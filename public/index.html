@@ -351,6 +351,79 @@
       font-weight: 600;
       font-size: 13px;
     }
+
+    /* ─── Mobile toggle button ─── */
+    #mobile-toggle {
+      display: none;
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      z-index: 1500;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: white;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      #app.visible { flex-direction: column-reverse; }
+
+      #sidebar {
+        width: 100%;
+        height: 40vh;
+        border-right: none;
+        border-top: 2px solid #334155;
+      }
+
+      #sidebar.hidden-mobile { display: none; }
+
+      #map-container {
+        flex: 1;
+        height: 60vh;
+      }
+
+      #sidebar-header h1 { font-size: 15px; }
+
+      .header-actions { gap: 4px; }
+      .btn-sm { font-size: 10px; padding: 4px 7px; }
+
+      #stats { gap: 6px; margin-top: 8px; }
+      .stat { padding: 6px 8px; }
+      .stat-value { font-size: 16px; }
+      .stat-label { font-size: 10px; }
+
+      .device-card { padding: 10px; }
+      .device-name { font-size: 13px; }
+
+      #mobile-toggle { display: block; }
+
+      #history-panel {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        padding: 12px;
+      }
+
+      #history-controls {
+        gap: 6px;
+      }
+
+      #history-controls input, #history-controls button {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      .modal { width: 95%; padding: 16px; }
+      .modal h2 { font-size: 15px; }
+
+      .login-box { width: 90%; padding: 24px; }
+    }
   </style>
 </head>
 <body>
@@ -421,6 +494,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Mobile toggle button -->
+  <button id="mobile-toggle" onclick="toggleMobileSidebar()">&#9776;</button>
 
   <!-- ═══ Modal Editare Dispozitiv ═══ -->
   <div id="edit-modal" class="modal-overlay">
@@ -849,6 +925,17 @@
 
     function formatDateLocal(date) {
       return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+
+    // ─── Mobile sidebar toggle ───
+    let sidebarVisible = true;
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const btn = document.getElementById('mobile-toggle');
+      sidebarVisible = !sidebarVisible;
+      sidebar.classList.toggle('hidden-mobile', !sidebarVisible);
+      btn.innerHTML = sidebarVisible ? '&#9776;' : '&#9650;';
+      if (map) setTimeout(() => map.invalidateSize(), 100);
     }
 
     // ─── Editare dispozitiv ───

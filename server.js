@@ -349,6 +349,121 @@ app.get('/api/stats', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Soferi CRUD ───
+
+app.get('/api/drivers', requireAuth, async (req, res) => {
+  try { res.json(await db.getDrivers()); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/drivers', requireAuth, requireAdmin, async (req, res) => {
+  try { res.json(await db.createDriver(req.body)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/drivers/:id', requireAuth, requireAdmin, async (req, res) => {
+  try { await db.updateDriver(req.params.id, req.body); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/drivers/:id', requireAuth, requireAdmin, async (req, res) => {
+  try { await db.deleteDriver(req.params.id); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Grupe CRUD ───
+
+app.get('/api/groups', requireAuth, async (req, res) => {
+  try { res.json(await db.getGroups()); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/groups', requireAuth, requireAdmin, async (req, res) => {
+  try { res.json(await db.createGroup(req.body)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/groups/:id', requireAuth, requireAdmin, async (req, res) => {
+  try { await db.updateGroup(req.params.id, req.body); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/groups/:id', requireAuth, requireAdmin, async (req, res) => {
+  try { await db.deleteGroup(req.params.id); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Geofences CRUD ───
+
+app.get('/api/geofences', requireAuth, async (req, res) => {
+  try { res.json(await db.getGeofences()); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/geofences', requireAuth, requireAdmin, async (req, res) => {
+  try { res.json(await db.createGeofence(req.body)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/geofences/:id', requireAuth, requireAdmin, async (req, res) => {
+  try { await db.deleteGeofence(req.params.id); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Alerte CRUD ───
+
+app.get('/api/alerts', requireAuth, async (req, res) => {
+  try { res.json(await db.getAlerts()); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/alerts', requireAuth, requireAdmin, async (req, res) => {
+  try { res.json(await db.createAlert(req.body)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/alerts/:id', requireAuth, requireAdmin, async (req, res) => {
+  try { await db.deleteAlert(req.params.id); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/alerts/history', requireAuth, async (req, res) => {
+  try { res.json(await db.getAlertHistory(parseInt(req.query.limit) || 50)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Trips ───
+
+app.get('/api/trips/:imei', requireAuth, async (req, res) => {
+  try {
+    const from = req.query.from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const to = req.query.to || new Date().toISOString();
+    res.json(await db.getTrips(req.params.imei, from, to));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Mentenanta CRUD ───
+
+app.get('/api/maintenance', requireAuth, async (req, res) => {
+  try { res.json(await db.getMaintenance(req.query.imei)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/maintenance', requireAuth, async (req, res) => {
+  try { res.json(await db.createMaintenance(req.body)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/maintenance/:id', requireAuth, async (req, res) => {
+  try { await db.updateMaintenance(req.params.id, req.body); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/maintenance/:id', requireAuth, requireAdmin, async (req, res) => {
+  try { await db.deleteMaintenance(req.params.id); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── Export CSV ───
 
 function haversineDistance(lat1, lon1, lat2, lon2) {

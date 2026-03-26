@@ -64,6 +64,129 @@ async function initDb() {
       )
     `);
 
+    // Tabela soferi
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS drivers (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        phone VARCHAR(20),
+        email VARCHAR(100),
+        license_number VARCHAR(30),
+        license_expiry DATE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Tabela grupe vehicule
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS device_groups (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) NOT NULL,
+        description VARCHAR(200),
+        color VARCHAR(7),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Extindere tabela devices cu campuri noi
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS brand VARCHAR(50);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS model VARCHAR(50);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS year INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS vin VARCHAR(17);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_type VARCHAR(20);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS tank_capacity INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS driver_id INTEGER REFERENCES drivers(id);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES device_groups(id);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS icon VARCHAR(20) DEFAULT 'car';
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS color VARCHAR(7);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS notes TEXT;
+      END $$
+    `);
+
+    // Tabela geofences (zone geografice)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS geofences (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        type VARCHAR(20) DEFAULT 'polygon',
+        coordinates JSONB NOT NULL,
+        color VARCHAR(7) DEFAULT '#2563eb',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Tabela alerte configurabile
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS alerts (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        type VARCHAR(30) NOT NULL,
+        imei VARCHAR(20),
+        condition JSONB NOT NULL,
+        enabled BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Tabela istoric alerte
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS alert_history (
+        id BIGSERIAL PRIMARY KEY,
+        alert_id INTEGER REFERENCES alerts(id),
+        imei VARCHAR(20) NOT NULL,
+        triggered_at TIMESTAMP DEFAULT NOW(),
+        data JSONB,
+        acknowledged BOOLEAN DEFAULT false
+      )
+    `);
+
+    // Tabela calatorii (trips)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS trips (
+        id BIGSERIAL PRIMARY KEY,
+        imei VARCHAR(20) NOT NULL,
+        start_time TIMESTAMP NOT NULL,
+        end_time TIMESTAMP,
+        start_lat DOUBLE PRECISION,
+        start_lng DOUBLE PRECISION,
+        end_lat DOUBLE PRECISION,
+        end_lng DOUBLE PRECISION,
+        start_address VARCHAR(200),
+        end_address VARCHAR(200),
+        distance_km DOUBLE PRECISION DEFAULT 0,
+        max_speed INTEGER DEFAULT 0,
+        avg_speed DOUBLE PRECISION DEFAULT 0,
+        fuel_used DOUBLE PRECISION,
+        duration_seconds INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Tabela mentenanta
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS maintenance (
+        id SERIAL PRIMARY KEY,
+        imei VARCHAR(20) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        description TEXT,
+        due_date DATE,
+        due_km INTEGER,
+        done_date DATE,
+        done_km INTEGER,
+        cost DECIMAL(10,2),
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Indecsi noi
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_trips_imei_start ON trips (imei, start_time DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_alert_history_imei ON alert_history (imei, triggered_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_maintenance_imei ON maintenance (imei, status)`);
+
     console.log('[DB] Tabele create / verificate');
   } finally {
     client.release();
@@ -202,6 +325,172 @@ async function getUserCount() {
   return parseInt(result.rows[0].count);
 }
 
+// ─── Funcții soferi ───
+
+async function getDrivers() {
+  const result = await pool.query('SELECT * FROM drivers ORDER BY name');
+  return result.rows;
+}
+
+async function createDriver(data) {
+  const result = await pool.query(
+    'INSERT INTO drivers (name, phone, email, license_number, license_expiry) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    [data.name, data.phone, data.email, data.license_number, data.license_expiry]
+  );
+  return result.rows[0];
+}
+
+async function updateDriver(id, data) {
+  await pool.query(
+    'UPDATE drivers SET name=$2, phone=$3, email=$4, license_number=$5, license_expiry=$6 WHERE id=$1',
+    [id, data.name, data.phone, data.email, data.license_number, data.license_expiry]
+  );
+}
+
+async function deleteDriver(id) {
+  await pool.query('UPDATE devices SET driver_id = NULL WHERE driver_id = $1', [id]);
+  await pool.query('DELETE FROM drivers WHERE id = $1', [id]);
+}
+
+// ─── Funcții grupe ───
+
+async function getGroups() {
+  const result = await pool.query('SELECT * FROM device_groups ORDER BY name');
+  return result.rows;
+}
+
+async function createGroup(data) {
+  const result = await pool.query(
+    'INSERT INTO device_groups (name, description, color) VALUES ($1, $2, $3) RETURNING *',
+    [data.name, data.description, data.color]
+  );
+  return result.rows[0];
+}
+
+async function updateGroup(id, data) {
+  await pool.query(
+    'UPDATE device_groups SET name=$2, description=$3, color=$4 WHERE id=$1',
+    [id, data.name, data.description, data.color]
+  );
+}
+
+async function deleteGroup(id) {
+  await pool.query('UPDATE devices SET group_id = NULL WHERE group_id = $1', [id]);
+  await pool.query('DELETE FROM device_groups WHERE id = $1', [id]);
+}
+
+// ─── Funcții geofences ───
+
+async function getGeofences() {
+  const result = await pool.query('SELECT * FROM geofences ORDER BY name');
+  return result.rows;
+}
+
+async function createGeofence(data) {
+  const result = await pool.query(
+    'INSERT INTO geofences (name, type, coordinates, color) VALUES ($1, $2, $3, $4) RETURNING *',
+    [data.name, data.type, JSON.stringify(data.coordinates), data.color]
+  );
+  return result.rows[0];
+}
+
+async function deleteGeofence(id) {
+  await pool.query('DELETE FROM geofences WHERE id = $1', [id]);
+}
+
+// ─── Funcții alerte ───
+
+async function getAlerts() {
+  const result = await pool.query('SELECT * FROM alerts ORDER BY created_at DESC');
+  return result.rows;
+}
+
+async function createAlert(data) {
+  const result = await pool.query(
+    'INSERT INTO alerts (name, type, imei, condition, enabled) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    [data.name, data.type, data.imei, JSON.stringify(data.condition), data.enabled !== false]
+  );
+  return result.rows[0];
+}
+
+async function deleteAlert(id) {
+  await pool.query('DELETE FROM alert_history WHERE alert_id = $1', [id]);
+  await pool.query('DELETE FROM alerts WHERE id = $1', [id]);
+}
+
+async function getAlertHistory(limit = 50) {
+  const result = await pool.query(
+    'SELECT ah.*, a.name as alert_name, a.type as alert_type FROM alert_history ah LEFT JOIN alerts a ON a.id = ah.alert_id ORDER BY ah.triggered_at DESC LIMIT $1',
+    [limit]
+  );
+  return result.rows;
+}
+
+async function insertAlertEvent(alertId, imei, data) {
+  await pool.query(
+    'INSERT INTO alert_history (alert_id, imei, data) VALUES ($1, $2, $3)',
+    [alertId, imei, JSON.stringify(data)]
+  );
+}
+
+// ─── Funcții trips ───
+
+async function getTrips(imei, from, to) {
+  const result = await pool.query(
+    'SELECT * FROM trips WHERE imei = $1 AND start_time >= $2 AND start_time <= $3 ORDER BY start_time DESC',
+    [imei, from, to]
+  );
+  return result.rows;
+}
+
+async function createTrip(data) {
+  const result = await pool.query(
+    'INSERT INTO trips (imei, start_time, start_lat, start_lng) VALUES ($1, $2, $3, $4) RETURNING *',
+    [data.imei, data.start_time, data.start_lat, data.start_lng]
+  );
+  return result.rows[0];
+}
+
+async function endTrip(id, data) {
+  await pool.query(
+    'UPDATE trips SET end_time=$2, end_lat=$3, end_lng=$4, distance_km=$5, max_speed=$6, avg_speed=$7, duration_seconds=$8 WHERE id=$1',
+    [id, data.end_time, data.end_lat, data.end_lng, data.distance_km, data.max_speed, data.avg_speed, data.duration_seconds]
+  );
+}
+
+// ─── Funcții mentenanta ───
+
+async function getMaintenance(imei) {
+  let query = 'SELECT * FROM maintenance';
+  const params = [];
+  if (imei) {
+    query += ' WHERE imei = $1';
+    params.push(imei);
+  }
+  query += ' ORDER BY CASE WHEN status = \'pending\' THEN 0 WHEN status = \'overdue\' THEN 1 ELSE 2 END, due_date';
+  const result = await pool.query(query, params);
+  return result.rows;
+}
+
+async function createMaintenance(data) {
+  const result = await pool.query(
+    'INSERT INTO maintenance (imei, type, description, due_date, due_km, cost, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [data.imei, data.type, data.description, data.due_date, data.due_km, data.cost, data.status || 'pending']
+  );
+  return result.rows[0];
+}
+
+async function updateMaintenance(id, data) {
+  await pool.query(
+    'UPDATE maintenance SET type=$2, description=$3, due_date=$4, due_km=$5, done_date=$6, done_km=$7, cost=$8, status=$9 WHERE id=$1',
+    [id, data.type, data.description, data.due_date, data.due_km, data.done_date, data.done_km, data.cost, data.status]
+  );
+}
+
+async function deleteMaintenance(id) {
+  await pool.query('DELETE FROM maintenance WHERE id = $1', [id]);
+}
+
 module.exports = {
   pool,
   initDb,
@@ -216,5 +505,11 @@ module.exports = {
   getUsers,
   deleteUser,
   updateUserPassword,
-  getUserCount
+  getUserCount,
+  getDrivers, createDriver, updateDriver, deleteDriver,
+  getGroups, createGroup, updateGroup, deleteGroup,
+  getGeofences, createGeofence, deleteGeofence,
+  getAlerts, createAlert, deleteAlert, getAlertHistory, insertAlertEvent,
+  getTrips, createTrip, endTrip,
+  getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance
 };
