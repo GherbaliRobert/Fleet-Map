@@ -349,6 +349,138 @@ app.get('/api/stats', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Export CSV ───
+
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+app.get('/api/export/:imei', requireAuth, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const to = req.query.to || new Date().toISOString();
+    const history = await db.getDeviceHistory(imei, from, to);
+
+    if (history.length === 0) {
+      return res.status(404).json({ error: 'Nu sunt date pentru perioada selectata' });
+    }
+
+    // Collect all IO keys from all records
+    const allIoKeys = new Set();
+    for (const row of history) {
+      if (row.io_data) {
+        Object.keys(row.io_data).forEach(k => allIoKeys.add(k));
+      }
+    }
+    const ioKeys = Array.from(allIoKeys).sort();
+
+    // CSV header
+    const baseHeaders = ['Data/Ora', 'Latitudine', 'Longitudine', 'Viteza (km/h)', 'Altitudine (m)', 'Unghi', 'Sateliti'];
+    const headers = [...baseHeaders, ...ioKeys, 'Distanta parcursa (km)'];
+
+    // Calculate stats
+    let totalDistance = 0;
+    let maxSpeed = 0;
+    let movingTime = 0;
+    let stoppedTime = 0;
+    let stops = 0;
+    let wasMoving = false;
+
+    const rows = history.map((row, i) => {
+      // Distance
+      let dist = 0;
+      if (i > 0) {
+        dist = haversineDistance(
+          history[i - 1].latitude, history[i - 1].longitude,
+          row.latitude, row.longitude
+        );
+        totalDistance += dist;
+
+        // Time calculation
+        const timeDiff = (new Date(row.timestamp) - new Date(history[i - 1].timestamp)) / 1000;
+        if (row.speed > 3) {
+          movingTime += timeDiff;
+          if (!wasMoving) wasMoving = true;
+        } else {
+          stoppedTime += timeDiff;
+          if (wasMoving) { stops++; wasMoving = false; }
+        }
+      }
+
+      if (row.speed > maxSpeed) maxSpeed = row.speed;
+
+      const baseCols = [
+        new Date(row.timestamp).toLocaleString('ro-RO'),
+        row.latitude,
+        row.longitude,
+        row.speed,
+        row.altitude,
+        row.angle,
+        row.satellites
+      ];
+
+      // IO data columns
+      const ioCols = ioKeys.map(key => {
+        const val = row.io_data?.[key];
+        return val !== undefined ? val : '';
+      });
+
+      return [...baseCols, ...ioCols, totalDistance.toFixed(3)];
+    });
+
+    // Summary rows
+    const avgSpeed = history.length > 0
+      ? (history.reduce((sum, r) => sum + r.speed, 0) / history.length).toFixed(1)
+      : 0;
+
+    const formatTime = (seconds) => {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      return `${h}h ${m}m`;
+    };
+
+    const emptyIoCols = ioKeys.map(() => '');
+
+    rows.push([]);
+    rows.push(['=== SUMAR ===', '', '', '', '', '', '', ...emptyIoCols, '']);
+    rows.push(['Total distanta (km)', totalDistance.toFixed(2), '', '', '', '', '', ...emptyIoCols, '']);
+    rows.push(['Viteza medie (km/h)', avgSpeed, '', '', '', '', '', ...emptyIoCols, '']);
+    rows.push(['Viteza maxima (km/h)', maxSpeed, '', '', '', '', '', ...emptyIoCols, '']);
+    rows.push(['Timp in miscare', formatTime(movingTime), '', '', '', '', '', ...emptyIoCols, '']);
+    rows.push(['Timp oprit', formatTime(stoppedTime), '', '', '', '', '', ...emptyIoCols, '']);
+    rows.push(['Numar opriri', stops, '', '', '', '', '', ...emptyIoCols, '']);
+    rows.push(['Perioada', `${new Date(from).toLocaleString('ro-RO')} - ${new Date(to).toLocaleString('ro-RO')}`, '', '', '', '', '', ...emptyIoCols, '']);
+    rows.push(['Puncte GPS', history.length, '', '', '', '', '', ...emptyIoCols, '']);
+
+    // Build CSV
+    const escapeCsv = (val) => {
+      const str = String(val ?? '');
+      return str.includes(',') || str.includes('"') || str.includes('\n')
+        ? `"${str.replace(/"/g, '""')}"`
+        : str;
+    };
+
+    const csv = [
+      headers.map(escapeCsv).join(','),
+      ...rows.map(row => row.map(escapeCsv).join(','))
+    ].join('\n');
+
+    const filename = `traseu_${imei}_${new Date(from).toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('\uFEFF' + csv); // BOM for Excel UTF-8
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Debug API (doar admin) ───
 
 app.get('/api/debug/log', requireAuth, requireAdmin, (req, res) => {

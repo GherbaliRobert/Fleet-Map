@@ -416,8 +416,44 @@
           <label style="font-size: 12px;">Pana la:</label>
           <input type="datetime-local" id="history-to">
           <button onclick="loadHistory()">Incarca</button>
+          <button onclick="exportCSV()" style="background:#22c55e;">Export CSV</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══ Modal Editare Dispozitiv ═══ -->
+  <div id="edit-modal" class="modal-overlay">
+    <div class="modal">
+      <h2>
+        Editare dispozitiv
+        <button class="close-btn" onclick="closeEditModal()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <div class="form-group">
+        <label>IMEI</label>
+        <input type="text" id="edit-imei" disabled style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#64748b;font-size:14px;font-family:monospace;">
+      </div>
+      <div class="form-group">
+        <label>Nume</label>
+        <input type="text" id="edit-name" placeholder="ex: Dacia Logan #1" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;">
+      </div>
+      <div class="form-group">
+        <label>Tip vehicul</label>
+        <select id="edit-vehicle-type" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;">
+          <option value="">-- Selecteaza --</option>
+          <option value="Auto">Auto</option>
+          <option value="Camion">Camion</option>
+          <option value="Duba">Duba</option>
+          <option value="Motocicleta">Motocicleta</option>
+          <option value="Utilaj">Utilaj</option>
+          <option value="Altul">Altul</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Numar inmatriculare</label>
+        <input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;text-transform:uppercase;">
+      </div>
+      <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:8px;">Salveaza</button>
     </div>
   </div>
 
@@ -627,7 +663,8 @@
           Sateliti: ${data.satellites || '-'}<br>
           ${new Date(timestamp).toLocaleString('ro-RO')}<br>
           <br>
-          <a href="#" onclick="showHistory('${imei}'); return false;" style="color: #2563eb;">Vezi istoric</a>
+          <a href="#" onclick="showHistory('${imei}'); return false;" style="color: #2563eb;">Vezi istoric</a> |
+          <a href="#" onclick="openEditModal('${imei}'); return false;" style="color: #f97316;">Editeaza</a>
         </div>
       `;
 
@@ -812,6 +849,65 @@
 
     function formatDateLocal(date) {
       return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+
+    // ─── Editare dispozitiv ───
+    function openEditModal(imei) {
+      document.getElementById('edit-modal').classList.add('visible');
+      document.getElementById('edit-imei').value = imei;
+
+      // Fetch device info from DB
+      fetch('/api/devices').then(r => r.json()).then(devs => {
+        const dev = devs.find(d => d.imei === imei);
+        if (dev) {
+          document.getElementById('edit-name').value = dev.name || '';
+          document.getElementById('edit-vehicle-type').value = dev.vehicle_type || '';
+          document.getElementById('edit-plate').value = dev.plate || '';
+        }
+      });
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.remove('visible');
+    }
+
+    async function saveDevice() {
+      const imei = document.getElementById('edit-imei').value;
+      const name = document.getElementById('edit-name').value;
+      const vehicle_type = document.getElementById('edit-vehicle-type').value;
+      const plate = document.getElementById('edit-plate').value.toUpperCase();
+
+      const res = await fetch(`/api/devices/${imei}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, vehicle_type, plate })
+      });
+
+      if (res.ok) {
+        closeEditModal();
+        // Update local device data
+        const dev = devices.get(imei);
+        if (dev) {
+          dev.name = name;
+          dev.vehicle_type = vehicle_type;
+          dev.plate = plate;
+          updateMarker(dev);
+        }
+      } else {
+        alert('Eroare la salvare');
+      }
+    }
+
+    // ─── Export CSV ───
+    async function exportCSV() {
+      if (!selectedImei) return alert('Selecteaza un dispozitiv');
+
+      const from = document.getElementById('history-from').value;
+      const to = document.getElementById('history-to').value;
+      if (!from || !to) return alert('Selecteaza perioada');
+
+      const url = `/api/export/${selectedImei}?from=${new Date(from).toISOString()}&to=${new Date(to).toISOString()}`;
+      window.open(url, '_blank');
     }
 
     // ─── Pornire ───
