@@ -12,9 +12,7 @@ const db = require('./db');
 
 // ─── Configurare ───
 const HTTP_PORT = parseInt(process.env.PORT || '3000');
-const TCP_PORT_DEFAULT = 5027;
-// Evita conflict daca Railway seteaza PORT=5027 (din cauza TCP Proxy)
-const TCP_PORT = parseInt(process.env.TCP_PORT || (HTTP_PORT === TCP_PORT_DEFAULT ? '5028' : String(TCP_PORT_DEFAULT)));
+const TCP_PORT = parseInt(process.env.RAILWAY_TCP_PROXY_PORT || process.env.TCP_PORT || '5027');
 
 // ─── Stare live (ultima poziție per IMEI, ținută în memorie) ───
 const livePositions = new Map();
