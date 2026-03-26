@@ -4,6 +4,9 @@ const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const path = require('path');
+const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
+const bcrypt = require('bcryptjs');
 const { parseAvlPacket } = require('./codec8e');
 const db = require('./db');
 
@@ -134,10 +137,137 @@ const tcpServer = net.createServer((socket) => {
 // ══════════════════════════════════════════════
 const app = express();
 app.use(express.json());
+
+// ─── Sesiuni ───
+const sessionMiddleware = session({
+  store: new PgSession({
+    pool: db.pool,
+    createTableIfMissing: true
+  }),
+  secret: process.env.SESSION_SECRET || 'gps-tracker-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000, // 24 ore
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax'
+  }
+});
+app.use(sessionMiddleware);
+
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ─── Middleware autentificare ───
+function requireAuth(req, res, next) {
+  if (req.session && req.session.userId) return next();
+  res.status(401).json({ error: 'Neautorizat' });
+}
+
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.role === 'admin') return next();
+  res.status(403).json({ error: 'Acces interzis' });
+}
+
+// ─── Rute autentificare ───
+
+// Login
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
+    }
+
+    const user = await db.getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ error: 'Username sau parola greșită' });
+    }
+
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Username sau parola greșită' });
+    }
+
+    req.session.userId = user.id;
+    req.session.username = user.username;
+    req.session.role = user.role;
+
+    res.json({ username: user.username, role: user.role });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Logout
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.json({ ok: true });
+  });
+});
+
+// Utilizatorul curent
+app.get('/api/me', (req, res) => {
+  if (req.session && req.session.userId) {
+    return res.json({ username: req.session.username, role: req.session.role });
+  }
+  res.status(401).json({ error: 'Neautorizat' });
+});
+
+// ─── Managementul utilizatorilor (doar admin) ───
+
+app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const users = await db.getUsers();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
+    }
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Username-ul trebuie să aibă minim 3 caractere' });
+    }
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'Parola trebuie să aibă minim 4 caractere' });
+    }
+
+    const existing = await db.getUserByUsername(username);
+    if (existing) {
+      return res.status(409).json({ error: 'Username-ul există deja' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const user = await db.createUser(username, hash, role || 'viewer');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (id === req.session.userId) {
+      return res.status(400).json({ error: 'Nu te poți șterge pe tine' });
+    }
+    await db.deleteUser(id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── API-uri protejate ───
+
 // API: Lista dispozitivelor cu ultima poziție
-app.get('/api/devices', async (req, res) => {
+app.get('/api/devices', requireAuth, async (req, res) => {
   try {
     const devices = await db.getDevices();
     res.json(devices);
@@ -147,19 +277,19 @@ app.get('/api/devices', async (req, res) => {
 });
 
 // API: Poziții live din memorie
-app.get('/api/live', (req, res) => {
+app.get('/api/live', requireAuth, (req, res) => {
   const positions = Array.from(livePositions.values());
   res.json(positions);
 });
 
 // API: Conexiuni active
-app.get('/api/connections', (req, res) => {
+app.get('/api/connections', requireAuth, (req, res) => {
   const connections = Object.fromEntries(activeConnections);
   res.json(connections);
 });
 
 // API: Istoric traseu pentru un dispozitiv
-app.get('/api/history/:imei', async (req, res) => {
+app.get('/api/history/:imei', requireAuth, async (req, res) => {
   try {
     const { imei } = req.params;
     const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -172,7 +302,7 @@ app.get('/api/history/:imei', async (req, res) => {
 });
 
 // API: Actualizare info dispozitiv (nume, tip, nr. înmatriculare)
-app.put('/api/devices/:imei', async (req, res) => {
+app.put('/api/devices/:imei', requireAuth, async (req, res) => {
   try {
     const { imei } = req.params;
     const { name, vehicle_type, plate } = req.body;
@@ -184,7 +314,7 @@ app.put('/api/devices/:imei', async (req, res) => {
 });
 
 // API: Statistici
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', requireAuth, async (req, res) => {
   try {
     const stats = {
       totalDevices: livePositions.size,
@@ -230,6 +360,15 @@ function broadcastWs(message) {
 async function start() {
   // Inițializează baza de date
   await db.initDb();
+
+  // Creează userul admin implicit dacă nu există niciun user
+  const userCount = await db.getUserCount();
+  if (userCount === 0) {
+    const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+    const hash = await bcrypt.hash(adminPass, 10);
+    await db.createUser('admin', hash, 'admin');
+    console.log('[AUTH] Utilizator admin creat (parola: din ADMIN_PASSWORD sau "admin123")');
+  }
 
   // Încarcă ultimele poziții din DB în memorie
   const lastPositions = await db.getLastPositions();

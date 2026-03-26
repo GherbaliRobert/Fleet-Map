@@ -3,8 +3,8 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('railway') 
-    ? { rejectUnauthorized: false } 
+  ssl: process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('railway')
+    ? { rejectUnauthorized: false }
     : false
 });
 
@@ -51,6 +51,17 @@ async function initDb() {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_positions_ts 
       ON positions (timestamp)
+    `);
+
+    // Tabela utilizatorilor
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password_hash VARCHAR(100) NOT NULL,
+        role VARCHAR(20) DEFAULT 'viewer',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
     `);
 
     console.log('[DB] Tabele create / verificate');
@@ -153,6 +164,40 @@ async function getLastPositions() {
   return result.rows;
 }
 
+// ─── Funcții utilizatori ───
+
+async function getUserByUsername(username) {
+  const result = await pool.query(
+    'SELECT * FROM users WHERE username = $1',
+    [username]
+  );
+  return result.rows[0] || null;
+}
+
+async function createUser(username, passwordHash, role = 'viewer') {
+  const result = await pool.query(
+    'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role, created_at',
+    [username, passwordHash, role]
+  );
+  return result.rows[0];
+}
+
+async function getUsers() {
+  const result = await pool.query(
+    'SELECT id, username, role, created_at FROM users ORDER BY created_at'
+  );
+  return result.rows;
+}
+
+async function deleteUser(id) {
+  await pool.query('DELETE FROM users WHERE id = $1', [id]);
+}
+
+async function getUserCount() {
+  const result = await pool.query('SELECT COUNT(*) FROM users');
+  return parseInt(result.rows[0].count);
+}
+
 module.exports = {
   pool,
   initDb,
@@ -161,5 +206,10 @@ module.exports = {
   insertPositions,
   getDevices,
   getDeviceHistory,
-  getLastPositions
+  getLastPositions,
+  getUserByUsername,
+  createUser,
+  getUsers,
+  deleteUser,
+  getUserCount
 };
