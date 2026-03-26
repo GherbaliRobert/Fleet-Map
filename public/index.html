@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPS Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+
+    #app { display: flex; height: 100vh; }
+
+    /* Sidebar */
+    #sidebar {
+      width: 340px;
+      background: #1e293b;
+      border-right: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid #334155;
+    }
+
+    #sidebar-header h1 {
+      font-size: 18px;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #stats {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .stat {
+      background: #0f172a;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      flex: 1;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .stat-label { color: #94a3b8; }
+
+    #device-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .device-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .device-card:hover { border-color: #38bdf8; transform: translateX(2px); }
+    .device-card.active { border-color: #38bdf8; background: #1e3a5f; }
+
+    .device-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .device-name { font-weight: 600; font-size: 14px; }
+    .device-imei { font-size: 11px; color: #64748b; font-family: monospace; }
+
+    .device-status {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .status-online { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .status-offline { background: #64748b; }
+
+    .device-info {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .device-info span { display: flex; align-items: center; gap: 3px; }
+
+    /* Map */
+    #map-container { flex: 1; position: relative; }
+    #map { width: 100%; height: 100%; }
+
+    /* History panel */
+    #history-panel {
+      display: none;
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 1000;
+    }
+
+    #history-panel.visible { display: block; }
+
+    #history-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    #history-controls input, #history-controls button {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+
+    #history-controls button {
+      background: #2563eb;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    #history-controls button:hover { background: #1d4ed8; }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    /* Connection status */
+    #ws-status {
+      padding: 6px 16px;
+      font-size: 11px;
+      text-align: center;
+      border-top: 1px solid #334155;
+    }
+
+    .ws-connected { color: #22c55e; }
+    .ws-disconnected { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <h1>📡 GPS Tracker</h1>
+        <div id="stats">
+          <div class="stat">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Dispozitive</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-online">0</div>
+            <div class="stat-label">Online</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-moving">0</div>
+            <div class="stat-label">În mișcare</div>
+          </div>
+        </div>
+      </div>
+      <div id="device-list"></div>
+      <div id="ws-status" class="ws-disconnected">⚡ Conectare...</div>
+    </div>
+
+    <div id="map-container">
+      <div id="map"></div>
+      <div id="history-panel">
+        <button class="close-btn" onclick="closeHistory()">✕</button>
+        <h3 style="margin-bottom: 10px; font-size: 14px;">📍 Istoric traseu</h3>
+        <div id="history-controls">
+          <label style="font-size: 12px;">De la:</label>
+          <input type="datetime-local" id="history-from">
+          <label style="font-size: 12px;">Până la:</label>
+          <input type="datetime-local" id="history-to">
+          <button onclick="loadHistory()">Încarcă</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // ─── Hartă ───
+    const map = L.map('map').setView([44.4268, 26.1025], 12); // București default
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const markers = new Map();
+    const devices = new Map();
+    let selectedImei = null;
+    let historyLine = null;
+
+    // ─── Iconițe ───
+    function createIcon(angle, speed, isSelected) {
+      const color = speed > 0 ? '#22c55e' : '#64748b';
+      const size = isSelected ? 14 : 10;
+      const border = isSelected ? '3px solid #38bdf8' : '2px solid #fff';
+      return L.divIcon({
+        className: 'vehicle-marker',
+        html: `<div style="
+          width: ${size}px; height: ${size}px;
+          background: ${color};
+          border: ${border};
+          border-radius: 50%;
+          box-shadow: 0 0 8px ${color};
+        "></div>`,
+        iconSize: [size + 6, size + 6],
+        iconAnchor: [(size + 6) / 2, (size + 6) / 2]
+      });
+    }
+
+    // ─── Actualizare marker pe hartă ───
+    function updateMarker(data) {
+      const { imei, latitude, longitude, speed, angle, timestamp, io } = data;
+
+      devices.set(imei, data);
+
+      const isSelected = imei === selectedImei;
+      const icon = createIcon(angle, speed, isSelected);
+
+      // Popup info
+      const name = data.name || imei;
+      const ignition = io?.ignition ? '🟢 ON' : '🔴 OFF';
+      const popupContent = `
+        <div style="font-family: sans-serif; font-size: 13px; min-width: 180px;">
+          <b>${name}</b><br>
+          <span style="color: #666; font-size: 11px;">${imei}</span><br><br>
+          🚗 Viteză: <b>${speed} km/h</b><br>
+          🔑 Contact: ${ignition}<br>
+          🛰️ Sateliți: ${data.satellites || '-'}<br>
+          🕐 ${new Date(timestamp).toLocaleString('ro-RO')}<br>
+          <br>
+          <a href="#" onclick="showHistory('${imei}'); return false;" style="color: #2563eb;">📍 Vezi istoric</a>
+        </div>
+      `;
+
+      if (markers.has(imei)) {
+        const marker = markers.get(imei);
+        marker.setLatLng([latitude, longitude]);
+        marker.setIcon(icon);
+        marker.getPopup().setContent(popupContent);
+      } else {
+        const marker = L.marker([latitude, longitude], { icon })
+          .bindPopup(popupContent)
+          .addTo(map);
+        
+        marker.on('click', () => selectDevice(imei));
+        markers.set(imei, marker);
+      }
+
+      // Dacă e selectat, urmărește pe hartă
+      if (isSelected) {
+        map.panTo([latitude, longitude]);
+      }
+
+      updateDeviceList();
+    }
+
+    // ─── Lista dispozitivelor din sidebar ───
+    function updateDeviceList() {
+      const list = document.getElementById('device-list');
+      const devicesArray = Array.from(devices.values());
+
+      document.getElementById('stat-total').textContent = devicesArray.length;
+      document.getElementById('stat-online').textContent = devicesArray.length;
+      document.getElementById('stat-moving').textContent = devicesArray.filter(d => d.speed > 0).length;
+
+      list.innerHTML = devicesArray.map(d => {
+        const isActive = d.imei === selectedImei;
+        const isMoving = d.speed > 0;
+        const name = d.name || d.imei;
+        const timeAgo = getTimeAgo(new Date(d.timestamp));
+        const ignition = d.io?.ignition ? 'Contact ON' : 'Contact OFF';
+
+        return `
+          <div class="device-card ${isActive ? 'active' : ''}" onclick="selectDevice('${d.imei}')">
+            <div class="device-header">
+              <div>
+                <span class="device-status ${isMoving ? 'status-online' : 'status-offline'}"></span>
+                <span class="device-name">${name}</span>
+              </div>
+              <span style="font-size: 12px; color: ${isMoving ? '#22c55e' : '#94a3b8'}">
+                ${d.speed} km/h
+              </span>
+            </div>
+            <div class="device-imei">${d.imei}</div>
+            <div class="device-info">
+              <span>🔑 ${ignition}</span>
+              <span>🕐 ${timeAgo}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectDevice(imei) {
+      selectedImei = imei;
+      const data = devices.get(imei);
+      if (data) {
+        map.flyTo([data.latitude, data.longitude], 16);
+        markers.get(imei)?.openPopup();
+      }
+      // Refresh icons
+      devices.forEach((d, key) => {
+        const marker = markers.get(key);
+        if (marker) {
+          marker.setIcon(createIcon(d.angle, d.speed, key === selectedImei));
+        }
+      });
+      updateDeviceList();
+    }
+
+    // ─── Istoric traseu ───
+    function showHistory(imei) {
+      selectedImei = imei;
+      const panel = document.getElementById('history-panel');
+      panel.classList.add('visible');
+
+      // Default: ultimele 24h
+      const now = new Date();
+      const yesterday = new Date(now - 24 * 60 * 60 * 1000);
+
+      document.getElementById('history-from').value = formatDateLocal(yesterday);
+      document.getElementById('history-to').value = formatDateLocal(now);
+    }
+
+    function closeHistory() {
+      document.getElementById('history-panel').classList.remove('visible');
+      if (historyLine) {
+        map.removeLayer(historyLine);
+        historyLine = null;
+      }
+    }
+
+    async function loadHistory() {
+      if (!selectedImei) return;
+
+      const from = document.getElementById('history-from').value;
+      const to = document.getElementById('history-to').value;
+      if (!from || !to) return;
+
+      try {
+        const res = await fetch(`/api/history/${selectedImei}?from=${new Date(from).toISOString()}&to=${new Date(to).toISOString()}`);
+        const data = await res.json();
+
+        if (historyLine) map.removeLayer(historyLine);
+
+        if (data.length === 0) {
+          alert('Nu sunt date pentru perioada selectată');
+          return;
+        }
+
+        const points = data.map(p => [p.latitude, p.longitude]);
+        historyLine = L.polyline(points, {
+          color: '#2563eb',
+          weight: 3,
+          opacity: 0.8
+        }).addTo(map);
+
+        map.fitBounds(historyLine.getBounds(), { padding: [50, 50] });
+
+        // Adaugă markere start/stop
+        L.circleMarker(points[0], { radius: 6, color: '#22c55e', fillOpacity: 1 })
+          .bindPopup(`Start: ${new Date(data[0].timestamp).toLocaleString('ro-RO')}`)
+          .addTo(map);
+        L.circleMarker(points[points.length - 1], { radius: 6, color: '#ef4444', fillOpacity: 1 })
+          .bindPopup(`Stop: ${new Date(data[data.length - 1].timestamp).toLocaleString('ro-RO')}`)
+          .addTo(map);
+
+      } catch (err) {
+        console.error('Eroare încărcare istoric:', err);
+      }
+    }
+
+    // ─── WebSocket — date live ───
+    function connectWs() {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${protocol}//${location.host}`);
+      const statusEl = document.getElementById('ws-status');
+
+      ws.onopen = () => {
+        statusEl.textContent = '🟢 Conectat — date live';
+        statusEl.className = 'ws-connected';
+        document.getElementById('ws-status').style.padding = '6px 16px';
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === 'init') {
+          msg.data.forEach(updateMarker);
+          // Zoom la toate dispozitivele
+          if (msg.data.length > 0) {
+            const bounds = msg.data.map(d => [d.latitude, d.longitude]);
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+          }
+        }
+
+        if (msg.type === 'position') {
+          updateMarker(msg.data);
+        }
+
+        if (msg.type === 'disconnect') {
+          // Marchează dispozitivul ca offline
+        }
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = '🔴 Deconectat — reconectare...';
+        statusEl.className = 'ws-disconnected';
+        setTimeout(connectWs, 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    // ─── Utilități ───
+    function getTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return 'acum';
+      if (seconds < 3600) return `${Math.floor(seconds / 60)} min`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)} ore`;
+      return `${Math.floor(seconds / 86400)} zile`;
+    }
+
+    function formatDateLocal(date) {
+      return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+
+    // ─── Pornire ───
+    connectWs();
+
+    // Fallback: încarcă dispozitivele prin HTTP dacă WS nu merge
+    fetch('/api/live').then(r => r.json()).then(data => {
+      data.forEach(updateMarker);
+    }).catch(() => {});
+  </script>
+</body>
+</html>
