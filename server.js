@@ -361,13 +361,18 @@ async function start() {
   // Inițializează baza de date
   await db.initDb();
 
-  // Creează userul admin implicit dacă nu există niciun user
-  const userCount = await db.getUserCount();
-  if (userCount === 0) {
-    const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+  // Creează sau actualizează userul admin
+  const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminUser = await db.getUserByUsername('admin');
+  if (!adminUser) {
     const hash = await bcrypt.hash(adminPass, 10);
     await db.createUser('admin', hash, 'admin');
-    console.log('[AUTH] Utilizator admin creat (parola: din ADMIN_PASSWORD sau "admin123")');
+    console.log('[AUTH] Utilizator admin creat');
+  } else if (process.env.ADMIN_PASSWORD) {
+    // Reseteaza parola admin la cea din env var
+    const hash = await bcrypt.hash(adminPass, 10);
+    await db.updateUserPassword(adminUser.id, hash);
+    console.log('[AUTH] Parola admin actualizata din ADMIN_PASSWORD');
   }
 
   // Încarcă ultimele poziții din DB în memorie

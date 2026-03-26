@@ -193,6 +193,10 @@ async function deleteUser(id) {
   await pool.query('DELETE FROM users WHERE id = $1', [id]);
 }
 
+async function updateUserPassword(id, passwordHash) {
+  await pool.query('UPDATE users SET password_hash = $2 WHERE id = $1', [id, passwordHash]);
+}
+
 async function getUserCount() {
   const result = await pool.query('SELECT COUNT(*) FROM users');
   return parseInt(result.rows[0].count);
@@ -211,5 +215,6 @@ module.exports = {
   createUser,
   getUsers,
   deleteUser,
+  updateUserPassword,
   getUserCount
 };
