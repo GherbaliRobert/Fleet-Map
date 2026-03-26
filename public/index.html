@@ -381,6 +381,7 @@
         <h1>
           <span>GPS Tracker</span>
           <div class="header-actions">
+            <a href="/debug.html" class="btn-sm" id="btn-debug" style="display:none;text-decoration:none;">Debug</a>
             <button class="btn-sm" id="btn-users" style="display:none" onclick="openUsersModal()">Utilizatori</button>
             <button class="btn-sm btn-danger" onclick="logout()">Iesire</button>
           </div>
@@ -495,6 +496,7 @@
 
       if (currentUser.role === 'admin') {
         document.getElementById('btn-users').style.display = '';
+        document.getElementById('btn-debug').style.display = '';
       }
 
       if (!mapInitialized) {

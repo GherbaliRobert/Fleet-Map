@@ -18,6 +18,17 @@ const HTTP_PORT = parseInt(process.env.PORT || '3000');
 const livePositions = new Map();
 const activeConnections = new Map(); // IMEI -> socket info
 
+// ─── Debug log (circular buffer) ───
+const debugLog = [];
+const DEBUG_MAX = 200;
+
+function addDebugEntry(entry) {
+  const item = { ...entry, time: new Date().toISOString() };
+  debugLog.push(item);
+  if (debugLog.length > DEBUG_MAX) debugLog.shift();
+  broadcastWs({ type: 'debug', data: item });
+}
+
 // ══════════════════════════════════════════════
 // 1. SERVER TCP — primește date de la FMB140
 // ══════════════════════════════════════════════
@@ -27,6 +38,7 @@ const tcpServer = net.createServer((socket) => {
   const clientAddr = `${socket.remoteAddress}:${socket.remotePort}`;
 
   console.log(`[TCP] Conexiune nouă de la ${clientAddr}`);
+  addDebugEntry({ event: 'connect', address: clientAddr });
 
   socket.on('data', async (data) => {
     buffer = Buffer.concat([buffer, data]);
@@ -44,6 +56,7 @@ const tcpServer = net.createServer((socket) => {
         buffer = buffer.slice(2 + imeiLength);
 
         console.log(`[TCP] Dispozitiv identificat: IMEI ${imei} de la ${clientAddr}`);
+        addDebugEntry({ event: 'imei', imei, address: clientAddr });
 
         // Înregistrează dispozitivul în DB
         await db.upsertDevice(imei);
@@ -75,11 +88,19 @@ const tcpServer = net.createServer((socket) => {
 
       if (parsed.error) {
         console.error(`[TCP] Eroare parsare de la ${imei}: ${parsed.error}`);
+        addDebugEntry({ event: 'error', imei, error: parsed.error });
         socket.write(Buffer.alloc(4, 0)); // răspunde cu 0
         return;
       }
 
       console.log(`[TCP] ${imei}: ${parsed.numberOfRecords} recorduri primite`);
+      addDebugEntry({
+        event: 'data',
+        imei,
+        codecId: parsed.codecId,
+        numberOfRecords: parsed.numberOfRecords,
+        records: parsed.records
+      });
 
       // Salvează în baza de date
       await db.insertPositions(imei, parsed.records);
@@ -114,6 +135,7 @@ const tcpServer = net.createServer((socket) => {
 
   socket.on('close', () => {
     console.log(`[TCP] Deconectat: ${imei || clientAddr}`);
+    addDebugEntry({ event: 'disconnect', imei: imei || null, address: clientAddr });
     if (imei) {
       activeConnections.delete(imei);
       broadcastWs({ type: 'disconnect', data: { imei } });
@@ -322,6 +344,26 @@ app.get('/api/stats', requireAuth, async (req, res) => {
       livePositions: livePositions.size
     };
     res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Debug API (doar admin) ───
+
+app.get('/api/debug/log', requireAuth, requireAdmin, (req, res) => {
+  res.json(debugLog);
+});
+
+app.get('/api/debug/raw/:imei', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await db.pool.query(
+      'SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, created_at FROM positions WHERE imei = $1 ORDER BY timestamp DESC LIMIT $2',
+      [imei, limit]
+    );
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
