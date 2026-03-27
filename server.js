@@ -14,6 +14,12 @@ const db = require('./db');
 const HTTP_PORT = parseInt(process.env.PORT || '3000');
 const TCP_PORT = parseInt(process.env.TCP_PORT || '5027');
 
+// Dacă TCP și HTTP ar folosi același port, mută TCP pe altul
+if (TCP_PORT === HTTP_PORT) {
+  console.warn(`[WARN] TCP_PORT (${TCP_PORT}) == HTTP_PORT, mut TCP pe ${TCP_PORT + 1}`);
+}
+const ACTUAL_TCP_PORT = TCP_PORT === HTTP_PORT ? TCP_PORT + 1 : TCP_PORT;
+
 // ─── Stare live (ultima poziție per IMEI, ținută în memorie) ───
 const livePositions = new Map();
 const activeConnections = new Map(); // IMEI -> socket info
@@ -681,8 +687,8 @@ async function start() {
   console.log(`[DB] ${lastPositions.length} dispozitive încărcate din istoric`);
 
   // Pornește serverul TCP
-  tcpServer.listen(TCP_PORT, () => {
-    console.log(`[TCP] Server activ pe portul ${TCP_PORT} — aștept dispozitive Teltonika`);
+  tcpServer.listen(ACTUAL_TCP_PORT, () => {
+    console.log(`[TCP] Server activ pe portul ${ACTUAL_TCP_PORT} — aștept dispozitive Teltonika`);
   });
 
   // Pornește serverul HTTP + WebSocket
@@ -692,7 +698,7 @@ async function start() {
     console.log('');
     console.log('═══════════════════════════════════════');
     console.log('  GPS Tracker Server — PORNIT');
-    console.log(`  TCP (dispozitive): port ${TCP_PORT}`);
+    console.log(`  TCP (dispozitive): port ${ACTUAL_TCP_PORT}`);
     console.log(`  HTTP (hartă):      port ${HTTP_PORT}`);
     console.log('═══════════════════════════════════════');
   });
