@@ -357,7 +357,8 @@
     }
 
     .status-dot.online { background: var(--green); box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
-    .status-dot.offline { background: var(--text-muted); }
+    .status-dot.offline { background: var(--red); box-shadow: 0 0 6px rgba(239, 68, 68, 0.3); }
+    .status-dot.idle { background: var(--yellow); box-shadow: 0 0 8px rgba(234, 179, 8, 0.4); }
     .status-dot.moving { background: var(--green); box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); animation: pulse 2s infinite; }
 
     @keyframes pulse {
@@ -1583,24 +1584,46 @@
     }
 
     // ─── Vehicle Icons ───
-    function createIcon(angle, speed, isSelected) {
-      const isMoving = speed > 0;
-      const color = isMoving ? '#22c55e' : '#64748b';
-      const size = isSelected ? 16 : 11;
-      const border = isSelected ? '3px solid #38bdf8' : '2px solid rgba(255,255,255,0.8)';
+    function createIcon(angle, speed, isSelected, io) {
+      const isMoving = speed > 3;
+      const hasIgnition = io?.ignition === 1 || io?.ignition === true;
+
+      // Verde = in miscare, Galben = stationare cu contact, Rosu = oprit fara contact
+      let color, glowColor, status;
+      if (isMoving) {
+        color = '#22c55e'; glowColor = 'rgba(34,197,94,0.5)'; status = 'moving';
+      } else if (hasIgnition) {
+        color = '#eab308'; glowColor = 'rgba(234,179,8,0.4)'; status = 'idle';
+      } else {
+        color = '#ef4444'; glowColor = 'rgba(239,68,68,0.3)'; status = 'off';
+      }
+
+      const size = isSelected ? 32 : 26;
+      const selectedRing = isSelected ? 'filter:drop-shadow(0 0 6px var(--accent));' : '';
+
+      // SVG car icon rotated by angle
+      const rotation = angle || 0;
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" style="' + selectedRing + '">' +
+        '<g transform="rotate(' + rotation + ' 12 12)">' +
+          // Car body
+          '<path d="M5 17h14v-5l-2-5H7L5 12v5z" fill="' + color + '" stroke="rgba(255,255,255,0.8)" stroke-width="0.8"/>' +
+          // Windshield
+          '<path d="M7.5 12L8.5 8.5h7L16.5 12H7.5z" fill="rgba(255,255,255,0.3)"/>' +
+          // Wheels
+          '<rect x="5.5" y="15" width="3" height="1.5" rx="0.5" fill="rgba(0,0,0,0.5)"/>' +
+          '<rect x="15.5" y="15" width="3" height="1.5" rx="0.5" fill="rgba(0,0,0,0.5)"/>' +
+          // Direction indicator (front)
+          (isMoving ? '<circle cx="12" cy="6" r="1.5" fill="white" opacity="0.7"/>' : '') +
+        '</g>' +
+        // Glow effect
+        '<circle cx="12" cy="12" r="11" fill="none" stroke="' + color + '" stroke-width="0.5" opacity="' + (isMoving ? '0.6' : '0.3') + '"/>' +
+      '</svg>';
 
       return L.divIcon({
-        className: 'vehicle-marker',
-        html: '<div style="' +
-          'width:' + size + 'px;height:' + size + 'px;' +
-          'background:' + color + ';' +
-          'border:' + border + ';' +
-          'border-radius:50%;' +
-          'box-shadow:0 0 ' + (isMoving ? '10' : '4') + 'px ' + color + ';' +
-          (isSelected ? 'animation:pulse 2s infinite;' : '') +
-          '"></div>',
-        iconSize: [size + 6, size + 6],
-        iconAnchor: [(size + 6) / 2, (size + 6) / 2]
+        className: 'vehicle-marker vehicle-' + status,
+        html: svg,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
       });
     }
 
@@ -1611,7 +1634,7 @@
       devices.set(imei, data);
 
       const isSelected = imei === selectedImei;
-      const icon = createIcon(angle, speed, isSelected);
+      const icon = createIcon(angle, speed, isSelected, io);
 
       const name = data.name || imei;
       const plate = data.plate || '';
@@ -1745,9 +1768,11 @@
         const ignOn = d.io?.ignition;
         const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
-        let statusClass = 'offline';
-        if (isMoving) statusClass = 'moving';
-        else if (isOnline) statusClass = 'online';
+        const hasIgnition = d.io?.ignition === 1 || d.io?.ignition === true;
+        let statusClass = 'offline'; // rosu - oprit fara contact
+        if (isMoving) statusClass = 'moving'; // verde - in miscare
+        else if (hasIgnition) statusClass = 'idle'; // galben - stationare cu contact
+        else if (isOnline) statusClass = 'offline'; // rosu - online dar fara contact
 
         return '' +
           '<div class="device-card ' + (isActive ? 'active' : '') + '" onclick="selectDevice(\'' + d.imei + '\')">' +
@@ -1778,7 +1803,7 @@
       devices.forEach((d, key) => {
         const marker = markers.get(key);
         if (marker) {
-          marker.setIcon(createIcon(d.angle, d.speed, key === selectedImei));
+          marker.setIcon(createIcon(d.angle, d.speed, key === selectedImei, d.io));
         }
       });
       updateDeviceList();
