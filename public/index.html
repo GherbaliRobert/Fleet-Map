@@ -687,6 +687,63 @@
     .info-item-value.orange { color: var(--orange); }
     .info-item-value.muted { color: var(--text-muted); }
 
+    /* Report Modal */
+    .report-period-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    .report-period-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+    .report-period-btn.active { background: var(--blue); border-color: var(--blue); color: white; }
+
+    .report-stat {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .report-stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .report-stat-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    #report-routes-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    #report-routes-table tbody tr:hover {
+      background: rgba(56, 189, 248, 0.05);
+    }
+    #report-routes-table td {
+      padding: 8px 10px;
+      color: var(--text-primary);
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #report-modal, #report-modal * { visibility: visible; }
+      #report-modal { position: absolute; left: 0; top: 0; width: 100%; }
+      .modal-overlay { background: white !important; }
+      .modal { color: black !important; background: white !important; max-height: none !important; }
+      .report-stat { border-color: #ccc !important; }
+      .report-stat-value { color: #333 !important; }
+      #report-routes-table { color: black !important; }
+      .close-btn, .report-period-btn, #report-actions { display: none !important; }
+    }
+
     /* IO Tab */
     .io-section {
       margin-bottom: 12px;
@@ -1193,6 +1250,11 @@
           <div class="info-grid" id="detail-info-grid">
             <!-- Filled dynamically -->
           </div>
+          <div style="margin-top:12px;text-align:center;">
+            <button onclick="if(detailPanelImei) openReportModal(detailPanelImei)" style="padding:8px 20px;border-radius:6px;background:var(--blue);color:white;border:none;cursor:pointer;font-size:12px;font-weight:600;">
+              <i class="fas fa-file-alt"></i> Genereaza raport
+            </button>
+          </div>
         </div>
 
         <!-- IO Live Tab -->
@@ -1275,6 +1337,95 @@
           <option value="admin">Admin</option>
         </select>
         <button onclick="addUser()"><i class="fas fa-plus"></i> Adauga</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Modal Raport ═══ -->
+  <div id="report-modal" class="modal-overlay">
+    <div class="modal" style="width:900px;max-width:95vw;max-height:90vh;">
+      <h2>
+        <span><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent);"></i> Raport vehicul</span>
+        <button class="close-btn" onclick="closeReportModal()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+
+      <!-- Header raport -->
+      <div id="report-vehicle-info" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg-dark);border-radius:8px;margin-bottom:12px;">
+        <i class="fas fa-car" style="font-size:20px;color:var(--accent);"></i>
+        <div>
+          <div id="report-vehicle-name" style="font-weight:700;font-size:14px;"></div>
+          <div id="report-vehicle-imei" style="font-size:11px;color:var(--text-muted);font-family:monospace;"></div>
+        </div>
+      </div>
+
+      <!-- Selector perioada -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="report-period-btn active" onclick="setReportPeriod('today', this)">Azi</button>
+        <button class="report-period-btn" onclick="setReportPeriod('yesterday', this)">Ieri</button>
+        <button class="report-period-btn" onclick="setReportPeriod('week', this)">Saptamana</button>
+        <button class="report-period-btn" onclick="setReportPeriod('month', this)">Luna</button>
+        <span style="color:var(--text-muted);font-size:12px;margin:0 4px;">sau</span>
+        <input type="date" id="report-from" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-size:12px;">
+        <span style="color:var(--text-muted);font-size:12px;">→</span>
+        <input type="date" id="report-to" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-size:12px;">
+        <button onclick="generateReport()" style="padding:6px 14px;border-radius:6px;background:var(--blue);color:white;border:none;cursor:pointer;font-size:12px;font-weight:600;">
+          <i class="fas fa-sync-alt"></i> Genereaza
+        </button>
+      </div>
+
+      <!-- Loading -->
+      <div id="report-loading" style="display:none;text-align:center;padding:40px;color:var(--text-muted);">
+        <i class="fas fa-spinner fa-spin fa-2x"></i>
+        <div style="margin-top:12px;">Se genereaza raportul...</div>
+      </div>
+
+      <!-- Sumar -->
+      <div id="report-summary" style="display:none;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:8px;">
+          <div class="report-stat"><div class="report-stat-value" id="rs-km">0</div><div class="report-stat-label">Km parcursi</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-routes">0</div><div class="report-stat-label">Rute</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-avg-speed">0</div><div class="report-stat-label">Viteza medie</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-max-speed">0</div><div class="report-stat-label">Viteza max</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-moving">0</div><div class="report-stat-label">Timp miscare</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-stopped">0</div><div class="report-stat-label">Timp stationare</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-stops">0</div><div class="report-stat-label">Opriri</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-fuel">-</div><div class="report-stat-label">Consum</div></div>
+        </div>
+      </div>
+
+      <!-- Tabel rute -->
+      <div id="report-routes" style="display:none;overflow-x:auto;">
+        <table id="report-routes-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:var(--bg-dark);color:var(--text-secondary);text-align:left;">
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">#</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Start</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Stop</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Durata</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Distanta</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Vit. medie</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Vit. max</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Coordonate</th>
+            </tr>
+          </thead>
+          <tbody id="report-routes-body"></tbody>
+        </table>
+      </div>
+
+      <!-- No data -->
+      <div id="report-empty" style="display:none;text-align:center;padding:40px;color:var(--text-muted);">
+        <i class="fas fa-inbox fa-2x" style="margin-bottom:12px;"></i>
+        <div>Nu sunt date pentru perioada selectata</div>
+      </div>
+
+      <!-- Export buttons -->
+      <div id="report-actions" style="display:none;margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="printReport()" style="padding:8px 16px;border-radius:6px;background:var(--bg-dark);color:var(--text-primary);border:1px solid var(--border);cursor:pointer;font-size:12px;">
+          <i class="fas fa-print"></i> Printeaza
+        </button>
+        <button onclick="exportReportCSV()" style="padding:8px 16px;border-radius:6px;background:var(--green);color:white;border:none;cursor:pointer;font-size:12px;font-weight:600;">
+          <i class="fas fa-file-csv"></i> Export CSV
+        </button>
       </div>
     </div>
   </div>
@@ -1493,6 +1644,7 @@
           '<div class="popup-actions">' +
             '<a href="#" class="io-link" onclick="openDetailPanel(\'' + imei + '\', \'io\'); return false;"><i class="fas fa-microchip"></i> Toate IO</a>' +
             '<a href="#" class="history-link" onclick="openDetailPanel(\'' + imei + '\', \'history\'); return false;"><i class="fas fa-route"></i> Istoric</a>' +
+            '<a href="#" style="color:var(--accent);cursor:pointer;font-size:11px;" onclick="openReportModal(\'' + imei + '\'); return false;"><i class="fas fa-file-alt"></i> Raport</a>' +
             '<a href="#" class="edit-link" onclick="openEditModal(\'' + imei + '\'); return false;"><i class="fas fa-pen"></i> Editeaza</a>' +
           '</div>' +
         '</div>';
@@ -2100,6 +2252,197 @@
 
     function closeIoPanel() {
       closeDetailPanel();
+    }
+
+    // ─── Raport ───
+    let reportImei = null;
+    let reportData = null;
+
+    function openReportModal(imei) {
+      reportImei = imei;
+      const modal = document.getElementById('report-modal');
+      modal.classList.add('visible');
+
+      const data = devices.get(imei);
+      document.getElementById('report-vehicle-name').textContent = data?.name || imei;
+      document.getElementById('report-vehicle-imei').textContent = imei + (data?.plate ? ' | ' + data.plate : '');
+
+      // Set default to today
+      setReportPeriod('today', document.querySelector('.report-period-btn.active'));
+    }
+
+    function closeReportModal() {
+      document.getElementById('report-modal').classList.remove('visible');
+      reportImei = null;
+      reportData = null;
+    }
+
+    function setReportPeriod(period, btn) {
+      document.querySelectorAll('.report-period-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+
+      const now = new Date();
+      let from, to;
+
+      switch (period) {
+        case 'today':
+          from = new Date(now); from.setHours(0,0,0,0);
+          to = now;
+          break;
+        case 'yesterday':
+          from = new Date(now); from.setDate(from.getDate() - 1); from.setHours(0,0,0,0);
+          to = new Date(now); to.setDate(to.getDate() - 1); to.setHours(23,59,59,999);
+          break;
+        case 'week':
+          from = new Date(now); from.setDate(from.getDate() - 7); from.setHours(0,0,0,0);
+          to = now;
+          break;
+        case 'month':
+          from = new Date(now); from.setDate(1); from.setHours(0,0,0,0);
+          to = now;
+          break;
+      }
+
+      document.getElementById('report-from').value = from.toISOString().slice(0, 10);
+      document.getElementById('report-to').value = to.toISOString().slice(0, 10);
+
+      generateReport();
+    }
+
+    async function generateReport() {
+      if (!reportImei) return;
+
+      const fromDate = document.getElementById('report-from').value;
+      const toDate = document.getElementById('report-to').value;
+      if (!fromDate || !toDate) return;
+
+      const from = new Date(fromDate + 'T00:00:00').toISOString();
+      const to = new Date(toDate + 'T23:59:59').toISOString();
+
+      // Show loading
+      document.getElementById('report-loading').style.display = 'block';
+      document.getElementById('report-summary').style.display = 'none';
+      document.getElementById('report-routes').style.display = 'none';
+      document.getElementById('report-empty').style.display = 'none';
+      document.getElementById('report-actions').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/report/' + reportImei + '?from=' + from + '&to=' + to);
+        reportData = await res.json();
+
+        document.getElementById('report-loading').style.display = 'none';
+
+        if (!reportData.routes || reportData.routes.length === 0) {
+          document.getElementById('report-empty').style.display = 'block';
+          // Still show summary if we have data
+          if (reportData.summary && reportData.summary.totalKm > 0) {
+            renderReportSummary(reportData.summary);
+          }
+          return;
+        }
+
+        renderReportSummary(reportData.summary);
+        renderReportRoutes(reportData.routes);
+
+        document.getElementById('report-actions').style.display = 'flex';
+      } catch (err) {
+        document.getElementById('report-loading').style.display = 'none';
+        document.getElementById('report-empty').style.display = 'block';
+        document.getElementById('report-empty').innerHTML = '<i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom:12px;color:var(--red);"></i><div>Eroare la generare raport</div>';
+      }
+    }
+
+    function formatDuration(seconds) {
+      if (!seconds || seconds <= 0) return '0m';
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      if (h > 0) return h + 'h ' + m + 'm';
+      return m + 'm';
+    }
+
+    function renderReportSummary(s) {
+      document.getElementById('rs-km').textContent = s.totalKm.toFixed(1) + ' km';
+      document.getElementById('rs-routes').textContent = s.routeCount;
+      document.getElementById('rs-avg-speed').textContent = s.avgSpeed + ' km/h';
+      document.getElementById('rs-max-speed').textContent = s.maxSpeed + ' km/h';
+      document.getElementById('rs-max-speed').style.color = s.maxSpeed > 120 ? 'var(--red)' : 'var(--accent)';
+      document.getElementById('rs-moving').textContent = formatDuration(s.movingTime);
+      document.getElementById('rs-stopped').textContent = formatDuration(s.stoppedTime);
+      document.getElementById('rs-stops').textContent = s.stops;
+      document.getElementById('rs-fuel').textContent = s.fuelConsumed !== null ? s.fuelConsumed + ' L' : '-';
+      document.getElementById('report-summary').style.display = 'block';
+    }
+
+    function renderReportRoutes(routes) {
+      const tbody = document.getElementById('report-routes-body');
+      tbody.innerHTML = routes.map(function(r, i) {
+        const startTime = new Date(r.startTime).toLocaleString('ro-RO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+        const endTime = new Date(r.endTime).toLocaleString('ro-RO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+        const duration = formatDuration(r.duration);
+        const speedColor = r.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
+
+        return '<tr>' +
+          '<td style="color:var(--text-muted);font-weight:600;">' + (i + 1) + '</td>' +
+          '<td><i class="fas fa-play-circle" style="color:var(--green);margin-right:4px;font-size:10px;"></i>' + startTime + '</td>' +
+          '<td><i class="fas fa-stop-circle" style="color:var(--red);margin-right:4px;font-size:10px;"></i>' + endTime + '</td>' +
+          '<td>' + duration + '</td>' +
+          '<td style="font-weight:600;color:var(--accent);">' + r.distance.toFixed(1) + ' km</td>' +
+          '<td>' + r.avgSpeed + ' km/h</td>' +
+          '<td style="' + speedColor + '">' + r.maxSpeed + ' km/h</td>' +
+          '<td style="font-size:10px;color:var(--text-muted);font-family:monospace;">' +
+            r.startLat.toFixed(4) + ',' + r.startLng.toFixed(4) + ' → ' +
+            r.endLat.toFixed(4) + ',' + r.endLng.toFixed(4) +
+          '</td>' +
+        '</tr>';
+      }).join('');
+
+      document.getElementById('report-routes').style.display = 'block';
+    }
+
+    function printReport() {
+      window.print();
+    }
+
+    function exportReportCSV() {
+      if (!reportData || !reportData.routes) return;
+
+      const lines = ['Nr,Start,Stop,Durata (min),Distanta (km),Viteza medie (km/h),Viteza max (km/h),Start Lat,Start Lng,Stop Lat,Stop Lng'];
+
+      reportData.routes.forEach(function(r, i) {
+        lines.push([
+          i + 1,
+          new Date(r.startTime).toLocaleString('ro-RO'),
+          new Date(r.endTime).toLocaleString('ro-RO'),
+          Math.round(r.duration / 60),
+          r.distance.toFixed(2),
+          r.avgSpeed,
+          r.maxSpeed,
+          r.startLat.toFixed(6),
+          r.startLng.toFixed(6),
+          r.endLat.toFixed(6),
+          r.endLng.toFixed(6)
+        ].join(','));
+      });
+
+      // Add summary row
+      const s = reportData.summary;
+      lines.push('');
+      lines.push('SUMAR');
+      lines.push('Total km,' + s.totalKm.toFixed(2));
+      lines.push('Viteza medie,' + s.avgSpeed);
+      lines.push('Viteza maxima,' + s.maxSpeed);
+      lines.push('Timp miscare (min),' + Math.round(s.movingTime / 60));
+      lines.push('Timp stationare (min),' + Math.round(s.stoppedTime / 60));
+      lines.push('Opriri,' + s.stops);
+      if (s.fuelConsumed !== null) lines.push('Consum (L),' + s.fuelConsumed);
+
+      const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'raport_' + reportImei + '_' + document.getElementById('report-from').value + '.csv';
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     // ─── Start ───

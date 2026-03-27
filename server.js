@@ -467,6 +467,159 @@ app.get('/api/stats/:imei', requireAuth, async (req, res) => {
   }
 });
 
+// API: Raport detaliat cu detectie automata rute
+app.get('/api/report/:imei', requireAuth, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    const from = req.query.from || new Date(new Date().setHours(0,0,0,0)).toISOString();
+    const to = req.query.to || new Date().toISOString();
+    const history = await db.getDeviceHistory(imei, from, to);
+
+    if (history.length === 0) {
+      return res.json({ imei, from, to, routes: [], summary: { totalKm: 0, totalTime: 0, movingTime: 0, stoppedTime: 0, avgSpeed: 0, maxSpeed: 0, stops: 0, fuelConsumed: null, routeCount: 0 } });
+    }
+
+    // Detectie automata rute bazat pe ignition ON/OFF si miscare
+    const routes = [];
+    let currentRoute = null;
+    const STOP_THRESHOLD = 180; // 3 minute fara miscare = oprire
+    const SPEED_THRESHOLD = 3; // km/h
+
+    let lastMovingTime = null;
+    let globalMaxSpeed = 0;
+    let globalSpeedSum = 0;
+    let globalSpeedCount = 0;
+    let globalTotalKm = 0;
+    let globalMovingTime = 0;
+    let globalStoppedTime = 0;
+    let globalStops = 0;
+
+    for (let i = 0; i < history.length; i++) {
+      const row = history[i];
+      const spd = row.speed || 0;
+      const ts = new Date(row.timestamp);
+      const io = row.io_data || {};
+      const isMoving = spd > SPEED_THRESHOLD;
+
+      // Track global stats
+      if (spd > globalMaxSpeed) globalMaxSpeed = spd;
+      if (isMoving) { globalSpeedSum += spd; globalSpeedCount++; }
+
+      // Distance from previous point
+      let segmentDist = 0;
+      if (i > 0) {
+        const prev = history[i - 1];
+        segmentDist = haversineDistance(prev.latitude, prev.longitude, row.latitude, row.longitude);
+        if (segmentDist > 10) segmentDist = 0; // filter GPS jumps
+
+        const dt = (ts - new Date(prev.timestamp)) / 1000;
+        if (dt > 0 && dt < 3600) {
+          if (isMoving) globalMovingTime += dt;
+          else globalStoppedTime += dt;
+        }
+      }
+      globalTotalKm += segmentDist;
+
+      if (isMoving || (io.ignition === 1 && spd > 0)) {
+        lastMovingTime = ts;
+
+        if (!currentRoute) {
+          // Start new route
+          currentRoute = {
+            startTime: row.timestamp,
+            startLat: row.latitude,
+            startLng: row.longitude,
+            endTime: row.timestamp,
+            endLat: row.latitude,
+            endLng: row.longitude,
+            distance: 0,
+            maxSpeed: spd,
+            speedSum: spd,
+            speedCount: 1,
+            points: 1,
+            stops: 0
+          };
+        } else {
+          // Continue route
+          currentRoute.endTime = row.timestamp;
+          currentRoute.endLat = row.latitude;
+          currentRoute.endLng = row.longitude;
+          currentRoute.distance += segmentDist;
+          if (spd > currentRoute.maxSpeed) currentRoute.maxSpeed = spd;
+          currentRoute.speedSum += spd;
+          currentRoute.speedCount++;
+          currentRoute.points++;
+        }
+      } else {
+        // Vehicle stopped
+        if (currentRoute && lastMovingTime) {
+          const stopDuration = (ts - lastMovingTime) / 1000;
+          if (stopDuration > STOP_THRESHOLD) {
+            // End route
+            currentRoute.duration = Math.round((new Date(currentRoute.endTime) - new Date(currentRoute.startTime)) / 1000);
+            currentRoute.avgSpeed = currentRoute.speedCount > 0 ? Math.round(currentRoute.speedSum / currentRoute.speedCount) : 0;
+            currentRoute.distance = Math.round(currentRoute.distance * 100) / 100;
+            delete currentRoute.speedSum;
+            delete currentRoute.speedCount;
+            delete currentRoute.points;
+
+            if (currentRoute.distance > 0.05 || currentRoute.duration > 60) {
+              routes.push(currentRoute);
+              globalStops++;
+            }
+            currentRoute = null;
+            lastMovingTime = null;
+          } else if (currentRoute) {
+            // Short stop - keep in current route
+            currentRoute.endTime = row.timestamp;
+            currentRoute.endLat = row.latitude;
+            currentRoute.endLng = row.longitude;
+          }
+        }
+      }
+    }
+
+    // Close any open route
+    if (currentRoute) {
+      currentRoute.duration = Math.round((new Date(currentRoute.endTime) - new Date(currentRoute.startTime)) / 1000);
+      currentRoute.avgSpeed = currentRoute.speedCount > 0 ? Math.round(currentRoute.speedSum / currentRoute.speedCount) : 0;
+      currentRoute.distance = Math.round(currentRoute.distance * 100) / 100;
+      delete currentRoute.speedSum;
+      delete currentRoute.speedCount;
+      delete currentRoute.points;
+      if (currentRoute.distance > 0.05 || currentRoute.duration > 60) {
+        routes.push(currentRoute);
+      }
+    }
+
+    // Fuel
+    let firstFuel = null, lastFuel = null;
+    for (const row of history) {
+      const io = row.io_data || {};
+      if (io.can_fuel_consumed !== undefined) {
+        if (firstFuel === null) firstFuel = io.can_fuel_consumed;
+        lastFuel = io.can_fuel_consumed;
+      }
+    }
+
+    const summary = {
+      totalKm: Math.round(globalTotalKm * 100) / 100,
+      totalTime: Math.round(globalMovingTime + globalStoppedTime),
+      movingTime: Math.round(globalMovingTime),
+      stoppedTime: Math.round(globalStoppedTime),
+      avgSpeed: globalSpeedCount > 0 ? Math.round(globalSpeedSum / globalSpeedCount) : 0,
+      maxSpeed: globalMaxSpeed,
+      stops: globalStops,
+      fuelConsumed: (firstFuel !== null && lastFuel !== null) ? Math.round((lastFuel - firstFuel) / 10 * 100) / 100 : null,
+      routeCount: routes.length
+    };
+
+    res.json({ imei, from, to, routes, summary });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Soferi CRUD ───
 
 app.get('/api/drivers', requireAuth, async (req, res) => {
