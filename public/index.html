@@ -652,41 +652,100 @@
     .tab-page { display: none; }
     .tab-page.active { display: block; }
 
-    /* Info Tab */
+    /* Info Tab - Arobs Style */
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
     }
 
     .info-item {
       background: var(--bg-dark);
-      border: 1px solid var(--border);
-      border-radius: 8px;
       padding: 10px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
     }
 
     .info-item.full { grid-column: 1 / -1; }
+
+    .info-item-icon {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .info-item-icon.blue { background: rgba(56, 189, 248, 0.15); color: var(--accent); }
+    .info-item-icon.green { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+    .info-item-icon.red { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+    .info-item-icon.orange { background: rgba(249, 115, 22, 0.15); color: var(--orange); }
+    .info-item-icon.yellow { background: rgba(234, 179, 8, 0.15); color: var(--yellow); }
+    .info-item-icon.purple { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
+
+    .info-item-text { flex: 1; min-width: 0; }
+
+    .info-item-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+      word-break: break-word;
+    }
 
     .info-item-label {
       font-size: 10px;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
       font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .info-item-value {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text-primary);
+      margin-top: 1px;
     }
 
     .info-item-value.green { color: var(--green); }
     .info-item-value.red { color: var(--red); }
     .info-item-value.orange { color: var(--orange); }
+    .info-item-value.yellow { color: var(--yellow); }
     .info-item-value.muted { color: var(--text-muted); }
+
+    .info-status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .info-status-bar.moving { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); }
+    .info-status-bar.idle { background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); }
+    .info-status-bar.off { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    .info-status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .info-status-bar.moving .info-status-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .info-status-bar.idle .info-status-dot { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+    .info-status-bar.off .info-status-dot { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    .info-status-text { font-size: 13px; font-weight: 700; }
+    .info-status-bar.moving .info-status-text { color: var(--green); }
+    .info-status-bar.idle .info-status-text { color: var(--yellow); }
+    .info-status-bar.off .info-status-text { color: var(--red); }
+
+    .info-status-detail { font-size: 11px; color: var(--text-muted); margin-left: auto; }
 
     /* Report Modal */
     .report-period-btn {
@@ -1859,6 +1918,59 @@
       document.getElementById('tab-' + tab).classList.add('active');
     }
 
+    // Reverse geocoding cache
+    const addressCache = new Map();
+
+    async function reverseGeocode(lat, lng) {
+      const key = lat.toFixed(4) + ',' + lng.toFixed(4);
+      if (addressCache.has(key)) return addressCache.get(key);
+
+      try {
+        const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=16&addressdetails=1', {
+          headers: { 'Accept-Language': 'ro' }
+        });
+        const data = await res.json();
+        const addr = data.address;
+        let parts = [];
+        if (addr.road) parts.push(addr.road);
+        if (addr.house_number) parts[parts.length - 1] += ' ' + addr.house_number;
+        if (addr.city || addr.town || addr.village) parts.push(addr.city || addr.town || addr.village);
+        if (addr.county) parts.push(addr.county);
+        const result = parts.join(', ') || data.display_name?.split(',').slice(0, 3).join(',') || '-';
+        addressCache.set(key, result);
+        return result;
+      } catch (e) {
+        return '-';
+      }
+    }
+
+    function getDirectionName(angle) {
+      if (angle === null || angle === undefined) return '-';
+      const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SV', 'V', 'NV'];
+      return dirs[Math.round(angle / 45) % 8] + ' (' + angle + '\u00B0)';
+    }
+
+    function getGsmSignalBars(level) {
+      if (level === undefined || level === null) return '-';
+      const labels = ['Fara semnal', 'Foarte slab', 'Slab', 'Mediu', 'Bun', 'Excelent'];
+      const bars = Math.min(level, 5);
+      let html = '<span style="display:inline-flex;gap:2px;margin-right:6px;">';
+      for (let i = 0; i < 5; i++) {
+        const h = 6 + i * 3;
+        const active = i < bars;
+        html += '<span style="width:4px;height:' + h + 'px;border-radius:1px;background:' + (active ? 'var(--green)' : 'var(--border)') + ';display:inline-block;vertical-align:bottom;"></span>';
+      }
+      html += '</span>' + (labels[bars] || level + '/5');
+      return html;
+    }
+
+    function getGpsSignalInfo(sats) {
+      if (!sats) return { text: 'Fara fix', color: 'red' };
+      if (sats < 6) return { text: 'Slab (' + sats + ' sat.)', color: 'red' };
+      if (sats < 10) return { text: 'Mediu (' + sats + ' sat.)', color: 'yellow' };
+      return { text: 'Bun (' + sats + ' sat.)', color: 'green' };
+    }
+
     function updateDetailPanel(imei) {
       const data = devices.get(imei);
       if (!data) return;
@@ -1868,50 +1980,205 @@
       document.getElementById('detail-vehicle-name').textContent = name;
       document.getElementById('detail-vehicle-plate').textContent = plate || imei;
 
-      // Update vehicle icon type
       const typeIcon = getVehicleTypeIcon(data.vehicle_type);
       document.querySelector('.detail-header-info .vehicle-icon').innerHTML = '<i class="fas fa-' + typeIcon + '"></i>';
 
-      // Info Tab
+      const io = data.io || {};
       const isOnline = isDeviceOnline(data);
-      const isMoving = data.speed > 0;
-      const ignition = data.io?.ignition;
-      const voltage = data.io?.external_voltage ? (data.io.external_voltage / 1000).toFixed(1) + ' V' : '-';
-      const sats = data.satellites || '-';
+      const isMoving = data.speed > 3;
+      const hasIgnition = io.ignition === 1 || io.ignition === true;
+      const voltage = io.external_voltage ? (io.external_voltage / 1000).toFixed(1) + ' V' : '-';
+      const battVoltage = io.battery_voltage ? (io.battery_voltage / 1000).toFixed(2) + ' V' : '-';
+      const sats = data.satellites || 0;
+      const gpsInfo = getGpsSignalInfo(sats);
+      const engineHours = io.can_engine_hours ? (io.can_engine_hours / 3600).toFixed(0) : '-';
+      const odometer = io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : (io.can_total_mileage ? (io.can_total_mileage / 1000).toFixed(1) + ' km' : '-');
+      const fuelLevel = io.can_fuel_level !== undefined ? io.can_fuel_level + '%' : '-';
+      const rpm = io.can_rpm !== undefined ? io.can_rpm + ' RPM' : '-';
+      const coolant = io.can_coolant_temp !== undefined ? io.can_coolant_temp + '\u00B0C' : '-';
 
-      document.getElementById('detail-info-grid').innerHTML = '' +
+      // Status bar
+      let statusClass, statusText, statusDetail;
+      if (isMoving) {
+        statusClass = 'moving';
+        statusText = 'In miscare';
+        statusDetail = data.speed + ' km/h';
+      } else if (hasIgnition) {
+        statusClass = 'idle';
+        statusText = 'Stationare (contact ON)';
+        statusDetail = '';
+      } else if (isOnline) {
+        statusClass = 'off';
+        statusText = 'Contact decuplat';
+        statusDetail = '';
+      } else {
+        statusClass = 'off';
+        statusText = 'Offline';
+        statusDetail = getTimeAgo(new Date(data.timestamp));
+      }
+
+      const grid = document.getElementById('detail-info-grid');
+      const infoContainer = grid.parentElement;
+
+      // Status bar above grid
+      let statusBar = document.getElementById('detail-status-bar');
+      if (!statusBar) {
+        statusBar = document.createElement('div');
+        statusBar.id = 'detail-status-bar';
+        infoContainer.insertBefore(statusBar, grid);
+      }
+      statusBar.className = 'info-status-bar ' + statusClass;
+      statusBar.innerHTML = '<span class="info-status-dot"></span>' +
+        '<span class="info-status-text">' + statusText + '</span>' +
+        (statusDetail ? '<span class="info-status-detail">' + statusDetail + '</span>' : '');
+
+      grid.innerHTML = '' +
+        // Row 1: Data + Numar inmatriculare
         '<div class="info-item">' +
-          '<div class="info-item-label">Viteza</div>' +
-          '<div class="info-item-value ' + (isMoving ? 'green' : 'muted') + '">' + data.speed + ' km/h</div>' +
+          '<div class="info-item-icon blue"><i class="fas fa-calendar-alt"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value" style="font-size:12px;">' + new Date(data.timestamp).toLocaleString('ro-RO') + '</div>' +
+            '<div class="info-item-label">Data</div>' +
+          '</div>' +
         '</div>' +
         '<div class="info-item">' +
-          '<div class="info-item-label">Contact</div>' +
-          '<div class="info-item-value ' + (ignition ? 'green' : 'red') + '">' + (ignition ? 'ON' : 'OFF') + '</div>' +
+          '<div class="info-item-icon blue"><i class="fas fa-id-card"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value" style="color:var(--accent);font-size:13px;">' + (plate || '-') + '</div>' +
+            '<div class="info-item-label">Nr. inmatriculare</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Row 2: Viteza + Directie
+        '<div class="info-item">' +
+          '<div class="info-item-icon ' + (isMoving ? 'green' : 'blue') + '"><i class="fas fa-tachometer-alt"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value ' + (isMoving ? 'green' : 'muted') + '">' + data.speed + ' km/h</div>' +
+            '<div class="info-item-label">Viteza GPS</div>' +
+          '</div>' +
         '</div>' +
         '<div class="info-item">' +
-          '<div class="info-item-label">Sateliti</div>' +
-          '<div class="info-item-value">' + sats + '</div>' +
+          '<div class="info-item-icon blue"><i class="fas fa-compass"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value">' + getDirectionName(data.angle) + '</div>' +
+            '<div class="info-item-label">Directie</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Row 3: Semnal GSM + Semnal GPS
+        '<div class="info-item">' +
+          '<div class="info-item-icon ' + (io.gsm_signal >= 3 ? 'green' : io.gsm_signal >= 1 ? 'yellow' : 'red') + '"><i class="fas fa-signal"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value" style="font-size:12px;">' + getGsmSignalBars(io.gsm_signal) + '</div>' +
+            '<div class="info-item-label">Semnal GSM</div>' +
+          '</div>' +
         '</div>' +
         '<div class="info-item">' +
-          '<div class="info-item-label">Voltaj</div>' +
-          '<div class="info-item-value">' + voltage + '</div>' +
+          '<div class="info-item-icon ' + gpsInfo.color + '"><i class="fas fa-satellite-dish"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value ' + gpsInfo.color + '">' + gpsInfo.text + '</div>' +
+            '<div class="info-item-label">Semnal GPS</div>' +
+          '</div>' +
         '</div>' +
-        '<div class="info-item">' +
-          '<div class="info-item-label">Latitudine</div>' +
-          '<div class="info-item-value" style="font-size:12px;font-family:monospace;">' + (data.latitude?.toFixed(6) || '-') + '</div>' +
-        '</div>' +
-        '<div class="info-item">' +
-          '<div class="info-item-label">Longitudine</div>' +
-          '<div class="info-item-value" style="font-size:12px;font-family:monospace;">' + (data.longitude?.toFixed(6) || '-') + '</div>' +
-        '</div>' +
+
+        // Row 4: Pozitie
         '<div class="info-item full">' +
-          '<div class="info-item-label">Ultima actualizare</div>' +
-          '<div class="info-item-value" style="font-size:12px;">' + new Date(data.timestamp).toLocaleString('ro-RO') + ' (' + getTimeAgo(new Date(data.timestamp)) + ')</div>' +
+          '<div class="info-item-icon blue"><i class="fas fa-map-pin"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value" style="font-size:11px;font-family:monospace;">' + (data.latitude?.toFixed(6) || '-') + ', ' + (data.longitude?.toFixed(6) || '-') + '</div>' +
+            '<div class="info-item-label">Pozitie</div>' +
+          '</div>' +
         '</div>' +
+
+        // Row 5: Adresa (filled async)
+        '<div class="info-item full" id="detail-address-item">' +
+          '<div class="info-item-icon purple"><i class="fas fa-map-marker-alt"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value" style="font-size:12px;" id="detail-address"><i class="fas fa-spinner fa-spin" style="color:var(--text-muted);"></i></div>' +
+            '<div class="info-item-label">Adresa</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Row 6: Contact + Voltaj
+        '<div class="info-item">' +
+          '<div class="info-item-icon ' + (hasIgnition ? 'green' : 'red') + '"><i class="fas fa-key"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value ' + (hasIgnition ? 'green' : 'red') + '">' + (hasIgnition ? 'Cuplat' : 'Decuplat') + '</div>' +
+            '<div class="info-item-label">Status contact</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-icon orange"><i class="fas fa-bolt"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value">' + voltage + '</div>' +
+            '<div class="info-item-label">Tensiune baterie</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Row 7: Combustibil + RPM
+        '<div class="info-item">' +
+          '<div class="info-item-icon orange"><i class="fas fa-gas-pump"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value ' + (fuelLevel !== '-' && parseInt(fuelLevel) < 15 ? 'red' : '') + '">' + fuelLevel + '</div>' +
+            '<div class="info-item-label">Combustibil</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-icon blue"><i class="fas fa-cog"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value">' + rpm + '</div>' +
+            '<div class="info-item-label">Motor RPM</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Row 8: Odometru + Ore motor
+        '<div class="info-item">' +
+          '<div class="info-item-icon blue"><i class="fas fa-road"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value">' + odometer + '</div>' +
+            '<div class="info-item-label">Kilometraj total</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-icon blue"><i class="fas fa-clock"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value">' + engineHours + (engineHours !== '-' ? ' h' : '') + '</div>' +
+            '<div class="info-item-label">Index ore motor</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Row 9: Temperatura + Sofer
+        '<div class="info-item">' +
+          '<div class="info-item-icon ' + (coolant !== '-' && parseInt(coolant) > 100 ? 'red' : 'blue') + '"><i class="fas fa-thermometer-half"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value">' + coolant + '</div>' +
+            '<div class="info-item-label">Temp. motor</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-icon purple"><i class="fas fa-user"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value" style="font-size:12px;">' + (data.driver_name || 'Nealocat') + '</div>' +
+            '<div class="info-item-label">Sofer</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Row 10: IMEI
         '<div class="info-item full">' +
-          '<div class="info-item-label">IMEI</div>' +
-          '<div class="info-item-value" style="font-size:12px;font-family:monospace;color:var(--text-muted);">' + imei + '</div>' +
+          '<div class="info-item-icon blue"><i class="fas fa-microchip"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value" style="font-size:11px;font-family:monospace;color:var(--text-muted);">' + imei + '</div>' +
+            '<div class="info-item-label">IMEI Dispozitiv</div>' +
+          '</div>' +
         '</div>';
+
+      // Async load address
+      if (data.latitude && data.longitude) {
+        reverseGeocode(data.latitude, data.longitude).then(addr => {
+          const el = document.getElementById('detail-address');
+          if (el) el.textContent = addr;
+        });
+      }
 
       // Load daily stats
       loadDailyStats(imei);
