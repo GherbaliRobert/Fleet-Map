@@ -271,6 +271,58 @@
     .ws-connected { color: #22c55e; }
     .ws-disconnected { color: #ef4444; }
 
+    /* ─── IO Details Panel ─── */
+    #io-panel {
+      display: none;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 320px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 1000;
+      font-size: 12px;
+    }
+
+    #io-panel.visible { display: block; }
+
+    #io-panel h3 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .io-section {
+      margin-bottom: 10px;
+    }
+
+    .io-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid #334155;
+    }
+
+    .io-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      color: #94a3b8;
+    }
+
+    .io-row .io-label { color: #cbd5e1; }
+    .io-row .io-value { font-family: monospace; color: #f1f5f9; font-weight: 600; }
+
     /* ─── Modal Utilizatori ─── */
     .modal-overlay {
       display: none;
@@ -480,6 +532,16 @@
 
     <div id="map-container">
       <div id="map"></div>
+
+      <!-- IO Details Panel -->
+      <div id="io-panel">
+        <h3>
+          <span id="io-panel-title">Date IO</span>
+          <button class="close-btn" onclick="closeIoPanel()" style="position:static;font-size:16px;">&#10005;</button>
+        </h3>
+        <div id="io-panel-content"></div>
+      </div>
+
       <div id="history-panel">
         <button class="close-btn" onclick="closeHistory()">&#10005;</button>
         <h3 style="margin-bottom: 10px; font-size: 14px;">Istoric traseu</h3>
@@ -730,17 +792,27 @@
 
       const name = data.name || imei;
       const ignition = io?.ignition ? 'ON' : 'OFF';
+      const voltage = io?.external_voltage ? (io.external_voltage / 1000).toFixed(1) + 'V' : '-';
+      const fuel = io?.can_fuel_level !== undefined ? io.can_fuel_level + '%' : '-';
+      const rpm = io?.can_rpm !== undefined ? io.can_rpm : '-';
       const popupContent = `
-        <div style="font-family: sans-serif; font-size: 13px; min-width: 180px;">
+        <div style="font-family: sans-serif; font-size: 13px; min-width: 200px;">
           <b>${name}</b><br>
           <span style="color: #666; font-size: 11px;">${imei}</span><br><br>
-          Viteza: <b>${speed} km/h</b><br>
-          Contact: ${ignition}<br>
-          Sateliti: ${data.satellites || '-'}<br>
-          ${new Date(timestamp).toLocaleString('ro-RO')}<br>
-          <br>
-          <a href="#" onclick="showHistory('${imei}'); return false;" style="color: #2563eb;">Vezi istoric</a> |
-          <a href="#" onclick="openEditModal('${imei}'); return false;" style="color: #f97316;">Editeaza</a>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <tr><td style="padding:2px 8px 2px 0;color:#666;">Viteza</td><td style="font-weight:600;">${speed} km/h</td></tr>
+            <tr><td style="padding:2px 8px 2px 0;color:#666;">Contact</td><td>${ignition}</td></tr>
+            <tr><td style="padding:2px 8px 2px 0;color:#666;">Sateliti</td><td>${data.satellites || '-'}</td></tr>
+            <tr><td style="padding:2px 8px 2px 0;color:#666;">Voltaj</td><td>${voltage}</td></tr>
+            <tr><td style="padding:2px 8px 2px 0;color:#666;">Combustibil</td><td>${fuel}</td></tr>
+            <tr><td style="padding:2px 8px 2px 0;color:#666;">RPM</td><td>${rpm}</td></tr>
+          </table>
+          <div style="font-size:11px;color:#888;margin-top:4px;">${new Date(timestamp).toLocaleString('ro-RO')}</div>
+          <div style="margin-top:6px;">
+            <a href="#" onclick="renderIoPanel('${imei}', devices.get('${imei}')?.io); return false;" style="color: #38bdf8;">Toate IO</a> |
+            <a href="#" onclick="showHistory('${imei}'); return false;" style="color: #2563eb;">Istoric</a> |
+            <a href="#" onclick="openEditModal('${imei}'); return false;" style="color: #f97316;">Editeaza</a>
+          </div>
         </div>
       `;
 
@@ -780,6 +852,7 @@
         const name = d.name || d.imei;
         const timeAgo = getTimeAgo(new Date(d.timestamp));
         const ignition = d.io?.ignition ? 'Contact ON' : 'Contact OFF';
+        const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
         return `
           <div class="device-card ${isActive ? 'active' : ''}" onclick="selectDevice('${d.imei}')">
@@ -794,7 +867,8 @@
             </div>
             <div class="device-imei">${d.imei}</div>
             <div class="device-info">
-              <span>Contact: ${ignition}</span>
+              <span>${ignition}</span>
+              ${voltage ? `<span>${voltage}</span>` : ''}
               <span>${timeAgo}</span>
             </div>
           </div>
@@ -995,6 +1069,94 @@
 
       const url = `/api/export/${selectedImei}?from=${new Date(from).toISOString()}&to=${new Date(to).toISOString()}`;
       window.open(url, '_blank');
+    }
+
+    // ─── IO Panel ───
+    const IO_CATEGORIES = {
+      'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_speed', 'can_rpm', 'can_coolant_temp', 'can_pedal_position', 'can_engine_hours', 'can_total_mileage'],
+      'Combustibil': ['can_fuel_level', 'can_fuel_consumed', 'can_fuel_rate', 'fuel_used_gps', 'fuel_rate_gps', 'fuel_consumed'],
+      'Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
+      'GPS / Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'data_mode'],
+      'I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
+      'I/O Analog': ['analog_input_1', 'analog_input_2'],
+      'Distanta': ['total_odometer', 'total_mileage'],
+      'Evenimente': ['trip', 'over_speeding', 'crash_detection', 'idling', 'towing', 'unplug', 'green_driving_type', 'green_driving_value'],
+      'Sistem': ['sleep_mode', 'sd_status', 'iccid', 'auto_geofence']
+    };
+
+    function formatIoValue(key, value) {
+      if (value === undefined || value === null) return '-';
+      if (key === 'external_voltage' || key === 'battery_voltage') return (value / 1000).toFixed(2) + ' V';
+      if (key === 'battery_current') return value + ' mA';
+      if (key === 'battery_level') return value + ' %';
+      if (key === 'ignition' || key === 'movement') return value ? 'ON' : 'OFF';
+      if (key === 'digital_input_1' || key === 'digital_input_2' || key === 'digital_input_3') return value ? 'ON' : 'OFF';
+      if (key === 'digital_output_1' || key === 'digital_output_2') return value ? 'ON' : 'OFF';
+      if (key === 'gsm_signal') return value + ' / 5';
+      if (key === 'can_coolant_temp') return value + ' °C';
+      if (key === 'can_rpm') return value + ' RPM';
+      if (key === 'can_speed' || key === 'speed_io') return value + ' km/h';
+      if (key === 'can_fuel_level') return value + ' %';
+      if (key === 'can_fuel_rate' || key === 'fuel_rate_gps') return (value / 10).toFixed(1) + ' L/h';
+      if (key === 'can_engine_hours') return (value / 3600).toFixed(1) + ' h';
+      if (key === 'total_odometer' || key === 'total_mileage' || key === 'can_total_mileage') return (value / 1000).toFixed(1) + ' km';
+      if (key === 'can_fuel_consumed' || key === 'fuel_consumed' || key === 'fuel_used_gps') return (value / 10).toFixed(1) + ' L';
+      if (key === 'analog_input_1' || key === 'analog_input_2') return (value / 1000).toFixed(2) + ' V';
+      if (key === 'gnss_pdop' || key === 'gnss_hdop') return (value / 10).toFixed(1);
+      if (key === 'gnss_status') return ['OFF', 'ON fara fix', 'ON cu fix'][value] || value;
+      if (key === 'sleep_mode') return ['Nu', 'GPS Sleep', 'Deep Sleep', 'Online Sleep'][value] || value;
+      if (key === 'data_mode') return ['Home', 'Roaming', 'Necunoscut'][value] || value;
+      if (key === 'trip') return value ? 'In calatorie' : 'Oprit';
+      if (key === 'over_speeding' || key === 'crash_detection' || key === 'idling' || key === 'towing' || key === 'unplug') return value ? 'DA' : 'Nu';
+      return value;
+    }
+
+    function formatIoLabel(key) {
+      return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function renderIoPanel(imei, io) {
+      const panel = document.getElementById('io-panel');
+      const title = document.getElementById('io-panel-title');
+      const content = document.getElementById('io-panel-content');
+
+      const dev = devices.get(imei);
+      title.textContent = (dev?.name || imei) + ' — Date IO';
+
+      if (!io || Object.keys(io).length === 0) {
+        content.innerHTML = '<p style="color:#64748b;">Nu sunt date IO disponibile.</p>';
+        panel.classList.add('visible');
+        return;
+      }
+
+      const usedKeys = new Set();
+      let html = '';
+
+      for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
+        const rows = keys.filter(k => io[k] !== undefined).map(k => {
+          usedKeys.add(k);
+          return `<div class="io-row"><span class="io-label">${formatIoLabel(k)}</span><span class="io-value">${formatIoValue(k, io[k])}</span></div>`;
+        });
+        if (rows.length > 0) {
+          html += `<div class="io-section"><div class="io-section-title">${category}</div>${rows.join('')}</div>`;
+        }
+      }
+
+      // Necategorizate (inclusiv io_XXX)
+      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && k !== 'eventIoId' && k !== 'totalCount');
+      if (uncategorized.length > 0) {
+        const rows = uncategorized.map(k =>
+          `<div class="io-row"><span class="io-label">${formatIoLabel(k)}</span><span class="io-value">${formatIoValue(k, io[k])}</span></div>`
+        );
+        html += `<div class="io-section"><div class="io-section-title">Altele</div>${rows.join('')}</div>`;
+      }
+
+      content.innerHTML = html;
+      panel.classList.add('visible');
+    }
+
+    function closeIoPanel() {
+      document.getElementById('io-panel').classList.remove('visible');
     }
 
     // ─── Pornire ───
