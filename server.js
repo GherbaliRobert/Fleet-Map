@@ -356,6 +356,117 @@ app.get('/api/stats', requireAuth, async (req, res) => {
   }
 });
 
+// API: Statistici zilnice per dispozitiv (km, viteza medie/max, opriri, timp mers/stationat, consum)
+app.get('/api/stats/:imei', requireAuth, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const now = new Date();
+
+    const history = await db.getDeviceHistory(imei, todayStart.toISOString(), now.toISOString());
+
+    if (history.length === 0) {
+      return res.json({
+        imei,
+        date: todayStart.toISOString().slice(0, 10),
+        totalKm: 0,
+        avgSpeed: 0,
+        maxSpeed: 0,
+        movingTime: 0,
+        stoppedTime: 0,
+        stops: 0,
+        lastIgnitionOn: null,
+        lastIgnitionOff: null,
+        fuelConsumed: null,
+        engineHours: null,
+        recordCount: 0
+      });
+    }
+
+    let totalDistance = 0;
+    let maxSpeed = 0;
+    let speedSum = 0;
+    let speedCount = 0;
+    let movingTime = 0;
+    let stoppedTime = 0;
+    let stops = 0;
+    let wasMoving = false;
+    let lastIgnitionOn = null;
+    let lastIgnitionOff = null;
+    let firstFuel = null;
+    let lastFuel = null;
+
+    for (let i = 0; i < history.length; i++) {
+      const row = history[i];
+      const spd = row.speed || 0;
+
+      // Distance
+      if (i > 0) {
+        const prev = history[i - 1];
+        const d = haversineDistance(prev.latitude, prev.longitude, row.latitude, row.longitude);
+        if (d < 10) totalDistance += d; // filtreaza salturi GPS > 10km
+
+        // Time
+        const dt = (new Date(row.timestamp) - new Date(prev.timestamp)) / 1000;
+        if (dt > 0 && dt < 3600) { // ignora gap-uri > 1h
+          if (spd > 3) {
+            movingTime += dt;
+          } else {
+            stoppedTime += dt;
+          }
+        }
+      }
+
+      // Speed
+      if (spd > 3) {
+        speedSum += spd;
+        speedCount++;
+        if (spd > maxSpeed) maxSpeed = spd;
+        if (!wasMoving) wasMoving = true;
+      } else {
+        if (wasMoving) {
+          stops++;
+          wasMoving = false;
+        }
+      }
+
+      // Ignition tracking
+      const io = row.io_data || {};
+      if (io.ignition === 1 || io.ignition === true) {
+        if (!lastIgnitionOn) lastIgnitionOn = row.timestamp;
+        lastIgnitionOn = row.timestamp;
+      } else if (io.ignition === 0 || io.ignition === false) {
+        lastIgnitionOff = row.timestamp;
+      }
+
+      // Fuel tracking (CAN)
+      if (io.can_fuel_consumed !== undefined) {
+        if (firstFuel === null) firstFuel = io.can_fuel_consumed;
+        lastFuel = io.can_fuel_consumed;
+      }
+    }
+
+    res.json({
+      imei,
+      date: todayStart.toISOString().slice(0, 10),
+      totalKm: Math.round(totalDistance * 100) / 100,
+      avgSpeed: speedCount > 0 ? Math.round(speedSum / speedCount) : 0,
+      maxSpeed,
+      movingTime: Math.round(movingTime),
+      stoppedTime: Math.round(stoppedTime),
+      stops,
+      lastIgnitionOn,
+      lastIgnitionOff,
+      fuelConsumed: (firstFuel !== null && lastFuel !== null) ? Math.round((lastFuel - firstFuel) / 10 * 100) / 100 : null,
+      engineHours: null,
+      recordCount: history.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Soferi CRUD ───
 
 app.get('/api/drivers', requireAuth, async (req, res) => {

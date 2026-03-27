@@ -684,6 +684,7 @@
 
     .info-item-value.green { color: var(--green); }
     .info-item-value.red { color: var(--red); }
+    .info-item-value.orange { color: var(--orange); }
     .info-item-value.muted { color: var(--text-muted); }
 
     /* IO Tab */
@@ -1720,8 +1721,59 @@
           '<div class="info-item-value" style="font-size:12px;font-family:monospace;color:var(--text-muted);">' + imei + '</div>' +
         '</div>';
 
+      // Load daily stats
+      loadDailyStats(imei);
+
       // IO Tab
       updateDetailIoPanel(imei);
+    }
+
+    async function loadDailyStats(imei) {
+      const grid = document.getElementById('detail-info-grid');
+      // Add stats loading placeholder
+      const statsId = 'daily-stats-' + imei;
+      let statsEl = document.getElementById(statsId);
+      if (!statsEl) {
+        statsEl = document.createElement('div');
+        statsEl.id = statsId;
+        statsEl.className = 'info-item full';
+        statsEl.style.gridColumn = '1 / -1';
+        grid.appendChild(statsEl);
+      }
+      statsEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:8px;"><i class="fas fa-spinner fa-spin"></i> Se incarca statisticile zilnice...</div>';
+
+      try {
+        const res = await fetch('/api/stats/' + imei);
+        const s = await res.json();
+
+        const movH = Math.floor(s.movingTime / 3600);
+        const movM = Math.floor((s.movingTime % 3600) / 60);
+        const stopH = Math.floor(s.stoppedTime / 3600);
+        const stopM = Math.floor((s.stoppedTime % 3600) / 60);
+        const lastIgn = s.lastIgnitionOn ? new Date(s.lastIgnitionOn).toLocaleString('ro-RO') : '-';
+
+        statsEl.innerHTML = '' +
+          '<div style="border-top:1px solid var(--border);margin:8px 0;padding-top:10px;">' +
+            '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">' +
+              '<i class="fas fa-chart-bar"></i> Statistici azi (' + s.date + ')' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
+              '<div class="info-item"><div class="info-item-label">Km parcursi</div><div class="info-item-value green">' + s.totalKm.toFixed(1) + ' km</div></div>' +
+              '<div class="info-item"><div class="info-item-label">Viteza medie</div><div class="info-item-value">' + s.avgSpeed + ' km/h</div></div>' +
+              '<div class="info-item"><div class="info-item-label">Viteza maxima</div><div class="info-item-value ' + (s.maxSpeed > 120 ? 'red' : '') + '">' + s.maxSpeed + ' km/h</div></div>' +
+              '<div class="info-item"><div class="info-item-label">Opriri</div><div class="info-item-value">' + s.stops + '</div></div>' +
+              '<div class="info-item"><div class="info-item-label">Timp in miscare</div><div class="info-item-value">' + movH + 'h ' + movM + 'm</div></div>' +
+              '<div class="info-item"><div class="info-item-label">Timp stationare</div><div class="info-item-value">' + stopH + 'h ' + stopM + 'm</div></div>' +
+              (s.fuelConsumed !== null ? '<div class="info-item"><div class="info-item-label">Consum azi</div><div class="info-item-value orange">' + s.fuelConsumed + ' L</div></div>' : '') +
+              '<div class="info-item"><div class="info-item-label">Recorduri GPS</div><div class="info-item-value" style="color:var(--text-muted);">' + s.recordCount + '</div></div>' +
+            '</div>' +
+            '<div style="margin-top:6px;">' +
+              '<div class="info-item" style="width:100%;"><div class="info-item-label">Ultim contact ON</div><div class="info-item-value" style="font-size:12px;">' + lastIgn + '</div></div>' +
+            '</div>' +
+          '</div>';
+      } catch (err) {
+        statsEl.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;">Nu s-au putut incarca statisticile</div>';
+      }
     }
 
     function updateDetailIoPanel(imei) {
