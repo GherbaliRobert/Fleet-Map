@@ -1588,40 +1588,55 @@
       const isMoving = speed > 3;
       const hasIgnition = io?.ignition === 1 || io?.ignition === true;
 
-      // Verde = in miscare, Galben = stationare cu contact, Rosu = oprit fara contact
-      let color, glowColor, status;
+      let color, shadowColor, status;
       if (isMoving) {
-        color = '#22c55e'; glowColor = 'rgba(34,197,94,0.5)'; status = 'moving';
+        color = '#22c55e'; shadowColor = 'rgba(34,197,94,0.6)'; status = 'moving';
       } else if (hasIgnition) {
-        color = '#eab308'; glowColor = 'rgba(234,179,8,0.4)'; status = 'idle';
+        color = '#eab308'; shadowColor = 'rgba(234,179,8,0.5)'; status = 'idle';
       } else {
-        color = '#ef4444'; glowColor = 'rgba(239,68,68,0.3)'; status = 'off';
+        color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.4)'; status = 'off';
       }
 
-      const size = isSelected ? 32 : 26;
-      const selectedRing = isSelected ? 'filter:drop-shadow(0 0 6px var(--accent));' : '';
-
-      // SVG car icon rotated by angle
+      const size = isSelected ? 40 : 34;
       const rotation = angle || 0;
-      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" style="' + selectedRing + '">' +
-        '<g transform="rotate(' + rotation + ' 12 12)">' +
-          // Car body
-          '<path d="M5 17h14v-5l-2-5H7L5 12v5z" fill="' + color + '" stroke="rgba(255,255,255,0.8)" stroke-width="0.8"/>' +
-          // Windshield
-          '<path d="M7.5 12L8.5 8.5h7L16.5 12H7.5z" fill="rgba(255,255,255,0.3)"/>' +
-          // Wheels
-          '<rect x="5.5" y="15" width="3" height="1.5" rx="0.5" fill="rgba(0,0,0,0.5)"/>' +
-          '<rect x="15.5" y="15" width="3" height="1.5" rx="0.5" fill="rgba(0,0,0,0.5)"/>' +
-          // Direction indicator (front)
-          (isMoving ? '<circle cx="12" cy="6" r="1.5" fill="white" opacity="0.7"/>' : '') +
+
+      // Realistic top-down car SVG
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
+        // Shadow
+        '<ellipse cx="24" cy="25" rx="12" ry="18" fill="rgba(0,0,0,0.25)" />' +
+        '<g transform="rotate(' + rotation + ' 24 24)">' +
+          // Car body outline (sedan shape, top view)
+          '<path d="M18 8 C18 5, 30 5, 30 8 L32 14 L33 20 L33 32 L32 38 C32 42, 16 42, 16 38 L15 32 L15 20 L16 14 Z" ' +
+            'fill="' + color + '" stroke="rgba(255,255,255,0.9)" stroke-width="1.2"/>' +
+          // Windshield (front)
+          '<path d="M19 12 C19 10, 29 10, 29 12 L30 17 L18 17 Z" fill="rgba(100,180,255,0.5)" stroke="rgba(255,255,255,0.4)" stroke-width="0.5"/>' +
+          // Rear window
+          '<path d="M19 36 L29 36 L30 32 L18 32 Z" fill="rgba(100,180,255,0.35)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>' +
+          // Roof line
+          '<rect x="20" y="18" width="8" height="13" rx="2" fill="rgba(255,255,255,0.1)"/>' +
+          // Left wheels
+          '<rect x="13" y="13" width="3.5" height="7" rx="1.5" fill="rgba(30,30,30,0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>' +
+          '<rect x="13" y="30" width="3.5" height="7" rx="1.5" fill="rgba(30,30,30,0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>' +
+          // Right wheels
+          '<rect x="31.5" y="13" width="3.5" height="7" rx="1.5" fill="rgba(30,30,30,0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>' +
+          '<rect x="31.5" y="30" width="3.5" height="7" rx="1.5" fill="rgba(30,30,30,0.8)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>' +
+          // Headlights
+          '<ellipse cx="20" cy="8" rx="2" ry="1.2" fill="' + (isMoving || hasIgnition ? 'rgba(255,255,200,0.9)' : 'rgba(255,255,255,0.2)') + '"/>' +
+          '<ellipse cx="28" cy="8" rx="2" ry="1.2" fill="' + (isMoving || hasIgnition ? 'rgba(255,255,200,0.9)' : 'rgba(255,255,255,0.2)') + '"/>' +
+          // Taillights
+          '<ellipse cx="20" cy="40" rx="1.8" ry="1" fill="rgba(255,50,50,0.7)"/>' +
+          '<ellipse cx="28" cy="40" rx="1.8" ry="1" fill="rgba(255,50,50,0.7)"/>' +
+          // Side mirrors
+          '<ellipse cx="14" y="17" rx="1.5" ry="1" fill="' + color + '" stroke="rgba(255,255,255,0.5)" stroke-width="0.3"/>' +
+          '<ellipse cx="34" y="17" rx="1.5" ry="1" fill="' + color + '" stroke="rgba(255,255,255,0.5)" stroke-width="0.3"/>' +
         '</g>' +
-        // Glow effect
-        '<circle cx="12" cy="12" r="11" fill="none" stroke="' + color + '" stroke-width="0.5" opacity="' + (isMoving ? '0.6' : '0.3') + '"/>' +
+        // Selection ring
+        (isSelected ? '<circle cx="24" cy="24" r="22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 2" opacity="0.8"><animateTransform attributeName="transform" type="rotate" dur="8s" from="0 24 24" to="360 24 24" repeatCount="indefinite"/></circle>' : '') +
       '</svg>';
 
       return L.divIcon({
         className: 'vehicle-marker vehicle-' + status,
-        html: svg,
+        html: '<div style="filter:drop-shadow(0 2px 4px ' + shadowColor + ');">' + svg + '</div>',
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2]
       });
