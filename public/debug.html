@@ -119,6 +119,45 @@
     #stats-panel div { margin-bottom: 4px; }
     #stats-panel span { color: #38bdf8; font-weight: 700; }
 
+    /* IO Live Values */
+    #io-live {
+      max-height: 40%;
+      overflow-y: auto;
+      padding: 8px;
+      border-bottom: 1px solid #334155;
+    }
+
+    #io-live h3 {
+      font-size: 11px;
+      color: #22c55e;
+      padding: 4px 8px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .io-live-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 8px;
+      font-size: 11px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .io-live-row.updated {
+      background: #1e3a5f;
+      transition: background 0.3s;
+    }
+
+    .io-cat-header {
+      color: #a78bfa;
+      font-weight: bold;
+      padding: 6px 8px 2px;
+      font-size: 11px;
+    }
+
+    .io-live-name { color: #94a3b8; }
+    .io-live-val { color: #38bdf8; font-weight: 600; }
+
     /* IO Reference */
     #io-ref {
       flex: 1;
@@ -273,6 +312,11 @@
         <div id="device-list"></div>
       </div>
 
+      <div id="io-live">
+        <h3>Live IO Values</h3>
+        <div id="io-live-content" style="font-size:11px;color:#64748b;padding:4px 8px;">Selecteaza un dispozitiv pentru a vedea IO live.</div>
+      </div>
+
       <div id="io-ref">
         <h3>IO Elements Reference</h3>
         <div id="io-table"></div>
@@ -364,6 +408,11 @@
       if (entry.imei) knownDevices.add(entry.imei);
       updateDeviceList();
       updateStats();
+
+      // Actualizeaza live IO cand primim date
+      if (entry.event === 'data' && entry.records) {
+        updateLiveIo(entry.imei, entry.records);
+      }
 
       if (!isPaused) renderLog();
     }
@@ -568,9 +617,11 @@
       if (filterImei === imei) {
         filterImei = '';
         input.value = '';
+        document.getElementById('io-live-content').innerHTML = '<span style="color:#64748b;">Selecteaza un dispozitiv pentru a vedea IO live.</span>';
       } else {
         filterImei = imei;
         input.value = imei;
+        renderLiveIo(imei);
       }
       renderLog();
       updateDeviceList();
@@ -639,6 +690,91 @@
       };
 
       ws.onerror = () => ws.close();
+    }
+
+    // ─── Live IO tracking ───
+    const liveIoData = {}; // per IMEI
+
+    function updateLiveIo(imei, records) {
+      if (!records || records.length === 0) return;
+
+      if (!liveIoData[imei]) liveIoData[imei] = { gps: {}, io: {} };
+
+      // Actualizeaza cu ultimul record
+      const lastRec = records[records.length - 1];
+      if (lastRec.gps) Object.assign(liveIoData[imei].gps, lastRec.gps);
+      if (lastRec.io) Object.assign(liveIoData[imei].io, lastRec.io);
+      liveIoData[imei].timestamp = lastRec.timestamp;
+      liveIoData[imei].lastUpdate = new Date().toISOString();
+
+      // Daca acest IMEI e selectat, actualizeaza panoul
+      if (filterImei === imei) renderLiveIo(imei);
+    }
+
+    function renderLiveIo(imei) {
+      const container = document.getElementById('io-live-content');
+      const data = liveIoData[imei];
+      if (!data) {
+        container.innerHTML = '<span style="color:#64748b;">Nu sunt date IO pentru acest dispozitiv.</span>';
+        return;
+      }
+
+      const gps = data.gps || {};
+      const io = data.io || {};
+      const ts = data.timestamp ? new Date(data.timestamp).toLocaleString('ro-RO') : '-';
+      const lastUp = data.lastUpdate ? new Date(data.lastUpdate).toLocaleTimeString('ro-RO') : '-';
+
+      let html = `<div style="color:#64748b;font-size:10px;margin-bottom:6px;">Ultimul update: ${lastUp} | Timestamp GPS: ${ts}</div>`;
+
+      // GPS
+      html += `<div class="io-cat-header">📍 GPS</div>`;
+      html += ioRow('Latitude', gps.latitude || 0);
+      html += ioRow('Longitude', gps.longitude || 0);
+      html += ioRow('Altitude', `${gps.altitude || 0} m`);
+      html += ioRow('Speed', `${gps.speed || 0} km/h`);
+      html += ioRow('Angle', `${gps.angle || 0}°`);
+      html += ioRow('Satellites', gps.satellites || 0);
+
+      // Categorii IO
+      const categories = {
+        '⚡ Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
+        '🚗 Motor / CAN': ['ignition', 'movement', 'can_speed', 'can_rpm', 'can_coolant_temp', 'can_pedal_position', 'can_engine_hours', 'can_total_mileage'],
+        '⛽ Combustibil': ['can_fuel_level', 'can_fuel_consumed', 'can_fuel_rate', 'fuel_used_gps', 'fuel_rate_gps', 'fuel_consumed'],
+        '📡 Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'speed_io'],
+        '🔌 I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
+        '📊 Analog': ['analog_input_1', 'analog_input_2'],
+        '📏 Distanta': ['total_odometer', 'total_mileage'],
+        '⚠️ Evenimente': ['trip', 'over_speeding', 'unplug', 'crash_detection', 'idling', 'towing', 'green_driving_type', 'green_driving_value'],
+        '💤 Status': ['sleep_mode', 'data_mode', 'sd_status', 'iccid', 'auto_geofence']
+      };
+
+      const usedKeys = new Set(['eventIoId', 'totalCount']);
+
+      for (const [catName, catKeys] of Object.entries(categories)) {
+        const present = catKeys.filter(k => io[k] !== undefined);
+        if (present.length === 0) continue;
+
+        html += `<div class="io-cat-header">${catName}</div>`;
+        present.forEach(k => {
+          html += ioRow(k, formatIoValue(k, io[k]));
+          usedKeys.add(k);
+        });
+      }
+
+      // IO necategorizate
+      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k));
+      if (uncategorized.length > 0) {
+        html += `<div class="io-cat-header">🔧 Alte IO</div>`;
+        uncategorized.forEach(k => {
+          html += ioRow(k, io[k]);
+        });
+      }
+
+      container.innerHTML = html;
+    }
+
+    function ioRow(name, value) {
+      return `<div class="io-live-row"><span class="io-live-name">${name}</span><span class="io-live-val">${value}</span></div>`;
     }
 
     // ─── Load existing log ───
