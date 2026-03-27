@@ -3,11 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GPS Tracker</title>
+  <title>GPS Unitip - Fleet Management</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+    :root {
+      --bg-darkest: #0a0f1a;
+      --bg-dark: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-card: #162032;
+      --border: #334155;
+      --border-light: #475569;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #38bdf8;
+      --accent-hover: #7dd3fc;
+      --blue: #2563eb;
+      --blue-hover: #1d4ed8;
+      --green: #22c55e;
+      --green-dim: #16a34a;
+      --red: #ef4444;
+      --orange: #f97316;
+      --yellow: #eab308;
+      --purple: #a78bfa;
+      --sidebar-width: 360px;
+      --detail-width: 380px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-darkest);
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
     /* ─── Login ─── */
     #login-screen {
@@ -15,28 +51,45 @@
       align-items: center;
       justify-content: center;
       height: 100vh;
-      background: #0f172a;
+      background: linear-gradient(135deg, #0a0f1a 0%, #0f172a 50%, #1a1a2e 100%);
     }
 
     .login-box {
-      background: #1e293b;
-      border: 1px solid #334155;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
       border-radius: 16px;
       padding: 40px;
-      width: 360px;
+      width: 380px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .login-logo i {
+      font-size: 40px;
+      color: var(--accent);
+      margin-bottom: 12px;
+      display: block;
     }
 
     .login-box h1 {
       text-align: center;
-      margin-bottom: 8px;
-      font-size: 22px;
+      margin-bottom: 4px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
     }
+
+    .login-box h1 span { color: var(--accent); }
 
     .login-box p {
       text-align: center;
-      color: #94a3b8;
+      color: var(--text-muted);
       font-size: 13px;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }
 
     .form-group { margin-bottom: 16px; }
@@ -44,22 +97,24 @@
     .form-group label {
       display: block;
       font-size: 12px;
-      color: #94a3b8;
+      color: var(--text-secondary);
       margin-bottom: 6px;
+      font-weight: 500;
     }
 
-    .form-group input {
+    .form-group input, .form-group select {
       width: 100%;
       padding: 10px 14px;
       border-radius: 8px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #e2e8f0;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-primary);
       font-size: 14px;
       outline: none;
+      transition: border-color 0.2s;
     }
 
-    .form-group input:focus { border-color: #38bdf8; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
 
     .btn {
       padding: 10px 16px;
@@ -68,161 +123,381 @@
       cursor: pointer;
       font-size: 14px;
       font-weight: 600;
+      transition: all 0.2s;
     }
 
     .btn-primary {
       width: 100%;
-      background: #2563eb;
+      background: var(--blue);
       color: white;
       padding: 12px;
     }
 
-    .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary:hover { background: var(--blue-hover); }
 
     .login-error {
-      color: #ef4444;
+      color: var(--red);
       font-size: 13px;
       text-align: center;
       margin-bottom: 12px;
       display: none;
     }
 
-    /* ─── App ─── */
+    /* ─── App Layout ─── */
     #app { display: none; height: 100vh; }
     #app.visible { display: flex; }
     #login-screen.hidden { display: none; }
 
-    /* Sidebar */
+    /* ─── Sidebar ─── */
     #sidebar {
-      width: 340px;
-      background: #1e293b;
-      border-right: 1px solid #334155;
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      z-index: 10;
     }
 
-    #sidebar-header {
-      padding: 16px;
-      border-bottom: 1px solid #334155;
+    /* Sidebar Header */
+    .sidebar-brand {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--border);
     }
 
-    #sidebar-header h1 {
-      font-size: 18px;
-      color: #f1f5f9;
+    .sidebar-brand-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 14px;
     }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title i {
+      font-size: 22px;
+      color: var(--accent);
+    }
+
+    .brand-title h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-title h1 span { color: var(--accent); }
 
     .header-actions { display: flex; gap: 6px; }
 
-    .btn-sm {
-      padding: 5px 10px;
-      border-radius: 6px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #94a3b8;
-      cursor: pointer;
-      font-size: 11px;
-    }
-
-    .btn-sm:hover { border-color: #38bdf8; color: #e2e8f0; }
-
-    .btn-danger { border-color: #ef4444; color: #ef4444; }
-    .btn-danger:hover { background: #ef4444; color: white; }
-
-    #stats {
-      display: flex;
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    .stat {
-      background: #0f172a;
-      padding: 8px 12px;
+    .btn-icon {
+      width: 32px;
+      height: 32px;
       border-radius: 8px;
-      font-size: 12px;
-      flex: 1;
-      text-align: center;
-    }
-
-    .stat-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: #38bdf8;
-    }
-
-    .stat-label { color: #94a3b8; }
-
-    #device-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-    }
-
-    .device-card {
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-secondary);
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
       transition: all 0.2s;
     }
 
-    .device-card:hover { border-color: #38bdf8; transform: translateX(2px); }
-    .device-card.active { border-color: #38bdf8; background: #1e3a5f; }
+    .btn-icon:hover { border-color: var(--accent); color: var(--text-primary); }
+    .btn-icon.danger:hover { border-color: var(--red); color: var(--red); }
 
-    .device-header {
+    /* Search */
+    .sidebar-search {
+      padding: 0 18px;
+      margin-bottom: 10px;
+    }
+
+    .search-input-wrap {
+      position: relative;
+    }
+
+    .search-input-wrap i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .search-input-wrap input {
+      width: 100%;
+      padding: 9px 12px 9px 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input-wrap input:focus { border-color: var(--accent); }
+
+    .search-input-wrap input::placeholder { color: var(--text-muted); }
+
+    /* Filter Buttons */
+    .filter-bar {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      gap: 4px;
+      padding: 0 18px 10px;
+    }
+
+    .filter-btn {
+      flex: 1;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .filter-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+    .filter-btn.active { background: var(--accent); color: var(--bg-dark); border-color: var(--accent); }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: flex;
+      gap: 6px;
+      padding: 0 18px 12px;
+    }
+
+    .stat-chip {
+      flex: 1;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .stat-chip .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.2;
+    }
+
+    .stat-chip .stat-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .stat-chip.online .stat-value { color: var(--green); }
+    .stat-chip.moving .stat-value { color: var(--orange); }
+
+    /* Device List */
+    #device-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 10px;
+    }
+
+    .device-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
       margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
     }
 
-    .device-name { font-weight: 600; font-size: 14px; }
-    .device-imei { font-size: 11px; color: #64748b; font-family: monospace; }
-
-    .device-status {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 6px;
+    .device-card:hover {
+      border-color: var(--accent);
+      background: #1a2b42;
     }
 
-    .status-online { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-    .status-offline { background: #64748b; }
+    .device-card.active {
+      border-color: var(--accent);
+      background: #1a3150;
+      box-shadow: 0 0 0 1px var(--accent) inset;
+    }
 
-    .device-info {
+    .device-card-top {
       display: flex;
-      gap: 12px;
-      font-size: 12px;
-      color: #94a3b8;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
     }
 
-    .device-info span { display: flex; align-items: center; gap: 3px; }
+    .device-card-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-    /* Map */
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.online { background: var(--green); box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
+    .status-dot.offline { background: var(--text-muted); }
+    .status-dot.moving { background: var(--green); box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); animation: pulse 2s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); }
+      50% { box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
+    }
+
+    .device-card-name .name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .device-card-plate {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .device-card-speed {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .device-card-speed.moving { color: var(--green); }
+    .device-card-speed.stopped { color: var(--text-muted); }
+
+    .device-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .device-card-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .device-card-meta i { font-size: 10px; }
+
+    .meta-ignition.on { color: var(--green); }
+    .meta-ignition.off { color: var(--text-muted); }
+
+    /* WS Status */
+    #ws-status {
+      padding: 8px 18px;
+      font-size: 11px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .ws-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .ws-connected { color: var(--green); }
+    .ws-connected .ws-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .ws-disconnected { color: var(--red); }
+    .ws-disconnected .ws-dot { background: var(--red); }
+
+    /* ─── Map ─── */
     #map-container { flex: 1; position: relative; }
     #map { width: 100%; height: 100%; }
 
-    /* History panel */
+    /* Map Controls Overlay */
+    .map-toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 1000;
+      display: flex;
+      gap: 6px;
+    }
+
+    .map-toolbar-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+    }
+
+    .map-toolbar-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+
+    /* ─── History Panel ─── */
     #history-panel {
       display: none;
       position: absolute;
       bottom: 20px;
       left: 20px;
       right: 20px;
-      background: #1e293b;
-      border: 1px solid #334155;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 16px;
+      padding: 16px 20px;
       z-index: 1000;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     }
 
     #history-panel.visible { display: block; }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .history-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .history-header h3 i { color: var(--accent); }
 
     #history-controls {
       display: flex;
@@ -231,104 +506,303 @@
       flex-wrap: wrap;
     }
 
-    #history-controls input, #history-controls button {
+    #history-controls label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    #history-controls input {
       padding: 8px 12px;
       border-radius: 6px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #e2e8f0;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-primary);
       font-size: 13px;
     }
 
-    #history-controls button {
-      background: #2563eb;
+    #history-controls input:focus { border-color: var(--accent); outline: none; }
+
+    .history-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
       border: none;
       cursor: pointer;
       font-weight: 600;
-    }
-
-    #history-controls button:hover { background: #1d4ed8; }
-
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 14px;
-      background: none;
-      border: none;
-      color: #94a3b8;
-      font-size: 20px;
-      cursor: pointer;
-    }
-
-    /* Connection status */
-    #ws-status {
-      padding: 6px 16px;
-      font-size: 11px;
-      text-align: center;
-      border-top: 1px solid #334155;
-    }
-
-    .ws-connected { color: #22c55e; }
-    .ws-disconnected { color: #ef4444; }
-
-    /* ─── IO Details Panel ─── */
-    #io-panel {
-      display: none;
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      width: 320px;
-      max-height: calc(100vh - 40px);
-      overflow-y: auto;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 16px;
-      z-index: 1000;
-      font-size: 12px;
-    }
-
-    #io-panel.visible { display: block; }
-
-    #io-panel h3 {
-      font-size: 14px;
-      margin-bottom: 12px;
+      font-size: 13px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
     }
 
+    .history-btn.primary { background: var(--blue); color: white; }
+    .history-btn.primary:hover { background: var(--blue-hover); }
+    .history-btn.success { background: var(--green-dim); color: white; }
+    .history-btn.success:hover { background: var(--green); }
+
+    /* ─── Right Detail Panel ─── */
+    #detail-panel {
+      width: 0;
+      min-width: 0;
+      overflow: hidden;
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s ease, min-width 0.3s ease;
+    }
+
+    #detail-panel.open {
+      width: var(--detail-width);
+      min-width: var(--detail-width);
+    }
+
+    .detail-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .detail-header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .detail-header-info .vehicle-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    .detail-header-info .vehicle-details h3 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .detail-header-info .vehicle-details .plate {
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .detail-close {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .detail-close:hover { border-color: var(--red); color: var(--red); }
+
+    /* Tabs */
+    .detail-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .detail-tab {
+      flex: 1;
+      padding: 10px 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      background: transparent;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+
+    .detail-tab:hover { color: var(--text-secondary); }
+    .detail-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .detail-tab i { margin-right: 4px; }
+
+    /* Tab Content */
+    .detail-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 18px;
+    }
+
+    .tab-page { display: none; }
+    .tab-page.active { display: block; }
+
+    /* Info Tab */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .info-item {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .info-item.full { grid-column: 1 / -1; }
+
+    .info-item-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .info-item-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .info-item-value.green { color: var(--green); }
+    .info-item-value.red { color: var(--red); }
+    .info-item-value.muted { color: var(--text-muted); }
+
+    /* IO Tab */
     .io-section {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .io-section-title {
       font-size: 11px;
       font-weight: 700;
-      color: #38bdf8;
+      color: var(--accent);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 4px;
-      padding-bottom: 3px;
-      border-bottom: 1px solid #334155;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
+
+    .io-section-title i { font-size: 12px; }
 
     .io-row {
       display: flex;
       justify-content: space-between;
-      padding: 3px 0;
-      color: #94a3b8;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.3);
     }
 
-    .io-row .io-label { color: #cbd5e1; }
-    .io-row .io-value { font-family: monospace; color: #f1f5f9; font-weight: 600; }
+    .io-row:last-child { border-bottom: none; }
 
-    /* ─── Modal Utilizatori ─── */
+    .io-row .io-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .io-row .io-value {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .io-value.on { color: var(--green); }
+    .io-value.off { color: var(--text-muted); }
+
+    /* Istoric Tab in detail panel */
+    .detail-history-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .detail-history-form label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .detail-history-form input {
+      padding: 9px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .detail-history-form input:focus { border-color: var(--accent); }
+
+    .detail-history-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .detail-history-buttons button {
+      flex: 1;
+      padding: 9px 14px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .detail-history-buttons .btn-load { background: var(--blue); color: white; }
+    .detail-history-buttons .btn-load:hover { background: var(--blue-hover); }
+    .detail-history-buttons .btn-export { background: var(--green-dim); color: white; }
+    .detail-history-buttons .btn-export:hover { background: var(--green); }
+
+    /* ─── Close Button (generic) ─── */
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+
+    .close-btn:hover { color: var(--text-primary); }
+
+    /* ─── Modals ─── */
     .modal-overlay {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.6);
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
       z-index: 2000;
       align-items: center;
       justify-content: center;
@@ -337,13 +811,14 @@
     .modal-overlay.visible { display: flex; }
 
     .modal {
-      background: #1e293b;
-      border: 1px solid #334155;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
       border-radius: 16px;
       padding: 24px;
-      width: 420px;
+      width: 440px;
       max-height: 80vh;
       overflow-y: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
 
     .modal h2 {
@@ -358,8 +833,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px;
-      background: #0f172a;
+      padding: 10px 12px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
       border-radius: 8px;
       margin-bottom: 6px;
       font-size: 13px;
@@ -369,11 +845,27 @@
       font-size: 11px;
       padding: 2px 8px;
       border-radius: 4px;
-      background: #334155;
-      color: #94a3b8;
+      background: var(--border);
+      color: var(--text-secondary);
+      font-weight: 600;
     }
 
-    .user-row .role.admin { background: #7c3aed22; color: #a78bfa; }
+    .user-row .role.admin { background: rgba(124, 58, 237, 0.15); color: var(--purple); }
+
+    .btn-sm {
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+
+    .btn-sm:hover { border-color: var(--accent); color: var(--text-primary); }
+    .btn-sm.btn-danger { border-color: var(--red); color: var(--red); }
+    .btn-sm.btn-danger:hover { background: var(--red); color: white; }
 
     .add-user-form {
       display: flex;
@@ -385,26 +877,30 @@
     .add-user-form input, .add-user-form select {
       padding: 8px 10px;
       border-radius: 6px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #e2e8f0;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-primary);
       font-size: 13px;
       flex: 1;
       min-width: 100px;
+      outline: none;
     }
 
     .add-user-form button {
       padding: 8px 16px;
       border-radius: 6px;
-      background: #22c55e;
+      background: var(--green-dim);
       color: white;
       border: none;
       cursor: pointer;
       font-weight: 600;
       font-size: 13px;
+      transition: background 0.2s;
     }
 
-    /* ─── Mobile toggle button ─── */
+    .add-user-form button:hover { background: var(--green); }
+
+    /* ─── Mobile toggle ─── */
     #mobile-toggle {
       display: none;
       position: fixed;
@@ -414,44 +910,146 @@
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      background: #2563eb;
+      background: var(--blue);
       color: white;
       border: none;
       font-size: 20px;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
 
+    /* ─── Leaflet popup override ─── */
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-panel) !important;
+      color: var(--text-primary) !important;
+      border-radius: 10px !important;
+      border: 1px solid var(--border) !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .leaflet-popup-tip { background: var(--bg-panel) !important; }
+
+    .leaflet-popup-close-button {
+      color: var(--text-secondary) !important;
+      font-size: 18px !important;
+    }
+
+    .popup-card { min-width: 240px; }
+
+    .popup-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .popup-card-header .popup-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .popup-card-header .popup-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .popup-card-header .popup-dot.offline { background: var(--text-muted); }
+
+    .popup-card-header .popup-title {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .popup-card-header .popup-imei {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .popup-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .popup-table td {
+      padding: 3px 0;
+    }
+
+    .popup-table td:first-child {
+      color: var(--text-muted);
+      padding-right: 14px;
+      white-space: nowrap;
+    }
+
+    .popup-table td:last-child {
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .popup-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border);
+    }
+
+    .popup-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .popup-actions a {
+      font-size: 11px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .popup-actions a.io-link { color: var(--accent); background: rgba(56, 189, 248, 0.1); }
+    .popup-actions a.io-link:hover { background: rgba(56, 189, 248, 0.2); }
+    .popup-actions a.history-link { color: var(--blue); background: rgba(37, 99, 235, 0.1); }
+    .popup-actions a.history-link:hover { background: rgba(37, 99, 235, 0.2); }
+    .popup-actions a.edit-link { color: var(--orange); background: rgba(249, 115, 22, 0.1); }
+    .popup-actions a.edit-link:hover { background: rgba(249, 115, 22, 0.2); }
+
     /* ─── Responsive ─── */
+    @media (max-width: 900px) {
+      #detail-panel.open { width: 320px; min-width: 320px; }
+    }
+
     @media (max-width: 768px) {
       #app.visible { flex-direction: column-reverse; }
 
       #sidebar {
         width: 100%;
+        min-width: 100%;
         height: 40vh;
         border-right: none;
-        border-top: 2px solid #334155;
+        border-top: 2px solid var(--border);
       }
 
       #sidebar.hidden-mobile { display: none; }
 
-      #map-container {
-        flex: 1;
-        height: 60vh;
-      }
+      #map-container { flex: 1; height: 60vh; }
 
-      #sidebar-header h1 { font-size: 15px; }
+      #detail-panel { display: none !important; }
 
-      .header-actions { gap: 4px; }
-      .btn-sm { font-size: 10px; padding: 4px 7px; }
-
-      #stats { gap: 6px; margin-top: 8px; }
-      .stat { padding: 6px 8px; }
-      .stat-value { font-size: 16px; }
-      .stat-label { font-size: 10px; }
-
+      .brand-title h1 { font-size: 15px; }
+      .btn-icon { width: 28px; height: 28px; font-size: 11px; }
+      .stats-bar { padding: 0 10px 8px; }
+      .stat-chip { padding: 6px 8px; }
+      .stat-chip .stat-value { font-size: 16px; }
+      .stat-chip .stat-label { font-size: 9px; }
+      .sidebar-search { padding: 0 10px; }
+      .filter-bar { padding: 0 10px 8px; }
       .device-card { padding: 10px; }
-      .device-name { font-size: 13px; }
+      .device-card-name .name { font-size: 12px; }
 
       #mobile-toggle { display: block; }
 
@@ -462,96 +1060,159 @@
         padding: 12px;
       }
 
-      #history-controls {
-        gap: 6px;
-      }
-
-      #history-controls input, #history-controls button {
-        padding: 6px 10px;
-        font-size: 12px;
-      }
-
       .modal { width: 95%; padding: 16px; }
-      .modal h2 { font-size: 15px; }
-
-      .login-box { width: 90%; padding: 24px; }
+      .login-box { width: 92%; padding: 24px; }
     }
   </style>
 </head>
 <body>
-  <!-- ═══ Login Screen ═══ -->
+  <!-- Login Screen -->
   <div id="login-screen">
     <div class="login-box">
-      <h1>GPS Tracker</h1>
-      <p>Autentificare necesara</p>
+      <div class="login-logo">
+        <i class="fas fa-satellite-dish"></i>
+      </div>
+      <h1>GPS <span>Unitip</span></h1>
+      <p>Fleet Management Platform</p>
       <div id="login-error" class="login-error"></div>
       <form id="login-form">
         <div class="form-group">
           <label>Username</label>
-          <input type="text" id="login-username" autocomplete="username" required>
+          <input type="text" id="login-username" autocomplete="username" required placeholder="Introdu username">
         </div>
         <div class="form-group">
           <label>Parola</label>
-          <input type="password" id="login-password" autocomplete="current-password" required>
+          <input type="password" id="login-password" autocomplete="current-password" required placeholder="Introdu parola">
         </div>
-        <button type="submit" class="btn btn-primary">Autentificare</button>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-sign-in-alt"></i> Autentificare
+        </button>
       </form>
     </div>
   </div>
 
-  <!-- ═══ App (hidden until login) ═══ -->
+  <!-- App -->
   <div id="app">
+    <!-- Sidebar -->
     <div id="sidebar">
-      <div id="sidebar-header">
-        <h1>
-          <span>GPS Tracker</span>
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-top">
+          <div class="brand-title">
+            <i class="fas fa-satellite-dish"></i>
+            <h1>GPS <span>Unitip</span></h1>
+          </div>
           <div class="header-actions">
-            <a href="/debug.html" class="btn-sm" id="btn-debug" style="display:none;text-decoration:none;">Debug</a>
-            <button class="btn-sm" id="btn-users" style="display:none" onclick="openUsersModal()">Utilizatori</button>
-            <button class="btn-sm btn-danger" onclick="logout()">Iesire</button>
+            <a href="/debug.html" id="btn-debug" class="btn-icon" style="display:none;text-decoration:none;" title="Debug"><i class="fas fa-terminal"></i></a>
+            <button class="btn-icon" id="btn-users" style="display:none" onclick="openUsersModal()" title="Utilizatori"><i class="fas fa-users"></i></button>
+            <button class="btn-icon danger" onclick="logout()" title="Deconectare"><i class="fas fa-sign-out-alt"></i></button>
           </div>
-        </h1>
-        <div id="stats">
-          <div class="stat">
+        </div>
+
+        <div class="sidebar-search">
+          <div class="search-input-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="search-input" placeholder="Cauta vehicul, IMEI, numar..." oninput="applyFilters()">
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">Toate</button>
+          <button class="filter-btn" data-filter="online" onclick="setFilter('online', this)">Online</button>
+          <button class="filter-btn" data-filter="offline" onclick="setFilter('offline', this)">Offline</button>
+          <button class="filter-btn" data-filter="moving" onclick="setFilter('moving', this)">In miscare</button>
+        </div>
+
+        <div class="stats-bar">
+          <div class="stat-chip">
             <div class="stat-value" id="stat-total">0</div>
-            <div class="stat-label">Dispozitive</div>
+            <div class="stat-label">Total</div>
           </div>
-          <div class="stat">
+          <div class="stat-chip online">
             <div class="stat-value" id="stat-online">0</div>
             <div class="stat-label">Online</div>
           </div>
-          <div class="stat">
+          <div class="stat-chip moving">
             <div class="stat-value" id="stat-moving">0</div>
             <div class="stat-label">In miscare</div>
           </div>
         </div>
       </div>
+
       <div id="device-list"></div>
-      <div id="ws-status" class="ws-disconnected">Conectare...</div>
+
+      <div id="ws-status" class="ws-disconnected">
+        <span class="ws-dot"></span>
+        <span>Conectare...</span>
+      </div>
     </div>
 
+    <!-- Map Area -->
     <div id="map-container">
       <div id="map"></div>
 
-      <!-- IO Details Panel -->
-      <div id="io-panel">
-        <h3>
-          <span id="io-panel-title">Date IO</span>
-          <button class="close-btn" onclick="closeIoPanel()" style="position:static;font-size:16px;">&#10005;</button>
-        </h3>
-        <div id="io-panel-content"></div>
+      <!-- History Panel (floating on map) -->
+      <div id="history-panel">
+        <div class="history-header">
+          <h3><i class="fas fa-route"></i> Istoric traseu</h3>
+          <button class="close-btn" onclick="closeHistory()">&#10005;</button>
+        </div>
+        <div id="history-controls">
+          <label>De la:</label>
+          <input type="datetime-local" id="history-from">
+          <label>Pana la:</label>
+          <input type="datetime-local" id="history-to">
+          <button class="history-btn primary" onclick="loadHistory()"><i class="fas fa-download"></i> Incarca</button>
+          <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Detail Panel -->
+    <div id="detail-panel">
+      <div class="detail-header">
+        <div class="detail-header-info">
+          <div class="vehicle-icon"><i class="fas fa-truck"></i></div>
+          <div class="vehicle-details">
+            <h3 id="detail-vehicle-name">-</h3>
+            <span class="plate" id="detail-vehicle-plate">-</span>
+          </div>
+        </div>
+        <button class="detail-close" onclick="closeDetailPanel()"><i class="fas fa-times"></i></button>
       </div>
 
-      <div id="history-panel">
-        <button class="close-btn" onclick="closeHistory()">&#10005;</button>
-        <h3 style="margin-bottom: 10px; font-size: 14px;">Istoric traseu</h3>
-        <div id="history-controls">
-          <label style="font-size: 12px;">De la:</label>
-          <input type="datetime-local" id="history-from">
-          <label style="font-size: 12px;">Pana la:</label>
-          <input type="datetime-local" id="history-to">
-          <button onclick="loadHistory()">Incarca</button>
-          <button onclick="exportCSV()" style="background:#22c55e;">Export CSV</button>
+      <div class="detail-tabs">
+        <button class="detail-tab active" data-tab="info" onclick="switchDetailTab('info', this)"><i class="fas fa-info-circle"></i> Info</button>
+        <button class="detail-tab" data-tab="io" onclick="switchDetailTab('io', this)"><i class="fas fa-microchip"></i> IO Live</button>
+        <button class="detail-tab" data-tab="history" onclick="switchDetailTab('history', this)"><i class="fas fa-route"></i> Istoric</button>
+      </div>
+
+      <div class="detail-content">
+        <!-- Info Tab -->
+        <div class="tab-page active" id="tab-info">
+          <div class="info-grid" id="detail-info-grid">
+            <!-- Filled dynamically -->
+          </div>
+        </div>
+
+        <!-- IO Live Tab -->
+        <div class="tab-page" id="tab-io">
+          <div id="detail-io-content">
+            <p style="color: var(--text-muted); font-size: 13px;">Selecteaza un vehicul pentru a vedea datele IO.</p>
+          </div>
+        </div>
+
+        <!-- History Tab -->
+        <div class="tab-page" id="tab-history">
+          <div class="detail-history-form">
+            <label>De la:</label>
+            <input type="datetime-local" id="detail-history-from">
+            <label>Pana la:</label>
+            <input type="datetime-local" id="detail-history-to">
+            <div class="detail-history-buttons">
+              <button class="btn-load" onclick="loadHistoryFromDetail()"><i class="fas fa-download"></i> Incarca</button>
+              <button class="btn-export" onclick="exportCSVFromDetail()"><i class="fas fa-file-csv"></i> Export</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -560,24 +1221,24 @@
   <!-- Mobile toggle button -->
   <button id="mobile-toggle" onclick="toggleMobileSidebar()">&#9776;</button>
 
-  <!-- ═══ Modal Editare Dispozitiv ═══ -->
+  <!-- Edit Device Modal -->
   <div id="edit-modal" class="modal-overlay">
     <div class="modal">
       <h2>
-        Editare dispozitiv
+        <span><i class="fas fa-pen" style="margin-right:8px;color:var(--orange);"></i> Editare dispozitiv</span>
         <button class="close-btn" onclick="closeEditModal()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
       <div class="form-group">
         <label>IMEI</label>
-        <input type="text" id="edit-imei" disabled style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#64748b;font-size:14px;font-family:monospace;">
+        <input type="text" id="edit-imei" disabled style="font-family:monospace;color:var(--text-muted);">
       </div>
       <div class="form-group">
-        <label>Nume</label>
-        <input type="text" id="edit-name" placeholder="ex: Dacia Logan #1" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;">
+        <label>Nume vehicul</label>
+        <input type="text" id="edit-name" placeholder="ex: Dacia Logan #1">
       </div>
       <div class="form-group">
         <label>Tip vehicul</label>
-        <select id="edit-vehicle-type" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;">
+        <select id="edit-vehicle-type">
           <option value="">-- Selecteaza --</option>
           <option value="Auto">Auto</option>
           <option value="Camion">Camion</option>
@@ -589,17 +1250,19 @@
       </div>
       <div class="form-group">
         <label>Numar inmatriculare</label>
-        <input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;text-transform:uppercase;">
+        <input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="text-transform:uppercase;">
       </div>
-      <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:8px;">Salveaza</button>
+      <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:8px;">
+        <i class="fas fa-save"></i> Salveaza
+      </button>
     </div>
   </div>
 
-  <!-- ═══ Modal Utilizatori ═══ -->
+  <!-- Users Modal -->
   <div id="users-modal" class="modal-overlay">
     <div class="modal">
       <h2>
-        Utilizatori
+        <span><i class="fas fa-users" style="margin-right:8px;color:var(--purple);"></i> Utilizatori</span>
         <button class="close-btn" onclick="closeUsersModal()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
       <div id="users-list"></div>
@@ -610,17 +1273,21 @@
           <option value="viewer">Viewer</option>
           <option value="admin">Admin</option>
         </select>
-        <button onclick="addUser()">Adauga</button>
+        <button onclick="addUser()"><i class="fas fa-plus"></i> Adauga</button>
       </div>
     </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ─── Stare globală ───
+    // ─── Global State ───
     let currentUser = null;
     let mapInitialized = false;
     let map, markers, devices, selectedImei, historyLine;
+    let currentFilter = 'all';
+    let searchQuery = '';
+    let detailPanelImei = null;
+    let historyMarkers = [];
 
     // ─── Auth ───
     document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -651,7 +1318,6 @@
       }
     });
 
-    // Verifică dacă e deja autentificat
     async function checkAuth() {
       try {
         const res = await fetch('/api/me');
@@ -659,9 +1325,7 @@
           currentUser = await res.json();
           showApp();
         }
-      } catch (err) {
-        // nu e logat
-      }
+      } catch (err) {}
     }
 
     function showApp() {
@@ -684,7 +1348,7 @@
       location.reload();
     }
 
-    // ─── Utilizatori (admin) ───
+    // ─── Users (admin) ───
     async function openUsersModal() {
       document.getElementById('users-modal').classList.add('visible');
       await loadUsers();
@@ -706,8 +1370,8 @@
             <span class="role ${u.role}">${u.role}</span>
           </div>
           ${u.username !== currentUser.username
-            ? `<button class="btn-sm btn-danger" onclick="deleteUser(${u.id})">Sterge</button>`
-            : '<span style="font-size:11px;color:#64748b">tu</span>'
+            ? '<button class="btn-sm btn-danger" onclick="deleteUser(' + u.id + ')">Sterge</button>'
+            : '<span style="font-size:11px;color:var(--text-muted)">tu</span>'
           }
         </div>
       `).join('');
@@ -738,13 +1402,18 @@
 
     async function deleteUser(id) {
       if (!confirm('Sigur vrei sa stergi acest utilizator?')) return;
-      await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      await fetch('/api/users/' + id, { method: 'DELETE' });
       await loadUsers();
     }
 
-    // ─── Hartă ───
+    // ─── Map ───
     function initMap() {
-      map = L.map('map').setView([44.4268, 26.1025], 12);
+      map = L.map('map', {
+        zoomControl: false
+      }).setView([44.4268, 26.1025], 12);
+
+      L.control.zoom({ position: 'topright' }).addTo(map);
+
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
@@ -756,32 +1425,34 @@
 
       connectWs();
 
-      // Fallback: încarcă dispozitivele prin HTTP dacă WS nu merge
       fetch('/api/live').then(r => r.json()).then(data => {
         data.forEach(updateMarker);
       }).catch(() => {});
     }
 
-    // ─── Iconițe ───
+    // ─── Vehicle Icons ───
     function createIcon(angle, speed, isSelected) {
-      const color = speed > 0 ? '#22c55e' : '#64748b';
-      const size = isSelected ? 14 : 10;
-      const border = isSelected ? '3px solid #38bdf8' : '2px solid #fff';
+      const isMoving = speed > 0;
+      const color = isMoving ? '#22c55e' : '#64748b';
+      const size = isSelected ? 16 : 11;
+      const border = isSelected ? '3px solid #38bdf8' : '2px solid rgba(255,255,255,0.8)';
+
       return L.divIcon({
         className: 'vehicle-marker',
-        html: `<div style="
-          width: ${size}px; height: ${size}px;
-          background: ${color};
-          border: ${border};
-          border-radius: 50%;
-          box-shadow: 0 0 8px ${color};
-        "></div>`,
+        html: '<div style="' +
+          'width:' + size + 'px;height:' + size + 'px;' +
+          'background:' + color + ';' +
+          'border:' + border + ';' +
+          'border-radius:50%;' +
+          'box-shadow:0 0 ' + (isMoving ? '10' : '4') + 'px ' + color + ';' +
+          (isSelected ? 'animation:pulse 2s infinite;' : '') +
+          '"></div>',
         iconSize: [size + 6, size + 6],
         iconAnchor: [(size + 6) / 2, (size + 6) / 2]
       });
     }
 
-    // ─── Actualizare marker pe hartă ───
+    // ─── Update Marker ───
     function updateMarker(data) {
       const { imei, latitude, longitude, speed, angle, timestamp, io } = data;
 
@@ -791,30 +1462,39 @@
       const icon = createIcon(angle, speed, isSelected);
 
       const name = data.name || imei;
+      const plate = data.plate || '';
+      const isOnline = isDeviceOnline(data);
+      const isMoving = speed > 0;
       const ignition = io?.ignition ? 'ON' : 'OFF';
       const voltage = io?.external_voltage ? (io.external_voltage / 1000).toFixed(1) + 'V' : '-';
       const fuel = io?.can_fuel_level !== undefined ? io.can_fuel_level + '%' : '-';
       const rpm = io?.can_rpm !== undefined ? io.can_rpm : '-';
-      const popupContent = `
-        <div style="font-family: sans-serif; font-size: 13px; min-width: 200px;">
-          <b>${name}</b><br>
-          <span style="color: #666; font-size: 11px;">${imei}</span><br><br>
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
-            <tr><td style="padding:2px 8px 2px 0;color:#666;">Viteza</td><td style="font-weight:600;">${speed} km/h</td></tr>
-            <tr><td style="padding:2px 8px 2px 0;color:#666;">Contact</td><td>${ignition}</td></tr>
-            <tr><td style="padding:2px 8px 2px 0;color:#666;">Sateliti</td><td>${data.satellites || '-'}</td></tr>
-            <tr><td style="padding:2px 8px 2px 0;color:#666;">Voltaj</td><td>${voltage}</td></tr>
-            <tr><td style="padding:2px 8px 2px 0;color:#666;">Combustibil</td><td>${fuel}</td></tr>
-            <tr><td style="padding:2px 8px 2px 0;color:#666;">RPM</td><td>${rpm}</td></tr>
-          </table>
-          <div style="font-size:11px;color:#888;margin-top:4px;">${new Date(timestamp).toLocaleString('ro-RO')}</div>
-          <div style="margin-top:6px;">
-            <a href="#" onclick="renderIoPanel('${imei}', devices.get('${imei}')?.io); return false;" style="color: #38bdf8;">Toate IO</a> |
-            <a href="#" onclick="showHistory('${imei}'); return false;" style="color: #2563eb;">Istoric</a> |
-            <a href="#" onclick="openEditModal('${imei}'); return false;" style="color: #f97316;">Editeaza</a>
-          </div>
-        </div>
-      `;
+      const sats = data.satellites || '-';
+
+      const popupContent = '' +
+        '<div class="popup-card">' +
+          '<div class="popup-card-header">' +
+            '<span class="popup-dot ' + (isOnline ? 'online' : 'offline') + '"></span>' +
+            '<div>' +
+              '<div class="popup-title">' + name + (plate ? ' <span style="color:var(--accent);font-size:11px;font-weight:700;">' + plate + '</span>' : '') + '</div>' +
+              '<div class="popup-imei">' + imei + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<table class="popup-table">' +
+            '<tr><td>Viteza</td><td style="color:' + (isMoving ? 'var(--green)' : 'var(--text-muted)') + '">' + speed + ' km/h</td></tr>' +
+            '<tr><td>Contact</td><td style="color:' + (io?.ignition ? 'var(--green)' : 'var(--text-muted)') + '">' + ignition + '</td></tr>' +
+            '<tr><td>Sateliti</td><td>' + sats + '</td></tr>' +
+            '<tr><td>Voltaj</td><td>' + voltage + '</td></tr>' +
+            '<tr><td>Combustibil</td><td>' + fuel + '</td></tr>' +
+            '<tr><td>RPM</td><td>' + rpm + '</td></tr>' +
+          '</table>' +
+          '<div class="popup-time"><i class="far fa-clock" style="margin-right:4px;"></i>' + new Date(timestamp).toLocaleString('ro-RO') + '</div>' +
+          '<div class="popup-actions">' +
+            '<a href="#" class="io-link" onclick="openDetailPanel(\'' + imei + '\', \'io\'); return false;"><i class="fas fa-microchip"></i> Toate IO</a>' +
+            '<a href="#" class="history-link" onclick="openDetailPanel(\'' + imei + '\', \'history\'); return false;"><i class="fas fa-route"></i> Istoric</a>' +
+            '<a href="#" class="edit-link" onclick="openEditModal(\'' + imei + '\'); return false;"><i class="fas fa-pen"></i> Editeaza</a>' +
+          '</div>' +
+        '</div>';
 
       if (markers.has(imei)) {
         const marker = markers.get(imei);
@@ -823,7 +1503,7 @@
         marker.getPopup().setContent(popupContent);
       } else {
         const marker = L.marker([latitude, longitude], { icon })
-          .bindPopup(popupContent)
+          .bindPopup(popupContent, { maxWidth: 280 })
           .addTo(map);
 
         marker.on('click', () => selectDevice(imei));
@@ -834,45 +1514,104 @@
         map.panTo([latitude, longitude]);
       }
 
+      // Update detail panel if showing this device
+      if (detailPanelImei === imei) {
+        updateDetailPanel(imei);
+      }
+
       updateDeviceList();
     }
 
-    // ─── Lista dispozitivelor din sidebar ───
+    // ─── Device online check ───
+    function isDeviceOnline(device) {
+      if (!device.timestamp) return false;
+      const age = Date.now() - new Date(device.timestamp).getTime();
+      return age < 5 * 60 * 1000; // 5 minutes
+    }
+
+    // ─── Filtering & Search ───
+    function setFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateDeviceList();
+    }
+
+    function applyFilters() {
+      searchQuery = document.getElementById('search-input').value.toLowerCase();
+      updateDeviceList();
+    }
+
+    function getFilteredDevices() {
+      let arr = Array.from(devices.values());
+
+      // Search filter
+      if (searchQuery) {
+        arr = arr.filter(d => {
+          const name = (d.name || '').toLowerCase();
+          const imei = (d.imei || '').toLowerCase();
+          const plate = (d.plate || '').toLowerCase();
+          return name.includes(searchQuery) || imei.includes(searchQuery) || plate.includes(searchQuery);
+        });
+      }
+
+      // Status filter
+      if (currentFilter === 'online') {
+        arr = arr.filter(d => isDeviceOnline(d));
+      } else if (currentFilter === 'offline') {
+        arr = arr.filter(d => !isDeviceOnline(d));
+      } else if (currentFilter === 'moving') {
+        arr = arr.filter(d => d.speed > 0);
+      }
+
+      return arr;
+    }
+
+    // ─── Device List ───
     function updateDeviceList() {
       const list = document.getElementById('device-list');
-      const devicesArray = Array.from(devices.values());
+      const allDevices = Array.from(devices.values());
+      const filtered = getFilteredDevices();
 
-      document.getElementById('stat-total').textContent = devicesArray.length;
-      document.getElementById('stat-online').textContent = devicesArray.length;
-      document.getElementById('stat-moving').textContent = devicesArray.filter(d => d.speed > 0).length;
+      document.getElementById('stat-total').textContent = allDevices.length;
+      document.getElementById('stat-online').textContent = allDevices.filter(d => isDeviceOnline(d)).length;
+      document.getElementById('stat-moving').textContent = allDevices.filter(d => d.speed > 0).length;
 
-      list.innerHTML = devicesArray.map(d => {
+      if (filtered.length === 0) {
+        list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;"><i class="fas fa-search" style="font-size:24px;display:block;margin-bottom:8px;"></i>Niciun vehicul gasit</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(d => {
         const isActive = d.imei === selectedImei;
         const isMoving = d.speed > 0;
+        const isOnline = isDeviceOnline(d);
         const name = d.name || d.imei;
+        const plate = d.plate || '';
         const timeAgo = getTimeAgo(new Date(d.timestamp));
-        const ignition = d.io?.ignition ? 'Contact ON' : 'Contact OFF';
+        const ignOn = d.io?.ignition;
         const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
-        return `
-          <div class="device-card ${isActive ? 'active' : ''}" onclick="selectDevice('${d.imei}')">
-            <div class="device-header">
-              <div>
-                <span class="device-status ${isMoving ? 'status-online' : 'status-offline'}"></span>
-                <span class="device-name">${name}</span>
-              </div>
-              <span style="font-size: 12px; color: ${isMoving ? '#22c55e' : '#94a3b8'}">
-                ${d.speed} km/h
-              </span>
-            </div>
-            <div class="device-imei">${d.imei}</div>
-            <div class="device-info">
-              <span>${ignition}</span>
-              ${voltage ? `<span>${voltage}</span>` : ''}
-              <span>${timeAgo}</span>
-            </div>
-          </div>
-        `;
+        let statusClass = 'offline';
+        if (isMoving) statusClass = 'moving';
+        else if (isOnline) statusClass = 'online';
+
+        return '' +
+          '<div class="device-card ' + (isActive ? 'active' : '') + '" onclick="selectDevice(\'' + d.imei + '\')">' +
+            '<div class="device-card-top">' +
+              '<div class="device-card-name">' +
+                '<span class="status-dot ' + statusClass + '"></span>' +
+                '<span class="name">' + name + '</span>' +
+                (plate ? '<span class="device-card-plate">' + plate + '</span>' : '') +
+              '</div>' +
+              '<span class="device-card-speed ' + (isMoving ? 'moving' : 'stopped') + '">' + d.speed + ' km/h</span>' +
+            '</div>' +
+            '<div class="device-card-meta">' +
+              '<span class="meta-ignition ' + (ignOn ? 'on' : 'off') + '"><i class="fas fa-key"></i> ' + (ignOn ? 'ON' : 'OFF') + '</span>' +
+              (voltage ? '<span><i class="fas fa-bolt"></i> ' + voltage + '</span>' : '') +
+              '<span><i class="far fa-clock"></i> ' + timeAgo + '</span>' +
+            '</div>' +
+          '</div>';
       }).join('');
     }
 
@@ -890,9 +1629,192 @@
         }
       });
       updateDeviceList();
+      openDetailPanel(imei, 'info');
     }
 
-    // ─── Istoric traseu ───
+    // ─── Detail Panel ───
+    function openDetailPanel(imei, tab) {
+      detailPanelImei = imei;
+      const panel = document.getElementById('detail-panel');
+      panel.classList.add('open');
+
+      updateDetailPanel(imei);
+
+      if (tab) {
+        switchDetailTab(tab, document.querySelector('.detail-tab[data-tab="' + tab + '"]'));
+      }
+
+      // Pre-fill history dates
+      const now = new Date();
+      const yesterday = new Date(now - 24 * 60 * 60 * 1000);
+      document.getElementById('detail-history-from').value = formatDateLocal(yesterday);
+      document.getElementById('detail-history-to').value = formatDateLocal(now);
+
+      setTimeout(() => { if (map) map.invalidateSize(); }, 350);
+    }
+
+    function closeDetailPanel() {
+      detailPanelImei = null;
+      document.getElementById('detail-panel').classList.remove('open');
+      setTimeout(() => { if (map) map.invalidateSize(); }, 350);
+    }
+
+    function switchDetailTab(tab, btn) {
+      document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    function updateDetailPanel(imei) {
+      const data = devices.get(imei);
+      if (!data) return;
+
+      const name = data.name || imei;
+      const plate = data.plate || '';
+      document.getElementById('detail-vehicle-name').textContent = name;
+      document.getElementById('detail-vehicle-plate').textContent = plate || imei;
+
+      // Update vehicle icon type
+      const typeIcon = getVehicleTypeIcon(data.vehicle_type);
+      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = '<i class="fas fa-' + typeIcon + '"></i>';
+
+      // Info Tab
+      const isOnline = isDeviceOnline(data);
+      const isMoving = data.speed > 0;
+      const ignition = data.io?.ignition;
+      const voltage = data.io?.external_voltage ? (data.io.external_voltage / 1000).toFixed(1) + ' V' : '-';
+      const sats = data.satellites || '-';
+
+      document.getElementById('detail-info-grid').innerHTML = '' +
+        '<div class="info-item">' +
+          '<div class="info-item-label">Viteza</div>' +
+          '<div class="info-item-value ' + (isMoving ? 'green' : 'muted') + '">' + data.speed + ' km/h</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-label">Contact</div>' +
+          '<div class="info-item-value ' + (ignition ? 'green' : 'red') + '">' + (ignition ? 'ON' : 'OFF') + '</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-label">Sateliti</div>' +
+          '<div class="info-item-value">' + sats + '</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-label">Voltaj</div>' +
+          '<div class="info-item-value">' + voltage + '</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-label">Latitudine</div>' +
+          '<div class="info-item-value" style="font-size:12px;font-family:monospace;">' + (data.latitude?.toFixed(6) || '-') + '</div>' +
+        '</div>' +
+        '<div class="info-item">' +
+          '<div class="info-item-label">Longitudine</div>' +
+          '<div class="info-item-value" style="font-size:12px;font-family:monospace;">' + (data.longitude?.toFixed(6) || '-') + '</div>' +
+        '</div>' +
+        '<div class="info-item full">' +
+          '<div class="info-item-label">Ultima actualizare</div>' +
+          '<div class="info-item-value" style="font-size:12px;">' + new Date(data.timestamp).toLocaleString('ro-RO') + ' (' + getTimeAgo(new Date(data.timestamp)) + ')</div>' +
+        '</div>' +
+        '<div class="info-item full">' +
+          '<div class="info-item-label">IMEI</div>' +
+          '<div class="info-item-value" style="font-size:12px;font-family:monospace;color:var(--text-muted);">' + imei + '</div>' +
+        '</div>';
+
+      // IO Tab
+      updateDetailIoPanel(imei);
+    }
+
+    function updateDetailIoPanel(imei) {
+      const data = devices.get(imei);
+      const io = data?.io;
+      const content = document.getElementById('detail-io-content');
+
+      if (!io || Object.keys(io).length === 0) {
+        content.innerHTML = '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px;">Nu sunt date IO disponibile.</p>';
+        return;
+      }
+
+      const usedKeys = new Set();
+      let html = '';
+
+      const categoryIcons = {
+        'Motor / Vehicul': 'fa-engine',
+        'Combustibil': 'fa-gas-pump',
+        'Alimentare': 'fa-bolt',
+        'GPS / Retea': 'fa-satellite',
+        'I/O Digital': 'fa-toggle-on',
+        'I/O Analog': 'fa-wave-square',
+        'Distanta': 'fa-road',
+        'Evenimente': 'fa-bell',
+        'Sistem': 'fa-cog'
+      };
+
+      for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
+        const rows = keys.filter(k => io[k] !== undefined).map(k => {
+          usedKeys.add(k);
+          const val = formatIoValue(k, io[k]);
+          const isOnOff = (typeof io[k] === 'boolean' || val === 'ON' || val === 'OFF' || val === 'DA' || val === 'Nu');
+          let valClass = '';
+          if (isOnOff) valClass = (val === 'ON' || val === 'DA' || val === 'In calatorie') ? 'on' : 'off';
+          return '<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value ' + valClass + '">' + val + '</span></div>';
+        });
+        if (rows.length > 0) {
+          const icon = categoryIcons[category] || 'fa-circle';
+          html += '<div class="io-section"><div class="io-section-title"><i class="fas ' + icon + '"></i> ' + category + '</div>' + rows.join('') + '</div>';
+        }
+      }
+
+      // Uncategorized
+      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && k !== 'eventIoId' && k !== 'totalCount');
+      if (uncategorized.length > 0) {
+        const rows = uncategorized.map(k =>
+          '<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value">' + formatIoValue(k, io[k]) + '</span></div>'
+        );
+        html += '<div class="io-section"><div class="io-section-title"><i class="fas fa-ellipsis-h"></i> Alte IO</div>' + rows.join('') + '</div>';
+      }
+
+      content.innerHTML = html;
+    }
+
+    function getVehicleTypeIcon(type) {
+      switch (type) {
+        case 'Auto': return 'car';
+        case 'Camion': return 'truck';
+        case 'Duba': return 'shuttle-van';
+        case 'Motocicleta': return 'motorcycle';
+        case 'Utilaj': return 'tractor';
+        default: return 'truck';
+      }
+    }
+
+    // ─── History from detail panel ───
+    function loadHistoryFromDetail() {
+      if (!detailPanelImei) return;
+      selectedImei = detailPanelImei;
+
+      const from = document.getElementById('detail-history-from').value;
+      const to = document.getElementById('detail-history-to').value;
+      if (!from || !to) return alert('Selecteaza perioada');
+
+      document.getElementById('history-from').value = from;
+      document.getElementById('history-to').value = to;
+      loadHistory();
+    }
+
+    function exportCSVFromDetail() {
+      if (!detailPanelImei) return alert('Selecteaza un dispozitiv');
+      selectedImei = detailPanelImei;
+
+      const from = document.getElementById('detail-history-from').value;
+      const to = document.getElementById('detail-history-to').value;
+      if (!from || !to) return alert('Selecteaza perioada');
+
+      document.getElementById('history-from').value = from;
+      document.getElementById('history-to').value = to;
+      exportCSV();
+    }
+
+    // ─── History ───
     function showHistory(imei) {
       selectedImei = imei;
       const panel = document.getElementById('history-panel');
@@ -911,6 +1833,8 @@
         map.removeLayer(historyLine);
         historyLine = null;
       }
+      historyMarkers.forEach(m => map.removeLayer(m));
+      historyMarkers = [];
     }
 
     async function loadHistory() {
@@ -921,10 +1845,12 @@
       if (!from || !to) return;
 
       try {
-        const res = await fetch(`/api/history/${selectedImei}?from=${new Date(from).toISOString()}&to=${new Date(to).toISOString()}`);
+        const res = await fetch('/api/history/' + selectedImei + '?from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString());
         const data = await res.json();
 
         if (historyLine) map.removeLayer(historyLine);
+        historyMarkers.forEach(m => map.removeLayer(m));
+        historyMarkers = [];
 
         if (data.length === 0) {
           alert('Nu sunt date pentru perioada selectata');
@@ -940,26 +1866,28 @@
 
         map.fitBounds(historyLine.getBounds(), { padding: [50, 50] });
 
-        L.circleMarker(points[0], { radius: 6, color: '#22c55e', fillOpacity: 1 })
-          .bindPopup(`Start: ${new Date(data[0].timestamp).toLocaleString('ro-RO')}`)
+        const startMarker = L.circleMarker(points[0], { radius: 7, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 1, weight: 2 })
+          .bindPopup('Start: ' + new Date(data[0].timestamp).toLocaleString('ro-RO'))
           .addTo(map);
-        L.circleMarker(points[points.length - 1], { radius: 6, color: '#ef4444', fillOpacity: 1 })
-          .bindPopup(`Stop: ${new Date(data[data.length - 1].timestamp).toLocaleString('ro-RO')}`)
+        const endMarker = L.circleMarker(points[points.length - 1], { radius: 7, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1, weight: 2 })
+          .bindPopup('Stop: ' + new Date(data[data.length - 1].timestamp).toLocaleString('ro-RO'))
           .addTo(map);
+
+        historyMarkers.push(startMarker, endMarker);
 
       } catch (err) {
         console.error('Eroare incarcare istoric:', err);
       }
     }
 
-    // ─── WebSocket — date live ───
+    // ─── WebSocket ───
     function connectWs() {
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(`${protocol}//${location.host}`);
+      const ws = new WebSocket(protocol + '//' + location.host);
       const statusEl = document.getElementById('ws-status');
 
       ws.onopen = () => {
-        statusEl.textContent = 'Conectat — date live';
+        statusEl.innerHTML = '<span class="ws-dot"></span><span>Conectat &mdash; date live</span>';
         statusEl.className = 'ws-connected';
       };
 
@@ -980,7 +1908,7 @@
       };
 
       ws.onclose = () => {
-        statusEl.textContent = 'Deconectat — reconectare...';
+        statusEl.innerHTML = '<span class="ws-dot"></span><span>Deconectat &mdash; reconectare...</span>';
         statusEl.className = 'ws-disconnected';
         setTimeout(connectWs, 3000);
       };
@@ -988,13 +1916,13 @@
       ws.onerror = () => ws.close();
     }
 
-    // ─── Utilități ───
+    // ─── Utils ───
     function getTimeAgo(date) {
       const seconds = Math.floor((new Date() - date) / 1000);
       if (seconds < 60) return 'acum';
-      if (seconds < 3600) return `${Math.floor(seconds / 60)} min`;
-      if (seconds < 86400) return `${Math.floor(seconds / 3600)} ore`;
-      return `${Math.floor(seconds / 86400)} zile`;
+      if (seconds < 3600) return Math.floor(seconds / 60) + ' min';
+      if (seconds < 86400) return Math.floor(seconds / 3600) + ' ore';
+      return Math.floor(seconds / 86400) + ' zile';
     }
 
     function formatDateLocal(date) {
@@ -1012,12 +1940,11 @@
       if (map) setTimeout(() => map.invalidateSize(), 100);
     }
 
-    // ─── Editare dispozitiv ───
+    // ─── Edit Device ───
     function openEditModal(imei) {
       document.getElementById('edit-modal').classList.add('visible');
       document.getElementById('edit-imei').value = imei;
 
-      // Fetch device info from DB
       fetch('/api/devices').then(r => r.json()).then(devs => {
         const dev = devs.find(d => d.imei === imei);
         if (dev) {
@@ -1038,7 +1965,7 @@
       const vehicle_type = document.getElementById('edit-vehicle-type').value;
       const plate = document.getElementById('edit-plate').value.toUpperCase();
 
-      const res = await fetch(`/api/devices/${imei}`, {
+      const res = await fetch('/api/devices/' + imei, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, vehicle_type, plate })
@@ -1046,7 +1973,6 @@
 
       if (res.ok) {
         closeEditModal();
-        // Update local device data
         const dev = devices.get(imei);
         if (dev) {
           dev.name = name;
@@ -1067,11 +1993,11 @@
       const to = document.getElementById('history-to').value;
       if (!from || !to) return alert('Selecteaza perioada');
 
-      const url = `/api/export/${selectedImei}?from=${new Date(from).toISOString()}&to=${new Date(to).toISOString()}`;
+      const url = '/api/export/' + selectedImei + '?from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString();
       window.open(url, '_blank');
     }
 
-    // ─── IO Panel ───
+    // ─── IO Categories & Formatting ───
     const IO_CATEGORIES = {
       'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_speed', 'can_rpm', 'can_coolant_temp', 'can_pedal_position', 'can_engine_hours', 'can_total_mileage'],
       'Combustibil': ['can_fuel_level', 'can_fuel_consumed', 'can_fuel_rate', 'fuel_used_gps', 'fuel_rate_gps', 'fuel_consumed'],
@@ -1093,7 +2019,7 @@
       if (key === 'digital_input_1' || key === 'digital_input_2' || key === 'digital_input_3') return value ? 'ON' : 'OFF';
       if (key === 'digital_output_1' || key === 'digital_output_2') return value ? 'ON' : 'OFF';
       if (key === 'gsm_signal') return value + ' / 5';
-      if (key === 'can_coolant_temp') return value + ' °C';
+      if (key === 'can_coolant_temp') return value + ' \u00B0C';
       if (key === 'can_rpm') return value + ' RPM';
       if (key === 'can_speed' || key === 'speed_io') return value + ' km/h';
       if (key === 'can_fuel_level') return value + ' %';
@@ -1115,51 +2041,16 @@
       return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
+    // Legacy IO panel (kept for backward compat but now uses detail panel)
     function renderIoPanel(imei, io) {
-      const panel = document.getElementById('io-panel');
-      const title = document.getElementById('io-panel-title');
-      const content = document.getElementById('io-panel-content');
-
-      const dev = devices.get(imei);
-      title.textContent = (dev?.name || imei) + ' — Date IO';
-
-      if (!io || Object.keys(io).length === 0) {
-        content.innerHTML = '<p style="color:#64748b;">Nu sunt date IO disponibile.</p>';
-        panel.classList.add('visible');
-        return;
-      }
-
-      const usedKeys = new Set();
-      let html = '';
-
-      for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
-        const rows = keys.filter(k => io[k] !== undefined).map(k => {
-          usedKeys.add(k);
-          return `<div class="io-row"><span class="io-label">${formatIoLabel(k)}</span><span class="io-value">${formatIoValue(k, io[k])}</span></div>`;
-        });
-        if (rows.length > 0) {
-          html += `<div class="io-section"><div class="io-section-title">${category}</div>${rows.join('')}</div>`;
-        }
-      }
-
-      // Necategorizate (inclusiv io_XXX)
-      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && k !== 'eventIoId' && k !== 'totalCount');
-      if (uncategorized.length > 0) {
-        const rows = uncategorized.map(k =>
-          `<div class="io-row"><span class="io-label">${formatIoLabel(k)}</span><span class="io-value">${formatIoValue(k, io[k])}</span></div>`
-        );
-        html += `<div class="io-section"><div class="io-section-title">Altele</div>${rows.join('')}</div>`;
-      }
-
-      content.innerHTML = html;
-      panel.classList.add('visible');
+      openDetailPanel(imei, 'io');
     }
 
     function closeIoPanel() {
-      document.getElementById('io-panel').classList.remove('visible');
+      closeDetailPanel();
     }
 
-    // ─── Pornire ───
+    // ─── Start ───
     checkAuth();
   </script>
 </body>
