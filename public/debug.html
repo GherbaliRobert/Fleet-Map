@@ -417,8 +417,129 @@
     function selectEntry(idx) {
       selectedEntry = idx;
       const entry = logEntries[idx];
-      document.getElementById('detail-content').innerHTML = syntaxHighlight(JSON.stringify(entry, null, 2));
+
+      if (entry.event === 'data' && entry.records && entry.records.length > 0) {
+        // Afisare detaliata pentru intrari DATA
+        let html = `<div style="color:#38bdf8;font-weight:bold;margin-bottom:12px;">📡 ${entry.imei} — ${entry.numberOfRecords} record(uri), Codec 0x${(entry.codecId||0).toString(16).toUpperCase()}</div>`;
+
+        entry.records.forEach((rec, i) => {
+          const ts = new Date(rec.timestamp).toLocaleString('ro-RO');
+          const gps = rec.gps || {};
+          const io = rec.io || {};
+
+          html += `<div style="border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:12px;background:#0f172a;">`;
+          html += `<div style="color:#f97316;font-weight:bold;margin-bottom:8px;">Record ${i+1} — ${ts}</div>`;
+
+          // GPS Section
+          html += `<div style="margin-bottom:8px;">`;
+          html += `<div style="color:#22c55e;font-weight:bold;margin-bottom:4px;">📍 GPS</div>`;
+          html += `<table style="width:100%;font-size:11px;">`;
+          html += `<tr><td style="color:#64748b;width:140px;">Latitude</td><td style="color:#e2e8f0;">${gps.latitude || 0}</td>`;
+          html += `<td style="color:#64748b;width:140px;">Longitude</td><td style="color:#e2e8f0;">${gps.longitude || 0}</td></tr>`;
+          html += `<tr><td style="color:#64748b;">Altitude</td><td style="color:#e2e8f0;">${gps.altitude || 0} m</td>`;
+          html += `<td style="color:#64748b;">Speed</td><td style="color:#e2e8f0;">${gps.speed || 0} km/h</td></tr>`;
+          html += `<tr><td style="color:#64748b;">Angle</td><td style="color:#e2e8f0;">${gps.angle || 0}°</td>`;
+          html += `<td style="color:#64748b;">Satellites</td><td style="color:#e2e8f0;">${gps.satellites || 0}</td></tr>`;
+          html += `</table></div>`;
+
+          // IO Section - grupat pe categorii
+          const ioKeys = Object.keys(io).filter(k => k !== 'eventIoId' && k !== 'totalCount');
+          if (ioKeys.length > 0) {
+            // Categorii IO
+            const categories = {
+              '⚡ Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
+              '🚗 Motor / CAN': ['ignition', 'movement', 'can_speed', 'can_rpm', 'can_coolant_temp', 'can_pedal_position', 'can_engine_hours', 'can_total_mileage'],
+              '⛽ Combustibil': ['can_fuel_level', 'can_fuel_consumed', 'can_fuel_rate', 'fuel_used_gps', 'fuel_rate_gps', 'fuel_consumed'],
+              '📡 Retea / GPS': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'speed_io'],
+              '🔌 I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
+              '📊 Analog': ['analog_input_1', 'analog_input_2'],
+              '📏 Distanta': ['total_odometer', 'total_mileage'],
+              '⚠️ Evenimente': ['trip', 'over_speeding', 'unplug', 'crash_detection', 'idling', 'towing', 'green_driving_type', 'green_driving_value'],
+              '💤 Status': ['sleep_mode', 'data_mode', 'sd_status', 'iccid', 'auto_geofence']
+            };
+
+            const usedKeys = new Set();
+
+            for (const [catName, catKeys] of Object.entries(categories)) {
+              const present = catKeys.filter(k => io[k] !== undefined);
+              if (present.length === 0) continue;
+
+              html += `<div style="margin-bottom:8px;">`;
+              html += `<div style="color:#a78bfa;font-weight:bold;margin-bottom:4px;">${catName}</div>`;
+              html += `<table style="width:100%;font-size:11px;">`;
+
+              for (let j = 0; j < present.length; j += 2) {
+                html += `<tr>`;
+                html += `<td style="color:#64748b;width:140px;">${present[j]}</td>`;
+                html += `<td style="color:#e2e8f0;">${formatIoValue(present[j], io[present[j]])}</td>`;
+                usedKeys.add(present[j]);
+                if (present[j+1]) {
+                  html += `<td style="color:#64748b;width:140px;">${present[j+1]}</td>`;
+                  html += `<td style="color:#e2e8f0;">${formatIoValue(present[j+1], io[present[j+1]])}</td>`;
+                  usedKeys.add(present[j+1]);
+                } else {
+                  html += `<td></td><td></td>`;
+                }
+                html += `</tr>`;
+              }
+              html += `</table></div>`;
+            }
+
+            // IO necategorizate
+            const uncategorized = ioKeys.filter(k => !usedKeys.has(k));
+            if (uncategorized.length > 0) {
+              html += `<div style="margin-bottom:8px;">`;
+              html += `<div style="color:#94a3b8;font-weight:bold;margin-bottom:4px;">🔧 Alte IO</div>`;
+              html += `<table style="width:100%;font-size:11px;">`;
+              for (let j = 0; j < uncategorized.length; j += 2) {
+                html += `<tr>`;
+                html += `<td style="color:#64748b;width:140px;">${uncategorized[j]}</td>`;
+                html += `<td style="color:#e2e8f0;">${io[uncategorized[j]]}</td>`;
+                if (uncategorized[j+1]) {
+                  html += `<td style="color:#64748b;width:140px;">${uncategorized[j+1]}</td>`;
+                  html += `<td style="color:#e2e8f0;">${io[uncategorized[j+1]]}</td>`;
+                }
+                html += `</tr>`;
+              }
+              html += `</table></div>`;
+            }
+          }
+
+          html += `</div>`;
+        });
+
+        // Adauga si JSON-ul brut la final
+        html += `<details style="margin-top:12px;"><summary style="cursor:pointer;color:#64748b;font-size:11px;">JSON brut</summary>`;
+        html += `<div style="margin-top:8px;">${syntaxHighlight(JSON.stringify(entry, null, 2))}</div></details>`;
+
+        document.getElementById('detail-content').innerHTML = html;
+      } else {
+        document.getElementById('detail-content').innerHTML = syntaxHighlight(JSON.stringify(entry, null, 2));
+      }
       renderLog();
+    }
+
+    function formatIoValue(key, value) {
+      // Formatare speciala pentru anumite valori
+      if (key === 'external_voltage') return `${(value / 1000).toFixed(2)} V (${value} mV)`;
+      if (key === 'battery_voltage') return `${(value / 1000).toFixed(2)} V (${value} mV)`;
+      if (key === 'battery_current') return `${value} mA`;
+      if (key === 'battery_level') return `${value}%`;
+      if (key === 'ignition') return value ? '<span style="color:#22c55e;">ON</span>' : '<span style="color:#ef4444;">OFF</span>';
+      if (key === 'movement') return value ? '<span style="color:#22c55e;">DA</span>' : '<span style="color:#64748b;">NU</span>';
+      if (key === 'can_rpm') return `${value} RPM`;
+      if (key === 'can_speed') return `${value} km/h`;
+      if (key === 'can_coolant_temp') return `${value}°C`;
+      if (key === 'can_fuel_level') return `${value}%`;
+      if (key === 'gsm_signal') return `${value}/5`;
+      if (key === 'total_odometer') return `${(value / 1000).toFixed(1)} km`;
+      if (key === 'total_mileage') return `${(value / 1000).toFixed(1)} km`;
+      if (key === 'can_engine_hours') return `${(value / 100).toFixed(1)} h`;
+      if (key === 'sleep_mode') {
+        const modes = { 0: 'Activ', 1: 'GPS Sleep', 2: 'Deep Sleep', 3: 'Online Sleep', 4: 'Ultra Sleep' };
+        return modes[value] || value;
+      }
+      return value;
     }
 
     function clearLog() {
