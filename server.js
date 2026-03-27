@@ -14,11 +14,12 @@ const db = require('./db');
 const HTTP_PORT = parseInt(process.env.PORT || '3000');
 const TCP_PORT = parseInt(process.env.TCP_PORT || '5027');
 
-// Dacă TCP și HTTP ar folosi același port, mută TCP pe altul
+// Dacă TCP și HTTP ar folosi același port, mută HTTP pe altul (TCP are prioritate - proxy-ul GPS pointeaza acolo)
 if (TCP_PORT === HTTP_PORT) {
-  console.warn(`[WARN] TCP_PORT (${TCP_PORT}) == HTTP_PORT, mut TCP pe ${TCP_PORT + 1}`);
+  console.warn(`[WARN] TCP_PORT (${TCP_PORT}) == HTTP_PORT, mut HTTP pe ${HTTP_PORT + 1}`);
 }
-const ACTUAL_TCP_PORT = TCP_PORT === HTTP_PORT ? TCP_PORT + 1 : TCP_PORT;
+const ACTUAL_TCP_PORT = TCP_PORT;
+const ACTUAL_HTTP_PORT = TCP_PORT === HTTP_PORT ? HTTP_PORT + 1 : HTTP_PORT;
 
 // ─── Stare live (ultima poziție per IMEI, ținută în memorie) ───
 const livePositions = new Map();
@@ -692,14 +693,14 @@ async function start() {
   });
 
   // Pornește serverul HTTP + WebSocket
-  httpServer.listen(HTTP_PORT, () => {
-    console.log(`[HTTP] Interfață web pe portul ${HTTP_PORT}`);
+  httpServer.listen(ACTUAL_HTTP_PORT, () => {
+    console.log(`[HTTP] Interfață web pe portul ${ACTUAL_HTTP_PORT}`);
     console.log(`[WS] WebSocket activ`);
     console.log('');
     console.log('═══════════════════════════════════════');
     console.log('  GPS Tracker Server — PORNIT');
     console.log(`  TCP (dispozitive): port ${ACTUAL_TCP_PORT}`);
-    console.log(`  HTTP (hartă):      port ${HTTP_PORT}`);
+    console.log(`  HTTP (hartă):      port ${ACTUAL_HTTP_PORT}`);
     console.log('═══════════════════════════════════════');
   });
 }
