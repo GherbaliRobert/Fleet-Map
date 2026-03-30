@@ -220,11 +220,13 @@ function getIoName(id) {
     3:   'digital_input_3',
     9:   'analog_input_1',
     6:   'analog_input_2',
+    12:  'fuel_used_gps_total',
     11:  'iccid',
     10:  'sd_status',
     179: 'digital_output_1',
     180: 'digital_output_2',
     113: 'battery_level',
+    199: 'trip_odometer',
     // CAN Bus (FMS)
     83:  'fuel_used_gps',
     84:  'fuel_rate_gps',
