@@ -1636,7 +1636,8 @@
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Distanta</th>
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Vit. medie</th>
               <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Vit. max</th>
-              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Coordonate</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Plecare</th>
+              <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Sosire</th>
             </tr>
           </thead>
           <tbody id="report-routes-body"></tbody>
@@ -2630,6 +2631,30 @@
       ws.onerror = () => ws.close();
     }
 
+    // ─── Reverse Geocoding ───
+    const geocodeCache = {};
+    async function reverseGeocode(lat, lng) {
+      const key = lat.toFixed(4) + ',' + lng.toFixed(4);
+      if (geocodeCache[key]) return geocodeCache[key];
+      try {
+        const resp = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=16&addressdetails=1', {
+          headers: { 'Accept-Language': 'ro' }
+        });
+        const data = await resp.json();
+        const a = data.address || {};
+        const parts = [];
+        if (a.road) parts.push(a.road);
+        if (a.house_number) parts[parts.length - 1] += ' ' + a.house_number;
+        if (a.village || a.town || a.city) parts.push(a.village || a.town || a.city);
+        if (a.county) parts.push(a.county);
+        const result = parts.length > 0 ? parts.join(', ') : (data.display_name || key).split(',').slice(0, 3).join(',');
+        geocodeCache[key] = result;
+        return result;
+      } catch (e) {
+        return key;
+      }
+    }
+
     // ─── Utils ───
     function getTimeAgo(date) {
       const seconds = Math.floor((new Date() - date) / 1000);
@@ -2897,8 +2922,10 @@
       document.getElementById('report-summary').style.display = 'block';
     }
 
-    function renderReportRoutes(routes) {
+    async function renderReportRoutes(routes) {
       const tbody = document.getElementById('report-routes-body');
+
+      // Build rows with placeholders first
       tbody.innerHTML = routes.map(function(r, i) {
         const startTime = new Date(r.startTime).toLocaleString('ro-RO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
         const endTime = new Date(r.endTime).toLocaleString('ro-RO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -2913,14 +2940,28 @@
           '<td style="font-weight:600;color:var(--accent);">' + r.distance.toFixed(1) + ' km</td>' +
           '<td>' + r.avgSpeed + ' km/h</td>' +
           '<td style="' + speedColor + '">' + r.maxSpeed + ' km/h</td>' +
-          '<td style="font-size:10px;color:var(--text-muted);font-family:monospace;">' +
-            r.startLat.toFixed(4) + ',' + r.startLng.toFixed(4) + ' → ' +
-            r.endLat.toFixed(4) + ',' + r.endLng.toFixed(4) +
-          '</td>' +
+          '<td id="route-start-' + i + '" style="font-size:11px;max-width:180px;"><i class="fas fa-spinner fa-spin" style="color:var(--text-muted);"></i></td>' +
+          '<td id="route-end-' + i + '" style="font-size:11px;max-width:180px;"><i class="fas fa-spinner fa-spin" style="color:var(--text-muted);"></i></td>' +
         '</tr>';
       }).join('');
 
       document.getElementById('report-routes').style.display = 'block';
+
+      // Resolve addresses with delay to respect Nominatim rate limit (1 req/sec)
+      for (let i = 0; i < routes.length; i++) {
+        const r = routes[i];
+        const startAddr = await reverseGeocode(r.startLat, r.startLng);
+        const startEl = document.getElementById('route-start-' + i);
+        if (startEl) startEl.innerHTML = '<i class="fas fa-map-marker-alt" style="color:var(--green);margin-right:4px;"></i>' + startAddr;
+
+        await new Promise(function(resolve) { setTimeout(resolve, 300); });
+
+        const endAddr = await reverseGeocode(r.endLat, r.endLng);
+        const endEl = document.getElementById('route-end-' + i);
+        if (endEl) endEl.innerHTML = '<i class="fas fa-flag-checkered" style="color:var(--red);margin-right:4px;"></i>' + endAddr;
+
+        await new Promise(function(resolve) { setTimeout(resolve, 300); });
+      }
     }
 
     function printReport() {
@@ -2930,9 +2971,13 @@
     function exportReportCSV() {
       if (!reportData || !reportData.routes) return;
 
-      const lines = ['Nr,Start,Stop,Durata (min),Distanta (km),Viteza medie (km/h),Viteza max (km/h),Start Lat,Start Lng,Stop Lat,Stop Lng'];
+      const lines = ['Nr,Start,Stop,Durata (min),Distanta (km),Viteza medie (km/h),Viteza max (km/h),Plecare,Sosire,Start Lat,Start Lng,Stop Lat,Stop Lng'];
 
       reportData.routes.forEach(function(r, i) {
+        const startKey = r.startLat.toFixed(4) + ',' + r.startLng.toFixed(4);
+        const endKey = r.endLat.toFixed(4) + ',' + r.endLng.toFixed(4);
+        const startAddr = (geocodeCache[startKey] || startKey).replace(/,/g, ' -');
+        const endAddr = (geocodeCache[endKey] || endKey).replace(/,/g, ' -');
         lines.push([
           i + 1,
           new Date(r.startTime).toLocaleString('ro-RO'),
@@ -2941,6 +2986,8 @@
           r.distance.toFixed(2),
           r.avgSpeed,
           r.maxSpeed,
+          '"' + startAddr + '"',
+          '"' + endAddr + '"',
           r.startLat.toFixed(6),
           r.startLng.toFixed(6),
           r.endLat.toFixed(6),
