@@ -115,6 +115,7 @@ const tcpServer = net.createServer((socket) => {
       // Actualizează poziția live
       const lastRecord = parsed.records[parsed.records.length - 1];
       if (lastRecord && lastRecord.gps.latitude !== 0) {
+        const existing = livePositions.get(imei) || {};
         const liveData = {
           imei,
           timestamp: lastRecord.timestamp,
@@ -123,7 +124,10 @@ const tcpServer = net.createServer((socket) => {
           speed: lastRecord.gps.speed,
           angle: lastRecord.gps.angle,
           satellites: lastRecord.gps.satellites,
-          io: lastRecord.io
+          io: lastRecord.io,
+          name: existing.name || null,
+          vehicle_type: existing.vehicle_type || null,
+          plate: existing.plate || null
         };
         livePositions.set(imei, liveData);
 
@@ -341,6 +345,15 @@ app.put('/api/devices/:imei', requireAuth, async (req, res) => {
     const { imei } = req.params;
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
+    // Update in-memory livePositions so WebSocket clients get the new name
+    const pos = livePositions.get(imei);
+    if (pos) {
+      pos.name = name || null;
+      pos.vehicle_type = vehicle_type || null;
+      pos.plate = plate || null;
+      livePositions.set(imei, pos);
+      broadcastWs({ type: 'position', data: pos });
+    }
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -942,7 +955,13 @@ async function start() {
 
   // Încarcă ultimele poziții din DB în memorie
   const lastPositions = await db.getLastPositions();
+  const allDevices = await db.getDevices();
+  const deviceInfoMap = {};
+  for (const dev of allDevices) {
+    deviceInfoMap[dev.imei] = { name: dev.name, vehicle_type: dev.vehicle_type, plate: dev.plate };
+  }
   for (const pos of lastPositions) {
+    const info = deviceInfoMap[pos.imei] || {};
     livePositions.set(pos.imei, {
       imei: pos.imei,
       timestamp: pos.timestamp,
@@ -951,7 +970,10 @@ async function start() {
       speed: pos.speed,
       angle: pos.angle,
       satellites: pos.satellites,
-      io: pos.io_data
+      io: pos.io_data,
+      name: info.name || null,
+      vehicle_type: info.vehicle_type || null,
+      plate: info.plate || null
     });
   }
   console.log(`[DB] ${lastPositions.length} dispozitive încărcate din istoric`);

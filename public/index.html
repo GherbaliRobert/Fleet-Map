@@ -2828,13 +2828,19 @@
     function closeReportModal() {
       const modal = document.getElementById('report-modal');
       modal.classList.remove('visible');
-      // Reset modal position if it was minimized
+      // Reset modal styles if it was minimized for route view
       const inner = modal.querySelector('.modal');
+      modal.style.pointerEvents = '';
+      modal.style.background = '';
+      modal.style.backdropFilter = '';
+      modal.style.alignItems = '';
       if (inner) {
-        modal.style.maxHeight = '';
-        modal.style.overflow = '';
-        modal.style.top = '';
-        modal.style.transform = '';
+        inner.style.pointerEvents = '';
+        inner.style.maxHeight = '';
+        inner.style.marginBottom = '';
+        inner.style.opacity = '';
+        inner.style.width = '';
+        inner.style.maxWidth = '';
       }
       // Clear route from map
       if (historyLine) { map.removeLayer(historyLine); historyLine = null; }
@@ -2995,12 +3001,19 @@
       if (selectedRow) selectedRow.classList.add('route-selected');
 
       // Minimize report modal to see the map
-      const modal = document.getElementById('report-modal');
-      if (modal) {
-        modal.style.maxHeight = '40vh';
-        modal.style.overflow = 'auto';
-        modal.style.top = '60vh';
-        modal.style.transform = 'none';
+      const modalOverlay = document.getElementById('report-modal');
+      const modalBox = modalOverlay.querySelector('.modal');
+      if (modalOverlay && modalBox) {
+        modalOverlay.style.pointerEvents = 'none';
+        modalOverlay.style.background = 'none';
+        modalOverlay.style.backdropFilter = 'none';
+        modalOverlay.style.alignItems = 'flex-end';
+        modalBox.style.pointerEvents = 'auto';
+        modalBox.style.maxHeight = '35vh';
+        modalBox.style.marginBottom = '10px';
+        modalBox.style.opacity = '0.95';
+        modalBox.style.width = '95vw';
+        modalBox.style.maxWidth = '900px';
       }
 
       // Clear previous route
