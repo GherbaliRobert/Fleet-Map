@@ -783,9 +783,14 @@
     #report-routes-table tbody tr {
       border-bottom: 1px solid var(--border);
       transition: background 0.15s;
+      cursor: pointer;
     }
     #report-routes-table tbody tr:hover {
-      background: rgba(56, 189, 248, 0.05);
+      background: rgba(56, 189, 248, 0.1);
+    }
+    #report-routes-table tbody tr.route-selected {
+      background: rgba(37, 99, 235, 0.15);
+      border-left: 3px solid var(--accent);
     }
     #report-routes-table td {
       padding: 8px 10px;
@@ -2821,7 +2826,20 @@
     }
 
     function closeReportModal() {
-      document.getElementById('report-modal').classList.remove('visible');
+      const modal = document.getElementById('report-modal');
+      modal.classList.remove('visible');
+      // Reset modal position if it was minimized
+      const inner = modal.querySelector('.modal');
+      if (inner) {
+        modal.style.maxHeight = '';
+        modal.style.overflow = '';
+        modal.style.top = '';
+        modal.style.transform = '';
+      }
+      // Clear route from map
+      if (historyLine) { map.removeLayer(historyLine); historyLine = null; }
+      historyMarkers.forEach(function(m) { map.removeLayer(m); });
+      historyMarkers = [];
       reportImei = null;
       reportData = null;
     }
@@ -2932,7 +2950,7 @@
         const duration = formatDuration(r.duration);
         const speedColor = r.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
 
-        return '<tr>' +
+        return '<tr id="route-row-' + i + '" onclick="showRouteOnMap(' + i + ')" title="Click pentru a vedea ruta pe harta">' +
           '<td style="color:var(--text-muted);font-weight:600;">' + (i + 1) + '</td>' +
           '<td><i class="fas fa-play-circle" style="color:var(--green);margin-right:4px;font-size:10px;"></i>' + startTime + '</td>' +
           '<td><i class="fas fa-stop-circle" style="color:var(--red);margin-right:4px;font-size:10px;"></i>' + endTime + '</td>' +
@@ -2961,6 +2979,68 @@
         if (endEl) endEl.innerHTML = '<i class="fas fa-flag-checkered" style="color:var(--red);margin-right:4px;"></i>' + endAddr;
 
         await new Promise(function(resolve) { setTimeout(resolve, 300); });
+      }
+    }
+
+    async function showRouteOnMap(index) {
+      if (!reportData || !reportData.routes || !reportData.routes[index]) return;
+      const route = reportData.routes[index];
+      const imei = reportData.imei;
+
+      // Highlight selected row
+      document.querySelectorAll('#report-routes-table tbody tr').forEach(function(tr) {
+        tr.classList.remove('route-selected');
+      });
+      const selectedRow = document.getElementById('route-row-' + index);
+      if (selectedRow) selectedRow.classList.add('route-selected');
+
+      // Minimize report modal to see the map
+      const modal = document.getElementById('report-modal');
+      if (modal) {
+        modal.style.maxHeight = '40vh';
+        modal.style.overflow = 'auto';
+        modal.style.top = '60vh';
+        modal.style.transform = 'none';
+      }
+
+      // Clear previous route
+      if (historyLine) map.removeLayer(historyLine);
+      historyMarkers.forEach(function(m) { map.removeLayer(m); });
+      historyMarkers = [];
+
+      try {
+        // Fetch GPS points for this route's time range
+        const from = new Date(new Date(route.startTime).getTime() - 60000).toISOString();
+        const to = new Date(new Date(route.endTime).getTime() + 60000).toISOString();
+        const resp = await fetch('/api/history/' + imei + '?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
+        const data = await resp.json();
+
+        if (data.length < 2) return;
+
+        // Draw polyline
+        const points = data.map(function(p) { return [p.latitude, p.longitude]; });
+        historyLine = L.polyline(points, {
+          color: '#2563eb',
+          weight: 4,
+          opacity: 0.9
+        }).addTo(map);
+
+        // Start marker (green)
+        var startMarker = L.circleMarker(points[0], {
+          radius: 8, color: '#fff', fillColor: '#22c55e', fillOpacity: 1, weight: 2
+        }).bindPopup('<b>Plecare</b><br>' + new Date(route.startTime).toLocaleString('ro-RO')).addTo(map);
+
+        // End marker (red)
+        var endMarker = L.circleMarker(points[points.length - 1], {
+          radius: 8, color: '#fff', fillColor: '#ef4444', fillOpacity: 1, weight: 2
+        }).bindPopup('<b>Sosire</b><br>' + new Date(route.endTime).toLocaleString('ro-RO')).addTo(map);
+
+        historyMarkers.push(startMarker, endMarker);
+
+        // Fit map to route
+        map.fitBounds(historyLine.getBounds(), { padding: [80, 80], maxZoom: 16 });
+      } catch (err) {
+        console.error('Eroare incarcare ruta:', err);
       }
     }
 
