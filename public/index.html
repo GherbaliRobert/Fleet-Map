@@ -1817,15 +1817,30 @@
       fetch('/api/live').then(r => r.json()).then(data => {
         data.forEach(updateMarker);
       }).catch(() => {});
+
+      // Periodic staleness check — refresh icons every 30 seconds
+      setInterval(function() {
+        devices.forEach(function(data, imei) {
+          const isOnline = isDeviceOnline(data);
+          const isSelected = imei === selectedImei;
+          const icon = createIcon(data.angle, data.speed, isSelected, data.io, isOnline);
+          if (markers.has(imei)) {
+            markers.get(imei).setIcon(icon);
+          }
+        });
+        updateDeviceList();
+      }, 30000);
     }
 
     // ─── Vehicle Icons ───
-    function createIcon(angle, speed, isSelected, io) {
+    function createIcon(angle, speed, isSelected, io, isOnline) {
       const isMoving = speed > 3;
       const hasIgnition = io?.ignition === 1 || io?.ignition === true;
 
       let color, shadowColor, status;
-      if (isMoving) {
+      if (!isOnline) {
+        color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.4)'; status = 'off';
+      } else if (isMoving) {
         color = '#22c55e'; shadowColor = 'rgba(34,197,94,0.6)'; status = 'moving';
       } else if (hasIgnition) {
         color = '#eab308'; shadowColor = 'rgba(234,179,8,0.5)'; status = 'idle';
@@ -1885,11 +1900,11 @@
       devices.set(imei, data);
 
       const isSelected = imei === selectedImei;
-      const icon = createIcon(angle, speed, isSelected, io);
+      const isOnline = isDeviceOnline(data);
+      const icon = createIcon(angle, speed, isSelected, io, isOnline);
 
       const name = data.name || imei;
       const plate = data.plate || '';
-      const isOnline = isDeviceOnline(data);
       const isMoving = speed > 0;
       const ignition = io?.ignition ? 'ON' : 'OFF';
       const voltage = io?.external_voltage ? (io.external_voltage / 1000).toFixed(1) + 'V' : '-';
@@ -1988,7 +2003,7 @@
       } else if (currentFilter === 'offline') {
         arr = arr.filter(d => !isDeviceOnline(d));
       } else if (currentFilter === 'moving') {
-        arr = arr.filter(d => d.speed > 0);
+        arr = arr.filter(d => d.speed > 0 && isDeviceOnline(d));
       }
 
       return arr;
@@ -2002,7 +2017,7 @@
 
       document.getElementById('stat-total').textContent = allDevices.length;
       document.getElementById('stat-online').textContent = allDevices.filter(d => isDeviceOnline(d)).length;
-      document.getElementById('stat-moving').textContent = allDevices.filter(d => d.speed > 0).length;
+      document.getElementById('stat-moving').textContent = allDevices.filter(d => d.speed > 0 && isDeviceOnline(d)).length;
 
       if (filtered.length === 0) {
         list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;"><i class="fas fa-search" style="font-size:24px;display:block;margin-bottom:8px;"></i>Niciun vehicul gasit</div>';
@@ -2020,10 +2035,11 @@
         const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
         const hasIgnition = d.io?.ignition === 1 || d.io?.ignition === true;
-        let statusClass = 'offline'; // rosu - oprit fara contact
-        if (isMoving) statusClass = 'moving'; // verde - in miscare
-        else if (hasIgnition) statusClass = 'idle'; // galben - stationare cu contact
-        else if (isOnline) statusClass = 'offline'; // rosu - online dar fara contact
+        let statusClass = 'offline';
+        if (isOnline) {
+          if (isMoving) statusClass = 'moving';
+          else if (hasIgnition) statusClass = 'idle';
+        }
 
         return '' +
           '<div class="device-card ' + (isActive ? 'active' : '') + '" onclick="selectDeviceMobile(\'' + d.imei + '\')">' +
@@ -2054,7 +2070,7 @@
       devices.forEach((d, key) => {
         const marker = markers.get(key);
         if (marker) {
-          marker.setIcon(createIcon(d.angle, d.speed, key === selectedImei, d.io));
+          marker.setIcon(createIcon(d.angle, d.speed, key === selectedImei, d.io, isDeviceOnline(d)));
         }
       });
       updateDeviceList();
@@ -2176,7 +2192,11 @@
 
       // Status bar
       let statusClass, statusText, statusDetail;
-      if (isMoving) {
+      if (!isOnline) {
+        statusClass = 'off';
+        statusText = 'Offline';
+        statusDetail = getTimeAgo(new Date(data.timestamp));
+      } else if (isMoving) {
         statusClass = 'moving';
         statusText = 'In miscare';
         statusDetail = data.speed + ' km/h';
@@ -2184,14 +2204,10 @@
         statusClass = 'idle';
         statusText = 'Stationare (contact ON)';
         statusDetail = '';
-      } else if (isOnline) {
+      } else {
         statusClass = 'off';
         statusText = 'Contact decuplat';
         statusDetail = '';
-      } else {
-        statusClass = 'off';
-        statusText = 'Offline';
-        statusDetail = getTimeAgo(new Date(data.timestamp));
       }
 
       const grid = document.getElementById('detail-info-grid');
@@ -2592,6 +2608,16 @@
 
         if (msg.type === 'position') {
           updateMarker(msg.data);
+        }
+
+        if (msg.type === 'disconnect') {
+          const imei = msg.data.imei;
+          const device = devices.get(imei);
+          if (device) {
+            device.timestamp = new Date(Date.now() - 6 * 60 * 1000).toISOString();
+            devices.set(imei, device);
+            updateMarker(device);
+          }
         }
       };
 

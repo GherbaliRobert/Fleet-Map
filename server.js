@@ -145,6 +145,11 @@ const tcpServer = net.createServer((socket) => {
     addDebugEntry({ event: 'disconnect', imei: imei || null, address: clientAddr });
     if (imei) {
       activeConnections.delete(imei);
+      const lastPos = livePositions.get(imei);
+      if (lastPos) {
+        lastPos.speed = 0;
+        livePositions.set(imei, lastPos);
+      }
       broadcastWs({ type: 'disconnect', data: { imei } });
     }
   });
