@@ -2572,15 +2572,17 @@
       let html = '';
 
       const categoryIcons = {
-        'Motor / Vehicul': 'fa-engine',
+        'Motor / Vehicul': 'fa-cog',
         'Combustibil': 'fa-gas-pump',
+        'Electric / Baterie': 'fa-battery-half',
         'Alimentare': 'fa-bolt',
         'GPS / Retea': 'fa-satellite',
         'I/O Digital': 'fa-toggle-on',
         'I/O Analog': 'fa-wave-square',
         'Distanta': 'fa-road',
+        'Diagnosticare': 'fa-stethoscope',
         'Evenimente': 'fa-bell',
-        'Sistem': 'fa-cog'
+        'Sistem': 'fa-microchip'
       };
 
       for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
@@ -2926,13 +2928,15 @@
 
     // ─── IO Categories & Formatting ───
     const IO_CATEGORIES = {
-      'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_speed', 'can_rpm', 'can_coolant_temp', 'can_pedal_position', 'can_engine_hours', 'can_total_mileage'],
-      'Combustibil': ['can_fuel_level', 'can_fuel_consumed', 'can_fuel_rate', 'fuel_used_gps', 'fuel_rate_gps', 'fuel_consumed'],
+      'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_speed', 'can_vehicle_speed', 'can_rpm', 'can_coolant_temp', 'can_engine_temp', 'can_intake_air_temp', 'can_pedal_position', 'can_accelerator_pedal', 'can_brake_pedal', 'can_engine_hours', 'can_engine_load', 'can_total_mileage', 'can_odo_high_res', 'can_control_state', 'can_doors', 'can_axle_weight'],
+      'Combustibil': ['can_fuel_level', 'can_fuel_level_pct', 'can_fuel_level_liters', 'can_fuel_consumed', 'can_fuel_rate', 'fuel_used_gps', 'fuel_rate_gps', 'fuel_consumed', 'fuel_used_gps_total'],
+      'Electric / Baterie': ['can_battery_soc', 'can_battery_temp', 'can_charging_status'],
       'Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
       'GPS / Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'data_mode'],
       'I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
       'I/O Analog': ['analog_input_1', 'analog_input_2'],
-      'Distanta': ['total_odometer', 'total_mileage'],
+      'Distanta': ['total_odometer', 'total_mileage', 'trip_odometer'],
+      'Diagnosticare': ['dtc_count'],
       'Evenimente': ['trip', 'over_speeding', 'crash_detection', 'idling', 'towing', 'unplug', 'green_driving_type', 'green_driving_value'],
       'Sistem': ['sleep_mode', 'sd_status', 'iccid', 'auto_geofence']
     };
@@ -2954,6 +2958,22 @@
       if (key === 'can_engine_hours') return (value / 3600).toFixed(1) + ' h';
       if (key === 'total_odometer' || key === 'total_mileage' || key === 'can_total_mileage') return (value / 1000).toFixed(1) + ' km';
       if (key === 'can_fuel_consumed' || key === 'fuel_consumed' || key === 'fuel_used_gps') return (value / 10).toFixed(1) + ' L';
+      if (key === 'fuel_used_gps_total') return (value / 1000).toFixed(1) + ' L';
+      if (key === 'can_vehicle_speed') return value + ' km/h';
+      if (key === 'can_accelerator_pedal' || key === 'can_brake_pedal') return value + ' %';
+      if (key === 'can_fuel_level_pct') return value + ' %';
+      if (key === 'can_fuel_level_liters') return (value / 10).toFixed(1) + ' L';
+      if (key === 'can_engine_load') return value + ' %';
+      if (key === 'can_engine_temp' || key === 'can_intake_air_temp') return value + ' \u00B0C';
+      if (key === 'can_battery_soc') return value + ' %';
+      if (key === 'can_battery_temp') return value + ' \u00B0C';
+      if (key === 'can_charging_status') return value ? 'Incarcare' : 'Nu';
+      if (key === 'can_odo_high_res') return (value / 1000).toFixed(1) + ' km';
+      if (key === 'can_doors') return value ? 'Deschise' : 'Inchise';
+      if (key === 'can_axle_weight') return value + ' kg';
+      if (key === 'dtc_count') return value + ' erori';
+      if (key === 'trip_odometer') return (value / 1000).toFixed(1) + ' km';
+      if (key === 'can_control_state') return value;
       if (key === 'analog_input_1' || key === 'analog_input_2') return (value / 1000).toFixed(2) + ' V';
       if (key === 'gnss_pdop' || key === 'gnss_hdop') return (value / 10).toFixed(1);
       if (key === 'gnss_status') return ['OFF', 'ON fara fix', 'ON cu fix'][value] || value;
