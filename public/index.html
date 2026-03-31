@@ -615,32 +615,58 @@
     .detail-close:hover { border-color: var(--red); color: var(--red); }
 
     /* Tabs */
-    .detail-tabs {
+    .detail-actions {
       display: flex;
+      gap: 4px;
+      padding: 8px 14px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
 
-    .detail-tab {
+    .detail-action-btn {
       flex: 1;
-      padding: 10px 8px;
+      padding: 7px 6px;
       text-align: center;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--text-muted);
       cursor: pointer;
-      border-bottom: 2px solid transparent;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 6px;
       transition: all 0.2s;
-      background: transparent;
-      border-top: none;
-      border-left: none;
-      border-right: none;
     }
 
-    .detail-tab:hover { color: var(--text-secondary); }
-    .detail-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .detail-action-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+    .detail-action-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
-    .detail-tab i { margin-right: 4px; }
+    .detail-action-btn i { margin-right: 3px; }
+
+    .route-period-btn {
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg-dark);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .route-period-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+    .route-period-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+    .route-card {
+      padding: 10px 12px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .route-card:hover { border-color: var(--accent); }
+    .route-card.selected { border-color: var(--accent); background: rgba(37,99,235,0.1); }
 
     /* Tab Content */
     .detail-content {
@@ -1472,45 +1498,39 @@
         <button class="detail-close" onclick="closeDetailPanel()"><i class="fas fa-times"></i></button>
       </div>
 
-      <div class="detail-tabs">
-        <button class="detail-tab active" data-tab="info" onclick="switchDetailTab('info', this)"><i class="fas fa-info-circle"></i> Info</button>
-        <button class="detail-tab" data-tab="io" onclick="switchDetailTab('io', this)"><i class="fas fa-microchip"></i> IO Live</button>
-        <button class="detail-tab" data-tab="history" onclick="switchDetailTab('history', this)"><i class="fas fa-route"></i> Istoric</button>
+      <div class="detail-actions">
+        <button class="detail-action-btn" onclick="showDetailView('info')"><i class="fas fa-info-circle"></i> Info</button>
+        <button class="detail-action-btn" onclick="showDetailView('routes')"><i class="fas fa-route"></i> Rute</button>
+        <button class="detail-action-btn" onclick="if(detailPanelImei) openReportModal(detailPanelImei)"><i class="fas fa-file-alt"></i> Raport</button>
       </div>
 
       <div class="detail-content">
-        <!-- Info Tab -->
-        <div class="tab-page active" id="tab-info">
-          <div class="info-grid" id="detail-info-grid">
-            <!-- Filled dynamically -->
-          </div>
-          <div style="margin-top:12px;text-align:center;">
-            <button onclick="if(detailPanelImei) openReportModal(detailPanelImei)" style="padding:8px 20px;border-radius:6px;background:var(--blue);color:white;border:none;cursor:pointer;font-size:12px;font-weight:600;">
-              <i class="fas fa-file-alt"></i> Genereaza raport
-            </button>
-          </div>
-        </div>
-
-        <!-- IO Live Tab -->
-        <div class="tab-page" id="tab-io">
-          <div id="detail-io-content">
-            <p style="color: var(--text-muted); font-size: 13px;">Selecteaza un vehicul pentru a vedea datele IO.</p>
-          </div>
-        </div>
-
-        <!-- History Tab -->
-        <div class="tab-page" id="tab-history">
-          <div class="detail-history-form">
-            <label>De la:</label>
-            <input type="datetime-local" id="detail-history-from">
-            <label>Pana la:</label>
-            <input type="datetime-local" id="detail-history-to">
-            <div class="detail-history-buttons">
-              <button class="btn-load" onclick="loadHistoryFromDetail()"><i class="fas fa-download"></i> Incarca</button>
-              <button class="btn-export" onclick="exportCSVFromDetail()"><i class="fas fa-file-csv"></i> Export</button>
+        <!-- Info + IO Combined View -->
+        <div id="detail-view-info">
+          <div class="info-grid" id="detail-info-grid"></div>
+          <div style="margin-top:16px;">
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);"><i class="fas fa-microchip" style="margin-right:6px;"></i>IO Live</div>
+            <div id="detail-io-content">
+              <p style="color:var(--text-muted);font-size:12px;">Selecteaza un vehicul.</p>
             </div>
           </div>
         </div>
+
+        <!-- Routes View -->
+        <div id="detail-view-routes" style="display:none;">
+          <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+            <button class="route-period-btn active" onclick="loadDetailRoutes('today', this)">Azi</button>
+            <button class="route-period-btn" onclick="loadDetailRoutes('yesterday', this)">Ieri</button>
+            <button class="route-period-btn" onclick="loadDetailRoutes('week', this)">Saptamana</button>
+          </div>
+          <div id="detail-routes-list">
+            <p style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">Apasa un period pentru a vedea rutele.</p>
+          </div>
+        </div>
+
+        <!-- Hidden history form (kept for export functionality) -->
+        <input type="hidden" id="detail-history-from">
+        <input type="hidden" id="detail-history-to">
       </div>
     </div>
   </div>
@@ -1977,6 +1997,7 @@
       // Update detail panel if showing this device
       if (detailPanelImei === imei) {
         updateDetailPanel(imei);
+        updateDetailIoPanel(imei);
       }
 
       updateDeviceList();
@@ -2102,18 +2123,110 @@
       panel.classList.add('open');
 
       updateDetailPanel(imei);
-
-      if (tab) {
-        switchDetailTab(tab, document.querySelector('.detail-tab[data-tab="' + tab + '"]'));
-      }
-
-      // Pre-fill history dates
-      const now = new Date();
-      const yesterday = new Date(now - 24 * 60 * 60 * 1000);
-      document.getElementById('detail-history-from').value = formatDateLocal(yesterday);
-      document.getElementById('detail-history-to').value = formatDateLocal(now);
+      updateDetailIoPanel(imei);
+      showDetailView(tab || 'info');
 
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
+    }
+
+    function showDetailView(view) {
+      const infoView = document.getElementById('detail-view-info');
+      const routesView = document.getElementById('detail-view-routes');
+      infoView.style.display = view === 'info' ? 'block' : 'none';
+      routesView.style.display = view === 'routes' ? 'block' : 'none';
+
+      document.querySelectorAll('.detail-action-btn').forEach(function(btn, i) {
+        btn.classList.remove('active');
+        if (i === 0 && view === 'info') btn.classList.add('active');
+        if (i === 1 && view === 'routes') btn.classList.add('active');
+      });
+
+      if (view === 'routes' && detailPanelImei) {
+        loadDetailRoutes('today', document.querySelector('.route-period-btn.active'));
+      }
+    }
+
+    let detailRoutesData = null;
+
+    async function loadDetailRoutes(period, btn) {
+      if (!detailPanelImei) return;
+
+      // Update active button
+      document.querySelectorAll('.route-period-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+
+      // Calculate date range
+      const now = new Date();
+      let from, to;
+      if (period === 'today') {
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        to = now.toISOString();
+      } else if (period === 'yesterday') {
+        const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        from = y.toISOString();
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      } else if (period === 'week') {
+        from = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+        to = now.toISOString();
+      }
+
+      const list = document.getElementById('detail-routes-list');
+      list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Se incarca...</p>';
+
+      try {
+        const resp = await fetch('/api/report/' + detailPanelImei + '?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
+        const data = await resp.json();
+        detailRoutesData = data;
+        reportData = data;
+        reportData.imei = detailPanelImei;
+
+        if (!data.routes || data.routes.length === 0) {
+          list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">Nicio ruta gasita.</p>';
+          return;
+        }
+
+        // Summary
+        const s = data.summary;
+        let html = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">' +
+          '<div style="background:var(--bg-card);border-radius:6px;padding:8px;text-align:center;"><div style="font-size:14px;font-weight:700;color:var(--accent);">' + s.totalKm.toFixed(1) + '</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">km</div></div>' +
+          '<div style="background:var(--bg-card);border-radius:6px;padding:8px;text-align:center;"><div style="font-size:14px;font-weight:700;color:var(--green);">' + data.routes.length + '</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">rute</div></div>' +
+          '<div style="background:var(--bg-card);border-radius:6px;padding:8px;text-align:center;"><div style="font-size:14px;font-weight:700;color:var(--orange);">' + s.maxSpeed + '</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">km/h max</div></div>' +
+        '</div>';
+
+        // Route cards
+        data.routes.forEach(function(r, i) {
+          const start = new Date(r.startTime).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+          const end = new Date(r.endTime).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+          const dur = formatDuration(r.duration);
+          html += '<div class="route-card" id="detail-route-' + i + '" onclick="showDetailRoute(' + i + ')">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+              '<span style="font-size:12px;font-weight:600;color:var(--text-primary);"><i class="fas fa-play-circle" style="color:var(--green);margin-right:4px;font-size:10px;"></i>' + start + ' <span style="color:var(--text-muted);">→</span> ' + end + '</span>' +
+              '<span style="font-size:12px;font-weight:700;color:var(--accent);">' + r.distance.toFixed(1) + ' km</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:12px;font-size:10px;color:var(--text-muted);">' +
+              '<span><i class="fas fa-clock"></i> ' + dur + '</span>' +
+              '<span><i class="fas fa-tachometer-alt"></i> ' + r.avgSpeed + ' km/h</span>' +
+              '<span style="' + (r.maxSpeed > 120 ? 'color:var(--red);' : '') + '"><i class="fas fa-exclamation-triangle"></i> ' + r.maxSpeed + ' km/h</span>' +
+            '</div>' +
+          '</div>';
+        });
+
+        list.innerHTML = html;
+      } catch (err) {
+        list.innerHTML = '<p style="color:var(--red);font-size:12px;text-align:center;">Eroare: ' + err.message + '</p>';
+      }
+    }
+
+    async function showDetailRoute(index) {
+      if (!detailRoutesData || !detailRoutesData.routes[index]) return;
+
+      // Highlight selected card
+      document.querySelectorAll('.route-card').forEach(function(c) { c.classList.remove('selected'); });
+      var card = document.getElementById('detail-route-' + index);
+      if (card) card.classList.add('selected');
+
+      // Reuse showRouteOnMap
+      await showRouteOnMap(index);
     }
 
     function closeDetailPanel() {
@@ -2122,11 +2235,10 @@
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     }
 
-    function switchDetailTab(tab, btn) {
-      document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      document.getElementById('tab-' + tab).classList.add('active');
+    function switchDetailTab(tab) {
+      // Legacy compat — redirect to new view system
+      if (tab === 'io' || tab === 'info') showDetailView('info');
+      else if (tab === 'history') showDetailView('routes');
     }
 
     // Reverse geocoding cache
@@ -3050,27 +3162,29 @@
       const route = reportData.routes[index];
       const imei = reportData.imei;
 
-      // Highlight selected row
+      // Highlight selected row in report table (if open)
       document.querySelectorAll('#report-routes-table tbody tr').forEach(function(tr) {
         tr.classList.remove('route-selected');
       });
       const selectedRow = document.getElementById('route-row-' + index);
       if (selectedRow) selectedRow.classList.add('route-selected');
 
-      // Minimize report modal to see the map
+      // Minimize report modal only if it's open
       const modalOverlay = document.getElementById('report-modal');
-      const modalBox = modalOverlay.querySelector('.modal');
-      if (modalOverlay && modalBox) {
-        modalOverlay.style.pointerEvents = 'none';
-        modalOverlay.style.background = 'none';
-        modalOverlay.style.backdropFilter = 'none';
-        modalOverlay.style.alignItems = 'flex-end';
-        modalBox.style.pointerEvents = 'auto';
-        modalBox.style.maxHeight = '35vh';
-        modalBox.style.marginBottom = '10px';
-        modalBox.style.opacity = '0.95';
-        modalBox.style.width = '95vw';
-        modalBox.style.maxWidth = '900px';
+      if (modalOverlay && modalOverlay.classList.contains('visible')) {
+        const modalBox = modalOverlay.querySelector('.modal');
+        if (modalBox) {
+          modalOverlay.style.pointerEvents = 'none';
+          modalOverlay.style.background = 'none';
+          modalOverlay.style.backdropFilter = 'none';
+          modalOverlay.style.alignItems = 'flex-end';
+          modalBox.style.pointerEvents = 'auto';
+          modalBox.style.maxHeight = '35vh';
+          modalBox.style.marginBottom = '10px';
+          modalBox.style.opacity = '0.95';
+          modalBox.style.width = '95vw';
+          modalBox.style.maxWidth = '900px';
+        }
       }
 
       // Clear previous route
