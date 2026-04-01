@@ -3065,8 +3065,10 @@
           break;
       }
 
-      document.getElementById('report-from').value = from.toISOString().slice(0, 10);
-      document.getElementById('report-to').value = to.toISOString().slice(0, 10);
+      // Use local date format to avoid UTC timezone shift
+      const pad = (n) => String(n).padStart(2, '0');
+      document.getElementById('report-from').value = from.getFullYear() + '-' + pad(from.getMonth()+1) + '-' + pad(from.getDate());
+      document.getElementById('report-to').value = to.getFullYear() + '-' + pad(to.getMonth()+1) + '-' + pad(to.getDate());
 
       generateReport();
     }

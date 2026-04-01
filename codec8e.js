@@ -271,6 +271,9 @@ function getIoName(id) {
     246: 'towing',
     // Geofence
     175: 'auto_geofence',
+    // FMB122 with ALL-CAN300 adapter
+    100: 'can_status',
+    387: 'gps_trajectory_encoded',
   };
 
   return names[id] || `io_${id}`;
