@@ -198,9 +198,10 @@ function parseIoGroupNX(buffer, offset) {
   return { values, nextOffset: offset };
 }
 
-// Mapare AVL ID -> nume citibil (cele mai comune pentru FMB140)
+// Mapare AVL ID -> nume citibil
 function getIoName(id) {
   const names = {
+    // System
     239: 'ignition',
     240: 'movement',
     80:  'data_mode',
@@ -227,38 +228,52 @@ function getIoName(id) {
     180: 'digital_output_2',
     113: 'battery_level',
     199: 'trip_odometer',
-    // CAN Bus (FMS)
-    83:  'fuel_used_gps',
-    84:  'fuel_rate_gps',
-    87:  'total_mileage',
-    110: 'fuel_consumed',
-    // CAN Bus data
-    29:  'can_fuel_level',
-    30:  'can_fuel_consumed',
-    31:  'can_fuel_rate',
-    32:  'can_speed',
-    33:  'can_rpm',
-    35:  'can_coolant_temp',
-    36:  'can_pedal_position',
-    37:  'can_engine_hours',
-    38:  'can_total_mileage',
-    // LV-CAN200 extended IO
-    81:  'can_vehicle_speed',
-    82:  'can_accelerator_pedal',
-    85:  'can_fuel_level_liters',
-    89:  'can_fuel_level_pct',
-    90:  'can_engine_load',
-    102: 'can_engine_temp',
-    103: 'can_axle_weight',
-    105: 'can_control_state',
-    114: 'can_doors',
-    115: 'can_brake_pedal',
-    160: 'dtc_count',
-    189: 'can_intake_air_temp',
-    232: 'can_battery_soc',
-    233: 'can_battery_temp',
-    234: 'can_charging_status',
-    235: 'can_odo_high_res',
+    // FMS/J1939 CAN (trucks/buses)
+    29:  'fms_fuel_level',
+    30:  'fms_fuel_consumed',
+    31:  'fms_fuel_rate',
+    32:  'fms_speed',
+    33:  'fms_rpm',
+    35:  'fms_coolant_temp',
+    36:  'fms_pedal_position',
+    37:  'fms_engine_hours',
+    38:  'fms_total_mileage',
+    // ALL-CAN300 / LV-CAN200 (official IO element list)
+    81:  'can_vehicle_speed',           // km/h
+    82:  'can_accelerator_pedal',       // %
+    83:  'can_fuel_consumed',           // liters * 100
+    84:  'can_fuel_level_liters',       // liters * 10
+    85:  'can_engine_rpm',              // RPM
+    87:  'can_total_mileage',           // meters
+    89:  'can_fuel_level_pct',          // %
+    90:  'can_door_status',             // bitmask (256=FL, 512=FR, 1024=RL, 2048=RR, 4096=hood, 8192=trunk)
+    100: 'can_program_number',          // 0-999
+    101: 'can_module_id',               // module identification
+    102: 'can_engine_worktime',         // minutes
+    103: 'can_engine_worktime_counted', // minutes (counted)
+    105: 'can_total_mileage_counted',   // meters (counted)
+    107: 'can_fuel_consumed_counted',   // liters * 100
+    110: 'can_fuel_rate',               // (liters * 10) / h
+    111: 'can_adblue_level_pct',        // %
+    112: 'can_adblue_level_liters',     // liters * 10
+    114: 'can_engine_load',             // % (0-125)
+    115: 'can_engine_temp',             // °C * 10 (signed)
+    118: 'can_axle1_load',              // kg
+    119: 'can_axle2_load',              // kg
+    120: 'can_axle3_load',              // kg
+    121: 'can_axle4_load',              // kg
+    122: 'can_axle5_load',              // kg
+    123: 'can_control_state_flags',     // bitmask
+    124: 'can_agricultural_flags',      // bitmask
+    132: 'can_security_state_flags',    // bitmask
+    133: 'can_tacho_distance',          // meters
+    134: 'can_trip_distance',           // meters
+    135: 'can_tacho_speed',             // km/h
+    151: 'can_battery_temp',            // °C * 10 (signed)
+    152: 'can_battery_level_pct',       // %
+    160: 'can_dtc_errors',              // fault count
+    187: 'can_load_weight',             // kg
+    188: 'can_retarder_load',           // % (0-125)
     // Green driving
     253: 'green_driving_type',
     254: 'green_driving_value',
@@ -271,12 +286,29 @@ function getIoName(id) {
     246: 'towing',
     // Geofence
     175: 'auto_geofence',
-    // FMB122 with ALL-CAN300 adapter
-    100: 'can_status',
-    387: 'gps_trajectory_encoded',
+    // GPS trajectory (Codec 8 Extended NX)
+    387: 'gps_trajectory_encoded',      // ISO6709 coordinates hex
   };
 
   return names[id] || `io_${id}`;
 }
 
-module.exports = { parseAvlPacket, getIoName };
+// Conversii valori CAN raw -> valori reale
+function convertCanValue(name, rawValue) {
+  switch (name) {
+    case 'can_fuel_level_liters':       return rawValue / 10;        // liters
+    case 'can_engine_temp':             return rawValue > 32767 ? (rawValue - 65536) / 10 : rawValue / 10; // °C (signed)
+    case 'can_battery_temp':            return rawValue > 32767 ? (rawValue - 65536) / 10 : rawValue / 10; // °C (signed)
+    case 'can_fuel_consumed':           return rawValue / 100;       // liters
+    case 'can_fuel_consumed_counted':   return rawValue / 100;       // liters
+    case 'can_fuel_rate':               return rawValue / 10;        // liters/h
+    case 'can_adblue_level_liters':     return rawValue / 10;        // liters
+    case 'can_total_mileage':           return rawValue / 1000;      // km
+    case 'can_total_mileage_counted':   return rawValue / 1000;      // km
+    case 'can_tacho_distance':          return rawValue / 1000;      // km
+    case 'can_trip_distance':           return rawValue / 1000;      // km
+    default:                            return rawValue;
+  }
+}
+
+module.exports = { parseAvlPacket, getIoName, convertCanValue };

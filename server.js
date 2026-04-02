@@ -7,7 +7,7 @@ const path = require('path');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcryptjs');
-const { parseAvlPacket } = require('./codec8e');
+const { parseAvlPacket, convertCanValue } = require('./codec8e');
 const db = require('./db');
 
 // ─── Configurare ───
@@ -108,6 +108,17 @@ const tcpServer = net.createServer((socket) => {
         numberOfRecords: parsed.numberOfRecords,
         records: parsed.records
       });
+
+      // Aplica conversii CAN (liters*10 -> liters, °C*10 -> °C, etc.)
+      for (const record of parsed.records) {
+        if (record.io) {
+          for (const key of Object.keys(record.io)) {
+            if (key.startsWith('can_')) {
+              record.io[key] = convertCanValue(key, record.io[key]);
+            }
+          }
+        }
+      }
 
       // Salvează în baza de date
       await db.insertPositions(imei, parsed.records);
