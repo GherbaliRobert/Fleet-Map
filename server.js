@@ -621,15 +621,63 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       }
     }
 
-    // Fuel
-    let firstFuel = null, lastFuel = null;
+    // Fuel consumption from CAN fuel level (tank level difference)
+    let fuelConsumed = null;
+    let prevFuelLevel = null;
+    let totalConsumed = 0;
+    let totalRefueled = 0;
+    let hasFuelData = false;
+    let firstFuelLevel = null;
+    let lastFuelLevel = null;
+
+    // Daily fuel breakdown
+    const dailyFuel = {};
+
     for (const row of history) {
       const io = row.io_data || {};
-      if (io.can_fuel_consumed !== undefined) {
-        if (firstFuel === null) firstFuel = io.can_fuel_consumed;
-        lastFuel = io.can_fuel_consumed;
+      const fuelLevel = io.can_fuel_level_liters;
+
+      if (fuelLevel !== undefined && fuelLevel !== null && fuelLevel > 0) {
+        hasFuelData = true;
+        if (firstFuelLevel === null) firstFuelLevel = fuelLevel;
+        lastFuelLevel = fuelLevel;
+
+        const dayKey = new Date(row.timestamp).toISOString().slice(0, 10);
+        if (!dailyFuel[dayKey]) {
+          dailyFuel[dayKey] = { first: fuelLevel, last: fuelLevel, consumed: 0, refueled: 0, prev: fuelLevel };
+        }
+
+        const dayData = dailyFuel[dayKey];
+        dayData.last = fuelLevel;
+
+        if (prevFuelLevel !== null) {
+          const diff = prevFuelLevel - fuelLevel;
+          if (diff > 0.5) {
+            // Fuel dropped = consumption
+            totalConsumed += diff;
+            dayData.consumed += diff;
+          } else if (diff < -2) {
+            // Fuel increased significantly = refuel
+            totalRefueled += Math.abs(diff);
+            dayData.refueled += Math.abs(diff);
+          }
+        }
+        prevFuelLevel = fuelLevel;
       }
     }
+
+    if (hasFuelData) {
+      fuelConsumed = Math.round(totalConsumed * 10) / 10;
+    }
+
+    // Build daily fuel summary
+    const dailyFuelSummary = Object.entries(dailyFuel).map(([date, d]) => ({
+      date,
+      startLevel: Math.round(d.first * 10) / 10,
+      endLevel: Math.round(d.last * 10) / 10,
+      consumed: Math.round(d.consumed * 10) / 10,
+      refueled: Math.round(d.refueled * 10) / 10
+    }));
 
     const summary = {
       totalKm: Math.round(globalTotalKm * 100) / 100,
@@ -639,7 +687,11 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       avgSpeed: globalSpeedCount > 0 ? Math.round(globalSpeedSum / globalSpeedCount) : 0,
       maxSpeed: globalMaxSpeed,
       stops: globalStops,
-      fuelConsumed: (firstFuel !== null && lastFuel !== null) ? Math.round((lastFuel - firstFuel) / 10 * 100) / 100 : null,
+      fuelConsumed,
+      fuelStartLevel: firstFuelLevel !== null ? Math.round(firstFuelLevel * 10) / 10 : null,
+      fuelEndLevel: lastFuelLevel !== null ? Math.round(lastFuelLevel * 10) / 10 : null,
+      totalRefueled: totalRefueled > 0 ? Math.round(totalRefueled * 10) / 10 : null,
+      dailyFuel: dailyFuelSummary,
       routeCount: routes.length
     };
 

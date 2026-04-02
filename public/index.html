@@ -1661,6 +1661,27 @@
         </div>
       </div>
 
+      <!-- Tabel consum zilnic -->
+      <div id="report-fuel-daily" style="display:none;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
+          <i class="fas fa-gas-pump" style="color:var(--orange);margin-right:6px;"></i>Consum zilnic
+        </div>
+        <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">
+          <table id="report-fuel-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:var(--bg-dark);color:var(--text-secondary);text-align:left;">
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Data</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Nivel start</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Nivel sfarsit</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Consum</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Alimentare</th>
+              </tr>
+            </thead>
+            <tbody id="report-fuel-body"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Tabel rute -->
       <div id="report-routes" style="display:none;overflow-x:auto;overflow-y:auto;max-height:calc(90vh - 340px);border:1px solid var(--border);border-radius:8px;">
         <table id="report-routes-table" style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -3118,6 +3139,7 @@
       // Show loading
       document.getElementById('report-loading').style.display = 'block';
       document.getElementById('report-summary').style.display = 'none';
+      document.getElementById('report-fuel-daily').style.display = 'none';
       document.getElementById('report-routes').style.display = 'none';
       document.getElementById('report-empty').style.display = 'none';
       document.getElementById('report-actions').style.display = 'none';
@@ -3167,6 +3189,25 @@
       document.getElementById('rs-stops').textContent = s.stops;
       document.getElementById('rs-fuel').textContent = s.fuelConsumed !== null ? s.fuelConsumed + ' L' : '-';
       document.getElementById('report-summary').style.display = 'block';
+
+      // Daily fuel table
+      const fuelDiv = document.getElementById('report-fuel-daily');
+      const fuelBody = document.getElementById('report-fuel-body');
+      if (s.dailyFuel && s.dailyFuel.length > 0 && s.dailyFuel.some(function(d) { return d.consumed > 0 || d.startLevel > 0; })) {
+        fuelBody.innerHTML = s.dailyFuel.map(function(d) {
+          const date = new Date(d.date + 'T00:00:00').toLocaleDateString('ro-RO', { day:'2-digit', month:'short', year:'numeric' });
+          return '<tr>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + date + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + d.startLevel + ' L</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + d.endLevel + ' L</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--orange);font-weight:700;">' + (d.consumed > 0 ? d.consumed + ' L' : '-') + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--green);">' + (d.refueled > 0 ? '+' + d.refueled + ' L' : '-') + '</td>' +
+          '</tr>';
+        }).join('');
+        fuelDiv.style.display = 'block';
+      } else {
+        fuelDiv.style.display = 'none';
+      }
     }
 
     async function renderReportRoutes(routes) {
