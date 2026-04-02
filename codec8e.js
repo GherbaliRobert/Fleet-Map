@@ -274,6 +274,20 @@ function getIoName(id) {
     160: 'can_dtc_errors',              // fault count
     187: 'can_load_weight',             // kg
     188: 'can_retarder_load',           // % (0-125)
+    // System IO
+    232: 'can_battery_soc',             // % (EV battery state of charge)
+    235: 'can_odo_high_res',            // high resolution odometer
+    // ALL-CAN300 state flags
+    652: 'can_security_flag_ext',       // extended security flag
+    658: 'can_indicator_left',          // left turn indicator
+    659: 'can_indicator_right',         // right turn indicator
+    660: 'can_indicator_hazard',        // hazard lights
+    661: 'can_indicator_lights',        // lights status
+    898: 'can_handbrake',               // handbrake status
+    // Manual CAN data
+    900: 'can_manual_0',                // manual CAN element 0
+    902: 'can_manual_2',                // manual CAN element 2
+    904: 'can_manual_4',                // manual CAN element 4
     // Green driving
     253: 'green_driving_type',
     254: 'green_driving_value',

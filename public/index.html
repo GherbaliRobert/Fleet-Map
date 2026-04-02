@@ -2930,8 +2930,9 @@
     const IO_CATEGORIES = {
       'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_vehicle_speed', 'can_engine_rpm', 'can_engine_temp', 'can_engine_load', 'can_accelerator_pedal', 'can_engine_worktime', 'can_engine_worktime_counted', 'can_retarder_load'],
       'Combustibil': ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_consumed', 'can_fuel_consumed_counted', 'can_fuel_rate', 'can_adblue_level_pct', 'can_adblue_level_liters', 'fuel_used_gps_total', 'fuel_rate_gps'],
-      'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_load_weight', 'can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load'],
-      'Stare CAN': ['can_program_number', 'can_module_id', 'can_control_state_flags', 'can_security_state_flags', 'can_dtc_errors'],
+      'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_handbrake', 'can_load_weight', 'can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load'],
+      'Lumini / Indicatoare': ['can_indicator_left', 'can_indicator_right', 'can_indicator_hazard', 'can_indicator_lights', 'can_security_flag_ext'],
+      'Stare CAN': ['can_program_number', 'can_module_id', 'can_control_state_flags', 'can_security_state_flags', 'can_dtc_errors', 'can_manual_0', 'can_manual_2', 'can_manual_4'],
       'Electric / Baterie': ['can_battery_temp', 'can_battery_level_pct'],
       'Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
       'GPS / Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'data_mode'],
@@ -2993,7 +2994,10 @@
       if (key === 'can_dtc_errors') return value + ' erori';
       // Baterie
       if (key === 'can_battery_temp') return value.toFixed ? value.toFixed(1) + ' \u00B0C' : value + ' \u00B0C';
-      if (key === 'can_battery_level_pct') return value + ' %';
+      if (key === 'can_battery_level_pct' || key === 'can_battery_soc') return value + ' %';
+      // Indicatoare / Flags
+      if (key === 'can_handbrake') return value ? 'TRAS' : 'Eliberat';
+      if (key === 'can_indicator_left' || key === 'can_indicator_right' || key === 'can_indicator_hazard' || key === 'can_indicator_lights' || key === 'can_security_flag_ext') return value ? 'ON' : 'OFF';
       // FMS
       if (key === 'fms_rpm') return value + ' RPM';
       if (key === 'fms_speed') return value + ' km/h';
