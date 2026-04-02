@@ -325,4 +325,131 @@ function convertCanValue(name, rawValue) {
   }
 }
 
-module.exports = { parseAvlPacket, getIoName, convertCanValue };
+// Decodare Security State Flags P2 (ID 132, 8 bytes)
+function decodeSecurityFlags(value) {
+  const flags = {};
+  // value poate fi un numar mare (8 bytes) - il convertim in bytes
+  const bytes = [];
+  let v = typeof value === 'bigint' ? value : BigInt(value);
+  for (let i = 0; i < 8; i++) {
+    bytes.push(Number(v & 0xFFn));
+    v >>= 8n;
+  }
+  // Nota: bytes sunt in ordine inversa (little-endian din BigInt)
+  // Reconstruim in ordine corecta (byte 0 = MSB din valoare)
+  const b = [];
+  const hex = value.toString(16).padStart(16, '0');
+  for (let i = 0; i < 8; i++) {
+    b.push(parseInt(hex.substr(i * 2, 2), 16));
+  }
+
+  // Byte 0 - CAN connection status
+  flags.can1_status = b[0] & 0x03;
+  flags.can2_status = (b[0] >> 2) & 0x03;
+
+  // Byte 1
+  flags.engine_lock = !!(b[1] & 0x01);
+  flags.hazard_lights = !!(b[1] & 0x02);
+  flags.factory_armed = !!(b[1] & 0x04);
+
+  // Byte 2
+  flags.electric_engine = !!(b[2] & 0x02);
+  flags.battery_charging = !!(b[2] & 0x04);
+  flags.charging_cable = !!(b[2] & 0x08);
+  flags.work_mode_private = !!(b[2] & 0x10);
+
+  // Byte 3 - Ignition / Key / Webasto
+  flags.key_in_ignition = !!(b[3] & 0x01);
+  flags.ignition_on = !!(b[3] & 0x02);
+  flags.dynamic_ignition = !!(b[3] & 0x04);
+  flags.webasto = !!(b[3] & 0x08);
+  flags.car_closed = !!(b[3] & 0x10);
+  flags.closed_by_remote = !!(b[3] & 0x20);
+  flags.factory_alarm = !!(b[3] & 0x40);
+  flags.alarm_emulated = !!(b[3] & 0x80);
+
+  // Byte 4 - Transmission
+  flags.parking = !!(b[4] & 0x01);
+  flags.neutral = !!(b[4] & 0x04);
+  flags.drive = !!(b[4] & 0x08);
+  flags.handbrake = !!(b[4] & 0x10);
+  flags.footbrake = !!(b[4] & 0x20);
+  flags.engine_working = !!(b[4] & 0x40);
+  flags.reverse = !!(b[4] & 0x80);
+
+  // Byte 5 - Doors
+  flags.door_front_left = !!(b[5] & 0x01);
+  flags.door_front_right = !!(b[5] & 0x02);
+  flags.door_rear_left = !!(b[5] & 0x04);
+  flags.door_rear_right = !!(b[5] & 0x08);
+  flags.hood_open = !!(b[5] & 0x10);
+  flags.trunk_open = !!(b[5] & 0x20);
+  flags.roof_open = !!(b[5] & 0x40);
+
+  return flags;
+}
+
+// Decodare Control State Flags P2 (ID 123, 4 bytes)
+function decodeControlFlags(value) {
+  const flags = {};
+  const b = [];
+  const hex = value.toString(16).padStart(8, '0');
+  for (let i = 0; i < 4; i++) {
+    b.push(parseInt(hex.substr(i * 2, 2), 16));
+  }
+
+  // Byte 0 - Warning indicators
+  flags.stop_indicator = !!(b[0] & 0x01);
+  flags.oil_pressure_warning = !!(b[0] & 0x02);
+  flags.coolant_warning = !!(b[0] & 0x04);
+  flags.handbrake_warning = !!(b[0] & 0x08);
+  flags.battery_warning = !!(b[0] & 0x10);
+  flags.airbag_warning = !!(b[0] & 0x20);
+  flags.eps_warning = !!(b[0] & 0x40);
+  flags.esp_warning = !!(b[0] & 0x80);
+
+  // Byte 1 - Engine / System warnings
+  flags.check_engine = !!(b[1] & 0x01);
+  flags.lights_failure = !!(b[1] & 0x02);
+  flags.low_tire_pressure = !!(b[1] & 0x04);
+  flags.brake_pad_wear = !!(b[1] & 0x08);
+  flags.general_warning = !!(b[1] & 0x10);
+  flags.abs_warning = !!(b[1] & 0x20);
+  flags.low_fuel = !!(b[1] & 0x40);
+  flags.maintenance = !!(b[1] & 0x80);
+
+  // Byte 2 - Lights & Indicators
+  flags.esp_active = !!(b[2] & 0x01);
+  flags.glow_plug = !!(b[2] & 0x02);
+  flags.dpf_warning = !!(b[2] & 0x04);
+  flags.epc_warning = !!(b[2] & 0x08);
+  flags.parking_lights = !!(b[2] & 0x10);
+  flags.dipped_headlights = !!(b[2] & 0x20);
+  flags.full_beam = !!(b[2] & 0x40);
+  flags.front_fog_lights = !!(b[2] & 0x80);
+
+  // Byte 3 - Active systems
+  flags.ready_to_drive = !!(b[3] & 0x01);
+  flags.cruise_control = !!(b[3] & 0x02);
+  flags.auto_retarder = !!(b[3] & 0x04);
+  flags.manual_retarder = !!(b[3] & 0x08);
+  flags.air_conditioning = !!(b[3] & 0x10);
+  flags.rear_fog_lights = !!(b[3] & 0x20);
+  flags.passenger_seatbelt = !!(b[3] & 0x40);
+  flags.driver_seatbelt = !!(b[3] & 0x80);
+
+  return flags;
+}
+
+// Expandeaza flag-urile in IO data
+function expandCanFlags(ioData) {
+  if (ioData.can_security_state_flags !== undefined) {
+    ioData._security_flags = decodeSecurityFlags(ioData.can_security_state_flags);
+  }
+  if (ioData.can_control_state_flags !== undefined) {
+    ioData._control_flags = decodeControlFlags(ioData.can_control_state_flags);
+  }
+  return ioData;
+}
+
+module.exports = { parseAvlPacket, getIoName, convertCanValue, expandCanFlags, decodeSecurityFlags, decodeControlFlags };

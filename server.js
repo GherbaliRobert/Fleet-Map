@@ -7,7 +7,7 @@ const path = require('path');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcryptjs');
-const { parseAvlPacket, convertCanValue } = require('./codec8e');
+const { parseAvlPacket, convertCanValue, expandCanFlags } = require('./codec8e');
 const db = require('./db');
 
 // ─── Configurare ───
@@ -117,6 +117,8 @@ const tcpServer = net.createServer((socket) => {
               record.io[key] = convertCanValue(key, record.io[key]);
             }
           }
+          // Decodifica flag-urile CAN in parametri individuali
+          expandCanFlags(record.io);
         }
       }
 

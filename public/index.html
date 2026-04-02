@@ -2595,24 +2595,56 @@
       const categoryIcons = {
         'Motor / Vehicul': 'fa-cog',
         'Combustibil': 'fa-gas-pump',
+        'Vehicul': 'fa-car',
+        'Usi (detaliat)': 'fa-door-open',
+        'Contact / Motor': 'fa-key',
+        'Transmisie': 'fa-sliders-h',
+        'Lumini': 'fa-lightbulb',
+        'Avertizari Motor': 'fa-engine-warning',
+        'Siguranta': 'fa-shield-alt',
+        'Sistem Activ': 'fa-tachometer-alt',
+        'Alarma / Securitate': 'fa-lock',
+        'Diagnosticare': 'fa-stethoscope',
+        'Stare CAN': 'fa-network-wired',
         'Electric / Baterie': 'fa-battery-half',
         'Alimentare': 'fa-bolt',
         'GPS / Retea': 'fa-satellite',
         'I/O Digital': 'fa-toggle-on',
         'I/O Analog': 'fa-wave-square',
         'Distanta': 'fa-road',
-        'Diagnosticare': 'fa-stethoscope',
         'Evenimente': 'fa-bell',
-        'Sistem': 'fa-microchip'
+        'Sistem': 'fa-microchip',
+        'FMS (Camioane)': 'fa-truck'
       };
 
+      // Flatten decoded CAN flags into a flat lookup for display
+      const flatIo = Object.assign({}, io);
+      if (io._security_flags) {
+        for (const [k, v] of Object.entries(io._security_flags)) {
+          flatIo['_sf_' + k] = v;
+        }
+      }
+      if (io._control_flags) {
+        for (const [k, v] of Object.entries(io._control_flags)) {
+          flatIo['_cf_' + k] = v;
+        }
+      }
+
       for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
-        const rows = keys.filter(k => io[k] !== undefined).map(k => {
+        const rows = keys.filter(k => flatIo[k] !== undefined).map(k => {
           usedKeys.add(k);
-          const val = formatIoValue(k, io[k]);
-          const isOnOff = (typeof io[k] === 'boolean' || val === 'ON' || val === 'OFF' || val === 'DA' || val === 'Nu');
+          const val = formatIoValue(k, flatIo[k]);
+          const isOnOff = (typeof flatIo[k] === 'boolean' || val === 'ON' || val === 'OFF' || val === 'DA' || val === 'NU' || val === 'Nu');
           let valClass = '';
-          if (isOnOff) valClass = (val === 'ON' || val === 'DA' || val === 'In calatorie') ? 'on' : 'off';
+          if (isOnOff) {
+            // For warnings, ON = bad (red), OFF = good (green)
+            const isWarning = k.includes('warning') || k.includes('check_engine') || k.includes('dpf') || k.includes('epc') || k.includes('stop_indicator');
+            if (isWarning) {
+              valClass = (val === 'ON' || val === 'DA' || val === 'ACTIV') ? 'off' : 'on'; // red for active warning
+            } else {
+              valClass = (val === 'ON' || val === 'DA' || val === 'ACTIV' || val === 'DESCHISA' || val === 'TRAS') ? 'on' : 'off';
+            }
+          }
           return '<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value ' + valClass + '">' + val + '</span></div>';
         });
         if (rows.length > 0) {
@@ -2621,8 +2653,8 @@
         }
       }
 
-      // Uncategorized
-      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && k !== 'eventIoId' && k !== 'totalCount');
+      // Uncategorized (exclude internal flag objects and already used keys)
+      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && k !== 'eventIoId' && k !== 'totalCount' && k !== '_security_flags' && k !== '_control_flags' && k !== 'can_security_state_flags' && k !== 'can_control_state_flags');
       if (uncategorized.length > 0) {
         const rows = uncategorized.map(k =>
           '<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value">' + formatIoValue(k, io[k]) + '</span></div>'
@@ -2952,9 +2984,17 @@
       'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_vehicle_speed', 'can_engine_rpm', 'can_engine_temp', 'can_engine_load', 'can_accelerator_pedal', 'can_engine_worktime', 'can_engine_worktime_counted', 'can_retarder_load'],
       'Combustibil': ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_consumed', 'can_fuel_consumed_counted', 'can_fuel_rate', 'can_adblue_level_pct', 'can_adblue_level_liters', 'fuel_used_gps_total', 'fuel_rate_gps'],
       'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_handbrake', 'can_load_weight', 'can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load'],
-      'Lumini / Indicatoare': ['can_indicator_left', 'can_indicator_right', 'can_indicator_hazard', 'can_indicator_lights', 'can_security_flag_ext'],
-      'Stare CAN': ['can_program_number', 'can_module_id', 'can_control_state_flags', 'can_security_state_flags', 'can_dtc_errors', 'can_manual_0', 'can_manual_2', 'can_manual_4'],
-      'Electric / Baterie': ['can_battery_temp', 'can_battery_level_pct'],
+      'Usi (detaliat)': ['_sf_door_front_left', '_sf_door_front_right', '_sf_door_rear_left', '_sf_door_rear_right', '_sf_hood_open', '_sf_trunk_open', '_sf_roof_open'],
+      'Contact / Motor': ['_sf_key_in_ignition', '_sf_ignition_on', '_sf_engine_working', '_sf_webasto', '_sf_car_closed', '_sf_closed_by_remote'],
+      'Transmisie': ['_sf_parking', '_sf_neutral', '_sf_drive', '_sf_reverse', '_sf_handbrake', '_sf_footbrake'],
+      'Lumini': ['_cf_parking_lights', '_cf_dipped_headlights', '_cf_full_beam', '_cf_front_fog_lights', '_cf_rear_fog_lights', '_sf_hazard_lights'],
+      'Avertizari Motor': ['_cf_check_engine', '_cf_dpf_warning', '_cf_epc_warning', '_cf_glow_plug', '_cf_oil_pressure_warning', '_cf_coolant_warning', '_cf_low_fuel', '_cf_maintenance', '_cf_stop_indicator'],
+      'Siguranta': ['_cf_airbag_warning', '_cf_abs_warning', '_cf_esp_warning', '_cf_eps_warning', '_cf_driver_seatbelt', '_cf_passenger_seatbelt', '_cf_low_tire_pressure', '_cf_brake_pad_wear'],
+      'Sistem Activ': ['_cf_cruise_control', '_cf_air_conditioning', '_cf_esp_active', '_cf_ready_to_drive'],
+      'Alarma / Securitate': ['_sf_factory_armed', '_sf_factory_alarm', '_sf_alarm_emulated', '_sf_engine_lock'],
+      'Diagnosticare': ['can_dtc_errors'],
+      'Stare CAN': ['can_program_number', 'can_module_id', 'can_manual_0', 'can_manual_2', 'can_manual_4'],
+      'Electric / Baterie': ['can_battery_temp', 'can_battery_level_pct', '_cf_battery_warning', '_sf_battery_charging'],
       'Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
       'GPS / Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'data_mode'],
       'I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
@@ -3019,6 +3059,40 @@
       // Indicatoare / Flags
       if (key === 'can_handbrake') return value ? 'TRAS' : 'Eliberat';
       if (key === 'can_indicator_left' || key === 'can_indicator_right' || key === 'can_indicator_hazard' || key === 'can_indicator_lights' || key === 'can_security_flag_ext') return value ? 'ON' : 'OFF';
+      // Decoded Security Flags (_sf_)
+      if (key.startsWith('_sf_door_') || key === '_sf_hood_open' || key === '_sf_trunk_open' || key === '_sf_roof_open') return value ? 'DESCHISA' : 'Inchisa';
+      if (key === '_sf_key_in_ignition' || key === '_sf_ignition_on' || key === '_sf_dynamic_ignition') return value ? 'DA' : 'NU';
+      if (key === '_sf_engine_working') return value ? 'PORNIT' : 'OPRIT';
+      if (key === '_sf_webasto') return value ? 'ACTIV' : 'OFF';
+      if (key === '_sf_car_closed' || key === '_sf_closed_by_remote') return value ? 'DA' : 'NU';
+      if (key === '_sf_parking') return value ? 'ACTIV' : 'OFF';
+      if (key === '_sf_neutral' || key === '_sf_drive' || key === '_sf_reverse') return value ? 'DA' : 'NU';
+      if (key === '_sf_handbrake') return value ? 'TRAS' : 'Eliberat';
+      if (key === '_sf_footbrake') return value ? 'APASAT' : 'Eliberat';
+      if (key === '_sf_factory_armed' || key === '_sf_factory_alarm' || key === '_sf_alarm_emulated' || key === '_sf_engine_lock') return value ? 'ACTIV' : 'OFF';
+      if (key === '_sf_hazard_lights' || key === '_sf_battery_charging') return value ? 'ON' : 'OFF';
+      // Decoded Control Flags (_cf_)
+      if (key === '_cf_check_engine') return value ? '⚠ ACTIV' : 'OK';
+      if (key === '_cf_dpf_warning') return value ? '⚠ DPF' : 'OK';
+      if (key === '_cf_epc_warning') return value ? '⚠ EPC' : 'OK';
+      if (key === '_cf_abs_warning') return value ? '⚠ ABS' : 'OK';
+      if (key === '_cf_esp_warning') return value ? '⚠ ESP' : 'OK';
+      if (key === '_cf_airbag_warning') return value ? '⚠ AIRBAG' : 'OK';
+      if (key === '_cf_eps_warning') return value ? '⚠ EPS' : 'OK';
+      if (key === '_cf_oil_pressure_warning') return value ? '⚠ ULEI' : 'OK';
+      if (key === '_cf_coolant_warning') return value ? '⚠ LICHID' : 'OK';
+      if (key === '_cf_battery_warning') return value ? '⚠ BATERIE' : 'OK';
+      if (key === '_cf_low_fuel') return value ? '⚠ NIVEL SCAZUT' : 'OK';
+      if (key === '_cf_low_tire_pressure') return value ? '⚠ PRESIUNE' : 'OK';
+      if (key === '_cf_brake_pad_wear') return value ? '⚠ UZURA' : 'OK';
+      if (key === '_cf_stop_indicator') return value ? '⚠ STOP' : 'OK';
+      if (key === '_cf_glow_plug') return value ? 'ACTIV' : 'OFF';
+      if (key === '_cf_maintenance') return value ? '⚠ NECESARA' : 'OK';
+      if (key === '_cf_general_warning' || key === '_cf_lights_failure') return value ? '⚠ ACTIV' : 'OK';
+      if (key === '_cf_driver_seatbelt') return value ? 'Pusa' : 'Nepusa';
+      if (key === '_cf_passenger_seatbelt') return value ? 'Pusa' : 'Nepusa';
+      if (key === '_cf_parking_lights' || key === '_cf_dipped_headlights' || key === '_cf_full_beam' || key === '_cf_front_fog_lights' || key === '_cf_rear_fog_lights') return value ? 'ON' : 'OFF';
+      if (key === '_cf_cruise_control' || key === '_cf_air_conditioning' || key === '_cf_esp_active' || key === '_cf_ready_to_drive') return value ? 'ACTIV' : 'OFF';
       // FMS
       if (key === 'fms_rpm') return value + ' RPM';
       if (key === 'fms_speed') return value + ' km/h';
@@ -3038,6 +3112,69 @@
     }
 
     function formatIoLabel(key) {
+      const labels = {
+        // Security flags
+        '_sf_door_front_left': 'Usa fata stanga',
+        '_sf_door_front_right': 'Usa fata dreapta',
+        '_sf_door_rear_left': 'Usa spate stanga',
+        '_sf_door_rear_right': 'Usa spate dreapta',
+        '_sf_hood_open': 'Capota motor',
+        '_sf_trunk_open': 'Portbagaj',
+        '_sf_roof_open': 'Trapa',
+        '_sf_key_in_ignition': 'Cheie in contact',
+        '_sf_ignition_on': 'Contact pornit',
+        '_sf_engine_working': 'Motor',
+        '_sf_webasto': 'Webasto',
+        '_sf_car_closed': 'Masina incuiata',
+        '_sf_closed_by_remote': 'Incuiata cu telecomanda',
+        '_sf_parking': 'Parking (P)',
+        '_sf_neutral': 'Neutru (N)',
+        '_sf_drive': 'Drive (D)',
+        '_sf_reverse': 'Marsarier (R)',
+        '_sf_handbrake': 'Frana de mana',
+        '_sf_footbrake': 'Frana de picior',
+        '_sf_factory_armed': 'Alarma fabrică armata',
+        '_sf_factory_alarm': 'Alarma fabrica activa',
+        '_sf_alarm_emulated': 'Alarma emulata',
+        '_sf_engine_lock': 'Blocare motor',
+        '_sf_hazard_lights': 'Avarii',
+        '_sf_battery_charging': 'Incarcare baterie',
+        // Control flags
+        '_cf_check_engine': 'CHECK ENGINE (MIL)',
+        '_cf_dpf_warning': 'Filtru particule (DPF)',
+        '_cf_epc_warning': 'Control electronic (EPC)',
+        '_cf_abs_warning': 'ABS',
+        '_cf_esp_warning': 'ESP',
+        '_cf_esp_active': 'ESP activ',
+        '_cf_airbag_warning': 'Airbag',
+        '_cf_eps_warning': 'Servodirectie (EPS)',
+        '_cf_oil_pressure_warning': 'Presiune ulei',
+        '_cf_coolant_warning': 'Temp. lichid racire',
+        '_cf_battery_warning': 'Baterie',
+        '_cf_low_fuel': 'Nivel combustibil scazut',
+        '_cf_low_tire_pressure': 'Presiune anvelope',
+        '_cf_brake_pad_wear': 'Uzura placute frana',
+        '_cf_stop_indicator': 'Indicator STOP',
+        '_cf_glow_plug': 'Bujii incandescente',
+        '_cf_maintenance': 'Revizie necesara',
+        '_cf_general_warning': 'Avertizare generala',
+        '_cf_lights_failure': 'Defect becuri',
+        '_cf_driver_seatbelt': 'Centura sofer',
+        '_cf_passenger_seatbelt': 'Centura pasager',
+        '_cf_parking_lights': 'Lumini pozitie',
+        '_cf_dipped_headlights': 'Faza scurta',
+        '_cf_full_beam': 'Faza lunga',
+        '_cf_front_fog_lights': 'Proiectoare fata',
+        '_cf_rear_fog_lights': 'Proiectoare spate',
+        '_cf_cruise_control': 'Cruise control',
+        '_cf_air_conditioning': 'Aer conditionat',
+        '_cf_ready_to_drive': 'Ready to drive',
+        // CAN
+        'can_dtc_errors': 'Erori DTC',
+        'can_program_number': 'Program CAN',
+        'can_module_id': 'Modul ID',
+      };
+      if (labels[key]) return labels[key];
       return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
