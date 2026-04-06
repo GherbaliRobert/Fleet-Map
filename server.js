@@ -387,6 +387,130 @@ app.get('/api/stats', requireAuth, async (req, res) => {
   }
 });
 
+// API: Dashboard KPI-uri fleet
+app.get('/api/dashboard', requireAuth, async (req, res) => {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const now = new Date();
+
+    // Collect stats per device
+    const deviceStats = [];
+    let totalKm = 0;
+    let totalFuel = 0;
+    let totalAlerts = 0;
+    let onlineCount = 0;
+    let movingCount = 0;
+    let totalEngineTime = 0;
+
+    for (const [imei, data] of livePositions) {
+      const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 300000;
+      const isMoving = isOnline && (data.speed || 0) > 3;
+      if (isOnline) onlineCount++;
+      if (isMoving) movingCount++;
+
+      // Get today's history for this device
+      try {
+        const history = await db.getDeviceHistory(imei, todayStart.toISOString(), now.toISOString());
+        let km = 0;
+        let fuel = 0;
+        let maxSpeed = 0;
+        let engineTime = 0;
+        let firstFuelLevel = null;
+        let lastFuelLevel = null;
+
+        for (let i = 0; i < history.length; i++) {
+          const row = history[i];
+          const io = row.io_data || {};
+
+          if (i > 0) {
+            const prev = history[i - 1];
+            const dist = haversineDistance(prev.latitude, prev.longitude, row.latitude, row.longitude);
+            if (dist < 10) km += dist;
+
+            // Engine time
+            const prevIo = prev.io_data || {};
+            if (prevIo.ignition === 1 || io.ignition === 1) {
+              const dt = (new Date(row.timestamp) - new Date(prev.timestamp)) / 1000;
+              if (dt > 0 && dt < 3600) engineTime += dt;
+            }
+          }
+
+          if ((row.speed || 0) > maxSpeed) maxSpeed = row.speed;
+
+          // Fuel tracking
+          const fl = io.can_fuel_level_liters;
+          if (fl !== undefined && fl > 0) {
+            if (firstFuelLevel === null) firstFuelLevel = fl;
+            lastFuelLevel = fl;
+          }
+        }
+
+        // Fuel consumed = drops only
+        let deviceFuel = 0;
+        let prevFL = null;
+        for (const row of history) {
+          const fl = (row.io_data || {}).can_fuel_level_liters;
+          if (fl !== undefined && fl > 0) {
+            if (prevFL !== null) {
+              const diff = prevFL - fl;
+              if (diff > 0.5) deviceFuel += diff;
+            }
+            prevFL = fl;
+          }
+        }
+
+        km = Math.round(km * 100) / 100;
+        deviceFuel = Math.round(deviceFuel * 10) / 10;
+        totalKm += km;
+        totalFuel += deviceFuel;
+        totalEngineTime += engineTime;
+
+        deviceStats.push({
+          imei,
+          name: data.name || imei,
+          plate: data.plate || '',
+          km,
+          fuel: deviceFuel,
+          maxSpeed,
+          engineTime: Math.round(engineTime),
+          fuelLevel: lastFuelLevel ? Math.round(lastFuelLevel * 10) / 10 : null,
+          isOnline,
+          isMoving
+        });
+      } catch (e) {
+        // Skip device on error
+      }
+    }
+
+    // Sort by km descending for top drivers
+    const topKm = [...deviceStats].sort((a, b) => b.km - a.km).slice(0, 5);
+    const topFuel = [...deviceStats].sort((a, b) => b.fuel - a.fuel).slice(0, 5);
+
+    // Get recent alerts
+    try {
+      const alertRows = await db.getAlertHistory(20);
+      totalAlerts = alertRows ? alertRows.length : 0;
+    } catch (e) { /* no alerts table yet */ }
+
+    res.json({
+      totalDevices: livePositions.size,
+      onlineCount,
+      movingCount,
+      offlineCount: livePositions.size - onlineCount,
+      totalKm: Math.round(totalKm * 10) / 10,
+      totalFuel: Math.round(totalFuel * 10) / 10,
+      totalEngineTime: Math.round(totalEngineTime),
+      totalAlerts,
+      topKm,
+      topFuel,
+      devices: deviceStats
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Statistici zilnice per dispozitiv (km, viteza medie/max, opriri, timp mers/stationat, consum)
 app.get('/api/stats/:imei', requireAuth, async (req, res) => {
   try {

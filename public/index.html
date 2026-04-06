@@ -1420,6 +1420,7 @@
             <h1>GPS <span>Unitip</span></h1>
           </div>
           <div class="header-actions">
+            <button class="btn-icon" onclick="openDashboard()" title="Dashboard"><i class="fas fa-tachometer-alt"></i></button>
             <button class="btn-icon" id="btn-debug" style="display:none;" onclick="toggleDebugPanel()" title="Debug"><i class="fas fa-terminal"></i></button>
             <button class="btn-icon" id="btn-users" style="display:none" onclick="openUsersModal()" title="Utilizatori"><i class="fas fa-users"></i></button>
             <button class="btn-icon danger" onclick="logout()" title="Deconectare"><i class="fas fa-sign-out-alt"></i></button>
@@ -1574,6 +1575,73 @@
       <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:8px;">
         <i class="fas fa-save"></i> Salveaza
       </button>
+    </div>
+  </div>
+
+  <!-- Dashboard Modal -->
+  <div id="dashboard-modal" class="modal-overlay">
+    <div class="modal" style="width:950px;max-width:95vw;max-height:92vh;">
+      <h2>
+        <span><i class="fas fa-tachometer-alt" style="margin-right:8px;color:var(--accent);"></i> Dashboard Fleet</span>
+        <button class="close-btn" onclick="closeDashboard()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+
+      <!-- Loading -->
+      <div id="dash-loading" style="text-align:center;padding:40px;color:var(--text-muted);">
+        <i class="fas fa-spinner fa-spin fa-2x"></i>
+        <div style="margin-top:12px;">Se incarca dashboard...</div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div id="dash-content" style="display:none;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:16px;">
+          <div class="report-stat"><div class="report-stat-value" id="dk-total">0</div><div class="report-stat-label">Total vehicule</div></div>
+          <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="dk-online" style="color:var(--green);">0</div><div class="report-stat-label">Online</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="dk-moving">0</div><div class="report-stat-label">In miscare</div></div>
+          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-offline" style="color:var(--red);">0</div><div class="report-stat-label">Offline</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="dk-km">0</div><div class="report-stat-label">Km azi</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="dk-fuel">0</div><div class="report-stat-label">Consum azi (L)</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="dk-engine">0</div><div class="report-stat-label">Ore motor</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="dk-alerts">0</div><div class="report-stat-label">Alerte</div></div>
+        </div>
+
+        <!-- Top vehicule -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
+              <i class="fas fa-road" style="color:var(--accent);margin-right:6px;"></i>Top km parcursi azi
+            </div>
+            <div id="dk-top-km" style="font-size:12px;"></div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
+              <i class="fas fa-gas-pump" style="color:var(--orange);margin-right:6px;"></i>Top consum azi
+            </div>
+            <div id="dk-top-fuel" style="font-size:12px;"></div>
+          </div>
+        </div>
+
+        <!-- Tabel vehicule -->
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
+          <i class="fas fa-list" style="color:var(--accent);margin-right:6px;"></i>Status flota
+        </div>
+        <div style="overflow-x:auto;overflow-y:auto;max-height:300px;border:1px solid var(--border);border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:var(--bg-dark);color:var(--text-secondary);text-align:left;">
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Vehicul</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Status</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Km azi</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Consum</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Vit. max</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Motor</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Combustibil</th>
+              </tr>
+            </thead>
+            <tbody id="dk-fleet-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -3196,6 +3264,70 @@
     // ─── Raport ───
     let reportImei = null;
     let reportData = null;
+
+    // ─── Dashboard ───
+    async function openDashboard() {
+      const modal = document.getElementById('dashboard-modal');
+      modal.classList.add('visible');
+      document.getElementById('dash-loading').style.display = 'block';
+      document.getElementById('dash-content').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/dashboard');
+        const d = await res.json();
+
+        document.getElementById('dk-total').textContent = d.totalDevices;
+        document.getElementById('dk-online').textContent = d.onlineCount;
+        document.getElementById('dk-moving').textContent = d.movingCount;
+        document.getElementById('dk-offline').textContent = d.offlineCount;
+        document.getElementById('dk-km').textContent = d.totalKm + ' km';
+        document.getElementById('dk-fuel').textContent = d.totalFuel + ' L';
+        document.getElementById('dk-engine').textContent = formatDuration(d.totalEngineTime);
+        document.getElementById('dk-alerts').textContent = d.totalAlerts;
+
+        // Top km
+        const topKmHtml = (d.topKm || []).filter(v => v.km > 0).map(function(v, i) {
+          return '<div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg-dark);border-radius:4px;margin-bottom:4px;">' +
+            '<span>' + (i+1) + '. ' + (v.name || v.imei) + '</span>' +
+            '<span style="color:var(--accent);font-weight:700;">' + v.km + ' km</span></div>';
+        }).join('') || '<div style="color:var(--text-muted);padding:8px;">Nicio activitate azi</div>';
+        document.getElementById('dk-top-km').innerHTML = topKmHtml;
+
+        // Top fuel
+        const topFuelHtml = (d.topFuel || []).filter(v => v.fuel > 0).map(function(v, i) {
+          return '<div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg-dark);border-radius:4px;margin-bottom:4px;">' +
+            '<span>' + (i+1) + '. ' + (v.name || v.imei) + '</span>' +
+            '<span style="color:var(--orange);font-weight:700;">' + v.fuel + ' L</span></div>';
+        }).join('') || '<div style="color:var(--text-muted);padding:8px;">Nicio data consum</div>';
+        document.getElementById('dk-top-fuel').innerHTML = topFuelHtml;
+
+        // Fleet table
+        const fleetHtml = (d.devices || []).map(function(v) {
+          const statusColor = v.isMoving ? 'var(--green)' : (v.isOnline ? 'var(--accent)' : 'var(--red)');
+          const statusText = v.isMoving ? 'Miscare' : (v.isOnline ? 'Stationare' : 'Offline');
+          const speedColor = v.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
+          return '<tr>' +
+            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + (v.name || v.imei) + (v.plate ? ' <span style="color:var(--text-muted);font-size:10px;">' + v.plate + '</span>' : '') + '</td>' +
+            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);"><span style="color:' + statusColor + ';font-weight:600;">' + statusText + '</span></td>' +
+            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + v.km + '</td>' +
+            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--orange);">' + (v.fuel > 0 ? v.fuel + ' L' : '-') + '</td>' +
+            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);' + speedColor + '">' + (v.maxSpeed > 0 ? v.maxSpeed + ' km/h' : '-') + '</td>' +
+            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);">' + (v.engineTime > 0 ? formatDuration(v.engineTime) : '-') + '</td>' +
+            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);">' + (v.fuelLevel ? v.fuelLevel + ' L' : '-') + '</td>' +
+          '</tr>';
+        }).join('');
+        document.getElementById('dk-fleet-body').innerHTML = fleetHtml;
+
+        document.getElementById('dash-loading').style.display = 'none';
+        document.getElementById('dash-content').style.display = 'block';
+      } catch (err) {
+        document.getElementById('dash-loading').innerHTML = '<div style="color:var(--red);">Eroare: ' + err.message + '</div>';
+      }
+    }
+
+    function closeDashboard() {
+      document.getElementById('dashboard-modal').classList.remove('visible');
+    }
 
     function openReportModal(imei) {
       reportImei = imei;
