@@ -2886,6 +2886,11 @@
         if (msg.type === 'position') {
           appendDebugEntry({ event: 'position', imei: msg.data.imei, time: new Date().toISOString(), speed: msg.data.speed, lat: msg.data.latitude?.toFixed(4), lng: msg.data.longitude?.toFixed(4) });
         }
+
+        // Alert notification
+        if (msg.type === 'alert') {
+          showAlertNotification(msg.data);
+        }
       };
 
       ws.onclose = () => {
@@ -2895,6 +2900,64 @@
       };
 
       ws.onerror = () => ws.close();
+    }
+
+    // ─── Alert Notifications ───
+    function showAlertNotification(data) {
+      // Create notification container if not exists
+      let container = document.getElementById('alert-notifications');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'alert-notifications';
+        container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:8px;max-width:400px;';
+        document.body.appendChild(container);
+      }
+
+      const typeLabels = {
+        'overspeed': '🚨 Viteza excesiva',
+        'fuel_drop': '⛽ Scadere combustibil',
+        'ignition_on': '🔑 Motor pornit',
+        'ignition_off': '🔑 Motor oprit',
+        'dtc_error': '⚠️ Eroare DTC',
+        'geofence_exit': '📍 Iesire zona',
+        'geofence_enter': '📍 Intrare zona',
+        'engine_temp': '🌡️ Temperatura motor'
+      };
+
+      const label = typeLabels[data.alertType] || '⚠️ Alerta';
+      let detail = '';
+      if (data.alertType === 'overspeed') detail = data.speed + ' km/h (limita ' + data.limit + ')';
+      else if (data.alertType === 'fuel_drop') detail = 'Scadere ' + (data.drop ? data.drop.toFixed(1) : '?') + ' L';
+      else if (data.alertType === 'dtc_error') detail = data.dtcCount + ' erori detectate';
+      else if (data.alertType === 'engine_temp') detail = data.temp + '°C (limita ' + data.limit + ')';
+      else if (data.alertType === 'geofence_exit' || data.alertType === 'geofence_enter') detail = data.geofence || '';
+      else detail = data.event || '';
+
+      const notif = document.createElement('div');
+      notif.style.cssText = 'background:var(--bg-panel);border:1px solid var(--red);border-radius:10px;padding:12px 16px;box-shadow:0 8px 30px rgba(0,0,0,0.5);animation:slideIn 0.3s ease;cursor:pointer;';
+      notif.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<div><div style="font-weight:700;font-size:13px;color:var(--red);margin-bottom:2px;">' + label + '</div>' +
+        '<div style="font-size:12px;color:var(--text-primary);">' + (data.vehicleName || data.imei) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">' + detail + '</div></div>' +
+        '<button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;padding:0 0 0 12px;">✕</button></div>';
+
+      notif.onclick = function(e) {
+        if (e.target.tagName === 'BUTTON') return;
+        if (data.lat && data.lng) map.setView([data.lat, data.lng], 16);
+        notif.remove();
+      };
+
+      container.appendChild(notif);
+
+      // Play sound
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1kbHN8g4OJi4yNjY2LiYaDfXdwa2VgXV1fY2lxeYGHjI+RkpKRj4yIg3x1bmhjX11dYGZtdX2EiY2QkpOTkZCMiIN9dnBqZGBdXV9ja3J6gYeMkJKUlJOSkI2Jg3x2cGplYV5eYGRrcnqBh4yQk5SUk5KQjYmEfnhybGZiX19hZWxze4KIjJCTlJSTkpCNiYR+eHJsZmJfX2Fla3N7goiMkJOUlJOSkI2JhH54cmxmYl9fYWVrc3uCiIyQk5SUk5KQjQ==');
+        audio.volume = 0.3;
+        audio.play().catch(() => {});
+      } catch (e) {}
+
+      // Auto-remove after 15 seconds
+      setTimeout(function() { if (notif.parentElement) notif.remove(); }, 15000);
     }
 
     // ─── Reverse Geocoding ───

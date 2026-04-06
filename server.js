@@ -146,6 +146,11 @@ const tcpServer = net.createServer((socket) => {
 
         // Trimite update live prin WebSocket
         broadcastWs({ type: 'position', data: liveData });
+
+        // Evaluare alerte automate
+        evaluateAlerts(imei, liveData).catch(err => {
+          console.error(`[ALERTS] Eroare evaluare alerte pentru ${imei}: ${err.message}`);
+        });
       }
 
       // Răspunde cu numărul de recorduri acceptate (4 bytes)
@@ -1004,6 +1009,169 @@ app.delete('/api/maintenance/:id', requireAuth, requireAdmin, async (req, res) =
 });
 
 // ─── Export CSV ───
+
+// ─── Evaluare Alerte Automate ───
+const alertCooldowns = new Map(); // key: alertId_imei, value: timestamp
+
+function isPointInPolygon(point, polygon) {
+  const [x, y] = point;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function isPointInCircle(lat, lng, centerLat, centerLng, radiusKm) {
+  return haversineDistance(lat, lng, centerLat, centerLng) <= radiusKm;
+}
+
+// Track geofence state per device for enter/exit detection
+const geofenceStates = new Map(); // key: imei_geofenceId, value: boolean (inside)
+
+async function evaluateAlerts(imei, data) {
+  try {
+    const alerts = await db.getAlerts();
+    if (!alerts || alerts.length === 0) return;
+
+    const speed = data.speed || 0;
+    const io = data.io || {};
+    const lat = data.latitude;
+    const lng = data.longitude;
+
+    for (const alert of alerts) {
+      if (!alert.enabled) continue;
+      if (alert.imei && alert.imei !== imei) continue; // Device-specific alert
+
+      const cond = alert.condition || {};
+      const cooldownKey = alert.id + '_' + imei;
+      const lastTriggered = alertCooldowns.get(cooldownKey);
+      if (lastTriggered && (Date.now() - lastTriggered) < 300000) continue; // 5 min cooldown
+
+      let triggered = false;
+      let alertData = {};
+
+      switch (alert.type) {
+        case 'overspeed':
+          if (cond.maxSpeed && speed > cond.maxSpeed) {
+            triggered = true;
+            alertData = { speed, limit: cond.maxSpeed };
+          }
+          break;
+
+        case 'fuel_drop':
+          if (cond.dropLiters && io.can_fuel_level_liters !== undefined) {
+            // Compare with previous reading stored in livePositions
+            const prev = livePositions.get(imei);
+            if (prev && prev.io && prev.io.can_fuel_level_liters !== undefined) {
+              const drop = prev.io.can_fuel_level_liters - io.can_fuel_level_liters;
+              if (drop > cond.dropLiters) {
+                triggered = true;
+                alertData = { previousLevel: prev.io.can_fuel_level_liters, currentLevel: io.can_fuel_level_liters, drop };
+              }
+            }
+          }
+          break;
+
+        case 'ignition_on':
+          if (io.ignition === 1) {
+            triggered = true;
+            alertData = { event: 'Motor pornit' };
+          }
+          break;
+
+        case 'ignition_off':
+          if (io.ignition === 0) {
+            const prev = livePositions.get(imei);
+            if (prev && prev.io && prev.io.ignition === 1) {
+              triggered = true;
+              alertData = { event: 'Motor oprit' };
+            }
+          }
+          break;
+
+        case 'dtc_error':
+          if (io.can_dtc_errors && io.can_dtc_errors > 0) {
+            triggered = true;
+            alertData = { dtcCount: io.can_dtc_errors };
+          }
+          break;
+
+        case 'geofence_exit':
+        case 'geofence_enter':
+          if (cond.geofenceId && lat && lng) {
+            try {
+              const geofences = await db.getGeofences();
+              const gf = geofences.find(g => g.id === cond.geofenceId);
+              if (gf && gf.coordinates) {
+                const coords = typeof gf.coordinates === 'string' ? JSON.parse(gf.coordinates) : gf.coordinates;
+                let isInside = false;
+
+                if (gf.type === 'circle' && coords.center && coords.radius) {
+                  isInside = isPointInCircle(lat, lng, coords.center[0], coords.center[1], coords.radius / 1000);
+                } else if (Array.isArray(coords)) {
+                  isInside = isPointInPolygon([lat, lng], coords);
+                }
+
+                const stateKey = imei + '_' + gf.id;
+                const wasInside = geofenceStates.get(stateKey);
+
+                if (alert.type === 'geofence_exit' && wasInside === true && !isInside) {
+                  triggered = true;
+                  alertData = { geofence: gf.name || gf.id, event: 'Iesire din zona' };
+                } else if (alert.type === 'geofence_enter' && wasInside === false && isInside) {
+                  triggered = true;
+                  alertData = { geofence: gf.name || gf.id, event: 'Intrare in zona' };
+                }
+
+                geofenceStates.set(stateKey, isInside);
+              }
+            } catch (e) { /* geofence check failed */ }
+          }
+          break;
+
+        case 'engine_temp':
+          if (cond.maxTemp && io.can_engine_temp && io.can_engine_temp > cond.maxTemp) {
+            triggered = true;
+            alertData = { temp: io.can_engine_temp, limit: cond.maxTemp };
+          }
+          break;
+      }
+
+      if (triggered) {
+        alertCooldowns.set(cooldownKey, Date.now());
+        alertData.imei = imei;
+        alertData.vehicleName = data.name || imei;
+        alertData.lat = lat;
+        alertData.lng = lng;
+        alertData.timestamp = new Date().toISOString();
+
+        // Save to DB
+        try {
+          await db.insertAlertEvent(alert.id, imei, alertData);
+        } catch (e) { /* DB error */ }
+
+        // Broadcast alert via WebSocket
+        broadcastWs({
+          type: 'alert',
+          data: {
+            alertId: alert.id,
+            alertName: alert.name,
+            alertType: alert.type,
+            ...alertData
+          }
+        });
+
+        console.log(`[ALERT] ${alert.name} triggered for ${imei}: ${JSON.stringify(alertData)}`);
+      }
+    }
+  } catch (err) {
+    console.error(`[ALERTS] Error: ${err.message}`);
+  }
+}
 
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // km
