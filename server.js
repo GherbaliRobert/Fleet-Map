@@ -526,9 +526,12 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
     let globalStops = 0;
     let globalEngineOnTime = 0;
     let globalEngineIdleTime = 0;
+    let firstIgnitionOnTime = null;
+    let lastIgnitionOffTime = null;
 
     // Daily engine hours tracking
     const dailyEngine = {};
+    const dailyActivity = {}; // track first ignition on and last ignition off per day
 
     for (let i = 0; i < history.length; i++) {
       const row = history[i];
@@ -537,6 +540,17 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       const io = row.io_data || {};
       const isMoving = spd > SPEED_THRESHOLD;
       const ignitionOn = io.ignition === 1 || io.ignition === true;
+
+      // Track first/last ignition times
+      if (ignitionOn) {
+        if (!firstIgnitionOnTime) firstIgnitionOnTime = ts;
+        lastIgnitionOffTime = ts;
+
+        const dayKey = ts.toISOString().slice(0, 10);
+        if (!dailyActivity[dayKey]) dailyActivity[dayKey] = { firstOn: ts, lastOff: ts };
+        if (!dailyActivity[dayKey].firstOn || ts < dailyActivity[dayKey].firstOn) dailyActivity[dayKey].firstOn = ts;
+        if (ts > dailyActivity[dayKey].lastOff) dailyActivity[dayKey].lastOff = ts;
+      }
 
       // Track global stats
       if (spd > globalMaxSpeed) globalMaxSpeed = spd;
@@ -695,10 +709,15 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
     }
 
     // Build daily fuel summary with engine hours
-    const allDays = new Set([...Object.keys(dailyFuel), ...Object.keys(dailyEngine)]);
+    const allDays = new Set([...Object.keys(dailyFuel), ...Object.keys(dailyEngine), ...Object.keys(dailyActivity)]);
     const dailySummary = Array.from(allDays).sort().map(date => {
       const fuel = dailyFuel[date] || {};
       const engine = dailyEngine[date] || {};
+      const activity = dailyActivity[date] || {};
+      // Work window = first ignition ON to last ignition OFF
+      const workWindow = (activity.firstOn && activity.lastOff) ? Math.round((activity.lastOff - activity.firstOn) / 1000) : 0;
+      // Stationare reala = work window - driving time
+      const realIdle = workWindow > 0 ? Math.max(0, workWindow - Math.round(engine.driving || 0)) : 0;
       return {
         date,
         startLevel: fuel.first ? Math.round(fuel.first * 10) / 10 : null,
@@ -707,7 +726,11 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
         refueled: fuel.refueled ? Math.round(fuel.refueled * 10) / 10 : 0,
         engineOn: Math.round(engine.engineOn || 0),
         driving: Math.round(engine.driving || 0),
-        idle: Math.round(engine.idle || 0)
+        idle: Math.round(engine.idle || 0),
+        workWindow,
+        realIdle,
+        firstOn: activity.firstOn ? activity.firstOn.toISOString() : null,
+        lastOff: activity.lastOff ? activity.lastOff.toISOString() : null
       };
     });
 
@@ -729,6 +752,8 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       totalRefueled: totalRefueled > 0 ? Math.round(totalRefueled * 10) / 10 : null,
       engineOnTime: Math.round(globalEngineOnTime),
       engineIdleTime: Math.round(globalEngineIdleTime),
+      workWindow: (firstIgnitionOnTime && lastIgnitionOffTime) ? Math.round((lastIgnitionOffTime - firstIgnitionOnTime) / 1000) : 0,
+      realStoppedTime: (firstIgnitionOnTime && lastIgnitionOffTime) ? Math.max(0, Math.round((lastIgnitionOffTime - firstIgnitionOnTime) / 1000) - Math.round(globalMovingTime)) : 0,
       dailyFuel: dailySummary,
       routeCount: routes.length
     };

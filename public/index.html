@@ -1678,7 +1678,7 @@
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Nivel sfarsit</th>
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Consum</th>
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Alimentare</th>
-                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Motor pornit</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Program</th>
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Condus</th>
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Stationare</th>
               </tr>
@@ -3328,7 +3328,7 @@
       document.getElementById('rs-max-speed').textContent = s.maxSpeed + ' km/h';
       document.getElementById('rs-max-speed').style.color = s.maxSpeed > 120 ? 'var(--red)' : 'var(--accent)';
       document.getElementById('rs-moving').textContent = formatDuration(s.movingTime);
-      document.getElementById('rs-stopped').textContent = formatDuration(s.stoppedTime);
+      document.getElementById('rs-stopped').textContent = s.realStoppedTime ? formatDuration(s.realStoppedTime) : formatDuration(s.stoppedTime);
       document.getElementById('rs-stops').textContent = s.stops;
       document.getElementById('rs-fuel').textContent = s.fuelConsumed !== null ? s.fuelConsumed + ' L' : '-';
       document.getElementById('rs-avg-cons').textContent = s.avgConsumption !== null ? s.avgConsumption + ' L/100km' : '-';
@@ -3348,9 +3348,9 @@
             '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + (d.endLevel !== null ? d.endLevel + ' L' : '-') + '</td>' +
             '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--orange);font-weight:700;">' + (d.consumed > 0 ? d.consumed + ' L' : '-') + '</td>' +
             '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--green);">' + (d.refueled > 0 ? '+' + d.refueled + ' L' : '-') + '</td>' +
-            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + (d.engineOn > 0 ? formatDuration(d.engineOn) : '-') + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + (d.workWindow > 0 ? formatDuration(d.workWindow) : '-') + '</td>' +
             '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + (d.driving > 0 ? formatDuration(d.driving) : '-') + '</td>' +
-            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-muted);">' + (d.idle > 0 ? formatDuration(d.idle) : '-') + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--orange);">' + (d.realIdle > 0 ? formatDuration(d.realIdle) : '-') + '</td>' +
           '</tr>';
         }).join('');
         fuelDiv.style.display = 'block';
