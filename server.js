@@ -524,6 +524,11 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
     let globalMovingTime = 0;
     let globalStoppedTime = 0;
     let globalStops = 0;
+    let globalEngineOnTime = 0;
+    let globalEngineIdleTime = 0;
+
+    // Daily engine hours tracking
+    const dailyEngine = {};
 
     for (let i = 0; i < history.length; i++) {
       const row = history[i];
@@ -531,6 +536,7 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       const ts = new Date(row.timestamp);
       const io = row.io_data || {};
       const isMoving = spd > SPEED_THRESHOLD;
+      const ignitionOn = io.ignition === 1 || io.ignition === true;
 
       // Track global stats
       if (spd > globalMaxSpeed) globalMaxSpeed = spd;
@@ -540,6 +546,8 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       let segmentDist = 0;
       if (i > 0) {
         const prev = history[i - 1];
+        const prevIo = prev.io_data || {};
+        const prevIgnition = prevIo.ignition === 1 || prevIo.ignition === true;
         segmentDist = haversineDistance(prev.latitude, prev.longitude, row.latitude, row.longitude);
         if (segmentDist > 10) segmentDist = 0; // filter GPS jumps
 
@@ -547,6 +555,20 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
         if (dt > 0 && dt < 3600) {
           if (isMoving) globalMovingTime += dt;
           else globalStoppedTime += dt;
+
+          // Engine hours tracking (ignition ON = motor pornit)
+          if (prevIgnition || ignitionOn) {
+            globalEngineOnTime += dt;
+            const dayKey = new Date(prev.timestamp).toISOString().slice(0, 10);
+            if (!dailyEngine[dayKey]) dailyEngine[dayKey] = { engineOn: 0, driving: 0, idle: 0 };
+            dailyEngine[dayKey].engineOn += dt;
+            if (isMoving) {
+              dailyEngine[dayKey].driving += dt;
+            } else {
+              globalEngineIdleTime += dt;
+              dailyEngine[dayKey].idle += dt;
+            }
+          }
         }
       }
       globalTotalKm += segmentDist;
@@ -672,14 +694,25 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       fuelConsumed = Math.round(totalConsumed * 10) / 10;
     }
 
-    // Build daily fuel summary
-    const dailyFuelSummary = Object.entries(dailyFuel).map(([date, d]) => ({
-      date,
-      startLevel: Math.round(d.first * 10) / 10,
-      endLevel: Math.round(d.last * 10) / 10,
-      consumed: Math.round(d.consumed * 10) / 10,
-      refueled: Math.round(d.refueled * 10) / 10
-    }));
+    // Build daily fuel summary with engine hours
+    const allDays = new Set([...Object.keys(dailyFuel), ...Object.keys(dailyEngine)]);
+    const dailySummary = Array.from(allDays).sort().map(date => {
+      const fuel = dailyFuel[date] || {};
+      const engine = dailyEngine[date] || {};
+      return {
+        date,
+        startLevel: fuel.first ? Math.round(fuel.first * 10) / 10 : null,
+        endLevel: fuel.last ? Math.round(fuel.last * 10) / 10 : null,
+        consumed: fuel.consumed ? Math.round(fuel.consumed * 10) / 10 : 0,
+        refueled: fuel.refueled ? Math.round(fuel.refueled * 10) / 10 : 0,
+        engineOn: Math.round(engine.engineOn || 0),
+        driving: Math.round(engine.driving || 0),
+        idle: Math.round(engine.idle || 0)
+      };
+    });
+
+    // Average fuel consumption (L/100km)
+    const avgConsumption = (fuelConsumed && globalTotalKm > 1) ? Math.round((fuelConsumed / globalTotalKm) * 100 * 10) / 10 : null;
 
     const summary = {
       totalKm: Math.round(globalTotalKm * 100) / 100,
@@ -690,10 +723,13 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       maxSpeed: globalMaxSpeed,
       stops: globalStops,
       fuelConsumed,
+      avgConsumption,
       fuelStartLevel: firstFuelLevel !== null ? Math.round(firstFuelLevel * 10) / 10 : null,
       fuelEndLevel: lastFuelLevel !== null ? Math.round(lastFuelLevel * 10) / 10 : null,
       totalRefueled: totalRefueled > 0 ? Math.round(totalRefueled * 10) / 10 : null,
-      dailyFuel: dailyFuelSummary,
+      engineOnTime: Math.round(globalEngineOnTime),
+      engineIdleTime: Math.round(globalEngineIdleTime),
+      dailyFuel: dailySummary,
       routeCount: routes.length
     };
 

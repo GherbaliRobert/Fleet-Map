@@ -1658,13 +1658,16 @@
           <div class="report-stat"><div class="report-stat-value" id="rs-stopped">0</div><div class="report-stat-label">Timp stationare</div></div>
           <div class="report-stat"><div class="report-stat-value" id="rs-stops">0</div><div class="report-stat-label">Opriri</div></div>
           <div class="report-stat"><div class="report-stat-value" id="rs-fuel">-</div><div class="report-stat-label">Consum</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-avg-cons">-</div><div class="report-stat-label">Consum mediu</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-engine-on">-</div><div class="report-stat-label">Motor pornit</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="rs-engine-idle">-</div><div class="report-stat-label">Stationare motor</div></div>
         </div>
       </div>
 
       <!-- Tabel consum zilnic -->
       <div id="report-fuel-daily" style="display:none;margin-bottom:16px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
-          <i class="fas fa-gas-pump" style="color:var(--orange);margin-right:6px;"></i>Consum zilnic
+          <i class="fas fa-gas-pump" style="color:var(--orange);margin-right:6px;"></i>Detalii zilnice
         </div>
         <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">
           <table id="report-fuel-table" style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -1675,6 +1678,9 @@
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Nivel sfarsit</th>
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Consum</th>
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Alimentare</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Motor pornit</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Condus</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);">Stationare</th>
               </tr>
             </thead>
             <tbody id="report-fuel-body"></tbody>
@@ -3325,20 +3331,26 @@
       document.getElementById('rs-stopped').textContent = formatDuration(s.stoppedTime);
       document.getElementById('rs-stops').textContent = s.stops;
       document.getElementById('rs-fuel').textContent = s.fuelConsumed !== null ? s.fuelConsumed + ' L' : '-';
+      document.getElementById('rs-avg-cons').textContent = s.avgConsumption !== null ? s.avgConsumption + ' L/100km' : '-';
+      document.getElementById('rs-engine-on').textContent = s.engineOnTime ? formatDuration(s.engineOnTime) : '-';
+      document.getElementById('rs-engine-idle').textContent = s.engineIdleTime ? formatDuration(s.engineIdleTime) : '-';
       document.getElementById('report-summary').style.display = 'block';
 
       // Daily fuel table
       const fuelDiv = document.getElementById('report-fuel-daily');
       const fuelBody = document.getElementById('report-fuel-body');
-      if (s.dailyFuel && s.dailyFuel.length > 0 && s.dailyFuel.some(function(d) { return d.consumed > 0 || d.startLevel > 0; })) {
+      if (s.dailyFuel && s.dailyFuel.length > 0 && s.dailyFuel.some(function(d) { return d.consumed > 0 || d.startLevel > 0 || d.engineOn > 0; })) {
         fuelBody.innerHTML = s.dailyFuel.map(function(d) {
           const date = new Date(d.date + 'T00:00:00').toLocaleDateString('ro-RO', { day:'2-digit', month:'short', year:'numeric' });
           return '<tr>' +
             '<td style="padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + date + '</td>' +
-            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + d.startLevel + ' L</td>' +
-            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + d.endLevel + ' L</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + (d.startLevel !== null ? d.startLevel + ' L' : '-') + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + (d.endLevel !== null ? d.endLevel + ' L' : '-') + '</td>' +
             '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--orange);font-weight:700;">' + (d.consumed > 0 ? d.consumed + ' L' : '-') + '</td>' +
             '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--green);">' + (d.refueled > 0 ? '+' + d.refueled + ' L' : '-') + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + (d.engineOn > 0 ? formatDuration(d.engineOn) : '-') + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + (d.driving > 0 ? formatDuration(d.driving) : '-') + '</td>' +
+            '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-muted);">' + (d.idle > 0 ? formatDuration(d.idle) : '-') + '</td>' +
           '</tr>';
         }).join('');
         fuelDiv.style.display = 'block';
