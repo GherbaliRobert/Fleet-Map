@@ -3480,7 +3480,7 @@
     // ─── IO Categories & Formatting ───
     const IO_CATEGORIES = {
       'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_vehicle_speed', 'can_engine_rpm', 'can_engine_temp', 'can_engine_load', 'can_accelerator_pedal', 'can_engine_worktime', 'can_engine_worktime_counted', 'can_retarder_load'],
-      'Combustibil': ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_consumed', 'can_fuel_consumed_counted', 'can_fuel_rate', 'can_adblue_level_pct', 'can_adblue_level_liters', 'fuel_used_gps_total', 'fuel_rate_gps'],
+      'Combustibil': ['tank_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_consumed', 'can_fuel_consumed_counted', 'can_fuel_rate', 'can_adblue_level_pct', 'can_adblue_level_liters', 'fuel_used_gps_total', 'fuel_rate_gps'],
       'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_handbrake', 'can_load_weight', 'can_outside_temp'],
       'Sarcina Axe (Camion)': ['can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load', 'can_total_axle_load', 'can_load_factor', 'can_trailer_connected', 'can_trailer_weight'],
       'Specific Camion': ['can_pto_active', 'can_pto_engagement_count', 'can_retarder_load', 'can_engine_oil_temp', 'can_engine_oil_level', 'can_engine_oil_pressure', 'can_intake_air_temp', 'can_coolant_level', 'can_washer_fluid_level'],
@@ -3638,6 +3638,7 @@
       if (key === 'fms_total_mileage') return (value / 1000).toFixed(1) + ' km';
       // Alte
       if (key === 'analog_input_1' || key === 'analog_input_2') return (value / 1000).toFixed(2) + ' V';
+      if (key === 'tank_level_liters') return value.toFixed(1) + ' L (sonda Escort)';
       if (key === 'gnss_pdop' || key === 'gnss_hdop') return (value / 10).toFixed(1);
       if (key === 'gnss_status') return ['OFF', 'ON fara fix', 'ON cu fix'][value] || value;
       if (key === 'sleep_mode') return ['Nu', 'GPS Sleep', 'Deep Sleep', 'Online Sleep'][value] || value;
@@ -3705,6 +3706,10 @@
         '_cf_cruise_control': 'Cruise control',
         '_cf_air_conditioning': 'Aer conditionat',
         '_cf_ready_to_drive': 'Ready to drive',
+        // Sonda combustibil
+        'tank_level_liters': 'Nivel combustibil (sonda)',
+        'analog_input_1': 'Intrare analogica 1',
+        'analog_input_2': 'Intrare analogica 2',
         // CAN
         'can_dtc_errors': 'Erori DTC',
         'can_program_number': 'Program CAN',

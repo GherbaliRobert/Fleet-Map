@@ -8,6 +8,55 @@ const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcryptjs');
 const { parseAvlPacket, convertCanValue, expandCanFlags } = require('./codec8e');
+
+// Cache pentru calibrare sonda combustibil per vehicul (voltage -> liters)
+const tankCalibrationCache = new Map(); // imei -> calibration array
+const tankCalibrationTimestamp = new Map(); // imei -> timestamp ultimei incarcari
+const TANK_CAL_TTL = 60000; // 1 minut
+
+async function getTankCalibration(imei) {
+  const now = Date.now();
+  const lastLoad = tankCalibrationTimestamp.get(imei) || 0;
+  if (now - lastLoad < TANK_CAL_TTL && tankCalibrationCache.has(imei)) {
+    return tankCalibrationCache.get(imei);
+  }
+  try {
+    const result = await db.pool.query('SELECT tank_calibration FROM devices WHERE imei = $1', [imei]);
+    if (result.rows.length > 0 && result.rows[0].tank_calibration) {
+      const cal = typeof result.rows[0].tank_calibration === 'string'
+        ? JSON.parse(result.rows[0].tank_calibration)
+        : result.rows[0].tank_calibration;
+      tankCalibrationCache.set(imei, cal);
+      tankCalibrationTimestamp.set(imei, now);
+      return cal;
+    }
+  } catch (e) { /* skip */ }
+  tankCalibrationCache.set(imei, null);
+  tankCalibrationTimestamp.set(imei, now);
+  return null;
+}
+
+// Interpoleaza liniar voltaj -> litri folosind calibrare
+function voltageToLiters(voltageMv, calibration) {
+  if (!calibration || !Array.isArray(calibration) || calibration.length < 2) return null;
+  const voltageV = voltageMv / 1000;
+  // Sort calibration by voltage ascending
+  const sorted = [...calibration].sort((a, b) => a.voltage - b.voltage);
+  // Below first point
+  if (voltageV <= sorted[0].voltage) return 0;
+  // Above last point
+  if (voltageV >= sorted[sorted.length - 1].voltage) return sorted[sorted.length - 1].liters;
+  // Linear interpolation between two points
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const p1 = sorted[i];
+    const p2 = sorted[i + 1];
+    if (voltageV >= p1.voltage && voltageV <= p2.voltage) {
+      const ratio = (voltageV - p1.voltage) / (p2.voltage - p1.voltage);
+      return Math.round((p1.liters + ratio * (p2.liters - p1.liters)) * 10) / 10;
+    }
+  }
+  return null;
+}
 const db = require('./db');
 
 // ─── Configurare ───
@@ -110,6 +159,8 @@ const tcpServer = net.createServer((socket) => {
       });
 
       // Aplica conversii CAN (liters*10 -> liters, °C*10 -> °C, etc.)
+      // si calculeaza nivelul de combustibil din sonda Escort (AIN1)
+      const tankCal = await getTankCalibration(imei);
       for (const record of parsed.records) {
         if (record.io) {
           for (const key of Object.keys(record.io)) {
@@ -119,6 +170,14 @@ const tcpServer = net.createServer((socket) => {
           }
           // Decodifica flag-urile CAN in parametri individuali
           expandCanFlags(record.io);
+
+          // Conversie AIN1 -> litri combustibil din sonda Escort TD-150
+          if (tankCal && record.io.analog_input_1 !== undefined) {
+            const liters = voltageToLiters(record.io.analog_input_1, tankCal);
+            if (liters !== null) {
+              record.io.tank_level_liters = liters;
+            }
+          }
         }
       }
 
@@ -423,6 +482,9 @@ app.put('/api/devices/:imei/truck-config', requireAuth, async (req, res) => {
 app.put('/api/devices/:imei/tank-calibration', requireAuth, async (req, res) => {
   try {
     await db.updateTankCalibration(req.params.imei, req.body.calibration);
+    // Invalida cache-ul ca sa se reincarce imediat
+    tankCalibrationCache.delete(req.params.imei);
+    tankCalibrationTimestamp.delete(req.params.imei);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1018,7 +1080,10 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
 
     for (const row of history) {
       const io = row.io_data || {};
-      const fuelLevel = io.can_fuel_level_liters;
+      // Prefer sonda Escort daca e calibrata, altfel CAN fuel level
+      const fuelLevel = (io.tank_level_liters !== undefined && io.tank_level_liters > 0)
+        ? io.tank_level_liters
+        : io.can_fuel_level_liters;
 
       if (fuelLevel !== undefined && fuelLevel !== null && fuelLevel > 0) {
         hasFuelData = true;
