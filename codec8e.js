@@ -279,6 +279,11 @@ function getIoName(id) {
     190: 'can_engine_oil_temp',         // °C * 10 (signed) - oil temperature
     191: 'can_outside_temp',            // °C * 10 (signed)
     192: 'can_distance_to_service',     // km
+    // Service parameters (new CAN adapter IDs)
+    858: 'can_service_distance',        // km to next service
+    859: 'can_service_time_to_due',     // days until next service
+    860: 'can_service_time_from_last',  // days since last service
+    861: 'can_service_distance_since',  // km since last service
     193: 'can_pto_active',              // 0/1 - Power Take Off active
     194: 'can_pto_engagement_count',    // counter
     195: 'can_brake_pad_axle1',         // % wear

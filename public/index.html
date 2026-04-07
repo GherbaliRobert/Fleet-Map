@@ -2211,7 +2211,9 @@
       const isMoving = speed > 0;
       const ignition = io?.ignition ? 'ON' : 'OFF';
       const voltage = io?.external_voltage ? (io.external_voltage / 1000).toFixed(1) + 'V' : '-';
-      const fuel = io?.can_fuel_level_liters !== undefined ? io.can_fuel_level_liters.toFixed(1) + 'L' : (io?.can_fuel_level_pct !== undefined ? io.can_fuel_level_pct + '%' : '-');
+      const fuel = (io?.tank_level_liters !== undefined && io.tank_level_liters !== null) ? io.tank_level_liters.toFixed(1) + 'L' :
+                   (io?.can_fuel_level_liters !== undefined && io.can_fuel_level_liters > 0) ? io.can_fuel_level_liters.toFixed(1) + 'L' :
+                   (io?.can_fuel_level_pct !== undefined) ? io.can_fuel_level_pct + '%' : '-';
       const rpm = io?.can_engine_rpm !== undefined ? io.can_engine_rpm : '-';
       const sats = data.satellites || '-';
 
@@ -2581,7 +2583,22 @@
       const gpsInfo = getGpsSignalInfo(sats);
       const engineHours = io.can_engine_worktime ? Math.floor(io.can_engine_worktime / 60) + 'h' : (io.can_engine_worktime_counted ? Math.floor(io.can_engine_worktime_counted / 60) + 'h' : '-');
       const odometer = io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : (io.can_total_mileage !== undefined ? io.can_total_mileage.toFixed(1) + ' km' : '-');
-      const fuelLevel = io.can_fuel_level_liters !== undefined ? io.can_fuel_level_liters.toFixed(1) + ' L' : (io.can_fuel_level_pct !== undefined ? io.can_fuel_level_pct + '%' : '-');
+      // Fuel level - prefer sonda Escort, fallback la CAN
+      let fuelLevel = '-';
+      let fuelLevelNum = null;
+      let fuelSource = '';
+      if (io.tank_level_liters !== undefined && io.tank_level_liters !== null) {
+        fuelLevelNum = io.tank_level_liters;
+        fuelLevel = io.tank_level_liters.toFixed(1) + ' L';
+        fuelSource = ' (sonda)';
+      } else if (io.can_fuel_level_liters !== undefined && io.can_fuel_level_liters > 0) {
+        fuelLevelNum = io.can_fuel_level_liters;
+        fuelLevel = io.can_fuel_level_liters.toFixed(1) + ' L';
+        fuelSource = ' (CAN)';
+      } else if (io.can_fuel_level_pct !== undefined) {
+        fuelLevel = io.can_fuel_level_pct + '%';
+        fuelSource = ' (CAN)';
+      }
       const rpm = io.can_engine_rpm !== undefined ? io.can_engine_rpm + ' RPM' : '-';
       const coolant = io.can_engine_temp !== undefined ? io.can_engine_temp.toFixed(1) + '\u00B0C' : '-';
 
@@ -2707,8 +2724,8 @@
         '<div class="info-item">' +
           '<div class="info-item-icon orange"><i class="fas fa-gas-pump"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value ' + (fuelLevel !== '-' && parseInt(fuelLevel) < 15 ? 'red' : '') + '">' + fuelLevel + '</div>' +
-            '<div class="info-item-label">Combustibil</div>' +
+            '<div class="info-item-value ' + (fuelLevelNum !== null && fuelLevelNum < 15 ? 'red' : '') + '">' + fuelLevel + '</div>' +
+            '<div class="info-item-label">Combustibil' + fuelSource + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="info-item">' +
@@ -3574,7 +3591,7 @@
       'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_handbrake', 'can_load_weight', 'can_outside_temp'],
       'Sarcina Axe (Camion)': ['can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load', 'can_total_axle_load', 'can_load_factor', 'can_trailer_connected', 'can_trailer_weight'],
       'Specific Camion': ['can_pto_active', 'can_pto_engagement_count', 'can_retarder_load', 'can_engine_oil_temp', 'can_engine_oil_level', 'can_engine_oil_pressure', 'can_intake_air_temp', 'can_coolant_level', 'can_washer_fluid_level'],
-      'Mentenanta Camion': ['can_distance_to_service', 'can_brake_pad_axle1', 'can_brake_pad_axle2', 'can_brake_pad_axle3', 'can_brake_pad_axle4', 'can_dtc_errors'],
+      'Mentenanta Camion': ['can_distance_to_service', 'can_service_distance', 'can_service_time_to_due', 'can_service_time_from_last', 'can_service_distance_since', 'can_brake_pad_axle1', 'can_brake_pad_axle2', 'can_brake_pad_axle3', 'can_brake_pad_axle4', 'can_dtc_errors'],
       'Tahograf': ['can_tacho_distance', 'can_tacho_speed', 'can_tacho_overspeed', 'can_tacho_driver1_card', 'can_tacho_driver2_card', 'can_tacho_driver1_drive_time', 'can_tacho_driver2_drive_time', 'can_tacho_driver1_break_time', 'can_tacho_driver2_break_time', 'can_tacho_driver1_continuous', 'can_tacho_driver2_continuous'],
       'AdBlue': ['can_adblue_level_pct', 'can_adblue_level_liters'],
       'Identificare': ['can_vin'],
@@ -3665,10 +3682,18 @@
       if (key === 'can_engine_oil_level' || key === 'can_coolant_level' || key === 'can_washer_fluid_level') return value + ' %';
       if (key === 'can_engine_oil_pressure') return value + ' kPa';
       // Camion - Mentenanta
-      if (key === 'can_distance_to_service') {
+      if (key === 'can_distance_to_service' || key === 'can_service_distance' || key === 'can_service_distance_since') {
         if (value <= 0) return '⚠ EXPIRAT (' + Math.abs(value) + ' km)';
         if (value < 1000) return '⚠ ' + value + ' km';
         return value + ' km';
+      }
+      if (key === 'can_service_time_to_due') {
+        if (value <= 0) return '⚠ EXPIRAT';
+        if (value < 30) return '⚠ ' + value + ' zile';
+        return value + ' zile (~' + Math.round(value/30) + ' luni)';
+      }
+      if (key === 'can_service_time_from_last') {
+        return value + ' zile (~' + Math.round(value/30) + ' luni)';
       }
       if (key.match(/^can_brake_pad_axle[1-4]$/)) {
         if (value < 20) return '⚠ ' + value + ' %';
@@ -3830,6 +3855,10 @@
         'can_washer_fluid_level': 'Lichid spalare',
         // Camion - Mentenanta
         'can_distance_to_service': 'Distanta la revizie',
+        'can_service_distance': 'Km pana la revizie',
+        'can_service_time_to_due': 'Zile pana la revizie',
+        'can_service_time_from_last': 'Zile de la ultima revizie',
+        'can_service_distance_since': 'Km de la ultima revizie',
         'can_brake_pad_axle1': 'Placute frana axa 1',
         'can_brake_pad_axle2': 'Placute frana axa 2',
         'can_brake_pad_axle3': 'Placute frana axa 3',
