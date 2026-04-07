@@ -822,17 +822,21 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
       }
     }
 
-    // Fuel consumption from CAN fuel level (tank level difference)
+    // Fuel consumption: folosim formula simpla (start - end + alimentari)
+    // pentru a evita zgomotul senzorului CAN (care oscileaza +/- 0.5L)
     let fuelConsumed = null;
-    let prevFuelLevel = null;
-    let totalConsumed = 0;
     let totalRefueled = 0;
     let hasFuelData = false;
     let firstFuelLevel = null;
     let lastFuelLevel = null;
 
-    // Daily fuel breakdown
+    // Daily fuel breakdown (per day)
     const dailyFuel = {};
+    const REFUEL_THRESHOLD = 5; // L - orice crestere brusca >5L e considerata alimentare
+
+    // Helper: smooth readings by taking a rolling window minimum to filter noise
+    // But pentru calcul corect folosim direct primele/ultimele citiri + detectare alimentari
+    let prevLevel = null;
 
     for (const row of history) {
       const io = row.io_data || {};
@@ -845,30 +849,32 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
 
         const dayKey = new Date(row.timestamp).toISOString().slice(0, 10);
         if (!dailyFuel[dayKey]) {
-          dailyFuel[dayKey] = { first: fuelLevel, last: fuelLevel, consumed: 0, refueled: 0, prev: fuelLevel };
+          dailyFuel[dayKey] = { first: fuelLevel, last: fuelLevel, refueled: 0 };
         }
+        dailyFuel[dayKey].last = fuelLevel;
 
-        const dayData = dailyFuel[dayKey];
-        dayData.last = fuelLevel;
-
-        if (prevFuelLevel !== null) {
-          const diff = prevFuelLevel - fuelLevel;
-          if (diff > 0.5) {
-            // Fuel dropped = consumption
-            totalConsumed += diff;
-            dayData.consumed += diff;
-          } else if (diff < -2) {
-            // Fuel increased significantly = refuel
-            totalRefueled += Math.abs(diff);
-            dayData.refueled += Math.abs(diff);
+        // Detect refuel events (fuel level jump > threshold)
+        if (prevLevel !== null) {
+          const increase = fuelLevel - prevLevel;
+          if (increase > REFUEL_THRESHOLD) {
+            totalRefueled += increase;
+            dailyFuel[dayKey].refueled += increase;
           }
         }
-        prevFuelLevel = fuelLevel;
+        prevLevel = fuelLevel;
       }
     }
 
-    if (hasFuelData) {
-      fuelConsumed = Math.round(totalConsumed * 10) / 10;
+    if (hasFuelData && firstFuelLevel !== null && lastFuelLevel !== null) {
+      // Consum total = start - end + alimentari (daca nu s-a alimentat, e direct diferenta)
+      const consumed = firstFuelLevel - lastFuelLevel + totalRefueled;
+      fuelConsumed = Math.max(0, Math.round(consumed * 10) / 10);
+    }
+
+    // Calcul consum per zi folosind aceeasi formula (first - last + refueled)
+    for (const dayKey of Object.keys(dailyFuel)) {
+      const d = dailyFuel[dayKey];
+      d.consumed = Math.max(0, Math.round((d.first - d.last + d.refueled) * 10) / 10);
     }
 
     // Build daily fuel summary with engine hours
@@ -885,7 +891,7 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
         date,
         startLevel: fuel.first ? Math.round(fuel.first * 10) / 10 : null,
         endLevel: fuel.last ? Math.round(fuel.last * 10) / 10 : null,
-        consumed: fuel.consumed ? Math.round(fuel.consumed * 10) / 10 : 0,
+        consumed: fuel.consumed || 0,
         refueled: fuel.refueled ? Math.round(fuel.refueled * 10) / 10 : 0,
         engineOn: Math.round(engine.engineOn || 0),
         driving: Math.round(engine.driving || 0),
