@@ -2913,15 +2913,13 @@
           const ain1 = flatIo.analog_input_1;
           const rate = flatIo.can_fuel_rate;
           const consumed = flatIo.can_fuel_consumed;
-          const adblue = flatIo.can_adblue_level_pct;
-          const adblueL = flatIo.can_adblue_level_liters;
+          const consumedCounted = flatIo.can_fuel_consumed_counted;
           const gpsFuel = flatIo.fuel_used_gps_total;
           const gpsRate = flatIo.fuel_rate_gps;
 
-          // Mark all these as used
+          // Mark all fuel-related keys as used (AdBlue has its own category, NOT marked here)
           ['tank_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_rate',
-           'can_fuel_consumed', 'can_adblue_level_pct', 'can_adblue_level_liters',
-           'fuel_used_gps_total', 'fuel_rate_gps', 'analog_input_1',
+           'can_fuel_consumed', 'fuel_used_gps_total', 'fuel_rate_gps', 'analog_input_1',
            'can_fuel_consumed_counted'].forEach(k => usedKeys.add(k));
 
           const hasTank = tank !== undefined && tank !== null;
@@ -2975,14 +2973,13 @@
               '</div>';
             }
 
-            // Other fuel info (rate, consumed, AdBlue)
+            // Other fuel info (rate, consumed) - AdBlue has its own category
             const extras = [];
             if (rate !== undefined) extras.push({ label: 'Rata consum (CAN)', value: (typeof rate === 'number' ? rate.toFixed(1) : rate) + ' L/h' });
             if (consumed !== undefined) extras.push({ label: 'Consum total (CAN)', value: (typeof consumed === 'number' ? consumed.toFixed(1) : consumed) + ' L' });
+            if (consumedCounted !== undefined && consumedCounted !== consumed) extras.push({ label: 'Consum contorizat', value: (typeof consumedCounted === 'number' ? consumedCounted.toFixed(1) : consumedCounted) + ' L' });
             if (gpsRate !== undefined) extras.push({ label: 'Rata consum GPS', value: (gpsRate/10).toFixed(1) + ' L/h' });
             if (gpsFuel !== undefined) extras.push({ label: 'Consum total GPS', value: (gpsFuel/1000).toFixed(1) + ' L' });
-            if (adblue !== undefined) extras.push({ label: 'AdBlue', value: adblue + ' %' });
-            if (adblueL !== undefined) extras.push({ label: 'AdBlue (L)', value: (typeof adblueL === 'number' ? adblueL.toFixed(1) : adblueL) + ' L' });
 
             extras.forEach(e => {
               fuelHtml += '<div class="io-row"><span class="io-label">' + e.label + '</span><span class="io-value">' + e.value + '</span></div>';
