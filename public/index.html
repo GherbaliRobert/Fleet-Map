@@ -2888,6 +2888,95 @@
       const maxConstruct = dev && dev.max_weight_construct ? dev.max_weight_construct : null;
 
       for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
+        // Special renderer for Combustibil - show both sources side by side with analog input as secondary info
+        if (category === 'Combustibil') {
+          const tank = flatIo.tank_level_liters;
+          const canFuel = flatIo.can_fuel_level_liters;
+          const canFuelPct = flatIo.can_fuel_level_pct;
+          const ain1 = flatIo.analog_input_1;
+          const rate = flatIo.can_fuel_rate;
+          const consumed = flatIo.can_fuel_consumed;
+          const adblue = flatIo.can_adblue_level_pct;
+          const adblueL = flatIo.can_adblue_level_liters;
+          const gpsFuel = flatIo.fuel_used_gps_total;
+          const gpsRate = flatIo.fuel_rate_gps;
+
+          // Mark all these as used
+          ['tank_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_rate',
+           'can_fuel_consumed', 'can_adblue_level_pct', 'can_adblue_level_liters',
+           'fuel_used_gps_total', 'fuel_rate_gps', 'analog_input_1',
+           'can_fuel_consumed_counted'].forEach(k => usedKeys.add(k));
+
+          const hasTank = tank !== undefined && tank !== null;
+          const hasCan = canFuel !== undefined && canFuel !== null;
+
+          if (hasTank || hasCan || ain1 !== undefined) {
+            let fuelHtml = '<div class="io-section"><div class="io-section-title"><i class="fas fa-gas-pump"></i> Combustibil</div>';
+
+            // Dual display: sonda + CAN side by side
+            if (hasTank && hasCan) {
+              const diff = Math.abs(tank - canFuel);
+              const diffPct = canFuel > 0 ? Math.round((diff / canFuel) * 100) : 0;
+              const diffColor = diffPct < 5 ? 'var(--green)' : (diffPct < 15 ? 'var(--orange)' : 'var(--red)');
+
+              fuelHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">' +
+                // Sonda card
+                '<div style="padding:12px;background:linear-gradient(135deg, var(--bg-dark), rgba(16,185,129,0.05));border:1px solid var(--green);border-radius:8px;">' +
+                  '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-tachometer-alt"></i> Sonda Escort</div>' +
+                  '<div style="font-size:20px;font-weight:700;color:var(--green);">' + tank.toFixed(1) + ' L</div>' +
+                  (ain1 !== undefined ? '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + (ain1/1000).toFixed(2) + ' V</div>' : '') +
+                '</div>' +
+                // CAN card
+                '<div style="padding:12px;background:linear-gradient(135deg, var(--bg-dark), rgba(59,130,246,0.05));border:1px solid var(--accent);border-radius:8px;">' +
+                  '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-microchip"></i> CAN Bus</div>' +
+                  '<div style="font-size:20px;font-weight:700;color:var(--accent);">' + canFuel.toFixed(1) + ' L</div>' +
+                  (canFuelPct !== undefined ? '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + canFuelPct + '%</div>' : '') +
+                '</div>' +
+              '</div>';
+
+              // Difference indicator
+              fuelHtml += '<div style="padding:6px 10px;background:var(--bg-dark);border-radius:6px;margin-bottom:6px;font-size:11px;display:flex;justify-content:space-between;">' +
+                '<span style="color:var(--text-muted);">Diferenta sonda ↔ CAN</span>' +
+                '<span style="color:' + diffColor + ';font-weight:700;">' + diff.toFixed(1) + ' L (' + diffPct + '%)</span>' +
+              '</div>';
+            } else if (hasTank) {
+              fuelHtml += '<div style="padding:12px;background:linear-gradient(135deg, var(--bg-dark), rgba(16,185,129,0.05));border:1px solid var(--green);border-radius:8px;margin-bottom:6px;">' +
+                '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-tachometer-alt"></i> Sonda Escort</div>' +
+                '<div style="font-size:22px;font-weight:700;color:var(--green);">' + tank.toFixed(1) + ' L</div>' +
+                (ain1 !== undefined ? '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + (ain1/1000).toFixed(2) + ' V</div>' : '') +
+              '</div>';
+            } else if (hasCan) {
+              fuelHtml += '<div style="padding:12px;background:linear-gradient(135deg, var(--bg-dark), rgba(59,130,246,0.05));border:1px solid var(--accent);border-radius:8px;margin-bottom:6px;">' +
+                '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-microchip"></i> CAN Bus</div>' +
+                '<div style="font-size:22px;font-weight:700;color:var(--accent);">' + canFuel.toFixed(1) + ' L</div>' +
+                (canFuelPct !== undefined ? '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + canFuelPct + '%</div>' : '') +
+              '</div>';
+            } else if (ain1 !== undefined) {
+              fuelHtml += '<div style="padding:10px;background:var(--bg-dark);border-radius:6px;margin-bottom:6px;font-size:11px;color:var(--text-muted);">' +
+                '<i class="fas fa-exclamation-circle" style="color:var(--orange);"></i> ' +
+                'Sonda trimite ' + (ain1/1000).toFixed(2) + ' V pe AIN1 dar nu e calibrata. <strong>Editeaza vehiculul</strong> → tab <strong>Sonda combustibil</strong> pentru a adauga perechi voltaj→litri.' +
+              '</div>';
+            }
+
+            // Other fuel info (rate, consumed, AdBlue)
+            const extras = [];
+            if (rate !== undefined) extras.push({ label: 'Rata consum (CAN)', value: (typeof rate === 'number' ? rate.toFixed(1) : rate) + ' L/h' });
+            if (consumed !== undefined) extras.push({ label: 'Consum total (CAN)', value: (typeof consumed === 'number' ? consumed.toFixed(1) : consumed) + ' L' });
+            if (gpsRate !== undefined) extras.push({ label: 'Rata consum GPS', value: (gpsRate/10).toFixed(1) + ' L/h' });
+            if (gpsFuel !== undefined) extras.push({ label: 'Consum total GPS', value: (gpsFuel/1000).toFixed(1) + ' L' });
+            if (adblue !== undefined) extras.push({ label: 'AdBlue', value: adblue + ' %' });
+            if (adblueL !== undefined) extras.push({ label: 'AdBlue (L)', value: (typeof adblueL === 'number' ? adblueL.toFixed(1) : adblueL) + ' L' });
+
+            extras.forEach(e => {
+              fuelHtml += '<div class="io-row"><span class="io-label">' + e.label + '</span><span class="io-value">' + e.value + '</span></div>';
+            });
+
+            fuelHtml += '</div>';
+            html += fuelHtml;
+          }
+          continue;
+        }
+
         // Special renderer for axle loads
         if (category === 'Sarcina Axe (Camion)') {
           const axleRows = [];
@@ -2904,7 +2993,8 @@
               const pct = limit ? Math.min(100, Math.round((kg / limit) * 100)) : 0;
               const barColor = pct < 70 ? '#10b981' : (pct < 90 ? '#f59e0b' : (pct < 100 ? '#f97316' : '#ef4444'));
               const warnIcon = pct >= 100 ? '<i class="fas fa-exclamation-triangle" style="color:#ef4444;margin-right:4px;"></i>' : '';
-              const labelText = 'Axa ' + n + (n <= 2 ? ' (fata)' : n <= 4 ? ' (spate)' : '');
+              const axleTypes = { 1: 'directoare', 2: 'directoare', 3: 'motoare', 4: 'motoare', 5: 'remorca' };
+              const labelText = 'Axa ' + n + ' (' + (axleTypes[n] || 'alta') + ')';
               const valueText = (kg / 1000).toFixed(2) + ' t' + (limit ? ' / ' + (limit/1000).toFixed(1) + ' t' : '');
               axleRows.push(
                 '<div style="padding:8px 10px;background:var(--bg-dark);border-radius:6px;margin-bottom:4px;">' +
@@ -3638,7 +3728,7 @@
       if (key === 'fms_total_mileage') return (value / 1000).toFixed(1) + ' km';
       // Alte
       if (key === 'analog_input_1' || key === 'analog_input_2') return (value / 1000).toFixed(2) + ' V';
-      if (key === 'tank_level_liters') return value.toFixed(1) + ' L (sonda Escort)';
+      if (key === 'tank_level_liters') return (typeof value === 'number' ? value.toFixed(1) : value) + ' L';
       if (key === 'gnss_pdop' || key === 'gnss_hdop') return (value / 10).toFixed(1);
       if (key === 'gnss_status') return ['OFF', 'ON fara fix', 'ON cu fix'][value] || value;
       if (key === 'sleep_mode') return ['Nu', 'GPS Sleep', 'Deep Sleep', 'Online Sleep'][value] || value;
@@ -3707,19 +3797,21 @@
         '_cf_air_conditioning': 'Aer conditionat',
         '_cf_ready_to_drive': 'Ready to drive',
         // Sonda combustibil
-        'tank_level_liters': 'Nivel combustibil (sonda)',
-        'analog_input_1': 'Intrare analogica 1',
-        'analog_input_2': 'Intrare analogica 2',
+        'tank_level_liters': '⛽ Sonda Escort',
+        'can_fuel_level_liters': '⛽ CAN Bus',
+        'can_fuel_level_pct': '⛽ CAN Bus (%)',
+        'analog_input_1': 'AIN1 (sonda voltaj)',
+        'analog_input_2': 'AIN2',
         // CAN
         'can_dtc_errors': 'Erori DTC',
         'can_program_number': 'Program CAN',
         'can_module_id': 'Modul ID',
-        // Camion - Axe
-        'can_axle1_load': 'Axa 1 (fata)',
-        'can_axle2_load': 'Axa 2 (fata)',
+        // Camion - Axe (8x4 = 2 directoare fata + 2 motoare spate)
+        'can_axle1_load': 'Axa 1 (directoare)',
+        'can_axle2_load': 'Axa 2 (directoare)',
         'can_axle3_load': 'Axa 3 (motoare)',
         'can_axle4_load': 'Axa 4 (motoare)',
-        'can_axle5_load': 'Axa 5',
+        'can_axle5_load': 'Axa 5 (remorca)',
         'can_total_axle_load': 'Total sarcina axe',
         'can_load_weight': 'Greutate totala',
         'can_load_factor': 'Procent capacitate',
