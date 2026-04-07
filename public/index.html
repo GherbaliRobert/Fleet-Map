@@ -2670,6 +2670,12 @@
         'Motor / Vehicul': 'fa-cog',
         'Combustibil': 'fa-gas-pump',
         'Vehicul': 'fa-car',
+        'Sarcina Axe (Camion)': 'fa-weight-hanging',
+        'Specific Camion': 'fa-truck-moving',
+        'Mentenanta Camion': 'fa-tools',
+        'Tahograf': 'fa-id-card',
+        'AdBlue': 'fa-tint',
+        'Identificare': 'fa-fingerprint',
         'Usi (detaliat)': 'fa-door-open',
         'Contact / Motor': 'fa-key',
         'Transmisie': 'fa-sliders-h',
@@ -3120,7 +3126,13 @@
     const IO_CATEGORIES = {
       'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_vehicle_speed', 'can_engine_rpm', 'can_engine_temp', 'can_engine_load', 'can_accelerator_pedal', 'can_engine_worktime', 'can_engine_worktime_counted', 'can_retarder_load'],
       'Combustibil': ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_consumed', 'can_fuel_consumed_counted', 'can_fuel_rate', 'can_adblue_level_pct', 'can_adblue_level_liters', 'fuel_used_gps_total', 'fuel_rate_gps'],
-      'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_handbrake', 'can_load_weight', 'can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load'],
+      'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_handbrake', 'can_load_weight', 'can_outside_temp'],
+      'Sarcina Axe (Camion)': ['can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load', 'can_total_axle_load', 'can_load_factor', 'can_trailer_connected', 'can_trailer_weight'],
+      'Specific Camion': ['can_pto_active', 'can_pto_engagement_count', 'can_retarder_load', 'can_engine_oil_temp', 'can_engine_oil_level', 'can_engine_oil_pressure', 'can_intake_air_temp', 'can_coolant_level', 'can_washer_fluid_level'],
+      'Mentenanta Camion': ['can_distance_to_service', 'can_brake_pad_axle1', 'can_brake_pad_axle2', 'can_brake_pad_axle3', 'can_brake_pad_axle4', 'can_dtc_errors'],
+      'Tahograf': ['can_tacho_distance', 'can_tacho_speed', 'can_tacho_overspeed', 'can_tacho_driver1_card', 'can_tacho_driver2_card', 'can_tacho_driver1_drive_time', 'can_tacho_driver2_drive_time', 'can_tacho_driver1_break_time', 'can_tacho_driver2_break_time', 'can_tacho_driver1_continuous', 'can_tacho_driver2_continuous'],
+      'AdBlue': ['can_adblue_level_pct', 'can_adblue_level_liters'],
+      'Identificare': ['can_vin'],
       'Usi (detaliat)': ['_sf_door_front_left', '_sf_door_front_right', '_sf_door_rear_left', '_sf_door_rear_right', '_sf_hood_open', '_sf_trunk_open', '_sf_roof_open'],
       'Contact / Motor': ['_sf_key_in_ignition', '_sf_ignition_on', '_sf_engine_working', '_sf_webasto', '_sf_car_closed', '_sf_closed_by_remote'],
       'Transmisie': ['_sf_parking', '_sf_neutral', '_sf_drive', '_sf_reverse', '_sf_handbrake', '_sf_footbrake'],
@@ -3193,6 +3205,38 @@
       // Baterie
       if (key === 'can_battery_temp') return value.toFixed ? value.toFixed(1) + ' \u00B0C' : value + ' \u00B0C';
       if (key === 'can_battery_level_pct' || key === 'can_battery_soc') return value + ' %';
+      // Camion - Sarcina axe
+      if (key.match(/^can_axle[1-5]_load$/) || key === 'can_total_axle_load' || key === 'can_load_weight' || key === 'can_trailer_weight') {
+        return value > 0 ? (value / 1000).toFixed(2) + ' t' : value + ' kg';
+      }
+      if (key === 'can_load_factor') return value + ' %';
+      if (key === 'can_trailer_connected') return value ? 'CONECTATA' : 'NU';
+      // Camion - Specific
+      if (key === 'can_pto_active') return value ? 'ACTIV' : 'OFF';
+      if (key === 'can_pto_engagement_count') return value + 'x';
+      if (key === 'can_engine_oil_temp' || key === 'can_intake_air_temp' || key === 'can_outside_temp') {
+        return (typeof value === 'number' ? value.toFixed(1) : value) + ' \u00B0C';
+      }
+      if (key === 'can_engine_oil_level' || key === 'can_coolant_level' || key === 'can_washer_fluid_level') return value + ' %';
+      if (key === 'can_engine_oil_pressure') return value + ' kPa';
+      // Camion - Mentenanta
+      if (key === 'can_distance_to_service') {
+        if (value <= 0) return '⚠ EXPIRAT (' + Math.abs(value) + ' km)';
+        if (value < 1000) return '⚠ ' + value + ' km';
+        return value + ' km';
+      }
+      if (key.match(/^can_brake_pad_axle[1-4]$/)) {
+        if (value < 20) return '⚠ ' + value + ' %';
+        return value + ' %';
+      }
+      // Tahograf
+      if (key === 'can_tacho_overspeed') return value ? '⚠ DA' : 'NU';
+      if (key === 'can_tacho_driver1_card' || key === 'can_tacho_driver2_card') return value ? 'INSERATA' : 'LIPSA';
+      if (key.match(/^can_tacho_driver[12]_(drive|break|continuous)_time$/)) {
+        return Math.floor(value/60) + 'h ' + (value%60) + 'm';
+      }
+      // VIN
+      if (key === 'can_vin') return String(value).substring(0, 17);
       // Indicatoare / Flags
       if (key === 'can_handbrake') return value ? 'TRAS' : 'Eliberat';
       if (key === 'can_indicator_left' || key === 'can_indicator_right' || key === 'can_indicator_hazard' || key === 'can_indicator_lights' || key === 'can_security_flag_ext') return value ? 'ON' : 'OFF';
@@ -3310,6 +3354,51 @@
         'can_dtc_errors': 'Erori DTC',
         'can_program_number': 'Program CAN',
         'can_module_id': 'Modul ID',
+        // Camion - Axe
+        'can_axle1_load': 'Axa 1 (fata)',
+        'can_axle2_load': 'Axa 2 (fata)',
+        'can_axle3_load': 'Axa 3 (motoare)',
+        'can_axle4_load': 'Axa 4 (motoare)',
+        'can_axle5_load': 'Axa 5',
+        'can_total_axle_load': 'Total sarcina axe',
+        'can_load_weight': 'Greutate totala',
+        'can_load_factor': 'Procent capacitate',
+        'can_trailer_connected': 'Remorca',
+        'can_trailer_weight': 'Greutate remorca',
+        // Camion - Specific
+        'can_pto_active': 'PTO (priza putere)',
+        'can_pto_engagement_count': 'Activari PTO',
+        'can_retarder_load': 'Retarder',
+        'can_engine_oil_temp': 'Temp. ulei motor',
+        'can_engine_oil_level': 'Nivel ulei motor',
+        'can_engine_oil_pressure': 'Presiune ulei',
+        'can_intake_air_temp': 'Temp. aer admisie',
+        'can_outside_temp': 'Temp. exterioara',
+        'can_coolant_level': 'Nivel lichid racire',
+        'can_washer_fluid_level': 'Lichid spalare',
+        // Camion - Mentenanta
+        'can_distance_to_service': 'Distanta la revizie',
+        'can_brake_pad_axle1': 'Placute frana axa 1',
+        'can_brake_pad_axle2': 'Placute frana axa 2',
+        'can_brake_pad_axle3': 'Placute frana axa 3',
+        'can_brake_pad_axle4': 'Placute frana axa 4',
+        // Tahograf
+        'can_tacho_distance': 'Distanta tahograf',
+        'can_tacho_speed': 'Viteza tahograf',
+        'can_tacho_overspeed': 'Depasire viteza tahograf',
+        'can_tacho_driver1_card': 'Card sofer 1',
+        'can_tacho_driver2_card': 'Card sofer 2',
+        'can_tacho_driver1_drive_time': 'Timp condus sofer 1',
+        'can_tacho_driver2_drive_time': 'Timp condus sofer 2',
+        'can_tacho_driver1_break_time': 'Pauza sofer 1',
+        'can_tacho_driver2_break_time': 'Pauza sofer 2',
+        'can_tacho_driver1_continuous': 'Condus continuu sofer 1',
+        'can_tacho_driver2_continuous': 'Condus continuu sofer 2',
+        // AdBlue
+        'can_adblue_level_pct': 'AdBlue (%)',
+        'can_adblue_level_liters': 'AdBlue (litri)',
+        // VIN
+        'can_vin': 'Numar VIN',
       };
       if (labels[key]) return labels[key];
       return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

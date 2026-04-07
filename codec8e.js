@@ -272,8 +272,45 @@ function getIoName(id) {
     151: 'can_battery_temp',            // °C * 10 (signed)
     152: 'can_battery_level_pct',       // %
     160: 'can_dtc_errors',              // fault count
-    187: 'can_load_weight',             // kg
+    187: 'can_load_weight',             // kg (gross combined vehicle weight)
     188: 'can_retarder_load',           // % (0-125)
+    // MAN TGS / Camioane specifice (LV-CAN200/ALL-CAN300 truck params)
+    189: 'can_intake_air_temp',         // °C * 10 (signed) - intake air temperature
+    190: 'can_engine_oil_temp',         // °C * 10 (signed) - oil temperature
+    191: 'can_outside_temp',            // °C * 10 (signed)
+    192: 'can_distance_to_service',     // km
+    193: 'can_pto_active',              // 0/1 - Power Take Off active
+    194: 'can_pto_engagement_count',    // counter
+    195: 'can_brake_pad_axle1',         // % wear
+    196: 'can_brake_pad_axle2',         // % wear
+    197: 'can_brake_pad_axle3',         // % wear
+    198: 'can_brake_pad_axle4',         // % wear
+    199: 'trip_odometer',               // already mapped above (system)
+    202: 'can_engine_oil_level',        // %
+    203: 'can_engine_oil_pressure',     // kPa
+    204: 'can_coolant_level',           // %
+    205: 'can_washer_fluid_level',      // %
+    // FMS Tachograph data (Camioane EU)
+    206: 'can_tacho_driver1_state',     // bitmask
+    207: 'can_tacho_driver2_state',     // bitmask
+    208: 'can_tacho_driver1_card',      // boolean
+    209: 'can_tacho_driver2_card',      // boolean
+    210: 'can_tacho_overspeed',         // boolean
+    211: 'can_tacho_driver1_drive_time', // minutes
+    212: 'can_tacho_driver2_drive_time', // minutes
+    213: 'can_tacho_driver1_break_time', // minutes
+    214: 'can_tacho_driver2_break_time', // minutes
+    215: 'can_tacho_driver1_continuous', // minutes
+    216: 'can_tacho_driver2_continuous', // minutes
+    // Truck VIN si identificare
+    217: 'can_vin',                     // string (VIN number)
+    218: 'can_engine_total_fuel_used', // liters * 100 (lifetime)
+    219: 'can_total_engine_revolutions',
+    // Sarcina si transport
+    220: 'can_total_axle_load',         // kg (sum)
+    221: 'can_load_factor',             // % capacity
+    222: 'can_trailer_connected',       // 0/1
+    223: 'can_trailer_weight',          // kg
     // System IO
     232: 'can_battery_soc',             // % (EV battery state of charge)
     235: 'can_odo_high_res',            // high resolution odometer
@@ -321,6 +358,12 @@ function convertCanValue(name, rawValue) {
     case 'can_total_mileage_counted':   return rawValue / 1000;      // km
     case 'can_tacho_distance':          return rawValue / 1000;      // km
     case 'can_trip_distance':           return rawValue / 1000;      // km
+    // Truck-specific conversions
+    case 'can_intake_air_temp':         return rawValue > 32767 ? (rawValue - 65536) / 10 : rawValue / 10;
+    case 'can_engine_oil_temp':         return rawValue > 32767 ? (rawValue - 65536) / 10 : rawValue / 10;
+    case 'can_outside_temp':            return rawValue > 32767 ? (rawValue - 65536) / 10 : rawValue / 10;
+    case 'can_engine_total_fuel_used':  return rawValue / 100;       // liters
+    case 'can_distance_to_service':     return rawValue;             // km already
     default:                            return rawValue;
   }
 }

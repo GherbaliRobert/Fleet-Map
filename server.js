@@ -151,6 +151,9 @@ const tcpServer = net.createServer((socket) => {
         evaluateAlerts(imei, liveData).catch(err => {
           console.error(`[ALERTS] Eroare evaluare alerte pentru ${imei}: ${err.message}`);
         });
+
+        // Track tare automat pentru camioane
+        trackTareCandidate(imei, lastRecord.io || {}).catch(() => {});
       }
 
       // Răspunde cu numărul de recorduri acceptate (4 bytes)
@@ -372,6 +375,37 @@ app.put('/api/devices/:imei', requireAuth, async (req, res) => {
       livePositions.set(imei, pos);
       broadcastWs({ type: 'position', data: pos });
     }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Get full device info (cu config camion)
+app.get('/api/devices/:imei/full', requireAuth, async (req, res) => {
+  try {
+    const device = await db.getDeviceFull(req.params.imei);
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+    res.json(device);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Update truck configuration (tara, limite, costuri)
+app.put('/api/devices/:imei/truck-config', requireAuth, async (req, res) => {
+  try {
+    await db.updateTruckConfig(req.params.imei, req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Update tank calibration (perechi voltage -> liters pentru sonda Escort)
+app.put('/api/devices/:imei/tank-calibration', requireAuth, async (req, res) => {
+  try {
+    await db.updateTankCalibration(req.params.imei, req.body.calibration);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1010,6 +1044,47 @@ app.delete('/api/maintenance/:id', requireAuth, requireAdmin, async (req, res) =
 
 // ─── Export CSV ───
 
+// ─── Detectie automata tara camion ───
+// Tracking ultimele N citiri ale sarcinii totale per vehicul
+const tareSamples = new Map(); // imei -> [{weight, timestamp}, ...]
+const TARE_SAMPLE_LIMIT = 100;
+
+async function trackTareCandidate(imei, ioData) {
+  const a1 = ioData.can_axle1_load || 0;
+  const a2 = ioData.can_axle2_load || 0;
+  const a3 = ioData.can_axle3_load || 0;
+  const a4 = ioData.can_axle4_load || 0;
+  const a5 = ioData.can_axle5_load || 0;
+  const total = a1 + a2 + a3 + a4 + a5 || ioData.can_load_weight || 0;
+  if (total <= 0) return;
+
+  let samples = tareSamples.get(imei) || [];
+  samples.push({ weight: total, timestamp: Date.now() });
+  if (samples.length > TARE_SAMPLE_LIMIT) samples = samples.slice(-TARE_SAMPLE_LIMIT);
+  tareSamples.set(imei, samples);
+
+  // Detectie tara: cea mai mica valoare aparuta de minim 10 ori in ultimele 100 citiri
+  // (vehiculul a fost gol de cel putin 10 ori)
+  if (samples.length >= 30) {
+    const minWeight = Math.min(...samples.map(s => s.weight));
+    const closeToMin = samples.filter(s => Math.abs(s.weight - minWeight) < 200).length;
+
+    if (closeToMin >= 10) {
+      // Update tara automata daca nu e setata sau valoarea noua e mai mica
+      try {
+        const device = await db.getDeviceFull(imei);
+        if (device && (!device.tare_weight || minWeight < device.tare_weight - 500)) {
+          await db.pool.query(
+            'UPDATE devices SET tare_weight = $2 WHERE imei = $1 AND (tare_weight IS NULL OR tare_weight > $2)',
+            [imei, Math.round(minWeight)]
+          );
+          console.log(`[TARE] Auto-detected tare for ${imei}: ${minWeight} kg`);
+        }
+      } catch (e) { /* skip */ }
+    }
+  }
+}
+
 // ─── Evaluare Alerte Automate ───
 const alertCooldowns = new Map(); // key: alertId_imei, value: timestamp
 
@@ -1137,6 +1212,64 @@ async function evaluateAlerts(imei, data) {
           if (cond.maxTemp && io.can_engine_temp && io.can_engine_temp > cond.maxTemp) {
             triggered = true;
             alertData = { temp: io.can_engine_temp, limit: cond.maxTemp };
+          }
+          break;
+
+        case 'overload_legal':
+        case 'overload_construct': {
+          // Calculate total weight from axles
+          const a1 = io.can_axle1_load || 0;
+          const a2 = io.can_axle2_load || 0;
+          const a3 = io.can_axle3_load || 0;
+          const a4 = io.can_axle4_load || 0;
+          const a5 = io.can_axle5_load || 0;
+          const totalKg = a1 + a2 + a3 + a4 + a5 || io.can_load_weight || 0;
+          if (totalKg > 0 && cond.maxKg && totalKg > cond.maxKg) {
+            triggered = true;
+            alertData = { totalKg, limit: cond.maxKg, axles: [a1, a2, a3, a4, a5] };
+          }
+          break;
+        }
+
+        case 'axle_overload': {
+          // Per-axle limit check
+          const axleLimits = cond.axleLimits || {};
+          for (const axleNum of [1, 2, 3, 4, 5]) {
+            const load = io['can_axle' + axleNum + '_load'];
+            const limit = axleLimits['axle' + axleNum];
+            if (load && limit && load > limit) {
+              triggered = true;
+              alertData = { axle: axleNum, load, limit };
+              break;
+            }
+          }
+          break;
+        }
+
+        case 'pto_active':
+          if (io.can_pto_active === 1 || io.can_pto_active === true) {
+            triggered = true;
+            alertData = { event: 'PTO activat' };
+          }
+          break;
+
+        case 'brake_pad_wear': {
+          const minWear = cond.minPercent || 20;
+          for (const axleNum of [1, 2, 3, 4]) {
+            const wear = io['can_brake_pad_axle' + axleNum];
+            if (wear !== undefined && wear < minWear) {
+              triggered = true;
+              alertData = { axle: axleNum, wear, threshold: minWear };
+              break;
+            }
+          }
+          break;
+        }
+
+        case 'service_due':
+          if (io.can_distance_to_service !== undefined && io.can_distance_to_service < (cond.warnKm || 1000)) {
+            triggered = true;
+            alertData = { distanceToService: io.can_distance_to_service, threshold: cond.warnKm || 1000 };
           }
           break;
       }

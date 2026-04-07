@@ -18,6 +18,13 @@ async function initDb() {
         name VARCHAR(100),
         vehicle_type VARCHAR(50),
         plate VARCHAR(20),
+        tare_weight INTEGER,
+        max_weight_legal INTEGER,
+        max_weight_construct INTEGER,
+        max_axle_loads JSONB,
+        tank_calibration JSONB,
+        fuel_price NUMERIC(10,2),
+        cost_per_ton_km NUMERIC(10,2),
         created_at TIMESTAMP DEFAULT NOW(),
         last_seen TIMESTAMP
       )
@@ -187,6 +194,20 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_alert_history_imei ON alert_history (imei, triggered_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_maintenance_imei ON maintenance (imei, status)`);
 
+    // Migrari pentru coloane noi (devices) - adauga coloanele daca nu exista
+    const migrateColumns = [
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS tare_weight INTEGER`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS max_weight_legal INTEGER`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS max_weight_construct INTEGER`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS max_axle_loads JSONB`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS tank_calibration JSONB`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_price NUMERIC(10,2)`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_per_ton_km NUMERIC(10,2)`
+    ];
+    for (const sql of migrateColumns) {
+      try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
+    }
+
     console.log('[DB] Tabele create / verificate');
   } finally {
     client.release();
@@ -204,10 +225,43 @@ async function upsertDevice(imei) {
 
 async function updateDeviceInfo(imei, name, vehicleType, plate) {
   await pool.query(`
-    UPDATE devices 
-    SET name = $2, vehicle_type = $3, plate = $4 
+    UPDATE devices
+    SET name = $2, vehicle_type = $3, plate = $4
     WHERE imei = $1
   `, [imei, name, vehicleType, plate]);
+}
+
+async function updateTruckConfig(imei, config) {
+  await pool.query(`
+    UPDATE devices
+    SET tare_weight = $2,
+        max_weight_legal = $3,
+        max_weight_construct = $4,
+        max_axle_loads = $5,
+        fuel_price = $6,
+        cost_per_ton_km = $7
+    WHERE imei = $1
+  `, [
+    imei,
+    config.tareWeight || null,
+    config.maxWeightLegal || null,
+    config.maxWeightConstruct || null,
+    config.maxAxleLoads ? JSON.stringify(config.maxAxleLoads) : null,
+    config.fuelPrice || null,
+    config.costPerTonKm || null
+  ]);
+}
+
+async function updateTankCalibration(imei, calibration) {
+  await pool.query(
+    'UPDATE devices SET tank_calibration = $2 WHERE imei = $1',
+    [imei, JSON.stringify(calibration)]
+  );
+}
+
+async function getDeviceFull(imei) {
+  const result = await pool.query('SELECT * FROM devices WHERE imei = $1', [imei]);
+  return result.rows[0] || null;
 }
 
 async function insertPositions(imei, records) {
@@ -496,6 +550,9 @@ module.exports = {
   initDb,
   upsertDevice,
   updateDeviceInfo,
+  updateTruckConfig,
+  updateTankCalibration,
+  getDeviceFull,
   insertPositions,
   getDevices,
   getDeviceHistory,
