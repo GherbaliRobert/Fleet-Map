@@ -1503,6 +1503,7 @@
         <button class="detail-action-btn" onclick="showDetailView('info')"><i class="fas fa-info-circle"></i> Info</button>
         <button class="detail-action-btn" onclick="showDetailView('routes')"><i class="fas fa-route"></i> Rute</button>
         <button class="detail-action-btn" onclick="if(detailPanelImei) openReportModal(detailPanelImei)"><i class="fas fa-file-alt"></i> Raport</button>
+        <button class="detail-action-btn" onclick="if(detailPanelImei) openTransportReport(detailPanelImei)"><i class="fas fa-weight-hanging"></i> Transport</button>
       </div>
 
       <div class="detail-content">
@@ -1543,36 +1544,134 @@
 
   <!-- Edit Device Modal -->
   <div id="edit-modal" class="modal-overlay">
-    <div class="modal">
+    <div class="modal" style="width:640px;max-width:95vw;max-height:92vh;">
       <h2>
-        <span><i class="fas fa-pen" style="margin-right:8px;color:var(--orange);"></i> Editare dispozitiv</span>
+        <span><i class="fas fa-pen" style="margin-right:8px;color:var(--orange);"></i> Editare vehicul</span>
         <button class="close-btn" onclick="closeEditModal()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
-      <div class="form-group">
-        <label>IMEI</label>
-        <input type="text" id="edit-imei" disabled style="font-family:monospace;color:var(--text-muted);">
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);">
+        <button class="edit-tab active" data-tab="basic" onclick="switchEditTab('basic', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-primary);font-size:13px;cursor:pointer;border-bottom:2px solid var(--accent);font-weight:600;">
+          <i class="fas fa-info-circle"></i> Informatii
+        </button>
+        <button class="edit-tab" data-tab="truck" onclick="switchEditTab('truck', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
+          <i class="fas fa-truck"></i> Config Camion
+        </button>
+        <button class="edit-tab" data-tab="calibration" onclick="switchEditTab('calibration', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
+          <i class="fas fa-tint"></i> Sonda combustibil
+        </button>
       </div>
-      <div class="form-group">
-        <label>Nume vehicul</label>
-        <input type="text" id="edit-name" placeholder="ex: Dacia Logan #1">
+
+      <!-- Tab: Basic -->
+      <div id="edit-tab-basic" class="edit-tab-content">
+        <div class="form-group">
+          <label>IMEI</label>
+          <input type="text" id="edit-imei" disabled style="font-family:monospace;color:var(--text-muted);">
+        </div>
+        <div class="form-group">
+          <label>Nume vehicul</label>
+          <input type="text" id="edit-name" placeholder="ex: Dacia Logan #1">
+        </div>
+        <div class="form-group">
+          <label>Tip vehicul</label>
+          <select id="edit-vehicle-type">
+            <option value="">-- Selecteaza --</option>
+            <option value="Auto">Auto</option>
+            <option value="Camion">Camion</option>
+            <option value="Duba">Duba</option>
+            <option value="Motocicleta">Motocicleta</option>
+            <option value="Utilaj">Utilaj</option>
+            <option value="Altul">Altul</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Numar inmatriculare</label>
+          <input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="text-transform:uppercase;">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Tip vehicul</label>
-        <select id="edit-vehicle-type">
-          <option value="">-- Selecteaza --</option>
-          <option value="Auto">Auto</option>
-          <option value="Camion">Camion</option>
-          <option value="Duba">Duba</option>
-          <option value="Motocicleta">Motocicleta</option>
-          <option value="Utilaj">Utilaj</option>
-          <option value="Altul">Altul</option>
-        </select>
+
+      <!-- Tab: Truck Config -->
+      <div id="edit-tab-truck" class="edit-tab-content" style="display:none;">
+        <div style="background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);">
+          <i class="fas fa-info-circle" style="color:var(--accent);"></i>
+          Configureaza limitele si tara pentru camioane. Folosit pentru alerte supraincarcare si calcul incarcatura.
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-group">
+            <label>Tara (kg) <span style="color:var(--text-muted);font-size:10px;">auto-detect</span></label>
+            <input type="number" id="edit-tare" placeholder="ex: 18000">
+          </div>
+          <div class="form-group">
+            <label>Limita legala (kg)</label>
+            <input type="number" id="edit-max-legal" placeholder="ex: 32000">
+          </div>
+          <div class="form-group">
+            <label>Limita constructiva (kg)</label>
+            <input type="number" id="edit-max-construct" placeholder="ex: 41000">
+          </div>
+          <div class="form-group">
+            <label>Pret combustibil (RON/L)</label>
+            <input type="number" step="0.01" id="edit-fuel-price" placeholder="ex: 7.85">
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:600;margin:8px 0;color:var(--text-secondary);">
+          <i class="fas fa-weight-hanging" style="color:var(--orange);"></i> Limite per axa (kg)
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;">
+          <div class="form-group">
+            <label style="font-size:10px;">Axa 1</label>
+            <input type="number" id="edit-axle1" placeholder="9000" style="padding:6px;font-size:12px;">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px;">Axa 2</label>
+            <input type="number" id="edit-axle2" placeholder="9000" style="padding:6px;font-size:12px;">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px;">Axa 3</label>
+            <input type="number" id="edit-axle3" placeholder="13000" style="padding:6px;font-size:12px;">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px;">Axa 4</label>
+            <input type="number" id="edit-axle4" placeholder="13000" style="padding:6px;font-size:12px;">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px;">Axa 5</label>
+            <input type="number" id="edit-axle5" placeholder="" style="padding:6px;font-size:12px;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Cost per tona-km (RON)</label>
+          <input type="number" step="0.01" id="edit-cost-tonkm" placeholder="ex: 0.85">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Numar inmatriculare</label>
-        <input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="text-transform:uppercase;">
+
+      <!-- Tab: Tank Calibration -->
+      <div id="edit-tab-calibration" class="edit-tab-content" style="display:none;">
+        <div style="background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);">
+          <i class="fas fa-info-circle" style="color:var(--accent);"></i>
+          Calibrare sonda litrometrica (Escort TD-150 sau similar). Introdu perechi Voltaj (AIN1) → Litri.
+          Exemplu: 0.5V = 0L, 1.2V = 10L, etc. Sistemul va folosi interpolare liniara.
+        </div>
+
+        <div id="calibration-rows" style="display:flex;flex-direction:column;gap:6px;">
+          <!-- Rows se adauga dinamic -->
+        </div>
+
+        <button type="button" onclick="addCalibrationRow()" class="btn btn-secondary" style="margin-top:8px;padding:6px 12px;font-size:12px;">
+          <i class="fas fa-plus"></i> Adauga punct
+        </button>
+
+        <div style="margin-top:12px;padding:10px;background:var(--bg-dark);border-radius:8px;font-size:11px;color:var(--text-muted);">
+          <strong style="color:var(--accent);">Exemplu calibrare VW T5 (80L tank):</strong><br>
+          0.5V=0L, 1.2V=10L, 2.0V=20L, 2.8V=30L, 3.6V=40L, 4.4V=50L, 5.1V=60L, 5.9V=70L, 6.7V=80L
+        </div>
       </div>
-      <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:8px;">
+
+      <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:16px;width:100%;">
         <i class="fas fa-save"></i> Salveaza
       </button>
     </div>
@@ -1640,6 +1739,77 @@
             </thead>
             <tbody id="dk-fleet-body"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transport Report Modal -->
+  <div id="transport-modal" class="modal-overlay">
+    <div class="modal" style="width:900px;max-width:95vw;max-height:92vh;">
+      <h2>
+        <span><i class="fas fa-weight-hanging" style="margin-right:8px;color:var(--orange);"></i> Raport Transport</span>
+        <button class="close-btn" onclick="closeTransportReport()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+
+      <div id="transport-vehicle-info" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg-dark);border-radius:8px;margin-bottom:12px;">
+        <i class="fas fa-truck" style="font-size:20px;color:var(--accent);"></i>
+        <div>
+          <div id="transport-vehicle-name" style="font-weight:700;font-size:14px;"></div>
+          <div id="transport-vehicle-imei" style="font-size:11px;color:var(--text-muted);font-family:monospace;"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="report-period-btn active" onclick="setTransportPeriod('today', this)">Azi</button>
+        <button class="report-period-btn" onclick="setTransportPeriod('yesterday', this)">Ieri</button>
+        <button class="report-period-btn" onclick="setTransportPeriod('week', this)">Saptamana</button>
+        <button class="report-period-btn" onclick="setTransportPeriod('month', this)">Luna</button>
+      </div>
+
+      <div id="transport-loading" style="display:none;text-align:center;padding:40px;color:var(--text-muted);">
+        <i class="fas fa-spinner fa-spin fa-2x"></i>
+        <div style="margin-top:12px;">Se genereaza raportul...</div>
+      </div>
+
+      <div id="transport-content" style="display:none;">
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:14px;">
+          <div class="report-stat"><div class="report-stat-value" id="tr-trips">0</div><div class="report-stat-label">Curse</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="tr-tons">0</div><div class="report-stat-label">Tone transportate</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="tr-tonkm">0</div><div class="report-stat-label">Tone-km</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="tr-loaded-km">0</div><div class="report-stat-label">Km cu incarcatura</div></div>
+          <div class="report-stat"><div class="report-stat-value" id="tr-empty-km">0</div><div class="report-stat-label">Km gol</div></div>
+          <div class="report-stat" style="border-color:var(--orange);"><div class="report-stat-value" id="tr-fuel-cost" style="color:var(--orange);">0</div><div class="report-stat-label">Cost combustibil</div></div>
+          <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="tr-revenue" style="color:var(--green);">0</div><div class="report-stat-label">Venit estimat</div></div>
+          <div class="report-stat" style="border-color:var(--accent);"><div class="report-stat-value" id="tr-profit" style="color:var(--accent);">0</div><div class="report-stat-label">Profit estimat</div></div>
+        </div>
+
+        <!-- Tabel curse -->
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
+          <i class="fas fa-route" style="color:var(--accent);margin-right:6px;"></i>Curse detectate (incarcare/descarcare)
+        </div>
+        <div style="overflow-x:auto;overflow-y:auto;max-height:350px;border:1px solid var(--border);border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:var(--bg-dark);color:var(--text-secondary);text-align:left;">
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">#</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Incarcare</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Descarcare</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Durata</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Distanta</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Tone</th>
+                <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Tone-km</th>
+              </tr>
+            </thead>
+            <tbody id="transport-trips-body"></tbody>
+          </table>
+        </div>
+
+        <div id="transport-no-data" style="display:none;text-align:center;padding:30px;color:var(--text-muted);">
+          <i class="fas fa-inbox fa-2x" style="margin-bottom:12px;"></i>
+          <div>Niciun ciclu de transport detectat</div>
+          <div style="font-size:11px;margin-top:6px;">Verifica daca tara este setata si sarcinile pe axe sunt disponibile</div>
         </div>
       </div>
     </div>
@@ -2710,7 +2880,86 @@
         }
       }
 
+      // Axle limits from device config (for visual bars)
+      const dev = devices.get(imei);
+      const axleLimits = (dev && dev.max_axle_loads) ? (typeof dev.max_axle_loads === 'string' ? JSON.parse(dev.max_axle_loads) : dev.max_axle_loads) : {};
+      const tare = dev && dev.tare_weight ? dev.tare_weight : null;
+      const maxLegal = dev && dev.max_weight_legal ? dev.max_weight_legal : null;
+      const maxConstruct = dev && dev.max_weight_construct ? dev.max_weight_construct : null;
+
       for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
+        // Special renderer for axle loads
+        if (category === 'Sarcina Axe (Camion)') {
+          const axleRows = [];
+          let totalKg = 0;
+          let hasAnyAxle = false;
+          for (let n = 1; n <= 5; n++) {
+            const k = 'can_axle' + n + '_load';
+            if (flatIo[k] !== undefined && flatIo[k] > 0) {
+              usedKeys.add(k);
+              hasAnyAxle = true;
+              const kg = flatIo[k];
+              totalKg += kg;
+              const limit = axleLimits['axle' + n] || null;
+              const pct = limit ? Math.min(100, Math.round((kg / limit) * 100)) : 0;
+              const barColor = pct < 70 ? '#10b981' : (pct < 90 ? '#f59e0b' : (pct < 100 ? '#f97316' : '#ef4444'));
+              const warnIcon = pct >= 100 ? '<i class="fas fa-exclamation-triangle" style="color:#ef4444;margin-right:4px;"></i>' : '';
+              const labelText = 'Axa ' + n + (n <= 2 ? ' (fata)' : n <= 4 ? ' (spate)' : '');
+              const valueText = (kg / 1000).toFixed(2) + ' t' + (limit ? ' / ' + (limit/1000).toFixed(1) + ' t' : '');
+              axleRows.push(
+                '<div style="padding:8px 10px;background:var(--bg-dark);border-radius:6px;margin-bottom:4px;">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px;">' +
+                    '<span style="color:var(--text-secondary);">' + warnIcon + labelText + '</span>' +
+                    '<span style="font-weight:700;color:' + barColor + ';">' + valueText + '</span>' +
+                  '</div>' +
+                  (limit ?
+                    '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">' +
+                      '<div style="height:100%;width:' + pct + '%;background:' + barColor + ';transition:width 0.3s;"></div>' +
+                    '</div>' +
+                    '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;text-align:right;">' + pct + '%</div>'
+                    : '') +
+                '</div>'
+              );
+            }
+          }
+
+          if (hasAnyAxle) {
+            // Total si incarcatura
+            const maxLimit = maxLegal || maxConstruct;
+            const totalPct = maxLimit ? Math.min(100, Math.round((totalKg / maxLimit) * 100)) : 0;
+            const totalColor = totalPct < 70 ? '#10b981' : (totalPct < 90 ? '#f59e0b' : (totalPct < 100 ? '#f97316' : '#ef4444'));
+            const loadKg = tare ? Math.max(0, totalKg - tare) : null;
+
+            let summaryHtml = '<div style="padding:10px;background:linear-gradient(135deg, var(--bg-dark), var(--bg-panel));border-radius:8px;border:1px solid ' + totalColor + ';margin-top:6px;">';
+            summaryHtml += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:6px;">' +
+              '<span>GREUTATE TOTALA</span>' +
+              '<span style="color:' + totalColor + ';">' + (totalKg / 1000).toFixed(2) + ' t</span>' +
+              '</div>';
+            if (maxLimit) {
+              summaryHtml += '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:4px;">' +
+                '<div style="height:100%;width:' + totalPct + '%;background:' + totalColor + ';"></div>' +
+                '</div>';
+              summaryHtml += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);">' +
+                '<span>0 t</span><span>' + totalPct + '% / ' + (maxLimit/1000).toFixed(1) + ' t</span>' +
+                '</div>';
+            }
+            if (tare && loadKg !== null) {
+              summaryHtml += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;">' +
+                '<div><div style="color:var(--text-muted);">Tara</div><div style="font-weight:600;">' + (tare/1000).toFixed(1) + ' t</div></div>' +
+                '<div><div style="color:var(--text-muted);">Incarcatura</div><div style="font-weight:700;color:var(--orange);">' + (loadKg/1000).toFixed(2) + ' t</div></div>' +
+                '</div>';
+            }
+            summaryHtml += '</div>';
+
+            // Mark other axle-related fields as used
+            ['can_total_axle_load', 'can_load_factor', 'can_trailer_connected', 'can_trailer_weight'].forEach(k => usedKeys.add(k));
+
+            const icon = categoryIcons[category] || 'fa-circle';
+            html += '<div class="io-section"><div class="io-section-title"><i class="fas ' + icon + '"></i> ' + category + '</div>' + axleRows.join('') + summaryHtml + '</div>';
+          }
+          continue;
+        }
+
         const rows = keys.filter(k => flatIo[k] !== undefined).map(k => {
           usedKeys.add(k);
           const val = formatIoValue(k, flatIo[k]);
@@ -3066,18 +3315,82 @@
     }
 
     // ─── Edit Device ───
-    function openEditModal(imei) {
+    function switchEditTab(tab, btn) {
+      document.querySelectorAll('.edit-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.color = 'var(--text-muted)';
+        t.style.borderBottomColor = 'transparent';
+        t.style.fontWeight = '400';
+      });
+      btn.classList.add('active');
+      btn.style.color = 'var(--text-primary)';
+      btn.style.borderBottomColor = 'var(--accent)';
+      btn.style.fontWeight = '600';
+      document.querySelectorAll('.edit-tab-content').forEach(c => c.style.display = 'none');
+      document.getElementById('edit-tab-' + tab).style.display = 'block';
+    }
+
+    function addCalibrationRow(voltage, liters) {
+      const container = document.getElementById('calibration-rows');
+      const row = document.createElement('div');
+      row.className = 'calibration-row';
+      row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+      row.innerHTML = '<input type="number" step="0.01" placeholder="Voltaj (V)" class="cal-voltage" value="' + (voltage || '') + '" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-size:12px;">' +
+        '<span style="color:var(--text-muted);font-size:11px;">→</span>' +
+        '<input type="number" step="0.1" placeholder="Litri" class="cal-liters" value="' + (liters || '') + '" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-size:12px;">' +
+        '<button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px 8px;"><i class="fas fa-trash"></i></button>';
+      container.appendChild(row);
+    }
+
+    async function openEditModal(imei) {
       document.getElementById('edit-modal').classList.add('visible');
       document.getElementById('edit-imei').value = imei;
 
-      fetch('/api/devices').then(r => r.json()).then(devs => {
-        const dev = devs.find(d => d.imei === imei);
-        if (dev) {
+      // Reset to basic tab
+      const basicBtn = document.querySelector('.edit-tab[data-tab="basic"]');
+      if (basicBtn) switchEditTab('basic', basicBtn);
+
+      // Clear calibration rows
+      document.getElementById('calibration-rows').innerHTML = '';
+
+      // Clear truck fields
+      ['edit-tare', 'edit-max-legal', 'edit-max-construct', 'edit-fuel-price', 'edit-cost-tonkm',
+       'edit-axle1', 'edit-axle2', 'edit-axle3', 'edit-axle4', 'edit-axle5'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+
+      try {
+        const res = await fetch('/api/devices/' + imei + '/full');
+        if (res.ok) {
+          const dev = await res.json();
           document.getElementById('edit-name').value = dev.name || '';
           document.getElementById('edit-vehicle-type').value = dev.vehicle_type || '';
           document.getElementById('edit-plate').value = dev.plate || '';
+
+          // Truck config
+          document.getElementById('edit-tare').value = dev.tare_weight || '';
+          document.getElementById('edit-max-legal').value = dev.max_weight_legal || '';
+          document.getElementById('edit-max-construct').value = dev.max_weight_construct || '';
+          document.getElementById('edit-fuel-price').value = dev.fuel_price || '';
+          document.getElementById('edit-cost-tonkm').value = dev.cost_per_ton_km || '';
+
+          // Axle limits
+          const axles = typeof dev.max_axle_loads === 'string' ? JSON.parse(dev.max_axle_loads) : (dev.max_axle_loads || {});
+          document.getElementById('edit-axle1').value = axles.axle1 || '';
+          document.getElementById('edit-axle2').value = axles.axle2 || '';
+          document.getElementById('edit-axle3').value = axles.axle3 || '';
+          document.getElementById('edit-axle4').value = axles.axle4 || '';
+          document.getElementById('edit-axle5').value = axles.axle5 || '';
+
+          // Calibration
+          const cal = typeof dev.tank_calibration === 'string' ? JSON.parse(dev.tank_calibration) : (dev.tank_calibration || null);
+          if (cal && Array.isArray(cal) && cal.length > 0) {
+            cal.forEach(pt => addCalibrationRow(pt.voltage, pt.liters));
+          }
         }
-      });
+      } catch (e) {
+        console.error('Load device info failed:', e);
+      }
     }
 
     function closeEditModal() {
@@ -3090,13 +3403,55 @@
       const vehicle_type = document.getElementById('edit-vehicle-type').value;
       const plate = document.getElementById('edit-plate').value.toUpperCase();
 
+      // Basic info
       const res = await fetch('/api/devices/' + imei, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, vehicle_type, plate })
       });
 
-      if (res.ok) {
+      if (!res.ok) {
+        alert('Eroare la salvare');
+        return;
+      }
+
+      // Truck config
+      const truckConfig = {
+        tareWeight: parseInt(document.getElementById('edit-tare').value) || null,
+        maxWeightLegal: parseInt(document.getElementById('edit-max-legal').value) || null,
+        maxWeightConstruct: parseInt(document.getElementById('edit-max-construct').value) || null,
+        maxAxleLoads: {
+          axle1: parseInt(document.getElementById('edit-axle1').value) || null,
+          axle2: parseInt(document.getElementById('edit-axle2').value) || null,
+          axle3: parseInt(document.getElementById('edit-axle3').value) || null,
+          axle4: parseInt(document.getElementById('edit-axle4').value) || null,
+          axle5: parseInt(document.getElementById('edit-axle5').value) || null
+        },
+        fuelPrice: parseFloat(document.getElementById('edit-fuel-price').value) || null,
+        costPerTonKm: parseFloat(document.getElementById('edit-cost-tonkm').value) || null
+      };
+      await fetch('/api/devices/' + imei + '/truck-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(truckConfig)
+      });
+
+      // Tank calibration
+      const calRows = document.querySelectorAll('#calibration-rows .calibration-row');
+      const calibration = [];
+      calRows.forEach(row => {
+        const v = parseFloat(row.querySelector('.cal-voltage').value);
+        const l = parseFloat(row.querySelector('.cal-liters').value);
+        if (!isNaN(v) && !isNaN(l)) calibration.push({ voltage: v, liters: l });
+      });
+      calibration.sort((a, b) => a.voltage - b.voltage);
+      await fetch('/api/devices/' + imei + '/tank-calibration', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calibration })
+      });
+
+      if (true) {
         closeEditModal();
         const dev = devices.get(imei);
         if (dev) {
@@ -3416,6 +3771,105 @@
     // ─── Raport ───
     let reportImei = null;
     let reportData = null;
+
+    // ─── Transport Report ───
+    let transportImei = null;
+
+    function openTransportReport(imei) {
+      transportImei = imei;
+      const modal = document.getElementById('transport-modal');
+      modal.classList.add('visible');
+
+      const data = devices.get(imei);
+      document.getElementById('transport-vehicle-name').textContent = data?.name || imei;
+      document.getElementById('transport-vehicle-imei').textContent = imei + (data?.plate ? ' | ' + data.plate : '');
+
+      setTransportPeriod('today', document.querySelector('#transport-modal .report-period-btn.active'));
+    }
+
+    function closeTransportReport() {
+      document.getElementById('transport-modal').classList.remove('visible');
+      transportImei = null;
+    }
+
+    async function setTransportPeriod(period, btn) {
+      document.querySelectorAll('#transport-modal .report-period-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+
+      const now = new Date();
+      let from, to;
+      switch (period) {
+        case 'today':
+          from = new Date(now); from.setHours(0,0,0,0);
+          to = now;
+          break;
+        case 'yesterday':
+          from = new Date(now); from.setDate(from.getDate() - 1); from.setHours(0,0,0,0);
+          to = new Date(now); to.setDate(to.getDate() - 1); to.setHours(23,59,59,999);
+          break;
+        case 'week':
+          from = new Date(now); from.setDate(from.getDate() - 7); from.setHours(0,0,0,0);
+          to = now;
+          break;
+        case 'month':
+          from = new Date(now); from.setDate(1); from.setHours(0,0,0,0);
+          to = now;
+          break;
+      }
+
+      await generateTransportReport(from.toISOString(), to.toISOString());
+    }
+
+    async function generateTransportReport(fromIso, toIso) {
+      if (!transportImei) return;
+
+      document.getElementById('transport-loading').style.display = 'block';
+      document.getElementById('transport-content').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/transport-report/' + transportImei + '?from=' + encodeURIComponent(fromIso) + '&to=' + encodeURIComponent(toIso));
+        const data = await res.json();
+
+        const s = data.summary;
+        document.getElementById('tr-trips').textContent = s.tripCount;
+        document.getElementById('tr-tons').textContent = s.totalTons + ' t';
+        document.getElementById('tr-tonkm').textContent = s.totalTonKm + ' t-km';
+        document.getElementById('tr-loaded-km').textContent = s.loadedKm + ' km';
+        document.getElementById('tr-empty-km').textContent = s.emptyKm + ' km';
+        document.getElementById('tr-fuel-cost').textContent = s.fuelCost.toFixed(2) + ' RON';
+        document.getElementById('tr-revenue').textContent = s.estimatedRevenue.toFixed(2) + ' RON';
+        document.getElementById('tr-profit').textContent = s.profit.toFixed(2) + ' RON';
+
+        const tbody = document.getElementById('transport-trips-body');
+        const noData = document.getElementById('transport-no-data');
+
+        if (!data.trips || data.trips.length === 0) {
+          tbody.innerHTML = '';
+          noData.style.display = 'block';
+        } else {
+          noData.style.display = 'none';
+          tbody.innerHTML = data.trips.map(function(t, i) {
+            const loadStart = new Date(t.loadStartTime).toLocaleString('ro-RO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+            const unload = t.unloadTime ? new Date(t.unloadTime).toLocaleString('ro-RO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '<em style="color:var(--text-muted);">in curs</em>';
+            const dur = t.durationSec ? Math.floor(t.durationSec/3600) + 'h ' + Math.floor((t.durationSec%3600)/60) + 'm' : '-';
+            return '<tr>' +
+              '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-muted);">' + (i+1) + '</td>' +
+              '<td style="padding:8px 10px;border-bottom:1px solid var(--border);"><i class="fas fa-arrow-down" style="color:var(--green);margin-right:4px;"></i>' + loadStart + '</td>' +
+              '<td style="padding:8px 10px;border-bottom:1px solid var(--border);"><i class="fas fa-arrow-up" style="color:var(--red);margin-right:4px;"></i>' + unload + '</td>' +
+              '<td style="padding:8px 10px;border-bottom:1px solid var(--border);">' + dur + '</td>' +
+              '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--accent);font-weight:700;">' + t.distance + ' km</td>' +
+              '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--orange);font-weight:700;">' + t.loadedTons + ' t</td>' +
+              '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--green);font-weight:700;">' + t.tonKm + '</td>' +
+            '</tr>';
+          }).join('');
+        }
+
+        document.getElementById('transport-loading').style.display = 'none';
+        document.getElementById('transport-content').style.display = 'block';
+      } catch (err) {
+        document.getElementById('transport-loading').innerHTML = '<div style="color:var(--red);">Eroare: ' + err.message + '</div>';
+      }
+    }
 
     // ─── Dashboard ───
     async function openDashboard() {

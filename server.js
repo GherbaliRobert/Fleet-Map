@@ -336,8 +336,25 @@ app.get('/api/devices', requireAuth, async (req, res) => {
 });
 
 // API: Poziții live din memorie
-app.get('/api/live', requireAuth, (req, res) => {
+app.get('/api/live', requireAuth, async (req, res) => {
   const positions = Array.from(livePositions.values());
+  try {
+    // Enrich with full device info (truck config, tank calibration, etc.)
+    const result = await db.pool.query('SELECT imei, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
+    const devMap = new Map(result.rows.map(r => [r.imei, r]));
+    for (const pos of positions) {
+      const dev = devMap.get(pos.imei);
+      if (dev) {
+        pos.tare_weight = dev.tare_weight;
+        pos.max_weight_legal = dev.max_weight_legal;
+        pos.max_weight_construct = dev.max_weight_construct;
+        pos.max_axle_loads = dev.max_axle_loads;
+        pos.tank_calibration = dev.tank_calibration;
+        pos.fuel_price = dev.fuel_price;
+        pos.cost_per_ton_km = dev.cost_per_ton_km;
+      }
+    }
+  } catch (e) { /* skip enrichment */ }
   res.json(positions);
 });
 
@@ -407,6 +424,167 @@ app.put('/api/devices/:imei/tank-calibration', requireAuth, async (req, res) => 
   try {
     await db.updateTankCalibration(req.params.imei, req.body.calibration);
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Raport transport (detectie automata curse incarcare/descarcare + tone-km)
+app.get('/api/transport-report/:imei', requireAuth, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const to = req.query.to || new Date().toISOString();
+
+    const device = await db.getDeviceFull(imei);
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+
+    const history = await db.getDeviceHistory(imei, from, to);
+    if (history.length === 0) {
+      return res.json({
+        imei, from, to,
+        trips: [],
+        summary: { tripCount: 0, totalTons: 0, totalTonKm: 0, emptyKm: 0, loadedKm: 0, fuelCost: 0, estimatedRevenue: 0 }
+      });
+    }
+
+    const tare = device.tare_weight || 0;
+    const LOAD_THRESHOLD = 1000; // kg - diferenta minima sa fie considerata incarcatura
+    const LOAD_CHANGE_THRESHOLD = 2000; // kg - schimbare brusca = eveniment
+    const STABILITY_WINDOW = 60; // secunde - cat trebuie sa fie stabila o greutate
+    const fuelPrice = parseFloat(device.fuel_price) || 0;
+    const costPerTonKm = parseFloat(device.cost_per_ton_km) || 0;
+
+    // Trips detected: fiecare ciclu gol->plin->gol sau segment cu incarcatura stabila
+    const trips = [];
+    let currentTrip = null;
+    let prevWeight = null;
+    let prevPos = null;
+    let totalLoadedKm = 0;
+    let totalEmptyKm = 0;
+    let totalFuelConsumed = 0;
+    let firstFuelLevel = null;
+    let lastFuelLevel = null;
+
+    for (let i = 0; i < history.length; i++) {
+      const row = history[i];
+      const io = row.io_data || {};
+      const ts = new Date(row.timestamp);
+
+      // Calculate total weight from axles
+      const a1 = io.can_axle1_load || 0;
+      const a2 = io.can_axle2_load || 0;
+      const a3 = io.can_axle3_load || 0;
+      const a4 = io.can_axle4_load || 0;
+      const a5 = io.can_axle5_load || 0;
+      const totalWeight = a1 + a2 + a3 + a4 + a5 || io.can_load_weight || 0;
+
+      // Distance from previous point
+      let segmentDist = 0;
+      if (prevPos) {
+        segmentDist = haversineDistance(prevPos.latitude, prevPos.longitude, row.latitude, row.longitude);
+        if (segmentDist > 10) segmentDist = 0; // filter GPS jumps
+      }
+
+      // Classify km as loaded vs empty based on current load
+      if (totalWeight > 0 && tare > 0) {
+        const load = totalWeight - tare;
+        if (load > LOAD_THRESHOLD) {
+          totalLoadedKm += segmentDist;
+        } else {
+          totalEmptyKm += segmentDist;
+        }
+      }
+
+      // Fuel tracking
+      const fuelLevel = io.can_fuel_level_liters;
+      if (fuelLevel !== undefined && fuelLevel > 0) {
+        if (firstFuelLevel === null) firstFuelLevel = fuelLevel;
+        lastFuelLevel = fuelLevel;
+      }
+
+      // Detect load events (incarcare/descarcare)
+      if (prevWeight !== null && totalWeight > 0) {
+        const change = totalWeight - prevWeight;
+
+        // Incarcare detectata (greutate creste brusc cu > 2t)
+        if (change > LOAD_CHANGE_THRESHOLD && !currentTrip) {
+          currentTrip = {
+            loadStartTime: row.timestamp,
+            loadStartLat: row.latitude,
+            loadStartLng: row.longitude,
+            loadedWeight: totalWeight - tare,
+            totalWeight: totalWeight,
+            distance: 0,
+            unloadTime: null,
+            unloadLat: null,
+            unloadLng: null
+          };
+        }
+
+        // Descarcare detectata (greutate scade brusc cu > 2t)
+        if (change < -LOAD_CHANGE_THRESHOLD && currentTrip) {
+          currentTrip.unloadTime = row.timestamp;
+          currentTrip.unloadLat = row.latitude;
+          currentTrip.unloadLng = row.longitude;
+          currentTrip.durationSec = Math.round((new Date(row.timestamp) - new Date(currentTrip.loadStartTime)) / 1000);
+          currentTrip.tonKm = Math.round((currentTrip.loadedWeight / 1000) * currentTrip.distance * 100) / 100;
+          currentTrip.loadedTons = Math.round((currentTrip.loadedWeight / 1000) * 100) / 100;
+          trips.push(currentTrip);
+          currentTrip = null;
+        }
+
+        // Add distance to current trip (while loaded)
+        if (currentTrip && segmentDist > 0) {
+          currentTrip.distance += segmentDist;
+        }
+      }
+
+      prevWeight = totalWeight;
+      prevPos = row;
+    }
+
+    // Close any open trip
+    if (currentTrip) {
+      currentTrip.durationSec = Math.round((new Date(prevPos.timestamp) - new Date(currentTrip.loadStartTime)) / 1000);
+      currentTrip.tonKm = Math.round((currentTrip.loadedWeight / 1000) * currentTrip.distance * 100) / 100;
+      currentTrip.loadedTons = Math.round((currentTrip.loadedWeight / 1000) * 100) / 100;
+      trips.push(currentTrip);
+    }
+
+    // Fuel consumption total
+    if (firstFuelLevel !== null && lastFuelLevel !== null) {
+      totalFuelConsumed = Math.max(0, firstFuelLevel - lastFuelLevel);
+    }
+
+    // Summary
+    const totalTons = trips.reduce((sum, t) => sum + (t.loadedTons || 0), 0);
+    const totalTonKm = trips.reduce((sum, t) => sum + (t.tonKm || 0), 0);
+    const fuelCost = totalFuelConsumed * fuelPrice;
+    const estimatedRevenue = totalTonKm * costPerTonKm;
+
+    res.json({
+      imei,
+      from,
+      to,
+      tareWeight: tare,
+      trips: trips.map(t => ({
+        ...t,
+        distance: Math.round(t.distance * 100) / 100
+      })),
+      summary: {
+        tripCount: trips.length,
+        totalTons: Math.round(totalTons * 100) / 100,
+        totalTonKm: Math.round(totalTonKm * 100) / 100,
+        loadedKm: Math.round(totalLoadedKm * 100) / 100,
+        emptyKm: Math.round(totalEmptyKm * 100) / 100,
+        totalKm: Math.round((totalLoadedKm + totalEmptyKm) * 100) / 100,
+        fuelConsumed: Math.round(totalFuelConsumed * 10) / 10,
+        fuelCost: Math.round(fuelCost * 100) / 100,
+        estimatedRevenue: Math.round(estimatedRevenue * 100) / 100,
+        profit: Math.round((estimatedRevenue - fuelCost) * 100) / 100
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
