@@ -284,6 +284,8 @@ function getIoName(id) {
     859: 'can_service_time_to_due',     // days until next service
     860: 'can_service_time_from_last',  // days since last service
     861: 'can_service_distance_since',  // km since last service
+    // PTO (Power Take Off) - direct ID for modern firmware
+    946: 'can_pto_state',               // 0 = Off, 1 = On
     193: 'can_pto_active',              // 0/1 - Power Take Off active
     194: 'can_pto_engagement_count',    // counter
     195: 'can_brake_pad_axle1',         // % wear

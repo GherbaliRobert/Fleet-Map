@@ -3587,7 +3587,7 @@
       'Combustibil': ['tank_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_consumed', 'can_fuel_consumed_counted', 'can_fuel_rate', 'can_adblue_level_pct', 'can_adblue_level_liters', 'fuel_used_gps_total', 'fuel_rate_gps'],
       'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_handbrake', 'can_load_weight', 'can_outside_temp'],
       'Sarcina Axe (Camion)': ['can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load', 'can_total_axle_load', 'can_load_factor', 'can_trailer_connected', 'can_trailer_weight'],
-      'Specific Camion': ['can_pto_active', 'can_pto_engagement_count', 'can_retarder_load', 'can_engine_oil_temp', 'can_engine_oil_level', 'can_engine_oil_pressure', 'can_intake_air_temp', 'can_coolant_level', 'can_washer_fluid_level'],
+      'Specific Camion': ['can_pto_state', 'can_pto_active', 'can_pto_engagement_count', 'can_retarder_load', 'can_engine_oil_temp', 'can_engine_oil_level', 'can_engine_oil_pressure', 'can_intake_air_temp', 'can_coolant_level', 'can_washer_fluid_level'],
       'Mentenanta Camion': ['can_distance_to_service', 'can_service_distance', 'can_service_time_to_due', 'can_service_time_from_last', 'can_service_distance_since', 'can_brake_pad_axle1', 'can_brake_pad_axle2', 'can_brake_pad_axle3', 'can_brake_pad_axle4', 'can_dtc_errors'],
       'Tahograf': ['can_tacho_distance', 'can_tacho_speed', 'can_tacho_overspeed', 'can_tacho_driver1_card', 'can_tacho_driver2_card', 'can_tacho_driver1_drive_time', 'can_tacho_driver2_drive_time', 'can_tacho_driver1_break_time', 'can_tacho_driver2_break_time', 'can_tacho_driver1_continuous', 'can_tacho_driver2_continuous'],
       'AdBlue': ['can_adblue_level_pct', 'can_adblue_level_liters'],
@@ -3671,7 +3671,7 @@
       if (key === 'can_load_factor') return value + ' %';
       if (key === 'can_trailer_connected') return value ? 'CONECTATA' : 'NU';
       // Camion - Specific
-      if (key === 'can_pto_active') return value ? 'ACTIV' : 'OFF';
+      if (key === 'can_pto_active' || key === 'can_pto_state') return value ? 'ACTIV' : 'OFF';
       if (key === 'can_pto_engagement_count') return value + 'x';
       if (key === 'can_engine_oil_temp' || key === 'can_intake_air_temp' || key === 'can_outside_temp') {
         return (typeof value === 'number' ? value.toFixed(1) : value) + ' \u00B0C';
@@ -3841,6 +3841,7 @@
         'can_trailer_weight': 'Greutate remorca',
         // Camion - Specific
         'can_pto_active': 'PTO (priza putere)',
+        'can_pto_state': 'PTO (priza putere)',
         'can_pto_engagement_count': 'Activari PTO',
         'can_retarder_load': 'Retarder',
         'can_engine_oil_temp': 'Temp. ulei motor',
