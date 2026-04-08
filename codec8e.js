@@ -286,6 +286,28 @@ function getIoName(id) {
     861: 'can_service_distance_since',  // km since last service
     // PTO (Power Take Off) - direct ID for modern firmware
     946: 'can_pto_state',               // 0 = Off, 1 = On
+    // LLS Fuel sensors (RS232/RS485 - Escort TD-150 cu RS-485)
+    201: 'lls_fuel_level_1',            // litri (LLS sensor 1)
+    202: 'lls_fuel_temp_1',             // °C (LLS sensor 1)
+    203: 'lls_fuel_level_2',            // litri (LLS sensor 2)
+    204: 'lls_fuel_temp_2',             // °C (LLS sensor 2)
+    // BLE Fuel sensors (Escort TD-BLE wireless)
+    270: 'ble_fuel_level_1',            // litri (BLE sensor 1)
+    271: 'ble_fuel_frequency_1',        // Hz (raw frequency)
+    272: 'ble_fuel_temp_1',             // °C (signed, /10)
+    273: 'ble_battery_voltage_1',       // mV
+    276: 'ble_fuel_level_2',            // litri (BLE sensor 2)
+    277: 'ble_fuel_frequency_2',        // Hz
+    278: 'ble_fuel_temp_2',             // °C
+    279: 'ble_battery_voltage_2',       // mV
+    282: 'ble_fuel_level_3',            // litri (BLE sensor 3)
+    283: 'ble_fuel_frequency_3',        // Hz
+    284: 'ble_fuel_temp_3',             // °C
+    285: 'ble_battery_voltage_3',       // mV
+    288: 'ble_fuel_level_4',            // litri (BLE sensor 4)
+    289: 'ble_fuel_frequency_4',        // Hz
+    290: 'ble_fuel_temp_4',             // °C
+    291: 'ble_battery_voltage_4',       // mV
     193: 'can_pto_active',              // 0/1 - Power Take Off active
     194: 'can_pto_engagement_count',    // counter
     195: 'can_brake_pad_axle1',         // % wear
@@ -371,6 +393,14 @@ function convertCanValue(name, rawValue) {
     case 'can_outside_temp':            return rawValue > 32767 ? (rawValue - 65536) / 10 : rawValue / 10;
     case 'can_engine_total_fuel_used':  return rawValue / 100;       // liters
     case 'can_distance_to_service':     return rawValue;             // km already
+    // BLE fuel sensors temperature (signed, raw * 10)
+    case 'ble_fuel_temp_1':
+    case 'ble_fuel_temp_2':
+    case 'ble_fuel_temp_3':
+    case 'ble_fuel_temp_4':
+    case 'lls_fuel_temp_1':
+    case 'lls_fuel_temp_2':
+      return rawValue > 32767 ? (rawValue - 65536) : rawValue;       // °C signed
     default:                            return rawValue;
   }
 }

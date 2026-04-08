@@ -2856,6 +2856,8 @@
       const categoryIcons = {
         'Motor / Vehicul': 'fa-cog',
         'Combustibil': 'fa-gas-pump',
+        'Senzori BLE Combustibil': 'fa-bluetooth',
+        'Senzori LLS Combustibil (RS485)': 'fa-broadcast-tower',
         'Vehicul': 'fa-car',
         'Sarcina Axe (Camion)': 'fa-weight-hanging',
         'Specific Camion': 'fa-truck-moving',
@@ -3585,6 +3587,8 @@
     const IO_CATEGORIES = {
       'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_vehicle_speed', 'can_engine_rpm', 'can_engine_temp', 'can_engine_load', 'can_accelerator_pedal', 'can_engine_worktime', 'can_engine_worktime_counted', 'can_retarder_load'],
       'Combustibil': ['tank_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_consumed', 'can_fuel_consumed_counted', 'can_fuel_rate', 'can_adblue_level_pct', 'can_adblue_level_liters', 'fuel_used_gps_total', 'fuel_rate_gps'],
+      'Senzori BLE Combustibil': ['ble_fuel_level_1', 'ble_fuel_temp_1', 'ble_battery_voltage_1', 'ble_fuel_frequency_1', 'ble_fuel_level_2', 'ble_fuel_temp_2', 'ble_battery_voltage_2', 'ble_fuel_frequency_2', 'ble_fuel_level_3', 'ble_fuel_temp_3', 'ble_battery_voltage_3', 'ble_fuel_frequency_3', 'ble_fuel_level_4', 'ble_fuel_temp_4', 'ble_battery_voltage_4', 'ble_fuel_frequency_4'],
+      'Senzori LLS Combustibil (RS485)': ['lls_fuel_level_1', 'lls_fuel_temp_1', 'lls_fuel_level_2', 'lls_fuel_temp_2'],
       'Vehicul': ['can_total_mileage', 'can_total_mileage_counted', 'can_trip_distance', 'can_door_status', 'can_handbrake', 'can_load_weight', 'can_outside_temp'],
       'Sarcina Axe (Camion)': ['can_axle1_load', 'can_axle2_load', 'can_axle3_load', 'can_axle4_load', 'can_axle5_load', 'can_total_axle_load', 'can_load_factor', 'can_trailer_connected', 'can_trailer_weight'],
       'Specific Camion': ['can_pto_state', 'can_pto_active', 'can_pto_engagement_count', 'can_retarder_load', 'can_engine_oil_temp', 'can_engine_oil_level', 'can_engine_oil_pressure', 'can_intake_air_temp', 'can_coolant_level', 'can_washer_fluid_level'],
@@ -3751,6 +3755,14 @@
       // Alte
       if (key === 'analog_input_1' || key === 'analog_input_2') return (value / 1000).toFixed(2) + ' V';
       if (key === 'tank_level_liters') return (typeof value === 'number' ? value.toFixed(1) : value) + ' L';
+      // Senzori BLE combustibil (Escort TD-BLE)
+      if (key.match(/^ble_fuel_level_[1-4]$/)) return (typeof value === 'number' ? value.toFixed(1) : value) + ' L';
+      if (key.match(/^ble_fuel_temp_[1-4]$/)) return value + ' \u00B0C';
+      if (key.match(/^ble_fuel_frequency_[1-4]$/)) return value + ' Hz';
+      if (key.match(/^ble_battery_voltage_[1-4]$/)) return (value / 1000).toFixed(2) + ' V';
+      // Senzori LLS (RS-485)
+      if (key.match(/^lls_fuel_level_[1-2]$/)) return (typeof value === 'number' ? value.toFixed(1) : value) + ' L';
+      if (key.match(/^lls_fuel_temp_[1-2]$/)) return value + ' \u00B0C';
       if (key === 'gnss_pdop' || key === 'gnss_hdop') return (value / 10).toFixed(1);
       if (key === 'gnss_status') return ['OFF', 'ON fara fix', 'ON cu fix'][value] || value;
       if (key === 'sleep_mode') return ['Nu', 'GPS Sleep', 'Deep Sleep', 'Online Sleep'][value] || value;
@@ -3824,6 +3836,28 @@
         'can_fuel_level_pct': '⛽ CAN Bus (%)',
         'analog_input_1': 'AIN1 (sonda voltaj)',
         'analog_input_2': 'AIN2',
+        // Senzori BLE (Escort TD-BLE wireless)
+        'ble_fuel_level_1': 'Sonda BLE 1 - Nivel',
+        'ble_fuel_temp_1': 'Sonda BLE 1 - Temp',
+        'ble_fuel_frequency_1': 'Sonda BLE 1 - Frecv',
+        'ble_battery_voltage_1': 'Sonda BLE 1 - Baterie',
+        'ble_fuel_level_2': 'Sonda BLE 2 - Nivel',
+        'ble_fuel_temp_2': 'Sonda BLE 2 - Temp',
+        'ble_fuel_frequency_2': 'Sonda BLE 2 - Frecv',
+        'ble_battery_voltage_2': 'Sonda BLE 2 - Baterie',
+        'ble_fuel_level_3': 'Sonda BLE 3 - Nivel',
+        'ble_fuel_temp_3': 'Sonda BLE 3 - Temp',
+        'ble_fuel_frequency_3': 'Sonda BLE 3 - Frecv',
+        'ble_battery_voltage_3': 'Sonda BLE 3 - Baterie',
+        'ble_fuel_level_4': 'Sonda BLE 4 - Nivel',
+        'ble_fuel_temp_4': 'Sonda BLE 4 - Temp',
+        'ble_fuel_frequency_4': 'Sonda BLE 4 - Frecv',
+        'ble_battery_voltage_4': 'Sonda BLE 4 - Baterie',
+        // Senzori LLS (RS-485)
+        'lls_fuel_level_1': 'LLS 1 - Nivel',
+        'lls_fuel_temp_1': 'LLS 1 - Temp',
+        'lls_fuel_level_2': 'LLS 2 - Nivel',
+        'lls_fuel_temp_2': 'LLS 2 - Temp',
         // CAN
         'can_dtc_errors': 'Erori DTC',
         'can_program_number': 'Program CAN',
