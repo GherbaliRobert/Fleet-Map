@@ -58,10 +58,25 @@ function voltageToLiters(voltageMv, calibration) {
   return null;
 }
 const db = require('./db');
+const https = require('https');
+const httpMod = require('http');
 
 // ─── Configurare ───
 const HTTP_PORT = parseInt(process.env.PORT || '3000');
 const TCP_PORT = parseInt(process.env.TCP_PORT || '5027');
+// OpenRemote forward config (optional)
+const OR_ENABLED = (process.env.OPENREMOTE_ENABLED || '').toLowerCase() === 'true' || process.env.OPENREMOTE_ENABLED === '1';
+const OR_URL = process.env.OPENREMOTE_INGEST_URL || '';
+const OR_TOKEN = process.env.OPENREMOTE_TOKEN || process.env.OPENREMOTE_API_KEY || '';
+const OR_AUTH_HEADER = process.env.OPENREMOTE_AUTH_HEADER || 'Authorization';
+const OR_TIMEOUT_MS = parseInt(process.env.OPENREMOTE_TIMEOUT_MS || '3000');
+// Teltonika raw TCP mirror to Traccar/OpenRemote (optional)
+const MIRROR_ENABLED = (process.env.MIRROR_TELTONIKA_ENABLED || '').toLowerCase() === 'true' || process.env.MIRROR_TELTONIKA_ENABLED === '1';
+const MIRROR_HOST = process.env.MIRROR_TELTONIKA_HOST || '';
+const MIRROR_PORT = parseInt(process.env.MIRROR_TELTONIKA_PORT || '0');
+const MIRROR_CONNECT_TIMEOUT_MS = parseInt(process.env.MIRROR_TELTONIKA_CONNECT_TIMEOUT_MS || '3000');
+const MIRROR_RECONNECT_MS = parseInt(process.env.MIRROR_TELTONIKA_RECONNECT_MS || '5000');
+const MIRROR_QUEUE_MAX = parseInt(process.env.MIRROR_TELTONIKA_QUEUE_MAX || '200');
 
 // Dacă TCP și HTTP ar folosi același port, mută HTTP pe altul (TCP are prioritate - proxy-ul GPS pointeaza acolo)
 if (TCP_PORT === HTTP_PORT) {
@@ -83,6 +98,139 @@ function addDebugEntry(entry) {
   debugLog.push(item);
   if (debugLog.length > DEBUG_MAX) debugLog.shift();
   broadcastWs({ type: 'debug', data: item });
+}
+
+// ─── OpenRemote Forwarder (HTTP) — optional, non-blocking ───
+function forwardToOpenRemote(imei, records) {
+  try {
+    if (!OR_ENABLED || !OR_URL) return;
+    if (!records || records.length === 0) return;
+
+    const url = new URL(OR_URL);
+    const isHttps = url.protocol === 'https:';
+    const mod = isHttps ? https : httpMod;
+
+    // Normalize Authorization header
+    const headers = { 'Content-Type': 'application/json' };
+    if (OR_TOKEN) {
+      if (OR_AUTH_HEADER.toLowerCase() === 'authorization' && !/^bearer\s/i.test(OR_TOKEN)) {
+        headers[OR_AUTH_HEADER] = `Bearer ${OR_TOKEN}`;
+      } else {
+        headers[OR_AUTH_HEADER] = OR_TOKEN;
+      }
+    }
+
+    const payload = JSON.stringify({ imei, records });
+    headers['Content-Length'] = Buffer.byteLength(payload);
+
+    const req = mod.request({
+      method: 'POST',
+      hostname: url.hostname,
+      port: url.port || (isHttps ? 443 : 80),
+      path: url.pathname + url.search,
+      headers,
+    }, (res) => {
+      // Drain response to free sockets; log only errors
+      res.on('data', () => {});
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 400) {
+          console.warn(`[OpenRemote] HTTP ${res.statusCode} for ${imei}`);
+        }
+      });
+    });
+
+    req.on('error', (err) => {
+      console.warn(`[OpenRemote] Post error for ${imei}: ${err.message}`);
+    });
+    req.setTimeout(OR_TIMEOUT_MS, () => {
+      req.destroy(new Error('timeout'));
+    });
+    req.write(payload);
+    req.end();
+  } catch (e) {
+    console.warn(`[OpenRemote] Forward exception: ${e.message}`);
+  }
+}
+
+// ─── Teltonika Raw TCP Mirror to Traccar/OpenRemote (optional) ───
+const mirrorSessions = new Map(); // imei -> { socket, ready, queue, reconnectTimer }
+
+function ensureMirrorConnection(imei) {
+  try {
+    if (!MIRROR_ENABLED || !MIRROR_HOST || !MIRROR_PORT) return null;
+    let session = mirrorSessions.get(imei);
+    if (session && session.socket && !session.socket.destroyed) return session;
+
+    const queue = (session && session.queue) ? session.queue : [];
+    const socket = net.createConnection({ host: MIRROR_HOST, port: MIRROR_PORT });
+    const newSession = { socket, ready: false, queue, reconnectTimer: null };
+    mirrorSessions.set(imei, newSession);
+
+    socket.setKeepAlive(true, 10000);
+    socket.setTimeout(MIRROR_CONNECT_TIMEOUT_MS);
+
+    socket.on('connect', () => {
+      // Send Teltonika handshake: 2 bytes length + IMEI ASCII
+      const imeiBuf = Buffer.from(imei, 'ascii');
+      const hs = Buffer.alloc(2 + imeiBuf.length);
+      hs.writeUInt16BE(imeiBuf.length, 0);
+      imeiBuf.copy(hs, 2);
+      socket.write(hs);
+      newSession.ready = false; // wait for handshake ACK before flushing
+    });
+
+    socket.on('data', () => {
+      // First data should be handshake ACK (0x01). Mark ready and flush any queued packets.
+      if (!newSession.ready) {
+        newSession.ready = true;
+        while (newSession.queue.length) {
+          const pkt = newSession.queue.shift();
+          socket.write(pkt);
+        }
+      }
+      // Subsequent data (4-byte acks) are ignored.
+    });
+
+    socket.on('timeout', () => {
+      socket.destroy(new Error('mirror-timeout'));
+    });
+
+    const scheduleReconnect = () => {
+      if (newSession.reconnectTimer) return;
+      newSession.ready = false;
+      newSession.reconnectTimer = setTimeout(() => {
+        newSession.reconnectTimer = null;
+        try { if (newSession.socket && !newSession.socket.destroyed) newSession.socket.destroy(); } catch {}
+        mirrorSessions.delete(imei);
+        ensureMirrorConnection(imei);
+      }, MIRROR_RECONNECT_MS);
+    };
+
+    socket.on('error', () => scheduleReconnect());
+    socket.on('close', () => scheduleReconnect());
+
+    return newSession;
+  } catch (e) {
+    console.warn(`[MIRROR] ensure error: ${e.message}`);
+    return null;
+  }
+}
+
+function mirrorSendPacket(imei, rawPacket) {
+  try {
+    if (!MIRROR_ENABLED || !MIRROR_HOST || !MIRROR_PORT) return;
+    const session = ensureMirrorConnection(imei);
+    if (!session) return;
+    if (session.ready && session.socket && !session.socket.destroyed) {
+      session.socket.write(rawPacket);
+    } else {
+      session.queue.push(Buffer.from(rawPacket));
+      // Trim queue to max size (drop oldest)
+      if (session.queue.length > MIRROR_QUEUE_MAX) session.queue.splice(0, session.queue.length - MIRROR_QUEUE_MAX);
+    }
+  } catch (e) {
+    console.warn(`[MIRROR] send error for ${imei}: ${e.message}`);
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -123,6 +271,9 @@ const tcpServer = net.createServer((socket) => {
           connectedAt: new Date()
         });
 
+        // Init mirror connection to Traccar/OpenRemote if enabled
+        try { ensureMirrorConnection(imei); } catch(_) {}
+
         // Răspunde cu 0x01 = accept
         socket.write(Buffer.from([0x01]));
         return;
@@ -139,6 +290,9 @@ const tcpServer = net.createServer((socket) => {
 
       const packet = buffer.slice(0, totalPacketLength);
       buffer = buffer.slice(totalPacketLength);
+
+      // Duplicate raw Teltonika packet to mirror server (if configured)
+      try { mirrorSendPacket(imei, packet); } catch (_) {}
 
       const parsed = parseAvlPacket(packet);
 
@@ -183,6 +337,9 @@ const tcpServer = net.createServer((socket) => {
 
       // Salvează în baza de date
       await db.insertPositions(imei, parsed.records);
+
+      // Trimite batch-ul și către OpenRemote (non-blocking)
+      try { forwardToOpenRemote(imei, parsed.records); } catch (_) {}
 
       // Actualizează poziția live
       const lastRecord = parsed.records[parsed.records.length - 1];
