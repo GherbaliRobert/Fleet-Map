@@ -1125,6 +1125,13 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
         segmentDist = haversineDistance(prev.latitude, prev.longitude, row.latitude, row.longitude);
         if (segmentDist > 10) segmentDist = 0; // filter GPS jumps
 
+        // Acumulare dailyKm per zi (cheia pentru ziua in care s-a facut segmentul)
+        if (segmentDist > 0) {
+          const kmDayKey = new Date(prev.timestamp).toISOString().slice(0, 10);
+          if (!dailyEngine[kmDayKey]) dailyEngine[kmDayKey] = { engineOn: 0, driving: 0, idle: 0, dailyKm: 0 };
+          dailyEngine[kmDayKey].dailyKm = (dailyEngine[kmDayKey].dailyKm || 0) + segmentDist;
+        }
+
         const dt = (ts - new Date(prev.timestamp)) / 1000;
         if (dt > 0 && dt < 3600) {
           if (isMoving) globalMovingTime += dt;
@@ -1134,7 +1141,7 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
           if (prevIgnition || ignitionOn) {
             globalEngineOnTime += dt;
             const dayKey = new Date(prev.timestamp).toISOString().slice(0, 10);
-            if (!dailyEngine[dayKey]) dailyEngine[dayKey] = { engineOn: 0, driving: 0, idle: 0 };
+            if (!dailyEngine[dayKey]) dailyEngine[dayKey] = { engineOn: 0, driving: 0, idle: 0, dailyKm: 0 };
             dailyEngine[dayKey].engineOn += dt;
             if (isMoving) {
               dailyEngine[dayKey].driving += dt;
@@ -1296,6 +1303,7 @@ app.get('/api/report/:imei', requireAuth, async (req, res) => {
         engineOn: Math.round(engine.engineOn || 0),
         driving: Math.round(engine.driving || 0),
         idle: Math.round(engine.idle || 0),
+        dailyKm: Math.round((engine.dailyKm || 0) * 100) / 100,
         workWindow,
         realIdle,
         firstOn: activity.firstOn ? activity.firstOn.toISOString() : null,

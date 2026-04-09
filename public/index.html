@@ -1856,6 +1856,27 @@
           <div class="report-stat" style="border-color:var(--accent);"><div class="report-stat-value" id="tr-profit" style="color:var(--accent);">0</div><div class="report-stat-label">Profit estimat</div></div>
         </div>
 
+        <!-- Grafice Transport -->
+        <div id="transport-charts" style="display:none;margin-bottom:14px;">
+          <div class="chart-section-title"><i class="fas fa-chart-bar" style="color:var(--accent);margin-right:6px;"></i>Analiza transport</div>
+          <div class="chart-grid cols-2">
+            <div class="chart-container h-200">
+              <div class="chart-container-title">Km cu incarcatura vs gol</div>
+              <canvas id="chart-transport-km"></canvas>
+            </div>
+            <div class="chart-container h-200">
+              <div class="chart-container-title">Tone-km per cursa</div>
+              <canvas id="chart-transport-tonkm"></canvas>
+            </div>
+          </div>
+          <div class="chart-grid cols-1">
+            <div class="chart-container h-200">
+              <div class="chart-container-title">Evolutie tonaj cumulativ</div>
+              <canvas id="chart-transport-cumul"></canvas>
+            </div>
+          </div>
+        </div>
+
         <!-- Tabel curse -->
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
           <i class="fas fa-route" style="color:var(--accent);margin-right:6px;"></i>Curse detectate (incarcare/descarcare)
@@ -1994,6 +2015,33 @@
             </thead>
             <tbody id="report-fuel-body"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Grafice Raport Vehicul -->
+      <div id="report-charts" style="display:none;margin-bottom:16px;">
+        <div class="chart-section-title"><i class="fas fa-chart-line" style="color:var(--accent);margin-right:6px;"></i>Grafice zilnice</div>
+        <div class="chart-grid cols-2">
+          <div class="chart-container h-200">
+            <div class="chart-container-title">Consum zilnic (litri)</div>
+            <canvas id="chart-report-fuel"></canvas>
+          </div>
+          <div class="chart-container h-200">
+            <div class="chart-container-title">Km parcursi zilnic</div>
+            <canvas id="chart-report-km"></canvas>
+          </div>
+        </div>
+        <div class="chart-grid cols-1">
+          <div class="chart-container h-250">
+            <div class="chart-container-title">Condus vs Stationare (ore per zi)</div>
+            <canvas id="chart-report-time"></canvas>
+          </div>
+        </div>
+        <div id="chart-report-speed-wrap" class="chart-grid cols-1" style="display:none;">
+          <div class="chart-container h-250">
+            <div class="chart-container-title">Viteza in timp (zi curenta)</div>
+            <canvas id="chart-report-speed"></canvas>
+          </div>
         </div>
       </div>
 
@@ -4124,6 +4172,8 @@
 
       document.getElementById('transport-loading').style.display = 'block';
       document.getElementById('transport-content').style.display = 'none';
+      const tChartsEl = document.getElementById('transport-charts');
+      if (tChartsEl) tChartsEl.style.display = 'none';
 
       try {
         const res = await fetch('/api/transport-report/' + transportImei + '?from=' + encodeURIComponent(fromIso) + '&to=' + encodeURIComponent(toIso));
@@ -4165,8 +4215,157 @@
 
         document.getElementById('transport-loading').style.display = 'none';
         document.getElementById('transport-content').style.display = 'block';
+
+        // Render grafice transport
+        setTimeout(function() { renderTransportCharts(data); }, 50);
       } catch (err) {
         document.getElementById('transport-loading').innerHTML = '<div style="color:var(--red);">Eroare: ' + err.message + '</div>';
+      }
+    }
+
+    // ─── Grafice Raport Transport ───
+    function renderTransportCharts(data) {
+      if (typeof Chart === 'undefined') return;
+      const chartsDiv = document.getElementById('transport-charts');
+      const s = data.summary || {};
+      const trips = data.trips || [];
+
+      // Daca nu avem niciun trip si nici km, ascunde
+      const hasData = trips.length > 0 || (s.loadedKm || 0) > 0 || (s.emptyKm || 0) > 0;
+      if (!hasData) {
+        chartsDiv.style.display = 'none';
+        return;
+      }
+      chartsDiv.style.display = 'block';
+
+      // 1. Pie chart "Km cu incarcatura vs gol"
+      const loadedKm = s.loadedKm || 0;
+      const emptyKm = s.emptyKm || 0;
+      if (loadedKm > 0 || emptyKm > 0) {
+        createChart('chart-transport-km', 'doughnut', {
+          labels: ['Cu incarcatura', 'Gol'],
+          datasets: [{
+            data: [loadedKm, emptyKm],
+            backgroundColor: [chartColors.green, chartColors.grayAlpha],
+            borderColor: [chartColors.green, chartColors.gray],
+            borderWidth: 2
+          }]
+        }, {
+          cutout: '55%',
+          plugins: {
+            legend: { position: 'bottom', labels: { padding: 8, boxWidth: 10, font: { size: 10 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const total = loadedKm + emptyKm;
+                  const pct = total > 0 ? Math.round((ctx.parsed / total) * 100) : 0;
+                  return ctx.label + ': ' + ctx.parsed.toFixed(1) + ' km (' + pct + '%)';
+                }
+              }
+            }
+          }
+        });
+      } else {
+        document.querySelector('#chart-transport-km').parentElement.innerHTML = '<div class="chart-container-title">Km cu incarcatura vs gol</div><div class="chart-empty">Fara date distanta</div>';
+      }
+
+      // 2. Bar chart "Tone-km per cursa"
+      if (trips.length > 0) {
+        createChart('chart-transport-tonkm', 'bar', {
+          labels: trips.map(function(t, i) { return 'Cursa ' + (i + 1); }),
+          datasets: [{
+            label: 'Tone-km',
+            data: trips.map(function(t) { return t.tonKm || 0; }),
+            backgroundColor: chartColors.orangeAlpha,
+            borderColor: chartColors.orange,
+            borderWidth: 1.5,
+            borderRadius: 4
+          }]
+        }, {
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  const t = trips[items[0].dataIndex];
+                  const ts = new Date(t.loadStartTime).toLocaleString('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                  return 'Cursa ' + (items[0].dataIndex + 1) + ' — ' + ts;
+                },
+                label: function(ctx) {
+                  const t = trips[ctx.dataIndex];
+                  return [
+                    'Tone-km: ' + ctx.parsed.y,
+                    'Tonaj: ' + (t.loadedTons || 0) + ' t',
+                    'Distanta: ' + (t.distance || 0) + ' km'
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 } },
+            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' } }
+          }
+        });
+      } else {
+        document.querySelector('#chart-transport-tonkm').parentElement.innerHTML = '<div class="chart-container-title">Tone-km per cursa</div><div class="chart-empty">Niciun ciclu de transport detectat</div>';
+      }
+
+      // 3. Line chart "Evolutie tonaj cumulativ"
+      if (trips.length > 0) {
+        // Sort by loadStartTime ca sa avem ordine cronologica
+        const sorted = [...trips].sort(function(a, b) {
+          return new Date(a.loadStartTime) - new Date(b.loadStartTime);
+        });
+        let cumul = 0;
+        const points = sorted.map(function(t) {
+          cumul += (t.loadedTons || 0);
+          return { x: new Date(t.loadStartTime).getTime(), y: Math.round(cumul * 100) / 100 };
+        });
+
+        createChart('chart-transport-cumul', 'line', {
+          datasets: [{
+            label: 'Tonaj cumulativ',
+            data: points,
+            borderColor: chartColors.green,
+            backgroundColor: chartColors.greenAlpha,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.2,
+            pointRadius: 4,
+            pointBackgroundColor: chartColors.green,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 1.5
+          }]
+        }, {
+          parsing: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  return new Date(items[0].parsed.x).toLocaleString('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                },
+                label: function(ctx) { return 'Total cumulativ: ' + ctx.parsed.y + ' t'; }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: {
+                font: { size: 10 },
+                callback: function(v) {
+                  return new Date(v).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' });
+                }
+              }
+            },
+            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' t'; } } }
+          }
+        });
+      } else {
+        document.querySelector('#chart-transport-cumul').parentElement.innerHTML = '<div class="chart-container-title">Evolutie tonaj cumulativ</div><div class="chart-empty">Niciun ciclu de transport detectat</div>';
       }
     }
 
@@ -4474,6 +4673,7 @@
       document.getElementById('report-loading').style.display = 'block';
       document.getElementById('report-summary').style.display = 'none';
       document.getElementById('report-fuel-daily').style.display = 'none';
+      document.getElementById('report-charts').style.display = 'none';
       document.getElementById('report-routes').style.display = 'none';
       document.getElementById('report-empty').style.display = 'none';
       document.getElementById('report-actions').style.display = 'none';
@@ -4547,6 +4747,205 @@
         fuelDiv.style.display = 'block';
       } else {
         fuelDiv.style.display = 'none';
+      }
+
+      // Render grafice raport
+      setTimeout(function() { renderReportCharts(s); }, 50);
+    }
+
+    // ─── Grafice Raport Vehicul ───
+    function renderReportCharts(s) {
+      if (typeof Chart === 'undefined') return;
+      const chartsDiv = document.getElementById('report-charts');
+      const daily = s.dailyFuel || [];
+
+      // Ascunde containerul daca nu avem date
+      if (daily.length === 0) {
+        chartsDiv.style.display = 'none';
+        return;
+      }
+      chartsDiv.style.display = 'block';
+
+      // Format labels ca "DD MMM"
+      const labels = daily.map(function(d) {
+        const dt = new Date(d.date + 'T00:00:00');
+        return dt.toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' });
+      });
+
+      // 1. Line chart "Consum zilnic (L)"
+      const fuelData = daily.map(function(d) { return d.consumed || 0; });
+      const hasFuel = fuelData.some(function(v) { return v > 0; });
+      if (hasFuel) {
+        createChart('chart-report-fuel', 'line', {
+          labels: labels,
+          datasets: [{
+            label: 'Consum',
+            data: fuelData,
+            borderColor: chartColors.orange,
+            backgroundColor: chartColors.orangeAlpha,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: chartColors.orange,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 1
+          }]
+        }, {
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' L'; } } }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 10 } } },
+            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' L'; } } }
+          }
+        });
+      } else {
+        document.querySelector('#chart-report-fuel').parentElement.innerHTML = '<div class="chart-container-title">Consum zilnic (litri)</div><div class="chart-empty">Fara date de consum</div>';
+      }
+
+      // 2. Line chart "Km parcursi zilnic"
+      const kmData = daily.map(function(d) { return d.dailyKm || 0; });
+      const hasKm = kmData.some(function(v) { return v > 0; });
+      if (hasKm) {
+        createChart('chart-report-km', 'line', {
+          labels: labels,
+          datasets: [{
+            label: 'Km',
+            data: kmData,
+            borderColor: chartColors.accent,
+            backgroundColor: chartColors.accentAlpha,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: chartColors.accent,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 1
+          }]
+        }, {
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y.toFixed(1) + ' km'; } } }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 10 } } },
+            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; } } }
+          }
+        });
+      } else {
+        document.querySelector('#chart-report-km').parentElement.innerHTML = '<div class="chart-container-title">Km parcursi zilnic</div><div class="chart-empty">Fara activitate</div>';
+      }
+
+      // 3. Stacked bar "Condus vs Stationare" (ore per zi)
+      const drivingData = daily.map(function(d) { return Math.round((d.driving || 0) / 36) / 100; }); // in ore cu 2 zecimale
+      const idleData = daily.map(function(d) { return Math.round((d.realIdle || 0) / 36) / 100; });
+      const hasTime = drivingData.some(function(v) { return v > 0; }) || idleData.some(function(v) { return v > 0; });
+      if (hasTime) {
+        createChart('chart-report-time', 'bar', {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Condus',
+              data: drivingData,
+              backgroundColor: chartColors.greenAlpha,
+              borderColor: chartColors.green,
+              borderWidth: 1.5,
+              borderRadius: 4
+            },
+            {
+              label: 'Stationare motor',
+              data: idleData,
+              backgroundColor: chartColors.grayAlpha,
+              borderColor: chartColors.gray,
+              borderWidth: 1.5,
+              borderRadius: 4
+            }
+          ]
+        }, {
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const hours = Math.floor(ctx.parsed.y);
+                  const mins = Math.round((ctx.parsed.y - hours) * 60);
+                  return ctx.dataset.label + ': ' + hours + 'h ' + mins + 'm';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+            y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + 'h'; } } }
+          }
+        });
+      } else {
+        document.querySelector('#chart-report-time').parentElement.innerHTML = '<div class="chart-container-title">Condus vs Stationare</div><div class="chart-empty">Fara date activitate</div>';
+      }
+
+      // 4. Line chart "Viteza in timp" — doar pentru perioada "Azi" (1 singura zi)
+      const speedWrap = document.getElementById('chart-report-speed-wrap');
+      if (daily.length === 1 && reportImei) {
+        // Fetch history pentru aceasta zi
+        const dayIso = daily[0].date + 'T00:00:00';
+        const nowIso = new Date().toISOString();
+        fetch('/api/history/' + reportImei + '?from=' + encodeURIComponent(dayIso) + '&to=' + encodeURIComponent(nowIso))
+          .then(function(r) { return r.json(); })
+          .then(function(history) {
+            if (!history || history.length < 2) { speedWrap.style.display = 'none'; return; }
+            const points = downsample(history, 500).map(function(h) {
+              return { x: new Date(h.timestamp).getTime(), y: h.speed || 0 };
+            });
+            speedWrap.style.display = 'block';
+            createChart('chart-report-speed', 'line', {
+              datasets: [{
+                label: 'Viteza',
+                data: points,
+                borderColor: chartColors.accent,
+                backgroundColor: chartColors.accentAlpha,
+                borderWidth: 1.5,
+                fill: true,
+                tension: 0.2,
+                pointRadius: 0,
+                pointHoverRadius: 4
+              }]
+            }, {
+              parsing: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    title: function(items) {
+                      return new Date(items[0].parsed.x).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    },
+                    label: function(ctx) { return ctx.parsed.y + ' km/h'; }
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  type: 'linear',
+                  grid: { color: 'rgba(255,255,255,0.04)' },
+                  ticks: {
+                    font: { size: 10 },
+                    callback: function(v) {
+                      return new Date(v).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+                    }
+                  }
+                },
+                y: {
+                  beginAtZero: true,
+                  grid: { color: 'rgba(255,255,255,0.04)' },
+                  ticks: { callback: function(v) { return v + ' km/h'; } }
+                }
+              }
+            });
+          })
+          .catch(function() { speedWrap.style.display = 'none'; });
+      } else {
+        speedWrap.style.display = 'none';
       }
     }
 
