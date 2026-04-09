@@ -1381,6 +1381,56 @@
         max-width: 100vw;
       }
     }
+
+    /* ─── Chart containers ─── */
+    .chart-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin: 12px 0 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .chart-grid {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .chart-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .chart-grid.cols-1 { grid-template-columns: 1fr; }
+    @media (max-width: 768px) {
+      .chart-grid.cols-2 { grid-template-columns: 1fr; }
+    }
+    .chart-container {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      position: relative;
+    }
+    .chart-container-title {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .chart-container canvas {
+      max-width: 100% !important;
+    }
+    .chart-container.h-200 { height: 230px; }
+    .chart-container.h-250 { height: 280px; }
+    .chart-container.h-300 { height: 330px; }
+    .chart-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -1704,6 +1754,27 @@
           <div class="report-stat"><div class="report-stat-value" id="dk-alerts">0</div><div class="report-stat-label">Alerte</div></div>
         </div>
 
+        <!-- Grafice Dashboard -->
+        <div class="chart-section-title"><i class="fas fa-chart-pie" style="color:var(--accent);margin-right:6px;"></i>Statistici vizuale</div>
+        <div class="chart-grid cols-2">
+          <div class="chart-container h-200">
+            <div class="chart-container-title">Status flota</div>
+            <canvas id="chart-dash-status"></canvas>
+          </div>
+          <div class="chart-container h-200">
+            <div class="chart-container-title">Top 5 km parcursi azi</div>
+            <canvas id="chart-dash-top-km"></canvas>
+          </div>
+          <div class="chart-container h-200">
+            <div class="chart-container-title">Top 5 consum azi</div>
+            <canvas id="chart-dash-top-fuel"></canvas>
+          </div>
+          <div class="chart-container h-200">
+            <div class="chart-container-title">Km per vehicul azi</div>
+            <canvas id="chart-dash-km-vehicle"></canvas>
+          </div>
+        </div>
+
         <!-- Top vehicule -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
           <div>
@@ -1965,9 +2036,79 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     // ─── Global State ───
     let currentUser = null;
+
+    // ─── Chart.js setup: dark theme + helper ───
+    if (typeof Chart !== 'undefined') {
+      Chart.defaults.color = '#9ca3af';
+      Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.06)';
+      Chart.defaults.font.family = '-apple-system, system-ui, "Segoe UI", Roboto, sans-serif';
+      Chart.defaults.font.size = 11;
+      Chart.defaults.plugins.legend.labels.color = '#e5e7eb';
+      Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(17, 24, 39, 0.95)';
+      Chart.defaults.plugins.tooltip.titleColor = '#e5e7eb';
+      Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+      Chart.defaults.plugins.tooltip.borderColor = 'rgba(255, 255, 255, 0.1)';
+      Chart.defaults.plugins.tooltip.borderWidth = 1;
+      Chart.defaults.plugins.tooltip.padding = 10;
+      Chart.defaults.plugins.tooltip.cornerRadius = 6;
+    }
+
+    // Registru pentru instance active pe canvas (pentru cleanup la re-render)
+    window._charts = {};
+
+    function createChart(canvasId, type, data, options) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return null;
+      // Destroy existing chart pe acelasi canvas ca sa evitam memory leak
+      if (window._charts[canvasId]) {
+        try { window._charts[canvasId].destroy(); } catch (e) {}
+        delete window._charts[canvasId];
+      }
+      const ctx = canvas.getContext('2d');
+      const chart = new Chart(ctx, {
+        type,
+        data,
+        options: Object.assign({
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 400 }
+        }, options || {})
+      });
+      window._charts[canvasId] = chart;
+      return chart;
+    }
+
+    // Downsample un array de puncte la max N puncte (pentru performance grafic viteza/timp)
+    function downsample(points, maxPoints) {
+      if (!points || points.length <= maxPoints) return points;
+      const step = Math.ceil(points.length / maxPoints);
+      const result = [];
+      for (let i = 0; i < points.length; i += step) result.push(points[i]);
+      return result;
+    }
+
+    // Helper: returneaza CSS variable din root
+    function cssVar(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    // Paleta de culori (folosita in grafice)
+    const chartColors = {
+      accent: '#3b82f6',
+      accentAlpha: 'rgba(59, 130, 246, 0.2)',
+      green: '#10b981',
+      greenAlpha: 'rgba(16, 185, 129, 0.2)',
+      orange: '#f97316',
+      orangeAlpha: 'rgba(249, 115, 22, 0.2)',
+      red: '#ef4444',
+      redAlpha: 'rgba(239, 68, 68, 0.2)',
+      gray: '#6b7280',
+      grayAlpha: 'rgba(107, 114, 128, 0.2)'
+    };
     let mapInitialized = false;
     let map, markers, devices, selectedImei, historyLine;
     let currentFilter = 'all';
@@ -4084,8 +4225,162 @@
 
         document.getElementById('dash-loading').style.display = 'none';
         document.getElementById('dash-content').style.display = 'block';
+
+        // Render charts DUPA ce content-ul e vizibil (canvas-urile au dimensiuni corecte)
+        setTimeout(function() { renderDashboardCharts(d); }, 50);
       } catch (err) {
         document.getElementById('dash-loading').innerHTML = '<div style="color:var(--red);">Eroare: ' + err.message + '</div>';
+      }
+    }
+
+    // ─── Grafice Dashboard ───
+    function renderDashboardCharts(d) {
+      if (typeof Chart === 'undefined') return;
+
+      // 1. Donut "Status flota" — Online (stationare) / Moving / Offline
+      const stationary = Math.max(0, (d.onlineCount || 0) - (d.movingCount || 0));
+      createChart('chart-dash-status', 'doughnut', {
+        labels: ['In miscare', 'Stationare', 'Offline'],
+        datasets: [{
+          data: [d.movingCount || 0, stationary, d.offlineCount || 0],
+          backgroundColor: [chartColors.green, chartColors.accent, chartColors.red],
+          borderColor: 'rgba(0, 0, 0, 0.2)',
+          borderWidth: 2
+        }]
+      }, {
+        cutout: '60%',
+        plugins: {
+          legend: { position: 'bottom', labels: { padding: 8, boxWidth: 10, font: { size: 10 } } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                const total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                const pct = total > 0 ? Math.round((ctx.parsed / total) * 100) : 0;
+                return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+              }
+            }
+          }
+        }
+      });
+
+      // 2. Horizontal bar "Top 5 km parcursi azi"
+      const topKmData = (d.topKm || []).filter(function(v) { return v.km > 0; }).slice(0, 5);
+      if (topKmData.length > 0) {
+        createChart('chart-dash-top-km', 'bar', {
+          labels: topKmData.map(function(v) { return (v.plate || v.name || v.imei).substring(0, 16); }),
+          datasets: [{
+            label: 'Km',
+            data: topKmData.map(function(v) { return v.km; }),
+            backgroundColor: chartColors.accentAlpha,
+            borderColor: chartColors.accent,
+            borderWidth: 1.5,
+            borderRadius: 4
+          }]
+        }, {
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  const idx = items[0].dataIndex;
+                  return topKmData[idx].name || topKmData[idx].imei;
+                },
+                label: function(ctx) { return ctx.parsed.x + ' km'; }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; } } },
+            y: { grid: { display: false } }
+          }
+        });
+      } else {
+        document.querySelector('#chart-dash-top-km').parentElement.innerHTML = '<div class="chart-container-title">Top 5 km parcursi azi</div><div class="chart-empty">Nicio activitate azi</div>';
+      }
+
+      // 3. Horizontal bar "Top 5 consum azi"
+      const topFuelData = (d.topFuel || []).filter(function(v) { return v.fuel > 0; }).slice(0, 5);
+      if (topFuelData.length > 0) {
+        createChart('chart-dash-top-fuel', 'bar', {
+          labels: topFuelData.map(function(v) { return (v.plate || v.name || v.imei).substring(0, 16); }),
+          datasets: [{
+            label: 'Litri',
+            data: topFuelData.map(function(v) { return v.fuel; }),
+            backgroundColor: chartColors.orangeAlpha,
+            borderColor: chartColors.orange,
+            borderWidth: 1.5,
+            borderRadius: 4
+          }]
+        }, {
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  const idx = items[0].dataIndex;
+                  return topFuelData[idx].name || topFuelData[idx].imei;
+                },
+                label: function(ctx) { return ctx.parsed.x + ' L'; }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' L'; } } },
+            y: { grid: { display: false } }
+          }
+        });
+      } else {
+        document.querySelector('#chart-dash-top-fuel').parentElement.innerHTML = '<div class="chart-container-title">Top 5 consum azi</div><div class="chart-empty">Fara date de consum</div>';
+      }
+
+      // 4. Vertical bar "Km per vehicul azi"
+      const activeDevices = (d.devices || []).filter(function(v) { return v.km > 0; }).sort(function(a, b) { return b.km - a.km; });
+      if (activeDevices.length > 0) {
+        // Limitam la 15 vehicule in grafic pentru lizibilitate
+        const chartDevices = activeDevices.slice(0, 15);
+        createChart('chart-dash-km-vehicle', 'bar', {
+          labels: chartDevices.map(function(v) { return (v.plate || v.name || v.imei).substring(0, 12); }),
+          datasets: [{
+            label: 'Km',
+            data: chartDevices.map(function(v) { return v.km; }),
+            backgroundColor: chartDevices.map(function(v) {
+              return v.isMoving ? chartColors.greenAlpha : chartColors.accentAlpha;
+            }),
+            borderColor: chartDevices.map(function(v) {
+              return v.isMoving ? chartColors.green : chartColors.accent;
+            }),
+            borderWidth: 1.5,
+            borderRadius: 4
+          }]
+        }, {
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  const idx = items[0].dataIndex;
+                  return chartDevices[idx].name || chartDevices[idx].imei;
+                },
+                label: function(ctx) {
+                  const v = chartDevices[ctx.dataIndex];
+                  return [
+                    'Km azi: ' + ctx.parsed.y,
+                    'Consum: ' + (v.fuel || '-') + ' L',
+                    'Vit max: ' + (v.maxSpeed || 0) + ' km/h'
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; } } }
+          }
+        });
+      } else {
+        document.querySelector('#chart-dash-km-vehicle').parentElement.innerHTML = '<div class="chart-container-title">Km per vehicul azi</div><div class="chart-empty">Nicio activitate azi</div>';
       }
     }
 
