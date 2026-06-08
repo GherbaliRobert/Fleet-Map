@@ -1,4 +1,4 @@
-# GPS Unitip — platformă de tracking flotă (Teltonika)
+# GPS  — platformă de tracking flotă (Teltonika)
 
 Server de tracking GPS pentru dispozitive Teltonika (FMB140 + camioane cu CAN), cu hartă live,
 istoric, rapoarte, alerte, roluri/acces multi-client și **API REST**. Rulează **100% local**:
