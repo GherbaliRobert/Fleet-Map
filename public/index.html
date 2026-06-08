@@ -2,13 +2,52 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>GPS Unitip - Fleet Management</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- PWA / mobil -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="application-name" content="GPS Unitip">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GPS Unitip">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
+      /* TEMĂ DESCHISĂ (implicită, ca în Track GPS) */
+      --bg-darkest: #eef2f6;
+      --bg-dark: #f1f5f9;
+      --bg-panel: #ffffff;
+      --bg-card: #ffffff;
+      --border: #e2e8f0;
+      --border-light: #cbd5e1;
+      --text-primary: #0f172a;
+      --text: var(--text-primary);
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --blue: #2563eb;
+      --blue-hover: #1d4ed8;
+      --green: #16a34a;
+      --green-dim: #15803d;
+      --red: #dc2626;
+      --orange: #ea580c;
+      --yellow: #ca8a04;
+      --purple: #7c3aed;
+      --sidebar-width: 340px;
+      --detail-width: 380px;
+      --topbar-h: 56px;
+      --navrail-w: 212px;
+      --footer-h: 32px;
+    }
+    body.dark {
+      /* TEMĂ ÎNTUNECATĂ (prin comutator) */
       --bg-darkest: #000000;
       --bg-dark: #0a0a0a;
       --bg-panel: #141414;
@@ -20,16 +59,12 @@
       --text-muted: #64748b;
       --accent: #38bdf8;
       --accent-hover: #7dd3fc;
-      --blue: #2563eb;
-      --blue-hover: #1d4ed8;
       --green: #22c55e;
       --green-dim: #16a34a;
       --red: #ef4444;
       --orange: #f97316;
       --yellow: #eab308;
       --purple: #a78bfa;
-      --sidebar-width: 360px;
-      --detail-width: 380px;
     }
 
     body {
@@ -51,7 +86,7 @@
       align-items: center;
       justify-content: center;
       height: 100vh;
-      background: linear-gradient(135deg, #0a0f1a 0%, #0f172a 50%, #1a1a2e 100%);
+      background: linear-gradient(135deg, #dbeafe 0%, #eef2f6 55%, #e0e7ff 100%);
     }
 
     .login-box {
@@ -143,10 +178,86 @@
       display: none;
     }
 
-    /* ─── App Layout ─── */
-    #app { display: none; height: 100vh; }
+    /* ─── App Layout (shell AROBS) ─── */
+    #app { display: none; height: 100vh; flex-direction: column; }
     #app.visible { display: flex; }
     #login-screen.hidden { display: none; }
+
+    /* Topbar */
+    #topbar {
+      height: var(--topbar-h); min-height: var(--topbar-h);
+      background: var(--bg-panel); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; z-index: 30;
+    }
+    .topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .topbar-icon {
+      width: 38px; height: 38px; border-radius: 8px; border: 1px solid transparent;
+      background: transparent; color: var(--text-secondary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 15px; transition: all .15s;
+    }
+    .topbar-icon:hover { background: var(--bg-dark); color: var(--text-primary); }
+    .topbar-icon.danger:hover { color: var(--red); }
+    .topbar-user { display: flex; align-items: center; gap: 10px; padding-left: 10px; margin-left: 4px; border-left: 1px solid var(--border); }
+    .topbar-user-info { text-align: right; line-height: 1.25; }
+    .topbar-user-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .topbar-user-role { font-size: 11px; color: var(--text-muted); }
+
+    /* Shell body = navrail + main */
+    #shell-body { flex: 1; display: flex; min-height: 0; }
+    #navrail {
+      width: var(--navrail-w); min-width: var(--navrail-w);
+      background: var(--bg-panel); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 10px 8px; gap: 2px; overflow-y: auto; z-index: 20;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 11px 12px;
+      border: none; background: transparent; color: var(--text-secondary); cursor: pointer;
+      font-size: 13.5px; font-weight: 600; border-radius: 8px; text-align: left; width: 100%; transition: all .15s;
+    }
+    .nav-item i { width: 20px; text-align: center; font-size: 15px; }
+    .nav-item:hover { background: var(--bg-dark); color: var(--text-primary); }
+    .nav-item.active { background: var(--accent); color: #fff; }
+
+    #main-view { flex: 1; position: relative; min-width: 0; }
+    .view { display: none; height: 100%; }
+    .view.active { display: flex; }
+
+    /* Footer */
+    #footer-bar {
+      height: var(--footer-h); min-height: var(--footer-h);
+      background: var(--bg-panel); border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; font-size: 11px; color: var(--text-muted); z-index: 20;
+    }
+    #footer-bar a { color: var(--text-muted); text-decoration: none; margin-left: 14px; }
+    #footer-bar a:hover { color: var(--accent); }
+
+    /* Modal afișat ca panou inline (în zona de conținut) */
+    .modal-overlay.as-view {
+      inset: var(--topbar-h) 0 var(--footer-h) var(--navrail-w);
+      position: fixed; background: var(--bg-darkest); backdrop-filter: none;
+      display: flex; align-items: flex-start; justify-content: center; padding: 18px; overflow: auto; z-index: 15;
+    }
+    .modal-overlay.as-view .modal {
+      width: 100% !important; max-width: 1080px !important; max-height: none !important;
+      height: auto !important; box-shadow: none !important;
+    }
+    @media (max-width: 768px) {
+      #navrail { position: fixed; top: var(--topbar-h); bottom: 0; left: 0; transform: translateX(-100%); transition: transform .2s; box-shadow: 4px 0 20px rgba(0,0,0,.2); z-index: 40; }
+      #navrail.open { transform: translateX(0); }
+      .modal-overlay.as-view { left: 0; }
+      /* Colapsează grilele multi-coloană pe mobil */
+      [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+      .modal { width: 96vw !important; max-width: 96vw !important; }
+      .topbar-user-info { display: none; }
+      .topbar-left .brand-title h1 { font-size: 16px; }
+      #detail-panel { width: 100% !important; min-width: 0 !important; }
+    }
+    @media (max-width: 768px) {
+      /* tabelele largi devin derulabile orizontal */
+      #rep-table-wrap, #audit-list, .modal table { overflow-x: auto; }
+    }
 
     /* ─── Sidebar ─── */
     #sidebar {
@@ -327,12 +438,12 @@
 
     .device-card:hover {
       border-color: var(--accent);
-      background: #1a2b42;
+      background: var(--bg-dark);
     }
 
     .device-card.active {
       border-color: var(--accent);
-      background: #1a3150;
+      background: var(--bg-dark);
       box-shadow: 0 0 0 1px var(--accent) inset;
     }
 
@@ -1461,21 +1572,46 @@
 
   <!-- App -->
   <div id="app">
-    <!-- Sidebar -->
-    <div id="sidebar">
-      <div class="sidebar-brand">
-        <div class="sidebar-brand-top">
-          <div class="brand-title">
-            <i class="fas fa-satellite-dish"></i>
-            <h1>GPS <span>Unitip</span></h1>
+    <!-- Topbar -->
+    <header id="topbar">
+      <div class="topbar-left">
+        <button class="topbar-icon" id="nav-toggle" onclick="toggleNavrail()" title="Meniu"><i class="fas fa-bars"></i></button>
+        <div class="brand-title"><i class="fas fa-satellite-dish"></i><h1>GPS <span>Unitip</span></h1></div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-icon" id="theme-toggle" onclick="toggleTheme()" title="Comută tema"><i class="fas fa-moon"></i></button>
+        <button class="topbar-icon" onclick="toggleNotifications()" title="Notificări" style="position:relative;">
+          <i class="fas fa-bell"></i>
+          <span id="notif-badge" style="display:none;position:absolute;top:-3px;right:-3px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;line-height:15px;border-radius:8px;padding:0 3px;text-align:center;">0</span>
+        </button>
+        <div class="topbar-user">
+          <div class="topbar-user-info">
+            <div class="topbar-user-name" id="topbar-username">-</div>
+            <div class="topbar-user-role" id="topbar-role">-</div>
           </div>
-          <div class="header-actions">
-            <button class="btn-icon" onclick="openDashboard()" title="Dashboard"><i class="fas fa-tachometer-alt"></i></button>
-            <button class="btn-icon" id="btn-debug" style="display:none;" onclick="toggleDebugPanel()" title="Debug"><i class="fas fa-terminal"></i></button>
-            <button class="btn-icon" id="btn-users" style="display:none" onclick="openUsersModal()" title="Utilizatori"><i class="fas fa-users"></i></button>
-            <button class="btn-icon danger" onclick="logout()" title="Deconectare"><i class="fas fa-sign-out-alt"></i></button>
-          </div>
+          <button class="topbar-icon danger" onclick="logout()" title="Deconectare"><i class="fas fa-sign-out-alt"></i></button>
         </div>
+      </div>
+    </header>
+
+    <div id="shell-body">
+      <!-- Meniu vertical -->
+      <nav id="navrail">
+        <button class="nav-item active" data-view="localizare" onclick="showView('localizare')"><i class="fas fa-location-dot"></i><span>Localizare</span></button>
+        <button class="nav-item" data-view="traseu" onclick="showView('traseu')"><i class="fas fa-route"></i><span>Traseu</span></button>
+        <button class="nav-item" data-view="analize" onclick="showView('analize')"><i class="fas fa-chart-column"></i><span>Analize statistice</span></button>
+        <button class="nav-item fleet-only" data-view="management" onclick="showView('management')"><i class="fas fa-pen-to-square"></i><span>Management</span></button>
+        <button class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
+        <button class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
+        <button class="nav-item" id="nav-admin" data-view="administrare" onclick="showView('administrare')" style="display:none;"><i class="fas fa-gear"></i><span>Administrare</span></button>
+      </nav>
+
+      <main id="main-view">
+        <!-- View: Localizare -->
+        <section id="view-localizare" class="view active">
+          <!-- Sidebar -->
+          <div id="sidebar">
+            <div class="sidebar-brand">
 
         <div class="sidebar-search">
           <div class="search-input-wrap">
@@ -1585,6 +1721,14 @@
         <input type="hidden" id="detail-history-to">
       </div>
     </div>
+        </section>
+      </main>
+    </div>
+
+    <footer id="footer-bar">
+      <span>GPS Unitip © Unitip 2026 · v1.0 · bază de date locală</span>
+      <span><a href="/api" target="_blank">API</a></span>
+    </footer>
   </div>
 
   <!-- Mobile toggle button -->
@@ -1610,6 +1754,9 @@
         </button>
         <button class="edit-tab" data-tab="calibration" onclick="switchEditTab('calibration', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
           <i class="fas fa-tint"></i> Sonda combustibil
+        </button>
+        <button class="edit-tab" data-tab="sensors" onclick="switchEditTab('sensors', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
+          <i class="fas fa-gas-pump"></i> Sonde (avansat)
         </button>
       </div>
 
@@ -1638,6 +1785,16 @@
         <div class="form-group">
           <label>Numar inmatriculare</label>
           <input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="text-transform:uppercase;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-group">
+            <label>Grup <span style="color:var(--text-muted);font-size:10px;">(determină accesul clienților)</span></label>
+            <select id="edit-group"><option value="">-- Fără grup --</option></select>
+          </div>
+          <div class="form-group">
+            <label>Șofer</label>
+            <select id="edit-driver"><option value="">-- Fără șofer --</option></select>
+          </div>
         </div>
       </div>
 
@@ -1719,6 +1876,17 @@
           <strong style="color:var(--accent);">Exemplu calibrare VW T5 (80L tank):</strong><br>
           0.5V=0L, 1.2V=10L, 2.0V=20L, 2.8V=30L, 3.6V=40L, 4.4V=50L, 5.1V=60L, 5.9V=70L, 6.7V=80L
         </div>
+      </div>
+
+      <!-- Tab: Sonde (avansat) -->
+      <div id="edit-tab-sensors" class="edit-tab-content" style="display:none;">
+        <div style="background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:11px;color:var(--text-muted);">
+          <i class="fas fa-info-circle" style="color:var(--accent);"></i>
+          Mapează sondele litrometrice / senzorii IoT (Escort, EuroSens Dominator, EuroSens Degree) la câmpurile dispozitivului.
+          Nivelul normalizat (litri) e folosit în rapoarte, alerte și detecția de scădere combustibil.
+        </div>
+        <div id="fuel-sensors-list"></div>
+        <button type="button" class="btn-sm" onclick="addFuelSensor()" style="margin-top:6px;"><i class="fas fa-plus"></i> Adaugă sondă</button>
       </div>
 
       <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:16px;width:100%;">
@@ -1907,22 +2075,388 @@
     </div>
   </div>
 
+  <!-- Stiluri pentru ecranele RBAC -->
+  <style>
+    #user-edit-modal input, #user-edit-modal select,
+    #apikeys-modal input, #apikeys-modal select,
+    #users-modal .add-user-form input, #users-modal .add-user-form select {
+      background: var(--bg-dark); border:1px solid var(--border); color: var(--text, #e5e7eb);
+      border-radius:6px; padding:8px 10px; font-size:13px; width:100%; box-sizing:border-box;
+    }
+    #user-edit-modal label.ue-field { display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--text-muted); }
+    label.ue-check { display:flex; align-items:center; gap:8px; padding:4px 2px; font-size:13px; cursor:pointer; }
+    label.ue-check input { width:auto !important; }
+    .btn-primary { background: var(--accent); color:#fff; border:none; }
+    body.no-fleet .fleet-only { display:none !important; }
+    /* Administrare (Faza 2) */
+    #admin-modal input, #admin-modal select, #admin-modal textarea {
+      background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb);
+      border-radius:6px; padding:7px 9px; font-size:13px; box-sizing:border-box; width:100%;
+    }
+    .admin-tab { background:none; border:none; border-bottom:2px solid transparent; color:var(--text-muted); padding:8px 12px; cursor:pointer; font-size:13px; font-weight:600; }
+    .admin-tab.active { color:var(--text,#e5e7eb); border-bottom-color:var(--accent); }
+    .admin-add { display:grid; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+    .admin-add label { display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--text-muted); }
+    .admin-row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
+    .admin-row .meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .admin-section-title { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin:4px 0 8px; }
+    #draw-toolbar input[type=text] { background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb); border-radius:6px; padding:6px 8px; font-size:12px; }
+    /* Rapoarte + Hotspot (Faza 3) */
+    #reports-modal input, #reports-modal select, #hotspot-panel input, #hotspot-panel select {
+      background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb);
+      border-radius:6px; padding:7px 9px; font-size:13px; box-sizing:border-box; width:100%;
+    }
+    label.rep-f { display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--text-muted); }
+    #rep-table th { position:sticky; top:0; background:var(--bg-dark); padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+    #rep-table td { padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+    .rep-chip { background:var(--bg-dark); border:1px solid var(--border); border-radius:8px; padding:8px 12px; }
+    .rep-chip .v { font-size:18px; font-weight:700; color:var(--accent); }
+    .rep-chip .l { font-size:11px; color:var(--text-muted); }
+    .rep-cats { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:12px; }
+    .rep-cat { padding:7px 14px; border-radius:8px; border:1px solid var(--border); background:var(--bg-panel); color:var(--text-secondary); cursor:pointer; font-size:13px; font-weight:600; }
+    .rep-cat:hover { border-color:var(--accent); color:var(--text-primary); }
+    .rep-cat.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .rep-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+    .rep-card { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-panel); color:var(--text-primary); cursor:pointer; transition:all .15s; text-align:left; }
+    .rep-card:hover { border-color:var(--accent); box-shadow:0 2px 12px rgba(0,0,0,.08); transform:translateY(-1px); }
+    .rep-card i { font-size:18px; color:var(--accent); width:26px; text-align:center; }
+    .rep-card .rc-label { font-weight:600; font-size:13.5px; }
+  </style>
+
   <!-- Users Modal -->
   <div id="users-modal" class="modal-overlay">
-    <div class="modal">
+    <div class="modal" style="width:760px;max-width:96vw;max-height:92vh;">
       <h2>
-        <span><i class="fas fa-users" style="margin-right:8px;color:var(--purple);"></i> Utilizatori</span>
-        <button class="close-btn" onclick="closeUsersModal()" style="position:static;font-size:18px;">&#10005;</button>
+        <span><i class="fas fa-users" style="margin-right:8px;color:var(--purple);"></i> Utilizatori &amp; acces</span>
+        <span style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-sm" onclick="openApiKeys()" title="Chei API"><i class="fas fa-key"></i> Chei API</button>
+          <button class="btn-sm" onclick="openAudit()" title="Jurnal audit"><i class="fas fa-clipboard-list"></i> Audit</button>
+          <button class="close-btn" onclick="closeUsersModal()" style="position:static;font-size:18px;">&#10005;</button>
+        </span>
       </h2>
-      <div id="users-list"></div>
-      <div class="add-user-form">
-        <input type="text" id="new-username" placeholder="Username">
-        <input type="password" id="new-password" placeholder="Parola">
-        <select id="new-role">
-          <option value="viewer">Viewer</option>
-          <option value="admin">Admin</option>
-        </select>
-        <button onclick="addUser()"><i class="fas fa-plus"></i> Adauga</button>
+      <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
+        <div class="add-user-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input type="text" id="new-username" placeholder="Username *">
+          <input type="password" id="new-password" placeholder="Parolă *">
+          <input type="text" id="new-fullname" placeholder="Nume complet">
+          <input type="email" id="new-email" placeholder="Email">
+          <input type="text" id="new-phone" placeholder="Telefon">
+          <select id="new-role">
+            <option value="client">Client (vede doar vehiculele atribuite)</option>
+            <option value="dispatcher">Dispecer (atribuit + confirmă alerte)</option>
+            <option value="manager">Manager (toată flota, editează)</option>
+            <option value="admin">Admin (control total)</option>
+            <option value="viewer">Viewer (read-only, atribuit)</option>
+          </select>
+          <button onclick="addUser()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă utilizator</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Edit / Access Modal -->
+  <div id="user-edit-modal" class="modal-overlay">
+    <div class="modal" style="width:620px;max-width:96vw;max-height:92vh;overflow-y:auto;">
+      <h2>
+        <span><i class="fas fa-user-cog" style="margin-right:8px;color:var(--orange);"></i> <span id="ue-title">Editare utilizator</span></span>
+        <button class="close-btn" onclick="closeUserEdit()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <input type="hidden" id="ue-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <label class="ue-field"><span>Rol</span>
+          <select id="ue-role">
+            <option value="client">Client</option>
+            <option value="dispatcher">Dispecer</option>
+            <option value="manager">Manager</option>
+            <option value="admin">Admin</option>
+            <option value="viewer">Viewer</option>
+          </select>
+        </label>
+        <label class="ue-field"><span>Status cont</span>
+          <select id="ue-active"><option value="true">Activ</option><option value="false">Dezactivat</option></select>
+        </label>
+        <label class="ue-field"><span>Nume complet</span><input type="text" id="ue-fullname"></label>
+        <label class="ue-field"><span>Email</span><input type="email" id="ue-email"></label>
+        <label class="ue-field"><span>Telefon</span><input type="text" id="ue-phone"></label>
+        <label class="ue-field"><span>Parolă nouă (opțional)</span><input type="password" id="ue-password" placeholder="gol = neschimbat"></label>
+      </div>
+      <div id="ue-access-wrap">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px;">Acces pe vehicule</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <button class="btn-sm" type="button" onclick="ueToggleAll('dev', true)">Toate</button>
+          <button class="btn-sm" type="button" onclick="ueToggleAll('dev', false)">Niciunul</button>
+          <input type="text" id="ue-dev-search" placeholder="caută vehicul..." oninput="ueFilterDevices()" style="flex:1;">
+        </div>
+        <div id="ue-devices" style="max-height:170px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;"></div>
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px;">Acces pe grupe (toate vehiculele din grup)</div>
+        <div id="ue-groups" style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+        <button class="btn-sm" onclick="closeUserEdit()">Anulează</button>
+        <button class="btn-sm btn-primary" onclick="saveUserEdit()"><i class="fas fa-save"></i> Salvează</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit Modal -->
+  <div id="audit-modal" class="modal-overlay">
+    <div class="modal" style="width:840px;max-width:96vw;max-height:90vh;">
+      <h2>
+        <span><i class="fas fa-clipboard-list" style="margin-right:8px;color:var(--accent);"></i> Jurnal audit</span>
+        <button class="close-btn" onclick="closeAudit()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <div id="audit-list" style="max-height:72vh;overflow-y:auto;font-size:12px;"></div>
+    </div>
+  </div>
+
+  <!-- API Keys Modal -->
+  <div id="apikeys-modal" class="modal-overlay">
+    <div class="modal" style="width:760px;max-width:96vw;max-height:92vh;overflow-y:auto;">
+      <h2>
+        <span><i class="fas fa-key" style="margin-right:8px;color:var(--orange);"></i> Chei API</span>
+        <button class="close-btn" onclick="closeApiKeys()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;">
+        O cheie API permite accesul programatic și moștenește rolul + accesul pe vehicule al utilizatorului asociat.
+        Trimite cheia în header: <code>Authorization: Bearer &lt;cheie&gt;</code> sau <code>X-API-Key: &lt;cheie&gt;</code>.
+      </p>
+      <div id="apikey-new" style="display:none;background:var(--bg-dark);border:1px solid #10b981;border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">⚠ Copiază cheia acum — nu se mai poate vedea după închidere:</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <code id="apikey-new-value" style="flex:1;word-break:break-all;font-size:13px;color:#10b981;"></code>
+          <button class="btn-sm" onclick="copyApiKey()"><i class="fas fa-copy"></i> Copiază</button>
+        </div>
+      </div>
+      <div id="apikeys-list" style="max-height:42vh;overflow-y:auto;margin-bottom:14px;"></div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Generează cheie nouă</div>
+        <div class="add-user-form" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--text-muted);"><span>Utilizator (rol + acces moștenit)</span>
+            <select id="apikey-user"></select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--text-muted);"><span>Nume / descriere</span>
+            <input type="text" id="apikey-name" placeholder="ex: integrare ERP">
+          </label>
+          <button onclick="createApiKey()"><i class="fas fa-plus"></i> Generează</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Administrare (Faza 2) ═══ -->
+  <div id="admin-modal" class="modal-overlay">
+    <div class="modal" style="width:880px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;">
+      <h2>
+        <span><i class="fas fa-sliders-h" style="margin-right:8px;color:var(--accent);"></i> Administrare</span>
+        <button class="close-btn" onclick="closeAdmin()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;">
+        <button class="admin-tab active" data-atab="drivers" onclick="switchAdminTab('drivers')"><i class="fas fa-id-card"></i> Șoferi</button>
+        <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
+        <button class="admin-tab" data-atab="alerts" onclick="switchAdminTab('alerts')"><i class="fas fa-bell"></i> Alerte</button>
+        <button class="admin-tab" data-atab="geofences" onclick="switchAdminTab('geofences')"><i class="fas fa-draw-polygon"></i> Zone</button>
+        <button class="admin-tab" data-atab="maintenance" onclick="switchAdminTab('maintenance')"><i class="fas fa-wrench"></i> Mentenanță</button>
+      </div>
+      <div style="overflow-y:auto;flex:1;padding-right:4px;">
+
+        <!-- Șoferi -->
+        <div id="atab-drivers" class="admin-tab-content">
+          <div id="admin-drivers-list"></div>
+          <div class="admin-add" style="grid-template-columns:repeat(2,1fr);">
+            <input type="hidden" id="drv-id">
+            <label><span>Nume *</span><input type="text" id="drv-name"></label>
+            <label><span>Telefon</span><input type="text" id="drv-phone"></label>
+            <label><span>Email</span><input type="email" id="drv-email"></label>
+            <label><span>Nr. permis</span><input type="text" id="drv-license"></label>
+            <label><span>Expirare permis</span><input type="date" id="drv-expiry"></label>
+            <div style="display:flex;align-items:flex-end;gap:6px;">
+              <button class="btn-sm btn-primary" onclick="saveDriver()" style="flex:1;"><i class="fas fa-save"></i> <span id="drv-btn">Adaugă</span></button>
+              <button class="btn-sm" onclick="resetDriverForm()" title="Golește">↺</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grupe -->
+        <div id="atab-groups" class="admin-tab-content" style="display:none;">
+          <div id="admin-groups-list"></div>
+          <div class="admin-add" style="grid-template-columns:2fr 3fr auto auto;align-items:end;">
+            <input type="hidden" id="grp-id">
+            <label><span>Nume *</span><input type="text" id="grp-name"></label>
+            <label><span>Descriere</span><input type="text" id="grp-desc"></label>
+            <label><span>Culoare</span><input type="color" id="grp-color" value="#2563eb" style="height:34px;padding:2px;"></label>
+            <div style="display:flex;gap:6px;"><button class="btn-sm btn-primary" onclick="saveGroup()"><i class="fas fa-save"></i> <span id="grp-btn">Adaugă</span></button><button class="btn-sm" onclick="resetGroupForm()">↺</button></div>
+          </div>
+        </div>
+
+        <!-- Alerte -->
+        <div id="atab-alerts" class="admin-tab-content" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div class="admin-section-title" style="margin:0;">Reguli de alertă</div>
+            <button class="btn-sm" onclick="openAlertHistory()"><i class="fas fa-history"></i> Istoric alerte</button>
+          </div>
+          <div id="admin-alerts-list"></div>
+          <div class="admin-add" style="grid-template-columns:repeat(2,1fr);">
+            <label><span>Nume regulă *</span><input type="text" id="alert-name"></label>
+            <label><span>Tip</span><select id="alert-type" onchange="renderAlertCond()"></select></label>
+            <label><span>Vehicul</span><select id="alert-imei"><option value="">Toate vehiculele</option></select></label>
+            <label><span>Activă</span><select id="alert-enabled"><option value="true">Da</option><option value="false">Nu</option></select></label>
+            <div id="alert-cond-fields" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
+            <button class="btn-sm btn-primary" onclick="saveAlert()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă regula</button>
+          </div>
+        </div>
+
+        <!-- Zone (geofence) -->
+        <div id="atab-geofences" class="admin-tab-content" style="display:none;">
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <button class="btn-sm btn-primary" onclick="startDrawGeofence('polygon')"><i class="fas fa-draw-polygon"></i> Desenează poligon</button>
+            <button class="btn-sm btn-primary" onclick="startDrawGeofence('circle')"><i class="far fa-circle"></i> Desenează cerc</button>
+            <span style="font-size:11px;color:var(--text-muted);align-self:center;">Se desenează pe hartă; modalul se închide temporar.</span>
+          </div>
+          <div id="admin-geofences-list"></div>
+        </div>
+
+        <!-- Mentenanță -->
+        <div id="atab-maintenance" class="admin-tab-content" style="display:none;">
+          <div id="admin-maintenance-list"></div>
+          <div class="admin-add" style="grid-template-columns:repeat(3,1fr);">
+            <input type="hidden" id="mnt-id">
+            <label><span>Vehicul *</span><select id="mnt-imei"></select></label>
+            <label><span>Tip *</span><input type="text" id="mnt-type" placeholder="ex: Schimb ulei, ITP, RCA"></label>
+            <label><span>Status</span><select id="mnt-status"><option value="pending">De făcut</option><option value="done">Efectuat</option></select></label>
+            <label style="grid-column:1/-1;"><span>Descriere</span><input type="text" id="mnt-desc"></label>
+            <label><span>Scadent la data</span><input type="date" id="mnt-due-date"></label>
+            <label><span>Scadent la km</span><input type="number" id="mnt-due-km"></label>
+            <label><span>Cost (RON)</span><input type="number" step="0.01" id="mnt-cost"></label>
+            <div style="grid-column:1/-1;display:flex;gap:6px;"><button class="btn-sm btn-primary" onclick="saveMaintenance()" style="flex:1;"><i class="fas fa-save"></i> <span id="mnt-btn">Adaugă</span></button><button class="btn-sm" onclick="resetMaintenanceForm()">↺</button></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Bara de desenare geofence (peste hartă) -->
+  <div id="draw-toolbar" style="display:none;position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:4000;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);gap:8px;align-items:center;flex-wrap:wrap;max-width:94vw;">
+    <span id="draw-title" style="font-weight:700;font-size:13px;color:var(--accent);"></span>
+    <span id="draw-info" style="font-size:12px;color:var(--text-muted);"></span>
+    <span id="draw-radius-wrap" style="display:none;align-items:center;gap:6px;">
+      <input type="range" id="draw-radius" min="50" max="5000" value="300" step="50" oninput="updateDrawRadius()" style="width:120px;">
+      <span id="draw-radius-val" style="font-size:11px;color:var(--text-muted);">300 m</span>
+    </span>
+    <input type="text" id="draw-name" placeholder="Nume zonă">
+    <input type="color" id="draw-color" value="#2563eb" style="width:34px;height:30px;padding:0;border:1px solid var(--border);border-radius:6px;background:var(--bg-dark);">
+    <button class="btn-sm btn-primary" id="draw-save-btn" onclick="saveDraw()"><i class="fas fa-save"></i> Salvează</button>
+    <button class="btn-sm" onclick="cancelDraw()">Anulează</button>
+  </div>
+
+  <!-- ═══ Rapoarte (Faza 3) ═══ -->
+  <div id="reports-modal" class="modal-overlay">
+    <div class="modal" style="width:940px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
+      <h2><span><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent);"></i> Rapoarte</span>
+        <button class="close-btn" onclick="closeReports()" style="position:static;font-size:18px;">&#10005;</button></h2>
+      <!-- Catalog: categorii + carduri -->
+      <div id="rep-catalog">
+        <div id="rep-cats" class="rep-cats"></div>
+        <div id="rep-cards" class="rep-cards"></div>
+      </div>
+
+      <!-- Rulare raport selectat -->
+      <div id="rep-runner" style="display:none;flex-direction:column;flex:1;min-height:0;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <button class="btn-sm" onclick="backToReportCatalog()"><i class="fas fa-arrow-left"></i> Catalog</button>
+          <strong id="rep-title" style="font-size:14px;"></strong>
+        </div>
+        <select id="rep-type" onchange="onRepType()" style="display:none;"></select>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
+          <label class="rep-f"><span>Vehicul</span><select id="rep-imei"></select></label>
+          <label class="rep-f"><span>De la</span><input type="datetime-local" id="rep-from"></label>
+          <label class="rep-f"><span>Până la</span><input type="datetime-local" id="rep-to"></label>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btn-sm" onclick="setRepPeriod('today')">Azi</button>
+          <button class="btn-sm" onclick="setRepPeriod('yesterday')">Ieri</button>
+          <button class="btn-sm" onclick="setRepPeriod('week')">7 zile</button>
+          <button class="btn-sm" onclick="setRepPeriod('month')">30 zile</button>
+          <span id="rep-extra" style="display:flex;gap:6px;align-items:center;margin-left:8px;"></span>
+          <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
+        </div>
+        <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
+        <div id="rep-table-wrap" style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;min-height:120px;">
+          <table id="rep-table" style="width:100%;border-collapse:collapse;font-size:12px;"><thead></thead><tbody></tbody></table>
+        </div>
+        <div id="rep-empty" style="display:none;text-align:center;color:var(--text-muted);padding:24px;">Nu sunt date pentru perioada selectată.</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+          <span id="rep-count" style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center;"></span>
+          <button class="btn-sm" onclick="exportReport('csv')"><i class="fas fa-file-csv"></i> CSV</button>
+          <button class="btn-sm" onclick="exportReport('xls')"><i class="fas fa-file-excel"></i> Excel</button>
+          <button class="btn-sm" onclick="exportReport('pdf')"><i class="fas fa-print"></i> PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Hotspot (Faza 3) ═══ -->
+  <div id="hotspot-panel" style="display:none;position:fixed;top:70px;right:12px;z-index:1100;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:12px;width:268px;box-shadow:0 6px 24px rgba(0,0,0,.4);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <strong style="font-size:13px;color:var(--orange);"><i class="fas fa-fire"></i> Hotspot</strong>
+      <button class="close-btn" onclick="closeHotspot()" style="position:static;font-size:16px;">&#10005;</button>
+    </div>
+    <label class="rep-f" style="margin-bottom:6px;"><span>Mod</span><select id="hs-mode"><option value="stops">Opriri (ponderat)</option><option value="positions">Poziții (densitate)</option></select></label>
+    <label class="rep-f" style="margin-bottom:6px;"><span>Vehicul</span><select id="hs-imei"></select></label>
+    <div style="display:flex;gap:6px;margin-bottom:6px;">
+      <button class="btn-sm" style="flex:1;" onclick="setHsPeriod('today')">Azi</button>
+      <button class="btn-sm" style="flex:1;" onclick="setHsPeriod('week')">7z</button>
+      <button class="btn-sm" style="flex:1;" onclick="setHsPeriod('month')">30z</button>
+    </div>
+    <input type="datetime-local" id="hs-from" style="margin-bottom:4px;">
+    <input type="datetime-local" id="hs-to" style="margin-bottom:8px;">
+    <button class="btn-sm btn-primary" style="width:100%;margin-bottom:6px;" onclick="loadHeatmap()"><i class="fas fa-fire"></i> Afișează heatmap</button>
+    <button class="btn-sm" style="width:100%;" onclick="clearHeatmap()">Ascunde heatmap</button>
+    <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:8px;">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Desenează o zonă → analiză:</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-sm" style="flex:1;" onclick="startZoneDraw('polygon')"><i class="fas fa-draw-polygon"></i> Poligon</button>
+        <button class="btn-sm" style="flex:1;" onclick="startZoneDraw('circle')"><i class="far fa-circle"></i> Cerc</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Notificări (Faza 4) ═══ -->
+  <div id="notif-panel" style="display:none;position:fixed;top:64px;right:12px;z-index:3500;width:360px;max-width:94vw;max-height:72vh;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.5);flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);">
+      <strong style="font-size:13px;"><i class="fas fa-bell" style="color:var(--accent);margin-right:6px;"></i> Notificări</strong>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-sm" onclick="openNotifPrefs()" title="Preferințe notificări"><i class="fas fa-gear"></i></button>
+        <button class="btn-sm" onclick="ackAllNotif()" title="Marchează toate citite"><i class="fas fa-check-double"></i></button>
+        <button class="close-btn" onclick="closeNotifications()" style="position:static;font-size:16px;">&#10005;</button>
+      </div>
+    </div>
+    <div id="notif-list" style="overflow-y:auto;flex:1;"></div>
+  </div>
+
+  <!-- ═══ Preferințe notificări (per utilizator) ═══ -->
+  <div id="notif-prefs-modal" class="modal-overlay">
+    <div class="modal" style="width:700px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;">
+      <h2><span><i class="fas fa-bell" style="margin-right:8px;color:var(--accent);"></i> Preferințe notificări</span>
+        <button class="close-btn" onclick="closeNotifPrefs()" style="position:static;font-size:18px;">&#10005;</button></h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--text-muted);">Notificări push pe acest dispozitiv: <strong id="push-state">verific...</strong></div>
+        <button class="btn-sm btn-primary" id="push-enable-btn" onclick="enablePush()" style="display:none;"><i class="fas fa-bell"></i> Activează push</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px;">Bifează evenimentele pe care vrei să le primești, pragul tău și canalele. Se aplică doar contului tău.</p>
+      <div style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;background:var(--bg-dark);">
+            <th style="padding:8px 10px;">Eveniment</th><th style="padding:8px;">Activ</th><th style="padding:8px;">Prag</th><th style="padding:8px;">Email</th><th style="padding:8px;">Push</th>
+          </tr></thead>
+          <tbody id="prefs-rows"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+        <button class="btn-sm" onclick="closeNotifPrefs()">Anulează</button>
+        <button class="btn-sm btn-primary" onclick="saveNotifPrefs()"><i class="fas fa-save"></i> Salvează</button>
       </div>
     </div>
   </div>
@@ -2084,6 +2618,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="vendor/leaflet-heat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     // ─── Global State ───
@@ -2207,10 +2742,14 @@
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app').classList.add('visible');
 
-      if (currentUser.role === 'admin') {
-        document.getElementById('btn-users').style.display = '';
-        document.getElementById('btn-debug').style.display = '';
-      }
+      applyTheme(localStorage.getItem('gpsTheme') || 'light');
+      document.getElementById('topbar-username').textContent = currentUser.username || '';
+      document.getElementById('topbar-role').textContent = ROLE_LABELS[currentUser.role] || currentUser.role || '';
+
+      applyPermissionsUI();
+      refreshNotifBadge();
+      setInterval(refreshNotifBadge, 60000);
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
       // Hide sidebar on mobile by default
       if (window.innerWidth <= 768) {
@@ -2229,6 +2768,22 @@
       location.reload();
     }
 
+    // ─── Permisiuni UI ───
+    function can(perm) {
+      return !!(currentUser && currentUser.permissions && currentUser.permissions[perm]);
+    }
+    function applyPermissionsUI() {
+      const bu = document.getElementById('btn-users');
+      const bd = document.getElementById('btn-debug');
+      if (bu) bu.style.display = can('manageUsers') ? '' : 'none';
+      if (bd) bd.style.display = can('manageUsers') ? '' : 'none';
+      // Ascunde acțiunile de editare flotă pentru cei fără drept (serverul le blochează oricum)
+      document.body.classList.toggle('no-fleet', !can('manageFleet'));
+    }
+
+    const ROLE_LABELS = { admin:'Admin', manager:'Manager', dispatcher:'Dispecer', client:'Client', viewer:'Viewer' };
+    let ueUsersCache = [];
+
     // ─── Users (admin) ───
     async function openUsersModal() {
       document.getElementById('users-modal').classList.add('visible');
@@ -2241,50 +2796,1117 @@
 
     async function loadUsers() {
       const res = await fetch('/api/users');
-      const users = await res.json();
+      ueUsersCache = await res.json();
       const list = document.getElementById('users-list');
 
-      list.innerHTML = users.map(u => `
-        <div class="user-row">
-          <div>
-            <strong>${u.username}</strong>
-            <span class="role ${u.role}">${u.role}</span>
+      list.innerHTML = ueUsersCache.map(u => {
+        const isSelf = u.username === currentUser.username;
+        const last = u.last_login ? new Date(u.last_login).toLocaleString('ro-RO') : 'niciodată';
+        const scope = (u.role === 'admin' || u.role === 'manager')
+          ? 'toată flota'
+          : ((Number(u.device_count) + Number(u.group_count) > 0)
+              ? (u.device_count + ' veh. + ' + u.group_count + ' grupe')
+              : '⚠ fără acces');
+        return `
+        <div class="user-row" style="align-items:center;">
+          <div style="min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <strong>${u.username}</strong>
+              <span class="role ${u.role}">${ROLE_LABELS[u.role]||u.role}</span>
+              ${u.active === false ? '<span style="color:#ef4444;font-size:11px;">(dezactivat)</span>' : ''}
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+              ${u.full_name ? u.full_name + ' · ' : ''}${u.email || ''}${u.email ? ' · ' : ''}acces: ${scope} · ultima logare: ${last}
+            </div>
           </div>
-          ${u.username !== currentUser.username
-            ? '<button class="btn-sm btn-danger" onclick="deleteUser(' + u.id + ')">Sterge</button>'
-            : '<span style="font-size:11px;color:var(--text-muted)">tu</span>'
-          }
-        </div>
-      `).join('');
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="btn-sm" onclick="openUserEdit(${u.id})" title="Editează rol & acces"><i class="fas fa-user-cog"></i></button>
+            ${isSelf
+              ? '<span style="font-size:11px;color:var(--text-muted);align-self:center;">tu</span>'
+              : '<button class="btn-sm btn-danger" onclick="deleteUser('+u.id+')" title="Șterge"><i class="fas fa-trash"></i></button>'}
+          </div>
+        </div>`;
+      }).join('');
     }
 
     async function addUser() {
-      const username = document.getElementById('new-username').value;
+      const username = document.getElementById('new-username').value.trim();
       const password = document.getElementById('new-password').value;
       const role = document.getElementById('new-role').value;
+      const full_name = document.getElementById('new-fullname').value.trim();
+      const email = document.getElementById('new-email').value.trim();
+      const phone = document.getElementById('new-phone').value.trim();
 
-      if (!username || !password) return alert('Completeaza toate campurile');
+      if (!username || !password) return alert('Username și parola sunt obligatorii');
 
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, role })
+        body: JSON.stringify({ username, password, role, full_name, email, phone })
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        return alert(err.error);
-      }
+      if (!res.ok) { const err = await res.json(); return alert(err.error); }
 
-      document.getElementById('new-username').value = '';
-      document.getElementById('new-password').value = '';
+      const created = await res.json();
+      ['new-username','new-password','new-fullname','new-email','new-phone'].forEach(id => document.getElementById(id).value = '');
       await loadUsers();
+      // Pentru roluri scoped, deschide direct atribuirea de vehicule
+      if (role !== 'admin' && role !== 'manager') openUserEdit(created.id);
     }
 
     async function deleteUser(id) {
-      if (!confirm('Sigur vrei sa stergi acest utilizator?')) return;
+      if (!confirm('Sigur vrei să ștergi acest utilizator?')) return;
       await fetch('/api/users/' + id, { method: 'DELETE' });
       await loadUsers();
+    }
+
+    // ─── Editare utilizator + acces multi-client ───
+    async function openUserEdit(id) {
+      let u = ueUsersCache.find(x => x.id === id);
+      if (!u) { const r = await fetch('/api/users'); ueUsersCache = await r.json(); u = ueUsersCache.find(x => x.id === id); }
+      if (!u) return;
+      document.getElementById('ue-id').value = id;
+      document.getElementById('ue-title').textContent = 'Utilizator: ' + u.username;
+      document.getElementById('ue-role').value = u.role;
+      document.getElementById('ue-active').value = (u.active === false) ? 'false' : 'true';
+      document.getElementById('ue-fullname').value = u.full_name || '';
+      document.getElementById('ue-email').value = u.email || '';
+      document.getElementById('ue-phone').value = u.phone || '';
+      document.getElementById('ue-password').value = '';
+
+      const [devRes, grpRes, accRes] = await Promise.all([
+        fetch('/api/devices'), fetch('/api/groups'), fetch('/api/users/' + id + '/access')
+      ]);
+      const devices = await devRes.json();
+      const groups = await grpRes.json();
+      const access = await accRes.json();
+      const devSet = new Set(access.devices || []);
+      const grpSet = new Set((access.groups || []).map(Number));
+
+      document.getElementById('ue-devices').innerHTML = devices.length ? devices.map(d => `
+        <label class="ue-check" data-name="${((d.name||'')+' '+(d.plate||'')+' '+d.imei).replace(/"/g,'')}">
+          <input type="checkbox" class="ue-dev" value="${d.imei}" ${devSet.has(d.imei)?'checked':''}>
+          <span>${d.name || d.imei}${d.plate ? ' · ' + d.plate : ''}</span>
+        </label>`).join('') : '<span style="color:var(--text-muted);font-size:12px;">Niciun vehicul.</span>';
+
+      document.getElementById('ue-groups').innerHTML = groups.length ? groups.map(g => `
+        <label class="ue-check">
+          <input type="checkbox" class="ue-grp" value="${g.id}" ${grpSet.has(Number(g.id))?'checked':''}>
+          <span>${g.name}</span>
+        </label>`).join('') : '<span style="color:var(--text-muted);font-size:12px;">Nicio grupă definită.</span>';
+
+      ueToggleAccessVisibility();
+      document.getElementById('ue-role').onchange = ueToggleAccessVisibility;
+      document.getElementById('user-edit-modal').classList.add('visible');
+    }
+
+    function ueToggleAccessVisibility() {
+      const role = document.getElementById('ue-role').value;
+      const scoped = (role !== 'admin' && role !== 'manager');
+      document.getElementById('ue-access-wrap').style.display = scoped ? '' : 'none';
+    }
+
+    function closeUserEdit() {
+      document.getElementById('user-edit-modal').classList.remove('visible');
+    }
+
+    function ueToggleAll(kind, val) {
+      const sel = kind === 'dev' ? '.ue-dev' : '.ue-grp';
+      document.querySelectorAll(sel).forEach(c => {
+        const label = c.closest('.ue-check');
+        if (label && label.style.display === 'none') return; // respectă filtrul
+        c.checked = val;
+      });
+    }
+
+    function ueFilterDevices() {
+      const q = document.getElementById('ue-dev-search').value.toLowerCase();
+      document.querySelectorAll('#ue-devices .ue-check').forEach(l => {
+        l.style.display = (l.getAttribute('data-name')||'').toLowerCase().includes(q) ? '' : 'none';
+      });
+    }
+
+    async function saveUserEdit() {
+      const id = document.getElementById('ue-id').value;
+      const role = document.getElementById('ue-role').value;
+      const active = document.getElementById('ue-active').value === 'true';
+      const full_name = document.getElementById('ue-fullname').value.trim();
+      const email = document.getElementById('ue-email').value.trim();
+      const phone = document.getElementById('ue-phone').value.trim();
+      const password = document.getElementById('ue-password').value;
+
+      let r = await fetch('/api/users/' + id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, active, full_name, email, phone })
+      });
+      if (!r.ok) { const e = await r.json(); return alert(e.error); }
+
+      if (password) {
+        r = await fetch('/api/users/' + id + '/password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        if (!r.ok) { const e = await r.json(); return alert(e.error); }
+      }
+
+      const deviceIds = Array.from(document.querySelectorAll('.ue-dev:checked')).map(c => c.value);
+      const groupIds = Array.from(document.querySelectorAll('.ue-grp:checked')).map(c => Number(c.value));
+      r = await fetch('/api/users/' + id + '/access', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ devices: deviceIds, groups: groupIds })
+      });
+      if (!r.ok) { const e = await r.json(); return alert(e.error); }
+
+      closeUserEdit();
+      await loadUsers();
+    }
+
+    // ─── Jurnal audit ───
+    async function openAudit() {
+      document.getElementById('audit-modal').classList.add('visible');
+      const list = document.getElementById('audit-list');
+      list.innerHTML = '<p style="color:var(--text-muted)">Se încarcă...</p>';
+      const res = await fetch('/api/audit?limit=200');
+      if (!res.ok) { list.innerHTML = '<p style="color:var(--text-muted)">Indisponibil.</p>'; return; }
+      const rows = await res.json();
+      if (!rows.length) { list.innerHTML = '<p style="color:var(--text-muted)">Nicio intrare.</p>'; return; }
+      list.innerHTML = '<table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">' +
+        '<th style="padding:6px;">Data</th><th>Utilizator</th><th>Acțiune</th><th>Entitate</th><th>Detalii</th><th>IP</th></tr></thead><tbody>' +
+        rows.map(r => `<tr style="border-top:1px solid var(--border);">
+          <td style="padding:6px;white-space:nowrap;">${new Date(r.created_at).toLocaleString('ro-RO')}</td>
+          <td>${r.username||'-'}</td>
+          <td><span class="role">${r.action}</span></td>
+          <td>${(r.entity||'')}${r.entity_id ? ' #'+r.entity_id : ''}</td>
+          <td style="color:var(--text-muted);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.details ? JSON.stringify(r.details) : ''}</td>
+          <td style="color:var(--text-muted);">${r.ip||''}</td>
+        </tr>`).join('') + '</tbody></table>';
+    }
+    function closeAudit() {
+      document.getElementById('audit-modal').classList.remove('visible');
+    }
+
+    // ─── Chei API ───
+    let apikeyLastValue = '';
+    async function openApiKeys() {
+      document.getElementById('apikeys-modal').classList.add('visible');
+      document.getElementById('apikey-new').style.display = 'none';
+      if (!ueUsersCache.length) { const r = await fetch('/api/users'); ueUsersCache = await r.json(); }
+      document.getElementById('apikey-user').innerHTML = ueUsersCache
+        .map(u => `<option value="${u.id}">${u.username} (${ROLE_LABELS[u.role]||u.role})</option>`).join('');
+      await loadApiKeys();
+    }
+    function closeApiKeys() {
+      document.getElementById('apikeys-modal').classList.remove('visible');
+      document.getElementById('apikey-new').style.display = 'none';
+    }
+    async function loadApiKeys() {
+      const res = await fetch('/api/apikeys');
+      const keys = await res.json();
+      const list = document.getElementById('apikeys-list');
+      if (!keys.length) { list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Nicio cheie creată.</p>'; return; }
+      list.innerHTML = keys.map(k => `
+        <div class="user-row" style="align-items:center;${k.revoked?'opacity:.5;':''}">
+          <div style="min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <strong>${k.name || '(fără nume)'}</strong>
+              <code style="font-size:11px;color:var(--text-muted);">${k.prefix}…</code>
+              ${k.revoked?'<span style="color:#ef4444;font-size:11px;">revocată</span>':''}
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+              ${k.username} · ${ROLE_LABELS[k.role]||k.role} · ultima utilizare: ${k.last_used? new Date(k.last_used).toLocaleString('ro-RO'):'niciodată'}
+            </div>
+          </div>
+          ${k.revoked?'':'<button class="btn-sm btn-danger" onclick="revokeApiKey('+k.id+')" title="Revocă"><i class="fas fa-ban"></i></button>'}
+        </div>`).join('');
+    }
+    async function createApiKey() {
+      const userId = document.getElementById('apikey-user').value;
+      const name = document.getElementById('apikey-name').value.trim();
+      if (!userId) return alert('Alege un utilizator');
+      const res = await fetch('/api/apikeys', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId: Number(userId), name }) });
+      if (!res.ok) { const e = await res.json(); return alert(e.error); }
+      const data = await res.json();
+      apikeyLastValue = data.key;
+      document.getElementById('apikey-new-value').textContent = data.key;
+      document.getElementById('apikey-new').style.display = '';
+      document.getElementById('apikey-name').value = '';
+      await loadApiKeys();
+    }
+    async function revokeApiKey(id) {
+      if (!confirm('Revoci această cheie? Integrarea care o folosește va pierde accesul imediat.')) return;
+      await fetch('/api/apikeys/' + id, { method: 'DELETE' });
+      await loadApiKeys();
+    }
+    function copyApiKey() {
+      if (!apikeyLastValue) return;
+      navigator.clipboard.writeText(apikeyLastValue).then(()=>{}, ()=>{});
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  FAZA 2 — Administrare: șoferi, grupe, alerte, zone, mentenanță
+    // ═══════════════════════════════════════════════════════════
+    let adminDevicesCache = [];
+    async function adminLoadDevices() {
+      try { const r = await fetch('/api/devices'); adminDevicesCache = await r.json(); } catch (e) { adminDevicesCache = []; }
+    }
+    function vehicleLabel(imei) {
+      const d = adminDevicesCache.find(x => x.imei === imei);
+      return d ? ((d.name || imei) + (d.plate ? ' · ' + d.plate : '')) : imei;
+    }
+    function populateVehicleSelect(id, withAll) {
+      const sel = document.getElementById(id); if (!sel) return;
+      const opts = (withAll ? '<option value="">Toate vehiculele</option>' : '<option value="">-- Alege vehicul --</option>')
+        + adminDevicesCache.map(d => `<option value="${d.imei}">${(d.name||d.imei)}${d.plate?' · '+d.plate:''}</option>`).join('');
+      sel.innerHTML = opts;
+    }
+
+    async function openAdmin() {
+      document.getElementById('admin-modal').classList.add('visible');
+      await adminLoadDevices();
+      populateVehicleSelect('alert-imei', true);
+      populateVehicleSelect('mnt-imei', false);
+      // tipuri alerte
+      document.getElementById('alert-type').innerHTML = ALERT_TYPES.map(t => `<option value="${t.v}">${t.label}</option>`).join('');
+      renderAlertCond();
+      switchAdminTab('drivers');
+    }
+    function closeAdmin() { document.getElementById('admin-modal').classList.remove('visible'); }
+    function switchAdminTab(tab) {
+      document.querySelectorAll('.admin-tab').forEach(b => b.classList.toggle('active', b.dataset.atab === tab));
+      document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
+      document.getElementById('atab-' + tab).style.display = 'block';
+      if (tab === 'drivers') loadDrivers();
+      else if (tab === 'groups') loadGroups();
+      else if (tab === 'alerts') loadAlerts();
+      else if (tab === 'geofences') loadGeofencesAdmin();
+      else if (tab === 'maintenance') loadMaintenance();
+    }
+
+    // ─── Șoferi ───
+    async function loadDrivers() {
+      const r = await fetch('/api/drivers'); const list = await r.json();
+      const el = document.getElementById('admin-drivers-list');
+      el.innerHTML = list.length ? list.map(d => {
+        const exp = d.license_expiry ? new Date(d.license_expiry) : null;
+        const expSoon = exp && (exp - new Date()) < 30*24*3600*1000;
+        return `<div class="admin-row"><div>
+          <strong>${d.name}</strong>
+          <div class="meta">${d.phone||''}${d.email?' · '+d.email:''}${d.license_number?' · permis '+d.license_number:''}${exp?' · expiră '+exp.toLocaleDateString('ro-RO')+(expSoon?' ⚠':''):''}</div>
+        </div><div style="display:flex;gap:6px;">
+          <button class="btn-sm" onclick='editDriver(${JSON.stringify(d)})'><i class="fas fa-pen"></i></button>
+          <button class="btn-sm btn-danger" onclick="deleteDriver(${d.id})"><i class="fas fa-trash"></i></button>
+        </div></div>`;
+      }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun șofer.</p>';
+    }
+    function editDriver(d) {
+      document.getElementById('drv-id').value = d.id;
+      document.getElementById('drv-name').value = d.name || '';
+      document.getElementById('drv-phone').value = d.phone || '';
+      document.getElementById('drv-email').value = d.email || '';
+      document.getElementById('drv-license').value = d.license_number || '';
+      document.getElementById('drv-expiry').value = d.license_expiry ? d.license_expiry.slice(0,10) : '';
+      document.getElementById('drv-btn').textContent = 'Salvează';
+    }
+    function resetDriverForm() {
+      ['drv-id','drv-name','drv-phone','drv-email','drv-license','drv-expiry'].forEach(i => document.getElementById(i).value = '');
+      document.getElementById('drv-btn').textContent = 'Adaugă';
+    }
+    async function saveDriver() {
+      const id = document.getElementById('drv-id').value;
+      const body = {
+        name: document.getElementById('drv-name').value.trim(),
+        phone: document.getElementById('drv-phone').value.trim(),
+        email: document.getElementById('drv-email').value.trim(),
+        license_number: document.getElementById('drv-license').value.trim(),
+        license_expiry: document.getElementById('drv-expiry').value || null
+      };
+      if (!body.name) return alert('Numele e obligatoriu');
+      const res = await fetch('/api/drivers' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
+      resetDriverForm(); await loadDrivers();
+    }
+    async function deleteDriver(id) {
+      if (!confirm('Ștergi acest șofer?')) return;
+      await fetch('/api/drivers/' + id, { method: 'DELETE' }); await loadDrivers();
+    }
+
+    // ─── Grupe ───
+    async function loadGroups() {
+      const r = await fetch('/api/groups'); const list = await r.json();
+      const el = document.getElementById('admin-groups-list');
+      el.innerHTML = list.length ? list.map(g => `<div class="admin-row"><div>
+          <strong><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${g.color||'#888'};margin-right:6px;"></span>${g.name}</strong>
+          <div class="meta">${g.description||''}</div>
+        </div><div style="display:flex;gap:6px;">
+          <button class="btn-sm" onclick='editGroup(${JSON.stringify(g)})'><i class="fas fa-pen"></i></button>
+          <button class="btn-sm btn-danger" onclick="deleteGroup(${g.id})"><i class="fas fa-trash"></i></button>
+        </div></div>`).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio grupă.</p>';
+    }
+    function editGroup(g) {
+      document.getElementById('grp-id').value = g.id;
+      document.getElementById('grp-name').value = g.name || '';
+      document.getElementById('grp-desc').value = g.description || '';
+      document.getElementById('grp-color').value = g.color || '#2563eb';
+      document.getElementById('grp-btn').textContent = 'Salvează';
+    }
+    function resetGroupForm() {
+      document.getElementById('grp-id').value=''; document.getElementById('grp-name').value=''; document.getElementById('grp-desc').value='';
+      document.getElementById('grp-color').value='#2563eb'; document.getElementById('grp-btn').textContent='Adaugă';
+    }
+    async function saveGroup() {
+      const id = document.getElementById('grp-id').value;
+      const body = { name: document.getElementById('grp-name').value.trim(), description: document.getElementById('grp-desc').value.trim(), color: document.getElementById('grp-color').value };
+      if (!body.name) return alert('Numele e obligatoriu');
+      const res = await fetch('/api/groups' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
+      resetGroupForm(); await loadGroups();
+    }
+    async function deleteGroup(id) {
+      if (!confirm('Ștergi grupa? Vehiculele rămân, dar fără grup.')) return;
+      await fetch('/api/groups/' + id, { method: 'DELETE' }); await loadGroups();
+    }
+
+    // ─── Alerte ───
+    const ALERT_TYPES = [
+      { v:'overspeed', label:'Depășire viteză', fields:[{k:'maxSpeed',label:'Viteză max (km/h)',def:90}] },
+      { v:'fuel_drop', label:'Scădere combustibil (furt)', fields:[{k:'dropLiters',label:'Scădere minimă (L)',def:10}] },
+      { v:'ignition_on', label:'Pornire motor', fields:[] },
+      { v:'ignition_off', label:'Oprire motor', fields:[] },
+      { v:'geofence_enter', label:'Intrare în zonă', fields:[{k:'geofenceId',label:'Zonă',geofence:true}] },
+      { v:'geofence_exit', label:'Ieșire din zonă', fields:[{k:'geofenceId',label:'Zonă',geofence:true}] },
+      { v:'engine_temp', label:'Temperatură motor mare', fields:[{k:'maxTemp',label:'Temp max (°C)',def:105}] },
+      { v:'dtc_error', label:'Erori motor (DTC)', fields:[] },
+      { v:'overload_legal', label:'Supraîncărcare (legal)', fields:[{k:'maxKg',label:'Limită (kg)',def:40000}] },
+      { v:'overload_construct', label:'Supraîncărcare (constructiv)', fields:[{k:'maxKg',label:'Limită (kg)',def:44000}] },
+      { v:'axle_overload', label:'Supraîncărcare pe axă', axles:true, fields:[] },
+      { v:'pto_active', label:'PTO activat', fields:[] },
+      { v:'brake_pad_wear', label:'Uzură plăcuțe frână', fields:[{k:'minPercent',label:'Prag minim (%)',def:20}] },
+      { v:'service_due', label:'Service aproape', fields:[{k:'warnKm',label:'Avertizare sub (km)',def:1000}] }
+    ];
+    let alertGeofencesCache = [];
+    function alertTypeLabel(v) { const t = ALERT_TYPES.find(x => x.v === v); return t ? t.label : v; }
+    async function renderAlertCond() {
+      const type = document.getElementById('alert-type').value;
+      const def = ALERT_TYPES.find(t => t.v === type) || { fields: [] };
+      const box = document.getElementById('alert-cond-fields');
+      let html = '';
+      for (const f of def.fields) {
+        if (f.geofence) {
+          if (!alertGeofencesCache.length) { try { alertGeofencesCache = await (await fetch('/api/geofences')).json(); } catch(e){} }
+          html += `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>${f.label}</span>
+            <select id="alert-cf-${f.k}">${alertGeofencesCache.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')||'<option value="">(nicio zonă — creează una)</option>'}</select></label>`;
+        } else {
+          html += `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>${f.label}</span>
+            <input type="number" id="alert-cf-${f.k}" value="${f.def!=null?f.def:''}"></label>`;
+        }
+      }
+      if (def.axles) {
+        html += [1,2,3,4,5].map(n => `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>Limită axa ${n} (kg)</span><input type="number" id="alert-cf-axle${n}" placeholder="ex: 10000"></label>`).join('');
+      }
+      box.innerHTML = html;
+    }
+    async function loadAlerts() {
+      const r = await fetch('/api/alerts'); const list = await r.json();
+      const el = document.getElementById('admin-alerts-list');
+      el.innerHTML = list.length ? list.map(a => `<div class="admin-row"><div>
+          <strong>${a.name}</strong> <span class="role">${alertTypeLabel(a.type)}</span>
+          <div class="meta">${a.imei ? vehicleLabel(a.imei) : 'Toate vehiculele'} · ${a.enabled ? 'activă' : 'inactivă'}</div>
+        </div><button class="btn-sm btn-danger" onclick="deleteAlert(${a.id})"><i class="fas fa-trash"></i></button></div>`).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio regulă.</p>';
+    }
+    async function saveAlert() {
+      const name = document.getElementById('alert-name').value.trim();
+      const type = document.getElementById('alert-type').value;
+      const imei = document.getElementById('alert-imei').value || null;
+      const enabled = document.getElementById('alert-enabled').value === 'true';
+      if (!name) return alert('Dă un nume regulii');
+      const def = ALERT_TYPES.find(t => t.v === type) || { fields: [] };
+      const condition = {};
+      for (const f of def.fields) {
+        const v = document.getElementById('alert-cf-' + f.k).value;
+        condition[f.k] = f.geofence ? Number(v) : (v === '' ? null : Number(v));
+      }
+      if (def.axles) {
+        condition.axleLimits = {};
+        [1,2,3,4,5].forEach(n => { const v = document.getElementById('alert-cf-axle'+n).value; if (v) condition.axleLimits['axle'+n] = Number(v); });
+      }
+      const res = await fetch('/api/alerts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, type, imei, condition, enabled }) });
+      if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
+      document.getElementById('alert-name').value = '';
+      await loadAlerts();
+    }
+    async function deleteAlert(id) {
+      if (!confirm('Ștergi regula de alertă?')) return;
+      await fetch('/api/alerts/' + id, { method: 'DELETE' }); await loadAlerts();
+    }
+    async function openAlertHistory() {
+      const r = await fetch('/api/alerts/history?limit=100'); const rows = await r.json();
+      const ov = document.createElement('div'); ov.className = 'modal-overlay visible'; ov.style.zIndex = 5000;
+      ov.innerHTML = `<div class="modal" style="width:760px;max-width:96vw;max-height:88vh;">
+        <h2><span><i class="fas fa-history" style="margin-right:8px;color:var(--orange);"></i> Istoric alerte</span>
+        <button class="close-btn" style="position:static;font-size:18px;">&#10005;</button></h2>
+        <div style="max-height:70vh;overflow-y:auto;font-size:12px;">${
+          rows.length ? rows.map(h => `<div class="admin-row"><div><strong>${alertTypeLabel(h.alert_type||'')}</strong> ${h.alert_name?('· '+h.alert_name):''}
+            <div class="meta">${vehicleLabel(h.imei)} · ${new Date(h.triggered_at).toLocaleString('ro-RO')}${h.data?(' · '+JSON.stringify(h.data).slice(0,120)):''}</div></div></div>`).join('')
+          : '<p style="color:var(--text-muted);">Nicio alertă declanșată.</p>'}</div></div>`;
+      ov.querySelector('.close-btn').onclick = () => ov.remove();
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+      document.body.appendChild(ov);
+    }
+
+    // ─── Mentenanță ───
+    async function loadMaintenance() {
+      const r = await fetch('/api/maintenance'); const list = await r.json();
+      const el = document.getElementById('admin-maintenance-list');
+      el.innerHTML = list.length ? list.map(m => {
+        const done = m.status === 'done';
+        const due = m.due_date ? new Date(m.due_date) : null;
+        const overdue = !done && due && due < new Date();
+        return `<div class="admin-row" style="${overdue?'border-color:#ef4444;':''}"><div>
+          <strong>${m.type}</strong> ${done?'<span class="role">efectuat</span>':(overdue?'<span style="color:#ef4444;font-size:11px;">scadent!</span>':'<span class="role">de făcut</span>')}
+          <div class="meta">${vehicleLabel(m.imei)}${m.description?' · '+m.description:''}${due?' · '+due.toLocaleDateString('ro-RO'):''}${m.due_km?' · '+m.due_km+' km':''}${m.cost?' · '+m.cost+' RON':''}</div>
+        </div><div style="display:flex;gap:6px;">
+          ${done?'':'<button class="btn-sm" title="Marchează efectuat" onclick="completeMaintenance('+m.id+')"><i class="fas fa-check"></i></button>'}
+          <button class="btn-sm" onclick='editMaintenance(${JSON.stringify(m)})'><i class="fas fa-pen"></i></button>
+          <button class="btn-sm btn-danger" onclick="deleteMaintenance(${m.id})"><i class="fas fa-trash"></i></button>
+        </div></div>`;
+      }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio intrare de mentenanță.</p>';
+    }
+    function editMaintenance(m) {
+      document.getElementById('mnt-id').value = m.id;
+      document.getElementById('mnt-imei').value = m.imei;
+      document.getElementById('mnt-type').value = m.type || '';
+      document.getElementById('mnt-status').value = m.status === 'done' ? 'done' : 'pending';
+      document.getElementById('mnt-desc').value = m.description || '';
+      document.getElementById('mnt-due-date').value = m.due_date ? m.due_date.slice(0,10) : '';
+      document.getElementById('mnt-due-km').value = m.due_km || '';
+      document.getElementById('mnt-cost').value = m.cost || '';
+      document.getElementById('mnt-btn').textContent = 'Salvează';
+    }
+    function resetMaintenanceForm() {
+      ['mnt-id','mnt-type','mnt-desc','mnt-due-date','mnt-due-km','mnt-cost'].forEach(i => document.getElementById(i).value = '');
+      document.getElementById('mnt-status').value = 'pending';
+      document.getElementById('mnt-btn').textContent = 'Adaugă';
+    }
+    async function saveMaintenance() {
+      const id = document.getElementById('mnt-id').value;
+      const body = {
+        imei: document.getElementById('mnt-imei').value,
+        type: document.getElementById('mnt-type').value.trim(),
+        description: document.getElementById('mnt-desc').value.trim(),
+        status: document.getElementById('mnt-status').value,
+        due_date: document.getElementById('mnt-due-date').value || null,
+        due_km: parseInt(document.getElementById('mnt-due-km').value) || null,
+        cost: parseFloat(document.getElementById('mnt-cost').value) || null
+      };
+      if (body.status === 'done') body.done_date = new Date().toISOString().slice(0,10);
+      if (!body.imei || !body.type) return alert('Alege vehiculul și tipul');
+      const res = await fetch('/api/maintenance' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
+      resetMaintenanceForm(); await loadMaintenance();
+    }
+    async function completeMaintenance(id) {
+      const m = (await (await fetch('/api/maintenance')).json()).find(x => x.id === id);
+      if (!m) return;
+      m.status = 'done'; m.done_date = new Date().toISOString().slice(0,10);
+      await fetch('/api/maintenance/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(m) });
+      await loadMaintenance();
+    }
+    async function deleteMaintenance(id) {
+      if (!confirm('Ștergi intrarea de mentenanță?')) return;
+      await fetch('/api/maintenance/' + id, { method: 'DELETE' }); await loadMaintenance();
+    }
+
+    // ─── Zone (geofence): listă admin + desenare + randare pe hartă ───
+    let geofenceLayers = new Map();
+    function parseGfCoords(g) { return typeof g.coordinates === 'string' ? JSON.parse(g.coordinates) : g.coordinates; }
+    async function loadGeofencesOnMap() {
+      try {
+        const list = await (await fetch('/api/geofences')).json();
+        geofenceLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+        geofenceLayers.clear();
+        list.forEach(renderGeofence);
+      } catch (e) {}
+    }
+    function renderGeofence(g) {
+      const coords = parseGfCoords(g);
+      let layer = null;
+      if (g.type === 'circle' && coords && coords.center) {
+        layer = L.circle(coords.center, { radius: coords.radius || 100, color: g.color||'#2563eb', weight: 2, fillOpacity: 0.08 });
+      } else if (Array.isArray(coords) && coords.length >= 3) {
+        layer = L.polygon(coords, { color: g.color||'#2563eb', weight: 2, fillOpacity: 0.08 });
+      }
+      if (layer) { layer.bindTooltip(g.name, { sticky: true }); layer.addTo(map); geofenceLayers.set(g.id, layer); }
+    }
+    async function loadGeofencesAdmin() {
+      alertGeofencesCache = [];
+      const list = await (await fetch('/api/geofences')).json();
+      const el = document.getElementById('admin-geofences-list');
+      el.innerHTML = list.length ? list.map(g => `<div class="admin-row"><div>
+          <strong><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${g.color||'#2563eb'};margin-right:6px;"></span>${g.name}</strong>
+          <div class="meta">${g.type === 'circle' ? 'cerc' : 'poligon'}</div>
+        </div><div style="display:flex;gap:6px;">
+          <button class="btn-sm" title="Arată pe hartă" onclick="focusGeofence(${g.id})"><i class="fas fa-map-marker-alt"></i></button>
+          <button class="btn-sm btn-danger" onclick="deleteGeofenceItem(${g.id})"><i class="fas fa-trash"></i></button>
+        </div></div>`).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio zonă. Desenează una mai sus.</p>';
+    }
+    function focusGeofence(id) {
+      const l = geofenceLayers.get(id);
+      if (l) { closeAdmin(); try { map.fitBounds(l.getBounds(), { maxZoom: 16, padding: [40,40] }); } catch(e){} }
+    }
+    async function deleteGeofenceItem(id) {
+      if (!confirm('Ștergi zona?')) return;
+      await fetch('/api/geofences/' + id, { method: 'DELETE' });
+      await loadGeofencesAdmin(); await loadGeofencesOnMap();
+    }
+
+    // Desenare
+    let drawState = null;
+    function startDrawGeofence(mode) {
+      cancelDraw();
+      closeAdmin();
+      drawState = { mode, points: [], layers: [], center: null, circle: null, purpose: 'geofence' };
+      const tb = document.getElementById('draw-toolbar');
+      tb.style.display = 'flex';
+      document.getElementById('draw-name').value = '';
+      document.getElementById('draw-name').style.display = '';
+      document.getElementById('draw-color').style.display = '';
+      document.getElementById('draw-save-btn').innerHTML = '<i class="fas fa-save"></i> Salvează';
+      document.getElementById('draw-radius-wrap').style.display = 'none';
+      document.getElementById('draw-title').textContent = mode === 'polygon' ? 'Desenare poligon' : 'Desenare cerc';
+      document.getElementById('draw-info').textContent = mode === 'polygon' ? 'Click pe hartă (minim 3 puncte)' : 'Click pe hartă pentru centru';
+      map.getContainer().style.cursor = 'crosshair';
+      map.on('click', mode === 'polygon' ? onPolyClick : onCircleClick);
+    }
+    function onPolyClick(e) { drawState.points.push([e.latlng.lat, e.latlng.lng]); redrawPoly(); }
+    function redrawPoly() {
+      drawState.layers.forEach(l => map.removeLayer(l)); drawState.layers = [];
+      drawState.points.forEach(p => { const m = L.circleMarker(p, { radius: 4, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 }); m.addTo(map); drawState.layers.push(m); });
+      if (drawState.points.length >= 2) { const pl = L.polyline(drawState.points.concat([drawState.points[0]]), { color: '#f59e0b', dashArray: '5,5' }); pl.addTo(map); drawState.layers.push(pl); }
+      document.getElementById('draw-info').textContent = drawState.points.length + ' puncte';
+    }
+    function onCircleClick(e) {
+      if (!drawState.center) {
+        drawState.center = [e.latlng.lat, e.latlng.lng];
+        const radius = parseInt(document.getElementById('draw-radius').value) || 300;
+        drawState.circle = L.circle(drawState.center, { radius, color: '#f59e0b' }).addTo(map);
+        document.getElementById('draw-radius-wrap').style.display = 'inline-flex';
+        document.getElementById('draw-info').textContent = 'Centru fixat — reglează raza';
+        updateDrawRadius();
+      }
+    }
+    function updateDrawRadius() {
+      const r = parseInt(document.getElementById('draw-radius').value) || 300;
+      document.getElementById('draw-radius-val').textContent = r + ' m';
+      if (drawState && drawState.circle) drawState.circle.setRadius(r);
+    }
+    async function saveDraw() {
+      if (!drawState) return;
+      if (drawState.purpose === 'zone') return analyzeDrawnZone();
+      const name = document.getElementById('draw-name').value.trim();
+      const color = document.getElementById('draw-color').value || '#2563eb';
+      if (!name) return alert('Dă un nume zonei');
+      let body;
+      if (drawState.mode === 'polygon') {
+        if (drawState.points.length < 3) return alert('Minim 3 puncte pentru poligon');
+        body = { name, type: 'polygon', coordinates: drawState.points, color };
+      } else {
+        if (!drawState.center) return alert('Click pe hartă pentru a fixa centrul');
+        body = { name, type: 'circle', coordinates: { center: drawState.center, radius: parseInt(document.getElementById('draw-radius').value) || 300 }, color };
+      }
+      const res = await fetch('/api/geofences', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
+      cancelDraw();
+      await loadGeofencesOnMap();
+      showView('management');
+      setTimeout(() => switchAdminTab('geofences'), 60);
+    }
+    function cancelDraw() {
+      const tb = document.getElementById('draw-toolbar'); if (tb) tb.style.display = 'none';
+      if (!drawState) return;
+      try { map.off('click', onPolyClick); map.off('click', onCircleClick); } catch(e){}
+      drawState.layers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
+      if (drawState.circle) { try { map.removeLayer(drawState.circle); } catch(e){} }
+      drawState = null;
+      if (map && map.getContainer) map.getContainer().style.cursor = '';
+    }
+
+    // Populează grup + șofer în formularul de editare vehicul
+    async function populateEditGroupsDrivers(groupId, driverId) {
+      try {
+        const [groups, drivers] = await Promise.all([
+          (await fetch('/api/groups')).json(),
+          (await fetch('/api/drivers')).json()
+        ]);
+        document.getElementById('edit-group').innerHTML = '<option value="">-- Fără grup --</option>' +
+          groups.map(g => `<option value="${g.id}" ${String(g.id)===String(groupId||'')?'selected':''}>${g.name}</option>`).join('');
+        document.getElementById('edit-driver').innerHTML = '<option value="">-- Fără șofer --</option>' +
+          drivers.map(d => `<option value="${d.id}" ${String(d.id)===String(driverId||'')?'selected':''}>${d.name}</option>`).join('');
+      } catch (e) {}
+    }
+
+    // ═══ Sonde combustibil (Escort / EuroSens Dominator / EuroSens Degree) ═══
+    const FUEL_PRESETS = [
+      { v: 'escort_ain1',   label: 'Escort analogic (AIN1)',            source: 'analog_input_1',    mode: 'calibration' },
+      { v: 'escort_ain2',   label: 'Escort analogic (AIN2)',            source: 'analog_input_2',    mode: 'calibration' },
+      { v: 'dominator_lls1',label: 'EuroSens Dominator — LLS 1 (digital)', source: 'lls_fuel_level_1', mode: 'direct' },
+      { v: 'dominator_lls2',label: 'EuroSens Dominator — LLS 2 (digital)', source: 'lls_fuel_level_2', mode: 'direct' },
+      { v: 'escort_ble1',   label: 'Escort TD-BLE — sondă 1',           source: 'ble_fuel_level_1',  mode: 'direct' },
+      { v: 'escort_ble2',   label: 'Escort TD-BLE — sondă 2',           source: 'ble_fuel_level_2',  mode: 'direct' },
+      { v: 'degree_lvl1',   label: 'EuroSens Degree BLE — nivel 1',     source: 'ble_fuel_level_1',  mode: 'direct' },
+      { v: 'degree_freq1',  label: 'EuroSens Degree BLE — frecvență 1', source: 'ble_fuel_frequency_1', mode: 'calibration' },
+      { v: 'can',           label: 'CAN (J1939)',                       source: 'can_fuel_level_liters', mode: 'direct' },
+      { v: 'generic',       label: 'Generic / personalizat',           source: '',                  mode: 'direct' }
+    ];
+    const FUEL_SOURCES = ['analog_input_1','analog_input_2','lls_fuel_level_1','lls_fuel_level_2','ble_fuel_level_1','ble_fuel_level_2','ble_fuel_level_3','ble_fuel_level_4','ble_fuel_frequency_1','ble_fuel_frequency_2','ble_fuel_frequency_3','ble_fuel_frequency_4','can_fuel_level_liters','fms_fuel_level'];
+    const _fsInput = 'padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-dark);color:var(--text,#222);';
+    function fuelCalRowHtml(raw, liters) {
+      return `<div class="fs-cal-row" style="display:flex;gap:6px;align-items:center;">
+        <input type="number" step="any" class="fs-cal-raw" value="${raw!=null?raw:''}" placeholder="brut" style="flex:1;${_fsInput}">
+        <span style="color:var(--text-muted);">→</span>
+        <input type="number" step="any" class="fs-cal-liters" value="${liters!=null?liters:''}" placeholder="litri" style="flex:1;${_fsInput}">
+        <button type="button" class="btn-sm btn-danger" onclick="this.closest('.fs-cal-row').remove()"><i class="fas fa-times"></i></button>
+      </div>`;
+    }
+    function addFuelCalRow(btn, raw, liters) {
+      const rows = btn.closest('.fs-cal-wrap').querySelector('.fs-cal-rows');
+      const tmp = document.createElement('div'); tmp.innerHTML = fuelCalRowHtml(raw, liters);
+      rows.appendChild(tmp.firstElementChild);
+    }
+    function fuelSensorCard(s) {
+      s = s || {};
+      let selPreset = '';
+      if (s.source) { const mp = FUEL_PRESETS.find(p => p.source === s.source && p.mode === (s.mode || 'direct')); selPreset = mp ? mp.v : 'generic'; }
+      const presetOpts = FUEL_PRESETS.map(p => `<option value="${p.v}" ${p.v===selPreset?'selected':''}>${p.label}</option>`).join('');
+      const srcOpts = FUEL_SOURCES.map(src => `<option value="${src}" ${s.source===src?'selected':''}>${src}</option>`).join('') + `<option value="" ${!s.source?'selected':''}>(altul)</option>`;
+      const calRows = (s.mode === 'calibration' && Array.isArray(s.calibration)) ? s.calibration.map(c => fuelCalRowHtml(c.raw, c.liters)).join('') : '';
+      const card = document.createElement('div');
+      card.className = 'fuel-sensor-card';
+      card.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;';
+      card.innerHTML =
+        `<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+          <label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>Nume sondă</span><input class="fs-name" value="${(s.name||'').replace(/"/g,'&quot;')}" placeholder="ex: Rezervor principal" style="${_fsInput}"></label>
+          <label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>Tip senzor (preset)</span><select class="fs-preset" onchange="onFuelPreset(this)" style="${_fsInput}">${presetOpts}</select></label>
+          <button type="button" class="btn-sm btn-danger" onclick="this.closest('.fuel-sensor-card').remove()"><i class="fas fa-trash"></i></button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+          <label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>Sursă (câmp)</span><select class="fs-source" style="${_fsInput}">${srcOpts}</select></label>
+          <label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>Mod</span><select class="fs-mode" onchange="onFuelMode(this)" style="${_fsInput}"><option value="direct" ${s.mode!=='calibration'?'selected':''}>Direct (deja litri)</option><option value="calibration" ${s.mode==='calibration'?'selected':''}>Calibrare (tabel)</option></select></label>
+          <label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>Capacitate (L)</span><input type="number" class="fs-capacity" value="${s.capacity||''}" style="${_fsInput}"></label>
+        </div>
+        <div class="fs-cal-wrap" style="display:${s.mode==='calibration'?'block':'none'};margin-top:10px;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Tabel calibrare — valoare brută (mV / Hz / etc.) → litri:</div>
+          <div class="fs-cal-rows" style="display:flex;flex-direction:column;gap:6px;">${calRows}</div>
+          <button type="button" class="btn-sm" style="margin-top:6px;" onclick="addFuelCalRow(this)">+ punct</button>
+        </div>`;
+      return card;
+    }
+    function onFuelPreset(sel) {
+      const preset = FUEL_PRESETS.find(p => p.v === sel.value); if (!preset) return;
+      const card = sel.closest('.fuel-sensor-card');
+      if (preset.source) { const src = card.querySelector('.fs-source'); if ([...src.options].some(o => o.value === preset.source)) src.value = preset.source; }
+      card.querySelector('.fs-mode').value = preset.mode;
+      card.querySelector('.fs-cal-wrap').style.display = preset.mode === 'calibration' ? 'block' : 'none';
+    }
+    function onFuelMode(sel) {
+      sel.closest('.fuel-sensor-card').querySelector('.fs-cal-wrap').style.display = sel.value === 'calibration' ? 'block' : 'none';
+    }
+    function addFuelSensor(sensor) { document.getElementById('fuel-sensors-list').appendChild(fuelSensorCard(sensor)); }
+    function renderFuelSensors(sensors) {
+      const list = document.getElementById('fuel-sensors-list'); list.innerHTML = '';
+      (sensors || []).forEach(s => list.appendChild(fuelSensorCard(s)));
+    }
+    function collectFuelSensors() {
+      const out = [];
+      document.querySelectorAll('#fuel-sensors-list .fuel-sensor-card').forEach(card => {
+        const mode = card.querySelector('.fs-mode').value;
+        const s = { name: card.querySelector('.fs-name').value.trim(), source: card.querySelector('.fs-source').value, mode, capacity: parseFloat(card.querySelector('.fs-capacity').value) || null };
+        if (mode === 'calibration') {
+          s.calibration = [];
+          card.querySelectorAll('.fs-cal-row').forEach(r => {
+            const raw = parseFloat(r.querySelector('.fs-cal-raw').value), liters = parseFloat(r.querySelector('.fs-cal-liters').value);
+            if (!isNaN(raw) && !isNaN(liters)) s.calibration.push({ raw, liters });
+          });
+        }
+        if (s.source) out.push(s);
+      });
+      return out;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  FAZA 3 — Rapoarte + Hotspot (heatmap + zonă desenabilă)
+    // ═══════════════════════════════════════════════════════════
+    function localISO(d) { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,16); }
+    async function fillVehicleSelect(id, withAll, allLabel) {
+      const sel = document.getElementById(id); if (!sel) return;
+      let list = []; try { list = await (await fetch('/api/devices')).json(); } catch (e) {}
+      sel.innerHTML = (withAll ? `<option value="">${allLabel||'Toate vehiculele'}</option>` : '') +
+        list.map(d => `<option value="${d.imei}">${(d.name||d.imei)}${d.plate?' · '+d.plate:''}</option>`).join('');
+    }
+
+    // ─── Rapoarte ───
+    let repCatalog = null, lastReport = null, repCurrentCat = null;
+    const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', events:'fa-bell' };
+    async function openReports() {
+      if (!repCatalog) { try { repCatalog = await (await fetch('/api/reports')).json(); } catch (e) { repCatalog = { categories: [], reports: [] }; } }
+      document.getElementById('rep-type').innerHTML = repCatalog.reports.map(r => `<option value="${r.type}">${r.label}</option>`).join('');
+      const cats = repCatalog.categories || [];
+      document.getElementById('rep-cats').innerHTML = cats.map((c, i) => `<button class="rep-cat${i===0?' active':''}" data-cat="${c.key}" onclick="selectReportCategory('${c.key}')">${c.label}</button>`).join('');
+      repCurrentCat = cats.length ? cats[0].key : null;
+      renderReportCards();
+      document.getElementById('rep-runner').style.display = 'none';
+      document.getElementById('rep-catalog').style.display = '';
+    }
+    function renderReportCards() {
+      const list = (repCatalog.reports || []).filter(r => r.cat === repCurrentCat);
+      document.getElementById('rep-cards').innerHTML = list.map(r =>
+        `<button class="rep-card" onclick="openReportCard('${r.type}')"><i class="fas ${REP_ICONS[r.type]||'fa-file-lines'}"></i><span class="rc-label">${r.label}</span></button>`
+      ).join('') || '<p style="color:var(--text-muted);font-size:13px;">Niciun raport în această categorie.</p>';
+    }
+    function selectReportCategory(cat) {
+      repCurrentCat = cat;
+      document.querySelectorAll('#rep-cats .rep-cat').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+      renderReportCards();
+    }
+    async function openReportCard(type) {
+      const r = (repCatalog.reports || []).find(x => x.type === type);
+      document.getElementById('rep-type').value = type;
+      document.getElementById('rep-title').textContent = r ? r.label : type;
+      document.getElementById('rep-catalog').style.display = 'none';
+      document.getElementById('rep-runner').style.display = 'flex';
+      await fillVehicleSelect('rep-imei', true, 'Toată flota');
+      setRepPeriod('week'); onRepType();
+      document.querySelector('#rep-table thead').innerHTML = '';
+      document.querySelector('#rep-table tbody').innerHTML = '';
+      document.getElementById('rep-summary').innerHTML = '';
+      document.getElementById('rep-empty').style.display = 'none';
+      document.getElementById('rep-count').textContent = '';
+      lastReport = null;
+    }
+    function backToReportCatalog() {
+      document.getElementById('rep-runner').style.display = 'none';
+      document.getElementById('rep-catalog').style.display = '';
+    }
+    function setRepPeriod(p) {
+      const now = new Date(); let from = new Date();
+      if (p === 'today') from.setHours(0,0,0,0);
+      else if (p === 'yesterday') { from.setDate(from.getDate()-1); from.setHours(0,0,0,0); now.setHours(0,0,0,0); }
+      else if (p === 'week') from.setDate(from.getDate()-7);
+      else if (p === 'month') from.setDate(from.getDate()-30);
+      document.getElementById('rep-from').value = localISO(from);
+      document.getElementById('rep-to').value = localISO(now);
+    }
+    function onRepType() {
+      const t = document.getElementById('rep-type').value; let html = '';
+      if (t === 'speeding') html = '<label class="rep-f"><span>Limită (km/h)</span><input type="number" id="rep-limit" value="90" style="width:90px;"></label>';
+      else if (['stops','trips','route','daily'].includes(t)) html = '<label class="rep-f"><span>Oprire min (min)</span><input type="number" id="rep-stopmin" value="5" style="width:90px;"></label>';
+      else if (['consumption','fuel'].includes(t)) html = '<label class="rep-f"><span>Prag alimentare (L)</span><input type="number" id="rep-refuel" value="10" style="width:100px;"></label>';
+      document.getElementById('rep-extra').innerHTML = html;
+    }
+    async function repGenerate() {
+      const t = document.getElementById('rep-type').value;
+      const imei = document.getElementById('rep-imei').value;
+      const fromV = document.getElementById('rep-from').value, toV = document.getElementById('rep-to').value;
+      if (!fromV || !toV) return alert('Selectează perioada');
+      let url = `/api/reports/${t}?from=${new Date(fromV).toISOString()}&to=${new Date(toV).toISOString()}`;
+      if (imei) url += '&imei=' + encodeURIComponent(imei);
+      const lim = document.getElementById('rep-limit'); if (lim) url += '&limit=' + (parseInt(lim.value)||90);
+      const sm = document.getElementById('rep-stopmin'); if (sm) url += '&stopMin=' + (parseInt(sm.value)||5);
+      const rf = document.getElementById('rep-refuel'); if (rf) url += '&refuelMin=' + (parseInt(rf.value)||10);
+      document.getElementById('rep-count').textContent = 'Se generează...';
+      let data;
+      try { const res = await fetch(url); data = await res.json(); if (!res.ok) throw new Error(data.error||'Eroare'); }
+      catch (e) { alert(e.message); document.getElementById('rep-count').textContent = ''; return; }
+      lastReport = data; renderReport(data);
+    }
+    function renderReport(data) {
+      document.getElementById('rep-summary').innerHTML = Object.entries(data.summary||{}).map(([k,v]) => `<div class="rep-chip"><div class="v">${v}</div><div class="l">${k}</div></div>`).join('');
+      document.querySelector('#rep-table thead').innerHTML = '<tr>' + (data.columns||[]).map(c => `<th>${c}</th>`).join('') + '</tr>';
+      document.querySelector('#rep-table tbody').innerHTML = (data.rows||[]).map(r => '<tr>' + r.map(c => `<td>${c==null?'':c}</td>`).join('') + '</tr>').join('');
+      const empty = !(data.rows && data.rows.length);
+      document.getElementById('rep-empty').style.display = empty ? 'block' : 'none';
+      document.getElementById('rep-table-wrap').style.display = empty ? 'none' : 'block';
+      document.getElementById('rep-count').textContent = (data.rows ? data.rows.length : 0) + ' rânduri';
+    }
+    function downloadBlob(content, filename, type) {
+      const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    function exportReport(fmt) {
+      if (!lastReport || !lastReport.rows || !lastReport.rows.length) return alert('Generează întâi un raport cu date');
+      const cols = lastReport.columns, rows = lastReport.rows;
+      const title = lastReport.label || 'raport';
+      const fname = title.replace(/\s+/g,'_').toLowerCase() + '_' + new Date().toISOString().slice(0,10);
+      if (fmt === 'csv') {
+        const esc = v => { const s = String(v==null?'':v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+        const csv = [cols.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
+        downloadBlob('﻿'+csv, fname+'.csv', 'text/csv;charset=utf-8');
+      } else if (fmt === 'xls') {
+        const esc = v => String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const html = '<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>' + cols.map(c=>'<th>'+esc(c)+'</th>').join('') + '</tr></thead><tbody>' + rows.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('') + '</tbody></table></body></html>';
+        downloadBlob(html, fname+'.xls', 'application/vnd.ms-excel');
+      } else if (fmt === 'pdf') {
+        printReportData(title, cols, rows, lastReport.summary);
+      }
+    }
+    function printReportData(title, cols, rows, summary) {
+      const w = window.open('', '_blank'); if (!w) return alert('Permite pop-up-urile pentru a tipări în PDF.');
+      const sumHtml = Object.entries(summary||{}).map(([k,v]) => `<span style="margin-right:18px;"><b>${v}</b> ${k}</span>`).join('');
+      w.document.write(`<html><head><meta charset="utf-8"><title>${title}</title>
+        <style>body{font-family:Arial,sans-serif;padding:20px;color:#111;}h1{font-size:18px;margin:0 0 4px;}table{border-collapse:collapse;width:100%;font-size:11px;margin-top:12px;}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;}th{background:#f0f0f0;}</style>
+        </head><body><h1>GPS Unitip — ${title}</h1><div style="font-size:12px;color:#555;">${sumHtml}</div>
+        <table><thead><tr>${cols.map(c=>'<th>'+c+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c==null?'':c)+'</td>').join('')+'</tr>').join('')}</tbody></table></body></html>`);
+      w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 300);
+    }
+
+    // ─── Hotspot (heatmap) ───
+    let heatLayer = null;
+    async function toggleHotspot() {
+      const p = document.getElementById('hotspot-panel');
+      if (p.style.display === 'none' || !p.style.display) {
+        p.style.display = 'block';
+        await fillVehicleSelect('hs-imei', true, 'Toată flota');
+        setHsPeriod('week');
+      } else { closeHotspot(); }
+    }
+    function closeHotspot() { document.getElementById('hotspot-panel').style.display = 'none'; }
+    function setHsPeriod(pp) {
+      const now = new Date(); let from = new Date();
+      if (pp === 'today') from.setHours(0,0,0,0);
+      else if (pp === 'week') from.setDate(from.getDate()-7);
+      else if (pp === 'month') from.setDate(from.getDate()-30);
+      document.getElementById('hs-from').value = localISO(from);
+      document.getElementById('hs-to').value = localISO(now);
+    }
+    async function loadHeatmap() {
+      if (typeof L.heatLayer !== 'function') return alert('Biblioteca heatmap nu s-a încărcat.');
+      const imei = document.getElementById('hs-imei').value;
+      const mode = document.getElementById('hs-mode').value;
+      const fromV = document.getElementById('hs-from').value, toV = document.getElementById('hs-to').value;
+      let url = `/api/hotspot?mode=${mode}&from=${new Date(fromV).toISOString()}&to=${new Date(toV).toISOString()}`;
+      if (imei) url += '&imei=' + encodeURIComponent(imei);
+      let pts; try { pts = await (await fetch(url)).json(); } catch (e) { return alert('Eroare la încărcarea hotspot.'); }
+      if (!Array.isArray(pts) || !pts.length) return alert('Nu sunt date pentru heatmap în perioada selectată.');
+      clearHeatmap();
+      heatLayer = L.heatLayer(pts, { radius: 25, blur: 18, maxZoom: 16 }).addTo(map);
+      try { map.fitBounds(L.latLngBounds(pts.map(p => [p[0], p[1]])), { maxZoom: 14, padding: [40,40] }); } catch (e) {}
+    }
+    function clearHeatmap() { if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; } }
+
+    // ─── Zonă desenată ad-hoc → analiză (reutilizează controlerul de desenare) ───
+    function startZoneDraw(mode) {
+      cancelDraw();
+      drawState = { mode, points: [], layers: [], center: null, circle: null, purpose: 'zone' };
+      const tb = document.getElementById('draw-toolbar'); tb.style.display = 'flex';
+      document.getElementById('draw-name').style.display = 'none';
+      document.getElementById('draw-color').style.display = 'none';
+      document.getElementById('draw-radius-wrap').style.display = 'none';
+      document.getElementById('draw-save-btn').innerHTML = '<i class="fas fa-chart-bar"></i> Analizează';
+      document.getElementById('draw-title').textContent = mode === 'polygon' ? 'Zonă: poligon' : 'Zonă: cerc';
+      document.getElementById('draw-info').textContent = mode === 'polygon' ? 'Click pe hartă (min 3 puncte)' : 'Click pe hartă pentru centru';
+      if (map && map.getContainer) map.getContainer().style.cursor = 'crosshair';
+      map.on('click', mode === 'polygon' ? onPolyClick : onCircleClick);
+    }
+    async function analyzeDrawnZone() {
+      let zone;
+      if (drawState.mode === 'polygon') { if (drawState.points.length < 3) return alert('Minim 3 puncte'); zone = { type: 'polygon', coordinates: drawState.points }; }
+      else { if (!drawState.center) return alert('Click pe hartă pentru centru'); zone = { type: 'circle', center: drawState.center, radius: parseInt(document.getElementById('draw-radius').value) || 300 }; }
+      const imei = document.getElementById('hs-imei') ? document.getElementById('hs-imei').value : '';
+      const fromV = document.getElementById('hs-from') ? document.getElementById('hs-from').value : '';
+      const toV = document.getElementById('hs-to') ? document.getElementById('hs-to').value : '';
+      const body = { zone, imei: imei || undefined, from: fromV ? new Date(fromV).toISOString() : undefined, to: toV ? new Date(toV).toISOString() : undefined };
+      let data;
+      try { const res = await fetch('/api/zone-report', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }); data = await res.json(); if (!res.ok) throw new Error(data.error||'Eroare'); }
+      catch (e) { alert(e.message); return; }
+      cancelDraw();
+      showZoneResult(data);
+    }
+    function showZoneResult(data) {
+      const ov = document.createElement('div'); ov.className = 'modal-overlay visible'; ov.style.zIndex = 5000;
+      const sum = Object.entries(data.summary||{}).map(([k,v]) => `<div class="rep-chip"><div class="v">${v}</div><div class="l">${k}</div></div>`).join('');
+      const tbl = (data.rows && data.rows.length)
+        ? '<table id="rep-table" style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>' + data.columns.map(c=>'<th>'+c+'</th>').join('') + '</tr></thead><tbody>' + data.rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c==null?'':c)+'</td>').join('')+'</tr>').join('') + '</tbody></table>'
+        : '<p style="color:var(--text-muted);padding:16px;">Niciun vehicul nu a intrat în zonă în perioada selectată.</p>';
+      ov.innerHTML = `<div class="modal" style="width:680px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;">
+        <h2><span><i class="fas fa-draw-polygon" style="margin-right:8px;color:var(--orange);"></i> Analiză zonă</span><button class="close-btn" style="position:static;font-size:18px;">&#10005;</button></h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">${sum}</div>
+        <div style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;">${tbl}</div></div>`;
+      ov.querySelector('.close-btn').onclick = () => ov.remove();
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+      document.body.appendChild(ov);
+    }
+
+    // ═══ Notificări (Faza 4) ═══
+    function setNotifBadge(n) {
+      const b = document.getElementById('notif-badge');
+      if (n > 0) { b.textContent = n > 99 ? '99+' : n; b.style.display = ''; } else { b.style.display = 'none'; }
+    }
+    async function refreshNotifBadge() {
+      try { const d = await (await fetch('/api/notifications/unread-count')).json(); setNotifBadge(d.count || 0); } catch (e) {}
+    }
+    async function toggleNotifications() {
+      const p = document.getElementById('notif-panel');
+      if (p.style.display === 'none' || !p.style.display) { p.style.display = 'flex'; await loadNotifications(); }
+      else closeNotifications();
+    }
+    function closeNotifications() { document.getElementById('notif-panel').style.display = 'none'; }
+    async function loadNotifications() {
+      const list = document.getElementById('notif-list');
+      list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;padding:12px;">Se încarcă...</p>';
+      let rows = []; try { rows = await (await fetch('/api/notifications?limit=80')).json(); } catch (e) {}
+      if (!Array.isArray(rows) || !rows.length) { list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;padding:16px;text-align:center;">Nicio notificare.</p>'; return; }
+      const sev = { info:'#3b82f6', warning:'#f59e0b', critical:'#ef4444' };
+      list.innerHTML = rows.map(n => `
+        <div style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);${n.acknowledged?'opacity:.5;':''}">
+          <span style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;background:${sev[n.severity]||'#3b82f6'};"></span>
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:12px;font-weight:600;">${n.title||n.type}</div>
+            <div style="font-size:11px;color:var(--text-muted);word-break:break-word;">${n.body||''}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${new Date(n.created_at).toLocaleString('ro-RO')}</div>
+          </div>
+          ${n.acknowledged?'':`<button class="btn-sm" style="padding:3px 7px;align-self:flex-start;" title="Marchează citit" onclick="ackNotif(${n.id})"><i class="fas fa-check"></i></button>`}
+        </div>`).join('');
+    }
+    async function ackNotif(id) { try { await fetch('/api/notifications/' + id + '/ack', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
+    async function ackAllNotif() { try { await fetch('/api/notifications/ack-all', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
+    function onNotificationWs() {
+      refreshNotifBadge();
+      const p = document.getElementById('notif-panel');
+      if (p && p.style.display === 'flex') loadNotifications();
+    }
+
+    // ═══ Preferințe notificări per utilizator + Web Push ═══
+    let _eventTypes = null;
+    async function openNotifPrefs() {
+      document.getElementById('notif-prefs-modal').classList.add('visible');
+      if (!_eventTypes) { try { _eventTypes = await (await fetch('/api/event-types')).json(); } catch (e) { _eventTypes = []; } }
+      let prefs = {}; try { prefs = await (await fetch('/api/notification-prefs')).json(); } catch (e) {}
+      const types = (prefs && prefs.types) || {};
+      const hasPrefs = !!(prefs && prefs.types);
+      document.getElementById('prefs-rows').innerHTML = _eventTypes.map(t => {
+        const p = types[t.key] || {};
+        const enabled = hasPrefs ? !!p.enabled : true;
+        const thr = (p.threshold != null && p.threshold !== '') ? p.threshold : (t.def != null ? t.def : '');
+        return `<tr style="border-top:1px solid var(--border);" data-key="${t.key}">
+          <td style="padding:8px 10px;">${t.label}</td>
+          <td style="text-align:center;"><input type="checkbox" class="pf-en" ${enabled?'checked':''}></td>
+          <td style="text-align:center;">${t.threshold ? `<input type="number" class="pf-thr" value="${thr}" style="width:74px;padding:4px;border:1px solid var(--border);border-radius:5px;background:var(--bg-dark);color:var(--text,#222);"> <span style="color:var(--text-muted);font-size:11px;">${t.unit||''}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+          <td style="text-align:center;"><input type="checkbox" class="pf-email" ${p.email?'checked':''}></td>
+          <td style="text-align:center;"><input type="checkbox" class="pf-push" ${p.push?'checked':''}></td>
+        </tr>`;
+      }).join('');
+      refreshPushState();
+    }
+    function closeNotifPrefs() { document.getElementById('notif-prefs-modal').classList.remove('visible'); }
+    async function saveNotifPrefs() {
+      const types = {};
+      document.querySelectorAll('#prefs-rows tr').forEach(tr => {
+        const key = tr.getAttribute('data-key');
+        const thrEl = tr.querySelector('.pf-thr');
+        types[key] = { enabled: tr.querySelector('.pf-en').checked, email: tr.querySelector('.pf-email').checked, push: tr.querySelector('.pf-push').checked };
+        if (thrEl && thrEl.value !== '') types[key].threshold = Number(thrEl.value);
+      });
+      const r = await fetch('/api/notification-prefs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ types }) });
+      if (!r.ok) return alert('Eroare la salvare');
+      closeNotifPrefs();
+    }
+    function urlBase64ToUint8Array(b64) {
+      const pad = '='.repeat((4 - b64.length % 4) % 4);
+      const base64 = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = atob(base64); const arr = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+      return arr;
+    }
+    async function getPushSub() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+      const reg = await navigator.serviceWorker.getRegistration(); if (!reg) return null;
+      return await reg.pushManager.getSubscription();
+    }
+    async function refreshPushState() {
+      const el = document.getElementById('push-state'), btn = document.getElementById('push-enable-btn');
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) { el.textContent = 'nesuportat de browser'; btn.style.display = 'none'; return; }
+      const perm = Notification.permission; const sub = await getPushSub();
+      if (sub && perm === 'granted') { el.textContent = 'activate'; btn.style.display = 'none'; }
+      else if (perm === 'denied') { el.textContent = 'blocate în browser'; btn.style.display = 'none'; }
+      else { el.textContent = 'dezactivate'; btn.style.display = ''; }
+    }
+    async function enablePush() {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return alert('Browserul nu suportă notificări push.');
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') return alert('Permisiune refuzată.');
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+        const vapid = await (await fetch('/api/push/vapid')).json();
+        if (!vapid.publicKey) return alert('Web Push neconfigurat pe server.');
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapid.publicKey) });
+        await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub) });
+        alert('Notificări push activate pe acest dispozitiv.');
+        refreshPushState();
+      } catch (e) { alert('Eroare push: ' + e.message); }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  SHELL AROBS — temă light/dark + router pentru view-uri
+    // ═══════════════════════════════════════════════════════════
+    function applyTheme(t) {
+      document.body.classList.toggle('dark', t === 'dark');
+      const i = document.querySelector('#theme-toggle i');
+      if (i) i.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+    function toggleTheme() {
+      const dark = !document.body.classList.contains('dark');
+      localStorage.setItem('gpsTheme', dark ? 'dark' : 'light');
+      applyTheme(dark ? 'dark' : 'light');
+      if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
+    }
+    function toggleNavrail() { document.getElementById('navrail').classList.toggle('open'); }
+
+    const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal' };
+    const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal' };
+    let currentView = 'localizare';
+    function showView(name) {
+      currentView = name;
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === name));
+      // ascunde panourile inline
+      Object.values(VIEW_PANELS).forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('as-view', 'visible'); });
+      // închide panourile flotante de pe hartă
+      try { closeHotspot(); } catch (e) {}
+      const hist = document.getElementById('history-panel'); if (hist) hist.classList.remove('visible');
+      const loc = document.getElementById('view-localizare');
+      const mapViews = ['localizare', 'traseu', 'hotspot'];
+      if (mapViews.includes(name)) {
+        loc.classList.add('active');
+        if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
+        if (name === 'hotspot') openHotspotPanel();
+        if (name === 'traseu' && hist) hist.classList.add('visible');
+      } else {
+        loc.classList.remove('active');
+        const el = document.getElementById(VIEW_PANELS[name]);
+        if (el) el.classList.add('as-view', 'visible');
+        const opener = VIEW_OPENERS[name];
+        if (opener && typeof window[opener] === 'function') window[opener]();
+      }
+      if (window.innerWidth <= 768) document.getElementById('navrail').classList.remove('open');
+    }
+    function openHotspotPanel() {
+      const p = document.getElementById('hotspot-panel');
+      if (p.style.display !== 'block') { p.style.display = 'block'; fillVehicleSelect('hs-imei', true, 'Toată flota'); setHsPeriod('week'); }
+    }
+
+    // Închiderile panourilor inline revin la Localizare (override peste definițiile anterioare)
+    function closeReports() { showView('localizare'); }
+    function closeDashboard() { showView('localizare'); }
+    function closeAdmin() { document.getElementById('admin-modal').classList.remove('as-view', 'visible'); showView('localizare'); }
+    function closeUsersModal() { showView('localizare'); }
+
+    // Gating UI după permisiuni (override: nav Administrare + acțiuni de flotă)
+    function applyPermissionsUI() {
+      const adminNav = document.getElementById('nav-admin');
+      if (adminNav) adminNav.style.display = can('manageUsers') ? '' : 'none';
+      document.body.classList.toggle('no-fleet', !can('manageFleet'));
     }
 
     // ─── Map ───
@@ -2309,6 +3931,9 @@
       fetch('/api/live').then(r => r.json()).then(data => {
         data.forEach(updateMarker);
       }).catch(() => {});
+
+      // Randează zonele (geofence) pe hartă
+      loadGeofencesOnMap();
 
       // Periodic staleness check — refresh icons every 30 seconds
       setInterval(function() {
@@ -2428,7 +4053,7 @@
             '<a href="#" class="io-link" onclick="openDetailPanel(\'' + imei + '\', \'io\'); return false;"><i class="fas fa-microchip"></i> Toate IO</a>' +
             '<a href="#" class="history-link" onclick="openDetailPanel(\'' + imei + '\', \'history\'); return false;"><i class="fas fa-route"></i> Istoric</a>' +
             '<a href="#" style="color:var(--accent);cursor:pointer;font-size:11px;" onclick="openReportModal(\'' + imei + '\'); return false;"><i class="fas fa-file-alt"></i> Raport</a>' +
-            '<a href="#" class="edit-link" onclick="openEditModal(\'' + imei + '\'); return false;"><i class="fas fa-pen"></i> Editeaza</a>' +
+            '<a href="#" class="edit-link fleet-only" onclick="openEditModal(\'' + imei + '\'); return false;"><i class="fas fa-pen"></i> Editeaza</a>' +
           '</div>' +
         '</div>';
 
@@ -3441,6 +5066,11 @@
         if (msg.type === 'alert') {
           showAlertNotification(msg.data);
         }
+
+        // Notificare (centru notificări)
+        if (msg.type === 'notification') {
+          onNotificationWs();
+        }
       };
 
       ws.onclose = () => {
@@ -3647,6 +5277,7 @@
 
       // Clear calibration rows
       document.getElementById('calibration-rows').innerHTML = '';
+      document.getElementById('fuel-sensors-list').innerHTML = '';
 
       // Clear truck fields
       ['edit-tare', 'edit-max-legal', 'edit-max-construct', 'edit-fuel-price', 'edit-cost-tonkm',
@@ -3661,6 +5292,7 @@
           document.getElementById('edit-name').value = dev.name || '';
           document.getElementById('edit-vehicle-type').value = dev.vehicle_type || '';
           document.getElementById('edit-plate').value = dev.plate || '';
+          await populateEditGroupsDrivers(dev.group_id, dev.driver_id);
 
           // Truck config
           document.getElementById('edit-tare').value = dev.tare_weight || '';
@@ -3682,6 +5314,8 @@
           if (cal && Array.isArray(cal) && cal.length > 0) {
             cal.forEach(pt => addCalibrationRow(pt.voltage, pt.liters));
           }
+          // Sonde combustibil (avansat)
+          try { const fsList = await (await fetch('/api/devices/' + imei + '/fuel-sensors')).json(); renderFuelSensors(Array.isArray(fsList) ? fsList : []); } catch (e) { renderFuelSensors([]); }
         }
       } catch (e) {
         console.error('Load device info failed:', e);
@@ -3709,6 +5343,16 @@
         alert('Eroare la salvare');
         return;
       }
+
+      // Grup + șofer (atribuire)
+      await fetch('/api/devices/' + imei + '/assign', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group_id: parseInt(document.getElementById('edit-group').value) || null,
+          driver_id: parseInt(document.getElementById('edit-driver').value) || null
+        })
+      });
 
       // Truck config
       const truckConfig = {
@@ -3744,6 +5388,13 @@
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ calibration })
+      });
+
+      // Sonde combustibil (avansat) — Escort / EuroSens Dominator / EuroSens Degree
+      await fetch('/api/devices/' + imei + '/fuel-sensors', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sensors: collectFuelSensors() })
       });
 
       if (true) {

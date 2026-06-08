@@ -1,0 +1,40 @@
+# GPS Unitip — deploy pe VPS cu HTTPS automat (Caddy)
+# 1) Pune un domeniu (A record) către IP-ul serverului
+# 2) Creează un fișier .env cu: DOMAIN, SESSION_SECRET, ADMIN_PASSWORD
+# 3) docker compose up -d --build
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - TCP_PORT=5027
+      - COOKIE_SECURE=true
+      - SESSION_SECRET=${SESSION_SECRET:?set SESSION_SECRET in .env}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      # opțional: NOTIFY_EXPIRY_DAYS, SMTP_*, TELEGRAM_*, NOTIFY_WEBHOOK_URL, POSITION_RETENTION_DAYS
+    volumes:
+      - gpsdata:/app/data          # baza PGlite + secrete + chei VAPID (persistent)
+    ports:
+      - "5027:5027"                # TCP brut pentru dispozitivele Teltonika
+    expose:
+      - "3000"                     # web/API — accesat doar prin Caddy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      - DOMAIN=${DOMAIN:?set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  gpsdata:
+  caddy_data:
+  caddy_config:

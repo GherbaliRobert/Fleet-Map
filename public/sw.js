@@ -1,0 +1,59 @@
+// Service worker — PWA (instalabil + shell offline) + Web Push pentru GPS Unitip
+const CACHE = 'gpsunitip-v1';
+const SHELL = ['/', '/index.html', '/manifest.json', '/icon.svg', '/icon-192.png', '/vendor/leaflet-heat.js'];
+
+self.addEventListener('install', function (e) {
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).catch(() => {})));
+});
+
+self.addEventListener('activate', function (e) {
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', function (e) {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // Nu intercepta API, WebSocket sau alt origin — datele sunt mereu live
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api')) return;
+  if (req.mode === 'navigate') {
+    // network-first pentru pagini (HTML proaspăt), cu fallback offline
+    e.respondWith(fetch(req).catch(() => caches.match('/index.html')));
+    return;
+  }
+  // static (icoane, vendor): cache-first cu reîmprospătare în fundal
+  e.respondWith(caches.match(req).then(cached => cached || fetch(req).then(res => {
+    const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy));
+    return res;
+  }).catch(() => cached)));
+});
+
+// ─── Web Push ───
+self.addEventListener('push', function (event) {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; }
+  catch (e) { data = { title: 'GPS Unitip', body: event.data ? event.data.text() : '' }; }
+  const title = data.title || 'GPS Unitip';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: data.tag || undefined,
+    renotify: false
+  }));
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (const c of list) { if ('focus' in c) return c.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow('/');
+    })
+  );
+});

@@ -1,0 +1,6 @@
+# Caddy — HTTPS automat (Let's Encrypt) + reverse proxy către aplicație.
+# WebSocket-ul este proxat automat.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:3000
+}

@@ -1,17 +1,29 @@
 {
-  "name": "gps-tracker",
+  "name": "gps-unitip",
   "version": "1.0.0",
-  "description": "GPS Tracker Server for Teltonika FMB140",
+  "description": "GPS Unitip — platformă de tracking flotă (Teltonika), 100% locală cu bază de date embedded (PGlite)",
   "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test:rbac": "node rbac_smoke.js",
+    "test:phase2": "node phase2_smoke.js",
+    "test:phase3": "node phase3_smoke.js",
+    "test:phase4": "node phase4_smoke.js",
+    "test:events": "node phase6_smoke.js",
+    "test:sensors": "node phase7_smoke.js",
+    "test:ws": "node ws_smoke.js"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.0",
     "bcryptjs": "^3.0.3",
-    "connect-pg-simple": "^10.0.0",
     "express": "^4.18.2",
     "express-session": "^1.19.0",
-    "pg": "^8.11.3",
+    "nodemailer": "^8.0.10",
+    "web-push": "^3.6.7",
     "ws": "^8.16.0"
   }
 }

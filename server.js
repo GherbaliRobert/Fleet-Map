@@ -1,11 +1,15 @@
 // server.js — Serverul principal: TCP (dispozitive) + HTTP (interfață web) + WebSocket (live)
+// Forțează UTC pentru tot procesul: coloanele `timestamp` (fără fus) fac round-trip consistent,
+// iar interogările pe interval (ISO/UTC) se potrivesc. Afișarea se face explicit pe ora locală.
+process.env.TZ = 'UTC';
 const net = require('net');
 const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const path = require('path');
 const session = require('express-session');
-const PgSession = require('connect-pg-simple')(session);
+const crypto = require('crypto');
+const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const { parseAvlPacket, convertCanValue, expandCanFlags } = require('./codec8e');
 
@@ -57,7 +61,65 @@ function voltageToLiters(voltageMv, calibration) {
   }
   return null;
 }
+
+// ─── Sonde combustibil configurabile (Escort / EuroSens Dominator LLS / EuroSens Degree BLE) ───
+const fuelSensorsCache = new Map(); const fuelSensorsTs = new Map();
+async function getFuelSensors(imei) {
+  const now = Date.now();
+  if (now - (fuelSensorsTs.get(imei) || 0) < TANK_CAL_TTL && fuelSensorsCache.has(imei)) return fuelSensorsCache.get(imei);
+  let sensors = null;
+  try { sensors = await dbRef().getFuelSensorsRow(imei); } catch (e) {}
+  fuelSensorsCache.set(imei, sensors); fuelSensorsTs.set(imei, now);
+  return sensors;
+}
+function invalidateFuelSensors(imei) { fuelSensorsCache.delete(imei); fuelSensorsTs.delete(imei); }
+// db e definit mai jos; folosim un getter lazy ca să evităm ordinea de declarare
+function dbRef() { return db; }
+
+// Interpolare liniară raw -> litri pe baza unui tabel de calibrare [{raw, liters}, ...]
+function interpolateCal(raw, cal) {
+  if (!cal || !Array.isArray(cal) || cal.length < 2) return null;
+  const pts = cal.map(p => ({ raw: Number(p.raw), liters: Number(p.liters) }))
+                 .filter(p => !isNaN(p.raw) && !isNaN(p.liters)).sort((a, b) => a.raw - b.raw);
+  if (pts.length < 2) return null;
+  if (raw <= pts[0].raw) return pts[0].liters;
+  if (raw >= pts[pts.length - 1].raw) return pts[pts.length - 1].liters;
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (raw >= pts[i].raw && raw <= pts[i + 1].raw) {
+      const r = (raw - pts[i].raw) / (pts[i + 1].raw - pts[i].raw);
+      return Math.round((pts[i].liters + r * (pts[i + 1].liters - pts[i].liters)) * 10) / 10;
+    }
+  }
+  return null;
+}
+
+// Calculează nivelul normalizat (litri) din sondele configurate; setează io.fuel_level_liters (+ per-sondă)
+function computeFuelFromSensors(io, sensors) {
+  if (!sensors || !sensors.length) return;
+  let primary = null;
+  sensors.forEach((s, idx) => {
+    if (!s || !s.source) return;
+    const raw = io[s.source];
+    if (raw === undefined || raw === null) return;
+    let liters = null;
+    if (s.mode === 'calibration' && Array.isArray(s.calibration) && s.calibration.length >= 2) {
+      liters = interpolateCal(Number(raw), s.calibration);
+    } else {
+      liters = Number(raw) * (s.scale ? Number(s.scale) : 1); // direct: valoarea e deja în litri
+    }
+    if (liters !== null && !isNaN(liters)) {
+      liters = Math.round(liters * 10) / 10;
+      io['fuel_sensor_' + (idx + 1) + '_liters'] = liters;
+      if (primary === null) primary = liters;
+    }
+  });
+  if (primary !== null) io.fuel_level_liters = primary;
+}
+
 const db = require('./db');
+const reports = require('./reports');
+const channels = require('./channels');
+const webpush = require('web-push');
 const https = require('https');
 const httpMod = require('http');
 
@@ -315,6 +377,7 @@ const tcpServer = net.createServer((socket) => {
       // Aplica conversii CAN (liters*10 -> liters, °C*10 -> °C, etc.)
       // si calculeaza nivelul de combustibil din sonda Escort (AIN1)
       const tankCal = await getTankCalibration(imei);
+      const fuelSensors = await getFuelSensors(imei);
       for (const record of parsed.records) {
         if (record.io) {
           for (const key of Object.keys(record.io)) {
@@ -325,12 +388,20 @@ const tcpServer = net.createServer((socket) => {
           // Decodifica flag-urile CAN in parametri individuali
           expandCanFlags(record.io);
 
-          // Conversie AIN1 -> litri combustibil din sonda Escort TD-150
-          if (tankCal && record.io.analog_input_1 !== undefined) {
+          // Nivel combustibil normalizat (fuel_level_liters) din sondele configurate
+          if (fuelSensors && fuelSensors.length) {
+            computeFuelFromSensors(record.io, fuelSensors);
+          } else if (tankCal && record.io.analog_input_1 !== undefined) {
+            // compat: calibrare Escort analogică (AIN1 voltaj -> litri)
             const liters = voltageToLiters(record.io.analog_input_1, tankCal);
-            if (liters !== null) {
-              record.io.tank_level_liters = liters;
-            }
+            if (liters !== null) { record.io.tank_level_liters = liters; record.io.fuel_level_liters = liters; }
+          }
+          // Fallback dacă nu există configurare: folosește direct CAN / LLS / BLE
+          if (record.io.fuel_level_liters === undefined) {
+            const fb = (typeof record.io.can_fuel_level_liters === 'number') ? record.io.can_fuel_level_liters
+              : (typeof record.io.lls_fuel_level_1 === 'number') ? record.io.lls_fuel_level_1
+              : (typeof record.io.ble_fuel_level_1 === 'number') ? record.io.ble_fuel_level_1 : undefined;
+            if (fb !== undefined) record.io.fuel_level_liters = fb;
           }
         }
       }
@@ -367,6 +438,9 @@ const tcpServer = net.createServer((socket) => {
         evaluateAlerts(imei, liveData).catch(err => {
           console.error(`[ALERTS] Eroare evaluare alerte pentru ${imei}: ${err.message}`);
         });
+
+        // Evenimente per-utilizator (abonamente + praguri proprii) — 'existing' = poziția anterioară
+        evaluateUserEvents(imei, liveData, existing).catch(() => {});
 
         // Track tare automat pentru camioane
         trackTareCandidate(imei, lastRecord.io || {}).catch(() => {});
@@ -411,64 +485,270 @@ const tcpServer = net.createServer((socket) => {
 // 2. SERVER HTTP — interfață web + API
 // ══════════════════════════════════════════════
 const app = express();
+app.set('trust proxy', 1); // necesar pentru cookie secure în spatele proxy-ului (Railway)
 app.use(express.json());
+
+// ─── Session store pe PGlite embedded (înlocuiește connect-pg-simple) ───
+class PgliteSessionStore extends session.Store {
+  constructor() {
+    super();
+    this.ready = db.pool.query(`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        sid TEXT PRIMARY KEY,
+        sess JSONB NOT NULL,
+        expire TIMESTAMPTZ NOT NULL
+      )
+    `).then(() => db.pool.query('CREATE INDEX IF NOT EXISTS idx_sessions_expire ON user_sessions (expire)'))
+      .catch(e => console.error('[SESSION] init:', e.message));
+  }
+  _expireOf(sess) {
+    return (sess && sess.cookie && sess.cookie.expires)
+      ? new Date(sess.cookie.expires)
+      : new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
+  async get(sid, cb) {
+    try {
+      await this.ready;
+      const r = await db.pool.query('SELECT sess FROM user_sessions WHERE sid = $1 AND expire > NOW()', [sid]);
+      if (!r.rows[0]) return cb(null, null);
+      const s = r.rows[0].sess;
+      cb(null, typeof s === 'string' ? JSON.parse(s) : s);
+    } catch (e) { cb(e); }
+  }
+  async set(sid, sess, cb) {
+    try {
+      await this.ready;
+      await db.pool.query(
+        `INSERT INTO user_sessions (sid, sess, expire) VALUES ($1, $2, $3)
+         ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess, expire = EXCLUDED.expire`,
+        [sid, JSON.stringify(sess), this._expireOf(sess)]
+      );
+      cb && cb(null);
+    } catch (e) { cb && cb(e); }
+  }
+  async destroy(sid, cb) {
+    try { await this.ready; await db.pool.query('DELETE FROM user_sessions WHERE sid = $1', [sid]); cb && cb(null); }
+    catch (e) { cb && cb(e); }
+  }
+  async touch(sid, sess, cb) {
+    try { await this.ready; await db.pool.query('UPDATE user_sessions SET expire = $2 WHERE sid = $1', [sid, this._expireOf(sess)]); cb && cb(null); }
+    catch (e) { cb && cb(e); }
+  }
+}
+
+// Secret de sesiune: din env, altfel generat o singură dată și persistat local
+function getSessionSecret() {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  const p = path.join(__dirname, 'data', '.session_secret');
+  try {
+    if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8').trim();
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    const s = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(p, s, { mode: 0o600 });
+    console.warn('[AUTH] SESSION_SECRET nesetat → generat persistent în data/.session_secret. Pentru producție setează SESSION_SECRET în .env.');
+    return s;
+  } catch (e) { return crypto.randomBytes(32).toString('hex'); }
+}
 
 // ─── Sesiuni ───
 const sessionMiddleware = session({
-  store: new PgSession({
-    pool: db.pool,
-    createTableIfMissing: true
-  }),
-  secret: process.env.SESSION_SECRET || 'gps-tracker-secret-key',
+  store: new PgliteSessionStore(),
+  secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
   cookie: {
     maxAge: 24 * 60 * 60 * 1000, // 24 ore
     httpOnly: true,
-    secure: false,
+    secure: process.env.COOKIE_SECURE === 'true', // pune COOKIE_SECURE=true în producție (HTTPS)
     sameSite: 'lax'
   }
 });
 app.use(sessionMiddleware);
+app.use(apiKeyAuth); // permite și autentificarea programatică prin cheie API
+
+// CORS pentru API (activează prin API_CORS_ORIGIN, ex: "*" sau "https://site.ro")
+const API_CORS_ORIGIN = process.env.API_CORS_ORIGIN;
+if (API_CORS_ORIGIN) {
+  app.use('/api', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', API_CORS_ORIGIN);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ─── Middleware autentificare ───
+// ─── Model roluri & permisiuni (RBAC) ───
+const ROLE_PERMISSIONS = {
+  admin:      { manageUsers: true,  manageFleet: true,  sendCommands: true,  viewReports: true,  ackAlerts: true,  viewAll: true,  viewAudit: true  },
+  manager:    { manageUsers: false, manageFleet: true,  sendCommands: true,  viewReports: true,  ackAlerts: true,  viewAll: true,  viewAudit: false },
+  dispatcher: { manageUsers: false, manageFleet: false, sendCommands: false, viewReports: true,  ackAlerts: true,  viewAll: false, viewAudit: false },
+  client:     { manageUsers: false, manageFleet: false, sendCommands: false, viewReports: true,  ackAlerts: false, viewAll: false, viewAudit: false },
+  viewer:     { manageUsers: false, manageFleet: false, sendCommands: false, viewReports: true,  ackAlerts: false, viewAll: false, viewAudit: false }
+};
+const VALID_ROLES = Object.keys(ROLE_PERMISSIONS);
+function permsFor(role) { return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.viewer; }
+function hasPerm(role, perm) { return !!permsFor(role)[perm]; }
+
+function clientIp(req) {
+  const xff = req.headers && req.headers['x-forwarded-for'];
+  if (xff) return String(xff).split(',')[0].trim();
+  return req.socket ? req.socket.remoteAddress : null;
+}
+
+// Identitatea curentă: cheie API (req.apiAuth) SAU sesiune cookie (req.session)
+function getAuth(req) {
+  if (req.apiAuth) return req.apiAuth;
+  if (req.session && req.session.userId) {
+    return { userId: req.session.userId, username: req.session.username, role: req.session.role, viaApiKey: false };
+  }
+  return null;
+}
+
+function auditReq(req, action, entity, entityId, details) {
+  const a = getAuth(req) || {};
+  db.logAudit({
+    userId: a.userId, username: a.username,
+    action, entity, entityId, details, ip: clientIp(req)
+  });
+}
+
+// Cache acces (IMEI-uri permise) per utilizator — TTL scurt, ca să nu lovim DB la fiecare poll
+const accessCache = new Map(); // userId -> { ts, imeis: Set|null }
+const ACCESS_TTL = 15000;
+async function getAllowedImeiSet(userId, role) {
+  if (hasPerm(role, 'viewAll')) return null; // null = acces la toate vehiculele
+  const cached = accessCache.get(userId);
+  if (cached && (Date.now() - cached.ts) < ACCESS_TTL) return cached.imeis;
+  const list = await db.computeAllowedImeis(userId);
+  const set = new Set(list);
+  accessCache.set(userId, { ts: Date.now(), imeis: set });
+  return set;
+}
+function invalidateAccessCache(userId) {
+  if (userId === undefined || userId === null) accessCache.clear();
+  else accessCache.delete(userId);
+}
+
+// ─── Autentificare prin cheie API (Authorization: Bearer <key> sau X-API-Key: <key>) ───
+function hashApiKey(key) { return crypto.createHash('sha256').update(key).digest('hex'); }
+async function apiKeyAuth(req, res, next) {
+  try {
+    let key = null;
+    const auth = req.headers['authorization'];
+    if (auth && /^Bearer\s+/i.test(auth)) key = auth.replace(/^Bearer\s+/i, '').trim();
+    if (!key && req.headers['x-api-key']) key = String(req.headers['x-api-key']).trim();
+    if (key) {
+      const user = await db.getUserByApiKey(hashApiKey(key));
+      if (user && user.active !== false) {
+        req.apiAuth = { userId: user.id, username: user.username, role: user.role, viaApiKey: true };
+      }
+    }
+  } catch (e) { /* cheie invalidă → tratat ca neautentificat */ }
+  next();
+}
+
+// ─── Middleware autentificare & autorizare ───
 function requireAuth(req, res, next) {
-  if (req.session && req.session.userId) return next();
+  const a = getAuth(req);
+  if (a) { req.auth = a; return next(); }
   res.status(401).json({ error: 'Neautorizat' });
 }
 
-function requireAdmin(req, res, next) {
-  if (req.session && req.session.role === 'admin') return next();
-  res.status(403).json({ error: 'Acces interzis' });
+function requirePerm(perm) {
+  return (req, res, next) => {
+    const a = getAuth(req);
+    if (a && hasPerm(a.role, perm)) { req.auth = a; return next(); }
+    res.status(403).json({ error: 'Acces interzis' });
+  };
 }
+const requireAdmin = requirePerm('manageUsers');
+const requireFleet = requirePerm('manageFleet');
+
+// Calculează IMEI-urile permise pe request (req.allowedImeis == null => acces la toate)
+async function withScope(req, res, next) {
+  try {
+    const a = req.auth || getAuth(req) || {};
+    req.allowedImeis = await getAllowedImeiSet(a.userId, a.role);
+    next();
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
+function canAccessImei(req, imei) {
+  return req.allowedImeis == null || req.allowedImeis.has(imei);
+}
+
+// Rezolvă vehiculele țintă pentru rapoarte (respectă accesul). null => 403.
+async function resolveReportImeis(req) {
+  const imeiParam = req.query.imei || (req.body && req.body.imei);
+  if (imeiParam) {
+    const list = String(imeiParam).split(',').map(s => s.trim()).filter(Boolean);
+    for (const im of list) if (!canAccessImei(req, im)) return null;
+    return list;
+  }
+  if (req.allowedImeis == null) { const devs = await db.getDevices(); return devs.map(d => d.imei); }
+  return Array.from(req.allowedImeis);
+}
+
+// Rate-limit simplu pentru login (per IP): max 10 eșecuri / 15 min
+const loginAttempts = new Map();
+function loginBlocked(ip) {
+  const rec = loginAttempts.get(ip);
+  return !!(rec && (Date.now() - rec.ts) < 15 * 60 * 1000 && rec.count >= 10);
+}
+function recordLoginFail(ip) {
+  const now = Date.now();
+  let rec = loginAttempts.get(ip);
+  if (!rec || (now - rec.ts) > 15 * 60 * 1000) rec = { count: 0, ts: now };
+  rec.count++; rec.ts = now;
+  loginAttempts.set(ip, rec);
+}
+function clearLoginFails(ip) { loginAttempts.delete(ip); }
 
 // ─── Rute autentificare ───
 
 // Login
 app.post('/api/login', async (req, res) => {
+  const ip = clientIp(req);
   try {
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
     }
+    if (loginBlocked(ip)) {
+      return res.status(429).json({ error: 'Prea multe încercări. Reîncearcă peste 15 minute.' });
+    }
 
     const user = await db.getUserByUsername(username);
     if (!user) {
+      recordLoginFail(ip);
       return res.status(401).json({ error: 'Username sau parola greșită' });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
+      recordLoginFail(ip);
       return res.status(401).json({ error: 'Username sau parola greșită' });
     }
 
+    if (user.active === false) {
+      return res.status(403).json({ error: 'Cont dezactivat. Contactează administratorul.' });
+    }
+
+    clearLoginFails(ip);
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.role = user.role;
 
-    res.json({ username: user.username, role: user.role });
+    db.setUserLastLogin(user.id).catch(() => {});
+    db.logAudit({ userId: user.id, username: user.username, action: 'login', entity: 'session', ip });
+
+    res.json({ username: user.username, role: user.role, permissions: permsFor(user.role) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -476,15 +756,19 @@ app.post('/api/login', async (req, res) => {
 
 // Logout
 app.post('/api/logout', (req, res) => {
+  const u = req.session ? { userId: req.session.userId, username: req.session.username } : {};
+  const ip = clientIp(req);
   req.session.destroy(() => {
+    if (u.userId) db.logAudit({ userId: u.userId, username: u.username, action: 'logout', entity: 'session', ip });
     res.json({ ok: true });
   });
 });
 
-// Utilizatorul curent
+// Utilizatorul curent (merge atât cu sesiune cât și cu cheie API)
 app.get('/api/me', (req, res) => {
-  if (req.session && req.session.userId) {
-    return res.json({ username: req.session.username, role: req.session.role });
+  const a = getAuth(req);
+  if (a) {
+    return res.json({ username: a.username, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey });
   }
   res.status(401).json({ error: 'Neautorizat' });
 });
@@ -493,8 +777,7 @@ app.get('/api/me', (req, res) => {
 
 app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const users = await db.getUsers();
-    res.json(users);
+    res.json(await db.getUsers());
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -502,7 +785,7 @@ app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
 
 app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password, role, full_name, email, phone } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
     }
@@ -512,6 +795,7 @@ app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
     if (password.length < 4) {
       return res.status(400).json({ error: 'Parola trebuie să aibă minim 4 caractere' });
     }
+    const finalRole = VALID_ROLES.includes(role) ? role : 'viewer';
 
     const existing = await db.getUserByUsername(username);
     if (existing) {
@@ -519,8 +803,66 @@ app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await db.createUser(username, hash, role || 'viewer');
+    const user = await db.createUser(username, hash, finalRole, { full_name, email, phone });
+    auditReq(req, 'create', 'user', user.id, { username, role: finalRole });
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { role, full_name, email, phone, active } = req.body;
+    if (role !== undefined && role !== null && !VALID_ROLES.includes(role)) {
+      return res.status(400).json({ error: 'Rol invalid' });
+    }
+    // Protecție: nu te poți dezactiva sau retrograda pe tine (ca să nu rămână platforma fără admin)
+    if (id === req.auth.userId && (active === false || (role && role !== 'admin'))) {
+      return res.status(400).json({ error: 'Nu te poți dezactiva sau retrograda pe tine' });
+    }
+    await db.updateUserProfile(id, { role, full_name, email, phone, active });
+    invalidateAccessCache(id);
+    auditReq(req, 'update', 'user', id, { role, active });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/users/:id/password', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { password } = req.body;
+    if (!password || password.length < 4) {
+      return res.status(400).json({ error: 'Parola trebuie să aibă minim 4 caractere' });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    await db.updateUserPassword(id, hash);
+    auditReq(req, 'reset_password', 'user', id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/users/:id/access', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    res.json(await db.getUserAccess(parseInt(req.params.id)));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/users/:id/access', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { devices, groups } = req.body;
+    await db.setUserAccess(id, devices, groups);
+    invalidateAccessCache(id);
+    auditReq(req, 'set_access', 'user', id, { devices: (devices || []).length, groups: (groups || []).length });
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -529,22 +871,91 @@ app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
 app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (id === req.session.userId) {
+    if (id === req.auth.userId) {
       return res.status(400).json({ error: 'Nu te poți șterge pe tine' });
     }
     await db.deleteUser(id);
+    invalidateAccessCache(id);
+    auditReq(req, 'delete', 'user', id);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Audit log (doar admin)
+app.get('/api/audit', requireAuth, requirePerm('viewAudit'), async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const offset = parseInt(req.query.offset) || 0;
+    res.json(await db.getAuditLog(limit, offset));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Chei API (doar admin) — pentru integrări programatice ───
+app.get('/api/apikeys', requireAuth, requireAdmin, async (req, res) => {
+  try { res.json(await db.getApiKeys()); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/apikeys', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { name } = req.body;
+    const userId = parseInt(req.body.userId);
+    if (!userId) return res.status(400).json({ error: 'userId este obligatoriu (cheia moștenește rolul și accesul acelui utilizator)' });
+    const target = await db.getUserById(userId);
+    if (!target) return res.status(404).json({ error: 'Utilizator inexistent' });
+    const key = 'gpsk_' + crypto.randomBytes(24).toString('hex');
+    const prefix = key.slice(0, 12);
+    const rec = await db.createApiKey(userId, name, hashApiKey(key), prefix);
+    auditReq(req, 'create', 'apikey', rec.id, { userId, name });
+    // ATENȚIE: cheia în clar se returnează O SINGURĂ DATĂ (nu se mai poate recupera)
+    res.json({ id: rec.id, name: rec.name, prefix, key, user: target.username, role: target.role });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/apikeys/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await db.revokeApiKey(parseInt(req.params.id));
+    auditReq(req, 'revoke', 'apikey', req.params.id);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Catalog API (public) — pentru integratori
+app.get('/api', (req, res) => {
+  res.json({
+    name: 'GPS Unitip API',
+    version: '1.0',
+    auth: 'Trimite cheia în header: "Authorization: Bearer <key>" sau "X-API-Key: <key>". Cheile se creează din interfață (Utilizatori → Chei API) și moștenesc rolul + accesul pe vehicule al utilizatorului asociat.',
+    endpoints: {
+      'GET /api/me': 'Identitatea și permisiunile curente',
+      'GET /api/devices': 'Vehiculele accesibile (cu ultima poziție)',
+      'GET /api/live': 'Pozițiile live (din memorie)',
+      'GET /api/history/:imei?from=&to=': 'Istoric poziții (date ISO 8601)',
+      'GET /api/report/:imei?from=&to=': 'Raport detaliat (km, opriri, consum, rute)',
+      'GET /api/stats/:imei': 'Statistici zilnice (km, viteze, opriri)',
+      'GET /api/trips/:imei?from=&to=': 'Curse',
+      'GET /api/geofences': 'Zone geografice',
+      'GET /api/alerts/history?limit=': 'Istoric alerte',
+      'GET /api/export/:imei?from=&to=': 'Export CSV traseu',
+      'GET /api/reports': 'Tipurile de rapoarte disponibile',
+      'GET /api/reports/:type?from=&to=&imei=': 'Raport (trips, stops, speeding, fuel, geofence, driver, utilization)',
+      'GET /api/hotspot?from=&to=&imei=&mode=': 'Puncte heatmap (stops/positions)',
+      'POST /api/zone-report': 'Analiză activitate într-o zonă desenată'
+    }
+  });
+});
+
 // ─── API-uri protejate ───
 
 // API: Lista dispozitivelor cu ultima poziție
-app.get('/api/devices', requireAuth, async (req, res) => {
+app.get('/api/devices', requireAuth, withScope, async (req, res) => {
   try {
-    const devices = await db.getDevices();
+    let devices = await db.getDevices();
+    if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     res.json(devices);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -552,8 +963,9 @@ app.get('/api/devices', requireAuth, async (req, res) => {
 });
 
 // API: Poziții live din memorie
-app.get('/api/live', requireAuth, async (req, res) => {
-  const positions = Array.from(livePositions.values());
+app.get('/api/live', requireAuth, withScope, async (req, res) => {
+  let positions = Array.from(livePositions.values());
+  if (req.allowedImeis != null) positions = positions.filter(p => req.allowedImeis.has(p.imei));
   try {
     // Enrich with full device info (truck config, tank calibration, etc.)
     const result = await db.pool.query('SELECT imei, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
@@ -575,15 +987,16 @@ app.get('/api/live', requireAuth, async (req, res) => {
 });
 
 // API: Conexiuni active
-app.get('/api/connections', requireAuth, (req, res) => {
+app.get('/api/connections', requireAuth, requireFleet, (req, res) => {
   const connections = Object.fromEntries(activeConnections);
   res.json(connections);
 });
 
 // API: Istoric traseu pentru un dispozitiv
-app.get('/api/history/:imei', requireAuth, async (req, res) => {
+app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const to = req.query.to || new Date().toISOString();
     const history = await db.getDeviceHistory(imei, from, to);
@@ -594,11 +1007,12 @@ app.get('/api/history/:imei', requireAuth, async (req, res) => {
 });
 
 // API: Actualizare info dispozitiv (nume, tip, nr. înmatriculare)
-app.put('/api/devices/:imei', requireAuth, async (req, res) => {
+app.put('/api/devices/:imei', requireAuth, requireFleet, async (req, res) => {
   try {
     const { imei } = req.params;
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
+    auditReq(req, 'update', 'device', imei, { name, plate });
     // Update in-memory livePositions so WebSocket clients get the new name
     const pos = livePositions.get(imei);
     if (pos) {
@@ -615,8 +1029,9 @@ app.put('/api/devices/:imei', requireAuth, async (req, res) => {
 });
 
 // API: Get full device info (cu config camion)
-app.get('/api/devices/:imei/full', requireAuth, async (req, res) => {
+app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
   try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const device = await db.getDeviceFull(req.params.imei);
     if (!device) return res.status(404).json({ error: 'Device not found' });
     res.json(device);
@@ -626,19 +1041,31 @@ app.get('/api/devices/:imei/full', requireAuth, async (req, res) => {
 });
 
 // API: Update truck configuration (tara, limite, costuri)
-app.put('/api/devices/:imei/truck-config', requireAuth, async (req, res) => {
+app.put('/api/devices/:imei/truck-config', requireAuth, requireFleet, async (req, res) => {
   try {
     await db.updateTruckConfig(req.params.imei, req.body);
+    auditReq(req, 'update', 'truck-config', req.params.imei);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Atribuire grup + șofer pe vehicul (grupul afectează accesul multi-client)
+app.put('/api/devices/:imei/assign', requireAuth, requireFleet, async (req, res) => {
+  try {
+    await db.assignDevice(req.params.imei, req.body.driver_id, req.body.group_id);
+    invalidateAccessCache(); // grupul s-a schimbat → invalidează tot cache-ul de acces
+    auditReq(req, 'assign', 'device', req.params.imei, { driver_id: req.body.driver_id, group_id: req.body.group_id });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // API: Update tank calibration (perechi voltage -> liters pentru sonda Escort)
-app.put('/api/devices/:imei/tank-calibration', requireAuth, async (req, res) => {
+app.put('/api/devices/:imei/tank-calibration', requireAuth, requireFleet, async (req, res) => {
   try {
     await db.updateTankCalibration(req.params.imei, req.body.calibration);
+    auditReq(req, 'update', 'tank-calibration', req.params.imei);
     // Invalida cache-ul ca sa se reincarce imediat
     tankCalibrationCache.delete(req.params.imei);
     tankCalibrationTimestamp.delete(req.params.imei);
@@ -648,10 +1075,28 @@ app.put('/api/devices/:imei/tank-calibration', requireAuth, async (req, res) => 
   }
 });
 
+// ─── Sonde combustibil configurabile (Escort / EuroSens Dominator / EuroSens Degree) ───
+app.get('/api/devices/:imei/fuel-sensors', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    res.json(await db.getFuelSensorsRow(req.params.imei) || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/devices/:imei/fuel-sensors', requireAuth, requireFleet, async (req, res) => {
+  try {
+    const sensors = Array.isArray(req.body.sensors) ? req.body.sensors : [];
+    await db.setFuelSensors(req.params.imei, sensors);
+    invalidateFuelSensors(req.params.imei);
+    auditReq(req, 'update', 'fuel-sensors', req.params.imei, { count: sensors.length });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // API: Raport transport (detectie automata curse incarcare/descarcare + tone-km)
-app.get('/api/transport-report/:imei', requireAuth, async (req, res) => {
+app.get('/api/transport-report/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const to = req.query.to || new Date().toISOString();
 
@@ -810,25 +1255,30 @@ app.get('/api/transport-report/:imei', requireAuth, async (req, res) => {
 });
 
 // API: Statistici
-app.get('/api/stats', requireAuth, async (req, res) => {
+app.get('/api/stats', requireAuth, withScope, async (req, res) => {
   try {
-    const stats = {
-      totalDevices: livePositions.size,
-      activeConnections: activeConnections.size,
-      livePositions: livePositions.size
-    };
-    res.json(stats);
+    const scoped = req.allowedImeis == null
+      ? livePositions.size
+      : Array.from(livePositions.keys()).filter(i => req.allowedImeis.has(i)).length;
+    res.json({
+      totalDevices: scoped,
+      activeConnections: req.allowedImeis == null ? activeConnections.size : undefined,
+      livePositions: scoped
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // API: Dashboard KPI-uri fleet
-app.get('/api/dashboard', requireAuth, async (req, res) => {
+app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
   try {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const now = new Date();
+    const scopedSize = req.allowedImeis == null
+      ? livePositions.size
+      : Array.from(livePositions.keys()).filter(i => req.allowedImeis.has(i)).length;
 
     // Collect stats per device
     const deviceStats = [];
@@ -840,6 +1290,7 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
     let totalEngineTime = 0;
 
     for (const [imei, data] of livePositions) {
+      if (req.allowedImeis != null && !req.allowedImeis.has(imei)) continue;
       const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 300000;
       const isMoving = isOnline && (data.speed || 0) > 3;
       if (isOnline) onlineCount++;
@@ -930,10 +1381,10 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
     } catch (e) { /* no alerts table yet */ }
 
     res.json({
-      totalDevices: livePositions.size,
+      totalDevices: scopedSize,
       onlineCount,
       movingCount,
-      offlineCount: livePositions.size - onlineCount,
+      offlineCount: scopedSize - onlineCount,
       totalKm: Math.round(totalKm * 10) / 10,
       totalFuel: Math.round(totalFuel * 10) / 10,
       totalEngineTime: Math.round(totalEngineTime),
@@ -948,9 +1399,10 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
 });
 
 // API: Statistici zilnice per dispozitiv (km, viteza medie/max, opriri, timp mers/stationat, consum)
-app.get('/api/stats/:imei', requireAuth, async (req, res) => {
+app.get('/api/stats/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const now = new Date();
@@ -1059,9 +1511,10 @@ app.get('/api/stats/:imei', requireAuth, async (req, res) => {
 });
 
 // API: Raport detaliat cu detectie automata rute
-app.get('/api/report/:imei', requireAuth, async (req, res) => {
+app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const from = req.query.from || new Date(new Date().setHours(0,0,0,0)).toISOString();
     const to = req.query.to || new Date().toISOString();
     const history = await db.getDeviceHistory(imei, from, to);
@@ -1348,18 +1801,18 @@ app.get('/api/drivers', requireAuth, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/drivers', requireAuth, requireAdmin, async (req, res) => {
-  try { res.json(await db.createDriver(req.body)); }
+app.post('/api/drivers', requireAuth, requireFleet, async (req, res) => {
+  try { const d = await db.createDriver(req.body); auditReq(req, 'create', 'driver', d.id, { name: req.body.name }); res.json(d); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/drivers/:id', requireAuth, requireAdmin, async (req, res) => {
-  try { await db.updateDriver(req.params.id, req.body); res.json({ ok: true }); }
+app.put('/api/drivers/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.updateDriver(req.params.id, req.body); auditReq(req, 'update', 'driver', req.params.id); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/drivers/:id', requireAuth, requireAdmin, async (req, res) => {
-  try { await db.deleteDriver(req.params.id); res.json({ ok: true }); }
+app.delete('/api/drivers/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.deleteDriver(req.params.id); auditReq(req, 'delete', 'driver', req.params.id); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1370,18 +1823,18 @@ app.get('/api/groups', requireAuth, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/groups', requireAuth, requireAdmin, async (req, res) => {
-  try { res.json(await db.createGroup(req.body)); }
+app.post('/api/groups', requireAuth, requireFleet, async (req, res) => {
+  try { const g = await db.createGroup(req.body); auditReq(req, 'create', 'group', g.id, { name: req.body.name }); res.json(g); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/groups/:id', requireAuth, requireAdmin, async (req, res) => {
-  try { await db.updateGroup(req.params.id, req.body); res.json({ ok: true }); }
+app.put('/api/groups/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.updateGroup(req.params.id, req.body); auditReq(req, 'update', 'group', req.params.id); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/groups/:id', requireAuth, requireAdmin, async (req, res) => {
-  try { await db.deleteGroup(req.params.id); res.json({ ok: true }); }
+app.delete('/api/groups/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.deleteGroup(req.params.id); auditReq(req, 'delete', 'group', req.params.id); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1392,42 +1845,54 @@ app.get('/api/geofences', requireAuth, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/geofences', requireAuth, requireAdmin, async (req, res) => {
-  try { res.json(await db.createGeofence(req.body)); }
+app.post('/api/geofences', requireAuth, requireFleet, async (req, res) => {
+  try { const g = await db.createGeofence(req.body); auditReq(req, 'create', 'geofence', g.id, { name: req.body.name }); res.json(g); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/geofences/:id', requireAuth, requireAdmin, async (req, res) => {
-  try { await db.deleteGeofence(req.params.id); res.json({ ok: true }); }
+app.put('/api/geofences/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.updateGeofence(req.params.id, req.body); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/geofences/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.deleteGeofence(req.params.id); auditReq(req, 'delete', 'geofence', req.params.id); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Alerte CRUD ───
 
-app.get('/api/alerts', requireAuth, async (req, res) => {
-  try { res.json(await db.getAlerts()); }
+app.get('/api/alerts', requireAuth, withScope, async (req, res) => {
+  try {
+    let alerts = await db.getAlerts();
+    if (req.allowedImeis != null) alerts = alerts.filter(a => !a.imei || req.allowedImeis.has(a.imei));
+    res.json(alerts);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/alerts', requireAuth, requireFleet, async (req, res) => {
+  try { const a = await db.createAlert(req.body); auditReq(req, 'create', 'alert', a.id, { type: req.body.type }); res.json(a); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/alerts', requireAuth, requireAdmin, async (req, res) => {
-  try { res.json(await db.createAlert(req.body)); }
+app.delete('/api/alerts/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.deleteAlert(req.params.id); auditReq(req, 'delete', 'alert', req.params.id); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/alerts/:id', requireAuth, requireAdmin, async (req, res) => {
-  try { await db.deleteAlert(req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/alerts/history', requireAuth, async (req, res) => {
-  try { res.json(await db.getAlertHistory(parseInt(req.query.limit) || 50)); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.get('/api/alerts/history', requireAuth, withScope, async (req, res) => {
+  try {
+    let rows = await db.getAlertHistory(parseInt(req.query.limit) || 50);
+    if (req.allowedImeis != null) rows = rows.filter(r => req.allowedImeis.has(r.imei));
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Trips ───
 
-app.get('/api/trips/:imei', requireAuth, async (req, res) => {
+app.get('/api/trips/:imei', requireAuth, withScope, async (req, res) => {
   try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const from = req.query.from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const to = req.query.to || new Date().toISOString();
     res.json(await db.getTrips(req.params.imei, from, to));
@@ -1436,23 +1901,26 @@ app.get('/api/trips/:imei', requireAuth, async (req, res) => {
 
 // ─── Mentenanta CRUD ───
 
-app.get('/api/maintenance', requireAuth, async (req, res) => {
-  try { res.json(await db.getMaintenance(req.query.imei)); }
+app.get('/api/maintenance', requireAuth, withScope, async (req, res) => {
+  try {
+    let rows = await db.getMaintenance(req.query.imei);
+    if (req.allowedImeis != null) rows = rows.filter(m => req.allowedImeis.has(m.imei));
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/maintenance', requireAuth, requireFleet, async (req, res) => {
+  try { const m = await db.createMaintenance(req.body); auditReq(req, 'create', 'maintenance', m.id, { imei: req.body.imei, type: req.body.type }); res.json(m); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/maintenance', requireAuth, async (req, res) => {
-  try { res.json(await db.createMaintenance(req.body)); }
+app.put('/api/maintenance/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.updateMaintenance(req.params.id, req.body); auditReq(req, 'update', 'maintenance', req.params.id); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/maintenance/:id', requireAuth, async (req, res) => {
-  try { await db.updateMaintenance(req.params.id, req.body); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.delete('/api/maintenance/:id', requireAuth, requireAdmin, async (req, res) => {
-  try { await db.deleteMaintenance(req.params.id); res.json({ ok: true }); }
+app.delete('/api/maintenance/:id', requireAuth, requireFleet, async (req, res) => {
+  try { await db.deleteMaintenance(req.params.id); auditReq(req, 'delete', 'maintenance', req.params.id); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1712,6 +2180,14 @@ async function evaluateAlerts(imei, data) {
           }
         });
 
+        // Centru de notificări + canale externe (Faza 4)
+        notify({
+          type: 'alert', severity: 'warning', imei,
+          title: alert.name,
+          body: alertSummary(alert.type, alertData),
+          data: { alertId: alert.id, alertType: alert.type, ...alertData }
+        });
+
         console.log(`[ALERT] ${alert.name} triggered for ${imei}: ${JSON.stringify(alertData)}`);
       }
     }
@@ -1730,9 +2206,240 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-app.get('/api/export/:imei', requireAuth, async (req, res) => {
+// ══════════════════════════════════════════════
+//  NOTIFICĂRI (Faza 4) — centru in-app + canale externe + workere
+// ══════════════════════════════════════════════
+{
+  const cfg = channels.channelsConfigured();
+  const active = Object.entries(cfg).filter(([, v]) => v).map(([k]) => k);
+  console.log(active.length ? '[NOTIFY] Canale externe active: ' + active.join(', ') : '[NOTIFY] Doar centrul in-app (niciun canal extern configurat)');
+}
+
+function alertSummary(type, d) {
+  switch (type) {
+    case 'overspeed': return `Viteză ${d.speed} km/h (limită ${d.limit})`;
+    case 'fuel_drop': return `Scădere combustibil ${d.drop != null ? d.drop.toFixed(1) : '?'} L`;
+    case 'engine_temp': return `Temperatură ${d.temp}°C (limită ${d.limit})`;
+    case 'geofence_enter': case 'geofence_exit': return (d.event || '') + (d.geofence ? ': ' + d.geofence : '');
+    case 'overload_legal': case 'overload_construct': return `Greutate ${d.totalKg} kg (limită ${d.limit})`;
+    case 'dtc_error': return `${d.dtcCount} erori motor`;
+    default: return d.event || type;
+  }
+}
+
+// Creează o notificare: stochează + WS (scopat pe imei) + canale externe (opțional)
+async function notify(n) {
+  try {
+    if (n.data && n.data.key) {
+      if (await db.notificationKeyExists(n.data.key, n.dedupHours || 20)) return;
+    }
+    const saved = await db.createNotification(n);
+    broadcastWs({ type: 'notification', data: saved });
+    const cfg = channels.channelsConfigured();
+    if (cfg.email || cfg.telegram || cfg.webhook) channels.dispatchChannels({ ...n, id: saved.id }).catch(() => {});
+  } catch (e) { console.error('[NOTIFY]', e.message); }
+}
+
+// Worker: detecție automată curse → populează tabela trips
+async function detectAndSaveTrips(imei) {
+  try {
+    const to = new Date(), from = new Date(Date.now() - 36 * 3600 * 1000);
+    const pts = await db.getDeviceHistory(imei, from.toISOString(), to.toISOString());
+    if (pts.length < 2) return 0;
+    const { trips } = reports.segmentTrack(pts, 5 * 60);
+    const mapped = trips.map(tr => ({
+      start: tr.start, end: tr.end, durationSec: tr.durationSec, distanceKm: tr.distanceKm,
+      maxSpeed: tr.maxSpeed, avgSpeed: tr.avgSpeed,
+      startLat: tr.startP.latitude, startLng: tr.startP.longitude, endLat: tr.endP.latitude, endLng: tr.endP.longitude
+    }));
+    await db.saveTripsForRange(imei, from.toISOString(), to.toISOString(), mapped);
+    return mapped.length;
+  } catch (e) { return 0; }
+}
+async function runTripDetection() {
+  try {
+    const devs = await db.getDevices();
+    let total = 0;
+    for (const d of devs) total += await detectAndSaveTrips(d.imei);
+    return total;
+  } catch (e) { console.error('[TRIPS]', e.message); return 0; }
+}
+
+// Worker: alerte expirare documente (permis șofer) + mentenanță scadentă
+async function checkExpiries() {
+  const warnDays = parseInt(process.env.NOTIFY_EXPIRY_DAYS) || 30;
+  const now = Date.now(), horizon = now + warnDays * 24 * 3600 * 1000;
+  try {
+    for (const dr of await db.getDrivers()) {
+      if (!dr.license_expiry) continue;
+      const exp = new Date(dr.license_expiry).getTime();
+      if (exp > horizon) continue;
+      const days = Math.ceil((exp - now) / (24 * 3600 * 1000));
+      const nDrv = {
+        type: 'document_expiry', severity: days < 0 ? 'critical' : 'warning',
+        title: `Permis șofer ${days < 0 ? 'EXPIRAT' : 'expiră curând'}: ${dr.name}`,
+        body: `Permisul ${dr.license_number || ''} ${days < 0 ? 'a expirat de ' + (-days) + ' zile' : 'expiră în ' + days + ' zile'} (${new Date(dr.license_expiry).toLocaleDateString('ro-RO')}).`,
+        data: { key: 'drv-license-' + dr.id, driverId: dr.id, days }
+      };
+      await notify(nDrv);
+      await deliverExpiryToSubscribers({ title: nDrv.title, body: nDrv.body, key: nDrv.data.key });
+    }
+    for (const m of await db.getMaintenance()) {
+      if (m.status === 'done' || !m.due_date) continue;
+      const due = new Date(m.due_date).getTime();
+      if (due > horizon) continue;
+      const days = Math.ceil((due - now) / (24 * 3600 * 1000));
+      const nMnt = {
+        type: 'maintenance_due', severity: days < 0 ? 'critical' : 'warning', imei: m.imei,
+        title: `Mentenanță ${days < 0 ? 'SCADENTĂ' : 'scadentă curând'}: ${m.type}`,
+        body: `${m.type} ${days < 0 ? 'a depășit scadența cu ' + (-days) + ' zile' : 'scade în ' + days + ' zile'} (${new Date(m.due_date).toLocaleDateString('ro-RO')}).`,
+        data: { key: 'maint-' + m.id, maintenanceId: m.id, days }
+      };
+      await notify(nMnt);
+      await deliverExpiryToSubscribers({ imei: m.imei, title: nMnt.title, body: nMnt.body, key: nMnt.data.key });
+    }
+  } catch (e) { console.error('[EXPIRY]', e.message); }
+}
+
+// ══════════════════════════════════════════════
+//  EVENIMENTE PER-UTILIZATOR — abonamente + praguri proprii + email/Web Push
+// ══════════════════════════════════════════════
+const EVENT_TYPES = [
+  { key: 'fuel_drop',        label: 'Scădere bruscă combustibil', unit: 'L',     def: 15,    threshold: true },
+  { key: 'overspeed',        label: 'Depășire viteză',            unit: 'km/h',  def: 90,    threshold: true },
+  { key: 'engine_temp',      label: 'Temperatură motor mare',     unit: '°C',    def: 105,   threshold: true },
+  { key: 'idling',           label: 'Idling prelungit',           unit: 'min',   def: 10,    threshold: true },
+  { key: 'overload',         label: 'Supraîncărcare',             unit: 'kg',    def: 40000, threshold: true },
+  { key: 'low_voltage',      label: 'Tensiune scăzută',           unit: 'V',     def: 11.8,  threshold: true, below: true },
+  { key: 'no_ignition_move', label: 'Mișcare fără contact',       threshold: false },
+  { key: 'dtc_error',        label: 'Erori motor (DTC)',          threshold: false },
+  { key: 'document_expiry',  label: 'Expirare documente',         threshold: false }
+];
+const EVENT_TYPE_MAP = Object.fromEntries(EVENT_TYPES.map(e => [e.key, e]));
+
+// ─── Web Push (VAPID generat o singură dată și persistat local) ───
+let VAPID = null;
+function initVapid() {
+  try {
+    if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+      VAPID = { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY };
+    } else {
+      const p = path.join(__dirname, 'data', '.vapid.json');
+      if (fs.existsSync(p)) { try { VAPID = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) {} }
+      if (!VAPID || !VAPID.publicKey) {
+        VAPID = webpush.generateVAPIDKeys();
+        try { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(VAPID)); } catch (e) {}
+      }
+    }
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@gps-unitip.local', VAPID.publicKey, VAPID.privateKey);
+    console.log('[PUSH] Web Push activ (VAPID configurat)');
+  } catch (e) { console.error('[PUSH] init:', e.message); }
+}
+async function sendPushToUser(userId, payload) {
+  let subs; try { subs = await db.getPushSubscriptions(userId); } catch (e) { return; }
+  for (const s of subs) {
+    try { await webpush.sendNotification(s.subscription, JSON.stringify(payload)); }
+    catch (e) { if (e.statusCode === 404 || e.statusCode === 410) db.deletePushSubscription(s.endpoint).catch(() => {}); }
+  }
+}
+function broadcastWsToUser(userId, message) {
+  const data = JSON.stringify(message);
+  wss.clients.forEach(c => { if (c.readyState === 1 && c._authed && c._userId === userId) c.send(data); });
+}
+
+// ─── Cache-uri + cooldown per-user ───
+let _prefsCache = null, _prefsTs = 0;
+async function getPrefsMap() { if (_prefsCache && Date.now() - _prefsTs < 30000) return _prefsCache; _prefsCache = await db.getAllNotificationPrefs(); _prefsTs = Date.now(); return _prefsCache; }
+function invalidatePrefsCache() { _prefsCache = null; }
+const _eligibleCache = new Map();
+async function getEligibleUsers(imei) { const c = _eligibleCache.get(imei); if (c && Date.now() - c.ts < 60000) return c.users; const users = await db.getUsersForImei(imei); _eligibleCache.set(imei, { ts: Date.now(), users }); return users; }
+const _userEvtCooldown = new Map();
+function userCooldownOk(userId, type, key, ms) { const k = userId + '_' + type + '_' + key; const last = _userEvtCooldown.get(k); if (last && Date.now() - last < (ms || 300000)) return false; _userEvtCooldown.set(k, Date.now()); return true; }
+const _idlingStart = new Map();
+
+// Preferința unui user pentru un tip: dacă nu are nicio preferință salvată → implicit doar in-app
+function userTypePref(prefsMap, userId, type) {
+  const up = prefsMap[userId];
+  if (!up || !up.types) return { enabled: true };           // fără preferințe → in-app implicit pornit
+  return up.types[type] || null;                            // are preferințe dar nu a bifat acest tip → null
+}
+async function deliverUserEvent(user, ev, p) {
+  try {
+    const saved = await db.createNotification({ type: ev.type, severity: ev.severity || 'warning', imei: ev.imei || null, title: ev.title, body: ev.body, data: { eventType: ev.type }, userId: user.id });
+    broadcastWsToUser(user.id, { type: 'notification', data: saved });
+  } catch (e) {}
+  if (p && p.email && user.email) channels.sendEmailTo(user.email, ev.title, ev.body).catch(() => {});
+  if (p && p.push) sendPushToUser(user.id, { title: ev.title, body: ev.body }).catch(() => {});
+}
+
+// Detector evenimente per-poziție (prev = poziția anterioară a vehiculului)
+async function evaluateUserEvents(imei, data, prev) {
+  try {
+    const io = data.io || {}, pio = (prev && prev.io) || {};
+    const speed = data.speed || 0;
+    const cand = [];
+    const pf = (typeof pio.fuel_level_liters === 'number') ? pio.fuel_level_liters : pio.can_fuel_level_liters;
+    const cf = (typeof io.fuel_level_liters === 'number') ? io.fuel_level_liters : io.can_fuel_level_liters;
+    if (typeof pf === 'number' && typeof cf === 'number') {
+      const drop = pf - cf;
+      if (drop >= 2) cand.push({ type: 'fuel_drop', mag: drop, body: `Scădere ${drop.toFixed(1)} L (${pf} → ${cf} L)` });
+    }
+    if (speed >= 50) cand.push({ type: 'overspeed', mag: speed, body: `Viteză ${speed} km/h` });
+    if (typeof io.can_engine_temp === 'number' && io.can_engine_temp >= 80) cand.push({ type: 'engine_temp', mag: io.can_engine_temp, body: `Temperatură motor ${io.can_engine_temp}°C` });
+    if (io.ignition === 1 && speed <= 3) {
+      if (!_idlingStart.has(imei)) _idlingStart.set(imei, Date.now());
+      const min = (Date.now() - _idlingStart.get(imei)) / 60000;
+      if (min >= 3) cand.push({ type: 'idling', mag: Math.round(min), body: `Motor pornit, staționat de ~${Math.round(min)} min` });
+    } else { _idlingStart.delete(imei); }
+    if (io.ignition === 0 && speed > 5) cand.push({ type: 'no_ignition_move', mag: speed, body: `Mișcare ${speed} km/h cu contactul OPRIT` });
+    if (typeof io.external_voltage === 'number' && io.external_voltage > 0) {
+      const v = io.external_voltage / 1000;
+      if (v < 13) cand.push({ type: 'low_voltage', mag: v, body: `Tensiune alimentare ${v.toFixed(1)} V` });
+    }
+    const totalKg = (io.can_axle1_load || 0) + (io.can_axle2_load || 0) + (io.can_axle3_load || 0) + (io.can_axle4_load || 0) + (io.can_axle5_load || 0) || io.can_load_weight || 0;
+    if (totalKg >= 20000) cand.push({ type: 'overload', mag: totalKg, body: `Greutate totală ${totalKg} kg` });
+    if (io.can_dtc_errors > 0) cand.push({ type: 'dtc_error', mag: io.can_dtc_errors, body: `${io.can_dtc_errors} erori motor (DTC)` });
+
+    if (!cand.length) return;
+    const users = await getEligibleUsers(imei);
+    if (!users.length) return;
+    const prefsMap = await getPrefsMap();
+    const vname = data.name || imei;
+    for (const c of cand) {
+      const def = EVENT_TYPE_MAP[c.type];
+      for (const u of users) {
+        const up = userTypePref(prefsMap, u.id, c.type);
+        if (!up || !up.enabled) continue;
+        if (def.threshold) {
+          const thr = (up.threshold != null && up.threshold !== '') ? Number(up.threshold) : def.def;
+          if (def.below) { if (c.mag >= thr) continue; } else { if (c.mag < thr) continue; }
+        }
+        if (!userCooldownOk(u.id, c.type, imei)) continue;
+        await deliverUserEvent(u, { type: c.type, imei, severity: c.type === 'no_ignition_move' ? 'critical' : 'warning', title: def.label + ' — ' + vname, body: c.body }, up);
+      }
+    }
+  } catch (e) { console.error('[UEVENTS]', e.message); }
+}
+
+// Livrare expirări documente către utilizatorii abonați (email/push; in-app vine din broadcast)
+async function deliverExpiryToSubscribers(ev) {
+  try {
+    const users = ev.imei ? await getEligibleUsers(ev.imei) : await db.getAllActiveUsers();
+    const prefsMap = await getPrefsMap();
+    for (const u of users) {
+      const up = userTypePref(prefsMap, u.id, 'document_expiry');
+      if (!up || !up.enabled) continue;
+      if (!userCooldownOk(u.id, 'document_expiry', ev.key, 20 * 3600 * 1000)) continue;
+      if (up.email && u.email) channels.sendEmailTo(u.email, ev.title, ev.body).catch(() => {});
+      if (up.push) sendPushToUser(u.id, { title: ev.title, body: ev.body }).catch(() => {});
+    }
+  } catch (e) {}
+}
+
+app.get('/api/export/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const to = req.query.to || new Date().toISOString();
     const history = await db.getDeviceHistory(imei, from, to);
@@ -1786,7 +2493,7 @@ app.get('/api/export/:imei', requireAuth, async (req, res) => {
       if (row.speed > maxSpeed) maxSpeed = row.speed;
 
       const baseCols = [
-        new Date(row.timestamp).toLocaleString('ro-RO'),
+        new Date(row.timestamp).toLocaleString('ro-RO', { timeZone: process.env.DISPLAY_TZ || 'Europe/Bucharest' }),
         row.latitude,
         row.longitude,
         row.speed,
@@ -1825,7 +2532,8 @@ app.get('/api/export/:imei', requireAuth, async (req, res) => {
     rows.push(['Timp in miscare', formatTime(movingTime), '', '', '', '', '', ...emptyIoCols, '']);
     rows.push(['Timp oprit', formatTime(stoppedTime), '', '', '', '', '', ...emptyIoCols, '']);
     rows.push(['Numar opriri', stops, '', '', '', '', '', ...emptyIoCols, '']);
-    rows.push(['Perioada', `${new Date(from).toLocaleString('ro-RO')} - ${new Date(to).toLocaleString('ro-RO')}`, '', '', '', '', '', ...emptyIoCols, '']);
+    const _tz = { timeZone: process.env.DISPLAY_TZ || 'Europe/Bucharest' };
+    rows.push(['Perioada', `${new Date(from).toLocaleString('ro-RO', _tz)} - ${new Date(to).toLocaleString('ro-RO', _tz)}`, '', '', '', '', '', ...emptyIoCols, '']);
     rows.push(['Puncte GPS', history.length, '', '', '', '', '', ...emptyIoCols, '']);
 
     // Build CSV
@@ -1848,6 +2556,142 @@ app.get('/api/export/:imei', requireAuth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── Rapoarte (Faza 3) ───
+app.get('/api/reports', requireAuth, (req, res) => {
+  res.json({
+    categories: reports.REPORT_CATEGORIES,
+    reports: Object.entries(reports.REPORTS).map(([k, v]) => ({ type: k, label: v.label, cat: v.cat }))
+  });
+});
+
+app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    const imeis = await resolveReportImeis(req);
+    if (imeis === null) return res.status(403).json({ error: 'Acces interzis' });
+    const from = req.query.from || new Date(Date.now() - 7*24*3600*1000).toISOString();
+    const to = req.query.to || new Date().toISOString();
+    const opts = {
+      stopMin: parseInt(req.query.stopMin) || 5,
+      limit: parseInt(req.query.limit) || 90,
+      refuelMin: parseInt(req.query.refuelMin) || 10,
+      dropMin: parseInt(req.query.dropMin) || 10
+    };
+    res.json(await reports.runReport(db, req.params.type, imeis, from, to, opts));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Hotspot — puncte pentru heatmap
+app.get('/api/hotspot', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    const imeis = await resolveReportImeis(req);
+    if (imeis === null) return res.status(403).json({ error: 'Acces interzis' });
+    const from = req.query.from || new Date(Date.now() - 7*24*3600*1000).toISOString();
+    const to = req.query.to || new Date().toISOString();
+    res.json(await reports.hotspot(db, imeis, from, to, { mode: req.query.mode || 'stops', stopMin: parseInt(req.query.stopMin) || 5 }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Analiză zonă desenată ad-hoc (cerc/poligon)
+app.post('/api/zone-report', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    const imeis = await resolveReportImeis(req);
+    if (imeis === null) return res.status(403).json({ error: 'Acces interzis' });
+    const from = req.body.from || new Date(Date.now() - 7*24*3600*1000).toISOString();
+    const to = req.body.to || new Date().toISOString();
+    const z = req.body.zone || {};
+    let zone;
+    if (z.type === 'circle' && z.center && z.radius) zone = { type: 'circle', center: z.center, radius: z.radius };
+    else if (Array.isArray(z.coordinates) && z.coordinates.length >= 3) zone = { type: 'polygon', coords: z.coordinates };
+    else return res.status(400).json({ error: 'Zonă invalidă' });
+    res.json(await reports.analyzeZone(db, imeis, from, to, zone));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Notificări (Faza 4) ───
+app.get('/api/notifications', requireAuth, withScope, async (req, res) => {
+  try {
+    const imeis = req.allowedImeis == null ? null : Array.from(req.allowedImeis);
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    res.json(await db.getNotifications(req.auth.userId, imeis, limit));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/notifications/unread-count', requireAuth, withScope, async (req, res) => {
+  try {
+    const imeis = req.allowedImeis == null ? null : Array.from(req.allowedImeis);
+    res.json({ count: await db.unreadNotifications(req.auth.userId, imeis) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/notifications/channels', requireAuth, requireAdmin, (req, res) => {
+  res.json(channels.channelsConfigured());
+});
+
+// Tipuri de evenimente abonabile (catalog)
+app.get('/api/event-types', requireAuth, (req, res) => res.json(EVENT_TYPES));
+
+// Preferințe notificări ale utilizatorului curent
+app.get('/api/notification-prefs', requireAuth, async (req, res) => {
+  try { res.json(await db.getNotificationPrefs(req.auth.userId)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/notification-prefs', requireAuth, async (req, res) => {
+  try { await db.setNotificationPrefs(req.auth.userId, req.body || {}); invalidatePrefsCache(); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Web Push: cheie publică VAPID + abonare/dezabonare dispozitiv
+app.get('/api/push/vapid', requireAuth, (req, res) => res.json({ publicKey: VAPID ? VAPID.publicKey : null }));
+app.post('/api/push/subscribe', requireAuth, async (req, res) => {
+  try {
+    const sub = req.body;
+    if (!sub || !sub.endpoint) return res.status(400).json({ error: 'Subscription invalidă' });
+    await db.savePushSubscription(req.auth.userId, sub);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
+  try { if (req.body && req.body.endpoint) await db.deletePushSubscription(req.body.endpoint); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Endpoint de test (DOAR cu SEED_TEST=1) — simulează o poziție live pentru a declanșa evenimente
+if (process.env.SEED_TEST === '1') {
+  app.post('/api/test/simulate', requireAuth, async (req, res) => {
+    try {
+      const { imei, io, speed, name } = req.body;
+      const data = { imei, io: io || {}, speed: speed || 0, name: name || imei, timestamp: new Date().toISOString() };
+      // aplică maparea de sonde (ca în ingestul TCP)
+      try { const fsensors = await getFuelSensors(imei); if (fsensors && fsensors.length) computeFuelFromSensors(data.io, fsensors); } catch (e) {}
+      const prev = livePositions.get(imei) || {};
+      livePositions.set(imei, data);
+      await evaluateUserEvents(imei, data, prev);
+      res.json({ ok: true, io: data.io });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+}
+app.post('/api/notifications/ack-all', requireAuth, withScope, async (req, res) => {
+  try {
+    const imeis = req.allowedImeis == null ? null : Array.from(req.allowedImeis);
+    await db.ackAllNotifications(req.auth.userId, imeis);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/notifications/:id/ack', requireAuth, async (req, res) => {
+  try { await db.ackNotification(parseInt(req.params.id)); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Declanșează manual verificarea expirărilor documente/mentenanță (admin)
+app.post('/api/notifications/check-expiries', requireAuth, requireAdmin, async (req, res) => {
+  try { await checkExpiries(); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Declanșează manual detecția de curse (admin/manager) — utilă și pentru recalcul
+app.post('/api/trips/detect', requireAuth, requireFleet, async (req, res) => {
+  try { res.json({ ok: true, trips: await runTripDetection() }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Debug API (doar admin) ───
@@ -1876,12 +2720,35 @@ app.get('/api/debug/raw/:imei', requireAuth, requireAdmin, async (req, res) => {
 const httpServer = http.createServer(app);
 const wss = new WebSocketServer({ server: httpServer });
 
-wss.on('connection', (ws) => {
-  console.log('[WS] Client conectat la live feed');
+// Răspuns fictiv pentru a putea rula sessionMiddleware pe handshake-ul WebSocket
+const wsDummyRes = {
+  setHeader() {}, getHeader() {}, removeHeader() {}, writeHead() {}, end() {},
+  on() {}, once() {}, emit() {}, getHeaderNames() { return []; }
+};
 
-  // Trimite toate pozițiile curente la conectare
-  const positions = Array.from(livePositions.values());
-  ws.send(JSON.stringify({ type: 'init', data: positions }));
+wss.on('connection', (ws, req) => {
+  // Autentificare prin sesiunea HTTP (cookie) și calculul accesului pe vehicule
+  sessionMiddleware(req, wsDummyRes, async () => {
+    if (!req.session || !req.session.userId) {
+      try { ws.send(JSON.stringify({ type: 'error', data: { error: 'Neautorizat' } })); } catch (e) {}
+      return ws.close();
+    }
+    ws._userId = req.session.userId;
+    ws._role = req.session.role;
+    ws._isAdmin = hasPerm(req.session.role, 'manageUsers');
+    try {
+      ws._allowedImeis = await getAllowedImeiSet(req.session.userId, req.session.role);
+    } catch (e) {
+      ws._allowedImeis = new Set();
+    }
+    ws._authed = true;
+    console.log(`[WS] Client conectat la live feed (${req.session.username})`);
+
+    // Trimite doar pozițiile la care utilizatorul are acces
+    const positions = Array.from(livePositions.values())
+      .filter(p => ws._allowedImeis == null || ws._allowedImeis.has(p.imei));
+    try { ws.send(JSON.stringify({ type: 'init', data: positions })); } catch (e) {}
+  });
 
   ws.on('close', () => {
     console.log('[WS] Client deconectat');
@@ -1889,11 +2756,15 @@ wss.on('connection', (ws) => {
 });
 
 function broadcastWs(message) {
+  const imei = message && message.data && message.data.imei;
+  const isDebug = message && message.type === 'debug';
   const data = JSON.stringify(message);
   wss.clients.forEach((client) => {
-    if (client.readyState === 1) { // WebSocket.OPEN
-      client.send(data);
-    }
+    if (client.readyState !== 1) return;       // doar conexiuni OPEN
+    if (!client._authed) return;               // nu trimite înainte de autentificare
+    if (isDebug && !client._isAdmin) return;   // debug doar pentru admini
+    if (imei && client._allowedImeis instanceof Set && !client._allowedImeis.has(imei)) return; // filtrare pe acces
+    client.send(data);
   });
 }
 
@@ -1903,6 +2774,7 @@ function broadcastWs(message) {
 async function start() {
   // Inițializează baza de date
   await db.initDb();
+  initVapid();
 
   // Creează sau actualizează userul admin
   const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
@@ -1916,6 +2788,32 @@ async function start() {
     const hash = await bcrypt.hash(adminPass, 10);
     await db.updateUserPassword(adminUser.id, hash);
     console.log('[AUTH] Parola admin actualizata din ADMIN_PASSWORD');
+  }
+
+  // Seed de test (doar pentru rularea testelor): SEED_TEST=1
+  if (process.env.SEED_TEST === '1') {
+    await db.pool.query(
+      "INSERT INTO devices (imei, name, plate, last_seen) VALUES ('TEST111','Camion A','B-111-AAA',NOW()),('TEST222','Camion B','B-222-BBB',NOW()) ON CONFLICT (imei) DO NOTHING"
+    );
+    const cnt = await db.pool.query("SELECT COUNT(*)::int AS n FROM positions WHERE imei = 'TEST111'");
+    if (cnt.rows[0].n === 0) {
+      const recs = []; let lat = 44.4268, lng = 26.1025, fuel = 300; const start = Date.now() - 2*3600*1000;
+      for (let i = 0; i < 60; i++) {
+        const ts = new Date(start + i*120*1000);
+        let speed;
+        if (i >= 20 && i < 25) speed = 0;        // oprire ~8 min
+        else if (i >= 30 && i < 35) speed = 100; // depășire viteză
+        else speed = 40 + ((i*7) % 50);
+        if (speed > 0) { lat += 0.004; lng += 0.006; }
+        if (i === 40) fuel += 50;                // alimentare
+        else if (i === 50) fuel -= 30;           // scădere/furt
+        else if (speed > 0) fuel -= 0.5;
+        recs.push({ timestamp: ts, priority: 1, gps: { latitude: lat, longitude: lng, altitude: 80, angle: 45, speed, satellites: 10 }, io: { ignition: speed > 0 ? 1 : 0, can_fuel_level_liters: Math.round(fuel) } });
+      }
+      await db.insertPositions('TEST111', recs);
+      console.log('[SEED] ' + recs.length + ' poziții de test pentru TEST111');
+    }
+    console.log('[SEED] Vehicule de test inserate (SEED_TEST=1)');
   }
 
   // Încarcă ultimele poziții din DB în memorie
@@ -1954,12 +2852,47 @@ async function start() {
     console.log(`[WS] WebSocket activ`);
     console.log('');
     console.log('═══════════════════════════════════════');
-    console.log('  GPS Tracker Server — PORNIT');
+    console.log('  GPS Unitip Server — PORNIT (DB embedded, 100% local)');
     console.log(`  TCP (dispozitive): port ${ACTUAL_TCP_PORT}`);
-    console.log(`  HTTP (hartă):      port ${ACTUAL_HTTP_PORT}`);
+    console.log(`  HTTP (hartă/API):  port ${ACTUAL_HTTP_PORT}`);
     console.log('═══════════════════════════════════════');
   });
+
+  // Întreținere: curăță sesiunile expirate din oră în oră
+  setInterval(() => { db.cleanupExpiredSessions().catch(() => {}); }, 60 * 60 * 1000);
+
+  // Retenție opțională pentru poziții (setează POSITION_RETENTION_DAYS în .env ca să o activezi)
+  const retentionDays = parseInt(process.env.POSITION_RETENTION_DAYS);
+  if (retentionDays > 0) {
+    const runRetention = () => db.deleteOldPositions(retentionDays)
+      .then(n => { if (n) console.log(`[RETENȚIE] Șterse ${n} poziții mai vechi de ${retentionDays} zile`); })
+      .catch(() => {});
+    runRetention();
+    setInterval(runRetention, 24 * 60 * 60 * 1000);
+  }
+
+  // Workere Faza 4: detecție automată curse + alerte expirare documente
+  setTimeout(() => runTripDetection().then(n => { if (n) console.log('[TRIPS] ' + n + ' curse detectate'); }), 3000);
+  setInterval(() => runTripDetection(), 15 * 60 * 1000);
+  setTimeout(() => checkExpiries(), 5000);
+  setInterval(() => checkExpiries(), 12 * 60 * 60 * 1000);
 }
+
+// Oprire grațioasă (Ctrl+C / kill)
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`\n[SHUTDOWN] Semnal ${signal} — închidere...`);
+  setTimeout(() => process.exit(0), 4000); // siguranță dacă închiderea se blochează
+  try { wss.clients.forEach(c => { try { c.close(); } catch (e) {} }); } catch (e) {}
+  try { httpServer.close(); } catch (e) {}
+  try { tcpServer.close(); } catch (e) {}
+  try { await db.closeDb(); } catch (e) {} // flush PGlite pe disc înainte de exit
+  process.exit(0);
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 start().catch((err) => {
   console.error('Eroare la pornire:', err);
