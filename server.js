@@ -1313,7 +1313,7 @@ async function sendSetPasswordEmail(req, user, opts) {
   if (!(channels.emailConfigured && channels.emailConfigured())) return false;
   const token = crypto.randomBytes(32).toString('hex');
   const hours = opts.hours || (24 * 7);
-  await db.setUserResetToken(user.id, token, new Date(Date.now() + hours * 3600 * 1000));
+  await db.setUserResetToken(user.id, token, Date.now() + hours * 3600 * 1000);
   const link = appBaseUrl(req) + '/set-password.html?token=' + token;
   let subject, text;
   if (opts.invite) {

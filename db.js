@@ -293,7 +293,7 @@ async function initDb() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires BIGINT;
       END $$
     `);
 
@@ -1194,7 +1194,7 @@ async function setUserResetToken(id, token, expiresAt) {
 }
 async function getUserByResetToken(token) {
   if (!token) return null;
-  const r = await pool.query('SELECT * FROM users WHERE reset_token = $1 AND reset_expires > NOW() LIMIT 1', [token]);
+  const r = await pool.query('SELECT * FROM users WHERE reset_token = $1 AND reset_expires > $2 LIMIT 1', [token, Date.now()]);
   return r.rows[0] || null;
 }
 async function consumeUserResetToken(id, passwordHash) {
