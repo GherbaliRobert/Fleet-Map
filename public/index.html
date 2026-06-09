@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>RA Tracks — Monitorizare flotă</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <!-- PWA / mobil -->
   <link rel="manifest" href="/manifest.json">
@@ -2203,7 +2204,12 @@
     .admin-row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
     .admin-row .meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
     .admin-section-title { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin:4px 0 8px; }
-    #draw-toolbar input[type=text] { background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb); border-radius:6px; padding:6px 8px; font-size:12px; }
+    #draw-toolbar input[type=text], #draw-toolbar input[type=number], #draw-toolbar select { background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb); border-radius:6px; padding:6px 8px; font-size:12px; }
+    #draw-toolbar .btn-sm.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .gf-table th { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); color:var(--text-muted); font-weight:600; }
+    .gf-table td { padding:6px 8px; border-bottom:1px solid var(--border); }
+    .gf-table tbody tr:hover { background:var(--bg-dark); }
+    #gf-search { background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb); border-radius:6px; padding:6px 8px; font-size:12px; }
     /* Rapoarte + Hotspot (Faza 3) */
     #reports-modal input, #reports-modal select, #hotspot-panel input, #hotspot-panel select {
       background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb);
@@ -2389,7 +2395,7 @@
         <button class="admin-tab active" data-atab="drivers" onclick="switchAdminTab('drivers')"><i class="fas fa-id-card"></i> Șoferi</button>
         <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
         <button class="admin-tab" data-atab="alerts" onclick="switchAdminTab('alerts')"><i class="fas fa-bell"></i> Alerte</button>
-        <button class="admin-tab" data-atab="geofences" onclick="switchAdminTab('geofences')"><i class="fas fa-draw-polygon"></i> Zone</button>
+        <button class="admin-tab" data-atab="geofences" onclick="switchAdminTab('geofences')"><i class="fas fa-draw-polygon"></i> Hotspot-uri</button>
         <button class="admin-tab" data-atab="maintenance" onclick="switchAdminTab('maintenance')"><i class="fas fa-wrench"></i> Mentenanță</button>
       </div>
       <div style="overflow-y:auto;flex:1;padding-right:4px;">
@@ -2440,12 +2446,13 @@
           </div>
         </div>
 
-        <!-- Zone (geofence) -->
+        <!-- Hotspot-uri (geofence) -->
         <div id="atab-geofences" class="admin-tab-content" style="display:none;">
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
             <button class="btn-sm btn-primary" onclick="startDrawGeofence('polygon')"><i class="fas fa-draw-polygon"></i> Desenează poligon</button>
             <button class="btn-sm btn-primary" onclick="startDrawGeofence('circle')"><i class="far fa-circle"></i> Desenează cerc</button>
-            <span style="font-size:11px;color:var(--text-muted);align-self:center;">Se desenează pe hartă; modalul se închide temporar.</span>
+            <input type="text" id="gf-search" oninput="renderGeofenceTable()" placeholder="Caută nume / descriere / poziționare…" style="flex:1;min-width:200px;">
+            <span id="gf-count" style="font-size:11px;color:var(--text-muted);"></span>
           </div>
           <div id="admin-geofences-list"></div>
         </div>
@@ -2470,18 +2477,39 @@
     </div>
   </div>
 
-  <!-- Bara de desenare geofence (peste hartă) -->
-  <div id="draw-toolbar" style="display:none;position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:4000;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);gap:8px;align-items:center;flex-wrap:wrap;max-width:94vw;">
-    <span id="draw-title" style="font-weight:700;font-size:13px;color:var(--accent);"></span>
-    <span id="draw-info" style="font-size:12px;color:var(--text-muted);"></span>
-    <span id="draw-radius-wrap" style="display:none;align-items:center;gap:6px;">
-      <input type="range" id="draw-radius" min="50" max="5000" value="300" step="50" oninput="updateDrawRadius()" style="width:120px;">
-      <span id="draw-radius-val" style="font-size:11px;color:var(--text-muted);">300 m</span>
-    </span>
-    <input type="text" id="draw-name" placeholder="Nume zonă">
-    <input type="color" id="draw-color" value="#3FE07D" style="width:34px;height:30px;padding:0;border:1px solid var(--border);border-radius:6px;background:var(--bg-dark);">
-    <button class="btn-sm btn-primary" id="draw-save-btn" onclick="saveDraw()"><i class="fas fa-save"></i> Salvează</button>
-    <button class="btn-sm" onclick="cancelDraw()">Anulează</button>
+  <!-- Bara de desenare hotspot / zonă (peste hartă) -->
+  <div id="draw-toolbar" style="display:none;position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:4000;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);flex-direction:column;gap:8px;align-items:stretch;max-width:94vw;width:580px;">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span id="draw-title" style="font-weight:700;font-size:13px;color:var(--accent);"></span>
+      <span id="draw-info" style="font-size:12px;color:var(--text-muted);"></span>
+      <span id="draw-metrics" style="font-size:11px;color:var(--text-muted);margin-left:auto;white-space:nowrap;"></span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn-sm" id="draw-undo-btn" type="button" onclick="drawUndo()" title="Șterge ultimul punct (Ctrl+Z)"><i class="fas fa-rotate-left"></i> Undo</button>
+      <button class="btn-sm" id="draw-finish-btn" type="button" onclick="drawFinishPoly()" title="Finalizează poligonul (sau dublu-click pe hartă)"><i class="fas fa-check"></i> Finalizează</button>
+      <button class="btn-sm" id="draw-sat-btn" type="button" onclick="toggleDrawSatellite()" title="Fundal satelit pentru trasare precisă"><i class="fas fa-satellite"></i> Satelit</button>
+      <span id="draw-radius-wrap" style="display:none;align-items:center;gap:6px;">
+        <label style="font-size:11px;color:var(--text-muted);">Rază</label>
+        <input type="number" id="draw-radius" min="10" max="50000" value="300" step="10" oninput="updateDrawRadius()" style="width:92px;">
+        <span style="font-size:11px;color:var(--text-muted);">m</span>
+      </span>
+      <span id="draw-radius-val" style="display:none;"></span>
+    </div>
+    <div id="draw-hs-fields" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="draw-name" placeholder="Nume hotspot" style="flex:1;min-width:150px;">
+      <input type="text" id="draw-desc" placeholder="Descriere" style="flex:1;min-width:150px;">
+      <input type="color" id="draw-color" value="#3FE07D" style="width:34px;height:30px;padding:0;border:1px solid var(--border);border-radius:6px;background:var(--bg-dark);">
+    </div>
+    <div id="draw-hs-fields2" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="draw-category" placeholder="Categorie" list="draw-category-list" style="width:160px;">
+      <datalist id="draw-category-list"></datalist>
+      <select id="draw-group" style="flex:1;min-width:150px;"><option value="">Fără grup</option></select>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);"><input type="checkbox" id="draw-region"> Regiune</label>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn-sm btn-primary" id="draw-save-btn" onclick="saveDraw()"><i class="fas fa-save"></i> Salvează</button>
+      <button class="btn-sm" onclick="cancelDraw()">Anulează</button>
+    </div>
   </div>
 
   <!-- ═══ Rapoarte (Faza 3) ═══ -->
@@ -2768,6 +2796,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
   <script src="vendor/leaflet-heat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
@@ -3498,19 +3527,56 @@
       } else if (Array.isArray(coords) && coords.length >= 3) {
         layer = L.polygon(coords, { color: g.color||'#38BDF8', weight: 2, fillOpacity: 0.08 });
       }
-      if (layer) { layer.bindTooltip(g.name, { sticky: true }); layer.addTo(map); geofenceLayers.set(g.id, layer); }
+      if (layer) {
+        const tip = '<strong>' + g.name + '</strong>'
+          + (g.category ? '<br><span style="opacity:.8;">' + g.category + '</span>' : '')
+          + (g.description ? '<br>' + g.description : '')
+          + (g.address ? '<br><span style="opacity:.7;">' + g.address + '</span>' : '');
+        layer.bindTooltip(tip, { sticky: true }); layer.addTo(map); geofenceLayers.set(g.id, layer);
+      }
     }
+    let gfPage = 1;
+    const GF_PAGE_SIZE = 12;
     async function loadGeofencesAdmin() {
       alertGeofencesCache = [];
-      const list = await (await fetch('/api/geofences')).json();
-      const el = document.getElementById('admin-geofences-list');
-      el.innerHTML = list.length ? list.map(g => `<div class="admin-row"><div>
-          <strong><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${g.color||'#38BDF8'};margin-right:6px;"></span>${g.name}</strong>
-          <div class="meta">${g.type === 'circle' ? 'cerc' : 'poligon'}</div>
-        </div><div style="display:flex;gap:6px;">
+      try { geofenceCache = await (await fetch('/api/geofences')).json(); } catch (e) { geofenceCache = []; }
+      gfPage = 1;
+      renderGeofenceTable();
+    }
+    function gfGoto(p) { gfPage = p; renderGeofenceTable(); }
+    function renderGeofenceTable() {
+      const el = document.getElementById('admin-geofences-list'); if (!el) return;
+      const esc = s => (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const searchEl = document.getElementById('gf-search');
+      const q = (searchEl && searchEl.value ? searchEl.value : '').trim().toLowerCase();
+      let list = geofenceCache || [];
+      if (q) list = list.filter(g => [g.name, g.description, g.address, g.category, g.group_name].some(v => (v||'').toString().toLowerCase().includes(q)));
+      const cnt = document.getElementById('gf-count');
+      if (cnt) cnt.textContent = list.length + (list.length === 1 ? ' hotspot' : ' hotspot-uri');
+      if (!list.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Niciun hotspot. Desenează unul mai sus.</p>'; return; }
+      const pages = Math.max(1, Math.ceil(list.length / GF_PAGE_SIZE));
+      if (gfPage > pages) gfPage = pages;
+      const slice = list.slice((gfPage-1)*GF_PAGE_SIZE, gfPage*GF_PAGE_SIZE);
+      const rows = slice.map(g => `<tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${esc(g.color||'#38BDF8')};margin-right:6px;vertical-align:middle;"></span>${esc(g.name)}${g.is_region?' <span style="font-size:9px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:0 4px;">regiune</span>':''}</td>
+        <td>${esc(g.description||'')}</td>
+        <td>${esc(g.address||'')}</td>
+        <td>${esc(g.category||'')}</td>
+        <td>${esc(g.group_name||'')}</td>
+        <td style="white-space:nowrap;text-align:right;">
           <button class="btn-sm" title="Arată pe hartă" onclick="focusGeofence(${g.id})"><i class="fas fa-map-marker-alt"></i></button>
-          <button class="btn-sm btn-danger" onclick="deleteGeofenceItem(${g.id})"><i class="fas fa-trash"></i></button>
-        </div></div>`).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio zonă. Desenează una mai sus.</p>';
+          <button class="btn-sm" title="Editează" onclick="startEditGeofence(${g.id})"><i class="fas fa-pen"></i></button>
+          <button class="btn-sm btn-danger" title="Șterge" onclick="deleteGeofenceItem(${g.id})"><i class="fas fa-trash"></i></button>
+        </td></tr>`).join('');
+      const pager = pages > 1 ? `<div style="display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:8px;">
+          <button class="btn-sm" ${gfPage<=1?'disabled':''} onclick="gfGoto(${gfPage-1})"><i class="fas fa-chevron-left"></i></button>
+          <span style="font-size:11px;color:var(--text-muted);">${gfPage} / ${pages}</span>
+          <button class="btn-sm" ${gfPage>=pages?'disabled':''} onclick="gfGoto(${gfPage+1})"><i class="fas fa-chevron-right"></i></button>
+        </div>` : '';
+      el.innerHTML = `<div style="overflow:auto;"><table class="gf-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr>
+          <th>Nume</th><th>Descriere</th><th>Poziționare</th><th>Categorie</th><th>Grup</th><th></th>
+        </tr></thead><tbody>${rows}</tbody></table></div>${pager}`;
     }
     function focusGeofence(id) {
       const l = geofenceLayers.get(id);
@@ -3522,76 +3588,226 @@
       await loadGeofencesAdmin(); await loadGeofencesOnMap();
     }
 
-    // Desenare
+    // ─── Desenare hotspot/zonă: plasare prin click + editare precisă cu Geoman (trage colțuri, snapping) ───
     let drawState = null;
-    function startDrawGeofence(mode) {
-      cancelDraw();
-      closeAdmin();
-      drawState = { mode, points: [], layers: [], center: null, circle: null, purpose: 'geofence' };
-      const tb = document.getElementById('draw-toolbar');
-      tb.style.display = 'flex';
-      document.getElementById('draw-name').value = '';
-      document.getElementById('draw-name').style.display = '';
-      document.getElementById('draw-color').style.display = '';
-      document.getElementById('draw-save-btn').innerHTML = '<i class="fas fa-save"></i> Salvează';
-      document.getElementById('draw-radius-wrap').style.display = 'none';
-      document.getElementById('draw-title').textContent = mode === 'polygon' ? 'Desenare poligon' : 'Desenare cerc';
-      document.getElementById('draw-info').textContent = mode === 'polygon' ? 'Click pe hartă (minim 3 puncte)' : 'Click pe hartă pentru centru';
-      map.getContainer().style.cursor = 'crosshair';
-      map.on('click', mode === 'polygon' ? onPolyClick : onCircleClick);
+    let geofenceCache = [];
+
+    function toRad(d) { return d * Math.PI / 180; }
+    function haversineM(a, b) {
+      const R = 6371000, dLat = toRad(b[0]-a[0]), dLon = toRad(b[1]-a[1]);
+      const s = Math.sin(dLat/2)**2 + Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLon/2)**2;
+      return 2 * R * Math.asin(Math.sqrt(s));
     }
-    function onPolyClick(e) { drawState.points.push([e.latlng.lat, e.latlng.lng]); redrawPoly(); }
+    function polyAreaM2(pts) {
+      if (!pts || pts.length < 3) return 0;
+      const R = 6378137; let a = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const p1 = pts[i], p2 = pts[(i+1) % pts.length];
+        a += toRad(p2[1]-p1[1]) * (2 + Math.sin(toRad(p1[0])) + Math.sin(toRad(p2[0])));
+      }
+      return Math.abs(a * R * R / 2);
+    }
+    function fmtArea(m2) { return m2 >= 1e6 ? (m2/1e6).toFixed(2)+' km²' : (m2 >= 1e4 ? (m2/1e4).toFixed(2)+' ha' : Math.round(m2)+' m²'); }
+    function fmtDist(m) { return m >= 1000 ? (m/1000).toFixed(2)+' km' : Math.round(m)+' m'; }
+
+    // Coordonatele curente ale formei (după eventuale editări Geoman)
+    function layerLatLngs() {
+      if (!drawState || !drawState.layer) return null;
+      if (drawState.mode === 'circle') {
+        const c = drawState.layer.getLatLng();
+        return { center: [c.lat, c.lng], radius: drawState.layer.getRadius() };
+      }
+      const ll = drawState.layer.getLatLngs();
+      const ring = Array.isArray(ll[0]) ? ll[0] : ll;
+      return ring.map(p => [p.lat, p.lng]);
+    }
+    function updateDrawMetrics() {
+      const el = document.getElementById('draw-metrics'); if (!el) return;
+      const g = layerLatLngs();
+      if (!g) {
+        if (drawState && drawState.mode === 'polygon' && drawState.points.length >= 2) {
+          let per = 0; for (let i = 1; i < drawState.points.length; i++) per += haversineM(drawState.points[i-1], drawState.points[i]);
+          el.textContent = 'Perimetru: ' + fmtDist(per);
+        } else el.textContent = '';
+        return;
+      }
+      if (drawState.mode === 'circle') {
+        const r = g.radius; el.textContent = 'Rază: ' + fmtDist(r) + ' · Suprafață: ' + fmtArea(Math.PI*r*r);
+      } else {
+        const closed = g.concat([g[0]]); let per = 0; for (let i = 1; i < closed.length; i++) per += haversineM(closed[i-1], closed[i]);
+        el.textContent = 'Suprafață: ' + fmtArea(polyAreaM2(g)) + ' · Perimetru: ' + fmtDist(per);
+      }
+    }
+
+    async function populateDrawMeta() {
+      try {
+        const groups = await (await fetch('/api/groups')).json();
+        const sel = document.getElementById('draw-group');
+        if (sel) sel.innerHTML = '<option value="">Fără grup</option>' + groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+      } catch (e) {}
+      try {
+        const list = geofenceCache && geofenceCache.length ? geofenceCache : await (await fetch('/api/geofences')).json();
+        const cats = [...new Set(list.map(g => g.category).filter(Boolean))];
+        const dl = document.getElementById('draw-category-list');
+        if (dl) dl.innerHTML = cats.map(c => `<option value="${c}">`).join('');
+      } catch (e) {}
+    }
+
+    function showDrawToolbar(mode, purpose, opts) {
+      opts = opts || {};
+      const tb = document.getElementById('draw-toolbar'); tb.style.display = 'flex';
+      const isZone = purpose === 'zone';
+      document.getElementById('draw-hs-fields').style.display = isZone ? 'none' : 'flex';
+      document.getElementById('draw-hs-fields2').style.display = isZone ? 'none' : 'flex';
+      document.getElementById('draw-radius-wrap').style.display = mode === 'circle' ? 'inline-flex' : 'none';
+      document.getElementById('draw-finish-btn').style.display = mode === 'polygon' ? '' : 'none';
+      document.getElementById('draw-undo-btn').style.display = mode === 'polygon' ? '' : 'none';
+      document.getElementById('draw-save-btn').innerHTML = isZone ? '<i class="fas fa-chart-bar"></i> Analizează' : '<i class="fas fa-save"></i> Salvează';
+      document.getElementById('draw-title').textContent = (isZone ? 'Zonă: ' : (opts.editing ? 'Editare: ' : 'Hotspot: ')) + (mode === 'polygon' ? 'poligon' : 'cerc');
+      document.getElementById('draw-info').textContent = opts.editing ? 'Trage colțurile pentru a ajusta' : (mode === 'polygon' ? 'Click pe hartă (min 3 puncte), apoi dublu-click' : 'Click pe hartă pentru centru');
+      document.getElementById('draw-sat-btn').classList.toggle('active', satMode);
+    }
+
+    function startDrawGeofence(mode) {
+      cancelDraw(); closeAdmin();
+      drawState = { mode, points: [], layers: [], layer: null, finished: false, purpose: 'geofence', editingId: null };
+      ['draw-name','draw-desc','draw-category'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      const rg = document.getElementById('draw-region'); if (rg) rg.checked = false;
+      const rad = document.getElementById('draw-radius'); if (rad) rad.value = 300;
+      showDrawToolbar(mode, 'geofence');
+      populateDrawMeta();
+      updateDrawMetrics();
+      enableDrawPlacement(mode);
+    }
+    function enableDrawPlacement(mode) {
+      map.getContainer().style.cursor = 'crosshair';
+      try { map.doubleClickZoom.disable(); } catch (e) {}
+      map.on('click', mode === 'polygon' ? onPolyClick : onCircleClick);
+      if (mode === 'polygon') map.on('dblclick', drawFinishPoly);
+    }
+    function onPolyClick(e) {
+      if (!drawState || drawState.finished) return;
+      drawState.points.push([e.latlng.lat, e.latlng.lng]); redrawPoly();
+    }
     function redrawPoly() {
-      drawState.layers.forEach(l => map.removeLayer(l)); drawState.layers = [];
+      drawState.layers.forEach(l => { try { map.removeLayer(l); } catch (e) {} }); drawState.layers = [];
       drawState.points.forEach(p => { const m = L.circleMarker(p, { radius: 4, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 }); m.addTo(map); drawState.layers.push(m); });
       if (drawState.points.length >= 2) { const pl = L.polyline(drawState.points.concat([drawState.points[0]]), { color: '#f59e0b', dashArray: '5,5' }); pl.addTo(map); drawState.layers.push(pl); }
-      document.getElementById('draw-info').textContent = drawState.points.length + ' puncte';
+      document.getElementById('draw-info').textContent = drawState.points.length + ' puncte — dublu-click / Finalizează';
+      updateDrawMetrics();
+    }
+    function drawUndo() {
+      if (!drawState) return;
+      if (drawState.mode === 'polygon' && !drawState.finished && drawState.points.length) { drawState.points.pop(); redrawPoly(); }
+    }
+    function drawFinishPoly() {
+      if (!drawState || drawState.mode !== 'polygon' || drawState.finished) return;
+      if (drawState.points.length < 3) return alert('Minim 3 puncte pentru poligon');
+      drawState.layers.forEach(l => { try { map.removeLayer(l); } catch (e) {} }); drawState.layers = [];
+      const layer = L.polygon(drawState.points, { color: document.getElementById('draw-color').value || '#3FE07D', weight: 2, fillOpacity: 0.1 }).addTo(map);
+      finalizeEditable(layer);
+      document.getElementById('draw-info').textContent = 'Trage colțurile pentru a ajusta';
     }
     function onCircleClick(e) {
-      if (!drawState.center) {
-        drawState.center = [e.latlng.lat, e.latlng.lng];
-        const radius = parseInt(document.getElementById('draw-radius').value) || 300;
-        drawState.circle = L.circle(drawState.center, { radius, color: '#f59e0b' }).addTo(map);
-        document.getElementById('draw-radius-wrap').style.display = 'inline-flex';
-        document.getElementById('draw-info').textContent = 'Centru fixat — reglează raza';
-        updateDrawRadius();
-      }
+      if (!drawState || drawState.layer) return;
+      const radius = parseInt(document.getElementById('draw-radius').value) || 300;
+      const layer = L.circle([e.latlng.lat, e.latlng.lng], { radius, color: document.getElementById('draw-color').value || '#3FE07D', weight: 2, fillOpacity: 0.1 }).addTo(map);
+      finalizeEditable(layer);
+      document.getElementById('draw-info').textContent = 'Trage centrul/marginea sau reglează raza';
+    }
+    function finalizeEditable(layer) {
+      drawState.layer = layer; drawState.finished = true;
+      try { map.off('click', onPolyClick); map.off('click', onCircleClick); map.off('dblclick', drawFinishPoly); } catch (e) {}
+      map.getContainer().style.cursor = '';
+      try {
+        if (layer.pm) layer.pm.enable({ allowSelfIntersection: false, snappable: true, snapDistance: 20 });
+        layer.on('pm:edit pm:markerdragend pm:vertexadded pm:vertexremoved', updateDrawMetrics);
+        layer.on('pm:edit', () => { if (drawState && drawState.mode === 'circle') { const ri = document.getElementById('draw-radius'); if (ri) ri.value = Math.round(layer.getRadius()); } });
+      } catch (e) {}
+      updateDrawMetrics();
     }
     function updateDrawRadius() {
       const r = parseInt(document.getElementById('draw-radius').value) || 300;
-      document.getElementById('draw-radius-val').textContent = r + ' m';
-      if (drawState && drawState.circle) drawState.circle.setRadius(r);
+      if (drawState && drawState.layer && drawState.mode === 'circle') drawState.layer.setRadius(r);
+      updateDrawMetrics();
     }
     async function saveDraw() {
       if (!drawState) return;
       if (drawState.purpose === 'zone') return analyzeDrawnZone();
+      if (drawState.mode === 'polygon' && !drawState.finished) { if (drawState.points.length < 3) return alert('Minim 3 puncte pentru poligon'); drawFinishPoly(); }
       const name = document.getElementById('draw-name').value.trim();
-      const color = document.getElementById('draw-color').value || '#38BDF8';
-      if (!name) return alert('Dă un nume zonei');
-      let body;
+      if (!name) return alert('Dă un nume hotspot-ului');
+      const g = layerLatLngs();
+      if (!g) return alert('Desenează forma pe hartă');
+      const body = {
+        name,
+        color: document.getElementById('draw-color').value || '#3FE07D',
+        description: document.getElementById('draw-desc').value.trim() || null,
+        category: document.getElementById('draw-category').value.trim() || null,
+        group_id: document.getElementById('draw-group').value || null,
+        is_region: document.getElementById('draw-region').checked
+      };
       if (drawState.mode === 'polygon') {
-        if (drawState.points.length < 3) return alert('Minim 3 puncte pentru poligon');
-        body = { name, type: 'polygon', coordinates: drawState.points, color };
+        if (!Array.isArray(g) || g.length < 3) return alert('Minim 3 puncte pentru poligon');
+        body.type = 'polygon'; body.coordinates = g;
       } else {
-        if (!drawState.center) return alert('Click pe hartă pentru a fixa centrul');
-        body = { name, type: 'circle', coordinates: { center: drawState.center, radius: parseInt(document.getElementById('draw-radius').value) || 300 }, color };
+        body.type = 'circle'; body.coordinates = { center: g.center, radius: Math.round(g.radius) };
       }
-      const res = await fetch('/api/geofences', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const editing = drawState.editingId;
+      const url = editing ? '/api/geofences/' + editing : '/api/geofences';
+      const res = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
       cancelDraw();
       await loadGeofencesOnMap();
       showView('management');
       setTimeout(() => switchAdminTab('geofences'), 60);
     }
+    function startEditGeofence(id) {
+      const g = (geofenceCache || []).find(x => String(x.id) === String(id));
+      if (!g) return;
+      cancelDraw(); closeAdmin();
+      const coords = parseGfCoords(g);
+      const mode = g.type === 'circle' ? 'circle' : 'polygon';
+      drawState = { mode, points: [], layers: [], layer: null, finished: true, purpose: 'geofence', editingId: g.id };
+      let layer;
+      if (mode === 'circle' && coords && coords.center) {
+        layer = L.circle(coords.center, { radius: coords.radius || 300, color: g.color || '#3FE07D', weight: 2, fillOpacity: 0.1 }).addTo(map);
+        const ri = document.getElementById('draw-radius'); if (ri) ri.value = Math.round(coords.radius || 300);
+      } else if (Array.isArray(coords) && coords.length >= 3) {
+        layer = L.polygon(coords, { color: g.color || '#3FE07D', weight: 2, fillOpacity: 0.1 }).addTo(map);
+      } else { drawState = null; return alert('Geometrie invalidă'); }
+      showDrawToolbar(mode, 'geofence', { editing: true });
+      populateDrawMeta();
+      document.getElementById('draw-name').value = g.name || '';
+      document.getElementById('draw-desc').value = g.description || '';
+      document.getElementById('draw-category').value = g.category || '';
+      document.getElementById('draw-color').value = (g.color || '#3FE07D');
+      document.getElementById('draw-region').checked = !!g.is_region;
+      setTimeout(() => { const sel = document.getElementById('draw-group'); if (sel && g.group_id != null) sel.value = String(g.group_id); }, 200);
+      finalizeEditable(layer);
+      try { map.fitBounds(layer.getBounds(), { maxZoom: 16, padding: [40,40] }); } catch (e) {}
+    }
     function cancelDraw() {
       const tb = document.getElementById('draw-toolbar'); if (tb) tb.style.display = 'none';
       if (!drawState) return;
-      try { map.off('click', onPolyClick); map.off('click', onCircleClick); } catch(e){}
-      drawState.layers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
-      if (drawState.circle) { try { map.removeLayer(drawState.circle); } catch(e){} }
+      try { map.off('click', onPolyClick); map.off('click', onCircleClick); map.off('dblclick', drawFinishPoly); } catch (e) {}
+      try { map.doubleClickZoom.enable(); } catch (e) {}
+      drawState.layers.forEach(l => { try { map.removeLayer(l); } catch (e) {} });
+      if (drawState.layer) { try { if (drawState.layer.pm) drawState.layer.pm.disable(); } catch (e) {} try { map.removeLayer(drawState.layer); } catch (e) {} }
       drawState = null;
+      const m = document.getElementById('draw-metrics'); if (m) m.textContent = '';
+      if (satMode) toggleDrawSatellite(false);
       if (map && map.getContainer) map.getContainer().style.cursor = '';
     }
+    // Scurtături tastatură în timpul desenării: Ctrl+Z undo, Enter finalizează, Esc anulează
+    document.addEventListener('keydown', (e) => {
+      if (!drawState) return;
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); drawUndo(); }
+      else if (e.key === 'Enter' && drawState.mode === 'polygon' && !drawState.finished) { e.preventDefault(); drawFinishPoly(); }
+      else if (e.key === 'Escape') { cancelDraw(); }
+    });
 
     // Populează grup + șofer în formularul de editare vehicul
     async function populateEditGroupsDrivers(groupId, driverId) {
@@ -4002,21 +4218,18 @@
     // ─── Zonă desenată ad-hoc → analiză (reutilizează controlerul de desenare) ───
     function startZoneDraw(mode) {
       cancelDraw();
-      drawState = { mode, points: [], layers: [], center: null, circle: null, purpose: 'zone' };
-      const tb = document.getElementById('draw-toolbar'); tb.style.display = 'flex';
-      document.getElementById('draw-name').style.display = 'none';
-      document.getElementById('draw-color').style.display = 'none';
-      document.getElementById('draw-radius-wrap').style.display = 'none';
-      document.getElementById('draw-save-btn').innerHTML = '<i class="fas fa-chart-bar"></i> Analizează';
-      document.getElementById('draw-title').textContent = mode === 'polygon' ? 'Zonă: poligon' : 'Zonă: cerc';
-      document.getElementById('draw-info').textContent = mode === 'polygon' ? 'Click pe hartă (min 3 puncte)' : 'Click pe hartă pentru centru';
-      if (map && map.getContainer) map.getContainer().style.cursor = 'crosshair';
-      map.on('click', mode === 'polygon' ? onPolyClick : onCircleClick);
+      drawState = { mode, points: [], layers: [], layer: null, finished: false, purpose: 'zone', editingId: null };
+      showDrawToolbar(mode, 'zone');
+      updateDrawMetrics();
+      enableDrawPlacement(mode);
     }
     async function analyzeDrawnZone() {
+      if (drawState.mode === 'polygon' && !drawState.finished) { if (drawState.points.length < 3) return alert('Minim 3 puncte'); drawFinishPoly(); }
+      const g = layerLatLngs();
+      if (!g) return alert('Desenează zona pe hartă');
       let zone;
-      if (drawState.mode === 'polygon') { if (drawState.points.length < 3) return alert('Minim 3 puncte'); zone = { type: 'polygon', coordinates: drawState.points }; }
-      else { if (!drawState.center) return alert('Click pe hartă pentru centru'); zone = { type: 'circle', center: drawState.center, radius: parseInt(document.getElementById('draw-radius').value) || 300 }; }
+      if (drawState.mode === 'polygon') { if (!Array.isArray(g) || g.length < 3) return alert('Minim 3 puncte'); zone = { type: 'polygon', coordinates: g }; }
+      else { zone = { type: 'circle', center: g.center, radius: Math.round(g.radius) }; }
       const imei = document.getElementById('hs-imei') ? document.getElementById('hs-imei').value : '';
       const fromV = document.getElementById('hs-from') ? document.getElementById('hs-from').value : '';
       const toV = document.getElementById('hs-to') ? document.getElementById('hs-to').value : '';
@@ -4227,14 +4440,23 @@
     let mapTiles = null;
     const MAP_TILES = {
       dark:  { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO', sub: 'abcd' },
-      light: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', sub: 'abc' }
+      light: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', sub: 'abc' },
+      sat:   { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri World Imagery', sub: '' }
     };
+    let satMode = false; // strat satelit forțat (util la desenare precisă)
     function applyMapTheme() {
       if (typeof map === 'undefined' || !map) return;
-      const cfg = document.body.classList.contains('dark') ? MAP_TILES.dark : MAP_TILES.light;
+      const cfg = satMode ? MAP_TILES.sat : (document.body.classList.contains('dark') ? MAP_TILES.dark : MAP_TILES.light);
       if (mapTiles) { try { map.removeLayer(mapTiles); } catch (e) {} }
       mapTiles = L.tileLayer(cfg.url, { attribution: cfg.attribution, subdomains: cfg.sub, maxZoom: 20 }).addTo(map);
       if (mapTiles.bringToBack) mapTiles.bringToBack();
+    }
+    // Comută fundalul satelit (folosit din bara de desenare pentru trasare precisă)
+    function toggleDrawSatellite(on) {
+      satMode = (typeof on === 'boolean') ? on : !satMode;
+      applyMapTheme();
+      const btn = document.getElementById('draw-sat-btn');
+      if (btn) btn.classList.toggle('active', satMode);
     }
     function initMap() {
       map = L.map('map', {

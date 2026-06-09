@@ -424,6 +424,14 @@ async function initDb() {
         ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS description VARCHAR(255);
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS category VARCHAR(60);
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS group_id INTEGER;
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS address VARCHAR(200);
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS is_region BOOLEAN DEFAULT false;
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS center_lat DOUBLE PRECISION;
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS center_lon DOUBLE PRECISION;
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'manual';
         ALTER TABLE alerts ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS company_id INTEGER;
@@ -1272,24 +1280,37 @@ async function deleteGroup(id) {
 // ─── Funcții geofences ───
 
 async function getGeofences(companyId) {
-  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const where = companyId != null ? 'WHERE g.company_id = $1' : '';
   const params = companyId != null ? [companyId] : [];
-  const result = await pool.query(`SELECT * FROM geofences ${where} ORDER BY name`, params);
+  const result = await pool.query(
+    `SELECT g.*, dg.name AS group_name
+       FROM geofences g
+       LEFT JOIN device_groups dg ON dg.id = g.group_id
+       ${where}
+       ORDER BY g.name`, params);
   return result.rows;
 }
 
 async function createGeofence(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO geofences (name, type, coordinates, color, company_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [data.name, data.type, JSON.stringify(data.coordinates), data.color, companyId || null]
+    `INSERT INTO geofences
+       (name, type, coordinates, color, company_id, description, category, group_id, address, is_region, center_lat, center_lon, source)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+    [data.name, data.type, JSON.stringify(data.coordinates), data.color, companyId || null,
+     data.description || null, data.category || null, data.group_id || null, data.address || null,
+     !!data.is_region, (data.center_lat ?? null), (data.center_lon ?? null), data.source || 'manual']
   );
   return result.rows[0];
 }
 
 async function updateGeofence(id, data) {
   await pool.query(
-    'UPDATE geofences SET name=$2, type=$3, coordinates=$4, color=$5 WHERE id=$1',
-    [id, data.name, data.type, JSON.stringify(data.coordinates), data.color]
+    `UPDATE geofences SET name=$2, type=$3, coordinates=$4, color=$5,
+       description=$6, category=$7, group_id=$8, address=$9, is_region=$10, center_lat=$11, center_lon=$12
+     WHERE id=$1`,
+    [id, data.name, data.type, JSON.stringify(data.coordinates), data.color,
+     data.description || null, data.category || null, data.group_id || null, data.address || null,
+     !!data.is_region, (data.center_lat ?? null), (data.center_lon ?? null)]
   );
 }
 

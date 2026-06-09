@@ -2406,20 +2406,44 @@ app.delete('/api/groups/:id', requireAuth, requireFleet, withCompany, async (req
 
 // ─── Geofences CRUD ───
 
+// Calculează centrul (centru cerc / centroid poligon) și completează adresa via geocodare inversă.
+async function enrichGeofence(body) {
+  const out = Object.assign({}, body);
+  try {
+    let lat = null, lon = null;
+    if (body.type === 'circle' && body.coordinates && body.coordinates.center) {
+      lat = Number(body.coordinates.center[0]); lon = Number(body.coordinates.center[1]);
+    } else if (Array.isArray(body.coordinates) && body.coordinates.length) {
+      let sLat = 0, sLon = 0, n = 0;
+      for (const p of body.coordinates) {
+        if (Array.isArray(p) && p.length >= 2) { sLat += Number(p[0]); sLon += Number(p[1]); n++; }
+      }
+      if (n) { lat = sLat / n; lon = sLon / n; }
+    }
+    if (lat != null && lon != null && isFinite(lat) && isFinite(lon)) {
+      out.center_lat = lat; out.center_lon = lon;
+      if (!out.address && geocode && geocode.reverseGeocode) {
+        try { out.address = await geocode.reverseGeocode(lat, lon); } catch (e) {}
+      }
+    }
+  } catch (e) {}
+  return out;
+}
+
 app.get('/api/geofences', requireAuth, withCompany, async (req, res) => {
   try { res.json(await db.getGeofences(req.isSuper ? null : req.companyId)); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/geofences', requireAuth, requireFleet, withCompany, async (req, res) => {
-  try { const g = await db.createGeofence(req.body, req.companyId); auditReq(req, 'create', 'geofence', g.id, { name: req.body.name }); res.json(g); }
+  try { const g = await db.createGeofence(await enrichGeofence(req.body), req.companyId); auditReq(req, 'create', 'geofence', g.id, { name: req.body.name }); res.json(g); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/geofences/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
-    await db.updateGeofence(req.params.id, req.body); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true });
+    await db.updateGeofence(req.params.id, await enrichGeofence(req.body)); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
