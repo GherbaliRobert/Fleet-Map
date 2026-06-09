@@ -1,0 +1,47 @@
+// ci-smoke.js — pornește serverul (PGlite embedded, SEED_TEST) și rulează suitele de smoke.
+// Folosit de `npm test` și de CI. Nu necesită servicii externe (baza e embedded).
+const { spawn } = require('child_process');
+const fs = require('fs');
+
+const PORT = 3199, TCP = 5199, DIR = '.ci-db';
+const env = {
+  ...process.env,
+  SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_secret_smoke',
+  PORT: String(PORT), TCP_PORT: String(TCP), PGLITE_DIR: DIR + '/pgdata'
+};
+try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {}
+
+const srv = spawn(process.execPath, ['server.js'], { env, stdio: ['ignore', 'ignore', 'inherit'] });
+let finished = false;
+function finish(code) {
+  if (finished) return; finished = true;
+  try { srv.kill(); } catch (e) {}
+  try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {}
+  process.exit(code);
+}
+srv.on('exit', (c) => { if (!finished) { console.error('[ci] serverul s-a oprit neașteptat (cod ' + c + ')'); finish(1); } });
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function waitUp() {
+  for (let i = 0; i < 60; i++) {
+    try { const r = await fetch('http://localhost:' + PORT + '/api'); if (r.ok) return true; } catch (e) {}
+    await sleep(500);
+  }
+  return false;
+}
+function runSmoke(script) {
+  return new Promise((res) => {
+    const c = spawn(process.execPath, [script], { env: { ...env, BASE: 'http://localhost:' + PORT }, stdio: 'inherit' });
+    c.on('exit', (code) => res(code || 0));
+  });
+}
+(async () => {
+  if (!await waitUp()) { console.error('[ci] serverul nu a pornit la timp'); return finish(1); }
+  let fail = 0;
+  for (const s of ['tenant_smoke.js', 'rbac_smoke.js']) {
+    console.log('\n=== ' + s + ' ===');
+    if (await runSmoke(s)) fail++;
+  }
+  console.log('\n[ci] ' + (fail ? (fail + ' suită(e) au picat') : 'toate suitele au trecut ✓'));
+  finish(fail ? 1 : 0);
+})();

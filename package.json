@@ -9,6 +9,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "test": "node ci-smoke.js",
+    "test:tenant": "node tenant_smoke.js",
     "test:rbac": "node rbac_smoke.js",
     "test:phase2": "node phase2_smoke.js",
     "test:phase3": "node phase3_smoke.js",

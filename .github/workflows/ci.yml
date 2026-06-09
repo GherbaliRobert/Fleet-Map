@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke:
+    name: Smoke (RBAC + izolare multi-tenant)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint (syntax check)
+        run: |
+          node --check server.js
+          node --check db.js
+          node --check report_export.js
+          node --check report_schedules.js
+          node --check channels.js
+      - name: Smoke tests
+        run: npm test

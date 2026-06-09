@@ -12,4 +12,6 @@ data/
 server_test.log
 
 .smoke-db/
+.ci-db/
 *.pid
+.test_*.js
