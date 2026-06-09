@@ -2405,6 +2405,10 @@
             <input type="text" id="veh-search" placeholder="Caută nume / nr. / marcă..." oninput="renderVehicles()" style="flex:1;min-width:160px;">
             <span id="veh-count" style="font-size:12px;color:var(--text-muted);"></span>
             <button class="btn-sm btn-primary" onclick="toggleVehAdd()"><i class="fas fa-plus"></i> Adaugă vehicul</button>
+            <button class="btn-sm" onclick="downloadTemplate()" title="Descarcă șablon CSV"><i class="fas fa-file-csv"></i> Template</button>
+            <button class="btn-sm" onclick="exportVehicles()" title="Exportă toate în CSV"><i class="fas fa-download"></i> Exportă</button>
+            <button class="btn-sm" onclick="document.getElementById('veh-import-file').click()" title="Importă din CSV"><i class="fas fa-upload"></i> Importă</button>
+            <input type="file" id="veh-import-file" accept=".csv,text/csv" style="display:none;" onchange="importVehiclesFile(this)">
           </div>
 
           <div id="veh-add-form" style="display:none;background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:10px;">
@@ -7405,6 +7409,7 @@
     <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
     <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
     <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
+    <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
     <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
     <button class="rax-fab" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-robot"></i> Asistent AI</button>
   </div>
@@ -7500,6 +7505,18 @@
     </div>
   </div>
 
+  <div class="rax-overlay" id="rax-sub-overlay">
+    <div class="rax-card">
+      <div class="rax-head"><h3><i class="fas fa-credit-card" style="color:var(--accent)"></i> Abonament</h3><button class="rax-x" onclick="document.getElementById('rax-sub-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-body">
+        <div id="rax-sub-current"></div>
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 8px;">Planuri</div>
+        <div id="rax-sub-plans"></div>
+        <div id="rax-sub-msg" style="font-size:12px;margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function () {
     var me = null, aiEnabled = false, aiHistory = [], companiesCache = [];
@@ -7527,6 +7544,7 @@
       $('rax-tacho-btn').style.display = fleet ? 'flex' : 'none';
       $('rax-et-btn').style.display = fleet ? 'flex' : 'none';
       $('rax-ag-btn').style.display = (me.permissions && me.permissions.viewReports) ? 'flex' : 'none';
+      $('rax-sub-btn').style.display = (me.permissions && me.permissions.manageUsers) ? 'flex' : 'none';
       raxRefreshAgBadge();
       var chip = $('rax-co-chip');
       if (me.company && me.company.name) { chip.style.display = 'block'; chip.innerHTML = (me.company.is_demo ? '🔵 ' : '🏢 ') + esc(me.company.name); }
@@ -7618,10 +7636,30 @@
         if (!Array.isArray(companiesCache) || !companiesCache.length) { box.innerHTML = '<div class="rax-co-meta">Nicio companie încă. Creează prima mai sus.</div>'; return; }
         box.innerHTML = companiesCache.map(function (c) {
           return '<div class="rax-co-item"><h4>' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</h4>' +
-            '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div></div>';
+            '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
+            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button></div>') + '</div>';
         }).join('');
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
+    window.raxSetPlan = async function (id) {
+      var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
+      var plan = prompt('Plan pentru „' + (c.name || id) + '":\nscrie  start  /  pro  /  premium  /  custom', c.plan || 'start');
+      if (!plan) return;
+      plan = plan.trim().toLowerCase();
+      var body = { plan: plan };
+      if (plan === 'custom') {
+        var name = prompt('Nume plan custom:', 'Enterprise — ' + (c.name || '')) || 'Custom';
+        var price = prompt('Preț CUSTOM — lei per vehicul/lună\n(lasă gol dacă pui tarif fix):', '');
+        var flat = (price && price.trim()) ? '' : prompt('Tarif FIX — lei/lună:', '');
+        if ((!price || !price.trim()) && (!flat || !flat.trim())) { alert('Trebuie un preț: per vehicul SAU fix.'); return; }
+        body.custom = { name: name, pricePerVehicleRON: (price && price.trim()) ? Number(price) : null, flatPriceRON: (flat && flat.trim()) ? Number(flat) : null };
+      } else if (['start', 'pro', 'premium'].indexOf(plan) < 0) { alert('Plan invalid. Folosește start / pro / premium / custom.'); return; }
+      try {
+        var j = await fetch('/api/companies/' + id + '/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        raxLoadCompanies();
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
     async function raxLoadUnassigned() {
       var box = $('rax-co-unassigned');
       try {
@@ -7731,6 +7769,46 @@
     function raxAgMeta(k) { return RAX_AGENTS[k] || { name: k || 'Agent', icon: 'fa-robot' }; }
     window.raxOpenAgents = function () { $('rax-ag-overlay').classList.add('open'); $('rax-ag-summary').innerHTML = ''; if (window.loadSuperCompanies) window.loadSuperCompanies(); raxRenderAgChips(); raxLoadFindings(); };
     window.raxReload = function () { raxLoadFindings(); raxRefreshAgBadge(); };
+
+    // ── Abonament (facturare) ──
+    window.raxOpenSub = async function () {
+      $('rax-sub-overlay').classList.add('open');
+      var cur = $('rax-sub-current'), box = $('rax-sub-plans'), msg = $('rax-sub-msg');
+      cur.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>'; box.innerHTML = ''; msg.textContent = ''; msg.style.color = '';
+      try {
+        var st = await fetch('/api/billing/status', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var pj = await fetch('/api/plans', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var pl = st.plan;
+        var planLine = pl ? (esc(pl.name) + (pl.custom ? ' (custom)' : '') + (pl.pricePerVehicleRON != null ? ' · ' + pl.pricePerVehicleRON + ' lei/vehicul' : (pl.flatPriceRON != null ? ' · ' + pl.flatPriceRON + ' lei/lună' : ''))) : '—';
+        cur.innerHTML = '<div style="padding:11px 13px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;margin-bottom:14px;">'
+          + '<div style="font-size:11px;color:var(--text-muted);">Plan curent</div>'
+          + '<div style="font-size:16px;font-weight:700;margin-top:2px;">' + planLine + '</div>'
+          + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Status: ' + esc(st.status || 'inactiv') + '</div>'
+          + (st.hasSubscription ? '<button class="rax-btn" style="margin-top:9px;" onclick="raxBillingPortal()"><i class="fas fa-gear"></i> Gestionează facturarea</button>' : '')
+          + '</div>';
+        if (!pj.billingEnabled) { msg.style.color = 'var(--orange)'; msg.textContent = 'Plata online încă nu e activată. Scrie-ne la contact@ratrack.ro pentru abonament.'; }
+        box.innerHTML = (pj.plans || []).map(function (p) {
+          var price = p.custom ? 'Preț la cerere' : (p.pricePerVehicleRON + ' lei/vehicul/lună');
+          var btn = p.custom
+            ? '<a class="rax-btn" href="mailto:contact@ratrack.ro?subject=Ofert%C4%83%20Enterprise%20RA%20Tracks">Cere ofertă</a>'
+            : '<button class="rax-btn primary" ' + (pj.billingEnabled ? '' : 'disabled style="opacity:.5"') + ' onclick="raxCheckout(\'' + p.key + '\')">Abonează-te</button>';
+          return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">'
+            + '<div><div style="font-weight:600;">' + esc(p.name) + '</div><div style="font-size:12px;color:var(--text-muted);">' + price + '</div></div>'
+            + btn + '</div>';
+        }).join('');
+      } catch (e) { cur.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
+    };
+    window.raxCheckout = async function (plan) {
+      var msg = $('rax-sub-msg'); msg.style.color = ''; msg.textContent = 'Se redirecționează către plată…';
+      try {
+        var j = await fetch('/api/billing/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ plan: plan }) }).then(function (r) { return r.json(); });
+        if (j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error; return; }
+        if (j.url) location.href = j.url;
+      } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
+    };
+    window.raxBillingPortal = async function () {
+      try { var j = await fetch('/api/billing/portal', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.json(); }); if (j.url) location.href = j.url; else alert(j.error || 'Indisponibil'); } catch (e) { alert('Eroare: ' + e.message); }
+    };
     function raxRenderAgChips() {
       var box = $('rax-ag-chips'); if (!box) return;
       box.innerHTML = Object.keys(RAX_AGENTS).map(function (k) {
