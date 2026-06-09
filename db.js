@@ -753,6 +753,9 @@ const NUMERIC_COLS = new Set([
   'consumption_road', 'passenger_seats', 'displacement', 'power_kw', 'payload',
   'tare_weight', 'max_weight_legal', 'max_weight_construct'
 ]);
+// Doar acestea sunt NUMERIC(6,2) (acceptă zecimale); restul din NUMERIC_COLS sunt INTEGER → rotunjim,
+// altfel un decimal (ex. 90.5) e respins de Postgres/PGlite ("invalid input syntax for type integer") și pică tot UPDATE-ul.
+const DECIMAL_COLS = new Set(['consumption_city', 'consumption_idle', 'consumption_road']);
 // Update parțial: actualizează doar câmpurile trimise, din whitelist
 async function updateVehicleDetails(imei, fields) {
   const sets = [], vals = [imei];
@@ -760,7 +763,7 @@ async function updateVehicleDetails(imei, fields) {
     if (!Object.prototype.hasOwnProperty.call(fields, col)) continue;
     let v = fields[col];
     if (v === '' || v === undefined) v = null;
-    if (v !== null && NUMERIC_COLS.has(col)) { const n = Number(v); v = isNaN(n) ? null : n; }
+    if (v !== null && NUMERIC_COLS.has(col)) { const n = Number(v); v = isNaN(n) ? null : (DECIMAL_COLS.has(col) ? n : Math.round(n)); }
     vals.push(v);
     sets.push(`${col} = $${vals.length}`);
   }

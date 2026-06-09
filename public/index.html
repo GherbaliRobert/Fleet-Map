@@ -3304,6 +3304,8 @@
     }
     function toggleVehAdd() { const f = document.getElementById('veh-add-form'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; }
     function renderVehicles() {
+      // esc local: cel global e definit în IIFE-ul celui de-al doilea <script>, deci nu e vizibil aici. Escapăm și ' (context onclick).
+      const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const q = (document.getElementById('veh-search').value || '').toLowerCase();
       let rows = vehAll.filter(d => (vehScope === 'archived') ? d.status === 'archived' : d.status !== 'archived');
       if (q) rows = rows.filter(d => ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.brand || '') + ' ' + (d.imei || '')).toLowerCase().includes(q));

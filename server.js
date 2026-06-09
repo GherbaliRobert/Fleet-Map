@@ -1617,6 +1617,7 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
     const fields = {};
     ['name', 'plate', 'vehicle_type', 'vin', 'brand', 'model'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
     await db.createDevice(imei, fields, companyId);
+    invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
     auditReq(req, 'create', 'device', imei, { name: fields.name, plate: fields.plate });
     res.json({ ok: true, imei });
   } catch (err) {
