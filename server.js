@@ -594,8 +594,12 @@ if (API_CORS_ORIGIN) {
 }
 
 // ─── Site public (landing) la "/" · aplicația la "/app" ───
+// Fără cache pentru shell-ul aplicației + service worker, ca actualizările să apară imediat
+// (altfel un CDN/edge ca Cloudflare poate servi versiuni vechi, iar SW-ul nu se mai actualizează).
+const NO_CACHE = 'no-cache, no-store, must-revalidate';
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
-app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.sendFile(path.join(__dirname, 'public', 'index.html')); });
+app.get('/sw.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.sendFile(path.join(__dirname, 'public', 'sw.js')); });
 
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
@@ -790,6 +794,18 @@ async function resolveReportImeis(req) {
     return devs.map(d => d.imei);
   }
   return Array.from(req.allowedImeis).filter(im => canAccessImei(req, im));
+}
+
+// Filtru opțional pe companie pentru super-admin (dashboard + agenți): restrânge scope-ul la o companie.
+// Ceilalți utilizatori sunt deja scopați și ignoră parametrul.
+async function applyCompanyFilter(req) {
+  if (!req.isSuper) return;
+  const raw = (req.query && req.query.companyId) || (req.body && req.body.companyId);
+  if (raw == null || raw === '') return;
+  const cid = parseInt(raw, 10);
+  if (isNaN(cid)) return;
+  req.filterCompanyId = cid;
+  try { req.allowedImeis = new Set(await db.getCompanyImeis(cid)); } catch (e) { req.allowedImeis = new Set(); }
 }
 
 // Rate-limit simplu pentru login (per IP): max 10 eșecuri / 15 min
@@ -1068,8 +1084,8 @@ app.delete('/api/apikeys/:id', requireAuth, requireAdmin, withCompany, async (re
 
 // ─── AI: asistent flotă + rezumate rapoarte (Claude) ───
 function _fleetSnapshot(req) {
-  let positions = Array.from(livePositions.values());
-  if (req.allowedImeis != null) positions = positions.filter(p => req.allowedImeis.has(p.imei));
+  // izolare strictă: doar vehiculele accesibile (companie + demo ascuns pt. flota reală/super-admin)
+  let positions = Array.from(livePositions.values()).filter(p => canAccessImei(req, p.imei));
   return positions.slice(0, 80).map(p => {
     const io = p.io || {};
     return {
@@ -1105,7 +1121,7 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
     const snapshot = _fleetSnapshot(req);
     let today = [];
     try {
-      const allImeis = req.allowedImeis == null ? (await db.getDevices()).map(d => d.imei) : Array.from(req.allowedImeis);
+      const allImeis = (await db.getDevices()).map(d => d.imei).filter(imei => canAccessImei(req, imei));
       const from = new Date(); from.setHours(0, 0, 0, 0);
       today = await db.getTripsSummaryForImeis(allImeis, from.toISOString(), new Date().toISOString());
     } catch (e) { /* fără sumar curse */ }
@@ -1144,18 +1160,33 @@ app.get('/api/agents', requireAuth, (req, res) => {
 app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
   try {
     if (!agents) return res.status(503).json({ error: 'Agenții indisponibili' });
+    await applyCompanyFilter(req);
     const imeis = await resolveReportImeis(req);
     if (!imeis) return res.status(403).json({ error: 'Acces interzis' });
-    const result = await agents.runAgent('watch', { db, imeis, livePositions, ai });
+    const which = (req.body && req.body.agent) || (req.query && req.query.agent) || 'all';
+    if (which !== 'all' && !agents.AGENTS[which]) return res.status(400).json({ error: 'Agent necunoscut: ' + which });
+    const storeCompany = (req.isSuper && req.filterCompanyId != null) ? req.filterCompanyId : req.companyId;
+    const base = { db, imeis, livePositions, companyId: storeCompany };
+    const findings = (which === 'all' ? await agents.runAll(base) : await agents.runAgent(which, base)).findings || [];
     let stored = 0;
-    for (const f of (result.findings || [])) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: req.companyId })); if (r) stored++; }
-    auditReq(req, 'run', 'agent', 'watch', { found: (result.findings || []).length, stored });
-    res.json({ findings: result.findings || [], aiSummary: result.aiSummary || null, stored });
+    for (const f of findings) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; }
+    let aiSummary = null;
+    if (ai && ai.aiEnabled() && findings.length) {
+      try {
+        const system = 'Ești coordonatorul agenților AI ai unei flote de transport (RA Watch, RA Care, RA Optimize, RA Compliance, RA Client). Primești constatările lor de azi. Scrie un rezumat scurt (2-4 propoziții) în limba română care prioritizează urgențele (furt combustibil, service depășit, încălcarea orelor de condus) și recomandă acțiuni concrete. Fără introduceri lungi.';
+        aiSummary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Constatări:\n' + JSON.stringify(findings.map(f => ({ a: f.agent, sev: f.severity, t: f.title }))) }], maxTokens: 400 });
+      } catch (e) { /* AI opțional */ }
+    }
+    auditReq(req, 'run', 'agent', which, { found: findings.length, stored });
+    res.json({ findings, aiSummary, stored });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/api/agents/findings', requireAuth, withCompany, async (req, res) => {
-  try { res.json(await db.getAgentFindings(req.isSuper ? null : req.companyId, 80)); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    await applyCompanyFilter(req);
+    const cid = req.isSuper ? (req.filterCompanyId != null ? req.filterCompanyId : null) : req.companyId;
+    res.json(await db.getAgentFindings(cid, 80));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/agents/findings/:id/:action', requireAuth, withCompany, async (req, res) => {
   try {
@@ -1166,7 +1197,35 @@ app.post('/api/agents/findings/:id/:action', requireAuth, withCompany, async (re
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Worker: RA Watch rulează automat per companie (heuristici, fără AI ca să nu consume tokeni)
+// RA Dispatch: vehicule disponibile aproape de o destinație (clasate după distanță + ETA estimativ)
+app.get('/api/dispatch/suggest', requireAuth, withScope, async (req, res) => {
+  try {
+    await applyCompanyFilter(req);
+    const lat = parseFloat(req.query.lat), lon = parseFloat(req.query.lon);
+    if (!isFinite(lat) || !isFinite(lon)) return res.status(400).json({ error: 'Coordonate (lat/lon) necesare' });
+    const now = Date.now();
+    const list = [];
+    for (const [imei, live] of livePositions) {
+      if (!canAccessImei(req, imei)) continue;
+      if (!live || live.latitude == null || live.longitude == null || !live.timestamp) continue;
+      const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
+      const online = ageMin < 30;
+      const stopped = (live.speed || 0) <= 3;
+      const distKm = haversineDistance(lat, lon, live.latitude, live.longitude);
+      list.push({
+        imei, name: live.name || live.plate || imei, plate: live.plate || null,
+        distanceKm: Math.round(distKm * 10) / 10, etaMin: Math.max(1, Math.round(distKm / 40 * 60)),
+        online, available: online && stopped, ageMin: Math.round(ageMin),
+        lat: live.latitude, lon: live.longitude
+      });
+    }
+    // disponibile întâi, apoi după distanță
+    list.sort((a, b) => (a.available === b.available ? a.distanceKm - b.distanceKm : (a.available ? -1 : 1)));
+    res.json({ target: { lat, lon }, vehicles: list.slice(0, 12) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Worker: agenții rulează automat per companie (heuristici, fără AI ca să nu consume tokeni)
 async function runAgentsWorker() {
   if (!agents) return;
   try {
@@ -1175,7 +1234,7 @@ async function runAgentsWorker() {
       if (co.is_demo) continue;
       const imeis = await db.getCompanyImeis(co.id);
       if (!imeis.length) continue;
-      const result = await agents.runAgent('watch', { db, imeis, livePositions }); // fără ai → doar euristici
+      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id }); // toți agenții, fără ai → doar euristici
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
     }
   } catch (e) { console.warn('[AGENTS] worker:', e.message); }
@@ -1663,6 +1722,7 @@ app.get('/api/stats', requireAuth, withScope, async (req, res) => {
 // API: Dashboard KPI-uri fleet
 app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
   try {
+    await applyCompanyFilter(req);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const now = new Date();
