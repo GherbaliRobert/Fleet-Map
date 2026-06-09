@@ -345,10 +345,237 @@ async function initDb() {
       try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
     }
 
+    // ─── MULTI-TENANT: companii (fiecare companie își vede doar flota ei) ───
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS companies (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        slug VARCHAR(80) UNIQUE,
+        contact_email VARCHAR(160),
+        phone VARCHAR(40),
+        plan VARCHAR(40) DEFAULT 'standard',
+        is_demo BOOLEAN DEFAULT false,
+        active BOOLEAN DEFAULT true,
+        settings JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    // Coloana company_id pe toate entitățile scopabile (FK-less, enforce în cod pentru robustețe PGlite)
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE geofences ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE alerts ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE positions ADD COLUMN IF NOT EXISTS company_id INTEGER;
+      END $$
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_company ON devices(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_groups_company ON device_groups(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_drivers_company ON drivers(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_geofences_company ON geofences(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_alerts_company ON alerts(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_positions_company ON positions(company_id, timestamp DESC)`);
+    // Backfill o singură dată: pozițiile vechi moștenesc company_id din vehiculul lor (idempotent — doar rândurile NULL)
+    await client.query(`
+      UPDATE positions SET company_id = d.company_id
+      FROM devices d
+      WHERE positions.imei = d.imei AND positions.company_id IS NULL AND d.company_id IS NOT NULL
+    `);
+
+    // Rapoarte programate (trimise automat pe email)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS report_schedules (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        user_id INTEGER,
+        name VARCHAR(120),
+        report_type VARCHAR(40) NOT NULL,
+        imei VARCHAR(20),
+        period VARCHAR(20) DEFAULT 'yesterday',
+        frequency VARCHAR(20) DEFAULT 'daily',
+        hour INTEGER DEFAULT 6,
+        format VARCHAR(10) DEFAULT 'pdf',
+        recipients TEXT,
+        opts JSONB DEFAULT '{}',
+        enabled BOOLEAN DEFAULT true,
+        last_run TIMESTAMP,
+        next_run TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_sched_company ON report_schedules(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_sched_due ON report_schedules(enabled, next_run)`);
+
+    // Tahograf: fișiere .DDD încărcate + analiza lor
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tacho_files (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        imei VARCHAR(20),
+        driver_name VARCHAR(120),
+        filename VARCHAR(200),
+        kind VARCHAR(20),
+        period_from DATE,
+        period_to DATE,
+        parsed JSONB,
+        raw_b64 TEXT,
+        uploaded_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tacho_company ON tacho_files(company_id)`);
+
+    // e-Transport (ANAF): coduri UIT per vehicul/transport
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS etransport (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        uit VARCHAR(40),
+        imei VARCHAR(20),
+        plate VARCHAR(20),
+        start_at TIMESTAMP,
+        end_at TIMESTAMP,
+        status VARCHAR(20) DEFAULT 'activ',
+        last_sent_at TIMESTAMP,
+        note TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_etransport_company ON etransport(company_id)`);
+
     console.log('[DB] Tabele create / verificate');
   } finally {
     client.release();
   }
+  // Migrarea datelor (după eliberarea lock-ului — folosește pool.query)
+  await ensureTenancy();
+}
+
+// Migrare idempotentă: promovează adminul platformă la superadmin, mută datele legacy într-o companie Default.
+async function ensureTenancy() {
+  try {
+    const hasSuper = (await pool.query("SELECT 1 FROM users WHERE role='superadmin' LIMIT 1")).rows.length > 0;
+    if (!hasSuper) {
+      // primul admin (cel mai vechi) devine super-admin platformă, fără companie
+      await pool.query("UPDATE users SET role='superadmin', company_id=NULL WHERE id=(SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1)");
+    }
+    const nullDev = (await pool.query('SELECT COUNT(*)::int AS n FROM devices WHERE company_id IS NULL')).rows[0].n;
+    const nullUsr = (await pool.query("SELECT COUNT(*)::int AS n FROM users WHERE company_id IS NULL AND role<>'superadmin'")).rows[0].n;
+    if (nullDev > 0 || nullUsr > 0) {
+      let def = (await pool.query("SELECT id FROM companies WHERE slug='default' LIMIT 1")).rows[0];
+      def = def ? def.id : (await pool.query("INSERT INTO companies (name, slug, plan) VALUES ('Compania mea','default','standard') RETURNING id")).rows[0].id;
+      for (const t of ['users', 'devices', 'device_groups', 'drivers', 'geofences', 'alerts', 'maintenance']) {
+        await pool.query(`UPDATE ${t} SET company_id=$1 WHERE company_id IS NULL`, [def]);
+      }
+      // super-adminul rămâne la nivel de platformă (fără companie)
+      await pool.query("UPDATE users SET company_id=NULL WHERE role='superadmin'");
+      console.log('[DB] Tenancy: date legacy migrate în compania Default (#' + def + ')');
+    }
+  } catch (e) { console.warn('[DB] ensureTenancy:', e.message); }
+}
+
+// ─── MULTI-TENANT: companii ───
+async function getCompanies() {
+  const r = await pool.query(`
+    SELECT c.*,
+      (SELECT COUNT(*)::int FROM devices d WHERE d.company_id = c.id) AS device_count,
+      (SELECT COUNT(*)::int FROM users u WHERE u.company_id = c.id) AS user_count
+    FROM companies c ORDER BY c.created_at`);
+  return r.rows;
+}
+async function getCompanyById(id) {
+  const r = await pool.query('SELECT * FROM companies WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function getCompanyBySlug(slug) {
+  const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
+  return r.rows[0] || null;
+}
+async function createCompany(data) {
+  const r = await pool.query(
+    `INSERT INTO companies (name, slug, contact_email, phone, plan, is_demo) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [data.name, data.slug || null, data.contact_email || null, data.phone || null, data.plan || 'standard', !!data.is_demo]
+  );
+  return r.rows[0];
+}
+async function updateCompany(id, data) {
+  await pool.query(
+    `UPDATE companies SET name=COALESCE($2,name), contact_email=$3, phone=$4, plan=COALESCE($5,plan), active=COALESCE($6,active) WHERE id=$1`,
+    [id, data.name || null, data.contact_email || null, data.phone || null, data.plan || null, (data.active === undefined ? null : data.active)]
+  );
+}
+async function deleteCompany(id) {
+  // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul
+  await pool.query('DELETE FROM companies WHERE id = $1', [id]);
+}
+// Toate IMEI-urile unei companii (pt. scoping viewAll pe companie)
+async function getCompanyImeis(companyId) {
+  const r = await pool.query('SELECT imei FROM devices WHERE company_id = $1', [companyId]);
+  return r.rows.map(x => x.imei);
+}
+async function setDeviceCompany(imei, companyId) {
+  await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1', [imei, companyId || null]);
+}
+// ─── Tahograf ───
+async function createTachoFile(rec) {
+  const r = await pool.query(
+    `INSERT INTO tacho_files (company_id, imei, driver_name, filename, kind, period_from, period_to, parsed, raw_b64)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, company_id, imei, driver_name, filename, kind, period_from, period_to, parsed, uploaded_at`,
+    [rec.companyId || null, rec.imei || null, rec.driverName || null, rec.filename || null, rec.kind || null,
+     rec.periodFrom || null, rec.periodTo || null, rec.parsed ? JSON.stringify(rec.parsed) : null, rec.rawB64 || null]
+  );
+  return r.rows[0];
+}
+async function getTachoFiles(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const r = await pool.query(`SELECT id, company_id, imei, driver_name, filename, kind, period_from, period_to, parsed, uploaded_at FROM tacho_files ${where} ORDER BY uploaded_at DESC`, params);
+  return r.rows;
+}
+async function getTachoFile(id) { const r = await pool.query('SELECT * FROM tacho_files WHERE id = $1', [id]); return r.rows[0] || null; }
+async function deleteTachoFile(id) { await pool.query('DELETE FROM tacho_files WHERE id = $1', [id]); }
+
+// ─── e-Transport ───
+async function getEtransports(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const r = await pool.query(`SELECT * FROM etransport ${where} ORDER BY created_at DESC`, params);
+  return r.rows;
+}
+async function createEtransport(d, companyId) {
+  const r = await pool.query(
+    `INSERT INTO etransport (company_id, uit, imei, plate, start_at, end_at, status, note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [companyId || null, d.uit, d.imei || null, d.plate || null, d.start_at || null, d.end_at || null, d.status || 'activ', d.note || null]
+  );
+  return r.rows[0];
+}
+async function updateEtransport(id, d) {
+  await pool.query(`UPDATE etransport SET status=COALESCE($2,status), end_at=COALESCE($3,end_at), last_sent_at=COALESCE($4,last_sent_at) WHERE id=$1`,
+    [id, d.status || null, d.end_at || null, d.last_sent_at || null]);
+}
+async function deleteEtransport(id) { await pool.query('DELETE FROM etransport WHERE id = $1', [id]); }
+async function getActiveEtransports() {
+  const r = await pool.query("SELECT * FROM etransport WHERE status = 'activ' AND (end_at IS NULL OR end_at > NOW())");
+  return r.rows;
+}
+
+// company_id al unei entități (pentru verificarea proprietății la update/delete pe id)
+async function getRowCompany(table, id) {
+  const allow = { device_groups: 1, drivers: 1, geofences: 1, alerts: 1, maintenance: 1, etransport: 1, report_schedules: 1 };
+  if (!allow[table]) return undefined;
+  const r = await pool.query(`SELECT company_id FROM ${table} WHERE id = $1`, [parseInt(id)]);
+  return r.rows[0] ? r.rows[0].company_id : undefined;
+}
+// Device-uri neasignate (vizibile doar super-adminului) + pentru asignare
+async function getUnassignedDevices() {
+  const r = await pool.query('SELECT imei, name, plate, last_seen FROM devices WHERE company_id IS NULL ORDER BY last_seen DESC NULLS LAST');
+  return r.rows;
 }
 
 async function upsertDevice(imei) {
@@ -424,6 +651,13 @@ async function getDeviceFull(imei) {
 async function insertPositions(imei, records) {
   if (records.length === 0) return;
 
+  // company_id moștenit de la vehicul (izolare per-tenant + retenție per-companie)
+  let companyId = null;
+  try {
+    const dr = await pool.query('SELECT company_id FROM devices WHERE imei = $1', [imei]);
+    companyId = dr.rows[0] ? dr.rows[0].company_id : null;
+  } catch (e) {}
+
   const values = [];
   const params = [];
   let paramIndex = 1;
@@ -434,7 +668,7 @@ async function insertPositions(imei, records) {
     // Ignoră recordurile fără fix GPS valid
     if (gps.latitude === 0 && gps.longitude === 0) continue;
 
-    values.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9})`);
+    values.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10})`);
     params.push(
       imei,
       record.timestamp,
@@ -445,15 +679,16 @@ async function insertPositions(imei, records) {
       gps.speed,
       gps.satellites,
       record.priority,
-      JSON.stringify(record.io)
+      JSON.stringify(record.io),
+      companyId
     );
-    paramIndex += 10;
+    paramIndex += 11;
   }
 
   if (values.length === 0) return;
 
   const query = `
-    INSERT INTO positions (imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data)
+    INSERT INTO positions (imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, company_id)
     VALUES ${values.join(', ')}
   `;
 
@@ -510,25 +745,27 @@ async function getUserByUsername(username) {
 
 async function createUser(username, passwordHash, role = 'viewer', extra = {}) {
   const result = await pool.query(
-    'INSERT INTO users (username, password_hash, role, full_name, email, phone) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username, role, full_name, email, phone, active, created_at',
-    [username, passwordHash, role, extra.full_name || null, extra.email || null, extra.phone || null]
+    'INSERT INTO users (username, password_hash, role, full_name, email, phone, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username, role, full_name, email, phone, active, company_id, created_at',
+    [username, passwordHash, role, extra.full_name || null, extra.email || null, extra.phone || null, extra.company_id || null]
   );
   return result.rows[0];
 }
 
-async function getUsers() {
+async function getUsers(companyId) {
+  const where = companyId != null ? 'WHERE u.company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
-    SELECT u.id, u.username, u.role, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at,
+    SELECT u.id, u.username, u.role, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id,
       (SELECT COUNT(*) FROM user_device_access WHERE user_id = u.id) AS device_count,
       (SELECT COUNT(*) FROM user_group_access WHERE user_id = u.id) AS group_count
-    FROM users u ORDER BY u.created_at
-  `);
+    FROM users u ${where} ORDER BY u.created_at
+  `, params);
   return result.rows;
 }
 
 async function getUserById(id) {
   const result = await pool.query(
-    'SELECT id, username, role, full_name, email, phone, active, last_login, created_at FROM users WHERE id = $1',
+    'SELECT id, username, role, full_name, email, phone, active, last_login, company_id, created_at FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0] || null;
@@ -556,12 +793,16 @@ async function setUserLastLogin(id) {
 
 // Lista IMEI-urilor la care userul are acces: direct + prin grupele atribuite
 async function computeAllowedImeis(userId) {
+  // doar device-urile din ACEEAȘI companie cu userul (defense-in-depth pe izolare)
   const result = await pool.query(`
-    SELECT imei FROM user_device_access WHERE user_id = $1
+    WITH me AS (SELECT company_id FROM users WHERE id = $1)
+    SELECT uda.imei FROM user_device_access uda
+      JOIN devices d ON d.imei = uda.imei
+      WHERE uda.user_id = $1 AND d.company_id IS NOT DISTINCT FROM (SELECT company_id FROM me)
     UNION
     SELECT d.imei FROM devices d
       JOIN user_group_access uga ON uga.group_id = d.group_id
-      WHERE uga.user_id = $1
+      WHERE uga.user_id = $1 AND d.company_id IS NOT DISTINCT FROM (SELECT company_id FROM me)
   `, [userId]);
   return result.rows.map(r => r.imei);
 }
@@ -598,18 +839,21 @@ async function setUserAccess(userId, devices, groups) {
 async function logAudit(entry) {
   try {
     await pool.query(
-      'INSERT INTO audit_log (user_id, username, action, entity, entity_id, details, ip) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      'INSERT INTO audit_log (user_id, username, action, entity, entity_id, details, ip, company_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
       [entry.userId || null, entry.username || null, entry.action,
        entry.entity || null, entry.entityId != null ? String(entry.entityId) : null,
-       entry.details ? JSON.stringify(entry.details) : null, entry.ip || null]
+       entry.details ? JSON.stringify(entry.details) : null, entry.ip || null,
+       entry.companyId != null ? entry.companyId : null]
     );
   } catch (e) { console.warn('[AUDIT]', e.message); }
 }
 
-async function getAuditLog(limit = 100, offset = 0) {
+async function getAuditLog(limit = 100, offset = 0, companyId) {
+  const where = companyId != null ? 'WHERE company_id = $3' : '';
+  const params = companyId != null ? [limit, offset, companyId] : [limit, offset];
   const result = await pool.query(
-    'SELECT * FROM audit_log ORDER BY created_at DESC LIMIT $1 OFFSET $2',
-    [limit, offset]
+    `SELECT * FROM audit_log ${where} ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+    params
   );
   return result.rows;
 }
@@ -624,19 +868,26 @@ async function createApiKey(userId, name, keyHash, prefix) {
   return result.rows[0];
 }
 
-async function getApiKeys() {
+async function getApiKeys(companyId) {
+  const where = companyId != null ? 'WHERE u.company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
     SELECT k.id, k.name, k.prefix, k.last_used, k.revoked, k.created_at,
-           k.user_id, u.username, u.role
+           k.user_id, u.username, u.role, u.company_id
     FROM api_keys k JOIN users u ON u.id = k.user_id
+    ${where}
     ORDER BY k.created_at DESC
-  `);
+  `, params);
   return result.rows;
+}
+async function getApiKeyCompany(id) {
+  const r = await pool.query('SELECT u.company_id FROM api_keys k JOIN users u ON u.id = k.user_id WHERE k.id = $1', [id]);
+  return r.rows[0] ? r.rows[0].company_id : undefined;
 }
 
 async function getUserByApiKey(keyHash) {
   const result = await pool.query(`
-    SELECT u.id, u.username, u.role, u.active, k.id AS key_id
+    SELECT u.id, u.username, u.role, u.active, u.company_id, k.id AS key_id
     FROM api_keys k JOIN users u ON u.id = k.user_id
     WHERE k.key_hash = $1 AND k.revoked = false
   `, [keyHash]);
@@ -692,7 +943,14 @@ async function unreadNotifications(userId, imeis) {
   const r = await pool.query(`SELECT COUNT(*)::int AS n FROM notifications WHERE acknowledged = false AND ${w.clause}`, w.params);
   return r.rows[0].n;
 }
-async function ackNotification(id) { await pool.query('UPDATE notifications SET acknowledged = true WHERE id = $1', [id]); }
+async function ackNotification(id, userId, imeis) {
+  const w = _notifWhere(userId, imeis);
+  const r = await pool.query(
+    `UPDATE notifications SET acknowledged = true WHERE ${w.clause} AND id = $${w.params.length + 1}`,
+    [...w.params, id]
+  );
+  return (r.affectedRows || r.rowCount || 0) > 0;
+}
 async function ackAllNotifications(userId, imeis) {
   const w = _notifWhere(userId, imeis);
   await pool.query(`UPDATE notifications SET acknowledged = true WHERE acknowledged = false AND ${w.clause}`, w.params);
@@ -731,13 +989,16 @@ async function deletePushSubscription(endpoint) {
 
 // Utilizatori care au acces la un vehicul (pentru livrarea per-user a evenimentelor)
 async function getUsersForImei(imei) {
+  // doar utilizatorii din compania device-ului (izolare la livrarea evenimentelor)
   const r = await pool.query(`
     SELECT DISTINCT u.id, u.username, u.email, u.role FROM users u
-    WHERE u.active IS NOT FALSE AND (
-      u.role IN ('admin','manager')
-      OR EXISTS (SELECT 1 FROM user_device_access uda WHERE uda.user_id = u.id AND uda.imei = $1)
-      OR EXISTS (SELECT 1 FROM user_group_access uga JOIN devices d ON d.group_id = uga.group_id WHERE uga.user_id = u.id AND d.imei = $1)
-    )`, [imei]);
+    WHERE u.active IS NOT FALSE
+      AND u.company_id = (SELECT company_id FROM devices WHERE imei = $1)
+      AND (
+        u.role IN ('company_admin','admin','manager')
+        OR EXISTS (SELECT 1 FROM user_device_access uda WHERE uda.user_id = u.id AND uda.imei = $1)
+        OR EXISTS (SELECT 1 FROM user_group_access uga JOIN devices d ON d.group_id = uga.group_id WHERE uga.user_id = u.id AND d.imei = $1)
+      )`, [imei]);
   return r.rows;
 }
 async function getAllActiveUsers() {
@@ -782,15 +1043,17 @@ async function getUserCount() {
 
 // ─── Funcții soferi ───
 
-async function getDrivers() {
-  const result = await pool.query('SELECT * FROM drivers ORDER BY name');
+async function getDrivers(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const result = await pool.query(`SELECT * FROM drivers ${where} ORDER BY name`, params);
   return result.rows;
 }
 
-async function createDriver(data) {
+async function createDriver(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO drivers (name, phone, email, license_number, license_expiry) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [data.name, data.phone, data.email, data.license_number, data.license_expiry]
+    'INSERT INTO drivers (name, phone, email, license_number, license_expiry, company_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [data.name, data.phone, data.email, data.license_number, data.license_expiry, companyId || null]
   );
   return result.rows[0];
 }
@@ -809,15 +1072,17 @@ async function deleteDriver(id) {
 
 // ─── Funcții grupe ───
 
-async function getGroups() {
-  const result = await pool.query('SELECT * FROM device_groups ORDER BY name');
+async function getGroups(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const result = await pool.query(`SELECT * FROM device_groups ${where} ORDER BY name`, params);
   return result.rows;
 }
 
-async function createGroup(data) {
+async function createGroup(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO device_groups (name, description, color) VALUES ($1, $2, $3) RETURNING *',
-    [data.name, data.description, data.color]
+    'INSERT INTO device_groups (name, description, color, company_id) VALUES ($1, $2, $3, $4) RETURNING *',
+    [data.name, data.description, data.color, companyId || null]
   );
   return result.rows[0];
 }
@@ -836,15 +1101,17 @@ async function deleteGroup(id) {
 
 // ─── Funcții geofences ───
 
-async function getGeofences() {
-  const result = await pool.query('SELECT * FROM geofences ORDER BY name');
+async function getGeofences(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const result = await pool.query(`SELECT * FROM geofences ${where} ORDER BY name`, params);
   return result.rows;
 }
 
-async function createGeofence(data) {
+async function createGeofence(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO geofences (name, type, coordinates, color) VALUES ($1, $2, $3, $4) RETURNING *',
-    [data.name, data.type, JSON.stringify(data.coordinates), data.color]
+    'INSERT INTO geofences (name, type, coordinates, color, company_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    [data.name, data.type, JSON.stringify(data.coordinates), data.color, companyId || null]
   );
   return result.rows[0];
 }
@@ -862,15 +1129,17 @@ async function deleteGeofence(id) {
 
 // ─── Funcții alerte ───
 
-async function getAlerts() {
-  const result = await pool.query('SELECT * FROM alerts ORDER BY created_at DESC');
+async function getAlerts(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const result = await pool.query(`SELECT * FROM alerts ${where} ORDER BY created_at DESC`, params);
   return result.rows;
 }
 
-async function createAlert(data) {
+async function createAlert(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO alerts (name, type, imei, condition, enabled) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [data.name, data.type, data.imei, JSON.stringify(data.condition), data.enabled !== false]
+    'INSERT INTO alerts (name, type, imei, condition, enabled, company_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [data.name, data.type, data.imei, JSON.stringify(data.condition), data.enabled !== false, companyId || null]
   );
   return result.rows[0];
 }
@@ -905,6 +1174,17 @@ async function getTrips(imei, from, to) {
   return result.rows;
 }
 
+// Sumar curse pe mai multe vehicule (pentru contextul AI)
+async function getTripsSummaryForImeis(imeis, from, to) {
+  if (!imeis || !imeis.length) return [];
+  const r = await pool.query(
+    `SELECT imei, COUNT(*)::int AS trips, COALESCE(SUM(distance_km),0)::numeric(10,1) AS km, COALESCE(MAX(max_speed),0) AS max_speed
+     FROM trips WHERE imei = ANY($1) AND start_time >= $2 AND start_time <= $3 GROUP BY imei`,
+    [imeis, from, to]
+  );
+  return r.rows;
+}
+
 async function createTrip(data) {
   const result = await pool.query(
     'INSERT INTO trips (imei, start_time, start_lat, start_lng) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -922,22 +1202,20 @@ async function endTrip(id, data) {
 
 // ─── Funcții mentenanta ───
 
-async function getMaintenance(imei) {
-  let query = 'SELECT * FROM maintenance';
+async function getMaintenance(imei, companyId) {
+  let query = 'SELECT * FROM maintenance WHERE 1=1';
   const params = [];
-  if (imei) {
-    query += ' WHERE imei = $1';
-    params.push(imei);
-  }
+  if (imei) { params.push(imei); query += ` AND imei = $${params.length}`; }
+  if (companyId != null) { params.push(companyId); query += ` AND company_id = $${params.length}`; }
   query += ' ORDER BY CASE WHEN status = \'pending\' THEN 0 WHEN status = \'overdue\' THEN 1 ELSE 2 END, due_date';
   const result = await pool.query(query, params);
   return result.rows;
 }
 
-async function createMaintenance(data) {
+async function createMaintenance(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO maintenance (imei, type, description, due_date, due_km, cost, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-    [data.imei, data.type, data.description, data.due_date, data.due_km, data.cost, data.status || 'pending']
+    'INSERT INTO maintenance (imei, type, description, due_date, due_km, cost, status, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+    [data.imei, data.type, data.description, data.due_date, data.due_km, data.cost, data.status || 'pending', companyId || null]
   );
   return result.rows[0];
 }
@@ -953,9 +1231,59 @@ async function deleteMaintenance(id) {
   await pool.query('DELETE FROM maintenance WHERE id = $1', [id]);
 }
 
+// ─── Rapoarte programate ───
+async function createReportSchedule(d) {
+  const r = await pool.query(
+    `INSERT INTO report_schedules (company_id, user_id, name, report_type, imei, period, frequency, hour, format, recipients, opts, enabled, next_run)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+    [d.company_id != null ? d.company_id : null, d.user_id != null ? d.user_id : null, d.name || null, d.report_type, d.imei || null,
+     d.period || 'yesterday', d.frequency || 'daily', d.hour != null ? d.hour : 6, d.format || 'pdf',
+     d.recipients || null, JSON.stringify(d.opts || {}), d.enabled !== false, d.next_run || null]
+  );
+  return r.rows[0];
+}
+async function getReportSchedules(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const r = await pool.query(`SELECT * FROM report_schedules ${where} ORDER BY created_at DESC`, params);
+  return r.rows;
+}
+async function getReportScheduleById(id) {
+  const r = await pool.query('SELECT * FROM report_schedules WHERE id = $1', [parseInt(id)]);
+  return r.rows[0] || null;
+}
+async function updateReportSchedule(id, d) {
+  await pool.query(
+    `UPDATE report_schedules SET name=COALESCE($2,name), report_type=COALESCE($3,report_type), imei=$4,
+       period=COALESCE($5,period), frequency=COALESCE($6,frequency), hour=COALESCE($7,hour),
+       format=COALESCE($8,format), recipients=$9, opts=COALESCE($10,opts), enabled=COALESCE($11,enabled), next_run=COALESCE($12,next_run)
+     WHERE id=$1`,
+    [parseInt(id), d.name != null ? d.name : null, d.report_type != null ? d.report_type : null, d.imei || null,
+     d.period != null ? d.period : null, d.frequency != null ? d.frequency : null, d.hour != null ? d.hour : null,
+     d.format != null ? d.format : null, d.recipients || null, d.opts != null ? JSON.stringify(d.opts) : null,
+     d.enabled != null ? d.enabled : null, d.next_run != null ? d.next_run : null]
+  );
+}
+async function deleteReportSchedule(id) {
+  await pool.query('DELETE FROM report_schedules WHERE id = $1', [parseInt(id)]);
+}
+async function getDueReportSchedules(nowIso) {
+  const r = await pool.query('SELECT * FROM report_schedules WHERE enabled = true AND next_run IS NOT NULL AND next_run <= $1', [nowIso]);
+  return r.rows;
+}
+async function setScheduleRun(id, lastRunIso, nextRunIso) {
+  await pool.query('UPDATE report_schedules SET last_run = $2, next_run = $3 WHERE id = $1', [parseInt(id), lastRunIso, nextRunIso]);
+}
+
 module.exports = {
   pool,
   initDb,
+  ensureTenancy,
+  createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
+  getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
+  getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
+  createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
+  getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   upsertDevice,
   updateDeviceInfo,
   assignDevice,
@@ -984,6 +1312,7 @@ module.exports = {
   getAuditLog,
   createApiKey,
   getApiKeys,
+  getApiKeyCompany,
   getUserByApiKey,
   revokeApiKey,
   cleanupExpiredSessions,
@@ -1008,6 +1337,6 @@ module.exports = {
   getGroups, createGroup, updateGroup, deleteGroup,
   getGeofences, createGeofence, updateGeofence, deleteGeofence,
   getAlerts, createAlert, deleteAlert, getAlertHistory, insertAlertEvent,
-  getTrips, createTrip, endTrip,
+  getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance
 };

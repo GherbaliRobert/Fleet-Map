@@ -12,6 +12,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const { parseAvlPacket, convertCanValue, expandCanFlags } = require('./codec8e');
+const reportExport = require('./report_export');
+const reportSchedules = require('./report_schedules');
 
 // Cache pentru calibrare sonda combustibil per vehicul (voltage -> liters)
 const tankCalibrationCache = new Map(); // imei -> calibration array
@@ -119,6 +121,11 @@ function computeFuelFromSensors(io, sensors) {
 const db = require('./db');
 const reports = require('./reports');
 const channels = require('./channels');
+const ai = require('./ai');
+const demoSim = require('./demo-sim');
+const tacho = require('./tacho');
+const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
+let demoCompanyId = null;
 const webpush = require('web-push');
 const https = require('https');
 const httpMod = require('http');
@@ -324,20 +331,20 @@ const tcpServer = net.createServer((socket) => {
         console.log(`[TCP] Dispozitiv identificat: IMEI ${imei} de la ${clientAddr}`);
         addDebugEntry({ event: 'imei', imei, address: clientAddr });
 
-        // Înregistrează dispozitivul în DB
-        await db.upsertDevice(imei);
-
         // Salvează conexiunea activă
         activeConnections.set(imei, {
           address: clientAddr,
           connectedAt: new Date()
         });
 
+        // Răspunde cu 0x01 = accept IMEDIAT (înainte de orice operație DB)
+        socket.write(Buffer.from([0x01]));
+
+        // Înregistrează dispozitivul în DB — asincron, nu blochează handshake-ul
+        db.upsertDevice(imei).catch(e => console.error(`[TCP] upsertDevice ${imei}: ${e.message}`));
+
         // Init mirror connection to Traccar/OpenRemote if enabled
         try { ensureMirrorConnection(imei); } catch(_) {}
-
-        // Răspunde cu 0x01 = accept
-        socket.write(Buffer.from([0x01]));
         return;
       }
 
@@ -364,6 +371,10 @@ const tcpServer = net.createServer((socket) => {
         socket.write(Buffer.alloc(4, 0)); // răspunde cu 0
         return;
       }
+
+      // ACK IMEDIAT cu numărul de recorduri acceptate — esențial pentru Teltonika.
+      // Se trimite ÎNAINTE de scrierea în DB, ca dispozitivul să nu retrimită / piardă date.
+      { const _ack = Buffer.alloc(4); _ack.writeUInt32BE(parsed.numberOfRecords); socket.write(_ack); }
 
       console.log(`[TCP] ${imei}: ${parsed.numberOfRecords} recorduri primite`);
       addDebugEntry({
@@ -446,10 +457,7 @@ const tcpServer = net.createServer((socket) => {
         trackTareCandidate(imei, lastRecord.io || {}).catch(() => {});
       }
 
-      // Răspunde cu numărul de recorduri acceptate (4 bytes)
-      const response = Buffer.alloc(4);
-      response.writeUInt32BE(parsed.numberOfRecords);
-      socket.write(response);
+      // (ACK-ul a fost deja trimis imediat după parsare, mai sus)
     } catch (err) {
       console.error(`[TCP] Eroare procesare de la ${imei || clientAddr}: ${err.message}`);
     }
@@ -486,7 +494,7 @@ const tcpServer = net.createServer((socket) => {
 // ══════════════════════════════════════════════
 const app = express();
 app.set('trust proxy', 1); // necesar pentru cookie secure în spatele proxy-ului (Railway)
-app.use(express.json());
+app.use(express.json({ limit: '6mb' })); // limită mărită pt. upload fișiere tahograf .DDD (base64)
 
 // ─── Session store pe PGlite embedded (înlocuiește connect-pg-simple) ───
 class PgliteSessionStore extends session.Store {
@@ -565,6 +573,7 @@ const sessionMiddleware = session({
 });
 app.use(sessionMiddleware);
 app.use(apiKeyAuth); // permite și autentificarea programatică prin cheie API
+app.use(refreshAuth); // re-sincronizează rol/companie din DB (sesiuni vechi cu rol învechit)
 
 // CORS pentru API (activează prin API_CORS_ORIGIN, ex: "*" sau "https://site.ro")
 const API_CORS_ORIGIN = process.env.API_CORS_ORIGIN;
@@ -580,19 +589,30 @@ if (API_CORS_ORIGIN) {
   });
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
+// ─── Site public (landing) la "/" · aplicația la "/app" ───
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
+app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ─── Model roluri & permisiuni (RBAC) ───
+// superadmin = proprietar platformă (vede/administrează TOATE companiile)
+// company_admin/admin = administrator al UNEI companii (acțiunile sale sunt scopate pe company_id)
 const ROLE_PERMISSIONS = {
-  admin:      { manageUsers: true,  manageFleet: true,  sendCommands: true,  viewReports: true,  ackAlerts: true,  viewAll: true,  viewAudit: true  },
+  superadmin:    { manageUsers: true,  manageFleet: true,  sendCommands: true,  viewReports: true,  ackAlerts: true,  viewAll: true,  viewAudit: true,  manageCompanies: true },
+  company_admin: { manageUsers: true,  manageFleet: true,  sendCommands: true,  viewReports: true,  ackAlerts: true,  viewAll: true,  viewAudit: true  },
+  admin:         { manageUsers: true,  manageFleet: true,  sendCommands: true,  viewReports: true,  ackAlerts: true,  viewAll: true,  viewAudit: true  },
   manager:    { manageUsers: false, manageFleet: true,  sendCommands: true,  viewReports: true,  ackAlerts: true,  viewAll: true,  viewAudit: false },
   dispatcher: { manageUsers: false, manageFleet: false, sendCommands: false, viewReports: true,  ackAlerts: true,  viewAll: false, viewAudit: false },
   client:     { manageUsers: false, manageFleet: false, sendCommands: false, viewReports: true,  ackAlerts: false, viewAll: false, viewAudit: false },
   viewer:     { manageUsers: false, manageFleet: false, sendCommands: false, viewReports: true,  ackAlerts: false, viewAll: false, viewAudit: false }
 };
 const VALID_ROLES = Object.keys(ROLE_PERMISSIONS);
+// roluri pe care un company_admin le poate atribui (NU poate crea superadmini/alți company_admin peste el)
+const COMPANY_ASSIGNABLE_ROLES = ['company_admin', 'manager', 'dispatcher', 'client', 'viewer'];
 function permsFor(role) { return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.viewer; }
 function hasPerm(role, perm) { return !!permsFor(role)[perm]; }
+function isSuper(role) { return role === 'superadmin'; }
 
 function clientIp(req) {
   const xff = req.headers && req.headers['x-forwarded-for'];
@@ -600,38 +620,79 @@ function clientIp(req) {
   return req.socket ? req.socket.remoteAddress : null;
 }
 
-// Identitatea curentă: cheie API (req.apiAuth) SAU sesiune cookie (req.session)
+// Identitatea curentă: cheie API (req.apiAuth) SAU sesiune cookie (req.session).
+// IMPORTANT: rolul + compania se iau din req._freshAuth (DB, prin refreshAuth) dacă există,
+// ca sesiunile vechi (rol învechit după schimbarea rolului) să NU mai dea scope greșit.
 function getAuth(req) {
-  if (req.apiAuth) return req.apiAuth;
+  const f = req._freshAuth;
+  if (req.apiAuth) return f ? Object.assign({}, req.apiAuth, { role: f.role, companyId: f.companyId }) : req.apiAuth;
   if (req.session && req.session.userId) {
-    return { userId: req.session.userId, username: req.session.username, role: req.session.role, viaApiKey: false };
+    return {
+      userId: req.session.userId, username: req.session.username,
+      role: f ? f.role : req.session.role,
+      companyId: f ? f.companyId : req.session.companyId,
+      viaApiKey: false
+    };
   }
   return null;
+}
+
+// Re-sincronizează rolul + compania din DB (cache 30s) → imun la sesiuni cu rol învechit
+const roleCache = new Map(); // userId -> { ts, role, companyId }
+function invalidateRoleCache(userId) { if (userId == null) roleCache.clear(); else roleCache.delete(userId); }
+async function refreshAuth(req, res, next) {
+  try {
+    if (!req.path || req.path.indexOf('/api') !== 0) return next();
+    const uid = req.apiAuth ? req.apiAuth.userId : (req.session && req.session.userId);
+    if (uid) {
+      let c = roleCache.get(uid);
+      if (!c || Date.now() - c.ts > 30000) {
+        const u = await db.getUserById(uid);
+        if (u) { c = { ts: Date.now(), role: u.role, companyId: u.company_id }; roleCache.set(uid, c); }
+      }
+      if (c) req._freshAuth = { role: c.role, companyId: c.companyId };
+    }
+  } catch (e) { /* fallback la sesiune */ }
+  next();
+}
+
+// Companie curentă a request-ului (din sesiune/cheie API, cu fallback la DB pentru sesiuni vechi)
+async function resolveCompanyId(a) {
+  if (!a || !a.userId) return null;
+  if (a.companyId !== undefined && a.companyId !== null) return a.companyId;
+  if (isSuper(a.role)) return null; // platformă
+  try { const u = await db.getUserById(a.userId); return u ? u.company_id : null; } catch (e) { return null; }
 }
 
 function auditReq(req, action, entity, entityId, details) {
   const a = getAuth(req) || {};
   db.logAudit({
     userId: a.userId, username: a.username,
-    action, entity, entityId, details, ip: clientIp(req)
+    action, entity, entityId, details, ip: clientIp(req),
+    companyId: (req.companyId != null ? req.companyId : a.companyId)
   });
 }
 
 // Cache acces (IMEI-uri permise) per utilizator — TTL scurt, ca să nu lovim DB la fiecare poll
 const accessCache = new Map(); // userId -> { ts, imeis: Set|null }
 const ACCESS_TTL = 15000;
-async function getAllowedImeiSet(userId, role) {
-  if (hasPerm(role, 'viewAll')) return null; // null = acces la toate vehiculele
+async function getAllowedImeiSet(userId, role, companyId) {
+  if (isSuper(role)) return null; // super-admin: toate companiile
   const cached = accessCache.get(userId);
   if (cached && (Date.now() - cached.ts) < ACCESS_TTL) return cached.imeis;
-  const list = await db.computeAllowedImeis(userId);
-  const set = new Set(list);
+  let set;
+  if (hasPerm(role, 'viewAll')) {
+    // viewAll = toate vehiculele COMPANIEI (nu globale)
+    set = new Set(companyId != null ? await db.getCompanyImeis(companyId) : []);
+  } else {
+    set = new Set(await db.computeAllowedImeis(userId));
+  }
   accessCache.set(userId, { ts: Date.now(), imeis: set });
   return set;
 }
 function invalidateAccessCache(userId) {
-  if (userId === undefined || userId === null) accessCache.clear();
-  else accessCache.delete(userId);
+  if (userId === undefined || userId === null) { accessCache.clear(); invalidateRoleCache(); }
+  else { accessCache.delete(userId); invalidateRoleCache(userId); }
 }
 
 // ─── Autentificare prin cheie API (Authorization: Bearer <key> sau X-API-Key: <key>) ───
@@ -645,7 +706,7 @@ async function apiKeyAuth(req, res, next) {
     if (key) {
       const user = await db.getUserByApiKey(hashApiKey(key));
       if (user && user.active !== false) {
-        req.apiAuth = { userId: user.id, username: user.username, role: user.role, viaApiKey: true };
+        req.apiAuth = { userId: user.id, username: user.username, role: user.role, companyId: user.company_id, viaApiKey: true };
       }
     }
   } catch (e) { /* cheie invalidă → tratat ca neautentificat */ }
@@ -668,12 +729,25 @@ function requirePerm(perm) {
 }
 const requireAdmin = requirePerm('manageUsers');
 const requireFleet = requirePerm('manageFleet');
+const requireSuperadmin = requirePerm('manageCompanies');
+
+// Atașează compania curentă (req.companyId) — pentru endpoint-urile care nu folosesc withScope
+async function withCompany(req, res, next) {
+  try {
+    const a = req.auth || getAuth(req) || {};
+    req.companyId = await resolveCompanyId(a);
+    req.isSuper = isSuper(a.role);
+    next();
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}
 
 // Calculează IMEI-urile permise pe request (req.allowedImeis == null => acces la toate)
 async function withScope(req, res, next) {
   try {
     const a = req.auth || getAuth(req) || {};
-    req.allowedImeis = await getAllowedImeiSet(a.userId, a.role);
+    req.companyId = await resolveCompanyId(a);
+    req.isSuper = isSuper(a.role);
+    req.allowedImeis = await getAllowedImeiSet(a.userId, a.role, req.companyId);
     next();
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -681,6 +755,19 @@ async function withScope(req, res, next) {
 }
 function canAccessImei(req, imei) {
   return req.allowedImeis == null || req.allowedImeis.has(imei);
+}
+
+// Verifică dacă un utilizator țintă aparține companiei celui care face cererea (super-adminul trece peste tot)
+async function sameCompanyUser(req, targetId) {
+  if (req.isSuper) return true;
+  const u = await db.getUserById(targetId);
+  return !!(u && u.company_id != null && u.company_id === req.companyId);
+}
+// Verifică proprietatea pe o entitate (driver/group/geofence/alert/maintenance) pentru update/delete
+async function ownsRow(req, table, id) {
+  if (req.isSuper) return true;
+  const cid = await db.getRowCompany(table, id);
+  return cid != null && cid === req.companyId;
 }
 
 // Rezolvă vehiculele țintă pentru rapoarte (respectă accesul). null => 403.
@@ -744,11 +831,12 @@ app.post('/api/login', async (req, res) => {
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.role = user.role;
+    req.session.companyId = user.company_id != null ? user.company_id : null;
 
     db.setUserLastLogin(user.id).catch(() => {});
     db.logAudit({ userId: user.id, username: user.username, action: 'login', entity: 'session', ip });
 
-    res.json({ username: user.username, role: user.role, permissions: permsFor(user.role) });
+    res.json({ username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -765,25 +853,47 @@ app.post('/api/logout', (req, res) => {
 });
 
 // Utilizatorul curent (merge atât cu sesiune cât și cu cheie API)
-app.get('/api/me', (req, res) => {
+app.get('/api/me', async (req, res) => {
   const a = getAuth(req);
-  if (a) {
-    return res.json({ username: a.username, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey });
-  }
-  res.status(401).json({ error: 'Neautorizat' });
+  if (!a) return res.status(401).json({ error: 'Neautorizat' });
+  let company = null;
+  try {
+    const cid = await resolveCompanyId(a);
+    if (cid != null) { const c = await db.getCompanyById(cid); if (c) company = { id: c.id, name: c.name, is_demo: !!c.is_demo }; }
+  } catch (e) { /* ignore */ }
+  res.json({
+    username: a.username, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
+    isSuper: isSuper(a.role), companyId: company ? company.id : null, company
+  });
+});
+
+// Demo: autentificare rapidă în contul demo (read-only, companie izolată) — pentru butonul de pe landing
+app.post('/api/demo/login', async (req, res) => {
+  try {
+    if (process.env.DEMO_DISABLED === 'true') return res.status(404).json({ error: 'Demo dezactivat' });
+    const u = await db.getUserByUsername('demo');
+    if (!u) return res.status(404).json({ error: 'Demo indisponibil' });
+    req.session.userId = u.id;
+    req.session.username = u.username;
+    req.session.role = u.role;
+    req.session.companyId = u.company_id != null ? u.company_id : null;
+    res.json({ ok: true, username: u.username, role: u.role });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── Managementul utilizatorilor (doar admin) ───
 
-app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
+app.get('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
-    res.json(await db.getUsers());
+    // company_admin vede doar userii companiei lui; super-admin vede tot (sau filtrat după ?company)
+    const scope = req.isSuper ? (req.query.company ? parseInt(req.query.company) : null) : req.companyId;
+    res.json(await db.getUsers(scope));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
+app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const { username, password, role, full_name, email, phone } = req.body;
     if (!username || !password) {
@@ -795,7 +905,15 @@ app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
     if (password.length < 4) {
       return res.status(400).json({ error: 'Parola trebuie să aibă minim 4 caractere' });
     }
-    const finalRole = VALID_ROLES.includes(role) ? role : 'viewer';
+    // company_admin poate atribui doar roluri din companie (nu superadmin); super-admin poate orice
+    const allowed = req.isSuper ? VALID_ROLES : COMPANY_ASSIGNABLE_ROLES;
+    const finalRole = allowed.includes(role) ? role : 'viewer';
+    // compania noului user: a adminului; super-adminul poate specifica ?company / body.company_id
+    let companyId = req.companyId;
+    if (req.isSuper) companyId = (req.body.company_id != null ? parseInt(req.body.company_id) : null);
+    if (!isSuper(finalRole) && companyId == null) {
+      return res.status(400).json({ error: 'Selectează compania pentru utilizator' });
+    }
 
     const existing = await db.getUserByUsername(username);
     if (existing) {
@@ -803,23 +921,26 @@ app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await db.createUser(username, hash, finalRole, { full_name, email, phone });
-    auditReq(req, 'create', 'user', user.id, { username, role: finalRole });
+    const user = await db.createUser(username, hash, finalRole, { full_name, email, phone, company_id: companyId });
+    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, company_id: companyId });
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
+app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     const { role, full_name, email, phone, active } = req.body;
-    if (role !== undefined && role !== null && !VALID_ROLES.includes(role)) {
+    const allowed = req.isSuper ? VALID_ROLES : COMPANY_ASSIGNABLE_ROLES;
+    if (role !== undefined && role !== null && !allowed.includes(role)) {
       return res.status(400).json({ error: 'Rol invalid' });
     }
-    // Protecție: nu te poți dezactiva sau retrograda pe tine (ca să nu rămână platforma fără admin)
-    if (id === req.auth.userId && (active === false || (role && role !== 'admin'))) {
+    // Protecție: nu te poți dezactiva sau retrograda pe tine dintr-un rol de administrare
+    const adminRoles = ['superadmin', 'company_admin', 'admin'];
+    if (id === req.auth.userId && (active === false || (role && !adminRoles.includes(role)))) {
       return res.status(400).json({ error: 'Nu te poți dezactiva sau retrograda pe tine' });
     }
     await db.updateUserProfile(id, { role, full_name, email, phone, active });
@@ -831,9 +952,10 @@ app.put('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/users/:id/password', requireAuth, requireAdmin, async (req, res) => {
+app.post('/api/users/:id/password', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     const { password } = req.body;
     if (!password || password.length < 4) {
       return res.status(400).json({ error: 'Parola trebuie să aibă minim 4 caractere' });
@@ -847,17 +969,20 @@ app.post('/api/users/:id/password', requireAuth, requireAdmin, async (req, res) 
   }
 });
 
-app.get('/api/users/:id/access', requireAuth, requireAdmin, async (req, res) => {
+app.get('/api/users/:id/access', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
-    res.json(await db.getUserAccess(parseInt(req.params.id)));
+    const id = parseInt(req.params.id);
+    if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
+    res.json(await db.getUserAccess(id));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/users/:id/access', requireAuth, requireAdmin, async (req, res) => {
+app.put('/api/users/:id/access', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     const { devices, groups } = req.body;
     await db.setUserAccess(id, devices, groups);
     invalidateAccessCache(id);
@@ -868,12 +993,13 @@ app.put('/api/users/:id/access', requireAuth, requireAdmin, async (req, res) => 
   }
 });
 
-app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
+app.delete('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (id === req.auth.userId) {
       return res.status(400).json({ error: 'Nu te poți șterge pe tine' });
     }
+    if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteUser(id);
     invalidateAccessCache(id);
     auditReq(req, 'delete', 'user', id);
@@ -883,28 +1009,29 @@ app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-// Audit log (doar admin)
-app.get('/api/audit', requireAuth, requirePerm('viewAudit'), async (req, res) => {
+// Audit log (doar admin) — company_admin vede doar compania lui; super-admin vede tot
+app.get('/api/audit', requireAuth, requirePerm('viewAudit'), withCompany, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 500);
     const offset = parseInt(req.query.offset) || 0;
-    res.json(await db.getAuditLog(limit, offset));
+    res.json(await db.getAuditLog(limit, offset, req.isSuper ? null : req.companyId));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // ─── Chei API (doar admin) — pentru integrări programatice ───
-app.get('/api/apikeys', requireAuth, requireAdmin, async (req, res) => {
-  try { res.json(await db.getApiKeys()); }
+app.get('/api/apikeys', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try { res.json(await db.getApiKeys(req.isSuper ? null : req.companyId)); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/apikeys', requireAuth, requireAdmin, async (req, res) => {
+app.post('/api/apikeys', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const { name } = req.body;
     const userId = parseInt(req.body.userId);
     if (!userId) return res.status(400).json({ error: 'userId este obligatoriu (cheia moștenește rolul și accesul acelui utilizator)' });
+    if (!(await sameCompanyUser(req, userId))) return res.status(403).json({ error: 'Utilizatorul nu este din compania ta' });
     const target = await db.getUserById(userId);
     if (!target) return res.status(404).json({ error: 'Utilizator inexistent' });
     const key = 'gpsk_' + crypto.randomBytes(24).toString('hex');
@@ -916,18 +1043,208 @@ app.post('/api/apikeys', requireAuth, requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/apikeys/:id', requireAuth, requireAdmin, async (req, res) => {
+app.delete('/api/apikeys/:id', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
-    await db.revokeApiKey(parseInt(req.params.id));
+    const id = parseInt(req.params.id);
+    if (!req.isSuper) {
+      const cid = await db.getApiKeyCompany(id);
+      if (cid !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
+    }
+    await db.revokeApiKey(id);
     auditReq(req, 'revoke', 'apikey', req.params.id);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── AI: asistent flotă + rezumate rapoarte (Claude) ───
+function _fleetSnapshot(req) {
+  let positions = Array.from(livePositions.values());
+  if (req.allowedImeis != null) positions = positions.filter(p => req.allowedImeis.has(p.imei));
+  return positions.slice(0, 80).map(p => {
+    const io = p.io || {};
+    return {
+      nume: p.name || p.imei, nr: p.plate || '',
+      viteza_kmh: Math.round(p.speed || 0),
+      lat: Number(p.latitude) ? Number(p.latitude).toFixed(5) : null,
+      lng: Number(p.longitude) ? Number(p.longitude).toFixed(5) : null,
+      contact: io.ignition === 1 ? 'pornit' : (io.ignition === 0 ? 'oprit' : '?'),
+      combustibil_l: io.can_fuel_level_liters,
+      ultima_actualizare: p.timestamp
+    };
+  });
+}
+
+app.get('/api/ai/status', requireAuth, (req, res) => res.json({ enabled: ai.aiEnabled(), model: ai.AI_MODEL }));
+
+app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!ai.aiEnabled()) return res.json({ reply: 'Asistentul AI nu este configurat. Adaugă ANTHROPIC_API_KEY în setările serverului.', disabled: true });
+    const message = (req.body.message || '').toString().slice(0, 2000).trim();
+    if (!message) return res.status(400).json({ error: 'Mesaj gol' });
+    const snapshot = _fleetSnapshot(req);
+    let today = [];
+    try {
+      const allImeis = req.allowedImeis == null ? (await db.getDevices()).map(d => d.imei) : Array.from(req.allowedImeis);
+      const from = new Date(); from.setHours(0, 0, 0, 0);
+      today = await db.getTripsSummaryForImeis(allImeis, from.toISOString(), new Date().toISOString());
+    } catch (e) { /* fără sumar curse */ }
+    const system = 'Ești asistentul AI al platformei RA Track (monitorizare GPS flote). Răspunzi SCURT, clar, în limba română, DOAR pe baza datelor furnizate. Dacă datele nu conțin răspunsul, spune sincer că nu ai informația. Nu inventa. Folosește numele/numărul vehiculului când te referi la el.';
+    const context = 'STARE FLOTĂ (live):\n' + JSON.stringify(snapshot) + '\n\nCURSE AZI (km/vehicul):\n' + JSON.stringify(today);
+    const history = Array.isArray(req.body.history) ? req.body.history.slice(-6).filter(m => m && m.role && m.content) : [];
+    const messages = [...history, { role: 'user', content: context + '\n\nÎntrebarea utilizatorului: ' + message }];
+    const reply = await ai.callClaude({ system, messages, maxTokens: 700 });
+    auditReq(req, 'ai_chat', 'assistant', null, { len: message.length });
+    res.json({ reply });
+  } catch (e) {
+    res.status(500).json({ error: 'AI: ' + e.message });
+  }
+});
+
+app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
+    const report = req.body.report;
+    if (!report) return res.status(400).json({ error: 'Lipsește raportul' });
+    const compact = JSON.stringify(report).slice(0, 7000);
+    const system = 'Ești analist de flotă. Rezumi un raport în limba română, în stil executiv: 4-6 puncte scurte, cu cifrele cheie (km, ore, opriri, consum, viteze). Doar pe baza datelor. Fără introduceri lungi.';
+    const summary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Tip raport: ' + (req.body.type || '') + '\nDate (JSON):\n' + compact + '\n\nScrie rezumatul executiv:' }], maxTokens: 600 });
+    auditReq(req, 'ai_report', 'assistant', null, { type: req.body.type });
+    res.json({ summary });
+  } catch (e) {
+    res.status(500).json({ error: 'AI: ' + e.message });
+  }
+});
+
+// ─── MULTI-TENANT: Companii (doar super-admin) ───
+app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await db.getCompanies()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const name = (req.body.name || '').trim();
+    if (name.length < 2) return res.status(400).json({ error: 'Numele companiei e obligatoriu' });
+    let slug = (req.body.slug || name).toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || null;
+    if (slug && await db.getCompanyBySlug(slug)) slug = slug + '-' + Date.now().toString(36).slice(-4); // evită coliziune slug
+    const c = await db.createCompany({ name, slug, contact_email: req.body.contact_email, phone: req.body.phone, plan: req.body.plan, is_demo: req.body.is_demo });
+    auditReq(req, 'create', 'company', c.id, { name: c.name });
+    res.json(c);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try { await db.updateCompany(parseInt(req.params.id), req.body); auditReq(req, 'update', 'company', req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const co = await db.getCompanyById(id);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const imeis = await db.getCompanyImeis(id);
+    const users = await db.getUsers(id);
+    if (imeis.length || users.length) return res.status(400).json({ error: 'Compania mai are vehicule/utilizatori. Mută-i sau șterge-i întâi.' });
+    await db.deleteCompany(id);
+    auditReq(req, 'delete', 'company', id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Creează adminul unei companii (super-admin)
+app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const companyId = parseInt(req.params.id);
+    const co = await db.getCompanyById(companyId);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const { username, password, full_name, email } = req.body;
+    if (!username || !password || password.length < 4) return res.status(400).json({ error: 'Username + parolă (min 4) obligatorii' });
+    if (await db.getUserByUsername(username)) return res.status(409).json({ error: 'Username-ul există deja' });
+    const hash = await bcrypt.hash(password, 10);
+    const u = await db.createUser(username, hash, 'company_admin', { full_name, email, company_id: companyId });
+    auditReq(req, 'create', 'company_admin', u.id, { companyId });
+    res.json(u);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Device-uri neasignate (super-admin) + asignare la companie
+app.get('/api/unassigned-devices', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await db.getUnassignedDevices()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const companyId = req.body.company_id != null ? parseInt(req.body.company_id) : null;
+    await db.setDeviceCompany(req.params.imei, companyId);
+    invalidateAccessCache(); _devCompanyCache.delete(req.params.imei);
+    auditReq(req, 'assign_company', 'device', req.params.imei, { companyId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Tahograf (.DDD) — upload + analiză best-effort ───
+app.get('/api/tacho', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+  try { res.json(await db.getTachoFiles(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+  try {
+    const f = await db.getTachoFile(parseInt(req.params.id));
+    if (!f) return res.status(404).json({ error: 'Inexistent' });
+    if (!req.isSuper && f.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
+    res.json({ id: f.id, filename: f.filename, kind: f.kind, driver_name: f.driver_name, uploaded_at: f.uploaded_at, parsed: typeof f.parsed === 'string' ? JSON.parse(f.parsed) : f.parsed });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const { filename, b64, imei } = req.body;
+    if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
+    const buf = Buffer.from(b64, 'base64');
+    if (buf.length < 8) return res.status(400).json({ error: 'Fișier invalid' });
+    if (buf.length > 4 * 1024 * 1024) return res.status(413).json({ error: 'Fișier prea mare (max 4MB)' });
+    const parsed = tacho.parse(buf);
+    const rec = await db.createTachoFile({ companyId: req.companyId, imei: imei || null, driverName: parsed.driverName, filename: (filename || 'tahograf.ddd').slice(0, 200), kind: parsed.kind, periodFrom: parsed.periodFrom || null, periodTo: parsed.periodTo || null, parsed, rawB64: b64.slice(0, 2 * 1024 * 1024) });
+    auditReq(req, 'upload', 'tacho', rec.id, { filename, kind: parsed.kind });
+    res.json({ id: rec.id, parsed });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const f = await db.getTachoFile(parseInt(req.params.id));
+    if (f && !req.isSuper && f.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteTachoFile(parseInt(req.params.id)); auditReq(req, 'delete', 'tacho', req.params.id); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── e-Transport (ANAF) — gestionare UIT + (trimitere doar dacă e configurat tokenul) ───
+function etransportEnabled() { return !!(process.env.ANAF_ETRANSPORT_TOKEN && process.env.ANAF_ETRANSPORT_URL); }
+app.get('/api/etransport/status', requireAuth, (req, res) => res.json({ enabled: etransportEnabled() }));
+app.get('/api/etransport', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+  try { res.json(await db.getEtransports(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/etransport', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try { if (!req.body.uit) return res.status(400).json({ error: 'Cod UIT obligatoriu' }); const tr = await db.createEtransport(req.body, req.companyId); auditReq(req, 'create', 'etransport', tr.id, { uit: req.body.uit }); res.json(tr); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/etransport/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.updateEtransport(parseInt(req.params.id), req.body); auditReq(req, 'update', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.deleteEtransport(parseInt(req.params.id)); auditReq(req, 'delete', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Worker e-Transport: trimite pozițiile transporturilor active la ANAF (DOAR dacă e configurat tokenul)
+async function sendEtransportPositions() {
+  if (!etransportEnabled()) return;
+  try {
+    const active = await db.getActiveEtransports();
+    for (const tr of active) {
+      const pos = tr.imei ? livePositions.get(tr.imei) : null;
+      if (!pos) continue;
+      // NOTĂ: schema payload-ului trebuie aliniată la specificația reală a API-ului ANAF e-Transport.
+      const payload = { uit: tr.uit, lat: pos.latitude, lng: pos.longitude, speed: pos.speed, timestamp: pos.timestamp };
+      await fetch(process.env.ANAF_ETRANSPORT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.ANAF_ETRANSPORT_TOKEN }, body: JSON.stringify(payload) }).catch(() => {});
+      await db.updateEtransport(tr.id, { last_sent_at: new Date().toISOString() }).catch(() => {});
+    }
+  } catch (e) { console.warn('[e-Transport]', e.message); }
+}
+
 // Catalog API (public) — pentru integratori
 app.get('/api', (req, res) => {
   res.json({
-    name: 'GPS Unitip API',
+    name: 'Fleet-Map API',
     version: '1.0',
     auth: 'Trimite cheia în header: "Authorization: Bearer <key>" sau "X-API-Key: <key>". Cheile se creează din interfață (Utilizatori → Chei API) și moștenesc rolul + accesul pe vehicule al utilizatorului asociat.',
     endpoints: {
@@ -956,6 +1273,7 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
   try {
     let devices = await db.getDevices();
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
+    if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei)); // demo doar în contul demo
     res.json(devices);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -966,6 +1284,7 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
 app.get('/api/live', requireAuth, withScope, async (req, res) => {
   let positions = Array.from(livePositions.values());
   if (req.allowedImeis != null) positions = positions.filter(p => req.allowedImeis.has(p.imei));
+  if (req.companyId !== demoCompanyId) positions = positions.filter(p => !DEMO_SET.has(p.imei)); // demo doar în contul demo
   try {
     // Enrich with full device info (truck config, tank calibration, etc.)
     const result = await db.pool.query('SELECT imei, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
@@ -1007,9 +1326,10 @@ app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
 });
 
 // API: Actualizare info dispozitiv (nume, tip, nr. înmatriculare)
-app.put('/api/devices/:imei', requireAuth, requireFleet, async (req, res) => {
+app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
     auditReq(req, 'update', 'device', imei, { name, plate });
@@ -1041,8 +1361,9 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
 });
 
 // API: Update truck configuration (tara, limite, costuri)
-app.put('/api/devices/:imei/truck-config', requireAuth, requireFleet, async (req, res) => {
+app.put('/api/devices/:imei/truck-config', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await db.updateTruckConfig(req.params.imei, req.body);
     auditReq(req, 'update', 'truck-config', req.params.imei);
     res.json({ ok: true });
@@ -1052,8 +1373,9 @@ app.put('/api/devices/:imei/truck-config', requireAuth, requireFleet, async (req
 });
 
 // Atribuire grup + șofer pe vehicul (grupul afectează accesul multi-client)
-app.put('/api/devices/:imei/assign', requireAuth, requireFleet, async (req, res) => {
+app.put('/api/devices/:imei/assign', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await db.assignDevice(req.params.imei, req.body.driver_id, req.body.group_id);
     invalidateAccessCache(); // grupul s-a schimbat → invalidează tot cache-ul de acces
     auditReq(req, 'assign', 'device', req.params.imei, { driver_id: req.body.driver_id, group_id: req.body.group_id });
@@ -1062,8 +1384,9 @@ app.put('/api/devices/:imei/assign', requireAuth, requireFleet, async (req, res)
 });
 
 // API: Update tank calibration (perechi voltage -> liters pentru sonda Escort)
-app.put('/api/devices/:imei/tank-calibration', requireAuth, requireFleet, async (req, res) => {
+app.put('/api/devices/:imei/tank-calibration', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await db.updateTankCalibration(req.params.imei, req.body.calibration);
     auditReq(req, 'update', 'tank-calibration', req.params.imei);
     // Invalida cache-ul ca sa se reincarce imediat
@@ -1082,8 +1405,9 @@ app.get('/api/devices/:imei/fuel-sensors', requireAuth, withScope, async (req, r
     res.json(await db.getFuelSensorsRow(req.params.imei) || []);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.put('/api/devices/:imei/fuel-sensors', requireAuth, requireFleet, async (req, res) => {
+app.put('/api/devices/:imei/fuel-sensors', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const sensors = Array.isArray(req.body.sensors) ? req.body.sensors : [];
     await db.setFuelSensors(req.params.imei, sensors);
     invalidateFuelSensors(req.params.imei);
@@ -1796,88 +2120,104 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
 
 // ─── Soferi CRUD ───
 
-app.get('/api/drivers', requireAuth, async (req, res) => {
-  try { res.json(await db.getDrivers()); }
+app.get('/api/drivers', requireAuth, withCompany, async (req, res) => {
+  try { res.json(await db.getDrivers(req.isSuper ? null : req.companyId)); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/drivers', requireAuth, requireFleet, async (req, res) => {
-  try { const d = await db.createDriver(req.body); auditReq(req, 'create', 'driver', d.id, { name: req.body.name }); res.json(d); }
+app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try { const d = await db.createDriver(req.body, req.companyId); auditReq(req, 'create', 'driver', d.id, { name: req.body.name }); res.json(d); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/drivers/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.updateDriver(req.params.id, req.body); auditReq(req, 'update', 'driver', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.put('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'drivers', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.updateDriver(req.params.id, req.body); auditReq(req, 'update', 'driver', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/drivers/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.deleteDriver(req.params.id); auditReq(req, 'delete', 'driver', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.delete('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'drivers', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteDriver(req.params.id); auditReq(req, 'delete', 'driver', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Grupe CRUD ───
 
-app.get('/api/groups', requireAuth, async (req, res) => {
-  try { res.json(await db.getGroups()); }
+app.get('/api/groups', requireAuth, withCompany, async (req, res) => {
+  try { res.json(await db.getGroups(req.isSuper ? null : req.companyId)); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/groups', requireAuth, requireFleet, async (req, res) => {
-  try { const g = await db.createGroup(req.body); auditReq(req, 'create', 'group', g.id, { name: req.body.name }); res.json(g); }
+app.post('/api/groups', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try { const g = await db.createGroup(req.body, req.companyId); auditReq(req, 'create', 'group', g.id, { name: req.body.name }); res.json(g); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/groups/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.updateGroup(req.params.id, req.body); auditReq(req, 'update', 'group', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.put('/api/groups/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'device_groups', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.updateGroup(req.params.id, req.body); auditReq(req, 'update', 'group', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/groups/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.deleteGroup(req.params.id); auditReq(req, 'delete', 'group', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.delete('/api/groups/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'device_groups', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteGroup(req.params.id); invalidateAccessCache(); auditReq(req, 'delete', 'group', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Geofences CRUD ───
 
-app.get('/api/geofences', requireAuth, async (req, res) => {
-  try { res.json(await db.getGeofences()); }
+app.get('/api/geofences', requireAuth, withCompany, async (req, res) => {
+  try { res.json(await db.getGeofences(req.isSuper ? null : req.companyId)); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/geofences', requireAuth, requireFleet, async (req, res) => {
-  try { const g = await db.createGeofence(req.body); auditReq(req, 'create', 'geofence', g.id, { name: req.body.name }); res.json(g); }
+app.post('/api/geofences', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try { const g = await db.createGeofence(req.body, req.companyId); auditReq(req, 'create', 'geofence', g.id, { name: req.body.name }); res.json(g); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/geofences/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.updateGeofence(req.params.id, req.body); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.put('/api/geofences/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.updateGeofence(req.params.id, req.body); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/geofences/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.deleteGeofence(req.params.id); auditReq(req, 'delete', 'geofence', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.delete('/api/geofences/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteGeofence(req.params.id); auditReq(req, 'delete', 'geofence', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Alerte CRUD ───
 
 app.get('/api/alerts', requireAuth, withScope, async (req, res) => {
   try {
-    let alerts = await db.getAlerts();
+    let alerts = await db.getAlerts(req.isSuper ? null : req.companyId);
     if (req.allowedImeis != null) alerts = alerts.filter(a => !a.imei || req.allowedImeis.has(a.imei));
     res.json(alerts);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/alerts', requireAuth, requireFleet, async (req, res) => {
-  try { const a = await db.createAlert(req.body); auditReq(req, 'create', 'alert', a.id, { type: req.body.type }); res.json(a); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.post('/api/alerts', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const a = await db.createAlert(req.body, req.companyId); auditReq(req, 'create', 'alert', a.id, { type: req.body.type }); res.json(a);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/alerts/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.deleteAlert(req.params.id); auditReq(req, 'delete', 'alert', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.delete('/api/alerts/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'alerts', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteAlert(req.params.id); auditReq(req, 'delete', 'alert', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/alerts/history', requireAuth, withScope, async (req, res) => {
@@ -1903,25 +2243,31 @@ app.get('/api/trips/:imei', requireAuth, withScope, async (req, res) => {
 
 app.get('/api/maintenance', requireAuth, withScope, async (req, res) => {
   try {
-    let rows = await db.getMaintenance(req.query.imei);
+    let rows = await db.getMaintenance(req.query.imei, req.isSuper ? null : req.companyId);
     if (req.allowedImeis != null) rows = rows.filter(m => req.allowedImeis.has(m.imei));
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/maintenance', requireAuth, requireFleet, async (req, res) => {
-  try { const m = await db.createMaintenance(req.body); auditReq(req, 'create', 'maintenance', m.id, { imei: req.body.imei, type: req.body.type }); res.json(m); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.post('/api/maintenance', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const m = await db.createMaintenance(req.body, req.companyId); auditReq(req, 'create', 'maintenance', m.id, { imei: req.body.imei, type: req.body.type }); res.json(m);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/maintenance/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.updateMaintenance(req.params.id, req.body); auditReq(req, 'update', 'maintenance', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.put('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.updateMaintenance(req.params.id, req.body); auditReq(req, 'update', 'maintenance', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/maintenance/:id', requireAuth, requireFleet, async (req, res) => {
-  try { await db.deleteMaintenance(req.params.id); auditReq(req, 'delete', 'maintenance', req.params.id); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.delete('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteMaintenance(req.params.id); auditReq(req, 'delete', 'maintenance', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Export CSV ───
@@ -1989,10 +2335,24 @@ function isPointInCircle(lat, lng, centerLat, centerLng, radiusKm) {
 // Track geofence state per device for enter/exit detection
 const geofenceStates = new Map(); // key: imei_geofenceId, value: boolean (inside)
 
+// Cache companie/device (pt. izolarea alertelor company-wide pe tenant)
+const _devCompanyCache = new Map(); // imei -> { ts, companyId }
+async function getDeviceCompanyCached(imei) {
+  const c = _devCompanyCache.get(imei);
+  if (c && (Date.now() - c.ts) < 60000) return c.companyId;
+  try {
+    const r = await db.pool.query('SELECT company_id FROM devices WHERE imei = $1', [imei]);
+    const cid = r.rows[0] ? r.rows[0].company_id : null;
+    _devCompanyCache.set(imei, { ts: Date.now(), companyId: cid });
+    return cid;
+  } catch (e) { return null; }
+}
+
 async function evaluateAlerts(imei, data) {
   try {
     const alerts = await db.getAlerts();
     if (!alerts || alerts.length === 0) return;
+    const devCompany = await getDeviceCompanyCached(imei);
 
     const speed = data.speed || 0;
     const io = data.io || {};
@@ -2001,7 +2361,8 @@ async function evaluateAlerts(imei, data) {
 
     for (const alert of alerts) {
       if (!alert.enabled) continue;
-      if (alert.imei && alert.imei !== imei) continue; // Device-specific alert
+      if (alert.imei) { if (alert.imei !== imei) continue; } // alertă pe device specific
+      else if (alert.company_id != null && devCompany != null && alert.company_id !== devCompany) continue; // alertă company-wide doar pt. compania ei
 
       const cond = alert.condition || {};
       const cooldownKey = alert.id + '_' + imei;
@@ -2331,7 +2692,7 @@ function initVapid() {
         try { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(VAPID)); } catch (e) {}
       }
     }
-    webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@gps-unitip.local', VAPID.publicKey, VAPID.privateKey);
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@fleet-map.local', VAPID.publicKey, VAPID.privateKey);
     console.log('[PUSH] Web Push activ (VAPID configurat)');
   } catch (e) { console.error('[PUSH] init:', e.message); }
 }
@@ -2578,7 +2939,61 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       refuelMin: parseInt(req.query.refuelMin) || 10,
       dropMin: parseInt(req.query.dropMin) || 10
     };
-    res.json(await reports.runReport(db, req.params.type, imeis, from, to, opts));
+    const report = await reports.runReport(db, req.params.type, imeis, from, to, opts);
+    const fmt = (req.query.format || '').toLowerCase();
+    if (fmt === 'xlsx' || fmt === 'pdf') return await reportExport.sendReport(res, report, fmt);
+    res.json(report);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Rapoarte programate (trimise automat pe email) ───
+app.get('/api/report-schedules', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try { res.json(await db.getReportSchedules(req.isSuper ? null : req.companyId)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/report-schedules', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (!b.report_type) return res.status(400).json({ error: 'report_type obligatoriu' });
+    if (b.imei && !canAccessImei(req, b.imei)) return res.status(403).json({ error: 'Acces interzis la vehicul' });
+    const hour = Math.min(23, Math.max(0, parseInt(b.hour) || 6));
+    const next = reportSchedules.computeNextRun(b.frequency || 'daily', hour, new Date());
+    const s = await db.createReportSchedule({
+      company_id: req.isSuper ? (b.company_id != null ? parseInt(b.company_id) : null) : req.companyId,
+      user_id: req.auth.userId, name: b.name, report_type: b.report_type, imei: b.imei || null,
+      period: b.period, frequency: b.frequency, hour, format: b.format, recipients: b.recipients,
+      opts: b.opts || {}, enabled: b.enabled !== false, next_run: next.toISOString()
+    });
+    auditReq(req, 'create', 'report_schedule', s.id, { report_type: b.report_type });
+    res.json(s);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/report-schedules/:id', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'report_schedules', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    const b = req.body || {};
+    if (b.hour != null) b.hour = Math.min(23, Math.max(0, parseInt(b.hour) || 6));
+    if (b.frequency || b.hour != null) b.next_run = reportSchedules.computeNextRun(b.frequency || 'daily', b.hour != null ? b.hour : 6, new Date()).toISOString();
+    await db.updateReportSchedule(req.params.id, b);
+    auditReq(req, 'update', 'report_schedule', req.params.id);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/report-schedules/:id', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'report_schedules', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteReportSchedule(req.params.id);
+    auditReq(req, 'delete', 'report_schedule', req.params.id);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/report-schedules/:id/run', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'report_schedules', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    const s = await db.getReportScheduleById(req.params.id);
+    if (!s) return res.status(404).json({ error: 'Programare inexistentă' });
+    const result = await reportSchedules.runSchedule(s, { db, reports, reportExport, channels }, new Date());
+    res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2677,9 +3092,13 @@ app.post('/api/notifications/ack-all', requireAuth, withScope, async (req, res) 
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.post('/api/notifications/:id/ack', requireAuth, async (req, res) => {
-  try { await db.ackNotification(parseInt(req.params.id)); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+app.post('/api/notifications/:id/ack', requireAuth, withScope, async (req, res) => {
+  try {
+    const imeis = req.allowedImeis == null ? null : Array.from(req.allowedImeis);
+    const ok = await db.ackNotification(parseInt(req.params.id), req.auth.userId, imeis);
+    if (!ok) return res.status(404).json({ error: 'Notificare inexistentă sau fără acces' });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Declanșează manual verificarea expirărilor documente/mentenanță (admin)
@@ -2734,19 +3153,25 @@ wss.on('connection', (ws, req) => {
       return ws.close();
     }
     ws._userId = req.session.userId;
-    ws._role = req.session.role;
-    ws._isAdmin = hasPerm(req.session.role, 'manageUsers');
     try {
-      ws._allowedImeis = await getAllowedImeiSet(req.session.userId, req.session.role);
+      // rol + companie FRESH din DB (sesiunile vechi pot avea rol învechit)
+      let role = req.session.role, companyId = req.session.companyId;
+      try { const u = await db.getUserById(req.session.userId); if (u) { role = u.role; companyId = u.company_id; } } catch (e) {}
+      ws._role = role;
+      ws._isAdmin = hasPerm(role, 'manageUsers');
+      const wsCompanyId = await resolveCompanyId({ userId: req.session.userId, role, companyId });
+      ws._companyId = wsCompanyId;
+      ws._allowedImeis = await getAllowedImeiSet(req.session.userId, role, wsCompanyId);
     } catch (e) {
       ws._allowedImeis = new Set();
     }
     ws._authed = true;
     console.log(`[WS] Client conectat la live feed (${req.session.username})`);
 
-    // Trimite doar pozițiile la care utilizatorul are acces
+    // Trimite doar pozițiile la care utilizatorul are acces (demo doar în contul demo)
     const positions = Array.from(livePositions.values())
-      .filter(p => ws._allowedImeis == null || ws._allowedImeis.has(p.imei));
+      .filter(p => ws._allowedImeis == null || ws._allowedImeis.has(p.imei))
+      .filter(p => ws._companyId === demoCompanyId || !DEMO_SET.has(p.imei));
     try { ws.send(JSON.stringify({ type: 'init', data: positions })); } catch (e) {}
   });
 
@@ -2764,6 +3189,7 @@ function broadcastWs(message) {
     if (!client._authed) return;               // nu trimite înainte de autentificare
     if (isDebug && !client._isAdmin) return;   // debug doar pentru admini
     if (imei && client._allowedImeis instanceof Set && !client._allowedImeis.has(imei)) return; // filtrare pe acces
+    if (imei && DEMO_SET.has(imei) && client._companyId !== demoCompanyId) return; // demo doar în contul demo
     client.send(data);
   });
 }
@@ -2781,8 +3207,9 @@ async function start() {
   const adminUser = await db.getUserByUsername('admin');
   if (!adminUser) {
     const hash = await bcrypt.hash(adminPass, 10);
-    await db.createUser('admin', hash, 'admin');
-    console.log('[AUTH] Utilizator admin creat');
+    // proprietarul platformei = super-admin (vede/administrează toate companiile)
+    await db.createUser('admin', hash, 'superadmin');
+    console.log('[AUTH] Utilizator super-admin creat (admin)');
   } else if (process.env.ADMIN_PASSWORD) {
     // Reseteaza parola admin la cea din env var
     const hash = await bcrypt.hash(adminPass, 10);
@@ -2841,6 +3268,33 @@ async function start() {
   }
   console.log(`[DB] ${lastPositions.length} dispozitive încărcate din istoric`);
 
+  // ─── DEMO mode: companie demo + vehicule sintetice + simulator ───
+  if (process.env.DEMO_DISABLED !== 'true') {
+    try {
+      let demo = await db.getCompanyBySlug('demo');
+      if (!demo) demo = await db.createCompany({ name: 'RA Track Demo', slug: 'demo', is_demo: true });
+      demoCompanyId = demo.id;
+      for (let i = 0; i < demoSim.DEMO_IMEIS.length; i++) {
+        const imei = demoSim.DEMO_IMEIS[i];
+        await db.pool.query(
+          "INSERT INTO devices (imei, name, vehicle_type, plate, company_id, last_seen) VALUES ($1,$2,'truck',$3,$4,NOW()) ON CONFLICT (imei) DO UPDATE SET company_id = $4",
+          [imei, demoSim.ROUTES[i % demoSim.ROUTES.length].city, 'DEMO-' + (i + 1), demo.id]
+        );
+      }
+      let demoUser = await db.getUserByUsername('demo');
+      if (!demoUser) {
+        const hash = await bcrypt.hash(crypto.randomBytes(12).toString('hex'), 10);
+        await db.createUser('demo', hash, 'viewer', { full_name: 'Cont Demo', company_id: demo.id });
+        demoUser = await db.getUserByUsername('demo');
+      } else if (demoUser.company_id !== demo.id) {
+        await db.pool.query('UPDATE users SET company_id = $1, role = $2 WHERE id = $3', [demo.id, 'viewer', demoUser.id]);
+      }
+      // contul demo (viewer, read-only) primește acces la toate vehiculele demo
+      if (demoUser) { try { await db.setUserAccess(demoUser.id, demoSim.DEMO_IMEIS, []); invalidateAccessCache(demoUser.id); } catch (e) {} }
+      demoSim.start({ livePositions, broadcastWs, insertPositions: db.insertPositions });
+    } catch (e) { console.warn('[DEMO] seed:', e.message); }
+  }
+
   // Pornește serverul TCP
   tcpServer.listen(ACTUAL_TCP_PORT, () => {
     console.log(`[TCP] Server activ pe portul ${ACTUAL_TCP_PORT} — aștept dispozitive Teltonika`);
@@ -2852,7 +3306,7 @@ async function start() {
     console.log(`[WS] WebSocket activ`);
     console.log('');
     console.log('═══════════════════════════════════════');
-    console.log('  GPS Unitip Server — PORNIT (DB embedded, 100% local)');
+    console.log('  Fleet-Map Server — PORNIT (DB embedded, 100% local)');
     console.log(`  TCP (dispozitive): port ${ACTUAL_TCP_PORT}`);
     console.log(`  HTTP (hartă/API):  port ${ACTUAL_HTTP_PORT}`);
     console.log('═══════════════════════════════════════');
@@ -2876,6 +3330,13 @@ async function start() {
   setInterval(() => runTripDetection(), 15 * 60 * 1000);
   setTimeout(() => checkExpiries(), 5000);
   setInterval(() => checkExpiries(), 12 * 60 * 60 * 1000);
+  // Rapoarte programate — rulează scadențele la fiecare 5 min
+  setInterval(() => reportSchedules.tickDue({ db, reports, reportExport, channels })
+    .then(r => { if (r && r.length) console.log('[PROGRAMĂRI] ' + r.length + ' rapoarte rulate'); })
+    .catch(e => console.error('[PROGRAMĂRI]', e.message)), 5 * 60 * 1000);
+
+  // e-Transport: trimite pozițiile la ANAF la fiecare 3 min (no-op dacă nu e configurat)
+  if (etransportEnabled()) { console.log('[e-Transport] Activ — trimitere poziții la ANAF'); setInterval(sendEtransportPositions, 3 * 60 * 1000); }
 }
 
 // Oprire grațioasă (Ctrl+C / kill)

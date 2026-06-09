@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app');}</script>
+  <title>RA Tracks — Monitorizare GPS flota</title>
+  <meta name="description" content="RA Tracks — platforma de monitorizare GPS in timp real pentru flote: localizare live, rapoarte, combustibil si sonde litrometrice, alerte. Compatibil Teltonika, CAN, Escort/EuroSens.">
+  <meta name="theme-color" content="#0B0E11">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#0B0E11;
+      --bg-2:#0E1217;
+      --surface:#15181D;
+      --surface-2:#181C22;
+      --border:#242A31;
+      --border-soft:#1C2127;
+      --text:#FFFFFF;
+      --muted:#9AA4B2;
+      --accent:#3FE07D;
+      --accent-dim:#2BB763;
+      --accent-deep:#0F2E1E;
+      --radius:16px;
+      --radius-sm:12px;
+      --ease:cubic-bezier(.22,.61,.36,1);
+      --shadow:0 24px 60px -24px rgba(0,0,0,.65);
+      --glow:0 0 0 1px rgba(63,224,125,.18), 0 18px 60px -18px rgba(63,224,125,.30);
+    }
+    html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+    body{
+      font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.62;
+      -webkit-font-smoothing:antialiased;
+      overflow-x:hidden;
+      position:relative;
+    }
+    /* subtle global grid background */
+    body::before{
+      content:"";
+      position:fixed;inset:0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.022) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.022) 1px, transparent 1px);
+      background-size:56px 56px;
+      mask-image:radial-gradient(circle at 50% 30%, #000 0%, transparent 78%);
+      -webkit-mask-image:radial-gradient(circle at 50% 30%, #000 0%, transparent 78%);
+      pointer-events:none;
+      z-index:0;
+    }
+    a{color:inherit;text-decoration:none}
+    img{max-width:100%;display:block}
+    ::selection{background:rgba(63,224,125,.30);color:#fff}
+    .wrap{max-width:1200px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+    /* ---------- BUTTONS (raza unificata pill 999px peste tot) ---------- */
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:10px;
+      font-weight:600;font-size:15px;line-height:1;
+      padding:15px 26px;border-radius:999px;border:1px solid transparent;
+      cursor:pointer;transition:transform .25s var(--ease),box-shadow .25s var(--ease),background .25s var(--ease),border-color .25s var(--ease),color .25s var(--ease);
+      white-space:nowrap;
+    }
+    .btn i{font-size:14px}
+    .btn-primary{
+      background:linear-gradient(180deg,#52ec8d 0%,var(--accent) 60%,var(--accent-dim) 100%);
+      color:#062414;
+      box-shadow:0 10px 30px -10px rgba(63,224,125,.55), inset 0 1px 0 rgba(255,255,255,.35);
+    }
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 18px 40px -12px rgba(63,224,125,.7), inset 0 1px 0 rgba(255,255,255,.45)}
+    .btn-ghost{
+      background:rgba(255,255,255,.02);
+      color:var(--text);
+      border-color:var(--border);
+      backdrop-filter:blur(6px);
+    }
+    .btn-ghost:hover{border-color:var(--accent);color:#fff;transform:translateY(-2px);box-shadow:0 10px 30px -16px rgba(63,224,125,.5)}
+    .btn-sm{padding:11px 18px;font-size:14px}
+
+    /* ---------- HEADER (sticky translucid + stare scrolled din C) ---------- */
+    header{
+      position:sticky;top:0;z-index:50;
+      background:rgba(11,14,17,.55);
+      backdrop-filter:saturate(160%) blur(10px);
+      -webkit-backdrop-filter:saturate(160%) blur(10px);
+      border-bottom:1px solid transparent;
+      transition:background .3s var(--ease),border-color .3s var(--ease),backdrop-filter .3s var(--ease);
+    }
+    header.scrolled{
+      background:rgba(11,14,17,.82);
+      backdrop-filter:saturate(160%) blur(16px);
+      -webkit-backdrop-filter:saturate(160%) blur(16px);
+      border-bottom:1px solid var(--border-soft);
+    }
+    .nav{display:flex;align-items:center;justify-content:space-between;height:70px}
+    .nav-links{display:flex;align-items:center;gap:34px}
+    .nav-links a{
+      color:var(--muted);font-size:15px;font-weight:500;
+      transition:color .2s var(--ease);position:relative;
+    }
+    .nav-links a::after{
+      content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;
+      background:var(--accent);border-radius:2px;transform:scaleX(0);transform-origin:center;
+      transition:transform .25s var(--ease);
+    }
+    .nav-links a:hover{color:#fff}
+    .nav-links a:hover::after{transform:scaleX(1)}
+    .nav-right{display:flex;align-items:center;gap:16px}
+
+    /* logo wordmark: R vector + chevron A verde (stroke, miter, fara crossbar) + divider + traks */
+    .logo{display:inline-flex;align-items:center;gap:0;height:34px}
+    .logo svg{height:30px;width:auto;display:block}
+    .ralogo{display:inline-flex;align-items:center;gap:8px}
+    .ralogo img{display:block}
+    .ralogo .raw{font-family:Inter,'Segoe UI',Arial,sans-serif;font-weight:800;letter-spacing:-.5px;color:#fff;line-height:1}
+    .logo .wm-r,.logo .wm-traks{fill:#fff}
+    .logo .wm-a{fill:none;stroke:var(--accent);stroke-width:13;stroke-linecap:square;stroke-linejoin:miter}
+    .logo .wm-div{stroke:#3a424c;stroke-width:6}
+
+    .hamburger{
+      display:none;background:none;border:1px solid var(--border);border-radius:10px;
+      width:44px;height:44px;color:#fff;font-size:18px;cursor:pointer;align-items:center;justify-content:center;
+      transition:border-color .2s var(--ease);position:relative;z-index:61;
+    }
+    .hamburger:hover{border-color:var(--accent)}
+
+    /* ---------- MOBILE MENU (overlay full-screen din C, blur, lock scroll) ---------- */
+    .mobile-menu{
+      position:fixed;inset:0;z-index:60;
+      display:flex;flex-direction:column;justify-content:center;
+      padding:28px 28px calc(28px + env(safe-area-inset-bottom));
+      background:rgba(9,11,14,.86);
+      backdrop-filter:saturate(140%) blur(18px);
+      -webkit-backdrop-filter:saturate(140%) blur(18px);
+      opacity:0;visibility:hidden;pointer-events:none;
+      transition:opacity .25s var(--ease),visibility .25s var(--ease);
+    }
+    .mobile-menu.open{opacity:1;visibility:visible;pointer-events:auto}
+    .mobile-menu .mm-inner{width:100%;max-width:420px;margin:0 auto}
+    /* pastram animatia slideDown din B pentru tranzitia continutului */
+    .mobile-menu.open .mm-inner{animation:slideDown .3s var(--ease)}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+    .mobile-menu a{
+      display:block;padding:18px 6px;color:#dfe5ec;font-size:21px;font-weight:600;
+      border-bottom:1px solid var(--border-soft);transition:color .2s var(--ease);
+    }
+    .mobile-menu a:hover{color:var(--accent)}
+    .mobile-menu .btn{display:flex;margin-top:26px;width:100%;font-size:16px;padding:16px 26px}
+    .mm-mark{display:flex;justify-content:center;margin-bottom:30px}
+    .mm-mark svg{height:34px;width:auto}
+    .mm-mark .wm-r,.mm-mark .wm-traks{fill:#fff}
+    .mm-mark .wm-a{fill:none;stroke:var(--accent);stroke-width:13;stroke-linecap:square;stroke-linejoin:miter}
+    .mm-mark .wm-div{stroke:#3a424c;stroke-width:6}
+
+    /* ---------- HERO (CENTRAT orizontal + vertical: min-height 100vh, flex center) ---------- */
+    .hero{
+      position:relative;text-align:center;overflow:hidden;
+      min-height:calc(100vh - 70px);
+      display:flex;align-items:center;justify-content:center;
+      padding:88px 0;
+    }
+    /* foto subtila (abordarea B): opacity .06 + masca fade in jos -> contrast AA garantat */
+    .hero-bgimg{
+      position:absolute;inset:0;z-index:0;
+      background:url('https://images.pexels.com/photos/12404730/pexels-photo-12404730.jpeg?auto=compress&cs=tinysrgb&w=1920') center 40%/cover no-repeat;
+      opacity:.06;filter:grayscale(.4) contrast(1.05);
+      mask-image:linear-gradient(180deg,#000 0%,transparent 92%);
+      -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 92%);
+    }
+    /* overlay liniar suplimentar 11,14,17 ~70% direct sub blocul de text */
+    .hero-veil{
+      position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+      width:min(960px,94%);height:min(640px,90%);z-index:1;pointer-events:none;
+      background:radial-gradient(60% 55% at 50% 50%, rgba(11,14,17,.70) 0%, rgba(11,14,17,.35) 55%, transparent 80%);
+    }
+    .hero-glow{
+      position:absolute;left:50%;top:8%;width:920px;height:620px;transform:translateX(-50%);
+      background:radial-gradient(50% 50% at 50% 50%, rgba(63,224,125,.22) 0%, rgba(63,224,125,.07) 38%, transparent 72%);
+      filter:blur(8px);z-index:0;pointer-events:none;
+    }
+    .hero-glow.two{top:auto;bottom:-12%;width:560px;height:380px;background:radial-gradient(50% 50% at 50% 50%, rgba(63,224,125,.14) 0%, transparent 70%)}
+    .hero-inner{position:relative;z-index:2;max-width:880px;margin:0 auto}
+    .badge{
+      display:inline-flex;align-items:center;gap:10px;
+      padding:8px 16px;border-radius:999px;
+      background:rgba(63,224,125,.06);
+      border:1px solid rgba(63,224,125,.28);
+      color:#cffadf;font-size:13px;font-weight:500;letter-spacing:.2px;
+      margin-bottom:30px;
+    }
+    .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(63,224,125,.18);animation:pulse 2.2s infinite}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(63,224,125,.4)}50%{box-shadow:0 0 0 6px rgba(63,224,125,0)}}
+    .hero h1{
+      font-size:clamp(40px,6.2vw,72px);
+      line-height:1.04;
+      font-weight:800;
+      letter-spacing:-1.8px;
+      margin:0 auto 22px;
+      max-width:14ch;
+    }
+    .hero h1 .grad{
+      background:linear-gradient(120deg,#fff 30%,var(--accent) 120%);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+    }
+    .hero p.sub{
+      font-size:clamp(17px,2.2vw,21px);color:var(--muted);
+      max-width:60ch;margin:0 auto 38px;line-height:1.6;
+    }
+    .hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:54px}
+    .hero-stats{
+      display:flex;justify-content:center;gap:0;flex-wrap:wrap;
+      max-width:760px;margin:0 auto;
+      border:1px solid var(--border);border-radius:var(--radius);
+      background:rgba(21,24,29,.55);backdrop-filter:blur(8px);
+      overflow:hidden;
+    }
+    .stat{flex:1 1 200px;padding:26px 22px;text-align:center;position:relative}
+    .stat + .stat{border-left:1px solid var(--border)}
+    .stat .num{font-size:30px;font-weight:800;color:#fff;letter-spacing:-.5px;display:flex;align-items:baseline;justify-content:center;gap:4px}
+    .stat .num span{color:var(--accent)}
+    .stat .lbl{font-size:13.5px;color:var(--muted);margin-top:6px}
+
+    /* ---------- SECTION SHELL ---------- */
+    section{position:relative;z-index:1}
+    .section{padding:96px 0}
+    .section-head{text-align:center;max-width:640px;margin:0 auto 56px}
+    .eyebrow{
+      display:inline-flex;align-items:center;gap:8px;
+      font-size:13px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;
+      color:var(--accent);margin-bottom:14px;
+    }
+    .eyebrow::before{content:"";width:22px;height:1px;background:var(--accent);opacity:.6}
+    .eyebrow::after{content:"";width:22px;height:1px;background:var(--accent);opacity:.6}
+    .section h2{font-size:clamp(28px,4vw,42px);font-weight:800;letter-spacing:-1px;line-height:1.12}
+    .section h2 .accent{color:var(--accent)}
+    .section .lead{color:var(--muted);font-size:17px;margin-top:14px}
+
+    /* ---------- FEATURES ---------- */
+    .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+    .feature{
+      background:linear-gradient(180deg,var(--surface) 0%,#121519 100%);
+      border:1px solid var(--border);border-radius:var(--radius);
+      padding:30px 26px;position:relative;overflow:hidden;
+      transition:transform .3s var(--ease),border-color .3s var(--ease),box-shadow .3s var(--ease);
+    }
+    .feature::after{
+      content:"";position:absolute;inset:0;border-radius:var(--radius);
+      background:radial-gradient(120% 80% at 100% 0%, rgba(63,224,125,.10), transparent 55%);
+      opacity:0;transition:opacity .3s var(--ease);pointer-events:none;
+    }
+    .feature:hover{transform:translateY(-6px);border-color:rgba(63,224,125,.45);box-shadow:0 24px 50px -28px rgba(63,224,125,.4)}
+    .feature:hover::after{opacity:1}
+    .feature .ic{
+      width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+      font-size:21px;color:var(--accent);
+      background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.25);
+      margin-bottom:20px;
+    }
+    .feature h3{font-size:19px;font-weight:700;margin-bottom:9px}
+    .feature p{color:var(--muted);font-size:15px;line-height:1.6}
+    .feature .tag{
+      display:inline-block;margin-top:16px;font-size:12px;font-weight:600;letter-spacing:.3px;
+      color:var(--accent);background:rgba(63,224,125,.07);border:1px solid rgba(63,224,125,.2);
+      padding:4px 10px;border-radius:999px;
+    }
+
+    /* ---------- ABOUT ---------- */
+    .about{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center}
+    .about-media{position:relative}
+    .about-media img{
+      border-radius:var(--radius);border:1px solid var(--border);
+      width:100%;height:440px;object-fit:cover;filter:saturate(1.05) contrast(1.02);
+    }
+    .about-media .frame-glow{
+      position:absolute;inset:-1px;border-radius:var(--radius);pointer-events:none;
+      box-shadow:0 30px 80px -30px rgba(63,224,125,.35);
+    }
+    .about-media .chip{
+      position:absolute;left:18px;bottom:18px;
+      display:inline-flex;align-items:center;gap:10px;
+      background:rgba(11,14,17,.82);backdrop-filter:blur(8px);
+      border:1px solid var(--border);border-radius:12px;padding:11px 15px;font-size:13.5px;font-weight:600;
+    }
+    .about-media .chip i{color:var(--accent)}
+    .about h2{font-size:clamp(26px,3.6vw,38px);font-weight:800;letter-spacing:-.8px;line-height:1.14;margin-bottom:18px}
+    .about p{color:var(--muted);font-size:16px;margin-bottom:14px}
+    .check-list{list-style:none;margin-top:26px;display:grid;gap:14px}
+    .check-list li{display:flex;align-items:flex-start;gap:13px;font-size:15.5px;color:#dfe5ec}
+    .check-list .ck{
+      flex:0 0 auto;width:24px;height:24px;border-radius:50%;
+      background:rgba(63,224,125,.12);border:1px solid rgba(63,224,125,.4);
+      display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:11px;margin-top:1px;
+    }
+
+    /* ---------- PRICING ---------- */
+    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
+    .plan{
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+      padding:34px 28px;display:flex;flex-direction:column;position:relative;
+      transition:transform .3s var(--ease),border-color .3s var(--ease);
+    }
+    .plan:hover{transform:translateY(-5px)}
+    .plan.popular{
+      border-color:rgba(63,224,125,.5);
+      background:linear-gradient(180deg,#13241b 0%,var(--surface) 55%);
+      box-shadow:var(--glow);
+    }
+    .plan .pop-tag{
+      position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(180deg,#52ec8d,var(--accent));color:#062414;
+      font-size:12px;font-weight:700;letter-spacing:.4px;padding:6px 16px;border-radius:999px;
+      box-shadow:0 8px 20px -8px rgba(63,224,125,.6);white-space:nowrap;
+    }
+    .plan .pname{font-size:16px;font-weight:700;color:var(--muted);letter-spacing:.4px}
+    .plan.popular .pname{color:var(--accent)}
+    .plan .price{display:flex;align-items:baseline;gap:6px;margin:16px 0 4px}
+    .plan .price .amt{font-size:46px;font-weight:800;letter-spacing:-1.5px}
+    .plan .price .per{font-size:14px;color:var(--muted)}
+    .plan .pdesc{color:var(--muted);font-size:14px;margin-bottom:22px;min-height:42px}
+    .plan ul{list-style:none;display:grid;gap:13px;margin-bottom:28px;flex:1}
+    .plan ul li{display:flex;align-items:flex-start;gap:11px;font-size:14.5px;color:#dfe5ec}
+    .plan ul li i{color:var(--accent);font-size:13px;margin-top:4px;flex:0 0 auto}
+    .plan .btn{width:100%}
+
+    /* ---------- CTA BAND ---------- */
+    .cta-band{padding:30px 0}
+    .cta-inner{
+      position:relative;overflow:hidden;border-radius:24px;
+      background:linear-gradient(120deg,#0F2E1E 0%,#103a25 45%,#0c1f15 100%);
+      border:1px solid rgba(63,224,125,.32);
+      padding:56px 48px;text-align:center;
+    }
+    .cta-inner::before{
+      content:"";position:absolute;inset:0;
+      background:radial-gradient(60% 120% at 50% 0%, rgba(63,224,125,.25), transparent 60%);
+      pointer-events:none;
+    }
+    .cta-inner h2{position:relative;font-size:clamp(26px,4vw,40px);font-weight:800;letter-spacing:-1px;margin-bottom:14px}
+    .cta-inner p{position:relative;color:#bfe9cf;font-size:17px;max-width:54ch;margin:0 auto 28px}
+    .cta-inner .btn{position:relative}
+    .cta-grid-lines{position:absolute;inset:0;background-image:linear-gradient(to right,rgba(63,224,125,.06) 1px,transparent 1px);background-size:40px 100%;opacity:.5}
+
+    /* ---------- CONTACT ---------- */
+    .contact-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:46px}
+    .contact-info h2{font-size:clamp(26px,3.4vw,36px);font-weight:800;letter-spacing:-.8px;margin-bottom:16px}
+    .contact-info p.intro{color:var(--muted);font-size:16px;margin-bottom:28px}
+    .info-row{display:flex;align-items:center;gap:15px;margin-bottom:18px}
+    .info-row .ic{
+      width:46px;height:46px;border-radius:12px;flex:0 0 auto;
+      background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.25);
+      display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:17px;
+    }
+    .info-row .meta .k{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+    .info-row .meta .v{font-size:16px;font-weight:600;color:#fff}
+    form.contact-form{
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:30px;
+    }
+    .field{margin-bottom:18px}
+    .field label{display:block;font-size:13.5px;font-weight:600;color:#cfd6df;margin-bottom:8px}
+    .field input,.field textarea{
+      width:100%;background:#0E1217;border:1px solid var(--border);border-radius:11px;
+      padding:14px 15px;color:#fff;font-size:15px;font-family:inherit;
+      transition:border-color .2s var(--ease),box-shadow .2s var(--ease);
+    }
+    .field input::placeholder,.field textarea::placeholder{color:#5c6675}
+    .field input:focus,.field textarea:focus{
+      outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(63,224,125,.15);
+    }
+    .field textarea{resize:vertical;min-height:130px}
+    form.contact-form .btn{width:100%}
+
+    /* ---------- FOOTER ---------- */
+    footer{border-top:1px solid var(--border-soft);background:var(--bg-2);padding:56px 0 30px;margin-top:30px}
+    .foot-top{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;margin-bottom:36px}
+    .foot-brand{max-width:320px}
+    .foot-brand p{color:var(--muted);font-size:14.5px;margin-top:16px}
+    .foot-cols{display:flex;gap:64px;flex-wrap:wrap}
+    .foot-col h4{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:#6f7986;margin-bottom:16px}
+    .foot-col a{display:block;color:var(--muted);font-size:14.5px;margin-bottom:11px;transition:color .2s var(--ease)}
+    .foot-col a:hover{color:var(--accent)}
+    .foot-bottom{
+      border-top:1px solid var(--border-soft);padding-top:24px;
+      display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+      color:#6f7986;font-size:13.5px;
+    }
+    .foot-bottom .socials{display:flex;gap:12px}
+    .foot-bottom .socials a{
+      width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
+      display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s var(--ease);
+    }
+    .foot-bottom .socials a:hover{color:var(--accent);border-color:var(--accent);transform:translateY(-2px)}
+
+    /* reveal */
+    .reveal{opacity:0;transform:translateY(22px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+    .reveal.in{opacity:1;transform:none}
+
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width:980px){
+      .features-grid{grid-template-columns:repeat(2,1fr)}
+      .pricing-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}
+      .about{grid-template-columns:1fr;gap:36px}
+      .about-media{order:-1}
+      .contact-grid{grid-template-columns:1fr;gap:34px}
+    }
+    @media (max-width:760px){
+      .nav-links,.nav-right .btn{display:none}
+      .hamburger{display:flex}
+      .section{padding:72px 0}
+      .hero{min-height:calc(100vh - 70px);padding:60px 0}
+      .features-grid{grid-template-columns:1fr}
+      .stat + .stat{border-left:none}
+      .stat{flex-basis:100%}
+      .stat:not(:last-child){border-bottom:1px solid var(--border)}
+      .cta-inner{padding:42px 24px}
+      .foot-top{flex-direction:column;gap:30px}
+      .foot-cols{gap:40px}
+    }
+    @media (max-width:420px){
+      .wrap{padding:0 18px}
+      .hero-ctas .btn{width:100%}
+    }
+
+    /* ---------- ACCESIBILITATE: prefers-reduced-motion ---------- */
+    @media (prefers-reduced-motion: reduce){
+      html{scroll-behavior:auto}
+      .reveal{opacity:1 !important;transform:none !important;transition:none !important}
+      .badge .dot{animation:none !important}
+      .mobile-menu.open .mm-inner{animation:none !important}
+      *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important;animation-iteration-count:1 !important}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header id="siteHeader">
+    <div class="wrap">
+      <nav class="nav">
+        <a href="#top" class="logo" aria-label="RA Tracks">
+          <span class="ralogo" aria-label="RA Tracks"><img src="/logo-mark.png" style="height:28px" alt="RA"><span class="raw" style="font-size:22px">Tracks</span></span>
+        </a>
+
+        <div class="nav-links">
+          <a href="#functii">Functii</a>
+          <a href="#despre">Despre</a>
+          <a href="#abonamente">Abonamente</a>
+          <a href="#contact">Contact</a>
+        </div>
+
+        <div class="nav-right">
+          <a href="/app" class="btn btn-primary btn-sm"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
+          <button class="hamburger" id="hamburger" aria-label="Meniu" aria-controls="mobileMenu" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- mobile menu (overlay full-screen) -->
+  <div class="mobile-menu" id="mobileMenu" role="dialog" aria-modal="true" aria-label="Meniu mobil">
+    <div class="mm-inner">
+      <div class="mm-mark" aria-hidden="true">
+        <span class="ralogo" aria-label="RA Tracks"><img src="/logo-mark.png" style="height:32px" alt="RA"><span class="raw" style="font-size:25px">Tracks</span></span>
+      </div>
+      <a href="#functii">Functii</a>
+      <a href="#despre">Despre</a>
+      <a href="#abonamente">Abonamente</a>
+      <a href="#contact">Contact</a>
+      <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
+    </div>
+  </div>
+
+  <span id="top"></span>
+
+  <!-- ===== HERO (centrat orizontal si vertical) ===== -->
+  <section class="hero">
+    <div class="hero-bgimg" aria-hidden="true"></div>
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="hero-glow two" aria-hidden="true"></div>
+    <div class="hero-veil" aria-hidden="true"></div>
+    <div class="wrap">
+      <div class="hero-inner">
+        <span class="badge"><span class="dot"></span> Compatibil Teltonika &middot; Sonde litrometrice &middot; CAN</span>
+        <h1>Monitorizeaza-ti <span class="grad">flota in timp real</span></h1>
+        <p class="sub">RA Tracks iti aduce localizare live, rapoarte detaliate, consum de combustibil si alerte instant — totul intr-un singur dashboard rapid, clar si construit pentru operatiuni reale de transport.</p>
+        <div class="hero-ctas">
+          <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
+          <button type="button" class="btn btn-ghost" onclick="raxDemo(this)"><i class="fa-solid fa-play"></i> Incearca demo live</button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat">
+            <div class="num"><span>~4s</span></div>
+            <div class="lbl">actualizare pozitie</div>
+          </div>
+          <div class="stat">
+            <div class="num"><span>14+</span></div>
+            <div class="lbl">tipuri de rapoarte</div>
+          </div>
+          <div class="stat">
+            <div class="num"><span>100%</span></div>
+            <div class="lbl">datele tale</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FUNCTII ===== -->
+  <section class="section" id="functii">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Functii</span>
+        <h2>Tot ce ai nevoie ca sa <span class="accent">controlezi flota</span></h2>
+        <p class="lead">Un set complet de instrumente, dintr-o singura platforma — de la harta live pana la integrari prin API.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature reveal">
+          <div class="ic"><i class="fa-solid fa-location-crosshairs"></i></div>
+          <h3>Localizare live</h3>
+          <p>Urmareste fiecare vehicul pe harta in timp real, cu viteza, directie si traseu. Pozitia se actualizeaza la cateva secunde.</p>
+          <span class="tag">Real-time</span>
+        </div>
+        <div class="feature reveal">
+          <div class="ic"><i class="fa-solid fa-chart-column"></i></div>
+          <h3>Rapoarte detaliate</h3>
+          <p>Trasee, opriri, stationari, kilometri, viteze si activitate per vehicul sau per sofer. Exporta si analizeaza usor.</p>
+          <span class="tag">14+ tipuri</span>
+        </div>
+        <div class="feature reveal">
+          <div class="ic"><i class="fa-solid fa-gas-pump"></i></div>
+          <h3>Combustibil &amp; sonde</h3>
+          <p>Monitorizare consum si nivel rezervor cu sonde litrometrice Escort / EuroSens si date CAN. Detectie alimentari si scurgeri.</p>
+          <span class="tag">Escort / EuroSens</span>
+        </div>
+        <div class="feature reveal">
+          <div class="ic"><i class="fa-solid fa-bell"></i></div>
+          <h3>Alerte &amp; notificari</h3>
+          <p>Primesti instant alerte pentru viteza, geofence, scurgeri de combustibil, deconectari sau evenimente personalizate.</p>
+          <span class="tag">Instant</span>
+        </div>
+        <div class="feature reveal">
+          <div class="ic"><i class="fa-solid fa-users-gear"></i></div>
+          <h3>Roluri &amp; multi-client</h3>
+          <p>Gestioneaza mai multi clienti si echipe cu drepturi de acces separate. Fiecare vede exact ce trebuie sa vada.</p>
+          <span class="tag">RBAC</span>
+        </div>
+        <div class="feature reveal">
+          <div class="ic"><i class="fa-solid fa-plug-circle-bolt"></i></div>
+          <h3>API &amp; integrari</h3>
+          <p>Conecteaza RA Tracks cu sistemele tale — ERP, facturare sau TMS — prin API si webhooks. Datele tale, fluxul tau.</p>
+          <span class="tag">API + Webhooks</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== DESPRE ===== -->
+  <section class="section" id="despre">
+    <div class="wrap">
+      <div class="about">
+        <div class="about-content reveal">
+          <span class="eyebrow">Despre noi</span>
+          <h2>Construit de oameni care chiar <span style="color:var(--accent)">opereaza flote</span></h2>
+          <p>RA Tracks s-a nascut din nevoia reala de a vedea instant unde sunt vehiculele, cat combustibil consuma si ce se intampla pe traseu — fara software greoi si fara compromisuri.</p>
+          <p>Lucram cu echipamente Teltonika, date CAN si sonde litrometrice profesionale, asa ca primesti informatii precise pe care te poti baza atunci cand iei decizii.</p>
+          <ul class="check-list">
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Date precise din hardware profesional, nu estimari</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Interfata rapida, optimizata pentru desktop si mobil</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Suport tehnic in limba romana, de la oameni reali</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Datele tale raman ale tale, in siguranta</li>
+          </ul>
+        </div>
+        <div class="about-media reveal">
+          <span class="frame-glow" aria-hidden="true"></span>
+          <img src="https://images.pexels.com/photos/20882742/pexels-photo-20882742.jpeg?auto=compress&cs=tinysrgb&w=1000" alt="Sofer si camion pe traseu" loading="lazy">
+          <span class="chip"><i class="fa-solid fa-satellite-dish"></i> Conectat &middot; live</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ABONAMENTE ===== -->
+  <section class="section" id="abonamente">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Abonamente</span>
+        <h2>Preturi simple, <span class="accent">per vehicul</span></h2>
+        <p class="lead">Fara costuri ascunse. Platesti doar pentru vehiculele active si cresti cand ai nevoie.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Start -->
+        <div class="plan reveal">
+          <span class="pname">START</span>
+          <div class="price"><span class="amt">&euro;4</span><span class="per">/ vehicul / luna</span></div>
+          <p class="pdesc">Pentru flote mici care vor localizare si rapoarte de baza.</p>
+          <ul>
+            <li><i class="fa-solid fa-check"></i> Localizare live pe harta</li>
+            <li><i class="fa-solid fa-check"></i> Rapoarte trasee &amp; opriri</li>
+            <li><i class="fa-solid fa-check"></i> Istoric 30 de zile</li>
+            <li><i class="fa-solid fa-check"></i> Alerte de baza</li>
+            <li><i class="fa-solid fa-check"></i> 1 utilizator</li>
+          </ul>
+          <a href="#contact" class="btn btn-ghost">Alege Start</a>
+        </div>
+
+        <!-- Pro -->
+        <div class="plan popular reveal">
+          <span class="pop-tag"><i class="fa-solid fa-star" style="font-size:11px"></i> Cel mai popular</span>
+          <span class="pname">PRO</span>
+          <div class="price"><span class="amt">&euro;7</span><span class="per">/ vehicul / luna</span></div>
+          <p class="pdesc">Pentru operatiuni serioase cu monitorizare de combustibil.</p>
+          <ul>
+            <li><i class="fa-solid fa-check"></i> Tot ce e in Start</li>
+            <li><i class="fa-solid fa-check"></i> Combustibil &amp; sonde litrometrice</li>
+            <li><i class="fa-solid fa-check"></i> Toate cele 14+ rapoarte</li>
+            <li><i class="fa-solid fa-check"></i> Istoric extins 365 zile &amp; export</li>
+            <li><i class="fa-solid fa-check"></i> Alerte avansate &amp; geofence</li>
+            <li><i class="fa-solid fa-check"></i> Roluri &amp; utilizatori multipli</li>
+          </ul>
+          <a href="#contact" class="btn btn-primary">Alege Pro</a>
+        </div>
+
+        <!-- Enterprise -->
+        <div class="plan reveal">
+          <span class="pname">ENTERPRISE</span>
+          <div class="price"><span class="amt">Custom</span></div>
+          <p class="pdesc">Pentru flote mari, multi-client si integrari dedicate.</p>
+          <ul>
+            <li><i class="fa-solid fa-check"></i> Tot ce e in Pro</li>
+            <li><i class="fa-solid fa-check"></i> API &amp; integrari dedicate</li>
+            <li><i class="fa-solid fa-check"></i> Multi-client &amp; sub-conturi</li>
+            <li><i class="fa-solid fa-check"></i> SLA &amp; suport prioritar</li>
+            <li><i class="fa-solid fa-check"></i> Onboarding asistat</li>
+          </ul>
+          <a href="#contact" class="btn btn-ghost">Contacteaza-ne</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA BAND ===== -->
+  <section class="cta-band">
+    <div class="wrap">
+      <div class="cta-inner">
+        <div class="cta-grid-lines" aria-hidden="true"></div>
+        <h2>Vezi-ti flota chiar acum</h2>
+        <p>Intra in aplicatie si descopera in cateva secunde cum arata monitorizarea moderna a flotei tale.</p>
+        <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CONTACT ===== -->
+  <section class="section" id="contact">
+    <div class="wrap">
+      <div class="contact-grid">
+        <div class="contact-info reveal">
+          <span class="eyebrow">Contact</span>
+          <h2>Hai sa vorbim despre <span style="color:var(--accent)">flota ta</span></h2>
+          <p class="intro">Spune-ne cate vehicule ai si ce vrei sa monitorizezi. Iti raspundem rapid cu o solutie potrivita.</p>
+
+          <div class="info-row">
+            <div class="ic"><i class="fa-solid fa-envelope"></i></div>
+            <div class="meta">
+              <div class="k">Email</div>
+              <div class="v">contact@ratrack.ro</div>
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="ic"><i class="fa-solid fa-phone"></i></div>
+            <div class="meta">
+              <div class="k">Telefon</div>
+              <div class="v">+40 7XX XXX XXX</div>
+            </div>
+          </div>
+          <div class="info-row">
+            <div class="ic"><i class="fa-solid fa-location-dot"></i></div>
+            <div class="meta">
+              <div class="k">Locatie</div>
+              <div class="v">Romania</div>
+            </div>
+          </div>
+        </div>
+
+        <form class="contact-form reveal" id="contactForm">
+          <div class="field">
+            <label for="cf-name">Nume</label>
+            <input type="text" id="cf-name" name="name" placeholder="Numele tau" required>
+          </div>
+          <div class="field">
+            <label for="cf-email">Email</label>
+            <input type="email" id="cf-email" name="email" placeholder="adresa@email.ro" required>
+          </div>
+          <div class="field">
+            <label for="cf-msg">Mesaj</label>
+            <textarea id="cf-msg" name="message" placeholder="Cate vehicule ai si ce vrei sa monitorizezi?" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Trimite mesajul</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    <div class="wrap">
+      <div class="foot-top">
+        <div class="foot-brand">
+          <a href="#top" class="logo" aria-label="RA Tracks">
+            <span class="ralogo" aria-label="RA Tracks"><img src="/logo-mark.png" style="height:28px" alt="RA"><span class="raw" style="font-size:22px">Tracks</span></span>
+          </a>
+          <p>Monitorizare GPS in timp real pentru flote. Localizare live, rapoarte, combustibil si alerte — intr-un singur loc.</p>
+        </div>
+
+        <div class="foot-cols">
+          <div class="foot-col">
+            <h4>Produs</h4>
+            <a href="#functii">Functii</a>
+            <a href="#abonamente">Abonamente</a>
+            <a href="/app">Intra in aplicatie</a>
+          </div>
+          <div class="foot-col">
+            <h4>Companie</h4>
+            <a href="#despre">Despre noi</a>
+            <a href="#contact">Contact</a>
+          </div>
+          <div class="foot-col">
+            <h4>Contact</h4>
+            <a href="mailto:contact@ratrack.ro">contact@ratrack.ro</a>
+            <a href="tel:+407000000000">+40 7XX XXX XXX</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot-bottom">
+        <span>&copy; <span id="year"></span> RA Tracks. Toate drepturile rezervate.</span>
+        <div class="socials">
+          <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+          <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+          <a href="mailto:contact@ratrack.ro" aria-label="Email"><i class="fa-solid fa-envelope"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // header scrolled state (border + fundal intensificat dupa scrollY > 12)
+    (function(){
+      var header=document.getElementById('siteHeader');
+      function onScroll(){
+        if(window.scrollY>12){header.classList.add('scrolled');}
+        else{header.classList.remove('scrolled');}
+      }
+      onScroll();
+      window.addEventListener('scroll',onScroll,{passive:true});
+    })();
+
+    // hamburger -> meniu overlay full-screen (blocheaza scroll-ul paginii)
+    (function(){
+      var btn=document.getElementById('hamburger');
+      var menu=document.getElementById('mobileMenu');
+      function open(){
+        menu.classList.add('open');
+        btn.setAttribute('aria-expanded','true');
+        btn.innerHTML='<i class="fa-solid fa-xmark"></i>';
+        document.body.style.overflow='hidden';
+      }
+      function close(){
+        menu.classList.remove('open');
+        btn.setAttribute('aria-expanded','false');
+        btn.innerHTML='<i class="fa-solid fa-bars"></i>';
+        document.body.style.overflow='';
+      }
+      btn.addEventListener('click',function(){
+        if(menu.classList.contains('open')){close();}else{open();}
+      });
+      menu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',close);});
+      document.addEventListener('keydown',function(e){
+        if(e.key==='Escape'&&menu.classList.contains('open')){close();}
+      });
+      window.addEventListener('resize',function(){
+        if(window.innerWidth>760&&menu.classList.contains('open')){close();}
+      });
+    })();
+
+    // contact form -> mailto
+    document.getElementById('contactForm').addEventListener('submit',function(e){
+      e.preventDefault();
+      var name=document.getElementById('cf-name').value.trim();
+      var email=document.getElementById('cf-email').value.trim();
+      var msg=document.getElementById('cf-msg').value.trim();
+      var subject=encodeURIComponent('Cerere RA Tracks de la '+name);
+      var body=encodeURIComponent('Nume: '+name+'\nEmail: '+email+'\n\nMesaj:\n'+msg);
+      window.location.href='mailto:contact@ratrack.ro?subject='+subject+'&body='+body;
+    });
+
+    // reveal on scroll (respecta prefers-reduced-motion)
+    (function(){
+      var els=document.querySelectorAll('.reveal');
+      var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(reduce||!('IntersectionObserver' in window)){
+        els.forEach(function(el){el.classList.add('in');});
+        return;
+      }
+      var io=new IntersectionObserver(function(entries){
+        entries.forEach(function(en){
+          if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}
+        });
+      },{threshold:.14,rootMargin:'0px 0px -40px 0px'});
+      els.forEach(function(el){io.observe(el);});
+    })();
+
+    // year
+    document.getElementById('year').textContent=new Date().getFullYear();
+
+    // Demo live: autentificare în contul demo (read-only) apoi intrare în aplicație
+    window.raxDemo = async function (btn) {
+      var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Se pregătește demo…';
+      try {
+        var r = await fetch('/api/demo/login', { method: 'POST', credentials: 'same-origin' });
+        if (r.ok) { location.href = '/app'; return; }
+        var j = await r.json().catch(function () { return {}; });
+        alert(j.error || 'Demo indisponibil momentan.');
+      } catch (e) { alert('Eroare: ' + e.message); }
+      btn.disabled = false; btn.innerHTML = old;
+    };
+  </script>
+</body>
+</html>

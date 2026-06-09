@@ -10,3 +10,6 @@ data/
 # Loguri și artefacte de test
 *.log
 server_test.log
+
+.smoke-db/
+*.pid

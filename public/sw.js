@@ -1,6 +1,6 @@
-// Service worker — PWA (instalabil + shell offline) + Web Push pentru GPS Unitip
-const CACHE = 'gpsunitip-v1';
-const SHELL = ['/', '/index.html', '/manifest.json', '/icon.svg', '/icon-192.png', '/vendor/leaflet-heat.js'];
+// Service worker — PWA (instalabil + shell offline) + Web Push pentru RA Track
+const CACHE = 'ratracks-v6';
+const SHELL = ['/app', '/index.html', '/manifest.json', '/icon.svg', '/icon-192.png', '/logo-mark.png', '/logo-mark-light.png', '/vendor/leaflet-heat.js'];
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();
@@ -37,8 +37,8 @@ self.addEventListener('fetch', function (e) {
 self.addEventListener('push', function (event) {
   let data = {};
   try { data = event.data ? event.data.json() : {}; }
-  catch (e) { data = { title: 'GPS Unitip', body: event.data ? event.data.text() : '' }; }
-  const title = data.title || 'GPS Unitip';
+  catch (e) { data = { title: 'RA Tracks', body: event.data ? event.data.text() : '' }; }
+  const title = data.title || 'RA Tracks';
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || '',
     icon: '/icon-192.png',
@@ -53,7 +53,7 @@ self.addEventListener('notificationclick', function (event) {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
       for (const c of list) { if ('focus' in c) return c.focus(); }
-      if (self.clients.openWindow) return self.clients.openWindow('/');
+      if (self.clients.openWindow) return self.clients.openWindow('/app');
     })
   );
 });

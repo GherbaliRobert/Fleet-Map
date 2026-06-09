@@ -1,7 +1,7 @@
 {
-  "name": "gps-unitip",
+  "name": "fleet-map",
   "version": "1.0.0",
-  "description": "GPS Unitip — platformă de tracking flotă (Teltonika), 100% locală cu bază de date embedded (PGlite)",
+  "description": "Fleet-Map — platformă de tracking flotă (Teltonika), 100% locală cu bază de date embedded (PGlite)",
   "main": "server.js",
   "engines": {
     "node": ">=18"
@@ -20,9 +20,11 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.5.0",
     "bcryptjs": "^3.0.3",
+    "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "express-session": "^1.19.0",
     "nodemailer": "^8.0.10",
+    "pdfkit": "^0.19.0",
     "web-push": "^3.6.7",
     "ws": "^8.16.0"
   }

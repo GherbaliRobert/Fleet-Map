@@ -25,10 +25,12 @@ async function sendEmail(subject, text) {
 }
 
 // Trimite email către un destinatar specific (folosit pentru notificările per-utilizator)
-async function sendEmailTo(to, subject, text) {
+async function sendEmailTo(to, subject, text, attachments) {
   const tr = getTransporter();
   if (!tr || !to) return false;
-  await tr.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER || 'gps@local', to, subject, text });
+  const msg = { from: process.env.SMTP_FROM || process.env.SMTP_USER || 'gps@local', to, subject, text };
+  if (attachments && attachments.length) msg.attachments = attachments;
+  await tr.sendMail(msg);
   return true;
 }
 
@@ -52,7 +54,7 @@ async function sendWebhook(payload) {
 async function dispatchChannels(n) {
   const text = `[${(n.severity || 'info').toUpperCase()}] ${n.title || n.type}\n${n.body || ''}`.trim();
   const results = {};
-  try { results.email = await sendEmail(n.title || 'Notificare GPS Unitip', text); } catch (e) { results.email = 'err: ' + e.message; }
+  try { results.email = await sendEmail(n.title || 'Notificare Fleet-Map', text); } catch (e) { results.email = 'err: ' + e.message; }
   try { results.telegram = await sendTelegram(text); } catch (e) { results.telegram = 'err: ' + e.message; }
   try { results.webhook = await sendWebhook(n); } catch (e) { results.webhook = 'err: ' + e.message; }
   return results;

@@ -1,13 +1,13 @@
 {
-  "name": "GPS Unitip — Monitorizare flotă",
-  "short_name": "GPS Unitip",
+  "name": "RA Tracks — Monitorizare flotă",
+  "short_name": "RA Tracks",
   "description": "Localizare GPS, rapoarte, alerte și notificări pentru flotă.",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#eef2f6",
-  "theme_color": "#2563eb",
+  "background_color": "#0B0E11",
+  "theme_color": "#0B0E11",
   "lang": "ro",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },

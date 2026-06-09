@@ -371,28 +371,121 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
   return { columns: ['Vehicul', 'Moment', 'Lat', 'Lng', 'Viteză', 'Contact', 'Combustibil', 'Sat.'], rows, summary: { 'Puncte': rows.length, 'Plafon atins': capped ? 'da (' + cap + ')' : 'nu' } };
 }
 
-// Catalog: cat = monitorizare | consum | can | evenimente
+async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — scor comportament șofer
+  const limit = opts.limit || 90;
+  const HARSH_ACCEL = opts.harshAccel || 7; // km/h pe secundă (~1.9 m/s²)
+  const HARSH_BRAKE = opts.harshBrake || 9; // km/h pe secundă (~2.5 m/s²)
+  const HARSH_TURN = opts.harshTurn || 25;  // grade/secundă la viteză > 25 km/h
+  const rows = []; let fleetScoreW = 0, fleetKm = 0, fleetVeh = 0, totA = 0, totB = 0;
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    let km = 0, accel = 0, brake = 0, hardTurn = 0, speedOverSec = 0, idleSec = 0, driveSec = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const pr = pts[i - 1], p = pts[i];
+      const dt = (t(p) - t(pr)) / 1000;
+      if (dt <= 0 || dt > 300) continue; // ignoră doar pauzele mari (acumularea km/timp acceptă intervale rare)
+      const dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude);
+      if (dist < MAX_STEP_KM) km += dist;
+      const sp = p.speed || 0, spPr = pr.speed || 0;
+      if (sp > limit) speedOverSec += dt;
+      if (sp > IDLE_SPEED) driveSec += dt; else if (ignOn(p)) idleSec += dt;
+      // evenimentele bruște au sens doar pe intervale scurte (accelerația pe gap mare nu e relevantă)
+      if (dt <= 30) {
+        const a = (sp - spPr) / dt;
+        if (a > HARSH_ACCEL) accel++;
+        if (a < -HARSH_BRAKE) brake++;
+        if (sp > 25) { let da = Math.abs((p.angle || 0) - (pr.angle || 0)); if (da > 180) da = 360 - da; if (da / dt > HARSH_TURN) hardTurn++; }
+      }
+    }
+    if (km < 0.5 && driveSec < 60) continue;
+    const per100 = km > 1 ? 100 / km : 0;
+    const speedShare = driveSec > 0 ? speedOverSec / driveSec : 0;
+    const idleShare = (driveSec + idleSec) > 0 ? idleSec / (driveSec + idleSec) : 0;
+    let pen = 0;
+    pen += Math.min(30, accel * per100 * 2.5);
+    pen += Math.min(35, brake * per100 * 3.0);
+    pen += Math.min(20, hardTurn * per100 * 2.0);
+    pen += Math.min(25, speedShare * 100);
+    pen += Math.min(15, idleShare * 40);
+    const score = Math.max(0, Math.round(100 - pen));
+    const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'E';
+    rows.push([label(devMap, imei), score + ' · ' + grade, accel, brake, hardTurn, fmtDur(speedOverSec), Math.round(idleShare * 100) + '%', Math.round(km)]);
+    const w = Math.max(1, km); fleetScoreW += score * w; fleetKm += w; fleetVeh++; totA += accel; totB += brake;
+  }
+  rows.sort((a, b) => parseInt(b[1]) - parseInt(a[1]));
+  return {
+    columns: ['Vehicul', 'Scor · Notă', 'Accel. bruște', 'Frânări bruște', 'Viraje bruște', 'Timp peste viteză', 'Ralanti', 'Km'],
+    rows,
+    summary: { 'Scor flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Vehicule evaluate': fleetVeh, 'Accelerări bruște': totA, 'Frânări bruște': totB }
+  };
+}
+
+async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor pornit + staționat)
+  const minSec = (opts.idleMin || 3) * 60;
+  const lph = opts.idleLph || 1.5; // L/h consumați la ralanti (estimare)
+  const rows = []; let totalIdle = 0, totalEvents = 0;
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    let start = null, last = null;
+    const flush = (endLoc) => { if (start) { const dur = (new Date(last) - new Date(start)) / 1000; if (dur >= minSec) { rows.push([label(devMap, imei), fmtTs(start), fmtDur(dur), endLoc]); totalIdle += dur; totalEvents++; } start = null; } };
+    for (const p of pts) {
+      if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED) { if (!start) start = p.timestamp; last = p.timestamp; }
+      else flush(loc(p));
+    }
+    flush('');
+  }
+  return { columns: ['Vehicul', 'Început', 'Durată ralanti', 'Locație'], rows,
+    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil estimat irosit (L)': Math.round(totalIdle / 3600 * lph) } };
+}
+
+async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibil (din consum + preț/vehicul)
+  const priceMap = {}; try { (await db.pool.query('SELECT imei, fuel_price FROM devices')).rows.forEach(d => priceMap[d.imei] = parseFloat(d.fuel_price)); } catch (e) {}
+  const rows = []; let tKm = 0, tCons = 0, tCost = 0;
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    let first = null, last = null, refuel = 0, dist = 0, prev = null;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], fl = fuelL(p);
+      if (fl != null) { if (first == null) first = fl; last = fl; if (prev != null) { const d = fl - prev; if (d >= (opts.refuelMin || 10)) refuel += d; } prev = fl; }
+      if (i > 0) { const pr = pts[i - 1], dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) dist += dd; }
+    }
+    const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
+    const price = priceMap[imei] || opts.fuelPrice || 7.5;
+    const cost = consumed * price, perKm = dist > 1 ? cost / dist : 0;
+    rows.push([label(devMap, imei), Math.round(dist), consumed.toFixed(0) + ' L', price.toFixed(2), Math.round(cost) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
+    tKm += dist; tCons += consumed; tCost += cost;
+  }
+  rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4]));
+  return { columns: ['Vehicul', 'Km', 'Consumat', 'Preț (RON/L)', 'Cost combustibil', 'Cost/km'], rows,
+    summary: { 'Km total': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) } };
+}
+
+// Catalog: cat = monitorizare | consum | can | evenimente | siguranta
 const REPORTS = {
   trips:       { label: 'Foaie de parcurs',     cat: 'monitorizare', fn: rTrips },
   route:       { label: 'Traseu',                cat: 'monitorizare', fn: rRoute },
   location:    { label: 'Locație',               cat: 'monitorizare', fn: rLocation },
   stops:       { label: 'Staționări',            cat: 'monitorizare', fn: rStops },
   daily:       { label: 'Situație zilnică',       cat: 'monitorizare', fn: rDaily },
+  idling:      { label: 'Ralanti',                cat: 'monitorizare', fn: rIdling },
   driver:      { label: 'Pontaj șofer',           cat: 'monitorizare', fn: rDriver },
   utilization: { label: 'Index km / ore',         cat: 'monitorizare', fn: rUtilization },
   analytic:    { label: 'Analitic',               cat: 'monitorizare', fn: rAnalytic },
   consumption: { label: 'Consum carburant',       cat: 'consum',       fn: rConsumption },
   fuel:        { label: 'Alimentări & scurgeri',  cat: 'consum',       fn: rFuel },
+  costs:       { label: 'Costuri combustibil',    cat: 'consum',       fn: rCosts },
   can:         { label: 'Date CAN',               cat: 'can',          fn: rCan },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   fn: rSpeeding },
   geofence:    { label: 'Vizite în zone',         cat: 'evenimente',   fn: rGeofence },
-  events:      { label: 'Evenimente (alerte)',    cat: 'evenimente',   fn: rEvents }
+  events:      { label: 'Evenimente (alerte)',    cat: 'evenimente',   fn: rEvents },
+  ecodrive:    { label: 'EcoDrive (comportament)', cat: 'siguranta',   fn: rEcoDrive }
 };
 const REPORT_CATEGORIES = [
   { key: 'monitorizare', label: 'Monitorizare' },
   { key: 'consum', label: 'Consum carburant' },
   { key: 'can', label: 'Date CAN' },
-  { key: 'evenimente', label: 'Evenimente & zone' }
+  { key: 'evenimente', label: 'Evenimente & zone' },
+  { key: 'siguranta', label: 'Siguranță & EcoDrive' }
 ];
 
 async function runReport(db, type, imeis, from, to, opts) {
