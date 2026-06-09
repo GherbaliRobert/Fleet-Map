@@ -2386,7 +2386,8 @@
         <button class="close-btn" onclick="closeAdmin()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
       <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;">
-        <button class="admin-tab active" data-atab="drivers" onclick="switchAdminTab('drivers')"><i class="fas fa-id-card"></i> Șoferi</button>
+        <button class="admin-tab active" data-atab="vehicles" onclick="switchAdminTab('vehicles')"><i class="fas fa-truck"></i> Vehicule</button>
+        <button class="admin-tab" data-atab="drivers" onclick="switchAdminTab('drivers')"><i class="fas fa-id-card"></i> Șoferi</button>
         <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
         <button class="admin-tab" data-atab="alerts" onclick="switchAdminTab('alerts')"><i class="fas fa-bell"></i> Alerte</button>
         <button class="admin-tab" data-atab="geofences" onclick="switchAdminTab('geofences')"><i class="fas fa-draw-polygon"></i> Zone</button>
@@ -2394,8 +2395,42 @@
       </div>
       <div style="overflow-y:auto;flex:1;padding-right:4px;">
 
+        <!-- Vehicule -->
+        <div id="atab-vehicles" class="admin-tab-content" style="display:none;">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
+            <div style="display:flex;gap:2px;background:var(--bg-dark);border-radius:8px;padding:2px;">
+              <button id="veh-tab-active" class="btn-sm btn-primary" onclick="setVehScope('active')">Active</button>
+              <button id="veh-tab-archived" class="btn-sm" onclick="setVehScope('archived')">Arhivate</button>
+            </div>
+            <input type="text" id="veh-search" placeholder="Caută nume / nr. / marcă..." oninput="renderVehicles()" style="flex:1;min-width:160px;">
+            <span id="veh-count" style="font-size:12px;color:var(--text-muted);"></span>
+            <button class="btn-sm btn-primary" onclick="toggleVehAdd()"><i class="fas fa-plus"></i> Adaugă vehicul</button>
+          </div>
+
+          <div id="veh-add-form" style="display:none;background:var(--bg-dark);padding:10px 12px;border-radius:8px;margin-bottom:10px;">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-info-circle" style="color:var(--accent);"></i> Pre-înregistrezi un vehicul după IMEI. Când trackerul cu acel IMEI se conectează, se leagă automat. Detaliile complete le pui apoi din „Editare".</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr) auto;gap:8px;align-items:end;">
+              <label style="font-size:11px;">IMEI *<input type="text" id="veh-new-imei" placeholder="ex: 350612..." style="font-family:monospace;"></label>
+              <label style="font-size:11px;">Nume<input type="text" id="veh-new-name"></label>
+              <label style="font-size:11px;">Nr. înmatriculare<input type="text" id="veh-new-plate" style="text-transform:uppercase;"></label>
+              <button class="btn-sm btn-primary" onclick="createVehicle()"><i class="fas fa-save"></i> Salvează</button>
+            </div>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead><tr style="text-align:left;border-bottom:1px solid var(--border);color:var(--text-muted);">
+                <th style="padding:6px 8px;">Status</th><th style="padding:6px 8px;">Nr.</th><th style="padding:6px 8px;">Nume</th>
+                <th style="padding:6px 8px;">Grup</th><th style="padding:6px 8px;">Șofer</th>
+                <th style="padding:6px 8px;">Ultima transmisie</th><th style="padding:6px 8px;">Marcă</th><th style="padding:6px 8px;">Acțiuni</th>
+              </tr></thead>
+              <tbody id="veh-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Șoferi -->
-        <div id="atab-drivers" class="admin-tab-content">
+        <div id="atab-drivers" class="admin-tab-content" style="display:none;">
           <div id="admin-drivers-list"></div>
           <div class="admin-add" style="grid-template-columns:repeat(2,1fr);">
             <input type="hidden" id="drv-id">
@@ -3232,17 +3267,89 @@
       // tipuri alerte
       document.getElementById('alert-type').innerHTML = ALERT_TYPES.map(t => `<option value="${t.v}">${t.label}</option>`).join('');
       renderAlertCond();
-      switchAdminTab('drivers');
+      switchAdminTab('vehicles');
     }
     function switchAdminTab(tab) {
       document.querySelectorAll('.admin-tab').forEach(b => b.classList.toggle('active', b.dataset.atab === tab));
       document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
       document.getElementById('atab-' + tab).style.display = 'block';
-      if (tab === 'drivers') loadDrivers();
+      if (tab === 'vehicles') loadVehicles();
+      else if (tab === 'drivers') loadDrivers();
       else if (tab === 'groups') loadGroups();
       else if (tab === 'alerts') loadAlerts();
       else if (tab === 'geofences') loadGeofencesAdmin();
       else if (tab === 'maintenance') loadMaintenance();
+    }
+
+    // ─── Vehicule (management) ───
+    let vehAll = [], vehScope = 'active', vehGroups = {}, vehDrivers = {};
+    async function loadVehicles() {
+      try {
+        const [dv, gr, dr] = await Promise.all([
+          fetch('/api/devices?includeArchived=1').then(r => r.json()),
+          fetch('/api/groups').then(r => r.json()).catch(() => []),
+          fetch('/api/drivers').then(r => r.json()).catch(() => [])
+        ]);
+        vehAll = Array.isArray(dv) ? dv : [];
+        vehGroups = {}; (Array.isArray(gr) ? gr : []).forEach(g => vehGroups[g.id] = g.name);
+        vehDrivers = {}; (Array.isArray(dr) ? dr : []).forEach(d => vehDrivers[d.id] = (d.name || d.full_name));
+      } catch (e) { vehAll = []; }
+      renderVehicles();
+    }
+    function setVehScope(s) {
+      vehScope = s;
+      document.getElementById('veh-tab-active').className = 'btn-sm' + (s === 'active' ? ' btn-primary' : '');
+      document.getElementById('veh-tab-archived').className = 'btn-sm' + (s === 'archived' ? ' btn-primary' : '');
+      renderVehicles();
+    }
+    function toggleVehAdd() { const f = document.getElementById('veh-add-form'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; }
+    function renderVehicles() {
+      const q = (document.getElementById('veh-search').value || '').toLowerCase();
+      let rows = vehAll.filter(d => (vehScope === 'archived') ? d.status === 'archived' : d.status !== 'archived');
+      if (q) rows = rows.filter(d => ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.brand || '') + ' ' + (d.imei || '')).toLowerCase().includes(q));
+      document.getElementById('veh-count').textContent = rows.length + ' vehicule';
+      const now = Date.now();
+      document.getElementById('veh-tbody').innerHTML = rows.map(d => {
+        const lastT = d.last_position_time || d.last_seen;
+        const online = lastT ? (now - new Date(lastT).getTime()) / 60000 < 30 : false;
+        const dot = '<span class="status-dot ' + (online ? 'moving' : 'offline') + '"></span>';
+        const last = lastT ? new Date(lastT).toLocaleString('ro-RO') : '—';
+        const grp = d.group_id ? (vehGroups[d.group_id] || '') : '';
+        const drv = d.driver_id ? (vehDrivers[d.driver_id] || '') : '';
+        const archived = d.status === 'archived';
+        return `<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:6px 8px;">${dot}</td>
+          <td style="padding:6px 8px;font-weight:600;">${esc(d.plate || '')}</td>
+          <td style="padding:6px 8px;">${esc(d.name || d.imei)}</td>
+          <td style="padding:6px 8px;">${esc(grp)}</td>
+          <td style="padding:6px 8px;">${esc(drv)}</td>
+          <td style="padding:6px 8px;color:var(--text-muted);">${last}</td>
+          <td style="padding:6px 8px;">${esc(d.brand || '')}</td>
+          <td style="padding:6px 8px;white-space:nowrap;">
+            <button class="btn-sm" title="Editează" onclick="closeAdmin();openEditModal('${esc(d.imei)}')"><i class="fas fa-pen"></i></button>
+            <button class="btn-sm ${archived ? 'btn-primary' : 'btn-danger'}" title="${archived ? 'Restaurează' : 'Arhivează'}" onclick="setVehArchive('${esc(d.imei)}', ${archived ? 'false' : 'true'})"><i class="fas fa-${archived ? 'undo' : 'archive'}"></i></button>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--text-muted);">Niciun vehicul.</td></tr>';
+    }
+    async function createVehicle() {
+      const imei = (document.getElementById('veh-new-imei').value || '').trim();
+      if (!/^\d{10,20}$/.test(imei)) { alert('IMEI invalid (10–20 cifre)'); return; }
+      const body = {
+        imei,
+        name: document.getElementById('veh-new-name').value.trim(),
+        plate: document.getElementById('veh-new-plate').value.trim().toUpperCase()
+      };
+      const r = await fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return; }
+      document.getElementById('veh-new-imei').value = ''; document.getElementById('veh-new-name').value = ''; document.getElementById('veh-new-plate').value = '';
+      toggleVehAdd(); await loadVehicles();
+    }
+    async function setVehArchive(imei, archive) {
+      if (!confirm(archive ? 'Arhivezi acest vehicul? Nu va mai apărea pe hartă.' : 'Restaurezi vehiculul?')) return;
+      const r = await fetch('/api/devices/' + imei + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: archive ? 'archived' : 'active' }) });
+      if (!r.ok) { alert('Eroare la arhivare'); return; }
+      await loadVehicles();
     }
 
     // ─── Șoferi ───
@@ -4275,10 +4382,11 @@
 
     // ─── Vehicle Icons ───
     // Glyph FontAwesome 6 după categoria vehiculului. Acceptă câmpul `icon` (en) și `vehicle_type` („Categorie", ro).
-    function markerGlyph(dev) {
-      const byIcon = { car: 'car-side', truck: 'truck', van: 'van-shuttle', bus: 'bus', motorcycle: 'motorcycle', utilaj: 'tractor' };
+    // Categoria vehiculului din câmpul `icon` (en) sau `vehicle_type` („Categorie", ro)
+    function markerCategory(dev) {
+      const byIcon = { car: 'car', truck: 'truck', van: 'van', bus: 'bus', motorcycle: 'motorcycle', utilaj: 'tractor' };
       const byType = {
-        'Auto': 'car-side', 'Camion': 'truck', 'Duba': 'van-shuttle', 'Dubă': 'van-shuttle',
+        'Auto': 'car', 'Camion': 'truck', 'Duba': 'van', 'Dubă': 'van',
         'Motocicleta': 'motorcycle', 'Motocicletă': 'motorcycle', 'Autobuz': 'bus',
         'Utilaj': 'tractor', 'Remorca': 'trailer', 'Remorcă': 'trailer'
       };
@@ -4286,49 +4394,89 @@
         if (dev.icon && byIcon[dev.icon]) return byIcon[dev.icon];
         if (dev.vehicle_type && byType[dev.vehicle_type]) return byType[dev.vehicle_type];
       }
-      return 'car-side';
+      return 'car';
+    }
+
+    // Siluetă top-down a vehiculului (viewBox 0..48, fața spre SUS). `lit` = faruri aprinse.
+    function vehicleBody(cat, color, lit) {
+      const wht = 'rgba(255,255,255,0.92)', win = 'rgba(120,190,255,0.55)', whl = 'rgba(22,22,26,0.85)';
+      const hl = lit ? 'rgba(255,247,200,0.95)' : 'rgba(255,255,255,0.25)', tl = 'rgba(255,60,60,0.8)';
+      const W = (x, y, w, h) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="1.4" fill="' + whl + '"/>';
+      switch (cat) {
+        case 'truck':
+          return W(11, 15, 3.5, 6) + W(33.5, 15, 3.5, 6) + W(11, 30, 3.5, 6) + W(33.5, 30, 3.5, 6) + W(11, 36, 3.5, 5) + W(33.5, 36, 3.5, 5) +
+            '<rect x="14" y="16" width="20" height="26" rx="2" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
+            '<rect x="15" y="6" width="18" height="11" rx="3" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
+            '<rect x="17" y="8" width="14" height="4" rx="1.5" fill="' + win + '"/>' +
+            '<circle cx="18" cy="7" r="1.2" fill="' + hl + '"/><circle cx="30" cy="7" r="1.2" fill="' + hl + '"/>';
+        case 'van':
+          return W(12, 13, 3.2, 6) + W(32.8, 13, 3.2, 6) + W(12, 31, 3.2, 6) + W(32.8, 31, 3.2, 6) +
+            '<rect x="14" y="6" width="20" height="36" rx="4" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
+            '<rect x="16" y="8" width="16" height="5" rx="2" fill="' + win + '"/>' +
+            '<line x1="15" y1="16" x2="33" y2="16" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/>' +
+            '<circle cx="18" cy="7.5" r="1.2" fill="' + hl + '"/><circle cx="30" cy="7.5" r="1.2" fill="' + hl + '"/>';
+        case 'bus':
+          return W(12, 12, 3, 6) + W(33, 12, 3, 6) + W(12, 32, 3, 6) + W(33, 32, 3, 6) +
+            '<rect x="14" y="5" width="20" height="38" rx="5" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
+            '<rect x="16" y="7" width="16" height="4" rx="1.5" fill="' + win + '"/>' +
+            '<line x1="15.5" y1="17" x2="32.5" y2="17" stroke="' + win + '" stroke-width="1.6"/>' +
+            '<line x1="15.5" y1="23" x2="32.5" y2="23" stroke="' + win + '" stroke-width="1.6"/>' +
+            '<line x1="15.5" y1="29" x2="32.5" y2="29" stroke="' + win + '" stroke-width="1.6"/>' +
+            '<line x1="15.5" y1="35" x2="32.5" y2="35" stroke="' + win + '" stroke-width="1.6"/>';
+        case 'motorcycle':
+          return '<rect x="22.5" y="8" width="3" height="6" rx="1.5" fill="' + whl + '"/>' +
+            '<rect x="22.5" y="34" width="3" height="6" rx="1.5" fill="' + whl + '"/>' +
+            '<rect x="18" y="14" width="12" height="2.4" rx="1.2" fill="' + whl + '"/>' +
+            '<rect x="21" y="14" width="6" height="20" rx="3" fill="' + color + '" stroke="' + wht + '" stroke-width="1.1"/>' +
+            '<circle cx="24" cy="11" r="1.3" fill="' + hl + '"/>';
+        case 'tractor':
+          return '<rect x="9" y="27" width="6" height="12" rx="2.8" fill="' + whl + '"/>' +
+            '<rect x="33" y="27" width="6" height="12" rx="2.8" fill="' + whl + '"/>' +
+            W(13, 11, 3, 5) + W(32, 11, 3, 5) +
+            '<rect x="16" y="8" width="16" height="30" rx="3" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
+            '<rect x="18" y="22" width="12" height="11" rx="2" fill="rgba(255,255,255,0.18)" stroke="' + wht + '" stroke-width="0.6"/>' +
+            '<circle cx="19" cy="9.5" r="1.1" fill="' + hl + '"/><circle cx="29" cy="9.5" r="1.1" fill="' + hl + '"/>';
+        case 'trailer':
+          return W(12, 20, 3.2, 6) + W(32.8, 20, 3.2, 6) + W(12, 28, 3.2, 7) + W(32.8, 28, 3.2, 7) +
+            '<rect x="14" y="10" width="20" height="32" rx="2" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
+            '<rect x="22.7" y="5" width="2.6" height="6" rx="1.3" fill="' + whl + '"/>' +
+            '<circle cx="24" cy="5" r="1.6" fill="none" stroke="' + wht + '" stroke-width="1"/>';
+        case 'car':
+        default:
+          return W(13, 13, 3.5, 7) + W(13, 30, 3.5, 7) + W(31.5, 13, 3.5, 7) + W(31.5, 30, 3.5, 7) +
+            '<path d="M18 8 C18 5, 30 5, 30 8 L32 14 L33 20 L33 32 L32 38 C32 42, 16 42, 16 38 L15 32 L15 20 L16 14 Z" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
+            '<path d="M19 12 C19 10, 29 10, 29 12 L30 17 L18 17 Z" fill="' + win + '"/>' +
+            '<path d="M19 36 L29 36 L30 32 L18 32 Z" fill="rgba(120,190,255,0.4)"/>' +
+            '<rect x="20" y="18" width="8" height="13" rx="2" fill="rgba(255,255,255,0.10)"/>' +
+            '<ellipse cx="20" cy="8" rx="1.8" ry="1.1" fill="' + hl + '"/><ellipse cx="28" cy="8" rx="1.8" ry="1.1" fill="' + hl + '"/>' +
+            '<ellipse cx="20" cy="40" rx="1.6" ry="0.9" fill="' + tl + '"/><ellipse cx="28" cy="40" rx="1.6" ry="0.9" fill="' + tl + '"/>';
+      }
     }
 
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
       const isMoving = speed > 3;
       const hasIgnition = io?.ignition === 1 || io?.ignition === true;
 
-      let color, status;
-      if (!isOnline) { color = '#ef4444'; status = 'off'; }
-      else if (isMoving) { color = '#22c55e'; status = 'moving'; }
-      else if (hasIgnition) { color = '#eab308'; status = 'idle'; }
-      else { color = '#ef4444'; status = 'off'; }
+      let color, shadowColor, status;
+      if (!isOnline) { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
+      else if (isMoving) { color = '#22c55e'; shadowColor = 'rgba(34,197,94,0.6)'; status = 'moving'; }
+      else if (hasIgnition) { color = '#eab308'; shadowColor = 'rgba(234,179,8,0.55)'; status = 'idle'; }
+      else { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
 
-      const glyph = markerGlyph(dev);
-      const size = isSelected ? 42 : 34;
-      const badge = isSelected ? 36 : 28;
+      const cat = markerCategory(dev);
+      const size = isSelected ? 44 : 36;
       const rot = Math.round(angle || 0);
+      const lit = isMoving || hasIgnition;
 
-      // Săgeată de direcție (doar în mișcare) — glyph-ul rămâne drept și lizibil
-      const arrow = isMoving
-        ? '<div style="position:absolute;inset:0;transform:rotate(' + rot + 'deg);">' +
-            '<div style="position:absolute;left:50%;top:-1px;margin-left:-6px;width:0;height:0;' +
-            'border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ' + color + ';' +
-            'filter:drop-shadow(0 -1px 1px rgba(0,0,0,.35));"></div></div>'
-        : '';
-      const ring = isSelected
-        ? 'box-shadow:0 0 0 3px rgba(56,189,248,.95),0 0 14px 3px rgba(56,189,248,.55);'
-        : 'box-shadow:0 2px 5px rgba(0,0,0,.45);';
-
-      const html =
-        '<div style="position:relative;width:' + size + 'px;height:' + size + 'px;">' + arrow +
-          '<div style="position:absolute;left:50%;top:50%;width:' + badge + 'px;height:' + badge + 'px;' +
-          'margin-left:-' + (badge / 2) + 'px;margin-top:-' + (badge / 2) + 'px;' +
-          'display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #fff;' +
-          'background:' + color + ';background-image:linear-gradient(135deg,rgba(255,255,255,.32),rgba(0,0,0,.22));' +
-          ring + 'color:#fff;font-size:' + (isSelected ? 16 : 13) + 'px;line-height:1;">' +
-            '<i class="fas fa-' + glyph + '"></i>' +
-          '</div>' +
-        '</div>';
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
+        '<ellipse cx="24" cy="25" rx="13" ry="19" fill="rgba(0,0,0,0.22)"/>' +
+        '<g transform="rotate(' + rot + ' 24 24)">' + vehicleBody(cat, color, lit) + '</g>' +
+        (isSelected ? '<circle cx="24" cy="24" r="22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 3" opacity="0.85"><animateTransform attributeName="transform" type="rotate" dur="8s" from="0 24 24" to="360 24 24" repeatCount="indefinite"/></circle>' : '') +
+      '</svg>';
 
       return L.divIcon({
         className: 'vehicle-marker vehicle-' + status,
-        html: html,
+        html: '<div style="filter:drop-shadow(0 2px 4px ' + shadowColor + ');">' + svg + '</div>',
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
         popupAnchor: [0, -(size / 2)]
