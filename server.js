@@ -129,6 +129,8 @@ const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
 let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
+let billing = null, plans = null;
+try { billing = require('./billing'); plans = require('./plans'); } catch (e) { console.warn('[BILLING] indisponibil:', e.message); }
 const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
 let demoCompanyId = null;
 const webpush = require('web-push');
@@ -499,7 +501,7 @@ const tcpServer = net.createServer((socket) => {
 // ══════════════════════════════════════════════
 const app = express();
 app.set('trust proxy', 1); // necesar pentru cookie secure în spatele proxy-ului (Railway)
-app.use(express.json({ limit: '6mb' })); // limită mărită pt. upload fișiere tahograf .DDD (base64)
+app.use(express.json({ limit: '6mb', verify: (req, res, buf) => { if (req.originalUrl === '/api/billing/webhook') req.rawBody = buf; } })); // limită mărită pt. upload .DDD; raw body pt. semnătura webhook Stripe
 
 // ─── Session store pe PGlite embedded (înlocuiește connect-pg-simple) ───
 class PgliteSessionStore extends session.Store {
@@ -1372,6 +1374,116 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   } catch (e) {}
   res.json({ ok: true, message: 'Dacă adresa există, vei primi un email cu instrucțiuni.' });
 });
+
+// ─── Facturare (Stripe) — se activează doar dacă STRIPE_SECRET_KEY e setat ───
+app.get('/api/plans', (req, res) => {
+  res.json({ plans: plans ? plans.publicPlans() : [], trialDays: plans ? plans.TRIAL_DAYS : 0, billingEnabled: !!(billing && billing.enabled()) });
+});
+app.get('/api/billing/status', requireAuth, withCompany, async (req, res) => {
+  try {
+    await applyCompanyFilter(req);
+    const cid = req.isSuper ? req.filterCompanyId : req.companyId;
+    const co = cid ? await db.getCompanyById(cid) : null;
+    const eff = (co && plans) ? plans.effectivePlan(co) : null;
+    res.json({
+      billingEnabled: !!(billing && billing.enabled()),
+      plan: eff ? { key: eff.key, name: eff.name, custom: !!eff.custom, pricePerVehicleRON: eff.pricePerVehicleRON, flatPriceRON: eff.flatPriceRON || null, note: eff.note || '' } : null,
+      status: (co && co.subscription_status) || 'inactiv',
+      currentPeriodEnd: (co && co.current_period_end) || null,
+      hasSubscription: !!(co && co.stripe_customer_id)
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/billing/checkout', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
+  try {
+    if (!(billing && billing.enabled())) return res.status(503).json({ error: 'Facturarea nu e configurată (STRIPE_SECRET_KEY)' });
+    const cid = req.companyId;
+    const co = cid ? await db.getCompanyById(cid) : null;
+    if (!co) return res.status(400).json({ error: 'Companie inexistentă' });
+    const reqPlan = (req.body && req.body.plan) || '';
+    let priceId, planKey;
+    if (reqPlan === 'custom') {
+      const eff = plans.effectivePlan(co);
+      if (!eff.custom || !eff.stripePriceId) return res.status(400).json({ error: 'Planul custom nu are un preț Stripe configurat — plata se face prin factură sau super-adminul pune un Stripe Price ID.' });
+      priceId = eff.stripePriceId; planKey = 'custom';
+    } else {
+      const plan = plans.getPlan(reqPlan);
+      if (!plan) return res.status(400).json({ error: 'Plan invalid' });
+      if (plan.custom) return res.status(400).json({ error: 'Planul Enterprise se contractează direct (preț la cerere). Scrie-ne la contact@ratrack.ro.' });
+      if (!plan.stripePriceId) return res.status(400).json({ error: 'Plan neconfigurat în Stripe (lipsește STRIPE_PRICE_' + plan.key.toUpperCase() + ')' });
+      priceId = plan.stripePriceId; planKey = plan.key;
+    }
+    const imeis = await db.getCompanyImeis(cid);
+    const base = appBaseUrl(req);
+    const sess = await billing.createCheckout({
+      priceId: priceId, quantity: Math.max(1, imeis.length),
+      customerId: co.stripe_customer_id || null, customerEmail: co.contact_email || null,
+      successUrl: base + '/app?billing=success', cancelUrl: base + '/app?billing=cancel',
+      trialDays: plans.TRIAL_DAYS, companyId: cid
+    });
+    auditReq(req, 'checkout', 'billing', cid, { plan: planKey, quantity: imeis.length });
+    res.json({ url: sess.url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/billing/portal', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
+  try {
+    if (!(billing && billing.enabled())) return res.status(503).json({ error: 'Facturarea nu e configurată' });
+    const co = req.companyId ? await db.getCompanyById(req.companyId) : null;
+    if (!co || !co.stripe_customer_id) return res.status(400).json({ error: 'Niciun abonament activ' });
+    const s = await billing.createPortal({ customerId: co.stripe_customer_id, returnUrl: appBaseUrl(req) + '/app' });
+    res.json({ url: s.url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Super-admin: setează planul unei companii — standard (start/pro/premium) sau CUSTOM (preț negociat)
+app.put('/api/companies/:id/plan', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const co = await db.getCompanyById(id);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const planKey = (req.body && req.body.plan) || 'start';
+    if (planKey === 'custom') {
+      const c = (req.body && req.body.custom) || {};
+      const perVeh = c.pricePerVehicleRON != null && c.pricePerVehicleRON !== '' ? Number(c.pricePerVehicleRON) : null;
+      const flat = c.flatPriceRON != null && c.flatPriceRON !== '' ? Number(c.flatPriceRON) : null;
+      if ((perVeh == null || isNaN(perVeh)) && (flat == null || isNaN(flat))) return res.status(400).json({ error: 'Planul custom are nevoie de un preț (per vehicul SAU fix/lună)' });
+      const custom = {
+        name: (c.name || 'Custom').toString().slice(0, 60),
+        pricePerVehicleRON: (perVeh != null && !isNaN(perVeh)) ? perVeh : null,
+        flatPriceRON: (flat != null && !isNaN(flat)) ? flat : null,
+        vehicleLimit: (c.vehicleLimit != null && c.vehicleLimit !== '') ? parseInt(c.vehicleLimit) : null,
+        stripePriceId: (c.stripePriceId || '').toString().slice(0, 80),
+        note: (c.note || '').toString().slice(0, 300)
+      };
+      await db.setCompanyPlan(id, 'custom', custom);
+    } else {
+      if (!(plans && plans.getPlan(planKey)) || planKey === 'enterprise') return res.status(400).json({ error: 'Plan invalid (folosește start/pro/premium sau custom)' });
+      await db.setCompanyPlan(id, planKey, null);
+    }
+    auditReq(req, 'set_plan', 'company', id, { plan: planKey });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Webhook Stripe — public, semnătură verificată pe raw body
+app.post('/api/billing/webhook', async (req, res) => {
+  if (!(billing && billing.enabled())) return res.status(503).end();
+  let event;
+  try { event = billing.verifyWebhook(req.rawBody, req.get('stripe-signature')); }
+  catch (e) { return res.status(400).send('Semnătură invalidă: ' + e.message); }
+  try {
+    const obj = (event.data && event.data.object) || {};
+    if (event.type === 'checkout.session.completed') {
+      const companyId = obj.client_reference_id ? parseInt(obj.client_reference_id) : null;
+      if (companyId) await db.setCompanyBilling(companyId, { status: 'active', customerId: obj.customer, subscriptionId: obj.subscription });
+    } else if (event.type.indexOf('customer.subscription.') === 0) {
+      const co = await db.getCompanyByStripeCustomer(obj.customer);
+      if (co) {
+        const status = event.type === 'customer.subscription.deleted' ? 'canceled' : (obj.status || 'active');
+        await db.setCompanyBilling(co.id, { status, customerId: obj.customer, subscriptionId: obj.id, periodEnd: obj.current_period_end ? obj.current_period_end * 1000 : null });
+      }
+    }
+  } catch (e) { console.warn('[BILLING] webhook:', e.message); }
+  res.json({ received: true });
+});
 // Device-uri neasignate (super-admin) + asignare la companie
 app.get('/api/unassigned-devices', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.getUnassignedDevices()); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1484,7 +1596,44 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
     let devices = await db.getDevices();
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei)); // demo doar în contul demo
+    // Implicit ascunde vehiculele arhivate (de pe hartă/selectoare); ?includeArchived=1 le include (management)
+    if (!req.query.includeArchived) devices = devices.filter(d => d.status !== 'archived');
     res.json(devices);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Adăugare manuală vehicul (pre-înregistrare IMEI). Trackerul cu acel IMEI se va lega automat.
+app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const imei = String(req.body.imei || '').trim();
+    if (!/^\d{10,20}$/.test(imei)) return res.status(400).json({ error: 'IMEI invalid (10–20 cifre)' });
+    if (await db.deviceExists(imei)) return res.status(409).json({ error: 'Există deja un vehicul cu acest IMEI' });
+    // Companie: ne-super → compania proprie; super → opțional company_id din body, altfel neasignat
+    const companyId = req.isSuper
+      ? (req.body.company_id != null && req.body.company_id !== '' ? parseInt(req.body.company_id) : null)
+      : req.companyId;
+    const fields = {};
+    ['name', 'plate', 'vehicle_type', 'vin', 'brand', 'model'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
+    await db.createDevice(imei, fields, companyId);
+    invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
+    auditReq(req, 'create', 'device', imei, { name: fields.name, plate: fields.plate });
+    res.json({ ok: true, imei });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Arhivare / restaurare vehicul
+app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const status = req.body.status === 'archived' ? 'archived' : 'active';
+    await db.setDeviceStatus(imei, status);
+    auditReq(req, 'update', 'device', imei, { status });
+    res.json({ ok: true, status });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

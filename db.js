@@ -437,6 +437,11 @@ async function initDb() {
         ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE notifications ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE positions ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(64);
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(64);
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(24);
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS current_period_end BIGINT;
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS custom_plan JSONB;
       END $$
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
@@ -582,6 +587,22 @@ async function getCompanies() {
 async function getCompanyById(id) {
   const r = await pool.query('SELECT * FROM companies WHERE id = $1', [id]);
   return r.rows[0] || null;
+}
+async function setCompanyBilling(id, b) {
+  await pool.query(
+    'UPDATE companies SET plan = COALESCE($2, plan), subscription_status = $3, stripe_customer_id = COALESCE($4, stripe_customer_id), stripe_subscription_id = $5, current_period_end = $6 WHERE id = $1',
+    [id, b.plan || null, b.status || null, b.customerId || null, b.subscriptionId || null, b.periodEnd || null]
+  );
+}
+async function getCompanyByStripeCustomer(customerId) {
+  if (!customerId) return null;
+  const r = await pool.query('SELECT * FROM companies WHERE stripe_customer_id = $1 LIMIT 1', [customerId]);
+  return r.rows[0] || null;
+}
+// Setează planul unei companii: cheie standard (start/pro/premium) sau plan custom (obiect).
+async function setCompanyPlan(id, plan, customPlan) {
+  await pool.query('UPDATE companies SET plan = $2, custom_plan = $3 WHERE id = $1',
+    [id, plan || 'start', customPlan ? JSON.stringify(customPlan) : null]);
 }
 async function getCompanyBySlug(slug) {
   const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
@@ -740,6 +761,9 @@ const NUMERIC_COLS = new Set([
   'consumption_road', 'passenger_seats', 'displacement', 'power_kw', 'payload',
   'tare_weight', 'max_weight_legal', 'max_weight_construct'
 ]);
+// Doar acestea sunt NUMERIC(6,2) (acceptă zecimale); restul din NUMERIC_COLS sunt INTEGER → rotunjim,
+// altfel un decimal (ex. 90.5) e respins de Postgres/PGlite ("invalid input syntax for type integer") și pică tot UPDATE-ul.
+const DECIMAL_COLS = new Set(['consumption_city', 'consumption_idle', 'consumption_road']);
 // Update parțial: actualizează doar câmpurile trimise, din whitelist
 async function updateVehicleDetails(imei, fields) {
   const sets = [], vals = [imei];
@@ -747,7 +771,7 @@ async function updateVehicleDetails(imei, fields) {
     if (!Object.prototype.hasOwnProperty.call(fields, col)) continue;
     let v = fields[col];
     if (v === '' || v === undefined) v = null;
-    if (v !== null && NUMERIC_COLS.has(col)) { const n = Number(v); v = isNaN(n) ? null : n; }
+    if (v !== null && NUMERIC_COLS.has(col)) { const n = Number(v); v = isNaN(n) ? null : (DECIMAL_COLS.has(col) ? n : Math.round(n)); }
     vals.push(v);
     sets.push(`${col} = $${vals.length}`);
   }
@@ -760,6 +784,24 @@ async function assignDevice(imei, driverId, groupId) {
     'UPDATE devices SET driver_id = $2, group_id = $3 WHERE imei = $1',
     [imei, driverId || null, groupId || null]
   );
+}
+
+// Adăugare manuală vehicul (pre-înregistrare IMEI înainte să se conecteze trackerul)
+async function deviceExists(imei) {
+  const r = await pool.query('SELECT 1 FROM devices WHERE imei = $1', [imei]);
+  return !!(r.rows && r.rows.length > 0); // r.rowCount e undefined în PGlite → rows.length merge și pe pg, și pe PGlite
+}
+async function createDevice(imei, fields, companyId) {
+  await pool.query(
+    "INSERT INTO devices (imei, company_id, status, created_at) VALUES ($1, $2, 'active', NOW())",
+    [imei, companyId != null ? companyId : null]
+  );
+  if (fields && Object.keys(fields).length) await updateVehicleDetails(imei, fields);
+}
+// Arhivare / restaurare vehicul (status = 'active' | 'archived')
+async function setDeviceStatus(imei, status) {
+  const s = status === 'archived' ? 'archived' : 'active';
+  await pool.query('UPDATE devices SET status = $2 WHERE imei = $1', [imei, s]);
 }
 
 async function updateTruckConfig(imei, config) {
@@ -1472,6 +1514,7 @@ module.exports = {
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
+  setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
@@ -1480,6 +1523,9 @@ module.exports = {
   upsertDevice,
   updateDeviceInfo,
   updateVehicleDetails,
+  deviceExists,
+  createDevice,
+  setDeviceStatus,
   assignDevice,
   updateTruckConfig,
   updateTankCalibration,

@@ -298,7 +298,7 @@
     }
 
     /* ---------- PRICING ---------- */
-    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
+    .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:18px;align-items:stretch}
     .plan{
       background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
       padding:34px 28px;display:flex;flex-direction:column;position:relative;
@@ -597,48 +597,60 @@
         <!-- Start -->
         <div class="plan reveal">
           <span class="pname">START</span>
-          <div class="price"><span class="amt">&euro;4</span><span class="per">/ vehicul / luna</span></div>
+          <div class="price"><span class="amt">29 lei</span><span class="per">/ vehicul / luna</span></div>
           <p class="pdesc">Pentru flote mici care vor localizare si rapoarte de baza.</p>
           <ul>
             <li><i class="fa-solid fa-check"></i> Localizare live pe harta</li>
-            <li><i class="fa-solid fa-check"></i> Rapoarte trasee &amp; opriri</li>
-            <li><i class="fa-solid fa-check"></i> Istoric 30 de zile</li>
-            <li><i class="fa-solid fa-check"></i> Alerte de baza</li>
-            <li><i class="fa-solid fa-check"></i> 1 utilizator</li>
+            <li><i class="fa-solid fa-check"></i> Istoric trasee (6 luni)</li>
+            <li><i class="fa-solid fa-check"></i> Rapoarte de baza + export CSV/Excel/PDF/KML</li>
+            <li><i class="fa-solid fa-check"></i> Alerte &amp; geofence</li>
+            <li><i class="fa-solid fa-check"></i> Aplicatie mobila (PWA)</li>
           </ul>
-          <a href="#contact" class="btn btn-ghost">Alege Start</a>
+          <a href="#contact" class="btn btn-ghost">Incepe</a>
         </div>
 
         <!-- Pro -->
-        <div class="plan popular reveal">
-          <span class="pop-tag"><i class="fa-solid fa-star" style="font-size:11px"></i> Cel mai popular</span>
+        <div class="plan reveal">
           <span class="pname">PRO</span>
-          <div class="price"><span class="amt">&euro;7</span><span class="per">/ vehicul / luna</span></div>
+          <div class="price"><span class="amt">45 lei</span><span class="per">/ vehicul / luna</span></div>
           <p class="pdesc">Pentru operatiuni serioase cu monitorizare de combustibil.</p>
           <ul>
             <li><i class="fa-solid fa-check"></i> Tot ce e in Start</li>
-            <li><i class="fa-solid fa-check"></i> Combustibil &amp; sonde litrometrice</li>
-            <li><i class="fa-solid fa-check"></i> Toate cele 14+ rapoarte</li>
-            <li><i class="fa-solid fa-check"></i> Istoric extins 365 zile &amp; export</li>
-            <li><i class="fa-solid fa-check"></i> Alerte avansate &amp; geofence</li>
-            <li><i class="fa-solid fa-check"></i> Roluri &amp; utilizatori multipli</li>
+            <li><i class="fa-solid fa-check"></i> Toate rapoartele (19+) + programare email</li>
+            <li><i class="fa-solid fa-check"></i> Sonde combustibil + tahograf + e-Transport</li>
+            <li><i class="fa-solid fa-check"></i> Notificari avansate (email / Web Push)</li>
+            <li><i class="fa-solid fa-check"></i> Acces API</li>
           </ul>
-          <a href="#contact" class="btn btn-primary">Alege Pro</a>
+          <a href="#contact" class="btn btn-ghost">Alege Pro</a>
+        </div>
+
+        <!-- Premium AI -->
+        <div class="plan popular reveal">
+          <span class="pop-tag"><i class="fa-solid fa-robot" style="font-size:11px"></i> Cu Inteligenta Artificiala</span>
+          <span class="pname">PREMIUM AI</span>
+          <div class="price"><span class="amt">65 lei</span><span class="per">/ vehicul / luna</span></div>
+          <p class="pdesc">Singura platforma cu 6 agenti AI care iti supravegheaza flota 24/7.</p>
+          <ul>
+            <li><i class="fa-solid fa-check"></i> Tot ce e in Pro</li>
+            <li><i class="fa-solid fa-check"></i> 6 agenti AI (furt combustibil, mentenanta, eco, ore condus...)</li>
+            <li><i class="fa-solid fa-check"></i> Asistent AI (chat flota) + rezumate AI</li>
+            <li><i class="fa-solid fa-check"></i> RA Dispatch (alocare curse) + dashboard avansat</li>
+          </ul>
+          <a href="#contact" class="btn btn-primary">Alege Premium AI</a>
         </div>
 
         <!-- Enterprise -->
         <div class="plan reveal">
           <span class="pname">ENTERPRISE</span>
           <div class="price"><span class="amt">Custom</span></div>
-          <p class="pdesc">Pentru flote mari, multi-client si integrari dedicate.</p>
+          <p class="pdesc">Pentru flote mari, cu pret negociat si nevoi dedicate.</p>
           <ul>
-            <li><i class="fa-solid fa-check"></i> Tot ce e in Pro</li>
-            <li><i class="fa-solid fa-check"></i> API &amp; integrari dedicate</li>
-            <li><i class="fa-solid fa-check"></i> Multi-client &amp; sub-conturi</li>
+            <li><i class="fa-solid fa-check"></i> Tot ce e in Premium AI</li>
+            <li><i class="fa-solid fa-check"></i> Pret negociat (per vehicul sau fix)</li>
             <li><i class="fa-solid fa-check"></i> SLA &amp; suport prioritar</li>
-            <li><i class="fa-solid fa-check"></i> Onboarding asistat</li>
+            <li><i class="fa-solid fa-check"></i> Integrari la cerere &amp; onboarding asistat</li>
           </ul>
-          <a href="#contact" class="btn btn-ghost">Contacteaza-ne</a>
+          <a href="#contact" class="btn btn-ghost">Cere oferta</a>
         </div>
       </div>
     </div>
