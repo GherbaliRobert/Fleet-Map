@@ -101,13 +101,36 @@ HTTP-ul merge prin domeniu, dar device-urile trimit pe **TCP brut**, nu HTTP:
 
 ---
 
-## Migrarea datelor (important)
-Railway pornește cu **DB nou, gol** (se creează doar userul `admin` + compania demo la boot).
-Device-urile/companiile/userii/istoricul de pe DigitalOcean **nu** se mută automat (PGlite ≠ același storage).
-Opțiuni:
-- **Start curat (simplu):** readaugi companiile + device-urile pe Railway (config-ul, nu istoricul).
-- **Migrare date:** pot scrie un script de export PGlite (DigitalOcean) → import PostgreSQL (Railway)
-  pentru `companies/users/devices/groups/...` (+ opțional `positions`). Spune-mi dacă vrei asta.
+## Migrarea datelor DigitalOcean → Railway
+Railway pornește cu **DB nou, gol**. Pentru a muta companiile/userii/device-urile (și opțional istoricul
+de poziții) de pe DigitalOcean (PGlite) pe Railway (PostgreSQL), folosește cele două scripturi din repo.
+Păstrează **ID-urile, cheile străine, secvențele și parolele** (deci te loghezi cu aceleași credențiale).
+Testat round-trip pe TimescaleDB real.
+
+**Pas 1 — Export pe DigitalOcean** (PGlite e single-process → oprește serverul scurt):
+```bash
+cd /opt/Fleet-Map                 # unde e instalată aplicația
+git pull                          # ca să ai migrate_export.js
+systemctl stop fleetmap           # numele unit-ului tău systemd
+MIGRATE_POSITIONS=1 node migrate_export.js    # fără MIGRATE_POSITIONS=1 sari istoricul de poziții
+systemctl start fleetmap
+```
+→ rezultă `migration_dump.json`.
+
+**Pas 2 — Adu fișierul local:**
+```bash
+scp root@165.227.131.142:/opt/Fleet-Map/migration_dump.json .
+```
+
+**Pas 3 — Import în Postgres-ul Railway** (URL-ul **PUBLIC**: Railway → Postgres → Connect → Public Network):
+```bash
+DATABASE_URL="postgres://postgres:...@...rlwy.net:PORT/railway" node migrate_import.js migration_dump.json
+```
+> SSL e pornit implicit (corect pentru URL-ul public Railway) — **nu** pune `PGSSL=disable` aici.
+> Importul **GOLEȘTE** (TRUNCATE) tabelele țintă întâi → DigitalOcean devine sursa de adevăr.
+> Rulează-l înainte de a adăuga date manual pe Railway. Poate fi rulat și înainte, și după primul deploy al app-ului (e idempotent, creează el schema dacă lipsește).
+
+**Pas 4 — Verifică:** loghează-te pe `https://ratrack.ro` cu user-ul/parola existente de pe DigitalOcean.
 
 ## Costuri (orientativ, din analiza anterioară)
 - App (RAM/CPU usage-based) + Postgres: ordinul **~$10–25/lună** pentru zeci de mașini.

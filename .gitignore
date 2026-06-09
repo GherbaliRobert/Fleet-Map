@@ -15,3 +15,5 @@ server_test.log
 .ci-db/
 *.pid
 .test_*.js
+# Dump de migrare DB (conține hash-uri de parole / chei — nu se comite)
+migration_dump.json
