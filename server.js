@@ -3376,7 +3376,7 @@ async function start() {
     console.log(`[WS] WebSocket activ`);
     console.log('');
     console.log('═══════════════════════════════════════');
-    console.log('  Fleet-Map Server — PORNIT (DB embedded, 100% local)');
+    console.log(`  RA Tracks Server — PORNIT (${process.env.DATABASE_URL ? 'PostgreSQL — mod scalabil' : 'PGlite embedded, 100% local'})`);
     console.log(`  TCP (dispozitive): port ${ACTUAL_TCP_PORT}`);
     console.log(`  HTTP (hartă/API):  port ${ACTUAL_HTTP_PORT}`);
     console.log('═══════════════════════════════════════');
