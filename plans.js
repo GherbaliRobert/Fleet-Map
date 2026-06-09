@@ -41,6 +41,19 @@ const PLANS = [
       'Asistent AI (chat flotă) + rezumate AI',
       'RA Dispatch (alocare curse) + dashboard avansat'
     ]
+  },
+  {
+    key: 'enterprise',
+    name: 'Enterprise',
+    custom: true,            // preț negociat — „la cerere"
+    pricePerVehicleRON: null,
+    stripePriceId: '',
+    features: [
+      'Tot din Premium AI',
+      'Preț negociat (per vehicul sau tarif fix)',
+      'Onboarding asistat + suport prioritar / SLA',
+      'Integrări la cerere, branding propriu, instanță dedicată (opțional)'
+    ]
   }
 ];
 
@@ -55,7 +68,24 @@ const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS) || 14;
 function getPlan(key) { return PLANS.find(p => p.key === key) || null; }
 function publicPlans() {
   // pentru landing/app — fără ID-uri Stripe
-  return PLANS.map(p => ({ key: p.key, name: p.name, pricePerVehicleRON: p.pricePerVehicleRON, features: p.features }));
+  return PLANS.map(p => ({ key: p.key, name: p.name, pricePerVehicleRON: p.pricePerVehicleRON, custom: !!p.custom, features: p.features }));
 }
 
-module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans };
+// Planul efectiv al unei companii: dacă are un plan custom setat de super-admin, acela; altfel cel standard.
+// company.custom_plan (JSONB) poate fi: { name, pricePerVehicleRON, flatPriceRON, vehicleLimit, stripePriceId, note }
+function effectivePlan(company) {
+  if (company && company.custom_plan && (company.custom_plan.pricePerVehicleRON != null || company.custom_plan.flatPriceRON != null)) {
+    const c = company.custom_plan;
+    return {
+      key: 'custom', custom: true, name: c.name || 'Custom',
+      pricePerVehicleRON: c.pricePerVehicleRON != null ? c.pricePerVehicleRON : null,
+      flatPriceRON: c.flatPriceRON != null ? c.flatPriceRON : null,
+      vehicleLimit: c.vehicleLimit != null ? c.vehicleLimit : null,
+      stripePriceId: c.stripePriceId || '',
+      note: c.note || ''
+    };
+  }
+  return getPlan((company && company.plan) || 'start') || getPlan('start');
+}
+
+module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans, effectivePlan };

@@ -1384,9 +1384,10 @@ app.get('/api/billing/status', requireAuth, withCompany, async (req, res) => {
     await applyCompanyFilter(req);
     const cid = req.isSuper ? req.filterCompanyId : req.companyId;
     const co = cid ? await db.getCompanyById(cid) : null;
+    const eff = (co && plans) ? plans.effectivePlan(co) : null;
     res.json({
       billingEnabled: !!(billing && billing.enabled()),
-      plan: (co && co.plan) || null,
+      plan: eff ? { key: eff.key, name: eff.name, custom: !!eff.custom, pricePerVehicleRON: eff.pricePerVehicleRON, flatPriceRON: eff.flatPriceRON || null, note: eff.note || '' } : null,
       status: (co && co.subscription_status) || 'inactiv',
       currentPeriodEnd: (co && co.current_period_end) || null,
       hasSubscription: !!(co && co.stripe_customer_id)
@@ -1396,21 +1397,31 @@ app.get('/api/billing/status', requireAuth, withCompany, async (req, res) => {
 app.post('/api/billing/checkout', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
   try {
     if (!(billing && billing.enabled())) return res.status(503).json({ error: 'Facturarea nu e configurată (STRIPE_SECRET_KEY)' });
-    const plan = plans.getPlan((req.body && req.body.plan) || '');
-    if (!plan) return res.status(400).json({ error: 'Plan invalid' });
-    if (!plan.stripePriceId) return res.status(400).json({ error: 'Plan neconfigurat în Stripe (lipsește STRIPE_PRICE_' + plan.key.toUpperCase() + ')' });
     const cid = req.companyId;
     const co = cid ? await db.getCompanyById(cid) : null;
     if (!co) return res.status(400).json({ error: 'Companie inexistentă' });
+    const reqPlan = (req.body && req.body.plan) || '';
+    let priceId, planKey;
+    if (reqPlan === 'custom') {
+      const eff = plans.effectivePlan(co);
+      if (!eff.custom || !eff.stripePriceId) return res.status(400).json({ error: 'Planul custom nu are un preț Stripe configurat — plata se face prin factură sau super-adminul pune un Stripe Price ID.' });
+      priceId = eff.stripePriceId; planKey = 'custom';
+    } else {
+      const plan = plans.getPlan(reqPlan);
+      if (!plan) return res.status(400).json({ error: 'Plan invalid' });
+      if (plan.custom) return res.status(400).json({ error: 'Planul Enterprise se contractează direct (preț la cerere). Scrie-ne la contact@ratrack.ro.' });
+      if (!plan.stripePriceId) return res.status(400).json({ error: 'Plan neconfigurat în Stripe (lipsește STRIPE_PRICE_' + plan.key.toUpperCase() + ')' });
+      priceId = plan.stripePriceId; planKey = plan.key;
+    }
     const imeis = await db.getCompanyImeis(cid);
     const base = appBaseUrl(req);
     const sess = await billing.createCheckout({
-      priceId: plan.stripePriceId, quantity: Math.max(1, imeis.length),
+      priceId: priceId, quantity: Math.max(1, imeis.length),
       customerId: co.stripe_customer_id || null, customerEmail: co.contact_email || null,
       successUrl: base + '/app?billing=success', cancelUrl: base + '/app?billing=cancel',
       trialDays: plans.TRIAL_DAYS, companyId: cid
     });
-    auditReq(req, 'checkout', 'billing', cid, { plan: plan.key, quantity: imeis.length });
+    auditReq(req, 'checkout', 'billing', cid, { plan: planKey, quantity: imeis.length });
     res.json({ url: sess.url });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1421,6 +1432,35 @@ app.post('/api/billing/portal', requireAuth, requirePerm('manageUsers'), withCom
     if (!co || !co.stripe_customer_id) return res.status(400).json({ error: 'Niciun abonament activ' });
     const s = await billing.createPortal({ customerId: co.stripe_customer_id, returnUrl: appBaseUrl(req) + '/app' });
     res.json({ url: s.url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Super-admin: setează planul unei companii — standard (start/pro/premium) sau CUSTOM (preț negociat)
+app.put('/api/companies/:id/plan', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const co = await db.getCompanyById(id);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const planKey = (req.body && req.body.plan) || 'start';
+    if (planKey === 'custom') {
+      const c = (req.body && req.body.custom) || {};
+      const perVeh = c.pricePerVehicleRON != null && c.pricePerVehicleRON !== '' ? Number(c.pricePerVehicleRON) : null;
+      const flat = c.flatPriceRON != null && c.flatPriceRON !== '' ? Number(c.flatPriceRON) : null;
+      if ((perVeh == null || isNaN(perVeh)) && (flat == null || isNaN(flat))) return res.status(400).json({ error: 'Planul custom are nevoie de un preț (per vehicul SAU fix/lună)' });
+      const custom = {
+        name: (c.name || 'Custom').toString().slice(0, 60),
+        pricePerVehicleRON: (perVeh != null && !isNaN(perVeh)) ? perVeh : null,
+        flatPriceRON: (flat != null && !isNaN(flat)) ? flat : null,
+        vehicleLimit: (c.vehicleLimit != null && c.vehicleLimit !== '') ? parseInt(c.vehicleLimit) : null,
+        stripePriceId: (c.stripePriceId || '').toString().slice(0, 80),
+        note: (c.note || '').toString().slice(0, 300)
+      };
+      await db.setCompanyPlan(id, 'custom', custom);
+    } else {
+      if (!(plans && plans.getPlan(planKey)) || planKey === 'enterprise') return res.status(400).json({ error: 'Plan invalid (folosește start/pro/premium sau custom)' });
+      await db.setCompanyPlan(id, planKey, null);
+    }
+    auditReq(req, 'set_plan', 'company', id, { plan: planKey });
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Webhook Stripe — public, semnătură verificată pe raw body

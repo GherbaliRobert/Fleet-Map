@@ -433,6 +433,7 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(64);
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(24);
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS current_period_end BIGINT;
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS custom_plan JSONB;
       END $$
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
@@ -589,6 +590,11 @@ async function getCompanyByStripeCustomer(customerId) {
   if (!customerId) return null;
   const r = await pool.query('SELECT * FROM companies WHERE stripe_customer_id = $1 LIMIT 1', [customerId]);
   return r.rows[0] || null;
+}
+// Setează planul unei companii: cheie standard (start/pro/premium) sau plan custom (obiect).
+async function setCompanyPlan(id, plan, customPlan) {
+  await pool.query('UPDATE companies SET plan = $2, custom_plan = $3 WHERE id = $1',
+    [id, plan || 'start', customPlan ? JSON.stringify(customPlan) : null]);
 }
 async function getCompanyBySlug(slug) {
   const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
@@ -1484,7 +1490,7 @@ module.exports = {
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
-  setCompanyBilling, getCompanyByStripeCustomer,
+  setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
