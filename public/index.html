@@ -2396,7 +2396,6 @@
         <button class="admin-tab" data-atab="drivers" onclick="switchAdminTab('drivers')"><i class="fas fa-id-card"></i> Șoferi</button>
         <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
         <button class="admin-tab" data-atab="alerts" onclick="switchAdminTab('alerts')"><i class="fas fa-bell"></i> Alerte</button>
-        <button class="admin-tab" data-atab="geofences" onclick="switchAdminTab('geofences')"><i class="fas fa-draw-polygon"></i> Hotspot-uri</button>
         <button class="admin-tab" data-atab="maintenance" onclick="switchAdminTab('maintenance')"><i class="fas fa-wrench"></i> Mentenanță</button>
       </div>
       <div style="overflow-y:auto;flex:1;padding-right:4px;">
@@ -2485,16 +2484,7 @@
           </div>
         </div>
 
-        <!-- Hotspot-uri (geofence) -->
-        <div id="atab-geofences" class="admin-tab-content" style="display:none;">
-          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-            <button class="btn-sm btn-primary" onclick="startDrawGeofence('polygon')"><i class="fas fa-draw-polygon"></i> Desenează poligon</button>
-            <button class="btn-sm btn-primary" onclick="startDrawGeofence('circle')"><i class="far fa-circle"></i> Desenează cerc</button>
-            <input type="text" id="gf-search" oninput="renderGeofenceTable()" placeholder="Caută nume / descriere / poziționare…" style="flex:1;min-width:200px;">
-            <span id="gf-count" style="font-size:11px;color:var(--text-muted);"></span>
-          </div>
-          <div id="admin-geofences-list"></div>
-        </div>
+        <!-- Hotspot-uri: mutat în meniul „Hotspot & Rutare" (vezi #hotspot-view) -->
 
         <!-- Mentenanță -->
         <div id="atab-maintenance" class="admin-tab-content" style="display:none;">
@@ -2512,6 +2502,48 @@
           </div>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Hotspot & Rutare (pagină completă, din meniul stânga) ═══ -->
+  <div id="hotspot-view" class="modal-overlay">
+    <div class="modal" style="width:1080px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
+      <h2><span><i class="fas fa-fire" style="margin-right:8px;color:var(--accent);"></i> Hotspot-uri &amp; Rutare</span>
+        <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;">
+        <button class="admin-tab active" data-hstab="hotspots" onclick="switchHotspotTab('hotspots')"><i class="fas fa-draw-polygon"></i> Hotspot-uri</button>
+        <button class="admin-tab" data-hstab="rute" onclick="switchHotspotTab('rute')"><i class="fas fa-route"></i> Rute</button>
+        <button class="admin-tab" data-hstab="heatmap" onclick="switchHotspotTab('heatmap')"><i class="fas fa-fire"></i> Analiză activitate</button>
+      </div>
+
+      <!-- Hotspot-uri -->
+      <div id="hstab-hotspots" class="hs-tab-content" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btn-sm btn-primary" onclick="startDrawGeofence('polygon')"><i class="fas fa-draw-polygon"></i> Adaugă poligon</button>
+          <button class="btn-sm btn-primary" onclick="startDrawGeofence('circle')"><i class="far fa-circle"></i> Adaugă cerc</button>
+          <button class="btn-sm" onclick="hotspotShowAllOnMap()"><i class="fas fa-map"></i> Vezi pe hartă</button>
+          <input type="text" id="gf-search" oninput="renderGeofenceTable()" placeholder="Caută nume / descriere / poziționare / categorie…" style="flex:1;min-width:220px;">
+          <span id="gf-count" style="font-size:11px;color:var(--text-muted);"></span>
+        </div>
+        <div id="hotspot-list" style="overflow:auto;flex:1;min-height:0;"></div>
+      </div>
+
+      <!-- Rute -->
+      <div id="hstab-rute" class="hs-tab-content" style="display:none;">
+        <div style="color:var(--text-muted);font-size:13px;line-height:1.6;padding:8px 2px;">
+          <p><b>Rute</b> — trasee predefinite cu coridor (buffer în metri), atribuite unui grup de vehicule, cu detecție de abatere și ETA.</p>
+          <p style="margin-top:6px;">Vine în runda următoare. Tot aici vei putea <i>genera o rută din istoricul</i> unui vehicul.</p>
+        </div>
+      </div>
+
+      <!-- Analiză activitate (heatmap) -->
+      <div id="hstab-heatmap" class="hs-tab-content" style="display:none;">
+        <div style="color:var(--text-muted);font-size:13px;line-height:1.6;padding:8px 2px;">
+          <p>Hartă de căldură a activității flotei pe o perioadă (opriri sau poziții) + analiză pe o zonă desenată.</p>
+          <button class="btn-sm btn-primary" style="margin-top:10px;" onclick="showView('localizare'); setTimeout(openHotspotPanel, 80);"><i class="fas fa-fire"></i> Deschide analiza pe hartă</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3310,7 +3342,6 @@
       else if (tab === 'drivers') loadDrivers();
       else if (tab === 'groups') loadGroups();
       else if (tab === 'alerts') loadAlerts();
-      else if (tab === 'geofences') loadGeofencesAdmin();
       else if (tab === 'maintenance') loadMaintenance();
     }
 
@@ -3650,15 +3681,33 @@
     }
     let gfPage = 1;
     const GF_PAGE_SIZE = 12;
-    async function loadGeofencesAdmin() {
+    function switchHotspotTab(tab) {
+      document.querySelectorAll('#hotspot-view .admin-tab').forEach(b => b.classList.toggle('active', b.dataset.hstab === tab));
+      document.querySelectorAll('#hotspot-view .hs-tab-content').forEach(c => c.style.display = 'none');
+      const el = document.getElementById('hstab-' + tab);
+      if (el) el.style.display = (tab === 'hotspots') ? 'flex' : 'block';
+    }
+    async function openHotspotView() {
+      switchHotspotTab('hotspots');
       alertGeofencesCache = [];
       try { geofenceCache = await (await fetch('/api/geofences')).json(); } catch (e) { geofenceCache = []; }
       gfPage = 1;
       renderGeofenceTable();
     }
+    function loadGeofencesAdmin() { return openHotspotView(); } // alias compat
+    function hotspotShowAllOnMap() {
+      showView('localizare');
+      setTimeout(() => {
+        try {
+          const ls = [...geofenceLayers.values()];
+          if (ls.length) map.fitBounds(L.featureGroup(ls).getBounds(), { padding: [50, 50] });
+          else alert('Niciun hotspot de afișat.');
+        } catch (e) {}
+      }, 120);
+    }
     function gfGoto(p) { gfPage = p; renderGeofenceTable(); }
     function renderGeofenceTable() {
-      const el = document.getElementById('admin-geofences-list'); if (!el) return;
+      const el = document.getElementById('hotspot-list'); if (!el) return;
       const esc = s => (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const searchEl = document.getElementById('gf-search');
       const q = (searchEl && searchEl.value ? searchEl.value : '').trim().toLowerCase();
@@ -3666,7 +3715,7 @@
       if (q) list = list.filter(g => [g.name, g.description, g.address, g.category, g.group_name].some(v => (v||'').toString().toLowerCase().includes(q)));
       const cnt = document.getElementById('gf-count');
       if (cnt) cnt.textContent = list.length + (list.length === 1 ? ' hotspot' : ' hotspot-uri');
-      if (!list.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Niciun hotspot. Desenează unul mai sus.</p>'; return; }
+      if (!list.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Niciun hotspot încă. Apasă „Adaugă poligon" sau „Adaugă cerc".</p>'; return; }
       const pages = Math.max(1, Math.ceil(list.length / GF_PAGE_SIZE));
       if (gfPage > pages) gfPage = pages;
       const slice = list.slice((gfPage-1)*GF_PAGE_SIZE, gfPage*GF_PAGE_SIZE);
@@ -3693,12 +3742,12 @@
     }
     function focusGeofence(id) {
       const l = geofenceLayers.get(id);
-      if (l) { closeAdmin(); try { map.fitBounds(l.getBounds(), { maxZoom: 16, padding: [40,40] }); } catch(e){} }
+      if (l) { showView('localizare'); setTimeout(() => { try { map.fitBounds(l.getBounds(), { maxZoom: 16, padding: [40,40] }); } catch(e){} }, 120); }
     }
     async function deleteGeofenceItem(id) {
-      if (!confirm('Ștergi zona?')) return;
+      if (!confirm('Ștergi hotspot-ul?')) return;
       await fetch('/api/geofences/' + id, { method: 'DELETE' });
-      await loadGeofencesAdmin(); await loadGeofencesOnMap();
+      await openHotspotView(); await loadGeofencesOnMap();
     }
 
     // ─── Desenare hotspot/zonă: plasare prin click + editare precisă cu Geoman (trage colțuri, snapping) ───
@@ -3782,7 +3831,7 @@
     }
 
     function startDrawGeofence(mode) {
-      cancelDraw(); closeAdmin();
+      cancelDraw(); showView('localizare');
       drawState = { mode, points: [], layers: [], layer: null, finished: false, purpose: 'geofence', editingId: null };
       ['draw-name','draw-desc','draw-category'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
       const rg = document.getElementById('draw-region'); if (rg) rg.checked = false;
@@ -3872,13 +3921,12 @@
       if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
       cancelDraw();
       await loadGeofencesOnMap();
-      showView('management');
-      setTimeout(() => switchAdminTab('geofences'), 60);
+      showView('hotspot');
     }
     function startEditGeofence(id) {
       const g = (geofenceCache || []).find(x => String(x.id) === String(id));
       if (!g) return;
-      cancelDraw(); closeAdmin();
+      cancelDraw(); showView('localizare');
       const coords = parseGfCoords(g);
       const mode = g.type === 'circle' ? 'circle' : 'polygon';
       drawState = { mode, points: [], layers: [], layer: null, finished: true, purpose: 'geofence', editingId: g.id };
@@ -4503,8 +4551,8 @@
       if (typeof map !== 'undefined' && map) setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 220);
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal' };
-    const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView' };
     let currentView = 'localizare';
     function showView(name) {
       currentView = name;
@@ -4516,11 +4564,10 @@
       try { var dp = document.getElementById('dispatch-panel'); if (dp) dp.style.display = 'none'; } catch (e) {}
       const hist = document.getElementById('history-panel'); if (hist) hist.classList.remove('visible');
       const loc = document.getElementById('view-localizare');
-      const mapViews = ['localizare', 'traseu', 'hotspot'];
+      const mapViews = ['localizare', 'traseu'];
       if (mapViews.includes(name)) {
         loc.classList.add('active');
         if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
-        if (name === 'hotspot') openHotspotPanel();
         if (name === 'traseu' && hist) hist.classList.add('visible');
       } else {
         loc.classList.remove('active');
