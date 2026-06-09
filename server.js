@@ -601,6 +601,20 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.
 app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 app.get('/sw.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.sendFile(path.join(__dirname, 'public', 'sw.js')); });
 
+// Healthcheck public (monitorizare/uptime + Railway) — verifică și conexiunea la DB
+const _startedAt = Date.now();
+app.get('/api/health', async (req, res) => {
+  let dbOk = false;
+  try { await db.pool.query('SELECT 1'); dbOk = true; } catch (e) {}
+  res.set('Cache-Control', 'no-store');
+  res.status(dbOk ? 200 : 503).json({
+    status: dbOk ? 'ok' : 'degraded',
+    db: dbOk ? 'up' : 'down',
+    mode: process.env.DATABASE_URL ? 'postgres' : 'pglite',
+    uptime_s: Math.round((Date.now() - _startedAt) / 1000)
+  });
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ─── Model roluri & permisiuni (RBAC) ───

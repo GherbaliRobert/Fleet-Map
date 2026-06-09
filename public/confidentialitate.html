@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politică de confidențialitate · RA Tracks</title>
+  <meta name="robots" content="index,follow">
+  <style>
+    :root{--bg:#0B0E11;--bg2:#11161B;--text:#E6EAF0;--muted:#9AA6B2;--accent:#34D399;--border:#1F2730}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{max-width:820px;margin:0 auto;padding:32px 20px 80px}
+    a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+    header{display:flex;align-items:center;gap:10px;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:24px}
+    header img{height:26px}.brand{font-size:20px;font-weight:700}
+    h1{font-size:26px;margin:18px 0 6px}h2{font-size:18px;margin:30px 0 8px;color:#fff}
+    .muted{color:var(--muted)}.note{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;margin:18px 0;font-size:13px;color:var(--muted)}
+    ul{padding-left:20px}li{margin:5px 0}
+    table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+    th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}th{background:var(--bg2)}
+    .back{display:inline-block;margin-top:30px;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header><img src="/logo-mark.png" alt="RA"><span class="brand">RA Tracks</span></header>
+
+    <h1>Politică de confidențialitate</h1>
+    <p class="muted">Ultima actualizare: <span id="d"></span></p>
+
+    <div class="note">⚠️ Document-model conform RGPD (Regulamentul UE 2016/679). Completează datele firmei și <b>obligatoriu</b> obține revizuire de la un specialist GDPR înainte de lansare. Dacă procesezi sistematic date de localizare la scară largă, evaluează necesitatea unui <b>DPIA</b> și a unui <b>DPO</b>.</p>
+
+    <h2>1. Operatorul de date</h2>
+    <p><b>[NUME FIRMĂ SRL]</b>, CUI <b>[CUI]</b>, sediu <b>[adresă]</b>, email <b>[contact@ratrack.ro]</b>.
+    Responsabil protecția datelor (dacă e desemnat): <b>[DPO / email]</b>.</p>
+
+    <h2>2. Rolurile (important)</h2>
+    <p>Pentru datele <b>șoferilor și vehiculelor</b> introduse de companiile-cliente, <b>Clientul (compania) este operatorul</b>
+    de date, iar <b>RA Tracks este persoană împuternicită</b> (procesator), prelucrând datele doar conform instrucțiunilor
+    Clientului și a unui <b>Acord de prelucrare (DPA)</b>. Pentru datele de cont ale utilizatorilor platformei și pentru
+    funcționarea generală a site-ului, RA Tracks este operator.</p>
+
+    <h2>3. Ce date prelucrăm</h2>
+    <table>
+      <tr><th>Categorie</th><th>Exemple</th><th>Temei legal</th></tr>
+      <tr><td>Date de cont</td><td>nume, email, rol, companie, parolă (criptată)</td><td>Executarea contractului</td></tr>
+      <tr><td>Date de localizare / telemetrie</td><td>poziții GPS, viteză, trasee, combustibil, date CAN ale vehiculelor</td><td>Interes legitim al Clientului (managementul flotei), conform instrucțiunilor acestuia</td></tr>
+      <tr><td>Date șoferi (indirect)</td><td>nume șofer, card tahograf, ore de condus — dacă sunt introduse de Client</td><td>Responsabilitatea Clientului (operator)</td></tr>
+      <tr><td>Date de utilizare</td><td>jurnale de acces, audit, adrese IP, tip browser</td><td>Interes legitim (securitate, prevenirea fraudei)</td></tr>
+      <tr><td>Cookie-uri esențiale</td><td>cookie de sesiune (autentificare)</td><td>Strict necesare (fără consimțământ)</td></tr>
+    </table>
+
+    <h2>4. Scopuri</h2>
+    <ul>
+      <li>Furnizarea platformei de tracking (localizare, istoric, rapoarte, alerte).</li>
+      <li>Funcții de asistență AI (rezumate, recomandări) — vezi secțiunea 6.</li>
+      <li>Securitate, audit, suport, facturare.</li>
+    </ul>
+
+    <h2>5. Cui divulgăm datele (împuterniciți / subprocesatori)</h2>
+    <p>Folosim furnizori terți strict pentru funcționarea serviciului:</p>
+    <ul>
+      <li><b>Găzduire & bază de date</b> — <b>[Railway / furnizor cloud]</b> (infrastructură, posibil în afara UE — vezi sec. 7).</li>
+      <li><b>CDN / securitate / DNS</b> — <b>Cloudflare</b> (proxy, protecție).</li>
+      <li><b>Asistență AI</b> — <b>Anthropic (Claude)</b>, doar dacă funcțiile AI sunt activate (vezi sec. 6).</li>
+      <li><b>Email</b> — <b>[furnizor SMTP]</b> pentru notificări/invitații, dacă e configurat.</li>
+    </ul>
+    <p>Nu vindem date personale. Divulgăm date doar acestor împuterniciți, sau autorităților când legea o cere.</p>
+
+    <h2>6. Funcțiile AI</h2>
+    <p>Dacă funcțiile de asistență AI sunt activate, putem trimite către <b>Anthropic (Claude)</b> rezumate/extrase din datele
+    flotei (ex. liste de constatări, întrebări ale utilizatorului) pentru a genera răspunsuri. Trimitem un context minim
+    necesar, scopat pe accesul utilizatorului. Aceste date pot fi procesate în <b>afara UE (SUA)</b>, sub clauze contractuale
+    standard. Funcțiile AI pot fi dezactivate.</p>
+
+    <h2>7. Transferuri internaționale</h2>
+    <p>Unii furnizori (găzduire, CDN, AI) pot prelucra date în afara Spațiului Economic European. În aceste cazuri ne bazăm
+    pe <b>Clauze Contractuale Standard (SCC)</b> ale Comisiei Europene și pe garanții adecvate.</p>
+
+    <h2>8. Cât păstrăm datele</h2>
+    <ul>
+      <li>Pozițiile/istoricul: <b>[ex. 12 luni]</b> (configurabil per contract).</li>
+      <li>Datele de cont: pe durata contractului + termenele legale (ex. facturare).</li>
+      <li>Jurnale de audit: <b>[ex. 12 luni]</b>. La încetarea contractului, datele se șterg/anonimizează într-un termen rezonabil, cu opțiune de export.</li>
+    </ul>
+
+    <h2>9. Drepturile tale (RGPD)</h2>
+    <p>Ai dreptul de acces, rectificare, ștergere, restricționare, portabilitate și opoziție. Pentru datele șoferilor,
+    cererile se adresează în primul rând <b>Clientului (operatorul)</b>. Poți depune plângere la
+    <b>ANSPDCP</b> (Autoritatea Națională de Supraveghere a Prelucrării Datelor cu Caracter Personal, dataprotection.ro).
+    Cereri: <b>[contact@ratrack.ro]</b>.</p>
+
+    <h2>10. Securitate</h2>
+    <p>Aplicăm măsuri tehnice și organizatorice: parole criptate (bcrypt), izolare strictă între companii (multi-tenant),
+    conexiuni HTTPS, control pe roluri, jurnal de audit. Niciun sistem nu e 100% sigur, dar tratăm securitatea ca prioritate.</p>
+
+    <h2>11. Cookie-uri</h2>
+    <p>Folosim doar cookie-uri <b>strict necesare</b> (sesiunea de autentificare). Nu folosim cookie-uri de publicitate/tracking.
+    Dacă vom adăuga analytics, vom solicita consimțământ.</p>
+
+    <h2>12. Modificări & contact</h2>
+    <p>Putem actualiza această politică; versiunea curentă e publicată aici. Contact: <b>[contact@ratrack.ro]</b>.</p>
+
+    <a class="back" href="/">← Înapoi la site</a>
+  </div>
+  <script>document.getElementById('d').textContent=new Date().toLocaleDateString('ro-RO');</script>
+</body>
+</html>
