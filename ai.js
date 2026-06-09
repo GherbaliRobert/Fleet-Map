@@ -1,6 +1,6 @@
 // ai.js — integrare AI (Anthropic Claude) prin fetch, fără SDK suplimentar.
 // Cheia poate veni din env (ANTHROPIC_API_KEY) SAU setată din UI de super-admin (stocată în settings).
-const AI_MODEL = process.env.AI_MODEL || 'claude-3-5-haiku-latest';
+const AI_MODEL = process.env.AI_MODEL || 'claude-haiku-4-5';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 let runtimeKey = process.env.ANTHROPIC_API_KEY || null;
