@@ -1302,19 +1302,75 @@ app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Creează adminul unei companii (super-admin)
+// ─── Onboarding: invitație prin email + set/reset parolă cu token ───
+function appBaseUrl(req) {
+  const h = (req && req.get && req.get('host')) || 'ratrack.ro';
+  return (process.env.BASE_URL || ('https://' + h)).replace(/\/$/, '');
+}
+async function sendSetPasswordEmail(req, user, opts) {
+  opts = opts || {};
+  if (!user || !user.email) return false;
+  if (!(channels.emailConfigured && channels.emailConfigured())) return false;
+  const token = crypto.randomBytes(32).toString('hex');
+  const hours = opts.hours || (24 * 7);
+  await db.setUserResetToken(user.id, token, new Date(Date.now() + hours * 3600 * 1000));
+  const link = appBaseUrl(req) + '/set-password.html?token=' + token;
+  let subject, text;
+  if (opts.invite) {
+    subject = 'Invitație RA Tracks' + (opts.company ? ' — ' + opts.company.name : '');
+    text = 'Bună' + (user.full_name ? ' ' + user.full_name : '') + ',\n\n'
+      + 'Ai fost invitat să administrezi ' + (opts.company ? '„' + opts.company.name + '"' : 'un cont') + ' în RA Tracks.\n'
+      + 'Utilizator: ' + user.username + '\n\n'
+      + 'Setează-ți parola (link valabil ' + Math.round(hours / 24) + ' zile):\n' + link + '\n\n'
+      + 'După ce setezi parola, te autentifici la ' + appBaseUrl(req) + '/app\n\n— RA Tracks';
+  } else {
+    subject = 'Resetare parolă RA Tracks';
+    text = 'Resetare parolă pentru contul „' + user.username + '".\n\nLink (valabil ' + hours + ' ore):\n' + link + '\n\nDacă nu ai cerut tu resetarea, ignoră acest email.\n\n— RA Tracks';
+  }
+  return await channels.sendEmailTo(user.email, subject, text);
+}
+
 app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const companyId = parseInt(req.params.id);
     const co = await db.getCompanyById(companyId);
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const { username, password, full_name, email } = req.body;
-    if (!username || !password || password.length < 4) return res.status(400).json({ error: 'Username + parolă (min 4) obligatorii' });
+    if (!username) return res.status(400).json({ error: 'Username obligatoriu' });
     if (await db.getUserByUsername(username)) return res.status(409).json({ error: 'Username-ul există deja' });
-    const hash = await bcrypt.hash(password, 10);
+    const invite = !password; // fără parolă → invitație prin email
+    if (invite && !email) return res.status(400).json({ error: 'Pune o parolă SAU un email pentru invitație' });
+    if (!invite && password.length < 4) return res.status(400).json({ error: 'Parola: minim 4 caractere' });
+    const hash = await bcrypt.hash(invite ? crypto.randomBytes(24).toString('hex') : password, 10);
     const u = await db.createUser(username, hash, 'company_admin', { full_name, email, company_id: companyId });
-    auditReq(req, 'create', 'company_admin', u.id, { companyId });
-    res.json(u);
+    let invited = false;
+    if (invite) { try { invited = await sendSetPasswordEmail(req, u, { invite: true, company: co }); } catch (e) {} }
+    auditReq(req, 'create', 'company_admin', u.id, { companyId, invited });
+    res.json(Object.assign({}, u, { invited, inviteEmailConfigured: !!(channels.emailConfigured && channels.emailConfigured()) }));
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Set parolă cu token (invitație sau resetare) — public
+app.post('/api/auth/set-password', async (req, res) => {
+  try {
+    const token = (req.body && req.body.token) || '';
+    const password = (req.body && req.body.password) || '';
+    if (!token || String(password).length < 6) return res.status(400).json({ error: 'Token + parolă (minim 6 caractere) obligatorii' });
+    const u = await db.getUserByResetToken(token);
+    if (!u) return res.status(400).json({ error: 'Link invalid sau expirat. Cere o nouă invitație.' });
+    const hash = await bcrypt.hash(String(password), 10);
+    await db.consumeUserResetToken(u.id, hash);
+    res.json({ ok: true, username: u.username });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Forgot password — public (răspuns identic indiferent de existență, anti-enumerare)
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const email = ((req.body && req.body.email) || '').trim();
+    if (email) { const u = await db.getUserByEmail(email); if (u) { try { await sendSetPasswordEmail(req, u, { hours: 2 }); } catch (e) {} } }
+  } catch (e) {}
+  res.json({ ok: true, message: 'Dacă adresa există, vei primi un email cu instrucțiuni.' });
 });
 // Device-uri neasignate (super-admin) + asignare la companie
 app.get('/api/unassigned-devices', requireAuth, requireSuperadmin, async (req, res) => {
@@ -1493,6 +1549,31 @@ app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, 
       pos.name = name || null;
       pos.vehicle_type = vehicle_type || null;
       pos.plate = plate || null;
+      livePositions.set(imei, pos);
+      broadcastWs({ type: 'position', data: pos });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Actualizare fișă vehicul completă (toate câmpurile editabile — paritate AROBS)
+app.put('/api/devices/:imei/details', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const b = req.body || {};
+    await db.updateVehicleDetails(imei, b);
+    auditReq(req, 'update', 'device', imei, { fields: Object.keys(b).length });
+    // Reflectă imediat în live (WebSocket) pentru câmpurile vizibile pe hartă/listă
+    const pos = livePositions.get(imei);
+    if (pos) {
+      if ('name' in b) pos.name = b.name || null;
+      if ('plate' in b) pos.plate = b.plate || null;
+      if ('vehicle_type' in b) pos.vehicle_type = b.vehicle_type || null;
+      if ('icon' in b) pos.icon = b.icon || null;
+      if ('color' in b) pos.color = b.color || null;
       livePositions.set(imei, pos);
       broadcastWs({ type: 'position', data: pos });
     }

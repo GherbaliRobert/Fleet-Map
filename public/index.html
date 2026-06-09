@@ -1772,7 +1772,7 @@
 
   <!-- Edit Device Modal -->
   <div id="edit-modal" class="modal-overlay">
-    <div class="modal" style="width:640px;max-width:95vw;max-height:92vh;">
+    <div class="modal" style="width:700px;max-width:95vw;max-height:92vh;overflow-y:auto;">
       <h2>
         <span><i class="fas fa-pen" style="margin-right:8px;color:var(--orange);"></i> Editare vehicul</span>
         <button class="close-btn" onclick="closeEditModal()" style="position:static;font-size:18px;">&#10005;</button>
@@ -1781,7 +1781,7 @@
       <!-- Tabs -->
       <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);">
         <button class="edit-tab active" data-tab="basic" onclick="switchEditTab('basic', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-primary);font-size:13px;cursor:pointer;border-bottom:2px solid var(--accent);font-weight:600;">
-          <i class="fas fa-info-circle"></i> Informatii
+          <i class="fas fa-info-circle"></i> Detalii vehicul
         </button>
         <button class="edit-tab" data-tab="truck" onclick="switchEditTab('truck', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
           <i class="fas fa-truck"></i> Config Camion
@@ -1794,42 +1794,88 @@
         </button>
       </div>
 
-      <!-- Tab: Basic -->
+      <!-- Tab: Detalii vehicul -->
       <div id="edit-tab-basic" class="edit-tab-content">
+        <style>
+          #edit-tab-basic .vsec{font-size:12px;font-weight:700;margin:14px 0 8px;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+          #edit-tab-basic .vgrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+          #edit-tab-basic .vgrid2 .form-group{margin-bottom:0;}
+        </style>
         <div class="form-group">
           <label>IMEI</label>
           <input type="text" id="edit-imei" disabled style="font-family:monospace;color:var(--text-muted);">
         </div>
-        <div class="form-group">
-          <label>Nume vehicul</label>
-          <input type="text" id="edit-name" placeholder="ex: Dacia Logan #1">
-        </div>
-        <div class="form-group">
-          <label>Tip vehicul</label>
-          <select id="edit-vehicle-type">
-            <option value="">-- Selecteaza --</option>
-            <option value="Auto">Auto</option>
-            <option value="Camion">Camion</option>
-            <option value="Duba">Duba</option>
-            <option value="Motocicleta">Motocicleta</option>
-            <option value="Utilaj">Utilaj</option>
-            <option value="Altul">Altul</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Număr înmatriculare</label>
-          <input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="text-transform:uppercase;">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="form-group">
-            <label>Grup <span style="color:var(--text-muted);font-size:10px;">(determină accesul clienților)</span></label>
-            <select id="edit-group"><option value="">-- Fără grup --</option></select>
+
+        <div class="vsec">Identificare</div>
+        <div class="vgrid2">
+          <div class="form-group"><label>Nume vehicul</label><input type="text" id="edit-name" placeholder="ex: Dacia Logan #1"></div>
+          <div class="form-group"><label>Număr înmatriculare</label><input type="text" id="edit-plate" placeholder="ex: B 123 ABC" style="text-transform:uppercase;"></div>
+          <div class="form-group"><label>Număr identificare (VIN)</label><input type="text" id="edit-vin" placeholder="ex: WVWZZZ..." maxlength="17" style="text-transform:uppercase;"></div>
+          <div class="form-group"><label>Categorie</label>
+            <select id="edit-vehicle-type">
+              <option value="">-- Selectează --</option>
+              <option value="Auto">Auto</option>
+              <option value="Camion">Camion</option>
+              <option value="Duba">Dubă</option>
+              <option value="Motocicleta">Motocicletă</option>
+              <option value="Autobuz">Autobuz</option>
+              <option value="Utilaj">Utilaj</option>
+              <option value="Remorca">Remorcă</option>
+              <option value="Altul">Altul</option>
+            </select>
           </div>
-          <div class="form-group">
-            <label>Șofer</label>
-            <select id="edit-driver"><option value="">-- Fără șofer --</option></select>
-          </div>
+          <div class="form-group"><label>Grup <span style="color:var(--text-muted);font-size:10px;">(acces clienți)</span></label><select id="edit-group"><option value="">-- Fără grup --</option></select></div>
+          <div class="form-group"><label>Șofer</label><select id="edit-driver"><option value="">-- Fără șofer --</option></select></div>
         </div>
+
+        <div class="vsec">Date tehnice</div>
+        <div class="vgrid2">
+          <div class="form-group"><label>Marcă</label><input type="text" id="edit-brand" placeholder="ex: Volvo"></div>
+          <div class="form-group"><label>Model</label><input type="text" id="edit-model" placeholder="ex: FH16"></div>
+          <div class="form-group"><label>An fabricație</label><input type="number" id="edit-year" placeholder="ex: 2019"></div>
+          <div class="form-group"><label>Tip combustibil</label>
+            <select id="edit-fuel-type">
+              <option value="">--</option>
+              <option value="Motorina">Motorină</option>
+              <option value="Benzina">Benzină</option>
+              <option value="GPL">GPL</option>
+              <option value="Electric">Electric</option>
+              <option value="Hibrid">Hibrid</option>
+              <option value="Altul">Altul</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Cilindree (cm³)</label><input type="number" id="edit-displacement" placeholder="ex: 12800"></div>
+          <div class="form-group"><label>Putere (KW)</label><input type="number" id="edit-power-kw" placeholder="ex: 397"></div>
+          <div class="form-group"><label>Serie motor</label><input type="text" id="edit-engine-serial"></div>
+          <div class="form-group"><label>Grad poluare</label>
+            <select id="edit-emission-class"><option value="">--</option><option value="Euro 3">Euro 3</option><option value="Euro 4">Euro 4</option><option value="Euro 5">Euro 5</option><option value="Euro 6">Euro 6</option><option value="Non-Euro">Non-Euro</option><option value="Electric">Electric</option></select>
+          </div>
+          <div class="form-group"><label>Dimensiune anvelopă</label><input type="text" id="edit-tire-size" placeholder="ex: 315/80 R22.5"></div>
+          <div class="form-group"><label>Locuri pasageri</label><input type="number" id="edit-passenger-seats" placeholder="ex: 3"></div>
+        </div>
+
+        <div class="vsec">Operațional & consum</div>
+        <div class="vgrid2">
+          <div class="form-group"><label>Viteza limită (km/h)</label><input type="number" id="edit-speed-limit" placeholder="ex: 90"></div>
+          <div class="form-group"><label>Capacitate rezervor (L)</label><input type="number" id="edit-tank-capacity" placeholder="ex: 400"></div>
+          <div class="form-group"><label>Volum util GPL (L)</label><input type="number" id="edit-lpg-volume" placeholder="ex: 0"></div>
+          <div class="form-group"><label>Sarcină utilă (kg)</label><input type="number" id="edit-payload" placeholder="ex: 24000"></div>
+          <div class="form-group"><label>Consum oraș (l/100km)</label><input type="number" step="0.1" id="edit-cons-city" placeholder="ex: 35"></div>
+          <div class="form-group"><label>Consum afară (l/100km)</label><input type="number" step="0.1" id="edit-cons-road" placeholder="ex: 28"></div>
+          <div class="form-group"><label>Consum staționar (l/h)</label><input type="number" step="0.1" id="edit-cons-idle" placeholder="ex: 2"></div>
+          <div class="form-group"><label>Categorie taxă drum</label><input type="text" id="edit-road-tax" placeholder="ex: 3-4 axe"></div>
+        </div>
+
+        <div class="vsec">Administrativ & afișare</div>
+        <div class="vgrid2">
+          <div class="form-group"><label>Centru de cost</label><input type="text" id="edit-cost-center" placeholder="ex: Șantier Nord"></div>
+          <div class="form-group"><label>Număr inventar</label><input type="text" id="edit-inventory"></div>
+          <div class="form-group"><label>Pictogramă</label>
+            <select id="edit-icon"><option value="car">Mașină</option><option value="truck">Camion</option><option value="van">Dubă</option><option value="bus">Autobuz</option><option value="motorcycle">Motocicletă</option><option value="utilaj">Utilaj</option></select>
+          </div>
+          <div class="form-group"><label>Culoare afișare</label><input type="color" id="edit-color" value="#22c55e" style="height:38px;padding:2px;"></div>
+        </div>
+        <div class="form-group"><label>Note</label><textarea id="edit-notes" rows="2" style="width:100%;resize:vertical;"></textarea></div>
       </div>
 
       <!-- Tab: Truck Config -->
@@ -5573,6 +5619,20 @@
           document.getElementById('edit-name').value = dev.name || '';
           document.getElementById('edit-vehicle-type').value = dev.vehicle_type || '';
           document.getElementById('edit-plate').value = dev.plate || '';
+          // Fișă vehicul extinsă (paritate AROBS)
+          const setv = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
+          setv('edit-vin', dev.vin); setv('edit-brand', dev.brand); setv('edit-model', dev.model);
+          setv('edit-year', dev.year); setv('edit-fuel-type', dev.fuel_type);
+          setv('edit-displacement', dev.displacement); setv('edit-power-kw', dev.power_kw);
+          setv('edit-engine-serial', dev.engine_serial); setv('edit-emission-class', dev.emission_class);
+          setv('edit-tire-size', dev.tire_size); setv('edit-passenger-seats', dev.passenger_seats);
+          setv('edit-speed-limit', dev.speed_limit); setv('edit-tank-capacity', dev.tank_capacity);
+          setv('edit-lpg-volume', dev.lpg_volume); setv('edit-payload', dev.payload);
+          setv('edit-cons-city', dev.consumption_city); setv('edit-cons-road', dev.consumption_road);
+          setv('edit-cons-idle', dev.consumption_idle); setv('edit-road-tax', dev.road_tax_category);
+          setv('edit-cost-center', dev.cost_center); setv('edit-inventory', dev.inventory_number);
+          setv('edit-icon', dev.icon || 'car'); setv('edit-notes', dev.notes);
+          if (dev.color) setv('edit-color', dev.color);
           await populateEditGroupsDrivers(dev.group_id, dev.driver_id);
 
           // Truck config
@@ -5613,11 +5673,30 @@
       const vehicle_type = document.getElementById('edit-vehicle-type').value;
       const plate = document.getElementById('edit-plate').value.toUpperCase();
 
-      // Basic info
-      const res = await fetch('/api/devices/' + imei, {
+      // Fișă vehicul completă
+      const numOrNull = id => { const el = document.getElementById(id); const v = el ? el.value : ''; return v === '' ? null : Number(v); };
+      const strOrNull = id => { const el = document.getElementById(id); const v = el ? el.value.trim() : ''; return v === '' ? null : v; };
+      const details = {
+        name, vehicle_type, plate,
+        vin: (document.getElementById('edit-vin').value.trim().toUpperCase() || null),
+        brand: strOrNull('edit-brand'), model: strOrNull('edit-model'), year: numOrNull('edit-year'),
+        fuel_type: strOrNull('edit-fuel-type'), displacement: numOrNull('edit-displacement'),
+        power_kw: numOrNull('edit-power-kw'), engine_serial: strOrNull('edit-engine-serial'),
+        emission_class: strOrNull('edit-emission-class'), tire_size: strOrNull('edit-tire-size'),
+        passenger_seats: numOrNull('edit-passenger-seats'), speed_limit: numOrNull('edit-speed-limit'),
+        tank_capacity: numOrNull('edit-tank-capacity'), lpg_volume: numOrNull('edit-lpg-volume'),
+        payload: numOrNull('edit-payload'), consumption_city: numOrNull('edit-cons-city'),
+        consumption_road: numOrNull('edit-cons-road'), consumption_idle: numOrNull('edit-cons-idle'),
+        road_tax_category: strOrNull('edit-road-tax'), cost_center: strOrNull('edit-cost-center'),
+        inventory_number: strOrNull('edit-inventory'),
+        icon: (document.getElementById('edit-icon').value || null),
+        color: (document.getElementById('edit-color').value || null),
+        notes: strOrNull('edit-notes')
+      };
+      const res = await fetch('/api/devices/' + imei + '/details', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, vehicle_type, plate })
+        body: JSON.stringify(details)
       });
 
       if (!res.ok) {

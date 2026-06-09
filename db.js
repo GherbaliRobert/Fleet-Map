@@ -183,6 +183,22 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS color VARCHAR(7);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS notes TEXT;
+        -- Fișă vehicul extinsă (paritate AROBS)
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS speed_limit INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS consumption_city NUMERIC(6,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS consumption_idle NUMERIC(6,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS consumption_road NUMERIC(6,2);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS lpg_volume INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS passenger_seats INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS emission_class VARCHAR(20);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS tire_size VARCHAR(30);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS engine_serial VARCHAR(40);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS displacement INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS power_kw INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS payload INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS road_tax_category VARCHAR(30);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_center VARCHAR(40);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS inventory_number VARCHAR(40);
       END $$
     `);
 
@@ -276,6 +292,8 @@ async function initDb() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP;
       END $$
     `);
 
@@ -698,6 +716,35 @@ async function updateDeviceInfo(imei, name, vehicleType, plate) {
     SET name = $2, vehicle_type = $3, plate = $4
     WHERE imei = $1
   `, [imei, name, vehicleType, plate]);
+}
+
+// Coloane editabile din fișa vehiculului (whitelist — previne injection / scriere pe coloane interzise)
+const VEHICLE_DETAIL_COLS = [
+  'name', 'plate', 'vehicle_type', 'vin', 'brand', 'model', 'year', 'fuel_type',
+  'tank_capacity', 'lpg_volume', 'icon', 'color', 'speed_limit',
+  'consumption_city', 'consumption_idle', 'consumption_road', 'passenger_seats',
+  'emission_class', 'tire_size', 'engine_serial', 'displacement', 'power_kw',
+  'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
+  'tare_weight', 'max_weight_legal', 'max_weight_construct'
+];
+const NUMERIC_COLS = new Set([
+  'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',
+  'consumption_road', 'passenger_seats', 'displacement', 'power_kw', 'payload',
+  'tare_weight', 'max_weight_legal', 'max_weight_construct'
+]);
+// Update parțial: actualizează doar câmpurile trimise, din whitelist
+async function updateVehicleDetails(imei, fields) {
+  const sets = [], vals = [imei];
+  for (const col of VEHICLE_DETAIL_COLS) {
+    if (!Object.prototype.hasOwnProperty.call(fields, col)) continue;
+    let v = fields[col];
+    if (v === '' || v === undefined) v = null;
+    if (v !== null && NUMERIC_COLS.has(col)) { const n = Number(v); v = isNaN(n) ? null : n; }
+    vals.push(v);
+    sets.push(`${col} = $${vals.length}`);
+  }
+  if (!sets.length) return;
+  await pool.query(`UPDATE devices SET ${sets.join(', ')} WHERE imei = $1`, vals);
 }
 
 async function assignDevice(imei, driverId, groupId) {
@@ -1141,6 +1188,24 @@ async function updateUserPassword(id, passwordHash) {
   await pool.query('UPDATE users SET password_hash = $2 WHERE id = $1', [id, passwordHash]);
 }
 
+// ─── Token de setare/resetare parolă (invitație + forgot-password) ───
+async function setUserResetToken(id, token, expiresAt) {
+  await pool.query('UPDATE users SET reset_token = $2, reset_expires = $3 WHERE id = $1', [id, token, expiresAt]);
+}
+async function getUserByResetToken(token) {
+  if (!token) return null;
+  const r = await pool.query('SELECT * FROM users WHERE reset_token = $1 AND reset_expires > NOW() LIMIT 1', [token]);
+  return r.rows[0] || null;
+}
+async function consumeUserResetToken(id, passwordHash) {
+  await pool.query('UPDATE users SET password_hash = $2, reset_token = NULL, reset_expires = NULL, active = true WHERE id = $1', [id, passwordHash]);
+}
+async function getUserByEmail(email) {
+  if (!email) return null;
+  const r = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]);
+  return r.rows[0] || null;
+}
+
 async function getUserCount() {
   const result = await pool.query('SELECT COUNT(*) FROM users');
   return parseInt(result.rows[0].count);
@@ -1393,6 +1458,7 @@ module.exports = {
   createAgentFinding, getAgentFindings, updateAgentFinding,
   upsertDevice,
   updateDeviceInfo,
+  updateVehicleDetails,
   assignDevice,
   updateTruckConfig,
   updateTankCalibration,
@@ -1411,6 +1477,10 @@ module.exports = {
   setUserLastLogin,
   deleteUser,
   updateUserPassword,
+  setUserResetToken,
+  getUserByResetToken,
+  consumeUserResetToken,
+  getUserByEmail,
   getUserCount,
   computeAllowedImeis,
   getUserAccess,
