@@ -2288,6 +2288,36 @@
   </div>
 
   <!-- ═══ Administrare (Faza 2) ═══ -->
+  <div id="sched-modal" class="modal-overlay">
+    <div class="modal" style="width:840px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;">
+      <h2>
+        <span><i class="fas fa-clock" style="margin-right:8px;color:var(--accent);"></i> Rapoarte programate</span>
+        <button class="close-btn" onclick="closeSchedules()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;">
+        <strong style="font-size:13px;">Programare nouă</strong>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+          <label class="rep-f"><span>Nume</span><input id="sch-name" placeholder="ex. Zilnic flotă"></label>
+          <label class="rep-f"><span>Raport</span><select id="sch-type"></select></label>
+          <label class="rep-f"><span>Vehicul</span><select id="sch-imei"></select></label>
+          <label class="rep-f"><span>Perioadă</span><select id="sch-period">
+            <option value="yesterday">Ziua precedentă</option><option value="last7">Ultimele 7 zile</option>
+            <option value="last30">Ultimele 30 zile</option><option value="thismonth">Luna curentă</option>
+            <option value="lastmonth">Luna precedentă</option></select></label>
+          <label class="rep-f"><span>Frecvență</span><select id="sch-freq">
+            <option value="daily">Zilnic</option><option value="weekly">Săptămânal (luni)</option>
+            <option value="monthly">Lunar (ziua 1)</option></select></label>
+          <label class="rep-f"><span>Ora (UTC)</span><input id="sch-hour" type="number" min="0" max="23" value="6"></label>
+          <label class="rep-f"><span>Format</span><select id="sch-format"><option value="pdf">PDF</option><option value="xlsx">Excel</option></select></label>
+          <label class="rep-f" style="grid-column:span 2;"><span>Destinatari (email, separați prin virgulă)</span><input id="sch-recips" placeholder="gol = emailul tău"></label>
+        </div>
+        <button class="btn-sm btn-primary" style="margin-top:10px;" onclick="schedCreate()"><i class="fas fa-plus"></i> Adaugă programarea</button>
+        <span id="sch-msg" style="font-size:12px;margin-left:8px;"></span>
+      </div>
+      <div id="sched-list" style="overflow:auto;"><div style="color:var(--text-muted);font-size:13px;">Se încarcă…</div></div>
+    </div>
+  </div>
+
   <div id="admin-modal" class="modal-overlay">
     <div class="modal" style="width:880px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;">
       <h2>
@@ -2397,7 +2427,10 @@
   <div id="reports-modal" class="modal-overlay">
     <div class="modal" style="width:940px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
       <h2><span><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent);"></i> Rapoarte</span>
-        <button class="close-btn" onclick="closeReports()" style="position:static;font-size:18px;">&#10005;</button></h2>
+        <span style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-sm" onclick="openSchedules()" title="Rapoarte programate"><i class="fas fa-clock"></i> Programări</button>
+          <button class="close-btn" onclick="closeReports()" style="position:static;font-size:18px;">&#10005;</button>
+        </span></h2>
       <!-- Catalog: categorii + carduri -->
       <div id="rep-catalog">
         <div id="rep-cats" class="rep-cats"></div>
@@ -3682,6 +3715,71 @@
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
         cnt.textContent = prev;
       } catch (e) { alert('Export eșuat: ' + e.message); cnt.textContent = prev; }
+    }
+    // ─── Rapoarte programate ───
+    async function openSchedules() {
+      document.getElementById('sched-modal').classList.add('visible');
+      try {
+        let cat = (typeof repCatalog !== 'undefined' && repCatalog && repCatalog.reports) ? repCatalog : await (await fetch('/api/reports', { credentials: 'same-origin' })).json();
+        document.getElementById('sch-type').innerHTML = (cat.reports || []).map(r => '<option value="' + r.type + '">' + r.label + '</option>').join('');
+      } catch (e) {}
+      const src = document.getElementById('rep-imei'), dst = document.getElementById('sch-imei');
+      if (src && src.options.length) dst.innerHTML = src.innerHTML;
+      else if (!dst.options.length) dst.innerHTML = '<option value="">Toată flota</option>';
+      schedLoad();
+    }
+    function closeSchedules() { document.getElementById('sched-modal').classList.remove('visible'); }
+    async function schedLoad() {
+      const E = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const box = document.getElementById('sched-list');
+      try {
+        const list = await fetch('/api/report-schedules', { credentials: 'same-origin' }).then(r => r.json());
+        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Nicio programare încă.</div>'; return; }
+        const FREQ = { daily: 'zilnic', weekly: 'săptămânal', monthly: 'lunar' };
+        box.innerHTML = list.map(s => '<div class="user-row" style="align-items:center;"><div style="min-width:0;">' +
+          '<strong>' + E(s.name || s.report_type) + '</strong>' +
+          '<span style="font-size:11px;color:var(--text-muted);"> · ' + E(s.report_type) + ' · ' + (FREQ[s.frequency] || s.frequency) + ' @ ' + String(s.hour).padStart(2, '0') + ':00 · ' + (s.format || 'pdf').toUpperCase() + ' · ' + (s.imei ? E(s.imei) : 'toată flota') + '</span>' +
+          '<div style="font-size:11px;color:var(--text-muted);">următoarea: ' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO') : '—') + ' · → ' + E(s.recipients || '(emailul creatorului)') + '</div>' +
+          '</div><div style="display:flex;gap:6px;flex-shrink:0;">' +
+          '<button class="btn-sm" onclick="schedRunNow(' + s.id + ')" title="Trimite acum"><i class="fas fa-paper-plane"></i></button>' +
+          '<button class="btn-sm btn-danger" onclick="schedDelete(' + s.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>' +
+          '</div></div>').join('');
+      } catch (e) { box.innerHTML = '<div style="color:var(--danger);font-size:13px;">Eroare la încărcare.</div>'; }
+    }
+    async function schedCreate() {
+      const body = {
+        name: document.getElementById('sch-name').value.trim(),
+        report_type: document.getElementById('sch-type').value,
+        imei: document.getElementById('sch-imei').value || null,
+        period: document.getElementById('sch-period').value,
+        frequency: document.getElementById('sch-freq').value,
+        hour: parseInt(document.getElementById('sch-hour').value) || 6,
+        format: document.getElementById('sch-format').value,
+        recipients: document.getElementById('sch-recips').value.trim()
+      };
+      const msg = document.getElementById('sch-msg');
+      if (!body.report_type) { msg.style.color = 'var(--danger)'; msg.textContent = 'Alege un raport.'; return; }
+      try {
+        const res = await fetch('/api/report-schedules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        const d = await res.json(); if (!res.ok) throw new Error(d.error || 'Eroare');
+        msg.style.color = 'var(--accent)'; msg.textContent = 'Adăugată ✓';
+        document.getElementById('sch-name').value = ''; document.getElementById('sch-recips').value = '';
+        schedLoad();
+      } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
+    }
+    async function schedDelete(id) {
+      if (!confirm('Ștergi programarea?')) return;
+      await fetch('/api/report-schedules/' + id, { method: 'DELETE', credentials: 'same-origin' });
+      schedLoad();
+    }
+    async function schedRunNow(id) {
+      const msg = document.getElementById('sch-msg'); msg.style.color = ''; msg.textContent = 'Se trimite...';
+      try {
+        const res = await fetch('/api/report-schedules/' + id + '/run', { method: 'POST', credentials: 'same-origin' });
+        const d = await res.json(); if (!res.ok) throw new Error(d.error || 'Eroare');
+        msg.style.color = d.emailSent ? 'var(--accent)' : 'var(--orange)';
+        msg.textContent = d.emailSent ? ('Trimis ✓ (' + d.rows + ' rânduri)') : ('Generat (' + d.rows + ' rânduri), dar emailul nu e configurat (SMTP)');
+      } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
     }
     function renderReport(data) {
       document.getElementById('rep-summary').innerHTML = Object.entries(data.summary||{}).map(([k,v]) => `<div class="rep-chip"><div class="v">${v}</div><div class="l">${k}</div></div>`).join('');
