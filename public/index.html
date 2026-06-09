@@ -7098,9 +7098,9 @@
       }
     }
 
-    function closeDashboard() {
-      document.getElementById('dashboard-modal').classList.remove('visible');
-    }
+    // closeDashboard() e definită mai sus ca showView('localizare') — scoate ATÂT `visible`
+    // CÂT ȘI `as-view`. Aici fusese un duplicat care scotea doar `visible` și lăsa Dashboard-ul
+    // afișat (în modul „view" `.as-view` are display:flex independent de `.visible`) → bug închidere.
 
     function openReportModal(imei) {
       reportImei = imei;
