@@ -420,6 +420,68 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
   };
 }
 
+// EcoDrive — clasament pe ȘOFER: agregă metricile vehiculelor după șoferul asignat, scor + notă + rang.
+async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
+  const limit = opts.limit || 90;
+  const HARSH_ACCEL = opts.harshAccel || 7, HARSH_BRAKE = opts.harshBrake || 9, HARSH_TURN = opts.harshTurn || 25;
+  const driverName = {};
+  try { const dr = await db.pool.query('SELECT id, name FROM drivers'); dr.rows.forEach(r => driverName[r.id] = r.name); } catch (e) {}
+
+  const agg = {}; // key -> bucket agregat pe șofer
+  for (const imei of imeis) {
+    const dev = devMap[imei] || {};
+    const key = dev.driver_id != null ? ('d' + dev.driver_id) : 'none';
+    const name = dev.driver_id != null ? (driverName[dev.driver_id] || ('Șofer #' + dev.driver_id)) : 'Fără șofer asignat';
+    const b = agg[key] || (agg[key] = { name, vehicles: new Set(), km: 0, accel: 0, brake: 0, hardTurn: 0, speedOverSec: 0, idleSec: 0, driveSec: 0 });
+    const pts = await history(db, imei, from, to);
+    let vehKm = 0, vehDrive = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const pr = pts[i - 1], p = pts[i];
+      const dt = (t(p) - t(pr)) / 1000;
+      if (dt <= 0 || dt > 300) continue;
+      const dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude);
+      if (dist < MAX_STEP_KM) { b.km += dist; vehKm += dist; }
+      const sp = p.speed || 0, spPr = pr.speed || 0;
+      if (sp > limit) b.speedOverSec += dt;
+      if (sp > IDLE_SPEED) { b.driveSec += dt; vehDrive += dt; } else if (ignOn(p)) b.idleSec += dt;
+      if (dt <= 30) {
+        const a = (sp - spPr) / dt;
+        if (a > HARSH_ACCEL) b.accel++;
+        if (a < -HARSH_BRAKE) b.brake++;
+        if (sp > 25) { let da = Math.abs((p.angle || 0) - (pr.angle || 0)); if (da > 180) da = 360 - da; if (da / dt > HARSH_TURN) b.hardTurn++; }
+      }
+    }
+    if (vehKm >= 0.5 || vehDrive >= 60) b.vehicles.add(imei);
+  }
+
+  const scored = []; let fleetScoreW = 0, fleetKm = 0, totA = 0, totB = 0;
+  for (const key of Object.keys(agg)) {
+    const b = agg[key];
+    if (b.km < 0.5 && b.driveSec < 60) continue;
+    const per100 = b.km > 1 ? 100 / b.km : 0;
+    const speedShare = b.driveSec > 0 ? b.speedOverSec / b.driveSec : 0;
+    const idleShare = (b.driveSec + b.idleSec) > 0 ? b.idleSec / (b.driveSec + b.idleSec) : 0;
+    let pen = 0;
+    pen += Math.min(30, b.accel * per100 * 2.5);
+    pen += Math.min(35, b.brake * per100 * 3.0);
+    pen += Math.min(20, b.hardTurn * per100 * 2.0);
+    pen += Math.min(25, speedShare * 100);
+    pen += Math.min(15, idleShare * 40);
+    const score = Math.max(0, Math.round(100 - pen));
+    const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'E';
+    const per100ev = Math.round((b.accel + b.brake + b.hardTurn) * per100 * 10) / 10;
+    scored.push({ name: b.name, vehicles: b.vehicles.size, score, grade, accel: b.accel, brake: b.brake, hardTurn: b.hardTurn, per100ev, km: Math.round(b.km) });
+    const w = Math.max(1, b.km); fleetScoreW += score * w; fleetKm += w; totA += b.accel; totB += b.brake;
+  }
+  scored.sort((x, y) => y.score - x.score);
+  const rows = scored.map((r, i) => [i + 1, r.name, r.vehicles, r.score + ' · ' + r.grade, r.accel, r.brake, r.hardTurn, r.per100ev, r.km]);
+  return {
+    columns: ['Rang', 'Șofer', 'Vehicule', 'Scor · Notă', 'Accel. bruște', 'Frânări bruște', 'Viraje bruște', 'Evenim./100km', 'Km'],
+    rows,
+    summary: { 'Scor mediu flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB }
+  };
+}
+
 async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor pornit + staționat)
   const minSec = (opts.idleMin || 3) * 60;
   const lph = opts.idleLph || 1.5; // L/h consumați la ralanti (estimare)
@@ -478,7 +540,8 @@ const REPORTS = {
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   fn: rSpeeding },
   geofence:    { label: 'Vizite în zone',         cat: 'evenimente',   fn: rGeofence },
   events:      { label: 'Evenimente (alerte)',    cat: 'evenimente',   fn: rEvents },
-  ecodrive:    { label: 'EcoDrive (comportament)', cat: 'siguranta',   fn: rEcoDrive }
+  ecodrive:    { label: 'EcoDrive (comportament)', cat: 'siguranta',   fn: rEcoDrive },
+  ecodrive_drivers: { label: 'EcoDrive — clasament șoferi', cat: 'siguranta', fn: rEcoDriveDrivers }
 };
 const REPORT_CATEGORIES = [
   { key: 'monitorizare', label: 'Monitorizare' },
