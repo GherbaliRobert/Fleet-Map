@@ -11,13 +11,22 @@ let pool, _pglite = null;
 if (USE_PG) {
   // ─── PostgreSQL real (pg.Pool are nativ .query și .connect → drop-in, fără mutex, concurență reală) ───
   const { Pool } = require('pg');
+  // SSL auto: rețeaua internă Railway (postgres.railway.internal) și localhost NU acceptă SSL;
+  // cloud public (Timescale Cloud, URL public *.rlwy.net) îl cere. Override explicit prin PGSSL.
+  const _u = process.env.DATABASE_URL || '';
+  const _m = (process.env.PGSSL || '').toLowerCase();
+  let _ssl;
+  if (_m === 'disable' || _m === 'false' || _m === 'off') _ssl = false;
+  else if (_m === 'require' || _m === 'true' || _m === 'on') _ssl = { rejectUnauthorized: false };
+  else if (/sslmode=disable/.test(_u) || /\.railway\.internal|@localhost|@127\.0\.0\.1|@postgres[:/]/.test(_u)) _ssl = false;
+  else _ssl = { rejectUnauthorized: false };
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: (process.env.PGSSL === 'disable') ? false : { rejectUnauthorized: false },
+    ssl: _ssl,
     max: parseInt(process.env.PG_POOL_MAX) || 10
   });
   pool.raw = null;
-  console.log('[DB] PostgreSQL (DATABASE_URL) — mod scalabil');
+  console.log(`[DB] PostgreSQL (DATABASE_URL) — mod scalabil (SSL: ${_ssl ? 'on' : 'off'})`);
 } else {
   // ─── PGlite embedded — single-connection, serializat printr-un mutex simplu (FIFO) ───
   const { PGlite } = require('@electric-sql/pglite');

@@ -15,8 +15,10 @@ ENV NODE_ENV=production \
 # 3000 = web/API (HTTP, în spatele reverse-proxy-ului) · 5027 = TCP dispozitive Teltonika
 EXPOSE 3000 5027
 
-# Baza de date embedded (PGlite) + secrete + chei VAPID persistă aici
-VOLUME ["/app/data"]
+# Notă: pe Railway folosim PostgreSQL (DATABASE_URL) + secrete în env vars, deci /app/data nu
+# trebuie să persiste. Railway respinge instrucțiunea VOLUME (cere Railway Volumes din dashboard).
+# Dacă rulezi imaginea cu PGlite pe alt mediu Docker, persistă datele cu un bind-mount la `docker run`:
+#   docker run -v /host/data:/app/data ...   (sau atașează un Railway Volume montat pe /app/data)
 
 # Rulează ca utilizator non-root (imaginea node:* are deja userul `node`)
 RUN chown -R node:node /app

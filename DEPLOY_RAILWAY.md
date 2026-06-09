@@ -59,7 +59,7 @@ Opționale:
 | `POSITION_RETENTION_DAYS` | `180` | după câte zile se șterg pozițiile (Timescale retention) |
 | `PG_POOL_MAX` | `10` | conexiuni max în pool |
 | `DISPLAY_TZ` | `Europe/Bucharest` | fus orar afișat în rapoarte |
-| `PGSSL` | `disable` | **doar dacă** în loguri apar erori SSL la conectarea DB |
+| `PGSSL` | `disable` / `require` | de obicei **nu e nevoie** — SSL se auto-detectează (intern Railway = off, cloud public = on). Setează doar ca override |
 | SMTP_*/TELEGRAM_* | — | canale notificări (vezi `channels.js`) |
 
 După ce adaugi variabilele → **Redeploy**.
@@ -138,7 +138,7 @@ DATABASE_URL="postgres://postgres:...@...rlwy.net:PORT/railway" node migrate_imp
   (compresie >7 zile reduce mult storage-ul) sau Timescale Cloud dedicat.
 
 ## Troubleshooting
-- **DB nu se conectează / erori SSL** → adaugă `PGSSL=disable` (rețeaua internă Railway e deja privată).
+- **DB nu se conectează / erori SSL** → SSL se auto-detectează; dacă tot apar erori, forțează cu `PGSSL=disable` (URL intern) sau `PGSSL=require` (URL public).
 - **Healthcheck eșuează** → verifică logurile pentru crash la boot (lipsă env var?); calea e `/api`.
 - **Sesiuni pică la fiecare deploy** → `SESSION_SECRET` nesetat.
 - **Push nu merge după redeploy** → `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` nesetate.
