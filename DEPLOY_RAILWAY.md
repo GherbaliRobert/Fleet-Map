@@ -75,14 +75,29 @@ După ce adaugi variabilele → **Redeploy**.
 ```
 Healthcheck-ul pe `/api` trebuie să treacă (serviciul devine **Active/verde**).
 
-## 5. Domeniu web (ratrack.ro)
-1. Railway → serviciul app → **Settings → Networking → Custom Domain** → adaugi `ratrack.ro` (și `www.ratrack.ro`).
-2. Railway îți dă o țintă **CNAME**. În DNS (DigitalOcean, unde ai zona acum):
-   - `www` → CNAME → ținta Railway.
-   - pentru rădăcină `@` Railway acceptă și ALIAS/ANAME; dacă DigitalOcean nu permite CNAME pe `@`,
-     folosește redirect `ratrack.ro → www.ratrack.ro` sau ținta dată de Railway.
-3. Railway emite automat certificat HTTPS. (Notă: mutând DNS-ul aici, vechiul DigitalOcean nu va mai
-   primi trafic pe `ratrack.ro` — fă schimbarea când ești gata de tăiat.)
+## 5. Domeniu web (ratrack.ro) prin Cloudflare DNS
+Railway nu găzduiește DNS și nu dă IP fix pe apex → pentru ca bara `ratrack.ro` (fără www) să meargă,
+zona se mută pe **Cloudflare** (gratis, suportă CNAME pe apex). Cloudflare înlocuiește rolul de DNS
+al DigitalOcean — după migrare rămâi cu Railway (app+DB) + Cloudflare (DNS).
+
+1. **Cloudflare** (dash.cloudflare.com) → cont gratis → **Add a site** → `ratrack.ro` → plan **Free**.
+   Cloudflare scanează zona veche; îți dă **2 nameservere** unice (ex. `xxx.ns.cloudflare.com`, `yyy.ns.cloudflare.com`).
+2. **RoTLD** (Administrare On-Line → nameservere) → **ștergi** `ns1/ns2/ns3.digitalocean.com` →
+   **adaugi cele 2 nameservere Cloudflare** → salvezi. (propagare: de obicei < 1h, max ~24h; Cloudflare trimite mail „Active")
+3. **Railway** → serviciul app → Settings → Networking → **Custom Domain** → adaugi `ratrack.ro` + `www.ratrack.ro`.
+   Railway îți dă o **țintă CNAME** (`...up.railway.app`).
+4. **Cloudflare → DNS records** (șterge recordurile vechi spre IP-ul DO, apoi adaugă):
+
+   | Tip | Nume | Conținut | Proxy |
+   |---|---|---|---|
+   | CNAME | `@` (ratrack.ro) | ținta web Railway | **DNS only** (nor gri) |
+   | CNAME | `www` | ținta web Railway | **DNS only** (nor gri) |
+   | CNAME | `gps` | host TCP Proxy Railway (`...proxy.rlwy.net`) | **DNS only** (nor gri) — obligatoriu |
+
+   > Toate pe **DNS only (gri)** la început: Railway își validează domeniul și emite SSL-ul, iar `gps`
+   > (TCP brut Teltonika) **trebuie** să ocolească proxy-ul Cloudflare (norul portocaliu = doar HTTP).
+   > Cloudflare aplatizează automat CNAME-ul pe apex. Dacă ai și MX/TXT pe ratrack.ro, readaugă-le aici.
+5. Railway emite HTTPS automat după validare. Verifică `https://ratrack.ro` + `https://www.ratrack.ro`.
 
 ## 6. Ingestie GPS (TCP 5027) — partea critică pentru Teltonika
 HTTP-ul merge prin domeniu, dar device-urile trimit pe **TCP brut**, nu HTTP:
