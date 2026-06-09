@@ -1701,6 +1701,7 @@
           <input type="datetime-local" id="history-to">
           <button class="history-btn primary" onclick="loadHistory()"><i class="fas fa-download"></i> Încarcă</button>
           <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
+          <button class="history-btn" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
         </div>
       </div>
     </div>
@@ -1944,6 +1945,11 @@
 
       <!-- KPI Cards -->
       <div id="dash-content" style="display:none;">
+        <div id="dash-company-wrap" style="display:none;align-items:center;gap:8px;margin-bottom:14px;padding:8px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;">
+          <i class="fas fa-building" style="color:var(--accent);"></i>
+          <span style="font-size:12px;color:var(--text-secondary);">Companie:</span>
+          <select id="dash-company-filter" onchange="setSuperCompany(this.value)" style="font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);min-width:180px;"></select>
+        </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:16px;">
           <div class="report-stat"><div class="report-stat-value" id="dk-total">0</div><div class="report-stat-label">Total vehicule</div></div>
           <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="dk-online" style="color:var(--green);">0</div><div class="report-stat-label">Online</div></div>
@@ -1953,6 +1959,15 @@
           <div class="report-stat"><div class="report-stat-value" id="dk-fuel">0</div><div class="report-stat-label">Consum azi (L)</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-engine">0</div><div class="report-stat-label">Ore motor</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-alerts">0</div><div class="report-stat-label">Alerte</div></div>
+        </div>
+
+        <!-- Constatări agenți AI -->
+        <div id="dash-agents-wrap" style="margin-bottom:16px;display:none;">
+          <div class="chart-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span><i class="fas fa-shield-halved" style="color:var(--accent);margin-right:6px;"></i>Constatări agenți AI</span>
+            <button class="btn-sm" onclick="raxOpenAgents()" style="font-size:11px;">Vezi toate</button>
+          </div>
+          <div id="dash-agents" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;"></div>
         </div>
 
         <!-- Grafice Dashboard -->
@@ -2500,6 +2515,18 @@
     </div>
   </div>
 
+  <!-- ═══ RA Dispatch (alocare curse) ═══ -->
+  <div id="dispatch-panel" style="display:none;position:fixed;top:70px;right:12px;z-index:1100;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:12px;width:300px;max-width:94vw;box-shadow:0 6px 24px rgba(0,0,0,.4);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <strong style="font-size:13px;color:var(--accent);"><i class="fas fa-compass"></i> RA Dispatch</strong>
+      <button class="close-btn" onclick="closeDispatch()" style="position:static;font-size:16px;">&#10005;</button>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Alege o destinație pe hartă → cele mai apropiate vehicule disponibile, cu distanță și ETA.</div>
+    <button class="btn-sm btn-primary" style="width:100%;margin-bottom:8px;" onclick="dispatchPickDestination()"><i class="fas fa-map-pin"></i> Alege destinația pe hartă</button>
+    <div id="dispatch-target" style="font-size:11px;margin-bottom:8px;"></div>
+    <div id="dispatch-results" style="max-height:46vh;overflow-y:auto;"><div style="color:var(--text-muted);font-size:12px;">Apasă „Alege destinația pe hartă".</div></div>
+  </div>
+
   <!-- ═══ Notificări (Faza 4) ═══ -->
   <div id="notif-panel" style="display:none;position:fixed;top:64px;right:12px;z-index:3500;width:360px;max-width:94vw;max-height:72vh;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.5);flex-direction:column;">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);">
@@ -2845,6 +2872,20 @@
         initMap();
         mapInitialized = true;
       }
+
+      // Click pe orice câmp de dată/oră → deschide direct calendarul nativ
+      if (!window.__pickerHooked) {
+        window.__pickerHooked = true;
+        document.addEventListener('click', function (e) {
+          var el = e.target;
+          if (el && el.tagName === 'INPUT' && /^(date|datetime-local|time|month|week)$/.test(el.type || '')) {
+            try { if (el.showPicker) el.showPicker(); } catch (_) {}
+          }
+        });
+      }
+
+      // După logare aterizează pe dashboard-ul complet (vizualizarea „Analize")
+      try { showView('analize'); } catch (e) {}
     }
 
     async function logout() {
@@ -3833,6 +3874,62 @@
       } else { closeHotspot(); }
     }
     function closeHotspot() { document.getElementById('hotspot-panel').style.display = 'none'; }
+
+    // ─── RA Dispatch (alocare curse: destinație → cele mai apropiate vehicule disponibile) ───
+    var dispatchTargetMarker = null, dispatchLine = null;
+    function raxOpenDispatch() {
+      var ov = document.getElementById('rax-ag-overlay'); if (ov) ov.classList.remove('open');
+      try { showView('localizare'); } catch (e) {}
+      document.getElementById('dispatch-panel').style.display = 'block';
+      document.getElementById('dispatch-results').innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Apasă „Alege destinația pe hartă".</div>';
+      document.getElementById('dispatch-target').textContent = '';
+    }
+    function closeDispatch() {
+      document.getElementById('dispatch-panel').style.display = 'none';
+      if (dispatchTargetMarker) { try { map.removeLayer(dispatchTargetMarker); } catch (e) {} dispatchTargetMarker = null; }
+      if (dispatchLine) { try { map.removeLayer(dispatchLine); } catch (e) {} dispatchLine = null; }
+      try { map.getContainer().style.cursor = ''; } catch (e) {}
+    }
+    function dispatchPickDestination() {
+      if (typeof map === 'undefined' || !map) return;
+      document.getElementById('dispatch-target').innerHTML = '<i class="fas fa-hand-pointer" style="color:var(--accent)"></i> Click pe hartă pentru destinație…';
+      map.getContainer().style.cursor = 'crosshair';
+      map.once('click', function (e) {
+        try { map.getContainer().style.cursor = ''; } catch (er) {}
+        dispatchSetTarget(e.latlng.lat, e.latlng.lng);
+      });
+    }
+    async function dispatchSetTarget(lat, lon) {
+      var x = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      if (dispatchTargetMarker) { try { map.removeLayer(dispatchTargetMarker); } catch (e) {} }
+      if (dispatchLine) { try { map.removeLayer(dispatchLine); } catch (e) {} dispatchLine = null; }
+      dispatchTargetMarker = L.marker([lat, lon]).addTo(map).bindPopup('Destinație').openPopup();
+      document.getElementById('dispatch-target').innerHTML = '<i class="fas fa-map-pin" style="color:var(--accent)"></i> Destinație: ' + lat.toFixed(4) + ', ' + lon.toFixed(4);
+      var box = document.getElementById('dispatch-results'); box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Caut vehicule…</div>';
+      try {
+        var j = await fetch('/api/dispatch/suggest?lat=' + lat + '&lon=' + lon, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (j.error) { box.innerHTML = '<div style="color:var(--red);font-size:12px;">' + x(j.error) + '</div>'; return; }
+        var vs = j.vehicles || [];
+        if (!vs.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Niciun vehicul accesibil.</div>'; return; }
+        var avail = vs.filter(function (v) { return v.available; }).length;
+        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + avail + ' disponibile · ' + vs.length + ' total · ETA estimativ (linie dreaptă)</div>' + vs.map(function (v, i) {
+          var col = v.available ? 'var(--green)' : 'var(--text-muted)';
+          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'offline');
+          return '<div style="border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:6px;background:var(--bg-dark);">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
+            + '<span style="font-weight:600;font-size:12px;">' + (i + 1) + '. ' + x(v.name) + '</span>'
+            + '<span style="font-size:10px;color:' + col + ';font-weight:700;white-space:nowrap;">' + badge + '</span></div>'
+            + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + v.distanceKm + ' km · ~' + v.etaMin + ' min</div>'
+            + '<div style="margin-top:5px;"><button class="btn-sm" onclick="dispatchShow(' + v.lat + ',' + v.lon + ',' + lat + ',' + lon + ')"><i class="fas fa-location-arrow"></i> Arată pe hartă</button></div>'
+            + '</div>';
+        }).join('');
+      } catch (e) { box.innerHTML = '<div style="color:var(--red);font-size:12px;">Eroare: ' + x(e.message) + '</div>'; }
+    }
+    function dispatchShow(vlat, vlon, tlat, tlon) {
+      if (dispatchLine) { try { map.removeLayer(dispatchLine); } catch (e) {} }
+      dispatchLine = L.polyline([[vlat, vlon], [tlat, tlon]], { color: '#22c55e', weight: 3, dashArray: '6,6' }).addTo(map);
+      try { map.fitBounds(dispatchLine.getBounds(), { padding: [70, 70] }); } catch (e) {}
+    }
     function setHsPeriod(pp) {
       const now = new Date(); let from = new Date();
       if (pp === 'today') from.setHours(0,0,0,0);
@@ -4044,6 +4141,7 @@
       Object.values(VIEW_PANELS).forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('as-view', 'visible'); });
       // închide panourile flotante de pe hartă
       try { closeHotspot(); } catch (e) {}
+      try { var dp = document.getElementById('dispatch-panel'); if (dp) dp.style.display = 'none'; } catch (e) {}
       const hist = document.getElementById('history-panel'); if (hist) hist.classList.remove('visible');
       const loc = document.getElementById('view-localizare');
       const mapViews = ['localizare', 'traseu', 'hotspot'];
@@ -5606,6 +5704,38 @@
       window.open(url, '_blank');
     }
 
+    // ─── Export KML (Google Earth / Maps) ───
+    async function exportKML() {
+      if (!selectedImei) return alert('Selectează un dispozitiv');
+      const from = document.getElementById('history-from').value;
+      const to = document.getElementById('history-to').value;
+      if (!from || !to) return alert('Selectează perioada');
+      try {
+        const res = await fetch('/api/history/' + selectedImei + '?from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString());
+        const data = await res.json();
+        const pts = (Array.isArray(data) ? data : []).filter(p => p.latitude != null && p.longitude != null);
+        if (!pts.length) return alert('Nu sunt date pentru perioada selectată');
+        const dev = (typeof devices !== 'undefined' && devices.get) ? (devices.get(selectedImei) || {}) : {};
+        const vname = dev.name || dev.plate || selectedImei;
+        const x = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const coords = pts.map(p => p.longitude + ',' + p.latitude + ',0').join(' ');
+        const s = pts[0], e = pts[pts.length - 1];
+        const kml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+          + '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>\n'
+          + '<name>' + x('Traseu ' + vname) + '</name>\n'
+          + '<Style id="t"><LineStyle><color>fff8bd38</color><width>4</width></LineStyle></Style>\n'
+          + '<Style id="s"><IconStyle><color>ff22c55e</color></IconStyle></Style>\n'
+          + '<Style id="f"><IconStyle><color>ff4444ef</color></IconStyle></Style>\n'
+          + '<Placemark><name>' + x(vname) + '</name><styleUrl>#t</styleUrl>'
+          + '<LineString><tessellate>1</tessellate><coordinates>' + coords + '</coordinates></LineString></Placemark>\n'
+          + '<Placemark><name>Start</name><description>' + x(new Date(s.timestamp).toLocaleString('ro-RO')) + '</description><styleUrl>#s</styleUrl><Point><coordinates>' + s.longitude + ',' + s.latitude + ',0</coordinates></Point></Placemark>\n'
+          + '<Placemark><name>Stop</name><description>' + x(new Date(e.timestamp).toLocaleString('ro-RO')) + '</description><styleUrl>#f</styleUrl><Point><coordinates>' + e.longitude + ',' + e.latitude + ',0</coordinates></Point></Placemark>\n'
+          + '</Document></kml>';
+        const fname = 'traseu_' + vname.replace(/[^\w]+/g, '_') + '_' + from.slice(0, 10) + '.kml';
+        downloadBlob(kml, fname, 'application/vnd.google-earth.kml+xml');
+      } catch (err) { alert('Eroare la export KML: ' + err.message); }
+    }
+
     // ─── IO Categories & Formatting ───
     const IO_CATEGORIES = {
       'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_vehicle_speed', 'can_engine_rpm', 'can_engine_temp', 'can_engine_load', 'can_accelerator_pedal', 'can_engine_worktime', 'can_engine_worktime_counted', 'can_retarder_load'],
@@ -6203,15 +6333,39 @@
       }
     }
 
+    // ─── Filtru pe companie (super-admin) ───
+    window.gSuperCompany = '';
+    function isSuperUser() { return !!(currentUser && currentUser.role === 'superadmin'); }
+    window.superCompanyQS = function (prefix) { return window.gSuperCompany ? (prefix + 'companyId=' + encodeURIComponent(window.gSuperCompany)) : ''; };
+    async function loadSuperCompanies() {
+      if (!isSuperUser()) return;
+      try {
+        var cos = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; });
+        var opts = '<option value="">Toate companiile</option>' + (cos || []).map(function (c) { return '<option value="' + c.id + '">' + (c.name ? String(c.name).replace(/</g, '&lt;') : ('#' + c.id)) + '</option>'; }).join('');
+        ['dash-company-filter', 'rax-company-filter'].forEach(function (id) { var el = document.getElementById(id); if (el) { el.innerHTML = opts; el.value = window.gSuperCompany || ''; } });
+        var dw = document.getElementById('dash-company-wrap'); if (dw) dw.style.display = 'flex';
+        var rw = document.getElementById('rax-company-wrap'); if (rw) rw.style.display = 'flex';
+      } catch (e) {}
+    }
+    window.loadSuperCompanies = loadSuperCompanies;
+    function setSuperCompany(val) {
+      window.gSuperCompany = val || '';
+      ['dash-company-filter', 'rax-company-filter'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = window.gSuperCompany; });
+      try { if (document.getElementById('dashboard-modal').classList.contains('visible')) openDashboard(); } catch (e) {}
+      try { if (window.raxReload && document.getElementById('rax-ag-overlay').classList.contains('open')) window.raxReload(); } catch (e) {}
+    }
+    window.setSuperCompany = setSuperCompany;
+
     // ─── Dashboard ───
     async function openDashboard() {
+      loadSuperCompanies();
       const modal = document.getElementById('dashboard-modal');
       modal.classList.add('visible');
       document.getElementById('dash-loading').style.display = 'block';
       document.getElementById('dash-content').style.display = 'none';
 
       try {
-        const res = await fetch('/api/dashboard');
+        const res = await fetch('/api/dashboard' + window.superCompanyQS('?'));
         const d = await res.json();
 
         document.getElementById('dk-total').textContent = d.totalDevices;
@@ -6261,9 +6415,33 @@
 
         // Render charts DUPA ce content-ul e vizibil (canvas-urile au dimensiuni corecte)
         setTimeout(function() { renderDashboardCharts(d); }, 50);
+        renderDashAgents();
       } catch (err) {
         document.getElementById('dash-loading').innerHTML = '<div style="color:var(--red);">Eroare: ' + err.message + '</div>';
       }
+    }
+
+    // ─── Constatări agenți AI pe dashboard ───
+    async function renderDashAgents() {
+      var wrap = document.getElementById('dash-agents-wrap'), box = document.getElementById('dash-agents');
+      if (!wrap || !box) return;
+      try {
+        var list = await fetch('/api/agents/findings' + window.superCompanyQS('?'), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; });
+        var nw = (Array.isArray(list) ? list : []).filter(function (f) { return f.status === 'new'; });
+        if (!nw.length) { wrap.style.display = 'none'; return; }
+        var rank = { critical: 0, warning: 1, info: 2 };
+        nw.sort(function (a, b) { return (rank[a.severity] == null ? 3 : rank[a.severity]) - (rank[b.severity] == null ? 3 : rank[b.severity]); });
+        var meta = { watch: ['RA Watch', 'fa-shield-halved'], care: ['RA Care', 'fa-wrench'], optimize: ['RA Optimize', 'fa-leaf'], compliance: ['RA Compliance', 'fa-clipboard-check'], client: ['RA Client', 'fa-file-lines'], dispatch: ['RA Dispatch', 'fa-compass'] };
+        var x = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        box.innerHTML = nw.slice(0, 6).map(function (f) {
+          var col = f.severity === 'critical' ? 'var(--red)' : (f.severity === 'warning' ? 'var(--orange)' : 'var(--accent)');
+          var m = meta[f.agent] || ['Agent', 'fa-robot'];
+          return '<div style="border:1px solid var(--border);border-left:3px solid ' + col + ';border-radius:8px;padding:8px 10px;background:var(--bg-dark);">'
+            + '<div style="font-size:12px;font-weight:600;margin-bottom:3px;line-height:1.3;">' + x(f.title) + '</div>'
+            + '<div style="font-size:10px;color:var(--text-muted);"><i class="fas ' + m[1] + '"></i> ' + m[0] + '</div></div>';
+        }).join('');
+        wrap.style.display = 'block';
+      } catch (e) { wrap.style.display = 'none'; }
     }
 
     // ─── Grafice Dashboard ───
@@ -7074,12 +7252,18 @@
 
   <div class="rax-overlay" id="rax-ag-overlay">
     <div class="rax-card">
-      <div class="rax-head"><h3><i class="fas fa-shield-halved" style="color:var(--accent)"></i> Agenți AI — RA Watch</h3><button class="rax-x" onclick="document.getElementById('rax-ag-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-head"><h3><i class="fas fa-shield-halved" style="color:var(--accent)"></i> Agenți AI</h3><button class="rax-x" onclick="document.getElementById('rax-ag-overlay').classList.remove('open')">&times;</button></div>
       <div class="rax-body">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-          <button class="rax-btn primary" id="rax-ag-run" onclick="raxRunWatch()"><i class="fas fa-play"></i> Rulează RA Watch acum</button>
-          <span style="font-size:11px;color:var(--text-muted)">Monitorizare 24/7 — rulează și automat la 30 min</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <button class="rax-btn primary" id="rax-ag-run" onclick="raxRunAgents()"><i class="fas fa-play"></i> Rulează toți agenții</button>
+          <span style="font-size:11px;color:var(--text-muted)">6 agenți · rulează automat la 30 min</span>
         </div>
+        <div id="rax-company-wrap" style="display:none;align-items:center;gap:6px;margin-bottom:8px;">
+          <i class="fas fa-building" style="color:var(--accent);font-size:12px;"></i>
+          <select id="rax-company-filter" onchange="setSuperCompany(this.value)" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);flex:1;"></select>
+        </div>
+        <div id="rax-ag-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
+        <button class="rax-btn" style="width:100%;margin-bottom:10px;justify-content:center;" onclick="raxOpenDispatch()"><i class="fas fa-compass" style="color:var(--accent)"></i> Dispecerizare — găsește vehicul pentru o cursă</button>
         <div id="rax-ag-summary" style="font-size:13px;margin-bottom:10px;"></div>
         <div id="rax-ag-list"><div class="rax-co-meta">Se încarcă…</div></div>
       </div>
@@ -7305,38 +7489,57 @@
     };
     window.raxDelEt = async function (id) { await fetch('/api/etransport/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxLoadEt(); };
 
-    // ── Agenți AI (RA Watch) ──
-    window.raxOpenAgents = function () { $('rax-ag-overlay').classList.add('open'); $('rax-ag-summary').innerHTML = ''; raxLoadFindings(); };
+    // ── Agenți AI ──
+    var RAX_AGENTS = {
+      watch: { name: 'RA Watch', icon: 'fa-shield-halved' },
+      care: { name: 'RA Care', icon: 'fa-wrench' },
+      optimize: { name: 'RA Optimize', icon: 'fa-leaf' },
+      compliance: { name: 'RA Compliance', icon: 'fa-clipboard-check' },
+      client: { name: 'RA Client', icon: 'fa-file-lines' },
+      dispatch: { name: 'RA Dispatch', icon: 'fa-compass' }
+    };
+    function raxAgMeta(k) { return RAX_AGENTS[k] || { name: k || 'Agent', icon: 'fa-robot' }; }
+    window.raxOpenAgents = function () { $('rax-ag-overlay').classList.add('open'); $('rax-ag-summary').innerHTML = ''; if (window.loadSuperCompanies) window.loadSuperCompanies(); raxRenderAgChips(); raxLoadFindings(); };
+    window.raxReload = function () { raxLoadFindings(); raxRefreshAgBadge(); };
+    function raxRenderAgChips() {
+      var box = $('rax-ag-chips'); if (!box) return;
+      box.innerHTML = Object.keys(RAX_AGENTS).map(function (k) {
+        var a = RAX_AGENTS[k];
+        return '<button class="rax-btn" style="font-size:11px;padding:4px 9px;" onclick="raxRunAgents(\'' + k + '\')" title="Rulează doar ' + a.name + '"><i class="fas ' + a.icon + '" style="color:var(--accent)"></i> ' + a.name + '</button>';
+      }).join('');
+    }
     function raxFindCard(f) {
       var sev = f.severity || 'info';
       var col = sev === 'critical' ? 'var(--red)' : (sev === 'warning' ? 'var(--orange)' : 'var(--accent)');
       var ic = sev === 'critical' ? 'fa-triangle-exclamation' : (sev === 'warning' ? 'fa-circle-exclamation' : 'fa-circle-info');
       var done = f.status && f.status !== 'new';
+      var am = raxAgMeta(f.agent);
       return '<div class="rax-co-item" style="border-left:3px solid ' + col + ';' + (done ? 'opacity:.5;' : '') + '">'
         + '<h4><i class="fas ' + ic + '" style="color:' + col + '"></i> ' + esc(f.title || '') + '</h4>'
         + '<div class="rax-co-meta">' + esc(f.body || '') + '</div>'
-        + '<div class="rax-co-meta" style="font-size:10px;margin-top:3px;opacity:.8;">' + new Date(f.created_at).toLocaleString('ro-RO') + (done ? ' · ' + (f.status === 'acknowledged' ? 'confirmat ✓' : 'respins') : '') + '</div>'
+        + '<div class="rax-co-meta" style="font-size:10px;margin-top:3px;opacity:.8;"><i class="fas ' + am.icon + '"></i> ' + esc(am.name) + ' · ' + new Date(f.created_at).toLocaleString('ro-RO') + (done ? ' · ' + (f.status === 'acknowledged' ? 'confirmat ✓' : 'respins') : '') + '</div>'
         + (done ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxFindingAction(' + f.id + ',\'ack\')">Confirmă</button><button class="rax-btn" onclick="raxFindingAction(' + f.id + ',\'dismiss\')">Respinge</button></div>')
         + '</div>';
     }
     async function raxLoadFindings() {
       var box = $('rax-ag-list');
       try {
-        var list = await fetch('/api/agents/findings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Nicio constatare. Apasă „Rulează RA Watch acum" pentru o verificare imediată.</div>'; return; }
+        var list = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Nicio constatare. Apasă „Rulează toți agenții" pentru o verificare imediată.</div>'; return; }
         box.innerHTML = list.map(raxFindCard).join('');
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
-    window.raxRunWatch = async function () {
+    window.raxRunAgents = async function (which) {
       var btn = $('rax-ag-run'); var orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se analizează…';
       var sum = $('rax-ag-summary'); sum.innerHTML = ''; sum.style.color = '';
       try {
-        var j = await fetch('/api/agents/run', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var j = await fetch('/api/agents/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ agent: which || 'all', companyId: window.gSuperCompany || undefined }) }).then(function (r) { return r.json(); });
         if (j.error) { sum.style.color = 'var(--red)'; sum.textContent = j.error; }
         else {
           var n = (j.findings && j.findings.length) || 0;
-          sum.innerHTML = '<div class="rax-co-meta"><b>' + n + '</b> constatări · <b>' + (j.stored || 0) + '</b> noi semnalate</div>'
-            + (j.aiSummary ? '<div style="margin-top:6px;padding:8px 10px;background:var(--surface-2,rgba(127,127,127,.12));border-radius:8px;line-height:1.45;"><b style="color:var(--accent)"><i class="fas fa-robot"></i> RA Watch: </b>' + esc(j.aiSummary) + '</div>' : '');
+          var who = (which && RAX_AGENTS[which]) ? RAX_AGENTS[which].name : 'Toți agenții';
+          sum.innerHTML = '<div class="rax-co-meta"><b>' + esc(who) + '</b>: <b>' + n + '</b> constatări · <b>' + (j.stored || 0) + '</b> noi semnalate</div>'
+            + (j.aiSummary ? '<div style="margin-top:6px;padding:8px 10px;background:var(--surface-2,rgba(127,127,127,.12));border-radius:8px;line-height:1.45;"><b style="color:var(--accent)"><i class="fas fa-robot"></i> Rezumat AI: </b>' + esc(j.aiSummary) + '</div>' : '');
         }
       } catch (e) { sum.style.color = 'var(--red)'; sum.textContent = 'Eroare: ' + e.message; }
       btn.disabled = false; btn.innerHTML = orig;
@@ -7351,7 +7554,7 @@
       if (!(me && me.permissions && me.permissions.viewReports)) return;
       var now = (new Date()).getTime(); if (now - _agBadgeTs < 20000) return; _agBadgeTs = now;
       try {
-        var list = await fetch('/api/agents/findings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var list = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         var n = Array.isArray(list) ? list.filter(function (f) { return f.status === 'new'; }).length : 0;
         var b = $('rax-ag-badge'); if (b) { b.style.display = n ? 'inline-block' : 'none'; b.textContent = n > 99 ? '99+' : String(n); }
       } catch (e) {}
