@@ -1,47 +1,59 @@
-// db.js — Bază de date EMBEDDED (PGlite = PostgreSQL în proces, persistă local).
-// Zero servicii externe: aplicația rulează 100% local doar cu `node server.js`.
+// db.js — Strat de bază de date DUAL-MODE:
+//  • dacă DATABASE_URL e setat → PostgreSQL real (Railway/managed, scalabil, TimescaleDB)
+//  • altfel → PGlite embedded (local / DigitalOcean, 100% local, fără servicii externe)
+// Restul codului folosește aceeași interfață (pool.query / pool.connect), deci e transparent.
 const path = require('path');
 const fs = require('fs');
-const { PGlite } = require('@electric-sql/pglite');
 
-// Folder de date local (configurabil). Implicit ./data/pgdata
-const DATA_DIR = process.env.PGLITE_DIR || path.join(__dirname, 'data', 'pgdata');
-try { fs.mkdirSync(path.dirname(DATA_DIR), { recursive: true }); } catch (e) { /* ignore */ }
+const USE_PG = !!process.env.DATABASE_URL;
+let pool, _pglite = null;
 
-const pglite = new PGlite(DATA_DIR);
-
-// PGlite e single-connection → serializăm accesul printr-un mutex simplu (FIFO).
-class Mutex {
-  constructor() { this._tail = Promise.resolve(); }
-  acquire() {
-    let release;
-    const next = new Promise(res => { release = res; });
-    const prev = this._tail;
-    this._tail = this._tail.then(() => next);
-    return prev.then(() => release);
+if (USE_PG) {
+  // ─── PostgreSQL real (pg.Pool are nativ .query și .connect → drop-in, fără mutex, concurență reală) ───
+  const { Pool } = require('pg');
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: (process.env.PGSSL === 'disable') ? false : { rejectUnauthorized: false },
+    max: parseInt(process.env.PG_POOL_MAX) || 10
+  });
+  pool.raw = null;
+  console.log('[DB] PostgreSQL (DATABASE_URL) — mod scalabil');
+} else {
+  // ─── PGlite embedded — single-connection, serializat printr-un mutex simplu (FIFO) ───
+  const { PGlite } = require('@electric-sql/pglite');
+  const DATA_DIR = process.env.PGLITE_DIR || path.join(__dirname, 'data', 'pgdata');
+  try { fs.mkdirSync(path.dirname(DATA_DIR), { recursive: true }); } catch (e) { /* ignore */ }
+  _pglite = new PGlite(DATA_DIR);
+  class Mutex {
+    constructor() { this._tail = Promise.resolve(); }
+    acquire() {
+      let release;
+      const next = new Promise(res => { release = res; });
+      const prev = this._tail;
+      this._tail = this._tail.then(() => next);
+      return prev.then(() => release);
+    }
   }
+  const _mutex = new Mutex();
+  pool = {
+    raw: _pglite,
+    async query(text, params) {
+      await _pglite.waitReady;
+      const release = await _mutex.acquire();
+      try { return await _pglite.query(text, params || []); }
+      finally { release(); }
+    },
+    async connect() {
+      await _pglite.waitReady;
+      const release = await _mutex.acquire();
+      return {
+        query: (text, params) => _pglite.query(text, params || []),
+        release: () => release()
+      };
+    }
+  };
+  console.log('[DB] PGlite embedded (local)');
 }
-const _mutex = new Mutex();
-
-// Adapter compatibil cu interfața pg.Pool folosită în rest (pool.query / pool.connect).
-const pool = {
-  raw: pglite,
-  async query(text, params) {
-    await pglite.waitReady;
-    const release = await _mutex.acquire();
-    try { return await pglite.query(text, params || []); }
-    finally { release(); }
-  },
-  // „client" exclusiv pentru tranzacții (BEGIN/COMMIT) — ține lock-ul până la release()
-  async connect() {
-    await pglite.waitReady;
-    const release = await _mutex.acquire();
-    return {
-      query: (text, params) => pglite.query(text, params || []),
-      release: () => release()
-    };
-  }
-};
 
 async function initDb() {
   const client = await pool.connect();
@@ -91,9 +103,26 @@ async function initDb() {
 
     // Index pe timestamp pentru curățare date vechi
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_positions_ts 
+      CREATE INDEX IF NOT EXISTS idx_positions_ts
       ON positions (timestamp)
     `);
+
+    // ─── TimescaleDB (doar pe Postgres real): hypertable + compresie + retenție pe `positions` ───
+    // La 4s × multe vehicule, asta ține storage-ul în frâu (compresie ~85-90% + ștergere automată a datelor vechi).
+    if (USE_PG) {
+      try {
+        await client.query('CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE');
+        await client.query('ALTER TABLE positions DROP CONSTRAINT IF EXISTS positions_pkey'); // hypertable cere ca PK să includă timestamp
+        await client.query("SELECT create_hypertable('positions','timestamp', if_not_exists => TRUE, migrate_data => TRUE)");
+        await client.query("ALTER TABLE positions SET (timescaledb.compress, timescaledb.compress_segmentby = 'imei')");
+        await client.query("SELECT add_compression_policy('positions', INTERVAL '7 days', if_not_exists => TRUE)");
+        const retDays = parseInt(process.env.POSITION_RETENTION_DAYS) || 180;
+        await client.query("SELECT add_retention_policy('positions', INTERVAL '" + retDays + " days', if_not_exists => TRUE)");
+        console.log('[DB] TimescaleDB activ: hypertable positions + compresie >7z + retenție ' + retDays + 'z');
+      } catch (e) {
+        console.warn('[DB] TimescaleDB indisponibil → rulez pe Postgres simplu:', e.message);
+      }
+    }
 
     // Tabela utilizatorilor
     await client.query(`
@@ -449,6 +478,32 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_etransport_company ON etransport(company_id)`);
 
+    // Setări globale (cheie-valoare) — ex. cheia API Anthropic configurată din UI
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key VARCHAR(60) PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Agenți AI — constatări/recomandări (RA Watch etc.)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS agent_findings (
+        id BIGSERIAL PRIMARY KEY,
+        company_id INTEGER,
+        agent VARCHAR(30) NOT NULL,
+        severity VARCHAR(12) DEFAULT 'info',
+        fkey VARCHAR(120),
+        imei VARCHAR(20),
+        title VARCHAR(220),
+        body TEXT,
+        status VARCHAR(16) DEFAULT 'new',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_findings_company ON agent_findings(company_id, created_at DESC)`);
+
     console.log('[DB] Tabele create / verificate');
   } finally {
     client.release();
@@ -563,6 +618,47 @@ async function deleteEtransport(id) { await pool.query('DELETE FROM etransport W
 async function getActiveEtransports() {
   const r = await pool.query("SELECT * FROM etransport WHERE status = 'activ' AND (end_at IS NULL OR end_at > NOW())");
   return r.rows;
+}
+
+// ─── Setări globale (cheie-valoare) ───
+async function getSetting(key) {
+  const r = await pool.query('SELECT value FROM settings WHERE key = $1', [key]);
+  return r.rows[0] ? r.rows[0].value : null;
+}
+async function setSetting(key, value) {
+  await pool.query(
+    'INSERT INTO settings (key, value, updated_at) VALUES ($1,$2,NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()',
+    [key, value]
+  );
+}
+
+// ─── Agenți AI: constatări ───
+async function createAgentFinding(f) {
+  if (f.fkey) {
+    const ex = await pool.query(
+      "SELECT 1 FROM agent_findings WHERE company_id IS NOT DISTINCT FROM $1 AND fkey = $2 AND created_at > NOW() - INTERVAL '12 hours' LIMIT 1",
+      [f.companyId == null ? null : f.companyId, f.fkey]
+    );
+    if (ex.rows.length) return null; // deja semnalat recent
+  }
+  const r = await pool.query(
+    'INSERT INTO agent_findings (company_id, agent, severity, fkey, imei, title, body) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+    [f.companyId == null ? null : f.companyId, f.agent, f.severity || 'info', f.fkey || null, f.imei || null, f.title, f.body || null]
+  );
+  return r.rows[0];
+}
+async function getAgentFindings(companyId, limit = 100) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId, limit] : [limit];
+  const r = await pool.query(`SELECT * FROM agent_findings ${where} ORDER BY created_at DESC LIMIT $${params.length}`, params);
+  return r.rows;
+}
+async function updateAgentFinding(id, status, companyId) {
+  const r = await pool.query(
+    'UPDATE agent_findings SET status = $2 WHERE id = $1 AND ($3::int IS NULL OR company_id IS NOT DISTINCT FROM $3)',
+    [parseInt(id), status, companyId == null ? null : companyId]
+  );
+  return (r.affectedRows || r.rowCount || 0) > 0;
 }
 
 // company_id al unei entități (pentru verificarea proprietății la update/delete pe id)
@@ -1025,7 +1121,7 @@ async function saveTripsForRange(imei, from, to, trips) {
 
 // Închidere curată: flush PGlite pe disc (apelat la shutdown — important pentru durabilitate)
 async function closeDb() {
-  try { await pglite.close(); } catch (e) { /* ignore */ }
+  try { if (USE_PG) { await pool.end(); } else if (_pglite) { await _pglite.close(); } } catch (e) { /* ignore */ }
 }
 
 async function deleteUser(id) {
@@ -1284,6 +1380,8 @@ module.exports = {
   getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
+  getSetting, setSetting,
+  createAgentFinding, getAgentFindings, updateAgentFinding,
   upsertDevice,
   updateDeviceInfo,
   assignDevice,

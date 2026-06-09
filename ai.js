@@ -1,17 +1,20 @@
 // ai.js — integrare AI (Anthropic Claude) prin fetch, fără SDK suplimentar.
-// Necesită ANTHROPIC_API_KEY în env. Model configurabil prin AI_MODEL.
+// Cheia poate veni din env (ANTHROPIC_API_KEY) SAU setată din UI de super-admin (stocată în settings).
 const AI_MODEL = process.env.AI_MODEL || 'claude-3-5-haiku-latest';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
-function aiEnabled() { return !!process.env.ANTHROPIC_API_KEY; }
+let runtimeKey = process.env.ANTHROPIC_API_KEY || null;
+function setKey(k) { runtimeKey = (k && String(k).trim()) || null; }
+function hasKey() { return !!runtimeKey; }
+function aiEnabled() { return !!runtimeKey; }
 
 async function callClaude({ system, messages, maxTokens = 800 }) {
-  if (!aiEnabled()) { const e = new Error('AI neconfigurat (lipsește ANTHROPIC_API_KEY)'); e.code = 'NO_KEY'; throw e; }
+  if (!runtimeKey) { const e = new Error('AI neconfigurat (lipsește cheia Anthropic)'); e.code = 'NO_KEY'; throw e; }
   const res = await fetch(ANTHROPIC_URL, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'x-api-key': runtimeKey,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens, system, messages })
@@ -26,4 +29,4 @@ async function callClaude({ system, messages, maxTokens = 800 }) {
   return (j.content && j.content[0] && j.content[0].text) || '';
 }
 
-module.exports = { aiEnabled, callClaude, AI_MODEL };
+module.exports = { aiEnabled, hasKey, setKey, callClaude, AI_MODEL };

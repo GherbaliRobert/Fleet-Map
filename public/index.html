@@ -6997,6 +6997,7 @@
     <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
     <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
     <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
+    <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
     <button class="rax-fab" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-robot"></i> Asistent AI</button>
   </div>
 
@@ -7071,6 +7072,20 @@
     </div>
   </div>
 
+  <div class="rax-overlay" id="rax-ag-overlay">
+    <div class="rax-card">
+      <div class="rax-head"><h3><i class="fas fa-shield-halved" style="color:var(--accent)"></i> Agenți AI — RA Watch</h3><button class="rax-x" onclick="document.getElementById('rax-ag-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-body">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="rax-btn primary" id="rax-ag-run" onclick="raxRunWatch()"><i class="fas fa-play"></i> Rulează RA Watch acum</button>
+          <span style="font-size:11px;color:var(--text-muted)">Monitorizare 24/7 — rulează și automat la 30 min</span>
+        </div>
+        <div id="rax-ag-summary" style="font-size:13px;margin-bottom:10px;"></div>
+        <div id="rax-ag-list"><div class="rax-co-meta">Se încarcă…</div></div>
+      </div>
+    </div>
+  </div>
+
   <script>
   (function () {
     var me = null, aiEnabled = false, aiHistory = [], companiesCache = [];
@@ -7097,6 +7112,8 @@
       var fleet = !!(me.permissions && me.permissions.manageFleet);
       $('rax-tacho-btn').style.display = fleet ? 'flex' : 'none';
       $('rax-et-btn').style.display = fleet ? 'flex' : 'none';
+      $('rax-ag-btn').style.display = (me.permissions && me.permissions.viewReports) ? 'flex' : 'none';
+      raxRefreshAgBadge();
       var chip = $('rax-co-chip');
       if (me.company && me.company.name) { chip.style.display = 'block'; chip.innerHTML = (me.company.is_demo ? '🔵 ' : '🏢 ') + esc(me.company.name); }
       else if (me.isSuper) { chip.style.display = 'block'; chip.textContent = 'Platformă · super-admin'; }
@@ -7111,13 +7128,41 @@
       ov.classList.toggle('open', open);
       if (open && !$('rax-ai-msgs').dataset.init) {
         $('rax-ai-msgs').dataset.init = '1';
-        var greet = aiEnabled ? 'Salut! Sunt asistentul RA Tracks. Întreabă-mă despre flota ta.' : 'Asistentul AI nu este configurat încă (lipsește cheia ANTHROPIC_API_KEY pe server).';
-        addMsg('ai', greet);
-        if (aiEnabled) { var s = document.createElement('div'); s.className = 'rax-suggest'; SUGG.forEach(function (t) { var c = document.createElement('span'); c.className = 'rax-chip'; c.textContent = t; c.onclick = function () { $('rax-ai-input').value = t; raxSendAI(); }; s.appendChild(c); }); var rc = document.createElement('span'); rc.className = 'rax-chip'; rc.style.borderColor = 'var(--accent)'; rc.innerHTML = '📄 Rezumă raportul afișat'; rc.onclick = raxSummarizeVisibleReport; s.appendChild(rc); $('rax-ai-msgs').appendChild(s); }
+        if (aiEnabled) {
+          addMsg('ai', 'Salut! Sunt asistentul RA Tracks. Întreabă-mă despre flota ta.');
+          var s = document.createElement('div'); s.className = 'rax-suggest';
+          SUGG.forEach(function (t) { var c = document.createElement('span'); c.className = 'rax-chip'; c.textContent = t; c.onclick = function () { $('rax-ai-input').value = t; raxSendAI(); }; s.appendChild(c); });
+          var rc = document.createElement('span'); rc.className = 'rax-chip'; rc.style.borderColor = 'var(--accent)'; rc.innerHTML = '📄 Rezumă raportul afișat'; rc.onclick = raxSummarizeVisibleReport; s.appendChild(rc);
+          $('rax-ai-msgs').appendChild(s);
+        } else if (me && me.isSuper) {
+          addMsg('ai', 'Asistentul AI nu e configurat. Lipește mai jos cheia ta Anthropic ca să-l activezi:');
+          var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:6px 0;';
+          w.innerHTML = '<input id="rax-ai-key" type="password" placeholder="sk-ant-..." style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:9px 11px;font-size:13px;">'
+            + '<button class="rax-btn primary" onclick="raxSaveKey()"><i class="fas fa-key"></i> Activează asistentul</button>'
+            + '<div id="rax-ai-key-msg" style="font-size:12px;"></div>'
+            + '<div style="font-size:11px;color:var(--text-muted)">Cheia o iei din console.anthropic.com → API Keys. Se stochează pe serverul tău, nu se afișează nimănui.</div>';
+          $('rax-ai-msgs').appendChild(w);
+        } else {
+          addMsg('ai', 'Asistentul AI nu este configurat. Roagă administratorul platformei să adauge cheia AI.');
+        }
       }
       if (open) setTimeout(function () { $('rax-ai-input').focus(); }, 50);
     };
     function addMsg(role, text) { var d = document.createElement('div'); d.className = 'rax-msg ' + role; d.textContent = text; $('rax-ai-msgs').appendChild(d); $('rax-ai-msgs').scrollTop = $('rax-ai-msgs').scrollHeight; return d; }
+    window.raxSaveKey = async function () {
+      var inp = $('rax-ai-key'), msg = $('rax-ai-key-msg'); if (!inp) return;
+      var key = (inp.value || '').trim(); msg.style.color = 'var(--red)';
+      if (!key) { msg.textContent = 'Lipește cheia.'; return; }
+      msg.style.color = 'var(--text-muted)'; msg.textContent = 'Se activează…';
+      try {
+        var r = await fetch('/api/ai/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ key: key }) });
+        var j = await r.json();
+        if (j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error; return; }
+        aiEnabled = true;
+        $('rax-ai-msgs').innerHTML = ''; $('rax-ai-msgs').dataset.init = '';
+        raxToggleAI(); raxToggleAI(); // închide + redeschide → re-init cu chat activ
+      } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
+    };
     window.raxSendAI = async function () {
       var inp = $('rax-ai-input'); var msg = (inp.value || '').trim(); if (!msg) return;
       inp.value = ''; addMsg('user', msg);
@@ -7259,6 +7304,58 @@
       try { var r = await fetch('/api/etransport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ uit: uit, plate: plate, imei: imei }) }); var j = await r.json(); if (j.error) { msg.textContent = j.error; return; } msg.style.color = 'var(--accent)'; msg.textContent = 'Adăugat ✓'; $('rax-et-uit').value = ''; $('rax-et-plate').value = ''; $('rax-et-imei').value = ''; raxLoadEt(); } catch (e) { msg.textContent = 'Eroare: ' + e.message; }
     };
     window.raxDelEt = async function (id) { await fetch('/api/etransport/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxLoadEt(); };
+
+    // ── Agenți AI (RA Watch) ──
+    window.raxOpenAgents = function () { $('rax-ag-overlay').classList.add('open'); $('rax-ag-summary').innerHTML = ''; raxLoadFindings(); };
+    function raxFindCard(f) {
+      var sev = f.severity || 'info';
+      var col = sev === 'critical' ? 'var(--red)' : (sev === 'warning' ? 'var(--orange)' : 'var(--accent)');
+      var ic = sev === 'critical' ? 'fa-triangle-exclamation' : (sev === 'warning' ? 'fa-circle-exclamation' : 'fa-circle-info');
+      var done = f.status && f.status !== 'new';
+      return '<div class="rax-co-item" style="border-left:3px solid ' + col + ';' + (done ? 'opacity:.5;' : '') + '">'
+        + '<h4><i class="fas ' + ic + '" style="color:' + col + '"></i> ' + esc(f.title || '') + '</h4>'
+        + '<div class="rax-co-meta">' + esc(f.body || '') + '</div>'
+        + '<div class="rax-co-meta" style="font-size:10px;margin-top:3px;opacity:.8;">' + new Date(f.created_at).toLocaleString('ro-RO') + (done ? ' · ' + (f.status === 'acknowledged' ? 'confirmat ✓' : 'respins') : '') + '</div>'
+        + (done ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxFindingAction(' + f.id + ',\'ack\')">Confirmă</button><button class="rax-btn" onclick="raxFindingAction(' + f.id + ',\'dismiss\')">Respinge</button></div>')
+        + '</div>';
+    }
+    async function raxLoadFindings() {
+      var box = $('rax-ag-list');
+      try {
+        var list = await fetch('/api/agents/findings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Nicio constatare. Apasă „Rulează RA Watch acum" pentru o verificare imediată.</div>'; return; }
+        box.innerHTML = list.map(raxFindCard).join('');
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
+    }
+    window.raxRunWatch = async function () {
+      var btn = $('rax-ag-run'); var orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se analizează…';
+      var sum = $('rax-ag-summary'); sum.innerHTML = ''; sum.style.color = '';
+      try {
+        var j = await fetch('/api/agents/run', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (j.error) { sum.style.color = 'var(--red)'; sum.textContent = j.error; }
+        else {
+          var n = (j.findings && j.findings.length) || 0;
+          sum.innerHTML = '<div class="rax-co-meta"><b>' + n + '</b> constatări · <b>' + (j.stored || 0) + '</b> noi semnalate</div>'
+            + (j.aiSummary ? '<div style="margin-top:6px;padding:8px 10px;background:var(--surface-2,rgba(127,127,127,.12));border-radius:8px;line-height:1.45;"><b style="color:var(--accent)"><i class="fas fa-robot"></i> RA Watch: </b>' + esc(j.aiSummary) + '</div>' : '');
+        }
+      } catch (e) { sum.style.color = 'var(--red)'; sum.textContent = 'Eroare: ' + e.message; }
+      btn.disabled = false; btn.innerHTML = orig;
+      raxLoadFindings(); raxRefreshAgBadge();
+    };
+    window.raxFindingAction = async function (id, action) {
+      try { await fetch('/api/agents/findings/' + id + '/' + action, { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+      raxLoadFindings(); raxRefreshAgBadge();
+    };
+    var _agBadgeTs = 0;
+    async function raxRefreshAgBadge() {
+      if (!(me && me.permissions && me.permissions.viewReports)) return;
+      var now = (new Date()).getTime(); if (now - _agBadgeTs < 20000) return; _agBadgeTs = now;
+      try {
+        var list = await fetch('/api/agents/findings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var n = Array.isArray(list) ? list.filter(function (f) { return f.status === 'new'; }).length : 0;
+        var b = $('rax-ag-badge'); if (b) { b.style.display = n ? 'inline-block' : 'none'; b.textContent = n > 99 ? '99+' : String(n); }
+      } catch (e) {}
+    }
   })();
   </script>
 </body>

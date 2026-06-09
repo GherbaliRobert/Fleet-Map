@@ -12,8 +12,10 @@ const crypto = require('crypto');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const { parseAvlPacket, convertCanValue, expandCanFlags } = require('./codec8e');
-const reportExport = require('./report_export');
-const reportSchedules = require('./report_schedules');
+// Module opționale (export PDF/Excel + programare rapoarte) — tolerante la lipsă, ca să nu pice serverul
+let reportExport = null, reportSchedules = null;
+try { reportExport = require('./report_export'); } catch (e) { console.warn('[REPORTS] export PDF/Excel indisponibil:', e.message); }
+try { reportSchedules = require('./report_schedules'); } catch (e) { console.warn('[REPORTS] programare rapoarte indisponibilă:', e.message); }
 
 // Cache pentru calibrare sonda combustibil per vehicul (voltage -> liters)
 const tankCalibrationCache = new Map(); // imei -> calibration array
@@ -124,6 +126,8 @@ const channels = require('./channels');
 const ai = require('./ai');
 const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
+let agents = null;
+try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
 const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
 let demoCompanyId = null;
 const webpush = require('web-push');
@@ -754,6 +758,8 @@ async function withScope(req, res, next) {
   }
 }
 function canAccessImei(req, imei) {
+  // vehiculele demo sunt vizibile DOAR în contul demo (nu se amestecă în flota reală/super-admin)
+  if (DEMO_SET.has(imei) && req.companyId !== demoCompanyId) return false;
   return req.allowedImeis == null || req.allowedImeis.has(imei);
 }
 
@@ -778,8 +784,12 @@ async function resolveReportImeis(req) {
     for (const im of list) if (!canAccessImei(req, im)) return null;
     return list;
   }
-  if (req.allowedImeis == null) { const devs = await db.getDevices(); return devs.map(d => d.imei); }
-  return Array.from(req.allowedImeis);
+  if (req.allowedImeis == null) {
+    let devs = await db.getDevices();
+    if (req.companyId !== demoCompanyId) devs = devs.filter(d => !DEMO_SET.has(d.imei)); // exclude demo pt. flota reală
+    return devs.map(d => d.imei);
+  }
+  return Array.from(req.allowedImeis).filter(im => canAccessImei(req, im));
 }
 
 // Rate-limit simplu pentru login (per IP): max 10 eșecuri / 15 min
@@ -1075,6 +1085,17 @@ function _fleetSnapshot(req) {
 }
 
 app.get('/api/ai/status', requireAuth, (req, res) => res.json({ enabled: ai.aiEnabled(), model: ai.AI_MODEL }));
+// Super-admin: setează/șterge cheia Anthropic din UI (stocată în DB, fără editare .env)
+app.post('/api/ai/config', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const key = (req.body.key || '').toString().trim();
+    if (key && !/^sk-ant-/.test(key)) return res.status(400).json({ error: 'Cheie invalidă (trebuie să înceapă cu „sk-ant-")' });
+    await db.setSetting('anthropic_api_key', key);
+    ai.setKey(key);
+    auditReq(req, 'update', 'ai_config', null, { configured: !!key });
+    res.json({ ok: true, enabled: ai.aiEnabled() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
   try {
@@ -1114,6 +1135,51 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
     res.status(500).json({ error: 'AI: ' + e.message });
   }
 });
+
+// ─── Agenți AI (RA Watch etc.) ───
+app.get('/api/agents', requireAuth, (req, res) => {
+  if (!agents) return res.json({ agents: [] });
+  res.json({ agents: Object.keys(agents.AGENTS).map(function (k) { return { key: k, name: agents.AGENTS[k].name, desc: agents.AGENTS[k].desc }; }) });
+});
+app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!agents) return res.status(503).json({ error: 'Agenții indisponibili' });
+    const imeis = await resolveReportImeis(req);
+    if (!imeis) return res.status(403).json({ error: 'Acces interzis' });
+    const result = await agents.runAgent('watch', { db, imeis, livePositions, ai });
+    let stored = 0;
+    for (const f of (result.findings || [])) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: req.companyId })); if (r) stored++; }
+    auditReq(req, 'run', 'agent', 'watch', { found: (result.findings || []).length, stored });
+    res.json({ findings: result.findings || [], aiSummary: result.aiSummary || null, stored });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/agents/findings', requireAuth, withCompany, async (req, res) => {
+  try { res.json(await db.getAgentFindings(req.isSuper ? null : req.companyId, 80)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/agents/findings/:id/:action', requireAuth, withCompany, async (req, res) => {
+  try {
+    const status = req.params.action === 'dismiss' ? 'dismissed' : 'acknowledged';
+    const ok = await db.updateAgentFinding(req.params.id, status, req.isSuper ? null : req.companyId);
+    if (!ok) return res.status(404).json({ error: 'Inexistent' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Worker: RA Watch rulează automat per companie (heuristici, fără AI ca să nu consume tokeni)
+async function runAgentsWorker() {
+  if (!agents) return;
+  try {
+    const companies = await db.getCompanies();
+    for (const co of companies) {
+      if (co.is_demo) continue;
+      const imeis = await db.getCompanyImeis(co.id);
+      if (!imeis.length) continue;
+      const result = await agents.runAgent('watch', { db, imeis, livePositions }); // fără ai → doar euristici
+      for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
+    }
+  } catch (e) { console.warn('[AGENTS] worker:', e.message); }
+}
 
 // ─── MULTI-TENANT: Companii (doar super-admin) ───
 app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
@@ -1600,9 +1666,7 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const now = new Date();
-    const scopedSize = req.allowedImeis == null
-      ? livePositions.size
-      : Array.from(livePositions.keys()).filter(i => req.allowedImeis.has(i)).length;
+    const scopedSize = Array.from(livePositions.keys()).filter(i => canAccessImei(req, i)).length;
 
     // Collect stats per device
     const deviceStats = [];
@@ -1614,7 +1678,7 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
     let totalEngineTime = 0;
 
     for (const [imei, data] of livePositions) {
-      if (req.allowedImeis != null && !req.allowedImeis.has(imei)) continue;
+      if (!canAccessImei(req, imei)) continue;
       const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 300000;
       const isMoving = isOnline && (data.speed || 0) > 3;
       if (isOnline) onlineCount++;
@@ -2941,7 +3005,10 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     };
     const report = await reports.runReport(db, req.params.type, imeis, from, to, opts);
     const fmt = (req.query.format || '').toLowerCase();
-    if (fmt === 'xlsx' || fmt === 'pdf') return await reportExport.sendReport(res, report, fmt);
+    if (fmt === 'xlsx' || fmt === 'pdf') {
+      if (!reportExport) return res.status(503).json({ error: 'Export PDF/Excel indisponibil pe server' });
+      return await reportExport.sendReport(res, report, fmt);
+    }
     res.json(report);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -3202,6 +3269,9 @@ async function start() {
   await db.initDb();
   initVapid();
 
+  // Încarcă cheia AI salvată din UI (dacă nu e deja în env)
+  try { if (!ai.aiEnabled()) { const k = await db.getSetting('anthropic_api_key'); if (k) { ai.setKey(k); console.log('[AI] Cheie Anthropic încărcată din setări'); } } } catch (e) {}
+
   // Creează sau actualizează userul admin
   const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
   const adminUser = await db.getUserByUsername('admin');
@@ -3330,13 +3400,16 @@ async function start() {
   setInterval(() => runTripDetection(), 15 * 60 * 1000);
   setTimeout(() => checkExpiries(), 5000);
   setInterval(() => checkExpiries(), 12 * 60 * 60 * 1000);
-  // Rapoarte programate — rulează scadențele la fiecare 5 min
-  setInterval(() => reportSchedules.tickDue({ db, reports, reportExport, channels })
+  // Rapoarte programate — rulează scadențele la fiecare 5 min (doar dacă modulul e disponibil)
+  if (reportSchedules) setInterval(() => reportSchedules.tickDue({ db, reports, reportExport, channels })
     .then(r => { if (r && r.length) console.log('[PROGRAMĂRI] ' + r.length + ' rapoarte rulate'); })
     .catch(e => console.error('[PROGRAMĂRI]', e.message)), 5 * 60 * 1000);
 
   // e-Transport: trimite pozițiile la ANAF la fiecare 3 min (no-op dacă nu e configurat)
   if (etransportEnabled()) { console.log('[e-Transport] Activ — trimitere poziții la ANAF'); setInterval(sendEtransportPositions, 3 * 60 * 1000); }
+
+  // Agenți AI: RA Watch rulează automat la fiecare 30 min (prima dată după 1 min)
+  if (agents) { setTimeout(runAgentsWorker, 60 * 1000); setInterval(runAgentsWorker, 30 * 60 * 1000); }
 }
 
 // Oprire grațioasă (Ctrl+C / kill)

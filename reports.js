@@ -522,6 +522,30 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     summary: { 'Km total': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) } };
 }
 
+async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (din consum carburant)
+  const FACTOR = opts.co2Factor || 2.64; // kg CO₂ / litru motorină
+  const rows = []; let tCo2 = 0, tKm = 0, tCons = 0;
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    let first = null, last = null, refuel = 0, dist = 0, prev = null;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], fl = fuelL(p);
+      if (fl != null) { if (first == null) first = fl; last = fl; if (prev != null) { const d = fl - prev; if (d >= (opts.refuelMin || 10)) refuel += d; } prev = fl; }
+      if (i > 0) { const pr = pts[i - 1], dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) dist += dd; }
+    }
+    const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
+    const co2 = consumed * FACTOR;
+    const perKm = dist > 1 ? co2 / dist * 1000 : 0; // g/km
+    rows.push([label(devMap, imei), Math.round(dist), consumed.toFixed(0) + ' L', (co2 / 1000).toFixed(2) + ' t', perKm ? Math.round(perKm) + ' g/km' : '—']);
+    tCo2 += co2; tKm += dist; tCons += consumed;
+  }
+  rows.sort((a, b) => parseFloat(b[3]) - parseFloat(a[3]));
+  return {
+    columns: ['Vehicul', 'Km', 'Consum', 'CO₂', 'CO₂/km'], rows,
+    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor (kg/L)': FACTOR }
+  };
+}
+
 // Catalog: cat = monitorizare | consum | can | evenimente | siguranta
 const REPORTS = {
   trips:       { label: 'Foaie de parcurs',     cat: 'monitorizare', fn: rTrips },
@@ -536,6 +560,7 @@ const REPORTS = {
   consumption: { label: 'Consum carburant',       cat: 'consum',       fn: rConsumption },
   fuel:        { label: 'Alimentări & scurgeri',  cat: 'consum',       fn: rFuel },
   costs:       { label: 'Costuri combustibil',    cat: 'consum',       fn: rCosts },
+  emissions:   { label: 'Emisii CO₂',             cat: 'consum',       fn: rEmissions },
   can:         { label: 'Date CAN',               cat: 'can',          fn: rCan },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   fn: rSpeeding },
   geofence:    { label: 'Vizite în zone',         cat: 'evenimente',   fn: rGeofence },
