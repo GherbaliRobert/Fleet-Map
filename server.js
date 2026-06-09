@@ -13,9 +13,10 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const { parseAvlPacket, convertCanValue, expandCanFlags } = require('./codec8e');
 // Module opționale (export PDF/Excel + programare rapoarte) — tolerante la lipsă, ca să nu pice serverul
-let reportExport = null, reportSchedules = null;
+let reportExport = null, reportSchedules = null, geocode = null;
 try { reportExport = require('./report_export'); } catch (e) { console.warn('[REPORTS] export PDF/Excel indisponibil:', e.message); }
 try { reportSchedules = require('./report_schedules'); } catch (e) { console.warn('[REPORTS] programare rapoarte indisponibilă:', e.message); }
+try { geocode = require('./geocode'); } catch (e) { console.warn('[GEO] geocodare inversă indisponibilă:', e.message); }
 
 // Cache pentru calibrare sonda combustibil per vehicul (voltage -> liters)
 const tankCalibrationCache = new Map(); // imei -> calibration array
@@ -1133,13 +1134,27 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
     const message = (req.body.message || '').toString().slice(0, 2000).trim();
     if (!message) return res.status(400).json({ error: 'Mesaj gol' });
     const snapshot = _fleetSnapshot(req);
+    // Clientul vrea LOCAȚIA (adresă), nu coordonate: îmbogățim cu adresă (geocodare inversă) și scoatem lat/lng.
+    try {
+      if (geocode) await geocode.warm(snapshot.map(v => ({ lat: Number(v.lat), lng: Number(v.lng) })));
+      for (const v of snapshot) {
+        const lbl = geocode ? geocode.peek(Number(v.lat), Number(v.lng)) : null;
+        if (lbl) v.locatie = lbl;
+        delete v.lat; delete v.lng;
+      }
+    } catch (e) { for (const v of snapshot) { delete v.lat; delete v.lng; } }
     let today = [];
     try {
       const allImeis = (await db.getDevices()).map(d => d.imei).filter(imei => canAccessImei(req, imei));
       const from = new Date(); from.setHours(0, 0, 0, 0);
       today = await db.getTripsSummaryForImeis(allImeis, from.toISOString(), new Date().toISOString());
     } catch (e) { /* fără sumar curse */ }
-    const system = 'Ești asistentul AI al platformei RA Track (monitorizare GPS flote). Răspunzi SCURT, clar, în limba română, DOAR pe baza datelor furnizate. Dacă datele nu conțin răspunsul, spune sincer că nu ai informația. Nu inventa. Folosește numele/numărul vehiculului când te referi la el.';
+    const system = [
+      'Ești asistentul AI al platformei RA Track (monitorizare GPS flote). Răspunzi în limba română, clar și concis, DOAR pe baza datelor furnizate. Dacă lipsește informația, spui sincer că nu o ai — nu inventezi.',
+      'REGULĂ CHEIE: clientul vrea LOCAȚIA, nu coordonate. NU afișa NICIODATĂ coordonate GPS brute (lat/lng). Folosește adresa din câmpul „locatie"; dacă lipsește, scrie „locație indisponibilă".',
+      'FORMAT (Markdown plăcut): un titlu scurt cu **bold**. Pentru fiecare vehicul, o linie „🚚 **Nume** (Nr)", apoi 2-4 sub-puncte cu „• ": 📍 Locație (adresa), 🚦 Stare (în mișcare X km/h / oprit / staționat), ⛽ Combustibil (doar dacă există), 🕒 Ultima actualizare (dată și oră prietenoasă). Fără tabele, fără coordonate, fără text de umplutură.',
+      'Referă-te la vehicule prin nume/număr.'
+    ].join('\n');
     const context = 'STARE FLOTĂ (live):\n' + JSON.stringify(snapshot) + '\n\nCURSE AZI (km/vehicul):\n' + JSON.stringify(today);
     const history = Array.isArray(req.body.history) ? req.body.history.slice(-6).filter(m => m && m.role && m.content) : [];
     const messages = [...history, { role: 'user', content: context + '\n\nÎntrebarea utilizatorului: ' + message }];
