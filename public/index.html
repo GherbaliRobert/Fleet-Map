@@ -5197,7 +5197,8 @@
       const hasIgnition = io?.ignition === 1 || io?.ignition === true;
 
       let color, shadowColor, status;
-      if (!isOnline) { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
+      // Legendă: verde=mișcare · galben=staționare(contact) · roșu=oprit · gri=offline(>1h)
+      if (!isOnline) { color = '#9ca3af'; shadowColor = 'rgba(148,163,184,0.45)'; status = 'gone'; }
       else if (isMoving) { color = '#22c55e'; shadowColor = 'rgba(34,197,94,0.6)'; status = 'moving'; }
       else if (hasIgnition) { color = '#eab308'; shadowColor = 'rgba(234,179,8,0.55)'; status = 'idle'; }
       else { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
