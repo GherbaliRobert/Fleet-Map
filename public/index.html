@@ -1710,9 +1710,20 @@
           <input type="datetime-local" id="history-from">
           <label>Până la:</label>
           <input type="datetime-local" id="history-to">
+          <button class="history-btn" onclick="hpQuick('today')">Azi</button>
+          <button class="history-btn" onclick="hpQuick('yesterday')">Ieri</button>
+          <button class="history-btn" onclick="hpQuick('week')">7 zile</button>
           <button class="history-btn primary" onclick="loadHistory()"><i class="fas fa-download"></i> Încarcă</button>
           <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
           <button class="history-btn" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
+        </div>
+        <div id="history-playback" style="display:none;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <button class="history-btn primary" id="hp-play" onclick="hpToggle()" title="Redă / Pauză"><i class="fas fa-play"></i></button>
+          <input type="range" id="hp-slider" min="0" max="0" value="0" oninput="hpSeek(this.value)" style="flex:1;min-width:140px;accent-color:var(--accent);cursor:pointer;">
+          <select id="hp-speed" onchange="hpSetSpeed(this.value)" style="padding:7px;border-radius:6px;background:var(--bg-dark);color:var(--text-primary);border:1px solid var(--border);font-size:12px;">
+            <option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option><option value="16">16×</option>
+          </select>
+          <span id="hp-readout" style="font-size:12px;color:var(--text-primary);white-space:nowrap;"></span>
         </div>
       </div>
     </div>
@@ -5845,6 +5856,8 @@
 
     function closeHistory() {
       document.getElementById('history-panel').classList.remove('visible');
+      hpStop(); hpData = []; hpMarker = null;
+      var bar = document.getElementById('history-playback'); if (bar) bar.style.display = 'none';
       if (historyLine) {
         map.removeLayer(historyLine);
         historyLine = null;
@@ -5894,9 +5907,59 @@
 
         historyMarkers.push(startMarker, endMarker);
 
+        hpInit(data); // activează replay-ul interactiv
       } catch (err) {
         console.error('Eroare incarcare istoric:', err);
       }
+    }
+
+    // ─── Replay interactiv istoric traseu ───
+    var hpData = [], hpTimer = null, hpIndex = 0, hpSpeed = 4, hpMarker = null;
+    function hpStop() {
+      if (hpTimer) { clearInterval(hpTimer); hpTimer = null; }
+      var b = document.getElementById('hp-play'); if (b) b.innerHTML = '<i class="fas fa-play"></i>';
+    }
+    function hpRender() {
+      var p = hpData[hpIndex]; if (!p) return;
+      if (hpMarker && map) hpMarker.setLatLng([p.latitude, p.longitude]);
+      var sl = document.getElementById('hp-slider'); if (sl) sl.value = hpIndex;
+      var ro = document.getElementById('hp-readout');
+      if (ro) { var d = new Date(p.timestamp); ro.innerHTML = '<i class="fas fa-clock"></i> ' + d.toLocaleTimeString('ro-RO') + ' · <i class="fas fa-gauge-high"></i> ' + Math.round(p.speed || 0) + ' km/h · ' + (hpIndex + 1) + '/' + hpData.length; }
+    }
+    function hpToggle() {
+      if (!hpData.length) return;
+      if (hpTimer) { hpStop(); return; }
+      if (hpIndex >= hpData.length - 1) hpIndex = 0;
+      var b = document.getElementById('hp-play'); if (b) b.innerHTML = '<i class="fas fa-pause"></i>';
+      hpTimer = setInterval(function () {
+        if (hpIndex >= hpData.length - 1) { hpRender(); hpStop(); return; }
+        hpIndex++; hpRender();
+      }, Math.max(40, 240 / hpSpeed));
+    }
+    function hpSeek(v) { hpIndex = Math.max(0, Math.min(hpData.length - 1, parseInt(v) || 0)); hpRender(); }
+    function hpSetSpeed(v) { hpSpeed = parseInt(v) || 4; if (hpTimer) { hpStop(); hpToggle(); } }
+    function hpInit(data) {
+      hpStop(); hpIndex = 0; hpData = Array.isArray(data) ? data : [];
+      var bar = document.getElementById('history-playback'); if (!bar) return;
+      if (hpMarker) { try { map.removeLayer(hpMarker); } catch (e) {} hpMarker = null; }
+      if (hpData.length < 2) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
+      var sl = document.getElementById('hp-slider'); if (sl) { sl.max = hpData.length - 1; sl.value = 0; }
+      hpMarker = L.marker([hpData[0].latitude, hpData[0].longitude], {
+        zIndexOffset: 1000,
+        icon: L.divIcon({ className: '', html: '<div style="width:16px;height:16px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 0 2px #22c55e,0 1px 5px rgba(0,0,0,.6);"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
+      }).addTo(map);
+      historyMarkers.push(hpMarker);
+      hpRender();
+    }
+    function hpQuick(period) {
+      var now = new Date(), from = new Date(now), to = new Date(now);
+      if (period === 'today') { from.setHours(0, 0, 0, 0); }
+      else if (period === 'yesterday') { from.setDate(from.getDate() - 1); from.setHours(0, 0, 0, 0); to = new Date(from); to.setHours(23, 59, 59, 0); }
+      else if (period === 'week') { from.setDate(from.getDate() - 7); }
+      document.getElementById('history-from').value = formatDateLocal(from);
+      document.getElementById('history-to').value = formatDateLocal(to);
+      loadHistory();
     }
 
     // ─── WebSocket ───
