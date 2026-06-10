@@ -2608,6 +2608,10 @@
             <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-building"></i> Default-uri pentru companie</div>
             <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Aceste valori sunt aplicate userilor companiei care nu și-au setat propriile preferințe.</p>
             <div id="us-company-list"></div>
+
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-shield-halved"></i> Agenți AI activi</div>
+            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
+            <div id="us-agents-list"></div>
           </div>
         </div>
 
@@ -3492,6 +3496,21 @@
             var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
             var dft = cs.ui_defaults || {};
             coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
+            // Secțiunea Agenți AI per companie
+            var agBox = document.getElementById('us-agents-list');
+            if (agBox) {
+              try {
+                var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(r => r.json());
+                var allKeys = ['watch','dispatch','care','optimize','compliance','client'];
+                var labels = { watch:'RA Watch', dispatch:'RA Dispatch', care:'RA Care', optimize:'RA Optimize', compliance:'RA Compliance', client:'RA Client' };
+                var descs = { watch:'Monitorizare 24/7 (anomalii, furt combustibil, depășiri)', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (frânări, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
+                var enabledKeys = ag.enabledKeys || [];
+                agBox.innerHTML = allKeys.map(k => {
+                  var on = enabledKeys.indexOf(k) >= 0;
+                  return '<label class="admin-row" style="cursor:pointer;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + labels[k] + '</div><div class="meta">' + descs[k] + '</div></div><input type="checkbox" data-agk="' + k + '" ' + (on ? 'checked' : '') + ' onchange="usSetAgent(\'' + k + '\', this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"></label>';
+                }).join('');
+              } catch (e) { agBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare.</div>'; }
+            }
           } catch (e) { coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>'; }
         }
       } catch (e) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>'; }
@@ -3514,6 +3533,19 @@
       var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
       if (!r.ok) { alert('Eroare la salvare default companie'); return; }
       invalidateUiPrefs(); loadSettingsTab();
+    }
+    async function usSetAgent(key, on) {
+      // Citește lista curentă, modifică, trimite înapoi
+      try {
+        var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(r => r.json());
+        var keys = Array.isArray(ag.enabledKeys) ? ag.enabledKeys.slice() : [];
+        var idx = keys.indexOf(key);
+        if (on && idx < 0) keys.push(key);
+        if (!on && idx >= 0) keys.splice(idx, 1);
+        var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ enabled_agents: keys }) });
+        if (!r.ok) { alert('Eroare la salvare agenți'); return; }
+        loadSettingsTab();
+      } catch (e) { alert('Eroare: ' + e.message); }
     }
 
     // ─── Vehicule (management) ───
@@ -8682,9 +8714,17 @@
     window.raxBillingPortal = async function () {
       try { var j = await fetch('/api/billing/portal', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.json(); }); if (j.url) location.href = j.url; else alert(j.error || 'Indisponibil'); } catch (e) { alert('Eroare: ' + e.message); }
     };
-    function raxRenderAgChips() {
+    async function raxRenderAgChips() {
       var box = $('rax-ag-chips'); if (!box) return;
-      box.innerHTML = Object.keys(RAX_AGENTS).map(function (k) {
+      // Folosește lista filtrată de server (după plan + override companie)
+      var enabled = null;
+      try { var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); enabled = ag.enabledKeys; } catch (e) {}
+      var keys = Array.isArray(enabled) ? enabled.filter(function (k) { return RAX_AGENTS[k]; }) : Object.keys(RAX_AGENTS);
+      if (!keys.length) {
+        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:6px;"><i class="fas fa-info-circle"></i> Niciun agent activ pe planul tău. Upgrade din „Abonament".</div>';
+        return;
+      }
+      box.innerHTML = keys.map(function (k) {
         var a = RAX_AGENTS[k];
         return '<button class="rax-btn" style="font-size:11px;padding:4px 9px;" onclick="raxRunAgents(\'' + k + '\')" title="Rulează doar ' + a.name + '"><i class="fas ' + a.icon + '" style="color:var(--accent)"></i> ' + a.name + '</button>';
       }).join('');
@@ -8727,8 +8767,22 @@
       raxLoadFindings(); raxRefreshAgBadge();
     };
     window.raxFindingAction = async function (id, action) {
-      try { await fetch('/api/agents/findings/' + id + '/' + action, { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+      try {
+        var r = await fetch('/api/agents/findings/' + id + '/' + action, { method: 'POST', credentials: 'same-origin' });
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast((e && e.error) || 'Eroare', 'error'); return; }
+        raxToast(action === 'ack' ? '✓ Confirmat' : 'Respins', 'success');
+      } catch (e) { raxToast('Eroare de rețea', 'error'); }
       raxLoadFindings(); raxRefreshAgBadge();
+    };
+    // Mini toast vizual (nu folosim alert care blochează UI-ul)
+    window.raxToast = function (msg, kind) {
+      var t = document.createElement('div');
+      t.textContent = msg;
+      var bg = kind === 'error' ? '#ef4444' : 'var(--accent)';
+      t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:' + bg + ';color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:9999;opacity:0;transition:opacity .2s;';
+      document.body.appendChild(t);
+      requestAnimationFrame(function () { t.style.opacity = '1'; });
+      setTimeout(function () { t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 250); }, 1800);
     };
     var _agBadgeTs = 0;
     async function raxRefreshAgBadge() {
