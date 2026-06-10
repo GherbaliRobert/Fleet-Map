@@ -8123,17 +8123,30 @@
     .rax-head h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
     .rax-x { -webkit-appearance: none; appearance: none; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px; }
     .rax-body { padding: 14px 16px; overflow: auto; }
-    /* AI chat */
-    #rax-ai-msgs { display: flex; flex-direction: column; gap: 10px; min-height: 180px; }
-    .rax-msg { padding: 9px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; max-width: 88%; white-space: pre-wrap; }
-    .rax-msg.user { align-self: flex-end; background: var(--accent); color: #06210F; border-bottom-right-radius: 4px; }
-    .rax-msg.ai { align-self: flex-start; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-    .rax-msg.sys { align-self: center; color: var(--text-muted); font-size: 12px; }
-    #rax-ai-foot { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
-    #rax-ai-input { flex: 1; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; resize: none; }
-    .rax-send { -webkit-appearance: none; appearance: none; border: none; background: var(--accent); color: #06210F; border-radius: 10px; padding: 0 16px; font-weight: 700; cursor: pointer; }
-    .rax-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-    .rax-chip { font-size: 12px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary); border-radius: 16px; padding: 5px 10px; cursor: pointer; }
+    /* AI chat — redesign */
+    #rax-ai-msgs { display: flex; flex-direction: column; gap: 12px; min-height: 180px; }
+    .rax-row { display: flex; gap: 8px; align-items: flex-end; max-width: 100%; }
+    .rax-row.user { justify-content: flex-end; }
+    .rax-row.sys { justify-content: center; }
+    .rax-av { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #2bbf6a); color: #06210F; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+    .rax-msg { padding: 10px 13px; border-radius: 16px; font-size: 13.5px; line-height: 1.55; max-width: 80%; word-wrap: break-word; overflow-wrap: anywhere; }
+    .rax-row.user .rax-msg { background: var(--accent); color: #06210F; border-bottom-right-radius: 5px; }
+    .rax-row.ai .rax-msg { background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-bottom-left-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .rax-msg.sys { background: transparent; color: var(--text-muted); font-size: 12px; padding: 4px 8px; border: none; }
+    .rax-md-h { font-weight: 700; font-size: 14px; margin: 1px 0 5px; }
+    .rax-md-li { padding-left: 2px; margin: 2px 0; }
+    .rax-msg strong { font-weight: 700; }
+    .rax-typing i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); margin: 0 2px; animation: raxblink 1.3s infinite both; }
+    .rax-typing i:nth-child(2) { animation-delay: .2s; } .rax-typing i:nth-child(3) { animation-delay: .4s; }
+    @keyframes raxblink { 0%,80%,100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+    #rax-ai-foot { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); align-items: flex-end; }
+    #rax-ai-input { flex: 1; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 12px; padding: 11px 13px; font-size: 13.5px; resize: none; max-height: 120px; }
+    #rax-ai-input:focus { outline: none; border-color: var(--accent); }
+    .rax-send { -webkit-appearance: none; appearance: none; border: none; background: var(--accent); color: #06210F; border-radius: 12px; width: 42px; height: 42px; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: transform .1s; }
+    .rax-send:active { transform: scale(.94); }
+    .rax-suggest { display: flex; flex-wrap: wrap; gap: 7px; margin: 6px 0 4px; }
+    .rax-chip { font-size: 12px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary); border-radius: 18px; padding: 7px 12px; cursor: pointer; transition: border-color .12s, color .12s; }
+    .rax-chip:hover { border-color: var(--accent); color: var(--accent); }
     /* Companii */
     .rax-co-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
     .rax-co-item h4 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
@@ -8167,7 +8180,13 @@
 
   <div class="rax-overlay" id="rax-ai-overlay">
     <div class="rax-card" style="max-width:480px;height:78vh;">
-      <div class="rax-head"><h3><i class="fas fa-robot" style="color:var(--accent)"></i> Asistent AI flotă</h3><button class="rax-x" onclick="raxToggleAI()">&times;</button></div>
+      <div class="rax-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="rax-av" style="width:34px;height:34px;font-size:15px;"><i class="fas fa-robot"></i></div>
+          <div><h3 style="margin:0;">Asistent RA Tracks</h3><div style="font-size:11px;color:var(--accent);">● online · răspunsuri instant</div></div>
+        </div>
+        <button class="rax-x" onclick="raxToggleAI()">&times;</button>
+      </div>
       <div class="rax-body" id="rax-ai-msgs"></div>
       <div id="rax-ai-foot">
         <textarea id="rax-ai-input" rows="1" placeholder="Întreabă ceva despre flotă…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();raxSendAI();}"></textarea>
@@ -8333,27 +8352,51 @@
       ov.classList.toggle('open', open);
       if (open && !$('rax-ai-msgs').dataset.init) {
         $('rax-ai-msgs').dataset.init = '1';
-        if (aiEnabled) {
-          addMsg('ai', 'Salut! Sunt asistentul RA Tracks. Întreabă-mă despre flota ta.');
-          var s = document.createElement('div'); s.className = 'rax-suggest';
-          SUGG.forEach(function (t) { var c = document.createElement('span'); c.className = 'rax-chip'; c.textContent = t; c.onclick = function () { $('rax-ai-input').value = t; raxSendAI(); }; s.appendChild(c); });
-          var rc = document.createElement('span'); rc.className = 'rax-chip'; rc.style.borderColor = 'var(--accent)'; rc.innerHTML = '📄 Rezumă raportul afișat'; rc.onclick = raxSummarizeVisibleReport; s.appendChild(rc);
-          $('rax-ai-msgs').appendChild(s);
-        } else if (me && me.isSuper) {
-          addMsg('ai', 'Asistentul AI nu e configurat. Lipește mai jos cheia ta Anthropic ca să-l activezi:');
-          var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:6px 0;';
+        // Întotdeauna: salut + întrebări rapide (răspund LOCAL, instant, fără tokeni AI)
+        addMsg('ai', 'Salut! Sunt asistentul RA Tracks. Întrebările rapide de mai jos răspund **instant**, fără să consume AI.');
+        var s = document.createElement('div'); s.className = 'rax-suggest';
+        SUGG.forEach(function (t) { var c = document.createElement('span'); c.className = 'rax-chip'; c.textContent = t; c.onclick = function () { $('rax-ai-input').value = t; raxSendAI(); }; s.appendChild(c); });
+        var rc = document.createElement('span'); rc.className = 'rax-chip'; rc.style.borderColor = 'var(--accent)'; rc.innerHTML = '📄 Rezumă raportul afișat'; rc.onclick = raxSummarizeVisibleReport; s.appendChild(rc);
+        $('rax-ai-msgs').appendChild(s);
+        // Pentru întrebări LIBERE e nevoie de cheia AI
+        if (!aiEnabled && me && me.isSuper) {
+          addMsg('ai', 'Pentru întrebări **libere** (nu doar cele rapide), activează AI-ul cu cheia ta Anthropic:');
+          var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:4px 0;';
           w.innerHTML = '<input id="rax-ai-key" type="password" placeholder="sk-ant-..." style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:9px 11px;font-size:13px;">'
             + '<button class="rax-btn primary" onclick="raxSaveKey()"><i class="fas fa-key"></i> Activează asistentul</button>'
             + '<div id="rax-ai-key-msg" style="font-size:12px;"></div>'
-            + '<div style="font-size:11px;color:var(--text-muted)">Cheia o iei din console.anthropic.com → API Keys. Se stochează pe serverul tău, nu se afișează nimănui.</div>';
+            + '<div style="font-size:11px;color:var(--text-muted)">Cheia o iei din console.anthropic.com → API Keys. Se stochează pe serverul tău.</div>';
           $('rax-ai-msgs').appendChild(w);
-        } else {
-          addMsg('ai', 'Asistentul AI nu este configurat. Roagă administratorul platformei să adauge cheia AI.');
+        } else if (!aiEnabled) {
+          addMsg('sys', 'Întrebările rapide merg fără AI. Pentru întrebări libere, roagă administratorul să adauge cheia AI.');
         }
       }
       if (open) setTimeout(function () { $('rax-ai-input').focus(); }, 50);
     };
-    function addMsg(role, text) { var d = document.createElement('div'); d.className = 'rax-msg ' + role; d.textContent = text; $('rax-ai-msgs').appendChild(d); $('rax-ai-msgs').scrollTop = $('rax-ai-msgs').scrollHeight; return d; }
+    function raxMd(t) {
+      var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      var bold = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); };
+      return esc(t).split('\n').map(function (ln) {
+        var l = ln.replace(/\s+$/, ''), tr = l.trim();
+        if (tr === '') return '<div style="height:6px"></div>';
+        if (/^#{1,6}\s+/.test(tr)) return '<div class="rax-md-h">' + bold(tr.replace(/^#{1,6}\s+/, '')) + '</div>';
+        if (/^[•\-]\s+/.test(tr)) return '<div class="rax-md-li">' + bold(tr.replace(/^[•\-]\s+/, '')) + '</div>';
+        return '<div>' + bold(l) + '</div>';
+      }).join('');
+    }
+    function addMsg(role, text) {
+      var row = document.createElement('div'); row.className = 'rax-row ' + role;
+      if (role === 'ai') {
+        var av = document.createElement('div'); av.className = 'rax-av'; av.innerHTML = '<i class="fas fa-robot"></i>';
+        var m = document.createElement('div'); m.className = 'rax-msg ai'; m.innerHTML = raxMd(text);
+        row.appendChild(av); row.appendChild(m);
+      } else if (role === 'user') {
+        var mu = document.createElement('div'); mu.className = 'rax-msg user'; mu.textContent = text; row.appendChild(mu);
+      } else {
+        var ms = document.createElement('div'); ms.className = 'rax-msg sys'; ms.innerHTML = text; row.appendChild(ms);
+      }
+      $('rax-ai-msgs').appendChild(row); $('rax-ai-msgs').scrollTop = $('rax-ai-msgs').scrollHeight; return row;
+    }
     window.raxSaveKey = async function () {
       var inp = $('rax-ai-key'), msg = $('rax-ai-key-msg'); if (!inp) return;
       var key = (inp.value || '').trim(); msg.style.color = 'var(--red)';
@@ -8371,7 +8414,7 @@
     window.raxSendAI = async function () {
       var inp = $('rax-ai-input'); var msg = (inp.value || '').trim(); if (!msg) return;
       inp.value = ''; addMsg('user', msg);
-      var thinking = addMsg('sys', '…');
+      var thinking = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
       try {
         var r = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg, history: aiHistory.slice(-6) }) });
         var j = await r.json();
@@ -8391,7 +8434,7 @@
       var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr')).slice(0, 60).map(function (tr) { return Array.prototype.slice.call(tr.children).map(function (td) { return td.textContent.trim(); }); });
       if (!rows.length) rows = Array.prototype.slice.call(table.querySelectorAll('tr')).slice(1, 60).map(function (tr) { return Array.prototype.slice.call(tr.children).map(function (td) { return td.textContent.trim(); }); });
       addMsg('user', 'Rezumă raportul afișat (' + rows.length + ' rânduri)');
-      var th = addMsg('sys', '…');
+      var th = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
       try {
         var r = await fetch('/api/ai/report-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'tabel', report: { columns: head, rows: rows } }) });
         var j = await r.json(); th.remove();

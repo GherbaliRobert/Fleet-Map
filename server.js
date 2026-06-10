@@ -131,6 +131,8 @@ let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
 let billing = null, plans = null;
 try { billing = require('./billing'); plans = require('./plans'); } catch (e) { console.warn('[BILLING] indisponibil:', e.message); }
+let fleetQuick = null;
+try { fleetQuick = require('./fleet_quick'); } catch (e) { console.warn('[AI] euristici locale indisponibile:', e.message); }
 const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
 let demoCompanyId = null;
 const webpush = require('web-push');
@@ -1106,6 +1108,7 @@ function _fleetSnapshot(req) {
   return positions.slice(0, 80).map(p => {
     const io = p.io || {};
     return {
+      imei: p.imei,
       nume: p.name || p.imei, nr: p.plate || '',
       viteza_kmh: Math.round(p.speed || 0),
       lat: Number(p.latitude) ? Number(p.latitude).toFixed(5) : null,
@@ -1132,7 +1135,6 @@ app.post('/api/ai/config', requireAuth, requireSuperadmin, async (req, res) => {
 
 app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
   try {
-    if (!ai.aiEnabled()) return res.json({ reply: 'Asistentul AI nu este configurat. Adaugă ANTHROPIC_API_KEY în setările serverului.', disabled: true });
     const message = (req.body.message || '').toString().slice(0, 2000).trim();
     if (!message) return res.status(400).json({ error: 'Mesaj gol' });
     const snapshot = _fleetSnapshot(req);
@@ -1151,6 +1153,20 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
       const from = new Date(); from.setHours(0, 0, 0, 0);
       today = await db.getTripsSummaryForImeis(allImeis, from.toISOString(), new Date().toISOString());
     } catch (e) { /* fără sumar curse */ }
+
+    // 1) Întâi euristici LOCALE (zero tokeni AI; merge chiar fără cheie configurată)
+    if (fleetQuick) {
+      const intent = fleetQuick.detectIntent(message);
+      if (intent) {
+        const a = fleetQuick.answer(intent, { snapshot, today, now: Date.now() });
+        auditReq(req, 'ai_local', 'assistant', null, { intent });
+        return res.json({ reply: a.reply, source: 'local' });
+      }
+    }
+    // 2) Pentru întrebări libere → Claude (dacă e configurat)
+    if (!ai.aiEnabled()) return res.json({ reply: 'Întrebările rapide (unde sunt vehiculele, km azi, oprite, cel mai rapid, status) merg instant, fără AI. Pentru întrebări libere, activează asistentul AI (cheie Anthropic).', disabled: true });
+    snapshot.forEach(v => { delete v.imei; }); // nu trimitem imei la Claude (folosește numele)
+
     const system = [
       'Ești asistentul AI al platformei RA Track (monitorizare GPS flote). Răspunzi în limba română, clar și concis, DOAR pe baza datelor furnizate. Dacă lipsește informația, spui sincer că nu o ai — nu inventezi.',
       'REGULĂ CHEIE: clientul vrea LOCAȚIA, nu coordonate. NU afișa NICIODATĂ coordonate GPS brute (lat/lng). Folosește adresa din câmpul „locatie"; dacă lipsește, scrie „locație indisponibilă".',
