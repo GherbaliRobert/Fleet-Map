@@ -3511,6 +3511,10 @@
       // tipuri alerte
       document.getElementById('alert-type').innerHTML = ALERT_TYPES.map(t => `<option value="${t.v}">${t.label}</option>`).join('');
       renderAlertCond();
+      // Ascunde taburile Tahograf/e-Transport dacă super-adminul nu a acordat funcția companiei
+      var _f = (currentUser && currentUser.features) || {};
+      var _tt = document.querySelector('[data-atab="tacho"]'); if (_tt) _tt.style.display = (_f.tahograf === false) ? 'none' : '';
+      var _et = document.querySelector('[data-atab="etransport"]'); if (_et) _et.style.display = (_f.etransport === false) ? 'none' : '';
       switchAdminTab('vehicles');
     }
     function switchAdminTab(tab) {
@@ -8387,8 +8391,9 @@
       // Status server + versiune doar pentru admin (superadmin / manageUsers); ascuns pentru client
       document.body.classList.toggle('is-admin', !!(me && (me.isSuper || (me.permissions && me.permissions.manageUsers))));
       if (!show) return;
-      $('rax-ai-btn').style.display = 'flex';
-      $('rax-ag-btn').style.display = (me.permissions && me.permissions.viewReports) ? 'flex' : 'none';
+      var feats = me.features || {};
+      $('rax-ai-btn').style.display = (feats.ai_assistant !== false) ? 'flex' : 'none';
+      $('rax-ag-btn').style.display = ((feats.agents !== false) && me.permissions && me.permissions.viewReports) ? 'flex' : 'none';
       raxRefreshAgBadge();
       var chip = $('rax-co-chip');
       if (me.company && me.company.name) { chip.style.display = 'block'; chip.innerHTML = (me.company.is_demo ? '🔵 ' : '🏢 ') + esc(me.company.name); }
@@ -8668,6 +8673,26 @@
       if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
       raxLoadAccounts();
     };
+    // Checkbox-uri de acces la funcții per companie (gestionat de super-admin)
+    var RAX_FEATURES = [['agents', 'Agenți AI'], ['ai_assistant', 'Asistent AI'], ['etransport', 'e-Transport'], ['tahograf', 'Tahograf']];
+    function _raxFeatureRow(c) {
+      if (c.is_demo) return '';
+      var f = c.features || {};
+      return '<div style="display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 2px;padding:6px 0;border-top:1px dashed var(--border);">' +
+        '<span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;align-self:center;">Acces funcții:</span>' +
+        RAX_FEATURES.map(function (d) {
+          return '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;">' +
+            '<input type="checkbox" ' + (f[d[0]] ? 'checked' : '') + ' onchange="raxToggleFeature(' + c.id + ',\'' + d[0] + '\',this.checked)" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"> ' + d[1] + '</label>';
+        }).join('') + '</div>';
+    }
+    window.raxToggleFeature = async function (id, key, on) {
+      try {
+        var body = { features: {} }; body.features[key] = !!on;
+        var j = await fetch('/api/companies/' + id + '/features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); raxLoadCompanies(); return; }
+        var c = (companiesCache || []).find(function (x) { return x.id === id; }); if (c) c.features = j.features;
+      } catch (e) { alert('Eroare: ' + e.message); raxLoadCompanies(); }
+    };
     async function raxLoadCompanies() {
       var box = $('rax-co-list'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
@@ -8676,6 +8701,7 @@
         box.innerHTML = companiesCache.map(function (c) {
           return '<div class="rax-co-item"><h4>' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</h4>' +
             '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
+            _raxFeatureRow(c) +
             (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button></div>') + '</div>';
         }).join('');
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }

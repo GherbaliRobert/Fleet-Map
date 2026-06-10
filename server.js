@@ -798,6 +798,18 @@ async function ownsRow(req, table, id) {
   const cid = await db.getRowCompany(table, id);
   return cid != null && cid === req.companyId;
 }
+// Gating pe funcții (module) controlate per-companie de super-admin (companies.settings.features).
+// Necesită req.companyId + req.isSuper (rulează DUPĂ withCompany/withScope). Super-admin = toate funcțiile.
+function requireFeature(key) {
+  return async function (req, res, next) {
+    try {
+      if (req.isSuper || req.companyId == null) return next();
+      const co = await db.getCompanyById(req.companyId);
+      if (co && plans && plans.featuresFor(co)[key]) return next();
+      return res.status(403).json({ error: 'feature_disabled', feature: key, message: 'Funcție indisponibilă pentru compania ta. Contactați administratorul platformei.' });
+    } catch (e) { return res.status(500).json({ error: e.message }); }
+  };
+}
 
 // Rezolvă vehiculele țintă pentru rapoarte (respectă accesul). null => 403.
 async function resolveReportImeis(req) {
@@ -901,14 +913,16 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', async (req, res) => {
   const a = getAuth(req);
   if (!a) return res.status(401).json({ error: 'Neautorizat' });
-  let company = null;
+  let company = null, features = null;
   try {
     const cid = await resolveCompanyId(a);
-    if (cid != null) { const c = await db.getCompanyById(cid); if (c) company = { id: c.id, name: c.name, is_demo: !!c.is_demo }; }
+    if (cid != null) { const c = await db.getCompanyById(cid); if (c) { company = { id: c.id, name: c.name, is_demo: !!c.is_demo }; features = plans ? plans.featuresFor(c) : null; } }
   } catch (e) { /* ignore */ }
+  // super-admin (fără companie) sau plan necunoscut → toate funcțiile disponibile
+  if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
   res.json({
     username: a.username, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
-    isSuper: isSuper(a.role), companyId: company ? company.id : null, company
+    isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features
   });
 });
 
@@ -1155,7 +1169,7 @@ async function aiLimitReached(companyId) {
   } catch (e) { return false; }
 }
 
-app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
+app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'), async (req, res) => {
   try {
     const message = (req.body.message || '').toString().slice(0, 2000).trim();
     if (!message) return res.status(400).json({ error: 'Mesaj gol' });
@@ -1207,7 +1221,7 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
   }
 });
 
-app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), async (req, res) => {
   try {
     if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
     if (await aiLimitReached(req.companyId)) return res.json({ summary: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
@@ -1326,7 +1340,10 @@ async function runAgentsWorker() {
 
 // ─── MULTI-TENANT: Companii (doar super-admin) ───
 app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
-  try { res.json(await db.getCompanies()); } catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    const list = await db.getCompanies();
+    res.json(list.map(function (c) { return Object.assign({}, c, { features: plans ? plans.featuresFor(c) : null }); }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Dashboard super-admin: stat per companie (vehicule, useri) + consum tokeni AI + totaluri
@@ -1658,10 +1675,10 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
 });
 
 // ─── Tahograf (.DDD) — upload + analiză best-effort ───
-app.get('/api/tacho', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+app.get('/api/tacho', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
   try { res.json(await db.getTachoFiles(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
     const f = await db.getTachoFile(parseInt(req.params.id));
     if (!f) return res.status(404).json({ error: 'Inexistent' });
@@ -1669,7 +1686,7 @@ app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, 
     res.json({ id: f.id, filename: f.filename, kind: f.kind, driver_name: f.driver_name, uploaded_at: f.uploaded_at, parsed: typeof f.parsed === 'string' ? JSON.parse(f.parsed) : f.parsed });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
     const { filename, b64, imei } = req.body;
     if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
@@ -1682,7 +1699,7 @@ app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, async (req
     res.json({ id: rec.id, parsed });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
     const f = await db.getTachoFile(parseInt(req.params.id));
     if (f && !req.isSuper && f.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
@@ -1693,16 +1710,16 @@ app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, async (req,
 // ─── e-Transport (ANAF) — gestionare UIT + (trimitere doar dacă e configurat tokenul) ───
 function etransportEnabled() { return !!(process.env.ANAF_ETRANSPORT_TOKEN && process.env.ANAF_ETRANSPORT_URL); }
 app.get('/api/etransport/status', requireAuth, (req, res) => res.json({ enabled: etransportEnabled() }));
-app.get('/api/etransport', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+app.get('/api/etransport', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('etransport'), async (req, res) => {
   try { res.json(await db.getEtransports(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/etransport', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.post('/api/etransport', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
   try { if (!req.body.uit) return res.status(400).json({ error: 'Cod UIT obligatoriu' }); const tr = await db.createEtransport(req.body, req.companyId); auditReq(req, 'create', 'etransport', tr.id, { uit: req.body.uit }); res.json(tr); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.put('/api/etransport/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.put('/api/etransport/:id', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.updateEtransport(parseInt(req.params.id), req.body); auditReq(req, 'update', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.deleteEtransport(parseInt(req.params.id)); auditReq(req, 'delete', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -3827,6 +3844,12 @@ async function _applyCompanySettingsPatch(companyId, body) {
   } else if (body.enabled_agents === null) {
     delete next.enabled_agents; // null = revino la default-ul planului
   }
+  if (body.features && typeof body.features === 'object') {
+    const fvalid = (plans && plans.FEATURE_KEYS) || [];
+    const f = Object.assign({}, cur.features || {});
+    fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
+    next.features = f;
+  }
   // Scriere directă (NU prin db.setCompanySettings, care face încă un merge cu vechiul cur și readuce cheile șterse)
   await db.pool.query('UPDATE companies SET settings = $2 WHERE id = $1', [companyId, JSON.stringify(next)]);
   return next;
@@ -3847,6 +3870,17 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const next = await _applyCompanySettingsPatch(id, req.body || {});
     auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
     res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Super-admin: funcții (module) per companie — checkbox-uri (agents / ai_assistant / etransport / tahograf)
+app.put('/api/companies/:id/features', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    await _applyCompanySettingsPatch(id, { features: (req.body && req.body.features) || {} });
+    const co2 = await db.getCompanyById(id);
+    auditReq(req, 'update', 'company_features', id, { features: req.body && req.body.features });
+    res.json({ ok: true, features: plans.featuresFor(co2) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -88,6 +88,27 @@ function effectivePlan(company) {
   return getPlan((company && company.plan) || 'start') || getPlan('start');
 }
 
+// ─── Funcții (module) controlabile per-companie de super-admin (checkbox-uri) ───
+// Stocate în companies.settings.features = { agents, ai_assistant, etransport, tahograf } (booleeni expliciți).
+// Cheie lipsă → cade pe default-ul planului companiei.
+const FEATURE_KEYS = ['agents', 'ai_assistant', 'etransport', 'tahograf'];
+const FEATURE_DEFAULTS_BY_PLAN = {
+  start:      { agents: false, ai_assistant: false, etransport: false, tahograf: false },
+  pro:        { agents: false, ai_assistant: false, etransport: true,  tahograf: true  },
+  premium:    { agents: true,  ai_assistant: true,  etransport: true,  tahograf: true  },
+  enterprise: { agents: true,  ai_assistant: true,  etransport: true,  tahograf: true  },
+  custom:     { agents: true,  ai_assistant: true,  etransport: true,  tahograf: true  }
+};
+function featuresFor(company) {
+  const settings = (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {};
+  const planKey = (effectivePlan(company) || {}).key || 'start';
+  const def = FEATURE_DEFAULTS_BY_PLAN[planKey] || FEATURE_DEFAULTS_BY_PLAN.start;
+  const ov = (settings && settings.features) || {};
+  const out = {};
+  FEATURE_KEYS.forEach(function (k) { out[k] = (typeof ov[k] === 'boolean') ? ov[k] : !!def[k]; });
+  return out;
+}
+
 // Agenți AI per plan (default; override per-companie via companies.settings.enabled_agents)
 const ALL_AGENT_KEYS = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
 const AGENTS_BY_PLAN = {
@@ -99,6 +120,7 @@ const AGENTS_BY_PLAN = {
 };
 // Lista agenților activi pentru o companie: override > default pe plan
 function enabledAgentsFor(company) {
+  if (!featuresFor(company).agents) return [];   // master „Agenți AI" oprit de super-admin
   const settings = (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {};
   if (Array.isArray(settings.enabled_agents)) {
     return settings.enabled_agents.filter(function (k) { return ALL_AGENT_KEYS.indexOf(k) >= 0; });
@@ -107,4 +129,4 @@ function enabledAgentsFor(company) {
   return AGENTS_BY_PLAN[eff && eff.key] || [];
 }
 
-module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans, effectivePlan, ALL_AGENT_KEYS, AGENTS_BY_PLAN, enabledAgentsFor };
+module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans, effectivePlan, ALL_AGENT_KEYS, AGENTS_BY_PLAN, enabledAgentsFor, FEATURE_KEYS, FEATURE_DEFAULTS_BY_PLAN, featuresFor };
