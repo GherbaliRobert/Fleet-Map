@@ -8355,17 +8355,11 @@
         SUGG.forEach(function (t) { var c = document.createElement('span'); c.className = 'rax-chip'; c.textContent = t; c.onclick = function () { $('rax-ai-input').value = t; raxSendAI(); }; s.appendChild(c); });
         var rc = document.createElement('span'); rc.className = 'rax-chip'; rc.style.borderColor = 'var(--accent)'; rc.innerHTML = '📄 Rezumă raportul afișat'; rc.onclick = raxSummarizeVisibleReport; s.appendChild(rc);
         $('rax-ai-msgs').appendChild(s);
-        // Pentru întrebări LIBERE e nevoie de cheia AI
-        if (!aiEnabled && me && me.isSuper) {
-          addMsg('ai', 'Pentru întrebări **libere** (nu doar cele rapide), activează AI-ul cu cheia ta Anthropic:');
-          var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:4px 0;';
-          w.innerHTML = '<input id="rax-ai-key" type="password" placeholder="sk-ant-..." style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:9px 11px;font-size:13px;">'
-            + '<button class="rax-btn primary" onclick="raxSaveKey()"><i class="fas fa-key"></i> Activează asistentul</button>'
-            + '<div id="rax-ai-key-msg" style="font-size:12px;"></div>'
-            + '<div style="font-size:11px;color:var(--text-muted)">Cheia o iei din console.anthropic.com → API Keys. Se stochează pe serverul tău.</div>';
-          $('rax-ai-msgs').appendChild(w);
-        } else if (!aiEnabled) {
-          addMsg('sys', 'Întrebările rapide merg fără AI. Pentru întrebări libere, roagă administratorul să adauge cheia AI.');
+        // Întrebările libere au nevoie de cheia AI — gestionată DOAR de super-admin (din Dashboard), nu aici.
+        if (!aiEnabled) {
+          addMsg('sys', (me && me.isSuper)
+            ? 'Întrebările rapide merg fără AI. Asistentul liber se activează din Dashboard → secțiunea „AI" (cheie + limite per companie).'
+            : 'Întrebările rapide merg instant, fără AI. Asistentul liber e gestionat de administratorul platformei.');
         }
       }
       if (open) setTimeout(function () { $('rax-ai-input').focus(); }, 50);
@@ -8488,6 +8482,13 @@
           '</div>';
         html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI estimat: <strong style="color:var(--accent);">$' + _raxCost(t.ai_input, t.ai_output).toFixed(2) + '</strong> · model ' + esc(d.model || '') + ' · <em>estimativ ($' + RAX_TOK_IN_RATE + '/$' + RAX_TOK_OUT_RATE + ' per 1M in/out)</em></div>';
 
+        // ─── Cheie AI (gestionată DOAR de super-admin, aici) ───
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-key"></i> Cheie AI (Anthropic)</div>';
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:5px;flex-wrap:wrap;">'
+          + '<input id="rax-dash-aikey" type="password" placeholder="' + (d.aiEnabled ? '•••••••• (schimbă cheia)' : 'sk-ant-...') + '" style="flex:1;min-width:200px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px 11px;font-size:13px;">'
+          + '<button class="rax-btn primary" onclick="raxDashSaveKey()"><i class="fas fa-key"></i> Salvează</button></div>';
+        html += '<div id="rax-dash-aikey-msg" style="font-size:11px;margin-bottom:12px;color:var(--text-muted);">Status: ' + (d.aiEnabled ? '<span style="color:var(--accent)">● activ</span> — asistentul liber și agenții AI funcționează' : '● inactiv — adaugă cheia pentru întrebări libere/rezumate (întrebările rapide merg oricum)') + '</div>';
+
         var rows = (d.companies || []).map(function (c) {
           return '<tr style="border-bottom:1px solid var(--border);">' +
             '<td style="padding:6px 8px;">' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">demo</span>' : '') + '</td>' +
@@ -8496,7 +8497,7 @@
             '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(c.health) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(c.ai_input) + ' / ' + _raxFmt(c.ai_output) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.ai_calls + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(c.ai_input, c.ai_output).toFixed(3) + '</td></tr>';
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(c.ai_input, c.ai_output).toFixed(3) + '</td>' + _raxLimitCell(c) + '</tr>';
         }).join('');
         // Consumul super-adminului (fără companie) — altfel ar fi în totaluri dar lipsă din tabel
         var pf = d.platform || {};
@@ -8506,14 +8507,42 @@
             '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(pf.health) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(pf.ai_input) + ' / ' + _raxFmt(pf.ai_output) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + (pf.ai_calls || 0) + '</td>' +
-            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td></tr>';
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">∞</td></tr>';
         }
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th></tr></thead><tbody>' +
-          (rows || '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
+          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită AI</th></tr></thead><tbody>' +
+          (rows || '<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
         box.innerHTML = html;
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcare.</div>'; }
     }
+
+    function _raxLimitCell(c) {
+      var used = (c.ai_input || 0) + (c.ai_output || 0);
+      var lim = c.ai_limit || 0;
+      var over = lim > 0 && used >= lim;
+      var txt = lim > 0 ? ((over ? '🚫 ' : '') + _raxFmt(used) + ' / ' + _raxFmt(lim)) : '∞';
+      var col = over ? 'var(--red)' : 'var(--text-muted)';
+      return '<td style="padding:6px 8px;text-align:right;white-space:nowrap;color:' + col + ';">' + txt + ' <button class="rax-btn" style="padding:2px 7px;font-size:10px;" onclick="raxSetAiLimit(' + c.id + ',' + lim + ')">✎</button></td>';
+    }
+    window.raxDashSaveKey = async function () {
+      var inp = $('rax-dash-aikey'), msg = $('rax-dash-aikey-msg'); if (!inp) return;
+      var key = (inp.value || '').trim(); if (!key) { msg.style.color = 'var(--red)'; msg.textContent = 'Lipește cheia (sk-ant-...).'; return; }
+      msg.style.color = 'var(--text-muted)'; msg.textContent = 'Se salvează…';
+      try {
+        var j = await fetch('/api/ai/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ key: key }) }).then(function (r) { return r.json(); });
+        if (j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error; return; }
+        aiEnabled = !!j.enabled; raxLoadDashboard();
+      } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
+    };
+    window.raxSetAiLimit = async function (id, cur) {
+      var v = prompt('Limită AI lunară pentru companie — tokeni (in+out) / 30 zile.\nLasă gol sau 0 = nelimitat:', cur || '');
+      if (v === null) return;
+      try {
+        var j = await fetch('/api/companies/' + id + '/ai-limit', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ limit: (v.trim() === '' ? 0 : parseInt(v)) }) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        raxLoadDashboard();
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
 
     // ─── Conturi (toate companiile) — super-admin ───
     var _raxAccounts = [];

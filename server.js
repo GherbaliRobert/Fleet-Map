@@ -1132,6 +1132,27 @@ app.post('/api/ai/config', requireAuth, requireSuperadmin, async (req, res) => {
     res.json({ ok: true, enabled: ai.aiEnabled() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Super-admin: limită lunară de tokeni AI per companie (0/gol = nelimitat)
+app.put('/api/companies/:id/ai-limit', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!(await db.getCompanyById(id))) return res.status(404).json({ error: 'Companie inexistentă' });
+    await db.setCompanyAiLimit(id, req.body.limit);
+    auditReq(req, 'set_ai_limit', 'company', id, { limit: req.body.limit });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Limită AI lunară per companie (gestionată de super-admin). 0/null = nelimitat; super-admin/platformă fără limită.
+async function aiLimitReached(companyId) {
+  if (companyId == null) return false;
+  try {
+    const co = await db.getCompanyById(companyId);
+    const lim = co && co.ai_monthly_limit;
+    if (!lim || lim <= 0) return false;
+    return (await db.getAiTokensForCompany(companyId, 30)) >= lim;
+  } catch (e) { return false; }
+}
 
 app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
   try {
@@ -1165,6 +1186,7 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
     }
     // 2) Pentru întrebări libere → Claude (dacă e configurat)
     if (!ai.aiEnabled()) return res.json({ reply: 'Întrebările rapide (unde sunt vehiculele, km azi, oprite, cel mai rapid, status) merg instant, fără AI. Pentru întrebări libere, activează asistentul AI (cheie Anthropic).', disabled: true });
+    if (await aiLimitReached(req.companyId)) return res.json({ reply: 'Compania ta a atins limita lunară de AI. Întrebările rapide rămân disponibile; pentru mai mult, contactează administratorul platformei.', limited: true });
     snapshot.forEach(v => { delete v.imei; }); // nu trimitem imei la Claude (folosește numele)
 
     const system = [
@@ -1187,6 +1209,7 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
 app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try {
     if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
+    if (await aiLimitReached(req.companyId)) return res.json({ summary: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
     const report = req.body.report;
     if (!report) return res.status(400).json({ error: 'Lipsește raportul' });
     const compact = JSON.stringify(report).slice(0, 7000);
@@ -1354,6 +1377,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         id: c.id, name: c.name, is_demo: !!c.is_demo, plan: c.plan || null,
         vehicles: c.device_count || 0, users: c.user_count || 0,
         ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0,
+        ai_limit: Number(c.ai_monthly_limit) || 0,
         health: _healthSummary(hbc[c.id])
       };
     });
@@ -1373,7 +1397,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
     };
     const pf = usageMap['null'] || {};
     res.json({
-      days: days, model: ai.AI_MODEL,
+      days: days, model: ai.AI_MODEL, aiEnabled: ai.aiEnabled(),
       companies: rows,
       platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0, health: _healthSummary(hbc['null']) },
       totals: {

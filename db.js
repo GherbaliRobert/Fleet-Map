@@ -459,6 +459,7 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(24);
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS current_period_end BIGINT;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS custom_plan JSONB;
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_monthly_limit BIGINT;
       END $$
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
@@ -646,6 +647,18 @@ async function getAiUsageByCompany(sinceDays) {
        COUNT(*)::int AS calls
      FROM ai_usage ${where} GROUP BY company_id`, params);
   return r.rows;
+}
+// Total tokeni (in+out) pentru o companie în ultimele N zile — pentru aplicarea limitei.
+async function getAiTokensForCompany(companyId, days) {
+  const since = new Date(Date.now() - (parseInt(days) || 30) * 86400000).toISOString();
+  const r = await pool.query(
+    'SELECT COALESCE(SUM(input_tokens + output_tokens), 0)::bigint AS total FROM ai_usage WHERE company_id IS NOT DISTINCT FROM $1 AND created_at >= $2',
+    [companyId != null ? companyId : null, since]
+  );
+  return Number(r.rows[0] && r.rows[0].total) || 0;
+}
+async function setCompanyAiLimit(id, limit) {
+  await pool.query('UPDATE companies SET ai_monthly_limit = $2 WHERE id = $1', [id, (limit == null || limit === '' || isNaN(limit)) ? null : parseInt(limit)]);
 }
 async function getCompanyById(id) {
   const r = await pool.query('SELECT * FROM companies WHERE id = $1', [id]);
@@ -1629,7 +1642,7 @@ module.exports = {
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
-  recordAiUsage, getAiUsageByCompany,
+  recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
