@@ -7793,6 +7793,12 @@
     .rax-fab.secondary { background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border); }
     .rax-fab i { font-size: 16px; }
     #rax-co-chip { font-size: 11px; color: var(--text-muted); background: var(--bg-panel); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #rax-actions { display: none; flex-direction: column; gap: 10px; align-items: flex-end; margin-bottom: 4px; }
+    #rax-fabs.rax-open #rax-actions { display: flex; animation: raxFabIn .16s ease; }
+    @keyframes raxFabIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    #rax-main-fab { width: 56px; min-width: 56px; height: 56px; padding: 0; border-radius: 50%; justify-content: center; position: relative; align-self: flex-end; }
+    #rax-main-fab i { font-size: 20px; }
+    .rax-badge { position: absolute; top: -3px; right: -3px; background: var(--red); color: #fff; border-radius: 10px; min-width: 18px; height: 18px; padding: 0 5px; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--bg-dark); }
     .rax-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 1300; display: none; align-items: center; justify-content: center; padding: 16px; }
     .rax-overlay.open { display: flex; }
     .rax-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 560px; max-height: 86vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -7825,13 +7831,19 @@
   </style>
 
   <div id="rax-fabs">
-    <div id="rax-co-chip" style="display:none;"></div>
-    <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
-    <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
-    <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
-    <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
-    <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
-    <button class="rax-fab" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-robot"></i> Asistent AI</button>
+    <div id="rax-actions">
+      <div id="rax-co-chip" style="display:none;"></div>
+      <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
+      <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
+      <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
+      <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
+      <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
+      <button class="rax-fab" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-robot"></i> Asistent AI</button>
+    </div>
+    <button class="rax-fab" id="rax-main-fab" onclick="raxToggleMenu()" aria-label="Meniu" title="Meniu acțiuni">
+      <i class="fas fa-bars" id="rax-main-icon"></i>
+      <span class="rax-badge" id="rax-main-badge" style="display:none;"></span>
+    </button>
   </div>
 
   <div class="rax-overlay" id="rax-ai-overlay">
@@ -8285,8 +8297,26 @@
         var list = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         var n = Array.isArray(list) ? list.filter(function (f) { return f.status === 'new'; }).length : 0;
         var b = $('rax-ag-badge'); if (b) { b.style.display = n ? 'inline-block' : 'none'; b.textContent = n > 99 ? '99+' : String(n); }
+        var mb = $('rax-main-badge'); if (mb) { mb.style.display = n ? 'flex' : 'none'; mb.textContent = n > 99 ? '99+' : String(n); }
       } catch (e) {}
     }
+    // ─── Speed-dial: pliază/desfășoară butoanele flotante ───
+    window.raxToggleMenu = function () {
+      var f = $('rax-fabs'); if (!f) return;
+      var open = f.classList.toggle('rax-open');
+      var ic = $('rax-main-icon'); if (ic) ic.className = open ? 'fas fa-xmark' : 'fas fa-bars';
+    };
+    window.raxCloseMenu = function () {
+      var f = $('rax-fabs'); if (!f) return;
+      f.classList.remove('rax-open');
+      var ic = $('rax-main-icon'); if (ic) ic.className = 'fas fa-bars';
+    };
+    // click în afară → pliază; click pe o acțiune → pliază (modalul tot se deschide)
+    document.addEventListener('click', function (e) {
+      var f = $('rax-fabs'); if (!f || !f.classList.contains('rax-open')) return;
+      if (!f.contains(e.target)) window.raxCloseMenu();
+    });
+    (function () { var a = $('rax-actions'); if (a) a.addEventListener('click', function () { window.raxCloseMenu(); }); })();
   })();
   </script>
 </body>
