@@ -460,8 +460,25 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS current_period_end BIGINT;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS custom_plan JSONB;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_monthly_limit BIGINT;
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS access_until BIGINT;
       END $$
     `);
+    // ─── Plăți (gestionate manual de super-admin; schema pregătită și pentru Stripe) ───
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER NOT NULL,
+        amount_ron NUMERIC(12,2),
+        period_start BIGINT,
+        period_end BIGINT,
+        method VARCHAR(40) DEFAULT 'manual',
+        note TEXT,
+        paid_at BIGINT,
+        created_by INTEGER,
+        created_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_payments_company ON payments(company_id, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_company ON devices(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_groups_company ON device_groups(company_id)`);
@@ -688,6 +705,29 @@ async function getCompanyByStripeCustomer(customerId) {
 async function setCompanyPlan(id, plan, customPlan) {
   await pool.query('UPDATE companies SET plan = $2, custom_plan = $3 WHERE id = $1',
     [id, plan || 'start', customPlan ? JSON.stringify(customPlan) : null]);
+}
+// ─── Acces & plăți (manual de super-admin; pregătit și pentru Stripe) ───
+async function setCompanyAccessUntil(id, untilMs) {
+  await pool.query('UPDATE companies SET access_until = $2 WHERE id = $1', [id, untilMs == null ? null : Math.round(untilMs)]);
+}
+async function recordPayment(p) {
+  const now = Date.now();
+  const r = await pool.query(
+    `INSERT INTO payments (company_id, amount_ron, period_start, period_end, method, note, paid_at, created_by, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [p.companyId, (p.amountRon != null ? p.amountRon : null), p.periodStart || null, p.periodEnd || null, p.method || 'manual', p.note || null, p.paidAt || now, p.createdBy || null, now]
+  );
+  if (p.periodEnd) await setCompanyAccessUntil(p.companyId, p.periodEnd);
+  return r.rows[0];
+}
+async function getPayments(companyId, limit) {
+  const lim = Math.min(parseInt(limit) || 50, 500);
+  if (companyId == null) {
+    const r = await pool.query('SELECT * FROM payments ORDER BY created_at DESC LIMIT $1', [lim]);
+    return r.rows;
+  }
+  const r = await pool.query('SELECT * FROM payments WHERE company_id = $1 ORDER BY created_at DESC LIMIT $2', [companyId, lim]);
+  return r.rows;
 }
 async function getCompanyBySlug(slug) {
   const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
@@ -1658,6 +1698,7 @@ module.exports = {
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
+  setCompanyAccessUntil, recordPayment, getPayments,
   getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
