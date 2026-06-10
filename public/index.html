@@ -1722,6 +1722,13 @@
     </div>
 
     <!-- Right Detail Panel -->
+    <style>
+      details.io-advanced { margin-top: 8px; }
+      details.io-advanced > summary { cursor: pointer; font-size: 11px; color: var(--text-muted); padding: 8px 6px; list-style: none; user-select: none; border-top: 1px solid var(--border); }
+      details.io-advanced > summary::-webkit-details-marker { display: none; }
+      details.io-advanced[open] > summary { color: var(--accent); }
+      @media (max-width: 820px) { body.detail-open #rax-fabs { display: none !important; } }
+    </style>
     <div id="detail-panel">
       <div class="detail-header">
         <div class="detail-header-info">
@@ -5044,6 +5051,8 @@
       detailPanelImei = imei;
       const panel = document.getElementById('detail-panel');
       panel.classList.add('open');
+      panel.style.transform = '';
+      document.body.classList.add('detail-open');
 
       updateDetailPanel(imei);
       updateDetailIoPanel(imei);
@@ -5154,9 +5163,24 @@
 
     function closeDetailPanel() {
       detailPanelImei = null;
-      document.getElementById('detail-panel').classList.remove('open');
+      var _p = document.getElementById('detail-panel');
+      _p.classList.remove('open');
+      _p.style.transform = '';
+      document.body.classList.remove('detail-open');
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     }
+    // Swipe-down pe header (mobil) → închide panoul
+    (function () {
+      var panel = document.getElementById('detail-panel'); if (!panel) return;
+      var header = panel.querySelector('.detail-header'); if (!header) return;
+      var startY = 0, curY = 0, dragging = false;
+      function start(e) { var t = e.touches ? e.touches[0] : e; startY = curY = t.clientY; dragging = true; panel.style.transition = 'none'; }
+      function move(e) { if (!dragging) return; var t = e.touches ? e.touches[0] : e; curY = t.clientY; var dy = curY - startY; if (dy > 0) { panel.style.transform = 'translateY(' + dy + 'px)'; if (e.cancelable) e.preventDefault(); } }
+      function end() { if (!dragging) return; dragging = false; panel.style.transition = ''; var dy = curY - startY; panel.style.transform = ''; if (dy > 90) closeDetailPanel(); }
+      header.addEventListener('touchstart', start, { passive: true });
+      header.addEventListener('touchmove', move, { passive: false });
+      header.addEventListener('touchend', end);
+    })();
 
     function switchDetailTab(tab) {
       // Legacy compat — redirect to new view system
@@ -5750,7 +5774,7 @@
         const rows = uncategorized.map(k =>
           '<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value">' + formatIoValue(k, io[k]) + '</span></div>'
         );
-        html += '<div class="io-section"><div class="io-section-title"><i class="fas fa-ellipsis-h"></i> Alte IO</div>' + rows.join('') + '</div>';
+        html += '<details class="io-advanced"><summary><i class="fas fa-ellipsis-h"></i> Date tehnice avansate (' + uncategorized.length + ')</summary><div style="margin-top:6px;">' + rows.join('') + '</div></details>';
       }
 
       content.innerHTML = html;
