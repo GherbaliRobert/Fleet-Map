@@ -3420,6 +3420,46 @@
       if (!r.ok) { alert('Eroare la arhivare'); return; }
       await loadVehicles();
     }
+    function downloadTemplate() { window.open('/api/devices/template.csv', '_blank'); }
+    function exportVehicles() { window.open('/api/devices/export.csv', '_blank'); }
+    // Parser CSV (gestionează câmpuri citate cu virgule/ghilimele/linii noi)
+    function parseCSV(text) {
+      text = String(text).replace(/^﻿/, '');
+      const rows = []; let row = [], cell = '', i = 0, inQ = false;
+      while (i < text.length) {
+        const ch = text[i];
+        if (inQ) {
+          if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i += 2; continue; } inQ = false; i++; continue; }
+          cell += ch; i++; continue;
+        }
+        if (ch === '"') { inQ = true; i++; continue; }
+        if (ch === ',') { row.push(cell); cell = ''; i++; continue; }
+        if (ch === '\r') { i++; continue; }
+        if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; i++; continue; }
+        cell += ch; i++;
+      }
+      if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+      return rows;
+    }
+    async function importVehiclesFile(input) {
+      const file = input.files && input.files[0]; if (!file) return;
+      try {
+        const text = await file.text();
+        const raw = parseCSV(text).filter(r => r.some(c => (c || '').trim() !== ''));
+        if (raw.length < 2) { alert('CSV gol sau fără rânduri de date.'); input.value = ''; return; }
+        const headers = raw[0].map(h => (h || '').trim().toLowerCase());
+        if (!headers.includes('imei')) { alert('Lipsește coloana „imei". Descarcă întâi Template-ul.'); input.value = ''; return; }
+        const objs = raw.slice(1).map(r => { const o = {}; headers.forEach((h, idx) => o[h] = (r[idx] || '').trim()); return o; });
+        if (!confirm('Imporți ' + objs.length + ' vehicule din „' + file.name + '"?')) { input.value = ''; return; }
+        const res = await fetch('/api/devices/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: objs }) });
+        const out = await res.json().catch(() => ({}));
+        if (!res.ok) { alert('Eroare: ' + (out.error || res.status)); input.value = ''; return; }
+        let msg = 'Import gata: ' + out.created + ' adăugate, ' + out.updated + ' actualizate.';
+        if (out.errors && out.errors.length) msg += '\n' + out.errors.length + ' erori. Ex: linia ' + out.errors[0].line + ' (' + (out.errors[0].imei || '?') + '): ' + out.errors[0].error;
+        alert(msg);
+        input.value = ''; await loadVehicles();
+      } catch (e) { alert('Eroare la citirea fișierului: ' + e.message); input.value = ''; }
+    }
 
     // ─── Șoferi ───
     async function loadDrivers() {
