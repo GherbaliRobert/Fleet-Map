@@ -1310,6 +1310,10 @@
     @media (max-width: 768px) {
       #app.visible { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
 
+      /* Header FIX pe mobil: rămâne mereu desenat (nu mai dispare după închiderea unui panel pe iOS).
+         Harta umple viewport-ul sub el; header-ul opac plutește deasupra (z-index 1000). */
+      #topbar { position: fixed; top: 0; left: 0; right: 0; }
+
       /* Harta umple zona de sub topbar (în flux, nu absolut — altfel pe iOS acoperă headerul) */
       #map-container {
         position: relative;
