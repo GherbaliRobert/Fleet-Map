@@ -202,6 +202,7 @@
       padding: var(--sat) 16px 0; z-index: 1000;
     }
     .topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .topbar-icon i { line-height: 1; display: block; }
     .topbar-icon {
       -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent;
       flex: 0 0 auto; padding: 0; margin: 0; outline: none;
@@ -1775,7 +1776,7 @@
     </div>
 
     <footer id="footer-bar">
-      <span>RA Tracks © 2026 · v1.0</span>
+      <span>RA Tracks © 2026 · v1.1</span>
       <span><a href="/api" target="_blank">API</a></span>
     </footer>
   </div>
@@ -4667,10 +4668,14 @@
     // iOS: bara fixă uneori nu se repictează după închiderea unui panel (rămâne goală până la tap).
     // Un mic „nudge" de transform o forțează să se redeseneze instant, fără flicker.
     function forceTopbarRepaint() {
+      if (window.innerWidth > 768) return; // bug-ul e pe mobil (iOS, element fixed)
       const tb = document.getElementById('topbar');
       if (!tb) return;
-      tb.style.transform = 'translateZ(0) translateY(-0.5px)';
-      requestAnimationFrame(function () { if (tb) tb.style.transform = 'translateZ(0)'; });
+      // Fix DUR: scot bara din arborele de randare și o pun înapoi → WebKit o redesenează garantat
+      // (bara e position:fixed, deci display:none nu mișcă restul layout-ului = fără flicker de conținut).
+      tb.style.display = 'none';
+      void tb.offsetHeight; // reflow forțat
+      tb.style.display = '';
     }
     function openHotspotPanel() {
       const p = document.getElementById('hotspot-panel');
