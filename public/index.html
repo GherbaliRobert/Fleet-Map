@@ -4910,12 +4910,11 @@
         const marker = markers.get(imei);
         marker.setLatLng([latitude, longitude]);
         marker.setIcon(icon);
-        marker.getPopup().setContent(popupContent);
       } else {
         const marker = L.marker([latitude, longitude], { icon })
-          .bindPopup(popupContent, { maxWidth: 280 })
           .addTo(map);
 
+        // Fără popup Leaflet — click pe marker deschide DOAR panoul de detaliu (altfel se suprapuneau)
         marker.on('click', () => selectDevice(imei));
         markers.set(imei, marker);
       }
