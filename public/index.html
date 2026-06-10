@@ -206,9 +206,11 @@
       -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent;
       flex: 0 0 auto; padding: 0; margin: 0; outline: none;
       width: 38px; height: 38px; border-radius: 8px; border: 1px solid transparent;
-      background: transparent; color: var(--text-secondary); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; transition: all .15s;
+      background: transparent; background-color: transparent; box-shadow: none; color: var(--text-secondary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1;
+      transition: background-color .15s, color .15s, border-color .15s;
     }
+    .topbar-icon:focus { background: transparent; }
     @media (hover: hover) {
       .topbar-icon:hover { background: var(--bg-dark); color: var(--text-primary); }
       .topbar-icon.danger:hover { color: var(--red); }
