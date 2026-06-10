@@ -207,7 +207,7 @@
       flex: 0 0 auto; padding: 0; margin: 0; outline: none;
       width: 38px; height: 38px; border-radius: 8px; border: 1px solid transparent;
       background: transparent; color: var(--text-secondary); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 15px; transition: all .15s;
+      display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; transition: all .15s;
     }
     @media (hover: hover) {
       .topbar-icon:hover { background: var(--bg-dark); color: var(--text-primary); }
@@ -1074,6 +1074,12 @@
       padding: 4px;
       line-height: 1;
       transition: color 0.2s;
+      /* zonă de atins ≥44px (fix iar X-ul „uneori merge, alteori nu" pe touch) */
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .close-btn:hover { color: var(--text-primary); }
@@ -1311,8 +1317,9 @@
       #app.visible { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
 
       /* Header FIX pe mobil: rămâne mereu desenat (nu mai dispare după închiderea unui panel pe iOS).
-         Harta umple viewport-ul sub el; header-ul opac plutește deasupra (z-index 1000). */
-      #topbar { position: fixed; top: 0; left: 0; right: 0; }
+         Harta umple viewport-ul sub el; header-ul opac plutește deasupra (z-index 1000).
+         translateZ(0) îl pune pe strat grafic propriu → iOS îl ține pictat (nu mai dispare până la tap). */
+      #topbar { position: fixed; top: 0; left: 0; right: 0; transform: translateZ(0); -webkit-transform: translateZ(0); }
 
       /* Harta umple zona de sub topbar (în flux, nu absolut — altfel pe iOS acoperă headerul) */
       #map-container {
@@ -4654,6 +4661,16 @@
         if (opener && typeof window[opener] === 'function') window[opener]();
       }
       if (window.innerWidth <= 768) document.getElementById('navrail').classList.remove('open');
+      forceTopbarRepaint();
+      setTimeout(forceTopbarRepaint, 80); // după ce harta face invalidateSize
+    }
+    // iOS: bara fixă uneori nu se repictează după închiderea unui panel (rămâne goală până la tap).
+    // Un mic „nudge" de transform o forțează să se redeseneze instant, fără flicker.
+    function forceTopbarRepaint() {
+      const tb = document.getElementById('topbar');
+      if (!tb) return;
+      tb.style.transform = 'translateZ(0) translateY(-0.5px)';
+      requestAnimationFrame(function () { if (tb) tb.style.transform = 'translateZ(0)'; });
     }
     function openHotspotPanel() {
       const p = document.getElementById('hotspot-panel');
