@@ -8887,10 +8887,28 @@
             '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
             _raxFeatureRow(c) +
             _raxAccessRow(c) +
-            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button></div>') + '</div>';
+            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button>' +
+              (((c.device_count || 0) === 0 && (c.user_count || 0) === 0)
+                ? '<button class="rax-btn" style="border-color:var(--red);color:var(--red);" onclick="raxDeleteCompany(' + c.id + ')" title="Șterge compania (doar dacă e goală)"><i class="fas fa-trash"></i> Șterge</button>'
+                : '<span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;" title="Mută/șterge întâi vehiculele + utilizatorii">🔒 nu se poate șterge (are vehicule sau utilizatori)</span>') +
+              '</div>') + '</div>';
         }).join('');
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
+    window.raxDeleteCompany = async function (id) {
+      var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
+      var name = c.name || ('#' + id);
+      if (!confirm('Șterge compania „' + name + '"?\n\nAcțiunea este IREVERSIBILĂ.\nVa șterge și consumul de tokeni AI asociat.')) return;
+      var ok2 = prompt('Pentru confirmare, scrie numele companiei exact:\n„' + name + '"');
+      if (ok2 == null) return;
+      if (ok2.trim() !== name) { raxToast('Numele nu coincide — anulat', 'error'); return; }
+      try {
+        var r = await fetch('/api/companies/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast('Eroare: ' + (e.error || r.status), 'error'); return; }
+        raxToast('Companie ștearsă: ' + name, 'success');
+        raxLoadCompanies();
+      } catch (e) { raxToast('Eroare de rețea', 'error'); }
+    };
     window.raxSetPlan = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
       var plan = prompt('Plan pentru „' + (c.name || id) + '":\nscrie  start  /  pro  /  premium  /  custom', c.plan || 'start');
