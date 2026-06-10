@@ -1286,24 +1286,73 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       usageMap[u.company_id == null ? 'null' : u.company_id] = u;
       totIn += Number(u.input_tokens) || 0; totOut += Number(u.output_tokens) || 0; totCalls += Number(u.calls) || 0;
     });
+    // ─── GPS + SIM health (din livePositions, real-time) per companie ───
+    // Hartă imei → company_id (din devices)
+    const devCompanyMap = {};
+    try { const r = await db.pool.query('SELECT imei, company_id FROM devices'); r.rows.forEach(d => { devCompanyMap[d.imei] = d.company_id; }); } catch (e) {}
+    const now = Date.now();
+    // healthByCompany[companyId] = { online, offline30, weakSignal, roaming, gsmSum, gsmN, satSum, satN, healthyFix, totalLive }
+    const hbc = {};
+    function _bucket(cid) { const key = cid == null ? 'null' : cid; if (!hbc[key]) hbc[key] = { online: 0, offline30: 0, weakSignal: 0, roaming: 0, gsmSum: 0, gsmN: 0, satSum: 0, satN: 0, healthyFix: 0, totalLive: 0 }; return hbc[key]; }
+    for (const [imei, live] of livePositions) {
+      const cid = devCompanyMap[imei];
+      const b = _bucket(cid);
+      b.totalLive++;
+      const ageMin = live.timestamp ? (now - new Date(live.timestamp).getTime()) / 60000 : 1e9;
+      if (ageMin < 5) b.online++;
+      if (ageMin > 30) b.offline30++;
+      const io = live.io || {};
+      const gsm = Number(io.gsm_signal);
+      if (Number.isFinite(gsm)) { b.gsmSum += gsm; b.gsmN++; if (gsm < 2) b.weakSignal++; }
+      if (io.data_mode === 1) b.roaming++;
+      const sats = Number(live.satellites != null ? live.satellites : io.satellites);
+      if (Number.isFinite(sats)) { b.satSum += sats; b.satN++; }
+      if ((io.gnss_status === 2 || io.gnss_status === undefined) && Number.isFinite(sats) && sats >= 4) b.healthyFix++;
+    }
+    function _healthSummary(b) {
+      if (!b) return { live: 0, online: 0, offline30: 0, weak_signal: 0, roaming: 0, avg_gsm: null, avg_sats: null, healthy_fix_pct: null };
+      return {
+        live: b.totalLive, online: b.online, offline30: b.offline30,
+        weak_signal: b.weakSignal, roaming: b.roaming,
+        avg_gsm: b.gsmN ? Math.round((b.gsmSum / b.gsmN) * 10) / 10 : null,
+        avg_sats: b.satN ? Math.round((b.satSum / b.satN) * 10) / 10 : null,
+        healthy_fix_pct: b.totalLive ? Math.round((b.healthyFix / b.totalLive) * 100) : null
+      };
+    }
     const rows = companies.map(function (c) {
       const u = usageMap[c.id] || {};
       return {
         id: c.id, name: c.name, is_demo: !!c.is_demo, plan: c.plan || null,
         vehicles: c.device_count || 0, users: c.user_count || 0,
-        ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0
+        ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0,
+        health: _healthSummary(hbc[c.id])
       };
     });
+    // Totaluri health (cumulate per companii — exclude null bucket, care e device fără companie)
+    const allBuckets = Object.keys(hbc).filter(k => k !== 'null').map(k => hbc[k]);
+    function _sumField(f) { return allBuckets.reduce((s, b) => s + (b[f] || 0), 0); }
+    const totLive = _sumField('totalLive'); const totGsmN = _sumField('gsmN'); const totSatN = _sumField('satN');
+    const totalsHealth = {
+      live: totLive,
+      online: _sumField('online'),
+      offline30: _sumField('offline30'),
+      weak_signal: _sumField('weakSignal'),
+      roaming: _sumField('roaming'),
+      avg_gsm: totGsmN ? Math.round((_sumField('gsmSum') / totGsmN) * 10) / 10 : null,
+      avg_sats: totSatN ? Math.round((_sumField('satSum') / totSatN) * 10) / 10 : null,
+      healthy_fix_pct: totLive ? Math.round((_sumField('healthyFix') / totLive) * 100) : null
+    };
     const pf = usageMap['null'] || {};
     res.json({
       days: days, model: ai.AI_MODEL,
       companies: rows,
-      platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0 },
+      platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0, health: _healthSummary(hbc['null']) },
       totals: {
         companies: companies.length,
         vehicles: companies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
         users: companies.reduce(function (s, c) { return s + (c.user_count || 0); }, 0),
-        ai_input: totIn, ai_output: totOut, ai_calls: totCalls
+        ai_input: totIn, ai_output: totOut, ai_calls: totCalls,
+        health: totalsHealth
       }
     });
   } catch (e) { res.status(500).json({ error: e.message }); }

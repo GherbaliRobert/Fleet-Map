@@ -1551,6 +1551,8 @@
       border-radius: 8px;
       padding: 10px 12px;
       position: relative;
+      overflow: hidden;                    /* nu lăsa eticheta canvas-ului să iasă peste card */
+      display: flex; flex-direction: column;
     }
     .chart-container-title {
       font-size: 11px;
@@ -1559,13 +1561,13 @@
       margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.3px;
+      flex-shrink: 0;
     }
-    .chart-container canvas {
-      max-width: 100% !important;
-    }
-    .chart-container.h-200 { height: 230px; }
-    .chart-container.h-250 { height: 280px; }
-    .chart-container.h-300 { height: 330px; }
+    /* canvas-ul ocupă restul cardului — Chart.js cu maintainAspectRatio:false respectă înălțimea */
+    .chart-container canvas { max-width: 100% !important; flex: 1 1 auto; min-height: 0; }
+    .chart-container.h-200 { height: 260px; }
+    .chart-container.h-250 { height: 300px; }
+    .chart-container.h-300 { height: 350px; }
     .chart-empty {
       display: flex;
       align-items: center;
@@ -5989,22 +5991,24 @@
 
         // Polilinia: una singură albastră (fără limit / heatmap dezactivat) SAU segmente agregate pe culoare
         const seg = L.layerGroup().addTo(map);
+        historyLine = seg; // ambele ramuri: seg e tracker-ul principal -> closeHistory îl curăță complet (fix leak)
         if (useHeatmap && hpSpeedLimit) {
-          // Agregăm puncte consecutive cu aceeași culoare într-o singură polilinie (perf — reduce ~10× layer-ele)
+          // Agregăm puncte consecutive cu aceeași culoare într-o singură polilinie (perf — reduce ~10× layer-ele).
+          // Convenție: segmentul (i-1) -> i e colorat după viteza la finalul intervalului (data[i].speed) — consistent pe TOATE segmentele.
           let curColor = _hpSegColor(data[1] && data[1].speed, hpSpeedLimit);
           let chunk = [points[0]];
           for (let i = 1; i < data.length; i++) {
             const c = _hpSegColor(data[i].speed, hpSpeedLimit);
-            chunk.push(points[i]);
             if (c !== curColor) {
+              // Închide chunk-ul curent (fără points[i]) — segmentul de tranziție va începe DE LA points[i-1] în culoarea nouă
               L.polyline(chunk, { color: curColor, weight: 4, opacity: 0.95 }).addTo(seg);
-              chunk = [points[i]]; curColor = c;
+              chunk = [points[i - 1]]; curColor = c;
             }
+            chunk.push(points[i]);
           }
           if (chunk.length > 1) L.polyline(chunk, { color: curColor, weight: 4, opacity: 0.95 }).addTo(seg);
-          historyLine = seg;
         } else {
-          historyLine = L.polyline(points, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(seg);
+          L.polyline(points, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(seg);
         }
         // fitBounds pe primul layer cu getBounds
         try { map.fitBounds(L.polyline(points).getBounds(), { padding: [50, 50] }); } catch (e) {}
@@ -7372,6 +7376,7 @@
           }]
         }, {
           indexAxis: 'y',
+          layout: { padding: { right: 12, left: 4, top: 4, bottom: 4 } },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -7385,8 +7390,8 @@
             }
           },
           scales: {
-            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; } } },
-            y: { grid: { display: false } }
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; }, maxTicksLimit: 6 } },
+            y: { grid: { display: false }, ticks: { autoSkip: false, font: { size: 11 } } }
           }
         });
       } else {
@@ -7408,6 +7413,7 @@
           }]
         }, {
           indexAxis: 'y',
+          layout: { padding: { right: 12, left: 4, top: 4, bottom: 4 } },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -7421,8 +7427,8 @@
             }
           },
           scales: {
-            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' L'; } } },
-            y: { grid: { display: false } }
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' L'; }, maxTicksLimit: 6 } },
+            y: { grid: { display: false }, ticks: { autoSkip: false, font: { size: 11 } } }
           }
         });
       } else {
@@ -7449,6 +7455,7 @@
             borderRadius: 4
           }]
         }, {
+          layout: { padding: { left: 4, right: 8, top: 4, bottom: 4 } },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -7469,8 +7476,8 @@
             }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, font: { size: 9 } } },
-            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; } } }
+            x: { grid: { display: false }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, autoSkipPadding: 10, maxTicksLimit: 8, font: { size: 10 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; }, maxTicksLimit: 8 } }
           }
         });
       } else {
@@ -7922,23 +7929,36 @@
       historyMarkers = [];
 
       try {
-        // Fetch GPS points for this route's time range
+        const prefs = await _loadUiPrefs();
+        const useHeatmap = prefs.overspeed_heatmap !== false;
+        // Fetch GPS points (ext=1 -> include device.speed_limit + summary)
         const from = new Date(new Date(route.startTime).getTime() - 60000).toISOString();
         const to = new Date(new Date(route.endTime).getTime() + 60000).toISOString();
-        const resp = await fetch('/api/history/' + imei + '?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
-        const data = await resp.json();
+        const resp = await fetch('/api/history/' + imei + '?ext=1&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
+        const payload = await resp.json();
+        const data = Array.isArray(payload) ? payload : (payload.points || []);
+        const dev = payload && payload.device ? payload.device : null;
+        hpSpeedLimit = dev && dev.speed_limit ? Number(dev.speed_limit) : null;
 
         if (data.length < 2) return;
 
-        // Draw polyline
+        // Draw polyline (heatmap dacă userul vrea + există speed_limit)
         const points = data.map(function(p) { return [p.latitude, p.longitude]; });
         var routeCasing = L.polyline(points, { color: '#0B0E11', weight: 8, opacity: 0.9 }).addTo(map);
-        historyLine = L.polyline(points, {
-          color: '#38BDF8',
-          weight: 4,
-          opacity: 0.95
-        }).addTo(map);
         historyMarkers.push(routeCasing);
+        const seg = L.layerGroup().addTo(map);
+        historyLine = seg; // fix leak: seg e tracker, indiferent de ramură
+        if (useHeatmap && hpSpeedLimit) {
+          var curColor = _hpSegColor(data[1] && data[1].speed, hpSpeedLimit), chunk = [points[0]];
+          for (var i = 1; i < data.length; i++) {
+            var c = _hpSegColor(data[i].speed, hpSpeedLimit);
+            if (c !== curColor) { L.polyline(chunk, { color: curColor, weight: 4, opacity: 0.95 }).addTo(seg); chunk = [points[i - 1]]; curColor = c; }
+            chunk.push(points[i]);
+          }
+          if (chunk.length > 1) L.polyline(chunk, { color: curColor, weight: 4, opacity: 0.95 }).addTo(seg);
+        } else {
+          L.polyline(points, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(seg);
+        }
 
         // Start marker (green)
         var startMarker = L.circleMarker(points[0], {
@@ -7953,7 +7973,14 @@
         historyMarkers.push(startMarker, endMarker);
 
         // Fit map to route
-        map.fitBounds(historyLine.getBounds(), { padding: [80, 80], maxZoom: 16 });
+        try { map.fitBounds(L.polyline(points).getBounds(), { padding: [80, 80], maxZoom: 16 }); } catch (e) {}
+
+        // PORNEȘTE REPLAY-UL INTERACTIV pentru acest traseu (afișează panoul cu bara de control jos)
+        var histPanel = document.getElementById('history-panel');
+        if (histPanel) histPanel.classList.add('visible');
+        // Populez câmpurile from/to ca să fie consistente cu replay-ul
+        try { document.getElementById('history-from').value = new Date(route.startTime).toISOString().slice(0, 16); document.getElementById('history-to').value = new Date(route.endTime).toISOString().slice(0, 16); } catch (e) {}
+        if (typeof hpInit === 'function') hpInit(data);
       } catch (err) {
         console.error('Eroare incarcare ruta:', err);
       }
@@ -8322,37 +8349,67 @@
     function _raxFmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n)); }
     function _raxCost(inp, out) { return (Number(inp) || 0) / 1e6 * RAX_TOK_IN_RATE + (Number(out) || 0) / 1e6 * RAX_TOK_OUT_RATE; }
     function _raxCard(label, val) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--accent);">' + (val == null ? '0' : val) + '</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">' + label + '</div></div>'; }
+    function _raxHealthCell(h) {
+      if (!h || !h.live) return '<span style="color:var(--text-muted);">—</span>';
+      var onlineColor = h.online === h.live ? 'var(--accent)' : (h.offline30 > 0 ? '#ef4444' : '#f59e0b');
+      var gsmTxt = h.avg_gsm == null ? '—' : h.avg_gsm.toFixed(1) + '/5';
+      var gsmColor = h.avg_gsm == null ? 'var(--text-muted)' : (h.avg_gsm >= 3 ? 'var(--accent)' : (h.avg_gsm >= 2 ? '#f59e0b' : '#ef4444'));
+      var fixTxt = h.healthy_fix_pct == null ? '—' : h.healthy_fix_pct + '%';
+      var fixColor = h.healthy_fix_pct == null ? 'var(--text-muted)' : (h.healthy_fix_pct >= 90 ? 'var(--accent)' : (h.healthy_fix_pct >= 60 ? '#f59e0b' : '#ef4444'));
+      return '<span style="color:' + onlineColor + ';font-weight:600;" title="Online ultimele 5 min">' + h.online + '/' + h.live + '</span>' +
+        ' · <span style="color:' + gsmColor + ';" title="Semnal GSM mediu (0-5)">📶 ' + gsmTxt + '</span>' +
+        ' · <span style="color:' + fixColor + ';" title="Procent fix GPS bun (≥4 sat.)">🛰 ' + fixTxt + '</span>' +
+        (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >30 min">⚠ ' + h.offline30 + '</span>' : '') +
+        (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
+    }
     async function raxLoadDashboard() {
       var box = $('rax-dash-body'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
         var d = await fetch('/api/admin/overview?days=30', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        var t = d.totals || {};
+        var t = d.totals || {}; var th = t.health || {};
         var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">' +
           _raxCard('Companii', t.companies) + _raxCard('Vehicule', t.vehicles) + _raxCard('Utilizatori', t.users) +
-          _raxCard('Tokeni IN (30z)', _raxFmt(t.ai_input)) + _raxCard('Tokeni OUT (30z)', _raxFmt(t.ai_output)) + _raxCard('Apeluri AI', t.ai_calls) +
           '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI estimat (30z): <strong style="color:var(--accent);">$' + _raxCost(t.ai_input, t.ai_output).toFixed(2) + '</strong> · model ' + esc(d.model || '') + ' · <em>estimativ ($' + RAX_TOK_IN_RATE + '/$' + RAX_TOK_OUT_RATE + ' per 1M in/out)</em></div>';
+        // ─── Health flotă (GPS + SIM) ───
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-satellite-dish"></i> Stare flotă (live)</div>';
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
+          _raxCard('Online (5m)', (th.online || 0) + '/' + (th.live || 0)) +
+          _raxCard('Offline >30m', th.offline30 || 0) +
+          _raxCard('Semnal slab', th.weak_signal || 0) +
+          _raxCard('Semnal GSM mediu', th.avg_gsm == null ? '—' : (th.avg_gsm + '/5')) +
+          _raxCard('Sateliți medii', th.avg_sats == null ? '—' : th.avg_sats) +
+          _raxCard('GPS fix bun', th.healthy_fix_pct == null ? '—' : (th.healthy_fix_pct + '%')) +
+          '</div>';
+        // ─── AI usage cards ───
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-robot"></i> Consum AI (30z)</div>';
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
+          _raxCard('Tokeni IN', _raxFmt(t.ai_input)) + _raxCard('Tokeni OUT', _raxFmt(t.ai_output)) + _raxCard('Apeluri', t.ai_calls) +
+          '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI estimat: <strong style="color:var(--accent);">$' + _raxCost(t.ai_input, t.ai_output).toFixed(2) + '</strong> · model ' + esc(d.model || '') + ' · <em>estimativ ($' + RAX_TOK_IN_RATE + '/$' + RAX_TOK_OUT_RATE + ' per 1M in/out)</em></div>';
+
         var rows = (d.companies || []).map(function (c) {
           return '<tr style="border-bottom:1px solid var(--border);">' +
             '<td style="padding:6px 8px;">' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">demo</span>' : '') + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.vehicles + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.users + '</td>' +
+            '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(c.health) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(c.ai_input) + ' / ' + _raxFmt(c.ai_output) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.ai_calls + '</td>' +
             '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(c.ai_input, c.ai_output).toFixed(3) + '</td></tr>';
         }).join('');
         // Consumul super-adminului (fără companie) — altfel ar fi în totaluri dar lipsă din tabel
         var pf = d.platform || {};
-        if (((pf.ai_input || 0) + (pf.ai_output || 0) + (pf.ai_calls || 0)) > 0) {
+        if (((pf.ai_input || 0) + (pf.ai_output || 0) + (pf.ai_calls || 0)) > 0 || (pf.health && pf.health.live > 0)) {
           rows += '<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;color:var(--text-muted);"><em>Platformă (super-admin)</em></td>' +
             '<td style="padding:6px 8px;text-align:right;">—</td><td style="padding:6px 8px;text-align:right;">—</td>' +
+            '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(pf.health) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(pf.ai_input) + ' / ' + _raxFmt(pf.ai_output) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + (pf.ai_calls || 0) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td></tr>';
         }
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th></tr></thead><tbody>' +
-          (rows || '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
+          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th></tr></thead><tbody>' +
+          (rows || '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
         box.innerHTML = html;
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcare.</div>'; }
     }
