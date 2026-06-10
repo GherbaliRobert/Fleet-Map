@@ -2753,6 +2753,38 @@ app.delete('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── Documente vehicul (ITP/RCA/CASCO/Rovinietă/...) ───
+app.get('/api/documents', requireAuth, withScope, async (req, res) => {
+  try {
+    let rows = await db.getVehicleDocuments(req.query.imei, req.isSuper ? null : req.companyId);
+    if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei));
+    if (req.query.imei && !canAccessImei(req, req.query.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/documents', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    if (!req.body.imei || !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    if (!req.body.doc_type) return res.status(400).json({ error: 'Tipul documentului e obligatoriu' });
+    // company_id = al vehiculului (proprietarul real al documentului), nu al celui care-l adaugă
+    const dev = await db.getDeviceFull(req.body.imei);
+    const companyId = dev && dev.company_id != null ? dev.company_id : req.companyId;
+    const doc = await db.createVehicleDocument(req.body, companyId);
+    auditReq(req, 'create', 'document', doc.id, { imei: req.body.imei, type: req.body.doc_type });
+    res.json(doc);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/documents/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'vehicle_documents', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteVehicleDocument(req.params.id);
+    auditReq(req, 'delete', 'document', req.params.id);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── Export CSV ───
 
 // ─── Detectie automata tara camion ───

@@ -1796,6 +1796,9 @@
         <button class="edit-tab" data-tab="sensors" onclick="switchEditTab('sensors', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
           <i class="fas fa-gas-pump"></i> Sonde (avansat)
         </button>
+        <button class="edit-tab" data-tab="documents" onclick="switchEditTab('documents', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
+          <i class="fas fa-file-contract"></i> Documente & Service
+        </button>
       </div>
 
       <!-- Tab: Detalii vehicul -->
@@ -1971,6 +1974,33 @@
         </div>
         <div id="fuel-sensors-list"></div>
         <button type="button" class="btn-sm" onclick="addFuelSensor()" style="margin-top:6px;"><i class="fas fa-plus"></i> Adaugă sondă</button>
+      </div>
+
+      <!-- Tab: Documente & Service -->
+      <div id="edit-tab-documents" class="edit-tab-content" style="display:none;">
+        <div style="font-size:12px;font-weight:700;margin:4px 0 8px;color:var(--accent);"><i class="fas fa-file-contract"></i> Documente vehicul</div>
+        <div id="veh-docs-list" style="margin-bottom:10px;"></div>
+        <div style="background:var(--bg-dark);padding:10px;border-radius:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;">
+            <label style="font-size:11px;">Tip<select id="doc-type"><option>ITP</option><option>RCA</option><option>CASCO</option><option>Rovinietă</option><option>Licență transport</option><option>Tahograf</option><option>Altul</option></select></label>
+            <label style="font-size:11px;">Număr<input type="text" id="doc-number"></label>
+            <label style="font-size:11px;">Emitent<input type="text" id="doc-issuer"></label>
+            <label style="font-size:11px;">Data emiterii<input type="date" id="doc-issue"></label>
+            <label style="font-size:11px;">Data expirării<input type="date" id="doc-expiry"></label>
+            <button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-plus"></i> Adaugă</button>
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;margin:16px 0 8px;color:var(--accent);"><i class="fas fa-wrench"></i> Plan service / mentenanță</div>
+        <div id="veh-service-list" style="margin-bottom:10px;"></div>
+        <div style="background:var(--bg-dark);padding:10px;border-radius:8px;">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:end;">
+            <label style="font-size:11px;">Tip / descriere<input type="text" id="svc-type" placeholder="ex: Schimb ulei"></label>
+            <label style="font-size:11px;">Scadent la dată<input type="date" id="svc-due-date"></label>
+            <label style="font-size:11px;">Scadent la km<input type="number" id="svc-due-km"></label>
+            <button class="btn-sm btn-primary" onclick="saveVehicleService()" style="grid-column:1 / -1;"><i class="fas fa-plus"></i> Adaugă service</button>
+          </div>
+        </div>
       </div>
 
       <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:16px;width:100%;">
@@ -6047,6 +6077,63 @@
       btn.style.fontWeight = '600';
       document.querySelectorAll('.edit-tab-content').forEach(c => c.style.display = 'none');
       document.getElementById('edit-tab-' + tab).style.display = 'block';
+      if (tab === 'documents') loadVehicleDocuments();
+    }
+
+    // ─── Documente & service per vehicul ───
+    function _docEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    async function loadVehicleDocuments() {
+      const imei = document.getElementById('edit-imei').value; if (!imei) return;
+      try {
+        const docs = await (await fetch('/api/documents?imei=' + encodeURIComponent(imei))).json();
+        const now = Date.now(), soon = 30 * 24 * 3600 * 1000;
+        document.getElementById('veh-docs-list').innerHTML = (Array.isArray(docs) && docs.length) ? docs.map(d => {
+          const exp = d.expiry_date ? new Date(d.expiry_date) : null;
+          let badge = 'fără dată expirare';
+          if (exp) { const diff = exp.getTime() - now; const txt = exp.toLocaleDateString('ro-RO'); badge = diff < 0 ? '<span style="color:#ef4444;font-weight:600;">EXPIRAT (' + txt + ')</span>' : (diff < soon ? '<span style="color:#f59e0b;font-weight:600;">expiră ' + txt + '</span>' : '<span style="color:var(--accent);">valid până ' + txt + '</span>'); }
+          return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + '</div></div><button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div>';
+        }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
+      } catch (e) { document.getElementById('veh-docs-list').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }
+      loadVehicleService();
+    }
+    async function saveVehicleDocument() {
+      const imei = document.getElementById('edit-imei').value;
+      const body = { imei, doc_type: document.getElementById('doc-type').value, number: document.getElementById('doc-number').value.trim(), issuer: document.getElementById('doc-issuer').value.trim(), issue_date: document.getElementById('doc-issue').value || null, expiry_date: document.getElementById('doc-expiry').value || null };
+      const r = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return; }
+      ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry'].forEach(id => document.getElementById(id).value = '');
+      loadVehicleDocuments();
+    }
+    async function deleteVehicleDoc(id) {
+      if (!confirm('Ștergi documentul?')) return;
+      const r = await fetch('/api/documents/' + id, { method: 'DELETE' });
+      if (!r.ok) { alert('Eroare la ștergere'); return; }
+      loadVehicleDocuments();
+    }
+    async function loadVehicleService() {
+      const imei = document.getElementById('edit-imei').value; if (!imei) return;
+      try {
+        const rows = await (await fetch('/api/maintenance?imei=' + encodeURIComponent(imei))).json();
+        document.getElementById('veh-service-list').innerHTML = (Array.isArray(rows) && rows.length) ? rows.map(m =>
+          '<div class="admin-row"><div><strong>' + _docEsc(m.type) + '</strong>' + (m.description ? ' · ' + _docEsc(m.description) : '') + '<div class="meta">' + (m.due_date ? 'scadent ' + new Date(m.due_date).toLocaleDateString('ro-RO') : '') + (m.due_km ? ' · la ' + m.due_km + ' km' : '') + ' · ' + _docEsc(m.status || '') + '</div></div><button class="btn-sm btn-danger" onclick="deleteVehicleService(' + m.id + ')"><i class="fas fa-trash"></i></button></div>'
+        ).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun element de service.</p>';
+      } catch (e) { }
+    }
+    async function saveVehicleService() {
+      const imei = document.getElementById('edit-imei').value;
+      const type = document.getElementById('svc-type').value.trim();
+      if (!type) { alert('Tipul / descrierea e obligatorie'); return; }
+      const body = { imei, type, due_date: document.getElementById('svc-due-date').value || null, due_km: parseInt(document.getElementById('svc-due-km').value) || null, status: 'pending' };
+      const r = await fetch('/api/maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { alert('Eroare la salvare service'); return; }
+      ['svc-type', 'svc-due-date', 'svc-due-km'].forEach(id => document.getElementById(id).value = '');
+      loadVehicleService();
+    }
+    async function deleteVehicleService(id) {
+      if (!confirm('Ștergi elementul de service?')) return;
+      const r = await fetch('/api/maintenance/' + id, { method: 'DELETE' });
+      if (!r.ok) { alert('Eroare la ștergere'); return; }
+      loadVehicleService();
     }
 
     function addCalibrationRow(voltage, liters) {
