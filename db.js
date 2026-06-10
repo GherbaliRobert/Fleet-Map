@@ -994,9 +994,9 @@ async function updateUserProfile(id, data) {
   await pool.query(
     `UPDATE users SET
        role = COALESCE($2, role),
-       full_name = $3,
-       email = $4,
-       phone = $5,
+       full_name = COALESCE($3, full_name),
+       email = COALESCE($4, email),
+       phone = COALESCE($5, phone),
        active = COALESCE($6, active)
      WHERE id = $1`,
     [id, data.role || null, data.full_name || null, data.email || null, data.phone || null,

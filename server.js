@@ -634,7 +634,7 @@ const ROLE_PERMISSIONS = {
 };
 const VALID_ROLES = Object.keys(ROLE_PERMISSIONS);
 // roluri pe care un company_admin le poate atribui (NU poate crea superadmini/alți company_admin peste el)
-const COMPANY_ASSIGNABLE_ROLES = ['company_admin', 'manager', 'dispatcher', 'client', 'viewer'];
+const COMPANY_ASSIGNABLE_ROLES = ['manager', 'dispatcher', 'client', 'viewer']; // company_admin se acordă DOAR de super-admin (fără escaladare intra-tenant)
 function permsFor(role) { return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.viewer; }
 function hasPerm(role, perm) { return !!permsFor(role)[perm]; }
 function isSuper(role) { return role === 'superadmin'; }
