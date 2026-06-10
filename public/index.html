@@ -207,9 +207,11 @@
       -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent;
       flex: 0 0 auto; padding: 0; margin: 0; outline: none;
       width: 38px; height: 38px; border-radius: 8px; border: 1px solid transparent;
-      background: transparent; color: var(--text-secondary); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; transition: all .15s;
+      background: transparent; background-color: transparent; box-shadow: none; color: var(--text-secondary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1;
+      transition: background-color .15s, color .15s, border-color .15s;
     }
+    .topbar-icon:focus { background: transparent; }
     @media (hover: hover) {
       .topbar-icon:hover { background: var(--bg-dark); color: var(--text-primary); }
       .topbar-icon.danger:hover { color: var(--red); }
@@ -247,14 +249,7 @@
     .view.active { display: flex; }
 
     /* Footer */
-    #footer-bar {
-      height: calc(var(--footer-h) + var(--sab)); min-height: calc(var(--footer-h) + var(--sab));
-      background: var(--bg-panel); border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 16px var(--sab); font-size: 11px; color: var(--text-muted); z-index: 20;
-    }
-    #footer-bar a { color: var(--text-muted); text-decoration: none; margin-left: 14px; }
-    #footer-bar a:hover { color: var(--accent); }
+    /* footer-bar eliminat (versiune/API nu mai apare) */
 
     /* Modal afișat ca panou inline (în zona de conținut) */
     .modal-overlay.as-view {
@@ -1660,6 +1655,7 @@
         <section id="view-localizare" class="view active">
           <!-- Sidebar -->
           <div id="sidebar">
+            <button class="sidebar-back-mobile" onclick="closeMobileSidebar()"><i class="fas fa-arrow-left"></i> Înapoi la hartă</button>
             <div class="sidebar-brand">
 
         <div class="sidebar-search">
@@ -1715,14 +1711,32 @@
           <input type="datetime-local" id="history-from">
           <label>Până la:</label>
           <input type="datetime-local" id="history-to">
+          <button class="history-btn" onclick="hpQuick('today')">Azi</button>
+          <button class="history-btn" onclick="hpQuick('yesterday')">Ieri</button>
+          <button class="history-btn" onclick="hpQuick('week')">7 zile</button>
           <button class="history-btn primary" onclick="loadHistory()"><i class="fas fa-download"></i> Încarcă</button>
           <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
           <button class="history-btn" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
+        </div>
+        <div id="history-playback" style="display:none;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <button class="history-btn primary" id="hp-play" onclick="hpToggle()" title="Redă / Pauză"><i class="fas fa-play"></i></button>
+          <input type="range" id="hp-slider" min="0" max="0" value="0" oninput="hpSeek(this.value)" style="flex:1;min-width:140px;accent-color:var(--accent);cursor:pointer;">
+          <select id="hp-speed" onchange="hpSetSpeed(this.value)" style="padding:7px;border-radius:6px;background:var(--bg-dark);color:var(--text-primary);border:1px solid var(--border);font-size:12px;">
+            <option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option><option value="16">16×</option>
+          </select>
+          <span id="hp-readout" style="font-size:12px;color:var(--text-primary);white-space:nowrap;"></span>
         </div>
       </div>
     </div>
 
     <!-- Right Detail Panel -->
+    <style>
+      details.io-advanced { margin-top: 8px; }
+      details.io-advanced > summary { cursor: pointer; font-size: 11px; color: var(--text-muted); padding: 8px 6px; list-style: none; user-select: none; border-top: 1px solid var(--border); }
+      details.io-advanced > summary::-webkit-details-marker { display: none; }
+      details.io-advanced[open] > summary { color: var(--accent); }
+      @media (max-width: 820px) { body.detail-open #rax-fabs { display: none !important; } }
+    </style>
     <div id="detail-panel">
       <div class="detail-header">
         <div class="detail-header-info">
@@ -1775,10 +1789,20 @@
       </main>
     </div>
 
-    <footer id="footer-bar">
-      <span>RA Tracks © 2026 · v1.1</span>
-      <span><a href="/api" target="_blank">API</a></span>
-    </footer>
+    <style>
+      /* Status server „Conectat" — doar pentru admin, nu pentru client */
+      body:not(.is-admin) #ws-status { display: none !important; }
+      /* Buton „Înapoi la hartă" — doar pe mobil, în sidebar */
+      .sidebar-back-mobile { display: none; }
+      @media (max-width: 768px) {
+        .sidebar-back-mobile { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px 14px; background: var(--bg-panel); border: none; border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; }
+        .sidebar-back-mobile:active { background: var(--bg-dark); }
+        /* Login mai simplu/curat pe mobil */
+        .login-box { width: 90vw; max-width: 360px; padding: 28px 22px; box-shadow: none; }
+        #login-screen .login-logo img { height: 38px; }
+        #login-screen p { font-size: 13px; }
+      }
+    </style>
   </div>
 
   <!-- Mobile toggle button -->
@@ -2946,6 +2970,12 @@
         try { window._charts[canvasId].destroy(); } catch (e) {}
         delete window._charts[canvasId];
       }
+      // Culori text adaptate la temă (legenda era fixă pe deschis → invizibilă pe tema light)
+      var _cs = getComputedStyle(document.body);
+      var _txt = (_cs.getPropertyValue('--text-primary') || '').trim() || '#e5e7eb';
+      var _muted = (_cs.getPropertyValue('--text-secondary') || '').trim() || '#9ca3af';
+      Chart.defaults.color = _muted;
+      Chart.defaults.plugins.legend.labels.color = _txt;
       const ctx = canvas.getContext('2d');
       const chart = new Chart(ctx, {
         type,
@@ -4723,6 +4753,7 @@
       }).setView([44.4268, 26.1025], 12);
 
       L.control.zoom({ position: 'topright' }).addTo(map);
+      if (map.attributionControl) map.attributionControl.setPosition('bottomleft'); // în stânga → nu se suprapune cu FAB-ul (dreapta-jos)
 
       applyMapTheme();
 
@@ -4908,12 +4939,11 @@
         const marker = markers.get(imei);
         marker.setLatLng([latitude, longitude]);
         marker.setIcon(icon);
-        marker.getPopup().setContent(popupContent);
       } else {
         const marker = L.marker([latitude, longitude], { icon })
-          .bindPopup(popupContent, { maxWidth: 280 })
           .addTo(map);
 
+        // Fără popup Leaflet — click pe marker deschide DOAR panoul de detaliu (altfel se suprapuneau)
         marker.on('click', () => selectDevice(imei));
         markers.set(imei, marker);
       }
@@ -5049,6 +5079,8 @@
       detailPanelImei = imei;
       const panel = document.getElementById('detail-panel');
       panel.classList.add('open');
+      panel.style.transform = '';
+      document.body.classList.add('detail-open');
 
       updateDetailPanel(imei);
       updateDetailIoPanel(imei);
@@ -5159,9 +5191,24 @@
 
     function closeDetailPanel() {
       detailPanelImei = null;
-      document.getElementById('detail-panel').classList.remove('open');
+      var _p = document.getElementById('detail-panel');
+      _p.classList.remove('open');
+      _p.style.transform = '';
+      document.body.classList.remove('detail-open');
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     }
+    // Swipe-down pe header (mobil) → închide panoul
+    (function () {
+      var panel = document.getElementById('detail-panel'); if (!panel) return;
+      var header = panel.querySelector('.detail-header'); if (!header) return;
+      var startY = 0, curY = 0, dragging = false;
+      function start(e) { var t = e.touches ? e.touches[0] : e; startY = curY = t.clientY; dragging = true; panel.style.transition = 'none'; }
+      function move(e) { if (!dragging) return; var t = e.touches ? e.touches[0] : e; curY = t.clientY; var dy = curY - startY; if (dy > 0) { panel.style.transform = 'translateY(' + dy + 'px)'; if (e.cancelable) e.preventDefault(); } }
+      function end() { if (!dragging) return; dragging = false; panel.style.transition = ''; var dy = curY - startY; panel.style.transform = ''; if (dy > 90) closeDetailPanel(); }
+      header.addEventListener('touchstart', start, { passive: true });
+      header.addEventListener('touchmove', move, { passive: false });
+      header.addEventListener('touchend', end);
+    })();
 
     function switchDetailTab(tab) {
       // Legacy compat — redirect to new view system
@@ -5755,7 +5802,7 @@
         const rows = uncategorized.map(k =>
           '<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value">' + formatIoValue(k, io[k]) + '</span></div>'
         );
-        html += '<div class="io-section"><div class="io-section-title"><i class="fas fa-ellipsis-h"></i> Alte IO</div>' + rows.join('') + '</div>';
+        html += '<details class="io-advanced"><summary><i class="fas fa-ellipsis-h"></i> Date tehnice avansate (' + uncategorized.length + ')</summary><div style="margin-top:6px;">' + rows.join('') + '</div></details>';
       }
 
       content.innerHTML = html;
@@ -5814,6 +5861,8 @@
 
     function closeHistory() {
       document.getElementById('history-panel').classList.remove('visible');
+      hpStop(); hpData = []; hpMarker = null;
+      var bar = document.getElementById('history-playback'); if (bar) bar.style.display = 'none';
       if (historyLine) {
         map.removeLayer(historyLine);
         historyLine = null;
@@ -5863,9 +5912,59 @@
 
         historyMarkers.push(startMarker, endMarker);
 
+        hpInit(data); // activează replay-ul interactiv
       } catch (err) {
         console.error('Eroare incarcare istoric:', err);
       }
+    }
+
+    // ─── Replay interactiv istoric traseu ───
+    var hpData = [], hpTimer = null, hpIndex = 0, hpSpeed = 4, hpMarker = null;
+    function hpStop() {
+      if (hpTimer) { clearInterval(hpTimer); hpTimer = null; }
+      var b = document.getElementById('hp-play'); if (b) b.innerHTML = '<i class="fas fa-play"></i>';
+    }
+    function hpRender() {
+      var p = hpData[hpIndex]; if (!p) return;
+      if (hpMarker && map) hpMarker.setLatLng([p.latitude, p.longitude]);
+      var sl = document.getElementById('hp-slider'); if (sl) sl.value = hpIndex;
+      var ro = document.getElementById('hp-readout');
+      if (ro) { var d = new Date(p.timestamp); ro.innerHTML = '<i class="fas fa-clock"></i> ' + d.toLocaleTimeString('ro-RO') + ' · <i class="fas fa-gauge-high"></i> ' + Math.round(p.speed || 0) + ' km/h · ' + (hpIndex + 1) + '/' + hpData.length; }
+    }
+    function hpToggle() {
+      if (!hpData.length) return;
+      if (hpTimer) { hpStop(); return; }
+      if (hpIndex >= hpData.length - 1) hpIndex = 0;
+      var b = document.getElementById('hp-play'); if (b) b.innerHTML = '<i class="fas fa-pause"></i>';
+      hpTimer = setInterval(function () {
+        if (hpIndex >= hpData.length - 1) { hpRender(); hpStop(); return; }
+        hpIndex++; hpRender();
+      }, Math.max(40, 240 / hpSpeed));
+    }
+    function hpSeek(v) { hpIndex = Math.max(0, Math.min(hpData.length - 1, parseInt(v) || 0)); hpRender(); }
+    function hpSetSpeed(v) { hpSpeed = parseInt(v) || 4; if (hpTimer) { hpStop(); hpToggle(); } }
+    function hpInit(data) {
+      hpStop(); hpIndex = 0; hpData = Array.isArray(data) ? data : [];
+      var bar = document.getElementById('history-playback'); if (!bar) return;
+      if (hpMarker) { try { map.removeLayer(hpMarker); } catch (e) {} hpMarker = null; }
+      if (hpData.length < 2) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
+      var sl = document.getElementById('hp-slider'); if (sl) { sl.max = hpData.length - 1; sl.value = 0; }
+      hpMarker = L.marker([hpData[0].latitude, hpData[0].longitude], {
+        zIndexOffset: 1000,
+        icon: L.divIcon({ className: '', html: '<div style="width:16px;height:16px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 0 2px #22c55e,0 1px 5px rgba(0,0,0,.6);"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
+      }).addTo(map);
+      historyMarkers.push(hpMarker);
+      hpRender();
+    }
+    function hpQuick(period) {
+      var now = new Date(), from = new Date(now), to = new Date(now);
+      if (period === 'today') { from.setHours(0, 0, 0, 0); }
+      else if (period === 'yesterday') { from.setDate(from.getDate() - 1); from.setHours(0, 0, 0, 0); to = new Date(from); to.setHours(23, 59, 59, 0); }
+      else if (period === 'week') { from.setDate(from.getDate() - 7); }
+      document.getElementById('history-from').value = formatDateLocal(from);
+      document.getElementById('history-to').value = formatDateLocal(to);
+      loadHistory();
     }
 
     // ─── WebSocket ───
@@ -7245,7 +7344,7 @@
             }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
+            x: { grid: { display: false }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, font: { size: 9 } } },
             y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; } } }
           }
         });
@@ -7839,6 +7938,8 @@
     <div id="rax-actions">
       <div id="rax-co-chip" style="display:none;"></div>
       <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
+      <button class="rax-fab secondary" id="rax-dash-btn" style="display:none;" onclick="raxOpenDashboard()"><i class="fas fa-chart-line"></i> Dashboard</button>
+      <button class="rax-fab secondary" id="rax-acc-btn" style="display:none;" onclick="raxOpenAccounts()"><i class="fas fa-users-gear"></i> Conturi</button>
       <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
       <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
       <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
@@ -7881,6 +7982,24 @@
           <strong style="font-size:13px;">Vehicule neasignate</strong>
           <div id="rax-co-unassigned" class="rax-co-meta" style="margin-top:6px;">—</div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rax-overlay" id="rax-dash-overlay">
+    <div class="rax-card" style="max-width:640px;">
+      <div class="rax-head"><h3><i class="fas fa-chart-line" style="color:var(--accent)"></i> Dashboard platformă (super-admin)</h3><button class="rax-x" onclick="raxCloseDashboard()">&times;</button></div>
+      <div class="rax-body" id="rax-dash-body"><div class="rax-co-meta">Se încarcă…</div></div>
+    </div>
+  </div>
+
+  <div class="rax-overlay" id="rax-accounts-overlay">
+    <div class="rax-card">
+      <div class="rax-head"><h3><i class="fas fa-users-gear" style="color:var(--accent)"></i> Conturi — toate companiile (super-admin)</h3><button class="rax-x" onclick="raxCloseAccounts()">&times;</button></div>
+      <div class="rax-body">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-shield-halved" style="color:var(--accent)"></i> Parolele sunt criptate (nu pot fi văzute) — le poți <strong>reseta</strong>.</div>
+        <input class="rax-field" id="rax-acc-search" placeholder="Caută username / companie / rol…" oninput="raxRenderAccounts()" style="margin-bottom:10px;">
+        <div id="rax-acc-list"><div class="rax-co-meta">Se încarcă…</div></div>
       </div>
     </div>
   </div>
@@ -7959,7 +8078,7 @@
     var me = null, aiEnabled = false, aiHistory = [], companiesCache = [];
     function $(id) { return document.getElementById(id); }
     function appVisible() { var a = $('app'); return a && a.classList.contains('visible'); }
-    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
 
     async function refresh() {
       try {
@@ -7974,9 +8093,13 @@
     function updateFabs() {
       var show = !!(me && appVisible());
       $('rax-fabs').style.display = show ? 'flex' : 'none';
+      // Status server + versiune doar pentru admin (superadmin / manageUsers); ascuns pentru client
+      document.body.classList.toggle('is-admin', !!(me && (me.isSuper || (me.permissions && me.permissions.manageUsers))));
       if (!show) return;
       $('rax-ai-btn').style.display = 'flex';
       $('rax-co-btn').style.display = (me.isSuper ? 'flex' : 'none');
+      $('rax-dash-btn').style.display = (me.isSuper ? 'flex' : 'none');
+      $('rax-acc-btn').style.display = (me.isSuper ? 'flex' : 'none');
       var fleet = !!(me.permissions && me.permissions.manageFleet);
       $('rax-tacho-btn').style.display = fleet ? 'flex' : 'none';
       $('rax-et-btn').style.display = fleet ? 'flex' : 'none';
@@ -8066,6 +8189,108 @@
     // ── Companii ──
     window.raxOpenCompanies = function () { $('rax-co-overlay').classList.add('open'); raxLoadCompanies(); raxLoadUnassigned(); };
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
+
+    // ─── Dashboard platformă — super-admin ───
+    var RAX_TOK_IN_RATE = 1.0, RAX_TOK_OUT_RATE = 5.0; // $/1M tokeni (Haiku, estimativ — ajustează după prețul real)
+    window.raxOpenDashboard = function () { $('rax-dash-overlay').classList.add('open'); if (window.raxCloseMenu) raxCloseMenu(); raxLoadDashboard(); };
+    window.raxCloseDashboard = function () { $('rax-dash-overlay').classList.remove('open'); };
+    function _raxFmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n)); }
+    function _raxCost(inp, out) { return (Number(inp) || 0) / 1e6 * RAX_TOK_IN_RATE + (Number(out) || 0) / 1e6 * RAX_TOK_OUT_RATE; }
+    function _raxCard(label, val) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--accent);">' + (val == null ? '0' : val) + '</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">' + label + '</div></div>'; }
+    async function raxLoadDashboard() {
+      var box = $('rax-dash-body'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var d = await fetch('/api/admin/overview?days=30', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var t = d.totals || {};
+        var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">' +
+          _raxCard('Companii', t.companies) + _raxCard('Vehicule', t.vehicles) + _raxCard('Utilizatori', t.users) +
+          _raxCard('Tokeni IN (30z)', _raxFmt(t.ai_input)) + _raxCard('Tokeni OUT (30z)', _raxFmt(t.ai_output)) + _raxCard('Apeluri AI', t.ai_calls) +
+          '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI estimat (30z): <strong style="color:var(--accent);">$' + _raxCost(t.ai_input, t.ai_output).toFixed(2) + '</strong> · model ' + esc(d.model || '') + ' · <em>estimativ ($' + RAX_TOK_IN_RATE + '/$' + RAX_TOK_OUT_RATE + ' per 1M in/out)</em></div>';
+        var rows = (d.companies || []).map(function (c) {
+          return '<tr style="border-bottom:1px solid var(--border);">' +
+            '<td style="padding:6px 8px;">' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">demo</span>' : '') + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + c.vehicles + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + c.users + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(c.ai_input) + ' / ' + _raxFmt(c.ai_output) + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + c.ai_calls + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(c.ai_input, c.ai_output).toFixed(3) + '</td></tr>';
+        }).join('');
+        // Consumul super-adminului (fără companie) — altfel ar fi în totaluri dar lipsă din tabel
+        var pf = d.platform || {};
+        if (((pf.ai_input || 0) + (pf.ai_output || 0) + (pf.ai_calls || 0)) > 0) {
+          rows += '<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;color:var(--text-muted);"><em>Platformă (super-admin)</em></td>' +
+            '<td style="padding:6px 8px;text-align:right;">—</td><td style="padding:6px 8px;text-align:right;">—</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(pf.ai_input) + ' / ' + _raxFmt(pf.ai_output) + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + (pf.ai_calls || 0) + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td></tr>';
+        }
+        html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th></tr></thead><tbody>' +
+          (rows || '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
+        box.innerHTML = html;
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcare.</div>'; }
+    }
+
+    // ─── Conturi (toate companiile) — super-admin ───
+    var _raxAccounts = [];
+    window.raxOpenAccounts = function () { $('rax-accounts-overlay').classList.add('open'); if (window.raxCloseMenu) raxCloseMenu(); raxLoadAccounts(); };
+    window.raxCloseAccounts = function () { $('rax-accounts-overlay').classList.remove('open'); };
+    async function raxLoadAccounts() {
+      var box = $('rax-acc-list'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var res = await Promise.all([
+          fetch('/api/users', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+          fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return []; })
+        ]);
+        var users = Array.isArray(res[0]) ? res[0] : [];
+        var coMap = {}; (Array.isArray(res[1]) ? res[1] : []).forEach(function (c) { coMap[c.id] = c.name; });
+        _raxAccounts = users.map(function (u) { u.company_name = (u.company_id != null) ? (coMap[u.company_id] || ('#' + u.company_id)) : ''; return u; });
+      } catch (e) { _raxAccounts = []; }
+      raxRenderAccounts();
+    }
+    window.raxRenderAccounts = function () {
+      var q = ($('rax-acc-search').value || '').toLowerCase();
+      var list = _raxAccounts.filter(function (u) { return !q || ((u.username || '') + ' ' + (u.company_name || '') + ' ' + (u.role || '')).toLowerCase().indexOf(q) >= 0; });
+      var box = $('rax-acc-list');
+      box.innerHTML = list.length ? list.map(function (u) {
+        var active = u.active !== false;
+        var inactiveTag = active ? '' : ' <span class="rax-tag" style="background:rgba(239,68,68,.15);color:#ef4444;">inactiv</span>';
+        return '<div class="rax-co-item"><div style="min-width:0;"><strong>' + esc(u.username) + '</strong> <span class="rax-tag">' + esc(u.role || '') + '</span>' + inactiveTag +
+          '<div class="rax-co-meta">' + esc(u.company_name || '(fără companie)') + (u.last_login ? ' · login ' + new Date(u.last_login).toLocaleDateString('ro-RO') : '') + '</div></div>' +
+          '<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+            '<button class="rax-btn" title="Resetează parola" onclick="raxResetPassword(' + u.id + ')"><i class="fas fa-key"></i></button>' +
+            '<button class="rax-btn" title="' + (active ? 'Dezactivează' : 'Activează') + '" onclick="raxToggleUserActive(' + u.id + ',' + (active ? 'false' : 'true') + ')"><i class="fas fa-' + (active ? 'user-slash' : 'user-check') + '"></i></button>' +
+            '<button class="rax-btn" title="Șterge" onclick="raxDeleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button>' +
+          '</div></div>';
+      }).join('') : '<div class="rax-co-meta">Niciun cont găsit.</div>';
+    };
+    function _raxFindUser(id) { for (var i = 0; i < _raxAccounts.length; i++) if (_raxAccounts[i].id === id) return _raxAccounts[i]; return null; }
+    window.raxResetPassword = async function (id) {
+      var u = _raxFindUser(id); var name = u ? u.username : ('#' + id);
+      var np = prompt('Parolă nouă pentru „' + name + '" (min 4 caractere):');
+      if (np == null) return;
+      np = String(np).trim();
+      if (np.length < 4) { alert('Parola e prea scurtă (minim 4 caractere).'); return; }
+      var r = await fetch('/api/users/' + id + '/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ password: np }) });
+      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
+      alert('Parola pentru „' + name + '" a fost resetată.');
+    };
+    window.raxToggleUserActive = async function (id, makeActive) {
+      var u = _raxFindUser(id); if (!u) return;
+      // trimitem și valorile curente (full_name/email/phone nu sunt COALESCE pe server → s-ar șterge altfel)
+      var body = { active: makeActive, full_name: u.full_name || null, email: u.email || null, phone: u.phone || null };
+      var r = await fetch('/api/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
+      raxLoadAccounts();
+    };
+    window.raxDeleteUser = async function (id) {
+      var u = _raxFindUser(id); var name = u ? u.username : ('#' + id);
+      if (!confirm('Ștergi contul „' + name + '"? Ireversibil.')) return;
+      var r = await fetch('/api/users/' + id, { method: 'DELETE', credentials: 'same-origin' });
+      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
+      raxLoadAccounts();
+    };
     async function raxLoadCompanies() {
       var box = $('rax-co-list'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {

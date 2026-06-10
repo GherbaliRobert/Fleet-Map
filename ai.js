@@ -8,7 +8,7 @@ function setKey(k) { runtimeKey = (k && String(k).trim()) || null; }
 function hasKey() { return !!runtimeKey; }
 function aiEnabled() { return !!runtimeKey; }
 
-async function callClaude({ system, messages, maxTokens = 800 }) {
+async function callClaude({ system, messages, maxTokens = 800, onUsage }) {
   if (!runtimeKey) { const e = new Error('AI neconfigurat (lipsește cheia Anthropic)'); e.code = 'NO_KEY'; throw e; }
   const res = await fetch(ANTHROPIC_URL, {
     method: 'POST',
@@ -26,6 +26,7 @@ async function callClaude({ system, messages, maxTokens = 800 }) {
     throw e;
   }
   const j = await res.json();
+  if (onUsage && j.usage) { try { onUsage(j.usage); } catch (e) { /* logarea consumului nu trebuie să rupă răspunsul */ } }
   return (j.content && j.content[0] && j.content[0].text) || '';
 }
 

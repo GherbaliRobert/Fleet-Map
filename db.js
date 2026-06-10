@@ -544,6 +544,19 @@ async function initDb() {
       )
     `);
 
+    // Consum tokeni AI (per companie) — pentru dashboard-ul super-adminului
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_usage (
+        id BIGSERIAL PRIMARY KEY,
+        company_id INTEGER,
+        kind VARCHAR(20),
+        input_tokens INTEGER DEFAULT 0,
+        output_tokens INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_company ON ai_usage (company_id, created_at)`);
+
     // Agenți AI — constatări/recomandări (RA Watch etc.)
     await client.query(`
       CREATE TABLE IF NOT EXISTS agent_findings (
@@ -601,6 +614,30 @@ async function getCompanies() {
     FROM companies c ORDER BY c.created_at`);
   return r.rows;
 }
+
+// ─── Consum AI (tokeni) per companie ───
+async function recordAiUsage(companyId, kind, usage) {
+  if (!usage) return;
+  const inp = parseInt(usage.input_tokens) || 0;
+  const out = parseInt(usage.output_tokens) || 0;
+  if (!inp && !out) return;
+  await pool.query(
+    'INSERT INTO ai_usage (company_id, kind, input_tokens, output_tokens) VALUES ($1, $2, $3, $4)',
+    [companyId != null ? companyId : null, String(kind || 'ai').slice(0, 20), inp, out]
+  );
+}
+async function getAiUsageByCompany(sinceDays) {
+  const days = parseInt(sinceDays);
+  let where = '', params = [];
+  if (days > 0) { params.push(new Date(Date.now() - days * 86400000).toISOString()); where = 'WHERE created_at >= $1'; }
+  const r = await pool.query(
+    `SELECT company_id,
+       COALESCE(SUM(input_tokens), 0)::bigint AS input_tokens,
+       COALESCE(SUM(output_tokens), 0)::bigint AS output_tokens,
+       COUNT(*)::int AS calls
+     FROM ai_usage ${where} GROUP BY company_id`, params);
+  return r.rows;
+}
 async function getCompanyById(id) {
   const r = await pool.query('SELECT * FROM companies WHERE id = $1', [id]);
   return r.rows[0] || null;
@@ -640,6 +677,7 @@ async function updateCompany(id, data) {
 }
 async function deleteCompany(id) {
   // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul
+  await pool.query('DELETE FROM ai_usage WHERE company_id = $1', [id]); // altfel consumul orfan rămâne în totaluri, fără companie în tabel
   await pool.query('DELETE FROM companies WHERE id = $1', [id]);
 }
 // Toate IMEI-urile unei companii (pt. scoping viewAll pe companie)
@@ -994,9 +1032,9 @@ async function updateUserProfile(id, data) {
   await pool.query(
     `UPDATE users SET
        role = COALESCE($2, role),
-       full_name = $3,
-       email = $4,
-       phone = $5,
+       full_name = COALESCE($3, full_name),
+       email = COALESCE($4, email),
+       phone = COALESCE($5, phone),
        active = COALESCE($6, active)
      WHERE id = $1`,
     [id, data.role || null, data.full_name || null, data.email || null, data.phone || null,
@@ -1552,6 +1590,7 @@ module.exports = {
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
+  recordAiUsage, getAiUsageByCompany,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
