@@ -6107,7 +6107,7 @@
       if (!from || !to) { alert('Alege intervalul (De la / Până la), sau apasă Azi / Ieri / 7 zile.'); return; }
 
       try {
-        const prefs = await _loadUiPrefs();
+        let prefs = {}; try { prefs = await _loadUiPrefs(); } catch (e) {}
         const useHeatmap = prefs.overspeed_heatmap !== false; // default ON
         const res = await fetch('/api/history/' + selectedImei + '?ext=1&from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString());
         const payload = await res.json();
@@ -6149,8 +6149,13 @@
         } else {
           L.polyline(points, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(seg);
         }
-        // fitBounds pe primul layer cu getBounds
-        try { map.fitBounds(L.polyline(points).getBounds(), { padding: [50, 50] }); } catch (e) {}
+        // fitBounds pe primul layer cu getBounds — pe mobil lasă loc jos pentru panoul de control
+        try {
+          const isM = window.innerWidth <= 768;
+          map.fitBounds(L.polyline(points).getBounds(), isM
+            ? { paddingTopLeft: [30, 30], paddingBottomRight: [30, Math.round(window.innerHeight * 0.45)] }
+            : { padding: [50, 50] });
+        } catch (e) {}
 
         const startMarker = L.circleMarker(points[0], { radius: 7, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 1, weight: 2 })
           .bindPopup('Start: ' + new Date(data[0].timestamp).toLocaleString('ro-RO')).addTo(map);
@@ -6175,9 +6180,10 @@
           }
         }
 
-        hpInit(data); // activează replay-ul interactiv
+        try { hpInit(data); } catch (e) { console.warn('replay indisponibil:', e); } // replay interactiv (non-fatal)
       } catch (err) {
         console.error('Eroare incarcare istoric:', err);
+        alert('Eroare la încărcarea traseului: ' + (err && err.message ? err.message : err));
       }
     }
 
