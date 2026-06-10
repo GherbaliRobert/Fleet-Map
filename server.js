@@ -1279,7 +1279,7 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
 // Dashboard super-admin: stat per companie (vehicule, useri) + consum tokeni AI + totaluri
 app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    const days = req.query.days ? parseInt(req.query.days) : 30;
+    let days = parseInt(req.query.days); if (!Number.isFinite(days) || days <= 0) days = 30; days = Math.min(days, 365);
     const [companies, usage] = await Promise.all([db.getCompanies(), db.getAiUsageByCompany(days)]);
     const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0;
     usage.forEach(function (u) {

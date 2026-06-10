@@ -8010,7 +8010,7 @@
     var me = null, aiEnabled = false, aiHistory = [], companiesCache = [];
     function $(id) { return document.getElementById(id); }
     function appVisible() { var a = $('app'); return a && a.classList.contains('visible'); }
-    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
 
     async function refresh() {
       try {
@@ -8148,6 +8148,15 @@
             '<td style="padding:6px 8px;text-align:right;">' + c.ai_calls + '</td>' +
             '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(c.ai_input, c.ai_output).toFixed(3) + '</td></tr>';
         }).join('');
+        // Consumul super-adminului (fără companie) — altfel ar fi în totaluri dar lipsă din tabel
+        var pf = d.platform || {};
+        if (((pf.ai_input || 0) + (pf.ai_output || 0) + (pf.ai_calls || 0)) > 0) {
+          rows += '<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;color:var(--text-muted);"><em>Platformă (super-admin)</em></td>' +
+            '<td style="padding:6px 8px;text-align:right;">—</td><td style="padding:6px 8px;text-align:right;">—</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(pf.ai_input) + ' / ' + _raxFmt(pf.ai_output) + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + (pf.ai_calls || 0) + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td></tr>';
+        }
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
           '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th></tr></thead><tbody>' +
           (rows || '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';

@@ -677,6 +677,7 @@ async function updateCompany(id, data) {
 }
 async function deleteCompany(id) {
   // protejează: nu șterge dacă mai are device-uri/useri (decis în server); aici doar ștergem rândul
+  await pool.query('DELETE FROM ai_usage WHERE company_id = $1', [id]); // altfel consumul orfan rămâne în totaluri, fără companie în tabel
   await pool.query('DELETE FROM companies WHERE id = $1', [id]);
 }
 // Toate IMEI-urile unei companii (pt. scoping viewAll pe companie)
