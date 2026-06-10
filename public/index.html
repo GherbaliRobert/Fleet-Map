@@ -5649,19 +5649,19 @@
       if (!isOnline) {
         statusClass = 'gone';                          // gri + ⚠ (>1h fără date)
         statusText = '⚠️ Offline';
-        statusDetail = 'ultimul pachet ' + timeAgoPhrase(new Date(data.timestamp));
+        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
       } else if (isMoving) {
         statusClass = 'moving';                        // verde
         statusText = 'În mișcare';
-        statusDetail = data.speed + ' km/h';
+        statusDetail = '● activ';                      // în mers = transmite live
       } else if (hasIgnition) {
         statusClass = 'idle';                          // galben
         statusText = 'Staționare (contact pornit)';
-        statusDetail = timeAgoPhrase(new Date(data.timestamp));
+        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
       } else {
         statusClass = 'off';                           // roșu (parcat, contact decuplat)
         statusText = 'Oprit';
-        statusDetail = timeAgoPhrase(new Date(data.timestamp));
+        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
       }
 
       const grid = document.getElementById('detail-info-grid');
@@ -5685,7 +5685,7 @@
           '<div class="info-item-icon blue"><i class="fas fa-calendar-alt"></i></div>' +
           '<div class="info-item-text">' +
             '<div class="info-item-value" style="font-size:12px;">' + new Date(data.timestamp).toLocaleString('ro-RO') + '</div>' +
-            '<div class="info-item-label">Ultimul pachet · ' + timeAgoPhrase(new Date(data.timestamp)) + '</div>' +
+            '<div class="info-item-label">Ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp)) + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="info-item">' +
