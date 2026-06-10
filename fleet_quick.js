@@ -21,7 +21,7 @@ function detectIntent(message) {
 }
 
 function fmtTime(ts) { try { return new Date(ts).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '' + ts; } }
-function online(v, now) { return v.ultima_actualizare && (now - new Date(v.ultima_actualizare).getTime()) < 30 * 60000; }
+function online(v, now) { return v.ultima_actualizare && (now - new Date(v.ultima_actualizare).getTime()) < 65 * 60000; } // 1h + tampon (parcate care trimit o data/ora = online/oprit)
 function moving(v, now) { return online(v, now) && (v.viteza_kmh || 0) > 3; }
 function head(v) { return '🚚 **' + (v.nume || '?') + '**' + (v.nr ? ' (' + v.nr + ')' : ''); }
 function loc(v) { return '• 📍 ' + (v.locatie || 'locație indisponibilă'); }

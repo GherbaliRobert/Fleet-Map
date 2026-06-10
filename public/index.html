@@ -1694,7 +1694,7 @@
         <div class="filter-bar">
           <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">Toate</button>
           <button class="filter-btn" data-filter="online" onclick="setFilter('online', this)">Online</button>
-          <button class="filter-btn" data-filter="offline" onclick="setFilter('offline', this)">Oprite</button>
+          <button class="filter-btn" data-filter="offline" onclick="setFilter('offline', this)">Offline</button>
           <button class="filter-btn" data-filter="moving" onclick="setFilter('moving', this)">În mișcare</button>
         </div>
 
@@ -2177,7 +2177,7 @@
           <div class="report-stat"><div class="report-stat-value" id="dk-total">0</div><div class="report-stat-label">Total vehicule</div></div>
           <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="dk-online" style="color:var(--green);">0</div><div class="report-stat-label">Online</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-moving">0</div><div class="report-stat-label">În mișcare</div></div>
-          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-offline" style="color:var(--red);">0</div><div class="report-stat-label">Oprite</div></div>
+          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-offline" style="color:var(--red);">0</div><div class="report-stat-label">Offline</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-km">0</div><div class="report-stat-label">Km azi</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-fuel">0</div><div class="report-stat-label">Consum azi (L)</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-engine">0</div><div class="report-stat-label">Ore motor</div></div>
@@ -4748,7 +4748,7 @@
         var avail = vs.filter(function (v) { return v.available; }).length;
         box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + avail + ' disponibile · ' + vs.length + ' total · ETA estimativ (linie dreaptă)</div>' + vs.map(function (v, i) {
           var col = v.available ? 'var(--green)' : 'var(--text-muted)';
-          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'oprit');
+          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'offline');
           return '<div style="border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:6px;background:var(--bg-dark);">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
             + '<span style="font-weight:600;font-size:12px;">' + (i + 1) + '. ' + x(v.name) + '</span>'
@@ -5293,7 +5293,7 @@
     function isDeviceOnline(device) {
       if (!device.timestamp) return false;
       const age = Date.now() - new Date(device.timestamp).getTime();
-      return age < 5 * 60 * 1000; // 5 minutes
+      return age < 65 * 60 * 1000; // 65 min (1h + tampon: trackerele parcate care trimit o dată/oră rămân „online"/Oprit; „Offline" doar la >1h fără date)
     }
 
     // ─── Filtering & Search ───
@@ -5355,16 +5355,13 @@
         const isOnline = isDeviceOnline(d);
         const name = d.name || d.imei;
         const plate = d.plate || '';
-        const timeAgo = getTimeAgo(new Date(d.timestamp));
+        const timeAgo = timeAgoPhrase(new Date(d.timestamp));
         const ignOn = d.io?.ignition;
         const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
         const hasIgnition = d.io?.ignition === 1 || d.io?.ignition === true;
-        let statusClass = 'offline';
-        if (isOnline) {
-          if (isMoving) statusClass = 'moving';
-          else if (hasIgnition) statusClass = 'idle';
-        }
+        let statusClass = 'offline';                 // 'offline' DOAR la >1h fără date
+        if (isOnline) statusClass = isMoving ? 'moving' : 'idle';   // online (≤1h): în mișcare / oprit
 
         return '' +
           '<div class="device-card ' + (isActive ? 'active' : '') + '" onclick="selectDeviceMobile(\'' + d.imei + '\')">' +
@@ -5638,24 +5635,24 @@
       const rpm = io.can_engine_rpm !== undefined ? io.can_engine_rpm + ' RPM' : '-';
       const coolant = io.can_engine_temp !== undefined ? io.can_engine_temp.toFixed(1) + '\u00B0C' : '-';
 
-      // Status bar
+      // Status bar — „Offline" DOAR la >1h fără date; altfel Oprit/Staționare/În mișcare
       let statusClass, statusText, statusDetail;
       if (!isOnline) {
         statusClass = 'off';
-        statusText = 'Oprit';
-        statusDetail = getTimeAgo(new Date(data.timestamp));
+        statusText = 'Offline';
+        statusDetail = 'ultimul pachet ' + timeAgoPhrase(new Date(data.timestamp));
       } else if (isMoving) {
         statusClass = 'moving';
         statusText = 'În mișcare';
         statusDetail = data.speed + ' km/h';
       } else if (hasIgnition) {
         statusClass = 'idle';
-        statusText = 'Stationare (contact ON)';
-        statusDetail = '';
+        statusText = 'Staționare (contact pornit)';
+        statusDetail = timeAgoPhrase(new Date(data.timestamp));
       } else {
-        statusClass = 'off';
-        statusText = 'Contact decuplat';
-        statusDetail = '';
+        statusClass = 'idle';
+        statusText = 'Oprit';
+        statusDetail = timeAgoPhrase(new Date(data.timestamp));
       }
 
       const grid = document.getElementById('detail-info-grid');
@@ -5679,7 +5676,7 @@
           '<div class="info-item-icon blue"><i class="fas fa-calendar-alt"></i></div>' +
           '<div class="info-item-text">' +
             '<div class="info-item-value" style="font-size:12px;">' + new Date(data.timestamp).toLocaleString('ro-RO') + '</div>' +
-            '<div class="info-item-label">Data</div>' +
+            '<div class="info-item-label">Ultimul pachet · ' + timeAgoPhrase(new Date(data.timestamp)) + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="info-item">' +
@@ -6571,6 +6568,7 @@
       if (seconds < 86400) return Math.floor(seconds / 3600) + ' ore';
       return Math.floor(seconds / 86400) + ' zile';
     }
+    function timeAgoPhrase(date) { var t = getTimeAgo(date); return t === 'acum' ? 'chiar acum' : 'acum ' + t; }
 
     function formatDateLocal(date) {
       return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -7567,7 +7565,7 @@
         // Fleet table
         const fleetHtml = (d.devices || []).map(function(v) {
           const statusColor = v.isMoving ? 'var(--green)' : (v.isOnline ? 'var(--accent)' : 'var(--red)');
-          const statusText = v.isMoving ? 'Miscare' : (v.isOnline ? 'Stationare' : 'Oprit');
+          const statusText = v.isMoving ? 'Mișcare' : (v.isOnline ? 'Oprit' : 'Offline');
           const speedColor = v.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
           return '<tr>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + (v.name || v.imei) + (v.plate ? ' <span style="color:var(--text-muted);font-size:10px;">' + v.plate + '</span>' : '') + '</td>' +
@@ -7622,7 +7620,7 @@
       // 1. Donut "Status flota" — Online (stationare) / Moving / Offline
       const stationary = Math.max(0, (d.onlineCount || 0) - (d.movingCount || 0));
       createChart('chart-dash-status', 'doughnut', {
-        labels: ['În mișcare', 'Stationare', 'Oprit'],
+        labels: ['În mișcare', 'Oprit', 'Offline'],
         datasets: [{
           data: [d.movingCount || 0, stationary, d.offlineCount || 0],
           backgroundColor: [chartColors.green, chartColors.accent, chartColors.red],
@@ -8666,7 +8664,7 @@
       return '<span style="color:' + onlineColor + ';font-weight:600;" title="Online ultimele 5 min">' + h.online + '/' + h.live + '</span>' +
         ' · <span style="color:' + gsmColor + ';" title="Semnal GSM mediu (0-5)">📶 ' + gsmTxt + '</span>' +
         ' · <span style="color:' + fixColor + ';" title="Procent fix GPS bun (≥4 sat.)">🛰 ' + fixTxt + '</span>' +
-        (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >30 min">⚠ ' + h.offline30 + '</span>' : '') +
+        (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >1h">⚠ ' + h.offline30 + '</span>' : '') +
         (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
     }
     window.raxLoadDashboard = async function raxLoadDashboard(targetId) {
@@ -8692,7 +8690,7 @@
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-satellite-dish"></i> Stare flotă (live)</div>';
         html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
           _raxCard('Online (5m)', (th.online || 0) + '/' + (th.live || 0)) +
-          _raxCard('Offline >30m', th.offline30 || 0) +
+          _raxCard('Offline >1h', th.offline30 || 0) +
           _raxCard('Semnal slab', th.weak_signal || 0) +
           _raxCard('Semnal GSM mediu', th.avg_gsm == null ? '—' : (th.avg_gsm + '/5')) +
           _raxCard('Sateliți medii', th.avg_sats == null ? '—' : th.avg_sats) +

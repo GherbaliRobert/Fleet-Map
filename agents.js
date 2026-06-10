@@ -9,7 +9,7 @@ try { segmentTrack = require('./reports').segmentTrack; } catch (e) { segmentTra
 const SPEED_LIMIT = 90;        // km/h
 const IDLE_MIN_MINUTES = 120;  // ralanti prelungit (RA Watch)
 const FUEL_DROP_L = 15;        // scădere suspectă combustibil
-const OFFLINE_MIN = 30;        // minute fără poziție = offline
+const OFFLINE_MIN = 60;        // minute fără poziție = offline (>1h; parcate care trimit o dată/oră NU sunt offline)
 const FUEL_PRICE = 7.5;        // lei/L (estimare pentru costuri)
 const IDLE_BURN_LPH = 1.5;     // L/h consum la ralanti (estimare)
 const SERVICE_SOON_KM = 1500;  // prag „revizie în curând"
@@ -181,7 +181,7 @@ async function raClient(ctx) {
 // ─── RA Dispatch — alocare curse (disponibilitate + echilibrare flotă) ───
 async function raDispatch(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; const now = Date.now();
-  const ONLINE_MS = 30 * 60000;
+  const ONLINE_MS = 65 * 60000; // 1h + tampon (parcate care trimit o dată/oră rămân disponibile)
   const available = [];
   for (const imei of imeis) {
     const live = livePositions.get(imei); if (!live || !live.timestamp) continue;
