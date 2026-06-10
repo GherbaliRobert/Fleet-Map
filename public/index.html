@@ -1650,6 +1650,7 @@
         <button class="nav-item fleet-only" data-view="management" onclick="showView('management')"><i class="fas fa-pen-to-square"></i><span>Management</span></button>
         <button class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
         <button class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
+        <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
         <button class="nav-item" id="nav-admin" data-view="administrare" onclick="showView('administrare')" style="display:none;"><i class="fas fa-gear"></i><span>Administrare</span></button>
       </nav>
 
@@ -1671,7 +1672,7 @@
         <div class="filter-bar">
           <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">Toate</button>
           <button class="filter-btn" data-filter="online" onclick="setFilter('online', this)">Online</button>
-          <button class="filter-btn" data-filter="offline" onclick="setFilter('offline', this)">Offline</button>
+          <button class="filter-btn" data-filter="offline" onclick="setFilter('offline', this)">Oprite</button>
           <button class="filter-btn" data-filter="moving" onclick="setFilter('moving', this)">În mișcare</button>
         </div>
 
@@ -2075,7 +2076,7 @@
           <div class="report-stat"><div class="report-stat-value" id="dk-total">0</div><div class="report-stat-label">Total vehicule</div></div>
           <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="dk-online" style="color:var(--green);">0</div><div class="report-stat-label">Online</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-moving">0</div><div class="report-stat-label">În mișcare</div></div>
-          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-offline" style="color:var(--red);">0</div><div class="report-stat-label">Offline</div></div>
+          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-offline" style="color:var(--red);">0</div><div class="report-stat-label">Oprite</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-km">0</div><div class="report-stat-label">Km azi</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-fuel">0</div><div class="report-stat-label">Consum azi (L)</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-engine">0</div><div class="report-stat-label">Ore motor</div></div>
@@ -2336,11 +2337,13 @@
           <button class="close-btn" onclick="closeUsersModal()" style="position:static;font-size:18px;">&#10005;</button>
         </span>
       </h2>
-      <div id="admin-tabs" style="display:none;gap:6px;margin-bottom:12px;">
-        <button class="btn-sm" id="admin-tab-btn-platform" onclick="raxAdminTab('platform')"><i class="fas fa-chart-line"></i> Dashboard platformă</button>
+      <div id="admin-tabs" style="display:none;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="btn-sm" id="admin-tab-btn-companies" onclick="raxAdminTab('companies')"><i class="fas fa-building"></i> Companii</button>
+        <button class="btn-sm" id="admin-tab-btn-accounts" onclick="raxAdminTab('accounts')"><i class="fas fa-users-gear"></i> Conturi</button>
         <button class="btn-sm" id="admin-tab-btn-users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
       </div>
-      <div id="admin-tab-platform" style="display:none;"></div>
+      <div id="admin-tab-companies" style="display:none;"></div>
+      <div id="admin-tab-accounts" style="display:none;"></div>
       <div id="admin-tab-users">
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
@@ -2498,6 +2501,8 @@
         <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
         <button class="admin-tab" data-atab="alerts" onclick="switchAdminTab('alerts')"><i class="fas fa-bell"></i> Alerte</button>
         <button class="admin-tab" data-atab="maintenance" onclick="switchAdminTab('maintenance')"><i class="fas fa-wrench"></i> Mentenanță</button>
+        <button class="admin-tab" data-atab="tacho" onclick="switchAdminTab('tacho')"><i class="fas fa-id-card"></i> Tahograf</button>
+        <button class="admin-tab" data-atab="etransport" onclick="switchAdminTab('etransport')"><i class="fas fa-truck-fast"></i> e-Transport</button>
         <button class="admin-tab" data-atab="settings" onclick="switchAdminTab('settings')"><i class="fas fa-gear"></i> Setări</button>
       </div>
       <div style="overflow-y:auto;flex:1;padding-right:4px;">
@@ -2621,7 +2626,20 @@
           </div>
         </div>
 
+        <div id="atab-tacho" class="admin-tab-content" style="display:none;"></div>
+        <div id="atab-etransport" class="admin-tab-content" style="display:none;"></div>
+
       </div>
+    </div>
+  </div>
+
+  <!-- ═══ Dashboard platformă (super-admin, din meniul stânga) ═══ -->
+  <div id="platform-dash-modal" class="modal-overlay">
+    <div class="modal" style="width:1080px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
+      <h2><span><i class="fas fa-gauge-high" style="margin-right:8px;color:var(--accent);"></i> Dashboard platformă</span>
+        <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <div id="platform-dash-body" style="overflow-y:auto;flex:1;padding-right:4px;"><div class="rax-co-meta">Se încarcă…</div></div>
     </div>
   </div>
 
@@ -3173,16 +3191,27 @@
     let ueUsersCache = [];
 
     // ─── Administrare: taburi (super-admin) ───
+    // Mută o singură dată corpul unui overlay rax (păstrând ID-urile) în containerul tabului.
+    function _raxMountBody(overlaySel, targetId) {
+      var t = document.getElementById(targetId); if (!t) return;
+      var body = document.querySelector(overlaySel + ' .rax-body');
+      if (body && body.parentNode !== t) t.appendChild(body);
+    }
     window.raxAdminTab = function (name) {
-      var isP = (name === 'platform');
-      var tp = document.getElementById('admin-tab-platform'), tu = document.getElementById('admin-tab-users');
-      if (tp) tp.style.display = isP ? 'block' : 'none';
-      if (tu) tu.style.display = isP ? 'none' : 'block';
-      var bp = document.getElementById('admin-tab-btn-platform'), bu = document.getElementById('admin-tab-btn-users');
-      [bp, bu].forEach(function (b) { if (b) { b.style.background = ''; b.style.color = ''; b.style.fontWeight = ''; } });
-      var act = isP ? bp : bu;
-      if (act) { act.style.background = 'var(--accent)'; act.style.color = '#06210F'; act.style.fontWeight = '700'; }
-      if (isP && window.raxLoadDashboard) window.raxLoadDashboard('admin-tab-platform');
+      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users' };
+      Object.keys(map).forEach(function (k) {
+        var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
+        var b = document.getElementById('admin-tab-btn-' + k);
+        if (b) { var on = (k === name); b.style.background = on ? 'var(--accent)' : ''; b.style.color = on ? '#06210F' : ''; b.style.fontWeight = on ? '700' : ''; }
+      });
+      if (name === 'companies') {
+        _raxMountBody('#rax-co-overlay', 'admin-tab-companies');
+        if (window.raxLoadCompanies) window.raxLoadCompanies();
+        if (window.raxLoadUnassigned) window.raxLoadUnassigned();
+      } else if (name === 'accounts') {
+        _raxMountBody('#rax-accounts-overlay', 'admin-tab-accounts');
+        if (window.raxLoadAccounts) window.raxLoadAccounts();
+      }
     };
 
     // ─── Users (admin) ───
@@ -3190,9 +3219,10 @@
       document.getElementById('users-modal').classList.add('visible');
       await loadUsers();
       var isSuper = !!(currentUser && currentUser.role === 'superadmin');
+      ['admin-tab-btn-companies', 'admin-tab-btn-accounts'].forEach(function (id) { var b = document.getElementById(id); if (b) b.style.display = isSuper ? '' : 'none'; });
       var tabs = document.getElementById('admin-tabs');
       if (tabs) tabs.style.display = isSuper ? 'flex' : 'none';
-      raxAdminTab(isSuper ? 'platform' : 'users'); // super: arată întâi dashboard-ul platformei
+      raxAdminTab(isSuper ? 'companies' : 'users'); // super: începe cu Companii; alți admini: doar Utilizatori
     }
 
     function closeUsersModal() {
@@ -3486,6 +3516,8 @@
       else if (tab === 'alerts') loadAlerts();
       else if (tab === 'maintenance') loadMaintenance();
       else if (tab === 'settings') loadSettingsTab();
+      else if (tab === 'tacho') { _raxMountBody('#rax-tacho-overlay', 'atab-tacho'); if (window.raxLoadTacho) window.raxLoadTacho(); }
+      else if (tab === 'etransport') { _raxMountBody('#rax-et-overlay', 'atab-etransport'); if (window.raxLoadEt) window.raxLoadEt(); }
     }
 
     // ─── Tab Setări — preferințe UI per user + default-uri pe companie ───
@@ -4603,7 +4635,7 @@
         var avail = vs.filter(function (v) { return v.available; }).length;
         box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + avail + ' disponibile · ' + vs.length + ' total · ETA estimativ (linie dreaptă)</div>' + vs.map(function (v, i) {
           var col = v.available ? 'var(--green)' : 'var(--text-muted)';
-          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'offline');
+          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'oprit');
           return '<div style="border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:6px;background:var(--bg-dark);">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
             + '<span style="font-weight:600;font-size:12px;">' + (i + 1) + '. ' + x(v.name) + '</span>'
@@ -4824,8 +4856,8 @@
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal' };
+    const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash' };
     let currentView = 'localizare';
     function showView(name) {
       currentView = name;
@@ -4873,11 +4905,14 @@
     function closeDashboard() { showView('localizare'); }
     function closeAdmin() { document.getElementById('admin-modal').classList.remove('as-view', 'visible'); showView('localizare'); }
     function closeUsersModal() { showView('localizare'); }
+    function openPlatformDash() { if (window.raxLoadDashboard) window.raxLoadDashboard('platform-dash-body'); }
 
     // Gating UI după permisiuni (override: nav Administrare + acțiuni de flotă)
     function applyPermissionsUI() {
       const adminNav = document.getElementById('nav-admin');
       if (adminNav) adminNav.style.display = can('manageUsers') ? '' : 'none';
+      const dashNav = document.getElementById('nav-dashboard');
+      if (dashNav) dashNav.style.display = (currentUser && currentUser.role === 'superadmin') ? '' : 'none';
       document.body.classList.toggle('no-fleet', !can('manageFleet'));
     }
 
@@ -5470,7 +5505,7 @@
       let statusClass, statusText, statusDetail;
       if (!isOnline) {
         statusClass = 'off';
-        statusText = 'Offline';
+        statusText = 'Oprit';
         statusDetail = getTimeAgo(new Date(data.timestamp));
       } else if (isMoving) {
         statusClass = 'moving';
@@ -7365,7 +7400,7 @@
         // Fleet table
         const fleetHtml = (d.devices || []).map(function(v) {
           const statusColor = v.isMoving ? 'var(--green)' : (v.isOnline ? 'var(--accent)' : 'var(--red)');
-          const statusText = v.isMoving ? 'Miscare' : (v.isOnline ? 'Stationare' : 'Offline');
+          const statusText = v.isMoving ? 'Miscare' : (v.isOnline ? 'Stationare' : 'Oprit');
           const speedColor = v.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
           return '<tr>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + (v.name || v.imei) + (v.plate ? ' <span style="color:var(--text-muted);font-size:10px;">' + v.plate + '</span>' : '') + '</td>' +
@@ -7420,7 +7455,7 @@
       // 1. Donut "Status flota" — Online (stationare) / Moving / Offline
       const stationary = Math.max(0, (d.onlineCount || 0) - (d.movingCount || 0));
       createChart('chart-dash-status', 'doughnut', {
-        labels: ['În mișcare', 'Stationare', 'Offline'],
+        labels: ['În mișcare', 'Stationare', 'Oprit'],
         datasets: [{
           data: [d.movingCount || 0, stationary, d.offlineCount || 0],
           backgroundColor: [chartColors.green, chartColors.accent, chartColors.red],
@@ -8184,11 +8219,6 @@
   <div id="rax-fabs">
     <div id="rax-actions">
       <div id="rax-co-chip" style="display:none;"></div>
-      <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
-      <button class="rax-fab secondary" id="rax-acc-btn" style="display:none;" onclick="raxOpenAccounts()"><i class="fas fa-users-gear"></i> Conturi</button>
-      <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
-      <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
-      <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
       <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
       <button class="rax-fab" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-robot"></i> Asistent AI</button>
     </div>
@@ -8306,18 +8336,6 @@
     </div>
   </div>
 
-  <div class="rax-overlay" id="rax-sub-overlay">
-    <div class="rax-card">
-      <div class="rax-head"><h3><i class="fas fa-credit-card" style="color:var(--accent)"></i> Abonament</h3><button class="rax-x" onclick="document.getElementById('rax-sub-overlay').classList.remove('open')">&times;</button></div>
-      <div class="rax-body">
-        <div id="rax-sub-current"></div>
-        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 8px;">Planuri</div>
-        <div id="rax-sub-plans"></div>
-        <div id="rax-sub-msg" style="font-size:12px;margin-top:8px;"></div>
-      </div>
-    </div>
-  </div>
-
   <script>
   (function () {
     var me = null, aiEnabled = false, aiHistory = [], companiesCache = [];
@@ -8342,13 +8360,7 @@
       document.body.classList.toggle('is-admin', !!(me && (me.isSuper || (me.permissions && me.permissions.manageUsers))));
       if (!show) return;
       $('rax-ai-btn').style.display = 'flex';
-      $('rax-co-btn').style.display = (me.isSuper ? 'flex' : 'none');
-      $('rax-acc-btn').style.display = (me.isSuper ? 'flex' : 'none');
-      var fleet = !!(me.permissions && me.permissions.manageFleet);
-      $('rax-tacho-btn').style.display = fleet ? 'flex' : 'none';
-      $('rax-et-btn').style.display = fleet ? 'flex' : 'none';
       $('rax-ag-btn').style.display = (me.permissions && me.permissions.viewReports) ? 'flex' : 'none';
-      $('rax-sub-btn').style.display = (me.permissions && me.permissions.manageUsers) ? 'flex' : 'none';
       raxRefreshAgBadge();
       var chip = $('rax-co-chip');
       if (me.company && me.company.name) { chip.style.display = 'block'; chip.innerHTML = (me.company.is_demo ? '🔵 ' : '🏢 ') + esc(me.company.name); }
@@ -8556,7 +8568,7 @@
       try {
         var j = await fetch('/api/ai/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ key: key }) }).then(function (r) { return r.json(); });
         if (j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error; return; }
-        aiEnabled = !!j.enabled; raxLoadDashboard('admin-tab-platform');
+        aiEnabled = !!j.enabled; raxLoadDashboard('platform-dash-body');
       } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
     };
     window.raxSetAiLimit = async function (id, cur) {
@@ -8565,7 +8577,7 @@
       try {
         var j = await fetch('/api/companies/' + id + '/ai-limit', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ limit: (v.trim() === '' ? 0 : parseInt(v)) }) }).then(function (r) { return r.json(); });
         if (j.error) { alert(j.error); return; }
-        raxLoadDashboard('admin-tab-platform');
+        raxLoadDashboard('platform-dash-body');
       } catch (e) { alert('Eroare: ' + e.message); }
     };
 
@@ -8767,6 +8779,9 @@
     };
     function raxAgMeta(k) { return RAX_AGENTS[k] || { name: k || 'Agent', icon: 'fa-robot' }; }
     window.raxOpenAgents = function () { $('rax-ag-overlay').classList.add('open'); $('rax-ag-summary').innerHTML = ''; if (window.loadSuperCompanies) window.loadSuperCompanies(); raxRenderAgChips(); raxLoadFindings(); };
+    // Expune funcțiile de încărcare ca taburile din Administrare/Management să le poată apela din scope-ul principal.
+    window.raxLoadCompanies = raxLoadCompanies; window.raxLoadUnassigned = raxLoadUnassigned;
+    window.raxLoadAccounts = raxLoadAccounts; window.raxLoadTacho = raxLoadTacho; window.raxLoadEt = raxLoadEt;
     window.raxReload = function () { raxLoadFindings(); raxRefreshAgBadge(); };
 
     // ── Abonament (facturare) ──
