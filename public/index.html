@@ -8535,17 +8535,11 @@
       document.body.classList.toggle('is-admin', !!(me && (me.isSuper || (me.permissions && me.permissions.manageUsers))));
       if (!show) return;
       var feats = me.features || {};
-      var perms = me.permissions || {};
-      var fleet = !!perms.manageFleet;
-      // Super-admin: Companii + Conturi (Dashboard e in nav-ul stang ca 'platform-dash-modal')
-      $('rax-co-btn').style.display = me.isSuper ? 'flex' : 'none';
-      $('rax-acc-btn').style.display = me.isSuper ? 'flex' : 'none';
-      // Feature-uri per companie (controlate de plan): Tahograf, e-Transport, Abonament, Agenți AI, Asistent AI
-      $('rax-tacho-btn').style.display = (fleet && feats.tacho !== false) ? 'flex' : 'none';
-      $('rax-et-btn').style.display = (fleet && feats.etransport !== false) ? 'flex' : 'none';
-      $('rax-sub-btn').style.display = perms.manageUsers ? 'flex' : 'none';
+      // FAB compact: DOAR „Asistent AI" rămâne (restul acțiunilor se accesează din meniul stâng — Administrare, Management, Rapoarte etc.)
+      ['rax-co-btn', 'rax-acc-btn', 'rax-tacho-btn', 'rax-et-btn', 'rax-sub-btn', 'rax-ag-btn'].forEach(function (id) {
+        var el = $(id); if (el) el.style.display = 'none';
+      });
       $('rax-ai-btn').style.display = (feats.ai_assistant !== false) ? 'flex' : 'none';
-      $('rax-ag-btn').style.display = ((feats.agents !== false) && perms.viewReports) ? 'flex' : 'none';
       raxRefreshAgBadge();
       var chip = $('rax-co-chip');
       if (me.company && me.company.name) { chip.style.display = 'block'; chip.innerHTML = (me.company.is_demo ? '🔵 ' : '🏢 ') + esc(me.company.name); }
