@@ -7864,6 +7864,7 @@
     <div id="rax-actions">
       <div id="rax-co-chip" style="display:none;"></div>
       <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
+      <button class="rax-fab secondary" id="rax-dash-btn" style="display:none;" onclick="raxOpenDashboard()"><i class="fas fa-chart-line"></i> Dashboard</button>
       <button class="rax-fab secondary" id="rax-acc-btn" style="display:none;" onclick="raxOpenAccounts()"><i class="fas fa-users-gear"></i> Conturi</button>
       <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
       <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
@@ -7908,6 +7909,13 @@
           <div id="rax-co-unassigned" class="rax-co-meta" style="margin-top:6px;">—</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="rax-overlay" id="rax-dash-overlay">
+    <div class="rax-card" style="max-width:640px;">
+      <div class="rax-head"><h3><i class="fas fa-chart-line" style="color:var(--accent)"></i> Dashboard platformă (super-admin)</h3><button class="rax-x" onclick="raxCloseDashboard()">&times;</button></div>
+      <div class="rax-body" id="rax-dash-body"><div class="rax-co-meta">Se încarcă…</div></div>
     </div>
   </div>
 
@@ -8016,6 +8024,7 @@
       if (!show) return;
       $('rax-ai-btn').style.display = 'flex';
       $('rax-co-btn').style.display = (me.isSuper ? 'flex' : 'none');
+      $('rax-dash-btn').style.display = (me.isSuper ? 'flex' : 'none');
       $('rax-acc-btn').style.display = (me.isSuper ? 'flex' : 'none');
       var fleet = !!(me.permissions && me.permissions.manageFleet);
       $('rax-tacho-btn').style.display = fleet ? 'flex' : 'none';
@@ -8106,6 +8115,39 @@
     // ── Companii ──
     window.raxOpenCompanies = function () { $('rax-co-overlay').classList.add('open'); raxLoadCompanies(); raxLoadUnassigned(); };
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
+
+    // ─── Dashboard platformă — super-admin ───
+    var RAX_TOK_IN_RATE = 1.0, RAX_TOK_OUT_RATE = 5.0; // $/1M tokeni (Haiku, estimativ — ajustează după prețul real)
+    window.raxOpenDashboard = function () { $('rax-dash-overlay').classList.add('open'); if (window.raxCloseMenu) raxCloseMenu(); raxLoadDashboard(); };
+    window.raxCloseDashboard = function () { $('rax-dash-overlay').classList.remove('open'); };
+    function _raxFmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n)); }
+    function _raxCost(inp, out) { return (Number(inp) || 0) / 1e6 * RAX_TOK_IN_RATE + (Number(out) || 0) / 1e6 * RAX_TOK_OUT_RATE; }
+    function _raxCard(label, val) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--accent);">' + (val == null ? '0' : val) + '</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">' + label + '</div></div>'; }
+    async function raxLoadDashboard() {
+      var box = $('rax-dash-body'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var d = await fetch('/api/admin/overview?days=30', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var t = d.totals || {};
+        var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">' +
+          _raxCard('Companii', t.companies) + _raxCard('Vehicule', t.vehicles) + _raxCard('Utilizatori', t.users) +
+          _raxCard('Tokeni IN (30z)', _raxFmt(t.ai_input)) + _raxCard('Tokeni OUT (30z)', _raxFmt(t.ai_output)) + _raxCard('Apeluri AI', t.ai_calls) +
+          '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI estimat (30z): <strong style="color:var(--accent);">$' + _raxCost(t.ai_input, t.ai_output).toFixed(2) + '</strong> · model ' + esc(d.model || '') + ' · <em>estimativ ($' + RAX_TOK_IN_RATE + '/$' + RAX_TOK_OUT_RATE + ' per 1M in/out)</em></div>';
+        var rows = (d.companies || []).map(function (c) {
+          return '<tr style="border-bottom:1px solid var(--border);">' +
+            '<td style="padding:6px 8px;">' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">demo</span>' : '') + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + c.vehicles + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + c.users + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(c.ai_input) + ' / ' + _raxFmt(c.ai_output) + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;">' + c.ai_calls + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(c.ai_input, c.ai_output).toFixed(3) + '</td></tr>';
+        }).join('');
+        html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th></tr></thead><tbody>' +
+          (rows || '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
+        box.innerHTML = html;
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcare.</div>'; }
+    }
 
     // ─── Conturi (toate companiile) — super-admin ───
     var _raxAccounts = [];

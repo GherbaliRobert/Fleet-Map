@@ -1160,7 +1160,7 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
     const context = 'STARE FLOTĂ (live):\n' + JSON.stringify(snapshot) + '\n\nCURSE AZI (km/vehicul):\n' + JSON.stringify(today);
     const history = Array.isArray(req.body.history) ? req.body.history.slice(-6).filter(m => m && m.role && m.content) : [];
     const messages = [...history, { role: 'user', content: context + '\n\nÎntrebarea utilizatorului: ' + message }];
-    const reply = await ai.callClaude({ system, messages, maxTokens: 700 });
+    const reply = await ai.callClaude({ system, messages, maxTokens: 700, onUsage: u => db.recordAiUsage(req.companyId, 'chat', u).catch(() => {}) });
     auditReq(req, 'ai_chat', 'assistant', null, { len: message.length });
     res.json({ reply });
   } catch (e) {
@@ -1175,7 +1175,7 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
     if (!report) return res.status(400).json({ error: 'Lipsește raportul' });
     const compact = JSON.stringify(report).slice(0, 7000);
     const system = 'Ești analist de flotă. Rezumi un raport în limba română, în stil executiv: 4-6 puncte scurte, cu cifrele cheie (km, ore, opriri, consum, viteze). Doar pe baza datelor. Fără introduceri lungi.';
-    const summary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Tip raport: ' + (req.body.type || '') + '\nDate (JSON):\n' + compact + '\n\nScrie rezumatul executiv:' }], maxTokens: 600 });
+    const summary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Tip raport: ' + (req.body.type || '') + '\nDate (JSON):\n' + compact + '\n\nScrie rezumatul executiv:' }], maxTokens: 600, onUsage: u => db.recordAiUsage(req.companyId, 'report', u).catch(() => {}) });
     auditReq(req, 'ai_report', 'assistant', null, { type: req.body.type });
     res.json({ summary });
   } catch (e) {
@@ -1205,7 +1205,7 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     if (ai && ai.aiEnabled() && findings.length) {
       try {
         const system = 'Ești coordonatorul agenților AI ai unei flote de transport (RA Watch, RA Care, RA Optimize, RA Compliance, RA Client). Primești constatările lor de azi. Scrie un rezumat scurt (2-4 propoziții) în limba română care prioritizează urgențele (furt combustibil, service depășit, încălcarea orelor de condus) și recomandă acțiuni concrete. Fără introduceri lungi.';
-        aiSummary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Constatări:\n' + JSON.stringify(findings.map(f => ({ a: f.agent, sev: f.severity, t: f.title }))) }], maxTokens: 400 });
+        aiSummary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Constatări:\n' + JSON.stringify(findings.map(f => ({ a: f.agent, sev: f.severity, t: f.title }))) }], maxTokens: 400, onUsage: u => db.recordAiUsage(storeCompany, 'agents', u).catch(() => {}) });
       } catch (e) { /* AI opțional */ }
     }
     auditReq(req, 'run', 'agent', which, { found: findings.length, stored });
@@ -1274,6 +1274,39 @@ async function runAgentsWorker() {
 // ─── MULTI-TENANT: Companii (doar super-admin) ───
 app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.getCompanies()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Dashboard super-admin: stat per companie (vehicule, useri) + consum tokeni AI + totaluri
+app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const days = req.query.days ? parseInt(req.query.days) : 30;
+    const [companies, usage] = await Promise.all([db.getCompanies(), db.getAiUsageByCompany(days)]);
+    const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0;
+    usage.forEach(function (u) {
+      usageMap[u.company_id == null ? 'null' : u.company_id] = u;
+      totIn += Number(u.input_tokens) || 0; totOut += Number(u.output_tokens) || 0; totCalls += Number(u.calls) || 0;
+    });
+    const rows = companies.map(function (c) {
+      const u = usageMap[c.id] || {};
+      return {
+        id: c.id, name: c.name, is_demo: !!c.is_demo, plan: c.plan || null,
+        vehicles: c.device_count || 0, users: c.user_count || 0,
+        ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0
+      };
+    });
+    const pf = usageMap['null'] || {};
+    res.json({
+      days: days, model: ai.AI_MODEL,
+      companies: rows,
+      platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0 },
+      totals: {
+        companies: companies.length,
+        vehicles: companies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
+        users: companies.reduce(function (s, c) { return s + (c.user_count || 0); }, 0),
+        ai_input: totIn, ai_output: totOut, ai_calls: totCalls
+      }
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
   try {

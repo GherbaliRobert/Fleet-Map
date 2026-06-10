@@ -544,6 +544,19 @@ async function initDb() {
       )
     `);
 
+    // Consum tokeni AI (per companie) — pentru dashboard-ul super-adminului
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_usage (
+        id BIGSERIAL PRIMARY KEY,
+        company_id INTEGER,
+        kind VARCHAR(20),
+        input_tokens INTEGER DEFAULT 0,
+        output_tokens INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_company ON ai_usage (company_id, created_at)`);
+
     // Agenți AI — constatări/recomandări (RA Watch etc.)
     await client.query(`
       CREATE TABLE IF NOT EXISTS agent_findings (
@@ -599,6 +612,30 @@ async function getCompanies() {
       (SELECT COUNT(*)::int FROM devices d WHERE d.company_id = c.id) AS device_count,
       (SELECT COUNT(*)::int FROM users u WHERE u.company_id = c.id) AS user_count
     FROM companies c ORDER BY c.created_at`);
+  return r.rows;
+}
+
+// ─── Consum AI (tokeni) per companie ───
+async function recordAiUsage(companyId, kind, usage) {
+  if (!usage) return;
+  const inp = parseInt(usage.input_tokens) || 0;
+  const out = parseInt(usage.output_tokens) || 0;
+  if (!inp && !out) return;
+  await pool.query(
+    'INSERT INTO ai_usage (company_id, kind, input_tokens, output_tokens) VALUES ($1, $2, $3, $4)',
+    [companyId != null ? companyId : null, String(kind || 'ai').slice(0, 20), inp, out]
+  );
+}
+async function getAiUsageByCompany(sinceDays) {
+  const days = parseInt(sinceDays);
+  let where = '', params = [];
+  if (days > 0) { params.push(new Date(Date.now() - days * 86400000).toISOString()); where = 'WHERE created_at >= $1'; }
+  const r = await pool.query(
+    `SELECT company_id,
+       COALESCE(SUM(input_tokens), 0)::bigint AS input_tokens,
+       COALESCE(SUM(output_tokens), 0)::bigint AS output_tokens,
+       COUNT(*)::int AS calls
+     FROM ai_usage ${where} GROUP BY company_id`, params);
   return r.rows;
 }
 async function getCompanyById(id) {
@@ -1552,6 +1589,7 @@ module.exports = {
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
+  recordAiUsage, getAiUsageByCompany,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
