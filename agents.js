@@ -28,6 +28,12 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 function roDate(d) { try { return new Date(d).toLocaleDateString('ro-RO'); } catch (e) { return '' + d; } }
 
+// Limita de viteză efectivă: per-vehicul dacă există, altfel fallback SPEED_LIMIT.
+async function _vehLimit(ctx, imei) {
+  if (!ctx || !ctx.db || !ctx.db.getDeviceFull) return SPEED_LIMIT;
+  try { const d = await ctx.db.getDeviceFull(imei); return (d && d.speed_limit) ? Number(d.speed_limit) : SPEED_LIMIT; } catch (e) { return SPEED_LIMIT; }
+}
+
 // ─── RA Watch — monitorizare 24/7 (anomalii operaționale) ───
 async function raWatch(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; const now = Date.now();
@@ -42,9 +48,10 @@ async function raWatch(ctx) {
 
     const pts = await ctx.hist(imei); if (!pts.length) continue;
 
+    const limit = await _vehLimit(ctx, imei);
     let over = 0, wasOver = false;
-    for (const p of pts) { const o = (p.speed || 0) > SPEED_LIMIT; if (o && !wasOver) over++; wasOver = o; }
-    if (over >= 3) findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'speed_' + imei, title: name + ': ' + over + ' depășiri de viteză azi', body: 'Peste ' + SPEED_LIMIT + ' km/h. Recomandare: avertizează șoferul.' });
+    for (const p of pts) { const o = (p.speed || 0) > limit; if (o && !wasOver) over++; wasOver = o; }
+    if (over >= 3) findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'speed_' + imei, title: name + ': ' + over + ' depășiri de viteză azi', body: 'Peste ' + limit + ' km/h (limita vehiculului). Recomandare: avertizează șoferul.' });
 
     let idleStart = null, idleMaxMin = 0;
     for (const p of pts) {
@@ -102,13 +109,14 @@ async function raOptimize(ctx) {
   for (const imei of imeis) {
     const live = livePositions.get(imei); const name = nameOf(live, imei);
     const pts = await ctx.hist(imei); if (pts.length < 5) continue;
+    const limit = await _vehLimit(ctx, imei);
     let km = 0, accel = 0, brake = 0, hardTurn = 0, speedOverSec = 0, idleSec = 0, driveSec = 0;
     for (let i = 1; i < pts.length; i++) {
       const pr = pts[i - 1], p = pts[i]; const dt = (tms(p) - tms(pr)) / 1000;
       if (dt <= 0 || dt > 300) continue;
       const dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dist < 10) km += dist;
       const sp = p.speed || 0, spPr = pr.speed || 0;
-      if (sp > SPEED_LIMIT) speedOverSec += dt;
+      if (sp > limit) speedOverSec += dt;
       if (sp > 3) driveSec += dt; else if (io(p).ignition === 1) idleSec += dt;
       if (dt <= 30) { const a = (sp - spPr) / dt; if (a > 7) accel++; if (a < -9) brake++; if (sp > 25) { let da = Math.abs((p.angle || 0) - (pr.angle || 0)); if (da > 180) da = 360 - da; if (da / dt > 25) hardTurn++; } }
     }

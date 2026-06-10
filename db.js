@@ -557,6 +557,15 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_company ON ai_usage (company_id, created_at)`);
 
+    // Preferințe UI per user (toggle-uri: overspeed_heatmap, replay_marker, etc.) — separat de notification_prefs ca să nu interfere
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ui_prefs (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        prefs JSONB NOT NULL DEFAULT '{}',
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
     // Agenți AI — constatări/recomandări (RA Watch etc.)
     await client.query(`
       CREATE TABLE IF NOT EXISTS agent_findings (
@@ -1222,6 +1231,36 @@ async function getNotificationPrefs(userId) {
 async function setNotificationPrefs(userId, prefs) {
   await pool.query('INSERT INTO notification_prefs (user_id, prefs) VALUES ($1,$2) ON CONFLICT (user_id) DO UPDATE SET prefs = EXCLUDED.prefs', [userId, JSON.stringify(prefs)]);
 }
+// ─── Preferințe UI (per user) + settings companie (default-uri) ───
+async function getUiPrefs(userId) {
+  const r = await pool.query('SELECT prefs FROM ui_prefs WHERE user_id = $1', [userId]);
+  const p = r.rows[0] ? r.rows[0].prefs : {};
+  return typeof p === 'string' ? JSON.parse(p) : (p || {});
+}
+async function setUiPrefs(userId, patch) {
+  // merge non-distructiv: citim, suprapunem, scriem (ca să nu pierdem chei la PUT-uri parțiale)
+  const cur = await getUiPrefs(userId);
+  const next = Object.assign({}, cur, patch || {});
+  await pool.query(
+    'INSERT INTO ui_prefs (user_id, prefs, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (user_id) DO UPDATE SET prefs = EXCLUDED.prefs, updated_at = NOW()',
+    [userId, JSON.stringify(next)]
+  );
+  return next;
+}
+async function getCompanySettings(companyId) {
+  if (companyId == null) return {};
+  const r = await pool.query('SELECT settings FROM companies WHERE id = $1', [companyId]);
+  const s = r.rows[0] ? r.rows[0].settings : {};
+  return typeof s === 'string' ? JSON.parse(s) : (s || {});
+}
+async function setCompanySettings(companyId, patch) {
+  if (companyId == null) return {};
+  const cur = await getCompanySettings(companyId);
+  const next = Object.assign({}, cur, patch || {});
+  await pool.query('UPDATE companies SET settings = $2 WHERE id = $1', [companyId, JSON.stringify(next)]);
+  return next;
+}
+
 async function getAllNotificationPrefs() {
   const r = await pool.query('SELECT user_id, prefs FROM notification_prefs');
   const map = {};
@@ -1646,6 +1685,8 @@ module.exports = {
   ackAllNotifications,
   getNotificationPrefs,
   setNotificationPrefs,
+  getUiPrefs, setUiPrefs,
+  getCompanySettings, setCompanySettings,
   getAllNotificationPrefs,
   savePushSubscription,
   getPushSubscriptions,

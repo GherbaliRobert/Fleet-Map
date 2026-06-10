@@ -1787,7 +1787,27 @@ app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
     const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const to = req.query.to || new Date().toISOString();
     const history = await db.getDeviceHistory(imei, from, to);
-    res.json(history);
+    // Format compatibil cu frontend-ul vechi (array) sau extins (?ext=1: include device.speed_limit + summary overspeed)
+    if (!req.query.ext) return res.json(history);
+    const dev = await db.getDeviceFull(imei).catch(() => null);
+    const limit = dev && dev.speed_limit ? Number(dev.speed_limit) : null;
+    let oc = 0, oMax = 0, oDur = 0;
+    if (limit && history.length > 1) {
+      for (let i = 1; i < history.length; i++) {
+        const p = history[i], sp = Number(p.speed) || 0;
+        if (sp > limit) {
+          oc++;
+          const over = sp - limit; if (over > oMax) oMax = over;
+          const dt = (new Date(p.timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
+          if (dt > 0 && dt < 300) oDur += dt; // ignoră salturi mari (offline)
+        }
+      }
+    }
+    res.json({
+      points: history,
+      device: dev ? { speed_limit: limit, name: dev.name, plate: dev.plate } : null,
+      summary: { overspeedCount: oc, overspeedDurationSec: Math.round(oDur), maxOverKmh: oMax }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -3604,6 +3624,73 @@ app.get('/api/notification-prefs', requireAuth, async (req, res) => {
 app.put('/api/notification-prefs', requireAuth, async (req, res) => {
   try { await db.setNotificationPrefs(req.auth.userId, req.body || {}); invalidatePrefsCache(); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Preferințe UI (per user) cu cascadă: app default → companie → user ───
+// Whitelist de chei UI permise (previne injection în JSONB cu chei arbitrare)
+const UI_PREF_KEYS = ['overspeed_heatmap', 'replay_marker', 'geocoded_address', 'show_driver_names'];
+const UI_PREF_DEFAULTS = { overspeed_heatmap: true, replay_marker: true, geocoded_address: true, show_driver_names: true };
+function _filterUiKeys(obj) {
+  const out = {};
+  if (!obj || typeof obj !== 'object') return out;
+  for (const k of UI_PREF_KEYS) if (Object.prototype.hasOwnProperty.call(obj, k)) out[k] = !!obj[k];
+  return out;
+}
+// Întoarce prefs efective după cascadă + sursa fiecărei chei (app/company/user) pentru UI
+app.get('/api/me/ui-prefs', requireAuth, async (req, res) => {
+  try {
+    const a = getAuth(req);
+    const userPrefs = _filterUiKeys(await db.getUiPrefs(a.userId));
+    const compSettings = await db.getCompanySettings(a.companyId);
+    const compDefaults = _filterUiKeys(compSettings.ui_defaults || {});
+    const effective = Object.assign({}, UI_PREF_DEFAULTS, compDefaults, userPrefs);
+    const source = {};
+    for (const k of UI_PREF_KEYS) source[k] = Object.prototype.hasOwnProperty.call(userPrefs, k) ? 'user' : (Object.prototype.hasOwnProperty.call(compDefaults, k) ? 'company' : 'app');
+    res.json({ effective, userPrefs, companyDefaults: compDefaults, source });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// User-ul setează propriile prefs (merge non-distructiv); trimite null pentru o cheie ca să o resetezi la cascadă
+app.put('/api/me/ui-prefs', requireAuth, async (req, res) => {
+  try {
+    const a = getAuth(req);
+    const patch = {};
+    const body = req.body || {};
+    // Permite și ștergere (null) ca să cadă pe default companiei
+    const cur = await db.getUiPrefs(a.userId);
+    for (const k of UI_PREF_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(body, k)) continue;
+      if (body[k] === null) delete cur[k]; else patch[k] = !!body[k];
+    }
+    // Aplicăm patch peste cur (pe care l-am eventual modificat prin delete pentru reset)
+    const next = Object.assign({}, cur, patch);
+    await db.pool.query(
+      'INSERT INTO ui_prefs (user_id, prefs, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (user_id) DO UPDATE SET prefs = EXCLUDED.prefs, updated_at = NOW()',
+      [a.userId, JSON.stringify(next)]
+    );
+    res.json({ ok: true, userPrefs: next });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Admin companie: setează default-urile UI pentru întreaga companie (cascadă)
+app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
+  try {
+    const a = getAuth(req);
+    if (a.companyId == null) return res.json({ ui_defaults: {} }); // super-admin fără companie
+    const s = await db.getCompanySettings(a.companyId);
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
+  try {
+    const a = getAuth(req);
+    if (a.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
+    const incoming = (req.body && req.body.ui_defaults) || {};
+    const filtered = _filterUiKeys(incoming);
+    const cur = await db.getCompanySettings(a.companyId);
+    const next = Object.assign({}, cur, { ui_defaults: Object.assign({}, cur.ui_defaults || {}, filtered) });
+    await db.setCompanySettings(a.companyId, next);
+    auditReq(req, 'update', 'company_settings', a.companyId, { keys: Object.keys(filtered) });
+    res.json({ ok: true, ui_defaults: next.ui_defaults });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Web Push: cheie publică VAPID + abonare/dezabonare dispozitiv

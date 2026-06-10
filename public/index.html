@@ -1718,6 +1718,7 @@
           <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
           <button class="history-btn" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
         </div>
+        <div id="hp-summary" style="display:none;margin-top:8px;padding:6px 10px;background:var(--bg-dark);border-radius:6px;font-size:12px;"></div>
         <div id="history-playback" style="display:none;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
           <button class="history-btn primary" id="hp-play" onclick="hpToggle()" title="Redă / Pauză"><i class="fas fa-play"></i></button>
           <input type="range" id="hp-slider" min="0" max="0" value="0" oninput="hpSeek(this.value)" style="flex:1;min-width:140px;accent-color:var(--accent);cursor:pointer;">
@@ -2362,6 +2363,7 @@
       </div>
       <div id="ue-access-wrap">
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px;">Acces pe vehicule</div>
+        <div style="font-size:10px;color:var(--text-muted);margin:-4px 0 6px;"><i class="fas fa-info-circle"></i> Roluri admin/manager văd automat toate vehiculele companiei — restricția se aplică doar dispatcher/client/viewer.</div>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
           <button class="btn-sm" type="button" onclick="ueToggleAll('dev', true)">Toate</button>
           <button class="btn-sm" type="button" onclick="ueToggleAll('dev', false)">Niciunul</button>
@@ -2466,6 +2468,7 @@
         <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
         <button class="admin-tab" data-atab="alerts" onclick="switchAdminTab('alerts')"><i class="fas fa-bell"></i> Alerte</button>
         <button class="admin-tab" data-atab="maintenance" onclick="switchAdminTab('maintenance')"><i class="fas fa-wrench"></i> Mentenanță</button>
+        <button class="admin-tab" data-atab="settings" onclick="switchAdminTab('settings')"><i class="fas fa-gear"></i> Setări</button>
       </div>
       <div style="overflow-y:auto;flex:1;padding-right:4px;">
 
@@ -2568,6 +2571,19 @@
             <label><span>Scadent la km</span><input type="number" id="mnt-due-km"></label>
             <label><span>Cost (RON)</span><input type="number" step="0.01" id="mnt-cost"></label>
             <div style="grid-column:1/-1;display:flex;gap:6px;"><button class="btn-sm btn-primary" onclick="saveMaintenance()" style="flex:1;"><i class="fas fa-save"></i> <span id="mnt-btn">Adaugă</span></button><button class="btn-sm" onclick="resetMaintenanceForm()">↺</button></div>
+          </div>
+        </div>
+
+        <!-- Setări -->
+        <div id="atab-settings" class="admin-tab-content" style="display:none;">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-user"></i> Preferințele tale</div>
+          <div id="us-list" style="margin-bottom:6px;"><div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div></div>
+          <p style="font-size:11px;color:var(--text-muted);margin:0 0 16px;">Aceste setări se aplică doar contului tău. Reset → cade pe default-ul companiei.</p>
+
+          <div id="us-company-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-building"></i> Default-uri pentru companie</div>
+            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Aceste valori sunt aplicate userilor companiei care nu și-au setat propriile preferințe.</p>
+            <div id="us-company-list"></div>
           </div>
         </div>
 
@@ -3418,6 +3434,62 @@
       else if (tab === 'groups') loadGroups();
       else if (tab === 'alerts') loadAlerts();
       else if (tab === 'maintenance') loadMaintenance();
+      else if (tab === 'settings') loadSettingsTab();
+    }
+
+    // ─── Tab Setări — preferințe UI per user + default-uri pe companie ───
+    const US_TOGGLES = [
+      { k: 'overspeed_heatmap', label: 'Afișează depășiri viteză pe traseu (heatmap)', desc: 'Colorează traseul de istoric verde/portocaliu/roșu în funcție de viteză vs. limita vehiculului.' },
+      { k: 'replay_marker', label: 'Afișează marker mobil în replay', desc: 'Punctul verde animat pe traseu la redarea istoricului.' },
+      { k: 'geocoded_address', label: 'Afișează adresa (reverse-geocode)', desc: 'În panoul de detaliu, conversia coordonatelor în adresă (Nominatim).' },
+      { k: 'show_driver_names', label: 'Afișează numele șoferilor', desc: 'Numele șoferului în panoul de detaliu și listă.' }
+    ];
+    function _usEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function _usRow(t, val, source) {
+      var srcLabel = source === 'user' ? '<span style="color:var(--accent);font-size:10px;">setat de tine</span>' : (source === 'company' ? '<span style="color:#f59e0b;font-size:10px;">default companie</span>' : '<span style="color:var(--text-muted);font-size:10px;">default aplicație</span>');
+      var resetBtn = source === 'user' ? ' <button class="btn-sm" style="font-size:10px;padding:2px 6px;" onclick="usResetPref(\'' + t.k + '\')" title="Resetează la default companie">↺</button>' : '';
+      return '<label class="admin-row" style="cursor:pointer;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + _usEsc(t.label) + ' ' + srcLabel + resetBtn + '</div><div class="meta">' + _usEsc(t.desc) + '</div></div><input type="checkbox" data-uk="' + t.k + '" ' + (val ? 'checked' : '') + ' onchange="usSetPref(\'' + t.k + '\', this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"></label>';
+    }
+    function _usRowCompany(t, val) {
+      return '<label class="admin-row" style="cursor:pointer;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + _usEsc(t.label) + '</div><div class="meta">' + _usEsc(t.desc) + '</div></div><input type="checkbox" data-cuk="' + t.k + '" ' + (val ? 'checked' : '') + ' onchange="usSetCompanyPref(\'' + t.k + '\', this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"></label>';
+    }
+    async function loadSettingsTab() {
+      var box = document.getElementById('us-list'); box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
+      try {
+        var p = await fetch('/api/me/ui-prefs', { credentials: 'same-origin' }).then(r => r.json());
+        box.innerHTML = US_TOGGLES.map(t => _usRow(t, p.effective[t.k], p.source[t.k])).join('');
+        // Default-uri companie — doar pentru admin/superadmin/company_admin (manageUsers)
+        var canMgr = !!(currentUser && currentUser.permissions && currentUser.permissions.manageUsers);
+        document.getElementById('us-company-section').style.display = canMgr ? 'block' : 'none';
+        if (canMgr) {
+          var coBox = document.getElementById('us-company-list');
+          coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
+          try {
+            var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
+            var dft = cs.ui_defaults || {};
+            coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
+          } catch (e) { coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>'; }
+        }
+      } catch (e) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>'; }
+    }
+    async function usSetPref(key, val) {
+      var body = {}; body[key] = !!val;
+      var r = await fetch('/api/me/ui-prefs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+      if (!r.ok) { alert('Eroare la salvare'); return; }
+      invalidateUiPrefs(); // forțează rerender la următoarea încărcare istoric
+      loadSettingsTab(); // refresh ca să arate sursa nouă „setat de tine"
+    }
+    async function usResetPref(key) {
+      var body = {}; body[key] = null;
+      var r = await fetch('/api/me/ui-prefs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+      if (!r.ok) { alert('Eroare la reset'); return; }
+      invalidateUiPrefs(); loadSettingsTab();
+    }
+    async function usSetCompanyPref(key, val) {
+      var body = { ui_defaults: {} }; body.ui_defaults[key] = !!val;
+      var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+      if (!r.ok) { alert('Eroare la salvare default companie'); return; }
+      invalidateUiPrefs(); loadSettingsTab();
     }
 
     // ─── Vehicule (management) ───
@@ -5861,16 +5933,31 @@
 
     function closeHistory() {
       document.getElementById('history-panel').classList.remove('visible');
-      hpStop(); hpData = []; hpMarker = null;
+      hpStop(); hpData = []; hpMarker = null; hpSpeedLimit = null;
       var bar = document.getElementById('history-playback'); if (bar) bar.style.display = 'none';
-      if (historyLine) {
-        map.removeLayer(historyLine);
-        historyLine = null;
-      }
-      historyMarkers.forEach(m => map.removeLayer(m));
+      var sumEl = document.getElementById('hp-summary'); if (sumEl) sumEl.style.display = 'none';
+      if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
+      historyMarkers.forEach(m => { try { map.removeLayer(m); } catch (e) {} });
       historyMarkers = [];
     }
 
+    // Culoare segment în funcție de viteză vs. limită (verde/portocaliu/roșu)
+    function _hpSegColor(speed, limit) {
+      if (!limit) return '#38BDF8'; // fallback fără limit setat
+      var sp = Number(speed) || 0;
+      if (sp <= limit) return '#22c55e';
+      if (sp <= limit + 15) return '#f59e0b';
+      return '#ef4444';
+    }
+    // Limita curentă de viteză (setată după loadHistory ext)
+    var hpSpeedLimit = null;
+    var hpUiPrefs = null;
+    async function _loadUiPrefs() {
+      if (hpUiPrefs) return hpUiPrefs;
+      try { var r = await fetch('/api/me/ui-prefs', { credentials: 'same-origin' }); hpUiPrefs = (await r.json()).effective || {}; } catch (e) { hpUiPrefs = {}; }
+      return hpUiPrefs;
+    }
+    function invalidateUiPrefs() { hpUiPrefs = null; }
     async function loadHistory() {
       if (!selectedImei) return;
 
@@ -5879,38 +5966,71 @@
       if (!from || !to) return;
 
       try {
-        const res = await fetch('/api/history/' + selectedImei + '?from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString());
-        const data = await res.json();
+        const prefs = await _loadUiPrefs();
+        const useHeatmap = prefs.overspeed_heatmap !== false; // default ON
+        const res = await fetch('/api/history/' + selectedImei + '?ext=1&from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString());
+        const payload = await res.json();
+        // Backwards-compat: dacă răspunsul e array (ext nu a fost respectat), îl normalizăm
+        const data = Array.isArray(payload) ? payload : (payload.points || []);
+        const dev = payload && payload.device ? payload.device : null;
+        const summary = payload && payload.summary ? payload.summary : null;
+        hpSpeedLimit = dev && dev.speed_limit ? Number(dev.speed_limit) : null;
 
         if (historyLine) map.removeLayer(historyLine);
         historyMarkers.forEach(m => map.removeLayer(m));
         historyMarkers = [];
 
-        if (data.length === 0) {
-          alert('Nu sunt date pentru perioada selectată');
-          return;
-        }
+        if (!data.length) { alert('Nu sunt date pentru perioada selectată'); return; }
 
         const points = data.map(p => [p.latitude, p.longitude]);
-        // casing inchis dedesubt pentru contrast pe harta dark
+        // casing închis dedesubt pentru contrast pe orice temă
         const historyCasing = L.polyline(points, { color: '#0B0E11', weight: 7, opacity: 0.9 }).addTo(map);
-        historyLine = L.polyline(points, {
-          color: '#38BDF8',
-          weight: 4,
-          opacity: 0.95
-        }).addTo(map);
         historyMarkers.push(historyCasing);
 
-        map.fitBounds(historyLine.getBounds(), { padding: [50, 50] });
+        // Polilinia: una singură albastră (fără limit / heatmap dezactivat) SAU segmente agregate pe culoare
+        const seg = L.layerGroup().addTo(map);
+        if (useHeatmap && hpSpeedLimit) {
+          // Agregăm puncte consecutive cu aceeași culoare într-o singură polilinie (perf — reduce ~10× layer-ele)
+          let curColor = _hpSegColor(data[1] && data[1].speed, hpSpeedLimit);
+          let chunk = [points[0]];
+          for (let i = 1; i < data.length; i++) {
+            const c = _hpSegColor(data[i].speed, hpSpeedLimit);
+            chunk.push(points[i]);
+            if (c !== curColor) {
+              L.polyline(chunk, { color: curColor, weight: 4, opacity: 0.95 }).addTo(seg);
+              chunk = [points[i]]; curColor = c;
+            }
+          }
+          if (chunk.length > 1) L.polyline(chunk, { color: curColor, weight: 4, opacity: 0.95 }).addTo(seg);
+          historyLine = seg;
+        } else {
+          historyLine = L.polyline(points, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(seg);
+        }
+        // fitBounds pe primul layer cu getBounds
+        try { map.fitBounds(L.polyline(points).getBounds(), { padding: [50, 50] }); } catch (e) {}
 
         const startMarker = L.circleMarker(points[0], { radius: 7, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 1, weight: 2 })
-          .bindPopup('Start: ' + new Date(data[0].timestamp).toLocaleString('ro-RO'))
-          .addTo(map);
+          .bindPopup('Start: ' + new Date(data[0].timestamp).toLocaleString('ro-RO')).addTo(map);
         const endMarker = L.circleMarker(points[points.length - 1], { radius: 7, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1, weight: 2 })
-          .bindPopup('Stop: ' + new Date(data[data.length - 1].timestamp).toLocaleString('ro-RO'))
-          .addTo(map);
-
+          .bindPopup('Stop: ' + new Date(data[data.length - 1].timestamp).toLocaleString('ro-RO')).addTo(map);
         historyMarkers.push(startMarker, endMarker);
+
+        // Summary depășiri sub bara de playback (banner)
+        var sumEl = document.getElementById('hp-summary');
+        if (sumEl) {
+          if (summary && summary.overspeedCount > 0) {
+            var dur = summary.overspeedDurationSec || 0;
+            var durStr = dur < 60 ? dur + 's' : Math.floor(dur / 60) + 'min ' + (dur % 60) + 's';
+            sumEl.innerHTML = '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + summary.overspeedCount + ' depășiri</span> · max +' + summary.maxOverKmh + ' km/h · durată ' + durStr + (hpSpeedLimit ? ' · limită ' + hpSpeedLimit + ' km/h' : '');
+            sumEl.style.display = 'block';
+          } else if (hpSpeedLimit) {
+            sumEl.innerHTML = '<span style="color:#22c55e;"><i class="fas fa-check"></i> Fără depășiri (limită ' + hpSpeedLimit + ' km/h)</span>';
+            sumEl.style.display = 'block';
+          } else {
+            sumEl.innerHTML = '<span style="color:var(--text-muted);"><i class="fas fa-info-circle"></i> Setează „Viteza limită" în fișa vehiculului pentru a vedea depășirile</span>';
+            sumEl.style.display = 'block';
+          }
+        }
 
         hpInit(data); // activează replay-ul interactiv
       } catch (err) {
@@ -5929,7 +6049,12 @@
       if (hpMarker && map) hpMarker.setLatLng([p.latitude, p.longitude]);
       var sl = document.getElementById('hp-slider'); if (sl) sl.value = hpIndex;
       var ro = document.getElementById('hp-readout');
-      if (ro) { var d = new Date(p.timestamp); ro.innerHTML = '<i class="fas fa-clock"></i> ' + d.toLocaleTimeString('ro-RO') + ' · <i class="fas fa-gauge-high"></i> ' + Math.round(p.speed || 0) + ' km/h · ' + (hpIndex + 1) + '/' + hpData.length; }
+      if (ro) {
+        var d = new Date(p.timestamp);
+        var sp = Math.round(p.speed || 0);
+        var over = (hpSpeedLimit && sp > hpSpeedLimit) ? (' <span style="color:#ef4444;font-weight:700;">+' + (sp - hpSpeedLimit) + ' km/h peste ' + hpSpeedLimit + '</span>') : '';
+        ro.innerHTML = '<i class="fas fa-clock"></i> ' + d.toLocaleTimeString('ro-RO') + ' · <i class="fas fa-gauge-high"></i> ' + sp + ' km/h' + over + ' · ' + (hpIndex + 1) + '/' + hpData.length;
+      }
     }
     function hpToggle() {
       if (!hpData.length) return;
