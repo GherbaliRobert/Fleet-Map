@@ -248,14 +248,7 @@
     .view.active { display: flex; }
 
     /* Footer */
-    #footer-bar {
-      height: calc(var(--footer-h) + var(--sab)); min-height: calc(var(--footer-h) + var(--sab));
-      background: var(--bg-panel); border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 16px var(--sab); font-size: 11px; color: var(--text-muted); z-index: 20;
-    }
-    #footer-bar a { color: var(--text-muted); text-decoration: none; margin-left: 14px; }
-    #footer-bar a:hover { color: var(--accent); }
+    /* footer-bar eliminat (versiune/API nu mai apare) */
 
     /* Modal afișat ca panou inline (în zona de conținut) */
     .modal-overlay.as-view {
@@ -1785,20 +1778,19 @@
     </div>
 
     <style>
-      /* Status server (Conectat / versiune) — doar pentru admin, nu pentru client */
-      body:not(.is-admin) #ws-status,
-      body:not(.is-admin) #footer-bar { display: none !important; }
+      /* Status server „Conectat" — doar pentru admin, nu pentru client */
+      body:not(.is-admin) #ws-status { display: none !important; }
       /* Buton „Înapoi la hartă" — doar pe mobil, în sidebar */
       .sidebar-back-mobile { display: none; }
       @media (max-width: 768px) {
         .sidebar-back-mobile { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px 14px; background: var(--bg-panel); border: none; border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; }
         .sidebar-back-mobile:active { background: var(--bg-dark); }
+        /* Login mai simplu/curat pe mobil */
+        .login-box { width: 90vw; max-width: 360px; padding: 28px 22px; box-shadow: none; }
+        #login-screen .login-logo img { height: 38px; }
+        #login-screen p { font-size: 13px; }
       }
     </style>
-    <footer id="footer-bar">
-      <span>RA Tracks © 2026 · v1.0</span>
-      <span><a href="/api" target="_blank">API</a></span>
-    </footer>
   </div>
 
   <!-- Mobile toggle button -->
@@ -4739,6 +4731,7 @@
       }).setView([44.4268, 26.1025], 12);
 
       L.control.zoom({ position: 'topright' }).addTo(map);
+      if (map.attributionControl) map.attributionControl.setPosition('bottomleft'); // în stânga → nu se suprapune cu FAB-ul (dreapta-jos)
 
       applyMapTheme();
 
@@ -7871,6 +7864,7 @@
     <div id="rax-actions">
       <div id="rax-co-chip" style="display:none;"></div>
       <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
+      <button class="rax-fab secondary" id="rax-acc-btn" style="display:none;" onclick="raxOpenAccounts()"><i class="fas fa-users-gear"></i> Conturi</button>
       <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
       <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
       <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
@@ -7913,6 +7907,17 @@
           <strong style="font-size:13px;">Vehicule neasignate</strong>
           <div id="rax-co-unassigned" class="rax-co-meta" style="margin-top:6px;">—</div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rax-overlay" id="rax-accounts-overlay">
+    <div class="rax-card">
+      <div class="rax-head"><h3><i class="fas fa-users-gear" style="color:var(--accent)"></i> Conturi — toate companiile (super-admin)</h3><button class="rax-x" onclick="raxCloseAccounts()">&times;</button></div>
+      <div class="rax-body">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-shield-halved" style="color:var(--accent)"></i> Parolele sunt criptate (nu pot fi văzute) — le poți <strong>reseta</strong>.</div>
+        <input class="rax-field" id="rax-acc-search" placeholder="Caută username / companie / rol…" oninput="raxRenderAccounts()" style="margin-bottom:10px;">
+        <div id="rax-acc-list"><div class="rax-co-meta">Se încarcă…</div></div>
       </div>
     </div>
   </div>
@@ -8011,6 +8016,7 @@
       if (!show) return;
       $('rax-ai-btn').style.display = 'flex';
       $('rax-co-btn').style.display = (me.isSuper ? 'flex' : 'none');
+      $('rax-acc-btn').style.display = (me.isSuper ? 'flex' : 'none');
       var fleet = !!(me.permissions && me.permissions.manageFleet);
       $('rax-tacho-btn').style.display = fleet ? 'flex' : 'none';
       $('rax-et-btn').style.display = fleet ? 'flex' : 'none';
@@ -8100,6 +8106,66 @@
     // ── Companii ──
     window.raxOpenCompanies = function () { $('rax-co-overlay').classList.add('open'); raxLoadCompanies(); raxLoadUnassigned(); };
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
+
+    // ─── Conturi (toate companiile) — super-admin ───
+    var _raxAccounts = [];
+    window.raxOpenAccounts = function () { $('rax-accounts-overlay').classList.add('open'); if (window.raxCloseMenu) raxCloseMenu(); raxLoadAccounts(); };
+    window.raxCloseAccounts = function () { $('rax-accounts-overlay').classList.remove('open'); };
+    async function raxLoadAccounts() {
+      var box = $('rax-acc-list'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var res = await Promise.all([
+          fetch('/api/users', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+          fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return []; })
+        ]);
+        var users = Array.isArray(res[0]) ? res[0] : [];
+        var coMap = {}; (Array.isArray(res[1]) ? res[1] : []).forEach(function (c) { coMap[c.id] = c.name; });
+        _raxAccounts = users.map(function (u) { u.company_name = (u.company_id != null) ? (coMap[u.company_id] || ('#' + u.company_id)) : ''; return u; });
+      } catch (e) { _raxAccounts = []; }
+      raxRenderAccounts();
+    }
+    window.raxRenderAccounts = function () {
+      var q = ($('rax-acc-search').value || '').toLowerCase();
+      var list = _raxAccounts.filter(function (u) { return !q || ((u.username || '') + ' ' + (u.company_name || '') + ' ' + (u.role || '')).toLowerCase().indexOf(q) >= 0; });
+      var box = $('rax-acc-list');
+      box.innerHTML = list.length ? list.map(function (u) {
+        var active = u.active !== false;
+        var inactiveTag = active ? '' : ' <span class="rax-tag" style="background:rgba(239,68,68,.15);color:#ef4444;">inactiv</span>';
+        return '<div class="rax-co-item"><div style="min-width:0;"><strong>' + esc(u.username) + '</strong> <span class="rax-tag">' + esc(u.role || '') + '</span>' + inactiveTag +
+          '<div class="rax-co-meta">' + esc(u.company_name || '(fără companie)') + (u.last_login ? ' · login ' + new Date(u.last_login).toLocaleDateString('ro-RO') : '') + '</div></div>' +
+          '<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+            '<button class="rax-btn" title="Resetează parola" onclick="raxResetPassword(' + u.id + ')"><i class="fas fa-key"></i></button>' +
+            '<button class="rax-btn" title="' + (active ? 'Dezactivează' : 'Activează') + '" onclick="raxToggleUserActive(' + u.id + ',' + (active ? 'false' : 'true') + ')"><i class="fas fa-' + (active ? 'user-slash' : 'user-check') + '"></i></button>' +
+            '<button class="rax-btn" title="Șterge" onclick="raxDeleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button>' +
+          '</div></div>';
+      }).join('') : '<div class="rax-co-meta">Niciun cont găsit.</div>';
+    };
+    function _raxFindUser(id) { for (var i = 0; i < _raxAccounts.length; i++) if (_raxAccounts[i].id === id) return _raxAccounts[i]; return null; }
+    window.raxResetPassword = async function (id) {
+      var u = _raxFindUser(id); var name = u ? u.username : ('#' + id);
+      var np = prompt('Parolă nouă pentru „' + name + '" (min 4 caractere):');
+      if (np == null) return;
+      np = String(np).trim();
+      if (np.length < 4) { alert('Parola e prea scurtă (minim 4 caractere).'); return; }
+      var r = await fetch('/api/users/' + id + '/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ password: np }) });
+      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
+      alert('Parola pentru „' + name + '" a fost resetată.');
+    };
+    window.raxToggleUserActive = async function (id, makeActive) {
+      var u = _raxFindUser(id); if (!u) return;
+      // trimitem și valorile curente (full_name/email/phone nu sunt COALESCE pe server → s-ar șterge altfel)
+      var body = { active: makeActive, full_name: u.full_name || null, email: u.email || null, phone: u.phone || null };
+      var r = await fetch('/api/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
+      raxLoadAccounts();
+    };
+    window.raxDeleteUser = async function (id) {
+      var u = _raxFindUser(id); var name = u ? u.username : ('#' + id);
+      if (!confirm('Ștergi contul „' + name + '"? Ireversibil.')) return;
+      var r = await fetch('/api/users/' + id, { method: 'DELETE', credentials: 'same-origin' });
+      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
+      raxLoadAccounts();
+    };
     async function raxLoadCompanies() {
       var box = $('rax-co-list'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
