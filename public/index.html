@@ -8465,6 +8465,17 @@
         var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">' +
           _raxCard('Companii', t.companies) + _raxCard('Vehicule', t.vehicles) + _raxCard('Utilizatori', t.users) +
           '</div>';
+        // ─── Venituri / MRR (estimat din pachete) ───
+        var rev = d.revenue || {}; var bp = rev.by_plan || {};
+        var planLabel = { start: 'Start', pro: 'Pro', premium: 'Premium AI', enterprise: 'Enterprise', custom: 'Custom' };
+        var lei = function (n) { return Number(n || 0).toLocaleString('ro-RO'); };
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-coins"></i> Venituri (estimat din pachete)</div>';
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
+          _raxCard('MRR (lei/lună)', lei(rev.mrr)) + _raxCard('ARR (lei/an)', lei(rev.arr)) + _raxCard('Abonamente active', rev.active_subs || 0) +
+          '</div>';
+        var bpHtml = Object.keys(bp).filter(function (k) { return bp[k] > 0; }).map(function (k) { return (planLabel[k] || k) + ': <strong style="color:var(--accent)">' + lei(bp[k]) + ' lei</strong>'; }).join(' &nbsp;·&nbsp; ');
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">' + (bpHtml || 'Niciun venit estimat încă') + ' &nbsp;·&nbsp; <em>fără TVA, după pachetele atribuite</em></div>';
+
         // ─── Health flotă (GPS + SIM) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-satellite-dish"></i> Stare flotă (live)</div>';
         html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +

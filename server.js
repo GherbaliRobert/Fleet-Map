@@ -1396,8 +1396,25 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       healthy_fix_pct: totLive ? Math.round((_sumField('healthyFix') / totLive) * 100) : null
     };
     const pf = usageMap['null'] || {};
+    // ─── Venituri / MRR (estimat din pachetele atribuite, fără TVA) ───
+    function _companyMrr(c) {
+      if (c.is_demo || !plans) return { mrr: 0, key: 'start' };
+      const eff = plans.effectivePlan(c);
+      const key = eff ? eff.key : 'start';
+      if (eff && eff.flatPriceRON != null) return { mrr: eff.flatPriceRON, key };
+      const ppv = eff ? eff.pricePerVehicleRON : null;
+      return { mrr: ppv != null ? ppv * (c.device_count || 0) : 0, key };
+    }
+    let mrrTotal = 0, activeSubs = 0; const mrrByPlan = {};
+    companies.forEach(function (c) {
+      if (c.is_demo) return;
+      const r = _companyMrr(c); mrrTotal += r.mrr;
+      mrrByPlan[r.key] = (mrrByPlan[r.key] || 0) + r.mrr;
+      if (c.subscription_status === 'active' || c.subscription_status === 'trialing') activeSubs++;
+    });
     res.json({
       days: days, model: ai.AI_MODEL, aiEnabled: ai.aiEnabled(),
+      revenue: { currency: 'RON', mrr: Math.round(mrrTotal), arr: Math.round(mrrTotal * 12), by_plan: mrrByPlan, active_subs: activeSubs, paying_companies: companies.filter(function (c) { return !c.is_demo; }).length },
       companies: rows,
       platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0, health: _healthSummary(hbc['null']) },
       totals: {
