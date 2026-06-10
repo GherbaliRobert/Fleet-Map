@@ -1334,9 +1334,13 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
   try {
     let days = parseInt(req.query.days); if (!Number.isFinite(days) || days <= 0) days = 30; days = Math.min(days, 365);
     const [companies, usage, findingsNew] = await Promise.all([db.getCompanies(), db.getAiUsageByCompany(days), db.countNewFindings().catch(function () { return 0; })]);
+    // Compania demo nu apare în dashboard-ul de business (nici tabel, nici totaluri/venituri/health).
+    const demoIds = new Set(companies.filter(function (c) { return c.is_demo; }).map(function (c) { return c.id; }));
+    const realCompanies = companies.filter(function (c) { return !c.is_demo; });
     const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0;
     usage.forEach(function (u) {
       usageMap[u.company_id == null ? 'null' : u.company_id] = u;
+      if (u.company_id != null && demoIds.has(u.company_id)) return; // exclude demo din totalurile AI
       totIn += Number(u.input_tokens) || 0; totOut += Number(u.output_tokens) || 0; totCalls += Number(u.calls) || 0;
     });
     // ─── GPS + SIM health (din livePositions, real-time) per companie ───
@@ -1349,6 +1353,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
     function _bucket(cid) { const key = cid == null ? 'null' : cid; if (!hbc[key]) hbc[key] = { online: 0, offline30: 0, weakSignal: 0, roaming: 0, gsmSum: 0, gsmN: 0, satSum: 0, satN: 0, healthyFix: 0, totalLive: 0 }; return hbc[key]; }
     for (const [imei, live] of livePositions) {
       const cid = devCompanyMap[imei];
+      if (cid != null && demoIds.has(cid)) continue; // exclude vehiculele demo din health
       const b = _bucket(cid);
       b.totalLive++;
       const ageMin = live.timestamp ? (now - new Date(live.timestamp).getTime()) / 60000 : 1e9;
@@ -1372,7 +1377,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         healthy_fix_pct: b.totalLive ? Math.round((b.healthyFix / b.totalLive) * 100) : null
       };
     }
-    const rows = companies.map(function (c) {
+    const rows = realCompanies.map(function (c) {
       const u = usageMap[c.id] || {};
       return {
         id: c.id, name: c.name, is_demo: !!c.is_demo, plan: c.plan || null,
@@ -1408,21 +1413,20 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       return { mrr: ppv != null ? ppv * (c.device_count || 0) : 0, key };
     }
     let mrrTotal = 0, activeSubs = 0; const mrrByPlan = {};
-    companies.forEach(function (c) {
-      if (c.is_demo) return;
+    realCompanies.forEach(function (c) {
       const r = _companyMrr(c); mrrTotal += r.mrr;
       mrrByPlan[r.key] = (mrrByPlan[r.key] || 0) + r.mrr;
       if (c.subscription_status === 'active' || c.subscription_status === 'trialing') activeSubs++;
     });
     res.json({
       days: days, model: ai.AI_MODEL, aiEnabled: ai.aiEnabled(),
-      revenue: { currency: 'RON', mrr: Math.round(mrrTotal), arr: Math.round(mrrTotal * 12), by_plan: mrrByPlan, active_subs: activeSubs, paying_companies: companies.filter(function (c) { return !c.is_demo; }).length },
+      revenue: { currency: 'RON', mrr: Math.round(mrrTotal), arr: Math.round(mrrTotal * 12), by_plan: mrrByPlan, active_subs: activeSubs, paying_companies: realCompanies.length },
       companies: rows,
       platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0, health: _healthSummary(hbc['null']) },
       totals: {
-        companies: companies.length,
-        vehicles: companies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
-        users: companies.reduce(function (s, c) { return s + (c.user_count || 0); }, 0),
+        companies: realCompanies.length,
+        vehicles: realCompanies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
+        users: realCompanies.reduce(function (s, c) { return s + (c.user_count || 0); }, 0),
         ai_input: totIn, ai_output: totOut, ai_calls: totCalls,
         findings_new: findingsNew,
         health: totalsHealth
