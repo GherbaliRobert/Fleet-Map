@@ -30,7 +30,7 @@
       --text-primary: #0f172a;
       --text: var(--text-primary);
       --text-secondary: #475569;
-      --text-muted: #94a3b8;
+      --text-muted: #64748b; /* urcat din #94a3b8 (~2.6:1) la slate-500 (~4.85:1) pentru WCAG AA pe bg deschis */
       --accent: #16a34a;
       --accent-hover: #15803d;
       --blue: #16a34a;
@@ -1848,17 +1848,42 @@
 
         /* Modaluri standard: padding mai mic */
         .modal-overlay > .modal { padding: 14px !important; }
+
+        /* iOS auto-zoom la focus: inputs ≥ 16px font-size (sub 16px iOS Safari face zoom) */
+        input, select, textarea, .rax-field { font-size: 16px !important; }
+        /* Excepție: chip-uri/label-uri foarte mici care nu primesc focus rămân la dimensiune normală */
+        label, .meta, .stat-label { font-size: inherit; }
+
+        /* Touch target ≥ 36px pe TOATE .btn-sm + checkbox-uri în admin */
+        .btn-sm { min-height: 36px; padding: 8px 12px; font-size: 13px; }
+        td .btn-sm { min-height: 34px; padding: 6px 10px; }
+        input[type="checkbox"] { width: 20px !important; height: 20px !important; }
+
+        /* #history-panel: max-height + scroll ca să nu depășească viewport pe orientare landscape sau iPhone SE */
+        #history-panel { max-height: 75vh; overflow-y: auto; padding-bottom: calc(14px + var(--sab)); }
+
+        /* FAB ascuns când history-panel deschis (lipsea — era doar pentru detail-panel) */
+        body.history-open #rax-fabs { display: none !important; }
+      }
+      /* Notă: contrastul text-muted urcat global la #64748b (slate-500, WCAG AA 4.85:1) pentru toate viewport-urile */
+
+      /* ANULARE :hover globală pe device-uri fără hover real (iOS, Android touch).
+         Folosesc :where() pentru specificitate zero — nu suprascrie regulile :hover, doar le anulează vizual. */
+      @media (hover: none), (pointer: coarse) {
+        :where(button, a, .btn, .btn-sm, .btn-primary, .btn-danger, .btn-icon, .topbar-icon, .rax-fab, .rax-btn,
+               .admin-tab, .device-card, .nav-item, .detail-action-btn, .filter-btn, .route-card,
+               .history-btn, .modal-btn, .nav-rail-item, .stat-chip, .meta-ignition, .icon-btn, .close-btn):hover {
+          background-color: inherit !important;
+          color: inherit !important;
+          border-color: inherit !important;
+          filter: none !important;
+        }
       }
 
-      /* Hover effects DOAR pe device-uri cu hover real (nu iOS) → evită stuck-hover */
-      @media (hover: none) {
-        .btn-sm:hover, .topbar-icon:hover, .rax-fab:hover, .admin-tab:hover,
-        .detail-action-btn:hover, .device-card:hover, .nav-item:hover { background: inherit; color: inherit; }
-      }
-
-      /* Tap delay eliminat pe butoane (iOS Safari) */
-      button, .btn-sm, .topbar-icon, .rax-fab, .admin-tab, .device-card, .nav-item,
-      .detail-action-btn, .filter-btn, .route-card { touch-action: manipulation; }
+      /* Tap delay eliminat pe butoane/elemente interactive (iOS Safari) — global */
+      button, a, [role="button"], input, select, textarea, label, .btn-sm, .btn-primary,
+      .topbar-icon, .rax-fab, .rax-btn, .admin-tab, .device-card, .nav-item,
+      .detail-action-btn, .filter-btn, .route-card, .history-btn { touch-action: manipulation; }
     </style>
   </div>
 
@@ -2850,7 +2875,7 @@
   </div>
 
   <!-- ═══ RA Dispatch (alocare curse) ═══ -->
-  <div id="dispatch-panel" style="display:none;position:fixed;top:70px;right:12px;z-index:1100;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:12px;width:300px;max-width:94vw;box-shadow:0 6px 24px rgba(0,0,0,.4);">
+  <div id="dispatch-panel" style="display:none;position:fixed;top:calc(var(--topbar-h) + var(--sat) + 8px);right:12px;z-index:1100;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:12px;width:300px;max-width:94vw;box-shadow:0 6px 24px rgba(0,0,0,.4);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <strong style="font-size:13px;color:var(--accent);"><i class="fas fa-compass"></i> RA Dispatch</strong>
       <button class="close-btn" onclick="closeDispatch()" style="position:static;font-size:16px;">&#10005;</button>
@@ -2862,7 +2887,7 @@
   </div>
 
   <!-- ═══ Notificări (Faza 4) ═══ -->
-  <div id="notif-panel" style="display:none;position:fixed;top:64px;right:12px;z-index:3500;width:360px;max-width:94vw;max-height:72vh;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.5);flex-direction:column;">
+  <div id="notif-panel" style="display:none;position:fixed;top:calc(var(--topbar-h) + var(--sat) + 8px);right:12px;z-index:3500;width:360px;max-width:94vw;max-height:72vh;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.5);flex-direction:column;">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);">
       <strong style="font-size:13px;"><i class="fas fa-bell" style="color:var(--accent);margin-right:6px;"></i> Notificări</strong>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -6130,6 +6155,7 @@
       selectedImei = imei;
       const panel = document.getElementById('history-panel');
       panel.classList.add('visible');
+      document.body.classList.add('history-open'); // ascunde FAB pe mobile
 
       const now = new Date();
       const yesterday = new Date(now - 24 * 60 * 60 * 1000);
@@ -6140,6 +6166,7 @@
 
     function closeHistory() {
       document.getElementById('history-panel').classList.remove('visible');
+      document.body.classList.remove('history-open');
       hpStop(); hpData = []; hpMarker = null; hpSpeedLimit = null;
       var bar = document.getElementById('history-playback'); if (bar) bar.style.display = 'none';
       var sumEl = document.getElementById('hp-summary'); if (sumEl) sumEl.style.display = 'none';
