@@ -1132,6 +1132,28 @@ app.post('/api/ai/config', requireAuth, requireSuperadmin, async (req, res) => {
     res.json({ ok: true, enabled: ai.aiEnabled() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Super-admin: limită lunară de tokeni AI per companie (0/gol = nelimitat)
+app.put('/api/companies/:id/ai-limit', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!(await db.getCompanyById(id))) return res.status(404).json({ error: 'Companie inexistentă' });
+    await db.setCompanyAiLimit(id, req.body.limit);
+    auditReq(req, 'set_ai_limit', 'company', id, { limit: req.body.limit });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Limită AI lunară per companie = număr de PROMPTURI (apeluri AI) / 30 zile, gestionată de super-admin.
+// 0/null = nelimitat; super-admin/platformă fără limită. Întrebările rapide (locale) NU consumă din limită.
+async function aiLimitReached(companyId) {
+  if (companyId == null) return false;
+  try {
+    const co = await db.getCompanyById(companyId);
+    const lim = co && co.ai_monthly_limit;
+    if (!lim || lim <= 0) return false;
+    return (await db.getAiCallsForCompany(companyId, 30)) >= lim;
+  } catch (e) { return false; }
+}
 
 app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
   try {
@@ -1165,6 +1187,7 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
     }
     // 2) Pentru întrebări libere → Claude (dacă e configurat)
     if (!ai.aiEnabled()) return res.json({ reply: 'Întrebările rapide (unde sunt vehiculele, km azi, oprite, cel mai rapid, status) merg instant, fără AI. Pentru întrebări libere, activează asistentul AI (cheie Anthropic).', disabled: true });
+    if (await aiLimitReached(req.companyId)) return res.json({ reply: 'Compania ta a atins limita lunară de AI. Întrebările rapide rămân disponibile; pentru mai mult, contactează administratorul platformei.', limited: true });
     snapshot.forEach(v => { delete v.imei; }); // nu trimitem imei la Claude (folosește numele)
 
     const system = [
@@ -1187,6 +1210,7 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
 app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try {
     if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
+    if (await aiLimitReached(req.companyId)) return res.json({ summary: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
     const report = req.body.report;
     if (!report) return res.status(400).json({ error: 'Lipsește raportul' });
     const compact = JSON.stringify(report).slice(0, 7000);
@@ -1309,10 +1333,14 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
 app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     let days = parseInt(req.query.days); if (!Number.isFinite(days) || days <= 0) days = 30; days = Math.min(days, 365);
-    const [companies, usage] = await Promise.all([db.getCompanies(), db.getAiUsageByCompany(days)]);
+    const [companies, usage, findingsNew] = await Promise.all([db.getCompanies(), db.getAiUsageByCompany(days), db.countNewFindings().catch(function () { return 0; })]);
+    // Compania demo nu apare în dashboard-ul de business (nici tabel, nici totaluri/venituri/health).
+    const demoIds = new Set(companies.filter(function (c) { return c.is_demo; }).map(function (c) { return c.id; }));
+    const realCompanies = companies.filter(function (c) { return !c.is_demo; });
     const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0;
     usage.forEach(function (u) {
       usageMap[u.company_id == null ? 'null' : u.company_id] = u;
+      if (u.company_id != null && demoIds.has(u.company_id)) return; // exclude demo din totalurile AI
       totIn += Number(u.input_tokens) || 0; totOut += Number(u.output_tokens) || 0; totCalls += Number(u.calls) || 0;
     });
     // ─── GPS + SIM health (din livePositions, real-time) per companie ───
@@ -1325,6 +1353,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
     function _bucket(cid) { const key = cid == null ? 'null' : cid; if (!hbc[key]) hbc[key] = { online: 0, offline30: 0, weakSignal: 0, roaming: 0, gsmSum: 0, gsmN: 0, satSum: 0, satN: 0, healthyFix: 0, totalLive: 0 }; return hbc[key]; }
     for (const [imei, live] of livePositions) {
       const cid = devCompanyMap[imei];
+      if (cid != null && demoIds.has(cid)) continue; // exclude vehiculele demo din health
       const b = _bucket(cid);
       b.totalLive++;
       const ageMin = live.timestamp ? (now - new Date(live.timestamp).getTime()) / 60000 : 1e9;
@@ -1348,12 +1377,14 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         healthy_fix_pct: b.totalLive ? Math.round((b.healthyFix / b.totalLive) * 100) : null
       };
     }
-    const rows = companies.map(function (c) {
+    const rows = realCompanies.map(function (c) {
       const u = usageMap[c.id] || {};
       return {
         id: c.id, name: c.name, is_demo: !!c.is_demo, plan: c.plan || null,
         vehicles: c.device_count || 0, users: c.user_count || 0,
         ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0,
+        ai_limit: Number(c.ai_monthly_limit) || 0,
+        mrr: plans ? Math.round(_companyMrr(c).mrr) : 0,
         health: _healthSummary(hbc[c.id])
       };
     });
@@ -1372,15 +1403,32 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       healthy_fix_pct: totLive ? Math.round((_sumField('healthyFix') / totLive) * 100) : null
     };
     const pf = usageMap['null'] || {};
+    // ─── Venituri / MRR (estimat din pachetele atribuite, fără TVA) ───
+    function _companyMrr(c) {
+      if (c.is_demo || !plans) return { mrr: 0, key: 'start' };
+      const eff = plans.effectivePlan(c);
+      const key = eff ? eff.key : 'start';
+      if (eff && eff.flatPriceRON != null) return { mrr: eff.flatPriceRON, key };
+      const ppv = eff ? eff.pricePerVehicleRON : null;
+      return { mrr: ppv != null ? ppv * (c.device_count || 0) : 0, key };
+    }
+    let mrrTotal = 0, activeSubs = 0; const mrrByPlan = {};
+    realCompanies.forEach(function (c) {
+      const r = _companyMrr(c); mrrTotal += r.mrr;
+      mrrByPlan[r.key] = (mrrByPlan[r.key] || 0) + r.mrr;
+      if (c.subscription_status === 'active' || c.subscription_status === 'trialing') activeSubs++;
+    });
     res.json({
-      days: days, model: ai.AI_MODEL,
+      days: days, model: ai.AI_MODEL, aiEnabled: ai.aiEnabled(),
+      revenue: { currency: 'RON', mrr: Math.round(mrrTotal), arr: Math.round(mrrTotal * 12), by_plan: mrrByPlan, active_subs: activeSubs, paying_companies: realCompanies.length },
       companies: rows,
       platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0, health: _healthSummary(hbc['null']) },
       totals: {
-        companies: companies.length,
-        vehicles: companies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
-        users: companies.reduce(function (s, c) { return s + (c.user_count || 0); }, 0),
+        companies: realCompanies.length,
+        vehicles: realCompanies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
+        users: realCompanies.reduce(function (s, c) { return s + (c.user_count || 0); }, 0),
         ai_input: totIn, ai_output: totOut, ai_calls: totCalls,
+        findings_new: findingsNew,
         health: totalsHealth
       }
     });
