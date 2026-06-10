@@ -195,10 +195,11 @@
 
     /* Topbar */
     #topbar {
+      position: relative; flex-shrink: 0;
       height: calc(var(--topbar-h) + var(--sat)); min-height: calc(var(--topbar-h) + var(--sat));
       background: var(--bg-panel); border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
-      padding: var(--sat) 16px 0; z-index: 30;
+      padding: var(--sat) 16px 0; z-index: 1000;
     }
     .topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; }
     .topbar-icon {
@@ -1309,12 +1310,14 @@
     @media (max-width: 768px) {
       #app.visible { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
 
-      /* Map takes full screen */
+      /* Harta umple zona de sub topbar (în flux, nu absolut — altfel pe iOS acoperă headerul) */
       #map-container {
-        position: absolute;
-        inset: 0;
+        position: relative;
+        inset: auto;
+        flex: 1;
         z-index: 1;
-        height: 100vh; height: 100dvh;
+        height: 100%;
+        min-height: 0;
       }
 
       /* Sidebar as slide-over from left */
@@ -2549,7 +2552,7 @@
   </div>
 
   <!-- Bara de desenare hotspot / zonă (peste hartă) -->
-  <div id="draw-toolbar" style="display:none;position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:4000;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);flex-direction:column;gap:8px;align-items:stretch;max-width:94vw;width:580px;">
+  <div id="draw-toolbar" style="display:none;position:fixed;top:calc(var(--topbar-h) + var(--sat) + 8px);left:50%;transform:translateX(-50%);z-index:4000;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);flex-direction:column;gap:8px;align-items:stretch;max-width:94vw;width:580px;">
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <span id="draw-title" style="font-weight:700;font-size:13px;color:var(--accent);"></span>
       <span id="draw-info" style="font-size:12px;color:var(--text-muted);"></span>
