@@ -8382,7 +8382,7 @@
   </style>
 
   <div id="rax-fabs">
-    <div id="rax-actions">
+    <div id="rax-actions" style="display:none !important;">
       <div id="rax-co-chip" style="display:none;"></div>
       <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
       <button class="rax-fab secondary" id="rax-acc-btn" style="display:none;" onclick="raxOpenAccounts()"><i class="fas fa-users-gear"></i> Conturi</button>
@@ -8392,9 +8392,8 @@
       <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
       <button class="rax-fab" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-robot"></i> Asistent AI</button>
     </div>
-    <button class="rax-fab" id="rax-main-fab" onclick="raxToggleMenu()" aria-label="Meniu" title="Meniu acțiuni">
-      <i class="fas fa-bars" id="rax-main-icon"></i>
-      <span class="rax-badge" id="rax-main-badge" style="display:none;"></span>
+    <button class="rax-fab" id="rax-main-fab" onclick="raxToggleAI()" aria-label="Asistent AI" title="Asistent AI flotă">
+      <i class="fas fa-robot" id="rax-main-icon"></i>
     </button>
   </div>
 
@@ -8535,16 +8534,9 @@
       document.body.classList.toggle('is-admin', !!(me && (me.isSuper || (me.permissions && me.permissions.manageUsers))));
       if (!show) return;
       var feats = me.features || {};
-      // FAB compact: DOAR „Asistent AI" rămâne (restul acțiunilor se accesează din meniul stâng — Administrare, Management, Rapoarte etc.)
-      ['rax-co-btn', 'rax-acc-btn', 'rax-tacho-btn', 'rax-et-btn', 'rax-sub-btn', 'rax-ag-btn'].forEach(function (id) {
-        var el = $(id); if (el) el.style.display = 'none';
-      });
-      $('rax-ai-btn').style.display = (feats.ai_assistant !== false) ? 'flex' : 'none';
-      raxRefreshAgBadge();
-      var chip = $('rax-co-chip');
-      if (me.company && me.company.name) { chip.style.display = 'block'; chip.innerHTML = (me.company.is_demo ? '🔵 ' : '🏢 ') + esc(me.company.name); }
-      else if (me.isSuper) { chip.style.display = 'block'; chip.textContent = 'Platformă · super-admin'; }
-      else chip.style.display = 'none';
+      // FAB redus la UN SINGUR buton rotund = direct Asistent AI. Toate celelalte butoane raman ascunse (#rax-actions e display:none !important).
+      // Daca feature-ul ai_assistant e dezactivat -> ascunde tot FAB-ul.
+      if (feats.ai_assistant === false) $('rax-fabs').style.display = 'none';
     }
     setInterval(refresh, 4000); refresh();
 
