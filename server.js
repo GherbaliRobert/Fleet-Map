@@ -1625,6 +1625,82 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
   }
 });
 
+// ─── Import / Export vehicule (CSV) ───
+const VEHICLE_CSV_COLS = [
+  { h: 'imei', f: 'imei' }, { h: 'nume', f: 'name' }, { h: 'nr_inmatriculare', f: 'plate' },
+  { h: 'categorie', f: 'vehicle_type' }, { h: 'vin', f: 'vin' }, { h: 'marca', f: 'brand' },
+  { h: 'model', f: 'model' }, { h: 'an', f: 'year' }, { h: 'combustibil', f: 'fuel_type' },
+  { h: 'capacitate_rezervor', f: 'tank_capacity' }, { h: 'viteza_limita', f: 'speed_limit' },
+  { h: 'putere_kw', f: 'power_kw' }, { h: 'cilindree', f: 'displacement' }, { h: 'sarcina_utila', f: 'payload' },
+  { h: 'locuri', f: 'passenger_seats' }, { h: 'grad_poluare', f: 'emission_class' }, { h: 'anvelopa', f: 'tire_size' },
+  { h: 'serie_motor', f: 'engine_serial' }, { h: 'centru_cost', f: 'cost_center' }, { h: 'nr_inventar', f: 'inventory_number' },
+  { h: 'consum_oras', f: 'consumption_city' }, { h: 'consum_afara', f: 'consumption_road' }, { h: 'consum_stationar', f: 'consumption_idle' }
+];
+// Escapare CSV + anti-injection formule (prefix ' la valori care încep cu = + - @ — previne formula injection în Excel)
+function csvCell(v) {
+  if (v == null) return '';
+  let s = String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+app.get('/api/devices/export.csv', requireAuth, withScope, async (req, res) => {
+  try {
+    let devices = await db.getDevices();
+    if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
+    if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei));
+    const header = VEHICLE_CSV_COLS.map(c => c.h).join(',');
+    const lines = devices.map(d => VEHICLE_CSV_COLS.map(c => csvCell(d[c.f])).join(','));
+    const csv = '﻿' + [header, ...lines].join('\r\n'); // BOM → Excel deschide UTF-8 cu diacritice
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="vehicule.csv"');
+    res.send(csv);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/devices/template.csv', requireAuth, (req, res) => {
+  const header = VEHICLE_CSV_COLS.map(c => c.h).join(',');
+  const ex = { imei: '350612345678901', nume: 'Camion exemplu', nr_inmatriculare: 'B 123 ABC', categorie: 'Camion', marca: 'Volvo', model: 'FH16', an: '2019', combustibil: 'Motorina', capacitate_rezervor: '400', putere_kw: '397' };
+  const example = VEHICLE_CSV_COLS.map(c => csvCell(ex[c.h] || '')).join(',');
+  const csv = '﻿' + [header, example].join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="template_vehicule.csv"');
+  res.send(csv);
+});
+
+// Import în masă: rânduri parsate din CSV (frontend) → create/update după IMEI, scoped pe companie
+app.post('/api/devices/import', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+    if (!rows.length) return res.status(400).json({ error: 'Niciun rând de importat' });
+    if (rows.length > 5000) return res.status(400).json({ error: 'Prea multe rânduri (max 5000)' });
+    let created = 0, updated = 0; const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || {};
+      const imei = String(row.imei || '').trim();
+      if (!/^\d{10,20}$/.test(imei)) { errors.push({ line: i + 2, imei, error: 'IMEI invalid' }); continue; }
+      const fields = {};
+      for (const c of VEHICLE_CSV_COLS) {
+        if (c.f === 'imei') continue;
+        if (row[c.h] !== undefined && row[c.h] !== '') fields[c.f] = row[c.h];
+      }
+      try {
+        if (await db.deviceExists(imei)) {
+          if (!canAccessImei(req, imei)) { errors.push({ line: i + 2, imei, error: 'Acces interzis (alt tenant)' }); continue; }
+          await db.updateVehicleDetails(imei, fields);
+          updated++;
+        } else {
+          await db.createDevice(imei, fields, req.isSuper ? null : req.companyId);
+          created++;
+        }
+      } catch (e) { errors.push({ line: i + 2, imei, error: e.message }); }
+    }
+    invalidateAccessCache();
+    auditReq(req, 'import', 'device', null, { created, updated, errors: errors.length });
+    res.json({ created, updated, errors: errors.slice(0, 50) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // API: Arhivare / restaurare vehicul
 app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
@@ -2674,6 +2750,38 @@ app.delete('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async
   try {
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteMaintenance(req.params.id); auditReq(req, 'delete', 'maintenance', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Documente vehicul (ITP/RCA/CASCO/Rovinietă/...) ───
+app.get('/api/documents', requireAuth, withScope, async (req, res) => {
+  try {
+    let rows = await db.getVehicleDocuments(req.query.imei, req.isSuper ? null : req.companyId);
+    if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei));
+    if (req.query.imei && !canAccessImei(req, req.query.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/documents', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    if (!req.body.imei || !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    if (!req.body.doc_type) return res.status(400).json({ error: 'Tipul documentului e obligatoriu' });
+    // company_id = al vehiculului (proprietarul real al documentului), nu al celui care-l adaugă
+    const dev = await db.getDeviceFull(req.body.imei);
+    const companyId = dev && dev.company_id != null ? dev.company_id : req.companyId;
+    const doc = await db.createVehicleDocument(req.body, companyId);
+    auditReq(req, 'create', 'document', doc.id, { imei: req.body.imei, type: req.body.doc_type });
+    res.json(doc);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/documents/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'vehicle_documents', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteVehicleDocument(req.params.id);
+    auditReq(req, 'delete', 'document', req.params.id);
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

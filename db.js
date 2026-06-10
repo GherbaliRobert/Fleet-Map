@@ -278,10 +278,27 @@ async function initDb() {
       )
     `);
 
+    // Documente vehicul (ITP, RCA, CASCO, Rovinietă, licențe etc.) cu dată expirare
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vehicle_documents (
+        id SERIAL PRIMARY KEY,
+        imei VARCHAR(20) NOT NULL,
+        doc_type VARCHAR(40) NOT NULL,
+        number VARCHAR(60),
+        issuer VARCHAR(100),
+        issue_date DATE,
+        expiry_date DATE,
+        notes TEXT,
+        company_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
     // Indecsi noi
     await client.query(`CREATE INDEX IF NOT EXISTS idx_trips_imei_start ON trips (imei, start_time DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_alert_history_imei ON alert_history (imei, triggered_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_maintenance_imei ON maintenance (imei, status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_vehicle_documents_imei ON vehicle_documents (imei)`);
 
     // ─── RBAC: roluri extinse, acces per utilizator, audit ───
     // Coloane noi pe users (profil + status + ultima logare)
@@ -719,7 +736,7 @@ async function updateAgentFinding(id, status, companyId) {
 
 // company_id al unei entități (pentru verificarea proprietății la update/delete pe id)
 async function getRowCompany(table, id) {
-  const allow = { device_groups: 1, drivers: 1, geofences: 1, alerts: 1, maintenance: 1, etransport: 1, report_schedules: 1 };
+  const allow = { device_groups: 1, drivers: 1, geofences: 1, alerts: 1, maintenance: 1, etransport: 1, report_schedules: 1, vehicle_documents: 1 };
   if (!allow[table]) return undefined;
   const r = await pool.query(`SELECT company_id FROM ${table} WHERE id = $1`, [parseInt(id)]);
   return r.rows[0] ? r.rows[0].company_id : undefined;
@@ -1464,6 +1481,27 @@ async function deleteMaintenance(id) {
   await pool.query('DELETE FROM maintenance WHERE id = $1', [id]);
 }
 
+// ─── Documente vehicul (ITP/RCA/CASCO/...) ───
+async function getVehicleDocuments(imei, companyId) {
+  let query = 'SELECT * FROM vehicle_documents WHERE 1=1';
+  const params = [];
+  if (imei) { params.push(imei); query += ` AND imei = $${params.length}`; }
+  if (companyId != null) { params.push(companyId); query += ` AND company_id = $${params.length}`; }
+  query += ' ORDER BY expiry_date ASC NULLS LAST, doc_type';
+  const result = await pool.query(query, params);
+  return result.rows;
+}
+async function createVehicleDocument(data, companyId) {
+  const result = await pool.query(
+    'INSERT INTO vehicle_documents (imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+    [data.imei, data.doc_type, data.number || null, data.issuer || null, data.issue_date || null, data.expiry_date || null, data.notes || null, companyId != null ? companyId : null]
+  );
+  return result.rows[0];
+}
+async function deleteVehicleDocument(id) {
+  await pool.query('DELETE FROM vehicle_documents WHERE id = $1', [id]);
+}
+
 // ─── Rapoarte programate ───
 async function createReportSchedule(d) {
   const r = await pool.query(
@@ -1582,5 +1620,6 @@ module.exports = {
   getGeofences, createGeofence, updateGeofence, deleteGeofence,
   getAlerts, createAlert, deleteAlert, getAlertHistory, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
-  getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance
+  getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance,
+  getVehicleDocuments, createVehicleDocument, deleteVehicleDocument
 };
