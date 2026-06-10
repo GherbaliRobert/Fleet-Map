@@ -2958,6 +2958,12 @@
         try { window._charts[canvasId].destroy(); } catch (e) {}
         delete window._charts[canvasId];
       }
+      // Culori text adaptate la temă (legenda era fixă pe deschis → invizibilă pe tema light)
+      var _cs = getComputedStyle(document.body);
+      var _txt = (_cs.getPropertyValue('--text-primary') || '').trim() || '#e5e7eb';
+      var _muted = (_cs.getPropertyValue('--text-secondary') || '').trim() || '#9ca3af';
+      Chart.defaults.color = _muted;
+      Chart.defaults.plugins.legend.labels.color = _txt;
       const ctx = canvas.getContext('2d');
       const chart = new Chart(ctx, {
         type,
@@ -7270,7 +7276,7 @@
             }
           },
           scales: {
-            x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 9 } } },
+            x: { grid: { display: false }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, font: { size: 9 } } },
             y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; } } }
           }
         });
