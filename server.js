@@ -764,6 +764,7 @@ async function withCompany(req, res, next) {
     const a = req.auth || getAuth(req) || {};
     req.companyId = await resolveCompanyId(a);
     req.isSuper = isSuper(a.role);
+    if (await _accessBlocked(req, res)) return;
     next();
   } catch (e) { res.status(500).json({ error: e.message }); }
 }
@@ -774,6 +775,7 @@ async function withScope(req, res, next) {
     const a = req.auth || getAuth(req) || {};
     req.companyId = await resolveCompanyId(a);
     req.isSuper = isSuper(a.role);
+    if (await _accessBlocked(req, res)) return;
     req.allowedImeis = await getAllowedImeiSet(a.userId, a.role, req.companyId);
     next();
   } catch (e) {
@@ -797,6 +799,73 @@ async function ownsRow(req, table, id) {
   if (req.isSuper) return true;
   const cid = await db.getRowCompany(table, id);
   return cid != null && cid === req.companyId;
+}
+// Gating pe funcții (module) controlate per-companie de super-admin (companies.settings.features).
+// Necesită req.companyId + req.isSuper (rulează DUPĂ withCompany/withScope). Super-admin = toate funcțiile.
+function requireFeature(key) {
+  return async function (req, res, next) {
+    try {
+      if (req.isSuper || req.companyId == null) return next();
+      const co = await db.getCompanyById(req.companyId);
+      if (co && plans && plans.featuresFor(co)[key]) return next();
+      return res.status(403).json({ error: 'feature_disabled', feature: key, message: 'Funcție indisponibilă pentru compania ta. Contactați administratorul platformei.' });
+    } catch (e) { return res.status(500).json({ error: e.message }); }
+  };
+}
+
+// ─── Acces pe bază de plată (manual de super-admin; pregătit pentru Stripe) ───
+const GRACE_BUSINESS_DAYS = 5;
+// +n luni calendaristice (gestionează 30/31: 31 ian + 1 lună = 28/29 feb)
+function _addMonthsMs(ms, n) {
+  const d = new Date(ms); const day = d.getDate();
+  d.setDate(1); d.setMonth(d.getMonth() + n);
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, last));
+  return d.getTime();
+}
+// +n zile lucrătoare (sare peste sâmbătă/duminică)
+function _addBusinessDaysMs(ms, n) {
+  const d = new Date(ms); let added = 0;
+  while (added < n) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w !== 0 && w !== 6) added++; }
+  return d.getTime();
+}
+// Starea de acces a unei companii: unlimited (fără dată) / active / grace / expired
+function companyAccessStatus(company) {
+  const until = (company && company.access_until != null) ? Number(company.access_until) : null;
+  if (until == null || !Number.isFinite(until)) return { status: 'unlimited', access_until: null, grace_until: null };
+  const now = Date.now();
+  const graceUntil = _addBusinessDaysMs(until, GRACE_BUSINESS_DAYS);
+  let status = 'active';
+  if (now > graceUntil) status = 'expired';
+  else if (now > until) status = 'grace';
+  return { status, access_until: until, grace_until: graceUntil };
+}
+// Cache scurt al stării de acces — evită un getCompanyById pe FIECARE request. Invalidat la schimbarea accesului.
+const _accessCache = new Map();
+function _invalidateAccessCache(companyId) { _accessCache.delete(companyId); }
+async function _accessStatusCached(companyId) {
+  let e = _accessCache.get(companyId);
+  if (!e || (Date.now() - e.ts) >= 20000) {
+    let until = null;
+    try { const co = await db.getCompanyById(companyId); until = co ? (co.access_until != null ? Number(co.access_until) : null) : null; } catch (err) { until = null; }
+    e = { until: until, ts: Date.now() };
+    _accessCache.set(companyId, e);
+  }
+  return companyAccessStatus({ access_until: e.until });
+}
+// Gate central: blochează (402) requesturile companiilor EXPIRATE (non-super) — sesiuni vechi, chei API, orice endpoint de date.
+// Allowlist ca userul blocat să-și poată vedea starea / plăti: /api/me, /api/logout, /api/billing/*.
+async function _accessBlocked(req, res) {
+  if (req.isSuper || req.companyId == null) return false;
+  const p = req.path || req.originalUrl || '';
+  if (p === '/api/me' || p === '/api/logout' || p.indexOf('/api/billing') === 0) return false;
+  try {
+    if ((await _accessStatusCached(req.companyId)).status === 'expired') {
+      res.status(402).json({ error: 'Abonament expirat — acces suspendat. Contactați furnizorul.', access_expired: true });
+      return true;
+    }
+  } catch (e) { /* la eroare nu blocăm */ }
+  return false;
 }
 
 // Rezolvă vehiculele țintă pentru rapoarte (respectă accesul). null => 403.
@@ -872,6 +941,24 @@ app.post('/api/login', async (req, res) => {
       return res.status(403).json({ error: 'Cont dezactivat. Contactează administratorul.' });
     }
 
+    // Acces pe bază de plată: blochează login-ul dacă abonamentul companiei a expirat (super-adminul e exceptat).
+    // Încărcăm compania o singură dată și reutilizăm pentru răspuns (features/access — ca să apară bannerul imediat).
+    let company = null, features = null, access = null;
+    if (user.company_id != null) {
+      try {
+        const co = await db.getCompanyById(user.company_id);
+        if (co) {
+          access = companyAccessStatus(co);
+          if (!isSuper(user.role) && access.status === 'expired') {
+            return res.status(402).json({ error: 'Abonament expirat — accesul este suspendat până la reînnoire. Contactați furnizorul.', access_expired: true });
+          }
+          company = { id: co.id, name: co.name, is_demo: !!co.is_demo };
+          features = plans ? plans.featuresFor(co) : null;
+        }
+      } catch (e) { /* dacă verificarea eșuează, lăsăm login-ul să continue */ }
+    }
+    if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
+
     clearLoginFails(ip);
     req.session.userId = user.id;
     req.session.username = user.username;
@@ -881,7 +968,7 @@ app.post('/api/login', async (req, res) => {
     db.setUserLastLogin(user.id).catch(() => {});
     db.logAudit({ userId: user.id, username: user.username, action: 'login', entity: 'session', ip });
 
-    res.json({ username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null });
+    res.json({ username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -901,14 +988,16 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', async (req, res) => {
   const a = getAuth(req);
   if (!a) return res.status(401).json({ error: 'Neautorizat' });
-  let company = null;
+  let company = null, features = null, access = null;
   try {
     const cid = await resolveCompanyId(a);
-    if (cid != null) { const c = await db.getCompanyById(cid); if (c) company = { id: c.id, name: c.name, is_demo: !!c.is_demo }; }
+    if (cid != null) { const c = await db.getCompanyById(cid); if (c) { company = { id: c.id, name: c.name, is_demo: !!c.is_demo }; features = plans ? plans.featuresFor(c) : null; access = companyAccessStatus(c); } }
   } catch (e) { /* ignore */ }
+  // super-admin (fără companie) sau plan necunoscut → toate funcțiile disponibile
+  if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
   res.json({
     username: a.username, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
-    isSuper: isSuper(a.role), companyId: company ? company.id : null, company
+    isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access
   });
 });
 
@@ -1155,7 +1244,7 @@ async function aiLimitReached(companyId) {
   } catch (e) { return false; }
 }
 
-app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
+app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'), async (req, res) => {
   try {
     const message = (req.body.message || '').toString().slice(0, 2000).trim();
     if (!message) return res.status(400).json({ error: 'Mesaj gol' });
@@ -1207,7 +1296,7 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
   }
 });
 
-app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), async (req, res) => {
   try {
     if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
     if (await aiLimitReached(req.companyId)) return res.json({ summary: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
@@ -1326,7 +1415,10 @@ async function runAgentsWorker() {
 
 // ─── MULTI-TENANT: Companii (doar super-admin) ───
 app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
-  try { res.json(await db.getCompanies()); } catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    const list = await db.getCompanies();
+    res.json(list.map(function (c) { return Object.assign({}, c, { features: plans ? plans.featuresFor(c) : null, access: companyAccessStatus(c) }); }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Dashboard super-admin: stat per companie (vehicule, useri) + consum tokeni AI + totaluri
@@ -1637,7 +1729,14 @@ app.post('/api/billing/webhook', async (req, res) => {
       const co = await db.getCompanyByStripeCustomer(obj.customer);
       if (co) {
         const status = event.type === 'customer.subscription.deleted' ? 'canceled' : (obj.status || 'active');
-        await db.setCompanyBilling(co.id, { status, customerId: obj.customer, subscriptionId: obj.id, periodEnd: obj.current_period_end ? obj.current_period_end * 1000 : null });
+        const periodEnd = obj.current_period_end ? obj.current_period_end * 1000 : null;
+        await db.setCompanyBilling(co.id, { status, customerId: obj.customer, subscriptionId: obj.id, periodEnd });
+        // Stripe-ready: o plată reușită prelungește accesul până la finalul perioadei facturate
+        if (periodEnd && (status === 'active' || status === 'trialing')) {
+          try { await db.recordPayment({ companyId: co.id, amountRon: null, periodStart: Date.now(), periodEnd, method: 'stripe', note: 'Stripe ' + event.type, createdBy: null }); }
+          catch (e) { await db.setCompanyAccessUntil(co.id, periodEnd); }
+          _invalidateAccessCache(co.id);
+        }
       }
     }
   } catch (e) { console.warn('[BILLING] webhook:', e.message); }
@@ -1658,10 +1757,10 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
 });
 
 // ─── Tahograf (.DDD) — upload + analiză best-effort ───
-app.get('/api/tacho', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+app.get('/api/tacho', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
   try { res.json(await db.getTachoFiles(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
     const f = await db.getTachoFile(parseInt(req.params.id));
     if (!f) return res.status(404).json({ error: 'Inexistent' });
@@ -1669,7 +1768,7 @@ app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, 
     res.json({ id: f.id, filename: f.filename, kind: f.kind, driver_name: f.driver_name, uploaded_at: f.uploaded_at, parsed: typeof f.parsed === 'string' ? JSON.parse(f.parsed) : f.parsed });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
     const { filename, b64, imei } = req.body;
     if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
@@ -1682,7 +1781,7 @@ app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, async (req
     res.json({ id: rec.id, parsed });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
     const f = await db.getTachoFile(parseInt(req.params.id));
     if (f && !req.isSuper && f.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
@@ -1693,16 +1792,16 @@ app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, async (req,
 // ─── e-Transport (ANAF) — gestionare UIT + (trimitere doar dacă e configurat tokenul) ───
 function etransportEnabled() { return !!(process.env.ANAF_ETRANSPORT_TOKEN && process.env.ANAF_ETRANSPORT_URL); }
 app.get('/api/etransport/status', requireAuth, (req, res) => res.json({ enabled: etransportEnabled() }));
-app.get('/api/etransport', requireAuth, requirePerm('viewReports'), withCompany, async (req, res) => {
+app.get('/api/etransport', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('etransport'), async (req, res) => {
   try { res.json(await db.getEtransports(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/etransport', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.post('/api/etransport', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
   try { if (!req.body.uit) return res.status(400).json({ error: 'Cod UIT obligatoriu' }); const tr = await db.createEtransport(req.body, req.companyId); auditReq(req, 'create', 'etransport', tr.id, { uit: req.body.uit }); res.json(tr); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.put('/api/etransport/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.put('/api/etransport/:id', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.updateEtransport(parseInt(req.params.id), req.body); auditReq(req, 'update', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.deleteEtransport(parseInt(req.params.id)); auditReq(req, 'delete', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -3827,6 +3926,12 @@ async function _applyCompanySettingsPatch(companyId, body) {
   } else if (body.enabled_agents === null) {
     delete next.enabled_agents; // null = revino la default-ul planului
   }
+  if (body.features && typeof body.features === 'object') {
+    const fvalid = (plans && plans.FEATURE_KEYS) || [];
+    const f = Object.assign({}, cur.features || {});
+    fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
+    next.features = f;
+  }
   // Scriere directă (NU prin db.setCompanySettings, care face încă un merge cu vechiul cur și readuce cheile șterse)
   await db.pool.query('UPDATE companies SET settings = $2 WHERE id = $1', [companyId, JSON.stringify(next)]);
   return next;
@@ -3847,6 +3952,63 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const next = await _applyCompanySettingsPatch(id, req.body || {});
     auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
     res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Super-admin: funcții (module) per companie — checkbox-uri (agents / ai_assistant / etransport / tahograf)
+app.put('/api/companies/:id/features', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    await _applyCompanySettingsPatch(id, { features: (req.body && req.body.features) || {} });
+    const co2 = await db.getCompanyById(id);
+    auditReq(req, 'update', 'company_features', id, { features: req.body && req.body.features });
+    res.json({ ok: true, features: plans.featuresFor(co2) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Super-admin: înregistrează o plată (manual) → prelungește accesul cu N luni (default 1, cumulativ)
+app.post('/api/companies/:id/payment', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const months = Math.max(1, Math.min(parseInt(req.body && req.body.months) || 1, 36));
+    const now = Date.now();
+    // Continuitate: dacă accesul e încă ACTIV sau în GRAȚIE, cumulăm peste access_until (fără a pierde zile); altfel pornim de acum.
+    const st = companyAccessStatus(co);
+    const base = ((st.status === 'active' || st.status === 'grace') && co.access_until != null) ? Number(co.access_until) : now;
+    const periodEnd = _addMonthsMs(base, months);
+    // Sumă opțională: normalizează separatorul zecimal RO (virgulă) + miile (punct), respinge gunoi/negativ.
+    let amount = null;
+    const rawAmt = (req.body && req.body.amount != null) ? String(req.body.amount).trim() : '';
+    if (rawAmt !== '') {
+      const norm = rawAmt.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+      amount = Number(norm);
+      if (!Number.isFinite(amount) || amount < 0) return res.status(400).json({ error: 'Sumă invalidă (ex: 1500 sau 1.234,56)' });
+    }
+    const pay = await db.recordPayment({ companyId: id, amountRon: amount, periodStart: base, periodEnd, method: (req.body && req.body.method) || 'manual', note: (req.body && req.body.note) || null, createdBy: req.auth && req.auth.userId });
+    _invalidateAccessCache(id);
+    auditReq(req, 'payment', 'company', id, { months, amount, until: periodEnd });
+    const co2 = await db.getCompanyById(id);
+    res.json({ ok: true, payment: pay, access: companyAccessStatus(co2) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Super-admin: istoricul plăților unei companii
+app.get('/api/companies/:id/payments', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    res.json(await db.getPayments(id, 100));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Super-admin: setează manual data de acces (trial / corecții). body: { until: epochMs | null }
+app.put('/api/companies/:id/access', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const until = (req.body && req.body.until != null && req.body.until !== '') ? Number(req.body.until) : null;
+    if (until != null && !Number.isFinite(until)) return res.status(400).json({ error: 'Dată invalidă' });
+    await db.setCompanyAccessUntil(id, until);
+    _invalidateAccessCache(id);
+    auditReq(req, 'set_access', 'company', id, { until });
+    const co2 = await db.getCompanyById(id);
+    res.json({ ok: true, access: companyAccessStatus(co2) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -3957,6 +4119,11 @@ wss.on('connection', (ws, req) => {
       const wsCompanyId = await resolveCompanyId({ userId: req.session.userId, role, companyId });
       ws._companyId = wsCompanyId;
       ws._allowedImeis = await getAllowedImeiSet(req.session.userId, role, wsCompanyId);
+      // Acces pe bază de plată: nu transmite live feed companiilor expirate (super-adminul e exceptat)
+      if (!isSuper(role) && wsCompanyId != null && (await _accessStatusCached(wsCompanyId)).status === 'expired') {
+        try { ws.send(JSON.stringify({ type: 'error', data: { error: 'access_expired' } })); } catch (e) {}
+        return ws.close();
+      }
     } catch (e) {
       ws._allowedImeis = new Set();
     }

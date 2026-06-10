@@ -30,7 +30,7 @@
       --text-primary: #0f172a;
       --text: var(--text-primary);
       --text-secondary: #475569;
-      --text-muted: #94a3b8;
+      --text-muted: #64748b; /* urcat din #94a3b8 (~2.6:1) la slate-500 (~4.85:1) pentru WCAG AA pe bg deschis */
       --accent: #16a34a;
       --accent-hover: #15803d;
       --blue: #16a34a;
@@ -1837,7 +1837,77 @@
         .login-box { width: 90vw; max-width: 360px; padding: 28px 22px; box-shadow: none; }
         #login-screen .login-logo img { height: 38px; }
         #login-screen p { font-size: 13px; }
+
+        /* ─── Polish mobile consolidat ───────────────────────────────────────── */
+        /* Tab-uri Administrare/Hotspot: scroll orizontal compact în loc de 3 rânduri */
+        #admin-modal > .modal > div[style*="border-bottom"]:first-of-type,
+        #hotspot-view > .modal > div[style*="border-bottom"]:first-of-type {
+          flex-wrap: nowrap !important;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        #admin-modal > .modal > div[style*="border-bottom"]:first-of-type::-webkit-scrollbar,
+        #hotspot-view > .modal > div[style*="border-bottom"]:first-of-type::-webkit-scrollbar { display: none; }
+        .admin-tab { flex: 0 0 auto; white-space: nowrap; padding: 8px 12px; font-size: 12px; }
+
+        /* Touch target ≥ 36px pe butoane mici din detail panel */
+        .detail-action-btn { min-height: 36px; padding: 7px 8px; }
+        .detail-close { min-width: 36px; min-height: 36px; }
+
+        /* Tabel Vehicule: ascund Grup + Marcă pe mobile (rămân nume/nr/șofer/transmisie/acțiuni) */
+        #veh-tbody td:nth-child(4), /* Grup */
+        #veh-tbody td:nth-child(7), /* Marcă */
+        #atab-vehicles thead th:nth-child(4),
+        #atab-vehicles thead th:nth-child(7) { display: none; }
+        #atab-vehicles table { font-size: 11px; }
+        #atab-vehicles table td, #atab-vehicles table th { padding: 5px 6px; }
+
+        /* Toolbar Vehicule: search ia tot rândul, butoanele compact pe rândul 2 */
+        #atab-vehicles .toolbar-row .toolbar-spacer { min-width: 100% !important; order: -1; }
+
+        /* Modaluri rax (Conturi, Dashboard, Companii): width pe tot ecranul */
+        .rax-card { max-width: 100% !important; max-height: 90vh; border-radius: 12px 12px 0 0; }
+
+        /* Modaluri standard: padding mai mic */
+        .modal-overlay > .modal { padding: 14px !important; }
+
+        /* iOS auto-zoom la focus: inputs ≥ 16px font-size (sub 16px iOS Safari face zoom) */
+        input, select, textarea, .rax-field { font-size: 16px !important; }
+        /* Excepție: chip-uri/label-uri foarte mici care nu primesc focus rămân la dimensiune normală */
+        label, .meta, .stat-label { font-size: inherit; }
+
+        /* Touch target ≥ 36px pe TOATE .btn-sm + checkbox-uri în admin */
+        .btn-sm { min-height: 36px; padding: 8px 12px; font-size: 13px; }
+        td .btn-sm { min-height: 34px; padding: 6px 10px; }
+        input[type="checkbox"] { width: 20px !important; height: 20px !important; }
+
+        /* #history-panel: max-height + scroll ca să nu depășească viewport pe orientare landscape sau iPhone SE */
+        #history-panel { max-height: 75vh; overflow-y: auto; padding-bottom: calc(14px + var(--sab)); }
+
+        /* FAB ascuns când history-panel deschis (lipsea — era doar pentru detail-panel) */
+        body.history-open #rax-fabs { display: none !important; }
       }
+      /* Notă: contrastul text-muted urcat global la #64748b (slate-500, WCAG AA 4.85:1) pentru toate viewport-urile */
+
+      /* ANULARE :hover globală pe device-uri fără hover real (iOS, Android touch).
+         Folosesc :where() pentru specificitate zero — nu suprascrie regulile :hover, doar le anulează vizual. */
+      @media (hover: none), (pointer: coarse) {
+        :where(button, a, .btn, .btn-sm, .btn-primary, .btn-danger, .btn-icon, .topbar-icon, .rax-fab, .rax-btn,
+               .admin-tab, .device-card, .nav-item, .detail-action-btn, .filter-btn, .route-card,
+               .history-btn, .modal-btn, .nav-rail-item, .stat-chip, .meta-ignition, .icon-btn, .close-btn):hover {
+          background-color: inherit !important;
+          color: inherit !important;
+          border-color: inherit !important;
+          filter: none !important;
+        }
+      }
+
+      /* Tap delay eliminat pe butoane/elemente interactive (iOS Safari) — global */
+      button, a, [role="button"], input, select, textarea, label, .btn-sm, .btn-primary,
+      .topbar-icon, .rax-fab, .rax-btn, .admin-tab, .device-card, .nav-item,
+      .detail-action-btn, .filter-btn, .route-card, .history-btn { touch-action: manipulation; }
     </style>
   </div>
 
@@ -2829,7 +2899,7 @@
   </div>
 
   <!-- ═══ RA Dispatch (alocare curse) ═══ -->
-  <div id="dispatch-panel" style="display:none;position:fixed;top:70px;right:12px;z-index:1100;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:12px;width:300px;max-width:94vw;box-shadow:0 6px 24px rgba(0,0,0,.4);">
+  <div id="dispatch-panel" style="display:none;position:fixed;top:calc(var(--topbar-h) + var(--sat) + 8px);right:12px;z-index:1100;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:12px;width:300px;max-width:94vw;box-shadow:0 6px 24px rgba(0,0,0,.4);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <strong style="font-size:13px;color:var(--accent);"><i class="fas fa-compass"></i> RA Dispatch</strong>
       <button class="close-btn" onclick="closeDispatch()" style="position:static;font-size:16px;">&#10005;</button>
@@ -2841,7 +2911,7 @@
   </div>
 
   <!-- ═══ Notificări (Faza 4) ═══ -->
-  <div id="notif-panel" style="display:none;position:fixed;top:64px;right:12px;z-index:3500;width:360px;max-width:94vw;max-height:72vh;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.5);flex-direction:column;">
+  <div id="notif-panel" style="display:none;position:fixed;top:calc(var(--topbar-h) + var(--sat) + 8px);right:12px;z-index:3500;width:360px;max-width:94vw;max-height:72vh;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.5);flex-direction:column;">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);">
       <strong style="font-size:13px;"><i class="fas fa-bell" style="color:var(--accent);margin-right:6px;"></i> Notificări</strong>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -3156,7 +3226,15 @@
       try {
         const res = await fetch('/api/me');
         if (res.ok) {
-          currentUser = await res.json();
+          const data = await res.json();
+          // Abonament expirat (non-super): nu intrăm în aplicație — sesiunea e închisă și se afișează mesajul pe login
+          if (data && data.access && data.access.status === 'expired' && !data.isSuper) {
+            await fetch('/api/logout', { method: 'POST' }).catch(function () {});
+            var el = document.getElementById('login-error');
+            if (el) { el.textContent = 'Abonament expirat — accesul este suspendat. Contactați furnizorul.'; el.style.display = 'block'; }
+            return;
+          }
+          currentUser = data;
           showApp();
         }
       } catch (err) {}
@@ -3535,6 +3613,10 @@
       // tipuri alerte
       document.getElementById('alert-type').innerHTML = ALERT_TYPES.map(t => `<option value="${t.v}">${t.label}</option>`).join('');
       renderAlertCond();
+      // Ascunde taburile Tahograf/e-Transport dacă super-adminul nu a acordat funcția companiei
+      var _f = (currentUser && currentUser.features) || {};
+      var _tt = document.querySelector('[data-atab="tacho"]'); if (_tt) _tt.style.display = (_f.tahograf === false) ? 'none' : '';
+      var _et = document.querySelector('[data-atab="etransport"]'); if (_et) _et.style.display = (_f.etransport === false) ? 'none' : '';
       switchAdminTab('vehicles');
     }
     function switchAdminTab(tab) {
@@ -4945,6 +5027,30 @@
       const dashNav = document.getElementById('nav-dashboard');
       if (dashNav) dashNav.style.display = (currentUser && currentUser.role === 'superadmin') ? '' : 'none';
       document.body.classList.toggle('no-fleet', !can('manageFleet'));
+      applyAccessBanner();
+    }
+    // Banner pentru companii în grație/expirat (acces pe bază de plată). Super-adminul nu e afectat.
+    function applyAccessBanner() {
+      var a = currentUser && currentUser.access;
+      var el = document.getElementById('access-banner');
+      var hide = !a || a.status === 'active' || a.status === 'unlimited' || (currentUser && currentUser.isSuper);
+      if (hide) { if (el) el.style.display = 'none'; return; }
+      if (!el) {
+        el = document.createElement('div'); el.id = 'access-banner';
+        // în flux (nu fixed) ÎNAINTE de topbar → nu mai acoperă bara; coloana flex îl împinge natural
+        el.style.cssText = 'position:relative;z-index:1200;padding:9px 14px;text-align:center;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.25);flex:0 0 auto;';
+        var app = document.getElementById('app'); var tb = document.getElementById('topbar');
+        if (app && tb) app.insertBefore(el, tb); else document.body.insertBefore(el, document.body.firstChild);
+      }
+      if (a.status === 'grace') {
+        var gd = a.grace_until ? new Date(Number(a.grace_until)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
+        el.style.background = '#f59e0b'; el.style.color = '#3a2400';
+        el.innerHTML = '⚠ Abonament expirat — perioadă de grație până la ' + gd + '. Reînnoiește pentru a evita suspendarea accesului.';
+      } else {
+        el.style.background = '#ef4444'; el.style.color = '#fff';
+        el.innerHTML = '🚫 Abonament expirat — accesul va fi suspendat. Contactează furnizorul pentru reactivare.';
+      }
+      el.style.display = 'block';
     }
 
     // ─── Map ───
@@ -6073,6 +6179,7 @@
       selectedImei = imei;
       const panel = document.getElementById('history-panel');
       panel.classList.add('visible');
+      document.body.classList.add('history-open'); // ascunde FAB pe mobile
 
       const now = new Date();
       const yesterday = new Date(now - 24 * 60 * 60 * 1000);
@@ -6083,6 +6190,7 @@
 
     function closeHistory() {
       document.getElementById('history-panel').classList.remove('visible');
+      document.body.classList.remove('history-open');
       hpStop(); hpData = []; hpMarker = null; hpSpeedLimit = null;
       var bar = document.getElementById('history-playback'); if (bar) bar.style.display = 'none';
       var sumEl = document.getElementById('hp-summary'); if (sumEl) sumEl.style.display = 'none';
@@ -8407,6 +8515,11 @@
         var r = await fetch('/api/me', { credentials: 'same-origin' });
         if (!r.ok) { me = null; return updateFabs(); }
         me = await r.json();
+        // Sincronizează currentUser (scope principal) ca bannerul de acces + gating-ul să se actualizeze live, nu doar la login
+        if (typeof currentUser !== 'undefined' && currentUser && me) {
+          currentUser.access = me.access; currentUser.features = me.features; currentUser.isSuper = me.isSuper;
+          if (typeof applyPermissionsUI === 'function') { try { applyPermissionsUI(); } catch (e) {} }
+        }
         var s = await fetch('/api/ai/status', { credentials: 'same-origin' }).then(function (x) { return x.ok ? x.json() : { enabled: false }; }).catch(function () { return { enabled: false }; });
         aiEnabled = !!s.enabled;
       } catch (e) { me = null; }
@@ -8418,8 +8531,9 @@
       // Status server + versiune doar pentru admin (superadmin / manageUsers); ascuns pentru client
       document.body.classList.toggle('is-admin', !!(me && (me.isSuper || (me.permissions && me.permissions.manageUsers))));
       if (!show) return;
-      $('rax-ai-btn').style.display = 'flex';
-      $('rax-ag-btn').style.display = (me.permissions && me.permissions.viewReports) ? 'flex' : 'none';
+      var feats = me.features || {};
+      $('rax-ai-btn').style.display = (feats.ai_assistant !== false) ? 'flex' : 'none';
+      $('rax-ag-btn').style.display = ((feats.agents !== false) && me.permissions && me.permissions.viewReports) ? 'flex' : 'none';
       raxRefreshAgBadge();
       var chip = $('rax-co-chip');
       if (me.company && me.company.name) { chip.style.display = 'block'; chip.innerHTML = (me.company.is_demo ? '🔵 ' : '🏢 ') + esc(me.company.name); }
@@ -8699,6 +8813,70 @@
       if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
       raxLoadAccounts();
     };
+    // Checkbox-uri de acces la funcții per companie (gestionat de super-admin)
+    var RAX_FEATURES = [['agents', 'Agenți AI'], ['ai_assistant', 'Asistent AI'], ['etransport', 'e-Transport'], ['tahograf', 'Tahograf']];
+    function _raxFeatureRow(c) {
+      if (c.is_demo) return '';
+      var f = c.features || {};
+      return '<div style="display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 2px;padding:6px 0;border-top:1px dashed var(--border);">' +
+        '<span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;align-self:center;">Acces funcții:</span>' +
+        RAX_FEATURES.map(function (d) {
+          return '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;">' +
+            '<input type="checkbox" ' + (f[d[0]] ? 'checked' : '') + ' onchange="raxToggleFeature(' + c.id + ',\'' + d[0] + '\',this.checked)" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"> ' + d[1] + '</label>';
+        }).join('') + '</div>';
+    }
+    window.raxToggleFeature = async function (id, key, on) {
+      try {
+        var body = { features: {} }; body.features[key] = !!on;
+        var j = await fetch('/api/companies/' + id + '/features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); raxLoadCompanies(); return; }
+        var c = (companiesCache || []).find(function (x) { return x.id === id; }); if (c) c.features = j.features;
+      } catch (e) { alert('Eroare: ' + e.message); raxLoadCompanies(); }
+    };
+    // Acces pe bază de plată — status + înregistrare plată + istoric (super-admin)
+    function _raxAccessRow(c) {
+      if (c.is_demo) return '';
+      var a = c.access || {};
+      var map = { unlimited: ['∞ nelimitat', 'var(--text-muted)'], active: ['● activ', 'var(--accent)'], grace: ['⚠ grație', '#f59e0b'], expired: ['🚫 expirat', 'var(--red)'] };
+      var m = map[a.status] || map.unlimited;
+      var until = a.access_until ? new Date(Number(a.access_until)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—';
+      return '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 2px;padding:6px 0;border-top:1px dashed var(--border);font-size:11.5px;">' +
+        '<span style="color:' + m[1] + ';font-weight:700;">' + m[0] + '</span>' +
+        '<span style="color:var(--text-muted);">acces până: <strong>' + until + '</strong></span>' +
+        '<button class="rax-btn" style="padding:3px 9px;font-size:11px;" onclick="raxRecordPayment(' + c.id + ')"><i class="fas fa-credit-card"></i> Înregistrează plată</button>' +
+        '<button class="rax-btn" style="padding:3px 9px;font-size:11px;" onclick="raxShowPayments(' + c.id + ')"><i class="fas fa-clock-rotate-left"></i> Istoric</button>' +
+        '</div>';
+    }
+    window.raxRecordPayment = async function (id) {
+      var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
+      var monthsStr = prompt('Înregistrează plată pentru „' + (c.name || id) + '"\nPrelungește accesul cu câte LUNI? (1 = o lună · cumulativ peste accesul curent)', '1');
+      if (monthsStr === null) return;
+      var months = Math.max(1, parseInt(monthsStr) || 1);
+      var amount = prompt('Suma încasată (lei, opțional — lasă gol dacă nu vrei să o reții):', '');
+      if (amount === null) return;
+      var note = prompt('Notă (opțional — ex: nr. factură / transfer):', '');
+      if (note === null) note = '';
+      try {
+        var j = await fetch('/api/companies/' + id + '/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ months: months, amount: (amount.trim() === '' ? null : amount.trim()), note: note }) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        var until = (j.access && j.access.access_until) ? new Date(Number(j.access.access_until)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—';
+        alert('✓ Plată înregistrată. Acces activ până la: ' + until);
+        raxLoadCompanies();
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
+    window.raxShowPayments = async function (id) {
+      var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
+      try {
+        var rows = await fetch('/api/companies/' + id + '/payments', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!Array.isArray(rows) || !rows.length) { alert('Nicio plată înregistrată pentru „' + (c.name || id) + '".'); return; }
+        var txt = rows.map(function (p) {
+          var d = p.paid_at ? new Date(Number(p.paid_at)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
+          var until = p.period_end ? new Date(Number(p.period_end)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
+          return '• ' + d + ' — ' + (p.amount_ron != null ? (p.amount_ron + ' lei') : '(fără sumă)') + ' · ' + (p.method || '') + ' → acces până ' + until + (p.note ? (' · ' + p.note) : '');
+        }).join('\n');
+        alert('Istoric plăți — ' + (c.name || id) + '\n\n' + txt);
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
     async function raxLoadCompanies() {
       var box = $('rax-co-list'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
@@ -8707,6 +8885,8 @@
         box.innerHTML = companiesCache.map(function (c) {
           return '<div class="rax-co-item"><h4>' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</h4>' +
             '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
+            _raxFeatureRow(c) +
+            _raxAccessRow(c) +
             (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button></div>') + '</div>';
         }).join('');
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
