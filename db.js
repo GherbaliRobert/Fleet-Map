@@ -648,7 +648,7 @@ async function getAiUsageByCompany(sinceDays) {
      FROM ai_usage ${where} GROUP BY company_id`, params);
   return r.rows;
 }
-// Total tokeni (in+out) pentru o companie în ultimele N zile — pentru aplicarea limitei.
+// Total tokeni (in+out) pentru o companie în ultimele N zile.
 async function getAiTokensForCompany(companyId, days) {
   const since = new Date(Date.now() - (parseInt(days) || 30) * 86400000).toISOString();
   const r = await pool.query(
@@ -656,6 +656,15 @@ async function getAiTokensForCompany(companyId, days) {
     [companyId != null ? companyId : null, since]
   );
   return Number(r.rows[0] && r.rows[0].total) || 0;
+}
+// Număr de prompturi AI (apeluri) pentru o companie în ultimele N zile — pentru aplicarea limitei pe prompturi.
+async function getAiCallsForCompany(companyId, days) {
+  const since = new Date(Date.now() - (parseInt(days) || 30) * 86400000).toISOString();
+  const r = await pool.query(
+    'SELECT COUNT(*)::int AS n FROM ai_usage WHERE company_id IS NOT DISTINCT FROM $1 AND created_at >= $2',
+    [companyId != null ? companyId : null, since]
+  );
+  return Number(r.rows[0] && r.rows[0].n) || 0;
 }
 async function setCompanyAiLimit(id, limit) {
   await pool.query('UPDATE companies SET ai_monthly_limit = $2 WHERE id = $1', [id, (limit == null || limit === '' || isNaN(limit)) ? null : parseInt(limit)]);
@@ -785,6 +794,11 @@ async function getAgentFindings(companyId, limit = 100) {
   const params = companyId != null ? [companyId, limit] : [limit];
   const r = await pool.query(`SELECT * FROM agent_findings ${where} ORDER BY created_at DESC LIMIT $${params.length}`, params);
   return r.rows;
+}
+// Număr constatări noi ale agenților (pentru dashboard platformă). null = toate companiile.
+async function countNewFindings() {
+  const r = await pool.query("SELECT COUNT(*)::int AS n FROM agent_findings WHERE status = 'new'");
+  return Number(r.rows[0] && r.rows[0].n) || 0;
 }
 async function updateAgentFinding(id, status, companyId) {
   const r = await pool.query(
@@ -1642,13 +1656,13 @@ module.exports = {
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
-  recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, setCompanyAiLimit,
+  recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   getSetting, setSetting,
-  createAgentFinding, getAgentFindings, updateAgentFinding,
+  createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
   updateDeviceInfo,
   updateVehicleDetails,

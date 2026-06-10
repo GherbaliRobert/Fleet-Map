@@ -2327,15 +2327,21 @@
 
   <!-- Users Modal -->
   <div id="users-modal" class="modal-overlay">
-    <div class="modal" style="width:760px;max-width:96vw;max-height:92vh;">
+    <div class="modal" style="width:920px;max-width:96vw;max-height:92vh;">
       <h2>
-        <span><i class="fas fa-users" style="margin-right:8px;color:var(--purple);"></i> Utilizatori &amp; acces</span>
+        <span><i class="fas fa-gear" style="margin-right:8px;color:var(--purple);"></i> Administrare</span>
         <span style="display:flex;gap:8px;align-items:center;">
           <button class="btn-sm" onclick="openApiKeys()" title="Chei API"><i class="fas fa-key"></i> Chei API</button>
           <button class="btn-sm" onclick="openAudit()" title="Jurnal audit"><i class="fas fa-clipboard-list"></i> Audit</button>
           <button class="close-btn" onclick="closeUsersModal()" style="position:static;font-size:18px;">&#10005;</button>
         </span>
       </h2>
+      <div id="admin-tabs" style="display:none;gap:6px;margin-bottom:12px;">
+        <button class="btn-sm" id="admin-tab-btn-platform" onclick="raxAdminTab('platform')"><i class="fas fa-chart-line"></i> Dashboard platformă</button>
+        <button class="btn-sm" id="admin-tab-btn-users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
+      </div>
+      <div id="admin-tab-platform" style="display:none;"></div>
+      <div id="admin-tab-users">
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
@@ -2354,6 +2360,7 @@
           </select>
           <button onclick="addUser()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă utilizator</button>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -3165,10 +3172,27 @@
     const ROLE_LABELS = { admin:'Admin', manager:'Manager', dispatcher:'Dispecer', client:'Client', viewer:'Viewer' };
     let ueUsersCache = [];
 
+    // ─── Administrare: taburi (super-admin) ───
+    window.raxAdminTab = function (name) {
+      var isP = (name === 'platform');
+      var tp = document.getElementById('admin-tab-platform'), tu = document.getElementById('admin-tab-users');
+      if (tp) tp.style.display = isP ? 'block' : 'none';
+      if (tu) tu.style.display = isP ? 'none' : 'block';
+      var bp = document.getElementById('admin-tab-btn-platform'), bu = document.getElementById('admin-tab-btn-users');
+      [bp, bu].forEach(function (b) { if (b) { b.style.background = ''; b.style.color = ''; b.style.fontWeight = ''; } });
+      var act = isP ? bp : bu;
+      if (act) { act.style.background = 'var(--accent)'; act.style.color = '#06210F'; act.style.fontWeight = '700'; }
+      if (isP && window.raxLoadDashboard) window.raxLoadDashboard('admin-tab-platform');
+    };
+
     // ─── Users (admin) ───
     async function openUsersModal() {
       document.getElementById('users-modal').classList.add('visible');
       await loadUsers();
+      var isSuper = !!(currentUser && currentUser.role === 'superadmin');
+      var tabs = document.getElementById('admin-tabs');
+      if (tabs) tabs.style.display = isSuper ? 'flex' : 'none';
+      raxAdminTab(isSuper ? 'platform' : 'users'); // super: arată întâi dashboard-ul platformei
     }
 
     function closeUsersModal() {
@@ -8161,7 +8185,6 @@
     <div id="rax-actions">
       <div id="rax-co-chip" style="display:none;"></div>
       <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
-      <button class="rax-fab secondary" id="rax-dash-btn" style="display:none;" onclick="raxOpenDashboard()"><i class="fas fa-chart-line"></i> Dashboard</button>
       <button class="rax-fab secondary" id="rax-acc-btn" style="display:none;" onclick="raxOpenAccounts()"><i class="fas fa-users-gear"></i> Conturi</button>
       <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
       <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
@@ -8212,13 +8235,6 @@
           <div id="rax-co-unassigned" class="rax-co-meta" style="margin-top:6px;">—</div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <div class="rax-overlay" id="rax-dash-overlay">
-    <div class="rax-card" style="max-width:640px;">
-      <div class="rax-head"><h3><i class="fas fa-chart-line" style="color:var(--accent)"></i> Dashboard platformă (super-admin)</h3><button class="rax-x" onclick="raxCloseDashboard()">&times;</button></div>
-      <div class="rax-body" id="rax-dash-body"><div class="rax-co-meta">Se încarcă…</div></div>
     </div>
   </div>
 
@@ -8327,7 +8343,6 @@
       if (!show) return;
       $('rax-ai-btn').style.display = 'flex';
       $('rax-co-btn').style.display = (me.isSuper ? 'flex' : 'none');
-      $('rax-dash-btn').style.display = (me.isSuper ? 'flex' : 'none');
       $('rax-acc-btn').style.display = (me.isSuper ? 'flex' : 'none');
       var fleet = !!(me.permissions && me.permissions.manageFleet);
       $('rax-tacho-btn').style.display = fleet ? 'flex' : 'none';
@@ -8437,10 +8452,8 @@
     window.raxOpenCompanies = function () { $('rax-co-overlay').classList.add('open'); raxLoadCompanies(); raxLoadUnassigned(); };
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
 
-    // ─── Dashboard platformă — super-admin ───
+    // ─── Dashboard platformă — super-admin (montat în modalul Administrare, tab „Platformă") ───
     var RAX_TOK_IN_RATE = 1.0, RAX_TOK_OUT_RATE = 5.0; // $/1M tokeni (Haiku, estimativ — ajustează după prețul real)
-    window.raxOpenDashboard = function () { $('rax-dash-overlay').classList.add('open'); if (window.raxCloseMenu) raxCloseMenu(); raxLoadDashboard(); };
-    window.raxCloseDashboard = function () { $('rax-dash-overlay').classList.remove('open'); };
     function _raxFmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n)); }
     function _raxCost(inp, out) { return (Number(inp) || 0) / 1e6 * RAX_TOK_IN_RATE + (Number(out) || 0) / 1e6 * RAX_TOK_OUT_RATE; }
     function _raxCard(label, val) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:700;color:var(--accent);">' + (val == null ? '0' : val) + '</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">' + label + '</div></div>'; }
@@ -8457,13 +8470,13 @@
         (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >30 min">⚠ ' + h.offline30 + '</span>' : '') +
         (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
     }
-    async function raxLoadDashboard() {
-      var box = $('rax-dash-body'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+    window.raxLoadDashboard = async function raxLoadDashboard(targetId) {
+      var box = $(targetId || 'rax-dash-body'); if (!box) return; box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
         var d = await fetch('/api/admin/overview?days=30', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         var t = d.totals || {}; var th = t.health || {};
-        var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">' +
-          _raxCard('Companii', t.companies) + _raxCard('Vehicule', t.vehicles) + _raxCard('Utilizatori', t.users) +
+        var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;margin-bottom:10px;">' +
+          _raxCard('Companii', t.companies) + _raxCard('Vehicule', t.vehicles) + _raxCard('Utilizatori', t.users) + _raxCard('Constatări noi AI', t.findings_new || 0) +
           '</div>';
         // ─── Venituri / MRR (estimat din pachete) ───
         var rev = d.revenue || {}; var bp = rev.by_plan || {};
@@ -8505,6 +8518,7 @@
             '<td style="padding:6px 8px;">' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">demo</span>' : '') + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.vehicles + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.users + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;color:var(--accent);font-weight:600;">' + (c.mrr ? lei(c.mrr) : '—') + '</td>' +
             '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(c.health) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(c.ai_input) + ' / ' + _raxFmt(c.ai_output) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + c.ai_calls + '</td>' +
@@ -8514,26 +8528,26 @@
         var pf = d.platform || {};
         if (((pf.ai_input || 0) + (pf.ai_output || 0) + (pf.ai_calls || 0)) > 0 || (pf.health && pf.health.live > 0)) {
           rows += '<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;color:var(--text-muted);"><em>Platformă (super-admin)</em></td>' +
-            '<td style="padding:6px 8px;text-align:right;">—</td><td style="padding:6px 8px;text-align:right;">—</td>' +
+            '<td style="padding:6px 8px;text-align:right;">—</td><td style="padding:6px 8px;text-align:right;">—</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">—</td>' +
             '<td style="padding:6px 8px;font-size:11px;">' + _raxHealthCell(pf.health) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + _raxFmt(pf.ai_input) + ' / ' + _raxFmt(pf.ai_output) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;">' + (pf.ai_calls || 0) + '</td>' +
             '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">∞</td></tr>';
         }
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită AI</th></tr></thead><tbody>' +
-          (rows || '<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
+          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită AI</th></tr></thead><tbody>' +
+          (rows || '<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
         box.innerHTML = html;
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcare.</div>'; }
     }
 
     function _raxLimitCell(c) {
-      var used = (c.ai_input || 0) + (c.ai_output || 0);
-      var lim = c.ai_limit || 0;
+      var used = c.ai_calls || 0;          // prompturi consumate (apeluri AI)
+      var lim = c.ai_limit || 0;           // limită = nr. prompturi/lună
       var over = lim > 0 && used >= lim;
-      var txt = lim > 0 ? ((over ? '🚫 ' : '') + _raxFmt(used) + ' / ' + _raxFmt(lim)) : '∞';
+      var txt = lim > 0 ? ((over ? '🚫 ' : '') + used + ' / ' + lim) : '∞';
       var col = over ? 'var(--red)' : 'var(--text-muted)';
-      return '<td style="padding:6px 8px;text-align:right;white-space:nowrap;color:' + col + ';">' + txt + ' <button class="rax-btn" style="padding:2px 7px;font-size:10px;" onclick="raxSetAiLimit(' + c.id + ',' + lim + ')">✎</button></td>';
+      return '<td style="padding:6px 8px;text-align:right;white-space:nowrap;color:' + col + ';">' + txt + ' <button class="rax-btn" style="padding:2px 7px;font-size:10px;" title="Setează limita de prompturi/lună" onclick="raxSetAiLimit(' + c.id + ',' + lim + ')">✎</button></td>';
     }
     window.raxDashSaveKey = async function () {
       var inp = $('rax-dash-aikey'), msg = $('rax-dash-aikey-msg'); if (!inp) return;
@@ -8542,16 +8556,16 @@
       try {
         var j = await fetch('/api/ai/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ key: key }) }).then(function (r) { return r.json(); });
         if (j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error; return; }
-        aiEnabled = !!j.enabled; raxLoadDashboard();
+        aiEnabled = !!j.enabled; raxLoadDashboard('admin-tab-platform');
       } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
     };
     window.raxSetAiLimit = async function (id, cur) {
-      var v = prompt('Limită AI lunară pentru companie — tokeni (in+out) / 30 zile.\nLasă gol sau 0 = nelimitat:', cur || '');
+      var v = prompt('Limită AI lunară pentru companie — număr de PROMPTURI (întrebări AI) / 30 zile.\nÎntrebările rapide nu consumă din limită.\nLasă gol sau 0 = nelimitat:', cur || '');
       if (v === null) return;
       try {
         var j = await fetch('/api/companies/' + id + '/ai-limit', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ limit: (v.trim() === '' ? 0 : parseInt(v)) }) }).then(function (r) { return r.json(); });
         if (j.error) { alert(j.error); return; }
-        raxLoadDashboard();
+        raxLoadDashboard('admin-tab-platform');
       } catch (e) { alert('Eroare: ' + e.message); }
     };
 

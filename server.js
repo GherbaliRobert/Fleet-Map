@@ -1143,14 +1143,15 @@ app.put('/api/companies/:id/ai-limit', requireAuth, requireSuperadmin, async (re
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Limită AI lunară per companie (gestionată de super-admin). 0/null = nelimitat; super-admin/platformă fără limită.
+// Limită AI lunară per companie = număr de PROMPTURI (apeluri AI) / 30 zile, gestionată de super-admin.
+// 0/null = nelimitat; super-admin/platformă fără limită. Întrebările rapide (locale) NU consumă din limită.
 async function aiLimitReached(companyId) {
   if (companyId == null) return false;
   try {
     const co = await db.getCompanyById(companyId);
     const lim = co && co.ai_monthly_limit;
     if (!lim || lim <= 0) return false;
-    return (await db.getAiTokensForCompany(companyId, 30)) >= lim;
+    return (await db.getAiCallsForCompany(companyId, 30)) >= lim;
   } catch (e) { return false; }
 }
 
@@ -1332,7 +1333,7 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
 app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     let days = parseInt(req.query.days); if (!Number.isFinite(days) || days <= 0) days = 30; days = Math.min(days, 365);
-    const [companies, usage] = await Promise.all([db.getCompanies(), db.getAiUsageByCompany(days)]);
+    const [companies, usage, findingsNew] = await Promise.all([db.getCompanies(), db.getAiUsageByCompany(days), db.countNewFindings().catch(function () { return 0; })]);
     const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0;
     usage.forEach(function (u) {
       usageMap[u.company_id == null ? 'null' : u.company_id] = u;
@@ -1378,6 +1379,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         vehicles: c.device_count || 0, users: c.user_count || 0,
         ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0,
         ai_limit: Number(c.ai_monthly_limit) || 0,
+        mrr: plans ? Math.round(_companyMrr(c).mrr) : 0,
         health: _healthSummary(hbc[c.id])
       };
     });
@@ -1422,6 +1424,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         vehicles: companies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
         users: companies.reduce(function (s, c) { return s + (c.user_count || 0); }, 0),
         ai_input: totIn, ai_output: totOut, ai_calls: totCalls,
+        findings_new: findingsNew,
         health: totalsHealth
       }
     });
