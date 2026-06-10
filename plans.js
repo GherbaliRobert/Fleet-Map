@@ -88,4 +88,23 @@ function effectivePlan(company) {
   return getPlan((company && company.plan) || 'start') || getPlan('start');
 }
 
-module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans, effectivePlan };
+// Agenți AI per plan (default; override per-companie via companies.settings.enabled_agents)
+const ALL_AGENT_KEYS = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
+const AGENTS_BY_PLAN = {
+  start: [],
+  pro: ['watch', 'dispatch'],
+  premium: ALL_AGENT_KEYS.slice(),
+  enterprise: ALL_AGENT_KEYS.slice(),
+  custom: ALL_AGENT_KEYS.slice()
+};
+// Lista agenților activi pentru o companie: override > default pe plan
+function enabledAgentsFor(company) {
+  const settings = (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {};
+  if (Array.isArray(settings.enabled_agents)) {
+    return settings.enabled_agents.filter(function (k) { return ALL_AGENT_KEYS.indexOf(k) >= 0; });
+  }
+  const eff = effectivePlan(company);
+  return AGENTS_BY_PLAN[eff && eff.key] || [];
+}
+
+module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans, effectivePlan, ALL_AGENT_KEYS, AGENTS_BY_PLAN, enabledAgentsFor };

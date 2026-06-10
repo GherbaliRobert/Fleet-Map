@@ -131,6 +131,8 @@ let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
 let billing = null, plans = null;
 try { billing = require('./billing'); plans = require('./plans'); } catch (e) { console.warn('[BILLING] indisponibil:', e.message); }
+let fleetQuick = null;
+try { fleetQuick = require('./fleet_quick'); } catch (e) { console.warn('[AI] euristici locale indisponibile:', e.message); }
 const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
 let demoCompanyId = null;
 const webpush = require('web-push');
@@ -1106,6 +1108,7 @@ function _fleetSnapshot(req) {
   return positions.slice(0, 80).map(p => {
     const io = p.io || {};
     return {
+      imei: p.imei,
       nume: p.name || p.imei, nr: p.plate || '',
       viteza_kmh: Math.round(p.speed || 0),
       lat: Number(p.latitude) ? Number(p.latitude).toFixed(5) : null,
@@ -1132,7 +1135,6 @@ app.post('/api/ai/config', requireAuth, requireSuperadmin, async (req, res) => {
 
 app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
   try {
-    if (!ai.aiEnabled()) return res.json({ reply: 'Asistentul AI nu este configurat. Adaugă ANTHROPIC_API_KEY în setările serverului.', disabled: true });
     const message = (req.body.message || '').toString().slice(0, 2000).trim();
     if (!message) return res.status(400).json({ error: 'Mesaj gol' });
     const snapshot = _fleetSnapshot(req);
@@ -1151,6 +1153,20 @@ app.post('/api/ai/chat', requireAuth, withScope, async (req, res) => {
       const from = new Date(); from.setHours(0, 0, 0, 0);
       today = await db.getTripsSummaryForImeis(allImeis, from.toISOString(), new Date().toISOString());
     } catch (e) { /* fără sumar curse */ }
+
+    // 1) Întâi euristici LOCALE (zero tokeni AI; merge chiar fără cheie configurată)
+    if (fleetQuick) {
+      const intent = fleetQuick.detectIntent(message);
+      if (intent) {
+        const a = fleetQuick.answer(intent, { snapshot, today, now: Date.now() });
+        auditReq(req, 'ai_local', 'assistant', null, { intent });
+        return res.json({ reply: a.reply, source: 'local' });
+      }
+    }
+    // 2) Pentru întrebări libere → Claude (dacă e configurat)
+    if (!ai.aiEnabled()) return res.json({ reply: 'Întrebările rapide (unde sunt vehiculele, km azi, oprite, cel mai rapid, status) merg instant, fără AI. Pentru întrebări libere, activează asistentul AI (cheie Anthropic).', disabled: true });
+    snapshot.forEach(v => { delete v.imei; }); // nu trimitem imei la Claude (folosește numele)
+
     const system = [
       'Ești asistentul AI al platformei RA Track (monitorizare GPS flote). Răspunzi în limba română, clar și concis, DOAR pe baza datelor furnizate. Dacă lipsește informația, spui sincer că nu o ai — nu inventezi.',
       'REGULĂ CHEIE: clientul vrea LOCAȚIA, nu coordonate. NU afișa NICIODATĂ coordonate GPS brute (lat/lng). Folosește adresa din câmpul „locatie"; dacă lipsește, scrie „locație indisponibilă".',
@@ -1184,9 +1200,16 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
 });
 
 // ─── Agenți AI (RA Watch etc.) ───
-app.get('/api/agents', requireAuth, (req, res) => {
+// Helper: lista agenților activi pentru compania userului (plan + override settings)
+async function _getEnabledAgents(companyId) {
+  if (!plans || !plans.enabledAgentsFor) return agents ? Object.keys(agents.AGENTS) : [];
+  if (companyId == null) return agents ? Object.keys(agents.AGENTS) : []; // super-admin fără companie → vede tot
+  try { const co = await db.getCompanyById(companyId); return plans.enabledAgentsFor(co); } catch (e) { return []; }
+}
+app.get('/api/agents', requireAuth, withCompany, async (req, res) => {
   if (!agents) return res.json({ agents: [] });
-  res.json({ agents: Object.keys(agents.AGENTS).map(function (k) { return { key: k, name: agents.AGENTS[k].name, desc: agents.AGENTS[k].desc }; }) });
+  const enabled = await _getEnabledAgents(req.companyId);
+  res.json({ agents: enabled.filter(k => agents.AGENTS[k]).map(function (k) { return { key: k, name: agents.AGENTS[k].name, desc: agents.AGENTS[k].desc }; }), enabledKeys: enabled });
 });
 app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
   try {
@@ -1197,8 +1220,12 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     const which = (req.body && req.body.agent) || (req.query && req.query.agent) || 'all';
     if (which !== 'all' && !agents.AGENTS[which]) return res.status(400).json({ error: 'Agent necunoscut: ' + which });
     const storeCompany = (req.isSuper && req.filterCompanyId != null) ? req.filterCompanyId : req.companyId;
+    // GATE: agentul cerut trebuie să fie activ pentru compania de stocare (plan + override)
+    const enabled = await _getEnabledAgents(storeCompany);
+    if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '" nu e inclus în planul/setările companiei' });
+    if (which === 'all' && !enabled.length) return res.json({ findings: [], aiSummary: null, stored: 0, message: 'Niciun agent activ pe acest plan' });
     const base = { db, imeis, livePositions, companyId: storeCompany };
-    const findings = (which === 'all' ? await agents.runAll(base) : await agents.runAgent(which, base)).findings || [];
+    const findings = (which === 'all' ? await agents.runAll(base, enabled) : await agents.runAgent(which, base)).findings || [];
     let stored = 0;
     for (const f of findings) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; }
     let aiSummary = null;
@@ -1263,9 +1290,11 @@ async function runAgentsWorker() {
     const companies = await db.getCompanies();
     for (const co of companies) {
       if (co.is_demo) continue;
+      const enabled = plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS);
+      if (!enabled.length) continue; // planul „start" nu rulează niciun agent
       const imeis = await db.getCompanyImeis(co.id);
       if (!imeis.length) continue;
-      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id }); // toți agenții, fără ai → doar euristici
+      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
     }
   } catch (e) { console.warn('[AGENTS] worker:', e.message); }
@@ -3732,13 +3761,44 @@ app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
   try {
     const a = getAuth(req);
     if (a.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
-    const incoming = (req.body && req.body.ui_defaults) || {};
-    const filtered = _filterUiKeys(incoming);
-    const cur = await db.getCompanySettings(a.companyId);
-    const next = Object.assign({}, cur, { ui_defaults: Object.assign({}, cur.ui_defaults || {}, filtered) });
-    await db.setCompanySettings(a.companyId, next);
-    auditReq(req, 'update', 'company_settings', a.companyId, { keys: Object.keys(filtered) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults });
+    const next = await _applyCompanySettingsPatch(a.companyId, req.body || {});
+    auditReq(req, 'update', 'company_settings', a.companyId, { keys: Object.keys(req.body || {}) });
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Helper centralizat ca să gestionez și enabled_agents (whitelist pe cheia validă), nu doar ui_defaults
+async function _applyCompanySettingsPatch(companyId, body) {
+  const cur = await db.getCompanySettings(companyId);
+  const next = Object.assign({}, cur);
+  if (body.ui_defaults && typeof body.ui_defaults === 'object') {
+    next.ui_defaults = Object.assign({}, cur.ui_defaults || {}, _filterUiKeys(body.ui_defaults));
+  }
+  if (Array.isArray(body.enabled_agents)) {
+    const valid = (plans && plans.ALL_AGENT_KEYS) || [];
+    next.enabled_agents = body.enabled_agents.filter(k => typeof k === 'string' && valid.indexOf(k) >= 0);
+  } else if (body.enabled_agents === null) {
+    delete next.enabled_agents; // null = revino la default-ul planului
+  }
+  // Scriere directă (NU prin db.setCompanySettings, care face încă un merge cu vechiul cur și readuce cheile șterse)
+  await db.pool.query('UPDATE companies SET settings = $2 WHERE id = $1', [companyId, JSON.stringify(next)]);
+  return next;
+}
+// Super-admin: setări per companie (ui_defaults + enabled_agents)
+app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const s = await db.getCompanySettings(id);
+    const planAgents = plans && plans.enabledAgentsFor(co);
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const next = await _applyCompanySettingsPatch(id, req.body || {});
+    auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

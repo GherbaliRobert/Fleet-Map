@@ -233,10 +233,11 @@ async function runAgent(key, base) {
   return a.run(buildCtx(base));
 }
 
-// Rulează toți agenții pe același context (cache partajat). Un agent care eșuează nu blochează restul.
-async function runAll(base) {
+// Rulează toți agenții (sau doar cei din `allowedKeys` dacă e setat) pe același context. Un agent care eșuează nu blochează restul.
+async function runAll(base, allowedKeys) {
   const ctx = buildCtx(base); const all = [];
-  for (const key of Object.keys(AGENTS)) {
+  const keys = Array.isArray(allowedKeys) ? allowedKeys.filter(k => AGENTS[k]) : Object.keys(AGENTS);
+  for (const key of keys) {
     try { const r = await AGENTS[key].run(ctx); if (r && r.findings) all.push.apply(all, r.findings); }
     catch (e) { /* izolează eșecul unui agent */ }
   }
