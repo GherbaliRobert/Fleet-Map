@@ -1314,10 +1314,9 @@
     @media (max-width: 768px) {
       #app.visible { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
 
-      /* Header FIX pe mobil: rămâne mereu desenat (nu mai dispare după închiderea unui panel pe iOS).
-         Harta umple viewport-ul sub el; header-ul opac plutește deasupra (z-index 1000).
-         translateZ(0) îl pune pe strat grafic propriu → iOS îl ține pictat (nu mai dispare până la tap). */
-      #topbar { position: fixed; top: 0; left: 0; right: 0; transform: translateZ(0); -webkit-transform: translateZ(0); }
+      /* Header în FLUX NORMAL (NU fixed) — flex-item în vârful #app, mereu vizibil.
+         position:fixed pe iOS Safari avea bug-uri (dispărea / „se ducea în jos") → renunțat.
+         Harta e relative;flex:1 (mai jos), deci nu mai acoperă headerul. */
 
       /* Harta umple zona de sub topbar (în flux, nu absolut — altfel pe iOS acoperă headerul) */
       #map-container {
@@ -1419,18 +1418,18 @@
         align-items: center;
         justify-content: center;
         position: fixed;
-        top: 12px;
-        left: 12px;
-        z-index: 1060;
-        width: 44px;
-        height: 44px;
-        border-radius: 10px;
-        background: var(--bg-panel);
-        color: var(--text-primary);
-        border: 1px solid var(--border);
-        font-size: 18px;
+        bottom: 16px;
+        left: 16px;
+        z-index: 1100;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--blue);
+        color: #fff;
+        border: none;
+        font-size: 19px;
         cursor: pointer;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       }
 
       /* Sidebar internals */
@@ -1510,7 +1509,7 @@
       .info-item-value { font-size: 12px; }
 
       /* Leaflet controls */
-      .leaflet-control-zoom { top: calc(var(--topbar-h) + var(--sat) + 14px) !important; right: calc(12px + env(safe-area-inset-right)) !important; }
+      .leaflet-control-zoom { top: 14px !important; right: calc(12px + env(safe-area-inset-right)) !important; }
     }
 
     @media (max-width: 400px) {
@@ -4795,8 +4794,6 @@
         if (opener && typeof window[opener] === 'function') window[opener]();
       }
       if (window.innerWidth <= 768) closeNavrail();
-      forceTopbarRepaint();
-      setTimeout(forceTopbarRepaint, 80); // după ce harta face invalidateSize
     }
     // iOS: bara fixă uneori nu se repictează după închiderea unui panel (rămâne goală până la tap).
     // Un mic „nudge" de transform o forțează să se redeseneze instant, fără flicker.
