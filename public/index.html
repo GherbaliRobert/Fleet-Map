@@ -5393,9 +5393,9 @@
     function selectDevice(imei) {
       selectedImei = imei;
       const data = devices.get(imei);
-      if (data) {
-        map.flyTo([data.latitude, data.longitude], 16);
-        // popup-ul Leaflet eliminat: selectDevice deschide doar detail-panel lateral (fara suprapunere)
+      if (data && window.innerWidth > 768) {
+        map.flyTo([data.latitude, data.longitude], 16); // desktop: panou lateral → centrăm normal
+        // pe mobil focalizarea se face din openDetailPanel (deasupra bottom-sheet-ului)
       }
       devices.forEach((d, key) => {
         const marker = markers.get(key);
@@ -5405,6 +5405,26 @@
       });
       updateDeviceList();
       openDetailPanel(imei, 'info');
+    }
+
+    // Pe mobil: aduce mașina în zona vizibilă DE DEASUPRA bottom-sheet-ului (panoul acoperă centrul hărții)
+    function focusVehicleAboveSheet(lat, lng) {
+      setTimeout(function () {
+        if (!map) return;
+        try {
+          map.invalidateSize();
+          var z = 16;
+          var mapRect = map.getContainer().getBoundingClientRect();
+          var panel = document.getElementById('detail-panel');
+          var covered = 0;
+          if (panel) { var pr = panel.getBoundingClientRect(); covered = Math.max(0, mapRect.bottom - pr.top); }
+          var visible = Math.max(80, mapRect.height - covered);
+          var offsetY = (mapRect.height / 2) - (visible * 0.40); // mașina în partea de sus a zonei vizibile
+          var pt = map.project([lat, lng], z);
+          pt.y += offsetY;
+          map.flyTo(map.unproject(pt, z), z, { animate: true, duration: 0.5 });
+        } catch (e) {}
+      }, 360);
     }
 
     // ─── Detail Panel ───
@@ -5420,6 +5440,8 @@
       showDetailView(tab || 'info');
 
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
+      // pe mobil: bottom-sheet-ul acoperă centrul → focalizează mașina în partea de sus vizibilă
+      if (window.innerWidth <= 768) { var _d = devices.get(imei); if (_d) focusVehicleAboveSheet(_d.latitude, _d.longitude); }
     }
 
     function showDetailView(view) {
