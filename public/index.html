@@ -1659,6 +1659,7 @@
         <section id="view-localizare" class="view active">
           <!-- Sidebar -->
           <div id="sidebar">
+            <button class="sidebar-back-mobile" onclick="closeMobileSidebar()"><i class="fas fa-arrow-left"></i> Înapoi la hartă</button>
             <div class="sidebar-brand">
 
         <div class="sidebar-search">
@@ -1781,6 +1782,17 @@
       </main>
     </div>
 
+    <style>
+      /* Status server (Conectat / versiune) — doar pentru admin, nu pentru client */
+      body:not(.is-admin) #ws-status,
+      body:not(.is-admin) #footer-bar { display: none !important; }
+      /* Buton „Înapoi la hartă" — doar pe mobil, în sidebar */
+      .sidebar-back-mobile { display: none; }
+      @media (max-width: 768px) {
+        .sidebar-back-mobile { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px 14px; background: var(--bg-panel); border: none; border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; }
+        .sidebar-back-mobile:active { background: var(--bg-dark); }
+      }
+    </style>
     <footer id="footer-bar">
       <span>RA Tracks © 2026 · v1.0</span>
       <span><a href="/api" target="_blank">API</a></span>
@@ -7992,6 +8004,8 @@
     function updateFabs() {
       var show = !!(me && appVisible());
       $('rax-fabs').style.display = show ? 'flex' : 'none';
+      // Status server + versiune doar pentru admin (superadmin / manageUsers); ascuns pentru client
+      document.body.classList.toggle('is-admin', !!(me && (me.isSuper || (me.permissions && me.permissions.manageUsers))));
       if (!show) return;
       $('rax-ai-btn').style.display = 'flex';
       $('rax-co-btn').style.display = (me.isSuper ? 'flex' : 'none');
