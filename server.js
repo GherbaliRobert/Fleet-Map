@@ -1380,7 +1380,7 @@ app.get('/api/dispatch/suggest', requireAuth, withScope, async (req, res) => {
       if (!canAccessImei(req, imei)) continue;
       if (!live || live.latitude == null || live.longitude == null || !live.timestamp) continue;
       const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
-      const online = ageMin < 30;
+      const online = ageMin < 65; // 1h + tampon: parcate care trimit o dată/oră rămân „online"/Oprit
       const stopped = (live.speed || 0) <= 3;
       const distKm = haversineDistance(lat, lon, live.latitude, live.longitude);
       list.push({
@@ -1450,7 +1450,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       b.totalLive++;
       const ageMin = live.timestamp ? (now - new Date(live.timestamp).getTime()) / 60000 : 1e9;
       if (ageMin < 5) b.online++;
-      if (ageMin > 30) b.offline30++;
+      if (ageMin > 60) b.offline30++; // „offline" = >1h fără date (aliniat cu statusul vehiculelor)
       const io = live.io || {};
       const gsm = Number(io.gsm_signal);
       if (Number.isFinite(gsm)) { b.gsmSum += gsm; b.gsmN++; if (gsm < 2) b.weakSignal++; }
@@ -2352,7 +2352,7 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
 
     for (const [imei, data] of livePositions) {
       if (!canAccessImei(req, imei)) continue;
-      const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 300000;
+      const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 3900000; // 65 min
       const isMoving = isOnline && (data.speed || 0) > 3;
       if (isOnline) onlineCount++;
       if (isMoving) movingCount++;

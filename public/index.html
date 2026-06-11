@@ -496,6 +496,8 @@
     .status-dot.offline { background: var(--red); box-shadow: 0 0 6px rgba(239, 68, 68, 0.3); }
     .status-dot.idle { background: var(--yellow); box-shadow: 0 0 8px rgba(234, 179, 8, 0.4); }
     .status-dot.moving { background: var(--green); box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); animation: pulse 2s infinite; }
+    .status-dot.stopped { background: var(--red); box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }   /* Oprit (parcat, raportează) */
+    .status-dot.gone { background: var(--text-muted); }   /* Offline (>1h fără date) */
 
     @keyframes pulse {
       0%, 100% { box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); }
@@ -910,6 +912,10 @@
     .info-status-bar.moving .info-status-text { color: var(--green); }
     .info-status-bar.idle .info-status-text { color: var(--yellow); }
     .info-status-bar.off .info-status-text { color: var(--red); }
+    /* Offline (>1h) — gri + ⚠ */
+    .info-status-bar.gone { background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); }
+    .info-status-bar.gone .info-status-dot { background: var(--text-muted); }
+    .info-status-bar.gone .info-status-text { color: var(--text-muted); }
 
     .info-status-detail { font-size: 11px; color: var(--text-muted); margin-left: auto; }
 
@@ -1699,7 +1705,7 @@
         <div class="filter-bar">
           <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">Toate</button>
           <button class="filter-btn" data-filter="online" onclick="setFilter('online', this)">Online</button>
-          <button class="filter-btn" data-filter="offline" onclick="setFilter('offline', this)">Oprite</button>
+          <button class="filter-btn" data-filter="offline" onclick="setFilter('offline', this)">Offline</button>
           <button class="filter-btn" data-filter="moving" onclick="setFilter('moving', this)">În mișcare</button>
         </div>
 
@@ -1916,8 +1922,7 @@
     </style>
   </div>
 
-  <!-- Mobile toggle button -->
-  <button id="mobile-toggle" onclick="toggleMobileSidebar()" title="Lista vehicule" aria-label="Lista vehicule"><svg viewBox="0 0 24 24" width="25" height="25" fill="currentColor" aria-hidden="true"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg></button>
+  <!-- (butonul flotant „Lista vehicule" eliminat la cererea userului) -->
   <!-- Sidebar backdrop for mobile -->
   <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
   <div class="navrail-backdrop" id="navrail-backdrop" onclick="closeNavrail()"></div>
@@ -2182,7 +2187,7 @@
           <div class="report-stat"><div class="report-stat-value" id="dk-total">0</div><div class="report-stat-label">Total vehicule</div></div>
           <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="dk-online" style="color:var(--green);">0</div><div class="report-stat-label">Online</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-moving">0</div><div class="report-stat-label">În mișcare</div></div>
-          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-offline" style="color:var(--red);">0</div><div class="report-stat-label">Oprite</div></div>
+          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-offline" style="color:var(--red);">0</div><div class="report-stat-label">Offline</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-km">0</div><div class="report-stat-label">Km azi</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-fuel">0</div><div class="report-stat-label">Consum azi (L)</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-engine">0</div><div class="report-stat-label">Ore motor</div></div>
@@ -4753,7 +4758,7 @@
         var avail = vs.filter(function (v) { return v.available; }).length;
         box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + avail + ' disponibile · ' + vs.length + ' total · ETA estimativ (linie dreaptă)</div>' + vs.map(function (v, i) {
           var col = v.available ? 'var(--green)' : 'var(--text-muted)';
-          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'oprit');
+          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'offline');
           return '<div style="border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:6px;background:var(--bg-dark);">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
             + '<span style="font-weight:600;font-size:12px;">' + (i + 1) + '. ' + x(v.name) + '</span>'
@@ -5197,7 +5202,8 @@
       const hasIgnition = io?.ignition === 1 || io?.ignition === true;
 
       let color, shadowColor, status;
-      if (!isOnline) { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
+      // Legendă: verde=mișcare · galben=staționare(contact) · roșu=oprit · gri=offline(>1h)
+      if (!isOnline) { color = '#9ca3af'; shadowColor = 'rgba(148,163,184,0.45)'; status = 'gone'; }
       else if (isMoving) { color = '#22c55e'; shadowColor = 'rgba(34,197,94,0.6)'; status = 'moving'; }
       else if (hasIgnition) { color = '#eab308'; shadowColor = 'rgba(234,179,8,0.55)'; status = 'idle'; }
       else { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
@@ -5242,11 +5248,12 @@
                    (io?.can_fuel_level_pct !== undefined) ? io.can_fuel_level_pct + '%' : '-';
       const rpm = io?.can_engine_rpm !== undefined ? io.can_engine_rpm : '-';
       const sats = data.satellites || '-';
+      const _popupColor = !isOnline ? 'var(--text-muted)' : (isMoving ? 'var(--green)' : (io?.ignition ? 'var(--yellow)' : 'var(--red)'));
 
       const popupContent = '' +
         '<div class="popup-card">' +
           '<div class="popup-card-header">' +
-            '<span class="popup-dot ' + (isOnline ? 'online' : 'offline') + '"></span>' +
+            '<span class="popup-dot" style="background:' + _popupColor + ';box-shadow:0 0 6px ' + _popupColor + ';"></span>' + (isOnline ? '' : '<span style="color:var(--red);font-weight:700;margin-right:2px;">⚠️</span>') +
             '<div>' +
               '<div class="popup-title">' + name + (plate ? ' <span style="color:var(--accent);font-size:11px;font-weight:700;">' + plate + '</span>' : '') + '</div>' +
               '<div class="popup-imei">' + imei + '</div>' +
@@ -5299,7 +5306,7 @@
     function isDeviceOnline(device) {
       if (!device.timestamp) return false;
       const age = Date.now() - new Date(device.timestamp).getTime();
-      return age < 5 * 60 * 1000; // 5 minutes
+      return age < 65 * 60 * 1000; // 65 min (1h + tampon: trackerele parcate care trimit o dată/oră rămân „online"/Oprit; „Offline" doar la >1h fără date)
     }
 
     // ─── Filtering & Search ───
@@ -5361,16 +5368,14 @@
         const isOnline = isDeviceOnline(d);
         const name = d.name || d.imei;
         const plate = d.plate || '';
-        const timeAgo = getTimeAgo(new Date(d.timestamp));
+        const timeAgo = timeAgoPhrase(new Date(d.timestamp));
         const ignOn = d.io?.ignition;
         const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
         const hasIgnition = d.io?.ignition === 1 || d.io?.ignition === true;
-        let statusClass = 'offline';
-        if (isOnline) {
-          if (isMoving) statusClass = 'moving';
-          else if (hasIgnition) statusClass = 'idle';
-        }
+        let statusClass = 'gone';     // gri DOAR la >1h fără date (Offline)
+        if (isOnline) statusClass = isMoving ? 'moving' : (hasIgnition ? 'idle' : 'stopped');   // verde / galben (staționare) / roșu (oprit)
+        const offlineFlag = !isOnline ? '⚠️ ' : '';
 
         return '' +
           '<div class="device-card ' + (isActive ? 'active' : '') + '" onclick="selectDeviceMobile(\'' + d.imei + '\')">' +
@@ -5385,7 +5390,7 @@
             '<div class="device-card-meta">' +
               '<span class="meta-ignition ' + (ignOn ? 'on' : 'off') + '"><i class="fas fa-key"></i> ' + (ignOn ? 'ON' : 'OFF') + '</span>' +
               (voltage ? '<span><i class="fas fa-bolt"></i> ' + voltage + '</span>' : '') +
-              '<span><i class="far fa-clock"></i> ' + timeAgo + '</span>' +
+              '<span style="' + (offlineFlag ? 'color:var(--red);font-weight:600;' : '') + '">' + offlineFlag + '<i class="far fa-clock"></i> ' + timeAgo + '</span>' +
             '</div>' +
           '</div>';
       }).join('');
@@ -5394,9 +5399,9 @@
     function selectDevice(imei) {
       selectedImei = imei;
       const data = devices.get(imei);
-      if (data) {
-        map.flyTo([data.latitude, data.longitude], 16);
-        // popup-ul Leaflet eliminat: selectDevice deschide doar detail-panel lateral (fara suprapunere)
+      if (data && window.innerWidth > 768) {
+        map.flyTo([data.latitude, data.longitude], 16); // desktop: panou lateral → centrăm normal
+        // pe mobil focalizarea se face din openDetailPanel (deasupra bottom-sheet-ului)
       }
       devices.forEach((d, key) => {
         const marker = markers.get(key);
@@ -5406,6 +5411,26 @@
       });
       updateDeviceList();
       openDetailPanel(imei, 'info');
+    }
+
+    // Pe mobil: aduce mașina în zona vizibilă DE DEASUPRA bottom-sheet-ului (panoul acoperă centrul hărții)
+    function focusVehicleAboveSheet(lat, lng) {
+      setTimeout(function () {
+        if (!map) return;
+        try {
+          map.invalidateSize();
+          var z = 16;
+          var mapRect = map.getContainer().getBoundingClientRect();
+          var panel = document.getElementById('detail-panel');
+          var covered = 0;
+          if (panel) { var pr = panel.getBoundingClientRect(); covered = Math.max(0, mapRect.bottom - pr.top); }
+          var visible = Math.max(80, mapRect.height - covered);
+          var offsetY = (mapRect.height / 2) - (visible * 0.40); // mașina în partea de sus a zonei vizibile
+          var pt = map.project([lat, lng], z);
+          pt.y += offsetY;
+          map.flyTo(map.unproject(pt, z), z, { animate: true, duration: 0.5 });
+        } catch (e) {}
+      }, 360);
     }
 
     // ─── Detail Panel ───
@@ -5421,6 +5446,8 @@
       showDetailView(tab || 'info');
 
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
+      // pe mobil: bottom-sheet-ul acoperă centrul → focalizează mașina în partea de sus vizibilă
+      if (window.innerWidth <= 768) { var _d = devices.get(imei); if (_d) focusVehicleAboveSheet(_d.latitude, _d.longitude); }
     }
 
     function showDetailView(view) {
@@ -5644,24 +5671,24 @@
       const rpm = io.can_engine_rpm !== undefined ? io.can_engine_rpm + ' RPM' : '-';
       const coolant = io.can_engine_temp !== undefined ? io.can_engine_temp.toFixed(1) + '\u00B0C' : '-';
 
-      // Status bar
+      // Status bar — „Offline" DOAR la >1h fără date; altfel Oprit/Staționare/În mișcare
       let statusClass, statusText, statusDetail;
       if (!isOnline) {
-        statusClass = 'off';
-        statusText = 'Oprit';
-        statusDetail = getTimeAgo(new Date(data.timestamp));
+        statusClass = 'gone';                          // gri + ⚠ (>1h fără date)
+        statusText = '⚠️ Offline';
+        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
       } else if (isMoving) {
-        statusClass = 'moving';
+        statusClass = 'moving';                        // verde
         statusText = 'În mișcare';
-        statusDetail = data.speed + ' km/h';
+        statusDetail = '● activ';                      // în mers = transmite live
       } else if (hasIgnition) {
-        statusClass = 'idle';
-        statusText = 'Stationare (contact ON)';
-        statusDetail = '';
+        statusClass = 'idle';                          // galben
+        statusText = 'Staționare (contact pornit)';
+        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
       } else {
-        statusClass = 'off';
-        statusText = 'Contact decuplat';
-        statusDetail = '';
+        statusClass = 'off';                           // roșu (parcat, contact decuplat)
+        statusText = 'Oprit';
+        statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
       }
 
       const grid = document.getElementById('detail-info-grid');
@@ -5685,7 +5712,7 @@
           '<div class="info-item-icon blue"><i class="fas fa-calendar-alt"></i></div>' +
           '<div class="info-item-text">' +
             '<div class="info-item-value" style="font-size:12px;">' + new Date(data.timestamp).toLocaleString('ro-RO') + '</div>' +
-            '<div class="info-item-label">Data</div>' +
+            '<div class="info-item-label">Ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp)) + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="info-item">' +
@@ -6577,6 +6604,7 @@
       if (seconds < 86400) return Math.floor(seconds / 3600) + ' ore';
       return Math.floor(seconds / 86400) + ' zile';
     }
+    function timeAgoPhrase(date) { var t = getTimeAgo(date); return t === 'acum' ? 'chiar acum' : 'acum ' + t; }
 
     function formatDateLocal(date) {
       return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -7572,8 +7600,8 @@
 
         // Fleet table
         const fleetHtml = (d.devices || []).map(function(v) {
-          const statusColor = v.isMoving ? 'var(--green)' : (v.isOnline ? 'var(--accent)' : 'var(--red)');
-          const statusText = v.isMoving ? 'Miscare' : (v.isOnline ? 'Stationare' : 'Oprit');
+          const statusColor = v.isMoving ? 'var(--green)' : (v.isOnline ? 'var(--red)' : 'var(--text-muted)');
+          const statusText = v.isMoving ? 'Mișcare' : (v.isOnline ? 'Oprit' : '⚠️ Offline');
           const speedColor = v.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
           return '<tr>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + (v.name || v.imei) + (v.plate ? ' <span style="color:var(--text-muted);font-size:10px;">' + v.plate + '</span>' : '') + '</td>' +
@@ -7628,10 +7656,10 @@
       // 1. Donut "Status flota" — Online (stationare) / Moving / Offline
       const stationary = Math.max(0, (d.onlineCount || 0) - (d.movingCount || 0));
       createChart('chart-dash-status', 'doughnut', {
-        labels: ['În mișcare', 'Stationare', 'Oprit'],
+        labels: ['În mișcare', 'Oprit', 'Offline'],
         datasets: [{
           data: [d.movingCount || 0, stationary, d.offlineCount || 0],
-          backgroundColor: [chartColors.green, chartColors.accent, chartColors.red],
+          backgroundColor: [chartColors.green, chartColors.red, '#9ca3af'],
           borderColor: 'rgba(0, 0, 0, 0.2)',
           borderWidth: 2
         }]
@@ -8390,14 +8418,18 @@
   </style>
 
   <div id="rax-fabs">
-    <div id="rax-actions">
+    <div id="rax-actions" style="display:none !important;">
       <div id="rax-co-chip" style="display:none;"></div>
+      <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
+      <button class="rax-fab secondary" id="rax-acc-btn" style="display:none;" onclick="raxOpenAccounts()"><i class="fas fa-users-gear"></i> Conturi</button>
+      <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
+      <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
+      <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
       <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
       <button class="rax-fab" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-robot"></i> Asistent AI</button>
     </div>
-    <button class="rax-fab" id="rax-main-fab" onclick="raxToggleMenu()" aria-label="Meniu" title="Meniu acțiuni">
-      <i class="fas fa-bars" id="rax-main-icon"></i>
-      <span class="rax-badge" id="rax-main-badge" style="display:none;"></span>
+    <button class="rax-fab" id="rax-main-fab" onclick="raxToggleAI()" aria-label="Asistent AI" title="Asistent AI flotă">
+      <i class="fas fa-robot" id="rax-main-icon"></i>
     </button>
   </div>
 
@@ -8538,13 +8570,9 @@
       document.body.classList.toggle('is-admin', !!(me && (me.isSuper || (me.permissions && me.permissions.manageUsers))));
       if (!show) return;
       var feats = me.features || {};
-      $('rax-ai-btn').style.display = (feats.ai_assistant !== false) ? 'flex' : 'none';
-      $('rax-ag-btn').style.display = ((feats.agents !== false) && me.permissions && me.permissions.viewReports) ? 'flex' : 'none';
-      raxRefreshAgBadge();
-      var chip = $('rax-co-chip');
-      if (me.company && me.company.name) { chip.style.display = 'block'; chip.innerHTML = (me.company.is_demo ? '🔵 ' : '🏢 ') + esc(me.company.name); }
-      else if (me.isSuper) { chip.style.display = 'block'; chip.textContent = 'Platformă · super-admin'; }
-      else chip.style.display = 'none';
+      // FAB redus la UN SINGUR buton rotund = direct Asistent AI. Toate celelalte butoane raman ascunse (#rax-actions e display:none !important).
+      // Daca feature-ul ai_assistant e dezactivat -> ascunde tot FAB-ul.
+      if (feats.ai_assistant === false) $('rax-fabs').style.display = 'none';
     }
     setInterval(refresh, 4000); refresh();
 
@@ -8658,7 +8686,7 @@
       return '<span style="color:' + onlineColor + ';font-weight:600;" title="Online ultimele 5 min">' + h.online + '/' + h.live + '</span>' +
         ' · <span style="color:' + gsmColor + ';" title="Semnal GSM mediu (0-5)">📶 ' + gsmTxt + '</span>' +
         ' · <span style="color:' + fixColor + ';" title="Procent fix GPS bun (≥4 sat.)">🛰 ' + fixTxt + '</span>' +
-        (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >30 min">⚠ ' + h.offline30 + '</span>' : '') +
+        (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >1h">⚠ ' + h.offline30 + '</span>' : '') +
         (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
     }
     window.raxLoadDashboard = async function raxLoadDashboard(targetId) {
@@ -8684,7 +8712,7 @@
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-satellite-dish"></i> Stare flotă (live)</div>';
         html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
           _raxCard('Online (5m)', (th.online || 0) + '/' + (th.live || 0)) +
-          _raxCard('Offline >30m', th.offline30 || 0) +
+          _raxCard('Offline >1h', th.offline30 || 0) +
           _raxCard('Semnal slab', th.weak_signal || 0) +
           _raxCard('Semnal GSM mediu', th.avg_gsm == null ? '—' : (th.avg_gsm + '/5')) +
           _raxCard('Sateliți medii', th.avg_sats == null ? '—' : th.avg_sats) +
@@ -8893,10 +8921,28 @@
             '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
             _raxFeatureRow(c) +
             _raxAccessRow(c) +
-            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button></div>') + '</div>';
+            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button>' +
+              (((c.device_count || 0) === 0 && (c.user_count || 0) === 0)
+                ? '<button class="rax-btn" style="border-color:var(--red);color:var(--red);" onclick="raxDeleteCompany(' + c.id + ')" title="Șterge compania (doar dacă e goală)"><i class="fas fa-trash"></i> Șterge</button>'
+                : '<span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;" title="Mută/șterge întâi vehiculele + utilizatorii">🔒 nu se poate șterge (are vehicule sau utilizatori)</span>') +
+              '</div>') + '</div>';
         }).join('');
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
+    window.raxDeleteCompany = async function (id) {
+      var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
+      var name = c.name || ('#' + id);
+      if (!confirm('Șterge compania „' + name + '"?\n\nAcțiunea este IREVERSIBILĂ.\nVa șterge și consumul de tokeni AI asociat.')) return;
+      var ok2 = prompt('Pentru confirmare, scrie numele companiei exact:\n„' + name + '"');
+      if (ok2 == null) return;
+      if (ok2.trim() !== name) { raxToast('Numele nu coincide — anulat', 'error'); return; }
+      try {
+        var r = await fetch('/api/companies/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast('Eroare: ' + (e.error || r.status), 'error'); return; }
+        raxToast('Companie ștearsă: ' + name, 'success');
+        raxLoadCompanies();
+      } catch (e) { raxToast('Eroare de rețea', 'error'); }
+    };
     window.raxSetPlan = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
       var plan = prompt('Plan pentru „' + (c.name || id) + '":\nscrie  start  /  pro  /  premium  /  custom', c.plan || 'start');
