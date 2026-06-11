@@ -1334,13 +1334,16 @@ async function _getEnabledAgents(companyId) {
   if (companyId == null) return agents ? Object.keys(agents.AGENTS) : []; // super-admin fără companie → vede tot
   try { const co = await db.getCompanyById(companyId); return plans.enabledAgentsFor(co); } catch (e) { return []; }
 }
-// Praguri alertă (offline, scădere combustibil) — citite din companies.settings.alert_thresholds; fallback la defaulturi (agents.js)
+// Praguri alertă (RA Watch + RA Optimize + RA Care) — citite din companies.settings.alert_thresholds; fallback la defaulturi (agents.js)
 function _alertThresholdsFromSettings(settings) {
   const s = (settings && (typeof settings === 'string' ? (function () { try { return JSON.parse(settings); } catch (e) { return {}; } })() : settings)) || {};
   const t = s.alert_thresholds || {};
   const out = {};
   const n1 = Number(t.offlineMin); if (Number.isFinite(n1) && n1 > 0) out.offlineMin = Math.min(n1, 24 * 60);
   const n2 = Number(t.fuelDropL); if (Number.isFinite(n2) && n2 > 0) out.fuelDropL = Math.min(n2, 1000);
+  const n3 = Number(t.idleMaxMin); if (Number.isFinite(n3) && n3 > 0) out.idleMaxMin = Math.min(n3, 24 * 60);
+  const n4 = Number(t.ecoScoreMin); if (Number.isFinite(n4) && n4 >= 0 && n4 <= 100) out.ecoScoreMin = n4;
+  const n5 = Number(t.serviceSoonKm); if (Number.isFinite(n5) && n5 > 0) out.serviceSoonKm = Math.min(n5, 100000);
   return out;
 }
 async function _getAlertThresholds(companyId) {
@@ -4065,15 +4068,25 @@ async function _applyCompanySettingsPatch(companyId, body) {
     fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
     next.features = f;
   }
-  // Praguri alertă (RA Watch): offline minute + scădere combustibil litri
+  // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie.
   if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {
     const a = Object.assign({}, cur.alert_thresholds || {});
-    const n1 = Number(body.alert_thresholds.offlineMin);
-    if (Number.isFinite(n1) && n1 >= 5 && n1 <= 1440) a.offlineMin = Math.round(n1);
-    else if (body.alert_thresholds.offlineMin === null) delete a.offlineMin;
-    const n2 = Number(body.alert_thresholds.fuelDropL);
-    if (Number.isFinite(n2) && n2 >= 1 && n2 <= 1000) a.fuelDropL = Math.round(n2);
-    else if (body.alert_thresholds.fuelDropL === null) delete a.fuelDropL;
+    const SPECS = [
+      { k: 'offlineMin', min: 5, max: 1440, round: true },     // RA Watch — offline (min)
+      { k: 'fuelDropL', min: 1, max: 1000, round: true },      // RA Watch — scădere combustibil (L)
+      { k: 'idleMaxMin', min: 5, max: 1440, round: true },     // RA Watch — ralanti prelungit (min)
+      { k: 'ecoScoreMin', min: 0, max: 100, round: true },     // RA Optimize — scor minim eco-driving
+      { k: 'serviceSoonKm', min: 100, max: 50000, round: true } // RA Care — km până la scadență
+    ];
+    SPECS.forEach(function (sp) {
+      if (Object.prototype.hasOwnProperty.call(body.alert_thresholds, sp.k)) {
+        const v = body.alert_thresholds[sp.k];
+        if (v === null) { delete a[sp.k]; return; }
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= sp.min && n <= sp.max) a[sp.k] = sp.round ? Math.round(n) : n;
+        // valori invalide → ignorate (nu suprascriu)
+      }
+    });
     next.alert_thresholds = a;
   } else if (body.alert_thresholds === null) {
     delete next.alert_thresholds;

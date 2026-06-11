@@ -38,12 +38,15 @@ async function _vehLimit(ctx, imei) {
 // ─── RA Watch — monitorizare 24/7 (anomalii operaționale) ───
 // RA Watch — alerte de monitorizare:
 //  (1) Offline > OFFLINE_MIN (implicit 60 min, max 24h)
-//  (2) Scădere combustibil > prag (implicit FUEL_DROP_L = 15L; configurabil per companie prin ctx.alertThresholds.fuelDropL)
+//  (2) Scădere combustibil > prag (implicit FUEL_DROP_L = 15L)
+//  (3) Ralanti prelungit > prag (implicit IDLE_MIN_MINUTES = 120 min)
+// Toate pragurile configurabile per companie prin ctx.alertThresholds (cu fallback la constantele globale).
 async function raWatch(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; const now = Date.now();
   const thresholds = (ctx && ctx.alertThresholds) || {};
   const offlineMin = Number.isFinite(thresholds.offlineMin) && thresholds.offlineMin > 0 ? thresholds.offlineMin : OFFLINE_MIN;
   const fuelDropL = Number.isFinite(thresholds.fuelDropL) && thresholds.fuelDropL > 0 ? thresholds.fuelDropL : FUEL_DROP_L;
+  const idleMaxMinPrag = Number.isFinite(thresholds.idleMaxMin) && thresholds.idleMaxMin > 0 ? thresholds.idleMaxMin : IDLE_MIN_MINUTES;
   for (const imei of imeis) {
     const live = livePositions.get(imei);
     const name = nameOf(live, imei);
@@ -70,6 +73,14 @@ async function raWatch(ctx) {
             }
           }
           if (drop) findings.push({ imei, severity: 'critical', agent: 'watch', fkey: 'fuel_' + imei, title: name + ': scădere combustibil ~' + Math.round(drop) + ' L', body: 'Posibil furt sau scurgere (prag ' + Math.round(fuelDropL) + ' L). Verifică traseul și opririle.' });
+          // (3) Ralanti prelungit (motor pornit + viteză ≤ 3 km/h, neîntrerupt)
+          let idleStart = null, idleMaxMin = 0;
+          for (const p of pts) {
+            const idling = io(p).ignition === 1 && (p.speed || 0) <= 3;
+            if (idling) { const t = tms(p); if (!idleStart) idleStart = t; idleMaxMin = Math.max(idleMaxMin, (t - idleStart) / 60000); }
+            else idleStart = null;
+          }
+          if (idleMaxMin >= idleMaxMinPrag) findings.push({ imei, severity: 'info', agent: 'watch', fkey: 'idle_' + imei, title: name + ': ralanti ~' + Math.round(idleMaxMin) + ' min azi', body: 'Motor pornit, staționat îndelung (peste ' + Math.round(idleMaxMinPrag) + ' min). Combustibil irosit.' });
         }
       } catch (e) { /* lipsă date istoric — fără alertă */ }
     }
@@ -80,6 +91,8 @@ async function raWatch(ctx) {
 // ─── RA Care — mentenanță predictivă (revizii, ITP, asigurări) ───
 async function raCare(ctx) {
   const { db, imeis, livePositions, companyId } = ctx; const findings = []; const now = Date.now(); const DAY = 86400000;
+  const thresholds = (ctx && ctx.alertThresholds) || {};
+  const serviceSoonKm = Number.isFinite(thresholds.serviceSoonKm) && thresholds.serviceSoonKm > 0 ? thresholds.serviceSoonKm : SERVICE_SOON_KM;
   for (const imei of imeis) {
     const live = livePositions.get(imei); const name = nameOf(live, imei);
 
@@ -87,7 +100,7 @@ async function raCare(ctx) {
     const dts = live ? num(io(live).can_distance_to_service) : null;
     if (dts != null) {
       if (dts <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_service_' + imei, title: name + ': service DEPĂȘIT cu ' + Math.round(-dts) + ' km', body: 'Vehiculul a depășit intervalul de revizie indicat de bord. Programează service-ul urgent.' });
-      else if (dts <= SERVICE_SOON_KM) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_service_' + imei, title: name + ': revizie în ' + Math.round(dts) + ' km', body: 'Se apropie intervalul de service. Programează din timp.' });
+      else if (dts <= serviceSoonKm) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_service_' + imei, title: name + ': revizie în ' + Math.round(dts) + ' km', body: 'Se apropie intervalul de service (prag ' + Math.round(serviceSoonKm) + ' km). Programează din timp.' });
     }
 
     // 2) Înregistrări de mentenanță (ITP, asigurare, revizie) — pe dată sau pe km
@@ -105,7 +118,7 @@ async function raCare(ctx) {
       if (m.due_km && odo != null) {
         const left = m.due_km - odo;
         if (left <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' — km depășiți', body: 'Odometru ' + Math.round(odo) + ' km ≥ scadență ' + m.due_km + ' km.' });
-        else if (left <= SERVICE_SOON_KM) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' în ' + Math.round(left) + ' km', body: 'Programează service-ul din timp.' });
+        else if (left <= serviceSoonKm) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' în ' + Math.round(left) + ' km', body: 'Programează service-ul din timp (prag ' + Math.round(serviceSoonKm) + ' km).' });
       }
     }
   }
@@ -115,6 +128,8 @@ async function raCare(ctx) {
 // ─── RA Optimize — eco-driving & costuri ───
 async function raOptimize(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; let fleetIdleSec = 0;
+  const thresholds = (ctx && ctx.alertThresholds) || {};
+  const ecoScoreMin = Number.isFinite(thresholds.ecoScoreMin) && thresholds.ecoScoreMin >= 0 && thresholds.ecoScoreMin <= 100 ? thresholds.ecoScoreMin : 60;
   for (const imei of imeis) {
     const live = livePositions.get(imei); const name = nameOf(live, imei);
     const pts = await ctx.hist(imei); if (pts.length < 5) continue;
@@ -141,7 +156,7 @@ async function raOptimize(ctx) {
     pen += Math.min(25, speedShare * 100);
     pen += Math.min(15, idleShare * 40);
     const score = Math.max(0, Math.round(100 - pen));
-    if (score < 60) findings.push({ imei, severity: 'warning', agent: 'optimize', fkey: 'opt_eco_' + imei, title: name + ': scor eco ' + score + '/100', body: 'Conducere agresivă azi (' + accel + ' accel. bruște, ' + brake + ' frânări, ' + hardTurn + ' viraje). Recomandă instruire șofer pentru economie de combustibil.' });
+    if (score < ecoScoreMin) findings.push({ imei, severity: 'warning', agent: 'optimize', fkey: 'opt_eco_' + imei, title: name + ': scor eco ' + score + '/100', body: 'Conducere agresivă azi (' + accel + ' accel. bruște, ' + brake + ' frânări, ' + hardTurn + ' viraje). Prag alertă: sub ' + ecoScoreMin + '. Recomandă instruire șofer.' });
   }
   // Cost ralanti la nivel de flotă (o singură constatare, distinctă de RA Watch)
   const fleetIdleH = fleetIdleSec / 3600;

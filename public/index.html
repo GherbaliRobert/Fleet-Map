@@ -2741,16 +2741,28 @@
             <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
             <div id="us-agents-list"></div>
 
-            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-bell"></i> Praguri alertă RA Watch</div>
-            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Pragurile sub care RA Watch generează alertă. Lasă gol pentru default (60 min / 15 L).</p>
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-bell"></i> Praguri alertă agenți</div>
+            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Pragurile peste/sub care agenții generează alertă. Lasă gol pentru default.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);">
-                Offline (minute)
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când un vehicul nu trimite date de peste atâtea minute">
+                <span><i class="fas fa-wifi" style="color:var(--accent);font-size:9px;"></i> RA Watch — Offline (minute)</span>
                 <input type="number" id="us-th-offline" min="5" max="1440" placeholder="60" onblur="usSetThreshold('offlineMin', this.value)" style="margin-top:4px;">
               </label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);">
-                Scădere combustibil (litri)
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă la scădere bruscă de combustibil (posibil furt)">
+                <span><i class="fas fa-gas-pump" style="color:var(--accent);font-size:9px;"></i> RA Watch — Scădere combustibil (litri)</span>
                 <input type="number" id="us-th-fuel" min="1" max="1000" placeholder="15" onblur="usSetThreshold('fuelDropL', this.value)" style="margin-top:4px;">
+              </label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când motorul rulează staționat (ralanti) peste atâtea minute consecutive">
+                <span><i class="fas fa-pause-circle" style="color:var(--accent);font-size:9px;"></i> RA Watch — Ralanti (minute)</span>
+                <input type="number" id="us-th-idle" min="5" max="1440" placeholder="120" onblur="usSetThreshold('idleMaxMin', this.value)" style="margin-top:4px;">
+              </label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Optimize — alertă când scorul eco al unui șofer scade sub această valoare">
+                <span><i class="fas fa-leaf" style="color:var(--accent);font-size:9px;"></i> RA Optimize — Scor eco minim (0-100)</span>
+                <input type="number" id="us-th-eco" min="0" max="100" placeholder="60" onblur="usSetThreshold('ecoScoreMin', this.value)" style="margin-top:4px;">
+              </label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);grid-column:1 / -1;" title="RA Care — cu câți km înainte de scadența unei revizii să apară alerta">
+                <span><i class="fas fa-wrench" style="color:var(--accent);font-size:9px;"></i> RA Care — Avertisment service (km înainte de scadență)</span>
+                <input type="number" id="us-th-srv" min="100" max="50000" placeholder="1500" onblur="usSetThreshold('serviceSoonKm', this.value)" style="margin-top:4px;">
               </label>
             </div>
           </div>
@@ -3707,10 +3719,14 @@
             var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
             var dft = cs.ui_defaults || {};
             coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
-            // Populez pragurile RA Watch
+            // Populez pragurile alertă (RA Watch + RA Optimize + RA Care)
             var thr = cs.alert_thresholds || {};
-            var oEl = document.getElementById('us-th-offline'); if (oEl) oEl.value = thr.offlineMin != null ? thr.offlineMin : '';
-            var fEl = document.getElementById('us-th-fuel'); if (fEl) fEl.value = thr.fuelDropL != null ? thr.fuelDropL : '';
+            function _setThrInput(id, key) { var el = document.getElementById(id); if (el) el.value = thr[key] != null ? thr[key] : ''; }
+            _setThrInput('us-th-offline', 'offlineMin');
+            _setThrInput('us-th-fuel', 'fuelDropL');
+            _setThrInput('us-th-idle', 'idleMaxMin');
+            _setThrInput('us-th-eco', 'ecoScoreMin');
+            _setThrInput('us-th-srv', 'serviceSoonKm');
             // Secțiunea Agenți AI per companie
             var agBox = document.getElementById('us-agents-list');
             if (agBox) {
