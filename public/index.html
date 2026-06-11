@@ -3701,7 +3701,7 @@
                 var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(r => r.json());
                 var allKeys = ['watch','dispatch','care','optimize','compliance','client'];
                 var labels = { watch:'RA Watch', dispatch:'RA Dispatch', care:'RA Care', optimize:'RA Optimize', compliance:'RA Compliance', client:'RA Client' };
-                var descs = { watch:'Monitorizare 24/7 (anomalii, furt combustibil, depășiri)', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (frânări, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
+                var descs = { watch:'Monitorizare conexiune — alertă când vehiculul e offline (fără date) peste 1 oră', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (depășiri viteză, frânări bruște, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
                 var enabledKeys = ag.enabledKeys || [];
                 agBox.innerHTML = allKeys.map(k => {
                   var on = enabledKeys.indexOf(k) >= 0;
@@ -8533,9 +8533,14 @@
           <div id="rax-co-unassigned" class="rax-co-meta" style="margin-top:6px;">—</div>
         </div>
         <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-          <strong style="font-size:13px;"><i class="fas fa-arrows-left-right" style="color:var(--accent)"></i> Mută vehicule între companii</strong>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-bottom:8px;">Bifează vehiculele, alege destinația în bara de jos și apasă „Mută selectate". Poți muta unul singur cu butonul „Mută" din rând.</div>
-          <input class="rax-field" id="rax-move-search" placeholder="Caută nume / nr. / IMEI / companie…" oninput="raxRenderMovableDevices()" style="margin-bottom:6px;">
+          <strong style="font-size:13px;"><i class="fas fa-arrows-left-right" style="color:var(--accent)"></i> Mută între companii</strong>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-bottom:8px;">Alege tipul, bifează rândurile, selectează destinația în bara de jos și apasă „Mută selectate". Poți muta unul singur cu butonul „Mută" din rând.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+            <button class="rax-btn primary" id="rax-mv-tab-devices" type="button" onclick="raxMoveSwitch('devices')"><i class="fas fa-truck"></i> Vehicule</button>
+            <button class="rax-btn" id="rax-mv-tab-users" type="button" onclick="raxMoveSwitch('users')"><i class="fas fa-user"></i> Utilizatori</button>
+            <button class="rax-btn" id="rax-mv-tab-drivers" type="button" onclick="raxMoveSwitch('drivers')"><i class="fas fa-id-card-clip"></i> Șoferi</button>
+          </div>
+          <input class="rax-field" id="rax-move-search" placeholder="Caută…" oninput="raxMoveRender()" style="margin-bottom:6px;">
           <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;">
             <button class="rax-btn" type="button" onclick="raxMoveToggleAll(true)">Bifează tot</button>
             <button class="rax-btn" type="button" onclick="raxMoveToggleAll(false)">Debifează tot</button>
@@ -8545,7 +8550,7 @@
           <div style="position:sticky;bottom:-12px;background:var(--bg-panel);padding:10px;border:1px solid var(--border);border-radius:8px;margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
             <span style="font-size:12px;color:var(--text-muted);">Mută cele bifate la:</span>
             <select class="rax-field" id="rax-bulk-dest" style="width:auto;margin:0;flex:1;min-width:140px;"></select>
-            <button class="rax-btn primary" onclick="raxMoveSelected()"><i class="fas fa-arrows-turn-to-dots"></i> Mută selectate</button>
+            <button class="rax-btn primary" onclick="raxMoveBulk()"><i class="fas fa-arrows-turn-to-dots"></i> Mută selectate</button>
           </div>
         </div>
       </div>

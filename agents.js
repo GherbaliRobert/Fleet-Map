@@ -36,35 +36,21 @@ async function _vehLimit(ctx, imei) {
 }
 
 // ─── RA Watch — monitorizare 24/7 (anomalii operaționale) ───
+// RA Watch — restrâns la DOAR offline (> OFFLINE_MIN, implicit 60 min).
+// Restul (overspeed, ralanti, scădere combustibil) e acoperit de RA Optimize + agenți dedicați (nu se duplică aici).
 async function raWatch(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; const now = Date.now();
   for (const imei of imeis) {
-    const live = livePositions.get(imei); const name = nameOf(live, imei);
-
-    if (live && live.timestamp) {
-      const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
-      if (ageMin > OFFLINE_MIN && ageMin < 24 * 60)
-        findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + Math.round(ageMin) + ' min', body: 'Vehiculul nu mai trimite poziții. Verifică dispozitivul/alimentarea.' });
+    const live = livePositions.get(imei);
+    if (!live || !live.timestamp) continue;
+    const name = nameOf(live, imei);
+    const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
+    // Alertăm DOAR pe offline > 1h (configurabil în OFFLINE_MIN), max 24h ca să nu spamăm pe vehicule abandonate
+    if (ageMin > OFFLINE_MIN && ageMin < 24 * 60) {
+      const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
+      const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
+      findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste o oră. Verifică dispozitivul/alimentarea/sim-ul.' });
     }
-
-    const pts = await ctx.hist(imei); if (!pts.length) continue;
-
-    const limit = await _vehLimit(ctx, imei);
-    let over = 0, wasOver = false;
-    for (const p of pts) { const o = (p.speed || 0) > limit; if (o && !wasOver) over++; wasOver = o; }
-    if (over >= 3) findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'speed_' + imei, title: name + ': ' + over + ' depășiri de viteză azi', body: 'Peste ' + limit + ' km/h (limita vehiculului). Recomandare: avertizează șoferul.' });
-
-    let idleStart = null, idleMaxMin = 0;
-    for (const p of pts) {
-      const idling = io(p).ignition === 1 && (p.speed || 0) <= 3;
-      if (idling) { const t = tms(p); if (!idleStart) idleStart = t; idleMaxMin = Math.max(idleMaxMin, (t - idleStart) / 60000); }
-      else idleStart = null;
-    }
-    if (idleMaxMin >= IDLE_MIN_MINUTES) findings.push({ imei, severity: 'info', agent: 'watch', fkey: 'idle_' + imei, title: name + ': ralanti ~' + Math.round(idleMaxMin / 60) + 'h azi', body: 'Motor pornit, staționat îndelung — combustibil irosit.' });
-
-    let prevFuel = null, drop = 0;
-    for (const p of pts) { const fl = fuelL(p); if (fl != null) { if (prevFuel != null && (prevFuel - fl) >= FUEL_DROP_L) drop = Math.max(drop, prevFuel - fl); prevFuel = fl; } }
-    if (drop) findings.push({ imei, severity: 'critical', agent: 'watch', fkey: 'fuel_' + imei, title: name + ': scădere combustibil ~' + Math.round(drop) + ' L', body: 'Posibil furt sau scurgere. Verifică traseul și opririle.' });
   }
   return { findings };
 }
@@ -207,7 +193,7 @@ async function raDispatch(ctx) {
 }
 
 const AGENTS = {
-  watch: { name: 'RA Watch', desc: 'Monitorizare 24/7 — anomalii (furt combustibil, depășiri viteză, offline, ralanti).', run: raWatch },
+  watch: { name: 'RA Watch', desc: 'Monitorizare conexiune — alertă când un vehicul e offline (fără date) peste 1 oră.', run: raWatch },
   dispatch: { name: 'RA Dispatch', desc: 'Alocare curse — vehicule disponibile acum + cel mai apropiat de o destinație.', run: raDispatch },
   care: { name: 'RA Care', desc: 'Mentenanță predictivă — revizii, ITP și asigurări scadente (pe dată sau pe km).', run: raCare },
   optimize: { name: 'RA Optimize', desc: 'Eco-driving & costuri — scor șofer, frânări/accelerări bruște, risipă la ralanti.', run: raOptimize },
