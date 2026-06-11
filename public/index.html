@@ -6266,7 +6266,10 @@
       if (selectedImei && list.some(d => String(d.imei) === String(selectedImei))) sel.value = selectedImei;
       else if (list.length) { sel.value = list[0].imei; selectedImei = list[0].imei; }
       const f = document.getElementById('history-from'), t = document.getElementById('history-to');
-      if (f && t && (!f.value || !t.value)) { try { hpQuick('today'); } catch (e) {} }
+      if (f && t && (!f.value || !t.value)) {
+        // setează intervalul „azi" DIRECT, fără să apeleze hpQuick (care ar declanșa loadHistory + plierea)
+        try { const now = new Date(), from = new Date(now); from.setHours(0, 0, 0, 0); f.value = formatDateLocal(from); t.value = formatDateLocal(now); } catch (e) {}
+      }
     }
     async function loadHistory() {
       const hsel = document.getElementById('history-imei');
