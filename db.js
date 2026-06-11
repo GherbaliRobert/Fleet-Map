@@ -412,7 +412,8 @@ async function initDb() {
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS tank_calibration JSONB`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_price NUMERIC(10,2)`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_per_ton_km NUMERIC(10,2)`,
-      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_sensors JSONB`
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_sensors JSONB`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS io_mappings JSONB`
     ];
     for (const sql of migrateColumns) {
       try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
@@ -975,6 +976,20 @@ async function getFuelSensorsRow(imei) {
   const s = r.rows[0].fuel_sensors;
   return typeof s === 'string' ? JSON.parse(s) : s;
 }
+// ─── Mapări IO per vehicul (super-admin): cheia brută io_<id> → { name, type, unit, capacity, rawMin, rawMax, scale, offset } ───
+async function getIoMappings(imei) {
+  const r = await pool.query('SELECT io_mappings FROM devices WHERE imei = $1', [imei]);
+  if (!r.rows[0] || !r.rows[0].io_mappings) return {};
+  const m = r.rows[0].io_mappings;
+  return (typeof m === 'string' ? JSON.parse(m) : m) || {};
+}
+async function setIoMapping(imei, ioId, mapping) {
+  const cur = await getIoMappings(imei);
+  if (mapping == null) delete cur[String(ioId)]; else cur[String(ioId)] = mapping;
+  await pool.query('UPDATE devices SET io_mappings = $2 WHERE imei = $1', [imei, JSON.stringify(cur)]);
+  return cur;
+}
+async function deleteIoMapping(imei, ioId) { return setIoMapping(imei, ioId, null); }
 
 async function getDeviceFull(imei) {
   const result = await pool.query('SELECT * FROM devices WHERE imei = $1', [imei]);
@@ -1715,6 +1730,7 @@ module.exports = {
   updateTankCalibration,
   setFuelSensors,
   getFuelSensorsRow,
+  getIoMappings, setIoMapping, deleteIoMapping,
   getDeviceFull,
   insertPositions,
   getDevices,

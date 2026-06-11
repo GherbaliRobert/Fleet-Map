@@ -2154,6 +2154,57 @@ app.put('/api/devices/:imei/fuel-sensors', requireAuth, requireFleet, withScope,
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── Debug / mapare IO per vehicul (doar super-admin) ───
+// Ultimul io live + cheile NEMAPATE (io_<id>) + maparile curente
+app.get('/api/devices/:imei/io-debug', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const imei = req.params.imei;
+    const live = livePositions.get(imei);
+    const io = (live && live.io) ? live.io : {};
+    const mappings = await db.getIoMappings(imei);
+    const unmapped = [];
+    const mapped = [];
+    for (const [k, v] of Object.entries(io)) {
+      const m = /^io_(\d+)$/.exec(k);
+      if (m) { if (mappings[m[1]]) mapped.push({ id: m[1], key: k, value: v }); else unmapped.push({ id: m[1], key: k, value: v }); }
+    }
+    unmapped.sort((a, b) => Number(a.id) - Number(b.id));
+    res.json({ imei, hasLive: !!live, timestamp: live ? live.timestamp : null, unmapped, mapped, mappings, ioKeyCount: Object.keys(io).length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Citire mapari (pentru afisare in fisa — orice user cu acces la vehicul)
+app.get('/api/devices/:imei/io-mappings', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    res.json(await db.getIoMappings(req.params.imei));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Setare mapare pentru un IO (doar super-admin)
+app.put('/api/devices/:imei/io-mappings/:ioId', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const ioId = String(req.params.ioId).replace(/[^0-9]/g, '');
+    if (!ioId) return res.status(400).json({ error: 'IO id invalid' });
+    const b = req.body || {};
+    const name = (b.name || '').toString().trim().slice(0, 60);
+    if (!name) return res.status(400).json({ error: 'Numele e obligatoriu' });
+    const type = ['raw', 'fuel', 'percent', 'temp'].includes(b.type) ? b.type : 'raw';
+    const num = (x) => (x != null && x !== '' && Number.isFinite(Number(x))) ? Number(x) : null;
+    const mapping = { name, type, unit: (b.unit || '').toString().slice(0, 12) || null, capacity: num(b.capacity), rawMin: num(b.rawMin), rawMax: num(b.rawMax), scale: num(b.scale), offset: num(b.offset) };
+    const next = await db.setIoMapping(req.params.imei, ioId, mapping);
+    auditReq(req, 'update', 'io-mapping', req.params.imei, { ioId, name, type });
+    res.json({ ok: true, mappings: next });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Stergere mapare (doar super-admin)
+app.delete('/api/devices/:imei/io-mappings/:ioId', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const ioId = String(req.params.ioId).replace(/[^0-9]/g, '');
+    const next = await db.deleteIoMapping(req.params.imei, ioId);
+    auditReq(req, 'delete', 'io-mapping', req.params.imei, { ioId });
+    res.json({ ok: true, mappings: next });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // API: Raport transport (detectie automata curse incarcare/descarcare + tone-km)
 app.get('/api/transport-report/:imei', requireAuth, withScope, async (req, res) => {
   try {
