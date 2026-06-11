@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" />
   <!-- PWA / mobil -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0B0E11">
@@ -2442,6 +2443,32 @@
     .rep-dl-csv i { color:#2563eb; }
     .rep-dl-xls i { color:#16a34a; }
     .rep-dl-pdf i { color:#dc2626; }
+    /* ── Flatpickr: câmp + temă asortată (light/dark prin variabile) ── */
+    .rep-dt-input { width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg-dark); color:var(--text-primary); font-size:13px; cursor:pointer; box-sizing:border-box; }
+    .rep-dt-input:focus { outline:none; border-color:var(--accent); }
+    .flatpickr-calendar { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.28); color:var(--text-primary); }
+    .flatpickr-calendar.arrowTop:before { border-bottom-color:var(--border); }
+    .flatpickr-calendar.arrowTop:after { border-bottom-color:var(--bg-card); }
+    .flatpickr-calendar.arrowBottom:before { border-top-color:var(--border); }
+    .flatpickr-calendar.arrowBottom:after { border-top-color:var(--bg-card); }
+    .flatpickr-months .flatpickr-month, .flatpickr-current-month, .flatpickr-monthDropdown-months { color:var(--text-primary); fill:var(--text-primary); }
+    .flatpickr-current-month input.cur-year { color:var(--text-primary); }
+    .flatpickr-monthDropdown-months { background:var(--bg-card); }
+    .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month { background:var(--bg-card); color:var(--text-primary); }
+    .flatpickr-months .flatpickr-prev-month svg, .flatpickr-months .flatpickr-next-month svg { fill:var(--text-muted); }
+    .flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg { fill:var(--accent); }
+    span.flatpickr-weekday { color:var(--text-muted); background:transparent; font-weight:600; }
+    .flatpickr-day { color:var(--text-primary); border-radius:8px; }
+    .flatpickr-day:hover, .flatpickr-day:focus { background:var(--bg-dark); border-color:var(--bg-dark); }
+    .flatpickr-day.today { border-color:var(--accent); }
+    .flatpickr-day.today:hover { background:var(--accent); color:#fff; }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover, .flatpickr-day.startRange, .flatpickr-day.endRange { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .flatpickr-day.flatpickr-disabled, .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color:var(--text-muted); opacity:.4; }
+    .flatpickr-time { border-top:1px solid var(--border); }
+    .flatpickr-time input, .flatpickr-time .flatpickr-time-separator, .flatpickr-time .flatpickr-am-pm { color:var(--text-primary); }
+    .flatpickr-time input:hover, .flatpickr-time input:focus, .flatpickr-time .flatpickr-am-pm:hover, .flatpickr-time .flatpickr-am-pm:focus { background:var(--bg-dark); }
+    .flatpickr-time .numInputWrapper span.arrowUp:after { border-bottom-color:var(--text-muted); }
+    .flatpickr-time .numInputWrapper span.arrowDown:after { border-top-color:var(--text-muted); }
     .rep-chip { background:var(--bg-dark); border:1px solid var(--border); border-radius:8px; padding:8px 12px; }
     .rep-chip .v { font-size:18px; font-weight:700; color:var(--accent); }
     .rep-chip .l { font-size:11px; color:var(--text-muted); }
@@ -3161,6 +3188,8 @@
   <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
   <script src="vendor/leaflet-heat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ro.js"></script>
   <script>
     // ─── Global State ───
     let currentUser = null;
@@ -4640,12 +4669,25 @@
       document.querySelectorAll('#rep-cats .rep-cat').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
       renderReportCards();
     }
+    // Flatpickr pe selectoarele de interval din Rapoarte (pilot). Fallback: datetime-local nativ dacă CDN-ul nu e disponibil.
+    let repFromFp = null, repToFp = null;
+    function ensureRepPickers() {
+      if (repFromFp || typeof flatpickr === 'undefined') return;
+      const elFrom = document.getElementById('rep-from'), elTo = document.getElementById('rep-to');
+      if (!elFrom || !elTo) return;
+      elFrom.type = 'text'; elTo.type = 'text';
+      const ro = (flatpickr.l10ns && flatpickr.l10ns.ro) ? 'ro' : 'default';
+      const common = { enableTime:true, time_24hr:true, dateFormat:'Y-m-d H:i', altInput:true, altFormat:'d.m.Y, H:i', altInputClass:'rep-dt-input', locale:ro, minuteIncrement:1, disableMobile:true };
+      repFromFp = flatpickr(elFrom, Object.assign({}, common, { onChange:(sel)=>{ if (repToFp && sel[0]) repToFp.set('minDate', sel[0]); } }));
+      repToFp = flatpickr(elTo, common);
+    }
     async function openReportCard(type) {
       const r = (repCatalog.reports || []).find(x => x.type === type);
       document.getElementById('rep-type').value = type;
       document.getElementById('rep-title').textContent = r ? r.label : type;
       document.getElementById('rep-catalog').style.display = 'none';
       document.getElementById('rep-runner').style.display = 'flex';
+      ensureRepPickers();
       await fillVehicleSelect('rep-imei', true, 'Toată flota');
       setRepPeriod('week'); onRepType();
       document.querySelector('#rep-table thead').innerHTML = '';
@@ -4665,8 +4707,15 @@
       else if (p === 'yesterday') { from.setDate(from.getDate()-1); from.setHours(0,0,0,0); now.setHours(0,0,0,0); }
       else if (p === 'week') from.setDate(from.getDate()-7);
       else if (p === 'month') from.setDate(from.getDate()-30);
-      document.getElementById('rep-from').value = localISO(from);
-      document.getElementById('rep-to').value = localISO(now);
+      if (repFromFp && repToFp) {
+        repToFp.set('minDate', null);
+        repFromFp.setDate(from, false);
+        repToFp.setDate(now, false);
+        repToFp.set('minDate', from);
+      } else {
+        document.getElementById('rep-from').value = localISO(from);
+        document.getElementById('rep-to').value = localISO(now);
+      }
     }
     function onRepType() {
       const t = document.getElementById('rep-type').value; let html = '';
@@ -4678,9 +4727,11 @@
     function repBuildUrl() {
       const t = document.getElementById('rep-type').value;
       const imei = document.getElementById('rep-imei').value;
-      const fromV = document.getElementById('rep-from').value, toV = document.getElementById('rep-to').value;
-      if (!fromV || !toV) { alert('Selectează perioada'); return null; }
-      let url = `/api/reports/${t}?from=${new Date(fromV).toISOString()}&to=${new Date(toV).toISOString()}`;
+      let fromD, toD;
+      if (repFromFp && repToFp) { fromD = repFromFp.selectedDates[0] || null; toD = repToFp.selectedDates[0] || null; }
+      else { const fv = document.getElementById('rep-from').value, tv = document.getElementById('rep-to').value; fromD = fv ? new Date(fv) : null; toD = tv ? new Date(tv) : null; }
+      if (!fromD || !toD) { alert('Selectează perioada'); return null; }
+      let url = `/api/reports/${t}?from=${fromD.toISOString()}&to=${toD.toISOString()}`;
       if (imei) url += '&imei=' + encodeURIComponent(imei);
       const lim = document.getElementById('rep-limit'); if (lim) url += '&limit=' + (parseInt(lim.value)||90);
       const sm = document.getElementById('rep-stopmin'); if (sm) url += '&stopMin=' + (parseInt(sm.value)||5);
