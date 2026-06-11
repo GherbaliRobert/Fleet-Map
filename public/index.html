@@ -1466,30 +1466,35 @@
         left: 0;
         right: 0;
         bottom: 0;
-        padding: 12px 14px calc(14px + var(--sab));
+        padding: 10px 14px calc(12px + var(--sab));
         border-radius: 16px 16px 0 0;
-        max-height: 74vh;
+        max-height: 70vh;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
       /* mâner de tip „drag" (aspect de bottom-sheet) */
       #history-panel::before {
-        content: ''; display: block; width: 40px; height: 4px; border-radius: 2px;
-        background: var(--border); margin: 0 auto 12px;
+        content: ''; display: block; width: 38px; height: 4px; border-radius: 2px;
+        background: var(--border); margin: 0 auto 8px;
       }
 
       #history-controls {
         flex-direction: column;
-        gap: 10px;
+        gap: 7px;
       }
 
-      #history-controls input, #history-controls select { width: 100%; box-sizing: border-box; }
+      /* etichete + câmpuri centrate uniform, compacte */
+      #history-controls label { text-align: center; font-size: 11px; margin: 2px 0 -3px; }
+      #history-controls input, #history-controls select { width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 14px; text-align: center; }
 
-      .history-btn { width: 100%; justify-content: center; padding: 13px; }
+      .history-btn { width: 100%; justify-content: center; padding: 11px; }
       /* butoanele grupate pe rânduri ocupă egal lățimea */
       .hp-row { width: 100%; gap: 8px; }
-      .hp-row .history-btn { flex: 1; width: auto; padding: 12px 6px; }
-      .hp-load { font-size: 15px; padding: 15px; }
+      .hp-row .history-btn { flex: 1; width: auto; padding: 10px 6px; }
+      .hp-load { font-size: 15px; padding: 13px; }
+
+      /* cât e cardul Traseu deschis, ascunde butoanele flotante (mașină stânga + FAB dreapta) */
+      body.history-open #rax-fabs, body.history-open #mobile-toggle { display: none !important; }
 
       /* Modals full screen on mobile */
       .modal-overlay { align-items: flex-end; }
@@ -4981,12 +4986,13 @@
       try { closeHotspot(); } catch (e) {}
       try { var dp = document.getElementById('dispatch-panel'); if (dp) dp.style.display = 'none'; } catch (e) {}
       const hist = document.getElementById('history-panel'); if (hist) hist.classList.remove('visible');
+      document.body.classList.remove('history-open');
       const loc = document.getElementById('view-localizare');
       const mapViews = ['localizare', 'traseu'];
       if (mapViews.includes(name)) {
         loc.classList.add('active');
         if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
-        if (name === 'traseu' && hist) { hist.classList.add('visible'); fillHistoryVehicle(); }
+        if (name === 'traseu' && hist) { hist.classList.add('visible'); document.body.classList.add('history-open'); fillHistoryVehicle(); }
       } else {
         loc.classList.remove('active');
         const el = document.getElementById(VIEW_PANELS[name]);
