@@ -9045,7 +9045,7 @@
             '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
             _raxFeatureRow(c) +
             _raxAccessRow(c) +
-            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button>' +
+            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează</button><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button>' +
               (((c.device_count || 0) === 0 && (c.user_count || 0) === 0)
                 ? '<button class="rax-btn" style="border-color:var(--red);color:var(--red);" onclick="raxDeleteCompany(' + c.id + ')" title="Șterge compania (doar dacă e goală)"><i class="fas fa-trash"></i> Șterge</button>'
                 : '<span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;" title="Mută/șterge întâi vehiculele + utilizatorii">🔒 nu se poate șterge (are vehicule sau utilizatori)</span>') +
@@ -9066,6 +9066,18 @@
         raxToast('Companie ștearsă: ' + name, 'success');
         raxLoadCompanies();
       } catch (e) { raxToast('Eroare de rețea', 'error'); }
+    };
+    window.raxEditCompany = async function (id) {
+      var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
+      var name = prompt('Nume companie:', c.name || ''); if (name == null) return; name = name.trim(); if (name.length < 2) { alert('Nume prea scurt.'); return; }
+      var email = prompt('Email contact (opțional):', c.contact_email || ''); if (email == null) return;
+      var phone = prompt('Telefon (opțional):', c.phone || ''); if (phone == null) return;
+      var act = prompt('Companie activă?  da / nu', c.active === false ? 'nu' : 'da'); if (act == null) return;
+      try {
+        var j = await fetch('/api/companies/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ name: name, contact_email: (email.trim() || null), phone: (phone.trim() || null), active: /^d/i.test(act.trim()) }) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        raxLoadCompanies();
+      } catch (e) { alert('Eroare: ' + e.message); }
     };
     window.raxSetPlan = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
