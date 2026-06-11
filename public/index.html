@@ -8493,6 +8493,12 @@
           <strong style="font-size:13px;">Vehicule neasignate</strong>
           <div id="rax-co-unassigned" class="rax-co-meta" style="margin-top:6px;">—</div>
         </div>
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+          <strong style="font-size:13px;"><i class="fas fa-arrows-left-right" style="color:var(--accent)"></i> Mută vehicul între companii</strong>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-bottom:8px;">Selectează un vehicul și compania destinație. Poți și „dezasigna" (revine la „neasignat").</div>
+          <input class="rax-field" id="rax-move-search" placeholder="Caută nume / nr. / IMEI…" oninput="raxRenderMovableDevices()" style="margin-bottom:6px;">
+          <div id="rax-move-list" class="rax-co-meta">Se încarcă…</div>
+        </div>
       </div>
     </div>
   </div>
@@ -8692,7 +8698,7 @@
     };
 
     // ── Companii ──
-    window.raxOpenCompanies = function () { $('rax-co-overlay').classList.add('open'); raxLoadCompanies(); raxLoadUnassigned(); };
+    window.raxOpenCompanies = function () { $('rax-co-overlay').classList.add('open'); raxLoadCompanies(); raxLoadUnassigned(); raxLoadMovableDevices(); };
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
 
     // ─── Dashboard platformă — super-admin (montat în modalul Administrare, tab „Platformă") ───
@@ -9002,7 +9008,59 @@
     window.raxAssignDevice = async function (imei) {
       var sel = $('raxasg_' + imei); if (!sel) return;
       await fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: parseInt(sel.value) }) });
-      raxLoadCompanies(); raxLoadUnassigned();
+      raxLoadCompanies(); raxLoadUnassigned(); raxLoadMovableDevices();
+    };
+
+    // ─── Mutare vehicule între companii (super-admin) ───
+    var _raxAllDevices = [];
+    async function raxLoadMovableDevices() {
+      var box = $('rax-move-list'); if (!box) return;
+      try {
+        var devs = await fetch('/api/devices?includeArchived=1', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        _raxAllDevices = Array.isArray(devs) ? devs : [];
+      } catch (e) { _raxAllDevices = []; }
+      raxRenderMovableDevices();
+    }
+    window.raxRenderMovableDevices = function () {
+      var box = $('rax-move-list'); if (!box) return;
+      var q = ($('rax-move-search').value || '').toLowerCase();
+      var coMap = {}; (companiesCache || []).forEach(function (c) { coMap[c.id] = c.name; });
+      var coOpts = (companiesCache || []).filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
+      var list = _raxAllDevices.filter(function (d) {
+        if (!q) return true;
+        var s = ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + (coMap[d.company_id] || '')).toLowerCase();
+        return s.indexOf(q) >= 0;
+      });
+      if (!list.length) { box.innerHTML = '<div class="rax-co-meta">Niciun vehicul.</div>'; return; }
+      box.innerHTML = list.slice(0, 60).map(function (d) {
+        var current = d.company_id != null ? (coMap[d.company_id] || '#' + d.company_id) : '<em>neasignat</em>';
+        return '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;padding:6px;border:1px solid var(--border);border-radius:6px;">' +
+          '<div style="flex:1;min-width:140px;font-size:12px;"><strong>' + esc(d.name || d.imei) + '</strong>' + (d.plate ? ' · <span style="color:var(--text-muted)">' + esc(d.plate) + '</span>' : '') +
+          '<div style="font-size:10px;color:var(--text-muted);">' + esc(d.imei) + ' · acum: ' + current + '</div></div>' +
+          '<select class="rax-field" style="width:auto;margin:0;min-width:120px;" id="raxmv_' + esc(d.imei) + '">' +
+            '<option value="">— neasignat —</option>' + coOpts + '</select>' +
+          '<button class="rax-btn primary" onclick="raxMoveDevice(\'' + esc(d.imei) + '\')"><i class="fas fa-arrow-right"></i> Mută</button>' +
+        '</div>';
+      }).join('') + (list.length > 60 ? '<div class="rax-co-meta" style="margin-top:6px;">… afișează primele 60. Filtrează pentru mai multe.</div>' : '');
+      // presetez selectorul la compania curentă
+      list.slice(0, 60).forEach(function (d) {
+        var sel = $('raxmv_' + d.imei); if (sel) sel.value = d.company_id != null ? String(d.company_id) : '';
+      });
+    };
+    window.raxMoveDevice = async function (imei) {
+      var sel = $('raxmv_' + imei); if (!sel) return;
+      var d = _raxAllDevices.find(function (x) { return x.imei === imei; }) || {};
+      var newCo = sel.value === '' ? null : parseInt(sel.value);
+      if ((d.company_id == null && newCo == null) || (d.company_id != null && newCo === d.company_id)) {
+        raxToast && raxToast('Vehiculul e deja acolo', 'error'); return;
+      }
+      if (!confirm('Mută „' + (d.name || imei) + '" la ' + (newCo == null ? 'NEASIGNAT' : '„' + (sel.options[sel.selectedIndex].text) + '"') + '?')) return;
+      try {
+        var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) });
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast && raxToast('Eroare: ' + (e.error || r.status), 'error'); return; }
+        raxToast && raxToast('Vehicul mutat ✓', 'success');
+        raxLoadCompanies(); raxLoadUnassigned(); raxLoadMovableDevices();
+      } catch (e) { raxToast && raxToast('Eroare de rețea', 'error'); }
     };
     window.raxCreateCompany = async function () {
       var name = $('rax-co-name').value.trim(), u = $('rax-co-admin-user').value.trim(), p = $('rax-co-admin-pass').value;
