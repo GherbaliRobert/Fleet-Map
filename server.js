@@ -1352,7 +1352,7 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     const enabled = await _getEnabledAgents(storeCompany);
     if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '" nu e inclus în planul/setările companiei' });
     if (which === 'all' && !enabled.length) return res.json({ findings: [], aiSummary: null, stored: 0, message: 'Niciun agent activ pe acest plan' });
-    const base = { db, imeis, livePositions, companyId: storeCompany };
+    const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit };
     const findings = (which === 'all' ? await agents.runAll(base, enabled) : await agents.runAgent(which, base)).findings || [];
     let stored = 0;
     for (const f of findings) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; }
@@ -1415,7 +1415,8 @@ app.get('/api/dispatch/suggest', requireAuth, withScope, async (req, res) => {
 async function runAgentsWorker() {
   if (!agents) return;
   try {
-    try { if (!(await getSystemSettings()).agents_auto) return; } catch (e) {} // toggle global din Setări sistem
+    let _sysSpeed = 90;
+    try { const _sys = await getSystemSettings(); if (!_sys.agents_auto) return; _sysSpeed = _sys.default_speed_limit; } catch (e) {} // toggle + viteză implicită din Setări sistem
     const companies = await db.getCompanies();
     for (const co of companies) {
       if (co.is_demo) continue;
@@ -1423,7 +1424,7 @@ async function runAgentsWorker() {
       if (!enabled.length) continue; // planul „start" nu rulează niciun agent
       const imeis = await db.getCompanyImeis(co.id);
       if (!imeis.length) continue;
-      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id }, enabled);
+      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
     }
   } catch (e) { console.warn('[AGENTS] worker:', e.message); }

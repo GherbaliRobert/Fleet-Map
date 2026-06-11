@@ -3127,6 +3127,20 @@
   <script>
     // ─── Global State ───
     let currentUser = null;
+    var ioMappingsCache = {}; // imei -> { '<id>': {name,type,unit,capacity,rawMin,rawMax,scale,offset} } (mapate de super-admin)
+    function ioMapValue(m, raw) {
+      var r = Number(raw); if (!Number.isFinite(r)) return String(raw);
+      if (m.type === 'fuel') {
+        var lo = (m.rawMin != null ? m.rawMin : 0), hi = (m.rawMax != null ? m.rawMax : 100), cap = (m.capacity != null ? m.capacity : 0);
+        if (hi === lo) return String(raw);
+        var frac = Math.max(0, Math.min(1, (r - lo) / (hi - lo)));
+        return Math.round(frac * cap) + ' L (' + Math.round(frac * 100) + '%)';
+      }
+      if (m.type === 'percent') { var lo2 = (m.rawMin != null ? m.rawMin : 0), hi2 = (m.rawMax != null ? m.rawMax : 100); if (hi2 === lo2) return String(raw); return Math.round(Math.max(0, Math.min(1, (r - lo2) / (hi2 - lo2))) * 100) + '%'; }
+      var v = r * (m.scale != null ? m.scale : 1) + (m.offset != null ? m.offset : 0);
+      if (m.type === 'temp') return v.toFixed(1) + '°C';
+      return v + (m.unit ? ' ' + m.unit : '');
+    }
 
     // ─── Chart.js setup: dark theme + helper ───
     if (typeof Chart !== 'undefined') {
@@ -5479,6 +5493,8 @@
 
       updateDetailPanel(imei);
       updateDetailIoPanel(imei);
+      // încarcă mapările IO (setate de super-admin) și re-randează cu numele personalizate
+      fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (m) { if (m && !m.error) { ioMappingsCache[imei] = m; if (detailPanelImei === imei) updateDetailIoPanel(imei); } }).catch(function () {});
       showDetailView(tab || 'info');
 
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
@@ -6195,11 +6211,19 @@
 
       // Uncategorized (exclude internal flag objects and already used keys)
       const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && k !== 'eventIoId' && k !== 'totalCount' && k !== '_security_flags' && k !== '_control_flags' && k !== 'can_security_state_flags' && k !== 'can_control_state_flags');
-      if (uncategorized.length > 0) {
-        const rows = uncategorized.map(k =>
-          '<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value">' + formatIoValue(k, io[k]) + '</span></div>'
-        );
-        html += '<details class="io-advanced"><summary><i class="fas fa-ellipsis-h"></i> Date tehnice avansate (' + uncategorized.length + ')</summary><div style="margin-top:6px;">' + rows.join('') + '</div></details>';
+      // IO mapate de super-admin (Senzori personalizați) vs restul (avansate)
+      var _maps = ioMappingsCache[imei] || {};
+      var _mappedRows = [], _advRows = [];
+      uncategorized.forEach(function (k) {
+        var mm = /^io_(\d+)$/.exec(k); var map = mm && _maps[mm[1]];
+        if (map) _mappedRows.push('<div class="io-row"><span class="io-label">' + _usEsc(map.name) + '</span><span class="io-value">' + _usEsc(ioMapValue(map, io[k])) + '</span></div>');
+        else _advRows.push('<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value">' + formatIoValue(k, io[k]) + '</span></div>');
+      });
+      if (_mappedRows.length) {
+        html += '<div style="margin-top:8px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;"><i class="fas fa-sliders-h"></i> Senzori personalizați</div>' + _mappedRows.join('') + '</div>';
+      }
+      if (_advRows.length) {
+        html += '<details class="io-advanced"><summary><i class="fas fa-ellipsis-h"></i> Date tehnice avansate (' + _advRows.length + ')</summary><div style="margin-top:6px;">' + _advRows.join('') + '</div></details>';
       }
 
       content.innerHTML = html;

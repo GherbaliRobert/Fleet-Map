@@ -30,8 +30,9 @@ function roDate(d) { try { return new Date(d).toLocaleDateString('ro-RO'); } cat
 
 // Limita de viteză efectivă: per-vehicul dacă există, altfel fallback SPEED_LIMIT.
 async function _vehLimit(ctx, imei) {
-  if (!ctx || !ctx.db || !ctx.db.getDeviceFull) return SPEED_LIMIT;
-  try { const d = await ctx.db.getDeviceFull(imei); return (d && d.speed_limit) ? Number(d.speed_limit) : SPEED_LIMIT; } catch (e) { return SPEED_LIMIT; }
+  const fallback = (ctx && Number(ctx.defaultSpeedLimit) > 0) ? Number(ctx.defaultSpeedLimit) : SPEED_LIMIT; // implicit din Setări sistem, altfel 90
+  if (!ctx || !ctx.db || !ctx.db.getDeviceFull) return fallback;
+  try { const d = await ctx.db.getDeviceFull(imei); return (d && d.speed_limit) ? Number(d.speed_limit) : fallback; } catch (e) { return fallback; }
 }
 
 // ─── RA Watch — monitorizare 24/7 (anomalii operaționale) ───
