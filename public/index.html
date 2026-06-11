@@ -1761,6 +1761,7 @@
         <div id="history-controls">
           <label>Vehicul</label>
           <select id="history-imei" onchange="selectedImei=this.value"></select>
+          <div class="rep-interval-title" style="margin:8px 0 3px;"><i class="far fa-clock"></i> Interval orar</div>
           <label>De la</label>
           <input type="datetime-local" id="history-from">
           <label>Până la</label>
@@ -2448,6 +2449,7 @@
     .rep-dt-input:focus { outline:none; border-color:var(--accent); }
     .rep-interval-title { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--text-primary); margin:2px 0 1px; }
     .rep-interval-title i { color:var(--accent); }
+    #hotspot-panel .rep-dt-input { margin-bottom:6px; }
     .flatpickr-calendar { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.28); color:var(--text-primary); }
     .flatpickr-calendar.arrowTop:before { border-bottom-color:var(--border); }
     .flatpickr-calendar.arrowTop:after { border-bottom-color:var(--bg-card); }
@@ -2968,6 +2970,7 @@
       <button class="btn-sm" style="flex:1;" onclick="setHsPeriod('week')">7z</button>
       <button class="btn-sm" style="flex:1;" onclick="setHsPeriod('month')">30z</button>
     </div>
+    <div class="rep-interval-title" style="margin:2px 0 4px;"><i class="far fa-clock"></i> Interval orar</div>
     <input type="datetime-local" id="hs-from" style="margin-bottom:4px;">
     <input type="datetime-local" id="hs-to" style="margin-bottom:8px;">
     <button class="btn-sm btn-primary" style="width:100%;margin-bottom:6px;" onclick="loadHeatmap()"><i class="fas fa-fire"></i> Afișează heatmap</button>
@@ -4672,6 +4675,21 @@
       document.querySelectorAll('#rep-cats .rep-cat').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
       renderReportCards();
     }
+    // ── Flatpickr: helper generic pentru perechi De la / Până la (Traseu, Hotspot) ──
+    function dtSet(id, val) {
+      const el = document.getElementById(id); if (!el) return;
+      if (el._fp) el._fp.setDate(val, false); else el.value = val;
+    }
+    function initRangePicker(fromId, toId) {
+      if (typeof flatpickr === 'undefined') return;
+      const elFrom = document.getElementById(fromId), elTo = document.getElementById(toId);
+      if (!elFrom || !elTo || elFrom._fp) return;
+      elFrom.type = 'text'; elTo.type = 'text';
+      const ro = (flatpickr.l10ns && flatpickr.l10ns.ro) ? 'ro' : 'default';
+      const common = { enableTime:true, time_24hr:true, dateFormat:'Y-m-d\\TH:i', altInput:true, altFormat:'d.m.Y, H:i', altInputClass:'rep-dt-input', locale:ro, minuteIncrement:1, disableMobile:true };
+      elFrom._fp = flatpickr(elFrom, Object.assign({}, common, { onChange:(sel)=>{ if (elTo._fp && sel[0]) elTo._fp.set('minDate', sel[0]); } }));
+      elTo._fp = flatpickr(elTo, common);
+    }
     // Flatpickr pe selectoarele de interval din Rapoarte (pilot). Fallback: datetime-local nativ dacă CDN-ul nu e disponibil.
     let repFromFp = null, repToFp = null;
     function ensureRepPickers() {
@@ -4880,6 +4898,7 @@
       if (p.style.display === 'none' || !p.style.display) {
         p.style.display = 'block';
         await fillVehicleSelect('hs-imei', true, 'Toată flota');
+        initRangePicker('hs-from', 'hs-to');
         setHsPeriod('week');
       } else { closeHotspot(); }
     }
@@ -4945,8 +4964,8 @@
       if (pp === 'today') from.setHours(0,0,0,0);
       else if (pp === 'week') from.setDate(from.getDate()-7);
       else if (pp === 'month') from.setDate(from.getDate()-30);
-      document.getElementById('hs-from').value = localISO(from);
-      document.getElementById('hs-to').value = localISO(now);
+      dtSet('hs-from', localISO(from));
+      dtSet('hs-to', localISO(now));
     }
     async function loadHeatmap() {
       if (typeof L.heatLayer !== 'function') return alert('Biblioteca heatmap nu s-a încărcat.');
@@ -5187,7 +5206,7 @@
     }
     function openHotspotPanel() {
       const p = document.getElementById('hotspot-panel');
-      if (p.style.display !== 'block') { p.style.display = 'block'; fillVehicleSelect('hs-imei', true, 'Toată flota'); setHsPeriod('week'); }
+      if (p.style.display !== 'block') { p.style.display = 'block'; fillVehicleSelect('hs-imei', true, 'Toată flota'); initRangePicker('hs-from', 'hs-to'); setHsPeriod('week'); }
     }
 
     // Închiderile panourilor inline revin la Localizare (override peste definițiile anterioare)
@@ -6408,8 +6427,8 @@
       const to = document.getElementById('detail-history-to').value;
       if (!from || !to) return alert('Selecteaza perioada');
 
-      document.getElementById('history-from').value = from;
-      document.getElementById('history-to').value = to;
+      dtSet('history-from', from);
+      dtSet('history-to', to);
       loadHistory();
     }
 
@@ -6421,8 +6440,8 @@
       const to = document.getElementById('detail-history-to').value;
       if (!from || !to) return alert('Selecteaza perioada');
 
-      document.getElementById('history-from').value = from;
-      document.getElementById('history-to').value = to;
+      dtSet('history-from', from);
+      dtSet('history-to', to);
       exportCSV();
     }
 
@@ -6432,12 +6451,13 @@
       const panel = document.getElementById('history-panel');
       panel.classList.add('visible');
       document.body.classList.add('history-open'); // ascunde FAB pe mobile
+      initRangePicker('history-from', 'history-to');
 
       const now = new Date();
       const yesterday = new Date(now - 24 * 60 * 60 * 1000);
 
-      document.getElementById('history-from').value = formatDateLocal(yesterday);
-      document.getElementById('history-to').value = formatDateLocal(now);
+      dtSet('history-from', formatDateLocal(yesterday));
+      dtSet('history-to', formatDateLocal(now));
     }
 
     function closeHistory() {
@@ -6486,7 +6506,7 @@
       const f = document.getElementById('history-from'), t = document.getElementById('history-to');
       if (f && t && (!f.value || !t.value)) {
         // setează intervalul „azi" DIRECT, fără să apeleze hpQuick (care ar declanșa loadHistory + plierea)
-        try { const now = new Date(), from = new Date(now); from.setHours(0, 0, 0, 0); f.value = formatDateLocal(from); t.value = formatDateLocal(now); } catch (e) {}
+        try { const now = new Date(), from = new Date(now); from.setHours(0, 0, 0, 0); dtSet('history-from', formatDateLocal(from)); dtSet('history-to', formatDateLocal(now)); } catch (e) {}
       }
     }
     async function loadHistory() {
@@ -6630,8 +6650,8 @@
       if (period === 'today') { from.setHours(0, 0, 0, 0); }
       else if (period === 'yesterday') { from.setDate(from.getDate() - 1); from.setHours(0, 0, 0, 0); to = new Date(from); to.setHours(23, 59, 59, 0); }
       else if (period === 'week') { from.setDate(from.getDate() - 7); }
-      document.getElementById('history-from').value = formatDateLocal(from);
-      document.getElementById('history-to').value = formatDateLocal(to);
+      dtSet('history-from', formatDateLocal(from));
+      dtSet('history-to', formatDateLocal(to));
       loadHistory();
     }
 
@@ -8527,7 +8547,7 @@
         var histPanel = document.getElementById('history-panel');
         if (histPanel) histPanel.classList.add('visible');
         // Populez câmpurile from/to ca să fie consistente cu replay-ul
-        try { document.getElementById('history-from').value = new Date(route.startTime).toISOString().slice(0, 16); document.getElementById('history-to').value = new Date(route.endTime).toISOString().slice(0, 16); } catch (e) {}
+        try { initRangePicker('history-from', 'history-to'); dtSet('history-from', new Date(route.startTime).toISOString().slice(0, 16)); dtSet('history-to', new Date(route.endTime).toISOString().slice(0, 16)); } catch (e) {}
         if (typeof hpInit === 'function') hpInit(data);
       } catch (err) {
         console.error('Eroare incarcare ruta:', err);
