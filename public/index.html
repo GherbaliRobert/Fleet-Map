@@ -1710,9 +1710,10 @@
 
         <div class="filter-bar">
           <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">Toate</button>
-          <button class="filter-btn" data-filter="online" onclick="setFilter('online', this)">Online</button>
-          <button class="filter-btn" data-filter="offline" onclick="setFilter('offline', this)">Offline</button>
+          <button class="filter-btn" data-filter="pornit" onclick="setFilter('pornit', this)">Pornit</button>
           <button class="filter-btn" data-filter="moving" onclick="setFilter('moving', this)">În mișcare</button>
+          <button class="filter-btn" data-filter="stationat" onclick="setFilter('stationat', this)">Staționat</button>
+          <button class="filter-btn" data-filter="oprit" onclick="setFilter('oprit', this)">Oprit</button>
         </div>
 
         <div class="stats-bar">
@@ -1721,12 +1722,16 @@
             <div class="stat-label">Total</div>
           </div>
           <div class="stat-chip online">
-            <div class="stat-value" id="stat-online">0</div>
-            <div class="stat-label">Online</div>
+            <div class="stat-value" id="stat-pornit">0</div>
+            <div class="stat-label">Pornit</div>
           </div>
           <div class="stat-chip moving">
             <div class="stat-value" id="stat-moving">0</div>
             <div class="stat-label">În mișcare</div>
+          </div>
+          <div class="stat-chip stationat">
+            <div class="stat-value" id="stat-stationat" style="color:var(--yellow);">0</div>
+            <div class="stat-label">Staționat</div>
           </div>
         </div>
       </div>
@@ -2191,9 +2196,10 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:16px;">
           <div class="report-stat"><div class="report-stat-value" id="dk-total">0</div><div class="report-stat-label">Total vehicule</div></div>
-          <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="dk-online" style="color:var(--green);">0</div><div class="report-stat-label">Online</div></div>
+          <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="dk-pornit" style="color:var(--green);">0</div><div class="report-stat-label">Pornit</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-moving">0</div><div class="report-stat-label">În mișcare</div></div>
-          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-offline" style="color:var(--red);">0</div><div class="report-stat-label">Offline</div></div>
+          <div class="report-stat" style="border-color:var(--yellow);"><div class="report-stat-value" id="dk-stationat" style="color:var(--yellow);">0</div><div class="report-stat-label">Staționat</div></div>
+          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-oprit" style="color:var(--red);">0</div><div class="report-stat-label">Oprit</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-km">0</div><div class="report-stat-label">Km azi</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-fuel">0</div><div class="report-stat-label">Consum azi (L)</div></div>
           <div class="report-stat"><div class="report-stat-value" id="dk-engine">0</div><div class="report-stat-label">Ore motor</div></div>
@@ -5328,6 +5334,13 @@
       updateDeviceList();
     }
 
+    // Predicate status „pe motor" (consistente cu serverul): Pornit = În mișcare + Staționat
+    function vehMoving(d) { return isDeviceOnline(d) && (d.speed || 0) > 3; }
+    function vehIgnition(d) { return !!(d.io && (d.io.ignition === 1 || d.io.ignition === true)); }
+    function vehStationat(d) { return isDeviceOnline(d) && !vehMoving(d) && vehIgnition(d); }
+    function vehPornit(d) { return isDeviceOnline(d) && (vehMoving(d) || vehIgnition(d)); }
+    function vehOprit(d) { return !vehPornit(d); }
+
     function getFilteredDevices() {
       let arr = Array.from(devices.values());
 
@@ -5341,14 +5354,11 @@
         });
       }
 
-      // Status filter
-      if (currentFilter === 'online') {
-        arr = arr.filter(d => isDeviceOnline(d));
-      } else if (currentFilter === 'offline') {
-        arr = arr.filter(d => !isDeviceOnline(d));
-      } else if (currentFilter === 'moving') {
-        arr = arr.filter(d => d.speed > 0 && isDeviceOnline(d));
-      }
+      // Status filter (pe motor: pornit / mișcare / staționat / oprit)
+      if (currentFilter === 'pornit') arr = arr.filter(vehPornit);
+      else if (currentFilter === 'moving') arr = arr.filter(vehMoving);
+      else if (currentFilter === 'stationat') arr = arr.filter(vehStationat);
+      else if (currentFilter === 'oprit') arr = arr.filter(vehOprit);
 
       return arr;
     }
@@ -5360,8 +5370,9 @@
       const filtered = getFilteredDevices();
 
       document.getElementById('stat-total').textContent = allDevices.length;
-      document.getElementById('stat-online').textContent = allDevices.filter(d => isDeviceOnline(d)).length;
-      document.getElementById('stat-moving').textContent = allDevices.filter(d => d.speed > 0 && isDeviceOnline(d)).length;
+      document.getElementById('stat-pornit').textContent = allDevices.filter(vehPornit).length;
+      document.getElementById('stat-moving').textContent = allDevices.filter(vehMoving).length;
+      document.getElementById('stat-stationat').textContent = allDevices.filter(vehStationat).length;
 
       if (filtered.length === 0) {
         list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;"><i class="fas fa-search" style="font-size:24px;display:block;margin-bottom:8px;"></i>Niciun vehicul gasit</div>';
@@ -5677,11 +5688,11 @@
       const rpm = io.can_engine_rpm !== undefined ? io.can_engine_rpm + ' RPM' : '-';
       const coolant = io.can_engine_temp !== undefined ? io.can_engine_temp.toFixed(1) + '\u00B0C' : '-';
 
-      // Status bar — „Offline" DOAR la >1h fără date; altfel Oprit/Staționare/În mișcare
+      // Status bar (pe motor): În mișcare / Staționat / Oprit; fără semnal >1h = Oprit (fără semnal)
       let statusClass, statusText, statusDetail;
       if (!isOnline) {
         statusClass = 'gone';                          // gri + ⚠ (>1h fără date)
-        statusText = '⚠️ Offline';
+        statusText = '⚠️ Oprit (fără semnal)';
         statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
       } else if (isMoving) {
         statusClass = 'moving';                        // verde
@@ -5689,7 +5700,7 @@
         statusDetail = '● activ';                      // în mers = transmite live
       } else if (hasIgnition) {
         statusClass = 'idle';                          // galben
-        statusText = 'Staționare (contact pornit)';
+        statusText = 'Staționat (contact pornit)';
         statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
       } else {
         statusClass = 'off';                           // roșu (parcat, contact decuplat)
@@ -7583,9 +7594,10 @@
         const d = await res.json();
 
         document.getElementById('dk-total').textContent = d.totalDevices;
-        document.getElementById('dk-online').textContent = d.onlineCount;
+        document.getElementById('dk-pornit').textContent = d.pornitCount;
         document.getElementById('dk-moving').textContent = d.movingCount;
-        document.getElementById('dk-offline').textContent = d.offlineCount;
+        document.getElementById('dk-stationat').textContent = d.stationatCount;
+        document.getElementById('dk-oprit').textContent = d.opritCount;
         document.getElementById('dk-km').textContent = d.totalKm + ' km';
         document.getElementById('dk-fuel').textContent = d.totalFuel + ' L';
         document.getElementById('dk-engine').textContent = formatDuration(d.totalEngineTime);
@@ -7609,8 +7621,8 @@
 
         // Fleet table
         const fleetHtml = (d.devices || []).map(function(v) {
-          const statusColor = v.isMoving ? 'var(--green)' : (v.isOnline ? 'var(--red)' : 'var(--text-muted)');
-          const statusText = v.isMoving ? 'Mișcare' : (v.isOnline ? 'Oprit' : '⚠️ Offline');
+          const statusColor = v.isMoving ? 'var(--green)' : (v.isStationat ? 'var(--yellow)' : (v.isOnline ? 'var(--red)' : 'var(--text-muted)'));
+          const statusText = v.isMoving ? 'În mișcare' : (v.isStationat ? 'Staționat' : (v.isOnline ? 'Oprit' : '⚠️ Oprit (fără semnal)'));
           const speedColor = v.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
           return '<tr>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + (v.name || v.imei) + (v.plate ? ' <span style="color:var(--text-muted);font-size:10px;">' + v.plate + '</span>' : '') + '</td>' +
@@ -7662,13 +7674,12 @@
     function renderDashboardCharts(d) {
       if (typeof Chart === 'undefined') return;
 
-      // 1. Donut "Status flota" — Online (stationare) / Moving / Offline
-      const stationary = Math.max(0, (d.onlineCount || 0) - (d.movingCount || 0));
+      // 1. Donut "Status flota" — pe motor: În mișcare / Staționat / Oprit
       createChart('chart-dash-status', 'doughnut', {
-        labels: ['În mișcare', 'Oprit', 'Offline'],
+        labels: ['În mișcare', 'Staționat', 'Oprit'],
         datasets: [{
-          data: [d.movingCount || 0, stationary, d.offlineCount || 0],
-          backgroundColor: [chartColors.green, chartColors.red, '#9ca3af'],
+          data: [d.movingCount || 0, d.stationatCount || 0, d.opritCount || 0],
+          backgroundColor: [chartColors.green, '#ca8a04', chartColors.red],
           borderColor: 'rgba(0, 0, 0, 0.2)',
           borderWidth: 2
         }]

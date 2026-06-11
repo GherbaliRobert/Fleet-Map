@@ -2348,14 +2348,22 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
     let totalAlerts = 0;
     let onlineCount = 0;
     let movingCount = 0;
+    let stationatCount = 0;
+    let pornitCount = 0;
     let totalEngineTime = 0;
 
     for (const [imei, data] of livePositions) {
       if (!canAccessImei(req, imei)) continue;
       const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 3900000; // 65 min
       const isMoving = isOnline && (data.speed || 0) > 3;
+      const _io = data.io || data.io_data || {};
+      const hasIgnition = _io.ignition === 1 || _io.ignition === true;
+      const isStationat = isOnline && !isMoving && hasIgnition; // motor pornit, dar nemișcat
+      const isPornit = isOnline && (isMoving || hasIgnition);    // motor pornit (= în mișcare + staționat)
       if (isOnline) onlineCount++;
       if (isMoving) movingCount++;
+      if (isStationat) stationatCount++;
+      if (isPornit) pornitCount++;
 
       // Get today's history for this device
       try {
@@ -2424,7 +2432,9 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
           engineTime: Math.round(engineTime),
           fuelLevel: lastFuelLevel ? Math.round(lastFuelLevel * 10) / 10 : null,
           isOnline,
-          isMoving
+          isMoving,
+          isStationat,
+          isPornit
         });
       } catch (e) {
         // Skip device on error
@@ -2446,6 +2456,9 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
       onlineCount,
       movingCount,
       offlineCount: scopedSize - onlineCount,
+      pornitCount,
+      stationatCount,
+      opritCount: scopedSize - pornitCount,
       totalKm: Math.round(totalKm * 10) / 10,
       totalFuel: Math.round(totalFuel * 10) / 10,
       totalEngineTime: Math.round(totalEngineTime),
