@@ -1396,15 +1396,21 @@ async function deletePushSubscription(endpoint) {
 
 // Utilizatori care au acces la un vehicul (pentru livrarea per-user a evenimentelor)
 async function getUsersForImei(imei) {
-  // doar utilizatorii din compania device-ului (izolare la livrarea evenimentelor)
+  // utilizatorii din compania device-ului (izolare la livrarea evenimentelor)
+  // + superadminii (companie NULL, viewAll) — altfel proprietarul platformei nu primește niciun eveniment
   const r = await pool.query(`
     SELECT DISTINCT u.id, u.username, u.email, u.role FROM users u
     WHERE u.active IS NOT FALSE
-      AND u.company_id = (SELECT company_id FROM devices WHERE imei = $1)
       AND (
-        u.role IN ('company_admin','admin','manager')
-        OR EXISTS (SELECT 1 FROM user_device_access uda WHERE uda.user_id = u.id AND uda.imei = $1)
-        OR EXISTS (SELECT 1 FROM user_group_access uga JOIN devices d ON d.group_id = uga.group_id WHERE uga.user_id = u.id AND d.imei = $1)
+        u.role = 'superadmin'
+        OR (
+          u.company_id = (SELECT company_id FROM devices WHERE imei = $1)
+          AND (
+            u.role IN ('company_admin','admin','manager')
+            OR EXISTS (SELECT 1 FROM user_device_access uda WHERE uda.user_id = u.id AND uda.imei = $1)
+            OR EXISTS (SELECT 1 FROM user_group_access uga JOIN devices d ON d.group_id = uga.group_id WHERE uga.user_id = u.id AND d.imei = $1)
+          )
+        )
       )`, [imei]);
   return r.rows;
 }
