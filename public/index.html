@@ -2435,6 +2435,13 @@
     label.rep-f { display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--text-secondary); }
     #rep-table th { position:sticky; top:0; background:var(--bg-dark); padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
     #rep-table td { padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+    #rep-table tbody tr:nth-child(even) { background:rgba(127,127,127,.06); }
+    #rep-table tbody tr:hover { background:rgba(127,127,127,.12); }
+    /* Butoane descărcare colorate (ca AROBS): CSV albastru · Excel verde · PDF roșu */
+    .rep-dl i { font-size:14px; }
+    .rep-dl-csv i { color:#2563eb; }
+    .rep-dl-xls i { color:#16a34a; }
+    .rep-dl-pdf i { color:#dc2626; }
     .rep-chip { background:var(--bg-dark); border:1px solid var(--border); border-radius:8px; padding:8px 12px; }
     .rep-chip .v { font-size:18px; font-weight:700; color:var(--accent); }
     .rep-chip .l { font-size:11px; color:var(--text-muted); }
@@ -2901,19 +2908,18 @@
           <button class="btn-sm" onclick="setRepPeriod('month')">30 zile</button>
           <span id="rep-extra" style="display:flex;gap:6px;align-items:center;margin-left:8px;"></span>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
-          <button class="btn-sm" id="rep-export-xlsx" onclick="repExport('xlsx')" title="Descarcă Excel"><i class="fas fa-file-excel"></i> Excel</button>
-          <button class="btn-sm" id="rep-export-pdf" onclick="repExport('pdf')" title="Descarcă PDF"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
         <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
         <div id="rep-table-wrap" style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;min-height:120px;">
           <table id="rep-table" style="width:100%;border-collapse:collapse;font-size:12px;"><thead></thead><tbody></tbody></table>
         </div>
         <div id="rep-empty" style="display:none;text-align:center;color:var(--text-muted);padding:24px;">Nu sunt date pentru perioada selectată.</div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;align-items:center;">
           <span id="rep-count" style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center;"></span>
-          <button class="btn-sm" onclick="exportReport('csv')"><i class="fas fa-file-csv"></i> CSV</button>
-          <button class="btn-sm" onclick="exportReport('xls')"><i class="fas fa-file-excel"></i> Excel</button>
-          <button class="btn-sm" onclick="exportReport('pdf')"><i class="fas fa-print"></i> PDF</button>
+          <span style="font-size:12px;color:var(--text-muted);">Descarcă:</span>
+          <button class="btn-sm rep-dl rep-dl-csv" onclick="exportReport('csv')" title="Descarcă CSV"><i class="fas fa-file-csv"></i> CSV</button>
+          <button class="btn-sm rep-dl rep-dl-xls" onclick="repExport('xlsx')" title="Descarcă Excel (.xlsx)"><i class="fas fa-file-excel"></i> Excel</button>
+          <button class="btn-sm rep-dl rep-dl-pdf" onclick="repExport('pdf')" title="Descarcă PDF"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
       </div>
     </div>
