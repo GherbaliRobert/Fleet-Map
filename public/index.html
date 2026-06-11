@@ -8494,10 +8494,20 @@
           <div id="rax-co-unassigned" class="rax-co-meta" style="margin-top:6px;">—</div>
         </div>
         <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-          <strong style="font-size:13px;"><i class="fas fa-arrows-left-right" style="color:var(--accent)"></i> Mută vehicul între companii</strong>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-bottom:8px;">Selectează un vehicul și compania destinație. Poți și „dezasigna" (revine la „neasignat").</div>
-          <input class="rax-field" id="rax-move-search" placeholder="Caută nume / nr. / IMEI…" oninput="raxRenderMovableDevices()" style="margin-bottom:6px;">
+          <strong style="font-size:13px;"><i class="fas fa-arrows-left-right" style="color:var(--accent)"></i> Mută vehicule între companii</strong>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-bottom:8px;">Bifează vehiculele, alege destinația în bara de jos și apasă „Mută selectate". Poți muta unul singur cu butonul „Mută" din rând.</div>
+          <input class="rax-field" id="rax-move-search" placeholder="Caută nume / nr. / IMEI / companie…" oninput="raxRenderMovableDevices()" style="margin-bottom:6px;">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;">
+            <button class="rax-btn" type="button" onclick="raxMoveToggleAll(true)">Bifează tot</button>
+            <button class="rax-btn" type="button" onclick="raxMoveToggleAll(false)">Debifează tot</button>
+            <span id="rax-move-count" style="font-size:11px;color:var(--text-muted);"></span>
+          </div>
           <div id="rax-move-list" class="rax-co-meta">Se încarcă…</div>
+          <div style="position:sticky;bottom:-12px;background:var(--bg-panel);padding:10px;border:1px solid var(--border);border-radius:8px;margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-muted);">Mută cele bifate la:</span>
+            <select class="rax-field" id="rax-bulk-dest" style="width:auto;margin:0;flex:1;min-width:140px;"></select>
+            <button class="rax-btn primary" onclick="raxMoveSelected()"><i class="fas fa-arrows-turn-to-dots"></i> Mută selectate</button>
+          </div>
         </div>
       </div>
     </div>
@@ -9021,21 +9031,27 @@
       } catch (e) { _raxAllDevices = []; }
       raxRenderMovableDevices();
     }
+    var _raxMoveSelected = {}; // { imei: true } — păstrate între re-render
     window.raxRenderMovableDevices = function () {
       var box = $('rax-move-list'); if (!box) return;
       var q = ($('rax-move-search').value || '').toLowerCase();
       var coMap = {}; (companiesCache || []).forEach(function (c) { coMap[c.id] = c.name; });
       var coOpts = (companiesCache || []).filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
+      // populez și selectorul bulk (cu opțiunea neasignat)
+      var dest = $('rax-bulk-dest');
+      if (dest) dest.innerHTML = '<option value="">— neasignat —</option>' + coOpts;
       var list = _raxAllDevices.filter(function (d) {
         if (!q) return true;
         var s = ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + (coMap[d.company_id] || '')).toLowerCase();
         return s.indexOf(q) >= 0;
       });
-      if (!list.length) { box.innerHTML = '<div class="rax-co-meta">Niciun vehicul.</div>'; return; }
+      if (!list.length) { box.innerHTML = '<div class="rax-co-meta">Niciun vehicul.</div>'; _raxUpdateMoveCount(); return; }
       box.innerHTML = list.slice(0, 60).map(function (d) {
         var current = d.company_id != null ? (coMap[d.company_id] || '#' + d.company_id) : '<em>neasignat</em>';
+        var checked = _raxMoveSelected[d.imei] ? 'checked' : '';
         return '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;padding:6px;border:1px solid var(--border);border-radius:6px;">' +
-          '<div style="flex:1;min-width:140px;font-size:12px;"><strong>' + esc(d.name || d.imei) + '</strong>' + (d.plate ? ' · <span style="color:var(--text-muted)">' + esc(d.plate) + '</span>' : '') +
+          '<input type="checkbox" class="rax-move-cb" data-imei="' + esc(d.imei) + '" onchange="raxMoveCheck(\'' + esc(d.imei) + '\', this.checked)" ' + checked + ' style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;">' +
+          '<div style="flex:1;min-width:120px;font-size:12px;"><strong>' + esc(d.name || d.imei) + '</strong>' + (d.plate ? ' · <span style="color:var(--text-muted)">' + esc(d.plate) + '</span>' : '') +
           '<div style="font-size:10px;color:var(--text-muted);">' + esc(d.imei) + ' · acum: ' + current + '</div></div>' +
           '<select class="rax-field" style="width:auto;margin:0;min-width:120px;" id="raxmv_' + esc(d.imei) + '">' +
             '<option value="">— neasignat —</option>' + coOpts + '</select>' +
@@ -9046,6 +9062,52 @@
       list.slice(0, 60).forEach(function (d) {
         var sel = $('raxmv_' + d.imei); if (sel) sel.value = d.company_id != null ? String(d.company_id) : '';
       });
+      _raxUpdateMoveCount();
+    };
+    function _raxUpdateMoveCount() {
+      var c = $('rax-move-count'); if (!c) return;
+      var n = Object.keys(_raxMoveSelected).filter(function (k) { return _raxMoveSelected[k]; }).length;
+      c.textContent = n > 0 ? (n + ' selectate') : '';
+    }
+    window.raxMoveCheck = function (imei, on) {
+      if (on) _raxMoveSelected[imei] = true; else delete _raxMoveSelected[imei];
+      _raxUpdateMoveCount();
+    };
+    window.raxMoveToggleAll = function (on) {
+      // Aplică pe lista FILTRATĂ curentă (ce vede userul)
+      var q = ($('rax-move-search').value || '').toLowerCase();
+      var coMap = {}; (companiesCache || []).forEach(function (c) { coMap[c.id] = c.name; });
+      _raxAllDevices.forEach(function (d) {
+        if (q) {
+          var s = ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + (coMap[d.company_id] || '')).toLowerCase();
+          if (s.indexOf(q) < 0) return;
+        }
+        if (on) _raxMoveSelected[d.imei] = true; else delete _raxMoveSelected[d.imei];
+      });
+      raxRenderMovableDevices();
+    };
+    window.raxMoveSelected = async function () {
+      var imeis = Object.keys(_raxMoveSelected).filter(function (k) { return _raxMoveSelected[k]; });
+      if (!imeis.length) { raxToast && raxToast('Bifează vehicule întâi', 'error'); return; }
+      var sel = $('rax-bulk-dest'); var newCo = sel.value === '' ? null : parseInt(sel.value);
+      var destName = newCo == null ? 'NEASIGNAT' : '„' + sel.options[sel.selectedIndex].text + '"';
+      if (!confirm('Mută ' + imeis.length + ' vehicule la ' + destName + '?')) return;
+      var ok = 0, errors = 0;
+      // Mut în paralel cu un cap de 8 simultane ca să nu inundăm serverul
+      var queue = imeis.slice(), pending = [];
+      function next() {
+        if (!queue.length) return null;
+        var imei = queue.shift();
+        return fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) })
+          .then(function (r) { if (r.ok) ok++; else errors++; })
+          .catch(function () { errors++; })
+          .then(function () { return next(); });
+      }
+      for (var i = 0; i < Math.min(8, queue.length); i++) pending.push(next());
+      await Promise.all(pending);
+      _raxMoveSelected = {};
+      raxToast && raxToast(ok + ' mutate ✓' + (errors ? ', ' + errors + ' erori' : ''), errors ? 'error' : 'success');
+      raxLoadCompanies(); raxLoadUnassigned(); raxLoadMovableDevices();
     };
     window.raxMoveDevice = async function (imei) {
       var sel = $('raxmv_' + imei); if (!sel) return;
