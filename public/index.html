@@ -5182,7 +5182,7 @@
       if (mapViews.includes(name)) {
         loc.classList.add('active');
         if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
-        if (name === 'traseu' && hist) { hist.classList.add('visible'); document.body.classList.add('history-open'); fillHistoryVehicle(); }
+        if (name === 'traseu' && hist) { hist.classList.add('visible'); document.body.classList.add('history-open'); initRangePicker('history-from', 'history-to'); fillHistoryVehicle(); }
       } else {
         loc.classList.remove('active');
         const el = document.getElementById(VIEW_PANELS[name]);
