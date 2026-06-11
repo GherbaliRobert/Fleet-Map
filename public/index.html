@@ -2740,6 +2740,19 @@
             <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-shield-halved"></i> Agenți AI activi</div>
             <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
             <div id="us-agents-list"></div>
+
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-bell"></i> Praguri alertă RA Watch</div>
+            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Pragurile sub care RA Watch generează alertă. Lasă gol pentru default (60 min / 15 L).</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);">
+                Offline (minute)
+                <input type="number" id="us-th-offline" min="5" max="1440" placeholder="60" onblur="usSetThreshold('offlineMin', this.value)" style="margin-top:4px;">
+              </label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);">
+                Scădere combustibil (litri)
+                <input type="number" id="us-th-fuel" min="1" max="1000" placeholder="15" onblur="usSetThreshold('fuelDropL', this.value)" style="margin-top:4px;">
+              </label>
+            </div>
           </div>
         </div>
 
@@ -3694,6 +3707,10 @@
             var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
             var dft = cs.ui_defaults || {};
             coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
+            // Populez pragurile RA Watch
+            var thr = cs.alert_thresholds || {};
+            var oEl = document.getElementById('us-th-offline'); if (oEl) oEl.value = thr.offlineMin != null ? thr.offlineMin : '';
+            var fEl = document.getElementById('us-th-fuel'); if (fEl) fEl.value = thr.fuelDropL != null ? thr.fuelDropL : '';
             // Secțiunea Agenți AI per companie
             var agBox = document.getElementById('us-agents-list');
             if (agBox) {
@@ -8753,7 +8770,7 @@
     };
 
     // ── Companii ──
-    window.raxOpenCompanies = function () { $('rax-co-overlay').classList.add('open'); raxLoadCompanies(); raxLoadUnassigned(); raxLoadMovableDevices(); };
+    window.raxOpenCompanies = async function () { $('rax-co-overlay').classList.add('open'); await raxLoadCompanies(); raxLoadUnassigned(); raxMoveLoadAll(); };
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
 
     // ─── Dashboard platformă — super-admin (montat în modalul Administrare, tab „Platformă") ───
@@ -9192,111 +9209,165 @@
     window.raxAssignDevice = async function (imei) {
       var sel = $('raxasg_' + imei); if (!sel) return;
       await fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: parseInt(sel.value) }) });
-      raxLoadCompanies(); raxLoadUnassigned(); raxLoadMovableDevices();
+      raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
     };
 
-    // ─── Mutare vehicule între companii (super-admin) ───
-    var _raxAllDevices = [];
-    async function raxLoadMovableDevices() {
-      var box = $('rax-move-list'); if (!box) return;
-      try {
-        var devs = await fetch('/api/devices?includeArchived=1', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        _raxAllDevices = Array.isArray(devs) ? devs : [];
-      } catch (e) { _raxAllDevices = []; }
-      raxRenderMovableDevices();
+    // ─── Mutare entități (vehicule / utilizatori / șoferi) între companii (super-admin) ───
+    // Configurație per tip: cum se încarcă, cum se afișează, cum se mută. Un singur motor de randare.
+    var RAX_MOVE_CFG = {
+      devices: {
+        label: 'vehicule', idKey: 'imei', empty: 'Niciun vehicul.',
+        url: '/api/devices?includeArchived=1',
+        moveUrl: function (id) { return '/api/devices/' + encodeURIComponent(id) + '/company'; },
+        name: function (d) { return d.name || d.imei; },
+        sub: function (d) { return [d.plate, d.imei].filter(Boolean).join(' · '); },
+        text: function (d, co) { return ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + co).toLowerCase(); }
+      },
+      users: {
+        label: 'utilizatori', idKey: 'id', empty: 'Niciun utilizator.',
+        url: '/api/users',
+        moveUrl: function (id) { return '/api/users/' + encodeURIComponent(id) + '/company'; },
+        keep: function (u) { return u.role !== 'superadmin'; }, // super = platformă, nu se mută
+        name: function (u) { return u.full_name || u.username; },
+        sub: function (u) { return [u.username, u.role].filter(Boolean).join(' · '); },
+        text: function (u, co) { return ((u.full_name || '') + ' ' + (u.username || '') + ' ' + (u.role || '') + ' ' + co).toLowerCase(); }
+      },
+      drivers: {
+        label: 'șoferi', idKey: 'id', empty: 'Niciun șofer.',
+        url: '/api/drivers',
+        moveUrl: function (id) { return '/api/drivers/' + encodeURIComponent(id) + '/company'; },
+        name: function (d) { return d.name || ('#' + d.id); },
+        sub: function (d) { return [d.phone, d.license_number].filter(Boolean).join(' · '); },
+        text: function (d, co) { return ((d.name || '') + ' ' + (d.phone || '') + ' ' + (d.license_number || '') + ' ' + co).toLowerCase(); }
+      }
+    };
+    var _raxMove = {
+      entity: 'devices',
+      data: { devices: [], users: [], drivers: [] },
+      loaded: { devices: false, users: false, drivers: false },
+      selected: { devices: {}, users: {}, drivers: {} }
+    };
+    // Încărcare inițială: companiile întâi (nume + selector destinație), apoi tab-ul curent.
+    async function raxMoveLoadAll() {
+      _raxMove.loaded = { devices: false, users: false, drivers: false };
+      if (!Array.isArray(companiesCache) || !companiesCache.length) { try { await raxLoadCompanies(); } catch (e) {} }
+      await raxMoveSwitch(_raxMove.entity || 'devices', true);
     }
-    var _raxMoveSelected = {}; // { imei: true } — păstrate între re-render
-    window.raxRenderMovableDevices = function () {
+    // Reîncarcă tab-ul curent după o mutare (datele s-au schimbat).
+    function raxMoveReload() { _raxMove.loaded[_raxMove.entity] = false; return raxMoveSwitch(_raxMove.entity, true); }
+    window.raxMoveSwitch = async function (entity, force) {
+      var cfg = RAX_MOVE_CFG[entity]; if (!cfg) return;
+      _raxMove.entity = entity;
+      ['devices', 'users', 'drivers'].forEach(function (e) { var b = $('rax-mv-tab-' + e); if (b) b.classList.toggle('primary', e === entity); });
+      var srch = $('rax-move-search'); if (srch) srch.placeholder = 'Caută ' + cfg.label + '…';
+      if (!_raxMove.loaded[entity] || force) {
+        var box = $('rax-move-list'); if (box) box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+        try {
+          var rows = await fetch(cfg.url, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+          _raxMove.data[entity] = Array.isArray(rows) ? rows : [];
+          _raxMove.loaded[entity] = true;
+        } catch (e) { _raxMove.data[entity] = []; }
+      }
+      raxMoveRender();
+    };
+    window.raxMoveRender = function () {
       var box = $('rax-move-list'); if (!box) return;
-      var q = ($('rax-move-search').value || '').toLowerCase();
+      var entity = _raxMove.entity, cfg = RAX_MOVE_CFG[entity];
+      var q = (($('rax-move-search') || {}).value || '').toLowerCase();
       var coMap = {}; (companiesCache || []).forEach(function (c) { coMap[c.id] = c.name; });
       var coOpts = (companiesCache || []).filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
-      // populez și selectorul bulk (cu opțiunea neasignat)
-      var dest = $('rax-bulk-dest');
-      if (dest) dest.innerHTML = '<option value="">— neasignat —</option>' + coOpts;
-      var list = _raxAllDevices.filter(function (d) {
-        if (!q) return true;
-        var s = ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + (coMap[d.company_id] || '')).toLowerCase();
-        return s.indexOf(q) >= 0;
-      });
-      if (!list.length) { box.innerHTML = '<div class="rax-co-meta">Niciun vehicul.</div>'; _raxUpdateMoveCount(); return; }
-      box.innerHTML = list.slice(0, 60).map(function (d) {
-        var current = d.company_id != null ? (coMap[d.company_id] || '#' + d.company_id) : '<em>neasignat</em>';
-        var checked = _raxMoveSelected[d.imei] ? 'checked' : '';
+      // „Neasignat" e valid pentru vehicule/șoferi, dar NU pentru utilizatori: un cont non-super fără companie
+      // ar sări peste gating-ul de abonament/funcții (vezi server). Deci ascundem opțiunea pe tab-ul Utilizatori.
+      var nullOpt = (entity === 'users') ? '' : '<option value="">— neasignat —</option>';
+      var dest = $('rax-bulk-dest'); if (dest) dest.innerHTML = nullOpt + coOpts;
+      var sel = _raxMove.selected[entity];
+      var demo = _raxDemoIds();
+      var all = (_raxMove.data[entity] || []).filter(cfg.keep || function () { return true; }).filter(function (d) { return !demo[d.company_id]; });
+      var list = all.filter(function (d) { if (!q) return true; return cfg.text(d, coMap[d.company_id] || '').indexOf(q) >= 0; });
+      if (!list.length) { box.innerHTML = '<div class="rax-co-meta">' + cfg.empty + '</div>'; _raxUpdateMoveCount(); return; }
+      box.innerHTML = list.slice(0, 80).map(function (d) {
+        var id = String(d[cfg.idKey]);
+        var current = d.company_id != null ? (coMap[d.company_id] ? esc(coMap[d.company_id]) : '#' + d.company_id) : '<em>neasignat</em>';
+        var sub = cfg.sub(d);
         return '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;padding:6px;border:1px solid var(--border);border-radius:6px;">' +
-          '<input type="checkbox" class="rax-move-cb" data-imei="' + esc(d.imei) + '" onchange="raxMoveCheck(\'' + esc(d.imei) + '\', this.checked)" ' + checked + ' style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;">' +
-          '<div style="flex:1;min-width:120px;font-size:12px;"><strong>' + esc(d.name || d.imei) + '</strong>' + (d.plate ? ' · <span style="color:var(--text-muted)">' + esc(d.plate) + '</span>' : '') +
-          '<div style="font-size:10px;color:var(--text-muted);">' + esc(d.imei) + ' · acum: ' + current + '</div></div>' +
-          '<select class="rax-field" style="width:auto;margin:0;min-width:120px;" id="raxmv_' + esc(d.imei) + '">' +
-            '<option value="">— neasignat —</option>' + coOpts + '</select>' +
-          '<button class="rax-btn primary" onclick="raxMoveDevice(\'' + esc(d.imei) + '\')"><i class="fas fa-arrow-right"></i> Mută</button>' +
+          '<input type="checkbox" onchange="raxMoveCheck(\'' + esc(id) + '\', this.checked)" ' + (sel[id] ? 'checked' : '') + ' style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;">' +
+          '<div style="flex:1;min-width:120px;font-size:12px;"><strong>' + esc(cfg.name(d)) + '</strong>' + (sub ? ' · <span style="color:var(--text-muted)">' + esc(sub) + '</span>' : '') +
+          '<div style="font-size:10px;color:var(--text-muted);">acum: ' + current + '</div></div>' +
+          '<select class="rax-field" style="width:auto;margin:0;min-width:120px;" id="raxmv_' + esc(id) + '">' +
+            nullOpt + coOpts + '</select>' +
+          '<button class="rax-btn primary" onclick="raxMoveOne(\'' + esc(id) + '\')"><i class="fas fa-arrow-right"></i> Mută</button>' +
         '</div>';
-      }).join('') + (list.length > 60 ? '<div class="rax-co-meta" style="margin-top:6px;">… afișează primele 60. Filtrează pentru mai multe.</div>' : '');
-      // presetez selectorul la compania curentă
-      list.slice(0, 60).forEach(function (d) {
-        var sel = $('raxmv_' + d.imei); if (sel) sel.value = d.company_id != null ? String(d.company_id) : '';
+      }).join('') + (list.length > 80 ? '<div class="rax-co-meta" style="margin-top:6px;">… primele 80. Filtrează pentru mai multe.</div>' : '');
+      list.slice(0, 80).forEach(function (d) {
+        var s = $('raxmv_' + d[cfg.idKey]); if (s) s.value = d.company_id != null ? String(d.company_id) : '';
       });
       _raxUpdateMoveCount();
     };
     function _raxUpdateMoveCount() {
       var c = $('rax-move-count'); if (!c) return;
-      var n = Object.keys(_raxMoveSelected).filter(function (k) { return _raxMoveSelected[k]; }).length;
+      var sel = _raxMove.selected[_raxMove.entity] || {};
+      var n = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
       c.textContent = n > 0 ? (n + ' selectate') : '';
     }
-    window.raxMoveCheck = function (imei, on) {
-      if (on) _raxMoveSelected[imei] = true; else delete _raxMoveSelected[imei];
+    // Companiile demo nu apar în uneltele de management (consistent cu restul dashboardului super-admin).
+    function _raxDemoIds() { var m = {}; (companiesCache || []).forEach(function (c) { if (c.is_demo) m[c.id] = true; }); return m; }
+    window.raxMoveCheck = function (id, on) {
+      var sel = _raxMove.selected[_raxMove.entity];
+      if (on) sel[id] = true; else delete sel[id];
       _raxUpdateMoveCount();
     };
     window.raxMoveToggleAll = function (on) {
-      // Aplică pe lista FILTRATĂ curentă (ce vede userul)
-      var q = ($('rax-move-search').value || '').toLowerCase();
+      var entity = _raxMove.entity, cfg = RAX_MOVE_CFG[entity];
+      var q = (($('rax-move-search') || {}).value || '').toLowerCase();
       var coMap = {}; (companiesCache || []).forEach(function (c) { coMap[c.id] = c.name; });
-      _raxAllDevices.forEach(function (d) {
-        if (q) {
-          var s = ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + (coMap[d.company_id] || '')).toLowerCase();
-          if (s.indexOf(q) < 0) return;
-        }
-        if (on) _raxMoveSelected[d.imei] = true; else delete _raxMoveSelected[d.imei];
+      var sel = _raxMove.selected[entity];
+      var demo = _raxDemoIds();
+      (_raxMove.data[entity] || []).filter(cfg.keep || function () { return true; }).filter(function (d) { return !demo[d.company_id]; }).forEach(function (d) {
+        if (q && cfg.text(d, coMap[d.company_id] || '').indexOf(q) < 0) return;
+        var id = String(d[cfg.idKey]);
+        if (on) sel[id] = true; else delete sel[id];
       });
-      raxRenderMovableDevices();
+      raxMoveRender();
     };
-    window.raxMoveSelected = async function () {
-      var imeis = Object.keys(_raxMoveSelected).filter(function (k) { return _raxMoveSelected[k]; });
-      if (!imeis.length) { raxToast && raxToast('Bifează vehicule întâi', 'error'); return; }
-      var sel = $('rax-bulk-dest'); var newCo = sel.value === '' ? null : parseInt(sel.value);
-      var destName = newCo == null ? 'NEASIGNAT' : '„' + sel.options[sel.selectedIndex].text + '"';
-      if (!confirm('Mută ' + imeis.length + ' vehicule la ' + destName + '?')) return;
+    window.raxMoveOne = async function (id) {
+      var entity = _raxMove.entity, cfg = RAX_MOVE_CFG[entity];
+      var s = $('raxmv_' + id); if (!s) return;
+      var d = (_raxMove.data[entity] || []).find(function (x) { return String(x[cfg.idKey]) === String(id); }) || {};
+      var newCo = s.value === '' ? null : parseInt(s.value);
+      if ((d.company_id == null && newCo == null) || (d.company_id != null && newCo === d.company_id)) { raxToast && raxToast('Deja acolo', 'error'); return; }
+      var destName = newCo == null ? 'NEASIGNAT' : '„' + s.options[s.selectedIndex].text + '"';
+      if (!confirm('Mută „' + cfg.name(d) + '" la ' + destName + '?')) return;
+      try {
+        var r = await fetch(cfg.moveUrl(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) });
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast && raxToast('Eroare: ' + (e.error || r.status), 'error'); return; }
+        delete _raxMove.selected[entity][String(id)];
+        raxToast && raxToast('Mutat ✓', 'success');
+        raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
+      } catch (e) { raxToast && raxToast('Eroare de rețea', 'error'); }
+    };
+    window.raxMoveBulk = async function () {
+      var entity = _raxMove.entity, cfg = RAX_MOVE_CFG[entity];
+      var sel = _raxMove.selected[entity];
+      var ids = Object.keys(sel).filter(function (k) { return sel[k]; });
+      if (!ids.length) { raxToast && raxToast('Bifează întâi', 'error'); return; }
+      var dd = $('rax-bulk-dest'); var newCo = dd.value === '' ? null : parseInt(dd.value);
+      var destName = newCo == null ? 'NEASIGNAT' : '„' + dd.options[dd.selectedIndex].text + '"';
+      if (!confirm('Mută ' + ids.length + ' ' + cfg.label + ' la ' + destName + '?')) return;
       var ok = 0, errors = 0;
-      // Mut în paralel cu un cap de 8 simultane ca să nu inundăm serverul
-      var queue = imeis.slice(), pending = [];
+      var queue = ids.slice(), pending = [];
       function next() {
         if (!queue.length) return null;
-        var imei = queue.shift();
-        return fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) })
+        var id = queue.shift();
+        return fetch(cfg.moveUrl(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) })
           .then(function (r) { if (r.ok) ok++; else errors++; })
           .catch(function () { errors++; })
           .then(function () { return next(); });
       }
       for (var i = 0; i < Math.min(8, queue.length); i++) pending.push(next());
       await Promise.all(pending);
-      _raxMoveSelected = {};
+      _raxMove.selected[entity] = {};
       raxToast && raxToast(ok + ' mutate ✓' + (errors ? ', ' + errors + ' erori' : ''), errors ? 'error' : 'success');
-      raxLoadCompanies(); raxLoadUnassigned(); raxLoadMovableDevices();
-    };
-    window.raxMoveDevice = async function (imei) {
-      var sel = $('raxmv_' + imei); if (!sel) return;
-      var d = _raxAllDevices.find(function (x) { return x.imei === imei; }) || {};
-      var newCo = sel.value === '' ? null : parseInt(sel.value);
-      if ((d.company_id == null && newCo == null) || (d.company_id != null && newCo === d.company_id)) {
-        raxToast && raxToast('Vehiculul e deja acolo', 'error'); return;
-      }
-      if (!confirm('Mută „' + (d.name || imei) + '" la ' + (newCo == null ? 'NEASIGNAT' : '„' + (sel.options[sel.selectedIndex].text) + '"') + '?')) return;
-      try {
-        var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) });
-        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast && raxToast('Eroare: ' + (e.error || r.status), 'error'); return; }
-        raxToast && raxToast('Vehicul mutat ✓', 'success');
-        raxLoadCompanies(); raxLoadUnassigned(); raxLoadMovableDevices();
-      } catch (e) { raxToast && raxToast('Eroare de rețea', 'error'); }
+      raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
     };
     window.raxCreateCompany = async function () {
       var name = $('rax-co-name').value.trim(), u = $('rax-co-admin-user').value.trim(), p = $('rax-co-admin-pass').value;

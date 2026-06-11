@@ -1334,6 +1334,19 @@ async function _getEnabledAgents(companyId) {
   if (companyId == null) return agents ? Object.keys(agents.AGENTS) : []; // super-admin fără companie → vede tot
   try { const co = await db.getCompanyById(companyId); return plans.enabledAgentsFor(co); } catch (e) { return []; }
 }
+// Praguri alertă (offline, scădere combustibil) — citite din companies.settings.alert_thresholds; fallback la defaulturi (agents.js)
+function _alertThresholdsFromSettings(settings) {
+  const s = (settings && (typeof settings === 'string' ? (function () { try { return JSON.parse(settings); } catch (e) { return {}; } })() : settings)) || {};
+  const t = s.alert_thresholds || {};
+  const out = {};
+  const n1 = Number(t.offlineMin); if (Number.isFinite(n1) && n1 > 0) out.offlineMin = Math.min(n1, 24 * 60);
+  const n2 = Number(t.fuelDropL); if (Number.isFinite(n2) && n2 > 0) out.fuelDropL = Math.min(n2, 1000);
+  return out;
+}
+async function _getAlertThresholds(companyId) {
+  if (companyId == null) return {};
+  try { const co = await db.getCompanyById(companyId); return _alertThresholdsFromSettings(co && co.settings); } catch (e) { return {}; }
+}
 app.get('/api/agents', requireAuth, withCompany, async (req, res) => {
   if (!agents) return res.json({ agents: [] });
   const enabled = await _getEnabledAgents(req.companyId);
@@ -1352,7 +1365,8 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     const enabled = await _getEnabledAgents(storeCompany);
     if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '" nu e inclus în planul/setările companiei' });
     if (which === 'all' && !enabled.length) return res.json({ findings: [], aiSummary: null, stored: 0, message: 'Niciun agent activ pe acest plan' });
-    const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit };
+    const alertThresholds = await _getAlertThresholds(storeCompany);
+    const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds };
     const findings = (which === 'all' ? await agents.runAll(base, enabled) : await agents.runAgent(which, base)).findings || [];
     let stored = 0;
     for (const f of findings) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; }
@@ -1424,7 +1438,8 @@ async function runAgentsWorker() {
       if (!enabled.length) continue; // planul „start" nu rulează niciun agent
       const imeis = await db.getCompanyImeis(co.id);
       if (!imeis.length) continue;
-      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed }, enabled);
+      const alertThresholds = _alertThresholdsFromSettings(co && co.settings);
+      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
     }
   } catch (e) { console.warn('[AGENTS] worker:', e.message); }
@@ -1769,6 +1784,25 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
     await db.setDeviceCompany(req.params.imei, companyId);
     invalidateAccessCache(); _devCompanyCache.delete(req.params.imei);
     auditReq(req, 'assign_company', 'device', req.params.imei, { companyId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Super-admin: mută un UTILIZATOR în altă companie. Curăță grant-urile per-vehicul/grup (db).
+app.put('/api/users/:id/company', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const target = await db.getUserById(id);
+    if (!target) return res.status(404).json({ error: 'Utilizator inexistent' });
+    if (isSuper(target.role)) return res.status(400).json({ error: 'Super-adminul aparține platformei, nu unei companii' });
+    const companyId = (req.body.company_id != null && req.body.company_id !== '') ? parseInt(req.body.company_id) : null;
+    // company_id == null = „platformă/super" în restul codului (_accessBlocked, requireFeature). Un cont non-super NU poate
+    // rămâne fără companie — altfel ar sări peste gating-ul de abonament + funcții. Oglindește crearea de user (400).
+    if (companyId == null) return res.status(400).json({ error: 'Selectează compania pentru utilizator (un cont nu poate rămâne fără companie)' });
+    if (!(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    await db.setUserCompany(id, companyId);
+    invalidateAccessCache(id);
+    auditReq(req, 'assign_company', 'user', id, { companyId });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2966,6 +3000,20 @@ app.delete('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (re
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Super-admin: mută un ȘOFER în altă companie (sau neasignat). Rupe legătura cu vehiculele (driver_id, în db).
+app.put('/api/drivers/:id/company', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const target = await db.getDriverById(id);
+    if (!target) return res.status(404).json({ error: 'Șofer inexistent' });
+    const companyId = (req.body.company_id != null && req.body.company_id !== '') ? parseInt(req.body.company_id) : null;
+    if (companyId != null && !(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    await db.setDriverCompany(id, companyId);
+    auditReq(req, 'assign_company', 'driver', id, { companyId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Grupe CRUD ───
 
 app.get('/api/groups', requireAuth, withCompany, async (req, res) => {
@@ -3984,9 +4032,9 @@ app.put('/api/me/ui-prefs', requireAuth, async (req, res) => {
 app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
   try {
     const a = getAuth(req);
-    if (a.companyId == null) return res.json({ ui_defaults: {} }); // super-admin fără companie
+    if (a.companyId == null) return res.json({ ui_defaults: {}, alert_thresholds: {} }); // super-admin fără companie
     const s = await db.getCompanySettings(a.companyId);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}) });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
@@ -4016,6 +4064,19 @@ async function _applyCompanySettingsPatch(companyId, body) {
     const f = Object.assign({}, cur.features || {});
     fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
     next.features = f;
+  }
+  // Praguri alertă (RA Watch): offline minute + scădere combustibil litri
+  if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {
+    const a = Object.assign({}, cur.alert_thresholds || {});
+    const n1 = Number(body.alert_thresholds.offlineMin);
+    if (Number.isFinite(n1) && n1 >= 5 && n1 <= 1440) a.offlineMin = Math.round(n1);
+    else if (body.alert_thresholds.offlineMin === null) delete a.offlineMin;
+    const n2 = Number(body.alert_thresholds.fuelDropL);
+    if (Number.isFinite(n2) && n2 >= 1 && n2 <= 1000) a.fuelDropL = Math.round(n2);
+    else if (body.alert_thresholds.fuelDropL === null) delete a.fuelDropL;
+    next.alert_thresholds = a;
+  } else if (body.alert_thresholds === null) {
+    delete next.alert_thresholds;
   }
   // Scriere directă (NU prin db.setCompanySettings, care face încă un merge cu vechiul cur și readuce cheile șterse)
   await db.pool.query('UPDATE companies SET settings = $2 WHERE id = $1', [companyId, JSON.stringify(next)]);

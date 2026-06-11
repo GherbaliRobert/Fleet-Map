@@ -760,6 +760,35 @@ async function getCompanyImeis(companyId) {
 async function setDeviceCompany(imei, companyId) {
   await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1', [imei, companyId || null]);
 }
+// Mutare utilizator între companii (super-admin). Curăță grant-urile per-vehicul/grup (deveneau inerte oricum,
+// dar le ștergem ca să nu „reapară" dacă un vehicul ajunge ulterior în noua companie).
+async function setUserCompany(id, companyId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE users SET company_id = $2 WHERE id = $1', [id, companyId || null]);
+    await client.query('DELETE FROM user_device_access WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM user_group_access WHERE user_id = $1', [id]);
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}
+// Mutare șofer între companii (super-admin). Rupe legătura cu vehiculele din vechea companie (driver_id),
+// altfel un vehicul ar referi un șofer din altă companie.
+async function setDriverCompany(id, companyId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE devices SET driver_id = NULL WHERE driver_id = $1', [id]);
+    await client.query('UPDATE drivers SET company_id = $2 WHERE id = $1', [id, companyId || null]);
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}
+async function getDriverById(id) {
+  const r = await pool.query('SELECT * FROM drivers WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
 // ─── Tahograf ───
 async function createTachoFile(rec) {
   const r = await pool.query(
@@ -1714,7 +1743,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments,
-  getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
+  getCompanyImeis, setDeviceCompany, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   getSetting, setSetting,
