@@ -5296,7 +5296,7 @@
       }
 
       if (isSelected) {
-        map.panTo([latitude, longitude]);
+        panFollowVehicle(latitude, longitude);
       }
 
       // Update detail panel if showing this device
@@ -5419,24 +5419,39 @@
       openDetailPanel(imei, 'info');
     }
 
-    // Pe mobil: aduce mașina în zona vizibilă DE DEASUPRA bottom-sheet-ului (panoul acoperă centrul hărții)
+    // Câți pixeli offsetăm centrul ca marker-ul să stea SUS, deasupra bottom-sheet-ului (0 dacă nu acoperă)
+    function _aboveSheetOffsetY() {
+      try {
+        if (!map || !(window.innerWidth <= 768) || !document.body.classList.contains('detail-open')) return 0;
+        var mapRect = map.getContainer().getBoundingClientRect();
+        var panel = document.getElementById('detail-panel');
+        var covered = 0;
+        if (panel) { var pr = panel.getBoundingClientRect(); covered = Math.max(0, mapRect.bottom - pr.top); }
+        var visible = Math.max(80, mapRect.height - covered);
+        return (mapRect.height / 2) - (visible * 0.40); // marker la ~40% din zona vizibilă (sus)
+      } catch (e) { return 0; }
+    }
+    // Focus inițial la selectare (flyTo cu zoom). Pe mobil cu panoul deschis → mașina sus.
     function focusVehicleAboveSheet(lat, lng) {
       setTimeout(function () {
         if (!map) return;
         try {
           map.invalidateSize();
           var z = 16;
-          var mapRect = map.getContainer().getBoundingClientRect();
-          var panel = document.getElementById('detail-panel');
-          var covered = 0;
-          if (panel) { var pr = panel.getBoundingClientRect(); covered = Math.max(0, mapRect.bottom - pr.top); }
-          var visible = Math.max(80, mapRect.height - covered);
-          var offsetY = (mapRect.height / 2) - (visible * 0.40); // mașina în partea de sus a zonei vizibile
           var pt = map.project([lat, lng], z);
-          pt.y += offsetY;
+          pt.y += _aboveSheetOffsetY();
           map.flyTo(map.unproject(pt, z), z, { animate: true, duration: 0.5 });
         } catch (e) {}
       }, 360);
+    }
+    // Urmărire live (mașina în mișcare): panTo fără schimbare de zoom. Panou deschis pe mobil → o ține SUS permanent.
+    function panFollowVehicle(lat, lng) {
+      if (!map) return;
+      try {
+        var off = _aboveSheetOffsetY();
+        if (off) { var z = map.getZoom(); var pt = map.project([lat, lng], z); pt.y += off; map.panTo(map.unproject(pt, z)); }
+        else { map.panTo([lat, lng]); }
+      } catch (e) { try { map.panTo([lat, lng]); } catch (e2) {} }
     }
 
     // ─── Detail Panel ───
