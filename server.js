@@ -984,6 +984,18 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
+// ─── Setări sistem (cheie-valoare în settings) cu cache scurt ───
+let _sysCache = null, _sysTs = 0;
+async function getSystemSettings() {
+  if (_sysCache && (Date.now() - _sysTs) < 15000) return _sysCache;
+  let ann = '', auto = null, off = null, spd = null;
+  try { [ann, auto, off, spd] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit')]); } catch (e) {}
+  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90) };
+  _sysTs = Date.now();
+  return _sysCache;
+}
+function invalidateSystemSettings() { _sysCache = null; }
+
 // Utilizatorul curent (merge atât cu sesiune cât și cu cheie API)
 app.get('/api/me', async (req, res) => {
   const a = getAuth(req);
@@ -995,9 +1007,12 @@ app.get('/api/me', async (req, res) => {
   } catch (e) { /* ignore */ }
   // super-admin (fără companie) sau plan necunoscut → toate funcțiile disponibile
   if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
+  let sys = { announcement: '', offline_minutes: 65 };
+  try { const s = await getSystemSettings(); sys = { announcement: s.announcement, offline_minutes: s.offline_minutes }; } catch (e) {}
   res.json({
     username: a.username, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
-    isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access
+    isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access,
+    announcement: sys.announcement, offline_minutes: sys.offline_minutes
   });
 });
 
@@ -1319,6 +1334,29 @@ async function _getEnabledAgents(companyId) {
   if (companyId == null) return agents ? Object.keys(agents.AGENTS) : []; // super-admin fără companie → vede tot
   try { const co = await db.getCompanyById(companyId); return plans.enabledAgentsFor(co); } catch (e) { return []; }
 }
+// SPECS canonice — sursă unică de adevăr pentru reader + writer (anti-divergență)
+const ALERT_THRESHOLD_SPECS = [
+  { k: 'offlineMin', min: 5, max: 1440, round: true },     // RA Watch — offline (min)
+  { k: 'fuelDropL', min: 1, max: 1000, round: true },      // RA Watch — scădere combustibil (L)
+  { k: 'idleMaxMin', min: 5, max: 1440, round: true },     // RA Watch — ralanti prelungit (min)
+  { k: 'ecoScoreMin', min: 0, max: 100, round: true },     // RA Optimize — scor minim eco-driving
+  { k: 'serviceSoonKm', min: 100, max: 50000, round: true } // RA Care — km până la scadență
+];
+// Praguri alertă (RA Watch + RA Optimize + RA Care) — citite din companies.settings.alert_thresholds; fallback la defaulturi (agents.js)
+function _alertThresholdsFromSettings(settings) {
+  const s = (settings && (typeof settings === 'string' ? (function () { try { return JSON.parse(settings); } catch (e) { return {}; } })() : settings)) || {};
+  const t = s.alert_thresholds || {};
+  const out = {};
+  ALERT_THRESHOLD_SPECS.forEach(function (sp) {
+    const n = Number(t[sp.k]);
+    if (Number.isFinite(n) && n >= sp.min && n <= sp.max) out[sp.k] = sp.round ? Math.round(n) : n;
+  });
+  return out;
+}
+async function _getAlertThresholds(companyId) {
+  if (companyId == null) return {};
+  try { const co = await db.getCompanyById(companyId); return _alertThresholdsFromSettings(co && co.settings); } catch (e) { return {}; }
+}
 app.get('/api/agents', requireAuth, withCompany, async (req, res) => {
   if (!agents) return res.json({ agents: [] });
   const enabled = await _getEnabledAgents(req.companyId);
@@ -1337,7 +1375,8 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     const enabled = await _getEnabledAgents(storeCompany);
     if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '" nu e inclus în planul/setările companiei' });
     if (which === 'all' && !enabled.length) return res.json({ findings: [], aiSummary: null, stored: 0, message: 'Niciun agent activ pe acest plan' });
-    const base = { db, imeis, livePositions, companyId: storeCompany };
+    const alertThresholds = await _getAlertThresholds(storeCompany);
+    const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds };
     const findings = (which === 'all' ? await agents.runAll(base, enabled) : await agents.runAgent(which, base)).findings || [];
     let stored = 0;
     for (const f of findings) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; }
@@ -1400,6 +1439,8 @@ app.get('/api/dispatch/suggest', requireAuth, withScope, async (req, res) => {
 async function runAgentsWorker() {
   if (!agents) return;
   try {
+    let _sysSpeed = 90;
+    try { const _sys = await getSystemSettings(); if (!_sys.agents_auto) return; _sysSpeed = _sys.default_speed_limit; } catch (e) {} // toggle + viteză implicită din Setări sistem
     const companies = await db.getCompanies();
     for (const co of companies) {
       if (co.is_demo) continue;
@@ -1407,7 +1448,8 @@ async function runAgentsWorker() {
       if (!enabled.length) continue; // planul „start" nu rulează niciun agent
       const imeis = await db.getCompanyImeis(co.id);
       if (!imeis.length) continue;
-      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id }, enabled);
+      const alertThresholds = _alertThresholdsFromSettings(co && co.settings);
+      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
     }
   } catch (e) { console.warn('[AGENTS] worker:', e.message); }
@@ -1752,6 +1794,25 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
     await db.setDeviceCompany(req.params.imei, companyId);
     invalidateAccessCache(); _devCompanyCache.delete(req.params.imei);
     auditReq(req, 'assign_company', 'device', req.params.imei, { companyId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Super-admin: mută un UTILIZATOR în altă companie. Curăță grant-urile per-vehicul/grup (db).
+app.put('/api/users/:id/company', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const target = await db.getUserById(id);
+    if (!target) return res.status(404).json({ error: 'Utilizator inexistent' });
+    if (isSuper(target.role)) return res.status(400).json({ error: 'Super-adminul aparține platformei, nu unei companii' });
+    const companyId = (req.body.company_id != null && req.body.company_id !== '') ? parseInt(req.body.company_id) : null;
+    // company_id == null = „platformă/super" în restul codului (_accessBlocked, requireFeature). Un cont non-super NU poate
+    // rămâne fără companie — altfel ar sări peste gating-ul de abonament + funcții. Oglindește crearea de user (400).
+    if (companyId == null) return res.status(400).json({ error: 'Selectează compania pentru utilizator (un cont nu poate rămâne fără companie)' });
+    if (!(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    await db.setUserCompany(id, companyId);
+    invalidateAccessCache(id);
+    auditReq(req, 'assign_company', 'user', id, { companyId });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2151,6 +2212,74 @@ app.put('/api/devices/:imei/fuel-sensors', requireAuth, requireFleet, withScope,
     invalidateFuelSensors(req.params.imei);
     auditReq(req, 'update', 'fuel-sensors', req.params.imei, { count: sensors.length });
     res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Debug / mapare IO per vehicul (doar super-admin) ───
+// Ultimul io live + cheile NEMAPATE (io_<id>) + maparile curente
+app.get('/api/devices/:imei/io-debug', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const imei = req.params.imei;
+    const live = livePositions.get(imei);
+    const io = (live && live.io) ? live.io : {};
+    const mappings = await db.getIoMappings(imei);
+    const unmapped = [];
+    const mapped = [];
+    for (const [k, v] of Object.entries(io)) {
+      const m = /^io_(\d+)$/.exec(k);
+      if (m) { if (mappings[m[1]]) mapped.push({ id: m[1], key: k, value: v }); else unmapped.push({ id: m[1], key: k, value: v }); }
+    }
+    unmapped.sort((a, b) => Number(a.id) - Number(b.id));
+    res.json({ imei, hasLive: !!live, timestamp: live ? live.timestamp : null, unmapped, mapped, mappings, ioKeyCount: Object.keys(io).length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Citire mapari (pentru afisare in fisa — orice user cu acces la vehicul)
+app.get('/api/devices/:imei/io-mappings', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    res.json(await db.getIoMappings(req.params.imei));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Setare mapare pentru un IO (doar super-admin)
+app.put('/api/devices/:imei/io-mappings/:ioId', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const ioId = String(req.params.ioId).replace(/[^0-9]/g, '');
+    if (!ioId) return res.status(400).json({ error: 'IO id invalid' });
+    const b = req.body || {};
+    const name = (b.name || '').toString().trim().slice(0, 60);
+    if (!name) return res.status(400).json({ error: 'Numele e obligatoriu' });
+    const type = ['raw', 'fuel', 'percent', 'temp'].includes(b.type) ? b.type : 'raw';
+    const num = (x) => (x != null && x !== '' && Number.isFinite(Number(x))) ? Number(x) : null;
+    const mapping = { name, type, unit: (b.unit || '').toString().slice(0, 12) || null, capacity: num(b.capacity), rawMin: num(b.rawMin), rawMax: num(b.rawMax), scale: num(b.scale), offset: num(b.offset) };
+    const next = await db.setIoMapping(req.params.imei, ioId, mapping);
+    auditReq(req, 'update', 'io-mapping', req.params.imei, { ioId, name, type });
+    res.json({ ok: true, mappings: next });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Stergere mapare (doar super-admin)
+app.delete('/api/devices/:imei/io-mappings/:ioId', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const ioId = String(req.params.ioId).replace(/[^0-9]/g, '');
+    const next = await db.deleteIoMapping(req.params.imei, ioId);
+    auditReq(req, 'delete', 'io-mapping', req.params.imei, { ioId });
+    res.json({ ok: true, mappings: next });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Setări sistem (super-admin): banner anunț, agenți auto, praguri ───
+app.get('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await getSystemSettings()); } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (b.announcement !== undefined) await db.setSetting('announcement', String(b.announcement || '').slice(0, 500));
+    if (b.agents_auto !== undefined) await db.setSetting('agents_auto', b.agents_auto ? 'on' : 'off');
+    if (b.offline_minutes !== undefined) { const n = parseInt(b.offline_minutes); if (Number.isFinite(n) && n >= 5 && n <= 1440) await db.setSetting('offline_minutes', String(n)); }
+    if (b.default_speed_limit !== undefined) { const n = parseInt(b.default_speed_limit); if (Number.isFinite(n) && n >= 10 && n <= 200) await db.setSetting('default_speed_limit', String(n)); }
+    invalidateSystemSettings();
+    auditReq(req, 'update', 'system-settings', null, { keys: Object.keys(b) });
+    res.json({ ok: true, settings: await getSystemSettings() });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2892,6 +3021,20 @@ app.delete('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (re
     if (!(await ownsRow(req, 'drivers', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteDriver(req.params.id); auditReq(req, 'delete', 'driver', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Super-admin: mută un ȘOFER în altă companie (sau neasignat). Rupe legătura cu vehiculele (driver_id, în db).
+app.put('/api/drivers/:id/company', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const target = await db.getDriverById(id);
+    if (!target) return res.status(404).json({ error: 'Șofer inexistent' });
+    const companyId = (req.body.company_id != null && req.body.company_id !== '') ? parseInt(req.body.company_id) : null;
+    if (companyId != null && !(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    await db.setDriverCompany(id, companyId);
+    auditReq(req, 'assign_company', 'driver', id, { companyId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── Grupe CRUD ───
@@ -3912,9 +4055,9 @@ app.put('/api/me/ui-prefs', requireAuth, async (req, res) => {
 app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
   try {
     const a = getAuth(req);
-    if (a.companyId == null) return res.json({ ui_defaults: {} }); // super-admin fără companie
+    if (a.companyId == null) return res.json({ ui_defaults: {}, alert_thresholds: {} }); // super-admin fără companie
     const s = await db.getCompanySettings(a.companyId);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}) });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
@@ -3923,7 +4066,7 @@ app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
     if (a.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
     const next = await _applyCompanySettingsPatch(a.companyId, req.body || {});
     auditReq(req, 'update', 'company_settings', a.companyId, { keys: Object.keys(req.body || {}) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents });
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Helper centralizat ca să gestionez și enabled_agents (whitelist pe cheia validă), nu doar ui_defaults
@@ -3945,6 +4088,22 @@ async function _applyCompanySettingsPatch(companyId, body) {
     fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
     next.features = f;
   }
+  // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie (SPECS canonice — vezi sus).
+  if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {
+    const a = Object.assign({}, cur.alert_thresholds || {});
+    ALERT_THRESHOLD_SPECS.forEach(function (sp) {
+      if (Object.prototype.hasOwnProperty.call(body.alert_thresholds, sp.k)) {
+        const v = body.alert_thresholds[sp.k];
+        if (v === null) { delete a[sp.k]; return; }
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= sp.min && n <= sp.max) a[sp.k] = sp.round ? Math.round(n) : n;
+        // valori invalide → ignorate (nu suprascriu)
+      }
+    });
+    next.alert_thresholds = a;
+  } else if (body.alert_thresholds === null) {
+    delete next.alert_thresholds;
+  }
   // Scriere directă (NU prin db.setCompanySettings, care face încă un merge cu vechiul cur și readuce cheile șterse)
   await db.pool.query('UPDATE companies SET settings = $2 WHERE id = $1', [companyId, JSON.stringify(next)]);
   return next;
@@ -3956,7 +4115,7 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const s = await db.getCompanySettings(id);
     const planAgents = plans && plans.enabledAgentsFor(co);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: s.features || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
@@ -3964,7 +4123,7 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const next = await _applyCompanySettingsPatch(id, req.body || {});
     auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents });
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Super-admin: funcții (module) per companie — checkbox-uri (agents / ai_assistant / etransport / tahograf)

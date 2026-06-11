@@ -412,7 +412,8 @@ async function initDb() {
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS tank_calibration JSONB`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_price NUMERIC(10,2)`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_per_ton_km NUMERIC(10,2)`,
-      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_sensors JSONB`
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_sensors JSONB`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS io_mappings JSONB`
     ];
     for (const sql of migrateColumns) {
       try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
@@ -759,6 +760,35 @@ async function getCompanyImeis(companyId) {
 async function setDeviceCompany(imei, companyId) {
   await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1', [imei, companyId || null]);
 }
+// Mutare utilizator între companii (super-admin). Curăță grant-urile per-vehicul/grup (deveneau inerte oricum,
+// dar le ștergem ca să nu „reapară" dacă un vehicul ajunge ulterior în noua companie).
+async function setUserCompany(id, companyId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE users SET company_id = $2 WHERE id = $1', [id, companyId || null]);
+    await client.query('DELETE FROM user_device_access WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM user_group_access WHERE user_id = $1', [id]);
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}
+// Mutare șofer între companii (super-admin). Rupe legătura cu vehiculele din vechea companie (driver_id),
+// altfel un vehicul ar referi un șofer din altă companie.
+async function setDriverCompany(id, companyId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE devices SET driver_id = NULL WHERE driver_id = $1', [id]);
+    await client.query('UPDATE drivers SET company_id = $2 WHERE id = $1', [id, companyId || null]);
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}
+async function getDriverById(id) {
+  const r = await pool.query('SELECT * FROM drivers WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
 // ─── Tahograf ───
 async function createTachoFile(rec) {
   const r = await pool.query(
@@ -975,6 +1005,20 @@ async function getFuelSensorsRow(imei) {
   const s = r.rows[0].fuel_sensors;
   return typeof s === 'string' ? JSON.parse(s) : s;
 }
+// ─── Mapări IO per vehicul (super-admin): cheia brută io_<id> → { name, type, unit, capacity, rawMin, rawMax, scale, offset } ───
+async function getIoMappings(imei) {
+  const r = await pool.query('SELECT io_mappings FROM devices WHERE imei = $1', [imei]);
+  if (!r.rows[0] || !r.rows[0].io_mappings) return {};
+  const m = r.rows[0].io_mappings;
+  return (typeof m === 'string' ? JSON.parse(m) : m) || {};
+}
+async function setIoMapping(imei, ioId, mapping) {
+  const cur = await getIoMappings(imei);
+  if (mapping == null) delete cur[String(ioId)]; else cur[String(ioId)] = mapping;
+  await pool.query('UPDATE devices SET io_mappings = $2 WHERE imei = $1', [imei, JSON.stringify(cur)]);
+  return cur;
+}
+async function deleteIoMapping(imei, ioId) { return setIoMapping(imei, ioId, null); }
 
 async function getDeviceFull(imei) {
   const result = await pool.query('SELECT * FROM devices WHERE imei = $1', [imei]);
@@ -1699,7 +1743,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments,
-  getCompanyImeis, setDeviceCompany, getUnassignedDevices, getRowCompany,
+  getCompanyImeis, setDeviceCompany, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   getSetting, setSetting,
@@ -1715,6 +1759,7 @@ module.exports = {
   updateTankCalibration,
   setFuelSensors,
   getFuelSensorsRow,
+  getIoMappings, setIoMapping, deleteIoMapping,
   getDeviceFull,
   insertPositions,
   getDevices,

@@ -2746,6 +2746,31 @@
             <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-shield-halved"></i> Agenți AI activi</div>
             <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
             <div id="us-agents-list"></div>
+
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-bell"></i> Praguri alertă agenți</div>
+            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Pragurile peste/sub care agenții generează alertă. Lasă gol pentru default.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când un vehicul nu trimite date de peste atâtea minute">
+                <span><i class="fas fa-wifi" style="color:var(--accent);font-size:9px;"></i> RA Watch — Offline (minute)</span>
+                <input type="number" id="us-th-offline" min="5" max="1440" placeholder="60" step="1" onblur="usSetThreshold('offlineMin', this.value)" style="margin-top:4px;">
+              </label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă la scădere bruscă de combustibil (posibil furt)">
+                <span><i class="fas fa-gas-pump" style="color:var(--accent);font-size:9px;"></i> RA Watch — Scădere combustibil (litri)</span>
+                <input type="number" id="us-th-fuel" min="1" max="1000" placeholder="15" step="1" onblur="usSetThreshold('fuelDropL', this.value)" style="margin-top:4px;">
+              </label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când motorul rulează staționat (ralanti) peste atâtea minute consecutive">
+                <span><i class="fas fa-pause-circle" style="color:var(--accent);font-size:9px;"></i> RA Watch — Ralanti (minute)</span>
+                <input type="number" id="us-th-idle" min="5" max="1440" placeholder="120" step="1" onblur="usSetThreshold('idleMaxMin', this.value)" style="margin-top:4px;">
+              </label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Optimize — alertă când scorul eco al unui șofer scade sub această valoare">
+                <span><i class="fas fa-leaf" style="color:var(--accent);font-size:9px;"></i> RA Optimize — Scor eco minim (0-100)</span>
+                <input type="number" id="us-th-eco" min="0" max="100" placeholder="60" step="1" onblur="usSetThreshold('ecoScoreMin', this.value)" style="margin-top:4px;">
+              </label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);grid-column:1 / -1;" title="RA Care — cu câți km înainte de scadența unei revizii să apară alerta">
+                <span><i class="fas fa-wrench" style="color:var(--accent);font-size:9px;"></i> RA Care — Avertisment service (km înainte de scadență)</span>
+                <input type="number" id="us-th-srv" min="100" max="50000" placeholder="1500" step="1" onblur="usSetThreshold('serviceSoonKm', this.value)" style="margin-top:4px;">
+              </label>
+            </div>
           </div>
         </div>
 
@@ -3133,6 +3158,20 @@
   <script>
     // ─── Global State ───
     let currentUser = null;
+    var ioMappingsCache = {}; // imei -> { '<id>': {name,type,unit,capacity,rawMin,rawMax,scale,offset} } (mapate de super-admin)
+    function ioMapValue(m, raw) {
+      var r = Number(raw); if (!Number.isFinite(r)) return String(raw);
+      if (m.type === 'fuel') {
+        var lo = (m.rawMin != null ? m.rawMin : 0), hi = (m.rawMax != null ? m.rawMax : 100), cap = (m.capacity != null ? m.capacity : 0);
+        if (hi === lo) return String(raw);
+        var frac = Math.max(0, Math.min(1, (r - lo) / (hi - lo)));
+        return Math.round(frac * cap) + ' L (' + Math.round(frac * 100) + '%)';
+      }
+      if (m.type === 'percent') { var lo2 = (m.rawMin != null ? m.rawMin : 0), hi2 = (m.rawMax != null ? m.rawMax : 100); if (hi2 === lo2) return String(raw); return Math.round(Math.max(0, Math.min(1, (r - lo2) / (hi2 - lo2))) * 100) + '%'; }
+      var v = r * (m.scale != null ? m.scale : 1) + (m.offset != null ? m.offset : 0);
+      if (m.type === 'temp') return v.toFixed(1) + '°C';
+      return v + (m.unit ? ' ' + m.unit : '');
+    }
 
     // ─── Chart.js setup: dark theme + helper ───
     if (typeof Chart !== 'undefined') {
@@ -3686,6 +3725,14 @@
             var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
             var dft = cs.ui_defaults || {};
             coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
+            // Populez pragurile alertă (RA Watch + RA Optimize + RA Care). Setez și data-initial pentru anti-no-change.
+            var thr = cs.alert_thresholds || {};
+            function _setThrInput(id, key) { var el = document.getElementById(id); if (el) { el.value = thr[key] != null ? thr[key] : ''; el.dataset.initial = el.value; } }
+            _setThrInput('us-th-offline', 'offlineMin');
+            _setThrInput('us-th-fuel', 'fuelDropL');
+            _setThrInput('us-th-idle', 'idleMaxMin');
+            _setThrInput('us-th-eco', 'ecoScoreMin');
+            _setThrInput('us-th-srv', 'serviceSoonKm');
             // Secțiunea Agenți AI per companie
             var agBox = document.getElementById('us-agents-list');
             if (agBox) {
@@ -3693,7 +3740,7 @@
                 var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(r => r.json());
                 var allKeys = ['watch','dispatch','care','optimize','compliance','client'];
                 var labels = { watch:'RA Watch', dispatch:'RA Dispatch', care:'RA Care', optimize:'RA Optimize', compliance:'RA Compliance', client:'RA Client' };
-                var descs = { watch:'Monitorizare 24/7 (anomalii, furt combustibil, depășiri)', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (frânări, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
+                var descs = { watch:'Monitorizare conexiune — alertă când vehiculul e offline (fără date) peste 1 oră', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (depășiri viteză, frânări bruște, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
                 var enabledKeys = ag.enabledKeys || [];
                 agBox.innerHTML = allKeys.map(k => {
                   var on = enabledKeys.indexOf(k) >= 0;
@@ -3736,6 +3783,53 @@
         if (!r.ok) { alert('Eroare la salvare agenți'); return; }
         loadSettingsTab();
       } catch (e) { alert('Eroare: ' + e.message); }
+    }
+    // Specs client-side (oglindă a ALERT_THRESHOLD_SPECS din server) — pt. validare imediată, fără round-trip
+    const US_THRESHOLD_SPECS = {
+      offlineMin: { min: 5, max: 1440, default: 60, inputId: 'us-th-offline' },
+      fuelDropL: { min: 1, max: 1000, default: 15, inputId: 'us-th-fuel' },
+      idleMaxMin: { min: 5, max: 1440, default: 120, inputId: 'us-th-idle' },
+      ecoScoreMin: { min: 0, max: 100, default: 60, inputId: 'us-th-eco' },
+      serviceSoonKm: { min: 100, max: 50000, default: 1500, inputId: 'us-th-srv' }
+    };
+    // Coadă pentru serializare PUT-uri concurente (evită race condition între input-uri adiacente)
+    var _usThrQueue = Promise.resolve();
+    async function usSetThreshold(key, val) {
+      const sp = US_THRESHOLD_SPECS[key]; if (!sp) return;
+      const el = document.getElementById(sp.inputId);
+      // Skip dacă valoarea n-a fost modificată (data-initial)
+      if (el && el.dataset.initial === String(val)) return;
+      // Validare client
+      const raw = (val == null ? '' : String(val)).trim();
+      let body = { alert_thresholds: {} };
+      if (raw === '') {
+        body.alert_thresholds[key] = null; // reset intenționat
+      } else {
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < sp.min || n > sp.max) {
+          (window.raxToast || alert)('Valoare invalidă (interval ' + sp.min + '-' + sp.max + '). Pragul anterior păstrat.', 'error');
+          // restaurez valoarea inițială
+          if (el) el.value = el.dataset.initial || '';
+          return;
+        }
+        body.alert_thresholds[key] = Math.round(n);
+      }
+      // Serializez prin coadă (evită race între PUT-uri paralele)
+      _usThrQueue = _usThrQueue.then(async () => {
+        try {
+          const r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+          if (!r.ok) { (window.raxToast || alert)('Eroare la salvare prag', 'error'); return; }
+          const out = await r.json().catch(() => ({}));
+          // Confirm cu valoarea returnată de server (poate fi clampată/rotunjită)
+          const saved = out.alert_thresholds && out.alert_thresholds[key];
+          if (el) {
+            el.value = saved != null ? saved : '';
+            el.dataset.initial = el.value;
+          }
+          (window.raxToast || function () {})('Prag salvat ✓', 'success');
+        } catch (e) { (window.raxToast || alert)('Eroare de rețea', 'error'); }
+      });
+      return _usThrQueue;
     }
 
     // ─── Vehicule (management) ───
@@ -5051,6 +5145,21 @@
       if (dashNav) dashNav.style.display = (currentUser && currentUser.role === 'superadmin') ? '' : 'none';
       document.body.classList.toggle('no-fleet', !can('manageFleet'));
       applyAccessBanner();
+      applyAnnouncementBanner();
+    }
+    // Banner de anunț global (din Setări sistem) — pentru toți userii
+    function applyAnnouncementBanner() {
+      var txt = (currentUser && currentUser.announcement) ? String(currentUser.announcement).trim() : '';
+      var el = document.getElementById('announce-banner');
+      if (!txt) { if (el) el.style.display = 'none'; return; }
+      if (!el) {
+        el = document.createElement('div'); el.id = 'announce-banner';
+        el.style.cssText = 'position:relative;z-index:1190;padding:8px 14px;text-align:center;font-size:12.5px;font-weight:600;background:#1d4ed8;color:#fff;flex:0 0 auto;box-shadow:0 2px 8px rgba(0,0,0,.2);';
+        var app = document.getElementById('app'); var tb = document.getElementById('topbar');
+        if (app && tb) app.insertBefore(el, tb); else document.body.insertBefore(el, document.body.firstChild);
+      }
+      el.textContent = '📢 ' + txt;
+      el.style.display = 'block';
     }
     // Banner pentru companii în grație/expirat (acces pe bază de plată). Super-adminul nu e afectat.
     function applyAccessBanner() {
@@ -5302,7 +5411,7 @@
       }
 
       if (isSelected) {
-        map.panTo([latitude, longitude]);
+        panFollowVehicle(latitude, longitude);
       }
 
       // Update detail panel if showing this device
@@ -5317,8 +5426,8 @@
     // ─── Device online check ───
     function isDeviceOnline(device) {
       if (!device.timestamp) return false;
-      const age = Date.now() - new Date(device.timestamp).getTime();
-      return age < 65 * 60 * 1000; // 65 min (1h + tampon: trackerele parcate care trimit o dată/oră rămân „online"/Oprit; „Offline" doar la >1h fără date)
+      var mins = (currentUser && currentUser.offline_minutes) || 65; // prag configurabil din Setări sistem (implicit 65 min)
+      return (Date.now() - new Date(device.timestamp).getTime()) < mins * 60 * 1000;
     }
 
     // ─── Filtering & Search ───
@@ -5430,24 +5539,39 @@
       openDetailPanel(imei, 'info');
     }
 
-    // Pe mobil: aduce mașina în zona vizibilă DE DEASUPRA bottom-sheet-ului (panoul acoperă centrul hărții)
+    // Câți pixeli offsetăm centrul ca marker-ul să stea SUS, deasupra bottom-sheet-ului (0 dacă nu acoperă)
+    function _aboveSheetOffsetY() {
+      try {
+        if (!map || !(window.innerWidth <= 768) || !document.body.classList.contains('detail-open')) return 0;
+        var mapRect = map.getContainer().getBoundingClientRect();
+        var panel = document.getElementById('detail-panel');
+        var covered = 0;
+        if (panel) { var pr = panel.getBoundingClientRect(); covered = Math.max(0, mapRect.bottom - pr.top); }
+        var visible = Math.max(80, mapRect.height - covered);
+        return (mapRect.height / 2) - (visible * 0.40); // marker la ~40% din zona vizibilă (sus)
+      } catch (e) { return 0; }
+    }
+    // Focus inițial la selectare (flyTo cu zoom). Pe mobil cu panoul deschis → mașina sus.
     function focusVehicleAboveSheet(lat, lng) {
       setTimeout(function () {
         if (!map) return;
         try {
           map.invalidateSize();
           var z = 16;
-          var mapRect = map.getContainer().getBoundingClientRect();
-          var panel = document.getElementById('detail-panel');
-          var covered = 0;
-          if (panel) { var pr = panel.getBoundingClientRect(); covered = Math.max(0, mapRect.bottom - pr.top); }
-          var visible = Math.max(80, mapRect.height - covered);
-          var offsetY = (mapRect.height / 2) - (visible * 0.40); // mașina în partea de sus a zonei vizibile
           var pt = map.project([lat, lng], z);
-          pt.y += offsetY;
+          pt.y += _aboveSheetOffsetY();
           map.flyTo(map.unproject(pt, z), z, { animate: true, duration: 0.5 });
         } catch (e) {}
       }, 360);
+    }
+    // Urmărire live (mașina în mișcare): panTo fără schimbare de zoom. Panou deschis pe mobil → o ține SUS permanent.
+    function panFollowVehicle(lat, lng) {
+      if (!map) return;
+      try {
+        var off = _aboveSheetOffsetY();
+        if (off) { var z = map.getZoom(); var pt = map.project([lat, lng], z); pt.y += off; map.panTo(map.unproject(pt, z)); }
+        else { map.panTo([lat, lng]); }
+      } catch (e) { try { map.panTo([lat, lng]); } catch (e2) {} }
     }
 
     // ─── Detail Panel ───
@@ -5460,6 +5584,8 @@
 
       updateDetailPanel(imei);
       updateDetailIoPanel(imei);
+      // încarcă mapările IO (setate de super-admin) și re-randează cu numele personalizate
+      fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (m) { if (m && !m.error) { ioMappingsCache[imei] = m; if (detailPanelImei === imei) updateDetailIoPanel(imei); } }).catch(function () {});
       showDetailView(tab || 'info');
 
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
@@ -5938,6 +6064,8 @@
 
       const usedKeys = new Set();
       let html = '';
+      // Super-admin vede toate IO-urile (brute, pt. mapare). Adminii/userii obișnuiți văd doar date utile.
+      const _ioShowAll = isSuperUser();
 
       const categoryIcons = {
         'Motor / Vehicul': 'fa-cog',
@@ -5993,6 +6121,8 @@
       const maxConstruct = dev && dev.max_weight_construct ? dev.max_weight_construct : null;
 
       for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
+        // Non-super: ascunde categoriile tehnice (IO brut). Cheile rămase ajung în „avansate", oricum ascunse.
+        if (!_ioShowAll && !CUSTOMER_IO_CATEGORIES.has(category)) continue;
         // Special renderer for Combustibil - show both sources side by side with analog input as secondary info
         if (category === 'Combustibil') {
           const tank = flatIo.tank_level_liters;
@@ -6176,13 +6306,25 @@
 
       // Uncategorized (exclude internal flag objects and already used keys)
       const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && k !== 'eventIoId' && k !== 'totalCount' && k !== '_security_flags' && k !== '_control_flags' && k !== 'can_security_state_flags' && k !== 'can_control_state_flags');
-      if (uncategorized.length > 0) {
-        const rows = uncategorized.map(k =>
-          '<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value">' + formatIoValue(k, io[k]) + '</span></div>'
-        );
-        html += '<details class="io-advanced"><summary><i class="fas fa-ellipsis-h"></i> Date tehnice avansate (' + uncategorized.length + ')</summary><div style="margin-top:6px;">' + rows.join('') + '</div></details>';
+      // IO mapate de super-admin (Senzori personalizați) vs restul (avansate)
+      var _maps = ioMappingsCache[imei] || {};
+      var _mappedRows = [], _advRows = [];
+      uncategorized.forEach(function (k) {
+        var mm = /^io_(\d+)$/.exec(k); var map = mm && _maps[mm[1]];
+        if (map) _mappedRows.push('<div class="io-row"><span class="io-label">' + _usEsc(map.name) + '</span><span class="io-value">' + _usEsc(ioMapValue(map, io[k])) + '</span></div>');
+        else _advRows.push('<div class="io-row"><span class="io-label">' + formatIoLabel(k) + '</span><span class="io-value">' + formatIoValue(k, io[k]) + '</span></div>');
+      });
+      if (_mappedRows.length) {
+        html += '<div style="margin-top:8px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;"><i class="fas fa-sliders-h"></i> Senzori personalizați</div>' + _mappedRows.join('') + '</div>';
+      }
+      // „Date tehnice avansate" (IO brut nemapat) — doar pentru super-admin.
+      if (_ioShowAll && _advRows.length) {
+        html += '<details class="io-advanced"><summary><i class="fas fa-ellipsis-h"></i> Date tehnice avansate (' + _advRows.length + ')</summary><div style="margin-top:6px;">' + _advRows.join('') + '</div></details>';
       }
 
+      if (!html) {
+        html = '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px;">Niciun senzor relevant pentru acest vehicul (carburant, consum etc.).</p>';
+      }
       content.innerHTML = html;
     }
 
@@ -6995,6 +7137,14 @@
       // FMS/J1939 (trucks)
       'FMS (Camioane)': ['fms_fuel_level', 'fms_fuel_consumed', 'fms_fuel_rate', 'fms_speed', 'fms_rpm', 'fms_coolant_temp', 'fms_pedal_position', 'fms_engine_hours', 'fms_total_mileage']
     };
+
+    // Categorii „prietenoase" (date utile + camion) arătate adminilor/userilor obișnuiți.
+    // Restul IO-urilor sunt brute/tehnice (tensiuni, I/O digital/analog, odometru brut, flag-uri) →
+    // vizibile DOAR pentru super-admin, care le mapează la nume prietenoase din „Debug IO".
+    const CUSTOMER_IO_CATEGORIES = new Set([
+      'Combustibil', 'Senzori BLE Combustibil', 'Senzori LLS Combustibil (RS485)',
+      'AdBlue', 'Vehicul', 'Sarcina Axe (Camion)', 'Mentenanta Camion', 'Tahograf', 'FMS (Camioane)'
+    ]);
 
     function formatIoValue(key, value) {
       if (value === undefined || value === null) return '-';
@@ -8489,6 +8639,27 @@
           <strong style="font-size:13px;">Vehicule neasignate</strong>
           <div id="rax-co-unassigned" class="rax-co-meta" style="margin-top:6px;">—</div>
         </div>
+        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+          <strong style="font-size:13px;"><i class="fas fa-arrows-left-right" style="color:var(--accent)"></i> Mută între companii</strong>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-bottom:8px;">Alege tipul, bifează rândurile, selectează destinația în bara de jos și apasă „Mută selectate". Poți muta unul singur cu butonul „Mută" din rând.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+            <button class="rax-btn primary" id="rax-mv-tab-devices" type="button" onclick="raxMoveSwitch('devices')"><i class="fas fa-truck"></i> Vehicule</button>
+            <button class="rax-btn" id="rax-mv-tab-users" type="button" onclick="raxMoveSwitch('users')"><i class="fas fa-user"></i> Utilizatori</button>
+            <button class="rax-btn" id="rax-mv-tab-drivers" type="button" onclick="raxMoveSwitch('drivers')"><i class="fas fa-id-card-clip"></i> Șoferi</button>
+          </div>
+          <input class="rax-field" id="rax-move-search" placeholder="Caută…" oninput="raxMoveRender()" style="margin-bottom:6px;">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;">
+            <button class="rax-btn" type="button" onclick="raxMoveToggleAll(true)">Bifează tot</button>
+            <button class="rax-btn" type="button" onclick="raxMoveToggleAll(false)">Debifează tot</button>
+            <span id="rax-move-count" style="font-size:11px;color:var(--text-muted);"></span>
+          </div>
+          <div id="rax-move-list" class="rax-co-meta">Se încarcă…</div>
+          <div style="position:sticky;bottom:-12px;background:var(--bg-panel);padding:10px;border:1px solid var(--border);border-radius:8px;margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-muted);">Mută cele bifate la:</span>
+            <select class="rax-field" id="rax-bulk-dest" style="width:auto;margin:0;flex:1;min-width:140px;"></select>
+            <button class="rax-btn primary" onclick="raxMoveBulk()"><i class="fas fa-arrows-turn-to-dots"></i> Mută selectate</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -8576,6 +8747,7 @@
         // Sincronizează currentUser (scope principal) ca bannerul de acces + gating-ul să se actualizeze live, nu doar la login
         if (typeof currentUser !== 'undefined' && currentUser && me) {
           currentUser.access = me.access; currentUser.features = me.features; currentUser.isSuper = me.isSuper;
+          currentUser.announcement = me.announcement; currentUser.offline_minutes = me.offline_minutes;
           if (typeof applyPermissionsUI === 'function') { try { applyPermissionsUI(); } catch (e) {} }
         }
         var s = await fetch('/api/ai/status', { credentials: 'same-origin' }).then(function (x) { return x.ok ? x.json() : { enabled: false }; }).catch(function () { return { enabled: false }; });
@@ -8688,7 +8860,7 @@
     };
 
     // ── Companii ──
-    window.raxOpenCompanies = function () { $('rax-co-overlay').classList.add('open'); raxLoadCompanies(); raxLoadUnassigned(); };
+    window.raxOpenCompanies = async function () { $('rax-co-overlay').classList.add('open'); await raxLoadCompanies(); raxLoadUnassigned(); raxMoveLoadAll(); };
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
 
     // ─── Dashboard platformă — super-admin (montat în modalul Administrare, tab „Platformă") ───
@@ -8776,9 +8948,126 @@
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
           '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită AI</th></tr></thead><tbody>' +
           (rows || '<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
+        // ─── Debug IO — mapare per vehicul (super-admin) ───
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:18px 0 6px;"><i class="fas fa-microchip"></i> Debug IO — mapare per vehicul</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Vezi IO-urile brute (io_NNN) trimise de tracker și mapează-le la nume utile. Pentru combustibil → conversie brut→litri după capacitatea rezervorului.</div>';
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;"><select id="rax-io-veh" onchange="raxIoDebug(this.value)" style="flex:1;min-width:180px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px 10px;font-size:13px;"><option value="">— se încarcă vehiculele —</option></select><button class="rax-btn" onclick="var v=document.getElementById(\'rax-io-veh\').value; if(v) raxIoDebug(v);"><i class="fas fa-rotate"></i> Reîncarcă</button></div>';
+        html += '<div id="rax-io-debug-body"><div class="rax-co-meta">Alege un vehicul pentru a vedea IO-urile.</div></div>';
+        // ─── Gestionare rapidă (scurtături) ───
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:18px 0 6px;"><i class="fas fa-bolt"></i> Gestionare rapidă</div>';
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">' +
+          '<button class="rax-btn" onclick="showView(\'administrare\');setTimeout(function(){if(window.raxAdminTab)raxAdminTab(\'companies\');},160);"><i class="fas fa-building"></i> Companii & dispozitive</button>' +
+          '<button class="rax-btn" onclick="showView(\'administrare\');setTimeout(function(){if(window.raxAdminTab)raxAdminTab(\'accounts\');},160);"><i class="fas fa-users-gear"></i> Conturi (utilizatori)</button></div>';
+        // ─── Setări sistem ───
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:16px 0 6px;"><i class="fas fa-gear"></i> Setări sistem</div>';
+        html += '<div id="rax-sys-body"><div class="rax-co-meta">Se încarcă…</div></div>';
         box.innerHTML = html;
+        raxIoLoadVehicles();
+        raxSysLoad();
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcare.</div>'; }
     }
+    window.raxSysLoad = async function () {
+      var box = $('rax-sys-body'); if (!box) return;
+      try {
+        var s = await fetch('/api/admin/system-settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        box.innerHTML =
+          '<div style="margin-bottom:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">Anunț global (banner pentru toți userii — gol = fără banner)</div>' +
+          '<textarea id="rax-sys-ann" rows="2" style="width:100%;box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px;font-size:13px;" placeholder="ex: Mentenanță programată duminică 02:00–03:00…">' + esc(s.announcement || '') + '</textarea></div>' +
+          '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' +
+            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rax-sys-agents" ' + (s.agents_auto ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:var(--accent);"> Agenți AI automat (30 min)</label>' +
+            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Prag offline (min): <input type="number" id="rax-sys-off" value="' + (s.offline_minutes || 65) + '" min="5" max="1440" style="width:72px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 6px;"></label>' +
+            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Viteză implicită (km/h): <input type="number" id="rax-sys-spd" value="' + (s.default_speed_limit || 90) + '" min="10" max="200" style="width:72px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 6px;"></label>' +
+          '</div>' +
+          '<button class="rax-btn primary" onclick="raxSysSave()"><i class="fas fa-save"></i> Salvează setările</button> <span id="rax-sys-msg" style="font-size:11px;color:var(--text-muted);margin-left:8px;"></span>';
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
+    };
+    window.raxSysSave = async function () {
+      var msg = $('rax-sys-msg'); if (msg) { msg.style.color = 'var(--text-muted)'; msg.textContent = 'Se salvează…'; }
+      var body = { announcement: ($('rax-sys-ann') || {}).value || '', agents_auto: !!($('rax-sys-agents') || {}).checked, offline_minutes: ($('rax-sys-off') || {}).value, default_speed_limit: ($('rax-sys-spd') || {}).value };
+      try {
+        var j = await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+        if (j.error) { if (msg) { msg.style.color = 'var(--red)'; msg.textContent = j.error; } return; }
+        if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = '✓ Salvat'; }
+      } catch (e) { if (msg) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; } }
+    };
+    // ─── Debug IO (super-admin): listă io_<id> brut + mapare la nume/conversie ───
+    var RAX_IO_CANDIDATES = { '9': 'Analog Input 1', '10': 'Analog Input 2', '11': 'Analog Input 3', '179': 'Digital Output 1', '180': 'Digital Output 2', '237': 'Network type', '241': 'Active GSM operator', '199': 'Trip odometer', '16': 'Total odometer', '12': 'Fuel used (GPS)', '13': 'Fuel rate (GPS)' };
+    function raxIoValue(m, raw) {
+      var r = Number(raw); if (!Number.isFinite(r)) return String(raw);
+      if (m.type === 'fuel') {
+        var lo = (m.rawMin != null ? m.rawMin : 0), hi = (m.rawMax != null ? m.rawMax : 100), cap = (m.capacity != null ? m.capacity : 0);
+        if (hi === lo) return String(raw);
+        var frac = Math.max(0, Math.min(1, (r - lo) / (hi - lo)));
+        return Math.round(frac * cap) + ' L (' + Math.round(frac * 100) + '%)';
+      }
+      if (m.type === 'percent') {
+        var lo2 = (m.rawMin != null ? m.rawMin : 0), hi2 = (m.rawMax != null ? m.rawMax : 100);
+        if (hi2 === lo2) return String(raw);
+        return Math.round(Math.max(0, Math.min(1, (r - lo2) / (hi2 - lo2))) * 100) + '%';
+      }
+      var v = r * (m.scale != null ? m.scale : 1) + (m.offset != null ? m.offset : 0);
+      if (m.type === 'temp') return v.toFixed(1) + '°C';
+      return v + (m.unit ? ' ' + m.unit : '');
+    }
+    window.raxIoLoadVehicles = async function () {
+      var sel = $('rax-io-veh'); if (!sel) return;
+      try {
+        var j = await fetch('/api/devices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var list = Array.isArray(j) ? j : (j.devices || []);
+        sel.innerHTML = '<option value="">— alege vehicul —</option>' + list.map(function (v) { return '<option value="' + esc(v.imei) + '">' + esc(v.name || v.imei) + (v.plate ? ' · ' + esc(v.plate) : '') + '</option>'; }).join('');
+      } catch (e) { sel.innerHTML = '<option value="">(eroare la încărcare)</option>'; }
+    };
+    window.raxIoDebug = async function (imei) {
+      var box = $('rax-io-debug-body'); if (!box) return;
+      if (!imei) { box.innerHTML = '<div class="rax-co-meta">Alege un vehicul pentru a vedea IO-urile.</div>'; return; }
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var d = await fetch('/api/devices/' + encodeURIComponent(imei) + '/io-debug', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d.error) { box.innerHTML = '<div class="rax-co-meta">' + esc(d.error) + '</div>'; return; }
+        var html = '';
+        if (!d.hasLive) html += '<div style="color:#f59e0b;font-size:11px;margin-bottom:6px;">⚠ Niciun pachet live recent — valorile pot lipsi (parchează/pornește vehiculul ca să transmită).</div>';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin:6px 0 4px;">IO nemapate (' + d.unmapped.length + ')</div>';
+        if (!d.unmapped.length) html += '<div class="rax-co-meta">Niciun IO nemapat.</div>';
+        else {
+          html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:4px 6px;">IO</th><th style="padding:4px 6px;">Cheie</th><th style="padding:4px 6px;text-align:right;">Valoare</th><th style="padding:4px 6px;"></th></tr></thead><tbody>';
+          d.unmapped.forEach(function (u) {
+            var cand = RAX_IO_CANDIDATES[u.id] ? '<div style="font-size:10px;color:var(--accent);">≈ ' + esc(RAX_IO_CANDIDATES[u.id]) + '</div>' : '';
+            html += '<tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 6px;font-weight:700;">' + u.id + cand + '</td><td style="padding:4px 6px;color:var(--text-muted);">' + esc(u.key) + '</td><td style="padding:4px 6px;text-align:right;font-weight:600;">' + esc(String(u.value)) + '</td><td style="padding:4px 6px;text-align:right;"><button class="rax-btn primary" style="padding:2px 9px;font-size:11px;" onclick="raxIoEdit(\'' + esc(imei) + '\',\'' + u.id + '\')">Mapează</button></td></tr>';
+          });
+          html += '</tbody></table></div>';
+        }
+        var ids = Object.keys(d.mappings || {}).sort(function (a, b) { return Number(a) - Number(b); });
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin:12px 0 4px;">IO mapate (' + ids.length + ')</div>';
+        if (!ids.length) html += '<div class="rax-co-meta">Niciunul încă.</div>';
+        else html += ids.map(function (id) {
+          var m = d.mappings[id]; var live = (d.mapped || []).find(function (x) { return x.id === id; });
+          var disp = live ? raxIoValue(m, live.value) : '—';
+          return '<div class="rax-co-item" style="padding:6px 10px;"><div style="min-width:0;"><strong>' + esc(m.name) + '</strong> <span class="rax-tag">io_' + id + '</span> <span class="rax-tag">' + esc(m.type) + '</span><div class="rax-co-meta">valoare: ' + esc(String(disp)) + (live ? ' · brut ' + esc(String(live.value)) : '') + '</div></div><div style="display:flex;gap:4px;"><button class="rax-btn" title="Editează" onclick="raxIoEdit(\'' + esc(imei) + '\',\'' + id + '\')"><i class="fas fa-pen"></i></button><button class="rax-btn" title="Șterge" onclick="raxIoDelete(\'' + esc(imei) + '\',\'' + id + '\')"><i class="fas fa-trash"></i></button></div></div>';
+        }).join('');
+        box.innerHTML = html;
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
+    };
+    window.raxIoEdit = async function (imei, ioId) {
+      var name = prompt('Nume pentru IO ' + ioId + ' (ex: Nivel combustibil rezervor):'); if (name == null) return; name = name.trim(); if (!name) { alert('Numele e obligatoriu.'); return; }
+      var type = (prompt('Tip: raw / fuel / percent / temp', 'raw') || '').trim(); if (!type) return;
+      var body = { name: name, type: type };
+      if (type === 'fuel') {
+        var cap = prompt('Capacitate rezervor (litri):', ''); if (cap == null) return; body.capacity = cap;
+        var rmax = prompt('Valoarea BRUTĂ la rezervor PLIN (rawMax — ex: 1023, 4095, 100):', ''); if (rmax == null) return; body.rawMax = rmax;
+        var rmin = prompt('Valoarea BRUTĂ la rezervor GOL (rawMin, implicit 0):', '0'); if (rmin != null) body.rawMin = rmin;
+      } else {
+        var unit = prompt('Unitate (opțional, ex: V, °C, %):', ''); if (unit != null) body.unit = unit;
+      }
+      try {
+        var j = await fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings/' + ioId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        raxIoDebug(imei);
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
+    window.raxIoDelete = async function (imei, ioId) {
+      if (!confirm('Ștergi maparea pentru io_' + ioId + '?')) return;
+      try { var j = await fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings/' + ioId, { method: 'DELETE', credentials: 'same-origin' }).then(function (r) { return r.json(); }); if (j.error) { alert(j.error); return; } raxIoDebug(imei); } catch (e) { alert('Eroare: ' + e.message); }
+    };
 
     function _raxLimitCell(c) {
       var used = c.ai_calls || 0;          // prompturi consumate (apeluri AI)
@@ -8941,7 +9230,7 @@
             '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
             _raxFeatureRow(c) +
             _raxAccessRow(c) +
-            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button>' +
+            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează</button><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button>' +
               (((c.device_count || 0) === 0 && (c.user_count || 0) === 0)
                 ? '<button class="rax-btn" style="border-color:var(--red);color:var(--red);" onclick="raxDeleteCompany(' + c.id + ')" title="Șterge compania (doar dacă e goală)"><i class="fas fa-trash"></i> Șterge</button>'
                 : '<span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;" title="Mută/șterge întâi vehiculele + utilizatorii">🔒 nu se poate șterge (are vehicule sau utilizatori)</span>') +
@@ -8962,6 +9251,18 @@
         raxToast('Companie ștearsă: ' + name, 'success');
         raxLoadCompanies();
       } catch (e) { raxToast('Eroare de rețea', 'error'); }
+    };
+    window.raxEditCompany = async function (id) {
+      var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
+      var name = prompt('Nume companie:', c.name || ''); if (name == null) return; name = name.trim(); if (name.length < 2) { alert('Nume prea scurt.'); return; }
+      var email = prompt('Email contact (opțional):', c.contact_email || ''); if (email == null) return;
+      var phone = prompt('Telefon (opțional):', c.phone || ''); if (phone == null) return;
+      var act = prompt('Companie activă?  da / nu', c.active === false ? 'nu' : 'da'); if (act == null) return;
+      try {
+        var j = await fetch('/api/companies/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ name: name, contact_email: (email.trim() || null), phone: (phone.trim() || null), active: /^d/i.test(act.trim()) }) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        raxLoadCompanies();
+      } catch (e) { alert('Eroare: ' + e.message); }
     };
     window.raxSetPlan = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
@@ -8998,7 +9299,165 @@
     window.raxAssignDevice = async function (imei) {
       var sel = $('raxasg_' + imei); if (!sel) return;
       await fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: parseInt(sel.value) }) });
-      raxLoadCompanies(); raxLoadUnassigned();
+      raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
+    };
+
+    // ─── Mutare entități (vehicule / utilizatori / șoferi) între companii (super-admin) ───
+    // Configurație per tip: cum se încarcă, cum se afișează, cum se mută. Un singur motor de randare.
+    var RAX_MOVE_CFG = {
+      devices: {
+        label: 'vehicule', idKey: 'imei', empty: 'Niciun vehicul.',
+        url: '/api/devices?includeArchived=1',
+        moveUrl: function (id) { return '/api/devices/' + encodeURIComponent(id) + '/company'; },
+        name: function (d) { return d.name || d.imei; },
+        sub: function (d) { return [d.plate, d.imei].filter(Boolean).join(' · '); },
+        text: function (d, co) { return ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + co).toLowerCase(); }
+      },
+      users: {
+        label: 'utilizatori', idKey: 'id', empty: 'Niciun utilizator.',
+        url: '/api/users',
+        moveUrl: function (id) { return '/api/users/' + encodeURIComponent(id) + '/company'; },
+        keep: function (u) { return u.role !== 'superadmin'; }, // super = platformă, nu se mută
+        name: function (u) { return u.full_name || u.username; },
+        sub: function (u) { return [u.username, u.role].filter(Boolean).join(' · '); },
+        text: function (u, co) { return ((u.full_name || '') + ' ' + (u.username || '') + ' ' + (u.role || '') + ' ' + co).toLowerCase(); }
+      },
+      drivers: {
+        label: 'șoferi', idKey: 'id', empty: 'Niciun șofer.',
+        url: '/api/drivers',
+        moveUrl: function (id) { return '/api/drivers/' + encodeURIComponent(id) + '/company'; },
+        name: function (d) { return d.name || ('#' + d.id); },
+        sub: function (d) { return [d.phone, d.license_number].filter(Boolean).join(' · '); },
+        text: function (d, co) { return ((d.name || '') + ' ' + (d.phone || '') + ' ' + (d.license_number || '') + ' ' + co).toLowerCase(); }
+      }
+    };
+    var _raxMove = {
+      entity: 'devices',
+      data: { devices: [], users: [], drivers: [] },
+      loaded: { devices: false, users: false, drivers: false },
+      selected: { devices: {}, users: {}, drivers: {} }
+    };
+    // Încărcare inițială: companiile întâi (nume + selector destinație), apoi tab-ul curent.
+    async function raxMoveLoadAll() {
+      _raxMove.loaded = { devices: false, users: false, drivers: false };
+      if (!Array.isArray(companiesCache) || !companiesCache.length) { try { await raxLoadCompanies(); } catch (e) {} }
+      await raxMoveSwitch(_raxMove.entity || 'devices', true);
+    }
+    // Reîncarcă tab-ul curent după o mutare (datele s-au schimbat).
+    function raxMoveReload() { _raxMove.loaded[_raxMove.entity] = false; return raxMoveSwitch(_raxMove.entity, true); }
+    window.raxMoveSwitch = async function (entity, force) {
+      var cfg = RAX_MOVE_CFG[entity]; if (!cfg) return;
+      _raxMove.entity = entity;
+      ['devices', 'users', 'drivers'].forEach(function (e) { var b = $('rax-mv-tab-' + e); if (b) b.classList.toggle('primary', e === entity); });
+      var srch = $('rax-move-search'); if (srch) srch.placeholder = 'Caută ' + cfg.label + '…';
+      if (!_raxMove.loaded[entity] || force) {
+        var box = $('rax-move-list'); if (box) box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+        try {
+          var rows = await fetch(cfg.url, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+          _raxMove.data[entity] = Array.isArray(rows) ? rows : [];
+          _raxMove.loaded[entity] = true;
+        } catch (e) { _raxMove.data[entity] = []; }
+      }
+      raxMoveRender();
+    };
+    window.raxMoveRender = function () {
+      var box = $('rax-move-list'); if (!box) return;
+      var entity = _raxMove.entity, cfg = RAX_MOVE_CFG[entity];
+      var q = (($('rax-move-search') || {}).value || '').toLowerCase();
+      var coMap = {}; (companiesCache || []).forEach(function (c) { coMap[c.id] = c.name; });
+      var coOpts = (companiesCache || []).filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
+      // „Neasignat" e valid pentru vehicule/șoferi, dar NU pentru utilizatori: un cont non-super fără companie
+      // ar sări peste gating-ul de abonament/funcții (vezi server). Deci ascundem opțiunea pe tab-ul Utilizatori.
+      var nullOpt = (entity === 'users') ? '' : '<option value="">— neasignat —</option>';
+      var dest = $('rax-bulk-dest'); if (dest) dest.innerHTML = nullOpt + coOpts;
+      var sel = _raxMove.selected[entity];
+      var demo = _raxDemoIds();
+      var all = (_raxMove.data[entity] || []).filter(cfg.keep || function () { return true; }).filter(function (d) { return !demo[d.company_id]; });
+      var list = all.filter(function (d) { if (!q) return true; return cfg.text(d, coMap[d.company_id] || '').indexOf(q) >= 0; });
+      if (!list.length) { box.innerHTML = '<div class="rax-co-meta">' + cfg.empty + '</div>'; _raxUpdateMoveCount(); return; }
+      box.innerHTML = list.slice(0, 80).map(function (d) {
+        var id = String(d[cfg.idKey]);
+        var current = d.company_id != null ? (coMap[d.company_id] ? esc(coMap[d.company_id]) : '#' + d.company_id) : '<em>neasignat</em>';
+        var sub = cfg.sub(d);
+        return '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;padding:6px;border:1px solid var(--border);border-radius:6px;">' +
+          '<input type="checkbox" onchange="raxMoveCheck(\'' + esc(id) + '\', this.checked)" ' + (sel[id] ? 'checked' : '') + ' style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;">' +
+          '<div style="flex:1;min-width:120px;font-size:12px;"><strong>' + esc(cfg.name(d)) + '</strong>' + (sub ? ' · <span style="color:var(--text-muted)">' + esc(sub) + '</span>' : '') +
+          '<div style="font-size:10px;color:var(--text-muted);">acum: ' + current + '</div></div>' +
+          '<select class="rax-field" style="width:auto;margin:0;min-width:120px;" id="raxmv_' + esc(id) + '">' +
+            nullOpt + coOpts + '</select>' +
+          '<button class="rax-btn primary" onclick="raxMoveOne(\'' + esc(id) + '\')"><i class="fas fa-arrow-right"></i> Mută</button>' +
+        '</div>';
+      }).join('') + (list.length > 80 ? '<div class="rax-co-meta" style="margin-top:6px;">… primele 80. Filtrează pentru mai multe.</div>' : '');
+      list.slice(0, 80).forEach(function (d) {
+        var s = $('raxmv_' + d[cfg.idKey]); if (s) s.value = d.company_id != null ? String(d.company_id) : '';
+      });
+      _raxUpdateMoveCount();
+    };
+    function _raxUpdateMoveCount() {
+      var c = $('rax-move-count'); if (!c) return;
+      var sel = _raxMove.selected[_raxMove.entity] || {};
+      var n = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
+      c.textContent = n > 0 ? (n + ' selectate') : '';
+    }
+    // Companiile demo nu apar în uneltele de management (consistent cu restul dashboardului super-admin).
+    function _raxDemoIds() { var m = {}; (companiesCache || []).forEach(function (c) { if (c.is_demo) m[c.id] = true; }); return m; }
+    window.raxMoveCheck = function (id, on) {
+      var sel = _raxMove.selected[_raxMove.entity];
+      if (on) sel[id] = true; else delete sel[id];
+      _raxUpdateMoveCount();
+    };
+    window.raxMoveToggleAll = function (on) {
+      var entity = _raxMove.entity, cfg = RAX_MOVE_CFG[entity];
+      var q = (($('rax-move-search') || {}).value || '').toLowerCase();
+      var coMap = {}; (companiesCache || []).forEach(function (c) { coMap[c.id] = c.name; });
+      var sel = _raxMove.selected[entity];
+      var demo = _raxDemoIds();
+      (_raxMove.data[entity] || []).filter(cfg.keep || function () { return true; }).filter(function (d) { return !demo[d.company_id]; }).forEach(function (d) {
+        if (q && cfg.text(d, coMap[d.company_id] || '').indexOf(q) < 0) return;
+        var id = String(d[cfg.idKey]);
+        if (on) sel[id] = true; else delete sel[id];
+      });
+      raxMoveRender();
+    };
+    window.raxMoveOne = async function (id) {
+      var entity = _raxMove.entity, cfg = RAX_MOVE_CFG[entity];
+      var s = $('raxmv_' + id); if (!s) return;
+      var d = (_raxMove.data[entity] || []).find(function (x) { return String(x[cfg.idKey]) === String(id); }) || {};
+      var newCo = s.value === '' ? null : parseInt(s.value);
+      if ((d.company_id == null && newCo == null) || (d.company_id != null && newCo === d.company_id)) { raxToast && raxToast('Deja acolo', 'error'); return; }
+      var destName = newCo == null ? 'NEASIGNAT' : '„' + s.options[s.selectedIndex].text + '"';
+      if (!confirm('Mută „' + cfg.name(d) + '" la ' + destName + '?')) return;
+      try {
+        var r = await fetch(cfg.moveUrl(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) });
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast && raxToast('Eroare: ' + (e.error || r.status), 'error'); return; }
+        delete _raxMove.selected[entity][String(id)];
+        raxToast && raxToast('Mutat ✓', 'success');
+        raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
+      } catch (e) { raxToast && raxToast('Eroare de rețea', 'error'); }
+    };
+    window.raxMoveBulk = async function () {
+      var entity = _raxMove.entity, cfg = RAX_MOVE_CFG[entity];
+      var sel = _raxMove.selected[entity];
+      var ids = Object.keys(sel).filter(function (k) { return sel[k]; });
+      if (!ids.length) { raxToast && raxToast('Bifează întâi', 'error'); return; }
+      var dd = $('rax-bulk-dest'); var newCo = dd.value === '' ? null : parseInt(dd.value);
+      var destName = newCo == null ? 'NEASIGNAT' : '„' + dd.options[dd.selectedIndex].text + '"';
+      if (!confirm('Mută ' + ids.length + ' ' + cfg.label + ' la ' + destName + '?')) return;
+      var ok = 0, errors = 0;
+      var queue = ids.slice(), pending = [];
+      function next() {
+        if (!queue.length) return null;
+        var id = queue.shift();
+        return fetch(cfg.moveUrl(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) })
+          .then(function (r) { if (r.ok) ok++; else errors++; })
+          .catch(function () { errors++; })
+          .then(function () { return next(); });
+      }
+      for (var i = 0; i < Math.min(8, queue.length); i++) pending.push(next());
+      await Promise.all(pending);
+      _raxMove.selected[entity] = {};
+      raxToast && raxToast(ok + ' mutate ✓' + (errors ? ', ' + errors + ' erori' : ''), errors ? 'error' : 'success');
+      raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
     };
     window.raxCreateCompany = async function () {
       var name = $('rax-co-name').value.trim(), u = $('rax-co-admin-user').value.trim(), p = $('rax-co-admin-pass').value;
