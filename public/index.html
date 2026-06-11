@@ -2450,6 +2450,7 @@
     .rep-interval-title { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--text-primary); margin:2px 0 1px; }
     .rep-interval-title i { color:var(--accent); }
     #hotspot-panel .rep-dt-input { margin-bottom:6px; }
+    .rep-dt-inline { width:auto; min-width:122px; }
     .flatpickr-calendar { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.28); color:var(--text-primary); }
     .flatpickr-calendar.arrowTop:before { border-bottom-color:var(--border); }
     .flatpickr-calendar.arrowTop:after { border-bottom-color:var(--bg-card); }
@@ -4680,13 +4681,17 @@
       const el = document.getElementById(id); if (!el) return;
       if (el._fp) el._fp.setDate(val, false); else el.value = val;
     }
-    function initRangePicker(fromId, toId) {
+    function initRangePicker(fromId, toId, opts) {
+      opts = opts || {};
       if (typeof flatpickr === 'undefined') return;
       const elFrom = document.getElementById(fromId), elTo = document.getElementById(toId);
       if (!elFrom || !elTo || elFrom._fp) return;
       elFrom.type = 'text'; elTo.type = 'text';
       const ro = (flatpickr.l10ns && flatpickr.l10ns.ro) ? 'ro' : 'default';
-      const common = { enableTime:true, time_24hr:true, dateFormat:'Y-m-d\\TH:i', altInput:true, altFormat:'d.m.Y, H:i', altInputClass:'rep-dt-input', locale:ro, minuteIncrement:1, disableMobile:true };
+      const cls = 'rep-dt-input' + (opts.inline ? ' rep-dt-inline' : '');
+      const common = opts.dateOnly
+        ? { dateFormat:'Y-m-d', altInput:true, altFormat:'d.m.Y', altInputClass:cls, locale:ro, disableMobile:true }
+        : { enableTime:true, time_24hr:true, dateFormat:'Y-m-d\\TH:i', altInput:true, altFormat:'d.m.Y, H:i', altInputClass:cls, locale:ro, minuteIncrement:1, disableMobile:true };
       elFrom._fp = flatpickr(elFrom, Object.assign({}, common, { onChange:(sel)=>{ if (elTo._fp && sel[0]) elTo._fp.set('minDate', sel[0]); } }));
       elTo._fp = flatpickr(elTo, common);
     }
@@ -8061,6 +8066,7 @@
       reportImei = imei;
       const modal = document.getElementById('report-modal');
       modal.classList.add('visible');
+      initRangePicker('report-from', 'report-to', { dateOnly: true, inline: true });
 
       const data = devices.get(imei);
       document.getElementById('report-vehicle-name').textContent = data?.name || imei;
@@ -8123,8 +8129,8 @@
 
       // Use local date format to avoid UTC timezone shift
       const pad = (n) => String(n).padStart(2, '0');
-      document.getElementById('report-from').value = from.getFullYear() + '-' + pad(from.getMonth()+1) + '-' + pad(from.getDate());
-      document.getElementById('report-to').value = to.getFullYear() + '-' + pad(to.getMonth()+1) + '-' + pad(to.getDate());
+      dtSet('report-from', from.getFullYear() + '-' + pad(from.getMonth()+1) + '-' + pad(from.getDate()));
+      dtSet('report-to', to.getFullYear() + '-' + pad(to.getMonth()+1) + '-' + pad(to.getDate()));
 
       generateReport();
     }
