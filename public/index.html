@@ -3762,6 +3762,15 @@
         loadSettingsTab();
       } catch (e) { alert('Eroare: ' + e.message); }
     }
+    async function usSetThreshold(key, val) {
+      var v = val === '' || val == null ? null : Number(val);
+      var body = { alert_thresholds: {} }; body.alert_thresholds[key] = (v != null && Number.isFinite(v)) ? v : null;
+      try {
+        var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        if (!r.ok) { (window.raxToast || alert)('Eroare la salvare prag', 'error'); return; }
+        (window.raxToast || function () {})('Prag salvat ✓', 'success');
+      } catch (e) { (window.raxToast || alert)('Eroare de rețea', 'error'); }
+    }
 
     // ─── Vehicule (management) ───
     let vehAll = [], vehScope = 'active', vehGroups = {}, vehDrivers = {};

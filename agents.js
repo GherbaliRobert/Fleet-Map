@@ -36,20 +36,42 @@ async function _vehLimit(ctx, imei) {
 }
 
 // ─── RA Watch — monitorizare 24/7 (anomalii operaționale) ───
-// RA Watch — restrâns la DOAR offline (> OFFLINE_MIN, implicit 60 min).
-// Restul (overspeed, ralanti, scădere combustibil) e acoperit de RA Optimize + agenți dedicați (nu se duplică aici).
+// RA Watch — alerte de monitorizare:
+//  (1) Offline > OFFLINE_MIN (implicit 60 min, max 24h)
+//  (2) Scădere combustibil > prag (implicit FUEL_DROP_L = 15L; configurabil per companie prin ctx.alertThresholds.fuelDropL)
 async function raWatch(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; const now = Date.now();
+  const thresholds = (ctx && ctx.alertThresholds) || {};
+  const offlineMin = Number.isFinite(thresholds.offlineMin) && thresholds.offlineMin > 0 ? thresholds.offlineMin : OFFLINE_MIN;
+  const fuelDropL = Number.isFinite(thresholds.fuelDropL) && thresholds.fuelDropL > 0 ? thresholds.fuelDropL : FUEL_DROP_L;
   for (const imei of imeis) {
     const live = livePositions.get(imei);
-    if (!live || !live.timestamp) continue;
     const name = nameOf(live, imei);
-    const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
-    // Alertăm DOAR pe offline > 1h (configurabil în OFFLINE_MIN), max 24h ca să nu spamăm pe vehicule abandonate
-    if (ageMin > OFFLINE_MIN && ageMin < 24 * 60) {
-      const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
-      const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
-      findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste o oră. Verifică dispozitivul/alimentarea/sim-ul.' });
+    // (1) Offline
+    if (live && live.timestamp) {
+      const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
+      if (ageMin > offlineMin && ageMin < 24 * 60) {
+        const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
+        const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
+        findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + Math.round(offlineMin) + ' min. Verifică dispozitivul/alimentarea/sim-ul.' });
+      }
+    }
+    // (2) Scădere combustibil (peste pragul configurat, în istoricul zilei curente)
+    if (ctx.hist) {
+      try {
+        const pts = await ctx.hist(imei);
+        if (pts && pts.length) {
+          let prevFuel = null, drop = 0;
+          for (const p of pts) {
+            const fl = fuelL(p);
+            if (fl != null) {
+              if (prevFuel != null && (prevFuel - fl) >= fuelDropL) drop = Math.max(drop, prevFuel - fl);
+              prevFuel = fl;
+            }
+          }
+          if (drop) findings.push({ imei, severity: 'critical', agent: 'watch', fkey: 'fuel_' + imei, title: name + ': scădere combustibil ~' + Math.round(drop) + ' L', body: 'Posibil furt sau scurgere (prag ' + Math.round(fuelDropL) + ' L). Verifică traseul și opririle.' });
+        }
+      } catch (e) { /* lipsă date istoric — fără alertă */ }
     }
   }
   return { findings };
@@ -193,7 +215,7 @@ async function raDispatch(ctx) {
 }
 
 const AGENTS = {
-  watch: { name: 'RA Watch', desc: 'Monitorizare conexiune — alertă când un vehicul e offline (fără date) peste 1 oră.', run: raWatch },
+  watch: { name: 'RA Watch', desc: 'Monitorizare — vehicule offline (> prag minute) + scădere combustibil (> prag litri). Pragurile sunt configurabile per companie în Setări.', run: raWatch },
   dispatch: { name: 'RA Dispatch', desc: 'Alocare curse — vehicule disponibile acum + cel mai apropiat de o destinație.', run: raDispatch },
   care: { name: 'RA Care', desc: 'Mentenanță predictivă — revizii, ITP și asigurări scadente (pe dată sau pe km).', run: raCare },
   optimize: { name: 'RA Optimize', desc: 'Eco-driving & costuri — scor șofer, frânări/accelerări bruște, risipă la ralanti.', run: raOptimize },
