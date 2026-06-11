@@ -2448,7 +2448,6 @@
     .rep-dt-input:focus { outline:none; border-color:var(--accent); }
     .rep-interval-title { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--text-primary); margin:2px 0 1px; }
     .rep-interval-title i { color:var(--accent); }
-    .rep-interval-title span { font-weight:400; font-size:12px; color:var(--text-muted); }
     .flatpickr-calendar { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.28); color:var(--text-primary); }
     .flatpickr-calendar.arrowTop:before { border-bottom-color:var(--border); }
     .flatpickr-calendar.arrowTop:after { border-bottom-color:var(--bg-card); }
@@ -2928,7 +2927,7 @@
         <select id="rep-type" onchange="onRepType()" style="display:none;"></select>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
           <label class="rep-f" style="grid-column:1 / -1;"><span>Vehicul</span><select id="rep-imei"></select></label>
-          <div class="rep-interval-title" style="grid-column:1 / -1;"><i class="far fa-clock"></i> Interval orar <span>(de la – până la)</span></div>
+          <div class="rep-interval-title" style="grid-column:1 / -1;"><i class="far fa-clock"></i> Interval orar</div>
           <label class="rep-f"><span>De la</span><input type="datetime-local" id="rep-from"></label>
           <label class="rep-f"><span>Până la</span><input type="datetime-local" id="rep-to"></label>
         </div>
