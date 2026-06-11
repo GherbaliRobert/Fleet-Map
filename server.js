@@ -1334,16 +1334,23 @@ async function _getEnabledAgents(companyId) {
   if (companyId == null) return agents ? Object.keys(agents.AGENTS) : []; // super-admin fără companie → vede tot
   try { const co = await db.getCompanyById(companyId); return plans.enabledAgentsFor(co); } catch (e) { return []; }
 }
+// SPECS canonice — sursă unică de adevăr pentru reader + writer (anti-divergență)
+const ALERT_THRESHOLD_SPECS = [
+  { k: 'offlineMin', min: 5, max: 1440, round: true },     // RA Watch — offline (min)
+  { k: 'fuelDropL', min: 1, max: 1000, round: true },      // RA Watch — scădere combustibil (L)
+  { k: 'idleMaxMin', min: 5, max: 1440, round: true },     // RA Watch — ralanti prelungit (min)
+  { k: 'ecoScoreMin', min: 0, max: 100, round: true },     // RA Optimize — scor minim eco-driving
+  { k: 'serviceSoonKm', min: 100, max: 50000, round: true } // RA Care — km până la scadență
+];
 // Praguri alertă (RA Watch + RA Optimize + RA Care) — citite din companies.settings.alert_thresholds; fallback la defaulturi (agents.js)
 function _alertThresholdsFromSettings(settings) {
   const s = (settings && (typeof settings === 'string' ? (function () { try { return JSON.parse(settings); } catch (e) { return {}; } })() : settings)) || {};
   const t = s.alert_thresholds || {};
   const out = {};
-  const n1 = Number(t.offlineMin); if (Number.isFinite(n1) && n1 > 0) out.offlineMin = Math.min(n1, 24 * 60);
-  const n2 = Number(t.fuelDropL); if (Number.isFinite(n2) && n2 > 0) out.fuelDropL = Math.min(n2, 1000);
-  const n3 = Number(t.idleMaxMin); if (Number.isFinite(n3) && n3 > 0) out.idleMaxMin = Math.min(n3, 24 * 60);
-  const n4 = Number(t.ecoScoreMin); if (Number.isFinite(n4) && n4 >= 0 && n4 <= 100) out.ecoScoreMin = n4;
-  const n5 = Number(t.serviceSoonKm); if (Number.isFinite(n5) && n5 > 0) out.serviceSoonKm = Math.min(n5, 100000);
+  ALERT_THRESHOLD_SPECS.forEach(function (sp) {
+    const n = Number(t[sp.k]);
+    if (Number.isFinite(n) && n >= sp.min && n <= sp.max) out[sp.k] = sp.round ? Math.round(n) : n;
+  });
   return out;
 }
 async function _getAlertThresholds(companyId) {
@@ -4037,7 +4044,7 @@ app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
     const a = getAuth(req);
     if (a.companyId == null) return res.json({ ui_defaults: {}, alert_thresholds: {} }); // super-admin fără companie
     const s = await db.getCompanySettings(a.companyId);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {} });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
@@ -4046,7 +4053,7 @@ app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
     if (a.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
     const next = await _applyCompanySettingsPatch(a.companyId, req.body || {});
     auditReq(req, 'update', 'company_settings', a.companyId, { keys: Object.keys(req.body || {}) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents });
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Helper centralizat ca să gestionez și enabled_agents (whitelist pe cheia validă), nu doar ui_defaults
@@ -4068,17 +4075,10 @@ async function _applyCompanySettingsPatch(companyId, body) {
     fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
     next.features = f;
   }
-  // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie.
+  // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie (SPECS canonice — vezi sus).
   if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {
     const a = Object.assign({}, cur.alert_thresholds || {});
-    const SPECS = [
-      { k: 'offlineMin', min: 5, max: 1440, round: true },     // RA Watch — offline (min)
-      { k: 'fuelDropL', min: 1, max: 1000, round: true },      // RA Watch — scădere combustibil (L)
-      { k: 'idleMaxMin', min: 5, max: 1440, round: true },     // RA Watch — ralanti prelungit (min)
-      { k: 'ecoScoreMin', min: 0, max: 100, round: true },     // RA Optimize — scor minim eco-driving
-      { k: 'serviceSoonKm', min: 100, max: 50000, round: true } // RA Care — km până la scadență
-    ];
-    SPECS.forEach(function (sp) {
+    ALERT_THRESHOLD_SPECS.forEach(function (sp) {
       if (Object.prototype.hasOwnProperty.call(body.alert_thresholds, sp.k)) {
         const v = body.alert_thresholds[sp.k];
         if (v === null) { delete a[sp.k]; return; }
@@ -4102,7 +4102,7 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const s = await db.getCompanySettings(id);
     const planAgents = plans && plans.enabledAgentsFor(co);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: s.features || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
@@ -4110,7 +4110,7 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const next = await _applyCompanySettingsPatch(id, req.body || {});
     auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents });
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Super-admin: funcții (module) per companie — checkbox-uri (agents / ai_assistant / etransport / tahograf)

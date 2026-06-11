@@ -2746,23 +2746,23 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când un vehicul nu trimite date de peste atâtea minute">
                 <span><i class="fas fa-wifi" style="color:var(--accent);font-size:9px;"></i> RA Watch — Offline (minute)</span>
-                <input type="number" id="us-th-offline" min="5" max="1440" placeholder="60" onblur="usSetThreshold('offlineMin', this.value)" style="margin-top:4px;">
+                <input type="number" id="us-th-offline" min="5" max="1440" placeholder="60" step="1" onblur="usSetThreshold('offlineMin', this.value)" style="margin-top:4px;">
               </label>
               <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă la scădere bruscă de combustibil (posibil furt)">
                 <span><i class="fas fa-gas-pump" style="color:var(--accent);font-size:9px;"></i> RA Watch — Scădere combustibil (litri)</span>
-                <input type="number" id="us-th-fuel" min="1" max="1000" placeholder="15" onblur="usSetThreshold('fuelDropL', this.value)" style="margin-top:4px;">
+                <input type="number" id="us-th-fuel" min="1" max="1000" placeholder="15" step="1" onblur="usSetThreshold('fuelDropL', this.value)" style="margin-top:4px;">
               </label>
               <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când motorul rulează staționat (ralanti) peste atâtea minute consecutive">
                 <span><i class="fas fa-pause-circle" style="color:var(--accent);font-size:9px;"></i> RA Watch — Ralanti (minute)</span>
-                <input type="number" id="us-th-idle" min="5" max="1440" placeholder="120" onblur="usSetThreshold('idleMaxMin', this.value)" style="margin-top:4px;">
+                <input type="number" id="us-th-idle" min="5" max="1440" placeholder="120" step="1" onblur="usSetThreshold('idleMaxMin', this.value)" style="margin-top:4px;">
               </label>
               <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Optimize — alertă când scorul eco al unui șofer scade sub această valoare">
                 <span><i class="fas fa-leaf" style="color:var(--accent);font-size:9px;"></i> RA Optimize — Scor eco minim (0-100)</span>
-                <input type="number" id="us-th-eco" min="0" max="100" placeholder="60" onblur="usSetThreshold('ecoScoreMin', this.value)" style="margin-top:4px;">
+                <input type="number" id="us-th-eco" min="0" max="100" placeholder="60" step="1" onblur="usSetThreshold('ecoScoreMin', this.value)" style="margin-top:4px;">
               </label>
               <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);grid-column:1 / -1;" title="RA Care — cu câți km înainte de scadența unei revizii să apară alerta">
                 <span><i class="fas fa-wrench" style="color:var(--accent);font-size:9px;"></i> RA Care — Avertisment service (km înainte de scadență)</span>
-                <input type="number" id="us-th-srv" min="100" max="50000" placeholder="1500" onblur="usSetThreshold('serviceSoonKm', this.value)" style="margin-top:4px;">
+                <input type="number" id="us-th-srv" min="100" max="50000" placeholder="1500" step="1" onblur="usSetThreshold('serviceSoonKm', this.value)" style="margin-top:4px;">
               </label>
             </div>
           </div>
@@ -3719,9 +3719,9 @@
             var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
             var dft = cs.ui_defaults || {};
             coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
-            // Populez pragurile alertă (RA Watch + RA Optimize + RA Care)
+            // Populez pragurile alertă (RA Watch + RA Optimize + RA Care). Setez și data-initial pentru anti-no-change.
             var thr = cs.alert_thresholds || {};
-            function _setThrInput(id, key) { var el = document.getElementById(id); if (el) el.value = thr[key] != null ? thr[key] : ''; }
+            function _setThrInput(id, key) { var el = document.getElementById(id); if (el) { el.value = thr[key] != null ? thr[key] : ''; el.dataset.initial = el.value; } }
             _setThrInput('us-th-offline', 'offlineMin');
             _setThrInput('us-th-fuel', 'fuelDropL');
             _setThrInput('us-th-idle', 'idleMaxMin');
@@ -3778,14 +3778,52 @@
         loadSettingsTab();
       } catch (e) { alert('Eroare: ' + e.message); }
     }
+    // Specs client-side (oglindă a ALERT_THRESHOLD_SPECS din server) — pt. validare imediată, fără round-trip
+    const US_THRESHOLD_SPECS = {
+      offlineMin: { min: 5, max: 1440, default: 60, inputId: 'us-th-offline' },
+      fuelDropL: { min: 1, max: 1000, default: 15, inputId: 'us-th-fuel' },
+      idleMaxMin: { min: 5, max: 1440, default: 120, inputId: 'us-th-idle' },
+      ecoScoreMin: { min: 0, max: 100, default: 60, inputId: 'us-th-eco' },
+      serviceSoonKm: { min: 100, max: 50000, default: 1500, inputId: 'us-th-srv' }
+    };
+    // Coadă pentru serializare PUT-uri concurente (evită race condition între input-uri adiacente)
+    var _usThrQueue = Promise.resolve();
     async function usSetThreshold(key, val) {
-      var v = val === '' || val == null ? null : Number(val);
-      var body = { alert_thresholds: {} }; body.alert_thresholds[key] = (v != null && Number.isFinite(v)) ? v : null;
-      try {
-        var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
-        if (!r.ok) { (window.raxToast || alert)('Eroare la salvare prag', 'error'); return; }
-        (window.raxToast || function () {})('Prag salvat ✓', 'success');
-      } catch (e) { (window.raxToast || alert)('Eroare de rețea', 'error'); }
+      const sp = US_THRESHOLD_SPECS[key]; if (!sp) return;
+      const el = document.getElementById(sp.inputId);
+      // Skip dacă valoarea n-a fost modificată (data-initial)
+      if (el && el.dataset.initial === String(val)) return;
+      // Validare client
+      const raw = (val == null ? '' : String(val)).trim();
+      let body = { alert_thresholds: {} };
+      if (raw === '') {
+        body.alert_thresholds[key] = null; // reset intenționat
+      } else {
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < sp.min || n > sp.max) {
+          (window.raxToast || alert)('Valoare invalidă (interval ' + sp.min + '-' + sp.max + '). Pragul anterior păstrat.', 'error');
+          // restaurez valoarea inițială
+          if (el) el.value = el.dataset.initial || '';
+          return;
+        }
+        body.alert_thresholds[key] = Math.round(n);
+      }
+      // Serializez prin coadă (evită race între PUT-uri paralele)
+      _usThrQueue = _usThrQueue.then(async () => {
+        try {
+          const r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+          if (!r.ok) { (window.raxToast || alert)('Eroare la salvare prag', 'error'); return; }
+          const out = await r.json().catch(() => ({}));
+          // Confirm cu valoarea returnată de server (poate fi clampată/rotunjită)
+          const saved = out.alert_thresholds && out.alert_thresholds[key];
+          if (el) {
+            el.value = saved != null ? saved : '';
+            el.dataset.initial = el.value;
+          }
+          (window.raxToast || function () {})('Prag salvat ✓', 'success');
+        } catch (e) { (window.raxToast || alert)('Eroare de rețea', 'error'); }
+      });
+      return _usThrQueue;
     }
 
     // ─── Vehicule (management) ───
@@ -6015,6 +6053,8 @@
 
       const usedKeys = new Set();
       let html = '';
+      // Super-admin vede toate IO-urile (brute, pt. mapare). Adminii/userii obișnuiți văd doar date utile.
+      const _ioShowAll = isSuperUser();
 
       const categoryIcons = {
         'Motor / Vehicul': 'fa-cog',
@@ -6070,6 +6110,8 @@
       const maxConstruct = dev && dev.max_weight_construct ? dev.max_weight_construct : null;
 
       for (const [category, keys] of Object.entries(IO_CATEGORIES)) {
+        // Non-super: ascunde categoriile tehnice (IO brut). Cheile rămase ajung în „avansate", oricum ascunse.
+        if (!_ioShowAll && !CUSTOMER_IO_CATEGORIES.has(category)) continue;
         // Special renderer for Combustibil - show both sources side by side with analog input as secondary info
         if (category === 'Combustibil') {
           const tank = flatIo.tank_level_liters;
@@ -6264,10 +6306,14 @@
       if (_mappedRows.length) {
         html += '<div style="margin-top:8px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;"><i class="fas fa-sliders-h"></i> Senzori personalizați</div>' + _mappedRows.join('') + '</div>';
       }
-      if (_advRows.length) {
+      // „Date tehnice avansate" (IO brut nemapat) — doar pentru super-admin.
+      if (_ioShowAll && _advRows.length) {
         html += '<details class="io-advanced"><summary><i class="fas fa-ellipsis-h"></i> Date tehnice avansate (' + _advRows.length + ')</summary><div style="margin-top:6px;">' + _advRows.join('') + '</div></details>';
       }
 
+      if (!html) {
+        html = '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px;">Niciun senzor relevant pentru acest vehicul (carburant, consum etc.).</p>';
+      }
       content.innerHTML = html;
     }
 
@@ -7080,6 +7126,14 @@
       // FMS/J1939 (trucks)
       'FMS (Camioane)': ['fms_fuel_level', 'fms_fuel_consumed', 'fms_fuel_rate', 'fms_speed', 'fms_rpm', 'fms_coolant_temp', 'fms_pedal_position', 'fms_engine_hours', 'fms_total_mileage']
     };
+
+    // Categorii „prietenoase" (date utile + camion) arătate adminilor/userilor obișnuiți.
+    // Restul IO-urilor sunt brute/tehnice (tensiuni, I/O digital/analog, odometru brut, flag-uri) →
+    // vizibile DOAR pentru super-admin, care le mapează la nume prietenoase din „Debug IO".
+    const CUSTOMER_IO_CATEGORIES = new Set([
+      'Combustibil', 'Senzori BLE Combustibil', 'Senzori LLS Combustibil (RS485)',
+      'AdBlue', 'Vehicul', 'Sarcina Axe (Camion)', 'Mentenanta Camion', 'Tahograf', 'FMS (Camioane)'
+    ]);
 
     function formatIoValue(key, value) {
       if (value === undefined || value === null) return '-';

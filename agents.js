@@ -50,10 +50,10 @@ async function raWatch(ctx) {
   for (const imei of imeis) {
     const live = livePositions.get(imei);
     const name = nameOf(live, imei);
-    // (1) Offline
+    // (1) Offline. Garda superioară de 7 zile (era 24h) — nu mai colizionează cu pragul user-ales până la 1440 min.
     if (live && live.timestamp) {
       const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
-      if (ageMin > offlineMin && ageMin < 24 * 60) {
+      if (ageMin > offlineMin && ageMin < 7 * 24 * 60) {
         const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
         const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
         findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + Math.round(offlineMin) + ' min. Verifică dispozitivul/alimentarea/sim-ul.' });
@@ -73,12 +73,19 @@ async function raWatch(ctx) {
             }
           }
           if (drop) findings.push({ imei, severity: 'critical', agent: 'watch', fkey: 'fuel_' + imei, title: name + ': scădere combustibil ~' + Math.round(drop) + ' L', body: 'Posibil furt sau scurgere (prag ' + Math.round(fuelDropL) + ' L). Verifică traseul și opririle.' });
-          // (3) Ralanti prelungit (motor pornit + viteză ≤ 3 km/h, neîntrerupt)
-          let idleStart = null, idleMaxMin = 0;
+          // (3) Ralanti prelungit (motor pornit + viteză ≤ 3 km/h, neîntrerupt). Gap între puncte > 5min = discontinuitate (anti-fals-pozitiv pe istoric rar).
+          const GAP_MAX_MS = 5 * 60 * 1000;
+          let idleStart = null, idleLastT = null, idleMaxMin = 0;
           for (const p of pts) {
-            const idling = io(p).ignition === 1 && (p.speed || 0) <= 3;
-            if (idling) { const t = tms(p); if (!idleStart) idleStart = t; idleMaxMin = Math.max(idleMaxMin, (t - idleStart) / 60000); }
-            else idleStart = null;
+            const t = tms(p); const idling = io(p).ignition === 1 && (p.speed || 0) <= 3;
+            if (idling) {
+              if (!idleStart) { idleStart = t; idleLastT = t; }
+              else if (idleLastT != null && (t - idleLastT) > GAP_MAX_MS) {
+                // gap mare → reset (perioada veche nu mai e relevantă, contează doar continuitatea)
+                idleStart = t; idleLastT = t;
+              } else { idleLastT = t; }
+              idleMaxMin = Math.max(idleMaxMin, (idleLastT - idleStart) / 60000);
+            } else { idleStart = null; idleLastT = null; }
           }
           if (idleMaxMin >= idleMaxMinPrag) findings.push({ imei, severity: 'info', agent: 'watch', fkey: 'idle_' + imei, title: name + ': ralanti ~' + Math.round(idleMaxMin) + ' min azi', body: 'Motor pornit, staționat îndelung (peste ' + Math.round(idleMaxMinPrag) + ' min). Combustibil irosit.' });
         }
