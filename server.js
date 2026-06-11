@@ -984,6 +984,18 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
+// ─── Setări sistem (cheie-valoare în settings) cu cache scurt ───
+let _sysCache = null, _sysTs = 0;
+async function getSystemSettings() {
+  if (_sysCache && (Date.now() - _sysTs) < 15000) return _sysCache;
+  let ann = '', auto = null, off = null, spd = null;
+  try { [ann, auto, off, spd] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit')]); } catch (e) {}
+  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90) };
+  _sysTs = Date.now();
+  return _sysCache;
+}
+function invalidateSystemSettings() { _sysCache = null; }
+
 // Utilizatorul curent (merge atât cu sesiune cât și cu cheie API)
 app.get('/api/me', async (req, res) => {
   const a = getAuth(req);
@@ -995,9 +1007,12 @@ app.get('/api/me', async (req, res) => {
   } catch (e) { /* ignore */ }
   // super-admin (fără companie) sau plan necunoscut → toate funcțiile disponibile
   if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
+  let sys = { announcement: '', offline_minutes: 65 };
+  try { const s = await getSystemSettings(); sys = { announcement: s.announcement, offline_minutes: s.offline_minutes }; } catch (e) {}
   res.json({
     username: a.username, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
-    isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access
+    isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access,
+    announcement: sys.announcement, offline_minutes: sys.offline_minutes
   });
 });
 
@@ -1400,6 +1415,7 @@ app.get('/api/dispatch/suggest', requireAuth, withScope, async (req, res) => {
 async function runAgentsWorker() {
   if (!agents) return;
   try {
+    try { if (!(await getSystemSettings()).agents_auto) return; } catch (e) {} // toggle global din Setări sistem
     const companies = await db.getCompanies();
     for (const co of companies) {
       if (co.is_demo) continue;
@@ -2202,6 +2218,23 @@ app.delete('/api/devices/:imei/io-mappings/:ioId', requireAuth, requireSuperadmi
     const next = await db.deleteIoMapping(req.params.imei, ioId);
     auditReq(req, 'delete', 'io-mapping', req.params.imei, { ioId });
     res.json({ ok: true, mappings: next });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Setări sistem (super-admin): banner anunț, agenți auto, praguri ───
+app.get('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await getSystemSettings()); } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (b.announcement !== undefined) await db.setSetting('announcement', String(b.announcement || '').slice(0, 500));
+    if (b.agents_auto !== undefined) await db.setSetting('agents_auto', b.agents_auto ? 'on' : 'off');
+    if (b.offline_minutes !== undefined) { const n = parseInt(b.offline_minutes); if (Number.isFinite(n) && n >= 5 && n <= 1440) await db.setSetting('offline_minutes', String(n)); }
+    if (b.default_speed_limit !== undefined) { const n = parseInt(b.default_speed_limit); if (Number.isFinite(n) && n >= 10 && n <= 200) await db.setSetting('default_speed_limit', String(n)); }
+    invalidateSystemSettings();
+    auditReq(req, 'update', 'system-settings', null, { keys: Object.keys(b) });
+    res.json({ ok: true, settings: await getSystemSettings() });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
