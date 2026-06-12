@@ -9088,7 +9088,7 @@
     window.raxResetIoOverride = async function (id) {
       if (!confirm('Resetează io_' + id + ' la valorile default?')) return;
       try {
-        var r = await fetch('/api/io-catalog/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: 'null' });
+        var r = await fetch('/api/io-catalog/' + id, { method: 'DELETE', credentials: 'same-origin' });
         if (!r.ok) { (window.raxToast || alert)('Eroare la reset', 'error'); return; }
         (window.raxToast || function () {})('Reset ✓', 'success');
         await loadIoCatalog(); raxRenderIoEditor();

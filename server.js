@@ -4162,15 +4162,15 @@ app.get('/api/io-catalog', requireAuth, async (req, res) => {
     res.json({ catalog: merged, categories: categories, overrideCount: Object.keys(overrides).length });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// PUT override pentru un ID (super-admin). Body: { name_ro, unit, multiplier, category, desc_ro } (toate opționale)
-// Body cu toate câmpurile null/undefined sau body===null → șterge override-ul.
+// PUT override pentru un ID (super-admin). Body: { name_ro, unit, multiplier, category, desc_ro } (toate opționale).
+// Pentru reset complet la default folosește DELETE sau ?reset=1 în URL.
 app.put('/api/io-catalog/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (!Number.isFinite(id) || id < 1 || id > 99999) return res.status(400).json({ error: 'ID invalid (1-99999)' });
     let overrides = {};
     try { const raw = await db.getSetting('io_catalog_overrides'); overrides = raw ? JSON.parse(raw) : {}; } catch (e) { overrides = {}; }
-    if (req.body === null) {
+    if (req.query.reset === '1' || req.body === null) {
       delete overrides[id];
     } else {
       const b = req.body || {};
@@ -4196,6 +4196,19 @@ app.put('/api/io-catalog/:id', requireAuth, requireSuperadmin, async (req, res) 
     await db.setSetting('io_catalog_overrides', JSON.stringify(overrides));
     auditReq(req, 'update', 'io_catalog', String(id), { keys: Object.keys(req.body || {}) });
     res.json({ ok: true, override: overrides[id] || null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// DELETE override (super-admin) — alternativă convenabilă la PUT ?reset=1
+app.delete('/api/io-catalog/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    let overrides = {};
+    try { const raw = await db.getSetting('io_catalog_overrides'); overrides = raw ? JSON.parse(raw) : {}; } catch (e) { overrides = {}; }
+    delete overrides[id];
+    await db.setSetting('io_catalog_overrides', JSON.stringify(overrides));
+    auditReq(req, 'delete', 'io_catalog', String(id));
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
