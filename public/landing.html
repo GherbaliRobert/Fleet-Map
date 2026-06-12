@@ -269,6 +269,46 @@
       padding:4px 10px;border-radius:999px;
     }
 
+    /* ---------- AGENTI AI ---------- */
+    .section-ai{
+      background:radial-gradient(120% 60% at 50% 0%, rgba(63,224,125,.045), transparent 62%);
+      border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft);
+    }
+    .agents-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+    .agent{
+      position:relative;overflow:hidden;
+      background:linear-gradient(180deg,var(--surface) 0%,#121519 100%);
+      border:1px solid var(--border);border-radius:var(--radius);
+      padding:26px 24px;
+      transition:transform .3s var(--ease),border-color .3s var(--ease),box-shadow .3s var(--ease);
+    }
+    .agent::after{
+      content:"";position:absolute;inset:0;border-radius:var(--radius);
+      background:radial-gradient(120% 80% at 100% 0%, rgba(63,224,125,.12), transparent 55%);
+      opacity:0;transition:opacity .3s var(--ease);pointer-events:none;
+    }
+    .agent:hover{transform:translateY(-6px);border-color:rgba(63,224,125,.45);box-shadow:0 24px 50px -28px rgba(63,224,125,.4)}
+    .agent:hover::after{opacity:1}
+    .agent-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    .agent .ic{
+      width:50px;height:50px;border-radius:14px;flex:0 0 auto;
+      display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);
+      background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.25);
+    }
+    .agent .live{
+      margin-left:auto;display:inline-flex;align-items:center;gap:7px;
+      font-size:11.5px;font-weight:600;letter-spacing:.2px;color:#9fe9bd;
+      background:rgba(63,224,125,.07);border:1px solid rgba(63,224,125,.22);
+      padding:5px 11px;border-radius:999px;white-space:nowrap;
+    }
+    .agent .live .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2.2s infinite}
+    .agent .role{font-size:11.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+    .agent h3{font-size:19px;font-weight:700;margin-bottom:9px;letter-spacing:-.3px}
+    .agent p{color:var(--muted);font-size:14.5px;line-height:1.6}
+    .agents-foot{text-align:center;margin-top:34px}
+    .agents-foot a{display:inline-flex;align-items:center;gap:9px;color:var(--accent);font-weight:600;font-size:15px;transition:gap .2s var(--ease)}
+    .agents-foot a:hover{gap:14px}
+
     /* ---------- ABOUT ---------- */
     .about{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center}
     .about-media{position:relative}
@@ -401,7 +441,7 @@
 
     /* ---------- RESPONSIVE ---------- */
     @media (max-width:980px){
-      .features-grid{grid-template-columns:repeat(2,1fr)}
+      .features-grid,.agents-grid{grid-template-columns:repeat(2,1fr)}
       .pricing-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}
       .about{grid-template-columns:1fr;gap:36px}
       .about-media{order:-1}
@@ -412,7 +452,7 @@
       .hamburger{display:flex}
       .section{padding:72px 0}
       .hero{min-height:calc(100vh - 70px);padding:60px 0}
-      .features-grid{grid-template-columns:1fr}
+      .features-grid,.agents-grid{grid-template-columns:1fr}
       .stat + .stat{border-left:none}
       .stat{flex-basis:100%}
       .stat:not(:last-child){border-bottom:1px solid var(--border)}
@@ -447,6 +487,7 @@
 
         <div class="nav-links">
           <a href="#functii">Functii</a>
+          <a href="#agenti-ai">Agenti AI</a>
           <a href="#despre">Despre</a>
           <a href="#abonamente">Abonamente</a>
           <a href="#contact">Contact</a>
@@ -467,6 +508,7 @@
         <span class="ralogo" aria-label="RA Tracks"><img src="/logo-mark.png" style="height:32px" alt="RA"><span class="raw" style="font-size:25px">Tracks</span></span>
       </div>
       <a href="#functii">Functii</a>
+      <a href="#agenti-ai">Agenti AI</a>
       <a href="#despre">Despre</a>
       <a href="#abonamente">Abonamente</a>
       <a href="#contact">Contact</a>
@@ -555,6 +597,83 @@
           <p>Conecteaza RA Tracks cu sistemele tale — ERP, facturare sau TMS — prin API si webhooks. Datele tale, fluxul tau.</p>
           <span class="tag">API + Webhooks</span>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== AGENTI AI ===== -->
+  <section class="section section-ai" id="agenti-ai">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Inteligenta artificiala</span>
+        <h2>6 agenti AI care iti <span class="accent">supravegheaza flota 24/7</span></h2>
+        <p class="lead">Fiecare agent are o misiune clara si lucreaza non-stop in fundal. Tu primesti doar concluziile care conteaza — nu sute de notificari.</p>
+      </div>
+
+      <div class="agents-grid">
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-shield-halved"></i></div>
+            <span class="live"><span class="dot"></span> 24/7</span>
+          </div>
+          <div class="role">Supraveghere</div>
+          <h3>RA Watch</h3>
+          <p>Detecteaza vehicule offline, scaderi bruste de combustibil, ralanti excesiv si tahograf neconfigurat — si te alerteaza instant.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            <span class="live"><span class="dot"></span> Predictiv</span>
+          </div>
+          <div class="role">Mentenanta</div>
+          <h3>RA Care</h3>
+          <p>Te anunta din timp de revizii (pe km sau data), ITP si asigurari care urmeaza sa expire. Fara surprize, fara penalizari.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-leaf"></i></div>
+            <span class="live"><span class="dot"></span> Scor sofer</span>
+          </div>
+          <div class="role">Eco-driving</div>
+          <h3>RA Optimize</h3>
+          <p>Calculeaza un scor pentru fiecare sofer din accelerari si franari bruste, viteza si ralanti — vezi exact unde pierzi combustibil.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-scale-balanced"></i></div>
+            <span class="live"><span class="dot"></span> UE 561/2006</span>
+          </div>
+          <div class="role">Conformitate</div>
+          <h3>RA Compliance</h3>
+          <p>Verifica automat limitele de condus si odihna conform Reg. UE 561/2006 si semnaleaza depasirile inainte sa devina amenzi.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-envelope-open-text"></i></div>
+            <span class="live"><span class="dot"></span> Automat</span>
+          </div>
+          <div class="role">Raport zilnic</div>
+          <h3>RA Client</h3>
+          <p>Iti livreaza in fiecare dimineata un rezumat clar al flotei: kilometri parcursi, vehicule active si topul soferilor.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-route"></i></div>
+            <span class="live"><span class="dot"></span> Timp real</span>
+          </div>
+          <div class="role">Alocare curse</div>
+          <h3>RA Dispatch</h3>
+          <p>Iti arata instant ce vehicule sunt libere acum si care e cel mai aproape de o destinatie — aloci cursa in secunde.</p>
+        </div>
+      </div>
+
+      <div class="agents-foot reveal">
+        <a href="#abonamente">Toti cei 6 agenti sunt inclusi in planul Premium AI <i class="fa-solid fa-arrow-right"></i></a>
       </div>
     </div>
   </section>
