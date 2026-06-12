@@ -180,6 +180,8 @@ const ACTUAL_HTTP_PORT = TCP_PORT === HTTP_PORT ? HTTP_PORT + 1 : HTTP_PORT;
 
 // ─── Stare live (ultima poziție per IMEI, ținută în memorie) ───
 const livePositions = new Map();
+// Ultimele valori CAN cunoscute per imei — pentru carry-forward când motorul e oprit (pachet fără date CAN).
+const lastCanIo = new Map(); // imei -> { io: {can_*...}, ts }
 const activeConnections = new Map(); // IMEI -> socket info
 
 // ─── Debug log (circular buffer) ───
@@ -417,7 +419,11 @@ const tcpServer = net.createServer((socket) => {
       for (const record of parsed.records) {
         if (record.io) {
           // FMS (FMC650): valorile vin DEJA finale → NU aplicăm convertCanValue (scalările LV-CAN ar strica valorile).
-          if (_iface !== 'fms') {
+          // Excepție: litrii (fuel/AdBlue) vin în device ca ×10 (rezoluție 0,1 L) → /10. (Verificabil pe pachet real.)
+          if (_iface === 'fms') {
+            if (typeof record.io.can_fuel_level_liters === 'number') record.io.can_fuel_level_liters = record.io.can_fuel_level_liters / 10;
+            if (typeof record.io.can_adblue_level_liters === 'number') record.io.can_adblue_level_liters = record.io.can_adblue_level_liters / 10;
+          } else {
             for (const key of Object.keys(record.io)) {
               if (key.startsWith('can_')) {
                 record.io[key] = convertCanValue(key, record.io[key]);
@@ -468,6 +474,20 @@ const tcpServer = net.createServer((socket) => {
           vehicle_type: existing.vehicle_type || null,
           plate: existing.plate || null
         };
+        // ── Carry-forward CAN: când motorul e oprit, pachetul nu conține chei can_* → păstrăm ultimele valori ──
+        const _freshCan = {};
+        for (const k of Object.keys(liveData.io)) { if (k.startsWith('can_')) _freshCan[k] = liveData.io[k]; }
+        if (Object.keys(_freshCan).length > 0) {
+          lastCanIo.set(imei, { io: _freshCan, ts: lastRecord.timestamp }); // motor pornit → snapshot proaspăt
+          liveData.can_stale = false;
+        } else {
+          const _snap = lastCanIo.get(imei);
+          if (_snap) {
+            liveData.io = { ...liveData.io, ..._snap.io }; // clonă + merge (doar can_*, nu atinge ignition/GPS)
+            liveData.can_stale = true;
+            liveData.can_snapshot_ts = _snap.ts; // marcaj: din ultimul pachet cu motorul pornit
+          }
+        }
         livePositions.set(imei, liveData);
 
         // Trimite update live prin WebSocket

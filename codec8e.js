@@ -6,6 +6,9 @@
 // alt sens). Valorile vin DEJA finale (multiplicator 1) — de aceea serverul NU aplică convertCanValue
 // pentru device-urile FMS. Le mapăm la nume can_* existente, ca să se afișeze în categoriile din UI.
 const FMS_NAMES = {
+  20:    'can_adblue_level_liters', // L (AdBlue level liters) — brut ×10 → /10 pe server
+  34:    'can_fuel_level_liters',   // L (Fuel Level liters) — brut ×10 → /10 pe server
+  36:    'total_odometer',          // m (Total vehicle distance / odometru real) — UI face /1000 = km
   84:    'can_accelerator_pedal',   // % (Accelerator pedal position)
   85:    'can_engine_load',         // % (Engine percent load)
   86:    'can_fuel_consumed',       // L (Engine total fuel used) — final, fără /100
