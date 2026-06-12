@@ -5918,8 +5918,12 @@
     }
 
     function getGsmSignalBars(level, isOnline) {
-      // fără valoare de semnal: dacă device-ul e online (a trimis date recent) → e Conectat (doar nu raportează nivelul în sleep)
-      if (level === undefined || level === null) return isOnline ? 'Conectat' : '-';
+      // „Conectat": online dar fără nivel raportat (0 sau lipsă, ex: parcat/sleep). NU desenăm barele goale
+      // (ar arăta ca „fără semnal" și s-ar bate cap în cap cu textul) — doar o iconiță de legătură + text.
+      if ((level === undefined || level === null || level === 0) && isOnline) {
+        return '<i class="fas fa-link" style="margin-right:6px;opacity:.75;"></i>Conectat';
+      }
+      if (level === undefined || level === null) return '-';
       const labels = ['Fara semnal', 'Foarte slab', 'Slab', 'Mediu', 'Bun', 'Excelent'];
       const bars = Math.min(level, 5);
       let html = '<span style="display:inline-flex;gap:2px;margin-right:6px;">';
@@ -5928,9 +5932,7 @@
         const active = i < bars;
         html += '<span style="width:4px;height:' + h + 'px;border-radius:1px;background:' + (active ? 'var(--green)' : 'var(--border)') + ';display:inline-block;vertical-align:bottom;"></span>';
       }
-      // nivel 0 dar device online → „Conectat" (a trimis date, deci are GSM), nu alarmant „Fara semnal"
-      const label = (level === 0 && isOnline) ? 'Conectat' : (labels[bars] || level + '/5');
-      html += '</span>' + label;
+      html += '</span>' + (labels[bars] || level + '/5');
       return html;
     }
 
