@@ -1293,8 +1293,8 @@ async function deleteOldPositions(days) {
 
 async function createNotification(n) {
   const r = await pool.query(
-    'INSERT INTO notifications (type, severity, imei, title, body, data, user_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-    [n.type, n.severity || 'info', n.imei || null, n.title || null, n.body || null, n.data ? JSON.stringify(n.data) : null, n.userId || null]
+    'INSERT INTO notifications (type, severity, imei, title, body, data, user_id, company_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+    [n.type, n.severity || 'info', n.imei || null, n.title || null, n.body || null, n.data ? JSON.stringify(n.data) : null, n.userId || null, n.companyId != null ? n.companyId : null]
   );
   return r.rows[0];
 }
@@ -1305,31 +1305,38 @@ async function notificationKeyExists(key, hours) {
   );
   return r.rows.length > 0;
 }
-// Vizibilitate: notificările personale (user_id = userId) + cele broadcast (user_id NULL) pentru vehiculele accesibile
-function _notifWhere(userId, imeis) {
+// Vizibilitate (izolare tenant): notificările personale (user_id = userId) + broadcast (user_id NULL).
+// imeis === null => super-admin: vede toate broadcasturile. Non-super: broadcast vizibil DOAR dacă
+//   - imei-ul aparține vehiculelor sale (imei = ANY), SAU
+//   - notificarea e la nivel de companie (imei NULL) ȘI company_id == compania userului.
+// Vechile broadcasturi imei-NULL + company-NULL NU mai sunt vizibile non-superului (erau scurgerea cross-tenant).
+function _notifWhere(userId, imeis, companyId) {
   if (imeis === null) return { clause: '(user_id = $1 OR user_id IS NULL)', params: [userId] };
-  return { clause: '(user_id = $1 OR (user_id IS NULL AND (imei = ANY($2) OR imei IS NULL)))', params: [userId, imeis] };
+  return {
+    clause: '(user_id = $1 OR (user_id IS NULL AND ((imei = ANY($2)) OR (imei IS NULL AND company_id = $3))))',
+    params: [userId, imeis, companyId != null ? companyId : -1]
+  };
 }
-async function getNotifications(userId, imeis, limit = 50) {
-  const w = _notifWhere(userId, imeis);
+async function getNotifications(userId, imeis, companyId, limit = 50) {
+  const w = _notifWhere(userId, imeis, companyId);
   const r = await pool.query(`SELECT * FROM notifications WHERE ${w.clause} ORDER BY created_at DESC LIMIT $${w.params.length + 1}`, [...w.params, limit]);
   return r.rows;
 }
-async function unreadNotifications(userId, imeis) {
-  const w = _notifWhere(userId, imeis);
+async function unreadNotifications(userId, imeis, companyId) {
+  const w = _notifWhere(userId, imeis, companyId);
   const r = await pool.query(`SELECT COUNT(*)::int AS n FROM notifications WHERE acknowledged = false AND ${w.clause}`, w.params);
   return r.rows[0].n;
 }
-async function ackNotification(id, userId, imeis) {
-  const w = _notifWhere(userId, imeis);
+async function ackNotification(id, userId, imeis, companyId) {
+  const w = _notifWhere(userId, imeis, companyId);
   const r = await pool.query(
     `UPDATE notifications SET acknowledged = true WHERE ${w.clause} AND id = $${w.params.length + 1}`,
     [...w.params, id]
   );
   return (r.affectedRows || r.rowCount || 0) > 0;
 }
-async function ackAllNotifications(userId, imeis) {
-  const w = _notifWhere(userId, imeis);
+async function ackAllNotifications(userId, imeis, companyId) {
+  const w = _notifWhere(userId, imeis, companyId);
   await pool.query(`UPDATE notifications SET acknowledged = true WHERE acknowledged = false AND ${w.clause}`, w.params);
 }
 
@@ -1416,6 +1423,12 @@ async function getUsersForImei(imei) {
 }
 async function getAllActiveUsers() {
   const r = await pool.query("SELECT id, username, email, role FROM users WHERE active IS NOT FALSE");
+  return r.rows;
+}
+// Tenant: utilizatorii activi ai unei companii (pt. livrarea notificărilor de companie). null => toți (super/global).
+async function getActiveUsersForCompany(companyId) {
+  if (companyId == null) return getAllActiveUsers();
+  const r = await pool.query("SELECT id, username, email, role FROM users WHERE active IS NOT FALSE AND company_id = $1", [companyId]);
   return r.rows;
 }
 
@@ -1811,7 +1824,7 @@ module.exports = {
   getPushSubscriptions,
   deletePushSubscription,
   getUsersForImei,
-  getAllActiveUsers,
+  getAllActiveUsers, getActiveUsersForCompany,
   saveTripsForRange,
   closeDb,
   getDrivers, createDriver, updateDriver, deleteDriver,

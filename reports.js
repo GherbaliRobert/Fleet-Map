@@ -181,8 +181,9 @@ function zoneVisits(pts, zone) {
   return visits;
 }
 
-async function rGeofence(db, imeis, from, to, opts, devMap) { // Vizite în zone (geofence)
-  const gfs = await db.getGeofences();
+async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizite în zone (geofence)
+  // Tenant: doar zonele companiei solicitantului (companyId null = super-admin → toate, by design).
+  const gfs = await db.getGeofences(companyId);
   const zones = gfs.map(g => {
     const c = typeof g.coordinates === 'string' ? JSON.parse(g.coordinates) : g.coordinates;
     return { name: g.name, type: g.type, center: c && c.center, radius: c && c.radius, coords: Array.isArray(c) ? c : null };
@@ -576,11 +577,12 @@ const REPORT_CATEGORIES = [
   { key: 'siguranta', label: 'Siguranță & EcoDrive' }
 ];
 
-async function runReport(db, type, imeis, from, to, opts) {
+async function runReport(db, type, imeis, from, to, opts, companyId) {
   const def = REPORTS[type];
   if (!def) throw new Error('Tip de raport necunoscut: ' + type);
   const devMap = await deviceNames(db, imeis);
-  const result = await def.fn(db, imeis, from, to, opts || {}, devMap);
+  // companyId (null = super/toate) e propagat la fn-urile care citesc definiții scopabile pe companie (ex: geofence).
+  const result = await def.fn(db, imeis, from, to, opts || {}, devMap, companyId);
   result.type = type; result.label = def.label; result.from = from; result.to = to;
   return result;
 }

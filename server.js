@@ -3376,7 +3376,8 @@ async function evaluateAlerts(imei, data) {
         case 'geofence_enter':
           if (cond.geofenceId && lat && lng) {
             try {
-              const geofences = await db.getGeofences();
+              // Tenant: doar zonele companiei alertei — o alertă nu poate referi geofence-ul altei companii.
+              const geofences = await db.getGeofences(alert.company_id);
               const gf = geofences.find(g => g.id === cond.geofenceId);
               if (gf && gf.coordinates) {
                 const coords = typeof gf.coordinates === 'string' ? JSON.parse(gf.coordinates) : gf.coordinates;
@@ -3897,7 +3898,9 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       refuelMin: parseInt(req.query.refuelMin) || 10,
       dropMin: parseInt(req.query.dropMin) || 10
     };
-    const report = await reports.runReport(db, req.params.type, imeis, from, to, opts, req.isSuper ? null : req.companyId);
+    // Tenant: super → null (toate zonele, by design); non-super → compania sa. Orphan non-super (companyId null)
+    // primește -1 ca să NU cadă pe „toate" (getGeofences(-1) → 0 zone), evitând scurgerea numelor de zone străine.
+    const report = await reports.runReport(db, req.params.type, imeis, from, to, opts, req.isSuper ? null : (req.companyId != null ? req.companyId : -1));
     const fmt = (req.query.format || '').toLowerCase();
     if (fmt === 'xlsx' || fmt === 'pdf') {
       if (!reportExport) return res.status(503).json({ error: 'Export PDF/Excel indisponibil pe server' });
@@ -4405,6 +4408,7 @@ function broadcastWs(message) {
   const imei = message && message.data && message.data.imei;
   const companyId = message && message.data && message.data.company_id; // notificări la nivel de companie (imei NULL)
   const isDebug = message && message.type === 'debug';
+  const isNotif = message && message.type === 'notification';
   const data = JSON.stringify(message);
   wss.clients.forEach((client) => {
     if (client.readyState !== 1) return;       // doar conexiuni OPEN
@@ -4412,9 +4416,9 @@ function broadcastWs(message) {
     if (isDebug && !client._isAdmin) return;   // debug doar pentru admini
     if (imei && client._allowedImeis instanceof Set && !client._allowedImeis.has(imei)) return; // filtrare pe acces
     if (imei && DEMO_SET.has(imei) && client._companyId !== demoCompanyId) return; // demo doar în contul demo
-    // Tenant: notificare imei-less, dar legată de o companie (ex: expirare permis) → doar clienții acelei companii.
-    // Clienții super-admin (allowedImeis == null) o primesc oricum. (Mesajele fără companie NU se difuzează non-superului.)
-    if (!imei && companyId != null && client._allowedImeis instanceof Set && client._companyId !== companyId) return;
+    // Tenant: NOTIFICARE imei-less (ex: expirare permis) → doar clienții companiei ei; super (allowedImeis null) o ia oricum.
+    // Oglindă a regulii din _notifWhere: o notificare imei-less fără companie NU ajunge la niciun client non-super.
+    if (isNotif && !imei && client._allowedImeis instanceof Set && client._companyId !== companyId) return;
     client.send(data);
   });
 }

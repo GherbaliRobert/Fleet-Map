@@ -41,14 +41,26 @@ function computeNextRun(frequency, hour, after) {
 async function runSchedule(s, deps, now) {
   const { db, reports, reportExport, channels } = deps;
   now = now || new Date();
-  const imeis = s.imei ? [s.imei] : await db.getCompanyImeis(s.company_id);
+  // Tenant defense-in-depth: dacă programarea țintește un imei, acesta TREBUIE să aparțină companiei programării
+  // (vehiculul putea fi mutat/retargetat). Super-admin (company_id null) poate orice vehicul.
+  let imeis;
+  if (s.imei) {
+    if (s.company_id != null) {
+      const companyImeis = await db.getCompanyImeis(s.company_id);
+      imeis = companyImeis.includes(s.imei) ? [s.imei] : [];
+    } else {
+      imeis = [s.imei];
+    }
+  } else {
+    imeis = await db.getCompanyImeis(s.company_id);
+  }
   if (!imeis || !imeis.length) return { ok: false, reason: 'fără vehicule accesibile', rows: 0, emailSent: false };
 
   const { from, to } = resolvePeriod(s.period, now);
   let opts = s.opts || {};
   if (typeof opts === 'string') { try { opts = JSON.parse(opts); } catch (e) { opts = {}; } }
 
-  const report = await reports.runReport(db, s.report_type, imeis, from, to, opts);
+  const report = await reports.runReport(db, s.report_type, imeis, from, to, opts, s.company_id);
   const fmt = (s.format === 'xlsx') ? 'xlsx' : 'pdf';
   const buf = fmt === 'xlsx' ? await reportExport.toXlsx(report) : await reportExport.toPdf(report);
   const filename = (report.type || 'raport') + '_' + from.slice(0, 10) + '.' + fmt;
