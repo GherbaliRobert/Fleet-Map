@@ -1932,6 +1932,17 @@
 
         /* FAB ascuns când history-panel deschis (lipsea — era doar pentru detail-panel) */
         body.history-open #rax-fabs { display: none !important; }
+
+        /* ─── Administrare (Companii) pe mobil: carduri aerisite + aliniere ─── */
+        .rax-row2 { flex-direction: column; }                 /* Username/Parolă, Nr/IMEI: stivuite */
+        .rax-feat-row { display: grid !important; grid-template-columns: 1fr 1fr; align-items: center; }
+        .rax-feat-label { grid-column: 1 / -1; margin-bottom: -2px; }
+        .rax-co-item { padding: 12px 13px; margin-bottom: 10px; }
+        .rax-co-actions { gap: 8px; }
+        .rax-co-actions .rax-btn { flex: 1 1 calc(50% - 4px); }   /* Editează | Plan/abonament: 50/50 */
+        .rax-co-actions > span { flex: 1 1 100%; }                /* mesajul „🔒 nu se poate șterge" pe tot rândul */
+        .rax-btn { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .add-user-form { grid-template-columns: 1fr !important; }   /* tab Utilizatori: câmpurile pe o coloană */
       }
       /* Notă: contrastul text-muted urcat global la #64748b (slate-500, WCAG AA 4.85:1) pentru toate viewport-urile */
 
@@ -8694,6 +8705,11 @@
     .rax-label { font-size: 12px; color: var(--text-muted); margin-top: 10px; display: block; }
     .rax-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: rgba(63,224,125,.15); color: var(--accent); }
     .rax-tag.demo { background: rgba(56,189,248,.15); color: #38BDF8; }
+    .rax-row2 { display: flex; gap: 8px; }
+    .rax-feat-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 6px 0 2px; padding: 8px 0; border-top: 1px dashed var(--border); }
+    .rax-feat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+    .rax-feat { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; }
+    .rax-feat input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
   </style>
 
   <div id="rax-fabs">
@@ -8736,7 +8752,7 @@
         <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;">
           <strong style="font-size:13px;">Companie nouă</strong>
           <input class="rax-field" id="rax-co-name" placeholder="Nume companie (ex. Transport Alfa SRL)">
-          <div style="display:flex;gap:8px;">
+          <div class="rax-row2">
             <input class="rax-field" id="rax-co-admin-user" placeholder="Username admin">
             <input class="rax-field" id="rax-co-admin-pass" placeholder="Parolă admin" type="text">
           </div>
@@ -8809,7 +8825,7 @@
         <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;">
           <strong style="font-size:13px;">Transport nou (cod UIT)</strong>
           <input class="rax-field" id="rax-et-uit" placeholder="Cod UIT (de la ANAF)">
-          <div style="display:flex;gap:8px;">
+          <div class="rax-row2">
             <input class="rax-field" id="rax-et-plate" placeholder="Nr. înmatriculare">
             <input class="rax-field" id="rax-et-imei" placeholder="IMEI vehicul (opțional)">
           </div>
@@ -9270,11 +9286,11 @@
     function _raxFeatureRow(c) {
       if (c.is_demo) return '';
       var f = c.features || {};
-      return '<div style="display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 2px;padding:6px 0;border-top:1px dashed var(--border);">' +
-        '<span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;align-self:center;">Acces funcții:</span>' +
+      return '<div class="rax-feat-row">' +
+        '<span class="rax-feat-label">Acces funcții:</span>' +
         RAX_FEATURES.map(function (d) {
-          return '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;">' +
-            '<input type="checkbox" ' + (f[d[0]] ? 'checked' : '') + ' onchange="raxToggleFeature(' + c.id + ',\'' + d[0] + '\',this.checked)" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"> ' + d[1] + '</label>';
+          return '<label class="rax-feat">' +
+            '<input type="checkbox" ' + (f[d[0]] ? 'checked' : '') + ' onchange="raxToggleFeature(' + c.id + ',\'' + d[0] + '\',this.checked)"> ' + d[1] + '</label>';
         }).join('') + '</div>';
     }
     window.raxToggleFeature = async function (id, key, on) {
