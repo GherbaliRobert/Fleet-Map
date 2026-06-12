@@ -1891,6 +1891,26 @@
         /* Toolbar Vehicule: search ia tot rândul, butoanele compact pe rândul 2 */
         #atab-vehicles .toolbar-row .toolbar-spacer { min-width: 100% !important; order: -1; }
 
+        /* ─── Hotspot pe mobil: toolbar aerisit + tabel ca CARDURI ─── */
+        /* Toolbar: search pe tot rândul (primul), contor sub el, butoanele aliniate */
+        .hs-tab-content .toolbar-row > .toolbar-spacer { flex: 1 1 100% !important; min-width: 0 !important; order: -2; }
+        .hs-tab-content .toolbar-row > .toolbar-count { flex: 1 1 100%; order: -1; margin: -3px 0 1px; }
+        .hs-tab-content .toolbar-row > .btn-sm { flex: 1 1 calc(50% - 4px); justify-content: center; min-height: 40px; }
+        .hs-tab-content .toolbar-row > .btn-sm:first-of-type { flex-basis: 100%; } /* „Vezi pe hartă" pe tot rândul */
+
+        /* Tabel hotspot → carduri (6 coloane nu încap pe ecran mic) */
+        #hotspot-list .gf-table thead { display: none; }
+        #hotspot-list .gf-table, #hotspot-list .gf-table tbody { display: block; width: 100%; }
+        #hotspot-list .gf-table tr { display: block; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; margin-bottom: 10px; }
+        #hotspot-list .gf-table td { display: block; border: none; padding: 3px 0; font-size: 12.5px; }
+        #hotspot-list .gf-table td::before { content: attr(data-label) ": "; color: var(--text-muted); font-size: 11px; font-weight: 600; }
+        #hotspot-list .gf-table td[data-label]:empty { display: none; }
+        #hotspot-list .gf-table td:first-child { font-size: 14px; font-weight: 700; padding-bottom: 8px; margin-bottom: 7px; border-bottom: 1px solid var(--border); }
+        #hotspot-list .gf-table td:first-child::before { content: none; }
+        #hotspot-list .gf-table td:last-child { text-align: right; padding-top: 10px; margin-top: 8px; border-top: 1px solid var(--border); }
+        #hotspot-list .gf-table td:last-child::before { content: none; }
+        #hotspot-list .gf-table td:last-child .btn-sm { min-height: 38px; min-width: 44px; }
+
         /* Modaluri rax (Conturi, Dashboard, Companii): width pe tot ecranul */
         .rax-card { max-width: 100% !important; max-height: 90vh; border-radius: 12px 12px 0 0; }
 
@@ -2391,6 +2411,9 @@
     /* Toolbar Administrare: search-ul ia restul rândului, butoanele rămân compacte */
     .admin-tab-content .toolbar-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
     .admin-tab-content .toolbar-row > .toolbar-spacer { flex: 1 1 200px; min-width: 160px; }
+    /* Toolbar Hotspot (același tratament ca Administrare) */
+    .hs-tab-content .toolbar-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .hs-tab-content .toolbar-row > .toolbar-spacer { flex: 1 1 240px; min-width: 180px; }
     /* Counter-uri/badge-uri în toolbar */
     .toolbar-count { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
     /* Empty state consistent */
@@ -4289,11 +4312,11 @@
       if (gfPage > pages) gfPage = pages;
       const slice = list.slice((gfPage-1)*GF_PAGE_SIZE, gfPage*GF_PAGE_SIZE);
       const rows = slice.map(g => `<tr>
-        <td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${esc(g.color||'#38BDF8')};margin-right:6px;vertical-align:middle;"></span>${esc(g.name)}${g.is_region?' <span style="font-size:9px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:0 4px;">regiune</span>':''}</td>
-        <td>${esc(g.description||'')}</td>
-        <td>${esc(g.address||'')}</td>
-        <td>${esc(g.category||'')}</td>
-        <td>${esc(g.group_name||'')}</td>
+        <td data-label="Nume"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${esc(g.color||'#38BDF8')};margin-right:6px;vertical-align:middle;"></span>${esc(g.name)}${g.is_region?' <span style="font-size:9px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:0 4px;">regiune</span>':''}</td>
+        <td data-label="Descriere">${esc(g.description||'')}</td>
+        <td data-label="Poziționare">${esc(g.address||'')}</td>
+        <td data-label="Categorie">${esc(g.category||'')}</td>
+        <td data-label="Grup">${esc(g.group_name||'')}</td>
         <td style="white-space:nowrap;text-align:right;">
           <button class="btn-sm" title="Arată pe hartă" onclick="focusGeofence(${g.id})"><i class="fas fa-map-marker-alt"></i></button>
           <button class="btn-sm" title="Editează" onclick="startEditGeofence(${g.id})"><i class="fas fa-pen"></i></button>
