@@ -8,7 +8,11 @@ try { segmentTrack = require('./reports').segmentTrack; } catch (e) { segmentTra
 
 const SPEED_LIMIT = 90;        // km/h
 const IDLE_MIN_MINUTES = 120;  // ralanti prelungit (RA Watch)
-const FUEL_DROP_L = 15;        // scădere suspectă combustibil
+const FUEL_DROP_L = 15;        // scădere suspectă combustibil (regulă veche, litri, punct-cu-punct)
+const FUEL_DROP_PCT = 5;       // furt: scădere % după pornire care nu revine în 5 min
+const FUEL_DROP_THEFT_L = 10;  // furt: scădere litri după pornire care nu revine în 5 min
+const FUEL_RETURN_WINDOW_MS = 5 * 60 * 1000; // fereastra în care nivelul ar trebui să revină (5 min)
+const FUEL_RETURN_TOL = 1.5;   // toleranță zgomot senzor (procente sau litri)
 const OFFLINE_MIN = 60;        // minute fără poziție = offline (>1h; parcate care trimit o dată/oră NU sunt offline)
 const FUEL_PRICE = 7.5;        // lei/L (estimare pentru costuri)
 const IDLE_BURN_LPH = 1.5;     // L/h consum la ralanti (estimare)
@@ -29,6 +33,15 @@ const TACHO_NAMED_KEYS = ['can_tacho_distance', 'can_tacho_speed', 'tacho_driver
 function io(p) { return (p && (p.io_data || p.io)) || {}; }
 function num(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }
 function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
+// Citire combustibil normalizată: { value, unit } unde unit ∈ {'L','pct'}. Preferă litri (sondă/CAN), altfel % (FMS).
+function fuelReading(p) {
+  const i = io(p);
+  const l = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters;
+  if (typeof l === 'number' && l > 0) return { value: l, unit: 'L' };
+  const pct = i.can_fuel_level_pct;
+  if (typeof pct === 'number' && pct >= 0 && pct <= 100) return { value: pct, unit: 'pct' };
+  return null;
+}
 function odoKm(p) { const i = io(p); return num(i.can_total_mileage) != null ? num(i.can_total_mileage) : (num(i.can_total_mileage_counted) != null ? num(i.can_total_mileage_counted) : (num(i.total_odometer) != null ? i.total_odometer / 1000 : null)); }
 function nameOf(live, imei) { return (live && (live.name || live.plate)) || imei; }
 function tms(p) { return new Date(p.timestamp).getTime(); }
@@ -78,6 +91,8 @@ async function raWatch(ctx) {
   const thresholds = (ctx && ctx.alertThresholds) || {};
   const offlineMin = Number.isFinite(thresholds.offlineMin) && thresholds.offlineMin > 0 ? thresholds.offlineMin : OFFLINE_MIN;
   const fuelDropL = Number.isFinite(thresholds.fuelDropL) && thresholds.fuelDropL > 0 ? thresholds.fuelDropL : FUEL_DROP_L;
+  const fuelDropPct = Number.isFinite(thresholds.fuelDropPct) && thresholds.fuelDropPct > 0 ? thresholds.fuelDropPct : FUEL_DROP_PCT;
+  const fuelTheftL = Number.isFinite(thresholds.fuelDropTheftL) && thresholds.fuelDropTheftL > 0 ? thresholds.fuelDropTheftL : FUEL_DROP_THEFT_L;
   const idleMaxMinPrag = Number.isFinite(thresholds.idleMaxMin) && thresholds.idleMaxMin > 0 ? thresholds.idleMaxMin : IDLE_MIN_MINUTES;
   const tachoGraceMin = Number.isFinite(thresholds.tachoGraceMin) && thresholds.tachoGraceMin > 0 ? thresholds.tachoGraceMin : TACHO_GRACE_MIN;
   for (const imei of imeis) {
@@ -133,6 +148,50 @@ async function raWatch(ctx) {
             }
           }
           if (drop) findings.push({ imei, severity: 'critical', agent: 'watch', fkey: 'fuel_' + imei, title: name + ': scădere combustibil ~' + Math.round(drop) + ' L', body: 'Posibil furt sau scurgere (prag ' + Math.round(fuelDropL) + ' L). Verifică traseul și opririle.' });
+
+          // (2b) FURT după pornire: oprit la nivel X, după pornire scade și NU revine în 5 min (> fuelDropPct% SAU > fuelTheftL litri).
+          // Funcționează și pe FMS (procente), nu doar pe litri. Folosește tranziția contact 0→1 din istoricul zilei.
+          let lastValid = null;   // ultima citire validă (orice stare motor)
+          let stopLevel = null;   // nivelul cunoscut cât timp e oprit
+          let prevIgn = null;
+          let theft = null;       // { drop, unit, from, to }
+          for (let k = 0; k < pts.length; k++) {
+            const p = pts[k];
+            const ign = io(p).ignition;
+            const r = fuelReading(p);
+            if (ign === 1 && prevIgn === 0) { // tocmai a pornit după ce a fost oprit
+              // base = nivelul ÎNAINTE de pornire (stopLevel din staționare, sau ultima citire validă) — calculat ÎNAINTE de a actualiza lastValid cu citirea curentă.
+              const base = stopLevel || lastValid;
+              if (base) {
+                const startTs = tms(p);
+                let endVal = null; // ultima citire în fereastra de 5 min, în aceeași unitate
+                for (let j = k; j < pts.length; j++) {
+                  if (tms(pts[j]) > startTs + FUEL_RETURN_WINDOW_MS) break;
+                  const rj = fuelReading(pts[j]);
+                  if (rj && rj.unit === base.unit) endVal = rj.value;
+                }
+                if (endVal != null) {
+                  const d = base.value - endVal; // scădere care NU a revenit (endVal = nivelul la finalul ferestrei)
+                  if (d > FUEL_RETURN_TOL) {
+                    const prag = base.unit === 'pct' ? fuelDropPct : fuelTheftL;
+                    if (d >= prag && (!theft || d > theft.drop)) theft = { drop: d, unit: base.unit, from: base.value, to: endVal };
+                  }
+                }
+              }
+              stopLevel = null; // eveniment consumat
+            }
+            // Actualizează DUPĂ verificarea tranziției (ca base să fie nivelul de dinainte de pornire).
+            if (r) { lastValid = { ...r, ts: tms(p) }; if (ign === 0) stopLevel = { ...r, ts: tms(p) }; }
+            if (ign === 0 || ign === 1) prevIgn = ign;
+          }
+          if (theft) {
+            const u = theft.unit === 'pct' ? '%' : ' L';
+            findings.push({
+              imei, severity: 'critical', agent: 'watch', fkey: 'fuel_theft_' + imei,
+              title: name + ': posibil furt combustibil ~' + Math.round(theft.drop) + u + ' după pornire',
+              body: 'Nivel la oprire ' + Math.round(theft.from) + u + ', iar la 5 min după pornire ' + Math.round(theft.to) + u + ' (scădere nerevenită). Prag: ' + Math.round(theft.unit === 'pct' ? fuelDropPct : fuelTheftL) + u + '. Verifică opririle/traseul.'
+            });
+          }
           // (3) Ralanti prelungit (motor pornit + viteză ≤ 3 km/h, neîntrerupt). Gap între puncte > 5min = discontinuitate (anti-fals-pozitiv pe istoric rar).
           const GAP_MAX_MS = 5 * 60 * 1000;
           let idleStart = null, idleLastT = null, idleMaxMin = 0;
