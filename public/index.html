@@ -5931,8 +5931,13 @@
       return html;
     }
 
-    function getGpsSignalInfo(sats) {
-      if (!sats) return { text: 'Fara fix', color: 'red' };
+    function getGpsSignalInfo(sats, hasValidPos) {
+      if (!sats) {
+        // satellites=0: dacă avem o poziție validă recentă (vehicul staționat → fix din ultima poziție),
+        // nu alarmăm cu roșu „Fara fix" — device-ul nu urmărește activ sateliți cât e oprit, dar poziția e validă
+        // (ca pe celelalte servere). Doar fără poziție validă → „Fara fix" real.
+        return hasValidPos ? { text: 'Fix staționar', color: 'yellow' } : { text: 'Fara fix', color: 'red' };
+      }
       if (sats < 6) return { text: 'Slab (' + sats + ' sat.)', color: 'red' };
       if (sats < 10) return { text: 'Mediu (' + sats + ' sat.)', color: 'yellow' };
       return { text: 'Bun (' + sats + ' sat.)', color: 'green' };
@@ -5957,7 +5962,9 @@
       const voltage = io.external_voltage ? (io.external_voltage / 1000).toFixed(1) + ' V' : '-';
       const battVoltage = io.battery_voltage ? (io.battery_voltage / 1000).toFixed(2) + ' V' : '-';
       const sats = data.satellites || 0;
-      const gpsInfo = getGpsSignalInfo(sats);
+      // „Fix staționar" (nu „Fara fix") dacă device-ul e online și are coordonate valide, chiar dacă raportează 0 sateliți (oprit).
+      const hasValidPos = !!(data.latitude && data.longitude && isOnline);
+      const gpsInfo = getGpsSignalInfo(sats, hasValidPos);
       const engineHours = io.can_engine_total_hours !== undefined ? Math.round(io.can_engine_total_hours) + 'h' : (io.can_engine_worktime ? Math.floor(io.can_engine_worktime / 60) + 'h' : (io.can_engine_worktime_counted ? Math.floor(io.can_engine_worktime_counted / 60) + 'h' : '-'));
       const odometer = io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : (io.can_total_mileage !== undefined ? io.can_total_mileage.toFixed(1) + ' km' : '-');
       // Fuel level - prefer sonda Escort, fallback la CAN
