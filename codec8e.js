@@ -1,7 +1,31 @@
 // codec8e.js — Parser pentru Teltonika Codec 8 Extended
 // Decodează pachetele AVL primite de la dispozitivele FMB140
 
-function parseAvlPacket(buffer) {
+// ─── Mod FMS / J1939 (ex: FMC650 cu sursă CAN = FMS) ───
+// Pe FMS, AVL ID-urile au ALTE semnificații decât pe adaptorul LV-CAN200/ALL-CAN300 (același număr,
+// alt sens). Valorile vin DEJA finale (multiplicator 1) — de aceea serverul NU aplică convertCanValue
+// pentru device-urile FMS. Le mapăm la nume can_* existente, ca să se afișeze în categoriile din UI.
+const FMS_NAMES = {
+  84:    'can_accelerator_pedal',   // % (Accelerator pedal position)
+  85:    'can_engine_load',         // % (Engine percent load)
+  86:    'can_fuel_consumed',       // L (Engine total fuel used) — final, fără /100
+  87:    'can_fuel_level_pct',      // % (Fuel Level)
+  88:    'can_engine_rpm',          // RPM (Engine speed)
+  104:   'can_engine_total_hours',  // h (Engine total hours of operation)
+  113:   'can_distance_to_service', // km (Service distance)
+  122:   'can_direction_indicator', // cod (Direction indicator)
+  127:   'can_engine_temp',         // °C (Engine coolant temperature) — final, fără /10
+  128:   'can_outside_temp',        // °C (Ambient air temperature)
+  135:   'can_fuel_rate',           // L/h (Fuel Rate) — final, fără /10
+  139:   'can_load_weight',         // kg (Combined vehicle weight)
+  357:   'can_brake_pedal',         // % (Brake pedal position)
+  10455: 'can_adblue_level_pct'     // % (AdBlue Level)
+};
+// Setat sincron la începutul fiecărui parse (Node single-thread, parse fără await) → citit de getIoName.
+let _ifaceForParse = null;
+
+function parseAvlPacket(buffer, iface) {
+  _ifaceForParse = (iface === 'fms') ? 'fms' : null;
   try {
     const preamble = buffer.readUInt32BE(0);
     if (preamble !== 0x00000000) {
@@ -198,8 +222,11 @@ function parseIoGroupNX(buffer, offset) {
   return { values, nextOffset: offset };
 }
 
-// Mapare AVL ID -> nume citibil
-function getIoName(id) {
+// Mapare AVL ID -> nume citibil. iface='fms' → folosește harta FMS (FMC650 cu sursă CAN=FMS),
+// altfel maparea standard/LV-CAN. Dacă iface nu e dat, se ia din _ifaceForParse (setat de parseAvlPacket).
+function getIoName(id, iface) {
+  const useIface = (iface !== undefined) ? iface : _ifaceForParse;
+  if (useIface === 'fms' && FMS_NAMES[id] !== undefined) return FMS_NAMES[id];
   const names = {
     // System
     239: 'ignition',

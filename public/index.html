@@ -5378,6 +5378,11 @@
           }
         });
         updateDeviceList();
+        // Re-randează și panoul detaliu deschis ca textul „ultima actualizare · acum X min" să avanseze
+        // chiar dacă nu vine poziție nouă (altfel textul rămâne înghețat la valoarea de la ultimul push WS).
+        if (typeof detailPanelImei !== 'undefined' && detailPanelImei && typeof updateDetailPanel === 'function') {
+          try { updateDetailPanel(detailPanelImei); } catch (e) {}
+        }
       }, 30000);
     }
 
@@ -9419,6 +9424,19 @@
         sel.innerHTML = '<option value="">— alege vehicul —</option>' + list.map(function (v) { return '<option value="' + esc(v.imei) + '">' + esc(v.name || v.imei) + (v.plate ? ' · ' + esc(v.plate) : '') + '</option>'; }).join('');
       } catch (e) { sel.innerHTML = '<option value="">(eroare la încărcare)</option>'; }
     };
+    window.raxSetCanIface = async function (imei, value) {
+      var msg = $('rax-io-iface-msg');
+      try {
+        var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/can-interface', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ can_interface: value || null })
+        });
+        var j = await r.json();
+        if (!r.ok) { if (msg) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + (j.error || r.status); } return; }
+        if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = (value === 'fms' ? 'FMS activat ✓' : 'Standard ✓') + ' — se aplică pachetelor noi primite de la device.'; }
+        raxToast && raxToast('Interfață CAN salvată ✓', 'success');
+      } catch (e) { if (msg) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare de rețea'; } }
+    };
     window.raxIoDebug = async function (imei) {
       var box = $('rax-io-debug-body'); if (!box) return;
       if (!imei) { box.innerHTML = '<div class="rax-co-meta">Alege un vehicul pentru a vedea IO-urile.</div>'; return; }
@@ -9428,6 +9446,15 @@
         if (d.error) { box.innerHTML = '<div class="rax-co-meta">' + esc(d.error) + '</div>'; return; }
         var html = '';
         if (!d.hasLive) html += '<div style="color:#f59e0b;font-size:11px;margin-bottom:6px;">⚠ Niciun pachet live recent — valorile pot lipsi (parchează/pornește vehiculul ca să transmită).</div>';
+        // Interfața CAN: FMS (FMC650/camioane) vs standard LV-CAN — schimbă cum se decodează datele CAN.
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px 10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap;">' +
+          '<span style="font-size:12px;font-weight:600;"><i class="fas fa-microchip"></i> Interfață CAN:</span>' +
+          '<select id="rax-io-iface" onchange="raxSetCanIface(\'' + esc(imei) + '\', this.value)" style="background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:5px 9px;font-size:12px;">' +
+            '<option value=""' + (!d.can_interface ? ' selected' : '') + '>Standard / LV-CAN (implicit)</option>' +
+            '<option value="fms"' + (d.can_interface === 'fms' ? ' selected' : '') + '>FMS / J1939 (FMC650, camioane)</option>' +
+          '</select>' +
+          '<span id="rax-io-iface-msg" style="font-size:10px;color:var(--text-muted);">FMS = decodare corectă a datelor de camion (RPM, combustibil, temperatură…). Se aplică pachetelor noi.</span>' +
+        '</div>';
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin:6px 0 4px;">IO nemapate (' + d.unmapped.length + ')</div>';
         if (!d.unmapped.length) html += '<div class="rax-co-meta">Niciun IO nemapat.</div>';
         else {

@@ -45,6 +45,19 @@ async function getTankCalibration(imei) {
   return null;
 }
 
+// Interfața CAN per-device (FMS pt. FMC650 / standard-LVCAN) — cache scurt, ca să nu lovim DB la fiecare pachet.
+const _ifaceCache = new Map(); // imei -> { ts, iface }
+const IFACE_TTL = 60000;
+async function getDeviceIface(imei) {
+  const e = _ifaceCache.get(imei);
+  if (e && (Date.now() - e.ts) < IFACE_TTL) return e.iface;
+  let iface = null;
+  try { iface = await db.getDeviceCanInterface(imei); } catch (err) { iface = null; }
+  _ifaceCache.set(imei, { ts: Date.now(), iface });
+  return iface;
+}
+function invalidateIfaceCache(imei) { _ifaceCache.delete(imei); }
+
 // Interpoleaza liniar voltaj -> litri folosind calibrare
 function voltageToLiters(voltageMv, calibration) {
   if (!calibration || !Array.isArray(calibration) || calibration.length < 2) return null;
@@ -374,7 +387,8 @@ const tcpServer = net.createServer((socket) => {
       // Duplicate raw Teltonika packet to mirror server (if configured)
       try { mirrorSendPacket(imei, packet); } catch (_) {}
 
-      const parsed = parseAvlPacket(packet);
+      const _iface = await getDeviceIface(imei); // 'fms' (FMC650) sau null (standard/LV-CAN)
+      const parsed = parseAvlPacket(packet, _iface);
 
       if (parsed.error) {
         console.error(`[TCP] Eroare parsare de la ${imei}: ${parsed.error}`);
@@ -402,9 +416,12 @@ const tcpServer = net.createServer((socket) => {
       const fuelSensors = await getFuelSensors(imei);
       for (const record of parsed.records) {
         if (record.io) {
-          for (const key of Object.keys(record.io)) {
-            if (key.startsWith('can_')) {
-              record.io[key] = convertCanValue(key, record.io[key]);
+          // FMS (FMC650): valorile vin DEJA finale → NU aplicăm convertCanValue (scalările LV-CAN ar strica valorile).
+          if (_iface !== 'fms') {
+            for (const key of Object.keys(record.io)) {
+              if (key.startsWith('can_')) {
+                record.io[key] = convertCanValue(key, record.io[key]);
+              }
             }
           }
           // Decodifica flag-urile CAN in parametri individuali
@@ -1810,6 +1827,19 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Super-admin: setează interfața CAN a device-ului ('fms' pt. FMC650 / 'lvcan'/null pt. adaptor standard).
+// Determină cum decodează codec8e AVL ID-urile CAN (FMS = altă mapare, valori finale, fără convertCanValue).
+app.put('/api/devices/:imei/can-interface', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const raw = (req.body && req.body.can_interface) || null;
+    if (raw != null && raw !== 'fms' && raw !== 'lvcan') return res.status(400).json({ error: 'Valoare invalidă (fms / lvcan / null)' });
+    const v = await db.setDeviceCanInterface(req.params.imei, raw);
+    invalidateIfaceCache(req.params.imei);
+    auditReq(req, 'set_can_interface', 'device', req.params.imei, { can_interface: v });
+    res.json({ ok: true, can_interface: v });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Bulk move: super-admin mută N vehicule la aceeași companie într-un singur statement.
 app.put('/api/devices/company/bulk', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -2294,7 +2324,8 @@ app.get('/api/devices/:imei/io-debug', requireAuth, requireSuperadmin, async (re
       if (m) { if (mappings[m[1]]) mapped.push({ id: m[1], key: k, value: v }); else unmapped.push({ id: m[1], key: k, value: v }); }
     }
     unmapped.sort((a, b) => Number(a.id) - Number(b.id));
-    res.json({ imei, hasLive: !!live, timestamp: live ? live.timestamp : null, unmapped, mapped, mappings, ioKeyCount: Object.keys(io).length });
+    const can_interface = await db.getDeviceCanInterface(imei);
+    res.json({ imei, hasLive: !!live, timestamp: live ? live.timestamp : null, can_interface, unmapped, mapped, mappings, ioKeyCount: Object.keys(io).length });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Citire mapari (pentru afisare in fisa — orice user cu acces la vehicul)

@@ -413,7 +413,8 @@ async function initDb() {
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_price NUMERIC(10,2)`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_per_ton_km NUMERIC(10,2)`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_sensors JSONB`,
-      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS io_mappings JSONB`
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS io_mappings JSONB`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS can_interface VARCHAR(8)`
     ];
     for (const sql of migrateColumns) {
       try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
@@ -763,6 +764,17 @@ async function getCompanyImeis(companyId) {
 }
 async function setDeviceCompany(imei, companyId) {
   await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1', [imei, companyId || null]);
+}
+// Interfața CAN a device-ului: 'fms' (J1939, ex: FMC650) sau null/'lvcan' (adaptor LV-CAN/standard).
+// Determină cum decodează codec8e AVL ID-urile CAN.
+async function setDeviceCanInterface(imei, iface) {
+  const v = (iface === 'fms') ? 'fms' : (iface === 'lvcan' ? 'lvcan' : null);
+  await pool.query('UPDATE devices SET can_interface = $2 WHERE imei = $1', [imei, v]);
+  return v;
+}
+async function getDeviceCanInterface(imei) {
+  const r = await pool.query('SELECT can_interface FROM devices WHERE imei = $1', [imei]);
+  return r.rows[0] ? (r.rows[0].can_interface || null) : null;
 }
 // Mutare utilizator între companii (super-admin). Curăță grant-urile per-vehicul/grup (deveneau inerte oricum,
 // dar le ștergem ca să nu „reapară" dacă un vehicul ajunge ulterior în noua companie).
@@ -1851,6 +1863,7 @@ module.exports = {
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments,
   getCompanyImeis, setDeviceCompany, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
+  setDeviceCanInterface, getDeviceCanInterface,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   getSetting, setSetting,
