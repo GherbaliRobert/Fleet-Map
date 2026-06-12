@@ -5087,6 +5087,30 @@
     async function refreshNotifBadge() {
       try { const d = await (await fetch('/api/notifications/unread-count')).json(); setNotifBadge(d.count || 0); } catch (e) {}
     }
+
+    // Cache cu findings active per IMEI (fkey -> finding), refresh-uit la 90s.
+    // Folosit de panoul de detalii pt. afișarea badge-urilor specifice (ex: tahograf neconfigurat).
+    window._activeFindings = {};   // { imei: { fkey: finding } }
+    async function refreshActiveFindings() {
+      try {
+        var rows = await (await fetch('/api/agents/findings')).json();
+        if (!Array.isArray(rows)) return;
+        var byImei = {};
+        rows.forEach(function (f) {
+          if (!f || f.status === 'dismissed') return; // ignore findings respinse manual
+          var im = f.imei; if (!im) return;
+          (byImei[im] = byImei[im] || {})[f.fkey || ('id_' + f.id)] = f;
+        });
+        window._activeFindings = byImei;
+        // Re-randează panoul detaliu dacă e deschis, ca eventualul badge să apară imediat
+        if (typeof detailPanelImei !== 'undefined' && detailPanelImei && typeof updateDetailPanel === 'function') {
+          try { updateDetailPanel(detailPanelImei); } catch (e) {}
+        }
+      } catch (e) { /* offline */ }
+    }
+    setTimeout(refreshActiveFindings, 4000);
+    setInterval(refreshActiveFindings, 90000);
+    function findingsForImei(imei) { return window._activeFindings[imei] || {}; }
     async function toggleNotifications() {
       const p = document.getElementById('notif-panel');
       if (p.style.display === 'none' || !p.style.display) { p.style.display = 'flex'; await loadNotifications(); }
@@ -5934,7 +5958,7 @@
       const battVoltage = io.battery_voltage ? (io.battery_voltage / 1000).toFixed(2) + ' V' : '-';
       const sats = data.satellites || 0;
       const gpsInfo = getGpsSignalInfo(sats);
-      const engineHours = io.can_engine_worktime ? Math.floor(io.can_engine_worktime / 60) + 'h' : (io.can_engine_worktime_counted ? Math.floor(io.can_engine_worktime_counted / 60) + 'h' : '-');
+      const engineHours = io.can_engine_total_hours !== undefined ? Math.round(io.can_engine_total_hours) + 'h' : (io.can_engine_worktime ? Math.floor(io.can_engine_worktime / 60) + 'h' : (io.can_engine_worktime_counted ? Math.floor(io.can_engine_worktime_counted / 60) + 'h' : '-'));
       const odometer = io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : (io.can_total_mileage !== undefined ? io.can_total_mileage.toFixed(1) + ' km' : '-');
       // Fuel level - prefer sonda Escort, fallback la CAN
       let fuelLevel = '-';
@@ -5946,7 +5970,7 @@
         fuelSource = ' (sonda)';
       } else if (io.can_fuel_level_liters !== undefined && io.can_fuel_level_liters > 0) {
         fuelLevelNum = io.can_fuel_level_liters;
-        fuelLevel = io.can_fuel_level_liters.toFixed(1) + ' L';
+        fuelLevel = io.can_fuel_level_liters.toFixed(1) + ' L' + (io.can_fuel_level_pct !== undefined ? ' · ' + io.can_fuel_level_pct + '%' : '');
         fuelSource = ' (CAN)';
       } else if (io.can_fuel_level_pct !== undefined) {
         fuelLevel = io.can_fuel_level_pct + '%';
@@ -5954,6 +5978,9 @@
       }
       const rpm = io.can_engine_rpm !== undefined ? io.can_engine_rpm + ' RPM' : '-';
       const coolant = io.can_engine_temp !== undefined ? io.can_engine_temp.toFixed(1) + '\u00B0C' : '-';
+      const adblue = io.can_adblue_level_pct !== undefined ? (io.can_adblue_level_pct + '%' + (io.can_adblue_level_liters !== undefined ? ' \u00B7 ' + Number(io.can_adblue_level_liters).toFixed(1) + ' L' : '')) : '-';
+      // Marcaj \u201Edate din ultimul pachet cu motorul pornit" (carry-forward CAN c\u00E2nd e oprit)
+      const canStaleNote = data.can_stale ? ' <span style="font-size:9px;color:var(--text-muted);" title="ultimele valori transmise (motor oprit)">(ultima)</span>' : '';
 
       // Status bar (pe motor): În mișcare / Staționat / Oprit; fără semnal >1h = Oprit (fără semnal)
       let statusClass, statusText, statusDetail;
@@ -5989,6 +6016,35 @@
       statusBar.innerHTML = '<span class="info-status-dot"></span>' +
         '<span class="info-status-text">' + statusText + '</span>' +
         (statusDetail ? '<span class="info-status-detail">' + statusDetail + '</span>' : '');
+
+      // Pill-uri „alertă activă" pentru findings de tip raWatch care vizează acest vehicul.
+      // Apar imediat sub status bar, înainte de info-grid. Click → deschide panoul de notificări.
+      var pillBox = document.getElementById('detail-warn-pills');
+      if (!pillBox) {
+        pillBox = document.createElement('div');
+        pillBox.id = 'detail-warn-pills';
+        pillBox.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin:8px 0 6px;';
+        infoContainer.insertBefore(pillBox, grid);
+      }
+      var findings = findingsForImei(imei);
+      var pillHtml = '';
+      if (findings['tacho_missing_' + imei]) {
+        pillHtml += '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;font-size:12px;cursor:pointer;" onclick="toggleNotifications()" title="Click pentru detalii alertă">' +
+          '<i class="fas fa-triangle-exclamation"></i>' +
+          '<div style="flex:1;"><strong>Tahograf neconfigurat</strong><div style="font-size:10px;opacity:.85;">Camion online cu contactul pornit, dar fără date de tahograf. Verifică cablajul / cardul de companie / RDD.</div></div>' +
+        '</div>';
+      }
+      // Alte findings care merită evidențiate în fișă (offline, scădere combustibil, ralanti, service depășit)
+      ['offline_' + imei, 'fuel_' + imei, 'idle_' + imei, 'care_service_' + imei].forEach(function (fk) {
+        var f = findings[fk]; if (!f) return;
+        var bg = f.severity === 'critical' ? '#fee2e2' : '#fef3c7';
+        var fg = f.severity === 'critical' ? '#991b1b' : '#92400e';
+        var br = f.severity === 'critical' ? '#fca5a5' : '#fbbf24';
+        pillHtml += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:' + bg + ';color:' + fg + ';border:1px solid ' + br + ';font-size:11px;cursor:pointer;" onclick="toggleNotifications()" title="Click pentru detalii">' +
+          '<i class="fas fa-circle-exclamation"></i><span>' + (f.title || 'Alertă') + '</span></div>';
+      });
+      pillBox.innerHTML = pillHtml;
+      pillBox.style.display = pillHtml ? 'flex' : 'none';
 
       grid.innerHTML = '' +
         // Row 1: Data + Numar inmatriculare
