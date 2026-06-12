@@ -8926,8 +8926,16 @@
       <div class="rax-head"><h3><i class="fas fa-pen-to-square" style="color:var(--accent)"></i> Editor catalog IO (super-admin)</h3><button class="rax-x" onclick="raxCloseIoEditor()">&times;</button></div>
       <div class="rax-body">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Modifică etichetele, unitățile sau descrierile pentru orice ID IO. Modificările sunt <strong>globale</strong> (toate companiile/userii vor vedea noile valori). Lasă un câmp gol = revino la default.</div>
+
+        <!-- Secțiune IO necunoscute (detectate din date live + istoric) -->
+        <details open style="margin-bottom:12px;border:1px solid var(--orange);border-radius:8px;padding:8px 10px;background:rgba(234,88,12,.04);">
+          <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--orange);"><i class="fas fa-triangle-exclamation"></i> IO necunoscute detectate <span id="rax-io-unknown-count">(0)</span> <button class="btn-sm" style="font-size:10px;padding:2px 6px;margin-left:8px;" onclick="event.preventDefault();raxRefreshIoUnknown()"><i class="fas fa-rotate"></i> Reîmprospătează</button></summary>
+          <div style="font-size:11px;color:var(--text-muted);margin:6px 0;">Coduri <code>io_NNN</code> care apar în datele reale de la trackere dar nu sunt în catalog. Apasă „Catalog" la fiecare pentru a-l mapa rapid.</div>
+          <div id="rax-io-unknown-body"><div class="rax-co-meta">Se încarcă…</div></div>
+        </details>
+
         <input class="rax-field" id="rax-io-editor-search" placeholder="Caută id / nume…" oninput="raxRenderIoEditor()" style="margin-bottom:8px;">
-        <div id="rax-io-editor-body" style="max-height:62vh;overflow-y:auto;"></div>
+        <div id="rax-io-editor-body" style="max-height:50vh;overflow-y:auto;"></div>
       </div>
     </div>
   </div>
@@ -9036,12 +9044,61 @@
       }).join('');
     };
 
-    // Modal „Editor catalog IO" — super-admin (edit override-uri)
+    // Modal „Editor catalog IO" — super-admin (edit override-uri + IO necunoscute)
+    window._raxIoUnknown = [];
     window.raxOpenIoEditor = function () {
       var ov = document.getElementById('rax-io-editor-overlay'); if (!ov) return;
       ov.classList.add('open');
+      raxLoadIoUnknown();
       raxRenderIoEditor();
     };
+    async function raxLoadIoUnknown() {
+      try {
+        var d = await fetch('/api/io-catalog/unknown', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        window._raxIoUnknown = (d && d.unknown) || [];
+      } catch (e) { window._raxIoUnknown = []; }
+      raxRenderIoUnknown();
+    }
+    function raxRenderIoUnknown() {
+      var box = document.getElementById('rax-io-unknown-body'); if (!box) return;
+      var n = window._raxIoUnknown.length;
+      var hdr = document.getElementById('rax-io-unknown-count'); if (hdr) hdr.textContent = '(' + n + ')';
+      if (!n) { box.innerHTML = '<div class="rax-co-meta">🎉 Nicio cheie io_NNN necunoscută. Toate IO-urile raportate de trackere sunt catalogate.</div>'; return; }
+      box.innerHTML = window._raxIoUnknown.map(function (e) {
+        var ts = e.lastSeen ? new Date(e.lastSeen).toLocaleString('ro-RO') : '—';
+        var valDisp = e.lastValue == null ? '—' : (typeof e.lastValue === 'object' ? JSON.stringify(e.lastValue) : String(e.lastValue));
+        return '<div style="border:1px solid var(--orange);border-radius:8px;padding:8px;margin-bottom:6px;background:rgba(234,88,12,.05);">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            '<span style="font-family:monospace;color:var(--orange);font-weight:700;font-size:13px;">io_' + e.id + '</span>' +
+            '<span style="font-size:11px;color:var(--text-muted);">apariții: <strong>' + (e.count || 0) + '</strong> · ultima valoare: <strong>' + esc(valDisp.slice(0, 40)) + '</strong></span>' +
+            '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;">' + esc(ts) + '</span>' +
+            '<button class="rax-btn primary" style="font-size:11px;padding:4px 10px;" onclick="raxCatalogUnknown(' + e.id + ')"><i class="fas fa-tag"></i> Catalog</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+    window.raxCatalogUnknown = function (id) {
+      var sampleEntry = window._raxIoUnknown.find(function (x) { return x.id === id; }) || {};
+      // Pre-fill cu sugestie: nume = "IO N", categorie = "Custom"
+      var nameRo = prompt('Nume în română pentru io_' + id + ':\n(ultima valoare: ' + (sampleEntry.lastValue == null ? '—' : sampleEntry.lastValue) + ')', 'IO ' + id);
+      if (nameRo == null || !nameRo.trim()) return;
+      var unit = prompt('Unitate de măsură (ex: V, °C, %, km, RPM, sau gol):', '');
+      if (unit == null) unit = '';
+      var category = prompt('Categorie (ex: CAN, Motor, Combustibil, Tahograf, Custom):', 'Custom');
+      if (category == null) category = 'Custom';
+      var desc = prompt('Descriere scurtă (opțional):', '');
+      if (desc == null) desc = '';
+      var mult = prompt('Multiplicator (de obicei 1; 0.01 dacă valoarea brută = centi-X; gol = 1):', '');
+      var body = { name_ro: nameRo.trim(), category: category.trim() };
+      if (unit.trim()) body.unit = unit.trim();
+      if (desc.trim()) body.desc_ro = desc.trim();
+      if (mult && !isNaN(Number(mult))) body.multiplier = Number(mult);
+      fetch('/api/io-catalog/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) })
+        .then(function (r) { return r.ok ? r.json() : r.json().then(function (e) { throw new Error(e.error || r.status); }); })
+        .then(function () { (window.raxToast || function () {})('io_' + id + ' catalogat ✓', 'success'); loadIoCatalog().then(function () { raxLoadIoUnknown(); raxRenderIoEditor(); }); })
+        .catch(function (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); });
+    };
+    window.raxRefreshIoUnknown = function () { raxLoadIoUnknown(); };
     window.raxCloseIoEditor = function () { var ov = document.getElementById('rax-io-editor-overlay'); if (ov) ov.classList.remove('open'); };
     window.raxRenderIoEditor = function () {
       var body = document.getElementById('rax-io-editor-body'); if (!body) return;

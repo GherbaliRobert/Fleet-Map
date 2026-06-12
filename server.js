@@ -4214,6 +4214,57 @@ app.delete('/api/io-catalog/:id', requireAuth, requireSuperadmin, async (req, re
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// IO necunoscute — scan livePositions + istoric persistent (settings 'io_unknown_seen')
+// Identifică cheile io_NNN care apar în datele reale dar NU sunt în catalog default + override.
+app.get('/api/io-catalog/unknown', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const known = new Set();
+    if (ioCatalog) ioCatalog.IO_CATALOG.forEach(function (e) { known.add(e.id); });
+    let overrides = {};
+    try { const raw = await db.getSetting('io_catalog_overrides'); overrides = raw ? JSON.parse(raw) : {}; } catch (e) {}
+    Object.keys(overrides).forEach(function (k) { known.add(parseInt(k)); });
+    let seenHist = {};
+    try { const raw = await db.getSetting('io_unknown_seen'); seenHist = raw ? JSON.parse(raw) : {}; } catch (e) {}
+    // Scan live: identific cheile io_NNN nemapate din livePositions
+    const liveMap = {};
+    for (const [imei, live] of livePositions) {
+      const io = (live && live.io) || {};
+      Object.keys(io).forEach(function (k) {
+        const m = /^io_(\d+)$/.exec(k); if (!m) return;
+        const id = parseInt(m[1]);
+        if (known.has(id)) return;
+        const ts = live.timestamp || null;
+        if (!liveMap[id]) liveMap[id] = { count: 0, lastValue: null, sampleImei: imei, lastSeen: ts };
+        liveMap[id].count++;
+        liveMap[id].lastValue = io[k];
+        liveMap[id].lastSeen = ts;
+      });
+    }
+    // Filtrez istoricul: scot ID-urile care între timp au fost catalogate (sunt acum în known)
+    const filteredHist = {};
+    Object.keys(seenHist || {}).forEach(function (k) {
+      const id = parseInt(k); if (!known.has(id)) filteredHist[id] = seenHist[k];
+    });
+    // Merge: live actualizează istoricul (count cumulat dacă există)
+    const merged = Object.assign({}, filteredHist);
+    Object.keys(liveMap).forEach(function (k) {
+      if (merged[k]) {
+        merged[k] = Object.assign({}, merged[k], liveMap[k]);
+        merged[k].count = (filteredHist[k].count || 0) + liveMap[k].count;
+      } else {
+        merged[k] = liveMap[k];
+      }
+    });
+    // Salvez istoric (max 200 ID-uri ca să nu crească nelimitat)
+    const ids = Object.keys(merged).slice(0, 200);
+    const newHist = {}; ids.forEach(function (k) { newHist[k] = merged[k]; });
+    try { await db.setSetting('io_unknown_seen', JSON.stringify(newHist)); } catch (e) {}
+    const list = Object.keys(merged).map(function (k) {
+      return Object.assign({ id: parseInt(k) }, merged[k]);
+    }).sort(function (a, b) { return (b.count || 0) - (a.count || 0) || a.id - b.id; });
+    res.json({ unknown: list, totalKnown: known.size });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // Super-admin: funcții (module) per companie — checkbox-uri (agents / ai_assistant / etransport / tahograf)
 app.put('/api/companies/:id/features', requireAuth, requireSuperadmin, async (req, res) => {
