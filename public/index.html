@@ -4277,7 +4277,10 @@
         list.forEach(renderGeofence);
       } catch (e) {}
     }
-    function renderGeofence(g) {
+    function renderGeofence(g, force) {
+      // Regiunile (zone administrative mari, ex: chenarul care încadra un hotspot) NU se desenează automat pe
+      // harta live — aglomerau harta. Rămân salvate + în listă; se afișează doar la cerere („Arată pe hartă").
+      if (g.is_region && !force) return;
       const coords = parseGfCoords(g);
       let layer = null;
       if (g.type === 'circle' && coords && coords.center) {
@@ -4355,7 +4358,11 @@
         </tr></thead><tbody>${rows}</tbody></table></div>${pager}`;
     }
     function focusGeofence(id) {
-      const l = geofenceLayers.get(id);
+      let l = geofenceLayers.get(id);
+      if (!l) { // regiunile nu sunt desenate automat → le afișăm la cerere
+        const g = (geofenceCache || []).find(x => String(x.id) === String(id));
+        if (g) { renderGeofence(g, true); l = geofenceLayers.get(id); }
+      }
       if (l) { showView('localizare'); setTimeout(() => { try { map.fitBounds(l.getBounds(), { maxZoom: 16, padding: [40,40] }); } catch(e){} }, 120); }
     }
     async function deleteGeofenceItem(id) {
@@ -9691,16 +9698,19 @@
     var RAX_MOVE_CFG = {
       devices: {
         label: 'vehicule', idKey: 'imei', empty: 'Niciun vehicul.',
-        url: '/api/devices?includeArchived=1',
+        // /lite = doar coloane esențiale (fără poziție live + io_data JSONB) → payload ~10× mai mic la 1000+ vehicule.
+        url: '/api/devices/lite?includeArchived=1',
         moveUrl: function (id) { return '/api/devices/' + encodeURIComponent(id) + '/company'; },
+        bulkUrl: '/api/devices/company/bulk', bulkIdsKey: 'imeis',
         name: function (d) { return d.name || d.imei; },
         sub: function (d) { return [d.plate, d.imei].filter(Boolean).join(' · '); },
         text: function (d, co) { return ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + co).toLowerCase(); }
       },
       users: {
         label: 'utilizatori', idKey: 'id', empty: 'Niciun utilizator.',
-        url: '/api/users',
+        url: '/api/users/lite',
         moveUrl: function (id) { return '/api/users/' + encodeURIComponent(id) + '/company'; },
+        bulkUrl: '/api/users/company/bulk', bulkIdsKey: 'ids',
         keep: function (u) { return u.role !== 'superadmin'; }, // super = platformă, nu se mută
         name: function (u) { return u.full_name || u.username; },
         sub: function (u) { return [u.username, u.role].filter(Boolean).join(' · '); },
@@ -9708,8 +9718,9 @@
       },
       drivers: {
         label: 'șoferi', idKey: 'id', empty: 'Niciun șofer.',
-        url: '/api/drivers',
+        url: '/api/drivers/lite',
         moveUrl: function (id) { return '/api/drivers/' + encodeURIComponent(id) + '/company'; },
+        bulkUrl: '/api/drivers/company/bulk', bulkIdsKey: 'ids',
         name: function (d) { return d.name || ('#' + d.id); },
         sub: function (d) { return [d.phone, d.license_number].filter(Boolean).join(' · '); },
         text: function (d, co) { return ((d.name || '') + ' ' + (d.phone || '') + ' ' + (d.license_number || '') + ' ' + co).toLowerCase(); }
@@ -9827,20 +9838,16 @@
       var dd = $('rax-bulk-dest'); var newCo = dd.value === '' ? null : parseInt(dd.value);
       var destName = newCo == null ? 'NEASIGNAT' : '„' + dd.options[dd.selectedIndex].text + '"';
       if (!confirm('Mută ' + ids.length + ' ' + cfg.label + ' la ' + destName + '?')) return;
-      var ok = 0, errors = 0;
-      var queue = ids.slice(), pending = [];
-      function next() {
-        if (!queue.length) return null;
-        var id = queue.shift();
-        return fetch(cfg.moveUrl(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: newCo }) })
-          .then(function (r) { if (r.ok) ok++; else errors++; })
-          .catch(function () { errors++; })
-          .then(function () { return next(); });
-      }
-      for (var i = 0; i < Math.min(8, queue.length); i++) pending.push(next());
-      await Promise.all(pending);
-      _raxMove.selected[entity] = {};
-      raxToast && raxToast(ok + ' mutate ✓' + (errors ? ', ' + errors + ' erori' : ''), errors ? 'error' : 'success');
+      // 1 cerere bulk (transacționabilă), nu N×PUT. Drops 50 vehicule × 50 round-trips la 1 singur request.
+      try {
+        var body = { company_id: newCo };
+        body[cfg.bulkIdsKey] = (cfg.bulkIdsKey === 'imeis') ? ids : ids.map(function (x) { return parseInt(x); });
+        var r = await fetch(cfg.bulkUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { raxToast && raxToast('Eroare: ' + (j.error || r.status), 'error'); return; }
+        _raxMove.selected[entity] = {};
+        raxToast && raxToast((j.moved != null ? j.moved : ids.length) + ' mutate ✓', 'success');
+      } catch (e) { raxToast && raxToast('Eroare de rețea', 'error'); return; }
       raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
     };
     window.raxCreateCompany = async function () {
