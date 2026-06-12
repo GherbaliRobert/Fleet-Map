@@ -1857,16 +1857,60 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Super-admin: setează interfața CAN a device-ului ('fms' pt. FMC650 / 'lvcan'/null pt. adaptor standard).
-// Determină cum decodează codec8e AVL ID-urile CAN (FMS = altă mapare, valori finale, fără convertCanValue).
+// Super-admin: setează interfața CAN a device-ului.
+//  - 'fms'   = FMC650 cu sursă CAN = FMS Gateway (semantică J1939)
+//  - 'tacho' = FMC650 cablat DIRECT la tahograf (C5/C7) - semantică DSRC pe IDs 184-198, 222-235
+//  - 'lvcan' = adaptor LV-CAN200/ALL-CAN300 (default), maparea standard
+//  - null    = autodetect (folosește harta standard cu aliasuri pe ID 88, 91-93)
 app.put('/api/devices/:imei/can-interface', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const raw = (req.body && req.body.can_interface) || null;
-    if (raw != null && raw !== 'fms' && raw !== 'lvcan') return res.status(400).json({ error: 'Valoare invalidă (fms / lvcan / null)' });
+    if (raw != null && !['fms', 'lvcan', 'tacho'].includes(raw)) return res.status(400).json({ error: 'Valoare invalidă (fms / lvcan / tacho / null)' });
     const v = await db.setDeviceCanInterface(req.params.imei, raw);
     invalidateIfaceCache(req.params.imei);
     auditReq(req, 'set_can_interface', 'device', req.params.imei, { can_interface: v });
     res.json({ ok: true, can_interface: v });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Debug super-admin: vezi io_data brut + can_interface pentru un IMEI (troubleshoot tracker fără date CAN) ───
+// GET /api/debug/last-io/:imei → ultimele 5 io_data parsate din DB
+// GET /api/debug/iface/:imei   → can_interface DB + cache + cheile CAN din ultima poziție
+app.get('/api/debug/last-io/:imei', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const r = await db.pool.query(
+      'SELECT timestamp, io_data FROM positions WHERE imei = $1 ORDER BY timestamp DESC LIMIT 5',
+      [req.params.imei]
+    );
+    res.json({ imei: req.params.imei, rows: r.rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/debug/iface/:imei', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const imei = req.params.imei;
+    const dbVal = await db.getDeviceCanInterface(imei).catch(() => null);
+    const cached = await getDeviceIface(imei).catch(() => null);
+    const lastRow = await db.pool.query(
+      'SELECT timestamp, io_data FROM positions WHERE imei = $1 ORDER BY timestamp DESC LIMIT 1',
+      [imei]
+    );
+    const live = livePositions.get(imei);
+    const lastIo = lastRow.rows[0] ? lastRow.rows[0].io_data : null;
+    const canKeysHist = lastIo ? Object.keys(lastIo).filter(k => k.startsWith('can_') || k.startsWith('tacho_') || k.startsWith('fms_') || k.startsWith('io_')) : [];
+    const canKeysLive = live && live.io ? Object.keys(live.io).filter(k => k.startsWith('can_') || k.startsWith('tacho_') || k.startsWith('fms_') || k.startsWith('io_')) : [];
+    res.json({
+      imei,
+      can_interface_db: dbVal,
+      can_interface_cached: cached,
+      lastHistoricalTimestamp: lastRow.rows[0] ? lastRow.rows[0].timestamp : null,
+      canKeysInLastHistorical: canKeysHist,
+      liveStale: live ? !!live.stale : null,
+      canKeysInLive: canKeysLive,
+      hint: dbVal == null && (canKeysHist.includes('io_88') || canKeysLive.includes('io_88'))
+        ? 'Trackerul emite RPM pe ID 88 (profil truck LV-CAN200). Patch-ul curent îl mapează automat ca can_engine_rpm. Dacă vezi io_88 brut, redeploy-ul nu a prins codec8e — verifică Railway.'
+        : (dbVal == null ? 'can_interface=null → maparea standard (cu aliasuri 88/91-93). Pentru FMC650 cu FMS Gateway recomandat: PUT /api/devices/' + imei + '/can-interface { can_interface: "fms" }.' : 'OK')
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -765,10 +765,13 @@ async function getCompanyImeis(companyId) {
 async function setDeviceCompany(imei, companyId) {
   await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1', [imei, companyId || null]);
 }
-// Interfața CAN a device-ului: 'fms' (J1939, ex: FMC650) sau null/'lvcan' (adaptor LV-CAN/standard).
-// Determină cum decodează codec8e AVL ID-urile CAN.
+// Interfața CAN a device-ului:
+//  - 'fms'   = FMS Gateway (J1939, ex: FMC650 pe MAN TGS prin gateway)
+//  - 'tacho' = cablu direct la tahograf (C5/C7) — semantică DSRC pe IDs 184-198, 222-235
+//  - 'lvcan' = adaptor LV-CAN200/ALL-CAN300 (default)
+//  - null    = autodetect (folosește harta standard cu aliasuri pe ID 88, 91-93)
 async function setDeviceCanInterface(imei, iface) {
-  const v = (iface === 'fms') ? 'fms' : (iface === 'lvcan' ? 'lvcan' : null);
+  const v = (iface === 'fms') ? 'fms' : (iface === 'tacho') ? 'tacho' : (iface === 'lvcan' ? 'lvcan' : null);
   await pool.query('UPDATE devices SET can_interface = $2 WHERE imei = $1', [imei, v]);
   return v;
 }

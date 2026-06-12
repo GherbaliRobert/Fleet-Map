@@ -329,10 +329,13 @@ function getIoName(id, iface) {
     84:  'can_fuel_level_liters',       // liters * 10
     85:  'can_engine_rpm',              // RPM
     // Camioane multi-axă (TGS / Scania / Volvo cu LV-CAN200 truck profile)
-    88:  'can_engine_rpm_alt',          // RPM (duplicat semantic 85 - apare pe unele profile truck)
-    91:  'can_axle3_load_alt',          // kg (Axle Weight 3 — duplicat pe profile noi)
-    92:  'can_axle4_load_alt',          // kg
-    93:  'can_axle5_load_alt',          // kg
+    // NOTĂ: AVL ID 88 / 91-93 sunt duplicat semantic peste 85 / 120-122 pe profilele noi
+    // de camion (LV-CAN200 truck). Le mapăm la ACELAȘI nume canonic ca să fie vizibile în UI
+    // fără să depindă de can_interface (FMC650 pe FMS / cu MAN TGS apare pe ID 88, nu 85).
+    88:  'can_engine_rpm',              // RPM (alias peste 85 — profil truck LV-CAN200)
+    91:  'can_axle3_load',               // kg (Axle Weight 3 — alias peste 120)
+    92:  'can_axle4_load',               // kg (alias peste 121)
+    93:  'can_axle5_load',               // kg (alias peste 122)
     94:  'can_axle6_load',              // kg
     95:  'can_axle7_load',              // kg
     96:  'can_axle8_load',              // kg
