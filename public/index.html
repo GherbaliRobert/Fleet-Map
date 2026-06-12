@@ -3827,7 +3827,7 @@
                 var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(r => r.json());
                 var allKeys = ['watch','dispatch','care','optimize','compliance','client'];
                 var labels = { watch:'RA Watch', dispatch:'RA Dispatch', care:'RA Care', optimize:'RA Optimize', compliance:'RA Compliance', client:'RA Client' };
-                var descs = { watch:'Monitorizare conexiune — alertă când vehiculul e offline (fără date) peste 1 oră', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (depășiri viteză, frânări bruște, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
+                var descs = { watch:'Monitorizare 24/7 — offline, scădere combustibil, ralanti prelungit + tahograf neconfigurat la camioane', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (depășiri viteză, frânări bruște, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
                 var enabledKeys = ag.enabledKeys || [];
                 agBox.innerHTML = allKeys.map(k => {
                   var on = enabledKeys.indexOf(k) >= 0;

@@ -13,6 +13,17 @@ const OFFLINE_MIN = 60;        // minute fără poziție = offline (>1h; parcate
 const FUEL_PRICE = 7.5;        // lei/L (estimare pentru costuri)
 const IDLE_BURN_LPH = 1.5;     // L/h consum la ralanti (estimare)
 const SERVICE_SOON_KM = 1500;  // prag „revizie în curând"
+const TACHO_GRACE_MIN = 10;    // minute cu contact ON dar zero semnal tahograf = neconfigurat
+
+// Tipuri de vehicul pentru care se aplică legislația tahograf (Reg. EU 561/2006, 165/2014).
+const TACHO_TRUCK_TYPES = new Set(['Camion', 'Autobuz', 'Autoutilitară', 'Autoutilitara', 'TIR', 'Truck', 'Bus']);
+
+// AVL IDs Teltonika care indică prezența unui tahograf citit corect (dacă apare oricare valoare ≠ 0, e OK).
+// Acoperă: viteză/distanță tahograf (192-194), Driver 1/2 working state (184-187, 122-125),
+// Drive Recognize / Tacho timestamp (183, 194), Driver 1/2 ID High/Low (195-198), Card 1/2 Issuing Member (222-223),
+// Card presence / status (52), VIN tahograf (231, 233-235), VRN (230, 232).
+const TACHO_IO_IDS = [52, 122, 123, 124, 125, 183, 184, 185, 186, 187, 188, 189, 192, 193, 194, 195, 196, 197, 198, 222, 223, 230, 231, 232, 233, 234, 235];
+const TACHO_NAMED_KEYS = ['can_tacho_distance', 'can_tacho_speed', 'tacho_driver_card_presence', 'driver_card_id', 'driver_status_event', 'tachograph_total_vehicle_distance'];
 
 // IO: punctele din istoric au `io_data`, pozițiile live au `io` — acoperim ambele.
 function io(p) { return (p && (p.io_data || p.io)) || {}; }
@@ -35,6 +46,27 @@ async function _vehLimit(ctx, imei) {
   try { const d = await ctx.db.getDeviceFull(imei); return (d && d.speed_limit) ? Number(d.speed_limit) : fallback; } catch (e) { return fallback; }
 }
 
+// Verifică dacă vehiculul e tip „camion" (intră sub legislația tahografului).
+async function _isTruck(ctx, imei) {
+  if (!ctx || !ctx.db || !ctx.db.getDeviceFull) return false;
+  try { const d = await ctx.db.getDeviceFull(imei); return d && TACHO_TRUCK_TYPES.has(String(d.vehicle_type || '').trim()); }
+  catch (e) { return false; }
+}
+
+// Verifică dacă pachetul de IO conține VREUN semnal de tahograf valid (≠ 0/null).
+function _hasAnyTachoSignal(p) {
+  const i = io(p);
+  for (const k of TACHO_NAMED_KEYS) {
+    const v = i[k];
+    if (v != null && v !== 0 && v !== '') return true;
+  }
+  for (const id of TACHO_IO_IDS) {
+    const v = i['io_' + id];
+    if (v != null && v !== 0 && v !== '') return true;
+  }
+  return false;
+}
+
 // ─── RA Watch — monitorizare 24/7 (anomalii operaționale) ───
 // RA Watch — alerte de monitorizare:
 //  (1) Offline > OFFLINE_MIN (implicit 60 min, max 24h)
@@ -47,6 +79,7 @@ async function raWatch(ctx) {
   const offlineMin = Number.isFinite(thresholds.offlineMin) && thresholds.offlineMin > 0 ? thresholds.offlineMin : OFFLINE_MIN;
   const fuelDropL = Number.isFinite(thresholds.fuelDropL) && thresholds.fuelDropL > 0 ? thresholds.fuelDropL : FUEL_DROP_L;
   const idleMaxMinPrag = Number.isFinite(thresholds.idleMaxMin) && thresholds.idleMaxMin > 0 ? thresholds.idleMaxMin : IDLE_MIN_MINUTES;
+  const tachoGraceMin = Number.isFinite(thresholds.tachoGraceMin) && thresholds.tachoGraceMin > 0 ? thresholds.tachoGraceMin : TACHO_GRACE_MIN;
   for (const imei of imeis) {
     const live = livePositions.get(imei);
     const name = nameOf(live, imei);
@@ -57,6 +90,33 @@ async function raWatch(ctx) {
         const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
         const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
         findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + Math.round(offlineMin) + ' min. Verifică dispozitivul/alimentarea/sim-ul.' });
+      }
+    }
+    // (4) Tahograf neconfigurat — pentru camioane cu contact pornit dar zero semnal tahograf
+    // Apare doar dacă: vehicul tip camion + ONLINE (ageMin <= 5) + ignition=1 + ≥3 puncte recente fără semnal
+    // (3 puncte ca anti-fals-pozitiv: un singur pachet pierdut nu declanșează)
+    if (live && live.timestamp) {
+      const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
+      const ignOn = io(live).ignition === 1;
+      if (ageMin <= 5 && ignOn && await _isTruck(ctx, imei)) {
+        let anySignal = _hasAnyTachoSignal(live);
+        if (!anySignal && ctx.hist) {
+          try {
+            const pts = await ctx.hist(imei);
+            const cutoff = now - tachoGraceMin * 60000;
+            const recent = (pts || []).filter(p => new Date(p.timestamp).getTime() >= cutoff && io(p).ignition === 1);
+            if (recent.length >= 3) {
+              anySignal = recent.some(_hasAnyTachoSignal);
+              if (!anySignal) {
+                findings.push({
+                  imei, severity: 'warning', agent: 'watch', fkey: 'tacho_missing_' + imei,
+                  title: name + ': tahograf neconfigurat sau decuplat',
+                  body: 'Camion cu contactul pornit de peste ' + Math.round(tachoGraceMin) + ' min, dar nu raportează niciun parametru de tahograf (viteză, distanță, card șofer, VIN). Verifică: 1) cablajul CAN/K-Line la tahograf, 2) cardul de companie introdus în VU, 3) activarea Remote Data Download (D8 pe Stoneridge / Update Card pe VDO).'
+                });
+              }
+            }
+          } catch (e) { /* lipsă date istoric — nu emitem alertă */ }
+        }
       }
     }
     // (2) Scădere combustibil (peste pragul configurat, în istoricul zilei curente)
