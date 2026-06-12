@@ -6580,8 +6580,10 @@
         historyMarkers.push(historyCasing);
 
         // Polilinia: una singură albastră (fără limit / heatmap dezactivat) SAU segmente agregate pe culoare
-        const seg = L.layerGroup().addTo(map);
+        const seg = L.featureGroup().addTo(map);
         historyLine = seg; // ambele ramuri: seg e tracker-ul principal -> closeHistory îl curăță complet (fix leak)
+        seg.on('click', hpRouteClick);
+        historyCasing.on('click', hpRouteClick);
         if (useHeatmap && hpSpeedLimit) {
           // Agregăm puncte consecutive cu aceeași culoare într-o singură polilinie (perf — reduce ~10× layer-ele).
           // Convenție: segmentul (i-1) -> i e colorat după viteza la finalul intervalului (data[i].speed) — consistent pe TOATE segmentele.
@@ -6600,6 +6602,8 @@
         } else {
           L.polyline(points, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(seg);
         }
+        // zonă de click lată & invizibilă peste tot traseul → tap ușor pe mobil pentru inspectare punct
+        L.polyline(points, { weight: 22, opacity: 0 }).addTo(seg);
         // fitBounds pe primul layer cu getBounds — pe mobil lasă loc jos pentru panoul de control
         try {
           const isM = window.innerWidth <= 768;
@@ -6679,10 +6683,53 @@
       var sl = document.getElementById('hp-slider'); if (sl) { sl.max = hpData.length - 1; sl.value = 0; }
       hpMarker = L.marker([hpData[0].latitude, hpData[0].longitude], {
         zIndexOffset: 1000,
-        icon: L.divIcon({ className: '', html: '<div style="width:16px;height:16px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 0 2px #22c55e,0 1px 5px rgba(0,0,0,.6);"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
+        icon: L.divIcon({ className: '', html: '<div style="width:16px;height:16px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 0 2px #22c55e,0 1px 5px rgba(0,0,0,.6);cursor:pointer;"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
       }).addTo(map);
+      hpMarker.on('click', function () { hpShowInfoPopup(hpIndex); });
       historyMarkers.push(hpMarker);
       hpRender();
+    }
+    // ── Inspectare punct pe traseu: stradă + viteză + oră (click pe cerc SAU pe linie) ──
+    var hpInfoPopup = null, hpInfoToken = 0;
+    function hpNearestIndex(latlng) {
+      var best = 0, bestD = Infinity;
+      for (var i = 0; i < hpData.length; i++) {
+        var dx = hpData[i].latitude - latlng.lat, dy = hpData[i].longitude - latlng.lng;
+        var d = dx * dx + dy * dy;
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      return best;
+    }
+    function hpShowInfoPopup(idx) {
+      if (!hpData.length || !map) return;
+      idx = Math.max(0, Math.min(hpData.length - 1, idx));
+      hpStop();                      // pauză la inspectare
+      hpIndex = idx; hpRender();     // mută cercul pe punct + actualizează bara de jos
+      var p = hpData[idx];
+      var d = new Date(p.timestamp);
+      var sp = Math.round(p.speed || 0);
+      var over = (hpSpeedLimit && sp > hpSpeedLimit)
+        ? ' <span style="color:#ef4444;font-weight:700;">(+' + (sp - hpSpeedLimit) + ' peste ' + hpSpeedLimit + ')</span>' : '';
+      var mk = function (street) {
+        return '<div style="font-size:12px;line-height:1.55;min-width:170px;">' +
+          '<div style="font-weight:700;margin-bottom:3px;"><i class="fas fa-location-dot" style="color:var(--accent);"></i> ' + street + '</div>' +
+          '<div><i class="fas fa-gauge-high" style="color:var(--text-muted);width:15px;text-align:center;"></i> <b>' + sp + ' km/h</b>' + over + '</div>' +
+          '<div style="color:var(--text-muted);"><i class="fas fa-clock" style="width:15px;text-align:center;"></i> ' + d.toLocaleString('ro-RO') + '</div>' +
+        '</div>';
+      };
+      if (!hpInfoPopup) hpInfoPopup = L.popup({ autoPan: true, maxWidth: 280 });
+      hpInfoPopup.setLatLng([p.latitude, p.longitude])
+        .setContent(mk('<span style="color:var(--text-muted);font-weight:400;">Se încarcă strada…</span>'))
+        .openOn(map);
+      var myToken = ++hpInfoToken;
+      reverseGeocode(p.latitude, p.longitude).then(function (street) {
+        if (myToken === hpInfoToken && hpInfoPopup && hpInfoPopup.isOpen()) hpInfoPopup.setContent(mk(street || '—'));
+      }).catch(function () {
+        if (myToken === hpInfoToken && hpInfoPopup && hpInfoPopup.isOpen()) hpInfoPopup.setContent(mk('—'));
+      });
+    }
+    function hpRouteClick(e) {
+      if (hpData && hpData.length && e && e.latlng) hpShowInfoPopup(hpNearestIndex(e.latlng));
     }
     function hpQuick(period) {
       var now = new Date(), from = new Date(now), to = new Date(now);
@@ -8554,8 +8601,10 @@
         const points = data.map(function(p) { return [p.latitude, p.longitude]; });
         var routeCasing = L.polyline(points, { color: '#0B0E11', weight: 8, opacity: 0.9 }).addTo(map);
         historyMarkers.push(routeCasing);
-        const seg = L.layerGroup().addTo(map);
+        const seg = L.featureGroup().addTo(map);
         historyLine = seg; // fix leak: seg e tracker, indiferent de ramură
+        seg.on('click', hpRouteClick);
+        routeCasing.on('click', hpRouteClick);
         if (useHeatmap && hpSpeedLimit) {
           var curColor = _hpSegColor(data[1] && data[1].speed, hpSpeedLimit), chunk = [points[0]];
           for (var i = 1; i < data.length; i++) {
@@ -8567,6 +8616,8 @@
         } else {
           L.polyline(points, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(seg);
         }
+        // zonă de click lată & invizibilă peste traseu → tap ușor pe mobil
+        L.polyline(points, { weight: 22, opacity: 0 }).addTo(seg);
 
         // Start marker (green)
         var startMarker = L.circleMarker(points[0], {
