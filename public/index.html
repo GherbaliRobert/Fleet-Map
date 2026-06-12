@@ -10077,11 +10077,11 @@
           + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Status: ' + esc(st.status || 'inactiv') + '</div>'
           + (st.hasSubscription ? '<button class="rax-btn" style="margin-top:9px;" onclick="raxBillingPortal()"><i class="fas fa-gear"></i> Gestionează facturarea</button>' : '')
           + '</div>';
-        // Preturile nu se mai afiseaza in lista: mergem pe oferta personalizata in functie de flota.
+        // Nu afisam grila de planuri/preturi: abonamentul e personalizat prin contract.
         box.innerHTML = '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;">'
-          + '<div style="font-weight:600;margin-bottom:5px;"><i class="fas fa-tags" style="color:var(--accent)"></i> Ofertă personalizată</div>'
-          + '<div style="font-size:12px;color:var(--text-muted);line-height:1.6;">Construim abonamentul în funcție de flota ta și de funcțiile de care ai nevoie — fără pachete fixe. Spune-ne câte vehicule ai și ce vrei să monitorizezi, iar noi îți pregătim o ofertă.</div>'
-          + '<a class="rax-btn primary" style="margin-top:11px;" href="mailto:contact@ratrack.ro?subject=Cerere%20ofert%C4%83%20RA%20Tracks">Cere o ofertă</a>'
+          + '<div style="font-weight:600;margin-bottom:5px;"><i class="fas fa-tags" style="color:var(--accent)"></i> Abonament personalizat</div>'
+          + '<div style="font-size:12px;color:var(--text-muted);line-height:1.6;">Abonamentul tău este adaptat flotei tale, conform contractului. Pentru orice modificare (vehicule sau funcții în plus), scrie-ne și actualizăm oferta.</div>'
+          + '<a class="rax-btn primary" style="margin-top:11px;" href="mailto:contact@ratrack.ro?subject=Modificare%20abonament%20RA%20Tracks">Contactează-ne</a>'
           + '</div>';
       } catch (e) { cur.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     };
