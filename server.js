@@ -336,6 +336,11 @@ const tcpServer = net.createServer((socket) => {
   let buffer = Buffer.alloc(0);
   const clientAddr = `${socket.remoteAddress}:${socket.remotePort}`;
 
+  // TCP keepalive: prima probă după 60s idle (default kernel = 7200s = 2h, prea mult).
+  // Combinat cu socket.setTimeout de mai jos, detectează GSM-pierdut în ~90s in loc de 2h.
+  socket.setKeepAlive(true, 60_000);
+  socket.setNoDelay(true); // ACK rapid pe handshake/AVL, fără Nagle buffering
+
   console.log(`[TCP] Conexiune nouă de la ${clientAddr}`);
   addDebugEntry({ event: 'connect', address: clientAddr });
 
@@ -357,10 +362,13 @@ const tcpServer = net.createServer((socket) => {
         console.log(`[TCP] Dispozitiv identificat: IMEI ${imei} de la ${clientAddr}`);
         addDebugEntry({ event: 'imei', imei, address: clientAddr });
 
-        // Salvează conexiunea activă
+        // Salvează conexiunea activă (cu referință la socket pentru destroy() forțat la cleanup zombie).
+        // ATENȚIE: când se serializează activeConnections în /api/debug/connections, EXCLUDE câmpul `socket`
+        // ca să nu rupă JSON.stringify pe circular reference.
         activeConnections.set(imei, {
           address: clientAddr,
-          connectedAt: new Date()
+          connectedAt: new Date(),
+          socket
         });
 
         // Răspunde cu 0x01 = accept IMEDIAT (înainte de orice operație DB)
@@ -529,10 +537,12 @@ const tcpServer = net.createServer((socket) => {
     console.error(`[TCP] Eroare socket ${imei || clientAddr}: ${err.message}`);
   });
 
-  // Timeout — închide conexiunea dacă nu primim date 10 min
-  socket.setTimeout(600000);
+  // Idle timeout aplicativ — închide conexiunea dacă nu primim date 3 min.
+  // Coborât de la 10 min: combinat cu keepalive de 60s, dezbrăcăm zombie-i mult mai rapid.
+  // Trackerele active raportează la 30-300s, deci 3 min e safe.
+  socket.setTimeout(180_000);
   socket.on('timeout', () => {
-    console.log(`[TCP] Timeout: ${imei || clientAddr}`);
+    console.log(`[TCP] Timeout (3 min idle): ${imei || clientAddr}`);
     socket.end();
   });
 });
@@ -2173,9 +2183,15 @@ app.get('/api/live', requireAuth, withScope, async (req, res) => {
 // API: Conexiuni active
 app.get('/api/connections', requireAuth, requireFleet, withScope, (req, res) => {
   // Tenant: super-admin (allowedImeis == null) vede toate conexiunile; restul doar ale vehiculelor proprii.
-  if (req.allowedImeis == null) return res.json(Object.fromEntries(activeConnections));
+  // ATENȚIE: excludem câmpul `socket` la serializare — Object are circular references și ar rupe JSON.stringify.
+  const safe = (info) => ({ address: info.address, connectedAt: info.connectedAt });
+  if (req.allowedImeis == null) {
+    const out = {};
+    for (const [imei, info] of activeConnections) out[imei] = safe(info);
+    return res.json(out);
+  }
   const out = {};
-  for (const [imei, info] of activeConnections) { if (req.allowedImeis.has(imei)) out[imei] = info; }
+  for (const [imei, info] of activeConnections) { if (req.allowedImeis.has(imei)) out[imei] = safe(info); }
   res.json(out);
 });
 
@@ -4753,6 +4769,49 @@ async function start() {
 
   // Agenți AI: RA Watch rulează automat la fiecare 30 min (prima dată după 1 min)
   if (agents) { setTimeout(runAgentsWorker, 60 * 1000); setInterval(runAgentsWorker, 30 * 60 * 1000); }
+
+  // ───────────────────────────────────────────────────────────────
+  // Cleanup periodic peste livePositions — fără el, vehiculele care își pierd semnalul GSM
+  // rămân „online" în UI cu timestamp tot mai vechi („acum 24 min", „acum 2h", etc.) până
+  // la restart de proces. Înainte de fix, Map-ul nu era niciodată șters (grep livePositions.delete = 0).
+  //
+  //  - LIVE_STALE_MS = 5 min  → marchez vehiculul stale (speed=0) + broadcast WS „stale"
+  //  - LIVE_PURGE_MS = 24h   → șterg complet din Map (evită memory leak la nesfârșit)
+  //  - Bonus: dacă mai există socket activ asociat unui IMEI stale → e clar zombie → socket.destroy()
+  // ───────────────────────────────────────────────────────────────
+  const LIVE_STALE_MS = 5 * 60 * 1000;
+  const LIVE_PURGE_MS = 24 * 60 * 60 * 1000;
+  setInterval(() => {
+    const now = Date.now();
+    let staled = 0, purged = 0;
+    for (const [imei, live] of livePositions) {
+      const ts = new Date(live.timestamp).getTime();
+      if (!Number.isFinite(ts)) continue;
+      const age = now - ts;
+
+      if (age > LIVE_PURGE_MS) {
+        livePositions.delete(imei);
+        if (typeof lastCanIo !== 'undefined' && lastCanIo.delete) lastCanIo.delete(imei);
+        broadcastWs({ type: 'disconnect', data: { imei, reason: 'purged' } });
+        purged++;
+        continue;
+      }
+
+      if (age > LIVE_STALE_MS && !live.stale) {
+        live.stale = true;
+        live.speed = 0;
+        livePositions.set(imei, live);
+        // Socket zombie? Distruge-l ca să elibereze handle-ul kernel.
+        const conn = activeConnections.get(imei);
+        if (conn && conn.socket && !conn.socket.destroyed) {
+          try { conn.socket.destroy(); } catch (e) {}
+        }
+        broadcastWs({ type: 'stale', data: { imei, lastSeen: live.timestamp } });
+        staled++;
+      }
+    }
+    if (staled || purged) console.log(`[LIVE-CLEANUP] stale=${staled}, purged=${purged}`);
+  }, 30 * 1000); // sweep la 30s
 }
 
 // Oprire grațioasă (Ctrl+C / kill)
