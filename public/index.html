@@ -1821,7 +1821,10 @@
         <div id="detail-view-info">
           <div class="info-grid" id="detail-info-grid"></div>
           <div style="margin-top:16px;">
-            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);"><i class="fas fa-microchip" style="margin-right:6px;"></i>IO Live</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">
+              <span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-microchip" style="margin-right:6px;"></i>IO Live</span>
+              <button class="btn-sm" style="font-size:10px;padding:3px 8px;" onclick="raxOpenIoDetails()" title="Vezi semnificațiile codurilor IO Teltonika"><i class="fas fa-circle-info"></i> Ce înseamnă?</button>
+            </div>
             <div id="detail-io-content">
               <p style="color:var(--text-muted);font-size:12px;">Selecteaza un vehicul.</p>
             </div>
@@ -2820,6 +2823,11 @@
             <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
             <div id="us-agents-list"></div>
 
+            <div id="us-io-catalog-section" style="display:none;margin:18px 0 0;padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;">
+              <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;"><i class="fas fa-microchip"></i> Catalog IO Teltonika (super-admin)</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Editează etichetele și descrierile codurilor IO global pentru toate companiile. Modificările sunt vizibile imediat în panourile vehiculelor.</div>
+              <button class="btn-sm btn-primary" onclick="raxOpenIoEditor()"><i class="fas fa-pen-to-square"></i> Deschide editor catalog</button>
+            </div>
             <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-bell"></i> Praguri alertă agenți</div>
             <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Pragurile peste/sub care agenții generează alertă. Lasă gol pentru default.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -3794,6 +3802,9 @@
         // Default-uri companie — doar pentru admin/superadmin/company_admin (manageUsers)
         var canMgr = !!(currentUser && currentUser.permissions && currentUser.permissions.manageUsers);
         document.getElementById('us-company-section').style.display = canMgr ? 'block' : 'none';
+        // Catalog IO Teltonika — DOAR super-admin (modificările sunt globale)
+        var ioCatBox = document.getElementById('us-io-catalog-section');
+        if (ioCatBox) ioCatBox.style.display = (currentUser && currentUser.isSuper) ? 'block' : 'none';
         if (canMgr) {
           var coBox = document.getElementById('us-company-list');
           coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
@@ -7608,6 +7619,12 @@
         'can_vin': 'Numar VIN',
       };
       if (labels[key]) return labels[key];
+      // Catalog Teltonika: dacă cheia e de forma io_NNN și avem catalogul încărcat → folosesc name_ro din catalog
+      var m = /^io_(\d+)$/.exec(key);
+      if (m && window.IO_CAT_BY_ID) {
+        var entry = window.IO_CAT_BY_ID[m[1]];
+        if (entry) return entry.name_ro || entry.name || 'IO ' + m[1];
+      }
       return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
@@ -8888,6 +8905,33 @@
     </div>
   </div>
 
+  <!-- Modal „Detalii IO" — read-only, accesibil oricui -->
+  <div class="rax-overlay" id="rax-io-details-overlay">
+    <div class="rax-card" style="max-width:720px;">
+      <div class="rax-head"><h3><i class="fas fa-circle-info" style="color:var(--accent)"></i> Detalii IO Teltonika</h3><button class="rax-x" onclick="raxCloseIoDetails()">&times;</button></div>
+      <div class="rax-body">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Catalog cu semnificațiile codurilor AVL IO din protocolul Teltonika Codec 8/8E. Folosit pentru a interpreta câmpurile <code>io_NNN</code> raportate de tracker.</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+          <input class="rax-field" id="rax-io-details-search" placeholder="Caută id / nume / descriere…" oninput="raxRenderIoDetails()" style="flex:1;min-width:160px;margin:0;">
+          <select class="rax-field" id="rax-io-details-cat" onchange="raxRenderIoDetails()" style="width:auto;min-width:140px;margin:0;"><option value="">Toate categoriile</option></select>
+        </div>
+        <div id="rax-io-details-body" style="max-height:60vh;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal „Editor catalog IO" — super-admin -->
+  <div class="rax-overlay" id="rax-io-editor-overlay">
+    <div class="rax-card" style="max-width:760px;">
+      <div class="rax-head"><h3><i class="fas fa-pen-to-square" style="color:var(--accent)"></i> Editor catalog IO (super-admin)</h3><button class="rax-x" onclick="raxCloseIoEditor()">&times;</button></div>
+      <div class="rax-body">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Modifică etichetele, unitățile sau descrierile pentru orice ID IO. Modificările sunt <strong>globale</strong> (toate companiile/userii vor vedea noile valori). Lasă un câmp gol = revino la default.</div>
+        <input class="rax-field" id="rax-io-editor-search" placeholder="Caută id / nume…" oninput="raxRenderIoEditor()" style="margin-bottom:8px;">
+        <div id="rax-io-editor-body" style="max-height:62vh;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="rax-overlay" id="rax-ag-overlay">
     <div class="rax-card">
       <div class="rax-head"><h3><i class="fas fa-shield-halved" style="color:var(--accent)"></i> Agenți AI</h3><button class="rax-x" onclick="document.getElementById('rax-ag-overlay').classList.remove('open')">&times;</button></div>
@@ -8943,6 +8987,113 @@
       if (feats.ai_assistant === false) $('rax-fabs').style.display = 'none';
     }
     setInterval(refresh, 4000); refresh();
+
+    // ─── Catalog IO Teltonika (138 ID-uri + override-uri super-admin) ───
+    window.IO_CAT = []; window.IO_CAT_BY_ID = {}; window.IO_CAT_CATEGORIES = [];
+    window.loadIoCatalog = async function () {
+      try {
+        var d = await fetch('/api/io-catalog', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        window.IO_CAT = d.catalog || [];
+        window.IO_CAT_BY_ID = {};
+        window.IO_CAT.forEach(function (e) { window.IO_CAT_BY_ID[e.id] = e; });
+        window.IO_CAT_CATEGORIES = d.categories || [];
+      } catch (e) { /* fail silent — fallback la prettify în formatIoLabel */ }
+    };
+    loadIoCatalog();
+    // Modal „Detalii IO" — read-only, accesibil oricui (afișat din panoul de detaliu vehicul)
+    window.raxOpenIoDetails = function () {
+      var ov = document.getElementById('rax-io-details-overlay'); if (!ov) return;
+      ov.classList.add('open');
+      raxRenderIoDetails();
+    };
+    window.raxCloseIoDetails = function () { var ov = document.getElementById('rax-io-details-overlay'); if (ov) ov.classList.remove('open'); };
+    window.raxRenderIoDetails = function () {
+      var body = document.getElementById('rax-io-details-body'); if (!body) return;
+      var q = (document.getElementById('rax-io-details-search').value || '').toLowerCase();
+      var cat = document.getElementById('rax-io-details-cat').value || '';
+      var list = (window.IO_CAT || []).filter(function (e) {
+        if (cat && e.category !== cat) return false;
+        if (!q) return true;
+        var s = ((e.name || '') + ' ' + (e.name_ro || '') + ' io_' + e.id + ' ' + (e.desc_ro || '') + ' ' + (e.category || '')).toLowerCase();
+        return s.indexOf(q) >= 0;
+      });
+      // Header categorii
+      var catSel = document.getElementById('rax-io-details-cat');
+      if (catSel && catSel.dataset.populated !== '1') {
+        catSel.innerHTML = '<option value="">Toate categoriile</option>' + (window.IO_CAT_CATEGORIES || []).map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+        catSel.dataset.populated = '1';
+      }
+      if (!list.length) { body.innerHTML = '<div class="rax-co-meta">Niciun IO găsit.</div>'; return; }
+      body.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + list.length + ' IO-uri</div>' + list.map(function (e) {
+        return '<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:start;gap:8px;flex-wrap:wrap;">' +
+          '<div style="min-width:60px;font-family:monospace;font-size:12px;color:var(--accent);font-weight:700;">io_' + e.id + '</div>' +
+          '<div style="flex:1;min-width:200px;">' +
+            '<div style="font-weight:600;font-size:13px;">' + esc(e.name_ro || e.name) + (e.unit && e.unit !== '-' ? ' <span style="font-size:10px;color:var(--text-muted);font-weight:400;">[' + esc(e.unit) + ']</span>' : '') + '</div>' +
+            (e.desc_ro ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(e.desc_ro) + '</div>' : '') +
+          '</div>' +
+          '<div><span class="rax-tag" style="font-size:10px;">' + esc(e.category || '') + '</span></div>' +
+        '</div>';
+      }).join('');
+    };
+
+    // Modal „Editor catalog IO" — super-admin (edit override-uri)
+    window.raxOpenIoEditor = function () {
+      var ov = document.getElementById('rax-io-editor-overlay'); if (!ov) return;
+      ov.classList.add('open');
+      raxRenderIoEditor();
+    };
+    window.raxCloseIoEditor = function () { var ov = document.getElementById('rax-io-editor-overlay'); if (ov) ov.classList.remove('open'); };
+    window.raxRenderIoEditor = function () {
+      var body = document.getElementById('rax-io-editor-body'); if (!body) return;
+      var q = (document.getElementById('rax-io-editor-search').value || '').toLowerCase();
+      var list = (window.IO_CAT || []).filter(function (e) {
+        if (!q) return true;
+        var s = ((e.name || '') + ' ' + (e.name_ro || '') + ' io_' + e.id + ' ' + (e.category || '')).toLowerCase();
+        return s.indexOf(q) >= 0;
+      });
+      body.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Editează nume / unitate / multiplicator / categorie / descriere. Modificările se aplică GLOBAL. Lasă gol pentru a folosi valoarea default. Adaugă ID custom (peste 99999 = invalid) cu „+ Adaugă IO".</div>' +
+        list.slice(0, 80).map(function (e) {
+          return '<div style="border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span style="font-family:monospace;color:var(--accent);font-weight:700;font-size:13px;">io_' + e.id + '</span>' +
+              '<span class="rax-tag" style="font-size:10px;">' + esc(e.category || '') + '</span>' +
+              '<button class="rax-btn" style="margin-left:auto;font-size:10px;padding:3px 6px;" onclick="raxResetIoOverride(' + e.id + ')" title="Revino la default">↺ Reset</button></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
+              '<label style="font-size:10px;color:var(--text-muted);">Nume RO<input class="rax-field" data-iok="name_ro" value="' + esc(e.name_ro || '') + '" placeholder="' + esc(e.name || '') + '" style="margin-top:2px;font-size:12px;"></label>' +
+              '<label style="font-size:10px;color:var(--text-muted);">Unitate<input class="rax-field" data-iok="unit" value="' + esc(e.unit || '') + '" style="margin-top:2px;font-size:12px;"></label>' +
+              '<label style="font-size:10px;color:var(--text-muted);">Multiplicator<input class="rax-field" data-iok="multiplier" type="number" step="any" value="' + (e.multiplier != null ? e.multiplier : '') + '" style="margin-top:2px;font-size:12px;"></label>' +
+              '<label style="font-size:10px;color:var(--text-muted);">Categorie<input class="rax-field" data-iok="category" value="' + esc(e.category || '') + '" style="margin-top:2px;font-size:12px;"></label>' +
+              '<label style="font-size:10px;color:var(--text-muted);grid-column:1 / -1;">Descriere<input class="rax-field" data-iok="desc_ro" value="' + esc(e.desc_ro || '') + '" style="margin-top:2px;font-size:12px;"></label>' +
+            '</div>' +
+            '<button class="rax-btn primary" style="margin-top:6px;font-size:11px;" onclick="raxSaveIoOverride(' + e.id + ', this)"><i class="fas fa-save"></i> Salvează</button>' +
+          '</div>';
+        }).join('') + (list.length > 80 ? '<div class="rax-co-meta">… primele 80 afișate. Filtrează pentru mai multe.</div>' : '');
+    };
+    window.raxSaveIoOverride = async function (id, btn) {
+      var div = btn.closest('div').parentElement || btn.parentElement;
+      var body = {};
+      div.querySelectorAll('[data-iok]').forEach(function (el) {
+        var k = el.dataset.iok;
+        var v = el.value;
+        if (v === '') body[k] = null;
+        else if (k === 'multiplier') body[k] = Number(v);
+        else body[k] = v;
+      });
+      try {
+        var r = await fetch('/api/io-catalog/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); (window.raxToast || alert)('Eroare: ' + (e.error || r.status), 'error'); return; }
+        (window.raxToast || function () {})('IO actualizat ✓', 'success');
+        await loadIoCatalog(); raxRenderIoEditor();
+      } catch (e) { (window.raxToast || alert)('Eroare de rețea', 'error'); }
+    };
+    window.raxResetIoOverride = async function (id) {
+      if (!confirm('Resetează io_' + id + ' la valorile default?')) return;
+      try {
+        var r = await fetch('/api/io-catalog/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: 'null' });
+        if (!r.ok) { (window.raxToast || alert)('Eroare la reset', 'error'); return; }
+        (window.raxToast || function () {})('Reset ✓', 'success');
+        await loadIoCatalog(); raxRenderIoEditor();
+      } catch (e) { (window.raxToast || alert)('Eroare de rețea', 'error'); }
+    };
 
     // ── AI ──
     var SUGG = ['Unde sunt vehiculele acum?', 'Cât au mers azi?', 'Care merge cel mai repede?', 'Sunt vehicule oprite?'];

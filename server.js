@@ -127,6 +127,8 @@ const channels = require('./channels');
 const ai = require('./ai');
 const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
+let ioCatalog = null;
+try { ioCatalog = require('./io_catalog'); } catch (e) { console.warn('[IO_CATALOG] indisponibil:', e.message); }
 let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
 let billing = null, plans = null;
@@ -2060,9 +2062,12 @@ app.get('/api/live', requireAuth, withScope, async (req, res) => {
 });
 
 // API: Conexiuni active
-app.get('/api/connections', requireAuth, requireFleet, (req, res) => {
-  const connections = Object.fromEntries(activeConnections);
-  res.json(connections);
+app.get('/api/connections', requireAuth, requireFleet, withScope, (req, res) => {
+  // Tenant: super-admin (allowedImeis == null) vede toate conexiunile; restul doar ale vehiculelor proprii.
+  if (req.allowedImeis == null) return res.json(Object.fromEntries(activeConnections));
+  const out = {};
+  for (const [imei, info] of activeConnections) { if (req.allowedImeis.has(imei)) out[imei] = info; }
+  res.json(out);
 });
 
 // API: Istoric traseu pentru un dispozitiv
@@ -3586,13 +3591,13 @@ async function checkExpiries() {
       if (exp > horizon) continue;
       const days = Math.ceil((exp - now) / (24 * 3600 * 1000));
       const nDrv = {
-        type: 'document_expiry', severity: days < 0 ? 'critical' : 'warning',
+        type: 'document_expiry', severity: days < 0 ? 'critical' : 'warning', companyId: dr.company_id,
         title: `Permis șofer ${days < 0 ? 'EXPIRAT' : 'expiră curând'}: ${dr.name}`,
         body: `Permisul ${dr.license_number || ''} ${days < 0 ? 'a expirat de ' + (-days) + ' zile' : 'expiră în ' + days + ' zile'} (${new Date(dr.license_expiry).toLocaleDateString('ro-RO')}).`,
         data: { key: 'drv-license-' + dr.id, driverId: dr.id, days }
       };
       await notify(nDrv);
-      await deliverExpiryToSubscribers({ title: nDrv.title, body: nDrv.body, key: nDrv.data.key });
+      await deliverExpiryToSubscribers({ companyId: dr.company_id, title: nDrv.title, body: nDrv.body, key: nDrv.data.key });
     }
     for (const m of await db.getMaintenance()) {
       if (m.status === 'done' || !m.due_date) continue;
@@ -3600,13 +3605,13 @@ async function checkExpiries() {
       if (due > horizon) continue;
       const days = Math.ceil((due - now) / (24 * 3600 * 1000));
       const nMnt = {
-        type: 'maintenance_due', severity: days < 0 ? 'critical' : 'warning', imei: m.imei,
+        type: 'maintenance_due', severity: days < 0 ? 'critical' : 'warning', imei: m.imei, companyId: m.company_id,
         title: `Mentenanță ${days < 0 ? 'SCADENTĂ' : 'scadentă curând'}: ${m.type}`,
         body: `${m.type} ${days < 0 ? 'a depășit scadența cu ' + (-days) + ' zile' : 'scade în ' + days + ' zile'} (${new Date(m.due_date).toLocaleDateString('ro-RO')}).`,
         data: { key: 'maint-' + m.id, maintenanceId: m.id, days }
       };
       await notify(nMnt);
-      await deliverExpiryToSubscribers({ imei: m.imei, title: nMnt.title, body: nMnt.body, key: nMnt.data.key });
+      await deliverExpiryToSubscribers({ imei: m.imei, companyId: m.company_id, title: nMnt.title, body: nMnt.body, key: nMnt.data.key });
     }
   } catch (e) { console.error('[EXPIRY]', e.message); }
 }
@@ -3734,7 +3739,11 @@ async function evaluateUserEvents(imei, data, prev) {
 // Livrare expirări documente către utilizatorii abonați (email/push; in-app vine din broadcast)
 async function deliverExpiryToSubscribers(ev) {
   try {
-    const users = ev.imei ? await getEligibleUsers(ev.imei) : await db.getAllActiveUsers();
+    // Tenant: cu imei → utilizatorii companiei vehiculului; fără imei (ex: permis șofer) → DOAR compania evenimentului.
+    // Nu mai folosim getAllActiveUsers (difuza către toate companiile). Eveniment fără companie = nu se difuzează nimănui.
+    const users = ev.imei
+      ? await getEligibleUsers(ev.imei)
+      : (ev.companyId != null ? await db.getActiveUsersForCompany(ev.companyId) : []);
     const prefsMap = await getPrefsMap();
     for (const u of users) {
       const up = userTypePref(prefsMap, u.id, 'document_expiry');
@@ -3888,7 +3897,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       refuelMin: parseInt(req.query.refuelMin) || 10,
       dropMin: parseInt(req.query.dropMin) || 10
     };
-    const report = await reports.runReport(db, req.params.type, imeis, from, to, opts);
+    const report = await reports.runReport(db, req.params.type, imeis, from, to, opts, req.isSuper ? null : req.companyId);
     const fmt = (req.query.format || '').toLowerCase();
     if (fmt === 'xlsx' || fmt === 'pdf') {
       if (!reportExport) return res.status(503).json({ error: 'Export PDF/Excel indisponibil pe server' });
@@ -3924,6 +3933,8 @@ app.put('/api/report-schedules/:id', requireAuth, requirePerm('viewReports'), wi
   try {
     if (!(await ownsRow(req, 'report_schedules', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     const b = req.body || {};
+    // Tenant: nu lăsa retargetarea programării către vehiculul altei companii (oglindă a verificării din POST).
+    if (b.imei && !canAccessImei(req, b.imei)) return res.status(403).json({ error: 'Acces interzis la vehicul' });
     if (b.hour != null) b.hour = Math.min(23, Math.max(0, parseInt(b.hour) || 6));
     if (b.frequency || b.hour != null) b.next_run = reportSchedules.computeNextRun(b.frequency || 'daily', b.hour != null ? b.hour : 6, new Date()).toISOString();
     await db.updateReportSchedule(req.params.id, b);
@@ -3981,13 +3992,13 @@ app.get('/api/notifications', requireAuth, withScope, async (req, res) => {
   try {
     const imeis = req.allowedImeis == null ? null : Array.from(req.allowedImeis);
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-    res.json(await db.getNotifications(req.auth.userId, imeis, limit));
+    res.json(await db.getNotifications(req.auth.userId, imeis, req.companyId, limit));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/notifications/unread-count', requireAuth, withScope, async (req, res) => {
   try {
     const imeis = req.allowedImeis == null ? null : Array.from(req.allowedImeis);
-    res.json({ count: await db.unreadNotifications(req.auth.userId, imeis) });
+    res.json({ count: await db.unreadNotifications(req.auth.userId, imeis, req.companyId) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/notifications/channels', requireAuth, requireAdmin, (req, res) => {
@@ -4126,6 +4137,68 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ─── Catalog IO Teltonika (138 ID-uri din wiki + override-uri globale super-admin) ─────────
+// GET catalog (orice user autentificat) → întoarce defaults din io_catalog.js, suprapus cu override-urile globale din settings('io_catalog_overrides')
+app.get('/api/io-catalog', requireAuth, async (req, res) => {
+  try {
+    const defaults = ioCatalog ? ioCatalog.IO_CATALOG : [];
+    let overrides = {};
+    try { const raw = await db.getSetting('io_catalog_overrides'); overrides = raw ? JSON.parse(raw) : {}; } catch (e) { overrides = {}; }
+    // Aplic overrides: înlocuiesc câmpurile din override-uri, păstrez restul
+    const merged = defaults.map(function (e) {
+      const ov = overrides[e.id];
+      return ov ? Object.assign({}, e, ov, { id: e.id }) : e;
+    });
+    // Adaug intrările doar din override (ID-uri custom, nu sunt în catalog default)
+    Object.keys(overrides).forEach(function (k) {
+      const id = parseInt(k); if (!Number.isFinite(id)) return;
+      if (!ioCatalog || !ioCatalog.IO_CATALOG_BY_ID[id]) {
+        const ov = overrides[k];
+        merged.push(Object.assign({ id: id, name: 'IO ' + id, name_ro: 'IO ' + id, unit: '-', multiplier: 1, category: 'Custom', desc_ro: '' }, ov, { id: id }));
+      }
+    });
+    // Categoriile finale
+    const categories = Array.from(new Set(merged.map(function (e) { return e.category || 'Altele'; }))).sort();
+    res.json({ catalog: merged, categories: categories, overrideCount: Object.keys(overrides).length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// PUT override pentru un ID (super-admin). Body: { name_ro, unit, multiplier, category, desc_ro } (toate opționale)
+// Body cu toate câmpurile null/undefined sau body===null → șterge override-ul.
+app.put('/api/io-catalog/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isFinite(id) || id < 1 || id > 99999) return res.status(400).json({ error: 'ID invalid (1-99999)' });
+    let overrides = {};
+    try { const raw = await db.getSetting('io_catalog_overrides'); overrides = raw ? JSON.parse(raw) : {}; } catch (e) { overrides = {}; }
+    if (req.body === null) {
+      delete overrides[id];
+    } else {
+      const b = req.body || {};
+      const patch = {};
+      ['name', 'name_ro', 'unit', 'category', 'desc_ro'].forEach(function (k) {
+        if (b[k] != null && typeof b[k] === 'string') patch[k] = String(b[k]).slice(0, 200);
+        else if (b[k] === null) patch[k] = null; // marker pentru „șterge câmpul"
+      });
+      if (b.multiplier != null) {
+        const m = Number(b.multiplier);
+        if (Number.isFinite(m) && m > 0 && m < 1e9) patch.multiplier = m;
+      }
+      // Curățare: dacă toate câmpurile sunt null, ștergem override-ul
+      const anySet = Object.keys(patch).some(function (k) { return patch[k] != null; });
+      if (!anySet) delete overrides[id];
+      else overrides[id] = Object.assign({}, overrides[id] || {}, patch);
+      // Elimin câmpurile cu valoare null (au fost „șterse" prin marker)
+      if (overrides[id]) {
+        Object.keys(overrides[id]).forEach(function (k) { if (overrides[id][k] === null) delete overrides[id][k]; });
+        if (!Object.keys(overrides[id]).length) delete overrides[id];
+      }
+    }
+    await db.setSetting('io_catalog_overrides', JSON.stringify(overrides));
+    auditReq(req, 'update', 'io_catalog', String(id), { keys: Object.keys(req.body || {}) });
+    res.json({ ok: true, override: overrides[id] || null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Super-admin: funcții (module) per companie — checkbox-uri (agents / ai_assistant / etransport / tahograf)
 app.put('/api/companies/:id/features', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -4217,14 +4290,14 @@ if (process.env.SEED_TEST === '1') {
 app.post('/api/notifications/ack-all', requireAuth, withScope, async (req, res) => {
   try {
     const imeis = req.allowedImeis == null ? null : Array.from(req.allowedImeis);
-    await db.ackAllNotifications(req.auth.userId, imeis);
+    await db.ackAllNotifications(req.auth.userId, imeis, req.companyId);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/notifications/:id/ack', requireAuth, withScope, async (req, res) => {
   try {
     const imeis = req.allowedImeis == null ? null : Array.from(req.allowedImeis);
-    const ok = await db.ackNotification(parseInt(req.params.id), req.auth.userId, imeis);
+    const ok = await db.ackNotification(parseInt(req.params.id), req.auth.userId, imeis, req.companyId);
     if (!ok) return res.status(404).json({ error: 'Notificare inexistentă sau fără acces' });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -4248,9 +4321,10 @@ app.get('/api/debug/log', requireAuth, requireAdmin, (req, res) => {
   res.json(debugLog);
 });
 
-app.get('/api/debug/raw/:imei', requireAuth, requireAdmin, async (req, res) => {
+app.get('/api/debug/raw/:imei', requireAuth, requireAdmin, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' }); // tenant: doar vehiculele proprii
     const limit = parseInt(req.query.limit) || 20;
     const result = await db.pool.query(
       'SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, created_at FROM positions WHERE imei = $1 ORDER BY timestamp DESC LIMIT $2',
@@ -4316,6 +4390,7 @@ wss.on('connection', (ws, req) => {
 
 function broadcastWs(message) {
   const imei = message && message.data && message.data.imei;
+  const companyId = message && message.data && message.data.company_id; // notificări la nivel de companie (imei NULL)
   const isDebug = message && message.type === 'debug';
   const data = JSON.stringify(message);
   wss.clients.forEach((client) => {
@@ -4324,6 +4399,9 @@ function broadcastWs(message) {
     if (isDebug && !client._isAdmin) return;   // debug doar pentru admini
     if (imei && client._allowedImeis instanceof Set && !client._allowedImeis.has(imei)) return; // filtrare pe acces
     if (imei && DEMO_SET.has(imei) && client._companyId !== demoCompanyId) return; // demo doar în contul demo
+    // Tenant: notificare imei-less, dar legată de o companie (ex: expirare permis) → doar clienții acelei companii.
+    // Clienții super-admin (allowedImeis == null) o primesc oricum. (Mesajele fără companie NU se difuzează non-superului.)
+    if (!imei && companyId != null && client._allowedImeis instanceof Set && client._companyId !== companyId) return;
     client.send(data);
   });
 }
