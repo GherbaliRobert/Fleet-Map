@@ -487,6 +487,10 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_geofences_company ON geofences(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_alerts_company ON alerts(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_positions_company ON positions(company_id, timestamp DESC)`);
+    // Indici suport pentru listele super-admin (ORDER BY last_seen, JOIN/lookup pe driver_id/group_id)
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_last_seen ON devices(last_seen DESC NULLS LAST)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_driver ON devices(driver_id) WHERE driver_id IS NOT NULL`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_group ON devices(group_id) WHERE group_id IS NOT NULL`);
     // Backfill o singură dată: pozițiile vechi moștenesc company_id din vehiculul lor (idempotent — doar rândurile NULL)
     await client.query(`
       UPDATE positions SET company_id = d.company_id
@@ -1074,20 +1078,42 @@ async function insertPositions(imei, records) {
 
 async function getDevices() {
   const result = await pool.query(`
-    SELECT d.*, 
+    SELECT d.*,
       p.latitude, p.longitude, p.speed, p.timestamp as last_position_time,
       p.io_data
     FROM devices d
     LEFT JOIN LATERAL (
       SELECT latitude, longitude, speed, timestamp, io_data
-      FROM positions 
-      WHERE positions.imei = d.imei 
-      ORDER BY timestamp DESC 
+      FROM positions
+      WHERE positions.imei = d.imei
+      ORDER BY timestamp DESC
       LIMIT 1
     ) p ON true
     ORDER BY d.last_seen DESC
   `);
   return result.rows;
+}
+
+// Variantă slabă: doar coloane esențiale pentru liste de selecție/move (fără JSONB io_data, fără LATERAL pe positions).
+// Folosită de panoul super-admin "Mută între companii" și alte selectoare unde nu ai nevoie de poziție live.
+async function getDevicesLite() {
+  const result = await pool.query(`
+    SELECT imei, name, plate, vehicle_type, status, company_id, group_id, driver_id, last_seen, created_at
+    FROM devices
+    ORDER BY last_seen DESC NULLS LAST
+  `);
+  return result.rows;
+}
+
+// UPDATE bulk: mută mai multe vehicule pe aceeași companie într-un singur statement (atomic).
+async function setDevicesCompanyBulk(imeis, companyId) {
+  if (!Array.isArray(imeis) || !imeis.length) return 0;
+  const r = await pool.query(
+    'UPDATE devices SET company_id = $2 WHERE imei = ANY($1::varchar[])',
+    [imeis, companyId || null]
+  );
+  // Pattern PGlite-safe: PGlite expune affectedRows, pg expune rowCount (vezi db.js:957)
+  return r.affectedRows || r.rowCount || 0;
 }
 
 async function getDeviceHistory(imei, from, to) {
@@ -1138,6 +1164,42 @@ async function getUsers(companyId) {
     FROM users u ${where} ORDER BY u.created_at
   `, params);
   return result.rows;
+}
+
+// Variantă slabă pentru selectoarele de mutare (fără subquery-uri COUNT pe user_device_access/user_group_access).
+async function getUsersLite(companyId) {
+  const where = companyId != null ? 'WHERE u.company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const result = await pool.query(`
+    SELECT u.id, u.username, u.role, u.full_name, u.email, u.active, u.company_id
+    FROM users u ${where} ORDER BY u.username
+  `, params);
+  return result.rows;
+}
+
+// UPDATE bulk pentru utilizatori — single transaction cu cleanup pe user_device_access + user_group_access pt. fiecare.
+async function setUsersCompanyBulk(ids, companyId) {
+  if (!Array.isArray(ids) || !ids.length) return 0;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await client.query('UPDATE users SET company_id = $2 WHERE id = ANY($1::int[])', [ids, companyId || null]);
+    await client.query('DELETE FROM user_device_access WHERE user_id = ANY($1::int[])', [ids]);
+    await client.query('DELETE FROM user_group_access WHERE user_id = ANY($1::int[])', [ids]);
+    await client.query('COMMIT');
+    return r.affectedRows || r.rowCount || 0;
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}
+
+// Helper: numără super-adminii dintr-o listă de ID-uri într-un singur SELECT (evită N round-trips în gate-ul de bulk).
+async function countSuperadminsInIds(ids) {
+  if (!Array.isArray(ids) || !ids.length) return 0;
+  const r = await pool.query(
+    `SELECT COUNT(*)::int AS c FROM users WHERE id = ANY($1::int[]) AND role = 'superadmin'`,
+    [ids]
+  );
+  return r.rows[0] ? r.rows[0].c : 0;
 }
 
 async function getUserById(id) {
@@ -1494,6 +1556,32 @@ async function getDrivers(companyId) {
   return result.rows;
 }
 
+// Variantă slabă pentru selectoare (doar coloane necesare).
+async function getDriversLite(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const result = await pool.query(
+    `SELECT id, name, phone, license_number, company_id FROM drivers ${where} ORDER BY name`,
+    params
+  );
+  return result.rows;
+}
+
+// UPDATE bulk pentru soferi — rupe întotdeauna devices.driver_id înainte de mutare, ca un vehicul să nu refere
+// un șofer din altă companie (paritate cu setDriverCompany). Vehiculele rămân la compania veche.
+async function setDriversCompanyBulk(ids, companyId) {
+  if (!Array.isArray(ids) || !ids.length) return 0;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE devices SET driver_id = NULL WHERE driver_id = ANY($1::int[])', [ids]);
+    const r = await client.query('UPDATE drivers SET company_id = $2 WHERE id = ANY($1::int[])', [ids, companyId || null]);
+    await client.query('COMMIT');
+    return r.affectedRows || r.rowCount || 0;
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}
+
 async function createDriver(data, companyId) {
   const result = await pool.query(
     'INSERT INTO drivers (name, phone, email, license_number, license_expiry, company_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
@@ -1782,6 +1870,13 @@ module.exports = {
   getDeviceFull,
   insertPositions,
   getDevices,
+  getDevicesLite,
+  setDevicesCompanyBulk,
+  setUsersCompanyBulk,
+  setDriversCompanyBulk,
+  countSuperadminsInIds,
+  getUsersLite,
+  getDriversLite,
   getDeviceHistory,
   getLastPositions,
   getUserByUsername,

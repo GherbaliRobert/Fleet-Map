@@ -1044,6 +1044,16 @@ app.get('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) =
   }
 });
 
+// Listă slabă (fără COUNT-uri pe acces) — pentru selectoarele de mutare.
+app.get('/api/users/lite', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const scope = req.isSuper ? (req.query.company ? parseInt(req.query.company) : null) : req.companyId;
+    res.json(await db.getUsersLite(scope));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const { username, password, role, full_name, email, phone } = req.body;
@@ -1800,6 +1810,22 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Bulk move: super-admin mută N vehicule la aceeași companie într-un singur statement.
+app.put('/api/devices/company/bulk', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const imeis = Array.isArray(req.body.imeis) ? req.body.imeis.map(String).filter(Boolean) : [];
+    if (!imeis.length) return res.status(400).json({ error: 'Niciun IMEI furnizat' });
+    if (imeis.length > 1000) return res.status(400).json({ error: 'Prea multe IMEI-uri (max 1000 per cerere)' });
+    const companyId = req.body.company_id != null && req.body.company_id !== '' ? parseInt(req.body.company_id) : null;
+    if (companyId != null && !(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    const moved = await db.setDevicesCompanyBulk(imeis, companyId);
+    invalidateAccessCache();
+    imeis.forEach(im => _devCompanyCache.delete(im));
+    auditReq(req, 'assign_company_bulk', 'device', null, { companyId, count: moved, imeis: imeis.slice(0, 50) });
+    res.json({ ok: true, moved });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Super-admin: mută un UTILIZATOR în altă companie. Curăță grant-urile per-vehicul/grup (db).
 app.put('/api/users/:id/company', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -1816,6 +1842,25 @@ app.put('/api/users/:id/company', requireAuth, requireSuperadmin, async (req, re
     invalidateAccessCache(id);
     auditReq(req, 'assign_company', 'user', id, { companyId });
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Bulk move: super-admin mută N utilizatori la aceeași companie. Curăță grant-urile în aceeași tranzacție.
+app.put('/api/users/company/bulk', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids.map(x => parseInt(x)).filter(x => !isNaN(x)) : [];
+    if (!ids.length) return res.status(400).json({ error: 'Niciun id furnizat' });
+    if (ids.length > 1000) return res.status(400).json({ error: 'Prea multe id-uri (max 1000 per cerere)' });
+    const companyId = req.body.company_id != null && req.body.company_id !== '' ? parseInt(req.body.company_id) : null;
+    if (companyId == null) return res.status(400).json({ error: 'Selectează compania pentru utilizatori' });
+    if (!(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    // Refuză super-adminii (același gard ca în PUT-ul single) — un singur SELECT, nu N round-trips.
+    const superCount = await db.countSuperadminsInIds(ids);
+    if (superCount > 0) return res.status(400).json({ error: 'Super-adminii nu pot fi mutați (' + superCount + ' detectați)' });
+    const moved = await db.setUsersCompanyBulk(ids, companyId);
+    ids.forEach(id => invalidateAccessCache(id));
+    auditReq(req, 'assign_company_bulk', 'user', null, { companyId, count: moved, ids: ids.slice(0, 50) });
+    res.json({ ok: true, moved });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1918,6 +1963,20 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei)); // demo doar în contul demo
     // Implicit ascunde vehiculele arhivate (de pe hartă/selectoare); ?includeArchived=1 le include (management)
+    if (!req.query.includeArchived) devices = devices.filter(d => d.status !== 'archived');
+    res.json(devices);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Listă slabă (fără poziție live + io_data) — folosită de selectoarele de mutare super-admin.
+// Drop ~80-95% din payload-ul /api/devices la 1000+ vehicule.
+app.get('/api/devices/lite', requireAuth, withScope, async (req, res) => {
+  try {
+    let devices = await db.getDevicesLite();
+    if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
+    if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei));
     if (!req.query.includeArchived) devices = devices.filter(d => d.status !== 'archived');
     res.json(devices);
   } catch (err) {
@@ -3009,6 +3068,12 @@ app.get('/api/drivers', requireAuth, withCompany, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Listă slabă șoferi — pentru selectoarele de mutare.
+app.get('/api/drivers/lite', requireAuth, withCompany, async (req, res) => {
+  try { res.json(await db.getDriversLite(req.isSuper ? null : req.companyId)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res) => {
   try { const d = await db.createDriver(req.body, req.companyId); auditReq(req, 'create', 'driver', d.id, { name: req.body.name }); res.json(d); }
   catch (err) { res.status(500).json({ error: err.message }); }
@@ -3039,6 +3104,20 @@ app.put('/api/drivers/:id/company', requireAuth, requireSuperadmin, async (req, 
     await db.setDriverCompany(id, companyId);
     auditReq(req, 'assign_company', 'driver', id, { companyId });
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Bulk move: super-admin mută N șoferi. company_id NULL = neasignat (permis).
+app.put('/api/drivers/company/bulk', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids.map(x => parseInt(x)).filter(x => !isNaN(x)) : [];
+    if (!ids.length) return res.status(400).json({ error: 'Niciun id furnizat' });
+    if (ids.length > 1000) return res.status(400).json({ error: 'Prea multe id-uri (max 1000 per cerere)' });
+    const companyId = (req.body.company_id != null && req.body.company_id !== '') ? parseInt(req.body.company_id) : null;
+    if (companyId != null && !(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
+    const moved = await db.setDriversCompanyBulk(ids, companyId);
+    auditReq(req, 'assign_company_bulk', 'driver', null, { companyId, count: moved, ids: ids.slice(0, 50) });
+    res.json({ ok: true, moved });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
