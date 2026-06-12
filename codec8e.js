@@ -315,22 +315,22 @@ function getIoName(id) {
     197: 'can_brake_pad_axle3',         // % wear
     198: 'can_brake_pad_axle4',         // % wear
     199: 'trip_odometer',               // already mapped above (system)
-    202: 'can_engine_oil_level',        // %
-    203: 'can_engine_oil_pressure',     // kPa
-    204: 'can_coolant_level',           // %
-    205: 'can_washer_fluid_level',      // %
-    // FMS Tachograph data (Camioane EU)
-    206: 'can_tacho_driver1_state',     // bitmask
-    207: 'can_tacho_driver2_state',     // bitmask
-    208: 'can_tacho_driver1_card',      // boolean
-    209: 'can_tacho_driver2_card',      // boolean
-    210: 'can_tacho_overspeed',         // boolean
-    211: 'can_tacho_driver1_drive_time', // minutes
-    212: 'can_tacho_driver2_drive_time', // minutes
-    213: 'can_tacho_driver1_break_time', // minutes
-    214: 'can_tacho_driver2_break_time', // minutes
-    215: 'can_tacho_driver1_continuous', // minutes
-    216: 'can_tacho_driver2_continuous', // minutes
+    // ─── CORECTAT pe specul OFICIAL Teltonika FMC650 (wiki.teltonika-gps.com) ───
+    // Vechea mapare 202-216 (oil/coolant/washer/tahograf) era GREȘITĂ și producea valori
+    // aberante (ex: „Lichid spalare 246479620" = de fapt GSM Cell ID la ID 205). Conform
+    // spec-ului, 201-216 = senzori LLS + GSM Cell/Area + RFID + Ultrasonic.
+    // 201-204 (LLS 1/2 nivel/temp) sunt definite mai sus și NU se mai suprascriu.
+    205: 'gsm_cell_id',                 // GSM Cell ID
+    206: 'gsm_area_code',               // GSM Area Code
+    207: 'rfid',                        // RFID
+    208: 'ultrasonic_status_1',         // Ultrasonic Software Status 1
+    209: 'ultrasonic_status_2',         // Ultrasonic Software Status 2
+    210: 'lls_fuel_level_3',            // LLS 3 Fuel Level
+    211: 'lls_fuel_temp_3',             // LLS 3 Temperature (°C)
+    212: 'lls_fuel_level_4',            // LLS 4 Fuel Level
+    213: 'lls_fuel_temp_4',             // LLS 4 Temperature (°C)
+    214: 'lls_fuel_level_5',            // LLS 5 Fuel Level
+    // 215, 216 → io_215/io_216 (necunoscute) — de confirmat din configurator, fără mapare greșită
     // Truck VIN si identificare
     217: 'can_vin',                     // string (VIN number)
     218: 'can_engine_total_fuel_used', // liters * 100 (lifetime)
