@@ -10067,7 +10067,6 @@
       cur.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>'; box.innerHTML = ''; msg.textContent = ''; msg.style.color = '';
       try {
         var st = await fetch('/api/billing/status', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        var pj = await fetch('/api/plans', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         var pl = st.plan;
         var planLine = pl ? (esc(pl.name) + (pl.custom ? ' (custom)' : '') + (pl.pricePerVehicleRON != null ? ' · ' + pl.pricePerVehicleRON + ' lei/vehicul' : (pl.flatPriceRON != null ? ' · ' + pl.flatPriceRON + ' lei/lună' : ''))) : '—';
         cur.innerHTML = '<div style="padding:11px 13px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;margin-bottom:14px;">'
@@ -10076,16 +10075,12 @@
           + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Status: ' + esc(st.status || 'inactiv') + '</div>'
           + (st.hasSubscription ? '<button class="rax-btn" style="margin-top:9px;" onclick="raxBillingPortal()"><i class="fas fa-gear"></i> Gestionează facturarea</button>' : '')
           + '</div>';
-        if (!pj.billingEnabled) { msg.style.color = 'var(--orange)'; msg.textContent = 'Plata online încă nu e activată. Scrie-ne la contact@ratrack.ro pentru abonament.'; }
-        box.innerHTML = (pj.plans || []).map(function (p) {
-          var price = p.custom ? 'Preț la cerere' : (p.pricePerVehicleRON + ' lei/vehicul/lună');
-          var btn = p.custom
-            ? '<a class="rax-btn" href="mailto:contact@ratrack.ro?subject=Ofert%C4%83%20Enterprise%20RA%20Tracks">Cere ofertă</a>'
-            : '<button class="rax-btn primary" ' + (pj.billingEnabled ? '' : 'disabled style="opacity:.5"') + ' onclick="raxCheckout(\'' + p.key + '\')">Abonează-te</button>';
-          return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">'
-            + '<div><div style="font-weight:600;">' + esc(p.name) + '</div><div style="font-size:12px;color:var(--text-muted);">' + price + '</div></div>'
-            + btn + '</div>';
-        }).join('');
+        // Preturile nu se mai afiseaza in lista: mergem pe oferta personalizata in functie de flota.
+        box.innerHTML = '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;">'
+          + '<div style="font-weight:600;margin-bottom:5px;"><i class="fas fa-tags" style="color:var(--accent)"></i> Ofertă personalizată</div>'
+          + '<div style="font-size:12px;color:var(--text-muted);line-height:1.6;">Construim abonamentul în funcție de flota ta și de funcțiile de care ai nevoie — fără pachete fixe. Spune-ne câte vehicule ai și ce vrei să monitorizezi, iar noi îți pregătim o ofertă.</div>'
+          + '<a class="rax-btn primary" style="margin-top:11px;" href="mailto:contact@ratrack.ro?subject=Cerere%20ofert%C4%83%20RA%20Tracks">Cere o ofertă</a>'
+          + '</div>';
       } catch (e) { cur.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     };
     window.raxCheckout = async function (plan) {
