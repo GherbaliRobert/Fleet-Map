@@ -6034,8 +6034,10 @@
           '<div style="flex:1;"><strong>Tahograf neconfigurat</strong><div style="font-size:10px;opacity:.85;">Camion online cu contactul pornit, dar fără date de tahograf. Verifică cablajul / cardul de companie / RDD.</div></div>' +
         '</div>';
       }
-      // Alte findings care merită evidențiate în fișă (offline, scădere combustibil, ralanti, service depășit)
-      ['offline_' + imei, 'fuel_' + imei, 'idle_' + imei, 'care_service_' + imei].forEach(function (fk) {
+      // Alte findings care merită evidențiate în fișă (combustibil, ralanti, service depășit).
+      // NB: 'offline_' nu apare aici — status bar de deasupra (clasa 'gone' / 'Oprit fără semnal')
+      //     comunică deja exact aceeași informație. Finding-ul rămâne în panoul notificări pt. istoric/ack.
+      ['fuel_' + imei, 'idle_' + imei, 'care_service_' + imei].forEach(function (fk) {
         var f = findings[fk]; if (!f) return;
         var bg = f.severity === 'critical' ? '#fee2e2' : '#fef3c7';
         var fg = f.severity === 'critical' ? '#991b1b' : '#92400e';
