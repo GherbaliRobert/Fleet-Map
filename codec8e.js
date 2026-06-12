@@ -20,15 +20,65 @@ const FMS_NAMES = {
   127:   'can_engine_temp',         // °C (Engine coolant temperature) — final, fără /10
   128:   'can_outside_temp',        // °C (Ambient air temperature)
   135:   'can_fuel_rate',           // L/h (Fuel Rate) — final, fără /10
+  136:   'can_fuel_economy',        // km/L (Instantaneous Fuel Economy)
+  137:   'can_pto_engagement',      // bitmask (PTO Drive Engagement)
+  138:   'can_engine_total_fuel_hires', // L (×0.001 — High Resolution Engine Total Fuel Used)
   139:   'can_load_weight',         // kg (Combined vehicle weight)
+  141:   'can_battery_temp',        // °C (Battery Temperature) ×0.1
+  142:   'can_battery_level_pct',   // % (Battery Level Percent)
+  143:   'can_door_status',         // bitmask (Door Status)
+  176:   'can_dtc_errors',          // count (DTC Errors)
+  226:   'can_cng_status',          // bitmask (CNG status)
+  227:   'can_cng_used',            // kg (CNG used)
+  228:   'can_cng_level',           // % (CNG level)
   357:   'can_brake_pedal',         // % (Brake pedal position)
   10455: 'can_adblue_level_pct'     // % (AdBlue Level)
 };
+
+// ─── Mod Tachograph DSRC (FMC650 cu sursă CAN = tahograf direct pe C5/C7) ───
+// Când FMC650 e cablat DIRECT la tahograf (nu prin FMS Gateway), AVL IDs 122-198 + 222/223/232/235
+// au semantică TAHOGRAF, NU LV-CAN200 (ex: id 192 = Tachograph Total Vehicle Distance,
+// NU can_distance_to_service km). Setarea per-vehicul: db.setDeviceCanInterface(imei, 'tacho').
+const TACHO_NAMES = {
+  52:  'tacho_drive_no_card',          // 0/1 - șofer fără card detectat
+  88:  'can_engine_rpm',                // RPM (același pe tahograf)
+  109: 'tacho_software_version',
+  111: 'tacho_requests_supported',
+  122: 'tacho_direction_indicator',
+  123: 'tacho_performance',
+  124: 'tacho_handling_info',
+  125: 'tacho_system_event',
+  135: 'tacho_fuel_rate',
+  183: 'tacho_drive_recognize',
+  184: 'tacho_total_distance',         // m (Total Distance)
+  185: 'tacho_vehicle_speed',          // km/h
+  186: 'tacho_driver_card_presence',   // 0/1
+  187: 'tacho_driver1_working_state',  // 0=Rest 1=Available 2=Work 3=Drive
+  188: 'tacho_driver2_working_state',
+  189: 'tacho_driver1_continuous_time', // min
+  190: 'tacho_driver1_cumulative_break', // min
+  191: 'tacho_driver1_activity_duration', // min
+  192: 'tacho_total_vehicle_distance', // m (Tachograph Total Vehicle Distance)
+  193: 'tacho_trip_distance',          // m (Trip Distance)
+  194: 'tacho_timestamp',              // s (Unix timestamp tahograf)
+  195: 'tacho_driver1_id_high',
+  196: 'tacho_driver1_id_low',
+  197: 'tacho_driver2_id_high',
+  198: 'tacho_driver2_id_low',
+  222: 'tacho_card1_issuing_state',
+  223: 'tacho_card2_issuing_state',
+  231: 'tacho_vin',
+  232: 'tacho_vrn_part2',               // Vehicle Registration Number partea 2
+  233: 'tacho_vin_part1',               // VIN partea 1 (primele 8 caractere)
+  234: 'tacho_vin_part2',               // VIN partea 2 (urmatoarele 8)
+  235: 'tacho_vin_part3'                // VIN partea 3 (ultimul caracter)
+};
+
 // Setat sincron la începutul fiecărui parse (Node single-thread, parse fără await) → citit de getIoName.
 let _ifaceForParse = null;
 
 function parseAvlPacket(buffer, iface) {
-  _ifaceForParse = (iface === 'fms') ? 'fms' : null;
+  _ifaceForParse = (iface === 'fms' || iface === 'tacho') ? iface : null;
   try {
     const preamble = buffer.readUInt32BE(0);
     if (preamble !== 0x00000000) {
@@ -225,10 +275,14 @@ function parseIoGroupNX(buffer, offset) {
   return { values, nextOffset: offset };
 }
 
-// Mapare AVL ID -> nume citibil. iface='fms' → folosește harta FMS (FMC650 cu sursă CAN=FMS),
-// altfel maparea standard/LV-CAN. Dacă iface nu e dat, se ia din _ifaceForParse (setat de parseAvlPacket).
+// Mapare AVL ID -> nume citibil.
+//  - iface='fms'   → folosește harta FMS (FMC650 cu sursă CAN=FMS).
+//  - iface='tacho' → folosește harta TACHO (FMC650 cu cablu direct la tahograf C5/C7).
+//  - altfel        → maparea standard/LV-CAN200/ALL-CAN300.
+// Dacă iface nu e dat, se ia din _ifaceForParse (setat de parseAvlPacket).
 function getIoName(id, iface) {
   const useIface = (iface !== undefined) ? iface : _ifaceForParse;
+  if (useIface === 'tacho' && TACHO_NAMES[id] !== undefined) return TACHO_NAMES[id];
   if (useIface === 'fms' && FMS_NAMES[id] !== undefined) return FMS_NAMES[id];
   const names = {
     // System
@@ -274,6 +328,16 @@ function getIoName(id, iface) {
     83:  'can_fuel_consumed',           // liters * 100
     84:  'can_fuel_level_liters',       // liters * 10
     85:  'can_engine_rpm',              // RPM
+    // Camioane multi-axă (TGS / Scania / Volvo cu LV-CAN200 truck profile)
+    88:  'can_engine_rpm_alt',          // RPM (duplicat semantic 85 - apare pe unele profile truck)
+    91:  'can_axle3_load_alt',          // kg (Axle Weight 3 — duplicat pe profile noi)
+    92:  'can_axle4_load_alt',          // kg
+    93:  'can_axle5_load_alt',          // kg
+    94:  'can_axle6_load',              // kg
+    95:  'can_axle7_load',              // kg
+    96:  'can_axle8_load',              // kg
+    97:  'can_axle9_load',              // kg
+    98:  'can_axle10_load',             // kg
     87:  'can_total_mileage',           // meters
     89:  'can_fuel_level_pct',          // %
     90:  'can_door_status',             // bitmask (256=FL, 512=FR, 1024=RL, 2048=RR, 4096=hood, 8192=trunk)
