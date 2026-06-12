@@ -1,8 +1,12 @@
-// Catalog AVL IO Teltonika (Codec 8/8E) — 138 ID-uri din documentația oficială wiki.teltonika-gps.com
-// FMB003 / FMB920 / FMC130 / FMM family. Override-uri global: companies.settings… nu, în settings global (key='io_catalog_overrides').
+// Catalog AVL IO Teltonika (Codec 8/8E) — ID-uri din documentația oficială wiki.teltonika-gps.com + Teltonika Configurator
+// FMB003 / FMB920 / FMC130 / FMM / FMC650 (heavy-vehicle dual-CAN + tahograf DSRC).
 // Cheie: id numeric. Format per intrare:
-//   { id, name, name_ro, unit, multiplier, category, desc_ro }
+//   { id, name, name_ro, unit, multiplier, category, desc_ro, name_wiki? }
+//   - name           = eticheta exactă din Teltonika Configurator (cum o vezi pe tracker prin USB)
+//   - name_wiki      = (opțional) cum apare pe wiki dacă diferă de Configurator
+//   - name_ro        = traducere română (pentru utilizatorul final)
 // Aplicația folosește acest catalog ca default; super-admin poate suprascrie/extinde din UI.
+// Override-urile sunt globale, în settings(key='io_catalog_overrides').
 
 const IO_CATALOG = [
   // ─── I/O Digital/Analog (1-10, 179-180, 380-381) ─────────────────────────
@@ -175,7 +179,154 @@ const IO_CATALOG = [
   // ─── OEM OBD (500, 501, 10000) ──────────────────────────────────────────
   { id: 500, name: 'MSP500 Vendor Name', name_ro: 'MSP500 vânzător', unit: '-', multiplier: 1, category: 'OEM OBD', desc_ro: 'Numele integratorului MSP500' },
   { id: 501, name: 'MSP500 Vehicle Number', name_ro: 'MSP500 nr. vehicul', unit: '-', multiplier: 1, category: 'OEM OBD', desc_ro: 'Număr de flotă vehicul (MSP500)' },
-  { id: 10000, name: 'OEM OBD parameter', name_ro: 'Parametru OEM OBD', unit: '-', multiplier: 1, category: 'OEM OBD', desc_ro: 'Interval 10000-10999: parametru specific mărcii mașinii (OEM PID via OBD/CAN). Sensul depinde de modelul mașinii și fișierul OEM Teltonika.' }
+  { id: 10000, name: 'OEM OBD parameter', name_ro: 'Parametru OEM OBD', unit: '-', multiplier: 1, category: 'OEM OBD', desc_ro: 'Interval 10000-10999: parametru specific mărcii mașinii (OEM PID via OBD/CAN). Sensul depinde de modelul mașinii și fișierul OEM Teltonika.' },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FMC650 — heavy-vehicle dual-CAN + tahograf DSRC. Adăugat 109 ID-uri suplimentare
+  // cu nume EXACT din Teltonika Configurator (eticheta pe care o vezi prin USB).
+  // Sursă: wiki.teltonika-gps.com/view/FMC650 + Teltonika Data Sending Parameters ID.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ─── Dallas Temperature (7-8, 62-65) ──────────────────────────────────────
+  { id: 7, name: "Dallas Temperature ID 6", name_ro: "ID senzor Dallas 6", multiplier: 1, category: "Dallas", desc_ro: "Identificator senzor temperatura Dallas 6" },
+  { id: 8, name: "Dallas Temperature 6", name_ro: "Temperatura Dallas 6", unit: "°C", multiplier: 0.1, category: "Dallas", desc_ro: "Temperatura citita de senzorul Dallas 6" },
+  { id: 62, name: "Dallas Temperature ID 1", name_ro: "ID senzor Dallas 1", multiplier: 1, category: "Dallas", desc_ro: "Identificator senzor Dallas 1" },
+  { id: 63, name: "Dallas Temperature ID 2", name_ro: "ID senzor Dallas 2", multiplier: 1, category: "Dallas", desc_ro: "Identificator senzor Dallas 2" },
+  { id: 64, name: "Dallas Temperature ID 3", name_ro: "ID senzor Dallas 3", multiplier: 1, category: "Dallas", desc_ro: "Identificator senzor Dallas 3" },
+  { id: 65, name: "Dallas Temperature ID 4", name_ro: "ID senzor Dallas 4", multiplier: 1, category: "Dallas", desc_ro: "Identificator senzor Dallas 4" },
+
+  // ─── AdBlue (20, 112, 229) ────────────────────────────────────────────────
+  { id: 20, name: "AdBlue Level Liters", name_ro: "Nivel AdBlue in litri", unit: "L", multiplier: 0.1, category: "AdBlue", desc_ro: "Nivel AdBlue exprimat in litri" },
+  { id: 112, name: "AdBlue Level Liters", name_ro: "Nivel AdBlue (L)", unit: "L", multiplier: 1, category: "AdBlue", desc_ro: "Cantitate AdBlue in rezervor", name_wiki: "AdBlue Level (liters)" },
+  { id: 229, name: "AdBlue Status", name_ro: "Stare AdBlue", multiplier: 1, category: "AdBlue", desc_ro: "Stare sistem AdBlue (info/galben/rosu)", name_wiki: "AdBlue status" },
+
+  // ─── Motor (31, 35, 88, 104, 114-115) ────────────────────────────────────
+  { id: 31, name: "Accelerator Pedal Position", name_ro: "Pozitie pedala acceleratie", unit: "%", multiplier: 1, category: "Motor", desc_ro: "Procentul de apasare pedala acceleratie" },
+  { id: 35, name: "Engine RPM", name_ro: "Turatie motor", unit: "RPM", multiplier: 1, category: "Motor", desc_ro: "Turatia motorului in rotatii/minut" },
+  { id: 88, name: "Engine Speed", name_ro: "Turatie motor (CAN)", unit: "RPM", multiplier: 1, category: "CAN", desc_ro: "Turatie motor citita din CAN" },
+  { id: 104, name: "Engine Total Hours Of Operation", name_ro: "Ore totale functionare motor", unit: "h", multiplier: 1, category: "CAN", desc_ro: "Ore totale de functionare motor" },
+  { id: 114, name: "Engine Load", name_ro: "Sarcina motor", unit: "%", multiplier: 1, category: "Motor", desc_ro: "Procent incarcare motor" },
+  { id: 115, name: "Engine Coolant Temperature", name_ro: "Temperatura motor (lichid racire)", unit: "°C", multiplier: 1, category: "Motor", desc_ro: "Temperatura lichid racire motor", name_wiki: "Engine Temperature" },
+  { id: 127, name: "Engine Coolant Temperature", name_ro: "Temperatura lichid racire", unit: "°C", multiplier: 1, category: "CAN", desc_ro: "Temperatura lichid de racire motor" },
+  { id: 128, name: "Ambient Air Temperature", name_ro: "Temperatura aer ambient", unit: "°C", multiplier: 1, category: "CAN", desc_ro: "Temperatura aerului ambiant" },
+  { id: 357, name: "Brake Pedal Position", name_ro: "Pozitie pedala frana", unit: "%", multiplier: 1, category: "CAN", desc_ro: "Procent apasare pedala frana" },
+
+  // ─── Combustibil CAN (33-34, 37, 135-136, 138, 226-228) ──────────────────
+  { id: 33, name: "Fuel Consumed", name_ro: "Combustibil consumat", unit: "L", multiplier: 0.1, category: "Combustibil", desc_ro: "Combustibil consumat citit din CAN" },
+  { id: 34, name: "Fuel Level Liters", name_ro: "Nivel combustibil in litri", unit: "L", multiplier: 0.1, category: "Combustibil", desc_ro: "Nivel combustibil in rezervor" },
+  { id: 37, name: "Fuel Level Percent", name_ro: "Nivel combustibil procentual", unit: "%", multiplier: 1, category: "Combustibil", desc_ro: "Nivel combustibil in procente" },
+  { id: 135, name: "Fuel Rate", name_ro: "Debit combustibil (CAN)", unit: "L/h", multiplier: 1, category: "CAN", desc_ro: "Debit combustibil instantaneu din CAN" },
+  { id: 136, name: "Instantaneous Fuel Economy", name_ro: "Economie combustibil instantanee", unit: "km/L", multiplier: 1, category: "CAN", desc_ro: "Eficienta consum instantanee km/L" },
+  { id: 138, name: "HiRes Engine Total Fuel Used", name_ro: "Combustibil total inalt rez.", unit: "L", multiplier: 0.001, category: "CAN", desc_ro: "Combustibil total motor in rezolutie inalta", name_wiki: "High Resolution Engine Total Fuel Used" },
+  { id: 226, name: "CNG Status", name_ro: "Stare CNG", multiplier: 1, category: "Combustibil", desc_ro: "Stare sistem CNG" },
+  { id: 227, name: "CNG Used", name_ro: "CNG consumat", unit: "kg", multiplier: 1, category: "Combustibil", desc_ro: "Cantitate CNG consumata" },
+  { id: 228, name: "CNG Level", name_ro: "Nivel CNG", unit: "%", multiplier: 1, category: "Combustibil", desc_ro: "Procent rezervor CNG" },
+
+  // ─── Anvelope/Punți (32, 91-98, 118-121, 139) ────────────────────────────
+  { id: 32, name: "Axle 5 Load", name_ro: "Sarcina punte 5", unit: "kg", multiplier: 1, category: "Anvelope", desc_ro: "Greutate distribuita pe puntea 5" },
+  { id: 91, name: "Axle Weight 3", name_ro: "Greutate punte 3", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 3", name_wiki: "Axle weight 3" },
+  { id: 92, name: "Axle Weight 4", name_ro: "Greutate punte 4", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 4", name_wiki: "Axle weight 4" },
+  { id: 93, name: "Axle Weight 5", name_ro: "Greutate punte 5", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 5", name_wiki: "Axle weight 5" },
+  { id: 94, name: "Axle Weight 6", name_ro: "Greutate punte 6", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 6", name_wiki: "Axle weight 6" },
+  { id: 95, name: "Axle Weight 7", name_ro: "Greutate punte 7", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 7", name_wiki: "Axle weight 7" },
+  { id: 96, name: "Axle Weight 8", name_ro: "Greutate punte 8", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 8", name_wiki: "Axle weight 8" },
+  { id: 97, name: "Axle Weight 9", name_ro: "Greutate punte 9", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 9", name_wiki: "Axle weight 9" },
+  { id: 98, name: "Axle Weight 10", name_ro: "Greutate punte 10", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 10", name_wiki: "Axle weight 10" },
+  { id: 118, name: "Axle 1 Load", name_ro: "Sarcina axa 1", unit: "kg", multiplier: 1, category: "Anvelope", desc_ro: "Greutate suportata de axa 1" },
+  { id: 119, name: "Axle 2 Load", name_ro: "Sarcina axa 2", unit: "kg", multiplier: 1, category: "Anvelope", desc_ro: "Greutate suportata de axa 2" },
+  { id: 120, name: "Axle 3 Load", name_ro: "Sarcina axa 3", unit: "kg", multiplier: 1, category: "Anvelope", desc_ro: "Greutate suportata de axa 3" },
+  { id: 121, name: "Axle 4 Load", name_ro: "Sarcina axa 4", unit: "kg", multiplier: 1, category: "Anvelope", desc_ro: "Greutate suportata de axa 4" },
+  { id: 139, name: "Gross Combination Vehicle Weight", name_ro: "Greutate totala vehicul+remorca", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutatea totala camion plus remorci" },
+
+  // ─── Kilometraj/Mers (36, 183) ───────────────────────────────────────────
+  { id: 36, name: "Total Mileage", name_ro: "Kilometraj total", unit: "m", multiplier: 1, category: "Mers", desc_ro: "Kilometraj total din CAN (m)" },
+  { id: 183, name: "Drive Recognize", name_ro: "Recunoastere mers", multiplier: 1, category: "Mers", desc_ro: "Indicator mers detectat de tahograf" },
+
+  // ─── Tahograf / DSRC (52, 109, 111, 122-125, 192-194, 222-223, 232-235) ──
+  { id: 52, name: "Tacho Drive No Card", name_ro: "Tahograf - sofer fara card", multiplier: 1, category: "Tahograf", desc_ro: "Indicator sofer fara card de tahograf", name_wiki: "Tacho drive no card" },
+  { id: 109, name: "Software Version Supported", name_ro: "Versiune software suportata", multiplier: 1, category: "Tahograf", desc_ro: "Versiune software suportata (tahograf)" },
+  { id: 111, name: "Requests Supported", name_ro: "Cereri suportate", multiplier: 1, category: "Tahograf", desc_ro: "Flag suport cereri" },
+  { id: 122, name: "Direction Indication", name_ro: "Indicator directie", multiplier: 1, category: "Tahograf", desc_ro: "Indicator directie miscare" },
+  { id: 123, name: "Tachograph Performance", name_ro: "Performanta tahograf", multiplier: 1, category: "Tahograf", desc_ro: "Stare inregistrare tahograf" },
+  { id: 124, name: "Handling Info", name_ro: "Info manipulare", multiplier: 1, category: "Tahograf", desc_ro: "Informatii manipulare marfa" },
+  { id: 125, name: "System Event", name_ro: "Eveniment sistem", multiplier: 1, category: "Tahograf", desc_ro: "Indicator eveniment sistem" },
+  { id: 192, name: "Tachograph Total Vehicle Distance", name_ro: "Kilometraj tahograf", unit: "m", multiplier: 1, category: "Tahograf", desc_ro: "Distanta totala raportata de tahograf", name_wiki: "Tachograph Odometer" },
+  { id: 193, name: "Tachograph Trip Distance", name_ro: "Distanta cursa tahograf", unit: "m", multiplier: 1, category: "Tahograf", desc_ro: "Distanta parcursa in cursa curenta (tahograf)", name_wiki: "Trip Distance" },
+  { id: 194, name: "Timestamp", name_ro: "Marca timp tahograf", unit: "s", multiplier: 1, category: "Tahograf", desc_ro: "Marca de timp Unix raportata de tahograf" },
+  { id: 222, name: "Card 1 Issuing Member State", name_ro: "Stat emitent card sofer 1", multiplier: 1, category: "Tahograf", desc_ro: "Cod NationNumeric al statului emitent card sofer 1" },
+  { id: 223, name: "Card 2 Issuing Member State", name_ro: "Stat emitent card sofer 2", multiplier: 1, category: "Tahograf", desc_ro: "Cod NationNumeric al statului emitent card sofer 2" },
+  { id: 232, name: "Vehicle Registration Number Part 2", name_ro: "Numar inmatriculare (partea 2)", multiplier: 1, category: "Tahograf", desc_ro: "Caractere ASCII suplimentare ale nr. inmatriculare (tahograf)", name_wiki: "Vehicle Registration Number Part2" },
+  { id: 233, name: "Vehicle Identification Number Part 1", name_ro: "VIN vehicul (partea 1)", multiplier: 1, category: "Tahograf", desc_ro: "Primele 8 caractere ASCII din VIN (tahograf)", name_wiki: "Vehicle Identification Number Part1" },
+  { id: 234, name: "Vehicle Identification Number Part 2", name_ro: "VIN vehicul (partea 2)", multiplier: 1, category: "Tahograf", desc_ro: "Urmatoarele 8 caractere ASCII din VIN (tahograf)", name_wiki: "Vehicle Identification Number Part2" },
+  { id: 235, name: "Vehicle Identification Number Part 3", name_ro: "VIN vehicul (partea 3)", multiplier: 1, category: "Tahograf", desc_ro: "Ultimul caracter ASCII din VIN (tahograf)", name_wiki: "Vehicle Identification Number Part3" },
+
+  // ─── Geofence Zone 1-20 (61, 155-174) — fiecare zonă raportează intrare/ieșire ───
+  { id: 61, name: "Geofence Zone 06", name_ro: "Zona Geofence 06", multiplier: 1, category: "Alarme", desc_ro: "0=parasire zona, 1=intrare in zona geofence 06" },
+  { id: 155, name: "Geofence Zone 01", name_ro: "Zona geofence 01", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 01", name_wiki: "Geofence zone 01" },
+  { id: 156, name: "Geofence Zone 02", name_ro: "Zona geofence 02", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 02", name_wiki: "Geofence zone 02" },
+  { id: 157, name: "Geofence Zone 03", name_ro: "Zona geofence 03", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 03", name_wiki: "Geofence zone 03" },
+  { id: 158, name: "Geofence Zone 04", name_ro: "Zona geofence 04", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 04", name_wiki: "Geofence zone 04" },
+  { id: 159, name: "Geofence Zone 05", name_ro: "Zona geofence 05", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 05", name_wiki: "Geofence zone 05" },
+  { id: 160, name: "Geofence Zone 06", name_ro: "Zona geofence 06", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 06", name_wiki: "Geofence zone 06" },
+  { id: 161, name: "Geofence Zone 07", name_ro: "Zona geofence 07", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 07", name_wiki: "Geofence zone 07" },
+  { id: 162, name: "Geofence Zone 08", name_ro: "Zona geofence 08", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 08", name_wiki: "Geofence zone 08" },
+  { id: 163, name: "Geofence Zone 09", name_ro: "Zona geofence 09", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 09", name_wiki: "Geofence zone 09" },
+  { id: 164, name: "Geofence Zone 10", name_ro: "Zona geofence 10", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 10", name_wiki: "Geofence zone 10" },
+  { id: 165, name: "Geofence Zone 11", name_ro: "Zona geofence 11", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 11", name_wiki: "Geofence zone 11" },
+  { id: 166, name: "Geofence Zone 12", name_ro: "Zona geofence 12", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 12", name_wiki: "Geofence zone 12" },
+  { id: 167, name: "Geofence Zone 13", name_ro: "Zona geofence 13", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 13", name_wiki: "Geofence zone 13" },
+  { id: 168, name: "Geofence Zone 14", name_ro: "Zona geofence 14", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 14", name_wiki: "Geofence zone 14" },
+  { id: 169, name: "Geofence Zone 15", name_ro: "Zona geofence 15", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 15", name_wiki: "Geofence zone 15" },
+  { id: 170, name: "Geofence Zone 16", name_ro: "Zona geofence 16", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 16", name_wiki: "Geofence zone 16" },
+  { id: 171, name: "Geofence Zone 17", name_ro: "Zona geofence 17", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 17", name_wiki: "Geofence zone 17" },
+  { id: 172, name: "Geofence Zone 18", name_ro: "Zona geofence 18", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 18", name_wiki: "Geofence zone 18" },
+  { id: 173, name: "Geofence Zone 19", name_ro: "Zona geofence 19", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 19", name_wiki: "Geofence zone 19" },
+  { id: 174, name: "Geofence Zone 20", name_ro: "Zona geofence 20", multiplier: 1, category: "Alarme", desc_ro: "Stare detectie zona geofence 20", name_wiki: "Geofence zone 20" },
+  { id: 175, name: "Auto Geofence", name_ro: "Auto-Geofence", multiplier: 1, category: "Alarme", desc_ro: "0=iesire din zona auto-geofence, 1=intrare in zona auto-geofence" },
+
+  // ─── Alarme + Idling + Crash (47, 243, 257) ──────────────────────────────
+  { id: 47, name: "Security State Flags", name_ro: "Flaguri stare securitate", multiplier: 1, category: "Alarme", desc_ro: "Flaguri stare securitate vehicul (bitmask)" },
+  { id: 243, name: "Idling", name_ro: "Mers in gol detectat", multiplier: 1, category: "Alarme", desc_ro: "1=motor in gol fara miscare peste pragul configurat" },
+  { id: 257, name: "Crash Trace Data", name_ro: "Date trasare impact", multiplier: 1, category: "Alarme", desc_ro: "Date brute accelerometru inregistrate la impact" },
+
+  // ─── Eco-driving extins (258-260) ────────────────────────────────────────
+  { id: 258, name: "EcoMaximum", name_ro: "Acceleratie eco maxima", unit: "g", multiplier: 0.01, category: "Eco-driving", desc_ro: "Valoarea maxima de acceleratie in evenimentul eco-driving" },
+  { id: 259, name: "EcoAverage", name_ro: "Acceleratie eco medie", unit: "g", multiplier: 0.01, category: "Eco-driving", desc_ro: "Valoarea medie de acceleratie in evenimentul eco-driving" },
+  { id: 260, name: "EcoDuration", name_ro: "Durata eveniment eco", unit: "ms", multiplier: 1, category: "Eco-driving", desc_ro: "Durata totala a evenimentului eco-driving in ms" },
+
+  // ─── CAN diverse (143, 176) ──────────────────────────────────────────────
+  { id: 143, name: "Door Status", name_ro: "Stare usi", multiplier: 1, category: "CAN", desc_ro: "Stare usi vehicul (bitmask)" },
+  { id: 176, name: "DTC Errors", name_ro: "Erori DTC", multiplier: 1, category: "CAN", desc_ro: "Numar coduri eroare diagnostic (DTC)" },
+
+  // ─── Alimentare extins (141-142) ─────────────────────────────────────────
+  { id: 141, name: "Battery Temperature", name_ro: "Temperatura baterie", unit: "°C", multiplier: 0.1, category: "Alimentare", desc_ro: "Temperatura bateriei interne" },
+  { id: 142, name: "Battery Level Percent", name_ro: "Nivel baterie procentual", unit: "%", multiplier: 1, category: "Alimentare", desc_ro: "Nivel baterie interna in procente" },
+
+  // ─── I/O Digital extins (50-51) ──────────────────────────────────────────
+  { id: 50, name: "Digital Output 3", name_ro: "Iesire digitala 3", multiplier: 1, category: "I/O Digital", desc_ro: "Stare iesire digitala 3 (0/1) — variantă alternativă pentru anumite firmware-uri" },
+  { id: 51, name: "Digital Output 4", name_ro: "Iesire digitala 4", multiplier: 1, category: "I/O Digital", desc_ro: "Stare iesire digitala 4 (0/1)" },
+
+  // ─── Sistem (38, 70, 144, 231, 242, 244) ─────────────────────────────────
+  { id: 38, name: "Control State Flags", name_ro: "Flaguri stare control", multiplier: 1, category: "Sistem", desc_ro: "Indicator stare operationala (bitmask)" },
+  { id: 70, name: "PCB Temperature", name_ro: "Temperatura PCB", unit: "°C", multiplier: 0.1, category: "Sistem", desc_ro: "Temperatura placii electronice" },
+  { id: 144, name: "SD Status", name_ro: "Stare card SD (CAN)", multiplier: 1, category: "Sistem", desc_ro: "Stare card SD (0-absent, 1-prezent) — variantă alternativă" },
+  { id: 231, name: "VIN", name_ro: "VIN vehicul", multiplier: 1, category: "Sistem", desc_ro: "Numar identificare vehicul (CAN)" },
+  { id: 242, name: "Data Limit Hit", name_ro: "Limita date atinsa", multiplier: 1, category: "Sistem", desc_ro: "1=limita lunara de date GSM atinsa" },
+  { id: 244, name: "Camera Image Generated", name_ro: "Imagine camera generata", multiplier: 1, category: "Sistem", desc_ro: "ID/timestamp imagine capturata de camera externa" },
+
+  // ─── Agricultural/Recoltare (39-46) — pentru utilaje agricole cu CAN ─────
+  { id: 39, name: "Agricultural Machinery Flags", name_ro: "Flaguri utilaje agricole", multiplier: 1, category: "Sistem", desc_ro: "Flaguri stare echipamente agricole" },
+  { id: 40, name: "Harvesting Time", name_ro: "Timp recoltare", unit: "min", multiplier: 1, category: "Sistem", desc_ro: "Timp total de recoltare in minute" },
+  { id: 41, name: "Area of Harvest", name_ro: "Suprafata recoltata", unit: "m²", multiplier: 1, category: "Sistem", desc_ro: "Suprafata totala recoltata in metri patrati" },
+  { id: 42, name: "Mowing Efficiency", name_ro: "Eficienta cosit", unit: "m²/h", multiplier: 1, category: "Sistem", desc_ro: "Eficienta de cosire pe ora" },
+  { id: 43, name: "Grain Mown Volume", name_ro: "Volum cereale recoltate", unit: "kg", multiplier: 1, category: "Sistem", desc_ro: "Cantitate cereale recoltate in kg" },
+  { id: 44, name: "Grain Moisture", name_ro: "Umiditate cereale", unit: "%", multiplier: 0.1, category: "Sistem", desc_ro: "Umiditate cereale procentuala" },
+  { id: 45, name: "Harvesting Drum RPM", name_ro: "Turatie toba recoltare", unit: "RPM", multiplier: 1, category: "Sistem", desc_ro: "Turatia tobei de recoltare" },
+  { id: 46, name: "Gap Under Harvesting Drum", name_ro: "Spatiu sub toba recoltare", unit: "mm", multiplier: 1, category: "Sistem", desc_ro: "Spatiul de sub toba de recoltare in mm" },
+
+  // ─── PTO + GSM Network Type (137, 178) ───────────────────────────────────
+  { id: 137, name: "PTO Drive Engagement", name_ro: "Cuplare PTO", multiplier: 1, category: "CAN", desc_ro: "Stare cuplare priza de putere (Power Take-Off)" },
+  { id: 178, name: "Network Type", name_ro: "Tip retea", multiplier: 1, category: "GSM", desc_ro: "Tehnologie retea celulara (2G/3G/4G)" }
 ];
 
 // Hartă rapidă id → entry

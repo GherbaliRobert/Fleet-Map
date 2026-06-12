@@ -9040,11 +9040,22 @@
       }
       if (!list.length) { body.innerHTML = '<div class="rax-co-meta">Niciun IO găsit.</div>'; return; }
       body.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + list.length + ' IO-uri</div>' + list.map(function (e) {
+        // Nume în 3 niveluri: RO (utilizator final) · Configurator (cum vezi prin USB) · wiki (dacă diferă)
+        var nameRo = e.name_ro || e.name || ('IO ' + e.id);
+        var nameCfg = e.name || '';
+        var nameWiki = e.name_wiki || '';
+        var cfgLine = nameCfg && nameCfg !== nameRo
+          ? '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">📟 Teltonika Configurator: <code style="font-size:10px;background:var(--surface-alt,#f3f4f6);padding:1px 4px;border-radius:3px;">' + esc(nameCfg) + '</code></div>'
+          : '';
+        var wikiLine = nameWiki && nameWiki !== nameCfg && nameWiki !== nameRo
+          ? '<div style="font-size:10px;color:var(--text-muted);margin-top:1px;">📖 wiki: <code style="font-size:10px;background:var(--surface-alt,#f3f4f6);padding:1px 4px;border-radius:3px;">' + esc(nameWiki) + '</code></div>'
+          : '';
         return '<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:start;gap:8px;flex-wrap:wrap;">' +
           '<div style="min-width:60px;font-family:monospace;font-size:12px;color:var(--accent);font-weight:700;">io_' + e.id + '</div>' +
           '<div style="flex:1;min-width:200px;">' +
-            '<div style="font-weight:600;font-size:13px;">' + esc(e.name_ro || e.name) + (e.unit && e.unit !== '-' ? ' <span style="font-size:10px;color:var(--text-muted);font-weight:400;">[' + esc(e.unit) + ']</span>' : '') + '</div>' +
-            (e.desc_ro ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(e.desc_ro) + '</div>' : '') +
+            '<div style="font-weight:600;font-size:13px;">' + esc(nameRo) + (e.unit && e.unit !== '-' ? ' <span style="font-size:10px;color:var(--text-muted);font-weight:400;">[' + esc(e.unit) + ']</span>' : '') + '</div>' +
+            cfgLine + wikiLine +
+            (e.desc_ro ? '<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">' + esc(e.desc_ro) + '</div>' : '') +
           '</div>' +
           '<div><span class="rax-tag" style="font-size:10px;">' + esc(e.category || '') + '</span></div>' +
         '</div>';
