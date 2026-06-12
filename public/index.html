@@ -5917,8 +5917,9 @@
       return dirs[Math.round(angle / 45) % 8] + ' (' + angle + '\u00B0)';
     }
 
-    function getGsmSignalBars(level) {
-      if (level === undefined || level === null) return '-';
+    function getGsmSignalBars(level, isOnline) {
+      // fără valoare de semnal: dacă device-ul e online (a trimis date recent) → e Conectat (doar nu raportează nivelul în sleep)
+      if (level === undefined || level === null) return isOnline ? 'Conectat' : '-';
       const labels = ['Fara semnal', 'Foarte slab', 'Slab', 'Mediu', 'Bun', 'Excelent'];
       const bars = Math.min(level, 5);
       let html = '<span style="display:inline-flex;gap:2px;margin-right:6px;">';
@@ -5927,7 +5928,9 @@
         const active = i < bars;
         html += '<span style="width:4px;height:' + h + 'px;border-radius:1px;background:' + (active ? 'var(--green)' : 'var(--border)') + ';display:inline-block;vertical-align:bottom;"></span>';
       }
-      html += '</span>' + (labels[bars] || level + '/5');
+      // nivel 0 dar device online → „Conectat" (a trimis date, deci are GSM), nu alarmant „Fara semnal"
+      const label = (level === 0 && isOnline) ? 'Conectat' : (labels[bars] || level + '/5');
+      html += '</span>' + label;
       return html;
     }
 
@@ -6090,9 +6093,9 @@
 
         // Row 3: Semnal GSM + Semnal GPS
         '<div class="info-item">' +
-          '<div class="info-item-icon ' + (io.gsm_signal >= 3 ? 'green' : io.gsm_signal >= 1 ? 'yellow' : 'red') + '"><i class="fas fa-signal"></i></div>' +
+          '<div class="info-item-icon ' + (io.gsm_signal >= 3 ? 'green' : io.gsm_signal >= 1 ? 'yellow' : (isOnline ? 'yellow' : 'red')) + '"><i class="fas fa-signal"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value" style="font-size:12px;">' + getGsmSignalBars(io.gsm_signal) + '</div>' +
+            '<div class="info-item-value" style="font-size:12px;">' + getGsmSignalBars(io.gsm_signal, isOnline) + '</div>' +
             '<div class="info-item-label">Semnal GSM</div>' +
           '</div>' +
         '</div>' +
