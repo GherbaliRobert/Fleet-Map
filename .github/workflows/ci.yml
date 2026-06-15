@@ -36,9 +36,13 @@ jobs:
           node --check tacho.js
           node --check geocode.js
 
-      # 2) Unit — logica agenților (RA Watch furt combustibil), fără server/rețea
-      - name: Unit tests (agenți)
-        run: node verify_fueltheft.js
+      # 2) Unit — deterministe, fără server/rețea: parser codec, agenți, billing (HMAC webhook)
+      - name: Unit tests (codec + agenți + billing)
+        run: |
+          node test_codec8e.js
+          node test_agents.js
+          node test_billing.js
+          node verify_fueltheft.js
 
       # 3) Smoke — server embedded (PGlite + SEED_TEST): izolare multi-tenant + RBAC
       - name: Smoke tests (server)
