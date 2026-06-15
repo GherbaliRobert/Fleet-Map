@@ -453,7 +453,8 @@ async function initDb() {
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_per_ton_km NUMERIC(10,2)`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_sensors JSONB`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS io_mappings JSONB`,
-      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS can_interface VARCHAR(8)`
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS can_interface VARCHAR(8)`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_can JSONB`
     ];
     for (const sql of migrateColumns) {
       try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
@@ -817,6 +818,26 @@ async function setDeviceCanInterface(imei, iface) {
 async function getDeviceCanInterface(imei) {
   const r = await pool.query('SELECT can_interface FROM devices WHERE imei = $1', [imei]);
   return r.rows[0] ? (r.rows[0].can_interface || null) : null;
+}
+// Persistă ultimele valori CAN „sticky" (carburant/odometru/AdBlue/ore) per device. Supraviețuiește restartului
+// serverului → rămân afișate cât vehiculul e parcat (motor oprit ⇒ nu mai trimite date CAN).
+async function setDeviceLastCan(imei, obj) {
+  try { await pool.query('UPDATE devices SET last_can = $2 WHERE imei = $1', [imei, JSON.stringify(obj || {})]); } catch (e) {}
+}
+// Backfill o singură dată la pornire: ultima poziție din istoricul recent care CHIAR are carburant/odometru,
+// pentru devices fără last_can persistat încă. Best-effort (wrapped în try/catch de apelant).
+async function getLastStickyCan() {
+  const r = await pool.query(`
+    SELECT DISTINCT ON (imei) imei, io_data, timestamp
+    FROM positions
+    WHERE timestamp > NOW() - INTERVAL '30 days'
+      AND ( (io_data->>'can_fuel_level_liters') IS NOT NULL
+         OR (io_data->>'can_total_mileage') IS NOT NULL
+         OR (io_data->>'total_odometer') IS NOT NULL
+         OR (io_data->>'can_fuel_level_pct') IS NOT NULL )
+    ORDER BY imei, timestamp DESC
+  `);
+  return r.rows;
 }
 // Mutare utilizator între companii (super-admin). Curăță grant-urile per-vehicul/grup (deveneau inerte oricum,
 // dar le ștergem ca să nu „reapară" dacă un vehicul ajunge ulterior în noua companie).
@@ -1945,7 +1966,7 @@ module.exports = {
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments,
   getCompanyImeis, setDeviceCompany, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
-  setDeviceCanInterface, getDeviceCanInterface,
+  setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   getSetting, setSetting,

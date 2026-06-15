@@ -4545,7 +4545,7 @@
         '<div class="info-item">' +
           '<div class="info-item-icon orange"><i class="fas fa-gas-pump"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value ' + (fuelLevelNum !== null && fuelLevelNum < 15 ? 'red' : '') + '">' + fuelLevel + '</div>' +
+            '<div class="info-item-value ' + (fuelLevelNum !== null && fuelLevelNum < 15 ? 'red' : '') + '">' + fuelLevel + (fuelLevel !== '-' ? canStaleNote : '') + '</div>' +
             '<div class="info-item-label">Combustibil' + fuelSource + '</div>' +
           '</div>' +
         '</div>' +
@@ -4561,7 +4561,7 @@
         '<div class="info-item">' +
           '<div class="info-item-icon blue"><i class="fas fa-road"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value">' + odometer + '</div>' +
+            '<div class="info-item-value">' + odometer + (odometer !== '-' ? canStaleNote : '') + '</div>' +
             '<div class="info-item-label">Kilometraj total</div>' +
           '</div>' +
         '</div>' +
