@@ -3884,7 +3884,7 @@
 
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
       const isMoving = speed > 3;
-      const hasIgnition = io?.ignition === 1 || io?.ignition === true;
+      const hasIgnition = ignitionOn(io, dev && dev.timestamp);
 
       let color, shadowColor, status;
       // Legendă: verde=mișcare · galben=staționare(contact) · roșu=oprit · gri=offline(>1h)
@@ -3994,6 +3994,16 @@
       return (Date.now() - new Date(device.timestamp).getTime()) < mins * 60 * 1000;
     }
 
+    // Un motor pornit raportează des (sub câteva minute). Dacă „contact pornit" vine dintr-un pachet vechi
+    // (vehiculul tace de mult), motorul e aproape sigur OPRIT — device-ul Teltonika intră în sleep DOAR când e oprit.
+    // Așa că „contact pornit" e de încredere doar dacă datele sunt proaspete (sub IGN_FRESH_MIN).
+    var IGN_FRESH_MIN = 15;
+    function ignitionOn(io, timestamp) {
+      if (!(io && (io.ignition === 1 || io.ignition === true))) return false;
+      if (!timestamp) return false;
+      return (Date.now() - new Date(timestamp).getTime()) < IGN_FRESH_MIN * 60 * 1000;
+    }
+
     // ─── Filtering & Search ───
     function setFilter(filter, btn) {
       currentFilter = filter;
@@ -4009,7 +4019,7 @@
 
     // Predicate status „pe motor" (consistente cu serverul): Pornit = În mișcare + Staționat
     function vehMoving(d) { return isDeviceOnline(d) && (d.speed || 0) > 3; }
-    function vehIgnition(d) { return !!(d.io && (d.io.ignition === 1 || d.io.ignition === true)); }
+    function vehIgnition(d) { return ignitionOn(d.io, d.timestamp); }
     function vehStationat(d) { return isDeviceOnline(d) && !vehMoving(d) && vehIgnition(d); }
     function vehPornit(d) { return isDeviceOnline(d) && (vehMoving(d) || vehIgnition(d)); }
     function vehOprit(d) { return !vehPornit(d); }
@@ -4062,7 +4072,7 @@
         const ignOn = d.io?.ignition;
         const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
-        const hasIgnition = d.io?.ignition === 1 || d.io?.ignition === true;
+        const hasIgnition = ignitionOn(d.io, d.timestamp);
         let statusClass = 'gone';     // gri DOAR la >1h fără date (Offline)
         if (isOnline) statusClass = isMoving ? 'moving' : (hasIgnition ? 'idle' : 'stopped');   // verde / galben (staționare) / roșu (oprit)
         const offlineFlag = !isOnline ? '⚠️ ' : '';
@@ -4364,7 +4374,7 @@
       const io = data.io || {};
       const isOnline = isDeviceOnline(data);
       const isMoving = data.speed > 3;
-      const hasIgnition = io.ignition === 1 || io.ignition === true;
+      const hasIgnition = ignitionOn(io, data.timestamp);
       const voltage = io.external_voltage ? (io.external_voltage / 1000).toFixed(1) + ' V' : '-';
       const battVoltage = io.battery_voltage ? (io.battery_voltage / 1000).toFixed(2) + ' V' : '-';
       const sats = data.satellites || 0;
