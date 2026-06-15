@@ -154,6 +154,24 @@ async function initDb() {
       }
     }
 
+    // Observabilitate: jurnal de erori centralizat (persistent, înlocuiește log-ul circular in-memory).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS error_log (
+        id BIGSERIAL PRIMARY KEY,
+        level VARCHAR(10) DEFAULT 'error',
+        message TEXT,
+        stack TEXT,
+        route VARCHAR(255),
+        method VARCHAR(10),
+        status INTEGER,
+        user_id INTEGER,
+        company_id INTEGER,
+        context JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_error_log_created ON error_log(created_at DESC)`);
+
     // Tabela utilizatorilor
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -1114,6 +1132,44 @@ async function insertPositions(imei, records) {
   await pool.query(query, params);
 }
 
+// ─── Jurnal erori (observabilitate) — toate funcțiile best-effort, NU aruncă din logger ───
+async function logError(e) {
+  try {
+    await pool.query(
+      `INSERT INTO error_log (level, message, stack, route, method, status, user_id, company_id, context)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        (e.level || 'error').slice(0, 10),
+        (e.message || '').slice(0, 4000),
+        (e.stack || '').slice(0, 8000) || null,
+        (e.route || '').slice(0, 255) || null,
+        (e.method || '').slice(0, 10) || null,
+        e.status != null ? parseInt(e.status) : null,
+        e.userId != null ? parseInt(e.userId) : null,
+        e.companyId != null ? parseInt(e.companyId) : null,
+        e.context != null ? JSON.stringify(e.context) : null,
+      ]
+    );
+  } catch (_) { /* best-effort */ }
+}
+async function getErrors(limit, level) {
+  const lim = Math.min(parseInt(limit) || 100, 500);
+  const where = level ? 'WHERE level = $2' : '';
+  const params = level ? [lim, level] : [lim];
+  const r = await pool.query(`SELECT * FROM error_log ${where} ORDER BY created_at DESC LIMIT $1`, params);
+  return r.rows;
+}
+async function clearErrors() { await pool.query('DELETE FROM error_log'); return true; }
+// Păstrează doar ultimele `keep` rânduri (anti-creștere nelimitată). Rulat periodic din server.
+async function pruneErrors(keep) {
+  try {
+    await pool.query(
+      `DELETE FROM error_log WHERE id < (SELECT MIN(id) FROM (SELECT id FROM error_log ORDER BY id DESC LIMIT $1) t)`,
+      [Math.max(100, parseInt(keep) || 2000)]
+    );
+  } catch (_) {}
+}
+
 async function getDevices() {
   const result = await pool.query(`
     SELECT d.*,
@@ -1893,6 +1949,7 @@ module.exports = {
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   getSetting, setSetting,
+  logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
   updateDeviceInfo,

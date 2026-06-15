@@ -9447,11 +9447,40 @@
         // ─── Setări sistem ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:16px 0 6px;"><i class="fas fa-gear"></i> Setări sistem</div>';
         html += '<div id="rax-sys-body"><div class="rax-co-meta">Se încarcă…</div></div>';
+        // ─── Jurnal erori platformă (observabilitate) ───
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:16px 0 6px;display:flex;align-items:center;gap:8px;"><i class="fas fa-bug"></i> Jurnal erori platformă <button class="btn-sm" style="font-size:10px;padding:2px 6px;" onclick="raxErrLoad()"><i class="fas fa-rotate"></i></button> <button class="btn-sm" style="font-size:10px;padding:2px 6px;" onclick="raxErrClear()"><i class="fas fa-trash"></i> Golește</button></div>';
+        html += '<div id="rax-err-body"><div class="rax-co-meta">Se încarcă…</div></div>';
         box.innerHTML = html;
         raxIoLoadVehicles();
         raxSysLoad();
+        raxErrLoad();
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcare.</div>'; }
     }
+    window.raxErrLoad = async function () {
+      var box = $('rax-err-body'); if (!box) return;
+      try {
+        var rows = await fetch('/api/admin/errors?limit=50', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!Array.isArray(rows) || !rows.length) { box.innerHTML = '<div class="rax-co-meta">🟢 Niciun eveniment de eroare înregistrat.</div>'; return; }
+        var col = { critical: '#dc2626', error: '#ea580c', warn: '#d97706' };
+        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + rows.length + ' evenimente recente (max 50)</div>' + rows.map(function (e) {
+          var when = e.created_at ? new Date(e.created_at).toLocaleString('ro-RO') : '';
+          var c = col[e.level] || '#6b7280';
+          return '<div style="border-left:3px solid ' + c + ';background:var(--bg-dark);border-radius:6px;padding:6px 10px;margin-bottom:5px;">' +
+            '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+              '<span style="font-size:10px;font-weight:700;color:' + c + ';text-transform:uppercase;">' + esc(e.level || 'error') + '</span>' +
+              (e.route ? '<span style="font-family:monospace;font-size:11px;color:var(--text-muted);">' + esc(e.method || '') + ' ' + esc(e.route) + (e.status ? ' · ' + e.status : '') + '</span>' : '') +
+              '<span style="font-size:10px;color:var(--text-muted);margin-left:auto;">' + esc(when) + '</span>' +
+            '</div>' +
+            '<div style="font-size:12px;margin-top:3px;word-break:break-word;">' + esc(e.message || '') + '</div>' +
+          '</div>';
+        }).join('');
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcarea jurnalului.</div>'; }
+    };
+    window.raxErrClear = async function () {
+      if (!confirm('Golești jurnalul de erori al platformei?')) return;
+      try { await fetch('/api/admin/errors', { method: 'DELETE', credentials: 'same-origin' }); (window.raxToast || function () {})('Jurnal golit ✓', 'success'); raxErrLoad(); }
+      catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
     window.raxSysLoad = async function () {
       var box = $('rax-sys-body'); if (!box) return;
       try {

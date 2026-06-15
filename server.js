@@ -195,6 +195,39 @@ function addDebugEntry(entry) {
   broadcastWs({ type: 'debug', data: item });
 }
 
+// ─── Observabilitate: capturare erori centralizată (best-effort, nu aruncă niciodată) ───
+async function captureError(err, ctx) {
+  ctx = ctx || {};
+  const entry = {
+    level: ctx.level || 'error',
+    message: (err && err.message) ? err.message : String(err),
+    stack: (err && err.stack) ? err.stack : null,
+    route: ctx.route, method: ctx.method, status: ctx.status,
+    userId: ctx.userId, companyId: ctx.companyId, context: ctx.context,
+  };
+  try { console.error('[ERROR]', entry.level, entry.route || '', '-', entry.message); } catch (_) {}
+  try { await db.logError(entry); } catch (_) {}
+}
+
+// Express error middleware — prinde throw-uri sincrone + next(err) din rute. Trebuie înregistrat ULTIMUL (în start()).
+function errorMiddleware(err, req, res, next) {
+  const status = err.status || err.statusCode || 500;
+  captureError(err, {
+    route: req.originalUrl, method: req.method, status,
+    userId: req.session && req.session.userId, companyId: req.companyId,
+  });
+  if (res.headersSent) return next(err);
+  res.status(status).json({ error: status >= 500 ? 'Eroare internă' : (err.message || 'Eroare') });
+}
+
+// Handlere de proces — pe un server de tracking live NU oprim procesul, doar logăm (availability > strictețe).
+process.on('unhandledRejection', (reason) => {
+  captureError(reason instanceof Error ? reason : new Error('unhandledRejection: ' + reason), { level: 'error', context: { kind: 'unhandledRejection' } });
+});
+process.on('uncaughtException', (err) => {
+  captureError(err, { level: 'critical', context: { kind: 'uncaughtException' } });
+});
+
 // ─── OpenRemote Forwarder (HTTP) — optional, non-blocking ───
 function forwardToOpenRemote(imei, records) {
   try {
@@ -1876,6 +1909,16 @@ app.put('/api/devices/:imei/can-interface', requireAuth, requireSuperadmin, asyn
 // ─── Debug super-admin: vezi io_data brut + can_interface pentru un IMEI (troubleshoot tracker fără date CAN) ───
 // GET /api/debug/last-io/:imei → ultimele 5 io_data parsate din DB
 // GET /api/debug/iface/:imei   → can_interface DB + cache + cheile CAN din ultima poziție
+// ─── Observabilitate: jurnal erori (super-admin) ───
+app.get('/api/admin/errors', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await db.getErrors(req.query.limit, req.query.level)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/admin/errors', requireAuth, requireSuperadmin, async (req, res) => {
+  try { await db.clearErrors(); auditReq(req, 'clear', 'error_log', null); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/debug/last-io/:imei', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const r = await db.pool.query(
@@ -4783,6 +4826,13 @@ async function start() {
       demoSim.start({ livePositions, broadcastWs, insertPositions: db.insertPositions });
     } catch (e) { console.warn('[DEMO] seed:', e.message); }
   }
+
+  // Error middleware — înregistrat ULTIMUL, după toate rutele (definite la încărcarea modulului).
+  app.use(errorMiddleware);
+
+  // Prune jurnal erori: la pornire + zilnic (păstrează ultimele 2000).
+  db.pruneErrors(2000).catch(() => {});
+  setInterval(() => db.pruneErrors(2000).catch(() => {}), 24 * 60 * 60 * 1000);
 
   // Pornește serverul TCP
   tcpServer.listen(ACTUAL_TCP_PORT, () => {
