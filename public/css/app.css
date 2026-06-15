@@ -627,16 +627,23 @@
 
     #history-controls {
       display: flex;
-      gap: 10px;
-      align-items: center;
+      gap: 16px;
+      align-items: flex-end;
       flex-wrap: wrap;
     }
 
     #history-controls label {
-      font-size: 12px;
-      color: var(--text-secondary);
-      font-weight: 500;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
+
+    .hp-field { display: flex; flex-direction: column; gap: 4px; }
+    .hp-interval { display: flex; flex-direction: column; gap: 6px; }
+    .hp-interval .rep-interval-title { margin: 0; }
+    .hp-dates { display: flex; gap: 10px; }
 
     #history-controls input, #history-controls select {
       padding: 8px 12px;
@@ -1469,11 +1476,14 @@
 
       #history-controls {
         flex-direction: column;
-        gap: 12px;
+        gap: 14px;
+        align-items: stretch;
       }
+      .hp-field, .hp-interval { width: 100%; }
+      .hp-dates { flex-direction: column; gap: 14px; }
 
-      /* Stil formular curat (ca referința): etichetă bold la stânga, lipită de câmpul ei */
-      #history-controls label { text-align: left; font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 2px 2px -7px; }
+      /* Stil formular curat (ca referința): etichetă bold la stânga, deasupra câmpului */
+      #history-controls label { text-align: left; font-size: 13px; font-weight: 600; color: var(--text-primary); text-transform: none; letter-spacing: normal; margin: 0; }
       #history-controls input, #history-controls select {
         width: 100%; box-sizing: border-box;
         padding: 14px; font-size: 15px; text-align: left; text-align-last: left;

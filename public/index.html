@@ -147,13 +147,23 @@
           </span>
         </div>
         <div id="history-controls">
-          <label>Vehicul</label>
-          <select id="history-imei" onchange="selectedImei=this.value"></select>
-          <div class="rep-interval-title" style="margin:8px 0 3px;"><i class="far fa-clock"></i> Interval orar</div>
-          <label>De la</label>
-          <input type="datetime-local" id="history-from">
-          <label>Până la</label>
-          <input type="datetime-local" id="history-to">
+          <div class="hp-field">
+            <label for="history-imei">Vehicul</label>
+            <select id="history-imei" onchange="selectedImei=this.value"></select>
+          </div>
+          <div class="hp-interval">
+            <div class="rep-interval-title"><i class="far fa-clock"></i> Interval orar</div>
+            <div class="hp-dates">
+              <div class="hp-field">
+                <label for="history-from">De la</label>
+                <input type="datetime-local" id="history-from">
+              </div>
+              <div class="hp-field">
+                <label for="history-to">Până la</label>
+                <input type="datetime-local" id="history-to">
+              </div>
+            </div>
+          </div>
           <div class="hp-row hp-quick">
             <button class="history-btn" onclick="hpQuick('today')">Azi</button>
             <button class="history-btn" onclick="hpQuick('yesterday')">Ieri</button>
