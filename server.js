@@ -531,8 +531,8 @@ const tcpServer = net.createServer((socket) => {
         }
         livePositions.set(imei, liveData);
 
-        // Trimite update live prin WebSocket
-        broadcastWs({ type: 'position', data: liveData });
+        // Trimite update live prin WebSocket (coalescing opțional via WS_BATCH_MS, vezi broadcastPosition)
+        broadcastPosition(liveData);
 
         // Evaluare alerte automate
         evaluateAlerts(imei, liveData).catch(err => {
@@ -4720,6 +4720,34 @@ function broadcastWs(message) {
     // Oglindă a regulii din _notifWhere: o notificare imei-less fără companie NU ajunge la niciun client non-super.
     if (isNotif && !imei && client._allowedImeis instanceof Set && client._companyId !== companyId) return;
     client.send(data);
+  });
+}
+
+// ─── Broadcast poziții live cu coalescing OPȚIONAL (P2.3) ───
+// WS_BATCH_MS=0 (implicit) → trimitere imediată per poziție (comportament istoric, zero risc).
+// WS_BATCH_MS>0 (ex: 250) → coalescează pe IMEI (ultima poziție câștigă) și trimite UN frame
+// {type:'positions'} per interval, filtrat per-client. La 2000 vehicule reduce frame-urile WS
+// de la ~67/sec la ~1000/WS_BATCH_MS/sec. Frontend-ul tratează ambele formate.
+const WS_BATCH_MS = parseInt(process.env.WS_BATCH_MS) || 0;
+const _wsPosBuffer = new Map(); // imei -> liveData
+let _wsFlushTimer = null;
+function broadcastPosition(liveData) {
+  if (WS_BATCH_MS <= 0) { broadcastWs({ type: 'position', data: liveData }); return; }
+  _wsPosBuffer.set(liveData.imei, liveData);
+  if (!_wsFlushTimer) _wsFlushTimer = setTimeout(flushPositions, WS_BATCH_MS);
+}
+function flushPositions() {
+  _wsFlushTimer = null;
+  if (!_wsPosBuffer.size) return;
+  const batch = Array.from(_wsPosBuffer.values());
+  _wsPosBuffer.clear();
+  wss.clients.forEach((client) => {
+    if (client.readyState !== 1 || !client._authed) return;
+    let arr = batch;
+    if (client._allowedImeis instanceof Set) arr = arr.filter(d => client._allowedImeis.has(d.imei));
+    if (client._companyId !== demoCompanyId) arr = arr.filter(d => !DEMO_SET.has(d.imei));
+    if (!arr.length) return;
+    try { client.send(JSON.stringify({ type: 'positions', data: arr })); } catch (_) {}
   });
 }
 

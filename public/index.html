@@ -6869,6 +6869,14 @@
           updateMarker(msg.data);
         }
 
+        // Poziții batch (când serverul rulează cu WS_BATCH_MS>0) — backward-compatible cu 'position' singular
+        if (msg.type === 'positions' && Array.isArray(msg.data)) {
+          msg.data.forEach(function (d) {
+            updateMarker(d);
+            appendDebugEntry({ event: 'position', imei: d.imei, time: new Date().toISOString(), speed: d.speed, lat: d.latitude && d.latitude.toFixed(4), lng: d.longitude && d.longitude.toFixed(4) });
+          });
+        }
+
         if (msg.type === 'disconnect') {
           const imei = msg.data.imei;
           const device = devices.get(imei);
