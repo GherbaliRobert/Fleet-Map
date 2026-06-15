@@ -186,7 +186,11 @@ const lastCanIo = new Map(); // imei -> { io: {sticky...}, ts }
 // NU includem RPM/viteză/temperatură/sarcină — alea sunt instantanee și trebuie să dispară când motorul e oprit.
 const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_adblue_level_liters', 'can_adblue_level_pct', 'can_engine_total_hours', 'can_engine_worktime'];
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
-function _stickyOf(io) { const o = {}; if (!io) return o; for (const k of STICKY_CAN) { const v = io[k]; if (v !== undefined && v !== null) o[k] = v; } return o; }
+// Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
+// „0.0 km (ultima)" / „- (ultima)" fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire".
+function _stickyOf(io) { const o = {}; if (!io) return o; for (const k of STICKY_CAN) { const v = io[k]; if (v !== undefined && v !== null && Number(v) > 0) o[k] = v; } return o; }
+// Completează în targetIo cheile sticky LIPSĂ cu ultima valoare reală din snapshot. Întoarce true dacă a completat ceva.
+function _fillSticky(targetIo, snapIo) { let c = false; for (const k of STICKY_CAN) { const sv = snapIo[k]; if (targetIo[k] === undefined && sv !== undefined && sv !== null && Number(sv) > 0) { targetIo[k] = sv; c = true; } } return c; }
 function _persistLastCan(imei, io, ts) {
   const s = _stickyOf(io); if (!Object.keys(s).length) return;
   s._ts = ts || null; lastCanPersistTs.set(imei, ts || 0);
@@ -525,10 +529,9 @@ const tcpServer = net.createServer((socket) => {
           vehicle_type: existing.vehicle_type || null,
           plate: existing.plate || null
         };
-        // ── Carry-forward CAN „sticky": carburant/odometru/AdBlue/ore rămân la ultima valoare cât motorul e oprit ──
-        // (NU cărăm RPM/viteză/temp — alea trebuie să dispară când e oprit). Persistăm în DB → supraviețuiește restartului.
+        // ── Carry-forward CAN „sticky": carburant/odometru/AdBlue/ore rămân la ultima valoare REALĂ cât motorul e oprit ──
+        // (NU cărăm RPM/viteză/temp). Persistăm în DB → supraviețuiește restartului. _stickyOf ignoră 0/spurious.
         const _freshSticky = _stickyOf(liveData.io);
-        const _hasFreshCan = Object.keys(liveData.io).some(function (k) { return k.startsWith('can_'); });
         if (Object.keys(_freshSticky).length > 0) {
           const _prev = lastCanIo.get(imei);
           const _merged = Object.assign({}, _prev && _prev.io, _freshSticky); // acumulează (suportă update parțial)
@@ -536,20 +539,15 @@ const tcpServer = net.createServer((socket) => {
           // checkpoint periodic în DB (max ~o scriere / 5 min / device) — ca să nu pierdem date la un crash pe traseu
           if (lastRecord.timestamp - (lastCanPersistTs.get(imei) || 0) > 5 * 60 * 1000) _persistLastCan(imei, _merged, lastRecord.timestamp);
         }
-        if (!_hasFreshCan) {
-          // motor oprit → completează DOAR carburant/odometru/etc. cu ultima valoare cunoscută (nu atinge ignition/GPS)
-          const _snap = lastCanIo.get(imei);
-          if (_snap) {
-            const _io = Object.assign({}, liveData.io);
-            for (const k of STICKY_CAN) { if (_io[k] === undefined && _snap.io[k] !== undefined) _io[k] = _snap.io[k]; }
-            liveData.io = _io;
-            liveData.can_stale = true;
-            liveData.can_snapshot_ts = _snap.ts;
-            // capturează valoarea „de parcare" în DB o singură dată (prima dată când rămâne fără CAN proaspăt)
-            if ((lastCanPersistTs.get(imei) || 0) < (_snap.ts || 0)) _persistLastCan(imei, _snap.io, _snap.ts);
-          }
-        } else {
-          liveData.can_stale = false;
+        // Completează cheile sticky LIPSĂ din pachetul curent (indiferent dacă pachetul are alte chei can_*).
+        // can_stale = true DOAR dacă chiar am completat o valoare reală → fără „(ultima)" fals pe camioane fără CAN.
+        const _snap = lastCanIo.get(imei);
+        const _carried = _snap ? _fillSticky(liveData.io, _snap.io) : false;
+        liveData.can_stale = _carried;
+        if (_carried) {
+          liveData.can_snapshot_ts = _snap.ts;
+          // capturează valoarea „de parcare" în DB o singură dată (prima dată când rămâne fără CAN proaspăt)
+          if ((lastCanPersistTs.get(imei) || 0) < (_snap.ts || 0)) _persistLastCan(imei, _snap.io, _snap.ts);
         }
         livePositions.set(imei, liveData);
 
@@ -4839,16 +4837,17 @@ async function start() {
     deviceInfoMap[dev.imei] = { name: dev.name, vehicle_type: dev.vehicle_type, plate: dev.plate };
     // Restaurează snapshot-ul CAN sticky (carburant/odometru) → supraviețuiește restartului serverului
     let _seedIo = null, _seedTs = null;
-    if (dev.last_can && typeof dev.last_can === 'object') { _seedIo = Object.assign({}, dev.last_can); _seedTs = _seedIo._ts || null; delete _seedIo._ts; }
+    if (dev.last_can && typeof dev.last_can === 'object') { _seedTs = dev.last_can._ts || null; _seedIo = _stickyOf(dev.last_can); }
     else if (stickyBackfill[dev.imei]) { _seedIo = _stickyOf(stickyBackfill[dev.imei]); }
     if (_seedIo && Object.keys(_seedIo).length) { lastCanIo.set(dev.imei, { io: _seedIo, ts: _seedTs }); lastCanPersistTs.set(dev.imei, _seedTs || 0); }
   }
   for (const pos of lastPositions) {
     const info = deviceInfoMap[pos.imei] || {};
     let _io = pos.io_data || {};
+    let _stale = false;
     // dacă ultimul pachet (probabil cu motorul oprit) n-are carburant/odometru, completează din snapshot-ul restaurat
     const _snap = lastCanIo.get(pos.imei);
-    if (_snap) { const _f = Object.assign({}, _io); for (const k of STICKY_CAN) { if (_f[k] === undefined && _snap.io[k] !== undefined) _f[k] = _snap.io[k]; } _io = _f; }
+    if (_snap) { const _f = Object.assign({}, _io); if (_fillSticky(_f, _snap.io)) { _io = _f; _stale = true; } }
     livePositions.set(pos.imei, {
       imei: pos.imei,
       timestamp: pos.timestamp,
@@ -4858,6 +4857,7 @@ async function start() {
       angle: pos.angle,
       satellites: pos.satellites,
       io: _io,
+      can_stale: _stale,
       name: info.name || null,
       vehicle_type: info.vehicle_type || null,
       plate: info.plate || null
