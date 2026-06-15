@@ -318,8 +318,13 @@ function getIoName(id, iface) {
     31:  'fms_fuel_rate',
     32:  'fms_speed',
     33:  'fms_rpm',
-    35:  'fms_coolant_temp',
-    36:  'fms_pedal_position',
+    // ─── LV-CAN200 / FMC650 — ID-uri CAN REALE (sursă: io_catalog.js; confirmat live pe Dacia B 154 UIP) ───
+    // Cheia 'can_*' declanșează convertCanValue pe server (litri/km/°C corecte). Vechile etichete de la 35/36
+    // ('fms_coolant_temp'/'fms_pedal_position') erau GREȘITE: afișau RPM-ul (687) ca „687 °C" și kilometrajul
+    // (31798270 m) ca „poziție pedală". NU începeau cu 'can_' → nu se aplica nicio conversie.
+    34:  'can_fuel_level_liters',   // L — Fuel Level (brut ×10 → /10) — confirmat 430 → 43.0 L
+    35:  'can_engine_rpm',          // RPM — Engine RPM — confirmat 687 (era 'fms_coolant_temp')
+    36:  'can_total_mileage',       // m → /1000 = km — confirmat 31798270 → 31798 km (era 'fms_pedal_position')
     37:  'fms_engine_hours',
     38:  'fms_total_mileage',
     // ALL-CAN300 / LV-CAN200 (official IO element list)

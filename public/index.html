@@ -7427,6 +7427,44 @@
     </div>
   </div>
 
+  <!-- Modal „Mapează IO" — funcție/transformare per-vehicul (super-admin) -->
+  <div class="rax-overlay" id="rax-iomap-overlay">
+    <div class="rax-card" style="max-width:520px;">
+      <div class="rax-head"><h3><i class="fas fa-sliders-h" style="color:var(--accent)"></i> Mapează IO — funcție</h3><button class="rax-x" onclick="raxCloseIoMap()">&times;</button></div>
+      <div class="rax-body">
+        <div id="rax-iomap-ctx" style="font-size:11px;color:var(--text-muted);margin-bottom:10px;"></div>
+        <label style="font-size:12px;font-weight:600;display:block;">Nume afișat *</label>
+        <input class="rax-field" id="rax-iomap-name" placeholder="ex: Nivel combustibil rezervor" maxlength="60" oninput="raxIoMapPreview()">
+        <label style="font-size:12px;font-weight:600;margin-top:10px;display:block;">Tip funcție</label>
+        <select class="rax-field" id="rax-iomap-type" onchange="raxIoMapTypeChange()">
+          <option value="raw">Liniară — valoare × scală + offset</option>
+          <option value="fuel">Combustibil rezervor — brut → litri</option>
+          <option value="percent">Procent — brut → 0–100%</option>
+          <option value="temp">Temperatură — × scală + offset (°C)</option>
+        </select>
+        <div id="rax-iomap-lin" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+          <div><label style="font-size:11px;color:var(--text-muted);">Scală (×)</label><input class="rax-field" id="rax-iomap-scale" type="number" step="any" value="1" oninput="raxIoMapPreview()"></div>
+          <div><label style="font-size:11px;color:var(--text-muted);">Offset (+)</label><input class="rax-field" id="rax-iomap-offset" type="number" step="any" value="0" oninput="raxIoMapPreview()"></div>
+          <div id="rax-iomap-unit-wrap" style="grid-column:1/3;"><label style="font-size:11px;color:var(--text-muted);">Unitate</label><input class="rax-field" id="rax-iomap-unit" placeholder="ex: L, V, %, bar" maxlength="12" oninput="raxIoMapPreview()"></div>
+        </div>
+        <div id="rax-iomap-fuel" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+          <div id="rax-iomap-cap-wrap" style="grid-column:1/3;"><label style="font-size:11px;color:var(--text-muted);">Capacitate rezervor (L)</label><input class="rax-field" id="rax-iomap-capacity" type="number" step="any" placeholder="ex: 400" oninput="raxIoMapPreview()"></div>
+          <div><label style="font-size:11px;color:var(--text-muted);">Brut „gol" (rawMin)</label><input class="rax-field" id="rax-iomap-rawmin" type="number" step="any" value="0" oninput="raxIoMapPreview()"></div>
+          <div><label style="font-size:11px;color:var(--text-muted);">Brut „plin" (rawMax)</label><input class="rax-field" id="rax-iomap-rawmax" type="number" step="any" placeholder="ex: 1023" oninput="raxIoMapPreview()"></div>
+        </div>
+        <div style="margin-top:12px;padding:9px 11px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:14px;">
+          <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;">Previzualizare</span><br><strong id="rax-iomap-preview" style="color:var(--accent);">—</strong>
+        </div>
+        <div id="rax-iomap-msg" style="font-size:11px;margin-top:8px;min-height:14px;"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px;">
+          <button class="rax-btn" id="rax-iomap-del" style="display:none;color:var(--red);" onclick="raxIoMapDeleteFromForm()"><i class="fas fa-trash"></i> Șterge</button>
+          <button class="rax-btn" style="margin-left:auto;" onclick="raxCloseIoMap()">Anulează</button>
+          <button class="rax-btn primary" onclick="raxIoMapSave()"><i class="fas fa-check"></i> Salvează</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="rax-overlay" id="rax-ag-overlay">
     <div class="rax-card">
       <div class="rax-head"><h3><i class="fas fa-shield-halved" style="color:var(--accent)"></i> Agenți AI</h3><button class="rax-x" onclick="document.getElementById('rax-ag-overlay').classList.remove('open')">&times;</button></div>
@@ -7948,6 +7986,7 @@
       try {
         var d = await fetch('/api/devices/' + encodeURIComponent(imei) + '/io-debug', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         if (d.error) { box.innerHTML = '<div class="rax-co-meta">' + esc(d.error) + '</div>'; return; }
+        window._raxIoDbg = { imei: imei, unmapped: d.unmapped || [], mapped: d.mapped || [], mappings: d.mappings || {} };
         var html = '';
         if (!d.hasLive) html += '<div style="color:#f59e0b;font-size:11px;margin-bottom:6px;">⚠ Niciun pachet live recent — valorile pot lipsi (parchează/pornește vehiculul ca să transmită).</div>';
         // Interfața CAN: FMS (FMC650/camioane) vs standard LV-CAN — schimbă cum se decodează datele CAN.
@@ -7980,21 +8019,83 @@
         box.innerHTML = html;
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     };
-    window.raxIoEdit = async function (imei, ioId) {
-      var name = prompt('Nume pentru IO ' + ioId + ' (ex: Nivel combustibil rezervor):'); if (name == null) return; name = name.trim(); if (!name) { alert('Numele e obligatoriu.'); return; }
-      var type = (prompt('Tip: raw / fuel / percent / temp', 'raw') || '').trim(); if (!type) return;
-      var body = { name: name, type: type };
-      if (type === 'fuel') {
-        var cap = prompt('Capacitate rezervor (litri):', ''); if (cap == null) return; body.capacity = cap;
-        var rmax = prompt('Valoarea BRUTĂ la rezervor PLIN (rawMax — ex: 1023, 4095, 100):', ''); if (rmax == null) return; body.rawMax = rmax;
-        var rmin = prompt('Valoarea BRUTĂ la rezervor GOL (rawMin, implicit 0):', '0'); if (rmin != null) body.rawMin = rmin;
-      } else {
-        var unit = prompt('Unitate (opțional, ex: V, °C, %):', ''); if (unit != null) body.unit = unit;
-      }
+    // ─── Editor mapare IO (funcție/transformare per-vehicul) — modal cu previzualizare live ───
+    var _raxIoMapCtx = { imei: null, ioId: null, raw: null };
+    function _raxIoRaw(ioId) {
+      var dd = window._raxIoDbg; if (!dd) return null;
+      var u = (dd.unmapped || []).find(function (x) { return String(x.id) === String(ioId); }); if (u) return u.value;
+      var m = (dd.mapped || []).find(function (x) { return String(x.id) === String(ioId); }); if (m) return m.value;
+      return null;
+    }
+    function _raxIoReadForm() {
+      var t = $('rax-iomap-type').value;
+      var num = function (id) { var v = $(id).value; return (v === '' || v == null) ? null : Number(v); };
+      return {
+        name: ($('rax-iomap-name').value || '').trim(), type: t,
+        unit: (t === 'temp') ? '°C' : (($('rax-iomap-unit').value || '').trim() || null),
+        scale: num('rax-iomap-scale'), offset: num('rax-iomap-offset'),
+        capacity: num('rax-iomap-capacity'), rawMin: num('rax-iomap-rawmin'), rawMax: num('rax-iomap-rawmax')
+      };
+    }
+    window.raxIoMapTypeChange = function () {
+      var t = $('rax-iomap-type').value;
+      var isFuelPct = (t === 'fuel' || t === 'percent');
+      $('rax-iomap-lin').style.display = isFuelPct ? 'none' : 'grid';
+      $('rax-iomap-fuel').style.display = isFuelPct ? 'grid' : 'none';
+      $('rax-iomap-cap-wrap').style.display = (t === 'fuel') ? '' : 'none';
+      $('rax-iomap-unit-wrap').style.display = (t === 'temp') ? 'none' : '';
+      raxIoMapPreview();
+    };
+    window.raxIoMapPreview = function () {
+      var raw = _raxIoMapCtx.raw;
+      var prev = $('rax-iomap-preview');
+      if (raw == null || raw === '') { prev.textContent = '(fără valoare live pe acest IO)'; return; }
+      try { prev.textContent = raw + ' → ' + ioMapValue(_raxIoReadForm(), raw); }
+      catch (e) { prev.textContent = '—'; }
+    };
+    window.raxIoEdit = function (imei, ioId) {
+      _raxIoMapCtx = { imei: imei, ioId: String(ioId).replace(/[^0-9]/g, ''), raw: _raxIoRaw(ioId) };
+      var dd = window._raxIoDbg || {};
+      var ex = (dd.mappings || {})[_raxIoMapCtx.ioId] || null;
+      $('rax-iomap-name').value = ex ? ex.name : '';
+      $('rax-iomap-type').value = ex ? (ex.type || 'raw') : 'raw';
+      $('rax-iomap-scale').value = (ex && ex.scale != null) ? ex.scale : 1;
+      $('rax-iomap-offset').value = (ex && ex.offset != null) ? ex.offset : 0;
+      $('rax-iomap-unit').value = (ex && ex.unit) ? ex.unit : '';
+      $('rax-iomap-capacity').value = (ex && ex.capacity != null) ? ex.capacity : '';
+      $('rax-iomap-rawmin').value = (ex && ex.rawMin != null) ? ex.rawMin : 0;
+      $('rax-iomap-rawmax').value = (ex && ex.rawMax != null) ? ex.rawMax : '';
+      $('rax-iomap-ctx').innerHTML = 'IO <strong>io_' + esc(_raxIoMapCtx.ioId) + '</strong> · valoare brută live: <strong style="color:var(--text-primary);">' + esc(_raxIoMapCtx.raw == null ? '—' : String(_raxIoMapCtx.raw)) + '</strong>';
+      $('rax-iomap-del').style.display = ex ? '' : 'none';
+      $('rax-iomap-msg').textContent = '';
+      raxIoMapTypeChange();
+      document.getElementById('rax-iomap-overlay').classList.add('open');
+    };
+    window.raxCloseIoMap = function () { var ov = document.getElementById('rax-iomap-overlay'); if (ov) ov.classList.remove('open'); };
+    window.raxIoMapSave = async function () {
+      var m = _raxIoReadForm(); var msg = $('rax-iomap-msg');
+      if (!m.name) { msg.style.color = 'var(--red)'; msg.textContent = 'Numele e obligatoriu.'; return; }
+      var body = { name: m.name, type: m.type };
+      if (m.type === 'fuel') { body.capacity = m.capacity; body.rawMin = m.rawMin; body.rawMax = m.rawMax; }
+      else if (m.type === 'percent') { body.rawMin = m.rawMin; body.rawMax = m.rawMax; }
+      else { if (m.scale != null) body.scale = m.scale; if (m.offset != null) body.offset = m.offset; if (m.unit) body.unit = m.unit; }
+      msg.style.color = 'var(--text-muted)'; msg.textContent = 'Se salvează…';
       try {
-        var j = await fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings/' + ioId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
-        if (j.error) { alert(j.error); return; }
-        raxIoDebug(imei);
+        var r = await fetch('/api/devices/' + encodeURIComponent(_raxIoMapCtx.imei) + '/io-mappings/' + _raxIoMapCtx.ioId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        var j = await r.json();
+        if (!r.ok || j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error || ('Eroare ' + r.status); return; }
+        raxCloseIoMap();
+        if (window.raxToast) raxToast('Mapare salvată ✓', 'success');
+        raxIoDebug(_raxIoMapCtx.imei);
+      } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare de rețea.'; }
+    };
+    window.raxIoMapDeleteFromForm = async function () {
+      if (!confirm('Ștergi maparea pentru io_' + _raxIoMapCtx.ioId + '?')) return;
+      try {
+        await fetch('/api/devices/' + encodeURIComponent(_raxIoMapCtx.imei) + '/io-mappings/' + _raxIoMapCtx.ioId, { method: 'DELETE', credentials: 'same-origin' });
+        raxCloseIoMap();
+        if (window.raxToast) raxToast('Mapare ștearsă', 'success');
+        raxIoDebug(_raxIoMapCtx.imei);
       } catch (e) { alert('Eroare: ' + e.message); }
     };
     window.raxIoDelete = async function (imei, ioId) {
