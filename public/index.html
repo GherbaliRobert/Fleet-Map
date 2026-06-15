@@ -3655,13 +3655,13 @@
       try { closeHotspot(); } catch (e) {}
       try { var dp = document.getElementById('dispatch-panel'); if (dp) dp.style.display = 'none'; } catch (e) {}
       const hist = document.getElementById('history-panel'); if (hist) hist.classList.remove('visible');
-      document.body.classList.remove('history-open');
+      document.body.classList.remove('history-open', 'tab-traseu');
       const loc = document.getElementById('view-localizare');
       const mapViews = ['localizare', 'traseu'];
       if (mapViews.includes(name)) {
         loc.classList.add('active');
         if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
-        if (name === 'traseu' && hist) { hist.classList.add('visible'); document.body.classList.add('history-open'); initRangePicker('history-from', 'history-to'); fillHistoryVehicle(); }
+        if (name === 'traseu' && hist) { hist.classList.add('visible'); document.body.classList.add('history-open', 'tab-traseu'); initRangePicker('history-from', 'history-to'); fillHistoryVehicle(); }
       } else {
         loc.classList.remove('active');
         const el = document.getElementById(VIEW_PANELS[name]);
