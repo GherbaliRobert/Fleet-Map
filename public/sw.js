@@ -1,6 +1,6 @@
 // Service worker — PWA (instalabil + shell offline) + Web Push pentru RA Track
-const CACHE = 'ratracks-v37';
-const SHELL = ['/app', '/index.html', '/manifest.json', '/icon.svg', '/icon-192.png', '/logo-mark.png', '/logo-mark-light.png', '/vendor/leaflet-heat.js'];
+const CACHE = 'ratracks-v38';
+const SHELL = ['/app', '/index.html', '/css/app.css', '/manifest.json', '/icon.svg', '/icon-192.png', '/logo-mark.png', '/logo-mark-light.png', '/vendor/leaflet-heat.js'];
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();
