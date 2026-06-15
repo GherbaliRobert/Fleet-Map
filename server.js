@@ -722,7 +722,8 @@ app.get('/api/health', async (req, res) => {
     status: dbOk ? 'ok' : 'degraded',
     db: dbOk ? 'up' : 'down',
     mode: process.env.DATABASE_URL ? 'postgres' : 'pglite',
-    uptime_s: Math.round((Date.now() - _startedAt) / 1000)
+    uptime_s: Math.round((Date.now() - _startedAt) / 1000),
+    version: (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7)
   });
 });
 
