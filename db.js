@@ -7,6 +7,9 @@ const fs = require('fs');
 
 const USE_PG = !!process.env.DATABASE_URL;
 let pool, _pglite = null;
+// Flag: există index UNIQUE pe positions(imei, timestamp)? Dacă da, insertPositions folosește ON CONFLICT DO NOTHING
+// (previne duplicate la retry tracker când ACK-ul e pierdut). Setat în initDb; dacă crearea eșuează → false → INSERT simplu.
+let positionsUniqueIdx = false;
 
 if (USE_PG) {
   // ─── PostgreSQL real (pg.Pool are nativ .query și .connect → drop-in, fără mutex, concurență reală) ───
@@ -130,6 +133,24 @@ async function initDb() {
         console.log('[DB] TimescaleDB activ: hypertable positions + compresie >7z + retenție ' + retDays + 'z');
       } catch (e) {
         console.warn('[DB] TimescaleDB indisponibil → rulez pe Postgres simplu:', e.message);
+      }
+    }
+
+    // Index UNIQUE pe (imei, timestamp) — previne duplicate la retry tracker (ACK pierdut → retrimite batch-ul).
+    // Guarded: dacă există deja duplicate, dedupe (păstrează id-ul minim) + retry o singură dată.
+    // Dacă tot eșuează (ex: hypertable comprimat refuză), lăsăm flag-ul false → insertPositions face INSERT simplu (zero regresie).
+    // Notă: inserturile vizează mereu timestamp-uri noi (chunk-ul curent, necomprimat), deci ON CONFLICT nu atinge date comprimate.
+    try {
+      await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_positions_imei_ts_uniq ON positions (imei, timestamp)`);
+      positionsUniqueIdx = true;
+    } catch (e1) {
+      try {
+        await client.query(`DELETE FROM positions a USING positions b WHERE a.id > b.id AND a.imei = b.imei AND a.timestamp = b.timestamp`);
+        await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_positions_imei_ts_uniq ON positions (imei, timestamp)`);
+        positionsUniqueIdx = true;
+        console.log('[DB] Dedupe pozitii + index UNIQUE (imei, timestamp) creat');
+      } catch (e2) {
+        console.warn('[DB] Index UNIQUE pe positions indisponibil → INSERT fără ON CONFLICT:', e2.message);
       }
     }
 
@@ -1083,9 +1104,11 @@ async function insertPositions(imei, records) {
 
   if (values.length === 0) return;
 
+  // ON CONFLICT DO NOTHING doar dacă există indexul UNIQUE (altfel Postgres aruncă „no unique constraint matching").
+  const onConflict = positionsUniqueIdx ? ' ON CONFLICT (imei, timestamp) DO NOTHING' : '';
   const query = `
     INSERT INTO positions (imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, company_id)
-    VALUES ${values.join(', ')}
+    VALUES ${values.join(', ')}${onConflict}
   `;
 
   await pool.query(query, params);

@@ -2199,15 +2199,28 @@ app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async
   }
 });
 
+// Cache enrichment device pentru /api/live (truck config + calibrare combustibil) — date care se schimbă rar.
+// Fără cache, fiecare poll /api/live (frontend cheamă la ~0.5-2s) interoga TOATE device-urile = O(n) inutil.
+// TTL 20s + invalidare explicită la update-uri de config (vezi invalidateLiveEnrichCache).
+let _liveEnrichCache = { ts: 0, map: null };
+async function getLiveEnrichMap() {
+  const now = Date.now();
+  if (_liveEnrichCache.map && (now - _liveEnrichCache.ts) < 20000) return _liveEnrichCache.map;
+  const result = await db.pool.query('SELECT imei, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
+  const map = new Map(result.rows.map(r => [r.imei, r]));
+  _liveEnrichCache = { ts: now, map };
+  return map;
+}
+function invalidateLiveEnrichCache() { _liveEnrichCache = { ts: 0, map: null }; }
+
 // API: Poziții live din memorie
 app.get('/api/live', requireAuth, withScope, async (req, res) => {
   let positions = Array.from(livePositions.values());
   if (req.allowedImeis != null) positions = positions.filter(p => req.allowedImeis.has(p.imei));
   if (req.companyId !== demoCompanyId) positions = positions.filter(p => !DEMO_SET.has(p.imei)); // demo doar în contul demo
   try {
-    // Enrich with full device info (truck config, tank calibration, etc.)
-    const result = await db.pool.query('SELECT imei, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
-    const devMap = new Map(result.rows.map(r => [r.imei, r]));
+    // Enrich with full device info (truck config, tank calibration, etc.) — din cache TTL 20s
+    const devMap = await getLiveEnrichMap();
     for (const pos of positions) {
       const dev = devMap.get(pos.imei);
       if (dev) {
@@ -2303,6 +2316,7 @@ app.put('/api/devices/:imei/details', requireAuth, requireFleet, withScope, asyn
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const b = req.body || {};
     await db.updateVehicleDetails(imei, b);
+    invalidateLiveEnrichCache(); // fișa poate conține fuel_price/cost_per_ton_km/greutăți din enrichment
     auditReq(req, 'update', 'device', imei, { fields: Object.keys(b).length });
     // Reflectă imediat în live (WebSocket) pentru câmpurile vizibile pe hartă/listă
     const pos = livePositions.get(imei);
@@ -2338,6 +2352,7 @@ app.put('/api/devices/:imei/truck-config', requireAuth, requireFleet, withScope,
   try {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await db.updateTruckConfig(req.params.imei, req.body);
+    invalidateLiveEnrichCache(); // truck config s-a schimbat → reîncarcă enrichment-ul live
     auditReq(req, 'update', 'truck-config', req.params.imei);
     res.json({ ok: true });
   } catch (err) {
@@ -2365,6 +2380,7 @@ app.put('/api/devices/:imei/tank-calibration', requireAuth, requireFleet, withSc
     // Invalida cache-ul ca sa se reincarce imediat
     tankCalibrationCache.delete(req.params.imei);
     tankCalibrationTimestamp.delete(req.params.imei);
+    invalidateLiveEnrichCache(); // calibrarea apare în enrichment-ul /api/live
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

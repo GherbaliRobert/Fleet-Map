@@ -7,7 +7,7 @@ on:
 
 jobs:
   smoke:
-    name: Smoke (RBAC + izolare multi-tenant)
+    name: CI (lint + unit + smoke server)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,12 +17,33 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+
+      # 1) Lint — syntax check pe TOATE modulele core (catch rapid regresii de sintaxă)
       - name: Lint (syntax check)
         run: |
           node --check server.js
           node --check db.js
+          node --check codec8e.js
+          node --check agents.js
+          node --check io_catalog.js
+          node --check plans.js
+          node --check reports.js
           node --check report_export.js
           node --check report_schedules.js
           node --check channels.js
-      - name: Smoke tests
+          node --check ai.js
+          node --check billing.js
+          node --check tacho.js
+          node --check geocode.js
+
+      # 2) Unit — logica agenților (RA Watch furt combustibil), fără server/rețea
+      - name: Unit tests (agenți)
+        run: node verify_fueltheft.js
+
+      # 3) Smoke — server embedded (PGlite + SEED_TEST): izolare multi-tenant + RBAC
+      - name: Smoke tests (server)
         run: npm test
+
+      # NOTĂ test-debt: phase2-7_smoke, ws_smoke și verify_{sys,io,fms,tenant,faza2}
+      # NU sunt încă în CI — au eșecuri de asserțiune pre-existente sau hardcodează portul 3000.
+      # De curățat într-un pass dedicat înainte de a le adăuga ca gate (vezi AUDIT-RA-TRACKS.md, P0.4).
