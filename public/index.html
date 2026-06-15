@@ -5051,6 +5051,55 @@
         try { const now = new Date(), from = new Date(now); from.setHours(0, 0, 0, 0); dtSet('history-from', formatDateLocal(from)); dtSet('history-to', formatDateLocal(now)); } catch (e) {}
       }
     }
+
+    // ─── Selector vehicul cu căutare: îmbracă un <select> nativ într-un combobox filtrabil ───
+    // Păstrează select-ul nativ (value + event 'change' + tot codul care citește .value). Se re-sincronizează
+    // automat când opțiunile sunt repopulate (MutationObserver). Aplicat pe toate dropdown-urile de vehicul.
+    function _ssEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function enhanceSelectSearch(sel) {
+      if (!sel || sel._ssEnhanced) return; sel._ssEnhanced = true;
+      const wrap = document.createElement('div'); wrap.className = 'ss-wrap';
+      sel.parentNode.insertBefore(wrap, sel); wrap.appendChild(sel); sel.classList.add('ss-native');
+      const input = document.createElement('input');
+      input.type = 'text'; input.className = 'ss-input'; input.autocomplete = 'off'; input.placeholder = 'Caută vehicul…';
+      const panel = document.createElement('div'); panel.className = 'ss-panel';
+      wrap.appendChild(input); wrap.appendChild(panel);
+      let items = [], activeIdx = -1;
+      function rebuild() { items = Array.from(sel.options).map(function (o) { return { value: o.value, label: o.textContent }; }); syncDisplay(); }
+      function syncDisplay() { const cur = items.find(function (it) { return it.value === sel.value; }); input.value = cur ? cur.label : ''; }
+      function render(filter) {
+        const f = (filter || '').trim().toLowerCase();
+        const matched = f ? items.filter(function (it) { return it.label.toLowerCase().indexOf(f) >= 0; }) : items;
+        activeIdx = -1;
+        panel.innerHTML = matched.length
+          ? matched.map(function (it) { return '<div class="ss-item' + (it.value === sel.value ? ' ss-sel' : '') + '" data-val="' + _ssEsc(it.value) + '">' + _ssEsc(it.label) + '</div>'; }).join('')
+          : '<div class="ss-empty">Niciun vehicul găsit</div>';
+      }
+      function choose(val) { sel.value = val; sel.dispatchEvent(new Event('change', { bubbles: true })); syncDisplay(); close(); }
+      function open() { wrap.classList.add('ss-open'); render(''); input.select(); }
+      function close() { wrap.classList.remove('ss-open'); syncDisplay(); }
+      input.addEventListener('focus', open);
+      input.addEventListener('input', function () { wrap.classList.add('ss-open'); render(input.value); });
+      input.addEventListener('keydown', function (e) {
+        const its = Array.from(panel.querySelectorAll('.ss-item'));
+        if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, its.length - 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); }
+        else if (e.key === 'Enter') { e.preventDefault(); const a = its[activeIdx] || its[0]; if (a) choose(a.getAttribute('data-val')); return; }
+        else if (e.key === 'Escape') { close(); input.blur(); return; }
+        else return;
+        its.forEach(function (el, i) { el.classList.toggle('ss-active', i === activeIdx); });
+        if (its[activeIdx]) its[activeIdx].scrollIntoView({ block: 'nearest' });
+      });
+      panel.addEventListener('mousedown', function (e) { const it = e.target.closest('.ss-item'); if (it) { e.preventDefault(); choose(it.getAttribute('data-val')); } });
+      document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
+      new MutationObserver(rebuild).observe(sel, { childList: true });
+      rebuild();
+    }
+    (function initVehicleSearch() {
+      function go() { ['history-imei', 'rep-imei', 'sch-imei', 'alert-imei', 'mnt-imei', 'hs-imei'].forEach(function (id) { const el = document.getElementById(id); if (el) enhanceSelectSearch(el); }); }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+    })();
+
     async function loadHistory() {
       const hsel = document.getElementById('history-imei');
       if (hsel && hsel.value) selectedImei = hsel.value;
@@ -7262,6 +7311,19 @@
     .rax-suggest { display: flex; flex-wrap: wrap; gap: 7px; margin: 6px 0 4px; }
     .rax-chip { font-size: 12px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary); border-radius: 18px; padding: 7px 12px; cursor: pointer; transition: border-color .12s, color .12s; }
     .rax-chip:hover { border-color: var(--accent); color: var(--accent); }
+    /* Selector vehicul cu căutare (searchable combobox peste un <select> nativ) */
+    .ss-wrap { position: relative; }
+    .ss-native { display: none !important; }
+    .ss-input { width: 100%; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 8px; padding: 9px 28px 9px 11px; font-size: 13px; box-sizing: border-box; }
+    .ss-input:focus { outline: none; border-color: var(--accent); }
+    .ss-wrap::after { content: "▾"; position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; }
+    .ss-wrap.ss-open::after { color: var(--accent); }
+    .ss-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 2000; max-height: 260px; overflow-y: auto; background: var(--bg-panel, var(--bg-dark)); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+    .ss-wrap.ss-open .ss-panel { display: block; }
+    .ss-item { padding: 9px 11px; font-size: 13px; cursor: pointer; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ss-item:hover, .ss-item.ss-active { background: var(--bg-dark); }
+    .ss-item.ss-sel { color: var(--accent); font-weight: 600; }
+    .ss-empty { padding: 9px 11px; font-size: 12px; color: var(--text-muted); }
     /* Companii */
     .rax-co-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
     .rax-co-item h4 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
