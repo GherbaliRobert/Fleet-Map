@@ -1734,6 +1734,7 @@
     let currentFilter = 'all';
     let searchQuery = '';
     let detailPanelImei = null;
+    let driverNameByImei = {}; // imei -> nume sofer (citit proaspat din DB la deschiderea detaliului, ca sa reflecte alocarea din Management)
     let historyMarkers = [];
 
     // ─── Auth ───
@@ -4147,6 +4148,8 @@
 
       updateDetailPanel(imei);
       updateDetailIoPanel(imei);
+      // Șofer alocat (din Management): citit proaspăt din DB, ca să reflecte ultima alocare (datele live nu conțin numele șoferului)
+      fetch('/api/devices/' + encodeURIComponent(imei) + '/full', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (full) { if (full && !full.error) { driverNameByImei[imei] = full.driver_name || ''; if (detailPanelImei === imei) updateDetailPanel(imei); } }).catch(function () {});
       // încarcă mapările IO (setate de super-admin) și re-randează cu numele personalizate
       fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (m) { if (m && !m.error) { ioMappingsCache[imei] = m; if (detailPanelImei === imei) updateDetailIoPanel(imei); } }).catch(function () {});
       showDetailView(tab || 'info');
@@ -4584,7 +4587,7 @@
         '<div class="info-item">' +
           '<div class="info-item-icon purple"><i class="fas fa-user"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value" style="font-size:12px;">' + (data.driver_name || 'Nealocat') + '</div>' +
+            '<div class="info-item-value" style="font-size:12px;">' + (driverNameByImei[imei] || data.driver_name || 'Nealocat') + '</div>' +
             '<div class="info-item-label">Sofer</div>' +
           '</div>' +
         '</div>' +

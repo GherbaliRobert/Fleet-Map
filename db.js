@@ -1100,7 +1100,10 @@ async function setIoMapping(imei, ioId, mapping) {
 async function deleteIoMapping(imei, ioId) { return setIoMapping(imei, ioId, null); }
 
 async function getDeviceFull(imei) {
-  const result = await pool.query('SELECT * FROM devices WHERE imei = $1', [imei]);
+  const result = await pool.query(
+    'SELECT d.*, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id WHERE d.imei = $1',
+    [imei]
+  );
   return result.rows[0] || null;
 }
 
