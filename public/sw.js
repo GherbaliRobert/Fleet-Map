@@ -1,5 +1,5 @@
 // Service worker — PWA (instalabil + shell offline) + Web Push pentru RA Track
-const CACHE = 'ratracks-v40';
+const CACHE = 'ratracks-v41';
 const SHELL = ['/app', '/index.html', '/css/app.css', '/manifest.json', '/icon.svg', '/icon-192.png', '/logo-mark.png', '/logo-mark-light.png', '/vendor/leaflet-heat.js'];
 
 self.addEventListener('install', function (e) {
@@ -21,12 +21,18 @@ self.addEventListener('fetch', function (e) {
   const url = new URL(req.url);
   // Nu intercepta API, WebSocket sau alt origin — datele sunt mereu live
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api')) return;
-  if (req.mode === 'navigate') {
-    // network-first pentru pagini (HTML proaspăt), cu fallback offline
-    e.respondWith(fetch(req).catch(() => caches.match('/index.html')));
+  // HTML + CSS: network-first (cod proaspăt la fiecare actualizare), cu fallback offline.
+  // CSS-ul era cache-first => actualizarile de stil nu apareau pana la schimbarea versiunii cache.
+  if (req.mode === 'navigate' || url.pathname.endsWith('.css')) {
+    e.respondWith(
+      fetch(req).then(res => {
+        const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy));
+        return res;
+      }).catch(() => caches.match(req).then(c => c || caches.match('/index.html')))
+    );
     return;
   }
-  // static (icoane, vendor): cache-first cu reîmprospătare în fundal
+  // static (icoane, vendor): cache-first cu populare la prima cerere
   e.respondWith(caches.match(req).then(cached => cached || fetch(req).then(res => {
     const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy));
     return res;
