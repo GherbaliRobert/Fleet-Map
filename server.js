@@ -2099,6 +2099,15 @@ async function sendEtransportPositions() {
   } catch (e) { console.warn('[e-Transport]', e.message); }
 }
 
+// ─── Module strategice DEMO-READY (e-Transport demo, E-Toll/Roviniete, Tahograf) ───
+// Endpoint-uri de simulare + flag-uri Demo/Real (settings). Montate aici (toate middleware-urile sunt definite).
+try {
+  require('./demo_modules').register(app, {
+    db, requireAuth, requireFleet, requireSuperadmin, withCompany, requireFeature, auditReq, ownsRow, livePositions
+  });
+  console.log('[DEMO-MODULES] e-Transport / E-Toll / Tahograf — endpoint-uri demo montate');
+} catch (e) { console.warn('[DEMO-MODULES] nu s-au putut monta:', e.message); }
+
 // Catalog API (public) — pentru integratori
 app.get('/api', (req, res) => {
   res.json({
@@ -3885,6 +3894,29 @@ async function checkExpiries() {
       };
       await notify(nMnt);
       await deliverExpiryToSubscribers({ imei: m.imei, companyId: m.company_id, title: nMnt.title, body: nMnt.body, key: nMnt.data.key });
+    }
+    // Documente vehicul (ITP / RCA / ROVINIETĂ) — alerte la 7, 3, 1 zile + EXPIRAT (Modul 2 E-Toll/Roviniete).
+    // Bucket-uri pe cheie (vdoc-{id}-{7|3|1|exp}) → fiecare prag se declanșează o singură dată (dedup notify).
+    for (const d of await db.getVehicleDocuments(null, null)) {
+      if (!d.expiry_date) continue;
+      const exp = new Date(d.expiry_date).getTime();
+      const days = Math.ceil((exp - now) / (24 * 3600 * 1000));
+      let bucket = null;
+      if (days < 0) bucket = 'exp';
+      else if (days <= 1) bucket = '1';
+      else if (days <= 3) bucket = '3';
+      else if (days <= 7) bucket = '7';
+      if (bucket === null) continue; // mai mult de 7 zile → nu alertăm încă
+      const label = String(d.doc_type || 'Document').toUpperCase();
+      const nDoc = {
+        type: 'document_expiry', severity: (days < 0 || days <= 3) ? 'critical' : 'warning',
+        imei: d.imei || null, companyId: d.company_id,
+        title: label + (days < 0 ? ' EXPIRAT' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + (d.imei ? ' · ' + d.imei : ''),
+        body: label + (d.number ? ' (' + d.number + ')' : '') + (days < 0 ? ' a expirat de ' + (-days) + ' zile' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + ' — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + '.',
+        data: { key: 'vdoc-' + d.id + '-' + bucket, docId: d.id, days: days, docType: d.doc_type }
+      };
+      await notify(nDoc);
+      await deliverExpiryToSubscribers({ imei: d.imei, companyId: d.company_id, title: nDoc.title, body: nDoc.body, key: nDoc.data.key });
     }
   } catch (e) { console.error('[EXPIRY]', e.message); }
 }
