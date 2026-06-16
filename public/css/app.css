@@ -1032,7 +1032,7 @@
     }
 
     .io-row .io-value {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-family: inherit;
       color: var(--text-primary);
       font-weight: 600;
       font-size: 12px;
@@ -1280,7 +1280,7 @@
     .popup-card-header .popup-imei {
       font-size: 11px;
       color: var(--text-muted);
-      font-family: monospace;
+      font-family: inherit;
     }
 
     .popup-table {
