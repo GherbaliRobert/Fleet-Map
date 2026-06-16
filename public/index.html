@@ -3782,6 +3782,16 @@
       L.control.zoom({ position: 'topright' }).addTo(map);
       if (map.attributionControl) map.attributionControl.setPosition('bottomleft'); // în stânga → nu se suprapune cu FAB-ul (dreapta-jos)
 
+      // Tap pe hartă (mobil, fișă deschisă) → colapsează fișa la „peek" ca să vezi tot traseul.
+      // Gardă: nu în modul de desenare geofence (drawState != null).
+      map.on('click', function () {
+        if (drawState) return;
+        if (window.innerWidth <= 768 && document.body.classList.contains('detail-open')) {
+          var p = document.getElementById('detail-panel');
+          if (p && !p.classList.contains('peek') && typeof setDetailPeek === 'function') setDetailPeek(true);
+        }
+      });
+
       applyMapTheme();
 
       markers = new Map();
@@ -4178,6 +4188,8 @@
     }
 
     function showDetailView(view) {
+      // La schimbarea tab-ului (sau redeschidere) ieșim din „peek" ca să fie vizibil conținutul.
+      var _dp = document.getElementById('detail-panel'); if (_dp) _dp.classList.remove('peek');
       const infoView = document.getElementById('detail-view-info');
       const routesView = document.getElementById('detail-view-routes');
       infoView.style.display = view === 'info' ? 'block' : 'none';
@@ -4290,17 +4302,42 @@
       } catch (e) {}
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     }
-    // Swipe-down pe header (mobil) → închide panoul
+    // Colapsează fișa la „peek" (doar header) — folosit la tap pe hartă; tap pe header → revine.
+    // Când e peek, re-încadrează ruta (dacă există) ca să folosească tot ecranul.
+    function setDetailPeek(on) {
+      var p = document.getElementById('detail-panel'); if (!p || !p.classList.contains('open')) return;
+      p.classList.toggle('peek', !!on);
+      setTimeout(function () {
+        try {
+          if (map) map.invalidateSize();
+          if (historyLine && historyLine.getBounds) {
+            var b = historyLine.getBounds();
+            if (b && b.isValid()) {
+              var isM = window.innerWidth <= 768;
+              if (on || !isM) map.fitBounds(b, { padding: [40, 40], maxZoom: 16 });
+              else map.fitBounds(b, { paddingTopLeft: [30, 30], paddingBottomRight: [30, Math.round(window.innerHeight * 0.45)], maxZoom: 16 });
+            }
+          }
+        } catch (e) {}
+      }, 80);
+    }
+
+    // Swipe-down pe header (mobil) → închide panoul; tap (fără drag) când e peek → revine la dimensiune normală
     (function () {
       var panel = document.getElementById('detail-panel'); if (!panel) return;
       var header = panel.querySelector('.detail-header'); if (!header) return;
-      var startY = 0, curY = 0, dragging = false;
-      function start(e) { var t = e.touches ? e.touches[0] : e; startY = curY = t.clientY; dragging = true; panel.style.transition = 'none'; }
-      function move(e) { if (!dragging) return; var t = e.touches ? e.touches[0] : e; curY = t.clientY; var dy = curY - startY; if (dy > 0) { panel.style.transform = 'translateY(' + dy + 'px)'; if (e.cancelable) e.preventDefault(); } }
+      var startY = 0, curY = 0, dragging = false, moved = false;
+      function start(e) { var t = e.touches ? e.touches[0] : e; startY = curY = t.clientY; dragging = true; moved = false; panel.style.transition = 'none'; }
+      function move(e) { if (!dragging) return; var t = e.touches ? e.touches[0] : e; curY = t.clientY; var dy = curY - startY; if (Math.abs(dy) > 4) moved = true; if (dy > 0) { panel.style.transform = 'translateY(' + dy + 'px)'; if (e.cancelable) e.preventDefault(); } }
       function end() { if (!dragging) return; dragging = false; panel.style.transition = ''; var dy = curY - startY; panel.style.transform = ''; if (dy > 90) closeDetailPanel(); }
       header.addEventListener('touchstart', start, { passive: true });
       header.addEventListener('touchmove', move, { passive: false });
       header.addEventListener('touchend', end);
+      // Tap pe header (nu pe X, fără drag) → dacă e peek, revine la dimensiune normală
+      header.addEventListener('click', function (e) {
+        if (e.target.closest('.detail-close')) return;
+        if (panel.classList.contains('peek')) setDetailPeek(false);
+      });
     })();
 
     function switchDetailTab(tab) {

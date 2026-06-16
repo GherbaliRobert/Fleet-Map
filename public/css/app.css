@@ -1418,6 +1418,14 @@
         padding-bottom: var(--sab);   /* iOS: conținutul de jos nu mai intră sub home indicator */
       }
 
+      /* „Peek": fișa colapsată doar la header (tap pe hartă) → vezi tot traseul; tap pe header → revine */
+      #detail-panel.open.peek {
+        height: auto;
+      }
+      #detail-panel.open.peek .detail-actions,
+      #detail-panel.open.peek .detail-content { display: none !important; }
+      #detail-panel.open.peek .detail-header { cursor: pointer; }
+
       /* Bottom sheet drag handle */
       .detail-header::before {
         content: '';
