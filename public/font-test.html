@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test font · Nunito · RA Tracks</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root{
+    --bg:#0B0E11;--panel:#15181D;--card:#181C22;--bg-dark:#0E1217;
+    --border:#242A31;--text:#fff;--text2:#C2CAD6;--muted:#8A93A3;
+    --accent:#3FE07D;--orange:#f97316;--red:#ef4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;-webkit-font-smoothing:antialiased;padding:24px;line-height:1.5}
+  body.system-font{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  .wrap{max-width:1000px;margin:0 auto}
+  .topbar{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  h1{font-size:22px;font-weight:800}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .toggle{display:flex;gap:8px}
+  .toggle button{font-family:inherit;padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-weight:700;font-size:13px;cursor:pointer}
+  .toggle button.active{background:var(--accent);color:#06210F;border-color:var(--accent)}
+  .cur{font-size:12px;color:var(--accent);font-weight:700;margin:14px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:12px}
+  .t1{font-size:26px;font-weight:800;margin-bottom:6px}
+  .t2{font-size:18px;font-weight:700;margin-bottom:6px}
+  .tbody{font-size:14px;color:var(--text2);margin-bottom:8px}
+  .tsmall{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .btn{font-family:inherit;padding:10px 16px;border-radius:8px;border:none;font-weight:700;font-size:14px;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#06210F}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text2)}
+  .veh{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .veh.sel{border-color:var(--accent)}
+  .veh-top{display:flex;align-items:center;justify-content:space-between}
+  .veh-name{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--red);display:inline-block}
+  .plate{background:rgba(63,224,125,.15);color:var(--accent);font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px}
+  .veh-speed{font-weight:700}
+  .veh-meta{color:var(--muted);font-size:12px;margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+  .filters{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{flex:1 1 30%;min-width:0;text-align:center;padding:7px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+  .chip.active{background:var(--accent);color:#06210F;border-color:var(--accent)}
+  .info{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .item{display:flex;align-items:center;gap:10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(63,224,125,.12);color:var(--accent);flex:0 0 auto}
+  .ico.red{background:rgba(239,68,68,.12);color:var(--red)}
+  .ico.orange{background:rgba(249,115,22,.12);color:var(--orange)}
+  .val{font-size:16px;font-weight:700}
+  .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-top:2px}
+  .num{font-variant-numeric:tabular-nums}
+  .mono{font-family:'JetBrains Mono','Consolas',monospace}
+  .note{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.6}
+  .note code{color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1>Test font: <span style="color:var(--accent)">Nunito</span></h1>
+      <div class="sub">Apasă butoanele ca să compari Nunito cu fontul actual. Tema e ca în aplicație.</div>
+    </div>
+    <div class="toggle">
+      <button id="b-nunito" class="active" onclick="setFont('nunito')">Nunito</button>
+      <button id="b-system" onclick="setFont('system')">Font actual</button>
+    </div>
+  </div>
+  <div class="cur" id="cur">Font activ: Nunito</div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Tipografie</h2>
+      <div class="t1">Dacia Logan 3 · 0 km/h</div>
+      <div class="t2">Monitorizare flotă în timp real</div>
+      <div class="tbody">Text de paragraf: vehiculul a parcurs 128 km astăzi, cu o viteză medie de 47 km/h și două opriri pe traseu.</div>
+      <div class="tsmall">Etichetă mică · uppercase</div>
+    </div>
+    <div class="panel">
+      <h2>Butoane</h2>
+      <div class="btns">
+        <button class="btn primary"><i class="fas fa-download"></i> Încarcă traseul</button>
+        <button class="btn ghost">Anulează</button>
+        <button class="btn primary">Salvează</button>
+      </div>
+      <h2 style="margin-top:14px">Filtre</h2>
+      <div class="filters">
+        <div class="chip active">Toate</div><div class="chip">Pornit</div><div class="chip">În mișcare</div>
+        <div class="chip">Staționat</div><div class="chip">Oprit</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>Listă vehicule</h2>
+      <div class="veh sel">
+        <div class="veh-top"><div class="veh-name"><span class="dot"></span> Dacia Logan 3 <span class="plate">B 154 UIP</span></div><div class="veh-speed">0 km/h</div></div>
+        <div class="veh-meta"><span><i class="fas fa-key"></i> OFF</span><span><i class="fas fa-bolt"></i> 12.8V</span><span><i class="far fa-clock"></i> acum 10 min</span></div>
+      </div>
+      <div class="veh">
+        <div class="veh-top"><div class="veh-name"><span class="dot"></span> Man TGS <span class="plate">B 188 UIP</span></div><div class="veh-speed">0 km/h</div></div>
+        <div class="veh-meta"><span><i class="fas fa-key"></i> OFF</span><span><i class="fas fa-bolt"></i> 25.0V</span><span><i class="far fa-clock"></i> acum 56 min</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Detalii vehicul (cifre)</h2>
+      <div class="info">
+        <div class="item"><div class="ico red"><i class="fas fa-power-off"></i></div><div><div class="val">Decuplat</div><div class="lbl">Status contact</div></div></div>
+        <div class="item"><div class="ico orange"><i class="fas fa-bolt"></i></div><div><div class="val num">12.8 V</div><div class="lbl">Tensiune baterie</div></div></div>
+        <div class="item"><div class="ico red"><i class="fas fa-gas-pump"></i></div><div><div class="val num">43.0 L</div><div class="lbl">Combustibil (CAN)</div></div></div>
+        <div class="item"><div class="ico"><i class="fas fa-road"></i></div><div><div class="val num">31798.3 km</div><div class="lbl">Kilometraj total</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Valori monospace (IMEI, coordonate, coduri IO)</h2>
+    <div class="mono" style="font-size:13px;color:var(--text2);line-height:1.9">
+      IMEI: 350612073409123<br>
+      Poziție: 44.426800, 26.102500<br>
+      io_239 · io_240 · GET /api/devices · 200
+    </div>
+  </div>
+
+  <div class="note">
+    Notă: monospace-ul rămâne separat (cifrele tehnice). Dacă-ți place Nunito, îl aplic în toată aplicația dintr-un singur loc:
+    încarc fontul + îl setez în <code>app.css</code>. Iconurile (Font Awesome) rămân la fel.
+  </div>
+</div>
+<script>
+  function setFont(f){
+    var sys = f === 'system';
+    document.body.classList.toggle('system-font', sys);
+    document.getElementById('b-nunito').classList.toggle('active', !sys);
+    document.getElementById('b-system').classList.toggle('active', sys);
+    document.getElementById('cur').textContent = 'Font activ: ' + (sys ? 'Segoe UI / Inter (actual)' : 'Nunito');
+  }
+</script>
+</body>
+</html>
