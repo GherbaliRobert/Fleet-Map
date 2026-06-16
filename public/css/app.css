@@ -1400,6 +1400,7 @@
         min-width: 100% !important;
         height: 0;
         max-height: 70vh;
+        max-height: 70dvh;        /* dvh: urmărește viewportul dinamic (bara URL iOS) */
         border-left: none;
         border-top: 2px solid var(--accent);
         border-radius: 12px 12px 0 0;
@@ -1411,8 +1412,10 @@
 
       #detail-panel.open {
         height: 65vh;
+        height: 65dvh;
         width: 100% !important;
         min-width: 100% !important;
+        padding-bottom: var(--sab);   /* iOS: conținutul de jos nu mai intră sub home indicator */
       }
 
       /* Bottom sheet drag handle */
@@ -1531,8 +1534,9 @@
         width: 100% !important;
         max-width: 100% !important;
         max-height: 90vh !important;
+        max-height: 90dvh !important;
         border-radius: 12px 12px 0 0 !important;
-        padding: 20px 16px !important;
+        padding: 20px 16px calc(20px + var(--sab)) !important;  /* iOS: butoanele de jos nu mai cad sub home indicator */
         margin: 0;
       }
 
