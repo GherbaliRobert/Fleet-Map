@@ -873,6 +873,14 @@
     .info-item-icon.yellow { background: rgba(234, 179, 8, 0.15); color: var(--yellow); }
     .info-item-icon.purple { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
 
+    /* TEST FONT: Nunito DOAR pe pagina Rapoarte + butonul „Rapoarte" din meniu (comparatie A/B in app). Se scoate dupa decizie. */
+    #reports-modal,
+    #reports-modal button, #reports-modal input, #reports-modal select, #reports-modal textarea,
+    #reports-modal th, #reports-modal td,
+    .nav-item[data-view="rapoarte"] {
+      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
+
     .info-item-text { flex: 1; min-width: 0; }
 
     .info-item-value {
