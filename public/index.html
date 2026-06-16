@@ -2056,9 +2056,15 @@
       document.getElementById('audit-modal').classList.add('visible');
       const list = document.getElementById('audit-list');
       list.innerHTML = '<p style="color:var(--text-muted)">Se încarcă...</p>';
-      const res = await fetch('/api/audit?limit=200');
-      if (!res.ok) { list.innerHTML = '<p style="color:var(--text-muted)">Indisponibil.</p>'; return; }
-      const rows = await res.json();
+      let res, rows;
+      try {
+        res = await fetch('/api/audit?limit=200');
+        if (!res.ok) { list.innerHTML = '<p style="color:var(--text-muted)">Indisponibil.</p>'; return; }
+        rows = await res.json();
+      } catch (e) {
+        // fără try/catch, o cădere de rețea lăsa spinnerul „Se încarcă..." blocat
+        list.innerHTML = '<p style="color:var(--text-muted)">Indisponibil (eroare de rețea).</p>'; return;
+      }
       if (!rows.length) { list.innerHTML = '<p style="color:var(--text-muted)">Nicio intrare.</p>'; return; }
       list.innerHTML = '<table style="width:100%;border-collapse:collapse;">' +
         '<thead><tr style="text-align:left;color:var(--text-muted);font-size:11px;">' +
@@ -4303,31 +4309,8 @@
       else if (tab === 'history') showDetailView('routes');
     }
 
-    // Reverse geocoding cache
-    const addressCache = new Map();
-
-    async function reverseGeocode(lat, lng) {
-      const key = lat.toFixed(4) + ',' + lng.toFixed(4);
-      if (addressCache.has(key)) return addressCache.get(key);
-
-      try {
-        const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=16&addressdetails=1', {
-          headers: { 'Accept-Language': 'ro' }
-        });
-        const data = await res.json();
-        const addr = data.address;
-        let parts = [];
-        if (addr.road) parts.push(addr.road);
-        if (addr.house_number) parts[parts.length - 1] += ' ' + addr.house_number;
-        if (addr.city || addr.town || addr.village) parts.push(addr.city || addr.town || addr.village);
-        if (addr.county) parts.push(addr.county);
-        const result = parts.join(', ') || data.display_name?.split(',').slice(0, 3).join(',') || '-';
-        addressCache.set(key, result);
-        return result;
-      } catch (e) {
-        return '-';
-      }
-    }
+    // NOTĂ: reverseGeocode + cache-ul real sunt definite mai jos (~5477, geocodeCache).
+    // Versiunea duplicată de aici (cu addressCache) era cod mort — suprascrisă prin hoisting. Eliminată.
 
     function getDirectionName(angle) {
       if (angle === null || angle === undefined) return '-';
