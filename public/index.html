@@ -405,6 +405,8 @@
           #edit-tab-basic .vsec{font-size:12px;font-weight:700;margin:14px 0 8px;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
           #edit-tab-basic .vgrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
           #edit-tab-basic .vgrid2 .form-group{margin-bottom:0;}
+          /* #8 mobil: colapsează la 1 coloană (câmpurile + label-urile lungi se înghesuiau sub ~400px) */
+          @media (max-width: 480px){ #edit-tab-basic .vgrid2{grid-template-columns:1fr;} }
         </style>
         <div class="form-group">
           <label>IMEI</label>
@@ -5091,7 +5093,15 @@
           : '<div class="ss-empty">Niciun vehicul găsit</div>';
       }
       function choose(val) { sel.value = val; sel.dispatchEvent(new Event('change', { bubbles: true })); syncDisplay(); close(); }
-      function open() { wrap.classList.add('ss-open'); render(''); input.select(); }
+      function open() {
+        wrap.classList.add('ss-open'); render(''); input.select();
+        // #7: dacă nu e loc dedesubt (selector jos în bottom-sheet), deschide panoul în sus
+        try {
+          var r = input.getBoundingClientRect();
+          var below = window.innerHeight - r.bottom;
+          wrap.classList.toggle('ss-up', below < 280 && r.top > below);
+        } catch (e) {}
+      }
       function close() { wrap.classList.remove('ss-open'); syncDisplay(); }
       input.addEventListener('focus', open);
       input.addEventListener('input', function () { wrap.classList.add('ss-open'); render(input.value); });
@@ -5113,6 +5123,22 @@
     (function initVehicleSearch() {
       function go() { ['history-imei', 'rep-imei', 'sch-imei', 'alert-imei', 'mnt-imei', 'hs-imei'].forEach(function (id) { const el = document.getElementById(id); if (el) enhanceSelectSearch(el); }); }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+    })();
+
+    // #9: pe iOS tastatura nu micșorează vh/fixed → input-ul chat-ului AI ajunge sub tastatură.
+    // visualViewport dă înălțimea VIZIBILĂ; redimensionăm overlay-ul ca să stea peste tastatură.
+    (function aiKeyboardFix() {
+      if (!window.visualViewport) return;
+      function adjust() {
+        var ov = document.getElementById('rax-ai-overlay'); if (!ov) return;
+        if (ov.classList.contains('open') && window.innerWidth <= 768) {
+          var vv = window.visualViewport;
+          ov.style.top = vv.offsetTop + 'px';
+          ov.style.height = vv.height + 'px';
+        } else { ov.style.top = ''; ov.style.height = ''; }
+      }
+      window.visualViewport.addEventListener('resize', adjust);
+      window.visualViewport.addEventListener('scroll', adjust);
     })();
 
     // Încadrează harta pe TOT traseul. Pe mobil rezervă jumătatea de jos pentru bottom-sheet
@@ -7343,6 +7369,8 @@
     .ss-wrap::after { content: "▾"; position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; }
     .ss-wrap.ss-open::after { color: var(--accent); }
     .ss-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 2000; max-height: 260px; overflow-y: auto; background: var(--bg-panel, var(--bg-dark)); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+    /* #7: deschide în SUS când nu e loc jos (ex: selector aproape de baza unui bottom-sheet pe mobil) */
+    .ss-wrap.ss-up .ss-panel { top: auto; bottom: calc(100% + 4px); box-shadow: 0 -8px 24px rgba(0,0,0,.35); }
     .ss-wrap.ss-open .ss-panel { display: block; }
     .ss-item { padding: 9px 11px; font-size: 13px; cursor: pointer; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .ss-item:hover, .ss-item.ss-active { background: var(--bg-dark); }
@@ -7383,7 +7411,7 @@
   </div>
 
   <div class="rax-overlay" id="rax-ai-overlay">
-    <div class="rax-card" style="max-width:480px;height:78vh;">
+    <div class="rax-card" style="max-width:480px;height:78vh;height:78dvh;">
       <div class="rax-head">
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="rax-av" style="width:34px;height:34px;font-size:15px;"><i class="fas fa-robot"></i></div>
@@ -7792,6 +7820,7 @@
     window.raxToggleAI = function () {
       var ov = $('rax-ai-overlay'); var open = !ov.classList.contains('open');
       ov.classList.toggle('open', open);
+      if (!open) { ov.style.top = ''; ov.style.height = ''; } // #9: reset poziționarea de tastatură la închidere
       if (open && !$('rax-ai-msgs').dataset.init) {
         $('rax-ai-msgs').dataset.init = '1';
         // Întotdeauna: salut + întrebări rapide (răspund LOCAL, instant, fără tokeni AI)
