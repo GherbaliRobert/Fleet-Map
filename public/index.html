@@ -4283,11 +4283,11 @@
       _p.classList.remove('open');
       _p.style.transform = '';
       document.body.classList.remove('detail-open');
-      // Pe mobil, dacă fișa a deschis un traseu (history-panel dedesubt), închide-l ca să nu rămână bara de playback orfană.
-      if (window.innerWidth <= 768) {
-        var hp = document.getElementById('history-panel');
-        if (hp && hp.classList.contains('visible') && typeof closeHistory === 'function') closeHistory();
-      }
+      // Curăță ruta desenată din tabul „Rute" (dacă a fost afișată) ca să nu rămână pe hartă după închiderea fișei.
+      try {
+        if (historyLine) { map.removeLayer(historyLine); historyLine = null; }
+        if (historyMarkers && historyMarkers.length) { historyMarkers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} }); historyMarkers = []; }
+      } catch (e) {}
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     }
     // Swipe-down pe header (mobil) → închide panoul
@@ -7229,16 +7229,11 @@
 
         historyMarkers.push(startMarker, endMarker);
 
-        // Focus pe TOT traseul (mobil-aware: lasă jos loc pentru panou, nu mai e padding simetric)
+        // Focus pe TOT traseul (mobil-aware: lasă jos loc pentru fișă, nu mai e padding simetric)
         fitRouteToMap(points);
-
-        // PORNEȘTE REPLAY-UL INTERACTIV pentru acest traseu (afișează panoul cu bara de control jos)
-        var histPanel = document.getElementById('history-panel');
-        if (histPanel) histPanel.classList.add('visible');
-        document.body.classList.add('history-open'); // consecvent cu showHistory → ascunde FAB pe mobil
-        // Populez câmpurile from/to ca să fie consistente cu replay-ul
-        try { initRangePicker('history-from', 'history-to'); dtSet('history-from', new Date(route.startTime).toISOString().slice(0, 16)); dtSet('history-to', new Date(route.endTime).toISOString().slice(0, 16)); } catch (e) {}
-        if (typeof hpInit === 'function') hpInit(data);
+        // NU mai deschidem panoul „Istoric traseu" peste fișă (evită dublul bottom-sheet).
+        // Tabul „Rute" din fișă rămâne deschis; ruta apare doar pe hartă (intenția din tooltip: „vezi ruta pe hartă").
+        // FAB-ul e oricum ascuns cât fișa e deschisă (body.detail-open).
       } catch (err) {
         console.error('Eroare incarcare ruta:', err);
       }
