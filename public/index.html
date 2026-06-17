@@ -3700,6 +3700,16 @@
     const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
     const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
+    // ─── Dropdown-uri în meniu (scurtături) ───
+    function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
+    // Navighează (fn), marchează butonul activ și ține grupul deschis. fn rulează ÎNAINTE (showView resetează .active).
+    function navGo(btn, fn) {
+      try { if (fn) fn(); } catch (e) {}
+      document.querySelectorAll('#navrail .nav-item').forEach(function (n) { n.classList.remove('active'); });
+      if (btn) { btn.classList.add('active'); var g = btn.closest('.nav-group'); if (g) g.classList.add('open'); }
+    }
+    function goManage(tab) { showView('management'); setTimeout(function () { try { switchAdminTab(tab); } catch (e) {} }, 60); }
+    function goAnalizeConsum() { showView('analize'); setTimeout(function () { try { var e = document.getElementById('dk-fuel'); if (e) (e.closest('.chart-container, .report-stat, section') || e).scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) {} }, 250); }
     function showView(name) {
       currentView = name;
       document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === name));
