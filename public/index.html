@@ -23,6 +23,7 @@
   <meta name="apple-mobile-web-app-title" content="RA Tracks">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="/css/app.css?v=3">
+  <link rel="stylesheet" href="/css/demo-modules.css?v=1">
 </head>
 <body class="dark">
   <!-- Login Screen -->
@@ -82,6 +83,9 @@
         <button class="nav-item fleet-only" data-view="management" onclick="showView('management')"><i class="fas fa-pen-to-square"></i><span>Management</span></button>
         <button class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
         <button class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
+        <button class="nav-item" data-view="etransport" onclick="showView('etransport')"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
+        <button class="nav-item" data-view="etoll" onclick="showView('etoll')"><i class="fas fa-road"></i><span>E-Toll &amp; Roviniete</span></button>
+        <button class="nav-item" data-view="tahograf" onclick="showView('tahograf')"><i class="fas fa-id-card"></i><span>Tahograf</span></button>
         <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
         <button class="nav-item" id="nav-admin" data-view="administrare" onclick="showView('administrare')" style="display:none;"><i class="fas fa-gear"></i><span>Administrare</span></button>
       </nav>
@@ -1643,6 +1647,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ro.js"></script>
+  <script src="/js/demo-modules-ui.js?v=1"></script>
   <script>
     // ─── Global State ───
     let currentUser = null;
@@ -3656,8 +3661,8 @@
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal' };
-    const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     function showView(name) {
       currentView = name;
