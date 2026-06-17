@@ -71,15 +71,26 @@
       '</div>';
   }
 
+  // Popup STANDALONE partajat (un singur balon pe hartă). NU folosim mk.bindPopup pentru că acela adaugă
+  // un al doilea handler de click pe marker (toggle Leaflet) care intra în conflict cu al nostru și închidea
+  // balonul la al doilea click. Cu un popup deschis prin map.openPopup, singurul trigger e marker.on('click').
+  function getVpPopup() {
+    if (!window._vpPopup) {
+      window._vpPopup = L.popup({ maxWidth: 330, minWidth: 290, className: 'vp-popup', autoPanPadding: [40, 80], closeButton: true });
+    }
+    return window._vpPopup;
+  }
+
   // Deschide balonul pe markerul vehiculului.
   window.openVehiclePopup = function (imei) {
     var map = MAP(), mks = MKS();
     if (!map || !mks) { if (window.selectDevice) window.selectDevice(imei); return; }
     ensureHooks();
     var mk = mks.get(imei); if (!mk) return;
-    if (!mk.getPopup()) mk.bindPopup('', { maxWidth: 330, minWidth: 290, className: 'vp-popup', autoPanPadding: [40, 80], closeButton: true });
-    mk.setPopupContent(buildHtml(imei));
-    mk.openPopup();
+    var pop = getVpPopup();
+    window._vpOpenImei = imei;
+    pop.setLatLng(mk.getLatLng()).setContent(buildHtml(imei));
+    map.openPopup(pop);
     enrich(imei);
   };
 
@@ -118,8 +129,10 @@
   // Refresh dacă balonul vehiculului e deschis (date live). Apelat din updateMarker.
   window.vpRefreshIfOpen = function (imei) {
     try {
-      var mks = MKS(); if (!mks) return;
-      var mk = mks.get(imei); if (!mk || !mk.isPopupOpen || !mk.isPopupOpen()) return;
+      if (window._vpOpenImei !== imei) return;
+      var pop = window._vpPopup; if (!pop || !pop.isOpen || !pop.isOpen()) return;
+      var mks = MKS(); var mk = mks && mks.get(imei);
+      if (mk && pop.setLatLng) pop.setLatLng(mk.getLatLng()); // balonul urmează markerul dacă se mișcă
       updateLiveFields(imei);
     } catch (e) {}
   };
@@ -163,10 +176,11 @@
     b.innerHTML = '<i class="fas fa-crosshairs"></i> <span>Urmărești: <b>' + esc(name) + '</b></span> <button title="Oprește urmărirea" onclick="vpClearFollow()">&times;</button>';
   }
 
-  // La control manual al hărții (drag) → oprește follow-ul.
+  // Hook-uri pe hartă: drag manual oprește follow-ul; închiderea balonului resetează starea „deschis".
   function ensureHooks() {
     var map = MAP(); if (!map || map.__vpHooked) return; map.__vpHooked = true;
     map.on('dragstart', function () { if (window._followImei) window.vpClearFollow(); });
+    map.on('popupclose', function (e) { if (e.popup === window._vpPopup) window._vpOpenImei = null; });
   }
 
   // Închide meniul nav (Google/Waze) la click în afara lui.
