@@ -35,7 +35,8 @@
         '<div class="msb-dd-head"><a href="#" id="msb-all"><i class="fas fa-check-double"></i> Toate</a><a href="#" id="msb-none"><i class="fas fa-xmark"></i> Niciuna</a></div>' +
         '<div id="msb-list" class="msb-list"></div>' +
       '</div>';
-    document.body.appendChild(bar);
+    // Montează bara în centrul topbar-ului (lângă butoane); fallback pe body dacă topbar-ul nu există.
+    (el('topbar-center') || document.body).appendChild(bar);
     el('msb-input').addEventListener('input', renderList);
     el('msb-input').addEventListener('focus', openDropdown);
     el('msb-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var f = (el('msb-list').querySelector('.msb-item-name')); if (f) f.click(); } });
