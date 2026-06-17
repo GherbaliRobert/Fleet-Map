@@ -715,8 +715,8 @@
 
     .history-btn.primary { background: var(--blue); color: white; }
     .history-btn.primary:hover { background: var(--blue-hover); }
-    .history-btn.success { background: var(--green-dim); color: white; }
-    .history-btn.success:hover { background: var(--green); }
+    .history-btn.success { background: var(--blue); color: #06210F; }
+    .history-btn.success:hover { background: var(--blue-hover); }
 
     /* ─── Right Detail Panel ─── */
     #detail-panel {
