@@ -13,8 +13,8 @@
       --text-muted: #64748b; /* urcat din #94a3b8 (~2.6:1) la slate-500 (~4.85:1) pentru WCAG AA pe bg deschis */
       --accent: #16a34a;
       --accent-hover: #15803d;
-      --blue: #16a34a;
-      --blue-hover: #15803d;
+      --blue: #3FE07D;
+      --blue-hover: #52EC8D;
       --green: #16a34a;
       --green-dim: #15803d;
       --red: #dc2626;
@@ -227,7 +227,7 @@
     /* bara de accent care „creste" la hover pe itemele neselectate */
     .nav-item::before {
       content: ''; position: absolute; left: 4px; top: 50%;
-      width: 3px; height: 0; border-radius: 3px; background: var(--accent);
+      width: 3px; height: 0; border-radius: 3px; background: var(--blue);
       transform: translateY(-50%); transition: height .18s ease;
     }
     @media (hover: hover) {
@@ -236,7 +236,7 @@
       .nav-item:hover i { transform: scale(1.15); }
     }
     /* selectat: fundal verde + „pop" la selectare + glow */
-    .nav-item.active { background: var(--accent); color: #fff; transform: translateX(0); box-shadow: 0 6px 16px -6px var(--accent); animation: navPop .3s ease; }
+    .nav-item.active { background: var(--blue); color: #fff; transform: translateX(0); box-shadow: 0 6px 16px -6px var(--blue); animation: navPop .3s ease; }
     .nav-item.active::before { height: 0; }
     @keyframes navPop { 0% { transform: scale(.96); } 55% { transform: scale(1.04); } 100% { transform: scale(1); } }
     @media (prefers-reduced-motion: reduce) {
@@ -411,7 +411,7 @@
     }
 
     .filter-btn:hover { border-color: var(--accent); color: var(--text-primary); }
-    .filter-btn.active { background: var(--accent); color: var(--bg-dark); border-color: var(--accent); }
+    .filter-btn.active { background: var(--blue); color: var(--bg-dark); border-color: var(--blue); }
 
     /* Stats Bar */
     .stats-bar {
@@ -814,7 +814,7 @@
     }
 
     .detail-action-btn:hover { border-color: var(--accent); color: var(--text-primary); }
-    .detail-action-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .detail-action-btn.active { background: var(--blue); color: #000; border-color: var(--blue); }
 
     .detail-action-btn i { margin-right: 3px; }
 
@@ -830,7 +830,7 @@
       transition: all 0.15s;
     }
     .route-period-btn:hover { border-color: var(--accent); color: var(--text-primary); }
-    .route-period-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .route-period-btn.active { background: var(--blue); color: #000; border-color: var(--blue); }
 
     .route-card {
       padding: 10px 12px;
