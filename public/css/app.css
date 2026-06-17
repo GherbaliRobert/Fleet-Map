@@ -431,7 +431,7 @@
 
     .stat-chip .stat-value {
       font-size: 20px;
-      font-weight: 700;
+      font-weight: 800;
       color: var(--accent);
       line-height: 1.2;
     }
@@ -529,7 +529,7 @@
       font-weight: 700;
     }
 
-    .device-card-speed.moving { color: var(--green); }
+    .device-card-speed.moving { color: var(--green); font-weight: 800; }
     .device-card-speed.stopped { color: var(--text-muted); }
 
     .device-card-meta {
@@ -549,7 +549,7 @@
 
     .device-card-meta i { font-size: 10px; }
 
-    .meta-ignition.on { color: var(--green); }
+    .meta-ignition.on { color: var(--green); font-weight: 800; }
     .meta-ignition.off { color: var(--text-muted); }
 
     /* WS Status */
@@ -571,7 +571,7 @@
       border-radius: 50%;
     }
 
-    .ws-connected { color: var(--green); }
+    .ws-connected { color: var(--green); font-weight: 800; }
     .ws-connected .ws-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
     .ws-disconnected { color: var(--red); }
     .ws-disconnected .ws-dot { background: var(--red); }
@@ -913,7 +913,7 @@
       margin-top: 1px;
     }
 
-    .info-item-value.green { color: var(--green); }
+    .info-item-value.green { color: var(--green); font-weight: 800; }
     .info-item-value.red { color: var(--red); }
     .info-item-value.orange { color: var(--orange); }
     .info-item-value.yellow { color: var(--yellow); }
@@ -943,7 +943,7 @@
     .info-status-bar.off .info-status-dot { background: var(--red); box-shadow: 0 0 6px var(--red); }
 
     .info-status-text { font-size: 13px; font-weight: 700; }
-    .info-status-bar.moving .info-status-text { color: var(--green); }
+    .info-status-bar.moving .info-status-text { color: var(--green); font-weight: 800; }
     .info-status-bar.idle .info-status-text { color: var(--yellow); }
     .info-status-bar.off .info-status-text { color: var(--red); }
     /* Offline (>1h) — gri + ⚠ */
@@ -976,7 +976,7 @@
     }
     .report-stat-value {
       font-size: 18px;
-      font-weight: 700;
+      font-weight: 800;
       color: var(--accent);
     }
     .report-stat-label {
@@ -1057,7 +1057,7 @@
       font-size: 12px;
     }
 
-    .io-value.on { color: var(--green); }
+    .io-value.on { color: var(--green); font-weight: 800; }
     .io-value.off { color: var(--text-muted); }
 
     /* Istoric Tab in detail panel */
