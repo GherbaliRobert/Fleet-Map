@@ -3994,8 +3994,9 @@
         }
       }
 
-      // Follow live: harta ține mașina centrată DOAR dacă userul a apăsat „Urmărește" pe ea (window._followImei).
-      if (imei === window._followImei) {
+      // Follow live: pe DESKTOP harta urmărește mașina doar dacă userul a apăsat „Urmărește" (window._followImei).
+      // Pe MOBIL păstrăm comportamentul anterior: vehiculul selectat e ținut centrat (deasupra bottom-sheet-ului).
+      if (imei === window._followImei || (window.innerWidth <= 768 && isSelected)) {
         panFollowVehicle(latitude, longitude);
       }
       // Balon deschis pe acest vehicul → reîmprospătează datele live (viteză, oră, adresă).
