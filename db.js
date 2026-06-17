@@ -119,6 +119,29 @@ async function initDb() {
       ON positions (timestamp)
     `);
 
+    // ─── Arhivă poziții: istoricul „înghețat" al dispozitivelor arhivate (contract încheiat) ───
+    // La arhivare copiem aici pozițiile dispozitivului (archiveDevicePositions). `positions` rămâne pe retenția
+    // scurtă (180z, active), iar `positions_archive` e păstrată mai mult (purgeArchivedPositions → 2 ani).
+    // Astfel „memoria veche" NU se pierde chiar dacă tracker-ul nu mai trimite și pozițiile vii expiră din hypertable.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS positions_archive (
+        id BIGSERIAL PRIMARY KEY,
+        imei VARCHAR(20) NOT NULL,
+        timestamp TIMESTAMP NOT NULL,
+        latitude DOUBLE PRECISION NOT NULL,
+        longitude DOUBLE PRECISION NOT NULL,
+        altitude INTEGER,
+        angle INTEGER,
+        speed INTEGER,
+        satellites INTEGER,
+        priority INTEGER,
+        io_data JSONB,
+        company_id INTEGER,
+        archived_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_posarch_imei_ts ON positions_archive (imei, timestamp)`);
+
     // ─── TimescaleDB (doar pe Postgres real): hypertable + compresie + retenție pe `positions` ───
     // La 4s × multe vehicule, asta ține storage-ul în frâu (compresie ~85-90% + ștergere automată a datelor vechi).
     if (USE_PG) {
@@ -1235,10 +1258,18 @@ async function setDevicesCompanyBulk(imeis, companyId) {
 }
 
 async function getDeviceHistory(imei, from, to) {
+  // UNION cu positions_archive: dispozitivele arhivate își păstrează istoricul acolo chiar după ce pozițiile vii
+  // expiră din hypertable (retenție 180z). DISTINCT ON (timestamp) elimină dublurile din fereastra de overlap
+  // (imediat după arhivare datele sunt în ambele tabele). Activele normale: positions_archive e gol → doar positions.
   const result = await pool.query(`
-    SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
-    FROM positions
-    WHERE imei = $1 AND timestamp BETWEEN $2 AND $3
+    SELECT DISTINCT ON (timestamp) timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+    FROM (
+      SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+        FROM positions WHERE imei = $1 AND timestamp BETWEEN $2 AND $3
+      UNION ALL
+      SELECT timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
+        FROM positions_archive WHERE imei = $1 AND timestamp BETWEEN $2 AND $3
+    ) u
     ORDER BY timestamp ASC
   `, [imei, from, to]);
   return result.rows;
@@ -1467,6 +1498,57 @@ async function deleteOldPositions(days) {
     [String(days)]
   );
   return result.affectedRows || (result.rowCount || 0);
+}
+
+// La arhivarea unui dispozitiv: copiază istoricul lui din `positions` în `positions_archive` (snapshot înghețat).
+// ON CONFLICT (imei, timestamp) DO NOTHING → idempotent la re-arhivare (arhivează → restaurează → arhivează).
+async function archiveDevicePositions(imei) {
+  const r = await pool.query(`
+    INSERT INTO positions_archive (imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, company_id)
+    SELECT imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, company_id
+    FROM positions WHERE imei = $1
+    ON CONFLICT (imei, timestamp) DO NOTHING
+  `, [imei]);
+  return r.affectedRows || r.rowCount || 0;
+}
+
+// Purjează arhiva mai veche de N zile (politică aleasă: arhivate 2 ani = 730z).
+async function purgeArchivedPositions(days) {
+  const r = await pool.query(
+    `DELETE FROM positions_archive WHERE timestamp < NOW() - ($1 || ' days')::interval`,
+    [String(days)]
+  );
+  return r.affectedRows || (r.rowCount || 0);
+}
+
+// IMEI-urile dispozitivelor arhivate — pentru oprirea ingestului în memoria serverului (set verificat la fiecare pachet).
+async function getArchivedImeis() {
+  const r = await pool.query(`SELECT imei FROM devices WHERE status = 'archived'`);
+  return r.rows.map(x => x.imei);
+}
+
+// Câte poziții arhivate are un dispozitiv (pentru UI: „X poziții păstrate").
+async function countArchivedPositions(imei) {
+  const r = await pool.query(`SELECT COUNT(*)::int AS n, MIN(timestamp) AS first_ts, MAX(timestamp) AS last_ts FROM positions_archive WHERE imei = $1`, [imei]);
+  return r.rows[0] || { n: 0, first_ts: null, last_ts: null };
+}
+
+// Dispozitivele arhivate + numărul de poziții păstrate în arhivă (pentru pagina „Dispozitive arhivate").
+async function getArchivedDevices() {
+  const r = await pool.query(`
+    SELECT d.imei, d.name, d.plate, d.vehicle_type, d.company_id, d.last_seen,
+           c.name AS company_name,
+           COALESCE(a.n, 0) AS archived_positions, a.first_ts, a.last_ts
+    FROM devices d
+    LEFT JOIN companies c ON c.id = d.company_id
+    LEFT JOIN (
+      SELECT imei, COUNT(*)::int AS n, MIN(timestamp) AS first_ts, MAX(timestamp) AS last_ts
+      FROM positions_archive GROUP BY imei
+    ) a ON a.imei = d.imei
+    WHERE d.status = 'archived'
+    ORDER BY d.last_seen DESC NULLS LAST
+  `);
+  return r.rows;
 }
 
 // ─── Notificări ───
@@ -2024,6 +2106,11 @@ module.exports = {
   revokeApiKey,
   cleanupExpiredSessions,
   deleteOldPositions,
+  archiveDevicePositions,
+  purgeArchivedPositions,
+  getArchivedImeis,
+  countArchivedPositions,
+  getArchivedDevices,
   createNotification,
   notificationKeyExists,
   getNotifications,

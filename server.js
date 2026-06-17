@@ -180,6 +180,9 @@ const ACTUAL_HTTP_PORT = TCP_PORT === HTTP_PORT ? HTTP_PORT + 1 : HTTP_PORT;
 
 // ─── Stare live (ultima poziție per IMEI, ținută în memorie) ───
 const livePositions = new Map();
+// Dispozitive ARHIVATE (contract încheiat): pachetele lor primesc ACK dar NU se stochează / nu apar live.
+// Set în memorie, populat la pornire + actualizat la arhivare/restaurare. Verificat la fiecare pachet (O(1)).
+const archivedImeis = new Set();
 // Ultimele valori CAN cunoscute per imei — pentru carry-forward când motorul e oprit (pachet fără date CAN).
 const lastCanIo = new Map(); // imei -> { io: {sticky...}, ts }
 // Valori CAN „sticky": rămân valabile cât vehiculul e oprit (carburant, odometru, AdBlue, ore motor).
@@ -459,6 +462,14 @@ const tcpServer = net.createServer((socket) => {
       { const _ack = Buffer.alloc(4); _ack.writeUInt32BE(parsed.numberOfRecords); socket.write(_ack); }
 
       console.log(`[TCP] ${imei}: ${parsed.numberOfRecords} recorduri primite`);
+
+      // ── Dispozitiv ARHIVAT: contractul s-a încheiat. ACK deja trimis (mai sus) → trackerul nu retrimite,
+      //    dar NU procesăm / NU stocăm / NU actualizăm live. Istoricul vechi rămâne intact în positions_archive.
+      if (archivedImeis.has(imei)) {
+        addDebugEntry({ event: 'archived_drop', imei, numberOfRecords: parsed.numberOfRecords });
+        return;
+      }
+
       addDebugEntry({
         event: 'data',
         imei,
@@ -2166,6 +2177,18 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
   }
 });
 
+// Dispozitive arhivate (contracte încheiate) + nr. poziții păstrate în arhivă. Pagina „Dispozitive arhivate".
+app.get('/api/archived-devices', requireAuth, withScope, async (req, res) => {
+  try {
+    let rows = await db.getArchivedDevices();
+    if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei));
+    if (req.companyId !== demoCompanyId) rows = rows.filter(d => !DEMO_SET.has(d.imei)); // demo doar în contul demo
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Listă slabă (fără poziție live + io_data) — folosită de selectoarele de mutare super-admin.
 // Drop ~80-95% din payload-ul /api/devices la 1000+ vehicule.
 app.get('/api/devices/lite', requireAuth, withScope, async (req, res) => {
@@ -2283,7 +2306,21 @@ app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const status = req.body.status === 'archived' ? 'archived' : 'active';
+    if (status === 'archived') {
+      // Întâi PĂSTRĂM istoricul (snapshot în positions_archive), abia apoi marcăm arhivat + oprim ingestul.
+      // Ordinea contează: dacă am opri ingestul înainte de copiere, n-am pierde nimic, dar așa garantăm snapshot complet.
+      let archived = 0;
+      try { archived = await db.archiveDevicePositions(imei); } catch (e) { console.error('[ARHIVĂ] copiere istoric ' + imei + ':', e.message); }
+      await db.setDeviceStatus(imei, status);
+      archivedImeis.add(imei);
+      // scoate-l din harta live imediat (nu mai primește date)
+      livePositions.delete(imei);
+      auditReq(req, 'update', 'device', imei, { status, archived_positions: archived });
+      return res.json({ ok: true, status, archived_positions: archived });
+    }
+    // Restaurare: reia ingestul. Istoricul rămâne în positions_archive (getDeviceHistory face UNION → fără pierderi).
     await db.setDeviceStatus(imei, status);
+    archivedImeis.delete(imei);
     auditReq(req, 'update', 'device', imei, { status });
     res.json({ ok: true, status });
   } catch (err) {
@@ -2309,6 +2346,7 @@ function invalidateLiveEnrichCache() { _liveEnrichCache = { ts: 0, map: null }; 
 app.get('/api/live', requireAuth, withScope, async (req, res) => {
   let positions = Array.from(livePositions.values());
   if (req.allowedImeis != null) positions = positions.filter(p => req.allowedImeis.has(p.imei));
+  if (archivedImeis.size) positions = positions.filter(p => !archivedImeis.has(p.imei)); // arhivatele nu apar live
   if (req.companyId !== demoCompanyId) positions = positions.filter(p => !DEMO_SET.has(p.imei)); // demo doar în contul demo
   try {
     // Enrich with full device info (truck config, tank calibration, etc.) — din cache TTL 20s
@@ -4952,6 +4990,8 @@ async function start() {
   const deviceInfoMap = {};
   for (const dev of allDevices) {
     deviceInfoMap[dev.imei] = { name: dev.name, vehicle_type: dev.vehicle_type, plate: dev.plate };
+    if (dev.status === 'archived') archivedImeis.add(dev.imei); // oprește ingestul pentru arhivate de la pornire
+
     // Restaurează snapshot-ul CAN sticky (carburant/odometru) → supraviețuiește restartului serverului
     let _seedIo = null, _seedTs = null;
     if (dev.last_can && typeof dev.last_can === 'object') { _seedTs = dev.last_can._ts || null; _seedIo = _stickyOf(dev.last_can); }
@@ -5045,6 +5085,15 @@ async function start() {
     runRetention();
     setInterval(runRetention, 24 * 60 * 60 * 1000);
   }
+
+  // Retenție ARHIVĂ (positions_archive): dispozitivele arhivate se păstrează 2 ani (730z), apoi se purjează.
+  // Rulează mereu (PG + PGlite); tabela conține doar arhivate → DELETE ieftin. Configurabil prin ARCHIVE_RETENTION_DAYS.
+  const archiveRetentionDays = parseInt(process.env.ARCHIVE_RETENTION_DAYS) || 730;
+  const runArchivePurge = () => db.purgeArchivedPositions(archiveRetentionDays)
+    .then(n => { if (n) console.log(`[ARHIVĂ] Purjate ${n} poziții arhivate mai vechi de ${archiveRetentionDays} zile`); })
+    .catch(e => console.warn('[ARHIVĂ] purge skip:', e.message));
+  setTimeout(runArchivePurge, 10000);
+  setInterval(runArchivePurge, 24 * 60 * 60 * 1000);
 
   // Workere Faza 4: detecție automată curse + alerte expirare documente
   setTimeout(() => runTripDetection().then(n => { if (n) console.log('[TRIPS] ' + n + ' curse detectate'); }), 3000);

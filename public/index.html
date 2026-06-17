@@ -107,8 +107,10 @@
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-gear"></i><span>Administrare</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('settings'); })"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
+            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ showView('administrare'); })"><i class="fas fa-gauge-high"></i><span>Panou admin</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('users'); })"><i class="fas fa-users"></i><span>Utilizatori</span></button>
+            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('archived'); })"><i class="fas fa-box-archive"></i><span>Dispozitive arhivate</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
           </div>
         </div>
@@ -974,21 +976,47 @@
   <div id="users-modal" class="modal-overlay">
     <div class="modal" style="width:920px;max-width:96vw;max-height:92vh;">
       <h2>
-        <span><i class="fas fa-gear" style="margin-right:8px;color:var(--purple);"></i> Administrare</span>
-        <span style="display:flex;gap:8px;align-items:center;">
-          <button class="btn-sm" onclick="openApiKeys()" title="Chei API"><i class="fas fa-key"></i> Chei API</button>
-          <button class="btn-sm" onclick="openAudit()" title="Jurnal audit"><i class="fas fa-clipboard-list"></i> Audit</button>
-          <button class="close-btn" onclick="closeUsersModal()" style="position:static;font-size:18px;">&#10005;</button>
+        <span style="display:flex;align-items:center;min-width:0;">
+          <button id="admin-back" class="btn-sm" style="display:none;margin-right:10px;" onclick="raxAdminHome()" title="Înapoi la panou"><i class="fas fa-arrow-left"></i></button>
+          <i class="fas fa-gear" style="margin-right:8px;color:var(--purple);"></i> <span id="admin-title">Administrare</span>
         </span>
+        <button class="close-btn" onclick="closeUsersModal()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
-      <div id="admin-tabs" style="display:none;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
-        <button class="btn-sm" id="admin-tab-btn-companies" onclick="raxAdminTab('companies')"><i class="fas fa-building"></i> Companii</button>
-        <button class="btn-sm" id="admin-tab-btn-accounts" onclick="raxAdminTab('accounts')"><i class="fas fa-users-gear"></i> Conturi</button>
-        <button class="btn-sm" id="admin-tab-btn-users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
+
+      <!-- ── Panou Administrare: carduri statistice clickabile + scurtături către secțiuni ── -->
+      <div id="admin-dash">
+        <div class="adash-cards">
+          <button class="adash-card" data-super onclick="raxAdminTab('companies')">
+            <span class="adash-num" id="adash-n-companies">–</span>
+            <span class="adash-lbl"><i class="fas fa-building"></i> Companii</span>
+          </button>
+          <button class="adash-card" onclick="raxAdminTab('users')">
+            <span class="adash-num" id="adash-n-users">–</span>
+            <span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span>
+          </button>
+          <button class="adash-card" data-super onclick="raxAdminTab('companies')">
+            <span class="adash-num" id="adash-n-active">–</span>
+            <span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span>
+          </button>
+          <button class="adash-card adash-warn" onclick="raxAdminTab('archived')">
+            <span class="adash-num" id="adash-n-archived">–</span>
+            <span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span>
+          </button>
+        </div>
+        <div class="adash-sections">
+          <button class="adash-sec" data-super onclick="raxAdminTab('companies')"><i class="fas fa-building adash-ic"></i><span class="adash-tx"><strong>Companii & Dispozitive</strong><small>Companii, atribuire & mutare vehicule, neasignate</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
+          <button class="adash-sec" data-super onclick="raxAdminTab('accounts')"><i class="fas fa-users-gear adash-ic"></i><span class="adash-tx"><strong>Conturi & Abonamente</strong><small>Conturi companii, planuri, facturare</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
+          <button class="adash-sec" onclick="raxAdminTab('users')"><i class="fas fa-users adash-ic"></i><span class="adash-tx"><strong>Utilizatori</strong><small>Useri, roluri, acces pe vehicule</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
+          <button class="adash-sec" onclick="openApiKeys()"><i class="fas fa-key adash-ic"></i><span class="adash-tx"><strong>Chei API</strong><small>Acces programatic pentru integrări</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
+          <button class="adash-sec" onclick="openAudit()"><i class="fas fa-clipboard-list adash-ic"></i><span class="adash-tx"><strong>Jurnal audit</strong><small>Istoric acțiuni administrative</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
+          <button class="adash-sec adash-sec-warn" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive adash-ic"></i><span class="adash-tx"><strong>Dispozitive arhivate</strong><small>Contracte încheiate · restaurare · istoric păstrat 2 ani</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
+        </div>
       </div>
+
       <div id="admin-tab-companies" style="display:none;"></div>
       <div id="admin-tab-accounts" style="display:none;"></div>
-      <div id="admin-tab-users">
+      <div id="admin-tab-archived" style="display:none;"></div>
+      <div id="admin-tab-users" style="display:none;">
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
@@ -1936,12 +1964,14 @@
       if (body && body.parentNode !== t) t.appendChild(body);
     }
     window.raxAdminTab = function (name) {
-      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users' };
+      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived' };
+      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate' };
+      var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       Object.keys(map).forEach(function (k) {
         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
-        var b = document.getElementById('admin-tab-btn-' + k);
-        if (b) { var on = (k === name); b.style.background = on ? 'var(--accent)' : ''; b.style.color = on ? '#06210F' : ''; b.style.fontWeight = on ? '700' : ''; }
       });
+      var back = document.getElementById('admin-back'); if (back) back.style.display = '';
+      var t = document.getElementById('admin-title'); if (t) t.textContent = titles[name] || 'Administrare';
       if (name === 'companies') {
         _raxMountBody('#rax-co-overlay', 'admin-tab-companies');
         if (window.raxLoadCompanies) window.raxLoadCompanies();
@@ -1949,23 +1979,107 @@
       } else if (name === 'accounts') {
         _raxMountBody('#rax-accounts-overlay', 'admin-tab-accounts');
         if (window.raxLoadAccounts) window.raxLoadAccounts();
+      } else if (name === 'archived') {
+        if (window.loadArchivedDevices) window.loadArchivedDevices();
       }
     };
+
+    // Panou (landing) Administrare: ascunde secțiunile, arată cardurile + reîncarcă statisticile.
+    window.raxAdminHome = function () {
+      var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = '';
+      ['admin-tab-companies', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+      var back = document.getElementById('admin-back'); if (back) back.style.display = 'none';
+      var t = document.getElementById('admin-title'); if (t) t.textContent = 'Administrare';
+      if (window.loadAdminDash) window.loadAdminDash();
+    };
+
+    // Populează numerele de pe carduri (companii, utilizatori, dispozitive active/arhivate).
+    async function loadAdminDash() {
+      var isSuper = !!(currentUser && currentUser.role === 'superadmin');
+      var setNum = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = (v == null ? '–' : v); };
+      try { setNum('adash-n-users', Array.isArray(ueUsersCache) ? ueUsersCache.length : '–'); } catch (e) {}
+      try {
+        var dr = await fetch('/api/devices?includeArchived=1'); var devs = await dr.json();
+        if (Array.isArray(devs)) {
+          var arch = devs.filter(function (d) { return d.status === 'archived'; }).length;
+          setNum('adash-n-active', devs.length - arch);
+          setNum('adash-n-archived', arch);
+        }
+      } catch (e) {}
+      if (isSuper) { try { var cr = await fetch('/api/companies'); var cos = await cr.json(); if (Array.isArray(cos)) setNum('adash-n-companies', cos.length); } catch (e) {} }
+    }
+    window.loadAdminDash = loadAdminDash;
 
     // ─── Users (admin) ───
     async function openUsersModal() {
       document.getElementById('users-modal').classList.add('visible');
       await loadUsers();
       var isSuper = !!(currentUser && currentUser.role === 'superadmin');
-      ['admin-tab-btn-companies', 'admin-tab-btn-accounts'].forEach(function (id) { var b = document.getElementById(id); if (b) b.style.display = isSuper ? '' : 'none'; });
-      var tabs = document.getElementById('admin-tabs');
-      if (tabs) tabs.style.display = isSuper ? 'flex' : 'none';
-      raxAdminTab(isSuper ? 'companies' : 'users'); // super: începe cu Companii; alți admini: doar Utilizatori
+      document.querySelectorAll('#admin-dash [data-super]').forEach(function (el) { el.style.display = isSuper ? '' : 'none'; });
+      raxAdminHome();
     }
 
     function closeUsersModal() {
       document.getElementById('users-modal').classList.remove('visible');
     }
+
+    // ─── Pagina „Dispozitive arhivate" ───
+    async function loadArchivedDevices() {
+      var host = document.getElementById('admin-tab-archived');
+      if (!host) return;
+      host.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px;">Se încarcă…</div>';
+      var rows = [];
+      try { var r = await fetch('/api/archived-devices'); rows = await r.json(); } catch (e) { host.innerHTML = '<div style="color:#ef4444;padding:12px;">Eroare la încărcare.</div>'; return; }
+      if (!Array.isArray(rows) || !rows.length) {
+        host.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:36px 12px;"><i class="fas fa-box-open" style="font-size:34px;opacity:.35;"></i>'
+          + '<div style="margin-top:12px;font-weight:600;">Niciun dispozitiv arhivat</div>'
+          + '<div style="font-size:12px;margin-top:6px;">Arhivezi un dispozitiv din <strong>Management → Vehicule</strong> când se încheie un contract. Datele lui vechi se păstrează 2 ani.</div></div>';
+        return;
+      }
+      var fmtD = function (s) { if (!s) return '–'; try { return new Date(s).toLocaleDateString('ro-RO'); } catch (e) { return '–'; } };
+      var html = '<div class="arch-note"><i class="fas fa-circle-info"></i> Dispozitivele arhivate <strong>nu mai primesc date noi</strong> (contract încheiat). Istoricul vechi rămâne accesibil și e păstrat <strong>2 ani</strong>.</div>';
+      html += '<div class="arch-list">';
+      rows.forEach(function (d) {
+        var span = (d.first_ts && d.last_ts) ? (fmtD(d.first_ts) + ' – ' + fmtD(d.last_ts)) : '–';
+        html += '<div class="arch-row">'
+          + '<div class="arch-main"><div class="arch-name"><strong>' + _ssEsc(d.name || d.plate || d.imei) + '</strong>'
+          + (d.plate ? ' <span class="arch-plate">' + _ssEsc(d.plate) + '</span>' : '') + '</div>'
+          + '<div class="arch-sub">IMEI ' + _ssEsc(d.imei) + (d.company_name ? ' · ' + _ssEsc(d.company_name) : '') + '</div></div>'
+          + '<div class="arch-meta"><div><i class="fas fa-database" style="opacity:.6;"></i> ' + (Number(d.archived_positions) || 0).toLocaleString('ro-RO') + ' poziții</div>'
+          + '<div class="arch-span">' + span + '</div></div>'
+          + '<div class="arch-actions">'
+          + '<button class="btn-sm" onclick="archViewHistory(\'' + _ssEsc(d.imei) + '\')" title="Vezi traseul istoric"><i class="fas fa-route"></i> Istoric</button>'
+          + '<button class="btn-sm btn-primary" onclick="archRestore(\'' + _ssEsc(d.imei) + '\',this)" title="Reactivează dispozitivul"><i class="fas fa-undo"></i> Restaurează</button>'
+          + '</div></div>';
+      });
+      html += '</div>';
+      host.innerHTML = html;
+    }
+    window.loadArchivedDevices = loadArchivedDevices;
+
+    async function archRestore(imei, btn) {
+      if (!confirm('Restaurezi dispozitivul?\nVa reîncepe să primească și să stocheze date GPS.')) return;
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+      try {
+        var r = await fetch('/api/devices/' + imei + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) });
+        if (!r.ok) throw new Error('fail');
+        await loadArchivedDevices();
+        if (window.loadAdminDash) loadAdminDash();
+      } catch (e) { alert('Eroare la restaurare.'); if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-undo"></i> Restaurează'; } }
+    }
+    window.archRestore = archRestore;
+
+    function archViewHistory(imei) {
+      closeUsersModal();
+      try { showView('traseu'); } catch (e) {}
+      setTimeout(function () {
+        try {
+          var sel = document.getElementById('hs-imei');
+          if (sel) { sel.value = imei; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+        } catch (e) {}
+      }, 250);
+    }
+    window.archViewHistory = archViewHistory;
 
     async function loadUsers() {
       const res = await fetch('/api/users');
@@ -7604,6 +7718,42 @@
     .nav-item.nav-sub { padding-left: 40px; font-size: 13px; opacity: .9; }
     .nav-item.nav-sub:hover { opacity: 1; }
     .nav-group:has(.nav-item.active) > .nav-group-head { color: var(--accent); }
+    /* Panou Administrare — carduri statistice + secțiuni */
+    #admin-dash { animation: adashIn .18s ease; }
+    @keyframes adashIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .adash-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    .adash-card { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color .15s, transform .15s; font-family: inherit; }
+    .adash-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .adash-num { font-size: 26px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+    .adash-lbl { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .adash-lbl i { margin-right: 4px; opacity: .7; }
+    .adash-card.adash-warn:hover { border-color: var(--orange); }
+    .adash-card.adash-warn .adash-num { color: var(--orange); }
+    .adash-sections { display: flex; flex-direction: column; gap: 8px; }
+    .adash-sec { display: flex; align-items: center; gap: 14px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color .15s; font-family: inherit; color: var(--text-primary); }
+    .adash-sec:hover { border-color: var(--accent); }
+    .adash-sec .adash-ic { font-size: 18px; width: 24px; text-align: center; color: var(--accent); }
+    .adash-sec.adash-sec-warn .adash-ic { color: var(--orange); }
+    .adash-sec .adash-tx { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .adash-sec .adash-tx strong { font-size: 14px; }
+    .adash-sec .adash-tx small { font-size: 12px; color: var(--text-muted); }
+    .adash-sec .adash-arr { font-size: 12px; opacity: .4; }
+    .adash-sec:hover .adash-arr { opacity: 1; color: var(--accent); }
+    /* Listă dispozitive arhivate */
+    .arch-note { font-size: 12px; color: var(--text-muted); background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .arch-list { display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; }
+    .arch-row { display: flex; align-items: center; gap: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; flex-wrap: wrap; }
+    .arch-main { flex: 1; min-width: 150px; }
+    .arch-plate { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: rgba(255,255,255,.08); }
+    .arch-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .arch-meta { font-size: 12px; min-width: 110px; }
+    .arch-span { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .arch-actions { display: flex; gap: 6px; }
+    @media (max-width: 640px) {
+      .adash-cards { grid-template-columns: repeat(2, 1fr); }
+      .arch-actions { width: 100%; }
+      .arch-actions .btn-sm { flex: 1; }
+    }
     /* Companii */
     .rax-co-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
     .rax-co-item h4 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
