@@ -220,11 +220,30 @@
     .nav-item {
       display: flex; align-items: center; gap: 12px; padding: 11px 12px;
       border: none; background: transparent; color: var(--text-secondary); cursor: pointer;
-      font-size: 13.5px; font-weight: 700; border-radius: 8px; text-align: left; width: 100%; transition: all .15s;
+      font-size: 13.5px; font-weight: 700; border-radius: 8px; text-align: left; width: 100%;
+      position: relative; transition: background-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
     }
-    .nav-item i { width: 20px; text-align: center; font-size: 15px; }
-    .nav-item:hover { background: var(--bg-dark); color: var(--text-primary); }
-    .nav-item.active { background: var(--accent); color: #fff; }
+    .nav-item i { width: 20px; text-align: center; font-size: 15px; transition: transform .18s ease; }
+    /* bara de accent care „creste" la hover pe itemele neselectate */
+    .nav-item::before {
+      content: ''; position: absolute; left: 4px; top: 50%;
+      width: 3px; height: 0; border-radius: 3px; background: var(--accent);
+      transform: translateY(-50%); transition: height .18s ease;
+    }
+    @media (hover: hover) {
+      .nav-item:hover { background: var(--bg-dark); color: var(--text-primary); transform: translateX(4px); }
+      .nav-item:hover::before { height: 55%; }
+      .nav-item:hover i { transform: scale(1.15); }
+    }
+    /* selectat: fundal verde + „pop" la selectare + glow */
+    .nav-item.active { background: var(--accent); color: #fff; transform: translateX(0); box-shadow: 0 6px 16px -6px var(--accent); animation: navPop .3s ease; }
+    .nav-item.active::before { height: 0; }
+    @keyframes navPop { 0% { transform: scale(.96); } 55% { transform: scale(1.04); } 100% { transform: scale(1); } }
+    @media (prefers-reduced-motion: reduce) {
+      .nav-item, .nav-item i, .nav-item::before { transition: none; }
+      .nav-item:hover, .nav-item.active { transform: none; }
+      .nav-item.active { animation: none; }
+    }
 
     #main-view { flex: 1; position: relative; min-width: 0; }
     .view { display: none; height: 100%; }
