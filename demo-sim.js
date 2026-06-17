@@ -15,22 +15,30 @@ function start({ livePositions, broadcastWs, insertPositions }) {
   if (started) return;
   started = true;
   const phase = {};
+  const fuelLvl = {}; // nivel combustibil per vehicul (litri), scade realist + realimentare
   // fază inițială deterministă (fără Math.random la boot, dar variată per index)
-  DEMO_IMEIS.forEach((imei, i) => { phase[imei] = (i * 1.7) % (Math.PI * 2); });
+  DEMO_IMEIS.forEach((imei, i) => { phase[imei] = (i * 1.7) % (Math.PI * 2); fuelLvl[imei] = 160 + i * 8; });
   let tick = 0;
   setInterval(async () => {
     tick++;
     for (let i = 0; i < DEMO_IMEIS.length; i++) {
       const imei = DEMO_IMEIS[i];
       const route = ROUTES[i % ROUTES.length];
-      phase[imei] += 0.05 + i * 0.004;
+      // ralanti ocazional: contact pornit, oprit pe loc (~54s la fiecare ~12 min, decalat per vehicul)
+      const idleWindow = ((tick + i * 37) % 240) < 18;
+      const dphase = idleWindow ? 0 : (0.05 + i * 0.004);
+      phase[imei] += dphase;
       const ph = phase[imei];
       const lat = route.center[0] + route.r * Math.cos(ph);
       const lng = route.center[1] + route.r * Math.sin(ph) * 1.4;
-      const speed = 28 + Math.round(22 * Math.abs(Math.sin(ph * 1.3)));
+      const speed = idleWindow ? 0 : (28 + Math.round(22 * Math.abs(Math.sin(ph * 1.3))));
       const angle = Math.round(((ph * 180 / Math.PI) % 360 + 360) % 360);
       const ts = new Date().toISOString();
-      const fuel = 220 - (tick % 200);
+      // combustibil realist: scade proporțional cu distanța parcursă (~30 L/100km) + un pic la ralanti; realimentare când e jos
+      const dkm = dphase * route.r * 111; // km geometrici pe tick
+      fuelLvl[imei] -= idleWindow ? 0.012 : (dkm * 0.30 + 0.008);
+      if (fuelLvl[imei] < 28) fuelLvl[imei] = 205; // realimentare (salt detectat ca alimentare)
+      const fuel = +Math.max(0, fuelLvl[imei]).toFixed(1);
       const io = { ignition: 1, can_fuel_level_liters: fuel, can_vehicle_speed: speed };
       const pos = {
         imei, timestamp: ts, latitude: lat, longitude: lng, speed, angle, satellites: 12, io,
