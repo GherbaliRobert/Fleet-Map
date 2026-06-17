@@ -670,6 +670,22 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_findings_company ON agent_findings(company_id, created_at DESC)`);
 
+    // Raport săptămânal de activitate a flotei (generat automat lunea, per companie, analizat AI).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS weekly_reports (
+        id BIGSERIAL PRIMARY KEY,
+        company_id INTEGER,
+        period_from TIMESTAMP NOT NULL,
+        period_to TIMESTAMP NOT NULL,
+        generated_at TIMESTAMP DEFAULT NOW(),
+        data JSONB DEFAULT '{}',
+        ai_analysis TEXT,
+        emailed BOOLEAN DEFAULT FALSE
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_wreport_period ON weekly_reports(company_id, period_from)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_wreport_company ON weekly_reports(company_id, period_from DESC)`);
+
     console.log('[DB] Tabele create / verificate');
   } finally {
     client.release();
@@ -2048,7 +2064,55 @@ async function setScheduleRun(id, lastRunIso, nextRunIso) {
   await pool.query('UPDATE report_schedules SET last_run = $2, next_run = $3 WHERE id = $1', [parseInt(id), lastRunIso, nextRunIso]);
 }
 
+// ─── Rapoarte săptămânale de activitate flotă ───
+async function saveWeeklyReport(r) {
+  const res = await pool.query(
+    `INSERT INTO weekly_reports (company_id, period_from, period_to, data, ai_analysis, emailed)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (company_id, period_from) DO UPDATE SET
+       period_to = EXCLUDED.period_to, data = EXCLUDED.data, ai_analysis = EXCLUDED.ai_analysis,
+       emailed = EXCLUDED.emailed, generated_at = NOW()
+     RETURNING *`,
+    [r.company_id != null ? r.company_id : null, r.period_from, r.period_to,
+     JSON.stringify(r.data || {}), r.ai_analysis || null, !!r.emailed]
+  );
+  return res.rows[0];
+}
+async function weeklyReportExists(companyId, periodFromIso) {
+  const r = await pool.query('SELECT 1 FROM weekly_reports WHERE company_id IS NOT DISTINCT FROM $1 AND period_from = $2 LIMIT 1', [companyId != null ? companyId : null, periodFromIso]);
+  return r.rows.length > 0;
+}
+async function getLatestWeeklyReport(companyId) {
+  const r = await pool.query('SELECT * FROM weekly_reports WHERE company_id IS NOT DISTINCT FROM $1 ORDER BY period_from DESC LIMIT 1', [companyId != null ? companyId : null]);
+  return r.rows[0] || null;
+}
+async function getWeeklyReports(companyId, limit) {
+  const r = await pool.query(
+    'SELECT id, company_id, period_from, period_to, generated_at, emailed FROM weekly_reports WHERE company_id IS NOT DISTINCT FROM $1 ORDER BY period_from DESC LIMIT $2',
+    [companyId != null ? companyId : null, Math.min(parseInt(limit) || 26, 104)]
+  );
+  return r.rows;
+}
+async function getWeeklyReportById(id, companyId) {
+  // companyId === undefined → fără filtru (super-admin); altfel scop pe companie (izolare tenant)
+  let q = 'SELECT * FROM weekly_reports WHERE id = $1', params = [parseInt(id)];
+  if (companyId !== undefined) { q += ' AND company_id IS NOT DISTINCT FROM $2'; params.push(companyId != null ? companyId : null); }
+  const r = await pool.query(q, params);
+  return r.rows[0] || null;
+}
+async function markWeeklyReportEmailed(id) {
+  await pool.query('UPDATE weekly_reports SET emailed = TRUE WHERE id = $1', [parseInt(id)]);
+}
+async function getCompanyAdminEmails(companyId) {
+  const r = await pool.query(
+    "SELECT email FROM users WHERE company_id = $1 AND role IN ('company_admin','admin') AND email IS NOT NULL AND email <> ''",
+    [companyId]
+  );
+  return r.rows.map(x => x.email);
+}
+
 module.exports = {
+  saveWeeklyReport, weeklyReportExists, getLatestWeeklyReport, getWeeklyReports, getWeeklyReportById, markWeeklyReportEmailed, getCompanyAdminEmails,
   pool,
   initDb,
   ensureTenancy,

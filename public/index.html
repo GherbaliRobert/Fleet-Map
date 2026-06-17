@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
   <link rel="stylesheet" href="/css/map-tools.css?v=1">
   <link rel="stylesheet" href="/css/vehicle-popup.css?v=1">
+  <link rel="stylesheet" href="/css/weekly-report.css?v=1">
 </head>
 <body class="dark">
   <!-- Login Screen -->
@@ -89,6 +90,7 @@
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goAnalizeConsum)"><i class="fas fa-gas-pump"></i><span>Statistici consum</span></button>
+            <button class="nav-item nav-sub" onclick="navGo(this, goWeeklyReport)"><i class="fas fa-calendar-week"></i><span>Raport săptămânal</span></button>
           </div>
         </div>
         <div class="nav-group fleet-only" data-group="management">
@@ -1483,6 +1485,9 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
+  <!-- Pagina „Raport săptămânal flotă" (populată de weekly-report-ui.js) -->
+  <div id="weekly-report-view" class="modal-overlay"></div>
+
   <div id="fuel-stats-modal" class="modal-overlay">
     <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;">
       <h2><span><i class="fas fa-gas-pump" style="margin-right:8px;color:var(--orange);"></i> Statistici consum</span>
@@ -1796,6 +1801,7 @@ const pozitii = await r.json();</code></pre>
   <script src="/js/demo-modules-ui.js?v=2"></script>
   <script src="/js/map-tools.js?v=4"></script>
   <script src="/js/vehicle-popup.js?v=3"></script>
+  <script src="/js/weekly-report-ui.js?v=1"></script>
   <script>
     // ─── Global State ───
     let currentUser = null;
@@ -3955,8 +3961,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', fuelstats: 'fuel-stats-modal', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', fuelstats: 'loadFuelStats', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', fuelstats: 'fuel-stats-modal', weeklyreport: 'weekly-report-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', fuelstats: 'loadFuelStats', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -3969,6 +3975,7 @@ const pozitii = await r.json();</code></pre>
     function goManage(tab) { window._pendingAdminTab = tab; showView('management'); }
     function goSistem(tab) { showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
     function goAnalizeConsum() { showView('fuelstats'); }
+    function goWeeklyReport() { showView('weeklyreport'); }
     // ─── Pagina „Statistici consum" (vederea fuelstats) ───
     var _fsState = { period: 'week' };
     function fsPeriod(p, btn) {

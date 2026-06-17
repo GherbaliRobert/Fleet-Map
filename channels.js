@@ -25,10 +25,12 @@ async function sendEmail(subject, text) {
 }
 
 // Trimite email către un destinatar specific (folosit pentru notificările per-utilizator)
-async function sendEmailTo(to, subject, text, attachments) {
+// html (opțional) → email HTML cu fallback text.
+async function sendEmailTo(to, subject, text, attachments, html) {
   const tr = getTransporter();
   if (!tr || !to) return false;
   const msg = { from: process.env.SMTP_FROM || process.env.SMTP_USER || 'gps@local', to, subject, text };
+  if (html) msg.html = html;
   if (attachments && attachments.length) msg.attachments = attachments;
   await tr.sendMail(msg);
   return true;
