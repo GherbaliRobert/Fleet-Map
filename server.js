@@ -2329,6 +2329,57 @@ app.get('/api/live', requireAuth, withScope, async (req, res) => {
   res.json(positions);
 });
 
+// ─── Map-matching: lipește traseul GPS de drumuri (OSRM) ───
+// OSRM_URL configurabil — implicit serverul public (test/volum mic); pentru producție → self-hosted (o variabilă env).
+const OSRM_URL = (process.env.OSRM_URL || 'https://router.project-osrm.org').replace(/\/+$/, '');
+const _matchCache = new Map(); // key cursă -> geometrie lipită [[lat,lng]...]
+function _matchKey(pts) {
+  let s = pts.length + ':'; const step = Math.max(1, Math.floor(pts.length / 8));
+  for (let i = 0; i < pts.length; i += step) s += pts[i][0].toFixed(4) + ',' + pts[i][1].toFixed(4) + ';';
+  return s;
+}
+async function _osrmMatchChunk(coords) { // coords [[lng,lat]...] (≤100) -> [[lat,lng]...] sau null
+  const coordStr = coords.map(c => c[0].toFixed(6) + ',' + c[1].toFixed(6)).join(';');
+  const rad = coords.map(() => '40').join(';');
+  const url = OSRM_URL + '/match/v1/driving/' + coordStr + '?geometries=geojson&overview=full&tidy=true&radiuses=' + rad;
+  const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'RA-Tracks/1.0' } });
+    clearTimeout(to);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || d.code !== 'Ok' || !Array.isArray(d.matchings)) return null;
+    const out = [];
+    d.matchings.forEach(m => { const g = m.geometry && m.geometry.coordinates; if (g) g.forEach(c => out.push([c[1], c[0]])); });
+    return out.length ? out : null;
+  } catch (e) { clearTimeout(to); return null; }
+}
+async function osrmMatch(pts) { // pts [[lat,lng]...] -> [[lat,lng]...] sau null (chunk ≤95, concat)
+  if (!pts || pts.length < 2) return null;
+  let coords = pts.map(p => [p[1], p[0]]);                       // [lng,lat]
+  if (coords.length > 1500) { const st = Math.ceil(coords.length / 1500); coords = coords.filter((_, i) => i % st === 0); }
+  const CHUNK = 95, OVERLAP = 1; let out = [];
+  for (let start = 0; start < coords.length - 1; start += (CHUNK - OVERLAP)) {
+    const slice = coords.slice(start, start + CHUNK);
+    if (slice.length < 2) break;
+    const m = await _osrmMatchChunk(slice);
+    if (m) { if (out.length) m.shift(); out = out.concat(m); }   // evită dublarea punctului de overlap
+  }
+  return out.length > 1 ? out : null;
+}
+app.post('/api/match', requireAuth, async (req, res) => {
+  try {
+    let pts = Array.isArray(req.body && req.body.points) ? req.body.points : [];
+    pts = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]));
+    if (pts.length < 2) return res.json({ matched: null });
+    const key = _matchKey(pts);
+    if (_matchCache.has(key)) return res.json({ matched: _matchCache.get(key) });
+    const matched = await osrmMatch(pts);
+    if (matched) { if (_matchCache.size > 300) _matchCache.clear(); _matchCache.set(key, matched); }
+    res.json({ matched: matched || null });
+  } catch (e) { res.json({ matched: null }); }
+});
+
 // API: Conexiuni active
 app.get('/api/connections', requireAuth, requireFleet, withScope, (req, res) => {
   // Tenant: super-admin (allowedImeis == null) vede toate conexiunile; restul doar ale vehiculelor proprii.

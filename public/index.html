@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="/css/app.css?v=3">
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
   <link rel="stylesheet" href="/css/map-tools.css?v=1">
+  <link rel="stylesheet" href="/css/vehicle-popup.css?v=1">
 </head>
 <body class="dark">
   <!-- Login Screen -->
@@ -1659,6 +1660,7 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ro.js"></script>
   <script src="/js/demo-modules-ui.js?v=2"></script>
   <script src="/js/map-tools.js?v=3"></script>
+  <script src="/js/vehicle-popup.js?v=2"></script>
   <script>
     // ─── Global State ───
     let currentUser = null;
@@ -3966,44 +3968,6 @@
       const isOnline = isDeviceOnline(data);
       const icon = createIcon(angle, speed, isSelected, io, isOnline, data);
 
-      const name = data.name || imei;
-      const plate = data.plate || '';
-      const isMoving = speed > 0;
-      const ignition = io?.ignition ? 'ON' : 'OFF';
-      const voltage = io?.external_voltage ? (io.external_voltage / 1000).toFixed(1) + 'V' : '-';
-      const fuel = (io?.tank_level_liters !== undefined && io.tank_level_liters !== null) ? io.tank_level_liters.toFixed(1) + 'L' :
-                   (io?.can_fuel_level_liters !== undefined && io.can_fuel_level_liters > 0) ? io.can_fuel_level_liters.toFixed(1) + 'L' :
-                   (io?.can_fuel_level_pct !== undefined) ? io.can_fuel_level_pct + '%' : '-';
-      const rpm = io?.can_engine_rpm !== undefined ? io.can_engine_rpm : '-';
-      const sats = data.satellites || '-';
-      const _popupColor = !isOnline ? 'var(--text-muted)' : (isMoving ? 'var(--green)' : (io?.ignition ? 'var(--yellow)' : 'var(--red)'));
-
-      const popupContent = '' +
-        '<div class="popup-card">' +
-          '<div class="popup-card-header">' +
-            '<span class="popup-dot" style="background:' + _popupColor + ';box-shadow:0 0 6px ' + _popupColor + ';"></span>' + (isOnline ? '' : '<span style="color:var(--red);font-weight:700;margin-right:2px;">⚠️</span>') +
-            '<div>' +
-              '<div class="popup-title">' + name + (plate ? ' <span style="color:var(--accent);font-size:11px;font-weight:700;">' + plate + '</span>' : '') + '</div>' +
-              '<div class="popup-imei">' + imei + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<table class="popup-table">' +
-            '<tr><td>Viteza</td><td style="color:' + (isMoving ? 'var(--green)' : 'var(--text-muted)') + '">' + speed + ' km/h</td></tr>' +
-            '<tr><td>Contact</td><td style="color:' + (io?.ignition ? 'var(--green)' : 'var(--text-muted)') + '">' + ignition + '</td></tr>' +
-            '<tr><td>Sateliti</td><td>' + sats + '</td></tr>' +
-            '<tr><td>Voltaj</td><td>' + voltage + '</td></tr>' +
-            '<tr><td>Combustibil</td><td>' + fuel + '</td></tr>' +
-            '<tr><td>RPM</td><td>' + rpm + '</td></tr>' +
-          '</table>' +
-          '<div class="popup-time"><i class="far fa-clock" style="margin-right:4px;"></i>' + new Date(timestamp).toLocaleString('ro-RO') + '</div>' +
-          '<div class="popup-actions">' +
-            '<a href="#" class="io-link" onclick="openDetailPanel(\'' + imei + '\', \'io\'); return false;"><i class="fas fa-microchip"></i> Toate IO</a>' +
-            '<a href="#" class="history-link" onclick="openDetailPanel(\'' + imei + '\', \'history\'); return false;"><i class="fas fa-route"></i> Istoric</a>' +
-            '<a href="#" style="color:var(--accent);cursor:pointer;font-size:11px;" onclick="openReportModal(\'' + imei + '\'); return false;"><i class="fas fa-file-alt"></i> Raport</a>' +
-            '<a href="#" class="edit-link fleet-only" onclick="openEditModal(\'' + imei + '\'); return false;"><i class="fas fa-pen"></i> Editeaza</a>' +
-          '</div>' +
-        '</div>';
-
       if (markers.has(imei)) {
         const marker = markers.get(imei);
         marker.setLatLng([latitude, longitude]);
@@ -4012,8 +3976,12 @@
         const marker = L.marker([latitude, longitude], { icon })
           .addTo(map);
 
-        // Fără popup Leaflet — click pe marker deschide DOAR panoul de detaliu (altfel se suprapuneau)
-        marker.on('click', () => selectDevice(imei));
+        // Click pe marker: pe desktop deschide balonul vehiculului (butoane Detalii / Urmărește / Localizare);
+        // pe mobil deschide direct panoul de detaliu (bottom-sheet) — comportament neschimbat.
+        marker.on('click', () => {
+          if (window.innerWidth > 768 && window.openVehiclePopup) window.openVehiclePopup(imei);
+          else selectDevice(imei);
+        });
         markers.set(imei, marker);
       }
 
@@ -4026,9 +3994,12 @@
         }
       }
 
-      if (isSelected) {
+      // Follow live: harta ține mașina centrată DOAR dacă userul a apăsat „Urmărește" pe ea (window._followImei).
+      if (imei === window._followImei) {
         panFollowVehicle(latitude, longitude);
       }
+      // Balon deschis pe acest vehicul → reîmprospătează datele live (viteză, oră, adresă).
+      if (window.vpRefreshIfOpen) window.vpRefreshIfOpen(imei);
 
       // Update detail panel if showing this device
       if (detailPanelImei === imei) {
@@ -4149,6 +4120,8 @@
     }
 
     function selectDevice(imei) {
+      // „Altă comandă": selectarea unui ALT vehicul oprește follow-ul activ (badge-ul „Urmărești").
+      if (window._followImei && window._followImei !== imei && window.vpClearFollow) window.vpClearFollow();
       selectedImei = imei;
       const data = devices.get(imei);
       if (data && window.innerWidth > 768) {
@@ -4324,6 +4297,7 @@
     }
 
     function closeDetailPanel() {
+      if (window.vpClearFollow) window.vpClearFollow(); // închiderea fișei oprește urmărirea live
       detailPanelImei = null;
       var _p = document.getElementById('detail-panel');
       _p.classList.remove('open');
@@ -5272,37 +5246,48 @@
         if (!data.length) { alert('Nu sunt date pentru perioada selectată'); return; }
 
         const points = data.map(p => [p.latitude, p.longitude]);
-        // casing închis dedesubt pentru contrast pe orice temă
-        const historyCasing = L.polyline(points, { color: '#0B0E11', weight: 7, opacity: 0.9 }).addTo(map);
-        historyMarkers.push(historyCasing);
-
-        // Polilinia: una singură albastră (fără limit / heatmap dezactivat) SAU segmente agregate pe culoare
-        const seg = L.featureGroup().addTo(map);
-        historyLine = seg; // ambele ramuri: seg e tracker-ul principal -> closeHistory îl curăță complet (fix leak)
-        seg.on('click', hpRouteClick);
-        historyCasing.on('click', hpRouteClick);
-        if (useHeatmap && hpSpeedLimit) {
-          // Agregăm puncte consecutive cu aceeași culoare într-o singură polilinie (perf — reduce ~10× layer-ele).
-          // Convenție: segmentul (i-1) -> i e colorat după viteza la finalul intervalului (data[i].speed) — consistent pe TOATE segmentele.
-          let curColor = _hpSegColor(data[1] && data[1].speed, hpSpeedLimit);
-          let chunk = [points[0]];
-          for (let i = 1; i < data.length; i++) {
-            const c = _hpSegColor(data[i].speed, hpSpeedLimit);
-            if (c !== curColor) {
-              // Închide chunk-ul curent (fără points[i]) — segmentul de tranziție va începe DE LA points[i-1] în culoarea nouă
-              L.polyline(chunk, { color: curColor, weight: 4, opacity: 0.95 }).addTo(seg);
-              chunk = [points[i - 1]]; curColor = c;
+        const _speeds = (useHeatmap && hpSpeedLimit) ? data.map(function (d) { return d.speed; }) : null;
+        // Desenează traseul (casing + segmente colorate pe viteză + zonă click lată) într-un singur featureGroup.
+        const _renderRoute = function (geom, speeds) {
+          if (!geom || geom.length < 2) return;
+          if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
+          const sg = L.featureGroup().addTo(map); historyLine = sg;
+          L.polyline(geom, { color: '#0B0E11', weight: 7, opacity: 0.9 }).addTo(sg); // casing dedesubt
+          if (speeds && hpSpeedLimit) {
+            let cc = _hpSegColor(speeds[1], hpSpeedLimit); let chunk = [geom[0]];
+            for (let i = 1; i < geom.length; i++) {
+              const c = _hpSegColor(speeds[i], hpSpeedLimit);
+              if (c !== cc) { L.polyline(chunk, { color: cc, weight: 4, opacity: 0.95 }).addTo(sg); chunk = [geom[i - 1]]; cc = c; }
+              chunk.push(geom[i]);
             }
-            chunk.push(points[i]);
+            if (chunk.length > 1) L.polyline(chunk, { color: cc, weight: 4, opacity: 0.95 }).addTo(sg);
+          } else {
+            L.polyline(geom, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(sg);
           }
-          if (chunk.length > 1) L.polyline(chunk, { color: curColor, weight: 4, opacity: 0.95 }).addTo(seg);
-        } else {
-          L.polyline(points, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(seg);
-        }
-        // zonă de click lată & invizibilă peste tot traseul → tap ușor pe mobil pentru inspectare punct
-        L.polyline(points, { weight: 22, opacity: 0 }).addTo(seg);
+          L.polyline(geom, { weight: 22, opacity: 0 }).addTo(sg); // zonă click lată (tap ușor pe mobil)
+          sg.on('click', hpRouteClick);
+        };
+        // Pentru traseul lipit de drum: viteza la fiecare vârf = viteza celui mai apropiat punct brut.
+        const _mapSpeeds = function (geom) {
+          let j = 0; const out = new Array(geom.length);
+          const d2 = function (ay, ax, by, bx) { const dy = ay - by, dx = ax - bx; return dy * dy + dx * dx; };
+          for (let k = 0; k < geom.length; k++) { const v = geom[k]; while (j < data.length - 1 && d2(v[0], v[1], data[j + 1].latitude, data[j + 1].longitude) <= d2(v[0], v[1], data[j].latitude, data[j].longitude)) j++; out[k] = data[j] ? data[j].speed : 0; }
+          return out;
+        };
+        _renderRoute(points, _speeds);               // brut acum (instant)
         // Focus pe TOT traseul (mobil: lasă jos loc pentru panoul de control)
         fitRouteToMap(points);
+        // Map-matching: lipește traseul de drumuri (async; păstrează brutul dacă eșuează)
+        (function () {
+          const _mImei = selectedImei;
+          fetch('/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: points }) })
+            .then(function (r) { return r.json(); })
+            .then(function (mr) {
+              if (!mr || !Array.isArray(mr.matched) || mr.matched.length < 2) return;
+              if (selectedImei !== _mImei || !historyLine) return;   // s-a schimbat vehiculul / s-a închis fișa
+              _renderRoute(mr.matched, _speeds ? _mapSpeeds(mr.matched) : null);
+            }).catch(function () {});
+        })();
         document.body.classList.add('history-open'); // ascunde FAB pe mobil cât e afișat un traseu
 
         const startMarker = L.circleMarker(points[0], { radius: 7, color: '#3FE07D', fillColor: '#3FE07D', fillOpacity: 1, weight: 2 })
