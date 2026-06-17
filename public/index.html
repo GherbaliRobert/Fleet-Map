@@ -4261,6 +4261,14 @@
       // „Altă comandă": selectarea unui ALT vehicul oprește follow-ul activ (badge-ul „Urmărești").
       if (window._followImei && window._followImei !== imei && window.vpClearFollow) window.vpClearFollow();
       selectedImei = imei;
+      // Dacă harta are un filtru multi-select activ care ascunde acest vehicul, adaugă-l în selecție și
+      // afișează-i markerul — altfel flyTo ar centra pe un punct gol (vehicul invizibil pe hartă).
+      if (window._mapSel instanceof Set && !window._mapSel.has(imei)) {
+        window._mapSel.add(imei);
+        const _mk = markers.get(imei);
+        if (_mk && map && !map.hasLayer(_mk)) _mk.addTo(map);
+        if (typeof window.applyMapSelection === 'function') window.applyMapSelection();
+      }
       const data = devices.get(imei);
       if (data && window.innerWidth > 768) {
         map.flyTo([data.latitude, data.longitude], 16); // desktop: panou lateral → centrăm normal
