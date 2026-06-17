@@ -1461,8 +1461,9 @@ async function getApiKeys(companyId) {
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
     SELECT k.id, k.name, k.prefix, k.last_used, k.revoked, k.created_at,
-           k.user_id, u.username, u.role, u.company_id
+           k.user_id, u.username, u.role, u.company_id, c.name AS company_name
     FROM api_keys k JOIN users u ON u.id = k.user_id
+    LEFT JOIN companies c ON c.id = u.company_id
     ${where}
     ORDER BY k.created_at DESC
   `, params);
@@ -1486,6 +1487,12 @@ async function getUserByApiKey(keyHash) {
 
 async function revokeApiKey(id) {
   await pool.query('UPDATE api_keys SET revoked = true WHERE id = $1', [id]);
+}
+
+// Ștergere DEFINITIVĂ a cheii (scoate înregistrarea complet). Revocarea (de mai sus) e soft — păstrează urma.
+async function deleteApiKey(id) {
+  const r = await pool.query('DELETE FROM api_keys WHERE id = $1', [id]);
+  return r.affectedRows || r.rowCount || 0;
 }
 
 async function cleanupExpiredSessions() {
@@ -2104,6 +2111,7 @@ module.exports = {
   getApiKeyCompany,
   getUserByApiKey,
   revokeApiKey,
+  deleteApiKey,
   cleanupExpiredSessions,
   deleteOldPositions,
   archiveDevicePositions,

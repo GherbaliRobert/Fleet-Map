@@ -1101,7 +1101,10 @@
     <div class="modal" style="width:760px;max-width:96vw;max-height:92vh;overflow-y:auto;">
       <h2>
         <span><i class="fas fa-key" style="margin-right:8px;color:var(--orange);"></i> Chei API</span>
-        <button class="close-btn" onclick="closeApiKeys()" style="position:static;font-size:18px;">&#10005;</button>
+        <span style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-sm" onclick="openApiDocs()" title="Documentație API"><i class="fas fa-book"></i> Documentație</button>
+          <button class="close-btn" onclick="closeApiKeys()" style="position:static;font-size:18px;">&#10005;</button>
+        </span>
       </h2>
       <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;">
         O cheie API permite accesul programatic și moștenește rolul + accesul pe vehicule al utilizatorului asociat.
@@ -1126,6 +1129,54 @@
           </label>
           <button onclick="createApiKey()"><i class="fas fa-plus"></i> Generează</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Documentație API (modal in-app) -->
+  <div id="apidocs-modal" class="modal-overlay">
+    <div class="modal" style="width:880px;max-width:96vw;max-height:92vh;overflow-y:auto;">
+      <h2>
+        <span><i class="fas fa-book" style="margin-right:8px;color:var(--accent);"></i> Documentație API</span>
+        <button class="close-btn" onclick="closeApiDocs()" style="position:static;font-size:18px;">&#10005;</button>
+      </h2>
+      <div class="apidocs">
+        <p class="apidocs-lead">API REST pentru integrare cu RA Tracks. Toate răspunsurile sunt JSON. <strong>Base URL:</strong> <code>https://ratrack.ro</code></p>
+
+        <h3><i class="fas fa-lock"></i> Autentificare</h3>
+        <p>Fiecare cerere trimite o cheie API într-un header HTTP:</p>
+        <pre><code>Authorization: Bearer gpsk_xxxxxxxxxxxxxxxx
+# sau
+X-API-Key: gpsk_xxxxxxxxxxxxxxxx</code></pre>
+        <p>Cheia <strong>moștenește rolul și accesul pe vehicule</strong> ale utilizatorului pentru care a fost generată. O creezi din <strong>Administrare → Chei API</strong>; valoarea în clar apare <strong>o singură dată</strong>, la generare — salveaz-o atunci.</p>
+
+        <h3><i class="fas fa-bolt"></i> Exemplu rapid</h3>
+        <pre><code>curl -H "X-API-Key: gpsk_xxx" https://ratrack.ro/api/live</code></pre>
+        <pre><code>const r = await fetch('https://ratrack.ro/api/live', {
+  headers: { 'X-API-Key': 'gpsk_xxx' }
+});
+const pozitii = await r.json();</code></pre>
+
+        <h3><i class="fas fa-plug"></i> Endpointuri</h3>
+        <div id="apidocs-endpoints"></div>
+
+        <h3><i class="fas fa-triangle-exclamation"></i> Coduri de stare</h3>
+        <table class="apidocs-table">
+          <tr><td><code>200</code></td><td>OK — răspuns JSON.</td></tr>
+          <tr><td><code>400</code></td><td>Cerere invalidă (parametri lipsă / greșiți).</td></tr>
+          <tr><td><code>401</code></td><td>Cheie lipsă, invalidă sau revocată.</td></tr>
+          <tr><td><code>403</code></td><td>Cheia nu are acces la resursă (rol / vehicul).</td></tr>
+          <tr><td><code>404</code></td><td>Resursă inexistentă.</td></tr>
+          <tr><td><code>429</code></td><td>Prea multe cereri — încetinește.</td></tr>
+          <tr><td><code>500</code></td><td>Eroare server.</td></tr>
+        </table>
+
+        <h3><i class="fas fa-circle-info"></i> Note</h3>
+        <ul class="apidocs-notes">
+          <li>Datele și intervalele sunt în UTC, format ISO 8601 (ex. <code>2026-06-17T08:30:00Z</code>).</li>
+          <li>O cheie revocată întoarce <code>401</code> imediat — fără propagare.</li>
+          <li>Catalogul brut, mereu actualizat, e la <code>GET /api</code>.</li>
+        </ul>
       </div>
     </div>
   </div>
@@ -2298,20 +2349,32 @@
       const keys = await res.json();
       const list = document.getElementById('apikeys-list');
       if (!keys.length) { list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Nicio cheie creată.</p>'; return; }
-      list.innerHTML = keys.map(k => `
-        <div class="user-row" style="align-items:center;${k.revoked?'opacity:.5;':''}">
+      list.innerHTML = keys.map(k => {
+        const created = k.created_at ? new Date(k.created_at).toLocaleDateString('ro-RO') : '–';
+        const used = k.last_used ? new Date(k.last_used).toLocaleString('ro-RO') : 'niciodată';
+        const comp = k.company_name ? _ssEsc(k.company_name) : '<em>platformă</em>';
+        return `
+        <div class="user-row" style="align-items:center;${k.revoked?'opacity:.55;':''}">
           <div style="min-width:0;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <strong>${k.name || '(fără nume)'}</strong>
-              <code style="font-size:11px;color:var(--text-muted);">${k.prefix}…</code>
-              ${k.revoked?'<span style="color:#ef4444;font-size:11px;">revocată</span>':''}
+              <strong>${_ssEsc(k.name || '(fără nume)')}</strong>
+              <code style="font-size:11px;color:var(--text-muted);">${_ssEsc(k.prefix)}…</code>
+              <span class="apikey-badge ${k.revoked?'rev':'act'}">${k.revoked?'revocată':'activă'}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">
+              <i class="fas fa-user" style="opacity:.55;"></i> ${_ssEsc(k.username)} · ${ROLE_LABELS[k.role]||k.role}
+              &nbsp;·&nbsp; <i class="fas fa-building" style="opacity:.55;"></i> ${comp}
             </div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
-              ${k.username} · ${ROLE_LABELS[k.role]||k.role} · ultima utilizare: ${k.last_used? new Date(k.last_used).toLocaleString('ro-RO'):'niciodată'}
+              Creată: ${created} &nbsp;·&nbsp; Ultima utilizare: ${used}
             </div>
           </div>
-          ${k.revoked?'':'<button class="btn-sm btn-danger" onclick="revokeApiKey('+k.id+')" title="Revocă"><i class="fas fa-ban"></i></button>'}
-        </div>`).join('');
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            ${k.revoked?'':'<button class="btn-sm" onclick="revokeApiKey('+k.id+')" title="Revocă (dezactivează — păstrează urma în audit)"><i class="fas fa-ban"></i></button>'}
+            <button class="btn-sm btn-danger" onclick="deleteApiKey('+k.id+')" title="Șterge definitiv"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>`;
+      }).join('');
     }
     async function createApiKey() {
       const userId = document.getElementById('apikey-user').value;
@@ -2327,14 +2390,51 @@
       await loadApiKeys();
     }
     async function revokeApiKey(id) {
-      if (!confirm('Revoci această cheie? Integrarea care o folosește va pierde accesul imediat.')) return;
+      if (!confirm('Revoci această cheie? Integrarea care o folosește va pierde accesul imediat.\n(Cheia rămâne în listă, marcată „revocată", pentru audit.)')) return;
       await fetch('/api/apikeys/' + id, { method: 'DELETE' });
+      await loadApiKeys();
+    }
+    async function deleteApiKey(id) {
+      if (!confirm('Ștergi DEFINITIV această cheie?\nÎnregistrarea dispare complet (ireversibil). Integrarea care o folosește pierde accesul.')) return;
+      await fetch('/api/apikeys/' + id + '?hard=1', { method: 'DELETE' });
       await loadApiKeys();
     }
     function copyApiKey() {
       if (!apikeyLastValue) return;
       navigator.clipboard.writeText(apikeyLastValue).then(()=>{}, ()=>{});
     }
+
+    // ─── Documentație API (modal in-app) ───
+    const API_DOCS = [
+      { m:'GET', p:'/api/me', d:'Identitatea și permisiunile cheii curente.' },
+      { m:'GET', p:'/api/devices', d:'Vehiculele accesibile, cu ultima poziție cunoscută.', ex:'curl -H "X-API-Key: gpsk_xxx" https://ratrack.ro/api/devices' },
+      { m:'GET', p:'/api/live', d:'Pozițiile live (din memorie, actualizate la fiecare pachet primit).' },
+      { m:'GET', p:'/api/history/:imei', q:'from, to (ISO 8601)', d:'Istoricul pozițiilor unui vehicul într-un interval. Include și datele arhivate.', ex:'/api/history/860...?from=2026-06-01T00:00:00Z&to=2026-06-02T00:00:00Z' },
+      { m:'GET', p:'/api/reports', d:'Tipurile de rapoarte disponibile.' },
+      { m:'GET', p:'/api/reports/:type', q:'from, to, imei', d:'Generează un raport: trips, stops, speeding, fuel, geofence, driver, utilization.' },
+      { m:'GET', p:'/api/stats/:imei', d:'Statistici zilnice (km parcurși, viteze, opriri).' },
+      { m:'GET', p:'/api/trips/:imei', q:'from, to', d:'Cursele detectate automat.' },
+      { m:'GET', p:'/api/geofences', d:'Zonele geografice (geofence) definite.' },
+      { m:'GET', p:'/api/alerts/history', q:'limit', d:'Istoricul alertelor declanșate.' },
+      { m:'GET', p:'/api/export/:imei', q:'from, to', d:'Export CSV al traseului.' },
+      { m:'GET', p:'/api/hotspot', q:'from, to, imei, mode', d:'Puncte pentru heatmap (mode = stops | positions).' },
+      { m:'POST', p:'/api/zone-report', d:'Analiză activitate într-o zonă desenată (body: poligon).' }
+    ];
+    function openApiDocs() {
+      const host = document.getElementById('apidocs-endpoints');
+      if (host && !host.dataset.rendered) {
+        host.innerHTML = API_DOCS.map(e => `
+          <div class="apidoc-ep">
+            <div class="apidoc-ep-head"><span class="apidoc-m ${e.m.toLowerCase()}">${e.m}</span><code>${_ssEsc(e.p)}</code></div>
+            <div class="apidoc-ep-desc">${e.d}</div>
+            ${e.q?`<div class="apidoc-ep-q"><strong>Parametri:</strong> <code>${_ssEsc(e.q)}</code></div>`:''}
+            ${e.ex?`<pre><code>${_ssEsc(e.ex)}</code></pre>`:''}
+          </div>`).join('');
+        host.dataset.rendered = '1';
+      }
+      document.getElementById('apidocs-modal').classList.add('visible');
+    }
+    function closeApiDocs() { document.getElementById('apidocs-modal').classList.remove('visible'); }
 
     // ═══════════════════════════════════════════════════════════
     //  FAZA 2 — Administrare: șoferi, grupe, alerte, zone, mentenanță
@@ -7754,6 +7854,32 @@
       .arch-actions { width: 100%; }
       .arch-actions .btn-sm { flex: 1; }
     }
+    /* Chei API — badge status */
+    .apikey-badge { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; }
+    .apikey-badge.act { background: rgba(63,224,125,.16); color: var(--accent); }
+    .apikey-badge.rev { background: rgba(239,68,68,.16); color: #ef4444; }
+    /* Documentație API (modal) */
+    .apidocs { font-size: 13px; line-height: 1.6; }
+    .apidocs-lead { color: var(--text-muted); }
+    .apidocs h3 { font-size: 14px; margin: 20px 0 8px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
+    .apidocs h3 i { font-size: 13px; opacity: .8; }
+    .apidocs p { margin: 6px 0; }
+    .apidocs pre { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; }
+    .apidocs code { font-family: inherit; background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+    .apidocs pre code { font-family: inherit; background: none; padding: 0; font-size: 12px; color: var(--text-primary); white-space: pre; }
+    .apidoc-ep { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+    .apidoc-ep-head { display: flex; align-items: center; gap: 10px; }
+    .apidoc-ep-head code { background: none; padding: 0; font-size: 13px; }
+    .apidoc-m { font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; letter-spacing: .5px; }
+    .apidoc-m.get { background: rgba(63,224,125,.16); color: var(--accent); }
+    .apidoc-m.post { background: rgba(245,158,11,.16); color: var(--orange); }
+    .apidoc-ep-desc { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .apidoc-ep-q { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .apidocs-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+    .apidocs-table td { border: 1px solid var(--border); padding: 6px 10px; }
+    .apidocs-table td:first-child { width: 64px; }
+    .apidocs-notes { font-size: 12px; color: var(--text-muted); margin: 6px 0; padding-left: 20px; }
+    .apidocs-notes li { margin: 4px 0; }
     /* Companii */
     .rax-co-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
     .rax-co-item h4 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 8px; }

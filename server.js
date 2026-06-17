@@ -1325,6 +1325,12 @@ app.delete('/api/apikeys/:id', requireAuth, requireAdmin, withCompany, async (re
       const cid = await db.getApiKeyCompany(id);
       if (cid !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
     }
+    if (req.query.hard === '1') {
+      // Ștergere definitivă (scoate înregistrarea). Revocarea simplă (mai jos) doar dezactivează cheia.
+      await db.deleteApiKey(id);
+      auditReq(req, 'delete', 'apikey', req.params.id);
+      return res.json({ ok: true, deleted: true });
+    }
     await db.revokeApiKey(id);
     auditReq(req, 'revoke', 'apikey', req.params.id);
     res.json({ ok: true });
