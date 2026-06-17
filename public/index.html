@@ -24,6 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="/css/app.css?v=3">
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
+  <link rel="stylesheet" href="/css/map-tools.css?v=1">
 </head>
 <body class="dark">
   <!-- Login Screen -->
@@ -1656,7 +1657,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ro.js"></script>
-  <script src="/js/demo-modules-ui.js?v=1"></script>
+  <script src="/js/demo-modules-ui.js?v=2"></script>
+  <script src="/js/map-tools.js?v=3"></script>
   <script>
     // ─── Global State ───
     let currentUser = null;
@@ -1751,6 +1753,11 @@
     };
     let mapInitialized = false;
     let map, markers, devices, selectedImei, historyLine;
+    // Accesori pentru fișierele externe (map-tools.js, demo-modules-ui.js) — `map/markers/devices` sunt
+    // globale LEXICALE (let), NU pe window. Closures întorc valoarea curentă (se reasignează în initMap).
+    window.getLeafletMap = function () { return map; };
+    window.getDevicesMap = function () { return devices; };
+    window.getMarkersMap = function () { return markers; };
     let currentFilter = 'all';
     let searchQuery = '';
     let detailPanelImei = null;

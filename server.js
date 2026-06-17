@@ -2108,6 +2108,23 @@ try {
   console.log('[DEMO-MODULES] e-Transport / E-Toll / Tahograf — endpoint-uri demo montate');
 } catch (e) { console.warn('[DEMO-MODULES] nu s-au putut monta:', e.message); }
 
+// ─── Suport clienți — mesaje din butonul headset (UI). Persistate (vizibile super-admin) + email best-effort. ───
+app.post('/api/support', requireAuth, async (req, res) => {
+  try {
+    const msg = String((req.body && req.body.message) || '').slice(0, 4000).trim();
+    if (!msg) return res.status(400).json({ error: 'Mesaj gol' });
+    const a = req.auth || getAuth(req) || {};
+    const who = a.username || ('utilizator#' + (a.userId || '?'));
+    try { await db.logError({ level: 'info', message: 'SUPORT — ' + who + ': ' + msg, route: '/api/support', userId: a.userId || null, companyId: a.companyId || null, context: { kind: 'support' } }); } catch (e) {}
+    try {
+      const to = process.env.SUPPORT_EMAIL || (await db.getSetting('support_email').catch(() => null));
+      if (to && channels && channels.sendEmailTo) channels.sendEmailTo(to, 'Mesaj suport — ' + who, msg).catch(() => {});
+    } catch (e) {}
+    auditReq(req, 'create', 'support', null, { len: msg.length });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Catalog API (public) — pentru integratori
 app.get('/api', (req, res) => {
   res.json({

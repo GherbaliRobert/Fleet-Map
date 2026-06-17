@@ -28,7 +28,7 @@
 
   function vehicleOptions() {
     var out = '<option value="">— alege vehicul —</option>';
-    try { if (window.devices) window.devices.forEach(function (d, imei) { out += '<option value="' + esc(imei) + '" data-plate="' + esc(d.plate || '') + '">' + esc(d.name || imei) + (d.plate ? ' · ' + esc(d.plate) : '') + '</option>'; }); } catch (e) {}
+    try { if ((window.getDevicesMap && window.getDevicesMap())) (window.getDevicesMap && window.getDevicesMap()).forEach(function (d, imei) { out += '<option value="' + esc(imei) + '" data-plate="' + esc(d.plate || '') + '">' + esc(d.name || imei) + (d.plate ? ' · ' + esc(d.plate) : '') + '</option>'; }); } catch (e) {}
     return out;
   }
 
