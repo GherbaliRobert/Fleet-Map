@@ -92,14 +92,22 @@
           </div>
         </div>
         <div class="nav-group fleet-only" data-group="management">
-          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-gear"></i><span>Administrare</span><i class="fas fa-chevron-down nav-caret"></i></button>
+          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-pen-to-square"></i><span>Management</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('vehicles'); })"><i class="fas fa-truck"></i><span>Vehicule</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('drivers'); })"><i class="fas fa-id-card"></i><span>Șoferi</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('groups'); })"><i class="fas fa-layer-group"></i><span>Grupe</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('alerts'); })"><i class="fas fa-bell"></i><span>Alerte</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('maintenance'); })"><i class="fas fa-wrench"></i><span>Mentenanță</span></button>
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('settings'); })"><i class="fas fa-gear"></i><span>Setări</span></button>
+          </div>
+        </div>
+        <div class="nav-group fleet-only" data-group="administrare">
+          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-gear"></i><span>Administrare</span><i class="fas fa-chevron-down nav-caret"></i></button>
+          <div class="nav-group-body">
+            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('settings'); })"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
+            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
+            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('users'); })"><i class="fas fa-users"></i><span>Utilizatori</span></button>
+            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
           </div>
         </div>
         <button class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
@@ -108,7 +116,6 @@
         <button class="nav-item" data-view="etoll" onclick="showView('etoll')"><i class="fas fa-road"></i><span>E-Toll &amp; Roviniete</span></button>
         <button class="nav-item" data-view="tahograf" onclick="showView('tahograf')"><i class="fas fa-id-card"></i><span>Tahograf</span></button>
         <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
-        <button class="nav-item" id="nav-admin" data-view="administrare" onclick="showView('administrare')" style="display:none;"><i class="fas fa-server"></i><span>Sistem</span></button>
       </nav>
 
       <main id="main-view">
@@ -874,6 +881,7 @@
     /* Acțiuni de rând (Edit/Delete) — pătrate consistente, mai mici */
     td .btn-sm { padding: 5px 9px; }
     body.no-fleet .fleet-only { display:none !important; }
+    body.no-users .users-only { display:none !important; } /* Companii/Utilizatori/Audit din Administrare — doar cu permisiunea manageUsers */
     /* Administrare (Faza 2) */
     #admin-modal input, #admin-modal select, #admin-modal textarea {
       background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb);
@@ -966,7 +974,7 @@
   <div id="users-modal" class="modal-overlay">
     <div class="modal" style="width:920px;max-width:96vw;max-height:92vh;">
       <h2>
-        <span><i class="fas fa-server" style="margin-right:8px;color:var(--purple);"></i> Sistem</span>
+        <span><i class="fas fa-gear" style="margin-right:8px;color:var(--purple);"></i> Administrare</span>
         <span style="display:flex;gap:8px;align-items:center;">
           <button class="btn-sm" onclick="openApiKeys()" title="Chei API"><i class="fas fa-key"></i> Chei API</button>
           <button class="btn-sm" onclick="openAudit()" title="Jurnal audit"><i class="fas fa-clipboard-list"></i> Audit</button>
@@ -3731,6 +3739,7 @@
       if (btn) { btn.classList.add('active'); var g = btn.closest('.nav-group'); if (g) g.classList.add('open'); }
     }
     function goManage(tab) { window._pendingAdminTab = tab; showView('management'); }
+    function goSistem(tab) { showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
     function goAnalizeConsum() { showView('fuelstats'); }
     // ─── Pagina „Statistici consum" (vederea fuelstats) ───
     var _fsState = { period: 'week' };
@@ -3758,14 +3767,14 @@
         var d = await fetch(url, { credentials: 'same-origin' }).then(function (x) { return x.json(); });
         if (!d || d.error) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--red);">' + ((d && d.error) || 'Eroare') + '</div>'; return; }
         _fsKpi(d.kpi); _fsTrend(d.series); _fsTop(d.topConsumers); _fsTable(d.perVehicle);
-        var rg = document.getElementById('fs-range'); if (rg) rg.textContent = (d.kpi.vehiclesWithData || 0) + '/' + (d.kpi.vehiclesTotal || 0) + ' vehicule cu date';
+        var rg = document.getElementById('fs-range'); if (rg) { var _ve = d.kpi.vehiclesEstimated || 0; rg.textContent = (d.kpi.vehiclesTotal || 0) + ' vehicule' + (d.kpi.vehiclesWithData ? ' · ' + d.kpi.vehiclesWithData + ' cu senzor' : '') + (_ve ? ' · ' + _ve + ' estimat' + (_ve > 1 ? 'e' : '') : ''); }
       } catch (e) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--red);">Eroare de rețea</div>'; }
     }
     function _fsKpi(k) {
       var el = document.getElementById('fs-kpi'); if (!el) return; k = k || {};
       function card(val, lbl, sub, color) { return '<div class="report-stat"' + (color ? ' style="border-color:' + color + ';"' : '') + '><div class="report-stat-value"' + (color ? ' style="color:' + color + ';"' : '') + '>' + val + '</div><div class="report-stat-label">' + lbl + (sub ? ' · ' + sub : '') + '</div></div>'; }
       el.innerHTML =
-        card((k.totalLiters || 0) + ' L', 'Consum total', (k.totalKm || 0) + ' km', 'var(--orange)') +
+        card((k.totalLiters || 0) + ' L', 'Consum total', (k.totalKm || 0) + ' km' + (k.vehiclesEstimated ? ' · parțial estimat' : ''), 'var(--orange)') +
         card((k.avgPer100 || 0) + ' L/100km', 'Consum mediu', '', 'var(--accent)') +
         card((k.fuelCost || 0) + ' RON', 'Cost combustibil', '', '') +
         card((k.idleLiters || 0) + ' L', 'Ralanti', (k.idlePct || 0) + '% · ' + (k.idleCost || 0) + ' RON', 'var(--red)');
@@ -3788,9 +3797,9 @@
         h += '<tr style="border-bottom:1px solid var(--border);">' +
           '<td style="padding:8px 10px;font-weight:600;">' + _ssEsc(v.name) + (v.plate ? ' <span style="color:var(--text-muted);font-weight:400;">' + _ssEsc(v.plate) + '</span>' : '') + '</td>' +
           '<td style="padding:8px 10px;">' + v.km + '</td>' +
-          '<td style="padding:8px 10px;">' + (v.hasFuel ? v.liters + ' L' : '—') + '</td>' +
+          '<td style="padding:8px 10px;">' + (v.liters != null ? v.liters + ' L' + (v.estimated ? ' <span style="color:var(--text-muted);font-size:10px;" title="Estimat din consumul configurat + km (fără senzor de nivel)">est.</span>' : '') : '—') + '</td>' +
           '<td style="padding:8px 10px;">' + (v.per100 != null ? v.per100 : '—') + '</td>' +
-          '<td style="padding:8px 10px;">' + (v.hasFuel ? v.cost + ' RON' : '—') + '</td>' +
+          '<td style="padding:8px 10px;">' + (v.cost ? v.cost + ' RON' : '—') + '</td>' +
           '<td style="padding:8px 10px;">' + v.idleLiters + ' L</td>' +
           '<td style="padding:8px 10px;">' + (v.co2Kg ? v.co2Kg + ' kg' : '—') + '</td>' +
           '</tr>';
@@ -3848,8 +3857,7 @@
 
     // Gating UI după permisiuni (override: nav Administrare + acțiuni de flotă)
     function applyPermissionsUI() {
-      const adminNav = document.getElementById('nav-admin');
-      if (adminNav) adminNav.style.display = can('manageUsers') ? '' : 'none';
+      document.body.classList.toggle('no-users', !can('manageUsers')); // ascunde Companii/Utilizatori/Audit din „Administrare" celor fără permisiune
       const dashNav = document.getElementById('nav-dashboard');
       if (dashNav) dashNav.style.display = (currentUser && currentUser.role === 'superadmin') ? '' : 'none';
       document.body.classList.toggle('no-fleet', !can('manageFleet'));
