@@ -11,12 +11,12 @@
       --text: var(--text-primary);
       --text-secondary: #475569;
       --text-muted: #64748b; /* urcat din #94a3b8 (~2.6:1) la slate-500 (~4.85:1) pentru WCAG AA pe bg deschis */
-      --accent: #16a34a;
-      --accent-hover: #15803d;
+      --accent: #3FE07D;
+      --accent-hover: #52EC8D;
       --blue: #3FE07D;
       --blue-hover: #52EC8D;
-      --green: #16a34a;
-      --green-dim: #15803d;
+      --green: #3FE07D;
+      --green-dim: #2BB763;
       --red: #dc2626;
       --orange: #ea580c;
       --yellow: #ca8a04;
