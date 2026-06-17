@@ -59,6 +59,7 @@
         <div class="brand-title"><span class="ralogo" aria-label="RA Tracks"><img class="ralm d" src="/logo-mark.png" height="26" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="26" alt="RA"><span class="raw" style="font-size:20px">Tracks</span></span></div>
       </div>
       <div class="topbar-right">
+        <button class="topbar-icon" onclick="openSupport()" title="Suport clienți"><i class="fas fa-headset"></i></button>
         <button class="topbar-icon" id="theme-toggle" onclick="toggleTheme()" title="Comută tema"><i class="fas fa-moon"></i></button>
         <button class="topbar-icon" onclick="toggleNotifications()" title="Notificări" style="position:relative;">
           <i class="fas fa-bell"></i>
@@ -266,6 +267,14 @@
       @media (max-width: 768px) {
         .sidebar-back-mobile { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px 14px; background: var(--bg-panel); border: none; border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; }
         .sidebar-back-mobile:active { background: var(--bg-dark); }
+
+        /* Raport + Transport: bottom-sheet care lasă harta vizibilă; tras în jos = „tab" (peek), ca fișa */
+        #report-modal.visible, #transport-modal.visible { background: transparent; backdrop-filter: none; pointer-events: none; }
+        #report-modal .modal, #transport-modal .modal { pointer-events: auto; transition: transform .28s ease; }
+        #report-modal .modal h2, #transport-modal .modal h2 { position: relative; padding-top: 20px; cursor: grab; touch-action: none; }
+        #report-modal .modal h2::before, #transport-modal .modal h2::before { content: ''; position: absolute; top: 7px; left: 50%; transform: translateX(-50%); width: 40px; height: 4px; border-radius: 2px; background: var(--border-light, #999); }
+        #report-modal.peek .modal > :not(h2), #transport-modal.peek .modal > :not(h2) { display: none !important; }
+
         /* Login mai simplu/curat pe mobil */
         .login-box { width: 90vw; max-width: 360px; padding: 28px 22px; box-shadow: none; }
         #login-screen .login-logo img { height: 38px; }
@@ -4001,6 +4010,15 @@
         markers.set(imei, marker);
       }
 
+      // Multi-select hartă: dacă există o selecție activă, afișează doar vehiculele bifate.
+      if (window._mapSel instanceof Set) {
+        const mk = markers.get(imei);
+        if (mk) {
+          if (window._mapSel.has(imei)) { if (!map.hasLayer(mk)) mk.addTo(map); }
+          else if (map.hasLayer(mk)) map.removeLayer(mk);
+        }
+      }
+
       if (isSelected) {
         panFollowVehicle(latitude, longitude);
       }
@@ -4338,15 +4356,53 @@
       var startY = 0, curY = 0, dragging = false, moved = false;
       function start(e) { var t = e.touches ? e.touches[0] : e; startY = curY = t.clientY; dragging = true; moved = false; panel.style.transition = 'none'; }
       function move(e) { if (!dragging) return; var t = e.touches ? e.touches[0] : e; curY = t.clientY; var dy = curY - startY; if (Math.abs(dy) > 4) moved = true; if (dy > 0) { panel.style.transform = 'translateY(' + dy + 'px)'; if (e.cancelable) e.preventDefault(); } }
-      function end() { if (!dragging) return; dragging = false; panel.style.transition = ''; var dy = curY - startY; panel.style.transform = ''; if (dy > 90) closeDetailPanel(); }
+      // 2 stări: complet ↔ „tab" (peek). Tras în jos → colapsează la tab (vezi harta); tras în sus / tap → complet.
+      function end() {
+        if (!dragging) return;
+        dragging = false;
+        panel.style.transition = '';
+        var dy = curY - startY;
+        panel.style.transform = '';
+        if (panel.classList.contains('peek')) {
+          if (dy < -24) setDetailPeek(false);        // tras în sus din tab → fișa completă
+          else if (dy > 70) closeDetailPanel();      // tras în jos din tab → închide
+          // altfel rămâne tab
+        } else {
+          if (dy > 40) setDetailPeek(true);          // tras în jos → colapsează la tab (harta vizibilă)
+          // altfel revine la complet (snap back)
+        }
+      }
       header.addEventListener('touchstart', start, { passive: true });
       header.addEventListener('touchmove', move, { passive: false });
       header.addEventListener('touchend', end);
-      // Tap pe header (nu pe X, fără drag) → dacă e peek, revine la dimensiune normală
+      // Tap pe header (nu pe X, fără drag) → dacă e tab, revine la dimensiune normală
       header.addEventListener('click', function (e) {
         if (e.target.closest('.detail-close')) return;
+        if (moved) return;                            // a fost drag, nu tap → ignoră click-ul sintetic (nu anula peek-ul)
         if (panel.classList.contains('peek')) setDetailPeek(false);
       });
+    })();
+
+    // Drag-to-„tab" reutilizabil pentru bottom-sheet-uri modale (Raport, Transport): tras în jos = peek (vezi harta),
+    // în sus / tap = complet, tras în jos din peek = închide. Activ doar pe mobil (≤768px).
+    function enableSheetDrag(overlay, sheet, header, onClose) {
+      if (!overlay || !sheet || !header || header._sheetDrag) return; header._sheetDrag = true;
+      var startY = 0, curY = 0, dragging = false, moved = false;
+      function start(e) { if (window.innerWidth > 768) return; var t = e.touches ? e.touches[0] : e; startY = curY = t.clientY; dragging = true; moved = false; sheet.style.transition = 'none'; }
+      function move(e) { if (!dragging) return; var t = e.touches ? e.touches[0] : e; curY = t.clientY; var dy = curY - startY; if (Math.abs(dy) > 4) moved = true; if (dy > 0) { sheet.style.transform = 'translateY(' + dy + 'px)'; if (e.cancelable) e.preventDefault(); } }
+      function end() {
+        if (!dragging) return; dragging = false; sheet.style.transition = ''; var dy = curY - startY; sheet.style.transform = '';
+        if (overlay.classList.contains('peek')) { if (dy < -24) overlay.classList.remove('peek'); else if (dy > 70 && onClose) onClose(); }
+        else if (dy > 40) overlay.classList.add('peek');
+      }
+      header.addEventListener('touchstart', start, { passive: true });
+      header.addEventListener('touchmove', move, { passive: false });
+      header.addEventListener('touchend', end);
+      header.addEventListener('click', function (e) { if (e.target.closest('.close-btn')) return; if (moved) return; if (overlay.classList.contains('peek')) overlay.classList.remove('peek'); });
+    }
+    (function () {
+      var rm = document.getElementById('report-modal'); if (rm) enableSheetDrag(rm, rm.querySelector('.modal'), rm.querySelector('.modal h2'), function () { if (window.closeReportModal) closeReportModal(); });
+      var tm = document.getElementById('transport-modal'); if (tm) enableSheetDrag(tm, tm.querySelector('.modal'), tm.querySelector('.modal h2'), function () { if (window.closeTransportReport) closeTransportReport(); });
     })();
 
     function switchDetailTab(tab) {
@@ -6274,7 +6330,7 @@
     function openTransportReport(imei) {
       transportImei = imei;
       const modal = document.getElementById('transport-modal');
-      modal.classList.add('visible');
+      modal.classList.remove('peek'); modal.classList.add('visible');
 
       const data = devices.get(imei);
       document.getElementById('transport-vehicle-name').textContent = data?.name || imei;
@@ -6790,7 +6846,7 @@
     function openReportModal(imei) {
       reportImei = imei;
       const modal = document.getElementById('report-modal');
-      modal.classList.add('visible');
+      modal.classList.remove('peek'); modal.classList.add('visible');
       initRangePicker('report-from', 'report-to', { dateOnly: true, inline: true });
 
       const data = devices.get(imei);
