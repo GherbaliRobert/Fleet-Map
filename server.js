@@ -4282,6 +4282,23 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Statistici consum (agregat flotă + per vehicul + trend) — pentru pagina „Statistici consum".
+app.get('/api/fuel-stats', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    await applyCompanyFilter(req);
+    let imeis = await resolveReportImeis(req);
+    if (imeis === null) return res.status(403).json({ error: 'Acces interzis' });
+    const gid = parseInt(req.query.groupId);
+    if (Number.isFinite(gid)) {
+      try { const gr = await db.pool.query('SELECT imei FROM devices WHERE group_id = $1', [gid]); const set = new Set(gr.rows.map(r => r.imei)); imeis = imeis.filter(im => set.has(im)); } catch (e) {}
+    }
+    const from = req.query.from || new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const to = req.query.to || new Date().toISOString();
+    const opts = { refuelMin: parseInt(req.query.refuelMin) || 10, bucket: req.query.bucket === 'month' ? 'month' : 'day' };
+    res.json(await reports.fuelStats(db, imeis, from, to, opts));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── Rapoarte programate (trimise automat pe email) ───
 app.get('/api/report-schedules', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try { res.json(await db.getReportSchedules(req.isSuper ? null : req.companyId)); }

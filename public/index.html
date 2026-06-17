@@ -1387,6 +1387,28 @@
   </div>
 
   <!-- ═══ Rapoarte (Faza 3) ═══ -->
+  <!-- Pagina „Statistici consum" (din meniul Analize statistice → Statistici consum) -->
+  <div id="fuel-stats-modal" class="modal-overlay">
+    <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;">
+      <h2><span><i class="fas fa-gas-pump" style="margin-right:8px;color:var(--orange);"></i> Statistici consum</span>
+        <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button></h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="report-period-btn" onclick="fsPeriod('today',this)">Azi</button>
+        <button class="report-period-btn" onclick="fsPeriod('yesterday',this)">Ieri</button>
+        <button class="report-period-btn active" onclick="fsPeriod('week',this)">7 zile</button>
+        <button class="report-period-btn" onclick="fsPeriod('month',this)">Luna</button>
+        <select id="fs-imei" class="rax-field" style="width:auto;min-width:170px;margin:0;" onchange="loadFuelStats()"></select>
+        <span id="fs-range" style="margin-left:auto;font-size:11px;color:var(--text-muted);"></span>
+      </div>
+      <div id="fs-kpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:14px;">
+        <div class="chart-container"><div class="chart-container-title">Trend consum (litri/zi)</div><canvas id="chart-fuel-trend" height="130"></canvas></div>
+        <div class="chart-container"><div class="chart-container-title">Top consumatori</div><canvas id="chart-fuel-top" height="130"></canvas></div>
+      </div>
+      <div id="fs-table" style="overflow-x:auto;"></div>
+    </div>
+  </div>
+
   <div id="reports-modal" class="modal-overlay">
     <div class="modal" style="width:940px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
       <h2><span><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent);"></i> Rapoarte</span>
@@ -2214,7 +2236,7 @@
       var _f = (currentUser && currentUser.features) || {};
       var _tt = document.querySelector('[data-atab="tacho"]'); if (_tt) _tt.style.display = (_f.tahograf === false) ? 'none' : '';
       var _et = document.querySelector('[data-atab="etransport"]'); if (_et) _et.style.display = (_f.etransport === false) ? 'none' : '';
-      switchAdminTab('vehicles');
+      switchAdminTab(window._pendingAdminTab || 'vehicles'); window._pendingAdminTab = null; // scurtătura din meniu alege tab-ul, după ce modalul e gata (fără race de timing)
     }
     function switchAdminTab(tab) {
       document.querySelectorAll('.admin-tab').forEach(b => b.classList.toggle('active', b.dataset.atab === tab));
@@ -3697,8 +3719,8 @@
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', fuelstats: 'fuel-stats-modal', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', fuelstats: 'loadFuelStats', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -3708,8 +3730,73 @@
       document.querySelectorAll('#navrail .nav-item').forEach(function (n) { n.classList.remove('active'); });
       if (btn) { btn.classList.add('active'); var g = btn.closest('.nav-group'); if (g) g.classList.add('open'); }
     }
-    function goManage(tab) { showView('management'); setTimeout(function () { try { switchAdminTab(tab); } catch (e) {} }, 60); }
-    function goAnalizeConsum() { showView('analize'); setTimeout(function () { try { var e = document.getElementById('dk-fuel'); if (e) (e.closest('.chart-container, .report-stat, section') || e).scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) {} }, 250); }
+    function goManage(tab) { window._pendingAdminTab = tab; showView('management'); }
+    function goAnalizeConsum() { showView('fuelstats'); }
+    // ─── Pagina „Statistici consum" (vederea fuelstats) ───
+    var _fsState = { period: 'week' };
+    function fsPeriod(p, btn) {
+      document.querySelectorAll('#fuel-stats-modal .report-period-btn').forEach(function (b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      _fsState.period = p; loadFuelStats();
+    }
+    function _fsRange() {
+      var now = new Date(), from = new Date(now), to = new Date(now);
+      if (_fsState.period === 'today') { from.setHours(0, 0, 0, 0); }
+      else if (_fsState.period === 'yesterday') { from.setDate(from.getDate() - 1); from.setHours(0, 0, 0, 0); to.setHours(0, 0, 0, 0); }
+      else if (_fsState.period === 'month') { from.setDate(from.getDate() - 30); }
+      else { from.setDate(from.getDate() - 7); }
+      return { from: from.toISOString(), to: to.toISOString() };
+    }
+    function _fsLabel(k) { var p = String(k).split('-'); var mo = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sep', 'oct', 'noi', 'dec']; return p.length === 3 ? (parseInt(p[2]) + ' ' + (mo[parseInt(p[1]) - 1] || '')) : (p.length === 2 ? ((mo[parseInt(p[1]) - 1] || '') + ' ' + p[0]) : k); }
+    async function loadFuelStats() {
+      var sel = document.getElementById('fs-imei');
+      if (sel && (!sel.options || !sel.options.length) && window.fillVehicleSelect) { try { fillVehicleSelect('fs-imei', true, 'Toată flota'); } catch (e) {} }
+      var r = _fsRange(), imei = (sel && sel.value) || '';
+      var url = '/api/fuel-stats?from=' + encodeURIComponent(r.from) + '&to=' + encodeURIComponent(r.to) + '&bucket=day' + (imei ? '&imei=' + encodeURIComponent(imei) : '');
+      var box = document.getElementById('fs-table'); if (box) box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">Se încarcă…</div>';
+      try {
+        var d = await fetch(url, { credentials: 'same-origin' }).then(function (x) { return x.json(); });
+        if (!d || d.error) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--red);">' + ((d && d.error) || 'Eroare') + '</div>'; return; }
+        _fsKpi(d.kpi); _fsTrend(d.series); _fsTop(d.topConsumers); _fsTable(d.perVehicle);
+        var rg = document.getElementById('fs-range'); if (rg) rg.textContent = (d.kpi.vehiclesWithData || 0) + '/' + (d.kpi.vehiclesTotal || 0) + ' vehicule cu date';
+      } catch (e) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--red);">Eroare de rețea</div>'; }
+    }
+    function _fsKpi(k) {
+      var el = document.getElementById('fs-kpi'); if (!el) return; k = k || {};
+      function card(val, lbl, sub, color) { return '<div class="report-stat"' + (color ? ' style="border-color:' + color + ';"' : '') + '><div class="report-stat-value"' + (color ? ' style="color:' + color + ';"' : '') + '>' + val + '</div><div class="report-stat-label">' + lbl + (sub ? ' · ' + sub : '') + '</div></div>'; }
+      el.innerHTML =
+        card((k.totalLiters || 0) + ' L', 'Consum total', (k.totalKm || 0) + ' km', 'var(--orange)') +
+        card((k.avgPer100 || 0) + ' L/100km', 'Consum mediu', '', 'var(--accent)') +
+        card((k.fuelCost || 0) + ' RON', 'Cost combustibil', '', '') +
+        card((k.idleLiters || 0) + ' L', 'Ralanti', (k.idlePct || 0) + '% · ' + (k.idleCost || 0) + ' RON', 'var(--red)');
+    }
+    function _fsTrend(s) {
+      if (typeof createChart !== 'function') return;
+      createChart('chart-fuel-trend', 'line', { labels: (s && s.labels) ? s.labels.map(_fsLabel) : [], datasets: [{ label: 'Litri', data: (s && s.consumed) || [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,.15)', fill: true, tension: .3, pointRadius: 2 }] }, { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
+    }
+    function _fsTop(top) {
+      if (typeof createChart !== 'function') return; top = top || [];
+      createChart('chart-fuel-top', 'bar', { labels: top.map(function (v) { return v.name + (v.plate ? ' · ' + v.plate : ''); }), datasets: [{ label: 'Litri', data: top.map(function (v) { return v.liters; }), backgroundColor: '#f59e0b' }] }, { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } });
+    }
+    function _fsTable(rows) {
+      var box = document.getElementById('fs-table'); if (!box) return;
+      if (!rows || !rows.length) { box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">Fără date de combustibil în perioada selectată.</div>'; return; }
+      var sorted = rows.slice().sort(function (a, b) { return b.liters - a.liters; });
+      var h = '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);">' +
+        ['Vehicul', 'Km', 'Litri', 'L/100km', 'Cost', 'Ralanti', 'CO₂'].map(function (c) { return '<th style="padding:8px 10px;">' + c + '</th>'; }).join('') + '</tr></thead><tbody>';
+      sorted.forEach(function (v) {
+        h += '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:8px 10px;font-weight:600;">' + _ssEsc(v.name) + (v.plate ? ' <span style="color:var(--text-muted);font-weight:400;">' + _ssEsc(v.plate) + '</span>' : '') + '</td>' +
+          '<td style="padding:8px 10px;">' + v.km + '</td>' +
+          '<td style="padding:8px 10px;">' + (v.hasFuel ? v.liters + ' L' : '—') + '</td>' +
+          '<td style="padding:8px 10px;">' + (v.per100 != null ? v.per100 : '—') + '</td>' +
+          '<td style="padding:8px 10px;">' + (v.hasFuel ? v.cost + ' RON' : '—') + '</td>' +
+          '<td style="padding:8px 10px;">' + v.idleLiters + ' L</td>' +
+          '<td style="padding:8px 10px;">' + (v.co2Kg ? v.co2Kg + ' kg' : '—') + '</td>' +
+          '</tr>';
+      });
+      box.innerHTML = h + '</tbody></table>';
+    }
     function showView(name) {
       currentView = name;
       document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === name));

@@ -577,6 +577,53 @@ const REPORT_CATEGORIES = [
   { key: 'siguranta', label: 'Siguranță & EcoDrive' }
 ];
 
+// Statistici consum agregate (flotă + per vehicul + trend) — numeric, pentru pagina „Statistici consum".
+// Refolosește EXACT helperii de combustibil (fuelL, haversineKm, ignOn, IDLE_SPEED, MAX_STEP_KM) ca rapoartele,
+// ca să nu dublăm logica. Întoarce { range, kpi, series, topConsumers, perVehicle } într-un singur apel.
+function _bucketKey(ts, bucket) { const s = new Date(ts).toISOString(); return bucket === 'month' ? s.slice(0, 7) : s.slice(0, 10); }
+async function fuelStats(db, imeis, from, to, opts) {
+  opts = opts || {};
+  const refuelMin = opts.refuelMin || 10, idleLph = opts.idleLph || 1.5, co2Factor = opts.co2Factor || 2.64;
+  const bucket = opts.bucket === 'month' ? 'month' : 'day';
+  const devMap = await deviceNames(db, imeis);
+  const cfg = {};
+  try { (await db.pool.query('SELECT imei, fuel_price, fuel_type FROM devices')).rows.forEach(d => { cfg[d.imei] = { price: parseFloat(d.fuel_price) || opts.fuelPrice || 7.5, fuelType: d.fuel_type || null }; }); } catch (e) {}
+  const perVehicle = [], seriesMap = {};
+  let kL = 0, kKm = 0, kCost = 0, kIdleL = 0, kIdleSec = 0, kCo2 = 0, kIdleCost = 0, vWith = 0;
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    let first = null, last = null, refueled = 0, dist = 0, prev = null, idleSec = 0, prevP = null;
+    const bF = {}, bL = {}, bPrev = {}, bRefuel = {}, bIdle = {};
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], fl = fuelL(p), bk = _bucketKey(p.timestamp, bucket);
+      if (fl != null) {
+        if (first == null) first = fl; last = fl;
+        if (prev != null) { const d = fl - prev; if (d >= refuelMin) refueled += d; }
+        prev = fl;
+        if (bF[bk] === undefined) bF[bk] = fl; bL[bk] = fl;
+        if (bPrev[bk] !== undefined) { const d = fl - bPrev[bk]; if (d >= refuelMin) bRefuel[bk] = (bRefuel[bk] || 0) + d; }
+        bPrev[bk] = fl;
+      }
+      if (i > 0) { const pr = pts[i - 1], dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) dist += dd; }
+      if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED && prevP && ignOn(prevP) && (prevP.speed || 0) <= IDLE_SPEED) { const dt = (new Date(p.timestamp) - new Date(prevP.timestamp)) / 1000; if (dt > 0 && dt < 3600) { idleSec += dt; bIdle[bk] = (bIdle[bk] || 0) + dt; } }
+      prevP = p;
+    }
+    const hasFuel = first != null;
+    const consumed = hasFuel ? Math.max(0, (first - last) + refueled) : 0;
+    const price = cfg[imei] ? cfg[imei].price : 7.5, cost = consumed * price, idleL = idleSec / 3600 * idleLph;
+    perVehicle.push({ imei, name: (devMap[imei] && devMap[imei].name) || imei, plate: (devMap[imei] && devMap[imei].plate) || '', km: Math.round(dist), liters: Math.round(consumed), per100: (hasFuel && dist > 1) ? +(consumed / dist * 100).toFixed(1) : null, cost: Math.round(cost), idleLiters: +idleL.toFixed(1), idleSec: Math.round(idleSec), co2Kg: Math.round(consumed * co2Factor), price: +price.toFixed(2), fuelType: cfg[imei] ? cfg[imei].fuelType : null, hasFuel });
+    kKm += dist; kIdleSec += idleSec; kIdleL += idleL; kIdleCost += idleL * price; kCo2 += consumed * co2Factor;
+    if (hasFuel) { kL += consumed; kCost += cost; vWith++; }
+    Object.keys(bF).forEach(bk => { const c = Math.max(0, (bF[bk] - bL[bk]) + (bRefuel[bk] || 0)); if (!seriesMap[bk]) seriesMap[bk] = { consumed: 0, idle: 0, cost: 0 }; seriesMap[bk].consumed += c; seriesMap[bk].cost += c * price; });
+    Object.keys(bIdle).forEach(bk => { if (!seriesMap[bk]) seriesMap[bk] = { consumed: 0, idle: 0, cost: 0 }; seriesMap[bk].idle += bIdle[bk] / 3600 * idleLph; });
+  }
+  const keys = Object.keys(seriesMap).sort();
+  const series = { labels: keys, consumed: keys.map(k => Math.round(seriesMap[k].consumed)), idle: keys.map(k => +seriesMap[k].idle.toFixed(1)), cost: keys.map(k => Math.round(seriesMap[k].cost)) };
+  const topConsumers = perVehicle.filter(v => v.hasFuel).sort((a, b) => b.liters - a.liters).slice(0, 10).map(v => ({ imei: v.imei, name: v.name, plate: v.plate, liters: v.liters, per100: v.per100, km: v.km }));
+  const kpi = { totalLiters: Math.round(kL), totalKm: Math.round(kKm), avgPer100: kKm > 1 ? +(kL / kKm * 100).toFixed(1) : 0, fuelCost: Math.round(kCost), idleLiters: +kIdleL.toFixed(1), idleSec: Math.round(kIdleSec), idlePct: kL > 0 ? Math.round(kIdleL / kL * 100) : 0, idleCost: Math.round(kIdleCost), co2Tons: +(kCo2 / 1000).toFixed(2), vehiclesWithData: vWith, vehiclesTotal: imeis.length };
+  return { range: { from, to, bucket }, kpi, series, topConsumers, perVehicle };
+}
+
 async function runReport(db, type, imeis, from, to, opts, companyId) {
   const def = REPORTS[type];
   if (!def) throw new Error('Tip de raport necunoscut: ' + type);
@@ -630,4 +677,4 @@ async function analyzeZone(db, imeis, from, to, zone) {
     label: 'Analiză zonă', from, to };
 }
 
-module.exports = { runReport, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack };
+module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack };
