@@ -92,7 +92,7 @@
           </div>
         </div>
         <div class="nav-group fleet-only" data-group="management">
-          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-pen-to-square"></i><span>Management</span><i class="fas fa-chevron-down nav-caret"></i></button>
+          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-gear"></i><span>Administrare</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('vehicles'); })"><i class="fas fa-truck"></i><span>Vehicule</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('drivers'); })"><i class="fas fa-id-card"></i><span>Șoferi</span></button>
@@ -108,7 +108,7 @@
         <button class="nav-item" data-view="etoll" onclick="showView('etoll')"><i class="fas fa-road"></i><span>E-Toll &amp; Roviniete</span></button>
         <button class="nav-item" data-view="tahograf" onclick="showView('tahograf')"><i class="fas fa-id-card"></i><span>Tahograf</span></button>
         <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
-        <button class="nav-item" id="nav-admin" data-view="administrare" onclick="showView('administrare')" style="display:none;"><i class="fas fa-gear"></i><span>Administrare</span></button>
+        <button class="nav-item" id="nav-admin" data-view="administrare" onclick="showView('administrare')" style="display:none;"><i class="fas fa-server"></i><span>Sistem</span></button>
       </nav>
 
       <main id="main-view">
@@ -966,7 +966,7 @@
   <div id="users-modal" class="modal-overlay">
     <div class="modal" style="width:920px;max-width:96vw;max-height:92vh;">
       <h2>
-        <span><i class="fas fa-gear" style="margin-right:8px;color:var(--purple);"></i> Administrare</span>
+        <span><i class="fas fa-server" style="margin-right:8px;color:var(--purple);"></i> Sistem</span>
         <span style="display:flex;gap:8px;align-items:center;">
           <button class="btn-sm" onclick="openApiKeys()" title="Chei API"><i class="fas fa-key"></i> Chei API</button>
           <button class="btn-sm" onclick="openAudit()" title="Jurnal audit"><i class="fas fa-clipboard-list"></i> Audit</button>
