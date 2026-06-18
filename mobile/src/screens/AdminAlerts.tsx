@@ -6,12 +6,14 @@ import { Icon } from '../components/Icon';
 import './detail.css';
 import './admin.css';
 
-// Subset de tipuri de alertă (prag numeric / fără câmpuri). Geofence + axe → în aplicația web.
-type AField = { k: string; label: string; def?: number };
+// Tipuri de alertă (prag numeric / zonă geofence / fără câmpuri). Paritate cu web (mai puțin axe pe vehicul).
+type AField = { k: string; label: string; def?: number; geofence?: boolean };
 type AType = { v: string; label: string; fields: AField[] };
 const ALERT_TYPES: AType[] = [
   { v: 'overspeed', label: 'Depășire viteză', fields: [{ k: 'maxSpeed', label: 'Viteză max (km/h)', def: 90 }] },
   { v: 'fuel_drop', label: 'Scădere combustibil (furt)', fields: [{ k: 'dropLiters', label: 'Scădere minimă (L)', def: 10 }] },
+  { v: 'geofence_enter', label: 'Intrare în zonă', fields: [{ k: 'geofenceId', label: 'Zonă', geofence: true }] },
+  { v: 'geofence_exit', label: 'Ieșire din zonă', fields: [{ k: 'geofenceId', label: 'Zonă', geofence: true }] },
   { v: 'ignition_on', label: 'Pornire motor', fields: [] },
   { v: 'ignition_off', label: 'Oprire motor', fields: [] },
   { v: 'engine_temp', label: 'Temperatură motor mare', fields: [{ k: 'maxTemp', label: 'Temp max (°C)', def: 105 }] },
@@ -20,6 +22,7 @@ const ALERT_TYPES: AType[] = [
   { v: 'brake_pad_wear', label: 'Uzură plăcuțe frână', fields: [{ k: 'minPercent', label: 'Prag minim (%)', def: 20 }] },
   { v: 'pto_active', label: 'PTO activat', fields: [] },
   { v: 'overload_legal', label: 'Supraîncărcare (legal)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 40000 }] },
+  { v: 'overload_construct', label: 'Supraîncărcare (constructiv)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 44000 }] },
 ];
 const typeLabel = (v: string) => ALERT_TYPES.find((t) => t.v === v)?.label || v;
 
@@ -30,6 +33,7 @@ export function AdminAlerts() {
   const vname = (imei: string) => { const v = vlist.find((x) => x.imei === imei); return v ? (v.name || v.plate || imei) : imei; };
 
   const [items, setItems] = useState<any[] | null>(null);
+  const [geofences, setGeofences] = useState<any[]>([]);
   const [err, setErr] = useState('');
   const [add, setAdd] = useState(false);
   const [confirmDel, setConfirmDel] = useState<any | null>(null);
@@ -41,7 +45,10 @@ export function AdminAlerts() {
     try { setItems(await Api.alerts()); }
     catch (e: any) { setErr(e?.status === 403 ? 'Nu ai permisiunea de administrare.' : (e?.message || 'Eroare la încărcare')); setItems([]); }
   }
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    reload();
+    Api.geofences().then((g) => setGeofences(Array.isArray(g) ? g : [])).catch(() => {});
+  }, []);
 
   function openAdd() {
     const t = ALERT_TYPES[0];
@@ -61,7 +68,11 @@ export function AdminAlerts() {
   async function save() {
     if (!form.name.trim()) { showToast('Dă un nume regulii', true); return; }
     const condition: Record<string, any> = {};
-    for (const f of curType.fields) { const v = form.cond[f.k]; condition[f.k] = (v === '' || v == null) ? null : Number(v); }
+    for (const f of curType.fields) {
+      const v = form.cond[f.k];
+      if (f.geofence && (v === '' || v == null)) { showToast('Alege o zonă', true); return; }
+      condition[f.k] = (v === '' || v == null) ? null : Number(v);
+    }
     setSaving(true);
     try {
       await Api.createAlert({ name: form.name.trim(), type: form.type, imei: form.imei || null, enabled: form.enabled === 'true', condition });
@@ -124,7 +135,16 @@ export function AdminAlerts() {
                 </div>
                 {curType.fields.map((f) => (
                   <div class="fld"><label>{f.label}</label>
-                    <input type="number" inputMode="numeric" value={form.cond[f.k] ?? ''} onInput={(e) => { const v = (e.target as HTMLInputElement).value; setForm((p: any) => ({ ...p, cond: { ...p.cond, [f.k]: v } })); }} />
+                    {f.geofence ? (
+                      geofences.length ? (
+                        <select value={form.cond[f.k] ?? ''} onChange={(e) => { const v = (e.target as HTMLSelectElement).value; setForm((p: any) => ({ ...p, cond: { ...p.cond, [f.k]: v } })); }}>
+                          <option value="">— alege zona —</option>
+                          {geofences.map((g) => <option value={String(g.id)}>{g.name}</option>)}
+                        </select>
+                      ) : <div class="muted" style="font-size:12.5px">Nicio zonă definită. Creează zone în aplicația web.</div>
+                    ) : (
+                      <input type="number" inputMode="numeric" value={form.cond[f.k] ?? ''} onInput={(e) => { const v = (e.target as HTMLInputElement).value; setForm((p: any) => ({ ...p, cond: { ...p.cond, [f.k]: v } })); }} />
+                    )}
                   </div>
                 ))}
                 <div class="fld"><label>Vehicul</label>

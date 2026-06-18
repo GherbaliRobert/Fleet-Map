@@ -53,9 +53,13 @@ export function Menu() {
         {u?.features?.ai_assistant && item('robot', 'Asistent AI', () => loc.route('/ai'))}
 
         <div class="mn-sec">Module</div>
-        {soon('truck', 'e-Transport (ANAF)')}
+        {u?.features?.etransport
+          ? item('truck', 'e-Transport (ANAF)', () => loc.route('/etransport'))
+          : soon('truck', 'e-Transport (ANAF)')}
         {soon('flame', 'E-Toll & Roviniete')}
-        {soon('disc', 'Tahograf')}
+        {u?.features?.tahograf
+          ? item('disc', 'Tahograf', () => loc.route('/tahograf'))
+          : soon('disc', 'Tahograf')}
         {soon('mapPin', 'Hotspot & Rutare')}
 
         {(perms.manageFleet || perms.manageUsers) && (
@@ -64,6 +68,7 @@ export function Menu() {
             {perms.manageFleet && item('user', 'Șoferi', () => loc.route('/admin/drivers'))}
             {perms.manageFleet && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
             {perms.manageFleet && item('wrench', 'Mentenanță', () => loc.route('/admin/maintenance'))}
+            {perms.manageFleet && item('report', 'Documente vehicule', () => loc.route('/admin/documents'))}
             {perms.manageFleet && item('truck', 'Vehicule (editare fișă)', () => loc.route('/vehicles'))}
             {perms.manageFleet && item('alert', 'Alerte', () => loc.route('/admin/alerts'))}
             {perms.manageUsers && item('user', 'Utilizatori', () => loc.route('/admin/users'))}
