@@ -4400,7 +4400,8 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       stopMin: parseInt(req.query.stopMin) || 5,
       limit: parseInt(req.query.limit) || 90,
       refuelMin: parseInt(req.query.refuelMin) || 10,
-      dropMin: parseInt(req.query.dropMin) || 10
+      dropMin: parseInt(req.query.dropMin) || 10,
+      geofenceId: parseInt(req.query.geofenceId) || null
     };
     // Tenant: super → null (toate zonele, by design); non-super → compania sa. Orphan non-super (companyId null)
     // primește -1 ca să NU cadă pe „toate" (getGeofences(-1) → 0 zone), evitând scurgerea numelor de zone străine.

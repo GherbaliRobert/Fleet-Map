@@ -259,6 +259,65 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
     summary: { 'Vizite': total, 'Timp total în zone': fmtDur(totalDwell) }, charts };
 }
 
+// Raport Hotspot: pentru un hotspot (geofence) ales, defalcă timpul fiecărui vehicul în perimetru
+// pe 3 stări (în mișcare / ralanti / motor oprit) + ore de funcționare (mișcare+ralanti).
+// Pauzele mari între două puncte aflate în zonă (device adormit) = parcat cu motorul oprit în perimetru.
+async function rHotspot(db, imeis, from, to, opts, devMap, companyId) {
+  const gid = parseInt((opts && opts.geofenceId) || 0);
+  const gfs = await db.getGeofences(companyId);
+  const g = gid ? (gfs || []).find(x => x.id === gid) : null;
+  if (!g) return { columns: ['Vehicul'], rows: [], summary: { 'Atenție': 'Alege un hotspot (zonă) pentru acest raport.' }, charts: [] };
+  const c = typeof g.coordinates === 'string' ? JSON.parse(g.coordinates) : g.coordinates;
+  const zone = { name: g.name, type: g.type, center: c && c.center, radius: c && c.radius, coords: Array.isArray(c) ? c : null };
+  const GAP = 1800; // s — pauză peste 30 min între puncte din zonă = device adormit (parcat, motor oprit)
+
+  const recs = [];
+  let T_move = 0, T_idle = 0, T_off = 0, T_total = 0, T_visits = 0, vehs = 0;
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    if (!pts.length) continue;
+    const visits = zoneVisits(pts, zone);
+    let move = 0, idle = 0, off = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const pr = pts[i - 1], p = pts[i];
+      if (!insideZone(pr.latitude, pr.longitude, zone) || !insideZone(p.latitude, p.longitude, zone)) continue;
+      const dt = (t(p) - t(pr)) / 1000;
+      if (dt <= 0) continue;
+      if (dt > GAP) off += dt;                              // pauză = parcat cu motorul oprit în zonă
+      else if ((pr.speed || 0) > IDLE_SPEED) move += dt;   // în mișcare
+      else if (ignOn(pr)) idle += dt;                      // ralanti (motor pornit, pe loc)
+      else off += dt;                                       // motor oprit
+    }
+    const total = move + idle + off;
+    if (total <= 0 && !visits.length) continue;
+    vehs++; T_move += move; T_idle += idle; T_off += off; T_total += total; T_visits += visits.length;
+    recs.push({ name: label(devMap, imei), total, move, idle, off, eng: move + idle, visits: visits.length,
+      first: visits.length ? visits[0].enter : null, last: visits.length ? visits[visits.length - 1].exit : null });
+  }
+  recs.sort((a, b) => b.total - a.total);
+  const rows = recs.map(r => [ r.name, fmtDur(r.total), fmtDur(r.move), fmtDur(r.idle), fmtDur(r.off), fmtDur(r.eng), r.visits, fmtTs(r.first), fmtTs(r.last) ]);
+  const top = recs.slice(0, 10);
+  const charts = recs.length ? [
+    { type: 'doughnut', title: 'Timp pe stări (în perimetru)', labels: ['În mișcare', 'Ralanti', 'Motor oprit'], datasets: [{ label: 'min', data: [Math.round(T_move / 60), Math.round(T_idle / 60), Math.round(T_off / 60)] }] },
+    { type: 'bar', title: 'Ore de funcționare pe vehicul (h)', labels: top.map(r => r.name), datasets: [{ label: 'ore', data: top.map(r => Math.round(r.eng / 360) / 10) }] }
+  ] : [];
+  return {
+    columns: ['Vehicul', 'Timp în perimetru', 'În mișcare', 'Ralanti', 'Motor oprit', 'Ore funcționare', 'Vizite', 'Prima intrare', 'Ultima ieșire'],
+    rows,
+    summary: {
+      'Hotspot': g.name,
+      'Vehicule în perimetru': vehs,
+      'Timp total în perimetru': fmtDur(T_total),
+      'În mișcare': fmtDur(T_move),
+      'Ralanti': fmtDur(T_idle),
+      'Motor oprit': fmtDur(T_off),
+      'Ore de funcționare': fmtDur(T_move + T_idle),
+      'Vizite totale': T_visits
+    },
+    charts
+  };
+}
+
 async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (per vehicul/zi)
   const drv = {}; try { (await db.getDrivers()).forEach(d => drv[d.id] = d.name); } catch (e) {}
   const rows = []; let totalKm = 0, totalDrive = 0; const drvKm = {}, dayDrive = {};
@@ -686,6 +745,7 @@ const REPORTS = {
   can:         { label: 'Date CAN',               cat: 'can',          fn: rCan },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   fn: rSpeeding },
   geofence:    { label: 'Vizite în zone',         cat: 'evenimente',   fn: rGeofence },
+  hotspot:     { label: 'Raport Hotspot',         cat: 'evenimente',   fn: rHotspot },
   events:      { label: 'Evenimente (alerte)',    cat: 'evenimente',   fn: rEvents },
   ecodrive:    { label: 'EcoDrive (comportament)', cat: 'siguranta',   fn: rEcoDrive },
   ecodrive_drivers: { label: 'EcoDrive — clasament șoferi', cat: 'siguranta', fn: rEcoDriveDrivers }

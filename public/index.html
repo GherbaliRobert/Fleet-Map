@@ -3424,7 +3424,7 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Rapoarte ───
     let repCatalog = null, lastReport = null, repCurrentCat = null;
-    const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', events:'fa-bell' };
+    const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell' };
     async function openReports() {
       if (!repCatalog) { try { repCatalog = await (await fetch('/api/reports')).json(); } catch (e) { repCatalog = { categories: [], reports: [] }; } }
       document.getElementById('rep-type').innerHTML = repCatalog.reports.map(r => `<option value="${r.type}">${r.label}</option>`).join('');
@@ -3518,7 +3518,17 @@ const pozitii = await r.json();</code></pre>
       if (t === 'speeding') html = '<label class="rep-f"><span>Limită (km/h)</span><input type="number" id="rep-limit" value="90" style="width:90px;"></label>';
       else if (['stops','trips','route','daily'].includes(t)) html = '<label class="rep-f"><span>Oprire min (min)</span><input type="number" id="rep-stopmin" value="5" style="width:90px;"></label>';
       else if (['consumption','fuel'].includes(t)) html = '<label class="rep-f"><span>Prag alimentare (L)</span><input type="number" id="rep-refuel" value="10" style="width:100px;"></label>';
+      else if (t === 'hotspot') html = '<label class="rep-f"><span>Hotspot (zonă)</span><select id="rep-geofence" style="min-width:170px;"><option value="">Se încarcă…</option></select></label>';
       document.getElementById('rep-extra').innerHTML = html;
+      if (t === 'hotspot') repLoadGeofences();
+    }
+    function repLoadGeofences() {
+      fetch('/api/geofences', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (gfs) {
+        var sel = document.getElementById('rep-geofence'); if (!sel) return;
+        if (!Array.isArray(gfs) || !gfs.length) { sel.innerHTML = '<option value="">(nicio zonă definită)</option>'; return; }
+        var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
+        sel.innerHTML = gfs.map(function (g) { return '<option value="' + g.id + '">' + esc(g.name || ('Zonă ' + g.id)) + '</option>'; }).join('');
+      }).catch(function () { var sel = document.getElementById('rep-geofence'); if (sel) sel.innerHTML = '<option value="">(eroare la încărcare)</option>'; });
     }
     function repBuildUrl() {
       const t = document.getElementById('rep-type').value;
@@ -3532,6 +3542,8 @@ const pozitii = await r.json();</code></pre>
       const lim = document.getElementById('rep-limit'); if (lim) url += '&limit=' + (parseInt(lim.value)||90);
       const sm = document.getElementById('rep-stopmin'); if (sm) url += '&stopMin=' + (parseInt(sm.value)||5);
       const rf = document.getElementById('rep-refuel'); if (rf) url += '&refuelMin=' + (parseInt(rf.value)||10);
+      const gf = document.getElementById('rep-geofence');
+      if (gf) { if (!gf.value) { alert('Alege un hotspot (zonă) pentru raport.'); return null; } url += '&geofenceId=' + encodeURIComponent(gf.value); }
       return url;
     }
     async function repGenerate() {
