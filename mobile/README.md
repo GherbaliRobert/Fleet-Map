@@ -80,6 +80,11 @@ Capacitor adaugă `INTERNET`. Pentru push pe Android 13+ adaugă:
 2. Descarcă `google-services.json` → pune-l în `mobile/android/app/`.
 3. În Firebase → Project settings → Service accounts → **Generate new private key** → JSON.
 4. Pune conținutul JSON în variabila de mediu a serverului: `FIREBASE_SA_JSON` (pe Railway: Settings → Variables). Serverul îl citește la boot (`initFcm`), no-op dacă lipsește.
+5. **Pe server, instalează `firebase-admin`** (dependență grea, intenționat NU e în `package.json` ca să nu îngreuneze deploy-ul când push-ul nu e folosit):
+   ```bash
+   npm install firebase-admin   # apoi commit package.json + package-lock.json actualizate
+   ```
+   Cât timp `firebase-admin` nu e instalat SAU `FIREBASE_SA_JSON` lipsește, `sendFcmToUser` e no-op (restul aplicației merge normal). Verifică build-ul pe imaginea Railway (node-alpine) după instalare.
 
 ### Pluginuri (deja în package.json)
 `@capacitor/push-notifications`. Fluxul e în `src/lib/push.ts` (cere permisiune → `getToken` → `POST /api/push/device`). Serverul trimite automat FCM când se creează o notificare (`sendPushToUser` → `sendFcmToUser`).
