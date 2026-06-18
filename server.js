@@ -699,6 +699,58 @@ app.use(sessionMiddleware);
 app.use(apiKeyAuth); // permite și autentificarea programatică prin cheie API
 app.use(refreshAuth); // re-sincronizează rol/companie din DB (sesiuni vechi cu rol învechit)
 
+// ─── Headere de securitate (toate răspunsurile) ───
+const _hsts = (process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production');
+// CSP permisiv (pas 1): permite inline (index.html are scripturi inline) + CDN-urile/tile-urile folosite.
+// Activabil prin CSP_ENABLED!=='false'. Strângem ulterior. frame-ancestors protejează clickjacking.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net",
+  "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https: wss:",
+  "worker-src 'self' blob:",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "object-src 'none'",
+].join('; ');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=()');
+  if (_hsts) res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  if (process.env.CSP_ENABLED !== 'false') res.setHeader('Content-Security-Policy', CSP);
+  next();
+});
+
+// ─── Rate limiting in-house (per utilizator/IP, fereastră 60s) pe /api ───
+// Fără dependențe noi (model loginAttempts). Protejează costul AI + abuzul de date la scară.
+const rlBuckets = new Map(); // key -> { count, resetAt }
+const RL_GEN = parseInt(process.env.RATE_LIMIT_GEN) || 1200; // ~20 req/s/utilizator (generos, doar anti-abuz/DoS)
+const RL_AI = parseInt(process.env.RATE_LIMIT_AI) || 20;     // cost AI
+app.use((req, res, next) => {
+  if (process.env.RATE_LIMIT_ENABLED === 'false') return next(); // kill-switch fără redeploy
+  const p = req.path || '';
+  if (p.indexOf('/api/') !== 0 || p.indexOf('/api/health') === 0) return next();
+  const a = getAuth(req);
+  const id = (a && a.userId) ? ('u' + a.userId) : ('ip' + clientIp(req));
+  const isAi = p.indexOf('/api/ai/') === 0;
+  const max = isAi ? RL_AI : RL_GEN;
+  const key = id + (isAi ? ':ai' : ':gen');
+  const now = Date.now();
+  let b = rlBuckets.get(key);
+  if (!b || now > b.resetAt) { b = { count: 0, resetAt: now + 60000 }; rlBuckets.set(key, b); }
+  b.count++;
+  if (rlBuckets.size > 5000) { for (const [k, v] of rlBuckets) if (now > v.resetAt) rlBuckets.delete(k); } // prune oportunist
+  if (b.count > max) {
+    res.setHeader('Retry-After', Math.ceil((b.resetAt - now) / 1000));
+    return res.status(429).json({ error: 'Prea multe cereri. Reîncearcă în scurt timp.' });
+  }
+  next();
+});
+
 // CORS pentru API (activează prin API_CORS_ORIGIN, ex: "*" sau "https://site.ro")
 const API_CORS_ORIGIN = process.env.API_CORS_ORIGIN;
 if (API_CORS_ORIGIN) {
@@ -1121,10 +1173,12 @@ app.post('/api/mobile/login', async (req, res) => {
     if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
     clearLoginFails(ip);
     const token = 'gpsk_' + crypto.randomBytes(24).toString('hex');
-    await db.createApiKey(user.id, 'mobile:' + (String(device || 'app').slice(0, 40)), hashApiKey(token), token.slice(0, 12));
+    // Token mobil cu expirare 90 zile (telefonul = vector de scurgere); clientul re-loghează la 401.
+    const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    await db.createApiKey(user.id, 'mobile:' + (String(device || 'app').slice(0, 40)), hashApiKey(token), token.slice(0, 12), expiresAt);
     db.setUserLastLogin(user.id).catch(() => {});
     db.logAudit({ userId: user.id, username: user.username, action: 'mobile_login', entity: 'session', ip });
-    res.json({ token, username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
+    res.json({ token, expires_at: expiresAt.toISOString(), username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2484,6 +2538,10 @@ app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const from = req.query.from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const to = req.query.to || new Date().toISOString();
+    // Plafon fereastră anti-OOM la scară (2000 vehicule): max 92 zile/cerere. (getDeviceHistory aplică și LIMIT dur.)
+    const spanMs = new Date(to).getTime() - new Date(from).getTime();
+    if (!Number.isFinite(spanMs) || spanMs < 0) return res.status(400).json({ error: 'Interval invalid' });
+    if (spanMs > 92 * 24 * 60 * 60 * 1000) return res.status(400).json({ error: 'Interval prea mare (max 92 de zile per cerere). Restrânge perioada.' });
     const history = await db.getDeviceHistory(imei, from, to);
     // Format compatibil cu frontend-ul vechi (array) sau extins (?ext=1: include device.speed_limit + summary overspeed)
     if (!req.query.ext) return res.json(history);
@@ -3637,9 +3695,9 @@ app.delete('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async
 // ─── Documente vehicul (ITP/RCA/CASCO/Rovinietă/...) ───
 app.get('/api/documents', requireAuth, withScope, async (req, res) => {
   try {
-    let rows = await db.getVehicleDocuments(req.query.imei, req.isSuper ? null : req.companyId);
-    if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei));
     if (req.query.imei && !canAccessImei(req, req.query.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    let rows = await db.getVehicleDocuments(req.query.imei, req.isSuper ? null : req.companyId);
+    if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei)); // scope per-vehicul (deja aplicat)
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

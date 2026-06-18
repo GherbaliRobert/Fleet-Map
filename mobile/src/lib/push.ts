@@ -1,8 +1,19 @@
 // Push nativ (FCM Android / APNs iOS). No-op în browser dev — rulează doar pe device.
 import { Capacitor } from '@capacitor/core';
 import { Api } from '../api/endpoints';
+import { showToast } from '../app/store';
 
 let registered = false;
+
+// Înregistrează tokenul la backend cu retry exponențial (3 încercări). Eșecul nu mai e silențios.
+async function registerToken(token: string, attempt = 0) {
+  try {
+    await Api.registerDevice(token, Capacitor.getPlatform());
+  } catch {
+    if (attempt < 3) { setTimeout(() => registerToken(token, attempt + 1), 2000 * Math.pow(2, attempt)); return; }
+    showToast('Notificările push nu au putut fi activate. Reintră în cont pentru a reîncerca.', true);
+  }
+}
 
 export async function initPush() {
   // Push-ul cere Firebase configurat (google-services.json). Fără el, PushNotifications.register()
@@ -19,10 +30,12 @@ export async function initPush() {
 
     await PushNotifications.register();
 
-    PushNotifications.addListener('registration', (t) => {
-      Api.registerDevice(t.value, Capacitor.getPlatform()).catch(() => {});
+    PushNotifications.addListener('registration', (t) => { registerToken(t.value); });
+    PushNotifications.addListener('registrationError', (err) => {
+      registered = false; // permite reîncercarea la următoarea inițializare
+      showToast('Eroare la activarea notificărilor push.', true);
+      console.warn('[push] registrationError', err);
     });
-    PushNotifications.addListener('registrationError', () => { /* silent */ });
 
     // Tap pe notificare → deep-link la vehicul (reload simplu; sesiunea e persistată în storage).
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {

@@ -2327,11 +2327,11 @@ const pozitii = await r.json();</code></pre>
         '<th style="padding:6px;">Data</th><th>Utilizator</th><th>Acțiune</th><th>Entitate</th><th>Detalii</th><th>IP</th></tr></thead><tbody>' +
         rows.map(r => `<tr style="border-top:1px solid var(--border);">
           <td style="padding:6px;white-space:nowrap;">${new Date(r.created_at).toLocaleString('ro-RO')}</td>
-          <td>${r.username||'-'}</td>
-          <td><span class="role">${r.action}</span></td>
-          <td>${(r.entity||'')}${r.entity_id ? ' #'+r.entity_id : ''}</td>
-          <td style="color:var(--text-muted);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.details ? JSON.stringify(r.details) : ''}</td>
-          <td style="color:var(--text-muted);">${r.ip||''}</td>
+          <td>${_ssEsc(r.username||'-')}</td>
+          <td><span class="role">${_ssEsc(r.action)}</span></td>
+          <td>${_ssEsc(r.entity||'')}${r.entity_id ? ' #'+_ssEsc(r.entity_id) : ''}</td>
+          <td style="color:var(--text-muted);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.details ? _ssEsc(JSON.stringify(r.details)) : ''}</td>
+          <td style="color:var(--text-muted);">${_ssEsc(r.ip||'')}</td>
         </tr>`).join('') + '</tbody></table>';
     }
     function closeAudit() {
@@ -2345,7 +2345,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('apikey-new').style.display = 'none';
       if (!ueUsersCache.length) { const r = await fetch('/api/users'); ueUsersCache = await r.json(); }
       document.getElementById('apikey-user').innerHTML = ueUsersCache
-        .map(u => `<option value="${u.id}">${u.username} (${ROLE_LABELS[u.role]||u.role})</option>`).join('');
+        .map(u => `<option value="${u.id}">${_ssEsc(u.username)} (${_ssEsc(ROLE_LABELS[u.role]||u.role)})</option>`).join('');
       await loadApiKeys();
     }
     function closeApiKeys() {

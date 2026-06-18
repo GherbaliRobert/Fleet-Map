@@ -130,7 +130,10 @@ async function raWatch(ctx) {
                 });
               }
             }
-          } catch (e) { /* lipsă date istoric — nu emitem alertă */ }
+          } catch (e) {
+            // Eroare tranzitorie la istoric → log observabil (nu mai e silențioasă), continuă bucla.
+            if (ctx.db && ctx.db.logError) ctx.db.logError({ level: 'warn', message: 'raWatch tacho hist: ' + (e && e.message), route: 'agents/raWatch', companyId: ctx.companyId, context: { imei, check: 'tacho' } }).catch(() => {});
+          }
         }
       }
     }
@@ -208,7 +211,10 @@ async function raWatch(ctx) {
           }
           if (idleMaxMin >= idleMaxMinPrag) findings.push({ imei, severity: 'info', agent: 'watch', fkey: 'idle_' + imei, title: name + ': ralanti ~' + Math.round(idleMaxMin) + ' min azi', body: 'Motor pornit, staționat îndelung (peste ' + Math.round(idleMaxMinPrag) + ' min). Combustibil irosit.' });
         }
-      } catch (e) { /* lipsă date istoric — fără alertă */ }
+      } catch (e) {
+        // Eroare tranzitorie la istoric (furt/idle) → log observabil; alertele time-sensitive nu mai dispar tăcut.
+        if (ctx.db && ctx.db.logError) ctx.db.logError({ level: 'warn', message: 'raWatch fuel/idle hist: ' + (e && e.message), route: 'agents/raWatch', companyId: ctx.companyId, context: { imei, check: 'fuel_idle' } }).catch(() => {});
+      }
     }
   }
   return { findings };

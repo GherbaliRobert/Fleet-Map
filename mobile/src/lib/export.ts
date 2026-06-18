@@ -16,14 +16,19 @@ export async function exportReport(type: string, from: string, to: string, imeis
   const fname = `raport_${type}_${from.slice(0, 10)}.${format}`;
 
   if (Capacitor.isNativePlatform()) {
-    // CapacitorHttp cu responseType 'blob' întoarce base64 în res.data.
-    const res = await CapacitorHttp.request({ url, method: 'GET', headers, responseType: 'blob' as any });
-    if (res.status < 200 || res.status >= 300) throw new Error('Export eșuat (' + res.status + ')');
-    const { Filesystem, Directory } = await import('@capacitor/filesystem');
-    const { Share } = await import('@capacitor/share');
-    await Filesystem.writeFile({ path: fname, data: res.data as string, directory: Directory.Cache });
-    const { uri } = await Filesystem.getUri({ path: fname, directory: Directory.Cache });
-    await Share.share({ title: fname, files: [uri] });
+    try {
+      // CapacitorHttp cu responseType 'blob' întoarce base64 în res.data.
+      const res = await CapacitorHttp.request({ url, method: 'GET', headers, responseType: 'blob' as any });
+      if (res.status < 200 || res.status >= 300) throw new Error('Export eșuat (' + res.status + ')');
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      const { Share } = await import('@capacitor/share');
+      await Filesystem.writeFile({ path: fname, data: res.data as string, directory: Directory.Cache });
+      const { uri } = await Filesystem.getUri({ path: fname, directory: Directory.Cache });
+      await Share.share({ title: fname, files: [uri] });
+    } catch (e: any) {
+      // Storage plin / permisiune / share anulat → mesaj clar, nu eșec silențios.
+      throw new Error(e?.message ? ('Export: ' + e.message) : 'Export indisponibil pe acest dispozitiv.');
+    }
   } else {
     const resp = await fetch(url, { headers });
     if (!resp.ok) throw new Error('Export eșuat (' + resp.status + ')');

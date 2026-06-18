@@ -422,10 +422,13 @@ async function initDb() {
         prefix VARCHAR(16),
         last_used TIMESTAMP,
         revoked BOOLEAN DEFAULT false,
+        expires_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_apikeys_user ON api_keys (user_id)`);
+    // Migrație additivă (DB existente): coloana de expirare a tokenului. NULL = fără expirare (chei vechi/integrări).
+    await client.query(`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP`).catch(() => {});
 
     // Notificări (centru in-app) — alerte, expirări documente, sistem
     await client.query(`
@@ -1286,7 +1289,8 @@ async function setDevicesCompanyBulk(imeis, companyId) {
   return r.affectedRows || r.rowCount || 0;
 }
 
-async function getDeviceHistory(imei, from, to) {
+async function getDeviceHistory(imei, from, to, limit) {
+  const lim = Math.min(Math.max(parseInt(limit) || 50000, 1), 200000); // plafon dur anti-OOM
   // UNION cu positions_archive: dispozitivele arhivate își păstrează istoricul acolo chiar după ce pozițiile vii
   // expiră din hypertable (retenție 180z). DISTINCT ON (timestamp) elimină dublurile din fereastra de overlap
   // (imediat după arhivare datele sunt în ambele tabele). Activele normale: positions_archive e gol → doar positions.
@@ -1300,6 +1304,7 @@ async function getDeviceHistory(imei, from, to) {
         FROM positions_archive WHERE imei = $1 AND timestamp BETWEEN $2 AND $3
     ) u
     ORDER BY timestamp ASC
+    LIMIT ${lim}
   `, [imei, from, to]);
   return result.rows;
 }
@@ -1477,10 +1482,13 @@ async function getAuditLog(limit = 100, offset = 0, companyId) {
 
 // ─── Chei API ───
 
-async function createApiKey(userId, name, keyHash, prefix) {
+async function createApiKey(userId, name, keyHash, prefix, expiresAt) {
+  // expiresAt: Date | ISO string | ms epoch | null. NULL = cheie fără expirare (integrări server).
+  let exp = null;
+  if (expiresAt != null) exp = (expiresAt instanceof Date) ? expiresAt.toISOString() : (typeof expiresAt === 'number' ? new Date(expiresAt).toISOString() : String(expiresAt));
   const result = await pool.query(
-    'INSERT INTO api_keys (user_id, name, key_hash, prefix) VALUES ($1,$2,$3,$4) RETURNING id, user_id, name, prefix, created_at',
-    [userId, name || null, keyHash, prefix]
+    'INSERT INTO api_keys (user_id, name, key_hash, prefix, expires_at) VALUES ($1,$2,$3,$4,$5) RETURNING id, user_id, name, prefix, expires_at, created_at',
+    [userId, name || null, keyHash, prefix, exp]
   );
   return result.rows[0];
 }
@@ -1508,6 +1516,7 @@ async function getUserByApiKey(keyHash) {
     SELECT u.id, u.username, u.role, u.active, u.company_id, k.id AS key_id
     FROM api_keys k JOIN users u ON u.id = k.user_id
     WHERE k.key_hash = $1 AND k.revoked = false
+      AND (k.expires_at IS NULL OR k.expires_at > NOW())
   `, [keyHash]);
   const row = result.rows[0];
   if (row) { pool.query('UPDATE api_keys SET last_used = NOW() WHERE id = $1', [row.key_id]).catch(() => {}); }
