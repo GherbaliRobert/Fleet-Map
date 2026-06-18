@@ -1,6 +1,6 @@
 import { LocationProvider, Router, Route, useLocation } from 'preact-iso';
 import { useEffect } from 'preact/hooks';
-import { token, authReady, bootstrap, toastMsg, startPolling, stopPolling, refreshUnread } from './app/store';
+import { token, authReady, bootstrap, toastMsg, startLive, stopLive, refreshUnread } from './app/store';
 import { App as CapApp } from '@capacitor/app';
 import { initPush } from './lib/push';
 import { TabBar } from './components/TabBar';
@@ -46,12 +46,12 @@ function Shell() {
   // Polling live global cât suntem autentificați; pauză pe background, reluare pe foreground.
   useEffect(() => {
     if (!token.value) return;
-    startPolling(7000);
+    startLive(7000);
     refreshUnread();
     initPush();
     const unreadTimer = setInterval(refreshUnread, 30000);
-    const h = CapApp.addListener('appStateChange', ({ isActive }) => { if (isActive) startPolling(7000); else stopPolling(); });
-    return () => { stopPolling(); clearInterval(unreadTimer); h.then((x) => x.remove()); };
+    const h = CapApp.addListener('appStateChange', ({ isActive }) => { if (isActive) startLive(7000); else stopLive(); });
+    return () => { stopLive(); clearInterval(unreadTimer); h.then((x) => x.remove()); };
   }, [token.value]);
 
   if (!authReady.value) return <Splash />;

@@ -1,7 +1,7 @@
 import { signal, computed } from '@preact/signals';
 import { Api } from '../api/endpoints';
 import type { Me, Position } from '../api/endpoints';
-import { setAuthToken, onUnauthorized } from '../api/client';
+import { setAuthToken, onUnauthorized, API_BASE } from '../api/client';
 import { saveToken, loadToken, clearToken, saveUser, loadUser, getTheme, setTheme } from '../lib/storage';
 
 export const theme = signal<'dark' | 'light'>('dark');
@@ -61,7 +61,7 @@ export async function login(username: string, password: string) {
 }
 
 export async function logout() {
-  stopPolling();
+  stopLive();
   token.value = null; me.value = null; vehicles.value = []; unread.value = 0;
   setAuthToken(null);
   await clearToken();
@@ -84,6 +84,69 @@ export function startPolling(ms = 7000) {
 export function stopPolling() {
   polling = false;
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// ─── Live updates: WebSocket (latență mică + sarcină redusă la scară) cu fallback la polling ───
+// Pe device: wss://ratrack.ro/?token=… (webview-ul nu trimite cookie → auth pe token). Pe web dev: ws://localhost:3000.
+const WS_BASE = (API_BASE || 'http://localhost:3000').replace(/^http/i, 'ws');
+let ws: WebSocket | null = null;
+let wsWanted = false;
+let wsReconnect: any = null;
+let wsBackoff = 1500;
+let livePollMs = 7000;
+
+function upsertVehicle(pos: Position) {
+  if (!pos || !pos.imei) return;
+  const arr = vehicles.value;
+  const i = arr.findIndex((v) => v.imei === pos.imei);
+  if (i >= 0) { const next = arr.slice(); next[i] = { ...arr[i], ...pos }; vehicles.value = next; }
+  else { vehicles.value = [...arr, pos]; }
+}
+function applyWs(msg: any) {
+  if (!msg || !msg.type) return;
+  if (msg.type === 'init' && Array.isArray(msg.data)) { vehicles.value = msg.data; vehiclesLoading.value = false; return; }
+  if (msg.type === 'position') { upsertVehicle(msg.data); return; }
+  if (msg.type === 'positions' && Array.isArray(msg.data)) {
+    const map = new Map(vehicles.value.map((v) => [v.imei, v] as [string, Position]));
+    for (const p of msg.data) if (p && p.imei) map.set(p.imei, { ...(map.get(p.imei) || {}), ...p } as Position);
+    vehicles.value = Array.from(map.values());
+    return;
+  }
+  if (msg.type === 'stale' && msg.data && msg.data.imei) { upsertVehicle({ imei: msg.data.imei, speed: 0, stale: true } as any); return; }
+  if (msg.type === 'disconnect' && msg.data && msg.data.imei && msg.data.reason === 'purged') {
+    vehicles.value = vehicles.value.filter((v) => v.imei !== msg.data.imei); return;
+  }
+}
+function connectWs() {
+  if (!wsWanted || !token.value) return;
+  try {
+    const sock = new WebSocket(WS_BASE + '/?token=' + encodeURIComponent(token.value));
+    ws = sock;
+    sock.onopen = () => { wsBackoff = 1500; stopPolling(); }; // WS sănătos → oprește polling-ul fallback
+    sock.onmessage = (ev) => { try { applyWs(JSON.parse(ev.data)); } catch { /* ignore frame invalid */ } };
+    sock.onerror = () => { try { sock.close(); } catch { /* ignore */ } };
+    sock.onclose = () => {
+      if (ws === sock) ws = null;
+      if (!wsWanted) return;
+      startPolling(livePollMs); // fallback imediat la polling
+      if (wsReconnect) clearTimeout(wsReconnect);
+      wsReconnect = setTimeout(connectWs, wsBackoff);
+      wsBackoff = Math.min(wsBackoff * 2, 30000); // backoff exponențial, plafon 30s
+    };
+  } catch { startPolling(livePollMs); } // WebSocket indisponibil → doar polling
+}
+
+// Pornește fluxul live: polling imediat (date instant + fallback) + încearcă WS (preia când e gata).
+export function startLive(ms = 7000) {
+  livePollMs = ms;
+  startPolling(ms);
+  if (!wsWanted) { wsWanted = true; connectWs(); }
+}
+export function stopLive() {
+  wsWanted = false;
+  if (wsReconnect) { clearTimeout(wsReconnect); wsReconnect = null; }
+  if (ws) { try { ws.close(); } catch { /* ignore */ } ws = null; }
+  stopPolling();
 }
 
 onUnauthorized(() => { logout(); });

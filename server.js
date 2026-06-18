@@ -5084,7 +5084,47 @@ const wsDummyRes = {
   on() {}, once() {}, emit() {}, getHeaderNames() { return []; }
 };
 
+// Setează contextul de acces pe socket + trimite init. Comun pt. cookie și token.
+async function _wsAuthContext(ws, userId, role, companyId, label) {
+  ws._userId = userId;
+  ws._role = role;
+  ws._isAdmin = hasPerm(role, 'manageUsers');
+  const wsCompanyId = await resolveCompanyId({ userId, role, companyId });
+  ws._companyId = wsCompanyId;
+  ws._allowedImeis = await getAllowedImeiSet(userId, role, wsCompanyId);
+  if (!isSuper(role) && wsCompanyId != null && (await _accessStatusCached(wsCompanyId)).status === 'expired') {
+    try { ws.send(JSON.stringify({ type: 'error', data: { error: 'access_expired' } })); } catch (e) {}
+    ws.close(); return false;
+  }
+  ws._authed = true;
+  const positions = Array.from(livePositions.values())
+    .filter(p => ws._allowedImeis == null || ws._allowedImeis.has(p.imei))
+    .filter(p => ws._companyId === demoCompanyId || !DEMO_SET.has(p.imei));
+  try { ws.send(JSON.stringify({ type: 'init', data: positions })); } catch (e) {}
+  console.log(`[WS] Client conectat la live feed (${label})`);
+  return true;
+}
+
 wss.on('connection', (ws, req) => {
+  // ── Autentificare prin TOKEN (mobil): ?token=gpsk_... în URL handshake. Webview-ul Capacitor
+  // nu trimite cookie cross-site, deci folosim tokenul (peste wss:// → criptat pe fir). ──
+  const tokenMatch = /[?&]token=([^&\s]+)/.exec(req.url || '');
+  if (tokenMatch) {
+    (async () => {
+      try {
+        const key = decodeURIComponent(tokenMatch[1]);
+        const user = await db.getUserByApiKey(hashApiKey(key));
+        if (!user || user.active === false) {
+          try { ws.send(JSON.stringify({ type: 'error', data: { error: 'Neautorizat' } })); } catch (e) {}
+          return ws.close();
+        }
+        await _wsAuthContext(ws, user.id, user.role, user.company_id, 'token:' + user.username);
+      } catch (e) { try { ws.close(); } catch (_) {} }
+    })();
+    ws.on('close', () => { console.log('[WS] Client deconectat'); });
+    return;
+  }
+
   // Autentificare prin sesiunea HTTP (cookie) și calculul accesului pe vehicule
   sessionMiddleware(req, wsDummyRes, async () => {
     if (!req.session || !req.session.userId) {
