@@ -10,7 +10,7 @@ import { VehicleDetail } from './screens/VehicleDetail';
 import { Stats } from './screens/Stats';
 import { Notifications } from './screens/Notifications';
 import { RouteScreen } from './screens/RouteScreen';
-import { ReportScreen } from './screens/ReportScreen';
+import { Reports } from './screens/Reports';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -47,7 +47,7 @@ function Shell() {
   if (!token.value) return <Login />;
 
   const path = loc.path || '/';
-  const showTabs = path === '/' || path === '/vehicles' || path === '/stats' || path === '/notifications';
+  const showTabs = path === '/' || path === '/vehicles' || path === '/stats' || path === '/reports' || path === '/notifications';
 
   return (
     <>
@@ -56,8 +56,8 @@ function Shell() {
         <Route path="/vehicles" component={Vehicles} />
         <Route path="/vehicles/:imei" component={VehicleDetail} />
         <Route path="/vehicles/:imei/route" component={RouteScreen} />
-        <Route path="/vehicles/:imei/report" component={ReportScreen} />
         <Route path="/stats" component={Stats} />
+        <Route path="/reports" component={Reports} />
         <Route path="/notifications" component={Notifications} />
         <Route default component={Vehicles} />
       </Router>

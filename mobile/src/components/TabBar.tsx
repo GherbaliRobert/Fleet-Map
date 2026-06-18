@@ -6,6 +6,7 @@ import './tabbar.css';
 const TABS: { path: string; label: string; icon: IconName }[] = [
   { path: '/vehicles', label: 'Autovehicule', icon: 'car' },
   { path: '/stats', label: 'Statistici', icon: 'chart' },
+  { path: '/reports', label: 'Rapoarte', icon: 'report' },
   { path: '/notifications', label: 'Notificări', icon: 'bell' },
 ];
 

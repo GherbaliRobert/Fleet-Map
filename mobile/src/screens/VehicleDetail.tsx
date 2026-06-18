@@ -94,7 +94,7 @@ export function VehicleDetail() {
 
         <div class="d-actions">
           <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/route`)}><Icon name="route" size={18} class="ic" /> Vezi traseu</button>
-          <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/report`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>
+          <button class="d-act" onClick={() => loc.route(`/reports?imei=${encodeURIComponent(imei)}`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>
           <button class="d-act" onClick={() => setSheet('can')}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
           <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>
           <button class="d-act" disabled={!me.value?.features?.tahograf} onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>

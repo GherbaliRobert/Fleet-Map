@@ -24,6 +24,9 @@ export interface NotificationItem {
 }
 export interface Group { id: number; name: string; color?: string; count?: number; }
 export interface DocItem { id: number; imei?: string; doc_type?: string; expiry_date?: string; number?: string; [k: string]: any; }
+export interface ReportTypeInfo { type: string; label: string; cat: string; }
+export interface ReportChartDef { type: string; title: string; labels: string[]; datasets: { label: string; data: number[] }[]; }
+export interface ReportResult { columns: string[]; rows: any[][]; summary: Record<string, any>; charts?: ReportChartDef[]; label?: string; type?: string; }
 
 export const Api = {
   mobileLogin: (username: string, password: string, device?: string) =>
@@ -44,4 +47,11 @@ export const Api = {
   documents: () => api<DocItem[]>('/api/documents'),
   registerDevice: (token: string, platform: string) => api('/api/push/device', { method: 'POST', body: { token, platform } }),
   unregisterDevice: (token: string) => api('/api/push/device/unregister', { method: 'POST', body: { token } }),
+  reportTypes: () => api<{ categories: { key: string; label: string }[]; reports: ReportTypeInfo[] }>('/api/reports'),
+  runReport: (type: string, from: string, to: string, imeis?: string[]) => {
+    const e = encodeURIComponent;
+    let q = `?from=${e(from)}&to=${e(to)}`;
+    if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
+    return api<ReportResult>(`/api/reports/${e(type)}${q}`);
+  },
 };

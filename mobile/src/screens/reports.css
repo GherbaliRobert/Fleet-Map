@@ -1,0 +1,46 @@
+.rp-controls { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.rp-pick { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.rp-pick:active { background: var(--bg-dark); }
+.rp-pick .ic { color: var(--accent); flex: 0 0 auto; }
+.rp-pick .lbl { font-size: 12px; color: var(--text-muted); }
+.rp-pick .val { font-weight: 700; font-size: 14.5px; margin-top: 1px; }
+.rp-pick .mn { flex: 1; min-width: 0; }
+
+.rp-periods { display: flex; gap: 7px; }
+.rp-period { flex: 1; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary);
+  border-radius: 10px; padding: 9px 4px; font-weight: 700; font-size: 12.5px; }
+.rp-period.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
+
+.rp-gen { height: 48px; }
+
+/* rezultate */
+.rp-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; padding: 4px 14px 12px; }
+.rp-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; }
+.rp-kpi .v { font-weight: 800; font-size: 18px; color: var(--accent); }
+.rp-kpi .l { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+
+.rc-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 0 14px 12px; }
+.rc-title { font-weight: 700; font-size: 13.5px; margin-bottom: 8px; }
+.rc-canvas { position: relative; height: 220px; }
+
+.rp-table-title { font-weight: 800; font-size: 14px; margin: 4px 14px 8px; }
+.rp-table-wrap { margin: 0 14px 24px; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+.rp-table { border-collapse: collapse; font-size: 12.5px; white-space: nowrap; min-width: 100%; }
+.rp-table th { text-align: left; color: var(--text-muted); padding: 9px 11px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-panel); }
+.rp-table td { padding: 9px 11px; border-bottom: 1px solid var(--border); }
+.rp-table tr:nth-child(even) td { background: var(--bg-dark); }
+
+/* sheet reutilizat (tip + vehicule) */
+.sh-search { margin: 12px 16px; display: flex; align-items: center; gap: 8px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; }
+.sh-search input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 15px; }
+.sh-actions { display: flex; gap: 10px; padding: 0 16px 8px; }
+.sh-actions a { font-size: 13px; font-weight: 700; color: var(--accent); }
+.sh-cat { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; padding: 10px 16px 4px; letter-spacing: .4px; }
+.sh-item { display: flex; align-items: center; gap: 11px; padding: 11px 16px; width: 100%; text-align: left; border-bottom: 1px solid var(--border); }
+.sh-item:active { background: var(--bg-dark); }
+.sh-item.on { color: var(--accent); }
+.sh-check { width: 20px; height: 20px; border-radius: 5px; border: 2px solid var(--border); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+.sh-item.on .sh-check { background: var(--accent); border-color: var(--accent); }
+.sh-item .nm { flex: 1; min-width: 0; }
+.sh-plate { color: var(--text-muted); font-size: 11px; }
