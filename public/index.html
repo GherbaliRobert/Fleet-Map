@@ -360,6 +360,19 @@
         #hotspot-list .gf-table td:last-child::before { content: none; }
         #hotspot-list .gf-table td:last-child .btn-sm { min-height: 38px; min-width: 44px; }
 
+        /* ─── Rapoarte pe mobil: tabel → carduri (toate rapoartele, inclusiv Hotspot cu 9 coloane) ─── */
+        #rep-table-wrap { border: none; overflow-x: hidden; }
+        #rep-table thead { display: none; }
+        #rep-table, #rep-table tbody { display: block; width: 100%; }
+        #rep-table tbody tr { display: block; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 10px 13px; margin-bottom: 10px; }
+        #rep-table tbody tr:nth-child(even) { background: var(--bg-dark); }
+        #rep-table td { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; border: none; padding: 4px 0; font-size: 12.5px; white-space: normal; text-align: right; }
+        #rep-table td::before { content: attr(data-label); color: var(--text-muted); font-weight: 600; font-size: 11px; text-align: left; }
+        #rep-table td:first-child { font-size: 14px; font-weight: 700; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px solid var(--border); justify-content: flex-start; }
+        #rep-table td:first-child::before { content: none; }
+        #rep-extra { width: 100%; margin-left: 0; }
+        #rep-extra .rep-f, #rep-extra select, #rep-extra input { width: 100%; box-sizing: border-box; }
+
         /* Modaluri rax (Conturi, Dashboard, Companii): width pe tot ecranul */
         .rax-card { max-width: 100% !important; max-height: 90vh; border-radius: 12px 12px 0 0; }
 
@@ -3680,7 +3693,7 @@ const pozitii = await r.json();</code></pre>
         pairs.sort((a, b) => { const x = _repCellVal(kind, a.r[ci]), y = _repCellVal(kind, b.r[ci]); return (x < y ? -1 : x > y ? 1 : 0) * dir; }); }
       const ico = ci => (_repSort && _repSort.ci === ci) ? (_repSort.dir > 0 ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort';
       document.querySelector('#rep-table thead').innerHTML = '<tr>' + cols.map((c, ci) => '<th class="rep-th-sort' + (_repSort && _repSort.ci === ci ? ' active' : '') + '" onclick="_repSortBy(' + ci + ')">' + _repEsc(c) + ' <i class="fas ' + ico(ci) + ' rep-th-arr"></i></th>').join('') + '</tr>';
-      document.querySelector('#rep-table tbody').innerHTML = pairs.map(p => '<tr data-ri="' + p.ri + '">' + p.r.map(c => '<td>' + _repEsc(c) + '</td>').join('') + '</tr>').join('');
+      document.querySelector('#rep-table tbody').innerHTML = pairs.map(p => '<tr data-ri="' + p.ri + '">' + p.r.map((c, ci) => '<td data-label="' + _repEsc(cols[ci] || '') + '">' + _repEsc(c) + '</td>').join('') + '</tr>').join('');
       window._repHoverLbl = null; if (window._repEmphasizeCharts) _repEmphasizeCharts();
       const bar = document.getElementById('rep-filter-bar');
       if (bar) { if (_repFilter) { bar.style.display = 'flex'; bar.innerHTML = '<span><i class="fas fa-filter"></i> Doar: <strong>' + _repEsc(_repFilter.desc) + '</strong> — ' + pairs.length + ' din ' + allRows.length + ' rânduri</span><button class="btn-sm" onclick="_repClearFilter()"><i class="fas fa-times"></i> Arată tot</button>'; } else bar.style.display = 'none'; }
