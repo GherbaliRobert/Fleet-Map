@@ -2569,7 +2569,7 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
     // Momente de referință pentru „în staționare de" / „motor oprit de" (calcul eficient pe server, ultimele 30 zile)
     try {
       const sd = await db.pool.query(
-        "SELECT MAX(CASE WHEN speed > 0 THEN timestamp END) AS last_moved_at, " +
+        "SELECT MAX(CASE WHEN speed > 3 THEN timestamp END) AS last_moved_at, " +
         "MAX(CASE WHEN (io_data->>'ignition') IN ('1','true') THEN timestamp END) AS ignition_on_at, " +
         "MAX(CASE WHEN (io_data->>'ignition') IN ('0','false') THEN timestamp END) AS ignition_off_at " +
         "FROM positions WHERE imei = $1 AND timestamp > NOW() - INTERVAL '30 days'",

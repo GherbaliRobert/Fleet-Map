@@ -136,7 +136,7 @@
         var a = el('vp-adr-' + imei); if (a) { a.textContent = addr; a.style.color = 'var(--text-primary)'; }
       }).catch(function () {});
     }
-    if (fullCache[imei]) { applyFull(imei); return; }
+    if (fullCache[imei]) applyFull(imei); // randare instant din cache (brand/șofer); ancorele staționare/motor se reîmprospătează prin re-fetch mai jos
     fetch('/api/devices/' + encodeURIComponent(imei) + '/full', { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (f) { if (f && !f.error) { fullCache[imei] = f; applyFull(imei); } })
