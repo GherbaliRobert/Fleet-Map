@@ -80,63 +80,109 @@ function segmentTrack(pts, stopMinSec) {
   return { stops, trips };
 }
 
+// ─── Helpers grafice (charts pentru rapoarte) ───
+// Contract: un raport poate întoarce `charts: [{ type, title, labels, datasets:[{label,data}] }]`.
+// Frontend-ul (renderReport) le desenează cu Chart.js și aplică paleta automat.
+function _dayKeyISO(ts) { try { return new Date(ts).toISOString().slice(0, 10); } catch (e) { return ''; } }
+function _dayLabel(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] : isoKey; }
+// Grupează pe zi: items[], getTs(item)=timestamp, getVal(item)=valoare numerică (null ⇒ numără). Sortat cronologic.
+function _groupByDay(items, getTs, getVal) {
+  const m = {};
+  for (const it of items) { const k = _dayKeyISO(getTs(it)); if (!k) continue; m[k] = (m[k] || 0) + (getVal ? (Number(getVal(it)) || 0) : 1); }
+  const keys = Object.keys(m).sort();
+  return { labels: keys.map(_dayLabel), data: keys.map(k => Math.round(m[k] * 10) / 10) };
+}
+// Histogramă: vals=numere, edges=[50,70,90,110] ⇒ intervale <50, 50–70, 70–90, 90–110, ≥110.
+function _histogram(vals, edges) {
+  const buckets = new Array(edges.length + 1).fill(0);
+  for (const v of vals) { let i = edges.findIndex(e => v < e); if (i === -1) i = edges.length; buckets[i]++; }
+  const labels = edges.map((e, i) => i === 0 ? '<' + e : edges[i - 1] + '–' + e); labels.push('≥' + edges[edges.length - 1]);
+  return { labels, data: buckets };
+}
+// Top N după valoare: pairs=[[label,val],...] ⇒ {labels,data} descrescător, primele n.
+function _topN(pairs, n) {
+  const s = pairs.slice().sort((a, b) => b[1] - a[1]).slice(0, n || 10);
+  return { labels: s.map(p => p[0]), data: s.map(p => Math.round(p[1] * 10) / 10) };
+}
+
 // ─── Rapoarte ───
 
 async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
-  const rows = []; let totalKm = 0, totalDur = 0, count = 0;
+  const rows = []; let totalKm = 0, totalDur = 0, count = 0; const all = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const { trips } = segmentTrack(pts, (opts.stopMin || 5) * 60);
     for (const tr of trips) {
       rows.push([ label(devMap, imei), fmtTs(tr.start), fmtTs(tr.end), fmtDur(tr.durationSec),
         tr.distanceKm.toFixed(2), tr.avgSpeed, tr.maxSpeed, loc(tr.startP), loc(tr.endP) ]);
-      totalKm += tr.distanceKm; totalDur += tr.durationSec; count++;
+      totalKm += tr.distanceKm; totalDur += tr.durationSec; count++; all.push(tr);
     }
   }
+  const kmDay = _groupByDay(all, x => x.start, x => x.distanceKm);
+  const nDay = _groupByDay(all, x => x.start, null);
+  const spd = _histogram(all.map(x => x.maxSpeed), [50, 70, 90, 110]);
+  const charts = all.length ? [
+    { type: 'bar',  title: 'Distanță parcursă pe zi (km)',    labels: kmDay.labels, datasets: [{ label: 'km', data: kmDay.data }] },
+    { type: 'line', title: 'Curse pe zi',                     labels: nDay.labels,  datasets: [{ label: 'curse', data: nDay.data }] },
+    { type: 'bar',  title: 'Distribuție viteză maximă (km/h)', labels: spd.labels,   datasets: [{ label: 'curse', data: spd.data }] }
+  ] : [];
   return { columns: ['Vehicul','Plecare','Sosire','Durată','Distanță (km)','Vit. medie','Vit. max','Loc. plecare','Loc. sosire'],
-    rows, summary: { 'Curse': count, 'Distanță totală (km)': Math.round(totalKm*10)/10, 'Durată totală': fmtDur(totalDur) } };
+    rows, summary: { 'Curse': count, 'Distanță totală (km)': Math.round(totalKm*10)/10, 'Durată totală': fmtDur(totalDur) }, charts };
 }
 
 async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / staționări
-  const rows = []; let total = 0, totalDur = 0;
+  const rows = []; let total = 0, totalDur = 0; const all = []; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const { stops } = segmentTrack(pts, (opts.stopMin || 5) * 60);
     for (const st of stops) {
       rows.push([ label(devMap, imei), fmtTs(st.start), fmtTs(st.end), fmtDur(st.durationSec), loc(st.p) ]);
-      total++; totalDur += st.durationSec;
+      total++; totalDur += st.durationSec; all.push(st);
+      const nm = label(devMap, imei); perVeh[nm] = (perVeh[nm] || 0) + 1;
     }
   }
+  const nDay = _groupByDay(all, x => x.start, null);
+  const dur = _histogram(all.map(x => x.durationSec / 60), [15, 30, 60, 120]);
+  const topV = _topN(Object.entries(perVeh), 10);
+  const charts = all.length ? [
+    { type: 'bar',      title: 'Opriri pe zi',                       labels: nDay.labels, datasets: [{ label: 'opriri', data: nDay.data }] },
+    { type: 'bar',      title: 'Distribuție durată oprire (min)',    labels: dur.labels,  datasets: [{ label: 'opriri', data: dur.data }] },
+    { type: 'doughnut', title: 'Top vehicule după număr de opriri',  labels: topV.labels, datasets: [{ label: 'opriri', data: topV.data }] }
+  ] : [];
   return { columns: ['Vehicul','Început','Sfârșit','Durată','Locație'], rows,
-    summary: { 'Opriri': total, 'Timp staționat total': fmtDur(totalDur) } };
+    summary: { 'Opriri': total, 'Timp staționat total': fmtDur(totalDur) }, charts };
 }
 
 async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri viteză
   const limit = opts.limit || 90;
-  const rows = []; let events = 0, maxOverall = 0;
+  const rows = []; let events = 0, maxOverall = 0; const evs = []; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
+    const nm = label(devMap, imei);
     let ev = null;
+    const flush = () => { if (!ev) return; rows.push([ nm, fmtTs(ev.start), limit, ev.max, loc(ev.p) ]); events++; if (ev.max > maxOverall) maxOverall = ev.max; evs.push({ start: ev.start, max: ev.max }); perVeh[nm] = (perVeh[nm] || 0) + 1; ev = null; };
     for (const p of pts) {
       const sp = p.speed || 0;
-      if (sp > limit) {
-        if (!ev) ev = { start: p.timestamp, max: sp, p };
-        else if (sp > ev.max) { ev.max = sp; ev.p = p; }
-        ev.end = p.timestamp;
-      } else if (ev) {
-        rows.push([ label(devMap, imei), fmtTs(ev.start), limit, ev.max, loc(ev.p) ]);
-        events++; if (ev.max > maxOverall) maxOverall = ev.max; ev = null;
-      }
+      if (sp > limit) { if (!ev) ev = { start: p.timestamp, max: sp, p }; else if (sp > ev.max) { ev.max = sp; ev.p = p; } ev.end = p.timestamp; }
+      else flush();
     }
-    if (ev) { rows.push([ label(devMap, imei), fmtTs(ev.start), limit, ev.max, loc(ev.p) ]); events++; if (ev.max > maxOverall) maxOverall = ev.max; }
+    flush();
   }
+  const nDay = _groupByDay(evs, x => x.start, null);
+  const spd = _histogram(evs.map(x => x.max), [limit + 10, limit + 20, limit + 35]);
+  const topV = _topN(Object.entries(perVeh), 10);
+  const charts = evs.length ? [
+    { type: 'bar',      title: 'Depășiri pe zi',                     labels: nDay.labels, datasets: [{ label: 'depășiri', data: nDay.data }] },
+    { type: 'bar',      title: 'Distribuție viteză depășire (km/h)', labels: spd.labels,  datasets: [{ label: 'depășiri', data: spd.data }] },
+    { type: 'doughnut', title: 'Top vehicule după depășiri',         labels: topV.labels, datasets: [{ label: 'depășiri', data: topV.data }] }
+  ] : [];
   return { columns: ['Vehicul','Moment','Limită (km/h)','Viteză max (km/h)','Locație'], rows,
-    summary: { 'Depășiri': events, 'Viteză maximă (km/h)': maxOverall, 'Limită folosită': limit } };
+    summary: { 'Depășiri': events, 'Viteză maximă (km/h)': maxOverall, 'Limită folosită': limit }, charts };
 }
 
 async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurgeri/furt
   const refuelMin = opts.refuelMin || 10, dropMin = opts.dropMin || 10;
-  const rows = []; let refuels = 0, drops = 0, addedL = 0, lostL = 0;
+  const rows = []; let refuels = 0, drops = 0, addedL = 0, lostL = 0; const refs = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let prev = null;
@@ -145,14 +191,19 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurg
       if (fl == null) continue;
       if (prev != null) {
         const delta = fl - prev.v;
-        if (delta >= refuelMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Alimentare', '+' + delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; }
+        if (delta >= refuelMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Alimentare', '+' + delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); }
         else if (delta <= -dropMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Scădere/furt', delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); drops++; lostL += -delta; }
       }
       prev = { v: fl };
     }
   }
+  const refDay = _groupByDay(refs, x => x.ts, x => x.v);
+  const charts = (refuels || drops) ? [
+    { type: 'doughnut', title: 'Alimentări vs. scăderi suspecte', labels: ['Alimentări', 'Scăderi suspecte'], datasets: [{ label: 'evenimente', data: [refuels, drops] }] },
+    { type: 'bar',      title: 'Litri alimentați pe zi',          labels: refDay.labels, datasets: [{ label: 'L', data: refDay.data }] }
+  ] : [];
   return { columns: ['Vehicul','Moment','Tip','Δ Litri','Nivel (L)','Locație'], rows,
-    summary: { 'Alimentări': refuels, 'Litri alimentați': Math.round(addedL), 'Scăderi suspecte': drops, 'Litri scăzuți': Math.round(lostL) } };
+    summary: { 'Alimentări': refuels, 'Litri alimentați': Math.round(addedL), 'Scăderi suspecte': drops, 'Litri scăzuți': Math.round(lostL) }, charts };
 }
 
 function pointInPolygon(lat, lng, poly) {
@@ -188,21 +239,29 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
     const c = typeof g.coordinates === 'string' ? JSON.parse(g.coordinates) : g.coordinates;
     return { name: g.name, type: g.type, center: c && c.center, radius: c && c.radius, coords: Array.isArray(c) ? c : null };
   });
-  const rows = []; let total = 0, totalDwell = 0;
+  const rows = []; let total = 0, totalDwell = 0; const all = []; const visByZone = {}, dwellByZone = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     for (const z of zones) {
       const visits = zoneVisits(pts, z);
-      for (const v of visits) { rows.push([ label(devMap, imei), z.name, fmtTs(v.enter), fmtTs(v.exit), fmtDur(v.durationSec) ]); total++; totalDwell += v.durationSec; }
+      for (const v of visits) { rows.push([ label(devMap, imei), z.name, fmtTs(v.enter), fmtTs(v.exit), fmtDur(v.durationSec) ]); total++; totalDwell += v.durationSec; all.push(v); visByZone[z.name] = (visByZone[z.name] || 0) + 1; dwellByZone[z.name] = (dwellByZone[z.name] || 0) + v.durationSec; }
     }
   }
+  const zVisits = _topN(Object.entries(visByZone), 10);
+  const zDwell = _topN(Object.entries(dwellByZone).map(([n, s]) => [n, s / 60]), 10);
+  const nDay = _groupByDay(all, x => x.enter, null);
+  const charts = all.length ? [
+    { type: 'doughnut', title: 'Vizite pe zonă',              labels: zVisits.labels, datasets: [{ label: 'vizite', data: zVisits.data }] },
+    { type: 'bar',      title: 'Timp petrecut pe zonă (min)',  labels: zDwell.labels,  datasets: [{ label: 'minute', data: zDwell.data }] },
+    { type: 'line',     title: 'Vizite pe zi',                labels: nDay.labels,    datasets: [{ label: 'vizite', data: nDay.data }] }
+  ] : [];
   return { columns: ['Vehicul','Zonă','Intrare','Ieșire','Durată'], rows,
-    summary: { 'Vizite': total, 'Timp total în zone': fmtDur(totalDwell) } };
+    summary: { 'Vizite': total, 'Timp total în zone': fmtDur(totalDwell) }, charts };
 }
 
 async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (per vehicul/zi)
   const drv = {}; try { (await db.getDrivers()).forEach(d => drv[d.id] = d.name); } catch (e) {}
-  const rows = []; let totalKm = 0, totalDrive = 0;
+  const rows = []; let totalKm = 0, totalDrive = 0; const drvKm = {}, dayDrive = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const byDay = {};
@@ -222,14 +281,21 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
       const d = byDay[day];
       rows.push([ dv, label(devMap, imei), day, fmtTs(d.first).split(',')[1] || '', fmtTs(d.last).split(',')[1] || '', fmtDur(d.drive), d.km.toFixed(1) ]);
       totalKm += d.km; totalDrive += d.drive;
+      drvKm[dv] = (drvKm[dv] || 0) + d.km; dayDrive[day] = (dayDrive[day] || 0) + d.drive;
     }
   }
+  const topDrv = _topN(Object.entries(drvKm), 10);
+  const dayKeys = Object.keys(dayDrive).sort();
+  const charts = rows.length ? [
+    { type: 'bar', title: 'Km pe șofer',             labels: topDrv.labels,          datasets: [{ label: 'km', data: topDrv.data }] },
+    { type: 'bar', title: 'Timp condus pe zi (ore)', labels: dayKeys.map(_dayLabel), datasets: [{ label: 'ore', data: dayKeys.map(k => Math.round(dayDrive[k] / 360) / 10) }] }
+  ] : [];
   return { columns: ['Șofer','Vehicul','Zi','Prima activ.','Ultima activ.','Timp condus','Km'], rows,
-    summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm), 'Timp condus total': fmtDur(totalDrive) } };
+    summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm), 'Timp condus total': fmtDur(totalDrive) }, charts };
 }
 
 async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare flotă
-  const rows = []; let totalKm = 0, totalEng = 0;
+  const rows = []; let totalKm = 0, totalEng = 0; const vehKm = [], vehEng = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let km = 0, eng = 0, maxSpeed = 0; const days = new Set();
@@ -244,12 +310,18 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare fl
         if ((p.speed||0) > IDLE_SPEED) days.add(new Date(p.timestamp).toISOString().slice(0,10));
       }
     }
-    rows.push([ label(devMap, imei), Math.round(km), fmtDur(eng), days.size, Math.round(maxSpeed), pts.length ]);
-    totalKm += km; totalEng += eng;
+    const nm = label(devMap, imei);
+    rows.push([ nm, Math.round(km), fmtDur(eng), days.size, Math.round(maxSpeed), pts.length ]);
+    totalKm += km; totalEng += eng; vehKm.push([nm, km]); vehEng.push([nm, eng / 3600]);
   }
   rows.sort((a, b) => b[1] - a[1]);
+  const topKm = _topN(vehKm, 10), topEng = _topN(vehEng, 10);
+  const charts = rows.length ? [
+    { type: 'bar', title: 'Km pe vehicul',        labels: topKm.labels,  datasets: [{ label: 'km', data: topKm.data }] },
+    { type: 'bar', title: 'Ore motor pe vehicul', labels: topEng.labels, datasets: [{ label: 'ore', data: topEng.data }] }
+  ] : [];
   return { columns: ['Vehicul','Km','Ore motor','Zile active','Vit. max','Puncte GPS'], rows,
-    summary: { 'Vehicule': imeis.length, 'Km total': Math.round(totalKm), 'Ore motor total': fmtDur(totalEng) } };
+    summary: { 'Vehicule': imeis.length, 'Km total': Math.round(totalKm), 'Ore motor total': fmtDur(totalEng) }, charts };
 }
 
 async function rLocation(db, imeis, from, to, opts, devMap) { // Locație (ultima poziție până la 'to')
@@ -264,7 +336,7 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Locație (ultim
 }
 
 async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
-  const rows = []; let totalKm = 0;
+  const rows = []; let totalKm = 0; const dayKm = {}, dayMove = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const byDay = {};
@@ -284,10 +356,15 @@ async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
     for (const day of Object.keys(byDay).sort()) {
       const d = byDay[day];
       rows.push([ label(devMap, imei), day, d.km.toFixed(1), fmtDur(d.move), fmtDur(d.eng), d.stops || 0, Math.round(d.max) ]);
-      totalKm += d.km;
+      totalKm += d.km; dayKm[day] = (dayKm[day] || 0) + d.km; dayMove[day] = (dayMove[day] || 0) + d.move;
     }
   }
-  return { columns: ['Vehicul', 'Zi', 'Km', 'Timp mers', 'Ore motor', 'Opriri', 'Vit. max'], rows, summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm) } };
+  const dk = Object.keys(dayKm).sort();
+  const charts = rows.length ? [
+    { type: 'bar',  title: 'Km pe zi (flotă)',         labels: dk.map(_dayLabel), datasets: [{ label: 'km', data: dk.map(k => Math.round(dayKm[k] * 10) / 10) }] },
+    { type: 'line', title: 'Timp în mers pe zi (ore)', labels: dk.map(_dayLabel), datasets: [{ label: 'ore', data: dk.map(k => Math.round(dayMove[k] / 360) / 10) }] }
+  ] : [];
+  return { columns: ['Vehicul', 'Zi', 'Km', 'Timp mers', 'Ore motor', 'Opriri', 'Vit. max'], rows, summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm) }, charts };
 }
 
 async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu (jurnal cronologic deplasări + staționări)
@@ -305,7 +382,7 @@ async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu (jurnal cro
 }
 
 async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carburant (sumar)
-  const rows = []; let tCons = 0, tDist = 0;
+  const rows = []; let tCons = 0, tDist = 0; const vCons = [], vPer = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refueled = 0, dist = 0, prev = null;
@@ -314,14 +391,20 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
       if (fl != null) { if (first == null) first = fl; last = fl; if (prev != null) { const dlt = fl - prev; if (dlt >= (opts.refuelMin || 10)) refueled += dlt; } prev = fl; }
       if (i > 0) { const pr = pts[i - 1], dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) dist += dd; }
     }
-    if (first == null) { rows.push([label(devMap, imei), '—', '—', '—', dist.toFixed(0), '—', '—']); continue; }
+    const nm = label(devMap, imei);
+    if (first == null) { rows.push([nm, '—', '—', '—', dist.toFixed(0), '—', '—']); continue; }
     const consumed = Math.max(0, (first - last) + refueled);
     const per100 = dist > 1 ? (consumed / dist * 100) : 0;
-    rows.push([ label(devMap, imei), first.toFixed(0) + ' L', last.toFixed(0) + ' L', refueled.toFixed(0) + ' L', dist.toFixed(0), consumed.toFixed(0) + ' L', per100 ? per100.toFixed(1) : '—' ]);
-    tCons += consumed; tDist += dist;
+    rows.push([ nm, first.toFixed(0) + ' L', last.toFixed(0) + ' L', refueled.toFixed(0) + ' L', dist.toFixed(0), consumed.toFixed(0) + ' L', per100 ? per100.toFixed(1) : '—' ]);
+    tCons += consumed; tDist += dist; vCons.push([nm, consumed]); if (per100) vPer.push([nm, per100]);
   }
+  const topCons = _topN(vCons, 10), topPer = _topN(vPer, 10);
+  const charts = vCons.length ? [
+    { type: 'bar', title: 'Consum pe vehicul (L)', labels: topCons.labels, datasets: [{ label: 'L', data: topCons.data }] },
+    { type: 'bar', title: 'L/100km pe vehicul',    labels: topPer.labels,  datasets: [{ label: 'L/100km', data: topPer.data }] }
+  ] : [];
   return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km'], rows,
-    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' } };
+    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts };
 }
 
 async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN (snapshot ultim)
@@ -348,14 +431,22 @@ async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alert
   const all = await db.getAlertHistory(2000);
   const fromT = new Date(from).getTime(), toT = new Date(to).getTime();
   const set = new Set(imeis);
-  const rows = [];
+  const rows = []; const evs = []; const byType = {};
   for (const e of all) {
     const tt = new Date(e.triggered_at).getTime();
     if (tt < fromT || tt > toT) continue;
     if (!set.has(e.imei)) continue;
-    rows.push([ label(devMap, e.imei), e.alert_name || e.alert_type || '—', fmtTs(e.triggered_at), e.data ? JSON.stringify(e.data).slice(0, 90) : '' ]);
+    const typ = e.alert_name || e.alert_type || '—';
+    rows.push([ label(devMap, e.imei), typ, fmtTs(e.triggered_at), e.data ? JSON.stringify(e.data).slice(0, 90) : '' ]);
+    evs.push({ ts: e.triggered_at }); byType[typ] = (byType[typ] || 0) + 1;
   }
-  return { columns: ['Vehicul', 'Eveniment', 'Moment', 'Detalii'], rows, summary: { 'Evenimente': rows.length } };
+  const nDay = _groupByDay(evs, x => x.ts, null);
+  const topT = _topN(Object.entries(byType), 8);
+  const charts = rows.length ? [
+    { type: 'line',     title: 'Evenimente pe zi', labels: nDay.labels, datasets: [{ label: 'evenimente', data: nDay.data }] },
+    { type: 'doughnut', title: 'Evenimente pe tip', labels: topT.labels, datasets: [{ label: 'evenimente', data: topT.data }] }
+  ] : [];
+  return { columns: ['Vehicul', 'Eveniment', 'Moment', 'Detalii'], rows, summary: { 'Evenimente': rows.length }, charts };
 }
 
 async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut, punct-cu-punct)
@@ -377,7 +468,7 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
   const HARSH_ACCEL = opts.harshAccel || 7; // km/h pe secundă (~1.9 m/s²)
   const HARSH_BRAKE = opts.harshBrake || 9; // km/h pe secundă (~2.5 m/s²)
   const HARSH_TURN = opts.harshTurn || 25;  // grade/secundă la viteză > 25 km/h
-  const rows = []; let fleetScoreW = 0, fleetKm = 0, fleetVeh = 0, totA = 0, totB = 0;
+  const rows = []; let fleetScoreW = 0, fleetKm = 0, fleetVeh = 0, totA = 0, totB = 0, totT = 0; const vehScore = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let km = 0, accel = 0, brake = 0, hardTurn = 0, speedOverSec = 0, idleSec = 0, driveSec = 0;
@@ -411,13 +502,18 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
     const score = Math.max(0, Math.round(100 - pen));
     const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'E';
     rows.push([label(devMap, imei), score + ' · ' + grade, accel, brake, hardTurn, fmtDur(speedOverSec), Math.round(idleShare * 100) + '%', Math.round(km)]);
-    const w = Math.max(1, km); fleetScoreW += score * w; fleetKm += w; fleetVeh++; totA += accel; totB += brake;
+    const w = Math.max(1, km); fleetScoreW += score * w; fleetKm += w; fleetVeh++; totA += accel; totB += brake; totT += hardTurn; vehScore.push([label(devMap, imei), score]);
   }
   rows.sort((a, b) => parseInt(b[1]) - parseInt(a[1]));
+  const topS = _topN(vehScore, 10);
+  const charts = vehScore.length ? [
+    { type: 'bar',      title: 'Scor EcoDrive pe vehicul',  labels: topS.labels, datasets: [{ label: 'scor', data: topS.data }] },
+    { type: 'doughnut', title: 'Evenimente bruște (total)', labels: ['Accelerări', 'Frânări', 'Viraje'], datasets: [{ label: 'evenimente', data: [totA, totB, totT] }] }
+  ] : [];
   return {
     columns: ['Vehicul', 'Scor · Notă', 'Accel. bruște', 'Frânări bruște', 'Viraje bruște', 'Timp peste viteză', 'Ralanti', 'Km'],
     rows,
-    summary: { 'Scor flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Vehicule evaluate': fleetVeh, 'Accelerări bruște': totA, 'Frânări bruște': totB }
+    summary: { 'Scor flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Vehicule evaluate': fleetVeh, 'Accelerări bruște': totA, 'Frânări bruște': totB }, charts
   };
 }
 
@@ -476,34 +572,47 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
   }
   scored.sort((x, y) => y.score - x.score);
   const rows = scored.map((r, i) => [i + 1, r.name, r.vehicles, r.score + ' · ' + r.grade, r.accel, r.brake, r.hardTurn, r.per100ev, r.km]);
+  const topS = _topN(scored.map(s => [s.name, s.score]), 10);
+  const topE = _topN(scored.map(s => [s.name, s.per100ev]), 10);
+  const charts = scored.length ? [
+    { type: 'bar', title: 'Scor EcoDrive pe șofer',     labels: topS.labels, datasets: [{ label: 'scor', data: topS.data }] },
+    { type: 'bar', title: 'Evenimente bruște / 100 km', labels: topE.labels, datasets: [{ label: 'ev/100km', data: topE.data }] }
+  ] : [];
   return {
     columns: ['Rang', 'Șofer', 'Vehicule', 'Scor · Notă', 'Accel. bruște', 'Frânări bruște', 'Viraje bruște', 'Evenim./100km', 'Km'],
     rows,
-    summary: { 'Scor mediu flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB }
+    summary: { 'Scor mediu flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB }, charts
   };
 }
 
 async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor pornit + staționat)
   const minSec = (opts.idleMin || 3) * 60;
   const lph = opts.idleLph || 1.5; // L/h consumați la ralanti (estimare)
-  const rows = []; let totalIdle = 0, totalEvents = 0;
+  const rows = []; let totalIdle = 0, totalEvents = 0; const all = []; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
+    const nm = label(devMap, imei);
     let start = null, last = null;
-    const flush = (endLoc) => { if (start) { const dur = (new Date(last) - new Date(start)) / 1000; if (dur >= minSec) { rows.push([label(devMap, imei), fmtTs(start), fmtDur(dur), endLoc]); totalIdle += dur; totalEvents++; } start = null; } };
+    const flush = (endLoc) => { if (start) { const dur = (new Date(last) - new Date(start)) / 1000; if (dur >= minSec) { rows.push([nm, fmtTs(start), fmtDur(dur), endLoc]); totalIdle += dur; totalEvents++; all.push({ ts: start, dur }); perVeh[nm] = (perVeh[nm] || 0) + dur; } start = null; } };
     for (const p of pts) {
       if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED) { if (!start) start = p.timestamp; last = p.timestamp; }
       else flush(loc(p));
     }
     flush('');
   }
+  const idleDay = _groupByDay(all, x => x.ts, x => x.dur / 60);
+  const topV = _topN(Object.entries(perVeh).map(([n, s]) => [n, s / 60]), 10);
+  const charts = all.length ? [
+    { type: 'bar',      title: 'Ralanti pe zi (min)',             labels: idleDay.labels, datasets: [{ label: 'min', data: idleDay.data }] },
+    { type: 'doughnut', title: 'Top vehicule după ralanti (min)', labels: topV.labels,    datasets: [{ label: 'min', data: topV.data }] }
+  ] : [];
   return { columns: ['Vehicul', 'Început', 'Durată ralanti', 'Locație'], rows,
-    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil estimat irosit (L)': Math.round(totalIdle / 3600 * lph) } };
+    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil estimat irosit (L)': Math.round(totalIdle / 3600 * lph) }, charts };
 }
 
 async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibil (din consum + preț/vehicul)
   const priceMap = {}; try { (await db.pool.query('SELECT imei, fuel_price FROM devices')).rows.forEach(d => priceMap[d.imei] = parseFloat(d.fuel_price)); } catch (e) {}
-  const rows = []; let tKm = 0, tCons = 0, tCost = 0;
+  const rows = []; let tKm = 0, tCons = 0, tCost = 0; const vCost = [], vPerKm = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refuel = 0, dist = 0, prev = null;
@@ -515,17 +624,23 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
     const price = priceMap[imei] || opts.fuelPrice || 7.5;
     const cost = consumed * price, perKm = dist > 1 ? cost / dist : 0;
-    rows.push([label(devMap, imei), Math.round(dist), consumed.toFixed(0) + ' L', price.toFixed(2), Math.round(cost) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
-    tKm += dist; tCons += consumed; tCost += cost;
+    const nm = label(devMap, imei);
+    rows.push([nm, Math.round(dist), consumed.toFixed(0) + ' L', price.toFixed(2), Math.round(cost) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
+    tKm += dist; tCons += consumed; tCost += cost; vCost.push([nm, cost]); if (perKm) vPerKm.push([nm, perKm]);
   }
   rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4]));
+  const topC = _topN(vCost, 10), topK = _topN(vPerKm, 10);
+  const charts = vCost.length ? [
+    { type: 'bar', title: 'Cost combustibil pe vehicul (RON)', labels: topC.labels, datasets: [{ label: 'RON', data: topC.data }] },
+    { type: 'bar', title: 'Cost pe km (RON)',                  labels: topK.labels, datasets: [{ label: 'RON/km', data: topK.data }] }
+  ] : [];
   return { columns: ['Vehicul', 'Km', 'Consumat', 'Preț (RON/L)', 'Cost combustibil', 'Cost/km'], rows,
-    summary: { 'Km total': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) } };
+    summary: { 'Km total': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts };
 }
 
 async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (din consum carburant)
   const FACTOR = opts.co2Factor || 2.64; // kg CO₂ / litru motorină
-  const rows = []; let tCo2 = 0, tKm = 0, tCons = 0;
+  const rows = []; let tCo2 = 0, tKm = 0, tCons = 0; const vCo2 = [], vPerKm = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refuel = 0, dist = 0, prev = null;
@@ -537,13 +652,19 @@ async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (
     const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
     const co2 = consumed * FACTOR;
     const perKm = dist > 1 ? co2 / dist * 1000 : 0; // g/km
-    rows.push([label(devMap, imei), Math.round(dist), consumed.toFixed(0) + ' L', (co2 / 1000).toFixed(2) + ' t', perKm ? Math.round(perKm) + ' g/km' : '—']);
-    tCo2 += co2; tKm += dist; tCons += consumed;
+    const nm = label(devMap, imei);
+    rows.push([nm, Math.round(dist), consumed.toFixed(0) + ' L', (co2 / 1000).toFixed(2) + ' t', perKm ? Math.round(perKm) + ' g/km' : '—']);
+    tCo2 += co2; tKm += dist; tCons += consumed; vCo2.push([nm, co2]); if (perKm) vPerKm.push([nm, perKm]);
   }
   rows.sort((a, b) => parseFloat(b[3]) - parseFloat(a[3]));
+  const topC = _topN(vCo2, 10), topK = _topN(vPerKm, 10);
+  const charts = vCo2.length ? [
+    { type: 'bar', title: 'CO₂ pe vehicul (kg)', labels: topC.labels, datasets: [{ label: 'kg', data: topC.data }] },
+    { type: 'bar', title: 'CO₂ pe km (g/km)',    labels: topK.labels, datasets: [{ label: 'g/km', data: topK.data }] }
+  ] : [];
   return {
     columns: ['Vehicul', 'Km', 'Consum', 'CO₂', 'CO₂/km'], rows,
-    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor (kg/L)': FACTOR }
+    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor (kg/L)': FACTOR }, charts
   };
 }
 

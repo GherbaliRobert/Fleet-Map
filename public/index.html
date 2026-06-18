@@ -1544,6 +1544,7 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
         </div>
         <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
+        <div id="rep-charts"></div>
         <div id="rep-table-wrap" style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;min-height:120px;">
           <table id="rep-table" style="width:100%;border-collapse:collapse;font-size:12px;"><thead></thead><tbody></tbody></table>
         </div>
@@ -3625,12 +3626,43 @@ const pozitii = await r.json();</code></pre>
     }
     function renderReport(data) {
       document.getElementById('rep-summary').innerHTML = Object.entries(data.summary||{}).map(([k,v]) => `<div class="rep-chip"><div class="v">${v}</div><div class="l">${k}</div></div>`).join('');
+      renderRepCharts(data.charts || []);
       document.querySelector('#rep-table thead').innerHTML = '<tr>' + (data.columns||[]).map(c => `<th>${c}</th>`).join('') + '</tr>';
       document.querySelector('#rep-table tbody').innerHTML = (data.rows||[]).map(r => '<tr>' + r.map(c => `<td>${c==null?'':c}</td>`).join('') + '</tr>').join('');
       const empty = !(data.rows && data.rows.length);
       document.getElementById('rep-empty').style.display = empty ? 'block' : 'none';
       document.getElementById('rep-table-wrap').style.display = empty ? 'none' : 'block';
       document.getElementById('rep-count').textContent = (data.rows ? data.rows.length : 0) + ' rânduri';
+    }
+    // Desenează graficele raportului (data.charts = [{type,title,labels,datasets:[{label,data}]}]).
+    function renderRepCharts(charts) {
+      const host = document.getElementById('rep-charts');
+      if (!host) return;
+      (window._repChartIds || []).forEach(id => { if (window._charts && window._charts[id]) { try { window._charts[id].destroy(); } catch (e) {} delete window._charts[id]; } });
+      window._repChartIds = [];
+      if (!charts || !charts.length) { host.style.display = 'none'; host.innerHTML = ''; return; }
+      const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      host.style.display = 'grid';
+      host.innerHTML = charts.map((c, i) => '<div class="rep-chart-box"><div class="rep-chart-title">' + esc(c.title) + '</div><div class="rep-chart-canvas"><canvas id="rep-chart-' + i + '"></canvas></div></div>').join('');
+      const palette = ['#3FE07D', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#14b8a6', '#ec4899', '#84cc16'];
+      charts.forEach((c, i) => {
+        const id = 'rep-chart-' + i; window._repChartIds.push(id);
+        const isPie = c.type === 'doughnut' || c.type === 'pie';
+        const isLine = c.type === 'line';
+        const single = (c.datasets || []).length <= 1;
+        const ds = (c.datasets || []).map((d, di) => {
+          let bg;
+          if (isLine) bg = 'rgba(63,224,125,.12)';
+          else if (isPie) bg = (d.data || []).map((_, k) => palette[k % palette.length]);
+          else if (single) bg = palette[0];
+          else bg = palette[di % palette.length];
+          return Object.assign({ backgroundColor: bg, borderColor: isLine ? palette[0] : (isPie ? '#0b1f17' : bg), borderWidth: isLine ? 2 : (isPie ? 2 : 0), tension: .35, fill: isLine, pointRadius: 2, borderRadius: isPie || isLine ? 0 : 4 }, d);
+        });
+        createChart(id, c.type, { labels: c.labels || [], datasets: ds }, {
+          plugins: { legend: { display: !single || isPie, position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } },
+          scales: isPie ? {} : { y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,.12)' } }, x: { grid: { display: false } } }
+        });
+      });
     }
     function downloadBlob(content, filename, type) {
       const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob);
@@ -7887,6 +7919,11 @@ const pozitii = await r.json();</code></pre>
     .apidocs-table td:first-child { width: 64px; }
     .apidocs-notes { font-size: 12px; color: var(--text-muted); margin: 6px 0; padding-left: 20px; }
     .apidocs-notes li { margin: 4px 0; }
+    /* Grafice rapoarte */
+    #rep-charts { display: none; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .rep-chart-box { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--bg-dark); }
+    .rep-chart-title { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+    .rep-chart-canvas { position: relative; height: 190px; }
     /* Companii */
     .rax-co-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
     .rax-co-item h4 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
