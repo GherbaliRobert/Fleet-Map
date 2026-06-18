@@ -59,11 +59,11 @@ export function Menu() {
         {(perms.manageFleet || perms.manageUsers) && (
           <>
             <div class="mn-sec">Administrare</div>
-            {soon('truck', 'Vehicule (editare, documente)')}
-            {soon('user', 'Șoferi')}
-            {soon('layers', 'Grupe')}
+            {perms.manageFleet && item('user', 'Șoferi', () => loc.route('/admin/drivers'))}
+            {perms.manageFleet && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
+            {perms.manageFleet && item('wrench', 'Mentenanță', () => loc.route('/admin/maintenance'))}
+            {perms.manageFleet && item('truck', 'Vehicule (editare fișă)', () => loc.route('/vehicles'))}
             {soon('alert', 'Alerte')}
-            {soon('wrench', 'Mentenanță')}
             {perms.manageUsers && soon('user', 'Utilizatori')}
           </>
         )}

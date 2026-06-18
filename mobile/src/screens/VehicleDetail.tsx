@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
-import { vehicles, offlineMinutes, me } from '../app/store';
+import { vehicles, offlineMinutes, me, showToast, refreshVehicles } from '../app/store';
 import { Api } from '../api/endpoints';
 import type { DeviceFull, DailyStats } from '../api/endpoints';
 import { reverseGeocode } from '../api/geocode';
@@ -9,6 +9,9 @@ import { fmtDateTime, fmtDuration, gpsQuality, gsmQuality, odometerKm, voltageSt
 import { Icon } from '../components/Icon';
 import { MiniMap } from '../components/MiniMap';
 import './detail.css';
+import './admin.css';
+
+const VEHICLE_TYPES = ['Auto', 'Camion', 'Duba', 'Motocicleta', 'Autobuz', 'Utilaj', 'Remorca', 'Altul'];
 
 const HEX: Record<string, string> = { moving: '#3FE07D', idle: '#eab308', stopped: '#ef4444', offline: '#8A93A3' };
 const CAN_LABELS: Record<string, [string, string]> = {
@@ -33,11 +36,45 @@ export function VehicleDetail() {
   const [sheet, setSheet] = useState<'' | 'can' | 'sensors' | 'tacho'>('');
   const [sensors, setSensors] = useState<any[] | null>(null);
   const [navOpen, setNavOpen] = useState(false);
+  const canManage = !!me.value?.permissions?.manageFleet;
+  const [editOpen, setEditOpen] = useState(false);
+  const [ef, setEf] = useState<Record<string, any>>({});
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
 
+  function loadFull() { Api.deviceFull(imei).then(setFull).catch(() => {}); }
   useEffect(() => {
-    Api.deviceFull(imei).then(setFull).catch(() => {});
+    loadFull();
     Api.dailyStats(imei).then(setDaily).catch(() => {});
   }, [imei]);
+
+  function openEdit() {
+    setEf({
+      name: full?.name || v?.name || '',
+      plate: full?.plate || v?.plate || '',
+      vehicle_type: (full as any)?.vehicle_type || v?.vehicle_type || '',
+      driver_id: (full as any)?.driver_id != null ? String((full as any).driver_id) : '',
+      group_id: (full as any)?.group_id != null ? String((full as any).group_id) : '',
+    });
+    setEditOpen(true);
+    if (!drivers.length) Api.driversLite().then((d) => setDrivers(Array.isArray(d) ? d : [])).catch(() => {});
+    if (!groups.length) Api.groupsAll().then((g) => setGroups(Array.isArray(g) ? g : [])).catch(() => {});
+  }
+  function setEF(k: string, val: any) { setEf((p) => ({ ...p, [k]: val })); }
+
+  async function saveEdit() {
+    setSavingEdit(true);
+    try {
+      await Api.updateDevice(imei, { name: ef.name || null, plate: ef.plate || null, vehicle_type: ef.vehicle_type || null });
+      await Api.assignDevice(imei, ef.driver_id ? Number(ef.driver_id) : null, ef.group_id ? Number(ef.group_id) : null);
+      showToast('Vehicul actualizat');
+      setEditOpen(false);
+      loadFull();
+      refreshVehicles();
+    } catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); }
+    finally { setSavingEdit(false); }
+  }
 
   useEffect(() => {
     if (v && v.latitude != null && v.longitude != null) reverseGeocode(v.latitude, v.longitude).then(setAddr).catch(() => {});
@@ -65,6 +102,9 @@ export function VehicleDetail() {
       <header class="app-header">
         <button class="h-btn" onClick={() => loc.route('/vehicles')}><Icon name="chevronL" /></button>
         <div class="h-title">{v?.name || full?.name || imei}</div>
+        {canManage
+          ? <button class="h-btn" onClick={openEdit} aria-label="Editează vehicul"><Icon name="edit" size={20} /></button>
+          : <div style="width:36px" />}
       </header>
 
       <div class="content d-content">
@@ -133,6 +173,46 @@ export function VehicleDetail() {
                 <div class="kv"><span class="k">{sn.type || sn.name || `Senzor ${i + 1}`}</span><span class="v">{sn.id || sn.io || '—'}</span></div>
               )) : <div class="center-msg">Niciun senzor configurat pe acest vehicul.</div>)}
               {sheet === 'tacho' && <div class="center-msg">Datele de tahograf detaliate sunt disponibile în aplicația web. (Integrarea completă în mobil — etapă următoare.)</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editOpen && (
+        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !savingEdit) setEditOpen(false); }}>
+          <div class="sheet">
+            <div class="sheet-h">
+              <b><Icon name="edit" size={18} color="var(--accent)" /> Editează vehicul</b>
+              <button class="h-btn" onClick={() => setEditOpen(false)}><Icon name="x" /></button>
+            </div>
+            <div class="sheet-body">
+              <div class="frm">
+                <div class="fld"><label>Denumire</label><input value={ef.name} onInput={(e) => setEF('name', (e.target as HTMLInputElement).value)} placeholder="Ex: Logan Alb" /></div>
+                <div class="frm-row">
+                  <div class="fld"><label>Nr. înmatriculare</label><input value={ef.plate} onInput={(e) => setEF('plate', (e.target as HTMLInputElement).value)} placeholder="B 123 ABC" /></div>
+                  <div class="fld"><label>Categorie</label>
+                    <select value={ef.vehicle_type} onChange={(e) => setEF('vehicle_type', (e.target as HTMLSelectElement).value)}>
+                      <option value="">— alege —</option>
+                      {VEHICLE_TYPES.map((t) => <option value={t}>{t === 'Duba' ? 'Dubă' : t === 'Motocicleta' ? 'Motocicletă' : t === 'Remorca' ? 'Remorcă' : t}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div class="fld"><label>Șofer alocat</label>
+                  <select value={ef.driver_id} onChange={(e) => setEF('driver_id', (e.target as HTMLSelectElement).value)}>
+                    <option value="">Nealocat</option>
+                    {drivers.map((d) => <option value={String(d.id)}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div class="fld"><label>Grupă</label>
+                  <select value={ef.group_id} onChange={(e) => setEF('group_id', (e.target as HTMLSelectElement).value)}>
+                    <option value="">Fără grupă</option>
+                    {groups.map((g) => <option value={String(g.id)}>{g.name}</option>)}
+                  </select>
+                </div>
+                <div class="frm-actions">
+                  <button class="btn btn-primary" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Se salvează…' : 'Salvează'}</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
