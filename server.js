@@ -2061,6 +2061,20 @@ app.get('/api/debug/last-io/:imei', requireAuth, requireSuperadmin, async (req, 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Stare memorie live (monitorizare scalare): dimensiune livePositions + memoria procesului.
+app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    livePositions: livePositions.size,
+    activeConnections: (typeof activeConnections !== 'undefined') ? activeConnections.size : null,
+    liveMax: parseInt(process.env.LIVE_MAX) || 5000,
+    purgeMs: parseInt(process.env.LIVE_PURGE_MS) || 24 * 60 * 60 * 1000,
+    rss_mb: Math.round(mem.rss / 1048576),
+    heapUsed_mb: Math.round(mem.heapUsed / 1048576),
+    uptime_s: Math.round(process.uptime()),
+  });
+});
+
 app.get('/api/debug/iface/:imei', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const imei = req.params.imei;
@@ -5359,7 +5373,10 @@ async function start() {
   //  - Bonus: dacă mai există socket activ asociat unui IMEI stale → e clar zombie → socket.destroy()
   // ───────────────────────────────────────────────────────────────
   const LIVE_STALE_MS = 5 * 60 * 1000;
-  const LIVE_PURGE_MS = 24 * 60 * 60 * 1000;
+  const LIVE_PURGE_MS = parseInt(process.env.LIVE_PURGE_MS) || 24 * 60 * 60 * 1000; // configurabil în prod
+  // Plafon dur de memorie: la creștere anormală (IMEI-uri garbage din TCP malformat, atac) evict cele mai vechi.
+  // O flotă sănătoasă de 2000 vehicule NU atinge plafonul → fără impact pe UX normal.
+  const LIVE_MAX = parseInt(process.env.LIVE_MAX) || 5000;
   setInterval(() => {
     const now = Date.now();
     let staled = 0, purged = 0;
@@ -5389,7 +5406,21 @@ async function start() {
         staled++;
       }
     }
-    if (staled || purged) console.log(`[LIVE-CLEANUP] stale=${staled}, purged=${purged}`);
+    // Plafon dur: dacă tot depășim LIVE_MAX după purjare, evict cele mai vechi (anti-OOM la creștere anormală).
+    let evicted = 0;
+    if (livePositions.size > LIVE_MAX) {
+      const sorted = Array.from(livePositions.entries())
+        .sort((a, b) => (new Date(a[1].timestamp).getTime() || 0) - (new Date(b[1].timestamp).getTime() || 0));
+      const toEvict = livePositions.size - LIVE_MAX;
+      for (let i = 0; i < toEvict; i++) {
+        const imei = sorted[i][0];
+        livePositions.delete(imei);
+        if (typeof lastCanIo !== 'undefined' && lastCanIo.delete) lastCanIo.delete(imei);
+        evicted++;
+      }
+      console.warn(`[LIVE-CLEANUP] PLAFON: evicted ${evicted} cele mai vechi (size depășea ${LIVE_MAX}). Verifică sursa de creștere.`);
+    }
+    if (staled || purged || evicted) console.log(`[LIVE-CLEANUP] stale=${staled}, purged=${purged}, evicted=${evicted}, size=${livePositions.size}`);
   }, 30 * 1000); // sweep la 30s
 }
 

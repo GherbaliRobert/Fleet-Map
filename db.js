@@ -67,6 +67,28 @@ if (USE_PG) {
   console.log('[DB] PGlite embedded (local)');
 }
 
+// ─── Slow-query logging (observabilitate la scară) ───
+// Înregistrează în error_log query-urile care depășesc SLOW_QUERY_MS (default 1500ms).
+// Guard anti-recursie: NU loghează insert-urile în error_log însuși. Folosește query-ul brut.
+{
+  const _origQuery = pool.query.bind(pool);
+  const SLOW_QUERY_MS = parseInt(process.env.SLOW_QUERY_MS) || 1500;
+  pool.query = async function (text, params) {
+    const t0 = Date.now();
+    try {
+      return await _origQuery(text, params);
+    } finally {
+      const dt = Date.now() - t0;
+      if (dt >= SLOW_QUERY_MS && typeof text === 'string' && text.indexOf('error_log') === -1) {
+        _origQuery(
+          'INSERT INTO error_log (level, message, context) VALUES ($1,$2,$3)',
+          ['warn', 'SLOW QUERY ' + dt + 'ms', JSON.stringify({ ms: dt, sql: String(text).replace(/\s+/g, ' ').trim().slice(0, 300) })]
+        ).catch(() => {});
+      }
+    }
+  };
+}
+
 async function initDb() {
   const client = await pool.connect();
   try {
@@ -1162,6 +1184,22 @@ async function getDeviceFull(imei) {
   return result.rows[0] || null;
 }
 
+// Curăță valori CAN clar imposibile (sentinele/garbage) ÎNAINTE de stocare. Bounds LARGI → nu atinge
+// telemetria validă (rezervoare mari ~2000L, RPM ~8000). Shallow-copy (nu mutează obiectul live).
+// Defensiv: nu aruncă niciodată; la orice eroare întoarce io-ul original.
+function _sanitizeIo(io) {
+  if (!io || typeof io !== 'object') return io;
+  try {
+    const o = Object.assign({}, io);
+    const nullIf = (k, lo, hi) => { const v = o[k]; if (typeof v === 'number' && (v < lo || v > hi)) o[k] = null; };
+    nullIf('can_engine_rpm', 0, 16383); nullIf('rpm', 0, 16383);
+    nullIf('can_engine_temp', -60, 250); nullIf('can_coolant_temp', -60, 250); nullIf('engine_temp', -60, 250);
+    nullIf('can_fuel_level_pct', 0, 100); nullIf('fuel_level_pct', 0, 100); nullIf('can_adblue_level_pct', 0, 100);
+    nullIf('can_fuel_level_liters', 0, 5000); nullIf('fuel_level_liters', 0, 5000); nullIf('can_adblue_level_liters', 0, 1000);
+    return o;
+  } catch (e) { return io; }
+}
+
 async function insertPositions(imei, records) {
   if (records.length === 0) return;
 
@@ -1193,7 +1231,7 @@ async function insertPositions(imei, records) {
       gps.speed,
       gps.satellites,
       record.priority,
-      JSON.stringify(record.io),
+      JSON.stringify(_sanitizeIo(record.io)),
       companyId
     );
     paramIndex += 11;
