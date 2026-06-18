@@ -896,8 +896,19 @@ async function getCompanyImeis(companyId) {
   const r = await pool.query('SELECT imei FROM devices WHERE company_id = $1', [companyId]);
   return r.rows.map(x => x.imei);
 }
+// La mutarea unui vehicul în altă companie, curăță feed-ul vechi legat de el (notificări + constatări
+// agenți) — ca fosta companie să nu mai vadă reziduuri, iar noua companie să nu moștenească istoric străin.
+// Best-effort: o eroare aici nu blochează mutarea.
+async function _purgeDeviceFeed(imeis) {
+  const list = (Array.isArray(imeis) ? imeis : [imeis]).filter(Boolean);
+  if (!list.length) return;
+  try { await pool.query('DELETE FROM notifications WHERE imei = ANY($1::varchar[])', [list]); } catch (e) {}
+  try { await pool.query('DELETE FROM agent_findings WHERE imei = ANY($1::varchar[])', [list]); } catch (e) {}
+}
+
 async function setDeviceCompany(imei, companyId) {
   await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1', [imei, companyId || null]);
+  await _purgeDeviceFeed([imei]);
 }
 // Interfața CAN a device-ului:
 //  - 'fms'   = FMS Gateway (J1939, ex: FMC650 pe MAN TGS prin gateway)
@@ -1345,6 +1356,7 @@ async function setDevicesCompanyBulk(imeis, companyId) {
     'UPDATE devices SET company_id = $2 WHERE imei = ANY($1::varchar[])',
     [imeis, companyId || null]
   );
+  await _purgeDeviceFeed(imeis); // curăță feed-ul vechi al vehiculelor mutate
   // Pattern PGlite-safe: PGlite expune affectedRows, pg expune rowCount (vezi db.js:957)
   return r.affectedRows || r.rowCount || 0;
 }
