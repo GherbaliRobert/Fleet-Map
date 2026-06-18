@@ -741,6 +741,30 @@ async function initDb() {
     await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_wreport_period ON weekly_reports(company_id, period_from)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_wreport_company ON weekly_reports(company_id, period_from DESC)`);
 
+    // Istoric rapoarte generate la cerere (per user) — payload complet + expirare automată (7 zile)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS report_history (
+        id BIGSERIAL PRIMARY KEY,
+        company_id INTEGER,
+        user_id INTEGER,
+        username VARCHAR(120),
+        report_type VARCHAR(40) NOT NULL,
+        label VARCHAR(120),
+        imei VARCHAR(20),
+        vehicle_count INTEGER DEFAULT 0,
+        period_from TIMESTAMP,
+        period_to TIMESTAMP,
+        opts JSONB DEFAULT '{}',
+        data JSONB DEFAULT '{}',
+        signature VARCHAR(200),
+        status VARCHAR(20) DEFAULT 'done',
+        generated_at TIMESTAMP DEFAULT NOW(),
+        expires_at TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_rhist_user ON report_history(user_id, generated_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_rhist_expires ON report_history(expires_at)`);
+
     console.log('[DB] Tabele create / verificate');
   } finally {
     client.release();
@@ -2204,6 +2228,41 @@ async function setScheduleRun(id, lastRunIso, nextRunIso) {
   await pool.query('UPDATE report_schedules SET last_run = $2, next_run = $3 WHERE id = $1', [parseInt(id), lastRunIso, nextRunIso]);
 }
 
+// ─── Istoric rapoarte (per user, retenție 7 zile) ───
+async function saveReportHistory(h) {
+  // Dedup pe zi: aceeași semnătură (tip + vehicul + perioadă + opțiuni) generată azi → înlocuiește rândul, nu adaugă duplicat.
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  if (h.user_id != null && h.signature) {
+    try { await pool.query('DELETE FROM report_history WHERE user_id = $1 AND signature = $2 AND generated_at >= $3', [h.user_id, h.signature, dayStart.toISOString()]); } catch (e) {}
+  }
+  const r = await pool.query(
+    `INSERT INTO report_history (company_id, user_id, username, report_type, label, imei, vehicle_count, period_from, period_to, opts, data, signature, status, expires_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id, generated_at, expires_at`,
+    [h.company_id != null ? h.company_id : null, h.user_id != null ? h.user_id : null, h.username || null,
+     h.report_type, h.label || null, h.imei || null, h.vehicle_count || 0,
+     h.period_from || null, h.period_to || null, JSON.stringify(h.opts || {}), JSON.stringify(h.data || {}),
+     h.signature || null, h.status || 'done', h.expires_at || null]
+  );
+  return r.rows[0];
+}
+async function getReportHistory(userId, limit) {
+  try { await pool.query('DELETE FROM report_history WHERE expires_at IS NOT NULL AND expires_at < NOW()'); } catch (e) {}
+  const r = await pool.query(
+    `SELECT id, company_id, user_id, username, report_type, label, imei, vehicle_count, period_from, period_to, status, generated_at, expires_at
+     FROM report_history WHERE user_id = $1 ORDER BY generated_at DESC LIMIT $2`,
+    [userId, Math.min(parseInt(limit) || 100, 500)]
+  );
+  return r.rows;
+}
+async function getReportHistoryById(id, userId) {
+  try { await pool.query('DELETE FROM report_history WHERE expires_at IS NOT NULL AND expires_at < NOW()'); } catch (e) {}
+  const r = await pool.query('SELECT * FROM report_history WHERE id = $1 AND user_id = $2', [parseInt(id), userId]);
+  return r.rows[0] || null;
+}
+async function deleteReportHistory(id, userId) {
+  await pool.query('DELETE FROM report_history WHERE id = $1 AND user_id = $2', [parseInt(id), userId]);
+}
+
 // ─── Rapoarte săptămânale de activitate flotă ───
 async function saveWeeklyReport(r) {
   const res = await pool.query(
@@ -2257,6 +2316,7 @@ module.exports = {
   initDb,
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
+  saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,

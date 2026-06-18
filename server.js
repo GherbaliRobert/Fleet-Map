@@ -4621,6 +4621,39 @@ app.get('/api/reports', requireAuth, (req, res) => {
   });
 });
 
+// ─── Istoric rapoarte (per user, generate la cerere — retenție 7 zile) ───
+// NB: declarate ÎNAINTE de /api/reports/:type ca să nu fie capturate de ruta parametrizată.
+app.get('/api/reports/history', requireAuth, requirePerm('viewReports'), async (req, res) => {
+  try {
+    const uid = req.auth && req.auth.userId;
+    if (!uid) return res.json([]);
+    res.json(await db.getReportHistory(uid, parseInt(req.query.limit) || 100));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/reports/history/:id', requireAuth, requirePerm('viewReports'), async (req, res) => {
+  try {
+    const uid = req.auth && req.auth.userId;
+    const row = uid ? await db.getReportHistoryById(req.params.id, uid) : null;
+    if (!row) return res.status(404).json({ error: 'Raport inexistent sau expirat' });
+    let report = row.data || {};
+    if (typeof report === 'string') { try { report = JSON.parse(report); } catch (e) { report = {}; } }
+    const fmt = (req.query.format || '').toLowerCase();
+    if (fmt === 'xlsx' || fmt === 'pdf') {
+      if (!reportExport) return res.status(503).json({ error: 'Export PDF/Excel indisponibil pe server' });
+      return await reportExport.sendReport(res, report, fmt);
+    }
+    res.json({ id: row.id, report_type: row.report_type, label: row.label, generated_at: row.generated_at, report });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/reports/history/:id', requireAuth, requirePerm('viewReports'), async (req, res) => {
+  try {
+    const uid = req.auth && req.auth.userId;
+    if (!uid) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteReportHistory(req.params.id, uid);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try {
     const imeis = await resolveReportImeis(req);
@@ -4641,6 +4674,23 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     if (fmt === 'xlsx' || fmt === 'pdf') {
       if (!reportExport) return res.status(503).json({ error: 'Export PDF/Excel indisponibil pe server' });
       return await reportExport.sendReport(res, report, fmt);
+    }
+    // Istoric: salvează DOAR generările reale din UI (log=1), nu apelurile automate/agent.
+    if (req.query.log === '1' && req.auth && req.auth.userId) {
+      try {
+        const type = req.params.type;
+        const label = (reports.REPORTS[type] && reports.REPORTS[type].label) || type;
+        const sig = [type, req.query.imei || 'all', from, to,
+          JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId })].join('|');
+        await db.saveReportHistory({
+          company_id: req.companyId != null ? req.companyId : null,
+          user_id: req.auth.userId, username: req.auth.username,
+          report_type: type, label, imei: req.query.imei || null,
+          vehicle_count: imeis.length, period_from: from, period_to: to,
+          opts, data: report, signature: sig,
+          expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
+        });
+      } catch (e) { /* logarea în istoric nu trebuie să rupă răspunsul raportului */ }
     }
     res.json(report);
   } catch (err) { res.status(500).json({ error: err.message }); }

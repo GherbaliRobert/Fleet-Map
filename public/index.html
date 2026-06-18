@@ -372,6 +372,18 @@
         #rep-table td:first-child::before { content: none; }
         #rep-extra { width: 100%; margin-left: 0; }
         #rep-extra .rep-f, #rep-extra select, #rep-extra input { width: 100%; box-sizing: border-box; }
+        /* ─── Istoric rapoarte pe mobil: tabel → carduri ─── */
+        #rep-history-wrap { border: none; overflow-x: hidden; }
+        #rep-history thead { display: none; }
+        #rep-history, #rep-history tbody { display: block; width: 100%; }
+        #rep-history tbody tr { display: block; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 10px 13px; margin-bottom: 10px; }
+        #rep-history td { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; border: none; padding: 4px 0; font-size: 12.5px; white-space: normal; text-align: right; }
+        #rep-history td::before { content: attr(data-label); color: var(--text-muted); font-weight: 600; font-size: 11px; text-align: left; }
+        #rep-history td:first-child { font-size: 14px; font-weight: 700; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px solid var(--border); justify-content: flex-start; }
+        #rep-history td:first-child::before { content: none; }
+        #rep-history td:last-child { justify-content: flex-start; gap: 8px; flex-wrap: wrap; padding-top: 8px; }
+        #rep-history td:last-child::before { content: none; }
+        #rep-history .rh-act { min-height: 36px; }
 
         /* Modaluri rax (Conturi, Dashboard, Companii): width pe tot ecranul */
         .rax-card { max-width: 100% !important; max-height: 90vh; border-radius: 12px 12px 0 0; }
@@ -985,6 +997,22 @@
     .rep-card:hover { border-color:var(--accent); box-shadow:0 2px 12px rgba(0,0,0,.08); transform:translateY(-1px); }
     .rep-card i { font-size:18px; color:var(--accent); width:26px; text-align:center; }
     .rep-card .rc-label { font-weight:600; font-size:13.5px; }
+    /* Tab-uri Rapoarte: Generează / Istoric */
+    .rep-tabs { display:flex; gap:8px; margin-bottom:14px; }
+    .rep-tab { display:flex; align-items:center; gap:8px; padding:10px 18px; border-radius:10px; border:1px solid var(--border); background:var(--bg-panel); color:var(--text-secondary); cursor:pointer; font-size:14px; font-weight:700; transition:all .15s; }
+    .rep-tab:hover { border-color:var(--accent); color:var(--text-primary); }
+    .rep-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .rep-tab i { font-size:15px; }
+    #rep-history th { position:sticky; top:0; background:var(--bg-dark); padding:9px 11px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12px; color:var(--text-secondary); }
+    #rep-history td { padding:9px 11px; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12.5px; }
+    #rep-history tbody tr:nth-child(even) { background:rgba(127,127,127,.06); }
+    #rep-history tbody tr:hover { background:rgba(127,127,127,.12); }
+    .rh-badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(63,224,125,.16); color:var(--accent); }
+    .rh-act { background:transparent; border:1px solid var(--border); border-radius:7px; padding:6px 9px; cursor:pointer; color:var(--text-primary); font-size:12px; }
+    .rh-act:hover { border-color:var(--accent); color:var(--accent); }
+    .rh-act.rh-view { font-weight:700; }
+    .rh-act i { font-size:12px; }
+    .rh-act-xls i { color:#3FE07D; } .rh-act-pdf i { color:#dc2626; } .rh-act-del i { color:#dc2626; }
   </style>
 
   <!-- Users Modal -->
@@ -1529,6 +1557,12 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm" onclick="openSchedules()" title="Rapoarte programate"><i class="fas fa-clock"></i> Programări</button>
           <button class="close-btn" onclick="closeReports()" style="position:static;font-size:18px;">&#10005;</button>
         </span></h2>
+      <div class="rep-tabs">
+        <button class="rep-tab active" id="rep-tab-btn-generate" onclick="repShowTab('generate')"><i class="fas fa-circle-plus"></i> Generează rapoarte</button>
+        <button class="rep-tab" id="rep-tab-btn-history" onclick="repShowTab('history')"><i class="fas fa-clock-rotate-left"></i> Istoric rapoarte</button>
+      </div>
+      <!-- TAB: Generează rapoarte -->
+      <div id="rep-tab-generate" style="display:flex;flex-direction:column;flex:1;min-height:0;">
       <!-- Catalog: categorii + carduri -->
       <div id="rep-catalog">
         <div id="rep-cats" class="rep-cats"></div>
@@ -1538,10 +1572,11 @@ const pozitii = await r.json();</code></pre>
       <!-- Rulare raport selectat -->
       <div id="rep-runner" style="display:none;flex-direction:column;flex:1;min-height:0;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <button class="btn-sm" onclick="backToReportCatalog()"><i class="fas fa-arrow-left"></i> Catalog</button>
+          <button class="btn-sm" id="rep-back-btn" onclick="backToReportCatalog()"><i class="fas fa-arrow-left"></i> Catalog</button>
           <strong id="rep-title" style="font-size:14px;"></strong>
         </div>
         <select id="rep-type" onchange="onRepType()" style="display:none;"></select>
+        <div id="rep-controls">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
           <label class="rep-f" style="grid-column:1 / -1;"><span>Vehicul</span><select id="rep-imei"></select></label>
           <div class="rep-interval-title" style="grid-column:1 / -1;"><i class="far fa-clock"></i> Interval orar</div>
@@ -1556,6 +1591,7 @@ const pozitii = await r.json();</code></pre>
           <span id="rep-extra" style="display:flex;gap:6px;align-items:center;margin-left:8px;"></span>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
         </div>
+        </div><!-- /rep-controls -->
         <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
         <div id="rep-charts"></div>
         <div id="rep-filter-bar"></div>
@@ -1571,6 +1607,25 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm rep-dl rep-dl-pdf" onclick="repExport('pdf')" title="Descarcă PDF"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
       </div>
+      </div><!-- /rep-tab-generate -->
+
+      <!-- TAB: Istoric rapoarte -->
+      <div id="rep-tab-history" style="display:none;flex-direction:column;flex:1;min-height:0;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+          <span style="font-size:12.5px;color:var(--text-muted);"><i class="fas fa-circle-info" style="color:var(--accent);"></i> Rapoartele generate rămân aici 7 zile, apoi se șterg automat.</span>
+          <button class="btn-sm" style="margin-left:auto;" onclick="loadReportHistory()"><i class="fas fa-rotate"></i> Reîmprospătează</button>
+        </div>
+        <div id="rep-history-wrap" style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;min-height:120px;">
+          <table id="rep-history" style="width:100%;border-collapse:collapse;">
+            <thead><tr>
+              <th>Denumire raport</th><th>Perioada</th><th>Data generării</th><th>Vehicule</th><th>Stare</th><th>Disponibil până la</th><th>Acțiuni</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="rep-history-empty" style="display:none;text-align:center;color:var(--text-muted);padding:28px;">Nu ai generat niciun raport în ultimele 7 zile.</div>
+      </div>
+
     </div>
   </div>
 
@@ -3437,6 +3492,7 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Rapoarte ───
     let repCatalog = null, lastReport = null, repCurrentCat = null;
+    let repHistoryId = null, repActiveTab = 'generate';
     const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell' };
     async function openReports() {
       if (!repCatalog) { try { repCatalog = await (await fetch('/api/reports')).json(); } catch (e) { repCatalog = { categories: [], reports: [] }; } }
@@ -3447,6 +3503,7 @@ const pozitii = await r.json();</code></pre>
       renderReportCards();
       document.getElementById('rep-runner').style.display = 'none';
       document.getElementById('rep-catalog').style.display = '';
+      repShowTab('generate');
     }
     function renderReportCards() {
       const list = (repCatalog.reports || []).filter(r => r.cat === repCurrentCat);
@@ -3496,6 +3553,9 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('rep-title').textContent = r ? r.label : type;
       document.getElementById('rep-catalog').style.display = 'none';
       document.getElementById('rep-runner').style.display = 'flex';
+      repHistoryId = null;
+      var _rc = document.getElementById('rep-controls'); if (_rc) _rc.style.display = '';
+      var _bb = document.getElementById('rep-back-btn'); if (_bb) _bb.innerHTML = '<i class="fas fa-arrow-left"></i> Catalog';
       ensureRepPickers();
       await fillVehicleSelect('rep-imei', true, 'Toată flota');
       setRepPeriod('week'); onRepType();
@@ -3509,6 +3569,7 @@ const pozitii = await r.json();</code></pre>
     function backToReportCatalog() {
       document.getElementById('rep-runner').style.display = 'none';
       document.getElementById('rep-catalog').style.display = '';
+      if (repHistoryId) { repHistoryId = null; repShowTab('history'); }
     }
     function setRepPeriod(p) {
       const now = new Date(); let from = new Date();
@@ -3561,18 +3622,21 @@ const pozitii = await r.json();</code></pre>
     }
     async function repGenerate() {
       const url = repBuildUrl(); if (!url) return;
+      repHistoryId = null; // generare nouă „live", nu vizualizare din istoric
       document.getElementById('rep-count').textContent = 'Se generează...';
       let data;
-      try { const res = await fetch(url); data = await res.json(); if (!res.ok) throw new Error(data.error||'Eroare'); }
+      try { const res = await fetch(url + '&log=1', { credentials: 'same-origin' }); data = await res.json(); if (!res.ok) throw new Error(data.error||'Eroare'); }
       catch (e) { alert(e.message); document.getElementById('rep-count').textContent = ''; return; }
       lastReport = data; renderReport(data);
     }
     async function repExport(fmt) {
-      const url = repBuildUrl(); if (!url) return;
+      let url;
+      if (repHistoryId) url = '/api/reports/history/' + repHistoryId + '?format=' + fmt;
+      else { const b = repBuildUrl(); if (!b) return; url = b + '&format=' + fmt; }
       const cnt = document.getElementById('rep-count'); const prev = cnt.textContent;
       cnt.textContent = 'Se exportă ' + fmt.toUpperCase() + '...';
       try {
-        const res = await fetch(url + '&format=' + fmt, { credentials: 'same-origin' });
+        const res = await fetch(url, { credentials: 'same-origin' });
         if (!res.ok) { let e = {}; try { e = await res.json(); } catch (_) {} throw new Error(e.error || ('Eroare ' + res.status)); }
         const blob = await res.blob();
         const cd = res.headers.get('Content-Disposition') || '';
@@ -3584,6 +3648,104 @@ const pozitii = await r.json();</code></pre>
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
         cnt.textContent = prev;
       } catch (e) { alert('Export eșuat: ' + e.message); cnt.textContent = prev; }
+    }
+    // ─── Tab-uri Rapoarte (Generează / Istoric) ───
+    function repShowTab(tab) {
+      repActiveTab = tab;
+      var gen = document.getElementById('rep-tab-generate'), his = document.getElementById('rep-tab-history');
+      var bg = document.getElementById('rep-tab-btn-generate'), bh = document.getElementById('rep-tab-btn-history');
+      if (gen) gen.style.display = (tab === 'generate') ? 'flex' : 'none';
+      if (his) his.style.display = (tab === 'history') ? 'flex' : 'none';
+      if (bg) bg.classList.toggle('active', tab === 'generate');
+      if (bh) bh.classList.toggle('active', tab === 'history');
+      if (tab === 'history') loadReportHistory();
+    }
+    function repFmtDT(s) {
+      if (!s) return '—';
+      var d = new Date(s); if (isNaN(d)) return '—';
+      var p = function (n) { return String(n).padStart(2, '0'); };
+      return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear() + ', ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    function repFmtD(s) {
+      if (!s) return '—';
+      var d = new Date(s); if (isNaN(d)) return '—';
+      var p = function (n) { return String(n).padStart(2, '0'); };
+      return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear();
+    }
+    async function loadReportHistory() {
+      var tb = document.querySelector('#rep-history tbody');
+      var empty = document.getElementById('rep-history-empty');
+      var wrap = document.getElementById('rep-history-wrap');
+      if (tb) tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:18px;">Se încarcă…</td></tr>';
+      var list = [];
+      try { list = await fetch('/api/reports/history', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+      catch (e) { list = []; }
+      if (!Array.isArray(list)) list = [];
+      if (!list.length) {
+        if (tb) tb.innerHTML = '';
+        if (wrap) wrap.style.display = 'none';
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      if (wrap) wrap.style.display = 'block';
+      if (empty) empty.style.display = 'none';
+      renderReportHistory(list);
+    }
+    function renderReportHistory(list) {
+      var E = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+      var tb = document.querySelector('#rep-history tbody'); if (!tb) return;
+      tb.innerHTML = list.map(function (h) {
+        var period = repFmtDT(h.period_from) + ' – ' + repFmtDT(h.period_to);
+        var n = h.imei ? 1 : (h.vehicle_count || 0);
+        var veh = n + ' ' + (n === 1 ? 'vehicul' : 'vehicule');
+        return '<tr>' +
+          '<td data-label="Denumire raport">' + E(h.label || h.report_type) + '</td>' +
+          '<td data-label="Perioada">' + E(period) + '</td>' +
+          '<td data-label="Data generării">' + E(repFmtDT(h.generated_at)) + '</td>' +
+          '<td data-label="Vehicule">' + E(veh) + '</td>' +
+          '<td data-label="Stare"><span class="rh-badge">Finalizat</span></td>' +
+          '<td data-label="Disponibil până la">' + E(repFmtD(h.expires_at)) + '</td>' +
+          '<td data-label="Acțiuni">' +
+            '<button class="rh-act rh-view" onclick="repViewHistory(' + h.id + ')" title="Vezi raportul"><i class="fas fa-eye"></i> Vezi</button> ' +
+            '<button class="rh-act rh-act-xls" onclick="repExportHistory(' + h.id + ',\'xlsx\')" title="Descarcă Excel"><i class="fas fa-file-excel"></i></button> ' +
+            '<button class="rh-act rh-act-pdf" onclick="repExportHistory(' + h.id + ',\'pdf\')" title="Descarcă PDF"><i class="fas fa-file-pdf"></i></button> ' +
+            '<button class="rh-act rh-act-del" onclick="repDeleteHistory(' + h.id + ')" title="Șterge din istoric"><i class="fas fa-trash"></i></button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+    async function repViewHistory(id) {
+      var data;
+      try { var res = await fetch('/api/reports/history/' + id, { credentials: 'same-origin' }); var j = await res.json(); if (!res.ok) throw new Error(j.error || 'Eroare'); data = j; }
+      catch (e) { alert(e.message || 'Nu am putut încărca raportul'); return; }
+      repHistoryId = id;
+      repShowTab('generate');
+      document.getElementById('rep-catalog').style.display = 'none';
+      document.getElementById('rep-runner').style.display = 'flex';
+      var rc = document.getElementById('rep-controls'); if (rc) rc.style.display = 'none';
+      var bb = document.getElementById('rep-back-btn'); if (bb) bb.innerHTML = '<i class="fas fa-arrow-left"></i> Înapoi la istoric';
+      document.getElementById('rep-title').textContent = (data.label || data.report_type || 'Raport') + ' · ' + repFmtDT(data.generated_at);
+      ensureRepPickers();
+      renderReport(data.report || {});
+    }
+    async function repExportHistory(id, fmt) {
+      try {
+        var res = await fetch('/api/reports/history/' + id + '?format=' + fmt, { credentials: 'same-origin' });
+        if (!res.ok) { var e = {}; try { e = await res.json(); } catch (_) {} throw new Error(e.error || ('Eroare ' + res.status)); }
+        var blob = await res.blob();
+        var cd = res.headers.get('Content-Disposition') || '';
+        var m = cd.match(/filename="?([^"]+)"?/);
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = m ? m[1] : ('raport.' + fmt);
+        document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      } catch (e) { alert('Export eșuat: ' + e.message); }
+    }
+    async function repDeleteHistory(id) {
+      if (!confirm('Ștergi acest raport din istoric?')) return;
+      try { await fetch('/api/reports/history/' + id, { method: 'DELETE', credentials: 'same-origin' }); } catch (e) {}
+      loadReportHistory();
     }
     // ─── Rapoarte programate ───
     async function openSchedules() {
