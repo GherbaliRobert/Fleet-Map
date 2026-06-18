@@ -1287,7 +1287,11 @@ async function pruneErrors(keep) {
   } catch (_) {}
 }
 
-async function getDevices() {
+async function getDevices(companyId) {
+  // Filtru pe companie ÎN SQL (scalare): la 30+ companii evită încărcarea TUTUROR dispozitivelor
+  // global + LATERAL pe positions la fiecare load de hartă. Fără arg (super-admin) → toate.
+  const where = companyId != null ? 'WHERE d.company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
     SELECT d.*,
       p.latitude, p.longitude, p.speed, p.timestamp as last_position_time,
@@ -1300,8 +1304,9 @@ async function getDevices() {
       ORDER BY timestamp DESC
       LIMIT 1
     ) p ON true
+    ${where}
     ORDER BY d.last_seen DESC
-  `);
+  `, params);
   return result.rows;
 }
 

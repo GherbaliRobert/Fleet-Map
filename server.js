@@ -2278,7 +2278,8 @@ app.get('/api', (req, res) => {
 // API: Lista dispozitivelor cu ultima poziție
 app.get('/api/devices', requireAuth, withScope, async (req, res) => {
   try {
-    let devices = await db.getDevices();
+    // Scalare: filtrează pe companie în SQL (non-super) → la 30+ companii nu mai încărcăm global.
+    let devices = await db.getDevices(req.isSuper ? null : req.companyId);
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei)); // demo doar în contul demo
     // Implicit ascunde vehiculele arhivate (de pe hartă/selectoare); ?includeArchived=1 le include (management)
