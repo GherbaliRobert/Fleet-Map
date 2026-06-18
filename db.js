@@ -1706,8 +1706,11 @@ async function notificationKeyExists(key, hours) {
 // Vechile broadcasturi imei-NULL + company-NULL NU mai sunt vizibile non-superului (erau scurgerea cross-tenant).
 function _notifWhere(userId, imeis, companyId) {
   if (imeis === null) return { clause: '(user_id = $1 OR user_id IS NULL)', params: [userId] };
+  // IZOLARE: o notificare LEGATĂ de un vehicul (imei) se arată DOAR dacă vehiculul e încă în accesul tău.
+  // Astfel, un vehicul mutat în altă companie nu-ți mai apare în feed (nici măcar pe notificările vechi
+  // adresate ție). Notificările fără vehicul (imei NULL) rămân: ale tale (user_id) sau ale companiei.
   return {
-    clause: '(user_id = $1 OR (user_id IS NULL AND ((imei = ANY($2)) OR (imei IS NULL AND company_id = $3))))',
+    clause: '((user_id = $1 AND (imei IS NULL OR imei = ANY($2))) OR (user_id IS NULL AND ((imei = ANY($2)) OR (imei IS NULL AND company_id = $3))))',
     params: [userId, imeis, companyId != null ? companyId : -1]
   };
 }
