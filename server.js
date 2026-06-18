@@ -3,6 +3,7 @@
 // iar interogările pe interval (ISO/UTC) se potrivesc. Afișarea se face explicit pe ora locală.
 process.env.TZ = 'UTC';
 const net = require('net');
+const dnsp = require('dns').promises;
 const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
@@ -2220,6 +2221,8 @@ app.post('/api/webhooks', requireAuth, requireAdmin, withCompany, async (req, re
   try {
     const url = (req.body.url || '').trim();
     if (!/^https?:\/\/.+/i.test(url)) return res.status(400).json({ error: 'URL invalid (http/https)' });
+    const urlErr = webhookUrlError(url); // anti-SSRF: refuză gazde interne/IP private
+    if (urlErr) return res.status(400).json({ error: urlErr });
     const events = Array.isArray(req.body.events) && req.body.events.length ? req.body.events.slice(0, 30) : null; // null = toate
     const secret = req.body.secret ? String(req.body.secret).slice(0, 80) : ('whsec_' + crypto.randomBytes(16).toString('hex'));
     const w = await db.createWebhook({ url, events, secret, enabled: req.body.enabled !== false }, req.companyId);
@@ -4342,14 +4345,63 @@ function _whCooldownOk(companyId, type, imei) {
   if (_whCooldown.size > 10000) { for (const [k, t] of _whCooldown) if (now - t > 600000) _whCooldown.delete(k); }
   return true;
 }
-// Livrează un corp deja serializat la UN webhook (fire-and-forget, semnat HMAC, timeout 5s).
-function _deliverWebhook(h, body) {
+// ─── Anti-SSRF pentru webhooks: blochează URL-urile către infrastructură internă ───
+// (loopback, IP-uri private/link-local, metadata cloud 169.254.x, gazde interne). Altfel un admin ar putea
+// folosi serverul ca proxy spre rețeaua internă, iar last_status/last_error ca oracol. WEBHOOK_ALLOW_PRIVATE=true
+// dezactivează blocarea (doar pt. instalări on-prem unde ținta e intenționat internă).
+function _isPrivateIp(ip) {
+  if (net.isIPv4(ip)) {
+    const p = ip.split('.').map(Number);
+    return p[0] === 10 || p[0] === 127 || p[0] === 0 ||
+      (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
+      (p[0] === 192 && p[1] === 168) ||
+      (p[0] === 169 && p[1] === 254) ||              // link-local + metadata cloud
+      (p[0] === 100 && p[1] >= 64 && p[1] <= 127);   // CGNAT
+  }
+  if (net.isIPv6(ip)) {
+    const l = ip.toLowerCase().replace(/^\[|\]$/g, '');
+    if (l === '::1' || l === '::') return true;
+    if (l.startsWith('fc') || l.startsWith('fd') || l.startsWith('fe80')) return true; // ULA + link-local
+    const m = l.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/); if (m) return _isPrivateIp(m[1]); // IPv4-mapped
+    return false;
+  }
+  return false;
+}
+function _hostBlocked(host) {
+  const h = (host || '').toLowerCase().replace(/^\[|\]$/g, '');
+  if (!h) return true;
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.internal') || h.endsWith('.local')) return true;
+  return false;
+}
+// Validare sincronă la CREARE (hostname/IP-literal).
+function webhookUrlError(raw) {
+  let u; try { u = new URL(raw); } catch (e) { return 'URL invalid'; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return 'Doar http/https';
+  if (process.env.WEBHOOK_ALLOW_PRIVATE === 'true') return null;
+  if (_hostBlocked(u.hostname)) return 'Gazdă internă interzisă';
+  if (net.isIP(u.hostname) && _isPrivateIp(u.hostname)) return 'Adresă IP privată/internă interzisă';
+  return null;
+}
+// Verificare la LIVRARE: rezolvă DNS → respinge dacă orice IP e privat (anti DNS-rebinding).
+async function webhookHostAllowed(raw) {
+  let u; try { u = new URL(raw); } catch (e) { return false; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+  if (process.env.WEBHOOK_ALLOW_PRIVATE === 'true') return true;
+  if (_hostBlocked(u.hostname)) return false;
+  if (net.isIP(u.hostname)) return !_isPrivateIp(u.hostname);
+  try { const addrs = await dnsp.lookup(u.hostname, { all: true }); return addrs.length > 0 && addrs.every((a) => !_isPrivateIp(a.address)); }
+  catch (e) { return false; }
+}
+// Livrează un corp deja serializat la UN webhook (fire-and-forget, semnat HMAC, timeout 5s, anti-SSRF).
+async function _deliverWebhook(h, body) {
+  if (!(await webhookHostAllowed(h.url))) { db.updateWebhookStatus(h.id, 0, 'URL blocat (gazdă internă/privată)'); return; }
   const headers = { 'Content-Type': 'application/json', 'User-Agent': 'RA-Tracks-Webhook/1.0' };
   if (h.secret) headers['X-RaTracks-Signature'] = 'sha256=' + crypto.createHmac('sha256', h.secret).update(body).digest('hex');
   const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 5000);
-  fetch(h.url, { method: 'POST', headers, body, signal: ctrl.signal })
+  // redirect:'error' → fără SSRF prin redirect public→intern.
+  fetch(h.url, { method: 'POST', headers, body, signal: ctrl.signal, redirect: 'error' })
     .then((r) => { clearTimeout(timer); db.updateWebhookStatus(h.id, r.status, r.ok ? null : ('HTTP ' + r.status)); })
-    .catch((e) => { clearTimeout(timer); db.updateWebhookStatus(h.id, 0, e.message); });
+    .catch((e) => { clearTimeout(timer); db.updateWebhookStatus(h.id, 0, (e && e.message || 'eroare').slice(0, 120)); });
 }
 // Livrează un eveniment către TOATE webhook-urile companiei abonate (fire-and-forget).
 async function fireWebhooks(companyId, payload, opts) {
