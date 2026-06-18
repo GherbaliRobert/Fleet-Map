@@ -63,8 +63,8 @@ export function Menu() {
             {perms.manageFleet && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
             {perms.manageFleet && item('wrench', 'Mentenanță', () => loc.route('/admin/maintenance'))}
             {perms.manageFleet && item('truck', 'Vehicule (editare fișă)', () => loc.route('/vehicles'))}
-            {soon('alert', 'Alerte')}
-            {perms.manageUsers && soon('user', 'Utilizatori')}
+            {perms.manageFleet && item('alert', 'Alerte', () => loc.route('/admin/alerts'))}
+            {perms.manageUsers && item('user', 'Utilizatori', () => loc.route('/admin/users'))}
           </>
         )}
 

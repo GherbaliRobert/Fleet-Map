@@ -1,0 +1,165 @@
+import { useEffect, useState } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
+import { me, vehicles, showToast } from '../app/store';
+import { Api } from '../api/endpoints';
+import { Icon } from '../components/Icon';
+import './detail.css';
+import './admin.css';
+
+// Subset de tipuri de alertă (prag numeric / fără câmpuri). Geofence + axe → în aplicația web.
+type AField = { k: string; label: string; def?: number };
+type AType = { v: string; label: string; fields: AField[] };
+const ALERT_TYPES: AType[] = [
+  { v: 'overspeed', label: 'Depășire viteză', fields: [{ k: 'maxSpeed', label: 'Viteză max (km/h)', def: 90 }] },
+  { v: 'fuel_drop', label: 'Scădere combustibil (furt)', fields: [{ k: 'dropLiters', label: 'Scădere minimă (L)', def: 10 }] },
+  { v: 'ignition_on', label: 'Pornire motor', fields: [] },
+  { v: 'ignition_off', label: 'Oprire motor', fields: [] },
+  { v: 'engine_temp', label: 'Temperatură motor mare', fields: [{ k: 'maxTemp', label: 'Temp max (°C)', def: 105 }] },
+  { v: 'dtc_error', label: 'Erori motor (DTC)', fields: [] },
+  { v: 'service_due', label: 'Service aproape', fields: [{ k: 'warnKm', label: 'Avertizare sub (km)', def: 1000 }] },
+  { v: 'brake_pad_wear', label: 'Uzură plăcuțe frână', fields: [{ k: 'minPercent', label: 'Prag minim (%)', def: 20 }] },
+  { v: 'pto_active', label: 'PTO activat', fields: [] },
+  { v: 'overload_legal', label: 'Supraîncărcare (legal)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 40000 }] },
+];
+const typeLabel = (v: string) => ALERT_TYPES.find((t) => t.v === v)?.label || v;
+
+export function AdminAlerts() {
+  const loc = useLocation();
+  const canWrite = !!me.value?.permissions?.manageFleet;
+  const vlist = vehicles.value;
+  const vname = (imei: string) => { const v = vlist.find((x) => x.imei === imei); return v ? (v.name || v.plate || imei) : imei; };
+
+  const [items, setItems] = useState<any[] | null>(null);
+  const [err, setErr] = useState('');
+  const [add, setAdd] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<any>({ name: '', type: 'overspeed', imei: '', enabled: 'true', cond: {} as Record<string, any> });
+
+  async function reload() {
+    setErr('');
+    try { setItems(await Api.alerts()); }
+    catch (e: any) { setErr(e?.status === 403 ? 'Nu ai permisiunea de administrare.' : (e?.message || 'Eroare la încărcare')); setItems([]); }
+  }
+  useEffect(() => { reload(); }, []);
+
+  function openAdd() {
+    const t = ALERT_TYPES[0];
+    const cond: Record<string, any> = {};
+    for (const f of t.fields) cond[f.k] = f.def ?? '';
+    setForm({ name: '', type: t.v, imei: '', enabled: 'true', cond });
+    setAdd(true);
+  }
+  function changeType(v: string) {
+    const t = ALERT_TYPES.find((x) => x.v === v) || ALERT_TYPES[0];
+    const cond: Record<string, any> = {};
+    for (const f of t.fields) cond[f.k] = f.def ?? '';
+    setForm((p: any) => ({ ...p, type: v, cond }));
+  }
+  const curType = ALERT_TYPES.find((t) => t.v === form.type) || ALERT_TYPES[0];
+
+  async function save() {
+    if (!form.name.trim()) { showToast('Dă un nume regulii', true); return; }
+    const condition: Record<string, any> = {};
+    for (const f of curType.fields) { const v = form.cond[f.k]; condition[f.k] = (v === '' || v == null) ? null : Number(v); }
+    setSaving(true);
+    try {
+      await Api.createAlert({ name: form.name.trim(), type: form.type, imei: form.imei || null, enabled: form.enabled === 'true', condition });
+      showToast('Alertă creată'); setAdd(false); await reload();
+    } catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); }
+    finally { setSaving(false); }
+  }
+  async function doDelete(a: any) {
+    setSaving(true);
+    try { await Api.deleteAlert(a.id); showToast('Ștearsă'); setConfirmDel(null); await reload(); }
+    catch (e: any) { showToast(e?.message || 'Eroare la ștergere', true); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div class="screen">
+      <header class="app-header">
+        <button class="h-btn" onClick={() => loc.route('/meniu')}><Icon name="chevronL" /></button>
+        <div class="h-title">Alerte</div>
+        <div style="width:36px" />
+      </header>
+      <div class="content has-tabbar" style="padding-bottom:96px">
+        {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
+        {items == null && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
+        {items != null && items.length === 0 && !err && (
+          <div class="adm-empty"><Icon name="alert" size={40} class="ic" /><div>Nicio regulă de alertă definită.</div></div>
+        )}
+        {items != null && items.length > 0 && (
+          <div class="adm-list">
+            {items.map((a) => (
+              <div class="adm-item">
+                <span class="ic-wrap"><Icon name="alert" size={19} /></span>
+                <span class="mid">
+                  <div class="nm">{a.name}</div>
+                  <div class="sub">{typeLabel(a.type)} · {a.imei ? vname(a.imei) : 'Toate vehiculele'}</div>
+                </span>
+                <span class="rt">
+                  <span class={'adm-pill ' + (a.enabled ? 'ok' : '')}>{a.enabled ? 'activă' : 'inactivă'}</span>
+                  {canWrite && <button class="icon-btn-sm danger" onClick={() => setConfirmDel(a)}><Icon name="trash" size={17} /></button>}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {canWrite && <button class="fab" onClick={openAdd} aria-label="Adaugă alertă"><Icon name="plus" size={26} color="#06210f" /></button>}
+
+      {add && (
+        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) setAdd(false); }}>
+          <div class="sheet">
+            <div class="sheet-h"><b><Icon name="alert" size={18} color="var(--accent)" /> Adaugă alertă</b><button class="h-btn" onClick={() => setAdd(false)}><Icon name="x" /></button></div>
+            <div class="sheet-body">
+              <div class="frm">
+                <div class="fld"><label>Nume regulă <span class="req">*</span></label><input value={form.name} onInput={(e) => setForm((p: any) => ({ ...p, name: (e.target as HTMLInputElement).value }))} placeholder="Ex: Viteză peste 90" /></div>
+                <div class="fld"><label>Tip alertă</label>
+                  <select value={form.type} onChange={(e) => changeType((e.target as HTMLSelectElement).value)}>
+                    {ALERT_TYPES.map((t) => <option value={t.v}>{t.label}</option>)}
+                  </select>
+                </div>
+                {curType.fields.map((f) => (
+                  <div class="fld"><label>{f.label}</label>
+                    <input type="number" inputMode="numeric" value={form.cond[f.k] ?? ''} onInput={(e) => { const v = (e.target as HTMLInputElement).value; setForm((p: any) => ({ ...p, cond: { ...p.cond, [f.k]: v } })); }} />
+                  </div>
+                ))}
+                <div class="fld"><label>Vehicul</label>
+                  <select value={form.imei} onChange={(e) => setForm((p: any) => ({ ...p, imei: (e.target as HTMLSelectElement).value }))}>
+                    <option value="">Toate vehiculele</option>
+                    {vlist.slice().sort((a, b) => (a.name || a.imei).localeCompare(b.name || b.imei)).map((v) => <option value={v.imei}>{v.name || v.plate || v.imei}</option>)}
+                  </select>
+                </div>
+                <div class="fld"><label>Stare</label>
+                  <select value={form.enabled} onChange={(e) => setForm((p: any) => ({ ...p, enabled: (e.target as HTMLSelectElement).value }))}>
+                    <option value="true">Activă</option>
+                    <option value="false">Inactivă</option>
+                  </select>
+                </div>
+                <div class="frm-actions"><button class="btn btn-primary" disabled={saving} onClick={save}>{saving ? 'Se salvează…' : 'Creează alerta'}</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDel && (
+        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) setConfirmDel(null); }}>
+          <div class="sheet">
+            <div class="sheet-h"><b>Confirmare ștergere</b><button class="h-btn" onClick={() => setConfirmDel(null)}><Icon name="x" /></button></div>
+            <div class="sheet-body">
+              <p style="margin:0 0 16px;font-size:14.5px">Sigur ștergi regula „<b>{confirmDel.name}</b>”?</p>
+              <div class="frm-actions">
+                <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" onClick={() => setConfirmDel(null)}>Anulează</button>
+                <button class="btn btn-danger-ghost" disabled={saving} onClick={() => doDelete(confirmDel)}>{saving ? '…' : 'Șterge'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

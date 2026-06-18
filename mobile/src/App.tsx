@@ -17,6 +17,8 @@ import { WeeklyReport } from './screens/WeeklyReport';
 import { AdminDrivers } from './screens/AdminDrivers';
 import { AdminGroups } from './screens/AdminGroups';
 import { AdminMaintenance } from './screens/AdminMaintenance';
+import { AdminAlerts } from './screens/AdminAlerts';
+import { AdminUsers } from './screens/AdminUsers';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -71,6 +73,8 @@ function Shell() {
         <Route path="/admin/drivers" component={AdminDrivers} />
         <Route path="/admin/groups" component={AdminGroups} />
         <Route path="/admin/maintenance" component={AdminMaintenance} />
+        <Route path="/admin/alerts" component={AdminAlerts} />
+        <Route path="/admin/users" component={AdminUsers} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}
