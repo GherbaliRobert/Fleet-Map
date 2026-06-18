@@ -2570,11 +2570,12 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
     try {
       const sd = await db.pool.query(
         "SELECT MAX(CASE WHEN speed > 0 THEN timestamp END) AS last_moved_at, " +
-        "MAX(CASE WHEN (io_data->>'ignition') IN ('1','true') THEN timestamp END) AS ignition_on_at " +
+        "MAX(CASE WHEN (io_data->>'ignition') IN ('1','true') THEN timestamp END) AS ignition_on_at, " +
+        "MAX(CASE WHEN (io_data->>'ignition') IN ('0','false') THEN timestamp END) AS ignition_off_at " +
         "FROM positions WHERE imei = $1 AND timestamp > NOW() - INTERVAL '30 days'",
         [req.params.imei]
       );
-      if (sd.rows && sd.rows[0]) { device.last_moved_at = sd.rows[0].last_moved_at; device.ignition_on_at = sd.rows[0].ignition_on_at; }
+      if (sd.rows && sd.rows[0]) { device.last_moved_at = sd.rows[0].last_moved_at; device.ignition_on_at = sd.rows[0].ignition_on_at; device.ignition_off_at = sd.rows[0].ignition_off_at; }
     } catch (e) { /* fără durate dacă interogarea eșuează */ }
     res.json(device);
   } catch (err) {

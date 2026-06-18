@@ -46,17 +46,20 @@
     if (!f.last_moved_at) return 'de peste 30 zile';
     return fmtDur(Date.now() - new Date(f.last_moved_at).getTime());
   }
+  function engOn(d) { return !!(d && d.io && (d.io.ignition === 1 || d.io.ignition === true)); }
+  function engLabel(d) { return engOn(d) ? 'Motor pornit de' : 'Motor oprit de'; }
   function durEng(d, f) {
-    var ignOn = !!(d && d.io && (d.io.ignition === 1 || d.io.ignition === true));
-    if (ignOn) return '<span style="color:var(--green)">motor pornit</span>';
     if (!f) return '<span style="color:var(--text-muted)">…</span>';
-    if (!f.ignition_on_at) return 'de peste 30 zile';
-    return fmtDur(Date.now() - new Date(f.ignition_on_at).getTime());
+    // pornit de = de la ultima oprire (ignition_off_at) · oprit de = de la ultima pornire (ignition_on_at)
+    var anchor = engOn(d) ? f.ignition_off_at : f.ignition_on_at;
+    if (!anchor) return 'de peste 30 zile';
+    return fmtDur(Date.now() - new Date(anchor).getTime());
   }
   function renderDur(imei) {
     var d = DEVS() && DEVS().get(imei); if (!d) return;
     var f = fullCache[imei] || null;
     var s = el('vp-stat-' + imei); if (s) s.innerHTML = durStat(d, f);
+    var lbl = el('vp-englbl-' + imei); if (lbl) lbl.textContent = engLabel(d);
     var e = el('vp-eng-' + imei); if (e) e.innerHTML = durEng(d, f);
   }
 
@@ -77,7 +80,7 @@
     rows += row('Adresă', '<span style="color:var(--text-muted)">se încarcă…</span>', 'vp-adr-' + imei);
     rows += row('Viteză', '<span id="vp-spd-' + imei + '" style="color:' + (b.moving ? 'var(--green)' : 'var(--text-muted)') + '">' + b.speed + ' km/h</span>');
     rows += row('În staționare de', durStat(d, fullCache[imei] || null), 'vp-stat-' + imei);
-    rows += row('Motor oprit de', durEng(d, fullCache[imei] || null), 'vp-eng-' + imei);
+    rows += '<tr><td id="vp-englbl-' + imei + '">' + esc(engLabel(d)) + '</td><td id="vp-eng-' + imei + '">' + durEng(d, fullCache[imei] || null) + '</td></tr>';
     rows += row('Coordonate', esc(b.lat + ', ' + b.lng + '  ·  ' + b.ang), 'vp-coord-' + imei);
     rows += row('Data ultimei transmisii', esc(b.ts), 'vp-tx-' + imei);
 
