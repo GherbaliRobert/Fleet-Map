@@ -110,7 +110,7 @@
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('settings'); })"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ showView('administrare'); })"><i class="fas fa-gauge-high"></i><span>Panou admin</span></button>
-            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
+            <button class="nav-item nav-sub companies-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('users'); })"><i class="fas fa-users"></i><span>Utilizatori</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('archived'); })"><i class="fas fa-box-archive"></i><span>Dispozitive arhivate</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
@@ -910,7 +910,9 @@
     /* Acțiuni de rând (Edit/Delete) — pătrate consistente, mai mici */
     td .btn-sm { padding: 5px 9px; }
     body.no-fleet .fleet-only { display:none !important; }
-    body.no-users .users-only { display:none !important; } /* Companii/Utilizatori/Audit din Administrare — doar cu permisiunea manageUsers */
+    body.no-users .users-only { display:none !important; } /* Utilizatori/Audit din Administrare — cu permisiunea manageUsers */
+    body.no-companies .companies-only { display:none !important; } /* Companii & mutare între companii — STRICT super-admin (manageCompanies) */
+    body:not(.is-super) [data-super] { display:none !important; } /* fail-closed: orice element data-super rămâne ascuns până se confirmă super-admin */
     /* Administrare (Faza 2) */
     #admin-modal input, #admin-modal select, #admin-modal textarea {
       background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb);
@@ -2091,6 +2093,7 @@ const pozitii = await r.json();</code></pre>
       if (body && body.parentNode !== t) t.appendChild(body);
     }
     window.raxAdminTab = function (name) {
+      if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
       var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived' };
       var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
@@ -4370,7 +4373,7 @@ const pozitii = await r.json();</code></pre>
       if (btn) { btn.classList.add('active'); var g = btn.closest('.nav-group'); if (g) g.classList.add('open'); }
     }
     function goManage(tab) { window._pendingAdminTab = tab; showView('management'); }
-    function goSistem(tab) { showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
+    function goSistem(tab) { if ((tab === 'companies' || tab === 'accounts') && !can('manageCompanies')) return; showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
     function goAnalizeConsum() { showView('fuelstats'); }
     function goWeeklyReport() { showView('weeklyreport'); }
     // ─── Pagina „Statistici consum" (vederea fuelstats) ───
@@ -4489,7 +4492,9 @@ const pozitii = await r.json();</code></pre>
 
     // Gating UI după permisiuni (override: nav Administrare + acțiuni de flotă)
     function applyPermissionsUI() {
-      document.body.classList.toggle('no-users', !can('manageUsers')); // ascunde Companii/Utilizatori/Audit din „Administrare" celor fără permisiune
+      document.body.classList.toggle('no-users', !can('manageUsers')); // Utilizatori/Audit din „Administrare" — cu permisiunea manageUsers
+      document.body.classList.toggle('no-companies', !can('manageCompanies')); // Companii & mutare între companii = STRICT super-admin (manageCompanies)
+      document.body.classList.toggle('is-super', !!(currentUser && currentUser.role === 'superadmin')); // fail-closed pentru [data-super]
       const dashNav = document.getElementById('nav-dashboard');
       if (dashNav) dashNav.style.display = (currentUser && currentUser.role === 'superadmin') ? '' : 'none';
       document.body.classList.toggle('no-fleet', !can('manageFleet'));
@@ -8855,6 +8860,7 @@ const pozitii = await r.json();</code></pre>
         (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
     }
     window.raxLoadDashboard = async function raxLoadDashboard(targetId) {
+      if (!(currentUser && currentUser.role === 'superadmin')) return; // STRICT super-admin: dashboard platformă (overview cross-tenant)
       var box = $(targetId || 'rax-dash-body'); if (!box) return; box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
         var d = await fetch('/api/admin/overview?days=30', { credentials: 'same-origin' }).then(function (r) { return r.json(); });

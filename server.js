@@ -4939,7 +4939,7 @@ app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Helper centralizat ca să gestionez și enabled_agents (whitelist pe cheia validă), nu doar ui_defaults
-async function _applyCompanySettingsPatch(companyId, body) {
+async function _applyCompanySettingsPatch(companyId, body, opts) {
   const cur = await db.getCompanySettings(companyId);
   const next = Object.assign({}, cur);
   if (body.ui_defaults && typeof body.ui_defaults === 'object') {
@@ -4951,7 +4951,7 @@ async function _applyCompanySettingsPatch(companyId, body) {
   } else if (body.enabled_agents === null) {
     delete next.enabled_agents; // null = revino la default-ul planului
   }
-  if (body.features && typeof body.features === 'object') {
+  if (body.features && typeof body.features === 'object' && opts && opts.allowFeatures) { // features (plan/billing) = STRICT super-admin; company_admin nu și le poate auto-activa
     const fvalid = (plans && plans.FEATURE_KEYS) || [];
     const f = Object.assign({}, cur.features || {});
     fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
@@ -4999,7 +4999,7 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
-    const next = await _applyCompanySettingsPatch(id, req.body || {});
+    const next = await _applyCompanySettingsPatch(id, req.body || {}, { allowFeatures: true }); // super-admin poate seta și features (plan/billing)
     auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
     res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -5135,7 +5135,7 @@ app.put('/api/companies/:id/features', requireAuth, requireSuperadmin, async (re
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-    await _applyCompanySettingsPatch(id, { features: (req.body && req.body.features) || {} });
+    await _applyCompanySettingsPatch(id, { features: (req.body && req.body.features) || {} }, { allowFeatures: true });
     const co2 = await db.getCompanyById(id);
     auditReq(req, 'update', 'company_features', id, { features: req.body && req.body.features });
     res.json({ ok: true, features: plans.featuresFor(co2) });
@@ -5261,7 +5261,7 @@ app.post('/api/trips/detect', requireAuth, requireFleet, async (req, res) => {
 
 // ─── Debug API (doar admin) ───
 
-app.get('/api/debug/log', requireAuth, requireAdmin, (req, res) => {
+app.get('/api/debug/log', requireAuth, requireSuperadmin, (req, res) => { // STRICT super-admin: debugLog e buffer global cross-tenant (IMEI/GPS/IO ale tuturor companiilor)
   res.json(debugLog);
 });
 
