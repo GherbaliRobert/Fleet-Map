@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentație API · RA Tracks</title>
+  <meta name="description" content="Documentație API RA Tracks / TrackGPS — autentificare, endpoint-uri de date GPS/flotă, webhooks, exemple de integrare.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0B0E11;--bg2:#11161B;--bg3:#0d1116;--text:#E6EAF0;--muted:#9AA6B2;--accent:#3FE07D;--border:#1F2730;--red:#f05a5a;--amber:#f5b43c}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.7 'Nunito',-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+    code{font-family:inherit;background:#172029;border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:13px;color:#cfe9d8}
+    pre{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow:auto;font-size:13px;line-height:1.55;margin:10px 0}
+    pre code{background:none;border:none;padding:0;color:#d6e2ee;font-family:'Nunito',monospace}
+    .layout{display:flex;max-width:1180px;margin:0 auto}
+    /* Sidebar */
+    aside{position:sticky;top:0;align-self:flex-start;height:100vh;overflow:auto;width:248px;flex:0 0 248px;padding:22px 14px;border-right:1px solid var(--border)}
+    aside .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px;margin-bottom:18px}
+    aside .brand .raw{color:var(--accent)}
+    aside nav a{display:block;color:var(--muted);font-size:13.5px;padding:5px 10px;border-radius:7px;font-weight:600}
+    aside nav a:hover{color:var(--text);background:var(--bg2);text-decoration:none}
+    aside nav .sec{color:#6b7682;font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 4px;padding:0 10px;font-weight:800}
+    main{flex:1;min-width:0;padding:34px 40px 100px;max-width:880px}
+    h1{font-size:30px;margin:0 0 6px}
+    h2{font-size:21px;margin:42px 0 10px;color:#fff;padding-top:8px;border-top:1px solid var(--border)}
+    h3{font-size:16px;margin:26px 0 6px;color:#fff}
+    p{margin:8px 0}
+    .muted{color:var(--muted)}
+    .lead{font-size:16.5px;color:var(--muted);margin:6px 0 18px}
+    .note{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;margin:16px 0;font-size:13.5px;color:var(--muted)}
+    .note.warn{border-left-color:var(--amber)}
+    .note b{color:var(--text)}
+    table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+    th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+    th{color:var(--muted);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+    .ep{display:flex;align-items:center;gap:10px;margin:24px 0 4px;flex-wrap:wrap}
+    .m{font-weight:800;font-size:12px;padding:3px 9px;border-radius:6px;letter-spacing:.5px}
+    .m.get{background:rgba(63,224,125,.16);color:var(--accent)}
+    .m.post{background:rgba(63,160,224,.16);color:#5cb6ff}
+    .m.put{background:rgba(245,180,60,.16);color:var(--amber)}
+    .m.del{background:rgba(240,90,90,.16);color:var(--red)}
+    .path{font-size:15px;font-weight:700;color:#fff;word-break:break-all}
+    .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--bg2);border:1px solid var(--border);color:var(--muted)}
+    .pill.w{border-color:var(--amber);color:var(--amber)}
+    .tag{display:inline-block;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:1px 7px;font-size:12px;color:#cfe9d8;margin:2px 3px 2px 0}
+    .toc-mobile{display:none}
+    @media(max-width:880px){
+      aside{display:none}
+      main{padding:24px 18px 80px}
+      .toc-mobile{display:block}
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand"><span class="raw">RA</span> Tracks · API</div>
+    <nav>
+      <a href="#intro">Introducere</a>
+      <a href="#auth">Autentificare</a>
+      <a href="#conv">Convenții & limite</a>
+      <a href="#errors">Coduri de eroare</a>
+      <div class="sec">Date flotă</div>
+      <a href="#me">Cont & permisiuni</a>
+      <a href="#live">Poziții live</a>
+      <a href="#devices">Vehicule</a>
+      <a href="#device-full">Fișă vehicul</a>
+      <a href="#history">Istoric traseu</a>
+      <a href="#stats">Statistici zilnice</a>
+      <a href="#trips">Curse</a>
+      <div class="sec">Rapoarte</div>
+      <a href="#reports">Rapoarte (+ PDF/Excel)</a>
+      <div class="sec">Management</div>
+      <a href="#drivers">Șoferi</a>
+      <a href="#groups">Grupe</a>
+      <a href="#geofences">Zone (geofences)</a>
+      <a href="#documents">Documente</a>
+      <a href="#maintenance">Mentenanță</a>
+      <a href="#alerts">Reguli alertă</a>
+      <a href="#notifications">Notificări</a>
+      <div class="sec">Integrare push</div>
+      <a href="#webhooks">Webhooks</a>
+      <a href="#wh-verify">Verificare semnătură</a>
+      <div class="sec">Final</div>
+      <a href="#best">Bune practici</a>
+    </nav>
+  </aside>
+
+  <main>
+    <h1 id="intro">Documentație API RA Tracks</h1>
+    <p class="lead">API REST pentru integrarea datelor de monitorizare GPS și flotă în sistemele tale (ERP, TMS, BI). Răspunsuri JSON, autentificare cu cheie API, plus webhooks pentru evenimente în timp real.</p>
+
+    <table>
+      <tr><th>Base URL</th><td><code>https://ratrack.ro/api</code></td></tr>
+      <tr><th>Format</th><td>JSON (UTF-8). Corpurile de cerere: <code>Content-Type: application/json</code>.</td></tr>
+      <tr><th>Autentificare</th><td>Cheie API (header <code>Authorization: Bearer</code> sau <code>X-API-Key</code>)</td></tr>
+      <tr><th>Fus orar</th><td>Timestamp-urile sunt ISO 8601 UTC (ex. <code>2026-06-18T07:30:00.000Z</code>)</td></tr>
+    </table>
+
+    <div class="note toc-mobile"><b>Cuprins:</b> Autentificare · Poziții live · Vehicule · Istoric · Rapoarte · Management · Webhooks. Derulează pagina sau folosește căutarea browserului (Ctrl+F).</div>
+
+    <!-- AUTH -->
+    <h2 id="auth">Autentificare</h2>
+    <p>Accesul se face cu o <b>cheie API</b> (prefix <code>gpsk_</code>) generată de administratorul contului tău din <b>Administrare → Chei API</b>. Cheia este legată de un utilizator și <b>moștenește automat rolul și accesul acelui utilizator</b> la vehicule — deci „vede" exact aceeași flotă pe care o vede acel cont în aplicație.</p>
+    <p>Trimite cheia pe fiecare cerere, în unul din cele două anteturi:</p>
+    <pre><code>Authorization: Bearer gpsk_xxxxxxxxxxxxxxxxxxxxxxxx
+# sau
+X-API-Key: gpsk_xxxxxxxxxxxxxxxxxxxxxxxx</code></pre>
+    <p>Exemplu complet:</p>
+    <pre><code>curl -H "Authorization: Bearer gpsk_xxxx" https://ratrack.ro/api/live</code></pre>
+    <div class="note"><b>Securitate:</b> cheia se afișează o singură dată la creare (stocăm doar hash-ul). Tratează-o ca pe o parolă — nu o pune în cod public/front-end. Poate fi revocată oricând din panou. Toate apelurile trebuie făcute prin HTTPS.</div>
+    <div class="note"><b>Domeniu de acces:</b> o cheie nu poate accesa date din altă companie și nici vehicule în afara accesului contului ei. Dacă vrei acces read-only, leagă cheia de un cont cu rol „Vizualizare".</div>
+
+    <!-- CONVENTIONS -->
+    <h2 id="conv">Convenții & limite</h2>
+    <table>
+      <tr><th>Subiect</th><th>Detaliu</th></tr>
+      <tr><td>Rate limit</td><td>~1200 cereri/minut per cheie (20/min pe endpoint-urile AI). La depășire: <code>429</code> + antet <code>Retry-After</code> (secunde).</td></tr>
+      <tr><td>Istoric</td><td><code>/api/history</code> acceptă o fereastră de maxim <b>92 de zile</b> per cerere (altfel <code>400</code>).</td></tr>
+      <tr><td>Filtrare vehicule</td><td>Parametrul <code>imei</code> acceptă mai multe IMEI-uri separate prin virgulă (acolo unde e suportat).</td></tr>
+      <tr><td>Scriere</td><td>Endpoint-urile <code>POST/PUT/DELETE</code> funcționează doar dacă rolul cheii permite (administrare flotă). Cheile read-only primesc <code>403</code>.</td></tr>
+    </table>
+
+    <!-- ERRORS -->
+    <h2 id="errors">Coduri de eroare</h2>
+    <p>Erorile întorc un JSON <code>{ "error": "mesaj" }</code> cu unul din statusurile:</p>
+    <table>
+      <tr><th>Cod</th><th>Semnificație</th></tr>
+      <tr><td><code>400</code></td><td>Cerere invalidă (parametri lipsă/greșiți, interval prea mare).</td></tr>
+      <tr><td><code>401</code></td><td>Cheie lipsă, invalidă sau expirată.</td></tr>
+      <tr><td><code>402</code></td><td>Abonament expirat — acces suspendat (contactează furnizorul).</td></tr>
+      <tr><td><code>403</code></td><td>Acces interzis (rol insuficient sau resursă din altă companie/vehicul fără acces).</td></tr>
+      <tr><td><code>404</code></td><td>Resursă inexistentă.</td></tr>
+      <tr><td><code>429</code></td><td>Prea multe cereri (rate limit).</td></tr>
+      <tr><td><code>500/503</code></td><td>Eroare/serviciu indisponibil temporar.</td></tr>
+    </table>
+
+    <!-- ME -->
+    <h2 id="me">Cont & permisiuni</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/me</span></div>
+    <p>Returnează identitatea cheii: rol, permisiuni, compania și modulele active. Util pentru a afla ce poate face cheia.</p>
+    <pre><code>{
+  "username": "integrare-erp",
+  "role": "manager",
+  "permissions": { "manageFleet": true, "viewReports": true, "viewAll": true, ... },
+  "companyId": 12,
+  "company": { "id": 12, "name": "Transporturi SRL" },
+  "features": { "etransport": true, "tahograf": true, "ai_assistant": false }
+}</code></pre>
+
+    <!-- LIVE -->
+    <h2 id="live">Poziții live</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/live</span></div>
+    <p>Cea mai recentă poziție a fiecărui vehicul din flota accesibilă (în memorie, actualizat în timp real). Vehiculele arhivate nu apar.</p>
+    <pre><code>[
+  {
+    "imei": "860123456789012",
+    "name": "Logan Alb",
+    "plate": "B 123 ABC",
+    "vehicle_type": "Auto",
+    "latitude": 44.4325,
+    "longitude": 26.1039,
+    "speed": 54,                // km/h
+    "angle": 187,               // grade (0 = nord)
+    "satellites": 11,
+    "timestamp": "2026-06-18T07:30:12.000Z",
+    "io": {
+      "ignition": 1,            // 1 = contact pornit
+      "external_voltage": 13800,// mV
+      "gsm_signal": 4,          // 0–5
+      "can_total_mileage": 145200,     // km (odometru CAN)
+      "can_fuel_level_liters": 48,
+      "can_engine_temp": 86,           // °C
+      "can_engine_rpm": 1450
+      // ... alte câmpuri CAN/IO disponibile pe vehicul
+    }
+  }
+]</code></pre>
+    <div class="note">Recomandare de polling: <b>la 10–15 secunde</b>. Pentru flux în timp real fără polling, folosește <a href="#webhooks">Webhooks</a>.</div>
+
+    <!-- DEVICES -->
+    <h2 id="devices">Vehicule</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/devices</span></div>
+    <p>Lista vehiculelor din flotă + ultima poziție cunoscută. Parametru opțional <code>?includeArchived=1</code> pentru a include vehiculele arhivate.</p>
+    <pre><code>[
+  { "imei": "860123456789012", "name": "Logan Alb", "plate": "B 123 ABC",
+    "vehicle_type": "Auto", "brand": "Dacia", "model": "Logan",
+    "driver_id": 5, "group_id": 2, "status": "active",
+    "latitude": 44.43, "longitude": 26.10, "last_position_time": "2026-06-18T07:30:12.000Z" }
+]</code></pre>
+
+    <h2 id="device-full">Fișă vehicul</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/devices/{imei}/full</span></div>
+    <p>Detaliile complete ale unui vehicul (marcă, model, VIN, an, șofer alocat, configurare camion).</p>
+    <pre><code>{
+  "imei": "860123456789012", "name": "Logan Alb", "plate": "B 123 ABC",
+  "brand": "Dacia", "model": "Logan", "year": 2021, "vin": "UU1...",
+  "vehicle_type": "Auto", "fuel_type": "benzina", "tank_capacity": 50,
+  "driver_id": 5, "driver_name": "Ion Popescu", "speed_limit": 130
+}</code></pre>
+
+    <!-- HISTORY -->
+    <h2 id="history">Istoric traseu</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/history/{imei}</span></div>
+    <p>Pozițiile istorice ale unui vehicul într-un interval. Parametri: <code>from</code>, <code>to</code> (ISO 8601). Implicit: ultimele 24h. Maxim 92 zile/cerere. Adaugă <code>?ext=1</code> pentru câmpuri extinse + sumar depășiri de viteză.</p>
+    <pre><code>curl -H "Authorization: Bearer gpsk_xxxx" \
+  "https://ratrack.ro/api/history/860123456789012?from=2026-06-17T00:00:00Z&to=2026-06-18T00:00:00Z"</code></pre>
+    <pre><code>[
+  { "timestamp": "2026-06-17T06:01:00.000Z", "latitude": 44.43, "longitude": 26.10,
+    "altitude": 82, "angle": 187, "speed": 0, "satellites": 10, "io_data": { ... } }
+]</code></pre>
+
+    <!-- STATS -->
+    <h2 id="stats">Statistici zilnice (per vehicul)</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/stats/{imei}</span></div>
+    <p>Agregat pentru ziua curentă: distanță, viteze, timpi de mers/staționare, opriri, consum.</p>
+    <pre><code>{
+  "imei": "860123456789012",
+  "totalKm": 142.5, "avgSpeed": 38, "maxSpeed": 96,
+  "movingTime": 13800,   // secunde
+  "stoppedTime": 5400,   // secunde
+  "stops": 6,
+  "fuelConsumed": 11.2,  // litri (dacă există date)
+  "engineHours": 4.1
+}</code></pre>
+
+    <!-- TRIPS -->
+    <h2 id="trips">Curse</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/trips/{imei}</span></div>
+    <p>Cursele detectate automat (start/stop, distanță, durată). Parametri opționali <code>from</code>/<code>to</code> (implicit ultimele 7 zile).</p>
+
+    <!-- REPORTS -->
+    <h2 id="reports">Rapoarte</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/reports</span></div>
+    <p>Lista tipurilor de rapoarte disponibile (19 tipuri, 5 categorii: monitorizare, consum, CAN, evenimente, siguranță/EcoDrive).</p>
+    <pre><code>{ "categories": [ { "key": "monitorizare", "label": "Monitorizare" }, ... ],
+  "reports": [ { "type": "trips", "label": "Foaie de parcurs", "cat": "monitorizare" }, ... ] }</code></pre>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/reports/{type}</span></div>
+    <p>Generează un raport. Parametri: <code>from</code>, <code>to</code>, <code>imei</code> (opțional; mai multe separate cu virgulă — implicit toată flota), și <code>format=pdf</code> sau <code>format=xlsx</code> pentru export fișier (altfel JSON).</p>
+    <pre><code># JSON
+curl -H "Authorization: Bearer gpsk_xxxx" \
+  "https://ratrack.ro/api/reports/trips?from=2026-06-01T00:00:00Z&to=2026-06-18T00:00:00Z"
+
+# Excel
+curl -H "Authorization: Bearer gpsk_xxxx" -o raport.xlsx \
+  "https://ratrack.ro/api/reports/trips?from=...&to=...&format=xlsx"</code></pre>
+    <pre><code>// Răspuns JSON
+{ "type": "trips", "label": "Foaie de parcurs",
+  "columns": ["Vehicul", "Plecare", "Sosire", "Km", ...],
+  "rows": [ ["Logan Alb", "...", "...", 142.5, ...], ... ],
+  "summary": { "Total km": 1820, ... },
+  "charts": [ { "type": "bar", "title": "Km/vehicul", "labels": [...], "datasets": [...] } ] }</code></pre>
+
+    <!-- DRIVERS -->
+    <h2 id="drivers">Șoferi</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/drivers</span> <span class="pill">+ POST / PUT / DELETE</span><span class="pill w">scriere = rol admin flotă</span></div>
+    <pre><code>[ { "id": 5, "name": "Ion Popescu", "phone": "07xx...", "email": "ion@...",
+    "license_number": "CJ123456", "license_expiry": "2027-09-30" } ]
+
+# creare:  POST /api/drivers   { "name": "...", "phone": "...", "license_expiry": "..." }
+# editare: PUT  /api/drivers/{id}
+# ștergere:DELETE /api/drivers/{id}</code></pre>
+
+    <!-- GROUPS -->
+    <h2 id="groups">Grupe</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/groups</span> <span class="pill">+ POST / PUT / DELETE</span></div>
+    <pre><code>[ { "id": 2, "name": "Camioane", "description": "...", "color": "#3FE07D", "count": 8 } ]</code></pre>
+
+    <!-- GEOFENCES -->
+    <h2 id="geofences">Zone (geofences)</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/geofences</span> <span class="pill">+ POST / PUT / DELETE</span></div>
+    <pre><code>[ { "id": 3, "name": "Depozit București", "type": "circle",
+    "coordinates": { "center": [44.43, 26.10], "radius": 300 }, "color": "#2563eb" } ]
+// type poate fi "circle" (center+radius m) sau "polygon" (listă de [lat,lng])</code></pre>
+
+    <!-- DOCUMENTS -->
+    <h2 id="documents">Documente vehicul</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/documents</span> <span class="pill">+ POST / DELETE</span></div>
+    <p>ITP, RCA, CASCO, Rovinietă, Licență transport, Tahograf. Filtrare opțională <code>?imei=</code>.</p>
+    <pre><code>[ { "id": 9, "imei": "860...", "doc_type": "ITP", "number": "B123",
+    "issuer": "RAR", "issue_date": "2025-09-01", "expiry_date": "2026-09-01" } ]</code></pre>
+
+    <!-- MAINTENANCE -->
+    <h2 id="maintenance">Mentenanță</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/maintenance</span> <span class="pill">+ POST / PUT / DELETE</span></div>
+    <pre><code>[ { "id": 4, "imei": "860...", "type": "Revizie", "description": "...",
+    "due_date": "2026-07-15", "due_km": 150000, "cost": 1200, "status": "pending" } ]</code></pre>
+
+    <!-- ALERTS -->
+    <h2 id="alerts">Reguli de alertă</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/alerts</span> <span class="pill">+ POST / DELETE</span></div>
+    <pre><code>[ { "id": 7, "name": "Viteză peste 90", "type": "overspeed", "imei": null,
+    "condition": { "maxSpeed": 90 }, "enabled": true } ]
+// tipuri: overspeed, fuel_drop, geofence_enter/exit, engine_temp, idling,
+//         overload_legal/construct, ignition_on/off, dtc_error, service_due ...</code></pre>
+
+    <!-- NOTIFICATIONS -->
+    <h2 id="notifications">Notificări</h2>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/notifications</span></div>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/notifications/unread-count</span></div>
+    <div class="ep"><span class="m post">POST</span><span class="path">/api/notifications/{id}/ack</span></div>
+    <pre><code>[ { "id": 120, "type": "overspeed", "severity": "warning", "imei": "860...",
+    "title": "Depășire viteză — Logan Alb", "body": "Viteză 96 km/h",
+    "created_at": "2026-06-18T07:31:00.000Z", "acked_at": null } ]</code></pre>
+
+    <!-- WEBHOOKS -->
+    <h2 id="webhooks">Webhooks (evenimente push)</h2>
+    <p>În loc să interoghezi periodic API-ul, poți primi evenimentele <b>împinse automat</b> către o adresă din sistemul tău (ERP/TMS). La fiecare eveniment, trimitem un <code>POST</code> JSON semnat HMAC.</p>
+
+    <h3>Configurare</h3>
+    <div class="ep"><span class="m get">GET</span><span class="path">/api/webhooks</span></div>
+    <div class="ep"><span class="m post">POST</span><span class="path">/api/webhooks</span> <span class="pill w">rol administrator</span></div>
+    <div class="ep"><span class="m del">DELETE</span><span class="path">/api/webhooks/{id}</span></div>
+    <div class="ep"><span class="m post">POST</span><span class="path">/api/webhooks/{id}/test</span></div>
+    <pre><code>POST /api/webhooks
+{ "url": "https://erp.firma.ro/hooks/ratracks",
+  "events": ["overspeed", "fuel_drop"] }   // gol/absent = toate evenimentele
+
+// Răspuns — secretul de semnătură se afișează O SINGURĂ DATĂ:
+{ "id": 1, "url": "...", "events": [...], "secret": "whsec_xxxxxxxx" }</code></pre>
+    <p>Configurarea se poate face și din aplicație: <b>Meniu → Administrare → Webhooks (integrări)</b> (listă, adăugare, buton „Testează", status livrare).</p>
+
+    <h3>Evenimente disponibile</h3>
+    <p>
+      <span class="tag">overspeed</span><span class="tag">fuel_drop</span><span class="tag">idling</span>
+      <span class="tag">engine_temp</span><span class="tag">overload</span><span class="tag">low_voltage</span>
+      <span class="tag">no_ignition_move</span><span class="tag">dtc_error</span><span class="tag">test</span>
+    </p>
+
+    <h3>Forma payload-ului</h3>
+    <pre><code>POST  (către URL-ul tău)
+Content-Type: application/json
+X-RaTracks-Signature: sha256=&lt;hmac_hex&gt;
+
+{
+  "company_id": 12,
+  "ts": "2026-06-18T07:31:00.000Z",
+  "event": "overspeed",
+  "imei": "860123456789012",
+  "vehicle": "Logan Alb",
+  "severity": "warning",
+  "message": "Viteză 96 km/h",
+  "value": 96
+}</code></pre>
+    <div class="note"><b>Livrare:</b> timeout 5s, fără reîncercare imediată; un eveniment nu se repetă mai des de 2 minute per vehicul. Răspunde cu <code>2xx</code> ca să confirmi primirea. Statusul ultimei livrări e vizibil în lista de webhooks.</div>
+
+    <!-- SIGNATURE -->
+    <h2 id="wh-verify">Verificarea semnăturii (HMAC SHA-256)</h2>
+    <p>Fiecare livrare include antetul <code>X-RaTracks-Signature: sha256=&lt;hex&gt;</code>, unde <code>hex</code> = HMAC-SHA256 al <b>corpului brut</b> al cererii, cu <b>secretul</b> webhook-ului. Verifică-l înainte de a procesa evenimentul.</p>
+    <h3>Node.js (Express)</h3>
+    <pre><code>const crypto = require('crypto');
+app.post('/hooks/ratracks', express.raw({ type: 'application/json' }), (req, res) => {
+  const sig = req.header('X-RaTracks-Signature') || '';
+  const expected = 'sha256=' + crypto.createHmac('sha256', WEBHOOK_SECRET)
+                                      .update(req.body).digest('hex');
+  const ok = sig.length === expected.length &&
+             crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  if (!ok) return res.status(401).end();
+  const event = JSON.parse(req.body.toString());
+  // ... procesează event ...
+  res.json({ ok: true });
+});</code></pre>
+    <h3>PHP</h3>
+    <pre><code>$body = file_get_contents('php://input');
+$sig  = $_SERVER['HTTP_X_RATRACKS_SIGNATURE'] ?? '';
+$expected = 'sha256=' . hash_hmac('sha256', $body, $WEBHOOK_SECRET);
+if (!hash_equals($expected, $sig)) { http_response_code(401); exit; }
+$event = json_decode($body, true);</code></pre>
+    <h3>Python (Flask)</h3>
+    <pre><code>import hmac, hashlib
+sig = request.headers.get('X-RaTracks-Signature', '')
+expected = 'sha256=' + hmac.new(SECRET.encode(), request.data, hashlib.sha256).hexdigest()
+if not hmac.compare_digest(sig, expected):
+    abort(401)
+event = request.get_json()</code></pre>
+
+    <!-- BEST PRACTICES -->
+    <h2 id="best">Bune practici</h2>
+    <ul>
+      <li>Stochează cheia API în siguranță (variabile de mediu / secret manager), nu în front-end.</li>
+      <li>Polling pentru poziții la 10–15s; pentru evenimente folosește <b>webhooks</b> (mai eficient, în timp real).</li>
+      <li>Respectă rate limit-ul; la <code>429</code> așteaptă conform antetului <code>Retry-After</code>.</li>
+      <li>Pentru rapoarte mari, limitează intervalul (max 92 zile la istoric) și folosește export <code>xlsx</code>/<code>pdf</code>.</li>
+      <li>Verifică <b>întotdeauna</b> semnătura HMAC a webhook-urilor.</li>
+      <li>Tratează câmpurile <code>io</code> ca opționale — variază în funcție de hardware/CAN-ul fiecărui vehicul.</li>
+    </ul>
+
+    <p class="muted" style="margin-top:40px;border-top:1px solid var(--border);padding-top:16px">Suport integrare: <a href="mailto:suport@ratrack.ro">suport@ratrack.ro</a> · RA Tracks</p>
+  </main>
+</div>
+</body>
+</html>

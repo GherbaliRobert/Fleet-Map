@@ -771,6 +771,8 @@ if (API_CORS_ORIGIN) {
 const NO_CACHE = 'no-cache, no-store, must-revalidate';
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
 app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.sendFile(path.join(__dirname, 'public', 'index.html')); });
+// Documentație API pentru clienți (publică, fără secrete)
+app.get(['/api-docs', '/docs'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'api-docs.html')));
 app.get('/sw.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.sendFile(path.join(__dirname, 'public', 'sw.js')); });
 // Stylesheet extras: fără cache (la fel ca /app și /sw.js), altfel Cloudflare/edge servește CSS vechi după actualizări.
 app.get('/css/app.css', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('text/css'); res.sendFile(path.join(__dirname, 'public', 'css', 'app.css')); });
