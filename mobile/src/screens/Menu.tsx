@@ -49,6 +49,8 @@ export function Menu() {
         <div class="mn-sec">Analize</div>
         {item('droplet', 'Statistici consum', () => loc.route('/fuelstats'))}
         {perms.viewAll && item('calendar', 'Raport săptămânal', () => loc.route('/weekly'))}
+        {perms.viewReports && item('clock', 'Rapoarte programate', () => loc.route('/report-schedules'))}
+        {u?.features?.ai_assistant && item('robot', 'Asistent AI', () => loc.route('/ai'))}
 
         <div class="mn-sec">Module</div>
         {soon('truck', 'e-Transport (ANAF)')}
@@ -74,7 +76,7 @@ export function Menu() {
         {item('headset', 'Suport clienți', () => setSupport(true))}
         {item('logout', 'Deconectare', () => logout(), null, 'danger')}
 
-        <div class="mn-foot">RA Tracks · v0.1<br />Mai multe funcții de administrare și module sosesc în curând.</div>
+        <div class="mn-foot">RA Tracks · v0.1<br />Modulele (e-Transport, E-Toll, Tahograf, Hotspot) sosesc în curând.</div>
       </div>
 
       {support && (

@@ -7,6 +7,14 @@
 .rp-pick .val { font-weight: 700; font-size: 14.5px; margin-top: 1px; }
 .rp-pick .mn { flex: 1; min-width: 0; }
 
+.rp-export { display: flex; gap: 10px; padding: 0 14px 4px; }
+.rp-exp-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--bg-card); border: 1px solid var(--accent); color: var(--accent);
+  border-radius: 10px; padding: 10px; font-weight: 700; font-size: 13.5px; font-family: inherit; }
+.rp-exp-btn:active { background: var(--bg-dark); }
+.rp-exp-btn:disabled { opacity: .6; }
+.rp-exp-btn .spin { width: 15px; height: 15px; border-width: 2px; }
+
 .rp-periods { display: flex; gap: 7px; }
 .rp-period { flex: 1; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary);
   border-radius: 10px; padding: 9px 4px; font-weight: 700; font-size: 12.5px; }

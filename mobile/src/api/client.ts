@@ -10,6 +10,7 @@ export const API_BASE = Capacitor.isNativePlatform()
 let _token: string | null = null;
 let _onUnauthorized: (() => void) | null = null;
 export function setAuthToken(t: string | null) { _token = t; }
+export function getAuthToken() { return _token; }
 export function onUnauthorized(cb: () => void) { _onUnauthorized = cb; }
 
 export class ApiError extends Error {

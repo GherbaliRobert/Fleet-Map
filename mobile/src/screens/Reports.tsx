@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import type { ReportTypeInfo, ReportResult } from '../api/endpoints';
-import { vehicles } from '../app/store';
+import { vehicles, showToast } from '../app/store';
 import { Icon } from '../components/Icon';
 import { ReportChart } from '../components/ReportChart';
+import { exportReport } from '../lib/export';
 import './reports.css';
 import '../screens/detail.css'; // pentru .sheet*
 
@@ -30,6 +31,7 @@ export function Reports() {
   const [res, setRes] = useState<ReportResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  const [exporting, setExporting] = useState<'' | 'pdf' | 'xlsx'>('');
 
   useEffect(() => {
     Api.reportTypes().then((d) => { setCats(d.categories || []); setTypes(d.reports || []); }).catch(() => {});
@@ -53,6 +55,15 @@ export function Reports() {
 
   function toggleVeh(imei: string) {
     setSel((cur) => cur.includes(imei) ? cur.filter((x) => x !== imei) : [...cur, imei]);
+  }
+
+  async function doExport(format: 'pdf' | 'xlsx') {
+    if (exporting) return;
+    setExporting(format);
+    const r = range(period);
+    try { await exportReport(type, r.from, r.to, sel.length ? sel : undefined, format); }
+    catch (e: any) { showToast(e?.message || 'Export indisponibil', true); }
+    finally { setExporting(''); }
   }
 
   const filteredTypes = (catKey: string) => types.filter((t) => t.cat === catKey && (!tq || t.label.toLowerCase().includes(tq.toLowerCase())));
@@ -88,6 +99,14 @@ export function Reports() {
 
         {res && (
           <>
+            <div class="rp-export">
+              <button class="rp-exp-btn" disabled={!!exporting} onClick={() => doExport('pdf')}>
+                {exporting === 'pdf' ? <span class="spin" /> : <Icon name="report" size={16} />} PDF
+              </button>
+              <button class="rp-exp-btn" disabled={!!exporting} onClick={() => doExport('xlsx')}>
+                {exporting === 'xlsx' ? <span class="spin" /> : <Icon name="fileBar" size={16} />} Excel
+              </button>
+            </div>
             {res.summary && Object.keys(res.summary).length > 0 && (
               <div class="rp-summary">
                 {Object.entries(res.summary).map(([k, v]) => <div class="rp-kpi"><div class="v">{String(v)}</div><div class="l">{k}</div></div>)}

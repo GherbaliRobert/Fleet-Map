@@ -20,6 +20,8 @@ import { AdminMaintenance } from './screens/AdminMaintenance';
 import { AdminAlerts } from './screens/AdminAlerts';
 import { AdminUsers } from './screens/AdminUsers';
 import { NotifPrefs } from './screens/NotifPrefs';
+import { ReportSchedules } from './screens/ReportSchedules';
+import { AiChat } from './screens/AiChat';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -77,6 +79,8 @@ function Shell() {
         <Route path="/admin/alerts" component={AdminAlerts} />
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/notif-prefs" component={NotifPrefs} />
+        <Route path="/report-schedules" component={ReportSchedules} />
+        <Route path="/ai" component={AiChat} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}
