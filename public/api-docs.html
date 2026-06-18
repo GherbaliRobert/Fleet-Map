@@ -49,16 +49,41 @@
     .pill.w{border-color:var(--amber);color:var(--amber)}
     .tag{display:inline-block;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:1px 7px;font-size:12px;color:#cfe9d8;margin:2px 3px 2px 0}
     .toc-mobile{display:none}
+    /* ── Bară sus + buton meniu: doar pe mobil ── */
+    .topbar{display:none}
+    .backdrop{display:none}
     @media(max-width:880px){
-      aside{display:none}
-      main{padding:24px 18px 80px}
-      .toc-mobile{display:block}
+      .topbar{display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;
+        background:rgba(11,14,17,.95);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+        border-bottom:1px solid var(--border);padding:11px 14px}
+      .menu-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:9px;
+        width:40px;height:40px;font-size:20px;line-height:1;flex:0 0 auto;cursor:pointer;padding:0}
+      .tb-brand{font-weight:800;font-size:16px}.tb-brand .raw{color:var(--accent)}
+      /* Sidebar devine drawer glisant peste conținut */
+      aside{position:fixed;top:0;left:0;height:100dvh;width:272px;max-width:84vw;z-index:50;
+        background:var(--bg);transform:translateX(-100%);transition:transform .22s ease;
+        box-shadow:0 0 34px rgba(0,0,0,.55)}
+      aside#sidebar.open{transform:translateX(0) !important}
+      .backdrop{display:block;position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.5);
+        opacity:0;pointer-events:none;transition:opacity .22s}
+      .backdrop.open{opacity:1;pointer-events:auto}
+      main{padding:18px 15px 80px}
+      h1{font-size:24px}h2{font-size:18.5px}h3{font-size:15.5px}
+      .lead{font-size:15px}
+      pre{font-size:12.5px;padding:12px 13px}
+      table{font-size:13px}
+      th,td{padding:7px 8px}
     }
   </style>
 </head>
 <body>
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="Deschide meniul" aria-expanded="false">☰</button>
+  <span class="tb-brand"><span class="raw">RA</span> Tracks · Documentație API</span>
+</header>
+<div class="backdrop" id="backdrop"></div>
 <div class="layout">
-  <aside>
+  <aside id="sidebar">
     <div class="brand"><span class="raw">RA</span> Tracks · API</div>
     <nav>
       <a href="#intro">Introducere</a>
@@ -393,5 +418,21 @@ event = request.get_json()</code></pre>
     <p class="muted" style="margin-top:40px;border-top:1px solid var(--border);padding-top:16px">Suport integrare: <a href="mailto:suport@ratrack.ro">suport@ratrack.ro</a> · RA Tracks</p>
   </main>
 </div>
+<script>
+  (function () {
+    var sb = document.getElementById('sidebar');
+    var bd = document.getElementById('backdrop');
+    var btn = document.getElementById('menuBtn');
+    function open() { sb.classList.add('open'); bd.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+    function close() { sb.classList.remove('open'); bd.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    if (btn) btn.addEventListener('click', function () { sb.classList.contains('open') ? close() : open(); });
+    if (bd) bd.addEventListener('click', close);
+    // La click pe un link din meniu → închide drawer-ul (după ce sare la secțiune).
+    sb.querySelectorAll('nav a').forEach(function (a) { a.addEventListener('click', close); });
+    // Esc închide; resize la desktop resetează starea.
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    window.addEventListener('resize', function () { if (window.innerWidth > 880) close(); });
+  })();
+</script>
 </body>
 </html>
