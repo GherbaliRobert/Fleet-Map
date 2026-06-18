@@ -31,6 +31,35 @@
     };
   }
 
+  // ── Durate „de când" (folosesc momentele de referință din /full: last_moved_at, ignition_on_at) ──
+  function fmtDur(ms) {
+    if (ms == null || isNaN(ms) || ms < 0) return '—';
+    var m = Math.floor(ms / 60000), h = Math.floor(m / 60), zile = Math.floor(h / 24);
+    if (zile >= 1) return zile + 'z ' + (h % 24) + 'h';
+    if (h >= 1) return h + 'h ' + (m % 60) + 'm';
+    if (m >= 1) return m + 'm';
+    return 'sub 1m';
+  }
+  function durStat(d, f) {
+    if (d && d.speed > 0) return '<span style="color:var(--green)">în mișcare</span>';
+    if (!f) return '<span style="color:var(--text-muted)">…</span>';
+    if (!f.last_moved_at) return 'de peste 30 zile';
+    return fmtDur(Date.now() - new Date(f.last_moved_at).getTime());
+  }
+  function durEng(d, f) {
+    var ignOn = !!(d && d.io && (d.io.ignition === 1 || d.io.ignition === true));
+    if (ignOn) return '<span style="color:var(--green)">motor pornit</span>';
+    if (!f) return '<span style="color:var(--text-muted)">…</span>';
+    if (!f.ignition_on_at) return 'de peste 30 zile';
+    return fmtDur(Date.now() - new Date(f.ignition_on_at).getTime());
+  }
+  function renderDur(imei) {
+    var d = DEVS() && DEVS().get(imei); if (!d) return;
+    var f = fullCache[imei] || null;
+    var s = el('vp-stat-' + imei); if (s) s.innerHTML = durStat(d, f);
+    var e = el('vp-eng-' + imei); if (e) e.innerHTML = durEng(d, f);
+  }
+
   function buildHtml(imei) {
     var d = DEVS() && DEVS().get(imei); if (!d) return '';
     var f = fullCache[imei] || {};
@@ -47,7 +76,10 @@
     rows += row('Șofer', driver ? esc(driver) : '<span style="color:var(--text-muted)">…</span>', 'vp-drv-' + imei);
     rows += row('Adresă', '<span style="color:var(--text-muted)">se încarcă…</span>', 'vp-adr-' + imei);
     rows += row('Viteză', '<span id="vp-spd-' + imei + '" style="color:' + (b.moving ? 'var(--green)' : 'var(--text-muted)') + '">' + b.speed + ' km/h</span>');
+    rows += row('În staționare de', durStat(d, fullCache[imei] || null), 'vp-stat-' + imei);
+    rows += row('Motor oprit de', durEng(d, fullCache[imei] || null), 'vp-eng-' + imei);
     rows += row('Coordonate', esc(b.lat + ', ' + b.lng + '  ·  ' + b.ang), 'vp-coord-' + imei);
+    rows += row('Data ultimei transmisii', esc(b.ts), 'vp-tx-' + imei);
 
     return '' +
       '<div class="vp-card">' +
@@ -56,7 +88,6 @@
           '<div class="vp-head-txt"><div class="vp-name">' + esc(name) + '</div><div class="vp-status" id="vp-status-' + imei + '">' + esc(b.status) + '</div></div>' +
         '</div>' +
         '<table class="vp-table">' + rows + '</table>' +
-        '<div class="vp-time" id="vp-time-' + imei + '"><i class="far fa-clock"></i> ' + esc(b.ts) + '</div>' +
         '<div class="vp-actions">' +
           '<button class="vp-btn vp-primary" onclick="vpDetails(\'' + esc(imei) + '\')"><i class="fas fa-circle-info"></i> Detalii</button>' +
           '<button class="vp-btn vp-follow" onclick="vpFollow(\'' + esc(imei) + '\')"><i class="fas fa-crosshairs"></i> Urmărește</button>' +
@@ -113,6 +144,7 @@
     var veh = [f.brand, f.model].filter(Boolean).join(' ') || f.vehicle_type || '—';
     var vc = el('vp-veh-' + imei); if (vc) vc.textContent = veh;
     var dc = el('vp-drv-' + imei); if (dc) { dc.textContent = f.driver_name || 'Nealocat'; dc.style.color = f.driver_name ? 'var(--text-primary)' : 'var(--text-muted)'; }
+    renderDur(imei);
   }
 
   // Update DOAR câmpurile live (fără rebuild → fără flicker pe adresă/șofer, fără a închide meniul nav).
@@ -123,7 +155,8 @@
     var st = el('vp-status-' + imei); if (st) st.textContent = b.status;
     var sp = el('vp-spd-' + imei); if (sp) { sp.textContent = b.speed + ' km/h'; sp.style.color = b.moving ? 'var(--green)' : 'var(--text-muted)'; }
     var co = el('vp-coord-' + imei); if (co) co.textContent = b.lat + ', ' + b.lng + '  ·  ' + b.ang;
-    var tm = el('vp-time-' + imei); if (tm) tm.innerHTML = '<i class="far fa-clock"></i> ' + esc(b.ts);
+    var tm = el('vp-tx-' + imei); if (tm) tm.textContent = b.ts;
+    renderDur(imei);
   }
 
   // Refresh dacă balonul vehiculului e deschis (date live). Apelat din updateMarker.

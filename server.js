@@ -2566,6 +2566,16 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const device = await db.getDeviceFull(req.params.imei);
     if (!device) return res.status(404).json({ error: 'Device not found' });
+    // Momente de referință pentru „în staționare de" / „motor oprit de" (calcul eficient pe server, ultimele 30 zile)
+    try {
+      const sd = await db.pool.query(
+        "SELECT MAX(CASE WHEN speed > 0 THEN timestamp END) AS last_moved_at, " +
+        "MAX(CASE WHEN (io_data->>'ignition') IN ('1','true') THEN timestamp END) AS ignition_on_at " +
+        "FROM positions WHERE imei = $1 AND timestamp > NOW() - INTERVAL '30 days'",
+        [req.params.imei]
+      );
+      if (sd.rows && sd.rows[0]) { device.last_moved_at = sd.rows[0].last_moved_at; device.ignition_on_at = sd.rows[0].ignition_on_at; }
+    } catch (e) { /* fără durate dacă interogarea eșuează */ }
     res.json(device);
   } catch (err) {
     res.status(500).json({ error: err.message });
