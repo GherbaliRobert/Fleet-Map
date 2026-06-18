@@ -11,6 +11,9 @@ import { Stats } from './screens/Stats';
 import { Notifications } from './screens/Notifications';
 import { RouteScreen } from './screens/RouteScreen';
 import { Reports } from './screens/Reports';
+import { Menu } from './screens/Menu';
+import { FuelStats } from './screens/FuelStats';
+import { WeeklyReport } from './screens/WeeklyReport';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -47,7 +50,7 @@ function Shell() {
   if (!token.value) return <Login />;
 
   const path = loc.path || '/';
-  const showTabs = path === '/' || path === '/vehicles' || path === '/stats' || path === '/reports' || path === '/notifications';
+  const showTabs = path === '/' || path === '/vehicles' || path === '/stats' || path === '/reports' || path === '/notifications' || path === '/meniu';
 
   return (
     <>
@@ -59,6 +62,9 @@ function Shell() {
         <Route path="/stats" component={Stats} />
         <Route path="/reports" component={Reports} />
         <Route path="/notifications" component={Notifications} />
+        <Route path="/meniu" component={Menu} />
+        <Route path="/fuelstats" component={FuelStats} />
+        <Route path="/weekly" component={WeeklyReport} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}

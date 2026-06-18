@@ -4,10 +4,11 @@ import { unread } from '../app/store';
 import './tabbar.css';
 
 const TABS: { path: string; label: string; icon: IconName }[] = [
-  { path: '/vehicles', label: 'Autovehicule', icon: 'car' },
+  { path: '/vehicles', label: 'Vehicule', icon: 'car' },
   { path: '/stats', label: 'Statistici', icon: 'chart' },
   { path: '/reports', label: 'Rapoarte', icon: 'report' },
   { path: '/notifications', label: 'Notificări', icon: 'bell' },
+  { path: '/meniu', label: 'Meniu', icon: 'menu' },
 ];
 
 export function TabBar() {

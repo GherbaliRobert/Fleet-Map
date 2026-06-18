@@ -47,6 +47,15 @@ export const Api = {
   documents: () => api<DocItem[]>('/api/documents'),
   registerDevice: (token: string, platform: string) => api('/api/push/device', { method: 'POST', body: { token, platform } }),
   unregisterDevice: (token: string) => api('/api/push/device/unregister', { method: 'POST', body: { token } }),
+  fuelStats: (from: string, to: string, imeis?: string[]) => {
+    const e = encodeURIComponent;
+    let q = `?from=${e(from)}&to=${e(to)}&bucket=day`;
+    if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
+    return api<any>(`/api/fuel-stats${q}`);
+  },
+  weeklyLatest: () => api<{ report: any | null; enabled?: boolean; canManage?: boolean; note?: string }>('/api/weekly-report/latest'),
+  weeklyGenerate: () => api<{ ok: boolean; report: any }>('/api/weekly-report/generate', { method: 'POST', body: {} }),
+  support: (message: string) => api('/api/support', { method: 'POST', body: { message } }),
   reportTypes: () => api<{ categories: { key: string; label: string }[]; reports: ReportTypeInfo[] }>('/api/reports'),
   runReport: (type: string, from: string, to: string, imeis?: string[]) => {
     const e = encodeURIComponent;

@@ -2,7 +2,19 @@ import { signal, computed } from '@preact/signals';
 import { Api } from '../api/endpoints';
 import type { Me, Position } from '../api/endpoints';
 import { setAuthToken, onUnauthorized } from '../api/client';
-import { saveToken, loadToken, clearToken, saveUser, loadUser } from '../lib/storage';
+import { saveToken, loadToken, clearToken, saveUser, loadUser, getTheme, setTheme } from '../lib/storage';
+
+export const theme = signal<'dark' | 'light'>('dark');
+export async function initTheme() {
+  try { const t = await getTheme(); theme.value = (t === 'light' ? 'light' : 'dark'); } catch { /* dark */ }
+  document.documentElement.setAttribute('data-theme', theme.value);
+}
+export async function toggleTheme() {
+  const next = theme.value === 'dark' ? 'light' : 'dark';
+  theme.value = next;
+  document.documentElement.setAttribute('data-theme', next);
+  try { await setTheme(next); } catch { /* ignore */ }
+}
 
 export const token = signal<string | null>(null);
 export const me = signal<Me | null>(null);
@@ -29,6 +41,7 @@ let pollTimer: any = null;
 let polling = false;
 
 export async function bootstrap() {
+  await initTheme();
   const t = await loadToken();
   if (t) {
     token.value = t; setAuthToken(t);

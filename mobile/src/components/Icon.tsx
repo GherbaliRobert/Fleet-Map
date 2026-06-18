@@ -3,7 +3,8 @@ type P = { name: IconName; size?: number; color?: string; style?: any; class?: s
 export type IconName =
   | 'car' | 'list' | 'chart' | 'bell' | 'search' | 'chevronR' | 'chevronL' | 'navigate'
   | 'route' | 'report' | 'cpu' | 'droplet' | 'disc' | 'clock' | 'gauge' | 'refresh'
-  | 'x' | 'check' | 'logout' | 'layers' | 'alert' | 'calendar' | 'zap' | 'mapPin' | 'map' | 'wifiOff';
+  | 'x' | 'check' | 'logout' | 'layers' | 'alert' | 'calendar' | 'zap' | 'mapPin' | 'map' | 'wifiOff'
+  | 'menu' | 'moon' | 'sun' | 'headset' | 'settings' | 'wrench' | 'user' | 'truck' | 'robot' | 'flame' | 'fileBar';
 
 const P: Record<IconName, string> = {
   car: '<path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11M5 11h14M5 11v6m14-6v6M6 17h2m8 0h2M7 14h.01M17 14h.01"/>',
@@ -32,6 +33,17 @@ const P: Record<IconName, string> = {
   mapPin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
   map: '<path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15"/>',
   wifiOff: '<path d="M1 1l22 22M16.7 11.1A6 6 0 0 1 19 13M5 13a10 10 0 0 1 5.2-2.7M2 8.8a16 16 0 0 1 4.5-2.6M12 20h.01"/>',
+  menu: '<path d="M3 12h18M3 6h18M3 18h18"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM20 14h-2a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1zM17 19a3 3 0 0 1-3 2h-2"/>',
+  settings: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  truck: '<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 18.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM20.5 18.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>',
+  robot: '<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 4h6M8.5 14h.01M15.5 14h.01M9 17h6"/>',
+  flame: '<path d="M12 2c2 4 6 5 6 10a6 6 0 0 1-12 0c0-2 1-3.5 2.5-4.5 0 2 1 3 2 3 0-3 .5-6 1.5-8.5z"/>',
+  fileBar: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 18v-3M12 18v-6M15 18v-2"/>',
 };
 
 export function Icon({ name, size = 22, color = 'currentColor', style, class: cls }: P) {
