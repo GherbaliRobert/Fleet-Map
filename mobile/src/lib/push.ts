@@ -5,6 +5,10 @@ import { Api } from '../api/endpoints';
 let registered = false;
 
 export async function initPush() {
+  // Push-ul cere Firebase configurat (google-services.json). Fără el, PushNotifications.register()
+  // crapă nativ pe Android ("Default FirebaseApp not initialized"). Activează DOAR după setarea Firebase,
+  // build cu VITE_ENABLE_PUSH=1.
+  if ((import.meta as any).env.VITE_ENABLE_PUSH !== '1') return;
   if (!Capacitor.isNativePlatform() || registered) return;
   registered = true;
   try {

@@ -89,6 +89,11 @@ Capacitor adaugă `INTERNET`. Pentru push pe Android 13+ adaugă:
 ### Pluginuri (deja în package.json)
 `@capacitor/push-notifications`. Fluxul e în `src/lib/push.ts` (cere permisiune → `getToken` → `POST /api/push/device`). Serverul trimite automat FCM când se creează o notificare (`sendPushToUser` → `sendFcmToUser`).
 
+> ⚠️ **Push e DEZACTIVAT implicit în build** (`initPush` iese imediat dacă `VITE_ENABLE_PUSH` ≠ `1`). Fără `google-services.json`, apelul nativ `PushNotifications.register()` crapă pe Android. **Activează push DOAR după ce ai pus `google-services.json`**, cu:
+> ```bash
+> VITE_API_BASE=https://ratrack.ro VITE_ENABLE_PUSH=1 npm run build && npx cap sync android
+> ```
+
 ### Test e2e
 Login pe device → verifică rândul în tabela `device_tokens`. Declanșează o alertă (depășire viteză / expirare document) → banner FCM pe telefon + tap deep-link la vehicul.
 

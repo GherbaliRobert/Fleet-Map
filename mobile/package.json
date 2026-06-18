@@ -28,6 +28,7 @@
     "preact-iso": "^2.6.3"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^6.1.2",
     "@preact/preset-vite": "^2.9.1",
     "@types/leaflet": "^1.9.12",
