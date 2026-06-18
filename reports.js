@@ -15,7 +15,9 @@ function fmtTs(ts) { return ts ? new Date(ts).toLocaleString('ro-RO', { timeZone
 function fmtDur(sec) {
   sec = Math.round(sec || 0);
   const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
-  return (h?h+'h ':'') + (m?m+'m ':'') + (h?'':s+'s');
+  if (h > 0) return m > 0 ? (h + 'h ' + m + 'm') : (h + 'h');
+  if (m > 0) return m + 'm';
+  return s + 's';
 }
 function loc(p) { return p ? p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(5) : ''; }
 function io(p) { return p && p.io_data ? p.io_data : {}; }
