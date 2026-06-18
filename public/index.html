@@ -3766,14 +3766,91 @@ const pozitii = await r.json();</code></pre>
         printReportData(title, cols, rows, lastReport.summary);
       }
     }
+    // Plugin: fundal alb → PNG-ul nu e transparent (transparent devine negru pe unele print engine-uri).
+    const _pdfWhiteBg = { id: 'pdfWhiteBg', beforeDraw(c) { const x = c.ctx; x.save(); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.restore(); } };
+    const PDF_PALETTE = ['#3FE07D', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#14b8a6', '#ec4899', '#84cc16'];
+    // Re-randează un grafic în temă LIGHT (text închis pe alb) pe un canvas off-screen → imagine PNG pentru PDF.
+    // Folosește `new Chart()` DIRECT (nu createChart) ca să NU mute Chart.defaults; canvas unic (nu în window._charts).
+    function _pdfChartImage(c) {
+      if (typeof Chart === 'undefined') return '';
+      const cv = document.createElement('canvas');
+      cv.width = 1000; cv.height = 520; cv.style.cssText = 'position:fixed;left:-10000px;top:0;width:1000px;height:520px;';
+      document.body.appendChild(cv); // trebuie în DOM-ul live ca să aibă layout pentru măsurare
+      const isPie = c.type === 'doughnut' || c.type === 'pie', isLine = c.type === 'line';
+      const single = (c.datasets || []).length <= 1;
+      const ds = (c.datasets || []).map((d, di) => {
+        const bg = isLine ? 'rgba(63,224,125,.15)' : isPie ? (d.data || []).map((_, k) => PDF_PALETTE[k % PDF_PALETTE.length]) : single ? PDF_PALETTE[0] : PDF_PALETTE[di % PDF_PALETTE.length];
+        return Object.assign({ backgroundColor: bg, borderColor: isLine ? PDF_PALETTE[0] : (isPie ? '#fff' : bg), borderWidth: isLine ? 3 : (isPie ? 2 : 0), tension: .35, fill: isLine, pointRadius: 0, borderRadius: isPie || isLine ? 0 : 4 }, d);
+      });
+      const INK = '#1f2937', GRID = 'rgba(0,0,0,.10)';
+      let chart, img = '';
+      try {
+        chart = new Chart(cv.getContext('2d'), {
+          type: c.type, data: { labels: c.labels || [], datasets: ds }, plugins: [_pdfWhiteBg],
+          options: {
+            responsive: false, maintainAspectRatio: false, devicePixelRatio: 2, animation: false,
+            plugins: { legend: { display: !single || isPie, position: 'bottom', labels: { color: INK, boxWidth: 12, font: { family: 'Nunito', size: 13 } } }, tooltip: { enabled: false }, title: { display: false } },
+            scales: isPie ? {} : { y: { beginAtZero: true, ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { color: GRID } }, x: { ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { display: false } } }
+          }
+        });
+        img = chart.toBase64Image('image/png', 1); // animation:false → primul frame e cel final, sincron
+      } catch (e) { img = ''; }
+      finally { if (chart) try { chart.destroy(); } catch (e) {} cv.remove(); }
+      return img;
+    }
+    // PDF/print bogat: antet brandat + KPI + grafice (imagini light-theme) + tabel. Sincron până la window.open (anti-popup-block).
     function printReportData(title, cols, rows, summary) {
       const w = window.open('', '_blank'); if (!w) return alert('Permite pop-up-urile pentru a tipări în PDF.');
-      const sumHtml = Object.entries(summary||{}).map(([k,v]) => `<span style="margin-right:18px;"><b>${v}</b> ${k}</span>`).join('');
-      w.document.write(`<html><head><meta charset="utf-8"><title>${title}</title>
-        <style>body{font-family:Arial,sans-serif;padding:20px;color:#111;}h1{font-size:18px;margin:0 0 4px;}table{border-collapse:collapse;width:100%;font-size:11px;margin-top:12px;}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;}th{background:#f0f0f0;}</style>
-        </head><body><h1>RA Tracks — ${title}</h1><div style="font-size:12px;color:#555;">${sumHtml}</div>
-        <table><thead><tr>${cols.map(c=>'<th>'+c+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+(c==null?'':c)+'</td>').join('')+'</tr>').join('')}</tbody></table></body></html>`);
-      w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 300);
+      const PRINT_ROW_CAP = 1500;
+      const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const sel = document.getElementById('rep-imei');
+      const vehicle = (sel && sel.selectedOptions && sel.selectedOptions[0] && sel.selectedOptions[0].text) || 'Toată flota';
+      const fmtDt = v => { if (!v) return '—'; try { return new Date(v).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } };
+      const fromEl = document.getElementById('rep-from'), toEl = document.getElementById('rep-to');
+      const period = (fromEl && fromEl.value) ? (fmtDt(fromEl.value) + ' → ' + fmtDt(toEl && toEl.value)) : '—';
+      const generated = new Date().toLocaleString('ro-RO');
+      const charts = (lastReport && lastReport.charts) || [];
+      const imgs = charts.map(c => ({ title: c.title, src: _pdfChartImage(c) })).filter(o => o.src);
+      const wide = cols.length > 8;
+      const capped = rows.length > PRINT_ROW_CAP, shown = capped ? rows.slice(0, PRINT_ROW_CAP) : rows;
+      const kpis = Object.entries(summary || {}).map(([k, v]) => '<div class="kpi"><div class="kv">' + esc(v) + '</div><div class="kl">' + esc(k) + '</div></div>').join('');
+      const gallery = imgs.map(o => '<figure class="ch"><figcaption>' + esc(o.title) + '</figcaption><img src="' + o.src + '"></figure>').join('');
+      const thead = '<tr>' + cols.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr>';
+      const tbody = shown.map(r => '<tr>' + r.map(c => '<td>' + esc(c) + '</td>').join('') + '</tr>').join('');
+      const capNote = capped ? '<div class="note">Afișate primele ' + PRINT_ROW_CAP + ' din ' + rows.length + ' rânduri — exportă CSV/Excel pentru setul complet.</div>' : '';
+      w.document.write('<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>' + esc(title) + '</title>'
+        + '<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">'
+        + '<style>'
+        + '@page{ size:A4 ' + (wide ? 'landscape' : 'portrait') + '; margin:14mm 12mm 16mm; }'
+        + '*{box-sizing:border-box} body{font-family:\'Nunito\',Arial,sans-serif;color:#1f2937;margin:0;font-size:12px;}'
+        + '.hd{display:flex;align-items:center;gap:12px;border-bottom:3px solid #3FE07D;padding-bottom:10px;margin-bottom:14px;}'
+        + '.logo{font-weight:800;font-size:22px;color:#111;display:flex;align-items:center;gap:7px}'
+        + '.logo .mk{background:#3FE07D;color:#06210F;border-radius:7px;padding:2px 9px;}'
+        + '.hd .ttl{margin-left:auto;text-align:right;font-size:15px;font-weight:700}'
+        + '.hd .ttl small{display:block;font-weight:600;color:#6b7280;font-size:11px}'
+        + '.meta{display:flex;gap:22px;flex-wrap:wrap;font-size:11px;color:#6b7280;margin-bottom:14px}'
+        + '.meta b{color:#1f2937;font-weight:700}'
+        + '.kpis{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}'
+        + '.kpi{flex:1 1 130px;border:1px solid #e5e7eb;border-left:4px solid #3FE07D;border-radius:8px;padding:9px 12px;page-break-inside:avoid}'
+        + '.kv{font-size:19px;font-weight:800;color:#16a34a} .kl{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}'
+        + '.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}'
+        + '.ch{margin:0;border:1px solid #e5e7eb;border-radius:8px;padding:8px;page-break-inside:avoid}'
+        + '.ch figcaption{font-size:12px;font-weight:700;margin-bottom:6px} .ch img{width:100%;height:auto;display:block}'
+        + '.note{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:6px;padding:6px 10px;font-size:11px;margin-bottom:8px}'
+        + 'table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:' + (wide ? '9px' : '10px') + '}'
+        + 'thead{display:table-header-group} tr{page-break-inside:avoid}'
+        + 'th,td{border:1px solid #e5e7eb;padding:4px 6px;text-align:left;word-break:break-word;vertical-align:top}'
+        + 'th{background:#f0fdf4;color:#166534;font-weight:700} tbody tr:nth-child(even){background:#fafafa}'
+        + '</style></head><body>'
+        + '<div class="hd"><div class="logo"><span class="mk">RA</span> Tracks</div><div class="ttl">' + esc(title) + '<small>Raport flotă</small></div></div>'
+        + '<div class="meta"><span>Vehicul: <b>' + esc(vehicle) + '</b></span><span>Perioadă: <b>' + esc(period) + '</b></span><span>Generat: <b>' + esc(generated) + '</b></span></div>'
+        + (kpis ? '<div class="kpis">' + kpis + '</div>' : '')
+        + (gallery ? '<div class="grid">' + gallery + '</div>' : '')
+        + capNote
+        + '<table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>'
+        + '</body></html>');
+      w.document.close();
+      setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 450);
     }
 
     // ─── Hotspot (heatmap) ───
