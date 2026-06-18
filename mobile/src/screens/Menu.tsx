@@ -72,6 +72,7 @@ export function Menu() {
             {perms.manageFleet && item('truck', 'Vehicule (editare fișă)', () => loc.route('/vehicles'))}
             {perms.manageFleet && item('alert', 'Alerte', () => loc.route('/admin/alerts'))}
             {perms.manageUsers && item('user', 'Utilizatori', () => loc.route('/admin/users'))}
+            {perms.manageUsers && item('zap', 'Webhooks (integrări)', () => loc.route('/admin/webhooks'))}
           </>
         )}
 

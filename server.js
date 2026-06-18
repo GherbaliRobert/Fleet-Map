@@ -2206,6 +2206,47 @@ app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, requir
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.deleteEtransport(parseInt(req.params.id)); auditReq(req, 'delete', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Webhooks (integrare ERP/TMS) — CRUD per companie (admin) ───
+app.get('/api/webhooks', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const rows = await db.getWebhooks(req.isSuper ? null : req.companyId);
+    // Maschează secretul (nu-l returnăm în clar; arătăm doar dacă există).
+    res.json(rows.map(w => ({ id: w.id, url: w.url, events: w.events, enabled: w.enabled, hasSecret: !!w.secret, last_status: w.last_status, last_error: w.last_error, last_at: w.last_at, created_at: w.created_at })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/webhooks', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const url = (req.body.url || '').trim();
+    if (!/^https?:\/\/.+/i.test(url)) return res.status(400).json({ error: 'URL invalid (http/https)' });
+    const events = Array.isArray(req.body.events) && req.body.events.length ? req.body.events.slice(0, 30) : null; // null = toate
+    const secret = req.body.secret ? String(req.body.secret).slice(0, 80) : ('whsec_' + crypto.randomBytes(16).toString('hex'));
+    const w = await db.createWebhook({ url, events, secret, enabled: req.body.enabled !== false }, req.companyId);
+    invalidateWebhookCache(req.companyId);
+    auditReq(req, 'create', 'webhook', w.id, { url });
+    res.json({ id: w.id, url: w.url, events: w.events, enabled: w.enabled, secret }); // secretul se arată O SINGURĂ DATĂ la creare
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/webhooks/:id', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'webhooks', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await db.deleteWebhook(req.params.id); invalidateWebhookCache(req.companyId);
+    auditReq(req, 'delete', 'webhook', req.params.id); res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Trimite un eveniment de test la webhook (verifică URL + semnătură la integrator).
+app.post('/api/webhooks/:id/test', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'webhooks', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    const w = await db.getWebhookById(req.params.id);
+    if (!w) return res.status(404).json({ error: 'Inexistent' });
+    // Doar acest webhook (nu fan-out) — buton „testează acest webhook".
+    const body = JSON.stringify({ company_id: w.company_id, ts: new Date().toISOString(), event: 'test', imei: null, vehicle: null, severity: 'info', message: 'Eveniment de test RA Tracks' });
+    _deliverWebhook(w, body);
+    auditReq(req, 'test', 'webhook', w.id);
+    res.json({ ok: true, message: 'Eveniment de test trimis. Verifică starea în listă.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Worker e-Transport: trimite pozițiile transporturilor active la ANAF (DOAR dacă e configurat tokenul)
 async function sendEtransportPositions() {
   if (!etransportEnabled()) return;
@@ -4265,6 +4306,64 @@ async function deliverUserEvent(user, ev, p) {
   if (p && p.push) sendPushToUser(user.id, { title: ev.title, body: ev.body, imei: ev.imei || null, data: { type: ev.type, imei: ev.imei || '' } }).catch(() => {});
 }
 
+// ─── Webhooks outbound (integrare ERP/TMS) ───
+// Fast-path: dacă NICIO companie nu are webhook activ, evaluateUserEvents nu plătește nimic.
+let _anyWebhooks = false;
+async function refreshAnyWebhooks() {
+  try { const r = await db.pool.query('SELECT COUNT(*)::int AS n FROM webhooks WHERE enabled = true'); _anyWebhooks = (Number(r.rows[0] && r.rows[0].n) || 0) > 0; } catch (e) { /* tabela poate lipsi la prima rulare */ }
+}
+const _whCache = new Map();      // companyId -> { ts, hooks }
+const _whCooldown = new Map();   // companyId:type:imei -> ts
+const _devCoCache = new Map();   // imei -> { ts, cid }
+function invalidateWebhookCache(companyId) { _anyWebhooks = true; if (companyId == null) _whCache.clear(); else _whCache.delete(companyId); refreshAnyWebhooks(); }
+async function _deviceCompanyId(imei) {
+  const c = _devCoCache.get(imei);
+  if (c && Date.now() - c.ts < 300000) return c.cid;
+  let cid = null;
+  try { const d = await db.getDeviceFull(imei); cid = d ? d.company_id : null; } catch (e) {}
+  _devCoCache.set(imei, { ts: Date.now(), cid });
+  return cid;
+}
+async function _webhooksFor(companyId) {
+  let e = _whCache.get(companyId);
+  if (!e || Date.now() - e.ts > 30000) {
+    let hooks = []; try { hooks = await db.getEnabledWebhooks(companyId); } catch (_) {}
+    e = { ts: Date.now(), hooks }; _whCache.set(companyId, e);
+  }
+  return e.hooks;
+}
+function _whCooldownOk(companyId, type, imei) {
+  const key = companyId + ':' + type + ':' + (imei || '-');
+  const now = Date.now(); const last = _whCooldown.get(key);
+  if (last && now - last < 120000) return false; // 2 min/eveniment/vehicul
+  _whCooldown.set(key, now);
+  if (_whCooldown.size > 10000) { for (const [k, t] of _whCooldown) if (now - t > 600000) _whCooldown.delete(k); }
+  return true;
+}
+// Livrează un corp deja serializat la UN webhook (fire-and-forget, semnat HMAC, timeout 5s).
+function _deliverWebhook(h, body) {
+  const headers = { 'Content-Type': 'application/json', 'User-Agent': 'RA-Tracks-Webhook/1.0' };
+  if (h.secret) headers['X-RaTracks-Signature'] = 'sha256=' + crypto.createHmac('sha256', h.secret).update(body).digest('hex');
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 5000);
+  fetch(h.url, { method: 'POST', headers, body, signal: ctrl.signal })
+    .then((r) => { clearTimeout(timer); db.updateWebhookStatus(h.id, r.status, r.ok ? null : ('HTTP ' + r.status)); })
+    .catch((e) => { clearTimeout(timer); db.updateWebhookStatus(h.id, 0, e.message); });
+}
+// Livrează un eveniment către TOATE webhook-urile companiei abonate (fire-and-forget).
+async function fireWebhooks(companyId, payload, opts) {
+  try {
+    if (companyId == null) return;
+    const hooks = await _webhooksFor(companyId);
+    if (!hooks.length) return;
+    if (!(opts && opts.skipCooldown) && !_whCooldownOk(companyId, payload.event, payload.imei)) return;
+    const body = JSON.stringify(Object.assign({ company_id: companyId, ts: new Date().toISOString() }, payload));
+    for (const h of hooks) {
+      const sub = !h.events || (Array.isArray(h.events) && (h.events.length === 0 || h.events.includes(payload.event)));
+      if (sub) _deliverWebhook(h, body);
+    }
+  } catch (e) { /* niciodată nu blocăm fluxul de evenimente */ }
+}
+
 // Detector evenimente per-poziție (prev = poziția anterioară a vehiculului)
 async function evaluateUserEvents(imei, data, prev) {
   try {
@@ -4294,10 +4393,15 @@ async function evaluateUserEvents(imei, data, prev) {
     if (io.can_dtc_errors > 0) cand.push({ type: 'dtc_error', mag: io.can_dtc_errors, body: `${io.can_dtc_errors} erori motor (DTC)` });
 
     if (!cand.length) return;
+    const vname = data.name || imei;
+    // Webhooks ERP/TMS (fire-and-forget): doar dacă există webhook-uri active (fast-path).
+    if (_anyWebhooks) {
+      const coId = await _deviceCompanyId(imei);
+      for (const c of cand) fireWebhooks(coId, { event: c.type, imei, vehicle: vname, severity: c.type === 'no_ignition_move' ? 'critical' : 'warning', message: c.body, value: c.mag });
+    }
     const users = await getEligibleUsers(imei);
     if (!users.length) return;
     const prefsMap = await getPrefsMap();
-    const vname = data.name || imei;
     for (const c of cand) {
       const def = EVENT_TYPE_MAP[c.type];
       for (const u of users) {
@@ -5403,6 +5507,10 @@ async function start() {
 
   // Agenți AI: RA Watch rulează automat la fiecare 30 min (prima dată după 1 min)
   if (agents) { setTimeout(runAgentsWorker, 60 * 1000); setInterval(runAgentsWorker, 30 * 60 * 1000); }
+
+  // Webhooks: reîmprospătează flag-ul „există webhook-uri active" (fast-path pentru evaluateUserEvents).
+  setTimeout(refreshAnyWebhooks, 8000);
+  setInterval(refreshAnyWebhooks, 60 * 1000);
 
   // ───────────────────────────────────────────────────────────────
   // Cleanup periodic peste livePositions — fără el, vehiculele care își pierd semnalul GSM

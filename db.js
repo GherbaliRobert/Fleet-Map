@@ -432,6 +432,23 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log (created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_uda_user ON user_device_access (user_id)`);
+
+    // Webhooks outbound (integrare ERP/TMS) — livrare evenimente flotă către sisteme externe.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS webhooks (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        url VARCHAR(500) NOT NULL,
+        secret VARCHAR(80),
+        events JSONB,
+        enabled BOOLEAN DEFAULT true,
+        last_status INTEGER,
+        last_error VARCHAR(300),
+        last_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_webhooks_company ON webhooks (company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_uga_user ON user_group_access (user_id)`);
 
     // Chei API (acces programatic) — stocăm doar hash-ul cheii
@@ -1036,7 +1053,7 @@ async function updateAgentFinding(id, status, companyId) {
 
 // company_id al unei entități (pentru verificarea proprietății la update/delete pe id)
 async function getRowCompany(table, id) {
-  const allow = { device_groups: 1, drivers: 1, geofences: 1, alerts: 1, maintenance: 1, etransport: 1, report_schedules: 1, vehicle_documents: 1 };
+  const allow = { device_groups: 1, drivers: 1, geofences: 1, alerts: 1, maintenance: 1, etransport: 1, report_schedules: 1, vehicle_documents: 1, webhooks: 1 };
   if (!allow[table]) return undefined;
   const r = await pool.query(`SELECT company_id FROM ${table} WHERE id = $1`, [parseInt(id)]);
   return r.rows[0] ? r.rows[0].company_id : undefined;
@@ -1574,6 +1591,33 @@ async function revokeApiKey(id) {
 async function deleteApiKey(id) {
   const r = await pool.query('DELETE FROM api_keys WHERE id = $1', [id]);
   return r.affectedRows || r.rowCount || 0;
+}
+
+// ─── Webhooks (integrare ERP/TMS) ───
+function _parseEvents(e) { if (e == null) return null; if (Array.isArray(e)) return e; try { return JSON.parse(e); } catch (_) { return null; } }
+async function getWebhooks(companyId) {
+  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const r = await pool.query(`SELECT id, company_id, url, secret, events, enabled, last_status, last_error, last_at, created_at FROM webhooks ${where} ORDER BY created_at DESC`, params);
+  return r.rows.map(w => Object.assign(w, { events: _parseEvents(w.events) }));
+}
+// Doar webhook-urile active ale unei companii — pentru livrare (hot path).
+async function getEnabledWebhooks(companyId) {
+  if (companyId == null) return [];
+  const r = await pool.query('SELECT id, url, secret, events FROM webhooks WHERE company_id = $1 AND enabled = true', [companyId]);
+  return r.rows.map(w => Object.assign(w, { events: _parseEvents(w.events) }));
+}
+async function getWebhookById(id) { const r = await pool.query('SELECT * FROM webhooks WHERE id = $1', [parseInt(id)]); const w = r.rows[0]; if (w) w.events = _parseEvents(w.events); return w || null; }
+async function createWebhook(d, companyId) {
+  const r = await pool.query(
+    'INSERT INTO webhooks (company_id, url, secret, events, enabled) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+    [companyId != null ? companyId : null, d.url, d.secret || null, d.events != null ? JSON.stringify(d.events) : null, d.enabled !== false]
+  );
+  const w = r.rows[0]; w.events = _parseEvents(w.events); return w;
+}
+async function deleteWebhook(id) { const r = await pool.query('DELETE FROM webhooks WHERE id = $1', [parseInt(id)]); return r.affectedRows || r.rowCount || 0; }
+async function updateWebhookStatus(id, status, error) {
+  await pool.query('UPDATE webhooks SET last_status = $2, last_error = $3, last_at = NOW() WHERE id = $1', [parseInt(id), status != null ? parseInt(status) : null, error ? String(error).slice(0, 300) : null]).catch(() => {});
 }
 
 async function cleanupExpiredSessions() {
@@ -2206,6 +2250,7 @@ module.exports = {
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
+  getWebhooks, getEnabledWebhooks, getWebhookById, createWebhook, deleteWebhook, updateWebhookStatus,
   getSetting, setSetting,
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
