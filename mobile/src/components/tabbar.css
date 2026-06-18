@@ -1,0 +1,18 @@
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+  display: flex; align-items: stretch;
+  height: calc(var(--tabbar-h) + var(--sab)); padding-bottom: var(--sab);
+  background: var(--bg-panel); border-top: 1px solid var(--border);
+}
+.tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  color: var(--text-muted); font-size: 11px; font-weight: 700;
+}
+.tab.active { color: var(--accent); }
+.tab-ic { position: relative; display: flex; }
+.tab-lbl { line-height: 1; }
+.tab-badge {
+  position: absolute; top: -6px; right: -10px; background: var(--red); color: #fff;
+  font-size: 9px; font-weight: 800; min-width: 16px; height: 16px; line-height: 16px;
+  border-radius: 9px; padding: 0 4px; text-align: center;
+}

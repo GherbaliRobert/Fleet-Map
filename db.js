@@ -465,6 +465,19 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions (user_id)`);
 
+    // Token-uri de notificări native pentru aplicația mobilă (FCM Android / APNs iOS)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS device_tokens (
+        id BIGSERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        platform TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        last_seen TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_devtok_user ON device_tokens (user_id)`);
+
     // Migrari pentru coloane noi (devices) - adauga coloanele daca nu exista
     const migrateColumns = [
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS tare_weight INTEGER`,
@@ -1686,6 +1699,22 @@ async function deletePushSubscription(endpoint) {
   await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
 }
 
+// ─── Token-uri native (FCM/APNs) pentru aplicația mobilă ───
+async function saveDeviceToken(userId, token, platform) {
+  await pool.query(
+    `INSERT INTO device_tokens (user_id, token, platform) VALUES ($1,$2,$3)
+     ON CONFLICT (token) DO UPDATE SET user_id = EXCLUDED.user_id, platform = EXCLUDED.platform, last_seen = NOW()`,
+    [userId, token, platform || 'android']
+  );
+}
+async function getDeviceTokens(userId) {
+  const r = await pool.query('SELECT token, platform FROM device_tokens WHERE user_id = $1', [userId]);
+  return r.rows;
+}
+async function deleteDeviceToken(token) {
+  await pool.query('DELETE FROM device_tokens WHERE token = $1', [token]);
+}
+
 // Utilizatori care au acces la un vehicul (pentru livrarea per-user a evenimentelor)
 async function getUsersForImei(imei) {
   // utilizatorii din compania device-ului (izolare la livrarea evenimentelor)
@@ -2197,6 +2226,9 @@ module.exports = {
   savePushSubscription,
   getPushSubscriptions,
   deletePushSubscription,
+  saveDeviceToken,
+  getDeviceTokens,
+  deleteDeviceToken,
   getUsersForImei,
   getAllActiveUsers, getActiveUsersForCompany,
   saveTripsForRange,

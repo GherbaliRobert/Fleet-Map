@@ -1,0 +1,43 @@
+/* Token-uri de design RA Tracks — copiate din public/css/app.css. Pe mobil, DARK e implicit. */
+:root, :root[data-theme="dark"] {
+  --bg-darkest: #0B0E11;
+  --bg-dark: #0E1217;
+  --bg-panel: #15181D;
+  --bg-card: #181C22;
+  --border: #242A31;
+  --border-light: #313842;
+  --text-primary: #FFFFFF;
+  --text: #FFFFFF;
+  --text-secondary: #C2CAD6;
+  --text-muted: #8A93A3;
+  --accent: #3FE07D;
+  --accent-hover: #52EC8D;
+  --green: #3FE07D;
+  --green-dim: #2BB763;
+  --blue: #3FE07D;
+  --red: #ef4444;
+  --orange: #f97316;
+  --yellow: #eab308;
+  --purple: #a78bfa;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --tabbar-h: 60px;
+  --header-h: 54px;
+  --radius: 12px;
+}
+:root[data-theme="light"] {
+  --bg-darkest: #eef2f6;
+  --bg-dark: #f1f5f9;
+  --bg-panel: #ffffff;
+  --bg-card: #ffffff;
+  --border: #e2e8f0;
+  --border-light: #cbd5e1;
+  --text-primary: #0f172a;
+  --text: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --red: #dc2626;
+  --orange: #ea580c;
+  --yellow: #ca8a04;
+  --purple: #7c3aed;
+}

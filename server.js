@@ -1092,6 +1092,42 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Login mobil (nativ): emite un TOKEN (cheie API) în loc de cookie de sesiune — webview-ul Capacitor nu poate
+// folosi cookie-uri cross-site. Tokenul se stochează în secure storage pe telefon și se trimite ca `Authorization: Bearer`.
+// Cheia moștenește automat rolul + accesul la vehicule al userului (getUserByApiKey), deci e scopată corect.
+app.post('/api/mobile/login', async (req, res) => {
+  const ip = clientIp(req);
+  try {
+    const { username, password, device } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
+    if (loginBlocked(ip)) return res.status(429).json({ error: 'Prea multe încercări. Reîncearcă peste 15 minute.' });
+    const user = await db.getUserByUsername(username);
+    if (!user) { recordLoginFail(ip); return res.status(401).json({ error: 'Username sau parola greșită' }); }
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) { recordLoginFail(ip); return res.status(401).json({ error: 'Username sau parola greșită' }); }
+    if (user.active === false) return res.status(403).json({ error: 'Cont dezactivat. Contactează administratorul.' });
+    let company = null, features = null, access = null;
+    if (user.company_id != null) {
+      try {
+        const co = await db.getCompanyById(user.company_id);
+        if (co) {
+          access = companyAccessStatus(co);
+          if (!isSuper(user.role) && access.status === 'expired') return res.status(402).json({ error: 'Abonament expirat — accesul este suspendat până la reînnoire. Contactați furnizorul.', access_expired: true });
+          company = { id: co.id, name: co.name, is_demo: !!co.is_demo };
+          features = plans ? plans.featuresFor(co) : null;
+        }
+      } catch (e) { /* lăsăm login-ul să continue */ }
+    }
+    if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
+    clearLoginFails(ip);
+    const token = 'gpsk_' + crypto.randomBytes(24).toString('hex');
+    await db.createApiKey(user.id, 'mobile:' + (String(device || 'app').slice(0, 40)), hashApiKey(token), token.slice(0, 12));
+    db.setUserLastLogin(user.id).catch(() => {});
+    db.logAudit({ userId: user.id, username: user.username, action: 'mobile_login', entity: 'session', ip });
+    res.json({ token, username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Logout
 app.post('/api/logout', (req, res) => {
   const u = req.session ? { userId: req.session.userId, username: req.session.username } : {};
@@ -4070,11 +4106,50 @@ function initVapid() {
   } catch (e) { console.error('[PUSH] init:', e.message); }
 }
 async function sendPushToUser(userId, payload) {
-  let subs; try { subs = await db.getPushSubscriptions(userId); } catch (e) { return; }
+  let subs; try { subs = await db.getPushSubscriptions(userId); } catch (e) { subs = []; }
   for (const s of subs) {
     try { await webpush.sendNotification(s.subscription, JSON.stringify(payload)); }
     catch (e) { if (e.statusCode === 404 || e.statusCode === 410) db.deletePushSubscription(s.endpoint).catch(() => {}); }
   }
+  sendFcmToUser(userId, payload).catch(() => {}); // push nativ (FCM/APNs) în paralel cu Web Push
+}
+
+// ─── Push nativ (FCM Android / APNs iOS) pentru aplicația mobilă ───
+// No-op dacă FIREBASE_SA_JSON nu e setat → nu afectează deploy-urile fără mobil.
+let _fcm = null;
+function initFcm() {
+  try {
+    const raw = process.env.FIREBASE_SA_JSON;
+    if (!raw) { console.log('[FCM] inactiv (FIREBASE_SA_JSON nesetat)'); return; }
+    const admin = require('firebase-admin');
+    const cred = JSON.parse(raw);
+    if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(cred) });
+    _fcm = admin.messaging();
+    console.log('[FCM] Push nativ activ');
+  } catch (e) { console.warn('[FCM] init eșuat (mobilul nu va primi push):', e.message); _fcm = null; }
+}
+async function sendFcmToUser(userId, payload) {
+  if (!_fcm) return;
+  let tokens; try { tokens = await db.getDeviceTokens(userId); } catch (e) { return; }
+  if (!tokens || !tokens.length) return;
+  const data = {};
+  if (payload && payload.data) for (const k in payload.data) data[k] = String(payload.data[k] == null ? '' : payload.data[k]);
+  if (payload && payload.imei && !data.imei) data.imei = String(payload.imei);
+  try {
+    const resp = await _fcm.sendEachForMulticast({
+      tokens: tokens.map(t => t.token),
+      notification: { title: (payload && payload.title) || 'RA Track', body: (payload && payload.body) || '' },
+      data,
+      android: { priority: 'high', notification: { channelId: 'alerts' } }
+    });
+    resp.responses.forEach((r, i) => {
+      if (!r.success) {
+        const code = r.error && r.error.code;
+        if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-argument' || code === 'messaging/invalid-registration-token')
+          db.deleteDeviceToken(tokens[i].token).catch(() => {});
+      }
+    });
+  } catch (e) { /* nu blochează restul livrării */ }
 }
 function broadcastWsToUser(userId, message) {
   const data = JSON.stringify(message);
@@ -4103,7 +4178,7 @@ async function deliverUserEvent(user, ev, p) {
     broadcastWsToUser(user.id, { type: 'notification', data: saved });
   } catch (e) {}
   if (p && p.email && user.email) channels.sendEmailTo(user.email, ev.title, ev.body).catch(() => {});
-  if (p && p.push) sendPushToUser(user.id, { title: ev.title, body: ev.body }).catch(() => {});
+  if (p && p.push) sendPushToUser(user.id, { title: ev.title, body: ev.body, imei: ev.imei || null, data: { type: ev.type, imei: ev.imei || '' } }).catch(() => {});
 }
 
 // Detector evenimente per-poziție (prev = poziția anterioară a vehiculului)
@@ -4834,6 +4909,19 @@ app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
   try { if (req.body && req.body.endpoint) await db.deletePushSubscription(req.body.endpoint); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Token-uri native (FCM Android / APNs iOS) pentru aplicația mobilă.
+app.post('/api/push/device', requireAuth, async (req, res) => {
+  try {
+    const { token, platform } = req.body || {};
+    if (!token) return res.status(400).json({ error: 'Token lipsă' });
+    await db.saveDeviceToken(req.auth.userId, String(token), (platform === 'ios' ? 'ios' : 'android'));
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/push/device/unregister', requireAuth, async (req, res) => {
+  try { if (req.body && req.body.token) await db.deleteDeviceToken(String(req.body.token)); res.json({ ok: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // Endpoint de test (DOAR cu SEED_TEST=1) — simulează o poziție live pentru a declanșa evenimente
 if (process.env.SEED_TEST === '1') {
@@ -5005,6 +5093,7 @@ async function start() {
   // Inițializează baza de date
   await db.initDb();
   initVapid();
+  initFcm();
 
   // Încarcă cheia AI salvată din UI (dacă nu e deja în env)
   try { if (!ai.aiEnabled()) { const k = await db.getSetting('anthropic_api_key'); if (k) { ai.setKey(k); console.log('[AI] Cheie Anthropic încărcată din setări'); } } } catch (e) {}
