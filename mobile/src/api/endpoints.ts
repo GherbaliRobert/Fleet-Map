@@ -25,6 +25,8 @@ export interface NotificationItem {
 export interface Group { id: number; name: string; color?: string; count?: number; }
 export interface DocItem { id: number; imei?: string; doc_type?: string; expiry_date?: string; number?: string; [k: string]: any; }
 export interface ReportTypeInfo { type: string; label: string; cat: string; }
+export interface EventType { key: string; label: string; unit?: string; def?: number; threshold?: boolean; below?: boolean; }
+export interface NotifPref { enabled: boolean; threshold?: number; email?: boolean; push?: boolean; }
 export interface ReportChartDef { type: string; title: string; labels: string[]; datasets: { label: string; data: number[] }[]; }
 export interface ReportResult { columns: string[]; rows: any[][]; summary: Record<string, any>; charts?: ReportChartDef[]; label?: string; type?: string; }
 
@@ -79,6 +81,9 @@ export const Api = {
   createUser: (b: any) => api('/api/users', { method: 'POST', body: b }),
   updateUser: (id: number, b: any) => api(`/api/users/${id}`, { method: 'PUT', body: b }),
   deleteUser: (id: number) => api(`/api/users/${id}`, { method: 'DELETE' }),
+  eventTypes: () => api<EventType[]>('/api/event-types'),
+  notifPrefs: () => api<{ types?: Record<string, NotifPref> }>('/api/notification-prefs'),
+  saveNotifPrefs: (types: Record<string, NotifPref>) => api('/api/notification-prefs', { method: 'PUT', body: { types } }),
   reportTypes: () => api<{ categories: { key: string; label: string }[]; reports: ReportTypeInfo[] }>('/api/reports'),
   runReport: (type: string, from: string, to: string, imeis?: string[]) => {
     const e = encodeURIComponent;

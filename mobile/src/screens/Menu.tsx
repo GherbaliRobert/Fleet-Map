@@ -70,7 +70,7 @@ export function Menu() {
 
         <div class="mn-sec">Cont & setări</div>
         {item(theme.value === 'dark' ? 'moon' : 'sun', 'Temă', () => toggleTheme(), theme.value === 'dark' ? 'Întunecat' : 'Luminos')}
-        {soon('bell', 'Preferințe notificări')}
+        {item('bell', 'Preferințe notificări', () => loc.route('/notif-prefs'))}
         {item('headset', 'Suport clienți', () => setSupport(true))}
         {item('logout', 'Deconectare', () => logout(), null, 'danger')}
 

@@ -56,3 +56,20 @@
 .adm-row-del { margin-left: auto; }
 .icon-btn-sm { background: transparent; border: none; color: var(--text-muted); padding: 6px; display: flex; }
 .icon-btn-sm.danger { color: var(--red); }
+
+/* Toggle switch */
+.sw { position: relative; width: 44px; height: 26px; flex: 0 0 44px; border-radius: 999px; background: var(--bg-dark); border: 1px solid var(--border); transition: background .15s; }
+.sw.on { background: var(--accent); border-color: var(--accent); }
+.sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.sw.on::after { transform: translateX(18px); }
+
+/* Notification preferences */
+.np-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px; margin-bottom: 10px; }
+.np-head { display: flex; align-items: center; gap: 12px; }
+.np-head .np-lbl { flex: 1; font-weight: 700; font-size: 14.5px; }
+.np-sub { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 11px; }
+.np-thr { display: flex; align-items: center; gap: 10px; }
+.np-thr label { font-size: 13px; color: var(--text-muted); flex: 1; }
+.np-thr input { width: 92px; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 9px; padding: 8px 10px; font-size: 15px; font-family: inherit; }
+.np-chan { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); }
+.np-chan .np-cl { flex: 1; }

@@ -19,6 +19,7 @@ import { AdminGroups } from './screens/AdminGroups';
 import { AdminMaintenance } from './screens/AdminMaintenance';
 import { AdminAlerts } from './screens/AdminAlerts';
 import { AdminUsers } from './screens/AdminUsers';
+import { NotifPrefs } from './screens/NotifPrefs';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -75,6 +76,7 @@ function Shell() {
         <Route path="/admin/maintenance" component={AdminMaintenance} />
         <Route path="/admin/alerts" component={AdminAlerts} />
         <Route path="/admin/users" component={AdminUsers} />
+        <Route path="/notif-prefs" component={NotifPrefs} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}
