@@ -30,6 +30,7 @@ export interface CrudConfig {
   itemSub?: (it: any) => string;
   itemRight?: (it: any) => any;
   canWrite: boolean;
+  filter?: { field: string; options: { value: string; label: string }[] }; // dropdown opțional (ex: companie, super-admin)
 }
 
 function dateInput(v: any): string {
@@ -46,6 +47,7 @@ export function AdminCrud({ cfg }: { cfg: CrudConfig }) {
   const [form, setForm] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [confirmDel, setConfirmDel] = useState<any | null>(null);
+  const [filterVal, setFilterVal] = useState('');
 
   async function reload() {
     setErr('');
@@ -99,6 +101,8 @@ export function AdminCrud({ cfg }: { cfg: CrudConfig }) {
     finally { setSaving(false); }
   }
 
+  const shown = items == null ? [] : ((cfg.filter && filterVal) ? items.filter((it) => String(it[cfg.filter!.field] ?? '') === filterVal) : items);
+
   return (
     <div class="screen">
       <header class="app-header">
@@ -107,14 +111,22 @@ export function AdminCrud({ cfg }: { cfg: CrudConfig }) {
         <div style="width:36px" />
       </header>
       <div class="content has-tabbar" style="padding-bottom:96px">
+        {cfg.filter && items != null && items.length > 0 && (
+          <div class="adm-filter">
+            <select value={filterVal} onChange={(e: any) => setFilterVal(e.target.value)}>
+              <option value="">Toate companiile</option>
+              {cfg.filter.options.map((o) => <option value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        )}
         {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
         {items == null && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
-        {items != null && items.length === 0 && !err && (
-          <div class="adm-empty"><Icon name={cfg.icon} size={40} class="ic" /><div>{cfg.empty}</div></div>
+        {items != null && shown.length === 0 && !err && (
+          <div class="adm-empty"><Icon name={cfg.icon} size={40} class="ic" /><div>{filterVal ? 'Niciun rezultat pentru filtrul ales.' : cfg.empty}</div></div>
         )}
-        {items != null && items.length > 0 && (
+        {items != null && shown.length > 0 && (
           <div class="adm-list">
-            {items.map((it) => (
+            {shown.map((it) => (
               <button class="adm-item" onClick={() => cfg.canWrite ? openEdit(it) : undefined}>
                 <span class="ic-wrap"><Icon name={cfg.icon} size={19} /></span>
                 <span class="mid">

@@ -63,6 +63,7 @@ export const Api = {
   // ── Administrare (CRUD) ──
   drivers: () => api<any[]>('/api/drivers'),
   driversLite: () => api<any[]>('/api/drivers/lite'),
+  companies: () => api<any[]>('/api/companies'), // super-admin: pentru etichete + filtru pe companie
   createDriver: (b: any) => api('/api/drivers', { method: 'POST', body: b }),
   updateDriver: (id: number, b: any) => api(`/api/drivers/${id}`, { method: 'PUT', body: b }),
   deleteDriver: (id: number) => api(`/api/drivers/${id}`, { method: 'DELETE' }),

@@ -2,6 +2,13 @@
 
 .adm-list { display: flex; flex-direction: column; gap: 8px; }
 
+.adm-filter { margin-bottom: 10px; }
+.adm-filter select {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 10px; padding: 11px 12px; font-size: 14px; font-family: inherit;
+}
+
 .adm-item {
   display: flex; align-items: center; gap: 12px;
   background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
