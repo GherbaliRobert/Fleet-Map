@@ -1008,6 +1008,9 @@
     .rep-tab:hover { border-color:var(--accent); color:var(--text-primary); }
     .rep-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     .rep-tab i { font-size:15px; }
+    .rin-chip, .rin-src { white-space:normal; text-align:left; font-size:12px; line-height:1.3; height:auto; }
+    .rin-src { border-color:var(--accent); color:var(--accent); }
+    #rep-tab-insight .rax-row.ai .rax-msg { max-width:92%; }
     #rep-history th { position:sticky; top:0; background:var(--bg-dark); padding:9px 11px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12px; color:var(--text-secondary); }
     #rep-history td { padding:9px 11px; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12.5px; }
     #rep-history tbody tr:nth-child(even) { background:rgba(127,127,127,.06); }
@@ -1565,6 +1568,7 @@ const pozitii = await r.json();</code></pre>
       <div class="rep-tabs">
         <button class="rep-tab active" id="rep-tab-btn-generate" onclick="repShowTab('generate')"><i class="fas fa-circle-plus"></i> Generează rapoarte</button>
         <button class="rep-tab" id="rep-tab-btn-history" onclick="repShowTab('history')"><i class="fas fa-clock-rotate-left"></i> Istoric rapoarte</button>
+        <button class="rep-tab" id="rep-tab-btn-insight" onclick="repShowTab('insight')"><i class="fas fa-wand-magic-sparkles"></i> RA Insight</button>
       </div>
       <!-- TAB: Generează rapoarte -->
       <div id="rep-tab-generate" style="display:flex;flex-direction:column;flex:1;min-height:0;">
@@ -1629,6 +1633,19 @@ const pozitii = await r.json();</code></pre>
           </table>
         </div>
         <div id="rep-history-empty" style="display:none;text-align:center;color:var(--text-muted);padding:28px;">Nu ai generat niciun raport în ultimele 7 zile.</div>
+      </div>
+
+      <!-- TAB: RA Insight (agent analitic) -->
+      <div id="rep-tab-insight" style="display:none;flex-direction:column;flex:1;min-height:0;">
+        <div style="margin-bottom:8px;">
+          <span style="font-size:12.5px;color:var(--text-muted);"><i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i> Întreabă în limbaj natural — RA Insight citește rapoartele și-ți răspunde direct, combinând mai multe dacă e nevoie.</span>
+        </div>
+        <div id="rin-msgs" style="overflow:auto;flex:1;min-height:160px;display:flex;flex-direction:column;gap:12px;padding:8px 2px;"></div>
+        <div id="rin-suggest" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px;"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="rin-input" rows="1" placeholder="Ex: Cât a consumat camionul X luna asta și în ce zonă a stat cel mai mult?" style="flex:1;resize:none;max-height:120px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13.5px;line-height:1.4;"></textarea>
+          <button class="btn-sm btn-primary" id="rin-send" onclick="rinAsk()" style="height:42px;min-width:46px;" title="Trimite"><i class="fas fa-paper-plane"></i></button>
+        </div>
       </div>
 
     </div>
@@ -3662,13 +3679,99 @@ const pozitii = await r.json();</code></pre>
     // ─── Tab-uri Rapoarte (Generează / Istoric) ───
     function repShowTab(tab) {
       repActiveTab = tab;
-      var gen = document.getElementById('rep-tab-generate'), his = document.getElementById('rep-tab-history');
-      var bg = document.getElementById('rep-tab-btn-generate'), bh = document.getElementById('rep-tab-btn-history');
+      var gen = document.getElementById('rep-tab-generate'), his = document.getElementById('rep-tab-history'), ins = document.getElementById('rep-tab-insight');
+      var bg = document.getElementById('rep-tab-btn-generate'), bh = document.getElementById('rep-tab-btn-history'), bi = document.getElementById('rep-tab-btn-insight');
       if (gen) gen.style.display = (tab === 'generate') ? 'flex' : 'none';
       if (his) his.style.display = (tab === 'history') ? 'flex' : 'none';
+      if (ins) ins.style.display = (tab === 'insight') ? 'flex' : 'none';
       if (bg) bg.classList.toggle('active', tab === 'generate');
       if (bh) bh.classList.toggle('active', tab === 'history');
+      if (bi) bi.classList.toggle('active', tab === 'insight');
       if (tab === 'history') loadReportHistory();
+      if (tab === 'insight') rinInit();
+    }
+    // ─── RA Insight — agent analitic conversațional peste rapoarte ───
+    var rinBusy = false, rinInited = false;
+    function rinMd(t) {
+      var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      var bold = function (s) { return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); };
+      return esc(t).split('\n').map(function (ln) {
+        var l = ln.replace(/\s+$/, ''), tr = l.trim();
+        if (tr === '') return '<div style="height:6px"></div>';
+        if (/^#{1,6}\s+/.test(tr)) return '<div class="rax-md-h">' + bold(tr.replace(/^#{1,6}\s+/, '')) + '</div>';
+        if (/^[•\-]\s+/.test(tr)) return '<div class="rax-md-li">' + bold(tr.replace(/^[•\-]\s+/, '')) + '</div>';
+        return '<div>' + bold(l) + '</div>';
+      }).join('');
+    }
+    function rinAddMsg(role, html, raw) {
+      var wrap = document.getElementById('rin-msgs'); if (!wrap) return null;
+      var row = document.createElement('div'); row.className = 'rax-row ' + role;
+      if (role === 'ai') {
+        var av = document.createElement('div'); av.className = 'rax-av'; av.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
+        var m = document.createElement('div'); m.className = 'rax-msg ai'; m.innerHTML = (raw ? html : rinMd(html));
+        row.appendChild(av); row.appendChild(m);
+      } else if (role === 'user') {
+        var mu = document.createElement('div'); mu.className = 'rax-msg user'; mu.textContent = html; row.appendChild(mu);
+      } else {
+        var ms = document.createElement('div'); ms.className = 'rax-msg sys'; ms.innerHTML = html; row.appendChild(ms);
+      }
+      wrap.appendChild(row); wrap.scrollTop = wrap.scrollHeight; return row;
+    }
+    function rinEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/'/g, '&#39;'); }
+    function rinSuggestionList() {
+      return [
+        'Privire de ansamblu pe flotă în ultimele 7 zile',
+        'Ce vehicul a consumat cel mai mult luna asta?',
+        'Câte ore a lucrat vs ralanti fiecare vehicul săptămâna trecută?',
+        'Top 3 vehicule după km în ultimele 30 de zile'
+      ];
+    }
+    function rinInit() {
+      var inp = document.getElementById('rin-input');
+      if (inp && !inp._wired) {
+        inp._wired = true;
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); rinAsk(); } });
+        inp.addEventListener('input', function () { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 120) + 'px'; });
+      }
+      if (rinInited) return;
+      rinInited = true;
+      rinAddMsg('ai', 'Salut! Sunt **RA Insight**. Întreabă-mă orice despre flota ta — citesc rapoartele și-ți dau direct răspunsul, fără să mai generezi tu mai multe rapoarte.');
+      var box = document.getElementById('rin-suggest');
+      if (box) box.innerHTML = rinSuggestionList().map(function (q) {
+        return '<button class="btn-sm rin-chip" data-q="' + rinEsc(q) + '" onclick="rinAsk(this.dataset.q)"><i class="fas fa-lightbulb" style="opacity:.7;"></i> ' + rinEsc(q) + '</button>';
+      }).join('');
+    }
+    function rinRenderSources(sources) {
+      if (!Array.isArray(sources) || !sources.length) return;
+      var chips = sources.map(function (s) {
+        var txt = (s.label || s.type) + (s.vehicle ? (' · ' + s.vehicle) : '');
+        return '<button class="btn-sm rin-src" onclick="rinOpenReport(\'' + rinEsc(s.type) + '\',\'' + rinEsc(s.imei || '') + '\')" title="Deschide raportul complet"><i class="fas fa-up-right-from-square" style="opacity:.7;"></i> ' + rinEsc(txt) + '</button>';
+      }).join('');
+      rinAddMsg('sys', '<div style="font-size:11px;color:var(--text-muted);margin:2px 0 4px;text-align:left;">Surse (deschide raportul complet):</div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start;">' + chips + '</div>', true);
+    }
+    async function rinAsk(preset) {
+      if (rinBusy) return;
+      var inp = document.getElementById('rin-input');
+      var msg = ((preset != null ? preset : (inp ? inp.value : '')) || '').trim();
+      if (!msg) return;
+      if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+      var sg = document.getElementById('rin-suggest'); if (sg) sg.innerHTML = '';
+      rinAddMsg('user', msg);
+      rinBusy = true;
+      var btn = document.getElementById('rin-send'); if (btn) btn.disabled = true;
+      var thinking = rinAddMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>', true);
+      try {
+        var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
+        var j = await r.json();
+        if (thinking) thinking.remove();
+        rinAddMsg('ai', j.reply || j.message || j.error || 'Eroare RA Insight.');
+        if (j.sources) rinRenderSources(j.sources);
+      } catch (e) { if (thinking) thinking.remove(); rinAddMsg('ai', 'Eroare de rețea: ' + e.message); }
+      rinBusy = false; if (btn) btn.disabled = false;
+    }
+    async function rinOpenReport(type, imei) {
+      repShowTab('generate');
+      try { await openReportCard(type); if (imei) { var sel = document.getElementById('rep-imei'); if (sel) sel.value = imei; } } catch (e) {}
     }
     function repFmtDT(s) {
       if (!s) return '—';

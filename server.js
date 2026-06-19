@@ -1554,6 +1554,141 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
   }
 });
 
+// ─── RA Insight — agent analitic peste rapoarte (tool-use) ───
+// Răspunde la întrebări în limbaj natural combinând mai multe rapoarte, ca clientul să nu genereze manual 5 rapoarte.
+// Per user (scoping prin canAccessImei), pe modelul AI_AGENT_MODEL (default Haiku, urcabil pe Sonnet dintr-o variabilă).
+app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), async (req, res) => {
+  try {
+    const message = ((req.body && req.body.message) || '').toString().slice(0, 2000).trim();
+    if (!message) return res.status(400).json({ error: 'Mesaj gol' });
+    if (!ai.aiEnabled()) return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
+    if (await aiLimitReached(req.companyId)) return res.json({ reply: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
+
+    const companyScope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
+
+    // Vehiculele la care userul are acces (nume + tip pentru model; imei intern pentru rezolvare + deep-link).
+    let devices = await db.getDevices(companyScope === -1 ? -1 : companyScope);
+    devices = devices.filter(d => canAccessImei(req, d.imei));
+    const vehList = devices.map(d => ({ name: (d.name || d.imei), type: d.vehicle_type || null, imei: d.imei }));
+    const allImeis = vehList.map(v => v.imei);
+    if (!allImeis.length) return res.json({ reply: 'Nu ai niciun vehicul în scope, deci nu am ce analiza.', sources: [] });
+
+    // Zone (geofence) accesibile — pentru întrebări pe hotspot.
+    let zones = [];
+    try { zones = (await db.getGeofences(companyScope)).map(g => ({ id: g.id, name: g.name || ('Zonă ' + g.id) })); } catch (e) {}
+
+    function resolveVehicle(nameOrNull) {
+      if (!nameOrNull) return { imeis: allImeis, label: 'toată flota', imei: null };
+      const q = String(nameOrNull).trim().toLowerCase();
+      let v = vehList.find(x => x.name.toLowerCase() === q) || vehList.find(x => x.name.toLowerCase().includes(q));
+      if (!v) return null;
+      return { imeis: [v.imei], label: v.name, imei: v.imei };
+    }
+    function resolvePeriod(input) {
+      const now = new Date();
+      const startOfDay = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+      const p = ((input && input.period) || '').toString().toLowerCase();
+      let from, to = new Date(now);
+      if (input && input.from && input.to) { from = new Date(input.from); to = new Date(input.to); }
+      else if (p === 'today') { from = startOfDay(now); }
+      else if (p === 'yesterday') { from = startOfDay(now); from.setDate(from.getDate() - 1); to = startOfDay(now); }
+      else if (p === 'this_week') { const dow = (startOfDay(now).getDay() + 6) % 7; from = startOfDay(now); from.setDate(from.getDate() - dow); }
+      else if (p === 'last_week') { const dow = (startOfDay(now).getDay() + 6) % 7; to = startOfDay(now); to.setDate(to.getDate() - dow); from = new Date(to); from.setDate(from.getDate() - 7); }
+      else if (p === 'this_month') { from = new Date(now.getFullYear(), now.getMonth(), 1); }
+      else if (p === 'last_month') { from = new Date(now.getFullYear(), now.getMonth() - 1, 1); to = new Date(now.getFullYear(), now.getMonth(), 1); }
+      else if (p === 'last_30_days' || p === 'month') { from = new Date(now); from.setDate(from.getDate() - 30); }
+      else { from = new Date(now); from.setDate(from.getDate() - 7); } // default: last_7_days
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) { from = new Date(now); from.setDate(from.getDate() - 7); to = new Date(now); }
+      return { from: from.toISOString(), to: to.toISOString() };
+    }
+
+    const PERIODS = ['today', 'yesterday', 'last_7_days', 'last_30_days', 'this_week', 'last_week', 'this_month', 'last_month'];
+    const MAX_REPORTS = 5;
+    let reportCalls = 0;
+    const sources = [];
+
+    const tools = [
+      { name: 'list_vehicles', description: 'Listează vehiculele disponibile (nume și tip). Folosește numele EXACT când ceri un raport pe un vehicul anume.', input_schema: { type: 'object', properties: {} } },
+      { name: 'list_zones', description: 'Listează zonele (hotspot/geofence) definite. Necesare pentru raportul de tip "hotspot".', input_schema: { type: 'object', properties: {} } },
+      {
+        name: 'run_report',
+        description: 'Generează un raport și întoarce sumarul lui (totaluri + rânduri-cheie). Cheamă de mai multe ori și combină rezultatele pentru a răspunde complet la întrebare.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', description: 'Tipul raportului (cheia exactă din lista din system prompt).', enum: Object.keys(reports.REPORTS) },
+            vehicle: { type: 'string', description: 'Numele vehiculului (exact, din list_vehicles). Omite pentru toată flota.' },
+            zone: { type: 'string', description: 'Numele zonei (obligatoriu doar pentru type="hotspot").' },
+            period: { type: 'string', description: 'Scurtătură de perioadă.', enum: PERIODS },
+            from: { type: 'string', description: 'Început interval ISO 8601 (alternativă la period).' },
+            to: { type: 'string', description: 'Sfârșit interval ISO 8601 (alternativă la period).' }
+          },
+          required: ['type']
+        }
+      }
+    ];
+
+    const toolHandlers = {
+      list_vehicles: async () => ({ vehicles: vehList.map(v => ({ name: v.name, type: v.type })) }),
+      list_zones: async () => ({ zones: zones.map(z => z.name) }),
+      run_report: async (input) => {
+        if (reportCalls >= MAX_REPORTS) return { error: 'Ai atins limita de ' + MAX_REPORTS + ' rapoarte pe întrebare. Răspunde cu datele deja adunate.' };
+        const type = String(input.type || '');
+        if (!reports.REPORTS[type]) return { error: 'Tip necunoscut: ' + type + '. Valide: ' + Object.keys(reports.REPORTS).join(', ') };
+        const veh = resolveVehicle(input.vehicle);
+        if (veh === null) return { error: 'Vehicul negăsit: "' + input.vehicle + '". Cheamă list_vehicles pentru numele corecte.' };
+        const opts = { stopMin: 5, limit: 90, refuelMin: 10, dropMin: 10, geofenceId: null };
+        if (type === 'hotspot') {
+          if (!input.zone) return { error: 'Pentru "hotspot" trebuie numele zonei (parametrul "zone"). Cheamă list_zones.' };
+          const zq = String(input.zone).trim().toLowerCase();
+          const z = zones.find(x => x.name.toLowerCase() === zq) || zones.find(x => x.name.toLowerCase().includes(zq));
+          if (!z) return { error: 'Zonă negăsită: "' + input.zone + '". Cheamă list_zones.' };
+          opts.geofenceId = z.id;
+        }
+        const { from, to } = resolvePeriod(input);
+        reportCalls++;
+        try {
+          const report = await reports.runReport(db, type, veh.imeis, from, to, opts, companyScope);
+          sources.push({ type, label: report.label || type, vehicle: input.vehicle ? veh.label : null, imei: veh.imei, from, to });
+          const rows = Array.isArray(report.rows) ? report.rows : [];
+          return {
+            type, label: report.label, vehicle: veh.label, period: { from, to },
+            summary: report.summary || {},
+            columns: report.columns || [],
+            rows: rows.slice(0, 25),
+            rows_total: rows.length,
+            truncated: rows.length > 25
+          };
+        } catch (e) { return { error: 'Eroare la generarea raportului: ' + ((e && e.message) || e) }; }
+      }
+    };
+
+    const reportList = Object.entries(reports.REPORTS).map(([k, v]) => '- ' + k + ': ' + v.label).join('\n');
+    const system = [
+      'Ești „RA Insight", analistul AI al platformei RA Tracks (monitorizare GPS flote). Răspunzi în limba română.',
+      'Rolul tău: răspunzi la întrebarea clientului combinând date din rapoarte, ca să nu fie nevoit să genereze manual mai multe rapoarte și să caute prin ele.',
+      'Ai 3 unelte: list_vehicles, list_zones și run_report. Cheamă run_report de câte ori e nevoie (maxim ' + MAX_REPORTS + '), apoi sintetizează un singur răspuns clar.',
+      'Data și ora curentă: ' + new Date().toISOString() + '. Folosește-o ca să interpretezi „azi", „ieri", „săptămâna trecută", „luna asta" etc.',
+      'Tipuri de raport disponibile (folosește EXACT cheia din stânga la run_report):\n' + reportList,
+      'REGULI: (1) Răspunde DOAR pe baza datelor întoarse de unelte — nu inventa cifre. (2) Dacă o valoare lipsește (ex: consum fără senzor de rezervor montat), spune sincer că nu e disponibilă, nu estima ca și cum ar fi măsurată. (3) Nu afișa coordonate GPS brute; folosește numele vehiculelor și zonelor. (4) Fii concis: un titlu scurt cu **bold**, apoi puncte cu „• " și cifrele-cheie. (5) Dacă întrebarea cere mai multe lucruri (ex: consum + zonă + ore lucrate), acoperă-le pe toate. (6) Nu enumera la final uneltele apelate — clientul vede sursele separat.'
+    ].join('\n\n');
+
+    const result = await ai.runAgent({
+      system, messages: [{ role: 'user', content: message }], tools, toolHandlers,
+      model: ai.AI_AGENT_MODEL, maxTokens: 1100, maxIters: 8,
+      onUsage: u => db.recordAiUsage(req.companyId, 'insight', u).catch(() => {})
+    });
+    auditReq(req, 'ai_insight', 'assistant', null, { len: message.length, reports: reportCalls });
+
+    // Surse unice (type+imei+perioadă) pentru chips-urile „Deschide raportul".
+    const seen = new Set(); const uniqSources = [];
+    for (const s of sources) { const k = s.type + '|' + (s.imei || '') + '|' + s.from + '|' + s.to; if (!seen.has(k)) { seen.add(k); uniqSources.push(s); } }
+    res.json({ reply: result.text || 'Nu am putut formula un răspuns pe baza datelor disponibile.', sources: uniqSources });
+  } catch (e) {
+    res.status(500).json({ error: 'RA Insight: ' + e.message });
+  }
+});
+
 // ─── Agenți AI (RA Watch etc.) ───
 // Helper: lista agenților activi pentru compania userului (plan + override settings)
 async function _getEnabledAgents(companyId) {
