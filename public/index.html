@@ -387,22 +387,19 @@
 
         /* ─── RA Insight pe mobil ─── */
         /* Tab-uri: iconiță deasupra etichetei complete (cum erau), pe un rând */
-        .rep-tabs { gap: 6px !important; margin-bottom: 10px !important; flex: 0 0 auto !important; }
+        .rep-tabs { gap: 6px !important; margin-bottom: 10px !important; }
         .rep-tab { flex: 1 1 0 !important; min-width: 0 !important; flex-direction: column !important; gap: 4px !important; padding: 8px 4px !important; font-size: 11.5px !important; line-height: 1.15 !important; text-align: center !important; }
         .rep-tab i { font-size: 16px !important; }
         .rep-tab .rt-long { display: inline !important; }
         .rep-tab .rt-short { display: none !important; }
-        /* CAUZA reală a „scrollează headerul": în app.css, .modal are overflow-y:auto → derula TOT modalul.
-           DOAR pe tabul RA Insight (clasa pusă din repShowTab): înălțime fixă + overflow ascuns, ca
-           SINGURA zonă scrollabilă să fie lista de mesaje, iar inputul să rămână fix jos. */
-        #reports-modal .modal.rep-insight-active { height: 90vh !important; height: 90dvh !important; overflow: hidden !important; }
-        #rep-tab-insight { flex: 1 1 0 !important; min-height: 0 !important; }
-        #rep-tab-insight > div:first-child { flex: 0 0 auto !important; }   /* linia de info */
-        #rin-msgs { flex: 1 1 0 !important; min-height: 0 !important; overflow-y: auto !important; overscroll-behavior: contain; padding: 6px 0 !important; gap: 10px !important; }
+        /* Lista de mesaje cu înălțime PLAFONATĂ raportat la ecran → scrollează în interior și NU împinge
+           inputul afară. Fără overflow:hidden pe modal = inputul NU mai e tăiat, rămâne mereu vizibil sub ea. */
+        #rin-msgs { flex: 0 1 auto !important; max-height: calc(88dvh - 340px) !important; min-height: 130px !important; overflow-y: auto !important; overscroll-behavior: contain; padding: 6px 0 !important; gap: 10px !important; }
+        #rep-tab-insight .rax-row .rax-msg { max-width: 86% !important; }
+        /* Sugestii compacte pe un rând scrollabil */
         #rin-suggest { flex: 0 0 auto !important; flex-wrap: nowrap !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; margin: 6px 0 !important; padding-bottom: 2px; }
         #rin-suggest .rin-chip { flex: 0 0 auto !important; white-space: nowrap !important; max-width: 80vw !important; overflow: hidden; text-overflow: ellipsis; }
-        #rep-tab-insight > div:last-child { flex: 0 0 auto !important; }   /* rândul de input */
-        #rep-tab-insight .rax-row .rax-msg { max-width: 86% !important; }
+        #rin-inputbar { flex: 0 0 auto !important; }
         #rin-send { flex: 0 0 auto !important; }
 
         /* Modaluri rax (Conturi, Dashboard, Companii): width pe tot ecranul */
@@ -1670,8 +1667,8 @@ const pozitii = await r.json();</code></pre>
         </div>
         <div id="rin-msgs" style="overflow:auto;flex:1;min-height:160px;display:flex;flex-direction:column;gap:12px;padding:8px 2px;"></div>
         <div id="rin-suggest" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px;"></div>
-        <div style="display:flex;gap:8px;align-items:flex-end;">
-          <textarea id="rin-input" rows="1" placeholder="Ex: Cât a consumat camionul X luna asta și în ce zonă a stat cel mai mult?" style="flex:1;resize:none;max-height:120px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13.5px;line-height:1.4;"></textarea>
+        <div id="rin-inputbar" style="display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--border);padding-top:10px;margin-top:2px;">
+          <textarea id="rin-input" rows="1" placeholder="Scrie întrebarea ta… ex: cât a consumat camionul X luna asta și în ce zonă a stat cel mai mult?" style="flex:1;resize:none;max-height:120px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13.5px;line-height:1.4;"></textarea>
           <button class="btn-sm btn-primary" id="rin-send" onclick="rinAsk()" style="height:42px;min-width:46px;" title="Trimite"><i class="fas fa-paper-plane"></i></button>
         </div>
       </div>
@@ -3748,8 +3745,6 @@ const pozitii = await r.json();</code></pre>
       if (bg) bg.classList.toggle('active', tab === 'generate');
       if (bh) bh.classList.toggle('active', tab === 'history');
       if (bi) bi.classList.toggle('active', tab === 'insight');
-      var rmodal = document.querySelector('#reports-modal .modal');
-      if (rmodal) rmodal.classList.toggle('rep-insight-active', tab === 'insight');
       if (tab === 'history') loadReportHistory();
       if (tab === 'insight') rinInit();
     }
