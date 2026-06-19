@@ -1345,10 +1345,11 @@ async function getDevices(companyId) {
   const where = companyId != null ? 'WHERE d.company_id = $1' : '';
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
-    SELECT d.*,
+    SELECT d.*, c.name AS company_name,
       p.latitude, p.longitude, p.speed, p.timestamp as last_position_time,
       p.io_data
     FROM devices d
+    LEFT JOIN companies c ON c.id = d.company_id
     LEFT JOIN LATERAL (
       SELECT latitude, longitude, speed, timestamp, io_data
       FROM positions
@@ -1937,9 +1938,17 @@ async function getUserCount() {
 // ─── Funcții soferi ───
 
 async function getDrivers(companyId) {
-  const where = companyId != null ? 'WHERE company_id = $1' : '';
+  const where = companyId != null ? 'WHERE d.company_id = $1' : '';
   const params = companyId != null ? [companyId] : [];
-  const result = await pool.query(`SELECT * FROM drivers ${where} ORDER BY name`, params);
+  // JOIN companies → company_name (super-admin vede toți șoferii, grupați pe companie)
+  const result = await pool.query(
+    `SELECT d.*, c.name AS company_name
+     FROM drivers d
+     LEFT JOIN companies c ON c.id = d.company_id
+     ${where}
+     ORDER BY c.name, d.name`,
+    params
+  );
   return result.rows;
 }
 

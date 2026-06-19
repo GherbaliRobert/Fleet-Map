@@ -913,6 +913,9 @@
     body.no-users .users-only { display:none !important; } /* Utilizatori/Audit din Administrare — cu permisiunea manageUsers */
     body.no-companies .companies-only { display:none !important; } /* Companii & mutare între companii — STRICT super-admin (manageCompanies) */
     body:not(.is-super) [data-super] { display:none !important; } /* fail-closed: orice element data-super rămâne ascuns până se confirmă super-admin */
+    body:not(.is-super) .veh-co-col { display:none !important; } /* coloana „Companie" (Vehicule) — doar super-admin */
+    .co-tag { display:inline-block; font-size:11px; font-weight:700; color:#16a34a; background:rgba(63,224,125,.14); padding:1px 8px; border-radius:10px; margin-left:6px; vertical-align:middle; white-space:nowrap; }
+    .co-tag i { font-size:9px; margin-right:4px; opacity:.85; }
     /* Administrare (Faza 2) */
     #admin-modal input, #admin-modal select, #admin-modal textarea {
       background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb);
@@ -1305,7 +1308,7 @@ const pozitii = await r.json();</code></pre>
               <thead><tr style="text-align:left;border-bottom:1px solid var(--border);color:var(--text-muted);">
                 <th style="padding:6px 8px;">Status</th><th style="padding:6px 8px;">Nr.</th><th style="padding:6px 8px;">Nume</th>
                 <th style="padding:6px 8px;">Grup</th><th style="padding:6px 8px;">Șofer</th>
-                <th style="padding:6px 8px;">Ultima transmisie</th><th style="padding:6px 8px;">Marcă</th><th style="padding:6px 8px;">Acțiuni</th>
+                <th style="padding:6px 8px;">Ultima transmisie</th><th style="padding:6px 8px;">Marcă</th><th class="veh-co-col" style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;">Acțiuni</th>
               </tr></thead>
               <tbody id="veh-tbody"></tbody>
             </table>
@@ -2754,12 +2757,13 @@ const pozitii = await r.json();</code></pre>
           <td style="padding:6px 8px;">${esc(drv)}</td>
           <td style="padding:6px 8px;color:var(--text-muted);">${last}</td>
           <td style="padding:6px 8px;">${esc(d.brand || '')}</td>
+          <td class="veh-co-col" style="padding:6px 8px;color:var(--text-muted);">${esc(d.company_name || '')}</td>
           <td style="padding:6px 8px;white-space:nowrap;">
             <button class="btn-sm" title="Editează" onclick="closeAdmin();openEditModal('${esc(d.imei)}')"><i class="fas fa-pen"></i></button>
             <button class="btn-sm ${archived ? 'btn-primary' : 'btn-danger'}" title="${archived ? 'Restaurează' : 'Arhivează'}" onclick="setVehArchive('${esc(d.imei)}', ${archived ? 'false' : 'true'})"><i class="fas fa-${archived ? 'undo' : 'archive'}"></i></button>
           </td>
         </tr>`;
-      }).join('') || '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--text-muted);">Niciun vehicul.</td></tr>';
+      }).join('') || '<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--text-muted);">Niciun vehicul.</td></tr>';
     }
     async function createVehicle() {
       const imei = (document.getElementById('veh-new-imei').value || '').trim();
@@ -2825,12 +2829,15 @@ const pozitii = await r.json();</code></pre>
     async function loadDrivers() {
       const r = await fetch('/api/drivers'); const list = await r.json();
       const el = document.getElementById('admin-drivers-list');
+      const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const showCo = !!(currentUser && currentUser.isSuper); // super-admin: arată compania fiecărui șofer
       el.innerHTML = list.length ? list.map(d => {
         const exp = d.license_expiry ? new Date(d.license_expiry) : null;
         const expSoon = exp && (exp - new Date()) < 30*24*3600*1000;
+        const coTag = (showCo && d.company_name) ? ` <span class="co-tag"><i class="fas fa-building"></i>${esc(d.company_name)}</span>` : '';
         return `<div class="admin-row"><div>
-          <strong>${d.name}</strong>
-          <div class="meta">${d.phone||''}${d.email?' · '+d.email:''}${d.license_number?' · permis '+d.license_number:''}${exp?' · expiră '+exp.toLocaleDateString('ro-RO')+(expSoon?' ⚠':''):''}</div>
+          <strong>${esc(d.name)}</strong>${coTag}
+          <div class="meta">${esc(d.phone||'')}${d.email?' · '+esc(d.email):''}${d.license_number?' · permis '+esc(d.license_number):''}${exp?' · expiră '+exp.toLocaleDateString('ro-RO')+(expSoon?' ⚠':''):''}</div>
         </div><div style="display:flex;gap:6px;">
           <button class="btn-sm" onclick='editDriver(${JSON.stringify(d)})'><i class="fas fa-pen"></i></button>
           <button class="btn-sm btn-danger" onclick="deleteDriver(${d.id})"><i class="fas fa-trash"></i></button>
