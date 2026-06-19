@@ -2230,11 +2230,8 @@ async function setScheduleRun(id, lastRunIso, nextRunIso) {
 
 // ─── Istoric rapoarte (per user, retenție 7 zile) ───
 async function saveReportHistory(h) {
-  // Dedup pe zi: aceeași semnătură (tip + vehicul + perioadă + opțiuni) generată azi → înlocuiește rândul, nu adaugă duplicat.
-  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-  if (h.user_id != null && h.signature) {
-    try { await pool.query('DELETE FROM report_history WHERE user_id = $1 AND signature = $2 AND generated_at >= $3', [h.user_id, h.signature, dayStart.toISOString()]); } catch (e) {}
-  }
+  // Fără dedup: fiecare generare din UI = un rând nou în istoric (se păstrează toate, până la expirarea de 7 zile).
+  // Semnătura rămâne stocată (utilă pentru filtrări viitoare), dar NU mai înlocuiește rândurile anterioare.
   const r = await pool.query(
     `INSERT INTO report_history (company_id, user_id, username, report_type, label, imei, vehicle_count, period_from, period_to, opts, data, signature, status, expires_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id, generated_at, expires_at`,
