@@ -386,19 +386,21 @@
         #rep-history .rh-act { min-height: 36px; }
 
         /* ─── RA Insight pe mobil ─── */
-        /* Cele 3 tab-uri încap pe un rând: egale, compacte, etichetă scurtă (rt-short) */
+        /* Modalul Rapoarte primește înălțime fixă pe mobil: altfel zona de chat nu se mărginește,
+           inputul de jos iese din ecran și nu se poate face scroll (dvh = ține cont de bara browserului). */
+        #reports-modal .modal { height: 90vh; height: 90dvh; }
+        /* Cele 3 tab-uri: iconiță DEASUPRA etichetei complete (ca să încapă cu text, cum erau) */
         .rep-tabs { gap: 6px; margin-bottom: 10px; }
-        .rep-tab { flex: 1 1 0; min-width: 0; justify-content: center; gap: 6px; padding: 9px 6px; font-size: 12px; line-height: 1.15; }
-        .rep-tab i { font-size: 14px; }
-        .rep-tab .rt-long { display: none; }
-        .rep-tab .rt-short { display: inline; }
-        /* Mesajele scrollează corect (min-height:0 în flex); bulele mai late */
+        .rep-tab { flex: 1 1 0; min-width: 0; flex-direction: column; gap: 4px; padding: 8px 4px; font-size: 11.5px; line-height: 1.15; text-align: center; }
+        .rep-tab i { font-size: 16px; }
+        .rep-tab .rt-long { display: inline; }
+        .rep-tab .rt-short { display: none; }
+        /* Mesajele scrollează în zona lor; inputul rămâne lipit jos, mereu vizibil */
         #rin-msgs { min-height: 0; padding: 6px 0; gap: 10px; }
         #rep-tab-insight .rax-row .rax-msg { max-width: 86%; }
-        /* Sugestii: un rând scrollabil orizontal, chip-uri pe o linie cu „…" */
+        /* Sugestii compacte: un rând scrollabil orizontal */
         #rin-suggest { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 6px 0; padding-bottom: 2px; }
         #rin-suggest .rin-chip { flex: 0 0 auto; white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis; }
-        /* Input lipit jos, buton trimite pătrat */
         #rin-send { flex: 0 0 auto; }
 
         /* Modaluri rax (Conturi, Dashboard, Companii): width pe tot ecranul */
