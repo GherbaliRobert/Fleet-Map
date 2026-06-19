@@ -914,6 +914,7 @@
     body.no-companies .companies-only { display:none !important; } /* Companii & mutare între companii — STRICT super-admin (manageCompanies) */
     body:not(.is-super) [data-super] { display:none !important; } /* fail-closed: orice element data-super rămâne ascuns până se confirmă super-admin */
     body:not(.is-super) .veh-co-col { display:none !important; } /* coloana „Companie" (Vehicule) — doar super-admin */
+    body:not(.is-super) .super-only { display:none !important; } /* filtre/selectoare companie — doar super-admin */
     .co-tag { display:inline-block; font-size:11px; font-weight:700; color:#16a34a; background:rgba(63,224,125,.14); padding:1px 8px; border-radius:10px; margin-left:6px; vertical-align:middle; white-space:nowrap; }
     .co-tag i { font-size:9px; margin-right:4px; opacity:.85; }
     /* Administrare (Faza 2) */
@@ -1288,6 +1289,7 @@ const pozitii = await r.json();</code></pre>
               <button id="veh-tab-archived" class="btn-sm" onclick="setVehScope('archived')">Arhivate</button>
             </div>
             <input type="text" id="veh-search" placeholder="Caută nume / nr. / marcă..." oninput="renderVehicles()" class="toolbar-spacer">
+            <select id="veh-co-filter" class="super-only" onchange="renderVehicles()" title="Filtrează pe companie" style="font-family:inherit;padding:5px 10px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);"></select>
             <span id="veh-count" class="toolbar-count"></span>
             <button class="btn-sm" onclick="downloadTemplate()" title="Descarcă șablon CSV"><i class="fas fa-file-csv"></i> Template</button>
             <button class="btn-sm" onclick="exportVehicles()" title="Exportă toate în CSV"><i class="fas fa-download"></i> Exportă</button>
@@ -1320,6 +1322,10 @@ const pozitii = await r.json();</code></pre>
 
         <!-- Șoferi -->
         <div id="atab-drivers" class="admin-tab-content" style="display:none;">
+          <div class="super-only" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text-muted);"><i class="fas fa-building"></i> Companie:</span>
+            <select id="drv-co-filter" onchange="renderDriversList()" style="font-family:inherit;padding:5px 10px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);"></select>
+          </div>
           <div id="admin-drivers-list"></div>
           <div class="admin-add" style="grid-template-columns:repeat(2,1fr);">
             <input type="hidden" id="drv-id">
@@ -1328,6 +1334,7 @@ const pozitii = await r.json();</code></pre>
             <label><span>Email</span><input type="email" id="drv-email"></label>
             <label><span>Nr. permis</span><input type="text" id="drv-license"></label>
             <label><span>Expirare permis</span><input type="date" id="drv-expiry"></label>
+            <label class="super-only"><span>Companie *</span><select id="drv-company" style="font-family:inherit;padding:6px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);width:100%;"></select></label>
             <div style="display:flex;align-items:flex-end;gap:6px;">
               <button class="btn-sm btn-primary" onclick="saveDriver()" style="flex:1;"><i class="fas fa-save"></i> <span id="drv-btn">Adaugă</span></button>
               <button class="btn-sm" onclick="resetDriverForm()" title="Golește">↺</button>
@@ -2730,6 +2737,24 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Vehicule (management) ───
     let vehAll = [], vehScope = 'active', vehGroups = {}, vehDrivers = {};
+    // ─── Companii (cache pentru filtrele super-admin pe Șoferi/Vehicule) ───
+    var _adminCompanies = null;
+    async function ensureAdminCompanies() {
+      if (_adminCompanies) return _adminCompanies;
+      if (!(currentUser && currentUser.isSuper)) { _adminCompanies = []; return _adminCompanies; }
+      try { var c = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); _adminCompanies = Array.isArray(c) ? c : []; }
+      catch (e) { _adminCompanies = []; }
+      return _adminCompanies;
+    }
+    function fillCompanyOptions(sel, includeAll) {
+      if (!sel) return;
+      var cur = sel.value;
+      var e2 = function (x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+      var html = includeAll ? '<option value="">Toate companiile</option>' : '<option value="">— alege compania —</option>';
+      (_adminCompanies || []).forEach(function (c) { html += '<option value="' + c.id + '">' + e2(c.name || ('#' + c.id)) + '</option>'; });
+      sel.innerHTML = html;
+      if (cur) sel.value = cur;
+    }
     async function loadVehicles() {
       try {
         const [dv, gr, dr] = await Promise.all([
@@ -2741,6 +2766,7 @@ const pozitii = await r.json();</code></pre>
         vehGroups = {}; (Array.isArray(gr) ? gr : []).forEach(g => vehGroups[g.id] = g.name);
         vehDrivers = {}; (Array.isArray(dr) ? dr : []).forEach(d => vehDrivers[d.id] = (d.name || d.full_name));
       } catch (e) { vehAll = []; }
+      if (currentUser && currentUser.isSuper) { await ensureAdminCompanies(); fillCompanyOptions(document.getElementById('veh-co-filter'), true); }
       renderVehicles();
     }
     function setVehScope(s) {
@@ -2755,6 +2781,8 @@ const pozitii = await r.json();</code></pre>
       const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const q = (document.getElementById('veh-search').value || '').toLowerCase();
       let rows = vehAll.filter(d => (vehScope === 'archived') ? d.status === 'archived' : d.status !== 'archived');
+      const _coF = document.getElementById('veh-co-filter'); const _fco = (currentUser && currentUser.isSuper && _coF && _coF.value) ? String(_coF.value) : '';
+      if (_fco) rows = rows.filter(d => String(d.company_id) === _fco);
       if (q) rows = rows.filter(d => ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.brand || '') + ' ' + (d.imei || '')).toLowerCase().includes(q));
       document.getElementById('veh-count').textContent = rows.length + ' vehicule';
       const now = Date.now();
@@ -2843,11 +2871,20 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Șoferi ───
+    var _driversAll = [];
     async function loadDrivers() {
-      const r = await fetch('/api/drivers'); const list = await r.json();
+      const r = await fetch('/api/drivers'); _driversAll = await r.json();
+      if (currentUser && currentUser.isSuper) { await ensureAdminCompanies(); fillCompanyOptions(document.getElementById('drv-co-filter'), true); fillCompanyOptions(document.getElementById('drv-company'), false); }
+      renderDriversList();
+    }
+    function renderDriversList() {
       const el = document.getElementById('admin-drivers-list');
       const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const showCo = !!(currentUser && currentUser.isSuper); // super-admin: arată compania fiecărui șofer
+      const fEl = document.getElementById('drv-co-filter');
+      const fco = (showCo && fEl && fEl.value) ? String(fEl.value) : '';
+      let list = Array.isArray(_driversAll) ? _driversAll : [];
+      if (fco) list = list.filter(d => String(d.company_id) === fco);
       el.innerHTML = list.length ? list.map(d => {
         const exp = d.license_expiry ? new Date(d.license_expiry) : null;
         const expSoon = exp && (exp - new Date()) < 30*24*3600*1000;
@@ -2859,7 +2896,7 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm" onclick='editDriver(${JSON.stringify(d)})'><i class="fas fa-pen"></i></button>
           <button class="btn-sm btn-danger" onclick="deleteDriver(${d.id})"><i class="fas fa-trash"></i></button>
         </div></div>`;
-      }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun șofer.</p>';
+      }).join('') : '<p style="color:var(--text-muted);font-size:12px;">' + (fco ? 'Niciun șofer în această companie.' : 'Niciun șofer.') + '</p>';
     }
     function editDriver(d) {
       document.getElementById('drv-id').value = d.id;
@@ -2868,10 +2905,12 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('drv-email').value = d.email || '';
       document.getElementById('drv-license').value = d.license_number || '';
       document.getElementById('drv-expiry').value = d.license_expiry ? d.license_expiry.slice(0,10) : '';
+      var _coSel = document.getElementById('drv-company'); if (_coSel && d.company_id != null) _coSel.value = d.company_id;
       document.getElementById('drv-btn').textContent = 'Salvează';
     }
     function resetDriverForm() {
       ['drv-id','drv-name','drv-phone','drv-email','drv-license','drv-expiry'].forEach(i => document.getElementById(i).value = '');
+      var _coSel = document.getElementById('drv-company'); if (_coSel) _coSel.value = '';
       document.getElementById('drv-btn').textContent = 'Adaugă';
     }
     async function saveDriver() {
@@ -2884,6 +2923,7 @@ const pozitii = await r.json();</code></pre>
         license_expiry: document.getElementById('drv-expiry').value || null
       };
       if (!body.name) return alert('Numele e obligatoriu');
+      if (currentUser && currentUser.isSuper && !id) { const coSel = document.getElementById('drv-company'); if (!coSel || !coSel.value) return alert('Alege compania pentru noul șofer'); body.company_id = parseInt(coSel.value); }
       const res = await fetch('/api/drivers' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
       resetDriverForm(); await loadDrivers();

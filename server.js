@@ -3692,8 +3692,17 @@ app.get('/api/drivers/lite', requireAuth, withCompany, async (req, res) => {
 });
 
 app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res) => {
-  try { const d = await db.createDriver(req.body, req.companyId); auditReq(req, 'create', 'driver', d.id, { name: req.body.name }); res.json(d); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    // super-admin poate adăuga șoferul direct într-o companie aleasă; company_admin = STRICT compania proprie (ignoră body.company_id)
+    let targetCompany = req.companyId;
+    if (req.isSuper && req.body && req.body.company_id != null && req.body.company_id !== '') {
+      targetCompany = parseInt(req.body.company_id);
+      if (!Number.isFinite(targetCompany) || !(await db.getCompanyById(targetCompany))) return res.status(400).json({ error: 'Companie invalidă' });
+    }
+    const d = await db.createDriver(req.body, targetCompany);
+    auditReq(req, 'create', 'driver', d.id, { name: req.body.name, company_id: targetCompany });
+    res.json(d);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
