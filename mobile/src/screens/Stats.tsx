@@ -48,10 +48,10 @@ export function Stats() {
               center={<div class="st-donut-center" style="text-align:center"><div class="num">{c.total}</div><div class="lbl">autovehicule</div></div>}
             />
             <div class="st-counts">
-              <CountRow color="#3FE07D" n={c.moving} label="În mișcare" />
-              <CountRow color="#eab308" n={c.idle} label="Staționate" />
-              <CountRow color="#ef4444" n={c.stopped} label="Oprite" />
-              <CountRow color="#8A93A3" n={c.offline} label="Fără transmisie" />
+              <CountRow color="#3FE07D" n={c.moving} label="În mișcare" onClick={() => loc.route('/vehicles?status=moving')} />
+              <CountRow color="#eab308" n={c.idle} label="Staționate" onClick={() => loc.route('/vehicles?status=idle')} />
+              <CountRow color="#ef4444" n={c.stopped} label="Oprite" onClick={() => loc.route('/vehicles?status=stopped')} />
+              <CountRow color="#8A93A3" n={c.offline} label="Fără transmisie" onClick={() => loc.route('/vehicles?status=offline')} />
             </div>
           </div>
         )}
@@ -96,8 +96,15 @@ export function Stats() {
   );
 }
 
-function CountRow({ color, n, label }: { color: string; n: number; label: string }) {
-  return <div class="st-count"><span class="bar" style={{ background: color }} /><span class="n">{n}</span><span class="lbl">{label}</span></div>;
+function CountRow({ color, n, label, onClick }: { color: string; n: number; label: string; onClick?: () => void }) {
+  return (
+    <button class="st-count" type="button" onClick={onClick}>
+      <span class="bar" style={{ background: color }} />
+      <span class="n">{n}</span>
+      <span class="lbl">{label}</span>
+      <Icon name="chevronR" size={17} color="var(--text-muted)" />
+    </button>
+  );
 }
 function Loading() { return <div class="center-msg"><div class="spin" style="margin:0 auto" /></div>; }
 function Empty({ text }: { text: string }) { return <div class="center-msg">{text}</div>; }

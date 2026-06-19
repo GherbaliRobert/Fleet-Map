@@ -7,10 +7,11 @@
 .st-donut-center .lbl { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
 .st-counts { display: flex; flex-direction: column; gap: 9px; padding: 16px 14px; }
-.st-count { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 14px; }
+.st-count { display: flex; align-items: center; gap: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 14px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .12s, border-color .12s; }
+.st-count:active { background: var(--bg-dark); border-color: var(--accent); }
 .st-count .bar { width: 4px; height: 26px; border-radius: 3px; }
 .st-count .n { font-weight: 800; font-size: 20px; min-width: 44px; }
-.st-count .lbl { color: var(--text-secondary); font-weight: 600; }
+.st-count .lbl { color: var(--text-secondary); font-weight: 600; flex: 1; }
 
 .st-listitem { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--border); }
 .st-listitem .ic { color: var(--text-muted); flex: 0 0 auto; }

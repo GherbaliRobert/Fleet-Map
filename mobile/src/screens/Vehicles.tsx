@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { vehicles, vehiclesLoading, offlineMinutes, logout } from '../app/store';
 import { statusOf, countByStatus, type Status } from '../lib/status';
@@ -8,12 +8,18 @@ import { Icon } from '../components/Icon';
 import './vehicles.css';
 
 type Filter = 'all' | Status;
+const VALID_STATUS = ['all', 'moving', 'idle', 'stopped', 'offline'];
 
 export function Vehicles() {
   const loc = useLocation();
+  // Filtru de stare venit din Statistici (ex: /vehicles?status=moving)
+  const statusParam = new URLSearchParams((loc.url || '').split('?')[1] || '').get('status') || '';
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>(VALID_STATUS.includes(statusParam) ? (statusParam as Filter) : 'all');
   const [showMap, setShowMap] = useState(false);
+  useEffect(() => {
+    if (statusParam && VALID_STATUS.includes(statusParam)) setFilter(statusParam as Filter);
+  }, [statusParam]);
 
   const off = offlineMinutes.value;
   const list = vehicles.value;
