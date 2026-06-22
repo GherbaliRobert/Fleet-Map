@@ -4800,7 +4800,8 @@ const pozitii = await r.json();</code></pre>
 
       fetch('/api/live').then(r => r.json()).then(data => {
         data.forEach(updateMarker);
-      }).catch(() => {});
+        seedRoster(); // după feed-ul live: completează vehiculele care NU transmit (din roster) → lista nu mai dispare
+      }).catch(() => { seedRoster(); });
 
       // Randează zonele (geofence) pe hartă
       loadGeofencesOnMap();
@@ -4926,6 +4927,27 @@ const pozitii = await r.json();</code></pre>
         iconAnchor: [size / 2, size / 2],
         popupAnchor: [0, -(size / 2)]
       });
+    }
+
+    // ─── Roster: completează lista cu TOATE vehiculele înregistrate (din /api/devices, din DB) ───
+    // Feed-ul live (/api/live) conține doar vehiculele care transmit ACUM; după un restart de server
+    // e gol până retransmit fiecare → lista părea că „dispare". Cu rosterul, vehiculele apar mereu
+    // (gri/„fără transmisie" când nu au date live). Nu suprascrie datele live (live câștigă).
+    function seedRoster() {
+      fetch('/api/devices').then(r => r.json()).then(list => {
+        if (!Array.isArray(list)) return;
+        list.forEach(function (d) {
+          if (!d || !d.imei || devices.has(d.imei)) return; // vehiculul live e deja prezent → îl lăsăm
+          var mapped = {
+            imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type,
+            latitude: d.latitude, longitude: d.longitude, speed: d.speed || 0, angle: d.angle || 0,
+            timestamp: d.last_position_time || null, io: d.io_data || {}
+          };
+          if (d.latitude != null && d.longitude != null) updateMarker(mapped);
+          else devices.set(d.imei, mapped); // fără poziție cunoscută → doar în listă, fără marker
+        });
+        updateDeviceList();
+      }).catch(function () {});
     }
 
     // ─── Update Marker ───
