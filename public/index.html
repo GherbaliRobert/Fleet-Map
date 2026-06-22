@@ -6316,6 +6316,16 @@ const pozitii = await r.json();</code></pre>
           .bindPopup('Stop: ' + new Date(data[data.length - 1].timestamp).toLocaleString('ro-RO')).addTo(map);
         historyMarkers.push(startMarker, endMarker);
 
+        // Afișează pill-ul de rută activă
+        (function () {
+          var _hselEl = document.getElementById('history-imei');
+          var _vn = (_hselEl && _hselEl.selectedIndex >= 0) ? _hselEl.options[_hselEl.selectedIndex].text : (typeof vehicleLabel === 'function' ? vehicleLabel(selectedImei) : selectedImei);
+          var _d1 = new Date(from), _d2 = new Date(to);
+          var _fmt = function (d) { return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }); };
+          var _pillEl = document.getElementById('route-active-pill'), _pillLbl = document.getElementById('route-pill-label');
+          if (_pillEl && _pillLbl) { _pillLbl.textContent = _vn + ' · ' + _fmt(_d1) + ' – ' + _fmt(_d2); _pillEl.style.display = 'flex'; }
+        })();
+
         // Summary depășiri sub bara de playback (banner)
         var sumEl = document.getElementById('hp-summary');
         if (sumEl) {
