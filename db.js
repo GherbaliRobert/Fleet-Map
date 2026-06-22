@@ -237,6 +237,7 @@ async function initDb() {
         email VARCHAR(100),
         license_number VARCHAR(30),
         license_expiry DATE,
+        photo_b64 TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
@@ -283,6 +284,8 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS road_tax_category VARCHAR(30);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_center VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inventory_number VARCHAR(40);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS ignition_source VARCHAR(10);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS show_transport BOOLEAN DEFAULT TRUE;
       END $$
     `);
 
@@ -560,6 +563,7 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE drivers ADD COLUMN IF NOT EXISTS photo_b64 TEXT;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS description VARCHAR(255);
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS category VARCHAR(60);
@@ -801,7 +805,9 @@ async function getCompanies() {
   const r = await pool.query(`
     SELECT c.*,
       (SELECT COUNT(*)::int FROM devices d WHERE d.company_id = c.id) AS device_count,
-      (SELECT COUNT(*)::int FROM users u WHERE u.company_id = c.id) AS user_count
+      (SELECT COUNT(*)::int FROM users u WHERE u.company_id = c.id) AS user_count,
+      (SELECT COUNT(*)::int FROM payments p WHERE p.company_id = c.id) AS payment_count,
+      (SELECT COALESCE(SUM(p.amount_ron), 0) FROM payments p WHERE p.company_id = c.id) AS paid_total
     FROM companies c ORDER BY c.created_at`);
   return r.rows;
 }
@@ -1115,6 +1121,35 @@ async function updateDeviceInfo(imei, name, vehicleType, plate) {
     WHERE imei = $1
   `, [imei, name, vehicleType, plate]);
 }
+// Sursa stării de „contact": 'auto' (IO 239 calculat de device, implicit) sau 'din1' (folosește DIN1 — pentru
+// trackere cu sursa de ignition configurată greșit). Override aplicat la ingest (live + stocat).
+async function setDeviceIgnitionSource(imei, src) {
+  const v = (src === 'din1') ? 'din1' : 'auto';
+  await pool.query('UPDATE devices SET ignition_source = $2 WHERE imei = $1', [imei, v]);
+  return v;
+}
+// IMEI-urile cu override 'din1' — pentru cache-ul de la ingest (doar excepțiile, nu toată flota).
+async function getDin1Imeis() {
+  const r = await pool.query("SELECT imei FROM devices WHERE ignition_source = 'din1'");
+  return r.rows.map(x => x.imei);
+}
+// IMEI-urile arhivate (status='archived') — sursă de adevăr pentru reconcilierea periodică a setului în memorie.
+async function getArchivedImeis() {
+  const r = await pool.query("SELECT imei FROM devices WHERE status = 'archived'");
+  return r.rows.map(x => x.imei);
+}
+// Ștergere DEFINITIVĂ a unui vehicul + toate datele lui (ireversibil). Best-effort pe fiecare tabel
+// (un tabel inexistent/fără coloană imei nu blochează restul); rândul `devices` cară JSONB-urile
+// (io_mappings/fuel_sensors/last_can). Numele tabelelor sunt fixe în cod → fără injection.
+async function deleteDeviceCompletely(imei) {
+  const tables = ['positions', 'positions_archive', 'notifications', 'agent_findings', 'vehicle_documents',
+    'alerts', 'alert_history', 'trips', 'maintenance', 'user_device_access', 'tacho_files', 'etransport', 'report_schedules'];
+  for (const t of tables) {
+    try { await pool.query(`DELETE FROM ${t} WHERE imei = $1`, [imei]); } catch (e) { /* tabel/coloană inexistentă */ }
+  }
+  const r = await pool.query('DELETE FROM devices WHERE imei = $1', [imei]);
+  return r.rowCount || 0;
+}
 
 // Coloane editabile din fișa vehiculului (whitelist — previne injection / scriere pe coloane interzise)
 const VEHICLE_DETAIL_COLS = [
@@ -1123,7 +1158,7 @@ const VEHICLE_DETAIL_COLS = [
   'consumption_city', 'consumption_idle', 'consumption_road', 'passenger_seats',
   'emission_class', 'tire_size', 'engine_serial', 'displacement', 'power_kw',
   'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct'
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source', 'show_transport'
 ];
 const NUMERIC_COLS = new Set([
   'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',
@@ -1439,9 +1474,10 @@ async function getUsers(companyId) {
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
     SELECT u.id, u.username, u.role, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id,
+      c.name AS company_name,
       (SELECT COUNT(*) FROM user_device_access WHERE user_id = u.id) AS device_count,
       (SELECT COUNT(*) FROM user_group_access WHERE user_id = u.id) AS group_count
-    FROM users u ${where} ORDER BY u.created_at
+    FROM users u LEFT JOIN companies c ON c.id = u.company_id ${where} ORDER BY u.created_at
   `, params);
   return result.rows;
 }
@@ -1980,16 +2016,16 @@ async function setDriversCompanyBulk(ids, companyId) {
 
 async function createDriver(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO drivers (name, phone, email, license_number, license_expiry, company_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-    [data.name, data.phone, data.email, data.license_number, data.license_expiry, companyId || null]
+    'INSERT INTO drivers (name, phone, email, license_number, license_expiry, photo_b64, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [data.name, data.phone, data.email, data.license_number, data.license_expiry, data.photo_b64 || null, companyId || null]
   );
   return result.rows[0];
 }
 
 async function updateDriver(id, data) {
   await pool.query(
-    'UPDATE drivers SET name=$2, phone=$3, email=$4, license_number=$5, license_expiry=$6 WHERE id=$1',
-    [id, data.name, data.phone, data.email, data.license_number, data.license_expiry]
+    'UPDATE drivers SET name=$2, phone=$3, email=$4, license_number=$5, license_expiry=$6, photo_b64=$7 WHERE id=$1',
+    [id, data.name, data.phone, data.email, data.license_number, data.license_expiry, data.photo_b64 || null]
   );
 }
 
@@ -2336,7 +2372,7 @@ module.exports = {
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
-  updateDeviceInfo,
+  updateDeviceInfo, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
   updateVehicleDetails,
   deviceExists,
   createDevice,

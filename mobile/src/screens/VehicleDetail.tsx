@@ -19,9 +19,19 @@ const CAN_LABELS: Record<string, [string, string]> = {
   can_fuel_level_liters: ['Combustibil', 'L'], can_fuel_level_pct: ['Combustibil', '%'],
   can_vehicle_speed: ['Viteză CAN', 'km/h'], can_total_mileage: ['Odometru CAN', 'km'],
   can_adblue_level_liters: ['AdBlue', 'L'], can_engine_hours: ['Ore motor', 'h'],
-  fuel_level_liters: ['Nivel rezervor', 'L'], external_voltage: ['Voltaj extern', 'mV'],
+  fuel_level_liters: ['Nivel rezervor', 'L'], external_voltage: ['Voltaj extern', 'V'], // împărțit la 1000 → V (nu mV)
   gsm_signal: ['Semnal GSM', ''], ignition: ['Contact', ''],
+  // CAN suplimentare — etichete + unități corecte (din codec8e.js)
+  can_accelerator_pedal: ['Pedală accelerație', '%'],
+  can_door_status: ['Stare uși', ''],          // bitmask (0 = toate închise)
+  can_engine_worktime_counted: ['Timp funcționare motor', 'min'],
+  can_fuel_consumed_counted: ['Combustibil consumat', 'L'],
+  can_axle_load: ['Sarcină axe', 'kg'], can_ambient_temp: ['Temp. exterioară', '°C'],
 };
+// Cheie necunoscută → etichetă prezentabilă (fără „can_…" brut): can_door_status → „Door status"
+function prettyKey(k: string): string {
+  return k.replace(/^can_/, '').replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
 
 export function VehicleDetail() {
   const loc = useLocation();
@@ -47,6 +57,8 @@ export function VehicleDetail() {
   useEffect(() => {
     loadFull();
     Api.dailyStats(imei).then(setDaily).catch(() => {});
+    // Senzori: încarcă din start ca să ascundem butonul dacă vehiculul N-ARE senzori configurați
+    Api.fuelSensors(imei).then((r) => setSensors(Array.isArray(r) ? r : (r?.sensors || []))).catch(() => setSensors([]));
   }, [imei]);
 
   function openEdit() {
@@ -88,6 +100,10 @@ export function VehicleDetail() {
   const gsm = gsmQuality(io.gsm_signal);
   const veh = [full?.brand, full?.model].filter(Boolean).join(' ') || full?.vehicle_type || v?.vehicle_type || '';
   const driver = full?.driver_name || '';
+  // AdBlue (în „Date CAN") doar pentru diesel (motorină) + EURO 6
+  const _ftd = String((full as any)?.fuel_type || '').toLowerCase();
+  const _emd = String((full as any)?.emission_class || '').toLowerCase().replace(/[\s_-]/g, '');
+  const adblueOk = (_ftd.includes('motorin') || _ftd.includes('diesel')) && _emd.includes('euro6');
   const ll = v && v.latitude != null ? `${v.latitude},${v.longitude}` : '';
 
   function openUrl(url: string) { try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); } }
@@ -136,8 +152,8 @@ export function VehicleDetail() {
           <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/route`)}><Icon name="route" size={18} class="ic" /> Vezi traseu</button>
           <button class="d-act" onClick={() => loc.route(`/reports?imei=${encodeURIComponent(imei)}`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>
           <button class="d-act" onClick={() => setSheet('can')}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
-          <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>
-          <button class="d-act" disabled={!me.value?.features?.tahograf} onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>
+          {sensors && sensors.length > 0 && <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>}
+          {me.value?.features?.tahograf && <button class="d-act" onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>}
           <button class="d-act" disabled={!ll} onClick={() => setNavOpen((o) => !o)}><Icon name="navigate" size={18} class="ic" /> Navighează</button>
           {navOpen && ll && (
             <div class="d-nav">
@@ -168,7 +184,7 @@ export function VehicleDetail() {
               <button class="h-btn" onClick={() => setSheet('')}><Icon name="x" /></button>
             </div>
             <div class="sheet-body">
-              {sheet === 'can' && <CanList io={io} />}
+              {sheet === 'can' && <CanList io={io} adblueOk={adblueOk} />}
               {sheet === 'sensors' && (sensors === null ? <div class="spin" style="margin:20px auto" /> : sensors.length ? sensors.map((sn: any, i) => (
                 <div class="kv"><span class="k">{sn.type || sn.name || `Senzor ${i + 1}`}</span><span class="v">{sn.id || sn.io || '—'}</span></div>
               )) : <div class="center-msg">Niciun senzor configurat pe acest vehicul.</div>)}
@@ -221,18 +237,50 @@ export function VehicleDetail() {
   );
 }
 
-function CanList({ io }: { io: any }) {
-  const keys = Object.keys(io || {}).filter((k) => CAN_LABELS[k] || k.startsWith('can_'));
-  if (!keys.length) return <div class="center-msg">Niciun parametru CAN disponibil acum.</div>;
+// Semnal GSM desenat cu liniuțe (0–5)
+function GsmBars({ signal }: { signal?: number }) {
+  const n = Math.max(0, Math.min(5, Math.round(Number(signal) || 0)));
+  return (
+    <span class="gsm-bars" title={'Semnal GSM ' + n + '/5'}>
+      {[0, 1, 2, 3, 4].map((i) => <i class={'gsm-bar' + (i < n ? ' on' : '')} style={{ height: (6 + i * 3) + 'px' }} />)}
+    </span>
+  );
+}
+
+function CanList({ io, adblueOk }: { io: any; adblueOk?: boolean }) {
+  const d = io || {};
+  const ignOn = (d.ignition === 1 || d.ignition === true);
+  const voltage = (typeof d.external_voltage === 'number' && d.external_voltage > 0) ? (d.external_voltage / 1000).toFixed(2) + ' V' : null;
+  const odo = (d.total_odometer != null) ? Math.round(d.total_odometer / 1000) + ' km'
+    : (d.can_total_mileage != null ? Math.round(d.can_total_mileage) + ' km' : null);
+  // Combustibil o SINGURĂ dată (CAN prioritar față de sonda fuel_level) — fără dublură
+  const fuel = (d.can_fuel_level_liters != null && d.can_fuel_level_liters > 0) ? Math.round(d.can_fuel_level_liters) + ' L'
+    : (d.fuel_level_liters != null && d.fuel_level_liters > 0) ? Math.round(d.fuel_level_liters) + ' L' : null;
+
+  // Rândurile de bază — SINGURELE afișate cât contactul e OPRIT
+  const base = (
+    <>
+      <div class="kv"><span class="k">Status contact</span><span class="v">{ignOn ? 'Pornit' : 'Oprit'}</span></div>
+      <div class="kv"><span class="k">Semnal GSM</span><span class="v"><GsmBars signal={d.gsm_signal} /></span></div>
+      {voltage && <div class="kv"><span class="k">Voltaj</span><span class="v">{voltage}</span></div>}
+      {odo && <div class="kv"><span class="k">Odometru</span><span class="v">{odo}</span></div>}
+      {fuel && <div class="kv"><span class="k">Nivel rezervor</span><span class="v">{fuel}</span></div>}
+    </>
+  );
+  if (!ignOn) return base; // contact OPRIT → doar cele de bază, nimic altceva
+
+  // Contact PORNIT → + restul parametrilor CAN (fără cele deja afișate / duplicate; AdBlue doar diesel+Euro6)
+  const SHOWN = new Set(['ignition', 'gsm_signal', 'external_voltage', 'total_odometer', 'can_total_mileage', 'can_total_mileage_counted', 'can_fuel_level_liters', 'can_fuel_level_pct', 'fuel_level_liters', 'fuel_level_pct']);
+  const extra = Object.keys(d).filter((k) => (CAN_LABELS[k] || k.startsWith('can_')) && !SHOWN.has(k) && !(!adblueOk && k.startsWith('can_adblue')));
   return (
     <>
-      {keys.map((k) => {
+      {base}
+      {extra.map((k) => {
         const def = CAN_LABELS[k];
-        const label = def ? def[0] : k;
+        const label = def ? def[0] : prettyKey(k);
         const unit = def ? def[1] : '';
-        let val = io[k];
-        if (k === 'ignition') val = val ? 'Pornit' : 'Oprit';
-        if (k === 'external_voltage' && typeof val === 'number') { val = (val / 1000).toFixed(2); }
+        let val = d[k];
+        if (k === 'external_voltage' && typeof val === 'number') val = (val / 1000).toFixed(2);
         return <div class="kv"><span class="k">{label}</span><span class="v">{val}{unit ? ' ' + unit : ''}</span></div>;
       })}
     </>

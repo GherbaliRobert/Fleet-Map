@@ -188,9 +188,39 @@ const livePositions = new Map();
 const archivedImeis = new Set();
 // Ultimele valori CAN cunoscute per imei — pentru carry-forward când motorul e oprit (pachet fără date CAN).
 const lastCanIo = new Map(); // imei -> { io: {sticky...}, ts }
-// Valori CAN „sticky": rămân valabile cât vehiculul e oprit (carburant, odometru, AdBlue, ore motor).
-// NU includem RPM/viteză/temperatură/sarcină — alea sunt instantanee și trebuie să dispară când motorul e oprit.
-const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_adblue_level_liters', 'can_adblue_level_pct', 'can_engine_total_hours', 'can_engine_worktime'];
+
+// Override „contact din DIN1": IMEI-urile pentru care starea de contact se ia din DIN1 (IO 1), nu din
+// IO 239 (calculat de device) — pentru trackere cu sursa de ignition configurată greșit. Doar excepțiile.
+const _din1Set = new Set();
+async function refreshDin1Set() {
+  try { const list = await db.getDin1Imeis(); _din1Set.clear(); list.forEach((i) => _din1Set.add(i)); } catch (e) {}
+}
+// Aplică override-ul pe TOATE recordurile (înainte de stocare + live) → contactul e corect peste tot
+// (status, hartă, alerte, „motor pornit/oprit de", rapoarte).
+function _applyIgnitionSource(imei, records) {
+  if (!_din1Set.has(imei) || !Array.isArray(records)) return;
+  for (const r of records) {
+    if (r && r.io) r.io.ignition = (r.io.digital_input_1 === 1 || r.io.digital_input_1 === true) ? 1 : 0;
+  }
+}
+
+// Reconciliere periodică „arhivat": sursa de adevăr e DB (status='archived'). Re-sincronizează setul în
+// memorie ȘI scoate orice vehicul arhivat care a rămas în harta live (din boot-seed sau drift) → nu mai
+// poate apărea pe hartă. Auto-vindecare, independent de cum a ajuns acolo.
+async function reconcileArchived() {
+  try {
+    const list = await db.getArchivedImeis();
+    const dbSet = new Set(list);
+    dbSet.forEach((i) => archivedImeis.add(i));               // adaugă arhivatele noi
+    for (const i of Array.from(archivedImeis)) if (!dbSet.has(i)) archivedImeis.delete(i); // restaurate → scoate din set
+    for (const i of dbSet) {                                   // purjează arhivatele din live + anunță sesiunile
+      if (livePositions.has(i)) { livePositions.delete(i); broadcastWs({ type: 'removed', data: { imei: i } }); }
+    }
+  } catch (e) { /* best-effort */ }
+}
+// Valori CAN „sticky": rămân valabile cât vehiculul e oprit — DOAR carburant + kilometraj (odometru).
+// NU includem RPM/viteză/temperatură/sarcină/AdBlue/ore motor — alea sunt instantanee și dispar când motorul e oprit.
+const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer'];
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
 // Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
 // „0.0 km (ultima)" / „- (ultima)" fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire".
@@ -519,6 +549,10 @@ const tcpServer = net.createServer((socket) => {
           }
         }
       }
+
+      // Override „contact din DIN1" (dacă e configurat pe vehicul) — ÎNAINTE de stocare + live, ca toate
+      // consumatoarele (status, alerte, „motor pornit/oprit de", rapoarte) să vadă contactul corect.
+      _applyIgnitionSource(imei, parsed.records);
 
       // Salvează în baza de date
       await db.insertPositions(imei, parsed.records);
@@ -1055,9 +1089,9 @@ async function resolveReportImeis(req) {
   if (req.allowedImeis == null) {
     let devs = await db.getDevices();
     if (req.companyId !== demoCompanyId) devs = devs.filter(d => !DEMO_SET.has(d.imei)); // exclude demo pt. flota reală
-    return devs.map(d => d.imei);
+    return devs.filter(d => d.status !== 'archived').map(d => d.imei); // exclude vehiculele ARHIVATE din rapoarte/analitice
   }
-  return Array.from(req.allowedImeis).filter(im => canAccessImei(req, im));
+  return Array.from(req.allowedImeis).filter(im => canAccessImei(req, im) && !archivedImeis.has(im)); // fără arhivate
 }
 
 // Filtru opțional pe companie pentru super-admin (dashboard + agenți): restrânge scope-ul la o companie.
@@ -2293,6 +2327,26 @@ app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
   });
 });
 
+// Audit „de ce apare X pe hartă": pentru fiecare vehicul — status DB vs set arhivat în memorie vs prezent în live.
+// Evidențiază „leaks" (arhivat în DB dar încă pe hartă). Cu ?fix=1 forțează reconcilierea pe loc.
+app.get('/api/debug/live-audit', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (req.query.fix) await reconcileArchived();
+    const r = await db.pool.query('SELECT imei, name, plate, status FROM devices ORDER BY name');
+    const devs = r.rows.map((d) => {
+      const lp = livePositions.get(d.imei);
+      return {
+        imei: d.imei, name: d.name, plate: d.plate, db_status: d.status || null,
+        inArchivedSet: archivedImeis.has(d.imei),
+        inLivePositions: !!lp,
+        live_ts: lp ? lp.timestamp : null,
+      };
+    });
+    const leaks = devs.filter((d) => d.db_status === 'archived' && d.inLivePositions).map((d) => d.name || d.imei);
+    res.json({ fixed: !!req.query.fix, archivedSetSize: archivedImeis.size, livePositionsSize: livePositions.size, leaks, devices: devs });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/debug/iface/:imei', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const imei = req.params.imei;
@@ -2689,6 +2743,7 @@ app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async
       archivedImeis.add(imei);
       // scoate-l din harta live imediat (nu mai primește date)
       livePositions.delete(imei);
+      broadcastWs({ type: 'removed', data: { imei } }); // scoate marker-ul din sesiunile web/mobil deschise
       auditReq(req, 'update', 'device', imei, { status, archived_positions: archived });
       return res.json({ ok: true, status, archived_positions: archived });
     }
@@ -2700,6 +2755,24 @@ app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// API: ȘTERGERE DEFINITIVĂ vehicul (super-admin). DOAR vehicule ARHIVATE — garanție că nu se șterge
+// din greșeală un vehicul activ. Ireversibil: rândul + toate datele (poziții, istoric, notificări etc.).
+app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    const dev = await db.getDeviceFull(imei);
+    if (!dev) return res.status(404).json({ error: 'Vehicul inexistent' });
+    if (dev.status !== 'archived') return res.status(400).json({ error: 'Doar vehiculele ARHIVATE pot fi șterse definitiv. Arhivează-l întâi.' });
+    const deleted = await db.deleteDeviceCompletely(imei);
+    archivedImeis.delete(imei);
+    livePositions.delete(imei);
+    broadcastWs({ type: 'removed', data: { imei } });
+    auditReq(req, 'delete', 'device', imei, { name: dev.name, plate: dev.plate, hard: true });
+    console.log(`[ȘTERGERE] Vehicul ${imei} (${dev.plate || dev.name || '-'}) șters definitiv de ${(getAuth(req) || {}).username || '?'}`);
+    res.json({ ok: true, deleted });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Cache enrichment device pentru /api/live (truck config + calibrare combustibil) — date care se schimbă rar.
@@ -2852,6 +2925,11 @@ app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, 
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
+    // Sursa stării de contact (auto = IO 239 / din1 = DIN1) — DOAR super-admin (nu admin/user companie).
+    if (req.body.ignition_source !== undefined && req.isSuper) {
+      await db.setDeviceIgnitionSource(imei, req.body.ignition_source);
+      refreshDin1Set(); // actualizează cache-ul de la ingest imediat
+    }
     auditReq(req, 'update', 'device', imei, { name, plate });
     // Update in-memory livePositions so WebSocket clients get the new name
     const pos = livePositions.get(imei);
@@ -2874,7 +2952,11 @@ app.put('/api/devices/:imei/details', requireAuth, requireFleet, withScope, asyn
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const b = req.body || {};
+    // Câmpuri rezervate SUPER-ADMIN (admin/user companie nu le pot seta) — eliminate din body dacă nu e super.
+    if (!req.isSuper) { delete b.ignition_source; delete b.show_transport; }
+    if (b.show_transport !== undefined) b.show_transport = (b.show_transport === true || b.show_transport === 'true'); // normalizează boolean
     await db.updateVehicleDetails(imei, b);
+    if (b.ignition_source !== undefined) refreshDin1Set(); // override „contact din DIN1" → actualizează cache ingest
     invalidateLiveEnrichCache(); // fișa poate conține fuel_price/cost_per_ton_km/greutăți din enrichment
     auditReq(req, 'update', 'device', imei, { fields: Object.keys(b).length });
     // Reflectă imediat în live (WebSocket) pentru câmpurile vizibile pe hartă/listă
@@ -3236,7 +3318,17 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const now = new Date();
-    const scopedSize = Array.from(livePositions.keys()).filter(i => canAccessImei(req, i)).length;
+    // Total vehicule = flota ÎNREGISTRATĂ (non-arhivată) din scope, NU doar cele care transmit live.
+    // Altfel un vehicul offline (ex. nu a transmis azi) dispărea din dashboard → totul pe 0. Acum apare ca „oprit".
+    let scopedSize;
+    try {
+      const _scopeCompany = req.isSuper ? (req.filterCompanyId || null) : req.companyId;
+      let regDevices = await db.getDevices(_scopeCompany);
+      regDevices = regDevices.filter(d => d.status !== 'archived' && canAccessImei(req, d.imei));
+      scopedSize = regDevices.length;
+    } catch (e) {
+      scopedSize = Array.from(livePositions.keys()).filter(i => canAccessImei(req, i)).length; // fallback
+    }
 
     // Collect stats per device
     const deviceStats = [];
@@ -3780,6 +3872,7 @@ app.get('/api/drivers/lite', requireAuth, withCompany, async (req, res) => {
 
 app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
+    if (req.body && req.body.photo_b64 && String(req.body.photo_b64).length > 1.5 * 1024 * 1024) return res.status(413).json({ error: 'Poza e prea mare' });
     // super-admin poate adăuga șoferul direct într-o companie aleasă; company_admin = STRICT compania proprie (ignoră body.company_id)
     let targetCompany = req.companyId;
     if (req.isSuper && req.body && req.body.company_id != null && req.body.company_id !== '') {
@@ -3794,6 +3887,7 @@ app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res
 
 app.put('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
+    if (req.body && req.body.photo_b64 && String(req.body.photo_b64).length > 1.5 * 1024 * 1024) return res.status(413).json({ error: 'Poza e prea mare' });
     if (!(await ownsRow(req, 'drivers', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.updateDriver(req.params.id, req.body); auditReq(req, 'update', 'driver', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -3869,6 +3963,12 @@ async function enrichGeofence(body) {
     let lat = null, lon = null;
     if (body.type === 'circle' && body.coordinates && body.coordinates.center) {
       lat = Number(body.coordinates.center[0]); lon = Number(body.coordinates.center[1]);
+    } else if (body.coordinates && Array.isArray(body.coordinates.line) && body.coordinates.line.length) {
+      let sLat = 0, sLon = 0, n = 0;
+      for (const p of body.coordinates.line) {
+        if (Array.isArray(p) && p.length >= 2) { sLat += Number(p[0]); sLon += Number(p[1]); n++; }
+      }
+      if (n) { lat = sLat / n; lon = sLon / n; }
     } else if (Array.isArray(body.coordinates) && body.coordinates.length) {
       let sLat = 0, sLon = 0, n = 0;
       for (const p of body.coordinates) {
@@ -4078,6 +4178,27 @@ function isPointInCircle(lat, lng, centerLat, centerLng, radiusKm) {
   return haversineDistance(lat, lng, centerLat, centerLng) <= radiusKm;
 }
 
+// Coridor: punctul e „în zonă" dacă e la cel mult halfMeters de oricare segment al liniei centrale.
+// Proiecție planară locală (echirectangulară) — exactă pentru lățimi de coridor (zeci de metri).
+function isPointNearPolyline(lat, lng, line, halfMeters) {
+  if (!Array.isArray(line) || line.length < 2 || !(halfMeters > 0)) return false;
+  const mLat = 111320, mLon = 111320 * Math.cos(lat * Math.PI / 180);
+  const px = lng * mLon, py = lat * mLat;
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1], b = line[i];
+    if (!Array.isArray(a) || !Array.isArray(b)) continue;
+    const ax = a[1] * mLon, ay = a[0] * mLat;
+    const bx = b[1] * mLon, by = b[0] * mLat;
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t * dx, cy = ay + t * dy;
+    if (Math.hypot(px - cx, py - cy) <= halfMeters) return true;
+  }
+  return false;
+}
+
 // Track geofence state per device for enter/exit detection
 const geofenceStates = new Map(); // key: imei_geofenceId, value: boolean (inside)
 
@@ -4177,6 +4298,8 @@ async function evaluateAlerts(imei, data) {
 
                 if (gf.type === 'circle' && coords.center && coords.radius) {
                   isInside = isPointInCircle(lat, lng, coords.center[0], coords.center[1], coords.radius / 1000);
+                } else if (coords && Array.isArray(coords.line) && coords.width) {
+                  isInside = isPointNearPolyline(lat, lng, coords.line, coords.width / 2);
                 } else if (Array.isArray(coords)) {
                   isInside = isPointInPolygon([lat, lng], coords);
                 }
@@ -4955,19 +5078,25 @@ app.get('/api/weekly-report/latest', requireAuth, requirePerm('viewReports'), as
   try {
     if (!canViewWeekly(req)) return res.status(403).json({ error: 'Acces interzis' });
     const a = getAuth(req);
-    if (a.companyId == null) return res.json({ report: null, note: 'super' });
-    const r = await db.getLatestWeeklyReport(a.companyId);
-    const s = await db.getCompanySettings(a.companyId);
+    let companyId = a.companyId;
+    if (a.companyId == null) { // super-admin: alege compania prin ?companyId= (n-are companie proprie)
+      const q = parseInt(req.query.companyId);
+      if (!q) return res.json({ report: null, isSuper: true });
+      companyId = q;
+    }
+    const r = await db.getLatestWeeklyReport(companyId);
+    const s = await db.getCompanySettings(companyId);
     const enabled = !(s && s.weekly_report && s.weekly_report.enabled === false);
-    res.json({ report: r, enabled, recipients: (s && s.weekly_report && s.weekly_report.recipients) || [], canManage: hasPerm(a.role, 'manageUsers') });
+    res.json({ report: r, enabled, recipients: (s && s.weekly_report && s.weekly_report.recipients) || [], canManage: hasPerm(a.role, 'manageUsers'), isSuper: a.companyId == null, companyId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/weekly-reports', requireAuth, requirePerm('viewReports'), async (req, res) => {
   try {
     if (!canViewWeekly(req)) return res.status(403).json({ error: 'Acces interzis' });
     const a = getAuth(req);
-    if (a.companyId == null) return res.json([]);
-    res.json(await db.getWeeklyReports(a.companyId, parseInt(req.query.limit) || 26));
+    let companyId = a.companyId;
+    if (a.companyId == null) { const q = parseInt(req.query.companyId); if (!q) return res.json([]); companyId = q; }
+    res.json(await db.getWeeklyReports(companyId, parseInt(req.query.limit) || 26));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/weekly-report/:id', requireAuth, requirePerm('viewReports'), async (req, res) => {
@@ -4984,14 +5113,15 @@ app.post('/api/weekly-report/generate', requireAuth, requirePerm('manageUsers'),
   try {
     if (!weeklyReports) return res.status(501).json({ error: 'Modul indisponibil' });
     const a = getAuth(req);
-    if (a.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
-    const co = await db.getCompanyById(a.companyId);
-    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const b = req.body || {};
+    let companyId = a.companyId;
+    if (a.companyId == null) { companyId = parseInt(b.companyId); if (!companyId) return res.status(400).json({ error: 'Selectează o companie' }); } // super → companie din body
+    const co = await db.getCompanyById(companyId);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const period = (b.from && b.to) ? { from: new Date(b.from).toISOString(), to: new Date(b.to).toISOString() } : weeklyReports.lastCompletedWeek(new Date());
     const saved = await weeklyReports.generateForCompany(weeklyDeps(req), co, period);
     if (!saved) return res.status(400).json({ error: 'Compania nu are vehicule' });
-    auditReq(req, 'generate', 'weekly_report', a.companyId, { period_from: period.from });
+    auditReq(req, 'generate', 'weekly_report', companyId, { period_from: period.from });
     res.json({ ok: true, report: saved });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -5224,7 +5354,7 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const s = await db.getCompanySettings(id);
     const planAgents = plans && plans.enabledAgentsFor(co);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: s.features || {} });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
@@ -5721,6 +5851,7 @@ async function start() {
     if (_seedIo && Object.keys(_seedIo).length) { lastCanIo.set(dev.imei, { io: _seedIo, ts: _seedTs }); lastCanPersistTs.set(dev.imei, _seedTs || 0); }
   }
   for (const pos of lastPositions) {
+    if (archivedImeis.has(pos.imei)) continue; // NU încărca vehiculele arhivate în harta live la pornire
     const info = deviceInfoMap[pos.imei] || {};
     let _io = pos.io_data || {};
     let _stale = false;
@@ -5846,6 +5977,15 @@ async function start() {
   // Webhooks: reîmprospătează flag-ul „există webhook-uri active" (fast-path pentru evaluateUserEvents).
   setTimeout(refreshAnyWebhooks, 8000);
   setInterval(refreshAnyWebhooks, 60 * 1000);
+
+  // Override „contact din DIN1": încarcă lista IMEI-urilor cu override (la pornire + periodic).
+  setTimeout(refreshDin1Set, 5000);
+  setInterval(refreshDin1Set, 60 * 1000);
+
+  // Reconciliere „arhivat": scoate din harta live orice vehicul arhivat (boot-seed/drift) + re-sincronizează
+  // setul cu DB. Rulează curând după pornire (după ce s-a încărcat livePositions) + la fiecare 2 min.
+  setTimeout(reconcileArchived, 6000);
+  setInterval(reconcileArchived, 2 * 60 * 1000);
 
   // ───────────────────────────────────────────────────────────────
   // Cleanup periodic peste livePositions — fără el, vehiculele care își pierd semnalul GSM

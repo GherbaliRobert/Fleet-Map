@@ -17,6 +17,7 @@
         '<h2 style="flex:0 0 auto;"><span><i class="fas fa-chart-line" style="margin-right:8px;color:var(--accent);"></i> Raport săptămânal flotă</span>' +
           '<button class="close-btn" onclick="showView(\'localizare\')" style="position:static;font-size:18px;">&#10005;</button></h2>' +
         '<div class="wr-toolbar">' +
+          '<select id="wr-company" class="rax-field" style="width:auto;min-width:190px;margin:0;display:none;" onchange="wrSetCompany(this.value)"></select>' +
           '<select id="wr-archive" class="rax-field" style="width:auto;min-width:230px;margin:0;" onchange="wrLoadSelected()"></select>' +
           '<span id="wr-period" class="wr-period"></span>' +
           '<span style="flex:1"></span>' +
@@ -32,12 +33,23 @@
   // ─── Încărcare ───
   window.openWeeklyReport = function () {
     var host = ensureSkeleton(); if (!host) return;
+    loadLatest(_state.companyId || null);
+  };
+  function loadLatest(companyId) {
     var body = el('wr-body'); if (body) body.innerHTML = '<div class="wr-loading">Se încarcă…</div>';
-    fetch('/api/weekly-report/latest', { credentials: 'same-origin' })
+    var qs = companyId ? ('?companyId=' + encodeURIComponent(companyId)) : '';
+    fetch('/api/weekly-report/latest' + qs, { credentials: 'same-origin' })
       .then(function (r) { if (r.status === 403) throw new Error('forbidden'); return r.json(); })
       .then(function (d) {
         _state.canManage = !!d.canManage; _state.enabled = (d.enabled !== false); _state.recipients = d.recipients || [];
+        _state.isSuper = !!d.isSuper; _state.companyId = d.companyId || companyId || null;
+        ensureCompanyPicker();
         renderAdmin();
+        if (_state.isSuper && !_state.companyId) { // super-admin: trebuie să aleagă o companie întâi
+          var ar = el('wr-archive'); if (ar) ar.style.display = 'none';
+          renderPickCompany(); return;
+        }
+        var ar2 = el('wr-archive'); if (ar2) ar2.style.display = '';
         loadArchive();
         if (d.report) { _state.current = d.report; render(d.report); }
         else renderEmpty();
@@ -46,10 +58,30 @@
         var body = el('wr-body');
         if (body) body.innerHTML = '<div class="wr-empty">' + (e.message === 'forbidden' ? 'Raportul de flotă e disponibil doar pentru administratori și manageri.' : 'Eroare la încărcare.') + '</div>';
       });
-  };
+  }
+  // Selector companie — DOAR super-admin (raportul e per-companie; super n-are companie proprie). Lista se ia o dată.
+  function ensureCompanyPicker() {
+    var sel = el('wr-company'); if (!sel) return;
+    if (!_state.isSuper) { sel.style.display = 'none'; return; }
+    sel.style.display = '';
+    if (_state.companies) { sel.value = _state.companyId || ''; return; }
+    fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (list) {
+      _state.companies = Array.isArray(list) ? list : [];
+      sel.innerHTML = '<option value="">— alege compania —</option>' + _state.companies.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
+      sel.value = _state.companyId || '';
+    }).catch(function () {});
+  }
+  window.wrSetCompany = function (v) { _state.companyId = v ? parseInt(v) : null; loadLatest(_state.companyId); };
+  function renderPickCompany() {
+    var body = el('wr-body'); if (!body) return;
+    body.innerHTML = '<div class="wr-empty"><i class="fas fa-building" style="font-size:34px;color:var(--text-muted);margin-bottom:10px;"></i>' +
+      '<div>Alege o companie din selectorul de sus pentru a vedea sau genera raportul săptămânal.</div></div>';
+    var p = el('wr-period'); if (p) p.textContent = '';
+  }
 
   function loadArchive() {
-    fetch('/api/weekly-reports?limit=26', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (list) {
+    var qs = '?limit=26' + (_state.companyId ? '&companyId=' + encodeURIComponent(_state.companyId) : '');
+    fetch('/api/weekly-reports' + qs, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (list) {
       var sel = el('wr-archive'); if (!sel || !Array.isArray(list)) return;
       if (!list.length) { sel.innerHTML = '<option>— niciun raport —</option>'; return; }
       sel.innerHTML = list.map(function (w, i) {
@@ -183,10 +215,11 @@
   // ─── Controale admin ───
   function renderAdmin() {
     var box = el('wr-admin'); if (!box) return;
-    if (!_state.canManage) { box.style.display = 'none'; return; }
+    if (!_state.canManage || (_state.isSuper && !_state.companyId)) { box.style.display = 'none'; return; }
     box.style.display = 'flex';
     box.innerHTML =
-      '<label class="wr-toggle"><input type="checkbox" id="wr-enabled" ' + (_state.enabled ? 'checked' : '') + ' onchange="wrToggle(this)"> Raport activ</label>' +
+      // Toggle „Raport activ" e setare per-companie (via /companies/me) → doar pentru admin de companie, nu super.
+      (_state.isSuper ? '' : '<label class="wr-toggle"><input type="checkbox" id="wr-enabled" ' + (_state.enabled ? 'checked' : '') + ' onchange="wrToggle(this)"> Raport activ</label>') +
       '<button class="btn-sm" onclick="wrGenerate(this)" title="Generează raportul pentru ultima săptămână completă"><i class="fas fa-bolt"></i> Generează acum</button>';
   }
   window.wrToggle = function (cb) {
@@ -198,7 +231,7 @@
   };
   window.wrGenerate = function (btn) {
     if (btn) { btn.disabled = true; btn.dataset._t = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se generează…'; }
-    fetch('/api/weekly-report/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: '{}' })
+    fetch('/api/weekly-report/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(_state.companyId ? { companyId: _state.companyId } : {}) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset._t || 'Generează acum'; }
