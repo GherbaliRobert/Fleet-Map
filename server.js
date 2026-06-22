@@ -2861,15 +2861,19 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const device = await db.getDeviceFull(req.params.imei);
     if (!device) return res.status(404).json({ error: 'Device not found' });
-    // Momente de referință pentru „în staționare de" / „motor oprit de". Fereastra acoperă retenția de
-    // poziții (implicit 180 zile) ca să arate durata REALĂ chiar dacă vehiculul stă de peste o lună.
-    // Configurabil prin STAT_LOOKBACK_DAYS. Apel rar (doar la deschiderea fișei) → cost acceptabil.
+    // Momente de referință pentru „în staționare de" / „motor pornit/oprit de".
+    // FERESTRE SEPARATE (intenționat):
+    //  • last_moved_at (de când nu s-a mai deplasat) — fereastră LUNGĂ (STAT_DAYS, implicit 180z) ca să
+    //    arate durata REALĂ a staționării chiar dacă vehiculul stă de luni de zile.
+    //  • ignition_on_at/off_at (sesiunea curentă a contactului) — fereastră SCURTĂ (IGN_DAYS, implicit 30z)
+    //    ca „motor pornit/oprit de" să reflecte sesiunea recentă, nu o tranziție veche → fără valori absurde.
     const STAT_DAYS = Math.min(Math.max(parseInt(process.env.STAT_LOOKBACK_DAYS) || 180, 1), 730);
+    const IGN_DAYS = Math.min(Math.max(parseInt(process.env.IGN_LOOKBACK_DAYS) || 30, 1), STAT_DAYS);
     try {
       const sd = await db.pool.query(
         "SELECT MAX(CASE WHEN speed > 3 THEN timestamp END) AS last_moved_at, " +
-        "MAX(CASE WHEN (io_data->>'ignition') IN ('1','true') THEN timestamp END) AS ignition_on_at, " +
-        "MAX(CASE WHEN (io_data->>'ignition') IN ('0','false') THEN timestamp END) AS ignition_off_at " +
+        "MAX(CASE WHEN (io_data->>'ignition') IN ('1','true') AND timestamp > NOW() - INTERVAL '" + IGN_DAYS + " days' THEN timestamp END) AS ignition_on_at, " +
+        "MAX(CASE WHEN (io_data->>'ignition') IN ('0','false') AND timestamp > NOW() - INTERVAL '" + IGN_DAYS + " days' THEN timestamp END) AS ignition_off_at " +
         "FROM positions WHERE imei = $1 AND timestamp > NOW() - INTERVAL '" + STAT_DAYS + " days'",
         [req.params.imei]
       );

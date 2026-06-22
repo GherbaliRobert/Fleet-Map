@@ -40,11 +40,18 @@
     if (m >= 1) return m + 'm';
     return 'sub 1m';
   }
+  // Referință pentru durate: ULTIMA TRANSMISIE a vehiculului, nu „acum". Altfel, pentru un vehicul
+  // offline, „motor pornit de" / „în staționare de" ar crește la nesfârșit deși nu mai dă semnal.
+  // Plafonat la „acum" (în caz de ceas defazat al device-ului).
+  function refMs(d) {
+    var t = (d && d.timestamp) ? new Date(d.timestamp).getTime() : NaN;
+    return isNaN(t) ? Date.now() : Math.min(t, Date.now());
+  }
   function durStat(d, f) {
     if (d && d.speed > 0) return '<span style="color:var(--green)">în mișcare</span>';
     if (!f) return '<span style="color:var(--text-muted)">…</span>';
     if (!f.last_moved_at) return 'de peste 6 luni';
-    return fmtDur(Date.now() - new Date(f.last_moved_at).getTime());
+    return fmtDur(refMs(d) - new Date(f.last_moved_at).getTime());
   }
   function engOn(d) { return !!(d && d.io && (d.io.ignition === 1 || d.io.ignition === true)); }
   function engLabel(d) { return engOn(d) ? 'Motor pornit de' : 'Motor oprit de'; }
@@ -53,7 +60,7 @@
     // pornit de = de la ultima oprire (ignition_off_at) · oprit de = de la ultima pornire (ignition_on_at)
     var anchor = engOn(d) ? f.ignition_off_at : f.ignition_on_at;
     if (!anchor) return 'de peste 6 luni';
-    return fmtDur(Date.now() - new Date(anchor).getTime());
+    return fmtDur(refMs(d) - new Date(anchor).getTime());
   }
   function renderDur(imei) {
     var d = DEVS() && DEVS().get(imei); if (!d) return;
