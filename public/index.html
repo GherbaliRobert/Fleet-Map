@@ -217,7 +217,7 @@
             <button class="history-btn" onclick="hpQuick('week')">7 zile</button>
           </div>
           <button class="history-btn primary hp-load" onclick="loadHistory()"><i class="fas fa-download"></i> Încarcă traseul</button>
-          <div class="hp-row hp-export">
+          <div id="hp-export" class="hp-row hp-export" style="display:none;">
             <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>
             <button class="history-btn" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
           </div>
@@ -5334,6 +5334,18 @@ const pozitii = await r.json();</code></pre>
       document.querySelectorAll('.route-card').forEach(function (c) { c.classList.remove('selected'); });
       document.querySelectorAll('#report-routes-table tbody tr').forEach(function (tr) { tr.classList.remove('route-selected'); });
       _routePillHide();
+      // Resetează panoul Traseu dacă e deschis
+      var _hp = document.getElementById('history-panel');
+      if (_hp && _hp.classList.contains('visible')) {
+        hpStop();
+        var _hsel = document.getElementById('history-imei'); if (_hsel) { _hsel.selectedIndex = -1; selectedImei = null; }
+        var _hf = document.getElementById('history-from'); if (_hf) _hf.value = '';
+        var _ht = document.getElementById('history-to'); if (_ht) _ht.value = '';
+        var _exp = document.getElementById('hp-export'); if (_exp) _exp.style.display = 'none';
+        var _pb = document.getElementById('history-playback'); if (_pb) _pb.style.display = 'none';
+        var _sum = document.getElementById('hp-summary'); if (_sum) _sum.style.display = 'none';
+        _hp.classList.remove('hp-collapsed');
+      }
     }
 
     // Colapsează fișa la „peek" (doar header) — folosit la tap pe hartă; tap pe header → revine.
@@ -6350,6 +6362,7 @@ const pozitii = await r.json();</code></pre>
           }
         }
 
+        var _expEl = document.getElementById('hp-export'); if (_expEl) _expEl.style.display = '';
         try { hpInit(data); } catch (e) { console.warn('replay indisponibil:', e); } // replay interactiv (non-fatal)
         // Pe mobil: pliază filtrele după încărcare → se vede harta cu traseul (rămâne bara de playback + buton „Filtre")
         if (window.innerWidth <= 768) { const hp = document.getElementById('history-panel'); if (hp) hp.classList.add('hp-collapsed'); }
