@@ -285,6 +285,7 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_center VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inventory_number VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS ignition_source VARCHAR(10);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS show_transport BOOLEAN DEFAULT TRUE;
       END $$
     `);
 
@@ -1143,7 +1144,7 @@ const VEHICLE_DETAIL_COLS = [
   'consumption_city', 'consumption_idle', 'consumption_road', 'passenger_seats',
   'emission_class', 'tire_size', 'engine_serial', 'displacement', 'power_kw',
   'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source'
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source', 'show_transport'
 ];
 const NUMERIC_COLS = new Set([
   'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',

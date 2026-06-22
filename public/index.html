@@ -258,7 +258,7 @@
         <button class="detail-action-btn" onclick="showDetailView('info')"><i class="fas fa-info-circle"></i> Info</button>
         <button class="detail-action-btn" onclick="showDetailView('routes')"><i class="fas fa-route"></i> Rute</button>
         <button class="detail-action-btn" onclick="if(detailPanelImei) openReportModal(detailPanelImei)"><i class="fas fa-file-alt"></i> Raport</button>
-        <button class="detail-action-btn" onclick="if(detailPanelImei) openTransportReport(detailPanelImei)"><i class="fas fa-weight-hanging"></i> Transport</button>
+        <button class="detail-action-btn" id="detail-transport-btn" onclick="if(detailPanelImei) openTransportReport(detailPanelImei)"><i class="fas fa-weight-hanging"></i> Transport</button>
       </div>
 
       <div class="detail-content">
@@ -534,6 +534,13 @@
               <option value="din1">DIN1 (intrare digitală 1)</option>
             </select>
             <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Alege „DIN1" dacă vehiculul apare „pornit" deși contactul e oprit (sursa de ignition setată greșit pe tracker).</div>
+          </div>
+          <div class="form-group" id="edit-transport-group" style="display:none;"><label>Tab „Transport" <span style="font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;">super-admin</span></label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal;">
+              <input type="checkbox" id="edit-show-transport" style="width:18px;height:18px;accent-color:var(--accent);">
+              <span>Afișează tab-ul „Transport" în fișa acestui vehicul</span>
+            </label>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Debifează pentru vehiculele care nu fac transporturi (tab-ul dispare din panoul de detaliu).</div>
           </div>
           <div class="form-group"><label>Grup <span style="color:var(--text-muted);font-size:10px;">(acces clienți)</span></label><select id="edit-group"><option value="">-- Fără grup --</option></select></div>
           <div class="form-group"><label>Șofer</label><select id="edit-driver"><option value="">-- Fără șofer --</option></select></div>
@@ -5266,7 +5273,7 @@ const pozitii = await r.json();</code></pre>
       updateDetailPanel(imei);
       updateDetailIoPanel(imei);
       // Șofer alocat (din Management): citit proaspăt din DB, ca să reflecte ultima alocare (datele live nu conțin numele șoferului)
-      fetch('/api/devices/' + encodeURIComponent(imei) + '/full', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (full) { if (full && !full.error) { driverNameByImei[imei] = full.driver_name || ''; if (detailPanelImei === imei) updateDetailPanel(imei); } }).catch(function () {});
+      fetch('/api/devices/' + encodeURIComponent(imei) + '/full', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (full) { if (full && !full.error) { driverNameByImei[imei] = full.driver_name || ''; var _tb = document.getElementById('detail-transport-btn'); if (_tb) _tb.style.display = (full.show_transport === false) ? 'none' : ''; if (detailPanelImei === imei) updateDetailPanel(imei); } }).catch(function () {});
       // încarcă mapările IO (setate de super-admin) și re-randează cu numele personalizate
       fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (m) { if (m && !m.error) { ioMappingsCache[imei] = m; if (detailPanelImei === imei) updateDetailIoPanel(imei); } }).catch(function () {});
       showDetailView(tab || 'info');
@@ -6881,9 +6888,11 @@ const pozitii = await r.json();</code></pre>
           document.getElementById('edit-name').value = dev.name || '';
           document.getElementById('edit-vehicle-type').value = dev.vehicle_type || '';
           document.getElementById('edit-ignition-source').value = dev.ignition_source || 'auto';
-          // Sursa de contact (DIN1) — vizibilă DOAR pentru super-admin
-          var _ignGrp = document.getElementById('edit-ignition-group');
-          if (_ignGrp) _ignGrp.style.display = (currentUser && currentUser.role === 'superadmin') ? '' : 'none';
+          document.getElementById('edit-show-transport').checked = (dev.show_transport !== false); // implicit afișat
+          // Câmpuri rezervate super-admin (sursă contact + tab Transport) — vizibile DOAR pentru super-admin
+          var _isSuper = (currentUser && currentUser.role === 'superadmin');
+          var _ignGrp = document.getElementById('edit-ignition-group'); if (_ignGrp) _ignGrp.style.display = _isSuper ? '' : 'none';
+          var _trGrp = document.getElementById('edit-transport-group'); if (_trGrp) _trGrp.style.display = _isSuper ? '' : 'none';
           document.getElementById('edit-plate').value = dev.plate || '';
           // Fișă vehicul extinsă (paritate AROBS)
           const setv = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
@@ -6945,6 +6954,7 @@ const pozitii = await r.json();</code></pre>
       const details = {
         name, vehicle_type, plate,
         ignition_source: ((document.getElementById('edit-ignition-source') || {}).value || 'auto'),
+        show_transport: !!(document.getElementById('edit-show-transport') && document.getElementById('edit-show-transport').checked),
         vin: (document.getElementById('edit-vin').value.trim().toUpperCase() || null),
         brand: strOrNull('edit-brand'), model: strOrNull('edit-model'), year: numOrNull('edit-year'),
         fuel_type: strOrNull('edit-fuel-type'), displacement: numOrNull('edit-displacement'),

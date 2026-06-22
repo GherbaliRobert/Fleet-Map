@@ -2934,7 +2934,9 @@ app.put('/api/devices/:imei/details', requireAuth, requireFleet, withScope, asyn
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const b = req.body || {};
-    if (b.ignition_source !== undefined && !req.isSuper) delete b.ignition_source; // sursa de contact: DOAR super-admin
+    // Câmpuri rezervate SUPER-ADMIN (admin/user companie nu le pot seta) — eliminate din body dacă nu e super.
+    if (!req.isSuper) { delete b.ignition_source; delete b.show_transport; }
+    if (b.show_transport !== undefined) b.show_transport = (b.show_transport === true || b.show_transport === 'true'); // normalizează boolean
     await db.updateVehicleDetails(imei, b);
     if (b.ignition_source !== undefined) refreshDin1Set(); // override „contact din DIN1" → actualizează cache ingest
     invalidateLiveEnrichCache(); // fișa poate conține fuel_price/cost_per_ton_km/greutăți din enrichment
