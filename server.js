@@ -3318,7 +3318,17 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const now = new Date();
-    const scopedSize = Array.from(livePositions.keys()).filter(i => canAccessImei(req, i)).length;
+    // Total vehicule = flota ÎNREGISTRATĂ (non-arhivată) din scope, NU doar cele care transmit live.
+    // Altfel un vehicul offline (ex. nu a transmis azi) dispărea din dashboard → totul pe 0. Acum apare ca „oprit".
+    let scopedSize;
+    try {
+      const _scopeCompany = req.isSuper ? (req.filterCompanyId || null) : req.companyId;
+      let regDevices = await db.getDevices(_scopeCompany);
+      regDevices = regDevices.filter(d => d.status !== 'archived' && canAccessImei(req, d.imei));
+      scopedSize = regDevices.length;
+    } catch (e) {
+      scopedSize = Array.from(livePositions.keys()).filter(i => canAccessImei(req, i)).length; // fallback
+    }
 
     // Collect stats per device
     const deviceStats = [];
