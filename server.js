@@ -3963,6 +3963,12 @@ async function enrichGeofence(body) {
     let lat = null, lon = null;
     if (body.type === 'circle' && body.coordinates && body.coordinates.center) {
       lat = Number(body.coordinates.center[0]); lon = Number(body.coordinates.center[1]);
+    } else if (body.coordinates && Array.isArray(body.coordinates.line) && body.coordinates.line.length) {
+      let sLat = 0, sLon = 0, n = 0;
+      for (const p of body.coordinates.line) {
+        if (Array.isArray(p) && p.length >= 2) { sLat += Number(p[0]); sLon += Number(p[1]); n++; }
+      }
+      if (n) { lat = sLat / n; lon = sLon / n; }
     } else if (Array.isArray(body.coordinates) && body.coordinates.length) {
       let sLat = 0, sLon = 0, n = 0;
       for (const p of body.coordinates) {
@@ -4172,6 +4178,27 @@ function isPointInCircle(lat, lng, centerLat, centerLng, radiusKm) {
   return haversineDistance(lat, lng, centerLat, centerLng) <= radiusKm;
 }
 
+// Coridor: punctul e „în zonă" dacă e la cel mult halfMeters de oricare segment al liniei centrale.
+// Proiecție planară locală (echirectangulară) — exactă pentru lățimi de coridor (zeci de metri).
+function isPointNearPolyline(lat, lng, line, halfMeters) {
+  if (!Array.isArray(line) || line.length < 2 || !(halfMeters > 0)) return false;
+  const mLat = 111320, mLon = 111320 * Math.cos(lat * Math.PI / 180);
+  const px = lng * mLon, py = lat * mLat;
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1], b = line[i];
+    if (!Array.isArray(a) || !Array.isArray(b)) continue;
+    const ax = a[1] * mLon, ay = a[0] * mLat;
+    const bx = b[1] * mLon, by = b[0] * mLat;
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t * dx, cy = ay + t * dy;
+    if (Math.hypot(px - cx, py - cy) <= halfMeters) return true;
+  }
+  return false;
+}
+
 // Track geofence state per device for enter/exit detection
 const geofenceStates = new Map(); // key: imei_geofenceId, value: boolean (inside)
 
@@ -4271,6 +4298,8 @@ async function evaluateAlerts(imei, data) {
 
                 if (gf.type === 'circle' && coords.center && coords.radius) {
                   isInside = isPointInCircle(lat, lng, coords.center[0], coords.center[1], coords.radius / 1000);
+                } else if (coords && Array.isArray(coords.line) && coords.width) {
+                  isInside = isPointNearPolyline(lat, lng, coords.line, coords.width / 2);
                 } else if (Array.isArray(coords)) {
                   isInside = isPointInPolygon([lat, lng], coords);
                 }

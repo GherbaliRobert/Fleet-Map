@@ -1564,6 +1564,7 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm" onclick="hotspotShowAllOnMap()"><i class="fas fa-map"></i> Vezi pe hartă</button>
           <button class="btn-sm btn-primary" onclick="startDrawGeofence('circle')"><i class="far fa-circle"></i> Adaugă cerc</button>
           <button class="btn-sm btn-primary" onclick="startDrawGeofence('polygon')"><i class="fas fa-draw-polygon"></i> Adaugă poligon</button>
+          <button class="btn-sm btn-primary" onclick="startDrawGeofence('corridor')"><i class="fas fa-road"></i> Trasare străzi</button>
         </div>
         <div id="hotspot-list" style="overflow:auto;flex:1;min-height:0;"></div>
       </div>
@@ -1602,6 +1603,12 @@ const pozitii = await r.json();</code></pre>
         <input type="number" id="draw-radius" min="10" max="50000" value="300" step="10" oninput="updateDrawRadius()" style="width:92px;">
         <span style="font-size:11px;color:var(--text-muted);">m</span>
       </span>
+      <span id="draw-width-wrap" style="display:none;align-items:center;gap:6px;">
+        <label style="font-size:11px;color:var(--text-muted);">Lățime</label>
+        <input type="number" id="draw-width" min="4" max="2000" value="30" step="2" oninput="updateCorridorWidth()" style="width:80px;">
+        <span style="font-size:11px;color:var(--text-muted);">m</span>
+      </span>
+      <button class="btn-sm" id="draw-snap-btn" type="button" onclick="snapCorridorToRoads()" style="display:none;" title="Aliniază traseul exact pe drumuri"><i class="fas fa-road"></i> Lipește pe străzi</button>
       <span id="draw-radius-val" style="display:none;"></span>
     </div>
     <div id="draw-hs-fields" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -3378,6 +3385,9 @@ const pozitii = await r.json();</code></pre>
       let layer = null;
       if (g.type === 'circle' && coords && coords.center) {
         layer = L.circle(coords.center, { radius: coords.radius || 100, color: g.color||'#38BDF8', weight: 2, fillOpacity: 0.08 });
+      } else if (g.type === 'corridor' && coords && Array.isArray(coords.line) && coords.line.length >= 2) {
+        const ring = corridorRibbon(coords.line, coords.width || 30);
+        if (ring) layer = L.polygon(ring, { color: g.color||'#38BDF8', weight: 2, fillOpacity: 0.08 });
       } else if (Array.isArray(coords) && coords.length >= 3) {
         layer = L.polygon(coords, { color: g.color||'#38BDF8', weight: 2, fillOpacity: 0.08 });
       }
@@ -3484,6 +3494,26 @@ const pozitii = await r.json();</code></pre>
       return Math.abs(a * R * R / 2);
     }
     function fmtArea(m2) { return m2 >= 1e6 ? (m2/1e6).toFixed(2)+' km²' : (m2 >= 1e4 ? (m2/1e4).toFixed(2)+' ha' : Math.round(m2)+' m²'); }
+    // Construiește banda (poligon) din jurul unei linii centrale, la lățimea dată (în metri) — pentru afișarea coridorului.
+    function corridorRibbon(line, widthM) {
+      if (!Array.isArray(line) || line.length < 2 || !(widthM > 0)) return null;
+      const half = widthM / 2;
+      const latRef = line[0][0];
+      const mLat = 111320, mLon = 111320 * Math.cos(latRef * Math.PI / 180) || 1;
+      const xy = line.map(p => [p[1] * mLon, p[0] * mLat]); // [x,y] în metri
+      const left = [], right = [];
+      for (let i = 0; i < xy.length; i++) {
+        let dx = 0, dy = 0;
+        if (i > 0) { dx += xy[i][0] - xy[i-1][0]; dy += xy[i][1] - xy[i-1][1]; }
+        if (i < xy.length - 1) { dx += xy[i+1][0] - xy[i][0]; dy += xy[i+1][1] - xy[i][1]; }
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len, ny = dx / len; // normala
+        left.push([xy[i][0] + nx*half, xy[i][1] + ny*half]);
+        right.push([xy[i][0] - nx*half, xy[i][1] - ny*half]);
+      }
+      const ring = left.concat(right.reverse());
+      return ring.map(q => [q[1] / mLat, q[0] / mLon]); // înapoi în [lat,lng]
+    }
     function fmtDist(m) { return m >= 1000 ? (m/1000).toFixed(2)+' km' : Math.round(m)+' m'; }
 
     // Coordonatele curente ale formei (după eventuale editări Geoman)
@@ -3495,10 +3525,36 @@ const pozitii = await r.json();</code></pre>
       }
       const ll = drawState.layer.getLatLngs();
       const ring = Array.isArray(ll[0]) ? ll[0] : ll;
-      return ring.map(p => [p.lat, p.lng]);
+      const pts = ring.map(p => [p.lat, p.lng]);
+      if (drawState.mode === 'corridor') {
+        const w = parseInt(document.getElementById('draw-width').value) || 30;
+        return { line: pts, width: w };
+      }
+      return pts;
+    }
+    // (Re)desenează banda coridorului (vizual) din linia + lățimea curentă.
+    function renderDrawRibbon(line, width) {
+      if (drawState && drawState.ribbon) { try { map.removeLayer(drawState.ribbon); } catch (e) {} drawState.ribbon = null; }
+      if (!drawState || !line) return;
+      const ring = corridorRibbon(line, width);
+      if (ring) {
+        const col = document.getElementById('draw-color').value || '#3FE07D';
+        drawState.ribbon = L.polygon(ring, { color: col, weight: 1, fillColor: col, fillOpacity: 0.14, dashArray: '4,4' });
+        drawState.ribbon.addTo(map);
+      }
     }
     function updateDrawMetrics() {
       const el = document.getElementById('draw-metrics'); if (!el) return;
+      if (drawState && drawState.mode === 'corridor') {
+        const width = parseInt(document.getElementById('draw-width').value) || 30;
+        const line = drawState.layer ? (layerLatLngs() || {}).line : drawState.points;
+        if (line && line.length >= 2) {
+          let len = 0; for (let i = 1; i < line.length; i++) len += haversineM(line[i-1], line[i]);
+          el.textContent = 'Lungime: ' + fmtDist(len) + ' · Lățime: ' + width + ' m · Suprafață ~ ' + fmtArea(len * width);
+          renderDrawRibbon(line, width);
+        } else { el.textContent = ''; renderDrawRibbon(null); }
+        return;
+      }
       const g = layerLatLngs();
       if (!g) {
         if (drawState && drawState.mode === 'polygon' && drawState.points.length >= 2) {
@@ -3536,11 +3592,14 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('draw-hs-fields').style.display = isZone ? 'none' : 'flex';
       document.getElementById('draw-hs-fields2').style.display = isZone ? 'none' : 'flex';
       document.getElementById('draw-radius-wrap').style.display = mode === 'circle' ? 'inline-flex' : 'none';
-      document.getElementById('draw-finish-btn').style.display = mode === 'polygon' ? '' : 'none';
-      document.getElementById('draw-undo-btn').style.display = mode === 'polygon' ? '' : 'none';
+      document.getElementById('draw-width-wrap').style.display = mode === 'corridor' ? 'inline-flex' : 'none';
+      document.getElementById('draw-snap-btn').style.display = mode === 'corridor' ? '' : 'none';
+      document.getElementById('draw-finish-btn').style.display = (mode === 'polygon' || mode === 'corridor') ? '' : 'none';
+      document.getElementById('draw-undo-btn').style.display = (mode === 'polygon' || mode === 'corridor') ? '' : 'none';
       document.getElementById('draw-save-btn').innerHTML = isZone ? '<i class="fas fa-chart-bar"></i> Analizează' : '<i class="fas fa-save"></i> Salvează';
-      document.getElementById('draw-title').textContent = (isZone ? 'Zonă: ' : (opts.editing ? 'Editare: ' : 'Hotspot: ')) + (mode === 'polygon' ? 'poligon' : 'cerc');
-      document.getElementById('draw-info').textContent = opts.editing ? 'Trage colțurile pentru a ajusta' : (mode === 'polygon' ? 'Click pe hartă (min 3 puncte), apoi dublu-click' : 'Click pe hartă pentru centru');
+      const modeLabel = mode === 'polygon' ? 'poligon' : (mode === 'corridor' ? 'traseu străzi' : 'cerc');
+      document.getElementById('draw-title').textContent = (isZone ? 'Zonă: ' : (opts.editing ? 'Editare: ' : 'Hotspot: ')) + modeLabel;
+      document.getElementById('draw-info').textContent = opts.editing ? 'Trage punctele pentru a ajusta' : (mode === 'polygon' ? 'Click pe hartă (min 3 puncte), apoi dublu-click' : (mode === 'corridor' ? 'Click pe străzi (min 2 puncte), apoi „Lipește pe străzi" + Finalizează' : 'Click pe hartă pentru centru'));
       document.getElementById('draw-sat-btn').classList.toggle('active', satMode);
     }
 
@@ -3550,6 +3609,7 @@ const pozitii = await r.json();</code></pre>
       ['draw-name','draw-desc','draw-category'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
       const rg = document.getElementById('draw-region'); if (rg) rg.checked = false;
       const rad = document.getElementById('draw-radius'); if (rad) rad.value = 300;
+      const wid = document.getElementById('draw-width'); if (wid) wid.value = 30;
       showDrawToolbar(mode, 'geofence');
       populateDrawMeta();
       updateDrawMetrics();
@@ -3558,8 +3618,8 @@ const pozitii = await r.json();</code></pre>
     function enableDrawPlacement(mode) {
       map.getContainer().style.cursor = 'crosshair';
       try { map.doubleClickZoom.disable(); } catch (e) {}
-      map.on('click', mode === 'polygon' ? onPolyClick : onCircleClick);
-      if (mode === 'polygon') map.on('dblclick', drawFinishPoly);
+      map.on('click', mode === 'circle' ? onCircleClick : onPolyClick);
+      if (mode === 'polygon' || mode === 'corridor') map.on('dblclick', drawFinishPoly);
     }
     function onPolyClick(e) {
       if (!drawState || drawState.finished) return;
@@ -3568,21 +3628,57 @@ const pozitii = await r.json();</code></pre>
     function redrawPoly() {
       drawState.layers.forEach(l => { try { map.removeLayer(l); } catch (e) {} }); drawState.layers = [];
       drawState.points.forEach(p => { const m = L.circleMarker(p, { radius: 4, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 }); m.addTo(map); drawState.layers.push(m); });
-      if (drawState.points.length >= 2) { const pl = L.polyline(drawState.points.concat([drawState.points[0]]), { color: '#f59e0b', dashArray: '5,5' }); pl.addTo(map); drawState.layers.push(pl); }
-      document.getElementById('draw-info').textContent = drawState.points.length + ' puncte — dublu-click / Finalizează';
+      const isCorridor = drawState.mode === 'corridor';
+      if (drawState.points.length >= 2) {
+        // coridor: linie deschisă (nu se închide bucla); poligon: contur închis
+        const pts = isCorridor ? drawState.points : drawState.points.concat([drawState.points[0]]);
+        const pl = L.polyline(pts, { color: '#f59e0b', dashArray: '5,5' }); pl.addTo(map); drawState.layers.push(pl);
+      }
+      document.getElementById('draw-info').textContent = drawState.points.length + ' puncte — ' + (isCorridor ? '„Lipește pe străzi" + Finalizează' : 'dublu-click / Finalizează');
       updateDrawMetrics();
     }
     function drawUndo() {
       if (!drawState) return;
-      if (drawState.mode === 'polygon' && !drawState.finished && drawState.points.length) { drawState.points.pop(); redrawPoly(); }
+      if ((drawState.mode === 'polygon' || drawState.mode === 'corridor') && !drawState.finished && drawState.points.length) { drawState.points.pop(); redrawPoly(); }
     }
     function drawFinishPoly() {
-      if (!drawState || drawState.mode !== 'polygon' || drawState.finished) return;
+      if (!drawState || drawState.finished) return;
+      const col = document.getElementById('draw-color').value || '#3FE07D';
+      if (drawState.mode === 'corridor') {
+        if (drawState.points.length < 2) return alert('Minim 2 puncte pentru traseu');
+        drawState.layers.forEach(l => { try { map.removeLayer(l); } catch (e) {} }); drawState.layers = [];
+        const layer = L.polyline(drawState.points, { color: col, weight: 3 }).addTo(map);
+        finalizeEditable(layer);
+        document.getElementById('draw-info').textContent = 'Trage punctele pentru a ajusta · reglează lățimea';
+        return;
+      }
+      if (drawState.mode !== 'polygon') return;
       if (drawState.points.length < 3) return alert('Minim 3 puncte pentru poligon');
       drawState.layers.forEach(l => { try { map.removeLayer(l); } catch (e) {} }); drawState.layers = [];
-      const layer = L.polygon(drawState.points, { color: document.getElementById('draw-color').value || '#3FE07D', weight: 2, fillOpacity: 0.1 }).addTo(map);
+      const layer = L.polygon(drawState.points, { color: col, weight: 2, fillOpacity: 0.1 }).addTo(map);
       finalizeEditable(layer);
       document.getElementById('draw-info').textContent = 'Trage colțurile pentru a ajusta';
+    }
+    function updateCorridorWidth() { updateDrawMetrics(); }
+    async function snapCorridorToRoads() {
+      if (!drawState || drawState.mode !== 'corridor') return;
+      let pts = (drawState.layer && drawState.finished) ? ((layerLatLngs() || {}).line || []) : drawState.points.slice();
+      if (!pts || pts.length < 2) return alert('Adaugă cel puțin 2 puncte pe străzi întâi.');
+      const btn = document.getElementById('draw-snap-btn');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se lipește…'; }
+      try {
+        const r = await fetch('/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ points: pts }) });
+        const j = await r.json();
+        if (j && Array.isArray(j.matched) && j.matched.length >= 2) {
+          drawState.points = j.matched.map(p => [p[0], p[1]]);
+          if (drawState.layer && drawState.finished) {
+            drawState.layer.setLatLngs(drawState.points);
+            try { if (drawState.layer.pm && drawState.layer.pm.enabled()) { drawState.layer.pm.disable(); drawState.layer.pm.enable({ allowSelfIntersection: false, snappable: true, snapDistance: 20 }); } } catch (e) {}
+            updateDrawMetrics();
+          } else redrawPoly();
+        } else { alert('Nu am putut alinia traseul pe drumuri (puncte prea puține sau drum negăsit). Încearcă mai multe puncte.'); }
+      } catch (e) { alert('Eroare la lipirea pe străzi.'); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-road"></i> Lipește pe străzi'; } }
     }
     function onCircleClick(e) {
       if (!drawState || drawState.layer) return;
@@ -3610,7 +3706,11 @@ const pozitii = await r.json();</code></pre>
     async function saveDraw() {
       if (!drawState) return;
       if (drawState.purpose === 'zone') return analyzeDrawnZone();
-      if (drawState.mode === 'polygon' && !drawState.finished) { if (drawState.points.length < 3) return alert('Minim 3 puncte pentru poligon'); drawFinishPoly(); }
+      if ((drawState.mode === 'polygon' || drawState.mode === 'corridor') && !drawState.finished) {
+        const need = drawState.mode === 'corridor' ? 2 : 3;
+        if (drawState.points.length < need) return alert('Minim ' + need + ' puncte');
+        drawFinishPoly();
+      }
       const name = document.getElementById('draw-name').value.trim();
       if (!name) return alert('Dă un nume hotspot-ului');
       const g = layerLatLngs();
@@ -3626,6 +3726,9 @@ const pozitii = await r.json();</code></pre>
       if (drawState.mode === 'polygon') {
         if (!Array.isArray(g) || g.length < 3) return alert('Minim 3 puncte pentru poligon');
         body.type = 'polygon'; body.coordinates = g;
+      } else if (drawState.mode === 'corridor') {
+        if (!g || !Array.isArray(g.line) || g.line.length < 2) return alert('Minim 2 puncte pentru traseu');
+        body.type = 'corridor'; body.coordinates = { line: g.line, width: Math.round(g.width) || 30 };
       } else {
         body.type = 'circle'; body.coordinates = { center: g.center, radius: Math.round(g.radius) };
       }
@@ -3642,12 +3745,16 @@ const pozitii = await r.json();</code></pre>
       if (!g) return;
       cancelDraw(); showView('localizare');
       const coords = parseGfCoords(g);
-      const mode = g.type === 'circle' ? 'circle' : 'polygon';
+      const mode = g.type === 'circle' ? 'circle' : (g.type === 'corridor' ? 'corridor' : 'polygon');
       drawState = { mode, points: [], layers: [], layer: null, finished: true, purpose: 'geofence', editingId: g.id };
       let layer;
       if (mode === 'circle' && coords && coords.center) {
         layer = L.circle(coords.center, { radius: coords.radius || 300, color: g.color || '#3FE07D', weight: 2, fillOpacity: 0.1 }).addTo(map);
         const ri = document.getElementById('draw-radius'); if (ri) ri.value = Math.round(coords.radius || 300);
+      } else if (mode === 'corridor' && coords && Array.isArray(coords.line) && coords.line.length >= 2) {
+        drawState.points = coords.line.map(p => [p[0], p[1]]);
+        layer = L.polyline(coords.line, { color: g.color || '#3FE07D', weight: 3 }).addTo(map);
+        const wi = document.getElementById('draw-width'); if (wi) wi.value = Math.round(coords.width || 30);
       } else if (Array.isArray(coords) && coords.length >= 3) {
         layer = L.polygon(coords, { color: g.color || '#3FE07D', weight: 2, fillOpacity: 0.1 }).addTo(map);
       } else { drawState = null; return alert('Geometrie invalidă'); }
@@ -3668,6 +3775,7 @@ const pozitii = await r.json();</code></pre>
       try { map.off('click', onPolyClick); map.off('click', onCircleClick); map.off('dblclick', drawFinishPoly); } catch (e) {}
       try { map.doubleClickZoom.enable(); } catch (e) {}
       drawState.layers.forEach(l => { try { map.removeLayer(l); } catch (e) {} });
+      if (drawState.ribbon) { try { map.removeLayer(drawState.ribbon); } catch (e) {} }
       if (drawState.layer) { try { if (drawState.layer.pm) drawState.layer.pm.disable(); } catch (e) {} try { map.removeLayer(drawState.layer); } catch (e) {} }
       drawState = null;
       const m = document.getElementById('draw-metrics'); if (m) m.textContent = '';
@@ -3680,7 +3788,7 @@ const pozitii = await r.json();</code></pre>
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); drawUndo(); }
-      else if (e.key === 'Enter' && drawState.mode === 'polygon' && !drawState.finished) { e.preventDefault(); drawFinishPoly(); }
+      else if (e.key === 'Enter' && (drawState.mode === 'polygon' || drawState.mode === 'corridor') && !drawState.finished) { e.preventDefault(); drawFinishPoly(); }
       else if (e.key === 'Escape') { cancelDraw(); }
     });
 
