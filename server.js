@@ -5049,19 +5049,25 @@ app.get('/api/weekly-report/latest', requireAuth, requirePerm('viewReports'), as
   try {
     if (!canViewWeekly(req)) return res.status(403).json({ error: 'Acces interzis' });
     const a = getAuth(req);
-    if (a.companyId == null) return res.json({ report: null, note: 'super' });
-    const r = await db.getLatestWeeklyReport(a.companyId);
-    const s = await db.getCompanySettings(a.companyId);
+    let companyId = a.companyId;
+    if (a.companyId == null) { // super-admin: alege compania prin ?companyId= (n-are companie proprie)
+      const q = parseInt(req.query.companyId);
+      if (!q) return res.json({ report: null, isSuper: true });
+      companyId = q;
+    }
+    const r = await db.getLatestWeeklyReport(companyId);
+    const s = await db.getCompanySettings(companyId);
     const enabled = !(s && s.weekly_report && s.weekly_report.enabled === false);
-    res.json({ report: r, enabled, recipients: (s && s.weekly_report && s.weekly_report.recipients) || [], canManage: hasPerm(a.role, 'manageUsers') });
+    res.json({ report: r, enabled, recipients: (s && s.weekly_report && s.weekly_report.recipients) || [], canManage: hasPerm(a.role, 'manageUsers'), isSuper: a.companyId == null, companyId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/weekly-reports', requireAuth, requirePerm('viewReports'), async (req, res) => {
   try {
     if (!canViewWeekly(req)) return res.status(403).json({ error: 'Acces interzis' });
     const a = getAuth(req);
-    if (a.companyId == null) return res.json([]);
-    res.json(await db.getWeeklyReports(a.companyId, parseInt(req.query.limit) || 26));
+    let companyId = a.companyId;
+    if (a.companyId == null) { const q = parseInt(req.query.companyId); if (!q) return res.json([]); companyId = q; }
+    res.json(await db.getWeeklyReports(companyId, parseInt(req.query.limit) || 26));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/weekly-report/:id', requireAuth, requirePerm('viewReports'), async (req, res) => {
@@ -5078,14 +5084,15 @@ app.post('/api/weekly-report/generate', requireAuth, requirePerm('manageUsers'),
   try {
     if (!weeklyReports) return res.status(501).json({ error: 'Modul indisponibil' });
     const a = getAuth(req);
-    if (a.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
-    const co = await db.getCompanyById(a.companyId);
-    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const b = req.body || {};
+    let companyId = a.companyId;
+    if (a.companyId == null) { companyId = parseInt(b.companyId); if (!companyId) return res.status(400).json({ error: 'Selectează o companie' }); } // super → companie din body
+    const co = await db.getCompanyById(companyId);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const period = (b.from && b.to) ? { from: new Date(b.from).toISOString(), to: new Date(b.to).toISOString() } : weeklyReports.lastCompletedWeek(new Date());
     const saved = await weeklyReports.generateForCompany(weeklyDeps(req), co, period);
     if (!saved) return res.status(400).json({ error: 'Compania nu are vehicule' });
-    auditReq(req, 'generate', 'weekly_report', a.companyId, { period_from: period.from });
+    auditReq(req, 'generate', 'weekly_report', companyId, { period_from: period.from });
     res.json({ ok: true, report: saved });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
