@@ -96,17 +96,28 @@ export async function refreshUnread() {
   try { const r = await Api.unreadCount(); unread.value = (r && (r as any).count) || 0; } catch { /* ignore */ }
 }
 
+let curPollMs = 7000;
+let pollTick = 0;
+function _pollOnce() {
+  refreshVehicles();
+  // Împrospătează rosterul periodic: timestamp-uri corecte pentru „fără transmisie" + vehiculele care revin online.
+  if ((pollTick++ % 4) === 0) refreshRoster();
+}
+function _arm(ms: number) { if (pollTimer) clearInterval(pollTimer); curPollMs = ms; pollTimer = setInterval(_pollOnce, ms); }
+
+// startPolling poate fi reapelat ca să SCHIMBE intervalul (ex. WS sănătos → backstop lent, nu oprire).
 export function startPolling(ms = 7000) {
-  if (polling) return;
+  if (polling) { if (ms !== curPollMs) _arm(ms); return; }
   polling = true;
   vehiclesLoading.value = vehicles.value.length === 0;
   refreshVehicles().finally(() => { vehiclesLoading.value = false; });
-  pollTimer = setInterval(refreshVehicles, ms);
+  _arm(ms);
 }
 export function stopPolling() {
   polling = false;
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
+const WS_BACKSTOP_MS = 25000; // poll de siguranță cât timp WS-ul e „conectat" (anti-stall silențios pe mobil)
 
 // ─── Live updates: WebSocket (latență mică + sarcină redusă la scară) cu fallback la polling ───
 // Pe device: wss://ratrack.ro/?token=… (webview-ul nu trimite cookie → auth pe token). Pe web dev: ws://localhost:3000.
@@ -144,7 +155,7 @@ function connectWs() {
   try {
     const sock = new WebSocket(WS_BASE + '/?token=' + encodeURIComponent(token.value));
     ws = sock;
-    sock.onopen = () => { wsBackoff = 1500; stopPolling(); }; // WS sănătos → oprește polling-ul fallback
+    sock.onopen = () => { wsBackoff = 1500; startPolling(WS_BACKSTOP_MS); }; // WS sănătos → poll de siguranță lent (nu oprire) → imun la WS blocat silențios
     sock.onmessage = (ev) => { try { applyWs(JSON.parse(ev.data)); } catch { /* ignore frame invalid */ } };
     sock.onerror = () => { try { sock.close(); } catch { /* ignore */ } };
     sock.onclose = () => {
