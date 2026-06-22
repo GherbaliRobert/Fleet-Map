@@ -1130,6 +1130,11 @@ async function getDin1Imeis() {
   const r = await pool.query("SELECT imei FROM devices WHERE ignition_source = 'din1'");
   return r.rows.map(x => x.imei);
 }
+// IMEI-urile arhivate (status='archived') — sursă de adevăr pentru reconcilierea periodică a setului în memorie.
+async function getArchivedImeis() {
+  const r = await pool.query("SELECT imei FROM devices WHERE status = 'archived'");
+  return r.rows.map(x => x.imei);
+}
 
 // Coloane editabile din fișa vehiculului (whitelist — previne injection / scriere pe coloane interzise)
 const VEHICLE_DETAIL_COLS = [
@@ -2351,7 +2356,7 @@ module.exports = {
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
-  updateDeviceInfo, setDeviceIgnitionSource, getDin1Imeis,
+  updateDeviceInfo, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis,
   updateVehicleDetails,
   deviceExists,
   createDevice,

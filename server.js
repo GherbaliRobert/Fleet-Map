@@ -203,6 +203,21 @@ function _applyIgnitionSource(imei, records) {
     if (r && r.io) r.io.ignition = (r.io.digital_input_1 === 1 || r.io.digital_input_1 === true) ? 1 : 0;
   }
 }
+
+// Reconciliere periodică „arhivat": sursa de adevăr e DB (status='archived'). Re-sincronizează setul în
+// memorie ȘI scoate orice vehicul arhivat care a rămas în harta live (din boot-seed sau drift) → nu mai
+// poate apărea pe hartă. Auto-vindecare, independent de cum a ajuns acolo.
+async function reconcileArchived() {
+  try {
+    const list = await db.getArchivedImeis();
+    const dbSet = new Set(list);
+    dbSet.forEach((i) => archivedImeis.add(i));               // adaugă arhivatele noi
+    for (const i of Array.from(archivedImeis)) if (!dbSet.has(i)) archivedImeis.delete(i); // restaurate → scoate din set
+    for (const i of dbSet) {                                   // purjează arhivatele din live + anunță sesiunile
+      if (livePositions.has(i)) { livePositions.delete(i); broadcastWs({ type: 'removed', data: { imei: i } }); }
+    }
+  } catch (e) { /* best-effort */ }
+}
 // Valori CAN „sticky": rămân valabile cât vehiculul e oprit (carburant, odometru, AdBlue, ore motor).
 // NU includem RPM/viteză/temperatură/sarcină — alea sunt instantanee și trebuie să dispară când motorul e oprit.
 const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_adblue_level_liters', 'can_adblue_level_pct', 'can_engine_total_hours', 'can_engine_worktime'];
@@ -2310,6 +2325,26 @@ app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
     heapUsed_mb: Math.round(mem.heapUsed / 1048576),
     uptime_s: Math.round(process.uptime()),
   });
+});
+
+// Audit „de ce apare X pe hartă": pentru fiecare vehicul — status DB vs set arhivat în memorie vs prezent în live.
+// Evidențiază „leaks" (arhivat în DB dar încă pe hartă). Cu ?fix=1 forțează reconcilierea pe loc.
+app.get('/api/debug/live-audit', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (req.query.fix) await reconcileArchived();
+    const r = await db.pool.query('SELECT imei, name, plate, status FROM devices ORDER BY name');
+    const devs = r.rows.map((d) => {
+      const lp = livePositions.get(d.imei);
+      return {
+        imei: d.imei, name: d.name, plate: d.plate, db_status: d.status || null,
+        inArchivedSet: archivedImeis.has(d.imei),
+        inLivePositions: !!lp,
+        live_ts: lp ? lp.timestamp : null,
+      };
+    });
+    const leaks = devs.filter((d) => d.db_status === 'archived' && d.inLivePositions).map((d) => d.name || d.imei);
+    res.json({ fixed: !!req.query.fix, archivedSetSize: archivedImeis.size, livePositionsSize: livePositions.size, leaks, devices: devs });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/debug/iface/:imei', requireAuth, requireSuperadmin, async (req, res) => {
@@ -5750,6 +5785,7 @@ async function start() {
     if (_seedIo && Object.keys(_seedIo).length) { lastCanIo.set(dev.imei, { io: _seedIo, ts: _seedTs }); lastCanPersistTs.set(dev.imei, _seedTs || 0); }
   }
   for (const pos of lastPositions) {
+    if (archivedImeis.has(pos.imei)) continue; // NU încărca vehiculele arhivate în harta live la pornire
     const info = deviceInfoMap[pos.imei] || {};
     let _io = pos.io_data || {};
     let _stale = false;
@@ -5879,6 +5915,11 @@ async function start() {
   // Override „contact din DIN1": încarcă lista IMEI-urilor cu override (la pornire + periodic).
   setTimeout(refreshDin1Set, 5000);
   setInterval(refreshDin1Set, 60 * 1000);
+
+  // Reconciliere „arhivat": scoate din harta live orice vehicul arhivat (boot-seed/drift) + re-sincronizează
+  // setul cu DB. Rulează curând după pornire (după ce s-a încărcat livePositions) + la fiecare 2 min.
+  setTimeout(reconcileArchived, 6000);
+  setInterval(reconcileArchived, 2 * 60 * 1000);
 
   // ───────────────────────────────────────────────────────────────
   // Cleanup periodic peste livePositions — fără el, vehiculele care își pierd semnalul GSM
