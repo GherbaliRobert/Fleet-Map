@@ -1029,6 +1029,14 @@
     .rep-tab .rt-short { display:none; }
     .rin-chip, .rin-src { white-space:normal; text-align:left; font-size:12px; line-height:1.3; height:auto; }
     .rin-src { border-color:var(--accent); color:var(--accent); }
+    .rin-kpis { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+    .rin-kpi { background:var(--bg-dark); border:1px solid var(--border); border-radius:9px; padding:8px 12px; min-width:100px; }
+    .rin-kpi .v { font-weight:800; font-size:17px; color:var(--accent); }
+    .rin-kpi .l { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .rin-tbl-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:9px; margin-top:8px; }
+    .rin-tbl { border-collapse:collapse; font-size:12px; white-space:nowrap; min-width:100%; }
+    .rin-tbl th { text-align:left; color:var(--text-muted); padding:7px 10px; border-bottom:1px solid var(--border); }
+    .rin-tbl td { padding:7px 10px; border-bottom:1px solid var(--border); }
     #rep-tab-insight .rax-row.ai .rax-msg { max-width:92%; }
     #rep-history th { position:sticky; top:0; background:var(--bg-dark); padding:9px 11px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12px; color:var(--text-secondary); }
     #rep-history td { padding:9px 11px; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12.5px; }
@@ -1663,8 +1671,9 @@ const pozitii = await r.json();</code></pre>
       <!-- TAB: RA Insight (agent analitic) -->
       <div id="rep-tab-insight" style="display:none;flex-direction:column;flex:1;min-height:0;">
         <div style="margin-bottom:8px;">
-          <span style="font-size:12.5px;color:var(--text-muted);"><i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i> Întreabă în limbaj natural — RA Insight citește rapoartele și-ți răspunde direct, combinând mai multe dacă e nevoie.</span>
+          <span style="font-size:12.5px;color:var(--text-muted);"><i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i> Apasă o întrebare predefinită — RA Insight rulează raportul și-ți dă răspunsul, fără AI (zero tokeni).</span>
         </div>
+        <div id="rin-presets" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
         <div id="rin-msgs" style="overflow:auto;flex:1;min-height:160px;display:flex;flex-direction:column;gap:12px;padding:8px 2px;"></div>
         <div id="rin-suggest" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px;"></div>
         <div id="rin-inputbar" style="display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--border);padding-top:10px;margin-top:2px;">
@@ -3793,11 +3802,44 @@ const pozitii = await r.json();</code></pre>
       }
       if (rinInited) return;
       rinInited = true;
-      rinAddMsg('ai', 'Salut! Sunt **RA Insight**. Întreabă-mă orice despre flota ta — citesc rapoartele și-ți dau direct răspunsul, fără să mai generezi tu mai multe rapoarte.');
+      // Întrebări predefinite (FĂRĂ AI, zero tokeni) — disponibile oricărei companii
+      var pbox = document.getElementById('rin-presets');
+      if (pbox) fetch('/api/insight/presets', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }).then(function (ps) {
+        pbox.innerHTML = (ps || []).map(function (p) { return '<button class="btn-sm rin-chip" onclick="rinPreset(\'' + rinEsc(p.key) + '\', this)"><i class="fas fa-bolt" style="opacity:.7;"></i> ' + rinEsc(p.title) + '</button>'; }).join('');
+      }).catch(function () {});
+      // Text liber (AI) = OPȚIONAL: doar dacă firma are modulul ai_assistant
+      var aiOn = !!(currentUser && currentUser.features && currentUser.features.ai_assistant);
       var box = document.getElementById('rin-suggest');
-      if (box) box.innerHTML = rinSuggestionList().map(function (q) {
-        return '<button class="btn-sm rin-chip" data-q="' + rinEsc(q) + '" onclick="rinAsk(this.dataset.q)"><i class="fas fa-lightbulb" style="opacity:.7;"></i> ' + rinEsc(q) + '</button>';
-      }).join('');
+      var bar = document.getElementById('rin-inputbar');
+      if (aiOn) {
+        rinAddMsg('ai', 'Apasă o întrebare predefinită mai sus, sau scrie liber — **AI-ul** îți combină mai multe rapoarte.');
+        if (box) box.innerHTML = rinSuggestionList().map(function (q) {
+          return '<button class="btn-sm rin-chip" data-q="' + rinEsc(q) + '" onclick="rinAsk(this.dataset.q)"><i class="fas fa-lightbulb" style="opacity:.7;"></i> ' + rinEsc(q) + '</button>';
+        }).join('');
+      } else {
+        if (bar) bar.style.display = 'none';
+        if (box) box.innerHTML = '<span style="font-size:11.5px;color:var(--text-muted);">Întrebările libere (AI) sunt opționale — activează modulul AI pentru companie ca să le folosești.</span>';
+      }
+    }
+    // RA Insight FĂRĂ AI — rulează un raport predefinit (zero tokeni) și afișează sumarul
+    async function rinPreset(key, btn) {
+      var title = btn ? btn.textContent.trim() : key;
+      rinAddMsg('user', title);
+      var pbtns = document.querySelectorAll('#rin-presets button'); pbtns.forEach(function (b) { b.disabled = true; });
+      var typing = rinAddMsg('ai', '<i class="fas fa-spinner fa-spin" style="opacity:.6;"></i>', true);
+      try {
+        var r = await fetch('/api/insight/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ key: key }) });
+        var j = await r.json();
+        if (typing) typing.remove();
+        if (!r.ok) { rinAddMsg('ai', rinEsc(j.error || 'Eroare RA Insight.'), true); return; }
+        var s = j.summary || {}; var sk = Object.keys(s);
+        var html = '<strong>' + rinEsc(j.title || 'Rezultat') + '</strong>';
+        if (sk.length) html += '<div class="rin-kpis">' + sk.map(function (k) { return '<div class="rin-kpi"><div class="v">' + rinEsc(String(s[k])) + '</div><div class="l">' + rinEsc(k) + '</div></div>'; }).join('') + '</div>';
+        if (j.rows && j.rows.length) html += '<div class="rin-tbl-wrap"><table class="rin-tbl"><thead><tr>' + (j.columns || []).map(function (c) { return '<th>' + rinEsc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' + j.rows.map(function (row) { return '<tr>' + row.map(function (cell) { return '<td>' + rinEsc(cell == null ? '' : String(cell)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+        if (j.reportType) html += '<div style="margin-top:8px;"><button class="btn-sm rin-src" onclick="rinOpenReport(\'' + rinEsc(j.reportType) + '\',\'\')"><i class="fas fa-up-right-from-square" style="opacity:.7;"></i> Deschide raportul complet</button></div>';
+        rinAddMsg('ai', html, true);
+      } catch (e) { if (typing) typing.remove(); rinAddMsg('ai', 'Eroare: ' + rinEsc(e.message), true); }
+      finally { pbtns.forEach(function (b) { b.disabled = false; }); }
     }
     function rinRenderSources(sources) {
       if (!Array.isArray(sources) || !sources.length) return;
