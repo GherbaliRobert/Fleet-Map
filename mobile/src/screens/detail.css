@@ -49,3 +49,7 @@
 .kv { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
 .kv .k { color: var(--text-muted); flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .kv .v { font-weight: 700; text-align: right; flex: 0 0 auto; white-space: nowrap; }
+/* Semnal GSM cu liniuțe */
+.gsm-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; vertical-align: middle; }
+.gsm-bar { width: 3px; border-radius: 1px; background: var(--border); display: inline-block; }
+.gsm-bar.on { background: var(--accent); }
