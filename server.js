@@ -3807,6 +3807,7 @@ app.get('/api/drivers/lite', requireAuth, withCompany, async (req, res) => {
 
 app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
+    if (req.body && req.body.photo_b64 && String(req.body.photo_b64).length > 1.5 * 1024 * 1024) return res.status(413).json({ error: 'Poza e prea mare' });
     // super-admin poate adăuga șoferul direct într-o companie aleasă; company_admin = STRICT compania proprie (ignoră body.company_id)
     let targetCompany = req.companyId;
     if (req.isSuper && req.body && req.body.company_id != null && req.body.company_id !== '') {
@@ -3821,6 +3822,7 @@ app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res
 
 app.put('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
+    if (req.body && req.body.photo_b64 && String(req.body.photo_b64).length > 1.5 * 1024 * 1024) return res.status(413).json({ error: 'Poza e prea mare' });
     if (!(await ownsRow(req, 'drivers', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.updateDriver(req.params.id, req.body); auditReq(req, 'update', 'driver', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

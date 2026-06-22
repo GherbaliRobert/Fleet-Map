@@ -1369,6 +1369,16 @@ const pozitii = await r.json();</code></pre>
           <div id="admin-drivers-list"></div>
           <div class="admin-add" style="grid-template-columns:repeat(2,1fr);">
             <input type="hidden" id="drv-id">
+            <input type="hidden" id="drv-photo-data">
+            <div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:2px 0;">
+              <img id="drv-photo-preview" src="" alt="" style="display:none;width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;">
+              <span id="drv-photo-ph" style="width:52px;height:52px;border-radius:50%;background:var(--bg-dark);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:20px;flex-shrink:0;"><i class="fas fa-user"></i></span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Poză profil</div>
+                <input type="file" id="drv-photo" accept="image/*" onchange="drvPhotoPick(this)" style="font-size:12px;max-width:100%;">
+              </div>
+              <button type="button" class="btn-sm" id="drv-photo-clear" onclick="drvPhotoClear()" style="display:none;" title="Elimină poza"><i class="fas fa-times"></i></button>
+            </div>
             <label><span>Nume *</span><input type="text" id="drv-name"></label>
             <label><span>Telefon</span><input type="text" id="drv-phone"></label>
             <label><span>Email</span><input type="email" id="drv-email"></label>
@@ -2931,16 +2941,24 @@ const pozitii = await r.json();</code></pre>
         const exp = d.license_expiry ? new Date(d.license_expiry) : null;
         const expSoon = exp && (exp - new Date()) < 30*24*3600*1000;
         const coTag = (showCo && d.company_name) ? ` <span class="co-tag"><i class="fas fa-building"></i>${esc(d.company_name)}</span>` : '';
-        return `<div class="admin-row"><div>
-          <strong>${esc(d.name)}</strong>${coTag}
-          <div class="meta">${esc(d.phone||'')}${d.email?' · '+esc(d.email):''}${d.license_number?' · permis '+esc(d.license_number):''}${exp?' · expiră '+exp.toLocaleDateString('ro-RO')+(expSoon?' ⚠':''):''}</div>
+        const av = d.photo_b64
+          ? `<img src="${esc(d.photo_b64)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;">`
+          : `<span style="width:40px;height:40px;border-radius:50%;background:var(--bg-dark);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);flex-shrink:0;"><i class="fas fa-user"></i></span>`;
+        return `<div class="admin-row"><div style="display:flex;align-items:center;gap:10px;min-width:0;">
+          ${av}
+          <div style="min-width:0;">
+            <strong>${esc(d.name)}</strong>${coTag}
+            <div class="meta">${esc(d.phone||'')}${d.email?' · '+esc(d.email):''}${d.license_number?' · permis '+esc(d.license_number):''}${exp?' · expiră '+exp.toLocaleDateString('ro-RO')+(expSoon?' ⚠':''):''}</div>
+          </div>
         </div><div style="display:flex;gap:6px;">
-          <button class="btn-sm" onclick='editDriver(${JSON.stringify(d)})'><i class="fas fa-pen"></i></button>
+          <button class="btn-sm" onclick="editDriver(${d.id})"><i class="fas fa-pen"></i></button>
           <button class="btn-sm btn-danger" onclick="deleteDriver(${d.id})"><i class="fas fa-trash"></i></button>
         </div></div>`;
       }).join('') : '<p style="color:var(--text-muted);font-size:12px;">' + (fco ? 'Niciun șofer în această companie.' : 'Niciun șofer.') + '</p>';
     }
-    function editDriver(d) {
+    function editDriver(idOrObj) {
+      const d = (idOrObj && typeof idOrObj === 'object') ? idOrObj : (_driversAll || []).find(x => String(x.id) === String(idOrObj));
+      if (!d) return;
       document.getElementById('drv-id').value = d.id;
       document.getElementById('drv-name').value = d.name || '';
       document.getElementById('drv-phone').value = d.phone || '';
@@ -2948,13 +2966,47 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('drv-license').value = d.license_number || '';
       document.getElementById('drv-expiry').value = d.license_expiry ? d.license_expiry.slice(0,10) : '';
       var _coSel = document.getElementById('drv-company'); if (_coSel && d.company_id != null) _coSel.value = d.company_id;
+      document.getElementById('drv-photo').value = '';
+      drvPhotoSet(d.photo_b64 || '');
       document.getElementById('drv-btn').textContent = 'Salvează';
     }
     function resetDriverForm() {
       ['drv-id','drv-name','drv-phone','drv-email','drv-license','drv-expiry'].forEach(i => document.getElementById(i).value = '');
       var _coSel = document.getElementById('drv-company'); if (_coSel) _coSel.value = '';
+      document.getElementById('drv-photo').value = '';
+      drvPhotoSet('');
       document.getElementById('drv-btn').textContent = 'Adaugă';
     }
+    // Redimensionează imaginea client-side (max 400px, JPEG ~0.82) → poză mică în DB, încărcare rapidă.
+    function drvPhotoPick(input) {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      if (!/^image\//.test(f.type)) { alert('Alege un fișier imagine.'); input.value = ''; return; }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          const max = 400; let w = img.width, h = img.height;
+          if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+          else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+          const c = document.createElement('canvas'); c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          drvPhotoSet(c.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = function () { alert('Imagine invalidă.'); };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(f);
+    }
+    function drvPhotoSet(dataUrl) {
+      document.getElementById('drv-photo-data').value = dataUrl || '';
+      const prev = document.getElementById('drv-photo-preview');
+      const ph = document.getElementById('drv-photo-ph');
+      const clr = document.getElementById('drv-photo-clear');
+      if (dataUrl) { prev.src = dataUrl; prev.style.display = ''; ph.style.display = 'none'; clr.style.display = ''; }
+      else { prev.src = ''; prev.style.display = 'none'; ph.style.display = ''; clr.style.display = 'none'; }
+    }
+    function drvPhotoClear() { document.getElementById('drv-photo').value = ''; drvPhotoSet(''); }
     async function saveDriver() {
       const id = document.getElementById('drv-id').value;
       const body = {
@@ -2962,7 +3014,8 @@ const pozitii = await r.json();</code></pre>
         phone: document.getElementById('drv-phone').value.trim(),
         email: document.getElementById('drv-email').value.trim(),
         license_number: document.getElementById('drv-license').value.trim(),
-        license_expiry: document.getElementById('drv-expiry').value || null
+        license_expiry: document.getElementById('drv-expiry').value || null,
+        photo_b64: document.getElementById('drv-photo-data').value || null
       };
       if (!body.name) return alert('Numele e obligatoriu');
       if (currentUser && currentUser.isSuper && !id) { const coSel = document.getElementById('drv-company'); if (!coSel || !coSel.value) return alert('Alege compania pentru noul șofer'); body.company_id = parseInt(coSel.value); }

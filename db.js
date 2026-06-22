@@ -237,6 +237,7 @@ async function initDb() {
         email VARCHAR(100),
         license_number VARCHAR(30),
         license_expiry DATE,
+        photo_b64 TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
@@ -561,6 +562,7 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE drivers ADD COLUMN IF NOT EXISTS photo_b64 TEXT;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS description VARCHAR(255);
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS category VARCHAR(60);
@@ -1993,16 +1995,16 @@ async function setDriversCompanyBulk(ids, companyId) {
 
 async function createDriver(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO drivers (name, phone, email, license_number, license_expiry, company_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-    [data.name, data.phone, data.email, data.license_number, data.license_expiry, companyId || null]
+    'INSERT INTO drivers (name, phone, email, license_number, license_expiry, photo_b64, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [data.name, data.phone, data.email, data.license_number, data.license_expiry, data.photo_b64 || null, companyId || null]
   );
   return result.rows[0];
 }
 
 async function updateDriver(id, data) {
   await pool.query(
-    'UPDATE drivers SET name=$2, phone=$3, email=$4, license_number=$5, license_expiry=$6 WHERE id=$1',
-    [id, data.name, data.phone, data.email, data.license_number, data.license_expiry]
+    'UPDATE drivers SET name=$2, phone=$3, email=$4, license_number=$5, license_expiry=$6, photo_b64=$7 WHERE id=$1',
+    [id, data.name, data.phone, data.email, data.license_number, data.license_expiry, data.photo_b64 || null]
   );
 }
 
