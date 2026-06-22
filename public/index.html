@@ -1618,6 +1618,7 @@ const pozitii = await r.json();</code></pre>
         <select id="fs-imei" class="rax-field" style="width:auto;min-width:170px;margin:0;" onchange="loadFuelStats()"></select>
         <span id="fs-range" style="margin-left:auto;font-size:11px;color:var(--text-muted);"></span>
       </div>
+      <div id="fs-note" style="display:none;font-size:12.5px;background:rgba(245,158,11,0.10);border:1px solid var(--orange);color:var(--text-secondary);border-radius:8px;padding:9px 12px;margin-bottom:12px;line-height:1.5;"></div>
       <div id="fs-kpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;"></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:14px;">
         <div class="chart-container h-250"><div class="chart-container-title">Trend consum (litri/zi)</div><canvas id="chart-fuel-trend"></canvas></div>
@@ -4720,6 +4721,19 @@ const pozitii = await r.json();</code></pre>
         if (!d || d.error) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--red);">' + ((d && d.error) || 'Eroare') + '</div>'; return; }
         _fsKpi(d.kpi); _fsTrend(d.series); _fsTop(d.topConsumers); _fsTable(d.perVehicle);
         var rg = document.getElementById('fs-range'); if (rg) { var _ve = d.kpi.vehiclesEstimated || 0; rg.textContent = (d.kpi.vehiclesTotal || 0) + ' vehicule' + (d.kpi.vehiclesWithData ? ' · ' + d.kpi.vehiclesWithData + ' cu senzor' : '') + (_ve ? ' · ' + _ve + ' estimat' + (_ve > 1 ? 'e' : '') : ''); }
+        // Banner clar când consumul e estimat (fără senzor de combustibil)
+        var note = document.getElementById('fs-note');
+        if (note) {
+          var ve2 = d.kpi.vehiclesEstimated || 0;
+          if (ve2 > 0) {
+            note.style.display = '';
+            note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--orange);margin-right:6px;"></i>' +
+              '<b>' + ve2 + ' vehicul' + (ve2 > 1 ? 'e au' : ' are') + ' consumul ESTIMAT</b> (fără senzor de combustibil). ' +
+              'Litrii se calculează din <b>km × consumul configurat în fișă</b> — sau valoarea implicită pe tip dacă nu e setat: ' +
+              'autoturism 9 · dubă 12 · autobuz 28 · camion 30 L/100km, plus ralanti. Rândurile estimate sunt marcate cu „<b>est.</b>". ' +
+              'Pentru consum <b>real</b>: montează sondă de combustibil sau setează consumul în fișa vehiculului.';
+          } else { note.style.display = 'none'; }
+        }
       } catch (e) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--red);">Eroare de rețea</div>'; }
     }
     function _fsKpi(k) {
@@ -4749,7 +4763,7 @@ const pozitii = await r.json();</code></pre>
         h += '<tr style="border-bottom:1px solid var(--border);">' +
           '<td style="padding:8px 10px;font-weight:600;">' + _ssEsc(v.name) + (v.plate ? ' <span style="color:var(--text-muted);font-weight:400;">' + _ssEsc(v.plate) + '</span>' : '') + '</td>' +
           '<td style="padding:8px 10px;">' + v.km + '</td>' +
-          '<td style="padding:8px 10px;">' + (v.liters != null ? v.liters + ' L' + (v.estimated ? ' <span style="color:var(--text-muted);font-size:10px;" title="Estimat din consumul configurat + km (fără senzor de nivel)">est.</span>' : '') : '—') + '</td>' +
+          '<td style="padding:8px 10px;">' + (v.liters != null ? v.liters + ' L' + (v.estimated ? ' <span style="color:var(--orange);font-size:9px;font-weight:700;border:1px solid var(--orange);border-radius:4px;padding:0 4px;margin-left:3px;vertical-align:middle;white-space:nowrap;" title="Consum ESTIMAT din km × consumul configurat (fără senzor de combustibil)">EST.</span>' : '') : '—') + '</td>' +
           '<td style="padding:8px 10px;">' + (v.per100 != null ? v.per100 : '—') + '</td>' +
           '<td style="padding:8px 10px;">' + (v.cost ? v.cost + ' RON' : '—') + '</td>' +
           '<td style="padding:8px 10px;">' + v.idleLiters + ' L</td>' +
