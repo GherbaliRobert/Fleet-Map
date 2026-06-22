@@ -1089,9 +1089,9 @@ async function resolveReportImeis(req) {
   if (req.allowedImeis == null) {
     let devs = await db.getDevices();
     if (req.companyId !== demoCompanyId) devs = devs.filter(d => !DEMO_SET.has(d.imei)); // exclude demo pt. flota reală
-    return devs.map(d => d.imei);
+    return devs.filter(d => d.status !== 'archived').map(d => d.imei); // exclude vehiculele ARHIVATE din rapoarte/analitice
   }
-  return Array.from(req.allowedImeis).filter(im => canAccessImei(req, im));
+  return Array.from(req.allowedImeis).filter(im => canAccessImei(req, im) && !archivedImeis.has(im)); // fără arhivate
 }
 
 // Filtru opțional pe companie pentru super-admin (dashboard + agenți): restrânge scope-ul la o companie.
