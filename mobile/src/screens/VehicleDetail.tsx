@@ -19,9 +19,19 @@ const CAN_LABELS: Record<string, [string, string]> = {
   can_fuel_level_liters: ['Combustibil', 'L'], can_fuel_level_pct: ['Combustibil', '%'],
   can_vehicle_speed: ['Viteză CAN', 'km/h'], can_total_mileage: ['Odometru CAN', 'km'],
   can_adblue_level_liters: ['AdBlue', 'L'], can_engine_hours: ['Ore motor', 'h'],
-  fuel_level_liters: ['Nivel rezervor', 'L'], external_voltage: ['Voltaj extern', 'mV'],
+  fuel_level_liters: ['Nivel rezervor', 'L'], external_voltage: ['Voltaj extern', 'V'], // împărțit la 1000 → V (nu mV)
   gsm_signal: ['Semnal GSM', ''], ignition: ['Contact', ''],
+  // CAN suplimentare — etichete + unități corecte (din codec8e.js)
+  can_accelerator_pedal: ['Pedală accelerație', '%'],
+  can_door_status: ['Stare uși', ''],          // bitmask (0 = toate închise)
+  can_engine_worktime_counted: ['Timp funcționare motor', 'min'],
+  can_fuel_consumed_counted: ['Combustibil consumat', 'L'],
+  can_axle_load: ['Sarcină axe', 'kg'], can_ambient_temp: ['Temp. exterioară', '°C'],
 };
+// Cheie necunoscută → etichetă prezentabilă (fără „can_…" brut): can_door_status → „Door status"
+function prettyKey(k: string): string {
+  return k.replace(/^can_/, '').replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
 
 export function VehicleDetail() {
   const loc = useLocation();
@@ -228,7 +238,7 @@ function CanList({ io }: { io: any }) {
     <>
       {keys.map((k) => {
         const def = CAN_LABELS[k];
-        const label = def ? def[0] : k;
+        const label = def ? def[0] : prettyKey(k);
         const unit = def ? def[1] : '';
         let val = io[k];
         if (k === 'ignition') val = val ? 'Pornit' : 'Oprit';
