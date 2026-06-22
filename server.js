@@ -2708,6 +2708,7 @@ app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async
       archivedImeis.add(imei);
       // scoate-l din harta live imediat (nu mai primește date)
       livePositions.delete(imei);
+      broadcastWs({ type: 'removed', data: { imei } }); // scoate marker-ul din sesiunile web/mobil deschise
       auditReq(req, 'update', 'device', imei, { status, archived_positions: archived });
       return res.json({ ok: true, status, archived_positions: archived });
     }
@@ -2871,8 +2872,8 @@ app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, 
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
-    // Sursa stării de contact (auto = IO 239 / din1 = DIN1) — pentru trackere cu ignition configurat greșit.
-    if (req.body.ignition_source !== undefined) {
+    // Sursa stării de contact (auto = IO 239 / din1 = DIN1) — DOAR super-admin (nu admin/user companie).
+    if (req.body.ignition_source !== undefined && req.isSuper) {
       await db.setDeviceIgnitionSource(imei, req.body.ignition_source);
       refreshDin1Set(); // actualizează cache-ul de la ingest imediat
     }
@@ -2898,6 +2899,7 @@ app.put('/api/devices/:imei/details', requireAuth, requireFleet, withScope, asyn
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const b = req.body || {};
+    if (b.ignition_source !== undefined && !req.isSuper) delete b.ignition_source; // sursa de contact: DOAR super-admin
     await db.updateVehicleDetails(imei, b);
     if (b.ignition_source !== undefined) refreshDin1Set(); // override „contact din DIN1" → actualizează cache ingest
     invalidateLiveEnrichCache(); // fișa poate conține fuel_price/cost_per_ton_km/greutăți din enrichment

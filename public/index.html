@@ -528,7 +528,7 @@
               <option value="Altul">Altul</option>
             </select>
           </div>
-          <div class="form-group"><label>Sursă contact (ignition)</label>
+          <div class="form-group" id="edit-ignition-group" style="display:none;"><label>Sursă contact (ignition) <span style="font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;">super-admin</span></label>
             <select id="edit-ignition-source">
               <option value="auto">Automat (din tracker)</option>
               <option value="din1">DIN1 (intrare digitală 1)</option>
@@ -2868,6 +2868,7 @@ const pozitii = await r.json();</code></pre>
       if (!confirm(archive ? 'Arhivezi acest vehicul? Nu va mai apărea pe hartă.' : 'Restaurezi vehiculul?')) return;
       const r = await fetch('/api/devices/' + imei + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: archive ? 'archived' : 'active' }) });
       if (!r.ok) { alert('Eroare la arhivare'); return; }
+      if (archive && typeof removeVehicleFromMap === 'function') removeVehicleFromMap(imei); // scoate marker-ul imediat
       await loadVehicles();
     }
     function downloadTemplate() { window.open('/api/devices/template.csv', '_blank'); }
@@ -4951,7 +4952,7 @@ const pozitii = await r.json();</code></pre>
       fetch('/api/devices').then(r => r.json()).then(list => {
         if (!Array.isArray(list)) return;
         list.forEach(function (d) {
-          if (!d || !d.imei || devices.has(d.imei)) return; // vehiculul live e deja prezent → îl lăsăm
+          if (!d || !d.imei || d.status === 'archived' || devices.has(d.imei)) return; // sari arhivatele + cele deja live
           var mapped = {
             imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type,
             latitude: d.latitude, longitude: d.longitude, speed: d.speed || 0, angle: d.angle || 0,
@@ -4962,6 +4963,14 @@ const pozitii = await r.json();</code></pre>
         });
         updateDeviceList();
       }).catch(function () {});
+    }
+
+    // Scoate complet un vehicul din harta live (marker + listă) — la arhivare/ștergere.
+    function removeVehicleFromMap(imei) {
+      try { if (markers && markers.has(imei)) { map.removeLayer(markers.get(imei)); markers.delete(imei); } } catch (e) {}
+      if (devices && devices.has(imei)) devices.delete(imei);
+      if (typeof selectedImei !== 'undefined' && selectedImei === imei) selectedImei = null;
+      if (typeof updateDeviceList === 'function') updateDeviceList();
     }
 
     // ─── Update Marker ───
@@ -6513,6 +6522,11 @@ const pozitii = await r.json();</code></pre>
           }
         }
 
+        // Vehicul arhivat/șters → scoate-l complet din hartă (în toate sesiunile deschise)
+        if (msg.type === 'removed' && msg.data && msg.data.imei) {
+          removeVehicleFromMap(msg.data.imei);
+        }
+
         // Debug log
         if (msg.type === 'debug') {
           appendDebugEntry(msg.data);
@@ -6809,6 +6823,9 @@ const pozitii = await r.json();</code></pre>
           document.getElementById('edit-name').value = dev.name || '';
           document.getElementById('edit-vehicle-type').value = dev.vehicle_type || '';
           document.getElementById('edit-ignition-source').value = dev.ignition_source || 'auto';
+          // Sursa de contact (DIN1) — vizibilă DOAR pentru super-admin
+          var _ignGrp = document.getElementById('edit-ignition-group');
+          if (_ignGrp) _ignGrp.style.display = (currentUser && currentUser.role === 'superadmin') ? '' : 'none';
           document.getElementById('edit-plate').value = dev.plate || '';
           // Fișă vehicul extinsă (paritate AROBS)
           const setv = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
