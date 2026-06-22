@@ -188,6 +188,21 @@ const livePositions = new Map();
 const archivedImeis = new Set();
 // Ultimele valori CAN cunoscute per imei — pentru carry-forward când motorul e oprit (pachet fără date CAN).
 const lastCanIo = new Map(); // imei -> { io: {sticky...}, ts }
+
+// Override „contact din DIN1": IMEI-urile pentru care starea de contact se ia din DIN1 (IO 1), nu din
+// IO 239 (calculat de device) — pentru trackere cu sursa de ignition configurată greșit. Doar excepțiile.
+const _din1Set = new Set();
+async function refreshDin1Set() {
+  try { const list = await db.getDin1Imeis(); _din1Set.clear(); list.forEach((i) => _din1Set.add(i)); } catch (e) {}
+}
+// Aplică override-ul pe TOATE recordurile (înainte de stocare + live) → contactul e corect peste tot
+// (status, hartă, alerte, „motor pornit/oprit de", rapoarte).
+function _applyIgnitionSource(imei, records) {
+  if (!_din1Set.has(imei) || !Array.isArray(records)) return;
+  for (const r of records) {
+    if (r && r.io) r.io.ignition = (r.io.digital_input_1 === 1 || r.io.digital_input_1 === true) ? 1 : 0;
+  }
+}
 // Valori CAN „sticky": rămân valabile cât vehiculul e oprit (carburant, odometru, AdBlue, ore motor).
 // NU includem RPM/viteză/temperatură/sarcină — alea sunt instantanee și trebuie să dispară când motorul e oprit.
 const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_adblue_level_liters', 'can_adblue_level_pct', 'can_engine_total_hours', 'can_engine_worktime'];
@@ -519,6 +534,10 @@ const tcpServer = net.createServer((socket) => {
           }
         }
       }
+
+      // Override „contact din DIN1" (dacă e configurat pe vehicul) — ÎNAINTE de stocare + live, ca toate
+      // consumatoarele (status, alerte, „motor pornit/oprit de", rapoarte) să vadă contactul corect.
+      _applyIgnitionSource(imei, parsed.records);
 
       // Salvează în baza de date
       await db.insertPositions(imei, parsed.records);
@@ -2852,6 +2871,11 @@ app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, 
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
+    // Sursa stării de contact (auto = IO 239 / din1 = DIN1) — pentru trackere cu ignition configurat greșit.
+    if (req.body.ignition_source !== undefined) {
+      await db.setDeviceIgnitionSource(imei, req.body.ignition_source);
+      refreshDin1Set(); // actualizează cache-ul de la ingest imediat
+    }
     auditReq(req, 'update', 'device', imei, { name, plate });
     // Update in-memory livePositions so WebSocket clients get the new name
     const pos = livePositions.get(imei);
@@ -2875,6 +2899,7 @@ app.put('/api/devices/:imei/details', requireAuth, requireFleet, withScope, asyn
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const b = req.body || {};
     await db.updateVehicleDetails(imei, b);
+    if (b.ignition_source !== undefined) refreshDin1Set(); // override „contact din DIN1" → actualizează cache ingest
     invalidateLiveEnrichCache(); // fișa poate conține fuel_price/cost_per_ton_km/greutăți din enrichment
     auditReq(req, 'update', 'device', imei, { fields: Object.keys(b).length });
     // Reflectă imediat în live (WebSocket) pentru câmpurile vizibile pe hartă/listă
@@ -5846,6 +5871,10 @@ async function start() {
   // Webhooks: reîmprospătează flag-ul „există webhook-uri active" (fast-path pentru evaluateUserEvents).
   setTimeout(refreshAnyWebhooks, 8000);
   setInterval(refreshAnyWebhooks, 60 * 1000);
+
+  // Override „contact din DIN1": încarcă lista IMEI-urilor cu override (la pornire + periodic).
+  setTimeout(refreshDin1Set, 5000);
+  setInterval(refreshDin1Set, 60 * 1000);
 
   // ───────────────────────────────────────────────────────────────
   // Cleanup periodic peste livePositions — fără el, vehiculele care își pierd semnalul GSM

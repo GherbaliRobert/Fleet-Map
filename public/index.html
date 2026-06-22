@@ -528,6 +528,13 @@
               <option value="Altul">Altul</option>
             </select>
           </div>
+          <div class="form-group"><label>Sursă contact (ignition)</label>
+            <select id="edit-ignition-source">
+              <option value="auto">Automat (din tracker)</option>
+              <option value="din1">DIN1 (intrare digitală 1)</option>
+            </select>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Alege „DIN1" dacă vehiculul apare „pornit" deși contactul e oprit (sursa de ignition setată greșit pe tracker).</div>
+          </div>
           <div class="form-group"><label>Grup <span style="color:var(--text-muted);font-size:10px;">(acces clienți)</span></label><select id="edit-group"><option value="">-- Fără grup --</option></select></div>
           <div class="form-group"><label>Șofer</label><select id="edit-driver"><option value="">-- Fără șofer --</option></select></div>
         </div>
@@ -6788,6 +6795,7 @@ const pozitii = await r.json();</code></pre>
           const dev = await res.json();
           document.getElementById('edit-name').value = dev.name || '';
           document.getElementById('edit-vehicle-type').value = dev.vehicle_type || '';
+          document.getElementById('edit-ignition-source').value = dev.ignition_source || 'auto';
           document.getElementById('edit-plate').value = dev.plate || '';
           // Fișă vehicul extinsă (paritate AROBS)
           const setv = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
@@ -6848,6 +6856,7 @@ const pozitii = await r.json();</code></pre>
       const strOrNull = id => { const el = document.getElementById(id); const v = el ? el.value.trim() : ''; return v === '' ? null : v; };
       const details = {
         name, vehicle_type, plate,
+        ignition_source: ((document.getElementById('edit-ignition-source') || {}).value || 'auto'),
         vin: (document.getElementById('edit-vin').value.trim().toUpperCase() || null),
         brand: strOrNull('edit-brand'), model: strOrNull('edit-model'), year: numOrNull('edit-year'),
         fuel_type: strOrNull('edit-fuel-type'), displacement: numOrNull('edit-displacement'),

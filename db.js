@@ -283,6 +283,7 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS road_tax_category VARCHAR(30);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_center VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inventory_number VARCHAR(40);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS ignition_source VARCHAR(10);
       END $$
     `);
 
@@ -1115,6 +1116,18 @@ async function updateDeviceInfo(imei, name, vehicleType, plate) {
     WHERE imei = $1
   `, [imei, name, vehicleType, plate]);
 }
+// Sursa stării de „contact": 'auto' (IO 239 calculat de device, implicit) sau 'din1' (folosește DIN1 — pentru
+// trackere cu sursa de ignition configurată greșit). Override aplicat la ingest (live + stocat).
+async function setDeviceIgnitionSource(imei, src) {
+  const v = (src === 'din1') ? 'din1' : 'auto';
+  await pool.query('UPDATE devices SET ignition_source = $2 WHERE imei = $1', [imei, v]);
+  return v;
+}
+// IMEI-urile cu override 'din1' — pentru cache-ul de la ingest (doar excepțiile, nu toată flota).
+async function getDin1Imeis() {
+  const r = await pool.query("SELECT imei FROM devices WHERE ignition_source = 'din1'");
+  return r.rows.map(x => x.imei);
+}
 
 // Coloane editabile din fișa vehiculului (whitelist — previne injection / scriere pe coloane interzise)
 const VEHICLE_DETAIL_COLS = [
@@ -1123,7 +1136,7 @@ const VEHICLE_DETAIL_COLS = [
   'consumption_city', 'consumption_idle', 'consumption_road', 'passenger_seats',
   'emission_class', 'tire_size', 'engine_serial', 'displacement', 'power_kw',
   'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct'
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source'
 ];
 const NUMERIC_COLS = new Set([
   'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',
@@ -2336,7 +2349,7 @@ module.exports = {
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
-  updateDeviceInfo,
+  updateDeviceInfo, setDeviceIgnitionSource, getDin1Imeis,
   updateVehicleDetails,
   deviceExists,
   createDevice,
