@@ -5,6 +5,7 @@ import type { ReportTypeInfo, ReportResult } from '../api/endpoints';
 import { vehicles, showToast } from '../app/store';
 import { Icon } from '../components/Icon';
 import { ReportChart } from '../components/ReportChart';
+import { InsightPanel } from '../components/InsightPanel';
 import { exportReport } from '../lib/export';
 import './reports.css';
 import '../screens/detail.css'; // pentru .sheet*
@@ -32,6 +33,7 @@ export function Reports() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [exporting, setExporting] = useState<'' | 'pdf' | 'xlsx'>('');
+  const [tab, setTab] = useState<'rapoarte' | 'insight'>('rapoarte');
 
   useEffect(() => {
     Api.reportTypes().then((d) => { setCats(d.categories || []); setTypes(d.reports || []); }).catch(() => {});
@@ -73,7 +75,12 @@ export function Reports() {
   return (
     <div class="screen">
       <header class="app-header"><div class="h-title">Rapoarte</div></header>
+      <div class="rp-tabs">
+        <button class={'rp-tab' + (tab === 'rapoarte' ? ' on' : '')} onClick={() => setTab('rapoarte')}><Icon name="report" size={16} /> Rapoarte</button>
+        <button class={'rp-tab' + (tab === 'insight' ? ' on' : '')} onClick={() => setTab('insight')}><Icon name="sparkles" size={16} /> RA Insight</button>
+      </div>
       <div class="content has-tabbar">
+        {tab === 'insight' ? <InsightPanel /> : (<>
         <div class="rp-controls">
           <button class="rp-pick" onClick={() => { setTq(''); setSheet('type'); }}>
             <Icon name="report" size={20} class="ic" />
@@ -126,6 +133,7 @@ export function Reports() {
             ) : (!res.charts || res.charts.length === 0) && <div class="center-msg">Fără date în perioada selectată.</div>}
           </>
         )}
+        </>)}
       </div>
 
       {/* Sheet: tip raport */}

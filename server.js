@@ -1689,6 +1689,47 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
   }
 });
 
+// ─── RA Insight FĂRĂ AI — întrebări predefinite (zero tokeni): rulează un raport și întoarce sumarul lui ───
+// Gated doar pe viewReports (NU pe ai_assistant) → disponibil oricărei companii. AI-ul (text liber) rămâne opțional.
+const INSIGHT_PRESETS = {
+  km:       { title: 'Km — săptămâna asta',            type: 'utilization',      period: 'this_week' },
+  consum:   { title: 'Consum — ultimele 30 zile',      type: 'consumption',      period: 'last_30_days' },
+  costuri:  { title: 'Costuri combustibil — luna asta', type: 'costs',           period: 'this_month' },
+  viteza:   { title: 'Depășiri viteză — 7 zile',       type: 'speeding',         period: 'last_7_days' },
+  ralanti:  { title: 'Ralanti (idle) — 7 zile',        type: 'idling',           period: 'last_7_days' },
+  ecodrive: { title: 'EcoDrive — clasament șoferi (30 zile)', type: 'ecodrive_drivers', period: 'last_30_days', top: 3 },
+};
+function _insightPeriod(p) {
+  const now = new Date(), sod = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  let from, to = new Date(now);
+  if (p === 'today') from = sod(now);
+  else if (p === 'this_week') { const dow = (sod(now).getDay() + 6) % 7; from = sod(now); from.setDate(from.getDate() - dow); }
+  else if (p === 'this_month') from = new Date(now.getFullYear(), now.getMonth(), 1);
+  else if (p === 'last_30_days') { from = new Date(now); from.setDate(from.getDate() - 30); }
+  else { from = new Date(now); from.setDate(from.getDate() - 7); } // last_7_days
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+app.get('/api/insight/presets', requireAuth, requirePerm('viewReports'), (req, res) => {
+  res.json(Object.entries(INSIGHT_PRESETS).map(([key, p]) => ({ key, title: p.title })));
+});
+app.post('/api/insight/run', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    const preset = INSIGHT_PRESETS[String((req.body && req.body.key) || '')];
+    if (!preset) return res.status(400).json({ error: 'Întrebare necunoscută' });
+    const companyScope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
+    let devices = await db.getDevices(companyScope === -1 ? -1 : companyScope);
+    devices = devices.filter(d => canAccessImei(req, d.imei));
+    const imeis = devices.map(d => d.imei);
+    if (!imeis.length) return res.json({ title: preset.title, summary: { 'Info': 'Niciun vehicul în scope.' }, rows: [], columns: [], period: null });
+    const { from, to } = _insightPeriod(preset.period);
+    const opts = { stopMin: 5, limit: 90, refuelMin: 10, dropMin: 10, geofenceId: null };
+    const report = await reports.runReport(db, preset.type, imeis, from, to, opts, companyScope);
+    const rows = (preset.top && Array.isArray(report.rows)) ? report.rows.slice(0, preset.top) : [];
+    auditReq(req, 'insight_preset', 'report', preset.type, { key: req.body.key });
+    res.json({ title: preset.title, label: report.label || preset.type, reportType: preset.type, period: { from, to }, summary: report.summary || {}, columns: report.columns || [], rows });
+  } catch (e) { res.status(500).json({ error: 'RA Insight: ' + e.message }); }
+});
+
 // ─── Agenți AI (RA Watch etc.) ───
 // Helper: lista agenților activi pentru compania userului (plan + override settings)
 async function _getEnabledAgents(companyId) {
