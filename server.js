@@ -218,9 +218,9 @@ async function reconcileArchived() {
     }
   } catch (e) { /* best-effort */ }
 }
-// Valori CAN „sticky": rămân valabile cât vehiculul e oprit (carburant, odometru, AdBlue, ore motor).
-// NU includem RPM/viteză/temperatură/sarcină — alea sunt instantanee și trebuie să dispară când motorul e oprit.
-const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_adblue_level_liters', 'can_adblue_level_pct', 'can_engine_total_hours', 'can_engine_worktime'];
+// Valori CAN „sticky": rămân valabile cât vehiculul e oprit — DOAR carburant + kilometraj (odometru).
+// NU includem RPM/viteză/temperatură/sarcină/AdBlue/ore motor — alea sunt instantanee și dispar când motorul e oprit.
+const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer'];
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
 // Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
 // „0.0 km (ultima)" / „- (ultima)" fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire".

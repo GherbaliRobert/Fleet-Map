@@ -5875,6 +5875,9 @@ const pozitii = await r.json();</code></pre>
       const rpm = io.can_engine_rpm !== undefined ? io.can_engine_rpm + ' RPM' : '-';
       const coolant = io.can_engine_temp !== undefined ? io.can_engine_temp.toFixed(1) + '\u00B0C' : '-';
       const adblue = io.can_adblue_level_pct !== undefined ? (io.can_adblue_level_pct + '%' + (io.can_adblue_level_liters !== undefined ? ' \u00B7 ' + Number(io.can_adblue_level_liters).toFixed(1) + ' L' : '')) : '-';
+      // AdBlue se afi\u0219eaz\u0103 DOAR pentru diesel (motorin\u0103) + EURO 6 (vehicule cu sistem SCR/AdBlue)
+      const _ftA = String(data.fuel_type || '').toLowerCase(), _emA = String(data.emission_class || '').toLowerCase().replace(/[\s_-]/g, '');
+      const showAdblue = (_ftA.indexOf('motorin') >= 0 || _ftA.indexOf('diesel') >= 0) && _emA.indexOf('euro6') >= 0;
       // Marcaj \u201Edate din ultimul pachet cu motorul pornit" (carry-forward CAN c\u00E2nd e oprit)
       const canStaleNote = data.can_stale ? ' <span style="font-size:9px;color:var(--text-muted);" title="ultimele valori transmise (motor oprit)">(ultima)</span>' : '';
 
@@ -6075,14 +6078,15 @@ const pozitii = await r.json();</code></pre>
           '</div>' +
         '</div>' +
 
-        // Row 9b: AdBlue (FMS / camioane) — nivel rezervor AdBlue/DEF
+        // Row 9b: AdBlue — DOAR diesel (motorină) + EURO 6 (vehicule cu sistem SCR/AdBlue)
+        (showAdblue ?
         '<div class="info-item full">' +
           '<div class="info-item-icon blue"><i class="fas fa-droplet"></i></div>' +
           '<div class="info-item-text">' +
             '<div class="info-item-value">' + adblue + canStaleNote + '</div>' +
             '<div class="info-item-label">AdBlue</div>' +
           '</div>' +
-        '</div>' +
+        '</div>' : '') +
 
         // Row 10: IMEI
         '<div class="info-item full">' +

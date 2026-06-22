@@ -98,6 +98,10 @@ export function VehicleDetail() {
   const gsm = gsmQuality(io.gsm_signal);
   const veh = [full?.brand, full?.model].filter(Boolean).join(' ') || full?.vehicle_type || v?.vehicle_type || '';
   const driver = full?.driver_name || '';
+  // AdBlue (în „Date CAN") doar pentru diesel (motorină) + EURO 6
+  const _ftd = String((full as any)?.fuel_type || '').toLowerCase();
+  const _emd = String((full as any)?.emission_class || '').toLowerCase().replace(/[\s_-]/g, '');
+  const adblueOk = (_ftd.includes('motorin') || _ftd.includes('diesel')) && _emd.includes('euro6');
   const ll = v && v.latitude != null ? `${v.latitude},${v.longitude}` : '';
 
   function openUrl(url: string) { try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); } }
@@ -178,7 +182,7 @@ export function VehicleDetail() {
               <button class="h-btn" onClick={() => setSheet('')}><Icon name="x" /></button>
             </div>
             <div class="sheet-body">
-              {sheet === 'can' && <CanList io={io} />}
+              {sheet === 'can' && <CanList io={io} adblueOk={adblueOk} />}
               {sheet === 'sensors' && (sensors === null ? <div class="spin" style="margin:20px auto" /> : sensors.length ? sensors.map((sn: any, i) => (
                 <div class="kv"><span class="k">{sn.type || sn.name || `Senzor ${i + 1}`}</span><span class="v">{sn.id || sn.io || '—'}</span></div>
               )) : <div class="center-msg">Niciun senzor configurat pe acest vehicul.</div>)}
@@ -231,8 +235,9 @@ export function VehicleDetail() {
   );
 }
 
-function CanList({ io }: { io: any }) {
-  const keys = Object.keys(io || {}).filter((k) => CAN_LABELS[k] || k.startsWith('can_'));
+function CanList({ io, adblueOk }: { io: any; adblueOk?: boolean }) {
+  // AdBlue (can_adblue_*) se arată DOAR pentru diesel + EURO 6; altfel e ascuns
+  const keys = Object.keys(io || {}).filter((k) => (CAN_LABELS[k] || k.startsWith('can_')) && !(!adblueOk && k.startsWith('can_adblue')));
   if (!keys.length) return <div class="center-msg">Niciun parametru CAN disponibil acum.</div>;
   return (
     <>
