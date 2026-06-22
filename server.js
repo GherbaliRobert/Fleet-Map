@@ -1628,7 +1628,9 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
           },
           required: ['type']
         }
-      }
+      },
+      { name: 'fleet_status', description: 'Starea LIVE a flotei ACUM: pentru fiecare vehicul — unde e (adresă), dacă e în mișcare/ralanti/oprit/offline, viteza, combustibilul (dacă există senzor) și ultima transmisie. Folosește pentru întrebări despre prezent („unde e X acum", „ce vehicule sunt oprite/offline", „cine se mișcă").', input_schema: { type: 'object', properties: {} } },
+      { name: 'fleet_alerts', description: 'Înștiințările/alertele ACTIVE ale flotei (monitorizare): vehicule offline, service depășit sau apropiat, documente care expiră (ITP/RCA/asigurare), posibil furt de combustibil, ralanti excesiv, conducere continuă peste limita legală, scor eco slab, digest zilnic. Folosește pentru „ce probleme are flota", „ce trebuie să știu", „ce expiră", „ce e de făcut".', input_schema: { type: 'object', properties: {} } }
     ];
 
     const toolHandlers = {
@@ -1663,17 +1665,51 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
             truncated: rows.length > 25
           };
         } catch (e) { return { error: 'Eroare la generarea raportului: ' + ((e && e.message) || e) }; }
+      },
+      fleet_status: async () => {
+        const snap = _fleetSnapshot(req); // doar vehiculele accesibile (izolare în _fleetSnapshot)
+        try { if (geocode) await geocode.warm(snap.map(v => ({ lat: Number(v.lat), lng: Number(v.lng) }))); } catch (e) {}
+        const now = Date.now();
+        const vehicles = snap.map(v => {
+          let loc = null;
+          try { loc = (geocode && v.lat && v.lng) ? geocode.peek(Number(v.lat), Number(v.lng)) : null; } catch (e) {}
+          const ageMin = v.ultima_actualizare ? (now - new Date(v.ultima_actualizare).getTime()) / 60000 : null;
+          let stare;
+          if (ageMin != null && ageMin > 60) stare = 'offline (fără semnal de ' + (ageMin >= 1440 ? (Math.round(ageMin / 1440) + ' zile') : (Math.round(ageMin / 60) + 'h')) + ')';
+          else if ((v.viteza_kmh || 0) > 3) stare = 'în mișcare ' + v.viteza_kmh + ' km/h';
+          else if (v.contact === 'pornit') stare = 'staționat cu motorul pornit (ralanti)';
+          else stare = 'oprit';
+          const r = { vehicul: v.nume, nr: v.nr || undefined, stare: stare, locatie: loc || 'indisponibilă' };
+          if (v.combustibil_l != null) r.combustibil_l = v.combustibil_l;
+          return r;
+        });
+        return { now: new Date().toISOString(), vehicles: vehicles };
+      },
+      fleet_alerts: async () => {
+        let rows = [];
+        try { rows = await db.getAgentFindings(companyScope, 100); } catch (e) {}
+        const allow = new Set(allImeis);
+        const nameByImei = {}; vehList.forEach(v => { nameByImei[v.imei] = v.name; });
+        const fullAccess = req.isSuper || req.allowedImeis == null; // findings „pe flotă" (imei null) doar la acces complet
+        const sevRank = { critical: 0, warning: 1, info: 2 };
+        const alerts = rows
+          .filter(f => (f.imei == null ? fullAccess : allow.has(f.imei)))
+          .sort((a, b) => (sevRank[a.severity] != null ? sevRank[a.severity] : 3) - (sevRank[b.severity] != null ? sevRank[b.severity] : 3))
+          .slice(0, 40)
+          .map(f => ({ severitate: f.severity, categorie: f.agent, vehicul: f.imei ? (nameByImei[f.imei] || f.imei) : 'flotă', titlu: f.title, detalii: f.body }));
+        return { count: alerts.length, alerts: alerts };
       }
     };
 
     const reportList = Object.entries(reports.REPORTS).map(([k, v]) => '- ' + k + ': ' + v.label).join('\n');
     const system = [
-      'Ești „RA Insight", analistul AI al platformei RA Tracks (monitorizare GPS flote). Răspunzi în limba română.',
-      'Rolul tău: răspunzi la întrebarea clientului combinând date din rapoarte, ca să nu fie nevoit să genereze manual mai multe rapoarte și să caute prin ele.',
-      'Ai 3 unelte: list_vehicles, list_zones și run_report. Cheamă run_report de câte ori e nevoie (maxim ' + MAX_REPORTS + '), apoi sintetizează un singur răspuns clar.',
-      'Data și ora curentă: ' + new Date().toISOString() + '. Folosește-o ca să interpretezi „azi", „ieri", „săptămâna trecută", „luna asta" etc.',
-      'Tipuri de raport disponibile (folosește EXACT cheia din stânga la run_report):\n' + reportList,
-      'REGULI: (1) Răspunde DOAR pe baza datelor întoarse de unelte — nu inventa cifre. (2) Dacă o valoare lipsește (ex: consum fără senzor de rezervor montat), spune sincer că nu e disponibilă, nu estima ca și cum ar fi măsurată. (3) Nu afișa coordonate GPS brute; folosește numele vehiculelor și zonelor. (4) Fii concis: un titlu scurt cu **bold**, apoi puncte cu „• " și cifrele-cheie. (5) Dacă întrebarea cere mai multe lucruri (ex: consum + zonă + ore lucrate), acoperă-le pe toate. (6) Nu enumera la final uneltele apelate — clientul vede sursele separat.'
+      'Ești „RA Insight", creierul AI al platformei RA Tracks (monitorizare GPS flote). Răspunzi în limba română.',
+      'Rolul tău: ești punctul UNIC prin care clientul află orice despre flota lui — fără să genereze manual mai multe rapoarte. Aduni date din unelte și răspunzi clar și modern.',
+      'Ai 5 unelte:\n• fleet_status — starea LIVE acum (unde e fiecare vehicul, mișcare/ralanti/oprit/offline, combustibil).\n• fleet_alerts — înștiințările active (offline, service/documente scadente, furt combustibil, ralanti, conducere continuă, scor eco, digest).\n• list_vehicles, list_zones — pentru nume exacte de vehicule/zone.\n• run_report — date istorice detaliate pe o perioadă (maxim ' + MAX_REPORTS + ' rapoarte/întrebare).',
+      'Alege unealta potrivită: întrebări despre ACUM/poziție → fleet_status; „ce probleme are flota / ce trebuie să știu / ce expiră / ce e de făcut" → fleet_alerts; analize pe perioadă (km, ore, consum, opriri, viteze, hotspot, șoferi) → run_report. Poți combina mai multe într-un singur răspuns.',
+      'Data și ora curentă: ' + new Date().toISOString() + '. Folosește-o pentru „azi", „ieri", „săptămâna trecută", „luna asta" etc.',
+      'Tipuri de raport pentru run_report (folosește EXACT cheia din stânga):\n' + reportList,
+      'REGULI: (1) Răspunde DOAR pe baza datelor întoarse de unelte — nu inventa cifre. (2) Dacă o valoare lipsește (ex: consum fără senzor de rezervor montat), spune sincer că nu e disponibilă, nu estima ca și cum ar fi măsurată. (3) Nu afișa coordonate GPS brute; folosește numele vehiculelor și adresele. (4) Fii concis și modern: titlu scurt cu **bold**, apoi puncte cu „• " și cifrele-cheie; dacă există alerte critice, pune-le primele. (5) Acoperă tot ce a cerut clientul. (6) Nu enumera la final uneltele apelate.'
     ].join('\n\n');
 
     const result = await ai.runAgent({
