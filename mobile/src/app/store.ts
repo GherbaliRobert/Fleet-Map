@@ -19,7 +19,16 @@ export async function toggleTheme() {
 export const token = signal<string | null>(null);
 export const me = signal<Me | null>(null);
 export const authReady = signal(false);
-export const vehicles = signal<Position[]>([]);
+export const livePos = signal<Position[]>([]);  // feed live (din /api/live + WS) — doar vehiculele care transmit
+export const roster = signal<Position[]>([]);   // TOATE vehiculele înregistrate (din /api/devices) → apar și cele fără transmisie
+// Flota afișată = pozițiile live + vehiculele înregistrate care NU sunt în live (marcate „fără transmisie")
+export const vehicles = computed<Position[]>(() => {
+  const live = livePos.value, r = roster.value;
+  if (!r.length) return live;
+  const liveSet = new Set(live.map((v) => v.imei));
+  const offline = r.filter((d) => !liveSet.has(d.imei));
+  return offline.length ? live.concat(offline) : live;
+});
 export const vehiclesLoading = signal(false);
 export const unread = signal(0);
 export const toastMsg = signal<{ text: string; err?: boolean } | null>(null);
@@ -62,13 +71,26 @@ export async function login(username: string, password: string) {
 
 export async function logout() {
   stopLive();
-  token.value = null; me.value = null; vehicles.value = []; unread.value = 0;
+  token.value = null; me.value = null; livePos.value = []; roster.value = []; unread.value = 0;
   setAuthToken(null);
   await clearToken();
 }
 
 export async function refreshVehicles() {
-  try { vehicles.value = await Api.live(); } catch { /* păstrează ultimele */ }
+  try { livePos.value = await Api.live(); } catch { /* păstrează ultimele */ }
+}
+// Roster complet (toate vehiculele înregistrate) — ca să apară și cele care nu transmit (super: toate companiile)
+export async function refreshRoster() {
+  try {
+    const devs = await Api.devices();
+    roster.value = (Array.isArray(devs) ? devs : [])
+      .filter((d: any) => d && d.imei && d.status !== 'archived')
+      .map((d: any) => ({
+        imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type, company_name: d.company_name,
+        latitude: d.latitude, longitude: d.longitude, speed: d.speed, angle: d.angle,
+        timestamp: d.last_position_time || null, io: d.io_data || {},
+      } as Position));
+  } catch { /* păstrează ce e */ }
 }
 export async function refreshUnread() {
   try { const r = await Api.unreadCount(); unread.value = (r && (r as any).count) || 0; } catch { /* ignore */ }
@@ -97,24 +119,24 @@ let livePollMs = 7000;
 
 function upsertVehicle(pos: Position) {
   if (!pos || !pos.imei) return;
-  const arr = vehicles.value;
+  const arr = livePos.value;
   const i = arr.findIndex((v) => v.imei === pos.imei);
-  if (i >= 0) { const next = arr.slice(); next[i] = { ...arr[i], ...pos }; vehicles.value = next; }
-  else { vehicles.value = [...arr, pos]; }
+  if (i >= 0) { const next = arr.slice(); next[i] = { ...arr[i], ...pos }; livePos.value = next; }
+  else { livePos.value = [...arr, pos]; }
 }
 function applyWs(msg: any) {
   if (!msg || !msg.type) return;
-  if (msg.type === 'init' && Array.isArray(msg.data)) { vehicles.value = msg.data; vehiclesLoading.value = false; return; }
+  if (msg.type === 'init' && Array.isArray(msg.data)) { livePos.value = msg.data; vehiclesLoading.value = false; return; }
   if (msg.type === 'position') { upsertVehicle(msg.data); return; }
   if (msg.type === 'positions' && Array.isArray(msg.data)) {
-    const map = new Map(vehicles.value.map((v) => [v.imei, v] as [string, Position]));
+    const map = new Map(livePos.value.map((v) => [v.imei, v] as [string, Position]));
     for (const p of msg.data) if (p && p.imei) map.set(p.imei, { ...(map.get(p.imei) || {}), ...p } as Position);
-    vehicles.value = Array.from(map.values());
+    livePos.value = Array.from(map.values());
     return;
   }
   if (msg.type === 'stale' && msg.data && msg.data.imei) { upsertVehicle({ imei: msg.data.imei, speed: 0, stale: true } as any); return; }
   if (msg.type === 'disconnect' && msg.data && msg.data.imei && msg.data.reason === 'purged') {
-    vehicles.value = vehicles.value.filter((v) => v.imei !== msg.data.imei); return;
+    livePos.value = livePos.value.filter((v) => v.imei !== msg.data.imei); return;
   }
 }
 function connectWs() {
@@ -139,6 +161,7 @@ function connectWs() {
 // Pornește fluxul live: polling imediat (date instant + fallback) + încearcă WS (preia când e gata).
 export function startLive(ms = 7000) {
   livePollMs = ms;
+  refreshRoster(); // încarcă rosterul (toate vehiculele înregistrate) la pornire/foreground
   startPolling(ms);
   if (!wsWanted) { wsWanted = true; connectWs(); }
 }

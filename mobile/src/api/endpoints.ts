@@ -35,6 +35,7 @@ export const Api = {
     api<{ token: string } & Me>('/api/mobile/login', { method: 'POST', auth: false, body: { username, password, device } }),
   me: () => api<Me>('/api/me'),
   live: () => api<Position[]>('/api/live'),
+  devices: () => api<any[]>('/api/devices'), // roster: toate vehiculele înregistrate (apar și cele fără transmisie)
   deviceFull: (imei: string) => api<DeviceFull>(`/api/devices/${encodeURIComponent(imei)}/full`),
   dailyStats: (imei: string) => api<DailyStats>(`/api/stats/${encodeURIComponent(imei)}`),
   ioMappings: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/io-mappings`),
