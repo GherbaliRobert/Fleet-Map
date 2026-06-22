@@ -177,6 +177,13 @@
     <div id="map-container">
       <div id="map"></div>
 
+      <!-- Pill traseu activ -->
+      <div id="route-active-pill">
+        <i class="fas fa-route" style="color:var(--accent);font-size:12px;flex-shrink:0;"></i>
+        <span id="route-pill-label"></span>
+        <button onclick="clearActiveRoute()" aria-label="Închide ruta"><i class="fas fa-times"></i></button>
+      </div>
+
       <!-- History Panel (floating on map) -->
       <div id="history-panel">
         <div class="history-header">
@@ -5308,9 +5315,20 @@ const pozitii = await r.json();</code></pre>
       try {
         if (historyLine) { map.removeLayer(historyLine); historyLine = null; }
         if (historyMarkers && historyMarkers.length) { historyMarkers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} }); historyMarkers = []; }
+        _routePillHide();
       } catch (e) {}
       setTimeout(() => { if (map) map.invalidateSize(); }, 350);
     }
+    function _routePillHide() { var p = document.getElementById('route-active-pill'); if (p) p.style.display = 'none'; }
+    function clearActiveRoute() {
+      if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
+      historyMarkers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
+      historyMarkers = [];
+      document.querySelectorAll('.route-card').forEach(function (c) { c.classList.remove('selected'); });
+      document.querySelectorAll('#report-routes-table tbody tr').forEach(function (tr) { tr.classList.remove('route-selected'); });
+      _routePillHide();
+    }
+
     // Colapsează fișa la „peek" (doar header) — folosit la tap pe hartă; tap pe header → revine.
     // Când e peek, re-încadrează ruta (dacă există) ca să folosească tot ecranul.
     function setDetailPeek(on) {
@@ -6095,6 +6113,7 @@ const pozitii = await r.json();</code></pre>
       if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
       historyMarkers.forEach(m => { try { map.removeLayer(m); } catch (e) {} });
       historyMarkers = [];
+      _routePillHide();
     }
 
     // Culoare segment în funcție de viteză vs. limită (verde/portocaliu/roșu)
@@ -7871,6 +7890,7 @@ const pozitii = await r.json();</code></pre>
       if (historyLine) { map.removeLayer(historyLine); historyLine = null; }
       historyMarkers.forEach(function(m) { map.removeLayer(m); });
       historyMarkers = [];
+      _routePillHide();
       reportImei = null;
       reportData = null;
     }
@@ -8326,6 +8346,16 @@ const pozitii = await r.json();</code></pre>
 
         // Focus pe TOT traseul (mobil-aware: lasă jos loc pentru fișă, nu mai e padding simetric)
         fitRouteToMap(points);
+
+        // Afișează pill-ul cu vehiculul și intervalul orar al rutei active
+        var _pillEl = document.getElementById('route-active-pill');
+        var _pillLbl = document.getElementById('route-pill-label');
+        if (_pillEl && _pillLbl) {
+          var _t1 = new Date(route.startTime).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+          var _t2 = new Date(route.endTime).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+          _pillLbl.textContent = vehicleLabel(imei) + ' · ' + _t1 + ' – ' + _t2;
+          _pillEl.style.display = 'flex';
+        }
         // NU mai deschidem panoul „Istoric traseu" peste fișă (evită dublul bottom-sheet).
         // Tabul „Rute" din fișă rămâne deschis; ruta apare doar pe hartă (intenția din tooltip: „vezi ruta pe hartă").
         // FAB-ul e oricum ascuns cât fișa e deschisă (body.detail-open).
@@ -8392,6 +8422,10 @@ const pozitii = await r.json();</code></pre>
 
   <!-- ═══ Extensii: AI asistent + Manager Companii (super-admin) — bloc auto-conținut ═══ -->
   <style>
+    #route-active-pill { display: none; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 900; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 24px; padding: 7px 8px 7px 14px; align-items: center; gap: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.3); font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; max-width: calc(100vw - 120px); }
+    #route-pill-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #route-active-pill > button { background: rgba(128,128,128,.15); border: none; border-radius: 50%; width: 26px; height: 26px; min-width: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); flex-shrink: 0; transition: background .15s, color .15s; }
+    #route-active-pill > button:hover, #route-active-pill > button:active { background: #ef4444; color: #fff; }
     #rax-fabs { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 1200; display: none; flex-direction: column; gap: 10px; align-items: flex-end; }
     .rax-fab { -webkit-appearance: none; appearance: none; border: none; cursor: pointer; height: 50px; min-width: 50px; padding: 0 16px; border-radius: 26px; background: var(--accent); color: #06210F; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
     .rax-fab.secondary { background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border); }
