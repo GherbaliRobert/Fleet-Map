@@ -1374,9 +1374,13 @@ const pozitii = await r.json();</code></pre>
             <select id="drv-co-filter" onchange="renderDriversList()" style="font-family:inherit;padding:5px 10px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);"></select>
           </div>
           <div id="admin-drivers-list"></div>
-          <div class="admin-add" style="grid-template-columns:repeat(2,1fr);">
+          <div class="admin-add" id="drv-form" style="grid-template-columns:repeat(2,1fr);">
             <input type="hidden" id="drv-id">
             <input type="hidden" id="drv-photo-data">
+            <div id="drv-form-title" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+              <i class="fas fa-user-plus" id="drv-form-icon" style="color:var(--accent);"></i>
+              <span id="drv-form-title-text">Adaugă șofer nou</span>
+            </div>
             <div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:4px 0;">
               <div style="position:relative;flex-shrink:0;">
                 <img id="drv-photo-preview" src="" alt="" style="display:none;width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">
@@ -1399,7 +1403,7 @@ const pozitii = await r.json();</code></pre>
             <label class="super-only"><span>Companie *</span><select id="drv-company" style="font-family:inherit;padding:6px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);width:100%;"></select></label>
             <div style="display:flex;align-items:flex-end;gap:6px;">
               <button class="btn-sm btn-primary" onclick="saveDriver()" style="flex:1;"><i class="fas fa-save"></i> <span id="drv-btn">Adaugă</span></button>
-              <button class="btn-sm" onclick="resetDriverForm()" title="Golește">↺</button>
+              <button class="btn-sm" id="drv-reset-btn" onclick="resetDriverForm()" title="Golește">↺</button>
             </div>
           </div>
         </div>
@@ -3009,6 +3013,18 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('drv-photo').value = '';
       drvPhotoSet(d.photo_b64 || '');
       document.getElementById('drv-btn').textContent = 'Salvează';
+      // Mod editare: titlu + indicator vizual + scroll la formular
+      var _ft = document.getElementById('drv-form-title-text'); if (_ft) _ft.textContent = 'Editezi: ' + (d.name || '');
+      var _fi = document.getElementById('drv-form-icon'); if (_fi) _fi.className = 'fas fa-user-pen';
+      var _form = document.getElementById('drv-form');
+      if (_form) {
+        _form.style.border = '1px solid var(--accent)';
+        _form.style.borderRadius = '10px';
+        _form.style.padding = '14px';
+        _form.style.background = 'rgba(63,224,125,0.06)';
+        _form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      var _rst = document.getElementById('drv-reset-btn'); if (_rst) _rst.title = 'Anulează editarea';
     }
     function resetDriverForm() {
       ['drv-id','drv-name','drv-phone','drv-email','drv-license','drv-expiry'].forEach(i => document.getElementById(i).value = '');
@@ -3016,6 +3032,12 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('drv-photo').value = '';
       drvPhotoSet('');
       document.getElementById('drv-btn').textContent = 'Adaugă';
+      // Revine la mod adăugare
+      var _ft = document.getElementById('drv-form-title-text'); if (_ft) _ft.textContent = 'Adaugă șofer nou';
+      var _fi = document.getElementById('drv-form-icon'); if (_fi) _fi.className = 'fas fa-user-plus';
+      var _form = document.getElementById('drv-form');
+      if (_form) { _form.style.border = ''; _form.style.borderRadius = ''; _form.style.padding = ''; _form.style.background = ''; }
+      var _rst = document.getElementById('drv-reset-btn'); if (_rst) _rst.title = 'Golește';
     }
     // Redimensionează imaginea client-side (max 400px, JPEG ~0.82) → poză mică în DB, încărcare rapidă.
     function drvPhotoPick(input) {
