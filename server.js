@@ -730,7 +730,7 @@ app.use((req, res, next) => {
 // Fără dependențe noi (model loginAttempts). Protejează costul AI + abuzul de date la scară.
 const rlBuckets = new Map(); // key -> { count, resetAt }
 const RL_GEN = parseInt(process.env.RATE_LIMIT_GEN) || 1200; // ~20 req/s/utilizator (generos, doar anti-abuz/DoS)
-const RL_AI = parseInt(process.env.RATE_LIMIT_AI) || 20;     // cost AI
+const RL_AI = parseInt(process.env.RATE_LIMIT_AI) || 40;     // cost AI (chat RA Insight; plafonul real de cost e limita lunară pe companie)
 app.use((req, res, next) => {
   if (process.env.RATE_LIMIT_ENABLED === 'false') return next(); // kill-switch fără redeploy
   const p = req.path || '';
@@ -746,8 +746,11 @@ app.use((req, res, next) => {
   b.count++;
   if (rlBuckets.size > 5000) { for (const [k, v] of rlBuckets) if (now > v.resetAt) rlBuckets.delete(k); } // prune oportunist
   if (b.count > max) {
-    res.setHeader('Retry-After', Math.ceil((b.resetAt - now) / 1000));
-    return res.status(429).json({ error: 'Prea multe cereri. Reîncearcă în scurt timp.' });
+    const retry = Math.ceil((b.resetAt - now) / 1000);
+    res.setHeader('Retry-After', retry);
+    return res.status(429).json({ error: isAi
+      ? ('Prea multe întrebări AI într-un minut. Mai așteaptă ~' + retry + 's și reîncearcă. (Întrebările predefinite merg oricum — sunt fără AI.)')
+      : 'Prea multe cereri. Reîncearcă în scurt timp.' });
   }
   next();
 });
