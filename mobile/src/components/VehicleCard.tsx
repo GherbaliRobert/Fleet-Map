@@ -5,6 +5,8 @@ import { Icon } from './Icon';
 
 export function VehicleCard({ v, offlineMin, onClick }: { v: Position; offlineMin: number; onClick: () => void }) {
   const s = statusOf(v, offlineMin);
+  // fără date de peste 3 zile → semn de exclamare lângă vehicul
+  const noData3d = !v.timestamp || (Date.now() - new Date(v.timestamp).getTime()) > 3 * 86400000;
   const sub =
     s.status === 'moving' ? `${s.label} · ${v.speed || 0} km/h`
     : s.status === 'offline' ? `Fără transmisie · ${fmtAgo(v.timestamp)}`
@@ -16,6 +18,7 @@ export function VehicleCard({ v, offlineMin, onClick }: { v: Position; offlineMi
         <div class="vcard-name">
           {v.name || v.imei}
           {v.plate ? <span class="vcard-plate">{v.plate}</span> : null}
+          {noData3d ? <Icon name="alert" size={14} color="#f59e0b" style="flex:0 0 auto" /> : null}
         </div>
         <div class="vcard-sub">{sub}</div>
       </div>
