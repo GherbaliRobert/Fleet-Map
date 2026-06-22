@@ -1472,9 +1472,10 @@ async function getUsers(companyId) {
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
     SELECT u.id, u.username, u.role, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id,
+      c.name AS company_name,
       (SELECT COUNT(*) FROM user_device_access WHERE user_id = u.id) AS device_count,
       (SELECT COUNT(*) FROM user_group_access WHERE user_id = u.id) AS group_count
-    FROM users u ${where} ORDER BY u.created_at
+    FROM users u LEFT JOIN companies c ON c.id = u.company_id ${where} ORDER BY u.created_at
   `, params);
   return result.rows;
 }
