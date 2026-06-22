@@ -8988,6 +8988,14 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
+  <!-- Configurare per-companie (super-admin): plan + module + agenți AI + limită AI într-un singur loc -->
+  <div class="rax-overlay" id="rax-cfg-overlay">
+    <div class="rax-card">
+      <div class="rax-head"><h3><i class="fas fa-sliders" style="color:var(--accent)"></i> <span id="rax-cfg-title">Configurare companie</span></h3><button class="rax-x" onclick="document.getElementById('rax-cfg-overlay').classList.remove('open'); if(window.raxLoadCompanies) raxLoadCompanies();">&times;</button></div>
+      <div class="rax-body" id="rax-cfg-body"><div class="rax-co-meta">Se încarcă…</div></div>
+    </div>
+  </div>
+
   <script>
   (function () {
     var me = null, aiEnabled = false, aiHistory = [], companiesCache = [];
@@ -9715,6 +9723,102 @@ const pozitii = await r.json();</code></pre>
         var c = (companiesCache || []).find(function (x) { return x.id === id; }); if (c) c.features = j.features;
       } catch (e) { alert('Eroare: ' + e.message); raxLoadCompanies(); }
     };
+
+    // ─── Configurare per-companie (super-admin): module + agenți AI + limită AI într-un singur ecran ───
+    var _raxCfg = null;
+    var _RAX_MODS = [
+      ['agents', 'Agenți AI', 'Master — permite rularea agenților AI de mai jos'],
+      ['ai_assistant', 'Asistent AI', 'Chat AI + RA Insight în aplicație'],
+      ['etransport', 'e-Transport', 'Modul ANAF e-Transport (coduri UIT)'],
+      ['tahograf', 'Tahograf', 'Analiză fișiere tahograf (.ddd)']
+    ];
+    var _RAX_AGS = [
+      ['watch', 'RA Watch', 'Vehicule offline + scădere combustibil + ralanti prelungit'],
+      ['dispatch', 'RA Dispatch', 'Alocare curse — vehicul disponibil aproape de destinație'],
+      ['care', 'RA Care', 'Mentenanță — revizii, ITP, RCA scadente'],
+      ['optimize', 'RA Optimize', 'Eco-driving — scor șofer, frânări/accelerări bruște'],
+      ['compliance', 'RA Compliance', 'Ore de condus (estimativ, Reg. CE 561/2006)'],
+      ['client', 'RA Client', 'Raport zilnic automat — sinteză flotă']
+    ];
+    window.raxOpenCompanyConfig = async function (id) {
+      var ov = document.getElementById('rax-cfg-overlay'); if (!ov) return;
+      var body = document.getElementById('rax-cfg-body');
+      document.getElementById('rax-cfg-title').textContent = 'Configurare companie';
+      if (body) body.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      ov.classList.add('open');
+      var cfg;
+      try { cfg = await fetch('/api/companies/' + id + '/settings', { credentials: 'same-origin' }).then(function (x) { return x.json(); }); }
+      catch (e) { if (body) body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      if (!cfg || cfg.error) { if (body) body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">' + esc((cfg && cfg.error) || 'Eroare') + '</div>'; return; }
+      document.getElementById('rax-cfg-title').textContent = 'Configurare: ' + (cfg.name || ('#' + id));
+      _raxCfg = {
+        id: id, feats: Object.assign({}, cfg.features || {}),
+        agents: (cfg.enabled_agents != null ? cfg.enabled_agents.slice() : (cfg.plan_defaults || []).slice()),
+        plan: cfg.plan || 'start', aiLimit: (cfg.ai_monthly_limit != null ? cfg.ai_monthly_limit : '')
+      };
+      _raxRenderCfg();
+    };
+    function _raxRenderCfg() {
+      var s = _raxCfg; if (!s) return;
+      var body = document.getElementById('rax-cfg-body'); if (!body) return;
+      var SEC = 'margin:0 0 18px;', H = 'font-weight:700;font-size:13px;margin-bottom:6px;color:var(--text-primary);';
+      var ROW = 'display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;';
+      var CK = 'width:18px;height:18px;accent-color:var(--accent);cursor:pointer;margin-top:1px;flex:0 0 auto;';
+      var INP = 'box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;';
+      var html = '<div style="' + SEC + '"><div style="' + H + '">Plan / abonament</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-size:14px;font-weight:700;color:var(--accent);">' + esc(s.plan || 'start') + '</span>' +
+        '<button class="rax-btn" onclick="document.getElementById(\'rax-cfg-overlay\').classList.remove(\'open\'); if(window.raxSetPlan) raxSetPlan(' + s.id + ');"><i class="fas fa-tag"></i> Schimbă planul</button></div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Planul dă valorile implicite pentru module/agenți. Le poți suprascrie per companie mai jos.</div></div>';
+      html += '<div style="' + SEC + '"><div style="' + H + '">Module (acces funcții)</div>' +
+        _RAX_MODS.map(function (m) {
+          return '<label style="' + ROW + '"><input type="checkbox" ' + (s.feats[m[0]] ? 'checked' : '') + ' onchange="raxCfgToggleFeature(\'' + m[0] + '\',this.checked)" style="' + CK + '"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + m[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + m[2] + '</span></span></label>';
+        }).join('') + '</div>';
+      var agOff = !s.feats.agents;
+      html += '<div style="' + SEC + '"><div style="' + H + '">Agenți AI' + (agOff ? ' <span style="font-size:10px;color:var(--orange);font-weight:600;">(modul oprit → niciunul nu rulează)</span>' : '') + '</div>' +
+        _RAX_AGS.map(function (a) {
+          var on = s.agents.indexOf(a[0]) >= 0;
+          return '<label style="' + ROW + (agOff ? 'opacity:.5;' : '') + '"><input type="checkbox" ' + (on ? 'checked' : '') + (agOff ? ' disabled' : '') + ' onchange="raxCfgToggleAgent(\'' + a[0] + '\',this.checked)" style="' + CK + '"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + a[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + a[2] + '</span></span></label>';
+        }).join('') + '</div>';
+      html += '<div style="' + SEC + 'border-bottom:none;"><div style="' + H + '">Limită AI lunară (tokeni)</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;"><input type="number" id="rax-cfg-ailimit" value="' + (s.aiLimit === '' ? '' : s.aiLimit) + '" placeholder="gol = nelimitat" min="0" step="1000" style="flex:1;' + INP + '">' +
+        '<button class="rax-btn primary" onclick="raxCfgSaveAiLimit()"><i class="fas fa-check"></i> Salvează</button></div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Plafon tokeni AI / lună. Gol = nelimitat.</div></div>';
+      body.innerHTML = html;
+    }
+    window.raxCfgToggleFeature = async function (key, on) {
+      if (!_raxCfg) return;
+      _raxCfg.feats[key] = !!on;
+      try {
+        var b = { features: {} }; b.features[key] = !!on;
+        var j = await fetch('/api/companies/' + _raxCfg.id + '/features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(b) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        if (j.features) _raxCfg.feats = j.features;
+        (window.raxToast || function () {})('Modul ' + (on ? 'activat' : 'dezactivat'), 'success');
+        if (key === 'agents') _raxRenderCfg();
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
+    window.raxCfgToggleAgent = async function (key, on) {
+      if (!_raxCfg) return;
+      var arr = _raxCfg.agents.filter(function (k) { return k !== key; });
+      if (on) arr.push(key);
+      _raxCfg.agents = arr;
+      try {
+        var j = await fetch('/api/companies/' + _raxCfg.id + '/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ enabled_agents: arr }) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        (window.raxToast || function () {})('Agent ' + (on ? 'activat' : 'dezactivat'), 'success');
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
+    window.raxCfgSaveAiLimit = async function () {
+      if (!_raxCfg) return;
+      var v = (document.getElementById('rax-cfg-ailimit').value || '').trim();
+      var lim = v === '' ? null : Math.max(0, parseInt(v) || 0);
+      try {
+        var j = await fetch('/api/companies/' + _raxCfg.id + '/ai-limit', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ limit: lim }) }).then(function (r) { return r.json(); });
+        if (j.error) { alert(j.error); return; }
+        _raxCfg.aiLimit = (lim == null ? '' : lim);
+        (window.raxToast || function () {})(lim == null ? 'Limită AI: nelimitat' : 'Limită AI salvată', 'success');
+      } catch (e) { alert('Eroare: ' + e.message); }
+    };
     // Acces pe bază de plată — status + înregistrare plată + istoric (super-admin)
     function _raxAccessRow(c) {
       if (c.is_demo) return '';
@@ -9767,9 +9871,8 @@ const pozitii = await r.json();</code></pre>
         box.innerHTML = companiesCache.map(function (c) {
           return '<div class="rax-co-item"><h4>' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</h4>' +
             '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
-            _raxFeatureRow(c) +
             _raxAccessRow(c) +
-            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează</button><button class="rax-btn" onclick="raxSetPlan(' + c.id + ')"><i class="fas fa-tag"></i> Plan / abonament</button>' +
+            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn primary" onclick="raxOpenCompanyConfig(' + c.id + ')"><i class="fas fa-sliders"></i> Configurează</button><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează</button>' +
               (((c.device_count || 0) === 0 && (c.user_count || 0) === 0)
                 ? '<button class="rax-btn" style="border-color:var(--red);color:var(--red);" onclick="raxDeleteCompany(' + c.id + ')" title="Șterge compania (doar dacă e goală)"><i class="fas fa-trash"></i> Șterge</button>'
                 : '<span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;" title="Mută/șterge întâi vehiculele + utilizatorii">🔒 nu se poate șterge (are vehicule sau utilizatori)</span>') +
