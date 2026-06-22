@@ -1091,6 +1091,16 @@
       .aside-item { width: auto; padding: 7px 11px; font-size: 12px; }
       .admin-content { padding-left: 0; }
     }
+    .rax-co-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .rax-co-table th { text-align: left; padding: 8px 10px; color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .rax-co-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .rax-co-table tbody tr:hover td { background: var(--bg-dark); }
+    .rax-co-table th.num, .rax-co-table td.num { text-align: center; }
+    .rax-co-table td.num { font-weight: 700; }
+    .rax-co-actions-cell { display: flex; gap: 4px; }
+    .rax-ico-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; cursor: pointer; color: var(--text-primary); font-size: 12px; line-height: 1; }
+    .rax-ico-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .rax-ico-btn.danger { border-color: var(--red); color: var(--red); }
   </style>
   <div id="users-modal" class="modal-overlay">
     <div class="modal" style="width:1060px;max-width:97vw;max-height:92vh;display:flex;flex-direction:column;">
@@ -9008,6 +9018,7 @@ const pozitii = await r.json();</code></pre>
           <button class="rax-btn primary" style="margin-top:10px;" onclick="raxCreateCompany()"><i class="fas fa-plus"></i> Creează companie + admin</button>
           <div id="rax-co-msg" style="font-size:12px;margin-top:8px;"></div>
         </div>
+        <input class="rax-field" id="rax-co-search" placeholder="🔎 Caută companie (nume sau plan)…" oninput="if(window.raxRenderCompanies) raxRenderCompanies()" style="margin-bottom:10px;">
         <div id="rax-co-list"><div class="rax-co-meta">Se încarcă…</div></div>
         <div style="margin-top:14px;">
           <strong style="font-size:13px;">Vehicule neasignate</strong>
@@ -10058,19 +10069,47 @@ const pozitii = await r.json();</code></pre>
       var box = $('rax-co-list'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
         companiesCache = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (!Array.isArray(companiesCache) || !companiesCache.length) { box.innerHTML = '<div class="rax-co-meta">Nicio companie încă. Creează prima mai sus.</div>'; return; }
-        box.innerHTML = companiesCache.map(function (c) {
-          return '<div class="rax-co-item"><h4>' + esc(c.name) + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</h4>' +
-            '<div class="rax-co-meta">' + (c.device_count || 0) + ' vehicule · ' + (c.user_count || 0) + ' utilizatori · plan ' + esc(c.plan || 'standard') + '</div>' +
-            _raxAccessRow(c) +
-            (c.is_demo ? '' : '<div class="rax-co-actions"><button class="rax-btn primary" onclick="raxOpenCompanyConfig(' + c.id + ')"><i class="fas fa-sliders"></i> Configurează</button><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează</button>' +
-              (((c.device_count || 0) === 0 && (c.user_count || 0) === 0)
-                ? '<button class="rax-btn" style="border-color:var(--red);color:var(--red);" onclick="raxDeleteCompany(' + c.id + ')" title="Șterge compania (doar dacă e goală)"><i class="fas fa-trash"></i> Șterge</button>'
-                : '<span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;" title="Mută/șterge întâi vehiculele + utilizatorii">🔒 nu se poate șterge (are vehicule sau utilizatori)</span>') +
-              '</div>') + '</div>';
-        }).join('');
+        raxRenderCompanies();
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
+    function _raxAccessCell(c) {
+      var a = c.access || {};
+      var map = { unlimited: ['∞ nelimitat', 'var(--text-muted)'], active: ['● activ', 'var(--accent)'], grace: ['⚠ grație', '#f59e0b'], expired: ['🚫 expirat', 'var(--red)'] };
+      var m = map[a.status] || map.unlimited;
+      var until = a.access_until ? new Date(Number(a.access_until)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
+      return '<span style="color:' + m[1] + ';font-weight:600;white-space:nowrap;">' + m[0] + '</span>' + (until ? '<br><span style="font-size:10.5px;color:var(--text-muted);">până ' + until + '</span>' : '');
+    }
+    // Listă companii ca TABEL, cu search (nume/plan). Coloane: vehicule, utilizatori, plan, acces, plăți, acțiuni.
+    window.raxRenderCompanies = function () {
+      var box = $('rax-co-list'); if (!box) return;
+      var list = companiesCache || [];
+      if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Nicio companie încă. Creează prima mai sus.</div>'; return; }
+      var q = (($('rax-co-search') || {}).value || '').trim().toLowerCase();
+      var rows = q ? list.filter(function (c) { return (c.name || '').toLowerCase().indexOf(q) >= 0 || (c.plan || '').toLowerCase().indexOf(q) >= 0; }) : list;
+      var head = '<thead><tr><th>Companie</th><th class="num">Vehicule</th><th class="num">Utilizatori</th><th>Plan</th><th>Acces</th><th class="num">Plăți</th><th>Acțiuni</th></tr></thead>';
+      var body = rows.map(function (c) {
+        var canDel = (c.device_count || 0) === 0 && (c.user_count || 0) === 0;
+        var paid = Number(c.paid_total) || 0;
+        var actions = c.is_demo ? '<span style="font-size:11px;color:var(--text-muted);">—</span>' :
+          '<div class="rax-co-actions-cell">' +
+            '<button class="rax-ico-btn" title="Configurează (module, agenți AI, limită AI)" onclick="raxOpenCompanyConfig(' + c.id + ')"><i class="fas fa-sliders"></i></button>' +
+            '<button class="rax-ico-btn" title="Editează datele companiei" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i></button>' +
+            '<button class="rax-ico-btn" title="Înregistrează plată" onclick="raxRecordPayment(' + c.id + ')"><i class="fas fa-credit-card"></i></button>' +
+            '<button class="rax-ico-btn" title="Istoric plăți" onclick="raxShowPayments(' + c.id + ')"><i class="fas fa-clock-rotate-left"></i></button>' +
+            (canDel ? '<button class="rax-ico-btn danger" title="Șterge compania (e goală)" onclick="raxDeleteCompany(' + c.id + ')"><i class="fas fa-trash"></i></button>' : '') +
+          '</div>';
+        return '<tr>' +
+          '<td><strong>' + esc(c.name) + '</strong>' + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</td>' +
+          '<td class="num">' + (c.device_count || 0) + '</td>' +
+          '<td class="num">' + (c.user_count || 0) + '</td>' +
+          '<td>' + esc(c.plan || 'standard') + '</td>' +
+          '<td>' + (c.is_demo ? '<span style="color:var(--text-muted);">—</span>' : _raxAccessCell(c)) + '</td>' +
+          '<td class="num" title="' + paid.toLocaleString('ro-RO') + ' RON încasați">' + (c.payment_count || 0) + (paid ? '<br><span style="font-size:10px;color:var(--text-muted);font-weight:400;">' + paid.toLocaleString('ro-RO') + ' lei</span>' : '') + '</td>' +
+          '<td>' + actions + '</td></tr>';
+      }).join('');
+      box.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>' +
+        (rows.length ? '' : '<div class="rax-co-meta" style="padding:12px;">Nicio companie pentru „' + esc(q) + '".</div>');
+    };
     window.raxDeleteCompany = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
       var name = c.name || ('#' + id);
