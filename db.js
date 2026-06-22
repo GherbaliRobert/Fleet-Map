@@ -1136,6 +1136,18 @@ async function getArchivedImeis() {
   const r = await pool.query("SELECT imei FROM devices WHERE status = 'archived'");
   return r.rows.map(x => x.imei);
 }
+// Ștergere DEFINITIVĂ a unui vehicul + toate datele lui (ireversibil). Best-effort pe fiecare tabel
+// (un tabel inexistent/fără coloană imei nu blochează restul); rândul `devices` cară JSONB-urile
+// (io_mappings/fuel_sensors/last_can). Numele tabelelor sunt fixe în cod → fără injection.
+async function deleteDeviceCompletely(imei) {
+  const tables = ['positions', 'positions_archive', 'notifications', 'agent_findings', 'vehicle_documents',
+    'alerts', 'alert_history', 'trips', 'maintenance', 'user_device_access', 'tacho_files', 'etransport', 'report_schedules'];
+  for (const t of tables) {
+    try { await pool.query(`DELETE FROM ${t} WHERE imei = $1`, [imei]); } catch (e) { /* tabel/coloană inexistentă */ }
+  }
+  const r = await pool.query('DELETE FROM devices WHERE imei = $1', [imei]);
+  return r.rowCount || 0;
+}
 
 // Coloane editabile din fișa vehiculului (whitelist — previne injection / scriere pe coloane interzise)
 const VEHICLE_DETAIL_COLS = [
@@ -2357,7 +2369,7 @@ module.exports = {
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
-  updateDeviceInfo, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis,
+  updateDeviceInfo, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
   updateVehicleDetails,
   deviceExists,
   createDevice,

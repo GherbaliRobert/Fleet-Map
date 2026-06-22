@@ -2757,6 +2757,24 @@ app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async
   }
 });
 
+// API: ȘTERGERE DEFINITIVĂ vehicul (super-admin). DOAR vehicule ARHIVATE — garanție că nu se șterge
+// din greșeală un vehicul activ. Ireversibil: rândul + toate datele (poziții, istoric, notificări etc.).
+app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const { imei } = req.params;
+    const dev = await db.getDeviceFull(imei);
+    if (!dev) return res.status(404).json({ error: 'Vehicul inexistent' });
+    if (dev.status !== 'archived') return res.status(400).json({ error: 'Doar vehiculele ARHIVATE pot fi șterse definitiv. Arhivează-l întâi.' });
+    const deleted = await db.deleteDeviceCompletely(imei);
+    archivedImeis.delete(imei);
+    livePositions.delete(imei);
+    broadcastWs({ type: 'removed', data: { imei } });
+    auditReq(req, 'delete', 'device', imei, { name: dev.name, plate: dev.plate, hard: true });
+    console.log(`[ȘTERGERE] Vehicul ${imei} (${dev.plate || dev.name || '-'}) șters definitiv de ${(getAuth(req) || {}).username || '?'}`);
+    res.json({ ok: true, deleted });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Cache enrichment device pentru /api/live (truck config + calibrare combustibil) — date care se schimbă rar.
 // Fără cache, fiecare poll /api/live (frontend cheamă la ~0.5-2s) interoga TOATE device-urile = O(n) inutil.
 // TTL 20s + invalidare explicită la update-uri de config (vezi invalidateLiveEnrichCache).

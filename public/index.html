@@ -2244,12 +2244,14 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Pagina „Dispozitive arhivate" ───
+    var _archByImei = {}; // imei -> rândul arhivat (pentru confirmarea ștergerii definitive)
     async function loadArchivedDevices() {
       var host = document.getElementById('admin-tab-archived');
       if (!host) return;
       host.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px;">Se încarcă…</div>';
       var rows = [];
       try { var r = await fetch('/api/archived-devices'); rows = await r.json(); } catch (e) { host.innerHTML = '<div style="color:#ef4444;padding:12px;">Eroare la încărcare.</div>'; return; }
+      _archByImei = {}; if (Array.isArray(rows)) rows.forEach(function (d) { _archByImei[d.imei] = d; }); // pt confirmarea ștergerii
       if (!Array.isArray(rows) || !rows.length) {
         host.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:36px 12px;"><i class="fas fa-box-open" style="font-size:34px;opacity:.35;"></i>'
           + '<div style="margin-top:12px;font-weight:600;">Niciun dispozitiv arhivat</div>'
@@ -2270,6 +2272,7 @@ const pozitii = await r.json();</code></pre>
           + '<div class="arch-actions">'
           + '<button class="btn-sm" onclick="archViewHistory(\'' + _ssEsc(d.imei) + '\')" title="Vezi traseul istoric"><i class="fas fa-route"></i> Istoric</button>'
           + '<button class="btn-sm btn-primary" onclick="archRestore(\'' + _ssEsc(d.imei) + '\',this)" title="Reactivează dispozitivul"><i class="fas fa-undo"></i> Restaurează</button>'
+          + '<button class="btn-sm" style="background:var(--red);border-color:var(--red);color:#fff;" onclick="archDelete(\'' + _ssEsc(d.imei) + '\',this)" title="Șterge definitiv din baza de date (ireversibil)"><i class="fas fa-trash"></i> Șterge</button>'
           + '</div></div>';
       });
       html += '</div>';
@@ -2288,6 +2291,30 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { alert('Eroare la restaurare.'); if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-undo"></i> Restaurează'; } }
     }
     window.archRestore = archRestore;
+
+    // Ștergere DEFINITIVĂ din baza de date (super-admin, doar arhivate). Ireversibilă → dublă confirmare:
+    // confirm() + tastarea exactă a numărului de înmatriculare (sau IMEI dacă nu are număr).
+    async function archDelete(imei, btn) {
+      var d = _archByImei[imei] || {};
+      var plate = (d.plate || '').trim();
+      var label = d.name || plate || imei;
+      var cnt = (Number(d.archived_positions) || 0).toLocaleString('ro-RO');
+      if (!confirm('⚠️ ȘTERGERE DEFINITIVĂ\n\n' + label + (plate ? ' (' + plate + ')' : '') + '\n' + cnt + ' poziții + tot istoricul vor fi ȘTERSE PERMANENT din baza de date.\n\nNU se poate anula. Continui?')) return;
+      var need = plate || imei;
+      var typed = prompt('Pentru confirmare, scrie exact ' + (plate ? 'numărul de înmatriculare:' : 'IMEI-ul:') + '\n\n' + need);
+      if (typed == null) return;
+      if (typed.trim().toUpperCase() !== need.toUpperCase()) { alert('Nu corespunde („' + typed + '" ≠ „' + need + '"). Ștergere anulată.'); return; }
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+      try {
+        var r = await fetch('/api/devices/' + encodeURIComponent(imei), { method: 'DELETE', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(j.error || 'Eroare la ștergere');
+        if (typeof removeVehicleFromMap === 'function') removeVehicleFromMap(imei);
+        await loadArchivedDevices();
+        if (window.loadAdminDash) loadAdminDash();
+      } catch (e) { alert('Eroare: ' + e.message); if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Șterge'; } }
+    }
+    window.archDelete = archDelete;
 
     function archViewHistory(imei) {
       closeUsersModal();
