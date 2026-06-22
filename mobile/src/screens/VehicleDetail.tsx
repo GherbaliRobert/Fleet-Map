@@ -57,6 +57,8 @@ export function VehicleDetail() {
   useEffect(() => {
     loadFull();
     Api.dailyStats(imei).then(setDaily).catch(() => {});
+    // Senzori: încarcă din start ca să ascundem butonul dacă vehiculul N-ARE senzori configurați
+    Api.fuelSensors(imei).then((r) => setSensors(Array.isArray(r) ? r : (r?.sensors || []))).catch(() => setSensors([]));
   }, [imei]);
 
   function openEdit() {
@@ -150,8 +152,8 @@ export function VehicleDetail() {
           <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/route`)}><Icon name="route" size={18} class="ic" /> Vezi traseu</button>
           <button class="d-act" onClick={() => loc.route(`/reports?imei=${encodeURIComponent(imei)}`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>
           <button class="d-act" onClick={() => setSheet('can')}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
-          <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>
-          <button class="d-act" disabled={!me.value?.features?.tahograf} onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>
+          {sensors && sensors.length > 0 && <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>}
+          {me.value?.features?.tahograf && <button class="d-act" onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>}
           <button class="d-act" disabled={!ll} onClick={() => setNavOpen((o) => !o)}><Icon name="navigate" size={18} class="ic" /> Navighează</button>
           {navOpen && ll && (
             <div class="d-nav">
