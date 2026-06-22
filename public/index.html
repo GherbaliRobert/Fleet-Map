@@ -3653,10 +3653,12 @@ const pozitii = await r.json();</code></pre>
     function enableDrawPlacement(mode) {
       map.getContainer().style.cursor = 'crosshair';
       try { map.doubleClickZoom.disable(); } catch (e) {}
-      if (mode === 'freehand') { enableFreehand(); setDrawMin(true); return; }
+      // Compactăm bara DOAR pe mobil (acolo acoperea harta). Pe desktop toate câmpurile (nume/descriere/culoare) rămân vizibile pentru orice unealtă.
+      const compact = window.innerWidth <= 820;
+      if (mode === 'freehand') { enableFreehand(); if (compact) setDrawMin(true); return; }
       map.on('click', mode === 'circle' ? onCircleClick : onPolyClick);
       if (mode === 'polygon' || mode === 'corridor') map.on('dblclick', drawFinishPoly);
-      setDrawMin(true); // în timpul plasării punctelor: bară compactă → se vede harta
+      if (compact) setDrawMin(true); // în timpul plasării punctelor: bară compactă → se vede harta
     }
     // ─── Desen liber (pix): ține apăsat și trage → contur, închis automat într-un poligon ───
     let fh = { active: false, points: [], lastPt: null, preview: null };
