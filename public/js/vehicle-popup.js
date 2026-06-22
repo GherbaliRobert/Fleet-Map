@@ -43,7 +43,7 @@
   function durStat(d, f) {
     if (d && d.speed > 0) return '<span style="color:var(--green)">în mișcare</span>';
     if (!f) return '<span style="color:var(--text-muted)">…</span>';
-    if (!f.last_moved_at) return 'de peste 30 zile';
+    if (!f.last_moved_at) return 'de peste 6 luni';
     return fmtDur(Date.now() - new Date(f.last_moved_at).getTime());
   }
   function engOn(d) { return !!(d && d.io && (d.io.ignition === 1 || d.io.ignition === true)); }
@@ -52,7 +52,7 @@
     if (!f) return '<span style="color:var(--text-muted)">…</span>';
     // pornit de = de la ultima oprire (ignition_off_at) · oprit de = de la ultima pornire (ignition_on_at)
     var anchor = engOn(d) ? f.ignition_off_at : f.ignition_on_at;
-    if (!anchor) return 'de peste 30 zile';
+    if (!anchor) return 'de peste 6 luni';
     return fmtDur(Date.now() - new Date(anchor).getTime());
   }
   function renderDur(imei) {

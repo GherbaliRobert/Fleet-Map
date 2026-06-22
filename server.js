@@ -2861,13 +2861,16 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const device = await db.getDeviceFull(req.params.imei);
     if (!device) return res.status(404).json({ error: 'Device not found' });
-    // Momente de referință pentru „în staționare de" / „motor oprit de" (calcul eficient pe server, ultimele 30 zile)
+    // Momente de referință pentru „în staționare de" / „motor oprit de". Fereastra acoperă retenția de
+    // poziții (implicit 180 zile) ca să arate durata REALĂ chiar dacă vehiculul stă de peste o lună.
+    // Configurabil prin STAT_LOOKBACK_DAYS. Apel rar (doar la deschiderea fișei) → cost acceptabil.
+    const STAT_DAYS = Math.min(Math.max(parseInt(process.env.STAT_LOOKBACK_DAYS) || 180, 1), 730);
     try {
       const sd = await db.pool.query(
         "SELECT MAX(CASE WHEN speed > 3 THEN timestamp END) AS last_moved_at, " +
         "MAX(CASE WHEN (io_data->>'ignition') IN ('1','true') THEN timestamp END) AS ignition_on_at, " +
         "MAX(CASE WHEN (io_data->>'ignition') IN ('0','false') THEN timestamp END) AS ignition_off_at " +
-        "FROM positions WHERE imei = $1 AND timestamp > NOW() - INTERVAL '30 days'",
+        "FROM positions WHERE imei = $1 AND timestamp > NOW() - INTERVAL '" + STAT_DAYS + " days'",
         [req.params.imei]
       );
       if (sd.rows && sd.rows[0]) { device.last_moved_at = sd.rows[0].last_moved_at; device.ignition_on_at = sd.rows[0].ignition_on_at; device.ignition_off_at = sd.rows[0].ignition_off_at; }
