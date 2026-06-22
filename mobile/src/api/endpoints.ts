@@ -101,6 +101,7 @@ export const Api = {
   runReportSchedule: (id: number) => api(`/api/report-schedules/${id}/run`, { method: 'POST', body: {} }),
   aiStatus: () => api<{ enabled: boolean; model?: string }>('/api/ai/status'),
   aiChat: (message: string, history?: { role: string; content: string }[]) => api<{ reply: string; source?: string; disabled?: boolean; limited?: boolean }>('/api/ai/chat', { method: 'POST', body: { message, history } }),
+  reportsAgent: (message: string) => api<{ reply?: string; disabled?: boolean; limited?: boolean }>('/api/ai/reports-agent', { method: 'POST', body: { message } }), // RA Insight (agent analitic peste rapoarte)
   reportTypes: () => api<{ categories: { key: string; label: string }[]; reports: ReportTypeInfo[] }>('/api/reports'),
   runReport: (type: string, from: string, to: string, imeis?: string[]) => {
     const e = encodeURIComponent;

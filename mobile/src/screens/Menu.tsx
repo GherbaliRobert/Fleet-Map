@@ -51,6 +51,7 @@ export function Menu() {
         {perms.viewAll && item('calendar', 'Raport săptămânal', () => loc.route('/weekly'))}
         {perms.viewReports && item('clock', 'Rapoarte programate', () => loc.route('/report-schedules'))}
         {u?.features?.ai_assistant && item('robot', 'Asistent AI', () => loc.route('/ai'))}
+        {perms.viewReports && u?.features?.ai_assistant && item('sparkles', 'RA Insight', () => loc.route('/insight'))}
 
         <div class="mn-sec">Module</div>
         {u?.features?.etransport
