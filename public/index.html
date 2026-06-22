@@ -1072,49 +1072,72 @@
   </style>
 
   <!-- Users Modal -->
+  <style>
+    .admin-shell { gap: 0; }
+    .admin-side { width: 210px; flex: 0 0 210px; overflow-y: auto; border-right: 1px solid var(--border); padding: 2px 10px 8px 0; }
+    .aside-grp { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); margin: 15px 0 4px 8px; }
+    .aside-grp:first-child { margin-top: 2px; }
+    .aside-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: none; color: var(--text-primary); padding: 9px 12px; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; }
+    .aside-item i { width: 16px; text-align: center; color: var(--text-muted); flex: 0 0 16px; }
+    .aside-item:hover { background: var(--bg-dark); }
+    .aside-item.active { background: var(--accent); color: #06210f; font-weight: 700; }
+    .aside-item.active i { color: #06210f; }
+    .aside-item.aside-warn.active { background: var(--orange); color: #2a1500; }
+    .admin-content { flex: 1; min-width: 0; overflow-y: auto; padding-left: 14px; }
+    @media (max-width: 760px) {
+      .admin-shell { flex-direction: column; overflow: visible; }
+      .admin-side { width: auto; flex: none; border-right: none; border-bottom: 1px solid var(--border); padding: 0 0 8px; display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+      .aside-grp { display: none; }
+      .aside-item { width: auto; padding: 7px 11px; font-size: 12px; }
+      .admin-content { padding-left: 0; }
+    }
+  </style>
   <div id="users-modal" class="modal-overlay">
-    <div class="modal" style="width:920px;max-width:96vw;max-height:92vh;">
+    <div class="modal" style="width:1060px;max-width:97vw;max-height:92vh;display:flex;flex-direction:column;">
       <h2>
         <span style="display:flex;align-items:center;min-width:0;">
-          <button id="admin-back" class="btn-sm" style="display:none;margin-right:10px;" onclick="raxAdminHome()" title="Înapoi la panou"><i class="fas fa-arrow-left"></i></button>
-          <i class="fas fa-gear" style="margin-right:8px;color:var(--purple);"></i> <span id="admin-title">Administrare</span>
+          <i class="fas fa-gear" style="margin-right:8px;color:var(--purple);"></i> <span id="admin-title">Panou administrare</span>
         </span>
         <button class="close-btn" onclick="closeUsersModal()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
 
-      <!-- ── Panou Administrare: carduri statistice clickabile + scurtături către secțiuni ── -->
-      <div id="admin-dash">
-        <div class="adash-cards">
-          <button class="adash-card" data-super onclick="raxAdminTab('companies')">
-            <span class="adash-num" id="adash-n-companies">–</span>
-            <span class="adash-lbl"><i class="fas fa-building"></i> Companii</span>
-          </button>
-          <button class="adash-card" onclick="raxAdminTab('users')">
-            <span class="adash-num" id="adash-n-users">–</span>
-            <span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span>
-          </button>
-          <button class="adash-card" data-super onclick="raxAdminTab('companies')">
-            <span class="adash-num" id="adash-n-active">–</span>
-            <span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span>
-          </button>
-          <button class="adash-card adash-warn" onclick="raxAdminTab('archived')">
-            <span class="adash-num" id="adash-n-archived">–</span>
-            <span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span>
-          </button>
-        </div>
-        <div class="adash-sections">
-          <button class="adash-sec" data-super onclick="raxAdminTab('companies')"><i class="fas fa-building adash-ic"></i><span class="adash-tx"><strong>Companii & Dispozitive</strong><small>Companii, atribuire & mutare vehicule, neasignate</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
-          <button class="adash-sec" data-super onclick="raxAdminTab('accounts')"><i class="fas fa-users-gear adash-ic"></i><span class="adash-tx"><strong>Conturi & Abonamente</strong><small>Conturi companii, planuri, facturare</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
-          <button class="adash-sec" onclick="raxAdminTab('users')"><i class="fas fa-users adash-ic"></i><span class="adash-tx"><strong>Utilizatori</strong><small>Useri, roluri, acces pe vehicule</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
-          <button class="adash-sec" onclick="openApiKeys()"><i class="fas fa-key adash-ic"></i><span class="adash-tx"><strong>Chei API</strong><small>Acces programatic pentru integrări</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
-          <button class="adash-sec" onclick="openAudit()"><i class="fas fa-clipboard-list adash-ic"></i><span class="adash-tx"><strong>Jurnal audit</strong><small>Istoric acțiuni administrative</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
-          <button class="adash-sec adash-sec-warn" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive adash-ic"></i><span class="adash-tx"><strong>Dispozitive arhivate</strong><small>Contracte încheiate · restaurare · istoric păstrat 2 ani</small></span><i class="fas fa-chevron-right adash-arr"></i></button>
-        </div>
-      </div>
+      <div class="admin-shell" style="display:flex;flex:1;min-height:0;overflow:hidden;">
+        <nav id="admin-side" class="admin-side">
+          <div class="aside-grp">Gestiune</div>
+          <button class="aside-item active" data-atab="dash" onclick="raxAdminHome()"><i class="fas fa-gauge"></i> Acasă</button>
+          <button class="aside-item" data-super data-atab="companies" onclick="raxAdminTab('companies')"><i class="fas fa-building"></i> Companii</button>
+          <button class="aside-item" data-atab="users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
+          <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
+          <div class="aside-grp" data-super>AI &amp; Module</div>
+          <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-shield-halved"></i> Agenți AI</button>
+          <button class="aside-item" data-super data-atab="tahograf" onclick="raxAdminTab('tahograf')"><i class="fas fa-gauge-high"></i> Tahograf</button>
+          <button class="aside-item" data-super data-atab="etransport" onclick="raxAdminTab('etransport')"><i class="fas fa-truck-fast"></i> e-Transport</button>
+          <div class="aside-grp" data-super>Business</div>
+          <button class="aside-item" data-super data-atab="accounts" onclick="raxAdminTab('accounts')"><i class="fas fa-users-gear"></i> Conturi &amp; Abonamente</button>
+          <button class="aside-item" data-super data-atab="dashboard" onclick="raxAdminTab('dashboard')"><i class="fas fa-chart-line"></i> Dashboard platformă</button>
+          <div class="aside-grp">Sistem</div>
+          <button class="aside-item" onclick="openApiKeys()"><i class="fas fa-key"></i> Chei API</button>
+          <button class="aside-item" onclick="openAudit()"><i class="fas fa-clipboard-list"></i> Jurnal audit</button>
+        </nav>
 
-      <div id="admin-tab-companies" style="display:none;"></div>
-      <div id="admin-tab-accounts" style="display:none;"></div>
-      <div id="admin-tab-archived" style="display:none;"></div>
+        <div id="admin-content" class="admin-content">
+          <div id="admin-dash">
+            <div class="adash-cards">
+              <button class="adash-card" data-super onclick="raxAdminTab('companies')"><span class="adash-num" id="adash-n-companies">–</span><span class="adash-lbl"><i class="fas fa-building"></i> Companii</span></button>
+              <button class="adash-card" onclick="raxAdminTab('users')"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span></button>
+              <button class="adash-card" data-super onclick="raxAdminTab('companies')"><span class="adash-num" id="adash-n-active">–</span><span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span></button>
+              <button class="adash-card adash-warn" onclick="raxAdminTab('archived')"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span></button>
+            </div>
+            <div style="margin-top:16px;font-size:12.5px;color:var(--text-muted);line-height:1.6;"><i class="fas fa-arrow-left" style="margin-right:6px;"></i>Folosește meniul din stânga pentru a gestiona <strong>companii</strong>, <strong>utilizatori</strong>, <strong>agenți AI</strong>, module (Tahograf / e-Transport), <strong>facturare</strong> și sistemul.</div>
+          </div>
+
+          <div id="admin-tab-companies" style="display:none;"></div>
+          <div id="admin-tab-accounts" style="display:none;"></div>
+          <div id="admin-tab-archived" style="display:none;"></div>
+          <div id="admin-tab-agents" style="display:none;"></div>
+          <div id="admin-tab-tahograf" style="display:none;"></div>
+          <div id="admin-tab-etransport" style="display:none;"></div>
+          <div id="admin-tab-dashboard" style="display:none;"></div>
       <div id="admin-tab-users" style="display:none;">
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
@@ -1136,6 +1159,8 @@
         </div>
       </div>
       </div>
+        </div><!-- /admin-content -->
+      </div><!-- /admin-shell -->
     </div>
   </div>
 
@@ -2187,15 +2212,18 @@ const pozitii = await r.json();</code></pre>
       var body = document.querySelector(overlaySel + ' .rax-body');
       if (body && body.parentNode !== t) t.appendChild(body);
     }
+    function _raxSideActive(name) {
+      document.querySelectorAll('#admin-side .aside-item').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-atab') === name); });
+    }
     window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
-      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived' };
-      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate' };
+      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
+      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       Object.keys(map).forEach(function (k) {
         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
       });
-      var back = document.getElementById('admin-back'); if (back) back.style.display = '';
+      _raxSideActive(name);
       var t = document.getElementById('admin-title'); if (t) t.textContent = titles[name] || 'Administrare';
       if (name === 'companies') {
         _raxMountBody('#rax-co-overlay', 'admin-tab-companies');
@@ -2206,15 +2234,30 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadAccounts) window.raxLoadAccounts();
       } else if (name === 'archived') {
         if (window.loadArchivedDevices) window.loadArchivedDevices();
+      } else if (name === 'users') {
+        if (window.loadUsers) window.loadUsers();
+      } else if (name === 'agents') {
+        _raxMountBody('#rax-ag-overlay', 'admin-tab-agents');
+        if (window.loadSuperCompanies) window.loadSuperCompanies();
+        if (window.raxRenderAgChips) window.raxRenderAgChips();
+        if (window.raxLoadFindings) window.raxLoadFindings();
+      } else if (name === 'tahograf') {
+        _raxMountBody('#rax-tacho-overlay', 'admin-tab-tahograf');
+        if (window.raxLoadTacho) window.raxLoadTacho();
+      } else if (name === 'etransport') {
+        _raxMountBody('#rax-et-overlay', 'admin-tab-etransport');
+        if (window.raxLoadEt) window.raxLoadEt();
+      } else if (name === 'dashboard') {
+        if (window.raxLoadDashboard) window.raxLoadDashboard('admin-tab-dashboard');
       }
     };
 
-    // Panou (landing) Administrare: ascunde secțiunile, arată cardurile + reîncarcă statisticile.
+    // Acasă: arată cardurile-sumar + reîncarcă statisticile (meniul lateral rămâne mereu vizibil).
     window.raxAdminHome = function () {
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = '';
-      ['admin-tab-companies', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
-      var back = document.getElementById('admin-back'); if (back) back.style.display = 'none';
-      var t = document.getElementById('admin-title'); if (t) t.textContent = 'Administrare';
+      ['admin-tab-companies', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived', 'admin-tab-agents', 'admin-tab-tahograf', 'admin-tab-etransport', 'admin-tab-dashboard'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+      _raxSideActive('dash');
+      var t = document.getElementById('admin-title'); if (t) t.textContent = 'Panou administrare';
       if (window.loadAdminDash) window.loadAdminDash();
     };
 
