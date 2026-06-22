@@ -983,7 +983,7 @@
     /* Bară restrânsă (în timpul trasării / la cerere): ascunde câmpurile de metadate ca să se vadă harta */
     #draw-toolbar.draw-min #draw-hs-fields, #draw-toolbar.draw-min #draw-hs-fields2, #draw-toolbar.draw-min #draw-save-row { display:none !important; }
     @media (max-width: 820px) {
-      #draw-toolbar { top:calc(var(--topbar-h) + var(--sat) + 4px); padding:8px 10px; gap:6px; width:96vw; }
+      #draw-toolbar { top:6px; padding:8px 10px; gap:6px; width:96vw; }
       #draw-toolbar #draw-info { font-size:11px; width:100%; }
       #draw-toolbar .btn-sm { font-size:11px; padding:5px 8px; }
       #draw-toolbar input[type=text], #draw-toolbar input[type=number], #draw-toolbar select { padding:5px 6px; font-size:11px; }
@@ -1583,6 +1583,7 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm btn-primary" onclick="startDrawGeofence('circle')"><i class="far fa-circle"></i> Adaugă cerc</button>
           <button class="btn-sm btn-primary" onclick="startDrawGeofence('polygon')"><i class="fas fa-draw-polygon"></i> Adaugă poligon</button>
           <button class="btn-sm btn-primary" onclick="startDrawGeofence('corridor')"><i class="fas fa-road"></i> Trasare străzi</button>
+          <button class="btn-sm btn-primary" onclick="startDrawGeofence('freehand')"><i class="fas fa-pen-nib"></i> Desen liber</button>
         </div>
         <div id="hotspot-list" style="overflow:auto;flex:1;min-height:0;"></div>
       </div>
@@ -1606,7 +1607,7 @@ const pozitii = await r.json();</code></pre>
   </div>
 
   <!-- Bara de desenare hotspot / zonă (peste hartă) -->
-  <div id="draw-toolbar" style="display:none;position:fixed;top:calc(var(--topbar-h) + var(--sat) + 8px);left:50%;transform:translateX(-50%);z-index:4000;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);flex-direction:column;gap:8px;align-items:stretch;max-width:94vw;width:580px;">
+  <div id="draw-toolbar" style="display:none;position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1500;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.45);flex-direction:column;gap:8px;align-items:stretch;max-width:94vw;width:580px;">
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <span id="draw-title" style="font-weight:700;font-size:13px;color:var(--accent);"></span>
       <span id="draw-info" style="font-size:12px;color:var(--text-muted);"></span>
@@ -1647,6 +1648,8 @@ const pozitii = await r.json();</code></pre>
       <button class="btn-sm" onclick="cancelDraw()">Anulează</button>
     </div>
   </div>
+  <!-- Mută bara de desen în interiorul hărții → centrată peste hartă, nu peste panoul Localizare -->
+  <script>(function(){var tb=document.getElementById('draw-toolbar'),mc=document.getElementById('map-container');if(tb&&mc)mc.appendChild(tb);})();</script>
 
   <!-- ═══ Rapoarte (Faza 3) ═══ -->
   <!-- Pagina „Statistici consum" (din meniul Analize statistice → Statistici consum) -->
@@ -3617,9 +3620,9 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('draw-finish-btn').style.display = (mode === 'polygon' || mode === 'corridor') ? '' : 'none';
       document.getElementById('draw-undo-btn').style.display = (mode === 'polygon' || mode === 'corridor') ? '' : 'none';
       document.getElementById('draw-save-btn').innerHTML = isZone ? '<i class="fas fa-chart-bar"></i> Analizează' : '<i class="fas fa-save"></i> Salvează';
-      const modeLabel = mode === 'polygon' ? 'poligon' : (mode === 'corridor' ? 'traseu străzi' : 'cerc');
+      const modeLabel = mode === 'polygon' ? 'poligon' : (mode === 'corridor' ? 'traseu străzi' : (mode === 'freehand' ? 'desen liber' : 'cerc'));
       document.getElementById('draw-title').textContent = (isZone ? 'Zonă: ' : (opts.editing ? 'Editare: ' : 'Hotspot: ')) + modeLabel;
-      document.getElementById('draw-info').textContent = opts.editing ? 'Trage punctele pentru a ajusta' : (mode === 'polygon' ? 'Click pe hartă (min 3 puncte) → Finalizează' : (mode === 'corridor' ? 'Click pe străzi (min 2 puncte) → Finalizează' : 'Click pe hartă pentru centru'));
+      document.getElementById('draw-info').textContent = opts.editing ? 'Trage punctele pentru a ajusta' : (mode === 'polygon' ? 'Click pe hartă (min 3 puncte) → Finalizează' : (mode === 'corridor' ? 'Click pe străzi (min 2 puncte) → Finalizează' : (mode === 'freehand' ? 'Ține apăsat și desenează conturul' : 'Click pe hartă pentru centru')));
       document.getElementById('draw-sat-btn').classList.toggle('active', satMode);
       setDrawMin(false);
     }
@@ -3650,9 +3653,78 @@ const pozitii = await r.json();</code></pre>
     function enableDrawPlacement(mode) {
       map.getContainer().style.cursor = 'crosshair';
       try { map.doubleClickZoom.disable(); } catch (e) {}
+      if (mode === 'freehand') { enableFreehand(); setDrawMin(true); return; }
       map.on('click', mode === 'circle' ? onCircleClick : onPolyClick);
       if (mode === 'polygon' || mode === 'corridor') map.on('dblclick', drawFinishPoly);
       setDrawMin(true); // în timpul plasării punctelor: bară compactă → se vede harta
+    }
+    // ─── Desen liber (pix): ține apăsat și trage → contur, închis automat într-un poligon ───
+    let fh = { active: false, points: [], lastPt: null, preview: null };
+    function enableFreehand() {
+      const c = map.getContainer();
+      try { map.dragging.disable(); } catch (e) {}
+      fh.active = false; fh.points = []; fh.lastPt = null;
+      c.addEventListener('mousedown', fhDown);
+      c.addEventListener('mousemove', fhMove);
+      document.addEventListener('mouseup', fhUp);
+      c.addEventListener('touchstart', fhTDown, { passive: false });
+      c.addEventListener('touchmove', fhTMove, { passive: false });
+      document.addEventListener('touchend', fhUp);
+    }
+    function fhTeardown() {
+      const c = map.getContainer();
+      c.removeEventListener('mousedown', fhDown);
+      c.removeEventListener('mousemove', fhMove);
+      document.removeEventListener('mouseup', fhUp);
+      c.removeEventListener('touchstart', fhTDown);
+      c.removeEventListener('touchmove', fhTMove);
+      document.removeEventListener('touchend', fhUp);
+      try { map.dragging.enable(); } catch (e) {}
+      if (fh.preview) { try { map.removeLayer(fh.preview); } catch (e) {} fh.preview = null; }
+      fh.active = false; fh.points = []; fh.lastPt = null;
+    }
+    function fhRedraw() {
+      if (fh.preview) { try { map.removeLayer(fh.preview); } catch (e) {} fh.preview = null; }
+      if (fh.points.length >= 2) { fh.preview = L.polyline(fh.points, { color: '#f59e0b', weight: 3 }).addTo(map); }
+      const el = document.getElementById('draw-info'); if (el) el.textContent = 'Se desenează… ' + fh.points.length + ' puncte';
+    }
+    function fhDown(e) {
+      if (!drawState || drawState.mode !== 'freehand' || drawState.finished) return;
+      if (e.preventDefault) e.preventDefault();
+      fh.active = true;
+      const ll = map.mouseEventToLatLng(e);
+      fh.points = [[ll.lat, ll.lng]];
+      fh.lastPt = map.mouseEventToContainerPoint(e);
+      fhRedraw();
+    }
+    function fhMove(e) {
+      if (!fh.active) return;
+      const cp = map.mouseEventToContainerPoint(e);
+      if (fh.lastPt && cp.distanceTo(fh.lastPt) < 4) return; // prag în pixeli → mai puține puncte
+      const ll = map.mouseEventToLatLng(e);
+      fh.points.push([ll.lat, ll.lng]); fh.lastPt = cp; fhRedraw();
+    }
+    function fhTDown(e) { if (!e.touches || !e.touches.length) return; e.preventDefault(); fhDown({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, preventDefault: function () {} }); }
+    function fhTMove(e) { if (!e.touches || !e.touches.length) return; e.preventDefault(); fhMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }); }
+    function fhSimplify(latlngs) {
+      try {
+        const pts = latlngs.map(ll => map.latLngToLayerPoint(L.latLng(ll[0], ll[1])));
+        const simp = L.LineUtil.simplify(pts, 4);
+        if (simp.length >= 3) return simp.map(p => { const ll = map.layerPointToLatLng(p); return [ll.lat, ll.lng]; });
+      } catch (e) {}
+      return latlngs;
+    }
+    function fhUp() {
+      if (!fh.active) return;
+      fh.active = false;
+      const pts = fh.points.slice();
+      fhTeardown();
+      if (!drawState || drawState.mode !== 'freehand') return;
+      if (pts.length < 3) { const el = document.getElementById('draw-info'); if (el) el.textContent = 'Prea scurt — ține apăsat și desenează un contur'; return; }
+      const col = document.getElementById('draw-color').value || '#3FE07D';
+      const layer = L.polygon(fhSimplify(pts), { color: col, weight: 2, fillOpacity: 0.1 }).addTo(map);
+      finalizeEditable(layer);
+      document.getElementById('draw-info').textContent = 'Trage colțurile pentru a ajusta';
     }
     function onPolyClick(e) {
       if (!drawState || drawState.finished) return;
@@ -3757,8 +3829,8 @@ const pozitii = await r.json();</code></pre>
         group_id: document.getElementById('draw-group').value || null,
         is_region: document.getElementById('draw-region').checked
       };
-      if (drawState.mode === 'polygon') {
-        if (!Array.isArray(g) || g.length < 3) return alert('Minim 3 puncte pentru poligon');
+      if (drawState.mode === 'polygon' || drawState.mode === 'freehand') {
+        if (!Array.isArray(g) || g.length < 3) return alert('Minim 3 puncte pentru o suprafață');
         body.type = 'polygon'; body.coordinates = g;
       } else if (drawState.mode === 'corridor') {
         if (!g || !Array.isArray(g.line) || g.line.length < 2) return alert('Minim 2 puncte pentru traseu');
@@ -3807,6 +3879,7 @@ const pozitii = await r.json();</code></pre>
       const tb = document.getElementById('draw-toolbar'); if (tb) tb.style.display = 'none';
       if (!drawState) return;
       try { map.off('click', onPolyClick); map.off('click', onCircleClick); map.off('dblclick', drawFinishPoly); } catch (e) {}
+      try { fhTeardown(); } catch (e) {} // oprește desenul liber (dacă era activ) + reactivează pan
       try { map.doubleClickZoom.enable(); } catch (e) {}
       drawState.layers.forEach(l => { try { map.removeLayer(l); } catch (e) {} });
       if (drawState.ribbon) { try { map.removeLayer(drawState.ribbon); } catch (e) {} }
