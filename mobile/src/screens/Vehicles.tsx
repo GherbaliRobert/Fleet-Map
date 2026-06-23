@@ -16,9 +16,10 @@ export function Vehicles() {
   const statusParam = new URLSearchParams((loc.url || '').split('?')[1] || '').get('status') || '';
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>(VALID_STATUS.includes(statusParam) ? (statusParam as Filter) : 'all');
-  const [showMap, setShowMap] = useState(false);
+  // Venind din Statistici (ex: ?status=moving) deschidem direct HARTA, filtrată pe acea stare
+  const [showMap, setShowMap] = useState(VALID_STATUS.includes(statusParam));
   useEffect(() => {
-    if (statusParam && VALID_STATUS.includes(statusParam)) setFilter(statusParam as Filter);
+    if (statusParam && VALID_STATUS.includes(statusParam)) { setFilter(statusParam as Filter); setShowMap(true); }
   }, [statusParam]);
 
   const off = offlineMinutes.value;
@@ -49,20 +50,19 @@ export function Vehicles() {
       </header>
 
       {!showMap && (
-        <>
-          <div class="vsearch">
-            <Icon name="search" size={18} />
-            <input placeholder="Caută vehicul, nr., IMEI" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
-          </div>
-          <div class="vfilters">
-            {FILTERS.map((f) => (
-              <button class={'vfilter' + (filter === f.k ? ' on' : '')} onClick={() => setFilter(f.k)}>
-                {f.label} <span class="cnt">{f.n}</span>
-              </button>
-            ))}
-          </div>
-        </>
+        <div class="vsearch">
+          <Icon name="search" size={18} />
+          <input placeholder="Caută vehicul, nr., IMEI" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
+        </div>
       )}
+      {/* Chips de stare — vizibile și pe hartă, ca să poți comuta filtrul (În mișcare / Staționate / …) */}
+      <div class="vfilters">
+        {FILTERS.map((f) => (
+          <button class={'vfilter' + (filter === f.k ? ' on' : '')} onClick={() => setFilter(f.k)}>
+            {f.label} <span class="cnt">{f.n}</span>
+          </button>
+        ))}
+      </div>
 
       {showMap ? (
         <div class="vmap-wrap">

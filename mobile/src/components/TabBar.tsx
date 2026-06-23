@@ -16,18 +16,22 @@ export function TabBar() {
   const path = loc.path === '/' ? '/vehicles' : loc.path;
   return (
     <nav class="tabbar">
-      {TABS.map((t) => {
-        const active = path === t.path;
-        return (
-          <button class={'tab' + (active ? ' active' : '')} onClick={() => loc.route(t.path)}>
-            <span class="tab-ic">
-              <Icon name={t.icon} size={22} />
-              {t.path === '/notifications' && unread.value > 0 && <span class="tab-badge">{unread.value > 99 ? '99+' : unread.value}</span>}
-            </span>
-            <span class="tab-lbl">{t.label}</span>
-          </button>
-        );
-      })}
+      <div class="tabbar-dock">
+        {TABS.map((t) => {
+          const active = path === t.path;
+          return (
+            <button class={'tab' + (active ? ' active' : '')} onClick={() => loc.route(t.path)}>
+              <span class="tab-in">
+                <span class="tab-ic">
+                  <Icon name={t.icon} size={22} />
+                  {t.path === '/notifications' && unread.value > 0 && <span class="tab-badge">{unread.value > 99 ? '99+' : unread.value}</span>}
+                </span>
+                <span class="tab-lbl">{t.label}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }
