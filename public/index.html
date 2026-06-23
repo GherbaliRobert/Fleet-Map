@@ -2320,12 +2320,12 @@ const pozitii = await r.json();</code></pre>
     window.loadAdminDash = loadAdminDash;
 
     // ─── Users (admin) ───
-    async function openUsersModal() {
+    function openUsersModal() {
       document.getElementById('users-modal').classList.add('visible');
-      await loadUsers();
       var isSuper = !!(currentUser && currentUser.role === 'superadmin');
       document.querySelectorAll('#admin-dash [data-super]').forEach(function (el) { el.style.display = isSuper ? '' : 'none'; });
-      raxAdminHome();
+      raxAdminHome();   // cardurile (loadAdminDash → /api/admin/counts) se încarcă IMEDIAT, nu blocate de lista de useri
+      loadUsers();      // în fundal — pentru tabul „Utilizatori" (re-încărcat oricum la deschiderea tabului)
     }
 
     function closeUsersModal() {

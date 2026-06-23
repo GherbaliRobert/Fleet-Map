@@ -26,7 +26,9 @@ if (USE_PG) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: _ssl,
-    max: parseInt(process.env.PG_POOL_MAX) || 10
+    max: parseInt(process.env.PG_POOL_MAX) || 10,
+    idleTimeoutMillis: 60000, // păstrează conexiunile idle 60s (default 10s era prea scurt → primul query după pauză reconecta lent la Railway)
+    keepAlive: true           // TCP keepalive pe socketul PG (previne drop-uri silențioase)
   });
   pool.raw = null;
   console.log(`[DB] PostgreSQL (DATABASE_URL) — mod scalabil (SSL: ${_ssl ? 'on' : 'off'})`);

@@ -6054,6 +6054,10 @@ async function start() {
   setTimeout(billingReminderTick, 30000);
   setInterval(billingReminderTick, 60 * 60 * 1000);
 
+  // Keepalive DB: ping ușor la 45s ca pool-ul PG să rămână CALD (/api/live e in-memory și nu atinge DB-ul →
+  // primul query din panou reconecta lent la Railway; acum prima deschidere e instant).
+  setInterval(function () { try { db.pool.query('SELECT 1').catch(function () {}); } catch (e) {} }, 45000);
+
   // ───────────────────────────────────────────────────────────────
   // Cleanup periodic peste livePositions — fără el, vehiculele care își pierd semnalul GSM
   // rămân „online" în UI cu timestamp tot mai vechi („acum 24 min", „acum 2h", etc.) până
