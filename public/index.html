@@ -5406,34 +5406,36 @@ const pozitii = await r.json();</code></pre>
       }
     }
 
-    // Pictograme line-art (profil lateral, stil Tabler Icons — open-source MIT). Contur 24×24, stroke=currentColor.
-    // TIR (semiremorcă) și Remorca sunt desenate în ACELAȘI stil (Tabler nu le are).
+    // Pictograme line-art DETALIATE, profil lateral (viewBox 0 0 64 44, fața la dreapta), stroke=currentColor.
+    // Desenate intern (caroserie + geamuri + jante) ca să semene cu vehiculul real, nu glife simple.
     function vehicleArtPath(cat) {
       switch (cat) {
-        case 'van': // Tabler „truck-delivery" (dubă)
-          return '<path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-4m-1 -8h11v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5" /><path d="M3 9l4 0" />';
-        case 'truck': // Tabler „truck" (camion cu cutie)
-          return '<path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5" />';
-        case 'tir': // desenat în stil Tabler: semiremorcă lungă + cap tractor (cu articulație)
-          return '<path d="M2 6h10v10h-10z" /><path d="M14 16v-5h3l2 3v2z" /><path d="M12 14h2" /><path d="M3 16a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M7 16a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M14 16a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />';
-        case 'bus': // Tabler „bus"
-          return '<path d="M4 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M16 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 17h-2v-11a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0h-8" /><path d="M16 5l1.5 7l4.5 0" /><path d="M2 10l15 0" /><path d="M7 5l0 5" /><path d="M12 5l0 5" />';
+        case 'van':
+          return '<path d="M4 31 L4 11 C4 9.6 5 8.6 6.4 8.6 L41 8.6 C45 8.6 48 10.6 51 15 L57 22 C59.5 22.5 61.5 23.6 61.5 26.4 L61.5 31"/><path d="M51 22 L61.5 22"/><path d="M44.5 13.5 L50.5 21 L44.5 21 Z"/><path d="M9 12.5 L26 12.5 L26 19 L9 19 Z"/><path d="M31 11 L31 31"/><path d="M4 31 L9 31 M21 31 L45 31 M57 31 L61.5 31"/><circle cx="15" cy="31" r="6"/><circle cx="15" cy="31" r="2.2"/><circle cx="51" cy="31" r="6"/><circle cx="51" cy="31" r="2.2"/>';
+        case 'truck':
+          return '<path d="M3 31 L3 7 C3 6 3.6 5.5 4.6 5.5 L37 5.5 L37 31"/><path d="M37 15 L48 15 C50 15 51 16 52 17.6 L58 24 L60.5 25 C61.3 25.3 61.8 26 61.8 27.2 L61.8 31"/><path d="M37 31 L37 15 M3 31 L9 31 M21 31 L45 31 M57 31 L61.8 31 M49 17.5 L56 23.5 L50.5 23.5 L50.5 17.5 Z"/><circle cx="15" cy="31" r="6"/><circle cx="15" cy="31" r="2.2"/><circle cx="51" cy="31" r="6"/><circle cx="51" cy="31" r="2.2"/>';
+        case 'tir':
+          return '<path d="M2 31 L2 6.5 L38 6.5 L38 31"/><path d="M42 31 L42 12 L50 12 C52 12 53 13.5 53.6 15.5 L55 22 L61 22.6 C62 22.6 62.6 23.4 62.6 24.6 L62.6 31"/><path d="M53.8 16 L60.4 22 L55 22 L54 16.5 Z"/><path d="M38 27 L42 27 M2 31 L4 31 M16 31 L30 31 M42 31 L49 31 M61 31 L62.6 31"/><circle cx="10" cy="31" r="6"/><circle cx="10" cy="31" r="2.2"/><circle cx="36" cy="31" r="6"/><circle cx="36" cy="31" r="2.2"/><circle cx="55" cy="31" r="5.5"/><circle cx="55" cy="31" r="2"/>';
+        case 'bus':
+          return '<path d="M3 31 L3 11 C3 9 4 8 6 8 L58 8 C60 8 61 9 61 11 L61 31"/><path d="M3 31 L9 31 M21 31 L45 31 M57 31 L61 31"/><path d="M3 14 L61 14 M9 14 L9 8 M16 8 L16 14 M24 8 L24 14 M32 8 L32 14 M40 8 L40 14 M48 8 L48 14 M54 14 L54 31"/><circle cx="15" cy="31" r="6"/><circle cx="15" cy="31" r="2.2"/><circle cx="51" cy="31" r="6"/><circle cx="51" cy="31" r="2.2"/>';
         case 'tractor':
-        case 'utilaj': // Tabler „tractor"
-          return '<path d="M3 15a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M7 15l0 .01" /><path d="M17 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M10.5 17l6.5 0" /><path d="M20 15.2v-4.2a1 1 0 0 0 -1 -1h-6l-2 -5h-6v6.5" /><path d="M18 5h-1a1 1 0 0 0 -1 1v4" />';
-        case 'motorcycle': // Tabler „motorbike"
-          return '<path d="M2 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M16 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M7.5 14h5l4 -4h-10.5m1.5 4l4 -4" /><path d="M13 6h2l1.5 3l2 4" />';
-        case 'trailer': // desenat în stil Tabler: remorcă cu proțap triunghiular
-          return '<path d="M2 8h13v6h-13z" /><path d="M15 9l5 3" /><path d="M15 13l5 -1" /><path d="M20 12a1 1 0 1 0 .01 0" /><path d="M4 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M9 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />';
+        case 'utilaj':
+          return '<path d="M9 26 L9 9 L21 9 L21 26"/><path d="M21 14 L45 14 L47 16 L47 26 L21 26"/><path d="M7 9 L23 9"/><path d="M23 9 L23 4 L26 4"/><path d="M12 12 L19 12 L19 18 L12 18 Z"/><path d="M45 16.5 L47 16.5 M45 19 L47 19"/><circle cx="16" cy="27" r="11"/><circle cx="16" cy="27" r="4"/><circle cx="49" cy="30" r="7"/><circle cx="49" cy="30" r="2.5"/>';
+        case 'motorcycle':
+          return '<path d="M15 26 L19 22 L33 20 L45 21"/><path d="M15 26 L17 23 L23 22"/><path d="M45 21 L50 18 L53 21 L50 25"/><path d="M44 21 L51 30"/><path d="M49 19 L54 15"/><path d="M19 28 L31 27 L40 27 L44 21"/><path d="M13 30 L20 25"/><circle cx="13" cy="30" r="8"/><circle cx="13" cy="30" r="2.9"/><circle cx="51" cy="30" r="8"/><circle cx="51" cy="30" r="2.9"/>';
+        case 'trailer':
+          return '<path d="M6 30 L6 14 L50 14 L50 30"/><path d="M50 18 L60 22 M50 26 L60 22"/><circle cx="61" cy="22" r="1.4"/><path d="M6 30 L14 30 M26 30 L34 30 M46 30 L50 30 M6 18 L50 18"/><circle cx="20" cy="30" r="6"/><circle cx="20" cy="30" r="2.2"/><circle cx="40" cy="30" r="6"/><circle cx="40" cy="30" r="2.2"/>';
         case 'car':
-        default: // Tabler „car"
-          return '<path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5" />';
+        default:
+          return '<path d="M5 31 L5 25 L12 25 L19 15.5 C20 14.2 21.2 13.5 23 13.5 L39 13.5 C40.8 13.5 42 14.2 43 15.8 L49 24.5 L58 25.5 C60 25.8 61 27 61 29.5 L61 31"/><path d="M5 31 L10 31 M22 31 L42 31 M54 31 L61 31"/><path d="M13 24.5 L49 24.5 M33 14 L33 24"/><circle cx="16" cy="31" r="6"/><circle cx="16" cy="31" r="2.2"/><circle cx="48" cy="31" r="6"/><circle cx="48" cy="31" r="2.2"/>';
       }
     }
-    // SVG line-art de sine stătător; culoarea vine din `currentColor` (status pe hartă, accent în selector etc.).
+    // SVG de sine stătător; culoarea = currentColor (status pe hartă, accent în selector). Contur constant ~1.8px la orice dimensiune.
     function vehicleArtSVG(cat, size) {
-      const s = size || 24;
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + vehicleArtPath(cat) + '</svg>';
+      const w = size || 28;
+      const h = Math.round(w * 44 / 64);
+      const sw = (1.8 * 64 / w).toFixed(2);
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round">' + vehicleArtPath(cat) + '</svg>';
     }
 
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
@@ -5448,7 +5450,8 @@ const pozitii = await r.json();</code></pre>
       else { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
 
       const cat = markerCategory(dev);
-      const size = isSelected ? 30 : 24; // mai mici ca să nu se aglomereze când sunt multe
+      const size = isSelected ? 40 : 32; // lățimea pictogramei (profil lateral); mai mici ca să nu se aglomereze
+      const ih = Math.round(size * 44 / 64);
       const rot = Math.round(angle || 0);
 
       // Săgeata de direcție (în jurul badge-ului) se rotește după cap; vehiculul (glifa) rămâne drept și lizibil.
@@ -5462,7 +5465,7 @@ const pozitii = await r.json();</code></pre>
       const plateHtml = plate ? '<div class="veh-plate" style="color:' + color + ';">' + plate + '</div>' : '';
 
       const html =
-        '<div class="veh-mk" style="width:' + size + 'px;height:' + size + 'px;">' +
+        '<div class="veh-mk" style="width:' + size + 'px;height:' + ih + 'px;">' +
           ring +
           arrow +
           '<div class="veh-dot" style="color:' + color + ';">' +
@@ -5474,9 +5477,9 @@ const pozitii = await r.json();</code></pre>
       return L.divIcon({
         className: 'vehicle-marker vehicle-' + status,
         html: html,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
-        popupAnchor: [0, -(size / 2)]
+        iconSize: [size, ih],
+        iconAnchor: [size / 2, ih / 2],
+        popupAnchor: [0, -(ih / 2)]
       });
     }
 
@@ -5657,7 +5660,7 @@ const pozitii = await r.json();</code></pre>
             '<div class="device-card-top">' +
               '<div class="device-card-name">' +
                 '<span class="status-dot ' + statusClass + '"></span>' +
-                '<span class="device-card-icon">' + vehicleArtSVG(markerCategory(d), 18) + '</span>' +
+                '<span class="device-card-icon">' + vehicleArtSVG(markerCategory(d), 26) + '</span>' +
                 '<span class="name">' + name + '</span>' +
                 (plate ? '<span class="device-card-plate">' + plate + '</span>' : '') +
               '</div>' +
@@ -6025,7 +6028,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('detail-vehicle-name').textContent = name;
       document.getElementById('detail-vehicle-plate').textContent = plate || imei;
 
-      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = vehicleArtSVG(markerCategory(data), 22);
+      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = vehicleArtSVG(markerCategory(data), 30);
 
       const io = data.io || {};
       const isOnline = isDeviceOnline(data);
@@ -7361,7 +7364,7 @@ const pozitii = await r.json();</code></pre>
       wrap.innerHTML = ICON_OPTIONS.map(function (o) {
         const active = o.val === cur;
         return '<button type="button" class="icon-tile' + (active ? ' active' : '') + '" data-icon="' + o.val + '" onclick="pickIcon(\'' + o.val + '\')" title="' + o.label + '">' +
-          '<span class="icon-tile-art">' + vehicleArtSVG(o.val, 30) + '</span>' +
+          '<span class="icon-tile-art">' + vehicleArtSVG(o.val, 48) + '</span>' +
           '<span class="icon-tile-label">' + o.label + '</span>' +
           '</button>';
       }).join('');
