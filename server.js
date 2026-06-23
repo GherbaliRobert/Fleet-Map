@@ -564,6 +564,9 @@ const tcpServer = net.createServer((socket) => {
       const lastRecord = parsed.records[parsed.records.length - 1];
       if (lastRecord && lastRecord.gps.latitude !== 0) {
         const existing = livePositions.get(imei) || {};
+        // Identitatea (nume/nr/categorie) din registrul de vehicule (DB, cache 20s) — NU doar din snapshot-ul
+        // anterior. Altfel, la un vehicul înregistrat după pornire, plăcuța rămânea null și „se reseta".
+        const devInfo = (await getLiveEnrichMap()).get(imei) || {};
         const liveData = {
           imei,
           timestamp: lastRecord.timestamp,
@@ -573,9 +576,9 @@ const tcpServer = net.createServer((socket) => {
           angle: lastRecord.gps.angle,
           satellites: lastRecord.gps.satellites,
           io: lastRecord.io,
-          name: existing.name || null,
-          vehicle_type: existing.vehicle_type || null,
-          plate: existing.plate || null
+          name: devInfo.name || existing.name || null,
+          vehicle_type: devInfo.vehicle_type || existing.vehicle_type || null,
+          plate: devInfo.plate || existing.plate || null
         };
         // ── Carry-forward CAN „sticky": carburant/odometru/AdBlue/ore rămân la ultima valoare REALĂ cât motorul e oprit ──
         // (NU cărăm RPM/viteză/temp). Persistăm în DB → supraviețuiește restartului. _stickyOf ignoră 0/spurious.
@@ -2698,6 +2701,17 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
     ['name', 'plate', 'vehicle_type', 'vin', 'brand', 'model'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
     await db.createDevice(imei, fields, companyId);
     invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
+    invalidateLiveEnrichCache(); // identitatea nouă (nume/nr) să apară imediat pe /api/live, nu după 20s
+    // Dacă vehiculul transmitea deja (era în memoria live ca IMEI „gol"), pune-i numele/nr ACUM + anunță WS,
+    // ca să nu aștepte un pachet GPS nou și să nu i se „reseteze" plăcuța peste rosterul din DB.
+    const _pos = livePositions.get(imei);
+    if (_pos) {
+      _pos.name = fields.name || null;
+      _pos.plate = fields.plate || null;
+      _pos.vehicle_type = fields.vehicle_type || null;
+      livePositions.set(imei, _pos);
+      broadcastWs({ type: 'position', data: _pos });
+    }
     auditReq(req, 'create', 'device', imei, { name: fields.name, plate: fields.plate });
     res.json({ ok: true, imei });
   } catch (err) {
@@ -2982,6 +2996,7 @@ app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, 
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
+    invalidateLiveEnrichCache(); // /api/live ia identitatea din acest cache → invalidează ca să nu servească nr. vechi
     // Sursa stării de contact (auto = IO 239 / din1 = DIN1) — DOAR super-admin (nu admin/user companie).
     if (req.body.ignition_source !== undefined && req.isSuper) {
       await db.setDeviceIgnitionSource(imei, req.body.ignition_source);
