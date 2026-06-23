@@ -1024,7 +1024,9 @@ function requireFeature(key) {
 }
 
 // ─── Acces pe bază de plată (manual de super-admin; pregătit pentru Stripe) ───
-const GRACE_BUSINESS_DAYS = 5;
+// Serviciul e ACTIV cât factura e plătită (access_until în viitor). După expirare → 15 zile calendaristice
+// de GRAȚIE (încă activ, cu avertisment), apoi EXPIRAT → acces suspendat (poate doar să se logheze + plătească).
+const GRACE_DAYS = 15;
 // +n luni calendaristice (gestionează 30/31: 31 ian + 1 lună = 28/29 feb)
 function _addMonthsMs(ms, n) {
   const d = new Date(ms); const day = d.getDate();
@@ -1044,7 +1046,7 @@ function companyAccessStatus(company) {
   const until = (company && company.access_until != null) ? Number(company.access_until) : null;
   if (until == null || !Number.isFinite(until)) return { status: 'unlimited', access_until: null, grace_until: null };
   const now = Date.now();
-  const graceUntil = _addBusinessDaysMs(until, GRACE_BUSINESS_DAYS);
+  const graceUntil = until + GRACE_DAYS * 24 * 60 * 60 * 1000; // 15 zile calendaristice de grație
   let status = 'active';
   if (now > graceUntil) status = 'expired';
   else if (now > until) status = 'grace';

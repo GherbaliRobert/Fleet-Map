@@ -10494,6 +10494,7 @@ const pozitii = await r.json();</code></pre>
         '<label class="rax-lbl" style="margin-top:10px;">Metodă</label><select id="rax-pay-method" class="rax-field" style="margin:0 0 10px;"><option value="transfer">Transfer bancar</option><option value="cash">Numerar</option><option value="card">Card</option><option value="manual">Alta</option></select>' +
         '<label class="rax-lbl">Notă (ex: nr. factură)</label><input id="rax-pay-note" class="rax-field" placeholder="ex: F 2026-0123" style="margin:0;">' +
         '<button class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxSubmitPayment(this)"><i class="fas fa-check"></i> Înregistrează plata</button>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;border-top:1px solid var(--border);padding-top:8px;line-height:1.5;">Plata prelungește accesul cu lunile alese (cumulativ peste accesul curent). După expirare: <b>15 zile de grație</b> (serviciul rămâne activ, cu avertisment), apoi accesul se <b>suspendă</b> până la următoarea plată.</div>' +
         '<div id="rax-pay-msg" style="font-size:12px;margin-top:8px;"></div>';
       ov.classList.add('open');
     };
