@@ -524,15 +524,16 @@
       letter-spacing: 0.5px;
     }
 
-    /* Mini-pictogramă (Font Awesome) în lista de vehicule */
-    .device-card-icon { display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:18px; color:var(--text-muted); font-size:14px; }
+    /* Mini-pictogramă (line-art) în lista de vehicule */
+    .device-card-icon { display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:18px; color:var(--text-muted); }
+    .device-card-icon svg { display:block; }
 
-    /* ─── Marker hartă: badge rotund colorat după status + glifa vehiculului + săgeată direcție + plăcuță nr. ─── */
+    /* ─── Marker hartă: pictograma vehiculului colorată după status + săgeată direcție + plăcuță nr. ─── */
     .vehicle-marker { background:transparent; border:none; overflow:visible; }
     .veh-mk { position:relative; display:flex; align-items:center; justify-content:center; }
-    /* Fără cerc de fundal: doar glifa colorată după status, cu halou alb + umbră pentru lizibilitate pe orice hartă */
+    /* Fără cerc de fundal: doar pictograma colorată după status, cu halou alb + umbră pentru lizibilitate pe orice hartă */
     .veh-dot { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
-    .veh-dot i { line-height:1; text-shadow:0 0 3px rgba(255,255,255,0.6), 0 0 6px rgba(255,255,255,0.35), 0 1px 2px rgba(0,0,0,0.5); }
+    .veh-dot svg { display:block; filter:drop-shadow(0 0 1.5px rgba(255,255,255,0.95)) drop-shadow(0 0 3px rgba(255,255,255,0.5)) drop-shadow(0 1px 1px rgba(0,0,0,0.45)); }
     .veh-arrow-rot { position:absolute; left:0; top:0; right:0; bottom:0; display:flex; justify-content:center; pointer-events:none; }
     .veh-arrow { position:absolute; top:-7px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid currentColor; filter:drop-shadow(0 0 2px rgba(255,255,255,0.55)) drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
     /* Selectat: halou radial moale (în loc de inel) */
@@ -548,7 +549,7 @@
     /* La zoom foarte mic (vezi toată țara) ascundem plăcuțele ca să nu se aglomereze */
     .map-hide-plates .veh-plate { display:none; }
 
-    /* Selector vizual de pictogramă (modal vehicul) — glife Font Awesome */
+    /* Selector vizual de pictogramă (modal vehicul) — pictograme line-art */
     .icon-picker { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
     .icon-tile {
       display:flex; flex-direction:column; align-items:center; gap:6px;
@@ -562,9 +563,9 @@
     .icon-tile.active { border-color:var(--accent); color:var(--accent);
       background:linear-gradient(180deg, rgba(63,224,125,.18), rgba(63,224,125,.05)), var(--bg-dark);
       box-shadow:inset 0 0 0 1px var(--accent), 0 0 16px rgba(63,224,125,.30); }
-    .icon-tile-art { display:flex; align-items:center; justify-content:center; height:30px; font-size:26px; }
-    .icon-tile-art i { filter:drop-shadow(0 1px 2px rgba(0,0,0,.32)); transition:transform .15s; }
-    .icon-tile:hover .icon-tile-art i, .icon-tile.active .icon-tile-art i { transform:translateY(-1px) scale(1.08); }
+    .icon-tile-art { display:flex; align-items:center; justify-content:center; height:32px; }
+    .icon-tile-art svg { display:block; filter:drop-shadow(0 1px 2px rgba(0,0,0,.30)); transition:transform .15s; }
+    .icon-tile:hover .icon-tile-art svg, .icon-tile.active .icon-tile-art svg { transform:translateY(-1px) scale(1.08); }
     .icon-tile-label { font-size:11px; font-weight:600; }
     @media (max-width:480px){ .icon-picker { grid-template-columns:repeat(3,1fr); } }
 

@@ -5406,6 +5406,36 @@ const pozitii = await r.json();</code></pre>
       }
     }
 
+    // Pictograme line-art (profil lateral, stil Tabler Icons — open-source MIT). Contur 24×24, stroke=currentColor.
+    // TIR (semiremorcă) și Remorca sunt desenate în ACELAȘI stil (Tabler nu le are).
+    function vehicleArtPath(cat) {
+      switch (cat) {
+        case 'van': // Tabler „truck-delivery" (dubă)
+          return '<path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-4m-1 -8h11v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5" /><path d="M3 9l4 0" />';
+        case 'truck': // Tabler „truck" (camion cu cutie)
+          return '<path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5" />';
+        case 'tir': // desenat în stil Tabler: semiremorcă lungă + cap tractor (cu articulație)
+          return '<path d="M2 6h10v10h-10z" /><path d="M14 16v-5h3l2 3v2z" /><path d="M12 14h2" /><path d="M3 16a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M7 16a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M14 16a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />';
+        case 'bus': // Tabler „bus"
+          return '<path d="M4 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M16 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 17h-2v-11a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0h-8" /><path d="M16 5l1.5 7l4.5 0" /><path d="M2 10l15 0" /><path d="M7 5l0 5" /><path d="M12 5l0 5" />';
+        case 'tractor':
+        case 'utilaj': // Tabler „tractor"
+          return '<path d="M3 15a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M7 15l0 .01" /><path d="M17 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M10.5 17l6.5 0" /><path d="M20 15.2v-4.2a1 1 0 0 0 -1 -1h-6l-2 -5h-6v6.5" /><path d="M18 5h-1a1 1 0 0 0 -1 1v4" />';
+        case 'motorcycle': // Tabler „motorbike"
+          return '<path d="M2 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M16 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M7.5 14h5l4 -4h-10.5m1.5 4l4 -4" /><path d="M13 6h2l1.5 3l2 4" />';
+        case 'trailer': // desenat în stil Tabler: remorcă cu proțap triunghiular
+          return '<path d="M2 8h13v6h-13z" /><path d="M15 9l5 3" /><path d="M15 13l5 -1" /><path d="M20 12a1 1 0 1 0 .01 0" /><path d="M4 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M9 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />';
+        case 'car':
+        default: // Tabler „car"
+          return '<path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5" />';
+      }
+    }
+    // SVG line-art de sine stătător; culoarea vine din `currentColor` (status pe hartă, accent în selector etc.).
+    function vehicleArtSVG(cat, size) {
+      const s = size || 24;
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + vehicleArtPath(cat) + '</svg>';
+    }
+
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
       const isMoving = speed > 3;
       const hasIgnition = ignitionOn(io, dev && dev.timestamp);
@@ -5418,8 +5448,7 @@ const pozitii = await r.json();</code></pre>
       else { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
 
       const cat = markerCategory(dev);
-      const glyph = vehicleGlyph(cat);
-      const size = isSelected ? 42 : 34;
+      const size = isSelected ? 30 : 24; // mai mici ca să nu se aglomereze când sunt multe
       const rot = Math.round(angle || 0);
 
       // Săgeata de direcție (în jurul badge-ului) se rotește după cap; vehiculul (glifa) rămâne drept și lizibil.
@@ -5436,8 +5465,8 @@ const pozitii = await r.json();</code></pre>
         '<div class="veh-mk" style="width:' + size + 'px;height:' + size + 'px;">' +
           ring +
           arrow +
-          '<div class="veh-dot">' +
-            '<i class="fas fa-' + glyph + '" style="color:' + color + ';font-size:' + Math.round(size * 0.82) + 'px;"></i>' +
+          '<div class="veh-dot" style="color:' + color + ';">' +
+            vehicleArtSVG(cat, size) +
           '</div>' +
           plateHtml +
         '</div>';
@@ -5628,7 +5657,7 @@ const pozitii = await r.json();</code></pre>
             '<div class="device-card-top">' +
               '<div class="device-card-name">' +
                 '<span class="status-dot ' + statusClass + '"></span>' +
-                '<span class="device-card-icon"><i class="fas fa-' + vehicleGlyph(markerCategory(d)) + '"></i></span>' +
+                '<span class="device-card-icon">' + vehicleArtSVG(markerCategory(d), 18) + '</span>' +
                 '<span class="name">' + name + '</span>' +
                 (plate ? '<span class="device-card-plate">' + plate + '</span>' : '') +
               '</div>' +
@@ -5996,7 +6025,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('detail-vehicle-name').textContent = name;
       document.getElementById('detail-vehicle-plate').textContent = plate || imei;
 
-      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = '<i class="fas fa-' + vehicleGlyph(markerCategory(data)) + '"></i>';
+      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = vehicleArtSVG(markerCategory(data), 22);
 
       const io = data.io || {};
       const isOnline = isDeviceOnline(data);
@@ -7332,7 +7361,7 @@ const pozitii = await r.json();</code></pre>
       wrap.innerHTML = ICON_OPTIONS.map(function (o) {
         const active = o.val === cur;
         return '<button type="button" class="icon-tile' + (active ? ' active' : '') + '" data-icon="' + o.val + '" onclick="pickIcon(\'' + o.val + '\')" title="' + o.label + '">' +
-          '<span class="icon-tile-art"><i class="fas fa-' + vehicleGlyph(o.val) + '"></i></span>' +
+          '<span class="icon-tile-art">' + vehicleArtSVG(o.val, 30) + '</span>' +
           '<span class="icon-tile-label">' + o.label + '</span>' +
           '</button>';
       }).join('');
