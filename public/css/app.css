@@ -530,15 +530,13 @@
     /* ─── Marker hartă: badge rotund colorat după status + glifa vehiculului + săgeată direcție + plăcuță nr. ─── */
     .vehicle-marker { background:transparent; border:none; overflow:visible; }
     .veh-mk { position:relative; display:flex; align-items:center; justify-content:center; }
-    .veh-dot {
-      width:100%; height:100%; border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-      color:#fff; border:2px solid rgba(255,255,255,0.92);
-    }
-    .veh-dot i { line-height:1; }
+    /* Fără cerc de fundal: doar glifa colorată după status, cu halou alb + umbră pentru lizibilitate pe orice hartă */
+    .veh-dot { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+    .veh-dot i { line-height:1; text-shadow:0 0 3px rgba(255,255,255,0.6), 0 0 6px rgba(255,255,255,0.35), 0 1px 2px rgba(0,0,0,0.5); }
     .veh-arrow-rot { position:absolute; left:0; top:0; right:0; bottom:0; display:flex; justify-content:center; pointer-events:none; }
-    .veh-arrow { position:absolute; top:-7px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid currentColor; filter:drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
-    .veh-ring { position:absolute; left:-4px; top:-4px; right:-4px; bottom:-4px; border-radius:50%; border:2px dashed #38bdf8; opacity:.85; pointer-events:none; }
+    .veh-arrow { position:absolute; top:-7px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid currentColor; filter:drop-shadow(0 0 2px rgba(255,255,255,0.55)) drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+    /* Selectat: halou radial moale (în loc de inel) */
+    .veh-ring { position:absolute; left:50%; top:50%; width:170%; height:170%; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle, rgba(56,189,248,0.40), rgba(56,189,248,0) 68%); pointer-events:none; }
     .veh-plate {
       position:absolute; left:50%; top:100%; transform:translateX(-50%);
       margin-top:5px; padding:1px 6px; border-radius:7px;
@@ -554,13 +552,19 @@
     .icon-picker { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
     .icon-tile {
       display:flex; flex-direction:column; align-items:center; gap:6px;
-      padding:10px 4px; border-radius:10px; cursor:pointer; font:inherit;
-      background:var(--bg-dark); border:1.5px solid var(--border);
-      color:var(--text-muted); transition:border-color .15s, background .15s, color .15s;
+      padding:11px 4px; border-radius:12px; cursor:pointer; font:inherit;
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0)), var(--bg-dark);
+      border:1.5px solid var(--border); color:var(--text-muted);
+      box-shadow:0 1px 2px rgba(0,0,0,.22);
+      transition:border-color .15s, background .15s, color .15s, box-shadow .15s, transform .15s;
     }
-    .icon-tile:hover { border-color:var(--accent); color:var(--text); }
-    .icon-tile.active { border-color:var(--accent); background:rgba(63,224,125,.12); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+    .icon-tile:hover { border-color:var(--accent); color:var(--text); transform:translateY(-1px); }
+    .icon-tile.active { border-color:var(--accent); color:var(--accent);
+      background:linear-gradient(180deg, rgba(63,224,125,.18), rgba(63,224,125,.05)), var(--bg-dark);
+      box-shadow:inset 0 0 0 1px var(--accent), 0 0 16px rgba(63,224,125,.30); }
     .icon-tile-art { display:flex; align-items:center; justify-content:center; height:30px; font-size:26px; }
+    .icon-tile-art i { filter:drop-shadow(0 1px 2px rgba(0,0,0,.32)); transition:transform .15s; }
+    .icon-tile:hover .icon-tile-art i, .icon-tile.active .icon-tile-art i { transform:translateY(-1px) scale(1.08); }
     .icon-tile-label { font-size:11px; font-weight:600; }
     @media (max-width:480px){ .icon-picker { grid-template-columns:repeat(3,1fr); } }
 
