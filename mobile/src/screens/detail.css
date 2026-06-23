@@ -11,6 +11,11 @@
 .d-row .val { color: var(--text-primary); font-weight: 600; margin-left: auto; text-align: right; max-width: 64%; }
 .d-quality { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
 .d-quality .q { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; }
+/* Liniuțe semnal GSM */
+.sigbars { display: inline-flex; align-items: flex-end; gap: 2px; height: 15px; }
+.sigbar { width: 3px; border-radius: 1px; background: var(--text-muted); opacity: .3; }
+.sigbar:nth-child(1) { height: 5px; } .sigbar:nth-child(2) { height: 8px; } .sigbar:nth-child(3) { height: 11px; } .sigbar:nth-child(4) { height: 14px; } .sigbar:nth-child(5) { height: 15px; }
+.sigbar.on { background: var(--accent); opacity: 1; }
 
 /* isolation: izolează z-index-urile interne ale hărții Leaflet (markeri ~600 etc.) ca să NU iasă peste sheet-ul „Date CAN" */
 .d-map { height: 170px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); isolation: isolate; position: relative; z-index: 0; }

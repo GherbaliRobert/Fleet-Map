@@ -98,6 +98,9 @@ export function VehicleDetail() {
   const volt = voltageStr(io);
   const gps = gpsQuality(v?.satellites);
   const gsm = gsmQuality(io.gsm_signal);
+  // Mașină oprită + motor stins → tracker în sleep (transmite din oră în oră) → GPS „în așteptare", nu „fără fix"
+  const ign = !!(io && (io.ignition === 1 || (io.ignition as any) === true));
+  const gpsStandby = (v?.speed || 0) === 0 && !ign;
   const veh = [full?.brand, full?.model].filter(Boolean).join(' ') || full?.vehicle_type || v?.vehicle_type || '';
   const driver = full?.driver_name || '';
   // AdBlue (în „Date CAN") doar pentru diesel (motorină) + EURO 6
@@ -139,8 +142,8 @@ export function VehicleDetail() {
             <div class="d-row"><span class="lbl">Ultima transmisie</span><span class="val">{fmtDateTime(v?.timestamp)}</span></div>
           </div>
           <div class="d-quality">
-            <span class="q"><Icon name="mapPin" size={15} color="var(--accent)" /> GPS: {gps.label}</span>
-            <span class="q"><Icon name="wifiOff" size={15} color={gsm.level ? 'var(--accent)' : 'var(--text-muted)'} /> GSM: {gsm.label}</span>
+            <span class="q"><Icon name="mapPin" size={15} color={gpsStandby ? 'var(--text-muted)' : 'var(--accent)'} /> GPS: {gpsStandby ? 'În așteptare' : gps.label}</span>
+            <span class="q"><SignalBars value={Number(io.gsm_signal) || 0} /> GSM</span>
           </div>
         </div>
 
@@ -243,6 +246,16 @@ function GsmBars({ signal }: { signal?: number }) {
   return (
     <span class="gsm-bars" title={'Semnal GSM ' + n + '/5'}>
       {[0, 1, 2, 3, 4].map((i) => <i class={'gsm-bar' + (i < n ? ' on' : '')} style={{ height: (6 + i * 3) + 'px' }} />)}
+    </span>
+  );
+}
+
+// Liniuțe semnal GSM (0..5), ca pe telefon
+function SignalBars({ value, max = 5 }: { value: number; max?: number }) {
+  const v = Math.max(0, Math.min(max, Math.round(value || 0)));
+  return (
+    <span class="sigbars" title={`Semnal ${v}/${max}`}>
+      {Array.from({ length: max }, (_, i) => <span class={'sigbar' + (i < v ? ' on' : '')} />)}
     </span>
   );
 }
