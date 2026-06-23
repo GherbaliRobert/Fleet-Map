@@ -5524,45 +5524,45 @@ const pozitii = await r.json();</code></pre>
       const isMoving = speed > 3;
       const hasIgnition = ignitionOn(io, dev && dev.timestamp);
 
-      let color, shadowColor, status, plateBg, plateText;
+      let color, status, plateBg, plateText;
       // Legendă: verde=mișcare · galben=staționare(contact) · roșu=oprit · gri=offline(>1h)
       // plateBg/plateText = pastila numărului de înmatriculare; text alb, dar închis pe galben (albul nu se citește pe galben)
-      if (!isOnline) { color = '#9ca3af'; shadowColor = 'rgba(148,163,184,0.45)'; status = 'gone'; plateBg = '#6b7280'; plateText = '#ffffff'; }
-      else if (isMoving) { color = '#3FE07D'; shadowColor = 'rgba(34,197,94,0.6)'; status = 'moving'; plateBg = '#16a34a'; plateText = '#ffffff'; }
-      else if (hasIgnition) { color = '#eab308'; shadowColor = 'rgba(234,179,8,0.55)'; status = 'idle'; plateBg = '#eab308'; plateText = '#1f2937'; }
-      else { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; plateBg = '#dc2626'; plateText = '#ffffff'; }
+      if (!isOnline) { color = '#9ca3af'; status = 'gone'; plateBg = '#6b7280'; plateText = '#ffffff'; }
+      else if (isMoving) { color = '#3FE07D'; status = 'moving'; plateBg = '#16a34a'; plateText = '#ffffff'; }
+      else if (hasIgnition) { color = '#eab308'; status = 'idle'; plateBg = '#eab308'; plateText = '#1f2937'; }
+      else { color = '#ef4444'; status = 'off'; plateBg = '#dc2626'; plateText = '#ffffff'; }
 
       const cat = markerCategory(dev);
-      const size = isSelected ? 40 : 32; // lățimea pictogramei (profil lateral); mai mici ca să nu se aglomereze
-      const ih = Math.round(size * 44 / 64);
-      const rot = Math.round(angle || 0);
+      const size = isSelected ? 48 : 40; // pictogramă top-down, plină; mai mare ca să se vadă direcția
+      const rot = Math.round(angle || 0); // capul vehiculului (0=N), rotim silueta → botul = direcția de mers
+      const lit = isMoving || hasIgnition; // faruri aprinse cât motorul merge
 
-      // Săgeata de direcție (în jurul badge-ului) se rotește după cap; vehiculul (glifa) rămâne drept și lizibil.
-      const arrow = (isMoving || hasIgnition)
-        ? '<div class="veh-arrow-rot" style="transform:rotate(' + rot + 'deg);color:' + color + ';"><span class="veh-arrow"></span></div>'
-        : '';
       const ring = isSelected ? '<span class="veh-ring"></span>' : '';
 
-      // Plăcuța cu numărul de înmatriculare, sub badge, colorată după status. La zoom mic e ascunsă din CSS.
+      // Silueta TOP-DOWN (fața spre sus în viewBox 0..48), rotită după cap: botul arată încotro merge.
+      // Înlocuiește vechiul profil lateral + săgeata separată (direcția se citește direct din vehicul).
+      const bodySvg =
+        '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
+          '<g transform="rotate(' + rot + ' 24 24)">' + vehicleBody(cat, color, lit) + '</g>' +
+        '</svg>';
+
+      // Plăcuța cu numărul de înmatriculare, sub vehicul, colorată după status. La zoom mic e ascunsă din CSS.
       const plate = dev && dev.plate ? String(dev.plate) : '';
       const plateHtml = plate ? '<div class="veh-plate" style="background:' + plateBg + ';color:' + plateText + ';">' + plate + '</div>' : '';
 
       const html =
-        '<div class="veh-mk" style="width:' + size + 'px;height:' + ih + 'px;">' +
+        '<div class="veh-mk" style="width:' + size + 'px;height:' + size + 'px;">' +
           ring +
-          arrow +
-          '<div class="veh-dot" style="color:' + color + ';">' +
-            vehicleArtSVG(cat, size) +
-          '</div>' +
+          '<div class="veh-dot">' + bodySvg + '</div>' +
           plateHtml +
         '</div>';
 
       return L.divIcon({
         className: 'vehicle-marker vehicle-' + status,
         html: html,
-        iconSize: [size, ih],
-        iconAnchor: [size / 2, ih / 2],
-        popupAnchor: [0, -(ih / 2)]
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        popupAnchor: [0, -(size / 2)]
       });
     }
 
