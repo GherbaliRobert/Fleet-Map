@@ -5294,75 +5294,93 @@ const pozitii = await r.json();</code></pre>
 
     // Siluetă top-down a vehiculului (viewBox 0..48, fața spre SUS). `lit` = faruri aprinse.
     function vehicleBody(cat, color, lit) {
-      const wht = 'rgba(255,255,255,0.92)', win = 'rgba(120,190,255,0.55)', whl = 'rgba(22,22,26,0.85)';
-      const hl = lit ? 'rgba(255,247,200,0.95)' : 'rgba(255,255,255,0.25)', tl = 'rgba(255,60,60,0.8)';
-      const W = (x, y, w, h) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="1.4" fill="' + whl + '"/>';
+      const wht = 'rgba(255,255,255,0.92)', win = 'rgba(130,200,255,0.62)', winR = 'rgba(130,200,255,0.4)', whl = 'rgba(20,22,28,0.92)';
+      const hl = lit ? 'rgba(255,248,205,0.98)' : 'rgba(255,255,255,0.28)', tl = 'rgba(255,70,70,0.85)';
+      const roof = 'rgba(255,255,255,0.13)', shade = 'rgba(0,0,0,0.12)';
+      const W = (x, y, w, h) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="1.7" fill="' + whl + '"/>';
+      const mir = (x, y) => '<rect x="' + x + '" y="' + y + '" width="3" height="2.3" rx="1.1" fill="' + color + '" stroke="' + wht + '" stroke-width="0.5"/>';
+      const bs = 'stroke="' + wht + '" stroke-width="1.1"'; // contur caroserie
       switch (cat) {
         case 'truck':
-          return W(11, 15, 3.5, 6) + W(33.5, 15, 3.5, 6) + W(11, 30, 3.5, 6) + W(33.5, 30, 3.5, 6) + W(11, 36, 3.5, 5) + W(33.5, 36, 3.5, 5) +
-            '<rect x="14" y="16" width="20" height="26" rx="2" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="15" y="6" width="18" height="11" rx="3" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="17" y="8" width="14" height="4" rx="1.5" fill="' + win + '"/>' +
-            '<circle cx="18" cy="7" r="1.2" fill="' + hl + '"/><circle cx="30" cy="7" r="1.2" fill="' + hl + '"/>';
+          return W(11, 14, 3.5, 5.5) + W(33.5, 14, 3.5, 5.5) + W(11, 30, 3.5, 5.5) + W(33.5, 30, 3.5, 5.5) + W(11, 36, 3.5, 5.5) + W(33.5, 36, 3.5, 5.5) +
+            mir(12.3, 8) + mir(32.7, 8) +
+            '<rect x="13.5" y="16" width="21" height="26.5" rx="1.8" fill="' + color + '" ' + bs + '/>' +
+            '<line x1="13.5" y1="23" x2="34.5" y2="23" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<line x1="13.5" y1="30" x2="34.5" y2="30" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<line x1="13.5" y1="37" x2="34.5" y2="37" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<rect x="15" y="5.5" width="18" height="11" rx="3" fill="' + color + '" ' + bs + '/>' +
+            '<path d="M17 11.5 L31 11.5 L29.8 8 C28.5 7 19.5 7 18.2 8 Z" fill="' + win + '"/>' +
+            '<circle cx="18" cy="6.6" r="1.2" fill="' + hl + '"/><circle cx="30" cy="6.6" r="1.2" fill="' + hl + '"/>';
         case 'van':
-          return W(12, 13, 3.2, 6) + W(32.8, 13, 3.2, 6) + W(12, 31, 3.2, 6) + W(32.8, 31, 3.2, 6) +
-            '<rect x="14" y="6" width="20" height="36" rx="4" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="16" y="8" width="16" height="5" rx="2" fill="' + win + '"/>' +
-            '<line x1="15" y1="16" x2="33" y2="16" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/>' +
-            '<circle cx="18" cy="7.5" r="1.2" fill="' + hl + '"/><circle cx="30" cy="7.5" r="1.2" fill="' + hl + '"/>';
+          return W(12, 13, 3.6, 6.5) + W(32.4, 13, 3.6, 6.5) + W(12, 30, 3.6, 6.5) + W(32.4, 30, 3.6, 6.5) +
+            mir(11.4, 13.5) + mir(33.6, 13.5) +
+            '<path d="M24 5 C28 5 31 6.6 32 10 L32.5 14 L32.5 42 C32.5 42.6 32.1 43 31.5 43 L16.5 43 C15.9 43 15.5 42.6 15.5 42 L15.5 14 L16 10 C17 6.6 20 5 24 5 Z" fill="' + color + '" ' + bs + '/>' +
+            '<path d="M17.5 14 L30.5 14 L29.4 9.6 C28 8.4 20 8.4 18.6 9.6 Z" fill="' + win + '"/>' +
+            '<rect x="16.6" y="16" width="14.8" height="24" rx="2" fill="' + roof + '"/>' +
+            '<line x1="15.5" y1="16" x2="32.5" y2="16" stroke="' + shade + '" stroke-width="0.8"/>' +
+            '<line x1="16" y1="40" x2="32" y2="40" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<line x1="24" y1="40" x2="24" y2="43" stroke="rgba(0,0,0,0.18)" stroke-width="0.8"/>' +
+            '<ellipse cx="19.5" cy="7.6" rx="1.6" ry="1.1" fill="' + hl + '"/><ellipse cx="28.5" cy="7.6" rx="1.6" ry="1.1" fill="' + hl + '"/>';
         case 'bus':
-          return W(12, 12, 3, 6) + W(33, 12, 3, 6) + W(12, 32, 3, 6) + W(33, 32, 3, 6) +
-            '<rect x="14" y="5" width="20" height="38" rx="5" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="16" y="7" width="16" height="4" rx="1.5" fill="' + win + '"/>' +
-            '<line x1="15.5" y1="17" x2="32.5" y2="17" stroke="' + win + '" stroke-width="1.6"/>' +
-            '<line x1="15.5" y1="23" x2="32.5" y2="23" stroke="' + win + '" stroke-width="1.6"/>' +
-            '<line x1="15.5" y1="29" x2="32.5" y2="29" stroke="' + win + '" stroke-width="1.6"/>' +
-            '<line x1="15.5" y1="35" x2="32.5" y2="35" stroke="' + win + '" stroke-width="1.6"/>';
+          return W(12, 12, 3, 5.5) + W(33, 12, 3, 5.5) + W(12, 33, 3, 5.5) + W(33, 33, 3, 5.5) +
+            '<rect x="14" y="5" width="20" height="38" rx="5.5" fill="' + color + '" ' + bs + '/>' +
+            '<path d="M16.5 11 L31.5 11 L30.4 7.6 C29 6.4 19 6.4 17.6 7.6 Z" fill="' + win + '"/>' +
+            '<rect x="18" y="14" width="12" height="26" rx="2" fill="' + roof + '"/>' +
+            '<rect x="15" y="14" width="2.6" height="24" rx="1.2" fill="' + win + '"/>' +
+            '<rect x="30.4" y="14" width="2.6" height="24" rx="1.2" fill="' + win + '"/>' +
+            '<rect x="17.5" y="39.5" width="13" height="2.2" rx="1" fill="' + tl + '"/>' +
+            '<circle cx="18" cy="6.6" r="1.1" fill="' + hl + '"/><circle cx="30" cy="6.6" r="1.1" fill="' + hl + '"/>';
         case 'motorcycle':
-          return '<rect x="22.5" y="8" width="3" height="6" rx="1.5" fill="' + whl + '"/>' +
-            '<rect x="22.5" y="34" width="3" height="6" rx="1.5" fill="' + whl + '"/>' +
-            '<rect x="18" y="14" width="12" height="2.4" rx="1.2" fill="' + whl + '"/>' +
-            '<rect x="21" y="14" width="6" height="20" rx="3" fill="' + color + '" stroke="' + wht + '" stroke-width="1.1"/>' +
-            '<circle cx="24" cy="11" r="1.3" fill="' + hl + '"/>';
+          return '<rect x="22" y="6" width="4" height="8" rx="2" fill="' + whl + '"/>' +
+            '<rect x="22" y="33" width="4" height="9" rx="2" fill="' + whl + '"/>' +
+            '<rect x="17.5" y="13.5" width="13" height="2.4" rx="1.2" fill="' + whl + '"/>' +
+            '<path d="M24 12 C26.5 12 27.6 14 27.5 17 L27 26 C27 30 21 30 21 26 L20.5 17 C20.4 14 21.5 12 24 12 Z" fill="' + color + '" ' + bs + '/>' +
+            '<ellipse cx="24" cy="19" rx="2.6" ry="3.4" fill="' + roof + '"/>' +
+            '<rect x="21.5" y="26" width="5" height="6" rx="2" fill="rgba(0,0,0,0.25)"/>' +
+            '<circle cx="24" cy="10" r="1.6" fill="' + hl + '"/>';
         case 'tractor':
-          return '<rect x="9" y="27" width="6" height="12" rx="2.8" fill="' + whl + '"/>' +
-            '<rect x="33" y="27" width="6" height="12" rx="2.8" fill="' + whl + '"/>' +
-            W(13, 11, 3, 5) + W(32, 11, 3, 5) +
-            '<rect x="16" y="8" width="16" height="30" rx="3" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="18" y="22" width="12" height="11" rx="2" fill="rgba(255,255,255,0.18)" stroke="' + wht + '" stroke-width="0.6"/>' +
-            '<circle cx="19" cy="9.5" r="1.1" fill="' + hl + '"/><circle cx="29" cy="9.5" r="1.1" fill="' + hl + '"/>';
-        case 'trailer':
-          return W(12, 20, 3.2, 6) + W(32.8, 20, 3.2, 6) + W(12, 28, 3.2, 7) + W(32.8, 28, 3.2, 7) +
-            '<rect x="14" y="10" width="20" height="32" rx="2" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="22.7" y="5" width="2.6" height="6" rx="1.3" fill="' + whl + '"/>' +
-            '<circle cx="24" cy="5" r="1.6" fill="none" stroke="' + wht + '" stroke-width="1"/>';
-        case 'tir':
-          // TIR / cap tractor + semiremorcă (articulat): cabină scurtă sus, remorcă lungă jos, șa de cuplare la mijloc
-          return W(11, 30, 3.5, 6) + W(33.5, 30, 3.5, 6) + W(11, 37, 3.5, 6) + W(33.5, 37, 3.5, 6) +
-            W(12, 13, 3, 5) + W(33, 13, 3, 5) +
-            '<rect x="14" y="18" width="20" height="25" rx="2" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="20.5" y="15" width="7" height="4" rx="1.2" fill="' + whl + '"/>' +
-            '<rect x="15" y="5" width="18" height="11" rx="3" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="17" y="7" width="14" height="4" rx="1.5" fill="' + win + '"/>' +
-            '<circle cx="18" cy="6" r="1.2" fill="' + hl + '"/><circle cx="30" cy="6" r="1.2" fill="' + hl + '"/>';
         case 'utilaj':
-          // Excavator (top-down): șenile pe lateral, cabină/platformă rotativă, braț + cupă spre față, contragreutate spate
-          return '<rect x="9" y="13" width="7" height="23" rx="3" fill="' + whl + '"/>' +
-            '<rect x="32" y="13" width="7" height="23" rx="3" fill="' + whl + '"/>' +
-            '<rect x="15" y="17" width="18" height="20" rx="3" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<rect x="17" y="19" width="8" height="7" rx="1.5" fill="' + win + '"/>' +
-            '<rect x="16" y="33" width="16" height="4" rx="1.5" fill="' + whl + '"/>' +
-            '<rect x="22" y="6" width="4" height="13" rx="1.6" fill="' + color + '" stroke="' + wht + '" stroke-width="1"/>' +
-            '<path d="M19.5 7 L28.5 7 L27 3 L21 3 Z" fill="' + whl + '"/>';
+          // Tractor (top-down): roți spate MARI, roți față mici, capotă îngustă în față, cabină cu geam în spate
+          return '<rect x="7.5" y="26" width="7.5" height="14" rx="3.5" fill="' + whl + '"/>' +
+            '<rect x="33" y="26" width="7.5" height="14" rx="3.5" fill="' + whl + '"/>' +
+            '<rect x="11" y="9" width="4.5" height="8" rx="2.2" fill="' + whl + '"/>' +
+            '<rect x="32.5" y="9" width="4.5" height="8" rx="2.2" fill="' + whl + '"/>' +
+            '<rect x="18.5" y="6" width="11" height="16" rx="2" fill="' + color + '" ' + bs + '/>' +
+            '<rect x="20" y="6.5" width="8" height="2.2" rx="1" fill="' + shade + '"/>' +
+            '<rect x="17.6" y="12.5" width="2" height="4.5" rx="1" fill="' + whl + '"/>' +
+            '<rect x="15.5" y="22" width="17" height="16" rx="2.5" fill="' + color + '" ' + bs + '/>' +
+            '<rect x="18" y="24.5" width="12" height="11" rx="2" fill="' + win + '"/>' +
+            '<circle cx="20.5" cy="7.6" r="1.1" fill="' + hl + '"/><circle cx="27.5" cy="7.6" r="1.1" fill="' + hl + '"/>';
+        case 'trailer':
+          return W(11.6, 22, 3.4, 6) + W(33, 22, 3.4, 6) + W(11.6, 30, 3.4, 6.5) + W(33, 30, 3.4, 6.5) +
+            '<rect x="13.5" y="11" width="21" height="31.5" rx="2" fill="' + color + '" ' + bs + '/>' +
+            '<rect x="16" y="14" width="16" height="25" rx="1.5" fill="' + roof + '"/>' +
+            '<line x1="13.5" y1="20" x2="34.5" y2="20" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<line x1="13.5" y1="28" x2="34.5" y2="28" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<line x1="13.5" y1="36" x2="34.5" y2="36" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<line x1="24" y1="11" x2="24" y2="5.5" stroke="' + whl + '" stroke-width="2"/>' +
+            '<circle cx="24" cy="4.6" r="1.6" fill="none" stroke="' + wht + '" stroke-width="1"/>';
+        case 'tir':
+          // TIR (cap tractor + semiremorcă, articulat): cabină rotunjită în față, semiremorcă lungă, șa de cuplare
+          return W(11, 30, 3.5, 5.5) + W(33.5, 30, 3.5, 5.5) + W(11, 36.5, 3.5, 5.5) + W(33.5, 36.5, 3.5, 5.5) +
+            W(11.6, 12.5, 3.2, 5) + W(33.2, 12.5, 3.2, 5) + mir(12.4, 9.5) + mir(32.6, 9.5) +
+            '<rect x="13.5" y="18" width="21" height="24.5" rx="1.6" fill="' + color + '" ' + bs + '/>' +
+            '<line x1="13.5" y1="26" x2="34.5" y2="26" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<line x1="13.5" y1="34" x2="34.5" y2="34" stroke="' + shade + '" stroke-width="0.7"/>' +
+            '<rect x="20.5" y="15.5" width="7" height="3.5" rx="1.2" fill="' + whl + '"/>' +
+            '<path d="M24 5 C27.5 5 30.5 6.3 31.5 9 L32 13 L32 16 L16 16 L16 13 L16.5 9 C17.5 6.3 20.5 5 24 5 Z" fill="' + color + '" ' + bs + '/>' +
+            '<path d="M17.5 13 L30.5 13 L29.4 9 C28 7.9 20 7.9 18.6 9 Z" fill="' + win + '"/>' +
+            '<circle cx="19" cy="6.5" r="1.1" fill="' + hl + '"/><circle cx="29" cy="6.5" r="1.1" fill="' + hl + '"/>';
         case 'car':
         default:
-          return W(13, 13, 3.5, 7) + W(13, 30, 3.5, 7) + W(31.5, 13, 3.5, 7) + W(31.5, 30, 3.5, 7) +
-            '<path d="M18 8 C18 5, 30 5, 30 8 L32 14 L33 20 L33 32 L32 38 C32 42, 16 42, 16 38 L15 32 L15 20 L16 14 Z" fill="' + color + '" stroke="' + wht + '" stroke-width="1.2"/>' +
-            '<path d="M19 12 C19 10, 29 10, 29 12 L30 17 L18 17 Z" fill="' + win + '"/>' +
-            '<path d="M19 36 L29 36 L30 32 L18 32 Z" fill="rgba(120,190,255,0.4)"/>' +
-            '<rect x="20" y="18" width="8" height="13" rx="2" fill="rgba(255,255,255,0.10)"/>' +
-            '<ellipse cx="20" cy="8" rx="1.8" ry="1.1" fill="' + hl + '"/><ellipse cx="28" cy="8" rx="1.8" ry="1.1" fill="' + hl + '"/>' +
-            '<ellipse cx="20" cy="40" rx="1.6" ry="0.9" fill="' + tl + '"/><ellipse cx="28" cy="40" rx="1.6" ry="0.9" fill="' + tl + '"/>';
+          return W(12.4, 13, 3.8, 7) + W(31.8, 13, 3.8, 7) + W(12.4, 29, 3.8, 7) + W(31.8, 29, 3.8, 7) +
+            mir(11.4, 16) + mir(33.6, 16) +
+            '<path d="M24 5 C28.4 5 31.4 7.3 32.1 11.6 L32.7 16 L32.7 33 C32.7 38.2 30 42.5 24 42.5 C18 42.5 15.3 38.2 15.3 33 L15.3 16 L15.9 11.6 C16.6 7.3 19.6 5 24 5 Z" fill="' + color + '" ' + bs + '/>' +
+            '<path d="M19.5 16 L28.5 16 L27 11.6 C26 10.7 22 10.7 21 11.6 Z" fill="' + win + '"/>' +
+            '<rect x="19" y="16.5" width="10" height="13" rx="2.5" fill="' + roof + '"/>' +
+            '<path d="M20 29.5 L28 29.5 L29 34 C28 35 20 35 19 34 Z" fill="' + winR + '"/>' +
+            '<ellipse cx="20" cy="7.6" rx="1.9" ry="1.2" fill="' + hl + '"/><ellipse cx="28" cy="7.6" rx="1.9" ry="1.2" fill="' + hl + '"/>' +
+            '<rect x="17.6" y="40.4" width="4" height="1.8" rx="0.9" fill="' + tl + '"/><rect x="26.4" y="40.4" width="4" height="1.8" rx="0.9" fill="' + tl + '"/>';
       }
     }
 
