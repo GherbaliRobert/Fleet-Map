@@ -5438,6 +5438,72 @@ const pozitii = await r.json();</code></pre>
       return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 64 44" fill="none" stroke="currentColor" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round">' + vehicleArtPath(cat) + '</svg>';
     }
 
+    // Pictograme PREMIUM: caroserie UMPLUTĂ cu gradient (efect 3D) + geamuri + jante cu butuc + umbră la sol.
+    // Culori fixe (gri metalic) — arată identic pe ambele teme. Folosite la dimensiuni MARI (selector, fișă);
+    // pe hartă/listă rămâne varianta plată (vehicleArtSVG), care se colorează după status.
+    function vehicleArtPremiumShapes(cat) {
+      switch (cat === 'utilaj' ? 'tractor' : cat) {
+        case 'van': return {
+          body: '<path d="M4 31 L4 11 C4 9.6 5 8.6 6.4 8.6 L41 8.6 C45 8.6 48 10.6 51 15 L57 22 C59.5 22.5 61.5 23.6 61.5 26.4 L61.5 31 Z"/>',
+          glass: '<path d="M44.8 14 L50.5 21 L44.8 21 Z"/><path d="M9 12.5 L26 12.5 L26 19 L9 19 Z"/>',
+          det: '<path d="M31 9 L31 31" stroke="#5b6675" stroke-width="1" fill="none"/>',
+          wheels: [[15, 31, 6], [51, 31, 6]] };
+        case 'truck': return {
+          body: '<path d="M3 31 L3 7 C3 6 3.6 5.5 4.6 5.5 L37 5.5 L37 31 Z"/><path d="M37 31 L37 16 L48 16 C49.8 16 50.8 16.8 52 18.4 L58 24.5 L60.8 25.2 C61.5 25.5 61.8 26.2 61.8 27.4 L61.8 31 Z"/>',
+          glass: '<path d="M49 18 L55.8 24 L50.5 24 L50.5 18 Z"/>',
+          det: '',
+          wheels: [[15, 31, 6], [51, 31, 6]] };
+        case 'tir': return {
+          body: '<path d="M2 31 L2 6.5 L38 6.5 L38 31 Z"/><path d="M42 31 L42 12 L50 12 C52 12 53 13.5 53.6 15.5 L55 22 L61 22.6 C62 22.6 62.6 23.4 62.6 24.6 L62.6 31 Z"/>',
+          glass: '<path d="M54 16.5 L60 22 L55.2 22 L54.2 16.5 Z"/>',
+          det: '<path d="M38 27.5 L42 27.5" stroke="#5b6675" stroke-width="1.2" fill="none"/>',
+          wheels: [[10, 31, 6], [36, 31, 6], [55, 31, 5.5]] };
+        case 'bus': return {
+          body: '<path d="M3 31 L3 11 C3 9 4 8 6 8 L58 8 C60 8 61 9 61 11 L61 31 Z"/>',
+          glass: '<path d="M8 12 L13 12 L13 17 L8 17 Z M16 12 L21 12 L21 17 L16 17 Z M24 12 L29 12 L29 17 L24 17 Z M32 12 L37 12 L37 17 L32 17 Z M40 12 L45 12 L45 17 L40 17 Z M48 12 L56 12 L56 17 L48 17 Z"/>',
+          det: '',
+          wheels: [[15, 31, 6], [51, 31, 6]] };
+        case 'tractor': return {
+          body: '<path d="M9 26 L9 9 L23 9 L23 13 L45 13 L47.5 16 L47.5 26 Z"/>',
+          glass: '<path d="M11.5 11.5 L21 11.5 L21 17.5 L11.5 17.5 Z"/>',
+          det: '<path d="M24 9 L24 4" stroke="#5b6675" stroke-width="1.4" fill="none"/>',
+          wheels: [[16, 27, 11], [49, 30, 7]] };
+        case 'motorcycle': return {
+          body: '<path d="M13 29 L18 22.5 C18.5 21.5 19.3 21 20.5 21 L31 21 L35 18.5 L43 18.5 C44.4 18.5 45.3 19.2 45.8 20.5 L47.5 25 L43.5 26 L40 24.5 L25 25.5 L19 29 Z"/>',
+          glass: '',
+          det: '<path d="M43 18.5 L49.5 14.8" stroke="#5b6675" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M45 22 L51 29" stroke="#5b6675" stroke-width="1.6" fill="none"/>',
+          wheels: [[13, 30, 8], [51, 30, 8]] };
+        case 'trailer': return {
+          body: '<path d="M6 30 L6 14 L50 14 L50 30 Z"/>',
+          glass: '',
+          det: '<path d="M6 18 L50 18" stroke="#5b6675" stroke-width="1" fill="none"/><path d="M50 18 L60 22 L50 26" stroke="#5b6675" stroke-width="1.4" fill="none" stroke-linejoin="round"/>',
+          wheels: [[20, 30, 6], [40, 30, 6]] };
+        case 'car':
+        default: return {
+          body: '<path d="M5 31 L5 25 C5 24.2 5.6 24 6.5 24 L12.5 24 L19 15.5 C20.3 14 21.6 13.2 23.5 13.2 L38.5 13.2 C40.4 13.2 41.7 14 43 15.8 L48.8 24 L58 25 C60.2 25.3 61.5 26.6 61.5 29 L61.5 31 Z"/>',
+          glass: '<path d="M22 15 L31.3 15 L31.3 21 L19.9 21 Z"/><path d="M33 15 L38 15 L42.4 21 L33 21 Z"/>',
+          det: '',
+          wheels: [[16, 31, 6], [48, 31, 6]] };
+      }
+    }
+    var __raVgSeq = 0; // id-uri unice de gradient (evită coliziuni când sunt mai multe iconuri în pagină)
+    function vehicleArtPremiumSVG(cat, size) {
+      const w = size || 40;
+      const h = Math.round(w * 44 / 64);
+      const s = vehicleArtPremiumShapes(cat);
+      const gid = 'raVg' + (++__raVgSeq);
+      const wheels = s.wheels.map(function (c) {
+        return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + c[2] + '" fill="#2b313b" stroke="#6b7686" stroke-width="1"/>' +
+               '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + (c[2] * 0.40).toFixed(1) + '" fill="#c2cad6"/>';
+      }).join('');
+      const shadow = '<ellipse cx="32" cy="39.5" rx="27" ry="2.4" fill="#000" opacity="0.10"/>';
+      const body = '<g fill="url(#' + gid + ')" stroke="#5b6675" stroke-width="1.4" stroke-linejoin="round">' + s.body + '</g>';
+      const glass = s.glass ? '<g fill="#e7edf4" stroke="#5b6675" stroke-width="0.9" stroke-linejoin="round">' + s.glass + '</g>' : '';
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 64 44">' +
+        '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ccd4df"/><stop offset="1" stop-color="#95a0af"/></linearGradient></defs>' +
+        shadow + body + glass + (s.det || '') + wheels + '</svg>';
+    }
+
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
       const isMoving = speed > 3;
       const hasIgnition = ignitionOn(io, dev && dev.timestamp);
@@ -6028,7 +6094,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('detail-vehicle-name').textContent = name;
       document.getElementById('detail-vehicle-plate').textContent = plate || imei;
 
-      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = vehicleArtSVG(markerCategory(data), 30);
+      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = vehicleArtPremiumSVG(markerCategory(data), 30);
 
       const io = data.io || {};
       const isOnline = isDeviceOnline(data);
@@ -7364,7 +7430,7 @@ const pozitii = await r.json();</code></pre>
       wrap.innerHTML = ICON_OPTIONS.map(function (o) {
         const active = o.val === cur;
         return '<button type="button" class="icon-tile' + (active ? ' active' : '') + '" data-icon="' + o.val + '" onclick="pickIcon(\'' + o.val + '\')" title="' + o.label + '">' +
-          '<span class="icon-tile-art">' + vehicleArtSVG(o.val, 48) + '</span>' +
+          '<span class="icon-tile-art">' + vehicleArtPremiumSVG(o.val, 48) + '</span>' +
           '<span class="icon-tile-label">' + o.label + '</span>' +
           '</button>';
       }).join('');
