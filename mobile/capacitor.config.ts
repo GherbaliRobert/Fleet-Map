@@ -13,7 +13,9 @@ const config: CapacitorConfig = {
       launchAutoHide: true,
       launchShowDuration: 800,
     },
-    StatusBar: { style: 'DARK', backgroundColor: '#0B0E11' },
+    // overlaysWebView → webview-ul desenează ÎN SPATELE barei de stare (full-screen / edge-to-edge).
+    // Înălțimea barei e compensată în CSS prin env(safe-area-inset-top) (--sat).
+    StatusBar: { overlaysWebView: true, style: 'DARK', backgroundColor: '#0B0E11' },
     PushNotifications: { presentationOptions: ['badge', 'sound', 'alert'] },
   },
   android: { allowMixedContent: false },

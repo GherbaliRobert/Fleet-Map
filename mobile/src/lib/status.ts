@@ -24,3 +24,13 @@ export function countByStatus(list: Position[], offlineMinutes: number): Counts 
   for (const p of list) c[statusOf(p, offlineMinutes).status]++;
   return c;
 }
+
+// Tahograful (Reg. UE 561/2006 + 165/2014) e obligatoriu DOAR pe vehicule grele de marfă
+// (>3.5t) și autobuze/autocare — NU pe autoturisme, motociclete, dube ușoare, utilaje sau
+// remorci. Categoria vine din fișa vehiculului (`vehicle_type`):
+// Auto / Camion / Duba / Motocicleta / Autobuz / Utilaj / Remorca / Altul.
+const TACHO_CATEGORIES = ['camion', 'tir', 'autobuz', 'autocar'];
+export function usesTachograph(vehicleType?: string | null): boolean {
+  const t = String(vehicleType || '').trim().toLowerCase();
+  return TACHO_CATEGORIES.includes(t);
+}

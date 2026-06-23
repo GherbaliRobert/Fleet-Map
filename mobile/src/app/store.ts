@@ -3,16 +3,32 @@ import { Api } from '../api/endpoints';
 import type { Me, Position } from '../api/endpoints';
 import { setAuthToken, onUnauthorized, API_BASE } from '../api/client';
 import { saveToken, loadToken, clearToken, saveUser, loadUser, getTheme, setTheme } from '../lib/storage';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 export const theme = signal<'dark' | 'light'>('dark');
+
+// Full-screen: bara de stare suprapusă peste webview (edge-to-edge), cu iconițele
+// adaptate la temă — temă închisă → iconițe deschise (Style.Dark), temă deschisă →
+// iconițe închise (Style.Light). No-op în browser (doar pe nativ).
+async function applyStatusBar(t: 'dark' | 'light') {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await StatusBar.setOverlaysWebView({ overlay: true });
+    await StatusBar.setStyle({ style: t === 'dark' ? Style.Dark : Style.Light });
+  } catch { /* web / nesuportat */ }
+}
+
 export async function initTheme() {
   try { const t = await getTheme(); theme.value = (t === 'light' ? 'light' : 'dark'); } catch { /* dark */ }
   document.documentElement.setAttribute('data-theme', theme.value);
+  applyStatusBar(theme.value);
 }
 export async function toggleTheme() {
   const next = theme.value === 'dark' ? 'light' : 'dark';
   theme.value = next;
   document.documentElement.setAttribute('data-theme', next);
+  applyStatusBar(next);
   try { await setTheme(next); } catch { /* ignore */ }
 }
 

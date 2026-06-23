@@ -4,7 +4,7 @@ import { vehicles, offlineMinutes, me, showToast, refreshVehicles } from '../app
 import { Api } from '../api/endpoints';
 import type { DeviceFull, DailyStats } from '../api/endpoints';
 import { reverseGeocode } from '../api/geocode';
-import { statusOf } from '../lib/status';
+import { statusOf, usesTachograph } from '../lib/status';
 import { fmtDateTime, fmtDuration, gpsQuality, gsmQuality, odometerKm, voltageStr } from '../lib/format';
 import { Icon } from '../components/Icon';
 import { MiniMap } from '../components/MiniMap';
@@ -107,6 +107,8 @@ export function VehicleDetail() {
   const _ftd = String((full as any)?.fuel_type || '').toLowerCase();
   const _emd = String((full as any)?.emission_class || '').toLowerCase().replace(/[\s_-]/g, '');
   const adblueOk = (_ftd.includes('motorin') || _ftd.includes('diesel')) && _emd.includes('euro6');
+  // Tahograf doar pe categorii care îl folosesc legal (camion/TIR/autobuz) — nu pe autoturisme etc.
+  const tachoOk = usesTachograph(full?.vehicle_type || v?.vehicle_type);
   const ll = v && v.latitude != null ? `${v.latitude},${v.longitude}` : '';
 
   function openUrl(url: string) { try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); } }
@@ -156,7 +158,7 @@ export function VehicleDetail() {
           <button class="d-act" onClick={() => loc.route(`/reports?imei=${encodeURIComponent(imei)}`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>
           <button class="d-act" onClick={() => setSheet('can')}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
           {sensors && sensors.length > 0 && <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>}
-          {me.value?.features?.tahograf && <button class="d-act" onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>}
+          {me.value?.features?.tahograf && tachoOk && <button class="d-act" onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>}
           <button class="d-act" disabled={!ll} onClick={() => setNavOpen((o) => !o)}><Icon name="navigate" size={18} class="ic" /> Navighează</button>
           {navOpen && ll && (
             <div class="d-nav">
