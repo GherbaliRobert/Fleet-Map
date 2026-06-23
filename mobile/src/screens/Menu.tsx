@@ -57,9 +57,7 @@ export function Menu() {
           ? item('truck', 'e-Transport (ANAF)', () => loc.route('/etransport'))
           : soon('truck', 'e-Transport (ANAF)')}
         {soon('flame', 'E-Toll & Roviniete')}
-        {u?.features?.tahograf
-          ? item('disc', 'Tahograf', () => loc.route('/tahograf'))
-          : soon('disc', 'Tahograf')}
+        {u?.features?.tahograf && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
         {soon('mapPin', 'Hotspot & Rutare')}
 
         {(perms.manageFleet || perms.manageUsers) && (
