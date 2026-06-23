@@ -9941,7 +9941,7 @@ const pozitii = await r.json();</code></pre>
             '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">∞</td></tr>';
         }
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită AI</th></tr></thead><tbody>' +
+          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită (cereri)</th></tr></thead><tbody>' +
           (rows || '<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
         // ─── Debug IO — mapare per vehicul (super-admin) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:18px 0 6px;"><i class="fas fa-microchip"></i> Debug IO — mapare per vehicul</div>';
@@ -10341,10 +10341,10 @@ const pozitii = await r.json();</code></pre>
           var on = s.agents.indexOf(a[0]) >= 0;
           return '<div style="' + ROW + 'cursor:default;' + (agOff ? 'opacity:.55;' : '') + '"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + a[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + a[2] + '</span></span><label class="rax-sw"><input type="checkbox" ' + (on ? 'checked' : '') + (agOff ? ' disabled' : '') + ' onchange="raxCfgToggleAgent(\'' + a[0] + '\',this.checked)"><span class="sl"></span></label></div>';
         }).join('') + '</div>';
-      html += '<div style="' + SEC + 'border-bottom:none;"><div style="' + H + '">Limită AI lunară (tokeni)</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;"><input type="number" id="rax-cfg-ailimit" value="' + (s.aiLimit === '' ? '' : s.aiLimit) + '" placeholder="gol = nelimitat" min="0" step="1000" style="flex:1;' + INP + '">' +
+      html += '<div style="' + SEC + 'border-bottom:none;"><div style="' + H + '">Limită AI lunară (cereri / prompturi)</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;"><input type="number" id="rax-cfg-ailimit" value="' + (s.aiLimit === '' ? '' : s.aiLimit) + '" placeholder="ex: 500 — gol = nelimitat" min="0" step="10" style="flex:1;' + INP + '">' +
         '<button class="rax-btn primary" onclick="raxCfgSaveAiLimit()"><i class="fas fa-check"></i> Salvează</button></div>' +
-        '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Plafon tokeni AI / lună. Gol = nelimitat.</div></div>';
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Număr maxim de <b>cereri AI (prompturi)</b> la 30 de zile. Întrebările rapide predefinite NU consumă din limită. Gol = nelimitat.</div></div>';
       body.innerHTML = html;
     }
     window.raxCfgToggleFeature = async function (key, on) {
