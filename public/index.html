@@ -2307,18 +2307,15 @@ const pozitii = await r.json();</code></pre>
 
     // Populează numerele de pe carduri (companii, utilizatori, dispozitive active/arhivate).
     async function loadAdminDash() {
-      var isSuper = !!(currentUser && currentUser.role === 'superadmin');
       var setNum = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = (v == null ? '–' : v); };
-      try { setNum('adash-n-users', Array.isArray(ueUsersCache) ? ueUsersCache.length : '–'); } catch (e) {}
+      // Un singur request rapid (COUNT-uri indexate), în loc de lista completă de vehicule (join pe poziții) + companii.
       try {
-        var dr = await fetch('/api/devices?includeArchived=1'); var devs = await dr.json();
-        if (Array.isArray(devs)) {
-          var arch = devs.filter(function (d) { return d.status === 'archived'; }).length;
-          setNum('adash-n-active', devs.length - arch);
-          setNum('adash-n-archived', arch);
-        }
+        var c = await fetch('/api/admin/counts', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        setNum('adash-n-companies', c.companies);
+        setNum('adash-n-users', c.users);
+        setNum('adash-n-active', c.active_devices);
+        setNum('adash-n-archived', c.archived_devices);
       } catch (e) {}
-      if (isSuper) { try { var cr = await fetch('/api/companies'); var cos = await cr.json(); if (Array.isArray(cos)) setNum('adash-n-companies', cos.length); } catch (e) {} }
     }
     window.loadAdminDash = loadAdminDash;
 

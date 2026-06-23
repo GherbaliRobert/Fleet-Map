@@ -1970,6 +1970,25 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
 });
 
 // Dashboard super-admin: stat per companie (vehicule, useri) + consum tokeni AI + totaluri
+// Numărătoare rapidă pentru cardurile din panou (COUNT-uri indexate; evită încărcarea listei complete de
+// vehicule cu join LATERAL pe poziții — care era lentă pe baza mare de poziții din producție).
+app.get('/api/admin/counts', requireAuth, withScope, async (req, res) => {
+  try {
+    if (req.isSuper) {
+      const r = await db.pool.query(`SELECT
+        (SELECT COUNT(*)::int FROM companies) AS companies,
+        (SELECT COUNT(*)::int FROM users) AS users,
+        (SELECT COUNT(*)::int FROM devices WHERE status IS DISTINCT FROM 'archived') AS active_devices,
+        (SELECT COUNT(*)::int FROM devices WHERE status = 'archived') AS archived_devices`);
+      return res.json(r.rows[0]);
+    }
+    const r = await db.pool.query(`SELECT
+      (SELECT COUNT(*)::int FROM users WHERE company_id = $1) AS users,
+      (SELECT COUNT(*)::int FROM devices WHERE company_id = $1 AND status IS DISTINCT FROM 'archived') AS active_devices,
+      (SELECT COUNT(*)::int FROM devices WHERE company_id = $1 AND status = 'archived') AS archived_devices`, [req.companyId]);
+    res.json(Object.assign({ companies: null }, r.rows[0]));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     let days = parseInt(req.query.days); if (!Number.isFinite(days) || days <= 0) days = 30; days = Math.min(days, 365);

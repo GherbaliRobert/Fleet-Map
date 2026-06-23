@@ -728,6 +728,7 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_findings_company ON agent_findings(company_id, created_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_findings_created ON agent_findings(created_at DESC)`); // pt. „Toate companiile" (ORDER BY created_at fără filtru pe companie)
 
     // Raport săptămânal de activitate a flotei (generat automat lunea, per companie, analizat AI).
     await client.query(`
