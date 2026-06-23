@@ -1052,6 +1052,34 @@ function companyAccessStatus(company) {
   else if (now > until) status = 'grace';
   return { status, access_until: until, grace_until: graceUntil };
 }
+// Notificare de facturare: când o companie intră în GRAȚIE (abonament tocmai expirat = factură emisă),
+// anunță adminii ei o singură dată per ciclu (dedup pe cheia invoice_due:<co>:<access_until>). Au 15 zile.
+async function billingReminderTick() {
+  const report = { checked: 0, grace: [], notified: [] };
+  let companies = [];
+  try { companies = await db.getCompanies(); } catch (e) { return report; }
+  report.checked = companies.length;
+  for (const co of companies) {
+    try {
+      if (co.access_until == null) continue; // „nelimitat" → fără facturare
+      const st = companyAccessStatus(co);
+      if (st.status !== 'grace') continue; // notificăm exact la intrarea în grație (după expirarea celor 31 zile)
+      report.grace.push(co.id);
+      const key = 'invoice_due:' + co.id + ':' + co.access_until;
+      if (await db.notificationKeyExists(key, 24 * 40)) continue; // deja notificat pentru acest ciclu (40z > 15 grație)
+      const graceDate = new Date(Number(st.grace_until)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' });
+      // Notificare la nivel de companie (user_id = null) → o văd toți utilizatorii ei, inclusiv adminul.
+      await db.createNotification({
+        type: 'invoice_due', severity: 'warning', companyId: co.id, userId: null,
+        title: 'Factură emisă — 15 zile pentru plată',
+        body: 'Abonamentul a expirat. Mai aveți 15 zile de grație (până la ' + graceDate + ') să înregistrați plata, altfel accesul se suspendă.',
+        data: { key: key, grace_until: st.grace_until, access_until: co.access_until }
+      });
+      report.notified.push(co.id);
+    } catch (e) { /* per-company, best-effort */ }
+  }
+  return report;
+}
 // Cache scurt al stării de acces — evită un getCompanyById pe FIECARE request. Invalidat la schimbarea accesului.
 const _accessCache = new Map();
 function _invalidateAccessCache(companyId) { _accessCache.delete(companyId); }
@@ -2331,6 +2359,10 @@ app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
 
 // Audit „de ce apare X pe hartă": pentru fiecare vehicul — status DB vs set arhivat în memorie vs prezent în live.
 // Evidențiază „leaks" (arhivat în DB dar încă pe hartă). Cu ?fix=1 forțează reconcilierea pe loc.
+// Forțează verificarea de facturare (trimite notificările „factură emisă" pt. companiile în grație). Util + debug.
+app.post('/api/debug/billing-run', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await billingReminderTick()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/debug/live-audit', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     if (req.query.fix) await reconcileArchived();
@@ -5994,6 +6026,10 @@ async function start() {
   // setul cu DB. Rulează curând după pornire (după ce s-a încărcat livePositions) + la fiecare 2 min.
   setTimeout(reconcileArchived, 6000);
   setInterval(reconcileArchived, 2 * 60 * 1000);
+
+  // Notificare facturare: la intrarea în grație anunță adminii companiei (verificare la pornire + orar).
+  setTimeout(billingReminderTick, 30000);
+  setInterval(billingReminderTick, 60 * 60 * 1000);
 
   // ───────────────────────────────────────────────────────────────
   // Cleanup periodic peste livePositions — fără el, vehiculele care își pierd semnalul GSM
