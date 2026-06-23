@@ -1110,6 +1110,15 @@
     .rax-ico-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; cursor: pointer; color: var(--text-primary); font-size: 12px; line-height: 1; }
     .rax-ico-btn:hover { border-color: var(--accent); color: var(--accent); }
     .rax-ico-btn.danger { border-color: var(--red); color: var(--red); }
+    /* Toggle switch (iOS-style) */
+    .rax-sw { position: relative; display: inline-block; width: 42px; height: 24px; flex: 0 0 42px; }
+    .rax-sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .rax-sw .sl { position: absolute; inset: 0; background: var(--border); border-radius: 24px; transition: background .2s; cursor: pointer; }
+    .rax-sw .sl:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+    .rax-sw input:checked + .sl { background: var(--accent); }
+    .rax-sw input:checked + .sl:before { transform: translateX(18px); }
+    .rax-sw input:disabled + .sl { opacity: .45; cursor: not-allowed; }
+    .rax-lbl { font-size: 11px; color: var(--text-muted); display: block; margin: 0 0 3px; }
   </style>
   <div id="users-modal" class="modal-overlay">
     <div class="modal" style="width:1060px;max-width:97vw;max-height:92vh;display:flex;flex-direction:column;">
@@ -1132,6 +1141,7 @@
           <button class="aside-item" data-super data-atab="tahograf" onclick="raxAdminTab('tahograf')"><i class="fas fa-gauge-high"></i> Tahograf</button>
           <button class="aside-item" data-super data-atab="etransport" onclick="raxAdminTab('etransport')"><i class="fas fa-truck-fast"></i> e-Transport</button>
           <div class="aside-grp" data-super>Business</div>
+          <button class="aside-item" data-super data-atab="billing" onclick="raxAdminTab('billing')"><i class="fas fa-file-invoice-dollar"></i> Facturare</button>
           <button class="aside-item" data-super data-atab="accounts" onclick="raxAdminTab('accounts')"><i class="fas fa-users-gear"></i> Conturi &amp; Abonamente</button>
           <button class="aside-item" data-super data-atab="dashboard" onclick="raxAdminTab('dashboard')"><i class="fas fa-chart-line"></i> Dashboard platformă</button>
           <div class="aside-grp">Sistem</div>
@@ -1153,6 +1163,7 @@
           <div id="admin-tab-companies" style="display:none;"></div>
           <div id="admin-tab-accounts" style="display:none;"></div>
           <div id="admin-tab-archived" style="display:none;"></div>
+          <div id="admin-tab-billing" style="display:none;"></div>
           <div id="admin-tab-agents" style="display:none;"></div>
           <div id="admin-tab-tahograf" style="display:none;"></div>
           <div id="admin-tab-etransport" style="display:none;"></div>
@@ -2248,8 +2259,8 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
-      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
-      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
+      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
+      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       Object.keys(map).forEach(function (k) {
         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
@@ -2265,6 +2276,8 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadAccounts) window.raxLoadAccounts();
       } else if (name === 'archived') {
         if (window.loadArchivedDevices) window.loadArchivedDevices();
+      } else if (name === 'billing') {
+        if (window.raxLoadBilling) window.raxLoadBilling();
       } else if (name === 'users') {
         if (window.loadUsers) window.loadUsers();
       } else if (name === 'agents') {
@@ -9465,6 +9478,14 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
+  <!-- Înregistrare plată / factură (super-admin) -->
+  <div class="rax-overlay" id="rax-pay-overlay">
+    <div class="rax-card" style="max-width:440px;">
+      <div class="rax-head"><h3><i class="fas fa-file-invoice-dollar" style="color:var(--accent)"></i> Înregistrează plată</h3><button class="rax-x" onclick="document.getElementById('rax-pay-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-body" id="rax-pay-body"></div>
+    </div>
+  </div>
+
   <script>
   (function () {
     var me = null, aiEnabled = false, aiHistory = [], companiesCache = [];
@@ -10240,13 +10261,13 @@ const pozitii = await r.json();</code></pre>
         '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Planul dă valorile implicite pentru module/agenți. Le poți suprascrie per companie mai jos.</div></div>';
       html += '<div style="' + SEC + '"><div style="' + H + '">Module (acces funcții)</div>' +
         _RAX_MODS.map(function (m) {
-          return '<label style="' + ROW + '"><input type="checkbox" ' + (s.feats[m[0]] ? 'checked' : '') + ' onchange="raxCfgToggleFeature(\'' + m[0] + '\',this.checked)" style="' + CK + '"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + m[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + m[2] + '</span></span></label>';
+          return '<div style="' + ROW + 'cursor:default;"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + m[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + m[2] + '</span></span><label class="rax-sw"><input type="checkbox" ' + (s.feats[m[0]] ? 'checked' : '') + ' onchange="raxCfgToggleFeature(\'' + m[0] + '\',this.checked)"><span class="sl"></span></label></div>';
         }).join('') + '</div>';
       var agOff = !s.feats.agents;
       html += '<div style="' + SEC + '"><div style="' + H + '">Agenți AI' + (agOff ? ' <span style="font-size:10px;color:var(--orange);font-weight:600;">(modul oprit → niciunul nu rulează)</span>' : '') + '</div>' +
         _RAX_AGS.map(function (a) {
           var on = s.agents.indexOf(a[0]) >= 0;
-          return '<label style="' + ROW + (agOff ? 'opacity:.5;' : '') + '"><input type="checkbox" ' + (on ? 'checked' : '') + (agOff ? ' disabled' : '') + ' onchange="raxCfgToggleAgent(\'' + a[0] + '\',this.checked)" style="' + CK + '"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + a[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + a[2] + '</span></span></label>';
+          return '<div style="' + ROW + 'cursor:default;' + (agOff ? 'opacity:.55;' : '') + '"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + a[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + a[2] + '</span></span><label class="rax-sw"><input type="checkbox" ' + (on ? 'checked' : '') + (agOff ? ' disabled' : '') + ' onchange="raxCfgToggleAgent(\'' + a[0] + '\',this.checked)"><span class="sl"></span></label></div>';
         }).join('') + '</div>';
       html += '<div style="' + SEC + 'border-bottom:none;"><div style="' + H + '">Limită AI lunară (tokeni)</div>' +
         '<div style="display:flex;gap:8px;align-items:center;"><input type="number" id="rax-cfg-ailimit" value="' + (s.aiLimit === '' ? '' : s.aiLimit) + '" placeholder="gol = nelimitat" min="0" step="1000" style="flex:1;' + INP + '">' +
@@ -10302,35 +10323,12 @@ const pozitii = await r.json();</code></pre>
         '<button class="rax-btn" style="padding:3px 9px;font-size:11px;" onclick="raxShowPayments(' + c.id + ')"><i class="fas fa-clock-rotate-left"></i> Istoric</button>' +
         '</div>';
     }
-    window.raxRecordPayment = async function (id) {
+    window.raxRecordPayment = function (id) { if (window.raxOpenPaymentModal) raxOpenPaymentModal(id); }; // modal în loc de prompt-uri
+    // „Istoric" pe rândul companiei → deschide tabelul de Facturare filtrat pe acea companie.
+    window.raxShowPayments = function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
-      var monthsStr = prompt('Înregistrează plată pentru „' + (c.name || id) + '"\nPrelungește accesul cu câte LUNI? (1 = o lună · cumulativ peste accesul curent)', '1');
-      if (monthsStr === null) return;
-      var months = Math.max(1, parseInt(monthsStr) || 1);
-      var amount = prompt('Suma încasată (lei, opțional — lasă gol dacă nu vrei să o reții):', '');
-      if (amount === null) return;
-      var note = prompt('Notă (opțional — ex: nr. factură / transfer):', '');
-      if (note === null) note = '';
-      try {
-        var j = await fetch('/api/companies/' + id + '/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ months: months, amount: (amount.trim() === '' ? null : amount.trim()), note: note }) }).then(function (r) { return r.json(); });
-        if (j.error) { alert(j.error); return; }
-        var until = (j.access && j.access.access_until) ? new Date(Number(j.access.access_until)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—';
-        alert('✓ Plată înregistrată. Acces activ până la: ' + until);
-        raxLoadCompanies();
-      } catch (e) { alert('Eroare: ' + e.message); }
-    };
-    window.raxShowPayments = async function (id) {
-      var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
-      try {
-        var rows = await fetch('/api/companies/' + id + '/payments', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (!Array.isArray(rows) || !rows.length) { alert('Nicio plată înregistrată pentru „' + (c.name || id) + '".'); return; }
-        var txt = rows.map(function (p) {
-          var d = p.paid_at ? new Date(Number(p.paid_at)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
-          var until = p.period_end ? new Date(Number(p.period_end)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
-          return '• ' + d + ' — ' + (p.amount_ron != null ? (p.amount_ron + ' lei') : '(fără sumă)') + ' · ' + (p.method || '') + ' → acces până ' + until + (p.note ? (' · ' + p.note) : '');
-        }).join('\n');
-        alert('Istoric plăți — ' + (c.name || id) + '\n\n' + txt);
-      } catch (e) { alert('Eroare: ' + e.message); }
+      if (window.raxAdminTab) raxAdminTab('billing');
+      setTimeout(function () { var s = document.getElementById('rax-bill-search'); if (s) { s.value = c.name || ''; if (window.raxRenderBilling) raxRenderBilling(); } }, 350);
     };
     async function raxLoadCompanies() {
       var box = $('rax-co-list'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
@@ -10376,6 +10374,76 @@ const pozitii = await r.json();</code></pre>
       }).join('');
       box.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>' +
         (rows.length ? '' : '<div class="rax-co-meta" style="padding:12px;">Nicio companie pentru „' + esc(q) + '".</div>');
+    };
+
+    // ─── Facturare (super-admin): tabel cu toate plățile + modal de înregistrare ───
+    var _billingData = [], _billingTotal = 0;
+    window.raxLoadBilling = async function () {
+      var box = document.getElementById('admin-tab-billing'); if (!box) return;
+      box.innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">' +
+          '<button class="rax-btn primary" onclick="raxOpenPaymentModal()"><i class="fas fa-plus"></i> Înregistrează plată</button>' +
+          '<input class="rax-field" id="rax-bill-search" placeholder="🔎 Caută (companie / notă / metodă)…" oninput="raxRenderBilling()" style="flex:1;min-width:160px;margin:0;">' +
+          '<span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap;">Total încasat: <span id="rax-bill-total">…</span></span>' +
+        '</div><div id="rax-bill-table"><div class="rax-co-meta">Se încarcă…</div></div>';
+      try {
+        var d = await fetch('/api/payments?limit=1000', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        _billingData = (d && d.payments) || []; _billingTotal = (d && d.total) || 0;
+      } catch (e) { var t0 = document.getElementById('rax-bill-table'); if (t0) t0.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      var tot = document.getElementById('rax-bill-total'); if (tot) tot.textContent = (_billingTotal || 0).toLocaleString('ro-RO') + ' lei';
+      raxRenderBilling();
+    };
+    window.raxRenderBilling = function () {
+      var t = document.getElementById('rax-bill-table'); if (!t) return;
+      var q = (($('rax-bill-search') || {}).value || '').trim().toLowerCase();
+      var rows = (_billingData || []).filter(function (p) { return !q || ((p.company_name || '') + ' ' + (p.note || '') + ' ' + (p.method || '')).toLowerCase().indexOf(q) >= 0; });
+      var fmtD = function (ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; };
+      if (!rows.length) { t.innerHTML = '<div class="rax-co-meta" style="padding:14px;">Nicio plată' + (q ? ' pentru „' + esc(q) + '"' : ' înregistrată încă') + '.</div>'; return; }
+      var head = '<thead><tr><th>Companie</th><th>Data</th><th class="num">Sumă</th><th>Perioadă acoperită</th><th>Metodă</th><th>Notă</th></tr></thead>';
+      var body = rows.map(function (p) {
+        return '<tr>' +
+          '<td><strong>' + esc(p.company_name || ('#' + p.company_id)) + '</strong></td>' +
+          '<td style="white-space:nowrap;">' + fmtD(p.paid_at || p.created_at) + '</td>' +
+          '<td class="num">' + (p.amount_ron != null ? Number(p.amount_ron).toLocaleString('ro-RO') + ' lei' : '—') + '</td>' +
+          '<td style="font-size:11.5px;white-space:nowrap;">' + fmtD(p.period_start) + ' → ' + fmtD(p.period_end) + '</td>' +
+          '<td>' + esc(p.method || 'manual') + '</td>' +
+          '<td style="font-size:11.5px;color:var(--text-muted);">' + esc(p.note || '') + '</td>' +
+        '</tr>';
+      }).join('');
+      t.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
+    };
+    window.raxOpenPaymentModal = function (companyId) {
+      var ov = document.getElementById('rax-pay-overlay'); if (!ov) return;
+      var cos = (companiesCache || []).filter(function (c) { return !c.is_demo; });
+      var opts = cos.map(function (c) { return '<option value="' + c.id + '"' + (companyId && c.id === companyId ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
+      document.getElementById('rax-pay-body').innerHTML =
+        '<label class="rax-lbl">Companie</label><select id="rax-pay-co" class="rax-field" style="margin:0 0 10px;">' + (opts || '<option value="">(nicio companie)</option>') + '</select>' +
+        '<div class="rax-row2"><div><label class="rax-lbl">Prelungește (luni)</label><input id="rax-pay-months" type="number" min="1" max="36" value="1" class="rax-field" style="margin:0;"></div>' +
+        '<div><label class="rax-lbl">Sumă (lei, opțional)</label><input id="rax-pay-amount" class="rax-field" placeholder="ex: 1500" style="margin:0;"></div></div>' +
+        '<label class="rax-lbl" style="margin-top:10px;">Metodă</label><select id="rax-pay-method" class="rax-field" style="margin:0 0 10px;"><option value="transfer">Transfer bancar</option><option value="cash">Numerar</option><option value="card">Card</option><option value="manual">Alta</option></select>' +
+        '<label class="rax-lbl">Notă (ex: nr. factură)</label><input id="rax-pay-note" class="rax-field" placeholder="ex: F 2026-0123" style="margin:0;">' +
+        '<button class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxSubmitPayment(this)"><i class="fas fa-check"></i> Înregistrează plata</button>' +
+        '<div id="rax-pay-msg" style="font-size:12px;margin-top:8px;"></div>';
+      ov.classList.add('open');
+    };
+    window.raxSubmitPayment = async function (btn) {
+      var co = $('rax-pay-co'); var msg = $('rax-pay-msg');
+      var id = parseInt(co && co.value);
+      if (!id) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Alege o companie.</span>'; return; }
+      var body = {
+        months: parseInt(($('rax-pay-months') || {}).value) || 1,
+        amount: (($('rax-pay-amount') || {}).value || '').trim() || null,
+        method: ($('rax-pay-method') || {}).value || 'manual',
+        note: (($('rax-pay-note') || {}).value || '').trim() || null
+      };
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se înregistrează…'; }
+      try {
+        var j = await fetch('/api/companies/' + id + '/payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+        if (j.error) { if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(j.error) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Înregistrează plata'; } return; }
+        document.getElementById('rax-pay-overlay').classList.remove('open');
+        if (window.raxToast) raxToast('Plată înregistrată ✓', 'success');
+        if (window.raxLoadBilling) raxLoadBilling();
+        if (window.raxLoadCompanies) raxLoadCompanies();
+      } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Înregistrează plata'; } }
     };
     window.raxDeleteCompany = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};

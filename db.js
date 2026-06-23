@@ -899,6 +899,17 @@ async function getPayments(companyId, limit) {
   const r = await pool.query('SELECT * FROM payments WHERE company_id = $1 ORDER BY created_at DESC LIMIT $2', [companyId, lim]);
   return r.rows;
 }
+// Toate plățile + numele companiei + total încasat — pentru tabelul de facturare (super-admin).
+async function getAllPayments(limit) {
+  const lim = Math.min(parseInt(limit) || 500, 2000);
+  const r = await pool.query(`
+    SELECT p.*, c.name AS company_name
+    FROM payments p LEFT JOIN companies c ON c.id = p.company_id
+    ORDER BY COALESCE(p.paid_at, p.created_at) DESC, p.id DESC
+    LIMIT $1`, [lim]);
+  const total = r.rows.reduce((s, x) => s + (Number(x.amount_ron) || 0), 0);
+  return { payments: r.rows, total: Math.round(total * 100) / 100 };
+}
 async function getCompanyBySlug(slug) {
   const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
   return r.rows[0] || null;
@@ -2362,7 +2373,7 @@ module.exports = {
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
-  setCompanyAccessUntil, recordPayment, getPayments,
+  setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   getCompanyImeis, setDeviceCompany, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,

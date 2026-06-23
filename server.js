@@ -5535,6 +5535,12 @@ app.get('/api/companies/:id/payments', requireAuth, requireSuperadmin, async (re
     res.json(await db.getPayments(id, 100));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Facturare (super-admin): toate plățile + numele companiei + total încasat.
+app.get('/api/payments', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    res.json(await db.getAllPayments(parseInt(req.query.limit) || 500));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // Super-admin: setează manual data de acces (trial / corecții). body: { until: epochMs | null }
 app.put('/api/companies/:id/access', requireAuth, requireSuperadmin, async (req, res) => {
   try {
