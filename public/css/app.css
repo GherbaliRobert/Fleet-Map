@@ -540,11 +540,12 @@
     .veh-ring { position:absolute; left:50%; top:50%; width:170%; height:170%; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle, rgba(56,189,248,0.40), rgba(56,189,248,0) 68%); pointer-events:none; }
     .veh-plate {
       position:absolute; left:50%; top:100%; transform:translateX(-50%);
-      margin-top:5px; padding:1px 6px; border-radius:7px;
-      font-size:10px; font-weight:800; line-height:1.45; letter-spacing:.3px;
-      white-space:nowrap; color:#9ca3af;
-      background:rgba(15,18,23,0.85); border:1.5px solid currentColor;
-      box-shadow:0 1px 3px rgba(0,0,0,.45); pointer-events:none;
+      margin-top:5px; padding:2px 7px; border-radius:8px;
+      font-size:10px; font-weight:800; line-height:1.4; letter-spacing:.3px;
+      white-space:nowrap;
+      /* background + color setate inline, în funcție de status (vezi createIcon) */
+      border:1.5px solid rgba(255,255,255,0.9); /* contur alb subțire: pastila se desprinde de orice fundal de hartă */
+      box-shadow:0 1px 4px rgba(0,0,0,.35); pointer-events:none;
     }
     /* La zoom foarte mic (vezi toată țara) ascundem plăcuțele ca să nu se aglomereze */
     .map-hide-plates .veh-plate { display:none; }
