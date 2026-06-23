@@ -524,35 +524,43 @@
       letter-spacing: 0.5px;
     }
 
-    /* Mini-siluetă a vehiculului în lista de vehicule */
-    .device-card-icon { display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
-    .device-card-icon svg { display:block; }
+    /* Mini-pictogramă (Font Awesome) în lista de vehicule */
+    .device-card-icon { display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:18px; color:var(--text-muted); font-size:14px; }
 
-    /* Marker hartă: fără cutia albă implicită Leaflet + plăcuța cu numărul de înmatriculare dedesubt */
+    /* ─── Marker hartă: badge rotund colorat după status + glifa vehiculului + săgeată direcție + plăcuță nr. ─── */
     .vehicle-marker { background:transparent; border:none; overflow:visible; }
+    .veh-mk { position:relative; display:flex; align-items:center; justify-content:center; }
+    .veh-dot {
+      width:100%; height:100%; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; border:2px solid rgba(255,255,255,0.92);
+    }
+    .veh-dot i { line-height:1; }
+    .veh-arrow-rot { position:absolute; left:0; top:0; right:0; bottom:0; display:flex; justify-content:center; pointer-events:none; }
+    .veh-arrow { position:absolute; top:-7px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:7px solid currentColor; filter:drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+    .veh-ring { position:absolute; left:-4px; top:-4px; right:-4px; bottom:-4px; border-radius:50%; border:2px dashed #38bdf8; opacity:.85; pointer-events:none; }
     .veh-plate {
       position:absolute; left:50%; top:100%; transform:translateX(-50%);
-      margin-top:3px; padding:1px 6px; border-radius:7px;
+      margin-top:5px; padding:1px 6px; border-radius:7px;
       font-size:10px; font-weight:800; line-height:1.45; letter-spacing:.3px;
       white-space:nowrap; color:#9ca3af;
-      background:rgba(15,18,23,0.82); border:1.5px solid currentColor;
+      background:rgba(15,18,23,0.85); border:1.5px solid currentColor;
       box-shadow:0 1px 3px rgba(0,0,0,.45); pointer-events:none;
     }
     /* La zoom foarte mic (vezi toată țara) ascundem plăcuțele ca să nu se aglomereze */
     .map-hide-plates .veh-plate { display:none; }
 
-    /* Selector vizual de pictogramă (modal vehicul) */
+    /* Selector vizual de pictogramă (modal vehicul) — glife Font Awesome */
     .icon-picker { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
     .icon-tile {
-      display:flex; flex-direction:column; align-items:center; gap:4px;
-      padding:8px 4px; border-radius:10px; cursor:pointer; font:inherit;
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      padding:10px 4px; border-radius:10px; cursor:pointer; font:inherit;
       background:var(--bg-dark); border:1.5px solid var(--border);
       color:var(--text-muted); transition:border-color .15s, background .15s, color .15s;
     }
     .icon-tile:hover { border-color:var(--accent); color:var(--text); }
     .icon-tile.active { border-color:var(--accent); background:rgba(63,224,125,.12); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
-    .icon-tile-art { display:flex; align-items:center; justify-content:center; height:34px; }
-    .icon-tile-art svg { display:block; }
+    .icon-tile-art { display:flex; align-items:center; justify-content:center; height:30px; font-size:26px; }
     .icon-tile-label { font-size:11px; font-weight:600; }
     @media (max-width:480px){ .icon-picker { grid-template-columns:repeat(3,1fr); } }
 

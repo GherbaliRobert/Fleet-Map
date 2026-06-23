@@ -5390,6 +5390,22 @@ const pozitii = await r.json();</code></pre>
       return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 48 48">' + vehicleBody(cat, color, false) + '</svg>';
     }
 
+    // Glifă Font Awesome (profil lateral, desenată profesional) pentru fiecare categorie — recognoscibilă instant.
+    function vehicleGlyph(cat) {
+      switch (cat) {
+        case 'van': return 'van-shuttle';
+        case 'truck': return 'truck';
+        case 'tir': return 'truck-moving';
+        case 'bus': return 'bus-simple';
+        case 'tractor':
+        case 'utilaj': return 'tractor';
+        case 'motorcycle': return 'motorcycle';
+        case 'trailer': return 'trailer';
+        case 'car':
+        default: return 'car-side';
+      }
+    }
+
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
       const isMoving = speed > 3;
       const hasIgnition = ignitionOn(io, dev && dev.timestamp);
@@ -5402,24 +5418,33 @@ const pozitii = await r.json();</code></pre>
       else { color = '#ef4444'; shadowColor = 'rgba(239,68,68,0.45)'; status = 'off'; }
 
       const cat = markerCategory(dev);
-      const size = isSelected ? 44 : 36;
+      const glyph = vehicleGlyph(cat);
+      const size = isSelected ? 42 : 34;
       const rot = Math.round(angle || 0);
-      const lit = isMoving || hasIgnition;
 
-      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
-        '<ellipse cx="24" cy="25" rx="13" ry="19" fill="rgba(0,0,0,0.22)"/>' +
-        '<g transform="rotate(' + rot + ' 24 24)">' + vehicleBody(cat, color, lit) + '</g>' +
-        (isSelected ? '<circle cx="24" cy="24" r="22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 3" opacity="0.85"><animateTransform attributeName="transform" type="rotate" dur="8s" from="0 24 24" to="360 24 24" repeatCount="indefinite"/></circle>' : '') +
-      '</svg>';
+      // Săgeata de direcție (în jurul badge-ului) se rotește după cap; vehiculul (glifa) rămâne drept și lizibil.
+      const arrow = (isMoving || hasIgnition)
+        ? '<div class="veh-arrow-rot" style="transform:rotate(' + rot + 'deg);color:' + color + ';"><span class="veh-arrow"></span></div>'
+        : '';
+      const ring = isSelected ? '<span class="veh-ring"></span>' : '';
 
-      // Plăcuța cu numărul de înmatriculare, sub siluetă, colorată după status (verde/galben/roșu/gri).
-      // Stă în afara SVG-ului → NU se rotește odată cu vehiculul. La zoom mic e ascunsă din CSS (.map-hide-plates).
+      // Plăcuța cu numărul de înmatriculare, sub badge, colorată după status. La zoom mic e ascunsă din CSS.
       const plate = dev && dev.plate ? String(dev.plate) : '';
       const plateHtml = plate ? '<div class="veh-plate" style="color:' + color + ';">' + plate + '</div>' : '';
 
+      const html =
+        '<div class="veh-mk" style="width:' + size + 'px;height:' + size + 'px;">' +
+          arrow +
+          '<div class="veh-dot" style="background:' + color + ';box-shadow:0 2px 6px ' + shadowColor + ';">' +
+            '<i class="fas fa-' + glyph + '" style="font-size:' + Math.round(size * 0.46) + 'px;"></i>' +
+          '</div>' +
+          ring +
+          plateHtml +
+        '</div>';
+
       return L.divIcon({
         className: 'vehicle-marker vehicle-' + status,
-        html: '<div style="position:relative;filter:drop-shadow(0 2px 4px ' + shadowColor + ');">' + svg + plateHtml + '</div>',
+        html: html,
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
         popupAnchor: [0, -(size / 2)]
@@ -5603,7 +5628,7 @@ const pozitii = await r.json();</code></pre>
             '<div class="device-card-top">' +
               '<div class="device-card-name">' +
                 '<span class="status-dot ' + statusClass + '"></span>' +
-                '<span class="device-card-icon">' + vehicleSilhouetteSVG(markerCategory(d), (d.color || '#9aa4b2'), 18) + '</span>' +
+                '<span class="device-card-icon"><i class="fas fa-' + vehicleGlyph(markerCategory(d)) + '"></i></span>' +
                 '<span class="name">' + name + '</span>' +
                 (plate ? '<span class="device-card-plate">' + plate + '</span>' : '') +
               '</div>' +
@@ -5971,7 +5996,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('detail-vehicle-name').textContent = name;
       document.getElementById('detail-vehicle-plate').textContent = plate || imei;
 
-      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = vehicleSilhouetteSVG(markerCategory(data), data.color || '#cbd5e1', 26);
+      document.querySelector('.detail-header-info .vehicle-icon').innerHTML = '<i class="fas fa-' + vehicleGlyph(markerCategory(data)) + '"></i>';
 
       const io = data.io || {};
       const isOnline = isDeviceOnline(data);
@@ -7307,7 +7332,7 @@ const pozitii = await r.json();</code></pre>
       wrap.innerHTML = ICON_OPTIONS.map(function (o) {
         const active = o.val === cur;
         return '<button type="button" class="icon-tile' + (active ? ' active' : '') + '" data-icon="' + o.val + '" onclick="pickIcon(\'' + o.val + '\')" title="' + o.label + '">' +
-          '<span class="icon-tile-art">' + vehicleSilhouetteSVG(o.val, active ? '#3FE07D' : '#aeb6c2', 30) + '</span>' +
+          '<span class="icon-tile-art"><i class="fas fa-' + vehicleGlyph(o.val) + '"></i></span>' +
           '<span class="icon-tile-label">' + o.label + '</span>' +
           '</button>';
       }).join('');
