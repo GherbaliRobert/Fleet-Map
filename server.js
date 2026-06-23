@@ -2835,7 +2835,7 @@ let _liveEnrichCache = { ts: 0, map: null };
 async function getLiveEnrichMap() {
   const now = Date.now();
   if (_liveEnrichCache.map && (now - _liveEnrichCache.ts) < 20000) return _liveEnrichCache.map;
-  const result = await db.pool.query('SELECT imei, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
+  const result = await db.pool.query('SELECT imei, name, plate, vehicle_type, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
   const map = new Map(result.rows.map(r => [r.imei, r]));
   _liveEnrichCache = { ts: now, map };
   return map;
@@ -2854,6 +2854,10 @@ app.get('/api/live', requireAuth, withScope, async (req, res) => {
     for (const pos of positions) {
       const dev = devMap.get(pos.imei);
       if (dev) {
+        // Nume + nr. înmatriculare mereu din DB (proaspăt) — vehiculele noi / cele fără seed la boot nu mai apar cu IMEI.
+        if (dev.name != null) pos.name = dev.name;
+        if (dev.plate != null) pos.plate = dev.plate;
+        if (dev.vehicle_type != null) pos.vehicle_type = dev.vehicle_type;
         pos.tare_weight = dev.tare_weight;
         pos.max_weight_legal = dev.max_weight_legal;
         pos.max_weight_construct = dev.max_weight_construct;

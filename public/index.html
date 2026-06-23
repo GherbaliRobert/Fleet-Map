@@ -5599,6 +5599,13 @@ const pozitii = await r.json();</code></pre>
     function updateMarker(data) {
       const { imei, latitude, longitude, speed, angle, timestamp, io } = data;
 
+      // Păstrează numele/nr. înmatriculare dacă update-ul live/WS nu le include (să nu „cadă" pe IMEI).
+      var _prev = devices.get(imei);
+      if (_prev) {
+        if (data.name == null) data.name = _prev.name;
+        if (data.plate == null) data.plate = _prev.plate;
+        if (data.vehicle_type == null) data.vehicle_type = _prev.vehicle_type;
+      }
       devices.set(imei, data);
 
       const isSelected = imei === selectedImei;
