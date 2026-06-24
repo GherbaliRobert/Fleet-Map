@@ -6146,7 +6146,7 @@ const pozitii = await r.json();</code></pre>
       // „Fix staționar" (nu „Fara fix") dacă device-ul e online și are coordonate valide, chiar dacă raportează 0 sateliți (oprit).
       const hasValidPos = !!(data.latitude && data.longitude && isOnline);
       const gpsInfo = getGpsSignalInfo(sats, hasValidPos);
-      const engineHours = io.can_engine_total_hours !== undefined ? Math.round(io.can_engine_total_hours) + 'h' : (io.can_engine_worktime ? Math.floor(io.can_engine_worktime / 60) + 'h' : (io.can_engine_worktime_counted ? Math.floor(io.can_engine_worktime_counted / 60) + 'h' : '-'));
+      const engineHours = io.can_engine_total_hours !== undefined ? String(Math.round(io.can_engine_total_hours)) : (io.can_engine_worktime ? String(Math.floor(io.can_engine_worktime / 60)) : (io.can_engine_worktime_counted ? String(Math.floor(io.can_engine_worktime_counted / 60)) : '-'));
       const odometer = io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : (io.can_total_mileage !== undefined ? io.can_total_mileage.toFixed(1) + ' km' : '-');
       // Fuel level - prefer sonda Escort, fallback la CAN
       let fuelLevel = '-';
