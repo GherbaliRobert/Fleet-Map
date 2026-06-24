@@ -6146,7 +6146,12 @@ const pozitii = await r.json();</code></pre>
       // „Fix staționar" (nu „Fara fix") dacă device-ul e online și are coordonate valide, chiar dacă raportează 0 sateliți (oprit).
       const hasValidPos = !!(data.latitude && data.longitude && isOnline);
       const gpsInfo = getGpsSignalInfo(sats, hasValidPos);
-      const engineHours = io.can_engine_total_hours !== undefined ? String(Math.round(io.can_engine_total_hours)) : (io.can_engine_worktime ? String(Math.floor(io.can_engine_worktime / 60)) : (io.can_engine_worktime_counted ? String(Math.floor(io.can_engine_worktime_counted / 60)) : '-'));
+      // Index ore motor = TOTALUL vehiculului (IO 104). Dacă lipsește (tipic la autoturisme), folosim „timp
+      // funcționare motor" (worktime, IO 102/103) — dar îl ETICHETĂM corect, ca să nu pară indexul total.
+      let engineHours = '-', engineHoursLabel = 'Index ore motor';
+      if (io.can_engine_total_hours !== undefined) { engineHours = String(Math.round(io.can_engine_total_hours)); }
+      else if (io.can_engine_worktime) { engineHours = String(Math.floor(io.can_engine_worktime / 60)); engineHoursLabel = 'Ore funcționare motor'; }
+      else if (io.can_engine_worktime_counted) { engineHours = String(Math.floor(io.can_engine_worktime_counted / 60)); engineHoursLabel = 'Ore funcționare motor'; }
       const odometer = io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : (io.can_total_mileage !== undefined ? io.can_total_mileage.toFixed(1) + ' km' : '-');
       // Fuel level - prefer sonda Escort, fallback la CAN
       let fuelLevel = '-';
@@ -6175,14 +6180,22 @@ const pozitii = await r.json();</code></pre>
 
       // Status bar (pe motor): În mișcare / Staționat / Oprit; fără semnal >1h = Oprit (fără semnal)
       let statusClass, statusText, statusDetail;
+      // „În mișcare" (verde, live) DOAR dacă a transmis recent (< 3 min). O viteză > 0 dintr-un pachet vechi
+      // (semnal pierdut în mers) NU mai e „în mișcare" → arătăm „fără semnal recent" cu ultima viteză.
+      const _lastMs = data.timestamp ? (Date.now() - new Date(data.timestamp).getTime()) : Infinity;
+      const _freshLive = _lastMs < 3 * 60 * 1000;
       if (!isOnline) {
         statusClass = 'gone';                          // gri + ⚠ (>1h fără date)
         statusText = '⚠️ Oprit (fără semnal)';
         statusDetail = 'ultima actualizare · ' + timeAgoPhrase(new Date(data.timestamp));
-      } else if (isMoving) {
+      } else if (isMoving && _freshLive) {
         statusClass = 'moving';                        // verde
         statusText = 'În mișcare';
         statusDetail = '● activ';                      // în mers = transmite live
+      } else if (isMoving) {
+        statusClass = 'idle';                          // galben — se mișca, dar nu mai transmite de câteva minute
+        statusText = '⚠️ Fără semnal recent';
+        statusDetail = 'ultima viteză ' + Math.round(data.speed || 0) + ' km/h · ' + timeAgoPhrase(new Date(data.timestamp));
       } else if (hasIgnition) {
         statusClass = 'idle';                          // galben
         statusText = 'Staționat (contact pornit)';
@@ -6350,7 +6363,7 @@ const pozitii = await r.json();</code></pre>
           '<div class="info-item-icon blue"><i class="fas fa-clock"></i></div>' +
           '<div class="info-item-text">' +
             '<div class="info-item-value">' + engineHours + (engineHours !== '-' ? ' h' : '') + '</div>' +
-            '<div class="info-item-label">Index ore motor</div>' +
+            '<div class="info-item-label">' + engineHoursLabel + '</div>' +
           '</div>' +
         '</div>' +
 
