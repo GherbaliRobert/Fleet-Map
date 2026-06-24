@@ -5520,79 +5520,50 @@ const pozitii = await r.json();</code></pre>
         shadow + body + glass + (s.det || '') + wheels + '</svg>';
     }
 
-    // Pe HARTĂ: aceeași siluetă plină (profil lateral, ca în management), dar UMPLUTĂ cu culoarea de status
-    // (gradient light→dark = efect 3D) și îngroșată. Vehiculul rămâne mereu DREPT (fără flip);
-    // sensul de mers e arătat separat, de chevronul de direcție (vezi createIcon).
-    function vehicleArtStatusSVG(cat, light, dark, size) {
-      const w = size || 40;
-      const h = Math.round(w * 44 / 64);
-      const s = vehicleArtPremiumShapes(cat);
-      const gid = 'raVg' + (++__raVgSeq);
-      const wheels = s.wheels.map(function (c) {
-        return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + c[2] + '" fill="#22262e" stroke="#5b6675" stroke-width="1"/>' +
-               '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + (c[2] * 0.4).toFixed(1) + '" fill="#cdd4de"/>';
-      }).join('');
-      const shadow = '<ellipse cx="32" cy="40" rx="27" ry="2.4" fill="#000" opacity="0.12"/>';
-      const body = '<g fill="url(#' + gid + ')" stroke="' + dark + '" stroke-width="2.1" stroke-linejoin="round">' + s.body + '</g>';
-      const glass = s.glass ? '<g fill="#eef4fb" stroke="' + dark + '" stroke-width="1" stroke-linejoin="round">' + s.glass + '</g>' : '';
-      const inner = '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + light + '"/><stop offset="1" stop-color="' + dark + '"/></linearGradient></defs>' +
-        shadow + body + glass + (s.det || '') + wheels;
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 64 44">' + inner + '</svg>';
-    }
-
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
       const isMoving = speed > 3;
       const hasIgnition = ignitionOn(io, dev && dev.timestamp);
 
-      let status, plateBg, plateText, gradLight, gradDark;
+      let color, status, plateBg, plateText;
       // Legendă: verde=mișcare · galben=staționare(contact) · roșu=oprit · gri=offline(>1h)
-      // gradLight/gradDark = umplerea cu gradient a caroseriei (efect 3D) pe culoarea de status
-      // plateBg/plateText = pastila numărului; text alb, dar închis pe galben (albul nu se citește pe galben)
-      if (!isOnline) { status = 'gone'; gradLight = '#CBD2DC'; gradDark = '#6B7280'; plateBg = '#6b7280'; plateText = '#ffffff'; }
-      else if (isMoving) { status = 'moving'; gradLight = '#6EE7A0'; gradDark = '#16A34A'; plateBg = '#16a34a'; plateText = '#ffffff'; }
-      else if (hasIgnition) { status = 'idle'; gradLight = '#FBD24E'; gradDark = '#CA8A04'; plateBg = '#eab308'; plateText = '#1f2937'; }
-      else { status = 'off'; gradLight = '#FB7185'; gradDark = '#DC2626'; plateBg = '#dc2626'; plateText = '#ffffff'; }
+      // color = umplerea plină a siluetei top-down; plateBg/plateText = pastila numărului
+      // (text alb, dar închis pe galben fiindcă albul nu se citește pe galben).
+      if (!isOnline) { color = '#9ca3af'; status = 'gone'; plateBg = '#6b7280'; plateText = '#ffffff'; }
+      else if (isMoving) { color = '#16A34A'; status = 'moving'; plateBg = '#16a34a'; plateText = '#ffffff'; }
+      else if (hasIgnition) { color = '#eab308'; status = 'idle'; plateBg = '#eab308'; plateText = '#1f2937'; }
+      else { color = '#ef4444'; status = 'off'; plateBg = '#dc2626'; plateText = '#ffffff'; }
 
       const cat = markerCategory(dev);
-      const size = isSelected ? 48 : 40; // lățimea pictogramei (profil lateral, plină); mai mare ca să se vadă bine
-      const ih = Math.round(size * 44 / 64);
-      // Direcția: vehiculul rămâne DREPT, iar sensul EXACT de mers e dat de un chevron care „orbitează"
-      // în jurul lui pe unghiul real (continuu). Doar în mișcare — pe staționare/oprit direcția nu e relevantă.
-      // Cap busolă: 0°=N (sus), 90°=E (dreapta), 180°=S (jos), 270°=V (stânga).
-      const heading = (((angle || 0) % 360) + 360) % 360;
-      const chevR = Math.round(size * 0.78);   // raza orbitei chevronului în jurul vehiculului
-      const chevPx = Math.round(size * 0.5);   // mărimea glifului chevron
-      const chevHtml = isMoving
-        ? '<div class="veh-chev" style="transform:rotate(' + heading.toFixed(0) + 'deg) translate(0,-' + chevR + 'px);">' +
-            '<div class="veh-chev-ico">' +
-              '<svg width="' + chevPx + '" height="' + chevPx + '" viewBox="0 0 24 24">' +
-                '<path d="M4 16 L12 6 L20 16" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>' +
-                '<path d="M4 16 L12 6 L20 16" fill="none" stroke="' + gradDark + '" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>' +
-              '</svg>' +
-            '</div>' +
-          '</div>'
-        : '';
+      const size = isSelected ? 38 : 30; // pictogramă top-down, compactă (stil AROBS)
+      const rot = Math.round((((angle || 0) % 360) + 360) % 360); // capul vehiculului (0=N); rotim silueta → botul = direcția de mers
+      const lit = isMoving || hasIgnition; // faruri aprinse cât motorul merge
 
       const ring = isSelected ? '<span class="veh-ring"></span>' : '';
+
+      // Silueta TOP-DOWN (fața spre sus în viewBox 0..48), rotită după cap: botul arată încotro merge.
+      // Direcția se citește direct din orientarea vehiculului — fără chevron/săgeată separată (stil AROBS).
+      const bodySvg =
+        '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
+          '<g transform="rotate(' + rot + ' 24 24)">' + vehicleBody(cat, color, lit) + '</g>' +
+        '</svg>';
 
       // Plăcuța cu numărul de înmatriculare, sub vehicul, colorată după status. La zoom mic e ascunsă din CSS.
       const plate = dev && dev.plate ? String(dev.plate) : '';
       const plateHtml = plate ? '<div class="veh-plate" style="background:' + plateBg + ';color:' + plateText + ';">' + plate + '</div>' : '';
 
       const html =
-        '<div class="veh-mk" style="width:' + size + 'px;height:' + ih + 'px;">' +
+        '<div class="veh-mk" style="width:' + size + 'px;height:' + size + 'px;">' +
           ring +
-          '<div class="veh-dot">' + vehicleArtStatusSVG(cat, gradLight, gradDark, size) + '</div>' +
-          chevHtml +
+          '<div class="veh-dot">' + bodySvg + '</div>' +
           plateHtml +
         '</div>';
 
       return L.divIcon({
         className: 'vehicle-marker vehicle-' + status,
         html: html,
-        iconSize: [size, ih],
-        iconAnchor: [size / 2, ih / 2],
-        popupAnchor: [0, -(ih / 2)]
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        popupAnchor: [0, -(size / 2)]
       });
     }
 
