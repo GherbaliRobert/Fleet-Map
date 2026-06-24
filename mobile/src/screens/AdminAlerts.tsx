@@ -23,6 +23,8 @@ const ALERT_TYPES: AType[] = [
   { v: 'pto_active', label: 'PTO activat', fields: [] },
   { v: 'overload_legal', label: 'Supraîncărcare (legal)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 40000 }] },
   { v: 'overload_construct', label: 'Supraîncărcare (constructiv)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 44000 }] },
+  { v: 'idle_engine', label: 'Staționare cu motor pornit (ralanti)', fields: [{ k: 'idleMinutes', label: 'Minute consecutive', def: 15 }] },
+  { v: 'document_expiry', label: 'Expirare documente', fields: [{ k: 'warnDays', label: 'Avertizare cu (zile) înainte', def: 30 }] },
 ];
 const typeLabel = (v: string) => ALERT_TYPES.find((t) => t.v === v)?.label || v;
 

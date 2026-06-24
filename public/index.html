@@ -3286,7 +3286,9 @@ const pozitii = await r.json();</code></pre>
       { v:'axle_overload', label:'Supraîncărcare pe axă', axles:true, fields:[] },
       { v:'pto_active', label:'PTO activat', fields:[] },
       { v:'brake_pad_wear', label:'Uzură plăcuțe frână', fields:[{k:'minPercent',label:'Prag minim (%)',def:20}] },
-      { v:'service_due', label:'Service aproape', fields:[{k:'warnKm',label:'Avertizare sub (km)',def:1000}] }
+      { v:'service_due', label:'Service aproape', fields:[{k:'warnKm',label:'Avertizare sub (km)',def:1000}] },
+      { v:'idle_engine', label:'Staționare cu motor pornit (ralanti)', fields:[{k:'idleMinutes',label:'Minute consecutive',def:15}] },
+      { v:'document_expiry', label:'Expirare documente', fields:[{k:'warnDays',label:'Avertizare cu (zile) înainte',def:30}] }
     ];
     let alertGeofencesCache = [];
     function alertTypeLabel(v) { const t = ALERT_TYPES.find(x => x.v === v); return t ? t.label : v; }

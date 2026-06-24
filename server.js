@@ -4273,6 +4273,7 @@ function isPointNearPolyline(lat, lng, line, halfMeters) {
 
 // Track geofence state per device for enter/exit detection
 const geofenceStates = new Map(); // key: imei_geofenceId, value: boolean (inside)
+const _alertIdleStart = new Map(); // imei -> { start, last, alerted } — sesiunea de ralanti (regula idle_engine)
 
 // Cache companie/device (pt. izolarea alertelor company-wide pe tenant)
 const _devCompanyCache = new Map(); // imei -> { ts, companyId }
@@ -4298,8 +4299,25 @@ async function evaluateAlerts(imei, data) {
     const lat = data.latitude;
     const lng = data.longitude;
 
+    // Ralanti (regula idle_engine): de când stă pe loc cu motorul pornit. Resetăm la mișcare / contact oprit /
+    // gap mare în transmisie. Calculat o singură dată per poziție (refolosit de regulile idle_engine).
+    const _ignOn = io.ignition === 1 || io.ignition === true;
+    const _idling = _ignOn && speed <= 3;
+    const _posT = data.timestamp ? new Date(data.timestamp).getTime() : Date.now();
+    let _idleMin = 0;
+    if (_idling) {
+      const st = _alertIdleStart.get(imei);
+      if (!st || (_posT - st.last) > 6 * 60 * 1000) _alertIdleStart.set(imei, { start: _posT, last: _posT, alerted: false });
+      else st.last = _posT;
+      const s2 = _alertIdleStart.get(imei);
+      _idleMin = (s2.last - s2.start) / 60000;
+    } else {
+      _alertIdleStart.delete(imei);
+    }
+
     for (const alert of alerts) {
       if (!alert.enabled) continue;
+      if (alert.type === 'document_expiry') continue; // bazat pe dată, nu pe poziție → tratat în checkExpiries()
       if (alert.imei) { if (alert.imei !== imei) continue; } // alertă pe device specific
       else if (alert.company_id != null && devCompany != null && alert.company_id !== devCompany) continue; // alertă company-wide doar pt. compania ei
 
@@ -4457,6 +4475,18 @@ async function evaluateAlerts(imei, data) {
             alertData = { distanceToService: io.can_distance_to_service, threshold: cond.warnKm || 1000 };
           }
           break;
+
+        case 'idle_engine': {
+          // Staționare cu motorul pornit peste pragul de minute consecutive (o singură alertă per sesiune de ralanti).
+          const thr = cond.idleMinutes || 15;
+          const st = _alertIdleStart.get(imei);
+          if (_idling && st && !st.alerted && _idleMin >= thr) {
+            st.alerted = true;
+            triggered = true;
+            alertData = { idleMinutes: Math.round(_idleMin), threshold: thr };
+          }
+          break;
+        }
       }
 
       if (triggered) {
@@ -4526,6 +4556,7 @@ function alertSummary(type, d) {
     case 'geofence_enter': case 'geofence_exit': return (d.event || '') + (d.geofence ? ': ' + d.geofence : '');
     case 'overload_legal': case 'overload_construct': return `Greutate ${d.totalKg} kg (limită ${d.limit})`;
     case 'dtc_error': return `${d.dtcCount} erori motor`;
+    case 'idle_engine': return `Ralanti ${d.idleMinutes} min (prag ${d.threshold} min)`;
     default: return d.event || type;
   }
 }
@@ -4624,6 +4655,36 @@ async function checkExpiries() {
       await notify(nDoc);
       await deliverExpiryToSubscribers({ imei: d.imei, companyId: d.company_id, title: nDoc.title, body: nDoc.body, key: nDoc.data.key });
     }
+
+    // Reguli „Expirare documente" (Management → Alerte): avertizare TIMPURIE la pragul warnDays per regulă
+    // (un vehicul sau toată compania). Pragurile urgente 7/3/1/EXPIRAT de mai sus rămân pentru toate documentele.
+    try {
+      const docRules = (await db.getAlerts()).filter(a => a.enabled && a.type === 'document_expiry');
+      if (docRules.length) {
+        const allDocs = await db.getVehicleDocuments(null, null);
+        for (const a of docRules) {
+          const wd = (a.condition && a.condition.warnDays) || 30;
+          if (wd <= 7) continue; // sub 8 zile = deja acoperit de pragurile urgente globale
+          for (const d of allDocs) {
+            if (!d.expiry_date) continue;
+            if (a.imei) { if (d.imei !== a.imei) continue; }                          // regulă pe un vehicul
+            else if (a.company_id != null && d.company_id !== a.company_id) continue;  // regulă pe compania ei
+            const days = Math.ceil((new Date(d.expiry_date).getTime() - now) / (24 * 3600 * 1000));
+            if (days <= 7 || days > wd) continue; // în afara benzii (8 .. warnDays) → nu acum
+            const label = String(d.doc_type || 'Document').toUpperCase();
+            const nEarly = {
+              type: 'document_expiry', severity: 'warning', imei: d.imei || null, companyId: d.company_id,
+              dedupHours: wd * 24, // o singură avertizare timpurie pe toată banda warnDays
+              title: label + ' expiră în ' + days + ' zile' + (d.imei ? ' · ' + d.imei : ''),
+              body: label + (d.number ? ' (' + d.number + ')' : '') + ' expiră în ' + days + ' zile — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + ' (regula „' + a.name + '").',
+              data: { key: 'vdoc-rule-' + a.id + '-' + d.id, alertId: a.id, docId: d.id, days }
+            };
+            await notify(nEarly);
+            await deliverExpiryToSubscribers({ imei: d.imei, companyId: d.company_id, title: nEarly.title, body: nEarly.body, key: nEarly.data.key });
+          }
+        }
+      }
+    } catch (e) { console.error('[EXPIRY-RULE]', e.message); }
   } catch (e) { console.error('[EXPIRY]', e.message); }
 }
 
