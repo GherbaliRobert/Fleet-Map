@@ -13,6 +13,7 @@ export interface Me {
 export interface DailyStats {
   imei: string; totalKm: number; avgSpeed: number; maxSpeed: number; movingTime: number; stoppedTime: number;
   stops: number; fuelConsumed: number | null; engineHours: number | null; recordCount?: number;
+  date?: string; lastIgnitionOn?: string | null;
 }
 export interface DeviceFull {
   imei: string; name?: string; plate?: string; brand?: string; model?: string; vehicle_type?: string;

@@ -2,10 +2,10 @@ import { useEffect, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
 import { vehicles, offlineMinutes, me, showToast, refreshVehicles } from '../app/store';
 import { Api } from '../api/endpoints';
-import type { DeviceFull, DailyStats } from '../api/endpoints';
+import type { DeviceFull, DailyStats, NotificationItem } from '../api/endpoints';
 import { reverseGeocode } from '../api/geocode';
 import { statusOf, usesTachograph } from '../lib/status';
-import { fmtDateTime, fmtDuration, gpsQuality, gsmQuality, odometerKm, voltageStr } from '../lib/format';
+import { fmtDateTime, fmtDuration, fmtAgo, gpsQuality, gsmQuality, odometerKm, voltageStr } from '../lib/format';
 import { Icon } from '../components/Icon';
 import { MiniMap } from '../components/MiniMap';
 import './detail.css';
@@ -33,6 +33,44 @@ function prettyKey(k: string): string {
   return k.replace(/^can_/, '').replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
+// Direcția busolă din unghi (0–360): „NE (45°)". Identic cu web getDirectionName.
+function getDirectionName(angle?: number): string {
+  if (angle == null) return '—';
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SV', 'V', 'NV'];
+  return dirs[Math.round(angle / 45) % 8] + ' (' + Math.round(angle) + '°)';
+}
+
+// Ore motor: Index TOTAL al vehiculului (IO 104) dacă există; altfel „timp funcționare" (102/103) ETICHETAT onest,
+// ca să nu pară kilometrajul-în-ore. Identic cu fișa web (evită „5h" afișat ca index total pe autoturisme).
+function engineHoursOf(io: any): { value: string; label: string } {
+  if (io?.can_engine_total_hours !== undefined) return { value: String(Math.round(io.can_engine_total_hours)), label: 'Index ore motor' };
+  if (io?.can_engine_worktime) return { value: String(Math.floor(io.can_engine_worktime / 60)), label: 'Ore funcționare motor' };
+  if (io?.can_engine_worktime_counted) return { value: String(Math.floor(io.can_engine_worktime_counted / 60)), label: 'Ore funcționare motor' };
+  return { value: '—', label: 'Index ore motor' };
+}
+
+// Status „live" nuanțat, cu prag de prospețime 3 min — identic cu fișa web (updateDetailPanel).
+// „În mișcare" (verde) DOAR dacă a transmis recent; viteză>0 dintr-un pachet vechi → „⚠️ fără semnal recent".
+function liveStatus(v: any, off: number): { cls: string; text: string; detail: string } {
+  if (!v || !v.timestamp) return { cls: 'gone', text: 'Fără date', detail: '' };
+  const ageMs = Date.now() - new Date(v.timestamp).getTime();
+  const online = ageMs < (off || 65) * 60000;
+  const fresh = ageMs < 180000;
+  const moving = (v.speed || 0) > 3;
+  const ign = !!(v.io && (v.io.ignition === 1 || v.io.ignition === true));
+  const ago = fmtAgo(v.timestamp);
+  if (!online) return { cls: 'gone', text: '⚠️ Oprit (fără semnal)', detail: 'ultima · ' + ago };
+  if (moving && fresh) return { cls: 'moving', text: 'În mișcare', detail: '● activ' };
+  if (moving) return { cls: 'idle', text: '⚠️ Fără semnal recent', detail: 'ultima viteză ' + Math.round(v.speed || 0) + ' km/h · ' + ago };
+  if (ign) return { cls: 'idle', text: 'Staționat (contact pornit)', detail: 'ultima · ' + ago };
+  return { cls: 'off', text: 'Oprit', detail: 'ultima · ' + ago };
+}
+
+// Câmp în grila „Detalii live": etichetă + valoare (opțional full-width / colorat).
+function G({ label, value, cls, full }: { label: string; value: any; cls?: string; full?: boolean }) {
+  return <div class={'g' + (full ? ' full' : '')}><span class="gl">{label}</span><span class={'gv ' + (cls || '')}>{value}</span></div>;
+}
+
 export function VehicleDetail() {
   const loc = useLocation();
   const { params } = useRoute();
@@ -45,6 +83,7 @@ export function VehicleDetail() {
   const [daily, setDaily] = useState<DailyStats | null>(null);
   const [sheet, setSheet] = useState<'' | 'can' | 'sensors' | 'tacho'>('');
   const [sensors, setSensors] = useState<any[] | null>(null);
+  const [notifs, setNotifs] = useState<NotificationItem[]>([]);
   const [navOpen, setNavOpen] = useState(false);
   const canManage = !!me.value?.permissions?.manageFleet;
   const [editOpen, setEditOpen] = useState(false);
@@ -59,6 +98,8 @@ export function VehicleDetail() {
     Api.dailyStats(imei).then(setDaily).catch(() => {});
     // Senzori: încarcă din start ca să ascundem butonul dacă vehiculul N-ARE senzori configurați
     Api.fuelSensors(imei).then((r) => setSensors(Array.isArray(r) ? r : (r?.sensors || []))).catch(() => setSensors([]));
+    // Notificări (alerte active pe acest vehicul) → pastile de avertizare în fișă, ca pe web
+    Api.notifications().then((l) => setNotifs(Array.isArray(l) ? l : [])).catch(() => {});
   }, [imei]);
 
   function openEdit() {
@@ -111,6 +152,23 @@ export function VehicleDetail() {
   const tachoOk = usesTachograph(full?.vehicle_type || v?.vehicle_type);
   const ll = v && v.latitude != null ? `${v.latitude},${v.longitude}` : '';
 
+  // ── Citiri „live" pentru grila „Detalii live" (paritate cu fișa web) ──
+  const live = liveStatus(v, off);
+  const eng = engineHoursOf(io);
+  const rpm = io.can_engine_rpm !== undefined ? io.can_engine_rpm + ' RPM' : null;
+  const coolant = io.can_engine_temp !== undefined ? Number(io.can_engine_temp).toFixed(1) + '°C' : null;
+  const adblueVal = (adblueOk && io.can_adblue_level_pct !== undefined)
+    ? (io.can_adblue_level_pct + '%' + (io.can_adblue_level_liters !== undefined ? ' · ' + Number(io.can_adblue_level_liters).toFixed(1) + ' L' : ''))
+    : null;
+  // Combustibil: sonda (tank_level) prioritar, apoi CAN (litri / %). Roșu sub 15 L. Identic cu web.
+  let fuelStr: string | null = null, fuelLow = false, fuelSrc = '';
+  if (io.tank_level_liters != null) { fuelStr = Number(io.tank_level_liters).toFixed(1) + ' L'; fuelLow = io.tank_level_liters < 15; fuelSrc = ' (sondă)'; }
+  else if (io.can_fuel_level_liters != null && io.can_fuel_level_liters > 0) { fuelStr = Number(io.can_fuel_level_liters).toFixed(1) + ' L' + (io.can_fuel_level_pct != null ? ' · ' + io.can_fuel_level_pct + '%' : ''); fuelLow = io.can_fuel_level_liters < 15; fuelSrc = ' (CAN)'; }
+  else if (io.can_fuel_level_pct != null) { fuelStr = io.can_fuel_level_pct + '%'; fuelSrc = ' (CAN)'; }
+  const pills = notifs.filter((n) => n.imei === imei && !n.acked_at).slice(0, 4);
+  const isSuper = !!me.value?.isSuper;
+  const canStale = !!(v as any)?.can_stale;
+
   function openUrl(url: string) { try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); } }
 
   function openSensors() {
@@ -129,6 +187,23 @@ export function VehicleDetail() {
       </header>
 
       <div class="content d-content">
+        <div class={'d-sb ' + live.cls}>
+          <span class="sb-dot" />
+          <span class="sb-text">{live.text}</span>
+          {live.detail && <span class="sb-detail">{live.detail}</span>}
+        </div>
+
+        {pills.length > 0 && (
+          <div class="d-pills">
+            {pills.map((n) => (
+              <div class={'d-pill ' + (n.severity === 'critical' ? 'crit' : 'warn')} onClick={() => loc.route('/notifications')}>
+                <Icon name="alert" size={15} class="ic" />
+                <div class="pill-tx"><b>{n.title || 'Alertă'}</b>{n.body ? <div class="pill-sub">{n.body}</div> : null}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div class="card d-top">
           <div class="d-plate-row">
             {s && <span class="dot" style={{ background: s.color, boxShadow: `0 0 6px ${s.color}` }} />}
@@ -139,8 +214,6 @@ export function VehicleDetail() {
             {veh && <div class="d-row"><span class="lbl">Vehicul</span><span class="val">{veh}</span></div>}
             <div class="d-row"><span class="lbl">Șofer</span><span class="val">{driver || 'Nealocat'}</span></div>
             <div class="d-row"><span class="lbl">Adresă</span><span class="val">{addr || 'se încarcă…'}</span></div>
-            {odo != null && <div class="d-row"><span class="lbl">Odometru</span><span class="val">{odo} km</span></div>}
-            {volt && <div class="d-row"><span class="lbl">Voltaj</span><span class="val">{volt}</span></div>}
             <div class="d-row"><span class="lbl">Ultima transmisie</span><span class="val">{fmtDateTime(v?.timestamp)}</span></div>
           </div>
           <div class="d-quality">
@@ -168,11 +241,34 @@ export function VehicleDetail() {
           )}
         </div>
 
+        <div class="card d-detail">
+          <h3 class="d-cardh">Detalii live{canStale && <span class="d-stale"> · ultimele valori (motor oprit)</span>}</h3>
+          <div class="d-grid">
+            <G label="Viteză GPS" value={(v?.speed || 0) + ' km/h'} cls={(v?.speed || 0) > 3 ? 'green' : ''} />
+            <G label="Direcție" value={getDirectionName(v?.angle)} />
+            <G label="Status contact" value={ign ? 'Cuplat' : 'Decuplat'} cls={ign ? 'green' : 'red'} />
+            {volt && <G label="Tensiune baterie" value={volt} />}
+            {fuelStr && <G label={'Combustibil' + fuelSrc} value={fuelStr} cls={fuelLow ? 'red' : ''} />}
+            {rpm && <G label="Motor RPM" value={rpm} />}
+            {odo != null && <G label="Kilometraj total" value={odo + ' km'} />}
+            {eng.value !== '—' && <G label={eng.label} value={eng.value + ' h'} />}
+            {coolant && <G label="Temp. motor" value={coolant} />}
+            {adblueVal && <G label="AdBlue" value={adblueVal} />}
+            <G label="Semnal GPS" value={gpsStandby ? 'În așteptare' : (v?.satellites != null ? gps.label + ' (' + v.satellites + ' sat.)' : gps.label)} />
+            <G label="Semnal GSM" value={gsm.label} />
+            <G label="Poziție" value={v?.latitude != null ? Number(v.latitude).toFixed(5) + ', ' + Number(v.longitude).toFixed(5) : '—'} full />
+            <G label="IMEI dispozitiv" value={imei} full />
+          </div>
+        </div>
+
         <div class="card d-stats">
           <h3>Activitate astăzi</h3>
           <div class="d-stat"><Icon name="route" size={18} class="ic" /><span class="lbl">Distanță parcursă</span><span class="val">{daily ? daily.totalKm.toFixed(2) : '0.00'} km</span></div>
           <div class="d-stat"><Icon name="clock" size={18} class="ic" /><span class="lbl">Timp de conducere</span><span class="val">{fmtDuration(daily?.movingTime)}</span></div>
           <div class="d-stat"><Icon name="clock" size={18} class="ic" /><span class="lbl">Staționare (motor pornit)</span><span class="val">{fmtDuration(daily?.stoppedTime)}</span></div>
+          <div class="d-stat"><Icon name="mapPin" size={18} class="ic" /><span class="lbl">Opriri</span><span class="val">{daily?.stops ?? 0}</span></div>
+          {daily?.fuelConsumed != null && <div class="d-stat"><Icon name="droplet" size={18} class="ic" /><span class="lbl">Consum estimat azi</span><span class="val">{daily.fuelConsumed} L</span></div>}
+          {daily?.lastIgnitionOn && <div class="d-stat"><Icon name="zap" size={18} class="ic" /><span class="lbl">Ultim contact pornit</span><span class="val" style="font-size:13px">{fmtDateTime(daily.lastIgnitionOn)}</span></div>}
           <div class="d-gauge">
             <div class="d-stat" style="border:none;padding-bottom:6px"><Icon name="gauge" size={18} class="ic" /><span class="lbl">Viteză</span><span class="val">{daily?.maxSpeed || 0} km/h</span></div>
             <div class="d-gauge-bar"><span class="d-gauge-pin" style={{ left: `${Math.min(100, ((daily?.maxSpeed || 0) / 130) * 100)}%` }} /></div>
@@ -189,11 +285,11 @@ export function VehicleDetail() {
               <button class="h-btn" onClick={() => setSheet('')}><Icon name="x" /></button>
             </div>
             <div class="sheet-body">
-              {sheet === 'can' && <CanList io={io} adblueOk={adblueOk} />}
+              {sheet === 'can' && <CanList io={io} adblueOk={adblueOk} showRaw={isSuper} />}
               {sheet === 'sensors' && (sensors === null ? <div class="spin" style="margin:20px auto" /> : sensors.length ? sensors.map((sn: any, i) => (
                 <div class="kv"><span class="k">{sn.type || sn.name || `Senzor ${i + 1}`}</span><span class="v">{sn.id || sn.io || '—'}</span></div>
               )) : <div class="center-msg">Niciun senzor configurat pe acest vehicul.</div>)}
-              {sheet === 'tacho' && <div class="center-msg">Datele de tahograf detaliate sunt disponibile în aplicația web. (Integrarea completă în mobil — etapă următoare.)</div>}
+              {sheet === 'tacho' && <TachoLive io={io} />}
             </div>
           </div>
         </div>
@@ -262,7 +358,7 @@ function SignalBars({ value, max = 5 }: { value: number; max?: number }) {
   );
 }
 
-function CanList({ io, adblueOk }: { io: any; adblueOk?: boolean }) {
+function CanList({ io, adblueOk, showRaw }: { io: any; adblueOk?: boolean; showRaw?: boolean }) {
   const d = io || {};
   const ignOn = (d.ignition === 1 || d.ignition === true);
   const voltage = (typeof d.external_voltage === 'number' && d.external_voltage > 0) ? (d.external_voltage / 1000).toFixed(2) + ' V' : null;
@@ -282,11 +378,10 @@ function CanList({ io, adblueOk }: { io: any; adblueOk?: boolean }) {
       {fuel && <div class="kv"><span class="k">Nivel rezervor</span><span class="v">{fuel}</span></div>}
     </>
   );
-  if (!ignOn) return base; // contact OPRIT → doar cele de bază, nimic altceva
-
-  // Contact PORNIT → + restul parametrilor CAN (fără cele deja afișate / duplicate; AdBlue doar diesel+Euro6)
+  // Contact PORNIT → + restul parametrilor CAN (fără cele deja afișate / duplicate; AdBlue doar diesel+Euro6).
+  // Contact OPRIT → doar cele de bază (restul ar fi valori vechi de carry-forward).
   const SHOWN = new Set(['ignition', 'gsm_signal', 'external_voltage', 'total_odometer', 'can_total_mileage', 'can_total_mileage_counted', 'can_fuel_level_liters', 'can_fuel_level_pct', 'fuel_level_liters', 'fuel_level_pct']);
-  const extra = Object.keys(d).filter((k) => (CAN_LABELS[k] || k.startsWith('can_')) && !SHOWN.has(k) && !(!adblueOk && k.startsWith('can_adblue')));
+  const extra = ignOn ? Object.keys(d).filter((k) => (CAN_LABELS[k] || k.startsWith('can_')) && !SHOWN.has(k) && !(!adblueOk && k.startsWith('can_adblue'))) : [];
   return (
     <>
       {base}
@@ -297,6 +392,35 @@ function CanList({ io, adblueOk }: { io: any; adblueOk?: boolean }) {
         let val = d[k];
         if (k === 'external_voltage' && typeof val === 'number') val = (val / 1000).toFixed(2);
         return <div class="kv"><span class="k">{label}</span><span class="v">{val}{unit ? ' ' + unit : ''}</span></div>;
+      })}
+      {showRaw && <RawIo io={d} />}
+    </>
+  );
+}
+
+// Super-admin: TOATE semnalele brute (pentru mapare IO), nu doar cele „utile" — echivalentul panoului IO din web.
+function RawIo({ io }: { io: any }) {
+  const keys = Object.keys(io || {}).filter((k) => io[k] !== null && typeof io[k] !== 'object').sort();
+  if (!keys.length) return null;
+  return (
+    <>
+      <div class="kv raw-h"><span class="k">Toate semnalele (brut)</span><span class="v">{keys.length}</span></div>
+      {keys.map((k) => <div class="kv"><span class="k">{prettyKey(k)}</span><span class="v">{String(io[k])}</span></div>)}
+    </>
+  );
+}
+
+// Tahograf — semnalele transmise LIVE (carduri șofer, timpi de condus/odihnă) extrase din IO. Fișierele .DDD
+// descărcate se analizează separat (secțiunea „Tahograf" din meniu).
+function TachoLive({ io }: { io: any }) {
+  const d = io || {};
+  const keys = Object.keys(d).filter((k) => /tacho|driver1|driver2|driver_card|card_present|tachograph|driving|drive_time|rest_time|working_time/i.test(k));
+  if (!keys.length) return <div class="center-msg">Niciun semnal de tahograf transmis live de acest vehicul. Fișierele descărcate (.DDD) se analizează în secțiunea „Tahograf" din meniu.</div>;
+  return (
+    <>
+      {keys.map((k) => {
+        const def = CAN_LABELS[k];
+        return <div class="kv"><span class="k">{def ? def[0] : prettyKey(k)}</span><span class="v">{String(d[k])}{def && def[1] ? ' ' + def[1] : ''}</span></div>;
       })}
     </>
   );

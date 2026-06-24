@@ -5528,9 +5528,12 @@ const pozitii = await r.json();</code></pre>
       // Legendă: verde=mișcare · galben=staționare(contact) · roșu=oprit · gri=offline(>1h)
       // color = umplerea plină a siluetei top-down; plateBg/plateText = pastila numărului
       // (text alb, dar închis pe galben fiindcă albul nu se citește pe galben).
+      // „În mișcare" (verde) DOAR dacă a transmis recent (<3 min). Viteză>0 dintr-un pachet vechi (semnal pierdut
+      // în mers) → galben (ca în fișă „⚠️ fără semnal recent"), nu verde fals. Aliniat cu updateDetailPanel.
+      const _freshLive = dev && dev.timestamp ? (Date.now() - new Date(dev.timestamp).getTime()) < 180000 : false;
       if (!isOnline) { color = '#9ca3af'; status = 'gone'; plateBg = '#6b7280'; plateText = '#ffffff'; }
-      else if (isMoving) { color = '#16A34A'; status = 'moving'; plateBg = '#16a34a'; plateText = '#ffffff'; }
-      else if (hasIgnition) { color = '#eab308'; status = 'idle'; plateBg = '#eab308'; plateText = '#1f2937'; }
+      else if (isMoving && _freshLive) { color = '#16A34A'; status = 'moving'; plateBg = '#16a34a'; plateText = '#ffffff'; }
+      else if (isMoving || hasIgnition) { color = '#eab308'; status = 'idle'; plateBg = '#eab308'; plateText = '#1f2937'; }
       else { color = '#ef4444'; status = 'off'; plateBg = '#dc2626'; plateText = '#ffffff'; }
 
       const cat = markerCategory(dev);
@@ -5742,8 +5745,11 @@ const pozitii = await r.json();</code></pre>
         const voltage = d.io?.external_voltage ? (d.io.external_voltage / 1000).toFixed(1) + 'V' : '';
 
         const hasIgnition = ignitionOn(d.io, d.timestamp);
+        // „În mișcare" (verde) DOAR dacă a transmis recent (<3 min) — altfel viteza e dintr-un pachet vechi (semnal
+        // pierdut în mers) → galben, identic cu markerul de pe hartă și cu fișa vehiculului.
+        const _freshLive = d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
         let statusClass = 'gone';     // gri DOAR la >1h fără date (Offline)
-        if (isOnline) statusClass = isMoving ? 'moving' : (hasIgnition ? 'idle' : 'stopped');   // verde / galben (staționare) / roșu (oprit)
+        if (isOnline) statusClass = (isMoving && _freshLive) ? 'moving' : ((isMoving || hasIgnition) ? 'idle' : 'stopped');   // verde / galben (staționare/semnal pierdut) / roșu (oprit)
         const offlineFlag = !isOnline ? '⚠️ ' : '';
 
         return '' +
@@ -5755,7 +5761,7 @@ const pozitii = await r.json();</code></pre>
                 '<span class="name">' + name + '</span>' +
                 (plate ? '<span class="device-card-plate">' + plate + '</span>' : '') +
               '</div>' +
-              '<span class="device-card-speed ' + (isMoving ? 'moving' : 'stopped') + '">' + d.speed + ' km/h</span>' +
+              '<span class="device-card-speed ' + (isMoving && _freshLive ? 'moving' : 'stopped') + '">' + d.speed + ' km/h</span>' +
             '</div>' +
             '<div class="device-card-meta">' +
               '<span class="meta-ignition ' + (ignOn ? 'on' : 'off') + '"><i class="fas fa-key"></i> ' + (ignOn ? 'ON' : 'OFF') + '</span>' +
