@@ -399,13 +399,23 @@ function CanList({ io, adblueOk, showRaw }: { io: any; adblueOk?: boolean; showR
 }
 
 // Super-admin: TOATE semnalele brute (pentru mapare IO), nu doar cele „utile" — echivalentul panoului IO din web.
+// Aplatizează și flag-urile decodate (_security_flags / _control_flags etc.) un nivel, ca panoul web (_sf_/_cf_).
 function RawIo({ io }: { io: any }) {
-  const keys = Object.keys(io || {}).filter((k) => io[k] !== null && typeof io[k] !== 'object').sort();
+  const flat: Record<string, any> = {};
+  for (const [k, val] of Object.entries(io || {})) {
+    if (val === null || val === undefined) continue;
+    if (typeof val === 'object') {
+      for (const [k2, v2] of Object.entries(val as any)) {
+        if (v2 !== null && typeof v2 !== 'object') flat[k.replace(/^_/, '') + '.' + k2] = v2;
+      }
+    } else { flat[k] = val; }
+  }
+  const keys = Object.keys(flat).sort();
   if (!keys.length) return null;
   return (
     <>
       <div class="kv raw-h"><span class="k">Toate semnalele (brut)</span><span class="v">{keys.length}</span></div>
-      {keys.map((k) => <div class="kv"><span class="k">{prettyKey(k)}</span><span class="v">{String(io[k])}</span></div>)}
+      {keys.map((k) => <div class="kv"><span class="k">{prettyKey(k)}</span><span class="v">{String(flat[k])}</span></div>)}
     </>
   );
 }
