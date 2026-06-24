@@ -552,6 +552,12 @@
     .map-view-ctrl { margin-top:10px; }
     .map-view-ctrl a { display:flex !important; align-items:center; justify-content:center; font-size:14px; }
     .map-view-ctrl a.active, .map-view-ctrl a.active:hover { background:var(--accent,#3FE07D); color:#fff; }
+    /* Pe touch (iOS/Android) starea :hover din Leaflet rămâne „lipită" după tap → butonul părea blocat
+       (nu revenea la starea inițială). O neutralizăm: după tap, inactivul revine la alb, activul rămâne verde. */
+    @media (hover: none) {
+      .leaflet-bar.map-view-ctrl a:hover { background:#fff; }
+      .leaflet-bar.map-view-ctrl a.active:hover { background:var(--accent,#3FE07D); }
+    }
 
     /* Bulă grupare (vehicule în același hotspot) + popup cu lista lor */
     .grp-bubble-marker { background:transparent; border:none; }
