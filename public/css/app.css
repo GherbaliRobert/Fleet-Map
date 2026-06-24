@@ -549,15 +549,13 @@
     .map-hide-plates .veh-plate { display:none; }
 
     /* ─── Control hartă (dreapta-sus): grupare pe hotspot + mod afișare săgeți/pictograme ─── */
+    /* Stări DETERMINISTE cu !important: pe mobil Leaflet aplică reguli cu specificitate mare
+       (.leaflet-touch .leaflet-bar a) care „mâncau" verdele activ → pictograma albă pe fundal alb
+       părea transparentă, nu verde. Cu !important: inactiv = mereu alb, activ = mereu verde. */
     .map-view-ctrl { margin-top:10px; }
-    .map-view-ctrl a { display:flex !important; align-items:center; justify-content:center; font-size:14px; }
-    .map-view-ctrl a.active, .map-view-ctrl a.active:hover { background:var(--accent,#3FE07D); color:#fff; }
-    /* Pe touch (iOS/Android) starea :hover din Leaflet rămâne „lipită" după tap → butonul părea blocat
-       (nu revenea la starea inițială). O neutralizăm: după tap, inactivul revine la alb, activul rămâne verde. */
-    @media (hover: none) {
-      .leaflet-bar.map-view-ctrl a:hover { background:#fff; }
-      .leaflet-bar.map-view-ctrl a.active:hover { background:var(--accent,#3FE07D); }
-    }
+    .map-view-ctrl a { display:flex !important; align-items:center; justify-content:center; font-size:14px;
+      background:#fff !important; color:#333 !important; }
+    .map-view-ctrl a.active { background:var(--accent,#3FE07D) !important; color:#fff !important; }
 
     /* Bulă grupare (vehicule în același hotspot) + popup cu lista lor */
     .grp-bubble-marker { background:transparent; border:none; }
