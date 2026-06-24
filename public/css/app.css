@@ -1673,8 +1673,11 @@
       .info-item-icon { width: 24px; height: 24px; min-width: 24px; font-size: 11px; }
       .info-item-value { font-size: 12px; }
 
-      /* Leaflet controls */
-      .leaflet-control-zoom { top: 14px !important; right: calc(12px + env(safe-area-inset-right)) !important; }
+      /* Leaflet controls — colțul dreapta-sus coboară SUB bara de căutare fixă (.msb), altfel
+         bara o acoperea (zoom „+", grupare, săgeți/pictograme). .msb e la ~8px și ~48px înălțime
+         în hartă → pornim grupul la 64px. */
+      .leaflet-top.leaflet-right { top: 64px; right: env(safe-area-inset-right); }
+      .leaflet-control-zoom { top: 0 !important; right: 0 !important; }
     }
 
     @media (max-width: 400px) {
