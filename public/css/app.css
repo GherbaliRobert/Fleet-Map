@@ -548,6 +548,13 @@
     /* La zoom foarte mic (vezi toată țara) ascundem plăcuțele ca să nu se aglomereze */
     .map-hide-plates .veh-plate { display:none; }
 
+    /* Chevron de direcție: „orbitează" în jurul vehiculului și arată sensul EXACT de mers (mașina rămâne dreaptă).
+       Unghiul (rotate) și raza (translate) se setează inline în createIcon, după capul GPS și mărimea iconului.
+       transform-origin:0 0 ⇒ punctul de pivot e fix centrul vehiculului (left/top:50%). */
+    .veh-chev { position:absolute; left:50%; top:50%; transform-origin:0 0; pointer-events:none; }
+    .veh-chev-ico { position:absolute; transform:translate(-50%,-50%); }
+    .veh-chev-ico svg { display:block; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.35)); }
+
     /* Selector vizual de pictogramă (modal vehicul) — pictograme line-art */
     .icon-picker { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
     .icon-tile {

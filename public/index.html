@@ -5521,8 +5521,9 @@ const pozitii = await r.json();</code></pre>
     }
 
     // Pe HARTĂ: aceeași siluetă plină (profil lateral, ca în management), dar UMPLUTĂ cu culoarea de status
-    // (gradient light→dark = efect 3D) și îngroșată. `flip`=true → vehiculul privește spre stânga (merge spre vest).
-    function vehicleArtStatusSVG(cat, light, dark, size, flip) {
+    // (gradient light→dark = efect 3D) și îngroșată. Vehiculul rămâne mereu DREPT (fără flip);
+    // sensul de mers e arătat separat, de chevronul de direcție (vezi createIcon).
+    function vehicleArtStatusSVG(cat, light, dark, size) {
       const w = size || 40;
       const h = Math.round(w * 44 / 64);
       const s = vehicleArtPremiumShapes(cat);
@@ -5536,8 +5537,7 @@ const pozitii = await r.json();</code></pre>
       const glass = s.glass ? '<g fill="#eef4fb" stroke="' + dark + '" stroke-width="1" stroke-linejoin="round">' + s.glass + '</g>' : '';
       const inner = '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + light + '"/><stop offset="1" stop-color="' + dark + '"/></linearGradient></defs>' +
         shadow + body + glass + (s.det || '') + wheels;
-      const inside = flip ? '<g transform="translate(64,0) scale(-1,1)">' + inner + '</g>' : inner;
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 64 44">' + inside + '</svg>';
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 64 44">' + inner + '</svg>';
     }
 
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
@@ -5556,9 +5556,22 @@ const pozitii = await r.json();</code></pre>
       const cat = markerCategory(dev);
       const size = isSelected ? 48 : 40; // lățimea pictogramei (profil lateral, plină); mai mare ca să se vadă bine
       const ih = Math.round(size * 44 / 64);
-      // Direcția: profilul lateral „privește" spre sensul de mers — întors spre stânga când merge spre vest
-      // (sin(cap)<0 ⇒ componentă spre vest). Fără săgeată separată; oprit ⇒ păstrează ultima orientare cunoscută.
-      const flip = Math.sin((angle || 0) * Math.PI / 180) < 0;
+      // Direcția: vehiculul rămâne DREPT, iar sensul EXACT de mers e dat de un chevron care „orbitează"
+      // în jurul lui pe unghiul real (continuu). Doar în mișcare — pe staționare/oprit direcția nu e relevantă.
+      // Cap busolă: 0°=N (sus), 90°=E (dreapta), 180°=S (jos), 270°=V (stânga).
+      const heading = (((angle || 0) % 360) + 360) % 360;
+      const chevR = Math.round(size * 0.78);   // raza orbitei chevronului în jurul vehiculului
+      const chevPx = Math.round(size * 0.5);   // mărimea glifului chevron
+      const chevHtml = isMoving
+        ? '<div class="veh-chev" style="transform:rotate(' + heading.toFixed(0) + 'deg) translate(0,-' + chevR + 'px);">' +
+            '<div class="veh-chev-ico">' +
+              '<svg width="' + chevPx + '" height="' + chevPx + '" viewBox="0 0 24 24">' +
+                '<path d="M4 16 L12 6 L20 16" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>' +
+                '<path d="M4 16 L12 6 L20 16" fill="none" stroke="' + gradDark + '" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+              '</svg>' +
+            '</div>' +
+          '</div>'
+        : '';
 
       const ring = isSelected ? '<span class="veh-ring"></span>' : '';
 
@@ -5569,7 +5582,8 @@ const pozitii = await r.json();</code></pre>
       const html =
         '<div class="veh-mk" style="width:' + size + 'px;height:' + ih + 'px;">' +
           ring +
-          '<div class="veh-dot">' + vehicleArtStatusSVG(cat, gradLight, gradDark, size, flip) + '</div>' +
+          '<div class="veh-dot">' + vehicleArtStatusSVG(cat, gradLight, gradDark, size) + '</div>' +
+          chevHtml +
           plateHtml +
         '</div>';
 
