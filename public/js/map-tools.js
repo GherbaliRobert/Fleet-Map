@@ -50,26 +50,132 @@
   function closeDropdown() { var d = el('msb-dropdown'); if (d) d.style.display = 'none'; }
   function toggleDropdown() { var d = el('msb-dropdown'); if (d.style.display === 'none') openDropdown(); else closeDropdown(); }
 
+  // ── Grupuri în dropdown (filtrare pe categorie) ──
+  var _grp = null, _grpTs = 0, _grpOpen = {}, _grpSecOpen = true;
+
+  // /api/groups (nume+culoare) + /api/devices (group_id per imei). Cache 30s.
+  function loadGroupData(force, cb) {
+    if (!force && _grp && (Date.now() - _grpTs < 30000)) { cb && cb(); return; }
+    Promise.all([
+      fetch('/api/groups', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
+      fetch('/api/devices', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })
+    ]).then(function (res) {
+      var ig = {};
+      (Array.isArray(res[1]) ? res[1] : []).forEach(function (d) { if (d && d.imei && d.group_id != null) ig[d.imei] = d.group_id; });
+      _grp = { groups: Array.isArray(res[0]) ? res[0] : [], imeiGroup: ig }; _grpTs = Date.now();
+      cb && cb();
+    });
+  }
+  function imeisOfGroup(gid) {
+    var out = [], ig = (_grp && _grp.imeiGroup) || {};
+    try { DEVS().forEach(function (d, imei) { if (ig[imei] === gid) out.push(imei); }); } catch (e) {}
+    return out;
+  }
+  function imeisUngrouped() {
+    var out = [], ig = (_grp && _grp.imeiGroup) || {}, valid = {};
+    ((_grp && _grp.groups) || []).forEach(function (g) { valid[g.id] = 1; });
+    try { DEVS().forEach(function (d, imei) { var gid = ig[imei]; if (gid == null || !valid[gid]) out.push(imei); }); } catch (e) {}
+    return out;
+  }
+  function selState(imeis) {
+    if (!imeis.length) return 'none';
+    var n = 0; imeis.forEach(function (i) { if (isSel(i)) n++; });
+    return n === 0 ? 'none' : (n === imeis.length ? 'all' : 'some');
+  }
+  function ensureSel() { if (!(window._mapSel instanceof Set)) window._mapSel = new Set(allImeis()); return window._mapSel; }
+
+  function vehItemHtml(imei) {
+    var d = (DEVS() && DEVS().get(imei)) || {}, name = d.name || imei, plate = d.plate || '';
+    return '<label class="msb-item"><input type="checkbox" data-imei="' + esc(imei) + '" ' + (isSel(imei) ? 'checked' : '') + '>' +
+      '<span class="msb-item-name" data-go="' + esc(imei) + '">' + esc(name) + (plate ? ' <span class="msb-plate">' + esc(plate) + '</span>' : '') + '</span></label>';
+  }
+  function sortByName(imeis) {
+    return imeis.slice().sort(function (a, b) { var da = (DEVS() && DEVS().get(a)) || {}, db = (DEVS() && DEVS().get(b)) || {}; return (da.name || a).localeCompare(db.name || b); });
+  }
+  function wireVehItems(scope) {
+    scope.querySelectorAll('input[type=checkbox][data-imei]').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        ensureSel();
+        if (cb.checked) window._mapSel.add(cb.dataset.imei); else window._mapSel.delete(cb.dataset.imei);
+        window.applyMapSelection(); renderListPreserve();
+      });
+    });
+    scope.querySelectorAll('.msb-item-name').forEach(function (sp) {
+      sp.addEventListener('click', function (e) { e.preventDefault(); closeDropdown(); if (typeof window.selectDevice === 'function') window.selectDevice(sp.dataset.go); });
+    });
+  }
+  function renderListPreserve() { var box = el('msb-list'); if (!box) return; var s = box.scrollTop; renderList(); box.scrollTop = s; }
+
   function renderList() {
     var box = el('msb-list'); if (!box) return;
     var q = ((el('msb-input') || {}).value || '').toLowerCase();
+    if (q) { renderFlat(box, q); return; }                 // căutare → listă plată (orice vehicul)
+    if (!_grp) { box.innerHTML = '<div class="msb-empty">Se încarcă grupurile…</div>'; loadGroupData(false, function () { renderGrouped(box); }); return; }
+    renderGrouped(box);
+  }
+
+  function renderFlat(box, q) {
     var items = []; try { DEVS().forEach(function (d, imei) { items.push({ imei: imei, name: d.name || imei, plate: d.plate || '' }); }); } catch (e) {}
     items = items.filter(function (it) { return !q || (it.name + ' ' + it.plate + ' ' + it.imei).toLowerCase().indexOf(q) >= 0; });
     items.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
     if (!items.length) { box.innerHTML = '<div class="msb-empty">Niciun vehicul găsit.</div>'; return; }
-    box.innerHTML = items.slice(0, 300).map(function (it) {
-      return '<label class="msb-item"><input type="checkbox" data-imei="' + esc(it.imei) + '" ' + (isSel(it.imei) ? 'checked' : '') + '>' +
-        '<span class="msb-item-name" data-go="' + esc(it.imei) + '">' + esc(it.name) + (it.plate ? ' <span class="msb-plate">' + esc(it.plate) + '</span>' : '') + '</span></label>';
-    }).join('') + (items.length > 300 ? '<div class="msb-empty">… primele 300. Filtrează pentru mai multe.</div>' : '');
-    box.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
-      cb.addEventListener('change', function () {
-        if (!(window._mapSel instanceof Set)) window._mapSel = new Set(allImeis()); // materializează din „toate"
-        if (cb.checked) window._mapSel.add(cb.dataset.imei); else window._mapSel.delete(cb.dataset.imei);
-        window.applyMapSelection();
+    box.innerHTML = items.slice(0, 300).map(function (it) { return vehItemHtml(it.imei); }).join('') +
+      (items.length > 300 ? '<div class="msb-empty">… primele 300. Filtrează pentru mai multe.</div>' : '');
+    wireVehItems(box);
+  }
+
+  function renderGrouped(box) {
+    var groups = (_grp && _grp.groups) || [];
+    if (!groups.length) { renderFlat(box, ''); return; }    // fără grupuri definite → listă plată
+    function grpBlock(gid, name, color, imeis) {
+      if (!imeis.length) return '';
+      var st = selState(imeis), open = !!_grpOpen[gid];
+      var veh = open ? sortByName(imeis).map(vehItemHtml).join('') : '';
+      return '<div class="msb-grp">' +
+        '<div class="msb-grp-row">' +
+          '<input type="checkbox" class="msb-grp-cb" data-gid="' + esc(gid) + '" ' + (st === 'all' ? 'checked' : '') + '>' +
+          '<span class="msb-grp-dot" style="background:' + esc(color || '#888') + '"></span>' +
+          '<span class="msb-grp-name" data-gid="' + esc(gid) + '">' + esc(name) + '</span>' +
+          '<span class="msb-grp-cnt">' + imeis.length + '</span>' +
+          '<button class="msb-grp-exp' + (open ? ' open' : '') + '" data-gid="' + esc(gid) + '" title="Vezi vehiculele"><i class="fas fa-chevron-right"></i></button>' +
+        '</div>' +
+        '<div class="msb-grp-veh" style="display:' + (open ? 'block' : 'none') + '">' + veh + '</div>' +
+      '</div>';
+    }
+    var rows = '';
+    groups.forEach(function (g) { rows += grpBlock(String(g.id), g.name || ('Grup ' + g.id), g.color, imeisOfGroup(g.id)); });
+    rows += grpBlock('_none', 'Fără grup', '#888', imeisUngrouped());
+    box.innerHTML =
+      '<div class="msb-grp-head" id="msb-grp-head"><i class="fas fa-layer-group"></i> Grupuri' +
+        '<i class="fas fa-chevron-down msb-grp-caret' + (_grpSecOpen ? ' open' : '') + '"></i></div>' +
+      '<div class="msb-grp-body" style="display:' + (_grpSecOpen ? 'block' : 'none') + '">' + (rows || '<div class="msb-empty">Niciun vehicul.</div>') + '</div>';
+    wireGrouped(box);
+  }
+
+  function wireGrouped(box) {
+    var head = el('msb-grp-head');
+    if (head) head.addEventListener('click', function () { _grpSecOpen = !_grpSecOpen; renderListPreserve(); });
+    // săgeată rotativă: deschide/închide lista de vehicule a categoriei (pe buton ȘI pe nume)
+    box.querySelectorAll('.msb-grp-exp, .msb-grp-name').forEach(function (b) {
+      b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); var g = b.dataset.gid; _grpOpen[g] = !_grpOpen[g]; renderListPreserve(); });
+    });
+    // bifă pe grup → adaugă/scoate toate vehiculele categoriei (poți alege una sau mai multe)
+    box.querySelectorAll('.msb-grp-cb').forEach(function (cb) {
+      cb.addEventListener('change', function (e) {
+        e.stopPropagation();
+        var gid = cb.dataset.gid;
+        var imeis = (gid === '_none') ? imeisUngrouped() : imeisOfGroup(parseInt(gid, 10));
+        ensureSel();
+        imeis.forEach(function (i) { if (cb.checked) window._mapSel.add(i); else window._mapSel.delete(i); });
+        window.applyMapSelection(); renderListPreserve();
       });
     });
-    box.querySelectorAll('.msb-item-name').forEach(function (sp) {
-      sp.addEventListener('click', function (e) { e.preventDefault(); closeDropdown(); if (typeof window.selectDevice === 'function') window.selectDevice(sp.dataset.go); });
+    wireVehItems(box);
+    // stări „parțial" (indeterminate) pe bifele de grup
+    box.querySelectorAll('.msb-grp-cb').forEach(function (cb) {
+      var gid = cb.dataset.gid;
+      var imeis = (gid === '_none') ? imeisUngrouped() : imeisOfGroup(parseInt(gid, 10));
+      cb.indeterminate = (selState(imeis) === 'some');
     });
   }
 
