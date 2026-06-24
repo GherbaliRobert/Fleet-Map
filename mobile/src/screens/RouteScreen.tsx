@@ -62,8 +62,14 @@ export function RouteScreen() {
     } catch { /* hartă în curs de demontare */ }
   }, [pts]);
 
-  let dist = 0, maxSpeed = 0;
-  if (pts) for (let i = 0; i < pts.length; i++) { if (i > 0) { const d = haversine(pts[i - 1], pts[i]); if (d < 10) dist += d; } if ((pts[i].speed || 0) > maxSpeed) maxSpeed = pts[i].speed; }
+  let dist = 0, maxSpeed = 0, spSum = 0, spN = 0;
+  if (pts) for (let i = 0; i < pts.length; i++) {
+    if (i > 0) { const d = haversine(pts[i - 1], pts[i]); if (d < 10) dist += d; }
+    const sp = pts[i].speed || 0;
+    if (sp > maxSpeed) maxSpeed = sp;
+    if (sp > 3) { spSum += sp; spN++; } // viteză medie doar cât vehiculul e în mișcare (exclude staționarea)
+  }
+  const avgSpeed = spN ? spSum / spN : 0;
 
   return (
     <div class="screen">
@@ -79,8 +85,8 @@ export function RouteScreen() {
       <div class="rt-map"><div ref={mapEl} />{pts === null && <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:500"><div class="spin" /></div>}</div>
       <div class="rt-summary">
         <div class="rt-sum"><div class="v">{pts ? dist.toFixed(1) : '—'}</div><div class="l">km parcurși</div></div>
-        <div class="rt-sum"><div class="v">{pts ? Math.round(maxSpeed) : '—'}</div><div class="l">viteză max</div></div>
-        <div class="rt-sum"><div class="v">{pts ? pts.length : '—'}</div><div class="l">puncte GPS</div></div>
+        <div class="rt-sum"><div class="v">{pts ? Math.round(avgSpeed) : '—'}</div><div class="l">viteză medie (km/h)</div></div>
+        <div class="rt-sum"><div class="v">{pts ? Math.round(maxSpeed) : '—'}</div><div class="l">viteză max (km/h)</div></div>
       </div>
     </div>
   );

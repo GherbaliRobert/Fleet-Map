@@ -1,7 +1,12 @@
+// Format uman: „X ore și Y minute" (ex. „1 oră și 59 minute", „0 minute", „2 ore").
 export function fmtDuration(sec?: number): string {
-  if (!sec || sec < 0) return '00:00';
+  if (!sec || sec < 0) return '0 minute';
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  const hp = h === 1 ? '1 oră' : h + ' ore';
+  const mp = m === 1 ? '1 minut' : m + ' minute';
+  if (h > 0 && m > 0) return hp + ' și ' + mp;
+  if (h > 0) return hp;
+  return mp;
 }
 export function fmtDateTime(iso?: string): string {
   if (!iso) return '—';
