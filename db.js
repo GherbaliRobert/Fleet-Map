@@ -2053,7 +2053,11 @@ async function deleteDriver(id) {
 async function getGroups(companyId) {
   const where = companyId != null ? 'WHERE company_id = $1' : '';
   const params = companyId != null ? [companyId] : [];
-  const result = await pool.query(`SELECT * FROM device_groups ${where} ORDER BY name`, params);
+  const result = await pool.query(
+    `SELECT g.*, (SELECT COUNT(*)::int FROM devices d WHERE d.group_id = g.id) AS vehicle_count
+       FROM device_groups g ${where} ORDER BY name`,
+    params
+  );
   return result.rows;
 }
 

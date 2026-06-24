@@ -3236,11 +3236,19 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Grupe ───
+    // Etichetă cu pluralizare RO corectă: 1 vehicul / 2..19 vehicule / 20+ de vehicule
+    function grpVehLabel(n) {
+      n = Number(n) || 0;
+      if (n === 1) return '1 vehicul';
+      const lt = n % 100;
+      return n + ((n !== 0 && (lt === 0 || lt >= 20)) ? ' de vehicule' : ' vehicule');
+    }
     async function loadGroups() {
       const r = await fetch('/api/groups'); const list = await r.json();
       const el = document.getElementById('admin-groups-list');
       el.innerHTML = list.length ? list.map(g => `<div class="admin-row"><div>
           <strong><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${g.color||'#888'};margin-right:6px;"></span>${g.name}</strong>
+          <span class="rh-badge" title="Vehicule alocate acestei grupe" style="margin-left:6px;"><i class="fas fa-car-side" style="margin-right:4px;"></i>${grpVehLabel(g.vehicle_count)}</span>
           <div class="meta">${g.description||''}</div>
         </div><div style="display:flex;gap:6px;">
           <button class="btn-sm" onclick='editGroup(${JSON.stringify(g)})'><i class="fas fa-pen"></i></button>
