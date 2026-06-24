@@ -807,7 +807,7 @@ async function ensureTenancy() {
 async function getCompanies() {
   const r = await pool.query(`
     SELECT c.*,
-      (SELECT COUNT(*)::int FROM devices d WHERE d.company_id = c.id) AS device_count,
+      (SELECT COUNT(*)::int FROM devices d WHERE d.company_id = c.id AND COALESCE(d.status,'') <> 'archived') AS device_count,
       (SELECT COUNT(*)::int FROM users u WHERE u.company_id = c.id) AS user_count,
       (SELECT COUNT(*)::int FROM payments p WHERE p.company_id = c.id) AS payment_count,
       (SELECT COALESCE(SUM(p.amount_ron), 0) FROM payments p WHERE p.company_id = c.id) AS paid_total

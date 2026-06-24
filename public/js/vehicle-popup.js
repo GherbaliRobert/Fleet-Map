@@ -18,12 +18,22 @@
   // Câmpuri dinamice (se schimbă la fiecare update live): status, dot, viteză, coordonate, oră.
   function liveBits(d) {
     var speed = (d.speed != null ? d.speed : 0);
-    var moving = speed > 0;
     var on = online(d);
+    // „În mișcare" (verde) DOAR dacă a transmis recent (<3 min). Viteză>0 dintr-un pachet vechi (semnal pierdut
+    // în mers) → galben „⚠️ Fără semnal recent", nu verde fals. Aliniat cu markerul / lista / fișa.
+    var fresh = d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
+    var fastEnough = speed > 3;
+    var liveMoving = fastEnough && fresh;
+    var ign = !!(d.io && (d.io.ignition === 1 || d.io.ignition === true));
+    var dot, status;
+    if (!on) { dot = 'var(--text-muted)'; status = '⚠️ Oprit (fără semnal)'; }
+    else if (liveMoving) { dot = 'var(--green)'; status = 'În mișcare'; }
+    else if (fastEnough) { dot = 'var(--yellow)'; status = '⚠️ Fără semnal recent'; }
+    else if (ign) { dot = 'var(--yellow)'; status = 'Staționat (contact pornit)'; }
+    else { dot = 'var(--red)'; status = 'Oprit'; }
     return {
-      speed: speed, moving: moving,
-      dot: !on ? 'var(--text-muted)' : (moving ? 'var(--green)' : ((d.io && d.io.ignition) ? 'var(--yellow)' : 'var(--red)')),
-      status: !on ? 'Offline' : (moving ? 'În mișcare' : ((d.io && d.io.ignition) ? 'Staționat (contact pornit)' : 'Oprit')),
+      speed: speed, moving: liveMoving,
+      dot: dot, status: status,
       lat: (d.latitude != null ? (+d.latitude).toFixed(5) : '—'),
       lng: (d.longitude != null ? (+d.longitude).toFixed(5) : '—'),
       ang: (d.angle != null ? Math.round(d.angle) + '°' : '—'),
@@ -48,7 +58,10 @@
     return isNaN(t) ? Date.now() : Math.min(t, Date.now());
   }
   function durStat(d, f) {
-    if (d && d.speed > 0) return '<span style="color:var(--green)">în mișcare</span>';
+    // „în mișcare" DOAR dacă transmite live (<3 min, viteză>3). Altfel arătăm de când stă (last_moved_at) —
+    // un pachet vechi cu viteză>0 (semnal pierdut) nu mai înseamnă „în mișcare". Aliniat cu liveBits.
+    var fresh = d && d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
+    if (d && d.speed > 3 && fresh) return '<span style="color:var(--green)">în mișcare</span>';
     if (!f) return '<span style="color:var(--text-muted)">…</span>';
     if (!f.last_moved_at) return 'fără date';
     return fmtDur(refMs(d) - new Date(f.last_moved_at).getTime());
