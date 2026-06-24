@@ -5761,15 +5761,15 @@ const pozitii = await r.json();</code></pre>
     function toggleMapStyle() {
       mapMarkerStyle = (mapMarkerStyle === 'arrows') ? 'icons' : 'arrows';
       localStorage.setItem('mapStyle', mapMarkerStyle);
-      rerenderAllMarkers();
-      updateViewControlUI();
+      updateViewControlUI();                 // întâi UI-ul (sigur) — butonul reflectă mereu starea
+      try { rerenderAllMarkers(); } catch (e) { if (window.console) console.warn('rerenderAllMarkers:', e); }
     }
 
     function toggleMapGroup() {
       mapGroupOn = !mapGroupOn;
       localStorage.setItem('mapGroup', mapGroupOn ? '1' : '0');
-      recomputeGrouping();
-      updateViewControlUI();
+      updateViewControlUI();                 // întâi UI-ul: butonul se înverzește/revine chiar dacă gruparea dă eroare
+      try { recomputeGrouping(); } catch (e) { if (window.console) console.warn('recomputeGrouping:', e); }
     }
 
     function rerenderAllMarkers() {
@@ -5780,18 +5780,30 @@ const pozitii = await r.json();</code></pre>
       });
     }
 
+    // Normalizează un număr (acceptă și string numeric); altfel null
+    function _num(v) { v = (typeof v === 'string') ? v.trim() : v; return (v !== '' && v != null && isFinite(v)) ? +v : null; }
+    // Normalizează un punct la [lat,lng] numeric (acceptă [lat,lng], {lat,lng}, {latitude,longitude})
+    function _toLL(p) {
+      if (Array.isArray(p)) { var a = _num(p[0]), b = _num(p[1]); return (a != null && b != null) ? [a, b] : null; }
+      if (p && typeof p === 'object') {
+        var la = _num(p.lat != null ? p.lat : p.latitude), lo = _num(p.lng != null ? p.lng : p.longitude);
+        return (la != null && lo != null) ? [la, lo] : null;
+      }
+      return null;
+    }
+
     // Zonele de grupare din geofence-uri: doar poligon + cerc (fără regiuni mari și fără coridoare-rută)
     function buildHotspotZones(list) {
       _hotspotZones = [];
       (list || []).forEach(function (g) {
-        if (g.is_region) return;
-        const coords = parseGfCoords(g);
+        if (g.is_region || g.type === 'corridor') return;
+        var coords; try { coords = parseGfCoords(g); } catch (e) { return; }
         if (g.type === 'circle' && coords && coords.center) {
-          _hotspotZones.push({ id: g.id, name: g.name, kind: 'circle', center: coords.center, radius: coords.radius || 100 });
-        } else if (g.type === 'corridor') {
-          return;
+          var c = _toLL(coords.center);
+          if (c) _hotspotZones.push({ id: g.id, name: g.name, kind: 'circle', center: c, radius: _num(coords.radius) || 100 });
         } else if (Array.isArray(coords) && coords.length >= 3) {
-          _hotspotZones.push({ id: g.id, name: g.name, kind: 'poly', ring: coords });
+          var ring = coords.map(_toLL).filter(Boolean);
+          if (ring.length >= 3) _hotspotZones.push({ id: g.id, name: g.name, kind: 'poly', ring: ring });
         }
       });
     }
@@ -5806,10 +5818,13 @@ const pozitii = await r.json();</code></pre>
     }
 
     function zoneOfPoint(lat, lng) {
+      if (!isFinite(lat) || !isFinite(lng)) return null;
       for (let i = 0; i < _hotspotZones.length; i++) {
         const z = _hotspotZones[i];
-        if (z.kind === 'circle') { if (map.distance([lat, lng], z.center) <= z.radius) return z; }
-        else if (_ptInPoly(lat, lng, z.ring)) return z;
+        try {
+          if (z.kind === 'circle') { if (map.distance([lat, lng], z.center) <= z.radius) return z; }
+          else if (_ptInPoly(lat, lng, z.ring)) return z;
+        } catch (e) { /* zonă cu date invalide → o sărim */ }
       }
       return null;
     }
@@ -5852,7 +5867,11 @@ const pozitii = await r.json();</code></pre>
     }
 
     // Recalculează gruparea: vehiculele din același hotspot (≥2) → o bulă cu numărul; restul individuale.
+    // Wrapper sigur: o eroare în calcul NU trebuie să blocheze butonul/UI-ul (la toggle sau la selectare).
     function recomputeGrouping() {
+      try { _recomputeGroupingImpl(); } catch (e) { if (window.console) console.warn('recomputeGrouping:', e); }
+    }
+    function _recomputeGroupingImpl() {
       if (!map || !markers) return;
       const groupingActive = mapGroupOn && !(window._mapSel instanceof Set);
       if (!groupingActive) {
