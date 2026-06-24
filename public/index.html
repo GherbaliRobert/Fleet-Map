@@ -604,7 +604,13 @@
           <div class="form-group"><label>Centru de cost</label><input type="text" id="edit-cost-center" placeholder="ex: Șantier Nord"></div>
           <div class="form-group"><label>Număr inventar</label><input type="text" id="edit-inventory"></div>
           <div class="form-group" style="grid-column:1 / -1;"><label>Pictogramă</label>
-            <div id="edit-icon-picker" class="icon-picker"></div>
+            <div class="icon-select" id="icon-select">
+              <button type="button" class="icon-select-trigger" id="icon-select-trigger" onclick="toggleIconPicker(event)" aria-haspopup="listbox" aria-expanded="false">
+                <span class="icon-select-current" id="icon-select-current"></span>
+                <i class="fas fa-chevron-down icon-select-caret"></i>
+              </button>
+              <div id="edit-icon-picker" class="icon-picker" style="display:none;"></div>
+            </div>
             <input type="hidden" id="edit-icon" value="car">
           </div>
           <div class="form-group"><label>Culoare afișare</label><input type="color" id="edit-color" value="#3FE07D" style="height:38px;padding:2px;"></div>
@@ -7590,7 +7596,20 @@ const pozitii = await r.json();</code></pre>
       };
       return m[type] || '';
     }
+    function iconLabel(val) {
+      const o = ICON_OPTIONS.find(function (x) { return x.val === val; });
+      return o ? o.label : 'Auto';
+    }
+    // Trigger-ul dropdown-ului: pictograma curentă + numele (collapsat, ocupă un rând).
+    function renderIconTrigger() {
+      const el = document.getElementById('icon-select-current');
+      if (!el) return;
+      const cur = (document.getElementById('edit-icon') || {}).value || 'car';
+      el.innerHTML = '<span class="icon-select-art">' + vehicleSilhouetteSVG(cur, '#64748b', 26) + '</span>' +
+        '<span class="icon-select-name">' + iconLabel(cur) + '</span>';
+    }
     function renderIconPicker() {
+      renderIconTrigger();
       const wrap = document.getElementById('edit-icon-picker');
       if (!wrap) return;
       const cur = (document.getElementById('edit-icon') || {}).value || 'car';
@@ -7602,18 +7621,44 @@ const pozitii = await r.json();</code></pre>
           '</button>';
       }).join('');
     }
-    // Alegere manuală a pictogramei (override peste legarea automată din tip).
+    // Dropdown collapsat: deschide/închide grila de pictograme (economisește spațiu).
+    function toggleIconPicker(e) {
+      if (e) e.stopPropagation();
+      const sel = document.getElementById('icon-select');
+      const wrap = document.getElementById('edit-icon-picker');
+      const trg = document.getElementById('icon-select-trigger');
+      if (!sel || !wrap) return;
+      const open = wrap.style.display !== 'none';
+      wrap.style.display = open ? 'none' : 'grid';
+      sel.classList.toggle('open', !open);
+      if (trg) trg.setAttribute('aria-expanded', String(!open));
+    }
+    function closeIconPicker() {
+      const wrap = document.getElementById('edit-icon-picker');
+      const sel = document.getElementById('icon-select');
+      const trg = document.getElementById('icon-select-trigger');
+      if (wrap) wrap.style.display = 'none';
+      if (sel) sel.classList.remove('open');
+      if (trg) trg.setAttribute('aria-expanded', 'false');
+    }
+    // Alegere manuală a pictogramei (override peste legarea automată din tip); închide grila.
     function pickIcon(val) {
       const hid = document.getElementById('edit-icon');
       if (hid) hid.value = val;
       renderIconPicker();
+      closeIconPicker();
     }
-    // Setează pictograma + reîmprospătează plăcuțele (folosit la deschiderea fișei).
+    // Setează pictograma + reîmprospătează trigger-ul/grila (folosit la deschiderea fișei).
     function setIconPicker(val) {
       const hid = document.getElementById('edit-icon');
       if (hid) hid.value = val || 'car';
       renderIconPicker();
     }
+    // Click în afara selectorului → închide grila.
+    document.addEventListener('click', function (e) {
+      const sel = document.getElementById('icon-select');
+      if (sel && !sel.contains(e.target)) closeIconPicker();
+    });
     // La schimbarea „Categoriei", pictograma se leagă automat de tip.
     function onVehicleTypeChange() {
       const t = (document.getElementById('edit-vehicle-type') || {}).value;
@@ -7633,8 +7678,9 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('calibration-rows').innerHTML = '';
       document.getElementById('fuel-sensors-list').innerHTML = '';
 
-      // Randează plăcuțele selectorului de pictogramă (populate-ul de mai jos va seta selecția corectă)
+      // Randează selectorul de pictogramă (dropdown collapsat; populate-ul de mai jos setează selecția)
       renderIconPicker();
+      closeIconPicker();
 
       // Clear truck fields
       ['edit-tare', 'edit-max-legal', 'edit-max-construct', 'edit-fuel-price', 'edit-cost-tonkm',
