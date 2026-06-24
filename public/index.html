@@ -2151,6 +2151,9 @@ const pozitii = await r.json();</code></pre>
     };
     let mapInitialized = false;
     let map, markers, devices, selectedImei, historyLine;
+    // Preferințe afișare hartă (persistate în localStorage): mod marker + grupare pe hotspot
+    let mapMarkerStyle = 'icons';   // 'icons' = silueta de categorie (implicit) · 'arrows' = săgeată simplă
+    let mapGroupOn = false;          // grupare vehicule aflate în același perimetru hotspot
     // Accesori pentru fișierele externe (map-tools.js, demo-modules-ui.js) — `map/markers/devices` sunt
     // globale LEXICALE (let), NU pe window. Closures întorc valoarea curentă (se reasignează în initMap).
     window.getLeafletMap = function () { return map; };
@@ -3440,6 +3443,8 @@ const pozitii = await r.json();</code></pre>
         geofenceLayers.forEach(l => { try { map.removeLayer(l); } catch(e){} });
         geofenceLayers.clear();
         list.forEach(renderGeofence);
+        buildHotspotZones(list);   // zone pentru grupare (poligon/cerc, fără regiuni/coridoare)
+        scheduleGrouping();
       } catch (e) {}
     }
     function renderGeofence(g, force) {
@@ -5257,11 +5262,16 @@ const pozitii = await r.json();</code></pre>
       if (btn) btn.classList.toggle('active', satMode);
     }
     function initMap() {
+      // Preferințe afișare salvate (mod marker + grupare pe hotspot)
+      mapMarkerStyle = (localStorage.getItem('mapStyle') === 'arrows') ? 'arrows' : 'icons';
+      mapGroupOn = localStorage.getItem('mapGroup') === '1';
+
       map = L.map('map', {
         zoomControl: false
       }).setView([44.4268, 26.1025], 12);
 
       L.control.zoom({ position: 'topright' }).addTo(map);
+      addMapViewControls(); // butoane dreapta-sus: grupare pe hotspot + săgeți/pictograme
       if (map.attributionControl) map.attributionControl.setPosition('bottomleft'); // în stânga → nu se suprapune cu FAB-ul (dreapta-jos)
 
       // Plăcuțele cu numărul de înmatriculare se ascund la zoom foarte mic (hartă de țară) ca să nu se aglomereze.
@@ -5673,9 +5683,13 @@ const pozitii = await r.json();</code></pre>
 
       // Silueta TOP-DOWN (fața spre sus în viewBox 0..48), rotită după cap: botul arată încotro merge.
       // Direcția se citește direct din orientarea vehiculului — fără chevron/săgeată separată (stil AROBS).
+      // Mod „săgeți" (la alegerea clientului): aceeași rotație, dar o săgeată simplă în loc de silueta de categorie.
+      const inner = (mapMarkerStyle === 'arrows')
+        ? '<path d="M24 5 L38 41 L24 33 L10 41 Z" fill="' + color + '" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>'
+        : vehicleBody(cat, color, lit);
       const bodySvg =
         '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
-          '<g transform="rotate(' + rot + ' 24 24)">' + vehicleBody(cat, color, lit) + '</g>' +
+          '<g transform="rotate(' + rot + ' 24 24)">' + inner + '</g>' +
         '</svg>';
 
       // Plăcuța cu numărul de înmatriculare, sub vehicul, colorată după status. La zoom mic e ascunsă din CSS.
@@ -5695,6 +5709,209 @@ const pozitii = await r.json();</code></pre>
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
         popupAnchor: [0, -(size / 2)]
+      });
+    }
+
+    // ─── Grupare pe hotspot + mod afișare (săgeți/pictograme) ───
+    let _hotspotZones = [];          // zone de grupare: {id,name,kind:'circle'|'poly',center,radius|ring}
+    let _groupBubbles = new Map();   // zoneId -> L.marker (bula cu numărul)
+    let _groupTimer = null;
+    let _btnGroup = null, _btnStyle = null;
+
+    function _esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    // Butoane dreapta-sus (sub zoom): grupare pe hotspot + comutare săgeți/pictograme
+    function addMapViewControls() {
+      const Ctrl = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd: function () {
+          const div = L.DomUtil.create('div', 'leaflet-bar map-view-ctrl');
+          _btnGroup = L.DomUtil.create('a', '', div);
+          _btnGroup.href = '#'; _btnGroup.setAttribute('role', 'button');
+          _btnGroup.innerHTML = '<i class="fas fa-layer-group"></i>';
+          _btnStyle = L.DomUtil.create('a', '', div);
+          _btnStyle.href = '#'; _btnStyle.setAttribute('role', 'button');
+          L.DomEvent.on(_btnGroup, 'click', function (e) { L.DomEvent.stop(e); toggleMapGroup(); });
+          L.DomEvent.on(_btnStyle, 'click', function (e) { L.DomEvent.stop(e); toggleMapStyle(); });
+          L.DomEvent.disableClickPropagation(div);
+          setTimeout(updateViewControlUI, 0);
+          return div;
+        }
+      });
+      map.addControl(new Ctrl());
+    }
+
+    function updateViewControlUI() {
+      if (_btnGroup) {
+        _btnGroup.classList.toggle('active', mapGroupOn);
+        _btnGroup.title = mapGroupOn ? 'Vehicule grupate pe hotspot (apasă pentru a opri)' : 'Grupează vehiculele aflate în același hotspot';
+      }
+      if (_btnStyle) {
+        const arrows = mapMarkerStyle === 'arrows';
+        _btnStyle.innerHTML = arrows ? '<i class="fas fa-location-arrow"></i>' : '<i class="fas fa-car-side"></i>';
+        _btnStyle.classList.toggle('active', arrows);
+        _btnStyle.title = arrows ? 'Afișare: săgeți (apasă pentru pictograme)' : 'Afișare: pictograme (apasă pentru săgeți)';
+      }
+    }
+
+    function toggleMapStyle() {
+      mapMarkerStyle = (mapMarkerStyle === 'arrows') ? 'icons' : 'arrows';
+      localStorage.setItem('mapStyle', mapMarkerStyle);
+      rerenderAllMarkers();
+      updateViewControlUI();
+    }
+
+    function toggleMapGroup() {
+      mapGroupOn = !mapGroupOn;
+      localStorage.setItem('mapGroup', mapGroupOn ? '1' : '0');
+      recomputeGrouping();
+      updateViewControlUI();
+    }
+
+    function rerenderAllMarkers() {
+      if (!markers) return;
+      markers.forEach(function (mk, imei) {
+        const d = devices.get(imei); if (!d) return;
+        mk.setIcon(createIcon(d.angle, d.speed, imei === selectedImei, d.io, isDeviceOnline(d), d));
+      });
+    }
+
+    // Zonele de grupare din geofence-uri: doar poligon + cerc (fără regiuni mari și fără coridoare-rută)
+    function buildHotspotZones(list) {
+      _hotspotZones = [];
+      (list || []).forEach(function (g) {
+        if (g.is_region) return;
+        const coords = parseGfCoords(g);
+        if (g.type === 'circle' && coords && coords.center) {
+          _hotspotZones.push({ id: g.id, name: g.name, kind: 'circle', center: coords.center, radius: coords.radius || 100 });
+        } else if (g.type === 'corridor') {
+          return;
+        } else if (Array.isArray(coords) && coords.length >= 3) {
+          _hotspotZones.push({ id: g.id, name: g.name, kind: 'poly', ring: coords });
+        }
+      });
+    }
+
+    function _ptInPoly(lat, lng, ring) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const yi = ring[i][0], xi = ring[i][1], yj = ring[j][0], xj = ring[j][1];
+        if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+      }
+      return inside;
+    }
+
+    function zoneOfPoint(lat, lng) {
+      for (let i = 0; i < _hotspotZones.length; i++) {
+        const z = _hotspotZones[i];
+        if (z.kind === 'circle') { if (map.distance([lat, lng], z.center) <= z.radius) return z; }
+        else if (_ptInPoly(lat, lng, z.ring)) return z;
+      }
+      return null;
+    }
+
+    function _polyCenter(ring) {
+      let la = 0, lo = 0;
+      ring.forEach(function (p) { la += p[0]; lo += p[1]; });
+      return [la / ring.length, lo / ring.length];
+    }
+
+    function _statusOf(d) {
+      const online = isDeviceOnline(d);
+      const fresh = d && d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
+      const moving = (d.speed || 0) > 3;
+      const ign = ignitionOn(d.io, d && d.timestamp);
+      if (!online) return { cls: 'st-gone', label: 'fără semnal' };
+      if (moving && fresh) return { cls: 'st-moving', label: 'în mișcare' };
+      if (moving || ign) return { cls: 'st-idle', label: 'ralanti' };
+      return { cls: 'st-off', label: 'oprit' };
+    }
+
+    function _openGroupPopup(bubble) {
+      const imeis = bubble._imeis || [];
+      const rows = imeis.map(function (imei) {
+        const d = devices.get(imei) || {};
+        const plate = d.plate || d.name || imei;
+        const st = _statusOf(d);
+        return '<div class="grp-pop-row" onclick="selectDevice(\'' + _esc(imei) + '\')">' +
+          '<span class="grp-pop-dot ' + st.cls + '"></span>' +
+          '<span class="grp-pop-plate">' + _esc(plate) + '</span>' +
+          '<span class="grp-pop-st">' + st.label + '</span></div>';
+      }).join('');
+      bubble.bindPopup('<div class="grp-pop"><div class="grp-pop-title">' + _esc(bubble._zoneName || 'Grup') + ' · ' + imeis.length + ' vehicule</div>' + rows + '</div>',
+        { className: 'grp-pop-wrap', maxHeight: 280 }).openPopup();
+    }
+
+    function scheduleGrouping() {
+      if (_groupTimer) return;
+      _groupTimer = setTimeout(function () { _groupTimer = null; try { recomputeGrouping(); } catch (e) {} }, 180);
+    }
+
+    // Recalculează gruparea: vehiculele din același hotspot (≥2) → o bulă cu numărul; restul individuale.
+    function recomputeGrouping() {
+      if (!map || !markers) return;
+      const groupingActive = mapGroupOn && !(window._mapSel instanceof Set);
+      if (!groupingActive) {
+        // grupare oprită (sau multi-select activ) → fără bule; vizibilitate normală, respectând multi-select-ul
+        _groupBubbles.forEach(function (b) { try { map.removeLayer(b); } catch (e) {} });
+        _groupBubbles.clear();
+        markers.forEach(function (mk, imei) {
+          const hiddenBySel = (window._mapSel instanceof Set) && !window._mapSel.has(imei);
+          if (hiddenBySel) { if (map.hasLayer(mk)) map.removeLayer(mk); }
+          else { if (!map.hasLayer(mk)) mk.addTo(map); }
+        });
+        return;
+      }
+      // strânge vehiculele pe zone (selectatul/urmăritul rămân individuale)
+      const byZone = new Map();
+      devices.forEach(function (d, imei) {
+        if (!markers.has(imei) || d.latitude == null || d.longitude == null) return;
+        if (imei === selectedImei || imei === window._followImei) return;
+        const z = zoneOfPoint(d.latitude, d.longitude);
+        if (!z) return;
+        if (!byZone.has(z.id)) byZone.set(z.id, { zone: z, imeis: [] });
+        byZone.get(z.id).imeis.push(imei);
+      });
+      const grouped = new Set();
+      byZone.forEach(function (entry) { if (entry.imeis.length >= 2) entry.imeis.forEach(function (i) { grouped.add(i); }); });
+      // ascunde vehiculele grupate, arată restul
+      markers.forEach(function (mk, imei) {
+        if (grouped.has(imei)) { if (map.hasLayer(mk)) map.removeLayer(mk); }
+        else { if (!map.hasLayer(mk)) mk.addTo(map); }
+      });
+      // bule pentru zonele cu ≥2; actualizează numărul doar când se schimbă
+      const liveZones = new Set();
+      byZone.forEach(function (entry, zoneId) {
+        if (entry.imeis.length < 2) return;
+        liveZones.add(zoneId);
+        const count = entry.imeis.length;
+        const center = entry.zone.kind === 'circle' ? entry.zone.center : _polyCenter(entry.zone.ring);
+        let bubble = _groupBubbles.get(zoneId);
+        if (!bubble) {
+          bubble = L.marker(center, { zIndexOffset: 1000 });
+          bubble.on('click', function () { _openGroupPopup(bubble); });
+          bubble.addTo(map);
+          _groupBubbles.set(zoneId, bubble);
+          bubble._count = -1;
+        }
+        bubble.setLatLng(center);
+        if (bubble._count !== count) {
+          bubble.setIcon(L.divIcon({
+            className: 'grp-bubble-marker',
+            html: '<div class="grp-bubble" title="' + _esc(entry.zone.name) + '">' + count + '</div>',
+            iconSize: [38, 38], iconAnchor: [19, 19]
+          }));
+          bubble._count = count;
+        }
+        bubble._imeis = entry.imeis; bubble._zoneName = entry.zone.name;
+      });
+      // scoate bulele rămase fără grup
+      _groupBubbles.forEach(function (b, zoneId) {
+        if (!liveZones.has(zoneId)) { try { map.removeLayer(b); } catch (e) {} _groupBubbles.delete(zoneId); }
       });
     }
 
@@ -5725,6 +5942,7 @@ const pozitii = await r.json();</code></pre>
       if (devices && devices.has(imei)) devices.delete(imei);
       if (typeof selectedImei !== 'undefined' && selectedImei === imei) selectedImei = null;
       if (typeof updateDeviceList === 'function') updateDeviceList();
+      if (typeof scheduleGrouping === 'function') scheduleGrouping();
     }
 
     // ─── Update Marker ───
@@ -5785,6 +6003,7 @@ const pozitii = await r.json();</code></pre>
       }
 
       updateDeviceList();
+      scheduleGrouping(); // re-evaluează bulele de grupare (debounce)
     }
 
     // ─── Device online check ───
@@ -5924,6 +6143,7 @@ const pozitii = await r.json();</code></pre>
         }
       });
       updateDeviceList();
+      recomputeGrouping(); // selectatul iese din bulă și rămâne vizibil individual
       openDetailPanel(imei, 'info');
     }
 
