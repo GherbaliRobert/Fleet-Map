@@ -2264,6 +2264,13 @@ async function createVehicleDocument(data, companyId) {
 async function deleteVehicleDocument(id) {
   await pool.query('DELETE FROM vehicle_documents WHERE id = $1', [id]);
 }
+// Reînnoire = înlocuire: scoate actele vechi de același tip ale vehiculului (cel nou rămâne singurul curent).
+async function deleteVehicleDocumentsByType(imei, docType, companyId) {
+  await pool.query(
+    'DELETE FROM vehicle_documents WHERE imei = $1 AND doc_type = $2 AND company_id IS NOT DISTINCT FROM $3',
+    [imei, docType, companyId != null ? companyId : null]
+  );
+}
 
 // ─── Rapoarte programate ───
 async function createReportSchedule(d) {
@@ -2489,5 +2496,5 @@ module.exports = {
   getAlerts, createAlert, deleteAlert, getAlertHistory, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
-  getVehicleDocuments, createVehicleDocument, deleteVehicleDocument
+  getVehicleDocuments, createVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
 };

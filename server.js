@@ -4273,6 +4273,11 @@ app.post('/api/documents', requireAuth, requireFleet, withScope, async (req, res
     // company_id = al vehiculului (proprietarul real al documentului), nu al celui care-l adaugă
     const dev = await db.getDeviceFull(req.body.imei);
     const companyId = dev && dev.company_id != null ? dev.company_id : req.companyId;
+    // Reînnoire = înlocuire: un act nou de același tip îl scoate pe cel vechi al vehiculului
+    // (excepție „Altul" → poate exista în mai multe exemplare). Punctul 4 din planul client.
+    if (req.body.doc_type !== 'Altul') {
+      try { await db.deleteVehicleDocumentsByType(req.body.imei, req.body.doc_type, companyId); } catch (e) {}
+    }
     const doc = await db.createVehicleDocument(req.body, companyId);
     auditReq(req, 'create', 'document', doc.id, { imei: req.body.imei, type: req.body.doc_type });
     res.json(doc);

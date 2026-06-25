@@ -101,6 +101,7 @@
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('groups'); })"><i class="fas fa-layer-group"></i><span>Grupe</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('alerts'); })"><i class="fas fa-bell"></i><span>Alerte</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('maintenance'); })"><i class="fas fa-wrench"></i><span>Mentenanță</span></button>
+            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('documente'); })"><i class="fas fa-file-contract"></i><span>Documente</span></button>
             <button class="nav-item nav-sub feat-tacho" onclick="navGo(this, function(){ goManage('tacho'); })"><i class="fas fa-id-card"></i><span>Tahograf</span></button>
             <button class="nav-item nav-sub feat-etransport" onclick="navGo(this, function(){ goManage('etransport'); })"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('etoll'); })"><i class="fas fa-road"></i><span>E-Toll &amp; Roviniete</span></button>
@@ -1540,6 +1541,21 @@ const pozitii = await r.json();</code></pre>
           </div>
         </div>
 
+        <!-- Documente (oglinda Mentenanței: fișă pe vehicul, acte curente + reînnoire care înlocuiește) -->
+        <div id="atab-documente" class="admin-tab-content" style="display:none;">
+          <div id="admin-documente-list"></div>
+          <div class="admin-add" style="grid-template-columns:repeat(3,1fr);">
+            <label><span>Vehicul *</span><select id="mdoc-imei"></select></label>
+            <label><span>Tip *</span><select id="mdoc-type"><option>ITP</option><option>RCA</option><option>CASCO</option><option>Rovinietă</option><option>Licență transport</option><option>Tahograf</option><option>Altul</option></select></label>
+            <label><span>Număr</span><input type="text" id="mdoc-number"></label>
+            <label><span>Emitent</span><input type="text" id="mdoc-issuer"></label>
+            <label><span>Dată emitere</span><input type="date" id="mdoc-issue"></label>
+            <label><span>Dată expirare</span><input type="date" id="mdoc-expiry"></label>
+            <div style="grid-column:1/-1;"><button class="btn-sm btn-primary" onclick="saveDocument()" style="width:100%;"><i class="fas fa-save"></i> Adaugă / reînnoiește</button></div>
+          </div>
+          <p style="font-size:11px;color:var(--text-muted);margin:8px 2px 0;">La reînnoire (același tip), actul vechi e înlocuit automat — rămâne doar cel curent.</p>
+        </div>
+
         <!-- Setări -->
         <div id="atab-settings" class="admin-tab-content" style="display:none;">
           <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-user"></i> Preferințele tale</div>
@@ -2817,6 +2833,7 @@ const pozitii = await r.json();</code></pre>
       await adminLoadDevices();
       populateVehicleSelect('alert-imei', true);
       populateVehicleSelect('mnt-imei', false);
+      populateVehicleSelect('mdoc-imei', false);
       // tipuri alerte
       document.getElementById('alert-type').innerHTML = ALERT_TYPES.map(t => `<option value="${t.v}">${t.label}</option>`).join('');
       renderAlertCond();
@@ -2833,8 +2850,8 @@ const pozitii = await r.json();</code></pre>
       document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
       document.getElementById('atab-' + tab).style.display = 'block';
       // Bara de tab-uri e ascunsă → titlul paginii reflectă secțiunea aleasă din meniul lateral (cu iconița ei).
-      var _alabels = { vehicles: 'Vehicule', drivers: 'Șoferi', groups: 'Grupe', alerts: 'Alerte', maintenance: 'Mentenanță', tacho: 'Tahograf', etransport: 'e-Transport', settings: 'Setări' };
-      var _aicons = { vehicles: 'fa-truck', drivers: 'fa-id-card', groups: 'fa-layer-group', alerts: 'fa-bell', maintenance: 'fa-wrench', tacho: 'fa-gauge-high', etransport: 'fa-truck-fast', settings: 'fa-sliders-h' };
+      var _alabels = { vehicles: 'Vehicule', drivers: 'Șoferi', groups: 'Grupe', alerts: 'Alerte', maintenance: 'Mentenanță', documente: 'Documente', tacho: 'Tahograf', etransport: 'e-Transport', settings: 'Setări' };
+      var _aicons = { vehicles: 'fa-truck', drivers: 'fa-id-card', groups: 'fa-layer-group', alerts: 'fa-bell', maintenance: 'fa-wrench', documente: 'fa-file-contract', tacho: 'fa-gauge-high', etransport: 'fa-truck-fast', settings: 'fa-sliders-h' };
       var _at = document.getElementById('admin-modal-title');
       if (_at) _at.innerHTML = '<i class="fas ' + (_aicons[tab] || 'fa-sliders-h') + '" style="margin-right:8px;color:var(--accent);"></i> ' + (_alabels[tab] || 'Administrare');
       if (tab === 'vehicles') loadVehicles();
@@ -2842,6 +2859,7 @@ const pozitii = await r.json();</code></pre>
       else if (tab === 'groups') loadGroups();
       else if (tab === 'alerts') loadAlerts();
       else if (tab === 'maintenance') loadMaintenance();
+      else if (tab === 'documente') loadDocuments();
       else if (tab === 'settings') loadSettingsTab();
       else if (tab === 'tacho') { _raxMountBody('#rax-tacho-overlay', 'atab-tacho'); if (window.raxLoadTacho) window.raxLoadTacho(); }
       else if (tab === 'etransport') { _raxMountBody('#rax-et-overlay', 'atab-etransport'); if (window.raxLoadEt) window.raxLoadEt(); }
@@ -3528,6 +3546,73 @@ const pozitii = await r.json();</code></pre>
     async function deleteMaintenance(id) {
       if (!confirm('Ștergi intrarea de mentenanță?')) return;
       await fetch('/api/maintenance/' + id, { method: 'DELETE' }); await loadMaintenance();
+    }
+
+    // ─── Documente (Management) — fișă pe vehicul: acte CURENTE + reînnoire (înlocuiește actul vechi). Fără istoric. ───
+    let _docAll = null, _docFilterImei = '', _docOpen = {};
+    async function loadDocuments() {
+      try { _docAll = await (await fetch('/api/documents')).json(); } catch (e) { _docAll = []; }
+      if (!Array.isArray(_docAll)) _docAll = [];
+      renderDocuments();
+    }
+    function docSetFilter(val) { _docFilterImei = val; renderDocuments(); }
+    function docToggle(imei) { _docOpen[imei] = (_docOpen[imei] === false); renderDocuments(); }
+    function docRow(d, canEdit) {
+      const exp = d.expiry_date ? new Date(d.expiry_date) : null;
+      let badge = '<span class="role">fără dată</span>', border = '';
+      if (exp) {
+        const days = Math.ceil((exp - new Date()) / 86400000);
+        const ds = exp.toLocaleDateString('ro-RO');
+        if (days < 0) { badge = '<span style="color:#ef4444;font-weight:700;font-size:11px;">EXPIRAT · ' + ds + '</span>'; border = 'border-color:#ef4444;'; }
+        else if (days <= 30) { badge = '<span style="color:#ef4444;font-size:11px;">expiră curând · ' + ds + ' (' + days + (days === 1 ? ' zi' : ' zile') + ')</span>'; border = 'border-color:#ef4444;'; }
+        else badge = '<span style="color:var(--accent);font-size:11px;">valid până ' + ds + '</span>';
+      }
+      const meta = [d.number, d.issuer, (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : '')].filter(Boolean).join(' · ');
+      const actions = canEdit ? '<button class="btn-sm btn-danger" onclick="deleteDocument(' + d.id + ')"><i class="fas fa-trash"></i></button>' : '';
+      return '<div class="admin-row" style="' + border + '"><div><strong>' + _docEsc(d.doc_type) + '</strong> ' + badge + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div>' + actions + '</div>';
+    }
+    function renderDocuments() {
+      const el = document.getElementById('admin-documente-list'); if (!el) return;
+      const canEdit = (typeof can === 'function') ? !!can('manageFleet') : true;
+      const form = document.querySelector('#atab-documente .admin-add'); if (form) form.style.display = canEdit ? '' : 'none';
+      const list = Array.isArray(_docAll) ? _docAll : [];
+      if (!list.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>'; return; }
+      const byVeh = new Map();
+      list.forEach(d => { if (!byVeh.has(d.imei)) byVeh.set(d.imei, []); byVeh.get(d.imei).push(d); });
+      const allImeis = Array.from(byVeh.keys()).sort((a, b) => String(vehicleLabel(a)).localeCompare(String(vehicleLabel(b))));
+      const ss = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;margin-left:5px;';
+      const filters = '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;"><label style="font-size:11px;color:var(--text-muted);">Vehicul<select onchange="docSetFilter(this.value)" style="' + ss + '"><option value="">Toate vehiculele</option>' + allImeis.map(i => '<option value="' + i + '" ' + (i === _docFilterImei ? 'selected' : '') + '>' + vehicleLabel(i) + '</option>').join('') + '</select></label></div>';
+      const imeis = _docFilterImei ? allImeis.filter(i => i === _docFilterImei) : allImeis;
+      let groups = '';
+      imeis.forEach(imei => {
+        const entries = (byVeh.get(imei) || []).slice().sort((a, b) => (a.expiry_date || '').localeCompare(b.expiry_date || ''));
+        if (!entries.length) return;
+        const now = new Date();
+        const alertCount = entries.filter(d => d.expiry_date && Math.ceil((new Date(d.expiry_date) - now) / 86400000) <= 30).length;
+        const open = _docOpen[imei] !== false;
+        groups += '<div style="margin-bottom:8px;"><div onclick="docToggle(\'' + imei + '\')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 4px;font-weight:700;border-bottom:1px solid var(--border);"><i class="fas fa-chevron-' + (open ? 'down' : 'right') + '" style="font-size:11px;color:var(--text-muted);width:12px;text-align:center;"></i><span>' + vehicleLabel(imei) + '</span>' + (alertCount ? '<span style="color:#ef4444;font-size:11px;">' + alertCount + ' de reînnoit</span>' : '') + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + entries.length + ' ' + (entries.length === 1 ? 'act' : 'acte') + '</span></div>' + (open ? '<div style="padding:4px 0 8px;">' + entries.map(d => docRow(d, canEdit)).join('') + '</div>' : '') + '</div>';
+      });
+      if (!groups) groups = '<p style="color:var(--text-muted);font-size:12px;">Niciun document pentru filtrul ales.</p>';
+      el.innerHTML = filters + groups;
+    }
+    async function saveDocument() {
+      const body = {
+        imei: document.getElementById('mdoc-imei').value,
+        doc_type: document.getElementById('mdoc-type').value,
+        number: document.getElementById('mdoc-number').value.trim(),
+        issuer: document.getElementById('mdoc-issuer').value.trim(),
+        issue_date: document.getElementById('mdoc-issue').value || null,
+        expiry_date: document.getElementById('mdoc-expiry').value || null
+      };
+      if (!body.imei || !body.doc_type) return alert('Alege vehiculul și tipul');
+      const res = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Eroare'); }
+      ['mdoc-number', 'mdoc-issuer', 'mdoc-issue', 'mdoc-expiry'].forEach(i => document.getElementById(i).value = '');
+      await loadDocuments();
+    }
+    async function deleteDocument(id) {
+      if (!confirm('Ștergi documentul?')) return;
+      await fetch('/api/documents/' + id, { method: 'DELETE' }); await loadDocuments();
     }
 
     // ─── Zone (geofence): listă admin + desenare + randare pe hartă ───
