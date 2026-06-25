@@ -2489,12 +2489,27 @@ const pozitii = await r.json();</code></pre>
           (isSelf ? '<span style="font-size:11px;color:var(--text-muted);align-self:center;">tu</span>' : '<button class="btn-sm btn-danger" onclick="deleteUser(' + u.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>') +
         '</div></div>';
     }
+    let ueUsersErr = null;
     async function loadUsers() {
-      try { const res = await fetch('/api/users'); ueUsersCache = await res.json(); } catch (e) { ueUsersCache = []; }
+      ueUsersErr = null;
+      try {
+        const res = await fetch('/api/users');
+        if (!res.ok) {
+          // NU mai înghițim eroarea în „Niciun utilizator". 403 = rolul contului nu are dreptul „manageUsers".
+          ueUsersErr = (res.status === 403)
+            ? 'Contul tău NU are dreptul de a gestiona utilizatori (rol fără „manageUsers"). Cere super-adminului să-ți seteze rolul „Admin (control total)" pe companie.'
+            : ('Eroare la încărcarea utilizatorilor (cod ' + res.status + ').');
+          ueUsersCache = [];
+        } else {
+          const d = await res.json();
+          ueUsersCache = Array.isArray(d) ? d : [];
+        }
+      } catch (e) { ueUsersErr = 'Eroare de rețea la încărcarea utilizatorilor.'; ueUsersCache = []; }
       renderUsersGrouped();
     }
     function renderUsersGrouped() {
       var list = document.getElementById('users-list'); if (!list) return;
+      if (ueUsersErr) { list.innerHTML = '<div class="rax-co-meta" style="color:var(--orange);padding:10px;line-height:1.5;"><i class="fas fa-triangle-exclamation"></i> ' + esc(ueUsersErr) + '</div>'; return; }
       var isSuper = !!(currentUser && currentUser.role === 'superadmin');
       var users = ueUsersCache || [];
       var groups = {};
