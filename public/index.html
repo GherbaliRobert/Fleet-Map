@@ -2588,7 +2588,7 @@ const pozitii = await r.json();</code></pre>
         if (g.users.length) inner += '<div style="' + subH + '">Utilizatori</div>' + g.users.map(_userRowHtml).join('');
         if (!inner) inner = '<div class="rax-co-meta" style="padding:6px 0;">Niciun utilizator.</div>';
         if (single) { html += inner; return; }
-        var open = (_usersFilter === k);
+        var open = true; // grupuri DESCHISE implicit → userii (inclusiv adminii) se văd direct, nu colapsate
         html += '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">' +
           '<div onclick="_usrToggleCo(this)" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;background:var(--bg-dark);">' +
             '<i class="fas fa-chevron-' + (open ? 'down' : 'right') + '" style="font-size:11px;color:var(--text-muted);"></i> <strong>' + esc(g.name) + '</strong>' +
@@ -10950,21 +10950,36 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { _raxAccounts = []; }
       raxRenderAccounts();
     }
+    function _raxAccountCard(u) {
+      var active = u.active !== false;
+      var inactiveTag = active ? '' : ' <span class="rax-tag" style="background:rgba(239,68,68,.15);color:#ef4444;">inactiv</span>';
+      return '<div class="rax-co-item"><div style="min-width:0;"><strong>' + esc(u.username) + '</strong> <span class="rax-tag">' + esc(u.role || '') + '</span>' + inactiveTag +
+        '<div class="rax-co-meta">' + (u.last_login ? 'login ' + new Date(u.last_login).toLocaleDateString('ro-RO') : 'fără login') + '</div></div>' +
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+          '<button class="rax-btn" title="Resetează parola" onclick="raxResetPassword(' + u.id + ')"><i class="fas fa-key"></i></button>' +
+          '<button class="rax-btn" title="' + (active ? 'Dezactivează' : 'Activează') + '" onclick="raxToggleUserActive(' + u.id + ',' + (active ? 'false' : 'true') + ')"><i class="fas fa-' + (active ? 'user-slash' : 'user-check') + '"></i></button>' +
+          '<button class="rax-btn" title="Șterge" onclick="raxDeleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button>' +
+        '</div></div>';
+    }
     window.raxRenderAccounts = function () {
       var q = ($('rax-acc-search').value || '').toLowerCase();
-      var list = _raxAccounts.filter(function (u) { return !q || ((u.username || '') + ' ' + (u.company_name || '') + ' ' + (u.role || '')).toLowerCase().indexOf(q) >= 0; });
+      var filtered = _raxAccounts.filter(function (u) { return !q || ((u.username || '') + ' ' + (u.company_name || '') + ' ' + (u.role || '')).toLowerCase().indexOf(q) >= 0; });
       var box = $('rax-acc-list');
-      box.innerHTML = list.length ? list.map(function (u) {
-        var active = u.active !== false;
-        var inactiveTag = active ? '' : ' <span class="rax-tag" style="background:rgba(239,68,68,.15);color:#ef4444;">inactiv</span>';
-        return '<div class="rax-co-item"><div style="min-width:0;"><strong>' + esc(u.username) + '</strong> <span class="rax-tag">' + esc(u.role || '') + '</span>' + inactiveTag +
-          '<div class="rax-co-meta">' + esc(u.company_name || '(fără companie)') + (u.last_login ? ' · login ' + new Date(u.last_login).toLocaleDateString('ro-RO') : '') + '</div></div>' +
-          '<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
-            '<button class="rax-btn" title="Resetează parola" onclick="raxResetPassword(' + u.id + ')"><i class="fas fa-key"></i></button>' +
-            '<button class="rax-btn" title="' + (active ? 'Dezactivează' : 'Activează') + '" onclick="raxToggleUserActive(' + u.id + ',' + (active ? 'false' : 'true') + ')"><i class="fas fa-' + (active ? 'user-slash' : 'user-check') + '"></i></button>' +
-            '<button class="rax-btn" title="Șterge" onclick="raxDeleteUser(' + u.id + ')"><i class="fas fa-trash"></i></button>' +
-          '</div></div>';
-      }).join('') : '<div class="rax-co-meta">Niciun cont găsit.</div>';
+      if (!filtered.length) { box.innerHTML = '<div class="rax-co-meta">Niciun cont găsit.</div>'; return; }
+      // Grupare pe companie (cu antet) — identic conceptual cu tabul Utilizatori.
+      var groups = {};
+      filtered.forEach(function (u) {
+        var key = (u.company_id != null) ? String(u.company_id) : '_none';
+        if (!groups[key]) groups[key] = { name: u.company_name || (u.company_id != null ? ('#' + u.company_id) : 'Platformă / fără companie'), items: [] };
+        groups[key].items.push(u);
+      });
+      var keys = Object.keys(groups).sort(function (a, b) { return (groups[a].name || '').localeCompare(groups[b].name || ''); });
+      var subH = 'font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px;display:flex;align-items:center;gap:6px;';
+      box.innerHTML = keys.map(function (k) {
+        var g = groups[k];
+        return '<div style="' + subH + '"><i class="fas fa-building"></i> ' + esc(g.name) + ' <span style="color:var(--text-muted);font-weight:600;">(' + g.items.length + ')</span></div>' +
+          g.items.map(_raxAccountCard).join('');
+      }).join('');
     };
     function _raxFindUser(id) { for (var i = 0; i < _raxAccounts.length; i++) if (_raxAccounts[i].id === id) return _raxAccounts[i]; return null; }
     window.raxResetPassword = async function (id) {
