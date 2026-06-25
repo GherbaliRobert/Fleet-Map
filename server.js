@@ -593,14 +593,25 @@ const tcpServer = net.createServer((socket) => {
       // Trimite batch-ul și către OpenRemote (non-blocking)
       try { forwardToOpenRemote(imei, parsed.records); } catch (_) {}
 
-      // Actualizează poziția live — ultimul record cu FIX GPS valid (nu neapărat records[last]): un heartbeat
-      // fără fix (lat=0) la coada batch-ului NU mai blochează tot update-ul live (poziție + CAN + alerte).
+      // Actualizează poziția live — recordul cu FIX GPS valid și timestamp MAXIM din batch (NU „ultimul din
+      // array": un tracker poate trimite recorduri OUT-OF-ORDER / buffer-uite vechi). Heartbeat fără fix
+      // (lat=0) ignorat → nu blochează update-ul live (poziție + CAN + alerte).
       let liveRec = null;
-      for (let _i = parsed.records.length - 1; _i >= 0; _i--) {
-        if (parsed.records[_i].gps && parsed.records[_i].gps.latitude !== 0) { liveRec = parsed.records[_i]; break; }
+      for (let _i = 0; _i < parsed.records.length; _i++) {
+        const _r = parsed.records[_i];
+        if (_r.gps && _r.gps.latitude !== 0 && (!liveRec || (_r.timestamp || 0) > (liveRec.timestamp || 0))) liveRec = _r;
       }
       if (liveRec) {
         const existing = livePositions.get(imei) || {};
+        // GUARD monotonic: NU retrograda poziția LIVE cu un record OUT-OF-ORDER mai vechi decât ce avem deja
+        // (buffer flush / ceas device defazat). E salvat în istoric (mai sus); live rămâne pe cel mai NOU —
+        // altfel ora „ultimei transmisii" oscilează („ba acum 6 min, ba acum 10h"). Excepție: dacă live-ul
+        // curent e în VIITOR (ceas defazat în față), permitem update-ul ca să ieșim din blocaj.
+        const _toMs = t => (t == null ? 0 : (typeof t === 'number' ? t : new Date(t).getTime()));
+        const _exTs = _toMs(existing.timestamp), _newTs = _toMs(liveRec.timestamp);
+        if (_exTs && _newTs && _newTs < _exTs && _exTs <= Date.now() + 120000) {
+          addDebugEntry({ event: 'live_skip_stale', imei, recTs: _newTs, liveTs: _exTs });
+        } else {
         // io: combină CAN-ul din TOT batch-ul (cea mai recentă valoare per cheie) — un record GPS-only la coadă
         // nu mai golește RPM/temp/etc. care au venit mai devreme în același batch.
         const mergedIo = {};
@@ -656,6 +667,7 @@ const tcpServer = net.createServer((socket) => {
 
         // Track tare automat pentru camioane
         trackTareCandidate(imei, liveData.io || {}).catch(() => {});
+        }
       }
 
       // (ACK-ul a fost deja trimis imediat după parsare, mai sus)
