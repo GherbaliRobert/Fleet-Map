@@ -108,46 +108,19 @@
     ensureContainers();
     var cfg = await api('/api/demo-modules/config').catch(function () { return {}; });
     el('etoll-view-mode').innerHTML = modeBadge((cfg.etoll && cfg.etoll.mode) || 'demo');
-    var docs = await api('/api/documents').catch(function () { return []; }); if (!Array.isArray(docs)) docs = [];
     var prov = await api('/api/etoll/providers').catch(function () { return { providers: [], selected: '' }; });
     el('etoll-view-body').innerHTML =
-      '<div class="dm-grid2">' +
-        '<div class="dm-card"><h3>Acte vehicul (Rovinietă / RCA / ITP)</h3>' +
-          '<div class="dm-row"><select id="etoll-doc-veh" class="dm-input" style="flex:1">' + vehicleOptions() + '</select>' +
-          '<select id="etoll-doc-type" class="dm-input" style="width:130px"><option>ROVINIETA</option><option>RCA</option><option>ITP</option></select>' +
-          '<input id="etoll-doc-exp" type="date" class="dm-input" style="width:150px"></div>' +
-          '<button class="dm-btn primary" onclick="etollAddDoc()"><i class="fas fa-plus"></i> Adaugă</button>' +
-          '<div id="etoll-docs" style="margin-top:10px;">' + etollDocsHtml(docs) + '</div>' +
-        '</div>' +
-        '<div class="dm-card"><h3>E-Toll Europa — costuri estimate</h3>' +
-          '<div class="dm-row" style="align-items:center"><label class="dm-lbl" style="margin:0">Furnizor extern:</label>' +
-          '<select id="etoll-provider" class="dm-input" style="width:160px" onchange="etollSetProvider()"><option value="">— niciunul —</option>' +
-          (prov.providers || []).map(function (p) { return '<option' + (p === prov.selected ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') + '</select></div>' +
-          '<div class="dm-toll-total" id="etoll-total"></div>' +
-          '<canvas id="etoll-chart" height="150"></canvas>' +
-          '<div class="dm-muted" id="etoll-src" style="font-size:11px;margin-top:6px"></div>' +
-        '</div>' +
+      '<div class="dm-card"><h3>E-Toll Europa — costuri estimate</h3>' +
+        '<div class="dm-row" style="align-items:center"><label class="dm-lbl" style="margin:0">Furnizor extern:</label>' +
+        '<select id="etoll-provider" class="dm-input" style="width:160px" onchange="etollSetProvider()"><option value="">— niciunul —</option>' +
+        (prov.providers || []).map(function (p) { return '<option' + (p === prov.selected ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="dm-toll-total" id="etoll-total"></div>' +
+        '<canvas id="etoll-chart" height="150"></canvas>' +
+        '<div class="dm-muted" id="etoll-src" style="font-size:11px;margin-top:6px"></div>' +
       '</div>';
     etollLoadCosts();
   };
-  function etollDocsHtml(docs) {
-    docs = docs.filter(function (d) { return ['ROVINIETA', 'RCA', 'ITP'].indexOf(String(d.doc_type).toUpperCase()) >= 0; });
-    if (!docs.length) return '<div class="dm-muted">Niciun act adăugat. Adaugă datele de expirare ca să primești alerte la 7/3/1 zile.</div>';
-    var now = Date.now();
-    return '<table class="dm-table"><thead><tr><th>Tip</th><th>Vehicul</th><th>Expiră</th><th>Stare</th></tr></thead><tbody>' +
-      docs.map(function (d) {
-        var days = d.expiry_date ? Math.ceil((new Date(d.expiry_date).getTime() - now) / 86400000) : null;
-        var cls = days == null ? '' : (days < 0 ? 'danger' : (days <= 3 ? 'danger' : (days <= 7 ? 'warn' : 'ok')));
-        var txt = days == null ? '-' : (days < 0 ? 'EXPIRAT (' + (-days) + 'z)' : days + ' zile');
-        return '<tr><td><b>' + esc(d.doc_type) + '</b></td><td>' + esc(d.imei || '-') + '</td><td>' + (d.expiry_date ? new Date(d.expiry_date).toLocaleDateString('ro-RO') : '-') + '</td><td><span class="dm-pill ' + cls + '">' + esc(txt) + '</span></td></tr>';
-      }).join('') + '</tbody></table>';
-  }
-  window.etollAddDoc = async function () {
-    var imei = el('etoll-doc-veh').value, type = el('etoll-doc-type').value, exp = el('etoll-doc-exp').value;
-    if (!imei || !exp) return toast('Alege vehicul + dată expirare', 'error');
-    await postJSON('/api/documents', { imei: imei, doc_type: type, expiry_date: exp });
-    toast('Document adăugat ✓', 'success'); openEtollDemo();
-  };
+  // Cardul „Acte vehicul" a fost mutat în secțiunea Documente (Management) / fișa vehiculului — E-Toll rămâne doar costuri toll.
   window.etollSetProvider = async function () {
     var p = el('etoll-provider').value;
     await api('/api/etoll/provider', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: p }) });

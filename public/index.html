@@ -103,6 +103,7 @@
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('maintenance'); })"><i class="fas fa-wrench"></i><span>Mentenanță</span></button>
             <button class="nav-item nav-sub feat-tacho" onclick="navGo(this, function(){ goManage('tacho'); })"><i class="fas fa-id-card"></i><span>Tahograf</span></button>
             <button class="nav-item nav-sub feat-etransport" onclick="navGo(this, function(){ goManage('etransport'); })"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
+            <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('etoll'); })"><i class="fas fa-road"></i><span>E-Toll &amp; Roviniete</span></button>
           </div>
         </div>
         <div class="nav-group fleet-only" data-group="administrare">
@@ -118,7 +119,6 @@
         </div>
         <button class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
         <button class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
-        <button class="nav-item" data-view="etoll" onclick="showView('etoll')"><i class="fas fa-road"></i><span>E-Toll &amp; Roviniete</span></button>
         <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
       </nav>
 
