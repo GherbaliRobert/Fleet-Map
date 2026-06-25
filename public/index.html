@@ -3261,7 +3261,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('drv-phone').value = d.phone || '';
       document.getElementById('drv-email').value = d.email || '';
       document.getElementById('drv-license').value = d.license_number || '';
-      document.getElementById('drv-expiry').value = d.license_expiry ? d.license_expiry.slice(0,10) : '';
+      dtSet('drv-expiry', d.license_expiry ? d.license_expiry.slice(0,10) : '');
       var _coSel = document.getElementById('drv-company'); if (_coSel && d.company_id != null) _coSel.value = d.company_id;
       document.getElementById('drv-photo').value = '';
       drvPhotoSet(d.photo_b64 || '');
@@ -3280,7 +3280,7 @@ const pozitii = await r.json();</code></pre>
       var _rst = document.getElementById('drv-reset-btn'); if (_rst) _rst.title = 'Anulează editarea';
     }
     function resetDriverForm() {
-      ['drv-id','drv-name','drv-phone','drv-email','drv-license','drv-expiry'].forEach(i => document.getElementById(i).value = '');
+      ['drv-id','drv-name','drv-phone','drv-email','drv-license','drv-expiry'].forEach(clearField);
       var _coSel = document.getElementById('drv-company'); if (_coSel) _coSel.value = '';
       document.getElementById('drv-photo').value = '';
       drvPhotoSet('');
@@ -3578,13 +3578,13 @@ const pozitii = await r.json();</code></pre>
       else { sel.value = '__alt'; inp.style.display = ''; inp.value = m.type || ''; }
       document.getElementById('mnt-done').checked = (m.status === 'done');
       document.getElementById('mnt-desc').value = m.description || '';
-      document.getElementById('mnt-due-date').value = m.due_date ? m.due_date.slice(0,10) : '';
+      dtSet('mnt-due-date', m.due_date ? m.due_date.slice(0,10) : '');
       document.getElementById('mnt-due-km').value = m.due_km || '';
       document.getElementById('mnt-cost').value = m.cost || '';
       document.getElementById('mnt-btn').textContent = 'Salvează';
     }
     function resetMaintenanceForm() {
-      ['mnt-id','mnt-type','mnt-desc','mnt-due-date','mnt-due-km','mnt-cost'].forEach(i => document.getElementById(i).value = '');
+      ['mnt-id','mnt-type','mnt-desc','mnt-due-date','mnt-due-km','mnt-cost'].forEach(clearField);
       document.getElementById('mnt-type').style.display = 'none';
       document.getElementById('mnt-type-sel').selectedIndex = 0;
       document.getElementById('mnt-done').checked = false;
@@ -3680,7 +3680,7 @@ const pozitii = await r.json();</code></pre>
       if (!body.imei || !body.doc_type) return alert('Alege vehiculul și tipul');
       const res = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Eroare'); }
-      ['mdoc-number', 'mdoc-issuer', 'mdoc-issue', 'mdoc-expiry'].forEach(i => document.getElementById(i).value = '');
+      ['mdoc-number', 'mdoc-issuer', 'mdoc-issue', 'mdoc-expiry'].forEach(clearField);
       await loadDocuments();
     }
     async function deleteDocument(id) {
@@ -4346,6 +4346,21 @@ const pozitii = await r.json();</code></pre>
       const el = document.getElementById(id); if (!el) return;
       if (el._fp) el._fp.setDate(val, false); else el.value = val;
     }
+    // Golește un câmp respectând flatpickr (calendarul modern). Pt. câmpuri normale → value = ''.
+    function clearField(i) { var el = document.getElementById(i); if (!el) return; if (el._fp) el._fp.clear(); else el.value = ''; }
+    // Calendar modern (flatpickr) și pe câmpurile simple de dată — nu doar pe selectoarele de interval.
+    // Lună din dropdown + an tastabil direct → salt rapid la ani anteriori/viitori. Valoarea rămâne YYYY-MM-DD.
+    function initSingleDatePickers() {
+      if (typeof flatpickr === 'undefined') return;
+      var ro = (flatpickr.l10ns && flatpickr.l10ns.ro) ? 'ro' : 'default';
+      ['doc-issue', 'doc-expiry', 'svc-date', 'mnt-due-date', 'mdoc-issue', 'mdoc-expiry', 'drv-expiry'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el || el._fp) return;
+        el.type = 'text';
+        el._fp = flatpickr(el, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'd.m.Y', locale: ro, monthSelectorType: 'dropdown', disableMobile: true });
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSingleDatePickers); else initSingleDatePickers();
     function initRangePicker(fromId, toId, opts) {
       opts = opts || {};
       if (typeof flatpickr === 'undefined') return;
@@ -8029,7 +8044,7 @@ const pozitii = await r.json();</code></pre>
       const body = { imei, doc_type: document.getElementById('doc-type').value, number: document.getElementById('doc-number').value.trim(), issuer: document.getElementById('doc-issuer').value.trim(), issue_date: document.getElementById('doc-issue').value || null, expiry_date: document.getElementById('doc-expiry').value || null };
       const r = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return; }
-      ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry'].forEach(id => document.getElementById(id).value = '');
+      ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry'].forEach(clearField);
       loadVehicleDocuments();
     }
     async function deleteVehicleDoc(id) {
@@ -8075,7 +8090,7 @@ const pozitii = await r.json();</code></pre>
         : { imei, type, status: 'pending', due_date: dateVal, due_km: km, cost };
       const r = await fetch('/api/maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!r.ok) { alert('Eroare la salvare service'); return; }
-      ['svc-type', 'svc-date', 'svc-km', 'svc-cost'].forEach(id => document.getElementById(id).value = '');
+      ['svc-type', 'svc-date', 'svc-km', 'svc-cost'].forEach(clearField);
       document.getElementById('svc-type-sel').selectedIndex = 0;
       document.getElementById('svc-type').style.display = 'none';
       document.getElementById('svc-done').checked = false;
