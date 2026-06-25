@@ -9523,15 +9523,9 @@ const pozitii = await r.json();</code></pre>
         // Focus pe TOT traseul (mobil-aware: lasă jos loc pentru fișă, nu mai e padding simetric)
         fitRouteToMap(points);
 
-        // Afișează pill-ul cu vehiculul și intervalul orar al rutei active
-        var _pillEl = document.getElementById('route-active-pill');
-        var _pillLbl = document.getElementById('route-pill-label');
-        if (_pillEl && _pillLbl) {
-          var _t1 = new Date(route.startTime).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
-          var _t2 = new Date(route.endTime).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
-          _pillLbl.textContent = vehicleLabel(imei) + ' · ' + _t1 + ' – ' + _t2;
-          _pillEl.style.display = 'flex';
-        }
+        // Pill-ul „vehicul · interval" NU se mai afișează în fișă (info redundant — fișa e deja
+        // deschisă pe vehiculul respectiv). Ruta se șterge la selectarea alteia sau la închiderea fișei.
+        _routePillHide();
         // NU mai deschidem panoul „Istoric traseu" peste fișă (evită dublul bottom-sheet).
         // Tabul „Rute" din fișă rămâne deschis; ruta apare doar pe hartă (intenția din tooltip: „vezi ruta pe hartă").
         // FAB-ul e oricum ascuns cât fișa e deschisă (body.detail-open).
