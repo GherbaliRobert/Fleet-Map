@@ -26,8 +26,10 @@ if (USE_PG) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: _ssl,
-    max: parseInt(process.env.PG_POOL_MAX) || 10,
+    max: parseInt(process.env.PG_POOL_MAX) || 12,
+    min: parseInt(process.env.PG_POOL_MIN) || 3,     // floor CALD de conexiuni → burst-ul panoului admin nu mai plătește connect+auth pe fiecare fetch
     idleTimeoutMillis: 60000, // păstrează conexiunile idle 60s (default 10s era prea scurt → primul query după pauză reconecta lent la Railway)
+    connectionTimeoutMillis: 8000, // nu mai aștepta o conexiune la INFINIT (pool epuizat) → eroare clară în 8s în loc de „Se încarcă…" veșnic
     keepAlive: true           // TCP keepalive pe socketul PG (previne drop-uri silențioase)
   });
   pool.raw = null;
@@ -806,13 +808,19 @@ async function ensureTenancy() {
 
 // ─── MULTI-TENANT: companii ───
 async function getCompanies() {
+  // 3 scanări GRUPATE (LEFT JOIN pe agregate) în loc de 4 sub-query-uri CORELATE per companie. Aceleași coloane
+  // (device_count/user_count/payment_count/paid_total), dar costul nu mai crește cu nr. de companii (O(N) → plat).
   const r = await pool.query(`
     SELECT c.*,
-      (SELECT COUNT(*)::int FROM devices d WHERE d.company_id = c.id AND COALESCE(d.status,'') <> 'archived') AS device_count,
-      (SELECT COUNT(*)::int FROM users u WHERE u.company_id = c.id) AS user_count,
-      (SELECT COUNT(*)::int FROM payments p WHERE p.company_id = c.id) AS payment_count,
-      (SELECT COALESCE(SUM(p.amount_ron), 0) FROM payments p WHERE p.company_id = c.id) AS paid_total
-    FROM companies c ORDER BY c.created_at`);
+      COALESCE(dev.device_count, 0) AS device_count,
+      COALESCE(usr.user_count, 0) AS user_count,
+      COALESCE(pay.payment_count, 0) AS payment_count,
+      COALESCE(pay.paid_total, 0) AS paid_total
+    FROM companies c
+    LEFT JOIN (SELECT company_id, COUNT(*)::int AS device_count FROM devices WHERE COALESCE(status,'') <> 'archived' GROUP BY company_id) dev ON dev.company_id = c.id
+    LEFT JOIN (SELECT company_id, COUNT(*)::int AS user_count FROM users GROUP BY company_id) usr ON usr.company_id = c.id
+    LEFT JOIN (SELECT company_id, COUNT(*)::int AS payment_count, COALESCE(SUM(amount_ron), 0) AS paid_total FROM payments GROUP BY company_id) pay ON pay.company_id = c.id
+    ORDER BY c.created_at`);
   return r.rows;
 }
 
@@ -1123,19 +1131,27 @@ async function getRowCompany(table, id) {
   const r = await pool.query(`SELECT company_id FROM ${table} WHERE id = $1`, [parseInt(id)]);
   return r.rows[0] ? r.rows[0].company_id : undefined;
 }
-// Device-uri neasignate (vizibile doar super-adminului) + pentru asignare
+// Device-uri neasignate (vizibile doar super-adminului) + pentru asignare.
+// Excludem cele RESPINSE (status='archived') — ele au ieșit din coada de decizie.
 async function getUnassignedDevices() {
-  const r = await pool.query('SELECT imei, name, plate, last_seen FROM devices WHERE company_id IS NULL ORDER BY last_seen DESC NULLS LAST');
+  const r = await pool.query("SELECT imei, name, plate, last_seen FROM devices WHERE company_id IS NULL AND status IS DISTINCT FROM 'archived' ORDER BY last_seen DESC NULLS LAST");
   return r.rows;
 }
 
+// Întoarce { created:true } DOAR la prima apariție a IMEI-ului. Verificarea existenței ÎNAINTE de upsert
+// e portabilă (PGlite + Postgres), spre deosebire de trucul cu xmax. Rulează o singură dată per CONEXIUNE
+// (la handshake-ul IMEI), nu per pachet → costul SELECT-ului e neglijabil. Eventualul dublu „created" la
+// două prime-conectări concurente e absorbit de dedup-ul notificării (notificationKeyExists).
 async function upsertDevice(imei) {
+  const ex = await pool.query('SELECT 1 FROM devices WHERE imei = $1', [imei]);
+  const created = ex.rows.length === 0;
   await pool.query(`
-    INSERT INTO devices (imei, last_seen) 
-    VALUES ($1, NOW()) 
-    ON CONFLICT (imei) 
+    INSERT INTO devices (imei, last_seen)
+    VALUES ($1, NOW())
+    ON CONFLICT (imei)
     DO UPDATE SET last_seen = NOW()
   `, [imei]);
+  return { created };
 }
 
 async function updateDeviceInfo(imei, name, vehicleType, plate) {
