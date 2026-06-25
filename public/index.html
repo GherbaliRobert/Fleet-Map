@@ -1521,8 +1521,8 @@ const pozitii = await r.json();</code></pre>
           <div class="admin-add" style="grid-template-columns:repeat(3,1fr);">
             <input type="hidden" id="mnt-id">
             <label><span>Vehicul *</span><select id="mnt-imei"></select></label>
-            <label><span>Tip *</span><input type="text" id="mnt-type" placeholder="ex: Schimb ulei, ITP, RCA"></label>
-            <label><span>Status</span><select id="mnt-status"><option value="pending">De făcut</option><option value="done">Efectuat</option></select></label>
+            <label><span>Tip *</span><select id="mnt-type-sel" onchange="mntTypeChange()"><option value="Schimb ulei + filtru">Schimb ulei + filtru</option><option value="Revizie generală">Revizie generală</option><option value="ITP">ITP</option><option value="RCA">RCA</option><option value="Rovinietă">Rovinietă</option><option value="Casco">Casco</option><option value="Plăcuțe/discuri frână">Plăcuțe/discuri frână</option><option value="Anvelope">Anvelope</option><option value="Distribuție">Distribuție</option><option value="Filtre (aer/polen/comb.)">Filtre (aer/polen/comb.)</option><option value="Baterie">Baterie</option><option value="Antigel/lichide">Antigel/lichide</option><option value="Tahograf (verificare)">Tahograf (verificare)</option><option value="Geometrie">Geometrie</option><option value="__alt">Altele…</option></select><input type="text" id="mnt-type" placeholder="Scrie tipul" style="display:none;margin-top:5px;"></label>
+            <label><span>Status</span><span style="display:inline-flex;align-items:center;gap:8px;height:34px;"><input type="checkbox" id="mnt-done" style="width:17px;height:17px;cursor:pointer;"><span style="font-size:13px;color:var(--text-muted);">Efectuat (bifează când e gata; ia ora exactă)</span></span></label>
             <label style="grid-column:1/-1;"><span>Descriere</span><input type="text" id="mnt-desc"></label>
             <label><span>Scadent la data</span><input type="date" id="mnt-due-date"></label>
             <label><span>Scadent la km</span><input type="number" id="mnt-due-km"></label>
@@ -3381,24 +3381,29 @@ const pozitii = await r.json();</code></pre>
     }
     function mntSetFilter(kind, val) { if (kind === 'veh') _mntFilterImei = val; else _mntFilterState = val; renderMaintenance(); }
     function mntToggle(imei) { _mntOpen[imei] = (_mntOpen[imei] === false); renderMaintenance(); }
-    function mntRow(m) {
+    function mntRow(m, canEdit) {
       const done = m.status === 'done';
       const due = m.due_date ? new Date(m.due_date) : null;
       const overdue = !done && due && due < new Date();
-      const dateStr = done ? (m.done_date ? new Date(m.done_date).toLocaleDateString('ro-RO') : '') : (due ? due.toLocaleDateString('ro-RO') : '');
+      const dateStr = done
+        ? (m.done_at ? new Date(m.done_at).toLocaleString('ro-RO') : (m.done_date ? new Date(m.done_date).toLocaleDateString('ro-RO') : ''))
+        : (due ? due.toLocaleDateString('ro-RO') : '');
       const kmStr = done ? (m.done_km ? m.done_km + ' km' : '') : (m.due_km ? m.due_km + ' km' : '');
       const cost = parseFloat(m.cost); const meta = [m.description, dateStr, kmStr, (cost ? Math.round(cost) + ' RON' : '')].filter(Boolean).join(' · ');
+      const actions = canEdit ? `<div style="display:flex;gap:6px;">
+          ${done ? '' : '<button class="btn-sm" title="Marchează efectuat (ora exactă)" onclick="completeMaintenance(' + m.id + ')"><i class="fas fa-check"></i></button>'}
+          <button class="btn-sm" onclick='editMaintenance(${JSON.stringify(m)})'><i class="fas fa-pen"></i></button>
+          <button class="btn-sm btn-danger" onclick="deleteMaintenance(${m.id})"><i class="fas fa-trash"></i></button>
+        </div>` : '';
       return `<div class="admin-row" style="${overdue ? 'border-color:#ef4444;' : ''}"><div>
           <strong>${m.type}</strong> ${done ? '<span class="role">efectuat</span>' : (overdue ? '<span style="color:#ef4444;font-size:11px;">scadent!</span>' : '<span class="role">de făcut</span>')}
           <div class="meta">${meta}</div>
-        </div><div style="display:flex;gap:6px;">
-          ${done ? '' : '<button class="btn-sm" title="Marchează efectuat" onclick="completeMaintenance(' + m.id + ')"><i class="fas fa-check"></i></button>'}
-          <button class="btn-sm" onclick='editMaintenance(${JSON.stringify(m)})'><i class="fas fa-pen"></i></button>
-          <button class="btn-sm btn-danger" onclick="deleteMaintenance(${m.id})"><i class="fas fa-trash"></i></button>
-        </div></div>`;
+        </div>${actions}</div>`;
     }
     function renderMaintenance() {
       const el = document.getElementById('admin-maintenance-list'); if (!el) return;
+      const canEdit = (typeof can === 'function') ? !!can('manageFleet') : true;
+      const form = document.querySelector('#atab-maintenance .admin-add'); if (form) form.style.display = canEdit ? '' : 'none';
       const list = Array.isArray(_mntAll) ? _mntAll : [];
       if (!list.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Nicio intrare de mentenanță.</p>'; return; }
       const byVeh = new Map();
@@ -3431,8 +3436,8 @@ const pozitii = await r.json();</code></pre>
               <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${entries.length} ${entries.length === 1 ? 'intrare' : 'intrări'}${total ? ' · ' + Math.round(total) + ' RON' : ''}</span>
             </div>
             ${open ? `<div style="padding:4px 0 8px;">
-              ${pending.length ? '<div class="admin-section-title">De făcut / scadente</div>' + pending.map(mntRow).join('') : ''}
-              ${done.length ? '<div class="admin-section-title">Istoric — efectuate</div>' + done.map(mntRow).join('') : ''}
+              ${pending.length ? '<div class="admin-section-title">De făcut / scadente</div>' + pending.map(m => mntRow(m, canEdit)).join('') : ''}
+              ${done.length ? '<div class="admin-section-title">Istoric — efectuate</div>' + done.map(m => mntRow(m, canEdit)).join('') : ''}
             </div>` : ''}
           </div>`;
       });
@@ -3440,11 +3445,20 @@ const pozitii = await r.json();</code></pre>
       const totalBar = grand ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Total service efectuat${_mntFilterImei ? '' : ' · toată flota'}: <strong style="color:var(--text-primary);">${Math.round(grand)} RON</strong></div>` : '';
       el.innerHTML = filters + totalBar + groups;
     }
+    function mntTypeChange() {
+      const sel = document.getElementById('mnt-type-sel'); const inp = document.getElementById('mnt-type');
+      const alt = sel.value === '__alt';
+      inp.style.display = alt ? '' : 'none';
+      if (alt) inp.focus(); else inp.value = '';
+    }
     function editMaintenance(m) {
       document.getElementById('mnt-id').value = m.id;
       document.getElementById('mnt-imei').value = m.imei;
-      document.getElementById('mnt-type').value = m.type || '';
-      document.getElementById('mnt-status').value = m.status === 'done' ? 'done' : 'pending';
+      const sel = document.getElementById('mnt-type-sel'); const inp = document.getElementById('mnt-type');
+      const known = Array.from(sel.options).some(o => o.value === m.type && o.value !== '__alt');
+      if (known) { sel.value = m.type; inp.style.display = 'none'; inp.value = ''; }
+      else { sel.value = '__alt'; inp.style.display = ''; inp.value = m.type || ''; }
+      document.getElementById('mnt-done').checked = (m.status === 'done');
       document.getElementById('mnt-desc').value = m.description || '';
       document.getElementById('mnt-due-date').value = m.due_date ? m.due_date.slice(0,10) : '';
       document.getElementById('mnt-due-km').value = m.due_km || '';
@@ -3453,22 +3467,26 @@ const pozitii = await r.json();</code></pre>
     }
     function resetMaintenanceForm() {
       ['mnt-id','mnt-type','mnt-desc','mnt-due-date','mnt-due-km','mnt-cost'].forEach(i => document.getElementById(i).value = '');
-      document.getElementById('mnt-status').value = 'pending';
+      document.getElementById('mnt-type').style.display = 'none';
+      document.getElementById('mnt-type-sel').selectedIndex = 0;
+      document.getElementById('mnt-done').checked = false;
       document.getElementById('mnt-btn').textContent = 'Adaugă';
     }
     async function saveMaintenance() {
       const id = document.getElementById('mnt-id').value;
+      const sel = document.getElementById('mnt-type-sel');
+      const type = (sel.value === '__alt') ? document.getElementById('mnt-type').value.trim() : sel.value;
       const body = {
         imei: document.getElementById('mnt-imei').value,
-        type: document.getElementById('mnt-type').value.trim(),
+        type: type,
         description: document.getElementById('mnt-desc').value.trim(),
-        status: document.getElementById('mnt-status').value,
+        status: document.getElementById('mnt-done').checked ? 'done' : 'pending',
         due_date: document.getElementById('mnt-due-date').value || null,
         due_km: parseInt(document.getElementById('mnt-due-km').value) || null,
         cost: parseFloat(document.getElementById('mnt-cost').value) || null
       };
-      if (body.status === 'done') body.done_date = new Date().toISOString().slice(0,10);
       if (!body.imei || !body.type) return alert('Alege vehiculul și tipul');
+      // status „done" → serverul ștampilează ora exactă (done_at) + km-ul curent
       const res = await fetch('/api/maintenance' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
       resetMaintenanceForm(); await loadMaintenance();
@@ -3476,7 +3494,7 @@ const pozitii = await r.json();</code></pre>
     async function completeMaintenance(id) {
       const m = (await (await fetch('/api/maintenance')).json()).find(x => x.id === id);
       if (!m) return;
-      m.status = 'done'; m.done_date = new Date().toISOString().slice(0,10);
+      m.status = 'done'; // serverul pune done_at (ora exactă), done_date și km-ul curent
       await fetch('/api/maintenance/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(m) });
       await loadMaintenance();
     }

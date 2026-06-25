@@ -575,6 +575,7 @@ async function initDb() {
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS center_lat DOUBLE PRECISION;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS center_lon DOUBLE PRECISION;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'manual';
+        ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS done_at TIMESTAMP;
         ALTER TABLE alerts ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS company_id INTEGER;
@@ -2209,21 +2210,29 @@ async function getMaintenance(imei, companyId) {
 
 async function createMaintenance(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO maintenance (imei, type, description, due_date, due_km, cost, status, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-    [data.imei, data.type, data.description, data.due_date, data.due_km, data.cost, data.status || 'pending', companyId || null]
+    'INSERT INTO maintenance (imei, type, description, due_date, due_km, cost, status, company_id, done_date, done_km, done_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+    [data.imei, data.type, data.description, data.due_date, data.due_km, data.cost, data.status || 'pending', companyId || null, data.done_date || null, data.done_km || null, data.done_at || null]
   );
   return result.rows[0];
 }
 
 async function updateMaintenance(id, data) {
   await pool.query(
-    'UPDATE maintenance SET type=$2, description=$3, due_date=$4, due_km=$5, done_date=$6, done_km=$7, cost=$8, status=$9 WHERE id=$1',
-    [id, data.type, data.description, data.due_date, data.due_km, data.done_date, data.done_km, data.cost, data.status]
+    'UPDATE maintenance SET type=$2, description=$3, due_date=$4, due_km=$5, done_date=$6, done_km=$7, cost=$8, status=$9, done_at=$10 WHERE id=$1',
+    [id, data.type, data.description, data.due_date, data.due_km, data.done_date, data.done_km, data.cost, data.status, data.done_at || null]
   );
 }
 
 async function deleteMaintenance(id) {
   await pool.query('DELETE FROM maintenance WHERE id = $1', [id]);
+}
+
+// io_data de la ultima poziție a unui vehicul (pentru odometru CAN la finalizare/alerte km)
+async function getLastIo(imei) {
+  try {
+    const r = await pool.query('SELECT io_data FROM positions WHERE imei = $1 ORDER BY timestamp DESC LIMIT 1', [imei]);
+    return (r.rows[0] && r.rows[0].io_data) || null;
+  } catch (e) { return null; }
 }
 
 // ─── Documente vehicul (ITP/RCA/CASCO/...) ───
@@ -2470,6 +2479,6 @@ module.exports = {
   getGeofences, createGeofence, updateGeofence, deleteGeofence,
   getAlerts, createAlert, deleteAlert, getAlertHistory, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
-  getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance,
+  getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
   getVehicleDocuments, createVehicleDocument, deleteVehicleDocument
 };

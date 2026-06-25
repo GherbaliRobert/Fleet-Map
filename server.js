@@ -4168,9 +4168,27 @@ app.get('/api/maintenance', requireAuth, withScope, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Odometru (km) din io_data CAN — încearcă câmpurile uzuale.
+function _odoFromIo(io) {
+  if (!io) return null;
+  const cands = [io.can_total_mileage, io.can_total_mileage_counted, io.total_odometer];
+  for (const c of cands) { const n = parseFloat(c); if (isFinite(n) && n > 0) return Math.round(n); }
+  return null;
+}
+// La marcarea „efectuat": înregistrează momentul EXACT (done_at) + data + km-ul curent (best-effort).
+async function stampMaintenanceDone(body) {
+  if (!body || body.status !== 'done') return;
+  if (!body.done_at) body.done_at = new Date().toISOString();
+  if (!body.done_date) body.done_date = new Date().toISOString().slice(0, 10);
+  if (body.done_km == null && body.imei) {
+    try { const km = _odoFromIo(await db.getLastIo(body.imei)); if (km) body.done_km = km; } catch (e) {}
+  }
+}
+
 app.post('/api/maintenance', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
     if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    await stampMaintenanceDone(req.body);
     const m = await db.createMaintenance(req.body, req.companyId); auditReq(req, 'create', 'maintenance', m.id, { imei: req.body.imei, type: req.body.type }); res.json(m);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -4178,6 +4196,7 @@ app.post('/api/maintenance', requireAuth, requireFleet, withScope, async (req, r
 app.put('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    await stampMaintenanceDone(req.body);
     await db.updateMaintenance(req.params.id, req.body); auditReq(req, 'update', 'maintenance', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -4651,20 +4670,52 @@ async function checkExpiries() {
       await notify(nDrv);
       await deliverExpiryToSubscribers({ companyId: dr.company_id, title: nDrv.title, body: nDrv.body, key: nDrv.data.key });
     }
-    for (const m of await db.getMaintenance()) {
+    const _mntList = await db.getMaintenance();
+    // a) Scadență pe DATĂ — praguri 14 / 3 / 1 zile + DEPĂȘIT (fiecare se declanșează ~o dată)
+    const _mntDateDedup = { '14': 11 * 24, '3': 2 * 24, '1': 24, 'exp': 24 };
+    for (const m of _mntList) {
       if (m.status === 'done' || !m.due_date) continue;
-      const due = new Date(m.due_date).getTime();
-      if (due > horizon) continue;
-      const days = Math.ceil((due - now) / (24 * 3600 * 1000));
+      const days = Math.ceil((new Date(m.due_date).getTime() - now) / (24 * 3600 * 1000));
+      let bucket = null;
+      if (days < 0) bucket = 'exp';
+      else if (days <= 1) bucket = '1';
+      else if (days <= 3) bucket = '3';
+      else if (days <= 14) bucket = '14';
+      if (bucket === null) continue;
       const nMnt = {
-        type: 'maintenance_due', severity: days < 0 ? 'critical' : 'warning', imei: m.imei, companyId: m.company_id,
+        type: 'maintenance_due', severity: (days < 0 || days <= 3) ? 'critical' : 'warning', imei: m.imei, companyId: m.company_id,
+        dedupHours: _mntDateDedup[bucket],
         title: `Mentenanță ${days < 0 ? 'SCADENTĂ' : 'scadentă curând'}: ${m.type}`,
-        body: `${m.type} ${days < 0 ? 'a depășit scadența cu ' + (-days) + ' zile' : 'scade în ' + days + ' zile'} (${new Date(m.due_date).toLocaleDateString('ro-RO')}).`,
-        data: { key: 'maint-' + m.id, maintenanceId: m.id, days }
+        body: `${m.type} ${days < 0 ? 'a depășit scadența cu ' + (-days) + ' zile' : 'scade în ' + days + (days === 1 ? ' zi' : ' zile')} (${new Date(m.due_date).toLocaleDateString('ro-RO')}).`,
+        data: { key: 'maint-' + m.id + '-' + bucket, maintenanceId: m.id, days }
       };
       await notify(nMnt);
       await deliverExpiryToSubscribers({ imei: m.imei, companyId: m.company_id, title: nMnt.title, body: nMnt.body, key: nMnt.data.key });
     }
+    // b) Scadență pe KM — alertă cu ~1000 km înainte + DEPĂȘIT (odometru CAN; vehiculele fără CAN → doar pe dată)
+    try {
+      const _odo = {};
+      for (const d of await db.getDevices()) { const km = _odoFromIo(d.io_data); if (km) _odo[d.imei] = km; }
+      const KM_LEAD = 1000;
+      for (const m of _mntList) {
+        if (m.status === 'done' || !m.due_km) continue;
+        const odo = _odo[m.imei]; if (!odo) continue;
+        const remaining = m.due_km - odo;
+        let bucket = null;
+        if (remaining <= 0) bucket = 'exp';
+        else if (remaining <= KM_LEAD) bucket = 'warn';
+        if (bucket === null) continue;
+        const nKm = {
+          type: 'maintenance_due', severity: remaining <= 0 ? 'critical' : 'warning', imei: m.imei, companyId: m.company_id,
+          dedupHours: remaining <= 0 ? 24 : 7 * 24,
+          title: `Mentenanță ${remaining <= 0 ? 'SCADENTĂ (km)' : 'scadentă curând (km)'}: ${m.type}`,
+          body: `${m.type} ${remaining <= 0 ? 'a depășit scadența cu ' + (-remaining) + ' km' : 'mai are ~' + remaining + ' km'} (prag ${m.due_km} km; acum ${odo} km).`,
+          data: { key: 'maint-km-' + m.id + '-' + bucket, maintenanceId: m.id, remaining }
+        };
+        await notify(nKm);
+        await deliverExpiryToSubscribers({ imei: m.imei, companyId: m.company_id, title: nKm.title, body: nKm.body, key: nKm.data.key });
+      }
+    } catch (e) { console.warn('[checkExpiries] km mentenanță:', e.message); }
     // Documente vehicul (ITP / RCA / ROVINIETĂ) — alerte la 7, 3, 1 zile + EXPIRAT (Modul 2 E-Toll/Roviniete).
     // Bucket-uri pe cheie (vdoc-{id}-{7|3|1|exp}) → fiecare prag se declanșează o singură dată (dedup notify).
     for (const d of await db.getVehicleDocuments(null, null)) {
