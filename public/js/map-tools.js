@@ -146,7 +146,7 @@
     groups.forEach(function (g) { rows += grpBlock(String(g.id), g.name || ('Grup ' + g.id), g.color, imeisOfGroup(g.id)); });
     rows += grpBlock('_none', 'Fără grup', '#888', imeisUngrouped());
     box.innerHTML =
-      '<div class="msb-grp-head" id="msb-grp-head"><i class="fas fa-layer-group"></i> Grupuri' +
+      '<div class="msb-grp-head" id="msb-grp-head"><i class="fas fa-tags"></i> Grupuri' +
         '<i class="fas fa-chevron-down msb-grp-caret' + (_grpSecOpen ? ' open' : '') + '"></i></div>' +
       '<div class="msb-grp-body" style="display:' + (_grpSecOpen ? 'block' : 'none') + '">' + (rows || '<div class="msb-empty">Niciun vehicul.</div>') + '</div>';
     wireGrouped(box);

@@ -2054,7 +2054,7 @@ const pozitii = await r.json();</code></pre>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ro.js"></script>
   <script src="/js/demo-modules-ui.js?v=2"></script>
-  <script src="/js/map-tools.js?v=5"></script>
+  <script src="/js/map-tools.js?v=6"></script>
   <script src="/js/vehicle-popup.js?v=6"></script>
   <script src="/js/weekly-report-ui.js?v=1"></script>
   <script>
@@ -5732,7 +5732,7 @@ const pozitii = await r.json();</code></pre>
           const div = L.DomUtil.create('div', 'leaflet-bar map-view-ctrl');
           _btnGroup = L.DomUtil.create('a', '', div);
           _btnGroup.href = '#'; _btnGroup.setAttribute('role', 'button');
-          _btnGroup.innerHTML = '<i class="fas fa-layer-group"></i>';
+          _btnGroup.innerHTML = '<i class="fas fa-arrows-to-circle"></i>';
           _btnStyle = L.DomUtil.create('a', '', div);
           _btnStyle.href = '#'; _btnStyle.setAttribute('role', 'button');
           L.DomEvent.on(_btnGroup, 'click', function (e) { L.DomEvent.stop(e); toggleMapGroup(); });
@@ -5748,7 +5748,7 @@ const pozitii = await r.json();</code></pre>
     function updateViewControlUI() {
       if (_btnGroup) {
         _btnGroup.classList.toggle('active', mapGroupOn);
-        _btnGroup.title = mapGroupOn ? 'Vehicule grupate pe hotspot (apasă pentru a opri)' : 'Grupează vehiculele aflate în același hotspot';
+        _btnGroup.title = mapGroupOn ? 'Vehicule unite în bule (apasă pentru a desface)' : 'Unește vehiculele apropiate într-o bulă';
       }
       if (_btnStyle) {
         const arrows = mapMarkerStyle === 'arrows';
