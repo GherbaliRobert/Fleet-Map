@@ -5180,12 +5180,15 @@ const pozitii = await r.json();</code></pre>
       let rows = []; try { rows = await (await fetch('/api/notifications?limit=80')).json(); } catch (e) {}
       if (!Array.isArray(rows) || !rows.length) { list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;padding:16px;text-align:center;">Nicio notificare.</p>'; return; }
       const sev = { info:'#3b82f6', warning:'#f59e0b', critical:'#ef4444' };
+      // Escapare HTML — titlul/corpul pot conține text necontrolat (ex. IMEI dintr-un handshake TCP). NU
+      // interpola direct în innerHTML (risc XSS stocat). Tratează & < > " '.
+      const _ne = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       list.innerHTML = rows.map(n => `
         <div style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);${n.acknowledged?'opacity:.5;':''}">
           <span style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;background:${sev[n.severity]||'#3b82f6'};"></span>
           <div style="min-width:0;flex:1;">
-            <div style="font-size:12px;font-weight:600;">${n.title||n.type}</div>
-            <div style="font-size:11px;color:var(--text-muted);word-break:break-word;">${n.body||''}</div>
+            <div style="font-size:12px;font-weight:600;">${_ne(n.title||n.type)}</div>
+            <div style="font-size:11px;color:var(--text-muted);word-break:break-word;">${_ne(n.body||'')}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${new Date(n.created_at).toLocaleString('ro-RO')}</div>
           </div>
           ${n.acknowledged?'':`<button class="btn-sm" style="padding:3px 7px;align-self:flex-start;" title="Marchează citit" onclick="ackNotif(${n.id})"><i class="fas fa-check"></i></button>`}
@@ -11314,7 +11317,8 @@ const pozitii = await r.json();</code></pre>
           var opts = companiesCache.filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
           return '<div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;"><span style="font-size:12px;color:var(--text-primary)">' + esc(d.name || d.imei) + ' (' + esc(d.imei) + ')</span>' +
             '<select class="rax-field" style="width:auto;margin:0;flex:1;min-width:120px;" id="raxasg_' + esc(d.imei) + '">' + opts + '</select>' +
-            '<button class="rax-btn primary" onclick="raxAssignDevice(\'' + esc(d.imei) + '\')">Asignează</button></div>';
+            '<button class="rax-btn primary" onclick="raxAssignDevice(\'' + esc(d.imei) + '\')" title="Adoptă — asignează la compania aleasă (devine vehicul, începe să stocheze date)">Adoptă</button>' +
+            '<button class="rax-btn" onclick="raxRejectDevice(\'' + esc(d.imei) + '\')" title="Respinge — arhivează și oprește stocarea datelor de la acest dispozitiv"><i class="fas fa-ban"></i> Respinge</button></div>';
         }).join('');
       } catch (e) { box.textContent = 'Eroare: ' + e.message; }
     }
@@ -11322,6 +11326,15 @@ const pozitii = await r.json();</code></pre>
       var sel = $('raxasg_' + imei); if (!sel) return;
       await fetch('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: parseInt(sel.value) }) });
       raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
+    };
+    // Respinge un dispozitiv neasignat → arhivare (oprește stocarea datelor; reversibil prin adopție ulterioară).
+    window.raxRejectDevice = async function (imei) {
+      if (!confirm('Respingi dispozitivul ' + imei + '?\nSe arhivează și nu se mai stochează date de la el (reversibil dacă îl adopți ulterior).')) return;
+      try {
+        var r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'archived' }) }).then(function (x) { return x.json(); });
+        if (r && r.error) { alert(r.error); return; }
+        raxLoadUnassigned();
+      } catch (e) { alert('Eroare: ' + e.message); }
     };
 
     // ─── Mutare entități (vehicule / utilizatori / șoferi) între companii (super-admin) ───

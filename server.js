@@ -442,6 +442,17 @@ const tcpServer = net.createServer((socket) => {
         imei = buffer.slice(2, 2 + imeiLength).toString('ascii');
         buffer = buffer.slice(2 + imeiLength);
 
+        // IMEI valid = DOAR cifre (Teltonika trimite 15; acceptăm 10–20). Un „IMEI" ne-numeric NU vine de la un
+        // tracker real → îl respingem ÎNAINTE de orice scriere/ACK/notificare. Astfel un payload injectat prin
+        // handshake (ex. „<img onerror=…>") nu mai ajunge în DB / în feed-ul de notificări al super-adminului.
+        if (!/^\d{10,20}$/.test(imei)) {
+          console.warn(`[TCP] IMEI invalid de la ${clientAddr}: „${imei.slice(0, 40)}" — conexiune respinsă`);
+          addDebugEntry({ event: 'reject', address: clientAddr, reason: 'imei_invalid' });
+          socket.destroy();
+          imei = null;
+          return;
+        }
+
         console.log(`[TCP] Dispozitiv identificat: IMEI ${imei} de la ${clientAddr}`);
         addDebugEntry({ event: 'imei', imei, address: clientAddr });
 
@@ -461,7 +472,9 @@ const tcpServer = net.createServer((socket) => {
         socket.write(Buffer.from([0x01]));
 
         // Înregistrează dispozitivul în DB — asincron, nu blochează handshake-ul
-        db.upsertDevice(imei).catch(e => console.error(`[TCP] upsertDevice ${imei}: ${e.message}`));
+        db.upsertDevice(imei)
+          .then(r => { if (r && r.created) notifyNewDeviceConnected(imei, clientAddr); })
+          .catch(e => console.error(`[TCP] upsertDevice ${imei}: ${e.message}`));
 
         // Init mirror connection to Traccar/OpenRemote if enabled
         try { ensureMirrorConnection(imei); } catch(_) {}
@@ -4933,6 +4946,29 @@ async function deliverUserEvent(user, ev, p) {
   } catch (e) {}
   if (p && p.email && user.email) channels.sendEmailTo(user.email, ev.title, ev.body).catch(() => {});
   if (p && p.push) sendPushToUser(user.id, { title: ev.title, body: ev.body, imei: ev.imei || null, data: { type: ev.type, imei: ev.imei || '' } }).catch(() => {});
+}
+
+// ─── Dispozitiv NOU conectat → anunță super-adminul ───
+// La prima conectare a unui tracker neînregistrat, super-adminul primește o notificare (in-app + push)
+// de unde poate ADOPTA dispozitivul (îl asignează unei companii = îl transformă în vehicul și stochează
+// datele) sau îl poate RESPINGE (arhivare → se oprește stocarea). O singură dată per IMEI (dedup 24h).
+async function notifyNewDeviceConnected(imei, address) {
+  try {
+    const key = 'newdev:' + imei;
+    if (await db.notificationKeyExists(key, 24)) return; // deja anunțat în ultimele 24h
+    const title = 'Dispozitiv nou conectat';
+    const body = 'IMEI ' + imei + ' transmite date dar nu e asociat niciunui vehicul. Adoptă-l (creează vehicul) sau respinge-l din „Companii → Vehicule neasignate".';
+    const saved = await db.createNotification({ type: 'device_new', severity: 'info', imei, title, body, data: { key, imei, address: address || null }, userId: null, companyId: null });
+    // Pentru un device orfan (companie NULL), getUsersForImei întoarce DOAR superadminii.
+    let supers = [];
+    try { supers = await db.getUsersForImei(imei); } catch (_) {}
+    for (const u of supers) {
+      if (u.role !== 'superadmin') continue; // strict: doar platforma află de orfani
+      try { broadcastWsToUser(u.id, { type: 'notification', data: saved }); } catch (_) {}
+      sendPushToUser(u.id, { title, body, imei, data: { type: 'device_new', imei } }).catch(() => {});
+    }
+    console.log('[TCP] Dispozitiv nou ' + imei + ' (' + (address || '?') + ') → notificat super-admin');
+  } catch (e) { console.error('[TCP] notifyNewDeviceConnected ' + imei + ': ' + e.message); }
 }
 
 // ─── Webhooks outbound (integrare ERP/TMS) ───
