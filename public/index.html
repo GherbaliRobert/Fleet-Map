@@ -3383,20 +3383,31 @@ const pozitii = await r.json();</code></pre>
     function mntToggle(imei) { _mntOpen[imei] = (_mntOpen[imei] === false); renderMaintenance(); }
     function mntRow(m, canEdit) {
       const done = m.status === 'done';
+      const state = done ? 'done' : (m._due || 'ok');   // 'overdue' | 'due_soon' | 'ok' (calculat pe server)
+      const overdue = state === 'overdue', soon = state === 'due_soon';
       const due = m.due_date ? new Date(m.due_date) : null;
-      const overdue = !done && due && due < new Date();
       const dateStr = done
         ? (m.done_at ? new Date(m.done_at).toLocaleString('ro-RO') : (m.done_date ? new Date(m.done_date).toLocaleDateString('ro-RO') : ''))
         : (due ? due.toLocaleDateString('ro-RO') : '');
       const kmStr = done ? (m.done_km ? m.done_km + ' km' : '') : (m.due_km ? m.due_km + ' km' : '');
       const cost = parseFloat(m.cost); const meta = [m.description, dateStr, kmStr, (cost ? Math.round(cost) + ' RON' : '')].filter(Boolean).join(' · ');
+      // Eticheta stării: ROȘU când intră în fereastra de alertă (≤14 zile / ≤500 km) sau e depășită.
+      let badge;
+      if (done) badge = '<span class="role">efectuat</span>';
+      else if (overdue) badge = '<span style="color:#ef4444;font-weight:700;font-size:11px;">scadent!</span>';
+      else if (soon) {
+        let det = '';
+        if (due) { const days = Math.ceil((due - new Date()) / 86400000); if (days >= 0 && days <= 14) det = (days === 0 ? 'azi' : days + (days === 1 ? ' zi' : ' zile')); }
+        if (!det && m._kmLeft != null && m._kmLeft >= 0) det = '~' + m._kmLeft + ' km';
+        badge = '<span style="color:#ef4444;font-size:11px;">scade curând' + (det ? ' · ' + det : '') + '</span>';
+      } else badge = '<span class="role">de făcut</span>';
       const actions = canEdit ? `<div style="display:flex;gap:6px;">
           ${done ? '' : '<button class="btn-sm" title="Marchează efectuat (ora exactă)" onclick="completeMaintenance(' + m.id + ')"><i class="fas fa-check"></i></button>'}
           <button class="btn-sm" onclick='editMaintenance(${JSON.stringify(m)})'><i class="fas fa-pen"></i></button>
           <button class="btn-sm btn-danger" onclick="deleteMaintenance(${m.id})"><i class="fas fa-trash"></i></button>
         </div>` : '';
-      return `<div class="admin-row" style="${overdue ? 'border-color:#ef4444;' : ''}"><div>
-          <strong>${m.type}</strong> ${done ? '<span class="role">efectuat</span>' : (overdue ? '<span style="color:#ef4444;font-size:11px;">scadent!</span>' : '<span class="role">de făcut</span>')}
+      return `<div class="admin-row" style="${(overdue || soon) ? 'border-color:#ef4444;' : ''}"><div>
+          <strong>${m.type}</strong> ${badge}
           <div class="meta">${meta}</div>
         </div>${actions}</div>`;
     }
@@ -3426,13 +3437,15 @@ const pozitii = await r.json();</code></pre>
         pending.sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
         done.sort((a, b) => (b.done_date || '').localeCompare(a.done_date || ''));
         const total = done.reduce((s, m) => s + (parseFloat(m.cost) || 0), 0); grand += total;
-        const overdue = pending.filter(m => m.due_date && new Date(m.due_date) < new Date()).length;
+        const overdue = pending.filter(m => m._due === 'overdue').length;
+        const soon = pending.filter(m => m._due === 'due_soon').length;
         const open = _mntOpen[imei] !== false;
         groups += `<div style="margin-bottom:8px;">
             <div onclick="mntToggle('${imei}')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 4px;font-weight:700;border-bottom:1px solid var(--border);">
               <i class="fas fa-chevron-${open ? 'down' : 'right'}" style="font-size:11px;color:var(--text-muted);width:12px;text-align:center;"></i>
               <span>${vehicleLabel(imei)}</span>
               ${overdue ? `<span style="color:#ef4444;font-size:11px;">${overdue} scadent${overdue > 1 ? 'e' : ''}</span>` : ''}
+              ${soon ? `<span style="color:#ef4444;font-size:11px;">${soon} curând</span>` : ''}
               <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${entries.length} ${entries.length === 1 ? 'intrare' : 'intrări'}${total ? ' · ' + Math.round(total) + ' RON' : ''}</span>
             </div>
             ${open ? `<div style="padding:4px 0 8px;">

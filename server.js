@@ -4164,6 +4164,14 @@ app.get('/api/maintenance', requireAuth, withScope, async (req, res) => {
   try {
     let rows = await db.getMaintenance(req.query.imei, req.isSuper ? null : req.companyId);
     if (req.allowedImeis != null) rows = rows.filter(m => req.allowedImeis.has(m.imei));
+    // Îmbogățire pt. UI: odometru live + starea de scadență (roșu în listă, sincron cu alertele).
+    // _due/_odo/_kmLeft sunt DOAR pt. afișare — updateMaintenance scrie pe coloane explicite, deci se ignoră la PUT.
+    const odoMap = {};
+    try { for (const d of await db.getDevices()) { const km = _odoFromIo(d.io_data); if (km) odoMap[d.imei] = km; } } catch (e) {}
+    rows = rows.map(m => {
+      const odo = odoMap[m.imei] || null;
+      return { ...m, _odo: odo, _kmLeft: (m.due_km && odo) ? (m.due_km - odo) : null, _due: maintenanceDueState(m, odo) };
+    });
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -4174,6 +4182,26 @@ function _odoFromIo(io) {
   const cands = [io.can_total_mileage, io.can_total_mileage_counted, io.total_odometer];
   for (const c of cands) { const n = parseFloat(c); if (isFinite(n) && n > 0) return Math.round(n); }
   return null;
+}
+
+// Praguri alertă mentenanță — O SINGURĂ sursă (worker + /api/maintenance pt. colorarea listei).
+const MAINT_DAYS_LEAD = 14;  // se aprinde roșu cu N zile înainte de scadența pe dată
+const MAINT_KM_LEAD = 500;   // se aprinde roșu cu N km înainte de scadența pe km
+// Starea de scadență pt. UI: 'overdue' (depășit) | 'due_soon' (în fereastra de alertă) | 'ok'.
+function maintenanceDueState(m, odo) {
+  if (!m || m.status === 'done') return 'ok';
+  let soon = false;
+  if (m.due_date) {
+    const days = Math.ceil((new Date(m.due_date).getTime() - Date.now()) / 86400000);
+    if (days < 0) return 'overdue';
+    if (days <= MAINT_DAYS_LEAD) soon = true;
+  }
+  if (m.due_km && odo) {
+    const left = m.due_km - odo;
+    if (left <= 0) return 'overdue';
+    if (left <= MAINT_KM_LEAD) soon = true;
+  }
+  return soon ? 'due_soon' : 'ok';
 }
 // La marcarea „efectuat": înregistrează momentul EXACT (done_at) + data + km-ul curent (best-effort).
 async function stampMaintenanceDone(body) {
@@ -4680,7 +4708,7 @@ async function checkExpiries() {
       if (days < 0) bucket = 'exp';
       else if (days <= 1) bucket = '1';
       else if (days <= 3) bucket = '3';
-      else if (days <= 14) bucket = '14';
+      else if (days <= MAINT_DAYS_LEAD) bucket = '14';
       if (bucket === null) continue;
       const nMnt = {
         type: 'maintenance_due', severity: (days < 0 || days <= 3) ? 'critical' : 'warning', imei: m.imei, companyId: m.company_id,
@@ -4696,7 +4724,7 @@ async function checkExpiries() {
     try {
       const _odo = {};
       for (const d of await db.getDevices()) { const km = _odoFromIo(d.io_data); if (km) _odo[d.imei] = km; }
-      const KM_LEAD = 500;
+      const KM_LEAD = MAINT_KM_LEAD;
       for (const m of _mntList) {
         if (m.status === 'done' || !m.due_km) continue;
         const odo = _odo[m.imei]; if (!odo) continue;
