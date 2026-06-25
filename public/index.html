@@ -1398,10 +1398,11 @@ const pozitii = await r.json();</code></pre>
   <div id="admin-modal" class="modal-overlay">
     <div class="modal" style="width:880px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;">
       <h2>
-        <span><i class="fas fa-sliders-h" style="margin-right:8px;color:var(--accent);"></i> Administrare</span>
+        <span id="admin-modal-title"><i class="fas fa-sliders-h" style="margin-right:8px;color:var(--accent);"></i> Administrare</span>
         <button class="close-btn" onclick="closeAdmin()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
-      <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;">
+      <!-- Bara de tab-uri ascunsă: navigarea între secțiuni se face din meniul lateral (un singur loc). -->
+      <div id="admin-tabbar" style="display:none;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;">
         <button class="admin-tab active" data-atab="vehicles" onclick="switchAdminTab('vehicles')"><i class="fas fa-truck"></i> Vehicule</button>
         <button class="admin-tab" data-atab="drivers" onclick="switchAdminTab('drivers')"><i class="fas fa-id-card"></i> Șoferi</button>
         <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
@@ -2831,6 +2832,11 @@ const pozitii = await r.json();</code></pre>
       document.querySelectorAll('.admin-tab').forEach(b => b.classList.toggle('active', b.dataset.atab === tab));
       document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
       document.getElementById('atab-' + tab).style.display = 'block';
+      // Bara de tab-uri e ascunsă → titlul paginii reflectă secțiunea aleasă din meniul lateral (cu iconița ei).
+      var _alabels = { vehicles: 'Vehicule', drivers: 'Șoferi', groups: 'Grupe', alerts: 'Alerte', maintenance: 'Mentenanță', tacho: 'Tahograf', etransport: 'e-Transport', settings: 'Setări' };
+      var _aicons = { vehicles: 'fa-truck', drivers: 'fa-id-card', groups: 'fa-layer-group', alerts: 'fa-bell', maintenance: 'fa-wrench', tacho: 'fa-gauge-high', etransport: 'fa-truck-fast', settings: 'fa-sliders-h' };
+      var _at = document.getElementById('admin-modal-title');
+      if (_at) _at.innerHTML = '<i class="fas ' + (_aicons[tab] || 'fa-sliders-h') + '" style="margin-right:8px;color:var(--accent);"></i> ' + (_alabels[tab] || 'Administrare');
       if (tab === 'vehicles') loadVehicles();
       else if (tab === 'drivers') loadDrivers();
       else if (tab === 'groups') loadGroups();
