@@ -73,6 +73,22 @@ console.log('\n— parseAvlPacket: erori —');
   ok(r.error && /preamble/i.test(r.error), 'preamble invalid → eroare');
 })();
 
+console.log('\n— parseAvlPacket: izolare per-record (un record corupt NU pierde tot batch-ul) —');
+(function () {
+  // Framing valid, numberOfRecords=1, dar buffer truncat → parseRecord aruncă. Trebuie să întoarcă
+  // recorduri parțiale + parseError (NU {error}), ca server-ul să ACK-uiască tot și trackerul să nu retrimită la infinit.
+  const buf = Buffer.alloc(14);
+  buf.writeUInt32BE(0x00000000, 0); // preamble valid
+  buf.writeUInt32BE(6, 4);          // dataFieldLength
+  buf.writeUInt8(0x08, 8);          // codecId = Codec8
+  buf.writeUInt8(1, 9);             // numberOfRecords = 1
+  const r = c.parseAvlPacket(buf, null);
+  ok(r.error === undefined, 'record corupt → NU eroare totală de framing');
+  eq(r.numberOfRecords, 1, 'numberOfRecords citit din header (ACK posibil)');
+  ok(Array.isArray(r.records), 'întoarce array de recorduri (parțial), nu {error}');
+  ok(!!r.parseError, 'parseError semnalează recordul corupt');
+})();
+
 console.log('\n— decodeSecurityFlags / decodeControlFlags —');
 ok(typeof c.decodeSecurityFlags(0n) === 'object', 'decodeSecurityFlags(0) → obiect');
 ok(typeof c.decodeControlFlags(0) === 'object', 'decodeControlFlags(0) → obiect');

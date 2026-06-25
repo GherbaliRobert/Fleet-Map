@@ -448,6 +448,9 @@ const tcpServer = net.createServer((socket) => {
         // Salvează conexiunea activă (cu referință la socket pentru destroy() forțat la cleanup zombie).
         // ATENȚIE: când se serializează activeConnections în /api/debug/connections, EXCLUDE câmpul `socket`
         // ca să nu rupă JSON.stringify pe circular reference.
+        // Reconectare: dacă există un socket vechi (zombie half-open) pentru același IMEI, închide-l ÎNTÂI, ca să
+        // nu rămână în paralel și apoi, la close-ul lui, să șteargă/„deconecteze" din greșeală conexiunea nouă.
+        { const _old = activeConnections.get(imei); if (_old && _old.socket && _old.socket !== socket) { try { _old.socket.destroy(); } catch (_) {} } }
         activeConnections.set(imei, {
           address: clientAddr,
           connectedAt: new Date(),
@@ -484,15 +487,22 @@ const tcpServer = net.createServer((socket) => {
       const parsed = parseAvlPacket(packet, _iface);
 
       if (parsed.error) {
+        // Eroare de FRAMING (preamble/codec invalid) — pachet nevalid la nivel de plic, nu îl putem accepta.
         console.error(`[TCP] Eroare parsare de la ${imei}: ${parsed.error}`);
         addDebugEntry({ event: 'error', imei, error: parsed.error });
         socket.write(Buffer.alloc(4, 0)); // răspunde cu 0
         return;
       }
 
-      // ACK IMEDIAT cu numărul de recorduri acceptate — esențial pentru Teltonika.
-      // Se trimite ÎNAINTE de scrierea în DB, ca dispozitivul să nu retrimită / piardă date.
+      // ACK cu numărul de recorduri din HEADER — framing-ul e deja validat (totalPacketLength), deci ACK-ul NU
+      // poate bloca trackerul nici dacă un record s-a parsat parțial. Se trimite înainte de scrierea în DB.
       { const _ack = Buffer.alloc(4); _ack.writeUInt32BE(parsed.numberOfRecords); socket.write(_ack); }
+
+      // Un record corupt → l-am sărit, dar batch-ul a fost ACK-uit integral (trackerul nu rămâne blocat în resend).
+      if (parsed.parseError) {
+        console.warn(`[TCP] ${imei}: record corupt sărit (${parsed.parseError}) — ${parsed.records.length}/${parsed.numberOfRecords} recorduri valide`);
+        addDebugEntry({ event: 'partial_parse', imei, error: parsed.parseError, valid: parsed.records.length, total: parsed.numberOfRecords });
+      }
 
       console.log(`[TCP] ${imei}: ${parsed.numberOfRecords} recorduri primite`);
 
@@ -522,6 +532,7 @@ const tcpServer = net.createServer((socket) => {
           if (_iface === 'fms') {
             if (typeof record.io.can_fuel_level_liters === 'number') record.io.can_fuel_level_liters = record.io.can_fuel_level_liters / 10;
             if (typeof record.io.can_adblue_level_liters === 'number') record.io.can_adblue_level_liters = record.io.can_adblue_level_liters / 10;
+            if (typeof record.io.can_battery_temp === 'number') record.io.can_battery_temp = record.io.can_battery_temp / 10; // °C ×0.1 (FMS_NAMES id 141)
           } else {
             for (const key of Object.keys(record.io)) {
               if (key.startsWith('can_')) {
@@ -554,28 +565,45 @@ const tcpServer = net.createServer((socket) => {
       // consumatoarele (status, alerte, „motor pornit/oprit de", rapoarte) să vadă contactul corect.
       _applyIgnitionSource(imei, parsed.records);
 
-      // Salvează în baza de date
-      await db.insertPositions(imei, parsed.records);
+      // Salvează în baza de date — cu re-încercări scurte. ACK-ul s-a trimis deja (rapid, pt. Teltonika), dar
+      // dacă scrierea dă eroare TRANZITORIE (drop conexiune Railway, pool epuizat), reîncercăm în loc să pierdem
+      // definitiv batch-ul. ON CONFLICT DO NOTHING face re-scrierile idempotente. La eșec definitiv NU aruncăm
+      // (break) → poziția live tot se actualizează din memorie, doar rândul de istoric lipsește (logat).
+      for (let _att = 0; ; _att++) {
+        try { await db.insertPositions(imei, parsed.records); break; }
+        catch (e) {
+          if (_att >= 3) { console.error(`[TCP] insertPositions ${imei} eșuat după ${_att + 1} încercări: ${e.message}`); addDebugEntry({ event: 'insert_fail', imei, error: e.message }); break; }
+          await new Promise(r => setTimeout(r, 200 * (_att + 1)));
+        }
+      }
 
       // Trimite batch-ul și către OpenRemote (non-blocking)
       try { forwardToOpenRemote(imei, parsed.records); } catch (_) {}
 
-      // Actualizează poziția live
-      const lastRecord = parsed.records[parsed.records.length - 1];
-      if (lastRecord && lastRecord.gps.latitude !== 0) {
+      // Actualizează poziția live — ultimul record cu FIX GPS valid (nu neapărat records[last]): un heartbeat
+      // fără fix (lat=0) la coada batch-ului NU mai blochează tot update-ul live (poziție + CAN + alerte).
+      let liveRec = null;
+      for (let _i = parsed.records.length - 1; _i >= 0; _i--) {
+        if (parsed.records[_i].gps && parsed.records[_i].gps.latitude !== 0) { liveRec = parsed.records[_i]; break; }
+      }
+      if (liveRec) {
         const existing = livePositions.get(imei) || {};
+        // io: combină CAN-ul din TOT batch-ul (cea mai recentă valoare per cheie) — un record GPS-only la coadă
+        // nu mai golește RPM/temp/etc. care au venit mai devreme în același batch.
+        const mergedIo = {};
+        for (const _r of parsed.records) if (_r.io) Object.assign(mergedIo, _r.io);
         // Identitatea (nume/nr/categorie) din registrul de vehicule (DB, cache 20s) — NU doar din snapshot-ul
         // anterior. Altfel, la un vehicul înregistrat după pornire, plăcuța rămânea null și „se reseta".
         const devInfo = (await getLiveEnrichMap()).get(imei) || {};
         const liveData = {
           imei,
-          timestamp: lastRecord.timestamp,
-          latitude: lastRecord.gps.latitude,
-          longitude: lastRecord.gps.longitude,
-          speed: lastRecord.gps.speed,
-          angle: lastRecord.gps.angle,
-          satellites: lastRecord.gps.satellites,
-          io: lastRecord.io,
+          timestamp: liveRec.timestamp,
+          latitude: liveRec.gps.latitude,
+          longitude: liveRec.gps.longitude,
+          speed: liveRec.gps.speed,
+          angle: liveRec.gps.angle,
+          satellites: liveRec.gps.satellites,
+          io: mergedIo,
           name: devInfo.name || existing.name || null,
           vehicle_type: devInfo.vehicle_type || existing.vehicle_type || null,
           plate: devInfo.plate || existing.plate || null
@@ -586,9 +614,9 @@ const tcpServer = net.createServer((socket) => {
         if (Object.keys(_freshSticky).length > 0) {
           const _prev = lastCanIo.get(imei);
           const _merged = Object.assign({}, _prev && _prev.io, _freshSticky); // acumulează (suportă update parțial)
-          lastCanIo.set(imei, { io: _merged, ts: lastRecord.timestamp });
+          lastCanIo.set(imei, { io: _merged, ts: liveRec.timestamp });
           // checkpoint periodic în DB (max ~o scriere / 5 min / device) — ca să nu pierdem date la un crash pe traseu
-          if (lastRecord.timestamp - (lastCanPersistTs.get(imei) || 0) > 5 * 60 * 1000) _persistLastCan(imei, _merged, lastRecord.timestamp);
+          if (liveRec.timestamp - (lastCanPersistTs.get(imei) || 0) > 5 * 60 * 1000) _persistLastCan(imei, _merged, liveRec.timestamp);
         }
         // Completează cheile sticky LIPSĂ din pachetul curent (indiferent dacă pachetul are alte chei can_*).
         // can_stale = true DOAR dacă chiar am completat o valoare reală → fără „(ultima)" fals pe camioane fără CAN.
@@ -614,7 +642,7 @@ const tcpServer = net.createServer((socket) => {
         evaluateUserEvents(imei, liveData, existing).catch(() => {});
 
         // Track tare automat pentru camioane
-        trackTareCandidate(imei, lastRecord.io || {}).catch(() => {});
+        trackTareCandidate(imei, liveData.io || {}).catch(() => {});
       }
 
       // (ACK-ul a fost deja trimis imediat după parsare, mai sus)
@@ -627,13 +655,18 @@ const tcpServer = net.createServer((socket) => {
     console.log(`[TCP] Deconectat: ${imei || clientAddr}`);
     addDebugEntry({ event: 'disconnect', imei: imei || null, address: clientAddr });
     if (imei) {
-      activeConnections.delete(imei);
-      const lastPos = livePositions.get(imei);
-      if (lastPos) {
-        lastPos.speed = 0;
-        livePositions.set(imei, lastPos);
+      // Doar dacă socketul care se închide e CHIAR cel curent — un zombie care moare nu mai dărâmă/„deconectează"
+      // conexiunea nouă, validă, a aceluiași IMEI (evită un „disconnect" fals pe un vehicul de fapt online).
+      const _e = activeConnections.get(imei);
+      if (_e && _e.socket === socket) {
+        activeConnections.delete(imei);
+        const lastPos = livePositions.get(imei);
+        if (lastPos) {
+          lastPos.speed = 0;
+          livePositions.set(imei, lastPos);
+        }
+        broadcastWs({ type: 'disconnect', data: { imei } });
       }
-      broadcastWs({ type: 'disconnect', data: { imei } });
     }
   });
 

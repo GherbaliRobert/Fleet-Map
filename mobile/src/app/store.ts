@@ -103,7 +103,7 @@ export async function refreshRoster() {
       .filter((d: any) => d && d.imei && d.status !== 'archived')
       .map((d: any) => ({
         imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type, company_name: d.company_name,
-        latitude: d.latitude, longitude: d.longitude, speed: d.speed, angle: d.angle,
+        latitude: d.latitude, longitude: d.longitude, speed: d.speed, angle: d.angle, satellites: d.satellites,
         timestamp: d.last_position_time || null, io: d.io_data || {},
       } as Position));
   } catch { /* păstrează ce e */ }
@@ -162,8 +162,24 @@ function applyWs(msg: any) {
     return;
   }
   if (msg.type === 'stale' && msg.data && msg.data.imei) { upsertVehicle({ imei: msg.data.imei, speed: 0, stale: true } as any); return; }
-  if (msg.type === 'disconnect' && msg.data && msg.data.imei && msg.data.reason === 'purged') {
-    livePos.value = livePos.value.filter((v) => v.imei !== msg.data.imei); return;
+  if (msg.type === 'disconnect' && msg.data && msg.data.imei) {
+    // Purge (24h fără semnal) → scoate din listă. Deconectare normală (close socket, fără reason) → marchează
+    // „fără semnal recent" (viteză 0 + timestamp îmbătrânit), exact ca web-ul — altfel un vehicul deconectat
+    // rămânea „În mișcare" pe APK până la următorul poll.
+    if (msg.data.reason === 'purged') { livePos.value = livePos.value.filter((v) => v.imei !== msg.data.imei); return; }
+    upsertVehicle({ imei: msg.data.imei, speed: 0, timestamp: new Date(Date.now() - 6 * 60000).toISOString() } as any);
+    return;
+  }
+  if (msg.type === 'removed' && msg.data && msg.data.imei) {
+    // Vehicul arhivat/șters → scoate-l imediat din hartă/listă (ca web-ul), fără să aștepte poll-ul.
+    livePos.value = livePos.value.filter((v) => v.imei !== msg.data.imei);
+    roster.value = roster.value.filter((v) => v.imei !== msg.data.imei);
+    return;
+  }
+  if (msg.type === 'notification') {
+    // Notificare nouă pe WS-ul live → badge-ul de „necitite" crește instant (ca web-ul), nu doar la poll-ul de 30s.
+    unread.value = unread.value + 1;
+    return;
   }
 }
 function connectWs() {

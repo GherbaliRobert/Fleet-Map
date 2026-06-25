@@ -98,17 +98,27 @@ function parseAvlPacket(buffer, iface) {
 
     let offset = 10;
     const records = [];
+    let parseError = null;
 
     for (let i = 0; i < numberOfRecords; i++) {
-      const record = parseRecord(buffer, offset, isExtended);
-      records.push(record.data);
-      offset = record.nextOffset;
+      try {
+        const record = parseRecord(buffer, offset, isExtended);
+        records.push(record.data);
+        offset = record.nextOffset;
+      } catch (e) {
+        // Un singur record corupt NU mai pierde tot batch-ul și NU mai blochează ACK-ul (altfel trackerul
+        // retrimite la infinit aceleași date). Offset-ul devine nesigur după excepție → ne oprim, dar întoarcem
+        // recordurile valide de până aici + numărul ORIGINAL din header (ca server-ul să ACK-uiască tot batch-ul).
+        parseError = `record ${i}: ${e.message}`;
+        break;
+      }
     }
 
     return {
       codecId,
       numberOfRecords,
-      records
+      records,
+      parseError
     };
   } catch (err) {
     return { error: `Parse error: ${err.message}` };
