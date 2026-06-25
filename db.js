@@ -955,6 +955,15 @@ async function setDeviceCompany(imei, companyId) {
   await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1', [imei, companyId || null]);
   await _purgeDeviceFeed([imei]);
 }
+// Adopție ATOMICĂ: setează compania DOAR dacă device-ul e încă neasignat (company_id NULL). Întoarce true dacă
+// CHIAR această cerere a făcut adopția → închide cursa a două companii care adoptă simultan același IMEI neasignat.
+async function adoptDevice(imei, companyId) {
+  if (companyId == null) return false;
+  const r = await pool.query('UPDATE devices SET company_id = $2 WHERE imei = $1 AND company_id IS NULL RETURNING imei', [imei, companyId]);
+  const ok = !!(r.rows && r.rows.length > 0);
+  if (ok) await _purgeDeviceFeed([imei]);
+  return ok;
+}
 // Interfața CAN a device-ului:
 //  - 'fms'   = FMS Gateway (J1939, ex: FMC650 pe MAN TGS prin gateway)
 //  - 'tacho' = cablu direct la tahograf (C5/C7) — semantică DSRC pe IDs 184-198, 222-235
@@ -2390,7 +2399,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
-  getCompanyImeis, setDeviceCompany, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
+  getCompanyImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,

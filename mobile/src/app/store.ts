@@ -77,6 +77,7 @@ export async function bootstrap() {
 }
 
 export async function login(username: string, password: string) {
+  _wsAccessMsgShown = false; // sesiune nouă → permite din nou avertismentul de acces suspendat
   const res = await Api.mobileLogin(username, password, 'android');
   token.value = res.token; setAuthToken(res.token);
   await saveToken(res.token);
@@ -143,6 +144,7 @@ let wsWanted = false;
 let wsReconnect: any = null;
 let wsBackoff = 1500;
 let livePollMs = 7000;
+let _wsAccessMsgShown = false; // anti-spam: „acces suspendat" o singură dată per sesiune (WS reconectează des)
 
 function upsertVehicle(pos: Position) {
   if (!pos || !pos.imei) return;
@@ -181,6 +183,11 @@ function applyWs(msg: any) {
     unread.value = unread.value + 1;
     return;
   }
+  if (msg.type === 'error' && msg.data && msg.data.error === 'access_expired') {
+    // Acces suspendat de server (abonament/factură) — NU e eroare de autentificare → nu delogăm; anunțăm o dată.
+    if (!_wsAccessMsgShown) { _wsAccessMsgShown = true; showToast('Acces suspendat — verifică factura/abonamentul', true); }
+    return;
+  }
 }
 function connectWs() {
   if (!wsWanted || !token.value) return;
@@ -215,4 +222,7 @@ export function stopLive() {
   stopPolling();
 }
 
-onUnauthorized(() => { logout(); });
+// 401 = cheia/sesiunea a expirat (cheile mobile durează 90 zile) sau e invalidă. Logout-ul e corect, dar acum
+// SPUNEM utilizatorului de ce (nu mai dispare ecranul fără explicație). Guard: o singură dată (mai multe cereri
+// pot da 401 simultan; după logout, token.value e null → nu re-declanșăm).
+onUnauthorized(() => { if (!token.value) return; showToast('Sesiune expirată — autentifică-te din nou', true); logout(); });

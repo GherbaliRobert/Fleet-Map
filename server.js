@@ -2353,7 +2353,7 @@ app.put('/api/devices/:imei/company', requireAuth, requireSuperadmin, async (req
   try {
     const companyId = req.body.company_id != null ? parseInt(req.body.company_id) : null;
     await db.setDeviceCompany(req.params.imei, companyId);
-    invalidateAccessCache(); _devCompanyCache.delete(req.params.imei);
+    invalidateAccessCache(); _devCompanyCache.delete(req.params.imei); refreshWsScope();
     auditReq(req, 'assign_company', 'device', req.params.imei, { companyId });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2475,6 +2475,7 @@ app.put('/api/devices/company/bulk', requireAuth, requireSuperadmin, async (req,
     const moved = await db.setDevicesCompanyBulk(imeis, companyId);
     invalidateAccessCache();
     imeis.forEach(im => _devCompanyCache.delete(im));
+    refreshWsScope();
     auditReq(req, 'assign_company_bulk', 'device', null, { companyId, count: moved, imeis: imeis.slice(0, 50) });
     res.json({ ok: true, moved });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2725,13 +2726,32 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
   try {
     const imei = String(req.body.imei || '').trim();
     if (!/^\d{10,20}$/.test(imei)) return res.status(400).json({ error: 'IMEI invalid (10–20 cifre)' });
-    if (await db.deviceExists(imei)) return res.status(409).json({ error: 'Există deja un vehicul cu acest IMEI' });
     // Companie: ne-super → compania proprie; super → opțional company_id din body, altfel neasignat
     const companyId = req.isSuper
       ? (req.body.company_id != null && req.body.company_id !== '' ? parseInt(req.body.company_id) : null)
       : req.companyId;
     const fields = {};
     ['name', 'plate', 'vehicle_type', 'vin', 'brand', 'model'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
+
+    // Dacă IMEI-ul există DEJA: ADOPȚIE dacă e neasignat (company_id NULL) — tipic un tracker care a transmis ÎNAINTE
+    // de a fi înregistrat. Îl revendică compania care îl adaugă (ne-super: doar compania proprie). Dacă aparține deja
+    // ALTEI companii → 409 (nu se poate „fura").
+    const _existing = await db.getDeviceFull(imei);
+    if (_existing) {
+      if (_existing.company_id != null) return res.status(409).json({ error: 'Există deja un vehicul cu acest IMEI' });
+      const adoptCompany = req.isSuper ? companyId : req.companyId;
+      if (adoptCompany == null) return res.status(400).json({ error: 'Cont fără companie — nu poate adopta vehicule. Contactează administratorul.' });
+      const adopted = await db.adoptDevice(imei, adoptCompany); // atomic: doar dacă încă e NULL (cursă închisă)
+      if (!adopted) return res.status(409).json({ error: 'Există deja un vehicul cu acest IMEI' }); // altă companie l-a adoptat între timp
+      if (Object.keys(fields).length) await db.updateVehicleDetails(imei, fields);
+      if (_existing.status === 'archived') await db.setDeviceStatus(imei, 'active');
+      invalidateAccessCache(); invalidateLiveEnrichCache(); _devCompanyCache.delete(imei); await refreshWsScope();
+      const _pa = livePositions.get(imei);
+      if (_pa) { _pa.name = fields.name || _pa.name || null; _pa.plate = fields.plate || _pa.plate || null; _pa.vehicle_type = fields.vehicle_type || _pa.vehicle_type || null; livePositions.set(imei, _pa); try { broadcastPosition(_pa); } catch (_) {} }
+      auditReq(req, 'adopt', 'device', imei, { companyId: adoptCompany });
+      return res.json({ ok: true, adopted: true, imei });
+    }
+
     await db.createDevice(imei, fields, companyId);
     invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
     invalidateLiveEnrichCache(); // identitatea nouă (nume/nr) să apară imediat pe /api/live, nu după 20s
@@ -5925,6 +5945,19 @@ async function _wsAuthContext(ws, userId, role, companyId, label) {
   return true;
 }
 
+// Reîmprospătează ws._allowedImeis pe socket-urile WS DESCHISE după reasignarea unui device la o companie/grup,
+// ca un vehicul nou alocat să primească frame-urile live IMEDIAT (nu doar după reconectare / poll-ul de siguranță).
+// Se apelează DUPĂ invalidateAccessCache(), ca getAllowedImeiSet să recompute fresh. Super-adminii au _allowedImeis
+// null (văd tot) → îi sărim. Nu aruncă (un client problematic nu blochează restul).
+async function refreshWsScope() {
+  for (const ws of wss.clients) {
+    try {
+      if (ws.readyState !== 1 || !ws._authed || isSuper(ws._role)) continue;
+      ws._allowedImeis = await getAllowedImeiSet(ws._userId, ws._role, ws._companyId);
+    } catch (_) { /* ignore per-client */ }
+  }
+}
+
 wss.on('connection', (ws, req) => {
   // ── Autentificare prin TOKEN (mobil): ?token=gpsk_... în URL handshake. Webview-ul Capacitor
   // nu trimite cookie cross-site, deci folosim tokenul (peste wss:// → criptat pe fir). ──
@@ -6204,6 +6237,29 @@ async function start() {
   setInterval(() => runTripDetection(), 15 * 60 * 1000);
   setTimeout(() => checkExpiries(), 5000);
   setInterval(() => checkExpiries(), 12 * 60 * 60 * 1000);
+
+  // #12: camioane care transmit CAN dar au can_interface NESETAT → maparea standard poate greși ID-urile FMS.
+  // Surfacem (notificare deduplicată, vizibilă super-admin + companie) ca super-adminul să seteze interfața.
+  async function checkUnconfiguredTruckInterfaces() {
+    try {
+      const r = await db.pool.query(
+        "SELECT imei, vehicle_type, company_id FROM devices WHERE can_interface IS NULL AND status IS DISTINCT FROM 'archived' AND LOWER(COALESCE(vehicle_type,'')) IN ('camion','tir','autobuz','autocar')"
+      );
+      for (const d of r.rows) {
+        const pos = livePositions.get(d.imei);
+        if (!pos || !pos.io) continue;
+        if (!Object.keys(pos.io).some(k => k.startsWith('can_'))) continue; // doar dacă chiar transmite CAN
+        await notify({
+          type: 'config', severity: 'warning', imei: d.imei, companyId: d.company_id, dedupHours: 24 * 7,
+          title: 'Interfață CAN nesetată · ' + d.imei,
+          body: 'Vehicul „' + (d.vehicle_type || 'camion') + '" transmite date CAN, dar interfața nu e configurată — unele valori pot fi interpretate greșit. Super-admin: setează „FMS" pe vehicul (fișă → interfață CAN).',
+          data: { key: 'iface-unset-' + d.imei, imei: d.imei }
+        });
+      }
+    } catch (e) { console.error('[IFACE-CHECK]', e.message); }
+  }
+  setTimeout(() => checkUnconfiguredTruckInterfaces(), 60000);
+  setInterval(() => checkUnconfiguredTruckInterfaces(), 6 * 60 * 60 * 1000);
   // Rapoarte programate — rulează scadențele la fiecare 5 min (doar dacă modulul e disponibil)
   if (reportSchedules) setInterval(() => reportSchedules.tickDue({ db, reports, reportExport, channels })
     .then(r => { if (r && r.length) console.log('[PROGRAMĂRI] ' + r.length + ' rapoarte rulate'); })
