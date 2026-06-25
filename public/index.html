@@ -737,10 +737,12 @@
         <div id="veh-service-list" style="margin-bottom:10px;"></div>
         <div style="background:var(--bg-dark);padding:10px;border-radius:8px;">
           <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:end;">
-            <label style="font-size:11px;">Tip / descriere<input type="text" id="svc-type" placeholder="ex: Schimb ulei"></label>
-            <label style="font-size:11px;">Scadent la dată<input type="date" id="svc-due-date"></label>
-            <label style="font-size:11px;">Scadent la km<input type="number" id="svc-due-km"></label>
-            <button class="btn-sm btn-primary" onclick="saveVehicleService()" style="grid-column:1 / -1;"><i class="fas fa-plus"></i> Adaugă service</button>
+            <label style="font-size:11px;">Tip<select id="svc-type-sel" onchange="svcTypeChange()"><option value="Revizie generală">Revizie generală</option><option value="Schimb ulei + filtru">Schimb ulei + filtru</option><option value="ITP">ITP</option><option value="Distribuție">Distribuție</option><option value="Plăcuțe/discuri frână">Plăcuțe/discuri frână</option><option value="Anvelope">Anvelope</option><option value="Filtre (aer/polen/comb.)">Filtre (aer/polen/comb.)</option><option value="__alt">Altele…</option></select><input type="text" id="svc-type" placeholder="Scrie tipul" style="display:none;margin-top:5px;"></label>
+            <label style="font-size:11px;">Dată<input type="date" id="svc-date"></label>
+            <label style="font-size:11px;">Km<input type="number" id="svc-km"></label>
+            <label style="font-size:11px;grid-column:1/-1;display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="svc-done" style="width:16px;height:16px;cursor:pointer;"><span style="color:var(--text-muted);">Revizie deja efectuată (intră în istoric, cu data și km-ul de mai sus). Nebifat = lucrare planificată (scadență).</span></label>
+            <label style="font-size:11px;">Cost (RON)<input type="number" step="0.01" id="svc-cost"></label>
+            <button class="btn-sm btn-primary" onclick="saveVehicleService()" style="grid-column:1 / -1;"><i class="fas fa-plus"></i> Adaugă</button>
           </div>
         </div>
       </div>
@@ -7980,19 +7982,42 @@ const pozitii = await r.json();</code></pre>
       const imei = document.getElementById('edit-imei').value; if (!imei) return;
       try {
         const rows = await (await fetch('/api/maintenance?imei=' + encodeURIComponent(imei))).json();
-        document.getElementById('veh-service-list').innerHTML = (Array.isArray(rows) && rows.length) ? rows.map(m =>
-          '<div class="admin-row"><div><strong>' + _docEsc(m.type) + '</strong>' + (m.description ? ' · ' + _docEsc(m.description) : '') + '<div class="meta">' + (m.due_date ? 'scadent ' + new Date(m.due_date).toLocaleDateString('ro-RO') : '') + (m.due_km ? ' · la ' + m.due_km + ' km' : '') + ' · ' + _docEsc(m.status || '') + '</div></div><button class="btn-sm btn-danger" onclick="deleteVehicleService(' + m.id + ')"><i class="fas fa-trash"></i></button></div>'
-        ).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun element de service.</p>';
+        document.getElementById('veh-service-list').innerHTML = (Array.isArray(rows) && rows.length) ? rows.map(m => {
+          const done = m.status === 'done';
+          const when = done ? (m.done_at ? new Date(m.done_at).toLocaleDateString('ro-RO') : (m.done_date ? new Date(m.done_date).toLocaleDateString('ro-RO') : '')) : (m.due_date ? new Date(m.due_date).toLocaleDateString('ro-RO') : '');
+          const km = done ? (m.done_km ? m.done_km + ' km' : '') : (m.due_km ? 'la ' + m.due_km + ' km' : '');
+          const cost = m.cost ? Math.round(parseFloat(m.cost)) + ' RON' : '';
+          const tag = done ? '<span class="role">efectuat</span>' : '<span style="color:#f59e0b;font-size:11px;">planificat</span>';
+          const meta = [when, km, cost].filter(Boolean).join(' · ');
+          return '<div class="admin-row"><div><strong>' + _docEsc(m.type) + '</strong> ' + tag + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div><button class="btn-sm btn-danger" onclick="deleteVehicleService(' + m.id + ')"><i class="fas fa-trash"></i></button></div>';
+        }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun element de service.</p>';
       } catch (e) { }
+    }
+    function svcTypeChange() {
+      const sel = document.getElementById('svc-type-sel'); const inp = document.getElementById('svc-type');
+      const alt = sel.value === '__alt';
+      inp.style.display = alt ? '' : 'none';
+      if (alt) inp.focus(); else inp.value = '';
     }
     async function saveVehicleService() {
       const imei = document.getElementById('edit-imei').value;
-      const type = document.getElementById('svc-type').value.trim();
-      if (!type) { alert('Tipul / descrierea e obligatorie'); return; }
-      const body = { imei, type, due_date: document.getElementById('svc-due-date').value || null, due_km: parseInt(document.getElementById('svc-due-km').value) || null, status: 'pending' };
+      const sel = document.getElementById('svc-type-sel');
+      const type = (sel.value === '__alt') ? document.getElementById('svc-type').value.trim() : sel.value;
+      if (!type) { alert('Alege tipul'); return; }
+      const dateVal = document.getElementById('svc-date').value || null;
+      const km = parseInt(document.getElementById('svc-km').value) || null;
+      const cost = parseFloat(document.getElementById('svc-cost').value) || null;
+      const done = document.getElementById('svc-done').checked;
+      // Efectuat = ultima revizie → intră în istoric cu data + km-ul introduse (done_at fixat pe data aleasă, nu „acum").
+      const body = done
+        ? { imei, type, status: 'done', done_date: dateVal, done_km: km, cost, done_at: dateVal ? new Date(dateVal + 'T12:00:00').toISOString() : null }
+        : { imei, type, status: 'pending', due_date: dateVal, due_km: km, cost };
       const r = await fetch('/api/maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!r.ok) { alert('Eroare la salvare service'); return; }
-      ['svc-type', 'svc-due-date', 'svc-due-km'].forEach(id => document.getElementById(id).value = '');
+      ['svc-type', 'svc-date', 'svc-km', 'svc-cost'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('svc-type-sel').selectedIndex = 0;
+      document.getElementById('svc-type').style.display = 'none';
+      document.getElementById('svc-done').checked = false;
       loadVehicleService();
     }
     async function deleteVehicleService(id) {
