@@ -1327,9 +1327,10 @@ app.post('/api/logout', (req, res) => {
 let _sysCache = null, _sysTs = 0;
 async function getSystemSettings() {
   if (_sysCache && (Date.now() - _sysTs) < 15000) return _sysCache;
-  let ann = '', auto = null, off = null, spd = null;
-  try { [ann, auto, off, spd] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit')]); } catch (e) {}
-  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90) };
+  let ann = '', auto = null, off = null, spd = null, issuer = null;
+  try { [ann, auto, off, spd, issuer] = await Promise.all([db.getSetting('announcement'), db.getSetting('agents_auto'), db.getSetting('offline_minutes'), db.getSetting('default_speed_limit'), db.getSetting('invoice_issuer')]); } catch (e) {}
+  let issuerObj = {}; try { issuerObj = issuer ? JSON.parse(issuer) : {}; } catch (e) { issuerObj = {}; }
+  _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90), invoice_issuer: issuerObj };
   _sysTs = Date.now();
   return _sysCache;
 }
@@ -3277,6 +3278,11 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     if (b.agents_auto !== undefined) await db.setSetting('agents_auto', b.agents_auto ? 'on' : 'off');
     if (b.offline_minutes !== undefined) { const n = parseInt(b.offline_minutes); if (Number.isFinite(n) && n >= 5 && n <= 1440) await db.setSetting('offline_minutes', String(n)); }
     if (b.default_speed_limit !== undefined) { const n = parseInt(b.default_speed_limit); if (Number.isFinite(n) && n >= 10 && n <= 200) await db.setSetting('default_speed_limit', String(n)); }
+    if (b.invoice_issuer !== undefined && b.invoice_issuer && typeof b.invoice_issuer === 'object') {
+      const i = b.invoice_issuer; const S = (v, n) => String(v == null ? '' : v).slice(0, n);
+      const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40) };
+      await db.setSetting('invoice_issuer', JSON.stringify(clean));
+    }
     invalidateSystemSettings();
     auditReq(req, 'update', 'system-settings', null, { keys: Object.keys(b) });
     res.json({ ok: true, settings: await getSystemSettings() });

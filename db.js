@@ -590,6 +590,9 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS custom_plan JSONB;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_monthly_limit BIGINT;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS access_until BIGINT;
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS cui VARCHAR(40);
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS reg_com VARCHAR(40);
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS address VARCHAR(255);
       END $$
     `);
     // ─── Plăți (gestionate manual de super-admin; schema pregătită și pentru Stripe) ───
@@ -935,8 +938,8 @@ async function createCompany(data) {
 }
 async function updateCompany(id, data) {
   await pool.query(
-    `UPDATE companies SET name=COALESCE($2,name), contact_email=$3, phone=$4, plan=COALESCE($5,plan), active=COALESCE($6,active) WHERE id=$1`,
-    [id, data.name || null, data.contact_email || null, data.phone || null, data.plan || null, (data.active === undefined ? null : data.active)]
+    `UPDATE companies SET name=COALESCE($2,name), contact_email=$3, phone=$4, plan=COALESCE($5,plan), active=COALESCE($6,active), cui=$7, reg_com=$8, address=$9 WHERE id=$1`,
+    [id, data.name || null, data.contact_email || null, data.phone || null, data.plan || null, (data.active === undefined ? null : data.active), data.cui || null, data.reg_com || null, data.address || null]
   );
 }
 async function deleteCompany(id) {
