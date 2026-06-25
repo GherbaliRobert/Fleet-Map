@@ -1166,7 +1166,7 @@
           <div class="aside-grp">Gestiune</div>
           <button class="aside-item active" data-atab="dash" onclick="raxAdminHome()"><i class="fas fa-gauge"></i> Acasă</button>
           <button class="aside-item" data-super data-atab="companies" onclick="raxAdminTab('companies')"><i class="fas fa-building"></i> Companii</button>
-          <button class="aside-item" data-atab="users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
+          <button class="aside-item users-only" data-atab="users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
           <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
           <div class="aside-grp" data-super>AI &amp; Module</div>
           <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-shield-halved"></i> Agenți AI</button>
@@ -1185,7 +1185,7 @@
           <div id="admin-dash">
             <div class="adash-cards">
               <button class="adash-card" data-super onclick="raxAdminTab('companies')"><span class="adash-num" id="adash-n-companies">–</span><span class="adash-lbl"><i class="fas fa-building"></i> Companii</span></button>
-              <button class="adash-card" onclick="raxAdminTab('users')"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span></button>
+              <button class="adash-card users-only" onclick="raxAdminTab('users')"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span></button>
               <button class="adash-card" data-super onclick="raxAdminTab('companies')"><span class="adash-num" id="adash-n-active">–</span><span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span></button>
               <button class="adash-card adash-warn" onclick="raxAdminTab('archived')"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span></button>
             </div>
@@ -1210,11 +1210,11 @@
           <input type="text" id="new-fullname" placeholder="Nume complet">
           <input type="email" id="new-email" placeholder="Email">
           <input type="text" id="new-phone" placeholder="Telefon">
+          <select id="new-company" class="super-only"><option value="">— alege compania —</option></select>
           <select id="new-role">
-            <option value="client">Client (vede doar vehiculele atribuite)</option>
-            <option value="dispatcher">Dispecer (atribuit + confirmă alerte)</option>
             <option value="manager">Manager (toată flota, editează)</option>
-            <option value="admin">Admin (control total)</option>
+            <option value="dispatcher">Dispecer (atribuit + confirmă alerte)</option>
+            <option value="client">Client (vede doar vehiculele atribuite)</option>
             <option value="viewer">Viewer (read-only, atribuit)</option>
           </select>
           <button onclick="addUser()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă utilizator</button>
@@ -2491,9 +2491,31 @@ const pozitii = await r.json();</code></pre>
           (isSelf ? '<span style="font-size:11px;color:var(--text-muted);align-self:center;">tu</span>' : '<button class="btn-sm btn-danger" onclick="deleteUser(' + u.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>') +
         '</div></div>';
     }
+    // Opțiunile formularului „Adaugă utilizator" depind de cine creează:
+    //  • super-admin → poate face „Admin companie" (implicit, el creează contul de admin) + alege compania.
+    //  • admin de companie → NU poate crea alți admini (backend-ul i-ar coborî la Viewer) → fără opțiunea „Admin",
+    //    iar compania e automat a lui.
+    async function _populateNewUserForm() {
+      var sup = !!(currentUser && currentUser.role === 'superadmin');
+      var sel = document.getElementById('new-role');
+      if (sel) {
+        var opts = sup
+          ? [['admin', 'Admin companie (control total)'], ['manager', 'Manager (toată flota, editează)'], ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['client', 'Client (vede doar vehiculele atribuite)'], ['viewer', 'Viewer (read-only, atribuit)']]
+          : [['manager', 'Manager (toată flota, editează)'], ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['client', 'Client (vede doar vehiculele atribuite)'], ['viewer', 'Viewer (read-only, atribuit)']];
+        sel.innerHTML = opts.map(function (o, i) { return '<option value="' + o[0] + '"' + (i === 0 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+      }
+      var csel = document.getElementById('new-company');
+      if (csel && sup) {
+        try {
+          var cos = await (await fetch('/api/companies')).json();
+          if (Array.isArray(cos)) csel.innerHTML = '<option value="">— alege compania —</option>' + cos.filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + _ssEsc(c.name) + '</option>'; }).join('');
+        } catch (e) {}
+      }
+    }
     let ueUsersErr = null;
     async function loadUsers() {
       ueUsersErr = null;
+      _populateNewUserForm();
       try {
         const res = await fetch('/api/users');
         if (!res.ok) {
@@ -2568,10 +2590,17 @@ const pozitii = await r.json();</code></pre>
 
       if (!username || !password) return alert('Username și parola sunt obligatorii');
 
+      const body = { username, password, role, full_name, email, phone };
+      // Super-admin: alege compania noului cont (admin de companie → automat compania lui, pe backend).
+      const _csel = document.getElementById('new-company');
+      if (currentUser && currentUser.role === 'superadmin' && _csel) {
+        if (!_csel.value) return alert('Selectează compania pentru noul cont.');
+        body.company_id = parseInt(_csel.value);
+      }
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, role, full_name, email, phone })
+        body: JSON.stringify(body)
       });
 
       if (!res.ok) { const err = await res.json(); return alert(err.error); }
