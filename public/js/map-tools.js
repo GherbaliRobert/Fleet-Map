@@ -43,7 +43,12 @@
     el('msb-toggle').addEventListener('click', function (e) { e.stopPropagation(); toggleDropdown(); });
     el('msb-all').addEventListener('click', function (e) { e.preventDefault(); window._mapSel = null; window.applyMapSelection(); renderList(); });
     el('msb-none').addEventListener('click', function (e) { e.preventDefault(); window._mapSel = new Set(); window.applyMapSelection(); renderList(); });
-    document.addEventListener('click', function (e) { if (!bar.contains(e.target)) closeDropdown(); });
+    // „Click în afara barei → închide". Folosim composedPath (traseul real la momentul click-ului),
+    // ca să nu se închidă greșit când un handler re-randează lista și detașează elementul țintă.
+    document.addEventListener('click', function (e) {
+      var path = (e.composedPath && e.composedPath()) || [];
+      if (path.indexOf(bar) === -1 && !bar.contains(e.target)) closeDropdown();
+    });
     updateCount();
   }
   function openDropdown() { el('msb-dropdown').style.display = 'block'; renderList(); }
