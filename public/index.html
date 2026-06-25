@@ -557,6 +557,14 @@
             </label>
             <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Debifează pentru vehiculele care nu fac transporturi (tab-ul dispare din panoul de detaliu).</div>
           </div>
+          <div class="form-group" id="edit-caniface-group" style="display:none;"><label>Interfață CAN <span style="font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;">super-admin</span></label>
+            <select id="edit-can-interface">
+              <option value="">Automat / LV-CAN (implicit)</option>
+              <option value="fms">FMS / J1939 (FMC650, camioane)</option>
+              <option value="tacho">Tahograf direct (DSRC)</option>
+            </select>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Alege „FMS" la camioane cu FMC650 + FMS Gateway — altfel datele CAN (RPM, combustibil, temperatură, sarcină pe axe) pot fi decodate greșit. Se aplică pachetelor noi.</div>
+          </div>
           <div class="form-group"><label>Grup <span style="color:var(--text-muted);font-size:10px;">(acces clienți)</span></label><select id="edit-group"><option value="">-- Fără grup --</option></select></div>
           <div class="form-group"><label>Șofer</label><select id="edit-driver"><option value="">-- Fără șofer --</option></select></div>
         </div>
@@ -8031,6 +8039,8 @@ const pozitii = await r.json();</code></pre>
           var _isSuper = (currentUser && currentUser.role === 'superadmin');
           var _ignGrp = document.getElementById('edit-ignition-group'); if (_ignGrp) _ignGrp.style.display = _isSuper ? '' : 'none';
           var _trGrp = document.getElementById('edit-transport-group'); if (_trGrp) _trGrp.style.display = _isSuper ? '' : 'none';
+          var _cifSel = document.getElementById('edit-can-interface'); if (_cifSel) _cifSel.value = dev.can_interface || '';
+          var _cifGrp = document.getElementById('edit-caniface-group'); if (_cifGrp) _cifGrp.style.display = _isSuper ? '' : 'none';
           document.getElementById('edit-plate').value = dev.plate || '';
           // Fișă vehicul extinsă (paritate AROBS)
           const setv = (id, val) => { const el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); };
@@ -8128,6 +8138,15 @@ const pozitii = await r.json();</code></pre>
           driver_id: parseInt(document.getElementById('edit-driver').value) || null
         })
       });
+
+      // Interfață CAN (doar super-admin) — endpoint dedicat, invalidează cache-ul de iface → pachetele noi se decodează corect.
+      var _cifEl = document.getElementById('edit-can-interface');
+      if (_cifEl && currentUser && currentUser.role === 'superadmin') {
+        await fetch('/api/devices/' + imei + '/can-interface', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ can_interface: _cifEl.value || null })
+        }).catch(function () {});
+      }
 
       // Truck config
       const truckConfig = {

@@ -109,6 +109,7 @@ export function VehicleDetail() {
       vehicle_type: (full as any)?.vehicle_type || v?.vehicle_type || '',
       driver_id: (full as any)?.driver_id != null ? String((full as any).driver_id) : '',
       group_id: (full as any)?.group_id != null ? String((full as any).group_id) : '',
+      can_interface: (full as any)?.can_interface || '',
     });
     setEditOpen(true);
     if (!drivers.length) Api.driversLite().then((d) => setDrivers(Array.isArray(d) ? d : [])).catch(() => {});
@@ -121,6 +122,7 @@ export function VehicleDetail() {
     try {
       await Api.updateDevice(imei, { name: ef.name || null, plate: ef.plate || null, vehicle_type: ef.vehicle_type || null });
       await Api.assignDevice(imei, ef.driver_id ? Number(ef.driver_id) : null, ef.group_id ? Number(ef.group_id) : null);
+      if (me.value?.isSuper) await Api.setCanInterface(imei, ef.can_interface || null).catch(() => {}); // doar super-admin
       showToast('Vehicul actualizat');
       setEditOpen(false);
       loadFull();
@@ -326,6 +328,16 @@ export function VehicleDetail() {
                     {groups.map((g) => <option value={String(g.id)}>{g.name}</option>)}
                   </select>
                 </div>
+                {me.value?.isSuper && (
+                  <div class="fld"><label>Interfață CAN <span style="color:var(--accent);font-size:10px">super-admin</span></label>
+                    <select value={ef.can_interface} onChange={(e) => setEF('can_interface', (e.target as HTMLSelectElement).value)}>
+                      <option value="">Automat / LV-CAN (implicit)</option>
+                      <option value="fms">FMS / J1939 (FMC650, camioane)</option>
+                      <option value="tacho">Tahograf direct (DSRC)</option>
+                    </select>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:3px">„FMS" la camioane cu FMC650 — altfel RPM/combustibil/temperatură pot fi greșit decodate. Se aplică pachetelor noi.</div>
+                  </div>
+                )}
                 <div class="frm-actions">
                   <button class="btn btn-primary" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Se salvează…' : 'Salvează'}</button>
                 </div>
