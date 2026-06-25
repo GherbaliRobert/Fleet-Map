@@ -2519,6 +2519,7 @@ const pozitii = await r.json();</code></pre>
     //  • super-admin → poate face „Admin companie" (implicit, el creează contul de admin) + alege compania.
     //  • admin de companie → NU poate crea alți admini (backend-ul i-ar coborî la Viewer) → fără opțiunea „Admin",
     //    iar compania e automat a lui.
+    let _newUserCompaniesCache = null;
     async function _populateNewUserForm() {
       var sup = !!(currentUser && currentUser.role === 'superadmin');
       var sel = document.getElementById('new-role');
@@ -2530,10 +2531,12 @@ const pozitii = await r.json();</code></pre>
       }
       var csel = document.getElementById('new-company');
       if (csel && sup) {
-        try {
-          var cos = await (await fetch('/api/companies')).json();
-          if (Array.isArray(cos)) csel.innerHTML = '<option value="">— alege compania —</option>' + cos.filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + _ssEsc(c.name) + '</option>'; }).join('');
-        } catch (e) {}
+        // Cache: companiile se încarcă O SINGURĂ DATĂ per sesiune — nu /api/companies (interogare grea) la FIECARE
+        // deschidere a tabului Utilizatori (asta încetinea pagina). Reumplem dropdown-ul instant din cache.
+        if (!_newUserCompaniesCache) {
+          try { var cos = await (await fetch('/api/companies')).json(); _newUserCompaniesCache = Array.isArray(cos) ? cos : []; } catch (e) { _newUserCompaniesCache = []; }
+        }
+        csel.innerHTML = '<option value="">— alege compania —</option>' + _newUserCompaniesCache.filter(function (c) { return !c.is_demo; }).map(function (c) { return '<option value="' + c.id + '">' + _ssEsc(c.name) + '</option>'; }).join('');
       }
     }
     let ueUsersErr = null;
