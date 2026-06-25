@@ -3372,22 +3372,73 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Mentenanță ───
+    // Istoric mentenanță grupat pe vehicul (acordeon) + filtre + cost total.
+    let _mntAll = null, _mntFilterImei = '', _mntFilterState = '', _mntOpen = {};
     async function loadMaintenance() {
-      const r = await fetch('/api/maintenance'); const list = await r.json();
-      const el = document.getElementById('admin-maintenance-list');
-      el.innerHTML = list.length ? list.map(m => {
-        const done = m.status === 'done';
-        const due = m.due_date ? new Date(m.due_date) : null;
-        const overdue = !done && due && due < new Date();
-        return `<div class="admin-row" style="${overdue?'border-color:#ef4444;':''}"><div>
-          <strong>${m.type}</strong> ${done?'<span class="role">efectuat</span>':(overdue?'<span style="color:#ef4444;font-size:11px;">scadent!</span>':'<span class="role">de făcut</span>')}
-          <div class="meta">${vehicleLabel(m.imei)}${m.description?' · '+m.description:''}${due?' · '+due.toLocaleDateString('ro-RO'):''}${m.due_km?' · '+m.due_km+' km':''}${m.cost?' · '+m.cost+' RON':''}</div>
+      try { _mntAll = await (await fetch('/api/maintenance')).json(); } catch (e) { _mntAll = []; }
+      if (!Array.isArray(_mntAll)) _mntAll = [];
+      renderMaintenance();
+    }
+    function mntSetFilter(kind, val) { if (kind === 'veh') _mntFilterImei = val; else _mntFilterState = val; renderMaintenance(); }
+    function mntToggle(imei) { _mntOpen[imei] = (_mntOpen[imei] === false); renderMaintenance(); }
+    function mntRow(m) {
+      const done = m.status === 'done';
+      const due = m.due_date ? new Date(m.due_date) : null;
+      const overdue = !done && due && due < new Date();
+      const dateStr = done ? (m.done_date ? new Date(m.done_date).toLocaleDateString('ro-RO') : '') : (due ? due.toLocaleDateString('ro-RO') : '');
+      const kmStr = done ? (m.done_km ? m.done_km + ' km' : '') : (m.due_km ? m.due_km + ' km' : '');
+      const cost = parseFloat(m.cost); const meta = [m.description, dateStr, kmStr, (cost ? Math.round(cost) + ' RON' : '')].filter(Boolean).join(' · ');
+      return `<div class="admin-row" style="${overdue ? 'border-color:#ef4444;' : ''}"><div>
+          <strong>${m.type}</strong> ${done ? '<span class="role">efectuat</span>' : (overdue ? '<span style="color:#ef4444;font-size:11px;">scadent!</span>' : '<span class="role">de făcut</span>')}
+          <div class="meta">${meta}</div>
         </div><div style="display:flex;gap:6px;">
-          ${done?'':'<button class="btn-sm" title="Marchează efectuat" onclick="completeMaintenance('+m.id+')"><i class="fas fa-check"></i></button>'}
+          ${done ? '' : '<button class="btn-sm" title="Marchează efectuat" onclick="completeMaintenance(' + m.id + ')"><i class="fas fa-check"></i></button>'}
           <button class="btn-sm" onclick='editMaintenance(${JSON.stringify(m)})'><i class="fas fa-pen"></i></button>
           <button class="btn-sm btn-danger" onclick="deleteMaintenance(${m.id})"><i class="fas fa-trash"></i></button>
         </div></div>`;
-      }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio intrare de mentenanță.</p>';
+    }
+    function renderMaintenance() {
+      const el = document.getElementById('admin-maintenance-list'); if (!el) return;
+      const list = Array.isArray(_mntAll) ? _mntAll : [];
+      if (!list.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Nicio intrare de mentenanță.</p>'; return; }
+      const byVeh = new Map();
+      list.forEach(m => { if (!byVeh.has(m.imei)) byVeh.set(m.imei, []); byVeh.get(m.imei).push(m); });
+      const allImeis = Array.from(byVeh.keys()).sort((a, b) => String(vehicleLabel(a)).localeCompare(String(vehicleLabel(b))));
+      const ss = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;margin-left:5px;';
+      const filters = `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--text-muted);">Vehicul<select onchange="mntSetFilter('veh',this.value)" style="${ss}"><option value="">Toate vehiculele</option>${allImeis.map(i => `<option value="${i}" ${i === _mntFilterImei ? 'selected' : ''}>${vehicleLabel(i)}</option>`).join('')}</select></label>
+          <label style="font-size:11px;color:var(--text-muted);">Stare<select onchange="mntSetFilter('state',this.value)" style="${ss}"><option value="">Toate</option><option value="active" ${_mntFilterState === 'active' ? 'selected' : ''}>De făcut / scadente</option><option value="done" ${_mntFilterState === 'done' ? 'selected' : ''}>Istoric (efectuate)</option></select></label>
+        </div>`;
+      const imeis = _mntFilterImei ? allImeis.filter(i => i === _mntFilterImei) : allImeis;
+      let groups = '', grand = 0;
+      imeis.forEach(imei => {
+        const entries = byVeh.get(imei) || [];
+        let pending = entries.filter(m => m.status !== 'done');
+        let done = entries.filter(m => m.status === 'done');
+        if (_mntFilterState === 'active') done = [];
+        if (_mntFilterState === 'done') pending = [];
+        if (!pending.length && !done.length) return;
+        pending.sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
+        done.sort((a, b) => (b.done_date || '').localeCompare(a.done_date || ''));
+        const total = done.reduce((s, m) => s + (parseFloat(m.cost) || 0), 0); grand += total;
+        const overdue = pending.filter(m => m.due_date && new Date(m.due_date) < new Date()).length;
+        const open = _mntOpen[imei] !== false;
+        groups += `<div style="margin-bottom:8px;">
+            <div onclick="mntToggle('${imei}')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 4px;font-weight:700;border-bottom:1px solid var(--border);">
+              <i class="fas fa-chevron-${open ? 'down' : 'right'}" style="font-size:11px;color:var(--text-muted);width:12px;text-align:center;"></i>
+              <span>${vehicleLabel(imei)}</span>
+              ${overdue ? `<span style="color:#ef4444;font-size:11px;">${overdue} scadent${overdue > 1 ? 'e' : ''}</span>` : ''}
+              <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${entries.length} ${entries.length === 1 ? 'intrare' : 'intrări'}${total ? ' · ' + Math.round(total) + ' RON' : ''}</span>
+            </div>
+            ${open ? `<div style="padding:4px 0 8px;">
+              ${pending.length ? '<div class="admin-section-title">De făcut / scadente</div>' + pending.map(mntRow).join('') : ''}
+              ${done.length ? '<div class="admin-section-title">Istoric — efectuate</div>' + done.map(mntRow).join('') : ''}
+            </div>` : ''}
+          </div>`;
+      });
+      if (!groups) groups = '<p style="color:var(--text-muted);font-size:12px;">Nicio intrare pentru filtrul ales.</p>';
+      const totalBar = grand ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Total service efectuat${_mntFilterImei ? '' : ' · toată flota'}: <strong style="color:var(--text-primary);">${Math.round(grand)} RON</strong></div>` : '';
+      el.innerHTML = filters + totalBar + groups;
     }
     function editMaintenance(m) {
       document.getElementById('mnt-id').value = m.id;
