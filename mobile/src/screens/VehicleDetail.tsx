@@ -167,7 +167,7 @@ export function VehicleDetail() {
   if (io.tank_level_liters != null) { fuelStr = Number(io.tank_level_liters).toFixed(1) + ' L'; fuelLow = io.tank_level_liters < 15; fuelSrc = ' (sondă)'; }
   else if (io.can_fuel_level_liters != null && io.can_fuel_level_liters > 0) { fuelStr = Number(io.can_fuel_level_liters).toFixed(1) + ' L' + (io.can_fuel_level_pct != null ? ' · ' + io.can_fuel_level_pct + '%' : ''); fuelLow = io.can_fuel_level_liters < 15; fuelSrc = ' (CAN)'; }
   else if (io.can_fuel_level_pct != null) { fuelStr = io.can_fuel_level_pct + '%'; fuelSrc = ' (CAN)'; }
-  const pills = notifs.filter((n) => n.imei === imei && !n.acked_at).slice(0, 4);
+  const pills = notifs.filter((n) => n.imei === imei && !n.acknowledged).slice(0, 4);
   const isSuper = !!me.value?.isSuper;
   const canStale = !!(v as any)?.can_stale;
 

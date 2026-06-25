@@ -21,12 +21,12 @@ export function Notifications() {
   useEffect(() => { load(); }, []);
 
   async function tap(n: NotificationItem) {
-    if (!n.acked_at) { try { await Api.ackNotification(n.id); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => x.id === n.id ? { ...x, acked_at: new Date().toISOString() } : x) : cur); }
+    if (!n.acknowledged) { try { await Api.ackNotification(n.id); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => x.id === n.id ? { ...x, acknowledged: true } : x) : cur); }
     if (n.imei) loc.route('/vehicles/' + encodeURIComponent(n.imei));
   }
-  async function markAll() { try { await Api.ackAll(); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => ({ ...x, acked_at: x.acked_at || new Date().toISOString() })) : cur); }
+  async function markAll() { try { await Api.ackAll(); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => ({ ...x, acknowledged: true })) : cur); }
 
-  const hasUnread = !!items && items.some((n) => !n.acked_at);
+  const hasUnread = !!items && items.some((n) => !n.acknowledged);
 
   return (
     <div class="screen">
@@ -38,7 +38,7 @@ export function Notifications() {
           : items.map((n) => {
             const sev = SEV[n.severity || 'info'] || SEV.info;
             return (
-              <button class={'nf-item' + (!n.acked_at ? ' unread' : '')} onClick={() => tap(n)}>
+              <button class={'nf-item' + (!n.acknowledged ? ' unread' : '')} onClick={() => tap(n)}>
                 <span class="nf-ic" style={{ background: 'color-mix(in srgb,' + sev.color + ' 18%, transparent)' }}>
                   <Icon name={sev.icon} size={18} color={sev.color} />
                 </span>
@@ -47,7 +47,7 @@ export function Notifications() {
                   {n.body && <div class="nf-body">{n.body}</div>}
                   <div class="nf-time">{fmtAgo(n.created_at)}</div>
                 </div>
-                {!n.acked_at && <span class="nf-unread-dot" />}
+                {!n.acknowledged && <span class="nf-unread-dot" />}
               </button>
             );
           })}

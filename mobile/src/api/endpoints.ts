@@ -21,7 +21,7 @@ export interface DeviceFull {
 }
 export interface NotificationItem {
   id: number; type: string; severity?: string; imei?: string | null; title?: string; body?: string;
-  created_at?: string; acked_at?: string | null; data?: any;
+  created_at?: string; acknowledged?: boolean; data?: any;
 }
 export interface Group { id: number; name: string; color?: string; count?: number; }
 export interface DocItem { id: number; imei?: string; doc_type?: string; expiry_date?: string; number?: string; [k: string]: any; }
