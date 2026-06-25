@@ -4692,11 +4692,11 @@ async function checkExpiries() {
       await notify(nMnt);
       await deliverExpiryToSubscribers({ imei: m.imei, companyId: m.company_id, title: nMnt.title, body: nMnt.body, key: nMnt.data.key });
     }
-    // b) Scadență pe KM — alertă cu ~1000 km înainte + DEPĂȘIT (odometru CAN; vehiculele fără CAN → doar pe dată)
+    // b) Scadență pe KM — alertă cu ~500 km înainte + DEPĂȘIT (odometru CAN; vehiculele fără CAN → doar pe dată)
     try {
       const _odo = {};
       for (const d of await db.getDevices()) { const km = _odoFromIo(d.io_data); if (km) _odo[d.imei] = km; }
-      const KM_LEAD = 1000;
+      const KM_LEAD = 500;
       for (const m of _mntList) {
         if (m.status === 'done' || !m.due_km) continue;
         const odo = _odo[m.imei]; if (!odo) continue;
