@@ -18,7 +18,9 @@
 .sigbar.on { background: var(--accent); opacity: 1; }
 
 /* isolation: izolează z-index-urile interne ale hărții Leaflet (markeri ~600 etc.) ca să NU iasă peste sheet-ul „Date CAN" */
-.d-map { height: 170px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); isolation: isolate; position: relative; z-index: 0; }
+/* flex-shrink:0 + min-height: în coloana flex .d-content, harta (div gol — tile-urile Leaflet sunt absolute, deci
+   0 la calculul flex) se comprima spre 0 când sunt multe carduri deasupra (status + pastile + grilă). O fixăm. */
+.d-map { height: 170px; min-height: 170px; flex-shrink: 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); isolation: isolate; position: relative; z-index: 0; }
 
 .d-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .d-act { display: flex; align-items: center; gap: 10px; background: var(--bg-card); border: 1px solid var(--border);
