@@ -14,7 +14,7 @@
   // ── Containere view (injectate o singură dată) ──
   function ensureContainers() {
     [['etransport-view', 'fa-truck-fast', 'e-Transport (ANAF)'],
-     ['etoll-view', 'fa-road', 'E-Toll & Roviniete'],
+     ['etoll-view', 'fa-road', 'E-Toll'],
      ['tahograf-view', 'fa-id-card', 'Tahograf']].forEach(function (v) {
       if (el(v[0])) return;
       var d = document.createElement('div');
