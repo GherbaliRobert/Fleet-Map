@@ -493,7 +493,10 @@
           <i class="fas fa-gas-pump"></i> Sonde (avansat)
         </button>
         <button class="edit-tab" data-tab="documents" onclick="switchEditTab('documents', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
-          <i class="fas fa-file-contract"></i> Documente & Service
+          <i class="fas fa-file-contract"></i> Documente
+        </button>
+        <button class="edit-tab" data-tab="service" onclick="switchEditTab('service', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
+          <i class="fas fa-wrench"></i> Service
         </button>
       </div>
 
@@ -718,31 +721,52 @@
         <button type="button" class="btn-sm" onclick="addFuelSensor()" style="margin-top:6px;"><i class="fas fa-plus"></i> Adaugă sondă</button>
       </div>
 
-      <!-- Tab: Documente & Service -->
+      <!-- Stil modern pt. inputurile din Documente + Service -->
+      <style>
+        #edit-tab-documents .doc-form, #edit-tab-service .doc-form{ background:var(--bg-dark); padding:14px; border-radius:12px; }
+        #edit-tab-documents .doc-form label:not(.svc-check), #edit-tab-service .doc-form label:not(.svc-check){ display:flex; flex-direction:column; gap:5px; font-size:11px; font-weight:600; color:var(--text-muted); }
+        #edit-tab-documents .doc-form input:not([type=checkbox]), #edit-tab-documents .doc-form select,
+        #edit-tab-service .doc-form input:not([type=checkbox]), #edit-tab-service .doc-form select{
+          width:100%; box-sizing:border-box; padding:10px 12px; font-family:inherit; font-size:13px;
+          color:var(--text-primary); background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
+          transition:border-color .15s, box-shadow .15s;
+        }
+        #edit-tab-documents .doc-form input:not([type=checkbox]):focus, #edit-tab-documents .doc-form select:focus,
+        #edit-tab-service .doc-form input:not([type=checkbox]):focus, #edit-tab-service .doc-form select:focus{
+          outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(34,197,94,.18);
+        }
+        #edit-tab-documents .doc-actions, #edit-tab-service .doc-actions{ display:flex; align-items:flex-end; }
+        #edit-tab-documents .doc-actions .btn-sm, #edit-tab-service .doc-actions .btn-sm{ width:100%; padding:11px 12px; border-radius:10px; }
+      </style>
+
+      <!-- Tab: Documente -->
       <div id="edit-tab-documents" class="edit-tab-content" style="display:none;">
-        <div style="font-size:12px;font-weight:700;margin:4px 0 8px;color:var(--accent);"><i class="fas fa-file-contract"></i> Documente vehicul <span id="veh-docs-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
-        <div id="veh-docs-list" style="margin-bottom:10px;"></div>
-        <div style="background:var(--bg-dark);padding:10px;border-radius:8px;">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;">
-            <label style="font-size:11px;">Tip<select id="doc-type"><option>ITP</option><option>RCA</option><option>CASCO</option><option>Rovinietă</option><option>Licență transport</option><option>Tahograf</option><option>Altul</option></select></label>
-            <label style="font-size:11px;">Serie / nr. act (opțional)<input type="text" id="doc-number"></label>
-            <label style="font-size:11px;">Emitent<input type="text" id="doc-issuer"></label>
-            <label style="font-size:11px;">Data emiterii<input type="date" id="doc-issue"></label>
-            <label style="font-size:11px;">Data expirării<input type="date" id="doc-expiry"></label>
-            <button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-plus"></i> Adaugă</button>
+        <div style="font-size:12px;font-weight:700;margin:4px 0 10px;color:var(--accent);"><i class="fas fa-file-contract"></i> Documente vehicul <span id="veh-docs-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
+        <div id="veh-docs-list" style="margin-bottom:12px;"></div>
+        <div class="doc-form">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
+            <label>Tip<select id="doc-type"><option>ITP</option><option>RCA</option><option>CASCO</option><option>Rovinietă</option><option>Licență transport</option><option>Tahograf</option><option>Altul</option></select></label>
+            <label>Serie / nr. act (opțional)<input type="text" id="doc-number"></label>
+            <label>Emitent<input type="text" id="doc-issuer"></label>
+            <label>Data emiterii<input type="date" id="doc-issue"></label>
+            <label>Data expirării<input type="date" id="doc-expiry"></label>
+            <div class="doc-actions"><button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-plus"></i> Adaugă</button></div>
           </div>
         </div>
+      </div>
 
-        <div style="font-size:12px;font-weight:700;margin:16px 0 8px;color:var(--accent);"><i class="fas fa-wrench"></i> Plan service / mentenanță</div>
-        <div id="veh-service-list" style="margin-bottom:10px;"></div>
-        <div style="background:var(--bg-dark);padding:10px;border-radius:8px;">
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:end;">
-            <label style="font-size:11px;">Tip<select id="svc-type-sel" onchange="svcTypeChange()"><option value="Revizie generală">Revizie generală</option><option value="Schimb ulei + filtru">Schimb ulei + filtru</option><option value="ITP">ITP</option><option value="Distribuție">Distribuție</option><option value="Plăcuțe/discuri frână">Plăcuțe/discuri frână</option><option value="Anvelope">Anvelope</option><option value="Filtre (aer/polen/comb.)">Filtre (aer/polen/comb.)</option><option value="__alt">Altele…</option></select><input type="text" id="svc-type" placeholder="Scrie tipul" style="display:none;margin-top:5px;"></label>
-            <label style="font-size:11px;">Dată<input type="date" id="svc-date"></label>
-            <label style="font-size:11px;">Km<input type="number" id="svc-km"></label>
-            <label style="font-size:11px;grid-column:1/-1;display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="svc-done" style="width:16px;height:16px;cursor:pointer;"><span style="color:var(--text-muted);">Revizie deja efectuată (intră în istoric, cu data și km-ul de mai sus). Nebifat = lucrare planificată (scadență).</span></label>
-            <label style="font-size:11px;">Cost (RON)<input type="number" step="0.01" id="svc-cost"></label>
-            <button class="btn-sm btn-primary" onclick="saveVehicleService()" style="grid-column:1 / -1;"><i class="fas fa-plus"></i> Adaugă</button>
+      <!-- Tab: Service -->
+      <div id="edit-tab-service" class="edit-tab-content" style="display:none;">
+        <div style="font-size:12px;font-weight:700;margin:4px 0 10px;color:var(--accent);"><i class="fas fa-wrench"></i> Plan service / mentenanță <span id="veh-svc-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
+        <div id="veh-service-list" style="margin-bottom:12px;"></div>
+        <div class="doc-form">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;align-items:end;">
+            <label>Tip<select id="svc-type-sel" onchange="svcTypeChange()"><option value="Revizie generală">Revizie generală</option><option value="Schimb ulei + filtru">Schimb ulei + filtru</option><option value="ITP">ITP</option><option value="Distribuție">Distribuție</option><option value="Plăcuțe/discuri frână">Plăcuțe/discuri frână</option><option value="Anvelope">Anvelope</option><option value="Filtre (aer/polen/comb.)">Filtre (aer/polen/comb.)</option><option value="__alt">Altele…</option></select><input type="text" id="svc-type" placeholder="Scrie tipul" style="display:none;margin-top:6px;"></label>
+            <label>Dată<input type="date" id="svc-date"></label>
+            <label>Km<input type="number" id="svc-km"></label>
+            <label class="svc-check" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;"><input type="checkbox" id="svc-done" style="width:16px;height:16px;cursor:pointer;"><span style="color:var(--text-muted);">Revizie deja efectuată (intră în istoric, cu data și km-ul de mai sus). Nebifat = lucrare planificată (scadență).</span></label>
+            <label>Cost (RON)<input type="number" step="0.01" id="svc-cost"></label>
+            <div class="doc-actions" style="grid-column:1/-1;"><button class="btn-sm btn-primary" onclick="saveVehicleService()"><i class="fas fa-plus"></i> Adaugă</button></div>
           </div>
         </div>
       </div>
@@ -7975,6 +7999,7 @@ const pozitii = await r.json();</code></pre>
       document.querySelectorAll('.edit-tab-content').forEach(c => c.style.display = 'none');
       document.getElementById('edit-tab-' + tab).style.display = 'block';
       if (tab === 'documents') loadVehicleDocuments();
+      else if (tab === 'service') loadVehicleService();
     }
 
     // ─── Documente & service per vehicul ───
@@ -7992,7 +8017,6 @@ const pozitii = await r.json();</code></pre>
           return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + '</div></div><button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div>';
         }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
       } catch (e) { document.getElementById('veh-docs-list').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }
-      loadVehicleService();
     }
     async function saveVehicleDocument() {
       const imei = document.getElementById('edit-imei').value;
@@ -8010,6 +8034,7 @@ const pozitii = await r.json();</code></pre>
     }
     async function loadVehicleService() {
       const imei = document.getElementById('edit-imei').value; if (!imei) return;
+      var _sp = document.getElementById('veh-svc-plate'); if (_sp) _sp.textContent = (typeof vehicleLabel === 'function' ? '· ' + vehicleLabel(imei) : '');
       try {
         const rows = await (await fetch('/api/maintenance?imei=' + encodeURIComponent(imei))).json();
         document.getElementById('veh-service-list').innerHTML = (Array.isArray(rows) && rows.length) ? rows.map(m => {
