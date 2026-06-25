@@ -725,7 +725,7 @@
         <div style="background:var(--bg-dark);padding:10px;border-radius:8px;">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;">
             <label style="font-size:11px;">Tip<select id="doc-type"><option>ITP</option><option>RCA</option><option>CASCO</option><option>Rovinietă</option><option>Licență transport</option><option>Tahograf</option><option>Altul</option></select></label>
-            <label style="font-size:11px;">Serie / nr. act<input type="text" id="doc-number" placeholder="opțional (serie poliță, nr. raport)"></label>
+            <label style="font-size:11px;">Serie / nr. act (opțional)<input type="text" id="doc-number"></label>
             <label style="font-size:11px;">Emitent<input type="text" id="doc-issuer"></label>
             <label style="font-size:11px;">Data emiterii<input type="date" id="doc-issue"></label>
             <label style="font-size:11px;">Data expirării<input type="date" id="doc-expiry"></label>
@@ -1549,7 +1549,7 @@ const pozitii = await r.json();</code></pre>
           <div class="admin-add" style="grid-template-columns:repeat(3,1fr);">
             <label><span>Vehicul *</span><select id="mdoc-imei"></select></label>
             <label><span>Tip *</span><select id="mdoc-type"><option>ITP</option><option>RCA</option><option>CASCO</option><option>Rovinietă</option><option>Licență transport</option><option>Tahograf</option><option>Altul</option></select></label>
-            <label><span>Serie / nr. act</span><input type="text" id="mdoc-number"></label>
+            <label><span>Serie / nr. act (opțional)</span><input type="text" id="mdoc-number"></label>
             <label><span>Emitent</span><input type="text" id="mdoc-issuer"></label>
             <label><span>Dată emitere</span><input type="date" id="mdoc-issue"></label>
             <label><span>Dată expirare</span><input type="date" id="mdoc-expiry"></label>
@@ -7981,7 +7981,7 @@ const pozitii = await r.json();</code></pre>
     function _docEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     async function loadVehicleDocuments() {
       const imei = document.getElementById('edit-imei').value; if (!imei) return;
-      var _vp = document.getElementById('veh-docs-plate'); if (_vp) _vp.textContent = (typeof vehicleLabel === 'function' ? '· ' + vehicleLabel(imei) + ' (atașat automat)' : '');
+      var _vp = document.getElementById('veh-docs-plate'); if (_vp) _vp.textContent = (typeof vehicleLabel === 'function' ? '· ' + vehicleLabel(imei) : '');
       try {
         const docs = await (await fetch('/api/documents?imei=' + encodeURIComponent(imei))).json();
         const now = Date.now(), soon = 30 * 24 * 3600 * 1000;
