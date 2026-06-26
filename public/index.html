@@ -6493,9 +6493,12 @@ const pozitii = await r.json();</code></pre>
       fetch('/api/devices').then(r => r.json()).then(list => {
         if (!Array.isArray(list)) return;
         list.forEach(function (d) {
-          if (!d || !d.imei || d.status === 'archived' || devices.has(d.imei)) return; // sari arhivatele + cele deja live
+          if (!d || !d.imei || d.status === 'archived') return;
+          var ex = devices.get(d.imei);
+          if (ex) { ex.group_id = d.group_id; ex.driver_id = d.driver_id; if (ex.name == null) ex.name = d.name; if (ex.plate == null) ex.plate = d.plate; return; } // deja live: completează doar grup/șofer din DB (nu strica poziția)
           var mapped = {
             imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type,
+            group_id: d.group_id, driver_id: d.driver_id,
             latitude: d.latitude, longitude: d.longitude, speed: d.speed || 0, angle: d.angle || 0,
             timestamp: d.last_position_time || null, io: d.io_data || {}
           };
@@ -6525,6 +6528,8 @@ const pozitii = await r.json();</code></pre>
         if (data.name == null) data.name = _prev.name;
         if (data.plate == null) data.plate = _prev.plate;
         if (data.vehicle_type == null) data.vehicle_type = _prev.vehicle_type;
+        if (data.group_id == null) data.group_id = _prev.group_id;
+        if (data.driver_id == null) data.driver_id = _prev.driver_id;
       }
       devices.set(imei, data);
 
@@ -8686,16 +8691,21 @@ const pozitii = await r.json();</code></pre>
 
       if (true) {
         closeEditModal();
+        const _gid = parseInt(document.getElementById('edit-group').value) || null;
+        const _did = parseInt(document.getElementById('edit-driver').value) || null;
         const dev = devices.get(imei);
         if (dev) {
           dev.name = name;
           dev.vehicle_type = vehicle_type;
           dev.plate = plate;
+          dev.group_id = _gid; dev.driver_id = _did;   // ca lista/filtrele live să reflecte grupa imediat
           dev.icon = details.icon;     // reflectă imediat noua pictogramă pe hartă/listă/fișă
           dev.color = details.color;
           updateMarker(dev);
           updateDeviceList();
         }
+        // reîmprospătează lista din Management → Vehicule (Grup/Șofer/detalii) ca să reflecte editarea
+        if (typeof loadVehicles === 'function') { try { loadVehicles(); } catch (e) {} }
       } else {
         alert('Eroare la salvare');
       }
