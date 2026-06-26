@@ -10439,7 +10439,7 @@ const pozitii = await r.json();</code></pre>
   <!-- Configurare per-companie (super-admin): plan + module + agenți AI + limită AI într-un singur loc -->
   <div class="rax-overlay" id="rax-cfg-overlay">
     <div class="rax-card">
-      <div class="rax-head"><h3><i class="fas fa-sliders" style="color:var(--accent)"></i> <span id="rax-cfg-title">Configurare companie</span></h3><button class="rax-x" onclick="document.getElementById('rax-cfg-overlay').classList.remove('open'); if(window.raxLoadCompanies) raxLoadCompanies();">&times;</button></div>
+      <div class="rax-head"><h3><i class="fas fa-sliders" style="color:var(--accent)"></i> <span id="rax-cfg-title">Configurare companie</span></h3><button class="rax-x" onclick="_raxBackFromSub('rax-cfg-overlay')">&times;</button></div>
       <div class="rax-body" id="rax-cfg-body"><div class="rax-co-meta">Se încarcă…</div></div>
     </div>
   </div>
@@ -10455,7 +10455,7 @@ const pozitii = await r.json();</code></pre>
   <!-- Editare date companie (super-admin) -->
   <div class="rax-overlay" id="rax-coedit-overlay">
     <div class="rax-card" style="max-width:520px;">
-      <div class="rax-head"><h3><i class="fas fa-building" style="color:var(--accent)"></i> Editează compania</h3><button class="rax-x" onclick="document.getElementById('rax-coedit-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-head"><h3><i class="fas fa-building" style="color:var(--accent)"></i> Editează compania</h3><button class="rax-x" onclick="_raxBackFromSub('rax-coedit-overlay')">&times;</button></div>
       <div class="rax-body" id="rax-coedit-body"></div>
     </div>
   </div>
@@ -11241,11 +11241,25 @@ const pozitii = await r.json();</code></pre>
       ['compliance', 'RA Compliance', 'Ore de condus (estimativ, Reg. CE 561/2006)'],
       ['client', 'RA Client', 'Raport zilnic automat — sinteză flotă']
     ];
+    // Doar UN panou de companie deschis odată (drill-down / config / editare / plată) — fără stivuire de modaluri.
+    function _raxSoloOverlay(keepId) {
+      ['rax-codetail-overlay', 'rax-cfg-overlay', 'rax-coedit-overlay', 'rax-pay-overlay'].forEach(function (id) {
+        if (id !== keepId) { var el = document.getElementById(id); if (el) el.classList.remove('open'); }
+      });
+    }
+    // Închide un sub-panou (config/editare) și revine la profilul companiei dacă de acolo a fost deschis.
+    window._raxBackFromSub = function (overlayId) {
+      var el = document.getElementById(overlayId); if (el) el.classList.remove('open');
+      if (window.raxLoadCompanies) raxLoadCompanies();
+      if (window._raxSubReturnId) { var r = window._raxSubReturnId; window._raxSubReturnId = null; raxOpenCompanyDetail(r); }
+    };
     window.raxOpenCompanyConfig = async function (id) {
       var ov = document.getElementById('rax-cfg-overlay'); if (!ov) return;
       var body = document.getElementById('rax-cfg-body');
       document.getElementById('rax-cfg-title').textContent = 'Configurare companie';
       if (body) body.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      window._raxSubReturnId = (document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) ? (window._raxCodId || id) : null;
+      _raxSoloOverlay('rax-cfg-overlay');
       ov.classList.add('open');
       var cfg;
       try { cfg = await fetch('/api/companies/' + id + '/settings', { credentials: 'same-origin' }).then(function (x) { return x.json(); }); }
@@ -11628,6 +11642,7 @@ const pozitii = await r.json();</code></pre>
         document.body.appendChild(ov);
         ov.addEventListener('click', function (e) { if (e.target === ov) raxCloseCompanyDetail(); });
       }
+      _raxSoloOverlay('rax-codetail-overlay');
       ov.classList.add('open');
       window._raxCodId = id;
       var bodyEl = document.getElementById('rax-cod-body'); if (bodyEl) bodyEl.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>';
@@ -11853,6 +11868,7 @@ const pozitii = await r.json();</code></pre>
         '<button class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxSubmitPayment(this)"><i class="fas fa-check"></i> Înregistrează plata</button>' +
         '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;border-top:1px solid var(--border);padding-top:8px;line-height:1.5;">Plata prelungește accesul cu lunile alese (cumulativ peste accesul curent). După expirare: <b>15 zile de grație</b> (serviciul rămâne activ, cu avertisment), apoi accesul se <b>suspendă</b> până la următoarea plată.</div>' +
         '<div id="rax-pay-msg" style="font-size:12px;margin-top:8px;"></div>';
+      _raxSoloOverlay('rax-pay-overlay');
       ov.classList.add('open');
     };
     window.raxSubmitPayment = async function (btn) {
@@ -11910,6 +11926,8 @@ const pozitii = await r.json();</code></pre>
         '<label class="rax-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:12px;"><input type="checkbox" id="rax-ce-active"' + (c.active === false ? '' : ' checked') + ' style="width:auto;margin:0;"> Companie activă</label>' +
         '<button class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxSaveCompanyEdit(this)"><i class="fas fa-check"></i> Salvează</button>' +
         '<div id="rax-ce-msg" style="font-size:12px;margin-top:8px;"></div>';
+      window._raxSubReturnId = (document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) ? (window._raxCodId || id) : null;
+      _raxSoloOverlay('rax-coedit-overlay');
       document.getElementById('rax-coedit-overlay').classList.add('open');
       _raxParseContacts(c.contacts).forEach(function (p) { raxAddContactRow(p); });
     };
@@ -11953,10 +11971,8 @@ const pozitii = await r.json();</code></pre>
       try {
         var j = await fetch('/api/companies/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
         if (j.error) { if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(j.error) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Salvează'; } return; }
-        document.getElementById('rax-coedit-overlay').classList.remove('open');
         if (window.raxToast) raxToast('Companie actualizată ✓', 'success');
-        raxLoadCompanies();
-        if (window.raxRefreshOpenDetail) raxRefreshOpenDetail();
+        _raxBackFromSub('rax-coedit-overlay');
       } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Salvează'; } }
     };
     // ─── Date emitent factură (firma TA — apar pe facturile printabile), stocate în system-settings ───
