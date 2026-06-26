@@ -115,7 +115,7 @@
             <button class="nav-item nav-sub companies-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('users'); })"><i class="fas fa-users"></i><span>Utilizatori</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('archived'); })"><i class="fas fa-box-archive"></i><span>Dispozitive arhivate</span></button>
-            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
+            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
           </div>
         </div>
         <button class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
@@ -1243,7 +1243,7 @@
           <button class="aside-item" data-super data-atab="dashboard" onclick="raxAdminTab('dashboard')"><i class="fas fa-chart-line"></i> Dashboard platformă</button>
           <div class="aside-grp">Sistem</div>
           <button class="aside-item" onclick="openApiKeys()"><i class="fas fa-key"></i> Chei API</button>
-          <button class="aside-item" onclick="openAudit()"><i class="fas fa-clipboard-list"></i> Jurnal audit</button>
+          <button class="aside-item" data-super onclick="openAudit()"><i class="fas fa-clipboard-list"></i> Jurnal audit</button>
         </nav>
 
         <div id="admin-content" class="admin-content">
@@ -2795,6 +2795,7 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Jurnal audit ───
     async function openAudit() {
+      if (typeof can === 'function' && !can('manageCompanies')) return; // DOAR super-admin (defensiv; backend-ul dă oricum 403)
       document.getElementById('audit-modal').classList.add('visible');
       const list = document.getElementById('audit-list');
       list.innerHTML = '<p style="color:var(--text-muted)">Se încarcă...</p>';
@@ -5406,7 +5407,7 @@ const pozitii = await r.json();</code></pre>
       if (btn) { btn.classList.add('active'); var g = btn.closest('.nav-group'); if (g) g.classList.add('open'); }
     }
     function goManage(tab) { window._pendingAdminTab = tab; showView('management'); }
-    function goSistem(tab) { if ((tab === 'companies' || tab === 'accounts') && !can('manageCompanies')) return; showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
+    function goSistem(tab) { if ((tab === 'companies' || tab === 'accounts' || tab === 'audit') && !can('manageCompanies')) return; showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
     function goAnalizeConsum() { showView('fuelstats'); }
     function goWeeklyReport() { showView('weeklyreport'); }
     // ─── Pagina „Statistici consum" (vederea fuelstats) ───

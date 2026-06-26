@@ -1524,7 +1524,7 @@ app.delete('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req,
 });
 
 // Audit log (doar admin) — company_admin vede doar compania lui; super-admin vede tot
-app.get('/api/audit', requireAuth, requirePerm('viewAudit'), withCompany, async (req, res) => {
+app.get('/api/audit', requireAuth, requireSuperadmin, withCompany, async (req, res) => { // DOAR super-admin (jurnalul e global, cross-tenant)
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 500);
     const offset = parseInt(req.query.offset) || 0;
