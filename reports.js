@@ -127,6 +127,20 @@ function _tripCharts(trips) {
   ];
 }
 
+// perVehicle GENERIC pentru orice raport cu prima coloană „Vehicul" și mai multe rânduri/mașină
+// (selector online + sheet/mașină în Excel). Sumar minim: nr. de înregistrări (corect indiferent de raport).
+function _genericPerVehicle(result) {
+  const cols = result.columns || [], rows = result.rows || [];
+  if (!cols.length || String(cols[0]).trim().toLowerCase() !== 'vehicul') return null;
+  const groups = {}, order = [];
+  for (const r of rows) { const k = String(r[0]); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); }
+  if (order.length < 2) return null;            // un singur vehicul → fără selector
+  if (rows.length <= order.length) return null; // ~1 rând/vehicul (ex. Costuri/Consum) → inutil
+  return order.sort((a, b) => a.localeCompare(b)).map(name => ({
+    vehicul: name, summary: [['Înregistrări', groups[name].length]], rows: groups[name]
+  }));
+}
+
 async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
   let totalKm = 0, totalDur = 0, count = 0; const all = []; const tripList = [];
   for (const imei of imeis) {
@@ -168,9 +182,9 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
     let kmStart = odo(f.startP), kmEnd = odo(l.endP);
     if (!(kmStart != null && kmEnd != null && kmStart > 0 && kmEnd >= kmStart && (kmEnd - kmStart) <= tKm * 3 + 5 && (kmEnd - kmStart) >= tKm * 0.5 - 2)) { kmStart = null; kmEnd = null; }
     return {
-      vehicul: v.name, firstDeparture: fmtTs(f.start), lastArrival: fmtTs(l.end),
-      totalKm: Math.round(tKm * 10) / 10, kmStart: kmStart != null ? kmStart : '—', kmEnd: kmEnd != null ? kmEnd : '—',
-      tripCount: trips.length, rows: v.rows, charts: _tripCharts(trips)
+      vehicul: v.name,
+      summary: [['Prima plecare', fmtTs(f.start)], ['Ultima sosire', fmtTs(l.end)], ['Km totali', Math.round(tKm * 10) / 10], ['Km plecare', kmStart != null ? kmStart : '—'], ['Km sosire', kmEnd != null ? kmEnd : '—'], ['Curse', trips.length]],
+      rows: v.rows, charts: _tripCharts(trips)
     };
   }).sort((a, b) => String(a.vehicul).localeCompare(String(b.vehicul)));
   const charts = _tripCharts(all);
@@ -939,6 +953,7 @@ async function runReport(db, type, imeis, from, to, opts, companyId) {
   // companyId (null = super/toate) e propagat la fn-urile care citesc definiții scopabile pe companie (ex: geofence).
   const result = await def.fn(db, imeis, from, to, opts || {}, devMap, companyId);
   result.type = type; result.label = def.label; result.from = from; result.to = to;
+  if (!result.perVehicle) { try { const pv = _genericPerVehicle(result); if (pv) result.perVehicle = pv; } catch (e) {} }
   return result;
 }
 

@@ -44,11 +44,16 @@ async function toXlsxMultiSheet(report) {
   const used = new Set();
   const period = { text: 'Perioada: ' + fmtPeriod(report.from, report.to), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
   const pv = report.perVehicle || [];
-  const sumCols = ['Vehicul', 'Prima plecare', 'Ultima sosire', 'Km totali', 'Km plecare', 'Km sosire', 'Nr. curse'];
-  const sumRows = pv.map(v => [v.vehicul, v.firstDeparture, v.lastArrival, v.totalKm, v.kmStart, v.kmEnd, v.tripCount]);
-  const totKm = pv.reduce((s, v) => s + (parseFloat(v.totalKm) || 0), 0);
-  const totTrips = pv.reduce((s, v) => s + (v.tripCount || 0), 0);
-  sumRows.push(['TOTAL flotă', '', '', Math.round(totKm * 10) / 10, '', '', totTrips]);
+  // Sumar generic: coloanele vin din summary-ul fiecărui vehicul (trips au câmpuri bogate; restul → „Înregistrări").
+  const labels = (pv[0] && pv[0].summary) ? pv[0].summary.map(s => s[0]) : [];
+  const sumCols = ['Vehicul'].concat(labels);
+  const sumRows = pv.map(v => [v.vehicul].concat((v.summary || []).map(s => s[1])));
+  const totals = labels.map((lbl, i) => {
+    let allNum = true, sum = 0;
+    for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = parseFloat(val); if (isNaN(n)) { allNum = false; break; } sum += n; }
+    return allNum ? Math.round(sum * 10) / 10 : '';
+  });
+  sumRows.push(['TOTAL flotă'].concat(totals));
   xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], sumCols, sumRows);
   for (const v of pv) {
     xlWriteTable(wb.addWorksheet(xlSheetName(v.vehicul, used)), [{ text: v.vehicul }, period], report.columns || [], v.rows || []);
