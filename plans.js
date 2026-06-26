@@ -72,12 +72,21 @@ function publicPlans() {
 }
 
 // Planul efectiv al unei companii: dacă are un plan custom setat de super-admin, acela; altfel cel standard.
-// company.custom_plan (JSONB) poate fi: { name, pricePerVehicleRON, flatPriceRON, vehicleLimit, stripePriceId, note }
+// company.custom_plan (JSONB):
+//   legacy:  { name, pricePerVehicleRON, flatPriceRON, vehicleLimit, stripePriceId, note }
+//   tiered:  + { basePerVehicleRON, canAddonRON, fmsAddonRON, aiAssistantRON, aiAgentsRON }
+//   Oferta e „tiered" (nouă) dacă basePerVehicleRON != null: preț de bază/vehicul + spor CAN + spor FMS
+//   (pe fiecare vehicul de tipul respectiv) + add-on-uri AI lunare fixe (asistent / agenți).
 function effectivePlan(company) {
-  if (company && company.custom_plan && (company.custom_plan.pricePerVehicleRON != null || company.custom_plan.flatPriceRON != null)) {
+  if (company && company.custom_plan && (company.custom_plan.basePerVehicleRON != null || company.custom_plan.pricePerVehicleRON != null || company.custom_plan.flatPriceRON != null)) {
     const c = company.custom_plan;
     return {
       key: 'custom', custom: true, name: c.name || 'Custom',
+      basePerVehicleRON: c.basePerVehicleRON != null ? c.basePerVehicleRON : null,
+      canAddonRON: c.canAddonRON != null ? c.canAddonRON : null,
+      fmsAddonRON: c.fmsAddonRON != null ? c.fmsAddonRON : null,
+      aiAssistantRON: c.aiAssistantRON != null ? c.aiAssistantRON : null,
+      aiAgentsRON: c.aiAgentsRON != null ? c.aiAgentsRON : null,
       pricePerVehicleRON: c.pricePerVehicleRON != null ? c.pricePerVehicleRON : null,
       flatPriceRON: c.flatPriceRON != null ? c.flatPriceRON : null,
       vehicleLimit: c.vehicleLimit != null ? c.vehicleLimit : null,
@@ -86,6 +95,45 @@ function effectivePlan(company) {
     };
   }
   return getPlan((company && company.plan) || 'start') || getPlan('start');
+}
+
+// Preț lunar al unei companii din oferta efectivă + numărul de vehicule pe tip CAN.
+// canCounts = { none, can, fms } (exact forma construită în /overview). opts.features (din featuresFor) →
+// add-on-urile AI se taxează DOAR dacă modulul respectiv e ON; fără opts → „list price" (ambele numărate).
+// Întoarce { model:'preset'|'tiered'|'flat', perVehicleTotal, aiTotal, monthlyTotal, breakdown }.
+function computeCompanyPrice(company, canCounts, opts) {
+  opts = opts || {};
+  const cc = canCounts || {};
+  const none = Math.max(0, parseInt(cc.none) || 0);
+  const can = Math.max(0, parseInt(cc.can) || 0);
+  const fms = Math.max(0, parseInt(cc.fms) || 0);
+  const total = none + can + fms;
+  const eff = effectivePlan(company) || {};
+  const num = function (v) { return (v != null && isFinite(v)) ? Number(v) : 0; };
+  const feats = opts.features || null;
+  const aiAssistOn = feats ? !!feats.ai_assistant : true;
+  const aiAgentsOn = feats ? !!feats.agents : true;
+  const mk = function (model, perVehicleTotal, aiTotal, bd) {
+    return {
+      model: model, perVehicleTotal: perVehicleTotal, aiTotal: aiTotal, monthlyTotal: perVehicleTotal + aiTotal,
+      breakdown: Object.assign({ base: 0, canAddon: 0, fmsAddon: 0, aiAssistant: 0, aiAgents: 0, counts: { none: none, can: can, fms: fms, total: total } }, bd)
+    };
+  };
+  // FLAT (legacy): prețul fix câștigă, fără AI separat
+  if (eff.flatPriceRON != null) { const flat = num(eff.flatPriceRON); return mk('flat', flat, 0, { base: flat }); }
+  // TIERED custom: bază/vehicul (toate) + spor CAN (vehiculele cu CAN) + spor FMS + add-on-uri AI lunare
+  if (eff.basePerVehicleRON != null) {
+    const baseTotal = num(eff.basePerVehicleRON) * total;
+    const canTotal = num(eff.canAddonRON) * can;
+    const fmsTotal = num(eff.fmsAddonRON) * fms;
+    const aiAssist = aiAssistOn ? num(eff.aiAssistantRON) : 0;
+    const aiAgents = aiAgentsOn ? num(eff.aiAgentsRON) : 0;
+    return mk('tiered', baseTotal + canTotal + fmsTotal, aiAssist + aiAgents,
+      { base: baseTotal, canAddon: canTotal, fmsAddon: fmsTotal, aiAssistant: aiAssist, aiAgents: aiAgents });
+  }
+  // PRESET / legacy per-vehicul
+  const perVehicleTotal = num(eff.pricePerVehicleRON) * total;
+  return mk('preset', perVehicleTotal, 0, { base: perVehicleTotal });
 }
 
 // ─── Funcții (module) controlabile per-companie de super-admin (checkbox-uri) ───
@@ -129,4 +177,4 @@ function enabledAgentsFor(company) {
   return AGENTS_BY_PLAN[eff && eff.key] || [];
 }
 
-module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans, effectivePlan, ALL_AGENT_KEYS, AGENTS_BY_PLAN, enabledAgentsFor, FEATURE_KEYS, FEATURE_DEFAULTS_BY_PLAN, featuresFor };
+module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans, effectivePlan, computeCompanyPrice, ALL_AGENT_KEYS, AGENTS_BY_PLAN, enabledAgentsFor, FEATURE_KEYS, FEATURE_DEFAULTS_BY_PLAN, featuresFor };

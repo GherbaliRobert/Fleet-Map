@@ -2146,9 +2146,11 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       if (c.is_demo || !plans) return { mrr: 0, key: 'start' };
       const eff = plans.effectivePlan(c);
       const key = eff ? eff.key : 'start';
-      if (eff && eff.flatPriceRON != null) return { mrr: eff.flatPriceRON, key };
-      const ppv = eff ? eff.pricePerVehicleRON : null;
-      return { mrr: ppv != null ? ppv * (c.device_count || 0) : 0, key };
+      // Estimare la scară de dashboard: toate vehiculele numărate pe nivelul de bază (ca „none") → fără query CAN
+      // per companie (clasificarea CAN rulează doar în /overview). Pt. presetări/flat e EXACT; pt. oferte tiered e
+      // o estimare-minim (cardurile au deja eticheta „estimat"). Add-on-urile AI se numără ca „list price".
+      const price = plans.computeCompanyPrice(c, { none: (c.device_count || 0), can: 0, fms: 0 });
+      return { mrr: price.monthlyTotal, key };
     }
     let mrrTotal = 0, activeSubs = 0; const mrrByPlan = {};
     realCompanies.forEach(function (c) {
@@ -2210,7 +2212,11 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
       can: vehicles.filter(v => v.can_type === 'can').length,
       none: vehicles.filter(v => v.can_type === 'none').length
     };
-    res.json({ company, access: companyAccessStatus(company), counts, users, vehicles, payments });
+    // Oferta efectivă (prefill editor) + module active (pt. preview-ul add-on-urilor AI) + preț lunar EXACT.
+    const offer = plans ? plans.effectivePlan(company) : null;
+    const features = plans ? plans.featuresFor(company) : {};
+    const price = plans ? plans.computeCompanyPrice(company, counts, { features }) : null;
+    res.json({ company, access: companyAccessStatus(company), counts, users, vehicles, payments, offer, price, features });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res) => {
@@ -2366,13 +2372,21 @@ app.put('/api/companies/:id/plan', requireAuth, requireSuperadmin, async (req, r
     const planKey = (req.body && req.body.plan) || 'start';
     if (planKey === 'custom') {
       const c = (req.body && req.body.custom) || {};
-      const perVeh = c.pricePerVehicleRON != null && c.pricePerVehicleRON !== '' ? Number(c.pricePerVehicleRON) : null;
-      const flat = c.flatPriceRON != null && c.flatPriceRON !== '' ? Number(c.flatPriceRON) : null;
-      if ((perVeh == null || isNaN(perVeh)) && (flat == null || isNaN(flat))) return res.status(400).json({ error: 'Planul custom are nevoie de un preț (per vehicul SAU fix/lună)' });
+      const numOrNull = function (v) { if (v == null || v === '') return null; const n = Number(v); return (isNaN(n) || n < 0) ? null : n; };
+      const perVeh = numOrNull(c.pricePerVehicleRON);
+      const flat = numOrNull(c.flatPriceRON);
+      const base = numOrNull(c.basePerVehicleRON);
+      // Oferta are nevoie de CEL PUȚIN un preț de pornire: bază/vehicul (tiered), per-vehicul (legacy) sau fix/lună.
+      if (perVeh == null && flat == null && base == null) return res.status(400).json({ error: 'Oferta custom are nevoie de un preț (bază/vehicul, per vehicul, SAU fix/lună)' });
       const custom = {
         name: (c.name || 'Custom').toString().slice(0, 60),
-        pricePerVehicleRON: (perVeh != null && !isNaN(perVeh)) ? perVeh : null,
-        flatPriceRON: (flat != null && !isNaN(flat)) ? flat : null,
+        basePerVehicleRON: base,
+        canAddonRON: numOrNull(c.canAddonRON),
+        fmsAddonRON: numOrNull(c.fmsAddonRON),
+        aiAssistantRON: numOrNull(c.aiAssistantRON),
+        aiAgentsRON: numOrNull(c.aiAgentsRON),
+        pricePerVehicleRON: perVeh,
+        flatPriceRON: flat,
         vehicleLimit: (c.vehicleLimit != null && c.vehicleLimit !== '') ? parseInt(c.vehicleLimit) : null,
         stripePriceId: (c.stripePriceId || '').toString().slice(0, 80),
         note: (c.note || '').toString().slice(0, 300)
