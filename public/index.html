@@ -6383,6 +6383,31 @@ const pozitii = await r.json();</code></pre>
 
     // Recalculează gruparea: vehiculele din același hotspot (≥2) → o bulă cu numărul; restul individuale.
     // Wrapper sigur: o eroare în calcul NU trebuie să blocheze butonul/UI-ul (la toggle sau la selectare).
+    // Distanță în metri (haversine) — pt. gruparea de proximitate.
+    function _grpDistM(la1, lo1, la2, lo2) {
+      const R = 6371000, dLa = (la2 - la1) * Math.PI / 180, dLo = (lo2 - lo1) * Math.PI / 180;
+      const a = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    // Clusterizează vehiculele „libere" (fără hotspot) care sunt la ≤ maxM metri unele de altele (≥2 → grup).
+    function _proximityClusters(items, maxM) {
+      maxM = maxM || 80;
+      const clusters = [], used = new Set();
+      for (let i = 0; i < items.length; i++) {
+        if (used.has(items[i].imei)) continue;
+        const cl = [items[i]]; used.add(items[i].imei);
+        for (let j = i + 1; j < items.length; j++) {
+          if (used.has(items[j].imei)) continue;
+          if (_grpDistM(items[i].lat, items[i].lng, items[j].lat, items[j].lng) <= maxM) { cl.push(items[j]); used.add(items[j].imei); }
+        }
+        if (cl.length >= 2) {
+          let la = 0, lo = 0; cl.forEach(function (x) { la += x.lat; lo += x.lng; });
+          const ids = cl.map(function (x) { return x.imei; });
+          clusters.push({ imeis: ids, center: [la / cl.length, lo / cl.length], key: ids.slice().sort().join(',') });
+        }
+      }
+      return clusters;
+    }
     function recomputeGrouping() {
       try { _recomputeGroupingImpl(); } catch (e) { if (window.console) console.warn('recomputeGrouping:', e); }
     }
@@ -6400,52 +6425,63 @@ const pozitii = await r.json();</code></pre>
         });
         return;
       }
-      // strânge vehiculele pe zone (selectatul/urmăritul rămân individuale)
-      const byZone = new Map();
+      // strânge vehiculele: pe zone (hotspot) + cele „libere" (fără zonă) pt. gruparea de proximitate.
+      // Selectatul/urmăritul rămân individuale.
+      const byZone = new Map(); const loose = [];
       devices.forEach(function (d, imei) {
         if (!markers.has(imei) || d.latitude == null || d.longitude == null) return;
         if (imei === selectedImei || imei === window._followImei) return;
         const z = zoneOfPoint(d.latitude, d.longitude);
-        if (!z) return;
-        if (!byZone.has(z.id)) byZone.set(z.id, { zone: z, imeis: [] });
-        byZone.get(z.id).imeis.push(imei);
+        if (z) {
+          if (!byZone.has(z.id)) byZone.set(z.id, { zone: z, imeis: [] });
+          byZone.get(z.id).imeis.push(imei);
+        } else {
+          loose.push({ imei: imei, lat: d.latitude, lng: d.longitude });
+        }
       });
-      const grouped = new Set();
-      byZone.forEach(function (entry) { if (entry.imeis.length >= 2) entry.imeis.forEach(function (i) { grouped.add(i); }); });
+      // grupuri = zone cu ≥2  +  clustere de proximitate cu ≥2 (vehicule una lângă alta, fără hotspot)
+      const groups = [];
+      byZone.forEach(function (entry) {
+        if (entry.imeis.length < 2) return;
+        const c = entry.zone.kind === 'circle' ? entry.zone.center : _polyCenter(entry.zone.ring);
+        groups.push({ id: 'z' + entry.zone.id, name: entry.zone.name, center: c, imeis: entry.imeis });
+      });
+      _proximityClusters(loose, 80).forEach(function (cl) {
+        groups.push({ id: 'p' + cl.key, name: 'Vehicule apropiate', center: cl.center, imeis: cl.imeis });
+      });
       // ascunde vehiculele grupate, arată restul
+      const grouped = new Set(); groups.forEach(function (g) { g.imeis.forEach(function (i) { grouped.add(i); }); });
       markers.forEach(function (mk, imei) {
         if (grouped.has(imei)) { if (map.hasLayer(mk)) map.removeLayer(mk); }
         else { if (!map.hasLayer(mk)) mk.addTo(map); }
       });
-      // bule pentru zonele cu ≥2; actualizează numărul doar când se schimbă
-      const liveZones = new Set();
-      byZone.forEach(function (entry, zoneId) {
-        if (entry.imeis.length < 2) return;
-        liveZones.add(zoneId);
-        const count = entry.imeis.length;
-        const center = entry.zone.kind === 'circle' ? entry.zone.center : _polyCenter(entry.zone.ring);
-        let bubble = _groupBubbles.get(zoneId);
+      // bule pentru fiecare grup; actualizează numărul doar când se schimbă
+      const liveIds = new Set();
+      groups.forEach(function (g) {
+        liveIds.add(g.id);
+        const count = g.imeis.length;
+        let bubble = _groupBubbles.get(g.id);
         if (!bubble) {
-          bubble = L.marker(center, { zIndexOffset: 1000 });
+          bubble = L.marker(g.center, { zIndexOffset: 1000 });
           bubble.on('click', function () { _openGroupPopup(bubble); });
           bubble.addTo(map);
-          _groupBubbles.set(zoneId, bubble);
+          _groupBubbles.set(g.id, bubble);
           bubble._count = -1;
         }
-        bubble.setLatLng(center);
+        bubble.setLatLng(g.center);
         if (bubble._count !== count) {
           bubble.setIcon(L.divIcon({
             className: 'grp-bubble-marker',
-            html: '<div class="grp-bubble" title="' + _esc(entry.zone.name) + '">' + count + '</div>',
+            html: '<div class="grp-bubble" title="' + _esc(g.name) + '">' + count + '</div>',
             iconSize: [38, 38], iconAnchor: [19, 19]
           }));
           bubble._count = count;
         }
-        bubble._imeis = entry.imeis; bubble._zoneName = entry.zone.name;
+        bubble._imeis = g.imeis; bubble._zoneName = g.name;
       });
       // scoate bulele rămase fără grup
-      _groupBubbles.forEach(function (b, zoneId) {
-        if (!liveZones.has(zoneId)) { try { map.removeLayer(b); } catch (e) {} _groupBubbles.delete(zoneId); }
+      _groupBubbles.forEach(function (b, id) {
+        if (!liveIds.has(id)) { try { map.removeLayer(b); } catch (e) {} _groupBubbles.delete(id); }
       });
     }
 
