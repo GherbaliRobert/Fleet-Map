@@ -4512,8 +4512,12 @@ const pozitii = await r.json();</code></pre>
       document.querySelector('#rep-table thead').innerHTML = '';
       document.querySelector('#rep-table tbody').innerHTML = '';
       document.getElementById('rep-summary').innerHTML = '';
+      var _ch = document.getElementById('rep-charts'); if (_ch) _ch.innerHTML = '';
+      var _vv = document.getElementById('rep-vehview'); if (_vv) { _vv.innerHTML = ''; _vv.style.display = 'none'; }
+      var _fb = document.getElementById('rep-filter-bar'); if (_fb) { _fb.innerHTML = ''; _fb.style.display = 'none'; }
       document.getElementById('rep-empty').style.display = 'none';
       document.getElementById('rep-count').textContent = '';
+      _repFilter = null; _repSort = null;
       lastReport = null;
     }
     function backToReportCatalog() {
