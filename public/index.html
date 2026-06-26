@@ -4991,6 +4991,39 @@ const pozitii = await r.json();</code></pre>
       const bar = document.getElementById('rep-filter-bar');
       if (bar) { if (_repFilter) { bar.style.display = 'flex'; bar.innerHTML = '<span><i class="fas fa-filter"></i> Doar: <strong>' + _repEsc(_repFilter.desc) + '</strong> — ' + pairs.length + ' din ' + allRows.length + ' rânduri</span><button class="btn-sm" onclick="_repClearFilter()"><i class="fas fa-times"></i> Arată tot</button>'; } else bar.style.display = 'none'; }
       const cnt = document.getElementById('rep-count'); if (cnt) cnt.textContent = pairs.length + (_repFilter ? ' / ' + allRows.length : '') + ' rânduri';
+      _repFillAddresses();
+    }
+    // ─── Completare progresivă a adreselor: celulele rămase pe coordonate → adresă (throttle Nominatim, cache) ───
+    var _repGeoQueued = {}, _repGeoBusy = false, _repGeoQ = [];
+    var _REP_COORD = /^-?\d{1,3}\.\d{3,},\s*-?\d{1,3}\.\d{3,}$/;
+    function _repFillAddresses() {
+      if (typeof reverseGeocode !== 'function') return;
+      var tb = document.querySelector('#rep-table tbody'); if (!tb) return;
+      var found = {};
+      tb.querySelectorAll('td').forEach(function (td) { var t = (td.textContent || '').trim(); if (_REP_COORD.test(t)) found[t] = 1; });
+      Object.keys(found).forEach(function (coordStr) {
+        var p = coordStr.split(','), key = parseFloat(p[0]).toFixed(4) + ',' + parseFloat(p[1]).toFixed(4);
+        if (geocodeCache[key] && !_REP_COORD.test(geocodeCache[key])) { _repApplyAddr(coordStr, geocodeCache[key]); return; }
+        if (_repGeoQueued[coordStr]) return; _repGeoQueued[coordStr] = 1; _repGeoQ.push(coordStr);
+      });
+      _repGeoDrain();
+    }
+    function _repGeoDrain() {
+      if (_repGeoBusy) return;
+      var coordStr = _repGeoQ.shift(); if (!coordStr) return;
+      _repGeoBusy = true;
+      var p = coordStr.split(',');
+      reverseGeocode(parseFloat(p[0]), parseFloat(p[1])).then(function (addr) {
+        if (addr && !_REP_COORD.test(String(addr))) _repApplyAddr(coordStr, addr);
+      }).catch(function () {}).then(function () { _repGeoBusy = false; setTimeout(_repGeoDrain, 1100); });
+    }
+    function _repApplyAddr(coordStr, addr) {
+      var tb = document.querySelector('#rep-table tbody');
+      if (tb) tb.querySelectorAll('td').forEach(function (td) { if ((td.textContent || '').trim() === coordStr) td.textContent = addr; });
+      if (lastReport) {
+        (lastReport.rows || []).forEach(function (r) { for (var i = 0; i < r.length; i++) if (r[i] === coordStr) r[i] = addr; });
+        (lastReport.perVehicle || []).forEach(function (v) { (v.rows || []).forEach(function (r) { for (var i = 0; i < r.length; i++) if (r[i] === coordStr) r[i] = addr; }); });
+      }
     }
     // Drill-down: la click pe un element de grafic, filtrează tabelul la rândurile corespunzătoare.
     function _repChartFilter(chart, label) {

@@ -138,7 +138,7 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
   if (geocode && geocode.warm && tripList.length) {
     const coords = [];
     for (const { tr } of tripList) { if (tr.startP) coords.push({ lat: tr.startP.latitude, lng: tr.startP.longitude }); if (tr.endP) coords.push({ lat: tr.endP.latitude, lng: tr.endP.longitude }); }
-    try { await geocode.warm(coords, { maxUnique: 50, budgetMs: imeis.length <= 1 ? 8000 : 3000 }); } catch (e) {}
+    try { await geocode.warm(coords, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 14000 : 6000 }); } catch (e) {}
   }
   const rows = tripList.map(({ imei, tr }) => {
     let ks = odo(tr.startP), ke = odo(tr.endP);
