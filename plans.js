@@ -123,10 +123,9 @@ function computeCompanyPrice(company, canCounts, opts) {
       breakdown: Object.assign({ base: 0, canAddon: 0, fmsAddon: 0, aiAssistant: 0, aiAgents: 0, counts: { none: none, can: can, fms: fms, total: total } }, bd)
     };
   };
-  // FLAT (legacy): prețul fix câștigă, fără AI separat
-  if (eff.flatPriceRON != null) { const flat = num(eff.flatPriceRON); return mk('flat', flat, 0, { base: flat }); }
-  // DIRECT pe tip: preț ÎNTREG/vehicul fără CAN și preț ÎNTREG/vehicul cu CAN (+ FMS opțional). Cel mai intuitiv
-  // (ex. fără CAN 21 lei, cu CAN 45 lei). Ce vehicul e „cu CAN" vine din canCounts (override manual din UI sau auto).
+  // DIRECT pe tip: preț ÎNTREG/vehicul fără CAN + preț ÎNTREG/vehicul cu CAN (+ FMS opțional). Cel mai intuitiv
+  // (ex. fără CAN 21 lei, cu CAN 45 lei). ÎNAINTE de flat — dacă e setat priceNoneRON, câștigă, chiar dacă a rămas
+  // un flatPriceRON vechi dintr-un model anterior. „Cu CAN" vine din canCounts (override manual din UI sau auto).
   if (eff.priceNoneRON != null) {
     const pn = num(eff.priceNoneRON);
     const pc = eff.priceCanRON != null ? num(eff.priceCanRON) : pn;
@@ -136,6 +135,8 @@ function computeCompanyPrice(company, canCounts, opts) {
     const aiAgents = aiAgentsOn ? num(eff.aiAgentsRON) : 0;
     return mk('direct', noneTotal + canTotal + fmsTotal, aiAssist + aiAgents, { base: noneTotal, canAddon: canTotal, fmsAddon: fmsTotal, aiAssistant: aiAssist, aiAgents: aiAgents });
   }
+  // FLAT (legacy): preț fix lunar (fără AI separat) — doar dacă NU e ofertă direct.
+  if (eff.flatPriceRON != null) { const flat = num(eff.flatPriceRON); return mk('flat', flat, 0, { base: flat }); }
   // TIERED custom: bază/vehicul (toate) + spor CAN (vehiculele cu CAN) + spor FMS + add-on-uri AI lunare
   if (eff.basePerVehicleRON != null) {
     const baseTotal = num(eff.basePerVehicleRON) * total;
