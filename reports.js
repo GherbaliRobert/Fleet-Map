@@ -702,6 +702,45 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     summary: { 'Km total': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts };
 }
 
+async function rCostsTotal(db, imeis, from, to, opts, devMap) { // Costuri totale: combustibil (auto din telemetrie) + service (mentenanță) + acte (documente)
+  const d0 = String(from).slice(0, 10), d1 = String(to).slice(0, 10);
+  const priceMap = {}; try { (await db.pool.query('SELECT imei, fuel_price FROM devices')).rows.forEach(d => priceMap[d.imei] = parseFloat(d.fuel_price)); } catch (e) {}
+  const svcMap = {}; try {
+    const r = await db.pool.query("SELECT imei, COALESCE(SUM(cost),0)::float AS c FROM maintenance WHERE status='done' AND imei = ANY($1) AND COALESCE(done_date, done_at::date) BETWEEN $2 AND $3 GROUP BY imei", [imeis, d0, d1]);
+    r.rows.forEach(x => svcMap[x.imei] = x.c);
+  } catch (e) {}
+  const docMap = {}; try {
+    const r = await db.pool.query("SELECT imei, COALESCE(SUM(cost),0)::float AS c FROM vehicle_documents WHERE imei = ANY($1) AND issue_date BETWEEN $2 AND $3 GROUP BY imei", [imeis, d0, d1]);
+    r.rows.forEach(x => docMap[x.imei] = x.c);
+  } catch (e) {}
+  const rows = []; let tFuel = 0, tSvc = 0, tDoc = 0, tKm = 0; const vTotal = [];
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    let first = null, last = null, refuel = 0, dist = 0, prev = null;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], fl = fuelL(p);
+      if (fl != null) { if (first == null) first = fl; last = fl; if (prev != null) { const dd = fl - prev; if (dd >= (opts.refuelMin || 10)) refuel += dd; } prev = fl; }
+      if (i > 0) { const pr = pts[i - 1], dk = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dk < MAX_STEP_KM) dist += dk; }
+    }
+    const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
+    const fuelCost = consumed * (priceMap[imei] || opts.fuelPrice || 7.5);
+    const svc = svcMap[imei] || 0, doc = docMap[imei] || 0;
+    const total = fuelCost + svc + doc, perKm = dist > 1 ? total / dist : 0;
+    const nm = label(devMap, imei);
+    rows.push([nm, Math.round(fuelCost) + ' RON', Math.round(svc) + ' RON', Math.round(doc) + ' RON', Math.round(total) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
+    tFuel += fuelCost; tSvc += svc; tDoc += doc; tKm += dist; if (total) vTotal.push([nm, total]);
+  }
+  rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4]));
+  const grand = tFuel + tSvc + tDoc;
+  const topT = _topN(vTotal, 10);
+  const charts = grand ? [
+    { type: 'doughnut', title: 'Costuri pe categorie (RON)', labels: ['Combustibil', 'Service', 'Acte'], datasets: [{ label: 'RON', data: [Math.round(tFuel), Math.round(tSvc), Math.round(tDoc)] }] },
+    { type: 'bar', title: 'Cost total pe vehicul (RON)', labels: topT.labels, datasets: [{ label: 'RON', data: topT.data }] }
+  ] : [];
+  return { columns: ['Vehicul', 'Combustibil', 'Service', 'Acte', 'Total', 'Cost/km'], rows,
+    summary: { 'Combustibil (RON)': Math.round(tFuel), 'Service (RON)': Math.round(tSvc), 'Acte (RON)': Math.round(tDoc), 'TOTAL (RON)': Math.round(grand), 'Km total': Math.round(tKm) }, charts };
+}
+
 async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (din consum carburant)
   const FACTOR = opts.co2Factor || 2.64; // kg CO₂ / litru motorină
   const rows = []; let tCo2 = 0, tKm = 0, tCons = 0; const vCo2 = [], vPerKm = [];
@@ -746,6 +785,7 @@ const REPORTS = {
   consumption: { label: 'Consum carburant',       cat: 'consum',       fn: rConsumption },
   fuel:        { label: 'Alimentări & scurgeri',  cat: 'consum',       fn: rFuel },
   costs:       { label: 'Costuri combustibil',    cat: 'consum',       fn: rCosts },
+  costs_total: { label: 'Costuri totale (toate)', cat: 'consum',       fn: rCostsTotal },
   emissions:   { label: 'Emisii CO₂',             cat: 'consum',       fn: rEmissions },
   can:         { label: 'Date CAN',               cat: 'can',          fn: rCan },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   fn: rSpeeding },
