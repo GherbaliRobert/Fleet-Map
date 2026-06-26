@@ -140,6 +140,26 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
     return [ label(devMap, imei), fmtTs(tr.start), addr(tr.startP), fmtTs(tr.end), addr(tr.endP), fmtDur(tr.durationSec), dist.toFixed(2),
       ks != null ? ks : '—', ke != null ? ke : '—', tr.avgSpeed, tr.maxSpeed ];
   });
+  // Date structurate pe vehicul (pt. export Excel: sheet „Sumar" + un sheet per mașină).
+  const byImei = {};
+  tripList.forEach(({ imei, tr }, i) => {
+    if (!byImei[imei]) byImei[imei] = { name: label(devMap, imei), trips: [], rows: [] };
+    byImei[imei].trips.push(tr); byImei[imei].rows.push(rows[i]);
+  });
+  const perVehicle = Object.keys(byImei).map(imei => {
+    const v = byImei[imei];
+    const trips = v.trips.slice().sort((a, b) => new Date(a.start) - new Date(b.start));
+    const tKm = trips.reduce((s, t) => s + t.distanceKm, 0);
+    const f = trips[0], l = trips[trips.length - 1];
+    // Index start/stop (odometru) pe toată perioada, cu aceeași validare (corelare cu distanța totală).
+    let kmStart = odo(f.startP), kmEnd = odo(l.endP);
+    if (!(kmStart != null && kmEnd != null && kmStart > 0 && kmEnd >= kmStart && (kmEnd - kmStart) <= tKm * 3 + 5 && (kmEnd - kmStart) >= tKm * 0.5 - 2)) { kmStart = null; kmEnd = null; }
+    return {
+      vehicul: v.name, firstDeparture: fmtTs(f.start), lastArrival: fmtTs(l.end),
+      totalKm: Math.round(tKm * 10) / 10, kmStart: kmStart != null ? kmStart : '—', kmEnd: kmEnd != null ? kmEnd : '—',
+      tripCount: trips.length, rows: v.rows
+    };
+  }).sort((a, b) => String(a.vehicul).localeCompare(String(b.vehicul)));
   const kmDay = _groupByDay(all, x => x.start, x => x.distanceKm);
   const nDay = _groupByDay(all, x => x.start, null);
   const spd = _histogram(all.map(x => x.maxSpeed), [50, 70, 90, 110]);
@@ -149,7 +169,7 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
     { type: 'bar',  title: 'Distribuție viteză maximă (km/h)', labels: spd.labels,   datasets: [{ label: 'curse', data: spd.data }] }
   ] : [];
   return { columns: ['Vehicul','Plecare','Loc. plecare','Sosire','Loc. sosire','Durată','Distanță (km)','Km plecare','Km sosire','Vit. medie','Vit. max'],
-    rows, summary: { 'Curse': count, 'Distanță totală (km)': Math.round(totalKm*10)/10, 'Durată totală': fmtDur(totalDur) }, charts };
+    rows, summary: { 'Curse': count, 'Distanță totală (km)': Math.round(totalKm*10)/10, 'Durată totală': fmtDur(totalDur) }, charts, perVehicle };
 }
 
 async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / staționări

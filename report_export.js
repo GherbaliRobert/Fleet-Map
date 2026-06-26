@@ -18,7 +18,45 @@ function datePart() {
 }
 
 // ─── Excel ───
+// Nume de sheet valid Excel (≤31 caractere, fără \ / ? * [ ] :), unic în workbook.
+function xlSheetName(name, used) {
+  let s = String(name == null ? 'Sheet' : name).replace(/[\\/?*\[\]:]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 28) || 'Sheet';
+  let cand = s, i = 2;
+  while (used.has(cand.toLowerCase())) { cand = (s.slice(0, 25) + ' ' + i).trim(); i++; }
+  used.add(cand.toLowerCase());
+  return cand;
+}
+// Scrie un tabel uniform într-un worksheet: linii titlu + antet + rânduri + auto-lățime.
+function xlWriteTable(ws, titleLines, columns, rows) {
+  const ncol = Math.max(1, columns.length);
+  let r = 1;
+  for (const tl of (titleLines || [])) { ws.mergeCells(r, 1, r, ncol); const c = ws.getCell(r, 1); c.value = tl.text; c.font = tl.font || { bold: true, size: 13 }; r++; }
+  r++;
+  const hr = r;
+  columns.forEach((c, i) => { const cell = ws.getCell(hr, i + 1); cell.value = c; cell.font = { bold: true }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } }; cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } }; });
+  r = hr + 1;
+  for (const row of (rows || [])) { const xr = ws.getRow(r++); (row || []).forEach((v, i) => { xr.getCell(i + 1).value = (v == null ? '' : v); }); }
+  columns.forEach((c, i) => { let w = String(c).length; for (const row of (rows || [])) { const v = row && row[i]; if (v != null) w = Math.max(w, String(v).length); } ws.getColumn(i + 1).width = Math.min(45, Math.max(10, w + 2)); });
+}
+// Excel multi-sheet pt. rapoarte cu date pe vehicul (ex. Foaie de parcurs): „Sumar" + un sheet/mașină.
+async function toXlsxMultiSheet(report) {
+  const wb = new ExcelJS.Workbook(); wb.creator = 'RA Track';
+  const used = new Set();
+  const period = { text: 'Perioada: ' + fmtPeriod(report.from, report.to), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
+  const pv = report.perVehicle || [];
+  const sumCols = ['Vehicul', 'Prima plecare', 'Ultima sosire', 'Km totali', 'Km plecare', 'Km sosire', 'Nr. curse'];
+  const sumRows = pv.map(v => [v.vehicul, v.firstDeparture, v.lastArrival, v.totalKm, v.kmStart, v.kmEnd, v.tripCount]);
+  const totKm = pv.reduce((s, v) => s + (parseFloat(v.totalKm) || 0), 0);
+  const totTrips = pv.reduce((s, v) => s + (v.tripCount || 0), 0);
+  sumRows.push(['TOTAL flotă', '', '', Math.round(totKm * 10) / 10, '', '', totTrips]);
+  xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], sumCols, sumRows);
+  for (const v of pv) {
+    xlWriteTable(wb.addWorksheet(xlSheetName(v.vehicul, used)), [{ text: v.vehicul }, period], report.columns || [], v.rows || []);
+  }
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
 async function toXlsx(report) {
+  if (report.perVehicle && report.perVehicle.length) return toXlsxMultiSheet(report);
   const cols = report.columns || [];
   const ncol = Math.max(1, cols.length);
   const wb = new ExcelJS.Workbook();
