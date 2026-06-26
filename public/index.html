@@ -11869,8 +11869,8 @@ const pozitii = await r.json();</code></pre>
       return '<div class="rax-co-item" style="border-left:3px solid ' + col + ';' + (done ? 'opacity:.5;' : '') + '">'
         + '<h4><i class="fas ' + ic + '" style="color:' + col + '"></i> ' + esc(f.title || '') + '</h4>'
         + '<div class="rax-co-meta">' + esc(f.body || '') + '</div>'
-        + '<div class="rax-co-meta" style="font-size:10px;margin-top:3px;opacity:.8;"><i class="fas ' + am.icon + '"></i> ' + esc(am.name) + ' · ' + new Date(f.created_at).toLocaleString('ro-RO') + (done ? ' · ' + (f.status === 'acknowledged' ? 'confirmat ✓' : 'respins') : '') + '</div>'
-        + (done ? '' : '<div class="rax-co-actions"><button class="rax-btn" onclick="raxFindingAction(' + f.id + ',\'ack\')">Confirmă</button><button class="rax-btn" onclick="raxFindingAction(' + f.id + ',\'dismiss\')">Respinge</button></div>')
+        + '<div class="rax-co-meta" style="font-size:10px;margin-top:3px;opacity:.8;"><i class="fas ' + am.icon + '"></i> ' + esc(am.name) + ' · ' + new Date(f.created_at).toLocaleString('ro-RO') + (done ? ' · ' + (f.status === 'acknowledged' ? 'citit ✓' : 'respins') : '') + '</div>'
+        + (done ? '' : '<label class="rax-find-read" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;color:var(--text-muted);margin-top:8px;user-select:none;"><input type="checkbox" onchange="raxFindingAction(' + f.id + ',\'ack\')" style="cursor:pointer;width:15px;height:15px;margin:0;"> Marchează citit</label>')
         + '</div>';
     }
     async function raxLoadFindings() {
@@ -11901,7 +11901,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var r = await fetch('/api/agents/findings/' + id + '/' + action, { method: 'POST', credentials: 'same-origin' });
         if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast((e && e.error) || 'Eroare', 'error'); return; }
-        raxToast(action === 'ack' ? '✓ Confirmat' : 'Respins', 'success');
+        raxToast(action === 'ack' ? '✓ Marcat citit' : 'Respins', 'success');
       } catch (e) { raxToast('Eroare de rețea', 'error'); }
       raxLoadFindings(); raxRefreshAgBadge();
     };
