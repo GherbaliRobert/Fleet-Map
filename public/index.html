@@ -4552,7 +4552,11 @@ const pozitii = await r.json();</code></pre>
       let data;
       try { const res = await fetch(url + '&log=1', { credentials: 'same-origin' }); data = await res.json(); if (!res.ok) throw new Error(data.error||'Eroare'); }
       catch (e) { alert(e.message); document.getElementById('rep-count').textContent = ''; return; }
-      lastReport = data; renderReport(data);
+      document.getElementById('rep-count').textContent = '';
+      lastReport = data; // disponibil pt. export, dar NU mai afișăm raportul în pagina de generare
+      // Toate rapoartele: nu mai randăm inline — trimitem în Istoric și anunțăm userul.
+      alert('Raportul a fost generat și se află în „Istoric rapoarte".\nApasă „Vezi" ca să-l deschizi sau descarcă-l direct (Excel/PDF).');
+      repShowTab('history');
     }
     async function repExport(fmt) {
       let url;
