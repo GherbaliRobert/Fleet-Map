@@ -6,13 +6,14 @@ import { Icon } from '../components/Icon';
 import './detail.css';
 import './admin.css';
 
-// Roluri pe care le poate atribui un company_admin (super-admin are aplicație separată).
-const ROLES = [
+// Roluri atribuibile: super-admin = TOATE (inclusiv „Administrator companie"); company_admin = doar non-admin.
+const COMPANY_ROLES = [
   { v: 'manager', label: 'Manager' },
   { v: 'dispatcher', label: 'Dispecer' },
   { v: 'client', label: 'Client' },
   { v: 'viewer', label: 'Vizualizare' },
 ];
+const SUPER_ROLES = [{ v: 'company_admin', label: 'Administrator companie' }, { v: 'admin', label: 'Admin' }, ...COMPANY_ROLES];
 const roleLabel = (v: string) => ({ company_admin: 'Administrator', admin: 'Administrator', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare' } as Record<string, string>)[v] || v;
 
 export function AdminUsers() {
@@ -41,6 +42,10 @@ export function AdminUsers() {
   const isEdit = editing && editing.id != null;
   const isSelf = isEdit && editing.username === myUsername;
   const isAdminRole = isEdit && ['company_admin', 'admin', 'superadmin'].includes(editing.role);
+  const isSuper = !!me.value?.isSuper;
+  const lockRole = isAdminRole && !isSuper; // super-adminul POATE schimba rolul oricui; adminul firmei nu poate atinge rolurile admin
+  const baseRoles = isSuper ? SUPER_ROLES : COMPANY_ROLES;
+  const roleOpts = (isEdit && editing.role && !baseRoles.some((r) => r.v === editing.role)) ? [{ v: editing.role, label: roleLabel(editing.role) }, ...baseRoles] : baseRoles;
 
   async function save() {
     if (!isEdit) {
@@ -119,11 +124,11 @@ export function AdminUsers() {
                   <div class="fld"><label>Telefon</label><input type="tel" value={form.phone} onInput={(e) => setF('phone', (e.target as HTMLInputElement).value)} /></div>
                 </div>
                 <div class="fld"><label>Rol</label>
-                  {isAdminRole ? (
+                  {lockRole ? (
                     <input value={roleLabel(editing.role)} disabled style="opacity:.6" />
                   ) : (
                     <select value={form.role} onChange={(e) => setF('role', (e.target as HTMLSelectElement).value)} disabled={isSelf}>
-                      {ROLES.map((r) => <option value={r.v}>{r.label}</option>)}
+                      {roleOpts.map((r) => <option value={r.v}>{r.label}</option>)}
                     </select>
                   )}
                 </div>
