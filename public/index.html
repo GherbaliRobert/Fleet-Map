@@ -1219,6 +1219,9 @@
     .rax-abo-ln { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
     .rax-abo-ln.dim { color: var(--text-muted); }
     .rax-abo-ln.total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 800; font-size: 15px; color: var(--accent); }
+    .rax-abo-plans { display: flex; gap: 8px; flex-wrap: wrap; }
+    .rax-abo-plan { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 9px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .rax-abo-plan.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
     /* Dashboard: secțiune avansată pliabilă */
     .rax-dash-adv > summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--text-secondary); padding: 9px 11px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; list-style: none; display: flex; align-items: center; gap: 8px; }
     .rax-dash-adv > summary::-webkit-details-marker { display: none; }
@@ -11482,11 +11485,11 @@ const pozitii = await r.json();</code></pre>
       var fld = function (label, key, ph, hint) {
         return '<div class="rax-abo-f"><label>' + esc(label) + '</label><input type="number" min="0" step="1" id="rax-abo-' + key + '" value="' + esc(o[key] || '') + '" placeholder="' + esc(ph || '') + '" oninput="raxAboRecalc()">' + (hint ? '<span class="hint">' + esc(hint) + '</span>' : '') + '</div>';
       };
-      var presetOpts = _RAX_PRESETS.map(function (p) { return '<option value="' + p[0] + '"' + (s.planKey === p[0] ? ' selected' : '') + '>' + esc(p[1]) + '</option>'; }).join('');
+      var presetBtns = _RAX_PRESETS.map(function (p) { return '<button type="button" class="rax-abo-plan' + (s.planKey === p[0] ? ' on' : '') + '" onclick="raxAboPlanChange(\'' + p[0] + '\')">' + esc(p[1]) + '</button>'; }).join('');
       var html = '<div class="rax-abo">';
       html += '<div class="rax-abo-sect"><h4>Tip abonament</h4>' +
-        '<select class="rax-field" id="rax-abo-plan" style="margin:0;max-width:340px;" onchange="raxAboPlanChange(this.value)">' + presetOpts + '</select>' +
-        '<div class="hint" style="margin-top:6px;">Presetările au un preț unic/vehicul. „Custom" îți dă preț de bază + spor CAN/FMS + AI la plată.</div></div>';
+        '<div class="rax-abo-plans">' + presetBtns + '</div>' +
+        '<div class="hint" style="margin-top:8px;">Presetările au un preț unic/vehicul. „Custom" îți dă preț de bază + spor CAN/FMS + AI la plată.</div></div>';
       if (isCustom) {
         html += '<div class="rax-abo-sect"><h4>Ofertă custom (RON / lună, fără TVA)</h4>' +
           '<div class="rax-abo-f" style="margin-bottom:10px;"><label>Nume ofertă</label><input type="text" id="rax-abo-name" value="' + esc(o.name || '') + '" placeholder="ex. Ofertă Unitip" oninput="raxAboRecalc()"></div>' +
