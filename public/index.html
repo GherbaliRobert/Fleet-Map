@@ -4947,7 +4947,7 @@ const pozitii = await r.json();</code></pre>
     }
     function _repSortBy(ci) { if (_repSort && _repSort.ci === ci) _repSort.dir = -_repSort.dir; else _repSort = { ci, dir: 1 }; _repRenderTable(); }
     window._repSortBy = _repSortBy;
-    function _repClearFilter() { _repFilter = null; var _s = document.getElementById('rep-vehsel'); if (_s) _s.value = ''; var _su = document.getElementById('rep-vehsum'); if (_su) _su.style.display = ''; _repRenderTable(); }
+    function _repClearFilter() { _repFilter = null; var _s = document.getElementById('rep-vehsel'); if (_s) _s.value = ''; var _su = document.getElementById('rep-vehsum'); if (_su) _su.style.display = ''; if (typeof renderRepCharts === 'function') renderRepCharts((lastReport && lastReport.charts) || []); _repRenderTable(); }
     // ─── Vizualizare pe vehicul (online, ca sheet-urile din Excel): selector + sumar pe vehicul ───
     function _repRenderVehView(data) {
       var host = document.getElementById('rep-vehview'); if (!host) return;
@@ -4972,8 +4972,8 @@ const pozitii = await r.json();</code></pre>
       var sel = document.getElementById('rep-vehsel'); if (sel) sel.value = (idx == null ? '' : idx);
       var sum = document.getElementById('rep-vehsum');
       var pv = (lastReport && lastReport.perVehicle) || [];
-      if (idx === '' || idx == null) { _repFilter = null; if (sum) sum.style.display = ''; }
-      else { var v = pv[parseInt(idx, 10)]; if (v) { var name = v.vehicul; _repFilter = { ci: 0, desc: name, test: function (r) { return String(r[0]) === name; } }; } else { _repFilter = null; } if (sum) sum.style.display = 'none'; }
+      if (idx === '' || idx == null) { _repFilter = null; if (sum) sum.style.display = ''; renderRepCharts((lastReport && lastReport.charts) || []); }
+      else { var v = pv[parseInt(idx, 10)]; if (v) { var name = v.vehicul; _repFilter = { ci: 0, desc: name, test: function (r) { return String(r[0]) === name; } }; renderRepCharts(v.charts || []); } else { _repFilter = null; renderRepCharts((lastReport && lastReport.charts) || []); } if (sum) sum.style.display = 'none'; }
       _repRenderTable();
       if (idx !== '' && idx != null) { var w = document.getElementById('rep-table-wrap'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     }

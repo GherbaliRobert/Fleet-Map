@@ -114,6 +114,19 @@ function _topN(pairs, n) {
 
 // ─── Rapoarte ───
 
+// Graficele pentru Foaie de parcurs dintr-un set de curse (folosit pt. toată flota ȘI per vehicul).
+function _tripCharts(trips) {
+  if (!trips || !trips.length) return [];
+  const kmDay = _groupByDay(trips, x => x.start, x => x.distanceKm);
+  const nDay = _groupByDay(trips, x => x.start, null);
+  const spd = _histogram(trips.map(x => x.maxSpeed), [50, 70, 90, 110]);
+  return [
+    { type: 'bar',  title: 'Distanță parcursă pe zi (km)',    labels: kmDay.labels, datasets: [{ label: 'km', data: kmDay.data }] },
+    { type: 'line', title: 'Curse pe zi',                     labels: nDay.labels,  datasets: [{ label: 'curse', data: nDay.data }] },
+    { type: 'bar',  title: 'Distribuție viteză maximă (km/h)', labels: spd.labels,   datasets: [{ label: 'curse', data: spd.data }] }
+  ];
+}
+
 async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
   let totalKm = 0, totalDur = 0, count = 0; const all = []; const tripList = [];
   for (const imei of imeis) {
@@ -157,17 +170,10 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
     return {
       vehicul: v.name, firstDeparture: fmtTs(f.start), lastArrival: fmtTs(l.end),
       totalKm: Math.round(tKm * 10) / 10, kmStart: kmStart != null ? kmStart : '—', kmEnd: kmEnd != null ? kmEnd : '—',
-      tripCount: trips.length, rows: v.rows
+      tripCount: trips.length, rows: v.rows, charts: _tripCharts(trips)
     };
   }).sort((a, b) => String(a.vehicul).localeCompare(String(b.vehicul)));
-  const kmDay = _groupByDay(all, x => x.start, x => x.distanceKm);
-  const nDay = _groupByDay(all, x => x.start, null);
-  const spd = _histogram(all.map(x => x.maxSpeed), [50, 70, 90, 110]);
-  const charts = all.length ? [
-    { type: 'bar',  title: 'Distanță parcursă pe zi (km)',    labels: kmDay.labels, datasets: [{ label: 'km', data: kmDay.data }] },
-    { type: 'line', title: 'Curse pe zi',                     labels: nDay.labels,  datasets: [{ label: 'curse', data: nDay.data }] },
-    { type: 'bar',  title: 'Distribuție viteză maximă (km/h)', labels: spd.labels,   datasets: [{ label: 'curse', data: spd.data }] }
-  ] : [];
+  const charts = _tripCharts(all);
   return { columns: ['Vehicul','Plecare','Loc. plecare','Sosire','Loc. sosire','Durată','Distanță (km)','Km plecare','Km sosire','Vit. medie','Vit. max'],
     rows, summary: { 'Curse': count, 'Distanță totală (km)': Math.round(totalKm*10)/10, 'Durată totală': fmtDur(totalDur) }, charts, perVehicle };
 }
