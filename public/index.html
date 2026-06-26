@@ -11499,6 +11499,9 @@ const pozitii = await r.json();</code></pre>
     // Builder factură (HTML self-contained) — partajat de super-admin și de adminul firmei (raxPrintMyInvoice).
     function _raxBuildInvoiceHtml(p, co, iss) {
       co = co || {}; iss = iss || {};
+      // Logo pe factură (varianta pentru fundal alb: „R" închis + „A" verde). URL ABSOLUT — fereastra de print
+      // e about:blank (document.write), unde căile relative nu se rezolvă.
+      var logoUrl = (window.location && window.location.origin ? window.location.origin : '') + '/logo-mark-light.png';
       var fmtD = function (ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; };
       var invNo = _raxInvNo(p);
       var amountStr = (p.amount_ron != null) ? Number(p.amount_ron).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' lei' : '—';
@@ -11528,7 +11531,7 @@ const pozitii = await r.json();</code></pre>
           '.noprint button{font-family:inherit;background:#16a34a;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;}' +
           '@media print{.noprint{display:none;}body{padding:8px;}}' +
         '</style></head><body>' +
-        '<div class="head"><div class="brand">RA Tracks<small>MONITORIZARE GPS FLOTĂ</small></div>' +
+        '<div class="head"><div class="brand"><img src="' + esc(logoUrl) + '" alt="RA Tracks" style="height:38px;width:auto;vertical-align:middle;margin-right:5px;"><span style="vertical-align:middle;">Tracks</span><small>MONITORIZARE GPS FLOTĂ</small></div>' +
           '<div class="inv-meta"><div class="no">Factură ' + esc(invNo) + '</div><div class="dt">Data emiterii: ' + fmtD(p.paid_at || p.created_at) + '</div></div></div>' +
         '<div class="parties">' +
           '<div class="party"><h4>Emitent (Furnizor)</h4><div class="nm">' + esc(issName) + '</div>' +
