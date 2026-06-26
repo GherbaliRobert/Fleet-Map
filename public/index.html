@@ -4545,6 +4545,34 @@ const pozitii = await r.json();</code></pre>
       if (gf) { if (!gf.value) { alert('Alege un hotspot (zonă) pentru raport.'); return null; } url += '&geofenceId=' + encodeURIComponent(gf.value); }
       return url;
     }
+    // Popup branded RA Tracks (înlocuiește alert-ul nativ). opts: {title, message(html), icon, actions:[{label,primary,onClick}]}
+    function raNotify(opts) {
+      opts = opts || {};
+      if (!document.getElementById('ra-notify-css')) { var _st = document.createElement('style'); _st.id = 'ra-notify-css'; _st.textContent = '@keyframes raPopIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}'; document.head.appendChild(_st); }
+      var ex = document.getElementById('ra-notify'); if (ex) ex.remove();
+      var ov = document.createElement('div'); ov.id = 'ra-notify';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);padding:20px;';
+      var card = document.createElement('div');
+      card.style.cssText = 'background:var(--bg-card,#fff);color:var(--text-primary,#1f2937);border:1px solid var(--border,#e2e8f0);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.4);max-width:380px;width:100%;padding:24px;text-align:center;font-family:inherit;animation:raPopIn .16s ease-out;';
+      var icon = opts.icon || 'fa-circle-check';
+      card.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px;"><img class="ralm d" src="/logo-mark.png" height="28" alt="RA"><img class="ralm l" src="/logo-mark-light.png" height="28" alt="RA"><span class="raw" style="font-size:21px;font-weight:800;">Tracks</span></div>' +
+        '<div style="width:54px;height:54px;border-radius:50%;background:rgba(34,197,94,.14);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"><i class="fas ' + icon + '" style="font-size:26px;color:var(--accent,#16a34a);"></i></div>' +
+        (opts.title ? '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">' + opts.title + '</div>' : '') +
+        '<div style="font-size:13.5px;color:var(--text-muted,#64748b);line-height:1.5;margin-bottom:18px;">' + (opts.message || '') + '</div>' +
+        '<div class="ra-notify-acts" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"></div>';
+      ov.appendChild(card); document.body.appendChild(ov);
+      var acts = (opts.actions && opts.actions.length) ? opts.actions : [{ label: 'OK', primary: true }];
+      var wrap = card.querySelector('.ra-notify-acts');
+      acts.forEach(function (a) {
+        var b = document.createElement('button'); b.textContent = a.label;
+        b.style.cssText = 'padding:9px 18px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;' + (a.primary ? 'background:var(--accent,#16a34a);color:#fff;border:none;' : 'background:transparent;color:var(--text-primary);border:1px solid var(--border);');
+        b.onclick = function () { ov.remove(); if (a.onClick) { try { a.onClick(); } catch (e) {} } };
+        wrap.appendChild(b);
+      });
+      ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+      var pb = wrap.querySelector('button'); if (pb) pb.focus();
+    }
     async function repGenerate() {
       const url = repBuildUrl(); if (!url) return;
       repHistoryId = null; // generare nouă „live", nu vizualizare din istoric
@@ -4554,9 +4582,9 @@ const pozitii = await r.json();</code></pre>
       catch (e) { alert(e.message); document.getElementById('rep-count').textContent = ''; return; }
       document.getElementById('rep-count').textContent = '';
       lastReport = data; // disponibil pt. export, dar NU mai afișăm raportul în pagina de generare
-      // Toate rapoartele: nu mai randăm inline — trimitem în Istoric și anunțăm userul.
-      alert('Raportul a fost generat și se află în „Istoric rapoarte".\nApasă „Vezi" ca să-l deschizi sau descarcă-l direct (Excel/PDF).');
+      // Toate rapoartele: nu mai randăm inline — trimitem în Istoric și anunțăm userul (popup branded RA Tracks).
       repShowTab('history');
+      raNotify({ title: 'Raport generat', message: 'Raportul se află acum în <b>Istoric rapoarte</b>. Apasă „Vezi" ca să-l deschizi, sau descarcă-l direct (Excel / PDF).', actions: [{ label: 'Am înțeles', primary: true }] });
     }
     async function repExport(fmt) {
       let url;
