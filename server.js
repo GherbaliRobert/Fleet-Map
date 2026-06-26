@@ -2037,11 +2037,13 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
 app.get('/api/admin/counts', requireAuth, withScope, async (req, res) => {
   try {
     if (req.isSuper) {
+      // Exclude compania DEMO din numerele de platformă — consecvent cu restul aplicației (listele de vehicule și
+      // dashboard-ul de business exclud deja demo-ul). Altfel cardul arăta umflat (ex. 6 „active" = 5 demo + 1 real).
       const r = await db.pool.query(`SELECT
-        (SELECT COUNT(*)::int FROM companies) AS companies,
-        (SELECT COUNT(*)::int FROM users) AS users,
-        (SELECT COUNT(*)::int FROM devices WHERE status IS DISTINCT FROM 'archived') AS active_devices,
-        (SELECT COUNT(*)::int FROM devices WHERE status = 'archived') AS archived_devices`);
+        (SELECT COUNT(*)::int FROM companies WHERE COALESCE(is_demo, false) = false) AS companies,
+        (SELECT COUNT(*)::int FROM users WHERE company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo)) AS users,
+        (SELECT COUNT(*)::int FROM devices WHERE status IS DISTINCT FROM 'archived' AND (company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo))) AS active_devices,
+        (SELECT COUNT(*)::int FROM devices WHERE status = 'archived' AND (company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo))) AS archived_devices`);
       return res.json(r.rows[0]);
     }
     const r = await db.pool.query(`SELECT
