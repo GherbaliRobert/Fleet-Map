@@ -1427,11 +1427,12 @@ async function getDevices(companyId) {
   const where = companyId != null ? 'WHERE d.company_id = $1' : '';
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
-    SELECT d.*, c.name AS company_name,
+    SELECT d.*, c.name AS company_name, g.name AS group_name,
       p.latitude, p.longitude, p.speed, p.angle, p.satellites, p.timestamp as last_position_time,
       p.io_data
     FROM devices d
     LEFT JOIN companies c ON c.id = d.company_id
+    LEFT JOIN device_groups g ON g.id = d.group_id
     LEFT JOIN LATERAL (
       SELECT latitude, longitude, speed, angle, satellites, timestamp, io_data
       FROM positions

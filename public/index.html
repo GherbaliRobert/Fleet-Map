@@ -3252,7 +3252,7 @@ const pozitii = await r.json();</code></pre>
         const online = lastT ? (now - new Date(lastT).getTime()) / 60000 < 30 : false;
         const dot = '<span class="status-dot ' + (online ? 'moving' : 'offline') + '"></span>';
         const last = lastT ? new Date(lastT).toLocaleString('ro-RO') : '—';
-        const grp = d.group_id ? (vehGroups[d.group_id] || '') : '';
+        const grp = d.group_name || (d.group_id ? (vehGroups[d.group_id] || '') : '');
         const drv = d.driver_id ? (vehDrivers[d.driver_id] || '') : '';
         const archived = d.status === 'archived';
         return `<tr style="border-bottom:1px solid var(--border);">
@@ -6495,10 +6495,10 @@ const pozitii = await r.json();</code></pre>
         list.forEach(function (d) {
           if (!d || !d.imei || d.status === 'archived') return;
           var ex = devices.get(d.imei);
-          if (ex) { ex.group_id = d.group_id; ex.driver_id = d.driver_id; if (ex.name == null) ex.name = d.name; if (ex.plate == null) ex.plate = d.plate; return; } // deja live: completează doar grup/șofer din DB (nu strica poziția)
+          if (ex) { ex.group_id = d.group_id; ex.driver_id = d.driver_id; ex.group_name = d.group_name; if (ex.name == null) ex.name = d.name; if (ex.plate == null) ex.plate = d.plate; return; } // deja live: completează doar grup/șofer din DB (nu strica poziția)
           var mapped = {
             imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type,
-            group_id: d.group_id, driver_id: d.driver_id,
+            group_id: d.group_id, driver_id: d.driver_id, group_name: d.group_name,
             latitude: d.latitude, longitude: d.longitude, speed: d.speed || 0, angle: d.angle || 0,
             timestamp: d.last_position_time || null, io: d.io_data || {}
           };
@@ -6530,6 +6530,7 @@ const pozitii = await r.json();</code></pre>
         if (data.vehicle_type == null) data.vehicle_type = _prev.vehicle_type;
         if (data.group_id == null) data.group_id = _prev.group_id;
         if (data.driver_id == null) data.driver_id = _prev.driver_id;
+        if (data.group_name == null) data.group_name = _prev.group_name;
       }
       devices.set(imei, data);
 
@@ -8698,7 +8699,9 @@ const pozitii = await r.json();</code></pre>
           dev.name = name;
           dev.vehicle_type = vehicle_type;
           dev.plate = plate;
+          var _gsel = document.getElementById('edit-group');
           dev.group_id = _gid; dev.driver_id = _did;   // ca lista/filtrele live să reflecte grupa imediat
+          dev.group_name = (_gid && _gsel && _gsel.selectedIndex >= 0) ? _gsel.options[_gsel.selectedIndex].text : '';
           dev.icon = details.icon;     // reflectă imediat noua pictogramă pe hartă/listă/fișă
           dev.color = details.color;
           updateMarker(dev);
