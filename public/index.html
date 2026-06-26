@@ -1883,6 +1883,7 @@ const pozitii = await r.json();</code></pre>
         </div><!-- /rep-controls -->
         <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
         <div id="rep-charts"></div>
+        <div id="rep-vehview" style="margin-bottom:10px;"></div>
         <div id="rep-filter-bar"></div>
         <div id="rep-table-wrap" style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;min-height:120px;">
           <table id="rep-table" style="width:100%;border-collapse:collapse;font-size:12px;"><thead></thead><tbody></tbody></table>
@@ -4915,6 +4916,7 @@ const pozitii = await r.json();</code></pre>
     function renderReport(data) {
       lastReport = data; _repSort = null; _repFilter = null;
       document.getElementById('rep-summary').innerHTML = Object.entries(data.summary||{}).map(([k,v]) => `<div class="rep-chip"><div class="v">${v}</div><div class="l">${k}</div></div>`).join('');
+      _repRenderVehView(data);
       renderRepCharts(data.charts || []);
       _repRenderTable();
       const empty = !(data.rows && data.rows.length);
@@ -4945,7 +4947,36 @@ const pozitii = await r.json();</code></pre>
     }
     function _repSortBy(ci) { if (_repSort && _repSort.ci === ci) _repSort.dir = -_repSort.dir; else _repSort = { ci, dir: 1 }; _repRenderTable(); }
     window._repSortBy = _repSortBy;
-    function _repClearFilter() { _repFilter = null; _repRenderTable(); }
+    function _repClearFilter() { _repFilter = null; var _s = document.getElementById('rep-vehsel'); if (_s) _s.value = ''; var _su = document.getElementById('rep-vehsum'); if (_su) _su.style.display = ''; _repRenderTable(); }
+    // ─── Vizualizare pe vehicul (online, ca sheet-urile din Excel): selector + sumar pe vehicul ───
+    function _repRenderVehView(data) {
+      var host = document.getElementById('rep-vehview'); if (!host) return;
+      var pv = (data && data.perVehicle) || [];
+      if (!pv.length) { host.innerHTML = ''; host.style.display = 'none'; return; }
+      host.style.display = 'block';
+      var ss = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px 12px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;min-width:220px;';
+      var opts = '<option value="">▦ Sumar — toate vehiculele</option>' + pv.map(function (v, i) { return '<option value="' + i + '">' + _repEsc(v.vehicul) + '</option>'; }).join('');
+      host.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;"><span style="font-size:12px;color:var(--text-muted);font-weight:700;"><i class="fas fa-truck"></i> Vezi vehicul:</span><select id="rep-vehsel" onchange="repVehSelect(this.value)" style="' + ss + '">' + opts + '</select></div><div id="rep-vehsum">' + _repVehSummaryHtml(pv) + '</div>';
+    }
+    function _repVehSummaryHtml(pv) {
+      var totKm = 0, totTrips = 0;
+      var td = function (v, align, bold) { return '<td style="padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap;' + (align ? 'text-align:' + align + ';' : '') + (bold ? 'font-weight:700;' : '') + '">' + v + '</td>'; };
+      var th = function (t, r) { return '<th style="text-align:' + (r ? 'right' : 'left') + ';padding:7px 10px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.3px;">' + t + '</th>'; };
+      var body = pv.map(function (v, i) {
+        totKm += parseFloat(v.totalKm) || 0; totTrips += v.tripCount || 0;
+        return '<tr onclick="repVehSelect(\'' + i + '\')" style="cursor:pointer;" onmouseover="this.style.background=\'rgba(34,197,94,.07)\'" onmouseout="this.style.background=\'\'">' + td(_repEsc(v.vehicul), '', true) + td(_repEsc(v.firstDeparture)) + td(_repEsc(v.lastArrival)) + td(_repEsc(v.totalKm), 'right') + td(_repEsc(v.kmStart), 'right') + td(_repEsc(v.kmEnd), 'right') + td(_repEsc(v.tripCount), 'right', true) + '</tr>';
+      }).join('');
+      return '<div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px;"><i class="fas fa-table-list"></i> Sumar pe vehicul <span style="color:var(--text-muted);font-weight:600;font-size:11px;">— click pe un rând ca să vezi doar acel vehicul</span></div><div style="overflow:auto;border:1px solid var(--border);border-radius:10px;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr>' + th('Vehicul') + th('Prima plecare') + th('Ultima sosire') + th('Km totali', 1) + th('Km plecare', 1) + th('Km sosire', 1) + th('Curse', 1) + '</tr></thead><tbody>' + body + '<tr style="font-weight:800;background:rgba(34,197,94,.10);">' + td('TOTAL flotă', '', true) + td('') + td('') + td(Math.round(totKm * 10) / 10, 'right', true) + td('') + td('') + td(totTrips, 'right', true) + '</tr></tbody></table></div>';
+    }
+    function repVehSelect(idx) {
+      var sel = document.getElementById('rep-vehsel'); if (sel) sel.value = (idx == null ? '' : idx);
+      var sum = document.getElementById('rep-vehsum');
+      var pv = (lastReport && lastReport.perVehicle) || [];
+      if (idx === '' || idx == null) { _repFilter = null; if (sum) sum.style.display = ''; }
+      else { var v = pv[parseInt(idx, 10)]; if (v) { var name = v.vehicul; _repFilter = { ci: 0, desc: name, test: function (r) { return String(r[0]) === name; } }; } else { _repFilter = null; } if (sum) sum.style.display = 'none'; }
+      _repRenderTable();
+      if (idx !== '' && idx != null) { var w = document.getElementById('rep-table-wrap'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    }
     window._repClearFilter = _repClearFilter;
     function _repRenderTable() {
       if (!lastReport) return;
