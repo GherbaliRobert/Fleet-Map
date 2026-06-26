@@ -12134,13 +12134,17 @@ const pozitii = await r.json();</code></pre>
         + '</div>';
     }
     async function raxLoadFindings() {
-      var box = $('rax-ag-list');
+      var box = $('rax-ag-list'); if (!box) return;
       try {
         var list = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Nicio constatare. Apasă „Rulează toți agenții" pentru o verificare imediată.</div>'; return; }
         box.innerHTML = list.map(raxFindCard).join('');
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
+    // Expuse pentru panoul NOU: raxAdminTab e în alt bloc de script și le apelează prin `window.*` (la fel ca
+    // raxMoveLoadAll). Fără asta, `if (window.raxLoadFindings)` era false → constatările rămâneau pe „Se încarcă…".
+    window.raxRenderAgChips = raxRenderAgChips;
+    window.raxLoadFindings = raxLoadFindings;
     window.raxRunAgents = async function (which) {
       var btn = $('rax-ag-run'); var orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se analizează…';
       var sum = $('rax-ag-summary'); sum.innerHTML = ''; sum.style.color = '';
