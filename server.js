@@ -5673,11 +5673,13 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   if (body.ui_defaults && typeof body.ui_defaults === 'object') {
     next.ui_defaults = Object.assign({}, cur.ui_defaults || {}, _filterUiKeys(body.ui_defaults));
   }
-  if (Array.isArray(body.enabled_agents)) {
-    const valid = (plans && plans.ALL_AGENT_KEYS) || [];
-    next.enabled_agents = body.enabled_agents.filter(k => typeof k === 'string' && valid.indexOf(k) >= 0);
-  } else if (body.enabled_agents === null) {
-    delete next.enabled_agents; // null = revino la default-ul planului
+  if (opts && opts.allowAgents) { // enabled_agents = funcție cu PLATĂ → DOAR super-admin; company_admin NU-și poate auto-activa agenții
+    if (Array.isArray(body.enabled_agents)) {
+      const valid = (plans && plans.ALL_AGENT_KEYS) || [];
+      next.enabled_agents = body.enabled_agents.filter(k => typeof k === 'string' && valid.indexOf(k) >= 0);
+    } else if (body.enabled_agents === null) {
+      delete next.enabled_agents; // null = revino la default-ul planului
+    }
   }
   if (body.features && typeof body.features === 'object' && opts && opts.allowFeatures) { // features (plan/billing) = STRICT super-admin; company_admin nu și le poate auto-activa
     const fvalid = (plans && plans.FEATURE_KEYS) || [];
@@ -5727,7 +5729,7 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
-    const next = await _applyCompanySettingsPatch(id, req.body || {}, { allowFeatures: true }); // super-admin poate seta și features (plan/billing)
+    const next = await _applyCompanySettingsPatch(id, req.body || {}, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
     auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
     res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
   } catch (err) { res.status(500).json({ error: err.message }); }

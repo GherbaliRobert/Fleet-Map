@@ -2699,6 +2699,13 @@ const pozitii = await r.json();</code></pre>
       if (!u) return;
       document.getElementById('ue-id').value = id;
       document.getElementById('ue-title').textContent = 'Utilizator: ' + u.username;
+      // Opțiuni de rol după cine editează: SUPER-ADMIN poate seta ORICE rol (inclusiv „Administrator companie");
+      // adminul de firmă doar rolurile non-admin (consecvent cu backend-ul: req.isSuper ? VALID_ROLES : COMPANY_ASSIGNABLE_ROLES).
+      var _ueRoleOpts = (currentUser && currentUser.isSuper)
+        ? [['company_admin', 'Administrator companie'], ['admin', 'Admin'], ['manager', 'Manager'], ['dispatcher', 'Dispecer'], ['client', 'Client'], ['viewer', 'Viewer']]
+        : [['manager', 'Manager'], ['dispatcher', 'Dispecer'], ['client', 'Client'], ['viewer', 'Viewer']];
+      if (!_ueRoleOpts.some(function (o) { return o[0] === u.role; })) _ueRoleOpts.unshift([u.role, (typeof ROLE_LABELS !== 'undefined' && ROLE_LABELS[u.role]) || u.role]); // arată rolul curent chiar dacă nu e în listă
+      document.getElementById('ue-role').innerHTML = _ueRoleOpts.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('');
       document.getElementById('ue-role').value = u.role;
       document.getElementById('ue-active').value = (u.active === false) ? 'false' : 'true';
       document.getElementById('ue-fullname').value = u.full_name || '';
@@ -3041,9 +3048,12 @@ const pozitii = await r.json();</code></pre>
                 var labels = { watch:'RA Watch', dispatch:'RA Dispatch', care:'RA Care', optimize:'RA Optimize', compliance:'RA Compliance', client:'RA Client' };
                 var descs = { watch:'Monitorizare 24/7 — offline, scădere combustibil, ralanti prelungit + tahograf neconfigurat la camioane', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (depășiri viteză, frânări bruște, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
                 var enabledKeys = ag.enabledKeys || [];
-                agBox.innerHTML = allKeys.map(k => {
+                var agLocked = !(currentUser && currentUser.isSuper); // agenții AI = funcție cu plată → adminul firmei îi vede DOAR read-only
+                var agNote = agLocked ? '<div style="font-size:11px;color:var(--text-muted);margin:0 0 10px;padding:9px 11px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;line-height:1.5;"><i class="fas fa-lock" style="color:var(--accent);margin-right:5px;"></i>Agenții AI sunt o <b>funcție cu plată</b>, activată de administratorul platformei (RA Tracks). Mai jos vezi ce e activ pentru compania ta. Pentru activare, contactează-ne.</div>' : '';
+                agBox.innerHTML = agNote + allKeys.map(k => {
                   var on = enabledKeys.indexOf(k) >= 0;
-                  return '<label class="admin-row" style="cursor:pointer;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + labels[k] + '</div><div class="meta">' + descs[k] + '</div></div><input type="checkbox" data-agk="' + k + '" ' + (on ? 'checked' : '') + ' onchange="usSetAgent(\'' + k + '\', this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"></label>';
+                  var tag = agLocked ? ('<span style="font-size:10px;font-weight:700;margin-left:6px;color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';">' + (on ? '● activ' : '○ inactiv') + '</span>') : '';
+                  return '<label class="admin-row" style="cursor:' + (agLocked ? 'default' : 'pointer') + ';' + (agLocked && !on ? 'opacity:.6;' : '') + '"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + labels[k] + tag + '</div><div class="meta">' + descs[k] + '</div></div><input type="checkbox" data-agk="' + k + '" ' + (on ? 'checked' : '') + (agLocked ? ' disabled title="Funcție cu plată — activată de super-admin"' : ' onchange="usSetAgent(\'' + k + '\', this.checked)"') + ' style="width:18px;height:18px;accent-color:var(--accent);cursor:' + (agLocked ? 'not-allowed' : 'pointer') + ';"></label>';
                 }).join('');
               } catch (e) { agBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare.</div>'; }
             }
