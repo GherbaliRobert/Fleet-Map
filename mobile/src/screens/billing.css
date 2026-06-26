@@ -1,0 +1,14 @@
+.bill-banner { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 6px; }
+.bill-banner .st { font-weight: 800; font-size: 16px; line-height: 1.2; }
+.bill-banner .sub { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
+
+.bill-doc { font-size: 13px; }
+.bill-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin: 14px 0 5px; font-weight: 700; }
+.bill-sec:first-child { margin-top: 0; }
+.bill-party { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; }
+.bill-party b { font-size: 14px; }
+.bill-party div { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.bill-kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.bill-kv span { color: var(--text-muted); }
+.bill-kv b { text-align: right; }
+.bill-total { display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--green); border-radius: 9px; padding: 10px 14px; margin-top: 14px; font-size: 16px; font-weight: 800; color: var(--green); }

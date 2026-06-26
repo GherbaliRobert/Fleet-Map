@@ -66,6 +66,12 @@ export const Api = {
   drivers: () => api<any[]>('/api/drivers'),
   driversLite: () => api<any[]>('/api/drivers/lite'),
   companies: () => api<any[]>('/api/companies'), // super-admin: pentru etichete + filtru pe companie
+  // ── Facturare ──
+  payments: (limit = 500) => api<{ payments: any[]; total: number }>(`/api/payments?limit=${limit}`), // super-admin: toate plățile + total
+  recordPayment: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/payment`, { method: 'POST', body: b }),
+  myInvoices: () => api<any>('/api/billing/my-invoices'), // admin firmă: facturile proprii + status abonament
+  systemSettings: () => api<any>('/api/admin/system-settings'), // super-admin: include invoice_issuer
+  saveSystemSettings: (b: any) => api<any>('/api/admin/system-settings', { method: 'PUT', body: b }),
   createDriver: (b: any) => api('/api/drivers', { method: 'POST', body: b }),
   updateDriver: (id: number, b: any) => api(`/api/drivers/${id}`, { method: 'PUT', body: b }),
   deleteDriver: (id: number) => api(`/api/drivers/${id}`, { method: 'DELETE' }),

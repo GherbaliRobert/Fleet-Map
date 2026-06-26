@@ -26,6 +26,7 @@ import { ETransport } from './screens/ETransport';
 import { Tahograf } from './screens/Tahograf';
 import { AdminDocuments } from './screens/AdminDocuments';
 import { AdminWebhooks } from './screens/AdminWebhooks';
+import { Billing } from './screens/Billing';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -89,6 +90,7 @@ function Shell() {
         <Route path="/tahograf" component={Tahograf} />
         <Route path="/admin/documents" component={AdminDocuments} />
         <Route path="/admin/webhooks" component={AdminWebhooks} />
+        <Route path="/billing" component={Billing} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}
