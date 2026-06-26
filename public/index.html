@@ -6319,6 +6319,10 @@ const pozitii = await r.json();</code></pre>
       return (Date.now() - new Date(device.timestamp).getTime()) < mins * 60 * 1000;
     }
 
+    // Date LIVE proaspete (≤3 min): „în mișcare" se aprinde DOAR pe fix recent, nu pe viteza înghețată a unui fix vechi.
+    // Același prag (180000 ms) e folosit de marker (createIcon), de cardul din listă și de fișă — îl centralizăm aici.
+    function isFreshLive(d) { return !!(d && d.timestamp) && (Date.now() - new Date(d.timestamp).getTime()) < 180000; }
+
     // Un motor pornit raportează des (sub câteva minute). Dacă „contact pornit" vine dintr-un pachet vechi
     // (vehiculul tace de mult), motorul e aproape sigur OPRIT — device-ul Teltonika intră în sleep DOAR când e oprit.
     // Așa că „contact pornit" e de încredere doar dacă datele sunt proaspete (sub IGN_FRESH_MIN).
@@ -6343,7 +6347,7 @@ const pozitii = await r.json();</code></pre>
     }
 
     // Predicate status „pe motor" (consistente cu serverul): Pornit = În mișcare + Staționat
-    function vehMoving(d) { return isDeviceOnline(d) && (d.speed || 0) > 3; }
+    function vehMoving(d) { return isDeviceOnline(d) && (d.speed || 0) > 3 && isFreshLive(d); }
     function vehIgnition(d) { return ignitionOn(d.io, d.timestamp); }
     function vehStationat(d) { return isDeviceOnline(d) && !vehMoving(d) && vehIgnition(d); }
     function vehPornit(d) { return isDeviceOnline(d) && (vehMoving(d) || vehIgnition(d)); }
@@ -6389,7 +6393,7 @@ const pozitii = await r.json();</code></pre>
 
       list.innerHTML = filtered.map(d => {
         const isActive = d.imei === selectedImei;
-        const isMoving = d.speed > 0;
+        const isMoving = d.speed > 3; // consecvent cu markerul / contoarele / fișă (>3 filtrează jitterul GPS de 1-2 km/h)
         const isOnline = isDeviceOnline(d);
         const name = d.name || d.imei;
         const plate = d.plate || '';
@@ -7823,7 +7827,10 @@ const pozitii = await r.json();</code></pre>
           const imei = msg.data.imei;
           const device = devices.get(imei);
           if (device) {
-            device.timestamp = new Date(Date.now() - 6 * 60 * 1000).toISOString();
+            // La deconectarea socketului serverul zeroează viteza; o reflectăm și pe client.
+            // NU mai falsificăm timestamp-ul (înainte era setat la „acum − 6 min", ceea ce făcea un vehicul
+            // fără fix de ore întregi să pară din nou „online/în mișcare"). Rămâne ultimul fix REAL → prospețime corectă.
+            device.speed = 0;
             devices.set(imei, device);
             updateMarker(device);
           }
