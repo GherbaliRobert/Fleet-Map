@@ -12135,13 +12135,24 @@ const pozitii = await r.json();</code></pre>
         + (done ? '' : '<label class="rax-find-read" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;color:var(--text-muted);margin-top:8px;user-select:none;"><input type="checkbox" onchange="raxFindingAction(' + f.id + ',\'ack\')" style="cursor:pointer;width:15px;height:15px;margin:0;"> Marchează citit</label>')
         + '</div>';
     }
+    var _raxFindings = [];
+    function _raxNewCount() { return _raxFindings.filter(function (f) { return !f.status || f.status === 'new'; }).length; }
+    function raxRenderFindings() {
+      var box = $('rax-ag-list'); if (!box) return;
+      if (!_raxFindings.length) { box.innerHTML = '<div class="rax-co-meta">Nicio constatare. Apasă „Rulează toți agenții" pentru o verificare imediată.</div>'; return; }
+      var nNew = _raxNewCount();
+      var bar = nNew ? '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;"><button class="rax-btn" onclick="raxAckAllFindings()" title="Marchează toate constatările noi ca citite"><i class="fas fa-check-double" style="color:var(--accent)"></i> Marchează toate citite (' + nNew + ')</button></div>' : '';
+      box.innerHTML = bar + _raxFindings.map(raxFindCard).join('');
+    }
+    window.raxRenderFindings = raxRenderFindings;
     async function raxLoadFindings() {
       var box = $('rax-ag-list'); if (!box) return;
       try {
         var list = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Nicio constatare. Apasă „Rulează toți agenții" pentru o verificare imediată.</div>'; return; }
-        box.innerHTML = list.map(raxFindCard).join('');
-      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
+        if (Array.isArray(list)) { _raxFindings = list; raxRenderFindings(); }
+        else if (!_raxFindings.length) { box.innerHTML = '<div class="rax-co-meta">Nicio constatare. Apasă „Rulează toți agenții" pentru o verificare imediată.</div>'; }
+        // Dacă răspunsul NU e array (cursă de rețea / hiccup) dar deja avem constatări încărcate → păstrăm lista (nu o golim).
+      } catch (e) { if (!_raxFindings.length) box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
     // Expuse pentru panoul NOU: raxAdminTab e în alt bloc de script și le apelează prin `window.*` (la fel ca
     // raxMoveLoadAll). Fără asta, `if (window.raxLoadFindings)` era false → constatările rămâneau pe „Se încarcă…".
@@ -12166,10 +12177,31 @@ const pozitii = await r.json();</code></pre>
     window.raxFindingAction = async function (id, action) {
       try {
         var r = await fetch('/api/agents/findings/' + id + '/' + action, { method: 'POST', credentials: 'same-origin' });
-        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast((e && e.error) || 'Eroare', 'error'); return; }
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); raxToast((e && e.error) || 'Eroare', 'error'); raxRenderFindings(); return; }
         raxToast(action === 'ack' ? '✓ Marcat citit' : 'Respins', 'success');
-      } catch (e) { raxToast('Eroare de rețea', 'error'); }
-      raxLoadFindings(); raxRefreshAgBadge();
+        // Update OPTIMIST în loc de re-fetch (re-fetch-ul golea lista din cauza unei curse cu celelalte fetch-uri
+        // pe același endpoint): marchez DOAR constatarea asta în cache și re-randez din cache → lista nu mai dispare.
+        var st = action === 'dismiss' ? 'dismissed' : 'acknowledged';
+        for (var i = 0; i < _raxFindings.length; i++) if (String(_raxFindings[i].id) === String(id)) _raxFindings[i].status = st;
+        raxRenderFindings();
+      } catch (e) { raxToast('Eroare de rețea', 'error'); raxRenderFindings(); }
+      raxRefreshAgBadge();
+    };
+    // „Marchează toate citite" — ack pe toate constatările NOI (în paralel), apoi update local + re-randare.
+    window.raxAckAllFindings = async function () {
+      var news = _raxFindings.filter(function (f) { return !f.status || f.status === 'new'; });
+      if (!news.length) return;
+      if (!confirm('Marchezi toate cele ' + news.length + ' constatări noi ca citite?')) return;
+      try {
+        var results = await Promise.all(news.map(function (f) {
+          return fetch('/api/agents/findings/' + f.id + '/ack', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.ok; }).catch(function () { return false; });
+        }));
+        news.forEach(function (f, i) { if (results[i]) f.status = 'acknowledged'; });
+        var okN = results.filter(Boolean).length;
+        raxToast(okN === news.length ? '✓ Toate marcate citite' : (okN + '/' + news.length + ' marcate'), okN ? 'success' : 'error');
+        raxRenderFindings();
+      } catch (e) { raxToast('Eroare', 'error'); raxLoadFindings(); }
+      raxRefreshAgBadge();
     };
     // Mini toast vizual (nu folosim alert care blochează UI-ul)
     window.raxToast = function (msg, kind) {
