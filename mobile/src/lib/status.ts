@@ -13,11 +13,12 @@ export function statusOf(p: Position, offlineMinutes: number): StatusInfo {
   const speed = p.speed || 0;
   const ign = !!(p.io && (p.io.ignition === 1 || (p.io.ignition as any) === true));
   if (!isOnline(p, offlineMinutes)) return { status: 'offline', color: 'var(--text-muted)', label: 'Fără transmisie' };
-  // „În mișcare" (verde) DOAR dacă a transmis recent (<3 min). Viteză>0 dintr-un pachet vechi (semnal pierdut
-  // în mers) → galben, ca pe web (marker + listă + fișă). Evită falsul „merge live".
+  // „În mișcare" (verde) DOAR dacă a transmis recent (<3 min). Viteză>3 dintr-un pachet vechi (semnal pierdut
+  // în mers) → galben, ca pe web (marker + listă + fișă). Pragul >3 km/h filtrează jitterul GPS de 1-2 km/h
+  // (identic cu web-ul). Evită falsul „merge live".
   const freshLive = p.timestamp ? (Date.now() - new Date(p.timestamp).getTime()) < 180000 : false;
-  if (speed > 0 && freshLive) return { status: 'moving', color: 'var(--green)', label: 'În mișcare' };
-  if (speed > 0) return { status: 'idle', color: 'var(--yellow)', label: 'Semnal pierdut' };
+  if (speed > 3 && freshLive) return { status: 'moving', color: 'var(--green)', label: 'În mișcare' };
+  if (speed > 3) return { status: 'idle', color: 'var(--yellow)', label: 'Semnal pierdut' };
   if (ign) return { status: 'idle', color: 'var(--yellow)', label: 'Staționat' };
   return { status: 'stopped', color: 'var(--red)', label: 'Oprit' };
 }

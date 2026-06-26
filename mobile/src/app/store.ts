@@ -165,11 +165,12 @@ function applyWs(msg: any) {
   }
   if (msg.type === 'stale' && msg.data && msg.data.imei) { upsertVehicle({ imei: msg.data.imei, speed: 0, stale: true } as any); return; }
   if (msg.type === 'disconnect' && msg.data && msg.data.imei) {
-    // Purge (24h fără semnal) → scoate din listă. Deconectare normală (close socket, fără reason) → marchează
-    // „fără semnal recent" (viteză 0 + timestamp îmbătrânit), exact ca web-ul — altfel un vehicul deconectat
-    // rămânea „În mișcare" pe APK până la următorul poll.
+    // Purge (24h fără semnal) → scoate din listă. Deconectare normală (close socket) → zeroează DOAR viteza
+    // (serverul face la fel la închiderea socketului). NU mai falsificăm timestamp-ul: înainte îl „îmbătrâneam"
+    // la acum−6 min, ceea ce făcea un vehicul fără fix de ore să pară iar online/proaspăt — exact bug-ul reparat
+    // pe web. Rămâne ultimul fix REAL → prospețimea (online / „în mișcare") e onestă.
     if (msg.data.reason === 'purged') { livePos.value = livePos.value.filter((v) => v.imei !== msg.data.imei); return; }
-    upsertVehicle({ imei: msg.data.imei, speed: 0, timestamp: new Date(Date.now() - 6 * 60000).toISOString() } as any);
+    upsertVehicle({ imei: msg.data.imei, speed: 0 } as any);
     return;
   }
   if (msg.type === 'removed' && msg.data && msg.data.imei) {
