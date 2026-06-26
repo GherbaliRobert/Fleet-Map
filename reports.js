@@ -3,6 +3,7 @@
 
 const IDLE_SPEED = 3;        // km/h sub care vehiculul e considerat oprit
 const MAX_STEP_KM = 10;      // ignoră salturi GPS mai mari (puncte aberante)
+let geocode = null; try { geocode = require('./geocode'); } catch (e) {} // reverse-geocode (adrese în Foaie de parcurs)
 
 function t(p) { return new Date(p.timestamp).getTime(); }
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -21,6 +22,10 @@ function fmtDur(sec) {
 }
 function loc(p) { return p ? p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(5) : ''; }
 function io(p) { return p && p.io_data ? p.io_data : {}; }
+// Odometru (km) din CAN la un punct (start/stop cursă). Fallback null dacă vehiculul n-are CAN.
+function odo(p) { const i = io(p); let v = i.can_total_mileage; if (v == null) v = i.can_total_mileage_counted; if (v == null) v = i.total_odometer; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
+// Adresă din cache (reverse-geocode); fallback pe coordonate dacă nu e încă rezolvată.
+function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = geocode.peek(p.latitude, p.longitude); if (a) return a; } return loc(p); }
 function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
 function ignOn(p) { return io(p).ignition === 1; }
 
@@ -110,16 +115,23 @@ function _topN(pairs, n) {
 // ─── Rapoarte ───
 
 async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
-  const rows = []; let totalKm = 0, totalDur = 0, count = 0; const all = [];
+  let totalKm = 0, totalDur = 0, count = 0; const all = []; const tripList = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const { trips } = segmentTrack(pts, (opts.stopMin || 5) * 60);
-    for (const tr of trips) {
-      rows.push([ label(devMap, imei), fmtTs(tr.start), fmtTs(tr.end), fmtDur(tr.durationSec),
-        tr.distanceKm.toFixed(2), tr.avgSpeed, tr.maxSpeed, loc(tr.startP), loc(tr.endP) ]);
-      totalKm += tr.distanceKm; totalDur += tr.durationSec; count++; all.push(tr);
-    }
+    for (const tr of trips) { tripList.push({ imei, tr }); all.push(tr); totalKm += tr.distanceKm; totalDur += tr.durationSec; count++; }
   }
+  // Pre-încarcă adresele (plecare + sosire) în cache; fallback pe coordonate dacă geocoderul (Nominatim ~1/s) nu apucă.
+  if (geocode && geocode.warm && tripList.length) {
+    const coords = [];
+    for (const { tr } of tripList) { if (tr.startP) coords.push({ lat: tr.startP.latitude, lng: tr.startP.longitude }); if (tr.endP) coords.push({ lat: tr.endP.latitude, lng: tr.endP.longitude }); }
+    try { await geocode.warm(coords, { maxUnique: 50, budgetMs: imeis.length <= 1 ? 8000 : 3000 }); } catch (e) {}
+  }
+  const rows = tripList.map(({ imei, tr }) => {
+    const ks = odo(tr.startP), ke = odo(tr.endP);
+    return [ label(devMap, imei), fmtTs(tr.start), fmtTs(tr.end), fmtDur(tr.durationSec), tr.distanceKm.toFixed(2),
+      ks != null ? ks : '—', ke != null ? ke : '—', tr.avgSpeed, tr.maxSpeed, addr(tr.startP), addr(tr.endP) ];
+  });
   const kmDay = _groupByDay(all, x => x.start, x => x.distanceKm);
   const nDay = _groupByDay(all, x => x.start, null);
   const spd = _histogram(all.map(x => x.maxSpeed), [50, 70, 90, 110]);
@@ -128,7 +140,7 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
     { type: 'line', title: 'Curse pe zi',                     labels: nDay.labels,  datasets: [{ label: 'curse', data: nDay.data }] },
     { type: 'bar',  title: 'Distribuție viteză maximă (km/h)', labels: spd.labels,   datasets: [{ label: 'curse', data: spd.data }] }
   ] : [];
-  return { columns: ['Vehicul','Plecare','Sosire','Durată','Distanță (km)','Vit. medie','Vit. max','Loc. plecare','Loc. sosire'],
+  return { columns: ['Vehicul','Plecare','Sosire','Durată','Distanță (km)','Km plecare','Km sosire','Vit. medie','Vit. max','Loc. plecare','Loc. sosire'],
     rows, summary: { 'Curse': count, 'Distanță totală (km)': Math.round(totalKm*10)/10, 'Durată totală': fmtDur(totalDur) }, charts };
 }
 
