@@ -2199,24 +2199,31 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     const [users, devices, payments] = await Promise.all([
       db.getUsers(id), db.getDevices(id), db.getPayments(id, 500)
     ]);
+    // Oferta efectivă întâi — ne dă lista IMEI „cu CAN" setată manual (canImeis); altfel cădem pe auto-detect.
+    const offer = plans ? plans.effectivePlan(company) : null;
+    const canSet = (offer && Array.isArray(offer.canImeis)) ? new Set(offer.canImeis) : null;
     const vehicles = (devices || [])
       .filter(d => d.status !== 'archived')
-      .map(d => ({
-        imei: d.imei, name: d.name || null, plate: d.plate || null, vehicle_type: d.vehicle_type || null,
-        can_type: classifyDeviceCan(d), can_interface: d.can_interface || null,
-        last_position_time: d.last_position_time || d.last_seen || null
-      }));
+      .map(d => {
+        const ct = classifyDeviceCan(d);
+        return {
+          imei: d.imei, name: d.name || null, plate: d.plate || null, vehicle_type: d.vehicle_type || null,
+          can_type: ct, can_interface: d.can_interface || null,
+          bill_can: canSet ? canSet.has(d.imei) : (ct !== 'none'), // „cu CAN" pt. facturare: override manual sau auto
+          last_position_time: d.last_position_time || d.last_seen || null
+        };
+      });
     const counts = {
       users: users.length, vehicles: vehicles.length, payments: payments.length,
       fms: vehicles.filter(v => v.can_type === 'fms').length,
       can: vehicles.filter(v => v.can_type === 'can').length,
       none: vehicles.filter(v => v.can_type === 'none').length
     };
-    // Oferta efectivă (prefill editor) + module active (pt. preview-ul add-on-urilor AI) + preț lunar EXACT.
-    const offer = plans ? plans.effectivePlan(company) : null;
+    // Counts pentru FACTURARE (model direct, 2 trepte): „cu CAN" = bill_can, restul „fără CAN".
+    const billCounts = { can: vehicles.filter(v => v.bill_can).length, none: vehicles.filter(v => !v.bill_can).length, fms: 0 };
     const features = plans ? plans.featuresFor(company) : {};
-    const price = plans ? plans.computeCompanyPrice(company, counts, { features }) : null;
-    res.json({ company, access: companyAccessStatus(company), counts, users, vehicles, payments, offer, price, features });
+    const price = plans ? plans.computeCompanyPrice(company, billCounts, { features }) : null;
+    res.json({ company, access: companyAccessStatus(company), counts, billCounts, users, vehicles, payments, offer, price, features });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res) => {
@@ -2376,10 +2383,17 @@ app.put('/api/companies/:id/plan', requireAuth, requireSuperadmin, async (req, r
       const perVeh = numOrNull(c.pricePerVehicleRON);
       const flat = numOrNull(c.flatPriceRON);
       const base = numOrNull(c.basePerVehicleRON);
-      // Oferta are nevoie de CEL PUȚIN un preț de pornire: bază/vehicul (tiered), per-vehicul (legacy) sau fix/lună.
-      if (perVeh == null && flat == null && base == null) return res.status(400).json({ error: 'Oferta custom are nevoie de un preț (bază/vehicul, per vehicul, SAU fix/lună)' });
+      const priceNone = numOrNull(c.priceNoneRON);
+      // Oferta are nevoie de CEL PUȚIN un preț de pornire: fără CAN (direct), bază/vehicul (tiered), per-vehicul sau fix.
+      if (priceNone == null && perVeh == null && flat == null && base == null) return res.status(400).json({ error: 'Oferta custom are nevoie de un preț (fără CAN, bază/vehicul, per vehicul SAU fix/lună)' });
+      // IMEI-urile marcate manual „cu CAN" (din checklist-ul de vehicule).
+      const canImeis = Array.isArray(c.canImeis) ? c.canImeis.filter(function (x) { return typeof x === 'string' && /^\d{6,20}$/.test(x); }).slice(0, 5000) : null;
       const custom = {
         name: (c.name || 'Custom').toString().slice(0, 60),
+        priceNoneRON: priceNone,
+        priceCanRON: numOrNull(c.priceCanRON),
+        priceFmsRON: numOrNull(c.priceFmsRON),
+        canImeis: canImeis,
         basePerVehicleRON: base,
         canAddonRON: numOrNull(c.canAddonRON),
         fmsAddonRON: numOrNull(c.fmsAddonRON),

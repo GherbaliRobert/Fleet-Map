@@ -78,10 +78,14 @@ function publicPlans() {
 //   Oferta e „tiered" (nouă) dacă basePerVehicleRON != null: preț de bază/vehicul + spor CAN + spor FMS
 //   (pe fiecare vehicul de tipul respectiv) + add-on-uri AI lunare fixe (asistent / agenți).
 function effectivePlan(company) {
-  if (company && company.custom_plan && (company.custom_plan.basePerVehicleRON != null || company.custom_plan.pricePerVehicleRON != null || company.custom_plan.flatPriceRON != null)) {
+  if (company && company.custom_plan && (company.custom_plan.priceNoneRON != null || company.custom_plan.basePerVehicleRON != null || company.custom_plan.pricePerVehicleRON != null || company.custom_plan.flatPriceRON != null)) {
     const c = company.custom_plan;
     return {
       key: 'custom', custom: true, name: c.name || 'Custom',
+      priceNoneRON: c.priceNoneRON != null ? c.priceNoneRON : null,
+      priceCanRON: c.priceCanRON != null ? c.priceCanRON : null,
+      priceFmsRON: c.priceFmsRON != null ? c.priceFmsRON : null,
+      canImeis: Array.isArray(c.canImeis) ? c.canImeis : null,
       basePerVehicleRON: c.basePerVehicleRON != null ? c.basePerVehicleRON : null,
       canAddonRON: c.canAddonRON != null ? c.canAddonRON : null,
       fmsAddonRON: c.fmsAddonRON != null ? c.fmsAddonRON : null,
@@ -121,6 +125,17 @@ function computeCompanyPrice(company, canCounts, opts) {
   };
   // FLAT (legacy): prețul fix câștigă, fără AI separat
   if (eff.flatPriceRON != null) { const flat = num(eff.flatPriceRON); return mk('flat', flat, 0, { base: flat }); }
+  // DIRECT pe tip: preț ÎNTREG/vehicul fără CAN și preț ÎNTREG/vehicul cu CAN (+ FMS opțional). Cel mai intuitiv
+  // (ex. fără CAN 21 lei, cu CAN 45 lei). Ce vehicul e „cu CAN" vine din canCounts (override manual din UI sau auto).
+  if (eff.priceNoneRON != null) {
+    const pn = num(eff.priceNoneRON);
+    const pc = eff.priceCanRON != null ? num(eff.priceCanRON) : pn;
+    const pf = eff.priceFmsRON != null ? num(eff.priceFmsRON) : pc;
+    const noneTotal = pn * none, canTotal = pc * can, fmsTotal = pf * fms;
+    const aiAssist = aiAssistOn ? num(eff.aiAssistantRON) : 0;
+    const aiAgents = aiAgentsOn ? num(eff.aiAgentsRON) : 0;
+    return mk('direct', noneTotal + canTotal + fmsTotal, aiAssist + aiAgents, { base: noneTotal, canAddon: canTotal, fmsAddon: fmsTotal, aiAssistant: aiAssist, aiAgents: aiAgents });
+  }
   // TIERED custom: bază/vehicul (toate) + spor CAN (vehiculele cu CAN) + spor FMS + add-on-uri AI lunare
   if (eff.basePerVehicleRON != null) {
     const baseTotal = num(eff.basePerVehicleRON) * total;
