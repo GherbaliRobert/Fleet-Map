@@ -2472,6 +2472,25 @@ app.put('/api/devices/:imei/can-interface', requireAuth, requireSuperadmin, asyn
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Super-admin: TOATE dispozitivele (toate companiile) — sursa modulului „Dispozitive". Lean (fără io_data brut),
+// cu tipul de date clasificat (FMS/CAN/fără), starea (active/neasignat/archived) și compania.
+app.get('/api/admin/devices', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const devs = await db.getDevices(null);
+    const out = (devs || [])
+      .filter(d => !DEMO_SET.has(d.imei))
+      .map(d => ({
+        imei: d.imei, name: d.name || null, plate: d.plate || null, vehicle_type: d.vehicle_type || null,
+        company_id: (d.company_id != null ? d.company_id : null), company_name: d.company_name || null,
+        status: d.status || 'active',
+        can_type: classifyDeviceCan(d), can_interface: d.can_interface || null,
+        last_position_time: d.last_position_time || d.last_seen || null,
+        created_at: d.created_at || null
+      }));
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Debug super-admin: vezi io_data brut + can_interface pentru un IMEI (troubleshoot tracker fără date CAN) ───
 // GET /api/debug/last-io/:imei → ultimele 5 io_data parsate din DB
 // GET /api/debug/iface/:imei   → can_interface DB + cache + cheile CAN din ultima poziție

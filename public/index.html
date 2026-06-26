@@ -1229,6 +1229,25 @@
     .rax-abo-veh input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto; }
     .rax-abo-veh .vn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .rax-abo-veh .va { flex: 0 0 auto; }
+    /* Modul Dispozitive (super-admin) */
+    .rax-dev-bar { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .rax-dev-chip { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 20px; padding: 6px 13px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .rax-dev-chip.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
+    .rax-dev-chip .cnt { opacity: .75; }
+    .rax-dev-search { flex: 1; min-width: 180px; margin: 0; }
+    .rax-dev-alert { background: rgba(245,158,11,.12); border: 1px solid var(--orange); color: var(--orange); border-radius: 9px; padding: 9px 12px; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .rax-dev-table td { vertical-align: middle; }
+    .rax-dev-table .mono { font-size: 11.5px; color: var(--text-secondary); }
+    .rax-dev-plate { font-size: 11px; font-weight: 800; color: var(--accent); }
+    .rax-dev-co, .rax-dev-if { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 7px; padding: 5px 8px; font-size: 12px; font-family: inherit; max-width: 160px; }
+    .rax-dev-if { max-width: 104px; margin-left: 4px; }
+    .rax-dev-lp { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .rax-dev-act { white-space: nowrap; }
+    .rax-dev-act .rax-btn { font-size: 11px; padding: 4px 9px; }
+    .rax-devst { display: inline-block; border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 800; }
+    .rax-devst.active { background: rgba(63,224,125,.14); color: var(--accent); }
+    .rax-devst.pend { background: rgba(245,158,11,.16); color: var(--orange); }
+    .rax-devst.arch { background: rgba(138,147,163,.16); color: var(--text-muted); }
     /* Dashboard: secțiune avansată pliabilă */
     .rax-dash-adv > summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--text-secondary); padding: 9px 11px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; list-style: none; display: flex; align-items: center; gap: 8px; }
     .rax-dash-adv > summary::-webkit-details-marker { display: none; }
@@ -1261,6 +1280,7 @@
           <div class="aside-grp">Gestiune</div>
           <button class="aside-item active" data-atab="dash" onclick="raxAdminHome()"><i class="fas fa-gauge"></i> Acasă</button>
           <button class="aside-item" data-super data-atab="companies" onclick="raxAdminTab('companies')"><i class="fas fa-building"></i> Companii</button>
+          <button class="aside-item" data-super data-atab="devices" onclick="raxAdminTab('devices')"><i class="fas fa-microchip"></i> Dispozitive</button>
           <button class="aside-item users-only" data-atab="users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
           <button class="aside-item users-only company-admin-only" data-atab="myinvoices" onclick="raxAdminTab('myinvoices')"><i class="fas fa-file-invoice-dollar"></i> Facturile mele</button>
           <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
@@ -1289,6 +1309,7 @@
           </div>
 
           <div id="admin-tab-companies" style="display:none;"></div>
+          <div id="admin-tab-devices" style="display:none;"></div>
           <div id="admin-tab-accounts" style="display:none;"></div>
           <div id="admin-tab-archived" style="display:none;"></div>
           <div id="admin-tab-billing" style="display:none;"></div>
@@ -2409,8 +2430,8 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
-      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
-      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
+      var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
+      var titles = { companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       Object.keys(map).forEach(function (k) {
         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
@@ -2427,6 +2448,8 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadAccounts) window.raxLoadAccounts();
       } else if (name === 'archived') {
         if (window.loadArchivedDevices) window.loadArchivedDevices();
+      } else if (name === 'devices') {
+        if (window.raxLoadDevices) window.raxLoadDevices();
       } else if (name === 'billing') {
         if (window.raxLoadBilling) window.raxLoadBilling();
       } else if (name === 'myinvoices') {
@@ -12158,6 +12181,92 @@ const pozitii = await r.json();</code></pre>
         if (r && r.error) { alert(r.error); return; }
         raxLoadUnassigned();
       } catch (e) { alert('Eroare: ' + e.message); }
+    };
+
+    // ─── Modul „Dispozitive" (super-admin): toate / neasignate / active / arhivate + adoptă / respinge / mută / interfață CAN ───
+    var _raxDevices = [], _raxDevFilter = 'all', _raxDevSearch = '';
+    var _RAX_IFACE = [['', 'Auto'], ['fms', 'FMS'], ['lvcan', 'LV-CAN'], ['tacho', 'Tahograf']];
+    function _raxDevBucket(d) { if (d.status === 'archived') return 'archived'; if (d.company_id == null) return 'unassigned'; return 'active'; }
+    function _raxDevCoOptions(sel) {
+      var cos = (companiesCache || []).filter(function (c) { return !c.is_demo; });
+      return '<option value="">— neasignat —</option>' + cos.map(function (c) { return '<option value="' + c.id + '"' + (String(sel) === String(c.id) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
+    }
+    window.raxLoadDevices = async function () {
+      var box = document.getElementById('admin-tab-devices'); if (!box) return;
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var r = await Promise.all([
+          fetch('/api/admin/devices', { credentials: 'same-origin' }).then(function (x) { return x.json(); }),
+          (Array.isArray(companiesCache) && companiesCache.length) ? Promise.resolve(companiesCache) : fetch('/api/companies', { credentials: 'same-origin' }).then(function (x) { return x.json(); }).catch(function () { return []; })
+        ]);
+        _raxDevices = Array.isArray(r[0]) ? r[0] : [];
+        if ((!companiesCache || !companiesCache.length) && Array.isArray(r[1])) companiesCache = r[1];
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare: ' + esc(e.message) + '</div>'; return; }
+      raxRenderDevices();
+    };
+    window.raxDevFilter = function (k) { _raxDevFilter = k; raxRenderDevices(); };
+    window.raxRenderDevices = function () {
+      var box = document.getElementById('admin-tab-devices'); if (!box) return;
+      var all = _raxDevices, q = (_raxDevSearch || '').toLowerCase();
+      var counts = { all: all.length, unassigned: 0, active: 0, archived: 0 };
+      all.forEach(function (d) { counts[_raxDevBucket(d)]++; });
+      var rows = all.filter(function (d) {
+        if (_raxDevFilter !== 'all' && _raxDevBucket(d) !== _raxDevFilter) return false;
+        if (q && ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + (d.company_name || '')).toLowerCase().indexOf(q) < 0) return false;
+        return true;
+      }).sort(function (a, b) { return (Number(b.last_position_time) || 0) - (Number(a.last_position_time) || 0); });
+      var chip = function (k, label) { return '<button class="rax-dev-chip' + (_raxDevFilter === k ? ' on' : '') + '" onclick="raxDevFilter(\'' + k + '\')">' + label + ' <span class="cnt">' + counts[k] + '</span></button>'; };
+      var canBadge = { fms: '<span class="rax-can fms">FMS</span>', can: '<span class="rax-can can">CAN</span>', none: '<span class="rax-can none">fără</span>' };
+      var stBadge = { active: '<span class="rax-devst active">activ</span>', unassigned: '<span class="rax-devst pend">neasignat</span>', archived: '<span class="rax-devst arch">arhivat</span>' };
+      var head = (counts.unassigned > 0 ? '<div class="rax-dev-alert"><i class="fas fa-bell"></i> ' + counts.unassigned + ' dispozitiv(e) neasignat(e) s-au conectat — adoptă-le sau respinge-le.</div>' : '') +
+        '<div class="rax-dev-bar">' + chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('archived', 'Arhivate') +
+        '<input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="_raxDevSearch=this.value;raxRenderDevices()"></div>';
+      var body = rows.map(function (d) {
+        var b = _raxDevBucket(d);
+        var co = (b === 'archived') ? (d.company_name ? esc(d.company_name) : '<span style="color:var(--text-muted)">—</span>')
+          : '<select class="rax-dev-co" onchange="raxDevSetCompany(\'' + esc(d.imei) + '\',this.value)">' + _raxDevCoOptions(d.company_id) + '</select>';
+        var iface = '<select class="rax-dev-if" title="Interfață CAN (decodare)" onchange="raxDevSetIface(\'' + esc(d.imei) + '\',this.value)">' +
+          _RAX_IFACE.map(function (it) { return '<option value="' + it[0] + '"' + ((d.can_interface || '') === it[0] ? ' selected' : '') + '>' + it[1] + '</option>'; }).join('') + '</select>';
+        var lp = d.last_position_time ? new Date(Number(d.last_position_time)).toLocaleString('ro-RO') : '—';
+        var act = (b === 'archived')
+          ? '<button class="rax-btn" onclick="raxDevRestore(\'' + esc(d.imei) + '\')"><i class="fas fa-rotate-left"></i> Restaurează</button> <button class="rax-btn" style="color:var(--red)" onclick="raxDevDelete(\'' + esc(d.imei) + '\')"><i class="fas fa-trash"></i> Șterge</button>'
+          : '<button class="rax-btn" onclick="raxDevArchive(\'' + esc(d.imei) + '\',' + (b === 'unassigned' ? 'true' : 'false') + ')"><i class="fas fa-ban"></i> ' + (b === 'unassigned' ? 'Respinge' : 'Arhivează') + '</button>';
+        return '<tr><td><strong>' + esc(d.name || '—') + '</strong>' + (d.plate ? '<br><span class="rax-dev-plate">' + esc(d.plate) + '</span>' : '') + '</td>' +
+          '<td class="mono">' + esc(d.imei) + '</td><td>' + co + '</td>' +
+          '<td>' + (canBadge[d.can_type] || '') + ' ' + iface + '</td>' +
+          '<td>' + (stBadge[b] || '') + '</td><td class="rax-dev-lp">' + lp + '</td>' +
+          '<td class="rax-dev-act">' + act + '</td></tr>';
+      }).join('');
+      box.innerHTML = head + '<div style="overflow-x:auto;"><table class="rax-co-table rax-dev-table"><thead><tr><th>Vehicul</th><th>IMEI</th><th>Companie</th><th>Date / interfață</th><th>Stare</th><th>Ultima poziție</th><th>Acțiuni</th></tr></thead><tbody>' +
+        (rows.length ? body : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text-muted)">Niciun dispozitiv în filtrul curent.</td></tr>') + '</tbody></table></div>';
+    };
+    async function _raxDevAction(url, opts, okMsg) {
+      try {
+        var r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts));
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || (j && j.error)) { (window.raxToast || alert)((j && j.error) || ('Eroare ' + r.status), 'error'); return false; }
+        if (okMsg) (window.raxToast || function () { })(okMsg, 'success');
+        return true;
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); return false; }
+    }
+    window.raxDevSetCompany = async function (imei, val) {
+      var ok = await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: val === '' ? null : parseInt(val) }) }, val === '' ? 'Dispozitiv dezasignat' : 'Asignat la companie');
+      if (ok) raxLoadDevices();
+    };
+    window.raxDevSetIface = async function (imei, val) {
+      await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/can-interface', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ can_interface: val || null }) }, 'Interfață CAN: ' + (val || 'auto'));
+      var d = _raxDevices.filter(function (x) { return x.imei === imei; })[0]; if (d) d.can_interface = val || null;
+    };
+    window.raxDevArchive = async function (imei, isReject) {
+      if (!confirm((isReject ? 'Respingi' : 'Arhivezi') + ' dispozitivul ' + imei + '?\nNu se mai stochează date de la el (reversibil prin Restaurează).')) return;
+      if (await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'archived' }) }, isReject ? 'Dispozitiv respins' : 'Dispozitiv arhivat')) raxLoadDevices();
+    };
+    window.raxDevRestore = async function (imei) {
+      if (await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) }, 'Dispozitiv restaurat')) raxLoadDevices();
+    };
+    window.raxDevDelete = async function (imei) {
+      if (!confirm('ȘTERGI DEFINITIV dispozitivul ' + imei + ' + tot istoricul lui?\nIreversibil.')) return;
+      if (await _raxDevAction('/api/devices/' + encodeURIComponent(imei), { method: 'DELETE' }, 'Dispozitiv șters')) raxLoadDevices();
     };
 
     // ─── Mutare entități (vehicule / utilizatori / șoferi) între companii (super-admin) ───
