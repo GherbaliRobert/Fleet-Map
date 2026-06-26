@@ -5867,6 +5867,24 @@ app.get('/api/payments', requireAuth, requireSuperadmin, async (req, res) => {
     res.json(await db.getAllPayments(parseInt(req.query.limit) || 500));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).
+// Super-adminul (fără companie proprie) folosește în continuare Facturarea completă; aici primește listă goală.
+app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
+  try {
+    const cid = req.companyId;
+    if (cid == null) return res.json({ company: null, access: null, invoices: [], issuer: {} });
+    const co = await db.getCompanyById(cid);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const invoices = await db.getPayments(cid, 200);
+    let issuer = {}; try { issuer = (await getSystemSettings()).invoice_issuer || {}; } catch (e) {}
+    res.json({
+      company: { id: co.id, name: co.name, cui: co.cui || null, reg_com: co.reg_com || null, address: co.address || null, contact_email: co.contact_email || null, phone: co.phone || null, plan: co.plan || null },
+      access: companyAccessStatus(co),
+      invoices,
+      issuer
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // Super-admin: setează manual data de acces (trial / corecții). body: { until: epochMs | null }
 app.put('/api/companies/:id/access', requireAuth, requireSuperadmin, async (req, res) => {
   try {

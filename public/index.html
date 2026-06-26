@@ -1009,6 +1009,7 @@
     body.no-users .users-only { display:none !important; } /* Utilizatori/Audit din Administrare — cu permisiunea manageUsers */
     body.no-companies .companies-only { display:none !important; } /* Companii & mutare între companii — STRICT super-admin (manageCompanies) */
     body:not(.is-super) [data-super] { display:none !important; } /* fail-closed: orice element data-super rămâne ascuns până se confirmă super-admin */
+    body.is-super .company-admin-only { display:none !important; } /* „Facturile mele" e pt. adminul firmei; super-adminul are Facturarea completă */
     body:not(.is-super) .veh-co-col { display:none !important; } /* coloana „Companie" (Vehicule) — doar super-admin */
     body:not(.is-super) .super-only { display:none !important; } /* filtre/selectoare companie — doar super-admin */
     .co-tag { display:inline-block; font-size:11px; font-weight:700; color:#16a34a; background:rgba(63,224,125,.14); padding:1px 8px; border-radius:10px; margin-left:6px; vertical-align:middle; white-space:nowrap; }
@@ -1192,6 +1193,7 @@
           <button class="aside-item active" data-atab="dash" onclick="raxAdminHome()"><i class="fas fa-gauge"></i> Acasă</button>
           <button class="aside-item" data-super data-atab="companies" onclick="raxAdminTab('companies')"><i class="fas fa-building"></i> Companii</button>
           <button class="aside-item users-only" data-atab="users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
+          <button class="aside-item users-only company-admin-only" data-atab="myinvoices" onclick="raxAdminTab('myinvoices')"><i class="fas fa-file-invoice-dollar"></i> Facturile mele</button>
           <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
           <div class="aside-grp" data-super>AI &amp; Module</div>
           <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-shield-halved"></i> Agenți AI</button>
@@ -1221,6 +1223,7 @@
           <div id="admin-tab-accounts" style="display:none;"></div>
           <div id="admin-tab-archived" style="display:none;"></div>
           <div id="admin-tab-billing" style="display:none;"></div>
+          <div id="admin-tab-myinvoices" style="display:none;"></div>
           <div id="admin-tab-agents" style="display:none;"></div>
           <div id="admin-tab-tahograf" style="display:none;"></div>
           <div id="admin-tab-etransport" style="display:none;"></div>
@@ -2336,8 +2339,8 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
-      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
-      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
+      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
+      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       Object.keys(map).forEach(function (k) {
         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
@@ -2355,6 +2358,8 @@ const pozitii = await r.json();</code></pre>
         if (window.loadArchivedDevices) window.loadArchivedDevices();
       } else if (name === 'billing') {
         if (window.raxLoadBilling) window.raxLoadBilling();
+      } else if (name === 'myinvoices') {
+        if (window.raxLoadMyInvoices) window.raxLoadMyInvoices();
       } else if (name === 'users') {
         if (window.loadUsers) window.loadUsers();
       } else if (name === 'agents') {
@@ -11320,11 +11325,14 @@ const pozitii = await r.json();</code></pre>
       t.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
     };
     // Generează un document de factură printabil (HTML self-contained) într-o fereastră nouă → Print / Salvează PDF.
-    window.raxPrintInvoice = async function (paymentId) {
-      var p = (_billingData || []).find(function (x) { return x.id === paymentId; });
-      if (!p) { if (window.raxToast) raxToast('Plată negăsită', 'error'); return; }
-      var co = (companiesCache || []).find(function (c) { return c.id === p.company_id; }) || {};
-      var iss = await _raxGetIssuer();
+    function _raxOpenInvoiceWindow(html) {
+      var w = window.open('', '_blank', 'width=880,height=980');
+      if (!w) { if (window.raxToast) raxToast('Permite pop-up-urile ca să vezi factura', 'error'); return; }
+      w.document.open(); w.document.write(html); w.document.close();
+    }
+    // Builder factură (HTML self-contained) — partajat de super-admin și de adminul firmei (raxPrintMyInvoice).
+    function _raxBuildInvoiceHtml(p, co, iss) {
+      co = co || {}; iss = iss || {};
       var fmtD = function (ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; };
       var invNo = _raxInvNo(p);
       var amountStr = (p.amount_ron != null) ? Number(p.amount_ron).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' lei' : '—';
@@ -11376,9 +11384,66 @@ const pozitii = await r.json();</code></pre>
         '<div class="foot">Document generat din platforma RA Tracks la ' + esc(new Date().toLocaleString('ro-RO')) + '. Document intern pentru evidența abonamentului — nu reprezintă factură fiscală oficială cu serie ANAF.</div>' +
         '<div class="noprint"><button onclick="window.print()">🖨 Printează / Salvează PDF</button></div>' +
         '</body></html>';
-      var w = window.open('', '_blank', 'width=880,height=980');
-      if (!w) { if (window.raxToast) raxToast('Permite pop-up-urile ca să vezi factura', 'error'); return; }
-      w.document.open(); w.document.write(html); w.document.close();
+      return html;
+    }
+    // Super-admin: factura unei plăți din lista globală (companie din companiesCache).
+    window.raxPrintInvoice = async function (paymentId) {
+      var p = (_billingData || []).find(function (x) { return x.id === paymentId; });
+      if (!p) { if (window.raxToast) raxToast('Plată negăsită', 'error'); return; }
+      var co = (companiesCache || []).find(function (c) { return c.id === p.company_id; }) || {};
+      var iss = await _raxGetIssuer();
+      _raxOpenInvoiceWindow(_raxBuildInvoiceHtml(p, co, iss));
+    };
+    // Admin firmă: factura unei plăți PROPRII (companie + emitent din răspunsul /api/billing/my-invoices).
+    window.raxPrintMyInvoice = function (paymentId) {
+      var p = (_myInvData && _myInvData.invoices || []).find(function (x) { return x.id === paymentId; });
+      if (!p) { if (window.raxToast) raxToast('Factură negăsită', 'error'); return; }
+      _raxOpenInvoiceWindow(_raxBuildInvoiceHtml(p, (_myInvData && _myInvData.company) || {}, (_myInvData && _myInvData.issuer) || {}));
+    };
+    // ─── „Facturile mele" (admin firmă, manageUsers): status abonament + facturi proprii + buton plată (pregătit) ───
+    var _myInvData = null;
+    window.raxLoadMyInvoices = async function () {
+      var box = document.getElementById('admin-tab-myinvoices'); if (!box) return;
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var r = await fetch('/api/billing/my-invoices', { credentials: 'same-origin' });
+        if (!r.ok) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">' + (r.status === 403 ? 'Nu ai dreptul de a vedea facturile.' : 'Eroare (' + r.status + ').') + '</div>'; return; }
+        _myInvData = await r.json();
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare de rețea.</div>'; return; }
+      var d = _myInvData || {};
+      var fmtD = function (ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; };
+      var a = d.access || {};
+      var stMap = { unlimited: ['∞ Abonament nelimitat', 'var(--text-muted)'], active: ['● Abonament activ', 'var(--accent)'], grace: ['⚠ Factură de plătit (perioadă de grație)', '#f59e0b'], expired: ['🚫 Acces suspendat — factură restantă', 'var(--red)'] };
+      var sm = stMap[a.status] || stMap.unlimited;
+      var until = a.access_until ? fmtD(a.access_until) : '';
+      var banner = '<div style="border:1px solid var(--border);border-left:4px solid ' + sm[1] + ';border-radius:10px;padding:14px 16px;margin-bottom:16px;background:var(--bg-dark);">' +
+        '<div style="font-weight:700;font-size:15px;color:' + sm[1] + ';">' + sm[0] + '</div>' +
+        (until ? '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Acces până la <b>' + until + '</b></div>' : '') +
+        '<button class="rax-btn primary" style="margin-top:12px;" onclick="raxPayPrepare()"><i class="fas fa-credit-card"></i> Plătește</button>' +
+        '</div>';
+      var inv = d.invoices || [];
+      var rows;
+      if (!inv.length) { rows = '<div class="rax-co-meta" style="padding:14px;">Nicio factură emisă încă.</div>'; }
+      else {
+        var head = '<thead><tr><th>Nr. factură</th><th>Data</th><th class="num">Sumă</th><th>Perioadă</th><th>Status</th><th>Factură</th></tr></thead>';
+        var body = inv.map(function (p) {
+          return '<tr>' +
+            '<td style="font-weight:700;white-space:nowrap;">' + esc(_raxInvNo(p)) + '</td>' +
+            '<td style="white-space:nowrap;">' + fmtD(p.paid_at || p.created_at) + '</td>' +
+            '<td class="num">' + (p.amount_ron != null ? Number(p.amount_ron).toLocaleString('ro-RO') + ' lei' : '—') + '</td>' +
+            '<td style="font-size:11.5px;white-space:nowrap;">' + fmtD(p.period_start) + ' → ' + fmtD(p.period_end) + '</td>' +
+            '<td><span style="color:var(--accent);font-weight:600;">Plătită</span></td>' +
+            '<td><button class="rax-ico-btn" title="Vezi / printează factura" onclick="raxPrintMyInvoice(' + p.id + ')"><i class="fas fa-print"></i></button></td>' +
+          '</tr>';
+        }).join('');
+        rows = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
+      }
+      box.innerHTML = banner +
+        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-receipt" style="color:var(--accent);margin-right:6px;"></i>Facturile mele</h4>' + rows;
+    };
+    // Buton de plată PREGĂTIT (fără plată reală încă) — afișează info; integrarea online se activează ulterior.
+    window.raxPayPrepare = function () {
+      if (window.raxToast) raxToast('Plata online va fi disponibilă în curând. Momentan plata se face prin transfer bancar — datele apar pe factură.', 'success');
     };
     window.raxOpenPaymentModal = function (companyId) {
       var ov = document.getElementById('rax-pay-overlay'); if (!ov) return;
