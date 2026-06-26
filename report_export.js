@@ -3,8 +3,9 @@
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
+const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Bucharest'; // perioada/ora afișate în fusul local (ca rândurile raportului), nu UTC-ul serverului
 function fmtPeriod(from, to) {
-  const d = (x) => { try { return x ? new Date(x).toLocaleString('ro-RO') : '?'; } catch (e) { return '?'; } };
+  const d = (x) => { try { return x ? new Date(x).toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }) : '?'; } catch (e) { return '?'; } };
   return d(from) + ' — ' + d(to);
 }
 function safeName(base) {
@@ -139,7 +140,7 @@ function renderPdf(doc, report) {
   y += 26;
   doc.moveTo(left, y).lineTo(left + usableW, y).strokeColor('#3FE07D').lineWidth(2).stroke();
   y += 7;
-  doc.font('Helvetica').fontSize(9).fillColor('#6b7280').text('Perioadă: ' + fmtPeriod(report.from, report.to) + '     Generat: ' + new Date().toLocaleString('ro-RO'), left, y, { lineBreak: false });
+  doc.font('Helvetica').fontSize(9).fillColor('#6b7280').text('Perioadă: ' + fmtPeriod(report.from, report.to) + '     Generat: ' + new Date().toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }), left, y, { lineBreak: false });
   y += 17;
 
   // 2. Carduri KPI (din summary)
