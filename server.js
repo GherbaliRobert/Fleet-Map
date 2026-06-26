@@ -1113,6 +1113,21 @@ function companyAccessStatus(company) {
   else if (now > until) status = 'grace';
   return { status, access_until: until, grace_until: graceUntil };
 }
+// Clasifică sursa de date a unui vehicul: 'fms' (FMS gateway J1939) / 'can' (CAN/LV-CAN/tahograf) / 'none'
+// (fără CAN). Folosit în drill-down-ul de companie (super-admin). Se uită la can_interface, la cheile din
+// ultima poziție (io_data) și la snapshot-ul CAN persistat (last_can, pentru vehicule parcate).
+function classifyDeviceCan(d) {
+  const iface = String((d && d.can_interface) || '').toLowerCase();
+  if (iface === 'fms') return 'fms';
+  const io = (d && (d.io_data || d.io)) || {};
+  const keys = Object.keys(io);
+  if (keys.some(k => k.indexOf('fms_') === 0)) return 'fms';
+  if (keys.some(k => k.indexOf('can_') === 0 || k.indexOf('tacho_') === 0)) return 'can';
+  const lc = d && d.last_can;
+  if (lc && typeof lc === 'object' && Object.keys(lc).length) return 'can';
+  if (iface === 'tacho' || iface === 'lvcan') return 'can';
+  return 'none';
+}
 // Notificare de facturare: când o companie intră în GRAȚIE (abonament tocmai expirat = factură emisă),
 // anunță adminii ei o singură dată per ciclu (dedup pe cheia invoice_due:<co>:<access_until>). Au 15 zile.
 async function billingReminderTick() {
@@ -2171,6 +2186,32 @@ app.post('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
 app.put('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try { await db.updateCompany(parseInt(req.params.id), req.body); auditReq(req, 'update', 'company', req.params.id); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Drill-down companie (super-admin): detalii companie + stare acces + utilizatori (cu roluri) +
+// vehicule (clasificate CAN/FMS/fără) + facturi (plăți). Agregat într-un singur apel pentru panoul de detaliu.
+app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const company = await db.getCompanyById(id);
+    if (!company) return res.status(404).json({ error: 'Compania nu există' });
+    const [users, devices, payments] = await Promise.all([
+      db.getUsers(id), db.getDevices(id), db.getPayments(id, 500)
+    ]);
+    const vehicles = (devices || [])
+      .filter(d => d.status !== 'archived')
+      .map(d => ({
+        imei: d.imei, name: d.name || null, plate: d.plate || null, vehicle_type: d.vehicle_type || null,
+        can_type: classifyDeviceCan(d), can_interface: d.can_interface || null,
+        last_position_time: d.last_position_time || d.last_seen || null
+      }));
+    const counts = {
+      users: users.length, vehicles: vehicles.length, payments: payments.length,
+      fms: vehicles.filter(v => v.can_type === 'fms').length,
+      can: vehicles.filter(v => v.can_type === 'can').length,
+      none: vehicles.filter(v => v.can_type === 'none').length
+    };
+    res.json({ company, access: companyAccessStatus(company), counts, users, vehicles, payments });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {

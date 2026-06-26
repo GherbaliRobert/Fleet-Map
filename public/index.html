@@ -1164,6 +1164,30 @@
     .rax-co-table tbody tr:hover td { background: var(--bg-dark); }
     .rax-co-table th.num, .rax-co-table td.num { text-align: center; }
     .rax-co-table td.num { font-weight: 700; }
+    /* Drill-down companie (super-admin): Detalii / Utilizatori / Vehicule / Facturi */
+    .rax-co-open { color: var(--text-primary); text-decoration: none; cursor: pointer; }
+    .rax-co-open:hover strong { color: var(--accent); text-decoration: underline; }
+    .rax-cod-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .rax-cod-tab { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 8px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .rax-cod-tab.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
+    .rax-cod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 620px) { .rax-cod-grid { grid-template-columns: 1fr; } }
+    .rax-cod-sect h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin: 0 0 8px; font-weight: 700; }
+    .rax-kv { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .rax-kv .k { color: var(--text-muted); flex: 0 0 auto; }
+    .rax-kv .v { font-weight: 600; text-align: right; word-break: break-word; }
+    .rax-mini-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .rax-mini-table th { text-align: left; padding: 7px 8px; color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .rax-mini-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .rax-role-pill { display: inline-block; background: var(--bg-dark); border: 1px solid var(--border-light); border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 700; }
+    .rax-can { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 800; }
+    .rax-can.fms { background: rgba(63,224,125,.14); color: var(--accent); }
+    .rax-can.can { background: rgba(96,165,250,.18); color: #60a5fa; }
+    .rax-can.none { background: rgba(138,147,163,.16); color: var(--text-muted); }
+    .rax-can-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .rax-contact-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.3fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+    .rax-contact-row .rax-field { margin: 0; }
+    @media (max-width: 620px) { .rax-contact-row { grid-template-columns: 1fr 1fr; } }
     .rax-co-actions-cell { display: flex; gap: 4px; }
     .rax-ico-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; cursor: pointer; color: var(--text-primary); font-size: 12px; line-height: 1; }
     .rax-ico-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -11239,7 +11263,7 @@ const pozitii = await r.json();</code></pre>
             (canDel ? '<button class="rax-ico-btn danger" title="Șterge compania (e goală)" onclick="raxDeleteCompany(' + c.id + ')"><i class="fas fa-trash"></i></button>' : '') +
           '</div>';
         return '<tr>' +
-          '<td><strong>' + esc(c.name) + '</strong>' + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</td>' +
+          '<td><a href="#" class="rax-co-open" title="Deschide compania (detalii · utilizatori · vehicule · facturi)" onclick="raxOpenCompanyDetail(' + c.id + ');return false;"><strong>' + esc(c.name) + '</strong></a>' + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</td>' +
           '<td class="num">' + (c.device_count || 0) + '</td>' +
           '<td class="num">' + (c.user_count || 0) + '</td>' +
           '<td>' + esc(c.plan || 'standard') + '</td>' +
@@ -11250,6 +11274,106 @@ const pozitii = await r.json();</code></pre>
       box.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>' +
         (rows.length ? '' : '<div class="rax-co-meta" style="padding:12px;">Nicio companie pentru „' + esc(q) + '".</div>');
     };
+
+    // ─── Drill-down companie (super-admin): Detalii / Utilizatori / Vehicule / Facturi ───
+    function _raxParseContacts(c) {
+      if (Array.isArray(c)) return c;
+      try { var p = JSON.parse(c || '[]'); return Array.isArray(p) ? p : []; } catch (e) { return []; }
+    }
+    function _raxCodDetalii(d) {
+      var c = d.company, a = d.access || {};
+      var accLbl = { unlimited: 'Nelimitat', active: 'Activ', grace: 'În grație (expirat — 15 zile)', expired: 'Expirat' }[a.status] || (a.status || '—');
+      var accColor = a.status === 'expired' ? 'var(--red)' : (a.status === 'grace' ? 'var(--orange)' : 'var(--accent)');
+      var until = a.access_until ? new Date(Number(a.access_until)).toLocaleDateString('ro-RO') : null;
+      function kv(k, v) { return '<div class="rax-kv"><span class="k">' + esc(k) + '</span><span class="v">' + (v ? esc(v) : '<span style="color:var(--text-muted)">—</span>') + '</span></div>'; }
+      var contacts = _raxParseContacts(c.contacts);
+      var contactsHtml = contacts.length
+        ? '<table class="rax-mini-table"><thead><tr><th>Nume</th><th>Rol</th><th>Telefon</th><th>Email</th></tr></thead><tbody>' +
+            contacts.map(function (p) { return '<tr><td>' + esc(p.name || '—') + '</td><td>' + esc(p.role || '—') + '</td><td>' + esc(p.phone || '—') + '</td><td>' + esc(p.email || '—') + '</td></tr>'; }).join('') + '</tbody></table>'
+        : '<div class="rax-co-meta">Nicio persoană de contact. Adaugă din „Editează datele companiei".</div>';
+      return '<div class="rax-cod-grid">' +
+          '<div class="rax-cod-sect"><h4>Identificare</h4>' + kv('Nume', c.name) + kv('CUI / CIF', c.cui) + kv('Nr. Reg. Com.', c.reg_com) + kv('Adresă', c.address) + kv('Plan', c.plan) +
+            '<div class="rax-kv"><span class="k">Acces</span><span class="v" style="color:' + accColor + ';font-weight:700">' + esc(accLbl) + (until ? ' · până ' + until : '') + '</span></div></div>' +
+          '<div class="rax-cod-sect"><h4>Bancă & contact</h4>' + kv('IBAN', c.iban) + kv('Bancă', c.bank_name) + kv('Email', c.contact_email) + kv('Telefon', c.phone) + '</div>' +
+        '</div>' +
+        '<div class="rax-cod-sect" style="margin-top:14px;"><h4>Persoane de contact</h4>' + contactsHtml + '</div>' +
+        '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;"><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează datele companiei</button>' +
+        '<button class="rax-btn" onclick="raxOpenCompanyConfig(' + c.id + ')"><i class="fas fa-sliders"></i> Module & limite</button></div>';
+    }
+    function _raxCodUsers(d) {
+      var roleLbl = { superadmin: 'Super-admin', company_admin: 'Administrator', admin: 'Administrator', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare' };
+      if (!d.users.length) return '<div class="rax-co-meta" style="padding:16px;">Niciun utilizator în această companie.</div>';
+      return '<table class="rax-mini-table"><thead><tr><th>Utilizator</th><th>Rol</th><th>Email</th><th>Telefon</th><th>Stare</th></tr></thead><tbody>' +
+        d.users.map(function (u) {
+          return '<tr><td><strong>' + esc(u.username) + '</strong>' + (u.full_name ? '<br><span style="font-size:11px;color:var(--text-muted)">' + esc(u.full_name) + '</span>' : '') + '</td>' +
+            '<td><span class="rax-role-pill">' + esc(roleLbl[u.role] || u.role) + '</span></td>' +
+            '<td>' + (u.email ? esc(u.email) : '—') + '</td><td>' + (u.phone ? esc(u.phone) : '—') + '</td>' +
+            '<td>' + (u.active === false ? '<span style="color:var(--red)">inactiv</span>' : '<span style="color:var(--accent)">activ</span>') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    function _raxCodVehicule(d) {
+      var canBadge = { fms: '<span class="rax-can fms">FMS</span>', can: '<span class="rax-can can">CAN</span>', none: '<span class="rax-can none">fără CAN</span>' };
+      var cc = d.counts || {};
+      var summary = '<div class="rax-can-summary"><span class="rax-can fms">' + (cc.fms || 0) + ' FMS</span><span class="rax-can can">' + (cc.can || 0) + ' CAN</span><span class="rax-can none">' + (cc.none || 0) + ' fără CAN</span></div>';
+      if (!d.vehicles.length) return summary + '<div class="rax-co-meta" style="padding:16px;">Niciun vehicul.</div>';
+      return summary + '<table class="rax-mini-table"><thead><tr><th>Vehicul</th><th>Nr.</th><th>Categorie</th><th>Date</th><th>Ultima poziție</th></tr></thead><tbody>' +
+        d.vehicles.map(function (v) {
+          var lp = v.last_position_time ? new Date(v.last_position_time).toLocaleString('ro-RO') : '—';
+          return '<tr><td><strong>' + esc(v.name || v.imei) + '</strong></td><td>' + (v.plate ? esc(v.plate) : '—') + '</td>' +
+            '<td>' + (v.vehicle_type ? esc(v.vehicle_type) : '—') + '</td><td>' + (canBadge[v.can_type] || '') + '</td>' +
+            '<td style="font-size:11px;color:var(--text-muted)">' + lp + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    function _raxCodFacturi(d) {
+      if (!d.payments.length) return '<div class="rax-co-meta" style="padding:16px;">Nicio plată înregistrată. Înregistrează una din tabelul Companii (iconița card).</div>';
+      var total = d.payments.reduce(function (s, p) { return s + (Number(p.amount_ron) || 0); }, 0);
+      return '<div style="margin-bottom:10px;font-size:13px;font-weight:700;color:var(--accent)">Total: ' + total.toLocaleString('ro-RO') + ' lei · ' + d.payments.length + ' plăți</div>' +
+        '<table class="rax-mini-table"><thead><tr><th>Data</th><th>Sumă</th><th>Perioadă</th><th>Metodă</th><th>Notă</th></tr></thead><tbody>' +
+        d.payments.map(function (p) {
+          var dt = (p.paid_at || p.created_at) ? new Date(Number(p.paid_at || p.created_at)).toLocaleDateString('ro-RO') : '—';
+          var per = (p.period_start && p.period_end) ? (new Date(Number(p.period_start)).toLocaleDateString('ro-RO') + ' – ' + new Date(Number(p.period_end)).toLocaleDateString('ro-RO')) : '—';
+          return '<tr><td>' + dt + '</td><td><strong>' + (p.amount_ron != null ? Number(p.amount_ron).toLocaleString('ro-RO') + ' lei' : '—') + '</strong></td>' +
+            '<td style="font-size:11px">' + per + '</td><td>' + esc(p.method || 'manual') + '</td><td style="font-size:11px;color:var(--text-muted)">' + (p.note ? esc(p.note) : '—') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    window.raxCodTab = function (tab) {
+      var d = window._raxCod; if (!d) return;
+      document.querySelectorAll('#rax-codetail-overlay .rax-cod-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-ct') === tab); });
+      var body = document.getElementById('rax-cod-body'); if (!body) return;
+      body.innerHTML = tab === 'utilizatori' ? _raxCodUsers(d) : tab === 'vehicule' ? _raxCodVehicule(d) : tab === 'facturi' ? _raxCodFacturi(d) : _raxCodDetalii(d);
+    };
+    window.raxCloseCompanyDetail = function () { var ov = document.getElementById('rax-codetail-overlay'); if (ov) ov.classList.remove('open'); };
+    window.raxOpenCompanyDetail = async function (id) {
+      var ov = document.getElementById('rax-codetail-overlay');
+      if (!ov) {
+        ov = document.createElement('div'); ov.id = 'rax-codetail-overlay'; ov.className = 'rax-overlay';
+        ov.innerHTML = '<div class="rax-card" style="max-width:900px;">' +
+            '<div class="rax-head"><h3 id="rax-cod-title"><i class="fas fa-building" style="color:var(--accent)"></i> Companie</h3><button class="rax-x" onclick="raxCloseCompanyDetail()">&times;</button></div>' +
+            '<div class="rax-cod-tabs">' +
+              '<button class="rax-cod-tab on" data-ct="detalii" onclick="raxCodTab(\'detalii\')"><i class="fas fa-id-card"></i> Detalii</button>' +
+              '<button class="rax-cod-tab" data-ct="utilizatori" onclick="raxCodTab(\'utilizatori\')"><i class="fas fa-users"></i> Utilizatori</button>' +
+              '<button class="rax-cod-tab" data-ct="vehicule" onclick="raxCodTab(\'vehicule\')"><i class="fas fa-truck"></i> Vehicule</button>' +
+              '<button class="rax-cod-tab" data-ct="facturi" onclick="raxCodTab(\'facturi\')"><i class="fas fa-receipt"></i> Facturi</button>' +
+            '</div>' +
+            '<div class="rax-body" id="rax-cod-body"><div class="rax-co-meta" style="padding:20px;">Se încarcă…</div></div>' +
+          '</div>';
+        document.body.appendChild(ov);
+        ov.addEventListener('click', function (e) { if (e.target === ov) raxCloseCompanyDetail(); });
+      }
+      ov.classList.add('open');
+      window._raxCodId = id;
+      var bodyEl = document.getElementById('rax-cod-body'); if (bodyEl) bodyEl.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>';
+      try {
+        var d = await fetch('/api/companies/' + id + '/overview', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d.error) { document.getElementById('rax-cod-body').innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red)">' + esc(d.error) + '</div>'; return; }
+        window._raxCod = d;
+        document.getElementById('rax-cod-title').innerHTML = '<i class="fas fa-building" style="color:var(--accent)"></i> ' + esc(d.company.name) +
+          ' <span style="font-size:12px;font-weight:400;color:var(--text-muted)">· ' + (d.counts.vehicles || 0) + ' vehicule · ' + (d.counts.users || 0) + ' utilizatori</span>';
+        raxCodTab('detalii');
+      } catch (e) { var b = document.getElementById('rax-cod-body'); if (b) b.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red)">Eroare: ' + esc(e.message) + '</div>'; }
+    };
+    // Reîmprospătează drill-down-ul deschis după o editare a companiei
+    window.raxRefreshOpenDetail = function () { if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId); };
 
     // ─── Facturare (super-admin): tabel cu toate plățile + modal de înregistrare ───
     var _billingData = [], _billingTotal = 0;
@@ -11507,15 +11631,41 @@ const pozitii = await r.json();</code></pre>
         _raxField('Adresă (sediu / facturare)', 'rax-ce-addr', c.address, 'Str. ..., nr. ..., oraș, județ') +
         '<div class="rax-row2"><div>' + _raxField('Email contact', 'rax-ce-email', c.contact_email, 'contact@firma.ro') + '</div>' +
         '<div>' + _raxField('Telefon', 'rax-ce-phone', c.phone, '07xx xxx xxx') + '</div></div>' +
-        '<label class="rax-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:2px;"><input type="checkbox" id="rax-ce-active"' + (c.active === false ? '' : ' checked') + ' style="width:auto;margin:0;"> Companie activă</label>' +
+        '<div class="rax-row2"><div>' + _raxField('IBAN', 'rax-ce-iban', c.iban, 'ROxx xxxx xxxx xxxx xxxx xxxx') + '</div>' +
+        '<div>' + _raxField('Bancă', 'rax-ce-bank', c.bank_name, 'ex. Banca Transilvania') + '</div></div>' +
+        '<div class="rax-lbl" style="margin-top:10px;">Persoane de contact</div>' +
+        '<div id="rax-ce-contacts"></div>' +
+        '<button class="rax-btn" type="button" style="margin-top:6px;" onclick="raxAddContactRow()"><i class="fas fa-user-plus"></i> Adaugă persoană</button>' +
+        '<label class="rax-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:12px;"><input type="checkbox" id="rax-ce-active"' + (c.active === false ? '' : ' checked') + ' style="width:auto;margin:0;"> Companie activă</label>' +
         '<button class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxSaveCompanyEdit(this)"><i class="fas fa-check"></i> Salvează</button>' +
         '<div id="rax-ce-msg" style="font-size:12px;margin-top:8px;"></div>';
       document.getElementById('rax-coedit-overlay').classList.add('open');
+      _raxParseContacts(c.contacts).forEach(function (p) { raxAddContactRow(p); });
+    };
+    window.raxAddContactRow = function (data) {
+      data = data || {};
+      var wrap = document.getElementById('rax-ce-contacts'); if (!wrap) return;
+      var row = document.createElement('div'); row.className = 'rax-contact-row';
+      row.innerHTML =
+        '<input class="rax-field rc-name" placeholder="Nume" value="' + (data.name ? esc(data.name) : '') + '">' +
+        '<input class="rax-field rc-role" placeholder="Rol / funcție" value="' + (data.role ? esc(data.role) : '') + '">' +
+        '<input class="rax-field rc-phone" placeholder="Telefon" value="' + (data.phone ? esc(data.phone) : '') + '">' +
+        '<input class="rax-field rc-email" placeholder="Email" value="' + (data.email ? esc(data.email) : '') + '">' +
+        '<button class="rax-ico-btn danger" type="button" title="Șterge persoana" onclick="this.parentNode.remove()"><i class="fas fa-times"></i></button>';
+      wrap.appendChild(row);
     };
     window.raxSaveCompanyEdit = async function (btn) {
       var id = parseInt(($('rax-ce-id') || {}).value); var msg = $('rax-ce-msg');
       var name = (($('rax-ce-name') || {}).value || '').trim();
       if (name.length < 2) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Nume prea scurt.</span>'; return; }
+      var contacts = [];
+      document.querySelectorAll('#rax-ce-contacts .rax-contact-row').forEach(function (r) {
+        var p = {
+          name: (r.querySelector('.rc-name').value || '').trim(), role: (r.querySelector('.rc-role').value || '').trim(),
+          phone: (r.querySelector('.rc-phone').value || '').trim(), email: (r.querySelector('.rc-email').value || '').trim()
+        };
+        if (p.name || p.role || p.phone || p.email) contacts.push(p);
+      });
       var body = {
         name: name,
         cui: (($('rax-ce-cui') || {}).value || '').trim() || null,
@@ -11523,6 +11673,9 @@ const pozitii = await r.json();</code></pre>
         address: (($('rax-ce-addr') || {}).value || '').trim() || null,
         contact_email: (($('rax-ce-email') || {}).value || '').trim() || null,
         phone: (($('rax-ce-phone') || {}).value || '').trim() || null,
+        iban: (($('rax-ce-iban') || {}).value || '').trim() || null,
+        bank_name: (($('rax-ce-bank') || {}).value || '').trim() || null,
+        contacts: contacts,
         active: !!(($('rax-ce-active') || {}).checked)
       };
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se salvează…'; }
@@ -11532,6 +11685,7 @@ const pozitii = await r.json();</code></pre>
         document.getElementById('rax-coedit-overlay').classList.remove('open');
         if (window.raxToast) raxToast('Companie actualizată ✓', 'success');
         raxLoadCompanies();
+        if (window.raxRefreshOpenDetail) raxRefreshOpenDetail();
       } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Salvează'; } }
     };
     // ─── Date emitent factură (firma TA — apar pe facturile printabile), stocate în system-settings ───
