@@ -129,8 +129,8 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
   }
   const rows = tripList.map(({ imei, tr }) => {
     const ks = odo(tr.startP), ke = odo(tr.endP);
-    return [ label(devMap, imei), fmtTs(tr.start), fmtTs(tr.end), fmtDur(tr.durationSec), tr.distanceKm.toFixed(2),
-      ks != null ? ks : '—', ke != null ? ke : '—', tr.avgSpeed, tr.maxSpeed, addr(tr.startP), addr(tr.endP) ];
+    return [ label(devMap, imei), fmtTs(tr.start), addr(tr.startP), fmtTs(tr.end), addr(tr.endP), fmtDur(tr.durationSec), tr.distanceKm.toFixed(2),
+      ks != null ? ks : '—', ke != null ? ke : '—', tr.avgSpeed, tr.maxSpeed ];
   });
   const kmDay = _groupByDay(all, x => x.start, x => x.distanceKm);
   const nDay = _groupByDay(all, x => x.start, null);
@@ -140,7 +140,7 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
     { type: 'line', title: 'Curse pe zi',                     labels: nDay.labels,  datasets: [{ label: 'curse', data: nDay.data }] },
     { type: 'bar',  title: 'Distribuție viteză maximă (km/h)', labels: spd.labels,   datasets: [{ label: 'curse', data: spd.data }] }
   ] : [];
-  return { columns: ['Vehicul','Plecare','Sosire','Durată','Distanță (km)','Km plecare','Km sosire','Vit. medie','Vit. max','Loc. plecare','Loc. sosire'],
+  return { columns: ['Vehicul','Plecare','Loc. plecare','Sosire','Loc. sosire','Durată','Distanță (km)','Km plecare','Km sosire','Vit. medie','Vit. max'],
     rows, summary: { 'Curse': count, 'Distanță totală (km)': Math.round(totalKm*10)/10, 'Durată totală': fmtDur(totalDur) }, charts };
 }
 
