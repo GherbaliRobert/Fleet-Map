@@ -5004,8 +5004,9 @@ const pozitii = await r.json();</code></pre>
     function exportReport(fmt) {
       if (!lastReport || !lastReport.rows || !lastReport.rows.length) return alert('Generează întâi un raport cu date');
       const cols = lastReport.columns, rows = lastReport.rows;
-      const title = lastReport.label || 'raport';
-      const fname = title.replace(/\s+/g,'_').toLowerCase() + '_' + new Date().toISOString().slice(0,10);
+      const title = lastReport.label || 'Raport';
+      const _d = new Date(), _p = n => String(n).padStart(2,'0');
+      const fname = (title.replace(/[\\/:*?"<>|]+/g,' ').trim() || 'Raport') + ' ' + _p(_d.getDate())+'.'+_p(_d.getMonth()+1)+'.'+_d.getFullYear();
       if (fmt === 'csv') {
         const esc = v => { const s = String(v==null?'':v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
         const csv = [cols.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');

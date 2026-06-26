@@ -8,11 +8,12 @@ function fmtPeriod(from, to) {
   return d(from) + ' — ' + d(to);
 }
 function safeName(base) {
-  return String(base || 'raport').replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 60) || 'raport';
+  // Păstrează spațiile și literele (inclusiv diacritice); scoate doar caracterele nepermise în nume de fișier.
+  return String(base || 'Raport').replace(/[\\/:*?"<>|\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Raport';
 }
-function datePart(report) {
-  try { return report.from ? new Date(report.from).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10); }
-  catch (e) { return ''; }
+function datePart() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear(); // data generării (zz.ll.aaaa)
 }
 
 // ─── Excel ───
@@ -207,8 +208,7 @@ function toPdf(report) {
 
 // ─── Trimite raportul ca descărcare ───
 async function sendReport(res, report, fmt) {
-  const base = safeName(report.type || report.label);
-  const name = base + '_' + datePart(report);
+  const name = safeName(report.label || report.type) + ' ' + datePart(); // ex: „Foaie de parcurs 26.06.2026"
   if (fmt === 'xlsx') {
     const buf = await toXlsx(report);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
