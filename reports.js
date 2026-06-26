@@ -491,18 +491,40 @@ async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
   return { columns: ['Vehicul', 'Zi', 'Km', 'Timp mers', 'Ore motor', 'Opriri', 'Vit. max'], rows, summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm) }, charts };
 }
 
-async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu (jurnal cronologic deplasări + staționări)
-  const rows = [];
+async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu — jurnal de activitate (deplasări + staționări, cu adrese)
+  const perImei = [];
   for (const imei of imeis) {
-    const pts = await history(db, imei, from, to);
-    const seg = segmentTrack(pts, (opts.stopMin || 5) * 60);
-    const ev = [];
-    seg.trips.forEach(tr => ev.push({ t: new Date(tr.start).getTime(), row: [label(devMap, imei), 'Deplasare', fmtTs(tr.start), fmtTs(tr.end), fmtDur(tr.durationSec), tr.distanceKm.toFixed(1), loc(tr.startP) + ' → ' + loc(tr.endP)] }));
-    seg.stops.forEach(s => ev.push({ t: new Date(s.start).getTime(), row: [label(devMap, imei), 'Staționare', fmtTs(s.start), fmtTs(s.end), fmtDur(s.durationSec), '', loc(s.p)] }));
-    ev.sort((a, b) => a.t - b.t);
-    ev.forEach(e => rows.push(e.row));
+    perImei.push({ imei, seg: segmentTrack(await history(db, imei, from, to), (opts.stopMin || 5) * 60) });
   }
-  return { columns: ['Vehicul', 'Tip', 'Start', 'Stop', 'Durată', 'Km', 'Locație'], rows, summary: { 'Înregistrări': rows.length } };
+  // Pre-încarcă adresele (start/stop deplasări + opriri); fallback pe coordonate + completare progresivă pe client.
+  if (geocode && geocode.warm) {
+    const coords = [];
+    for (const { seg } of perImei) {
+      seg.trips.forEach(tr => { if (tr.startP) coords.push({ lat: tr.startP.latitude, lng: tr.startP.longitude }); if (tr.endP) coords.push({ lat: tr.endP.latitude, lng: tr.endP.longitude }); });
+      seg.stops.forEach(s => { if (s.p) coords.push({ lat: s.p.latitude, lng: s.p.longitude }); });
+    }
+    try { await geocode.warm(coords, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 14000 : 6000 }); } catch (e) {}
+  }
+  const rows = [], perVehicle = [];
+  let gMove = 0, gStop = 0, gKm = 0, gMoveSec = 0, gStopSec = 0;
+  for (const { imei, seg } of perImei) {
+    const nm = label(devMap, imei);
+    const ev = [];
+    let nMove = 0, nStop = 0, km = 0, moveSec = 0, stopSec = 0;
+    seg.trips.forEach(tr => { ev.push({ t: new Date(tr.start).getTime(), row: [nm, 'Deplasare', fmtTs(tr.start), fmtTs(tr.end), fmtDur(tr.durationSec), tr.distanceKm.toFixed(1), addr(tr.startP), addr(tr.endP)] }); nMove++; km += tr.distanceKm; moveSec += tr.durationSec; });
+    seg.stops.forEach(s => { ev.push({ t: new Date(s.start).getTime(), row: [nm, 'Staționare', fmtTs(s.start), fmtTs(s.end), fmtDur(s.durationSec), '', addr(s.p), ''] }); nStop++; stopSec += s.durationSec; });
+    ev.sort((a, b) => a.t - b.t);
+    const vrows = ev.map(e => e.row);
+    vrows.forEach(r => rows.push(r));
+    gMove += nMove; gStop += nStop; gKm += km; gMoveSec += moveSec; gStopSec += stopSec;
+    if (vrows.length) perVehicle.push({ vehicul: nm, summary: [['Deplasări', nMove], ['Staționări', nStop], ['Km', Math.round(km * 10) / 10], ['Timp mișcare', fmtDur(moveSec)], ['Timp staționat', fmtDur(stopSec)]], rows: vrows });
+  }
+  perVehicle.sort((a, b) => String(a.vehicul).localeCompare(String(b.vehicul)));
+  return {
+    columns: ['Vehicul', 'Tip', 'Început', 'Sfârșit', 'Durată', 'Km', 'De la', 'Până la'], rows,
+    summary: { 'Deplasări': gMove, 'Staționări': gStop, 'Km total': Math.round(gKm * 10) / 10, 'Timp mișcare': fmtDur(gMoveSec), 'Timp staționat': fmtDur(gStopSec) },
+    perVehicle: perVehicle.length > 1 ? perVehicle : undefined
+  };
 }
 
 async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carburant (sumar)
