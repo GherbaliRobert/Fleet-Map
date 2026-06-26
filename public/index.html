@@ -2389,6 +2389,7 @@ const pozitii = await r.json();</code></pre>
         _raxMountBody('#rax-co-overlay', 'admin-tab-companies');
         if (window.raxLoadCompanies) window.raxLoadCompanies();
         if (window.raxLoadUnassigned) window.raxLoadUnassigned();
+        if (window.raxMoveLoadAll) window.raxMoveLoadAll(); // încarcă lista „Mută între companii" la deschiderea tabului (altfel rămânea pe „Se încarcă…")
       } else if (name === 'accounts') {
         _raxMountBody('#rax-accounts-overlay', 'admin-tab-accounts');
         if (window.raxLoadAccounts) window.raxLoadAccounts();
@@ -11848,6 +11849,7 @@ const pozitii = await r.json();</code></pre>
       if (!Array.isArray(companiesCache) || !companiesCache.length) { try { await raxLoadCompanies(); } catch (e) {} }
       await raxMoveSwitch(_raxMove.entity || 'devices', true);
     }
+    window.raxMoveLoadAll = raxMoveLoadAll; // expus pt. panoul nou (raxAdminTab e în alt bloc de script)
     // Reîncarcă tab-ul curent după o mutare (datele s-au schimbat).
     function raxMoveReload() { _raxMove.loaded[_raxMove.entity] = false; return raxMoveSwitch(_raxMove.entity, true); }
     window.raxMoveSwitch = async function (entity, force) {
