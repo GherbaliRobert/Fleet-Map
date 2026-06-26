@@ -128,8 +128,12 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
     try { await geocode.warm(coords, { maxUnique: 50, budgetMs: imeis.length <= 1 ? 8000 : 3000 }); } catch (e) {}
   }
   const rows = tripList.map(({ imei, tr }) => {
-    const ks = odo(tr.startP), ke = odo(tr.endP);
-    return [ label(devMap, imei), fmtTs(tr.start), addr(tr.startP), fmtTs(tr.end), addr(tr.endP), fmtDur(tr.durationSec), tr.distanceKm.toFixed(2),
+    let ks = odo(tr.startP), ke = odo(tr.endP);
+    // Odometrul CAN e zgomotos pe unele device-uri (valori parazite / cifre în plus / sursă mixtă).
+    // Afișează Km doar dacă diferența start→sosire se corelează cu distanța GPS; altfel „—" (decât un număr greșit).
+    const dist = tr.distanceKm;
+    if (!(ks != null && ke != null && ks > 0 && ke >= ks && Math.abs((ke - ks) - dist) <= Math.max(3, dist * 0.5))) { ks = null; ke = null; }
+    return [ label(devMap, imei), fmtTs(tr.start), addr(tr.startP), fmtTs(tr.end), addr(tr.endP), fmtDur(tr.durationSec), dist.toFixed(2),
       ks != null ? ks : '—', ke != null ? ke : '—', tr.avgSpeed, tr.maxSpeed ];
   });
   const kmDay = _groupByDay(all, x => x.start, x => x.distanceKm);
