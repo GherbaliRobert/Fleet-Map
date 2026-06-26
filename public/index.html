@@ -2439,6 +2439,7 @@ const pozitii = await r.json();</code></pre>
       } catch (e) {}
     }
     window.loadAdminDash = loadAdminDash;
+    window.loadUsers = loadUsers; // raxAdminTab('users') îl apelează prin window.* → trebuie expus (altfel tabul depindea doar de preload)
 
     // ─── Users (admin) ───
     function openUsersModal() {
