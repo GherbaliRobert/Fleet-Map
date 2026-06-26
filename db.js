@@ -539,7 +539,8 @@ async function initDb() {
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS fuel_sensors JSONB`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS io_mappings JSONB`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS can_interface VARCHAR(8)`,
-      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_can JSONB`
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_can JSONB`,
+      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS cost NUMERIC(10,2)`
     ];
     for (const sql of migrateColumns) {
       try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
@@ -2275,8 +2276,8 @@ async function getVehicleDocuments(imei, companyId) {
 }
 async function createVehicleDocument(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO vehicle_documents (imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-    [data.imei, data.doc_type, data.number || null, data.issuer || null, data.issue_date || null, data.expiry_date || null, data.notes || null, companyId != null ? companyId : null]
+    'INSERT INTO vehicle_documents (imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id, cost) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+    [data.imei, data.doc_type, data.number || null, data.issuer || null, data.issue_date || null, data.expiry_date || null, data.notes || null, companyId != null ? companyId : null, (data.cost != null && data.cost !== '') ? data.cost : null]
   );
   return result.rows[0];
 }

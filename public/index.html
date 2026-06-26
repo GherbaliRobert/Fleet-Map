@@ -750,6 +750,7 @@
             <label>Emitent<input type="text" id="doc-issuer"></label>
             <label>Data emiterii<input type="date" id="doc-issue"></label>
             <label>Data expirării<input type="date" id="doc-expiry"></label>
+            <label>Cost (RON)<input type="number" step="0.01" id="doc-cost"></label>
             <div class="doc-actions"><button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-plus"></i> Adaugă</button></div>
           </div>
         </div>
@@ -1577,6 +1578,7 @@ const pozitii = await r.json();</code></pre>
             <label><span>Emitent</span><input type="text" id="mdoc-issuer"></label>
             <label><span>Dată emitere</span><input type="date" id="mdoc-issue"></label>
             <label><span>Dată expirare</span><input type="date" id="mdoc-expiry"></label>
+            <label><span>Cost (RON)</span><input type="number" step="0.01" id="mdoc-cost"></label>
             <div style="grid-column:1/-1;"><button class="btn-sm btn-primary" onclick="saveDocument()" style="width:100%;"><i class="fas fa-save"></i> Adaugă / reînnoiește</button></div>
           </div>
           <p style="font-size:11px;color:var(--text-muted);margin:8px 2px 0;">La reînnoire (același tip), actul vechi e înlocuit automat — rămâne doar cel curent.</p>
@@ -3560,8 +3562,14 @@ const pozitii = await r.json();</code></pre>
           </div>`;
       });
       if (!groups) groups = '<p style="color:var(--text-muted);font-size:12px;">Nicio intrare pentru filtrul ales.</p>';
+      // Contor costuri service: luna + anul curent (după data efectuării)
+      const _now = new Date(), _y = _now.getFullYear(), _m = _now.getMonth();
+      const _src = _mntFilterImei ? list.filter(x => x.imei === _mntFilterImei) : list;
+      let cM = 0, cY = 0;
+      _src.forEach(x => { if (x.status !== 'done') return; const c = parseFloat(x.cost) || 0; if (!c) return; const dd = x.done_date || (x.done_at ? x.done_at.slice(0,10) : null); if (!dd) return; const dt = new Date(dd); if (dt.getFullYear() === _y) { cY += c; if (dt.getMonth() === _m) cM += c; } });
+      const costBar = (cM || cY) ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Costuri service — luna aceasta: <strong style="color:var(--text-primary);">${Math.round(cM)} RON</strong> · anul ${_y}: <strong style="color:var(--text-primary);">${Math.round(cY)} RON</strong></div>` : '';
       const totalBar = grand ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Total service efectuat${_mntFilterImei ? '' : ' · toată flota'}: <strong style="color:var(--text-primary);">${Math.round(grand)} RON</strong></div>` : '';
-      el.innerHTML = filters + totalBar + groups;
+      el.innerHTML = filters + costBar + totalBar + groups;
     }
     function mntTypeChange() {
       const sel = document.getElementById('mnt-type-sel'); const inp = document.getElementById('mnt-type');
@@ -3640,7 +3648,7 @@ const pozitii = await r.json();</code></pre>
         else if (days <= 30) { badge = '<span style="color:#ef4444;font-size:11px;">expiră curând · ' + ds + ' (' + days + (days === 1 ? ' zi' : ' zile') + ')</span>'; border = 'border-color:#ef4444;'; }
         else badge = '<span style="color:var(--accent);font-size:11px;">valid până ' + ds + '</span>';
       }
-      const meta = [d.number, d.issuer, (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : '')].filter(Boolean).join(' · ');
+      const meta = [d.number, d.issuer, (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : ''), (d.cost ? Math.round(parseFloat(d.cost)) + ' RON' : '')].filter(Boolean).join(' · ');
       const actions = canEdit ? '<button class="btn-sm btn-danger" onclick="deleteDocument(' + d.id + ')"><i class="fas fa-trash"></i></button>' : '';
       return '<div class="admin-row" style="' + border + '"><div><strong>' + _docEsc(d.doc_type) + '</strong> ' + badge + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div>' + actions + '</div>';
     }
@@ -3666,7 +3674,13 @@ const pozitii = await r.json();</code></pre>
         groups += '<div style="margin-bottom:8px;"><div onclick="docToggle(\'' + imei + '\')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 4px;font-weight:700;border-bottom:1px solid var(--border);"><i class="fas fa-chevron-' + (open ? 'down' : 'right') + '" style="font-size:11px;color:var(--text-muted);width:12px;text-align:center;"></i><span>' + vehicleLabel(imei) + '</span>' + (alertCount ? '<span style="color:#ef4444;font-size:11px;">' + alertCount + ' de reînnoit</span>' : '') + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + entries.length + ' ' + (entries.length === 1 ? 'act' : 'acte') + '</span></div>' + (open ? '<div style="padding:4px 0 8px;">' + entries.map(d => docRow(d, canEdit)).join('') + '</div>' : '') + '</div>';
       });
       if (!groups) groups = '<p style="color:var(--text-muted);font-size:12px;">Niciun document pentru filtrul ales.</p>';
-      el.innerHTML = filters + groups;
+      // Contor costuri acte: luna + anul curent (după data emiterii)
+      const _now = new Date(), _y = _now.getFullYear(), _m = _now.getMonth();
+      const _src = _docFilterImei ? list.filter(d => d.imei === _docFilterImei) : list;
+      let cM = 0, cY = 0;
+      _src.forEach(d => { const c = parseFloat(d.cost) || 0; if (!c || !d.issue_date) return; const dt = new Date(d.issue_date); if (dt.getFullYear() === _y) { cY += c; if (dt.getMonth() === _m) cM += c; } });
+      const costBar = (cM || cY) ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Costuri acte — luna aceasta: <strong style="color:var(--text-primary);">' + Math.round(cM) + ' RON</strong> · anul ' + _y + ': <strong style="color:var(--text-primary);">' + Math.round(cY) + ' RON</strong></div>' : '';
+      el.innerHTML = filters + costBar + groups;
     }
     async function saveDocument() {
       const body = {
@@ -3675,12 +3689,13 @@ const pozitii = await r.json();</code></pre>
         number: document.getElementById('mdoc-number').value.trim(),
         issuer: document.getElementById('mdoc-issuer').value.trim(),
         issue_date: document.getElementById('mdoc-issue').value || null,
-        expiry_date: document.getElementById('mdoc-expiry').value || null
+        expiry_date: document.getElementById('mdoc-expiry').value || null,
+        cost: parseFloat(document.getElementById('mdoc-cost').value) || null
       };
       if (!body.imei || !body.doc_type) return alert('Alege vehiculul și tipul');
       const res = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Eroare'); }
-      ['mdoc-number', 'mdoc-issuer', 'mdoc-issue', 'mdoc-expiry'].forEach(clearField);
+      ['mdoc-number', 'mdoc-issuer', 'mdoc-issue', 'mdoc-expiry', 'mdoc-cost'].forEach(clearField);
       await loadDocuments();
     }
     async function deleteDocument(id) {
@@ -8035,16 +8050,16 @@ const pozitii = await r.json();</code></pre>
           const exp = d.expiry_date ? new Date(d.expiry_date) : null;
           let badge = 'fără dată expirare';
           if (exp) { const diff = exp.getTime() - now; const txt = exp.toLocaleDateString('ro-RO'); badge = diff < 0 ? '<span style="color:#ef4444;font-weight:600;">EXPIRAT (' + txt + ')</span>' : (diff < soon ? '<span style="color:#f59e0b;font-weight:600;">expiră ' + txt + '</span>' : '<span style="color:var(--accent);">valid până ' + txt + '</span>'); }
-          return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + '</div></div><button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div>';
+          return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + (d.cost ? ' · ' + Math.round(parseFloat(d.cost)) + ' RON' : '') + '</div></div><button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div>';
         }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
       } catch (e) { document.getElementById('veh-docs-list').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }
     }
     async function saveVehicleDocument() {
       const imei = document.getElementById('edit-imei').value;
-      const body = { imei, doc_type: document.getElementById('doc-type').value, number: document.getElementById('doc-number').value.trim(), issuer: document.getElementById('doc-issuer').value.trim(), issue_date: document.getElementById('doc-issue').value || null, expiry_date: document.getElementById('doc-expiry').value || null };
+      const body = { imei, doc_type: document.getElementById('doc-type').value, number: document.getElementById('doc-number').value.trim(), issuer: document.getElementById('doc-issuer').value.trim(), issue_date: document.getElementById('doc-issue').value || null, expiry_date: document.getElementById('doc-expiry').value || null, cost: parseFloat(document.getElementById('doc-cost').value) || null };
       const r = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return; }
-      ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry'].forEach(clearField);
+      ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
       loadVehicleDocuments();
     }
     async function deleteVehicleDoc(id) {
