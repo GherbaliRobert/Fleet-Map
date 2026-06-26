@@ -129,10 +129,14 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
   }
   const rows = tripList.map(({ imei, tr }) => {
     let ks = odo(tr.startP), ke = odo(tr.endP);
-    // Odometrul CAN e zgomotos pe unele device-uri (valori parazite / cifre în plus / sursă mixtă).
-    // Afișează Km doar dacă diferența start→sosire se corelează cu distanța GPS; altfel „—" (decât un număr greșit).
-    const dist = tr.distanceKm;
-    if (!(ks != null && ke != null && ks > 0 && ke >= ks && Math.abs((ke - ks) - dist) <= Math.max(3, dist * 0.5))) { ks = null; ke = null; }
+    // Validare anti-zgomot a odometrului CAN, robustă pt. CAN curat:
+    //  - monotonic (ke >= ks) și pozitiv;
+    //  - diferența start→sosire e în jurul distanței GPS, dar PERMITE odometru mai mare (GPS subestimează la
+    //    eșantionare rară): jos ≈ ½·dist, sus ≈ 3·dist; respinge doar paraziții (×10…×1000, cifre în plus).
+    // După ce CAN-ul e reparat (odometru curat, crescător), valorile bune trec și se corelează corect.
+    const dist = tr.distanceKm, delta = (ks != null && ke != null) ? (ke - ks) : NaN;
+    const okKm = ks != null && ke != null && ks > 0 && ke >= ks && delta <= dist * 3 + 5 && delta >= dist * 0.5 - 2;
+    if (!okKm) { ks = null; ke = null; }
     return [ label(devMap, imei), fmtTs(tr.start), addr(tr.startP), fmtTs(tr.end), addr(tr.endP), fmtDur(tr.durationSec), dist.toFixed(2),
       ks != null ? ks : '—', ke != null ? ke : '—', tr.avgSpeed, tr.maxSpeed ];
   });
