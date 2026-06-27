@@ -170,6 +170,8 @@ export function VehicleDetail() {
   const pills = notifs.filter((n) => n.imei === imei && !n.acknowledged).slice(0, 4);
   const isSuper = !!me.value?.isSuper;
   const canStale = !!(v as any)?.can_stale;
+  // „Ultima interogare": cu motorul oprit CAN-ul e carry-forward → arăt ora snapshot-ului real; altfel ultima transmisie
+  const lastQ = (canStale && (v as any)?.can_snapshot_ts) ? (v as any).can_snapshot_ts : v?.timestamp;
 
   function openUrl(url: string) { try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); } }
 
@@ -244,22 +246,29 @@ export function VehicleDetail() {
         </div>
 
         <div class="card d-detail">
-          <h3 class="d-cardh">Detalii live{canStale && <span class="d-stale"> · ultimele valori (motor oprit)</span>}</h3>
+          <h3 class="d-cardh">Detalii live</h3>
+          <div class="d-lastq"><Icon name="clock" size={12} /> Ultima interogare · {lastQ ? fmtAgo(lastQ) : '—'}{canStale ? ' · ultimele valori (motor oprit)' : ''}</div>
           <div class="d-grid">
-            <G label="Viteză GPS" value={(v?.speed || 0) + ' km/h'} cls={(v?.speed || 0) > 3 ? 'green' : ''} />
-            <G label="Direcție" value={getDirectionName(v?.angle)} />
+            {/* Set minimal — esențialul CAN, vizibil tuturor */}
             <G label="Status contact" value={ign ? 'Cuplat' : 'Decuplat'} cls={ign ? 'green' : 'red'} />
-            {volt && <G label="Tensiune baterie" value={volt} />}
             {fuelStr && <G label={'Combustibil' + fuelSrc} value={fuelStr} cls={fuelLow ? 'red' : ''} />}
-            {rpm && <G label="Motor RPM" value={rpm} />}
             {odo != null && <G label="Kilometraj total" value={odo + ' km'} />}
-            {eng.value !== '—' && <G label={eng.label} value={eng.value + ' h'} />}
             {coolant && <G label="Temp. motor" value={coolant} />}
-            {adblueVal && <G label="AdBlue" value={adblueVal} />}
-            <G label="Semnal GPS" value={gpsStandby ? 'În așteptare' : (v?.satellites != null ? gps.label + ' (' + v.satellites + ' sat.)' : gps.label)} />
-            <G label="Semnal GSM" value={gsm.label} />
-            <G label="Poziție" value={v?.latitude != null ? Number(v.latitude).toFixed(5) + ', ' + Number(v.longitude).toFixed(5) : '—'} full />
-            <G label="IMEI dispozitiv" value={imei} full />
+            {/* Restul IO — doar super-admin */}
+            {isSuper && (
+              <>
+                <G label="Viteză GPS" value={(v?.speed || 0) + ' km/h'} cls={(v?.speed || 0) > 3 ? 'green' : ''} />
+                <G label="Direcție" value={getDirectionName(v?.angle)} />
+                {volt && <G label="Tensiune baterie" value={volt} />}
+                {rpm && <G label="Motor RPM" value={rpm} />}
+                {eng.value !== '—' && <G label={eng.label} value={eng.value + ' h'} />}
+                {adblueVal && <G label="AdBlue" value={adblueVal} />}
+                <G label="Semnal GPS" value={gpsStandby ? 'În așteptare' : (v?.satellites != null ? gps.label + ' (' + v.satellites + ' sat.)' : gps.label)} />
+                <G label="Semnal GSM" value={gsm.label} />
+                <G label="Poziție" value={v?.latitude != null ? Number(v.latitude).toFixed(5) + ', ' + Number(v.longitude).toFixed(5) : '—'} full />
+                <G label="IMEI dispozitiv" value={imei} full />
+              </>
+            )}
           </div>
         </div>
 

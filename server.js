@@ -665,6 +665,9 @@ const tcpServer = net.createServer((socket) => {
         // Evenimente per-utilizator (abonamente + praguri proprii) — 'existing' = poziția anterioară
         evaluateUserEvents(imei, liveData, existing).catch(() => {});
 
+        // Alertă „furt combustibil" (prag per companie) — stare proprie (NU livePositions, care e deja actualizat)
+        checkFuelTheft(imei, liveData, undefined).catch(() => {});
+
         // Track tare automat pentru camioane
         trackTareCandidate(imei, liveData.io || {}).catch(() => {});
         }
@@ -1921,6 +1924,7 @@ async function _getEnabledAgents(companyId) {
 const ALERT_THRESHOLD_SPECS = [
   { k: 'offlineMin', min: 5, max: 1440, round: true },     // RA Watch — offline (min)
   { k: 'fuelDropL', min: 1, max: 1000, round: true },      // RA Watch — scădere combustibil (L)
+  { k: 'fuelTheftL', min: 1, max: 1000, round: true },     // Furt combustibil — prag scădere (L): parcare + în mers (reverificat 1h)
   { k: 'idleMaxMin', min: 5, max: 1440, round: true },     // RA Watch — ralanti prelungit (min)
   { k: 'ecoScoreMin', min: 0, max: 100, round: true },     // RA Optimize — scor minim eco-driving
   { k: 'serviceSoonKm', min: 100, max: 50000, round: true } // RA Care — km până la scadență
@@ -4513,6 +4517,98 @@ async function getDeviceCompanyCached(imei) {
     return cid;
   } catch (e) { return null; }
 }
+
+// ── Alertă „furt combustibil" (per companie, prag self-service fuelTheftL) ───────────────────────────
+// Două moduri: (1) PARCARE — scădere între ultima oprire (ign OFF) și următoarea pornire (ign ON);
+// (2) ÎN MERS — scădere bruscă în deplasare, dar NU alertăm imediat: ținem o „suspiciune" și o confirmăm
+// doar dacă nivelul NU revine în ~1h (clătinarea/înclinarea pe pantă readuce temporar citirea CAN în jos).
+const _fuelTheft = new Map();          // imei -> { ign, lastFuel, parkFuel, parkAt, susp:{baseline,low,at}|null }
+const _fuelTheftCooldown = new Map();  // imei -> ts ultima alertă (anti-spam)
+const _companyThreshCache = new Map(); // companyId -> { ts, thresholds } (evită un SELECT/poziție)
+async function _companyThresholds(companyId) {
+  if (companyId == null) return {};
+  const c = _companyThreshCache.get(companyId);
+  if (c && (Date.now() - c.ts) < 60000) return c.thresholds;
+  const t = await _getAlertThresholds(companyId);
+  _companyThreshCache.set(companyId, { ts: Date.now(), thresholds: t });
+  return t;
+}
+function _bestFuelLiters(io) { // litri reali (NU procente): tanc calibrat > sintetizat (LLS/BLE/CAN) > CAN brut
+  if (!io) return undefined;
+  for (const k of ['tank_level_liters', 'fuel_level_liters', 'can_fuel_level_liters']) {
+    const v = Number(io[k]); if (Number.isFinite(v) && v > 0) return v;
+  }
+  return undefined;
+}
+async function _emitFuelTheft(imei, data, info) {
+  const now = Date.now();
+  if ((now - (_fuelTheftCooldown.get(imei) || 0)) < 30 * 60 * 1000) return; // o alertă / 30 min / vehicul
+  _fuelTheftCooldown.set(imei, now);
+  const where = info.mode === 'parked' ? 'cât a stat oprit' : 'în mers (nerevenit în 1h)';
+  const body = `Scădere ${info.drop.toFixed(1)} L ${where} — de la ${info.from.toFixed(1)} L la ${info.to.toFixed(1)} L`;
+  const payload = { imei, vehicleName: (data && data.name) || imei, lat: data && data.latitude, lng: data && data.longitude, drop: Math.round(info.drop * 10) / 10, fromL: Math.round(info.from * 10) / 10, toL: Math.round(info.to * 10) / 10, mode: info.mode, timestamp: new Date().toISOString() };
+  broadcastWs({ type: 'alert', data: { alertType: 'fuel_theft', alertName: 'Posibil furt combustibil', ...payload } });
+  notify({ type: 'alert', severity: 'warning', imei, title: 'Posibil furt combustibil', body, dedupHours: 1, data: { alertType: 'fuel_theft', key: 'fueltheft:' + imei + ':' + Math.round(now / 1800000), ...payload } });
+  console.log(`[FUEL-THEFT] ${imei}: -${info.drop.toFixed(1)}L (${info.mode})`);
+}
+async function checkFuelTheft(imei, data, devCompany) {
+  try {
+    const companyId = (devCompany !== undefined) ? devCompany : await getDeviceCompanyCached(imei);
+    const th = await _companyThresholds(companyId);
+    const X = Number(th.fuelTheftL);
+    if (!Number.isFinite(X) || X <= 0) { if (_fuelTheft.has(imei)) _fuelTheft.delete(imei); return; } // dezactivat pt. companie
+    const io = data.io || {};
+    const fuel = _bestFuelLiters(io);
+    const wall = Date.now();
+    const st = _fuelTheft.get(imei) || { ign: 0, lastFuel: fuel, parkFuel: undefined, parkAt: 0, susp: null, seen: wall };
+    // Ignition lipsă dintr-un batch (heartbeat GPS-only) → NU presupune OFF; păstrează starea anterioară (fără tranziție falsă)
+    const ign = (io.ignition === 1 || io.ignition === true) ? 1 : (io.ignition === 0 || io.ignition === false) ? 0 : st.ign;
+
+    // (1) Tranziție ON→OFF: reține nivelul „de parcare"
+    if (st.ign === 1 && ign === 0) { st.parkFuel = (fuel != null ? fuel : st.lastFuel); st.parkAt = wall; }
+    // (2) Tranziție OFF→ON: compară cu nivelul de la parcare → furt cât a stat oprit
+    if (st.ign === 0 && ign === 1) {
+      if (st.parkFuel != null && fuel != null) {
+        const drop = st.parkFuel - fuel;
+        if (drop > X) await _emitFuelTheft(imei, data, { drop, from: st.parkFuel, to: fuel, mode: 'parked' });
+      }
+      st.parkFuel = undefined; st.susp = null; // pornire curată
+    }
+    // (3) Deplasare susținută (ON→ON): scădere bruscă → suspiciune confirmată DOAR dacă nu revine în 1h
+    if (st.ign === 1 && ign === 1 && fuel != null && st.lastFuel != null) {
+      if (!st.susp) {
+        if ((st.lastFuel - fuel) > X) st.susp = { baseline: st.lastFuel, low: fuel, at: wall };
+      } else if (fuel >= st.susp.baseline - Math.max(2, X * 0.25)) {
+        st.susp = null; // a revenit → clătinare/înclinare, nu furt
+      } else {
+        if (fuel < st.susp.low) st.susp.low = fuel;
+        if ((wall - st.susp.at) >= 60 * 60 * 1000) { await _emitFuelTheft(imei, data, { drop: st.susp.baseline - st.susp.low, from: st.susp.baseline, to: st.susp.low, mode: 'motion' }); st.susp = null; }
+      }
+    }
+    st.ign = ign;
+    if (fuel != null) st.lastFuel = fuel;
+    st.seen = wall;
+    _fuelTheft.set(imei, st);
+  } catch (e) { /* nu bloca ingestul */ }
+}
+// Confirmă suspiciunile „în mers" mai vechi de 1h chiar dacă vehiculul a încetat să raporteze între timp.
+// Re-verifică pragul LIVE (firma poate fi dezactivat alerta) + housekeeping (prună cooldown-uri + intrări inactive).
+setInterval(async () => {
+  const wall = Date.now();
+  for (const [imei, st] of _fuelTheft) {
+    const cd = _fuelTheftCooldown.get(imei);
+    if (cd && (wall - cd) > 24 * 60 * 60 * 1000) _fuelTheftCooldown.delete(imei);
+    if (st.susp && (wall - st.susp.at) >= 60 * 60 * 1000) {
+      const info = { drop: st.susp.baseline - st.susp.low, from: st.susp.baseline, to: st.susp.low, mode: 'motion' };
+      st.susp = null;
+      const X = Number((await _companyThresholds(await getDeviceCompanyCached(imei))).fuelTheftL);
+      if (!Number.isFinite(X) || X <= 0) { _fuelTheft.delete(imei); continue; } // firma a dezactivat alerta → nu emite
+      _emitFuelTheft(imei, livePositions.get(imei) || { name: imei }, info).catch(() => {});
+    } else if (!st.susp && st.seen && (wall - st.seen) > 7 * 24 * 60 * 60 * 1000) {
+      _fuelTheft.delete(imei); // vehicul inactiv de mult, fără suspiciune → eliberează memoria
+    }
+  }
+}, 5 * 60 * 1000);
 
 async function evaluateAlerts(imei, data) {
   try {

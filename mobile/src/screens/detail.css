@@ -83,8 +83,9 @@
 
 /* ── Grila „Detalii live" (toate citirile CAN/IO, ca info-grid din web) ── */
 .d-detail { padding: 14px; }
-.d-cardh { font-size: 13px; color: var(--text-muted); font-weight: 700; margin-bottom: 12px; }
+.d-cardh { font-size: 13px; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; }
 .d-stale { color: var(--text-muted); font-weight: 600; font-size: 11px; }
+.d-lastq { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); margin: 0 0 12px; }
 .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 .d-grid .g { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .d-grid .g.full { grid-column: 1 / -1; }
