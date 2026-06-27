@@ -1,4 +1,4 @@
-# Deploy GPS Unitip
+# Deploy RA Tracks
 
 Aplicația are nevoie de un host care oferă:
 
@@ -31,7 +31,7 @@ curl -fsSL https://get.docker.com | sh
 
 **3. Copiază proiectul pe server** (git clone sau scp) și creează `.env`:
 ```bash
-cd "GPS Unitip APP"
+cd "RA Tracks APP"
 cat > .env <<EOF
 DOMAIN=gps.firma.ro
 SESSION_SECRET=$(openssl rand -hex 32)
@@ -48,7 +48,7 @@ Caddy obține automat certificatul HTTPS. Deschide `https://gps.firma.ro` → lo
 **5. Configurează dispozitivele** (vezi secțiunea *Dispozitive* mai jos) către `gps.firma.ro:5027`.
 
 Actualizare ulterioară: `git pull && docker compose up -d --build`.
-Backup: salvează volumul `gpsdata` (ex. `docker run --rm -v gpsunitipapp_gpsdata:/d -v $PWD:/b alpine tar czf /b/backup.tgz /d`).
+Backup: salvează volumul `gpsdata` (ex. `docker run --rm -v ratrackapp_gpsdata:/d -v $PWD:/b alpine tar czf /b/backup.tgz /d`).
 
 ---
 
@@ -108,8 +108,8 @@ Dar există **VM-uri gratuite reale** (always-on, control pe porturi, disc persi
 - Pe router: **port-forward 5027** (pentru dispozitive) și 80/443 (pentru web), + DuckDNS pentru HTTPS.
 
 ### Domeniu gratuit (pentru HTTPS)
-- **DuckDNS** (https://duckdns.org): subdomeniu gratuit, ex. `gpsunitip.duckdns.org` → IP-ul mașinii.
-- Pui `DOMAIN=gpsunitip.duckdns.org` în `.env`; **Caddy obține certificatul automat** (port 80 deschis).
+- **DuckDNS** (https://duckdns.org): subdomeniu gratuit, ex. `ratrack.duckdns.org` → IP-ul mașinii.
+- Pui `DOMAIN=ratrack.duckdns.org` în `.env`; **Caddy obține certificatul automat** (port 80 deschis).
 
 > Rezumat gratuit 100%: **Oracle Always Free + DuckDNS + Docker/Caddy** (din proiectul ăsta) = web HTTPS + TCP 5027 + disc persistent, fără cost lunar.
 

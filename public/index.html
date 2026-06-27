@@ -11710,7 +11710,7 @@ const pozitii = await r.json();</code></pre>
             fld('Fără CAN', 'priceNoneRON', 'ex. 21', 'vehiculele nebifate') +
             fld('Cu CAN', 'priceCanRON', 'ex. 45', 'vehiculele bifate mai jos') +
           '</div>' +
-          '<div class="rax-abo-f" style="margin-top:10px;max-width:340px;"><label>Nume ofertă (opțional)</label><input type="text" id="rax-abo-name" value="' + esc(o.name || '') + '" placeholder="ex. Ofertă Unitip" oninput="raxAboRecalc()"></div></div>';
+          '<div class="rax-abo-f" style="margin-top:10px;max-width:340px;"><label>Nume ofertă (opțional)</label><input type="text" id="rax-abo-name" value="' + esc(o.name || '') + '" placeholder="ex. Ofertă standard" oninput="raxAboRecalc()"></div></div>';
         html += '<div class="rax-abo-sect"><h4>Vehicule „cu CAN" (bifează)</h4>' +
           '<div class="hint" style="margin-bottom:8px;">Bifat = preț „cu CAN"; nebifat = „fără CAN". Bifa pornește din detecția automată (badge), dar o poți schimba per vehicul.</div>' +
           _raxAboVehList() + '</div>';

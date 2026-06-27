@@ -1,9 +1,9 @@
-# GPS Unitip pe Fly.io
+# RA Tracks pe Fly.io
 #   fly launch --no-deploy        (creează app-ul, alege regiunea)
 #   fly volumes create gpsdata --size 1
 #   fly secrets set SESSION_SECRET=$(openssl rand -hex 32) ADMIN_PASSWORD=parola-ta
 #   fly deploy
-app = "gps-unitip"
+app = "ra-track"
 primary_region = "fra"   # Frankfurt (latență bună pentru România)
 
 [build]

@@ -13,7 +13,7 @@ Rezultat: VM gratuit **pe veci**, IP public, **HTTPS automat**, port **TCP 5027*
 
 ## 2. Creează VM-ul (Always Free)
 - Meniu (☰) → **Compute → Instances → Create instance**.
-- **Name:** `gps-unitip`
+- **Name:** `ra-track`
 - **Image and shape → Edit:**
   - Image: **Ubuntu 22.04**
   - Shape → **Ampere (ARM) `VM.Standard.A1.Flex`**, 1 OCPU / 6 GB — *Always Free eligible*.
@@ -39,9 +39,9 @@ sudo netfilter-persistent save
 
 ## 4. Domeniu gratuit (DuckDNS)
 - https://www.duckdns.org → autentificare (Google/GitHub).
-- La „domains" scrie `gpsunitip` → **add domain**.
+- La „domains" scrie `ratrack` → **add domain**.
 - La „current ip" pune **IP-ul public al VM-ului** → **update ip**.
-- Domeniul tău: **`gpsunitip.duckdns.org`** (alege-ți numele tău).
+- Domeniul tău: **`ratrack.duckdns.org`** (alege-ți numele tău).
 
 ## 5. Conectare SSH (din Windows PowerShell)
 ```powershell
@@ -65,32 +65,32 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ## 7. Adu codul pe server (o variantă)
 - **A. GitHub:** pune proiectul pe GitHub, apoi pe VM:
   ```bash
-  git clone https://github.com/UTILIZATORUL_TAU/gps-unitip.git && cd gps-unitip
+  git clone https://github.com/UTILIZATORUL_TAU/ra-track.git && cd ra-track
   ```
 - **B. Copiere directă (WinSCP / scp din Windows):** copiezi folderul proiectului pe VM (fără `node_modules` și `data`).
 
 ## 8. Configurează și pornește
 ```bash
-cd gps-unitip            # folderul proiectului
+cd ra-track            # folderul proiectului
 cat > .env <<'EOF'
-DOMAIN=gpsunitip.duckdns.org
+DOMAIN=ratrack.duckdns.org
 SESSION_SECRET=ruleaza__openssl_rand_-hex_32__si_pune_rezultatul_aici
 ADMIN_PASSWORD=ParolaTaTare
 EOF
 docker compose up -d --build
 ```
-Caddy obține automat certificatul HTTPS. În ~1 minut deschizi **https://gpsunitip.duckdns.org** → login `admin` / parola din `.env` → **schimbă parola** din Administrare.
+Caddy obține automat certificatul HTTPS. În ~1 minut deschizi **https://ratrack.duckdns.org** → login `admin` / parola din `.env` → **schimbă parola** din Administrare.
 
 Verificare: `docker compose logs -f app` (ar trebui să vezi „PORNIT").
 
 ## 9. Conectează dispozitivele Teltonika
 SMS către dispozitiv:
 ```
-  setparam 2004:gpsunitip.duckdns.org;2005:5027;2006:0
+  setparam 2004:ratrack.duckdns.org;2005:5027;2006:0
 ```
 
 ## 10. Instalează pe telefoane (PWA)
-Deschizi `https://gpsunitip.duckdns.org` pe telefon:
+Deschizi `https://ratrack.duckdns.org` pe telefon:
 - **Android (Chrome):** meniu ⋮ → „Instalează aplicația".
 - **iPhone (Safari):** Share → „Add to Home Screen".
 Apoi din 🔔 → ⚙ Preferințe → „Activează push".
@@ -99,6 +99,6 @@ Apoi din 🔔 → ⚙ Preferințe → „Activează push".
 
 ## Întreținere
 - **Update:** `git pull && docker compose up -d --build` (sau recopiezi + rebuild).
-- **Backup** (baza + secrete): `docker run --rm -v gps-unitip_gpsdata:/d -v $PWD:/b alpine tar czf /b/backup-gps.tgz /d`
+- **Backup** (baza + secrete): `docker run --rm -v ra-track_gpsdata:/d -v $PWD:/b alpine tar czf /b/backup-gps.tgz /d`
 - **Loguri:** `docker compose logs -f`
 - **DuckDNS** se poate auto-actualiza dacă IP-ul se schimbă (Oracle IP-ul e de obicei fix la Always Free).

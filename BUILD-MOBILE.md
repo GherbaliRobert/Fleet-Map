@@ -36,14 +36,14 @@ Pentru funcții native avansate sau publicare manuală. Necesită **Android Stud
 
 ```bash
 npm i -D @capacitor/cli @capacitor/core @capacitor/android @capacitor/ios
-npx cap init "GPS Unitip" ro.unitip.gps
+npx cap init "RA Tracks" ro.ratracks.app
 ```
 
 Creează `capacitor.config.json` (încarcă direct serverul publicat — nu mai bundle-uim frontend-ul):
 ```json
 {
-  "appId": "ro.unitip.gps",
-  "appName": "GPS Unitip",
+  "appId": "ro.ratracks.app",
+  "appName": "RA Tracks",
   "webDir": "public",
   "server": { "url": "https://gps.firma.ro", "cleartext": false }
 }

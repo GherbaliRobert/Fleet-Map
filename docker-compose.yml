@@ -1,4 +1,4 @@
-# GPS Unitip — deploy pe VPS cu HTTPS automat (Caddy)
+# RA Tracks — deploy pe VPS cu HTTPS automat (Caddy)
 # 1) Pune un domeniu (A record) către IP-ul serverului
 # 2) Creează un fișier .env cu: DOMAIN, SESSION_SECRET, ADMIN_PASSWORD
 # 3) docker compose up -d --build
