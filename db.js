@@ -1040,6 +1040,27 @@ async function markCostPaid(id, o) {
   );
   return { cost: upd.rows[0], payment: r.rows[0] };
 }
+// Capacitatea bazei de date din PostgreSQL-ul PROPRIU (fără token extern): mărime totală + defalcare pe tabel.
+async function getDbCapacity() {
+  let dbBytes = null, tables = [];
+  try {
+    const r = await pool.query('SELECT pg_database_size(current_database()) AS bytes');
+    dbBytes = (r.rows[0] && r.rows[0].bytes != null) ? Number(r.rows[0].bytes) : null;
+  } catch (e) { dbBytes = null; }
+  try {
+    const t = await pool.query(
+      `SELECT n.nspname AS schema_name, c.relname AS tbl,
+         pg_total_relation_size(c.oid) AS total_bytes,
+         pg_relation_size(c.oid) AS table_bytes,
+         pg_indexes_size(c.oid) AS index_bytes
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE c.relkind IN ('r','p','m') AND n.nspname NOT IN ('pg_catalog','information_schema')
+       ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 25`
+    );
+    tables = t.rows.map(function (x) { return { schema: x.schema_name, table: x.tbl, total: Number(x.total_bytes) || 0, data: Number(x.table_bytes) || 0, idx: Number(x.index_bytes) || 0 }; });
+  } catch (e) { tables = []; }
+  return { dbBytes, tables };
+}
 async function getCompanyBySlug(slug) {
   const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
   return r.rows[0] || null;
@@ -2550,7 +2571,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
-  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid,
+  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getDbCapacity,
   getCompanyImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,

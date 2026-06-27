@@ -3411,6 +3411,7 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     if (b.agents_auto !== undefined) await db.setSetting('agents_auto', b.agents_auto ? 'on' : 'off');
     if (b.offline_minutes !== undefined) { const n = parseInt(b.offline_minutes); if (Number.isFinite(n) && n >= 5 && n <= 1440) await db.setSetting('offline_minutes', String(n)); }
     if (b.default_speed_limit !== undefined) { const n = parseInt(b.default_speed_limit); if (Number.isFinite(n) && n >= 10 && n <= 200) await db.setSetting('default_speed_limit', String(n)); }
+    if (b.railway_volume_gb !== undefined) { const n = parseFloat(b.railway_volume_gb); if (Number.isFinite(n) && n > 0 && n <= 4096) await db.setSetting('railway_volume_gb', String(n)); } // plafon volum Railway pt. panoul de capacitate DB
     if (b.invoice_issuer !== undefined && b.invoice_issuer && typeof b.invoice_issuer === 'object') {
       const i = b.invoice_issuer; const S = (v, n) => String(v == null ? '' : v).slice(0, n);
       const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40) };
@@ -6158,6 +6159,35 @@ app.get('/api/admin/costs/:id/payments', requireAuth, requireSuperadmin, async (
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     res.json(await db.getCostPayments(id, 100));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Railway: usage/cost ESTIMAT din API (doar dacă RAILWAY_API_TOKEN + RAILWAY_WORKSPACE_ID sunt setate în env). Prețuri unitare publice.
+const RAILWAY_UNIT_PRICE_USD = { MEMORY_USAGE_GB: 0.000231, CPU_USAGE: 0.000463, NETWORK_TX_GB: 0.05, DISK_USAGE_GB: 0.000003472, BACKUP_USAGE_GB: 0.000003472 };
+async function fetchRailwayUsage() {
+  const token = process.env.RAILWAY_API_TOKEN, wsId = process.env.RAILWAY_WORKSPACE_ID;
+  if (!token || !wsId) return { configured: false };
+  const planFee = parseFloat(process.env.RAILWAY_PLAN_FEE_USD) || 0;
+  const query = 'query($id:String!){ estimatedUsage(workspaceId:$id, measurements:[CPU_USAGE,MEMORY_USAGE_GB,DISK_USAGE_GB,NETWORK_TX_GB,BACKUP_USAGE_GB]){ measurement estimatedValue } }';
+  try {
+    const r = await fetch('https://backboard.railway.com/graphql/v2', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ query, variables: { id: wsId } }) });
+    const j = await r.json().catch(function () { return {}; });
+    if (j.errors) return { configured: true, error: (j.errors[0] && j.errors[0].message) || 'Eroare GraphQL Railway' };
+    const rows = (j.data && j.data.estimatedUsage) || [];
+    const byMeasure = {}; let estUsd = planFee;
+    for (const row of rows) {
+      const v = Number(row.estimatedValue) || 0;
+      byMeasure[row.measurement] = (byMeasure[row.measurement] || 0) + v;
+      estUsd += v * (RAILWAY_UNIT_PRICE_USD[row.measurement] || 0);
+    }
+    return { configured: true, byMeasure, planFee, estimatedUsd: Math.round(estUsd * 100) / 100 };
+  } catch (e) { return { configured: true, error: e.message }; }
+}
+app.get('/api/admin/costs/railway', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const dbCap = await db.getDbCapacity();
+    let capGb = 5; try { const v = parseFloat(await db.getSetting('railway_volume_gb')); if (Number.isFinite(v) && v > 0) capGb = v; } catch (e) {}
+    const usage = await fetchRailwayUsage();
+    res.json({ db: dbCap, capGb, usage });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).

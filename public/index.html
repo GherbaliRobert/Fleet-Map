@@ -10634,6 +10634,14 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
+  <!-- Railway — detalii: capacitate bază de date + usage/cost (super-admin) -->
+  <div class="rax-overlay" id="rax-cost-detail-overlay">
+    <div class="rax-card" style="max-width:560px;">
+      <div class="rax-head"><h3><i class="fas fa-server" style="color:var(--accent)"></i> Railway — detalii</h3><button class="rax-x" onclick="document.getElementById('rax-cost-detail-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-body" id="rax-cost-detail-body"></div>
+    </div>
+  </div>
+
   <!-- Editare date companie (super-admin) -->
   <div class="rax-overlay" id="rax-coedit-overlay">
     <div class="rax-card" style="max-width:520px;">
@@ -12144,6 +12152,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="font-size:20px;font-weight:800;">' + _costAmt(c) + '<span style="font-size:11px;font-weight:500;color:var(--text-muted);"> / ' + _costCycleLabel(c.cycle) + '</span></div>' +
           '<div style="font-size:11.5px;color:var(--text-muted);"><i class="fas fa-calendar-day" style="margin-right:5px;"></i>Scadent: ' + _costFmtD(c.next_due) + '</div>' +
           '<div style="display:flex;gap:6px;margin-top:4px;"><button class="rax-btn primary" style="flex:1;justify-content:center;padding:5px 8px;font-size:11.5px;" onclick="raxCostMarkPaid(' + c.id + ')"><i class="fas fa-check"></i> Marchează plătit</button>' +
+          (_costIcon(c) === 'fa-server' ? '<button class="rax-btn" style="padding:5px 9px;" title="Detalii bază de date + usage" onclick="raxOpenRailwayDetail()"><i class="fas fa-chart-bar"></i></button>' : '') +
           '<button class="rax-btn" style="padding:5px 9px;" onclick="raxOpenCostModal(' + c.id + ')"><i class="fas fa-pen"></i></button></div>' +
         '</div>';
       }).join('');
@@ -12239,6 +12248,56 @@ const pozitii = await r.json();</code></pre>
         if (window.raxToast) raxToast('Cost șters ✓', 'success');
         raxLoadCosts();
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); else alert(e.message); }
+    };
+    // ─── Railway: panou „divizat" — capacitate bază de date (din pg-ul nostru) + usage/cost (din API Railway, dacă e token) ───
+    function _fmtBytes(b) { b = Number(b) || 0; if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB'; if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB'; if (b >= 1024) return (b / 1024).toFixed(0) + ' KB'; return b + ' B'; }
+    window.raxOpenRailwayDetail = async function () {
+      var ov = document.getElementById('rax-cost-detail-overlay'); if (!ov) return;
+      var body = document.getElementById('rax-cost-detail-body');
+      body.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>'; ov.classList.add('open');
+      var d;
+      try { d = await fetch('/api/admin/costs/railway', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+      catch (e) { body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      var used = (d.db && d.db.dbBytes) || 0;
+      var capGb = d.capGb || 5;
+      var capBytes = capGb * 1073741824;
+      var pct = capBytes ? Math.min(100, Math.round(used / capBytes * 100)) : 0;
+      var barColor = pct > 90 ? 'var(--red)' : (pct > 70 ? '#f59e0b' : 'var(--accent)');
+      var tables = (d.db && d.db.tables) || [];
+      var tableRows = tables.map(function (t) {
+        return '<tr><td><strong>' + esc(t.table) + '</strong>' + (t.schema && t.schema !== 'public' ? ' <span style="color:var(--text-muted);font-size:10px;">(' + esc(t.schema) + ')</span>' : '') + '</td>' +
+          '<td class="num">' + _fmtBytes(t.total) + '</td>' +
+          '<td class="num" style="color:var(--text-muted);font-size:11px;">' + _fmtBytes(t.data) + ' + ' + _fmtBytes(t.idx) + '</td></tr>';
+      }).join('');
+      var u = d.usage || {};
+      var usageHtml;
+      if (!u.configured) {
+        usageHtml = '<div class="rax-co-meta" style="padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;"><i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Pentru <b>usage + cost estimat</b>, setează în Railway (Variables) env: <code>RAILWAY_API_TOKEN</code> (railway.com/account/tokens) + <code>RAILWAY_WORKSPACE_ID</code> (din URL-ul workspace-ului). Opțional <code>RAILWAY_PLAN_FEE_USD</code> (taxa fixă de plan, ex. 5 sau 20).</div>';
+      } else if (u.error) {
+        usageHtml = '<div class="rax-co-meta" style="color:var(--red)">Eroare API Railway: ' + esc(u.error) + '</div>';
+      } else {
+        var bm = u.byMeasure || {};
+        var ml = { CPU_USAGE: 'CPU (vCPU-min)', MEMORY_USAGE_GB: 'RAM (GB-min)', DISK_USAGE_GB: 'Disc (GB-min)', NETWORK_TX_GB: 'Trafic ieșire (GB)', BACKUP_USAGE_GB: 'Backup (GB)' };
+        usageHtml = '<div style="font-size:24px;font-weight:800;color:var(--accent);">~$' + (u.estimatedUsd != null ? Number(u.estimatedUsd).toFixed(2) : '—') + ' <span style="font-size:12px;font-weight:500;color:var(--text-muted);">cost estimat luna asta</span></div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin:6px 0 8px;">Estimare = consum × prețuri unitare publice' + (u.planFee ? ' + taxă plan $' + u.planFee : '') + '. Poate diferi de factura reală (credite/rotunjiri).</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' + Object.keys(bm).map(function (k) { return '<div style="font-size:12px;"><span style="color:var(--text-muted);">' + (ml[k] || k) + ':</span> <b>' + (Number(bm[k]) || 0).toFixed(1) + '</b></div>'; }).join('') + '</div>';
+      }
+      body.innerHTML =
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-database"></i> Bază de date</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span><b>' + _fmtBytes(used) + '</b> ocupat</span><span style="color:var(--text-muted);">din ' + capGb + ' GB · <b style="color:' + barColor + ';">' + pct + '%</b></span></div>' +
+        '<div style="height:10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:8px;"><div style="height:100%;width:' + pct + '%;background:' + barColor + ';"></div></div>' +
+        '<div style="display:flex;gap:6px;align-items:center;margin-bottom:14px;"><span style="font-size:11px;color:var(--text-muted);">Plafon volum (GB):</span><input id="rax-rwcap" class="rax-field" type="number" min="0.5" step="0.5" value="' + capGb + '" style="width:90px;margin:0;"><button class="rax-btn" style="padding:4px 10px;font-size:11px;" onclick="raxSaveRailwayCap()">Salvează</button></div>' +
+        '<div style="overflow-x:auto;max-height:280px;overflow-y:auto;"><table class="rax-co-table"><thead><tr><th>Tabel</th><th class="num">Total</th><th class="num">Date + Index</th></tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-server"></i> Resurse &amp; cost (estimat)</div>' + usageHtml;
+    };
+    window.raxSaveRailwayCap = async function () {
+      var v = parseFloat((document.getElementById('rax-rwcap') || {}).value);
+      if (!Number.isFinite(v) || v <= 0) { if (window.raxToast) raxToast('Valoare invalidă', 'error'); return; }
+      try {
+        await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ railway_volume_gb: v }) });
+        if (window.raxToast) raxToast('Plafon salvat ✓', 'success');
+        raxOpenRailwayDetail();
+      } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
     };
     window.raxDeleteCompany = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
