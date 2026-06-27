@@ -6261,6 +6261,7 @@ app.get('/api/admin/costs/cloudflare', requireAuth, requireSuperadmin, async (re
   try { res.json(await fetchCloudflareUsage()); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Anthropic: cheltuiala lunii curente (USD) din Admin API cost_report. DOAR cu ANTHROPIC_ADMIN_KEY (cheie ADMIN sk-ant-admin01, separată de cea runtime din ai.js).
+const _anthSpendCache = new Map(); // startingAt -> { at, data } — TTL 60s, ca panoul + cardul să nu lovească de 2x cost_report (anti rate-limit 429)
 async function fetchAnthropicSpend(startingAtISO) {
   const ADMIN_KEY = process.env.ANTHROPIC_ADMIN_KEY;
   if (!ADMIN_KEY) return { configured: false };
@@ -6271,6 +6272,8 @@ async function fetchAnthropicSpend(startingAtISO) {
   const endExclusive = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
   const startingAt = startingAtISO || startOfMonth.toISOString().replace(/\.\d{3}Z$/, 'Z');
   const endingAt = endExclusive.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const _ck = startingAt; const _cc = _anthSpendCache.get(_ck);
+  if (_cc && (Date.now() - _cc.at) < 60000) return _cc.data; // rezultat proaspăt din cache
   const BASE = 'https://api.anthropic.com/v1/organizations/cost_report';
   const headers = { 'x-api-key': ADMIN_KEY, 'anthropic-version': '2023-06-01' };
   try {
@@ -6313,6 +6316,7 @@ async function fetchAnthropicSpend(startingAtISO) {
     const byWorkspaceUsd = {}; for (const k of Object.keys(byWorkspace)) byWorkspaceUsd[k] = round2(byWorkspace[k]);
     const out = { configured: true, spentUsd: round2(totalCents), byWorkspace: byWorkspaceUsd };
     if (sawNonUsd) out.error = 'Atenție: unele costuri nu sunt în USD și au fost ignorate.';
+    if (!out.error) _anthSpendCache.set(_ck, { at: Date.now(), data: out }); // cache doar rezultate reușite
     return out;
   } catch (err) {
     return { configured: true, spentUsd: 0, error: 'Nu am putut citi cheltuielile Anthropic: ' + (err && err.message ? err.message : String(err)) };
@@ -6325,14 +6329,20 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
     let available = null;
     if (spend.configured && !spend.error && budget > 0) available = Math.max(0, Math.round((budget - spend.spentUsd) * 100) / 100);
     // SOLD credite (Anthropic n-are API de sold): credite setate la o dată − cheltuit de la acea dată → sold rămas care scade singur.
-    let creditUsd = 0, creditDate = null, spentSince = null, soldRemaining = null;
+    let creditUsd = 0, creditDate = null, spentSince = null, soldRemaining = null, soldError = null;
     try { const c = parseFloat(await db.getSetting('anthropic_credit_usd')); if (Number.isFinite(c) && c >= 0) creditUsd = c; } catch (e) {}
     try { creditDate = (await db.getSetting('anthropic_credit_date')) || null; } catch (e) {}
-    if (creditUsd > 0 && creditDate && spend.configured && !spend.error) {
-      const since = await fetchAnthropicSpend(creditDate + 'T00:00:00Z');
-      if (since.configured && !since.error) { spentSince = since.spentUsd; soldRemaining = Math.max(0, Math.round((creditUsd - since.spentUsd) * 100) / 100); }
+    const creditConfigured = creditUsd > 0 && !!creditDate;
+    if (creditConfigured) {
+      if (!spend.configured) soldError = 'Cheia Admin Anthropic lipsește.';
+      else if (spend.error) soldError = spend.error;
+      else {
+        const since = await fetchAnthropicSpend(creditDate + 'T00:00:00Z');
+        if (since.configured && !since.error) { spentSince = since.spentUsd; soldRemaining = Math.max(0, Math.round((creditUsd - since.spentUsd) * 100) / 100); }
+        else soldError = since.error || 'Nu am putut citi cheltuiala de la data setată.';
+      }
     }
-    res.json(Object.assign({}, spend, { budget: budget, available: available, creditUsd: creditUsd, creditDate: creditDate, spentSince: spentSince, soldRemaining: soldRemaining }));
+    res.json(Object.assign({}, spend, { budget: budget, available: available, creditUsd: creditUsd, creditDate: creditDate, creditConfigured: creditConfigured, spentSince: spentSince, soldRemaining: soldRemaining, soldError: soldError }));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).

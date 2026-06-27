@@ -12193,6 +12193,7 @@ const pozitii = await r.json();</code></pre>
         var spent = Number(d.spentUsd || 0), sold = d.soldRemaining;
         var line = '<div style="font-size:11px;"><span style="color:var(--text-muted);">Folosit luna: </span><b style="color:var(--text-primary);">$' + spent.toFixed(2) + '</b>';
         if (sold != null) line += ' · <span style="color:var(--text-muted);">sold rămas </span><b style="color:var(--accent);">$' + Number(sold).toFixed(2) + '</b>';
+        else if (d.creditConfigured) line += ' · <span style="color:#f59e0b;cursor:pointer;text-decoration:underline dotted;" onclick="raxOpenProviderDetail(\'anthropic\')" title="' + esc(d.soldError || 'Eroare la calculul soldului') + '">sold: eroare (vezi 📊)</span>';
         else line += ' · <span style="color:var(--accent);cursor:pointer;text-decoration:underline dotted;" onclick="raxOpenProviderDetail(\'anthropic\')" title="Setează soldul de credite ca să apară aici">sold: setează →</span>';
         line += '</div>';
         host.innerHTML = line;
@@ -12406,6 +12407,8 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size:12px;color:var(--text-muted);">Sold rămas</span><span style="font-size:22px;font-weight:800;color:' + soldCol + ';">$' + Number(sold).toFixed(2) + '</span></div>' +
           '<div style="height:8px;background:var(--bg-dark);border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:5px;"><div style="height:100%;width:' + usedPct + '%;background:' + soldCol + ';"></div></div>' +
           '<div style="font-size:11px;color:var(--text-muted);">din <b>$' + creditUsd.toFixed(2) + '</b> setate la ' + esc(creditDate) + ' · cheltuit de atunci: <b>$' + (spentSince != null ? Number(spentSince).toFixed(2) : '—') + '</b></div>';
+      } else if (d.creditConfigured && d.soldError) {
+        soldBlock = '<div class="rax-co-meta" style="font-size:11px;line-height:1.5;color:var(--red);"><i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>Credit setat (<b>$' + Number(d.creditUsd || 0).toFixed(2) + '</b> la ' + esc(d.creditDate || '') + '), dar nu am putut calcula soldul rămas: ' + esc(d.soldError) + '</div>';
       } else {
         soldBlock = '<div class="rax-co-meta" style="font-size:11px;line-height:1.5;">Setează soldul de credite + data → vezi „sold rămas = credite − cheltuit de la acea dată", care scade singur. (Anthropic n-are API de sold; ia cifra din Console → <b>Credits</b>.)</div>';
       }
@@ -12421,12 +12424,14 @@ const pozitii = await r.json();</code></pre>
       var c = parseFloat((document.getElementById('rax-ancredit') || {}).value);
       var dt = (document.getElementById('rax-ancreditdate') || {}).value;
       if (!Number.isFinite(c) || c < 0) { if (window.raxToast) raxToast('Sold invalid', 'error'); return; }
-      if (!dt || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) { if (window.raxToast) raxToast('Alege o dată', 'error'); return; }
+      if (!dt || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) { dt = new Date().toISOString().slice(0, 10); } // implicit azi dacă data lipsește
       try {
-        await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ anthropic_credit_usd: c, anthropic_credit_date: dt }) });
+        var r = await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ anthropic_credit_usd: c, anthropic_credit_date: dt }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { if (window.raxToast) raxToast(j.error || ('Eroare ' + r.status), 'error'); return; }
         if (window.raxToast) raxToast('Sold salvat ✓', 'success');
         raxOpenAnthropicDetail();
-      } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
     window.raxDeleteCompany = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
