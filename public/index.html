@@ -12168,7 +12168,16 @@ const pozitii = await r.json();</code></pre>
         var pct = capBytes ? Math.min(100, Math.round(used / capBytes * 100)) : 0;
         var col = pct > 90 ? 'var(--red)' : (pct > 70 ? '#f59e0b' : 'var(--accent)');
         var u = d.usage || {};
-        var costLine = (u.configured && !u.error && u.estimatedUsd != null) ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">Usage estimat: <b style="color:var(--text-primary);">~$' + Number(u.estimatedUsd).toFixed(2) + '</b></div>' : '';
+        var costLine = '';
+        if (u.configured && !u.error) {
+          var bm = u.byMeasure || {}; var parts = [];
+          if (bm.CPU_USAGE != null) parts.push('CPU ' + Number(bm.CPU_USAGE).toFixed(0));
+          if (bm.MEMORY_USAGE_GB != null) parts.push('RAM ' + Number(bm.MEMORY_USAGE_GB).toFixed(1));
+          if (bm.NETWORK_TX_GB != null) parts.push('net ' + Number(bm.NETWORK_TX_GB).toFixed(2) + 'GB');
+          costLine = '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-muted);margin-top:4px;"><span>' + (parts.join(' · ') || 'resurse') + '</span>' + (u.estimatedUsd != null ? '<b style="color:var(--text-primary);">~$' + Number(u.estimatedUsd).toFixed(2) + '</b>' : '') + '</div>';
+        } else if (u.configured && u.error) {
+          costLine = '<div style="font-size:10.5px;color:var(--red);margin-top:4px;">Usage: token neautorizat (vezi 📊)</div>';
+        }
         host.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span style="color:var(--text-muted);"><i class="fas fa-database" style="margin-right:4px;"></i>Bază de date</span><span><b>' + _fmtBytes(used) + '</b> <span style="color:var(--text-muted);">/ ' + capGb + ' GB · ' + pct + '%</span></span></div><div style="height:6px;background:var(--bg-darker,#0b0f14);border:1px solid var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';"></div></div>' + costLine;
       }).catch(function () {});
       if ($id('rax-cx-cloudflare')) fetch('/api/admin/costs/cloudflare', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
@@ -12181,9 +12190,9 @@ const pozitii = await r.json();</code></pre>
         var host = $id('rax-cx-anthropic'); if (!host) return;
         if (!d.configured) { host.innerHTML = '<div style="font-size:10.5px;color:var(--text-muted);"><i class="fas fa-robot" style="margin-right:4px;"></i>Cheltuială: necesită cheie Admin (vezi 📊)</div>'; return; }
         if (d.error) { host.innerHTML = '<div style="font-size:10.5px;color:var(--red);">Anthropic: token invalid (vezi 📊)</div>'; return; }
-        var spent = Number(d.spentUsd || 0), avail = d.available;
-        var line = '<div style="font-size:11px;"><span style="color:var(--text-muted);">Cheltuit luna: </span><b style="color:var(--text-primary);">$' + spent.toFixed(2) + '</b>';
-        if (avail != null) line += ' · <span style="color:var(--text-muted);">disponibil </span><b style="color:var(--accent);">$' + Number(avail).toFixed(2) + '</b>';
+        var spent = Number(d.spentUsd || 0), sold = d.soldRemaining;
+        var line = '<div style="font-size:11px;"><span style="color:var(--text-muted);">Folosit luna: </span><b style="color:var(--text-primary);">$' + spent.toFixed(2) + '</b>';
+        if (sold != null) line += ' · <span style="color:var(--text-muted);">sold </span><b style="color:var(--accent);">$' + Number(sold).toFixed(2) + '</b>';
         line += '</div>';
         host.innerHTML = line;
       }).catch(function () {});
@@ -12383,29 +12392,38 @@ const pozitii = await r.json();</code></pre>
         body.innerHTML = '<div class="rax-co-meta" style="padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;"><i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Pentru <b>cheltuiala reală</b>, adaugă în env <code>ANTHROPIC_ADMIN_KEY</code> — o cheie de tip <b>Admin</b> (prefix „sk-ant-admin01-…"), creată la console.anthropic.com → Settings → Admin keys. NU cheia API obișnuită folosită de asistentul AI.</div>';
         return;
       }
-      var spent = Number(d.spentUsd || 0), budget = Number(d.budget || 0), avail = d.available;
-      var pct = budget > 0 ? Math.min(100, Math.round(spent / budget * 100)) : 0;
-      var barColor = pct > 90 ? 'var(--red)' : (pct > 70 ? '#f59e0b' : 'var(--accent)');
+      var spent = Number(d.spentUsd || 0);
+      var creditUsd = Number(d.creditUsd || 0), creditDate = d.creditDate || '', sold = d.soldRemaining, spentSince = d.spentSince;
       var errHtml = d.error ? '<div class="rax-co-meta" style="color:var(--red);margin-bottom:10px;font-size:11.5px;">' + esc(d.error) + '</div>' : '';
       var bw = d.byWorkspace || {}; var wsKeys = Object.keys(bw).filter(function (k) { return bw[k] > 0; });
       var wsHtml = wsKeys.length > 1 ? '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:10px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Pe workspace:</div>' + wsKeys.map(function (k) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;"><span>' + esc(k === 'default' ? 'Workspace principal' : k) + '</span><b>$' + Number(bw[k]).toFixed(2) + '</b></div>'; }).join('') + '</div>' : '';
+      var soldBlock;
+      if (sold != null) {
+        var usedPct = creditUsd > 0 ? Math.min(100, Math.round((creditUsd - sold) / creditUsd * 100)) : 0;
+        var soldCol = usedPct > 90 ? 'var(--red)' : (usedPct > 70 ? '#f59e0b' : 'var(--accent)');
+        soldBlock =
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size:12px;color:var(--text-muted);">Sold rămas</span><span style="font-size:22px;font-weight:800;color:' + soldCol + ';">$' + Number(sold).toFixed(2) + '</span></div>' +
+          '<div style="height:8px;background:var(--bg-dark);border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:5px;"><div style="height:100%;width:' + usedPct + '%;background:' + soldCol + ';"></div></div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">din <b>$' + creditUsd.toFixed(2) + '</b> setate la ' + esc(creditDate) + ' · cheltuit de atunci: <b>$' + (spentSince != null ? Number(spentSince).toFixed(2) : '—') + '</b></div>';
+      } else {
+        soldBlock = '<div class="rax-co-meta" style="font-size:11px;line-height:1.5;">Setează soldul de credite + data → vezi „sold rămas = credite − cheltuit de la acea dată", care scade singur. (Anthropic n-are API de sold; ia cifra din Console → <b>Credits</b>.)</div>';
+      }
       body.innerHTML = errHtml +
         '<div style="font-size:30px;font-weight:800;color:var(--accent);line-height:1;">$' + spent.toFixed(2) + '</div>' +
-        '<div style="font-size:12px;color:var(--text-muted);margin:4px 0 14px;">cheltuit luna aceasta (USD)</div>' +
-        '<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">Buget lunar ($):</span><input id="rax-anbudget" class="rax-field" type="number" min="0" step="1" value="' + (budget || '') + '" placeholder="ex. 100" style="width:100px;margin:0;"><button class="rax-btn" style="padding:4px 10px;font-size:11px;" onclick="raxSaveAnthropicBudget()">Salvează</button></div>' +
-        (budget > 0 ?
-          '<div style="height:10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:6px;"><div style="height:100%;width:' + pct + '%;background:' + barColor + ';"></div></div>' +
-          '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-muted);">' + pct + '% din buget</span><span><b style="color:' + barColor + ';">$' + (avail != null ? Number(avail).toFixed(2) : '—') + '</b> disponibil</span></div>' +
-          '<div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;font-style:italic;">„Disponibil" = buget − cheltuit (estimat din bugetul setat de tine). Anthropic nu oferă API de sold real — verifică-l în Console.</div>'
-        : '<div class="rax-co-meta" style="font-size:11px;">Setează un buget lunar pentru „disponibil = buget − cheltuit". (Anthropic nu expune soldul real prin API.)</div>') +
+        '<div style="font-size:12px;color:var(--text-muted);margin:4px 0 16px;">cheltuit luna aceasta (USD)</div>' +
+        '<div style="border-top:1px solid var(--border);padding-top:12px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-coins"></i> Sold credite</div>' +
+        soldBlock +
+        '<div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;"><span style="font-size:11px;color:var(--text-muted);">Credite ($):</span><input id="rax-ancredit" class="rax-field" type="number" min="0" step="0.01" value="' + (creditUsd || '') + '" placeholder="ex. 4.92" style="width:90px;margin:0;"><span style="font-size:11px;color:var(--text-muted);">la data:</span><input id="rax-ancreditdate" class="rax-field" type="date" value="' + esc(creditDate) + '" style="width:150px;margin:0;"><button class="rax-btn" style="padding:4px 10px;font-size:11px;" onclick="raxSaveAnthropicCredit()">Salvează</button></div></div>' +
         wsHtml;
     };
-    window.raxSaveAnthropicBudget = async function () {
-      var v = parseFloat((document.getElementById('rax-anbudget') || {}).value);
-      if (!Number.isFinite(v) || v < 0) { if (window.raxToast) raxToast('Valoare invalidă', 'error'); return; }
+    window.raxSaveAnthropicCredit = async function () {
+      var c = parseFloat((document.getElementById('rax-ancredit') || {}).value);
+      var dt = (document.getElementById('rax-ancreditdate') || {}).value;
+      if (!Number.isFinite(c) || c < 0) { if (window.raxToast) raxToast('Sold invalid', 'error'); return; }
+      if (!dt || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) { if (window.raxToast) raxToast('Alege o dată', 'error'); return; }
       try {
-        await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ anthropic_monthly_budget: v }) });
-        if (window.raxToast) raxToast('Buget salvat ✓', 'success');
+        await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ anthropic_credit_usd: c, anthropic_credit_date: dt }) });
+        if (window.raxToast) raxToast('Sold salvat ✓', 'success');
         raxOpenAnthropicDetail();
       } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
     };
