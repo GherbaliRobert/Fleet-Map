@@ -52,16 +52,19 @@ export function RouteScreen() {
 
   // ── Date: punctele brute (pentru desen) + rutele grupate (din raport) ─────
   useEffect(() => {
+    let alive = true; // anti-race: la schimbare rapidă de perioadă, ignoră răspunsul vechi care sosește ultimul
     setPts(null); setRoutes(null); setSummary(null); setSel(null);
     const { from, to } = range(period);
     Promise.all([
       Api.history(imei, from, to).then((r: any) => Array.isArray(r) ? r : (r.points || r.rows || [])).catch(() => []),
       Api.report(imei, from, to).catch(() => null),
     ]).then(([points, rep]: any) => {
+      if (!alive) return;
       setPts((points || []).filter((p: any) => p.latitude != null && p.longitude != null));
       if (rep && Array.isArray(rep.routes)) { setRoutes(rep.routes); setSummary(rep.summary || null); }
       else { setRoutes([]); setSummary(null); }
     });
+    return () => { alive = false; };
   }, [period, imei]);
 
   // Fiecare rută → punctele ei (feliate din istoric după intervalul de timp)
@@ -90,6 +93,13 @@ export function RouteScreen() {
         if (sel != null && focus) {
           dot((focus as LatLng[])[0], START).addTo(lg); dot((focus as LatLng[])[(focus as LatLng[]).length - 1], STOP).addTo(lg);
           map.fitBounds(L.latLngBounds(focus).pad(0.15), { animate: false });
+        } else if (sel != null && routes && routes[sel]) {
+          // Ruta selectată dar cu <2 puncte în istoric → centrează pe coordonatele rutei din raport (mereu prezente)
+          const r = routes[sel];
+          if (r.startLat != null && r.startLng != null) dot([r.startLat, r.startLng], START).addTo(lg);
+          if (r.endLat != null && r.endLng != null) dot([r.endLat, r.endLng], STOP).addTo(lg);
+          const b = L.latLngBounds([[r.startLat, r.startLng], [r.endLat, r.endLng]] as LatLng[]);
+          if (b.isValid()) map.fitBounds(b.pad(0.15), { animate: false });
         } else {
           const all = slices.flat();
           const firstS = slices.find((s) => s.length); const lastS = [...slices].reverse().find((s) => s.length);
