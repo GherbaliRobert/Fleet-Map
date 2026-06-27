@@ -12151,11 +12151,42 @@ const pozitii = await r.json();</code></pre>
             '<span style="margin-left:auto;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:' + st[2] + ';color:' + st[1] + ';white-space:nowrap;">' + st[0] + '</span></div>' +
           '<div style="font-size:20px;font-weight:800;">' + _costAmt(c) + '<span style="font-size:11px;font-weight:500;color:var(--text-muted);"> / ' + _costCycleLabel(c.cycle) + '</span></div>' +
           '<div style="font-size:11.5px;color:var(--text-muted);"><i class="fas fa-calendar-day" style="margin-right:5px;"></i>Scadent: ' + _costFmtD(c.next_due) + '</div>' +
+          (_costProviderKey(c) ? '<div id="rax-cx-' + _costProviderKey(c) + '" class="rax-cx"></div>' : '') +
           '<div style="display:flex;gap:6px;margin-top:4px;"><button class="rax-btn primary" style="flex:1;justify-content:center;padding:5px 8px;font-size:11.5px;" onclick="raxCostMarkPaid(' + c.id + ')"><i class="fas fa-check"></i> Marchează plătit</button>' +
           (_costProviderKey(c) ? '<button class="rax-btn" style="padding:5px 9px;" title="Detalii & usage" onclick="raxOpenProviderDetail(\'' + _costProviderKey(c) + '\')"><i class="fas fa-chart-bar"></i></button>' : '') +
           '<button class="rax-btn" style="padding:5px 9px;" onclick="raxOpenCostModal(' + c.id + ')"><i class="fas fa-pen"></i></button></div>' +
         '</div>';
       }).join('');
+      if (window.raxLoadCardExtras) raxLoadCardExtras();
+    };
+    // Rezumat inline pe fiecare card de furnizor (fără să deschizi 📊): Railway=capacitate DB, Cloudflare=usage, Anthropic=cheltuit+disponibil.
+    window.raxLoadCardExtras = function () {
+      var $id = function (id) { return document.getElementById(id); };
+      if ($id('rax-cx-railway')) fetch('/api/admin/costs/railway', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+        var host = $id('rax-cx-railway'); if (!host) return;
+        var used = (d.db && d.db.dbBytes) || 0, capGb = d.capGb || 5, capBytes = capGb * 1073741824;
+        var pct = capBytes ? Math.min(100, Math.round(used / capBytes * 100)) : 0;
+        var col = pct > 90 ? 'var(--red)' : (pct > 70 ? '#f59e0b' : 'var(--accent)');
+        var u = d.usage || {};
+        var costLine = (u.configured && !u.error && u.estimatedUsd != null) ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">Usage estimat: <b style="color:var(--text-primary);">~$' + Number(u.estimatedUsd).toFixed(2) + '</b></div>' : '';
+        host.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span style="color:var(--text-muted);"><i class="fas fa-database" style="margin-right:4px;"></i>Bază de date</span><span><b>' + _fmtBytes(used) + '</b> <span style="color:var(--text-muted);">/ ' + capGb + ' GB · ' + pct + '%</span></span></div><div style="height:6px;background:var(--bg-darker,#0b0f14);border:1px solid var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';"></div></div>' + costLine;
+      }).catch(function () {});
+      if ($id('rax-cx-cloudflare')) fetch('/api/admin/costs/cloudflare', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+        var host = $id('rax-cx-cloudflare'); if (!host) return;
+        if (!d.configured || d.error) { host.innerHTML = '<div style="font-size:10.5px;color:var(--text-muted);"><i class="fas fa-chart-line" style="margin-right:4px;"></i>Statistici: necesită token (vezi 📊)</div>'; return; }
+        var t = d.totals || {};
+        host.innerHTML = '<div style="font-size:11px;color:var(--text-muted);"><i class="fas fa-chart-line" style="margin-right:4px;"></i><b style="color:var(--text-primary);">' + _fmtNum(t.requests) + '</b> cereri · ' + _fmtBytes(t.bytes) + ' · <b style="color:var(--text-primary);">' + _fmtNum(t.threats) + '</b> blocate <span style="opacity:.7;">(30z)</span></div>';
+      }).catch(function () {});
+      if ($id('rax-cx-anthropic')) fetch('/api/admin/costs/anthropic', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+        var host = $id('rax-cx-anthropic'); if (!host) return;
+        if (!d.configured) { host.innerHTML = '<div style="font-size:10.5px;color:var(--text-muted);"><i class="fas fa-robot" style="margin-right:4px;"></i>Cheltuială: necesită cheie Admin (vezi 📊)</div>'; return; }
+        if (d.error) { host.innerHTML = '<div style="font-size:10.5px;color:var(--red);">Anthropic: token invalid (vezi 📊)</div>'; return; }
+        var spent = Number(d.spentUsd || 0), avail = d.available;
+        var line = '<div style="font-size:11px;"><span style="color:var(--text-muted);">Cheltuit luna: </span><b style="color:var(--text-primary);">$' + spent.toFixed(2) + '</b>';
+        if (avail != null) line += ' · <span style="color:var(--text-muted);">disponibil </span><b style="color:var(--accent);">$' + Number(avail).toFixed(2) + '</b>';
+        line += '</div>';
+        host.innerHTML = line;
+      }).catch(function () {});
     };
     window.raxRenderCostList = function () {
       var host = document.getElementById('rax-cost-table'); if (!host) return;
