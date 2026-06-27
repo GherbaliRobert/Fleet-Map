@@ -533,21 +533,14 @@ async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu — jurnal 
 }
 
 async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carburant (sumar)
-  const rows = []; let tCons = 0, tDist = 0; const vCons = [], vPer = [];
+  const cm = await _consumptionMap(db, imeis, from, to, opts);
+  const rows = []; let tCons = 0, tDist = 0, nEst = 0; const vCons = [], vPer = [];
   for (const imei of imeis) {
-    const pts = await history(db, imei, from, to);
-    let first = null, last = null, refueled = 0, dist = 0, prev = null;
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], fl = fuelL(p);
-      if (fl != null) { if (first == null) first = fl; last = fl; if (prev != null) { const dlt = fl - prev; if (dlt >= (opts.refuelMin || 10)) refueled += dlt; } prev = fl; }
-      if (i > 0) { const pr = pts[i - 1], dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) dist += dd; }
-    }
+    const m = cm[imei]; if (!m) continue;
     const nm = label(devMap, imei);
-    if (first == null) { rows.push([nm, '—', '—', '—', dist.toFixed(0), '—', '—']); continue; }
-    const consumed = Math.max(0, (first - last) + refueled);
-    const per100 = dist > 1 ? (consumed / dist * 100) : 0;
-    rows.push([ nm, first.toFixed(0) + ' L', last.toFixed(0) + ' L', refueled.toFixed(0) + ' L', dist.toFixed(0), consumed.toFixed(0) + ' L', per100 ? per100.toFixed(1) : '—' ]);
-    tCons += consumed; tDist += dist; vCons.push([nm, consumed]); if (per100) vPer.push([nm, per100]);
+    if (!m.hasFuel && m.consumed <= 0) { rows.push([nm, '—', '—', '—', m.dist.toFixed(0), '—', '—']); continue; }
+    rows.push([ nm, m.first != null ? m.first.toFixed(0) + ' L' : '—', m.last != null ? m.last.toFixed(0) + ' L' : '—', Math.round(m.refueled) + ' L', m.dist.toFixed(0), m.consumed.toFixed(0) + ' L' + (m.estimated ? ' (est.)' : ''), m.per100 != null ? m.per100.toFixed(1) : '—' ]);
+    tCons += m.consumed; tDist += m.dist; vCons.push([nm, m.consumed]); if (m.per100) vPer.push([nm, m.per100]); if (m.estimated) nEst++;
   }
   const topCons = _topN(vCons, 10), topPer = _topN(vPer, 10);
   const charts = vCons.length ? [
@@ -555,7 +548,7 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
     { type: 'bar', title: 'L/100km pe vehicul',    labels: topPer.labels,  datasets: [{ label: 'L/100km', data: topPer.data }] }
   ] : [];
   return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km'], rows,
-    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts };
+    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—', 'Estimate (fără senzor)': nEst }, charts };
 }
 
 async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN (snapshot ultim)
@@ -759,22 +752,14 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
 }
 
 async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibil (din consum + preț/vehicul)
-  const priceMap = {}; try { (await db.pool.query('SELECT imei, fuel_price FROM devices')).rows.forEach(d => priceMap[d.imei] = parseFloat(d.fuel_price)); } catch (e) {}
+  const cm = await _consumptionMap(db, imeis, from, to, opts);
   const rows = []; let tKm = 0, tCons = 0, tCost = 0; const vCost = [], vPerKm = [];
   for (const imei of imeis) {
-    const pts = await history(db, imei, from, to);
-    let first = null, last = null, refuel = 0, dist = 0, prev = null;
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], fl = fuelL(p);
-      if (fl != null) { if (first == null) first = fl; last = fl; if (prev != null) { const d = fl - prev; if (d >= (opts.refuelMin || 10)) refuel += d; } prev = fl; }
-      if (i > 0) { const pr = pts[i - 1], dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) dist += dd; }
-    }
-    const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
-    const price = Number.isFinite(priceMap[imei]) ? priceMap[imei] : (opts.fuelPrice || 7.5); // preț 0 configurat e valid (nu cădea pe 7.5)
-    const cost = consumed * price, perKm = dist > 1 ? cost / dist : 0;
+    const m = cm[imei]; if (!m) continue;
+    const cost = m.consumed * m.price, perKm = m.dist > 1 ? cost / m.dist : 0;
     const nm = label(devMap, imei);
-    rows.push([nm, Math.round(dist), consumed.toFixed(0) + ' L', price.toFixed(2), Math.round(cost) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
-    tKm += dist; tCons += consumed; tCost += cost; vCost.push([nm, cost]); if (perKm) vPerKm.push([nm, perKm]);
+    rows.push([nm, Math.round(m.dist), m.consumed.toFixed(0) + ' L' + (m.estimated ? ' (est.)' : ''), m.price.toFixed(2), Math.round(cost) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
+    tKm += m.dist; tCons += m.consumed; tCost += cost; vCost.push([nm, cost]); if (perKm) vPerKm.push([nm, perKm]);
   }
   rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4]));
   const topC = _topN(vCost, 10), topK = _topN(vPerKm, 10);
@@ -788,7 +773,7 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
 
 async function rCostsTotal(db, imeis, from, to, opts, devMap) { // Costuri totale: combustibil (auto din telemetrie) + service (mentenanță) + acte (documente)
   const d0 = String(from).slice(0, 10), d1 = String(to).slice(0, 10);
-  const priceMap = {}; try { (await db.pool.query('SELECT imei, fuel_price FROM devices')).rows.forEach(d => priceMap[d.imei] = parseFloat(d.fuel_price)); } catch (e) {}
+  const cm = await _consumptionMap(db, imeis, from, to, opts);
   const svcMap = {}; try {
     const r = await db.pool.query("SELECT imei, COALESCE(SUM(cost),0)::float AS c FROM maintenance WHERE status='done' AND imei = ANY($1) AND COALESCE(done_date, done_at::date) BETWEEN $2 AND $3 GROUP BY imei", [imeis, d0, d1]);
     r.rows.forEach(x => svcMap[x.imei] = x.c);
@@ -799,20 +784,13 @@ async function rCostsTotal(db, imeis, from, to, opts, devMap) { // Costuri total
   } catch (e) {}
   const rows = []; let tFuel = 0, tSvc = 0, tDoc = 0, tKm = 0; const vTotal = [];
   for (const imei of imeis) {
-    const pts = await history(db, imei, from, to);
-    let first = null, last = null, refuel = 0, dist = 0, prev = null;
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], fl = fuelL(p);
-      if (fl != null) { if (first == null) first = fl; last = fl; if (prev != null) { const dd = fl - prev; if (dd >= (opts.refuelMin || 10)) refuel += dd; } prev = fl; }
-      if (i > 0) { const pr = pts[i - 1], dk = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dk < MAX_STEP_KM) dist += dk; }
-    }
-    const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
-    const fuelCost = consumed * (Number.isFinite(priceMap[imei]) ? priceMap[imei] : (opts.fuelPrice || 7.5));
+    const m = cm[imei] || { consumed: 0, dist: 0, price: opts.fuelPrice || 7.5 };
+    const fuelCost = m.consumed * m.price;
     const svc = svcMap[imei] || 0, doc = docMap[imei] || 0;
-    const total = fuelCost + svc + doc, perKm = dist > 1 ? total / dist : 0;
+    const total = fuelCost + svc + doc, perKm = m.dist > 1 ? total / m.dist : 0;
     const nm = label(devMap, imei);
     rows.push([nm, Math.round(fuelCost) + ' RON', Math.round(svc) + ' RON', Math.round(doc) + ' RON', Math.round(total) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
-    tFuel += fuelCost; tSvc += svc; tDoc += doc; tKm += dist; if (total) vTotal.push([nm, total]);
+    tFuel += fuelCost; tSvc += svc; tDoc += doc; tKm += m.dist; if (total) vTotal.push([nm, total]);
   }
   rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4]));
   const grand = tFuel + tSvc + tDoc;
@@ -827,21 +805,15 @@ async function rCostsTotal(db, imeis, from, to, opts, devMap) { // Costuri total
 
 async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (din consum carburant)
   const FACTOR = opts.co2Factor || 2.64; // kg CO₂ / litru motorină
+  const cm = await _consumptionMap(db, imeis, from, to, opts);
   const rows = []; let tCo2 = 0, tKm = 0, tCons = 0; const vCo2 = [], vPerKm = [];
   for (const imei of imeis) {
-    const pts = await history(db, imei, from, to);
-    let first = null, last = null, refuel = 0, dist = 0, prev = null;
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], fl = fuelL(p);
-      if (fl != null) { if (first == null) first = fl; last = fl; if (prev != null) { const d = fl - prev; if (d >= (opts.refuelMin || 10)) refuel += d; } prev = fl; }
-      if (i > 0) { const pr = pts[i - 1], dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) dist += dd; }
-    }
-    const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
-    const co2 = consumed * FACTOR;
-    const perKm = dist > 1 ? co2 / dist * 1000 : 0; // g/km
+    const m = cm[imei]; if (!m) continue;
+    const co2 = m.consumed * FACTOR;
+    const perKm = m.dist > 1 ? co2 / m.dist * 1000 : 0; // g/km
     const nm = label(devMap, imei);
-    rows.push([nm, Math.round(dist), consumed.toFixed(0) + ' L', (co2 / 1000).toFixed(2) + ' t', perKm ? Math.round(perKm) + ' g/km' : '—']);
-    tCo2 += co2; tKm += dist; tCons += consumed; vCo2.push([nm, co2]); if (perKm) vPerKm.push([nm, perKm]);
+    rows.push([nm, Math.round(m.dist), m.consumed.toFixed(0) + ' L', (co2 / 1000).toFixed(2) + ' t', perKm ? Math.round(perKm) + ' g/km' : '—']);
+    tCo2 += co2; tKm += m.dist; tCons += m.consumed; vCo2.push([nm, co2]); if (perKm) vPerKm.push([nm, perKm]);
   }
   rows.sort((a, b) => parseFloat(b[3]) - parseFloat(a[3]));
   const topC = _topN(vCo2, 10), topK = _topN(vPerKm, 10);
@@ -856,6 +828,136 @@ async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (
 }
 
 // Catalog: cat = monitorizare | consum | can | evenimente | siguranta
+function fmtDate(d) { try { return new Date(d).toLocaleDateString('ro-RO', { timeZone: DISPLAY_TZ }); } catch (e) { return String(d || ''); } }
+function _dueStatus(days) { return days < 0 ? 'Depășit' : days <= 7 ? 'Critic' : days <= 30 ? 'Curând' : 'OK'; }
+
+// ── Model de consum ROBUST (sursă unică pentru Consum / Costuri / Costuri-totale / Emisii) ───────────────
+// Senzorul de nivel e folosit DOAR dacă dă un L/100km plauzibil (1..200) pe distanță reală; altfel estimează
+// din km × consum-pe-tip + ralanti. Gardă de timp pe distanță (dt<=300s) și pe realimentări (salt după o pauză
+// mare = ignorat). Întoarce un map imei -> metrici. Oglindește logica din fuelStats (pagina „Statistici consum").
+async function _consumptionMap(db, imeis, from, to, opts) {
+  opts = opts || {};
+  const refuelMin = opts.refuelMin || 10, idleLph = opts.idleLph || 1.5, MAX_PER100 = 200;
+  const cfg = {};
+  try { (await db.pool.query('SELECT imei, fuel_price, vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices')).rows.forEach(d => { cfg[d.imei] = { price: parseFloat(d.fuel_price), vtype: d.vehicle_type || null, cRoad: parseFloat(d.consumption_road) || parseFloat(d.consumption_city) || null, cIdle: parseFloat(d.consumption_idle) || null }; }); } catch (e) {}
+  const out = {};
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    let first = null, last = null, refueled = 0, dist = 0, prevFuel = null, prevFuelTs = 0, idleSec = 0, prevP = null;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], fl = fuelL(p), ts = t(p);
+      if (fl != null) {
+        if (first == null) first = fl; last = fl;
+        if (prevFuel != null && (ts - prevFuelTs) <= 3600 * 1000) { const d = fl - prevFuel; if (d >= refuelMin) refueled += d; }
+        prevFuel = fl; prevFuelTs = ts;
+      }
+      if (i > 0) { const pr = pts[i - 1], dt = (ts - t(pr)) / 1000, dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dt > 0 && dt <= 300 && dd < MAX_STEP_KM) dist += dd; }
+      if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED && prevP && ignOn(prevP) && (prevP.speed || 0) <= IDLE_SPEED) { const dt = (new Date(p.timestamp) - new Date(prevP.timestamp)) / 1000; if (dt > 0 && dt < 3600) idleSec += dt; }
+      prevP = p;
+    }
+    const c = cfg[imei] || {};
+    const price = Number.isFinite(c.price) ? c.price : (opts.fuelPrice || 7.5);
+    const cRoad = c.cRoad || defConsumption(c.vtype);
+    const idleL = idleSec / 3600 * (c.cIdle || idleLph);
+    const hasFuel = first != null;
+    const sensorL = hasFuel ? Math.max(0, (first - last) + refueled) : 0;
+    const sensorPer100 = (hasFuel && dist > 1) ? (sensorL / dist * 100) : null;
+    const sensorOk = hasFuel && sensorL > 0 && dist > 1 && sensorPer100 >= 1 && sensorPer100 <= MAX_PER100;
+    let consumed = sensorOk ? sensorL : (dist * cRoad / 100 + idleL);
+    if (consumed < idleL) consumed = idleL;
+    const per100 = dist > 1 ? +(consumed / dist * 100).toFixed(1) : null;
+    out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !sensorOk, hasFuel, per100, price, first, last };
+  }
+  return out;
+}
+
+// ── Raport NOU: Scadențe documente & service (expirări ITP/RCA/roviniete/tahograf + revizii) ─────────────
+async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
+  const ref = new Date(to); const rows = []; let overdue = 0, soon = 0;
+  try {
+    const r = await db.pool.query('SELECT imei, doc_type, number, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL', [imeis]);
+    for (const d of r.rows) { const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000);
+      rows.push([ label(devMap, d.imei), 'Document', d.doc_type || '—', fmtDate(d.expiry_date), days, _dueStatus(days) ]);
+      if (days < 0) overdue++; else if (days <= 30) soon++; }
+  } catch (e) {}
+  try {
+    const r = await db.pool.query("SELECT imei, type, due_date FROM maintenance WHERE imei = ANY($1) AND status <> 'done' AND due_date IS NOT NULL", [imeis]);
+    for (const m of r.rows) { const days = Math.floor((new Date(m.due_date) - ref) / 86400000);
+      rows.push([ label(devMap, m.imei), 'Service', m.type || '—', fmtDate(m.due_date), days, _dueStatus(days) ]);
+      if (days < 0) overdue++; else if (days <= 30) soon++; }
+  } catch (e) {}
+  rows.sort((a, b) => a[4] - b[4]); // cele mai urgente (zile rămase mici/negative) primul
+  const charts = rows.length ? [
+    { type: 'doughnut', title: 'Stare scadențe', labels: ['Depășite', 'În 30 zile', 'OK'], datasets: [{ label: 'nr.', data: [overdue, soon, Math.max(0, rows.length - overdue - soon)] }] }
+  ] : [];
+  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Zile rămase', 'Stare'], rows,
+    summary: { 'Total scadențe': rows.length, 'Depășite': overdue, 'În ≤30 zile': soon }, charts };
+}
+
+// ── Raport NOU: Disponibilitate flotă (zile active/inactive, cea mai lungă pauză, ultima poziție) ────────
+async function rFleetUptime(db, imeis, from, to, opts, devMap) {
+  const fromMs = new Date(from).getTime(), toMs = new Date(to).getTime();
+  const periodDays = Math.max(1, Math.round((toMs - fromMs) / 86400000));
+  const rows = []; let inactive = 0, dark = 0; const vIdle = [];
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    const moveDays = new Set(); let maxGap = 0, prevTs = fromMs, lastTs = null;
+    for (const p of pts) { const ts = t(p); if (ts - prevTs > maxGap) maxGap = ts - prevTs; prevTs = ts;
+      if ((p.speed || 0) > IDLE_SPEED) moveDays.add(_dayKeyISO(p.timestamp)); lastTs = ts; }
+    if (toMs - prevTs > maxGap) maxGap = toMs - prevTs; // pauză până la finalul perioadei
+    const activeDays = moveDays.size, idleDays = Math.max(0, periodDays - activeDays);
+    const ageH = lastTs ? Math.round((Date.now() - lastTs) / 3600000) : null;
+    const nm = label(devMap, imei);
+    rows.push([ nm, activeDays + ' / ' + periodDays, idleDays, (maxGap / 3600000).toFixed(1) + ' h', lastTs ? fmtTs(new Date(lastTs).toISOString()) : '—', ageH != null ? ageH + ' h' : '—' ]);
+    if (activeDays === 0) inactive++;
+    if (!pts.length || (ageH != null && ageH > 24)) dark++;
+    vIdle.push([nm, idleDays]);
+  }
+  rows.sort((a, b) => b[2] - a[2]); // cele mai inactive primul
+  const topIdle = _topN(vIdle.filter(x => x[1] > 0), 10);
+  const charts = topIdle.labels.length ? [
+    { type: 'bar', title: 'Zile inactive pe vehicul', labels: topIdle.labels, datasets: [{ label: 'zile', data: topIdle.data }] }
+  ] : [];
+  return { columns: ['Vehicul', 'Zile active', 'Zile inactive', 'Cea mai lungă pauză', 'Ultima poziție', 'Vechime'], rows,
+    summary: { 'Vehicule': imeis.length, 'Complet inactive': inactive, 'Fără semnal >24h': dark, 'Zile perioadă': periodDays }, charts };
+}
+
+// ── Raport NOU: Anomalii combustibil cu scor de încredere (furt vs consum vs zgomot) ────────────────────
+async function rFuelAnomaly(db, imeis, from, to, opts, devMap) {
+  const dropMin = opts.dropMin || 10; const rows = []; let high = 0, med = 0;
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    let prev = null;
+    for (const p of pts) {
+      const fl = fuelL(p);
+      if (fl == null) continue;
+      if (prev != null && (t(p) - prev.ts) <= 3600 * 1000) {
+        const delta = fl - prev.v;
+        if (delta <= -dropMin) {
+          const drop = -delta;
+          const ign = ignOn(p) || ignOn(prev.p);
+          const moving = (p.speed || 0) > IDLE_SPEED;
+          let score = 40;
+          if (!ign) score += 30;                 // motor stins → nu poate fi consum
+          if (!moving) score += 15;              // staționat
+          if (drop >= 30) score += 15; else if (drop >= 15) score += 8;
+          score = Math.min(100, score);
+          const conf = score >= 75 ? 'Probabil furt' : score >= 55 ? 'Posibil' : 'Zgomot/consum';
+          if (score >= 75) high++; else if (score >= 55) med++;
+          rows.push([ label(devMap, imei), fmtTs(p.timestamp), drop.toFixed(1) + ' L', ign ? 'pornit' : 'oprit', Math.round(p.speed || 0), score, conf, loc(p) ]);
+        }
+      }
+      prev = { v: fl, ts: t(p), p };
+    }
+  }
+  rows.sort((a, b) => b[5] - a[5]); // scor descrescător
+  const charts = rows.length ? [
+    { type: 'doughnut', title: 'Anomalii pe încredere', labels: ['Probabil furt', 'Posibil', 'Zgomot/consum'], datasets: [{ label: 'nr.', data: [high, med, Math.max(0, rows.length - high - med)] }] }
+  ] : [];
+  return { columns: ['Vehicul', 'Moment', 'Scădere', 'Contact', 'Viteză', 'Scor', 'Încredere', 'Locație'], rows,
+    summary: { 'Anomalii': rows.length, 'Probabil furt': high, 'Posibil': med }, charts };
+}
+
 const REPORTS = {
   trips:       { label: 'Foaie de parcurs',     cat: 'monitorizare', fn: rTrips },
   route:       { label: 'Traseu',                cat: 'monitorizare', fn: rRoute },
@@ -866,8 +968,11 @@ const REPORTS = {
   driver:      { label: 'Pontaj șofer',           cat: 'monitorizare', fn: rDriver },
   utilization: { label: 'Index km / ore',         cat: 'monitorizare', fn: rUtilization },
   analytic:    { label: 'Analitic',               cat: 'monitorizare', fn: rAnalytic },
+  uptime:      { label: 'Disponibilitate flotă',  cat: 'monitorizare', fn: rFleetUptime },
+  due:         { label: 'Scadențe documente & service', cat: 'monitorizare', fn: rDocServiceDue },
   consumption: { label: 'Consum carburant',       cat: 'consum',       fn: rConsumption },
   fuel:        { label: 'Alimentări & scurgeri',  cat: 'consum',       fn: rFuel },
+  fuel_anomaly:{ label: 'Anomalii combustibil (scor)', cat: 'consum',  fn: rFuelAnomaly },
   costs:       { label: 'Costuri combustibil',    cat: 'consum',       fn: rCosts },
   costs_total: { label: 'Costuri totale (toate)', cat: 'consum',       fn: rCostsTotal },
   emissions:   { label: 'Emisii CO₂',             cat: 'consum',       fn: rEmissions },
