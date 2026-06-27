@@ -6244,7 +6244,7 @@ async function fetchCloudflareUsage() {
   const fmt = function (d) { return d.toISOString().slice(0, 10); };
   const now = new Date();
   const end = fmt(now), start = fmt(new Date(now.getTime() - 29 * 86400000));
-  const query = 'query($zone:String!,$start:Date!,$end:Date!){ viewer { zones(filter:{zoneTag:$zone}) { httpRequests1dGroups(limit:31, orderBy:[date_ASC], filter:{date_geq:$start, date_leq:$end}) { sum { requests bytes cachedRequests cachedBytes threats encryptedRequests } uniq { uniques } } } } }';
+  const query = 'query($zone:String!,$start:Date!,$end:Date!){ viewer { zones(filter:{zoneTag:$zone}) { httpRequests1dGroups(limit:31, filter:{date_geq:$start, date_leq:$end}) { sum { requests bytes cachedRequests cachedBytes threats encryptedRequests } uniq { uniques } } } } }';
   try {
     const r = await fetch('https://api.cloudflare.com/client/v4/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ query, variables: { zone: zoneId, start: start, end: end } }) });
     const j = await r.json().catch(function () { return {}; });

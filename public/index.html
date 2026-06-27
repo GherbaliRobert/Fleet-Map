@@ -12149,7 +12149,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;align-items:center;gap:10px;"><i class="fas ' + _costIcon(c) + '" style="font-size:20px;color:var(--accent);width:26px;text-align:center;"></i>' +
             '<div style="font-weight:800;font-size:14px;">' + esc(c.provider) + '</div>' +
             '<span style="margin-left:auto;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:' + st[2] + ';color:' + st[1] + ';white-space:nowrap;">' + st[0] + '</span></div>' +
-          '<div style="font-size:20px;font-weight:800;">' + _costAmt(c) + '<span style="font-size:11px;font-weight:500;color:var(--text-muted);"> / ' + _costCycleLabel(c.cycle) + '</span></div>' +
+          '<div style="font-size:20px;font-weight:800;">' + (_costProviderKey(c) === 'anthropic' ? '<span style="font-size:15px;color:var(--text-muted);font-weight:600;">După consum</span>' : (_costAmt(c) + '<span style="font-size:11px;font-weight:500;color:var(--text-muted);"> / ' + _costCycleLabel(c.cycle) + '</span>')) + '</div>' +
           '<div style="font-size:11.5px;color:var(--text-muted);"><i class="fas fa-calendar-day" style="margin-right:5px;"></i>Scadent: ' + _costFmtD(c.next_due) + '</div>' +
           (_costProviderKey(c) ? '<div id="rax-cx-' + _costProviderKey(c) + '" class="rax-cx"></div>' : '') +
           '<div style="display:flex;gap:6px;margin-top:4px;"><button class="rax-btn primary" style="flex:1;justify-content:center;padding:5px 8px;font-size:11.5px;" onclick="raxCostMarkPaid(' + c.id + ')"><i class="fas fa-check"></i> Marchează plătit</button>' +
