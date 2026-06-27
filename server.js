@@ -3412,6 +3412,7 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     if (b.offline_minutes !== undefined) { const n = parseInt(b.offline_minutes); if (Number.isFinite(n) && n >= 5 && n <= 1440) await db.setSetting('offline_minutes', String(n)); }
     if (b.default_speed_limit !== undefined) { const n = parseInt(b.default_speed_limit); if (Number.isFinite(n) && n >= 10 && n <= 200) await db.setSetting('default_speed_limit', String(n)); }
     if (b.railway_volume_gb !== undefined) { const n = parseFloat(b.railway_volume_gb); if (Number.isFinite(n) && n > 0 && n <= 4096) await db.setSetting('railway_volume_gb', String(n)); } // plafon volum Railway pt. panoul de capacitate DB
+    if (b.anthropic_monthly_budget !== undefined) { const n = parseFloat(b.anthropic_monthly_budget); if (Number.isFinite(n) && n >= 0 && n <= 1000000) await db.setSetting('anthropic_monthly_budget', String(n)); } // buget lunar Anthropic (USD) pt. „disponibil = buget − cheltuit"
     if (b.invoice_issuer !== undefined && b.invoice_issuer && typeof b.invoice_issuer === 'object') {
       const i = b.invoice_issuer; const S = (v, n) => String(v == null ? '' : v).slice(0, n);
       const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40) };
@@ -6232,6 +6233,96 @@ app.get('/api/admin/costs/railway', requireAuth, requireSuperadmin, async (req, 
     let capGb = 5; try { const v = parseFloat(await db.getSetting('railway_volume_gb')); if (Number.isFinite(v) && v > 0) capGb = v; } catch (e) {}
     const usage = await fetchRailwayUsage();
     res.json({ db: dbCap, capGb, usage });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Cloudflare: usage analytics ultimele 30 zile (plan gratuit — cost 0, dar arătăm ce a făcut). DOAR dacă CLOUDFLARE_ANALYTICS_TOKEN + CLOUDFLARE_ZONE_ID sunt în env.
+async function fetchCloudflareUsage() {
+  const token = process.env.CLOUDFLARE_ANALYTICS_TOKEN, zoneId = process.env.CLOUDFLARE_ZONE_ID;
+  if (!token || !zoneId) return { configured: false };
+  const fmt = function (d) { return d.toISOString().slice(0, 10); };
+  const now = new Date();
+  const end = fmt(now), start = fmt(new Date(now.getTime() - 29 * 86400000));
+  const query = 'query($zone:String!,$start:Date!,$end:Date!){ viewer { zones(filter:{zoneTag:$zone}) { httpRequests1dGroups(limit:31, orderBy:[date_ASC], filter:{date_geq:$start, date_leq:$end}) { sum { requests bytes cachedRequests cachedBytes threats encryptedRequests } uniq { uniques } } } } }';
+  try {
+    const r = await fetch('https://api.cloudflare.com/client/v4/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ query, variables: { zone: zoneId, start: start, end: end } }) });
+    const j = await r.json().catch(function () { return {}; });
+    if (j.errors && j.errors.length) return { configured: true, error: (j.errors[0] && j.errors[0].message) || 'Eroare GraphQL Cloudflare' };
+    const data = j.data || {};
+    const zones = (data.viewer && data.viewer.zones) || [];
+    const groups = (zones[0] && zones[0].httpRequests1dGroups) || [];
+    const t = { requests: 0, bytes: 0, cachedRequests: 0, cachedBytes: 0, threats: 0, encrypted: 0, uniques: 0 };
+    for (const g of groups) { const s = g.sum || {}; t.requests += s.requests || 0; t.bytes += s.bytes || 0; t.cachedRequests += s.cachedRequests || 0; t.cachedBytes += s.cachedBytes || 0; t.threats += s.threats || 0; t.encrypted += s.encryptedRequests || 0; t.uniques += (g.uniq && g.uniq.uniques) || 0; }
+    return { configured: true, days: groups.length, start: start, end: end, totals: t };
+  } catch (e) { return { configured: true, error: e.message }; }
+}
+app.get('/api/admin/costs/cloudflare', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await fetchCloudflareUsage()); } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Anthropic: cheltuiala lunii curente (USD) din Admin API cost_report. DOAR cu ANTHROPIC_ADMIN_KEY (cheie ADMIN sk-ant-admin01, separată de cea runtime din ai.js).
+async function fetchAnthropicSpend() {
+  const ADMIN_KEY = process.env.ANTHROPIC_ADMIN_KEY;
+  if (!ADMIN_KEY) return { configured: false };
+  // `amount` e documentat în CENȚI (string zecimal): USD = cenți / 100. Override prin env dacă verificarea cu Consola arată altfel.
+  const CENTS_PER_USD = parseFloat(process.env.ANTHROPIC_AMOUNT_DIVISOR) || 100;
+  const now = new Date();
+  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
+  const endExclusive = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+  const startingAt = startOfMonth.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const endingAt = endExclusive.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const BASE = 'https://api.anthropic.com/v1/organizations/cost_report';
+  const headers = { 'x-api-key': ADMIN_KEY, 'anthropic-version': '2023-06-01' };
+  try {
+    let totalCents = 0; const byWorkspace = {}; let page = null; let sawNonUsd = false; let guard = 0;
+    do {
+      const url = new URL(BASE);
+      url.searchParams.set('starting_at', startingAt);
+      url.searchParams.set('ending_at', endingAt);
+      url.searchParams.set('bucket_width', '1d');     // cost report acceptă DOAR „1d"
+      url.searchParams.set('limit', '31');            // default e 7 → ar trunchia luna la ultimele 7 zile
+      url.searchParams.append('group_by[]', 'workspace_id');
+      if (page) url.searchParams.set('page', page);
+      const res = await fetch(url, { headers: headers });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) return { configured: true, spentUsd: 0, error: 'Cheia Anthropic nu e acceptată de Admin API. Folosește o cheie ADMIN (prefix „sk-ant-admin01-…") în ANTHROPIC_ADMIN_KEY, nu una standard „sk-ant-api03-…". (HTTP ' + res.status + ')' };
+        if (res.status === 429) return { configured: true, spentUsd: 0, error: 'Anthropic Admin API: prea multe cereri (429). Reîncearcă peste un minut.' };
+        let detail = ''; try { detail = (await res.text()).slice(0, 200); } catch (e) {}
+        return { configured: true, spentUsd: 0, error: 'Anthropic Admin API a răspuns ' + res.status + '. ' + detail };
+      }
+      const body = await res.json();
+      const data = Array.isArray(body && body.data) ? body.data : [];
+      for (const bucket of data) {
+        const results = Array.isArray(bucket && bucket.results) ? bucket.results : [];
+        for (const item of results) {
+          if (!item) continue;
+          if (item.currency && item.currency !== 'USD') { sawNonUsd = true; continue; }
+          const raw = item.amount != null ? item.amount : (item.cost != null ? item.cost : (item.amount_cents != null ? item.amount_cents : null));
+          if (raw == null) continue;
+          const cents = parseFloat(raw);
+          if (!Number.isFinite(cents)) continue;
+          totalCents += cents;
+          const wsKey = item.workspace_id || 'default';
+          byWorkspace[wsKey] = (byWorkspace[wsKey] || 0) + cents;
+        }
+      }
+      page = body && body.has_more === true ? body.next_page : null;
+      guard += 1;
+    } while (page && guard < 50);
+    const round2 = function (c) { return Math.round((c / CENTS_PER_USD) * 100) / 100; };
+    const byWorkspaceUsd = {}; for (const k of Object.keys(byWorkspace)) byWorkspaceUsd[k] = round2(byWorkspace[k]);
+    const out = { configured: true, spentUsd: round2(totalCents), byWorkspace: byWorkspaceUsd };
+    if (sawNonUsd) out.error = 'Atenție: unele costuri nu sunt în USD și au fost ignorate.';
+    return out;
+  } catch (err) {
+    return { configured: true, spentUsd: 0, error: 'Nu am putut citi cheltuielile Anthropic: ' + (err && err.message ? err.message : String(err)) };
+  }
+}
+app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const spend = await fetchAnthropicSpend();
+    let budget = 0; try { const v = parseFloat(await db.getSetting('anthropic_monthly_budget')); if (Number.isFinite(v) && v >= 0) budget = v; } catch (e) {}
+    let available = null;
+    if (spend.configured && !spend.error && budget > 0) available = Math.max(0, Math.round((budget - spend.spentUsd) * 100) / 100);
+    res.json(Object.assign({}, spend, { budget: budget, available: available }));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).

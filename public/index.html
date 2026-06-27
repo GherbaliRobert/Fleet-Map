@@ -10637,7 +10637,7 @@ const pozitii = await r.json();</code></pre>
   <!-- Railway — detalii: capacitate bază de date + usage/cost (super-admin) -->
   <div class="rax-overlay" id="rax-cost-detail-overlay">
     <div class="rax-card" style="max-width:560px;">
-      <div class="rax-head"><h3><i class="fas fa-server" style="color:var(--accent)"></i> Railway — detalii</h3><button class="rax-x" onclick="document.getElementById('rax-cost-detail-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-head"><h3 id="rax-cost-detail-h"><i class="fas fa-server" style="color:var(--accent)"></i> Railway — detalii</h3><button class="rax-x" onclick="document.getElementById('rax-cost-detail-overlay').classList.remove('open')">&times;</button></div>
       <div class="rax-body" id="rax-cost-detail-body"></div>
     </div>
   </div>
@@ -12152,7 +12152,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="font-size:20px;font-weight:800;">' + _costAmt(c) + '<span style="font-size:11px;font-weight:500;color:var(--text-muted);"> / ' + _costCycleLabel(c.cycle) + '</span></div>' +
           '<div style="font-size:11.5px;color:var(--text-muted);"><i class="fas fa-calendar-day" style="margin-right:5px;"></i>Scadent: ' + _costFmtD(c.next_due) + '</div>' +
           '<div style="display:flex;gap:6px;margin-top:4px;"><button class="rax-btn primary" style="flex:1;justify-content:center;padding:5px 8px;font-size:11.5px;" onclick="raxCostMarkPaid(' + c.id + ')"><i class="fas fa-check"></i> Marchează plătit</button>' +
-          (_costIcon(c) === 'fa-server' ? '<button class="rax-btn" style="padding:5px 9px;" title="Detalii bază de date + usage" onclick="raxOpenRailwayDetail()"><i class="fas fa-chart-bar"></i></button>' : '') +
+          (_costProviderKey(c) ? '<button class="rax-btn" style="padding:5px 9px;" title="Detalii & usage" onclick="raxOpenProviderDetail(\'' + _costProviderKey(c) + '\')"><i class="fas fa-chart-bar"></i></button>' : '') +
           '<button class="rax-btn" style="padding:5px 9px;" onclick="raxOpenCostModal(' + c.id + ')"><i class="fas fa-pen"></i></button></div>' +
         '</div>';
       }).join('');
@@ -12249,11 +12249,21 @@ const pozitii = await r.json();</code></pre>
         raxLoadCosts();
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); else alert(e.message); }
     };
-    // ─── Railway: panou „divizat" — capacitate bază de date (din pg-ul nostru) + usage/cost (din API Railway, dacă e token) ───
+    // ─── Detalii per furnizor (Railway / Cloudflare / Anthropic) ───
+    function _costProviderKey(c) { var p = ((c && c.provider) || '').toLowerCase(); if (/railway/.test(p)) return 'railway'; if (/cloud ?flare/.test(p)) return 'cloudflare'; if (/anthropic|claude/.test(p)) return 'anthropic'; return null; }
+    function _costDetailHead(icon, title) { var cls = icon.indexOf(' ') >= 0 ? icon : ('fas ' + icon); var h = document.getElementById('rax-cost-detail-h'); if (h) h.innerHTML = '<i class="' + cls + '" style="color:var(--accent)"></i> ' + title; }
     function _fmtBytes(b) { b = Number(b) || 0; if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB'; if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB'; if (b >= 1024) return (b / 1024).toFixed(0) + ' KB'; return b + ' B'; }
+    function _fmtNum(n) { n = Number(n) || 0; if (n >= 1e9) return (n / 1e9).toFixed(2) + ' mld'; if (n >= 1e6) return (n / 1e6).toFixed(2) + ' mil'; if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'; return String(Math.round(n)); }
+    window.raxOpenProviderDetail = function (key) {
+      if (key === 'railway' && window.raxOpenRailwayDetail) return raxOpenRailwayDetail();
+      if (key === 'cloudflare' && window.raxOpenCloudflareDetail) return raxOpenCloudflareDetail();
+      if (key === 'anthropic' && window.raxOpenAnthropicDetail) return raxOpenAnthropicDetail();
+    };
+    // ─── Railway: panou „divizat" — capacitate bază de date (din pg-ul nostru) + usage/cost (din API Railway, dacă e token) ───
     window.raxOpenRailwayDetail = async function () {
       var ov = document.getElementById('rax-cost-detail-overlay'); if (!ov) return;
       var body = document.getElementById('rax-cost-detail-body');
+      _costDetailHead('fa-server', 'Railway — detalii');
       body.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>'; ov.classList.add('open');
       var d;
       try { d = await fetch('/api/admin/costs/railway', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
@@ -12297,6 +12307,75 @@ const pozitii = await r.json();</code></pre>
         await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ railway_volume_gb: v }) });
         if (window.raxToast) raxToast('Plafon salvat ✓', 'success');
         raxOpenRailwayDetail();
+      } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
+    };
+    // ─── Cloudflare: cost $0 (Free) + statistici de utilizare (ultimele 30 zile) ───
+    window.raxOpenCloudflareDetail = async function () {
+      var ov = document.getElementById('rax-cost-detail-overlay'); if (!ov) return;
+      var body = document.getElementById('rax-cost-detail-body');
+      _costDetailHead('fab fa-cloudflare', 'Cloudflare — detalii');
+      body.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>'; ov.classList.add('open');
+      var d;
+      try { d = await fetch('/api/admin/costs/cloudflare', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+      catch (e) { body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      var head = '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px;"><span style="font-size:24px;font-weight:800;color:var(--accent);">$0</span><span style="font-size:12px;color:var(--text-muted);">cost lunar · plan Free</span></div>';
+      if (!d.configured) {
+        body.innerHTML = head + '<div class="rax-co-meta" style="padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;"><i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Pentru <b>statistici de utilizare</b> (cereri, trafic, amenințări), adaugă în env: <code>CLOUDFLARE_ANALYTICS_TOKEN</code> (token cu Zone→Analytics:Read + Zone→Zone:Read, creat la dash.cloudflare.com → My Profile → API Tokens) + <code>CLOUDFLARE_ZONE_ID</code> (din Overview-ul zonei, dreapta-jos).</div>';
+        return;
+      }
+      if (d.error) { body.innerHTML = head + '<div class="rax-co-meta" style="color:var(--red)">Eroare API Cloudflare: ' + esc(d.error) + '</div>'; return; }
+      var t = d.totals || {};
+      var cacheHit = t.requests ? Math.round((t.cachedRequests || 0) / t.requests * 100) : 0;
+      var httpsPct = t.requests ? Math.round((t.encrypted || 0) / t.requests * 100) : 0;
+      function tile(label, val, sub) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><div style="font-size:19px;font-weight:800;color:var(--text-primary);">' + val + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + label + (sub ? ' <span style="opacity:.7;">' + sub + '</span>' : '') + '</div></div>'; }
+      body.innerHTML = head +
+        '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Ultimele ' + (d.days || 30) + ' zile (' + esc(d.start || '') + ' → ' + esc(d.end || '') + ')</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+          tile('Cereri servite', _fmtNum(t.requests)) +
+          tile('Trafic total', _fmtBytes(t.bytes)) +
+          tile('Cache hit', cacheHit + '%', '(' + _fmtBytes(t.cachedBytes) + ')') +
+          tile('Amenințări blocate', _fmtNum(t.threats)) +
+          tile('Trafic HTTPS', httpsPct + '%') +
+          tile('Vizitatori unici', _fmtNum(t.uniques)) +
+        '</div>';
+    };
+    // ─── Anthropic: cheltuiala reală + „disponibil = buget − cheltuit" (soldul real nu e expus de API) ───
+    window.raxOpenAnthropicDetail = async function () {
+      var ov = document.getElementById('rax-cost-detail-overlay'); if (!ov) return;
+      var body = document.getElementById('rax-cost-detail-body');
+      _costDetailHead('fa-robot', 'Anthropic — detalii');
+      body.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>'; ov.classList.add('open');
+      var d;
+      try { d = await fetch('/api/admin/costs/anthropic', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+      catch (e) { body.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      if (!d.configured) {
+        body.innerHTML = '<div class="rax-co-meta" style="padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;"><i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Pentru <b>cheltuiala reală</b>, adaugă în env <code>ANTHROPIC_ADMIN_KEY</code> — o cheie de tip <b>Admin</b> (prefix „sk-ant-admin01-…"), creată la console.anthropic.com → Settings → Admin keys. NU cheia API obișnuită folosită de asistentul AI.</div>';
+        return;
+      }
+      var spent = Number(d.spentUsd || 0), budget = Number(d.budget || 0), avail = d.available;
+      var pct = budget > 0 ? Math.min(100, Math.round(spent / budget * 100)) : 0;
+      var barColor = pct > 90 ? 'var(--red)' : (pct > 70 ? '#f59e0b' : 'var(--accent)');
+      var errHtml = d.error ? '<div class="rax-co-meta" style="color:var(--red);margin-bottom:10px;font-size:11.5px;">' + esc(d.error) + '</div>' : '';
+      var bw = d.byWorkspace || {}; var wsKeys = Object.keys(bw).filter(function (k) { return bw[k] > 0; });
+      var wsHtml = wsKeys.length > 1 ? '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:10px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Pe workspace:</div>' + wsKeys.map(function (k) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;"><span>' + esc(k === 'default' ? 'Workspace principal' : k) + '</span><b>$' + Number(bw[k]).toFixed(2) + '</b></div>'; }).join('') + '</div>' : '';
+      body.innerHTML = errHtml +
+        '<div style="font-size:30px;font-weight:800;color:var(--accent);line-height:1;">$' + spent.toFixed(2) + '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);margin:4px 0 14px;">cheltuit luna aceasta (USD)</div>' +
+        '<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);">Buget lunar ($):</span><input id="rax-anbudget" class="rax-field" type="number" min="0" step="1" value="' + (budget || '') + '" placeholder="ex. 100" style="width:100px;margin:0;"><button class="rax-btn" style="padding:4px 10px;font-size:11px;" onclick="raxSaveAnthropicBudget()">Salvează</button></div>' +
+        (budget > 0 ?
+          '<div style="height:10px;background:var(--bg-dark);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:6px;"><div style="height:100%;width:' + pct + '%;background:' + barColor + ';"></div></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-muted);">' + pct + '% din buget</span><span><b style="color:' + barColor + ';">$' + (avail != null ? Number(avail).toFixed(2) : '—') + '</b> disponibil</span></div>' +
+          '<div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;font-style:italic;">„Disponibil" = buget − cheltuit (estimat din bugetul setat de tine). Anthropic nu oferă API de sold real — verifică-l în Console.</div>'
+        : '<div class="rax-co-meta" style="font-size:11px;">Setează un buget lunar pentru „disponibil = buget − cheltuit". (Anthropic nu expune soldul real prin API.)</div>') +
+        wsHtml;
+    };
+    window.raxSaveAnthropicBudget = async function () {
+      var v = parseFloat((document.getElementById('rax-anbudget') || {}).value);
+      if (!Number.isFinite(v) || v < 0) { if (window.raxToast) raxToast('Valoare invalidă', 'error'); return; }
+      try {
+        await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ anthropic_monthly_budget: v }) });
+        if (window.raxToast) raxToast('Buget salvat ✓', 'success');
+        raxOpenAnthropicDetail();
       } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
     };
     window.raxDeleteCompany = async function (id) {
