@@ -12272,7 +12272,7 @@ const pozitii = await r.json();</code></pre>
       var u = d.usage || {};
       var usageHtml;
       if (!u.configured) {
-        usageHtml = '<div class="rax-co-meta" style="padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;"><i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Pentru <b>usage + cost estimat</b>, setează în Railway (Variables) env: <code>RAILWAY_API_TOKEN</code> (railway.com/account/tokens) + <code>RAILWAY_WORKSPACE_ID</code> (din URL-ul workspace-ului). Opțional <code>RAILWAY_PLAN_FEE_USD</code> (taxa fixă de plan, ex. 5 sau 20).</div>';
+        usageHtml = '<div class="rax-co-meta" style="padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;"><i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Pentru <b>usage + cost estimat</b>, adaugă pe serviciul aplicației din Railway → tab <b>Variables</b> o variabilă <code>RAILWAY_API_TOKEN</code> (creează tokenul la railway.com/account/tokens). ID-ul proiectului e <b>automat</b>. Opțional <code>RAILWAY_PLAN_FEE_USD</code> (taxa fixă de plan, ex. 5 sau 20). După Save, Railway redeployează singur.</div>';
       } else if (u.error) {
         usageHtml = '<div class="rax-co-meta" style="color:var(--red)">Eroare API Railway: ' + esc(u.error) + '</div>';
       } else {

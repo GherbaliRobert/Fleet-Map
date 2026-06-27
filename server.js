@@ -6164,12 +6164,16 @@ app.get('/api/admin/costs/:id/payments', requireAuth, requireSuperadmin, async (
 // Railway: usage/cost ESTIMAT din API (doar dacă RAILWAY_API_TOKEN + RAILWAY_WORKSPACE_ID sunt setate în env). Prețuri unitare publice.
 const RAILWAY_UNIT_PRICE_USD = { MEMORY_USAGE_GB: 0.000231, CPU_USAGE: 0.000463, NETWORK_TX_GB: 0.05, DISK_USAGE_GB: 0.000003472, BACKUP_USAGE_GB: 0.000003472 };
 async function fetchRailwayUsage() {
-  const token = process.env.RAILWAY_API_TOKEN, wsId = process.env.RAILWAY_WORKSPACE_ID;
-  if (!token || !wsId) return { configured: false };
+  const token = process.env.RAILWAY_API_TOKEN;
+  const projectId = process.env.RAILWAY_PROJECT_ID; // injectat AUTOMAT de Railway în deployment → userul nu-l mai caută
+  const wsId = process.env.RAILWAY_WORKSPACE_ID;
+  const id = projectId || wsId;
+  if (!token || !id) return { configured: false };
   const planFee = parseFloat(process.env.RAILWAY_PLAN_FEE_USD) || 0;
-  const query = 'query($id:String!){ estimatedUsage(workspaceId:$id, measurements:[CPU_USAGE,MEMORY_USAGE_GB,DISK_USAGE_GB,NETWORK_TX_GB,BACKUP_USAGE_GB]){ measurement estimatedValue } }';
+  const idArg = projectId ? 'projectId:$id' : 'workspaceId:$id';
+  const query = 'query($id:String!){ estimatedUsage(' + idArg + ', measurements:[CPU_USAGE,MEMORY_USAGE_GB,DISK_USAGE_GB,NETWORK_TX_GB,BACKUP_USAGE_GB]){ measurement estimatedValue } }';
   try {
-    const r = await fetch('https://backboard.railway.com/graphql/v2', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ query, variables: { id: wsId } }) });
+    const r = await fetch('https://backboard.railway.com/graphql/v2', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ query, variables: { id } }) });
     const j = await r.json().catch(function () { return {}; });
     if (j.errors) return { configured: true, error: (j.errors[0] && j.errors[0].message) || 'Eroare GraphQL Railway' };
     const rows = (j.data && j.data.estimatedUsage) || [];
