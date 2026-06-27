@@ -251,14 +251,15 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurg
     for (const p of pts) {
       const fl = fuelL(p);
       if (fl == null) continue;
-      // Sari peste deltă dacă a fost o pauză mare între citiri (offline / fără combustibil) — altfel consumul
-      // normal de peste mai multe zile ar fi raportat ca o singură „scădere/furt" la reluare.
-      if (prev != null && (t(p) - prev.ts) <= 3600 * 1000) {
-        const delta = fl - prev.v;
-        if (delta >= refuelMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Alimentare', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); }
-        else if (delta <= -dropMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Scădere/furt', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); drops++; lostL += -delta; }
+      // Gardă de timp: realimentarea se ia doar din citiri apropiate (<1h). Scăderea e suspectă și peste noapte
+      // DACĂ motorul a stat STINS (parcat → nu e consum); cu motorul pornit păstrăm garda de 1h (altfel consumul
+      // normal de peste mai multe ore ar apărea ca o „scădere/furt").
+      if (prev != null) {
+        const delta = fl - prev.v, gapH = (t(p) - prev.ts) / 3600000, ign = ignOn(p) || ignOn(prev.p);
+        if (delta >= refuelMin && gapH <= 1) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Alimentare', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); }
+        else if (delta <= -dropMin && ((!ign && gapH <= 72) || (ign && gapH <= 1))) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Scădere/furt', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); drops++; lostL += -delta; }
       }
-      prev = { v: fl, ts: t(p) };
+      prev = { v: fl, ts: t(p), p };
     }
   }
   const refDay = _groupByDay(refs, x => x.ts, x => x.v);
@@ -931,11 +932,14 @@ async function rFuelAnomaly(db, imeis, from, to, opts, devMap) {
     for (const p of pts) {
       const fl = fuelL(p);
       if (fl == null) continue;
-      if (prev != null && (t(p) - prev.ts) <= 3600 * 1000) {
+      if (prev != null) {
         const delta = fl - prev.v;
-        if (delta <= -dropMin) {
+        const ign = ignOn(p) || ignOn(prev.p);
+        const gapH = (t(p) - prev.ts) / 3600000;
+        // Motor STINS (parcat) → scăderea e suspectă chiar și peste noapte (până la 72h); motor pornit → doar
+        // citiri apropiate (<1h), altfel e consumul normal de peste mai multe ore.
+        if (delta <= -dropMin && ((!ign && gapH <= 72) || (ign && gapH <= 1))) {
           const drop = -delta;
-          const ign = ignOn(p) || ignOn(prev.p);
           const moving = (p.speed || 0) > IDLE_SPEED;
           let score = 40;
           if (!ign) score += 30;                 // motor stins → nu poate fi consum
