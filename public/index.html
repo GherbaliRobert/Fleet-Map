@@ -12192,7 +12192,8 @@ const pozitii = await r.json();</code></pre>
         if (d.error) { host.innerHTML = '<div style="font-size:10.5px;color:var(--red);">Anthropic: token invalid (vezi 📊)</div>'; return; }
         var spent = Number(d.spentUsd || 0), sold = d.soldRemaining;
         var line = '<div style="font-size:11px;"><span style="color:var(--text-muted);">Folosit luna: </span><b style="color:var(--text-primary);">$' + spent.toFixed(2) + '</b>';
-        if (sold != null) line += ' · <span style="color:var(--text-muted);">sold </span><b style="color:var(--accent);">$' + Number(sold).toFixed(2) + '</b>';
+        if (sold != null) line += ' · <span style="color:var(--text-muted);">sold rămas </span><b style="color:var(--accent);">$' + Number(sold).toFixed(2) + '</b>';
+        else line += ' · <span style="color:var(--accent);cursor:pointer;text-decoration:underline dotted;" onclick="raxOpenProviderDetail(\'anthropic\')" title="Setează soldul de credite ca să apară aici">sold: setează →</span>';
         line += '</div>';
         host.innerHTML = line;
       }).catch(function () {});
