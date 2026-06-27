@@ -6165,18 +6165,58 @@ app.get('/api/admin/costs/:id/payments', requireAuth, requireSuperadmin, async (
 const RAILWAY_UNIT_PRICE_USD = { MEMORY_USAGE_GB: 0.000231, CPU_USAGE: 0.000463, NETWORK_TX_GB: 0.05, DISK_USAGE_GB: 0.000003472, BACKUP_USAGE_GB: 0.000003472 };
 async function fetchRailwayUsage() {
   const token = process.env.RAILWAY_API_TOKEN;
-  const projectId = process.env.RAILWAY_PROJECT_ID; // injectat AUTOMAT de Railway în deployment → userul nu-l mai caută
-  const wsId = process.env.RAILWAY_WORKSPACE_ID;
-  const id = projectId || wsId;
-  if (!token || !id) return { configured: false };
+  if (!token) return { configured: false };
+  const envProjectId = process.env.RAILWAY_PROJECT_ID;   // auto-injectat de Railway
+  const envWsId = process.env.RAILWAY_WORKSPACE_ID;      // auto-injectat de Railway
   const planFee = parseFloat(process.env.RAILWAY_PLAN_FEE_USD) || 0;
-  const idArg = projectId ? 'projectId:$id' : 'workspaceId:$id';
-  const query = 'query($id:String!){ estimatedUsage(' + idArg + ', measurements:[CPU_USAGE,MEMORY_USAGE_GB,DISK_USAGE_GB,NETWORK_TX_GB,BACKUP_USAGE_GB]){ measurement estimatedValue } }';
+  const ENDPOINT = 'https://backboard.railway.com/graphql/v2';
+  const MEASURES = ['CPU_USAGE', 'MEMORY_USAGE_GB', 'DISK_USAGE_GB', 'NETWORK_TX_GB', 'BACKUP_USAGE_GB'];
+
+  async function gql(query, variables) {
+    const r = await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ query, variables: variables || {} }) });
+    let j = {}; try { j = await r.json(); } catch (e) { j = {}; }
+    return j;
+  }
+  function firstErr(j) { return (j && j.errors && j.errors[0] && j.errors[0].message) || null; }
+  function isAuthz(msg) { return !!msg && /not authoriz/i.test(msg); }
+
+  // estimatedUsage pe un scope dat: { projectId } SAU { workspaceId }
+  async function estUsage(scope) {
+    const argName = scope.projectId ? 'projectId' : 'workspaceId';
+    const q = 'query($id:String!){ estimatedUsage(' + argName + ':$id, measurements:[' + MEASURES.join(',') + ']){ measurement estimatedValue } }';
+    const j = await gql(q, { id: scope.projectId || scope.workspaceId });
+    const err = firstErr(j);
+    if (err) return { err: err };
+    return { rows: (j.data && j.data.estimatedUsage) || [] };
+  }
+
+  // Self-discovery: află workspace-ul care DEȚINE proiectul (necesită account token valid)
+  async function discoverWorkspaceId() {
+    const j = await gql('query{ me { id workspaces { id name projects { edges { node { id name } } } } } }');
+    if (firstErr(j)) return null; // me cere account token; dacă pică, token-ul nu e de cont
+    const wss = (j.data && j.data.me && j.data.me.workspaces) || [];
+    if (envProjectId) {
+      for (const ws of wss) {
+        const edges = (ws.projects && ws.projects.edges) || [];
+        if (edges.some(function (e) { return e && e.node && e.node.id === envProjectId; })) return ws.id;
+      }
+    }
+    return wss.length === 1 ? wss[0].id : null; // un singur workspace → fără ambiguitate
+  }
+
   try {
-    const r = await fetch('https://backboard.railway.com/graphql/v2', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ query, variables: { id } }) });
-    const j = await r.json().catch(function () { return {}; });
-    if (j.errors) return { configured: true, error: (j.errors[0] && j.errors[0].message) || 'Eroare GraphQL Railway' };
-    const rows = (j.data && j.data.estimatedUsage) || [];
+    let rows = null, lastErr = null;
+    if (envProjectId) { const r1 = await estUsage({ projectId: envProjectId }); if (r1.rows) rows = r1.rows; else lastErr = r1.err; }
+    if (!rows && envWsId && (!lastErr || isAuthz(lastErr))) { const r2 = await estUsage({ workspaceId: envWsId }); if (r2.rows) rows = r2.rows; else lastErr = r2.err; }
+    if (!rows && (!lastErr || isAuthz(lastErr))) {
+      const wsId = await discoverWorkspaceId();
+      if (wsId) { const r3 = await estUsage({ workspaceId: wsId }); if (r3.rows) rows = r3.rows; else lastErr = r3.err; }
+    }
+    if (!rows) {
+      let error = lastErr || 'Eroare GraphQL Railway';
+      if (isAuthz(error)) error = 'Railway „Not Authorized": RAILWAY_API_TOKEN trebuie să fie un ACCOUNT token (creat la railway.com/account/tokens cu dropdown-ul de workspace pe „No workspace"), iar contul lui să fie membru al workspace-ului care deține acest proiect.';
+      return { configured: true, error: error };
+    }
     const byMeasure = {}; let estUsd = planFee;
     for (const row of rows) {
       const v = Number(row.estimatedValue) || 0;
