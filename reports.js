@@ -90,7 +90,7 @@ function segmentTrack(pts, stopMinSec) {
 // ─── Helpers grafice (charts pentru rapoarte) ───
 // Contract: un raport poate întoarce `charts: [{ type, title, labels, datasets:[{label,data}] }]`.
 // Frontend-ul (renderReport) le desenează cu Chart.js și aplică paleta automat.
-function _dayKeyISO(ts) { try { return new Date(ts).toISOString().slice(0, 10); } catch (e) { return ''; } }
+function _dayKeyISO(ts) { try { return new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TZ }).format(new Date(ts)); } catch (e) { return ''; } } // YYYY-MM-DD în fusul afișat (nu UTC) → atribuire corectă a zilei lângă miezul nopții
 function _dayLabel(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] : isoKey; }
 // Grupează pe zi: items[], getTs(item)=timestamp, getVal(item)=valoare numerică (null ⇒ numără). Sortat cronologic.
 function _groupByDay(items, getTs, getVal) {
@@ -251,12 +251,14 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurg
     for (const p of pts) {
       const fl = fuelL(p);
       if (fl == null) continue;
-      if (prev != null) {
+      // Sari peste deltă dacă a fost o pauză mare între citiri (offline / fără combustibil) — altfel consumul
+      // normal de peste mai multe zile ar fi raportat ca o singură „scădere/furt" la reluare.
+      if (prev != null && (t(p) - prev.ts) <= 3600 * 1000) {
         const delta = fl - prev.v;
-        if (delta >= refuelMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Alimentare', '+' + delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); }
-        else if (delta <= -dropMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Scădere/furt', delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); drops++; lostL += -delta; }
+        if (delta >= refuelMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Alimentare', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); }
+        else if (delta <= -dropMin) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Scădere/furt', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); drops++; lostL += -delta; }
       }
-      prev = { v: fl };
+      prev = { v: fl, ts: t(p) };
     }
   }
   const refDay = _groupByDay(refs, x => x.ts, x => x.v);
@@ -278,7 +280,10 @@ function pointInPolygon(lat, lng, poly) {
   return inside;
 }
 function insideZone(lat, lng, zone) {
-  if (zone.type === 'circle') return haversineKm(lat, lng, zone.center[0], zone.center[1]) * 1000 <= zone.radius;
+  if (zone.type === 'circle') {
+    if (!Array.isArray(zone.center) || zone.center.length < 2 || !(zone.radius > 0)) return false; // zonă circulară malformată → ignoră (nu arunca → nu pică tot raportul)
+    return haversineKm(lat, lng, zone.center[0], zone.center[1]) * 1000 <= zone.radius;
+  }
   return Array.isArray(zone.coords) && pointInPolygon(lat, lng, zone.coords);
 }
 // Detectează vizite (intrare→ieșire) ale unui vehicul într-o zonă
@@ -390,7 +395,7 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
     const pts = await history(db, imei, from, to);
     const byDay = {};
     for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], day = new Date(p.timestamp).toISOString().slice(0,10);
+      const p = pts[i], day = _dayKeyISO(p.timestamp);
       const d = byDay[day] || (byDay[day] = { first: p.timestamp, last: p.timestamp, km: 0, drive: 0 });
       d.last = p.timestamp;
       if (i > 0) {
@@ -430,8 +435,8 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare fl
         const pr = pts[i-1], dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude);
         if (dist < MAX_STEP_KM) km += dist;
         const dt = (t(p) - t(pr)) / 1000;
-        if (dt > 0 && dt < 3600 && (ignOn(pr) || ignOn(p))) eng += dt;
-        if ((p.speed||0) > IDLE_SPEED) days.add(new Date(p.timestamp).toISOString().slice(0,10));
+        if (dt > 0 && dt < 3600 && ignOn(pr) && ignOn(p)) eng += dt;
+        if ((p.speed||0) > IDLE_SPEED) days.add(_dayKeyISO(p.timestamp));
       }
     }
     const nm = label(devMap, imei);
@@ -454,7 +459,7 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Locație (ultim
     const r = await db.pool.query('SELECT * FROM positions WHERE imei = $1 AND timestamp <= $2 ORDER BY timestamp DESC LIMIT 1', [imei, to]);
     const p = r.rows[0]; if (!p) continue;
     const i = p.io_data || {};
-    rows.push([ label(devMap, imei), fmtTs(p.timestamp), loc(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', p.satellites || 0 ]);
+    rows.push([ label(devMap, imei), fmtTs(p.timestamp), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', p.satellites || 0 ]);
   }
   return { columns: ['Vehicul', 'Moment', 'Locație', 'Viteză', 'Contact', 'Sateliți'], rows, summary: { 'Vehicule': rows.length } };
 }
@@ -465,18 +470,18 @@ async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
     const pts = await history(db, imei, from, to);
     const byDay = {};
     for (let i = 0; i < pts.length; i++) {
-      const p = pts[i], day = new Date(p.timestamp).toISOString().slice(0, 10);
+      const p = pts[i], day = _dayKeyISO(p.timestamp);
       const d = byDay[day] || (byDay[day] = { km: 0, move: 0, eng: 0, max: 0, first: p.timestamp, last: p.timestamp });
       d.last = p.timestamp; if ((p.speed || 0) > d.max) d.max = p.speed || 0;
       if (i > 0) {
         const pr = pts[i - 1], dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude);
         if (dist < MAX_STEP_KM) d.km += dist;
         const dt = (t(p) - t(pr)) / 1000;
-        if (dt > 0 && dt < 3600) { if ((p.speed || 0) > IDLE_SPEED) d.move += dt; if (ignOn(pr) || ignOn(p)) d.eng += dt; }
+        if (dt > 0 && dt < 3600) { if ((p.speed || 0) > IDLE_SPEED) d.move += dt; if (ignOn(pr) && ignOn(p)) d.eng += dt; } // motor pornit = contact ON la AMBELE capete (nu supraestima)
       }
     }
     const seg = segmentTrack(pts, (opts.stopMin || 5) * 60);
-    seg.stops.forEach(s => { const day = new Date(s.start).toISOString().slice(0, 10); if (byDay[day]) byDay[day].stops = (byDay[day].stops || 0) + 1; });
+    seg.stops.forEach(s => { const day = _dayKeyISO(s.start); if (byDay[day]) byDay[day].stops = (byDay[day].stops || 0) + 1; });
     for (const day of Object.keys(byDay).sort()) {
       const d = byDay[day];
       rows.push([ label(devMap, imei), day, d.km.toFixed(1), fmtDur(d.move), fmtDur(d.eng), d.stops || 0, Math.round(d.max) ]);
@@ -562,7 +567,7 @@ async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN (snapshot u
     const axle = [i.can_axle1_load, i.can_axle2_load, i.can_axle3_load, i.can_axle4_load, i.can_axle5_load].reduce((s, v) => s + (v || 0), 0) || i.can_load_weight || 0;
     rows.push([
       label(devMap, imei), fmtTs(p.timestamp),
-      i.can_fuel_level_liters != null ? i.can_fuel_level_liters + ' L' : '—',
+      fuelL(p) != null ? fuelL(p).toFixed(0) + ' L' : '—',
       i.can_engine_temp != null ? i.can_engine_temp + '°C' : '—',
       i.can_rpm != null ? i.can_rpm : '—',
       i.can_total_mileage != null ? Math.round(i.can_total_mileage) + ' km' : '—',
@@ -574,14 +579,11 @@ async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN (snapshot u
 }
 
 async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alerte declanșate)
-  const all = await db.getAlertHistory(2000);
-  const fromT = new Date(from).getTime(), toT = new Date(to).getTime();
-  const set = new Set(imeis);
+  // Interogare scopată pe fereastră + vehicule (NU global LIMIT 2000) — altfel, peste 2000 alerte mai noi decât
+  // fereastra, TOATE evenimentele din interval erau pierdute silențios (subraportare care se înrăutățește în timp).
+  const all = await db.getAlertHistoryRange(imeis, from, to, 5000);
   const rows = []; const evs = []; const byType = {};
   for (const e of all) {
-    const tt = new Date(e.triggered_at).getTime();
-    if (tt < fromT || tt > toT) continue;
-    if (!set.has(e.imei)) continue;
     const typ = e.alert_name || e.alert_type || '—';
     rows.push([ label(devMap, e.imei), typ, fmtTs(e.triggered_at), e.data ? JSON.stringify(e.data).slice(0, 90) : '' ]);
     evs.push({ ts: e.triggered_at }); byType[typ] = (byType[typ] || 0) + 1;
@@ -603,7 +605,7 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
     for (const p of pts) {
       if (rows.length >= cap) { capped = true; break; }
       const i = p.io_data || {};
-      rows.push([ label(devMap, imei), fmtTs(p.timestamp), p.latitude.toFixed(5), p.longitude.toFixed(5), Math.round(p.speed || 0), i.ignition === 1 ? 'DA' : 'NU', i.can_fuel_level_liters != null ? i.can_fuel_level_liters : '', p.satellites || 0 ]);
+      rows.push([ label(devMap, imei), fmtTs(p.timestamp), p.latitude.toFixed(5), p.longitude.toFixed(5), Math.round(p.speed || 0), i.ignition === 1 ? 'DA' : 'NU', fuelL(p) != null ? fuelL(p) : '', p.satellites || 0 ]);
     }
   }
   return { columns: ['Vehicul', 'Moment', 'Lat', 'Lng', 'Viteză', 'Contact', 'Combustibil', 'Sat.'], rows, summary: { 'Puncte': rows.length, 'Plafon atins': capped ? 'da (' + cap + ')' : 'nu' } };
@@ -768,7 +770,7 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
       if (i > 0) { const pr = pts[i - 1], dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dd < MAX_STEP_KM) dist += dd; }
     }
     const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
-    const price = priceMap[imei] || opts.fuelPrice || 7.5;
+    const price = Number.isFinite(priceMap[imei]) ? priceMap[imei] : (opts.fuelPrice || 7.5); // preț 0 configurat e valid (nu cădea pe 7.5)
     const cost = consumed * price, perKm = dist > 1 ? cost / dist : 0;
     const nm = label(devMap, imei);
     rows.push([nm, Math.round(dist), consumed.toFixed(0) + ' L', price.toFixed(2), Math.round(cost) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
@@ -805,7 +807,7 @@ async function rCostsTotal(db, imeis, from, to, opts, devMap) { // Costuri total
       if (i > 0) { const pr = pts[i - 1], dk = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dk < MAX_STEP_KM) dist += dk; }
     }
     const consumed = first != null ? Math.max(0, (first - last) + refuel) : 0;
-    const fuelCost = consumed * (priceMap[imei] || opts.fuelPrice || 7.5);
+    const fuelCost = consumed * (Number.isFinite(priceMap[imei]) ? priceMap[imei] : (opts.fuelPrice || 7.5));
     const svc = svcMap[imei] || 0, doc = docMap[imei] || 0;
     const total = fuelCost + svc + doc, perKm = dist > 1 ? total / dist : 0;
     const nm = label(devMap, imei);

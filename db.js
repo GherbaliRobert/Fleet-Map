@@ -615,6 +615,62 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_payments_company ON payments(company_id, created_at DESC)`);
+    // ─── Control costuri: cheltuielile NOASTRE de platformă (RoTLD, Railway, Cloudflare, Anthropic…) — NU sunt scopate pe companie ───
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS platform_costs (
+        id SERIAL PRIMARY KEY,
+        provider VARCHAR(80) NOT NULL,
+        category VARCHAR(40),
+        description VARCHAR(200),
+        amount NUMERIC(12,2),
+        currency VARCHAR(3) NOT NULL DEFAULT 'RON',
+        cycle VARCHAR(12) NOT NULL DEFAULT 'monthly',
+        next_due BIGINT,
+        last_paid_at BIGINT,
+        url VARCHAR(255),
+        notes TEXT,
+        active BOOLEAN DEFAULT true,
+        created_by INTEGER,
+        created_at BIGINT,
+        updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_platform_costs_due ON platform_costs(active, next_due)`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS costs_payments (
+        id SERIAL PRIMARY KEY,
+        cost_id INTEGER NOT NULL,
+        amount NUMERIC(12,2),
+        currency VARCHAR(3),
+        paid_at BIGINT,
+        period_covered_to BIGINT,
+        method VARCHAR(40) DEFAULT 'manual',
+        note TEXT,
+        created_by INTEGER,
+        created_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_costs_payments_cost ON costs_payments(cost_id, paid_at DESC)`);
+    // Seed: rânduri de start EDITABILE (doar dacă tabelul e gol) — utilizatorul le ajustează/șterge din UI.
+    try {
+      const _pcCount = await client.query('SELECT COUNT(*)::int AS n FROM platform_costs');
+      if ((_pcCount.rows[0] && _pcCount.rows[0].n) === 0) {
+        const _now = Date.now();
+        const _seed = [
+          ['RoTLD', 'domain', 'Domeniu ratrack.ro', 50, 'RON', 'yearly', 'https://rotld.ro'],
+          ['Railway', 'hosting', 'Hosting aplicație + PostgreSQL/TimescaleDB', 20, 'USD', 'monthly', 'https://railway.app'],
+          ['Cloudflare', 'cdn', 'DNS + CDN + proxy', 0, 'USD', 'monthly', 'https://cloudflare.com'],
+          ['Anthropic', 'api', 'Claude API (Asistent AI + RA Insight)', 0, 'USD', 'monthly', 'https://console.anthropic.com']
+        ];
+        for (const s of _seed) {
+          await client.query(
+            `INSERT INTO platform_costs (provider,category,description,amount,currency,cycle,next_due,url,active,created_at,updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,$9,$9)`,
+            [s[0], s[1], s[2], s[3], s[4], s[5], _now, s[6], _now]
+          );
+        }
+      }
+    } catch (e) { /* seed best-effort */ }
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_company ON devices(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_groups_company ON device_groups(company_id)`);
@@ -928,6 +984,61 @@ async function getAllPayments(limit) {
     LIMIT $1`, [lim]);
   const total = r.rows.reduce((s, x) => s + (Number(x.amount_ron) || 0), 0);
   return { payments: r.rows, total: Math.round(total * 100) / 100 };
+}
+// ─── Control costuri (platform_costs) ───
+async function listPlatformCosts(opts) {
+  opts = opts || {};
+  const where = opts.activeOnly ? 'WHERE active = true' : '';
+  const r = await pool.query(`SELECT * FROM platform_costs ${where} ORDER BY active DESC, next_due ASC NULLS LAST, id DESC`);
+  return r.rows;
+}
+async function getPlatformCostById(id) {
+  const r = await pool.query('SELECT * FROM platform_costs WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function createPlatformCost(c) {
+  const now = Date.now();
+  const r = await pool.query(
+    `INSERT INTO platform_costs (provider,category,description,amount,currency,cycle,next_due,url,notes,active,created_by,created_at,updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$12) RETURNING *`,
+    [c.provider, c.category || null, c.description || null, (c.amount != null ? c.amount : null), c.currency || 'RON', c.cycle || 'monthly', (c.nextDue != null ? c.nextDue : null), c.url || null, c.notes || null, (c.active !== false), c.createdBy || null, now]
+  );
+  return r.rows[0];
+}
+async function updatePlatformCost(id, c) {
+  // provider/currency/cycle/amount/active = COALESCE (un PUT parțial nu le șterge); description/url/notes = set direct (se pot goli).
+  const r = await pool.query(
+    `UPDATE platform_costs SET provider=COALESCE($2,provider), category=COALESCE($3,category), description=$4,
+       amount=COALESCE($5,amount), currency=COALESCE($6,currency), cycle=COALESCE($7,cycle),
+       next_due=$8, url=$9, notes=$10, active=COALESCE($11,active), updated_at=$12
+     WHERE id=$1 RETURNING *`,
+    [id, c.provider || null, c.category || null, (c.description !== undefined ? c.description : null), (c.amount != null ? c.amount : null), c.currency || null, c.cycle || null, (c.nextDue !== undefined ? c.nextDue : null), (c.url !== undefined ? c.url : null), (c.notes !== undefined ? c.notes : null), (c.active === undefined ? null : c.active), Date.now()]
+  );
+  return r.rows[0];
+}
+async function deletePlatformCost(id) {
+  await pool.query('DELETE FROM costs_payments WHERE cost_id = $1', [id]);
+  await pool.query('DELETE FROM platform_costs WHERE id = $1', [id]);
+}
+async function getCostPayments(costId, limit) {
+  const lim = Math.min(parseInt(limit) || 50, 500);
+  const r = await pool.query('SELECT * FROM costs_payments WHERE cost_id = $1 ORDER BY paid_at DESC LIMIT $2', [costId, lim]);
+  return r.rows;
+}
+// Marchează un cost ca plătit: scrie în istoric + avansează scadența (nextDue calculat în server prin _addMonthsMs).
+async function markCostPaid(id, o) {
+  o = o || {};
+  const now = Date.now();
+  const r = await pool.query(
+    `INSERT INTO costs_payments (cost_id, amount, currency, paid_at, period_covered_to, method, note, created_by, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [id, (o.amount != null ? o.amount : null), o.currency || null, o.paidAt || now, (o.nextDue != null ? o.nextDue : null), o.method || 'manual', o.note || null, o.createdBy || null, now]
+  );
+  const upd = await pool.query(
+    `UPDATE platform_costs SET next_due=$2, last_paid_at=$3, active=COALESCE($4,active), updated_at=$5 WHERE id=$1 RETURNING *`,
+    [id, (o.nextDue != null ? o.nextDue : null), o.paidAt || now, (o.active === undefined ? null : o.active), now]
+  );
+  return { cost: upd.rows[0], payment: r.rows[0] };
 }
 async function getCompanyBySlug(slug) {
   const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
@@ -2185,6 +2296,15 @@ async function getAlertHistory(limit = 50) {
   );
   return result.rows;
 }
+// Scopat pe fereastră de timp + vehicule (pentru rapoarte) — LIMIT-ul se aplică pe interval, nu pe ultimele N globale.
+async function getAlertHistoryRange(imeis, from, to, limit = 5000) {
+  if (!Array.isArray(imeis) || !imeis.length) return [];
+  const result = await pool.query(
+    'SELECT ah.*, a.name as alert_name, a.type as alert_type FROM alert_history ah LEFT JOIN alerts a ON a.id = ah.alert_id WHERE ah.imei = ANY($1) AND ah.triggered_at >= $2 AND ah.triggered_at <= $3 ORDER BY ah.triggered_at DESC LIMIT $4',
+    [imeis, from, to, limit]
+  );
+  return result.rows;
+}
 
 async function insertAlertEvent(alertId, imei, data) {
   await pool.query(
@@ -2430,6 +2550,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
+  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid,
   getCompanyImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
@@ -2517,7 +2638,7 @@ module.exports = {
   getDrivers, createDriver, updateDriver, deleteDriver,
   getGroups, createGroup, updateGroup, deleteGroup,
   getGeofences, createGeofence, updateGeofence, deleteGeofence,
-  getAlerts, createAlert, deleteAlert, getAlertHistory, insertAlertEvent,
+  getAlerts, createAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
   getVehicleDocuments, createVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
