@@ -1116,6 +1116,45 @@ function companyAccessStatus(company) {
   else if (now > until) status = 'grace';
   return { status, access_until: until, grace_until: graceUntil };
 }
+// ─── Control costuri: status + KPI calculate în JS (nu stocate), pe modelul companyAccessStatus ───
+const COST_DUE_SOON_MS = 14 * 86400000; // „scadent curând" = ≤14 zile
+function costStatus(c) {
+  if (c.active === false) return 'inactive';
+  const due = (c.next_due != null) ? Number(c.next_due) : null;
+  if (c.cycle === 'one_time' && due == null) return 'paid';
+  if (due == null) return 'unknown';
+  const now = Date.now();
+  if (due < now) return 'overdue';
+  if ((due - now) <= COST_DUE_SOON_MS) return 'upcoming';
+  return 'active';
+}
+function computeCostKpis(costs) {
+  const by = { RON: { monthly: 0, yearly: 0 }, USD: { monthly: 0, yearly: 0 }, EUR: { monthly: 0, yearly: 0 } };
+  let nextDue = null, nextDueProvider = null, overdueCount = 0, upcomingCount = 0, activeCount = 0;
+  for (const c of costs) {
+    if (c.active === false) continue;
+    activeCount++;
+    const cur = by[c.currency] || (by[c.currency] = { monthly: 0, yearly: 0 });
+    const amt = Number(c.amount) || 0;
+    if (c.cycle === 'monthly') { cur.monthly += amt; cur.yearly += amt * 12; }
+    else if (c.cycle === 'yearly') { cur.monthly += amt / 12; cur.yearly += amt; }
+    // one_time exclus din run-rate
+    if (c._status === 'overdue') overdueCount++;
+    else if (c._status === 'upcoming') upcomingCount++;
+    if (c.next_due != null && (nextDue == null || Number(c.next_due) < nextDue)) { nextDue = Number(c.next_due); nextDueProvider = c.provider; }
+  }
+  for (const k of Object.keys(by)) { by[k].monthly = Math.round(by[k].monthly * 100) / 100; by[k].yearly = Math.round(by[k].yearly * 100) / 100; }
+  return { byCurrency: by, nextDue, nextDueProvider, overdueCount, upcomingCount, activeCount }; // NU se adună între monede
+}
+// Normalizează o sumă scrisă RO (virgulă zecimală, punct la mii) → number; { ok, val } (null = gol).
+function _parseMoney(raw) {
+  const s = (raw != null) ? String(raw).trim() : '';
+  if (s === '') return { ok: true, val: null };
+  const norm = s.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const n = Number(norm);
+  if (!Number.isFinite(n) || n < 0) return { ok: false };
+  return { ok: true, val: n };
+}
 // Clasifică sursa de date a unui vehicul: 'fms' (FMS gateway J1939) / 'can' (CAN/LV-CAN/tahograf) / 'none'
 // (fără CAN). Folosit în drill-down-ul de companie (super-admin). Se uită la can_interface, la cheile din
 // ultima poziție (io_data) și la snapshot-ul CAN persistat (last_can, pentru vehicule parcate).
@@ -6051,6 +6090,74 @@ app.get('/api/companies/:id/payments', requireAuth, requireSuperadmin, async (re
 app.get('/api/payments', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     res.json(await db.getAllPayments(parseInt(req.query.limit) || 500));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ─── Control costuri (cheltuielile NOASTRE de platformă) — STRICT super-admin ───
+app.get('/api/admin/costs', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const costs = await db.listPlatformCosts({});
+    for (const c of costs) c._status = costStatus(c);
+    res.json({ costs, kpis: computeCostKpis(costs) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/admin/costs', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const provider = String(b.provider || '').trim(); if (!provider) return res.status(400).json({ error: 'Furnizor obligatoriu' });
+    const currency = ['RON', 'USD', 'EUR'].includes(b.currency) ? b.currency : 'RON';
+    const cycle = ['monthly', 'yearly', 'one_time'].includes(b.cycle) ? b.cycle : 'monthly';
+    const m = _parseMoney(b.amount); if (!m.ok) return res.status(400).json({ error: 'Sumă invalidă' });
+    const nextDue = (b.nextDue != null && b.nextDue !== '') ? Number(b.nextDue) : null;
+    const row = await db.createPlatformCost({ provider, category: b.category || null, description: b.description || null, amount: m.val, currency, cycle, nextDue, url: b.url || null, notes: b.notes || null, active: (b.active !== false), createdBy: req.auth && req.auth.userId });
+    auditReq(req, 'create', 'platform_cost', row.id, { provider, amount: m.val, currency });
+    res.json(row);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/admin/costs/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const cur = await db.getPlatformCostById(id); if (!cur) return res.status(404).json({ error: 'Cost inexistent' });
+    const b = req.body || {};
+    const currency = (b.currency != null) ? (['RON', 'USD', 'EUR'].includes(b.currency) ? b.currency : 'RON') : null;
+    const cycle = (b.cycle != null) ? (['monthly', 'yearly', 'one_time'].includes(b.cycle) ? b.cycle : 'monthly') : null;
+    let amount; if (b.amount !== undefined) { const m = _parseMoney(b.amount); if (!m.ok) return res.status(400).json({ error: 'Sumă invalidă' }); amount = m.val; }
+    const nextDue = (b.nextDue !== undefined) ? ((b.nextDue === '' || b.nextDue == null) ? null : Number(b.nextDue)) : undefined;
+    const row = await db.updatePlatformCost(id, { provider: b.provider, category: b.category, description: b.description, amount, currency, cycle, nextDue, url: b.url, notes: b.notes, active: (b.active === undefined ? undefined : b.active) });
+    auditReq(req, 'update', 'platform_cost', id, { provider: b.provider });
+    res.json(row);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/admin/costs/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const cur = await db.getPlatformCostById(id); if (!cur) return res.status(404).json({ error: 'Cost inexistent' });
+    await db.deletePlatformCost(id);
+    auditReq(req, 'delete', 'platform_cost', id, { provider: cur.provider });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/admin/costs/:id/paid', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const cost = await db.getPlatformCostById(id); if (!cost) return res.status(404).json({ error: 'Cost inexistent' });
+    const now = Date.now();
+    let nextDue, active;
+    if (cost.cycle === 'one_time') { nextDue = null; active = false; }
+    else {
+      const base = (cost.next_due != null && Number(cost.next_due) > now) ? Number(cost.next_due) : now; // evită driftul pe restanțe
+      nextDue = _addMonthsMs(base, cost.cycle === 'yearly' ? 12 : 1);
+      active = undefined; // rămâne activ
+    }
+    const m = _parseMoney(req.body && req.body.amount);
+    const result = await db.markCostPaid(id, { paidAt: now, amount: (m.ok ? (m.val != null ? m.val : cost.amount) : cost.amount), currency: cost.currency, nextDue, active, note: (req.body && req.body.note) || null, createdBy: req.auth && req.auth.userId });
+    auditReq(req, 'payment', 'platform_cost', id, { currency: cost.currency, until: nextDue });
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/admin/costs/:id/payments', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    res.json(await db.getCostPayments(id, 100));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).

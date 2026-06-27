@@ -1292,6 +1292,7 @@
           <button class="aside-item" data-super data-atab="billing" onclick="raxAdminTab('billing')"><i class="fas fa-file-invoice-dollar"></i> Facturare</button>
           <button class="aside-item" data-super data-atab="accounts" onclick="raxAdminTab('accounts')"><i class="fas fa-users-gear"></i> Conturi &amp; Abonamente</button>
           <button class="aside-item" data-super data-atab="dashboard" onclick="raxAdminTab('dashboard')"><i class="fas fa-chart-line"></i> Dashboard platformă</button>
+          <button class="aside-item" data-super data-atab="costs" onclick="raxAdminTab('costs')"><i class="fas fa-wallet"></i> Control costuri</button>
           <div class="aside-grp">Sistem</div>
           <button class="aside-item" onclick="openApiKeys()"><i class="fas fa-key"></i> Chei API</button>
           <button class="aside-item" data-super onclick="openAudit()"><i class="fas fa-clipboard-list"></i> Jurnal audit</button>
@@ -1318,6 +1319,7 @@
           <div id="admin-tab-tahograf" style="display:none;"></div>
           <div id="admin-tab-etransport" style="display:none;"></div>
           <div id="admin-tab-dashboard" style="display:none;"></div>
+          <div id="admin-tab-costs" style="display:none;"></div>
       <div id="admin-tab-users" style="display:none;">
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
@@ -2436,8 +2438,8 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
-      var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
-      var titles = { companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
+      var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs' };
+      var titles = { companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       Object.keys(map).forEach(function (k) {
         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
@@ -2475,6 +2477,8 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadEt) window.raxLoadEt();
       } else if (name === 'dashboard') {
         if (window.raxLoadDashboard) window.raxLoadDashboard('admin-tab-dashboard');
+      } else if (name === 'costs') {
+        if (window.raxLoadCosts) window.raxLoadCosts();
       }
     };
 
@@ -10622,6 +10626,14 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
+  <!-- Adaugă / editează cost de platformă (super-admin) -->
+  <div class="rax-overlay" id="rax-cost-overlay">
+    <div class="rax-card" style="max-width:480px;">
+      <div class="rax-head"><h3><i class="fas fa-wallet" style="color:var(--accent)"></i> <span id="rax-cost-mtitle">Adaugă cost</span></h3><button class="rax-x" onclick="document.getElementById('rax-cost-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-body" id="rax-cost-body"></div>
+    </div>
+  </div>
+
   <!-- Editare date companie (super-admin) -->
   <div class="rax-overlay" id="rax-coedit-overlay">
     <div class="rax-card" style="max-width:520px;">
@@ -12078,6 +12090,155 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadBilling) raxLoadBilling();
         if (window.raxLoadCompanies) raxLoadCompanies();
       } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Înregistrează plata'; } }
+    };
+    // ─── Control costuri (super-admin): KPI-uri + carduri per furnizor + listă + modal ───
+    window._raxCosts = []; window._raxCostKpis = null;
+    var RAX_FX = { RON: 1, USD: 4.6, EUR: 5.0 }; // doar pentru KPI-ul aproximativ în RON; pe carduri/listă rămâne moneda reală
+    function _costFmtD(ms) { if (ms == null) return '—'; var d = new Date(Number(ms)); return ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear(); }
+    function _costCycleLabel(cy) { return cy === 'monthly' ? 'lună' : cy === 'yearly' ? 'an' : 'o dată'; }
+    function _costIcon(c) { var p = (c.provider || '').toLowerCase(); if (p.indexOf('rotld') >= 0 || c.category === 'domain') return 'fa-globe'; if (p.indexOf('railway') >= 0 || c.category === 'hosting') return 'fa-server'; if (p.indexOf('cloudflare') >= 0 || c.category === 'cdn') return 'fa-cloud'; if (p.indexOf('anthropic') >= 0 || c.category === 'api') return 'fa-robot'; return 'fa-receipt'; }
+    function _costBadge(c) { var st = c._status; if (st === 'inactive') return ['Inactiv', 'var(--text-muted)', 'rgba(148,163,184,.15)']; if (st === 'overdue') return ['Restant', 'var(--red)', 'rgba(220,38,38,.15)']; if (st === 'upcoming') return ['Scadent curând', '#f59e0b', 'rgba(245,158,11,.15)']; if (st === 'paid') return ['Achitat', 'var(--accent)', 'rgba(22,163,74,.15)']; if (st === 'unknown') return ['Fără scadență', 'var(--text-muted)', 'rgba(148,163,184,.15)']; return ['La zi', 'var(--accent)', 'rgba(22,163,74,.15)']; }
+    function _costAmt(c) { var a = Number(c.amount) || 0; if (a === 0) return '<span style="color:var(--text-muted)">Gratuit</span>'; return a.toLocaleString('ro-RO') + ' ' + esc(c.currency); }
+    window.raxLoadCosts = async function () {
+      var box = document.getElementById('admin-tab-costs'); if (!box) return;
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var d = await fetch('/api/admin/costs', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        window._raxCosts = (d && d.costs) || []; window._raxCostKpis = (d && d.kpis) || null;
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      box.innerHTML =
+        '<div id="rax-cost-kpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px;"></div>' +
+        '<div id="rax-cost-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:18px;"></div>' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0 12px;">' +
+          '<button class="rax-btn primary" onclick="raxOpenCostModal()"><i class="fas fa-plus"></i> Adaugă cost</button>' +
+          '<input class="rax-field" id="rax-cost-search" placeholder="🔎 Caută (furnizor / categorie / notă)…" oninput="raxRenderCostList()" style="flex:1;min-width:160px;margin:0;">' +
+        '</div>' +
+        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;"><i class="fas fa-list" style="color:var(--accent);margin-right:6px;"></i>Toate costurile</h4>' +
+        '<div id="rax-cost-table"></div>';
+      raxRenderCostKpis(); raxRenderCostCards(); raxRenderCostList();
+    };
+    window.raxRenderCostKpis = function () {
+      var host = document.getElementById('rax-cost-kpi'); if (!host) return;
+      var k = window._raxCostKpis || { byCurrency: {}, overdueCount: 0, nextDue: null, nextDueProvider: null };
+      var monthlyRON = 0, yearlyRON = 0;
+      Object.keys(k.byCurrency || {}).forEach(function (cur) { var f = RAX_FX[cur] || 1; monthlyRON += (k.byCurrency[cur].monthly || 0) * f; yearlyRON += (k.byCurrency[cur].yearly || 0) * f; });
+      monthlyRON = Math.round(monthlyRON); yearlyRON = Math.round(yearlyRON);
+      var overSum = 0; (window._raxCosts || []).forEach(function (c) { if (c._status === 'overdue') overSum += (Number(c.amount) || 0) * (RAX_FX[c.currency] || 1); }); overSum = Math.round(overSum);
+      function kpi(val, lbl, sub, color) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-left:3px solid ' + (color || 'var(--border)') + ';border-radius:12px;padding:12px 14px;"><div style="font-size:20px;font-weight:800;color:' + (color || 'var(--text-primary)') + ';">' + val + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + lbl + (sub ? ' · ' + sub : '') + '</div></div>'; }
+      host.innerHTML =
+        kpi(monthlyRON.toLocaleString('ro-RO') + ' lei', 'Total lunar', 'recurent ≈RON', 'var(--accent)') +
+        kpi(yearlyRON.toLocaleString('ro-RO') + ' lei', 'Total anual', '≈RON', 'var(--accent)') +
+        kpi(k.nextDue != null ? _costFmtD(k.nextDue) : '—', 'Următoarea scadență', esc(k.nextDueProvider || ''), '#f59e0b') +
+        kpi(String(k.overdueCount || 0), 'Restanțe', overSum ? overSum.toLocaleString('ro-RO') + ' lei' : '—', 'var(--red)');
+    };
+    window.raxRenderCostCards = function () {
+      var host = document.getElementById('rax-cost-cards'); if (!host) return;
+      var rows = window._raxCosts || [];
+      if (!rows.length) { host.innerHTML = '<div class="rax-co-meta">Niciun cost adăugat încă.</div>'; return; }
+      host.innerHTML = rows.map(function (c) {
+        var st = _costBadge(c);
+        return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;"><i class="fas ' + _costIcon(c) + '" style="font-size:20px;color:var(--accent);width:26px;text-align:center;"></i>' +
+            '<div style="font-weight:800;font-size:14px;">' + esc(c.provider) + '</div>' +
+            '<span style="margin-left:auto;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:' + st[2] + ';color:' + st[1] + ';white-space:nowrap;">' + st[0] + '</span></div>' +
+          '<div style="font-size:20px;font-weight:800;">' + _costAmt(c) + '<span style="font-size:11px;font-weight:500;color:var(--text-muted);"> / ' + _costCycleLabel(c.cycle) + '</span></div>' +
+          '<div style="font-size:11.5px;color:var(--text-muted);"><i class="fas fa-calendar-day" style="margin-right:5px;"></i>Scadent: ' + _costFmtD(c.next_due) + '</div>' +
+          '<div style="display:flex;gap:6px;margin-top:4px;"><button class="rax-btn primary" style="flex:1;justify-content:center;padding:5px 8px;font-size:11.5px;" onclick="raxCostMarkPaid(' + c.id + ')"><i class="fas fa-check"></i> Marchează plătit</button>' +
+          '<button class="rax-btn" style="padding:5px 9px;" onclick="raxOpenCostModal(' + c.id + ')"><i class="fas fa-pen"></i></button></div>' +
+        '</div>';
+      }).join('');
+    };
+    window.raxRenderCostList = function () {
+      var host = document.getElementById('rax-cost-table'); if (!host) return;
+      var s = document.getElementById('rax-cost-search'); var q = ((s && s.value) || '').trim().toLowerCase();
+      var rows = (window._raxCosts || []).filter(function (c) { return !q || ((c.provider || '') + ' ' + (c.category || '') + ' ' + (c.notes || '')).toLowerCase().indexOf(q) >= 0; });
+      if (!rows.length) { host.innerHTML = '<div class="rax-co-meta" style="padding:14px;">Niciun cost' + (q ? ' pentru „' + esc(q) + '"' : ' adăugat încă') + '.</div>'; return; }
+      var head = '<thead><tr><th>Furnizor</th><th>Categorie</th><th class="num">Sumă</th><th>Ciclu</th><th>Următoarea scadență</th><th>Status</th><th>Acțiuni</th></tr></thead>';
+      var body = rows.map(function (c) {
+        var st = _costBadge(c);
+        return '<tr>' +
+          '<td><i class="fas ' + _costIcon(c) + '" style="color:var(--accent);margin-right:6px;"></i><strong>' + esc(c.provider) + '</strong></td>' +
+          '<td>' + esc(c.category || '—') + '</td>' +
+          '<td class="num">' + _costAmt(c) + '</td>' +
+          '<td>' + _costCycleLabel(c.cycle) + '</td>' +
+          '<td style="white-space:nowrap;">' + _costFmtD(c.next_due) + '</td>' +
+          '<td><span style="color:' + st[1] + ';font-weight:700;white-space:nowrap;">● ' + st[0] + '</span></td>' +
+          '<td><button class="rax-ico-btn" title="Marchează plătit" onclick="raxCostMarkPaid(' + c.id + ')"><i class="fas fa-check"></i></button> ' +
+            '<button class="rax-ico-btn" title="Editează" onclick="raxOpenCostModal(' + c.id + ')"><i class="fas fa-pen"></i></button> ' +
+            '<button class="rax-ico-btn danger" title="Șterge" onclick="raxDeleteCost(' + c.id + ')"><i class="fas fa-trash"></i></button></td>' +
+        '</tr>';
+      }).join('');
+      host.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
+    };
+    window.raxOpenCostModal = function (id) {
+      var ov = document.getElementById('rax-cost-overlay'); if (!ov) return;
+      var c = id ? (window._raxCosts || []).find(function (x) { return x.id === id; }) : null; c = c || {};
+      document.getElementById('rax-cost-mtitle').textContent = id ? 'Editează cost' : 'Adaugă cost';
+      function dval(ms) { if (ms == null) return ''; var d = new Date(Number(ms)); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+      function opt(v, l, sel) { return '<option value="' + v + '"' + (sel === v ? ' selected' : '') + '>' + l + '</option>'; }
+      document.getElementById('rax-cost-body').innerHTML =
+        '<input type="hidden" id="rax-cost-id" value="' + (id || '') + '">' +
+        '<label class="rax-lbl">Furnizor</label><input id="rax-cost-provider" class="rax-field" style="margin:0 0 10px;" value="' + esc(c.provider || '') + '" placeholder="ex. RoTLD">' +
+        '<label class="rax-lbl">Categorie</label><select id="rax-cost-cat" class="rax-field" style="margin:0 0 10px;">' + opt('domain', 'Domeniu', c.category) + opt('hosting', 'Hosting', c.category) + opt('cdn', 'DNS/CDN', c.category) + opt('api', 'AI/API', c.category) + opt('other', 'Altele', c.category) + '</select>' +
+        '<label class="rax-lbl">Descriere</label><input id="rax-cost-desc" class="rax-field" style="margin:0 0 10px;" value="' + esc(c.description || '') + '">' +
+        '<div class="rax-row2"><div><label class="rax-lbl">Sumă</label><input id="rax-cost-amount" class="rax-field" type="number" step="0.01" min="0" style="margin:0 0 10px;" value="' + (c.amount != null ? c.amount : '') + '"></div>' +
+          '<div><label class="rax-lbl">Monedă</label><select id="rax-cost-currency" class="rax-field" style="margin:0 0 10px;">' + opt('RON', 'RON', c.currency || 'RON') + opt('USD', 'USD', c.currency) + opt('EUR', 'EUR', c.currency) + '</select></div></div>' +
+        '<div class="rax-row2"><div><label class="rax-lbl">Ciclu</label><select id="rax-cost-cycle" class="rax-field" style="margin:0 0 10px;">' + opt('monthly', 'Lunar', c.cycle || 'monthly') + opt('yearly', 'Anual', c.cycle) + opt('one_time', 'O singură dată', c.cycle) + '</select></div>' +
+          '<div><label class="rax-lbl">Următoarea scadență</label><input id="rax-cost-due" class="rax-field" type="date" style="margin:0 0 10px;" value="' + dval(c.next_due) + '"></div></div>' +
+        '<label class="rax-lbl">URL furnizor</label><input id="rax-cost-url" class="rax-field" type="url" style="margin:0 0 10px;" value="' + esc(c.url || '') + '" placeholder="https://…">' +
+        '<label class="rax-lbl">Notă</label><input id="rax-cost-note" class="rax-field" style="margin:0 0 10px;" value="' + esc(c.notes || '') + '">' +
+        '<label class="rax-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:4px;"><input type="checkbox" id="rax-cost-active"' + (c.active === false ? '' : ' checked') + ' style="width:auto;margin:0;"> Cost activ</label>' +
+        '<button class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxSubmitCost(this)"><i class="fas fa-check"></i> Salvează</button>' +
+        '<div id="rax-cost-msg" style="font-size:12px;margin-top:8px;"></div>';
+      ov.classList.add('open');
+    };
+    window.raxSubmitCost = async function (btn) {
+      var msg = document.getElementById('rax-cost-msg');
+      var idv = (document.getElementById('rax-cost-id').value || '').trim();
+      var dueStr = document.getElementById('rax-cost-due').value;
+      var nextDue = dueStr ? new Date(dueStr + 'T12:00:00').getTime() : null;
+      var body = {
+        provider: document.getElementById('rax-cost-provider').value.trim(),
+        category: document.getElementById('rax-cost-cat').value,
+        description: document.getElementById('rax-cost-desc').value.trim(),
+        amount: document.getElementById('rax-cost-amount').value,
+        currency: document.getElementById('rax-cost-currency').value,
+        cycle: document.getElementById('rax-cost-cycle').value,
+        nextDue: nextDue,
+        url: document.getElementById('rax-cost-url').value.trim(),
+        notes: document.getElementById('rax-cost-note').value.trim(),
+        active: document.getElementById('rax-cost-active').checked
+      };
+      if (!body.provider) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Furnizor obligatoriu.</span>'; return; }
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se salvează…'; }
+      try {
+        var url = idv ? ('/api/admin/costs/' + idv) : '/api/admin/costs';
+        var j = await fetch(url, { method: idv ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+        if (j.error) { if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(j.error) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Salvează'; } return; }
+        document.getElementById('rax-cost-overlay').classList.remove('open');
+        if (window.raxToast) raxToast('Cost salvat ✓', 'success');
+        raxLoadCosts();
+      } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Salvează'; } }
+    };
+    window.raxCostMarkPaid = async function (id) {
+      if (!confirm('Marchezi acest cost ca plătit? Scadența avansează cu un ciclu.')) return;
+      try {
+        var j = await fetch('/api/admin/costs/' + id + '/paid', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({}) }).then(function (r) { return r.json(); });
+        if (j.error) { if (window.raxToast) raxToast(j.error, 'error'); else alert(j.error); return; }
+        if (window.raxToast) raxToast('Plată înregistrată ✓', 'success');
+        raxLoadCosts();
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); else alert(e.message); }
+    };
+    window.raxDeleteCost = async function (id) {
+      var c = (window._raxCosts || []).find(function (x) { return x.id === id; }) || {};
+      if (!confirm('Ștergi costul „' + (c.provider || '') + '"?\nIstoricul de plăți aferent se șterge.')) return;
+      try {
+        var r = await fetch('/api/admin/costs/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); else alert(j.error || 'Eroare'); return; }
+        if (window.raxToast) raxToast('Cost șters ✓', 'success');
+        raxLoadCosts();
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); else alert(e.message); }
     };
     window.raxDeleteCompany = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
