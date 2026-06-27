@@ -6345,6 +6345,36 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
     res.json(Object.assign({}, spend, { budget: budget, available: available, creditUsd: creditUsd, creditDate: creditDate, creditConfigured: creditConfigured, spentSince: spentSince, soldRemaining: soldRemaining, soldError: soldError }));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ─── Ofertare Live: CRUD oferte salvate (super-admin) ───
+app.get('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await db.listOffers()); } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const o = await db.createOffer({ name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, currency: b.currency, notes: b.notes, created_by: req.auth && req.auth.userId });
+    auditReq(req, 'create', 'offer', o.id, { name: o.name });
+    res.json(o);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const b = req.body || {};
+    const o = await db.updateOffer(id, { name: b.name, client_name: b.client_name, client_cui: b.client_cui, client_contact: b.client_contact, config: b.config, monthly_total: b.monthly_total, currency: b.currency, notes: b.notes });
+    if (!o) return res.status(404).json({ error: 'Oferta nu există' });
+    auditReq(req, 'update', 'offer', id, { name: o.name });
+    res.json(o);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    await db.deleteOffer(id);
+    auditReq(req, 'delete', 'offer', id, {});
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).
 // Super-adminul (fără companie proprie) folosește în continuare Facturarea completă; aici primește listă goală.
 app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {

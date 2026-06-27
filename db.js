@@ -671,6 +671,24 @@ async function initDb() {
         }
       }
     } catch (e) { /* seed best-effort */ }
+    // Ofertare Live: oferte salvate (configurator de preț cu istoric)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS offers (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(160),
+        client_name VARCHAR(160),
+        client_cui VARCHAR(40),
+        client_contact VARCHAR(200),
+        config JSONB,
+        monthly_total NUMERIC(12,2),
+        currency VARCHAR(3) DEFAULT 'RON',
+        notes TEXT,
+        created_by INTEGER,
+        created_at BIGINT,
+        updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_offers_created ON offers(created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_company ON devices(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_groups_company ON device_groups(company_id)`);
@@ -1060,6 +1078,36 @@ async function getDbCapacity() {
     tables = t.rows.map(function (x) { return { schema: x.schema_name, table: x.tbl, total: Number(x.total_bytes) || 0, data: Number(x.table_bytes) || 0, idx: Number(x.index_bytes) || 0 }; });
   } catch (e) { tables = []; }
   return { dbBytes, tables };
+}
+// ─── Ofertare Live (oferte salvate) ───
+async function listOffers() {
+  const r = await pool.query('SELECT * FROM offers ORDER BY created_at DESC LIMIT 500');
+  return r.rows;
+}
+async function getOfferById(id) {
+  const r = await pool.query('SELECT * FROM offers WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function createOffer(o) {
+  const now = Date.now();
+  const r = await pool.query(
+    `INSERT INTO offers (name, client_name, client_cui, client_contact, config, monthly_total, currency, notes, created_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10) RETURNING *`,
+    [o.name || null, o.client_name || null, o.client_cui || null, o.client_contact || null, JSON.stringify(o.config || {}), o.monthly_total || 0, o.currency || 'RON', o.notes || null, o.created_by || null, now]
+  );
+  return r.rows[0];
+}
+async function updateOffer(id, o) {
+  const now = Date.now();
+  const r = await pool.query(
+    `UPDATE offers SET name=$2, client_name=$3, client_cui=$4, client_contact=$5, config=$6, monthly_total=$7, currency=$8, notes=$9, updated_at=$10 WHERE id=$1 RETURNING *`,
+    [id, o.name || null, o.client_name || null, o.client_cui || null, o.client_contact || null, JSON.stringify(o.config || {}), o.monthly_total || 0, o.currency || 'RON', o.notes || null, now]
+  );
+  return r.rows[0] || null;
+}
+async function deleteOffer(id) {
+  await pool.query('DELETE FROM offers WHERE id = $1', [id]);
+  return { ok: true };
 }
 async function getCompanyBySlug(slug) {
   const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
@@ -2572,6 +2620,7 @@ module.exports = {
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getDbCapacity,
+  listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
   getCompanyImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
