@@ -111,31 +111,57 @@ async function toXlsx(report) {
 const PALETTE = ['#3FE07D', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#14b8a6', '#ec4899', '#84cc16'];
 function _num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
 
-// Bar chart: bare verticale + etichete x.
+// Valoare compactă pentru axă/etichetă (1.2k, 47, 9.7).
+function _fmtTick(v) { v = _num(v); if (Math.abs(v) >= 1000) return (v / 1000).toFixed(1).replace(/\.0$/, '') + 'k'; return String(Math.round(v * 10) / 10); }
+// Grilă orizontală + valori pe axa Y (4 trepte). Întoarce geometria zonei de plot.
+function _gridY(doc, x, y, w, h, max) {
+  const gut = 22, padB = 14, plotH = h - padB, plotW = w - gut, x0 = x + gut;
+  doc.font('Helvetica').fontSize(5.5);
+  for (let g = 0; g <= 4; g++) {
+    const gy = y + plotH - (plotH - 2) * (g / 4);
+    doc.moveTo(x0, gy).lineTo(x0 + plotW, gy).strokeColor(g === 0 ? '#cbd5e1' : '#eef2f6').lineWidth(g === 0 ? 0.8 : 0.5).stroke();
+    doc.fillColor('#94a3b8').text(_fmtTick(max * g / 4), x, gy - 3, { width: gut - 3, align: 'right', lineBreak: false });
+  }
+  return { x0, plotW, plotH };
+}
+// Bar chart: bare rotunjite colorate + grilă + valori deasupra + etichete x.
 function drawBar(doc, x, y, w, h, c) {
   const labels = c.labels || [], data = ((c.datasets || [])[0] || {}).data || [];
   const n = labels.length; if (!n) return;
-  const max = Math.max(1, ...data.map(_num)), padB = 12, plotH = h - padB;
-  doc.moveTo(x, y + plotH).lineTo(x + w, y + plotH).strokeColor('#e5e7eb').lineWidth(0.8).stroke();
-  const bw = w / n;
+  const max = Math.max(1, ...data.map(_num));
+  const { x0, plotW, plotH } = _gridY(doc, x, y, w, h, max);
+  const bw = plotW / n;
   for (let i = 0; i < n; i++) {
     const v = _num(data[i]), bh = max > 0 ? (v / max) * (plotH - 2) : 0;
-    doc.rect(x + i * bw + bw * 0.18, y + plotH - bh, bw * 0.64, Math.max(0, bh)).fillColor(PALETTE[0]).fill();
-    doc.fillColor('#6b7280').font('Helvetica').fontSize(5.5).text(String(labels[i]), x + i * bw, y + plotH + 2, { width: bw, align: 'center', lineBreak: false });
+    const bx = x0 + i * bw + bw * 0.16, by = y + plotH - bh, bwi = bw * 0.68;
+    doc.roundedRect(bx, by, bwi, Math.max(0.6, bh), Math.min(3, bwi / 2)).fillColor(PALETTE[i % PALETTE.length]).fill();
+    if (n <= 14) doc.fillColor('#334155').font('Helvetica-Bold').fontSize(5.5).text(_fmtTick(v), x0 + i * bw, by - 7, { width: bw, align: 'center', lineBreak: false });
+    doc.fillColor('#64748b').font('Helvetica').fontSize(5.5).text(String(labels[i]), x0 + i * bw, y + plotH + 3, { width: bw, align: 'center', lineBreak: false });
   }
 }
-// Line chart: polilinie + puncte.
+// Line chart: arie umplută + polilinie + puncte + grilă.
 function drawLine(doc, x, y, w, h, c) {
   const labels = c.labels || [], data = ((c.datasets || [])[0] || {}).data || [];
   const n = labels.length; if (!n) return;
-  const max = Math.max(1, ...data.map(_num)), padB = 12, plotH = h - padB, step = n > 1 ? w / (n - 1) : 0;
-  doc.moveTo(x, y + plotH).lineTo(x + w, y + plotH).strokeColor('#e5e7eb').lineWidth(0.8).stroke();
-  const pt = i => ({ px: x + (n > 1 ? i * step : w / 2), py: y + plotH - (max > 0 ? (_num(data[i]) / max) * (plotH - 2) : 0) });
-  doc.strokeColor(PALETTE[0]).lineWidth(1.5);
+  const max = Math.max(1, ...data.map(_num)), col = PALETTE[0];
+  const { x0, plotW, plotH } = _gridY(doc, x, y, w, h, max);
+  const step = n > 1 ? plotW / (n - 1) : 0;
+  const pt = i => ({ px: x0 + (n > 1 ? i * step : plotW / 2), py: y + plotH - (max > 0 ? (_num(data[i]) / max) * (plotH - 2) : 0) });
+  // arie umplută sub linie
+  doc.save();
+  doc.moveTo(pt(0).px, y + plotH);
+  for (let i = 0; i < n; i++) { const p = pt(i); doc.lineTo(p.px, p.py); }
+  doc.lineTo(pt(n - 1).px, y + plotH).closePath().fillColor(col).fillOpacity(0.12).fill();
+  doc.restore();
+  // linia
+  doc.strokeColor(col).lineWidth(1.6);
   for (let i = 0; i < n; i++) { const p = pt(i); if (i === 0) doc.moveTo(p.px, p.py); else doc.lineTo(p.px, p.py); }
   doc.stroke();
-  for (let i = 0; i < n; i++) { const p = pt(i); doc.circle(p.px, p.py, 2).fillColor(PALETTE[0]).fill();
-    doc.fillColor('#6b7280').font('Helvetica').fontSize(5.5).text(String(labels[i]), p.px - (step || w) / 2, y + plotH + 2, { width: step || w, align: 'center', lineBreak: false }); }
+  // puncte + etichete x
+  for (let i = 0; i < n; i++) {
+    const p = pt(i); doc.circle(p.px, p.py, 1.9).fillColor(col).fill();
+    doc.fillColor('#64748b').font('Helvetica').fontSize(5.5).text(String(labels[i]), p.px - (step || plotW) / 2, y + plotH + 3, { width: step || plotW, align: 'center', lineBreak: false });
+  }
 }
 // Pie/doughnut: felii (arc SVG) + legendă.
 function drawPie(doc, x, y, w, h, c, doughnut) {
