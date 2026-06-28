@@ -6430,6 +6430,12 @@ app.post('/api/push/device', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Diagnostic push (super-admin): e FCM configurat pe server (FIREBASE_SA_JSON) + a înregistrat telefonul meu un token?
+app.get('/api/admin/push-status', requireAuth, requireSuperadmin, async (req, res) => {
+  let myDeviceTokens = 0;
+  try { myDeviceTokens = ((await db.getDeviceTokens(req.auth.userId)) || []).length; } catch (e) {}
+  res.json({ fcmConfigured: !!_fcm, myDeviceTokens: myDeviceTokens, hint: !_fcm ? 'Setează FIREBASE_SA_JSON pe server' : (myDeviceTokens === 0 ? 'Niciun token de pe telefonul tău — instalează APK-ul cu push + loghează-te' : 'OK — server + telefon pregătite') });
+});
 app.post('/api/push/device/unregister', requireAuth, async (req, res) => {
   try { if (req.body && req.body.token) await db.deleteDeviceToken(String(req.body.token)); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
