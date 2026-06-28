@@ -6436,6 +6436,31 @@ app.get('/api/admin/push-status', requireAuth, requireSuperadmin, async (req, re
   try { myDeviceTokens = ((await db.getDeviceTokens(req.auth.userId)) || []).length; } catch (e) {}
   res.json({ fcmConfigured: !!_fcm, myDeviceTokens: myDeviceTokens, hint: !_fcm ? 'Setează FIREBASE_SA_JSON pe server' : (myDeviceTokens === 0 ? 'Niciun token de pe telefonul tău — instalează APK-ul cu push + loghează-te' : 'OK — server + telefon pregătite') });
 });
+// Diagnostic CONTACT (super-admin): analizează semnalul de contact (IO 239 / DIN1) vs viteză pe ultimele 48h, pentru un vehicul (q = nume / nr / imei).
+app.get('/api/admin/ignition-check', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').toLowerCase().trim();
+    if (!q) return res.status(400).json({ error: 'Adaugă ?q=nume/nr/imei (ex. ?q=caddy)' });
+    const devs = await db.getDevicesLite();
+    const dev = devs.find(function (d) { return (d.imei && String(d.imei).toLowerCase().includes(q)) || (d.name && String(d.name).toLowerCase().includes(q)) || (d.plate && String(d.plate).toLowerCase().includes(q)); });
+    if (!dev) return res.status(404).json({ error: 'Vehicul negăsit pentru „' + q + '"' });
+    const imei = dev.imei;
+    const to = new Date(), from = new Date(to.getTime() - 48 * 3600 * 1000);
+    const hist = await db.getDeviceHistory(imei, from.toISOString(), to.toISOString(), 100000);
+    const SP = 3;
+    let ign1 = 0, ign0 = 0, ignU = 0, din1Present = 0, din1On = 0, idle = 0, driving = 0, moveNoIgn = 0, stopNoIgn = 0;
+    for (const p of hist) {
+      const io = p.io_data || {}; const spd = p.speed || 0;
+      const ign = io.ignition; const ignOn = (ign === 1 || ign === true); const moving = spd > SP;
+      if (ignOn) ign1++; else if (ign === 0 || ign === false) ign0++; else ignU++;
+      if (io.digital_input_1 != null) { din1Present++; if (io.digital_input_1 === 1 || io.digital_input_1 === true) din1On++; }
+      if (ignOn && !moving) idle++; else if (ignOn && moving) driving++; else if (!ignOn && moving) moveNoIgn++; else stopNoIgn++;
+    }
+    const source = _din1Set.has(imei) ? 'din1 (override)' : 'auto (IO 239 device)';
+    const recent = hist.slice(-15).map(function (p) { return { ts: p.timestamp, speed: p.speed, ignition: (p.io_data || {}).ignition, din1: (p.io_data || {}).digital_input_1 }; });
+    res.json({ vehicul: dev.name || imei, imei, source, samples: hist.length, ign_on: ign1, ign_off: ign0, ign_undef: ignU, din1_present: din1Present, din1_on: din1On, idle_samples: idle, driving_samples: driving, moving_fara_contact: moveNoIgn, oprit_fara_contact: stopNoIgn, recent });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 app.post('/api/push/device/unregister', requireAuth, async (req, res) => {
   try { if (req.body && req.body.token) await db.deleteDeviceToken(String(req.body.token)); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
