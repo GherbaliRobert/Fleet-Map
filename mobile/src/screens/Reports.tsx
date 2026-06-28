@@ -19,6 +19,8 @@ function range(p: Period): { from: string; to: string } {
   return { from: from.toISOString(), to: now.toISOString() };
 }
 const PERIOD_LABEL: Record<Period, string> = { today: 'Azi', yesterday: 'Ieri', week: '7 zile', month: '30 zile' };
+// YYYY-MM-DD → DD.MM (pentru axa graficului de consum zilnic)
+function dayLbl(d: string) { const p = String(d).slice(5).split('-'); return p.length === 2 ? p[1] + '.' + p[0] : d; }
 
 export function Reports() {
   const loc = useLocation();
@@ -30,6 +32,7 @@ export function Reports() {
   const [sheet, setSheet] = useState<'' | 'type' | 'veh'>('');
   const [tq, setTq] = useState(''); const [vq, setVq] = useState('');
   const [res, setRes] = useState<ReportResult | null>(null);
+  const [fuelSeries, setFuelSeries] = useState<any | null>(null); // grafic consum zilnic (time-series) pt. raportul de consum
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [exporting, setExporting] = useState<'' | 'pdf' | 'xlsx'>('');
@@ -48,9 +51,21 @@ export function Reports() {
     : `${sel.length} vehicule`;
 
   async function generate() {
-    setErr(''); setLoading(true); setRes(null);
+    setErr(''); setLoading(true); setRes(null); setFuelSeries(null);
     const r = range(period);
-    try { setRes(await Api.runReport(type, r.from, r.to, sel.length ? sel : undefined)); }
+    try {
+      setRes(await Api.runReport(type, r.from, r.to, sel.length ? sel : undefined));
+      // Raport de consum: adaugă graficul REAL de consum zilnic (cum a urcat/scăzut pe perioadă), din /api/fuel-stats
+      if (type === 'consumption') {
+        try {
+          const fs: any = await Api.fuelStats(r.from, r.to, sel.length ? sel : undefined);
+          const s = fs && fs.series;
+          if (s && s.labels && s.labels.length) {
+            setFuelSeries({ type: 'line', title: 'Consum zilnic (litri)', labels: s.labels.map(dayLbl), datasets: [{ label: 'litri', data: s.consumed || [] }] });
+          }
+        } catch { /* fuel-stats opțional */ }
+      }
+    }
     catch (e: any) { setErr(e?.message || 'Eroare la generare'); }
     finally { setLoading(false); }
   }
@@ -119,6 +134,7 @@ export function Reports() {
                 {Object.entries(res.summary).map(([k, v]) => <div class="rp-kpi"><div class="v">{String(v)}</div><div class="l">{k}</div></div>)}
               </div>
             )}
+            {fuelSeries && <ReportChart def={fuelSeries} />}
             {(res.charts || []).map((c) => <ReportChart def={c} />)}
             {res.rows && res.rows.length > 0 ? (
               <>

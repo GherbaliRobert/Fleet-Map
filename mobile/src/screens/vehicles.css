@@ -32,3 +32,11 @@
 .vmpop-warn { font-size: 12.5px; font-weight: 700; color: #f59e0b; display: flex; align-items: center; }
 .vmpop-bang { display: inline-flex; width: 16px; height: 16px; border-radius: 50%; background: #f59e0b; color: #06210f; font-weight: 800; font-size: 11px; align-items: center; justify-content: center; margin-right: 6px; flex: 0 0 auto; }
 .vmpop-btn { margin-top: 9px; width: 100%; background: var(--accent); color: #06210f; border: none; border-radius: 8px; padding: 7px; font-weight: 700; font-size: 13px; font-family: inherit; }
+
+/* Etichetă permanentă pe marker — numărul mașinii (stil xMonitor) */
+.leaflet-tooltip.vlabel { background: rgba(11,14,17,.88); color: #fff; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; padding: 1px 5px; font-size: 10.5px; font-weight: 700; font-family: inherit; line-height: 1.4; box-shadow: 0 2px 6px rgba(0,0,0,.45); white-space: nowrap; }
+.leaflet-tooltip.vlabel::before { display: none; } /* fără săgeată */
+
+/* Buton „Urmărire" pe hartă (follow / unfollow) */
+.vmap-follow { position: absolute; top: 10px; right: 10px; z-index: 1000; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 700; font-family: inherit; box-shadow: 0 2px 10px rgba(0,0,0,.35); cursor: pointer; }
+.vmap-follow.on { background: var(--accent); color: #06210f; border-color: var(--accent); }

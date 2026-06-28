@@ -18,6 +18,7 @@ export function Vehicles() {
   const [filter, setFilter] = useState<Filter>(VALID_STATUS.includes(statusParam) ? (statusParam as Filter) : 'all');
   // Venind din Statistici (ex: ?status=moving) deschidem direct HARTA, filtrată pe acea stare
   const [showMap, setShowMap] = useState(VALID_STATUS.includes(statusParam));
+  const [follow, setFollow] = useState(true); // urmărire: reîncadrează harta pe toate mașinile (toggle off = pan liber)
   useEffect(() => {
     if (statusParam && VALID_STATUS.includes(statusParam)) { setFilter(statusParam as Filter); setShowMap(true); }
   }, [statusParam]);
@@ -66,7 +67,10 @@ export function Vehicles() {
 
       {showMap ? (
         <div class="vmap-wrap">
-          <VehicleMap vehicles={filtered} offlineMin={off} onSelect={(imei) => loc.route('/vehicles/' + encodeURIComponent(imei))} />
+          <VehicleMap vehicles={filtered} offlineMin={off} follow={follow} onSelect={(imei) => loc.route('/vehicles/' + encodeURIComponent(imei))} />
+          <button class={'vmap-follow' + (follow ? ' on' : '')} onClick={() => setFollow((f) => !f)} aria-label="urmărește mașinile">
+            {follow ? 'Urmărire ✓' : 'Urmărire'}
+          </button>
         </div>
       ) : (
         <div class="content has-tabbar">

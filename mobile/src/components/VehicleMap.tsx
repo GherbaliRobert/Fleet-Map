@@ -23,8 +23,8 @@ function popupHtml(v: Position, st: StatusInfo, stale: boolean) {
   return `<div class="vmpop"><div class="vmpop-name">${title}</div>${line}<button class="vmpop-btn" data-imei="${esc(v.imei)}">Detalii →</button></div>`;
 }
 
-export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei }: {
-  vehicles: Position[]; offlineMin: number; onSelect: (imei: string) => void; focusImei?: string;
+export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }: {
+  vehicles: Position[]; offlineMin: number; onSelect: (imei: string) => void; focusImei?: string; follow?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -60,11 +60,16 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei }: {
       const stale = st.status === 'offline';
       const icon = L.divIcon({ className: '', html: markerHtml(HEX[st.status], v.angle || 0), iconSize: [26, 26], iconAnchor: [13, 13] });
       const popup = popupHtml(v, st, stale);
+      const label = esc(v.plate || v.name || ''); // eticheta permanentă lângă marker (numărul mașinii, ca xMonitor)
       let m = markers.current.get(v.imei);
-      if (m) { m.setLatLng([v.latitude, v.longitude]); m.setIcon(icon); m.setPopupContent(popup); }
+      if (m) {
+        m.setLatLng([v.latitude, v.longitude]); m.setIcon(icon); m.setPopupContent(popup);
+        if (label) { if (m.getTooltip()) m.setTooltipContent(label); else m.bindTooltip(label, { permanent: true, direction: 'top', className: 'vlabel', offset: [0, -12] }); }
+      }
       else {
         m = L.marker([v.latitude, v.longitude], { icon }).addTo(map);
         m.bindPopup(popup, { closeButton: false, offset: [0, -8] });
+        if (label) m.bindTooltip(label, { permanent: true, direction: 'top', className: 'vlabel', offset: [0, -12] });
         markers.current.set(v.imei, m);
       }
       pts.push([v.latitude, v.longitude]);
@@ -74,12 +79,15 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei }: {
     if (focusImei) {
       const fv = vehicles.find((x) => x.imei === focusImei);
       if (fv && fv.latitude != null && fv.longitude != null) { map.setView([fv.latitude, fv.longitude], 15, { animate: false }); fitted.current = true; }
+    } else if (follow && pts.length) {
+      map.fitBounds(L.latLngBounds(pts).pad(0.25), { animate: true }); // urmărire: reîncadrează toate mașinile la fiecare update
+      fitted.current = true;
     } else if (!fitted.current && pts.length) {
       map.fitBounds(L.latLngBounds(pts).pad(0.25), { animate: false });
       fitted.current = true;
     }
     } catch { /* hartă în curs de demontare */ }
-  }, [vehicles, focusImei]);
+  }, [vehicles, focusImei, follow]);
 
   return <div ref={ref} class="vmap" />;
 }
