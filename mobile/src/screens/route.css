@@ -9,8 +9,11 @@
 .rt-mapload { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 500; }
 
 /* Sumar (km / rute / km/h max) — strip între hartă și listă, etichete clare */
-.rt-summary { display: flex; gap: 10px; padding: 11px 14px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg-panel); }
-.rt-sum { flex: 1; text-align: center; }
+.rt-summary { display: flex; gap: 10px; padding: 11px 14px 7px; border-top: 1px solid var(--border); background: var(--bg-panel); }
+.rt-substats { display: flex; gap: 6px; padding: 7px 12px 11px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
+.rt-substats .rt-sum .v { font-size: 15px; }
+.rt-substats .rt-sum .l { line-height: 1.25; }
+.rt-sum { flex: 1; text-align: center; min-width: 0; }
 .rt-sum .v { font-weight: 800; font-size: 18px; }
 .rt-sum .l { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 

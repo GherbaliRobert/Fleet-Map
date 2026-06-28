@@ -121,6 +121,11 @@ export function RouteScreen() {
   const nRoutes = routes ? routes.length : 0;
   const km = summary && summary.totalKm != null ? Number(summary.totalKm) : (routes || []).reduce((a, r) => a + (r.distance || 0), 0);
   const maxSp = summary && summary.maxSpeed != null ? Number(summary.maxSpeed) : (routes || []).reduce((a, r) => Math.max(a, r.maxSpeed || 0), 0);
+  // Carburant + timpi (din summary-ul raportului) — null la vehiculele fără senzor de combustibil / fără contact
+  const fuel = summary && summary.fuelConsumed != null ? Number(summary.fuelConsumed) : null;
+  const avgC = summary && summary.avgConsumption != null ? Number(summary.avgConsumption) : null;
+  const moveSec = summary && summary.movingTime != null ? Number(summary.movingTime) : 0;
+  const idleSec = summary && summary.engineIdleTime != null ? Number(summary.engineIdleTime) : 0;
 
   return (
     <div class="screen">
@@ -139,6 +144,12 @@ export function RouteScreen() {
         <div class="rt-sum"><div class="v">{loading ? '—' : km.toFixed(1)}</div><div class="l">km parcurși</div></div>
         <div class="rt-sum"><div class="v">{loading ? '—' : nRoutes}</div><div class="l">rute</div></div>
         <div class="rt-sum"><div class="v">{loading ? '—' : Math.round(maxSp)}</div><div class="l">km/h max</div></div>
+      </div>
+      <div class="rt-substats">
+        <div class="rt-sum"><div class="v">{loading ? '—' : (fuel != null ? fuel.toFixed(1) : '—')}</div><div class="l">carburant (L)</div></div>
+        <div class="rt-sum"><div class="v">{loading ? '—' : (avgC != null ? avgC.toFixed(1) : '—')}</div><div class="l">consum (L/100)</div></div>
+        <div class="rt-sum"><div class="v">{loading ? '—' : fmtDur(moveSec)}</div><div class="l">timp mers</div></div>
+        <div class="rt-sum"><div class="v">{loading ? '—' : fmtDur(idleSec)}</div><div class="l">motor staționat</div></div>
       </div>
 
       <div class="rt-list">
