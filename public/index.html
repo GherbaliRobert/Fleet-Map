@@ -12550,11 +12550,12 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
     // ═══ Ofertare Live: configurator de preț + oferte salvate + export PDF (super-admin) ═══
-    var _raxOf = { editingId: null, offers: [], prices: { pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0 } };
+    var _raxOf = { editingId: null, offers: [], prices: { pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0, mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2 } };
+    var _OF_MONTAJ_DEF = { mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2 };
     function _ofN(v) { v = parseFloat(v); return Number.isFinite(v) ? v : 0; }
     function _ofReadPrices() {
       var p = _raxOf.prices;
-      ['pPlain', 'pCan', 'pFms', 'pAiA', 'pAiAg', 'ret6', 'ret12', 'ret24', 'ret36', 'retCustom'].forEach(function (k) {
+      ['pPlain', 'pCan', 'pFms', 'pAiA', 'pAiAg', 'ret6', 'ret12', 'ret24', 'ret36', 'retCustom', 'mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel'].forEach(function (k) {
         var el = document.getElementById('of-' + k); if (el && el.value !== '') p[k] = _ofN(el.value);
       });
       return p;
@@ -12568,8 +12569,27 @@ const pozitii = await r.json();</code></pre>
         nVeh: Math.max(0, Math.round(_ofN(g('of-nveh')))), nCan: Math.max(0, Math.round(_ofN(g('of-ncan')))), nFms: Math.max(0, Math.round(_ofN(g('of-nfms')))),
         aiA: c('of-aiA'), aiAg: c('of-aiAg'),
         retTier: g('of-ret') || '6', retCustomMonths: Math.max(0, Math.round(_ofN(g('of-retcustom-m')))),
-        contractMonths: Math.max(1, Math.round(_ofN(g('of-contract')) || 12)), notes: g('of-notes')
+        contractMonths: Math.max(1, Math.round(_ofN(g('of-contract')) || 12)), notes: g('of-notes'),
+        montaj: {
+          qGps: Math.max(0, Math.round(_ofN(g('of-qGps')))), qLvCan: Math.max(0, Math.round(_ofN(g('of-qLvCan')))),
+          qCanInc: Math.max(0, Math.round(_ofN(g('of-qCanInc')))), qFms: Math.max(0, Math.round(_ofN(g('of-qFms')))),
+          qUninstall: Math.max(0, Math.round(_ofN(g('of-qUninstall')))), qReplace: Math.max(0, Math.round(_ofN(g('of-qReplace')))),
+          kmTravel: Math.max(0, Math.round(_ofN(g('of-kmTravel'))))
+        }
       };
+    }
+    // Liniile de montaj (cost UNIC) din config + tarife. Ordinea = lista din ofertă.
+    function _ofMontajLines(cfg, p) {
+      var mc = cfg.montaj || {}, L = [];
+      var add = function (label, qty, unit, perKm) { if (qty > 0) L.push({ label: label, qty: qty, unit: unit, total: qty * unit, perKm: !!perKm }); };
+      add('Instalare dispozitiv GPS', mc.qGps, p.mGps);
+      add('Instalare soluție cu LV-CAN', mc.qLvCan, p.mLvCan);
+      add('Instalare cu CAN încorporat', mc.qCanInc, p.mCanInc);
+      add('Instalare FMS (tahograf)', mc.qFms, p.mFms);
+      add('Dezinstalare echipament', mc.qUninstall, p.mUninstall);
+      add('Înlocuire echipament', mc.qReplace, p.mReplace);
+      add('Deplasare (' + (mc.kmTravel || 0) + ' km)', mc.kmTravel, p.mTravel, true);
+      return L;
     }
     function _ofRetAddon(cfg, p) { return cfg.retTier === '12' ? p.ret12 : cfg.retTier === '24' ? p.ret24 : cfg.retTier === '36' ? p.ret36 : cfg.retTier === 'custom' ? p.retCustom : p.ret6; }
     function _ofRetLabel(cfg) { return cfg.retTier === 'custom' ? ((cfg.retCustomMonths || 0) + ' luni') : (cfg.retTier + ' luni'); }
@@ -12584,20 +12604,28 @@ const pozitii = await r.json();</code></pre>
       if (cfg.aiAg) lines.push({ label: 'Agenți AI', qty: 1, unit: p.pAiAg, total: p.pAiAg });
       var retA = _ofRetAddon(cfg, p); if (retA > 0) lines.push({ label: 'Păstrare date ' + _ofRetLabel(cfg), qty: 1, unit: retA, total: retA });
       var monthly = lines.reduce(function (s, l) { return s + l.total; }, 0);
-      return { cfg: cfg, p: p, nPlain: nPlain, nCan: nCan, nFms: nFms, lines: lines, monthly: Math.round(monthly * 100) / 100, annual: Math.round(monthly * 12 * 100) / 100, contractTotal: Math.round(monthly * cfg.contractMonths * 100) / 100 };
+      var montajLines = _ofMontajLines(cfg, p);
+      var montaj = montajLines.reduce(function (s, l) { return s + l.total; }, 0);
+      return { cfg: cfg, p: p, nPlain: nPlain, nCan: nCan, nFms: nFms, lines: lines, monthly: Math.round(monthly * 100) / 100, annual: Math.round(monthly * 12 * 100) / 100, contractTotal: Math.round(monthly * cfg.contractMonths * 100) / 100, montajLines: montajLines, montaj: Math.round(montaj * 100) / 100, initial: Math.round((montaj + monthly) * 100) / 100 };
     }
     window.raxOfRecalc = function () {
       var r = _ofCalc();
       var cm = document.getElementById('of-retcustom-wrap'); if (cm) cm.style.display = (r.cfg.retTier === 'custom') ? 'inline-flex' : 'none';
       var host = document.getElementById('rax-of-summary'); if (!host) return;
       var rows = r.lines.map(function (l) { return '<tr><td>' + esc(l.label) + (l.qty > 1 ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num" style="color:var(--text-muted);">' + l.unit.toFixed(0) + '</td><td class="num"><b>' + l.total.toFixed(0) + '</b></td></tr>'; }).join('') || '<tr><td colspan="3" style="color:var(--text-muted);">Adaugă vehicule…</td></tr>';
+      var mRows = r.montajLines.map(function (l) { return '<tr><td>' + esc(l.label) + ((l.qty > 1 && !l.perKm) ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num" style="color:var(--text-muted);">' + l.unit.toFixed(0) + (l.perKm ? '/km' : '') + '</td><td class="num"><b>' + l.total.toFixed(0) + '</b></td></tr>'; }).join('');
+      var montajBlock = r.montaj > 0 ?
+        ('<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:16px 0 6px;"><i class="fas fa-screwdriver-wrench"></i> Montaj (cost unic)</div>' +
+         '<table class="rax-co-table" style="margin-bottom:8px;"><thead><tr><th>Operațiune</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead><tbody>' + mRows + '</tbody></table>' +
+         '<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--border);padding-top:8px;"><span style="font-size:13px;color:var(--text-muted);">Total montaj (o dată)</span><span style="font-size:20px;font-weight:800;color:var(--text-primary);">' + r.montaj.toFixed(0) + ' lei</span></div>' +
+         '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Total inițial (montaj + prima lună)</span><b>' + r.initial.toFixed(0) + ' lei</b></div>') : '';
       host.innerHTML =
         '<table class="rax-co-table" style="margin-bottom:10px;"><thead><tr><th>Componentă</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
         '<div style="border-top:2px solid var(--accent);padding-top:10px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:13px;color:var(--text-muted);">Total lunar</span><span style="font-size:26px;font-weight:800;color:var(--accent);">' + r.monthly.toFixed(0) + ' lei</span></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + r.annual.toFixed(0) + ' lei</b></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + r.contractTotal.toFixed(0) + ' lei</b></div>' +
-        '</div>';
+        '</div>' + montajBlock;
     };
     window.raxLoadOfertare = async function () {
       var box = document.getElementById('admin-tab-ofertare'); if (!box) return;
@@ -12605,6 +12633,7 @@ const pozitii = await r.json();</code></pre>
       function fNum(id, val, ph, w) { return '<input id="' + id + '" type="number" min="0" step="1" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + (ph || '') + '" oninput="raxOfRecalc()" class="rax-field" style="width:' + (w || 80) + 'px;margin:0;">'; }
       function row(label, inner, hint) { return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;"><span style="font-size:12.5px;min-width:150px;">' + label + '</span>' + inner + (hint ? '<span style="font-size:10.5px;color:var(--text-muted);">' + hint + '</span>' : '') + '</div>'; }
       function lei() { return '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span>'; }
+      function leiU(u) { return '<span style="font-size:11px;color:var(--text-muted);">lei/' + u + '</span>'; }
       function card(title, inner) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">' + title + '</div>' + inner + '</div>'; }
       var clientCard = card('<i class="fas fa-user"></i> Client',
         row('Nume client', '<input id="of-cl-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="ex. Transport SRL" oninput="raxOfRecalc()">') +
@@ -12620,10 +12649,22 @@ const pozitii = await r.json();</code></pre>
         '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:10px;cursor:pointer;"><input type="checkbox" id="of-aiAg" onchange="raxOfRecalc()"> Agenți AI (RA Optimize / Care)</label>' +
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
         row('Durată contract', fNum('of-contract', 12, '', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span>'));
+      var montajCard = card('<i class="fas fa-screwdriver-wrench"></i> Montaj (cost unic, opțional)',
+        row('Instalare dispozitiv GPS', fNum('of-qGps', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
+        row('Instalare LV-CAN', fNum('of-qLvCan', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
+        row('Instalare CAN încorporat', fNum('of-qCanInc', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
+        row('Instalare FMS (tahograf)', fNum('of-qFms', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
+        row('Dezinstalare echipament', fNum('of-qUninstall', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
+        row('Înlocuire echipament', fNum('of-qReplace', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
+        row('Deplasare', fNum('of-kmTravel', '') + '<span style="font-size:11px;color:var(--text-muted);">km</span>'));
       var priceCard = '<details style="margin-bottom:14px;"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:8px 0;"><i class="fas fa-sliders"></i> Tarife (editabile)</summary><div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:6px;">' +
         row('Vehicul GPS (fără CAN)', fNum('of-pPlain', p.pPlain) + lei()) + row('Vehicul CAN', fNum('of-pCan', p.pCan) + lei()) + row('Vehicul FMS', fNum('of-pFms', p.pFms) + lei()) +
         row('Asistent AI', fNum('of-pAiA', p.pAiA) + lei()) + row('Agenți AI', fNum('of-pAiAg', p.pAiAg) + lei()) +
         row('Retenție 12 luni', fNum('of-ret12', p.ret12) + lei()) + row('Retenție 24 luni', fNum('of-ret24', p.ret24) + lei()) + row('Retenție 36 luni', fNum('of-ret36', p.ret36) + lei()) + row('Retenție custom', fNum('of-retCustom', p.retCustom) + lei()) +
+        '<div style="border-top:1px solid var(--border);margin:6px 0 8px;padding-top:8px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;">Montaj (cost unic)</div>' +
+        row('Instalare GPS', fNum('of-mGps', p.mGps) + leiU('buc')) + row('Instalare LV-CAN', fNum('of-mLvCan', p.mLvCan) + leiU('buc')) + row('Instalare CAN încorporat', fNum('of-mCanInc', p.mCanInc) + leiU('buc')) +
+        row('Instalare FMS', fNum('of-mFms', p.mFms) + leiU('buc')) + row('Dezinstalare', fNum('of-mUninstall', p.mUninstall) + leiU('buc')) + row('Înlocuire', fNum('of-mReplace', p.mReplace) + leiU('buc')) +
+        row('Deplasare', fNum('of-mTravel', p.mTravel) + leiU('km')) +
         '</div></details>';
       var notesCard = card('<i class="fas fa-note-sticky"></i> Observații (apar pe PDF)', '<textarea id="of-notes" class="rax-field" style="width:100%;min-height:54px;margin:0;resize:vertical;" placeholder="ex. Preț valabil 30 zile, instalare inclusă…"></textarea>');
       var actions = '<div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">' +
@@ -12632,7 +12673,7 @@ const pozitii = await r.json();</code></pre>
         '<button class="rax-btn" style="justify-content:center;" onclick="raxOfReset()"><i class="fas fa-rotate-left"></i> Ofertă nouă</button></div>';
       box.innerHTML =
         '<div style="display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start;">' +
-          '<div>' + clientCard + vehCard + featCard + priceCard + notesCard + '</div>' +
+          '<div>' + clientCard + vehCard + featCard + montajCard + priceCard + notesCard + '</div>' +
           '<div style="position:sticky;top:8px;"><div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:14px;padding:16px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;"><i class="fas fa-receipt"></i> Rezumat ofertă</div><div id="rax-of-summary"></div>' + actions + '</div></div>' +
         '</div><div id="rax-of-list" style="margin-top:22px;"></div>';
       raxOfRecalc(); raxOfLoadList();
@@ -12673,6 +12714,8 @@ const pozitii = await r.json();</code></pre>
         set('of-cl-name', (cfg.client && cfg.client.name) || o.client_name); set('of-cl-cui', (cfg.client && cfg.client.cui) || o.client_cui); set('of-cl-contact', (cfg.client && cfg.client.contact) || o.client_contact);
         set('of-name', cfg.offerName || o.name); set('of-nveh', cfg.nVeh); set('of-ncan', cfg.nCan); set('of-nfms', cfg.nFms);
         set('of-aiA', cfg.aiA); set('of-aiAg', cfg.aiAg); set('of-ret', cfg.retTier || '6'); set('of-retcustom-m', cfg.retCustomMonths); set('of-contract', cfg.contractMonths); set('of-notes', cfg.notes);
+        var mj = cfg.montaj || {};
+        set('of-qGps', mj.qGps); set('of-qLvCan', mj.qLvCan); set('of-qCanInc', mj.qCanInc); set('of-qFms', mj.qFms); set('of-qUninstall', mj.qUninstall); set('of-qReplace', mj.qReplace); set('of-kmTravel', mj.kmTravel);
         var lbl = document.getElementById('of-save-label'); if (lbl) lbl.textContent = 'Actualizează oferta';
         raxOfRecalc();
         try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
@@ -12682,12 +12725,13 @@ const pozitii = await r.json();</code></pre>
       if (!confirm('Ștergi această ofertă?')) return;
       try { await fetch('/api/admin/offers/' + id, { method: 'DELETE', credentials: 'same-origin' }); if (window.raxToast) raxToast('Ofertă ștearsă ✓', 'success'); if (_raxOf.editingId === id) raxOfReset(); else raxOfLoadList(); } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
     };
-    window.raxOfReset = function () { _raxOf.editingId = null; _raxOf.prices = { pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0 }; raxLoadOfertare(); };
+    window.raxOfReset = function () { _raxOf.editingId = null; _raxOf.prices = Object.assign({ pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0 }, _OF_MONTAJ_DEF); raxLoadOfertare(); };
     window.raxOfExportPdf = function () {
       var r = _ofCalc(); var cl = r.cfg.client || {};
       var logoUrl = (window.location && window.location.origin ? window.location.origin : '') + '/logo-mark-light.png';
       var today = new Date(); var dstr = today.toLocaleDateString('ro-RO'); var validUntil = new Date(today.getTime() + 30 * 86400000).toLocaleDateString('ro-RO');
       var rowsHtml = r.lines.map(function (l) { return '<tr><td>' + esc(l.label) + '</td><td style="text-align:center;">' + l.qty + '</td><td style="text-align:right;">' + l.unit.toFixed(2) + ' lei</td><td style="text-align:right;font-weight:700;">' + l.total.toFixed(2) + ' lei</td></tr>'; }).join('');
+      var montajRowsHtml = r.montajLines.map(function (l) { return '<tr><td>' + esc(l.label) + '</td><td style="text-align:center;">' + l.qty + (l.perKm ? ' km' : '') + '</td><td style="text-align:right;">' + l.unit.toFixed(2) + ' lei' + (l.perKm ? '/km' : '') + '</td><td style="text-align:right;font-weight:700;">' + l.total.toFixed(2) + ' lei</td></tr>'; }).join('');
       var html = '<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8"><title>Ofertă ' + esc(cl.name || 'RA Tracks') + '</title>' +
         '<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"><style>' +
         '*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"Nunito",-apple-system,sans-serif;color:#1a2235;padding:40px;max-width:820px;margin:0 auto;font-size:13px;line-height:1.55;}' +
@@ -12700,6 +12744,8 @@ const pozitii = await r.json();</code></pre>
         '<div class="box"><div class="muted">Configurație</div><div>' + r.cfg.nVeh + ' vehicule (' + r.nPlain + ' GPS · ' + r.nCan + ' CAN · ' + r.nFms + ' FMS)</div><div class="muted">Păstrare date: ' + _ofRetLabel(r.cfg) + (r.cfg.aiA || r.cfg.aiAg ? ' · AI inclus' : '') + '</div></div></div>' +
         '<h2>Detaliere preț (lunar)</h2><table><thead><tr><th>Componentă</th><th style="text-align:center;">Cant.</th><th style="text-align:right;">Unitar</th><th style="text-align:right;">Subtotal</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
         '<div class="total">Total lunar: ' + r.monthly.toFixed(2) + ' lei</div><div style="text-align:right;" class="muted">Anual: ' + r.annual.toFixed(2) + ' lei · Contract ' + r.cfg.contractMonths + ' luni: ' + r.contractTotal.toFixed(2) + ' lei (fără TVA)</div>' +
+        (r.montaj > 0 ? '<h2>Montaj (cost unic)</h2><table><thead><tr><th>Operațiune</th><th style="text-align:center;">Cant.</th><th style="text-align:right;">Unitar</th><th style="text-align:right;">Subtotal</th></tr></thead><tbody>' + montajRowsHtml + '</tbody></table>' +
+          '<div class="total">Total montaj: ' + r.montaj.toFixed(2) + ' lei</div><div style="text-align:right;" class="muted">Cost inițial (montaj + prima lună): ' + r.initial.toFixed(2) + ' lei (fără TVA)</div>' : '') +
         (r.cfg.notes ? '<h2>Observații</h2><div class="box">' + esc(r.cfg.notes).replace(/\n/g, '<br>') + '</div>' : '') +
         '<div class="foot">RA Tracks · ratrack.ro · Ofertă generată automat. Prețurile nu includ TVA.</div>' +
         '<div class="noprint" style="margin-top:20px;text-align:center;"><button onclick="window.print()" style="background:#16a34a;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Printează / Salvează PDF</button></div></body></html>';
