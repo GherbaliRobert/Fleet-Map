@@ -79,6 +79,7 @@
     var d = DEVS() && DEVS().get(imei); if (!d) return;
     var f = fullCache[imei] || null;
     var s = el('vp-stat-' + imei); if (s) s.innerHTML = durStat(d, f);
+    var sr = el('vp-statrow-' + imei); if (sr) sr.style.display = engOn(d) ? '' : 'none'; // ascunde „În staționare de" cu motorul oprit (redundant cu „Motor oprit de")
     var lbl = el('vp-englbl-' + imei); if (lbl) lbl.textContent = engLabel(d);
     var e = el('vp-eng-' + imei); if (e) e.innerHTML = durEng(d, f);
   }
@@ -99,7 +100,8 @@
     rows += row('Șofer', driver ? esc(driver) : '<span style="color:var(--text-muted)">…</span>', 'vp-drv-' + imei);
     rows += row('Adresă', '<span style="color:var(--text-muted)">se încarcă…</span>', 'vp-adr-' + imei);
     rows += row('Viteză', '<span id="vp-spd-' + imei + '" style="color:' + (b.moving ? 'var(--green)' : 'var(--text-muted)') + '">' + b.speed + ' km/h</span>');
-    rows += row('În staționare de', durStat(d, fullCache[imei] || null), 'vp-stat-' + imei);
+    // „În staționare de" doar cu motorul PORNIT (staționat/idling). Cu motorul oprit e redundant cu „Motor oprit de" → ascuns.
+    rows += '<tr id="vp-statrow-' + imei + '"' + (engOn(d) ? '' : ' style="display:none"') + '><td>În staționare de</td><td id="vp-stat-' + imei + '">' + durStat(d, fullCache[imei] || null) + '</td></tr>';
     rows += '<tr><td id="vp-englbl-' + imei + '">' + esc(engLabel(d)) + '</td><td id="vp-eng-' + imei + '">' + durEng(d, fullCache[imei] || null) + '</td></tr>';
     rows += row('Coordonate', esc(b.lat + ', ' + b.lng + '  ·  ' + b.ang), 'vp-coord-' + imei);
     rows += row('Data ultimei transmisii', esc(b.ts), 'vp-tx-' + imei);
