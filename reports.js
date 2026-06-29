@@ -1067,7 +1067,7 @@ async function fuelStats(db, imeis, from, to, opts) {
     const estimated = !sensorOk;
     const per100 = dist > 1 ? +(liters / dist * 100).toFixed(1) : null;
     const cost = liters * price;
-    perVehicle.push({ imei, name: (devMap[imei] && devMap[imei].name) || imei, plate: (devMap[imei] && devMap[imei].plate) || '', km: Math.round(dist), liters: Math.round(liters), per100, cost: Math.round(cost), idleLiters: +idleL.toFixed(1), idleSec: Math.round(idleSec), co2Kg: Math.round(liters * co2Factor), price: +price.toFixed(2), fuelType: c.fuelType || null, estimated, hasFuel });
+    perVehicle.push({ imei, name: (devMap[imei] && devMap[imei].name) || imei, plate: (devMap[imei] && devMap[imei].plate) || '', km: Math.round(dist), liters: +liters.toFixed(1), per100, cost: Math.round(cost), idleLiters: +idleL.toFixed(1), idleSec: Math.round(idleSec), co2Kg: Math.round(liters * co2Factor), price: +price.toFixed(2), fuelType: c.fuelType || null, estimated, hasFuel });
     kKm += dist; kIdleSec += idleSec; kIdleL += idleL; kIdleCost += idleL * price; kCo2 += liters * co2Factor;
     kL += liters; kCost += cost;
     if (hasFuel) vWith++;
@@ -1085,9 +1085,9 @@ async function fuelStats(db, imeis, from, to, opts) {
     });
   }
   const keys = Object.keys(seriesMap).sort();
-  const series = { labels: keys, consumed: keys.map(k => Math.round(seriesMap[k].consumed)), idle: keys.map(k => +seriesMap[k].idle.toFixed(1)), cost: keys.map(k => Math.round(seriesMap[k].cost)) };
+  const series = { labels: keys, consumed: keys.map(k => +seriesMap[k].consumed.toFixed(1)), idle: keys.map(k => +seriesMap[k].idle.toFixed(1)), cost: keys.map(k => Math.round(seriesMap[k].cost)) };
   const topConsumers = perVehicle.filter(v => v.liters > 0).sort((a, b) => b.liters - a.liters).slice(0, 10).map(v => ({ imei: v.imei, name: v.name, plate: v.plate, liters: v.liters, per100: v.per100, km: v.km, estimated: v.estimated }));
-  const kpi = { totalLiters: Math.round(kL), totalKm: Math.round(kKm), avgPer100: kKm > 1 ? +(kL / kKm * 100).toFixed(1) : 0, fuelCost: Math.round(kCost), idleLiters: +kIdleL.toFixed(1), idleSec: Math.round(kIdleSec), idlePct: kL > 0 ? Math.round(kIdleL / kL * 100) : 0, idleCost: Math.round(kIdleCost), co2Tons: +(kCo2 / 1000).toFixed(2), vehiclesWithData: vWith, vehiclesTotal: imeis.length, vehiclesEstimated: vEst };
+  const kpi = { totalLiters: +kL.toFixed(1), totalKm: Math.round(kKm), avgPer100: kKm > 1 ? +(kL / kKm * 100).toFixed(1) : 0, fuelCost: Math.round(kCost), idleLiters: +kIdleL.toFixed(1), idleSec: Math.round(kIdleSec), idlePct: kL > 0 ? Math.round(kIdleL / kL * 100) : 0, idleCost: Math.round(kIdleCost), co2Tons: +(kCo2 / 1000).toFixed(2), vehiclesWithData: vWith, vehiclesTotal: imeis.length, vehiclesEstimated: vEst };
   return { range: { from, to, bucket }, kpi, series, topConsumers, perVehicle };
 }
 

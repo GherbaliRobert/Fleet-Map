@@ -3670,6 +3670,10 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
     let pornitCount = 0;
     let totalEngineTime = 0;
 
+    // Config consum per vehicul (o singură interogare) — pentru ESTIMARE la cele fără senzor fiabil (ex. Logan, CAN plat).
+    let _consumCfg = {};
+    try { (await db.pool.query('SELECT imei, vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices')).rows.forEach(d => { _consumCfg[d.imei] = d; }); } catch (e) {}
+
     for (const [imei, data] of livePositions) {
       if (!canAccessImei(req, imei)) continue;
       const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 3900000; // 65 min
@@ -3740,6 +3744,16 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
 
         km = Math.round(km * 100) / 100;
         deviceFuel = Math.round(deviceFuel * 10) / 10;
+        // Fallback ESTIMARE pentru vehicule fără senzor fiabil (au rulat dar consum 0, ex. Logan cu CAN plat): km × consum(config/tip).
+        let fuelEstimated = false;
+        if (deviceFuel <= 0 && km > 0.2) {
+          const dc = _consumCfg[imei] || {};
+          const vt = String(dc.vehicle_type || '').toLowerCase();
+          const cDef = /truck|camion|tir|lorry|tractor|autotractor/.test(vt) ? 30 : /bus|autobuz|autocar/.test(vt) ? 28 : /van|dub|autoutil|furgon|utilitar/.test(vt) ? 12 : 9;
+          const cRoad = parseFloat(dc.consumption_road) || parseFloat(dc.consumption_city) || cDef;
+          const est = km * cRoad / 100;
+          if (est > 0.05) { deviceFuel = Math.round(est * 10) / 10; fuelEstimated = true; }
+        }
         totalKm += km;
         totalFuel += deviceFuel;
         totalEngineTime += engineTime;
@@ -3750,6 +3764,7 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
           plate: data.plate || '',
           km,
           fuel: deviceFuel,
+          fuelEstimated,
           maxSpeed,
           engineTime: Math.round(engineTime),
           fuelLevel: lastFuelLevel ? Math.round(lastFuelLevel * 10) / 10 : null,

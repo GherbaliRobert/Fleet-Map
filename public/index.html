@@ -9548,7 +9548,7 @@ const pozitii = await r.json();</code></pre>
         const topFuelHtml = (d.topFuel || []).filter(v => v.fuel > 0).map(function(v, i) {
           return '<div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg-dark);border-radius:4px;margin-bottom:4px;">' +
             '<span>' + (i+1) + '. ' + (v.name || v.imei) + '</span>' +
-            '<span style="color:var(--orange);font-weight:700;">' + v.fuel + ' L</span></div>';
+            '<span style="color:var(--orange);font-weight:700;">' + v.fuel + ' L' + (v.fuelEstimated ? ' <span style="font-size:9px;font-weight:600;opacity:.7;">est.</span>' : '') + '</span></div>';
         }).join('') || '<div style="color:var(--text-muted);padding:8px;">Nicio data consum</div>';
         document.getElementById('dk-top-fuel').innerHTML = topFuelHtml;
 
@@ -9561,7 +9561,7 @@ const pozitii = await r.json();</code></pre>
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + (v.name || v.imei) + (v.plate ? ' <span style="color:var(--text-muted);font-size:10px;">' + v.plate + '</span>' : '') + '</td>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);"><span style="color:' + statusColor + ';font-weight:600;">' + statusText + '</span></td>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + v.km + '</td>' +
-            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--orange);">' + (v.fuel > 0 ? v.fuel + ' L' : '-') + '</td>' +
+            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--orange);">' + (v.fuel > 0 ? v.fuel + ' L' + (v.fuelEstimated ? ' <span style="font-size:9px;opacity:.7;">est.</span>' : '') : '-') + '</td>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);' + speedColor + '">' + (v.maxSpeed > 0 ? v.maxSpeed + ' km/h' : '-') + '</td>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);">' + (v.engineTime > 0 ? formatDuration(v.engineTime) : '-') + '</td>' +
             '<td style="padding:6px 10px;border-bottom:1px solid var(--border);">' + (v.fuelLevel ? v.fuelLevel + ' L' : '-') + '</td>' +
