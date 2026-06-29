@@ -62,7 +62,8 @@
 /* Formular în sheet */
 .frm { display: flex; flex-direction: column; gap: 13px; }
 .frm-row { display: flex; gap: 10px; }
-.frm-row > .fld { flex: 1; }
+.frm-row > .fld { flex: 1; min-width: 0; }
+.frm-row > .fld > label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fld { display: flex; flex-direction: column; gap: 5px; }
 .fld > label { font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
 .fld > label .req { color: var(--red); }

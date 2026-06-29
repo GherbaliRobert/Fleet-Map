@@ -163,11 +163,20 @@ export function VehicleDetail() {
   const adblueVal = (adblueOk && io.can_adblue_level_pct !== undefined)
     ? (io.can_adblue_level_pct + '%' + (io.can_adblue_level_liters !== undefined ? ' · ' + Number(io.can_adblue_level_liters).toFixed(1) + ' L' : ''))
     : null;
-  // Combustibil: sonda (tank_level) prioritar, apoi CAN (litri / %). Roșu sub 15 L. Identic cu web.
+  // Combustibil: sondă → câmp REZOLVAT (fuel_level_liters) → CAN, din io-ul live SAU din io-ul stocat (/full) ca rezervă.
+  // „(ultima)" când CAN-ul e stale (motor oprit) — ca să nu dispară ultima cantitate cunoscută. Roșu sub 15 L.
+  const fio: any = (full as any)?.io_data || {};
+  const tank = (typeof io.tank_level_liters === 'number' ? io.tank_level_liters : fio.tank_level_liters);
+  const fuelLnum = (typeof io.fuel_level_liters === 'number' && io.fuel_level_liters > 0) ? io.fuel_level_liters
+    : (typeof io.can_fuel_level_liters === 'number' && io.can_fuel_level_liters > 0) ? io.can_fuel_level_liters
+      : (typeof fio.fuel_level_liters === 'number' && fio.fuel_level_liters > 0) ? fio.fuel_level_liters
+        : (typeof fio.can_fuel_level_liters === 'number' && fio.can_fuel_level_liters > 0) ? fio.can_fuel_level_liters : null;
+  const fuelPct = io.can_fuel_level_pct ?? fio.can_fuel_level_pct;
+  const staleNote = (v as any)?.can_stale ? ' (ultima)' : '';
   let fuelStr: string | null = null, fuelLow = false, fuelSrc = '';
-  if (io.tank_level_liters != null) { fuelStr = Number(io.tank_level_liters).toFixed(1) + ' L'; fuelLow = io.tank_level_liters < 15; fuelSrc = ' (sondă)'; }
-  else if (io.can_fuel_level_liters != null && io.can_fuel_level_liters > 0) { fuelStr = Number(io.can_fuel_level_liters).toFixed(1) + ' L' + (io.can_fuel_level_pct != null ? ' · ' + io.can_fuel_level_pct + '%' : ''); fuelLow = io.can_fuel_level_liters < 15; fuelSrc = ' (CAN)'; }
-  else if (io.can_fuel_level_pct != null) { fuelStr = io.can_fuel_level_pct + '%'; fuelSrc = ' (CAN)'; }
+  if (typeof tank === 'number' && tank > 0) { fuelStr = tank.toFixed(1) + ' L'; fuelLow = tank < 15; fuelSrc = ' (sondă)'; }
+  else if (fuelLnum != null) { fuelStr = fuelLnum.toFixed(1) + ' L' + (fuelPct != null ? ' · ' + fuelPct + '%' : '') + staleNote; fuelLow = fuelLnum < 15; fuelSrc = ' (CAN)'; }
+  else if (fuelPct != null) { fuelStr = fuelPct + '%' + staleNote; fuelSrc = ' (CAN)'; }
   const pills = notifs.filter((n) => n.imei === imei && !n.acknowledged).slice(0, 4);
   const isSuper = !!me.value?.isSuper;
   const canStale = !!(v as any)?.can_stale;

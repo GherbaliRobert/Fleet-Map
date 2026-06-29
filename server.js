@@ -244,7 +244,7 @@ async function reconcileArchived() {
 // Sigur: RPM e doar afișaj (ascuns pe fișă cu contactul oprit, gate hasIgnition/ign) și NU intră în nicio logică.
 // NU includem TEMP MOTORULUI — alimentează alertele de supraîncălzire (o temp „sticky" ar da alerte FALSE după răcire).
 // NU includem viteza — aceea TREBUIE instantanee (o viteză „sticky" ar arăta mașina în mișcare deși stă).
-const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_engine_rpm'];
+const STICKY_CAN = ['fuel_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_engine_rpm'];
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
 // Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
 // „0.0 km (ultima)" / „- (ultima)" fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire".

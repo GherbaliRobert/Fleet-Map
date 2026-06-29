@@ -9,8 +9,8 @@ import './detail.css';
 // Super-admin: Ofertare Live — calculator preț (vehicule GPS/CAN/FMS + AI + retenție) + secțiune MONTAJ (cost unic) + oferte salvate + export PDF.
 // Endpoint-uri /api/admin/offers* sunt requireSuperadmin.
 function num(v: any) { const n = parseFloat(v); return isFinite(n) ? n : 0; }
-const DEF_PRICES = { pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret12: 0, ret24: 50, ret36: 100, retCustom: 0, mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2 };
-const DEF_CFG = { clName: '', clCui: '', clContact: '', offerName: '', nVeh: '10', nCan: '0', nFms: '0', aiA: false, aiAg: false, retTier: '6', contractMonths: '12', notes: '', qGps: '', qLvCan: '', qCanInc: '', qFms: '', qUninstall: '', qReplace: '', kmTravel: '' };
+const DEF_PRICES = { pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret12: 0, ret24: 50, ret36: 100, retCustom: 0, mGps: 100, mLvCan: 60, mCanInc: 50, mFms: 60, mUninstall: 60, mReplace: 130, mTravel: 2, dFmc130: 55, dFmc150: 95, dFmc650: 120, dLvCan: 60 };
+const DEF_CFG = { clName: '', clCui: '', clContact: '', offerName: '', nVeh: '10', nCan: '0', nFms: '0', aiA: false, aiAg: false, retTier: '6', contractMonths: '12', notes: '', qGps: '', qLvCan: '', qCanInc: '', qFms: '', qUninstall: '', qReplace: '', kmTravel: '', dq130: '', dq150: '', dq650: '', dqLvCan: '' };
 
 function calc(cfg: any, p: any) {
   const nVeh = Math.max(0, Math.round(num(cfg.nVeh)));
@@ -36,14 +36,22 @@ function calc(cfg: any, p: any) {
   addM('Înlocuire echipament', num(cfg.qReplace), p.mReplace);
   addM('Deplasare (' + Math.round(num(cfg.kmTravel)) + ' km)', num(cfg.kmTravel), p.mTravel);
   const montaj = m.reduce((s, l) => s + l.total, 0);
+  const hw: { label: string; total: number }[] = [];
+  const addH = (label: string, qty: number, unit: number) => { if (qty > 0) hw.push({ label, total: qty * unit }); };
+  addH('Teltonika FMC130', num(cfg.dq130), p.dFmc130);
+  addH('Teltonika FMC150', num(cfg.dq150), p.dFmc150);
+  addH('Teltonika FMC650', num(cfg.dq650), p.dFmc650);
+  addH('Modul LV-CAN200', num(cfg.dqLvCan), p.dLvCan);
+  const hwTotal = hw.reduce((s, l) => s + l.total, 0);
   const cm = Math.max(1, Math.round(num(cfg.contractMonths) || 12));
-  return { nPlain, nCan, nFms, lines, monthly, mLines: m, montaj, annual: monthly * 12, contractTotal: monthly * cm, initial: montaj + monthly };
+  return { nPlain, nCan, nFms, lines, monthly, mLines: m, montaj, hwLines: hw, hwTotal, annual: monthly * 12, contractTotal: monthly * cm, initial: montaj + monthly };
 }
 
 function esc(s: any) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function buildPdfHtml(cfg: any, r: any) {
   const rows = r.lines.map((l: any) => `<tr><td>${esc(l.label)}</td><td style="text-align:right;font-weight:700">${l.total.toFixed(2)} lei</td></tr>`).join('');
   const mrows = r.mLines.map((l: any) => `<tr><td>${esc(l.label)}</td><td style="text-align:right;font-weight:700">${l.total.toFixed(2)} lei</td></tr>`).join('');
+  const hrows = r.hwLines.map((l: any) => `<tr><td>${esc(l.label)}</td><td style="text-align:right;font-weight:700">${l.total.toFixed(2)} €</td></tr>`).join('');
   return `<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ofertă ${esc(cfg.clName || 'RA Tracks')}</title>
   <style>body{font-family:-apple-system,Arial,sans-serif;color:#1a2235;padding:22px;max-width:760px;margin:0 auto;font-size:13px;line-height:1.5}
   h1{font-size:22px;color:#16a34a;margin:0 0 4px}h2{font-size:15px;color:#16a34a;margin:18px 0 6px}.muted{color:#667085;font-size:12px}
@@ -55,6 +63,7 @@ function buildPdfHtml(cfg: any, r: any) {
   <div class="total">Total lunar: ${r.monthly.toFixed(2)} lei</div>
   <div class="muted" style="text-align:right">Anual: ${r.annual.toFixed(2)} lei · Contract ${cfg.contractMonths} luni: ${r.contractTotal.toFixed(2)} lei (fără TVA)</div>
   ${r.montaj > 0 ? `<h2>Montaj (cost unic)</h2><table>${mrows}</table><div class="total">Total montaj: ${r.montaj.toFixed(2)} lei</div><div class="muted" style="text-align:right">Cost inițial (montaj + prima lună): ${r.initial.toFixed(2)} lei</div>` : ''}
+  ${r.hwTotal > 0 ? `<h2>Echipamente (cost unic)</h2><table>${hrows}</table><div class="total">Total echipamente: ${r.hwTotal.toFixed(2)} €</div>` : ''}
   ${cfg.notes ? '<h2>Observații</h2><div class="box">' + esc(cfg.notes).replace(/\n/g, '<br>') + '</div>' : ''}
   <div class="muted" style="margin-top:22px;border-top:1px solid #e2e8f0;padding-top:10px">RA Tracks · ratrack.ro · Prețurile nu includ TVA.</div>
   <div style="margin-top:16px;text-align:center"><button onclick="window.print()" style="background:#16a34a;color:#fff;border:0;border-radius:8px;padding:11px 22px;font-size:15px;font-weight:700">🖨 Printează / Salvează PDF</button></div>
@@ -160,6 +169,14 @@ export function Offers() {
           </div>
           <div class="fld"><label>Deplasare (km)</label>{fNum('kmTravel')}</div>
 
+          <div class="adm-sec2">Echipamente (cost unic, EUR)</div>
+          <div class="frm-row">
+            <div class="fld"><label>FMC130</label>{fNum('dq130')}</div>
+            <div class="fld"><label>FMC150</label>{fNum('dq150')}</div>
+            <div class="fld"><label>FMC650</label>{fNum('dq650')}</div>
+          </div>
+          <div class="fld"><label>Modul LV-CAN200 (extra, la FMC130/650)</label>{fNum('dqLvCan')}</div>
+
           <div class="fld"><label>Observații (apar pe PDF)</label><textarea value={cfg.notes} onInput={(e: any) => sc('notes', e.target.value)} rows={2} /></div>
 
           <button class="adm-act" style="align-self:flex-start" onClick={() => setShowTariffs((v) => !v)}><Icon name="settings" size={14} /> Tarife (editabile) {showTariffs ? '▲' : '▼'}</button>
@@ -172,6 +189,9 @@ export function Offers() {
               <div class="frm-row"><div class="fld"><label>GPS</label>{pNum('mGps')}</div><div class="fld"><label>LV-CAN</label>{pNum('mLvCan')}</div><div class="fld"><label>CAN înc.</label>{pNum('mCanInc')}</div></div>
               <div class="frm-row"><div class="fld"><label>FMS</label>{pNum('mFms')}</div><div class="fld"><label>Dezinst.</label>{pNum('mUninstall')}</div><div class="fld"><label>Înlocuire</label>{pNum('mReplace')}</div></div>
               <div class="fld"><label>Deplasare (lei/km)</label>{pNum('mTravel')}</div>
+              <div class="adm-sec2" style="margin-top:8px">Echipamente (EUR/buc)</div>
+              <div class="frm-row"><div class="fld"><label>FMC130</label>{pNum('dFmc130')}</div><div class="fld"><label>FMC150</label>{pNum('dFmc150')}</div><div class="fld"><label>FMC650</label>{pNum('dFmc650')}</div></div>
+              <div class="fld"><label>LV-CAN200</label>{pNum('dLvCan')}</div>
             </div>
           )}
         </div>
@@ -188,6 +208,11 @@ export function Offers() {
             {r.mLines.map((l) => <div class="adm-kv"><span class="k">{l.label}</span><span>{l.total.toFixed(0)} lei</span></div>)}
             <div class="adm-kv"><span class="k"><b>Total montaj</b></span><span><b>{r.montaj.toFixed(0)} lei</b></span></div>
             <div class="adm-kv"><span class="k">Total inițial (montaj + prima lună)</span><span>{r.initial.toFixed(0)} lei</span></div>
+          </>)}
+          {r.hwTotal > 0 && (<>
+            <div class="adm-sec2">Echipamente (cost unic)</div>
+            {r.hwLines.map((l) => <div class="adm-kv"><span class="k">{l.label}</span><span>{l.total.toFixed(0)} €</span></div>)}
+            <div class="adm-kv"><span class="k"><b>Total echipamente</b></span><span><b>{r.hwTotal.toFixed(0)} €</b></span></div>
           </>)}
         </div>
 
@@ -218,12 +243,14 @@ export function Offers() {
 
 // mapează montajul salvat (cfg.montaj.{qGps...}) în câmpurile plate ale formularului + invers
 function mapInCfg(c: any) {
-  const mj = c.montaj || {};
+  const mj = c.montaj || {}, dv = c.devices || {};
+  const st = (x: any) => (x ? String(x) : '');
   return {
     nVeh: String(c.nVeh ?? 10), nCan: String(c.nCan ?? 0), nFms: String(c.nFms ?? 0), aiA: !!c.aiA, aiAg: !!c.aiAg,
     retTier: c.retTier || '6', contractMonths: String(c.contractMonths ?? 12),
-    qGps: mj.qGps ? String(mj.qGps) : '', qLvCan: mj.qLvCan ? String(mj.qLvCan) : '', qCanInc: mj.qCanInc ? String(mj.qCanInc) : '',
-    qFms: mj.qFms ? String(mj.qFms) : '', qUninstall: mj.qUninstall ? String(mj.qUninstall) : '', qReplace: mj.qReplace ? String(mj.qReplace) : '', kmTravel: mj.kmTravel ? String(mj.kmTravel) : '',
+    qGps: st(mj.qGps), qLvCan: st(mj.qLvCan), qCanInc: st(mj.qCanInc),
+    qFms: st(mj.qFms), qUninstall: st(mj.qUninstall), qReplace: st(mj.qReplace), kmTravel: st(mj.kmTravel),
+    dq130: st(dv.d130), dq150: st(dv.d150), dq650: st(dv.d650), dqLvCan: st(dv.lvcan),
   };
 }
 function mapOutCfg(cfg: any) {
@@ -232,5 +259,6 @@ function mapOutCfg(cfg: any) {
     nVeh: Math.round(num(cfg.nVeh)), nCan: Math.round(num(cfg.nCan)), nFms: Math.round(num(cfg.nFms)), aiA: !!cfg.aiA, aiAg: !!cfg.aiAg,
     retTier: cfg.retTier, contractMonths: Math.round(num(cfg.contractMonths) || 12),
     montaj: { qGps: Math.round(num(cfg.qGps)), qLvCan: Math.round(num(cfg.qLvCan)), qCanInc: Math.round(num(cfg.qCanInc)), qFms: Math.round(num(cfg.qFms)), qUninstall: Math.round(num(cfg.qUninstall)), qReplace: Math.round(num(cfg.qReplace)), kmTravel: Math.round(num(cfg.kmTravel)) },
+    devices: { d130: Math.round(num(cfg.dq130)), d150: Math.round(num(cfg.dq150)), d650: Math.round(num(cfg.dq650)), lvcan: Math.round(num(cfg.dqLvCan)) },
   };
 }

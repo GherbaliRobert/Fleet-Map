@@ -141,6 +141,13 @@ export function AdminCompanies() {
               </div>
               <button class="btn btn-primary" style="margin-top:8px" disabled={saving} onClick={recordPay}>Înregistrează plata</button>
 
+              <div class="adm-sec2">Utilizatori{ov ? ' (' + (ov.users || []).length + ')' : ''}</div>
+              {!ov && <div class="spin" style="margin:6px auto" />}
+              {ov && (ov.users || []).length === 0 && <div style="color:var(--text-muted);font-size:13px">Niciun utilizator în companie.</div>}
+              {ov && (ov.users || []).map((u: any) => (
+                <div class="adm-kv"><span class="k">{(u.full_name || u.username || '—')}{(u.full_name && u.username) ? ' · ' + u.username : ''}</span><span style={'color:' + (u.active === false ? 'var(--text-muted)' : 'var(--text-primary)')}>{u.role || ''}{u.active === false ? ' (inactiv)' : ''}</span></div>
+              ))}
+
               <div class="adm-sec2">Periculos</div>
               <button class="btn btn-danger-ghost" disabled={saving} onClick={del}><Icon name="trash" size={16} /> Șterge compania</button>
             </div>
