@@ -7438,9 +7438,12 @@ const pozitii = await r.json();</code></pre>
         const stopH = Math.floor(s.stoppedTime / 3600);
         const stopM = Math.floor((s.stoppedTime % 3600) / 60);
         const lastIgn = s.lastIgnitionOn ? new Date(s.lastIgnitionOn).toLocaleString('ro-RO') : '-';
-        // „Ore funcționare azi" din grila principală = timpul cu motorul pornit AZI (engineOnTime), nu contorul total CAN.
+        // „Ore funcționare azi" = timpul cu motorul pornit AZI (engineOnTime). Robust: plat → nested → minim timpul în mișcare.
         var _eh = document.getElementById('detail-engine-hours');
-        if (_eh) _eh.textContent = (typeof s.engineOnTime === 'number' && s.engineOnTime > 0) ? formatDuration(s.engineOnTime) : '0h 0m';
+        var _eot = (typeof s.engineOnTime === 'number') ? s.engineOnTime
+          : (s.summary && typeof s.summary.engineOnTime === 'number') ? s.summary.engineOnTime : null;
+        if (_eot == null || _eot <= 0) { var _mv = (typeof s.movingTime === 'number') ? s.movingTime : (s.summary && s.summary.movingTime); if (_mv > 0) _eot = _mv; }
+        if (_eh) _eh.textContent = (typeof _eot === 'number' && _eot > 0) ? formatDuration(_eot) : '0h 0m';
 
         statsEl.innerHTML = '' +
           '<div style="border-top:1px solid var(--border);margin:8px 0;padding-top:10px;">' +
