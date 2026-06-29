@@ -33,6 +33,9 @@ function ignOn(p) { return io(p).ignition === 1; }
 let _defaultPrices = {};
 function setDefaultFuelPrices(p) { if (p && typeof p === 'object') _defaultPrices = p; }
 function _ftKey(ft) { const s = String(ft || '').toLowerCase(); if (/benzin|petrol/.test(s)) return 'benzina'; if (/gpl|lpg|gaz/.test(s)) return 'gpl'; return 'motorina'; }
+// Factor CO₂ ars (kg / litru) pe tip de combustibil — diesel ≠ benzină ≠ GPL. GPL emite ~1.51 kg/L, NU 2.64 (diesel).
+const _CO2_PER_L = { motorina: 2.64, benzina: 2.31, gpl: 1.51 };
+function co2For(fuelType, opts) { if (opts && opts.co2Factor) return opts.co2Factor; return _CO2_PER_L[_ftKey(fuelType)] || 2.64; }
 function resolvePrice(c, opts) {
   if (c && Number.isFinite(c.price)) return c.price;
   const k = _ftKey(c && c.fuelType), pbt = opts && opts.priceByType;
@@ -817,12 +820,11 @@ async function rCostsTotal(db, imeis, from, to, opts, devMap) { // Costuri total
 }
 
 async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (din consum carburant)
-  const FACTOR = opts.co2Factor || 2.64; // kg CO₂ / litru motorină
   const cm = await _consumptionMap(db, imeis, from, to, opts);
   const rows = []; let tCo2 = 0, tKm = 0, tCons = 0; const vCo2 = [], vPerKm = [];
   for (const imei of imeis) {
     const m = cm[imei]; if (!m) continue;
-    const co2 = m.consumed * FACTOR;
+    const co2 = m.consumed * co2For(m.fuelType, opts); // factor pe tipul de combustibil (diesel/benzină/GPL)
     const perKm = m.dist > 1 ? co2 / m.dist * 1000 : 0; // g/km
     const nm = label(devMap, imei);
     rows.push([nm, Math.round(m.dist), m.consumed.toFixed(0) + ' L', (co2 / 1000).toFixed(2) + ' t', perKm ? Math.round(perKm) + ' g/km' : '—']);
@@ -879,7 +881,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     let consumed = sensorOk ? sensorL : (dist * cRoad / 100 + idleL);
     if (consumed < idleL) consumed = idleL;
     const per100 = dist > 1 ? +(consumed / dist * 100).toFixed(1) : null;
-    out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !sensorOk, hasFuel, per100, price, first, last };
+    out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !sensorOk, hasFuel, per100, price, first, last, fuelType: c.fuelType || null };
   }
   return out;
 }
@@ -1067,8 +1069,9 @@ async function fuelStats(db, imeis, from, to, opts) {
     const estimated = !sensorOk;
     const per100 = dist > 1 ? +(liters / dist * 100).toFixed(1) : null;
     const cost = liters * price;
-    perVehicle.push({ imei, name: (devMap[imei] && devMap[imei].name) || imei, plate: (devMap[imei] && devMap[imei].plate) || '', km: Math.round(dist), liters: +liters.toFixed(1), per100, cost: Math.round(cost), idleLiters: +idleL.toFixed(1), idleSec: Math.round(idleSec), co2Kg: Math.round(liters * co2Factor), price: +price.toFixed(2), fuelType: c.fuelType || null, estimated, hasFuel });
-    kKm += dist; kIdleSec += idleSec; kIdleL += idleL; kIdleCost += idleL * price; kCo2 += liters * co2Factor;
+    const vCo2F = co2For(c.fuelType, opts); // factor CO₂ pe tipul de combustibil al vehiculului
+    perVehicle.push({ imei, name: (devMap[imei] && devMap[imei].name) || imei, plate: (devMap[imei] && devMap[imei].plate) || '', km: Math.round(dist), liters: +liters.toFixed(1), per100, cost: Math.round(cost), idleLiters: +idleL.toFixed(1), idleSec: Math.round(idleSec), co2Kg: Math.round(liters * vCo2F), price: +price.toFixed(2), fuelType: c.fuelType || null, estimated, hasFuel });
+    kKm += dist; kIdleSec += idleSec; kIdleL += idleL; kIdleCost += idleL * price; kCo2 += liters * vCo2F;
     kL += liters; kCost += cost;
     if (hasFuel) vWith++;
     if (estimated && (dist > 1 || idleL > 0)) vEst++;
