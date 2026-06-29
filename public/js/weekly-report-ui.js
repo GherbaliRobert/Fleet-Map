@@ -85,7 +85,7 @@
       var sel = el('wr-archive'); if (!sel || !Array.isArray(list)) return;
       if (!list.length) { sel.innerHTML = '<option>— niciun raport —</option>'; return; }
       sel.innerHTML = list.map(function (w, i) {
-        return '<option value="' + w.id + '">' + (i === 0 ? '● ' : '') + 'Săptămâna ' + String(w.period_from).slice(0, 10) + ' → ' + String(w.period_to).slice(0, 10) + '</option>';
+        return '<option value="' + w.id + '">' + (i === 0 ? '● ' : '') + 'Săptămâna ' + fmtDate(w.period_from) + ' → ' + fmtDateEnd(w.period_to) + '</option>';
       }).join('');
     }).catch(function () {});
   }
@@ -109,6 +109,8 @@
 
   // ─── Randare raport ───
   function fmtDate(s) { try { return new Date(s).toLocaleDateString('ro-RO'); } catch (e) { return String(s).slice(0, 10); } }
+  // period_to = luni 00:00 (exclusiv) → ultima zi INCLUSĂ = period_to − 1 zi = duminică. Afișăm Luni–Duminică, nu Luni–Luni.
+  function fmtDateEnd(s) { try { return new Date(new Date(s).getTime() - 86400000).toLocaleDateString('ro-RO'); } catch (e) { return String(s).slice(0, 10); } }
   function kpiCard(val, label, sub, color) {
     return '<div class="report-stat"' + (color ? ' style="border-color:' + color + ';"' : '') + '>' +
       '<div class="report-stat-value"' + (color ? ' style="color:' + color + ';"' : '') + '>' + val + '</div>' +
@@ -138,7 +140,7 @@
   function render(w) {
     var body = el('wr-body'); if (!body) return;
     var d = w.data || {}; var k = d.kpi || {}; var rk = d.rankings || {}; var s = d.series || {};
-    var pj = el('wr-period'); if (pj) pj.textContent = fmtDate(w.period_from) + ' — ' + fmtDate(w.period_to);
+    var pj = el('wr-period'); if (pj) pj.textContent = fmtDate(w.period_from) + ' — ' + fmtDateEnd(w.period_to) + ' (Luni–Duminică)';
 
     var kpis = '<div class="wr-kpi">' +
       kpiCard(num(k.vehiclesActive) + ' / ' + num(k.vehiclesTotal), 'Vehicule active', '', 'var(--accent)') +
@@ -192,8 +194,8 @@
     var s = d.series || {}, rk = d.rankings || {}, k = d.kpi || {};
     var GREEN = '#3FE07D', ORANGE = '#f59e0b', MUTED = '#94a3b8';
     // Distanță zilnică
-    window.createChart('wr-chart-km', 'bar', { labels: s.labels || [], datasets: [{ label: 'km', data: s.km || [], backgroundColor: GREEN }] },
-      { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
+    window.createChart('wr-chart-km', 'bar', { labels: s.labels || [], datasets: [{ label: 'km', data: s.km || [], backgroundColor: GREEN, minBarLength: 3 }] },
+      { interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
     // Stare flotă (doughnut)
     var act = num(k.vehiclesActive), inact = num(k.vehiclesInactive);
     window.createChart('wr-chart-status', 'doughnut', { labels: ['Active', 'Inactive'], datasets: [{ data: [act, inact], backgroundColor: [GREEN, MUTED] }] },

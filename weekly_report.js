@@ -96,7 +96,7 @@ async function aiAnalyze(deps, companyName, period, data) {
   if (!ai || !ai.hasKey || !ai.hasKey()) return null;
   const k = data.kpi, r = data.rankings;
   const compact = {
-    companie: companyName, perioada: period.from.slice(0, 10) + ' … ' + period.to.slice(0, 10),
+    companie: companyName, perioada: period.from.slice(0, 10) + ' … ' + lastDay(period.to),
     flota: { vehicule: k.vehiclesTotal, active: k.vehiclesActive, inactive: k.vehiclesInactive, cu_senzor_combustibil: k.vehiclesWithFuelSensor, consum_estimat_la: k.vehiclesEstimated },
     km_total: k.totalKm, ore_mers: k.totalMovingH, ore_stationat: k.totalStoppedH, ore_ralanti: k.totalIdleH, curse: k.totalTrips,
     consum_litri: k.totalFuel, cost_combustibil_ron: k.fuelCost, consum_mediu_l_100km: k.avgPer100, cost_ralanti_ron: k.idleCost, co2_tone: k.co2Tons,
@@ -150,6 +150,8 @@ async function generateForCompany(deps, company, period) {
 
 // ─── Email (HTML) către adminii companiei, cu link la raportul complet din aplicație ───
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+// Ultima zi INCLUSĂ a săptămânii: period.to e luni 00:00 (exclusiv) → afișăm duminica (to − 1 zi). Luni–Duminică, nu Luni–Luni.
+function lastDay(iso) { try { return new Date(new Date(iso).getTime() - 864e5).toISOString().slice(0, 10); } catch (e) { return String(iso).slice(0, 10); } }
 function buildEmailHtml(company, saved, period, baseUrl) {
   const k = saved.data.kpi;
   const link = (baseUrl || '') + '/app#weekly-report';
@@ -158,7 +160,7 @@ function buildEmailHtml(company, saved, period, baseUrl) {
   return '' +
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto;color:#1f2937;">' +
     '<h2 style="color:#0b8a4b;">Raport săptămânal flotă — ' + esc(company.name || '') + '</h2>' +
-    '<p style="color:#555;">Perioada: <b>' + period.from.slice(0, 10) + '</b> … <b>' + period.to.slice(0, 10) + '</b></p>' +
+    '<p style="color:#555;">Perioada: <b>' + period.from.slice(0, 10) + '</b> … <b>' + lastDay(period.to) + '</b></p>' +
     '<table style="border-collapse:collapse;width:100%;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;">' +
     kpiRow('Vehicule active', k.vehiclesActive + ' / ' + k.vehiclesTotal) +
     kpiRow('Distanță totală', k.totalKm + ' km') +
@@ -175,7 +177,7 @@ function buildEmailHtml(company, saved, period, baseUrl) {
 }
 function htmlToText(saved, company, period) {
   const k = saved.data.kpi;
-  return 'Raport săptămânal flotă — ' + (company.name || '') + '\nPerioada: ' + period.from.slice(0, 10) + ' … ' + period.to.slice(0, 10) +
+  return 'Raport săptămânal flotă — ' + (company.name || '') + '\nPerioada: ' + period.from.slice(0, 10) + ' … ' + lastDay(period.to) +
     '\n\nVehicule active: ' + k.vehiclesActive + '/' + k.vehiclesTotal + '\nDistanță: ' + k.totalKm + ' km\nOre mers: ' + k.totalMovingH +
     '\nOre ralanti: ' + k.totalIdleH + (k.totalFuel ? ('\nConsum: ' + k.totalFuel + ' L (' + k.fuelCost + ' RON)') : '') +
     '\n\n' + (saved.ai_analysis || '') + '\n\n— RA Track (raport automat)';
@@ -187,7 +189,7 @@ async function emailReport(deps, company, saved, period, settings) {
   recips = recips.map(x => String(x).trim()).filter(Boolean);
   if (!recips.length) { try { recips = await db.getCompanyAdminEmails(company.id); } catch (e) { recips = []; } }
   if (!recips.length) return false;
-  const subject = '[RA Track] Raport săptămânal flotă — ' + period.from.slice(0, 10) + ' … ' + period.to.slice(0, 10);
+  const subject = '[RA Track] Raport săptămânal flotă — ' + period.from.slice(0, 10) + ' … ' + lastDay(period.to);
   const html = buildEmailHtml(company, saved, period, deps.appBaseUrl);
   const text = htmlToText(saved, company, period);
   let sent = false;
