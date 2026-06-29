@@ -253,7 +253,7 @@ export function VehicleDetail() {
             <G label="Status contact" value={ign ? 'Cuplat' : 'Decuplat'} cls={ign ? 'green' : 'red'} />
             {fuelStr && <G label={'Combustibil' + fuelSrc} value={fuelStr} cls={fuelLow ? 'red' : ''} />}
             {odo != null && <G label="Kilometraj total" value={odo + ' km'} />}
-            {coolant && <G label="Temp. motor" value={coolant} />}
+            {ign && coolant && <G label="Temp. motor" value={coolant} />}{/* ascuns cu contactul oprit — valoarea e stale (carry-forward) */}
             {/* Restul IO — doar super-admin */}
             {isSuper && (
               <>

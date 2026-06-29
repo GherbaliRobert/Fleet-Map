@@ -6484,6 +6484,24 @@ app.get('/api/admin/push-status', requireAuth, requireSuperadmin, async (req, re
   res.json({ fcmConfigured: !!_fcm, myDeviceTokens: myDeviceTokens, hint: !_fcm ? 'Setează FIREBASE_SA_JSON pe server' : (myDeviceTokens === 0 ? 'Niciun token de pe telefonul tău — instalează APK-ul cu push + loghează-te' : 'OK — server + telefon pregătite') });
 });
 // Diagnostic CONTACT (super-admin): analizează semnalul de contact (IO 239 / DIN1) vs viteză pe ultimele 48h, pentru un vehicul (q = nume / nr / imei).
+// Diagnostic ODOMETRU/IO (super-admin): ce câmpuri de mileage/odometru trimite un vehicul + valorile lor (pt. ex. Logan citit greșit).
+app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').toLowerCase().trim();
+    if (!q) return res.status(400).json({ error: 'Adaugă ?q=nume/imei (ex. ?q=logan)' });
+    const devs = await db.getDevicesLite();
+    const dev = devs.find(function (d) { return (d.imei && String(d.imei).toLowerCase().includes(q)) || (d.name && String(d.name).toLowerCase().includes(q)) || (d.plate && String(d.plate).toLowerCase().includes(q)); });
+    if (!dev) return res.status(404).json({ error: 'Vehicul negăsit pentru „' + q + '"' });
+    let canIface = null; try { const dr = await db.pool.query('SELECT can_interface FROM devices WHERE imei = $1', [dev.imei]); canIface = dr.rows[0] && dr.rows[0].can_interface; } catch (e) {}
+    const to = new Date(), from = new Date(to.getTime() - 24 * 3600 * 1000);
+    const hist = await db.getDeviceHistory(dev.imei, from.toISOString(), to.toISOString(), 5000);
+    const last = hist.length ? hist[hist.length - 1] : null;
+    const io = (last && last.io_data) || {};
+    const odometer_fields = {};
+    for (const k of Object.keys(io)) if (/mileage|odometer|odo|distance/i.test(k)) odometer_fields[k] = io[k];
+    res.json({ vehicul: dev.name || dev.imei, imei: dev.imei, can_interface: canIface, ts: last && last.timestamp, odometer_fields: odometer_fields, all_io_keys: Object.keys(io).sort() });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 app.get('/api/admin/ignition-check', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const q = String(req.query.q || '').toLowerCase().trim();

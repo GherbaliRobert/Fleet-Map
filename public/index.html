@@ -7359,14 +7359,15 @@ const pozitii = await r.json();</code></pre>
           '</div>' +
         '</div>' : '') +
 
-        // Row 9: Temp. motor (mereu) + Sofer (mereu — info operațional, nu IO)
+        // Row 9: Temp. motor — DOAR cu contactul pornit (cu motorul oprit valoarea e stale/carry-forward) + Sofer (mereu)
+        ((hasIgnition && coolant !== '-') ?
         '<div class="info-item">' +
-          '<div class="info-item-icon ' + (coolant !== '-' && parseInt(coolant) > 100 ? 'red' : 'blue') + '"><i class="fas fa-thermometer-half"></i></div>' +
+          '<div class="info-item-icon ' + (parseInt(coolant) > 100 ? 'red' : 'blue') + '"><i class="fas fa-thermometer-half"></i></div>' +
           '<div class="info-item-text">' +
             '<div class="info-item-value">' + coolant + '</div>' +
             '<div class="info-item-label">Temp. motor</div>' +
           '</div>' +
-        '</div>' +
+        '</div>' : '') +
         '<div class="info-item">' +
           '<div class="info-item-icon purple"><i class="fas fa-user"></i></div>' +
           '<div class="info-item-text">' +
