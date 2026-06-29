@@ -3706,9 +3706,9 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
             const dist = haversineDistance(prev.latitude, prev.longitude, row.latitude, row.longitude);
             if (dist < 10) km += dist;
 
-            // Engine time
+            // Engine time = contact pornit SAU în mișcare (mișcarea implică motor pornit) — robust la ignition nefiabil.
             const prevIo = prev.io_data || {};
-            if (prevIo.ignition === 1 || io.ignition === 1) {
+            if (prevIo.ignition === 1 || io.ignition === 1 || (row.speed || 0) > 3) {
               const dt = (new Date(row.timestamp) - new Date(prev.timestamp)) / 1000;
               if (dt > 0 && dt < 3600) engineTime += dt;
             }
@@ -4001,8 +4001,9 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
           if (isMoving) globalMovingTime += dt;
           else globalStoppedTime += dt;
 
-          // Engine hours tracking (ignition ON = motor pornit)
-          if (prevIgnition || ignitionOn) {
+          // Motor pornit = contact pornit SAU în mișcare (mișcarea implică motor pornit). Robust la vehicule
+          // unde io.ignition din istoric nu e fiabil (ex. Caddy) → orele de funcționare nu mai ies 0 când a rulat.
+          if (prevIgnition || ignitionOn || isMoving) {
             globalEngineOnTime += dt;
             const dayKey = new Date(prev.timestamp).toISOString().slice(0, 10);
             if (!dailyEngine[dayKey]) dailyEngine[dayKey] = { engineOn: 0, driving: 0, idle: 0, dailyKm: 0 };
