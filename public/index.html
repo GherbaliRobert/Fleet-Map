@@ -6656,14 +6656,15 @@ const pozitii = await r.json();</code></pre>
     // Același prag (180000 ms) e folosit de marker (createIcon), de cardul din listă și de fișă — îl centralizăm aici.
     function isFreshLive(d) { return !!(d && d.timestamp) && (Date.now() - new Date(d.timestamp).getTime()) < 180000; }
 
-    // Un motor pornit raportează des (sub câteva minute). Dacă „contact pornit" vine dintr-un pachet vechi
-    // (vehiculul tace de mult), motorul e aproape sigur OPRIT — device-ul Teltonika intră în sleep DOAR când e oprit.
-    // Așa că „contact pornit" e de încredere doar dacă datele sunt proaspete (sub IGN_FRESH_MIN).
-    var IGN_FRESH_MIN = 15;
+    // „Contact pornit" = ultima valoare cunoscută a contactului, de încredere cât timp device-ul e ONLINE
+    // (transmite în fereastra offline_minutes). Unele vehicule transmit RAR când staționează (ex. Logan/LV-CAN200
+    // la ~16 min) → un prag scurt (15 min) arăta fals „Decuplat" între pachete, în dezacord cu lista/markeri/popup.
+    // Aliniem cu „online"; vechimea reală e oricum vizibilă pe fișă („ultima actualizare acum X min").
     function ignitionOn(io, timestamp) {
       if (!(io && (io.ignition === 1 || io.ignition === true))) return false;
       if (!timestamp) return false;
-      return (Date.now() - new Date(timestamp).getTime()) < IGN_FRESH_MIN * 60 * 1000;
+      var mins = (currentUser && currentUser.offline_minutes) || 65;
+      return (Date.now() - new Date(timestamp).getTime()) < mins * 60 * 1000;
     }
 
     // ─── Filtering & Search ───
