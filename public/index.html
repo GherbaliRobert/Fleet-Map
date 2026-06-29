@@ -220,7 +220,7 @@
           <button class="history-btn primary hp-load" onclick="loadHistory()"><i class="fas fa-download"></i> Încarcă traseul</button>
           <div id="hp-export" class="hp-row hp-export" style="display:none;">
             <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>
-            <button class="history-btn" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
+            <button class="history-btn success" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
             <button class="history-btn" id="hp-osm-btn" onclick="hpToggleOsmLimits()" title="Colorează cu roșu unde s-a depășit limita REALĂ a drumului (date OpenStreetMap)"><i class="fas fa-gauge-high"></i> Limite reale</button>
           </div>
         </div>
@@ -7939,7 +7939,18 @@ const pozitii = await r.json();</code></pre>
         var r = await fetch('/api/road-limits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: pts }) });
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok) { (window.raxToast || alert)(j.error || 'Limite OSM indisponibile', 'error'); return; }
-        var lim = j.limits || [], sg = L.featureGroup(), over = 0, withLimit = 0, maxOver = 0, chunk = null;
+        var lim = j.limits || [], sg = L.featureGroup(), over = 0, withLimit = 0, maxOver = 0;
+        var chunk = null, chunkLim = null, chunkMaxSp = 0;
+        // Închide segmentul roșu curent: îl desenează + atașează tooltip (hover) și popup (click/tap) cu limita reală + viteza mașinii.
+        var _closeChunk = function () {
+          if (chunk && chunk.length > 1) {
+            var pl = L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(sg);
+            var over0 = Math.round(chunkMaxSp - chunkLim);
+            pl.bindTooltip('Limită ' + chunkLim + ' · mașina ' + Math.round(chunkMaxSp) + ' km/h (+' + over0 + ')', { sticky: true });
+            pl.bindPopup('<b style="color:#ef4444;"><i class="fas fa-triangle-exclamation"></i> Depășire viteză</b><br>Limita drumului: <b>' + chunkLim + ' km/h</b><br>Mașina a avut: <b>' + Math.round(chunkMaxSp) + ' km/h</b> <span style="color:#ef4444;">(+' + over0 + ')</span>');
+          }
+          chunk = null; chunkLim = null; chunkMaxSp = 0;
+        };
         for (var i = 0; i < hpLastData.length; i++) {
           var lm = lim[i], sp = hpLastData[i].speed || 0;
           if (typeof lm === 'number') withLimit++;
@@ -7947,11 +7958,13 @@ const pozitii = await r.json();</code></pre>
           if (isOver) {
             over++; if (sp - lm > maxOver) maxOver = sp - lm;
             var prev = hpLastData[i - 1] || hpLastData[i];
-            if (!chunk) chunk = [[prev.latitude, prev.longitude]];
+            if (!chunk) { chunk = [[prev.latitude, prev.longitude]]; chunkLim = lm; chunkMaxSp = 0; }
             chunk.push([hpLastData[i].latitude, hpLastData[i].longitude]);
-          } else if (chunk) { if (chunk.length > 1) L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(sg); chunk = null; }
+            if (sp > chunkMaxSp) chunkMaxSp = sp;
+            if (lm < chunkLim) chunkLim = lm;
+          } else { _closeChunk(); }
         }
-        if (chunk && chunk.length > 1) L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(sg);
+        _closeChunk();
         sg.addTo(map); hpOsmLayer = sg; if (btn) btn.classList.add('primary');
         var sumEl = document.getElementById('hp-summary');
         if (sumEl) {

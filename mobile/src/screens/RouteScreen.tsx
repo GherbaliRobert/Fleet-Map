@@ -135,7 +135,17 @@ export function RouteScreen() {
       const r = await Api.roadLimits(data.map((p) => [p.latitude, p.longitude] as [number, number]));
       const lim = r.limits || [];
       og.clearLayers();
-      let over = 0, withLimit = 0, maxOver = 0, chunk: LatLng[] | null = null;
+      let over = 0, withLimit = 0, maxOver = 0;
+      let chunk: LatLng[] | null = null, chunkLim = 0, chunkMaxSp = 0;
+      // Închide segmentul roșu + atașează popup (tap) cu limita reală + viteza mașinii pe acel segment.
+      const closeChunk = () => {
+        if (chunk && chunk.length > 1) {
+          const o = Math.round(chunkMaxSp - chunkLim);
+          L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(og)
+            .bindPopup(`<b style="color:#ef4444;">Depășire viteză</b><br>Limita drumului: <b>${chunkLim} km/h</b><br>Mașina: <b>${Math.round(chunkMaxSp)} km/h</b> (+${o})`);
+        }
+        chunk = null; chunkLim = 0; chunkMaxSp = 0;
+      };
       for (let i = 0; i < data.length; i++) {
         const lm = lim[i], sp = Number(data[i].speed) || 0;
         if (typeof lm === 'number') withLimit++;
@@ -143,11 +153,13 @@ export function RouteScreen() {
         if (isOver) {
           over++; if (sp - lm > maxOver) maxOver = sp - lm;
           const prev = data[i - 1] || data[i];
-          if (!chunk) chunk = [[prev.latitude, prev.longitude]];
+          if (!chunk) { chunk = [[prev.latitude, prev.longitude]]; chunkLim = lm as number; chunkMaxSp = 0; }
           chunk.push([data[i].latitude, data[i].longitude]);
-        } else if (chunk) { if (chunk.length > 1) L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(og); chunk = null; }
+          if (sp > chunkMaxSp) chunkMaxSp = sp;
+          if ((lm as number) < chunkLim) chunkLim = lm as number;
+        } else { closeChunk(); }
       }
-      if (chunk && chunk.length > 1) L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(og);
+      closeChunk();
       setOsmOn(true);
       setOsmInfo(withLimit === 0 ? 'Fără limite OSM pe acest traseu (drumuri netagate)'
         : (over > 0 ? `${over} puncte peste limita reală · max +${maxOver} km/h` : 'Fără depășiri vs. limita reală a drumului'));
