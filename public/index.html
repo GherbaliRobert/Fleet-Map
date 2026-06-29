@@ -1696,6 +1696,19 @@ const pozitii = await r.json();</code></pre>
             <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
             <div id="us-agents-list"></div>
 
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 6px;"><i class="fas fa-gas-pump"></i> Prețuri combustibil (lei/L)</div>
+            <p style="font-size:11px;color:var(--text-muted);margin:0 0 6px;">Folosite la calculul costului în rapoarte. Lasă gol → se folosește <b>media națională</b> (auto, zilnic). Lanț: preț pe vehicul → aceste valori → media națională.</p>
+            <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
+              <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
+            </div>
+
             <div id="us-io-catalog-section" style="display:none;margin:18px 0 0;padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;">
               <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;"><i class="fas fa-microchip"></i> Catalog IO Teltonika (super-admin)</div>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Editează etichetele și descrierile codurilor IO global pentru toate companiile. Modificările sunt vizibile imediat în panourile vehiculelor.</div>
@@ -3094,6 +3107,7 @@ const pozitii = await r.json();</code></pre>
         var ioCatBox = document.getElementById('us-io-catalog-section');
         if (ioCatBox) ioCatBox.style.display = (currentUser && currentUser.isSuper) ? 'block' : 'none';
         if (canMgr) {
+          usLoadFuelPrices();
           var coBox = document.getElementById('us-company-list');
           coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
           try {
@@ -3174,6 +3188,38 @@ const pozitii = await r.json();</code></pre>
     };
     // Coadă pentru serializare PUT-uri concurente (evită race condition între input-uri adiacente)
     var _usThrQueue = Promise.resolve();
+    // ─── Prețuri combustibil (companie) — media națională auto + override ───
+    window.usLoadFuelPrices = async function () {
+      try {
+        var d = await fetch('/api/fuel-prices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var a = d.auto || {}, co = d.company || {};
+        var autoEl = document.getElementById('us-fuel-auto');
+        if (autoEl) {
+          var attr = ' · <a href="https://pretcarburant.ro" target="_blank" rel="noopener" style="color:var(--accent);">Sursa: PretCarburant.ro</a>';
+          if (a.motorina || a.benzina) autoEl.innerHTML = 'Media națională: <b>motorină ' + (a.motorina != null ? a.motorina : '—') + '</b> · benzină ' + (a.benzina != null ? a.benzina : '—') + ' · GPL ' + (a.gpl != null ? a.gpl : '—') + ' lei/L' + (a.data ? ' <span style="opacity:.7;">(' + String(a.data).replace(/[<>"]/g, '') + ')</span>' : '') + attr;
+          else autoEl.innerHTML = 'Media națională indisponibilă momentan' + attr;
+        }
+        var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
+        set('us-fp-motorina', co.motorina); set('us-fp-benzina', co.benzina); set('us-fp-gpl', co.gpl);
+        var ph = function (id, v) { var el = document.getElementById(id); if (el && v != null) el.placeholder = v + ' (auto)'; };
+        ph('us-fp-motorina', a.motorina); ph('us-fp-benzina', a.benzina); ph('us-fp-gpl', a.gpl);
+        var rb = document.getElementById('us-fuel-refresh'); if (rb) rb.style.display = (currentUser && currentUser.isSuper) ? 'inline-flex' : 'none';
+      } catch (e) {}
+    };
+    window.usSaveFuelPrices = async function () {
+      var g = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+      var body = { motorina: g('us-fp-motorina'), benzina: g('us-fp-benzina'), gpl: g('us-fp-gpl') };
+      try {
+        var r = await fetch('/api/company/fuel-prices', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { (window.raxToast || alert)(j.error || 'Eroare', 'error'); return; }
+        (window.raxToast || alert)('Prețuri combustibil salvate ✓', 'success');
+        usLoadFuelPrices();
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+    window.usRefreshFuelAuto = async function () {
+      try { await fetch('/api/admin/fuel-prices/refresh', { method: 'POST', credentials: 'same-origin' }); (window.raxToast || alert)('Media națională actualizată ✓', 'success'); usLoadFuelPrices(); } catch (e) {}
+    };
     async function usSetThreshold(key, val) {
       const sp = US_THRESHOLD_SPECS[key]; if (!sp) return;
       const el = document.getElementById(sp.inputId);
