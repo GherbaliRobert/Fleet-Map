@@ -239,9 +239,12 @@ async function reconcileArchived() {
     }
   } catch (e) { /* best-effort */ }
 }
-// Valori CAN „sticky": rămân valabile cât vehiculul e oprit — DOAR carburant + kilometraj (odometru).
-// NU includem RPM/viteză/temperatură/sarcină/AdBlue/ore motor — alea sunt instantanee și dispar când motorul e oprit.
-const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer'];
+// Valori CAN „sticky": rămân valabile când un pachet nu le include — carburant + kilometraj + RPM.
+// RPM se cară pt. vehiculele care îl trimit INTERMITENT (ex. Dacia LV-CAN200) → nu mai apare „-" cu motorul pornit.
+// Sigur: RPM e doar afișaj (ascuns pe fișă cu contactul oprit, gate hasIgnition/ign) și NU intră în nicio logică.
+// NU includem TEMP MOTORULUI — alimentează alertele de supraîncălzire (o temp „sticky" ar da alerte FALSE după răcire).
+// NU includem viteza — aceea TREBUIE instantanee (o viteză „sticky" ar arăta mașina în mișcare deși stă).
+const STICKY_CAN = ['can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_engine_rpm'];
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
 // Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
 // „0.0 km (ultima)" / „- (ultima)" fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire".
@@ -653,8 +656,8 @@ const tcpServer = net.createServer((socket) => {
           vehicle_type: devInfo.vehicle_type || existing.vehicle_type || null,
           plate: devInfo.plate || existing.plate || null
         };
-        // ── Carry-forward CAN „sticky": carburant/odometru/AdBlue/ore rămân la ultima valoare REALĂ cât motorul e oprit ──
-        // (NU cărăm RPM/viteză/temp). Persistăm în DB → supraviețuiește restartului. _stickyOf ignoră 0/spurious.
+        // ── Carry-forward CAN „sticky": carburant/odometru + RPM rămân la ultima valoare REALĂ când lipsesc dintr-un pachet ──
+        // (NU cărăm viteza, nici temp motorului — temp alimentează alertele de supraîncălzire). Persistăm în DB → supraviețuiește restartului. _stickyOf ignoră 0/spurious.
         const _freshSticky = _stickyOf(liveData.io);
         if (Object.keys(_freshSticky).length > 0) {
           const _prev = lastCanIo.get(imei);
