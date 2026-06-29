@@ -3,11 +3,21 @@
 .adm-list { display: flex; flex-direction: column; gap: 8px; }
 
 .adm-filter { margin-bottom: 10px; }
-.adm-filter select {
+.adm-filter select, .adm-filter input {
   width: 100%; box-sizing: border-box;
   background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
   border-radius: 10px; padding: 11px 12px; font-size: 14px; font-family: inherit;
 }
+
+/* Secțiuni + toggle pe rând (ecrane super-admin custom: companii/setări) */
+.adm-sec2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--accent); margin: 18px 0 8px; }
+.adm-tgl { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+.adm-tgl .lbl { flex: 1; font-size: 14px; }
+.adm-tgl .lbl small { display: block; font-size: 11.5px; color: var(--text-muted); font-weight: 400; margin-top: 1px; }
+.adm-act { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; color: var(--accent); }
+.adm-act.danger { color: var(--red); }
+.adm-kv { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.adm-kv .k { color: var(--text-muted); }
 
 .adm-item {
   display: flex; align-items: center; gap: 12px;

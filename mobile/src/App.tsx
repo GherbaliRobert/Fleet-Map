@@ -27,6 +27,9 @@ import { Tahograf } from './screens/Tahograf';
 import { AdminDocuments } from './screens/AdminDocuments';
 import { AdminWebhooks } from './screens/AdminWebhooks';
 import { Billing } from './screens/Billing';
+import { AdminCompanies } from './screens/AdminCompanies';
+import { AdminDevices } from './screens/AdminDevices';
+import { AdminArchived } from './screens/AdminArchived';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -91,6 +94,9 @@ function Shell() {
         <Route path="/admin/documents" component={AdminDocuments} />
         <Route path="/admin/webhooks" component={AdminWebhooks} />
         <Route path="/billing" component={Billing} />
+        <Route path="/admin/companies" component={AdminCompanies} />
+        <Route path="/admin/devices" component={AdminDevices} />
+        <Route path="/admin/archived" component={AdminArchived} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}

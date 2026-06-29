@@ -75,6 +75,15 @@ export function Menu() {
           </>
         )}
 
+        {u?.isSuper && (
+          <>
+            <div class="mn-sec">Platformă (super-admin)</div>
+            {item('layers', 'Companii', () => loc.route('/admin/companies'))}
+            {item('cpu', 'Dispozitive (toate)', () => loc.route('/admin/devices'))}
+            {item('trash', 'Dispozitive arhivate', () => loc.route('/admin/archived'))}
+          </>
+        )}
+
         <div class="mn-sec">Cont & setări</div>
         {item(theme.value === 'dark' ? 'moon' : 'sun', 'Temă', () => toggleTheme(), theme.value === 'dark' ? 'Întunecat' : 'Luminos')}
         {item('bell', 'Preferințe notificări', () => loc.route('/notif-prefs'))}

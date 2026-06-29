@@ -67,6 +67,24 @@ export const Api = {
   drivers: () => api<any[]>('/api/drivers'),
   driversLite: () => api<any[]>('/api/drivers/lite'),
   companies: () => api<any[]>('/api/companies'), // super-admin: pentru etichete + filtru pe companie
+  // ── Super-admin: Companii (CRUD + abonament/features/plăți = și „Conturi & Abonamente" + „config Agenți AI") ──
+  createCompany: (b: any) => api<any>('/api/companies', { method: 'POST', body: b }),
+  updateCompany: (id: number, b: any) => api<any>(`/api/companies/${id}`, { method: 'PUT', body: b }),
+  deleteCompany: (id: number) => api<any>(`/api/companies/${id}`, { method: 'DELETE' }),
+  companyOverview: (id: number) => api<any>(`/api/companies/${id}/overview`),
+  setCompanyFeatures: (id: number, features: Record<string, boolean>) => api<any>(`/api/companies/${id}/features`, { method: 'PUT', body: { features } }),
+  setCompanyAiLimit: (id: number, limit: number) => api<any>(`/api/companies/${id}/ai-limit`, { method: 'PUT', body: { limit } }),
+  setCompanyPlan: (id: number, plan: string) => api<any>(`/api/companies/${id}/plan`, { method: 'PUT', body: { plan } }),
+  companyPayments: (id: number) => api<any[]>(`/api/companies/${id}/payments`),
+  setCompanyAccess: (id: number, until: number) => api<any>(`/api/companies/${id}/access`, { method: 'PUT', body: { until } }),
+  // ── Super-admin: Dispozitive (global) ──
+  adminDevices: () => api<any[]>('/api/admin/devices'),
+  unassignedDevices: () => api<any[]>('/api/unassigned-devices'),
+  moveDevice: (imei: string, company_id: number | null) => api<any>(`/api/devices/${encodeURIComponent(imei)}/company`, { method: 'PUT', body: { company_id } }),
+  // ── Dispozitive arhivate (super: toate; admin: ale companiei) ──
+  archivedDevices: () => api<any[]>('/api/archived-devices'),
+  restoreDevice: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/status`, { method: 'PUT', body: { status: 'active' } }),
+  deleteDevice: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}`, { method: 'DELETE' }),
   // ── Facturare ──
   payments: (limit = 500) => api<{ payments: any[]; total: number }>(`/api/payments?limit=${limit}`), // super-admin: toate plățile + total
   recordPayment: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/payment`, { method: 'POST', body: b }),
