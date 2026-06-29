@@ -149,6 +149,8 @@ let weeklyReports = null;
 try { weeklyReports = require('./weekly_report'); } catch (e) { console.warn('[WEEKLY] raport săptămânal indisponibil:', e.message); }
 let fuelprice = null;
 try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
+let roadlimits = null;
+try { roadlimits = require('./roadlimits'); } catch (e) { console.warn('[ROADLIMITS] modul limite OSM indisponibil:', e.message); }
 // Preț carburant: media națională (auto, zilnic, PretCarburant.ro CC BY 4.0) + override per companie.
 // Lanț în rapoarte: preț pe VEHICUL → preț COMPANIE (pe tipul lui) → AUTO național → 7.5.
 let _fuelAuto = null;
@@ -3165,6 +3167,21 @@ app.post('/api/match', requireAuth, async (req, res) => {
     if (matched) { if (_matchCache.size > 300) _matchCache.clear(); _matchCache.set(key, matched); }
     res.json({ matched: matched || null });
   } catch (e) { res.json({ matched: null }); }
+});
+
+// Limite de viteză reale (OpenStreetMap, via Overpass) pentru punctele unui traseu — la cerere, în replay.
+// Body: { points: [[lat,lng], …] }. Întoarce { limits:[km/h|null per punct], attribution, ways }. Date ODbL → atribuire OBLIGATORIE.
+app.post('/api/road-limits', requireAuth, async (req, res) => {
+  try {
+    if (!roadlimits) return res.status(503).json({ error: 'Modul limite indisponibil' });
+    let pts = Array.isArray(req.body && req.body.points) ? req.body.points : [];
+    pts = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).map(p => [+p[0], +p[1]]);
+    if (pts.length < 2) return res.json({ limits: pts.map(() => null), attribution: roadlimits.ATTRIBUTION, ways: 0 });
+    const r = await roadlimits.limitsForPoints(pts);
+    res.json(r);
+  } catch (e) {
+    res.status(e && e.code === 'AREA' ? 413 : 502).json({ error: (e && e.message) || 'Eroare limite OSM' });
+  }
 });
 
 // API: Conexiuni active

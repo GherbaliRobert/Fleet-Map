@@ -3,6 +3,7 @@ import { useRoute } from 'preact-iso';
 import L from 'leaflet';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
+import { showToast } from '../app/store';
 import './route.css';
 
 type Period = 'today' | 'yesterday' | 'week';
@@ -38,6 +39,10 @@ export function RouteScreen() {
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
+  const osmLayer = useRef<L.LayerGroup | null>(null);   // overlay „limite reale" (OSM)
+  const [osmOn, setOsmOn] = useState(false);
+  const [osmBusy, setOsmBusy] = useState(false);
+  const [osmInfo, setOsmInfo] = useState<string | null>(null);
 
   // ── Harta (o singură dată) ───────────────────────────────────────────────
   useEffect(() => {
@@ -45,6 +50,7 @@ export function RouteScreen() {
     const map = L.map(mapEl.current, { attributionControl: false }).setView([45.9, 25], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     layer.current = L.layerGroup().addTo(map);
+    osmLayer.current = L.layerGroup().addTo(map); // overlay limite OSM, deasupra traseului
     mapRef.current = map;
     setTimeout(() => map.invalidateSize(), 120);
     return () => { map.remove(); mapRef.current = null; };
@@ -54,6 +60,7 @@ export function RouteScreen() {
   useEffect(() => {
     let alive = true; // anti-race: la schimbare rapidă de perioadă, ignoră răspunsul vechi care sosește ultimul
     setPts(null); setRoutes(null); setSummary(null); setSel(null);
+    setOsmOn(false); setOsmInfo(null); if (osmLayer.current) osmLayer.current.clearLayers(); // overlay OSM e stale la schimbarea perioadei
     const { from, to } = range(period);
     Promise.all([
       Api.history(imei, from, to).then((r: any) => Array.isArray(r) ? r : (r.points || r.rows || [])).catch(() => []),
@@ -117,6 +124,38 @@ export function RouteScreen() {
     } catch { /* hartă în curs de demontare */ }
   }, [pts, routes, slices, sel]);
 
+  // ── Overlay „limite reale" (OSM): roșu unde viteza a depășit limita REALĂ a drumului (la cerere) ──
+  async function toggleOsm() {
+    const og = osmLayer.current; if (!og) return;
+    if (osmOn) { og.clearLayers(); setOsmOn(false); setOsmInfo(null); return; }
+    const data = (pts || []).filter((p) => p.latitude != null && p.longitude != null);
+    if (data.length < 2) { showToast('Niciun traseu de verificat.'); return; }
+    setOsmBusy(true);
+    try {
+      const r = await Api.roadLimits(data.map((p) => [p.latitude, p.longitude] as [number, number]));
+      const lim = r.limits || [];
+      og.clearLayers();
+      let over = 0, withLimit = 0, maxOver = 0, chunk: LatLng[] | null = null;
+      for (let i = 0; i < data.length; i++) {
+        const lm = lim[i], sp = Number(data[i].speed) || 0;
+        if (typeof lm === 'number') withLimit++;
+        const isOver = typeof lm === 'number' && sp > lm + 3; // toleranță 3 km/h (zgomot GPS)
+        if (isOver) {
+          over++; if (sp - lm > maxOver) maxOver = sp - lm;
+          const prev = data[i - 1] || data[i];
+          if (!chunk) chunk = [[prev.latitude, prev.longitude]];
+          chunk.push([data[i].latitude, data[i].longitude]);
+        } else if (chunk) { if (chunk.length > 1) L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(og); chunk = null; }
+      }
+      if (chunk && chunk.length > 1) L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(og);
+      setOsmOn(true);
+      setOsmInfo(withLimit === 0 ? 'Fără limite OSM pe acest traseu (drumuri netagate)'
+        : (over > 0 ? `${over} puncte peste limita reală · max +${maxOver} km/h` : 'Fără depășiri vs. limita reală a drumului'));
+    } catch (e: any) {
+      showToast(e?.message || 'Limite OSM indisponibile');
+    } finally { setOsmBusy(false); }
+  }
+
   const loading = pts === null || routes === null;
   const nRoutes = routes ? routes.length : 0;
   const km = summary && summary.totalKm != null ? Number(summary.totalKm) : (routes || []).reduce((a, r) => a + (r.distance || 0), 0);
@@ -138,7 +177,16 @@ export function RouteScreen() {
           <button class={'rt-period' + (period === p ? ' on' : '')} onClick={() => setPeriod(p)}>{p === 'today' ? 'Azi' : p === 'yesterday' ? 'Ieri' : '7 zile'}</button>
         ))}
       </div>
-      <div class="rt-map"><div ref={mapEl} />{loading && <div class="rt-mapload"><div class="spin" /></div>}</div>
+      <div class="rt-map">
+        <div ref={mapEl} />
+        {loading && <div class="rt-mapload"><div class="spin" /></div>}
+        {!loading && pts && pts.length > 1 && (
+          <button class={'rt-osmbtn' + (osmOn ? ' on' : '')} onClick={toggleOsm} disabled={osmBusy} aria-label="Limite reale (OSM)" title="Limite reale (OSM)">
+            {osmBusy ? <div class="spin sm" /> : <Icon name="gauge" size={18} />}
+          </button>
+        )}
+      </div>
+      {osmInfo && <div class="rt-osmcap"><Icon name="gauge" size={12} /> {osmInfo} · <span class="src">© OpenStreetMap contributors</span></div>}
 
       <div class="rt-summary">
         <div class="rt-sum"><div class="v">{loading ? '—' : km.toFixed(1)}</div><div class="l">km parcurși</div></div>

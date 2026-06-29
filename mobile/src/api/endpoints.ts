@@ -43,6 +43,7 @@ export const Api = {
   fuelSensors: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/fuel-sensors`),
   history: (imei: string, from: string, to: string) => api<any[]>(`/api/history/${encodeURIComponent(imei)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&ext=1`),
   report: (imei: string, from: string, to: string) => api<any>(`/api/report/${encodeURIComponent(imei)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  roadLimits: (points: [number, number][]) => api<{ limits: (number | null)[]; attribution: string; ways: number }>('/api/road-limits', { method: 'POST', body: { points } }),
   notifications: () => api<NotificationItem[]>('/api/notifications'),
   unreadCount: () => api<{ count: number }>('/api/notifications/unread-count'),
   ackNotification: (id: number) => api(`/api/notifications/${id}/ack`, { method: 'POST' }),

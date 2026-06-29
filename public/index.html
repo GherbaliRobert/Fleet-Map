@@ -221,6 +221,7 @@
           <div id="hp-export" class="hp-row hp-export" style="display:none;">
             <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>
             <button class="history-btn" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
+            <button class="history-btn" id="hp-osm-btn" onclick="hpToggleOsmLimits()" title="Colorează cu roșu unde s-a depășit limita REALĂ a drumului (date OpenStreetMap)"><i class="fas fa-gauge-high"></i> Limite reale</button>
           </div>
         </div>
         <div id="hp-summary" style="display:none;margin-top:8px;padding:6px 10px;background:var(--bg-dark);border-radius:6px;font-size:12px;"></div>
@@ -7810,6 +7811,7 @@ const pozitii = await r.json();</code></pre>
     }
     // Limita curentă de viteză (setată după loadHistory ext)
     var hpSpeedLimit = null;
+    var hpOsmLayer = null, hpLastData = null;   // overlay „limite reale" (OSM) pe traseu
     var hpUiPrefs = null;
     async function _loadUiPrefs() {
       if (hpUiPrefs) return hpUiPrefs;
@@ -7923,6 +7925,45 @@ const pozitii = await r.json();</code></pre>
       } catch (e) {}
     }
 
+    // Overlay „limite reale" (OSM): colorează cu roșu unde viteza a depășit limita REALĂ a drumului (date OpenStreetMap, la cerere).
+    window.hpToggleOsmLimits = async function () {
+      var btn = document.getElementById('hp-osm-btn');
+      if (hpOsmLayer) { try { map.removeLayer(hpOsmLayer); } catch (e) {} hpOsmLayer = null; if (btn) btn.classList.remove('primary'); return; }
+      if (!hpLastData || hpLastData.length < 2) { (window.raxToast || alert)('Încarcă întâi un traseu.', 'error'); return; }
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Limite…'; }
+      try {
+        var pts = hpLastData.map(function (d) { return [d.latitude, d.longitude]; });
+        var r = await fetch('/api/road-limits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: pts }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { (window.raxToast || alert)(j.error || 'Limite OSM indisponibile', 'error'); return; }
+        var lim = j.limits || [], sg = L.featureGroup(), over = 0, withLimit = 0, maxOver = 0, chunk = null;
+        for (var i = 0; i < hpLastData.length; i++) {
+          var lm = lim[i], sp = hpLastData[i].speed || 0;
+          if (typeof lm === 'number') withLimit++;
+          var isOver = (typeof lm === 'number') && sp > lm + 3; // toleranță 3 km/h (zgomot GPS)
+          if (isOver) {
+            over++; if (sp - lm > maxOver) maxOver = sp - lm;
+            var prev = hpLastData[i - 1] || hpLastData[i];
+            if (!chunk) chunk = [[prev.latitude, prev.longitude]];
+            chunk.push([hpLastData[i].latitude, hpLastData[i].longitude]);
+          } else if (chunk) { if (chunk.length > 1) L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(sg); chunk = null; }
+        }
+        if (chunk && chunk.length > 1) L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(sg);
+        sg.addTo(map); hpOsmLayer = sg; if (btn) btn.classList.add('primary');
+        var sumEl = document.getElementById('hp-summary');
+        if (sumEl) {
+          var msg = withLimit === 0
+            ? '<span style="color:var(--text-muted);"><i class="fas fa-info-circle"></i> Fără limite OSM pe acest traseu (drumuri netagate)</span>'
+            : (over > 0
+              ? '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + over + ' puncte peste limita reală</span> · max +' + maxOver + ' km/h'
+              : '<span style="color:#3FE07D;"><i class="fas fa-check"></i> Fără depășiri vs. limita reală a drumului</span>');
+          sumEl.innerHTML = msg + ' · <span style="color:var(--text-muted);font-size:11px;">' + (j.attribution || '© OpenStreetMap contributors') + '</span>';
+          sumEl.style.display = 'block';
+        }
+      } catch (e) { (window.raxToast || alert)('Eroare limite: ' + (e && e.message), 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-gauge-high"></i> Limite reale'; } }
+    };
+
     async function loadHistory() {
       const hsel = document.getElementById('history-imei');
       if (hsel && hsel.value) selectedImei = hsel.value;
@@ -7979,6 +8020,9 @@ const pozitii = await r.json();</code></pre>
           return out;
         };
         _renderRoute(points, _speeds);               // brut acum (instant)
+        hpLastData = data;                           // pentru overlay-ul „limite reale" (OSM)
+        if (hpOsmLayer) { try { map.removeLayer(hpOsmLayer); } catch (e) {} hpOsmLayer = null; }
+        var _osmBtn0 = document.getElementById('hp-osm-btn'); if (_osmBtn0) _osmBtn0.classList.remove('primary');
         // Focus pe TOT traseul (mobil: lasă jos loc pentru panoul de control)
         fitRouteToMap(points);
         // Map-matching: lipește traseul de drumuri (async; păstrează brutul dacă eșuează)
