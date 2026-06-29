@@ -5255,6 +5255,7 @@ async function getEligibleUsers(imei) { const c = _eligibleCache.get(imei); if (
 const _userEvtCooldown = new Map();
 function userCooldownOk(userId, type, key, ms) { const k = userId + '_' + type + '_' + key; const last = _userEvtCooldown.get(k); if (last && Date.now() - last < (ms || 300000)) return false; _userEvtCooldown.set(k, Date.now()); return true; }
 const _idlingStart = new Map();
+const _noIgnMoveStart = new Map(); // imei -> ts de când e „mișcare cu contactul oprit" continuă (filtrează glitch-uri tranzitorii de ignition)
 
 // Preferința unui user pentru un tip: dacă nu are nicio preferință salvată → implicit doar in-app
 function userTypePref(prefsMap, userId, type) {
@@ -5420,7 +5421,13 @@ async function evaluateUserEvents(imei, data, prev) {
       const min = (Date.now() - _idlingStart.get(imei)) / 60000;
       if (min >= 3) cand.push({ type: 'idling', mag: Math.round(min), body: `Motor pornit, staționat de ~${Math.round(min)} min` });
     } else { _idlingStart.delete(imei); }
-    if (io.ignition === 0 && speed > 5) cand.push({ type: 'no_ignition_move', mag: speed, body: `Mișcare ${speed} km/h cu contactul OPRIT` });
+    // „Mișcare fără contact" (tractare/împingere): doar dacă PERSISTĂ ≥ 60s. Un singur pachet cu ignition=0 e adesea
+    // un glitch tranzitoriu (ex. LV-CAN200 raportează contactul intermitent) → nu mai dă alertă falsă la fiecare flicker.
+    if (io.ignition === 0 && speed > 5) {
+      if (!_noIgnMoveStart.has(imei)) _noIgnMoveStart.set(imei, Date.now());
+      const sec = (Date.now() - _noIgnMoveStart.get(imei)) / 1000;
+      if (sec >= 60) cand.push({ type: 'no_ignition_move', mag: speed, body: `Mișcare ${speed} km/h cu contactul OPRIT (de ~${Math.round(sec)}s)` });
+    } else { _noIgnMoveStart.delete(imei); }
     if (typeof io.external_voltage === 'number' && io.external_voltage > 0) {
       const v = io.external_voltage / 1000;
       if (v < 13) cand.push({ type: 'low_voltage', mag: v, body: `Tensiune alimentare ${v.toFixed(1)} V` });
