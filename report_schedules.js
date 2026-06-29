@@ -46,13 +46,13 @@ async function runSchedule(s, deps, now) {
   let imeis;
   if (s.imei) {
     if (s.company_id != null) {
-      const companyImeis = await db.getCompanyImeis(s.company_id);
+      const companyImeis = await db.getCompanyActiveImeis(s.company_id); // arhivatele nu mai sunt raportate
       imeis = companyImeis.includes(s.imei) ? [s.imei] : [];
     } else {
       imeis = [s.imei];
     }
   } else {
-    imeis = await db.getCompanyImeis(s.company_id);
+    imeis = await db.getCompanyActiveImeis(s.company_id);
   }
   if (!imeis || !imeis.length) return { ok: false, reason: 'fără vehicule accesibile', rows: 0, emailSent: false };
 

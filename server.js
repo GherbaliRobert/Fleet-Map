@@ -2072,7 +2072,7 @@ async function runAgentsWorker() {
       if (co.is_demo) continue;
       const enabled = plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS);
       if (!enabled.length) continue; // planul „start" nu rulează niciun agent
-      const imeis = await db.getCompanyImeis(co.id);
+      const imeis = await db.getCompanyActiveImeis(co.id); // agenții nu rulează pe vehicule arhivate
       if (!imeis.length) continue;
       const alertThresholds = _alertThresholdsFromSettings(co && co.settings);
       const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds }, enabled);

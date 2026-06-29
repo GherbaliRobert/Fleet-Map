@@ -1136,6 +1136,11 @@ async function getCompanyImeis(companyId) {
   const r = await pool.query('SELECT imei FROM devices WHERE company_id = $1', [companyId]);
   return r.rows.map(x => x.imei);
 }
+// Ca getCompanyImeis, dar EXCLUDE vehiculele arhivate — pentru rapoarte/analitice (nu pentru scoping de acces).
+async function getCompanyActiveImeis(companyId) {
+  const r = await pool.query("SELECT imei FROM devices WHERE company_id = $1 AND status IS DISTINCT FROM 'archived'", [companyId]);
+  return r.rows.map(x => x.imei);
+}
 // La mutarea unui vehicul în altă companie, curăță feed-ul vechi legat de el (notificări + constatări
 // agenți) — ca fosta companie să nu mai vadă reziduuri, iar noua companie să nu moștenească istoric străin.
 // Best-effort: o eroare aici nu blochează mutarea.
@@ -2621,7 +2626,7 @@ module.exports = {
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
-  getCompanyImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
+  getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,

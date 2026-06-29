@@ -140,7 +140,7 @@ function fallbackSummary(data) {
 // ─── Generare pentru o companie + salvare ───
 async function generateForCompany(deps, company, period) {
   const { db } = deps;
-  const imeis = await db.getCompanyImeis(company.id);
+  const imeis = await db.getCompanyActiveImeis(company.id); // exclude vehiculele ARHIVATE din raport (nu mai apar în counts/donut/top)
   if (!imeis || !imeis.length) return null;
   const data = await buildWeeklyData(deps, company.id, imeis, period.from, period.to);
   let ai_analysis = await aiAnalyze(deps, company.name, period, data);
