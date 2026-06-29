@@ -30,6 +30,8 @@ import { Billing } from './screens/Billing';
 import { AdminCompanies } from './screens/AdminCompanies';
 import { AdminDevices } from './screens/AdminDevices';
 import { AdminArchived } from './screens/AdminArchived';
+import { PlatformDashboard } from './screens/PlatformDashboard';
+import { CostControl } from './screens/CostControl';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -97,6 +99,8 @@ function Shell() {
         <Route path="/admin/companies" component={AdminCompanies} />
         <Route path="/admin/devices" component={AdminDevices} />
         <Route path="/admin/archived" component={AdminArchived} />
+        <Route path="/admin/platform" component={PlatformDashboard} />
+        <Route path="/admin/costs" component={CostControl} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}

@@ -78,9 +78,11 @@ export function Menu() {
         {u?.isSuper && (
           <>
             <div class="mn-sec">Platformă (super-admin)</div>
+            {item('chart', 'Dashboard platformă', () => loc.route('/admin/platform'))}
             {item('layers', 'Companii', () => loc.route('/admin/companies'))}
             {item('cpu', 'Dispozitive (toate)', () => loc.route('/admin/devices'))}
             {item('trash', 'Dispozitive arhivate', () => loc.route('/admin/archived'))}
+            {item('zap', 'Control costuri', () => loc.route('/admin/costs'))}
           </>
         )}
 

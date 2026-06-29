@@ -77,6 +77,21 @@ export const Api = {
   setCompanyPlan: (id: number, plan: string) => api<any>(`/api/companies/${id}/plan`, { method: 'PUT', body: { plan } }),
   companyPayments: (id: number) => api<any[]>(`/api/companies/${id}/payments`),
   setCompanyAccess: (id: number, until: number) => api<any>(`/api/companies/${id}/access`, { method: 'PUT', body: { until } }),
+  // ── Super-admin: Dashboard platformă ──
+  adminOverview: (days = 30) => api<any>(`/api/admin/overview?days=${days}`),
+  adminCounts: () => api<any>('/api/admin/counts'),
+  adminErrors: (limit = 50) => api<any[]>(`/api/admin/errors?limit=${limit}`),
+  clearAdminErrors: () => api('/api/admin/errors', { method: 'DELETE' }),
+  liveStats: () => api<any>('/api/debug/live-stats'),
+  // ── Super-admin: Control costuri ──
+  costs: () => api<any>('/api/admin/costs'),
+  createCost: (b: any) => api<any>('/api/admin/costs', { method: 'POST', body: b }),
+  updateCost: (id: number, b: any) => api<any>(`/api/admin/costs/${id}`, { method: 'PUT', body: b }),
+  deleteCost: (id: number) => api<any>(`/api/admin/costs/${id}`, { method: 'DELETE' }),
+  markCostPaid: (id: number, b?: any) => api<any>(`/api/admin/costs/${id}/paid`, { method: 'POST', body: b || {} }),
+  costRailway: () => api<any>('/api/admin/costs/railway'),
+  costCloudflare: () => api<any>('/api/admin/costs/cloudflare'),
+  costAnthropic: () => api<any>('/api/admin/costs/anthropic'),
   // ── Super-admin: Dispozitive (global) ──
   adminDevices: () => api<any[]>('/api/admin/devices'),
   unassignedDevices: () => api<any[]>('/api/unassigned-devices'),

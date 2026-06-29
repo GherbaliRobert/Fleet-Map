@@ -18,6 +18,15 @@
 .adm-act.danger { color: var(--red); }
 .adm-kv { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .adm-kv .k { color: var(--text-muted); }
+.adm-kv:last-child { border-bottom: none; }
+
+/* Dashboard super-admin (KPI grid + carduri) */
+.pf-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.pf-kpi { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px; }
+.pf-kpi .v { font-size: 23px; font-weight: 800; color: var(--accent); }
+.pf-kpi .l { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.pf-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.pf-card h3 { font-size: 12.5px; margin: 0 0 8px; color: var(--accent); text-transform: uppercase; letter-spacing: .4px; display: flex; align-items: center; justify-content: space-between; }
 
 .adm-item {
   display: flex; align-items: center; gap: 12px;
