@@ -28,6 +28,18 @@ function odo(p) { const i = io(p); let v = i.can_total_mileage; if (v == null) v
 function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = geocode.peek(p.latitude, p.longitude); if (a) return a; } return loc(p); }
 function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
 function ignOn(p) { return io(p).ignition === 1; }
+// Preț carburant — media națională auto (setată din server zilnic) + override pe tip via opts.priceByType.
+// Lanț: preț pe VEHICUL (c.price) → preț COMPANIE/efectiv (opts.priceByType[tip]) → media națională AUTO → opts.fuelPrice → 7.5.
+let _defaultPrices = {};
+function setDefaultFuelPrices(p) { if (p && typeof p === 'object') _defaultPrices = p; }
+function _ftKey(ft) { const s = String(ft || '').toLowerCase(); if (/benzin|petrol/.test(s)) return 'benzina'; if (/gpl|lpg|gaz/.test(s)) return 'gpl'; return 'motorina'; }
+function resolvePrice(c, opts) {
+  if (c && Number.isFinite(c.price)) return c.price;
+  const k = _ftKey(c && c.fuelType), pbt = opts && opts.priceByType;
+  if (pbt && Number.isFinite(pbt[k])) return pbt[k];
+  if (Number.isFinite(_defaultPrices[k])) return _defaultPrices[k];
+  return (opts && opts.fuelPrice) || 7.5;
+}
 
 async function history(db, imei, from, to) {
   return db.getDeviceHistory(imei, from, to);
@@ -785,7 +797,7 @@ async function rCostsTotal(db, imeis, from, to, opts, devMap) { // Costuri total
   } catch (e) {}
   const rows = []; let tFuel = 0, tSvc = 0, tDoc = 0, tKm = 0; const vTotal = [];
   for (const imei of imeis) {
-    const m = cm[imei] || { consumed: 0, dist: 0, price: opts.fuelPrice || 7.5 };
+    const m = cm[imei] || { consumed: 0, dist: 0, price: resolvePrice(null, opts) };
     const fuelCost = m.consumed * m.price;
     const svc = svcMap[imei] || 0, doc = docMap[imei] || 0;
     const total = fuelCost + svc + doc, perKm = m.dist > 1 ? total / m.dist : 0;
@@ -840,7 +852,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
   opts = opts || {};
   const refuelMin = opts.refuelMin || 10, idleLph = opts.idleLph || 1.5, MAX_PER100 = 200;
   const cfg = {};
-  try { (await db.pool.query('SELECT imei, fuel_price, vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices')).rows.forEach(d => { cfg[d.imei] = { price: parseFloat(d.fuel_price), vtype: d.vehicle_type || null, cRoad: parseFloat(d.consumption_road) || parseFloat(d.consumption_city) || null, cIdle: parseFloat(d.consumption_idle) || null }; }); } catch (e) {}
+  try { (await db.pool.query('SELECT imei, fuel_price, fuel_type, vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices')).rows.forEach(d => { cfg[d.imei] = { price: parseFloat(d.fuel_price), fuelType: d.fuel_type || null, vtype: d.vehicle_type || null, cRoad: parseFloat(d.consumption_road) || parseFloat(d.consumption_city) || null, cIdle: parseFloat(d.consumption_idle) || null }; }); } catch (e) {}
   const out = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
@@ -857,7 +869,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
       prevP = p;
     }
     const c = cfg[imei] || {};
-    const price = Number.isFinite(c.price) ? c.price : (opts.fuelPrice || 7.5);
+    const price = resolvePrice(c, opts);
     const cRoad = c.cRoad || defConsumption(c.vtype);
     const idleL = idleSec / 3600 * (c.cIdle || idleLph);
     const hasFuel = first != null;
@@ -1038,7 +1050,7 @@ async function fuelStats(db, imeis, from, to, opts) {
       prevP = p;
     }
     const c = cfg[imei] || {};
-    const price = c.price || 7.5;
+    const price = resolvePrice(c, opts);
     const cRoad = c.cRoad || c.cCity || defConsumption(c.vtype);  // L/100km pentru estimare
     const cIdleLph = c.cIdle || idleLph;                          // L/h ralanti
     const idleH = idleSec / 3600, idleL = idleH * cIdleLph;
@@ -1133,4 +1145,4 @@ async function analyzeZone(db, imeis, from, to, zone) {
     label: 'Analiză zonă', from, to };
 }
 
-module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack };
+module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack, setDefaultFuelPrices };

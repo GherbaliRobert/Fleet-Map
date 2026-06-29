@@ -147,6 +147,25 @@ let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
 let weeklyReports = null;
 try { weeklyReports = require('./weekly_report'); } catch (e) { console.warn('[WEEKLY] raport săptămânal indisponibil:', e.message); }
+let fuelprice = null;
+try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
+// Preț carburant: media națională (auto, zilnic, PretCarburant.ro CC BY 4.0) + override per companie.
+// Lanț în rapoarte: preț pe VEHICUL → preț COMPANIE (pe tipul lui) → AUTO național → 7.5.
+let _fuelAuto = null;
+function _applyFuelDefaults() { try { if (_fuelAuto) reports.setDefaultFuelPrices(_fuelAuto); } catch (e) {} } // propagă media națională în rapoarte
+async function _loadFuelAuto() { try { const raw = await db.getSetting('fuel_prices_auto'); if (raw) { _fuelAuto = JSON.parse(raw); _applyFuelDefaults(); } } catch (e) {} }
+async function refreshFuelPrices() {
+  if (!fuelprice) return;
+  try {
+    const p = await fuelprice.fetchFuelPrices();
+    if (p && (p.motorina || p.benzina)) { _fuelAuto = p; _applyFuelDefaults(); try { await db.setSetting('fuel_prices_auto', JSON.stringify(p)); } catch (e) {} console.log('[FUEL] preț ' + p.data + ': motorină ' + p.motorina + ' / benzină ' + p.benzina + ' / GPL ' + p.gpl + ' lei/L'); }
+  } catch (e) { console.warn('[FUEL] preluare preț eșuată:', e.message); }
+}
+function effectiveFuelPrices(companySettings) {
+  const a = _fuelAuto || {}; const co = (companySettings && companySettings.fuel_prices) || {};
+  const pick = function (x, y) { const v = parseFloat(x); return Number.isFinite(v) ? v : (Number.isFinite(y) ? y : null); };
+  return { motorina: pick(co.motorina, a.motorina), benzina: pick(co.benzina, a.benzina), gpl: pick(co.gpl, a.gpl) };
+}
 let billing = null, plans = null;
 try { billing = require('./billing'); plans = require('./plans'); } catch (e) { console.warn('[BILLING] indisponibil:', e.message); }
 let fleetQuick = null;
@@ -5571,12 +5590,14 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     if (imeis === null) return res.status(403).json({ error: 'Acces interzis' });
     const from = req.query.from || new Date(Date.now() - 7*24*3600*1000).toISOString();
     const to = req.query.to || new Date().toISOString();
+    const _cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
     const opts = {
       stopMin: parseInt(req.query.stopMin) || 5,
       limit: parseInt(req.query.limit) || 90,
       refuelMin: parseInt(req.query.refuelMin) || 10,
       dropMin: parseInt(req.query.dropMin) || 10,
-      geofenceId: parseInt(req.query.geofenceId) || null
+      geofenceId: parseInt(req.query.geofenceId) || null,
+      priceByType: effectiveFuelPrices(_cs)
     };
     // Tenant: super → null (toate zonele, by design); non-super → compania sa. Orphan non-super (companyId null)
     // primește -1 ca să NU cadă pe „toate" (getGeofences(-1) → 0 zone), evitând scurgerea numelor de zone străine.
@@ -5619,9 +5640,30 @@ app.get('/api/fuel-stats', requireAuth, requirePerm('viewReports'), withScope, a
     }
     const from = req.query.from || new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
     const to = req.query.to || new Date().toISOString();
-    const opts = { refuelMin: parseInt(req.query.refuelMin) || 10, bucket: req.query.bucket === 'month' ? 'month' : 'day' };
+    const _cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
+    const opts = { refuelMin: parseInt(req.query.refuelMin) || 10, bucket: req.query.bucket === 'month' ? 'month' : 'day', priceByType: effectiveFuelPrices(_cs) };
     res.json(await reports.fuelStats(db, imeis, from, to, opts));
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ─── Preț carburant: media națională auto (PretCarburant.ro) + override per companie ───
+app.get('/api/fuel-prices', requireAuth, withScope, async (req, res) => {
+  try {
+    const cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
+    res.json({ auto: _fuelAuto || null, company: (cs && cs.fuel_prices) || {}, effective: effectiveFuelPrices(cs), source: fuelprice ? fuelprice.SOURCE : 'PretCarburant.ro' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/company/fuel-prices', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (req.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie; setează prețul din fișa companiei.' });
+    const b = req.body || {}, clean = {};
+    ['motorina', 'benzina', 'gpl'].forEach(function (k) { if (b[k] === '' || b[k] == null) return; const v = parseFloat(b[k]); if (Number.isFinite(v) && v > 0 && v < 100) clean[k] = Math.round(v * 100) / 100; });
+    await db.setCompanySettings(req.companyId, { fuel_prices: clean });
+    auditReq(req, 'update', 'company-fuel-prices', req.companyId, clean);
+    res.json({ ok: true, company: clean, effective: effectiveFuelPrices(await db.getCompanySettings(req.companyId)) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/admin/fuel-prices/refresh', requireAuth, requireSuperadmin, async (req, res) => {
+  try { await refreshFuelPrices(); res.json({ ok: true, auto: _fuelAuto || null }); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Raport săptămânal de activitate a flotei (per companie, generat automat lunea, analizat AI) ───
@@ -6695,6 +6737,7 @@ async function start() {
   await db.initDb();
   initVapid();
   initFcm();
+  await _loadFuelAuto(); refreshFuelPrices(); setInterval(refreshFuelPrices, 12 * 60 * 60 * 1000); // preț carburant: la boot + de 2x/zi
 
   // Încarcă cheia AI salvată din UI (dacă nu e deja în env)
   try { if (!ai.aiEnabled()) { const k = await db.getSetting('anthropic_api_key'); if (k) { ai.setKey(k); console.log('[AI] Cheie Anthropic încărcată din setări'); } } } catch (e) {}
