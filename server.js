@@ -6548,7 +6548,22 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
     const io = (last && last.io_data) || {};
     const odometer_fields = {};
     for (const k of Object.keys(io)) if (/mileage|odometer|odo|distance/i.test(k)) odometer_fields[k] = io[k];
-    res.json({ vehicul: dev.name || dev.imei, imei: dev.imei, can_interface: canIface, ts: last && last.timestamp, odometer_fields: odometer_fields, all_io_keys: Object.keys(io).sort() });
+    // Debug „Ore funcționare azi": de ce engineOnTime = 0? Arată valorile reale de ignition + calculul.
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const todayH = await db.getDeviceHistory(dev.imei, dayStart.toISOString(), to.toISOString(), 10000);
+    let ignOn = 0, engineOnSec = 0, kmToday = 0; const ignitionValues = {};
+    for (let i = 0; i < todayH.length; i++) {
+      const rio = todayH[i].io_data || {}, iv = rio.ignition, key = JSON.stringify(iv) + ' (' + typeof iv + ')';
+      ignitionValues[key] = (ignitionValues[key] || 0) + 1;
+      const on = iv === 1 || iv === true; if (on) ignOn++;
+      if (i > 0) {
+        const pr = todayH[i - 1], prio = pr.io_data || {}, dt = (new Date(todayH[i].timestamp) - new Date(pr.timestamp)) / 1000;
+        if (dt > 0 && dt < 3600 && ((prio.ignition === 1 || prio.ignition === true) || on)) engineOnSec += dt;
+        const dd = haversineDistance(pr.latitude, pr.longitude, todayH[i].latitude, todayH[i].longitude); if (dd < 10) kmToday += dd;
+      }
+    }
+    const today_debug = { points: todayH.length, ignition_on_samples: ignOn, ignition_values_seen: ignitionValues, engine_on_sec: Math.round(engineOnSec), engine_on_fmt: Math.floor(engineOnSec / 3600) + 'h ' + Math.floor((engineOnSec % 3600) / 60) + 'm', km_today: +kmToday.toFixed(1) };
+    res.json({ vehicul: dev.name || dev.imei, imei: dev.imei, can_interface: canIface, ts: last && last.timestamp, last_ignition: io.ignition, odometer_fields: odometer_fields, today_debug: today_debug, all_io_keys: Object.keys(io).sort() });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/admin/ignition-check', requireAuth, requireSuperadmin, async (req, res) => {
