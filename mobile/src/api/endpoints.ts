@@ -92,6 +92,11 @@ export const Api = {
   costRailway: () => api<any>('/api/admin/costs/railway'),
   costCloudflare: () => api<any>('/api/admin/costs/cloudflare'),
   costAnthropic: () => api<any>('/api/admin/costs/anthropic'),
+  // ── Super-admin: Ofertare Live ──
+  offers: () => api<any[]>('/api/admin/offers'),
+  createOffer: (b: any) => api<any>('/api/admin/offers', { method: 'POST', body: b }),
+  updateOffer: (id: number, b: any) => api<any>(`/api/admin/offers/${id}`, { method: 'PUT', body: b }),
+  deleteOffer: (id: number) => api<any>(`/api/admin/offers/${id}`, { method: 'DELETE' }),
   // ── Super-admin: Dispozitive (global) ──
   adminDevices: () => api<any[]>('/api/admin/devices'),
   unassignedDevices: () => api<any[]>('/api/unassigned-devices'),

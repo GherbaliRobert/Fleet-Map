@@ -83,6 +83,7 @@ export function Menu() {
             {item('cpu', 'Dispozitive (toate)', () => loc.route('/admin/devices'))}
             {item('trash', 'Dispozitive arhivate', () => loc.route('/admin/archived'))}
             {item('zap', 'Control costuri', () => loc.route('/admin/costs'))}
+            {item('fileBar', 'Ofertare Live', () => loc.route('/admin/offers'))}
           </>
         )}
 
