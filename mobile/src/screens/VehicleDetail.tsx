@@ -260,8 +260,8 @@ export function VehicleDetail() {
                 <G label="Viteză GPS" value={(v?.speed || 0) + ' km/h'} cls={(v?.speed || 0) > 3 ? 'green' : ''} />
                 <G label="Direcție" value={getDirectionName(v?.angle)} />
                 {volt && <G label="Tensiune baterie" value={volt} />}
-                {rpm && <G label="Motor RPM" value={rpm} />}
-                {eng.value !== '—' && <G label={eng.label} value={eng.value + ' h'} />}
+                {ign && rpm && <G label="Motor RPM" value={rpm} />}{/* RPM doar cu motorul pornit */}
+                {daily?.engineOnTime != null && <G label="Ore funcționare azi" value={fmtDuration(daily.engineOnTime)} />}{/* timpul cu motorul pornit AZI, nu contorul total */}
                 {adblueVal && <G label="AdBlue" value={adblueVal} />}
                 <G label="Semnal GPS" value={gpsStandby ? 'În așteptare' : (v?.satellites != null ? gps.label + ' (' + v.satellites + ' sat.)' : gps.label)} />
                 <G label="Semnal GSM" value={gsm.label} />

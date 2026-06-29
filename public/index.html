@@ -7337,7 +7337,7 @@ const pozitii = await r.json();</code></pre>
             '<div class="info-item-label">Combustibil' + fuelSource + '</div>' +
           '</div>' +
         '</div>' +
-        (_isSuper ?
+        ((_isSuper && hasIgnition) ?  // RPM doar cu motorul pornit (cu contactul oprit e 0/stale)
         '<div class="info-item">' +
           '<div class="info-item-icon blue"><i class="fas fa-cog"></i></div>' +
           '<div class="info-item-text">' +
@@ -7358,8 +7358,8 @@ const pozitii = await r.json();</code></pre>
         '<div class="info-item">' +
           '<div class="info-item-icon blue"><i class="fas fa-clock"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value">' + engineHours + (engineHours !== '-' ? ' h' : '') + '</div>' +
-            '<div class="info-item-label">' + engineHoursLabel + '</div>' +
+            '<div class="info-item-value" id="detail-engine-hours">…</div>' +  // umplut din statisticile zilei (engineOnTime azi)
+            '<div class="info-item-label">Ore funcționare azi</div>' +
           '</div>' +
         '</div>' : '') +
 
@@ -7438,6 +7438,9 @@ const pozitii = await r.json();</code></pre>
         const stopH = Math.floor(s.stoppedTime / 3600);
         const stopM = Math.floor((s.stoppedTime % 3600) / 60);
         const lastIgn = s.lastIgnitionOn ? new Date(s.lastIgnitionOn).toLocaleString('ro-RO') : '-';
+        // „Ore funcționare azi" din grila principală = timpul cu motorul pornit AZI (engineOnTime), nu contorul total CAN.
+        var _eh = document.getElementById('detail-engine-hours');
+        if (_eh) _eh.textContent = (typeof s.engineOnTime === 'number' && s.engineOnTime > 0) ? formatDuration(s.engineOnTime) : '0h 0m';
 
         statsEl.innerHTML = '' +
           '<div style="border-top:1px solid var(--border);margin:8px 0;padding-top:10px;">' +
