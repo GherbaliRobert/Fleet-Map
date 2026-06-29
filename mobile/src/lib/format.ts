@@ -39,7 +39,9 @@ export function gsmQuality(sig?: number): { label: string; level: number } {
 }
 export function odometerKm(io?: any): number | null {
   if (!io) return null;
-  if (typeof io.can_total_mileage === 'number') return Math.round(io.can_total_mileage);
+  // CAN-ul (odometru real din bord) prioritar; total_odometer (GPS device, de la instalare) doar fallback.
+  if (typeof io.can_total_mileage === 'number' && io.can_total_mileage > 0) return Math.round(io.can_total_mileage);
+  if (typeof io.can_total_mileage_counted === 'number' && io.can_total_mileage_counted > 0) return Math.round(io.can_total_mileage_counted);
   if (typeof io.total_odometer === 'number') return Math.round(io.total_odometer / 1000);
   return null;
 }

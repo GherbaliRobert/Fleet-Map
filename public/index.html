@@ -7136,7 +7136,10 @@ const pozitii = await r.json();</code></pre>
       if (io.can_engine_total_hours !== undefined) { engineHours = String(Math.round(io.can_engine_total_hours)); }
       else if (io.can_engine_worktime) { engineHours = String(Math.floor(io.can_engine_worktime / 60)); engineHoursLabel = 'Ore funcționare motor'; }
       else if (io.can_engine_worktime_counted) { engineHours = String(Math.floor(io.can_engine_worktime_counted / 60)); engineHoursLabel = 'Ore funcționare motor'; }
-      const odometer = io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : (io.can_total_mileage !== undefined ? io.can_total_mileage.toFixed(1) + ' km' : '-');
+      // Odometru: CAN-ul (odometrul REAL din bord) are prioritate; total_odometer (GPS device, de la instalare) e doar fallback.
+      const _canMil = (typeof io.can_total_mileage === 'number' && io.can_total_mileage > 0) ? io.can_total_mileage
+        : ((typeof io.can_total_mileage_counted === 'number' && io.can_total_mileage_counted > 0) ? io.can_total_mileage_counted : null);
+      const odometer = _canMil != null ? _canMil.toFixed(1) + ' km' : (io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : '-');
       // Fuel level - prefer sonda Escort, fallback la CAN
       let fuelLevel = '-';
       let fuelLevelNum = null;

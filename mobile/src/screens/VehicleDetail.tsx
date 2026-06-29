@@ -383,8 +383,10 @@ function CanList({ io, adblueOk, showRaw }: { io: any; adblueOk?: boolean; showR
   const d = io || {};
   const ignOn = (d.ignition === 1 || d.ignition === true);
   const voltage = (typeof d.external_voltage === 'number' && d.external_voltage > 0) ? (d.external_voltage / 1000).toFixed(2) + ' V' : null;
-  const odo = (d.total_odometer != null) ? Math.round(d.total_odometer / 1000) + ' km'
-    : (d.can_total_mileage != null ? Math.round(d.can_total_mileage) + ' km' : null);
+  // Odometru: CAN-ul (real din bord) prioritar; total_odometer (GPS device) doar fallback.
+  const odo = (typeof d.can_total_mileage === 'number' && d.can_total_mileage > 0) ? Math.round(d.can_total_mileage) + ' km'
+    : (typeof d.can_total_mileage_counted === 'number' && d.can_total_mileage_counted > 0) ? Math.round(d.can_total_mileage_counted) + ' km'
+    : (d.total_odometer != null ? Math.round(d.total_odometer / 1000) + ' km' : null);
   // Combustibil o SINGURĂ dată (CAN prioritar față de sonda fuel_level) — fără dublură
   const fuel = (d.can_fuel_level_liters != null && d.can_fuel_level_liters > 0) ? Math.round(d.can_fuel_level_liters) + ' L'
     : (d.fuel_level_liters != null && d.fuel_level_liters > 0) ? Math.round(d.fuel_level_liters) + ' L' : null;
