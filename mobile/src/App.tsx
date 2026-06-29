@@ -33,6 +33,9 @@ import { AdminArchived } from './screens/AdminArchived';
 import { PlatformDashboard } from './screens/PlatformDashboard';
 import { CostControl } from './screens/CostControl';
 import { Offers } from './screens/Offers';
+import { Hotspot } from './screens/Hotspot';
+import { EToll } from './screens/EToll';
+import { Settings } from './screens/Settings';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -103,6 +106,9 @@ function Shell() {
         <Route path="/admin/platform" component={PlatformDashboard} />
         <Route path="/admin/costs" component={CostControl} />
         <Route path="/admin/offers" component={Offers} />
+        <Route path="/hotspot" component={Hotspot} />
+        <Route path="/etoll" component={EToll} />
+        <Route path="/settings" component={Settings} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}

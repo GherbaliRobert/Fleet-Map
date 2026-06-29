@@ -56,9 +56,9 @@ export function Menu() {
         {u?.features?.etransport
           ? item('truck', 'e-Transport (ANAF)', () => loc.route('/etransport'))
           : soon('truck', 'e-Transport (ANAF)')}
-        {soon('flame', 'E-Toll & Roviniete')}
+        {item('flame', 'E-Toll & Roviniete', () => loc.route('/etoll'))}
         {u?.features?.tahograf && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
-        {soon('mapPin', 'Hotspot & Rutare')}
+        {perms.viewReports && item('mapPin', 'Hotspot & Rutare', () => loc.route('/hotspot'))}
 
         {(perms.manageFleet || perms.manageUsers) && (
           <>
@@ -90,10 +90,11 @@ export function Menu() {
         <div class="mn-sec">Cont & setări</div>
         {item(theme.value === 'dark' ? 'moon' : 'sun', 'Temă', () => toggleTheme(), theme.value === 'dark' ? 'Întunecat' : 'Luminos')}
         {item('bell', 'Preferințe notificări', () => loc.route('/notif-prefs'))}
+        {(perms.manageFleet || perms.manageUsers) && item('settings', 'Setări companie', () => loc.route('/settings'))}
         {item('headset', 'Suport clienți', () => setSupport(true))}
         {item('logout', 'Deconectare', () => logout(), null, 'danger')}
 
-        <div class="mn-foot">RA Tracks · v0.1<br />Modulele (e-Transport, E-Toll, Tahograf, Hotspot) sosesc în curând.</div>
+        <div class="mn-foot">RA Tracks · v0.1</div>
       </div>
 
       {support && (

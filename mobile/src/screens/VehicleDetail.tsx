@@ -110,6 +110,7 @@ export function VehicleDetail() {
       driver_id: (full as any)?.driver_id != null ? String((full as any).driver_id) : '',
       group_id: (full as any)?.group_id != null ? String((full as any).group_id) : '',
       can_interface: (full as any)?.can_interface || '',
+      ignition_source: (full as any)?.ignition_source || '',
     });
     setEditOpen(true);
     if (!drivers.length) Api.driversLite().then((d) => setDrivers(Array.isArray(d) ? d : [])).catch(() => {});
@@ -120,7 +121,7 @@ export function VehicleDetail() {
   async function saveEdit() {
     setSavingEdit(true);
     try {
-      await Api.updateDevice(imei, { name: ef.name || null, plate: ef.plate || null, vehicle_type: ef.vehicle_type || null });
+      await Api.updateDevice(imei, Object.assign({ name: ef.name || null, plate: ef.plate || null, vehicle_type: ef.vehicle_type || null }, me.value?.isSuper ? { ignition_source: ef.ignition_source || null } : {}));
       await Api.assignDevice(imei, ef.driver_id ? Number(ef.driver_id) : null, ef.group_id ? Number(ef.group_id) : null);
       if (me.value?.isSuper) await Api.setCanInterface(imei, ef.can_interface || null).catch(() => {}); // doar super-admin
       showToast('Vehicul actualizat');
@@ -345,6 +346,15 @@ export function VehicleDetail() {
                       <option value="tacho">Tahograf direct (DSRC)</option>
                     </select>
                     <div style="font-size:11px;color:var(--text-muted);margin-top:3px">„FMS" la camioane cu FMC650 — altfel RPM/combustibil/temperatură pot fi greșit decodate. Se aplică pachetelor noi.</div>
+                  </div>
+                )}
+                {me.value?.isSuper && (
+                  <div class="fld"><label>Sursă contact <span style="color:var(--accent);font-size:10px">super-admin</span></label>
+                    <select value={ef.ignition_source} onChange={(e) => setEF('ignition_source', (e.target as HTMLSelectElement).value)}>
+                      <option value="">Automat (IO 239, implicit)</option>
+                      <option value="din1">DIN1 (intrare digitală 1)</option>
+                    </select>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:3px">Folosește „DIN1" doar dacă contactul vine pe intrarea digitală, nu pe IO 239.</div>
                   </div>
                 )}
                 <div class="frm-actions">

@@ -92,6 +92,20 @@ export const Api = {
   costRailway: () => api<any>('/api/admin/costs/railway'),
   costCloudflare: () => api<any>('/api/admin/costs/cloudflare'),
   costAnthropic: () => api<any>('/api/admin/costs/anthropic'),
+  // ── Module + Setări (companie) ──
+  hotspot: (from: string, to: string, imeis?: string[], mode = 'stops', stopMin = 5) => {
+    const e = encodeURIComponent;
+    let q = `?from=${e(from)}&to=${e(to)}&mode=${mode}&stopMin=${stopMin}`;
+    if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
+    return api<[number, number, number][]>(`/api/hotspot${q}`);
+  },
+  etollCosts: (imei?: string, days = 30) => api<any>(`/api/etoll/costs?days=${days}${imei ? '&imei=' + encodeURIComponent(imei) : ''}`),
+  etollProviders: () => api<any>('/api/etoll/providers'),
+  fuelPrices: () => api<any>('/api/fuel-prices'),
+  setFuelPrices: (b: any) => api<any>('/api/company/fuel-prices', { method: 'PUT', body: b }),
+  refreshFuelPrices: () => api<any>('/api/admin/fuel-prices/refresh', { method: 'POST', body: {} }), // super-admin
+  companySettings: () => api<any>('/api/companies/me/settings'),
+  saveCompanySettings: (b: any) => api<any>('/api/companies/me/settings', { method: 'PUT', body: b }),
   // ── Super-admin: Ofertare Live ──
   offers: () => api<any[]>('/api/admin/offers'),
   createOffer: (b: any) => api<any>('/api/admin/offers', { method: 'POST', body: b }),
