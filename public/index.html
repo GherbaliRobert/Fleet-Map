@@ -12421,14 +12421,16 @@ const pozitii = await r.json();</code></pre>
         '<div style="font-size:12px;color:var(--text-muted);margin:4px 0 16px;">cheltuit luna aceasta (USD)</div>' +
         '<div style="border-top:1px solid var(--border);padding-top:12px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-coins"></i> Sold credite</div>' +
         soldBlock +
-        '<div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;"><span style="font-size:11px;color:var(--text-muted);">Credite ($):</span><input id="rax-ancredit" class="rax-field" type="number" min="0" step="0.01" value="' + (creditUsd || '') + '" placeholder="ex. 4.92" style="width:90px;margin:0;"><span style="font-size:11px;color:var(--text-muted);">la data:</span><input id="rax-ancreditdate" class="rax-field" type="date" value="' + esc(creditDate) + '" style="width:150px;margin:0;"><button class="rax-btn" style="padding:4px 10px;font-size:11px;" onclick="raxSaveAnthropicCredit()">Salvează</button></div></div>' +
+        '<div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;"><span style="font-size:11px;color:var(--text-muted);">Credite ($):</span><input id="rax-ancredit" class="rax-field" type="number" min="0" step="0.01" value="' + (creditUsd || '') + '" placeholder="ex. 4.92" style="width:90px;margin:0;"><span style="font-size:11px;color:var(--text-muted);">la data:</span><input id="rax-ancreditdate" class="rax-field" type="date" value="' + esc(creditDate) + '" max="' + new Date().toISOString().slice(0, 10) + '" style="width:150px;margin:0;"><button class="rax-btn" style="padding:4px 10px;font-size:11px;" onclick="raxSaveAnthropicCredit()">Salvează</button></div></div>' +
         wsHtml;
     };
     window.raxSaveAnthropicCredit = async function () {
       var c = parseFloat((document.getElementById('rax-ancredit') || {}).value);
       var dt = (document.getElementById('rax-ancreditdate') || {}).value;
       if (!Number.isFinite(c) || c < 0) { if (window.raxToast) raxToast('Sold invalid', 'error'); return; }
-      if (!dt || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) { dt = new Date().toISOString().slice(0, 10); } // implicit azi dacă data lipsește
+      var _today = new Date().toISOString().slice(0, 10);
+      if (!dt || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) { dt = _today; } // implicit azi dacă data lipsește
+      if (dt > _today) dt = _today; // nu permite date în viitor (ar da interval invalid la cost_report)
       try {
         var r = await fetch('/api/admin/system-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ anthropic_credit_usd: c, anthropic_credit_date: dt }) });
         var j = await r.json().catch(function () { return {}; });

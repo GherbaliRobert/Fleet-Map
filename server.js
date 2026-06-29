@@ -6272,6 +6272,7 @@ async function fetchAnthropicSpend(startingAtISO) {
   const endExclusive = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
   const startingAt = startingAtISO || startOfMonth.toISOString().replace(/\.\d{3}Z$/, 'Z');
   const endingAt = endExclusive.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  if (Date.parse(startingAt) >= Date.parse(endingAt)) return { configured: true, spentUsd: 0 }; // interval invalid (dată în viitor) → 0 cheltuit, fără apel API
   const _ck = startingAt; const _cc = _anthSpendCache.get(_ck);
   if (_cc && (Date.now() - _cc.at) < 60000) return _cc.data; // rezultat proaspăt din cache
   const BASE = 'https://api.anthropic.com/v1/organizations/cost_report';
