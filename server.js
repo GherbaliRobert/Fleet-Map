@@ -4110,6 +4110,21 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
       fuelConsumed = Math.max(0, Math.round(consumed * 10) / 10);
     }
 
+    // Fallback ESTIMARE pentru vehicule FĂRĂ senzor de combustibil (ex. Dacia Logan): km × consum (config) + ralanti.
+    // Fără senzor, hasFuelData=false → fuelConsumed rămânea null și „Consum azi" dispărea complet. Estimăm onest (marcat fuelEstimated).
+    let fuelEstimated = false;
+    if (fuelConsumed === null && (globalTotalKm > 0.2 || globalEngineIdleTime > 60)) {
+      try {
+        const dc = (await db.pool.query('SELECT vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices WHERE imei = $1', [imei])).rows[0] || {};
+        const vt = String(dc.vehicle_type || '').toLowerCase();
+        const cDef = /truck|camion|tir|lorry|tractor|autotractor/.test(vt) ? 30 : /bus|autobuz|autocar/.test(vt) ? 28 : /van|dub|autoutil|furgon|utilitar/.test(vt) ? 12 : 9;
+        const cRoad = parseFloat(dc.consumption_road) || parseFloat(dc.consumption_city) || cDef; // L/100km
+        const cIdle = parseFloat(dc.consumption_idle) || 1.0;                                     // L/h ralanti
+        const est = (globalTotalKm * cRoad / 100) + ((globalEngineIdleTime || 0) / 3600 * cIdle);
+        if (est > 0.05) { fuelConsumed = Math.round(est * 10) / 10; fuelEstimated = true; }
+      } catch (e) {}
+    }
+
     // Calcul consum per zi folosind aceeasi formula (first - last + refueled)
     for (const dayKey of Object.keys(dailyFuel)) {
       const d = dailyFuel[dayKey];
@@ -4155,6 +4170,7 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
       maxSpeed: globalMaxSpeed,
       stops: globalStops,
       fuelConsumed,
+      fuelEstimated,
       avgConsumption,
       fuelStartLevel: firstFuelLevel !== null ? Math.round(firstFuelLevel * 10) / 10 : null,
       fuelEndLevel: lastFuelLevel !== null ? Math.round(lastFuelLevel * 10) / 10 : null,
@@ -4167,7 +4183,8 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
       routeCount: routes.length
     };
 
-    res.json({ imei, from, to, routes, summary });
+    // Răspuns PLAT (consumatorii web + mobil citesc câmpurile direct: s.totalKm, s.fuelConsumed…) + `summary` păstrat pt. compat.
+    res.json({ imei, from, to, routes, summary, ...summary });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

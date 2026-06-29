@@ -7447,7 +7447,7 @@ const pozitii = await r.json();</code></pre>
               '<div class="info-item"><div class="info-item-label">Opriri</div><div class="info-item-value">' + s.stops + '</div></div>' +
               '<div class="info-item"><div class="info-item-label">Timp in miscare</div><div class="info-item-value">' + movH + 'h ' + movM + 'm</div></div>' +
               '<div class="info-item"><div class="info-item-label">Timp stationare</div><div class="info-item-value">' + stopH + 'h ' + stopM + 'm</div></div>' +
-              (s.fuelConsumed !== null ? '<div class="info-item"><div class="info-item-label">Consum azi</div><div class="info-item-value orange">' + s.fuelConsumed + ' L</div></div>' : '') +
+              (s.fuelConsumed !== null ? '<div class="info-item"><div class="info-item-label">Consum azi' + (s.fuelEstimated ? ' (est.)' : '') + '</div><div class="info-item-value orange">' + s.fuelConsumed + ' L</div></div>' : '') +
               '<div class="info-item"><div class="info-item-label">Recorduri GPS</div><div class="info-item-value" style="color:var(--text-muted);">' + s.recordCount + '</div></div>' +
             '</div>' +
             '<div style="margin-top:6px;">' +
