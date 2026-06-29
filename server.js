@@ -3676,26 +3676,30 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
 
           if ((row.speed || 0) > maxSpeed) maxSpeed = row.speed;
 
-          // Fuel tracking
-          const fl = io.can_fuel_level_liters;
-          if (fl !== undefined && fl > 0) {
+          // Fuel tracking — câmpul REZOLVAT (orice senzor), nu doar CAN
+          const fl = (typeof io.fuel_level_liters === 'number') ? io.fuel_level_liters : io.can_fuel_level_liters;
+          if (typeof fl === 'number' && fl > 0) {
             if (firstFuelLevel === null) firstFuelLevel = fl;
             lastFuelLevel = fl;
           }
         }
 
-        // Fuel consumed = drops only
+        // Consum = (primul − ultimul nivel) + alimentări, din câmpul REZOLVAT (fuel_level_liters), ca în rapoarte.
+        // Înainte folosea doar can_fuel_level_liters + prag per-segment 0.5L → rata senzorii non-CAN și consumul mic gradual.
         let deviceFuel = 0;
-        let prevFL = null;
-        for (const row of history) {
-          const fl = (row.io_data || {}).can_fuel_level_liters;
-          if (fl !== undefined && fl > 0) {
-            if (prevFL !== null) {
-              const diff = prevFL - fl;
-              if (diff > 0.5) deviceFuel += diff;
+        {
+          let firstFL = null, lastFL = null, refueled = 0, prevFL = null;
+          for (const row of history) {
+            const rio = row.io_data || {};
+            const fl = (typeof rio.fuel_level_liters === 'number') ? rio.fuel_level_liters : rio.can_fuel_level_liters;
+            if (typeof fl === 'number' && fl > 0) {
+              if (firstFL === null) firstFL = fl;
+              lastFL = fl;
+              if (prevFL !== null && (fl - prevFL) > 5) refueled += (fl - prevFL); // alimentare detectată
+              prevFL = fl;
             }
-            prevFL = fl;
           }
+          if (firstFL !== null && lastFL !== null) deviceFuel = Math.max(0, (firstFL - lastFL) + refueled);
         }
 
         km = Math.round(km * 100) / 100;
