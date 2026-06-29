@@ -33,8 +33,9 @@ function ignOn(p) { return io(p).ignition === 1; }
 let _defaultPrices = {};
 function setDefaultFuelPrices(p) { if (p && typeof p === 'object') _defaultPrices = p; }
 function _ftKey(ft) { const s = String(ft || '').toLowerCase(); if (/benzin|petrol/.test(s)) return 'benzina'; if (/gpl|lpg|gaz/.test(s)) return 'gpl'; return 'motorina'; }
-// Factor CO₂ ars (kg / litru) pe tip de combustibil — diesel ≠ benzină ≠ GPL. GPL emite ~1.51 kg/L, NU 2.64 (diesel).
-const _CO2_PER_L = { motorina: 2.64, benzina: 2.31, gpl: 1.51 };
+// Factor CO₂ ars (kg / litru), tank-to-wheel — valori standard DEFRA/EPA pe tip de combustibil.
+// Diesel 2.68 · Benzină 2.31 · GPL 1.55. (Diesel ≠ GPL: GPL arde ~1.55, nu 2.68.)
+const _CO2_PER_L = { motorina: 2.68, benzina: 2.31, gpl: 1.55 };
 function co2For(fuelType, opts) { if (opts && opts.co2Factor) return opts.co2Factor; return _CO2_PER_L[_ftKey(fuelType)] || 2.64; }
 function resolvePrice(c, opts) {
   if (c && Number.isFinite(c.price)) return c.price;
