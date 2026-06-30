@@ -23,7 +23,7 @@ const crypto = require('crypto');
 const BUSINESS_TABLES = [
   'companies', 'users', 'user_device_access', 'user_group_access', 'drivers',
   'devices', 'device_groups', 'geofences', 'alerts', 'alert_history', 'maintenance',
-  'vehicle_documents', 'notifications', 'notification_prefs', 'push_subscriptions', 'device_tokens',
+  'vehicle_documents', 'fuel_transactions', 'notifications', 'notification_prefs', 'push_subscriptions', 'device_tokens',
   'payments', 'platform_costs', 'costs_payments', 'offers', 'agent_findings',
   'weekly_reports', 'report_schedules', 'report_history', 'api_keys', 'webhooks',
   'tacho_files', 'etransport', 'settings', 'ai_usage', 'ui_prefs', 'trips', 'audit_log',

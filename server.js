@@ -2785,6 +2785,108 @@ app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, requir
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.deleteEtransport(parseInt(req.params.id)); auditReq(req, 'delete', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Card combustibil: alimentări + reconciliere cu nivelul CAN (detecție furt) — manageFleet ───
+// Reconciliază o alimentare: compară litrii cumpărați cu CREȘTEREA reală a nivelului CAN din rezervor,
+// în fereastra ±3h (absoarbe fusul orar al bonului + decalajul moment-bon vs moment-alimentare). Status:
+//   reconciliat = rezervorul a crescut ~cât scrie pe bon · suspect = NU a crescut (posibil furt) · partial = a crescut mai puțin · fara_can = fără citiri CAN.
+async function reconcileFuelTx(tx) {
+  if (!tx.imei || !tx.ts || !(Number(tx.liters) > 0)) return { status: tx.imei ? 'nou' : 'fara_can', tankDelta: null };
+  const from = Number(tx.ts) - 3 * 3600 * 1000, to = Number(tx.ts) + 3 * 3600 * 1000;
+  let rows;
+  try { rows = await db.getDeviceHistory(tx.imei, from, to, 5000); } catch (e) { return { status: 'fara_can', tankDelta: null }; }
+  const fuelOf = (io) => { if (!io) return null; const v = (typeof io.fuel_level_liters === 'number') ? io.fuel_level_liters : io.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; };
+  const reads = [];
+  for (const r of rows) { const f = fuelOf(r.io_data); if (f != null) reads.push(f); }
+  if (reads.length < 2) return { status: 'fara_can', tankDelta: null };
+  let minF = Infinity, minIdx = 0;
+  for (let i = 0; i < reads.length; i++) if (reads[i] < minF) { minF = reads[i]; minIdx = i; }
+  let maxAfter = -Infinity;
+  for (let i = minIdx; i < reads.length; i++) if (reads[i] > maxAfter) maxAfter = reads[i];
+  const rise = Math.max(0, maxAfter - minF), L = Number(tx.liters);
+  let status = (rise >= L * 0.6) ? 'reconciliat' : (rise < L * 0.3 ? 'suspect' : 'partial');
+  return { status, tankDelta: Math.round(rise * 10) / 10 };
+}
+function _fcNum(s) { if (s == null) return null; const v = parseFloat(String(s).replace(/\s/g, '').replace(',', '.')); return Number.isFinite(v) ? v : null; }
+function _fcDate(s) {
+  if (!s) return null; s = String(s).trim();
+  let m = /^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})(?:[ T](\d{1,2}):(\d{2}))?/.exec(s);
+  if (m) { let y = +m[3]; if (y < 100) y += 2000; return Date.UTC(y, +m[2] - 1, +m[1], +(m[4] || 12), +(m[5] || 0)); }
+  m = /^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(s);
+  if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 12), +(m[5] || 0));
+  const t = Date.parse(s); return Number.isFinite(t) ? t : null;
+}
+// Parser CSV generic: delimiter ; , sau tab; antet RO/EN auto-detectat.
+function parseFuelCsv(text) {
+  const lines = String(text || '').split(/\r?\n/).filter((l) => l.trim().length);
+  if (lines.length < 2) return [];
+  const semis = (lines[0].match(/;/g) || []).length, commas = (lines[0].match(/,/g) || []).length, tabs = (lines[0].match(/\t/g) || []).length;
+  const delim = tabs > semis && tabs > commas ? '\t' : (semis >= commas ? ';' : ',');
+  const split = (l) => l.split(delim).map((c) => c.trim().replace(/^"|"$/g, ''));
+  const head = split(lines[0]).map((h) => h.toLowerCase());
+  const find = (...names) => { for (const n of names) { const i = head.findIndex((h) => h.indexOf(n) >= 0); if (i >= 0) return i; } return -1; };
+  const ci = {
+    date: find('data', 'date', 'dată', 'datum'), liters: find('litri', 'liter', 'cantitate', 'quantity', 'qty', 'volum'),
+    amount: find('suma', 'sumă', 'valoare', 'amount', 'total', 'pret', 'preț'), station: find('statie', 'stație', 'station', 'locat', 'denumire'),
+    plate: find('inmatricul', 'înmatricul', 'plate', 'nr', 'numar', 'număr', 'vehicul', 'reg'), card: find('card'), country: find('tara', 'țară', 'country', 'tară'),
+  };
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const c = split(lines[i]);
+    const liters = ci.liters >= 0 ? _fcNum(c[ci.liters]) : null, ts = ci.date >= 0 ? _fcDate(c[ci.date]) : null;
+    if (!liters && !ts) continue;
+    out.push({ ts, liters, amount: ci.amount >= 0 ? _fcNum(c[ci.amount]) : null, station: ci.station >= 0 ? c[ci.station] : null, plate: ci.plate >= 0 ? c[ci.plate] : null, card_number: ci.card >= 0 ? c[ci.card] : null, country: ci.country >= 0 ? c[ci.country] : null });
+  }
+  return out;
+}
+
+app.get('/api/fuel-transactions', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try { res.json(await db.listFuelTransactions(req.companyId, { imei: req.query.imei, from: req.query.from, to: req.query.to })); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/fuel-transactions', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const b = req.body || {};
+    let imei = b.imei || null;
+    if (!imei && b.plate) imei = await db.getDeviceImeiByPlate(b.plate, req.companyId);
+    const tx = { imei, driver_id: b.driver_id || null, ts: b.ts ? Number(b.ts) : (b.date ? _fcDate(b.date) : null), station: b.station || null, country: b.country || null, liters: b.liters != null ? Number(b.liters) : null, amount: b.amount != null ? Number(b.amount) : null, currency: b.currency || 'RON', card_number: b.card_number || null, source: 'manual', note: b.note || null };
+    const rec = await reconcileFuelTx(tx); tx.status = rec.status; tx.tank_delta = rec.tankDelta;
+    const row = await db.createFuelTransaction(tx, req.companyId);
+    auditReq(req, 'create', 'fuel-tx', row.id);
+    res.json(row);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/fuel-transactions/import', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const parsed = parseFuelCsv((req.body && req.body.csv) || '');
+    if (!parsed.length) return res.status(400).json({ error: 'CSV gol sau format necunoscut (antet așteptat: data, litri, sumă, înmatriculare, stație…)' });
+    let imported = 0, noVeh = 0;
+    for (const p of parsed.slice(0, 5000)) {
+      const imei = p.plate ? await db.getDeviceImeiByPlate(p.plate, req.companyId) : null;
+      if (p.plate && !imei) noVeh++;
+      await db.createFuelTransaction({ imei, ts: p.ts, station: p.station, country: p.country, liters: p.liters, amount: p.amount, card_number: p.card_number, source: 'csv', status: 'nou' }, req.companyId);
+      imported++;
+    }
+    auditReq(req, 'import', 'fuel-tx', null, { count: imported });
+    res.json({ ok: true, imported, unmatchedPlate: noVeh });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/fuel-transactions/reconcile', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const rows = await db.listFuelTransactions(req.companyId, { limit: 1500 });
+    let reconciled = 0, suspect = 0;
+    for (const tx of rows) {
+      const rec = await reconcileFuelTx(tx);
+      await db.setFuelTxReconcile(tx.id, rec.status, rec.tankDelta, req.companyId);
+      reconciled++; if (rec.status === 'suspect') suspect++;
+    }
+    res.json({ ok: true, reconciled, suspect });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/fuel-transactions/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try { await db.deleteFuelTransaction(parseInt(req.params.id), req.companyId); auditReq(req, 'delete', 'fuel-tx', req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Webhooks (integrare ERP/TMS) — CRUD per companie (admin) ───
 app.get('/api/webhooks', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {

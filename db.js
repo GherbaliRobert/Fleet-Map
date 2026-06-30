@@ -369,6 +369,30 @@ async function initDb() {
       )
     `);
 
+    // Alimentări card combustibil (import CSV / manual) + reconciliere cu nivelul CAN al rezervorului (detecție furt)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS fuel_transactions (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER,
+        imei VARCHAR(20),
+        driver_id INTEGER,
+        ts BIGINT,
+        station TEXT,
+        country VARCHAR(8),
+        liters DECIMAL(10,2),
+        amount DECIMAL(10,2),
+        currency VARCHAR(8) DEFAULT 'RON',
+        card_number VARCHAR(40),
+        source VARCHAR(20) DEFAULT 'manual',
+        status VARCHAR(16) DEFAULT 'nou',
+        tank_delta DECIMAL(10,2),
+        note TEXT,
+        created_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_fuel_tx_company ON fuel_transactions(company_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_fuel_tx_imei_ts ON fuel_transactions(imei, ts)`);
+
     // Documente vehicul (ITP, RCA, CASCO, Rovinietă, licențe etc.) cu dată expirare
     await client.query(`
       CREATE TABLE IF NOT EXISTS vehicle_documents (
@@ -2454,6 +2478,40 @@ async function deleteMaintenance(id) {
   await pool.query('DELETE FROM maintenance WHERE id = $1', [id]);
 }
 
+// ─── Card combustibil (alimentări + reconciliere cu nivelul CAN) ───
+async function listFuelTransactions(companyId, opts = {}) {
+  let q = 'SELECT ft.*, d.plate, d.name AS vehicle_name FROM fuel_transactions ft LEFT JOIN devices d ON d.imei = ft.imei WHERE ft.company_id IS NOT DISTINCT FROM $1';
+  const p = [companyId || null];
+  if (opts.imei) { p.push(opts.imei); q += ' AND ft.imei = $' + p.length; }
+  if (opts.from) { p.push(parseInt(opts.from)); q += ' AND ft.ts >= $' + p.length; }
+  if (opts.to) { p.push(parseInt(opts.to)); q += ' AND ft.ts <= $' + p.length; }
+  p.push(Math.min(parseInt(opts.limit) || 2000, 5000));
+  q += ' ORDER BY ft.ts DESC NULLS LAST LIMIT $' + p.length;
+  const r = await pool.query(q, p);
+  return r.rows;
+}
+async function createFuelTransaction(d, companyId) {
+  const r = await pool.query(
+    `INSERT INTO fuel_transactions (company_id, imei, driver_id, ts, station, country, liters, amount, currency, card_number, source, status, tank_delta, note, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+    [companyId || null, d.imei || null, d.driver_id || null, d.ts || null, d.station || null, d.country || null,
+      d.liters != null ? d.liters : null, d.amount != null ? d.amount : null, d.currency || 'RON', d.card_number || null,
+      d.source || 'manual', d.status || 'nou', d.tank_delta != null ? d.tank_delta : null, d.note || null, Date.now()]
+  );
+  return r.rows[0];
+}
+async function deleteFuelTransaction(id, companyId) {
+  await pool.query('DELETE FROM fuel_transactions WHERE id = $1 AND company_id IS NOT DISTINCT FROM $2', [id, companyId || null]);
+}
+async function setFuelTxReconcile(id, status, tankDelta, companyId) {
+  await pool.query('UPDATE fuel_transactions SET status = $2, tank_delta = $3 WHERE id = $1 AND company_id IS NOT DISTINCT FROM $4', [id, status, tankDelta, companyId || null]);
+}
+async function getDeviceImeiByPlate(plate, companyId) {
+  if (!plate) return null;
+  const r = await pool.query("SELECT imei FROM devices WHERE company_id IS NOT DISTINCT FROM $2 AND UPPER(REPLACE(plate,' ','')) = UPPER(REPLACE($1,' ','')) LIMIT 1", [String(plate), companyId || null]);
+  return r.rows[0] ? r.rows[0].imei : null;
+}
+
 // io_data de la ultima poziție a unui vehicul (pentru odometru CAN la finalizare/alerte km)
 async function getLastIo(imei) {
   try {
@@ -2716,5 +2774,6 @@ module.exports = {
   getAlerts, createAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
+  listFuelTransactions, createFuelTransaction, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,
   getVehicleDocuments, createVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
 };

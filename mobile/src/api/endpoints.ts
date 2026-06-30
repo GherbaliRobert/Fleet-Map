@@ -85,6 +85,12 @@ export const Api = {
   liveStats: () => api<any>('/api/debug/live-stats'),
   backupStatus: () => api<any>('/api/admin/backup/status'),
   backupRun: () => api<any>('/api/admin/backup/run', { method: 'POST' }),
+  // ── Card combustibil (alimentări + reconciliere) ──
+  fuelTransactions: () => api<any[]>('/api/fuel-transactions'),
+  addFuelTx: (b: any) => api<any>('/api/fuel-transactions', { method: 'POST', body: b }),
+  importFuelCsv: (csv: string) => api<any>('/api/fuel-transactions/import', { method: 'POST', body: { csv } }),
+  reconcileFuel: () => api<any>('/api/fuel-transactions/reconcile', { method: 'POST' }),
+  deleteFuelTx: (id: number) => api(`/api/fuel-transactions/${id}`, { method: 'DELETE' }),
   // ── Super-admin: Control costuri ──
   costs: () => api<any>('/api/admin/costs'),
   createCost: (b: any) => api<any>('/api/admin/costs', { method: 'POST', body: b }),

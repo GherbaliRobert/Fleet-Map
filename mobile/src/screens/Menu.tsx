@@ -67,6 +67,7 @@ export function Menu() {
             {perms.manageFleet && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
             {perms.manageFleet && item('wrench', 'Mentenanță', () => loc.route('/admin/maintenance'))}
             {perms.manageFleet && item('report', 'Documente vehicule', () => loc.route('/admin/documents'))}
+            {perms.manageFleet && item('droplet', 'Card combustibil', () => loc.route('/fuelcard'))}
             {perms.manageFleet && item('truck', 'Vehicule (editare fișă)', () => loc.route('/vehicles'))}
             {perms.manageFleet && item('alert', 'Alerte', () => loc.route('/admin/alerts'))}
             {perms.manageUsers && item('user', 'Utilizatori', () => loc.route('/admin/users'))}

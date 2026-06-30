@@ -36,6 +36,7 @@ import { Offers } from './screens/Offers';
 import { Hotspot } from './screens/Hotspot';
 import { EToll } from './screens/EToll';
 import { Settings } from './screens/Settings';
+import { FuelCard } from './screens/FuelCard';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -109,6 +110,7 @@ function Shell() {
         <Route path="/hotspot" component={Hotspot} />
         <Route path="/etoll" component={EToll} />
         <Route path="/settings" component={Settings} />
+        <Route path="/fuelcard" component={FuelCard} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}

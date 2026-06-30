@@ -102,6 +102,7 @@
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('alerts'); })"><i class="fas fa-bell"></i><span>Alerte</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('maintenance'); })"><i class="fas fa-wrench"></i><span>Mentenanță</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('documente'); })"><i class="fas fa-file-contract"></i><span>Documente</span></button>
+            <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('fuelcard'); })"><i class="fas fa-credit-card"></i><span>Card combustibil</span></button>
             <button class="nav-item nav-sub feat-tacho" onclick="navGo(this, function(){ goManage('tacho'); })"><i class="fas fa-id-card"></i><span>Tahograf</span></button>
             <button class="nav-item nav-sub feat-etransport" onclick="navGo(this, function(){ goManage('etransport'); })"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('etoll'); })"><i class="fas fa-road"></i><span>E-Toll</span></button>
@@ -1862,6 +1863,14 @@ const pozitii = await r.json();</code></pre>
       <h2><span><i class="fas fa-sliders-h" style="margin-right:8px;color:var(--accent);"></i> Setări</span>
         <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button></h2>
       <div id="settings-host"></div>
+    </div>
+  </div>
+
+  <div id="fuelcard-view" class="modal-overlay">
+    <div class="modal" style="width:1080px;max-width:96vw;max-height:92vh;">
+      <h2><span><i class="fas fa-credit-card" style="margin-right:8px;color:var(--accent);"></i> Card combustibil — alimentări &amp; reconciliere</span>
+        <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button></h2>
+      <div id="fuelcard-host"><div class="rax-co-meta">Se încarcă…</div></div>
     </div>
   </div>
 
@@ -5626,8 +5635,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', fuelstats: 'fuel-stats-modal', weeklyreport: 'weekly-report-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', fuelstats: 'loadFuelStats', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', fuelstats: 'fuel-stats-modal', weeklyreport: 'weekly-report-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', fuelstats: 'loadFuelStats', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -11093,6 +11102,96 @@ const pozitii = await r.json();</code></pre>
         (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >1h">⚠ ' + h.offline30 + '</span>' : '') +
         (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
     }
+    window.loadFuelCard = async function () {
+      var host = document.getElementById('fuelcard-host'); if (!host) return;
+      host.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      var rows = [];
+      try { rows = await fetch('/api/fuel-transactions', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) { rows = []; }
+      if (!Array.isArray(rows)) rows = [];
+      var badge = function (s) {
+        var map = { reconciliat: ['#16a34a', 'reconciliat'], suspect: ['#ef4444', 'SUSPECT'], partial: ['#f59e0b', 'parțial'], fara_can: ['#64748b', 'fără CAN'], nou: ['#64748b', 'neverificat'] };
+        var x = map[s] || map.nou;
+        return '<span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:' + x[0] + '22;color:' + x[0] + ';">' + x[1] + '</span>';
+      };
+      var dt = function (ms) { if (!ms) return '—'; try { return new Date(Number(ms)).toLocaleDateString('ro-RO'); } catch (e) { return '—'; } };
+      var nL = rows.reduce(function (a, r) { return a + (Number(r.liters) || 0); }, 0);
+      var nAmt = rows.reduce(function (a, r) { return a + (Number(r.amount) || 0); }, 0);
+      var nSus = rows.filter(function (r) { return r.status === 'suspect'; }).length;
+      var trs = rows.map(function (r) {
+        var veh = (r.plate || r.vehicle_name) ? esc(r.plate || r.vehicle_name) : (r.imei ? '<span style="color:var(--text-muted)">' + esc(r.imei) + '</span>' : '<span style="color:var(--text-muted)">nealocat</span>');
+        return '<tr style="border-bottom:1px solid var(--border);' + (r.status === 'suspect' ? 'background:rgba(239,68,68,.06);' : '') + '">' +
+          '<td style="padding:6px 8px;">' + dt(r.ts) + '</td><td style="padding:6px 8px;">' + esc(r.station || '—') + '</td><td style="padding:6px 8px;">' + veh + '</td>' +
+          '<td style="padding:6px 8px;text-align:right;">' + (Number(r.liters) || 0).toFixed(1) + ' L</td>' +
+          '<td style="padding:6px 8px;text-align:right;color:var(--text-muted);">' + (r.tank_delta != null ? (Number(r.tank_delta).toFixed(1) + ' L') : '—') + '</td>' +
+          '<td style="padding:6px 8px;text-align:right;">' + (r.amount != null ? (Number(r.amount).toFixed(0) + ' ' + esc(r.currency || 'RON')) : '—') + '</td>' +
+          '<td style="padding:6px 8px;">' + badge(r.status) + '</td>' +
+          '<td style="padding:6px 8px;text-align:right;"><button class="rax-btn" style="padding:3px 7px;font-size:11px;" onclick="raxFcDelete(' + r.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
+      }).join('');
+      host.innerHTML =
+        '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">' +
+          '<div style="flex:1;min-width:260px;background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px;">' +
+            '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:8px;"><i class="fas fa-file-csv"></i> Import CSV</div>' +
+            '<textarea id="fc-csv" class="rax-field" style="width:100%;min-height:70px;margin:0;font-size:12px;" placeholder="Lipește CSV-ul de la furnizorul de card (cu antet). Coloane recunoscute: data, litri, sumă, înmatriculare, stație, card…"></textarea>' +
+            '<button class="rax-btn primary" style="margin-top:8px;" onclick="raxFcImport(this)"><i class="fas fa-upload"></i> Importă</button>' +
+          '</div>' +
+          '<div style="flex:1;min-width:260px;background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px;">' +
+            '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:8px;"><i class="fas fa-plus"></i> Adaugă manual</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
+              '<input id="fc-plate" class="rax-field" style="margin:0;" placeholder="Înmatriculare">' +
+              '<input id="fc-date" type="date" class="rax-field" style="margin:0;">' +
+              '<input id="fc-liters" type="number" class="rax-field" style="margin:0;" placeholder="Litri">' +
+              '<input id="fc-amount" type="number" class="rax-field" style="margin:0;" placeholder="Sumă (RON)">' +
+              '<input id="fc-station" class="rax-field" style="margin:0;grid-column:1/3;" placeholder="Stație (opțional)">' +
+            '</div>' +
+            '<button class="rax-btn primary" style="margin-top:8px;" onclick="raxFcAdd(this)"><i class="fas fa-plus"></i> Adaugă + verifică</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">' +
+          '<button class="rax-btn" onclick="raxFcReconcile(this)"><i class="fas fa-scale-balanced"></i> Reconciliază toate</button>' +
+          '<span style="font-size:12px;color:var(--text-muted);margin-left:auto;">' + rows.length + ' alimentări · ' + nL.toFixed(0) + ' L · ' + nAmt.toFixed(0) + ' RON' + (nSus ? ' · <strong style="color:#ef4444;">' + nSus + ' suspecte</strong>' : '') + '</span>' +
+        '</div>' +
+        '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);">' +
+          '<th style="padding:6px 8px;">Data</th><th style="padding:6px 8px;">Stație</th><th style="padding:6px 8px;">Vehicul</th><th style="padding:6px 8px;text-align:right;">Litri</th><th style="padding:6px 8px;text-align:right;">Δ rezervor</th><th style="padding:6px 8px;text-align:right;">Sumă</th><th style="padding:6px 8px;">Status</th><th></th>' +
+          '</tr></thead><tbody>' + (trs || '<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--text-muted);">Nicio alimentare. Importă un CSV sau adaugă manual.</td></tr>') + '</tbody></table></div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;"><strong>Cum funcționează:</strong> comparăm litrii de pe card cu creșterea reală a nivelului din rezervor (CAN), în jurul alimentării. „SUSPECT" = s-a plătit combustibil dar rezervorul NU a crescut (posibil furt). „Fără CAN" = vehiculul nu raportează nivel combustibil (nu poate fi verificat automat).</div>';
+    };
+    window.raxFcImport = async function (btn) {
+      var ta = document.getElementById('fc-csv'); var csv = ta ? ta.value.trim() : '';
+      if (!csv) { if (window.raxToast) raxToast('Lipește un CSV întâi', 'error'); return; }
+      if (btn) btn.disabled = true;
+      try {
+        var r = await fetch('/api/fuel-transactions/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ csv: csv }) }).then(function (x) { return x.json(); });
+        if (r.error) { if (window.raxToast) raxToast(r.error, 'error'); }
+        else { if (window.raxToast) raxToast('Importate ' + r.imported + ' alimentări' + (r.unmatchedPlate ? ' (' + r.unmatchedPlate + ' fără vehicul găsit)' : '') + '. Apasă „Reconciliază".', 'success'); loadFuelCard(); }
+      } catch (e) { if (window.raxToast) raxToast('Eroare la import', 'error'); }
+      finally { if (btn) btn.disabled = false; }
+    };
+    window.raxFcAdd = async function (btn) {
+      var g = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+      var liters = parseFloat(g('fc-liters')), plate = g('fc-plate');
+      if (!liters || !plate) { if (window.raxToast) raxToast('Pune cel puțin înmatricularea și litrii', 'error'); return; }
+      if (btn) btn.disabled = true;
+      try {
+        var body = { plate: plate, date: g('fc-date'), liters: liters, amount: parseFloat(g('fc-amount')) || null, station: g('fc-station') };
+        var r = await fetch('/api/fuel-transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (x) { return x.json(); });
+        if (r.error) { if (window.raxToast) raxToast(r.error, 'error'); }
+        else { if (window.raxToast) raxToast('Adăugat — ' + (r.status || ''), r.status === 'suspect' ? 'error' : 'success'); loadFuelCard(); }
+      } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
+      finally { if (btn) btn.disabled = false; }
+    };
+    window.raxFcReconcile = async function (btn) {
+      var o = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se verifică…'; }
+      try {
+        var r = await fetch('/api/fuel-transactions/reconcile', { method: 'POST', credentials: 'same-origin' }).then(function (x) { return x.json(); });
+        if (window.raxToast) raxToast('Verificate ' + (r.reconciled || 0) + ' alimentări' + (r.suspect ? ' · ' + r.suspect + ' suspecte' : ''), r.suspect ? 'error' : 'success');
+        loadFuelCard();
+      } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); if (btn) { btn.disabled = false; btn.innerHTML = o; } }
+    };
+    window.raxFcDelete = async function (id) {
+      if (!confirm('Ștergi această alimentare?')) return;
+      try { await fetch('/api/fuel-transactions/' + id, { method: 'DELETE', credentials: 'same-origin' }); loadFuelCard(); } catch (e) {}
+    };
     window.raxRunBackup = async function (btn) {
       var old = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se rulează…'; }
