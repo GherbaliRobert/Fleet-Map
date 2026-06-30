@@ -5539,6 +5539,7 @@ const pozitii = await r.json();</code></pre>
     let _notifDetailMap = null;
     function closeNotifDetail() { var ov = document.getElementById('notif-detail-modal'); if (ov) ov.style.display = 'none'; try { if (_notifDetailMap) { _notifDetailMap.remove(); _notifDetailMap = null; } } catch (e) {} }
     async function openNotifDetail(id) {
+      var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
       var ov = document.getElementById('notif-detail-modal'), body = document.getElementById('notif-detail-body');
       if (!ov || !body) return;
       ov.style.display = 'flex';
