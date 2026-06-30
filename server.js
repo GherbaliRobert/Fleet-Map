@@ -6041,7 +6041,7 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
     if (!n) return res.status(404).json({ error: 'Notificare negăsită' });
     if (n.imei && !canAccessImei(req, n.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const at = new Date(n.created_at).getTime();
-    const out = { id: n.id, type: n.type, severity: n.severity, title: n.title, body: n.body, at: n.created_at, imei: n.imei, vehicle: null, event: null, segment: [], maxSpeed: 0, data: n.data || {} };
+    const out = { id: n.id, type: n.type, severity: n.severity, title: n.title, body: n.body, at: n.created_at, imei: n.imei, acknowledged: !!n.acknowledged, vehicle: null, event: null, segment: [], maxSpeed: 0, data: n.data || {} };
     if (n.imei) {
       try { const dr = await db.pool.query('SELECT name, plate FROM devices WHERE imei = $1', [n.imei]); if (dr.rows[0]) out.vehicle = dr.rows[0].name || dr.rows[0].plate || n.imei; } catch (e) {}
       const from = new Date(at - 12 * 60000).toISOString(), to = new Date(at + 12 * 60000).toISOString();

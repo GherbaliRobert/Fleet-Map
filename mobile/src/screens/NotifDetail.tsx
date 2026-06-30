@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
 import L from 'leaflet';
 import { Api } from '../api/endpoints';
+import { refreshUnread } from '../app/store';
 import { Icon } from '../components/Icon';
 import './admin.css';
 import './route.css';
@@ -17,12 +18,19 @@ export function NotifDetail() {
   const [err, setErr] = useState('');
   const [rl, setRl] = useState<number | null | undefined>(undefined); // undefined=se verifică, null=necunoscută
   const [rlEst, setRlEst] = useState(false);
+  const [acked, setAcked] = useState(false);
+  const [ackBusy, setAckBusy] = useState(false);
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
-    Api.notifContext(id).then((x: any) => { if (x && x.error) setErr(x.error); else setD(x); }).catch((e: any) => setErr(e?.message || 'Eroare la încărcare'));
+    Api.notifContext(id).then((x: any) => { if (x && x.error) setErr(x.error); else { setD(x); setAcked(!!x.acknowledged); } }).catch((e: any) => setErr(e?.message || 'Eroare la încărcare'));
   }, [id]);
+
+  async function markRead() {
+    setAckBusy(true);
+    try { await Api.ackNotification(Number(id)); setAcked(true); refreshUnread(); } catch { /* */ } finally { setAckBusy(false); }
+  }
 
   // Limita legală a drumului (OSM) — async; trimit punctul dublat (endpoint-ul cere ≥2 puncte).
   useEffect(() => {
@@ -80,7 +88,10 @@ export function NotifDetail() {
               {d.event && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
               {d.event ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && d.event.speed && d.event.speed > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (d.event.speed && d.event.speed > rl ? ' · +' + (d.event.speed - rl) : ''))}</span></div> : null}
             </div>
-            {d.event ? <a class="btn btn-primary" style="margin-top:12px;display:block;text-align:center;text-decoration:none" href={'https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener">Deschide în Google Maps</a> : null}
+            {acked
+              ? <div style="margin-top:12px;text-align:center;color:var(--accent);font-weight:600"><Icon name="check" size={15} /> Marcat ca citit</div>
+              : <button class="btn btn-primary" style="margin-top:12px" disabled={ackBusy} onClick={markRead}>{ackBusy ? 'Se marchează…' : 'Marchează citit'}</button>}
+            {d.event ? <a class="btn" style="margin-top:10px;display:block;text-align:center;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary)" href={'https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener">Deschide în Google Maps</a> : null}
           </>
         )}
       </div>

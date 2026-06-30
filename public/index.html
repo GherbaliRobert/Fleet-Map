@@ -5538,6 +5538,15 @@ const pozitii = await r.json();</code></pre>
     async function ackAllNotif() { try { await fetch('/api/notifications/ack-all', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
     let _notifDetailMap = null;
     function closeNotifDetail() { var ov = document.getElementById('notif-detail-modal'); if (ov) ov.style.display = 'none'; try { if (_notifDetailMap) { _notifDetailMap.remove(); _notifDetailMap = null; } } catch (e) {} }
+    async function raxNotifAck(id, btn) {
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se marchează…'; }
+      try {
+        await fetch('/api/notifications/' + id + '/ack', { method: 'POST', credentials: 'same-origin' });
+        if (btn) btn.outerHTML = '<div style="margin-top:14px;text-align:center;color:var(--accent);font-weight:600;font-size:13px;"><i class="fas fa-check-circle"></i> Marcat ca citit</div>';
+        try { refreshNotifBadge(); } catch (e) {}
+        try { var p = document.getElementById('notif-panel'); if (p && p.style.display === 'flex') loadNotifications(); } catch (e) {}
+      } catch (e) { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Marchează citit'; } }
+    }
     async function openNotifDetail(id) {
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
       var ov = document.getElementById('notif-detail-modal'), body = document.getElementById('notif-detail-body');
@@ -5564,7 +5573,10 @@ const pozitii = await r.json();</code></pre>
         (d.body ? '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">' + esc(d.body) + '</div>' : '') +
         '<div id="notif-detail-map" style="height:300px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg-dark);margin-bottom:12px;"></div>' +
         detailHtml +
-        (!d.event ? '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Fără poziție GPS pentru acest eveniment.</div>' : '');
+        (!d.event ? '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Fără poziție GPS pentru acest eveniment.</div>' : '') +
+        (d.acknowledged
+          ? '<div style="margin-top:14px;text-align:center;color:var(--accent);font-weight:600;font-size:13px;"><i class="fas fa-check-circle"></i> Marcat ca citit</div>'
+          : '<button id="notif-ack-btn" class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxNotifAck(' + d.id + ', this)"><i class="fas fa-check"></i> Marchează citit</button>');
       setTimeout(function () {
         try {
           if (_notifDetailMap) { _notifDetailMap.remove(); _notifDetailMap = null; }

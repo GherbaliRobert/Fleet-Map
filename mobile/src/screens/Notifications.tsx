@@ -20,9 +20,8 @@ export function Notifications() {
   function load() { Api.notifications().then((r) => setItems(r || [])).catch(() => setItems([])); }
   useEffect(() => { load(); }, []);
 
-  async function tap(n: NotificationItem) {
-    if (!n.acknowledged) { try { await Api.ackNotification(n.id); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => x.id === n.id ? { ...x, acknowledged: true } : x) : cur); }
-    loc.route('/notif/' + n.id); // deschide detaliul evenimentului (hartă segment + locație)
+  function tap(n: NotificationItem) {
+    loc.route('/notif/' + n.id); // deschide detaliul evenimentului — marcarea „citit" se face din modal
   }
   async function markAll() { try { await Api.ackAll(); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => ({ ...x, acknowledged: true })) : cur); }
 
