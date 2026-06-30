@@ -5557,6 +5557,7 @@ const pozitii = await r.json();</code></pre>
       if (d.maxSpeed) rows.push(['Viteză maximă pe segment', d.maxSpeed + ' km/h']);
       if (d.event && d.event.address) rows.push(['Locație', esc(d.event.address)]);
       if (d.event) rows.push(['Coordonate', d.event.lat.toFixed(5) + ', ' + d.event.lng.toFixed(5) + ' &nbsp;<a href="https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Google Maps</a>']);
+      if (d.event) rows.push(['Limită drum (OSM)', '<span id="notif-rl" style="color:var(--text-muted);">se verifică…</span>']);
       var detailHtml = rows.map(function (r) { return '<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--text-muted);flex-shrink:0;">' + r[0] + '</span><span style="font-weight:600;text-align:right;">' + r[1] + '</span></div>'; }).join('');
       body.innerHTML =
         '<div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;"><span style="width:11px;height:11px;border-radius:50%;flex-shrink:0;background:' + sevC + ';"></span><div style="font-size:15.5px;font-weight:700;">' + esc(d.title || d.type) + '</div></div>' +
@@ -5579,6 +5580,16 @@ const pozitii = await r.json();</code></pre>
           _notifDetailMap = m;
         } catch (e) {}
       }, 60);
+      // Limita legală a drumului (OSM) — async, nu blochează modalul.
+      if (d.event) {
+        fetch('/api/road-limits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: [[d.event.lat, d.event.lng]] }) })
+          .then(function (r) { return r.json(); }).then(function (rl) {
+            var el = document.getElementById('notif-rl'); if (!el) return;
+            var lim = rl && rl.limits && rl.limits[0];
+            if (lim) { var ovr = d.event.speed && d.event.speed > lim; el.innerHTML = lim + ' km/h' + (ovr ? ' <b style="color:#ef4444;">(depășită cu ' + (d.event.speed - lim) + ' km/h)</b>' : ''); el.style.color = ''; }
+            else { el.textContent = 'necunoscută pe acest segment'; }
+          }).catch(function () { var el = document.getElementById('notif-rl'); if (el) el.textContent = 'indisponibilă'; });
+      }
     }
     function onNotificationWs() {
       refreshNotifBadge();

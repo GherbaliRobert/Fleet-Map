@@ -141,6 +141,10 @@ const errortrack = require('./errortrack');
 errortrack.init();
 let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
+// Regula alertei de viteză: prag MINIM (sub asta nu alertăm niciodată — fără absurdități în zone rezidențiale)
+// + MARJĂ peste limită (toleranță). Alertă DOAR dacă speed > max(BASE, limita configurată) + MARGIN.
+const SPEED_ALERT_BASE = Number(process.env.SPEED_ALERT_BASE) > 0 ? Number(process.env.SPEED_ALERT_BASE) : 50;
+const SPEED_ALERT_MARGIN = Number(process.env.SPEED_ALERT_MARGIN) >= 0 ? Number(process.env.SPEED_ALERT_MARGIN) : 10;
 const reports = require('./reports');
 const channels = require('./channels');
 const ai = require('./ai');
@@ -4917,12 +4921,16 @@ async function evaluateAlerts(imei, data) {
       let alertData = {};
 
       switch (alert.type) {
-        case 'overspeed':
-          if (cond.maxSpeed && speed > cond.maxSpeed) {
+        case 'overspeed': {
+          // Prag efectiv = max(prag minim 50, limita configurată) + marjă 10. Nu alertăm sub 60 km/h →
+          // fără alarme absurde în zone rezidențiale (ex. limită 5, mers cu 20). Respectă o limită mai mare dacă e setată.
+          const _base = Math.max(SPEED_ALERT_BASE, Number(cond.maxSpeed) || 0);
+          if (speed > _base + SPEED_ALERT_MARGIN) {
             triggered = true;
-            alertData = { speed, limit: cond.maxSpeed };
+            alertData = { speed, limit: _base, margin: SPEED_ALERT_MARGIN, lat, lng };
           }
           break;
+        }
 
         case 'fuel_drop':
           if (cond.dropLiters && io.can_fuel_level_liters !== undefined) {
