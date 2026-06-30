@@ -14,6 +14,8 @@
 .adm-tgl { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
 .adm-tgl .lbl { flex: 1; font-size: 14px; }
 .adm-tgl .lbl small { display: block; font-size: 11.5px; color: var(--text-muted); font-weight: 400; margin-top: 1px; }
+.adm-price { width: 68px; flex: 0 0 68px; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 8px; padding: 7px 9px; font-size: 14px; font-family: inherit; text-align: right; }
+.adm-price:focus { outline: none; border-color: var(--accent); }
 .adm-act { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; color: var(--accent); }
 .adm-act.danger { color: var(--red); }
 .adm-kv { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border); }

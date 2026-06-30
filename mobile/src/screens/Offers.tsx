@@ -145,8 +145,8 @@ export function Offers() {
           </div>
 
           <div class="adm-sec2">Opțiuni</div>
-          <div class="adm-tgl"><span class="lbl">Asistent AI</span><span class={'sw' + (cfg.aiA ? ' on' : '')} onClick={() => sc('aiA', !cfg.aiA)} /></div>
-          <div class="adm-tgl"><span class="lbl">Agenți AI (RA Optimize / Care)</span><span class={'sw' + (cfg.aiAg ? ' on' : '')} onClick={() => sc('aiAg', !cfg.aiAg)} /></div>
+          <div class="adm-tgl"><span class="lbl">Asistent AI</span><input type="number" inputMode="numeric" value={prices.pAiA} onInput={(e: any) => sp('pAiA', e.target.value)} class="adm-price" /><span style="font-size:11px;color:var(--text-muted)">lei</span><span class={'sw' + (cfg.aiA ? ' on' : '')} onClick={() => sc('aiA', !cfg.aiA)} /></div>
+          <div class="adm-tgl"><span class="lbl">Agenți AI (RA Optimize / Care)</span><input type="number" inputMode="numeric" value={prices.pAiAg} onInput={(e: any) => sp('pAiAg', e.target.value)} class="adm-price" /><span style="font-size:11px;color:var(--text-muted)">lei</span><span class={'sw' + (cfg.aiAg ? ' on' : '')} onClick={() => sc('aiAg', !cfg.aiAg)} /></div>
           <div class="frm-row">
             <div class="fld"><label>Păstrare date</label>
               <select value={cfg.retTier} onChange={(e: any) => sc('retTier', e.target.value)}>
@@ -183,7 +183,7 @@ export function Offers() {
           {showTariffs && (
             <div class="pf-card">
               <div class="frm-row"><div class="fld"><label>Vehicul GPS</label>{pNum('pPlain')}</div><div class="fld"><label>Vehicul CAN</label>{pNum('pCan')}</div><div class="fld"><label>Vehicul FMS</label>{pNum('pFms')}</div></div>
-              <div class="frm-row"><div class="fld"><label>Asistent AI</label>{pNum('pAiA')}</div><div class="fld"><label>Agenți AI</label>{pNum('pAiAg')}</div></div>
+              <div style="font-size:11px;color:var(--text-muted);margin:2px 0 6px">Prețul AI (Asistent / Agenți) se editează în „Opțiuni", lângă comutator.</div>
               <div class="frm-row"><div class="fld"><label>Ret. 12l</label>{pNum('ret12')}</div><div class="fld"><label>Ret. 24l</label>{pNum('ret24')}</div><div class="fld"><label>Ret. 36l</label>{pNum('ret36')}</div></div>
               <div class="adm-sec2" style="margin-top:8px">Montaj (lei/buc · deplasare lei/km)</div>
               <div class="frm-row"><div class="fld"><label>GPS</label>{pNum('mGps')}</div><div class="fld"><label>LV-CAN</label>{pNum('mLvCan')}</div><div class="fld"><label>CAN înc.</label>{pNum('mCanInc')}</div></div>
