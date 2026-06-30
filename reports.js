@@ -27,6 +27,9 @@ function odo(p) { const i = io(p); let v = i.can_total_mileage; if (v == null) v
 // Adresă din cache (reverse-geocode); fallback pe coordonate dacă nu e încă rezolvată.
 function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = geocode.peek(p.latitude, p.longitude); if (a) return a; } return loc(p); }
 function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
+// Contor CUMULATIV de combustibil consumat (CAN „total fuel used", L). Monoton crescător → delta = consum EXACT,
+// chiar și pe distanțe scurte unde nivelul rezervorului nu se mișcă vizibil. Sursă PREFERATĂ pentru consum.
+function fuelCumul(p) { const i = io(p); const v = (typeof i.can_fuel_consumed === 'number') ? i.can_fuel_consumed : (typeof i.can_fuel_consumed_counted === 'number' ? i.can_fuel_consumed_counted : (typeof i.can_engine_total_fuel_used === 'number' ? i.can_engine_total_fuel_used : null)); return (typeof v === 'number' && v > 0) ? v : null; }
 function ignOn(p) { return io(p).ignition === 1; }
 // Preț carburant — media națională auto (setată din server zilnic) + override pe tip via opts.priceByType.
 // Lanț: preț pe VEHICUL (c.price) → preț COMPANIE/efectiv (opts.priceByType[tip]) → media națională AUTO → opts.fuelPrice → 7.5.
@@ -908,8 +911,10 @@ async function _consumptionMap(db, imeis, from, to, opts) {
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refueled = 0, dist = 0, prevFuel = null, prevFuelTs = 0, idleSec = 0, prevP = null;
+    let firstCumul = null, lastCumul = null;
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], fl = fuelL(p), ts = t(p);
+      const fc = fuelCumul(p); if (fc != null) { if (firstCumul == null) firstCumul = fc; lastCumul = fc; }
       if (fl != null) {
         if (first == null) first = fl; last = fl;
         if (prevFuel != null && (ts - prevFuelTs) <= 3600 * 1000) { const d = fl - prevFuel; if (d >= refuelMin) refueled += d; }
@@ -924,13 +929,17 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     const cRoad = c.cRoad || defConsumption(c.vtype);
     const idleL = idleSec / 3600 * (c.cIdle || idleLph);
     const hasFuel = first != null;
+    // Contor cumulativ (cel mai exact) — preferat înaintea scăderii de nivel.
+    const cumulL = (firstCumul != null && lastCumul != null && lastCumul >= firstCumul) ? (lastCumul - firstCumul) : null;
+    const cumulPer100 = (cumulL != null && dist > 1) ? (cumulL / dist * 100) : null;
+    const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
     const sensorL = hasFuel ? Math.max(0, (first - last) + refueled) : 0;
     const sensorPer100 = (hasFuel && dist > 1) ? (sensorL / dist * 100) : null;
     const sensorOk = hasFuel && sensorL > 0 && dist > 1 && sensorPer100 >= 1 && sensorPer100 <= MAX_PER100;
-    let consumed = sensorOk ? sensorL : (dist * cRoad / 100 + idleL);
+    let consumed = cumulOk ? cumulL : (sensorOk ? sensorL : (dist * cRoad / 100 + idleL));
     if (consumed < idleL) consumed = idleL;
     const per100 = dist > 1 ? +(consumed / dist * 100).toFixed(1) : null;
-    out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !sensorOk, hasFuel, per100, price, first, last, fuelType: c.fuelType || null };
+    out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !(cumulOk || sensorOk), hasFuel: hasFuel || cumulL != null, per100, price, first, last, fuelType: c.fuelType || null };
   }
   return out;
 }
@@ -1086,9 +1095,11 @@ async function fuelStats(db, imeis, from, to, opts) {
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refueled = 0, dist = 0, prev = null, idleSec = 0, prevP = null;
+    let firstCumul = null, lastCumul = null;
     const bF = {}, bL = {}, bPrev = {}, bRefuel = {}, bIdle = {}, bDist = {};
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], fl = fuelL(p), bk = _bucketKey(p.timestamp, bucket);
+      const fc = fuelCumul(p); if (fc != null) { if (firstCumul == null) firstCumul = fc; lastCumul = fc; }
       if (fl != null) {
         if (first == null) first = fl; last = fl;
         if (prev != null) { const d = fl - prev; if (d >= refuelMin) refueled += d; }
@@ -1108,15 +1119,19 @@ async function fuelStats(db, imeis, from, to, opts) {
     const idleH = idleSec / 3600, idleL = idleH * cIdleLph;
     // Consum din senzorul de nivel (sondă/CAN): scădere netă + realimentări detectate (salturi ≥ refuelMin).
     const hasFuel = first != null;
+    // Contor cumulativ CAN (consum exact, merge și pe distanțe scurte) — preferat înaintea scăderii de nivel.
+    const cumulL = (firstCumul != null && lastCumul != null && lastCumul >= firstCumul) ? (lastCumul - firstCumul) : null;
+    const cumulPer100 = (cumulL != null && dist > 1) ? (cumulL / dist * 100) : null;
+    const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
     const sensorL = hasFuel ? Math.max(0, (first - last) + refueled) : 0;
     const sensorPer100 = (hasFuel && dist > 1) ? (sensorL / dist * 100) : null;
-    // Senzorul e „de încredere" doar dacă dă consum > 0 pe distanță reală și un L/100km plauzibil (filtrăm zgomotul).
+    // Senzorul de nivel e „de încredere" doar dacă dă consum > 0 pe distanță reală și un L/100km plauzibil (filtrăm zgomotul).
     const sensorOk = hasFuel && sensorL > 0 && dist > 1 && sensorPer100 >= 1 && sensorPer100 <= MAX_PER100;
-    // Estimare din config (sau implicit pe tip) + km + ralanti — folosită când nu există senzor fiabil.
+    // Estimare din config (sau implicit pe tip) + km + ralanti — folosită când nu există nici contor, nici senzor fiabil.
     const estL = dist * cRoad / 100 + idleL;
-    let liters = sensorOk ? sensorL : estL;
+    let liters = cumulOk ? cumulL : (sensorOk ? sensorL : estL);
     if (liters < idleL) liters = idleL;            // totalul include MEREU ralanti-ul (fizic, e parte din total)
-    const estimated = !sensorOk;
+    const estimated = !(cumulOk || sensorOk);
     const per100 = dist > 1 ? +(liters / dist * 100).toFixed(1) : null;
     const cost = liters * price;
     const vCo2F = co2For(c.fuelType, opts); // factor CO₂ pe tipul de combustibil al vehiculului
