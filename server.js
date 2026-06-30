@@ -3879,6 +3879,17 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
           }
           if (firstFL !== null && lastFL !== null) deviceFuel = Math.max(0, (firstFL - lastFL) + refueled);
         }
+        // Contor cumulativ CAN (consum EXACT, merge și pe drumuri scurte) — preferat dacă vehiculul îl raportează plauzibil.
+        // (La vehiculele cu nivel grosier/contor stricat, ex. unele VW, nu se aplică → rămâne estimarea.)
+        {
+          let cumulSum = 0, prevCum = null;
+          for (const row of history) {
+            const rio = row.io_data || {};
+            const cum = (typeof rio.can_fuel_consumed === 'number') ? rio.can_fuel_consumed : (typeof rio.can_fuel_consumed_counted === 'number' ? rio.can_fuel_consumed_counted : (typeof rio.can_engine_total_fuel_used === 'number' ? rio.can_engine_total_fuel_used : null));
+            if (cum != null && cum > 0) { if (prevCum != null) { const dc = cum - prevCum; if (dc > 0 && dc < 100) cumulSum += dc; } prevCum = cum; }
+          }
+          if (cumulSum > 0 && km > 0.5) { const p100 = cumulSum / km * 100; if (p100 >= 1 && p100 <= 200) deviceFuel = Math.round(cumulSum * 10) / 10; }
+        }
 
         km = Math.round(km * 100) / 100;
         deviceFuel = Math.round(deviceFuel * 10) / 10;
