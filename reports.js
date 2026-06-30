@@ -911,13 +911,13 @@ async function _consumptionMap(db, imeis, from, to, opts) {
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refueled = 0, dist = 0, prevFuel = null, prevFuelTs = 0, idleSec = 0, prevP = null;
-    let cumulSum = 0, prevCumul = null, cumulSeen = false; // sumă de incremente pozitive (gestionează contoare „_counted" care se resetează)
+    let cumulSum = 0, prevCumul = null, cumulSeen = false, dropSum = 0; // contor incremente + sumă scăderi de nivel
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], fl = fuelL(p), ts = t(p);
       const fc = fuelCumul(p); if (fc != null) { if (prevCumul != null) { const dc = fc - prevCumul; if (dc > 0 && dc < 100) cumulSum += dc; } prevCumul = fc; cumulSeen = true; }
       if (fl != null) {
         if (first == null) first = fl; last = fl;
-        if (prevFuel != null && (ts - prevFuelTs) <= 3600 * 1000) { const d = fl - prevFuel; if (d >= refuelMin) refueled += d; }
+        if (prevFuel != null && (ts - prevFuelTs) <= 3600 * 1000) { const d = fl - prevFuel; if (d >= refuelMin) refueled += d; const dd = prevFuel - fl; if (dd >= 0.4 && dd < 40) dropSum += dd; }
         prevFuel = fl; prevFuelTs = ts;
       }
       if (i > 0) { const pr = pts[i - 1], dt = (ts - t(pr)) / 1000, dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dt > 0 && dt <= 300 && dd < MAX_STEP_KM) dist += dd; }
@@ -933,9 +933,9 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     const cumulL = (cumulSeen && cumulSum > 0) ? cumulSum : null;
     const cumulPer100 = (cumulL != null && dist > 1) ? (cumulL / dist * 100) : null;
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
-    const sensorL = hasFuel ? Math.max(0, (first - last) + refueled) : 0;
-    const sensorPer100 = (hasFuel && dist > 1) ? (sensorL / dist * 100) : null;
-    const sensorOk = hasFuel && sensorL > 0 && dist > 1 && sensorPer100 >= 1 && sensorPer100 <= MAX_PER100;
+    const sensorL = dropSum; // consum din nivel = suma scăderilor reale (gestionează alimentări/grad. automat)
+    const sensorPer100 = (sensorL > 0 && dist > 1) ? (sensorL / dist * 100) : null;
+    const sensorOk = sensorL > 0 && dist > 1 && sensorPer100 >= 1.5 && sensorPer100 <= MAX_PER100;
     let consumed = cumulOk ? cumulL : (sensorOk ? sensorL : (dist * cRoad / 100 + idleL));
     if (consumed < idleL) consumed = idleL;
     const per100 = dist > 1 ? +(consumed / dist * 100).toFixed(1) : null;
@@ -1095,14 +1095,14 @@ async function fuelStats(db, imeis, from, to, opts) {
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refueled = 0, dist = 0, prev = null, idleSec = 0, prevP = null;
-    let cumulSum = 0, prevCumul = null, cumulSeen = false; // sumă incremente pozitive (contoare „_counted" resetabile)
+    let cumulSum = 0, prevCumul = null, cumulSeen = false, dropSum = 0; // contor incremente + sumă scăderi de nivel
     const bF = {}, bL = {}, bPrev = {}, bRefuel = {}, bIdle = {}, bDist = {};
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], fl = fuelL(p), bk = _bucketKey(p.timestamp, bucket);
       const fc = fuelCumul(p); if (fc != null) { if (prevCumul != null) { const dc = fc - prevCumul; if (dc > 0 && dc < 100) cumulSum += dc; } prevCumul = fc; cumulSeen = true; }
       if (fl != null) {
         if (first == null) first = fl; last = fl;
-        if (prev != null) { const d = fl - prev; if (d >= refuelMin) refueled += d; }
+        if (prev != null) { const d = fl - prev; if (d >= refuelMin) refueled += d; const dd = prev - fl; if (dd >= 0.4 && dd < 40) dropSum += dd; }
         prev = fl;
         if (bF[bk] === undefined) bF[bk] = fl; bL[bk] = fl;
         if (bPrev[bk] !== undefined) { const d = fl - bPrev[bk]; if (d >= refuelMin) bRefuel[bk] = (bRefuel[bk] || 0) + d; }
@@ -1123,10 +1123,10 @@ async function fuelStats(db, imeis, from, to, opts) {
     const cumulL = (cumulSeen && cumulSum > 0) ? cumulSum : null;
     const cumulPer100 = (cumulL != null && dist > 1) ? (cumulL / dist * 100) : null;
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
-    const sensorL = hasFuel ? Math.max(0, (first - last) + refueled) : 0;
-    const sensorPer100 = (hasFuel && dist > 1) ? (sensorL / dist * 100) : null;
+    const sensorL = dropSum; // consum din nivel = suma scăderilor reale (gestionează alimentări/scăderi graduale automat)
+    const sensorPer100 = (sensorL > 0 && dist > 1) ? (sensorL / dist * 100) : null;
     // Senzorul de nivel e „de încredere" doar dacă dă consum > 0 pe distanță reală și un L/100km plauzibil (filtrăm zgomotul).
-    const sensorOk = hasFuel && sensorL > 0 && dist > 1 && sensorPer100 >= 1 && sensorPer100 <= MAX_PER100;
+    const sensorOk = sensorL > 0 && dist > 1 && sensorPer100 >= 1.5 && sensorPer100 <= MAX_PER100;
     // Estimare din config (sau implicit pe tip) + km + ralanti — folosită când nu există nici contor, nici senzor fiabil.
     const estL = dist * cRoad / 100 + idleL;
     let liters = cumulOk ? cumulL : (sensorOk ? sensorL : estL);
