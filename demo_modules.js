@@ -5,6 +5,7 @@
 // Reutilizează tabelele existente (etransport, vehicle_documents, tacho_files, drivers) — zero tabele noi.
 
 const crypto = require('crypto');
+let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Flag-uri Demo/Real (per modul) — citite din settings
@@ -15,7 +16,7 @@ async function getModuleConfig(db) {
   const etollProvider = await get('etoll_provider', '');
   const companyCardHost = await get('company_card_host', '');
   return {
-    etransport: { mode: anafConnected ? 'real' : 'demo', anafConnected },
+    etransport: { mode: anafConnected ? 'real' : 'demo', anafConnected, tokenSet: !!(anaf && anaf.enabled()), test: !!(anaf && anaf.cfg().test) },
     etoll: { provider: etollProvider, mode: etollProvider ? 'real' : 'demo' },
     tahograf: { mode: companyCardHost ? 'real' : 'demo', companyCardHost }
   };
@@ -163,10 +164,15 @@ function register(app, deps) {
     try {
       const cfg = await getModuleConfig(db);
       if (cfg.etransport.mode === 'real') {
-        // TODO real: apel ANAF e-Transport pentru emitere UIT (cu certificat + token din SPV).
-        return res.status(501).json({ error: 'Integrare ANAF reală neimplementată (mod real). Activează demo sau configurează tokenul ANAF.' });
+        if (!anaf || !anaf.enabled()) return res.status(400).json({ error: 'Mod real activ, dar tokenul ANAF lipsește. Setează ANAF_ETRANSPORT_TOKEN + ANAF_CIF în variabilele de mediu (vezi ANAF.md).' });
+        try {
+          const b = req.body || {};
+          const r = await anaf.emitUIT({ plate: b.plate || b.nrVehicul, note: b.marfa || b.note }, b);
+          if (r.uit) { auditReq(req, 'emit', 'uit-real', null, { uit: r.uit, test: anaf.cfg().test }); return res.json({ uit: r.uit, mode: 'real', index: r.index, test: anaf.cfg().test }); }
+          return res.json({ uit: null, pending: true, index: r.index, mode: 'real', test: anaf.cfg().test, note: 'Declarație depusă la ANAF; UIT în prelucrare. Reverifică folosind index ' + r.index + '.' });
+        } catch (e) { return res.status(502).json({ error: 'ANAF: ' + e.message }); }
       }
-      res.json({ uit: generateDemoUIT(), mode: 'demo', note: 'Cod UIT DEMO. Activare reală: setează anaf_token_connected=true + ANAF_ETRANSPORT_TOKEN/URL.' });
+      res.json({ uit: generateDemoUIT(), mode: 'demo', note: 'Cod UIT DEMO. Activare reală: anaf_token_connected=true + ANAF_ETRANSPORT_TOKEN + ANAF_CIF (vezi ANAF.md).' });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
   app.post('/api/etransport/:id/start', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async function (req, res) {

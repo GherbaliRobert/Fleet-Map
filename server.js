@@ -139,6 +139,7 @@ const db = require('./db');
 const backup = require('./backup');
 const errortrack = require('./errortrack');
 errortrack.init();
+let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
 const reports = require('./reports');
 const channels = require('./channels');
@@ -2770,7 +2771,7 @@ app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, requireFeat
 });
 
 // ─── e-Transport (ANAF) — gestionare UIT + (trimitere doar dacă e configurat tokenul) ───
-function etransportEnabled() { return !!(process.env.ANAF_ETRANSPORT_TOKEN && process.env.ANAF_ETRANSPORT_URL); }
+function etransportEnabled() { return !!(anaf && anaf.enabled()); }
 app.get('/api/etransport/status', requireAuth, (req, res) => res.json({ enabled: etransportEnabled() }));
 app.get('/api/etransport', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('etransport'), async (req, res) => {
   try { res.json(await db.getEtransports(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2937,11 +2938,9 @@ async function sendEtransportPositions() {
     const active = await db.getActiveEtransports();
     for (const tr of active) {
       const pos = tr.imei ? livePositions.get(tr.imei) : null;
-      if (!pos) continue;
-      // NOTĂ: schema payload-ului trebuie aliniată la specificația reală a API-ului ANAF e-Transport.
-      const payload = { uit: tr.uit, lat: pos.latitude, lng: pos.longitude, speed: pos.speed, timestamp: pos.timestamp };
-      await fetch(process.env.ANAF_ETRANSPORT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.ANAF_ETRANSPORT_TOKEN }, body: JSON.stringify(payload) }).catch(() => {});
-      await db.updateEtransport(tr.id, { last_sent_at: new Date().toISOString() }).catch(() => {});
+      if (!pos || !tr.uit) continue;
+      const ok = await anaf.sendPosition(tr.uit, pos.latitude, pos.longitude);
+      if (ok) await db.updateEtransport(tr.id, { last_sent_at: new Date().toISOString() }).catch(() => {});
     }
   } catch (e) { console.warn('[e-Transport]', e.message); }
 }
