@@ -5582,11 +5582,12 @@ const pozitii = await r.json();</code></pre>
       }, 60);
       // Limita legală a drumului (OSM) — async, nu blochează modalul.
       if (d.event) {
-        fetch('/api/road-limits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: [[d.event.lat, d.event.lng]] }) })
+        fetch('/api/road-limits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: [[d.event.lat, d.event.lng], [d.event.lat, d.event.lng]] }) })
           .then(function (r) { return r.json(); }).then(function (rl) {
             var el = document.getElementById('notif-rl'); if (!el) return;
             var lim = rl && rl.limits && rl.limits[0];
-            if (lim) { var ovr = d.event.speed && d.event.speed > lim; el.innerHTML = lim + ' km/h' + (ovr ? ' <b style="color:#ef4444;">(depășită cu ' + (d.event.speed - lim) + ' km/h)</b>' : ''); el.style.color = ''; }
+            var est = rl && rl.estimated && rl.estimated[0];
+            if (lim) { var ovr = d.event.speed && d.event.speed > lim; el.innerHTML = lim + ' km/h' + (est ? ' <span style="color:var(--text-muted);font-size:10.5px;">(estimat din tip drum)</span>' : '') + (ovr ? ' <b style="color:#ef4444;">· depășită cu ' + (d.event.speed - lim) + ' km/h</b>' : ''); el.style.color = ''; }
             else { el.textContent = 'necunoscută pe acest segment'; }
           }).catch(function () { var el = document.getElementById('notif-rl'); if (el) el.textContent = 'indisponibilă'; });
       }

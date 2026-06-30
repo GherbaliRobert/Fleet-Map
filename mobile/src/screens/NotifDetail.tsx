@@ -16,6 +16,7 @@ export function NotifDetail() {
   const [d, setD] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [rl, setRl] = useState<number | null | undefined>(undefined); // undefined=se verifică, null=necunoscută
+  const [rlEst, setRlEst] = useState(false);
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -23,10 +24,13 @@ export function NotifDetail() {
     Api.notifContext(id).then((x: any) => { if (x && x.error) setErr(x.error); else setD(x); }).catch((e: any) => setErr(e?.message || 'Eroare la încărcare'));
   }, [id]);
 
-  // Limita legală a drumului (OSM) — async, după ce avem poziția evenimentului.
+  // Limita legală a drumului (OSM) — async; trimit punctul dublat (endpoint-ul cere ≥2 puncte).
   useEffect(() => {
     if (!d || !d.event) return;
-    Api.roadLimits([[d.event.lat, d.event.lng]]).then((x: any) => { setRl(x && x.limits && x.limits[0] != null ? x.limits[0] : null); }).catch(() => setRl(null));
+    Api.roadLimits([[d.event.lat, d.event.lng], [d.event.lat, d.event.lng]]).then((x: any) => {
+      setRl(x && x.limits && x.limits[0] != null ? x.limits[0] : null);
+      setRlEst(!!(x && x.estimated && x.estimated[0]));
+    }).catch(() => setRl(null));
   }, [d]);
 
   useEffect(() => {
@@ -74,7 +78,7 @@ export function NotifDetail() {
               {d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
               {d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
               {d.event && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
-              {d.event ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && d.event.speed && d.event.speed > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (d.event.speed && d.event.speed > rl ? ' (+' + (d.event.speed - rl) + ')' : ''))}</span></div> : null}
+              {d.event ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && d.event.speed && d.event.speed > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (d.event.speed && d.event.speed > rl ? ' · +' + (d.event.speed - rl) : ''))}</span></div> : null}
             </div>
             {d.event ? <a class="btn btn-primary" style="margin-top:12px;display:block;text-align:center;text-decoration:none" href={'https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener">Deschide în Google Maps</a> : null}
           </>

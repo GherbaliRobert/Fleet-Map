@@ -36,6 +36,18 @@ function parseMaxspeed(v) {
   return null; // "none", "signals", "variable", necunoscut → fără limită utilă
 }
 
+// Limită ESTIMATĂ din clasa drumului OSM (când lipsește maxspeed). Valori orientative RO — marcate „estimat".
+const CLASS_LIMIT = {
+  motorway: 130, motorway_link: 80,
+  trunk: 100, trunk_link: 60,
+  primary: 90, primary_link: 60,
+  secondary: 80, secondary_link: 50,
+  tertiary: 70, tertiary_link: 50,
+  unclassified: 50, residential: 50,
+  living_street: 20, service: 20, road: 50,
+};
+function inferFromClass(hw) { return (hw && CLASS_LIMIT[hw] != null) ? CLASS_LIMIT[hw] : null; }
+
 function _enqueue(fn) {
   const run = _chain.then(fn, fn);
   _chain = run.then(() => {}, () => {});
@@ -43,7 +55,9 @@ function _enqueue(fn) {
 }
 
 async function _overpassBbox(s, w, n, e) {
-  const q = `[out:json][timeout:25];way["maxspeed"]["highway"](${s},${w},${n},${e});out geom;`;
+  // Toate drumurile CAROSABILE (cu tip + maxspeed) — ca să putem DEDUCE limita din clasă unde lipsește maxspeed.
+  const HW = '^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|road)(_link)?$';
+  const q = `[out:json][timeout:25];way["highway"~"${HW}"](${s},${w},${n},${e});out geom;`;
   let lastErr;
   for (const url of ENDPOINTS) {
     try {
@@ -63,12 +77,14 @@ async function _overpassBbox(s, w, n, e) {
       const ways = [];
       for (const el of (j.elements || [])) {
         if (el.type !== 'way' || !Array.isArray(el.geometry)) continue;
-        const ms = parseMaxspeed(el.tags && el.tags.maxspeed);
-        if (ms == null) continue;
+        const tags = el.tags || {};
+        let ms = parseMaxspeed(tags.maxspeed), estimated = false;
+        if (ms == null) { ms = inferFromClass(tags.highway); estimated = true; } // fără maxspeed real → deduc din clasă
+        if (ms == null) continue; // clasă necunoscută → fără limită
         const pts = el.geometry.map(g => [g.lat, g.lon]);
         let mnLa = 90, mnLo = 180, mxLa = -90, mxLo = -180;
         for (const [a, b] of pts) { if (a < mnLa) mnLa = a; if (a > mxLa) mxLa = a; if (b < mnLo) mnLo = b; if (b > mxLo) mxLo = b; }
-        ways.push({ maxspeed: ms, bbox: [mnLa, mnLo, mxLa, mxLo], pts });
+        ways.push({ maxspeed: ms, estimated: estimated, bbox: [mnLa, mnLo, mxLa, mxLo], pts });
       }
       return ways;
     } catch (e) { lastErr = e; }
@@ -112,21 +128,22 @@ async function limitsForPoints(points) {
     if (_cache.size > 200) _cache.delete(_cache.keys().next().value);
   }
 
-  const limits = points.map(p => {
+  const limits = [], estimated = [];
+  for (const p of points) {
     const plat = +p[0], plng = +p[1];
-    if (!isFinite(plat) || !isFinite(plng)) return null;
-    let best = null, bestD = MATCH_M;
+    if (!isFinite(plat) || !isFinite(plng)) { limits.push(null); estimated.push(false); continue; }
+    let best = null, bestEst = false, bestD = MATCH_M;
     for (const wy of ways) {
       const bb = wy.bbox;
       if (plat < bb[0] - 0.001 || plat > bb[2] + 0.001 || plng < bb[1] - 0.001 || plng > bb[3] + 0.001) continue;
       for (let i = 1; i < wy.pts.length; i++) {
         const d = _distToSeg(plat, plng, wy.pts[i - 1][0], wy.pts[i - 1][1], wy.pts[i][0], wy.pts[i][1]);
-        if (d < bestD) { bestD = d; best = wy.maxspeed; }
+        if (d < bestD) { bestD = d; best = wy.maxspeed; bestEst = wy.estimated; }
       }
     }
-    return best;
-  });
-  return { limits, attribution: ATTRIBUTION, ways: ways.length };
+    limits.push(best); estimated.push(best != null ? bestEst : false);
+  }
+  return { limits, estimated, attribution: ATTRIBUTION, ways: ways.length };
 }
 
 module.exports = { limitsForPoints, parseMaxspeed, ATTRIBUTION };
