@@ -137,6 +137,8 @@ function computeFuelFromSensors(io, sensors) {
 
 const db = require('./db');
 const backup = require('./backup');
+const errortrack = require('./errortrack');
+errortrack.init();
 const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
 const reports = require('./reports');
 const channels = require('./channels');
@@ -287,6 +289,7 @@ async function captureError(err, ctx) {
   };
   try { console.error('[ERROR]', entry.level, entry.route || '', '-', entry.message); } catch (_) {}
   try { await db.logError(entry); } catch (_) {}
+  errortrack.toSentry(entry).catch(() => {}); // forward opțional la Sentry (dacă SENTRY_DSN setat) — best-effort
 }
 
 // Express error middleware — prinde throw-uri sincrone + next(err) din rute. Trebuie înregistrat ULTIMUL (în start()).
@@ -950,6 +953,29 @@ function clientIp(req) {
   if (xff) return String(xff).split(',')[0].trim();
   return req.socket ? req.socket.remoteAddress : null;
 }
+
+// ─── Ingest erori de client (web + mobil) → error_log + Sentry. Public (erorile pot apărea pre-login), dar rate-limited (20/min/IP) + capat. ───
+const _clientErrHits = new Map();
+app.post('/api/client-error', (req, res) => {
+  try {
+    const ip = clientIp(req) || 'x';
+    const now = Date.now(); let rec = _clientErrHits.get(ip);
+    if (!rec || now - rec.ts > 60000) { rec = { n: 0, ts: now }; _clientErrHits.set(ip, rec); }
+    rec.n++;
+    if (rec.n > 20) return res.status(429).json({ ok: false });
+    const b = req.body || {};
+    const src = (b.source === 'mobile') ? 'mobile' : 'web';
+    captureError(
+      { message: String(b.message || 'client error').slice(0, 1000), stack: b.stack ? String(b.stack).slice(0, 4000) : null },
+      {
+        level: 'error', route: 'client:' + src,
+        userId: (req.session && req.session.userId) || null, companyId: (req.session && req.session.companyId) || null,
+        context: { source: src, url: String(b.url || '').slice(0, 300), ua: String((req.headers && req.headers['user-agent']) || '').slice(0, 200), line: b.line, col: b.col },
+      }
+    );
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false }); }
+});
 
 // Identitatea curentă: cheie API (req.apiAuth) SAU sesiune cookie (req.session).
 // IMPORTANT: rolul + compania se iau din req._freshAuth (DB, prin refreshAuth) dacă există,

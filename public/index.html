@@ -13484,6 +13484,19 @@ const pozitii = await r.json();</code></pre>
         if (_nativeAlert) _nativeAlert(m);
       };
     })();
+    // Raportare erori de client → /api/client-error (apar în „Erori recente" + Sentry dacă e configurat). Throttle 10/sesiune.
+    (function () {
+      var _erN = 0;
+      function _rep(message, stack, extra) {
+        if (_erN >= 10 || !message) return; _erN++;
+        try {
+          fetch('/api/client-error', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', keepalive: true,
+            body: JSON.stringify(Object.assign({ source: 'web', message: String(message).slice(0, 1000), stack: stack ? String(stack).slice(0, 4000) : null, url: location.href }, extra || {})) }).catch(function () {});
+        } catch (e) {}
+      }
+      window.addEventListener('error', function (e) { if (e && e.message) _rep(e.message, e.error && e.error.stack, { line: e.lineno, col: e.colno }); });
+      window.addEventListener('unhandledrejection', function (e) { var r = e && e.reason; _rep('unhandledrejection: ' + (r && r.message ? r.message : String(r)), r && r.stack); });
+    })();
     var _agBadgeTs = 0;
     async function raxRefreshAgBadge() {
       if (!(me && me.permissions && me.permissions.viewReports)) return;
