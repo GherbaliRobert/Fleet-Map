@@ -911,10 +911,10 @@ async function _consumptionMap(db, imeis, from, to, opts) {
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refueled = 0, dist = 0, prevFuel = null, prevFuelTs = 0, idleSec = 0, prevP = null;
-    let firstCumul = null, lastCumul = null;
+    let cumulSum = 0, prevCumul = null, cumulSeen = false; // sumă de incremente pozitive (gestionează contoare „_counted" care se resetează)
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], fl = fuelL(p), ts = t(p);
-      const fc = fuelCumul(p); if (fc != null) { if (firstCumul == null) firstCumul = fc; lastCumul = fc; }
+      const fc = fuelCumul(p); if (fc != null) { if (prevCumul != null) { const dc = fc - prevCumul; if (dc > 0 && dc < 100) cumulSum += dc; } prevCumul = fc; cumulSeen = true; }
       if (fl != null) {
         if (first == null) first = fl; last = fl;
         if (prevFuel != null && (ts - prevFuelTs) <= 3600 * 1000) { const d = fl - prevFuel; if (d >= refuelMin) refueled += d; }
@@ -930,7 +930,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     const idleL = idleSec / 3600 * (c.cIdle || idleLph);
     const hasFuel = first != null;
     // Contor cumulativ (cel mai exact) — preferat înaintea scăderii de nivel.
-    const cumulL = (firstCumul != null && lastCumul != null && lastCumul >= firstCumul) ? (lastCumul - firstCumul) : null;
+    const cumulL = (cumulSeen && cumulSum > 0) ? cumulSum : null;
     const cumulPer100 = (cumulL != null && dist > 1) ? (cumulL / dist * 100) : null;
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
     const sensorL = hasFuel ? Math.max(0, (first - last) + refueled) : 0;
@@ -1095,11 +1095,11 @@ async function fuelStats(db, imeis, from, to, opts) {
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     let first = null, last = null, refueled = 0, dist = 0, prev = null, idleSec = 0, prevP = null;
-    let firstCumul = null, lastCumul = null;
+    let cumulSum = 0, prevCumul = null, cumulSeen = false; // sumă incremente pozitive (contoare „_counted" resetabile)
     const bF = {}, bL = {}, bPrev = {}, bRefuel = {}, bIdle = {}, bDist = {};
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], fl = fuelL(p), bk = _bucketKey(p.timestamp, bucket);
-      const fc = fuelCumul(p); if (fc != null) { if (firstCumul == null) firstCumul = fc; lastCumul = fc; }
+      const fc = fuelCumul(p); if (fc != null) { if (prevCumul != null) { const dc = fc - prevCumul; if (dc > 0 && dc < 100) cumulSum += dc; } prevCumul = fc; cumulSeen = true; }
       if (fl != null) {
         if (first == null) first = fl; last = fl;
         if (prev != null) { const d = fl - prev; if (d >= refuelMin) refueled += d; }
@@ -1120,7 +1120,7 @@ async function fuelStats(db, imeis, from, to, opts) {
     // Consum din senzorul de nivel (sondă/CAN): scădere netă + realimentări detectate (salturi ≥ refuelMin).
     const hasFuel = first != null;
     // Contor cumulativ CAN (consum exact, merge și pe distanțe scurte) — preferat înaintea scăderii de nivel.
-    const cumulL = (firstCumul != null && lastCumul != null && lastCumul >= firstCumul) ? (lastCumul - firstCumul) : null;
+    const cumulL = (cumulSeen && cumulSum > 0) ? cumulSum : null;
     const cumulPer100 = (cumulL != null && dist > 1) ? (cumulL / dist * 100) : null;
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
     const sensorL = hasFuel ? Math.max(0, (first - last) + refueled) : 0;
