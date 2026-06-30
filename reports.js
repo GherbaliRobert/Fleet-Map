@@ -440,6 +440,54 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
     summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm), 'Timp condus total': fmtDur(totalDrive) }, charts };
 }
 
+// Ore de conducere & repaus (HOS / Reg. CE 561/2006). Sursă: stările tahograf (io 187) + contorul de conducere
+// continuă (io 189) dacă vehiculul are tahograf conectat (autoritar); altfel estimare din GPS (mișcare/contact).
+// Marchează încălcări: conducere continuă > 4h30 (fără pauză ≥45 min) și conducere zilnică > 9h.
+async function rHos(db, imeis, from, to, opts, devMap) {
+  const drv = {}; try { (await db.getDrivers()).forEach(d => drv[d.id] = d.name); } catch (e) {}
+  const stOf = (p) => { const io = p.io_data || {}; const v = io.tacho_driver1_working_state; return (typeof v === 'number') ? v : null; };
+  const contMinOf = (p) => { const io = p.io_data || {}; const v = io.tacho_driver1_continuous_time; return (typeof v === 'number' && v >= 0) ? v : null; };
+  const rows = []; let totDrive = 0, totRest = 0, totWork = 0, totInfr = 0; const dayDrive = {};
+  for (const imei of imeis) {
+    const pts = await history(db, imei, from, to);
+    if (pts.length < 2) continue;
+    const dvName = devMap[imei] && devMap[imei].driver_id ? (drv[devMap[imei].driver_id] || '—') : '—';
+    const useTacho = pts.some((p) => stOf(p) != null);
+    const byDay = {}; let contSec = 0, restSec = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const pr = pts[i - 1], p = pts[i];
+      const dt = (t(p) - t(pr)) / 1000;
+      if (!(dt > 0 && dt < 3 * 3600)) { contSec = 0; restSec = 0; continue; }
+      const day = _dayKeyISO(pr.timestamp);
+      const d = byDay[day] || (byDay[day] = { drive: 0, work: 0, rest: 0, avail: 0, contMax: 0 });
+      let kind;
+      if (useTacho) { const s = stOf(pr); kind = s === 3 ? 'drive' : s === 2 ? 'work' : s === 1 ? 'avail' : 'rest'; }
+      else { kind = (pr.speed || 0) > IDLE_SPEED ? 'drive' : (ignOn(pr) ? 'work' : 'rest'); }
+      d[kind] += dt;
+      const cm = contMinOf(pr);
+      if (cm != null) { if (cm / 60 > d.contMax) d.contMax = cm / 60; }
+      else if (kind === 'drive') { contSec += dt; restSec = 0; if (contSec / 3600 > d.contMax) d.contMax = contSec / 3600; }
+      else if (kind === 'rest') { restSec += dt; if (restSec >= 45 * 60) contSec = 0; }
+    }
+    for (const day of Object.keys(byDay).sort()) {
+      const d = byDay[day]; const infr = [];
+      if (d.contMax > 4.5) infr.push('continuă ' + d.contMax.toFixed(1) + 'h');
+      if (d.drive / 3600 > 9) infr.push('zilnic ' + (d.drive / 3600).toFixed(1) + 'h');
+      rows.push([dvName, label(devMap, imei), day, fmtDur(d.drive), fmtDur(d.work), fmtDur(d.rest), d.contMax.toFixed(1) + 'h', useTacho ? 'tahograf' : 'GPS (est.)', infr.join('; ') || '✓']);
+      totDrive += d.drive; totWork += d.work; totRest += d.rest; totInfr += infr.length;
+      dayDrive[day] = (dayDrive[day] || 0) + d.drive;
+    }
+  }
+  const dayKeys = Object.keys(dayDrive).sort();
+  const charts = rows.length ? [{ type: 'bar', title: 'Ore conducere pe zi', labels: dayKeys.map(_dayLabel), datasets: [{ label: 'ore', data: dayKeys.map((k) => Math.round(dayDrive[k] / 360) / 10) }] }] : [];
+  return {
+    columns: ['Șofer', 'Vehicul', 'Zi', 'Condus', 'Muncă', 'Repaus', 'Continuă max', 'Sursă', 'Încălcări (Reg. 561)'],
+    rows,
+    summary: { 'Zile-vehicul': rows.length, 'Condus total': fmtDur(totDrive), 'Repaus total': fmtDur(totRest), 'Încălcări (561)': totInfr },
+    charts,
+  };
+}
+
 async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare flotă
   const rows = []; let totalKm = 0, totalEng = 0; const vehKm = [], vehEng = [];
   for (const imei of imeis) {
@@ -1001,7 +1049,8 @@ const REPORTS = {
   hotspot:     { label: 'Raport Hotspot',         cat: 'evenimente',   fn: rHotspot },
   events:      { label: 'Evenimente (alerte)',    cat: 'evenimente',   fn: rEvents },
   ecodrive:    { label: 'EcoDrive (comportament)', cat: 'siguranta',   fn: rEcoDrive },
-  ecodrive_drivers: { label: 'EcoDrive — clasament șoferi', cat: 'siguranta', fn: rEcoDriveDrivers }
+  ecodrive_drivers: { label: 'EcoDrive — clasament șoferi', cat: 'siguranta', fn: rEcoDriveDrivers },
+  hos:         { label: 'Ore conducere & repaus (HOS, Reg. 561)', cat: 'siguranta', fn: rHos }
 };
 const REPORT_CATEGORIES = [
   { key: 'monitorizare', label: 'Monitorizare' },
