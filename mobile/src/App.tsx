@@ -37,6 +37,7 @@ import { Hotspot } from './screens/Hotspot';
 import { EToll } from './screens/EToll';
 import { Settings } from './screens/Settings';
 import { FuelCard } from './screens/FuelCard';
+import { NotifDetail } from './screens/NotifDetail';
 
 export function App() {
   useEffect(() => { bootstrap(); }, []);
@@ -111,6 +112,7 @@ function Shell() {
         <Route path="/etoll" component={EToll} />
         <Route path="/settings" component={Settings} />
         <Route path="/fuelcard" component={FuelCard} />
+        <Route path="/notif/:id" component={NotifDetail} />
         <Route default component={Vehicles} />
       </Router>
       {showTabs && <TabBar />}

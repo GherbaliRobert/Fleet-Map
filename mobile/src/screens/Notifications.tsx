@@ -22,7 +22,7 @@ export function Notifications() {
 
   async function tap(n: NotificationItem) {
     if (!n.acknowledged) { try { await Api.ackNotification(n.id); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => x.id === n.id ? { ...x, acknowledged: true } : x) : cur); }
-    if (n.imei) loc.route('/vehicles/' + encodeURIComponent(n.imei));
+    loc.route('/notif/' + n.id); // deschide detaliul evenimentului (hartă segment + locație)
   }
   async function markAll() { try { await Api.ackAll(); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => ({ ...x, acknowledged: true })) : cur); }
 

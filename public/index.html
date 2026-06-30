@@ -1874,6 +1874,16 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
+  <div id="notif-detail-modal" style="display:none;position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.55);align-items:center;justify-content:center;" onclick="if(event.target===this)closeNotifDetail()">
+    <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;width:580px;max-width:94vw;max-height:90vh;overflow:auto;padding:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-map-location-dot"></i> Detaliu eveniment</div>
+        <button class="btn-sm" onclick="closeNotifDetail()" title="Închide"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="notif-detail-body"></div>
+    </div>
+  </div>
+
   <!-- Pagina „Raport săptămânal flotă" (populată de weekly-report-ui.js) -->
   <div id="weekly-report-view" class="modal-overlay"></div>
 
@@ -5516,16 +5526,57 @@ const pozitii = await r.json();</code></pre>
       list.innerHTML = rows.map(n => `
         <div style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);${n.acknowledged?'opacity:.5;':''}">
           <span style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;background:${sev[n.severity]||'#3b82f6'};"></span>
-          <div style="min-width:0;flex:1;">
+          <div style="min-width:0;flex:1;cursor:pointer;" onclick="openNotifDetail(${n.id})" title="Vezi pe hartă ce s-a întâmplat">
             <div style="font-size:12px;font-weight:600;">${_ne(n.title||n.type)}</div>
             <div style="font-size:11px;color:var(--text-muted);word-break:break-word;">${_ne(n.body||'')}</div>
-            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${new Date(n.created_at).toLocaleString('ro-RO')}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:5px;"><span>${new Date(n.created_at).toLocaleString('ro-RO')}</span><i class="fas fa-map-location-dot" style="color:var(--accent);opacity:.7;"></i></div>
           </div>
           ${n.acknowledged?'':`<button class="btn-sm" style="padding:3px 7px;align-self:flex-start;" title="Marchează citit" onclick="ackNotif(${n.id})"><i class="fas fa-check"></i></button>`}
         </div>`).join('');
     }
     async function ackNotif(id) { try { await fetch('/api/notifications/' + id + '/ack', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
     async function ackAllNotif() { try { await fetch('/api/notifications/ack-all', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
+    let _notifDetailMap = null;
+    function closeNotifDetail() { var ov = document.getElementById('notif-detail-modal'); if (ov) ov.style.display = 'none'; try { if (_notifDetailMap) { _notifDetailMap.remove(); _notifDetailMap = null; } } catch (e) {} }
+    async function openNotifDetail(id) {
+      var ov = document.getElementById('notif-detail-modal'), body = document.getElementById('notif-detail-body');
+      if (!ov || !body) return;
+      ov.style.display = 'flex';
+      body.innerHTML = '<div style="padding:36px;text-align:center;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>';
+      var d = null;
+      try { d = await fetch('/api/notifications/' + id + '/context', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
+      if (!d || d.error) { body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">' + esc((d && d.error) || 'Eroare la încărcare') + '</div>'; return; }
+      var sevMap = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' }, sevC = sevMap[d.severity] || '#3b82f6';
+      var rows = [];
+      rows.push(['Vehicul', esc(d.vehicle || d.imei || '—')]);
+      rows.push(['Când', new Date(d.at).toLocaleString('ro-RO')]);
+      if (d.event && d.event.speed != null) rows.push(['Viteză în acel moment', '<b style="color:' + (d.event.speed >= (d.maxSpeed || 999) ? '#ef4444' : 'inherit') + '">' + d.event.speed + ' km/h</b>']);
+      if (d.maxSpeed) rows.push(['Viteză maximă pe segment', d.maxSpeed + ' km/h']);
+      if (d.event && d.event.address) rows.push(['Locație', esc(d.event.address)]);
+      if (d.event) rows.push(['Coordonate', d.event.lat.toFixed(5) + ', ' + d.event.lng.toFixed(5) + ' &nbsp;<a href="https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Google Maps</a>']);
+      var detailHtml = rows.map(function (r) { return '<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--text-muted);flex-shrink:0;">' + r[0] + '</span><span style="font-weight:600;text-align:right;">' + r[1] + '</span></div>'; }).join('');
+      body.innerHTML =
+        '<div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;"><span style="width:11px;height:11px;border-radius:50%;flex-shrink:0;background:' + sevC + ';"></span><div style="font-size:15.5px;font-weight:700;">' + esc(d.title || d.type) + '</div></div>' +
+        (d.body ? '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">' + esc(d.body) + '</div>' : '') +
+        '<div id="notif-detail-map" style="height:300px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg-dark);margin-bottom:12px;"></div>' +
+        detailHtml +
+        (!d.event ? '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Fără poziție GPS pentru acest eveniment.</div>' : '');
+      setTimeout(function () {
+        try {
+          if (_notifDetailMap) { _notifDetailMap.remove(); _notifDetailMap = null; }
+          if (!d.event || typeof L === 'undefined') return;
+          var m = L.map('notif-detail-map', { zoomControl: true, attributionControl: false });
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
+          var seg = (d.segment || []).filter(function (p) { return p.lat != null; }).map(function (p) { return [p.lat, p.lng]; });
+          if (seg.length > 1) L.polyline(seg, { color: sevC, weight: 4, opacity: .85 }).addTo(m);
+          var ev = [d.event.lat, d.event.lng];
+          L.circleMarker(ev, { radius: 9, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m).bindPopup(esc(d.title || d.type)).openPopup();
+          if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.25)); else m.setView(ev, 16);
+          setTimeout(function () { try { m.invalidateSize(); } catch (e) {} }, 120);
+          _notifDetailMap = m;
+        } catch (e) {}
+      }, 60);
+    }
     function onNotificationWs() {
       refreshNotifBadge();
       const p = document.getElementById('notif-panel');

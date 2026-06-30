@@ -6025,6 +6025,42 @@ app.get('/api/notifications/unread-count', requireAuth, withScope, async (req, r
     res.json({ count: await db.unreadNotifications(req.auth.userId, imeis, req.companyId) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Context eveniment: segmentul de drum + poziția + adresa unde s-a întâmplat notificarea (pt. modalul de detaliu).
+app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, res) => {
+  try {
+    const r = await db.pool.query('SELECT * FROM notifications WHERE id = $1', [parseInt(req.params.id)]);
+    const n = r.rows[0];
+    if (!n) return res.status(404).json({ error: 'Notificare negăsită' });
+    if (n.imei && !canAccessImei(req, n.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const at = new Date(n.created_at).getTime();
+    const out = { id: n.id, type: n.type, severity: n.severity, title: n.title, body: n.body, at: n.created_at, imei: n.imei, vehicle: null, event: null, segment: [], maxSpeed: 0, data: n.data || {} };
+    if (n.imei) {
+      try { const dr = await db.pool.query('SELECT name, plate FROM devices WHERE imei = $1', [n.imei]); if (dr.rows[0]) out.vehicle = dr.rows[0].name || dr.rows[0].plate || n.imei; } catch (e) {}
+      const from = new Date(at - 12 * 60000).toISOString(), to = new Date(at + 12 * 60000).toISOString();
+      let hist = []; try { hist = await db.getDeviceHistory(n.imei, from, to, 2000); } catch (e) {}
+      let best = null, bestDt = Infinity;
+      for (const p of hist) {
+        if (p.latitude == null) continue;
+        out.segment.push({ lat: p.latitude, lng: p.longitude, speed: Math.round(p.speed || 0), ts: p.timestamp });
+        if ((p.speed || 0) > out.maxSpeed) out.maxSpeed = p.speed || 0;
+        const dt = Math.abs(new Date(p.timestamp).getTime() - at);
+        if (dt < bestDt) { bestDt = dt; best = p; }
+      }
+      out.maxSpeed = Math.round(out.maxSpeed);
+      const d = n.data || {};
+      let ev = null;
+      if (typeof d.lat === 'number' && typeof d.lng === 'number') ev = { lat: d.lat, lng: d.lng };
+      else if (typeof d.latitude === 'number' && typeof d.longitude === 'number') ev = { lat: d.latitude, lng: d.longitude };
+      else if (best) ev = { lat: best.latitude, lng: best.longitude, speed: Math.round(best.speed || 0) };
+      if (ev) {
+        if (ev.speed == null && best) ev.speed = Math.round(best.speed || 0);
+        try { if (geocode && geocode.reverseGeocode) ev.address = await geocode.reverseGeocode(ev.lat, ev.lng); } catch (e) {}
+        out.event = ev;
+      }
+    }
+    res.json(out);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 app.get('/api/notifications/channels', requireAuth, requireAdmin, (req, res) => {
   res.json(channels.channelsConfigured());
 });

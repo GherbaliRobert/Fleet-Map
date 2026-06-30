@@ -47,6 +47,7 @@ export const Api = {
   notifications: () => api<NotificationItem[]>('/api/notifications'),
   unreadCount: () => api<{ count: number }>('/api/notifications/unread-count'),
   ackNotification: (id: number) => api(`/api/notifications/${id}/ack`, { method: 'POST' }),
+  notifContext: (id: number | string) => api<any>(`/api/notifications/${id}/context`),
   ackAll: () => api('/api/notifications/ack-all', { method: 'POST' }),
   groups: () => api<Group[]>('/api/groups'),
   documents: () => api<DocItem[]>('/api/documents'),
