@@ -293,7 +293,8 @@ async function raOptimize(ctx) {
   // Cost ralanti la nivel de flotă (o singură constatare, distinctă de RA Watch)
   const fleetIdleH = fleetIdleSec / 3600;
   if (fleetIdleH >= 2) {
-    const wasteL = fleetIdleH * IDLE_BURN_LPH; const cost = wasteL * FUEL_PRICE;
+    const _fp = (ctx && Number(ctx.fuelPrice) > 0) ? Number(ctx.fuelPrice) : FUEL_PRICE; // prețul REAL al companiei (motorină), fallback 7.5
+    const wasteL = fleetIdleH * IDLE_BURN_LPH; const cost = wasteL * _fp;
     findings.push({ imei: null, severity: 'info', agent: 'optimize', fkey: 'opt_fleet_idle', title: 'Flotă: ' + fleetIdleH.toFixed(1) + ' h ralanti azi', body: 'Risipă estimată ~' + wasteL.toFixed(1) + ' L (~' + Math.round(cost) + ' lei). Reducerea ralantiului scade direct costurile.' });
   }
   return { findings };

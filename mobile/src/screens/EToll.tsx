@@ -18,6 +18,7 @@ export function EToll() {
         <div style="width:36px" />
       </header>
       <div class="content has-tabbar" style="padding-bottom:24px">
+        <div style="font-size:12.5px;color:var(--text-muted);background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px">Estimare informativă a costurilor de taxare pe baza km parcurși. Configurarea providerilor și reconcilierea facturilor se fac în aplicația web.</div>
         {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
         {!data && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
         {data && (

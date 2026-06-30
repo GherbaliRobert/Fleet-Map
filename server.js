@@ -245,12 +245,16 @@ async function reconcileArchived() {
 // NU includem TEMP MOTORULUI — alimentează alertele de supraîncălzire (o temp „sticky" ar da alerte FALSE după răcire).
 // NU includem viteza — aceea TREBUIE instantanee (o viteză „sticky" ar arăta mașina în mișcare deși stă).
 const STICKY_CAN = ['fuel_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_engine_rpm'];
+// Valori „volatile" (live): NU le mai cărăm dacă snapshot-ul e mai vechi de X — altfel RPM-ul ultimei tură apare ca instant deși motorul e oprit/offline.
+// (Carburant/odometru rămân sticky oricât — nu se schimbă cât stă mașina parcată.)
+const STICKY_VOLATILE = new Set(['can_engine_rpm']);
+const STICKY_VOLATILE_MAX_MS = 15 * 60 * 1000;
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
 // Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
 // „0.0 km (ultima)" / „- (ultima)" fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire".
 function _stickyOf(io) { const o = {}; if (!io) return o; for (const k of STICKY_CAN) { const v = io[k]; if (v !== undefined && v !== null && Number(v) > 0) o[k] = v; } return o; }
 // Completează în targetIo cheile sticky LIPSĂ cu ultima valoare reală din snapshot. Întoarce true dacă a completat ceva.
-function _fillSticky(targetIo, snapIo) { let c = false; for (const k of STICKY_CAN) { const sv = snapIo[k]; if (targetIo[k] === undefined && sv !== undefined && sv !== null && Number(sv) > 0) { targetIo[k] = sv; c = true; } } return c; }
+function _fillSticky(targetIo, snapIo, snapTs) { let c = false; const volStale = (Date.now() - (snapTs || 0)) > STICKY_VOLATILE_MAX_MS; for (const k of STICKY_CAN) { if (volStale && STICKY_VOLATILE.has(k)) continue; const sv = snapIo[k]; if (targetIo[k] === undefined && sv !== undefined && sv !== null && Number(sv) > 0) { targetIo[k] = sv; c = true; } } return c; }
 function _persistLastCan(imei, io, ts) {
   const s = _stickyOf(io); if (!Object.keys(s).length) return;
   s._ts = ts || null; lastCanPersistTs.set(imei, ts || 0);
@@ -669,7 +673,7 @@ const tcpServer = net.createServer((socket) => {
         // Completează cheile sticky LIPSĂ din pachetul curent (indiferent dacă pachetul are alte chei can_*).
         // can_stale = true DOAR dacă chiar am completat o valoare reală → fără „(ultima)" fals pe camioane fără CAN.
         const _snap = lastCanIo.get(imei);
-        const _carried = _snap ? _fillSticky(liveData.io, _snap.io) : false;
+        const _carried = _snap ? _fillSticky(liveData.io, _snap.io, _snap.ts) : false;
         liveData.can_stale = _carried;
         if (_carried) {
           liveData.can_snapshot_ts = _snap.ts;
@@ -2026,7 +2030,8 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '" nu e inclus în planul/setările companiei' });
     if (which === 'all' && !enabled.length) return res.json({ findings: [], aiSummary: null, stored: 0, message: 'Niciun agent activ pe acest plan' });
     const alertThresholds = await _getAlertThresholds(storeCompany);
-    const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds };
+    const _coFP = await db.getCompanyById(storeCompany).then(function (c) { return effectiveFuelPrices(c && c.settings).motorina; }).catch(function () { return null; });
+    const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds, fuelPrice: _coFP || 7.5 };
     const findings = (which === 'all' ? await agents.runAll(base, enabled) : await agents.runAgent(which, base)).findings || [];
     let stored = 0;
     for (const f of findings) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; }
@@ -2099,7 +2104,8 @@ async function runAgentsWorker() {
       const imeis = await db.getCompanyActiveImeis(co.id); // agenții nu rulează pe vehicule arhivate
       if (!imeis.length) continue;
       const alertThresholds = _alertThresholdsFromSettings(co && co.settings);
-      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds }, enabled);
+      const _coFP = effectiveFuelPrices(co && co.settings).motorina || 7.5;
+      const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds, fuelPrice: _coFP }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
     }
   } catch (e) { console.warn('[AGENTS] worker:', e.message); }

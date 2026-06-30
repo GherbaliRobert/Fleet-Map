@@ -13439,15 +13439,25 @@ const pozitii = await r.json();</code></pre>
       raxRefreshAgBadge();
     };
     // Mini toast vizual (nu folosim alert care blochează UI-ul)
-    window.raxToast = function (msg, kind) {
+    window.raxToast = function (msg, kind, ms) {
       var t = document.createElement('div');
       t.textContent = msg;
-      var bg = kind === 'error' ? '#ef4444' : 'var(--accent)';
-      t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:' + bg + ';color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:9999;opacity:0;transition:opacity .2s;';
+      var bg = kind === 'error' ? '#ef4444' : kind === 'info' ? '#334155' : 'var(--accent)';
+      t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:' + bg + ';color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:9999;opacity:0;transition:opacity .2s;max-width:90vw;text-align:center;';
       document.body.appendChild(t);
       requestAnimationFrame(function () { t.style.opacity = '1'; });
-      setTimeout(function () { t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 250); }, 1800);
+      setTimeout(function () { t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 250); }, ms || 1800);
     };
+    // Consistență UI: toate apelurile native alert() devin toast-uri stilizate (fără a modifica cele 120+ call-site-uri).
+    // Pică pe alert-ul nativ doar dacă toast-ul nu e disponibil. confirm() rămâne nativ (e prompt de siguranță).
+    (function () {
+      var _nativeAlert = (typeof window.alert === 'function') ? window.alert.bind(window) : null;
+      window.alert = function (m) {
+        var s = String(m == null ? '' : m);
+        try { if (window.raxToast) { window.raxToast(s, /eroare|invalid|gre[șs]|nu se |nu poate|nu pot |prea |trebuie|e[șs]uat|fail|interzis/i.test(s) ? 'error' : 'info', 4200); return; } } catch (e) {}
+        if (_nativeAlert) _nativeAlert(m);
+      };
+    })();
     var _agBadgeTs = 0;
     async function raxRefreshAgBadge() {
       if (!(me && me.permissions && me.permissions.viewReports)) return;
