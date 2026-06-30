@@ -5544,7 +5544,9 @@ const pozitii = await r.json();</code></pre>
       ov.style.display = 'flex';
       body.innerHTML = '<div style="padding:36px;text-align:center;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>';
       var d = null;
-      try { d = await fetch('/api/notifications/' + id + '/context', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
+      var _ctrl = new AbortController(), _to = setTimeout(function () { _ctrl.abort(); }, 12000);
+      try { d = await fetch('/api/notifications/' + id + '/context', { credentials: 'same-origin', signal: _ctrl.signal }).then(function (r) { return r.json(); }); } catch (e) {}
+      clearTimeout(_to);
       if (!d || d.error) { body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">' + esc((d && d.error) || 'Eroare la încărcare') + '</div>'; return; }
       var sevMap = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' }, sevC = sevMap[d.severity] || '#3b82f6';
       var rows = [];

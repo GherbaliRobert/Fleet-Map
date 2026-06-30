@@ -6054,7 +6054,12 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
       else if (best) ev = { lat: best.latitude, lng: best.longitude, speed: Math.round(best.speed || 0) };
       if (ev) {
         if (ev.speed == null && best) ev.speed = Math.round(best.speed || 0);
-        try { if (geocode && geocode.reverseGeocode) ev.address = await geocode.reverseGeocode(ev.lat, ev.lng); } catch (e) {}
+        // Adresă: din cache INSTANT (peek); altfel reverse-geocode cu plafon 2s — NU blocăm dacă coada Nominatim e plină.
+        try {
+          const cached = (geocode && geocode.peek) ? geocode.peek(ev.lat, ev.lng) : undefined;
+          if (cached !== undefined) ev.address = cached;
+          else if (geocode && geocode.reverseGeocode) ev.address = await Promise.race([geocode.reverseGeocode(ev.lat, ev.lng).catch(() => null), new Promise((r) => setTimeout(() => r(null), 2000))]);
+        } catch (e) {}
         out.event = ev;
       }
     }
