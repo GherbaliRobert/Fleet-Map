@@ -136,6 +136,8 @@ function computeFuelFromSensors(io, sensors) {
 }
 
 const db = require('./db');
+const backup = require('./backup');
+const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
 const reports = require('./reports');
 const channels = require('./channels');
 const ai = require('./ai');
@@ -6209,6 +6211,25 @@ app.get('/api/payments', requireAuth, requireSuperadmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Control costuri (cheltuielile NOASTRE de platformă) — STRICT super-admin ───
+// ─── Backup date business (super-admin) — vezi backup.js + restore-backup.js ───
+app.get('/api/admin/backup/status', requireAuth, requireSuperadmin, (req, res) => { res.json(backup.getStatus()); });
+app.post('/api/admin/backup/run', requireAuth, requireSuperadmin, async (req, res) => {
+  const st = await backup.runScheduledBackup(db, COMMIT_VER);
+  auditReq(req, 'run', 'backup', null, { target: st.target, ok: st.ok });
+  res.json(st);
+});
+app.get('/api/admin/backup/download', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = await backup.makeBackup(db, COMMIT_VER);
+    const fname = 'ratracks-backup-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.' + b.ext;
+    auditReq(req, 'download', 'backup', null, { rows: b.rows, encrypted: b.encrypted });
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + fname + '"');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(b.buf);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/costs', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const costs = await db.listPlatformCosts({});
@@ -6957,6 +6978,10 @@ async function start() {
   // Prune jurnal erori: la pornire + zilnic (păstrează ultimele 2000).
   db.pruneErrors(2000).catch(() => {});
   setInterval(() => db.pruneErrors(2000).catch(() => {}), 24 * 60 * 60 * 1000);
+
+  // Backup zilnic al datelor de business (off-site dacă BACKUP_S3_* e configurat; altfel doar status + download manual). Vezi backup.js.
+  setTimeout(() => backup.runScheduledBackup(db, COMMIT_VER).catch(() => {}), 5 * 60 * 1000);
+  setInterval(() => backup.runScheduledBackup(db, COMMIT_VER).catch(() => {}), 24 * 60 * 60 * 1000);
 
   // Pornește serverul TCP
   tcpServer.listen(ACTUAL_TCP_PORT, () => {

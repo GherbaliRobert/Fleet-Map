@@ -16,8 +16,10 @@ export function PlatformDashboard() {
   const [counts, setCounts] = useState<any | null>(null);
   const [live, setLive] = useState<any | null>(null);
   const [errs, setErrs] = useState<any[] | null>(null);
+  const [bk, setBk] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [bkBusy, setBkBusy] = useState(false);
 
   function reload() {
     setErr('');
@@ -25,6 +27,7 @@ export function PlatformDashboard() {
     Api.adminCounts().then(setCounts).catch(() => {});
     Api.liveStats().then(setLive).catch(() => {});
     Api.adminErrors(20).then(setErrs).catch(() => setErrs([]));
+    Api.backupStatus().then(setBk).catch(() => {});
   }
   useEffect(reload, []);
 
@@ -32,6 +35,11 @@ export function PlatformDashboard() {
     if (!confirm('Golești logul de erori?')) return;
     setBusy(true);
     try { await Api.clearAdminErrors(); showToast('Log golit'); setErrs([]); } catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setBusy(false); }
+  }
+  async function runBackup() {
+    setBkBusy(true);
+    try { const st = await Api.backupRun(); setBk(st); showToast(st?.ok ? ('Backup: ' + (st.target || 'rulat')) : ('Eșuat: ' + (st?.error || '')), !st?.ok); }
+    catch (e: any) { showToast(e?.message || 'Eroare backup', true); } finally { setBkBusy(false); }
   }
 
   const rev = ov?.revenue || {};
@@ -82,6 +90,20 @@ export function PlatformDashboard() {
                 <div class="adm-kv"><span class="k">Uptime</span><span>{fmtUptime(live.uptime_s)}</span></div>
               </div>
             )}
+
+            <div class="pf-card">
+              <h3>Backup date</h3>
+              {bk ? (
+                <>
+                  <div class="adm-kv"><span class="k">Ultimul automat</span><span>{bk.ok === false ? 'EȘUAT' : (bk.at ? fmtDT(bk.at) : 'nerulat încă')}</span></div>
+                  <div class="adm-kv"><span class="k">Destinație</span><span style={'color:' + (bk.s3Configured ? 'var(--text-primary)' : '#f59e0b')}>{bk.s3Configured ? (String(bk.target || '').indexOf('S3') === 0 ? 'off-site (S3) ✓' : 'S3 configurat') : 'S3 neconfigurat'}</span></div>
+                  {bk.sizeBytes ? <div class="adm-kv"><span class="k">Dimensiune</span><span>{Math.round(bk.sizeBytes / 1024)} KB{bk.encrypted ? ' · 🔒' : ''}</span></div> : null}
+                  {bk.error ? <div style="color:var(--red);font-size:12px;padding:4px 0">{bk.error}</div> : null}
+                </>
+              ) : <div class="spin" style="margin:8px auto" />}
+              <button class="btn btn-primary" style="margin-top:10px" disabled={bkBusy} onClick={runBackup}>{bkBusy ? 'Se rulează…' : 'Rulează backup off-site acum'}</button>
+              <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px">Descărcarea fișierului de backup se face din aplicația web (Dashboard platformă).</div>
+            </div>
 
             <div class="pf-card">
               <h3>Erori recente{errs && errs.length > 0 ? <button class="adm-act danger" disabled={busy} onClick={clearErrs}><Icon name="trash" size={13} /> Golește</button> : null}</h3>

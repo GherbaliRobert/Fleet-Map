@@ -11093,11 +11093,22 @@ const pozitii = await r.json();</code></pre>
         (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >1h">⚠ ' + h.offline30 + '</span>' : '') +
         (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
     }
+    window.raxRunBackup = async function (btn) {
+      var old = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se rulează…'; }
+      try {
+        var st = await fetch('/api/admin/backup/run', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (window.raxToast) raxToast(st.ok ? ('Backup rulat: ' + (st.target || 'local')) : ('Backup eșuat: ' + (st.error || '')), st.ok ? 'success' : 'error');
+        if (window.raxLoadDashboard) raxLoadDashboard('admin-tab-dashboard');
+      } catch (e) { if (window.raxToast) raxToast('Eroare la backup', 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = old; } }
+    };
     window.raxLoadDashboard = async function raxLoadDashboard(targetId) {
       if (!(currentUser && currentUser.role === 'superadmin')) return; // STRICT super-admin: dashboard platformă (overview cross-tenant)
       var box = $(targetId || 'rax-dash-body'); if (!box) return; box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
         var d = await fetch('/api/admin/overview?days=30', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var bk = await fetch('/api/admin/backup/status', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return null; });
         var t = d.totals || {}; var th = t.health || {};
         var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;margin-bottom:10px;">' +
           _raxCard('Companii', t.companies) + _raxCard('Vehicule', t.vehicles) + _raxCard('Utilizatori', t.users) + _raxCard('Constatări noi AI', t.findings_new || 0) +
@@ -11136,6 +11147,21 @@ const pozitii = await r.json();</code></pre>
           + '<input id="rax-dash-aikey" type="password" placeholder="' + (d.aiEnabled ? '•••••••• (schimbă cheia)' : 'sk-ant-...') + '" style="flex:1;min-width:200px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px 11px;font-size:13px;">'
           + '<button class="rax-btn primary" onclick="raxDashSaveKey()"><i class="fas fa-key"></i> Salvează</button></div>';
         html += '<div id="rax-dash-aikey-msg" style="font-size:11px;margin-bottom:12px;color:var(--text-muted);">Status: ' + (d.aiEnabled ? '<span style="color:var(--accent)">● activ</span> — asistentul liber și agenții AI funcționează' : '● inactiv — adaugă cheia pentru întrebări libere/rezumate (întrebările rapide merg oricum)') + '</div>';
+
+        // ─── Backup date business (off-site) ───
+        var _bkTxt = 'Status indisponibil.';
+        if (bk) {
+          var _bkWhen = bk.at ? new Date(bk.at).toLocaleString('ro-RO') : 'nerulat automat încă';
+          var _bkTgt = bk.s3Configured ? ((bk.target && String(bk.target).indexOf('S3') === 0) ? '<span style="color:var(--accent)">off-site (S3) ✓</span>' : 'S3 configurat') : '<span style="color:#f59e0b">S3 NEconfigurat — momentan doar download manual</span>';
+          var _bkSize = bk.sizeBytes ? (Math.round(bk.sizeBytes / 1024) + ' KB') : '';
+          var _bkEnc = bk.encrypted ? ' · 🔒 criptat' : ' · necriptat';
+          _bkTxt = (bk.ok === false ? '<span style="color:#ef4444">Ultimul automat EȘUAT: ' + esc(bk.error || '') + '</span>' : ('Ultimul automat: ' + _bkWhen + (bk.at ? ' · ' + _bkSize + _bkEnc : ''))) + ' · ' + _bkTgt;
+        }
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-database"></i> Backup date (business)</div>';
+        html += '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px;">' + _bkTxt + '</div>';
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">'
+          + '<button class="rax-btn primary" onclick="window.open(\'/api/admin/backup/download\',\'_blank\')"><i class="fas fa-download"></i> Descarcă backup acum</button>'
+          + '<button class="rax-btn" onclick="raxRunBackup(this)"><i class="fas fa-cloud-arrow-up"></i> Rulează backup off-site</button></div>';
 
         var rows = (d.companies || []).map(function (c) {
           return '<tr style="border-bottom:1px solid var(--border);">' +

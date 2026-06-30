@@ -83,6 +83,8 @@ export const Api = {
   adminErrors: (limit = 50) => api<any[]>(`/api/admin/errors?limit=${limit}`),
   clearAdminErrors: () => api('/api/admin/errors', { method: 'DELETE' }),
   liveStats: () => api<any>('/api/debug/live-stats'),
+  backupStatus: () => api<any>('/api/admin/backup/status'),
+  backupRun: () => api<any>('/api/admin/backup/run', { method: 'POST' }),
   // ── Super-admin: Control costuri ──
   costs: () => api<any>('/api/admin/costs'),
   createCost: (b: any) => api<any>('/api/admin/costs', { method: 'POST', body: b }),
