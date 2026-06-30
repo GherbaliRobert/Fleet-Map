@@ -262,7 +262,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
 }
 
 async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurgeri/furt
-  const refuelMin = opts.refuelMin || 10, dropMin = opts.dropMin || 10;
+  const refuelMin = opts.refuelMin || 5, dropMin = opts.dropMin || 10;
   const rows = []; let refuels = 0, drops = 0, addedL = 0, lostL = 0; const refs = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
@@ -904,7 +904,7 @@ function _dueStatus(days) { return days < 0 ? 'Depășit' : days <= 7 ? 'Critic'
 // mare = ignorat). Întoarce un map imei -> metrici. Oglindește logica din fuelStats (pagina „Statistici consum").
 async function _consumptionMap(db, imeis, from, to, opts) {
   opts = opts || {};
-  const refuelMin = opts.refuelMin || 10, idleLph = opts.idleLph || 1.5, MAX_PER100 = 200;
+  const refuelMin = opts.refuelMin || 5, idleLph = opts.idleLph || 1.5, MAX_PER100 = 200;
   const cfg = {};
   try { (await db.pool.query('SELECT imei, fuel_price, fuel_type, vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices')).rows.forEach(d => { cfg[d.imei] = { price: parseFloat(d.fuel_price), fuelType: d.fuel_type || null, vtype: d.vehicle_type || null, cRoad: parseFloat(d.consumption_road) || parseFloat(d.consumption_city) || null, cIdle: parseFloat(d.consumption_idle) || null }; }); } catch (e) {}
   const out = {};
@@ -1084,7 +1084,7 @@ function defConsumption(vtype) {
 
 async function fuelStats(db, imeis, from, to, opts) {
   opts = opts || {};
-  const refuelMin = opts.refuelMin || 10, idleLph = opts.idleLph || 1.5, co2Factor = opts.co2Factor || 2.64;
+  const refuelMin = opts.refuelMin || 5, idleLph = opts.idleLph || 1.5, co2Factor = opts.co2Factor || 2.64;
   const MAX_PER100 = 200; // peste atât, semnalul de nivel e zgomot → folosim estimarea
   const bucket = opts.bucket === 'month' ? 'month' : 'day';
   const devMap = await deviceNames(db, imeis);

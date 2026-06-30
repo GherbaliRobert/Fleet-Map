@@ -6729,18 +6729,23 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
     }
     const today_debug = { points: todayH.length, ignition_on_samples: ignOn, ignition_values_seen: ignitionValues, engine_on_sec: Math.round(engineOnSec), engine_on_fmt: Math.floor(engineOnSec / 3600) + 'h ' + Math.floor((engineOnSec % 3600) / 60) + 'm', km_today: +kmToday.toFixed(1) };
     // Diagnostic combustibil: are CONTOR cumulativ (consum exact) sau doar NIVEL (consum mic = „est.")?
-    let fCumFirst = null, fCumLast = null, fLvlFirst = null, fLvlLast = null, cumSum = 0, prevCum = null;
+    let fCumFirst = null, fCumLast = null, fLvlFirst = null, fLvlLast = null, cumSum = 0, prevCum = null, prevLvl = null, lvlMaxJump = 0;
     for (const r of todayH) {
       const rio = r.io_data || {};
       const cum = (typeof rio.can_fuel_consumed === 'number') ? rio.can_fuel_consumed : (typeof rio.can_fuel_consumed_counted === 'number' ? rio.can_fuel_consumed_counted : (typeof rio.can_engine_total_fuel_used === 'number' ? rio.can_engine_total_fuel_used : null));
       if (cum != null && cum > 0) { if (prevCum != null) { const dc = cum - prevCum; if (dc > 0 && dc < 100) cumSum += dc; } prevCum = cum; if (fCumFirst == null) fCumFirst = cum; fCumLast = cum; }
       const lvl = (typeof rio.fuel_level_liters === 'number') ? rio.fuel_level_liters : (typeof rio.can_fuel_level_liters === 'number' ? rio.can_fuel_level_liters : null);
-      if (lvl != null && lvl > 0) { if (fLvlFirst == null) fLvlFirst = lvl; fLvlLast = lvl; }
+      if (lvl != null && lvl > 0) { if (prevLvl != null) { const dL = lvl - prevLvl; if (dL > lvlMaxJump) lvlMaxJump = dL; } prevLvl = lvl; if (fLvlFirst == null) fLvlFirst = lvl; fLvlLast = lvl; }
     }
     const _counter = fCumFirst != null;
     const _km = today_debug.km_today || 0;
     const _sumPer100 = (cumSum > 0 && _km > 1) ? +(cumSum / _km * 100).toFixed(1) : null;
     const _ok = cumSum > 0 && _sumPer100 != null && _sumPer100 >= 1 && _sumPer100 <= 200;
+    // Consum din NIVEL cu alimentarea (cel mai mare salt ≥ 5 L) recunoscută — replică logica de raport cu pragul nou.
+    const _refuel = lvlMaxJump >= 5 ? lvlMaxJump : 0;
+    const _netCons = (fLvlFirst != null && fLvlLast != null) ? Math.max(0, (fLvlFirst - fLvlLast) + _refuel) : null;
+    const _netPer100 = (_netCons != null && _netCons > 0 && _km > 1) ? +(_netCons / _km * 100).toFixed(1) : null;
+    const _levelOk = _netPer100 != null && _netPer100 >= 1 && _netPer100 <= 200;
     const fuel_diag = {
       contor_cumulativ_prezent: _counter,
       contor_chei: ['can_fuel_consumed', 'can_fuel_consumed_counted', 'can_engine_total_fuel_used'].filter(function (k) { return io[k] !== undefined; }),
@@ -6751,11 +6756,17 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
       nivel_prezent: fLvlFirst != null,
       nivel_curent_L: fLvlLast,
       nivel_scadere_azi_L: (fLvlFirst != null && fLvlLast != null) ? +(fLvlFirst - fLvlLast).toFixed(2) : null,
+      nivel_cel_mai_mare_salt_L: +lvlMaxJump.toFixed(1),
+      alimentare_detectata_L: +_refuel.toFixed(1),
+      consum_din_nivel_cu_alimentare_L: _netCons != null ? +_netCons.toFixed(2) : null,
+      consum_din_nivel_L_per_100km: _netPer100,
       toate_cheile_combustibil: Object.keys(io).filter(function (k) { return /fuel|carbur|consum/i.test(k); }).sort(),
       verdict: _ok
         ? ('Contor OK prin SUMA incrementelor: ' + cumSum.toFixed(1) + ' L azi (' + _sumPer100 + ' L/100km) → fix-ul îl folosește, NU mai e „est.".')
-        : (_counter ? ('Contor prezent dar suma azi = ' + cumSum.toFixed(2) + ' L (' + (_sumPer100 || '?') + ' L/100km) — neplauzibil → rămâne estimat (contorul nu acumulează corect / e prea coarse).')
-          : (fLvlFirst != null ? 'Doar NIVEL (fără contor) → consum mic „est.".' : 'Niciun semnal de combustibil.')),
+        : (_levelOk
+          ? ('Rezolvat din NIVEL + alimentare (' + _refuel.toFixed(1) + ' L salt detectat la prag 5): consum ' + _netCons.toFixed(1) + ' L (' + _netPer100 + ' L/100km) → NU mai e „est.".')
+          : (_counter ? ('Contor prezent dar suma azi = ' + cumSum.toFixed(2) + ' L (' + (_sumPer100 || '?') + ' L/100km) — neplauzibil → estimat.')
+            : (fLvlFirst != null ? ('Doar NIVEL, fără salt/alimentare detectabil (cel mai mare salt ' + lvlMaxJump.toFixed(1) + ' L) → consum mic „est.".') : 'Niciun semnal de combustibil.'))),
     };
     res.json({ vehicul: dev.name || dev.imei, imei: dev.imei, can_interface: canIface, ts: last && last.timestamp, last_ignition: io.ignition, fuel_diag: fuel_diag, odometer_fields: odometer_fields, today_debug: today_debug, all_io_keys: Object.keys(io).sort() });
   } catch (err) { res.status(500).json({ error: err.message }); }
