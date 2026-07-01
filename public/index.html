@@ -5559,6 +5559,7 @@ const pozitii = await r.json();</code></pre>
       clearTimeout(_to);
       if (!d || d.error) { body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">' + esc((d && d.error) || 'Eroare la încărcare') + '</div>'; return; }
       var sevMap = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' }, sevC = sevMap[d.severity] || '#3b82f6';
+      var isSpeeding = /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || '')); // limita OSM DOAR la alerte de viteză (nu la idle etc.)
       var rows = [];
       rows.push(['Vehicul', esc(d.vehicle || d.imei || '—')]);
       rows.push(['Când', new Date(d.at).toLocaleString('ro-RO')]);
@@ -5566,7 +5567,7 @@ const pozitii = await r.json();</code></pre>
       if (d.maxSpeed) rows.push(['Viteză maximă pe segment', d.maxSpeed + ' km/h']);
       if (d.event && d.event.address) rows.push(['Locație', esc(d.event.address)]);
       if (d.event) rows.push(['Coordonate', d.event.lat.toFixed(5) + ', ' + d.event.lng.toFixed(5) + ' &nbsp;<a href="https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Google Maps</a>']);
-      if (d.event) rows.push(['Limită drum (OSM)', '<span id="notif-rl" style="color:var(--text-muted);">se verifică…</span>']);
+      if (d.event && isSpeeding) rows.push(['Limită drum (OSM)', '<span id="notif-rl" style="color:var(--text-muted);">se verifică…</span>']);
       var detailHtml = rows.map(function (r) { return '<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--text-muted);flex-shrink:0;">' + r[0] + '</span><span style="font-weight:600;text-align:right;">' + r[1] + '</span></div>'; }).join('');
       body.innerHTML =
         '<div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;"><span style="width:11px;height:11px;border-radius:50%;flex-shrink:0;background:' + sevC + ';"></span><div style="font-size:15.5px;font-weight:700;">' + esc(d.title || d.type) + '</div></div>' +
@@ -5592,8 +5593,8 @@ const pozitii = await r.json();</code></pre>
           _notifDetailMap = m;
         } catch (e) {}
       }, 60);
-      // Limita legală a drumului (OSM) — async, nu blochează modalul.
-      if (d.event) {
+      // Limita legală a drumului (OSM) — async, nu blochează modalul. DOAR la alerte de viteză (nu la idle etc.).
+      if (d.event && isSpeeding) {
         fetch('/api/road-limits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: [[d.event.lat, d.event.lng], [d.event.lat, d.event.lng]] }) })
           .then(function (r) { return r.json(); }).then(function (rl) {
             var el = document.getElementById('notif-rl'); if (!el) return;
@@ -7238,7 +7239,11 @@ const pozitii = await r.json();</code></pre>
         fuelSource = ' (sonda)';
       } else if (io.can_fuel_level_liters !== undefined && io.can_fuel_level_liters > 0) {
         fuelLevelNum = io.can_fuel_level_liters;
-        fuelLevel = io.can_fuel_level_liters.toFixed(1) + ' L' + (io.can_fuel_level_pct !== undefined ? ' · ' + io.can_fuel_level_pct + '%' : '');
+        // % REAL = litri ÷ capacitate rezervor (configurată). NU afișăm can_fuel_level_pct BRUT — la senzorii factory
+        // (Logan/Caddy) e nesigur (ex. 42 L raportat ca „100%"). Fără capacitate configurată → doar litri.
+        const _tankCap = Number(data.tank_capacity) || 0;
+        const _pctReal = _tankCap > 0 ? Math.max(0, Math.min(100, Math.round(io.can_fuel_level_liters / _tankCap * 100))) : null;
+        fuelLevel = io.can_fuel_level_liters.toFixed(1) + ' L' + (_pctReal != null ? ' · ' + _pctReal + '%' : '');
         fuelSource = ' (CAN)';
       } else if (io.can_fuel_level_pct !== undefined) {
         fuelLevel = io.can_fuel_level_pct + '%';
@@ -8045,13 +8050,17 @@ const pozitii = await r.json();</code></pre>
           }
           chunk = null; chunkLim = null; chunkMaxSp = 0;
         };
+        var GAP_MS = 3 * 60 * 1000; // >3 min între poziții = pauză/gap GPS → NU lega segmentul (altfel linie dreaptă greșită între trasee)
+        var _tms = function (p) { return new Date(p.timestamp).getTime(); };
         for (var i = 0; i < hpLastData.length; i++) {
           var lm = lim[i], sp = hpLastData[i].speed || 0;
           if (typeof lm === 'number') withLimit++;
+          var gap = i > 0 ? (_tms(hpLastData[i]) - _tms(hpLastData[i - 1])) : 0;
+          if (gap > GAP_MS) _closeChunk(); // rupe la pauze — nu conecta puncte îndepărtate în timp
           var isOver = (typeof lm === 'number') && sp > lm + 3; // toleranță 3 km/h (zgomot GPS)
           if (isOver) {
             over++; if (sp - lm > maxOver) maxOver = sp - lm;
-            var prev = hpLastData[i - 1] || hpLastData[i];
+            var prev = (i > 0 && gap <= GAP_MS) ? hpLastData[i - 1] : hpLastData[i]; // pornește de la punctul anterior DOAR dacă e contiguu
             if (!chunk) { chunk = [[prev.latitude, prev.longitude]]; chunkLim = lm; chunkMaxSp = 0; }
             chunk.push([hpLastData[i].latitude, hpLastData[i].longitude]);
             if (sp > chunkMaxSp) chunkMaxSp = sp;

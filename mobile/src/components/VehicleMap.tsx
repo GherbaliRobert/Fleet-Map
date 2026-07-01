@@ -30,6 +30,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   const mapRef = useRef<L.Map | null>(null);
   const markers = useRef<Map<string, L.Marker>>(new Map());
   const fitted = useRef(false);
+  const prevFollow = useRef(false);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
 
@@ -38,11 +39,11 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
     const map = L.map(ref.current, { zoomControl: true, attributionControl: false }).setView([45.9, 25], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     mapRef.current = map;
-    // butonul „Detalii" din balon → ecranul vehiculului
-    map.on('popupopen', (e: any) => {
-      const el = e.popup.getElement && e.popup.getElement();
-      const btn = el && el.querySelector('.vmpop-btn');
-      if (btn) btn.addEventListener('click', () => { const imei = btn.getAttribute('data-imei'); if (imei) onSelectRef.current(imei); }, { once: true });
+    // butonul „Detalii" din balon → ecranul vehiculului. DELEGARE (un singur listener pe container) —
+    // supraviețuiește lui setPopupContent de la update-urile live (înainte, listener-ul per-buton se pierdea → butonul nu funcționa).
+    ref.current.addEventListener('click', (ev: any) => {
+      const btn = ev.target && ev.target.closest ? ev.target.closest('.vmpop-btn') : null;
+      if (btn) { ev.stopPropagation(); const imei = btn.getAttribute('data-imei'); if (imei) onSelectRef.current(imei); }
     });
     setTimeout(() => map.invalidateSize(), 100);
     return () => { map.remove(); mapRef.current = null; markers.current.clear(); fitted.current = false; };
@@ -80,12 +81,17 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       const fv = vehicles.find((x) => x.imei === focusImei);
       if (fv && fv.latitude != null && fv.longitude != null) { map.setView([fv.latitude, fv.longitude], 15, { animate: false }); fitted.current = true; }
     } else if (follow && pts.length) {
-      map.fitBounds(L.latLngBounds(pts).pad(0.25), { animate: true }); // urmărire: reîncadrează toate mașinile la fiecare update
+      const b = L.latLngBounds(pts);
+      // La ACTIVAREA urmăririi → încadrează. În continuare → doar re-centrează (panTo), PĂSTREAZĂ zoom-ul userului
+      // (poate da zoom out fără să-i sară harta înapoi la fiecare update).
+      if (!prevFollow.current) map.fitBounds(b.pad(0.25), { animate: true });
+      else map.panTo(b.getCenter(), { animate: true });
       fitted.current = true;
     } else if (!fitted.current && pts.length) {
       map.fitBounds(L.latLngBounds(pts).pad(0.25), { animate: false });
       fitted.current = true;
     }
+    prevFollow.current = !!follow;
     } catch { /* hartă în curs de demontare */ }
   }, [vehicles, focusImei, follow]);
 

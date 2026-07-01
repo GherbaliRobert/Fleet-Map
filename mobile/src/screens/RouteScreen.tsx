@@ -128,8 +128,13 @@ export function RouteScreen() {
   async function toggleOsm() {
     const og = osmLayer.current; if (!og) return;
     if (osmOn) { og.clearLayers(); setOsmOn(false); setOsmInfo(null); return; }
-    const data = (pts || []).filter((p) => p.latitude != null && p.longitude != null);
-    if (data.length < 2) { showToast('Niciun traseu de verificat.'); return; }
+    // DOAR ruta selectată (dacă userul a apăsat una) — altfel toată perioada. Nu mai verifică toată ziua când e o rută apăsată.
+    let data = (pts || []).filter((p) => p.latitude != null && p.longitude != null);
+    if (sel != null && routes && routes[sel]) {
+      const a = new Date(routes[sel].startTime).getTime(), b = new Date(routes[sel].endTime).getTime();
+      data = data.filter((p) => { const t = ptMs(p); return t >= a && t <= b; });
+    }
+    if (data.length < 2) { showToast(sel != null ? 'Ruta selectată n-are traseu detaliat.' : 'Selectează o rută sau verifică perioada.'); return; }
     setOsmBusy(true);
     try {
       const r = await Api.roadLimits(data.map((p) => [p.latitude, p.longitude] as [number, number]));
@@ -137,6 +142,7 @@ export function RouteScreen() {
       og.clearLayers();
       let over = 0, withLimit = 0, maxOver = 0;
       let chunk: LatLng[] | null = null, chunkLim = 0, chunkMaxSp = 0;
+      const GAP_MS = 3 * 60 * 1000; // >3 min între poziții = pauză/gap GPS → NU lega segmentul (altfel linie dreaptă greșită peste hartă)
       // Închide segmentul roșu + atașează popup (tap) cu limita reală + viteza mașinii pe acel segment.
       const closeChunk = () => {
         if (chunk && chunk.length > 1) {
@@ -149,11 +155,15 @@ export function RouteScreen() {
       for (let i = 0; i < data.length; i++) {
         const lm = lim[i], sp = Number(data[i].speed) || 0;
         if (typeof lm === 'number') withLimit++;
+        const gap = i > 0 ? (ptMs(data[i]) - ptMs(data[i - 1])) : 0;
+        if (gap > GAP_MS) closeChunk(); // rupe la pauze — nu conecta puncte îndepărtate în timp
         const isOver = typeof lm === 'number' && sp > lm + 3; // toleranță 3 km/h (zgomot GPS)
         if (isOver) {
           over++; if (sp - lm > maxOver) maxOver = sp - lm;
-          const prev = data[i - 1] || data[i];
-          if (!chunk) { chunk = [[prev.latitude, prev.longitude]]; chunkLim = lm as number; chunkMaxSp = 0; }
+          if (!chunk) {
+            const prev = (i > 0 && gap <= GAP_MS) ? data[i - 1] : data[i]; // pornește de la punctul anterior DOAR dacă e contiguu
+            chunk = [[prev.latitude, prev.longitude]]; chunkLim = lm as number; chunkMaxSp = 0;
+          }
           chunk.push([data[i].latitude, data[i].longitude]);
           if (sp > chunkMaxSp) chunkMaxSp = sp;
           if ((lm as number) < chunkLim) chunkLim = lm as number;
@@ -162,7 +172,7 @@ export function RouteScreen() {
       closeChunk();
       setOsmOn(true);
       setOsmInfo(withLimit === 0 ? 'Fără limite OSM pe acest traseu (drumuri netagate)'
-        : (over > 0 ? `${over} puncte peste limita reală · max +${maxOver} km/h` : 'Fără depășiri vs. limita reală a drumului'));
+        : (over > 0 ? `${over} puncte peste limită${sel != null ? ' (ruta selectată)' : ''} · max +${maxOver} km/h` : 'Fără depășiri vs. limita reală' + (sel != null ? ' (ruta selectată)' : '')));
     } catch (e: any) {
       showToast(e?.message || 'Limite OSM indisponibile');
     } finally { setOsmBusy(false); }

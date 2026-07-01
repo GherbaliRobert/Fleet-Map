@@ -172,10 +172,14 @@ export function VehicleDetail() {
       : (typeof fio.fuel_level_liters === 'number' && fio.fuel_level_liters > 0) ? fio.fuel_level_liters
         : (typeof fio.can_fuel_level_liters === 'number' && fio.can_fuel_level_liters > 0) ? fio.can_fuel_level_liters : null;
   const fuelPct = io.can_fuel_level_pct ?? fio.can_fuel_level_pct;
+  const tankCap = Number((full as any)?.tank_capacity) || 0;
+  // % REAL = litri ÷ capacitate rezervor (configurată în fișă). NU afișăm can_fuel_level_pct BRUT la senzorii
+  // factory (Logan/Caddy) — e nesigur (ex. 42 L raportat ca „100%"). Fără capacitate configurată → doar litri.
+  const fuelPctReal = (fuelLnum != null && tankCap > 0) ? Math.max(0, Math.min(100, Math.round(fuelLnum / tankCap * 100))) : null;
   const staleNote = (v as any)?.can_stale ? ' (ultima)' : '';
   let fuelStr: string | null = null, fuelLow = false, fuelSrc = '';
   if (typeof tank === 'number' && tank > 0) { fuelStr = tank.toFixed(1) + ' L'; fuelLow = tank < 15; fuelSrc = ' (sondă)'; }
-  else if (fuelLnum != null) { fuelStr = fuelLnum.toFixed(1) + ' L' + (fuelPct != null ? ' · ' + fuelPct + '%' : '') + staleNote; fuelLow = fuelLnum < 15; fuelSrc = ' (CAN)'; }
+  else if (fuelLnum != null) { fuelStr = fuelLnum.toFixed(1) + ' L' + (fuelPctReal != null ? ' · ' + fuelPctReal + '%' : '') + staleNote; fuelLow = fuelLnum < 15; fuelSrc = ' (CAN)'; }
   else if (fuelPct != null) { fuelStr = fuelPct + '%' + staleNote; fuelSrc = ' (CAN)'; }
   const pills = notifs.filter((n) => n.imei === imei && !n.acknowledged).slice(0, 4);
   const isSuper = !!me.value?.isSuper;

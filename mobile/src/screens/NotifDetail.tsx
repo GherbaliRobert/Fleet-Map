@@ -32,9 +32,10 @@ export function NotifDetail() {
     try { await Api.ackNotification(Number(id)); setAcked(true); refreshUnread(); } catch { /* */ } finally { setAckBusy(false); }
   }
 
-  // Limita legală a drumului (OSM) — async; trimit punctul dublat (endpoint-ul cere ≥2 puncte).
+  // Limita legală a drumului (OSM) — DOAR la alerte de viteză (nu la idle etc.). Async; punct dublat (endpoint cere ≥2).
+  const isSpeeding = !!d && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || ''));
   useEffect(() => {
-    if (!d || !d.event) return;
+    if (!d || !d.event || !isSpeeding) return;
     Api.roadLimits([[d.event.lat, d.event.lng], [d.event.lat, d.event.lng]]).then((x: any) => {
       setRl(x && x.limits && x.limits[0] != null ? x.limits[0] : null);
       setRlEst(!!(x && x.estimated && x.estimated[0]));
@@ -86,7 +87,7 @@ export function NotifDetail() {
               {d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
               {d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
               {d.event && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
-              {d.event ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && d.event.speed && d.event.speed > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (d.event.speed && d.event.speed > rl ? ' · +' + (d.event.speed - rl) : ''))}</span></div> : null}
+              {d.event && isSpeeding ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && d.event.speed && d.event.speed > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (d.event.speed && d.event.speed > rl ? ' · +' + (d.event.speed - rl) : ''))}</span></div> : null}
             </div>
             {acked
               ? <div style="margin-top:12px;text-align:center;color:var(--accent);font-weight:600"><Icon name="check" size={15} /> Marcat ca citit</div>
