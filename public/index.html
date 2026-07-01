@@ -5578,17 +5578,46 @@ const pozitii = await r.json();</code></pre>
         (d.acknowledged
           ? '<div style="margin-top:14px;text-align:center;color:var(--accent);font-weight:600;font-size:13px;"><i class="fas fa-check-circle"></i> Marcat ca citit</div>'
           : '<button id="notif-ack-btn" class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxNotifAck(' + d.id + ', this)"><i class="fas fa-check"></i> Marchează citit</button>');
+      var _drawRed = null, _refitRed = null; // colorează EXACT porțiunea unde s-a depășit viteza (redesenabilă când sosește limita OSM)
       setTimeout(function () {
         try {
           if (_notifDetailMap) { _notifDetailMap.remove(); _notifDetailMap = null; }
           if (!d.event || typeof L === 'undefined') return;
           var m = L.map('notif-detail-map', { zoomControl: true, attributionControl: false });
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
-          var seg = (d.segment || []).filter(function (p) { return p.lat != null; }).map(function (p) { return [p.lat, p.lng]; });
-          if (seg.length > 1) L.polyline(seg, { color: sevC, weight: 4, opacity: .85 }).addTo(m);
+          var segPts = (d.segment || []).filter(function (p) { return p.lat != null; });
+          var seg = segPts.map(function (p) { return [p.lat, p.lng]; });
+          if (seg.length > 1) L.polyline(seg, { color: '#64748b', weight: 4, opacity: .5 }).addTo(m); // traseul din jur (±12 min), discret
           var ev = [d.event.lat, d.event.lng];
-          L.circleMarker(ev, { radius: 9, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m).bindPopup(esc(d.title || d.type)).openPopup();
-          if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.25)); else m.setView(ev, 16);
+
+          // Stratul ROȘU: segmentele unde viteza a depășit pragul (limita drumului). Focus pe ele = „exact unde s-a depășit".
+          var redLayer = L.layerGroup().addTo(m);
+          _drawRed = function (thr) {
+            redLayer.clearLayers();
+            var rb = L.latLngBounds([]);
+            if (!(thr > 0) || segPts.length < 2) return rb;
+            var cur = null;
+            for (var i = 0; i < segPts.length; i++) {
+              if ((segPts[i].speed || 0) > thr) {
+                if (!cur) { cur = []; if (i > 0) cur.push([segPts[i - 1].lat, segPts[i - 1].lng]); }
+                cur.push([segPts[i].lat, segPts[i].lng]); rb.extend([segPts[i].lat, segPts[i].lng]);
+              } else if (cur) { if (cur.length > 1) L.polyline(cur, { color: '#ef4444', weight: 7, opacity: .95 }).addTo(redLayer); cur = null; }
+            }
+            if (cur && cur.length > 1) L.polyline(cur, { color: '#ef4444', weight: 7, opacity: .95 }).addTo(redLayer);
+            return rb;
+          };
+          _refitRed = function (rb) { try { if (rb && rb.isValid()) m.fitBounds(rb.pad(0.5), { maxZoom: 16 }); } catch (e) {} };
+
+          // Prag inițial: limita configurată a vehiculului (dacă >55) sau ~70% din viteza max de pe segment; se rafinează cu OSM.
+          var thr0 = (d.data && d.data.limit > 55) ? d.data.limit : Math.max(50, Math.round((d.maxSpeed || (d.event && d.event.speed) || 70) * 0.7));
+          var rb0 = _drawRed(thr0);
+
+          L.circleMarker(ev, { radius: 9, color: '#fff', weight: 2, fillColor: '#ef4444', fillOpacity: 1 }).addTo(m)
+            .bindPopup('Aici: <b>' + ((d.event && d.event.speed != null) ? d.event.speed + ' km/h' : esc(d.title || d.type)) + '</b>').openPopup();
+
+          if (rb0 && rb0.isValid()) _refitRed(rb0);         // zoom pe porțiunea roșie…
+          else if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.25)); // …altfel pe tot segmentul
+          else m.setView(ev, 16);
           setTimeout(function () { try { m.invalidateSize(); } catch (e) {} }, 120);
           _notifDetailMap = m;
         } catch (e) {}
@@ -5600,7 +5629,10 @@ const pozitii = await r.json();</code></pre>
             var el = document.getElementById('notif-rl'); if (!el) return;
             var lim = rl && rl.limits && rl.limits[0];
             var est = rl && rl.estimated && rl.estimated[0];
-            if (lim) { var ovr = d.event.speed && d.event.speed > lim; el.innerHTML = lim + ' km/h' + (est ? ' <span style="color:var(--text-muted);font-size:10.5px;">(estimat din tip drum)</span>' : '') + (ovr ? ' <b style="color:#ef4444;">· depășită cu ' + (d.event.speed - lim) + ' km/h</b>' : ''); el.style.color = ''; }
+            if (lim) {
+              var ovr = d.event.speed && d.event.speed > lim; el.innerHTML = lim + ' km/h' + (est ? ' <span style="color:var(--text-muted);font-size:10.5px;">(estimat din tip drum)</span>' : '') + (ovr ? ' <b style="color:#ef4444;">· depășită cu ' + (d.event.speed - lim) + ' km/h</b>' : ''); el.style.color = '';
+              try { if (_drawRed) { var _rb = _drawRed(lim); if (_refitRed) _refitRed(_rb); } } catch (e) {} // rafinează porțiunea roșie cu limita REALĂ a drumului
+            }
             else { el.textContent = 'necunoscută pe acest segment'; }
           }).catch(function () { var el = document.getElementById('notif-rl'); if (el) el.textContent = 'indisponibilă'; });
       }

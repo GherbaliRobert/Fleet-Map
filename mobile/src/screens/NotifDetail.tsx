@@ -22,6 +22,7 @@ export function NotifDetail() {
   const [ackBusy, setAckBusy] = useState(false);
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const drawRedRef = useRef<((thr: number) => void) | null>(null); // recolorează porțiunea roșie (unde s-a depășit) când sosește limita OSM
 
   useEffect(() => {
     Api.notifContext(id).then((x: any) => { if (x && x.error) setErr(x.error); else { setD(x); setAcked(!!x.acknowledged); } }).catch((e: any) => setErr(e?.message || 'Eroare la încărcare'));
@@ -44,21 +45,48 @@ export function NotifDetail() {
 
   useEffect(() => {
     if (!d || !d.event || !mapEl.current) return;
-    const sevC = SEV[d.severity] || '#3b82f6';
     try {
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
       const m = L.map(mapEl.current, { attributionControl: false });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
-      const seg: [number, number][] = (d.segment || []).filter((p: any) => p.lat != null).map((p: any) => [p.lat, p.lng]);
-      if (seg.length > 1) L.polyline(seg, { color: sevC, weight: 4, opacity: 0.85 }).addTo(m);
+      const segPts: any[] = (d.segment || []).filter((p: any) => p.lat != null);
+      const seg: [number, number][] = segPts.map((p: any) => [p.lat, p.lng]);
+      if (seg.length > 1) L.polyline(seg, { color: '#64748b', weight: 4, opacity: 0.5 }).addTo(m); // traseul din jur (±12 min), discret
       const ev: [number, number] = [d.event.lat, d.event.lng];
-      L.circleMarker(ev, { radius: 9, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m);
-      if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.25)); else m.setView(ev, 16);
+
+      // Stratul ROȘU: exact segmentele unde viteza a depășit pragul (limita drumului). Focus pe ele.
+      const redLayer = L.layerGroup().addTo(m);
+      const drawRed = (thr: number) => {
+        redLayer.clearLayers();
+        const rb = L.latLngBounds([]);
+        if (!(thr > 0) || segPts.length < 2) return rb;
+        let cur: [number, number][] | null = null;
+        for (let i = 0; i < segPts.length; i++) {
+          if ((segPts[i].speed || 0) > thr) {
+            if (!cur) { cur = []; if (i > 0) cur.push([segPts[i - 1].lat, segPts[i - 1].lng]); }
+            cur.push([segPts[i].lat, segPts[i].lng]); rb.extend([segPts[i].lat, segPts[i].lng]);
+          } else if (cur) { if (cur.length > 1) L.polyline(cur, { color: '#ef4444', weight: 7, opacity: 0.95 }).addTo(redLayer); cur = null; }
+        }
+        if (cur && cur.length > 1) L.polyline(cur, { color: '#ef4444', weight: 7, opacity: 0.95 }).addTo(redLayer);
+        return rb;
+      };
+      drawRedRef.current = (thr: number) => { const rb = drawRed(thr); try { if (rb.isValid()) m.fitBounds(rb.pad(0.5), { maxZoom: 16 }); } catch { /* */ } };
+      const thr0 = (d.data && d.data.limit > 55) ? d.data.limit : Math.max(50, Math.round(((d.maxSpeed || (d.event && d.event.speed) || 70) as number) * 0.7));
+      const rb0 = drawRed(thr0);
+
+      L.circleMarker(ev, { radius: 9, color: '#fff', weight: 2, fillColor: '#ef4444', fillOpacity: 1 }).addTo(m);
+      if (rb0.isValid()) { try { m.fitBounds(rb0.pad(0.5), { maxZoom: 16 }); } catch { /* */ } }
+      else if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.25)); else m.setView(ev, 16);
       setTimeout(() => { try { m.invalidateSize(); } catch { /* */ } }, 160);
       mapRef.current = m;
     } catch { /* */ }
-    return () => { try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } } catch { /* */ } };
+    return () => { try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } drawRedRef.current = null; } catch { /* */ } };
   }, [d]);
+
+  // Rafinează porțiunea roșie cu limita REALĂ a drumului (OSM), când sosește.
+  useEffect(() => {
+    if (typeof rl === 'number' && rl > 0 && drawRedRef.current) drawRedRef.current(rl);
+  }, [rl]);
 
   const sevC = d ? (SEV[d.severity] || '#3b82f6') : '#3b82f6';
   return (
