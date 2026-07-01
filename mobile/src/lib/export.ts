@@ -9,16 +9,14 @@ function buildUrl(type: string, from: string, to: string, imeis: string[] | unde
   return API_BASE + `/api/reports/${e(type)}` + q;
 }
 
-export async function exportReport(type: string, from: string, to: string, imeis: string[] | undefined, format: 'pdf' | 'xlsx') {
-  const url = buildUrl(type, from, to, imeis, format);
+// Descarcă (web) sau salvează-în-cache + Share (device) un fișier de la un URL autentificat.
+async function fetchAndSave(url: string, fname: string) {
   const token = getAuthToken();
   const headers: Record<string, string> = token ? { Authorization: 'Bearer ' + token } : {};
-  const fname = `raport_${type}_${from.slice(0, 10)}.${format}`;
-
   if (Capacitor.isNativePlatform()) {
     try {
       // CapacitorHttp cu responseType 'blob' întoarce base64 în res.data.
-      const res = await CapacitorHttp.request({ url, method: 'GET', headers, responseType: 'blob' as any });
+      const res = await CapacitorHttp.request({ url, method: 'GET', headers, responseType: 'blob' as any, readTimeout: 120000 } as any);
       if (res.status < 200 || res.status >= 300) throw new Error('Export eșuat (' + res.status + ')');
       const { Filesystem, Directory } = await import('@capacitor/filesystem');
       const { Share } = await import('@capacitor/share');
@@ -39,4 +37,14 @@ export async function exportReport(type: string, from: string, to: string, imeis
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
   }
+}
+
+export async function exportReport(type: string, from: string, to: string, imeis: string[] | undefined, format: 'pdf' | 'xlsx') {
+  await fetchAndSave(buildUrl(type, from, to, imeis, format), `raport_${type}_${from.slice(0, 10)}.${format}`);
+}
+
+// Export al unui raport DIN ISTORIC (după id) — endpoint-ul îl scoate din snapshot-ul salvat, izolat pe user.
+export async function exportHistoryReport(id: number, type: string, format: 'pdf' | 'xlsx') {
+  const url = API_BASE + `/api/reports/history/${encodeURIComponent(String(id))}?format=${format}`;
+  await fetchAndSave(url, `raport_${type || 'istoric'}_${id}.${format}`);
 }

@@ -179,8 +179,12 @@ export const Api = {
   reportTypes: () => api<{ categories: { key: string; label: string }[]; reports: ReportTypeInfo[] }>('/api/reports'),
   runReport: (type: string, from: string, to: string, imeis?: string[]) => {
     const e = encodeURIComponent;
-    let q = `?from=${e(from)}&to=${e(to)}`;
+    let q = `?from=${e(from)}&to=${e(to)}&log=1`; // log=1 → se salvează în istoricul de rapoarte (per utilizator, retenție 7 zile)
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
     return api<ReportResult>(`/api/reports/${e(type)}${q}`);
   },
+  // Istoric rapoarte (izolat pe user pe server: getReportHistory(uid) / getReportHistoryById(id, uid) / delete(id, uid)).
+  reportHistory: () => api<any[]>('/api/reports/history'),
+  reportHistoryItem: (id: number) => api<any>(`/api/reports/history/${encodeURIComponent(String(id))}`),
+  deleteReportHistoryItem: (id: number) => api(`/api/reports/history/${encodeURIComponent(String(id))}`, { method: 'DELETE' }),
 };

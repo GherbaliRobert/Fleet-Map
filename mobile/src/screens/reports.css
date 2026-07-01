@@ -74,3 +74,12 @@
 .insight-ai-h { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13.5px; margin-bottom: 9px; }
 .insight-ai-bar { display: flex; gap: 8px; }
 .insight-ai-bar input { flex: 1; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 10px; padding: 11px 13px; font-size: 15px; font-family: inherit; }
+
+/* Istoric rapoarte */
+.hist-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 11px; margin: 2px 14px 8px; }
+.hist-item { display: flex; align-items: center; gap: 10px; }
+.hist-main { flex: 1; min-width: 0; }
+.hist-nm { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.hist-del { flex: 0 0 auto; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--red); }
+.hist-del:active { background: var(--bg-dark); }

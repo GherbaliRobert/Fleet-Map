@@ -6,7 +6,7 @@ import { vehicles, showToast } from '../app/store';
 import { Icon } from '../components/Icon';
 import { ReportChart } from '../components/ReportChart';
 import { InsightPanel } from '../components/InsightPanel';
-import { exportReport } from '../lib/export';
+import { exportReport, exportHistoryReport } from '../lib/export';
 import './reports.css';
 import '../screens/detail.css'; // pentru .sheet*
 
@@ -21,6 +21,8 @@ function range(p: Period): { from: string; to: string } {
 const PERIOD_LABEL: Record<Period, string> = { today: 'Azi', yesterday: 'Ieri', week: '7 zile', month: '30 zile' };
 // YYYY-MM-DD → DD.MM (pentru axa graficului de consum zilnic)
 function dayLbl(d: string) { const p = String(d).slice(5).split('-'); return p.length === 2 ? p[1] + '.' + p[0] : d; }
+// data generării unui raport din istoric
+function fmtHist(s: string) { try { return new Date(s).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return s; } }
 
 export function Reports() {
   const loc = useLocation();
@@ -29,9 +31,12 @@ export function Reports() {
   const [type, setType] = useState('trips');
   const [period, setPeriod] = useState<Period>('week');
   const [sel, setSel] = useState<string[]>([]); // gol = toată flota
-  const [sheet, setSheet] = useState<'' | 'type' | 'veh'>('');
+  const [sheet, setSheet] = useState<'' | 'type' | 'veh' | 'hist'>('');
   const [tq, setTq] = useState(''); const [vq, setVq] = useState('');
   const [res, setRes] = useState<ReportResult | null>(null);
+  const [hist, setHist] = useState<any[] | null>(null);
+  const [histId, setHistId] = useState<number | null>(null); // != null → afișăm un raport DIN istoric
+  const [histBusy, setHistBusy] = useState(false);
   const [fuelSeries, setFuelSeries] = useState<any | null>(null); // grafic consum zilnic (time-series) pt. raportul de consum
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -51,7 +56,7 @@ export function Reports() {
     : `${sel.length} vehicule`;
 
   async function generate() {
-    setErr(''); setLoading(true); setRes(null); setFuelSeries(null);
+    setErr(''); setLoading(true); setRes(null); setFuelSeries(null); setHistId(null);
     const r = range(period);
     try {
       setRes(await Api.runReport(type, r.from, r.to, sel.length ? sel : undefined));
@@ -77,10 +82,34 @@ export function Reports() {
   async function doExport(format: 'pdf' | 'xlsx') {
     if (exporting) return;
     setExporting(format);
-    const r = range(period);
-    try { await exportReport(type, r.from, r.to, sel.length ? sel : undefined, format); }
+    try {
+      if (histId != null) await exportHistoryReport(histId, type, format); // raport din istoric → export din snapshot
+      else { const r = range(period); await exportReport(type, r.from, r.to, sel.length ? sel : undefined, format); }
+    }
     catch (e: any) { showToast(e?.message || 'Export indisponibil', true); }
     finally { setExporting(''); }
+  }
+
+  // ── Istoric rapoarte (izolat pe user pe server) ──
+  async function openHist() {
+    setSheet('hist'); setHistBusy(true);
+    try { setHist(await Api.reportHistory()); } catch { setHist([]); } finally { setHistBusy(false); }
+  }
+  async function viewHist(item: any) {
+    setSheet(''); setErr(''); setLoading(true); setRes(null); setFuelSeries(null);
+    try {
+      const d: any = await Api.reportHistoryItem(item.id);
+      setRes(d.report); setHistId(item.id); if (item.report_type) setType(item.report_type);
+    } catch (e: any) { setErr(e?.message || 'Raport indisponibil (posibil expirat)'); }
+    finally { setLoading(false); }
+  }
+  async function delHist(id: number, ev: any) {
+    ev.stopPropagation();
+    try {
+      await Api.deleteReportHistoryItem(id);
+      setHist((h) => (h || []).filter((x) => x.id !== id));
+      if (histId === id) { setRes(null); setHistId(null); }
+    } catch (e: any) { showToast(e?.message || 'Nu s-a putut șterge', true); }
   }
 
   const filteredTypes = (catKey: string) => types.filter((t) => t.cat === catKey && (!tq || t.label.toLowerCase().includes(tq.toLowerCase())));
@@ -89,7 +118,7 @@ export function Reports() {
 
   return (
     <div class="screen">
-      <header class="app-header"><div class="h-title">Rapoarte</div></header>
+      <header class="app-header"><div class="h-title">Rapoarte</div><button class="h-btn" onClick={openHist} aria-label="Istoric rapoarte"><Icon name="clock" /></button></header>
       <div class="rp-tabs">
         <button class={'rp-tab' + (tab === 'rapoarte' ? ' on' : '')} onClick={() => setTab('rapoarte')}><Icon name="report" size={16} /> Rapoarte</button>
         <button class={'rp-tab' + (tab === 'insight' ? ' on' : '')} onClick={() => setTab('insight')}><Icon name="sparkles" size={16} /> RA Insight</button>
@@ -121,6 +150,7 @@ export function Reports() {
 
         {res && (
           <>
+            {histId != null && <div class="hist-badge"><Icon name="clock" size={13} /> Raport din istoric — regenerează pentru date la zi</div>}
             <div class="rp-export">
               <button class="rp-exp-btn" disabled={!!exporting} onClick={() => doExport('pdf')}>
                 {exporting === 'pdf' ? <span class="spin" /> : <Icon name="report" size={16} />} PDF
@@ -190,6 +220,29 @@ export function Reports() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sheet: istoric rapoarte (per utilizator, retenție 7 zile) */}
+      {sheet === 'hist' && (
+        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) setSheet(''); }}>
+          <div class="sheet">
+            <div class="sheet-h"><b>Istoric rapoarte</b><button class="h-btn" onClick={() => setSheet('')}><Icon name="x" /></button></div>
+            <div class="sheet-body">
+              {histBusy ? <div class="center-msg"><span class="spin" /></div>
+                : !hist || hist.length === 0
+                  ? <div class="center-msg">Niciun raport recent.<br /><span style="font-size:12px;color:var(--text-muted)">Rapoartele generate se păstrează 7 zile.</span></div>
+                  : hist.map((h) => (
+                    <button class="sh-item hist-item" onClick={() => viewHist(h)}>
+                      <div class="hist-main">
+                        <div class="hist-nm">{h.label || h.report_type}</div>
+                        <div class="hist-sub">{fmtHist(h.generated_at)} · {h.vehicle_count || 0} veh.</div>
+                      </div>
+                      <span class="hist-del" onClick={(e) => delHist(h.id, e)} aria-label="Șterge"><Icon name="trash" size={16} /></span>
+                    </button>
+                  ))}
             </div>
           </div>
         </div>
