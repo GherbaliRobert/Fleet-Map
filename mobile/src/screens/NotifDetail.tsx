@@ -22,7 +22,7 @@ export function NotifDetail() {
   const [ackBusy, setAckBusy] = useState(false);
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const drawRedRef = useRef<((thr: number) => void) | null>(null); // recolorează porțiunea roșie (unde s-a depășit) când sosește limita OSM
+  const maxHaloRef = useRef<any>(null); // halo-ul punctului MAX (re-colorat de OSM dacă s-a depășit limita reală)
 
   useEffect(() => {
     Api.notifContext(id).then((x: any) => { if (x && x.error) setErr(x.error); else { setD(x); setAcked(!!x.acknowledged); } }).catch((e: any) => setErr(e?.message || 'Eroare la încărcare'));
@@ -32,6 +32,9 @@ export function NotifDetail() {
     setAckBusy(true);
     try { await Api.ackNotification(Number(id)); setAcked(true); refreshUnread(); } catch { /* */ } finally { setAckBusy(false); }
   }
+
+  // Reset stare OSM la schimbarea notificării (preact-iso refolosește instanța pe /notif/:id → altfel rămâne limita veche).
+  useEffect(() => { setRl(undefined); setRlEst(false); }, [id]);
 
   // Limita legală a drumului (OSM) — DOAR la alerte de viteză (nu la idle etc.). Async; punct dublat (endpoint cere ≥2).
   const isSpeeding = !!d && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || ''));
@@ -45,47 +48,91 @@ export function NotifDetail() {
 
   useEffect(() => {
     if (!d || !d.event || !mapEl.current) return;
+    const sevC = SEV[d.severity] || '#3b82f6';
+    // Culoare ABSOLUTĂ pe viteză (verde=lent → roșu=rapid). Nu depinde de limită → colorat o singură dată, fără flicker.
+    const speedColor = (v: number) => { const s = Number(v) || 0; if (s < 30) return '#22C55E'; if (s < 55) return '#A3E635'; if (s < 80) return '#FACC15'; if (s < 110) return '#F59E0B'; return '#EF4444'; };
     try {
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
       const m = L.map(mapEl.current, { attributionControl: false });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
       const segPts: any[] = (d.segment || []).filter((p: any) => p.lat != null);
       const seg: [number, number][] = segPts.map((p: any) => [p.lat, p.lng]);
-      if (seg.length > 1) L.polyline(seg, { color: '#64748b', weight: 4, opacity: 0.5 }).addTo(m); // traseul din jur (±12 min), discret
       const ev: [number, number] = [d.event.lat, d.event.lng];
 
-      // Stratul ROȘU: exact segmentele unde viteza a depășit pragul (limita drumului). Focus pe ele.
-      const redLayer = L.layerGroup().addTo(m);
-      const drawRed = (thr: number) => {
-        redLayer.clearLayers();
-        const rb = L.latLngBounds([]);
-        if (!(thr > 0) || segPts.length < 2) return rb;
-        let cur: [number, number][] | null = null;
-        for (let i = 0; i < segPts.length; i++) {
-          if ((segPts[i].speed || 0) > thr) {
-            if (!cur) { cur = []; if (i > 0) cur.push([segPts[i - 1].lat, segPts[i - 1].lng]); }
-            cur.push([segPts[i].lat, segPts[i].lng]); rb.extend([segPts[i].lat, segPts[i].lng]);
-          } else if (cur) { if (cur.length > 1) L.polyline(cur, { color: '#ef4444', weight: 7, opacity: 0.95 }).addTo(redLayer); cur = null; }
-        }
-        if (cur && cur.length > 1) L.polyline(cur, { color: '#ef4444', weight: 7, opacity: 0.95 }).addTo(redLayer);
-        return rb;
-      };
-      drawRedRef.current = (thr: number) => { const rb = drawRed(thr); try { if (rb.isValid()) m.fitBounds(rb.pad(0.5), { maxZoom: 16 }); } catch { /* */ } };
-      const thr0 = (d.data && d.data.limit > 55) ? d.data.limit : Math.max(50, Math.round(((d.maxSpeed || (d.event && d.event.speed) || 70) as number) * 0.7));
-      const rb0 = drawRed(thr0);
+      if (seg.length > 1) L.polyline(seg, { color: '#64748b', weight: 4, opacity: 0.45 }).addTo(m); // context ±12 min, discret
 
-      L.circleMarker(ev, { radius: 9, color: '#fff', weight: 2, fillColor: '#ef4444', fillOpacity: 1 }).addTo(m);
-      if (rb0.isValid()) { try { m.fitBounds(rb0.pad(0.5), { maxZoom: 16 }); } catch { /* */ } }
-      else if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.25)); else m.setView(ev, 16);
-      setTimeout(() => { try { m.invalidateSize(); } catch { /* */ } }, 160);
+      // Panglica colorată pe viteză — segmente coalescente (una per culoare), sincron.
+      const spdLayer = L.layerGroup().addTo(m);
+      if (segPts.length >= 2) {
+        let runPts: [number, number][] = [[segPts[0].lat, segPts[0].lng]]; let runCol = speedColor(segPts[0].speed);
+        for (let i = 1; i < segPts.length; i++) {
+          const col = speedColor(Math.max(segPts[i - 1].speed || 0, segPts[i].speed || 0));
+          if (col !== runCol) { if (runPts.length > 1) L.polyline(runPts, { color: runCol, weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }).addTo(spdLayer); runPts = [[segPts[i - 1].lat, segPts[i - 1].lng]]; runCol = col; }
+          runPts.push([segPts[i].lat, segPts[i].lng]);
+        }
+        if (runPts.length > 1) L.polyline(runPts, { color: runCol, weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }).addTo(spdLayer);
+      }
+
+      // Punctul cu viteza MAXIMĂ de pe segment
+      let maxI = -1, maxV = -1;
+      for (let j = 0; j < segPts.length; j++) { if ((segPts[j].speed || 0) > maxV) { maxV = segPts[j].speed || 0; maxI = j; } }
+      let evIsMax = false;
+      if (maxI >= 0) {
+        const mp: [number, number] = [segPts[maxI].lat, segPts[maxI].lng];
+        maxHaloRef.current = L.circleMarker(mp, { radius: 13, color: speedColor(maxV), weight: 2, fill: false, opacity: 0.6 }).addTo(m);
+        L.circleMarker(mp, { radius: 8, color: '#fff', weight: 3, fillColor: speedColor(maxV), fillOpacity: 1 }).addTo(m);
+        L.marker(mp, { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<span class="spd-max-lbl" style="background:' + speedColor(maxV) + '">MAX ' + Math.round(maxV) + ' km/h</span>' }) }).addTo(m);
+        evIsMax = Math.abs(segPts[maxI].lat - d.event.lat) < 1e-5 && Math.abs(segPts[maxI].lng - d.event.lng) < 1e-5;
+      }
+
+      // Markerul evenimentului (unde s-a declanșat alerta) — culoarea severității
+      if (!evIsMax) L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m);
+
+      // Etichete km/h la vârfurile locale (rare, fără suprapunere) — recalculate după dimensionarea hărții
+      const labelLayer = L.layerGroup().addTo(m);
+      const relabelPeaks = () => {
+        labelLayer.clearLayers();
+        if (segPts.length < 3) return;
+        const floor = Math.max(30, 0.6 * ((d.maxSpeed || maxV || 0) as number));
+        const cand: { i: number; s: number }[] = [];
+        for (let k = 1; k < segPts.length - 1; k++) { if (k === maxI) continue; const s = segPts[k].speed || 0; if (s >= (segPts[k - 1].speed || 0) && s > (segPts[k + 1].speed || 0) && s >= floor) cand.push({ i: k, s }); }
+        cand.sort((a, b) => b.s - a.s);
+        const kept: any[] = [];
+        try { if (maxI >= 0) kept.push(m.latLngToLayerPoint(L.latLng(segPts[maxI].lat, segPts[maxI].lng))); } catch { /* */ }
+        try { kept.push(m.latLngToLayerPoint(L.latLng(d.event.lat, d.event.lng))); } catch { /* */ }
+        let budget = 3;
+        for (let c = 0; c < cand.length && budget > 0; c++) {
+          const pp = segPts[cand[c].i]; let pt: any; try { pt = m.latLngToLayerPoint(L.latLng(pp.lat, pp.lng)); } catch { continue; }
+          let ok = true; for (const kp of kept) { if (pt.distanceTo(kp) < 40) { ok = false; break; } }
+          if (!ok) continue; kept.push(pt); budget--;
+          L.circleMarker([pp.lat, pp.lng], { radius: 3, color: '#fff', weight: 1, fillColor: speedColor(pp.speed), fillOpacity: 1 }).addTo(labelLayer);
+          L.marker([pp.lat, pp.lng], { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<span class="spd-lbl" style="border-color:' + speedColor(pp.speed) + '">' + Math.round(pp.speed) + '</span>' }) }).addTo(labelLayer);
+        }
+      };
+
+      // Legendă compactă (verde→roșu) — div în containerul hărții (evită typing-ul L.Control)
+      try {
+        const oldLg = mapEl.current!.querySelector('.notif-spd-legend'); if (oldLg) oldLg.remove();
+        const lgEl = document.createElement('div');
+        lgEl.className = 'notif-spd-legend';
+        lgEl.style.cssText = 'position:absolute;left:8px;bottom:8px;z-index:600';
+        lgEl.innerHTML = '<span>0</span><i></i><span>110+</span>';
+        mapEl.current!.appendChild(lgEl);
+      } catch { /* */ }
+
+      if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.18), { maxZoom: 16 }); else m.setView(ev, 16);
+      m.on('zoomend', relabelPeaks); // re-culege etichetele la pinch-zoom (paritate cu web)
+      setTimeout(() => { try { m.invalidateSize(); if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.18), { maxZoom: 16 }); relabelPeaks(); } catch { /* */ } }, 160);
       mapRef.current = m;
     } catch { /* */ }
-    return () => { try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } drawRedRef.current = null; } catch { /* */ } };
+    return () => { try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } maxHaloRef.current = null; } catch { /* */ } };
   }, [d]);
 
-  // Rafinează porțiunea roșie cu limita REALĂ a drumului (OSM), când sosește.
+  // OSM: doar re-colorează halo-ul MAX dacă viteza a depășit limita reală (fără recolorare/re-zoom pe panglică).
   useEffect(() => {
-    if (typeof rl === 'number' && rl > 0 && drawRedRef.current) drawRedRef.current(rl);
+    if (typeof rl === 'number' && rl > 0 && d && d.event && d.event.speed > rl && maxHaloRef.current) {
+      try { maxHaloRef.current.setStyle({ color: '#ef4444', opacity: 0.9 }); } catch { /* */ }
+    }
   }, [rl]);
 
   const sevC = d ? (SEV[d.severity] || '#3b82f6') : '#3b82f6';

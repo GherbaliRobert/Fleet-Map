@@ -50,3 +50,10 @@
 
 .rt-empty { display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 28px 16px; color: var(--text-muted); font-size: 13px; }
+
+/* Harta din detaliul evenimentului: pastile viteză + marker MAX + legendă (font moștenit = Nunito) */
+.spd-lbl { display: inline-block; transform: translate(-50%, -140%); font-weight: 700; font-size: 11px; line-height: 1; padding: 1px 6px; border-radius: 999px; background: rgba(15, 23, 42, .82); color: #fff; border: 1px solid #888; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); white-space: nowrap; }
+.spd-max-lbl { display: inline-block; transform: translate(-50%, -150%); font-weight: 800; font-size: 12px; line-height: 1; padding: 2px 8px; border-radius: 999px; color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .4); white-space: nowrap; }
+.notif-spd-legend { display: flex; align-items: center; gap: 5px; background: rgba(15, 23, 42, .72); padding: 4px 7px; border-radius: 8px; }
+.notif-spd-legend i { display: block; width: 90px; height: 6px; border-radius: 3px; background: linear-gradient(to right, #22C55E, #A3E635, #FACC15, #F59E0B, #EF4444); }
+.notif-spd-legend span { font-weight: 600; font-size: 9px; color: #fff; }

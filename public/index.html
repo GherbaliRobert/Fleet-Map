@@ -5537,6 +5537,7 @@ const pozitii = await r.json();</code></pre>
     async function ackNotif(id) { try { await fetch('/api/notifications/' + id + '/ack', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
     async function ackAllNotif() { try { await fetch('/api/notifications/ack-all', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
     let _notifDetailMap = null;
+    let _notifDetailSeq = 0; // token per-deschidere: ignoră răspunsuri OSM întârziate de la o notificare anterioară
     function closeNotifDetail() { var ov = document.getElementById('notif-detail-modal'); if (ov) ov.style.display = 'none'; try { if (_notifDetailMap) { _notifDetailMap.remove(); _notifDetailMap = null; } } catch (e) {} }
     async function raxNotifAck(id, btn) {
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se marchează…'; }
@@ -5548,6 +5549,7 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Marchează citit'; } }
     }
     async function openNotifDetail(id) {
+      var myReq = ++_notifDetailSeq; // captează deschiderea curentă — răspunsurile OSM întârziate de la o deschidere anterioară se ignoră
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
       var ov = document.getElementById('notif-detail-modal'), body = document.getElementById('notif-detail-body');
       if (!ov || !body) return;
@@ -5578,7 +5580,7 @@ const pozitii = await r.json();</code></pre>
         (d.acknowledged
           ? '<div style="margin-top:14px;text-align:center;color:var(--accent);font-weight:600;font-size:13px;"><i class="fas fa-check-circle"></i> Marcat ca citit</div>'
           : '<button id="notif-ack-btn" class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxNotifAck(' + d.id + ', this)"><i class="fas fa-check"></i> Marchează citit</button>');
-      var _drawRed = null, _refitRed = null; // colorează EXACT porțiunea unde s-a depășit viteza (redesenabilă când sosește limita OSM)
+      var _maxHalo = null; // halo-ul punctului MAX (re-colorat de OSM dacă s-a depășit limita reală a drumului)
       setTimeout(function () {
         try {
           if (_notifDetailMap) { _notifDetailMap.remove(); _notifDetailMap = null; }
@@ -5587,38 +5589,68 @@ const pozitii = await r.json();</code></pre>
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
           var segPts = (d.segment || []).filter(function (p) { return p.lat != null; });
           var seg = segPts.map(function (p) { return [p.lat, p.lng]; });
-          if (seg.length > 1) L.polyline(seg, { color: '#64748b', weight: 4, opacity: .5 }).addTo(m); // traseul din jur (±12 min), discret
           var ev = [d.event.lat, d.event.lng];
+          // Culoare ABSOLUTĂ pe viteză (verde=lent → roșu=rapid). Nu depinde de limită → colorat o singură dată, fără flicker.
+          function speedColor(v) { var s = Number(v) || 0; if (s < 30) return '#22C55E'; if (s < 55) return '#A3E635'; if (s < 80) return '#FACC15'; if (s < 110) return '#F59E0B'; return '#EF4444'; }
 
-          // Stratul ROȘU: segmentele unde viteza a depășit pragul (limita drumului). Focus pe ele = „exact unde s-a depășit".
-          var redLayer = L.layerGroup().addTo(m);
-          _drawRed = function (thr) {
-            redLayer.clearLayers();
-            var rb = L.latLngBounds([]);
-            if (!(thr > 0) || segPts.length < 2) return rb;
-            var cur = null;
-            for (var i = 0; i < segPts.length; i++) {
-              if ((segPts[i].speed || 0) > thr) {
-                if (!cur) { cur = []; if (i > 0) cur.push([segPts[i - 1].lat, segPts[i - 1].lng]); }
-                cur.push([segPts[i].lat, segPts[i].lng]); rb.extend([segPts[i].lat, segPts[i].lng]);
-              } else if (cur) { if (cur.length > 1) L.polyline(cur, { color: '#ef4444', weight: 7, opacity: .95 }).addTo(redLayer); cur = null; }
+          if (seg.length > 1) L.polyline(seg, { color: '#64748b', weight: 4, opacity: .45 }).addTo(m); // context ±12 min, discret dedesubt
+
+          // Panglica colorată pe viteză — segmente coalescente (una per culoare), desenată o singură dată sincron.
+          var spdLayer = L.layerGroup().addTo(m);
+          if (segPts.length >= 2) {
+            var runPts = [[segPts[0].lat, segPts[0].lng]], runCol = speedColor(segPts[0].speed);
+            for (var i = 1; i < segPts.length; i++) {
+              var col = speedColor(Math.max(segPts[i - 1].speed || 0, segPts[i].speed || 0));
+              if (col !== runCol) { if (runPts.length > 1) L.polyline(runPts, { color: runCol, weight: 6, opacity: .95, lineCap: 'round', lineJoin: 'round' }).addTo(spdLayer); runPts = [[segPts[i - 1].lat, segPts[i - 1].lng]]; runCol = col; }
+              runPts.push([segPts[i].lat, segPts[i].lng]);
             }
-            if (cur && cur.length > 1) L.polyline(cur, { color: '#ef4444', weight: 7, opacity: .95 }).addTo(redLayer);
-            return rb;
-          };
-          _refitRed = function (rb) { try { if (rb && rb.isValid()) m.fitBounds(rb.pad(0.5), { maxZoom: 16 }); } catch (e) {} };
+            if (runPts.length > 1) L.polyline(runPts, { color: runCol, weight: 6, opacity: .95, lineCap: 'round', lineJoin: 'round' }).addTo(spdLayer);
+          }
 
-          // Prag inițial: limita configurată a vehiculului (dacă >55) sau ~70% din viteza max de pe segment; se rafinează cu OSM.
-          var thr0 = (d.data && d.data.limit > 55) ? d.data.limit : Math.max(50, Math.round((d.maxSpeed || (d.event && d.event.speed) || 70) * 0.7));
-          var rb0 = _drawRed(thr0);
+          // Punctul cu viteza MAXIMĂ de pe segment
+          var maxI = -1, maxV = -1;
+          for (var j = 0; j < segPts.length; j++) { if ((segPts[j].speed || 0) > maxV) { maxV = segPts[j].speed || 0; maxI = j; } }
+          var evIsMax = false;
+          if (maxI >= 0) {
+            var mp = [segPts[maxI].lat, segPts[maxI].lng];
+            _maxHalo = L.circleMarker(mp, { radius: 13, color: speedColor(maxV), weight: 2, fill: false, opacity: .6 }).addTo(m);
+            L.circleMarker(mp, { radius: 8, color: '#fff', weight: 3, fillColor: speedColor(maxV), fillOpacity: 1 }).addTo(m);
+            L.marker(mp, { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<span class="spd-max-lbl" style="background:' + speedColor(maxV) + '">MAX ' + Math.round(maxV) + ' km/h</span>' }) }).addTo(m);
+            evIsMax = Math.abs(segPts[maxI].lat - d.event.lat) < 1e-5 && Math.abs(segPts[maxI].lng - d.event.lng) < 1e-5;
+          }
 
-          L.circleMarker(ev, { radius: 9, color: '#fff', weight: 2, fillColor: '#ef4444', fillOpacity: 1 }).addTo(m)
-            .bindPopup('Aici: <b>' + ((d.event && d.event.speed != null) ? d.event.speed + ' km/h' : esc(d.title || d.type)) + '</b>').openPopup();
+          // Markerul evenimentului (unde s-a declanșat alerta) — culoarea severității, distinct de heat-red
+          if (!evIsMax) L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m).bindPopup('Aici: <b>' + ((d.event && d.event.speed != null) ? d.event.speed + ' km/h' : esc(d.title || d.type)) + '</b>');
 
-          if (rb0 && rb0.isValid()) _refitRed(rb0);         // zoom pe porțiunea roșie…
-          else if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.25)); // …altfel pe tot segmentul
-          else m.setView(ev, 16);
-          setTimeout(function () { try { m.invalidateSize(); } catch (e) {} }, 120);
+          // Etichete km/h la vârfurile locale (rare, fără suprapunere) — recalculate după ce harta e dimensionată
+          var labelLayer = L.layerGroup().addTo(m);
+          function relabelPeaks() {
+            labelLayer.clearLayers();
+            if (segPts.length < 3) return;
+            var floor = Math.max(30, 0.6 * (d.maxSpeed || maxV || 0)), cand = [];
+            for (var k = 1; k < segPts.length - 1; k++) { if (k === maxI) continue; var s = segPts[k].speed || 0; if (s >= (segPts[k - 1].speed || 0) && s > (segPts[k + 1].speed || 0) && s >= floor) cand.push({ i: k, s: s }); }
+            cand.sort(function (a, b) { return b.s - a.s; });
+            var kept = [];
+            try { if (maxI >= 0) kept.push(m.latLngToLayerPoint(L.latLng(segPts[maxI].lat, segPts[maxI].lng))); } catch (e) {}
+            try { kept.push(m.latLngToLayerPoint(L.latLng(d.event.lat, d.event.lng))); } catch (e) {}
+            var budget = 4;
+            for (var c = 0; c < cand.length && budget > 0; c++) {
+              var pp = segPts[cand[c].i], pt; try { pt = m.latLngToLayerPoint(L.latLng(pp.lat, pp.lng)); } catch (e) { continue; }
+              var ok = true; for (var q = 0; q < kept.length; q++) { if (pt.distanceTo(kept[q]) < 40) { ok = false; break; } }
+              if (!ok) continue; kept.push(pt); budget--;
+              L.circleMarker([pp.lat, pp.lng], { radius: 3, color: '#fff', weight: 1, fillColor: speedColor(pp.speed), fillOpacity: 1 }).addTo(labelLayer);
+              L.marker([pp.lat, pp.lng], { interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<span class="spd-lbl" style="border-color:' + speedColor(pp.speed) + '">' + Math.round(pp.speed) + '</span>' }) }).addTo(labelLayer);
+            }
+          }
+
+          // Legendă compactă (verde→roșu)
+          var lg = L.control({ position: 'bottomleft' });
+          lg.onAdd = function () { var el = L.DomUtil.create('div', 'notif-spd-legend'); el.innerHTML = '<span>0</span><i></i><span>110+</span>'; return el; };
+          lg.addTo(m);
+
+          if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.18), { maxZoom: 16 }); else m.setView(ev, 16);
+          m.on('zoomend', relabelPeaks);
+          setTimeout(function () { try { m.invalidateSize(); if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.18), { maxZoom: 16 }); relabelPeaks(); } catch (e) {} }, 130);
           _notifDetailMap = m;
         } catch (e) {}
       }, 60);
@@ -5626,15 +5658,16 @@ const pozitii = await r.json();</code></pre>
       if (d.event && isSpeeding) {
         fetch('/api/road-limits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: [[d.event.lat, d.event.lng], [d.event.lat, d.event.lng]] }) })
           .then(function (r) { return r.json(); }).then(function (rl) {
+            if (myReq !== _notifDetailSeq) return; // răspuns întârziat de la o notificare anterioară → ignoră
             var el = document.getElementById('notif-rl'); if (!el) return;
             var lim = rl && rl.limits && rl.limits[0];
             var est = rl && rl.estimated && rl.estimated[0];
             if (lim) {
               var ovr = d.event.speed && d.event.speed > lim; el.innerHTML = lim + ' km/h' + (est ? ' <span style="color:var(--text-muted);font-size:10.5px;">(estimat din tip drum)</span>' : '') + (ovr ? ' <b style="color:#ef4444;">· depășită cu ' + (d.event.speed - lim) + ' km/h</b>' : ''); el.style.color = '';
-              try { if (_drawRed) { var _rb = _drawRed(lim); if (_refitRed) _refitRed(_rb); } } catch (e) {} // rafinează porțiunea roșie cu limita REALĂ a drumului
+              try { if (_maxHalo && ovr) _maxHalo.setStyle({ color: '#ef4444', opacity: .9 }); } catch (e) {} // OSM: doar re-colorează halo-ul MAX, NU panglica (fără flicker/re-zoom)
             }
             else { el.textContent = 'necunoscută pe acest segment'; }
-          }).catch(function () { var el = document.getElementById('notif-rl'); if (el) el.textContent = 'indisponibilă'; });
+          }).catch(function () { if (myReq !== _notifDetailSeq) return; var el = document.getElementById('notif-rl'); if (el) el.textContent = 'indisponibilă'; });
       }
     }
     function onNotificationWs() {
