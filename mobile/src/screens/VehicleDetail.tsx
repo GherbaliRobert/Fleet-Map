@@ -181,6 +181,10 @@ export function VehicleDetail() {
   if (typeof tank === 'number' && tank > 0) { fuelStr = tank.toFixed(1) + ' L'; fuelLow = tank < 15; fuelSrc = ' (sondă)'; }
   else if (fuelLnum != null) { fuelStr = fuelLnum.toFixed(1) + ' L' + (fuelPctReal != null ? ' · ' + fuelPctReal + '%' : '') + staleNote; fuelLow = fuelLnum < 15; fuelSrc = ' (CAN)'; }
   else if (fuelPct != null) { fuelStr = fuelPct + '%' + staleNote; fuelSrc = ' (CAN)'; }
+  // Limita de viteză recunoscută de camera mașinii (IO 1116 → speed_limit_sign). 0/absent/necredibil → nu afișăm.
+  const _rawLimit = io.speed_limit_sign ?? (io as any).io_1116 ?? fio.speed_limit_sign ?? fio.io_1116;
+  const spdLimit = (typeof _rawLimit === 'number' && _rawLimit >= 5 && _rawLimit <= 200) ? Math.round(_rawLimit) : 0;
+  const overLimit = spdLimit > 0 && (v?.speed || 0) > spdLimit;
   const pills = notifs.filter((n) => n.imei === imei && !n.acknowledged).slice(0, 4);
   const isSuper = !!me.value?.isSuper;
   const canStale = !!(v as any)?.can_stale;
@@ -226,7 +230,8 @@ export function VehicleDetail() {
           <div class="d-plate-row">
             {s && <span class="dot" style={{ background: s.color, boxShadow: `0 0 6px ${s.color}` }} />}
             <span class="d-plate">{v?.plate || full?.plate || '—'}</span>
-            <span class="d-speed">{v?.speed || 0} KM/h</span>
+            <span class={'d-speed' + (overLimit ? ' over' : '')}>{v?.speed || 0} KM/h</span>
+            {spdLimit > 0 && <span class={'d-splimit' + (overLimit ? ' over' : '')} title="Limită de viteză (recunoscută de cameră)">{spdLimit}</span>}
           </div>
           <div class="d-rows">
             {veh && <div class="d-row"><span class="lbl">Vehicul</span><span class="val">{veh}</span></div>}

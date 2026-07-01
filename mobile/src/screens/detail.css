@@ -4,6 +4,10 @@
 .d-plate-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .d-plate { font-weight: 800; font-size: 18px; }
 .d-speed { margin-left: auto; font-weight: 800; font-size: 16px; color: var(--accent); }
+.d-speed.over { color: #ef4444; }
+/* Indicator „limită de viteză" (semn rutier european: cerc alb, contur roșu, cifră neagră) — din camera mașinii (IO 1116) */
+.d-splimit { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 3px solid #e11d2a; color: #0b0e11; font-weight: 800; font-size: 14px; line-height: 1; box-shadow: 0 1px 4px rgba(0,0,0,.45); flex-shrink: 0; }
+.d-splimit.over { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.35), 0 1px 4px rgba(0,0,0,.45); }
 .d-rows { display: flex; flex-direction: column; gap: 9px; }
 .d-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; }
 .d-row .ic { color: var(--text-muted); flex: 0 0 auto; margin-top: 1px; }

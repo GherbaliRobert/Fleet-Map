@@ -84,6 +84,14 @@
     var e = el('vp-eng-' + imei); if (e) e.innerHTML = durEng(d, f);
   }
 
+  // Limita de viteză recunoscută de camera mașinii (IO 1116 → speed_limit_sign). 0 = absent/necredibil → nu afișăm.
+  function spdLimitOf(d) {
+    var io = (d && d.io) || {};
+    var v = (io.speed_limit_sign != null) ? io.speed_limit_sign : io.io_1116;
+    v = Number(v);
+    return (isFinite(v) && v >= 5 && v <= 200) ? Math.round(v) : 0;
+  }
+
   function buildHtml(imei) {
     var d = DEVS() && DEVS().get(imei); if (!d) return '';
     var f = fullCache[imei] || {};
@@ -99,7 +107,9 @@
     rows += row('Vehicul', esc(veh), 'vp-veh-' + imei);
     rows += row('Șofer', driver ? esc(driver) : '<span style="color:var(--text-muted)">…</span>', 'vp-drv-' + imei);
     rows += row('Adresă', '<span style="color:var(--text-muted)">se încarcă…</span>', 'vp-adr-' + imei);
-    rows += row('Viteză', '<span id="vp-spd-' + imei + '" style="color:' + (b.moving ? 'var(--green)' : 'var(--text-muted)') + '">' + b.speed + ' km/h</span>');
+    var _splim0 = spdLimitOf(d);
+    rows += row('Viteză', '<span id="vp-spd-' + imei + '" style="color:' + (b.moving ? 'var(--green)' : 'var(--text-muted)') + '">' + b.speed + ' km/h</span>' +
+      '<span class="vp-splimit" id="vp-splim-' + imei + '"' + (_splim0 ? '' : ' style="display:none"') + ' title="Limită de viteză (recunoscută de cameră)">' + (_splim0 || '') + '</span>');
     // „În staționare de" doar cu motorul PORNIT (staționat/idling). Cu motorul oprit e redundant cu „Motor oprit de" → ascuns.
     rows += '<tr id="vp-statrow-' + imei + '"' + (engOn(d) ? '' : ' style="display:none"') + '><td>În staționare de</td><td id="vp-stat-' + imei + '">' + durStat(d, fullCache[imei] || null) + '</td></tr>';
     rows += '<tr><td id="vp-englbl-' + imei + '">' + esc(engLabel(d)) + '</td><td id="vp-eng-' + imei + '">' + durEng(d, fullCache[imei] || null) + '</td></tr>';
@@ -179,6 +189,7 @@
     var dot = el('vp-dot-' + imei); if (dot) { dot.style.background = b.dot; dot.style.boxShadow = '0 0 7px ' + b.dot; }
     var st = el('vp-status-' + imei); if (st) st.textContent = b.status;
     var sp = el('vp-spd-' + imei); if (sp) { sp.textContent = b.speed + ' km/h'; sp.style.color = b.moving ? 'var(--green)' : 'var(--text-muted)'; }
+    var slp = el('vp-splim-' + imei); if (slp) { var _lv = spdLimitOf(d); if (_lv) { slp.textContent = _lv; slp.style.display = ''; slp.classList.toggle('over', (b.speed || 0) > _lv); } else { slp.style.display = 'none'; } }
     var co = el('vp-coord-' + imei); if (co) co.textContent = b.lat + ', ' + b.lng + '  ·  ' + b.ang;
     var tm = el('vp-tx-' + imei); if (tm) tm.textContent = b.ts;
     renderDur(imei);

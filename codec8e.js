@@ -469,6 +469,8 @@ function getIoName(id, iface) {
     // Green driving
     253: 'green_driving_type',
     254: 'green_driving_value',
+    // Recunoaștere semne rutiere (cameră ADAS / camera proprie a mașinii) — limita de viteză de pe indicatorul curent
+    1116: 'speed_limit_sign',
     // Events
     250: 'trip',
     255: 'over_speeding',
