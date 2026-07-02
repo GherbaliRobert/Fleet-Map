@@ -13,6 +13,7 @@ import { RouteScreen } from './screens/RouteScreen';
 import { Reports } from './screens/Reports';
 import { Menu } from './screens/Menu';
 import { FuelStats } from './screens/FuelStats';
+import { FuelPrice } from './screens/FuelPrice';
 import { WeeklyReport } from './screens/WeeklyReport';
 import { AdminDrivers } from './screens/AdminDrivers';
 import { AdminGroups } from './screens/AdminGroups';
@@ -88,6 +89,7 @@ function Shell() {
         <Route path="/notifications" component={Notifications} />
         <Route path="/meniu" component={Menu} />
         <Route path="/fuelstats" component={FuelStats} />
+        <Route path="/fuelprice" component={FuelPrice} />
         <Route path="/weekly" component={WeeklyReport} />
         <Route path="/admin/drivers" component={AdminDrivers} />
         <Route path="/admin/groups" component={AdminGroups} />

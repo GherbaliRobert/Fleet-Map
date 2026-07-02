@@ -169,7 +169,7 @@ async function refreshFuelPrices() {
   if (!fuelprice) return;
   try {
     const p = await fuelprice.fetchFuelPrices();
-    if (p && (p.motorina || p.benzina)) { _fuelAuto = p; _applyFuelDefaults(); try { await db.setSetting('fuel_prices_auto', JSON.stringify(p)); } catch (e) {} console.log('[FUEL] preț ' + p.data + ': motorină ' + p.motorina + ' / benzină ' + p.benzina + ' / GPL ' + p.gpl + ' lei/L'); }
+    if (p && (p.motorina || p.benzina)) { _fuelAuto = p; _applyFuelDefaults(); try { await db.setSetting('fuel_prices_auto', JSON.stringify(p)); } catch (e) {} try { await db.saveFuelPriceSnapshot(p); } catch (e) {} console.log('[FUEL] preț ' + p.data + ': motorină ' + p.motorina + ' / benzină ' + p.benzina + ' / GPL ' + p.gpl + ' lei/L'); }
   } catch (e) { console.warn('[FUEL] preluare preț eșuată:', e.message); }
 }
 function effectiveFuelPrices(companySettings) {
@@ -5865,6 +5865,11 @@ app.get('/api/fuel-prices', requireAuth, withScope, async (req, res) => {
     const cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
     res.json({ auto: _fuelAuto || null, company: (cs && cs.fuel_prices) || {}, effective: effectiveFuelPrices(cs), source: fuelprice ? fuelprice.SOURCE : 'PretCarburant.ro' });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Istoric preț carburant național (media zilnică) — pentru modulul „Preț combustibil" (trend). Date publice → doar requireAuth.
+app.get('/api/fuel-price-history', requireAuth, async (req, res) => {
+  try { res.json({ history: await db.getFuelPriceHistory(req.query.days || 90), source: fuelprice ? fuelprice.SOURCE : 'PretCarburant.ro' }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/company/fuel-prices', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {

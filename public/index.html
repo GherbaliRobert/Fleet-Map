@@ -90,6 +90,7 @@
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goAnalizeConsum)"><i class="fas fa-gas-pump"></i><span>Statistici consum</span></button>
+            <button class="nav-item nav-sub" onclick="navGo(this, goFuelPrice)"><i class="fas fa-coins"></i><span>Preț combustibil</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goWeeklyReport)"><i class="fas fa-calendar-week"></i><span>Raport săptămânal</span></button>
           </div>
         </div>
@@ -1871,6 +1872,23 @@ const pozitii = await r.json();</code></pre>
       <h2><span><i class="fas fa-credit-card" style="margin-right:8px;color:var(--accent);"></i> Card combustibil — alimentări &amp; reconciliere</span>
         <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button></h2>
       <div id="fuelcard-host"><div class="rax-co-meta">Se încarcă…</div></div>
+    </div>
+  </div>
+
+  <!-- Pagina „Preț combustibil" (media națională PretCarburant.ro + override companie + trend în timp) -->
+  <div id="fuel-price-view" class="modal-overlay">
+    <div class="modal" style="width:960px;max-width:96vw;max-height:92vh;">
+      <h2><span><i class="fas fa-coins" style="margin-right:8px;color:var(--orange);"></i> Preț combustibil</span>
+        <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button></h2>
+      <div id="fp-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        <span style="font-size:12.5px;font-weight:700;color:var(--text-secondary);">Evoluție:</span>
+        <button class="report-period-btn" onclick="fpDays(30,this)">30 zile</button>
+        <button class="report-period-btn active" onclick="fpDays(90,this)">90 zile</button>
+        <button class="report-period-btn" onclick="fpDays(365,this)">1 an</button>
+      </div>
+      <div class="chart-container h-250"><div class="chart-container-title">Preț mediu național (lei/L)</div><canvas id="chart-fuel-price"></canvas></div>
+      <div id="fp-note" style="font-size:11.5px;color:var(--text-muted);margin-top:10px;line-height:1.5;"></div>
     </div>
   </div>
 
@@ -5779,8 +5797,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', fuelstats: 'fuel-stats-modal', weeklyreport: 'weekly-report-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', fuelstats: 'loadFuelStats', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', weeklyreport: 'weekly-report-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -5794,6 +5812,43 @@ const pozitii = await r.json();</code></pre>
     function goSistem(tab) { if ((tab === 'companies' || tab === 'accounts' || tab === 'audit') && !can('manageCompanies')) return; showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
     function goAnalizeConsum() { showView('fuelstats'); }
     function goWeeklyReport() { showView('weeklyreport'); }
+    // ─── Pagina „Preț combustibil" (media națională + override companie + trend) ───
+    var _fpDays = 90;
+    function goFuelPrice() { showView('fuelprice'); }
+    function fpDays(n, btn) { _fpDays = n; if (btn) { document.querySelectorAll('#fuel-price-view .report-period-btn').forEach(function (b) { b.classList.remove('active'); }); btn.classList.add('active'); } loadFuelPriceView(); }
+    async function loadFuelPriceView() {
+      var cards = document.getElementById('fp-cards');
+      if (cards && !cards.innerHTML) cards.innerHTML = '<div style="padding:12px;color:var(--text-muted);">Se încarcă…</div>';
+      try {
+        var cur = await fetch('/api/fuel-prices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var hist = await fetch('/api/fuel-price-history?days=' + _fpDays, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        _fpCards(cur);
+        _fpChart((hist && hist.history) || []);
+        var note = document.getElementById('fp-note');
+        if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Sursa: <b>' + ((cur && cur.source) || 'PretCarburant.ro') + '</b> — media națională (licență CC BY 4.0), actualizată automat de 2×/zi. „Preț companie" = tariful setat de tine în Setări → Prețuri combustibil; altfel se folosește media națională. Istoricul graficului se acumulează zilnic.';
+      } catch (e) { if (cards) cards.innerHTML = '<div style="padding:16px;color:var(--red);">Eroare la încărcarea prețurilor.</div>'; }
+    }
+    function _fpCards(cur) {
+      var el = document.getElementById('fp-cards'); if (!el) return;
+      var auto = (cur && cur.auto) || {}, eff = (cur && cur.effective) || {}, comp = (cur && cur.company) || {};
+      var types = [{ k: 'motorina', label: 'Motorină', color: '#f59e0b' }, { k: 'benzina', label: 'Benzină', color: '#3FE07D' }, { k: 'gpl', label: 'GPL', color: '#38BDF8' }];
+      el.innerHTML = types.map(function (t) {
+        var nat = auto[t.k], e = eff[t.k], hasOverride = comp[t.k] != null && comp[t.k] !== '';
+        var val = (e != null ? e : nat);
+        return '<div class="report-stat" style="border-color:' + t.color + ';">' +
+          '<div class="report-stat-value" style="color:' + t.color + ';">' + (val != null ? Number(val).toFixed(2) + ' <span style="font-size:12px;color:var(--text-muted);">lei/L</span>' : '—') + '</div>' +
+          '<div class="report-stat-label">' + t.label + (hasOverride ? ' · <span style="color:var(--accent);">preț companie</span>' : (nat != null ? ' · național' : '')) + '</div>' +
+          (hasOverride && nat != null ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">național: ' + Number(nat).toFixed(2) + ' lei/L</div>' : '') +
+          '</div>';
+      }).join('');
+    }
+    function _fpChart(hist) {
+      if (typeof createChart !== 'function') return;
+      var labels = hist.map(function (h) { return _fpLabel(h.day); });
+      function ds(key, label, color) { return { label: label, data: hist.map(function (h) { return h[key]; }), borderColor: color, backgroundColor: 'transparent', tension: .3, pointRadius: hist.length > 60 ? 0 : 3, spanGaps: true }; }
+      createChart('chart-fuel-price', 'line', { labels: labels, datasets: [ds('motorina', 'Motorină', '#f59e0b'), ds('benzina', 'Benzină', '#3FE07D'), ds('gpl', 'GPL', '#38BDF8')] }, { plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: { beginAtZero: false } } });
+    }
+    function _fpLabel(day) { var p = String(day || '').split('-'); return p.length === 3 ? p[2] + '.' + p[1] : day; }
     // ─── Pagina „Statistici consum" (vederea fuelstats) ───
     var _fsState = { period: 'week' };
     function fsPeriod(p, btn) {

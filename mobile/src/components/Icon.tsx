@@ -5,7 +5,7 @@ export type IconName =
   | 'route' | 'report' | 'cpu' | 'droplet' | 'disc' | 'clock' | 'gauge' | 'refresh'
   | 'x' | 'check' | 'logout' | 'layers' | 'alert' | 'calendar' | 'zap' | 'mapPin' | 'map' | 'wifiOff'
   | 'menu' | 'moon' | 'sun' | 'headset' | 'settings' | 'wrench' | 'user' | 'truck' | 'robot' | 'flame' | 'fileBar'
-  | 'plus' | 'trash' | 'edit' | 'phone' | 'mail' | 'idCard' | 'sparkles';
+  | 'plus' | 'trash' | 'edit' | 'phone' | 'mail' | 'idCard' | 'sparkles' | 'coins';
 
 const P: Record<IconName, string> = {
   car: '<path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11M5 11h14M5 11v6m14-6v6M6 17h2m8 0h2M7 14h.01M17 14h.01"/>',
@@ -52,6 +52,7 @@ const P: Record<IconName, string> = {
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
   idCard: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M7 15h4M7 7h.01"/>',
   sparkles: '<path d="M12 3 L13.8 7.9 L18.7 9.7 L13.8 11.5 L12 16.4 L10.2 11.5 L5.3 9.7 L10.2 7.9 Z"/><path d="M19 13 L19.7 14.8 L21.5 15.5 L19.7 16.2 L19 18 L18.3 16.2 L16.5 15.5 L18.3 14.8 Z"/>',
+  coins: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
 };
 
 export function Icon({ name, size = 22, color = 'currentColor', style, class: cls }: P) {

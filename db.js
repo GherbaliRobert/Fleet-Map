@@ -393,6 +393,20 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_fuel_tx_company ON fuel_transactions(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_fuel_tx_imei_ts ON fuel_transactions(imei, ts)`);
 
+    // Istoric preț carburant național (media zilnică PretCarburant.ro) — pentru modulul „Preț combustibil" (trend în timp)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS fuel_price_history (
+        day VARCHAR(10) PRIMARY KEY,
+        motorina DECIMAL(6,3),
+        benzina DECIMAL(6,3),
+        gpl DECIMAL(6,3),
+        motorina_premium DECIMAL(6,3),
+        benzina_premium DECIMAL(6,3),
+        source VARCHAR(40),
+        updated_at BIGINT
+      )
+    `);
+
     // Documente vehicul (ITP, RCA, CASCO, Rovinietă, licențe etc.) cu dată expirare
     await client.query(`
       CREATE TABLE IF NOT EXISTS vehicle_documents (
@@ -2512,6 +2526,28 @@ async function getDeviceImeiByPlate(plate, companyId) {
   return r.rows[0] ? r.rows[0].imei : null;
 }
 
+// ─── Istoric preț carburant (media națională zilnică) ───
+// Snapshot upsert pe ZI (cheia = data prețului de la sursă, altfel azi). Rulat la fiecare refresh (2×/zi) → o linie/zi.
+async function saveFuelPriceSnapshot(p) {
+  if (!p) return;
+  const day = (p.data && /^\d{4}-\d{2}-\d{2}/.test(String(p.data))) ? String(p.data).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const num = (v) => (typeof v === 'number' && isFinite(v) && v > 0) ? v : null;
+  await pool.query(
+    `INSERT INTO fuel_price_history (day, motorina, benzina, gpl, motorina_premium, benzina_premium, source, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT (day) DO UPDATE SET motorina=EXCLUDED.motorina, benzina=EXCLUDED.benzina, gpl=EXCLUDED.gpl,
+       motorina_premium=EXCLUDED.motorina_premium, benzina_premium=EXCLUDED.benzina_premium, source=EXCLUDED.source, updated_at=EXCLUDED.updated_at`,
+    [day, num(p.motorina), num(p.benzina), num(p.gpl), num(p.motorina_premium), num(p.benzina_premium), p.source || null, Date.now()]
+  );
+}
+async function getFuelPriceHistory(days) {
+  const lim = Math.min(Math.max(parseInt(days) || 90, 1), 365);
+  const r = await pool.query(
+    'SELECT day, motorina, benzina, gpl, motorina_premium, benzina_premium FROM fuel_price_history ORDER BY day DESC LIMIT $1', [lim]);
+  const n = (v) => (v == null ? null : Number(v)); // DECIMAL vine ca string din pg
+  return r.rows.reverse().map(row => ({ day: row.day, motorina: n(row.motorina), benzina: n(row.benzina), gpl: n(row.gpl), motorina_premium: n(row.motorina_premium), benzina_premium: n(row.benzina_premium) }));
+}
+
 // io_data de la ultima poziție a unui vehicul (pentru odometru CAN la finalizare/alerte km)
 async function getLastIo(imei) {
   try {
@@ -2775,5 +2811,6 @@ module.exports = {
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
   listFuelTransactions, createFuelTransaction, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,
+  saveFuelPriceSnapshot, getFuelPriceHistory,
   getVehicleDocuments, createVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
 };

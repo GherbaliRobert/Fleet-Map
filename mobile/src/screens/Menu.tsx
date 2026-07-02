@@ -48,6 +48,7 @@ export function Menu() {
 
         <div class="mn-sec">Analize</div>
         {item('droplet', 'Statistici consum', () => loc.route('/fuelstats'))}
+        {item('coins', 'Preț combustibil', () => loc.route('/fuelprice'))}
         {perms.viewAll && item('calendar', 'Raport săptămânal', () => loc.route('/weekly'))}
         {perms.viewReports && item('clock', 'Rapoarte programate', () => loc.route('/report-schedules'))}
         {u?.features?.ai_assistant && item('robot', 'Asistent AI', () => loc.route('/ai'))}

@@ -111,6 +111,7 @@ export const Api = {
   etollCosts: (imei?: string, days = 30) => api<any>(`/api/etoll/costs?days=${days}${imei ? '&imei=' + encodeURIComponent(imei) : ''}`),
   etollProviders: () => api<any>('/api/etoll/providers'),
   fuelPrices: () => api<any>('/api/fuel-prices'),
+  fuelPriceHistory: (days: number) => api<any>('/api/fuel-price-history?days=' + (days || 90)),
   setFuelPrices: (b: any) => api<any>('/api/company/fuel-prices', { method: 'PUT', body: b }),
   refreshFuelPrices: () => api<any>('/api/admin/fuel-prices/refresh', { method: 'POST', body: {} }), // super-admin
   companySettings: () => api<any>('/api/companies/me/settings'),
