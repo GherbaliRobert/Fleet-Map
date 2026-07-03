@@ -109,8 +109,13 @@ export const Api = {
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
     return api<[number, number, number][]>(`/api/hotspot${q}`);
   },
+  // Analiză zonă desenată (poligon/cerc) → vizite pe vehicul. imei opțional (gol = toată flota).
+  zoneReport: (zone: any, from: string, to: string, imei?: string) =>
+    api<any>('/api/zone-report', { method: 'POST', body: imei ? { zone, from, to, imei } : { zone, from, to } }),
   etollCosts: (imei?: string, days = 30) => api<any>(`/api/etoll/costs?days=${days}${imei ? '&imei=' + encodeURIComponent(imei) : ''}`),
   etollProviders: () => api<any>('/api/etoll/providers'),
+  etollSetProvider: (provider: string) => api<any>('/api/etoll/provider', { method: 'PUT', body: { provider } }), // super-admin
+  demoConfig: () => api<any>('/api/demo-modules/config'),
   fuelPrices: () => api<any>('/api/fuel-prices'),
   fuelPriceHistory: (days: number) => api<any>('/api/fuel-price-history?days=' + (days || 90)),
   setFuelPrices: (b: any) => api<any>('/api/company/fuel-prices', { method: 'PUT', body: b }),
