@@ -2,6 +2,7 @@
 // în Excel (.xlsx) sau PDF. Folosit de /api/reports/:type?format=xlsx|pdf.
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
+const path = require('path');
 
 const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Bucharest'; // perioada/ora afișate în fusul local (ca rândurile raportului), nu UTC-ul serverului
 function fmtPeriod(from, to) {
@@ -116,7 +117,7 @@ function _fmtTick(v) { v = _num(v); if (Math.abs(v) >= 1000) return (v / 1000).t
 // Grilă orizontală + valori pe axa Y (4 trepte). Întoarce geometria zonei de plot.
 function _gridY(doc, x, y, w, h, max) {
   const gut = 22, padB = 14, plotH = h - padB, plotW = w - gut, x0 = x + gut;
-  doc.font('Helvetica').fontSize(5.5);
+  doc.font('Nunito').fontSize(5.5);
   for (let g = 0; g <= 4; g++) {
     const gy = y + plotH - (plotH - 2) * (g / 4);
     doc.moveTo(x0, gy).lineTo(x0 + plotW, gy).strokeColor(g === 0 ? '#cbd5e1' : '#eef2f6').lineWidth(g === 0 ? 0.8 : 0.5).stroke();
@@ -135,8 +136,8 @@ function drawBar(doc, x, y, w, h, c) {
     const v = _num(data[i]), bh = max > 0 ? (v / max) * (plotH - 2) : 0;
     const bx = x0 + i * bw + bw * 0.16, by = y + plotH - bh, bwi = bw * 0.68;
     doc.roundedRect(bx, by, bwi, Math.max(0.6, bh), Math.min(3, bwi / 2)).fillColor(PALETTE[i % PALETTE.length]).fill();
-    if (n <= 14) doc.fillColor('#334155').font('Helvetica-Bold').fontSize(5.5).text(_fmtTick(v), x0 + i * bw, by - 7, { width: bw, align: 'center', lineBreak: false });
-    doc.fillColor('#64748b').font('Helvetica').fontSize(5.5).text(String(labels[i]), x0 + i * bw, y + plotH + 3, { width: bw, align: 'center', lineBreak: false });
+    if (n <= 14) doc.fillColor('#334155').font('Nunito-Bold').fontSize(5.5).text(_fmtTick(v), x0 + i * bw, by - 7, { width: bw, align: 'center', lineBreak: false });
+    doc.fillColor('#64748b').font('Nunito').fontSize(5.5).text(String(labels[i]), x0 + i * bw, y + plotH + 3, { width: bw, align: 'center', lineBreak: false });
   }
 }
 // Line chart: arie umplută + polilinie + puncte + grilă.
@@ -160,7 +161,7 @@ function drawLine(doc, x, y, w, h, c) {
   // puncte + etichete x
   for (let i = 0; i < n; i++) {
     const p = pt(i); doc.circle(p.px, p.py, 1.9).fillColor(col).fill();
-    doc.fillColor('#64748b').font('Helvetica').fontSize(5.5).text(String(labels[i]), p.px - (step || plotW) / 2, y + plotH + 3, { width: step || plotW, align: 'center', lineBreak: false });
+    doc.fillColor('#64748b').font('Nunito').fontSize(5.5).text(String(labels[i]), p.px - (step || plotW) / 2, y + plotH + 3, { width: step || plotW, align: 'center', lineBreak: false });
   }
 }
 // Pie/doughnut: felii (arc SVG) + legendă.
@@ -182,7 +183,7 @@ function drawPie(doc, x, y, w, h, c, doughnut) {
   for (let i = 0; i < labels.length; i++) {
     if (ly > y + h - 8) break;
     doc.rect(lx, ly + 1, 6, 6).fillColor(PALETTE[i % PALETTE.length]).fill();
-    doc.fillColor('#1f2937').font('Helvetica').fontSize(6.5).text(String(labels[i]) + ' (' + (data[i] == null ? '' : data[i]) + ')', lx + 9, ly, { width: lw - 9, lineBreak: false, ellipsis: true });
+    doc.fillColor('#1f2937').font('Nunito').fontSize(6.5).text(String(labels[i]) + ' (' + (data[i] == null ? '' : data[i]) + ')', lx + 9, ly, { width: lw - 9, lineBreak: false, ellipsis: true });
     ly += 11;
   }
 }
@@ -203,13 +204,13 @@ function renderPdf(doc, report) {
 
   // 1. Antet brandat
   doc.roundedRect(left, y, 30, 22, 4).fillColor('#3FE07D').fill();
-  doc.fillColor('#06210F').font('Helvetica-Bold').fontSize(14).text('RA', left, y + 5, { width: 30, align: 'center', lineBreak: false });
-  doc.fillColor('#111').font('Helvetica-Bold').fontSize(16).text('Tracks', left + 36, y + 4, { lineBreak: false });
-  doc.fillColor('#111').font('Helvetica-Bold').fontSize(13).text(report.label || 'Raport', left, y + 4, { width: usableW, align: 'right', lineBreak: false });
+  doc.fillColor('#06210F').font('Nunito-Bold').fontSize(14).text('RA', left, y + 5, { width: 30, align: 'center', lineBreak: false });
+  doc.fillColor('#111').font('Nunito-Bold').fontSize(16).text('Tracks', left + 36, y + 4, { lineBreak: false });
+  doc.fillColor('#111').font('Nunito-Bold').fontSize(13).text(report.label || 'Raport', left, y + 4, { width: usableW, align: 'right', lineBreak: false });
   y += 26;
   doc.moveTo(left, y).lineTo(left + usableW, y).strokeColor('#3FE07D').lineWidth(2).stroke();
   y += 7;
-  doc.font('Helvetica').fontSize(9).fillColor('#6b7280').text('Perioadă: ' + fmtPeriod(report.from, report.to) + '     Generat: ' + new Date().toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }), left, y, { lineBreak: false });
+  doc.font('Nunito').fontSize(9).fillColor('#6b7280').text('Perioadă: ' + fmtPeriod(report.from, report.to) + '     Generat: ' + new Date().toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }), left, y, { lineBreak: false });
   y += 17;
 
   // 2. Carduri KPI (din summary)
@@ -220,8 +221,8 @@ function renderPdf(doc, report) {
       const cx = left + i * (cw + 8);
       doc.roundedRect(cx, y, cw, 34, 5).strokeColor('#e5e7eb').lineWidth(1).stroke();
       doc.rect(cx, y, 3, 34).fillColor('#3FE07D').fill();
-      doc.fillColor('#16a34a').font('Helvetica-Bold').fontSize(13).text(String(v), cx + 8, y + 5, { width: cw - 12, lineBreak: false, ellipsis: true });
-      doc.fillColor('#6b7280').font('Helvetica').fontSize(7).text(String(k).toUpperCase(), cx + 8, y + 22, { width: cw - 12, lineBreak: false, ellipsis: true });
+      doc.fillColor('#16a34a').font('Nunito-Bold').fontSize(13).text(String(v), cx + 8, y + 5, { width: cw - 12, lineBreak: false, ellipsis: true });
+      doc.fillColor('#6b7280').font('Nunito').fontSize(7).text(String(k).toUpperCase(), cx + 8, y + 22, { width: cw - 12, lineBreak: false, ellipsis: true });
     });
     y += 44;
   }
@@ -237,7 +238,7 @@ function renderPdf(doc, report) {
       const row = Math.floor(i / perRow), col = i % perRow;
       const cx = left + col * (chW + gap), cy = startY + row * (boxH + rowGap);
       doc.roundedRect(cx, cy, chW, boxH, 5).strokeColor('#e5e7eb').lineWidth(1).stroke();
-      doc.fillColor('#111').font('Helvetica-Bold').fontSize(9).text(c.title || '', cx + 8, cy + 6, { width: chW - 16, lineBreak: false, ellipsis: true });
+      doc.fillColor('#111').font('Nunito-Bold').fontSize(9).text(c.title || '', cx + 8, cy + 6, { width: chW - 16, lineBreak: false, ellipsis: true });
       drawChart(doc, c, cx + 8, cy + 20, chW - 16, chH - 2);
     });
     y = startY + rows * (boxH + rowGap) + 4;
@@ -247,11 +248,11 @@ function renderPdf(doc, report) {
   const ncol = Math.max(1, cols.length), colW = usableW / ncol, rowH = 15;
   if (y + rowH * 2 > bottom) { doc.addPage(); y = doc.page.margins.top; }
   const drawHeader = () => {
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#166534');
+    doc.font('Nunito-Bold').fontSize(8).fillColor('#166534');
     cols.forEach((c, i) => doc.text(String(c), left + i * colW + 2, y + 3, { width: colW - 4, height: rowH, ellipsis: true, lineBreak: false }));
     doc.moveTo(left, y + rowH).lineTo(left + usableW, y + rowH).strokeColor('#3FE07D').lineWidth(0.8).stroke();
     y += rowH;
-    doc.font('Helvetica').fontSize(8).fillColor('#222');
+    doc.font('Nunito').fontSize(8).fillColor('#222');
   };
   drawHeader();
   for (const row of (report.rows || [])) {
@@ -266,6 +267,14 @@ function toPdf(report) {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30, info: { Title: report.label || 'Raport', Author: 'RA Track' } });
+      // Font unicode înglobat (DejaVu Sans — glife românești complete Ș/Ț/Ă/ș/ț/ă) sub aliasul intern „Nunito".
+      // Helvetica din pdfkit corupea diacriticele. Fallback la Helvetica dacă lipsesc TTF-urile (nu strică PDF-ul).
+      try {
+        doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
+        doc.registerFont('Nunito-Bold', path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'));
+      } catch (e) {
+        try { doc.registerFont('Nunito', 'Helvetica'); doc.registerFont('Nunito-Bold', 'Helvetica-Bold'); } catch (e2) {}
+      }
       const chunks = [];
       doc.on('data', (c) => chunks.push(c));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
