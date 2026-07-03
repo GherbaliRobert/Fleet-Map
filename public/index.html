@@ -802,17 +802,10 @@
           <span style="font-size:12px;color:var(--text-secondary);">Companie:</span>
           <select id="dash-company-filter" onchange="setSuperCompany(this.value)" style="font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);min-width:180px;"></select>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:16px;">
-          <div class="report-stat"><div class="report-stat-value" id="dk-total">0</div><div class="report-stat-label">Total vehicule</div></div>
-          <div class="report-stat" style="border-color:var(--green);"><div class="report-stat-value" id="dk-pornit" style="color:var(--green);">0</div><div class="report-stat-label">Pornit</div></div>
-          <div class="report-stat"><div class="report-stat-value" id="dk-moving">0</div><div class="report-stat-label">În mișcare</div></div>
-          <div class="report-stat" style="border-color:var(--yellow);"><div class="report-stat-value" id="dk-stationat" style="color:var(--yellow);">0</div><div class="report-stat-label">Staționat</div></div>
-          <div class="report-stat" style="border-color:var(--red);"><div class="report-stat-value" id="dk-oprit" style="color:var(--red);">0</div><div class="report-stat-label">Oprit</div></div>
-          <div class="report-stat"><div class="report-stat-value" id="dk-km">0</div><div class="report-stat-label">Km azi</div></div>
-          <div class="report-stat"><div class="report-stat-value" id="dk-fuel">0</div><div class="report-stat-label">Consum azi (L)</div></div>
-          <div class="report-stat"><div class="report-stat-value" id="dk-engine">0</div><div class="report-stat-label">Ore motor</div></div>
-          <div class="report-stat"><div class="report-stat-value" id="dk-alerts">0</div><div class="report-stat-label">Alerte</div></div>
-        </div>
+        <!-- HERO KPI (4 carduri mari) + bară status -->
+        <div id="dash-hero" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;"></div>
+        <div class="chart-section-title"><i class="fas fa-signal" style="color:var(--accent);margin-right:6px;"></i>Status flotă acum</div>
+        <div id="dash-status" style="margin-bottom:20px;"></div>
 
         <!-- Constatări agenți AI -->
         <div id="dash-agents-wrap" style="margin-bottom:16px;display:none;">
@@ -823,51 +816,30 @@
           <div id="dash-agents" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;"></div>
         </div>
 
-        <!-- Grafice Dashboard -->
-        <div class="chart-section-title"><i class="fas fa-chart-pie" style="color:var(--accent);margin-right:6px;"></i>Statistici vizuale</div>
-        <div class="chart-grid cols-2">
-          <div class="chart-container h-200">
-            <div class="chart-container-title">Status flota</div>
-            <canvas id="chart-dash-status"></canvas>
+        <!-- Top vehicule (progress bars) -->
+        <div class="chart-grid cols-2" style="margin-bottom:20px;">
+          <div>
+            <div class="chart-section-title" style="margin-top:0;"><i class="fas fa-road" style="color:var(--accent);margin-right:6px;"></i>Top km azi</div>
+            <div id="dk-top-km"></div>
           </div>
-          <div class="chart-container h-200">
-            <div class="chart-container-title">Top 5 km parcursi azi</div>
-            <canvas id="chart-dash-top-km"></canvas>
-          </div>
-          <div class="chart-container h-200">
-            <div class="chart-container-title">Top 5 consum azi</div>
-            <canvas id="chart-dash-top-fuel"></canvas>
-          </div>
-          <div class="chart-container h-200">
-            <div class="chart-container-title">Km per vehicul azi</div>
-            <canvas id="chart-dash-km-vehicle"></canvas>
+          <div>
+            <div class="chart-section-title" style="margin-top:0;"><i class="fas fa-gas-pump" style="color:var(--orange);margin-right:6px;"></i>Top consum azi</div>
+            <div id="dk-top-fuel"></div>
           </div>
         </div>
 
-        <!-- Top vehicule -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-          <div>
-            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
-              <i class="fas fa-road" style="color:var(--accent);margin-right:6px;"></i>Top km parcursi azi
-            </div>
-            <div id="dk-top-km" style="font-size:12px;"></div>
-          </div>
-          <div>
-            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
-              <i class="fas fa-gas-pump" style="color:var(--orange);margin-right:6px;"></i>Top consum azi
-            </div>
-            <div id="dk-top-fuel" style="font-size:12px;"></div>
-          </div>
+        <!-- Grafic km per vehicul -->
+        <div class="chart-section-title"><i class="fas fa-chart-column" style="color:var(--accent);margin-right:6px;"></i>Km per vehicul azi</div>
+        <div class="chart-container h-250" id="dash-km-chart-box" style="margin-bottom:20px;">
+          <canvas id="chart-dash-km-vehicle"></canvas>
         </div>
 
         <!-- Tabel vehicule -->
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">
-          <i class="fas fa-list" style="color:var(--accent);margin-right:6px;"></i>Status flota
-        </div>
+        <div class="chart-section-title"><i class="fas fa-list" style="color:var(--accent);margin-right:6px;"></i>Flota <span id="dash-fleet-n" style="color:var(--text-muted);font-weight:600;"></span></div>
         <div style="overflow-x:auto;overflow-y:auto;max-height:300px;border:1px solid var(--border);border-radius:8px;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <table class="dash-ftable" style="width:100%;border-collapse:collapse;font-size:12px;">
             <thead>
-              <tr style="background:var(--bg-dark);color:var(--text-secondary);text-align:left;">
+              <tr style="background:var(--bg-dark);color:var(--text-muted);text-align:left;text-transform:uppercase;letter-spacing:.3px;font-size:10.5px;">
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Vehicul</th>
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Status</th>
                 <th style="padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-dark);">Km azi</th>
@@ -9766,47 +9738,82 @@ const pozitii = await r.json();</code></pre>
         const res = await fetch('/api/dashboard' + window.superCompanyQS('?'));
         const d = await res.json();
 
-        document.getElementById('dk-total').textContent = d.totalDevices;
-        document.getElementById('dk-pornit').textContent = d.pornitCount;
-        document.getElementById('dk-moving').textContent = d.movingCount;
-        document.getElementById('dk-stationat').textContent = d.stationatCount;
-        document.getElementById('dk-oprit').textContent = d.opritCount;
-        document.getElementById('dk-km').textContent = d.totalKm + ' km';
-        document.getElementById('dk-fuel').textContent = d.totalFuel + ' L';
-        document.getElementById('dk-engine').textContent = formatDuration(d.totalEngineTime);
-        document.getElementById('dk-alerts').textContent = d.totalAlerts;
+        var _dashEsc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
 
-        // Top km
-        const topKmHtml = (d.topKm || []).filter(v => v.km > 0).map(function(v, i) {
-          return '<div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg-dark);border-radius:4px;margin-bottom:4px;">' +
-            '<span>' + (i+1) + '. ' + (v.name || v.imei) + '</span>' +
-            '<span style="color:var(--accent);font-weight:700;">' + v.km + ' km</span></div>';
-        }).join('') || '<div style="color:var(--text-muted);padding:8px;">Nicio activitate azi</div>';
-        document.getElementById('dk-top-km').innerHTML = topKmHtml;
+        // ─── HERO KPI (4 carduri) ───
+        var _consPer100 = (d.totalKm > 0) ? ('≈ ' + (d.totalFuel / d.totalKm * 100).toFixed(1) + ' L/100km') : '—';
+        var _alertOn = (d.totalAlerts > 0);
+        var heroCard = function (icon, iconColor, border, label, num, unit, sub) {
+          return '<div class="dash-hero-card" style="border-left-color:' + border + '">' +
+            '<div class="dash-hero-lbl"><i class="fas ' + icon + '" style="color:' + iconColor + '"></i>' + label + '</div>' +
+            '<div class="dash-hero-num">' + num + (unit ? '<small>' + unit + '</small>' : '') + '</div>' +
+            '<div class="dash-hero-sub">' + sub + '</div></div>';
+        };
+        document.getElementById('dash-hero').innerHTML =
+          heroCard('fa-truck', 'var(--green)', 'var(--green)', 'Total vehicule', d.totalDevices, '', d.onlineCount + ' online · ' + d.offlineCount + ' offline') +
+          heroCard('fa-road', 'var(--green)', 'var(--green)', 'Km azi', d.totalKm, ' km', 'total flotă azi') +
+          heroCard('fa-gas-pump', 'var(--orange)', 'var(--orange)', 'Consum azi', d.totalFuel, ' L', _consPer100) +
+          heroCard('fa-bell', (_alertOn ? 'var(--red)' : 'var(--green)'), (_alertOn ? 'var(--red)' : 'var(--green)'), 'Alerte', d.totalAlerts, '', (_alertOn ? d.totalAlerts + ' necitite' : 'nicio alertă'));
 
-        // Top fuel
-        const topFuelHtml = (d.topFuel || []).filter(v => v.fuel > 0).map(function(v, i) {
-          return '<div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg-dark);border-radius:4px;margin-bottom:4px;">' +
-            '<span>' + (i+1) + '. ' + (v.name || v.imei) + '</span>' +
-            '<span style="color:var(--orange);font-weight:700;">' + v.fuel + ' L' + (v.fuelEstimated ? ' <span style="font-size:9px;font-weight:600;opacity:.7;">est.</span>' : '') + '</span></div>';
-        }).join('') || '<div style="color:var(--text-muted);padding:8px;">Nicio data consum</div>';
-        document.getElementById('dk-top-fuel').innerHTML = topFuelHtml;
+        // ─── Bară status (În mișcare / Staționat / Oprit / Offline) — CSS flex, nu Chart.js ───
+        var _moving = d.movingCount || 0, _stat = d.stationatCount || 0;
+        var _oprit = Math.max(0, (d.onlineCount || 0) - _moving - _stat), _offline = d.offlineCount || 0;
+        var _tot = d.totalDevices || 0;
+        var _segs = [
+          { n: _moving, c: 'var(--green)', tc: '#0f3d22', lbl: 'În mișcare' },
+          { n: _stat, c: 'var(--yellow)', tc: '#3a2e05', lbl: 'Staționat' },
+          { n: _oprit, c: 'var(--red)', tc: '#fff', lbl: 'Oprit' },
+          { n: _offline, c: 'var(--text-muted)', tc: '#fff', lbl: 'Offline' }
+        ];
+        var barHtml = '', legHtml = '';
+        if (_tot > 0) {
+          _segs.forEach(function (s) {
+            if (s.n <= 0) return;
+            var pct = Math.round(s.n / _tot * 100), showTxt = (s.n / _tot) > 0.12;
+            barHtml += '<span title="' + s.lbl + ': ' + s.n + ' (' + pct + '%)" style="flex:' + s.n + ';min-width:2px;background:' + s.c + ';color:' + s.tc + '">' + (showTxt ? s.n + ' · ' + pct + '%' : '') + '</span>';
+          });
+        } else { barHtml = '<span style="flex:1;background:var(--bg-panel);color:var(--text-muted);font-weight:600;">Fără vehicule</span>'; }
+        _segs.forEach(function (s) { legHtml += '<span style="opacity:' + (s.n > 0 ? 1 : .45) + '"><i class="dot" style="background:' + s.c + '"></i>' + s.lbl + ' <b>' + s.n + '</b></span>'; });
+        document.getElementById('dash-status').innerHTML =
+          '<div class="dash-statbar">' + barHtml + '</div>' +
+          '<div class="dash-statleg">' + legHtml + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:9px;"><i class="fas fa-clock"></i> Ore motor azi: <b>' + (d.totalEngineTime > 0 ? (d.totalEngineTime / 3600).toFixed(1) + ' h' : '0 h') + '</b></div>';
 
-        // Fleet table
-        const fleetHtml = (d.devices || []).map(function(v) {
-          const statusColor = v.isMoving ? 'var(--green)' : (v.isStationat ? 'var(--yellow)' : (v.isOnline ? 'var(--red)' : 'var(--text-muted)'));
-          const statusText = v.isMoving ? 'În mișcare' : (v.isStationat ? 'Staționat' : (v.isOnline ? 'Oprit' : '⚠️ Oprit (fără semnal)'));
-          const speedColor = v.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
+        var _fn = document.getElementById('dash-fleet-n'); if (_fn) _fn.textContent = '(' + (d.totalDevices || 0) + ')';
+
+        // ─── Top km / Top consum (progress bars) ───
+        var _prog = function (list, key, unit, color, empty) {
+          var arr = (list || []).filter(function (v) { return v[key] > 0; }).slice(0, 5);
+          if (!arr.length) return '<div style="color:var(--text-muted);font-size:12px;padding:6px 2px;">' + empty + '</div>';
+          var mx = Math.max.apply(null, arr.map(function (v) { return v[key]; })) || 1;
+          return '<div class="dash-prog">' + arr.map(function (v) {
+            var est = (key === 'fuel' && v.fuelEstimated) ? ' <span style="font-size:9px;opacity:.7;">est.</span>' : '';
+            return '<div class="dash-prog-row"><div class="t"><span>' + _dashEsc(v.name || v.imei) + '</span><span style="color:' + color + ';font-weight:700;">' + v[key] + unit + est + '</span></div>' +
+              '<div class="track"><div class="fill" style="width:' + Math.round(v[key] / mx * 100) + '%;background:' + color + ';"></div></div></div>';
+          }).join('') + '</div>';
+        };
+        document.getElementById('dk-top-km').innerHTML = _prog(d.topKm, 'km', ' km', 'var(--accent)', 'Nicio activitate azi');
+        document.getElementById('dk-top-fuel').innerHTML = _prog(d.topFuel, 'fuel', ' L', 'var(--orange)', 'Nicio dată consum');
+
+        // ─── Tabel flotă (pastile status + ore zecimale) ───
+        var _pill = function (bg, col, lbl) { return '<span class="dash-pill" style="background:' + bg + ';color:' + col + ';"><i class="dot" style="background:' + col + ';"></i>' + lbl + '</span>'; };
+        const fleetHtml = (d.devices || []).map(function (v) {
+          var pill = v.isMoving ? _pill('rgba(63,224,125,.14)', 'var(--green)', 'În mișcare')
+            : v.isStationat ? _pill('rgba(234,179,8,.14)', 'var(--yellow)', 'Staționat')
+              : v.isOnline ? _pill('rgba(239,68,68,.14)', 'var(--red)', 'Oprit')
+                : _pill('rgba(138,147,163,.16)', 'var(--text-muted)', 'Offline');
+          var speedColor = v.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
+          var dash = '<span style="color:var(--text-muted);">–</span>';
           return '<tr>' +
-            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600;">' + (v.name || v.imei) + (v.plate ? ' <span style="color:var(--text-muted);font-size:10px;">' + v.plate + '</span>' : '') + '</td>' +
-            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);"><span style="color:' + statusColor + ';font-weight:600;">' + statusText + '</span></td>' +
-            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--accent);">' + v.km + '</td>' +
-            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);color:var(--orange);">' + (v.fuel > 0 ? v.fuel + ' L' + (v.fuelEstimated ? ' <span style="font-size:9px;opacity:.7;">est.</span>' : '') : '-') + '</td>' +
-            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);' + speedColor + '">' + (v.maxSpeed > 0 ? v.maxSpeed + ' km/h' : '-') + '</td>' +
-            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);">' + (v.engineTime > 0 ? formatDuration(v.engineTime) : '-') + '</td>' +
-            '<td style="padding:6px 10px;border-bottom:1px solid var(--border);">' + (v.fuelLevel ? v.fuelLevel + ' L' : '-') + '</td>' +
+            '<td style="font-weight:700;">' + _dashEsc(v.name || v.imei) + (v.plate ? ' <span style="color:var(--text-muted);font-size:10px;">' + _dashEsc(v.plate) + '</span>' : '') + '</td>' +
+            '<td>' + pill + '</td>' +
+            '<td style="color:var(--accent);text-align:right;">' + (v.km > 0 ? v.km : dash) + '</td>' +
+            '<td style="color:var(--orange);text-align:right;">' + (v.fuel > 0 ? v.fuel + ' L' + (v.fuelEstimated ? ' <span style="font-size:9px;opacity:.7;">est.</span>' : '') : dash) + '</td>' +
+            '<td style="text-align:right;' + speedColor + '">' + (v.maxSpeed > 0 ? v.maxSpeed + ' km/h' : dash) + '</td>' +
+            '<td style="text-align:right;color:var(--text-muted);">' + (v.engineTime > 0 ? (v.engineTime / 3600).toFixed(1) + ' h' : dash) + '</td>' +
+            '<td style="text-align:right;color:var(--text-muted);">' + (v.fuelLevel ? v.fuelLevel + ' L' : dash) + '</td>' +
           '</tr>';
-        }).join('');
+        }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:16px;">Niciun vehicul</td></tr>';
         document.getElementById('dk-fleet-body').innerHTML = fleetHtml;
 
         document.getElementById('dash-loading').style.display = 'none';
@@ -9843,157 +9850,40 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { wrap.style.display = 'none'; }
     }
 
-    // ─── Grafice Dashboard ───
+    // ─── Grafic Dashboard: „Km per vehicul azi" (donut + top-uri înlocuite cu bara CSS + progress) ───
     function renderDashboardCharts(d) {
       if (typeof Chart === 'undefined') return;
-
-      // 1. Donut "Status flota" — pe motor: În mișcare / Staționat / Oprit
-      createChart('chart-dash-status', 'doughnut', {
-        labels: ['În mișcare', 'Staționat', 'Oprit'],
+      var box = document.getElementById('dash-km-chart-box');
+      if (box) box.innerHTML = '<canvas id="chart-dash-km-vehicle"></canvas>'; // reset canvas (robust la un render gol anterior)
+      var activeDevices = (d.devices || []).filter(function (v) { return v.km > 0; }).sort(function (a, b) { return b.km - a.km; });
+      if (!activeDevices.length) { if (box) box.innerHTML = '<div class="chart-empty">Nicio activitate azi</div>'; return; }
+      var chartDevices = activeDevices.slice(0, 15);
+      createChart('chart-dash-km-vehicle', 'bar', {
+        labels: chartDevices.map(function (v) { return (v.plate || v.name || v.imei).substring(0, 12); }),
         datasets: [{
-          data: [d.movingCount || 0, d.stationatCount || 0, d.opritCount || 0],
-          backgroundColor: [chartColors.green, '#ca8a04', chartColors.red],
-          borderColor: 'rgba(0, 0, 0, 0.2)',
-          borderWidth: 2
+          label: 'Km',
+          data: chartDevices.map(function (v) { return v.km; }),
+          backgroundColor: chartDevices.map(function (v) { return v.isMoving ? 'rgba(63,224,125,0.30)' : 'rgba(63,224,125,0.15)'; }),
+          borderColor: '#3FE07D',
+          borderWidth: 1.5,
+          borderRadius: 4
         }]
       }, {
-        cutout: '60%',
+        layout: { padding: { left: 4, right: 8, top: 4, bottom: 4 } },
         plugins: {
-          legend: { position: 'bottom', labels: { padding: 8, boxWidth: 10, font: { size: 10 } } },
+          legend: { display: false },
           tooltip: {
             callbacks: {
-              label: function(ctx) {
-                const total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
-                const pct = total > 0 ? Math.round((ctx.parsed / total) * 100) : 0;
-                return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
-              }
+              title: function (items) { var idx = items[0].dataIndex; return chartDevices[idx].name || chartDevices[idx].imei; },
+              label: function (ctx) { var v = chartDevices[ctx.dataIndex]; return ['Km azi: ' + ctx.parsed.y, 'Consum: ' + (v.fuel || '-') + ' L', 'Vit max: ' + (v.maxSpeed || 0) + ' km/h']; }
             }
           }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, autoSkipPadding: 10, maxTicksLimit: 8, font: { size: 10 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function (v) { return v + ' km'; }, maxTicksLimit: 8 } }
         }
       });
-
-      // 2. Horizontal bar "Top 5 km parcursi azi"
-      const topKmData = (d.topKm || []).filter(function(v) { return v.km > 0; }).slice(0, 5);
-      if (topKmData.length > 0) {
-        createChart('chart-dash-top-km', 'bar', {
-          labels: topKmData.map(function(v) { return (v.plate || v.name || v.imei).substring(0, 16); }),
-          datasets: [{
-            label: 'Km',
-            data: topKmData.map(function(v) { return v.km; }),
-            backgroundColor: chartColors.accentAlpha,
-            borderColor: chartColors.accent,
-            borderWidth: 1.5,
-            borderRadius: 4
-          }]
-        }, {
-          indexAxis: 'y',
-          layout: { padding: { right: 12, left: 4, top: 4, bottom: 4 } },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: function(items) {
-                  const idx = items[0].dataIndex;
-                  return topKmData[idx].name || topKmData[idx].imei;
-                },
-                label: function(ctx) { return ctx.parsed.x + ' km'; }
-              }
-            }
-          },
-          scales: {
-            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; }, maxTicksLimit: 6 } },
-            y: { grid: { display: false }, ticks: { autoSkip: false, font: { size: 11 } } }
-          }
-        });
-      } else {
-        document.querySelector('#chart-dash-top-km').parentElement.innerHTML = '<div class="chart-container-title">Top 5 km parcursi azi</div><div class="chart-empty">Nicio activitate azi</div>';
-      }
-
-      // 3. Horizontal bar "Top 5 consum azi"
-      const topFuelData = (d.topFuel || []).filter(function(v) { return v.fuel > 0; }).slice(0, 5);
-      if (topFuelData.length > 0) {
-        createChart('chart-dash-top-fuel', 'bar', {
-          labels: topFuelData.map(function(v) { return (v.plate || v.name || v.imei).substring(0, 16); }),
-          datasets: [{
-            label: 'Litri',
-            data: topFuelData.map(function(v) { return v.fuel; }),
-            backgroundColor: chartColors.orangeAlpha,
-            borderColor: chartColors.orange,
-            borderWidth: 1.5,
-            borderRadius: 4
-          }]
-        }, {
-          indexAxis: 'y',
-          layout: { padding: { right: 12, left: 4, top: 4, bottom: 4 } },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: function(items) {
-                  const idx = items[0].dataIndex;
-                  return topFuelData[idx].name || topFuelData[idx].imei;
-                },
-                label: function(ctx) { return ctx.parsed.x + ' L'; }
-              }
-            }
-          },
-          scales: {
-            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' L'; }, maxTicksLimit: 6 } },
-            y: { grid: { display: false }, ticks: { autoSkip: false, font: { size: 11 } } }
-          }
-        });
-      } else {
-        document.querySelector('#chart-dash-top-fuel').parentElement.innerHTML = '<div class="chart-container-title">Top 5 consum azi</div><div class="chart-empty">Fara date de consum</div>';
-      }
-
-      // 4. Vertical bar "Km per vehicul azi"
-      const activeDevices = (d.devices || []).filter(function(v) { return v.km > 0; }).sort(function(a, b) { return b.km - a.km; });
-      if (activeDevices.length > 0) {
-        // Limitam la 15 vehicule in grafic pentru lizibilitate
-        const chartDevices = activeDevices.slice(0, 15);
-        createChart('chart-dash-km-vehicle', 'bar', {
-          labels: chartDevices.map(function(v) { return (v.plate || v.name || v.imei).substring(0, 12); }),
-          datasets: [{
-            label: 'Km',
-            data: chartDevices.map(function(v) { return v.km; }),
-            backgroundColor: chartDevices.map(function(v) {
-              return v.isMoving ? chartColors.greenAlpha : chartColors.accentAlpha;
-            }),
-            borderColor: chartDevices.map(function(v) {
-              return v.isMoving ? chartColors.green : chartColors.accent;
-            }),
-            borderWidth: 1.5,
-            borderRadius: 4
-          }]
-        }, {
-          layout: { padding: { left: 4, right: 8, top: 4, bottom: 4 } },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: function(items) {
-                  const idx = items[0].dataIndex;
-                  return chartDevices[idx].name || chartDevices[idx].imei;
-                },
-                label: function(ctx) {
-                  const v = chartDevices[ctx.dataIndex];
-                  return [
-                    'Km azi: ' + ctx.parsed.y,
-                    'Consum: ' + (v.fuel || '-') + ' L',
-                    'Vit max: ' + (v.maxSpeed || 0) + ' km/h'
-                  ];
-                }
-              }
-            }
-          },
-          scales: {
-            x: { grid: { display: false }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, autoSkipPadding: 10, maxTicksLimit: 8, font: { size: 10 } } },
-            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' km'; }, maxTicksLimit: 8 } }
-          }
-        });
-      } else {
-        document.querySelector('#chart-dash-km-vehicle').parentElement.innerHTML = '<div class="chart-container-title">Km per vehicul azi</div><div class="chart-empty">Nicio activitate azi</div>';
-      }
     }
 
     // closeDashboard() e definită mai sus ca showView('localizare') — scoate ATÂT `visible`
