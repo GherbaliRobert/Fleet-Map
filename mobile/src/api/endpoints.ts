@@ -190,6 +190,13 @@ export const Api = {
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
     return api<ReportResult>(`/api/reports/${e(type)}${q}`);
   },
+  // Generare în FUNDAL: serverul răspunde imediat ({queued}), generează async și trimite o notificare (push) când e gata.
+  runReportBg: (type: string, from: string, to: string, imeis?: string[]) => {
+    const e = encodeURIComponent;
+    let q = `?from=${e(from)}&to=${e(to)}&log=1&background=1`;
+    if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
+    return api<{ queued?: boolean }>(`/api/reports/${e(type)}${q}`);
+  },
   // Istoric rapoarte (izolat pe user pe server: getReportHistory(uid) / getReportHistoryById(id, uid) / delete(id, uid)).
   reportHistory: () => api<any[]>('/api/reports/history'),
   reportHistoryItem: (id: number) => api<any>(`/api/reports/history/${encodeURIComponent(String(id))}`),

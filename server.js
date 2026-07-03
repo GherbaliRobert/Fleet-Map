@@ -5840,9 +5840,34 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       geofenceId: parseInt(req.query.geofenceId) || null,
       priceByType: effectiveFuelPrices(_cs)
     };
+    const _scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
+    // ─── Generare în FUNDAL (background=1): răspundem imediat, generăm async, apoi notificăm userul ───
+    // Notificarea „report_ready" ajunge în clopoțel (WS) pe web + push FCM pe APK + în lista de notificări.
+    const _fmt = (req.query.format || '').toLowerCase();
+    if (req.query.background === '1' && req.query.log === '1' && _fmt !== 'xlsx' && _fmt !== 'pdf' && req.auth && req.auth.userId) {
+      res.json({ queued: true });
+      const _type = req.params.type, _uid = req.auth.userId, _uname = req.auth.username, _cid = req.companyId != null ? req.companyId : null, _imei = req.query.imei || null;
+      setImmediate(async () => {
+        try {
+          const report = await reports.runReport(db, _type, imeis, from, to, opts, _scope);
+          const label = (reports.REPORTS[_type] && reports.REPORTS[_type].label) || _type;
+          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId })].join('|');
+          const saved = await db.saveReportHistory({
+            company_id: _cid, user_id: _uid, username: _uname, report_type: _type, label, imei: _imei,
+            vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig,
+            expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
+          });
+          await notify({ type: 'report_ready', severity: 'info', title: 'Raport generat', body: '„' + label + '" e disponibil în Istoric rapoarte.', data: { historyId: saved && saved.id, reportType: _type, key: 'report_' + (saved && saved.id) }, userId: _uid, companyId: _cid });
+          try { sendPushToUser(_uid, { title: 'Raport generat', body: '„' + label + '" e gata în Istoric rapoarte.', data: { type: 'report_ready', historyId: String((saved && saved.id) || '') } }); } catch (e) {}
+        } catch (e) {
+          try { await notify({ type: 'report_error', severity: 'warning', title: 'Raport eșuat', body: 'Generarea raportului a eșuat: ' + ((e && e.message) || e), data: { reportType: _type }, userId: _uid, companyId: _cid }); } catch (_) {}
+        }
+      });
+      return;
+    }
     // Tenant: super → null (toate zonele, by design); non-super → compania sa. Orphan non-super (companyId null)
     // primește -1 ca să NU cadă pe „toate" (getGeofences(-1) → 0 zone), evitând scurgerea numelor de zone străine.
-    const report = await reports.runReport(db, req.params.type, imeis, from, to, opts, req.isSuper ? null : (req.companyId != null ? req.companyId : -1));
+    const report = await reports.runReport(db, req.params.type, imeis, from, to, opts, _scope);
     const fmt = (req.query.format || '').toLowerCase();
     if (fmt === 'xlsx' || fmt === 'pdf') {
       if (!reportExport) return res.status(503).json({ error: 'Export PDF/Excel indisponibil pe server' });

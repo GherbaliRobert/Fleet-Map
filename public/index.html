@@ -1943,6 +1943,7 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm" onclick="setRepPeriod('month')">30 zile</button>
           <span id="rep-extra" style="display:flex;gap:6px;align-items:center;margin-left:8px;"></span>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
+          <button class="btn-sm" onclick="repGenerateBg()" title="Generează în fundal — primești o notificare când e gata"><i class="fas fa-clock"></i> În fundal</button>
         </div>
         </div><!-- /rep-controls -->
         <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
@@ -4727,6 +4728,15 @@ const pozitii = await r.json();</code></pre>
       // Toate rapoartele: nu mai randăm inline — trimitem în Istoric și anunțăm userul (popup branded RA Tracks).
       repShowTab('history');
       raNotify({ title: 'Raport generat', message: 'Raportul se află acum în <b>Istoric rapoarte</b>. Apasă „Vezi" ca să-l deschizi, sau descarcă-l direct (Excel / PDF).', actions: [{ label: 'Am înțeles', primary: true }] });
+    }
+    // Generare în FUNDAL: serverul răspunde imediat, generează async, apoi trimite o notificare (clopoțel + push) când e gata.
+    async function repGenerateBg() {
+      const url = repBuildUrl(); if (!url) return;
+      let data;
+      try { const res = await fetch(url + '&log=1&background=1', { credentials: 'same-origin' }); data = await res.json(); if (!res.ok) throw new Error(data.error || 'Eroare'); }
+      catch (e) { alert(e.message); return; }
+      repShowTab('history');
+      raNotify({ title: 'Se generează în fundal', message: 'Raportul se pregătește în fundal. Primești o <b>notificare</b> 🔔 când e gata, apoi îl găsești în <b>Istoric rapoarte</b>.', actions: [{ label: 'Am înțeles', primary: true }] });
     }
     async function repExport(fmt) {
       let url;

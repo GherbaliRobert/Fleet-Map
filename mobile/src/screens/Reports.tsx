@@ -75,6 +75,16 @@ export function Reports() {
     finally { setLoading(false); }
   }
 
+  // Generare în fundal: serverul răspunde imediat și trimite o notificare (push) când raportul e gata în Istoric.
+  async function generateBg() {
+    if (loading) return;
+    const r = range(period);
+    try {
+      await Api.runReportBg(type, r.from, r.to, sel.length ? sel : undefined);
+      showToast('Se generează în fundal — primești o notificare când e gata');
+    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
+  }
+
   function toggleVeh(imei: string) {
     setSel((cur) => cur.includes(imei) ? cur.filter((x) => x !== imei) : [...cur, imei]);
   }
@@ -143,6 +153,9 @@ export function Reports() {
           </div>
           <button class="btn btn-primary btn-block rp-gen" onClick={generate} disabled={loading}>
             {loading ? <span class="spin" style="border-top-color:#06210F" /> : <><Icon name="chart" size={18} /> Generează raport</>}
+          </button>
+          <button class="btn btn-block" style="background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);margin-top:8px" onClick={generateBg} disabled={loading}>
+            <Icon name="bell" size={16} /> Generează în fundal
           </button>
         </div>
 
