@@ -58,7 +58,7 @@ export function Settings() {
         {canFleet && (
           <div class="pf-card">
             <h3>Prețuri combustibil (lei/L)</h3>
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Lasă gol → se folosește media națională.{auto.motorina ? ' Național azi: motorină ' + auto.motorina + ' · benzină ' + (auto.benzina || '—') + ' · GPL ' + (auto.gpl || '—') + '.' : ''} Sursa: PretCarburant.ro</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Folosite la calculul costului în rapoarte. Lasă gol → se folosește media națională (auto, zilnic). Lanț: preț pe vehicul → aceste valori → media națională.{auto.motorina ? ' Național azi: motorină ' + auto.motorina + ' · benzină ' + (auto.benzina || '—') + ' · GPL ' + (auto.gpl || '—') + '.' : ''} Sursa: PretCarburant.ro</div>
             <div class="frm-row">
               <div class="fld"><label>Motorină</label><input type="number" value={fpForm.motorina} onInput={(e: any) => setFpForm({ ...fpForm, motorina: e.target.value })} placeholder={auto.motorina ? String(auto.motorina) : 'auto'} /></div>
               <div class="fld"><label>Benzină</label><input type="number" value={fpForm.benzina} onInput={(e: any) => setFpForm({ ...fpForm, benzina: e.target.value })} placeholder={auto.benzina ? String(auto.benzina) : 'auto'} /></div>

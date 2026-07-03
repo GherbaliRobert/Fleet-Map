@@ -1671,19 +1671,6 @@ const pozitii = await r.json();</code></pre>
             <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
             <div id="us-agents-list"></div>
 
-            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 6px;"><i class="fas fa-gas-pump"></i> Prețuri combustibil (lei/L)</div>
-            <p style="font-size:11px;color:var(--text-muted);margin:0 0 6px;">Folosite la calculul costului în rapoarte. Lasă gol → se folosește <b>media națională</b> (auto, zilnic). Lanț: preț pe vehicul → aceste valori → media națională.</p>
-            <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
-              <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
-            </div>
-
             <div id="us-io-catalog-section" style="display:none;margin:18px 0 0;padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;">
               <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;"><i class="fas fa-microchip"></i> Catalog IO Teltonika (super-admin)</div>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Editează etichetele și descrierile codurilor IO global pentru toate companiile. Modificările sunt vizibile imediat în panourile vehiculelor.</div>
@@ -1719,6 +1706,22 @@ const pozitii = await r.json();</code></pre>
               <span><i class="fas fa-gas-pump" style="color:var(--accent);font-size:9px;"></i> Prag scădere combustibil (litri)</span>
               <input type="number" id="us-th-fueltheft" min="1" max="1000" placeholder="ex. 20" step="1" onblur="usSetThreshold('fuelTheftL', this.value)" style="margin-top:4px;">
             </label>
+          </div>
+
+          <!-- Prețuri combustibil — secțiune proprie, vizibilă/editabilă cu manageFleet (identic cu serverul requireFleet), independent de manageUsers -->
+          <div id="us-fuel-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px;"><i class="fas fa-gas-pump"></i> Prețuri combustibil (lei/L)</div>
+            <p style="font-size:11px;color:var(--text-muted);margin:0 0 6px;">Folosite la calculul costului în rapoarte. Lasă gol → se folosește <b>media națională</b> (auto, zilnic). Lanț: preț pe vehicul → aceste valori → media națională.</p>
+            <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
+              <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
+            </div>
           </div>
         </div>
 
@@ -3113,11 +3116,15 @@ const pozitii = await r.json();</code></pre>
         // Default-uri companie — doar pentru admin/superadmin/company_admin (manageUsers)
         var canMgr = !!(currentUser && currentUser.permissions && currentUser.permissions.manageUsers);
         document.getElementById('us-company-section').style.display = canMgr ? 'block' : 'none';
+        // Prețuri combustibil — vizibile/editabile cu manageFleet (identic cu serverul requireFleet), independent de manageUsers
+        var canFleet = !!(currentUser && (currentUser.isSuper || (currentUser.permissions && currentUser.permissions.manageFleet)));
+        var fuelSec = document.getElementById('us-fuel-section');
+        if (fuelSec) fuelSec.style.display = canFleet ? 'block' : 'none';
+        if (canFleet) usLoadFuelPrices();
         // Catalog IO Teltonika — DOAR super-admin (modificările sunt globale)
         var ioCatBox = document.getElementById('us-io-catalog-section');
         if (ioCatBox) ioCatBox.style.display = (currentUser && currentUser.isSuper) ? 'block' : 'none';
         if (canMgr) {
-          usLoadFuelPrices();
           var coBox = document.getElementById('us-company-list');
           coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
           try {
@@ -3228,7 +3235,11 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
     window.usRefreshFuelAuto = async function () {
-      try { await fetch('/api/admin/fuel-prices/refresh', { method: 'POST', credentials: 'same-origin' }); (window.raxToast || alert)('Media națională actualizată ✓', 'success'); usLoadFuelPrices(); } catch (e) {}
+      try {
+        var r = await fetch('/api/admin/fuel-prices/refresh', { method: 'POST', credentials: 'same-origin' });
+        if (!r.ok) { var j = await r.json().catch(function () { return {}; }); (window.raxToast || alert)(j.error || 'Nu am putut actualiza media națională', 'error'); return; }
+        (window.raxToast || alert)('Media națională actualizată ✓', 'success'); usLoadFuelPrices();
+      } catch (e) { (window.raxToast || alert)('Eroare de rețea: ' + e.message, 'error'); }
     };
     async function usSetThreshold(key, val) {
       const sp = US_THRESHOLD_SPECS[key]; if (!sp) return;
