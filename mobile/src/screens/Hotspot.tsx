@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import L from 'leaflet';
+import 'leaflet.heat'; // extinde L cu heatLayer (heatmap real, ca pe web)
 import { Api } from '../api/endpoints';
 import { vehicles, showToast } from '../app/store';
 import { Icon } from '../components/Icon';
@@ -8,8 +9,8 @@ import './route.css';
 import './admin.css'; // .pf-kpis, .adm-list/item/empty
 import './detail.css'; // .sheet*
 
-// Hotspot & Rutare — paritate cu web (#hotspot-panel): heatmap opriri/poziții cu selector vehicul + mod + interval,
-// PLUS analiză zonă desenată (poligon/cerc) → /api/zone-report. Totul per-companie (viewReports + withScope).
+// Hotspot & Rutare — paritate cu web (#hotspot-panel): HEATMAP real (L.heatLayer) opriri/poziții cu selector
+// vehicul + mod + interval, PLUS analiză zonă desenată (poligon/cerc) → /api/zone-report. Per-companie (viewReports).
 type Preset = 'today' | 'week' | 'month' | 'custom';
 type DrawMode = 'off' | 'polygon' | 'circle';
 
@@ -30,7 +31,7 @@ export function Hotspot() {
   const loc = useLocation();
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const layer = useRef<L.LayerGroup | null>(null);
+  const heatRef = useRef<any>(null);
   const drawLayer = useRef<L.LayerGroup | null>(null);
 
   const [mode, setMode] = useState<'stops' | 'positions'>('stops');
@@ -72,7 +73,6 @@ export function Hotspot() {
     if (!mapEl.current || mapRef.current) return;
     const map = L.map(mapEl.current, { attributionControl: false }).setView([45.9, 25], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    layer.current = L.layerGroup().addTo(map);
     drawLayer.current = L.layerGroup().addTo(map);
     map.on('click', (e: any) => {
       const dm = drawModeRef.current; if (dm === 'off') return;
@@ -81,28 +81,33 @@ export function Hotspot() {
       redrawZone();
     });
     mapRef.current = map;
-    setTimeout(() => map.invalidateSize(), 120);
-    return () => { map.remove(); mapRef.current = null; };
+    // invalidateSize de mai multe ori — containerul e flex, se poate așeza după primul frame
+    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => map.invalidateSize(), 400);
+    return () => { map.remove(); mapRef.current = null; heatRef.current = null; };
   }, []);
 
   useEffect(() => {
     setLoading(true); setErr('');
     const { from, to } = computeRange(preset, customFrom, customTo);
     Api.hotspot(from, to, selImei ? [selImei] : undefined, mode, 5).then((pts: any[]) => {
-      const arr = (pts || []).slice(0, 3000); // cap de siguranță pt. modul „poziții" (densitate mare)
+      const arr = (pts || []).slice(0, 4000); // cap de siguranță pt. densitate mare (modul „poziții")
       setCount(pts?.length || 0);
-      const lg = layer.current, map = mapRef.current;
-      if (lg && map) {
-        lg.clearLayers();
-        const latlngs: any[] = [];
-        arr.forEach((p: any) => {
-          const lat = p[0], lng = p[1], w = p[2] || 0.3;
-          if (lat == null || lng == null) return;
-          latlngs.push([lat, lng]);
-          const r = mode === 'positions' ? (2 + w * 6) : (5 + w * 14);
-          L.circleMarker([lat, lng], { radius: r, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.2 + w * 0.45, weight: 1 }).addTo(lg);
-        });
-        if (latlngs.length) { try { map.fitBounds(L.latLngBounds(latlngs).pad(0.2), { animate: false }); } catch { /* */ } }
+      const map = mapRef.current;
+      if (map) {
+        map.invalidateSize();
+        const heatPts: Array<[number, number, number]> = [];
+        arr.forEach((p: any) => { const lat = p[0], lng = p[1], w = p[2]; if (lat != null && lng != null) heatPts.push([lat, lng, (typeof w === 'number' && w > 0) ? w : 0.4]); });
+        if (heatRef.current) { try { map.removeLayer(heatRef.current); } catch { /* */ } heatRef.current = null; }
+        if (heatPts.length) {
+          try {
+            heatRef.current = (L as any).heatLayer(heatPts, {
+              radius: mode === 'positions' ? 18 : 26, blur: mode === 'positions' ? 14 : 20, maxZoom: 16, minOpacity: 0.35,
+              gradient: { 0.2: '#22c55e', 0.45: '#eab308', 0.7: '#f97316', 1.0: '#ef4444' },
+            }).addTo(map);
+          } catch { /* heatLayer indisponibil → ignorăm */ }
+          try { map.fitBounds(L.latLngBounds(heatPts.map((h) => [h[0], h[1]] as [number, number])).pad(0.2), { animate: false }); } catch { /* */ }
+        }
       }
       setLoading(false);
     }).catch((e: any) => { setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare')); setLoading(false); });
@@ -167,15 +172,15 @@ export function Hotspot() {
         )}
       </div>
 
-      <div class="rt-map" style="height:auto;flex:1;position:relative">
+      <div class="rt-map" style="flex:1;min-height:300px;position:relative">
         <div ref={mapEl} />
         {loading && <div class="rt-mapload"><div class="spin" /></div>}
-        {/* Panou desenare zonă */}
-        <div style="position:absolute;right:10px;top:10px;z-index:500;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        {/* Panou desenare zonă — pointer-events:none pe container ca să NU blocheze harta; auto doar pe controale */}
+        <div style="position:absolute;left:auto;bottom:auto;right:10px;top:10px;z-index:600;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none">
           {drawMode === 'off' ? (
-            <button style="background:var(--accent);color:#06210f;border:0;border-radius:9px;padding:8px 12px;font-size:12.5px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.3)" onClick={() => setDraw('polygon')}><Icon name="map" size={14} /> Desenează zonă</button>
+            <button style="pointer-events:auto;background:var(--accent);color:#06210f;border:0;border-radius:9px;padding:8px 12px;font-size:12.5px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.3)" onClick={() => setDraw('polygon')}><Icon name="map" size={14} /> Desenează zonă</button>
           ) : (
-            <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:9px 10px;box-shadow:0 2px 10px rgba(0,0,0,.35);min-width:186px">
+            <div style="pointer-events:auto;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:9px 10px;box-shadow:0 2px 10px rgba(0,0,0,.35);min-width:186px">
               <div style="display:flex;gap:5px;margin-bottom:7px">
                 <button style={sel(drawMode === 'polygon')} onClick={() => { setDraw('polygon'); }}>Poligon</button>
                 <button style={sel(drawMode === 'circle')} onClick={() => { setDraw('circle'); }}>Cerc</button>
@@ -197,7 +202,7 @@ export function Hotspot() {
       </div>
 
       <div style="padding:9px 14px;font-size:12.5px;color:var(--text-muted);border-top:1px solid var(--border)">
-        {err ? err : (count.toLocaleString('ro-RO') + (mode === 'positions' ? ' poziții' : ' puncte de oprire') + (count > 3000 ? ' (afișez primele 3000)' : '') + ' · cerc mai mare = mai frecvent')}
+        {err ? err : (count.toLocaleString('ro-RO') + (mode === 'positions' ? ' poziții' : ' puncte de oprire') + (count > 4000 ? ' (heatmap pe primele 4000)' : '') + ' · zonele roșii = frecvență mare')}
       </div>
 
       {/* Rezultat analiză zonă */}
