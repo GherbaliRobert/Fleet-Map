@@ -9,15 +9,19 @@ export function isOnline(p: Position, offlineMinutes: number): boolean {
   return (Date.now() - new Date(p.timestamp).getTime()) < (offlineMinutes || 65) * 60000;
 }
 
+// Histerezis „în mișcare" (identic cu server + web): dacă s-a mișcat (viteză>3) în ultimele MOVE_MEMORY_MS și are
+// contactul pornit, rămâne „În mișcare" chiar dacă pachetul curent arată ~0 — trafic bară-la-bară nu mai apare „staționat".
+const MOVE_MEMORY_MS = 150000; // 2.5 min
 export function statusOf(p: Position, offlineMinutes: number): StatusInfo {
   const speed = p.speed || 0;
   const ign = !!(p.io && (p.io.ignition === 1 || (p.io.ignition as any) === true));
   if (!isOnline(p, offlineMinutes)) return { status: 'offline', color: 'var(--text-muted)', label: 'Fără transmisie' };
   // „În mișcare" (verde) DOAR dacă a transmis recent (<3 min). Viteză>3 dintr-un pachet vechi (semnal pierdut
-  // în mers) → galben, ca pe web (marker + listă + fișă). Pragul >3 km/h filtrează jitterul GPS de 1-2 km/h
-  // (identic cu web-ul). Evită falsul „merge live".
+  // în mers) → galben, ca pe web (marker + listă + fișă). Pragul >3 km/h filtrează jitterul GPS de 1-2 km/h.
   const freshLive = p.timestamp ? (Date.now() - new Date(p.timestamp).getTime()) < 180000 : false;
-  if (speed > 3 && freshLive) return { status: 'moving', color: 'var(--green)', label: 'În mișcare' };
+  const movedAt = (p as any).moved_at;
+  const movedRecently = !!(movedAt && (Date.now() - movedAt) < MOVE_MEMORY_MS);
+  if ((speed > 3 || (movedRecently && ign)) && freshLive) return { status: 'moving', color: 'var(--green)', label: 'În mișcare' };
   if (speed > 3) return { status: 'idle', color: 'var(--yellow)', label: 'Semnal pierdut' };
   if (ign) return { status: 'idle', color: 'var(--yellow)', label: 'Staționat' };
   return { status: 'stopped', color: 'var(--red)', label: 'Oprit' };

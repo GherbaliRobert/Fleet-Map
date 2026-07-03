@@ -145,6 +145,9 @@ const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA ||
 // + MARJĂ peste limită (toleranță). Alertă DOAR dacă speed > max(BASE, limita configurată) + MARGIN.
 const SPEED_ALERT_BASE = Number(process.env.SPEED_ALERT_BASE) > 0 ? Number(process.env.SPEED_ALERT_BASE) : 50;
 const SPEED_ALERT_MARGIN = Number(process.env.SPEED_ALERT_MARGIN) >= 0 ? Number(process.env.SPEED_ALERT_MARGIN) : 10;
+// Histerezis „în mișcare": dacă vehiculul a avut viteză reală (>3) în ultimele MOVE_MEMORY_MS și are contactul pornit,
+// rămâne „În mișcare" chiar dacă pachetul curent arată ~0 (trafic bară-la-bară). O mașină chiar parcată expiră → „Staționat/Oprit".
+const MOVE_MEMORY_MS = Number(process.env.MOVE_MEMORY_MS) > 0 ? Number(process.env.MOVE_MEMORY_MS) : 150000; // 2.5 min
 const reports = require('./reports');
 const channels = require('./channels');
 const ai = require('./ai');
@@ -690,6 +693,9 @@ const tcpServer = net.createServer((socket) => {
           // capturează valoarea „de parcare" în DB o singură dată (prima dată când rămâne fără CAN proaspăt)
           if ((lastCanPersistTs.get(imei) || 0) < (_snap.ts || 0)) _persistLastCan(imei, _snap.io, _snap.ts);
         }
+        // Memorie „s-a mișcat recent" (histerezis anti-fals-„staționat" în trafic): reține momentul ultimei viteze reale;
+        // se propagă din intrarea live anterioară când viteza curentă e ≤3, ca să nu resetăm memoria la fiecare oprire scurtă.
+        try { const _plp = livePositions.get(imei); liveData.moved_at = ((Number(liveData.speed) || 0) > 3) ? new Date(liveData.timestamp).getTime() : ((_plp && _plp.moved_at) || null); } catch (e) {}
         livePositions.set(imei, liveData);
 
         // Trimite update live prin WebSocket (coalescing opțional via WS_BATCH_MS, vezi broadcastPosition)
@@ -3011,6 +3017,8 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei)); // demo doar în contul demo
     // Implicit ascunde vehiculele arhivate (de pe hartă/selectoare); ?includeArchived=1 le include (management)
     if (!req.query.includeArchived) devices = devices.filter(d => d.status !== 'archived');
+    // Overlay „moved_at" (memoria de mișcare) din snapshot-ul live → statusul are histerezis chiar de la prima încărcare.
+    for (const d of devices) { const lp = livePositions.get(d.imei); if (lp && lp.moved_at) d.moved_at = lp.moved_at; }
     res.json(devices);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3819,10 +3827,12 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
     for (const [imei, data] of livePositions) {
       if (!canAccessImei(req, imei)) continue;
       const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 3900000; // 65 min
-      const isMoving = isOnline && (data.speed || 0) > 3;
       const _io = data.io || data.io_data || {};
       const hasIgnition = _io.ignition === 1 || _io.ignition === true;
-      const isStationat = isOnline && !isMoving && hasIgnition; // motor pornit, dar nemișcat
+      // Histerezis: crawl în trafic (viteză ~0 dar s-a mișcat recent + contact pornit) → tot „în mișcare", nu „staționat".
+      const _movedRecently = data.moved_at && (now - data.moved_at) < MOVE_MEMORY_MS;
+      const isMoving = isOnline && ((data.speed || 0) > 3 || (_movedRecently && hasIgnition));
+      const isStationat = isOnline && !isMoving && hasIgnition; // motor pornit, dar nemișcat (parcat cu contactul pornit)
       const isPornit = isOnline && (isMoving || hasIgnition);    // motor pornit (= în mișcare + staționat)
       if (isOnline) onlineCount++;
       if (isMoving) movingCount++;
@@ -7168,6 +7178,8 @@ async function start() {
       satellites: pos.satellites,
       io: _io,
       can_stale: _stale,
+      // seed histerezis „s-a mișcat recent" din ultima poziție (dacă mergea) → status corect imediat după restart, până la primul pachet
+      moved_at: ((pos.speed || 0) > 3) ? new Date(pos.timestamp).getTime() : null,
       name: info.name || null,
       vehicle_type: info.vehicle_type || null,
       plate: info.plate || null

@@ -22,9 +22,10 @@
     // „În mișcare" (verde) DOAR dacă a transmis recent (<3 min). Viteză>0 dintr-un pachet vechi (semnal pierdut
     // în mers) → galben „⚠️ Fără semnal recent", nu verde fals. Aliniat cu markerul / lista / fișa.
     var fresh = d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
-    var fastEnough = speed > 3;
-    var liveMoving = fastEnough && fresh;
     var ign = !!(d.io && (d.io.ignition === 1 || d.io.ignition === true));
+    var movedRecently = !!(d.moved_at && (Date.now() - d.moved_at) < 150000); // histerezis: crawl în trafic + contact pornit → tot „mișcare"
+    var fastEnough = speed > 3 || (movedRecently && ign);
+    var liveMoving = fastEnough && fresh;
     var dot, status;
     if (!on) { dot = 'var(--text-muted)'; status = '⚠️ Oprit (fără semnal)'; }
     else if (liveMoving) { dot = 'var(--green)'; status = 'În mișcare'; }
@@ -61,7 +62,8 @@
     // „în mișcare" DOAR dacă transmite live (<3 min, viteză>3). Altfel arătăm de când stă (last_moved_at) —
     // un pachet vechi cu viteză>0 (semnal pierdut) nu mai înseamnă „în mișcare". Aliniat cu liveBits.
     var fresh = d && d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
-    if (d && d.speed > 3 && fresh) return '<span style="color:var(--green)">în mișcare</span>';
+    var movedRecently = !!(d && d.moved_at && (Date.now() - d.moved_at) < 150000 && d.io && (d.io.ignition === 1 || d.io.ignition === true)); // histerezis trafic
+    if (d && (d.speed > 3 || movedRecently) && fresh) return '<span style="color:var(--green)">în mișcare</span>';
     if (!f) return '<span style="color:var(--text-muted)">…</span>';
     if (!f.last_moved_at) return 'fără date';
     return fmtDur(refMs(d) - new Date(f.last_moved_at).getTime());

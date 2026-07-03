@@ -56,8 +56,10 @@ function liveStatus(v: any, off: number): { cls: string; text: string; detail: s
   const ageMs = Date.now() - new Date(v.timestamp).getTime();
   const online = ageMs < (off || 65) * 60000;
   const fresh = ageMs < 180000;
-  const moving = (v.speed || 0) > 3;
   const ign = !!(v.io && (v.io.ignition === 1 || v.io.ignition === true));
+  const movedAt = (v as any).moved_at;
+  const movedRecently = !!(movedAt && (Date.now() - movedAt) < 150000); // histerezis: crawl în trafic + contact pornit → tot „în mișcare"
+  const moving = (v.speed || 0) > 3 || (movedRecently && ign);
   const ago = fmtAgo(v.timestamp);
   if (!online) return { cls: 'gone', text: '⚠️ Oprit (fără semnal)', detail: 'ultima · ' + ago };
   if (moving && fresh) return { cls: 'moving', text: 'În mișcare', detail: '● activ' };

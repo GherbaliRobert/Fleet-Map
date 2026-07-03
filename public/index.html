@@ -6444,8 +6444,12 @@ const pozitii = await r.json();</code></pre>
         shadow + body + glass + (s.det || '') + wheels + '</svg>';
     }
 
+    // Histerezis „în mișcare" (identic cu server + APK): s-a mișcat (viteză>3) în ultimele 2.5 min → tot „mișcare"
+    // chiar dacă pachetul curent arată ~0 (trafic bară-la-bară). Parcarea reală expiră → „staționat/oprit".
+    function raxMovedRecently(d) { return !!(d && d.moved_at && (Date.now() - d.moved_at) < 150000); }
+
     function createIcon(angle, speed, isSelected, io, isOnline, dev) {
-      const isMoving = speed > 3;
+      const isMoving = speed > 3 || (raxMovedRecently(dev) && ignitionOn(io, dev && dev.timestamp));
       const hasIgnition = ignitionOn(io, dev && dev.timestamp);
 
       let color, status, plateBg, plateText;
@@ -6624,8 +6628,8 @@ const pozitii = await r.json();</code></pre>
     function _statusOf(d) {
       const online = isDeviceOnline(d);
       const fresh = d && d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
-      const moving = (d.speed || 0) > 3;
       const ign = ignitionOn(d.io, d && d.timestamp);
+      const moving = (d.speed || 0) > 3 || (raxMovedRecently(d) && ign); // + histerezis trafic
       if (!online) return { cls: 'st-gone', label: 'fără semnal' };
       if (moving && fresh) return { cls: 'st-moving', label: 'în mișcare' };
       if (moving || ign) return { cls: 'st-idle', label: 'ralanti' };
@@ -6935,7 +6939,7 @@ const pozitii = await r.json();</code></pre>
 
       list.innerHTML = filtered.map(d => {
         const isActive = d.imei === selectedImei;
-        const isMoving = d.speed > 3; // consecvent cu markerul / contoarele / fișă (>3 filtrează jitterul GPS de 1-2 km/h)
+        const isMoving = d.speed > 3 || (raxMovedRecently(d) && ignitionOn(d.io, d.timestamp)); // + histerezis trafic (consecvent cu markerul/fișă)
         const isOnline = isDeviceOnline(d);
         const name = d.name || d.imei;
         const plate = d.plate || '';
@@ -7331,7 +7335,7 @@ const pozitii = await r.json();</code></pre>
 
       const io = data.io || {};
       const isOnline = isDeviceOnline(data);
-      const isMoving = data.speed > 3;
+      const isMoving = data.speed > 3 || (raxMovedRecently(data) && ignitionOn(io, data.timestamp)); // + histerezis trafic
       const hasIgnition = ignitionOn(io, data.timestamp);
       const voltage = io.external_voltage ? (io.external_voltage / 1000).toFixed(1) + ' V' : '-';
       const battVoltage = io.battery_voltage ? (io.battery_voltage / 1000).toFixed(2) + ' V' : '-';
