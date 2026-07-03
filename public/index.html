@@ -12479,8 +12479,31 @@ const pozitii = await r.json();</code></pre>
     function _costIcon(c) { var p = (c.provider || '').toLowerCase(); if (p.indexOf('rotld') >= 0 || c.category === 'domain') return 'fa-globe'; if (p.indexOf('railway') >= 0 || c.category === 'hosting') return 'fa-server'; if (p.indexOf('cloudflare') >= 0 || c.category === 'cdn') return 'fa-cloud'; if (p.indexOf('anthropic') >= 0 || c.category === 'api') return 'fa-robot'; return 'fa-receipt'; }
     function _costBadge(c) { var st = c._status; if (st === 'inactive') return ['Inactiv', 'var(--text-muted)', 'rgba(148,163,184,.15)']; if (st === 'overdue') return ['Restant', 'var(--red)', 'rgba(220,38,38,.15)']; if (st === 'upcoming') return ['Scadent curând', '#f59e0b', 'rgba(245,158,11,.15)']; if (st === 'paid') return ['Achitat', 'var(--accent)', 'rgba(22,163,74,.15)']; if (st === 'unknown') return ['Fără scadență', 'var(--text-muted)', 'rgba(148,163,184,.15)']; return ['La zi', 'var(--accent)', 'rgba(22,163,74,.15)']; }
     function _costAmt(c) { var a = Number(c.amount) || 0; if (a === 0) return '<span style="color:var(--text-muted)">Gratuit</span>'; return a.toLocaleString('ro-RO') + ' ' + esc(c.currency); }
+    // Control costuri = 2 sub-view-uri: „Cash-flow" (venituri vs cheltuieli → profit) + „Costuri & furnizori" (registrul existent).
     window.raxLoadCosts = async function () {
       var box = document.getElementById('admin-tab-costs'); if (!box) return;
+      var fin = (window._raxCostSub !== 'ledger');
+      box.innerHTML =
+        '<div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">' +
+          '<button id="rax-costsub-finance" class="rax-btn' + (fin ? ' primary' : '') + '" onclick="raxCostSubtab(\'finance\')"><i class="fas fa-chart-line"></i> Cash-flow</button>' +
+          '<button id="rax-costsub-ledger" class="rax-btn' + (fin ? '' : ' primary') + '" onclick="raxCostSubtab(\'ledger\')"><i class="fas fa-file-invoice-dollar"></i> Costuri &amp; furnizori</button>' +
+        '</div>' +
+        '<div id="rax-costs-finance"' + (fin ? '' : ' style="display:none;"') + '></div>' +
+        '<div id="rax-costs-ledger"' + (fin ? ' style="display:none;"' : '') + '></div>';
+      raxLoadFinance(); raxLoadLedger();
+    };
+    window.raxCostSubtab = function (which) {
+      var f = document.getElementById('rax-costs-finance'), l = document.getElementById('rax-costs-ledger');
+      var bf = document.getElementById('rax-costsub-finance'), bl = document.getElementById('rax-costsub-ledger');
+      if (!f || !l) return;
+      var fin = (which !== 'ledger'); window._raxCostSub = fin ? 'finance' : 'ledger';
+      f.style.display = fin ? '' : 'none'; l.style.display = fin ? 'none' : '';
+      if (bf) bf.className = 'rax-btn' + (fin ? ' primary' : '');
+      if (bl) bl.className = 'rax-btn' + (fin ? '' : ' primary');
+    };
+    // Registrul de costuri (conținutul original al tab-ului) — acum într-un sub-view.
+    window.raxLoadLedger = async function () {
+      var box = document.getElementById('rax-costs-ledger'); if (!box) return;
       box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
         var d = await fetch('/api/admin/costs', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
@@ -12496,6 +12519,75 @@ const pozitii = await r.json();</code></pre>
         '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;"><i class="fas fa-list" style="color:var(--accent);margin-right:6px;"></i>Toate costurile</h4>' +
         '<div id="rax-cost-table"></div>';
       raxRenderCostKpis(); raxRenderCostCards(); raxRenderCostList();
+    };
+    // ─── Cash-flow (venituri vs cheltuieli → profit lunar) ───
+    window.raxLoadFinance = async function () {
+      var box = document.getElementById('rax-costs-finance'); if (!box) return;
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      var months = window._raxFinMonths || 12;
+      try { window._raxFin = await fetch('/api/admin/finance?months=' + months, { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+      catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
+      raxRenderFinance();
+    };
+    window.raxSetFinMonths = function (m) { window._raxFinMonths = m; raxLoadFinance(); };
+    window.raxRenderFinance = function () {
+      var box = document.getElementById('rax-costs-finance'); if (!box) return;
+      var f = window._raxFin;
+      if (!f || f.error) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">' + esc((f && f.error) || 'Eroare la încărcare.') + '</div>'; return; }
+      var t = f.totals || { income: 0, expenses: 0, profit: 0, marginPct: 0 };
+      var months = f.months || [], curM = window._raxFinMonths || 12;
+      var fmt = function (n) { return Math.round(Number(n) || 0).toLocaleString('ro-RO'); };
+      var profitColor = t.profit >= 0 ? 'var(--accent)' : 'var(--red)';
+      function kpi(val, lbl, sub, color) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-left:3px solid ' + (color || 'var(--border)') + ';border-radius:12px;padding:12px 14px;"><div style="font-size:20px;font-weight:800;color:' + (color || 'var(--text-primary)') + ';">' + val + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + lbl + (sub ? ' · ' + sub : '') + '</div></div>'; }
+      var kpiHtml =
+        kpi(fmt(t.income) + ' lei', 'Venituri', 'încasat', 'var(--accent)') +
+        kpi(fmt(t.expenses) + ' lei', 'Cheltuieli', 'plătit ≈RON', 'var(--red)') +
+        kpi((t.profit >= 0 ? '' : '−') + fmt(Math.abs(t.profit)) + ' lei', 'Profit', 'venit − cheltuieli', profitColor) +
+        kpi((t.marginPct != null ? t.marginPct : 0) + '%', 'Marjă', 'profit / venit', profitColor) +
+        kpi(fmt(f.recurringMonthlyRON) + ' lei', 'Burn recurent', '≈RON / lună', '#f59e0b');
+      function pbtn(m, lbl) { return '<button class="rax-btn' + (curM === m ? ' primary' : '') + '" style="padding:4px 12px;font-size:12px;" onclick="raxSetFinMonths(' + m + ')">' + lbl + '</button>'; }
+      var periodHtml = '<div style="display:flex;gap:6px;align-items:center;margin:10px 0;"><span style="font-size:11.5px;color:var(--text-muted);margin-right:4px;">Perioadă:</span>' + pbtn(6, '6 luni') + pbtn(12, '12 luni') + pbtn(24, '24 luni') + '</div>';
+      var maxBar = 0; months.forEach(function (m) { maxBar = Math.max(maxBar, m.income, m.expenses); }); if (maxBar <= 0) maxBar = 1;
+      var rowsHtml = months.map(function (m) {
+        var iw = m.income > 0 ? Math.max(2, Math.round(m.income / maxBar * 100)) : 0;
+        var ew = m.expenses > 0 ? Math.max(2, Math.round(m.expenses / maxBar * 100)) : 0;
+        var pc = m.profit >= 0 ? 'var(--accent)' : 'var(--red)';
+        return '<div style="display:grid;grid-template-columns:56px 1fr 96px;gap:10px;align-items:center;padding:5px 0;">' +
+          '<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;">' + esc(m.label) + '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:3px;">' +
+            '<div style="height:9px;border-radius:5px;background:var(--accent);width:' + iw + '%;" title="Venituri: ' + fmt(m.income) + ' lei"></div>' +
+            '<div style="height:9px;border-radius:5px;background:var(--red);width:' + ew + '%;" title="Cheltuieli: ' + fmt(m.expenses) + ' lei"></div>' +
+          '</div>' +
+          '<div style="text-align:right;font-size:12px;font-weight:700;color:' + pc + ';white-space:nowrap;">' + (m.profit >= 0 ? '+' : '−') + fmt(Math.abs(m.profit)) + '</div>' +
+        '</div>';
+      }).join('');
+      var legendHtml = '<div style="display:flex;gap:16px;font-size:11px;color:var(--text-muted);margin:2px 0 8px;">' +
+        '<span><i class="fas fa-square" style="color:var(--accent);"></i> Venituri</span>' +
+        '<span><i class="fas fa-square" style="color:var(--red);"></i> Cheltuieli</span>' +
+        '<span style="margin-left:auto;">Profit / lună →</span></div>';
+      function breakdown(title, icon, rows, color) {
+        var mx = 0; (rows || []).forEach(function (r) { mx = Math.max(mx, r.amount); }); if (mx <= 0) mx = 1;
+        var body = (rows && rows.length) ? rows.map(function (r) {
+          var w = Math.max(2, Math.round(r.amount / mx * 100));
+          return '<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span>' + esc(r.name) + '</span><b>' + fmt(r.amount) + ' lei</b></div><div style="height:7px;border-radius:4px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + w + '%;background:' + color + ';"></div></div></div>';
+        }).join('') : '<div class="rax-co-meta">—</div>';
+        return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">' +
+          '<h4 style="font-size:12.5px;font-weight:700;margin:0 0 10px;"><i class="fas ' + icon + '" style="color:' + color + ';margin-right:6px;"></i>' + title + '</h4>' + body + '</div>';
+      }
+      var brkHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:16px;">' +
+        breakdown('Top venituri / companie', 'fa-building', f.incomeByCompany, 'var(--accent)') +
+        breakdown('Top cheltuieli / furnizor', 'fa-server', f.expenseByProvider, 'var(--red)') + '</div>';
+      var emptyHint = (f.counts && f.counts.payments === 0 && f.counts.costPayments === 0)
+        ? '<div style="background:var(--bg-dark);border:1px dashed var(--border);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text-muted);margin-bottom:14px;"><i class="fas fa-circle-info" style="margin-right:6px;color:var(--accent);"></i>Încă nu ai plăți înregistrate. Cash-flow-ul se populează pe măsură ce încasezi abonamente (plată companie, în „Conturi &amp; abonamente") și marchezi costurile ca plătite (tab-ul „Costuri &amp; furnizori").</div>'
+        : '';
+      box.innerHTML =
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;">' + kpiHtml + '</div>' +
+        emptyHint +
+        '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">' +
+          '<h4 style="font-size:13px;font-weight:700;margin:0;"><i class="fas fa-chart-column" style="color:var(--accent);margin-right:6px;"></i>Evoluție lunară</h4>' +
+          periodHtml + legendHtml + rowsHtml +
+        '</div>' +
+        brkHtml;
     };
     window.raxRenderCostKpis = function () {
       var host = document.getElementById('rax-cost-kpi'); if (!host) return;

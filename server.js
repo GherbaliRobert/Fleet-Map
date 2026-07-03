@@ -1213,6 +1213,23 @@ function computeCostKpis(costs) {
   for (const k of Object.keys(by)) { by[k].monthly = Math.round(by[k].monthly * 100) / 100; by[k].yearly = Math.round(by[k].yearly * 100) / 100; }
   return { byCurrency: by, nextDue, nextDueProvider, overdueCount, upcomingCount, activeCount }; // NU se adună între monede
 }
+// ─── Cash-flow platformă (super-admin): agregare lunară venituri vs cheltuieli ───
+// Rate FX identice cu KPI-ul aproximativ din frontend (RAX_FX). Doar pentru a exprima costurile în valută → RON.
+const FINANCE_FX = { RON: 1, USD: 4.6, EUR: 5.0 };
+const FINANCE_MON_RO = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sep.', 'oct.', 'noi.', 'dec.'];
+// Construiește N buckets lunari consecutivi (cel mai vechi → cel mai nou), terminând cu luna curentă.
+function buildFinanceMonths(n) {
+  const out = [], now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const ym = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    out.push({ ym, label: FINANCE_MON_RO[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2), income: 0, expenses: 0, profit: 0 });
+  }
+  return out;
+}
+function _financeMonthStartMs(ym) { const p = String(ym).split('-'); return new Date(Number(p[0]), Number(p[1]) - 1, 1).getTime(); }
+function _financeYmOf(ts) { const d = new Date(Number(ts)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function _fin2(x) { return Math.round((Number(x) || 0) * 100) / 100; }
 // Normalizează o sumă scrisă RO (virgulă zecimală, punct la mii) → number; { ok, val } (null = gol).
 function _parseMoney(raw) {
   const s = (raw != null) ? String(raw).trim() : '';
@@ -6497,6 +6514,50 @@ app.get('/api/admin/costs/:id/payments', requireAuth, requireSuperadmin, async (
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     res.json(await db.getCostPayments(id, 100));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Cash-flow platformă: venituri (payments) vs cheltuieli reale (costs_payments) agregate pe lună → profit + marjă.
+// Super-admin only. Toate sumele în RON (costurile în valută convertite cu FINANCE_FX). NU expune nicio dată per-tenant altcuiva.
+app.get('/api/admin/finance', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    let months = parseInt(req.query.months); if (!Number.isFinite(months)) months = 12;
+    months = Math.max(1, Math.min(36, months));
+    const buckets = buildFinanceMonths(months);
+    const byYm = {}; buckets.forEach(function (b) { byYm[b.ym] = b; });
+    const fromMs = _financeMonthStartMs(buckets[0].ym);
+    const data = await db.getFinanceSummary(fromMs);
+    // Venituri (RON)
+    const incomeByCompany = {};
+    for (const r of data.income) {
+      const amt = Number(r.amount) || 0;
+      const b = byYm[_financeYmOf(r.ts)]; if (b) b.income += amt;
+      const nm = r.company_name || 'Necunoscut'; incomeByCompany[nm] = (incomeByCompany[nm] || 0) + amt;
+    }
+    // Cheltuieli reale (valută → RON)
+    const expenseByProvider = {};
+    for (const r of data.expenses) {
+      const fx = FINANCE_FX[r.currency] || 1; const amt = (Number(r.amount) || 0) * fx;
+      const b = byYm[_financeYmOf(r.ts)]; if (b) b.expenses += amt;
+      const nm = r.provider || 'Altele'; expenseByProvider[nm] = (expenseByProvider[nm] || 0) + amt;
+    }
+    // Burn recurent estimat (proiecție lunară din costurile active) — reper, nu cash-flow real
+    let recurringMonthlyRON = 0;
+    for (const r of data.recurring) {
+      const fx = FINANCE_FX[r.currency] || 1; const amt = (Number(r.amount) || 0) * fx;
+      if (r.cycle === 'monthly') recurringMonthlyRON += amt;
+      else if (r.cycle === 'yearly') recurringMonthlyRON += amt / 12;
+    }
+    let tIncome = 0, tExpense = 0;
+    buckets.forEach(function (b) { b.income = _fin2(b.income); b.expenses = _fin2(b.expenses); b.profit = _fin2(b.income - b.expenses); tIncome += b.income; tExpense += b.expenses; });
+    const profit = tIncome - tExpense;
+    const top = function (obj) { return Object.keys(obj).map(function (k) { return { name: k, amount: _fin2(obj[k]) }; }).sort(function (a, b) { return b.amount - a.amount; }).slice(0, 8); };
+    res.json({
+      currency: 'RON', rates: FINANCE_FX, months: buckets,
+      totals: { income: _fin2(tIncome), expenses: _fin2(tExpense), profit: _fin2(profit), marginPct: tIncome > 0 ? Math.round(profit / tIncome * 1000) / 10 : 0, monthsCount: months },
+      recurringMonthlyRON: _fin2(recurringMonthlyRON),
+      incomeByCompany: top(incomeByCompany), expenseByProvider: top(expenseByProvider),
+      counts: { payments: data.income.length, costPayments: data.expenses.length }
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Railway: usage/cost ESTIMAT din API (doar dacă RAILWAY_API_TOKEN + RAILWAY_WORKSPACE_ID sunt setate în env). Prețuri unitare publice.

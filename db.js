@@ -1096,6 +1096,27 @@ async function markCostPaid(id, o) {
   );
   return { cost: upd.rows[0], payment: r.rows[0] };
 }
+// Cash-flow platformă (super-admin): rânduri brute din fromMs pentru agregare lunară venituri vs cheltuieli.
+//  - income: plăți încasate de la companiile-client (payments, amount_ron = RON)
+//  - expenses: plăți efective pe costuri (costs_payments) + furnizor/categorie din platform_costs (moneda proprie)
+//  - recurring: costuri active pentru estimarea burn-ului lunar (proiecție)
+// Agregarea pe luni + conversia valutară se fac în server.js (o singură sursă de rate FX).
+async function getFinanceSummary(fromMs) {
+  const from = Number(fromMs) || 0;
+  const inc = await pool.query(`
+    SELECT COALESCE(p.paid_at, p.created_at) AS ts, p.amount_ron AS amount, p.company_id, c.name AS company_name
+    FROM payments p LEFT JOIN companies c ON c.id = p.company_id
+    WHERE COALESCE(p.paid_at, p.created_at) >= $1
+    ORDER BY ts ASC`, [from]);
+  const exp = await pool.query(`
+    SELECT cp.paid_at AS ts, cp.amount, COALESCE(cp.currency, pc.currency, 'RON') AS currency, pc.provider, pc.category
+    FROM costs_payments cp LEFT JOIN platform_costs pc ON pc.id = cp.cost_id
+    WHERE cp.paid_at >= $1 AND cp.amount IS NOT NULL
+    ORDER BY cp.paid_at ASC`, [from]);
+  const recurring = await pool.query(
+    `SELECT provider, category, amount, currency, cycle FROM platform_costs WHERE active = true AND amount IS NOT NULL`);
+  return { income: inc.rows, expenses: exp.rows, recurring: recurring.rows };
+}
 // Capacitatea bazei de date din PostgreSQL-ul PROPRIU (fără token extern): mărime totală + defalcare pe tabel.
 async function getDbCapacity() {
   let dbBytes = null, tables = [];
@@ -2718,7 +2739,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
-  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getDbCapacity,
+  listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,

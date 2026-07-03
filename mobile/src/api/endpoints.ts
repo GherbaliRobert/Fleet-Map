@@ -101,6 +101,7 @@ export const Api = {
   costRailway: () => api<any>('/api/admin/costs/railway'),
   costCloudflare: () => api<any>('/api/admin/costs/cloudflare'),
   costAnthropic: () => api<any>('/api/admin/costs/anthropic'),
+  adminFinance: (months = 12) => api<any>(`/api/admin/finance?months=${months}`),
   // ── Module + Setări (companie) ──
   hotspot: (from: string, to: string, imeis?: string[], mode = 'stops', stopMin = 5) => {
     const e = encodeURIComponent;
