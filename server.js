@@ -6914,6 +6914,17 @@ app.put('/api/companies/:id/access', requireAuth, requireSuperadmin, async (req,
 
 // Web Push: cheie publică VAPID + abonare/dezabonare dispozitiv
 app.get('/api/push/vapid', requireAuth, (req, res) => res.json({ publicKey: VAPID ? VAPID.publicKey : null }));
+// Test push: trimite o notificare de probă către PROPRIILE dispozitive ale userului (FCM + web push).
+// Ocolește preferințele (testează TRANSPORTUL, nu regulile). Întoarce câte tokenuri/abonamente a găsit.
+app.post('/api/push/test', requireAuth, async (req, res) => {
+  const uid = req.auth && req.auth.userId;
+  if (!uid) return res.status(401).json({ error: 'Neautentificat' });
+  let deviceTokens = 0, webSubs = 0;
+  try { deviceTokens = (await db.getDeviceTokens(uid) || []).length; } catch (_) {}
+  try { webSubs = (await db.getPushSubscriptions(uid) || []).length; } catch (_) {}
+  sendPushToUser(uid, { title: 'RA Track — test', body: 'Notificare de test — dacă o vezi, push-ul funcționează! ✅', data: { type: 'test' } }).catch(() => {});
+  res.json({ ok: true, fcm: !!_fcm, deviceTokens, webSubs });
+});
 app.post('/api/push/subscribe', requireAuth, async (req, res) => {
   try {
     const sub = req.body;

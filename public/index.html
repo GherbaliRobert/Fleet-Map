@@ -1691,6 +1691,8 @@ const pozitii = await r.json();</code></pre>
             <div class="set-sec-h"><i class="fas fa-user"></i> Preferințele tale</div>
             <div id="us-list" style="margin-bottom:6px;"><div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div></div>
             <p class="set-note">Aceste setări se aplică doar contului tău. Reset → cade pe default-ul companiei.</p>
+            <button class="btn-sm btn-primary" onclick="usTestPush(this)" style="margin-top:2px;"><i class="fas fa-bell"></i> Trimite notificare de test pe telefon</button>
+            <div id="us-test-push-res" style="font-size:11.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;"></div>
           </div>
 
           <!-- Panel: Companie -->
@@ -3223,6 +3225,20 @@ const pozitii = await r.json();</code></pre>
           } catch (e) { coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>'; }
         }
       } catch (e) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>'; }
+    }
+    async function usTestPush(btn) {
+      var res = document.getElementById('us-test-push-res');
+      if (btn) btn.disabled = true;
+      if (res) res.textContent = 'Se trimite…';
+      try {
+        var r = await fetch('/api/push/test', { method: 'POST', credentials: 'same-origin' }).then(function (x) { return x.json(); });
+        if (res) {
+          if (!r.fcm) res.innerHTML = '<span style="color:var(--red)">⚠ Serverul nu are FCM activ (FIREBASE_SA_JSON).</span>';
+          else if (!r.deviceTokens) res.innerHTML = '<span style="color:var(--orange)">Trimis, dar <b>0 telefoane înregistrate</b> pe contul tău. Deschide APK-ul, loghează-te și acceptă notificările — apoi reîncearcă.</span>' + (r.webSubs ? ' <span style="color:var(--text-muted)">(' + r.webSubs + ' abonare web push)</span>' : '');
+          else res.innerHTML = '<span style="color:var(--accent)">✓ Trimis către <b>' + r.deviceTokens + '</b> telefon(e). Verifică notificările pe telefon.</span>';
+        }
+      } catch (e) { if (res) res.innerHTML = '<span style="color:var(--red)">Eroare: ' + ((e && e.message) || e) + '</span>'; }
+      if (btn) btn.disabled = false;
     }
     async function usSetPref(key, val) {
       var body = {}; body[key] = !!val;
