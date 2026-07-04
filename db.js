@@ -746,14 +746,18 @@ async function initDb() {
         ['Google Search Console', 'seo', 'Performanță căutare Google — clicuri, afișări, poziție', 'https://search.google.com/search-console'],
       ];
       for (const g of _google) {
-        await client.query(
-          `INSERT INTO platform_costs (provider,category,description,amount,currency,cycle,next_due,url,active,created_at,updated_at)
-           SELECT $1,$2,$3,0,'USD','monthly',$4,$5,true,$6,$6
-           WHERE NOT EXISTS (SELECT 1 FROM platform_costs WHERE provider = $1)`,
-          [g[0], g[1], g[2], _gnow, g[3], _gnow]
-        );
+        // verificare + INSERT VALUES simplu (același tipar ca seed-ul de mai sus). NU folosi
+        // `INSERT … SELECT $1 … WHERE NOT EXISTS(… $1)` — inferența de tip a parametrilor eșuează.
+        const _ex = await client.query('SELECT 1 FROM platform_costs WHERE provider = $1 LIMIT 1', [g[0]]);
+        if (_ex.rows.length === 0) {
+          await client.query(
+            `INSERT INTO platform_costs (provider,category,description,amount,currency,cycle,next_due,url,active,created_at,updated_at)
+             VALUES ($1,$2,$3,0,'USD','monthly',$4,$5,true,$6,$6)`,
+            [g[0], g[1], g[2], _gnow, g[3], _gnow]
+          );
+        }
       }
-    } catch (e) { /* best-effort */ }
+    } catch (e) { if (typeof console !== 'undefined') console.warn('[costs] seed Google:', e && e.message); }
     // Ofertare Live: oferte salvate (configurator de preț cu istoric)
     await client.query(`
       CREATE TABLE IF NOT EXISTS offers (
