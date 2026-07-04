@@ -5625,12 +5625,21 @@ const pozitii = await r.json();</code></pre>
     setTimeout(refreshActiveFindings, 4000);
     setInterval(refreshActiveFindings, 90000);
     function findingsForImei(imei) { return window._activeFindings[imei] || {}; }
+    // Închide panoul de notificări dacă se dă click ORIUNDE în afara lui (ex. pe o mașină de pe hartă) → fără suprapunere de panouri.
+    function _notifOutsideClose(e) {
+      var panel = document.getElementById('notif-panel'); if (!panel) return;
+      if (panel.contains(e.target)) return;                                         // click în panou → nu închide
+      if (e.target.closest && e.target.closest('button[title="Notificări"]')) return; // clopoțel → lasă toggle-ul
+      closeNotifications();
+    }
     async function toggleNotifications() {
       const p = document.getElementById('notif-panel');
-      if (p.style.display === 'none' || !p.style.display) { p.style.display = 'flex'; await loadNotifications(); }
-      else closeNotifications();
+      if (p.style.display === 'none' || !p.style.display) {
+        p.style.display = 'flex'; await loadNotifications();
+        setTimeout(function () { document.addEventListener('click', _notifOutsideClose); }, 0); // deferat: nu prinde clicul care a deschis
+      } else closeNotifications();
     }
-    function closeNotifications() { document.getElementById('notif-panel').style.display = 'none'; }
+    function closeNotifications() { document.getElementById('notif-panel').style.display = 'none'; document.removeEventListener('click', _notifOutsideClose); }
     async function loadNotifications() {
       const list = document.getElementById('notif-list');
       list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;padding:12px;">Se încarcă...</p>';
@@ -5653,7 +5662,7 @@ const pozitii = await r.json();</code></pre>
           ? '<i class="fas fa-file-lines" style="color:var(--accent);opacity:.8;"></i>'
           : '<i class="fas fa-map-location-dot" style="color:var(--accent);opacity:.7;"></i>';
         const reportBtn = (n.type === 'report_ready')
-          ? `<button class="btn-sm btn-primary" style="padding:3px 8px;white-space:nowrap;" title="Mergi la rapoarte generate" onclick="notifOpenReport('${hid}')"><i class="fas fa-arrow-right"></i> Rapoarte</button>`
+          ? `<button class="btn-sm btn-primary" style="padding:3px 8px;white-space:nowrap;" title="Mergi la rapoarte generate" onclick="notifGoReports()"><i class="fas fa-arrow-right"></i> Rapoarte</button>`
           : '';
         return `
         <div style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);${n.acknowledged?'opacity:.5;':''}">
@@ -5670,10 +5679,49 @@ const pozitii = await r.json();</code></pre>
         </div>`;
       }).join('');
     }
-    // Deschide raportul dintr-o notificare de raport: închide panoul + deschide Istoric rapoarte (+ raportul dacă avem id).
-    function notifOpenReport(hid) {
-      var p = document.getElementById('notif-panel'); if (p) p.style.display = 'none';
-      _repBadgeView((hid === '' || hid == null) ? null : hid);
+    // Click pe notificarea de raport → MODAL cu raportul COMPLET (tabel + export). Butonul „Rapoarte" duce în Istoric.
+    function notifOpenReport(hid) { openReportModal((hid === '' || hid == null) ? null : hid); }
+    // Butonul „Rapoarte" → zona de rapoarte generate (panoul Rapoarte, tab Istoric).
+    function notifGoReports() { closeNotifications(); if (typeof showView === 'function') showView('rapoarte'); setTimeout(function () { if (typeof repShowTab === 'function') repShowTab('history'); }, 250); }
+    // Modal dedicat care afișează raportul complet (columns/rows) dintr-un istoric, cu export + „Deschide în Rapoarte".
+    async function openReportModal(hid) {
+      closeNotifications();
+      if (hid == null || hid === '') { notifGoReports(); return; }
+      var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      var ov = document.getElementById('report-modal');
+      if (!ov) {
+        ov = document.createElement('div'); ov.id = 'report-modal';
+        ov.style.cssText = 'display:none;position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px;';
+        ov.onclick = function (e) { if (e.target === ov) ov.style.display = 'none'; };
+        ov.innerHTML = '<div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5);width:940px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);"><i class="fas fa-file-lines" style="color:var(--accent);"></i><div id="report-modal-title" style="font-weight:800;font-size:15px;flex:1;min-width:0;"></div><button class="btn-sm" onclick="document.getElementById(\'report-modal\').style.display=\'none\'"><i class="fas fa-times"></i></button></div>' +
+          '<div id="report-modal-body" style="overflow:auto;flex:1;padding:14px 18px;"></div>' +
+          '<div id="report-modal-foot" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--border);flex-wrap:wrap;"></div></div>';
+        document.body.appendChild(ov);
+      }
+      ov.style.display = 'flex';
+      document.getElementById('report-modal-title').textContent = 'Se încarcă…';
+      document.getElementById('report-modal-body').innerHTML = '<div style="padding:36px;text-align:center;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Se încarcă raportul…</div>';
+      document.getElementById('report-modal-foot').innerHTML = '';
+      var data;
+      try { var res = await fetch('/api/reports/history/' + hid, { credentials: 'same-origin' }); data = await res.json(); if (!res.ok) throw new Error(data.error || 'Eroare'); }
+      catch (e) { document.getElementById('report-modal-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">' + esc(e.message || 'Nu am putut încărca raportul') + '</div>'; return; }
+      var rep = data.report || {}, cols = rep.columns || [], rows = rep.rows || [];
+      document.getElementById('report-modal-title').textContent = (data.label || data.report_type || 'Raport') + ' · ' + repFmtDT(data.generated_at);
+      var body;
+      if (rows.length) {
+        body = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr>' +
+          cols.map(function (c) { return '<th style="text-align:left;padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text-secondary);position:sticky;top:0;background:var(--bg-panel);">' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+          rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td style="padding:7px 9px;border-bottom:1px solid var(--border);">' + esc(c == null ? '' : c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>' +
+          '<div style="font-size:11.5px;color:var(--text-muted);margin-top:10px;">' + rows.length + ' rânduri' + ((rep.from && rep.to) ? (' · perioada ' + repFmtDT(rep.from) + ' – ' + repFmtDT(rep.to)) : '') + '</div>';
+      } else {
+        body = '<div style="padding:30px;text-align:center;color:var(--text-muted);">Raportul nu conține date pentru perioada selectată.</div>';
+      }
+      document.getElementById('report-modal-body').innerHTML = body;
+      document.getElementById('report-modal-foot').innerHTML =
+        '<button class="btn-sm" onclick="repExportHistory(' + hid + ',\'xlsx\')"><i class="fas fa-file-excel"></i> Excel</button>' +
+        '<button class="btn-sm" onclick="repExportHistory(' + hid + ',\'pdf\')"><i class="fas fa-file-pdf"></i> PDF</button>' +
+        '<button class="btn-sm btn-primary" onclick="document.getElementById(\'report-modal\').style.display=\'none\'; notifGoReports();"><i class="fas fa-arrow-right"></i> Deschide în Rapoarte</button>';
     }
     async function ackNotif(id) { try { await fetch('/api/notifications/' + id + '/ack', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
     async function ackAllNotif() { try { await fetch('/api/notifications/ack-all', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
