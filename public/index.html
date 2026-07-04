@@ -13802,7 +13802,7 @@ const pozitii = await r.json();</code></pre>
           }).join('') + '</div>'
         : '';
       var head = (counts.unassigned > 0 ? '<div class="rax-dev-alert"><i class="fas fa-bell"></i> ' + counts.unassigned + ' dispozitiv(e) neasignat(e) s-au conectat — adoptă-le sau respinge-le.</div>' : '') +
-        '<div class="rax-dev-bar">' + chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('archived', 'Arhivate') +
+        '<div class="rax-dev-bar">' + '<button class="rax-btn primary" style="border-radius:20px;" onclick="raxDevAddOpen()"><i class="fas fa-plus"></i> Adaugă dispozitiv</button>' + chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('archived', 'Arhivate') +
         '<input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="_raxDevSearch=this.value;raxRenderDevices()"></div>';
       var body = rows.map(function (d) {
         var b = _raxDevBucket(d);
@@ -13859,6 +13859,66 @@ const pozitii = await r.json();</code></pre>
       if (!await raConfirm('ȘTERGI DEFINITIV dispozitivul ' + imei + ' + tot istoricul lui?\nIreversibil.')) return;
       if (await _raxDevAction('/api/devices/' + encodeURIComponent(imei), { method: 'DELETE' }, 'Dispozitiv șters')) raxLoadDevices();
     };
+
+    // ─── Adăugare manuală dispozitiv (super-admin) — pre-înregistrează IMEI în allow-list (mod strict).
+    //     Până la integrarea FOTA WEB (Teltonika) aici înregistrezi trackerele noi manual, după IMEI.
+    window.raxDevAddOpen = function () {
+      var ov = document.getElementById('rax-devadd-overlay');
+      if (!ov) {
+        var L = function (label, inner, extra) { return '<label style="display:block;font-size:12px;color:var(--text-muted);margin-top:10px;' + (extra || '') + '">' + label + inner + '</label>'; };
+        var types = [['', '— auto —'], ['car', 'Autoturism'], ['van', 'Autoutilitară'], ['truck', 'Camion'], ['bus', 'Autobuz']];
+        var typeOpts = types.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('');
+        var ifaceOpts = _RAX_IFACE.map(function (it) { return '<option value="' + it[0] + '">' + it[1] + '</option>'; }).join('');
+        ov = document.createElement('div');
+        ov.className = 'rax-overlay'; ov.id = 'rax-devadd-overlay';
+        ov.innerHTML = '<div class="rax-card" style="max-width:460px;">' +
+          '<div class="rax-head"><h3><i class="fas fa-plus" style="color:var(--accent)"></i> Adaugă dispozitiv</h3>' +
+          '<button class="rax-x" onclick="document.getElementById(\'rax-devadd-overlay\').classList.remove(\'open\')">&times;</button></div>' +
+          '<div class="rax-body">' +
+            '<div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">Înregistrează un tracker nou după IMEI. Intră în allow-list (mod strict) și e acceptat la următoarea conectare.</div>' +
+            L('IMEI *', '<input id="radd-imei" class="rax-field" inputmode="numeric" maxlength="20" placeholder="ex. 862129084852924">') +
+            L('Vehicul (nume)', '<input id="radd-name" class="rax-field" placeholder="ex. Dacia Logan 3">') +
+            L('Nr. înmatriculare', '<input id="radd-plate" class="rax-field" placeholder="ex. B 154 UIP">') +
+            L('Companie', '<select id="radd-co" class="rax-field">' + _raxDevCoOptions('') + '</select>') +
+            '<div style="display:flex;gap:10px;">' +
+              L('Tip vehicul', '<select id="radd-type" class="rax-field">' + typeOpts + '</select>', 'flex:1;') +
+              L('Interfață CAN', '<select id="radd-if" class="rax-field">' + ifaceOpts + '</select>', 'flex:1;') +
+            '</div>' +
+            '<div id="radd-err" style="color:var(--red);font-size:12px;margin-top:8px;min-height:14px;"></div>' +
+            '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">' +
+              '<button class="rax-btn" onclick="document.getElementById(\'rax-devadd-overlay\').classList.remove(\'open\')">Anulează</button>' +
+              '<button class="rax-btn primary" id="radd-save" onclick="raxDevAddSubmit()"><i class="fas fa-plus"></i> Adaugă</button>' +
+            '</div>' +
+          '</div></div>';
+        document.body.appendChild(ov);
+        ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('open'); });
+      } else {
+        ['radd-imei', 'radd-name', 'radd-plate'].forEach(function (id) { var e = document.getElementById(id); if (e) e.value = ''; });
+        var co = document.getElementById('radd-co'); if (co) co.innerHTML = _raxDevCoOptions('');
+        var ty = document.getElementById('radd-type'); if (ty) ty.value = '';
+        var ifc = document.getElementById('radd-if'); if (ifc) ifc.value = '';
+        var er0 = document.getElementById('radd-err'); if (er0) er0.textContent = '';
+      }
+      ov.classList.add('open');
+      setTimeout(function () { var e = document.getElementById('radd-imei'); if (e) e.focus(); }, 60);
+    };
+    window.raxDevAddSubmit = async function () {
+      var er = document.getElementById('radd-err'); if (er) er.textContent = '';
+      var imei = (document.getElementById('radd-imei').value || '').trim();
+      if (!/^\d{10,20}$/.test(imei)) { if (er) er.textContent = 'IMEI invalid — trebuie 10–20 de cifre.'; return; }
+      var body = { imei: imei };
+      var name = (document.getElementById('radd-name').value || '').trim(); if (name) body.name = name;
+      var plate = (document.getElementById('radd-plate').value || '').trim(); if (plate) body.plate = plate;
+      var type = document.getElementById('radd-type').value; if (type) body.vehicle_type = type;
+      var co = document.getElementById('radd-co').value; if (co) body.company_id = parseInt(co);
+      var iface = document.getElementById('radd-if').value;
+      var btn = document.getElementById('radd-save'); if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
+      var ok = await _raxDevAction('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'Dispozitiv adăugat — intră în allow-list');
+      if (ok && iface) await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/can-interface', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ can_interface: iface }) }, null);
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+      if (ok) { document.getElementById('rax-devadd-overlay').classList.remove('open'); raxLoadDevices(); }
+    };
+
 
     // ─── Mutare entități (vehicule / utilizatori / șoferi) între companii (super-admin) ───
     // Configurație per tip: cum se încarcă, cum se afișează, cum se mută. Un singur motor de randare.

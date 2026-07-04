@@ -130,6 +130,7 @@ export const Api = {
   // ── Super-admin: Dispozitive (global) ──
   adminDevices: () => api<any[]>('/api/admin/devices'),
   unassignedDevices: () => api<any[]>('/api/unassigned-devices'),
+  createDevice: (fields: any) => api<any>('/api/devices', { method: 'POST', body: fields }), // super: pre-înregistrează IMEI în allow-list (mod strict)
   moveDevice: (imei: string, company_id: number | null) => api<any>(`/api/devices/${encodeURIComponent(imei)}/company`, { method: 'PUT', body: { company_id } }),
   // ── Dispozitive arhivate (super: toate; admin: ale companiei) ──
   archivedDevices: () => api<any[]>('/api/archived-devices'),
