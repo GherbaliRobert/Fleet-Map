@@ -30,6 +30,10 @@ export async function initPush() {
 
     await PushNotifications.register();
 
+    // Canal Android „alerts" (serverul trimite channelId:'alerts') — obligatoriu pe Android 8+ ca push-ul să
+    // apară cu prioritate/sunet. No-op pe iOS.
+    try { await PushNotifications.createChannel({ id: 'alerts', name: 'Alerte', description: 'Alerte vehicule și evenimente', importance: 5, visibility: 1 }); } catch { /* iOS / nesuportat */ }
+
     PushNotifications.addListener('registration', (t) => { registerToken(t.value); });
     PushNotifications.addListener('registrationError', (err) => {
       registered = false; // permite reîncercarea la următoarea inițializare
