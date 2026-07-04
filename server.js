@@ -5249,7 +5249,26 @@ async function notify(n) {
     broadcastWs({ type: 'notification', data: saved });
     const cfg = channels.channelsConfigured();
     if (cfg.email || cfg.telegram || cfg.webhook) channels.dispatchChannels({ ...n, id: saved.id }).catch(() => {});
+    _notifyPush(n).catch(() => {}); // push NATIV (FCM) către utilizatorii eligibili, respectând preferințele
   } catch (e) { console.error('[NOTIFY]', e.message); }
+}
+// Fan-out push nativ pentru notify(): rezolvă utilizatorii țintă (userId / imei / companie) și trimite DOAR
+// celor care au push activat pentru acest tip. No-op dacă FCM nu e configurat (sendPushToUser iese devreme).
+async function _notifyPush(n) {
+  if (!_fcm) return;
+  let users = [];
+  try {
+    if (n.userId) users = [{ id: n.userId }];
+    else if (n.imei) users = await getEligibleUsers(n.imei);
+    else if (n.companyId != null) users = await db.getActiveUsersForCompany(n.companyId);
+  } catch (_) { return; }
+  if (!users || !users.length) return;
+  const prefsMap = await getPrefsMap();
+  const payload = { title: n.title || 'RA Track', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}) };
+  for (const u of users) {
+    const up = userTypePref(prefsMap, u.id, n.type);
+    if (up && up.push) sendPushToUser(u.id, payload).catch(() => {});
+  }
 }
 
 // Worker: detecție automată curse → populează tabela trips
@@ -5915,7 +5934,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
             expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
           });
           await notify({ type: 'report_ready', severity: 'info', title: 'Raport generat', body: '„' + label + '" e disponibil în Istoric rapoarte.', data: { historyId: saved && saved.id, reportType: _type, jobId: _jobId, key: 'report_' + (saved && saved.id) }, userId: _uid, companyId: _cid });
-          try { sendPushToUser(_uid, { title: 'Raport generat', body: '„' + label + '" e gata în Istoric rapoarte.', data: { type: 'report_ready', historyId: String((saved && saved.id) || ''), jobId: _jobId || '' } }); } catch (e) {}
+          // push report_ready gestionat central de notify() → _notifyPush (respectă preferințele, fără dublură)
         } catch (e) {
           try { await notify({ type: 'report_error', severity: 'warning', title: 'Raport eșuat', body: 'Generarea raportului a eșuat: ' + ((e && e.message) || e), data: { reportType: _type, jobId: _jobId }, userId: _uid, companyId: _cid }); } catch (_) {}
         }
