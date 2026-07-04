@@ -251,6 +251,31 @@ async function reconcileArchived() {
     }
   } catch (e) { /* best-effort */ }
 }
+
+// ── MOD STRICT de înregistrare device-uri (securitate, ca Traccar) ───────────────────────────────────────
+// Acceptăm la handshake DOAR IMEI-uri PRE-ÎNREGISTRATE (allow-list) + neARHIVATE. Un tracker necunoscut sau
+// RESPINS e refuzat FĂRĂ să se creeze rând sau să se stocheze poziții — doar reținut într-un jurnal de „încercări"
+// (în memorie) ca super-adminul să-l poată aproba dacă e legitim. Dezactivabil cu STRICT_DEVICES=false. Implicit ACTIV.
+const STRICT_DEVICES = process.env.STRICT_DEVICES !== 'false' && process.env.STRICT_DEVICES !== '0';
+const registeredImeis = new Set(); // allow-list: IMEI-uri pre-înregistrate + neARHIVATE
+let registeredLoaded = false;
+async function loadRegisteredImeis() {
+  try {
+    const r = await db.pool.query("SELECT imei FROM devices WHERE status IS DISTINCT FROM 'archived'");
+    registeredImeis.clear(); r.rows.forEach((x) => registeredImeis.add(x.imei)); registeredLoaded = true;
+    console.log(`[STRICT] ${registeredImeis.size} IMEI-uri înregistrate (mod strict ${STRICT_DEVICES ? 'ACTIV' : 'oprit'})`);
+  } catch (e) { console.error('[STRICT] loadRegisteredImeis:', e.message); }
+}
+// Jurnal (plafonat, în memorie) de încercări de conectare de la IMEI-uri neînregistrate — pentru descoperire/aprobare.
+const deviceAttempts = new Map(); // imei -> { first, last, count, address }
+const DEVICE_ATTEMPTS_MAX = 500;
+function logDeviceAttempt(imei, address) {
+  const now = Date.now(); const e = deviceAttempts.get(imei);
+  if (e) { e.last = now; e.count++; e.address = address; return; }
+  if (deviceAttempts.size >= DEVICE_ATTEMPTS_MAX) { let ok = null, ot = Infinity; for (const [k, v] of deviceAttempts) if (v.last < ot) { ot = v.last; ok = k; } if (ok) deviceAttempts.delete(ok); }
+  deviceAttempts.set(imei, { first: now, last: now, count: 1, address });
+}
+
 // Valori CAN „sticky": rămân valabile când un pachet nu le include — carburant + kilometraj + RPM.
 // RPM se cară pt. vehiculele care îl trimit INTERMITENT (ex. Dacia LV-CAN200) → nu mai apare „-" cu motorul pornit.
 // Sigur: RPM e doar afișaj (ascuns pe fișă cu contactul oprit, gate hasIgnition/ign) și NU intră în nicio logică.
@@ -489,6 +514,18 @@ const tcpServer = net.createServer((socket) => {
         if (!/^\d{10,20}$/.test(imei)) {
           console.warn(`[TCP] IMEI invalid de la ${clientAddr}: „${imei.slice(0, 40)}" — conexiune respinsă`);
           addDebugEntry({ event: 'reject', address: clientAddr, reason: 'imei_invalid' });
+          socket.destroy();
+          imei = null;
+          return;
+        }
+
+        // MOD STRICT: doar IMEI-uri PRE-ÎNREGISTRATE (allow-list) + neRESPINSE. Necunoscut/respins → drop + jurnal,
+        // fără creare de rând sau stocare de poziții. Guard: dacă lista încă nu s-a încărcat (fereastra de la boot),
+        // NU bloca — evită să pici toate device-urile la pornire.
+        if (STRICT_DEVICES && registeredLoaded && (!registeredImeis.has(imei) || archivedImeis.has(imei))) {
+          console.warn(`[TCP] IMEI neînregistrat/respins ${imei} de la ${clientAddr} — respins (mod strict)`);
+          addDebugEntry({ event: 'reject', imei, address: clientAddr, reason: 'not_registered' });
+          logDeviceAttempt(imei, clientAddr);
           socket.destroy();
           imei = null;
           return;
@@ -3092,6 +3129,7 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
       if (!adopted) return res.status(409).json({ error: 'Există deja un vehicul cu acest IMEI' }); // altă companie l-a adoptat între timp
       if (Object.keys(fields).length) await db.updateVehicleDetails(imei, fields);
       if (_existing.status === 'archived') await db.setDeviceStatus(imei, 'active');
+      registeredImeis.add(imei); deviceAttempts.delete(imei); // adoptat → intră în allow-list (mod strict)
       invalidateAccessCache(); invalidateLiveEnrichCache(); _devCompanyCache.delete(imei); await refreshWsScope();
       const _pa = livePositions.get(imei);
       if (_pa) { _pa.name = fields.name || _pa.name || null; _pa.plate = fields.plate || _pa.plate || null; _pa.vehicle_type = fields.vehicle_type || _pa.vehicle_type || null; livePositions.set(imei, _pa); try { broadcastPosition(_pa); } catch (_) {} }
@@ -3100,6 +3138,7 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
     }
 
     await db.createDevice(imei, fields, companyId);
+    registeredImeis.add(imei); deviceAttempts.delete(imei); // pre-înregistrat → intră în allow-list (mod strict)
     invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
     invalidateLiveEnrichCache(); // identitatea nouă (nume/nr) să apară imediat pe /api/live, nu după 20s
     // Dacă vehiculul transmitea deja (era în memoria live ca IMEI „gol"), pune-i numele/nr ACUM + anunță WS,
@@ -3185,6 +3224,7 @@ app.post('/api/devices/import', requireAuth, requireFleet, withScope, async (req
           updated++;
         } else {
           await db.createDevice(imei, fields, req.isSuper ? null : req.companyId);
+          registeredImeis.add(imei); deviceAttempts.delete(imei); // import → în allow-list (mod strict)
           created++;
         }
       } catch (e) { errors.push({ line: i + 2, imei, error: e.message }); }
@@ -3208,6 +3248,8 @@ app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async
       try { archived = await db.archiveDevicePositions(imei); } catch (e) { console.error('[ARHIVĂ] copiere istoric ' + imei + ':', e.message); }
       await db.setDeviceStatus(imei, status);
       archivedImeis.add(imei);
+      registeredImeis.delete(imei); // scoate din allow-list → respins la următorul handshake (mod strict)
+      { const _c = activeConnections.get(imei); if (_c && _c.socket) { try { _c.socket.destroy(); } catch (_) {} } } // taie conexiunea activă acum
       // scoate-l din harta live imediat (nu mai primește date)
       livePositions.delete(imei);
       broadcastWs({ type: 'removed', data: { imei } }); // scoate marker-ul din sesiunile web/mobil deschise
@@ -3217,6 +3259,7 @@ app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async
     // Restaurare: reia ingestul. Istoricul rămâne în positions_archive (getDeviceHistory face UNION → fără pierderi).
     await db.setDeviceStatus(imei, status);
     archivedImeis.delete(imei);
+    registeredImeis.add(imei); // reintră în allow-list (mod strict)
     auditReq(req, 'update', 'device', imei, { status });
     res.json({ ok: true, status });
   } catch (err) {
@@ -3234,12 +3277,25 @@ app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res
     if (dev.status !== 'archived') return res.status(400).json({ error: 'Doar vehiculele ARHIVATE pot fi șterse definitiv. Arhivează-l întâi.' });
     const deleted = await db.deleteDeviceCompletely(imei);
     archivedImeis.delete(imei);
+    registeredImeis.delete(imei);
     livePositions.delete(imei);
     broadcastWs({ type: 'removed', data: { imei } });
     auditReq(req, 'delete', 'device', imei, { name: dev.name, plate: dev.plate, hard: true });
     console.log(`[ȘTERGERE] Vehicul ${imei} (${dev.plate || dev.name || '-'}) șters definitiv de ${(getAuth(req) || {}).username || '?'}`);
     res.json({ ok: true, deleted });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Mod strict: încercări de conectare de la IMEI-uri NEÎNREGISTRATE (super-admin) — descoperire + aprobare ──
+app.get('/api/admin/device-attempts', requireAuth, requireSuperadmin, (req, res) => {
+  const attempts = [...deviceAttempts.entries()]
+    .map(([imei, v]) => ({ imei, first: new Date(v.first).toISOString(), last: new Date(v.last).toISOString(), count: v.count, address: v.address }))
+    .sort((a, b) => new Date(b.last) - new Date(a.last));
+  res.json({ strict: STRICT_DEVICES, registered: registeredImeis.size, attempts });
+});
+app.delete('/api/admin/device-attempts/:imei', requireAuth, requireSuperadmin, (req, res) => {
+  deviceAttempts.delete(String(req.params.imei || ''));
+  res.json({ ok: true });
 });
 
 // Cache enrichment device pentru /api/live (truck config + calibrare combustibil) — date care se schimbă rar.
@@ -7182,6 +7238,7 @@ function flushPositions() {
 async function start() {
   // Inițializează baza de date
   await db.initDb();
+  await loadRegisteredImeis(); // allow-list mod strict — ÎNAINTE de a porni serverul TCP (altfel s-ar bloca la boot)
   initVapid();
   initFcm();
   await _loadFuelAuto(); refreshFuelPrices(); setInterval(refreshFuelPrices, 12 * 60 * 60 * 1000); // preț carburant: la boot + de 2x/zi
@@ -7312,7 +7369,8 @@ async function start() {
   setTimeout(() => backup.runScheduledBackup(db, COMMIT_VER).catch(() => {}), 5 * 60 * 1000);
   setInterval(() => backup.runScheduledBackup(db, COMMIT_VER).catch(() => {}), 24 * 60 * 60 * 1000);
 
-  // Pornește serverul TCP
+  // Pornește serverul TCP — reîncarcă allow-list-ul (mod strict) chiar ÎNAINTE, ca să includă orice device creat/seed-uit la pornire
+  await loadRegisteredImeis();
   tcpServer.listen(ACTUAL_TCP_PORT, () => {
     console.log(`[TCP] Server activ pe portul ${ACTUAL_TCP_PORT} — aștept dispozitive Teltonika`);
   });
@@ -7412,6 +7470,7 @@ async function start() {
   // setul cu DB. Rulează curând după pornire (după ce s-a încărcat livePositions) + la fiecare 2 min.
   setTimeout(reconcileArchived, 6000);
   setInterval(reconcileArchived, 2 * 60 * 1000);
+  setInterval(loadRegisteredImeis, 2 * 60 * 1000); // backstop: re-sincronizează allow-list-ul (mod strict) cu DB
 
   // Notificare facturare: la intrarea în grație anunță adminii companiei (verificare la pornire + orar).
   setTimeout(billingReminderTick, 30000);

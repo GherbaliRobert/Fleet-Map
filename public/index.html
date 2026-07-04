@@ -1211,6 +1211,15 @@
     .rax-dev-chip .cnt { opacity: .75; }
     .rax-dev-search { flex: 1; min-width: 180px; margin: 0; }
     .rax-dev-alert { background: rgba(245,158,11,.12); border: 1px solid var(--orange); color: var(--orange); border-radius: 9px; padding: 9px 12px; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .rax-dev-strict { border-radius: 9px; padding: 9px 12px; font-size: 12.5px; margin-bottom: 10px; border: 1px solid var(--border); }
+    .rax-dev-strict.on { background: rgba(63,224,125,.10); border-color: var(--accent); color: var(--accent); }
+    .rax-dev-strict.off { background: rgba(245,158,11,.10); border-color: var(--orange); color: var(--orange); }
+    .rax-dev-attempts { background: rgba(239,68,68,.08); border: 1px solid var(--red); border-radius: 9px; padding: 10px 12px; margin-bottom: 12px; }
+    .rax-dev-atth { font-size: 13px; font-weight: 700; color: var(--red); margin-bottom: 8px; }
+    .rax-dev-atrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--border); }
+    .rax-dev-atmeta { font-size: 11px; color: var(--text-muted); flex: 1; min-width: 140px; }
+    .rax-dev-atact { display: flex; gap: 6px; }
+    .rax-dev-atact .rax-btn { font-size: 11px; padding: 4px 9px; }
     .rax-dev-table td { vertical-align: middle; }
     .rax-dev-table .mono { font-size: 11.5px; color: var(--text-secondary); }
     .rax-dev-plate { font-size: 11px; font-weight: 800; color: var(--accent); }
@@ -13479,6 +13488,18 @@ const pozitii = await r.json();</code></pre>
       var chip = function (k, label) { return '<button class="rax-dev-chip' + (_raxDevFilter === k ? ' on' : '') + '" onclick="raxDevFilter(\'' + k + '\')">' + label + ' <span class="cnt">' + counts[k] + '</span></button>'; };
       var canBadge = { fms: '<span class="rax-can fms">FMS</span>', can: '<span class="rax-can can">CAN</span>', none: '<span class="rax-can none">fără</span>' };
       var stBadge = { active: '<span class="rax-devst active">activ</span>', unassigned: '<span class="rax-devst pend">neasignat</span>', archived: '<span class="rax-devst arch">arhivat</span>' };
+      var strictBanner = _raxStrict
+        ? '<div class="rax-dev-strict on"><i class="fas fa-shield-halved"></i> <b>Mod strict ACTIV</b> — doar IMEI-urile pre-înregistrate sunt acceptate; trackerele necunoscute sunt respinse la conectare (nu se stochează nimic).</div>'
+        : '<div class="rax-dev-strict off"><i class="fas fa-shield-halved"></i> Mod strict OPRIT — orice tracker se poate conecta (auto-descoperire).</div>';
+      var attemptsHtml = (_raxAttempts && _raxAttempts.length)
+        ? '<div class="rax-dev-attempts"><div class="rax-dev-atth"><i class="fas fa-triangle-exclamation"></i> ' + _raxAttempts.length + ' dispozitiv(e) neînregistrat(e) încearcă să se conecteze — aprobă-le dacă sunt ale tale:</div>' +
+          _raxAttempts.map(function (a) {
+            return '<div class="rax-dev-atrow"><span class="mono">' + esc(a.imei) + '</span>' +
+              '<span class="rax-dev-atmeta">' + (a.count || 1) + ' încercări · ultima ' + esc(new Date(a.last).toLocaleString('ro-RO')) + '</span>' +
+              '<span class="rax-dev-atact"><button class="rax-btn" onclick="raxApproveAttempt(\'' + esc(a.imei) + '\')"><i class="fas fa-check"></i> Aprobă</button> ' +
+              '<button class="rax-btn" style="color:var(--text-muted)" onclick="raxDismissAttempt(\'' + esc(a.imei) + '\')"><i class="fas fa-xmark"></i> Ignoră</button></span></div>';
+          }).join('') + '</div>'
+        : '';
       var head = (counts.unassigned > 0 ? '<div class="rax-dev-alert"><i class="fas fa-bell"></i> ' + counts.unassigned + ' dispozitiv(e) neasignat(e) s-au conectat — adoptă-le sau respinge-le.</div>' : '') +
         '<div class="rax-dev-bar">' + chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('archived', 'Arhivate') +
         '<input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="_raxDevSearch=this.value;raxRenderDevices()"></div>';
@@ -13498,8 +13519,16 @@ const pozitii = await r.json();</code></pre>
           '<td>' + (stBadge[b] || '') + '</td><td class="rax-dev-lp">' + lp + '</td>' +
           '<td class="rax-dev-act">' + act + '</td></tr>';
       }).join('');
-      box.innerHTML = head + '<div style="overflow-x:auto;"><table class="rax-co-table rax-dev-table"><thead><tr><th>Vehicul</th><th>IMEI</th><th>Companie</th><th>Date / interfață</th><th>Stare</th><th>Ultima poziție</th><th>Acțiuni</th></tr></thead><tbody>' +
+      box.innerHTML = strictBanner + attemptsHtml + head + '<div style="overflow-x:auto;"><table class="rax-co-table rax-dev-table"><thead><tr><th>Vehicul</th><th>IMEI</th><th>Companie</th><th>Date / interfață</th><th>Stare</th><th>Ultima poziție</th><th>Acțiuni</th></tr></thead><tbody>' +
         (rows.length ? body : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text-muted)">Niciun dispozitiv în filtrul curent.</td></tr>') + '</tbody></table></div>';
+    };
+    window.raxApproveAttempt = async function (imei) {
+      // Pre-înregistrează IMEI-ul (neasignat) → intră în allow-list → acceptat la următoarea conectare
+      if (await _raxDevAction('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imei: imei }) }, 'IMEI aprobat — se va conecta la următoarea încercare')) raxLoadDevices();
+    };
+    window.raxDismissAttempt = async function (imei) {
+      await _raxDevAction('/api/admin/device-attempts/' + encodeURIComponent(imei), { method: 'DELETE' }, 'Încercare ignorată');
+      raxLoadDevices();
     };
     async function _raxDevAction(url, opts, okMsg) {
       try {
