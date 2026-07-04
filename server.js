@@ -5469,10 +5469,15 @@ function initFcm() {
   try {
     const raw = process.env.FIREBASE_SA_JSON;
     if (!raw) { _fcmStatus = 'unset'; console.log('[FCM] inactiv (FIREBASE_SA_JSON nesetat)'); return; }
-    const admin = require('firebase-admin');
-    const cred = JSON.parse(raw);
-    if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(cred) });
-    _fcm = admin.messaging(); _fcmStatus = 'active';
+    let cred;
+    try { cred = JSON.parse(raw); } catch (pe) { _fcmStatus = 'error: JSON invalid — ' + pe.message; console.warn('[FCM]', _fcmStatus); return; }
+    const missing = ['type', 'project_id', 'private_key', 'client_email'].filter(k => !cred || !cred[k]);
+    if (missing.length) { _fcmStatus = 'error: lipsesc câmpuri [' + missing.join(', ') + ']' + ((cred && cred.project_info) ? ' — pare google-services.json (fișier greșit); folosește cheia de service account' : ''); console.warn('[FCM]', _fcmStatus); return; }
+    // firebase-admin v14 — API modular (namespace-ul vechi admin.apps/credential/messaging a fost eliminat)
+    const { initializeApp, getApps, cert } = require('firebase-admin/app');
+    const { getMessaging } = require('firebase-admin/messaging');
+    if (!getApps().length) initializeApp({ credential: cert(cred) });
+    _fcm = getMessaging(); _fcmStatus = 'active';
     console.log('[FCM] Push nativ activ');
   } catch (e) { _fcmStatus = 'error: ' + e.message; console.warn('[FCM] init eșuat (mobilul nu va primi push):', e.message); _fcm = null; }
 }
