@@ -138,6 +138,7 @@
             <i class="fas fa-search"></i>
             <input type="text" id="search-input" placeholder="Cauta vehicul, IMEI, numar..." oninput="applyFilters()">
           </div>
+          <button id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Ascunde lista" aria-label="Ascunde lista"><i class="fas fa-chevron-left"></i></button>
         </div>
 
         <div class="filter-bar">
@@ -179,6 +180,7 @@
     <!-- Map Area -->
     <div id="map-container">
       <div id="map"></div>
+      <button id="sidebar-open-btn" onclick="toggleSidebar()" title="Arată lista de vehicule" aria-label="Arată lista"><i class="fas fa-chevron-right"></i><span>Listă</span></button>
 
       <!-- Pill traseu activ -->
       <div id="route-active-pill">
@@ -8940,6 +8942,13 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('sidebar').classList.add('hidden-mobile');
       document.getElementById('sidebar-backdrop').classList.remove('visible');
     }
+    // Ascunde/afișează lista de vehicule (desktop) → harta ocupă tot spațiul. Persistat în localStorage.
+    function toggleSidebar() {
+      var hidden = document.body.classList.toggle('sidebar-hidden');
+      try { localStorage.setItem('ra_sidebar_hidden', hidden ? '1' : '0'); } catch (e) {}
+      if (typeof map !== 'undefined' && map) setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 220);
+    }
+    (function () { try { if (localStorage.getItem('ra_sidebar_hidden') === '1' && window.matchMedia('(min-width: 769px)').matches) document.body.classList.add('sidebar-hidden'); } catch (e) {} })();
 
     // Close sidebar when selecting device on mobile
     function selectDeviceMobile(imei) {
