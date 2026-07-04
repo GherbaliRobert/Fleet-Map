@@ -191,9 +191,11 @@ export const Api = {
     return api<ReportResult>(`/api/reports/${e(type)}${q}`);
   },
   // Generare în FUNDAL: serverul răspunde imediat ({queued}), generează async și trimite o notificare (push) când e gata.
-  runReportBg: (type: string, from: string, to: string, imeis?: string[]) => {
+  // jobId → corelează badge-ul din client cu notificarea report_ready.
+  runReportBg: (type: string, from: string, to: string, imeis?: string[], jobId?: string) => {
     const e = encodeURIComponent;
     let q = `?from=${e(from)}&to=${e(to)}&log=1&background=1`;
+    if (jobId) q += `&jobId=${e(jobId)}`;
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
     return api<{ queued?: boolean }>(`/api/reports/${e(type)}${q}`);
   },

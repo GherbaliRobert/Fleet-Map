@@ -5847,6 +5847,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     if (req.query.background === '1' && req.query.log === '1' && _fmt !== 'xlsx' && _fmt !== 'pdf' && req.auth && req.auth.userId) {
       res.json({ queued: true });
       const _type = req.params.type, _uid = req.auth.userId, _uname = req.auth.username, _cid = req.companyId != null ? req.companyId : null, _imei = req.query.imei || null;
+      const _jobId = req.query.jobId ? String(req.query.jobId).slice(0, 64) : null; // corelează badge-ul din client cu notificarea de finalizare
       setImmediate(async () => {
         try {
           const report = await reports.runReport(db, _type, imeis, from, to, opts, _scope);
@@ -5857,10 +5858,10 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
             vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig,
             expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
           });
-          await notify({ type: 'report_ready', severity: 'info', title: 'Raport generat', body: '„' + label + '" e disponibil în Istoric rapoarte.', data: { historyId: saved && saved.id, reportType: _type, key: 'report_' + (saved && saved.id) }, userId: _uid, companyId: _cid });
-          try { sendPushToUser(_uid, { title: 'Raport generat', body: '„' + label + '" e gata în Istoric rapoarte.', data: { type: 'report_ready', historyId: String((saved && saved.id) || '') } }); } catch (e) {}
+          await notify({ type: 'report_ready', severity: 'info', title: 'Raport generat', body: '„' + label + '" e disponibil în Istoric rapoarte.', data: { historyId: saved && saved.id, reportType: _type, jobId: _jobId, key: 'report_' + (saved && saved.id) }, userId: _uid, companyId: _cid });
+          try { sendPushToUser(_uid, { title: 'Raport generat', body: '„' + label + '" e gata în Istoric rapoarte.', data: { type: 'report_ready', historyId: String((saved && saved.id) || ''), jobId: _jobId || '' } }); } catch (e) {}
         } catch (e) {
-          try { await notify({ type: 'report_error', severity: 'warning', title: 'Raport eșuat', body: 'Generarea raportului a eșuat: ' + ((e && e.message) || e), data: { reportType: _type }, userId: _uid, companyId: _cid }); } catch (_) {}
+          try { await notify({ type: 'report_error', severity: 'warning', title: 'Raport eșuat', body: 'Generarea raportului a eșuat: ' + ((e && e.message) || e), data: { reportType: _type, jobId: _jobId }, userId: _uid, companyId: _cid }); } catch (_) {}
         }
       });
       return;

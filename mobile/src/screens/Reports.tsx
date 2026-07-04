@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import type { ReportTypeInfo, ReportResult } from '../api/endpoints';
-import { vehicles, showToast } from '../app/store';
+import { vehicles, showToast, lastNotif } from '../app/store';
 import { Icon } from '../components/Icon';
 import { ReportChart } from '../components/ReportChart';
 import { InsightPanel } from '../components/InsightPanel';
@@ -39,6 +39,7 @@ export function Reports() {
   const [histBusy, setHistBusy] = useState(false);
   const [fuelSeries, setFuelSeries] = useState<any | null>(null); // grafic consum zilnic (time-series) pt. raportul de consum
   const [loading, setLoading] = useState(false);
+  const [job, setJob] = useState<{ id: string; label: string; status: 'running' | 'done' | 'error'; historyId?: number } | null>(null); // badge „se generează în fundal"
   const [err, setErr] = useState('');
   const [exporting, setExporting] = useState<'' | 'pdf' | 'xlsx'>('');
   const [tab, setTab] = useState<'rapoarte' | 'insight'>('rapoarte');
@@ -55,35 +56,45 @@ export function Reports() {
     ? (list.find((v) => v.imei === sel[0])?.name || sel[0])
     : `${sel.length} vehicule`;
 
-  async function generate() {
-    setErr(''); setLoading(true); setRes(null); setFuelSeries(null); setHistId(null);
-    const r = range(period);
+  // Graficul de consum zilnic (doar pt. raportul „consumption"), din /api/fuel-stats.
+  async function loadFuelSeries() {
+    if (type !== 'consumption') return;
     try {
-      setRes(await Api.runReport(type, r.from, r.to, sel.length ? sel : undefined));
-      // Raport de consum: adaugă graficul REAL de consum zilnic (cum a urcat/scăzut pe perioadă), din /api/fuel-stats
-      if (type === 'consumption') {
-        try {
-          const fs: any = await Api.fuelStats(r.from, r.to, sel.length ? sel : undefined);
-          const s = fs && fs.series;
-          if (s && s.labels && s.labels.length) {
-            setFuelSeries({ type: 'line', title: 'Consum zilnic (litri)', labels: s.labels.map(dayLbl), datasets: [{ label: 'litri', data: s.consumed || [] }] });
-          }
-        } catch { /* fuel-stats opțional */ }
-      }
-    }
-    catch (e: any) { setErr(e?.message || 'Eroare la generare'); }
+      const r = range(period);
+      const fs: any = await Api.fuelStats(r.from, r.to, sel.length ? sel : undefined);
+      const s = fs && fs.series;
+      if (s && s.labels && s.labels.length) setFuelSeries({ type: 'line', title: 'Consum zilnic (litri)', labels: s.labels.map(dayLbl), datasets: [{ label: 'litri', data: s.consumed || [] }] });
+    } catch { /* fuel-stats opțional */ }
+  }
+
+  // Generarea rulează în FUNDAL pe server: badge cu spinner + „Lasă în fundal"; la finalizare vine o notificare
+  // report_ready (WS/push) care rezolvă badge-ul → raportul se randează inline + apare în notificări.
+  async function generate() {
+    if (job && job.status === 'running') return;
+    setErr(''); setRes(null); setFuelSeries(null); setHistId(null); setLoading(true);
+    const r = range(period);
+    const id = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    setJob({ id, label: typeLabel, status: 'running' });
+    try {
+      await Api.runReportBg(type, r.from, r.to, sel.length ? sel : undefined, id);
+    } catch (e: any) { setJob(null); setErr(e?.message || 'Eroare la generare'); }
     finally { setLoading(false); }
   }
 
-  // Generare în fundal: serverul răspunde imediat și trimite o notificare (push) când raportul e gata în Istoric.
-  async function generateBg() {
-    if (loading) return;
-    const r = range(period);
-    try {
-      await Api.runReportBg(type, r.from, r.to, sel.length ? sel : undefined);
-      showToast('Se generează în fundal — primești o notificare când e gata');
-    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
-  }
+  // Rezolvă badge-ul când sosește notificarea report_ready cu același jobId (doar dacă badge-ul e încă activ).
+  useEffect(() => {
+    const n = lastNotif.value; if (!n || !job || job.status !== 'running') return;
+    const d = n.data || {};
+    if (n.type === 'report_ready' && d.jobId && d.jobId === job.id) {
+      const hid = d.historyId != null ? Number(d.historyId) : undefined;
+      setJob({ ...job, status: 'done', historyId: hid });
+      if (hid != null) {
+        Api.reportHistoryItem(hid).then((h: any) => { const rep = h && (h.report || h.data); if (rep) { setRes(rep); setHistId(hid); loadFuelSeries(); } }).catch(() => {});
+      }
+    } else if (n.type === 'report_error' && d.jobId === job.id) {
+      setJob({ ...job, status: 'error' }); setErr(n.body || 'Raport eșuat');
+    }
+  }, [lastNotif.value]);
 
   function toggleVeh(imei: string) {
     setSel((cur) => cur.includes(imei) ? cur.filter((x) => x !== imei) : [...cur, imei]);
@@ -151,12 +162,21 @@ export function Reports() {
               <button class={'rp-period' + (period === p ? ' on' : '')} onClick={() => setPeriod(p)}>{PERIOD_LABEL[p]}</button>
             ))}
           </div>
-          <button class="btn btn-primary btn-block rp-gen" onClick={generate} disabled={loading}>
-            {loading ? <span class="spin" style="border-top-color:#06210F" /> : <><Icon name="chart" size={18} /> Generează raport</>}
+          <button class="btn btn-primary btn-block rp-gen" onClick={generate} disabled={loading || job?.status === 'running'}>
+            {(loading || job?.status === 'running') ? <span class="spin" style="border-top-color:#06210F" /> : <><Icon name="chart" size={18} /> Generează raport</>}
           </button>
-          <button class="btn btn-block" style="background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);margin-top:8px" onClick={generateBg} disabled={loading}>
-            <Icon name="bell" size={16} /> Generează în fundal
-          </button>
+          {job && (
+            <div style="display:flex;align-items:center;gap:10px;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-top:10px">
+              {job.status === 'running' ? <span class="spin" style="width:18px;height:18px" />
+                : job.status === 'done' ? <Icon name="check" size={18} color="var(--accent)" />
+                  : <Icon name="alert" size={18} color="var(--red)" />}
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:13px">{job.status === 'running' ? 'Se generează raportul…' : job.status === 'done' ? 'Raport generat ✓' : 'Raport eșuat'}</div>
+                <div style="font-size:11.5px;color:var(--text-muted)">{job.label}{job.status === 'running' ? ' · poți continua, te anunțăm când e gata' : job.status === 'done' ? ' · gata în Istoric rapoarte' : ''}</div>
+              </div>
+              <button style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:6px 10px;font-size:12px;white-space:nowrap" onClick={() => setJob(null)}>{job.status === 'running' ? 'Lasă în fundal' : 'Închide'}</button>
+            </div>
+          )}
         </div>
 
         {err && <div class="center-msg" style="color:var(--red)">{err}</div>}

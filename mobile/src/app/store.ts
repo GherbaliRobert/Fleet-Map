@@ -47,6 +47,7 @@ export const vehicles = computed<Position[]>(() => {
 });
 export const vehiclesLoading = signal(false);
 export const unread = signal(0);
+export const lastNotif = signal<any | null>(null); // ultima notificare primită pe WS (ex. report_ready) — ecranele o pot urmări
 export const toastMsg = signal<{ text: string; err?: boolean } | null>(null);
 
 export const offlineMinutes = computed(() =>
@@ -182,6 +183,7 @@ function applyWs(msg: any) {
   if (msg.type === 'notification') {
     // Notificare nouă pe WS-ul live → badge-ul de „necitite" crește instant (ca web-ul), nu doar la poll-ul de 30s.
     unread.value = unread.value + 1;
+    if (msg.data) lastNotif.value = msg.data; // expune notificarea (ex. report_ready) ecranelor care o urmăresc
     return;
   }
   if (msg.type === 'error' && msg.data && msg.data.error === 'access_expired') {

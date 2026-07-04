@@ -1943,7 +1943,6 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm" onclick="setRepPeriod('month')">30 zile</button>
           <span id="rep-extra" style="display:flex;gap:6px;align-items:center;margin-left:8px;"></span>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
-          <button class="btn-sm" onclick="repGenerateBg()" title="Generează în fundal — primești o notificare când e gata"><i class="fas fa-clock"></i> În fundal</button>
         </div>
         </div><!-- /rep-controls -->
         <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
@@ -4716,27 +4715,82 @@ const pozitii = await r.json();</code></pre>
       ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
       var pb = wrap.querySelector('button'); if (pb) pb.focus();
     }
+    // Generarea rulează în FUNDAL pe server: badge cu spinner + „Lasă în fundal"; la finalizare vine o notificare
+    // report_ready (WebSocket + push) care rezolvă badge-ul (→ „Vezi raportul") și apare în clopoțel.
     async function repGenerate() {
       const url = repBuildUrl(); if (!url) return;
-      repHistoryId = null; // generare nouă „live", nu vizualizare din istoric
-      document.getElementById('rep-count').textContent = 'Se generează...';
-      let data;
-      try { const res = await fetch(url + '&log=1', { credentials: 'same-origin' }); data = await res.json(); if (!res.ok) throw new Error(data.error||'Eroare'); }
-      catch (e) { alert(e.message); document.getElementById('rep-count').textContent = ''; return; }
-      document.getElementById('rep-count').textContent = '';
-      lastReport = data; // disponibil pt. export, dar NU mai afișăm raportul în pagina de generare
-      // Toate rapoartele: nu mai randăm inline — trimitem în Istoric și anunțăm userul (popup branded RA Tracks).
-      repShowTab('history');
-      raNotify({ title: 'Raport generat', message: 'Raportul se află acum în <b>Istoric rapoarte</b>. Apasă „Vezi" ca să-l deschizi, sau descarcă-l direct (Excel / PDF).', actions: [{ label: 'Am înțeles', primary: true }] });
+      repHistoryId = null;
+      const sel = document.getElementById('rep-type');
+      const label = (sel && sel.selectedOptions && sel.selectedOptions[0]) ? sel.selectedOptions[0].textContent.trim() : 'Raport';
+      const jobId = _repShowBadge(label);
+      try {
+        const res = await fetch(url + '&log=1&background=1&jobId=' + encodeURIComponent(jobId), { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Eroare');
+      } catch (e) { _repBadgeHide(); alert(e.message); return; }
+      // Badge-ul rămâne activ; se rezolvă la notificarea report_ready (WS) sau la timeout.
     }
-    // Generare în FUNDAL: serverul răspunde imediat, generează async, apoi trimite o notificare (clopoțel + push) când e gata.
-    async function repGenerateBg() {
-      const url = repBuildUrl(); if (!url) return;
-      let data;
-      try { const res = await fetch(url + '&log=1&background=1', { credentials: 'same-origin' }); data = await res.json(); if (!res.ok) throw new Error(data.error || 'Eroare'); }
-      catch (e) { alert(e.message); return; }
-      repShowTab('history');
-      raNotify({ title: 'Se generează în fundal', message: 'Raportul se pregătește în fundal. Primești o <b>notificare</b> 🔔 când e gata, apoi îl găsești în <b>Istoric rapoarte</b>.', actions: [{ label: 'Am înțeles', primary: true }] });
+    // ─── Badge „se generează raportul" (fundal) ───
+    var _repJob = null;
+    function _repBadgeEl() {
+      var el = document.getElementById('rep-progress');
+      if (!el) {
+        el = document.createElement('div'); el.id = 'rep-progress';
+        el.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:100000;background:var(--bg-card,#131826);color:var(--text-primary,#e8edf7);border:1px solid var(--border,#26304a);border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.45);padding:13px 15px;min-width:252px;max-width:340px;font-family:inherit;display:none;';
+        el.innerHTML = '<div style="display:flex;align-items:center;gap:11px;"><span id="rep-progress-ico"></span><div style="flex:1;min-width:0;"><div id="rep-progress-title" style="font-weight:800;font-size:13px;"></div><div id="rep-progress-sub" style="font-size:11.5px;color:var(--text-muted);margin-top:2px;"></div></div></div><div id="rep-progress-actions" style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;"></div>';
+        document.body.appendChild(el);
+      }
+      return el;
+    }
+    function _repShowBadge(label) {
+      var id = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      _repJob = { id: id, label: label || 'Raport', timer: null };
+      _repBadgeEl().style.display = 'block';
+      document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-circle-notch fa-spin" style="color:var(--accent);font-size:20px;"></i>';
+      document.getElementById('rep-progress-title').textContent = 'Se generează raportul…';
+      document.getElementById('rep-progress-sub').textContent = _repJob.label + ' · poți continua, te anunțăm când e gata';
+      document.getElementById('rep-progress-actions').innerHTML = '<button class="btn-sm" onclick="_repBadgeHide()"><i class="fas fa-clock"></i> Lasă în fundal</button>';
+      _repJob.timer = setTimeout(_repBadgeTimeout, 210000); // fallback dacă WS e jos / întârziere
+      return id;
+    }
+    function _repBadgeHide() { if (_repJob && _repJob.timer) clearTimeout(_repJob.timer); _repJob = null; var el = document.getElementById('rep-progress'); if (el) el.style.display = 'none'; }
+    function _repBadgeTimeout() {
+      if (!_repJob) return; _repJob = null;
+      document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-hourglass-half" style="color:#f59e0b;font-size:18px;"></i>';
+      document.getElementById('rep-progress-title').textContent = 'Durează mai mult…';
+      document.getElementById('rep-progress-sub').textContent = 'Verifică în Istoric rapoarte / notificări.';
+      document.getElementById('rep-progress-actions').innerHTML = '<button class="btn-sm" onclick="_repBadgeHide()">Închide</button><button class="btn-sm btn-primary" onclick="_repBadgeView(null)">Istoric</button>';
+    }
+    function _repBadgeDone(notif) {
+      var d = (notif && notif.data) || {};
+      if (!_repJob || !d.jobId || d.jobId !== _repJob.id) return false;
+      if (_repJob.timer) clearTimeout(_repJob.timer);
+      var hid = (d.historyId != null) ? d.historyId : null, lbl = _repJob.label; _repJob = null;
+      _repBadgeEl().style.display = 'block';
+      document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-circle-check" style="color:var(--accent);font-size:20px;"></i>';
+      document.getElementById('rep-progress-title').textContent = 'Raport generat ✓';
+      document.getElementById('rep-progress-sub').textContent = lbl + ' — gata în Istoric rapoarte';
+      document.getElementById('rep-progress-actions').innerHTML = '<button class="btn-sm" onclick="_repBadgeHide()">Închide</button><button class="btn-sm btn-primary" onclick="_repBadgeView(' + (hid != null ? hid : 'null') + ')"><i class="fas fa-eye"></i> Vezi raportul</button>';
+      return true;
+    }
+    function _repBadgeError(notif) {
+      var d = (notif && notif.data) || {};
+      if (!_repJob || !d.jobId || d.jobId !== _repJob.id) return false;
+      if (_repJob.timer) clearTimeout(_repJob.timer); _repJob = null;
+      _repBadgeEl().style.display = 'block';
+      document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-triangle-exclamation" style="color:var(--red);font-size:18px;"></i>';
+      document.getElementById('rep-progress-title').textContent = 'Raport eșuat';
+      document.getElementById('rep-progress-sub').textContent = (notif && notif.body) || 'Încearcă din nou.';
+      document.getElementById('rep-progress-actions').innerHTML = '<button class="btn-sm" onclick="_repBadgeHide()">Închide</button>';
+      return true;
+    }
+    function _repBadgeView(hid) {
+      _repBadgeHide();
+      if (typeof showView === 'function') showView('rapoarte');
+      setTimeout(function () {
+        if (typeof repShowTab === 'function') repShowTab('history');
+        if (hid != null && typeof repViewHistory === 'function') repViewHistory(hid);
+      }, 250);
     }
     async function repExport(fmt) {
       let url;
@@ -5709,10 +5763,12 @@ const pozitii = await r.json();</code></pre>
           }).catch(function () { if (myReq !== _notifDetailSeq) return; var el = document.getElementById('notif-rl'); if (el) el.textContent = 'indisponibilă'; });
       }
     }
-    function onNotificationWs() {
+    function onNotificationWs(notif) {
       refreshNotifBadge();
       const p = document.getElementById('notif-panel');
       if (p && p.style.display === 'flex') loadNotifications();
+      if (notif && notif.type === 'report_ready') _repBadgeDone(notif);
+      else if (notif && notif.type === 'report_error') _repBadgeError(notif);
     }
 
     // ═══ Preferințe notificări per utilizator + Web Push ═══
@@ -8509,7 +8565,7 @@ const pozitii = await r.json();</code></pre>
 
         // Notificare (centru notificări)
         if (msg.type === 'notification') {
-          onNotificationWs();
+          onNotificationWs(msg.data);
         }
       };
 
