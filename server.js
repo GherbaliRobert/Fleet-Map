@@ -885,7 +885,7 @@ const _hsts = (process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 
 // Activabil prin CSP_ENABLED!=='false'. Strângem ulterior. frame-ancestors protejează clickjacking.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com",
+  "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net",
   "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
   "img-src 'self' data: blob: https:",
