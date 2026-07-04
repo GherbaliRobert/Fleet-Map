@@ -5969,19 +5969,27 @@ const pozitii = await r.json();</code></pre>
           '</div>';
       }).join('');
     }
+    var _FP_MON = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sep.', 'oct.', 'noi.', 'dec.'];
+    function _fpDayNum(day) { var t = Date.parse(String(day) + 'T00:00:00'); return isFinite(t) ? Math.round(t / 86400000) : null; }
+    function _fpTickLabel(dn) { var d = new Date(dn * 86400000); return d.getDate() + ' ' + _FP_MON[d.getMonth()] + ' ’' + String(d.getFullYear()).slice(2); }
     function _fpChart(hist, comp) {
       if (typeof createChart !== 'function') return;
       comp = comp || {};
-      var labels = hist.map(function (h) { return _fpLabel(h.day); });
-      function ds(key, label, color) { return { label: label, data: hist.map(function (h) { return h[key]; }), borderColor: color, backgroundColor: 'transparent', tension: .3, pointRadius: hist.length > 60 ? 0 : 3, spanGaps: true }; }
+      // Axă X LINIARĂ pe „ziua" (număr): spațierea reflectă timpul real (golul de luni apare lat, zilele recente
+      // se îndesesc) + etichete cu ziua/luna/anul (fără „29.06" duplicat între ani). Datele sunt puncte {x,y}.
+      function pts(key) { return hist.map(function (h) { var x = _fpDayNum(h.day); return (x == null || h[key] == null) ? null : { x: x, y: h[key] }; }).filter(Boolean); }
+      function ds(key, label, color) { return { label: label, data: pts(key), borderColor: color, backgroundColor: 'transparent', tension: .3, pointRadius: hist.length > 45 ? 0 : 3, borderWidth: 2.5, spanGaps: true }; }
       var datasets = [ds('motorina', 'Motorină', '#f59e0b'), ds('benzina', 'Benzină', '#3FE07D'), ds('gpl', 'GPL', '#38BDF8')];
-      // Prețul companiei (override) = linie orizontală punctată → graficul reflectă modificarea prețului tău
-      // și îl compari cu trendul național. (Overrideul e o valoare curentă, nu o serie istorică.)
-      [{ k: 'motorina', label: 'Motorină (companie)', color: '#f59e0b' }, { k: 'benzina', label: 'Benzină (companie)', color: '#3FE07D' }, { k: 'gpl', label: 'GPL (companie)', color: '#38BDF8' }].forEach(function (r) {
-        var v = parseFloat(comp[r.k]);
-        if (Number.isFinite(v) && v > 0 && labels.length) datasets.push({ label: r.label, data: labels.map(function () { return v; }), borderColor: r.color, backgroundColor: 'transparent', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, tension: 0, spanGaps: true });
-      });
-      createChart('chart-fuel-price', 'line', { labels: labels, datasets: datasets }, { plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: { beginAtZero: false } } });
+      var xs = hist.map(function (h) { return _fpDayNum(h.day); }).filter(function (x) { return x != null; });
+      // Prețul companiei (override) = linie orizontală punctată peste tot intervalul → graficul reflectă prețul tău.
+      if (xs.length) {
+        var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+        [{ k: 'motorina', label: 'Motorină (companie)', color: '#f59e0b' }, { k: 'benzina', label: 'Benzină (companie)', color: '#3FE07D' }, { k: 'gpl', label: 'GPL (companie)', color: '#38BDF8' }].forEach(function (r) {
+          var v = parseFloat(comp[r.k]);
+          if (Number.isFinite(v) && v > 0) datasets.push({ label: r.label, data: [{ x: minX, y: v }, { x: maxX, y: v }], borderColor: r.color, backgroundColor: 'transparent', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, tension: 0 });
+        });
+      }
+      createChart('chart-fuel-price', 'line', { datasets: datasets }, { plugins: { legend: { display: true, position: 'bottom' }, tooltip: { callbacks: { title: function (it) { return (it && it[0]) ? _fpTickLabel(it[0].parsed.x) : ''; } } } }, scales: { x: { type: 'linear', ticks: { callback: function (v) { return _fpTickLabel(v); }, maxRotation: 0, autoSkip: true, autoSkipPadding: 14, font: { size: 10 } } }, y: { beginAtZero: false } } });
     }
     function _fpLabel(day) { var p = String(day || '').split('-'); return p.length === 3 ? p[2] + '.' + p[1] : day; }
     // ─── Pagina „Statistici consum" (vederea fuelstats) ───

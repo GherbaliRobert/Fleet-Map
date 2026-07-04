@@ -90,8 +90,10 @@ export function ReportChart({ def }: { def: ReportChartDef }) {
           },
         },
         scales: isPie ? {} : {
-          x: { grid: { display: false }, border: { color: grid }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, autoSkipPadding: 8 } },
-          y: { beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 6 } },
+          x: (def as any).xLinear
+            ? { type: 'linear', grid: { display: false }, border: { color: grid }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, autoSkipPadding: 12, callback: (v: any) => { const f = (def as any).xTick; return f ? f(v) : v; } } }
+            : { grid: { display: false }, border: { color: grid }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, autoSkipPadding: 8 } },
+          y: { beginAtZero: (def as any).yZero !== false, grid: { color: grid }, border: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 6 } },
         },
         animation: { duration: 600, easing: 'easeOutQuart' },
       },

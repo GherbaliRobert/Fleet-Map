@@ -5,8 +5,9 @@ import { Icon } from '../components/Icon';
 import './reports.css';
 import './stats.css';
 
-// YYYY-MM-DD → DD.MM
-function dayLbl(k: string) { const p = String(k).split('-'); return p.length === 3 ? p[2] + '.' + p[1] : k; }
+// Etichetă axă X (număr de zile de la epocă → „D lună 'YY").
+const _MON = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sep.', 'oct.', 'noi.', 'dec.'];
+function fpTick(v: number) { const d = new Date(v * 86400000); return d.getDate() + ' ' + _MON[d.getMonth()] + ' ’' + String(d.getFullYear()).slice(2); }
 
 const TYPES = [
   { k: 'motorina', label: 'Motorină', color: '#f59e0b' },
@@ -30,17 +31,18 @@ export function FuelPrice() {
   }, [days]);
 
   const auto = cur?.auto || {}, eff = cur?.effective || {}, comp = cur?.company || {};
-  // Preț național (istoric) + prețul companiei ca linie de referință punctată (override = valoare curentă, nu serie)
-  const trend = hist ? {
-    type: 'line', title: 'Preț național vs. prețul companiei (lei/L)',
-    labels: hist.map((h) => dayLbl(h.day)),
+  // Axă X LINIARĂ pe „ziua" (număr) → spațierea reflectă timpul real + etichete cu ziua/luna/anul (ca pe web).
+  const dnum = (day: string) => { const t = Date.parse(day + 'T00:00:00'); return isFinite(t) ? Math.round(t / 86400000) : null; };
+  const xs: number[] = hist ? hist.map((h) => dnum(h.day)).filter((x): x is number => x != null) : [];
+  const trend = (hist && xs.length) ? {
+    type: 'line', title: 'Preț național vs. prețul companiei (lei/L)', xLinear: true, xTick: fpTick, yZero: false, labels: [],
     datasets: [
-      ...TYPES.map((t) => ({ label: t.label, data: hist.map((h) => h[t.k]), color: t.color })),
+      ...TYPES.map((t) => ({ label: t.label, color: t.color, data: hist.filter((h) => dnum(h.day) != null && h[t.k] != null).map((h) => ({ x: dnum(h.day), y: h[t.k] })) })),
       ...TYPES.filter((t) => { const v = parseFloat(comp[t.k]); return Number.isFinite(v) && v > 0; })
-        .map((t) => ({ label: t.label + ' (companie)', data: hist.map(() => Number(comp[t.k])), color: t.color, dash: true, fill: false })),
+        .map((t) => ({ label: t.label + ' (companie)', color: t.color, dash: true, fill: false, data: [{ x: Math.min(...xs), y: Number(comp[t.k]) }, { x: Math.max(...xs), y: Number(comp[t.k]) }] })),
     ],
   } : null;
-  const hasTrend = !!(trend && trend.datasets.some((ds: any) => (ds.data || []).some((x: any) => x != null)));
+  const hasTrend = !!(trend && trend.datasets.some((ds: any) => (ds.data || []).length));
 
   return (
     <div class="screen">
