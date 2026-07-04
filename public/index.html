@@ -5701,6 +5701,47 @@ const pozitii = await r.json();</code></pre>
     // Modal dedicat care afișează raportul complet (columns/rows) dintr-un istoric, cu export + „Deschide în Rapoarte".
     // NB: numele e unic — NU „openReportModal" (există deja openReportModal(imei) pentru configuratorul „Raport vehicul").
     function _hrmClose() { var e = document.getElementById('hist-report-modal'); if (e) e.style.display = 'none'; }
+    // Randează un raport (din istoric) STRUCTURAT: KPI-uri sus + secțiuni pe vehicul (dacă există perVehicle) + tabel curat.
+    function _hrmRenderReport(rep) {
+      rep = rep || {};
+      var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      var html = '';
+      // 1) Carduri KPI din rep.summary (obiect {cheie: valoare})
+      var sum = rep.summary;
+      if (sum && typeof sum === 'object' && !Array.isArray(sum)) {
+        var ks = Object.keys(sum);
+        if (ks.length) html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;">' +
+          ks.map(function (k) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:10px 13px;"><div style="font-size:19px;font-weight:800;color:var(--accent);">' + esc(sum[k]) + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(k) + '</div></div>'; }).join('') + '</div>';
+      }
+      // 2) Grupare pe vehicul (perVehicle) — fără coloana „Vehicul" repetată; altfel tabel plat.
+      var pv = rep.perVehicle, cols = rep.columns || [];
+      if (Array.isArray(pv) && pv.length) {
+        var hideFirst = cols.length && String(cols[0]).trim().toLowerCase() === 'vehicul';
+        var dispCols = hideFirst ? cols.slice(1) : cols;
+        html += pv.map(function (v) {
+          var vrows = (v.rows || []).map(function (r) { return hideFirst ? r.slice(1) : r; });
+          var vsum = Array.isArray(v.summary) ? v.summary : [];
+          return '<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:12px;overflow:hidden;">' +
+            '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--bg-dark);border-bottom:1px solid var(--border);">' +
+              '<i class="fas fa-car" style="color:var(--accent);"></i><b style="font-size:13.5px;">' + esc(v.vehicul) + '</b>' +
+              '<span style="margin-left:auto;display:flex;gap:14px;flex-wrap:wrap;">' + vsum.map(function (s) { return '<span style="font-size:11.5px;color:var(--text-muted);">' + esc(s[0]) + ': <b style="color:var(--text-primary);">' + esc(s[1]) + '</b></span>'; }).join('') + '</span>' +
+            '</div>' + _hrmTable(dispCols, vrows) + '</div>';
+        }).join('');
+      } else {
+        var rows = rep.rows || [];
+        html += rows.length ? _hrmTable(cols, rows) : '<div style="padding:30px;text-align:center;color:var(--text-muted);">Raportul nu conține date pentru perioada selectată.</div>';
+      }
+      return html || '<div style="padding:30px;text-align:center;color:var(--text-muted);">Raportul nu conține date.</div>';
+    }
+    function _hrmTable(cols, rows) {
+      var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      if (!rows || !rows.length) return '<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:12.5px;">Fără date.</div>';
+      // Coloane numerice → aliniate la dreapta (detectate: >70% valori numerice)
+      var num = cols.map(function (_, ci) { var n = 0, t = 0; rows.forEach(function (r) { var v = r[ci]; if (v != null && v !== '') { t++; var s = String(v); if (/^-?[\d.,\s]+$/.test(s) && !isNaN(parseFloat(s.replace(/\s/g, '').replace(',', '.')))) n++; } }); return t > 0 && n / t > 0.7; });
+      return '<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">' +
+        '<thead><tr>' + cols.map(function (c, ci) { return '<th style="text-align:' + (num[ci] ? 'right' : 'left') + ';padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text-secondary);font-weight:700;position:sticky;top:0;background:var(--bg-panel);">' + esc(c) + '</th>'; }).join('') + '</tr></thead>' +
+        '<tbody>' + rows.map(function (r, ri) { return '<tr style="' + (ri % 2 ? 'background:rgba(127,127,127,.045);' : '') + '">' + r.map(function (c, ci) { return '<td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:' + (num[ci] ? 'right' : 'left') + ';white-space:nowrap;">' + esc(c == null ? '' : c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+    }
     async function openHistoryReportModal(hid) {
       closeNotifications();
       if (hid == null || hid === '') { notifGoReports(); return; }
@@ -5726,16 +5767,7 @@ const pozitii = await r.json();</code></pre>
       catch (e) { document.getElementById('hist-report-modal-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">' + esc(e.message || 'Nu am putut încărca raportul') + '</div>'; return; }
       var rep = data.report || {}, cols = rep.columns || [], rows = rep.rows || [];
       document.getElementById('hist-report-modal-title').textContent = (data.label || data.report_type || 'Raport') + ' · ' + repFmtDT(data.generated_at);
-      var body;
-      if (rows.length) {
-        body = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr>' +
-          cols.map(function (c) { return '<th style="text-align:left;padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text-secondary);position:sticky;top:0;background:var(--bg-panel);">' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-          rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td style="padding:7px 9px;border-bottom:1px solid var(--border);">' + esc(c == null ? '' : c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>' +
-          '<div style="font-size:11.5px;color:var(--text-muted);margin-top:10px;">' + rows.length + ' rânduri' + ((rep.from && rep.to) ? (' · perioada ' + repFmtDT(rep.from) + ' – ' + repFmtDT(rep.to)) : '') + '</div>';
-      } else {
-        body = '<div style="padding:30px;text-align:center;color:var(--text-muted);">Raportul nu conține date pentru perioada selectată.</div>';
-      }
-      document.getElementById('hist-report-modal-body').innerHTML = body;
+      document.getElementById('hist-report-modal-body').innerHTML = _hrmRenderReport(rep);
       document.getElementById('hist-report-modal-foot').innerHTML =
         '<button class="btn-sm" onclick="repExportHistory(' + hid + ',\'xlsx\')"><i class="fas fa-file-excel"></i> Excel</button>' +
         '<button class="btn-sm" onclick="repExportHistory(' + hid + ',\'pdf\')"><i class="fas fa-file-pdf"></i> PDF</button>' +
