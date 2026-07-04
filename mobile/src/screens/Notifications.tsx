@@ -21,6 +21,13 @@ export function Notifications() {
   useEffect(() => { load(); }, []);
 
   function tap(n: NotificationItem) {
+    // Notificările de raport nu au eveniment GPS → deschid ecranul Rapoarte (+ raportul din Istoric), nu modalul de eveniment.
+    if (n.type === 'report_ready' || n.type === 'report_error') {
+      let nd: any = (n as any).data; if (typeof nd === 'string') { try { nd = JSON.parse(nd); } catch { nd = null; } }
+      const hid = nd && nd.historyId != null ? nd.historyId : '';
+      loc.route('/reports' + (hid !== '' ? ('?histId=' + hid) : ''));
+      return;
+    }
     loc.route('/notif/' + n.id); // deschide detaliul evenimentului — marcarea „citit" se face din modal
   }
   async function markAll() { try { await Api.ackAll(); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => ({ ...x, acknowledged: true })) : cur); }

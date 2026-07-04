@@ -4731,21 +4731,27 @@ const pozitii = await r.json();</code></pre>
       // Badge-ul rămâne activ; se rezolvă la notificarea report_ready (WS) sau la timeout.
     }
     // ─── Badge „se generează raportul" (fundal) ───
-    var _repJob = null;
+    var _repJob = null, _repBadgeAutoTimer = null;
     function _repBadgeEl() {
       var el = document.getElementById('rep-progress');
       if (!el) {
         el = document.createElement('div'); el.id = 'rep-progress';
-        el.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:100000;background:var(--bg-card,#131826);color:var(--text-primary,#e8edf7);border:1px solid var(--border,#26304a);border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.45);padding:13px 15px;min-width:252px;max-width:340px;font-family:inherit;display:none;';
+        el.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:100000;background:var(--bg-card,#131826);color:var(--text-primary,#e8edf7);border:1px solid var(--border,#26304a);border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.45);padding:13px 15px;min-width:252px;max-width:340px;font-family:inherit;display:none;opacity:0;transform:translateY(12px);transition:opacity .35s ease,transform .35s ease;';
         el.innerHTML = '<div style="display:flex;align-items:center;gap:11px;"><span id="rep-progress-ico"></span><div style="flex:1;min-width:0;"><div id="rep-progress-title" style="font-weight:800;font-size:13px;"></div><div id="rep-progress-sub" style="font-size:11.5px;color:var(--text-muted);margin-top:2px;"></div></div></div><div id="rep-progress-actions" style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;"></div>';
         document.body.appendChild(el);
       }
       return el;
     }
+    // Fade + slide in (anulează un auto-dismiss în curs).
+    function _repBadgeShow() {
+      if (_repBadgeAutoTimer) { clearTimeout(_repBadgeAutoTimer); _repBadgeAutoTimer = null; }
+      var el = _repBadgeEl(); el.style.display = 'block';
+      requestAnimationFrame(function () { el.style.opacity = '1'; el.style.transform = 'none'; });
+    }
     function _repShowBadge(label) {
       var id = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       _repJob = { id: id, label: label || 'Raport', timer: null };
-      _repBadgeEl().style.display = 'block';
+      _repBadgeShow();
       document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-circle-notch fa-spin" style="color:var(--accent);font-size:20px;"></i>';
       document.getElementById('rep-progress-title').textContent = 'Se generează raportul…';
       document.getElementById('rep-progress-sub').textContent = _repJob.label + ' · poți continua, te anunțăm când e gata';
@@ -4753,7 +4759,14 @@ const pozitii = await r.json();</code></pre>
       _repJob.timer = setTimeout(_repBadgeTimeout, 210000); // fallback dacă WS e jos / întârziere
       return id;
     }
-    function _repBadgeHide() { if (_repJob && _repJob.timer) clearTimeout(_repJob.timer); _repJob = null; var el = document.getElementById('rep-progress'); if (el) el.style.display = 'none'; }
+    // Fade + slide out, apoi ascunde.
+    function _repBadgeHide() {
+      if (_repJob && _repJob.timer) clearTimeout(_repJob.timer); _repJob = null;
+      if (_repBadgeAutoTimer) { clearTimeout(_repBadgeAutoTimer); _repBadgeAutoTimer = null; }
+      var el = document.getElementById('rep-progress'); if (!el) return;
+      el.style.opacity = '0'; el.style.transform = 'translateY(12px)';
+      setTimeout(function () { var e = document.getElementById('rep-progress'); if (e) e.style.display = 'none'; }, 380);
+    }
     function _repBadgeTimeout() {
       if (!_repJob) return; _repJob = null;
       document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-hourglass-half" style="color:#f59e0b;font-size:18px;"></i>';
@@ -4766,22 +4779,24 @@ const pozitii = await r.json();</code></pre>
       if (!_repJob || !d.jobId || d.jobId !== _repJob.id) return false;
       if (_repJob.timer) clearTimeout(_repJob.timer);
       var hid = (d.historyId != null) ? d.historyId : null, lbl = _repJob.label; _repJob = null;
-      _repBadgeEl().style.display = 'block';
+      _repBadgeShow();
       document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-circle-check" style="color:var(--accent);font-size:20px;"></i>';
       document.getElementById('rep-progress-title').textContent = 'Raport generat ✓';
       document.getElementById('rep-progress-sub').textContent = lbl + ' — gata în Istoric rapoarte';
       document.getElementById('rep-progress-actions').innerHTML = '<button class="btn-sm" onclick="_repBadgeHide()">Închide</button><button class="btn-sm btn-primary" onclick="_repBadgeView(' + (hid != null ? hid : 'null') + ')"><i class="fas fa-eye"></i> Vezi raportul</button>';
+      _repBadgeAutoTimer = setTimeout(_repBadgeHide, 7000); // dispare singur după câteva secunde (rămâne în clopoțel)
       return true;
     }
     function _repBadgeError(notif) {
       var d = (notif && notif.data) || {};
       if (!_repJob || !d.jobId || d.jobId !== _repJob.id) return false;
       if (_repJob.timer) clearTimeout(_repJob.timer); _repJob = null;
-      _repBadgeEl().style.display = 'block';
+      _repBadgeShow();
       document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-triangle-exclamation" style="color:var(--red);font-size:18px;"></i>';
       document.getElementById('rep-progress-title').textContent = 'Raport eșuat';
       document.getElementById('rep-progress-sub').textContent = (notif && notif.body) || 'Încearcă din nou.';
       document.getElementById('rep-progress-actions').innerHTML = '<button class="btn-sm" onclick="_repBadgeHide()">Închide</button>';
+      _repBadgeAutoTimer = setTimeout(_repBadgeHide, 10000);
       return true;
     }
     function _repBadgeView(hid) {
@@ -5616,16 +5631,40 @@ const pozitii = await r.json();</code></pre>
       // Escapare HTML — titlul/corpul pot conține text necontrolat (ex. IMEI dintr-un handshake TCP). NU
       // interpola direct în innerHTML (risc XSS stocat). Tratează & < > " '.
       const _ne = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      list.innerHTML = rows.map(n => `
+      list.innerHTML = rows.map(n => {
+        // Notificările de raport (report_ready/report_error) NU au poziție GPS → click-ul deschide raportul din
+        // Istoric (nu modalul de eveniment) + un buton dedicat „Rapoarte".
+        let nd = n.data; if (typeof nd === 'string') { try { nd = JSON.parse(nd); } catch (e) { nd = null; } }
+        const isReport = (n.type === 'report_ready' || n.type === 'report_error');
+        const hid = (nd && nd.historyId != null) ? nd.historyId : '';
+        const clickAttr = isReport
+          ? `onclick="notifOpenReport('${hid}')" title="Deschide raportul în Istoric"`
+          : `onclick="openNotifDetail(${n.id})" title="Vezi pe hartă ce s-a întâmplat"`;
+        const footIcon = isReport
+          ? '<i class="fas fa-file-lines" style="color:var(--accent);opacity:.8;"></i>'
+          : '<i class="fas fa-map-location-dot" style="color:var(--accent);opacity:.7;"></i>';
+        const reportBtn = (n.type === 'report_ready')
+          ? `<button class="btn-sm btn-primary" style="padding:3px 8px;white-space:nowrap;" title="Mergi la rapoarte generate" onclick="notifOpenReport('${hid}')"><i class="fas fa-arrow-right"></i> Rapoarte</button>`
+          : '';
+        return `
         <div style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);${n.acknowledged?'opacity:.5;':''}">
           <span style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;background:${sev[n.severity]||'#3b82f6'};"></span>
-          <div style="min-width:0;flex:1;cursor:pointer;" onclick="openNotifDetail(${n.id})" title="Vezi pe hartă ce s-a întâmplat">
+          <div style="min-width:0;flex:1;cursor:pointer;" ${clickAttr}>
             <div style="font-size:12px;font-weight:600;">${_ne(n.title||n.type)}</div>
             <div style="font-size:11px;color:var(--text-muted);word-break:break-word;">${_ne(n.body||'')}</div>
-            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:5px;"><span>${new Date(n.created_at).toLocaleString('ro-RO')}</span><i class="fas fa-map-location-dot" style="color:var(--accent);opacity:.7;"></i></div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:5px;"><span>${new Date(n.created_at).toLocaleString('ro-RO')}</span>${footIcon}</div>
           </div>
-          ${n.acknowledged?'':`<button class="btn-sm" style="padding:3px 7px;align-self:flex-start;" title="Marchează citit" onclick="ackNotif(${n.id})"><i class="fas fa-check"></i></button>`}
-        </div>`).join('');
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            ${reportBtn}
+            ${n.acknowledged?'':`<button class="btn-sm" style="padding:3px 7px;" title="Marchează citit" onclick="ackNotif(${n.id})"><i class="fas fa-check"></i></button>`}
+          </div>
+        </div>`;
+      }).join('');
+    }
+    // Deschide raportul dintr-o notificare de raport: închide panoul + deschide Istoric rapoarte (+ raportul dacă avem id).
+    function notifOpenReport(hid) {
+      var p = document.getElementById('notif-panel'); if (p) p.style.display = 'none';
+      _repBadgeView((hid === '' || hid == null) ? null : hid);
     }
     async function ackNotif(id) { try { await fetch('/api/notifications/' + id + '/ack', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
     async function ackAllNotif() { try { await fetch('/api/notifications/ack-all', { method: 'POST' }); } catch (e) {} await loadNotifications(); refreshNotifBadge(); }
@@ -5653,6 +5692,8 @@ const pozitii = await r.json();</code></pre>
       try { d = await fetch('/api/notifications/' + id + '/context', { credentials: 'same-origin', signal: _ctrl.signal }).then(function (r) { return r.json(); }); } catch (e) {}
       clearTimeout(_to);
       if (!d || d.error) { body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--red);">' + esc((d && d.error) || 'Eroare la încărcare') + '</div>'; return; }
+      // Notificare de raport → nu are eveniment GPS; deschide direct raportul din Istoric (nu modalul de hartă).
+      if (d.type === 'report_ready' || d.type === 'report_error') { closeNotifDetail(); notifOpenReport((d.data && d.data.historyId != null) ? d.data.historyId : ''); return; }
       var sevMap = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' }, sevC = sevMap[d.severity] || '#3b82f6';
       var isSpeeding = /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || '')); // limita OSM DOAR la alerte de viteză (nu la idle etc.)
       var rows = [];
@@ -13401,7 +13442,7 @@ const pozitii = await r.json();</code></pre>
     };
 
     // ─── Modul „Dispozitive" (super-admin): toate / neasignate / active / arhivate + adoptă / respinge / mută / interfață CAN ───
-    var _raxDevices = [], _raxDevFilter = 'all', _raxDevSearch = '';
+    var _raxDevices = [], _raxDevFilter = 'all', _raxDevSearch = '', _raxAttempts = [], _raxStrict = false;
     var _RAX_IFACE = [['', 'Auto'], ['fms', 'FMS'], ['lvcan', 'LV-CAN'], ['tacho', 'Tahograf']];
     function _raxDevBucket(d) { if (d.status === 'archived') return 'archived'; if (d.company_id == null) return 'unassigned'; return 'active'; }
     function _raxDevCoOptions(sel) {
@@ -13414,10 +13455,13 @@ const pozitii = await r.json();</code></pre>
       try {
         var r = await Promise.all([
           fetch('/api/admin/devices', { credentials: 'same-origin' }).then(function (x) { return x.json(); }),
-          (Array.isArray(companiesCache) && companiesCache.length) ? Promise.resolve(companiesCache) : fetch('/api/companies', { credentials: 'same-origin' }).then(function (x) { return x.json(); }).catch(function () { return []; })
+          (Array.isArray(companiesCache) && companiesCache.length) ? Promise.resolve(companiesCache) : fetch('/api/companies', { credentials: 'same-origin' }).then(function (x) { return x.json(); }).catch(function () { return []; }),
+          fetch('/api/admin/device-attempts', { credentials: 'same-origin' }).then(function (x) { return x.json(); }).catch(function () { return { attempts: [] }; })
         ]);
         _raxDevices = Array.isArray(r[0]) ? r[0] : [];
         if ((!companiesCache || !companiesCache.length) && Array.isArray(r[1])) companiesCache = r[1];
+        _raxAttempts = (r[2] && Array.isArray(r[2].attempts)) ? r[2].attempts : [];
+        _raxStrict = !!(r[2] && r[2].strict);
       } catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare: ' + esc(e.message) + '</div>'; return; }
       raxRenderDevices();
     };

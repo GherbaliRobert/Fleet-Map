@@ -25,7 +25,16 @@ export function NotifDetail() {
   const maxHaloRef = useRef<any>(null); // halo-ul punctului MAX (re-colorat de OSM dacă s-a depășit limita reală)
 
   useEffect(() => {
-    Api.notifContext(id).then((x: any) => { if (x && x.error) setErr(x.error); else { setD(x); setAcked(!!x.acknowledged); } }).catch((e: any) => setErr(e?.message || 'Eroare la încărcare'));
+    Api.notifContext(id).then((x: any) => {
+      if (x && x.error) { setErr(x.error); return; }
+      // Notificare de raport → nu are eveniment GPS; deschid direct ecranul Rapoarte (+ raportul din Istoric).
+      if (x && (x.type === 'report_ready' || x.type === 'report_error')) {
+        const hid = x.data && x.data.historyId != null ? x.data.historyId : '';
+        loc.route('/reports' + (hid !== '' ? ('?histId=' + hid) : ''));
+        return;
+      }
+      setD(x); setAcked(!!x.acknowledged);
+    }).catch((e: any) => setErr(e?.message || 'Eroare la încărcare'));
   }, [id]);
 
   async function markRead() {

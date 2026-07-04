@@ -48,6 +48,9 @@ export function Reports() {
     Api.reportTypes().then((d) => { setCats(d.categories || []); setTypes(d.reports || []); }).catch(() => {});
     const pre = (loc.query && (loc.query as any).imei) || '';
     if (pre) setSel(String(pre).split(',').filter(Boolean));
+    // Deschis dintr-o notificare de raport (?histId=) → încarcă raportul din Istoric și îl randează inline.
+    const hq = (loc.query && (loc.query as any).histId) || '';
+    if (hq) { const hid = Number(hq); if (Number.isFinite(hid)) Api.reportHistoryItem(hid).then((h: any) => { const rep = h && (h.report || h.data); if (rep) { setRes(rep); setHistId(hid); } }).catch(() => {}); }
   }, []);
 
   const typeLabel = useMemo(() => (types.find((t) => t.type === type)?.label || 'Raport'), [types, type]);
@@ -91,8 +94,10 @@ export function Reports() {
       if (hid != null) {
         Api.reportHistoryItem(hid).then((h: any) => { const rep = h && (h.report || h.data); if (rep) { setRes(rep); setHistId(hid); loadFuelSeries(); } }).catch(() => {});
       }
+      setTimeout(() => setJob((j) => (j && j.status === 'done' ? null : j)), 7000); // badge-ul dispare singur (raportul rămâne randat)
     } else if (n.type === 'report_error' && d.jobId === job.id) {
       setJob({ ...job, status: 'error' }); setErr(n.body || 'Raport eșuat');
+      setTimeout(() => setJob((j) => (j && j.status === 'error' ? null : j)), 10000);
     }
   }, [lastNotif.value]);
 
