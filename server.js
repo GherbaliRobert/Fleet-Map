@@ -972,7 +972,8 @@ app.get('/api/health', async (req, res) => {
     mode: process.env.DATABASE_URL ? 'postgres' : 'pglite',
     uptime_s: Math.round((Date.now() - _startedAt) / 1000),
     version: (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7),
-    fcm: !!_fcm // push nativ (FCM) activ = FIREBASE_SA_JSON setat + init reușit
+    fcm: !!_fcm, // push nativ (FCM) activ = FIREBASE_SA_JSON setat + init reușit
+    fcm_status: _fcmStatus // 'active' | 'unset' | 'error: <mesaj>'
   });
 });
 
@@ -5463,17 +5464,17 @@ async function sendPushToUser(userId, payload) {
 
 // ─── Push nativ (FCM Android / APNs iOS) pentru aplicația mobilă ───
 // No-op dacă FIREBASE_SA_JSON nu e setat → nu afectează deploy-urile fără mobil.
-let _fcm = null;
+let _fcm = null, _fcmStatus = 'unset';
 function initFcm() {
   try {
     const raw = process.env.FIREBASE_SA_JSON;
-    if (!raw) { console.log('[FCM] inactiv (FIREBASE_SA_JSON nesetat)'); return; }
+    if (!raw) { _fcmStatus = 'unset'; console.log('[FCM] inactiv (FIREBASE_SA_JSON nesetat)'); return; }
     const admin = require('firebase-admin');
     const cred = JSON.parse(raw);
     if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(cred) });
-    _fcm = admin.messaging();
+    _fcm = admin.messaging(); _fcmStatus = 'active';
     console.log('[FCM] Push nativ activ');
-  } catch (e) { console.warn('[FCM] init eșuat (mobilul nu va primi push):', e.message); _fcm = null; }
+  } catch (e) { _fcmStatus = 'error: ' + e.message; console.warn('[FCM] init eșuat (mobilul nu va primi push):', e.message); _fcm = null; }
 }
 async function sendFcmToUser(userId, payload) {
   if (!_fcm) return;
