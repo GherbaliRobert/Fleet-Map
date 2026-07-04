@@ -101,6 +101,8 @@ export const Api = {
   costRailway: () => api<any>('/api/admin/costs/railway'),
   costCloudflare: () => api<any>('/api/admin/costs/cloudflare'),
   costAnthropic: () => api<any>('/api/admin/costs/anthropic'),
+  costGa: () => api<any>('/api/admin/costs/ga'),        // Google Analytics (GA4) — date live, $0
+  costGsc: () => api<any>('/api/admin/costs/gsc'),      // Google Search Console — date live, $0
   adminFinance: (months = 12) => api<any>(`/api/admin/finance?months=${months}`),
   // ── Module + Setări (companie) ──
   hotspot: (from: string, to: string, imeis?: string[], mode = 'stops', stopMin = 5) => {

@@ -737,6 +737,23 @@ async function initDb() {
         }
       }
     } catch (e) { /* seed best-effort */ }
+    // Asigură rândurile Google Analytics + Search Console (gratuit, $0) în registru — IDEMPOTENT (rulează chiar dacă
+    // tabelul nu mai e gol). Cardurile lor arată date LIVE când sunt setate GA4_PROPERTY_ID / GSC_SITE_URL + service-account.
+    try {
+      const _gnow = Date.now();
+      const _google = [
+        ['Google Analytics', 'analytics', 'Trafic web (GA4) — vizitatori, sesiuni, pagini', 'https://analytics.google.com'],
+        ['Google Search Console', 'seo', 'Performanță căutare Google — clicuri, afișări, poziție', 'https://search.google.com/search-console'],
+      ];
+      for (const g of _google) {
+        await client.query(
+          `INSERT INTO platform_costs (provider,category,description,amount,currency,cycle,next_due,url,active,created_at,updated_at)
+           SELECT $1,$2,$3,0,'USD','monthly',$4,$5,true,$6,$6
+           WHERE NOT EXISTS (SELECT 1 FROM platform_costs WHERE provider = $1)`,
+          [g[0], g[1], g[2], _gnow, g[3], _gnow]
+        );
+      }
+    } catch (e) { /* best-effort */ }
     // Ofertare Live: oferte salvate (configurator de preț cu istoric)
     await client.query(`
       CREATE TABLE IF NOT EXISTS offers (

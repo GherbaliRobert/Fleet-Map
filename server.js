@@ -6764,6 +6764,93 @@ async function fetchCloudflareUsage() {
 app.get('/api/admin/costs/cloudflare', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await fetchCloudflareUsage()); } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ─── Google (Analytics GA4 + Search Console): date LIVE, cost 0 (gratuit). Token OAuth via service-account (JWT RS256).
+// Reutilizează FIREBASE_SA_JSON (sau GOOGLE_SA_JSON dedicat). Acel service-account trebuie să aibă acces în proprietatea
+// GA4 (rol Viewer) + în Search Console (utilizator). ID-uri necesare: GA4_PROPERTY_ID (numeric), GSC_SITE_URL. Env-only.
+let _gTokCache = null; // { scope, token, exp(sec) }
+async function getGoogleAccessToken(scopes) {
+  const raw = process.env.GOOGLE_SA_JSON || process.env.FIREBASE_SA_JSON;
+  if (!raw) return null;
+  let sa; try { sa = JSON.parse(raw); } catch (e) { return null; }
+  if (!sa.client_email || !sa.private_key) return null;
+  const scope = scopes.join(' ');
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (_gTokCache && _gTokCache.scope === scope && _gTokCache.exp - 60 > nowSec) return _gTokCache.token;
+  const crypto = require('crypto');
+  const b64u = (s) => Buffer.from(s).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const head = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claim = b64u(JSON.stringify({ iss: sa.client_email, scope, aud: 'https://oauth2.googleapis.com/token', iat: nowSec, exp: nowSec + 3600 }));
+  const signer = crypto.createSign('RSA-SHA256'); signer.update(head + '.' + claim); signer.end();
+  const sig = signer.sign((sa.private_key || '').replace(/\\n/g, '\n')).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const assertion = head + '.' + claim + '.' + sig;
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' + encodeURIComponent(assertion) });
+  const j = await r.json().catch(() => ({}));
+  if (!j.access_token) throw new Error(j.error_description || j.error || 'Autentificare Google eșuată');
+  _gTokCache = { scope, token: j.access_token, exp: nowSec + (j.expires_in || 3600) };
+  return j.access_token;
+}
+// Google Analytics (GA4 Data API): utilizatori activi / sesiuni / afișări / utilizatori noi (30 zile) + top pagini.
+const _gaCache = { at: 0, data: null };
+async function fetchGaUsage() {
+  const prop = process.env.GA4_PROPERTY_ID;
+  if (!prop || !(process.env.GOOGLE_SA_JSON || process.env.FIREBASE_SA_JSON)) return { configured: false };
+  if (_gaCache.data && (Date.now() - _gaCache.at) < 300000) return _gaCache.data; // cache 5 min (anti rate-limit)
+  try {
+    const token = await getGoogleAccessToken(['https://www.googleapis.com/auth/analytics.readonly']);
+    if (!token) return { configured: false };
+    const propId = String(prop).replace(/^properties\//, '');
+    const url = 'https://analyticsdata.googleapis.com/v1beta/properties/' + encodeURIComponent(propId) + ':runReport';
+    const hdr = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+    const r = await fetch(url, { method: 'POST', headers: hdr, body: JSON.stringify({ dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }], metrics: [{ name: 'activeUsers' }, { name: 'sessions' }, { name: 'screenPageViews' }, { name: 'newUsers' }] }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { configured: true, error: (j.error && j.error.message) || ('HTTP ' + r.status) };
+    const row = (j.rows && j.rows[0]) || null;
+    const mv = (i) => (row && row.metricValues && row.metricValues[i]) ? (Number(row.metricValues[i].value) || 0) : 0;
+    let topPages = [];
+    try {
+      const r2 = await fetch(url, { method: 'POST', headers: hdr, body: JSON.stringify({ dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }], dimensions: [{ name: 'pagePath' }], metrics: [{ name: 'screenPageViews' }], orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }], limit: 6 }) });
+      const j2 = await r2.json().catch(() => ({}));
+      topPages = ((j2 && j2.rows) || []).map((x) => ({ path: (x.dimensionValues && x.dimensionValues[0] && x.dimensionValues[0].value) || '', views: Number(x.metricValues && x.metricValues[0] && x.metricValues[0].value) || 0 }));
+    } catch (e) {}
+    const out = { configured: true, activeUsers: mv(0), sessions: mv(1), pageViews: mv(2), newUsers: mv(3), topPages };
+    _gaCache.at = Date.now(); _gaCache.data = out;
+    return out;
+  } catch (e) { return { configured: true, error: e.message }; }
+}
+app.get('/api/admin/costs/ga', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await fetchGaUsage()); } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Google Search Console (Search Analytics API): clicuri / afișări / CTR / poziție medie (30 zile, cu decalajul ~2 zile) + top căutări.
+const _gscCache = { at: 0, data: null };
+async function fetchGscUsage() {
+  const site = process.env.GSC_SITE_URL;
+  if (!site || !(process.env.GOOGLE_SA_JSON || process.env.FIREBASE_SA_JSON)) return { configured: false };
+  if (_gscCache.data && (Date.now() - _gscCache.at) < 300000) return _gscCache.data;
+  try {
+    const token = await getGoogleAccessToken(['https://www.googleapis.com/auth/webmasters.readonly']);
+    if (!token) return { configured: false };
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    const now = Date.now();
+    const endDate = fmt(new Date(now - 2 * 86400000));    // datele SC întârzie ~2-3 zile
+    const startDate = fmt(new Date(now - 31 * 86400000));
+    const url = 'https://searchconsole.googleapis.com/webmasters/v3/sites/' + encodeURIComponent(site) + '/searchAnalytics/query';
+    const hdr = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+    const tot = await fetch(url, { method: 'POST', headers: hdr, body: JSON.stringify({ startDate, endDate }) }).then((r) => r.json()).catch(() => ({}));
+    if (tot.error) return { configured: true, error: (tot.error && tot.error.message) || 'Eroare Search Console' };
+    const row = (tot.rows && tot.rows[0]) || {};
+    let topQueries = [];
+    try {
+      const q = await fetch(url, { method: 'POST', headers: hdr, body: JSON.stringify({ startDate, endDate, dimensions: ['query'], rowLimit: 6 }) }).then((r) => r.json()).catch(() => ({}));
+      topQueries = ((q && q.rows) || []).map((x) => ({ query: (x.keys && x.keys[0]) || '', clicks: x.clicks || 0, impressions: x.impressions || 0 }));
+    } catch (e) {}
+    const out = { configured: true, start: startDate, end: endDate, clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0, topQueries };
+    _gscCache.at = Date.now(); _gscCache.data = out;
+    return out;
+  } catch (e) { return { configured: true, error: e.message }; }
+}
+app.get('/api/admin/costs/gsc', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await fetchGscUsage()); } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // Anthropic: cheltuiala lunii curente (USD) din Admin API cost_report. DOAR cu ANTHROPIC_ADMIN_KEY (cheie ADMIN sk-ant-admin01, separată de cea runtime din ai.js).
 const _anthSpendCache = new Map(); // startingAt -> { at, data } — TTL 60s, ca panoul + cardul să nu lovească de 2x cost_report (anti rate-limit 429)
 async function fetchAnthropicSpend(startingAtISO) {

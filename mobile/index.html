@@ -5,8 +5,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0B0E11" />
   <title>RA Tracks</title>
+  <style>
+    /* Intro animat la lansare (brandat RA Tracks). Se afișează instant din HTML (înainte de bundle-ul JS),
+       preia de la splash-ul nativ (același fundal #0B0E11) și e scos de main.tsx după ce montăm aplicația. */
+    #ra-intro {
+      position: fixed; inset: 0; z-index: 99999;
+      background: radial-gradient(125% 90% at 50% 34%, #123421 0%, #0B0E11 62%);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 1; transition: opacity .5s ease;
+      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #ra-intro.ra-hide { opacity: 0; pointer-events: none; }
+    .ra-intro-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .ra-pin-wrap { position: relative; width: 110px; height: 110px; display: flex; align-items: center; justify-content: center; }
+    .ra-ripple { position: absolute; left: 50%; top: 54%; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #3FE07D; transform: translate(-50%, -50%); opacity: 0; animation: raRipple 1.9s ease-out .35s infinite; }
+    .ra-ripple.r2 { animation-delay: 1.05s; }
+    @keyframes raRipple { 0% { width: 16px; height: 16px; opacity: .65; } 100% { width: 118px; height: 118px; opacity: 0; } }
+    .ra-pin { width: 74px; height: 74px; color: #3FE07D; opacity: 0; transform: translateY(-42px) scale(.5);
+      animation: raDrop .72s cubic-bezier(.2, .85, .3, 1.35) .1s forwards; filter: drop-shadow(0 8px 16px rgba(63, 224, 125, .45)); }
+    @keyframes raDrop { 0% { transform: translateY(-42px) scale(.5); opacity: 0; } 55% { opacity: 1; } 70% { transform: translateY(4px) scale(1.04); } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+    .ra-word { font-size: 30px; font-weight: 800; letter-spacing: .3px; color: #fff; opacity: 0; transform: translateY(10px); animation: raRise .55s ease .58s forwards; }
+    .ra-word .g { color: #3FE07D; }
+    .ra-sub { font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #8a93a3; opacity: 0; transform: translateY(8px); animation: raRise .55s ease .82s forwards; }
+    @keyframes raRise { to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) {
+      .ra-pin, .ra-word, .ra-sub { animation: none; opacity: 1; transform: none; }
+      .ra-ripple { display: none; }
+    }
+  </style>
 </head>
 <body>
+  <div id="ra-intro" aria-hidden="true">
+    <div class="ra-intro-inner">
+      <div class="ra-pin-wrap">
+        <span class="ra-ripple"></span>
+        <span class="ra-ripple r2"></span>
+        <svg class="ra-pin" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C7.58 2 4 5.58 4 10c0 5.4 7 11.55 7.3 11.81a1.1 1.1 0 0 0 1.4 0C13 21.55 20 15.4 20 10c0-4.42-3.58-8-8-8zm0 10.75A2.75 2.75 0 1 1 12 7.25a2.75 2.75 0 0 1 0 5.5z" />
+        </svg>
+      </div>
+      <div class="ra-word"><span class="g">RA</span> Tracks</div>
+      <div class="ra-sub">Monitorizare flotă</div>
+    </div>
+  </div>
   <div id="app"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

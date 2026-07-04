@@ -21,6 +21,8 @@ export function CostControl() {
   const [rw, setRw] = useState<any>(null);
   const [cf, setCf] = useState<any>(null);
   const [an, setAn] = useState<any>(null);
+  const [ga, setGa] = useState<any>(null);
+  const [gsc, setGsc] = useState<any>(null);
   const [fin, setFin] = useState<any | null>(null);
   const [finMonths, setFinMonths] = useState(12);
   const [sel, setSel] = useState<any | null>(null);
@@ -33,6 +35,8 @@ export function CostControl() {
     Api.costRailway().then(setRw).catch(() => setRw({ _err: true }));
     Api.costCloudflare().then(setCf).catch(() => setCf({ _err: true }));
     Api.costAnthropic().then(setAn).catch(() => setAn({ _err: true }));
+    Api.costGa().then(setGa).catch(() => setGa({ _err: true }));
+    Api.costGsc().then(setGsc).catch(() => setGsc({ _err: true }));
   }
   function loadFin() { setFin(null); Api.adminFinance(finMonths).then(setFin).catch((e: any) => setFin({ _err: e?.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare') })); }
   useEffect(reload, []);
@@ -175,6 +179,23 @@ export function CostControl() {
               <div class="adm-kv"><span class="k">Cheltuit luna</span><span>${n(an.spentUsd).toFixed(2)}</span></div>
               {an.soldRemaining != null && <div class="adm-kv"><span class="k">Sold rămas</span><span style="color:var(--accent)">${n(an.soldRemaining).toFixed(2)}</span></div>}
               {an.budget != null && <div class="adm-kv"><span class="k">Buget</span><span>${n(an.budget).toFixed(2)}</span></div>}
+            </>)}
+          </div>
+
+          <div class="pf-card">
+            <h3>Google Analytics (30 zile)</h3>
+            {!ga ? <div class="spin" style="margin:6px auto" /> : (ga._err || !ga.configured) ? <div style="color:var(--text-muted);font-size:12.5px">Indisponibil (GA4_PROPERTY_ID + service-account pe server).</div> : ga.error ? <div style="color:var(--red);font-size:12.5px">{String(ga.error).slice(0, 80)}</div> : (<>
+              <div class="adm-kv"><span class="k">Utilizatori activi</span><span>{n(ga.activeUsers).toLocaleString('ro-RO')}</span></div>
+              <div class="adm-kv"><span class="k">Sesiuni</span><span>{n(ga.sessions).toLocaleString('ro-RO')}</span></div>
+              <div class="adm-kv"><span class="k">Afișări pagini</span><span>{n(ga.pageViews).toLocaleString('ro-RO')}</span></div>
+            </>)}
+          </div>
+          <div class="pf-card">
+            <h3>Search Console (30 zile)</h3>
+            {!gsc ? <div class="spin" style="margin:6px auto" /> : (gsc._err || !gsc.configured) ? <div style="color:var(--text-muted);font-size:12.5px">Indisponibil (GSC_SITE_URL + service-account pe server).</div> : gsc.error ? <div style="color:var(--red);font-size:12.5px">{String(gsc.error).slice(0, 80)}</div> : (<>
+              <div class="adm-kv"><span class="k">Clicuri</span><span>{n(gsc.clicks).toLocaleString('ro-RO')}</span></div>
+              <div class="adm-kv"><span class="k">Afișări</span><span>{n(gsc.impressions).toLocaleString('ro-RO')}</span></div>
+              <div class="adm-kv"><span class="k">Poziție medie</span><span>{n(gsc.position).toFixed(1)}</span></div>
             </>)}
           </div>
 

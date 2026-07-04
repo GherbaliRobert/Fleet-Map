@@ -27,3 +27,14 @@ window.addEventListener('error', (e: any) => { if (e && e.message) _reportErr(e.
 window.addEventListener('unhandledrejection', (e: any) => { const r = e && e.reason; _reportErr('unhandledrejection: ' + (r && r.message ? r.message : String(r)), r && r.stack); });
 
 render(<App />, document.getElementById('app')!);
+
+// Intro animat (o singură dată, la lansare) → se estompează după ce aplicația e montată.
+try {
+  const _intro = document.getElementById('ra-intro');
+  if (_intro) {
+    setTimeout(() => {
+      _intro.classList.add('ra-hide');
+      setTimeout(() => { try { _intro.remove(); } catch (e) { /* noop */ } }, 550);
+    }, 1450); // lasă animația pin+ripple+wordmark să se deruleze
+  }
+} catch (e) { /* noop */ }
