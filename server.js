@@ -5493,7 +5493,7 @@ async function sendFcmToUser(userId, payload) {
       tokens: tokens.map(t => t.token),
       notification: { title: (payload && payload.title) || 'RA Track', body: (payload && payload.body) || '' },
       data,
-      android: { priority: 'high', notification: { channelId: 'alerts' } }
+      android: { priority: 'high', notification: { channelId: 'ra_alerts', sound: 'notif' } }
     });
     resp.responses.forEach((r, i) => {
       if (!r.success) {

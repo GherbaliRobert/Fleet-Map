@@ -30,9 +30,10 @@ export async function initPush() {
 
     await PushNotifications.register();
 
-    // Canal Android „alerts" (serverul trimite channelId:'alerts') — obligatoriu pe Android 8+ ca push-ul să
-    // apară cu prioritate/sunet. No-op pe iOS.
-    try { await PushNotifications.createChannel({ id: 'alerts', name: 'Alerte', description: 'Alerte vehicule și evenimente', importance: 5, visibility: 1 }); } catch { /* iOS / nesuportat */ }
+    // Canal Android cu SUNET propriu (res/raw/notif.wav). Android BLOCHEAZĂ sunetul unui canal după creare, deci
+    // folosim un canal NOU ('ra_alerts') ca sunetul să se aplice curat (canalul vechi 'alerts' rămâne, nefolosit).
+    // sound = numele resursei din res/raw FĂRĂ extensie. No-op pe iOS.
+    try { await PushNotifications.createChannel({ id: 'ra_alerts', name: 'Alerte RA Tracks', description: 'Alerte vehicule și evenimente', importance: 5, visibility: 1, sound: 'notif' }); } catch { /* iOS / nesuportat */ }
 
     PushNotifications.addListener('registration', (t) => { registerToken(t.value); });
     PushNotifications.addListener('registrationError', (err) => {
