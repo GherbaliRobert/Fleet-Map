@@ -5680,11 +5680,12 @@ const pozitii = await r.json();</code></pre>
       }).join('');
     }
     // Click pe notificarea de raport → MODAL cu raportul COMPLET (tabel + export). Butonul „Rapoarte" duce în Istoric.
-    function notifOpenReport(hid) { openReportModal((hid === '' || hid == null) ? null : hid); }
+    function notifOpenReport(hid) { openHistoryReportModal((hid === '' || hid == null) ? null : hid); }
     // Butonul „Rapoarte" → zona de rapoarte generate (panoul Rapoarte, tab Istoric).
     function notifGoReports() { closeNotifications(); if (typeof showView === 'function') showView('rapoarte'); setTimeout(function () { if (typeof repShowTab === 'function') repShowTab('history'); }, 250); }
     // Modal dedicat care afișează raportul complet (columns/rows) dintr-un istoric, cu export + „Deschide în Rapoarte".
-    async function openReportModal(hid) {
+    // NB: numele e unic — NU „openReportModal" (există deja openReportModal(imei) pentru configuratorul „Raport vehicul").
+    async function openHistoryReportModal(hid) {
       closeNotifications();
       if (hid == null || hid === '') { notifGoReports(); return; }
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
