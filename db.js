@@ -406,6 +406,17 @@ async function initDb() {
         updated_at BIGINT
       )
     `);
+    // Backfill: puncte REALE de referință (media națională RO, RON/L) — sursă GlobalPetrolPrices.com — ca graficul
+    // să arate imediat trendul real din ultimul an. Non-distructiv (ON CONFLICT DO NOTHING → datele zilnice live
+    // din PretCarburant.ro primează pe orice zi comună). Idempotent la fiecare boot.
+    await client.query(
+      `INSERT INTO fuel_price_history (day, motorina, benzina, gpl, source, updated_at) VALUES
+        ('2025-06-29', 7.42, 7.08, 3.61, 'GlobalPetrolPrices.com', ${Date.now()}),
+        ('2026-03-29', 10.07, 9.18, 4.15, 'GlobalPetrolPrices.com', ${Date.now()}),
+        ('2026-05-29', 9.64, 9.65, 4.45, 'GlobalPetrolPrices.com', ${Date.now()}),
+        ('2026-06-29', 9.41, 8.73, 4.56, 'GlobalPetrolPrices.com', ${Date.now()})
+       ON CONFLICT (day) DO NOTHING`
+    );
 
     // Documente vehicul (ITP, RCA, CASCO, Rovinietă, licențe etc.) cu dată expirare
     await client.query(`

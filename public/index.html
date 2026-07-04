@@ -5902,7 +5902,7 @@ const pozitii = await r.json();</code></pre>
         _fpCards(cur);
         _fpChart((hist && hist.history) || [], (cur && cur.company) || {});
         var note = document.getElementById('fp-note');
-        if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Sursa: <b>' + ((cur && cur.source) || 'PretCarburant.ro') + '</b> — media națională (licență CC BY 4.0), actualizată automat de 2×/zi. „Preț companie" = tariful setat de tine în Setări → Prețuri combustibil; altfel se folosește media națională. Istoricul graficului se acumulează zilnic.';
+        if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Sursa: <b>' + ((cur && cur.source) || 'PretCarburant.ro') + '</b> — media națională (licență CC BY 4.0), actualizată automat de 2×/zi și acumulată zilnic pe grafic. Punctele istorice de referință (ultimul an): <b>GlobalPetrolPrices.com</b>. „Preț companie" = tariful setat de tine în Setări → Prețuri combustibil (linia punctată); altfel se folosește media națională.';
       } catch (e) { if (cards) cards.innerHTML = '<div style="padding:16px;color:var(--red);">Eroare la încărcarea prețurilor.</div>'; }
     }
     function _fpCards(cur) {
