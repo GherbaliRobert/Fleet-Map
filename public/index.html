@@ -1014,6 +1014,16 @@
     .admin-row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
     .admin-row .meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
     .admin-section-title { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin:4px 0 8px; }
+    /* ─── Panoul Setări: tab-uri ─── */
+    .set-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; border-bottom:1px solid var(--border); }
+    .set-tab { background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-secondary); font-family:inherit; font-size:13px; font-weight:700; padding:9px 13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-bottom:-1px; }
+    .set-tab i { font-size:11px; opacity:.85; }
+    .set-tab:hover { color:var(--text-primary); }
+    .set-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .set-panel { animation:setFade .18s ease; }
+    @keyframes setFade { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+    .set-sec-h { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.4px; margin:0 0 8px; display:flex; align-items:center; gap:6px; }
+    .set-note { font-size:11px; color:var(--text-muted); margin:0 0 14px; line-height:1.5; }
     #draw-toolbar input[type=text], #draw-toolbar input[type=number], #draw-toolbar select { background:var(--bg-dark); border:1px solid var(--border); color:var(--text,#e5e7eb); border-radius:6px; padding:6px 8px; font-size:12px; }
     #draw-toolbar .btn-sm.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     /* Bară restrânsă (în timpul trasării / la cerere): ascunde câmpurile de metadate ca să se vadă harta */
@@ -1669,26 +1679,59 @@ const pozitii = await r.json();</code></pre>
 
         <!-- Setări -->
         <div id="atab-settings" class="admin-tab-content" style="display:none;">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-user"></i> Preferințele tale</div>
-          <div id="us-list" style="margin-bottom:6px;"><div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div></div>
-          <p style="font-size:11px;color:var(--text-muted);margin:0 0 16px;">Aceste setări se aplică doar contului tău. Reset → cade pe default-ul companiei.</p>
+          <div class="set-tabs">
+            <button class="set-tab active" data-stab="prefs" onclick="usTab('prefs')"><i class="fas fa-user"></i> Preferințe</button>
+            <button class="set-tab" data-stab="company" id="set-tab-company" style="display:none;" onclick="usTab('company')"><i class="fas fa-building"></i> Companie</button>
+            <button class="set-tab" data-stab="agents" id="set-tab-agents" style="display:none;" onclick="usTab('agents')"><i class="fas fa-shield-halved"></i> Agenți AI</button>
+            <button class="set-tab" data-stab="thresholds" id="set-tab-thresholds" style="display:none;" onclick="usTab('thresholds')"><i class="fas fa-bell"></i> Praguri</button>
+          </div>
 
-          <div id="us-company-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;"><i class="fas fa-building"></i> Default-uri pentru companie</div>
-            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Aceste valori sunt aplicate userilor companiei care nu și-au setat propriile preferințe.</p>
-            <div id="us-company-list"></div>
+          <!-- Panel: Preferințe -->
+          <div class="set-panel" data-spanel="prefs">
+            <div class="set-sec-h"><i class="fas fa-user"></i> Preferințele tale</div>
+            <div id="us-list" style="margin-bottom:6px;"><div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div></div>
+            <p class="set-note">Aceste setări se aplică doar contului tău. Reset → cade pe default-ul companiei.</p>
+          </div>
 
-            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-shield-halved"></i> Agenți AI activi</div>
-            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
-            <div id="us-agents-list"></div>
-
+          <!-- Panel: Companie -->
+          <div class="set-panel" data-spanel="company" style="display:none;">
+            <div id="us-company-defaults">
+              <div class="set-sec-h"><i class="fas fa-building"></i> Default-uri pentru companie</div>
+              <p class="set-note">Aceste valori sunt aplicate userilor companiei care nu și-au setat propriile preferințe.</p>
+              <div id="us-company-list"></div>
+            </div>
             <div id="us-io-catalog-section" style="display:none;margin:18px 0 0;padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;">
-              <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;"><i class="fas fa-microchip"></i> Catalog IO Teltonika (super-admin)</div>
+              <div class="set-sec-h" style="margin-bottom:4px;"><i class="fas fa-microchip"></i> Catalog IO Teltonika (super-admin)</div>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Editează etichetele și descrierile codurilor IO global pentru toate companiile. Modificările sunt vizibile imediat în panourile vehiculelor.</div>
               <button class="btn-sm btn-primary" onclick="raxOpenIoEditor()"><i class="fas fa-pen-to-square"></i> Deschide editor catalog</button>
             </div>
-            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-bell"></i> Praguri alertă agenți</div>
-            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Pragurile peste/sub care agenții generează alertă. Lasă gol pentru default.</p>
+            <div id="us-fuel-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+              <div class="set-sec-h" style="margin-bottom:6px;"><i class="fas fa-gas-pump"></i> Prețuri combustibil (lei/L)</div>
+              <p class="set-note" style="margin-bottom:6px;">Folosite la calculul costului în rapoarte. Lasă gol → se folosește <b>media națională</b> (auto, zilnic). Lanț: preț pe vehicul → aceste valori → media națională.</p>
+              <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+                <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+                <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+              </div>
+              <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
+                <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel: Agenți AI -->
+          <div class="set-panel" data-spanel="agents" style="display:none;">
+            <div class="set-sec-h"><i class="fas fa-shield-halved"></i> Agenți AI activi</div>
+            <p class="set-note">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
+            <div id="us-agents-list"></div>
+          </div>
+
+          <!-- Panel: Praguri -->
+          <div class="set-panel" data-spanel="thresholds" style="display:none;">
+            <div class="set-sec-h"><i class="fas fa-bell"></i> Praguri alertă agenți</div>
+            <p class="set-note">Pragurile peste/sub care agenții generează alertă. Lasă gol pentru default.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când un vehicul nu trimite date de peste atâtea minute">
                 <span><i class="fas fa-wifi" style="color:var(--accent);font-size:9px;"></i> RA Watch — Offline (minute)</span>
@@ -1719,21 +1762,6 @@ const pozitii = await r.json();</code></pre>
             </label>
           </div>
 
-          <!-- Prețuri combustibil — secțiune proprie, vizibilă/editabilă cu manageFleet (identic cu serverul requireFleet), independent de manageUsers -->
-          <div id="us-fuel-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px;"><i class="fas fa-gas-pump"></i> Prețuri combustibil (lei/L)</div>
-            <p style="font-size:11px;color:var(--text-muted);margin:0 0 6px;">Folosite la calculul costului în rapoarte. Lasă gol → se folosește <b>media națională</b> (auto, zilnic). Lanț: preț pe vehicul → aceste valori → media națională.</p>
-            <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
-              <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
-            </div>
-          </div>
         </div>
 
         <div id="atab-tacho" class="admin-tab-content" style="display:none;"></div>
@@ -3130,6 +3158,10 @@ const pozitii = await r.json();</code></pre>
     function _usRowCompany(t, val) {
       return '<label class="admin-row" style="cursor:pointer;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + _usEsc(t.label) + '</div><div class="meta">' + _usEsc(t.desc) + '</div></div><input type="checkbox" data-cuk="' + t.k + '" ' + (val ? 'checked' : '') + ' onchange="usSetCompanyPref(\'' + t.k + '\', this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"></label>';
     }
+    function usTab(name) {
+      document.querySelectorAll('#atab-settings .set-tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-stab') === name); });
+      document.querySelectorAll('#atab-settings .set-panel').forEach(function (p) { p.style.display = p.getAttribute('data-spanel') === name ? '' : 'none'; });
+    }
     async function loadSettingsTab() {
       // Setările au pagină proprie acum: mută #atab-settings în #settings-host (o singură dată) + afișează-l.
       var _sc = document.getElementById('atab-settings'), _sh = document.getElementById('settings-host');
@@ -3141,9 +3173,13 @@ const pozitii = await r.json();</code></pre>
         box.innerHTML = US_TOGGLES.map(t => _usRow(t, p.effective[t.k], p.source[t.k])).join('');
         // Default-uri companie — doar pentru admin/superadmin/company_admin (manageUsers)
         var canMgr = !!(currentUser && currentUser.permissions && currentUser.permissions.manageUsers);
-        document.getElementById('us-company-section').style.display = canMgr ? 'block' : 'none';
-        // Prețuri combustibil — vizibile/editabile cu manageFleet (identic cu serverul requireFleet), independent de manageUsers
         var canFleet = !!(currentUser && (currentUser.isSuper || (currentUser.permissions && currentUser.permissions.manageFleet)));
+        // Vizibilitatea tab-urilor + sub-secțiunilor după permisiuni („Preferințe" e mereu vizibil)
+        var _usShow = function (id, on) { var e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+        _usShow('set-tab-company', canMgr || canFleet);
+        _usShow('set-tab-agents', canMgr);
+        _usShow('set-tab-thresholds', canMgr);
+        _usShow('us-company-defaults', canMgr);
         var fuelSec = document.getElementById('us-fuel-section');
         if (fuelSec) fuelSec.style.display = canFleet ? 'block' : 'none';
         if (canFleet) usLoadFuelPrices();
@@ -10205,7 +10241,7 @@ const pozitii = await r.json();</code></pre>
         document.getElementById('dash-status').innerHTML =
           '<div class="dash-statbar">' + barHtml + '</div>' +
           '<div class="dash-statleg">' + legHtml + '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:9px;"><i class="fas fa-clock"></i> Ore motor azi: <b>' + (d.totalEngineTime > 0 ? (d.totalEngineTime / 3600).toFixed(1) + ' h' : '0 h') + '</b></div>';
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:9px;"><i class="fas fa-clock"></i> Ore motor azi: <b>' + (d.totalEngineTime > 0 ? formatDuration(d.totalEngineTime) : '0h 0m') + '</b></div>';
 
         var _fn = document.getElementById('dash-fleet-n'); if (_fn) _fn.textContent = '(' + (d.totalDevices || 0) + ')';
 
@@ -10223,7 +10259,7 @@ const pozitii = await r.json();</code></pre>
         document.getElementById('dk-top-km').innerHTML = _prog(d.topKm, 'km', ' km', 'var(--accent)', 'Nicio activitate azi');
         document.getElementById('dk-top-fuel').innerHTML = _prog(d.topFuel, 'fuel', ' L', 'var(--orange)', 'Nicio dată consum');
 
-        // ─── Tabel flotă (pastile status + ore zecimale) ───
+        // ─── Tabel flotă (pastile status + ore h+m) ───
         var _pill = function (bg, col, lbl) { return '<span class="dash-pill" style="background:' + bg + ';color:' + col + ';"><i class="dot" style="background:' + col + ';"></i>' + lbl + '</span>'; };
         const fleetHtml = (d.devices || []).map(function (v) {
           var pill = v.isMoving ? _pill('rgba(63,224,125,.14)', 'var(--green)', 'În mișcare')
@@ -10238,7 +10274,7 @@ const pozitii = await r.json();</code></pre>
             '<td style="color:var(--accent);text-align:right;">' + (v.km > 0 ? v.km : dash) + '</td>' +
             '<td style="color:var(--orange);text-align:right;">' + (v.fuel > 0 ? v.fuel + ' L' + (v.fuelEstimated ? ' <span style="font-size:9px;opacity:.7;">est.</span>' : '') : dash) + '</td>' +
             '<td style="text-align:right;' + speedColor + '">' + (v.maxSpeed > 0 ? v.maxSpeed + ' km/h' : dash) + '</td>' +
-            '<td style="text-align:right;color:var(--text-muted);">' + (v.engineTime > 0 ? (v.engineTime / 3600).toFixed(1) + ' h' : dash) + '</td>' +
+            '<td style="text-align:right;color:var(--text-muted);">' + (v.engineTime > 0 ? formatDuration(v.engineTime) : dash) + '</td>' +
             '<td style="text-align:right;color:var(--text-muted);">' + (v.fuelLevel ? v.fuelLevel + ' L' : dash) + '</td>' +
           '</tr>';
         }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:16px;">Niciun vehicul</td></tr>';
