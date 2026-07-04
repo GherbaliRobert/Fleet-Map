@@ -80,7 +80,7 @@ export function FuelPrice() {
 
                 <div style="padding:4px 16px 24px;font-size:11.5px;color:var(--text-muted);line-height:1.5">
                   Sursa: <b>{cur?.source || 'PretCarburant.ro'}</b> — media națională (CC BY 4.0), actualizată de 2×/zi și acumulată zilnic.
-                  Puncte istorice de referință (ultimul an): <b>GlobalPetrolPrices.com</b>. „Preț companie" = tariful setat în Setări (linia punctată).
+                  Istoric (ultimul an): referințe <b>GlobalPetrolPrices.com</b> + medii lunare din arhive publice de piață. „Preț companie" = tariful setat în Setări (linia punctată).
                 </div>
               </>
             )}

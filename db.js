@@ -417,6 +417,23 @@ async function initDb() {
         ('2026-06-29', 9.41, 8.73, 4.56, 'GlobalPetrolPrices.com', ${Date.now()})
        ON CONFLICT (day) DO NOTHING`
     );
+    // Medii LUNARE reale (arhivă publică de piață) pentru golul iul. 2025 – feb. 2026 — altfel graficul „1 an"
+    // trăgea o linie dreaptă de 9 luni între referințele trimestriale. GPL: fără date lunare (NULL) — frontend-ul
+    // (web+mobil) filtrează null per serie, deci linia GPL doar interpolează peste referințele existente.
+    await client.query(
+      `INSERT INTO fuel_price_history (day, motorina, benzina, gpl, source, updated_at) VALUES
+        ('2025-07-15', 7.56, 7.08, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2025-08-15', 7.74, 7.37, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2025-09-15', 7.81, 7.52, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2025-10-15', 7.65, 7.33, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2025-11-15', 8.05, 7.57, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2025-12-15', 7.65, 7.37, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2026-01-15', 7.95, 7.68, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2026-02-15', 8.16, 7.79, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2026-03-15', 9.73, 8.96, NULL, 'arhivă piață (medie lunară)', ${Date.now()}),
+        ('2026-04-15', 9.02, 8.07, NULL, 'arhivă piață (medie lunară)', ${Date.now()})
+       ON CONFLICT (day) DO NOTHING`
+    );
 
     // Documente vehicul (ITP, RCA, CASCO, Rovinietă, licențe etc.) cu dată expirare
     await client.query(`
