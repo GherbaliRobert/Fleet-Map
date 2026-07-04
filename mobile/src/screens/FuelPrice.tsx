@@ -30,10 +30,15 @@ export function FuelPrice() {
   }, [days]);
 
   const auto = cur?.auto || {}, eff = cur?.effective || {}, comp = cur?.company || {};
+  // Preț național (istoric) + prețul companiei ca linie de referință punctată (override = valoare curentă, nu serie)
   const trend = hist ? {
-    type: 'line', title: 'Preț mediu național (lei/L)',
+    type: 'line', title: 'Preț național vs. prețul companiei (lei/L)',
     labels: hist.map((h) => dayLbl(h.day)),
-    datasets: TYPES.map((t) => ({ label: t.label, data: hist.map((h) => h[t.k]) })),
+    datasets: [
+      ...TYPES.map((t) => ({ label: t.label, data: hist.map((h) => h[t.k]), color: t.color })),
+      ...TYPES.filter((t) => { const v = parseFloat(comp[t.k]); return Number.isFinite(v) && v > 0; })
+        .map((t) => ({ label: t.label + ' (companie)', data: hist.map(() => Number(comp[t.k])), color: t.color, dash: true, fill: false })),
+    ],
   } : null;
   const hasTrend = !!(trend && trend.datasets.some((ds: any) => (ds.data || []).some((x: any) => x != null)));
 

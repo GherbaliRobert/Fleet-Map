@@ -5900,7 +5900,7 @@ const pozitii = await r.json();</code></pre>
         var cur = await fetch('/api/fuel-prices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         var hist = await fetch('/api/fuel-price-history?days=' + _fpDays, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         _fpCards(cur);
-        _fpChart((hist && hist.history) || []);
+        _fpChart((hist && hist.history) || [], (cur && cur.company) || {});
         var note = document.getElementById('fp-note');
         if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Sursa: <b>' + ((cur && cur.source) || 'PretCarburant.ro') + '</b> — media națională (licență CC BY 4.0), actualizată automat de 2×/zi. „Preț companie" = tariful setat de tine în Setări → Prețuri combustibil; altfel se folosește media națională. Istoricul graficului se acumulează zilnic.';
       } catch (e) { if (cards) cards.innerHTML = '<div style="padding:16px;color:var(--red);">Eroare la încărcarea prețurilor.</div>'; }
@@ -5919,11 +5919,19 @@ const pozitii = await r.json();</code></pre>
           '</div>';
       }).join('');
     }
-    function _fpChart(hist) {
+    function _fpChart(hist, comp) {
       if (typeof createChart !== 'function') return;
+      comp = comp || {};
       var labels = hist.map(function (h) { return _fpLabel(h.day); });
       function ds(key, label, color) { return { label: label, data: hist.map(function (h) { return h[key]; }), borderColor: color, backgroundColor: 'transparent', tension: .3, pointRadius: hist.length > 60 ? 0 : 3, spanGaps: true }; }
-      createChart('chart-fuel-price', 'line', { labels: labels, datasets: [ds('motorina', 'Motorină', '#f59e0b'), ds('benzina', 'Benzină', '#3FE07D'), ds('gpl', 'GPL', '#38BDF8')] }, { plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: { beginAtZero: false } } });
+      var datasets = [ds('motorina', 'Motorină', '#f59e0b'), ds('benzina', 'Benzină', '#3FE07D'), ds('gpl', 'GPL', '#38BDF8')];
+      // Prețul companiei (override) = linie orizontală punctată → graficul reflectă modificarea prețului tău
+      // și îl compari cu trendul național. (Overrideul e o valoare curentă, nu o serie istorică.)
+      [{ k: 'motorina', label: 'Motorină (companie)', color: '#f59e0b' }, { k: 'benzina', label: 'Benzină (companie)', color: '#3FE07D' }, { k: 'gpl', label: 'GPL (companie)', color: '#38BDF8' }].forEach(function (r) {
+        var v = parseFloat(comp[r.k]);
+        if (Number.isFinite(v) && v > 0 && labels.length) datasets.push({ label: r.label, data: labels.map(function () { return v; }), borderColor: r.color, backgroundColor: 'transparent', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, tension: 0, spanGaps: true });
+      });
+      createChart('chart-fuel-price', 'line', { labels: labels, datasets: datasets }, { plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: { beginAtZero: false } } });
     }
     function _fpLabel(day) { var p = String(day || '').split('-'); return p.length === 3 ? p[2] + '.' + p[1] : day; }
     // ─── Pagina „Statistici consum" (vederea fuelstats) ───

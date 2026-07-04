@@ -28,10 +28,13 @@ export function ReportChart({ def }: { def: ReportChartDef }) {
     Chart.defaults.font.family = "'Nunito', -apple-system, sans-serif";
 
     const datasets = def.datasets.map((ds, i) => {
-      const c = PALETTE[i % PALETTE.length];
+      const c = (ds as any).color || PALETTE[i % PALETTE.length]; // culoare per-dataset opțională
+      const dashed = !!(ds as any).dash;                          // linie punctată (ex. preț de referință)
+      const noFill = dashed || (ds as any).fill === false;        // linie punctată/de referință → fără umplere
       if (isLine) return {
-        label: ds.label, data: ds.data, borderColor: c, borderWidth: 2.5, tension: 0.35, fill: true,
-        pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: c, pointBorderColor: '#0b0e11', pointBorderWidth: 1.5, pointHitRadius: 18,
+        label: ds.label, data: ds.data, borderColor: c, borderWidth: dashed ? 1.5 : 2.5, tension: dashed ? 0 : 0.35, fill: noFill ? false : true,
+        borderDash: dashed ? [6, 4] : undefined,
+        pointRadius: dashed ? 0 : 3, pointHoverRadius: dashed ? 0 : 6, pointBackgroundColor: c, pointBorderColor: '#0b0e11', pointBorderWidth: 1.5, pointHitRadius: 18,
         backgroundColor: (ctx: any) => {
           const area = ctx.chart.chartArea; if (!area) return c + '22';
           const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
