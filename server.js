@@ -971,7 +971,8 @@ app.get('/api/health', async (req, res) => {
     db: dbOk ? 'up' : 'down',
     mode: process.env.DATABASE_URL ? 'postgres' : 'pglite',
     uptime_s: Math.round((Date.now() - _startedAt) / 1000),
-    version: (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7)
+    version: (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7),
+    fcm: !!_fcm // push nativ (FCM) activ = FIREBASE_SA_JSON setat + init reușit
   });
 });
 
