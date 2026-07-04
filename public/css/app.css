@@ -591,6 +591,9 @@
     .grp-pop-dot.st-off { background:#ef4444; } .grp-pop-dot.st-gone { background:#9ca3af; }
     .grp-pop-plate { font-weight:700; font-size:12px; }
     .grp-pop-st { margin-left:auto; font-size:11px; color:var(--text-muted); }
+    /* Spiderfy: „picioarele" (linii din centru) când o bulă se desface animat în markere */
+    .spider-leg { stroke:var(--accent,#3FE07D); animation:spiderLeg .27s ease-out; }
+    @keyframes spiderLeg { from { stroke-opacity:0; } }
 
     /* Selector pictogramă (modal vehicul) — dropdown collapsat: trigger cu pictograma curentă + grila la click */
     .icon-select { position:relative; }

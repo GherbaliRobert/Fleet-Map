@@ -6362,6 +6362,7 @@ const pozitii = await r.json();</code></pre>
       // Gardă: nu în modul de desenare geofence (drawState != null).
       map.on('click', function () {
         if (drawState) return;
+        if (_spiderActive) { _unspiderfy(true); return; }   // click pe fundal → strânge grupul desfăcut (animat)
         if (window.innerWidth <= 768 && document.body.classList.contains('detail-open')) {
           var p = document.getElementById('detail-panel');
           if (p && !p.classList.contains('peek') && typeof setDetailPeek === 'function') setDetailPeek(true);
@@ -6799,6 +6800,8 @@ const pozitii = await r.json();</code></pre>
     let _groupBubbles = new Map();   // zoneId -> L.marker (bula cu numărul)
     let _groupTimer = null;
     let _btnGroup = null, _btnStyle = null;
+    let _spiderActive = null;        // { bubble, center, items:[{mk,imei,target,leg}], imeis:Set } — grup „desfăcut" animat
+    let _spiderEvtBound = false;     // evenimentele de închidere (zoom/drag) legate o singură dată
 
     function _esc(s) {
       return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -6848,6 +6851,7 @@ const pozitii = await r.json();</code></pre>
     }
 
     function toggleMapGroup() {
+      try { _unspiderfy(false); } catch (e) {}   // dacă un grup e desfăcut, strânge-l înainte de re-grupare
       mapGroupOn = !mapGroupOn;
       localStorage.setItem('mapGroup', mapGroupOn ? '1' : '0');
       updateViewControlUI();                 // întâi UI-ul: butonul se înverzește/revine chiar dacă gruparea dă eroare
@@ -6943,6 +6947,99 @@ const pozitii = await r.json();</code></pre>
         { className: 'grp-pop-wrap', maxHeight: 280 }).openPopup();
     }
 
+    // ─── Spiderfy: la click pe bulă, vehiculele se „despart" animat în jurul centrului ───
+    // (în loc de popup-ul cu listă). Click pe hartă / zoom / drag → se strâng la loc.
+    const _SPIDER_MAX = 24; // peste atât → revenim la popup (prea aglomerat pt. desfacere)
+    function _ringPoints(cp, count, radius, startAngle) {
+      const pts = [], a0 = (startAngle == null ? -Math.PI / 2 : startAngle);
+      for (let i = 0; i < count; i++) {
+        const a = a0 + (i / count) * Math.PI * 2;
+        pts.push(L.point(cp.x + radius * Math.cos(a), cp.y + radius * Math.sin(a)));
+      }
+      return pts;
+    }
+    // Pozițiile țintă (latlng) în jurul centrului: un inel pt. grupuri mici, două inele concentrice pt. cele mari.
+    function _spiderTargets(center, n) {
+      const cp = map.latLngToLayerPoint(center);
+      let pxPts;
+      if (n <= 8) {
+        pxPts = _ringPoints(cp, n, 34 + n * 5);
+      } else {
+        const inner = Math.floor(n * 0.4), outer = n - inner;
+        pxPts = _ringPoints(cp, inner, 46, -Math.PI / 2)
+          .concat(_ringPoints(cp, outer, 80, -Math.PI / 2 + Math.PI / Math.max(1, outer)));
+      }
+      return pxPts.map(function (p) { return map.layerPointToLatLng(p); });
+    }
+    function _spiderfyGroup(bubble) {
+      if (!map) return;
+      _unspiderfy(false);                                    // închide orice desfacere anterioară (instant)
+      const imeis = (bubble._imeis || []).slice();
+      const n = imeis.length;
+      if (!n) return;
+      if (n > _SPIDER_MAX) { _openGroupPopup(bubble); return; } // grup uriaș → listă (nu se desface)
+      const center = bubble.getLatLng();
+      const targets = _spiderTargets(center, n);
+      if (map.hasLayer(bubble)) map.removeLayer(bubble);     // ascunde bula cât timp e desfăcută
+      const items = [], imeiSet = new Set();
+      imeis.forEach(function (imei, i) {
+        const mk = markers.get(imei); if (!mk) return;
+        const leg = L.polyline([center, center], { className: 'spider-leg', color: '#3FE07D', weight: 1.6, opacity: .55, interactive: false }).addTo(map);
+        mk.setLatLng(center);                                // pornesc din centru → animație spre exterior
+        if (!map.hasLayer(mk)) mk.addTo(map);
+        items.push({ mk: mk, imei: imei, target: targets[i], leg: leg });
+        imeiSet.add(imei);
+      });
+      if (!items.length) return;
+      _spiderActive = { bubble: bubble, center: center, items: items, imeis: imeiSet };
+      _bindSpiderClose();
+      let t0 = null; const DUR = 270;                        // desfacere (easeOutCubic)
+      (function frame(now) {
+        if (!_spiderActive) return;                          // anulat între timp
+        if (t0 == null) t0 = now;
+        const p = Math.min(1, (now - t0) / DUR), e = 1 - Math.pow(1 - p, 3);
+        items.forEach(function (it) {
+          const la = center.lat + (it.target.lat - center.lat) * e;
+          const lo = center.lng + (it.target.lng - center.lng) * e;
+          try { it.mk.setLatLng([la, lo]); } catch (_) {}
+          try { it.leg.setLatLngs([center, [la, lo]]); } catch (_) {}
+        });
+        if (p < 1) requestAnimationFrame(frame);
+      })();
+    }
+    function _unspiderfy(animate) {
+      const s = _spiderActive; if (!s) return;
+      _spiderActive = null;                                  // eliberează gărzile (regrupare / update marker) imediat
+      const center = s.center, items = s.items;
+      function cleanup() {
+        items.forEach(function (it) {
+          try { map.removeLayer(it.leg); } catch (_) {}
+          const d = devices.get(it.imei);                    // repune markerul pe poziția REALĂ (nu pe cea strânsă)
+          if (d && d.latitude != null && d.longitude != null) { try { it.mk.setLatLng([d.latitude, d.longitude]); } catch (_) {} }
+        });
+        try { recomputeGrouping(); } catch (_) {}            // re-ascunde markerele grupate + re-afișează bula
+      }
+      if (animate === false) { cleanup(); return; }
+      let t0 = null; const DUR = 160;                        // strângere spre centru (easeIn)
+      (function frame(now) {
+        if (t0 == null) t0 = now;
+        const p = Math.min(1, (now - t0) / DUR), e = p * p;
+        items.forEach(function (it) {
+          const la = it.target.lat + (center.lat - it.target.lat) * e;
+          const lo = it.target.lng + (center.lng - it.target.lng) * e;
+          try { it.mk.setLatLng([la, lo]); } catch (_) {}
+          try { it.leg.setLatLngs([center, [la, lo]]); it.leg.setStyle({ opacity: .55 * (1 - p) }); } catch (_) {}
+        });
+        if (p < 1) requestAnimationFrame(frame); else cleanup();
+      })();
+    }
+    function _bindSpiderClose() {
+      if (_spiderEvtBound || !map) return;
+      _spiderEvtBound = true;
+      map.on('zoomstart', function () { _unspiderfy(false); });
+      map.on('dragstart', function () { _unspiderfy(false); });
+    }
+
     function scheduleGrouping() {
       if (_groupTimer) return;
       _groupTimer = setTimeout(function () { _groupTimer = null; try { recomputeGrouping(); } catch (e) {} }, 180);
@@ -6980,6 +7077,7 @@ const pozitii = await r.json();</code></pre>
     }
     function _recomputeGroupingImpl() {
       if (!map || !markers) return;
+      if (_spiderActive) return;                 // un grup e „desfăcut" (spiderfy) → nu regrupa cât timp e afișat
       const groupingActive = mapGroupOn && !(window._mapSel instanceof Set);
       if (!groupingActive) {
         // grupare oprită (sau multi-select activ) → fără bule; vizibilitate normală, respectând multi-select-ul
@@ -7030,11 +7128,13 @@ const pozitii = await r.json();</code></pre>
         let bubble = _groupBubbles.get(g.id);
         if (!bubble) {
           bubble = L.marker(g.center, { zIndexOffset: 1000 });
-          bubble.on('click', function () { _openGroupPopup(bubble); });
+          bubble.on('click', function () { _spiderfyGroup(bubble); }); // click → se desface animat (spiderfy)
           bubble.addTo(map);
           _groupBubbles.set(g.id, bubble);
           bubble._count = -1;
         }
+        if (!map.hasLayer(bubble)) bubble.addTo(map);  // re-atașează bula dacă a fost scoasă (după o desfacere)
+        bubble._grpId = g.id;
         bubble.setLatLng(g.center);
         if (bubble._count !== count) {
           bubble.setIcon(L.divIcon({
@@ -7107,7 +7207,8 @@ const pozitii = await r.json();</code></pre>
 
       if (markers.has(imei)) {
         const marker = markers.get(imei);
-        marker.setLatLng([latitude, longitude]);
+        // Nu muta markerul cât timp e „desfăcut" din bulă (spiderfy) — l-ar smulge din poziția răsfirată.
+        if (!(_spiderActive && _spiderActive.imeis.has(imei))) marker.setLatLng([latitude, longitude]);
         marker.setIcon(icon);
       } else {
         const marker = L.marker([latitude, longitude], { icon })
