@@ -474,9 +474,9 @@ async function rHos(db, imeis, from, to, opts, devMap) {
     }
     for (const day of Object.keys(byDay).sort()) {
       const d = byDay[day]; const infr = [];
-      if (d.contMax > 4.5) infr.push('continuă ' + d.contMax.toFixed(1) + 'h');
-      if (d.drive / 3600 > 9) infr.push('zilnic ' + (d.drive / 3600).toFixed(1) + 'h');
-      rows.push([dvName, label(devMap, imei), day, fmtDur(d.drive), fmtDur(d.work), fmtDur(d.rest), d.contMax.toFixed(1) + 'h', useTacho ? 'tahograf' : 'GPS (est.)', infr.join('; ') || '✓']);
+      if (d.contMax > 4.5) infr.push('continuă ' + fmtDur(d.contMax * 3600));
+      if (d.drive / 3600 > 9) infr.push('zilnic ' + fmtDur(d.drive));
+      rows.push([dvName, label(devMap, imei), day, fmtDur(d.drive), fmtDur(d.work), fmtDur(d.rest), fmtDur(d.contMax * 3600), useTacho ? 'tahograf' : 'GPS (est.)', infr.join('; ') || '✓']);
       totDrive += d.drive; totWork += d.work; totRest += d.rest; totInfr += infr.length;
       dayDrive[day] = (dayDrive[day] || 0) + d.drive;
     }
@@ -981,7 +981,7 @@ async function rFleetUptime(db, imeis, from, to, opts, devMap) {
     const activeDays = moveDays.size, idleDays = Math.max(0, periodDays - activeDays);
     const ageH = lastTs ? Math.round((Date.now() - lastTs) / 3600000) : null;
     const nm = label(devMap, imei);
-    rows.push([ nm, activeDays + ' / ' + periodDays, idleDays, (maxGap / 3600000).toFixed(1) + ' h', lastTs ? fmtTs(new Date(lastTs).toISOString()) : '—', ageH != null ? ageH + ' h' : '—' ]);
+    rows.push([ nm, activeDays + ' / ' + periodDays, idleDays, fmtDur(maxGap / 1000), lastTs ? fmtTs(new Date(lastTs).toISOString()) : '—', ageH != null ? ageH + ' h' : '—' ]);
     if (activeDays === 0) inactive++;
     if (!pts.length || (ageH != null && ageH > 24)) dark++;
     vIdle.push([nm, idleDays]);

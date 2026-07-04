@@ -6,6 +6,8 @@
   function el(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function num(n, d) { return (n == null || isNaN(n)) ? (d || 0) : n; }
+  // Secunde → „Xh Ym" (ore+minute, nu zecimal). null dacă nu avem secunde (rapoarte vechi) → apelantul cade pe orele zecimale.
+  function hm(sec) { if (sec == null || isNaN(sec)) return null; sec = Math.round(sec); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h > 0 ? (m > 0 ? h + 'h ' + m + 'm' : h + 'h') : m + 'm'; }
 
   var _state = { canManage: false, enabled: true, recipients: [], current: null };
 
@@ -145,9 +147,9 @@
     var kpis = '<div class="wr-kpi">' +
       kpiCard(num(k.vehiclesActive) + ' / ' + num(k.vehiclesTotal), 'Vehicule active', '', 'var(--accent)') +
       kpiCard(num(k.totalKm) + ' km', 'Distanță totală', '', 'var(--accent)') +
-      kpiCard(num(k.totalMovingH) + ' h', 'Ore în mers', num(k.totalTrips) + ' curse', '') +
-      kpiCard(num(k.totalStoppedH) + ' h', 'Ore staționate', '', '') +
-      kpiCard(num(k.totalIdleH) + ' h', 'Ralanti', (k.idleCost ? num(k.idleCost) + ' RON' : ''), 'var(--orange)') +
+      kpiCard(hm(k.totalMovingSec) || (num(k.totalMovingH) + ' h'), 'Ore în mers', num(k.totalTrips) + ' curse', '') +
+      kpiCard(hm(k.totalStoppedSec) || (num(k.totalStoppedH) + ' h'), 'Ore staționate', '', '') +
+      kpiCard(hm(k.totalIdleSec) || (num(k.totalIdleH) + ' h'), 'Ralanti', (k.idleCost ? num(k.idleCost) + ' RON' : ''), 'var(--orange)') +
       (k.totalFuel ? kpiCard(num(k.totalFuel) + ' L', 'Consum', num(k.fuelCost) + ' RON' + (k.vehiclesEstimated ? ' · parțial estimat' : ''), 'var(--orange)') : '') +
       (k.totalFuel ? kpiCard(num(k.avgPer100) + ' L/100km', 'Consum mediu', '', '') : '') +
       (k.co2Tons ? kpiCard(num(k.co2Tons) + ' t', 'CO₂', '', '') : '') +
@@ -176,9 +178,9 @@
       h += '<tr>' +
         '<td class="wr-veh">' + esc(v.name) + (v.plate ? ' <span class="wr-plate">' + esc(v.plate) + '</span>' : '') + '</td>' +
         '<td>' + num(v.km) + '</td>' +
-        '<td>' + num(v.movingH) + ' h</td>' +
-        '<td>' + num(v.stoppedH) + ' h</td>' +
-        '<td>' + num(v.idleH) + ' h</td>' +
+        '<td>' + (hm(v.movingSec) || (num(v.movingH) + ' h')) + '</td>' +
+        '<td>' + (hm(v.stoppedSec) || (num(v.stoppedH) + ' h')) + '</td>' +
+        '<td>' + (hm(v.idleSec) || (num(v.idleH) + ' h')) + '</td>' +
         '<td>' + num(v.trips) + '</td>' +
         '<td>' + (v.maxSpeed ? num(v.maxSpeed) + ' km/h' : '—') + '</td>' +
         '<td>' + (v.liters ? num(v.liters) + ' L' + (v.estimated ? ' <span class="wr-est" title="Estimat din consumul configurat + km">est.</span>' : '') : '—') + '</td>' +

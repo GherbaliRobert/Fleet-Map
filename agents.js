@@ -16,6 +16,13 @@ const FUEL_RETURN_TOL = 1.5;   // toleranță zgomot senzor (procente sau litri)
 const OFFLINE_MIN = 60;        // minute fără poziție = offline (>1h; parcate care trimit o dată/oră NU sunt offline)
 const FUEL_PRICE = 7.5;        // lei/L (estimare pentru costuri)
 const IDLE_BURN_LPH = 1.5;     // L/h consum la ralanti (estimare)
+
+// Ore zecimale → „Xh Ym" (userul vrea ore+minute peste tot în texte, nu „1.6 h").
+function hmH(hours) {
+  const s = Math.max(0, Math.round((hours || 0) * 3600));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h > 0 ? (m > 0 ? h + 'h ' + m + 'm' : h + 'h') : m + 'm';
+}
 const SERVICE_SOON_KM = 1500;  // prag „revizie în curând"
 const TACHO_GRACE_MIN = 10;    // minute cu contact ON dar zero semnal tahograf = neconfigurat
 
@@ -295,7 +302,7 @@ async function raOptimize(ctx) {
   if (fleetIdleH >= 2) {
     const _fp = (ctx && Number(ctx.fuelPrice) > 0) ? Number(ctx.fuelPrice) : FUEL_PRICE; // prețul REAL al companiei (motorină), fallback 7.5
     const wasteL = fleetIdleH * IDLE_BURN_LPH; const cost = wasteL * _fp;
-    findings.push({ imei: null, severity: 'info', agent: 'optimize', fkey: 'opt_fleet_idle', title: 'Flotă: ' + fleetIdleH.toFixed(1) + ' h ralanti azi', body: 'Risipă estimată ~' + wasteL.toFixed(1) + ' L (~' + Math.round(cost) + ' lei). Reducerea ralantiului scade direct costurile.' });
+    findings.push({ imei: null, severity: 'info', agent: 'optimize', fkey: 'opt_fleet_idle', title: 'Flotă: ' + hmH(fleetIdleH) + ' ralanti azi', body: 'Risipă estimată ~' + wasteL.toFixed(1) + ' L (~' + Math.round(cost) + ' lei). Reducerea ralantiului scade direct costurile.' });
   }
   return { findings };
 }
@@ -315,8 +322,8 @@ async function raCompliance(ctx) {
       cont += trips[i].durationSec; daily += trips[i].durationSec; maxCont = Math.max(maxCont, cont);
     }
     const contH = maxCont / 3600, dailyH = daily / 3600;
-    if (contH > 4.5) findings.push({ imei, severity: contH > 5.5 ? 'critical' : 'warning', agent: 'compliance', fkey: 'comp_cont_' + imei, title: name + ': conducere continuă ~' + contH.toFixed(1) + ' h', body: 'Estimativ din GPS. Limita legală: 4h30 de condus fără pauză de 45 min (Reg. CE 561/2006).' });
-    if (dailyH > 9) findings.push({ imei, severity: dailyH > 10 ? 'critical' : 'warning', agent: 'compliance', fkey: 'comp_daily_' + imei, title: name + ': conducere zilnică ~' + dailyH.toFixed(1) + ' h', body: 'Estimativ din GPS. Limita zilnică: 9h (extensibil la 10h de cel mult 2 ori/săptămână).' });
+    if (contH > 4.5) findings.push({ imei, severity: contH > 5.5 ? 'critical' : 'warning', agent: 'compliance', fkey: 'comp_cont_' + imei, title: name + ': conducere continuă ~' + hmH(contH), body: 'Estimativ din GPS. Limita legală: 4h30 de condus fără pauză de 45 min (Reg. CE 561/2006).' });
+    if (dailyH > 9) findings.push({ imei, severity: dailyH > 10 ? 'critical' : 'warning', agent: 'compliance', fkey: 'comp_daily_' + imei, title: name + ': conducere zilnică ~' + hmH(dailyH), body: 'Estimativ din GPS. Limita zilnică: 9h (extensibil la 10h de cel mult 2 ori/săptămână).' });
   }
   return { findings };
 }

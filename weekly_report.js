@@ -50,6 +50,9 @@ async function buildWeeklyData(deps, companyId, imeis, from, to) {
       movingH: +(movingSec / 3600).toFixed(1),
       stoppedH: +(stoppedSec / 3600).toFixed(1),
       idleH: +(((fv.idleSec || 0) / 3600)).toFixed(1),
+      movingSec: Math.round(movingSec),          // secunde brute → UI afișează „Xh Ym"
+      stoppedSec: Math.round(stoppedSec),
+      idleSec: Math.round(fv.idleSec || 0),
       trips: seg.trips.length,
       maxSpeed: Math.round(maxSpeed),
       liters: fv.liters || 0, per100: (fv.per100 != null ? fv.per100 : null), cost: fv.cost || 0, co2Kg: fv.co2Kg || 0,
@@ -64,6 +67,7 @@ async function buildWeeklyData(deps, companyId, imeis, from, to) {
     totalMovingH: +sum('movingH').toFixed(1),
     totalStoppedH: +sum('stoppedH').toFixed(1),
     totalIdleH: +sum('idleH').toFixed(1),
+    totalMovingSec: sum('movingSec'), totalStoppedSec: sum('stoppedSec'), totalIdleSec: sum('idleSec'),
     totalTrips: sum('trips'),
     totalFuel: fuel.kpi.totalLiters, fuelCost: fuel.kpi.fuelCost, co2Tons: fuel.kpi.co2Tons,
     avgPer100: fuel.kpi.avgPer100, idleCost: fuel.kpi.idleCost, idleLiters: fuel.kpi.idleLiters,
