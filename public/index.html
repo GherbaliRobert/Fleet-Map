@@ -7116,7 +7116,7 @@ const pozitii = await r.json();</code></pre>
     }
     // Clusterizează vehiculele „libere" (fără hotspot) care sunt la ≤ maxM metri unele de altele (≥2 → grup).
     function _proximityClusters(items, maxM) {
-      maxM = maxM || 80;
+      maxM = maxM || 100;
       const clusters = [], used = new Set();
       for (let i = 0; i < items.length; i++) {
         if (used.has(items[i].imei)) continue;
@@ -7152,11 +7152,12 @@ const pozitii = await r.json();</code></pre>
         return;
       }
       // strânge vehiculele: pe zone (hotspot) + cele „libere" (fără zonă) pt. gruparea de proximitate.
-      // Selectatul/urmăritul rămân individuale.
+      // Doar vehiculul URMĂRIT activ (follow) rămâne individual; cel doar selectat poate intra în bulă
+      // (altfel, la o flotă mică, selectarea unei mașini ar desface perechea și n-ar mai grupa nimic).
       const byZone = new Map(); const loose = [];
       devices.forEach(function (d, imei) {
         if (!markers.has(imei) || d.latitude == null || d.longitude == null) return;
-        if (imei === selectedImei || imei === window._followImei) return;
+        if (imei === window._followImei) return;
         const z = zoneOfPoint(d.latitude, d.longitude);
         if (z) {
           if (!byZone.has(z.id)) byZone.set(z.id, { zone: z, imeis: [] });
@@ -7168,11 +7169,19 @@ const pozitii = await r.json();</code></pre>
       // grupuri = zone cu ≥2  +  clustere de proximitate cu ≥2 (vehicule una lângă alta, fără hotspot)
       const groups = [];
       byZone.forEach(function (entry) {
-        if (entry.imeis.length < 2) return;
-        const c = entry.zone.kind === 'circle' ? entry.zone.center : _polyCenter(entry.zone.ring);
-        groups.push({ id: 'z' + entry.zone.id, name: entry.zone.name, center: c, imeis: entry.imeis });
+        if (entry.imeis.length >= 2) {
+          const c = entry.zone.kind === 'circle' ? entry.zone.center : _polyCenter(entry.zone.ring);
+          groups.push({ id: 'z' + entry.zone.id, name: entry.zone.name, center: c, imeis: entry.imeis });
+        } else {
+          // zonă cu un singur vehicul → nu-l „închide" în zonă; trece-l la proximitate ca să se poată uni
+          // cu o mașină aflată la câțiva metri, chiar dacă e taman peste marginea geofence-ului.
+          entry.imeis.forEach(function (imei) {
+            const d = devices.get(imei);
+            if (d && d.latitude != null && d.longitude != null) loose.push({ imei: imei, lat: d.latitude, lng: d.longitude });
+          });
+        }
       });
-      _proximityClusters(loose, 80).forEach(function (cl) {
+      _proximityClusters(loose, 100).forEach(function (cl) {
         groups.push({ id: 'p' + cl.key, name: 'Vehicule apropiate', center: cl.center, imeis: cl.imeis });
       });
       // ascunde vehiculele grupate, arată restul
@@ -7455,7 +7464,7 @@ const pozitii = await r.json();</code></pre>
         }
       });
       updateDeviceList();
-      recomputeGrouping(); // selectatul iese din bulă și rămâne vizibil individual
+      recomputeGrouping(); // reevaluează bulele (selectatul poate rămâne grupat; doar cel urmărit e individual)
       openDetailPanel(imei, 'info');
     }
 
