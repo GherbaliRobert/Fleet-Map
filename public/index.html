@@ -398,11 +398,14 @@
         #rep-history-wrap { border: none; overflow-x: hidden; }
         #rep-history thead { display: none; }
         #rep-history, #rep-history tbody { display: block; width: 100%; }
-        #rep-history tbody tr { display: block; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 10px 13px; margin-bottom: 10px; }
+        #rep-history tbody tr { display: block; position: relative; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 10px 13px; margin-bottom: 10px; }
         #rep-history td { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; border: none; padding: 4px 0; font-size: 12.5px; white-space: normal; text-align: right; }
         #rep-history td::before { content: attr(data-label); color: var(--text-muted); font-weight: 600; font-size: 11px; text-align: left; }
-        #rep-history td:first-child { font-size: 14px; font-weight: 700; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px solid var(--border); justify-content: flex-start; }
-        #rep-history td:first-child::before { content: none; }
+        #rep-history td.rh-cbcell { position: absolute; top: 10px; right: 11px; padding: 0; margin: 0; display: block; }
+        #rep-history td.rh-cbcell::before { content: none; }
+        #rep-history .rh-cb { width: 20px; height: 20px; }
+        #rep-history td.rh-name { font-size: 14px; font-weight: 700; padding-bottom: 8px; margin-bottom: 6px; padding-right: 30px; border-bottom: 1px solid var(--border); justify-content: flex-start; }
+        #rep-history td.rh-name::before { content: none; }
         #rep-history td:last-child { justify-content: flex-start; gap: 8px; flex-wrap: wrap; padding-top: 8px; }
         #rep-history td:last-child::before { content: none; }
         #rep-history .rh-act { min-height: 36px; }
@@ -1132,6 +1135,9 @@
     .rh-act.rh-view { font-weight:700; }
     .rh-act i { font-size:12px; }
     .rh-act-xls i { color:#3FE07D; } .rh-act-pdf i { color:#dc2626; } .rh-act-del i { color:#dc2626; }
+    #rep-history td.rh-cbcell { text-align:center; }
+    .rh-cb { width:17px; height:17px; cursor:pointer; accent-color:var(--accent); vertical-align:middle; }
+    #rep-history tbody tr:has(.rh-cb:checked) { background:rgba(63,224,125,.10); }
   </style>
 
   <!-- Users Modal -->
@@ -2017,12 +2023,20 @@ const pozitii = await r.json();</code></pre>
       <div id="rep-tab-history" style="display:none;flex-direction:column;flex:1;min-height:0;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
           <span style="font-size:12.5px;color:var(--text-muted);"><i class="fas fa-circle-info" style="color:var(--accent);"></i> Rapoartele generate rămân aici 7 zile, apoi se șterg automat.</span>
-          <button class="btn-sm" style="margin-left:auto;" onclick="loadReportHistory()"><i class="fas fa-rotate"></i> Reîmprospătează</button>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;">
+            <div id="rh-bulkbar" style="display:none;align-items:center;gap:8px;">
+              <span id="rh-selcount" style="font-size:12.5px;color:var(--text-muted);font-weight:700;">0 selectate</span>
+              <button class="btn-sm" onclick="rhBulkDelete()" style="border-color:#dc2626;color:#dc2626;font-weight:700;"><i class="fas fa-trash"></i> Șterge selectate</button>
+              <button class="btn-sm" onclick="rhClearSel()"><i class="fas fa-xmark"></i> Anulează</button>
+            </div>
+            <button class="btn-sm" id="rh-selall-btn" onclick="rhToggleSelectAll()"><i class="fas fa-check-double"></i> Selectează tot</button>
+            <button class="btn-sm" onclick="loadReportHistory()"><i class="fas fa-rotate"></i> Reîmprospătează</button>
+          </div>
         </div>
         <div id="rep-history-wrap" style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;min-height:120px;">
           <table id="rep-history" style="width:100%;border-collapse:collapse;">
             <thead><tr>
-              <th>Denumire raport</th><th>Perioada</th><th>Data generării</th><th>Vehicule</th><th>Stare</th><th>Disponibil până la</th><th>Acțiuni</th>
+              <th class="rh-cbhead" style="width:36px;text-align:center;"></th><th>Denumire raport</th><th>Perioada</th><th>Data generării</th><th>Vehicule</th><th>Stare</th><th>Disponibil până la</th><th>Acțiuni</th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -5091,7 +5105,7 @@ const pozitii = await r.json();</code></pre>
       var tb = document.querySelector('#rep-history tbody');
       var empty = document.getElementById('rep-history-empty');
       var wrap = document.getElementById('rep-history-wrap');
-      if (tb) tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:18px;">Se încarcă…</td></tr>';
+      if (tb) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:18px;">Se încarcă…</td></tr>';
       var list = [];
       try { list = await fetch('/api/reports/history', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
       catch (e) { list = []; }
@@ -5100,6 +5114,7 @@ const pozitii = await r.json();</code></pre>
         if (tb) tb.innerHTML = '';
         if (wrap) wrap.style.display = 'none';
         if (empty) empty.style.display = 'block';
+        rhUpdateBulkBar(); // fără rapoarte → ascunde „Selectează tot" + bara
         return;
       }
       if (wrap) wrap.style.display = 'block';
@@ -5114,7 +5129,8 @@ const pozitii = await r.json();</code></pre>
         var n = h.imei ? 1 : (h.vehicle_count || 0);
         var veh = n + ' ' + (n === 1 ? 'vehicul' : 'vehicule');
         return '<tr>' +
-          '<td data-label="Denumire raport">' + E(h.label || h.report_type) + '</td>' +
+          '<td class="rh-cbcell" data-label="Selectează"><input type="checkbox" class="rh-cb" value="' + h.id + '" onclick="rhUpdateBulkBar()"></td>' +
+          '<td class="rh-name" data-label="Denumire raport">' + E(h.label || h.report_type) + '</td>' +
           '<td data-label="Perioada">' + E(period) + '</td>' +
           '<td data-label="Data generării">' + E(repFmtDT(h.generated_at)) + '</td>' +
           '<td data-label="Vehicule">' + E(veh) + '</td>' +
@@ -5128,6 +5144,7 @@ const pozitii = await r.json();</code></pre>
           '</td>' +
         '</tr>';
       }).join('');
+      rhUpdateBulkBar(); // reset bară + buton (lista re-randată → bifele dispar)
     }
     async function repViewHistory(id) {
       var data;
@@ -5160,6 +5177,37 @@ const pozitii = await r.json();</code></pre>
     async function repDeleteHistory(id) {
       if (!await raConfirm('Ștergi acest raport din istoric?')) return;
       try { await fetch('/api/reports/history/' + id, { method: 'DELETE', credentials: 'same-origin' }); } catch (e) {}
+      loadReportHistory();
+    }
+    // ─── Selecție multiplă în Istoric (bife per rând + „Selectează tot" + „Șterge selectate") ───
+    function rhCheckboxes() { return Array.prototype.slice.call(document.querySelectorAll('#rep-history .rh-cb')); }
+    function rhSelectedIds() { return rhCheckboxes().filter(function (c) { return c.checked; }).map(function (c) { return c.value; }); }
+    function rhUpdateBulkBar() {
+      var boxes = rhCheckboxes(), sel = boxes.filter(function (c) { return c.checked; });
+      var bar = document.getElementById('rh-bulkbar'), cnt = document.getElementById('rh-selcount'), btn = document.getElementById('rh-selall-btn');
+      if (cnt) cnt.textContent = sel.length + ' ' + (sel.length === 1 ? 'selectat' : 'selectate');
+      if (bar) bar.style.display = sel.length ? 'flex' : 'none';
+      if (btn) {
+        var allSel = boxes.length && sel.length === boxes.length;
+        btn.innerHTML = allSel ? '<i class="fas fa-square-xmark"></i> Deselectează tot' : '<i class="fas fa-check-double"></i> Selectează tot';
+        btn.style.display = boxes.length ? '' : 'none';
+      }
+    }
+    function rhToggleSelectAll() {
+      var boxes = rhCheckboxes(); if (!boxes.length) return;
+      var allSel = boxes.every(function (c) { return c.checked; });
+      boxes.forEach(function (c) { c.checked = !allSel; });
+      rhUpdateBulkBar();
+    }
+    function rhClearSel() { rhCheckboxes().forEach(function (c) { c.checked = false; }); rhUpdateBulkBar(); }
+    async function rhBulkDelete() {
+      var ids = rhSelectedIds();
+      if (!ids.length) return;
+      var msg = ids.length === 1 ? 'Ștergi raportul selectat din istoric?' : 'Ștergi cele ' + ids.length + ' rapoarte selectate din istoric?';
+      if (!await raConfirm(msg)) return;
+      await Promise.all(ids.map(function (id) {
+        return fetch('/api/reports/history/' + id, { method: 'DELETE', credentials: 'same-origin' }).catch(function () {});
+      }));
       loadReportHistory();
     }
     // ─── Rapoarte programate ───
