@@ -12924,9 +12924,11 @@ const pozitii = await r.json();</code></pre>
     window.raxPrintInvoice = async function (paymentId) {
       var p = (_billingData || []).find(function (x) { return x.id === paymentId; });
       if (!p) { if (window.raxToast) raxToast('Plată negăsită', 'error'); return; }
+      var w = window.open('', '_blank', 'width=880,height=980');
+      if (!w) { if (window.raxToast) raxToast('Permite pop-up-urile pentru a vedea documentul', 'error'); return; }
       var co = (companiesCache || []).find(function (c) { return c.id === p.company_id; }) || {};
       var iss = await _raxGetIssuer();
-      _raxOpenInvoiceWindow(_raxBuildInvoiceHtml(p, co, iss));
+      w.document.open(); w.document.write(_raxBuildInvoiceHtml(p, co, iss)); w.document.close();
     };
     // Admin firmă: factura unei plăți PROPRII (companie + emitent din răspunsul /api/billing/my-invoices).
     window.raxPrintMyInvoice = function (paymentId) {
@@ -13973,11 +13975,15 @@ const pozitii = await r.json();</code></pre>
       box.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
     };
     window.raxPrintFiscalInvoice = async function (id) {
+      var w = window.open('', '_blank', 'width=880,height=980');
+      if (!w) { if (window.raxToast) raxToast('Permite pop-up-urile pentru a vedea factura', 'error'); return; }
+      try { w.document.write('<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;padding:40px;color:#64748b">Se încarcă factura…</body>'); } catch (e) {}
       try {
         var inv = await fetch('/api/invoices/' + id, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (!inv || inv.error) { if (window.raxToast) raxToast((inv && inv.error) || 'Factură negăsită', 'error'); return; }
-        _raxOpenInvoiceWindow(_invFiscalHtml(inv, await _raxGetIssuer()));
-      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+        if (!inv || inv.error) { try { w.close(); } catch (e) {} if (window.raxToast) raxToast((inv && inv.error) || 'Factură negăsită', 'error'); return; }
+        var iss = await _raxGetIssuer();
+        w.document.open(); w.document.write(_invFiscalHtml(inv, iss)); w.document.close();
+      } catch (e) { try { w.close(); } catch (_) {} if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
     window.raxInvoiceMarkPaid = async function (id) {
       if (!await raConfirm('Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea și se extinde accesul companiei.')) return;
@@ -14082,7 +14088,7 @@ const pozitii = await r.json();</code></pre>
         document.getElementById('rax-geninv-overlay').classList.remove('open');
         if (window.raxToast) raxToast('Factură emisă: ' + ((j.invoice && j.invoice.full_number) || '') + ' ✓', 'success');
         raxLoadBilling();
-        if (j.invoice && j.invoice.id) raxPrintFiscalInvoice(j.invoice.id);
+        // factura se deschide din listă (butonul 🖨) — window.open imediat după emitere e blocat ca popup
       } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-invoice-dollar"></i> Emite factura'; } }
     };
 
@@ -14119,12 +14125,13 @@ const pozitii = await r.json();</code></pre>
 
     // Link de plată cu cardul (Stripe) pentru o factură — deschide checkout-ul Stripe într-un tab nou.
     window.raxInvoicePayLink = async function (id) {
+      var w = window.open('', '_blank');
       try {
         var r = await fetch('/api/invoices/' + id + '/pay-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: '{}' });
         var j = await r.json().catch(function () { return {}; });
-        if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); else alert(j.error || 'Eroare'); return; }
-        if (j.url) window.open(j.url, '_blank'); else if (window.raxToast) raxToast('Link indisponibil', 'error');
-      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+        if (!r.ok || j.error) { try { if (w) w.close(); } catch (e) {} if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
+        if (j.url && w) { w.location = j.url; } else if (j.url) { window.location.href = j.url; }
+      } catch (e) { try { if (w) w.close(); } catch (_) {} if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
     // ─── Facturare automată: status integrări + rulare manuală + toggle per companie ───
     window.raxLoadBillingAutoConfig = async function () {
