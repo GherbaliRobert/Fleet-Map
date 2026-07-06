@@ -238,7 +238,7 @@ function FiscalInvoiceSheet({ inv, onClose, onChanged }: { inv: any; onClose: ()
   );
 }
 
-// Generează + emite o factură fiscală: companie + lună → draft (linii calculate) → emite.
+// Generează + emite o factură fiscală: companie + lună → draft (linii EDITABILE + montaj/dispozitiv) → emite.
 function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
   const opts = (companies || []).filter((c: any) => !c.is_demo);
   const now = new Date();
@@ -246,23 +246,34 @@ function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
   const [cid, setCid] = useState<string>(String((opts[0] && opts[0].id) || ''));
   const [mon, setMon] = useState(now.getMonth() + 1);
   const [yr, setYr] = useState(now.getFullYear());
-  const [draft, setDraft] = useState<any | null>(null);
+  const [draft, setDraft] = useState<any | null>(null);   // { issuer, client, vatRate }
+  const [lines, setLines] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const vr = draft?.vatRate != null ? draft.vatRate : 19;
+  const recalc = (l: any) => { const net = Math.round((Number(l.qty) || 0) * (Number(l.unitPrice) || 0) * 100) / 100; return { ...l, net, vat: Math.round(net * vr) / 100, vatRate: vr }; };
+  const subtotal = lines.reduce((s, l) => s + (Number(l.net) || 0), 0);
+  const vatTotal = lines.reduce((s, l) => s + (Number(l.vat) || 0), 0);
+  const setLine = (i: number, k: string, v: any) => setLines((ls) => ls.map((l, idx) => idx === i ? recalc({ ...l, [k]: k === 'desc' ? v : (Number(v) || 0) }) : l));
+  const addLine = (desc = '', price = 0) => setLines((ls) => [...ls, recalc({ desc, qty: 1, unitPrice: price, vatRate: vr })]);
+  const delLine = (i: number) => setLines((ls) => ls.filter((_, idx) => idx !== i));
+
   async function calc() {
     if (!cid) { showToast('Alege o companie', true); return; }
-    setLoading(true); setDraft(null);
-    try { const d = await Api.invoiceDraft(parseInt(cid)); setDraft(d); }
+    setLoading(true); setDraft(null); setLines([]);
+    try { const d = await Api.invoiceDraft(parseInt(cid)); setDraft(d); setLines((d.lines || []).map(recalc)); }
     catch (e: any) { showToast(e?.message || 'Eroare la calcul', true); } finally { setLoading(false); }
   }
   async function issue() {
-    if (!draft || !(draft.lines || []).length) { showToast('Calculează întâi liniile', true); return; }
-    if (!(draft.issuer && draft.issuer.name && draft.issuer.cui)) { showToast('Completează „Date emitent" (nume + CUI)', true); return; }
+    const valid = lines.filter((l) => (l.desc || '').trim() && (Number(l.qty) || 0) > 0);
+    if (!valid.length) { showToast('Adaugă cel puțin o linie validă', true); return; }
+    if (!(draft?.issuer && draft.issuer.name && draft.issuer.cui)) { showToast('Completează „Date emitent" (nume + CUI)', true); return; }
     setSaving(true);
     const ps = new Date(yr, mon - 1, 1).getTime(), pe = new Date(yr, mon, 0, 23, 59, 0).getTime();
-    try { const r = await Api.issueInvoice({ companyId: parseInt(cid), periodStart: ps, periodEnd: pe, lines: draft.lines }); showToast('Factură emisă: ' + ((r.invoice && r.invoice.full_number) || '')); onIssued(); }
+    try { const r = await Api.issueInvoice({ companyId: parseInt(cid), periodStart: ps, periodEnd: pe, lines: valid }); showToast('Factură emisă: ' + ((r.invoice && r.invoice.full_number) || '')); onIssued(); }
     catch (e: any) { showToast(e?.message || 'Eroare la emitere', true); } finally { setSaving(false); }
   }
+  const qbtn = 'padding:6px 9px;font-size:12px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';
   return (
     <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
       <div class="sheet">
@@ -270,7 +281,7 @@ function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
         <div class="sheet-body">
           <div class="frm">
             <div class="fld"><label>Companie (client)</label>
-              <select value={cid} onChange={(e: any) => { setCid(e.target.value); setDraft(null); }}>{opts.map((c: any) => <option value={c.id}>{c.name}</option>)}</select>
+              <select value={cid} onChange={(e: any) => { setCid(e.target.value); setDraft(null); setLines([]); }}>{opts.map((c: any) => <option value={c.id}>{c.name}</option>)}</select>
             </div>
             <div class="frm-row">
               <div class="fld"><label>Luna</label><select value={String(mon)} onChange={(e: any) => setMon(parseInt(e.target.value))}>{MON.map((m, i) => <option value={i + 1}>{m}</option>)}</select></div>
@@ -279,11 +290,21 @@ function GenerateInvoiceSheet({ companies, onClose, onIssued }: any) {
             <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--accent)" disabled={loading} onClick={calc}>{loading ? 'Se calculează…' : 'Calculează liniile'}</button>
             {draft && (
               <div style="margin-top:12px">
-                <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px">Client: <b>{draft.client?.name}</b> · TVA {draft.vatRate}%</div>
-                {(draft.lines || []).map((l: any) => (
-                  <div class="bill-kv"><span>{l.desc} ({l.qty} × {money2(l.unitPrice)})</span><b>{money2(l.net)}</b></div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">Client: <b>{draft.client?.name}</b> · TVA {vr}% · editează liniile / adaugă montaj & dispozitiv</div>
+                {lines.map((l, i) => (
+                  <div style="display:flex;gap:5px;align-items:center;margin-bottom:6px">
+                    <input style="flex:2;min-width:0" value={l.desc} onInput={(e: any) => setLine(i, 'desc', e.target.value)} placeholder="Descriere" />
+                    <input style="width:42px;text-align:center" type="number" value={l.qty} onInput={(e: any) => setLine(i, 'qty', e.target.value)} />
+                    <input style="width:62px;text-align:right" type="number" value={l.unitPrice} onInput={(e: any) => setLine(i, 'unitPrice', e.target.value)} />
+                    <button class="btn" style="padding:6px 8px;background:transparent;border:1px solid var(--red);color:var(--red)" onClick={() => delLine(i)}>×</button>
+                  </div>
                 ))}
-                <div class="bill-total"><span>Total (cu TVA)</span><b>{money2(draft.total)} lei</b></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+                  <button class="btn" style={qbtn} onClick={() => addLine('Dispozitiv GPS (echipament)')}>+ Dispozitiv</button>
+                  <button class="btn" style={qbtn} onClick={() => addLine('Montaj / instalare GPS')}>+ Montaj</button>
+                  <button class="btn" style={qbtn} onClick={() => addLine()}>+ Linie</button>
+                </div>
+                <div class="bill-total"><span>Total (cu TVA)</span><b>{money2(subtotal + vatTotal)} lei</b></div>
                 <div class="frm-actions" style="margin-top:12px"><button class="btn btn-primary" disabled={saving} onClick={issue}>{saving ? 'Se emite…' : 'Emite factura'}</button></div>
               </div>
             )}
