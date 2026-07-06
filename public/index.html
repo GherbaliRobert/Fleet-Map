@@ -13891,7 +13891,7 @@ const pozitii = await r.json();</code></pre>
         var act = '<button class="rax-ico-btn" title="Vezi / PDF" onclick="raxPrintFiscalInvoice(' + v.id + ')"><i class="fas fa-print"></i></button> <button class="rax-ico-btn" title="Vezi XML (e-Factura)" onclick="raxEfacturaView(' + v.id + ')"><i class="fas fa-code"></i></button> ';
         if (v.status !== 'canceled' && v.efactura_status !== 'validated') act += '<button class="rax-ico-btn" title="Trimite la ANAF" onclick="raxEfacturaSend(' + v.id + ')"><i class="fas fa-paper-plane"></i></button> ';
         if (v.efactura_status === 'uploaded') act += '<button class="rax-ico-btn" title="Verifică status ANAF" onclick="raxEfacturaStatus(' + v.id + ')"><i class="fas fa-rotate"></i></button> ';
-        if (v.status !== 'paid' && v.status !== 'canceled') act += '<button class="rax-ico-btn" title="Marchează plătită" onclick="raxInvoiceMarkPaid(' + v.id + ')"><i class="fas fa-check"></i></button> <button class="rax-ico-btn danger" title="Anulează" onclick="raxInvoiceCancel(' + v.id + ')"><i class="fas fa-ban"></i></button>';
+        if (v.status !== 'paid' && v.status !== 'canceled') act += '<button class="rax-ico-btn" title="Link plată card (Stripe)" onclick="raxInvoicePayLink(' + v.id + ')"><i class="fas fa-credit-card"></i></button> <button class="rax-ico-btn" title="Marchează plătită" onclick="raxInvoiceMarkPaid(' + v.id + ')"><i class="fas fa-check"></i></button> <button class="rax-ico-btn danger" title="Anulează" onclick="raxInvoiceCancel(' + v.id + ')"><i class="fas fa-ban"></i></button>';
         return '<tr>' +
           '<td style="font-weight:700;white-space:nowrap;">' + esc(v.full_number || '') + '</td>' +
           '<td><strong>' + esc(v.company_name || ('#' + v.company_id)) + '</strong></td>' +
@@ -14051,6 +14051,15 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { el.innerHTML = ''; }
     };
 
+    // Link de plată cu cardul (Stripe) pentru o factură — deschide checkout-ul Stripe într-un tab nou.
+    window.raxInvoicePayLink = async function (id) {
+      try {
+        var r = await fetch('/api/invoices/' + id + '/pay-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: '{}' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); else alert(j.error || 'Eroare'); return; }
+        if (j.url) window.open(j.url, '_blank'); else if (window.raxToast) raxToast('Link indisponibil', 'error');
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
     window.raxSetPlan = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
       var plan = prompt('Plan pentru „' + (c.name || id) + '":\nscrie  start  /  pro  /  premium  /  custom', c.plan || 'start');

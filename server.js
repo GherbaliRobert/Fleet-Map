@@ -2592,8 +2592,21 @@ app.post('/api/billing/webhook', async (req, res) => {
   try {
     const obj = (event.data && event.data.object) || {};
     if (event.type === 'checkout.session.completed') {
-      const companyId = obj.client_reference_id ? parseInt(obj.client_reference_id) : null;
-      if (companyId) await db.setCompanyBilling(companyId, { status: 'active', customerId: obj.customer, subscriptionId: obj.subscription });
+      const invoiceId = (obj.metadata && obj.metadata.invoiceId) ? parseInt(obj.metadata.invoiceId) : null;
+      if (invoiceId && (obj.payment_status === 'paid' || obj.mode === 'payment')) {
+        // Plată ONE-TIME a unei facturi cu cardul → marchează factura plătită + înregistrează încasarea + extinde accesul.
+        try {
+          const inv = await db.getInvoice(invoiceId);
+          if (inv && inv.status !== 'paid') {
+            const pay = await db.recordPayment({ companyId: inv.company_id, amountRon: Number(inv.total) || null, periodStart: inv.period_start, periodEnd: inv.period_end, method: 'card', note: 'Stripe card · Factură ' + inv.full_number, createdBy: null });
+            await db.updateInvoice(inv.id, { status: 'paid', paidAt: Date.now(), paymentId: pay.id, stripeInvoiceId: obj.payment_intent || obj.id });
+            _invalidateAccessCache(inv.company_id);
+          }
+        } catch (e) { console.warn('[BILLING] invoice pay:', e.message); }
+      } else {
+        const companyId = obj.client_reference_id ? parseInt(obj.client_reference_id) : null;
+        if (companyId) await db.setCompanyBilling(companyId, { status: 'active', customerId: obj.customer, subscriptionId: obj.subscription });
+      }
     } else if (event.type.indexOf('customer.subscription.') === 0) {
       const co = await db.getCompanyByStripeCustomer(obj.customer);
       if (co) {
@@ -6715,6 +6728,21 @@ app.get('/api/invoices/:id/efactura/status', requireAuth, requireSuperadmin, asy
     await db.updateInvoice(inv.id, { efacturaStatus: st, efacturaError: (st === 'error' ? (r.stare || 'nok') : null) });
     res.json({ ok: true, stare: r.stare, status: st, idDescarcare: r.idDescarcare });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Link de plată cu CARDUL (Stripe, one-time) pentru o factură. Super-admin (generează link de trimis) SAU client (propria factură).
+app.post('/api/invoices/:id/pay-link', requireAuth, withCompany, async (req, res) => {
+  try {
+    if (!(billing && billing.enabled())) return res.status(503).json({ error: 'Plata cu cardul nu e configurată (STRIPE_SECRET_KEY).' });
+    const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
+    if (!req.isSuper && inv.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
+    if (inv.status === 'paid') return res.status(400).json({ error: 'Factura e deja plătită' });
+    if (inv.status === 'canceled') return res.status(400).json({ error: 'Factură anulată' });
+    const co = await db.getCompanyById(inv.company_id);
+    const base = appBaseUrl(req);
+    const sess = await billing.createInvoiceCheckout({ invoice: inv, customerEmail: (co && co.contact_email) || null, successUrl: base + '/app?pay=success', cancelUrl: base + '/app?pay=cancel' });
+    auditReq(req, 'pay-link', 'invoice', inv.id, { total: inv.total });
+    res.json({ url: sess.url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // ─── Control costuri (cheltuielile NOASTRE de platformă) — STRICT super-admin ───
 // ─── Backup date business (super-admin) — vezi backup.js + restore-backup.js ───

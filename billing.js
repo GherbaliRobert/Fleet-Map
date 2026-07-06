@@ -52,6 +52,31 @@ async function createCheckout({ priceId, quantity, customerEmail, customerId, su
   return { id: s.id, url: s.url };
 }
 
+// Checkout ONE-TIME pentru o factură emisă (plată cu cardul a sumei totale). metadata.invoiceId → webhook o marchează plătită.
+async function createInvoiceCheckout({ invoice, customerEmail, successUrl, cancelUrl }) {
+  const amount = Math.round((Number(invoice.total) || 0) * 100); // în bani (RON*100)
+  if (amount <= 0) throw new Error('Sumă factură invalidă');
+  const body = {
+    mode: 'payment',
+    'line_items': { '0': {
+      'price_data': {
+        currency: (invoice.currency || 'RON').toLowerCase(),
+        'product_data': { name: 'Factură ' + (invoice.full_number || '') + ' — abonament monitorizare GPS RA Tracks' },
+        unit_amount: amount
+      },
+      quantity: 1
+    } },
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    client_reference_id: invoice.company_id != null ? String(invoice.company_id) : undefined,
+    'metadata': { invoiceId: String(invoice.id), fullNumber: invoice.full_number || '' },
+    'payment_intent_data': { 'metadata': { invoiceId: String(invoice.id) } }
+  };
+  if (customerEmail) body.customer_email = customerEmail;
+  const s = await stripe('POST', '/checkout/sessions', body);
+  return { id: s.id, url: s.url };
+}
+
 // Portal de self-service (schimbă card, anulează, vezi facturi)
 async function createPortal({ customerId, returnUrl }) {
   const s = await stripe('POST', '/billing_portal/sessions', { customer: customerId, return_url: returnUrl });
@@ -75,4 +100,4 @@ function verifyWebhook(rawBody, sigHeader) {
   return JSON.parse(payload);
 }
 
-module.exports = { enabled, createCheckout, createPortal, verifyWebhook };
+module.exports = { enabled, createCheckout, createInvoiceCheckout, createPortal, verifyWebhook };
