@@ -140,6 +140,7 @@ const backup = require('./backup');
 const errortrack = require('./errortrack');
 errortrack.init();
 let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
+let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
 const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
 // Regula alertei de viteză: prag MINIM (sub asta nu alertăm niciodată — fără absurdități în zone rezidențiale)
 // + MARJĂ peste limită (toleranță). Alertă DOAR dacă speed > max(BASE, limita configurată) + MARGIN.
@@ -3679,7 +3680,7 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     if (b.invoice_issuer !== undefined && b.invoice_issuer && typeof b.invoice_issuer === 'object') {
       const i = b.invoice_issuer; const S = (v, n) => String(v == null ? '' : v).slice(0, n);
       const _vr = parseFloat(i.vat_rate); const vatRate = (Number.isFinite(_vr) && _vr >= 0 && _vr <= 100) ? _vr : 19;
-      const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40), vat_rate: vatRate, vat_payer: (i.vat_payer !== false && i.vat_payer !== 'false') };
+      const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), city: S(i.city, 80), county: S(i.county, 12), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40), vat_rate: vatRate, vat_payer: (i.vat_payer !== false && i.vat_payer !== 'false') };
       await db.setSetting('invoice_issuer', JSON.stringify(clean));
     }
     invalidateSystemSettings();
@@ -6672,6 +6673,47 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
       auditReq(req, 'paid', 'invoice', inv.id, { paymentId: pay.id }); return res.json({ ok: true, payment: pay });
     }
     return res.status(400).json({ error: 'Stare necunoscută (paid|canceled)' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ─── e-Factura ANAF (super-admin): config + preview UBL + trimitere SPV + status. Dormant fără ANAF_EFACTURA_TOKEN. ───
+app.get('/api/efactura/config', requireAuth, requireSuperadmin, (req, res) => {
+  try { const c = efactura ? efactura.cfg() : { cif: null, test: true }; res.json({ enabled: !!(efactura && efactura.enabled()), test: c.test, cif: c.cif || null }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/invoices/:id/efactura/xml', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!efactura) return res.status(503).json({ error: 'Modul e-Factura indisponibil' });
+    const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', 'inline; filename="' + (inv.full_number || 'factura') + '.xml"');
+    res.send(efactura.buildUBL(inv));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/invoices/:id/efactura', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!efactura) return res.status(503).json({ error: 'Modul e-Factura indisponibil' });
+    const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
+    if (inv.status === 'canceled') return res.status(400).json({ error: 'Factură anulată' });
+    if (!efactura.enabled()) return res.status(400).json({ error: 'e-Factura e dormantă — setează ANAF_EFACTURA_TOKEN + ANAF_CIF pe server.' });
+    const r = await efactura.uploadInvoice(inv, {});
+    if (!r.ok) { await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: String(r.error || '').slice(0, 500) }); return res.status(400).json({ error: r.error || 'Trimitere eșuată', raw: r.raw }); }
+    await db.updateInvoice(inv.id, { efacturaStatus: 'uploaded', efacturaId: r.index, efacturaError: null });
+    auditReq(req, 'efactura-send', 'invoice', inv.id, { index: r.index });
+    res.json({ ok: true, index: r.index });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/invoices/:id/efactura/status', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!efactura) return res.status(503).json({ error: 'Modul e-Factura indisponibil' });
+    const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
+    if (!inv.efactura_id) return res.json({ ok: true, status: inv.efactura_status || null, note: 'Nu a fost trimisă încă.' });
+    const r = await efactura.checkStatus(inv.efactura_id, {});
+    if (!r.ok) return res.status(400).json({ error: r.error });
+    let st = 'uploaded';
+    if (/^ok$/i.test(r.stare || '')) st = 'validated';
+    else if (/nok/i.test(r.stare || '')) st = 'error';
+    await db.updateInvoice(inv.id, { efacturaStatus: st, efacturaError: (st === 'error' ? (r.stare || 'nok') : null) });
+    res.json({ ok: true, stare: r.stare, status: st, idDescarcare: r.idDescarcare });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Control costuri (cheltuielile NOASTRE de platformă) — STRICT super-admin ───
