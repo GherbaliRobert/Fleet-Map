@@ -142,6 +142,17 @@ export const Api = {
   payments: (limit = 500) => api<{ payments: any[]; total: number }>(`/api/payments?limit=${limit}`), // super-admin: toate plățile + total
   recordPayment: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/payment`, { method: 'POST', body: b }),
   myInvoices: () => api<any>('/api/billing/my-invoices'), // admin firmă: facturile proprii + status abonament
+  // ── Facturi FISCALE (super-admin) ──
+  invoices: () => api<{ invoices: any[] }>('/api/invoices'),
+  invoice: (id: number) => api<any>(`/api/invoices/${id}`),
+  invoiceDraft: (companyId: number) => api<any>('/api/invoices/draft', { method: 'POST', body: { companyId } }),
+  issueInvoice: (b: any) => api<any>('/api/invoices', { method: 'POST', body: b }),
+  invoiceSetStatus: (id: number, status: string) => api<any>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
+  invoiceEfacturaSend: (id: number) => api<any>(`/api/invoices/${id}/efactura`, { method: 'POST', body: {} }),
+  invoicePayLink: (id: number) => api<{ url: string }>(`/api/invoices/${id}/pay-link`, { method: 'POST', body: {} }),
+  billingConfig: () => api<any>('/api/admin/billing/config'),
+  billingRunAuto: () => api<any>('/api/admin/billing/run-auto', { method: 'POST', body: {} }),
+  companyBillingConfig: (id: number, b: any) => api<any>(`/api/companies/${id}/billing-config`, { method: 'PUT', body: b }),
   systemSettings: () => api<any>('/api/admin/system-settings'), // super-admin: include invoice_issuer
   saveSystemSettings: (b: any) => api<any>('/api/admin/system-settings', { method: 'PUT', body: b }),
   createDriver: (b: any) => api('/api/drivers', { method: 'POST', body: b }),
