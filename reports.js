@@ -543,34 +543,35 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare fl
     summary: { 'Vehicule': imeis.length, 'Km total': Math.round(totalKm), 'Ore motor total': fmtDur(totalEng) }, charts };
 }
 
-async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: ultima poziție a fiecărui vehicul până la 'to' (o „poză" a flotei)
-  const toMs = new Date(to).getTime();
-  const nowMs = Date.now();
-  const refMs = Math.min(toMs, nowMs);   // vechime față de ACUM dacă poza e curentă/în viitor; altfel față de momentul pozei
-  const isNow = toMs >= nowMs - 120000;  // raport „până acum" → „acum X"; raport pe o zi din trecut → durată simplă „X"
-  // 1. Adună ultima poziție a fiecărui vehicul (până la momentul 'to')
+async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: unde a STAȚIONAT ultima dată fiecare vehicul (parcarea); dacă încă merge la final → poziția curentă marcată „în mișcare"
+  const refMs = Math.min(new Date(to).getTime(), Date.now()); // „staționează de" se măsoară până la ACUM dacă intervalul e curent, altfel până la finalul intervalului
+  // 1. Pentru fiecare vehicul: ultima poziție + de când e oprită (coada contiguă de puncte staționare de la final)
   const items = [];
   for (const imei of imeis) {
-    const r = await db.pool.query('SELECT * FROM positions WHERE imei = $1 AND timestamp <= $2 ORDER BY timestamp DESC LIMIT 1', [imei, to]);
-    const p = r.rows[0]; if (!p) continue;
-    items.push({ imei, p });
+    const pts = await history(db, imei, from, to);
+    if (!pts.length) continue;
+    const pLast = pts[pts.length - 1];
+    const movingNow = (pLast.speed || 0) > IDLE_SPEED;
+    let k = pts.length - 1;                                   // scan înapoi cât timp e oprită → primul punct al staționării curente
+    while (k > 0 && (pts[k - 1].speed || 0) <= IDLE_SPEED) k--;
+    items.push({ imei, pLast, movingNow, stoppedAt: pts[k].timestamp });
   }
-  // 2. Pre-încarcă adresele în cache (ca la Foaie de parcurs) → coloana „Locație" arată ADRESE, nu coordonate.
-  //    Fallback pe coordonate dacă geocoderul (Nominatim ~1/s) nu apucă în bugetul de timp.
+  // 2. Adrese în cache (poziția curentă/parcarea fiecărui vehicul) → coloana „Locație" arată ADRESE, nu coordonate.
   if (geocode && geocode.warm && items.length) {
-    try { await geocode.warm(items.map(x => ({ lat: x.p.latitude, lng: x.p.longitude })), { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {}
+    try { await geocode.warm(items.map(x => ({ lat: x.pLast.latitude, lng: x.pLast.longitude })), { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {}
   }
-  // 3. Construiește rândurile — addr() ia acum adresa din cache
-  const rows = items.map(({ imei, p }) => {
-    const i = p.io_data || {};
-    const sat = p.satellites || 0;
-    return [ label(devMap, imei), fmtTs(p.timestamp), _ageStr(refMs - t(p), isNow), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', sat + ' (' + _satQ(sat) + ')' ];
+  // 3. Rânduri: parcată → unde/când a oprit + de cât timp stă; în mișcare → poziția curentă marcată.
+  const rows = items.map(({ imei, pLast, movingNow, stoppedAt }) => {
+    const nm = label(devMap, imei);
+    const ign = (pLast.io_data || {}).ignition === 1 ? 'pornit' : 'oprit';
+    const sat = pLast.satellites || 0; const satTxt = sat + ' (' + _satQ(sat) + ')';
+    if (movingNow) return [ nm, addr(pLast), '—', 'în mișcare', ign, satTxt ];
+    return [ nm, addr(pLast), fmtTs(stoppedAt), _ageStr(refMs - new Date(stoppedAt).getTime(), false), ign, satTxt ];
   });
   return {
-    columns: ['Vehicul', 'Moment', 'Vechime poziție', 'Locație', 'Viteză', 'Contact', 'Sateliți'],
-    rows,
-    // fără sumar (cerut): raportul e o simplă listă „poză a flotei", nu are nevoie de KPI-uri.
-    periodLabel: 'Poziție la: ' + fmtTs(to)   // în antet: momentul „pozei", nu un interval (rap. folosește doar 'to')
+    columns: ['Vehicul', 'Locație (unde a oprit)', 'A oprit la', 'Staționează de', 'Contact', 'Sateliți'],
+    rows
+    // fără sumar; antetul arată „Perioada: de la — până la" (intervalul contează acum, căutăm ultima oprire în el)
   };
 }
 
