@@ -141,6 +141,7 @@ const errortrack = require('./errortrack');
 errortrack.init();
 let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
+let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
 const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
 // Regula alertei de viteză: prag MINIM (sub asta nu alertăm niciodată — fără absurdități în zone rezidențiale)
 // + MARJĂ peste limită (toleranță). Alertă DOAR dacă speed > max(BASE, limita configurată) + MARGIN.
@@ -1318,9 +1319,73 @@ async function billingReminderTick() {
         data: { key: key, grace_until: st.grace_until, access_until: co.access_until }
       });
       report.notified.push(co.id);
+      // Email de reamintire (dacă SMTP e configurat + companie are email).
+      if (mailer && mailer.enabled() && co.contact_email) {
+        mailer.send({ to: co.contact_email, subject: 'RA Tracks — abonament de reînnoit (15 zile grație)', html: '<p>Bună ziua,</p><p>Abonamentul de monitorizare GPS a expirat. Mai aveți <b>15 zile</b> de grație (până la ' + _he(graceDate) + ') să achitați, altfel accesul se suspendă.</p><p>Vă mulțumim,<br>RA Tracks</p>' }).catch(function () {});
+      }
     } catch (e) { /* per-company, best-effort */ }
   }
   return report;
+}
+// Escape HTML minimal pentru email-uri (valori dinamice companie/emitent).
+function _he(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+// Corpul de email pentru o factură emisă (rezumat + instrucțiuni plată).
+function _invoiceEmailHtml(inv, iss) {
+  const money = function (n) { return (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  const due = inv.due_date ? new Date(Number(inv.due_date)).toLocaleDateString('ro-RO') : '';
+  iss = iss || {};
+  return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a2235;">' +
+    '<div style="background:#16a34a;color:#fff;padding:18px 20px;border-radius:10px 10px 0 0;"><h2 style="margin:0;font-size:19px;">RA Tracks — Factura ' + _he(inv.full_number) + '</h2></div>' +
+    '<div style="border:1px solid #e2e8f0;border-top:0;border-radius:0 0 10px 10px;padding:20px;">' +
+      '<p>Bună ziua,</p><p>Am emis factura pentru abonamentul de monitorizare GPS:</p>' +
+      '<table style="width:100%;font-size:14px;margin:12px 0;border-collapse:collapse;">' +
+        '<tr><td style="padding:5px 0;color:#475569;">Serie / număr</td><td style="text-align:right;font-weight:700;">' + _he(inv.full_number) + '</td></tr>' +
+        '<tr><td style="padding:5px 0;color:#475569;">Total de plată</td><td style="text-align:right;font-weight:800;color:#16a34a;font-size:18px;">' + money(inv.total) + ' lei</td></tr>' +
+        (due ? '<tr><td style="padding:5px 0;color:#475569;">Scadență</td><td style="text-align:right;">' + _he(due) + '</td></tr>' : '') +
+      '</table>' +
+      (iss.iban ? '<p style="font-size:13px;color:#475569;">Plată prin transfer în contul <b>' + _he(iss.iban) + '</b>' + (iss.bank ? ' (' + _he(iss.bank) + ')' : '') + ', beneficiar <b>' + _he(iss.name || '') + '</b>.</p>' : '') +
+      '<p style="font-size:12px;color:#94a3b8;margin-top:16px;">Factura fiscală este disponibilă și în platformă. Vă mulțumim!</p>' +
+    '</div></div>';
+}
+// ─── Facturare AUTOMATĂ lunară: pe ziua de facturare a companiei (auto_invoice=true) emite factura lunii, o notifică,
+//     o trimite la ANAF (dacă e activ) și pe email (dacă SMTP e setat). IDEMPOTENT: o singură factură/companie/lună. ───
+async function billingAutoInvoiceTick() {
+  if (!plans) return { ran: false };
+  const now = new Date(), day = now.getDate();
+  let companies = [];
+  try { companies = await db.getCompanies(); } catch (e) { return { ran: false, error: e.message }; }
+  let iss = {}; try { iss = ((await getSystemSettings()).invoice_issuer) || {}; } catch (e) {}
+  const canIssue = !!(iss.name && iss.cui);
+  const out = { ran: true, issued: [], skipped: 0 };
+  const ym = now.getFullYear() + '-' + (now.getMonth() + 1);
+  for (const co of companies) {
+    try {
+      if (co.is_demo || co.auto_invoice !== true) { out.skipped++; continue; }
+      const billDay = Math.max(1, Math.min(parseInt(co.billing_day) || 1, 28));
+      if (day < billDay) continue;               // încă nu a venit ziua de facturare
+      if (!canIssue) continue;                    // fără „Date emitent" (nume+CUI) nu putem emite
+      const existing = await db.getInvoices({ companyId: co.id, limit: 24 });
+      const already = (existing || []).some(function (v) { const d = new Date(Number(v.issue_date)); return v.type === 'invoice' && (d.getFullYear() + '-' + (d.getMonth() + 1)) === ym; });
+      if (already) continue;                      // deja emisă luna asta
+      const calc = buildInvoiceLines(co, await _companyBillCounts(co), plans.featuresFor(co), _issuerVatRate(iss));
+      if (!calc.lines.length || calc.total <= 0) continue;
+      const num = await db.nextInvoiceNumber(INV_SERIES, now.getFullYear());
+      const ps = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const pe = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 0).getTime();
+      const termDays = Math.max(0, parseInt(co.payment_term_days) || 15);
+      const inv = await db.createInvoice({
+        companyId: co.id, series: num.series, number: num.number, year: num.year, fullNumber: num.full,
+        type: 'invoice', status: 'issued', issueDate: Date.now(), dueDate: Date.now() + termDays * 86400000, periodStart: ps, periodEnd: pe, currency: 'RON',
+        subtotal: calc.subtotal, vatAmount: calc.vatAmount, total: calc.total, lines: calc.lines, issuer: iss, client: _clientSnapshot(co), note: 'Factură lunară automată', createdBy: null
+      });
+      await db.createNotification({ type: 'invoice_issued', severity: 'info', companyId: co.id, userId: null, title: 'Factură nouă: ' + num.full, body: 'Am emis factura lunară de ' + calc.total.toFixed(2) + ' lei. Scadență în ' + termDays + ' zile.', data: { invoiceFull: num.full, total: calc.total } }).catch(function () {});
+      if (efactura && efactura.enabled()) { try { const r = await efactura.uploadInvoice(inv, {}); if (r.ok) await db.updateInvoice(inv.id, { efacturaStatus: 'uploaded', efacturaId: r.index }); } catch (e) {} }
+      if (mailer && mailer.enabled() && co.contact_email) { mailer.send({ to: co.contact_email, subject: 'Factură ' + num.full + ' — RA Tracks', html: _invoiceEmailHtml(inv, iss), text: 'Factura ' + num.full + ', total ' + calc.total.toFixed(2) + ' lei.' }).catch(function () {}); }
+      out.issued.push(num.full);
+      console.log('[BILLING] factură automată ' + num.full + ' → companie #' + co.id + ' (' + calc.total.toFixed(2) + ' lei)');
+    } catch (e) { console.warn('[BILLING] auto-invoice co #' + co.id + ':', e.message); }
+  }
+  return out;
 }
 // Cache scurt al stării de acces — evită un getCompanyById pe FIECARE request. Invalidat la schimbarea accesului.
 const _accessCache = new Map();
@@ -2715,6 +2780,33 @@ app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
 // Forțează verificarea de facturare (trimite notificările „factură emisă" pt. companiile în grație). Util + debug.
 app.post('/api/debug/billing-run', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await billingReminderTick()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Facturare AUTOMATĂ — rulare manuală (super-admin): emite facturile lunii pt. companiile cu auto_invoice.
+app.post('/api/admin/billing/run-auto', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await billingAutoInvoiceTick()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Stare integrări facturare (email SMTP / e-Factura / Stripe) — pentru panoul de automatizare.
+app.get('/api/admin/billing/config', requireAuth, requireSuperadmin, (req, res) => {
+  const ef = efactura ? efactura.cfg() : {};
+  res.json({
+    email: !!(mailer && mailer.enabled()), emailFrom: (mailer && mailer.enabled()) ? mailer.fromAddr() : null,
+    efactura: !!(efactura && efactura.enabled()), efacturaTest: ef.test !== false,
+    stripe: !!(billing && billing.enabled())
+  });
+});
+// Config facturare per companie: auto_invoice + ziua de facturare + termen de plată (actualizare parțială).
+app.put('/api/companies/:id/billing-config', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); const b = req.body || {};
+    const sets = [], args = [id];
+    if (b.auto_invoice !== undefined) { args.push(b.auto_invoice === true || b.auto_invoice === 'true'); sets.push('auto_invoice=$' + args.length); }
+    if (b.billing_day !== undefined) { args.push(Math.max(1, Math.min(parseInt(b.billing_day) || 1, 28))); sets.push('billing_day=$' + args.length); }
+    if (b.payment_term_days !== undefined) { args.push(Math.max(0, Math.min(parseInt(b.payment_term_days) || 15, 120))); sets.push('payment_term_days=$' + args.length); }
+    if (!sets.length) return res.json({ ok: true });
+    await db.pool.query('UPDATE companies SET ' + sets.join(', ') + ' WHERE id=$1', args);
+    auditReq(req, 'billing-config', 'company', id, b);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/api/debug/live-audit', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -7806,6 +7898,9 @@ async function start() {
   // Notificare facturare: la intrarea în grație anunță adminii companiei (verificare la pornire + orar).
   setTimeout(billingReminderTick, 30000);
   setInterval(billingReminderTick, 60 * 60 * 1000);
+  // Facturare automată lunară: la scurt timp după boot + de ~4x/zi (idempotent — o factură/companie/lună, pe billing_day).
+  setTimeout(() => billingAutoInvoiceTick().then(r => { if (r && r.issued && r.issued.length) console.log('[BILLING] auto-facturare: ' + r.issued.length + ' facturi emise'); }).catch(() => {}), 90 * 1000);
+  setInterval(() => billingAutoInvoiceTick().catch(() => {}), 6 * 60 * 60 * 1000);
 
   // Keepalive DB: ping ușor la 45s ca pool-ul PG să rămână CALD (/api/live e in-memory și nu atinge DB-ul →
   // primul query din panou reconecta lent la Railway; acum prima deschidere e instant).

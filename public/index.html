@@ -12722,6 +12722,7 @@ const pozitii = await r.json();</code></pre>
           '<input class="rax-field" id="rax-bill-search" placeholder="🔎 Caută (companie / notă / metodă)…" oninput="raxRenderBilling()" style="flex:1;min-width:160px;margin:0;">' +
           '<span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap;">Total încasat: <span id="rax-bill-total">…</span></span>' +
         '</div>' +
+        '<div id="rax-bill-auto"></div>' +
         '<div id="rax-bill-status" style="margin-bottom:18px;"></div>' +
         '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-file-invoice-dollar" style="color:var(--accent);margin-right:6px;"></i>Facturi fiscale <span id="rax-ef-status" style="font-size:10.5px;font-weight:400;margin-left:6px;"></span></h4>' +
         '<div id="rax-invoices" style="margin-bottom:18px;"><div class="rax-co-meta">Se încarcă…</div></div>' +
@@ -12739,6 +12740,7 @@ const pozitii = await r.json();</code></pre>
       raxRenderBillingStatus();
       if (window.raxLoadInvoices) raxLoadInvoices();
       if (window.raxLoadEfacturaConfig) raxLoadEfacturaConfig();
+      if (window.raxLoadBillingAutoConfig) raxLoadBillingAutoConfig();
       raxRenderBilling();
     };
     // Registru de status: per companie, dacă abonamentul e plătit/activ, în grație (factură de plătit) sau restant.
@@ -12750,7 +12752,7 @@ const pozitii = await r.json();</code></pre>
       cos = cos.slice().sort(function (a, b) { return _raxBillRank((a.access || {}).status) - _raxBillRank((b.access || {}).status); });
       var labelMap = { unlimited: ['∞ Nelimitat', 'var(--text-muted)'], active: ['● Plătit / activ', 'var(--accent)'], grace: ['⚠ De plătit (grație)', '#f59e0b'], expired: ['🚫 Restant / suspendat', 'var(--red)'] };
       var fmtD = function (ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; };
-      var head = '<thead><tr><th>Companie</th><th>Status facturare</th><th>Acces până</th><th class="num">Total plătit</th><th>Acțiuni</th></tr></thead>';
+      var head = '<thead><tr><th>Companie</th><th>Status facturare</th><th>Acces până</th><th class="num">Total plătit</th><th>Auto</th><th>Acțiuni</th></tr></thead>';
       var body = cos.map(function (c) {
         var st = (c.access || {}).status || 'unlimited';
         var lm = labelMap[st] || labelMap.unlimited;
@@ -12761,6 +12763,7 @@ const pozitii = await r.json();</code></pre>
           '<td><span style="color:' + lm[1] + ';font-weight:700;white-space:nowrap;">' + lm[0] + '</span></td>' +
           '<td style="white-space:nowrap;">' + (until ? fmtD(until) : '—') + '</td>' +
           '<td class="num">' + (paid ? paid.toLocaleString('ro-RO') + ' lei' : '—') + '</td>' +
+          '<td style="text-align:center;"><input type="checkbox" ' + (c.auto_invoice ? 'checked' : '') + ' onchange="raxSetAutoInvoice(' + c.id + ',this.checked)" title="Facturare automată lunară"></td>' +
           '<td><button class="rax-btn" style="padding:3px 9px;font-size:11px;" onclick="raxOpenPaymentModal(' + c.id + ')"><i class="fas fa-credit-card"></i> Plată</button></td>' +
         '</tr>';
       }).join('');
@@ -14058,6 +14061,37 @@ const pozitii = await r.json();</code></pre>
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); else alert(j.error || 'Eroare'); return; }
         if (j.url) window.open(j.url, '_blank'); else if (window.raxToast) raxToast('Link indisponibil', 'error');
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
+    // ─── Facturare automată: status integrări + rulare manuală + toggle per companie ───
+    window.raxLoadBillingAutoConfig = async function () {
+      var el = document.getElementById('rax-bill-auto'); if (!el) return;
+      try {
+        var c = await fetch('/api/admin/billing/config', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var b = function (on, label) { return '<span style="font-size:11px;font-weight:700;color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';margin-right:12px;"><i class="fas fa-' + (on ? 'circle-check' : 'circle-xmark') + '"></i> ' + label + '</span>'; };
+        el.innerHTML = '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;">' +
+          '<span style="font-size:12px;font-weight:700;margin-right:12px;"><i class="fas fa-robot" style="color:var(--accent);"></i> Facturare automată:</span>' +
+          b(c.email, 'Email') + b(c.efactura, 'e-Factura' + (c.efactura && c.efacturaTest ? ' (TEST)' : '')) + b(c.stripe, 'Stripe card') +
+          '<button class="rax-btn" style="margin-left:auto;" onclick="raxRunAutoBilling(this)"><i class="fas fa-play"></i> Rulează acum</button>' +
+        '</div>';
+      } catch (e) { el.innerHTML = ''; }
+    };
+    window.raxRunAutoBilling = async function (btn) {
+      if (!await raConfirm('Rulezi facturarea automată acum?\nEmite facturile lunii pentru companiile cu auto-facturare activă (dacă e ziua de facturare și nu au deja factură pe luna curentă).')) return;
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rulează…'; }
+      try {
+        var r = await fetch('/api/admin/billing/run-auto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: '{}' }).then(function (x) { return x.json(); });
+        var n = (r.issued || []).length;
+        if (window.raxToast) raxToast(n ? (n + ' facturi emise automat ✓') : 'Nicio factură de emis acum', 'success');
+        raxLoadBilling();
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Rulează acum'; } }
+    };
+    window.raxSetAutoInvoice = async function (id, on) {
+      try {
+        await fetch('/api/companies/' + id + '/billing-config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ auto_invoice: !!on }) });
+        if (window.raxToast) raxToast(on ? 'Auto-facturare ACTIVĂ' : 'Auto-facturare oprită', 'success');
+        var c = (companiesCache || []).find(function (x) { return x.id === id; }); if (c) c.auto_invoice = !!on;
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
     window.raxSetPlan = async function (id) {
