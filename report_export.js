@@ -50,9 +50,9 @@ async function toXlsxMultiSheet(report) {
   const sumCols = ['Vehicul'].concat(labels);
   const sumRows = pv.map(v => [v.vehicul].concat((v.summary || []).map(s => s[1])));
   const totals = labels.map((lbl, i) => {
-    let allNum = true, sum = 0;
-    for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = parseFloat(val); if (isNaN(n)) { allNum = false; break; } sum += n; }
-    return allNum ? Math.round(sum * 10) / 10 : '';
+    let allNum = true, any = false, sum = 0;
+    for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = _summableNum(val); if (n == null) { allNum = false; break; } any = true; sum += n; }
+    return (allNum && any) ? Math.round(sum * 10) / 10 : '';
   });
   sumRows.push(['TOTAL flotă'].concat(totals));
   xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], sumCols, sumRows);
@@ -111,6 +111,15 @@ async function toXlsx(report) {
 // ─── PDF: branding + KPI + grafice desenate în pdfkit (fără dependențe native) + tabel ───
 const PALETTE = ['#3FE07D', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#14b8a6', '#ec4899', '#84cc16'];
 function _num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+// Sumabil DOAR dacă întreg șirul e un singur număr. `parseFloat` ar accepta prefixul unei date
+// („01.07.2026, 07:53:31" → 1.07), stricând TOTAL-ul; aici respingem date/ore/„1h 20m". Întoarce număr sau null.
+function _summableNum(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  if (v == null) return null;
+  const s = String(v).trim().replace(/\s/g, '');
+  if (!/^-?\d+(?:[.,]\d+)?$/.test(s)) return null;
+  return parseFloat(s.replace(',', '.'));
+}
 
 // Valoare compactă pentru axă/etichetă (1.2k, 47, 9.7).
 function _fmtTick(v) { v = _num(v); if (Math.abs(v) >= 1000) return (v / 1000).toFixed(1).replace(/\.0$/, '') + 'k'; return String(Math.round(v * 10) / 10); }
