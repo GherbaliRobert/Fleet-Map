@@ -7697,6 +7697,7 @@ const pozitii = await r.json();</code></pre>
       if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
       historyMarkers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
       historyMarkers = [];
+      hpClearOsmOverlay();   // curăță și segmentele roșii de limite OSM la închiderea rutei din pill
       document.querySelectorAll('.route-card').forEach(function (c) { c.classList.remove('selected'); });
       document.querySelectorAll('#report-routes-table tbody tr').forEach(function (tr) { tr.classList.remove('route-selected'); });
       _routePillHide();
@@ -8538,6 +8539,7 @@ const pozitii = await r.json();</code></pre>
       if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
       historyMarkers.forEach(m => { try { map.removeLayer(m); } catch (e) {} });
       historyMarkers = [];
+      hpClearOsmOverlay();   // curăță și segmentele roșii de limite OSM (nu le mai lasă pe hartă)
       _routePillHide();
     }
 
@@ -8552,6 +8554,13 @@ const pozitii = await r.json();</code></pre>
     // Limita curentă de viteză (setată după loadHistory ext)
     var hpSpeedLimit = null;
     var hpOsmLayer = null, hpLastData = null;   // overlay „limite reale" (OSM) pe traseu
+    // Curăță overlay-ul de limite OSM (segmentele roșii) + resetează butonul. Se apelează la ÎNCHIDEREA
+    // traseului — altfel segmentele roșii de depășire rămân pe hartă după ce închizi fereastra. No-op dacă nu e activ.
+    function hpClearOsmOverlay() {
+      if (hpOsmLayer) { try { map.removeLayer(hpOsmLayer); } catch (e) {} hpOsmLayer = null; }
+      var _b = document.getElementById('hp-osm-btn'); if (_b) _b.classList.remove('primary');
+      hpLastData = null;
+    }
     var hpUiPrefs = null;
     async function _loadUiPrefs() {
       if (hpUiPrefs) return hpUiPrefs;
