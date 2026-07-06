@@ -822,6 +822,8 @@
     .history-btn.primary:hover { background: var(--blue-hover); }
     .history-btn.success { background: var(--blue); color: #06210F; }
     .history-btn.success:hover { background: var(--blue-hover); }
+    /* Interval rapid selectat (Azi/Ieri/7 zile): „cip" conturat verde — distinct de butonul plin „Încarcă traseul" */
+    .hp-quick .history-btn.active { background: rgba(63,224,125,.16); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); font-weight: 700; }
 
     /* ─── Right Detail Panel ─── */
     #detail-panel {

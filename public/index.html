@@ -226,9 +226,9 @@
             </div>
           </div>
           <div class="hp-row hp-quick">
-            <button class="history-btn" onclick="hpQuick('today')">Azi</button>
-            <button class="history-btn" onclick="hpQuick('yesterday')">Ieri</button>
-            <button class="history-btn" onclick="hpQuick('week')">7 zile</button>
+            <button class="history-btn" onclick="hpQuick('today', this)">Azi</button>
+            <button class="history-btn" onclick="hpQuick('yesterday', this)">Ieri</button>
+            <button class="history-btn" onclick="hpQuick('week', this)">7 zile</button>
           </div>
           <button class="history-btn primary hp-load" onclick="loadHistory()"><i class="fas fa-download"></i> Încarcă traseul</button>
           <div id="hp-export" class="hp-row hp-export" style="display:none;">
@@ -4696,8 +4696,9 @@ const pozitii = await r.json();</code></pre>
       const common = opts.dateOnly
         ? { dateFormat:'Y-m-d', altInput:true, altFormat:'d.m.Y', altInputClass:cls, locale:ro, disableMobile:true }
         : { enableTime:true, time_24hr:true, dateFormat:'Y-m-d\\TH:i', altInput:true, altFormat:'d.m.Y, H:i', altInputClass:cls, locale:ro, minuteIncrement:1, disableMobile:true };
-      elFrom._fp = flatpickr(elFrom, Object.assign({}, common, { onChange:(sel)=>{ if (elTo._fp && sel[0]) elTo._fp.set('minDate', sel[0]); } }));
-      elTo._fp = flatpickr(elTo, common);
+      const _uc = typeof opts.onUserChange === 'function' ? opts.onUserChange : null; // apelat când userul schimbă manual data (nu programatic)
+      elFrom._fp = flatpickr(elFrom, Object.assign({}, common, { onChange:(sel)=>{ if (elTo._fp && sel[0]) elTo._fp.set('minDate', sel[0]); if (_uc) _uc(); } }));
+      elTo._fp = flatpickr(elTo, _uc ? Object.assign({}, common, { onChange:()=>{ _uc(); } }) : common);
     }
     // Flatpickr pe selectoarele de interval din Rapoarte (pilot). Fallback: datetime-local nativ dacă CDN-ul nu e disponibil.
     let repFromFp = null, repToFp = null;
@@ -6346,7 +6347,7 @@ const pozitii = await r.json();</code></pre>
       if (mapViews.includes(name)) {
         loc.classList.add('active');
         if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
-        if (name === 'traseu' && hist) { hist.classList.add('visible'); document.body.classList.add('history-open', 'tab-traseu'); initRangePicker('history-from', 'history-to'); fillHistoryVehicle(); }
+        if (name === 'traseu' && hist) { hist.classList.add('visible'); document.body.classList.add('history-open', 'tab-traseu'); initRangePicker('history-from', 'history-to', { onUserChange: hpClearQuickActive }); fillHistoryVehicle(); }
       } else {
         loc.classList.remove('active');
         const el = document.getElementById(VIEW_PANELS[name]);
@@ -7708,6 +7709,7 @@ const pozitii = await r.json();</code></pre>
         var _hsel = document.getElementById('history-imei'); if (_hsel) { _hsel.selectedIndex = -1; selectedImei = null; }
         var _hf = document.getElementById('history-from'); if (_hf) _hf.value = '';
         var _ht = document.getElementById('history-to'); if (_ht) _ht.value = '';
+        hpClearQuickActive(); // intervalul e resetat → stinge și evidențierea Azi/Ieri/7 zile
         var _exp = document.getElementById('hp-export'); if (_exp) _exp.style.display = 'none';
         var _pb = document.getElementById('history-playback'); if (_pb) _pb.style.display = 'none';
         var _sum = document.getElementById('hp-summary'); if (_sum) _sum.style.display = 'none';
@@ -8521,7 +8523,7 @@ const pozitii = await r.json();</code></pre>
       const panel = document.getElementById('history-panel');
       panel.classList.add('visible');
       document.body.classList.add('history-open'); // ascunde FAB pe mobile
-      initRangePicker('history-from', 'history-to');
+      initRangePicker('history-from', 'history-to', { onUserChange: hpClearQuickActive });
 
       const now = new Date();
       const yesterday = new Date(now - 24 * 60 * 60 * 1000);
@@ -8934,13 +8936,16 @@ const pozitii = await r.json();</code></pre>
     function hpRouteClick(e) {
       if (hpData && hpData.length && e && e.latlng) hpShowInfoPopup(hpNearestIndex(e.latlng));
     }
-    function hpQuick(period) {
+    // Stinge evidențierea butoanelor de interval rapid (Azi/Ieri/7 zile). Apelat și când userul editează manual calendarul.
+    function hpClearQuickActive() { document.querySelectorAll('.hp-quick .history-btn').forEach(function (b) { b.classList.remove('active'); }); }
+    function hpQuick(period, btn) {
       var now = new Date(), from = new Date(now), to = new Date(now);
       if (period === 'today') { from.setHours(0, 0, 0, 0); }
       else if (period === 'yesterday') { from.setDate(from.getDate() - 1); from.setHours(0, 0, 0, 0); to = new Date(from); to.setHours(23, 59, 59, 0); }
       else if (period === 'week') { from.setDate(from.getDate() - 7); }
-      dtSet('history-from', formatDateLocal(from));
+      dtSet('history-from', formatDateLocal(from));   // dtSet → setDate(val,false): NU declanșează onChange, deci nu se stinge singur
       dtSet('history-to', formatDateLocal(to));
+      hpClearQuickActive(); if (btn) btn.classList.add('active'); // evidențiază intervalul ales
       // NU auto-încărca: butoanele Azi/Ieri/7 zile doar completează intervalul „De la/Până la";
       // încărcarea o declanșează userul din butonul „Încarcă traseul" (la fel ca la selecția din calendar).
     }
