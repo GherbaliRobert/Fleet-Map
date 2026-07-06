@@ -12713,13 +12713,16 @@ const pozitii = await r.json();</code></pre>
     window.raxLoadBilling = async function () {
       var box = document.getElementById('admin-tab-billing'); if (!box) return;
       box.innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">' +
-          '<button class="rax-btn primary" onclick="raxOpenPaymentModal()"><i class="fas fa-plus"></i> Înregistrează plată</button>' +
+          '<button class="rax-btn primary" onclick="raxOpenGenInvoice()"><i class="fas fa-file-invoice-dollar"></i> Generează factură</button>' +
+          '<button class="rax-btn" onclick="raxOpenPaymentModal()"><i class="fas fa-plus"></i> Înregistrează plată</button>' +
           '<button class="rax-btn" onclick="raxEditIssuer()" title="Datele firmei tale care apar pe facturi"><i class="fas fa-file-invoice"></i> Date emitent</button>' +
           '<input class="rax-field" id="rax-bill-search" placeholder="🔎 Caută (companie / notă / metodă)…" oninput="raxRenderBilling()" style="flex:1;min-width:160px;margin:0;">' +
           '<span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap;">Total încasat: <span id="rax-bill-total">…</span></span>' +
         '</div>' +
         '<div id="rax-bill-status" style="margin-bottom:18px;"></div>' +
-        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-receipt" style="color:var(--accent);margin-right:6px;"></i>Facturi emise</h4>' +
+        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-file-invoice-dollar" style="color:var(--accent);margin-right:6px;"></i>Facturi fiscale</h4>' +
+        '<div id="rax-invoices" style="margin-bottom:18px;"><div class="rax-co-meta">Se încarcă…</div></div>' +
+        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-receipt" style="color:var(--accent);margin-right:6px;"></i>Plăți / încasări</h4>' +
         '<div id="rax-bill-table"><div class="rax-co-meta">Se încarcă…</div></div>';
       try {
         // Avem nevoie de companii pentru registrul de status + datele clientului pe factură.
@@ -12731,6 +12734,7 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { var t0 = document.getElementById('rax-bill-table'); if (t0) t0.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcare.</div>'; return; }
       var tot = document.getElementById('rax-bill-total'); if (tot) tot.textContent = (_billingTotal || 0).toLocaleString('ro-RO') + ' lei';
       raxRenderBillingStatus();
+      if (window.raxLoadInvoices) raxLoadInvoices();
       raxRenderBilling();
     };
     // Registru de status: per companie, dacă abonamentul e plătit/activ, în grație (factură de plătit) sau restant.
@@ -13765,7 +13769,7 @@ const pozitii = await r.json();</code></pre>
       var iss = await _raxGetIssuer(true);
       var body = document.getElementById('rax-issuer-body'); if (!body) return;
       body.innerHTML =
-        '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">Aceste date apar ca EMITENT pe facturile printabile. Document intern — nu factură fiscală oficială cu serie ANAF.</div>' +
+        '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;">Aceste date apar ca EMITENT (Furnizor) pe facturile fiscale emise.</div>' +
         _raxField('Denumire firmă', 'rax-iss-name', iss.name, 'ex. RA Tracks SRL') +
         '<div class="rax-row2"><div>' + _raxField('CUI / CIF', 'rax-iss-cui', iss.cui, 'ex. RO12345678') + '</div>' +
         '<div>' + _raxField('Nr. Reg. Com.', 'rax-iss-reg', iss.reg_com, 'ex. J40/1234/2020') + '</div></div>' +
@@ -13774,6 +13778,8 @@ const pozitii = await r.json();</code></pre>
         '<div>' + _raxField('Bancă', 'rax-iss-bank', iss.bank, 'ex. Banca Transilvania') + '</div></div>' +
         '<div class="rax-row2"><div>' + _raxField('Email facturare', 'rax-iss-email', iss.email, 'facturare@firma.ro') + '</div>' +
         '<div>' + _raxField('Telefon', 'rax-iss-phone', iss.phone, '07xx xxx xxx') + '</div></div>' +
+        '<div class="rax-row2"><div>' + _raxField('Cotă TVA (%)', 'rax-iss-vat', (iss.vat_rate != null ? iss.vat_rate : 19), 'ex. 19') + '</div>' +
+        '<div><label class="rax-lbl">Plătitor TVA</label><label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px;cursor:pointer;"><input type="checkbox" id="rax-iss-vatpayer"' + (iss.vat_payer !== false ? ' checked' : '') + ' style="width:auto;"> firma e plătitoare de TVA</label></div></div>' +
         '<button class="rax-btn primary" style="margin-top:8px;width:100%;justify-content:center;" onclick="raxSaveIssuer(this)"><i class="fas fa-check"></i> Salvează datele emitentului</button>' +
         '<div id="rax-iss-msg" style="font-size:12px;margin-top:8px;"></div>';
       document.getElementById('rax-issuer-overlay').classList.add('open');
@@ -13784,7 +13790,8 @@ const pozitii = await r.json();</code></pre>
         name: (($('rax-iss-name') || {}).value || '').trim(), cui: (($('rax-iss-cui') || {}).value || '').trim(),
         reg_com: (($('rax-iss-reg') || {}).value || '').trim(), address: (($('rax-iss-addr') || {}).value || '').trim(),
         iban: (($('rax-iss-iban') || {}).value || '').trim(), bank: (($('rax-iss-bank') || {}).value || '').trim(),
-        email: (($('rax-iss-email') || {}).value || '').trim(), phone: (($('rax-iss-phone') || {}).value || '').trim()
+        email: (($('rax-iss-email') || {}).value || '').trim(), phone: (($('rax-iss-phone') || {}).value || '').trim(),
+        vat_rate: parseFloat((($('rax-iss-vat') || {}).value || '19')) || 0, vat_payer: !!(($('rax-iss-vatpayer') || {}).checked)
       };
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se salvează…'; }
       try {
@@ -13795,6 +13802,213 @@ const pozitii = await r.json();</code></pre>
         if (window.raxToast) raxToast('Date emitent salvate ✓', 'success');
       } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Salvează datele emitentului'; } }
     };
+    // ═══ Facturi FISCALE (super-admin): generare din abonament + listă + PDF fiscal ═══
+    var _raxInvoices = [];
+    var _giState = null; // { companyId, periodStart, periodEnd, lines, issuer, vatRate, client }
+    function _invFmtD(ts) { return ts ? new Date(Number(ts)).toLocaleDateString('ro-RO') : '—'; }
+    function _invMoney(n) { return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    var _INV_ST = { draft: ['Ciornă', '#64748b'], issued: ['Emisă', 'var(--accent)'], sent: ['Trimisă', '#38BDF8'], paid: ['Plătită', '#16a34a'], overdue: ['Restantă', 'var(--red)'], canceled: ['Anulată', 'var(--text-muted)'] };
+
+    // Builder factură fiscală (HTML self-contained) — linii + defalcare TVA + serie/număr + date emitent/client.
+    function _invFiscalHtml(inv, issFallback) {
+      var iss = (inv.issuer && typeof inv.issuer === 'object') ? inv.issuer : (issFallback || {});
+      var cl = (inv.client && typeof inv.client === 'object') ? inv.client : {};
+      var lines = Array.isArray(inv.lines) ? inv.lines : [];
+      var line = function (cond, html) { return cond ? '<div class="ln">' + html + '</div>' : ''; };
+      var rows = lines.map(function (l, i) {
+        return '<tr><td>' + (i + 1) + '</td><td>' + esc(l.desc || '') + '</td>' +
+          '<td class="c">' + (Number(l.qty) || 0) + '</td>' +
+          '<td class="r">' + _invMoney(l.unitPrice) + '</td>' +
+          '<td class="r">' + _invMoney(l.net) + '</td>' +
+          '<td class="c">' + (Number(l.vatRate) || 0) + '%</td>' +
+          '<td class="r">' + _invMoney(l.vat) + '</td></tr>';
+      }).join('');
+      var logoUrl = (window.location && window.location.origin ? window.location.origin : '') + '/logo-mark-light.png';
+      var html = '<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8"><title>Factură ' + esc(inv.full_number || '') + '</title>' +
+        '<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"><style>' +
+        '*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Nunito",-apple-system,"Segoe UI",sans-serif;color:#1a2235;padding:40px;max-width:820px;margin:0 auto;font-size:13px;line-height:1.5;background:#fff}' +
+        '.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #16a34a;padding-bottom:16px;margin-bottom:20px}' +
+        '.brand{font-size:25px;font-weight:800;color:#16a34a;line-height:1.05}.brand small{display:block;font-size:10.5px;font-weight:700;color:#64748b;letter-spacing:1px;margin-top:3px}' +
+        '.inv-meta{text-align:right}.inv-meta .ttl{font-size:12px;font-weight:800;letter-spacing:.5px;color:#64748b}.inv-meta .no{font-size:20px;font-weight:800}.inv-meta .dt{color:#64748b;font-size:12px;margin-top:3px}' +
+        '.parties{display:flex;gap:18px;margin-bottom:20px}.party{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:13px 15px}' +
+        '.party h4{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#64748b;margin-bottom:6px}.party .nm{font-weight:800;font-size:14px;margin-bottom:3px}.party .ln{font-size:12px;color:#475569}' +
+        'table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#16a34a;color:#fff;text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.3px}' +
+        'th.r,td.r{text-align:right}th.c,td.c{text-align:center}td{padding:9px 10px;border-bottom:1px solid #e8edf3;font-size:12.5px}tbody tr:nth-child(even){background:#fafcff}' +
+        '.tot{display:flex;justify-content:flex-end}.tot .box{min-width:290px}.tot .row{display:flex;justify-content:space-between;padding:6px 14px;font-size:13px;color:#475569}.tot .row.vat{border-bottom:1px solid #e2e8f0}' +
+        '.tot .grand{display:flex;justify-content:space-between;background:#f0fdf4;border:2px solid #16a34a;border-radius:8px;font-weight:800;font-size:17px;color:#15803d;padding:11px 14px;margin-top:6px}' +
+        '.pay{margin-top:14px;font-size:12px;color:#334155}.pay b{color:#1a2235}.foot{margin-top:22px;padding-top:12px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:10.5px;line-height:1.5}' +
+        '.noprint{margin-top:24px;text-align:center}.noprint button{font-family:inherit;background:#16a34a;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer}@media print{.noprint{display:none}body{padding:8px}}' +
+        '</style></head><body>' +
+        '<div class="head"><div class="brand"><img src="' + esc(logoUrl) + '" alt="RA Tracks" style="height:34px;width:auto;vertical-align:middle;margin-right:4px;"><span style="vertical-align:middle;">Tracks</span><small>MONITORIZARE GPS FLOTĂ</small></div>' +
+          '<div class="inv-meta"><div class="ttl">FACTURĂ FISCALĂ</div><div class="no">' + esc(inv.full_number || '—') + '</div><div class="dt">Data emiterii: ' + _invFmtD(inv.issue_date) + (inv.due_date ? '<br>Scadență: ' + _invFmtD(inv.due_date) : '') + '</div></div></div>' +
+        '<div class="parties">' +
+          '<div class="party"><h4>Furnizor (Emitent)</h4><div class="nm">' + esc(iss.name || '(completează Date emitent)') + '</div>' +
+            line(iss.cui, 'CUI: ' + esc(iss.cui) + (iss.reg_com ? ' · Reg. Com.: ' + esc(iss.reg_com) : '')) +
+            line(iss.address, esc(iss.address)) + line(iss.iban, 'IBAN: ' + esc(iss.iban) + (iss.bank ? ' · ' + esc(iss.bank) : '')) +
+            line(true, 'TVA: ' + (iss.vat_rate != null ? iss.vat_rate : 19) + '%' + (iss.vat_payer === false ? ' · neplătitor de TVA' : ' · plătitor de TVA')) +
+          '</div>' +
+          '<div class="party"><h4>Client (Beneficiar)</h4><div class="nm">' + esc(cl.name || inv.company_name || '—') + '</div>' +
+            line(cl.cui, 'CUI: ' + esc(cl.cui) + (cl.reg_com ? ' · Reg. Com.: ' + esc(cl.reg_com) : '')) +
+            line(cl.address, esc(cl.address)) + line(cl.email, esc(cl.email)) + line(cl.phone, 'Tel: ' + esc(cl.phone)) +
+          '</div></div>' +
+        '<table><thead><tr><th style="width:26px">#</th><th>Descriere</th><th class="c">Cant.</th><th class="r">Preț unitar</th><th class="r">Valoare</th><th class="c">TVA %</th><th class="r">TVA</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<div class="tot"><div class="box">' +
+          '<div class="row"><span>Total fără TVA (net)</span><b>' + _invMoney(inv.subtotal) + ' lei</b></div>' +
+          '<div class="row vat"><span>TVA</span><b>' + _invMoney(inv.vat_amount) + ' lei</b></div>' +
+          '<div class="grand"><span>TOTAL DE PLATĂ</span><span>' + _invMoney(inv.total) + ' lei</span></div>' +
+        '</div></div>' +
+        '<div class="pay">Perioada: ' + _invFmtD(inv.period_start) + ' → ' + _invFmtD(inv.period_end) + (inv.note ? ' · ' + esc(inv.note) : '') + '</div>' +
+        '<div class="foot">Factură emisă electronic din platforma RA Tracks. Document valabil fără semnătură și ștampilă conform art. 319 alin. (29) Cod fiscal.</div>' +
+        '<div class="noprint"><button onclick="window.print()">🖨 Printează / Salvează PDF</button></div>' +
+        '</body></html>';
+      return html;
+    }
+
+    // ─── Lista de facturi fiscale ───
+    window.raxLoadInvoices = async function () {
+      var box = document.getElementById('rax-invoices'); if (!box) return;
+      try { var d = await fetch('/api/invoices?limit=1000', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); _raxInvoices = (d && d.invoices) || []; }
+      catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare la încărcarea facturilor.</div>'; return; }
+      raxRenderInvoices();
+    };
+    window.raxRenderInvoices = function () {
+      var box = document.getElementById('rax-invoices'); if (!box) return;
+      var rows = _raxInvoices || [];
+      if (!rows.length) { box.innerHTML = '<div class="rax-co-meta" style="padding:12px;">Nicio factură fiscală emisă încă. Apasă „Generează factură".</div>'; return; }
+      var head = '<thead><tr><th>Nr. factură</th><th>Companie</th><th>Data</th><th class="num">Net</th><th class="num">TVA</th><th class="num">Total</th><th>Stare</th><th>e-Factura</th><th>Acțiuni</th></tr></thead>';
+      var body = rows.map(function (v) {
+        var st = _INV_ST[v.status] || _INV_ST.issued;
+        var ef = v.efactura_status ? ('<span style="font-size:10.5px;color:var(--text-muted);">' + esc(v.efactura_status) + '</span>') : '<span style="font-size:10.5px;color:var(--text-muted);opacity:.6;">—</span>';
+        var act = '<button class="rax-ico-btn" title="Vezi / PDF" onclick="raxPrintFiscalInvoice(' + v.id + ')"><i class="fas fa-print"></i></button> ';
+        if (v.status !== 'paid' && v.status !== 'canceled') act += '<button class="rax-ico-btn" title="Marchează plătită" onclick="raxInvoiceMarkPaid(' + v.id + ')"><i class="fas fa-check"></i></button> <button class="rax-ico-btn danger" title="Anulează" onclick="raxInvoiceCancel(' + v.id + ')"><i class="fas fa-ban"></i></button>';
+        return '<tr>' +
+          '<td style="font-weight:700;white-space:nowrap;">' + esc(v.full_number || '') + '</td>' +
+          '<td><strong>' + esc(v.company_name || ('#' + v.company_id)) + '</strong></td>' +
+          '<td style="white-space:nowrap;">' + _invFmtD(v.issue_date) + '</td>' +
+          '<td class="num">' + _invMoney(v.subtotal) + '</td>' +
+          '<td class="num">' + _invMoney(v.vat_amount) + '</td>' +
+          '<td class="num" style="font-weight:700;">' + _invMoney(v.total) + ' lei</td>' +
+          '<td><span style="color:' + st[1] + ';font-weight:700;white-space:nowrap;">● ' + st[0] + '</span></td>' +
+          '<td>' + ef + '</td>' +
+          '<td style="white-space:nowrap;">' + act + '</td>' +
+        '</tr>';
+      }).join('');
+      box.innerHTML = '<div style="overflow-x:auto;"><table class="rax-co-table">' + head + '<tbody>' + body + '</tbody></table></div>';
+    };
+    window.raxPrintFiscalInvoice = async function (id) {
+      try {
+        var inv = await fetch('/api/invoices/' + id, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!inv || inv.error) { if (window.raxToast) raxToast((inv && inv.error) || 'Factură negăsită', 'error'); return; }
+        _raxOpenInvoiceWindow(_invFiscalHtml(inv, await _raxGetIssuer()));
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
+    window.raxInvoiceMarkPaid = async function (id) {
+      if (!await raConfirm('Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea și se extinde accesul companiei.')) return;
+      try {
+        var r = await fetch('/api/invoices/' + id + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'paid' }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
+        if (window.raxToast) raxToast('Factură plătită ✓', 'success');
+        raxLoadBilling();
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
+    window.raxInvoiceCancel = async function (id) {
+      if (!await raConfirm('Anulezi această factură? (pentru facturi plătite se folosește storno)')) return;
+      try {
+        var r = await fetch('/api/invoices/' + id + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'canceled' }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
+        if (window.raxToast) raxToast('Factură anulată', 'success');
+        raxLoadInvoices();
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
+
+    // ─── Modal „Generează factură" (companie + lună → draft linii editabile → emite) ───
+    window.raxOpenGenInvoice = function (companyId) {
+      var ov = document.getElementById('rax-geninv-overlay');
+      if (!ov) {
+        ov = document.createElement('div'); ov.className = 'rax-overlay'; ov.id = 'rax-geninv-overlay';
+        ov.innerHTML = '<div class="rax-card" style="max-width:640px;"><div class="rax-head"><h3><i class="fas fa-file-invoice-dollar" style="color:var(--accent)"></i> Generează factură</h3>' +
+          '<button class="rax-x" onclick="document.getElementById(\'rax-geninv-overlay\').classList.remove(\'open\')">&times;</button></div>' +
+          '<div class="rax-body" id="rax-geninv-body"></div></div>';
+        document.body.appendChild(ov);
+      }
+      var cos = (companiesCache || []).filter(function (c) { return !c.is_demo; });
+      var now = new Date(), curM = now.getMonth() + 1, curY = now.getFullYear();
+      var MON = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sep.', 'oct.', 'noi.', 'dec.'];
+      var coOpts = cos.map(function (c) { return '<option value="' + c.id + '"' + (String(companyId) === String(c.id) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
+      var monOpts = MON.map(function (m, i) { return '<option value="' + (i + 1) + '"' + ((i + 1) === curM ? ' selected' : '') + '>' + m + '</option>'; }).join('');
+      var yrOpts = [curY - 1, curY, curY + 1].map(function (y) { return '<option value="' + y + '"' + (y === curY ? ' selected' : '') + '>' + y + '</option>'; }).join('');
+      document.getElementById('rax-geninv-body').innerHTML =
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">' +
+          '<div style="flex:2;min-width:180px;"><label class="rax-lbl">Companie (client)</label><select id="rax-gi-co" class="rax-field">' + coOpts + '</select></div>' +
+          '<div style="flex:1;min-width:90px;"><label class="rax-lbl">Luna</label><select id="rax-gi-mon" class="rax-field">' + monOpts + '</select></div>' +
+          '<div style="flex:1;min-width:80px;"><label class="rax-lbl">An</label><select id="rax-gi-yr" class="rax-field">' + yrOpts + '</select></div>' +
+          '<button class="rax-btn primary" style="height:38px;" onclick="raxGenDraft()"><i class="fas fa-calculator"></i> Calculează</button>' +
+        '</div>' +
+        '<div id="rax-gi-result" style="margin-top:14px;"></div>';
+      ov.classList.add('open');
+    };
+    window.raxGenDraft = async function () {
+      var cid = parseInt((document.getElementById('rax-gi-co') || {}).value);
+      var mon = parseInt((document.getElementById('rax-gi-mon') || {}).value);
+      var yr = parseInt((document.getElementById('rax-gi-yr') || {}).value);
+      var res = document.getElementById('rax-gi-result'); if (!res) return;
+      if (!cid) { res.innerHTML = '<div style="color:var(--red);font-size:12px;">Alege o companie.</div>'; return; }
+      res.innerHTML = '<div class="rax-co-meta">Se calculează…</div>';
+      var ps = new Date(yr, mon - 1, 1).getTime(), pe = new Date(yr, mon, 0, 23, 59, 0).getTime();
+      try {
+        var d = await fetch('/api/invoices/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ companyId: cid }) }).then(function (r) { return r.json(); });
+        if (d.error) { res.innerHTML = '<div style="color:var(--red);font-size:12px;">' + esc(d.error) + '</div>'; return; }
+        _giState = { companyId: cid, periodStart: ps, periodEnd: pe, lines: (d.lines || []).slice(), issuer: d.issuer || {}, vatRate: d.vatRate != null ? d.vatRate : 19, client: d.client || {} };
+        if (!(_giState.issuer && _giState.issuer.name && _giState.issuer.cui)) {
+          res.innerHTML = '<div style="background:var(--bg-dark);border:1px dashed var(--border);border-radius:10px;padding:12px;font-size:12.5px;color:#f59e0b;">⚠ Completează întâi <b>Date emitent</b> (nume + CUI) — sunt obligatorii pe factură. <button class="rax-btn" style="margin-left:6px;" onclick="document.getElementById(\'rax-geninv-overlay\').classList.remove(\'open\');raxEditIssuer()">Date emitent</button></div>';
+          return;
+        }
+        _giRenderLines();
+      } catch (e) { res.innerHTML = '<div style="color:var(--red);font-size:12px;">Eroare: ' + esc(e.message) + '</div>'; }
+    };
+    function _giRenderLines() {
+      var res = document.getElementById('rax-gi-result'); if (!res || !_giState) return;
+      var rows = _giState.lines.map(function (l, i) {
+        return '<tr>' +
+          '<td><input class="rax-field" style="margin:0;" value="' + esc(l.desc || '') + '" oninput="_giEdit(' + i + ',\'desc\',this.value)"></td>' +
+          '<td style="width:70px;"><input class="rax-field" style="margin:0;text-align:center;" type="number" min="0" value="' + (Number(l.qty) || 0) + '" onchange="_giEdit(' + i + ',\'qty\',this.value)"></td>' +
+          '<td style="width:100px;"><input class="rax-field" style="margin:0;text-align:right;" type="number" step="0.01" min="0" value="' + (Number(l.unitPrice) || 0) + '" onchange="_giEdit(' + i + ',\'unitPrice\',this.value)"></td>' +
+          '<td class="num" style="white-space:nowrap;">' + _invMoney(l.net) + '</td>' +
+          '<td style="width:40px;text-align:center;"><button class="rax-ico-btn danger" title="Șterge linia" onclick="_giDel(' + i + ')"><i class="fas fa-times"></i></button></td>' +
+        '</tr>';
+      }).join('');
+      var sub = _giState.lines.reduce(function (s, l) { return s + (Number(l.net) || 0); }, 0);
+      var vat = _giState.lines.reduce(function (s, l) { return s + (Number(l.vat) || 0); }, 0);
+      res.innerHTML =
+        '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px;">Client: <b>' + esc(_giState.client.name || '') + '</b> · TVA ' + _giState.vatRate + '% · poți edita liniile înainte de emitere.</div>' +
+        '<div style="overflow-x:auto;"><table class="rax-co-table"><thead><tr><th>Descriere</th><th style="text-align:center;">Cant.</th><th style="text-align:right;">Preț unit.</th><th style="text-align:right;">Valoare</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;"><button class="rax-btn" onclick="_giAdd()"><i class="fas fa-plus"></i> Adaugă linie</button>' +
+          '<div style="text-align:right;font-size:12.5px;"><span style="color:var(--text-muted);">Net </span><b>' + _invMoney(sub) + '</b> · <span style="color:var(--text-muted);">TVA </span><b>' + _invMoney(vat) + '</b> · <span style="color:var(--text-muted);">Total </span><b style="color:var(--accent);font-size:15px;">' + _invMoney(sub + vat) + ' lei</b></div></div>' +
+        '<button class="rax-btn primary" style="width:100%;justify-content:center;margin-top:12px;" onclick="raxGenIssue(this)"><i class="fas fa-file-invoice-dollar"></i> Emite factura</button>' +
+        '<div id="rax-gi-msg" style="font-size:12px;margin-top:8px;"></div>';
+    }
+    function _giRecalcLine(l) { var vr = (_giState.vatRate || 0); l.net = Math.round((Number(l.qty) || 0) * (Number(l.unitPrice) || 0) * 100) / 100; l.vat = Math.round(l.net * vr) / 100; l.vatRate = vr; l.gross = Math.round((l.net + l.vat) * 100) / 100; }
+    window._giEdit = function (i, k, v) { if (!_giState || !_giState.lines[i]) return; _giState.lines[i][k] = (k === 'desc') ? v : (Number(v) || 0); if (k !== 'desc') { _giRecalcLine(_giState.lines[i]); _giRenderLines(); } };
+    window._giDel = function (i) { if (!_giState) return; _giState.lines.splice(i, 1); _giRenderLines(); };
+    window._giAdd = function () { if (!_giState) return; var l = { desc: '', qty: 1, unitPrice: 0, vatRate: _giState.vatRate || 0, net: 0, vat: 0, gross: 0 }; _giState.lines.push(l); _giRenderLines(); };
+    window.raxGenIssue = async function (btn) {
+      if (!_giState) return; var msg = document.getElementById('rax-gi-msg');
+      var lines = _giState.lines.filter(function (l) { return (l.desc || '').trim() && (Number(l.qty) || 0) > 0; });
+      if (!lines.length) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Adaugă cel puțin o linie validă.</span>'; return; }
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se emite…'; }
+      try {
+        var r = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ companyId: _giState.companyId, periodStart: _giState.periodStart, periodEnd: _giState.periodEnd, lines: lines }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(j.error || 'Eroare') + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-invoice-dollar"></i> Emite factura'; } return; }
+        document.getElementById('rax-geninv-overlay').classList.remove('open');
+        if (window.raxToast) raxToast('Factură emisă: ' + ((j.invoice && j.invoice.full_number) || '') + ' ✓', 'success');
+        raxLoadBilling();
+        if (j.invoice && j.invoice.id) raxPrintFiscalInvoice(j.invoice.id);
+      } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-invoice-dollar"></i> Emite factura'; } }
+    };
+
     window.raxSetPlan = async function (id) {
       var c = (companiesCache || []).find(function (x) { return x.id === id; }) || {};
       var plan = prompt('Plan pentru „' + (c.name || id) + '":\nscrie  start  /  pro  /  premium  /  custom', c.plan || 'start');
