@@ -319,18 +319,31 @@ function toPdf(report) {
   });
 }
 
+// Diacritice românești → ASCII (pt. fallback-ul filename=", care trebuie să fie ASCII pur).
+function _asciiFold(s) {
+  const map = { 'ă':'a','â':'a','î':'i','ș':'s','ş':'s','ț':'t','ţ':'t','Ă':'A','Â':'A','Î':'I','Ș':'S','Ş':'S','Ț':'T','Ţ':'T' };
+  return String(s || '').replace(/[ăâîșşțţĂÂÎȘŞȚŢ]/g, c => map[c] || c).replace(/[^\x20-\x7E]/g, '');
+}
+// Content-Disposition sigur: antetul HTTP acceptă DOAR ASCII, dar labelul poate avea diacritice („Locație",
+// „Depășiri") → altfel Node aruncă „Invalid character in header content". Dăm fallback ASCII (filename=")
+// + numele real UTF-8 (filename*, RFC 5987) pe care browserele moderne îl afișează cu diacritice.
+function contentDisposition(filename) {
+  const ascii = _asciiFold(filename).replace(/["\\]/g, '');
+  return 'attachment; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(filename);
+}
+
 // ─── Trimite raportul ca descărcare ───
 async function sendReport(res, report, fmt) {
   const name = safeName('RA-Tracks - Raport ' + (report.label || report.type) + ' - ' + datePart()); // ex: „RA-Tracks - Raport Traseu - 06.07.2026"
   if (fmt === 'xlsx') {
     const buf = await toXlsx(report);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + name + '.xlsx"');
+    res.setHeader('Content-Disposition', contentDisposition(name + '.xlsx'));
     return res.send(buf);
   }
   const buf = await toPdf(report);
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'attachment; filename="' + name + '.pdf"');
+  res.setHeader('Content-Disposition', contentDisposition(name + '.pdf'));
   return res.send(buf);
 }
 
