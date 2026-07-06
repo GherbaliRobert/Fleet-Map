@@ -3,6 +3,25 @@
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const path = require('path');
+const fs = require('fs');
+
+// Logo RA Tracks (înglobat în primul rând al fiecărei foi Excel). Citit o singură dată din disc.
+let _logoBuf = null, _logoTried = false;
+function _logoBuffer() {
+  if (!_logoTried) { _logoTried = true; try { _logoBuf = fs.readFileSync(path.join(__dirname, 'public', 'logo.png')); } catch (e) { _logoBuf = null; } }
+  return _logoBuf;
+}
+// Înregistrează imaginea logo în workbook (o dată) → întoarce id-ul refolosibil pe toate foile, sau null.
+function xlLogoId(wb) {
+  const buf = _logoBuffer(); if (!buf) return null;
+  try { return wb.addImage({ buffer: buf, extension: 'png' }); } catch (e) { return null; }
+}
+// Pune logo-ul pe rândul 1 al foii; întoarce primul rând liber (2 cu logo, 1 fără).
+function xlPlaceLogo(ws, logoId) {
+  if (logoId == null) return 1;
+  try { ws.getRow(1).height = 28; ws.addImage(logoId, { tl: { col: 0, row: 0 }, ext: { width: 180, height: 35 } }); } catch (e) { return 1; }
+  return 2;
+}
 
 const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Bucharest'; // perioada/ora afișate în fusul local (ca rândurile raportului), nu UTC-ul serverului
 function fmtPeriod(from, to) {
@@ -28,9 +47,9 @@ function xlSheetName(name, used) {
   return cand;
 }
 // Scrie un tabel uniform într-un worksheet: linii titlu + antet + rânduri + auto-lățime.
-function xlWriteTable(ws, titleLines, columns, rows) {
+function xlWriteTable(ws, titleLines, columns, rows, logoId) {
   const ncol = Math.max(1, columns.length);
-  let r = 1;
+  let r = xlPlaceLogo(ws, logoId); // logo pe rândul 1 → titlul/tabelul încep de la rândul 2 (sau 1 fără logo)
   for (const tl of (titleLines || [])) { ws.mergeCells(r, 1, r, ncol); const c = ws.getCell(r, 1); c.value = tl.text; c.font = tl.font || { bold: true, size: 13 }; r++; }
   r++;
   const hr = r;
@@ -55,9 +74,10 @@ async function toXlsxMultiSheet(report) {
     return (allNum && any) ? Math.round(sum * 10) / 10 : '';
   });
   sumRows.push(['TOTAL flotă'].concat(totals));
-  xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], sumCols, sumRows);
+  const logoId = xlLogoId(wb); // logo RA Tracks, refolosit pe toate foile
+  xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], sumCols, sumRows, logoId);
   for (const v of pv) {
-    xlWriteTable(wb.addWorksheet(xlSheetName(v.vehicul, used)), [{ text: v.vehicul }, period], report.columns || [], v.rows || []);
+    xlWriteTable(wb.addWorksheet(xlSheetName(v.vehicul, used)), [{ text: v.vehicul }, period], report.columns || [], v.rows || [], logoId);
   }
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
@@ -69,14 +89,18 @@ async function toXlsx(report) {
   wb.creator = 'RA Track';
   const ws = wb.addWorksheet((report.label || 'Raport').replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Raport');
 
-  ws.mergeCells(1, 1, 1, ncol);
-  ws.getCell(1, 1).value = report.label || 'Raport';
-  ws.getCell(1, 1).font = { bold: true, size: 14 };
-  ws.mergeCells(2, 1, 2, ncol);
-  ws.getCell(2, 1).value = 'Perioada: ' + fmtPeriod(report.from, report.to);
-  ws.getCell(2, 1).font = { italic: true, size: 10, color: { argb: 'FF777777' } };
+  const logoId = xlLogoId(wb);
+  const base = xlPlaceLogo(ws, logoId); // logo pe rândul 1 → titlul începe de la rândul 2 (sau 1 fără logo)
 
-  const header = ws.getRow(4);
+  ws.mergeCells(base, 1, base, ncol);
+  ws.getCell(base, 1).value = report.label || 'Raport';
+  ws.getCell(base, 1).font = { bold: true, size: 14 };
+  ws.mergeCells(base + 1, 1, base + 1, ncol);
+  ws.getCell(base + 1, 1).value = 'Perioada: ' + fmtPeriod(report.from, report.to);
+  ws.getCell(base + 1, 1).font = { italic: true, size: 10, color: { argb: 'FF777777' } };
+
+  const headerRow = base + 3;
+  const header = ws.getRow(headerRow);
   cols.forEach((c, i) => {
     const cell = header.getCell(i + 1);
     cell.value = c;
@@ -85,7 +109,7 @@ async function toXlsx(report) {
     cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } };
   });
 
-  let r = 5;
+  let r = headerRow + 1;
   for (const row of (report.rows || [])) {
     const xr = ws.getRow(r++);
     (row || []).forEach((v, i) => { xr.getCell(i + 1).value = (v == null ? '' : v); });
@@ -296,7 +320,7 @@ function toPdf(report) {
 
 // ─── Trimite raportul ca descărcare ───
 async function sendReport(res, report, fmt) {
-  const name = safeName(report.label || report.type) + ' ' + datePart(); // ex: „Foaie de parcurs 26.06.2026"
+  const name = safeName('RA-Tracks - Raport ' + (report.label || report.type) + ' - ' + datePart()); // ex: „RA-Tracks - Raport Traseu - 06.07.2026"
   if (fmt === 'xlsx') {
     const buf = await toXlsx(report);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
