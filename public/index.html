@@ -8941,7 +8941,8 @@ const pozitii = await r.json();</code></pre>
       else if (period === 'week') { from.setDate(from.getDate() - 7); }
       dtSet('history-from', formatDateLocal(from));
       dtSet('history-to', formatDateLocal(to));
-      loadHistory();
+      // NU auto-încărca: butoanele Azi/Ieri/7 zile doar completează intervalul „De la/Până la";
+      // încărcarea o declanșează userul din butonul „Încarcă traseul" (la fel ca la selecția din calendar).
     }
 
     // ─── WebSocket ───
