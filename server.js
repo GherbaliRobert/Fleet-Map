@@ -142,6 +142,7 @@ errortrack.init();
 let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
+let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
 const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
 // Regula alertei de viteză: prag MINIM (sub asta nu alertăm niciodată — fără absurdități în zone rezidențiale)
 // + MARJĂ peste limită (toleranță). Alertă DOAR dacă speed > max(BASE, limita configurată) + MARGIN.
@@ -750,6 +751,9 @@ const tcpServer = net.createServer((socket) => {
 
         // Alertă „furt combustibil" (prag per companie) — stare proprie (NU livePositions, care e deja actualizat)
         checkFuelTheft(imei, liveData, undefined).catch(() => {});
+
+        // Alertă „mișcare în afara programului de lucru" (supraveghere flotă)
+        checkAfterHoursMovement(imei, liveData).catch(() => {});
 
         // Track tare automat pentru camioane
         trackTareCandidate(imei, liveData.io || {}).catch(() => {});
@@ -1386,6 +1390,55 @@ async function billingAutoInvoiceTick() {
     } catch (e) { console.warn('[BILLING] auto-invoice co #' + co.id + ':', e.message); }
   }
   return out;
+}
+// ─── Program de lucru + alertă „mișcare în afara programului" (supraveghere flotă) ───
+// Program per companie (settings.work_schedule) + override pe grup / vehicul. Detecție la ingest, cooldown per vehicul.
+const WORK_SCHED_COOLDOWN_MS = Math.max(60000, (parseInt(process.env.WORK_SCHED_COOLDOWN_MIN) || 30) * 60000);
+let _wsCompany = new Map(), _wsGroup = new Map(), _wsDevice = new Map(), _wsDevMeta = new Map();
+const _wsCooldown = new Map();
+async function loadWorkSchedules() {
+  if (!workSched) return;
+  try {
+    const cMap = new Map();
+    const cs = await db.pool.query('SELECT id, settings FROM companies');
+    for (const r of cs.rows) { let s = r.settings; if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { s = null; } } if (s && s.work_schedule) cMap.set(r.id, s.work_schedule); }
+    const gMap = new Map();
+    try { const gs = await db.pool.query('SELECT id, work_schedule FROM device_groups WHERE work_schedule IS NOT NULL'); for (const r of gs.rows) { if (r.work_schedule) gMap.set(r.id, r.work_schedule); } } catch (e) {}
+    const dMap = new Map(), metaMap = new Map();
+    const ds = await db.pool.query("SELECT imei, company_id, group_id, name, plate, work_schedule FROM devices WHERE status IS DISTINCT FROM 'archived'");
+    for (const r of ds.rows) { metaMap.set(r.imei, { companyId: r.company_id, groupId: r.group_id, name: r.name, plate: r.plate }); if (r.work_schedule) dMap.set(r.imei, r.work_schedule); }
+    _wsCompany = cMap; _wsGroup = gMap; _wsDevice = dMap; _wsDevMeta = metaMap;
+  } catch (e) { console.warn('[WORKSCHED] load:', e.message); }
+}
+// Rezolvă programul unui vehicul: override vehicul → override grup → program companie.
+function resolveWorkSchedule(imei) {
+  if (_wsDevice.has(imei)) return _wsDevice.get(imei);
+  const meta = _wsDevMeta.get(imei);
+  if (meta) {
+    if (meta.groupId != null && _wsGroup.has(meta.groupId)) return _wsGroup.get(meta.groupId);
+    if (meta.companyId != null && _wsCompany.has(meta.companyId)) return _wsCompany.get(meta.companyId);
+  }
+  return null;
+}
+// La ingest: dacă vehiculul SE MIȘCĂ în afara programului → o alertă (cu cooldown per vehicul).
+async function checkAfterHoursMovement(imei, liveData) {
+  if (!workSched) return;
+  if (!((Number(liveData.speed) || 0) > 3)) return;                 // DOAR mișcare (deplasare)
+  const sched = resolveWorkSchedule(imei);
+  if (!sched || !sched.enabled) return;
+  const nowMs = new Date(liveData.timestamp).getTime() || Date.now();
+  if (workSched.isWithin(sched, nowMs)) return;                     // e în program → ok
+  if (Date.now() - (_wsCooldown.get(imei) || 0) < WORK_SCHED_COOLDOWN_MS) return; // o alertă / sesiune
+  _wsCooldown.set(imei, Date.now());
+  const meta = _wsDevMeta.get(imei) || {};
+  const plate = meta.plate || meta.name || imei;
+  const tz = sched.tz || 'Europe/Bucharest';
+  const timeStr = new Date(nowMs).toLocaleString('ro-RO', { timeZone: tz, hour: '2-digit', minute: '2-digit' });
+  try {
+    await notify({ type: 'after_hours_move', severity: 'warning', imei: imei, companyId: (meta.companyId != null ? meta.companyId : null), userId: null,
+      title: '⚠ Mișcare în afara programului', body: plate + ' s-a deplasat în afara programului de lucru (ora ' + timeStr + ').',
+      data: { imei: imei, at: nowMs, lat: liveData.latitude, lng: liveData.longitude, speed: Math.round(Number(liveData.speed) || 0) } });
+  } catch (e) { /* best-effort */ }
 }
 // Cache scurt al stării de acces — evită un getCompanyById pe FIECARE request. Invalidat la schimbarea accesului.
 const _accessCache = new Map();
@@ -6388,7 +6441,7 @@ app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
     const a = getAuth(req);
     if (a.companyId == null) return res.json({ ui_defaults: {}, alert_thresholds: {} }); // super-admin fără companie
     const s = await db.getCompanySettings(a.companyId);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {}, weekly_report: s.weekly_report || null });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {}, weekly_report: s.weekly_report || null, work_schedule: s.work_schedule || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
@@ -6396,9 +6449,35 @@ app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
     const a = getAuth(req);
     if (a.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
     const next = await _applyCompanySettingsPatch(a.companyId, req.body || {});
+    if (req.body && req.body.work_schedule !== undefined) loadWorkSchedules().catch(() => {}); // refresh cache detecție
     auditReq(req, 'update', 'company_settings', a.companyId, { keys: Object.keys(req.body || {}) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, work_schedule: next.work_schedule || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Program de lucru — override pe VEHICUL (admin companie / super). null = revine la programul grupului/companiei.
+app.put('/api/devices/:imei/work-schedule', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const imei = String(req.params.imei);
+    const dev = await db.getDeviceFull(imei); if (!dev) return res.status(404).json({ error: 'Vehicul inexistent' });
+    if (!req.isSuper && dev.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
+    const w = (req.body && req.body.work_schedule === null) ? null : (workSched ? workSched.sanitize(req.body && req.body.work_schedule) : null);
+    await db.pool.query('UPDATE devices SET work_schedule = $2::jsonb WHERE imei = $1', [imei, w ? JSON.stringify(w) : null]);
+    loadWorkSchedules().catch(() => {});
+    auditReq(req, 'work-schedule', 'device', imei, {});
+    res.json({ ok: true, work_schedule: w });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Program de lucru — override pe GRUP.
+app.put('/api/device-groups/:id/work-schedule', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!req.isSuper) { const g = await db.pool.query('SELECT company_id FROM device_groups WHERE id=$1', [id]); if (!g.rows[0] || g.rows[0].company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' }); }
+    const w = (req.body && req.body.work_schedule === null) ? null : (workSched ? workSched.sanitize(req.body && req.body.work_schedule) : null);
+    await db.pool.query('UPDATE device_groups SET work_schedule = $2::jsonb WHERE id = $1', [id, w ? JSON.stringify(w) : null]);
+    loadWorkSchedules().catch(() => {});
+    auditReq(req, 'work-schedule', 'device_group', id, {});
+    res.json({ ok: true, work_schedule: w });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Helper centralizat ca să gestionez și enabled_agents (whitelist pe cheia validă), nu doar ui_defaults
 async function _applyCompanySettingsPatch(companyId, body, opts) {
@@ -6436,6 +6515,11 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     next.alert_thresholds = a;
   } else if (body.alert_thresholds === null) {
     delete next.alert_thresholds;
+  }
+  // Program de lucru (supraveghere „mișcare în afara programului"). Admin-ul companiei îl setează pentru flota lui.
+  if (body.work_schedule !== undefined) {
+    if (body.work_schedule === null) delete next.work_schedule;
+    else if (workSched) { const w = workSched.sanitize(body.work_schedule); if (w) next.work_schedule = w; }
   }
   // Raport săptămânal de flotă: { enabled: bool, recipients: [emailuri] }. Admin-ul companiei îl poate dezactiva.
   if (body.weekly_report && typeof body.weekly_report === 'object') {
@@ -7901,6 +7985,9 @@ async function start() {
   // Facturare automată lunară: la scurt timp după boot + de ~4x/zi (idempotent — o factură/companie/lună, pe billing_day).
   setTimeout(() => billingAutoInvoiceTick().then(r => { if (r && r.issued && r.issued.length) console.log('[BILLING] auto-facturare: ' + r.issued.length + ' facturi emise'); }).catch(() => {}), 90 * 1000);
   setInterval(() => billingAutoInvoiceTick().catch(() => {}), 6 * 60 * 60 * 1000);
+  // Program de lucru (supraveghere): încarcă programele la boot + re-sincronizează la 3 min.
+  loadWorkSchedules().catch(() => {});
+  setInterval(() => loadWorkSchedules().catch(() => {}), 3 * 60 * 1000);
 
   // Keepalive DB: ping ușor la 45s ca pool-ul PG să rămână CALD (/api/live e in-memory și nu atinge DB-ul →
   // primul query din panou reconecta lent la Railway; acum prima deschidere e instant).

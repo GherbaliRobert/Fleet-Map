@@ -633,6 +633,8 @@ async function initDb() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS company_id INTEGER;
+        ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS work_schedule JSONB;   -- program de lucru (override pe grup)
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS work_schedule JSONB;         -- program de lucru (override pe vehicul)
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS photo_b64 TEXT;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS company_id INTEGER;
