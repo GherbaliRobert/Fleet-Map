@@ -3678,7 +3678,8 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     if (b.anthropic_credit_date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(String(b.anthropic_credit_date))) await db.setSetting('anthropic_credit_date', String(b.anthropic_credit_date)); // data la care soldul de credite era cel de mai sus
     if (b.invoice_issuer !== undefined && b.invoice_issuer && typeof b.invoice_issuer === 'object') {
       const i = b.invoice_issuer; const S = (v, n) => String(v == null ? '' : v).slice(0, n);
-      const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40) };
+      const _vr = parseFloat(i.vat_rate); const vatRate = (Number.isFinite(_vr) && _vr >= 0 && _vr <= 100) ? _vr : 19;
+      const clean = { name: S(i.name, 160), cui: S(i.cui, 40), reg_com: S(i.reg_com, 40), address: S(i.address, 255), iban: S(i.iban, 40), bank: S(i.bank, 80), email: S(i.email, 160), phone: S(i.phone, 40), vat_rate: vatRate, vat_payer: (i.vat_payer !== false && i.vat_payer !== 'false') };
       await db.setSetting('invoice_issuer', JSON.stringify(clean));
     }
     invalidateSystemSettings();
@@ -6535,6 +6536,142 @@ app.get('/api/companies/:id/payments', requireAuth, requireSuperadmin, async (re
 app.get('/api/payments', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     res.json(await db.getAllPayments(parseInt(req.query.limit) || 500));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ─── Facturi FISCALE (super-admin): generare din abonament (linii + TVA), emitere numerotată, plată/anulare ───
+const INV_SERIES = (process.env.INVOICE_SERIES || 'RAT').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'RAT';
+function _issuerVatRate(iss) { const v = parseFloat(iss && iss.vat_rate); return (Number.isFinite(v) && v >= 0 && v <= 100) ? v : 19; }
+// Clasifică vehiculele companiei în {none, can, fms} pentru facturare (aceeași logică ca /overview: bill_can/override).
+async function _companyBillCounts(company) {
+  const devices = await db.getDevices(company.id);
+  const offer = plans ? plans.effectivePlan(company) : null;
+  const canSet = (offer && Array.isArray(offer.canImeis)) ? new Set(offer.canImeis) : null;
+  let none = 0, can = 0, fms = 0;
+  (devices || []).filter(d => d.status !== 'archived').forEach(d => {
+    const ct = classifyDeviceCan(d);
+    if (ct === 'fms') fms++;
+    else if (canSet ? canSet.has(d.imei) : (ct !== 'none')) can++;
+    else none++;
+  });
+  return { none, can, fms };
+}
+// Construiește liniile de factură din motorul de preț (plans.computeCompanyPrice → breakdown) + TVA per linie.
+function buildInvoiceLines(company, billCounts, features, vatRatePct) {
+  const p = plans ? plans.computeCompanyPrice(company, billCounts, { features }) : { model: 'preset', monthlyTotal: 0, breakdown: { counts: billCounts } };
+  const bd = p.breakdown || {}; const cnt = bd.counts || billCounts || {};
+  const vr = Number(vatRatePct) || 0; const lines = [];
+  const add = (desc, qty, total) => {
+    total = Math.round((Number(total) || 0) * 100) / 100;
+    if (!(total > 0)) return;
+    const q = qty > 0 ? qty : 1;
+    const unit = Math.round((total / q) * 100) / 100;
+    const vat = Math.round(total * vr) / 100;
+    lines.push({ desc, qty: q, unitPrice: unit, vatRate: vr, net: total, vat, gross: Math.round((total + vat) * 100) / 100 });
+  };
+  if (p.model === 'direct') {
+    add('Abonament monitorizare GPS (fără CAN)', cnt.none, bd.base);
+    add('Abonament monitorizare GPS cu CAN', cnt.can, bd.canAddon);
+    add('Abonament monitorizare GPS + FMS/tahograf', cnt.fms, bd.fmsAddon);
+  } else if (p.model === 'tiered') {
+    add('Abonament monitorizare GPS — bază/vehicul', cnt.total, bd.base);
+    add('Supliment CAN', cnt.can, bd.canAddon);
+    add('Supliment FMS/tahograf', cnt.fms, bd.fmsAddon);
+  } else if (p.model === 'flat') {
+    add('Abonament monitorizare flotă GPS', 1, bd.base);
+  } else {
+    add('Abonament monitorizare GPS', cnt.total, bd.base);
+  }
+  add('Asistent AI', 1, bd.aiAssistant);
+  add('Agenți AI (monitorizare inteligentă)', 1, bd.aiAgents);
+  if (!lines.length && (p.monthlyTotal > 0)) add('Abonament monitorizare GPS', 1, p.monthlyTotal);
+  const subtotal = Math.round(lines.reduce((s, l) => s + l.net, 0) * 100) / 100;
+  const vatAmount = Math.round(lines.reduce((s, l) => s + l.vat, 0) * 100) / 100;
+  return { lines, subtotal, vatAmount, total: Math.round((subtotal + vatAmount) * 100) / 100, model: p.model };
+}
+function _clientSnapshot(co) {
+  return { name: co.name || null, cui: co.cui || null, reg_com: co.reg_com || null, address: co.address || null, iban: co.iban || null, email: co.contact_email || null, phone: co.phone || null, vat_payer: co.vat_payer !== false };
+}
+app.get('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const rows = await db.getInvoices({ companyId: req.query.company_id ? parseInt(req.query.company_id) : null, status: req.query.status || null, limit: parseInt(req.query.limit) || 500 });
+    res.json({ invoices: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/invoices/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try { const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' }); res.json(inv); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Draft: calculează liniile pt. companie + perioadă FĂRĂ a salva/numerota (admin revizuiește, apoi emite).
+app.post('/api/invoices/draft', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.body && req.body.companyId); if (!Number.isFinite(id)) return res.status(400).json({ error: 'companyId invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const iss = ((await getSystemSettings()).invoice_issuer) || {};
+    const vatRate = _issuerVatRate(iss);
+    const billCounts = await _companyBillCounts(co);
+    const calc = buildInvoiceLines(co, billCounts, plans ? plans.featuresFor(co) : {}, vatRate);
+    res.json({ company: { id: co.id, name: co.name }, client: _clientSnapshot(co), issuer: iss, vatRate, billCounts, model: calc.model, lines: calc.lines, subtotal: calc.subtotal, vatAmount: calc.vatAmount, total: calc.total });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Emite factura (numerotare ATOMICĂ + snapshot emitent/client). Body: { companyId, periodStart, periodEnd, lines[], note }
+app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const id = parseInt(b.companyId); if (!Number.isFinite(id)) return res.status(400).json({ error: 'companyId invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const iss = ((await getSystemSettings()).invoice_issuer) || {};
+    if (!iss.name || !iss.cui) return res.status(400).json({ error: 'Completează întâi „Date emitent" (nume + CUI) — sunt obligatorii pe factură.' });
+    const vr = _issuerVatRate(iss);
+    let calc;
+    if (Array.isArray(b.lines) && b.lines.length) { // linii revizuite de admin
+      const norm = b.lines.map(l => {
+        const qty = Math.max(0, Number(l.qty) || 0), unit = Math.round((Number(l.unitPrice) || 0) * 100) / 100;
+        const net = Math.round(qty * unit * 100) / 100;
+        const vrate = (l.vatRate != null ? Number(l.vatRate) : vr);
+        const vat = Math.round(net * vrate) / 100;
+        return { desc: String(l.desc || '').slice(0, 200), qty, unitPrice: unit, vatRate: vrate, net, vat, gross: Math.round((net + vat) * 100) / 100 };
+      }).filter(l => l.desc && l.qty > 0);
+      const subtotal = Math.round(norm.reduce((s, l) => s + l.net, 0) * 100) / 100;
+      const vatAmount = Math.round(norm.reduce((s, l) => s + l.vat, 0) * 100) / 100;
+      calc = { lines: norm, subtotal, vatAmount, total: Math.round((subtotal + vatAmount) * 100) / 100 };
+    } else {
+      calc = buildInvoiceLines(co, await _companyBillCounts(co), plans ? plans.featuresFor(co) : {}, vr);
+    }
+    if (!calc.lines.length || calc.total <= 0) return res.status(400).json({ error: 'Factura nu are linii/valoare — verifică abonamentul companiei.' });
+    const now = Date.now(); const year = new Date(now).getFullYear();
+    const num = await db.nextInvoiceNumber(INV_SERIES, year);
+    const periodStart = b.periodStart ? Number(b.periodStart) : now;
+    const periodEnd = b.periodEnd ? Number(b.periodEnd) : _addMonthsMs(periodStart, 1);
+    const termDays = Math.max(0, parseInt(co.payment_term_days) || 15);
+    const inv = await db.createInvoice({
+      companyId: id, series: num.series, number: num.number, year: num.year, fullNumber: num.full,
+      type: 'invoice', status: 'issued', issueDate: now, dueDate: now + termDays * 86400000, periodStart, periodEnd, currency: 'RON',
+      subtotal: calc.subtotal, vatAmount: calc.vatAmount, total: calc.total, lines: calc.lines,
+      issuer: iss, client: _clientSnapshot(co), note: (b.note || null), createdBy: req.auth && req.auth.userId
+    });
+    auditReq(req, 'issue', 'invoice', inv.id, { full: num.full, company: id, total: calc.total });
+    res.json({ ok: true, invoice: inv });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Stare factură: 'paid' (înregistrează plata + extinde accesul) | 'canceled'
+app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
+    const status = String((req.body && req.body.status) || '').toLowerCase();
+    if (status === 'canceled') {
+      if (inv.status === 'paid') return res.status(400).json({ error: 'Factura e plătită — folosește storno, nu anulare.' });
+      await db.updateInvoice(inv.id, { status: 'canceled' });
+      auditReq(req, 'cancel', 'invoice', inv.id, {}); return res.json({ ok: true });
+    }
+    if (status === 'paid') {
+      if (inv.status === 'paid') return res.json({ ok: true, already: true });
+      const method = (req.body && req.body.method) || 'transfer';
+      const pay = await db.recordPayment({ companyId: inv.company_id, amountRon: Number(inv.total) || null, periodStart: inv.period_start, periodEnd: inv.period_end, method, note: 'Factură ' + inv.full_number, createdBy: req.auth && req.auth.userId });
+      await db.updateInvoice(inv.id, { status: 'paid', paidAt: Date.now(), paymentId: pay.id });
+      _invalidateAccessCache(inv.company_id);
+      auditReq(req, 'paid', 'invoice', inv.id, { paymentId: pay.id }); return res.json({ ok: true, payment: pay });
+    }
+    return res.status(400).json({ error: 'Stare necunoscută (paid|canceled)' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Control costuri (cheltuielile NOASTRE de platformă) — STRICT super-admin ───
