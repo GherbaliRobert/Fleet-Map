@@ -555,7 +555,7 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație
   return {
     columns: ['Vehicul', 'Moment', 'Vechime poziție', 'Locație', 'Viteză', 'Contact', 'Sateliți'],
     rows,
-    summary: { 'Vehicule': rows.length },
+    // fără sumar (cerut): raportul e o simplă listă „poză a flotei", nu are nevoie de KPI-uri.
     periodLabel: 'Poziție la: ' + fmtTs(to)   // în antet: momentul „pozei", nu un interval (rap. folosește doar 'to')
   };
 }
