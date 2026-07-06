@@ -13,17 +13,19 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Bucharest';
 function fmtTs(ts) { return ts ? new Date(ts).toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }) : ''; }
-// Vechimea unei poziții (ms) față de momentul raportului: „acum 12 min" / „acum 3 zile".
-function _ageStr(ms) {
+// Vechimea unei poziții (ms). isNow=true (raport „până acum") → prefix „acum X" (ex. „acum 12 min");
+// isNow=false (raport pe o zi din trecut) → durată simplă „34 min" — fără „acum", ca să nu inducă în eroare.
+function _ageStr(ms, isNow) {
   if (ms == null || !isFinite(ms) || ms < 0) return '—';
+  const pre = isNow ? 'acum ' : '';
   const s = Math.round(ms / 1000);
-  if (s < 60) return 'acum ' + s + ' sec';
+  if (s < 60) return pre + s + ' sec';
   const m = Math.round(s / 60);
-  if (m < 60) return 'acum ' + m + ' min';
+  if (m < 60) return pre + m + ' min';
   const h = Math.floor(m / 60);
-  if (h < 24) return 'acum ' + h + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+  if (h < 24) return pre + h + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
   const d = Math.floor(h / 24);
-  return 'acum ' + d + (d === 1 ? ' zi' : ' zile');
+  return pre + d + (d === 1 ? ' zi' : ' zile');
 }
 // Calitatea fix-ului GPS după numărul de sateliți (ca userul să înțeleagă coloana „Sateliți").
 function _satQ(n) {
@@ -543,6 +545,9 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare fl
 
 async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: ultima poziție a fiecărui vehicul până la 'to' (o „poză" a flotei)
   const toMs = new Date(to).getTime();
+  const nowMs = Date.now();
+  const refMs = Math.min(toMs, nowMs);   // vechime față de ACUM dacă poza e curentă/în viitor; altfel față de momentul pozei
+  const isNow = toMs >= nowMs - 120000;  // raport „până acum" → „acum X"; raport pe o zi din trecut → durată simplă „X"
   // 1. Adună ultima poziție a fiecărui vehicul (până la momentul 'to')
   const items = [];
   for (const imei of imeis) {
@@ -559,7 +564,7 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație
   const rows = items.map(({ imei, p }) => {
     const i = p.io_data || {};
     const sat = p.satellites || 0;
-    return [ label(devMap, imei), fmtTs(p.timestamp), _ageStr(toMs - t(p)), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', sat + ' (' + _satQ(sat) + ')' ];
+    return [ label(devMap, imei), fmtTs(p.timestamp), _ageStr(refMs - t(p), isNow), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', sat + ' (' + _satQ(sat) + ')' ];
   });
   return {
     columns: ['Vehicul', 'Moment', 'Vechime poziție', 'Locație', 'Viteză', 'Contact', 'Sateliți'],
