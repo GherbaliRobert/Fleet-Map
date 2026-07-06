@@ -98,6 +98,7 @@
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-chart-column"></i><span>Analize statistice</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici</span></button>
+            <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('aiasist'); })"><i class="fas fa-robot"></i><span>Asistenți AI</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goAnalizeConsum)"><i class="fas fa-gas-pump"></i><span>Statistici consum</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goFuelPrice)"><i class="fas fa-coins"></i><span>Preț combustibil</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goWeeklyReport)"><i class="fas fa-calendar-week"></i><span>Raport săptămânal</span></button>
@@ -1928,6 +1929,23 @@ const pozitii = await r.json();</code></pre>
       </div>
       <div class="chart-container h-250" style="position:relative;"><div class="chart-container-title">Preț mediu național (lei/L) <span style="font-weight:400;font-size:10.5px;color:var(--text-muted);">· trage pe grafic pentru zoom · dublu-click = resetare</span></div><button id="fp-zoom-reset" onclick="fpZoomReset()" style="display:none;position:absolute;top:6px;right:10px;z-index:5;background:var(--bg-dark);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="fas fa-rotate-left"></i> Resetează zoom</button><canvas id="chart-fuel-price"></canvas></div>
       <div id="fp-note" style="font-size:11.5px;color:var(--text-muted);margin-top:10px;line-height:1.5;"></div>
+    </div>
+  </div>
+
+  <!-- Pagina „Asistenți AI" (Analize statistice → Asistenți AI): roster asistenți AI + utilizare, sub formă de cartonașe -->
+  <div id="ai-assist-view" class="modal-overlay">
+    <div class="modal" style="width:960px;max-width:96vw;max-height:92vh;">
+      <h2><span><i class="fas fa-robot" style="margin-right:8px;color:var(--accent);"></i> Asistenți AI</span>
+        <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button></h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <span style="font-size:12.5px;font-weight:700;color:var(--text-secondary);">Perioadă:</span>
+        <button class="report-period-btn" onclick="aiaDays(7,this)">7 zile</button>
+        <button class="report-period-btn active" onclick="aiaDays(30,this)">30 zile</button>
+        <button class="report-period-btn" onclick="aiaDays(90,this)">90 zile</button>
+        <button class="report-period-btn" onclick="aiaDays(0,this)">Tot</button>
+      </div>
+      <div id="aia-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;"></div>
+      <div id="aia-note" style="font-size:11.5px;color:var(--text-muted);margin-top:14px;line-height:1.5;"></div>
     </div>
   </div>
 
@@ -6257,8 +6275,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', weeklyreport: 'weekly-report-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', weeklyreport: 'weekly-report-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -6272,6 +6290,56 @@ const pozitii = await r.json();</code></pre>
     function goSistem(tab) { if ((tab === 'companies' || tab === 'accounts' || tab === 'audit') && !can('manageCompanies')) return; showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
     function goAnalizeConsum() { showView('fuelstats'); }
     function goWeeklyReport() { showView('weeklyreport'); }
+    // ─── Pagina „Asistenți AI" (Analize statistice → utilizare per asistent, cartonașe) ───
+    var _aiaDays = 30;
+    // Rosterul de asistenți AI (kind = eticheta din ai_usage). Culorile sunt variabile de temă (light/dark safe).
+    var AI_ASSISTANTS = [
+      { kind: 'chat',    name: 'Asistent AI',      icon: 'fa-robot',               color: 'var(--accent)', desc: 'Chat conversațional despre flota live: unde sunt vehiculele, km azi, stare, combustibil.' },
+      { kind: 'insight', name: 'RA Insight',       icon: 'fa-wand-magic-sparkles', color: 'var(--purple)', desc: 'Agent analitic peste rapoarte — răspunde la întrebări și scrie constatări din datele flotei.' },
+      { kind: 'report',  name: 'Rezumat rapoarte', icon: 'fa-align-left',           color: 'var(--orange)', desc: 'Generează rezumatul executiv (în cuvinte) al unui raport de flotă afișat.' },
+      { kind: 'agents',  name: 'Agenți AI',        icon: 'fa-shield-halved',        color: 'var(--red)',    desc: 'Detectează anomalii (consum, viteză, trasee, mentenanță) și rezumă constatările.' }
+    ];
+    function aiaDays(n, btn) {
+      _aiaDays = n;
+      if (btn) { document.querySelectorAll('#ai-assist-view .report-period-btn').forEach(function (b) { b.classList.remove('active'); }); btn.classList.add('active'); }
+      loadAiAssistView();
+    }
+    async function loadAiAssistView() {
+      var host = document.getElementById('aia-cards');
+      if (host && !host.innerHTML) host.innerHTML = '<div style="padding:12px;color:var(--text-muted);">Se încarcă…</div>';
+      var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+      var fmtN = function (n) { return (Number(n) || 0).toLocaleString('ro-RO'); };
+      var fmtTok = function (n) { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k'; return String(n); };
+      var fmtWhen = function (s) { if (!s) return null; var dt = new Date(s); if (isNaN(dt.getTime())) return null; return dt.toLocaleDateString('ro-RO', { day: '2-digit', month: 'short', year: 'numeric' }); };
+      try {
+        var qs = (window.superCompanyQS ? window.superCompanyQS('?') : '');
+        qs = qs ? (qs + '&days=' + _aiaDays) : ('?days=' + _aiaDays);
+        var d = await fetch('/api/ai/usage-stats' + qs, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        var byKind = {};
+        (d.usage || []).forEach(function (u) { byKind[u.kind] = u; });
+        host.innerHTML = AI_ASSISTANTS.map(function (a) {
+          var u = byKind[a.kind] || {};
+          var calls = Number(u.calls) || 0, used = calls > 0;
+          var last = fmtWhen(u.last_used);
+          return '<div class="aia-card" style="border-top:3px solid ' + a.color + ';">' +
+            '<div class="aia-head"><span class="aia-ic" style="color:' + a.color + ';"><i class="fas ' + a.icon + '"></i></span>' +
+            '<div class="aia-name">' + esc(a.name) + '<span class="aia-badge' + (used ? ' on' : '') + '">' + (used ? fmtN(calls) + (calls === 1 ? ' utilizare' : ' utilizări') : 'disponibil · 0 utilizări') + '</span></div></div>' +
+            '<div class="aia-desc">' + esc(a.desc) + '</div>' +
+            '<div class="aia-stats">' +
+              '<div><span class="v">' + fmtN(calls) + '</span><span class="k">Apeluri</span></div>' +
+              '<div><span class="v">' + fmtTok(u.input_tokens) + '</span><span class="k">Tokeni in</span></div>' +
+              '<div><span class="v">' + fmtTok(u.output_tokens) + '</span><span class="k">Tokeni out</span></div>' +
+            '</div>' +
+            '<div class="aia-last">' + (last ? '<i class="fas fa-clock"></i> Ultima folosire: ' + last : '<i class="fas fa-minus"></i> Neutilizat în perioada aleasă') + '</div>' +
+          '</div>';
+        }).join('');
+        var totCalls = (d.usage || []).reduce(function (s, u) { return s + (Number(u.calls) || 0); }, 0);
+        var note = document.getElementById('aia-note');
+        if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Utilizarea AI din ' + (_aiaDays ? ('ultimele ' + _aiaDays + ' zile') : 'tot istoricul') + ' — <b>' + fmtN(totCalls) + '</b> apeluri în total' + (d.model ? ' · model: <b>' + esc(d.model) + '</b>' : '') + (d.enabled === false ? ' · <span style="color:var(--orange);">AI neconfigurat (fără cheie)</span>' : '') + '. Tokenii sunt însumați (intrare/ieșire) pe fiecare asistent.';
+      } catch (e) {
+        if (host) host.innerHTML = '<div style="padding:16px;color:var(--red);">Eroare la încărcarea statisticilor AI.</div>';
+      }
+    }
     // ─── Pagina „Preț combustibil" (media națională + override companie + trend) ───
     var _fpDays = 90;
     function goFuelPrice() { showView('fuelprice'); }

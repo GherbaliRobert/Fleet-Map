@@ -1064,6 +1064,23 @@ async function getAiUsageByCompany(sinceDays) {
      FROM ai_usage ${where} GROUP BY company_id`, params);
   return r.rows;
 }
+// Consum AI grupat pe tip de asistent (kind) — pentru panoul „Asistenți AI" din Analize statistice.
+// companyId=null → toate companiile (super-admin fără filtru). sinceDays=0/null → tot istoricul.
+async function getAiUsageByKind(companyId, sinceDays) {
+  const params = [], conds = [];
+  if (companyId != null) { params.push(companyId); conds.push('company_id = $' + params.length); }
+  const days = parseInt(sinceDays);
+  if (days > 0) { params.push(new Date(Date.now() - days * 86400000).toISOString()); conds.push('created_at >= $' + params.length); }
+  const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+  const r = await pool.query(
+    `SELECT kind,
+       COALESCE(SUM(input_tokens), 0)::bigint  AS input_tokens,
+       COALESCE(SUM(output_tokens), 0)::bigint AS output_tokens,
+       COUNT(*)::int AS calls,
+       MAX(created_at)  AS last_used
+     FROM ai_usage ${where} GROUP BY kind`, params);
+  return r.rows;
+}
 // Total tokeni (in+out) pentru o companie în ultimele N zile.
 async function getAiTokensForCompany(companyId, days) {
   const since = new Date(Date.now() - (parseInt(days) || 30) * 86400000).toISOString();
@@ -2888,7 +2905,7 @@ module.exports = {
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
-  recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
+  recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice,

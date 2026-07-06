@@ -1880,6 +1880,16 @@ function _fleetSnapshot(req) {
 }
 
 app.get('/api/ai/status', requireAuth, (req, res) => res.json({ enabled: ai.aiEnabled(), model: ai.AI_MODEL }));
+// Utilizare AI per asistent (kind) — pentru panoul „Asistenți AI" (Analize statistice). Scope pe companie; super-adminul poate filtra.
+app.get('/api/ai/usage-stats', requireAuth, withScope, async (req, res) => {
+  try {
+    await applyCompanyFilter(req);
+    const companyId = req.isSuper ? (req.filterCompanyId != null ? req.filterCompanyId : null) : req.companyId;
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 0), 3650);
+    const usage = await db.getAiUsageByKind(companyId, days);
+    res.json({ days, enabled: ai.aiEnabled(), model: ai.AI_MODEL, usage });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // Super-admin: setează/șterge cheia Anthropic din UI (stocată în DB, fără editare .env)
 app.post('/api/ai/config', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -4836,11 +4846,15 @@ app.get('/api/maintenance', requireAuth, withScope, async (req, res) => {
 });
 
 // Odometru (km) din io_data CAN — încearcă câmpurile uzuale.
+// IMPORTANT unități: can_total_mileage / _counted sunt DEJA în km (convertite în codec8e),
+// dar total_odometer e RAW în METRI (nu trece prin convertCanValue) → /1000. (identic cu reports.js odo / agents.js odoKm)
 function _odoFromIo(io) {
   if (!io) return null;
-  const cands = [io.can_total_mileage, io.can_total_mileage_counted, io.total_odometer];
-  for (const c of cands) { const n = parseFloat(c); if (isFinite(n) && n > 0) return Math.round(n); }
-  return null;
+  let km = null;
+  if (io.can_total_mileage != null)              km = parseFloat(io.can_total_mileage);            // deja km
+  else if (io.can_total_mileage_counted != null) km = parseFloat(io.can_total_mileage_counted);     // deja km
+  else if (io.total_odometer != null)            km = parseFloat(io.total_odometer) / 1000;         // metri → km
+  return (km != null && isFinite(km) && km > 0) ? Math.round(km) : null;
 }
 
 // Praguri alertă mentenanță — O SINGURĂ sursă (worker + /api/maintenance pt. colorarea listei).

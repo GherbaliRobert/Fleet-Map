@@ -195,6 +195,7 @@ export const Api = {
   deleteReportSchedule: (id: number) => api(`/api/report-schedules/${id}`, { method: 'DELETE' }),
   runReportSchedule: (id: number) => api(`/api/report-schedules/${id}/run`, { method: 'POST', body: {} }),
   aiStatus: () => api<{ enabled: boolean; model?: string }>('/api/ai/status'),
+  aiUsageStats: (days: number) => api<{ days: number; enabled: boolean; model?: string; usage: { kind: string; input_tokens: number; output_tokens: number; calls: number; last_used: string | null }[] }>(`/api/ai/usage-stats?days=${days}`),
   aiChat: (message: string, history?: { role: string; content: string }[]) => api<{ reply: string; source?: string; disabled?: boolean; limited?: boolean }>('/api/ai/chat', { method: 'POST', body: { message, history } }),
   reportsAgent: (message: string) => api<{ reply?: string; disabled?: boolean; limited?: boolean }>('/api/ai/reports-agent', { method: 'POST', body: { message } }), // RA Insight — mod AI (text liber, opțional)
   insightPresets: () => api<{ key: string; title: string }[]>('/api/insight/presets'), // RA Insight — întrebări predefinite (fără AI)
