@@ -5,10 +5,12 @@ const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
 
-// Logo RA Tracks (înglobat în primul rând al fiecărei foi Excel). Citit o singură dată din disc.
+// Logo RA Tracks pt. exporturi pe fundal ALB (Excel + PDF). Citit o singură dată din disc.
+// ATENȚIE la denumire: „logo.png" e varianta ALBĂ (pt. fundal închis) — invizibilă pe alb;
+// „logo-light.png" e varianta ÎNCHISĂ (pt. temă/​fundal deschis) — asta ne trebuie pe alb.
 let _logoBuf = null, _logoTried = false;
 function _logoBuffer() {
-  if (!_logoTried) { _logoTried = true; try { _logoBuf = fs.readFileSync(path.join(__dirname, 'public', 'logo.png')); } catch (e) { _logoBuf = null; } }
+  if (!_logoTried) { _logoTried = true; try { _logoBuf = fs.readFileSync(path.join(__dirname, 'public', 'logo-light.png')); } catch (e) { _logoBuf = null; } }
   return _logoBuf;
 }
 // Înregistrează imaginea logo în workbook (o dată) → întoarce id-ul refolosibil pe toate foile, sau null.
@@ -235,12 +237,11 @@ function renderPdf(doc, report) {
   const bottom = doc.page.height - doc.page.margins.bottom;
   let y = doc.page.margins.top;
 
-  // 1. Antet brandat
-  doc.roundedRect(left, y, 30, 22, 4).fillColor('#3FE07D').fill();
-  doc.fillColor('#06210F').font('Nunito-Bold').fontSize(14).text('RA', left, y + 5, { width: 30, align: 'center', lineBreak: false });
-  doc.fillColor('#111').font('Nunito-Bold').fontSize(16).text('Tracks', left + 36, y + 4, { lineBreak: false });
-  doc.fillColor('#111').font('Nunito-Bold').fontSize(13).text(report.label || 'Raport', left, y + 4, { width: usableW, align: 'right', lineBreak: false });
-  y += 26;
+  // 1. Antet brandat — logo REAL RA Tracks (aceeași imagine ca în Excel), la stânga
+  const _pdfLogo = _logoBuffer();
+  if (_pdfLogo) { try { doc.image(_pdfLogo, left, y, { height: 24 }); } catch (e) {} } // 694×135 → înălț. 24 ⇒ lățime ≈123, proporție păstrată
+  doc.fillColor('#111').font('Nunito-Bold').fontSize(13).text(report.label || 'Raport', left, y + 6, { width: usableW, align: 'right', lineBreak: false });
+  y += 28;
   doc.moveTo(left, y).lineTo(left + usableW, y).strokeColor('#3FE07D').lineWidth(2).stroke();
   y += 7;
   doc.font('Nunito').fontSize(9).fillColor('#6b7280').text('Perioadă: ' + fmtPeriod(report.from, report.to) + '     Generat: ' + new Date().toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }), left, y, { lineBreak: false });
