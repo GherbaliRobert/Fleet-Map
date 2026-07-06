@@ -663,6 +663,10 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS iban VARCHAR(34);
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS bank_name VARCHAR(120);
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS contacts JSONB DEFAULT '[]';
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS billing_day INTEGER DEFAULT 1;         -- ziua lunii la care se emite factura (facturare automată)
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS payment_term_days INTEGER DEFAULT 15;  -- termen de plată (zile) → scadența facturii
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS auto_invoice BOOLEAN DEFAULT false;    -- intră în ciclul lunar automat de facturare
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS vat_payer BOOLEAN DEFAULT true;        -- clientul e plătitor de TVA (informativ pe factură)
       END $$
     `);
     // ─── Plăți (gestionate manual de super-admin; schema pregătită și pentru Stripe) ───
@@ -681,6 +685,49 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_payments_company ON payments(company_id, created_at DESC)`);
+    // ─── Facturi (fiscale) — emise către clienți; abonament lunar GPS. Serie persistentă + linii + defalcare TVA + stare e-Factura. ───
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER NOT NULL,
+        series VARCHAR(16) NOT NULL DEFAULT 'RAT',
+        number INTEGER NOT NULL,
+        year INTEGER NOT NULL,
+        full_number VARCHAR(40),                    -- „RAT-2026-00042" (denormalizat pt. afișare/căutare)
+        type VARCHAR(16) NOT NULL DEFAULT 'invoice', -- invoice | proforma | credit_note
+        status VARCHAR(16) NOT NULL DEFAULT 'draft', -- draft | issued | sent | paid | overdue | canceled
+        issue_date BIGINT, due_date BIGINT,
+        period_start BIGINT, period_end BIGINT,
+        currency VARCHAR(3) NOT NULL DEFAULT 'RON',
+        subtotal NUMERIC(12,2) DEFAULT 0,           -- net (fără TVA)
+        vat_amount NUMERIC(12,2) DEFAULT 0,
+        total NUMERIC(12,2) DEFAULT 0,              -- brut (cu TVA)
+        lines JSONB DEFAULT '[]',                   -- [{desc, qty, unitPrice, vatRate, net, vat, gross}]
+        issuer JSONB,                               -- snapshot emitent la emitere (imutabil)
+        client JSONB,                               -- snapshot client la emitere (imutabil)
+        efactura_status VARCHAR(24),                -- null | pending | uploaded | validated | error
+        efactura_id VARCHAR(80),
+        efactura_error TEXT,
+        stripe_invoice_id VARCHAR(80),
+        payment_id INTEGER,
+        paid_at BIGINT,
+        note TEXT,
+        created_by INTEGER,
+        created_at BIGINT,
+        updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_invoices_company ON invoices(company_id, created_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status, due_date)`);
+    // Contor serie de facturi (per serie+an) — sursă ATOMICĂ pt. numerotare secvențială fără găuri/duplicate.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS invoice_counters (
+        series VARCHAR(16) NOT NULL,
+        year INTEGER NOT NULL,
+        last_number INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (series, year)
+      )
+    `);
     // ─── Control costuri: cheltuielile NOASTRE de platformă (RoTLD, Railway, Cloudflare, Anthropic…) — NU sunt scopate pe companie ───
     await client.query(`
       CREATE TABLE IF NOT EXISTS platform_costs (
@@ -1089,6 +1136,60 @@ async function getAllPayments(limit) {
     LIMIT $1`, [lim]);
   const total = r.rows.reduce((s, x) => s + (Number(x.amount_ron) || 0), 0);
   return { payments: r.rows, total: Math.round(total * 100) / 100 };
+}
+// ─── Facturi (invoices) ───
+const _r2 = (x) => Math.round((Number(x) || 0) * 100) / 100;
+// Contor ATOMIC per serie+an → următorul număr secvențial (fără duplicate/găuri chiar la emitere concurentă).
+async function nextInvoiceNumber(series, year) {
+  series = String(series || 'RAT').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'RAT';
+  year = parseInt(year) || new Date().getFullYear();
+  const r = await pool.query(
+    `INSERT INTO invoice_counters (series, year, last_number) VALUES ($1,$2,1)
+     ON CONFLICT (series, year) DO UPDATE SET last_number = invoice_counters.last_number + 1
+     RETURNING last_number`,
+    [series, year]
+  );
+  const n = r.rows[0].last_number;
+  return { series, year, number: n, full: series + '-' + year + '-' + String(n).padStart(5, '0') };
+}
+async function createInvoice(inv) {
+  const now = Date.now();
+  const r = await pool.query(
+    `INSERT INTO invoices (company_id, series, number, year, full_number, type, status, issue_date, due_date, period_start, period_end, currency, subtotal, vat_amount, total, lines, issuer, client, note, created_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$21) RETURNING *`,
+    [inv.companyId, inv.series || 'RAT', inv.number, inv.year, inv.fullNumber || null, inv.type || 'invoice', inv.status || 'draft',
+      inv.issueDate || now, inv.dueDate || null, inv.periodStart || null, inv.periodEnd || null, inv.currency || 'RON',
+      _r2(inv.subtotal), _r2(inv.vatAmount), _r2(inv.total), JSON.stringify(inv.lines || []),
+      inv.issuer ? JSON.stringify(inv.issuer) : null, inv.client ? JSON.stringify(inv.client) : null, inv.note || null, inv.createdBy || null, now]
+  );
+  return r.rows[0];
+}
+async function getInvoice(id) {
+  const r = await pool.query('SELECT i.*, c.name AS company_name FROM invoices i LEFT JOIN companies c ON c.id = i.company_id WHERE i.id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function getInvoices(opts) {
+  opts = opts || {};
+  const cond = [], args = [];
+  if (opts.companyId != null) { args.push(opts.companyId); cond.push('i.company_id = $' + args.length); }
+  if (opts.status) { args.push(opts.status); cond.push('i.status = $' + args.length); }
+  const where = cond.length ? ('WHERE ' + cond.join(' AND ')) : '';
+  args.push(Math.min(parseInt(opts.limit) || 500, 2000));
+  const r = await pool.query(
+    `SELECT i.*, c.name AS company_name FROM invoices i LEFT JOIN companies c ON c.id = i.company_id
+     ${where} ORDER BY i.year DESC, i.number DESC LIMIT $${args.length}`, args);
+  return r.rows;
+}
+// Actualizare parțială controlată (stare / e-Factura / legătură plată). NU atinge liniile/emitentul o dată emise (imutabile).
+async function updateInvoice(id, f) {
+  const map = { status: 'status', efacturaStatus: 'efactura_status', efacturaId: 'efactura_id', efacturaError: 'efactura_error',
+    stripeInvoiceId: 'stripe_invoice_id', paymentId: 'payment_id', paidAt: 'paid_at', dueDate: 'due_date', note: 'note' };
+  const sets = [], args = [id];
+  for (const k of Object.keys(map)) { if (f[k] !== undefined) { args.push(f[k]); sets.push(map[k] + ' = $' + args.length); } }
+  if (!sets.length) return getInvoice(id);
+  args.push(Date.now()); sets.push('updated_at = $' + args.length);
+  const r = await pool.query(`UPDATE invoices SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, args);
+  return r.rows[0] || null;
 }
 // ─── Control costuri (platform_costs) ───
 async function listPlatformCosts(opts) {
@@ -2788,6 +2889,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
+  nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
