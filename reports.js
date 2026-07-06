@@ -534,14 +534,24 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare fl
 }
 
 async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: ultima poziție a fiecărui vehicul până la 'to' (o „poză" a flotei)
-  const rows = [];
   const toMs = new Date(to).getTime();
+  // 1. Adună ultima poziție a fiecărui vehicul (până la momentul 'to')
+  const items = [];
   for (const imei of imeis) {
     const r = await db.pool.query('SELECT * FROM positions WHERE imei = $1 AND timestamp <= $2 ORDER BY timestamp DESC LIMIT 1', [imei, to]);
     const p = r.rows[0]; if (!p) continue;
-    const i = p.io_data || {};
-    rows.push([ label(devMap, imei), fmtTs(p.timestamp), _ageStr(toMs - t(p)), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', p.satellites || 0 ]);
+    items.push({ imei, p });
   }
+  // 2. Pre-încarcă adresele în cache (ca la Foaie de parcurs) → coloana „Locație" arată ADRESE, nu coordonate.
+  //    Fallback pe coordonate dacă geocoderul (Nominatim ~1/s) nu apucă în bugetul de timp.
+  if (geocode && geocode.warm && items.length) {
+    try { await geocode.warm(items.map(x => ({ lat: x.p.latitude, lng: x.p.longitude })), { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {}
+  }
+  // 3. Construiește rândurile — addr() ia acum adresa din cache
+  const rows = items.map(({ imei, p }) => {
+    const i = p.io_data || {};
+    return [ label(devMap, imei), fmtTs(p.timestamp), _ageStr(toMs - t(p)), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', p.satellites || 0 ];
+  });
   return {
     columns: ['Vehicul', 'Moment', 'Vechime poziție', 'Locație', 'Viteză', 'Contact', 'Sateliți'],
     rows,
