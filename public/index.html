@@ -6157,7 +6157,8 @@ const pozitii = await r.json();</code></pre>
             var lim = rl && rl.limits && rl.limits[0];
             var est = rl && rl.estimated && rl.estimated[0];
             if (lim) {
-              var ovr = d.event.speed && d.event.speed > lim; el.innerHTML = lim + ' km/h' + (est ? ' <span style="color:var(--text-muted);font-size:10.5px;">(estimat din tip drum)</span>' : '') + (ovr ? ' <b style="color:#ef4444;">· depășită cu ' + (d.event.speed - lim) + ' km/h</b>' : ''); el.style.color = '';
+              var osmRef = Math.max(d.maxSpeed || 0, (d.event && d.event.speed) || 0); // depășirea se raportează la viteza MAXIMĂ pe segment
+              var ovr = osmRef > lim; el.innerHTML = lim + ' km/h' + (est ? ' <span style="color:var(--text-muted);font-size:10.5px;">(estimat din tip drum)</span>' : '') + (ovr ? ' <b style="color:#ef4444;">· depășită cu ' + (osmRef - lim) + ' km/h</b>' : ''); el.style.color = '';
               try { if (_maxHalo && ovr) _maxHalo.setStyle({ color: '#ef4444', opacity: .9 }); } catch (e) {} // OSM: doar re-colorează halo-ul MAX, NU panglica (fără flicker/re-zoom)
             }
             else { el.textContent = 'necunoscută pe acest segment'; }

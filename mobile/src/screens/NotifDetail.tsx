@@ -139,12 +139,14 @@ export function NotifDetail() {
 
   // OSM: doar re-colorează halo-ul MAX dacă viteza a depășit limita reală (fără recolorare/re-zoom pe panglică).
   useEffect(() => {
-    if (typeof rl === 'number' && rl > 0 && d && d.event && d.event.speed > rl && maxHaloRef.current) {
+    if (typeof rl === 'number' && rl > 0 && d && d.event && Math.max(d.maxSpeed || 0, d.event.speed || 0) > rl && maxHaloRef.current) {
       try { maxHaloRef.current.setStyle({ color: '#ef4444', opacity: 0.9 }); } catch { /* */ }
     }
   }, [rl]);
 
   const sevC = d ? (SEV[d.severity] || '#3b82f6') : '#3b82f6';
+  // Depășirea față de limita OSM se raportează la viteza MAXIMĂ pe segment (nu la viteza din momentul alertei).
+  const osmRef = d && d.event ? Math.max(d.maxSpeed || 0, d.event.speed || 0) : 0;
   return (
     <div class="screen">
       <header class="app-header">
@@ -171,7 +173,7 @@ export function NotifDetail() {
               {d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
               {d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
               {d.event && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
-              {d.event && isSpeeding ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && d.event.speed && d.event.speed > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (d.event.speed && d.event.speed > rl ? ' · +' + (d.event.speed - rl) : ''))}</span></div> : null}
+              {d.event && isSpeeding ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && osmRef > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (osmRef > rl ? ' · +' + (osmRef - rl) : ''))}</span></div> : null}
             </div>
             {acked
               ? <div style="margin-top:12px;text-align:center;color:var(--accent);font-weight:600"><Icon name="check" size={15} /> Marcat ca citit</div>
