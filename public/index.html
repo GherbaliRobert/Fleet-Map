@@ -5577,7 +5577,7 @@ const pozitii = await r.json();</code></pre>
       const vehicle = (sel && sel.selectedOptions && sel.selectedOptions[0] && sel.selectedOptions[0].text) || 'Toată flota';
       const fmtDt = v => { if (!v) return '—'; try { return new Date(v).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } };
       const fromEl = document.getElementById('rep-from'), toEl = document.getElementById('rep-to');
-      const period = (fromEl && fromEl.value) ? (fmtDt(fromEl.value) + ' → ' + fmtDt(toEl && toEl.value)) : '—';
+      const period = (lastReport && lastReport.periodLabel) ? lastReport.periodLabel : ((fromEl && fromEl.value) ? (fmtDt(fromEl.value) + ' → ' + fmtDt(toEl && toEl.value)) : '—');
       const generated = new Date().toLocaleString('ro-RO');
       const charts = (lastReport && lastReport.charts) || [];
       const imgs = charts.map(c => ({ title: c.title, src: _pdfChartImage(c) })).filter(o => o.src);

@@ -13,6 +13,18 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Bucharest';
 function fmtTs(ts) { return ts ? new Date(ts).toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }) : ''; }
+// Vechimea unei poziții (ms) față de momentul raportului: „acum 12 min" / „acum 3 zile".
+function _ageStr(ms) {
+  if (ms == null || !isFinite(ms) || ms < 0) return '—';
+  const s = Math.round(ms / 1000);
+  if (s < 60) return 'acum ' + s + ' sec';
+  const m = Math.round(s / 60);
+  if (m < 60) return 'acum ' + m + ' min';
+  const h = Math.floor(m / 60);
+  if (h < 24) return 'acum ' + h + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+  const d = Math.floor(h / 24);
+  return 'acum ' + d + (d === 1 ? ' zi' : ' zile');
+}
 function fmtDur(sec) {
   sec = Math.round(sec || 0);
   const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
@@ -521,15 +533,21 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare fl
     summary: { 'Vehicule': imeis.length, 'Km total': Math.round(totalKm), 'Ore motor total': fmtDur(totalEng) }, charts };
 }
 
-async function rLocation(db, imeis, from, to, opts, devMap) { // Locație (ultima poziție până la 'to')
+async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: ultima poziție a fiecărui vehicul până la 'to' (o „poză" a flotei)
   const rows = [];
+  const toMs = new Date(to).getTime();
   for (const imei of imeis) {
     const r = await db.pool.query('SELECT * FROM positions WHERE imei = $1 AND timestamp <= $2 ORDER BY timestamp DESC LIMIT 1', [imei, to]);
     const p = r.rows[0]; if (!p) continue;
     const i = p.io_data || {};
-    rows.push([ label(devMap, imei), fmtTs(p.timestamp), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', p.satellites || 0 ]);
+    rows.push([ label(devMap, imei), fmtTs(p.timestamp), _ageStr(toMs - t(p)), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', p.satellites || 0 ]);
   }
-  return { columns: ['Vehicul', 'Moment', 'Locație', 'Viteză', 'Contact', 'Sateliți'], rows, summary: { 'Vehicule': rows.length } };
+  return {
+    columns: ['Vehicul', 'Moment', 'Vechime poziție', 'Locație', 'Viteză', 'Contact', 'Sateliți'],
+    rows,
+    summary: { 'Vehicule': rows.length },
+    periodLabel: 'Poziție la: ' + fmtTs(to)   // în antet: momentul „pozei", nu un interval (rap. folosește doar 'to')
+  };
 }
 
 async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
@@ -1037,7 +1055,7 @@ async function rFuelAnomaly(db, imeis, from, to, opts, devMap) {
 const REPORTS = {
   trips:       { label: 'Foaie de parcurs',     cat: 'monitorizare', fn: rTrips },
   route:       { label: 'Traseu',                cat: 'monitorizare', fn: rRoute },
-  location:    { label: 'Locație',               cat: 'monitorizare', fn: rLocation },
+  location:    { label: 'Ultima locație',         cat: 'monitorizare', fn: rLocation },
   stops:       { label: 'Staționări',            cat: 'monitorizare', fn: rStops },
   daily:       { label: 'Situație zilnică',       cat: 'monitorizare', fn: rDaily },
   idling:      { label: 'Ralanti',                cat: 'monitorizare', fn: rIdling },

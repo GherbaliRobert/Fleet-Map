@@ -64,7 +64,7 @@ function xlWriteTable(ws, titleLines, columns, rows, logoId) {
 async function toXlsxMultiSheet(report) {
   const wb = new ExcelJS.Workbook(); wb.creator = 'RA Track';
   const used = new Set();
-  const period = { text: 'Perioada: ' + fmtPeriod(report.from, report.to), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
+  const period = { text: report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to)), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
   const pv = report.perVehicle || [];
   // Sumar generic: coloanele vin din summary-ul fiecărui vehicul (trips au câmpuri bogate; restul → „Înregistrări").
   const labels = (pv[0] && pv[0].summary) ? pv[0].summary.map(s => s[0]) : [];
@@ -98,7 +98,7 @@ async function toXlsx(report) {
   ws.getCell(base, 1).value = report.label || 'Raport';
   ws.getCell(base, 1).font = { bold: true, size: 14 };
   ws.mergeCells(base + 1, 1, base + 1, ncol);
-  ws.getCell(base + 1, 1).value = 'Perioada: ' + fmtPeriod(report.from, report.to);
+  ws.getCell(base + 1, 1).value = report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to));
   ws.getCell(base + 1, 1).font = { italic: true, size: 10, color: { argb: 'FF777777' } };
 
   const headerRow = base + 3;
@@ -244,7 +244,7 @@ function renderPdf(doc, report) {
   y += 28;
   doc.moveTo(left, y).lineTo(left + usableW, y).strokeColor('#3FE07D').lineWidth(2).stroke();
   y += 7;
-  doc.font('Nunito').fontSize(9).fillColor('#6b7280').text('Perioadă: ' + fmtPeriod(report.from, report.to) + '     Generat: ' + new Date().toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }), left, y, { lineBreak: false });
+  doc.font('Nunito').fontSize(9).fillColor('#6b7280').text((report.periodLabel || ('Perioadă: ' + fmtPeriod(report.from, report.to))) + '     Generat: ' + new Date().toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }), left, y, { lineBreak: false });
   y += 17;
 
   // 2. Carduri KPI (din summary)
