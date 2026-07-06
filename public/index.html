@@ -12723,7 +12723,7 @@ const pozitii = await r.json();</code></pre>
           '<span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap;">Total încasat: <span id="rax-bill-total">…</span></span>' +
         '</div>' +
         '<div id="rax-bill-status" style="margin-bottom:18px;"></div>' +
-        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-file-invoice-dollar" style="color:var(--accent);margin-right:6px;"></i>Facturi fiscale</h4>' +
+        '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-file-invoice-dollar" style="color:var(--accent);margin-right:6px;"></i>Facturi fiscale <span id="rax-ef-status" style="font-size:10.5px;font-weight:400;margin-left:6px;"></span></h4>' +
         '<div id="rax-invoices" style="margin-bottom:18px;"><div class="rax-co-meta">Se încarcă…</div></div>' +
         '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-receipt" style="color:var(--accent);margin-right:6px;"></i>Plăți / încasări</h4>' +
         '<div id="rax-bill-table"><div class="rax-co-meta">Se încarcă…</div></div>';
@@ -12738,6 +12738,7 @@ const pozitii = await r.json();</code></pre>
       var tot = document.getElementById('rax-bill-total'); if (tot) tot.textContent = (_billingTotal || 0).toLocaleString('ro-RO') + ' lei';
       raxRenderBillingStatus();
       if (window.raxLoadInvoices) raxLoadInvoices();
+      if (window.raxLoadEfacturaConfig) raxLoadEfacturaConfig();
       raxRenderBilling();
     };
     // Registru de status: per companie, dacă abonamentul e plătit/activ, în grație (factură de plătit) sau restant.
@@ -13777,6 +13778,8 @@ const pozitii = await r.json();</code></pre>
         '<div class="rax-row2"><div>' + _raxField('CUI / CIF', 'rax-iss-cui', iss.cui, 'ex. RO12345678') + '</div>' +
         '<div>' + _raxField('Nr. Reg. Com.', 'rax-iss-reg', iss.reg_com, 'ex. J40/1234/2020') + '</div></div>' +
         _raxField('Adresă', 'rax-iss-addr', iss.address, 'Str. ..., oraș, județ') +
+        '<div class="rax-row2"><div>' + _raxField('Oraș / localitate', 'rax-iss-city', iss.city, 'ex. București / SECTOR1') + '</div>' +
+        '<div>' + _raxField('Cod județ (RO-XX)', 'rax-iss-county', iss.county, 'ex. RO-B, RO-CJ') + '</div></div>' +
         '<div class="rax-row2"><div>' + _raxField('IBAN', 'rax-iss-iban', iss.iban, 'RO00 XXXX ...') + '</div>' +
         '<div>' + _raxField('Bancă', 'rax-iss-bank', iss.bank, 'ex. Banca Transilvania') + '</div></div>' +
         '<div class="rax-row2"><div>' + _raxField('Email facturare', 'rax-iss-email', iss.email, 'facturare@firma.ro') + '</div>' +
@@ -13792,6 +13795,7 @@ const pozitii = await r.json();</code></pre>
       var issuer = {
         name: (($('rax-iss-name') || {}).value || '').trim(), cui: (($('rax-iss-cui') || {}).value || '').trim(),
         reg_com: (($('rax-iss-reg') || {}).value || '').trim(), address: (($('rax-iss-addr') || {}).value || '').trim(),
+        city: (($('rax-iss-city') || {}).value || '').trim(), county: (($('rax-iss-county') || {}).value || '').trim(),
         iban: (($('rax-iss-iban') || {}).value || '').trim(), bank: (($('rax-iss-bank') || {}).value || '').trim(),
         email: (($('rax-iss-email') || {}).value || '').trim(), phone: (($('rax-iss-phone') || {}).value || '').trim(),
         vat_rate: parseFloat((($('rax-iss-vat') || {}).value || '19')) || 0, vat_payer: !!(($('rax-iss-vatpayer') || {}).checked)
@@ -13881,8 +13885,12 @@ const pozitii = await r.json();</code></pre>
       var head = '<thead><tr><th>Nr. factură</th><th>Companie</th><th>Data</th><th class="num">Net</th><th class="num">TVA</th><th class="num">Total</th><th>Stare</th><th>e-Factura</th><th>Acțiuni</th></tr></thead>';
       var body = rows.map(function (v) {
         var st = _INV_ST[v.status] || _INV_ST.issued;
-        var ef = v.efactura_status ? ('<span style="font-size:10.5px;color:var(--text-muted);">' + esc(v.efactura_status) + '</span>') : '<span style="font-size:10.5px;color:var(--text-muted);opacity:.6;">—</span>';
-        var act = '<button class="rax-ico-btn" title="Vezi / PDF" onclick="raxPrintFiscalInvoice(' + v.id + ')"><i class="fas fa-print"></i></button> ';
+        var _efm = { uploaded: ['trimisă', '#38BDF8'], validated: ['validată ANAF', '#16a34a'], error: ['eroare', 'var(--red)'], pending: ['în lucru', '#f59e0b'] };
+        var _efi = _efm[v.efactura_status];
+        var ef = _efi ? ('<span style="font-size:10.5px;font-weight:700;color:' + _efi[1] + ';">● ' + _efi[0] + '</span>') : '<span style="font-size:10.5px;color:var(--text-muted);opacity:.6;">—</span>';
+        var act = '<button class="rax-ico-btn" title="Vezi / PDF" onclick="raxPrintFiscalInvoice(' + v.id + ')"><i class="fas fa-print"></i></button> <button class="rax-ico-btn" title="Vezi XML (e-Factura)" onclick="raxEfacturaView(' + v.id + ')"><i class="fas fa-code"></i></button> ';
+        if (v.status !== 'canceled' && v.efactura_status !== 'validated') act += '<button class="rax-ico-btn" title="Trimite la ANAF" onclick="raxEfacturaSend(' + v.id + ')"><i class="fas fa-paper-plane"></i></button> ';
+        if (v.efactura_status === 'uploaded') act += '<button class="rax-ico-btn" title="Verifică status ANAF" onclick="raxEfacturaStatus(' + v.id + ')"><i class="fas fa-rotate"></i></button> ';
         if (v.status !== 'paid' && v.status !== 'canceled') act += '<button class="rax-ico-btn" title="Marchează plătită" onclick="raxInvoiceMarkPaid(' + v.id + ')"><i class="fas fa-check"></i></button> <button class="rax-ico-btn danger" title="Anulează" onclick="raxInvoiceCancel(' + v.id + ')"><i class="fas fa-ban"></i></button>';
         return '<tr>' +
           '<td style="font-weight:700;white-space:nowrap;">' + esc(v.full_number || '') + '</td>' +
@@ -14010,6 +14018,37 @@ const pozitii = await r.json();</code></pre>
         raxLoadBilling();
         if (j.invoice && j.invoice.id) raxPrintFiscalInvoice(j.invoice.id);
       } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-invoice-dollar"></i> Emite factura'; } }
+    };
+
+    // ─── e-Factura ANAF: acțiuni per factură + indicator de conexiune ───
+    window.raxEfacturaView = function (id) { window.open('/api/invoices/' + id + '/efactura/xml', '_blank'); };
+    window.raxEfacturaSend = async function (id) {
+      if (!await raConfirm('Trimiți factura la ANAF (RO e-Factura)?\nSe încarcă în SPV pe mediul configurat (TEST/producție).')) return;
+      try {
+        var r = await fetch('/api/invoices/' + id + '/efactura', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: '{}' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare ANAF', 'error'); else alert(j.error || 'Eroare'); return; }
+        if (window.raxToast) raxToast('Trimisă la ANAF (index ' + (j.index || '') + ') ✓', 'success');
+        raxLoadInvoices();
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
+    window.raxEfacturaStatus = async function (id) {
+      try {
+        var r = await fetch('/api/invoices/' + id + '/efactura/status', { credentials: 'same-origin' });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
+        if (window.raxToast) raxToast('Status ANAF: ' + (j.stare || j.status || '—'), 'success');
+        raxLoadInvoices();
+      } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
+    };
+    // Indicator conexiune ANAF (badge lângă titlul „Facturi fiscale").
+    window.raxLoadEfacturaConfig = async function () {
+      var el = document.getElementById('rax-ef-status'); if (!el) return;
+      try {
+        var c = await fetch('/api/efactura/config', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (c && c.enabled) el.innerHTML = '<span style="color:var(--accent);"><i class="fas fa-plug-circle-check"></i> e-Factura: conectat' + (c.test ? ' (TEST)' : ' (producție)') + (c.cif ? ' · CIF ' + esc(c.cif) : '') + '</span>';
+        else el.innerHTML = '<span style="color:var(--text-muted);"><i class="fas fa-plug-circle-xmark"></i> e-Factura: dormantă — setează ANAF_EFACTURA_TOKEN pe server</span>';
+      } catch (e) { el.innerHTML = ''; }
     };
 
     window.raxSetPlan = async function (id) {
