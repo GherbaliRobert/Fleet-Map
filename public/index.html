@@ -1777,6 +1777,7 @@ const pozitii = await r.json();</code></pre>
               <span><i class="fas fa-gas-pump" style="color:var(--accent);font-size:9px;"></i> Prag scădere combustibil (litri)</span>
               <input type="number" id="us-th-fueltheft" min="1" max="1000" placeholder="ex. 20" step="1" onblur="usSetThreshold('fuelTheftL', this.value)" style="margin-top:4px;">
             </label>
+            <div id="us-worksched" style="margin:18px 0 0;padding-top:16px;border-top:1px solid var(--border);"></div>
           </div>
 
         </div>
@@ -3227,6 +3228,7 @@ const pozitii = await r.json();</code></pre>
             _setThrInput('us-th-idle', 'idleMaxMin');
             _setThrInput('us-th-eco', 'ecoScoreMin');
             _setThrInput('us-th-srv', 'serviceSoonKm');
+            if (window.usRenderWorkSched) usRenderWorkSched(cs.work_schedule);
             // Secțiunea Agenți AI per companie
             var agBox = document.getElementById('us-agents-list');
             if (agBox) {
@@ -3342,6 +3344,50 @@ const pozitii = await r.json();</code></pre>
         (window.raxToast || alert)('Media națională actualizată ✓', 'success'); usLoadFuelPrices();
       } catch (e) { (window.raxToast || alert)('Eroare de rețea: ' + e.message, 'error'); }
     };
+    // ─── Program de lucru (supraveghere mișcare în afara programului) ───
+    var _WS_DAYS = [['mon', 'Luni'], ['tue', 'Marți'], ['wed', 'Miercuri'], ['thu', 'Joi'], ['fri', 'Vineri'], ['sat', 'Sâmbătă'], ['sun', 'Duminică']];
+    window.usRenderWorkSched = function (ws) {
+      var box = document.getElementById('us-worksched'); if (!box) return;
+      ws = ws || {}; var days = ws.days || {};
+      var tol = ws.tolerance_min != null ? ws.tolerance_min : 15;
+      var rows = _WS_DAYS.map(function (d) {
+        var iv = (Array.isArray(days[d[0]]) && days[d[0]][0]) || null;
+        var on = !!iv, from = (iv && iv.from) || '07:00', to = (iv && iv.to) || '19:00';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap;">' +
+          '<label style="display:flex;align-items:center;gap:6px;width:104px;font-size:13px;cursor:pointer;"><input type="checkbox" class="ws-day" data-d="' + d[0] + '"' + (on ? ' checked' : '') + '> ' + d[1] + '</label>' +
+          '<input type="time" class="ws-from" data-d="' + d[0] + '" value="' + from + '" style="width:108px;">' +
+          '<span style="color:var(--text-muted);">–</span>' +
+          '<input type="time" class="ws-to" data-d="' + d[0] + '" value="' + to + '" style="width:108px;"></div>';
+      }).join('');
+      box.innerHTML =
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px;"><i class="fas fa-user-clock"></i> Program de lucru — supraveghere</div>' +
+        '<p style="font-size:11px;color:var(--text-muted);margin:0 0 10px;">Primești alertă (+ notificare push) când un vehicul <b>se deplasează în afara programului de lucru</b>. Bifează zilele lucrătoare și pune intervalul orar (fus RO).</p>' +
+        '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;cursor:pointer;"><input type="checkbox" id="ws-enabled"' + (ws.enabled ? ' checked' : '') + '> <b>Activează supravegherea programului de lucru</b></label>' +
+        rows +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span style="font-size:12px;color:var(--text-muted);">Toleranță la margini:</span><input type="number" id="ws-tol" min="0" max="120" value="' + tol + '" style="width:72px;"><span style="font-size:12px;color:var(--text-muted);">minute</span></div>' +
+        '<button class="btn-sm btn-primary" style="margin-top:12px;" onclick="usSaveWorkSched(this)"><i class="fas fa-check"></i> Salvează programul</button>' +
+        '<div id="ws-msg" style="font-size:12px;margin-top:8px;"></div>';
+    };
+    window.usSaveWorkSched = async function (btn) {
+      var msg = document.getElementById('ws-msg'), days = {};
+      _WS_DAYS.forEach(function (d) {
+        var cb = document.querySelector('.ws-day[data-d="' + d[0] + '"]');
+        if (cb && cb.checked) {
+          var from = (document.querySelector('.ws-from[data-d="' + d[0] + '"]') || {}).value || '';
+          var to = (document.querySelector('.ws-to[data-d="' + d[0] + '"]') || {}).value || '';
+          days[d[0]] = (from && to) ? [{ from: from, to: to }] : [];
+        } else days[d[0]] = [];
+      });
+      var body = { work_schedule: { enabled: !!((document.getElementById('ws-enabled') || {}).checked), tz: 'Europe/Bucharest', tolerance_min: parseInt((document.getElementById('ws-tol') || {}).value) || 0, days: days } };
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se salvează…'; }
+      try {
+        var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (x) { return x.json(); });
+        if (r.error) { if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(r.error) + '</span>'; }
+        else { if (msg) msg.innerHTML = '<span style="color:var(--accent)">Program salvat ✓</span>'; if (window.raxToast) raxToast('Program de lucru salvat', 'success'); }
+      } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Salvează programul'; } }
+    };
+
     async function usSetThreshold(key, val) {
       const sp = US_THRESHOLD_SPECS[key]; if (!sp) return;
       const el = document.getElementById(sp.inputId);
