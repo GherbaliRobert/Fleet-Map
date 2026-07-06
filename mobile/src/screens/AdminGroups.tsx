@@ -1,4 +1,5 @@
 import { AdminCrud, type CrudConfig } from '../components/AdminCrud';
+import { WorkSchedEditor } from '../components/WorkSchedEditor';
 import { Api } from '../api/endpoints';
 import { me } from '../app/store';
 
@@ -23,6 +24,12 @@ export function AdminGroups() {
     itemSub: (g) => g.description || (g.count != null ? `${g.count} vehicule` : '—'),
     itemRight: (g) => (
       <span style={`width:16px;height:16px;border-radius:5px;display:inline-block;background:${g.color || 'var(--text-muted)'}`} />
+    ),
+    renderExtra: (g) => (
+      <div>
+        <div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-bottom:2px">Program de lucru (grupă)</div>
+        <WorkSchedEditor value={g.work_schedule} allowInherit onSave={(ws: any) => Api.setGroupWorkSchedule(g.id, ws)} />
+      </div>
     ),
   };
   return <AdminCrud cfg={cfg} />;

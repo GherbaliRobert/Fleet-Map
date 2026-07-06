@@ -8,6 +8,7 @@ import { statusOf, usesTachograph } from '../lib/status';
 import { fmtDateTime, fmtDuration, fmtAgo, gpsQuality, gsmQuality, odometerKm, voltageStr } from '../lib/format';
 import { Icon } from '../components/Icon';
 import { MiniMap } from '../components/MiniMap';
+import { WorkSchedEditor } from '../components/WorkSchedEditor';
 import './detail.css';
 import './admin.css';
 
@@ -379,6 +380,10 @@ export function VehicleDetail() {
                 )}
                 <div class="frm-actions">
                   <button class="btn btn-primary" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Se salvează…' : 'Salvează'}</button>
+                </div>
+                <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+                  <div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-bottom:2px"><Icon name="clock" size={13} /> Program de lucru (vehicul)</div>
+                  <WorkSchedEditor value={(full as any)?.work_schedule} allowInherit onSave={(ws: any) => Api.setDeviceWorkSchedule(imei, ws).then(() => loadFull())} />
                 </div>
               </div>
             </div>

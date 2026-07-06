@@ -28,6 +28,13 @@ window.addEventListener('unhandledrejection', (e: any) => { const r = e && e.rea
 
 render(<App />, document.getElementById('app')!);
 
+// Splash-ul nativ predă DIRECT către intro-ul nostru: ascunde overlay-ul Capacitor imediat ce
+// #ra-intro (HTML static) e pictat, ca să NU mai existe al doilea ecran static „generat" de 800ms.
+// (Splash-ul OS de pe Android 12+ e obligatoriu de sistem și rămâne — dar acum e scurt + curge în intro.)
+import('@capacitor/splash-screen')
+  .then(({ SplashScreen }) => { requestAnimationFrame(() => { SplashScreen.hide().catch(() => {}); }); })
+  .catch(() => { /* web / plugin absent */ });
+
 // Intro animat (o singură dată, la lansare) → se estompează după ce aplicația e montată.
 try {
   const _intro = document.getElementById('ra-intro');

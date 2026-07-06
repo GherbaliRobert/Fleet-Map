@@ -31,6 +31,7 @@ export interface CrudConfig {
   itemRight?: (it: any) => any;
   canWrite: boolean;
   filter?: { field: string; options: { value: string; label: string }[] }; // dropdown opțional (ex: companie, super-admin)
+  renderExtra?: (item: any) => any; // secțiune extra în sheet-ul de editare (doar item existent) — ex: program de lucru
 }
 
 function dateInput(v: any): string {
@@ -164,6 +165,11 @@ export function AdminCrud({ cfg }: { cfg: CrudConfig }) {
                   <button class="btn btn-primary" disabled={saving} onClick={save}>{saving ? 'Se salvează…' : 'Salvează'}</button>
                 </div>
               </div>
+              {editing.id != null && cfg.renderExtra && (
+                <div key={'extra-' + editing.id} style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+                  {cfg.renderExtra(editing)}
+                </div>
+              )}
             </div>
           </div>
         </div>

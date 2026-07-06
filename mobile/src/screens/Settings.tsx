@@ -3,6 +3,7 @@ import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { me, showToast } from '../app/store';
 import { Icon } from '../components/Icon';
+import { WorkSchedEditor } from '../components/WorkSchedEditor';
 import './admin.css';
 
 // Setări de COMPANIE: prețuri combustibil (manageFleet) + praguri agenți AI (manageUsers). Serverul scope-uiește pe req.companyId.
@@ -23,11 +24,13 @@ export function Settings() {
   const [fp, setFp] = useState<any>(null);
   const [fpForm, setFpForm] = useState<any>({ motorina: '', benzina: '', gpl: '' });
   const [thr, setThr] = useState<Record<string, any>>({});
+  const [ws, setWs] = useState<any>(null);
+  const [wsLoaded, setWsLoaded] = useState(false);
   const [busy, setBusy] = useState('');
 
   useEffect(() => {
     if (canFleet) Api.fuelPrices().then((d: any) => { setFp(d); const c = d.company || {}; setFpForm({ motorina: c.motorina ?? '', benzina: c.benzina ?? '', gpl: c.gpl ?? '' }); }).catch(() => {});
-    if (canUsers) Api.companySettings().then((s: any) => setThr(Object.assign({}, s?.alert_thresholds))).catch(() => {});
+    if (canUsers) Api.companySettings().then((s: any) => { setThr(Object.assign({}, s?.alert_thresholds)); setWs(s?.work_schedule || null); setWsLoaded(true); }).catch(() => setWsLoaded(true));
   }, []);
 
   async function saveFuel() {
@@ -81,6 +84,13 @@ export function Settings() {
               </div>
             ))}
             <button class="btn btn-primary" style="margin-top:12px" disabled={busy === 'thr'} onClick={saveThr}>{busy === 'thr' ? '…' : 'Salvează pragurile'}</button>
+          </div>
+        )}
+
+        {canUsers && wsLoaded && (
+          <div class="pf-card">
+            <h3><Icon name="clock" size={16} /> Program de lucru — supraveghere</h3>
+            <WorkSchedEditor value={ws} onSave={(w: any) => Api.saveCompanySettings({ work_schedule: w }).then((r: any) => setWs(w))} />
           </div>
         )}
 

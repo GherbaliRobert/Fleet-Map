@@ -515,6 +515,9 @@
         <button class="edit-tab" data-tab="service" onclick="switchEditTab('service', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
           <i class="fas fa-wrench"></i> Service
         </button>
+        <button class="edit-tab" data-tab="workschedule" onclick="switchEditTab('workschedule', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
+          <i class="fas fa-user-clock"></i> Program
+        </button>
       </div>
 
       <!-- Tab: Detalii vehicul -->
@@ -787,6 +790,10 @@
             <div class="doc-actions" style="grid-column:1/-1;"><button class="btn-sm btn-primary" onclick="saveVehicleService()"><i class="fas fa-plus"></i> Adaugă</button></div>
           </div>
         </div>
+      </div>
+
+      <div id="edit-tab-workschedule" class="edit-tab-content" style="display:none;">
+        <div id="veh-worksched"></div>
       </div>
 
       <button class="btn btn-primary" onclick="saveDevice()" style="margin-top:16px;width:100%;">
@@ -3228,7 +3235,7 @@ const pozitii = await r.json();</code></pre>
             _setThrInput('us-th-idle', 'idleMaxMin');
             _setThrInput('us-th-eco', 'ecoScoreMin');
             _setThrInput('us-th-srv', 'serviceSoonKm');
-            if (window.usRenderWorkSched) usRenderWorkSched(cs.work_schedule);
+            if (window.usRenderWorkSched) usRenderWorkSched(cs.work_schedule, 'us-worksched', 'company');
             // Secțiunea Agenți AI per companie
             var agBox = document.getElementById('us-agents-list');
             if (agBox) {
@@ -3346,10 +3353,15 @@ const pozitii = await r.json();</code></pre>
     };
     // ─── Program de lucru (supraveghere mișcare în afara programului) ───
     var _WS_DAYS = [['mon', 'Luni'], ['tue', 'Marți'], ['wed', 'Miercuri'], ['thu', 'Joi'], ['fri', 'Vineri'], ['sat', 'Sâmbătă'], ['sun', 'Duminică']];
-    window.usRenderWorkSched = function (ws) {
-      var box = document.getElementById('us-worksched'); if (!box) return;
-      ws = ws || {}; var days = ws.days || {};
-      var tol = ws.tolerance_min != null ? ws.tolerance_min : 15;
+    // Editor reutilizat: companie (Setări), grup, vehicul. Pt. grup/vehicul → 3 moduri (moștenește / propriu / fără).
+    window.usRenderWorkSched = function (ws, containerId, kind, id) {
+      containerId = containerId || 'us-worksched'; kind = kind || 'company';
+      var box = document.getElementById(containerId); if (!box) return;
+      var allowInherit = (kind === 'group' || kind === 'device');
+      ws = ws || null; var days = (ws && ws.days) || {};
+      var mode = !allowInherit ? 'own' : (ws == null ? 'inherit' : (ws.enabled ? 'own' : 'off'));
+      var enabled = !allowInherit ? !!(ws && ws.enabled) : true;
+      var tol = (ws && ws.tolerance_min != null) ? ws.tolerance_min : 15;
       var rows = _WS_DAYS.map(function (d) {
         var iv = (Array.isArray(days[d[0]]) && days[d[0]][0]) || null;
         var on = !!iv, from = (iv && iv.from) || '07:00', to = (iv && iv.to) || '19:00';
@@ -3359,29 +3371,59 @@ const pozitii = await r.json();</code></pre>
           '<span style="color:var(--text-muted);">–</span>' +
           '<input type="time" class="ws-to" data-d="' + d[0] + '" value="' + to + '" style="width:108px;"></div>';
       }).join('');
+      var modeSel = allowInherit ?
+        ('<div style="margin-bottom:10px;"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">Program pentru ' + (kind === 'group' ? 'această grupă' : 'acest vehicul') + '</label>' +
+          '<select class="ws-mode" onchange="usWsToggleMode(this, \'' + containerId + '\')" style="width:100%;padding:8px;">' +
+          '<option value="inherit"' + (mode === 'inherit' ? ' selected' : '') + '>Moștenește programul companiei</option>' +
+          '<option value="own"' + (mode === 'own' ? ' selected' : '') + '>Program propriu</option>' +
+          '<option value="off"' + (mode === 'off' ? ' selected' : '') + '>Fără supraveghere (niciodată)</option>' +
+          '</select></div>') : '';
+      var enabledToggle = allowInherit ? '' :
+        ('<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;cursor:pointer;"><input type="checkbox" class="ws-enabled"' + (enabled ? ' checked' : '') + '> <b>Activează supravegherea programului de lucru</b></label>');
       box.innerHTML =
         '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px;"><i class="fas fa-user-clock"></i> Program de lucru — supraveghere</div>' +
-        '<p style="font-size:11px;color:var(--text-muted);margin:0 0 10px;">Primești alertă (+ notificare push) când un vehicul <b>se deplasează în afara programului de lucru</b>. Bifează zilele lucrătoare și pune intervalul orar (fus RO).</p>' +
-        '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;cursor:pointer;"><input type="checkbox" id="ws-enabled"' + (ws.enabled ? ' checked' : '') + '> <b>Activează supravegherea programului de lucru</b></label>' +
-        rows +
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span style="font-size:12px;color:var(--text-muted);">Toleranță la margini:</span><input type="number" id="ws-tol" min="0" max="120" value="' + tol + '" style="width:72px;"><span style="font-size:12px;color:var(--text-muted);">minute</span></div>' +
-        '<button class="btn-sm btn-primary" style="margin-top:12px;" onclick="usSaveWorkSched(this)"><i class="fas fa-check"></i> Salvează programul</button>' +
-        '<div id="ws-msg" style="font-size:12px;margin-top:8px;"></div>';
+        '<p style="font-size:11px;color:var(--text-muted);margin:0 0 10px;">Primești alertă (+ notificare push) când ' + (allowInherit ? 'acest element' : 'un vehicul') + ' <b>se deplasează în afara programului de lucru</b> (fus RO).</p>' +
+        modeSel + enabledToggle +
+        '<div class="ws-grid" style="' + ((mode === 'own' || !allowInherit) ? '' : 'display:none;') + '">' + rows +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span style="font-size:12px;color:var(--text-muted);">Toleranță la margini:</span><input type="number" class="ws-tol" min="0" max="120" value="' + tol + '" style="width:72px;"><span style="font-size:12px;color:var(--text-muted);">minute</span></div>' +
+        '</div>' +
+        '<button class="btn-sm btn-primary" style="margin-top:12px;" onclick="usSaveWorkSched(this, \'' + containerId + '\', \'' + kind + '\', \'' + (id == null ? '' : String(id).replace(/[^A-Za-z0-9_-]/g, '')) + '\')"><i class="fas fa-check"></i> Salvează programul</button>' +
+        '<div class="ws-msg" style="font-size:12px;margin-top:8px;"></div>';
     };
-    window.usSaveWorkSched = async function (btn) {
-      var msg = document.getElementById('ws-msg'), days = {};
-      _WS_DAYS.forEach(function (d) {
-        var cb = document.querySelector('.ws-day[data-d="' + d[0] + '"]');
-        if (cb && cb.checked) {
-          var from = (document.querySelector('.ws-from[data-d="' + d[0] + '"]') || {}).value || '';
-          var to = (document.querySelector('.ws-to[data-d="' + d[0] + '"]') || {}).value || '';
-          days[d[0]] = (from && to) ? [{ from: from, to: to }] : [];
-        } else days[d[0]] = [];
-      });
-      var body = { work_schedule: { enabled: !!((document.getElementById('ws-enabled') || {}).checked), tz: 'Europe/Bucharest', tolerance_min: parseInt((document.getElementById('ws-tol') || {}).value) || 0, days: days } };
+    window.usWsToggleMode = function (sel, containerId) {
+      var box = document.getElementById(containerId); if (!box) return;
+      var grid = box.querySelector('.ws-grid'); if (grid) grid.style.display = (sel.value === 'own') ? '' : 'none';
+    };
+    window.usSaveWorkSched = async function (btn, containerId, kind, id) {
+      containerId = containerId || 'us-worksched'; kind = kind || 'company';
+      var box = document.getElementById(containerId); if (!box) return;
+      var msg = box.querySelector('.ws-msg');
+      var allowInherit = (kind === 'group' || kind === 'device');
+      var modeEl = box.querySelector('.ws-mode');
+      var mode = allowInherit ? (modeEl ? modeEl.value : 'own') : 'own';
+      var wsObj;
+      if (allowInherit && mode === 'inherit') wsObj = null;
+      else if (allowInherit && mode === 'off') wsObj = { enabled: false, tz: 'Europe/Bucharest', tolerance_min: parseInt((box.querySelector('.ws-tol') || {}).value) || 0, days: {} };
+      else {
+        var days = {};
+        _WS_DAYS.forEach(function (d) {
+          var cb = box.querySelector('.ws-day[data-d="' + d[0] + '"]');
+          if (cb && cb.checked) {
+            var from = (box.querySelector('.ws-from[data-d="' + d[0] + '"]') || {}).value || '';
+            var to = (box.querySelector('.ws-to[data-d="' + d[0] + '"]') || {}).value || '';
+            days[d[0]] = (from && to) ? [{ from: from, to: to }] : [];
+          } else days[d[0]] = [];
+        });
+        var en = allowInherit ? true : !!((box.querySelector('.ws-enabled') || {}).checked);
+        wsObj = { enabled: en, tz: 'Europe/Bucharest', tolerance_min: parseInt((box.querySelector('.ws-tol') || {}).value) || 0, days: days };
+      }
+      var url = (kind === 'company') ? '/api/companies/me/settings'
+        : (kind === 'group') ? ('/api/device-groups/' + encodeURIComponent(id) + '/work-schedule')
+          : ('/api/devices/' + encodeURIComponent(id) + '/work-schedule');
+      var body = { work_schedule: wsObj };
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se salvează…'; }
       try {
-        var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (x) { return x.json(); });
+        var r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) }).then(function (x) { return x.json(); });
         if (r.error) { if (msg) msg.innerHTML = '<span style="color:var(--red)">' + esc(r.error) + '</span>'; }
         else { if (msg) msg.innerHTML = '<span style="color:var(--accent)">Program salvat ✓</span>'; if (window.raxToast) raxToast('Program de lucru salvat', 'success'); }
       } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; }
@@ -3711,10 +3753,11 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('grp-name').value = g.name || '';
       document.getElementById('grp-desc').value = g.description || '';
       document.getElementById('grp-color').value = g.color || '#38BDF8';
+      (function(){ var _wsb=document.getElementById('grp-worksched'); if(!_wsb){ var _sg=document.querySelector('[onclick="saveGroup()"]'); var _row=_sg?_sg.closest('div'):null; if(_row&&_row.parentNode){ _wsb=document.createElement('div'); _wsb.id='grp-worksched'; _wsb.style.cssText='margin-top:14px;padding-top:14px;border-top:1px solid var(--border);'; _row.parentNode.insertBefore(_wsb,_row.nextSibling); } } if(_wsb&&window.usRenderWorkSched){ _wsb.style.display=''; usRenderWorkSched(g.work_schedule,'grp-worksched','group',g.id); } })();
       document.getElementById('grp-btn').textContent = 'Salvează';
     }
     function resetGroupForm() {
-      document.getElementById('grp-id').value=''; document.getElementById('grp-name').value=''; document.getElementById('grp-desc').value='';
+      document.getElementById('grp-id').value=''; var _wsb=document.getElementById('grp-worksched'); if(_wsb){_wsb.style.display='none';_wsb.innerHTML='';} document.getElementById('grp-name').value=''; document.getElementById('grp-desc').value='';
       document.getElementById('grp-color').value='#38BDF8'; document.getElementById('grp-btn').textContent='Adaugă';
     }
     async function saveGroup() {
@@ -9475,6 +9518,7 @@ const pozitii = await r.json();</code></pre>
         if (res.ok) {
           const dev = await res.json();
           document.getElementById('edit-name').value = dev.name || '';
+          if (window.usRenderWorkSched) usRenderWorkSched(dev.work_schedule, 'veh-worksched', 'device', imei);
           document.getElementById('edit-vehicle-type').value = dev.vehicle_type || '';
           document.getElementById('edit-ignition-source').value = dev.ignition_source || 'auto';
           document.getElementById('edit-show-transport').checked = (dev.show_transport !== false); // implicit afișat
