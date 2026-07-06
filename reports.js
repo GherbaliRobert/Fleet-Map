@@ -25,6 +25,14 @@ function _ageStr(ms) {
   const d = Math.floor(h / 24);
   return 'acum ' + d + (d === 1 ? ' zi' : ' zile');
 }
+// Calitatea fix-ului GPS după numărul de sateliți (ca userul să înțeleagă coloana „Sateliți").
+function _satQ(n) {
+  n = Number(n) || 0;
+  if (n <= 3) return 'semnal slab';
+  if (n <= 6) return 'puțin precisă';
+  if (n <= 12) return 'bun';
+  return 'excelent';
+}
 function fmtDur(sec) {
   sec = Math.round(sec || 0);
   const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
@@ -550,7 +558,8 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație
   // 3. Construiește rândurile — addr() ia acum adresa din cache
   const rows = items.map(({ imei, p }) => {
     const i = p.io_data || {};
-    return [ label(devMap, imei), fmtTs(p.timestamp), _ageStr(toMs - t(p)), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', p.satellites || 0 ];
+    const sat = p.satellites || 0;
+    return [ label(devMap, imei), fmtTs(p.timestamp), _ageStr(toMs - t(p)), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'pornit' : 'oprit', sat + ' (' + _satQ(sat) + ')' ];
   });
   return {
     columns: ['Vehicul', 'Moment', 'Vechime poziție', 'Locație', 'Viteză', 'Contact', 'Sateliți'],
