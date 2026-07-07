@@ -234,16 +234,22 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
 }
 
 async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / staționări
-  const rows = []; let total = 0, totalDur = 0; const all = []; const perVeh = {};
+  const items = []; let total = 0, totalDur = 0; const all = []; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const { stops } = segmentTrack(pts, (opts.stopMin || 5) * 60);
     for (const st of stops) {
-      rows.push([ label(devMap, imei), fmtTs(st.start), fmtTs(st.end), fmtDur(st.durationSec), loc(st.p) ]);
+      items.push({ imei, st });
       total++; totalDur += st.durationSec; all.push(st);
       const nm = label(devMap, imei); perVeh[nm] = (perVeh[nm] || 0) + 1;
     }
   }
+  // Pre-încarcă adresele opririlor în cache (ca la Foaie de parcurs) → coloana „Locație" = ADRESE, nu coordonate.
+  // Locațiile care se repetă (ex. sediul) se deduplică; ce nu apucă în buget rămâne pe coordonate (fallback).
+  if (geocode && geocode.warm && items.length) {
+    try { await geocode.warm(items.map(x => ({ lat: x.st.p.latitude, lng: x.st.p.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
+  }
+  const rows = items.map(({ imei, st }) => [ label(devMap, imei), fmtTs(st.start), fmtTs(st.end), fmtDur(st.durationSec), addr(st.p) ]);
   const nDay = _groupByDay(all, x => x.start, null);
   const dur = _histogram(all.map(x => x.durationSec / 60), [15, 30, 60, 120]);
   const topV = _topN(Object.entries(perVeh), 10);
