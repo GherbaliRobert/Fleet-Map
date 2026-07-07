@@ -1032,9 +1032,12 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
       if (start) {
         const dur = (new Date(last) - new Date(start)) / 1000;
         if (dur >= minSec) {
-          // Combustibil: litri REALI din contorul CAN cumulativ (delta start→final); altfel estimare (durată × L/h).
-          const fs = fuelCumul(startP), fe = fuelCumul(endP);
-          const real = (fs != null && fe != null && fe >= fs && (fe - fs) < 30) ? (fe - fs) : null; // <30L gardă anti-reset/glitch de contor
+          // Combustibil: litri REALI din contorul CAN cumulativ (delta start→final), DAR doar dacă rata implicită
+          // e plauzibilă (≥ 0.3 L/h). Sub asta = CAN nu măsoară consumul (ex. mașină pe GPL — canul nu citește gazul,
+          // sau senzor lipsă) → estimare (durată × L/h). Un ralanti real arde ≥ 0.5 L/h, deci 0.3 e prag sigur.
+          const fs = fuelCumul(startP), fe = fuelCumul(endP), hrs = dur / 3600;
+          const delta = (fs != null && fe != null && fe >= fs && (fe - fs) < 30) ? (fe - fs) : null; // <30L gardă anti-reset/glitch
+          const real = (delta != null && hrs > 0 && (delta / hrs) >= 0.3) ? delta : null;
           const litri = real != null ? real : (dur / 3600 * lph);
           items.push({ nm, start, end: last, dur, endP, litri, real: real != null });
           totalIdle += dur; totalEvents++; totalFuel += litri; all.push({ ts: start, dur, nm });
@@ -1078,14 +1081,14 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
       const ai = all.filter(x => x.nm === nm), iD = _groupByDay(ai, x => x.ts, x => x.dur / 60);
       return {
         vehicul: nm,
-        summary: [['Evenimente ralanti', perVeh[nm].n], ['Timp ralanti', fmtDur(perVeh[nm].dur)], ['Combustibil irosit (L)', Math.round(perVeh[nm].fuel)]],
+        summary: [['Evenimente ralanti', perVeh[nm].n], ['Timp ralanti', fmtDur(perVeh[nm].dur)], ['Combustibil irosit (L)', Math.round(perVeh[nm].fuel * 100) / 100]],
         rows: rowsByName[nm] || [],
         charts: ai.length ? [{ type: 'bar', title: 'Ralanti pe zi (min)', labels: iD.labels, datasets: [{ label: 'min', data: iD.data }] }] : []
       };
     });
   }
   return { columns: ['Vehicul', 'Început', 'Sfârșit', 'Durată ralanti', 'Combustibil (L)', 'Locație'], rows,
-    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil irosit (L)': Math.round(totalFuel) }, charts, perVehicle };
+    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil irosit (L)': Math.round(totalFuel * 100) / 100 }, charts, perVehicle };
 }
 
 async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibil (din consum + preț/vehicul)
