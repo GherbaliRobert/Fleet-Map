@@ -285,13 +285,20 @@ async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / stațion�
   const names = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
   let perVehicle;
   if (names.length >= 2) {
-    const byName = {};
-    items.forEach(({ imei }, i) => { const nm = label(devMap, imei); (byName[nm] || (byName[nm] = [])).push(rows[i]); });
-    perVehicle = names.map(nm => ({
-      vehicul: nm,
-      summary: [['Opriri', perVeh[nm].n], ['Timp staționat', fmtDur(perVeh[nm].dur)], ['Cea mai lungă', fmtDur(perVeh[nm].max)]],
-      rows: byName[nm] || []
-    }));
+    const byName = {}, stopsByName = {};
+    items.forEach(({ imei, st }, i) => { const nm = label(devMap, imei); (byName[nm] || (byName[nm] = [])).push(rows[i]); (stopsByName[nm] || (stopsByName[nm] = [])).push(st); });
+    perVehicle = names.map(nm => {
+      const st = stopsByName[nm] || [], nD = _groupByDay(st, x => x.start, null), dr = _histogram(st.map(x => x.durationSec / 60), [15, 30, 60, 120]);
+      return {
+        vehicul: nm,
+        summary: [['Opriri', perVeh[nm].n], ['Timp staționat', fmtDur(perVeh[nm].dur)], ['Cea mai lungă', fmtDur(perVeh[nm].max)]],
+        rows: byName[nm] || [],
+        charts: st.length ? [ // grafice INDIVIDUALE (la selecția vehiculului)
+          { type: 'bar', title: 'Opriri pe zi', labels: nD.labels, datasets: [{ label: 'opriri', data: nD.data }] },
+          { type: 'bar', title: 'Distribuție durată oprire (min)', labels: dr.labels, datasets: [{ label: 'opriri', data: dr.data }] }
+        ] : []
+      };
+    });
   }
   const nDay = _groupByDay(all, x => x.start, null);
   const dur = _histogram(all.map(x => x.durationSec / 60), [15, 30, 60, 120]);
@@ -312,7 +319,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
     let ev = null;
-    const flush = () => { if (!ev) return; rows.push([ nm, fmtTs(ev.start), limit, ev.max, loc(ev.p) ]); events++; if (ev.max > maxOverall) maxOverall = ev.max; evs.push({ start: ev.start, max: ev.max }); perVeh[nm] = (perVeh[nm] || 0) + 1; ev = null; };
+    const flush = () => { if (!ev) return; rows.push([ nm, fmtTs(ev.start), limit, ev.max, loc(ev.p) ]); events++; if (ev.max > maxOverall) maxOverall = ev.max; evs.push({ start: ev.start, max: ev.max, nm }); perVeh[nm] = (perVeh[nm] || 0) + 1; ev = null; };
     for (const p of pts) {
       const sp = p.speed || 0;
       if (sp > limit) { if (!ev) ev = { start: p.timestamp, max: sp, p }; else if (sp > ev.max) { ev.max = sp; ev.p = p; } ev.end = p.timestamp; }
@@ -328,15 +335,34 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     { type: 'bar',      title: 'Distribuție viteză depășire (km/h)', labels: spd.labels,  datasets: [{ label: 'depășiri', data: spd.data }] },
     { type: 'doughnut', title: 'Top vehicule după depășiri',         labels: topV.labels, datasets: [{ label: 'depășiri', data: topV.data }] }
   ] : [];
+  const evNames = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
+  let perVehicle;
+  if (evNames.length >= 2) {
+    const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
+    perVehicle = evNames.map(nm => {
+      const ve = evs.filter(e => e.nm === nm), nD = _groupByDay(ve, x => x.start, null), sD = _histogram(ve.map(x => x.max), [limit + 10, limit + 20, limit + 35]);
+      return {
+        vehicul: nm,
+        summary: [['Depășiri', perVeh[nm]], ['Viteză max', ve.length ? Math.max.apply(null, ve.map(e => e.max)) : 0]],
+        rows: rowsByName[nm] || [],
+        charts: ve.length ? [
+          { type: 'bar', title: 'Depășiri pe zi', labels: nD.labels, datasets: [{ label: 'depășiri', data: nD.data }] },
+          { type: 'bar', title: 'Distribuție viteză depășire (km/h)', labels: sD.labels, datasets: [{ label: 'depășiri', data: sD.data }] }
+        ] : []
+      };
+    });
+  }
   return { columns: ['Vehicul','Moment','Limită (km/h)','Viteză max (km/h)','Locație'], rows,
-    summary: { 'Depășiri': events, 'Viteză maximă (km/h)': maxOverall, 'Limită folosită': limit }, charts };
+    summary: { 'Depășiri': events, 'Viteză maximă (km/h)': maxOverall, 'Limită folosită': limit }, charts, perVehicle };
 }
 
 async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurgeri/furt
   const refuelMin = opts.refuelMin || 5, dropMin = opts.dropMin || 10;
-  const rows = []; let refuels = 0, drops = 0, addedL = 0, lostL = 0; const refs = [];
+  const rows = []; let refuels = 0, drops = 0, addedL = 0, lostL = 0; const refs = []; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
+    const nm = label(devMap, imei);
+    const pv = perVeh[nm] || (perVeh[nm] = { refuels: 0, drops: 0, added: 0, lost: 0, refs: [] });
     let prev = null;
     for (const p of pts) {
       const fl = fuelL(p);
@@ -346,8 +372,8 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurg
       // normal de peste mai multe ore ar apărea ca o „scădere/furt").
       if (prev != null) {
         const delta = fl - prev.v, gapH = (t(p) - prev.ts) / 3600000, ign = ignOn(p) || ignOn(prev.p);
-        if (delta >= refuelMin && gapH <= 1) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Alimentare', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); }
-        else if (delta <= -dropMin && ((!ign && gapH <= 72) || (ign && gapH <= 1))) { rows.push([ label(devMap, imei), fmtTs(p.timestamp), 'Scădere/furt', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); drops++; lostL += -delta; }
+        if (delta >= refuelMin && gapH <= 1) { rows.push([ nm, fmtTs(p.timestamp), 'Alimentare', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); pv.refuels++; pv.added += delta; pv.refs.push({ ts: p.timestamp, v: delta }); }
+        else if (delta <= -dropMin && ((!ign && gapH <= 72) || (ign && gapH <= 1))) { rows.push([ nm, fmtTs(p.timestamp), 'Scădere/furt', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); drops++; lostL += -delta; pv.drops++; pv.lost += -delta; }
       }
       prev = { v: fl, ts: t(p), p };
     }
@@ -357,8 +383,25 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurg
     { type: 'doughnut', title: 'Alimentări vs. scăderi suspecte', labels: ['Alimentări', 'Scăderi suspecte'], datasets: [{ label: 'evenimente', data: [refuels, drops] }] },
     { type: 'bar',      title: 'Litri alimentați pe zi',          labels: refDay.labels, datasets: [{ label: 'L', data: refDay.data }] }
   ] : [];
+  const fNames = Object.keys(perVeh).filter(nm => perVeh[nm].refuels || perVeh[nm].drops).sort((a, b) => a.localeCompare(b));
+  let perVehicle;
+  if (fNames.length >= 2) {
+    const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
+    perVehicle = fNames.map(nm => {
+      const pv = perVeh[nm], rD = _groupByDay(pv.refs, x => x.ts, x => x.v);
+      return {
+        vehicul: nm,
+        summary: [['Alimentări', pv.refuels], ['Litri alimentați', Math.round(pv.added)], ['Scăderi suspecte', pv.drops], ['Litri scăzuți', Math.round(pv.lost)]],
+        rows: rowsByName[nm] || [],
+        charts: [
+          { type: 'doughnut', title: 'Alimentări vs. scăderi suspecte', labels: ['Alimentări', 'Scăderi suspecte'], datasets: [{ label: 'evenimente', data: [pv.refuels, pv.drops] }] },
+          { type: 'bar', title: 'Litri alimentați pe zi', labels: rD.labels, datasets: [{ label: 'L', data: rD.data }] }
+        ]
+      };
+    });
+  }
   return { columns: ['Vehicul','Moment','Tip','Δ Litri','Nivel (L)','Locație'], rows,
-    summary: { 'Alimentări': refuels, 'Litri alimentați': Math.round(addedL), 'Scăderi suspecte': drops, 'Litri scăzuți': Math.round(lostL) }, charts };
+    summary: { 'Alimentări': refuels, 'Litri alimentați': Math.round(addedL), 'Scăderi suspecte': drops, 'Litri scăzuți': Math.round(lostL) }, charts, perVehicle };
 }
 
 function pointInPolygon(lat, lng, poly) {
@@ -397,12 +440,18 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
     const c = typeof g.coordinates === 'string' ? JSON.parse(g.coordinates) : g.coordinates;
     return { name: g.name, type: g.type, center: c && c.center, radius: c && c.radius, coords: Array.isArray(c) ? c : null };
   });
-  const rows = []; let total = 0, totalDwell = 0; const all = []; const visByZone = {}, dwellByZone = {};
+  const rows = []; let total = 0, totalDwell = 0; const all = []; const visByZone = {}, dwellByZone = {}; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
+    const nm = label(devMap, imei);
     for (const z of zones) {
       const visits = zoneVisits(pts, z);
-      for (const v of visits) { rows.push([ label(devMap, imei), z.name, fmtTs(v.enter), fmtTs(v.exit), fmtDur(v.durationSec) ]); total++; totalDwell += v.durationSec; all.push(v); visByZone[z.name] = (visByZone[z.name] || 0) + 1; dwellByZone[z.name] = (dwellByZone[z.name] || 0) + v.durationSec; }
+      for (const v of visits) {
+        rows.push([ nm, z.name, fmtTs(v.enter), fmtTs(v.exit), fmtDur(v.durationSec) ]); total++; totalDwell += v.durationSec; all.push(v);
+        visByZone[z.name] = (visByZone[z.name] || 0) + 1; dwellByZone[z.name] = (dwellByZone[z.name] || 0) + v.durationSec;
+        const pv = perVeh[nm] || (perVeh[nm] = { visits: [], visZ: {}, dwellZ: {}, total: 0, dwell: 0 });
+        pv.visits.push(v); pv.total++; pv.dwell += v.durationSec; pv.visZ[z.name] = (pv.visZ[z.name] || 0) + 1; pv.dwellZ[z.name] = (pv.dwellZ[z.name] || 0) + v.durationSec;
+      }
     }
   }
   const zVisits = _topN(Object.entries(visByZone), 10);
@@ -413,8 +462,26 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
     { type: 'bar',      title: 'Timp petrecut pe zonă (min)',  labels: zDwell.labels,  datasets: [{ label: 'minute', data: zDwell.data }] },
     { type: 'line',     title: 'Vizite pe zi',                labels: nDay.labels,    datasets: [{ label: 'vizite', data: nDay.data }] }
   ] : [];
+  const gNames = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
+  let perVehicle;
+  if (gNames.length >= 2) {
+    const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
+    perVehicle = gNames.map(nm => {
+      const pv = perVeh[nm], zV = _topN(Object.entries(pv.visZ), 10), zD = _topN(Object.entries(pv.dwellZ).map(([n, s]) => [n, s / 60]), 10), nD = _groupByDay(pv.visits, x => x.enter, null);
+      return {
+        vehicul: nm,
+        summary: [['Vizite', pv.total], ['Timp în zone', fmtDur(pv.dwell)]],
+        rows: rowsByName[nm] || [],
+        charts: [
+          { type: 'doughnut', title: 'Vizite pe zonă', labels: zV.labels, datasets: [{ label: 'vizite', data: zV.data }] },
+          { type: 'bar', title: 'Timp petrecut pe zonă (min)', labels: zD.labels, datasets: [{ label: 'minute', data: zD.data }] },
+          { type: 'line', title: 'Vizite pe zi', labels: nD.labels, datasets: [{ label: 'vizite', data: nD.data }] }
+        ]
+      };
+    });
+  }
   return { columns: ['Vehicul','Zonă','Intrare','Ieșire','Durată'], rows,
-    summary: { 'Vizite': total, 'Timp total în zone': fmtDur(totalDwell) }, charts };
+    summary: { 'Vizite': total, 'Timp total în zone': fmtDur(totalDwell) }, charts, perVehicle };
 }
 
 // Raport Hotspot: pentru un hotspot (geofence) ales, defalcă timpul fiecărui vehicul în perimetru
@@ -773,11 +840,14 @@ async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alert
   // Interogare scopată pe fereastră + vehicule (NU global LIMIT 2000) — altfel, peste 2000 alerte mai noi decât
   // fereastra, TOATE evenimentele din interval erau pierdute silențios (subraportare care se înrăutățește în timp).
   const all = await db.getAlertHistoryRange(imeis, from, to, 5000);
-  const rows = []; const evs = []; const byType = {};
+  const rows = []; const evs = []; const byType = {}; const perVeh = {};
   for (const e of all) {
     const typ = e.alert_name || e.alert_type || '—';
-    rows.push([ label(devMap, e.imei), typ, fmtTs(e.triggered_at), e.data ? JSON.stringify(e.data).slice(0, 90) : '' ]);
+    const nm = label(devMap, e.imei);
+    rows.push([ nm, typ, fmtTs(e.triggered_at), e.data ? JSON.stringify(e.data).slice(0, 90) : '' ]);
     evs.push({ ts: e.triggered_at }); byType[typ] = (byType[typ] || 0) + 1;
+    const pv = perVeh[nm] || (perVeh[nm] = { evs: [], byType: {}, n: 0 });
+    pv.evs.push({ ts: e.triggered_at }); pv.byType[typ] = (pv.byType[typ] || 0) + 1; pv.n++;
   }
   const nDay = _groupByDay(evs, x => x.ts, null);
   const topT = _topN(Object.entries(byType), 8);
@@ -785,7 +855,24 @@ async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alert
     { type: 'line',     title: 'Evenimente pe zi', labels: nDay.labels, datasets: [{ label: 'evenimente', data: nDay.data }] },
     { type: 'doughnut', title: 'Evenimente pe tip', labels: topT.labels, datasets: [{ label: 'evenimente', data: topT.data }] }
   ] : [];
-  return { columns: ['Vehicul', 'Eveniment', 'Moment', 'Detalii'], rows, summary: { 'Evenimente': rows.length }, charts };
+  const eNames = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
+  let perVehicle;
+  if (eNames.length >= 2) {
+    const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
+    perVehicle = eNames.map(nm => {
+      const pv = perVeh[nm], nD = _groupByDay(pv.evs, x => x.ts, null), tT = _topN(Object.entries(pv.byType), 8);
+      return {
+        vehicul: nm,
+        summary: [['Evenimente', pv.n]],
+        rows: rowsByName[nm] || [],
+        charts: [
+          { type: 'line', title: 'Evenimente pe zi', labels: nD.labels, datasets: [{ label: 'evenimente', data: nD.data }] },
+          { type: 'doughnut', title: 'Evenimente pe tip', labels: tT.labels, datasets: [{ label: 'evenimente', data: tT.data }] }
+        ]
+      };
+    });
+  }
+  return { columns: ['Vehicul', 'Eveniment', 'Moment', 'Detalii'], rows, summary: { 'Evenimente': rows.length }, charts, perVehicle };
 }
 
 async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut, punct-cu-punct)
@@ -932,7 +1019,7 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
     let start = null, last = null;
-    const flush = (endLoc) => { if (start) { const dur = (new Date(last) - new Date(start)) / 1000; if (dur >= minSec) { rows.push([nm, fmtTs(start), fmtDur(dur), endLoc]); totalIdle += dur; totalEvents++; all.push({ ts: start, dur }); perVeh[nm] = (perVeh[nm] || 0) + dur; } start = null; } };
+    const flush = (endLoc) => { if (start) { const dur = (new Date(last) - new Date(start)) / 1000; if (dur >= minSec) { rows.push([nm, fmtTs(start), fmtDur(dur), endLoc]); totalIdle += dur; totalEvents++; all.push({ ts: start, dur, nm }); perVeh[nm] = (perVeh[nm] || 0) + dur; } start = null; } };
     for (const p of pts) {
       if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED) { if (!start) start = p.timestamp; last = p.timestamp; }
       else flush(loc(p));
@@ -945,8 +1032,22 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
     { type: 'bar',      title: 'Ralanti pe zi (min)',             labels: idleDay.labels, datasets: [{ label: 'min', data: idleDay.data }] },
     { type: 'doughnut', title: 'Top vehicule după ralanti (min)', labels: topV.labels,    datasets: [{ label: 'min', data: topV.data }] }
   ] : [];
+  const idNames = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
+  let perVehicle;
+  if (idNames.length >= 2) {
+    const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
+    perVehicle = idNames.map(nm => {
+      const ai = all.filter(x => x.nm === nm), iD = _groupByDay(ai, x => x.ts, x => x.dur / 60);
+      return {
+        vehicul: nm,
+        summary: [['Evenimente ralanti', ai.length], ['Timp ralanti', fmtDur(perVeh[nm])], ['Combustibil irosit (L)', Math.round(perVeh[nm] / 3600 * lph)]],
+        rows: rowsByName[nm] || [],
+        charts: ai.length ? [{ type: 'bar', title: 'Ralanti pe zi (min)', labels: iD.labels, datasets: [{ label: 'min', data: iD.data }] }] : []
+      };
+    });
+  }
   return { columns: ['Vehicul', 'Început', 'Durată ralanti', 'Locație'], rows,
-    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil estimat irosit (L)': Math.round(totalIdle / 3600 * lph) }, charts };
+    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil estimat irosit (L)': Math.round(totalIdle / 3600 * lph) }, charts, perVehicle };
 }
 
 async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibil (din consum + preț/vehicul)
