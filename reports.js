@@ -13,6 +13,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Bucharest';
 function fmtTs(ts) { return ts ? new Date(ts).toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }) : ''; }
+function fmtHM(ts) { return ts ? new Date(ts).toLocaleTimeString('ro-RO', { timeZone: DISPLAY_TZ, hour: '2-digit', minute: '2-digit' }) : ''; } // doar ora HH:MM (ziua e deja în coloana „Zi")
 // Vechimea unei poziții (ms). isNow=true (raport „până acum") → prefix „acum X" (ex. „acum 12 min");
 // isNow=false (raport pe o zi din trecut) → durată simplă „34 min" — fără „acum", ca să nu inducă în eroare.
 function _ageStr(ms, isNow) {
@@ -650,7 +651,8 @@ async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
       const d = byDay[day];
       const eng = Math.max(d.eng, d.move);      // dacă a mers, motorul era pornit (robust la senzor de contact nesigur)
       const idle = eng - d.move;                // ralanti = motor pornit dar oprit din loc
-      rows.push([ nm, day, d.firstDep ? fmtTs(d.firstDep) : '—', d.lastArr ? fmtTs(d.lastArr) : '—', d.km.toFixed(1), d.trips, fmtDur(d.move), fmtDur(idle), fmtDur(eng), d.stops, Math.round(d.max) ]);
+      const activ = (d.firstDep && d.lastArr) ? (fmtHM(d.firstDep) + ' – ' + fmtHM(d.lastArr)) : '—'; // fereastra de activitate a zilei (doar ore)
+      rows.push([ nm, day, activ, d.km.toFixed(1), d.trips, fmtDur(d.move), fmtDur(idle), fmtDur(eng), d.stops, Math.round(d.max) ]);
       totalKm += d.km; totalIdle += idle;
       dayKm[day] = (dayKm[day] || 0) + d.km; dayMove[day] = (dayMove[day] || 0) + d.move; dayIdle[day] = (dayIdle[day] || 0) + idle;
       const pv = perVeh[nm] || (perVeh[nm] = { km: 0, move: 0, idle: 0, active: 0 });
@@ -675,7 +677,7 @@ async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
     }));
   }
   return {
-    columns: ['Vehicul', 'Zi', 'Prima plecare', 'Ultima sosire', 'Km', 'Curse', 'Timp mers', 'Ralanti', 'Ore motor', 'Opriri', 'Vit. max'],
+    columns: ['Vehicul', 'Zi', 'Interval activ', 'Km', 'Curse', 'Timp mers', 'Ralanti', 'Ore motor', 'Opriri', 'Vit. max'],
     rows,
     summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm), 'Ralanti total (flotă)': fmtDur(totalIdle) },
     charts, perVehicle
