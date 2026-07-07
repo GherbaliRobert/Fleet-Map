@@ -1022,6 +1022,8 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
   const minSec = (opts.idleMin || 3) * 60;
   const lph = opts.idleLph || 1.5; // L/h consumați la ralanti (estimare)
   let totalIdle = 0, totalEvents = 0, totalFuel = 0; const all = []; const perVeh = {}; const items = [];
+  const allNames = [...new Set(imeis.map(imei => label(devMap, imei)))]; // TOATE mașinile, în ordine (ca să apară și cele fără ralanti)
+  allNames.forEach(nm => { perVeh[nm] = { dur: 0, fuel: 0, n: 0 }; });
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
@@ -1053,8 +1055,15 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
   if (geocode && geocode.warm && items.length) {
     try { await geocode.warm(items.filter(x => x.endP).map(x => ({ lat: x.endP.latitude, lng: x.endP.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
-  // Combustibil: „~" în față = valoare ESTIMATĂ (fără contor CAN); fără „~" = litri REALI din CAN.
-  const rows = items.map(x => [ x.nm, fmtTs(x.start), fmtTs(x.end), fmtDur(x.dur), (x.real ? '' : '~') + x.litri.toFixed(2), x.endP ? addr(x.endP) : '' ]);
+  // Fiecare mașină apare în raport: cele cu ralanti → rândurile lor; cele FĂRĂ → un rând „0/—"
+  // (arată clar că n-a avut ralanti, nu dispare din raport). Combustibil: „~" = estimat, fără „~" = real din CAN.
+  const itemsByNm = {}; items.forEach(x => { (itemsByNm[x.nm] || (itemsByNm[x.nm] = [])).push(x); });
+  const rows = [];
+  for (const nm of allNames) {
+    const evs = itemsByNm[nm] || [];
+    if (evs.length) evs.forEach(x => rows.push([ nm, fmtTs(x.start), fmtTs(x.end), fmtDur(x.dur), (x.real ? '' : '~') + x.litri.toFixed(2), x.endP ? addr(x.endP) : '' ]));
+    else rows.push([ nm, '—', '—', '0m', '0', '—' ]); // fără ralanti în perioada aleasă
+  }
   const idleDay = _groupByDay(all, x => x.ts, x => x.dur / 60);
   const topV = _topN(Object.entries(perVeh).map(([n, s]) => [n, s.dur / 60]), 10);
   const charts = all.length ? [
