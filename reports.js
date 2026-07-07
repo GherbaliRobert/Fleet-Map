@@ -623,36 +623,63 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație
   };
 }
 
-async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
-  const rows = []; let totalKm = 0; const dayKm = {}, dayMove = {};
+async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică (rezumat pe zi/vehicul)
+  const rows = []; let totalKm = 0, totalIdle = 0; const dayKm = {}, dayMove = {}, dayIdle = {}; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const byDay = {};
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], day = _dayKeyISO(p.timestamp);
-      const d = byDay[day] || (byDay[day] = { km: 0, move: 0, eng: 0, max: 0, first: p.timestamp, last: p.timestamp });
-      d.last = p.timestamp; if ((p.speed || 0) > d.max) d.max = p.speed || 0;
+      const d = byDay[day] || (byDay[day] = { km: 0, move: 0, eng: 0, max: 0, stops: 0, trips: 0, firstDep: null, lastArr: null });
+      if ((p.speed || 0) > d.max) d.max = p.speed || 0;
       if (i > 0) {
         const pr = pts[i - 1], dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude);
         if (dist < MAX_STEP_KM) d.km += dist;
         const dt = (t(p) - t(pr)) / 1000;
-        if (dt > 0 && dt < 3600) { if ((p.speed || 0) > IDLE_SPEED) d.move += dt; if (ignOn(pr) && ignOn(p)) d.eng += dt; } // motor pornit = contact ON la AMBELE capete (nu supraestima)
+        if (dt > 0 && dt < 3600) { if ((p.speed || 0) > IDLE_SPEED) d.move += dt; if (ignOn(pr) && ignOn(p)) d.eng += dt; } // motor pornit = contact ON la AMBELE capete
       }
     }
     const seg = segmentTrack(pts, (opts.stopMin || 5) * 60);
-    seg.stops.forEach(s => { const day = _dayKeyISO(s.start); if (byDay[day]) byDay[day].stops = (byDay[day].stops || 0) + 1; });
+    seg.stops.forEach(s => { const day = _dayKeyISO(s.start); if (byDay[day]) byDay[day].stops++; });
+    seg.trips.forEach(tr => { // trips-urile sunt cronologice → primul = prima plecare, ultimul = ultima sosire
+      const day = _dayKeyISO(tr.start); const d = byDay[day]; if (!d) return;
+      d.trips++; if (d.firstDep == null) d.firstDep = tr.start; d.lastArr = tr.end;
+    });
+    const nm = label(devMap, imei);
     for (const day of Object.keys(byDay).sort()) {
       const d = byDay[day];
-      rows.push([ label(devMap, imei), day, d.km.toFixed(1), fmtDur(d.move), fmtDur(d.eng), d.stops || 0, Math.round(d.max) ]);
-      totalKm += d.km; dayKm[day] = (dayKm[day] || 0) + d.km; dayMove[day] = (dayMove[day] || 0) + d.move;
+      const eng = Math.max(d.eng, d.move);      // dacă a mers, motorul era pornit (robust la senzor de contact nesigur)
+      const idle = eng - d.move;                // ralanti = motor pornit dar oprit din loc
+      rows.push([ nm, day, d.firstDep ? fmtTs(d.firstDep) : '—', d.lastArr ? fmtTs(d.lastArr) : '—', d.km.toFixed(1), d.trips, fmtDur(d.move), fmtDur(idle), fmtDur(eng), d.stops, Math.round(d.max) ]);
+      totalKm += d.km; totalIdle += idle;
+      dayKm[day] = (dayKm[day] || 0) + d.km; dayMove[day] = (dayMove[day] || 0) + d.move; dayIdle[day] = (dayIdle[day] || 0) + idle;
+      const pv = perVeh[nm] || (perVeh[nm] = { km: 0, move: 0, idle: 0, active: 0 });
+      pv.km += d.km; pv.move += d.move; pv.idle += idle; if (d.km > 0.1) pv.active++;
     }
   }
   const dk = Object.keys(dayKm).sort();
   const charts = rows.length ? [
     { type: 'bar',  title: 'Km pe zi (flotă)',         labels: dk.map(_dayLabel), datasets: [{ label: 'km', data: dk.map(k => Math.round(dayKm[k] * 10) / 10) }] },
-    { type: 'line', title: 'Timp în mers pe zi (ore)', labels: dk.map(_dayLabel), datasets: [{ label: 'ore', data: dk.map(k => Math.round(dayMove[k] / 360) / 10) }] }
+    { type: 'line', title: 'Timp în mers pe zi (ore)', labels: dk.map(_dayLabel), datasets: [{ label: 'ore', data: dk.map(k => Math.round(dayMove[k] / 360) / 10) }] },
+    { type: 'bar',  title: 'Ralanti pe zi (ore)',      labels: dk.map(_dayLabel), datasets: [{ label: 'ore', data: dk.map(k => Math.round((dayIdle[k] || 0) / 360) / 10) }] }
   ] : [];
-  return { columns: ['Vehicul', 'Zi', 'Km', 'Timp mers', 'Ore motor', 'Opriri', 'Vit. max'], rows, summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm) }, charts };
+  // Sumar PE VEHICUL cu sens (Excel „Sumar" + online): Km total / Zile active / Timp mers / Ralanti total.
+  const names = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
+  let perVehicle;
+  if (names.length >= 2) {
+    const byName = {}; rows.forEach(r => { (byName[String(r[0])] || (byName[String(r[0])] = [])).push(r); });
+    perVehicle = names.map(nm => ({
+      vehicul: nm,
+      summary: [['Km total', Math.round(perVeh[nm].km)], ['Zile active', perVeh[nm].active], ['Timp mers', fmtDur(perVeh[nm].move)], ['Ralanti total', fmtDur(perVeh[nm].idle)]],
+      rows: byName[nm] || []
+    }));
+  }
+  return {
+    columns: ['Vehicul', 'Zi', 'Prima plecare', 'Ultima sosire', 'Km', 'Curse', 'Timp mers', 'Ralanti', 'Ore motor', 'Opriri', 'Vit. max'],
+    rows,
+    summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm), 'Ralanti total (flotă)': fmtDur(totalIdle) },
+    charts, perVehicle
+  };
 }
 
 async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu — jurnal de activitate (deplasări + staționări, cu adrese)
