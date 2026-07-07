@@ -4551,10 +4551,12 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
       fuelConsumed = Math.max(0, Math.round(consumed * 10) / 10);
     }
 
-    // Fallback ESTIMARE pentru vehicule FĂRĂ senzor de combustibil (ex. Dacia Logan): km × consum (config) + ralanti.
-    // Fără senzor, hasFuelData=false → fuelConsumed rămânea null și „Consum azi" dispărea complet. Estimăm onest (marcat fuelEstimated).
+    // Fallback ESTIMARE pentru vehicule FĂRĂ senzor de combustibil fiabil (ex. Dacia Logan): km × consum (config) + ralanti.
+    // Cazuri: (a) fără senzor → fuelConsumed=null; (b) senzor CAN care raportează un nivel PLAT/nesigur pe o cursă reală →
+    // consumed iese 0 deși mașina a mers zeci de km (imposibil). În ambele → estimăm onest (marcat fuelEstimated), altfel
+    // „carburant/consum" apărea 0.0 / — pe traseu chiar dacă vehiculul a rulat.
     let fuelEstimated = false;
-    if (fuelConsumed === null && (globalTotalKm > 0.2 || globalEngineIdleTime > 60)) {
+    if ((fuelConsumed === null || (fuelConsumed === 0 && globalTotalKm > 2)) && (globalTotalKm > 0.2 || globalEngineIdleTime > 60)) {
       try {
         const dc = (await db.pool.query('SELECT vehicle_type, consumption_road, consumption_city, consumption_idle FROM devices WHERE imei = $1', [imei])).rows[0] || {};
         const vt = String(dc.vehicle_type || '').toLowerCase();
