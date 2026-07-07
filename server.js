@@ -5839,6 +5839,19 @@ async function fireWebhooks(companyId, payload, opts) {
   } catch (e) { /* niciodată nu blocăm fluxul de evenimente */ }
 }
 
+// Titlul notificării: „<eveniment> — <NR ÎNMATRICULARE> · <denumire>". Numărul de înmatriculare primează;
+// denumirea se adaugă DOAR dacă mai încape (titlurile push se trunchiază pe telefon). Fără plăcuță → denumirea.
+function eventVehTitle(label, data, imei) {
+  const plate = (data && data.plate) ? String(data.plate).trim() : '';
+  const name = (data && data.name) ? String(data.name).trim() : '';
+  let veh = plate || name || imei;
+  if (plate && name && name !== plate) {
+    const withName = plate + ' · ' + name;
+    if ((label + ' — ' + withName).length <= 46) veh = withName; // ține titlul scurt pt. push
+  }
+  return label + ' — ' + veh;
+}
+
 // Detector evenimente per-poziție (prev = poziția anterioară a vehiculului)
 async function evaluateUserEvents(imei, data, prev) {
   try {
@@ -5893,7 +5906,7 @@ async function evaluateUserEvents(imei, data, prev) {
           if (def.below) { if (c.mag >= thr) continue; } else { if (c.mag < thr) continue; }
         }
         if (!userCooldownOk(u.id, c.type, imei)) continue;
-        await deliverUserEvent(u, { type: c.type, imei, severity: c.type === 'no_ignition_move' ? 'critical' : 'warning', title: def.label + ' — ' + vname, body: c.body }, up);
+        await deliverUserEvent(u, { type: c.type, imei, severity: c.type === 'no_ignition_move' ? 'critical' : 'warning', title: eventVehTitle(def.label, data, imei), body: c.body }, up);
       }
     }
   } catch (e) { console.error('[UEVENTS]', e.message); }
