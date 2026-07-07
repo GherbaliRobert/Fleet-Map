@@ -279,15 +279,17 @@ function logDeviceAttempt(imei, address) {
   deviceAttempts.set(imei, { first: now, last: now, count: 1, address });
 }
 
-// Valori CAN „sticky": rămân valabile când un pachet nu le include — carburant + kilometraj + RPM.
+// Valori CAN „sticky": rămân valabile când un pachet nu le include — carburant + kilometraj + RPM + limita de viteză (semn).
 // RPM se cară pt. vehiculele care îl trimit INTERMITENT (ex. Dacia LV-CAN200) → nu mai apare „-" cu motorul pornit.
-// Sigur: RPM e doar afișaj (ascuns pe fișă cu contactul oprit, gate hasIgnition/ign) și NU intră în nicio logică.
+// speed_limit_sign (cameră ADAS, IO 1116): camera raportează semnul DOAR la schimbare → între semne pachetul nu-l include
+// și badge-ul de limită dispărea. Îl cărăm ca „ultima limită văzută" (volatil, expiră ca RPM — e limita drumului CURENT, nu permanent).
+// Sigur: RPM/limita sunt doar afișaj (ascunse cu contactul oprit / expirate) și NU intră în nicio logică de alertă.
 // NU includem TEMP MOTORULUI — alimentează alertele de supraîncălzire (o temp „sticky" ar da alerte FALSE după răcire).
 // NU includem viteza — aceea TREBUIE instantanee (o viteză „sticky" ar arăta mașina în mișcare deși stă).
-const STICKY_CAN = ['fuel_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_engine_rpm'];
+const STICKY_CAN = ['fuel_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_engine_rpm', 'speed_limit_sign'];
 // Valori „volatile" (live): NU le mai cărăm dacă snapshot-ul e mai vechi de X — altfel RPM-ul ultimei tură apare ca instant deși motorul e oprit/offline.
-// (Carburant/odometru rămân sticky oricât — nu se schimbă cât stă mașina parcată.)
-const STICKY_VOLATILE = new Set(['can_engine_rpm']);
+// (Carburant/odometru rămân sticky oricât — nu se schimbă cât stă mașina parcată. RPM + limita de viteză = volatile, expiră.)
+const STICKY_VOLATILE = new Set(['can_engine_rpm', 'speed_limit_sign']);
 const STICKY_VOLATILE_MAX_MS = 15 * 60 * 1000;
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
 // Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
