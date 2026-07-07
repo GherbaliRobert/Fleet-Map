@@ -1059,12 +1059,12 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
     try { await geocode.warm(items.filter(x => x.endP).map(x => ({ lat: x.endP.latitude, lng: x.endP.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
   // Fiecare mașină apare în raport: cele cu ralanti → rândurile lor; cele FĂRĂ → un rând „0/—"
-  // (arată clar că n-a avut ralanti, nu dispare din raport). Combustibil: „~" = estimat, fără „~" = real din CAN.
+  // (arată clar că n-a avut ralanti, nu dispare din raport). Combustibil: „(CAN)" = real din contor, „(estimat)" = aproximare.
   const itemsByNm = {}; items.forEach(x => { (itemsByNm[x.nm] || (itemsByNm[x.nm] = [])).push(x); });
   const rows = [];
   for (const nm of allNames) {
     const evs = itemsByNm[nm] || [];
-    if (evs.length) evs.forEach(x => rows.push([ nm, fmtTs(x.start), fmtTs(x.end), fmtDur(x.dur), (x.real ? '' : '~') + x.litri.toFixed(2), x.endP ? addr(x.endP) : '' ]));
+    if (evs.length) evs.forEach(x => rows.push([ nm, fmtTs(x.start), fmtTs(x.end), fmtDur(x.dur), x.litri.toFixed(2) + (x.real ? ' (CAN)' : ' (estimat)'), x.endP ? addr(x.endP) : '' ]));
     else rows.push([ nm, '—', '—', '0m', '0', '—' ]); // fără ralanti în perioada aleasă
   }
   const idleDay = _groupByDay(all, x => x.ts, x => x.dur / 60);
