@@ -76,7 +76,7 @@ async function history(db, imei, from, to) {
 async function deviceNames(db, imeis) {
   const map = {};
   try {
-    const r = await db.pool.query('SELECT imei, name, plate, driver_id, group_id FROM devices');
+    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
     r.rows.forEach(d => map[d.imei] = d);
   } catch (e) {}
   return map;
@@ -91,9 +91,14 @@ function segmentTrack(pts, stopMinSec) {
   const stops = [], trips = [];
   if (pts.length < 2) return { stops, trips };
   const moving = pts.map(p => (p.speed || 0) > IDLE_SPEED);
-  // runs consecutive de aceeași stare
+  // runs consecutive de aceeași stare. Rupe și la un „salt" spațial într-o serie de opriri: dacă între
+  // două puncte oprite consecutive sunt >200m, mașina s-a mutat cu aparatul tăcut (deplasare neînregistrată)
+  // → sunt DOUĂ parcări diferite, nu una singură lipită greșit la primul punct (fix „oprire falsă la locul greșit").
   const runs = []; let s = 0;
-  for (let i = 1; i < pts.length; i++) { if (moving[i] !== moving[s]) { runs.push({ moving: moving[s], s, e: i-1 }); s = i; } }
+  for (let i = 1; i < pts.length; i++) {
+    const jumped = !moving[i] && !moving[i-1] && haversineKm(pts[i-1].latitude, pts[i-1].longitude, pts[i].latitude, pts[i].longitude) > 0.2;
+    if (moving[i] !== moving[s] || jumped) { runs.push({ moving: moving[s], s, e: i-1 }); s = i; }
+  }
   runs.push({ moving: moving[s], s, e: pts.length-1 });
 
   const tripDist = (a, b) => { let km = 0; for (let i = a+1; i <= b; i++) { const d = haversineKm(pts[i-1].latitude, pts[i-1].longitude, pts[i].latitude, pts[i].longitude); if (d < MAX_STEP_KM) km += d; } return km; };
@@ -181,6 +186,24 @@ function _genericPerVehicle(result) {
     vehicul: name, summary: [['Înregistrări', groups[name].length]], rows: groups[name]
   }));
 }
+// Adaugă automat coloana „Șofer" (imediat după „Vehicul") la ORICE raport care începe cu coloana „Vehicul".
+// Un singur loc → toate rapoartele despre mașini primesc șoferul alocat, fără să edităm fiecare raport.
+function _injectDriverColumn(result, imeis, devMap) {
+  const cols = result.columns;
+  if (!Array.isArray(cols) || !cols.length || String(cols[0]).trim().toLowerCase() !== 'vehicul') return;
+  if (String(cols[1] || '').trim().toLowerCase() === 'șofer') return; // idempotent (nu dubla)
+  const l2d = {};
+  for (const imei of imeis) { const d = devMap[imei]; if (d) l2d[label(devMap, imei)] = (d.driver_name || '—'); }
+  const drv = r => (l2d[String(r && r[0])] || '—');
+  result.columns = [cols[0], 'Șofer'].concat(cols.slice(1));
+  if (Array.isArray(result.rows)) result.rows = result.rows.map(r => [r[0], drv(r)].concat(r.slice(1)));
+  if (Array.isArray(result.perVehicle)) {
+    result.perVehicle.forEach(v => {
+      if (Array.isArray(v.rows)) v.rows = v.rows.map(r => [r[0], drv(r)].concat(r.slice(1)));
+      if (Array.isArray(v.summary)) v.summary = [['Șofer', (l2d[String(v.vehicul)] || '—')]].concat(v.summary);
+    });
+  }
+}
 
 async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
   let totalKm = 0, totalDur = 0, count = 0; const all = []; const tripList = [];
@@ -234,14 +257,21 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
 }
 
 async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / staționări
+  const fromMs = new Date(from).getTime();
+  // Caută cu 24h ÎNAINTE de interval: o parcare începută seara dinainte primește ora REALĂ de sosire,
+  // nu „primul ping din zi" (fix: „a ajuns la 00:51" era de fapt primul semnal, nu sosirea).
+  const lookFrom = new Date(fromMs - 24 * 3600 * 1000).toISOString();
   const items = []; let total = 0, totalDur = 0; const all = []; const perVeh = {};
   for (const imei of imeis) {
-    const pts = await history(db, imei, from, to);
+    const pts = await history(db, imei, lookFrom, to);
     const { stops } = segmentTrack(pts, (opts.stopMin || 5) * 60);
     for (const st of stops) {
+      if (new Date(st.end).getTime() < fromMs) continue;   // oprire terminată complet înainte de interval → nu ne interesează
       items.push({ imei, st });
       total++; totalDur += st.durationSec; all.push(st);
-      const nm = label(devMap, imei); perVeh[nm] = (perVeh[nm] || 0) + 1;
+      const nm = label(devMap, imei);
+      const pv = perVeh[nm] || (perVeh[nm] = { n: 0, dur: 0, max: 0 });
+      pv.n++; pv.dur += st.durationSec; if (st.durationSec > pv.max) pv.max = st.durationSec;
     }
   }
   // Pre-încarcă adresele opririlor în cache (ca la Foaie de parcurs) → coloana „Locație" = ADRESE, nu coordonate.
@@ -250,16 +280,28 @@ async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / stațion�
     try { await geocode.warm(items.map(x => ({ lat: x.st.p.latitude, lng: x.st.p.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
   const rows = items.map(({ imei, st }) => [ label(devMap, imei), fmtTs(st.start), fmtTs(st.end), fmtDur(st.durationSec), addr(st.p) ]);
+  // Sumar PE VEHICUL cu sens (Excel „Sumar" + online): Opriri / Timp staționat / Cea mai lungă — nu generic „Înregistrări".
+  const names = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
+  let perVehicle;
+  if (names.length >= 2) {
+    const byName = {};
+    items.forEach(({ imei }, i) => { const nm = label(devMap, imei); (byName[nm] || (byName[nm] = [])).push(rows[i]); });
+    perVehicle = names.map(nm => ({
+      vehicul: nm,
+      summary: [['Opriri', perVeh[nm].n], ['Timp staționat', fmtDur(perVeh[nm].dur)], ['Cea mai lungă', fmtDur(perVeh[nm].max)]],
+      rows: byName[nm] || []
+    }));
+  }
   const nDay = _groupByDay(all, x => x.start, null);
   const dur = _histogram(all.map(x => x.durationSec / 60), [15, 30, 60, 120]);
-  const topV = _topN(Object.entries(perVeh), 10);
+  const topV = _topN(names.map(nm => [nm, perVeh[nm].n]), 10);
   const charts = all.length ? [
     { type: 'bar',      title: 'Opriri pe zi',                       labels: nDay.labels, datasets: [{ label: 'opriri', data: nDay.data }] },
     { type: 'bar',      title: 'Distribuție durată oprire (min)',    labels: dur.labels,  datasets: [{ label: 'opriri', data: dur.data }] },
     { type: 'doughnut', title: 'Top vehicule după număr de opriri',  labels: topV.labels, datasets: [{ label: 'opriri', data: topV.data }] }
   ] : [];
   return { columns: ['Vehicul','Început','Sfârșit','Durată','Locație'], rows,
-    summary: { 'Opriri': total, 'Timp staționat total': fmtDur(totalDur) }, charts };
+    summary: { 'Opriri': total, 'Timp staționat total': fmtDur(totalDur) }, charts, perVehicle };
 }
 
 async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri viteză
@@ -1216,6 +1258,7 @@ async function runReport(db, type, imeis, from, to, opts, companyId) {
   const result = await def.fn(db, imeis, from, to, opts || {}, devMap, companyId);
   result.type = type; result.label = def.label; result.from = from; result.to = to;
   if (!result.perVehicle) { try { const pv = _genericPerVehicle(result); if (pv) result.perVehicle = pv; } catch (e) {} }
+  try { _injectDriverColumn(result, imeis, devMap); } catch (e) {} // coloană „Șofer" la orice raport pe vehicule (după perVehicle → prinde și sumarele)
   return result;
 }
 
