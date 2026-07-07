@@ -655,8 +655,9 @@ async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
       rows.push([ nm, day, activ, d.km.toFixed(1), d.trips, fmtDur(d.move), fmtDur(idle), fmtDur(eng), d.stops, Math.round(d.max) ]);
       totalKm += d.km; totalIdle += idle;
       dayKm[day] = (dayKm[day] || 0) + d.km; dayMove[day] = (dayMove[day] || 0) + d.move; dayIdle[day] = (dayIdle[day] || 0) + idle;
-      const pv = perVeh[nm] || (perVeh[nm] = { km: 0, move: 0, idle: 0, active: 0 });
+      const pv = perVeh[nm] || (perVeh[nm] = { km: 0, move: 0, idle: 0, active: 0, days: {} });
       pv.km += d.km; pv.move += d.move; pv.idle += idle; if (d.km > 0.1) pv.active++;
+      pv.days[day] = { km: d.km, move: d.move, idle: idle }; // serie zilnică per vehicul → grafice individuale la selecție
     }
   }
   const dk = Object.keys(dayKm).sort();
@@ -670,14 +671,23 @@ async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
   let perVehicle;
   if (names.length >= 2) {
     const byName = {}; rows.forEach(r => { (byName[String(r[0])] || (byName[String(r[0])] = [])).push(r); });
-    perVehicle = names.map(nm => ({
-      vehicul: nm,
-      summary: [['Km total', Math.round(perVeh[nm].km)], ['Zile active', perVeh[nm].active], ['Timp mers', fmtDur(perVeh[nm].move)], ['Ralanti total', fmtDur(perVeh[nm].idle)]],
-      rows: byName[nm] || []
-    }));
+    perVehicle = names.map(nm => {
+      const pv = perVeh[nm], dks = Object.keys(pv.days).sort();
+      return {
+        vehicul: nm,
+        summary: [['Km total', Math.round(pv.km)], ['Zile active', pv.active], ['Timp mers', fmtDur(pv.move)], ['Ralanti total', fmtDur(pv.idle)]],
+        rows: byName[nm] || [],
+        // grafice INDIVIDUALE (doar pentru vehiculul selectat) — se afișează în locul celor pe flotă când alegi mașina
+        charts: dks.length ? [
+          { type: 'bar',  title: 'Km pe zi',            labels: dks.map(_dayLabel), datasets: [{ label: 'km', data: dks.map(k => Math.round(pv.days[k].km * 10) / 10) }] },
+          { type: 'line', title: 'Timp în mers pe zi (ore)', labels: dks.map(_dayLabel), datasets: [{ label: 'ore', data: dks.map(k => Math.round(pv.days[k].move / 360) / 10) }] },
+          { type: 'bar',  title: 'Ralanti pe zi (ore)', labels: dks.map(_dayLabel), datasets: [{ label: 'ore', data: dks.map(k => Math.round(pv.days[k].idle / 360) / 10) }] }
+        ] : []
+      };
+    });
   }
   return {
-    columns: ['Vehicul', 'Zi', 'Interval activ', 'Km', 'Curse', 'Timp mers', 'Ralanti', 'Ore motor', 'Opriri', 'Vit. max'],
+    columns: ['Vehicul', 'Zi', 'Interval activ', 'Km', 'Curse', 'Timp mers', 'Ralanti', 'Motor pornit', 'Opriri', 'Vit. max'],
     rows,
     summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm), 'Ralanti total (flotă)': fmtDur(totalIdle) },
     charts, perVehicle
