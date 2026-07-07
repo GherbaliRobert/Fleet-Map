@@ -1020,15 +1020,30 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
 async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor pornit + staționat)
   const minSec = (opts.idleMin || 3) * 60;
   const lph = opts.idleLph || 1.5; // L/h consumați la ralanti (estimare)
-  let totalIdle = 0, totalEvents = 0; const all = []; const perVeh = {}; const items = [];
+  let totalIdle = 0, totalEvents = 0, totalFuel = 0; const all = []; const perVeh = {}; const items = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
-    let start = null, last = null, endP = null;
-    const flush = () => { if (start) { const dur = (new Date(last) - new Date(start)) / 1000; if (dur >= minSec) { items.push({ nm, start, dur, endP }); totalIdle += dur; totalEvents++; all.push({ ts: start, dur, nm }); perVeh[nm] = (perVeh[nm] || 0) + dur; } start = null; endP = null; } };
+    let start = null, startP = null, last = null, endP = null;
+    const flush = () => {
+      if (start) {
+        const dur = (new Date(last) - new Date(start)) / 1000;
+        if (dur >= minSec) {
+          // Combustibil: litri REALI din contorul CAN cumulativ (delta start→final); altfel estimare (durată × L/h).
+          const fs = fuelCumul(startP), fe = fuelCumul(endP);
+          const real = (fs != null && fe != null && fe >= fs && (fe - fs) < 30) ? (fe - fs) : null; // <30L gardă anti-reset/glitch de contor
+          const litri = real != null ? real : (dur / 3600 * lph);
+          items.push({ nm, start, dur, endP, litri, real: real != null });
+          totalIdle += dur; totalEvents++; totalFuel += litri; all.push({ ts: start, dur, nm });
+          const pv = perVeh[nm] || (perVeh[nm] = { dur: 0, fuel: 0, n: 0 });
+          pv.dur += dur; pv.fuel += litri; pv.n++;
+        }
+        start = null; startP = null; endP = null;
+      }
+    };
     for (const p of pts) {
       // Ralanti = MOTOR PORNIT (RPM din CAN dacă există, altfel contactul) + STAȚIONAT (viteză CAN dacă există, altfel GPS).
-      if (engineRunning(p) && vehSpeed(p) <= IDLE_SPEED) { if (!start) start = p.timestamp; last = p.timestamp; endP = p; }
+      if (engineRunning(p) && vehSpeed(p) <= IDLE_SPEED) { if (!start) { start = p.timestamp; startP = p; } last = p.timestamp; endP = p; }
       else flush();
     }
     flush();
@@ -1037,9 +1052,10 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
   if (geocode && geocode.warm && items.length) {
     try { await geocode.warm(items.filter(x => x.endP).map(x => ({ lat: x.endP.latitude, lng: x.endP.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
-  const rows = items.map(x => [ x.nm, fmtTs(x.start), fmtDur(x.dur), x.endP ? addr(x.endP) : '' ]);
+  // Combustibil: „~" în față = valoare ESTIMATĂ (fără contor CAN); fără „~" = litri REALI din CAN.
+  const rows = items.map(x => [ x.nm, fmtTs(x.start), fmtDur(x.dur), (x.real ? '' : '~') + x.litri.toFixed(2), x.endP ? addr(x.endP) : '' ]);
   const idleDay = _groupByDay(all, x => x.ts, x => x.dur / 60);
-  const topV = _topN(Object.entries(perVeh).map(([n, s]) => [n, s / 60]), 10);
+  const topV = _topN(Object.entries(perVeh).map(([n, s]) => [n, s.dur / 60]), 10);
   const charts = all.length ? [
     { type: 'bar',      title: 'Ralanti pe zi (min)',             labels: idleDay.labels, datasets: [{ label: 'min', data: idleDay.data }] },
     { type: 'doughnut', title: 'Top vehicule după ralanti (min)', labels: topV.labels,    datasets: [{ label: 'min', data: topV.data }] }
@@ -1052,14 +1068,14 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
       const ai = all.filter(x => x.nm === nm), iD = _groupByDay(ai, x => x.ts, x => x.dur / 60);
       return {
         vehicul: nm,
-        summary: [['Evenimente ralanti', ai.length], ['Timp ralanti', fmtDur(perVeh[nm])], ['Combustibil irosit (L)', Math.round(perVeh[nm] / 3600 * lph)]],
+        summary: [['Evenimente ralanti', perVeh[nm].n], ['Timp ralanti', fmtDur(perVeh[nm].dur)], ['Combustibil irosit (L)', Math.round(perVeh[nm].fuel)]],
         rows: rowsByName[nm] || [],
         charts: ai.length ? [{ type: 'bar', title: 'Ralanti pe zi (min)', labels: iD.labels, datasets: [{ label: 'min', data: iD.data }] }] : []
       };
     });
   }
-  return { columns: ['Vehicul', 'Început', 'Durată ralanti', 'Locație'], rows,
-    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil estimat irosit (L)': Math.round(totalIdle / 3600 * lph) }, charts, perVehicle };
+  return { columns: ['Vehicul', 'Început', 'Durată ralanti', 'Combustibil (L)', 'Locație'], rows,
+    summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil irosit (L)': Math.round(totalFuel) }, charts, perVehicle };
 }
 
 async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibil (din consum + preț/vehicul)
