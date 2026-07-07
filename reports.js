@@ -54,6 +54,12 @@ function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === '
 // chiar și pe distanțe scurte unde nivelul rezervorului nu se mișcă vizibil. Sursă PREFERATĂ pentru consum.
 function fuelCumul(p) { const i = io(p); const v = (typeof i.can_fuel_consumed === 'number') ? i.can_fuel_consumed : (typeof i.can_fuel_consumed_counted === 'number' ? i.can_fuel_consumed_counted : (typeof i.can_engine_total_fuel_used === 'number' ? i.can_engine_total_fuel_used : null)); return (typeof v === 'number' && v > 0) ? v : null; }
 function ignOn(p) { return io(p).ignition === 1; }
+// Turația CAN (RON: „can_rpm" în raportul CAN, unele parsere „can_engine_rpm"). null dacă lipsește.
+function canRpm(p) { const i = io(p); return (typeof i.can_rpm === 'number') ? i.can_rpm : (typeof i.can_engine_rpm === 'number' ? i.can_engine_rpm : null); }
+// Motor pornit — din CAN (RPM > 300 = motor efectiv pornit, ralanti tipic 600-900) dacă avem RPM, altfel contactul (ignition).
+function engineRunning(p) { const r = canRpm(p); return (r != null) ? r > 300 : ignOn(p); }
+// Viteză reală — din CAN (mai precisă) dacă avem, altfel GPS.
+function vehSpeed(p) { const i = io(p); const cs = (typeof i.can_vehicle_speed === 'number') ? i.can_vehicle_speed : (typeof i.can_tacho_speed === 'number' ? i.can_tacho_speed : (typeof i.can_wheel_speed === 'number' ? i.can_wheel_speed : null)); return (cs != null) ? cs : (p.speed || 0); }
 // Preț carburant — media națională auto (setată din server zilnic) + override pe tip via opts.priceByType.
 // Lanț: preț pe VEHICUL (c.price) → preț COMPANIE/efectiv (opts.priceByType[tip]) → media națională AUTO → opts.fuelPrice → 7.5.
 let _defaultPrices = {};
@@ -1014,18 +1020,24 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
 async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor pornit + staționat)
   const minSec = (opts.idleMin || 3) * 60;
   const lph = opts.idleLph || 1.5; // L/h consumați la ralanti (estimare)
-  const rows = []; let totalIdle = 0, totalEvents = 0; const all = []; const perVeh = {};
+  let totalIdle = 0, totalEvents = 0; const all = []; const perVeh = {}; const items = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
-    let start = null, last = null;
-    const flush = (endLoc) => { if (start) { const dur = (new Date(last) - new Date(start)) / 1000; if (dur >= minSec) { rows.push([nm, fmtTs(start), fmtDur(dur), endLoc]); totalIdle += dur; totalEvents++; all.push({ ts: start, dur, nm }); perVeh[nm] = (perVeh[nm] || 0) + dur; } start = null; } };
+    let start = null, last = null, endP = null;
+    const flush = () => { if (start) { const dur = (new Date(last) - new Date(start)) / 1000; if (dur >= minSec) { items.push({ nm, start, dur, endP }); totalIdle += dur; totalEvents++; all.push({ ts: start, dur, nm }); perVeh[nm] = (perVeh[nm] || 0) + dur; } start = null; endP = null; } };
     for (const p of pts) {
-      if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED) { if (!start) start = p.timestamp; last = p.timestamp; }
-      else flush(loc(p));
+      // Ralanti = MOTOR PORNIT (RPM din CAN dacă există, altfel contactul) + STAȚIONAT (viteză CAN dacă există, altfel GPS).
+      if (engineRunning(p) && vehSpeed(p) <= IDLE_SPEED) { if (!start) start = p.timestamp; last = p.timestamp; endP = p; }
+      else flush();
     }
-    flush('');
+    flush();
   }
+  // Adrese în loc de coordonate (geocode.warm → addr); fallback pe coordonate dacă Nominatim nu apucă în buget.
+  if (geocode && geocode.warm && items.length) {
+    try { await geocode.warm(items.filter(x => x.endP).map(x => ({ lat: x.endP.latitude, lng: x.endP.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
+  }
+  const rows = items.map(x => [ x.nm, fmtTs(x.start), fmtDur(x.dur), x.endP ? addr(x.endP) : '' ]);
   const idleDay = _groupByDay(all, x => x.ts, x => x.dur / 60);
   const topV = _topN(Object.entries(perVeh).map(([n, s]) => [n, s / 60]), 10);
   const charts = all.length ? [
