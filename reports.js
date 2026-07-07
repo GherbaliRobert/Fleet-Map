@@ -1033,7 +1033,7 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
           const fs = fuelCumul(startP), fe = fuelCumul(endP);
           const real = (fs != null && fe != null && fe >= fs && (fe - fs) < 30) ? (fe - fs) : null; // <30L gardă anti-reset/glitch de contor
           const litri = real != null ? real : (dur / 3600 * lph);
-          items.push({ nm, start, dur, endP, litri, real: real != null });
+          items.push({ nm, start, end: last, dur, endP, litri, real: real != null });
           totalIdle += dur; totalEvents++; totalFuel += litri; all.push({ ts: start, dur, nm });
           const pv = perVeh[nm] || (perVeh[nm] = { dur: 0, fuel: 0, n: 0 });
           pv.dur += dur; pv.fuel += litri; pv.n++;
@@ -1053,7 +1053,7 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
     try { await geocode.warm(items.filter(x => x.endP).map(x => ({ lat: x.endP.latitude, lng: x.endP.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
   // Combustibil: „~" în față = valoare ESTIMATĂ (fără contor CAN); fără „~" = litri REALI din CAN.
-  const rows = items.map(x => [ x.nm, fmtTs(x.start), fmtDur(x.dur), (x.real ? '' : '~') + x.litri.toFixed(2), x.endP ? addr(x.endP) : '' ]);
+  const rows = items.map(x => [ x.nm, fmtTs(x.start), fmtTs(x.end), fmtDur(x.dur), (x.real ? '' : '~') + x.litri.toFixed(2), x.endP ? addr(x.endP) : '' ]);
   const idleDay = _groupByDay(all, x => x.ts, x => x.dur / 60);
   const topV = _topN(Object.entries(perVeh).map(([n, s]) => [n, s.dur / 60]), 10);
   const charts = all.length ? [
@@ -1074,7 +1074,7 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
       };
     });
   }
-  return { columns: ['Vehicul', 'Început', 'Durată ralanti', 'Combustibil (L)', 'Locație'], rows,
+  return { columns: ['Vehicul', 'Început', 'Sfârșit', 'Durată ralanti', 'Combustibil (L)', 'Locație'], rows,
     summary: { 'Evenimente ralanti': totalEvents, 'Timp ralanti total': fmtDur(totalIdle), 'Combustibil irosit (L)': Math.round(totalFuel) }, charts, perVehicle };
 }
 
