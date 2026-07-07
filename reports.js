@@ -61,6 +61,15 @@ function canRpm(p) { const i = io(p); return (typeof i.can_rpm === 'number') ? i
 function engineRunning(p) { return canRpm(p) > 300 || ignOn(p); }
 // Viteză CAN (dacă există) — folosită doar ca semnal suplimentar; GPS rămâne baza pentru „staționat".
 function canSpeed(p) { const i = io(p); return (typeof i.can_vehicle_speed === 'number') ? i.can_vehicle_speed : (typeof i.can_tacho_speed === 'number' ? i.can_tacho_speed : (typeof i.can_wheel_speed === 'number' ? i.can_wheel_speed : null)); }
+// Rata de consum la RALANTI (L/h) după tipul mașinii — pentru ESTIMARE, când nu avem consumul real din CAN.
+// Un motor mare (camion) arde mult mai mult stând pe loc decât un autoturism.
+function idleRate(vtype) {
+  const t = String(vtype || '').toLowerCase();
+  if (/truck|camion|tir|lorry|tractor|autotractor/.test(t)) return 3.0; // camion
+  if (/bus|autobuz|autocar/.test(t)) return 3.0;                        // autobuz
+  if (/van|dub|autoutil|furgon|utilitar/.test(t)) return 1.2;          // van / dubă
+  return 0.8;                                                           // autoturism (mașină mică) / implicit
+}
 // Preț carburant — media națională auto (setată din server zilnic) + override pe tip via opts.priceByType.
 // Lanț: preț pe VEHICUL (c.price) → preț COMPANIE/efectiv (opts.priceByType[tip]) → media națională AUTO → opts.fuelPrice → 7.5.
 let _defaultPrices = {};
@@ -84,7 +93,7 @@ async function history(db, imei, from, to) {
 async function deviceNames(db, imeis) {
   const map = {};
   try {
-    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
+    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.consumption_idle, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
     r.rows.forEach(d => map[d.imei] = d);
   } catch (e) {}
   return map;
@@ -1020,13 +1029,16 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
 
 async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor pornit + staționat)
   const minSec = (opts.idleMin || 3) * 60;
-  const lph = opts.idleLph || 1.5; // L/h consumați la ralanti (estimare)
+  const lphOverride = opts.idleLph || null; // rată manuală din opțiuni (dacă e setată, prevalează peste tip)
   let totalIdle = 0, totalEvents = 0, totalFuel = 0; const all = []; const perVeh = {}; const items = [];
   const allNames = [...new Set(imeis.map(imei => label(devMap, imei)))]; // TOATE mașinile, în ordine (ca să apară și cele fără ralanti)
   allNames.forEach(nm => { perVeh[nm] = { dur: 0, fuel: 0, n: 0 }; });
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
+    const cfg = devMap[imei] || {};
+    // Rata de estimare (L/h): override manual > valoarea per-vehicul (consumption_idle) > pe tip de mașină.
+    const lphV = lphOverride || (parseFloat(cfg.consumption_idle) > 0 ? parseFloat(cfg.consumption_idle) : idleRate(cfg.vehicle_type));
     let start = null, startP = null, last = null, endP = null;
     const flush = () => {
       if (start) {
@@ -1038,7 +1050,7 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
           const fs = fuelCumul(startP), fe = fuelCumul(endP), hrs = dur / 3600;
           const delta = (fs != null && fe != null && fe >= fs && (fe - fs) < 30) ? (fe - fs) : null; // <30L gardă anti-reset/glitch
           const real = (delta != null && hrs > 0 && (delta / hrs) >= 0.3) ? delta : null;
-          const litri = real != null ? real : (dur / 3600 * lph);
+          const litri = real != null ? real : (dur / 3600 * lphV);
           items.push({ nm, start, end: last, dur, endP, litri, real: real != null });
           totalIdle += dur; totalEvents++; totalFuel += litri; all.push({ ts: start, dur, nm });
           const pv = perVeh[nm] || (perVeh[nm] = { dur: 0, fuel: 0, n: 0 });
