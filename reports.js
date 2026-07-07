@@ -56,10 +56,11 @@ function fuelCumul(p) { const i = io(p); const v = (typeof i.can_fuel_consumed =
 function ignOn(p) { return io(p).ignition === 1; }
 // Turația CAN (RON: „can_rpm" în raportul CAN, unele parsere „can_engine_rpm"). null dacă lipsește.
 function canRpm(p) { const i = io(p); return (typeof i.can_rpm === 'number') ? i.can_rpm : (typeof i.can_engine_rpm === 'number' ? i.can_engine_rpm : null); }
-// Motor pornit — din CAN (RPM > 300 = motor efectiv pornit, ralanti tipic 600-900) dacă avem RPM, altfel contactul (ignition).
-function engineRunning(p) { const r = canRpm(p); return (r != null) ? r > 300 : ignOn(p); }
-// Viteză reală — din CAN (mai precisă) dacă avem, altfel GPS.
-function vehSpeed(p) { const i = io(p); const cs = (typeof i.can_vehicle_speed === 'number') ? i.can_vehicle_speed : (typeof i.can_tacho_speed === 'number' ? i.can_tacho_speed : (typeof i.can_wheel_speed === 'number' ? i.can_wheel_speed : null)); return (cs != null) ? cs : (p.speed || 0); }
+// Motor pornit dacă RPM-ul CAN o arată (>300) SAU contactul e ON. RPM se ADAUGĂ ca semnal (prinde
+// contactul nesigur), NU înlocuiește — altfel o mașină care trimite can_rpm=0/nesigur ar rămâne nedetectată.
+function engineRunning(p) { return canRpm(p) > 300 || ignOn(p); }
+// Viteză CAN (dacă există) — folosită doar ca semnal suplimentar; GPS rămâne baza pentru „staționat".
+function canSpeed(p) { const i = io(p); return (typeof i.can_vehicle_speed === 'number') ? i.can_vehicle_speed : (typeof i.can_tacho_speed === 'number' ? i.can_tacho_speed : (typeof i.can_wheel_speed === 'number' ? i.can_wheel_speed : null)); }
 // Preț carburant — media națională auto (setată din server zilnic) + override pe tip via opts.priceByType.
 // Lanț: preț pe VEHICUL (c.price) → preț COMPANIE/efectiv (opts.priceByType[tip]) → media națională AUTO → opts.fuelPrice → 7.5.
 let _defaultPrices = {};
@@ -1042,8 +1043,8 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
       }
     };
     for (const p of pts) {
-      // Ralanti = MOTOR PORNIT (RPM din CAN dacă există, altfel contactul) + STAȚIONAT (viteză CAN dacă există, altfel GPS).
-      if (engineRunning(p) && vehSpeed(p) <= IDLE_SPEED) { if (!start) { start = p.timestamp; startP = p; } last = p.timestamp; endP = p; }
+      // Ralanti = MOTOR PORNIT (RPM CAN SAU contact) + STAȚIONAT (GPS ≤ 3 — baza sigură, cea care mergea).
+      if (engineRunning(p) && (p.speed || 0) <= IDLE_SPEED) { if (!start) { start = p.timestamp; startP = p; } last = p.timestamp; endP = p; }
       else flush();
     }
     flush();
