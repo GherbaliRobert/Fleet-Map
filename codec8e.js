@@ -236,6 +236,10 @@ function parseIoElement(buffer, offset, isExtended) {
     if (_raw[35] !== undefined) elements.can_engine_rpm = _raw[35];        // RPM real (nu 85=load / 88)
     if (_raw[36] !== undefined) elements.can_total_mileage = _raw[36];     // km real (nu 87=fuel%)
     if (_raw[34] !== undefined) elements.can_fuel_level_liters = _raw[34]; // litri reali (nu 84)
+    // Sarcini pe axe (camioane): 120/121/122 = ID-urile PRIMARE; 91/92/93 sunt aliasuri → primarul câștigă.
+    if (_raw[120] !== undefined) elements.can_axle3_load = _raw[120];
+    if (_raw[121] !== undefined) elements.can_axle4_load = _raw[121];
+    if (_raw[122] !== undefined) elements.can_axle5_load = _raw[122];
   }
 
   return { elements, _raw, nextOffset: offset };
