@@ -49,13 +49,15 @@ function io(p) { return p && p.io_data ? p.io_data : {}; }
 function odo(p) { const i = io(p); let v = i.can_total_mileage; if (v == null) v = i.can_total_mileage_counted; if (v == null) v = i.total_odometer; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
 // Odometru REAL din CAN (km) — oglindă a panoului de detalii: can_total_mileage → _counted. FĂRĂ fallback pe total_odometer
 // (acela e contorul GPS al device-ului „de la montare", în METRI → alt scop; intră abia la indexul bord+GPS, pasul 2).
-function odoCan(p) { const i = io(p); const v = (typeof i.can_total_mileage === 'number' && i.can_total_mileage > 0) ? i.can_total_mileage : ((typeof i.can_total_mileage_counted === 'number' && i.can_total_mileage_counted > 0) ? i.can_total_mileage_counted : null); return v != null ? Math.round(v) : null; }
+// IMPORTANT: valorile CAN din io_data pot fi STRINGURI („32685.7") → citim cu != null + parseFloat (ca _odoFromIo din server.js),
+// NU cu typeof==='number' (care le respinge → „—" deși CAN-ul merge).
+function odoCan(p) { const i = io(p); const v = i.can_total_mileage != null ? i.can_total_mileage : (i.can_total_mileage_counted != null ? i.can_total_mileage_counted : null); if (v == null) return null; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
 // Index ore de funcționare (moto-ore) din CAN: total (IO 104, h) preferat; altfel worktime (IO 102/103, minute→h). null dacă lipsește.
-function engH(p) { const i = io(p); if (typeof i.can_engine_total_hours === 'number' && i.can_engine_total_hours > 0) return Math.round(i.can_engine_total_hours); if (typeof i.can_engine_worktime === 'number' && i.can_engine_worktime > 0) return Math.round(i.can_engine_worktime / 60); if (typeof i.can_engine_worktime_counted === 'number' && i.can_engine_worktime_counted > 0) return Math.round(i.can_engine_worktime_counted / 60); return null; }
+function engH(p) { const i = io(p); let h = i.can_engine_total_hours != null ? parseFloat(i.can_engine_total_hours) : (i.can_engine_worktime != null ? parseFloat(i.can_engine_worktime) / 60 : (i.can_engine_worktime_counted != null ? parseFloat(i.can_engine_worktime_counted) / 60 : null)); return (h != null && isFinite(h) && h > 0) ? Math.round(h) : null; }
 // Grupare mii stil RO (145320 → „145.320").
 function _grp(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 // Contorul GPS al device-ului „de la montare" (total_odometer, IO 16, METRI). Baza indexului bord+GPS (pasul 2). null dacă lipsește.
-function todo(p) { const i = io(p); return (typeof i.total_odometer === 'number' && i.total_odometer >= 0) ? i.total_odometer : null; }
+function todo(p) { const i = io(p); if (i.total_odometer == null) return null; const n = parseFloat(i.total_odometer); return (isFinite(n) && n >= 0) ? n : null; }
 // Adresă din cache (reverse-geocode); fallback pe coordonate dacă nu e încă rezolvată.
 function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = geocode.peek(p.latitude, p.longitude); if (a) return a; } return loc(p); }
 function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
@@ -709,15 +711,21 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
 
     let startTxt = '—', realTxt = '—', endTxt = '—', src = '—', sortKey = 0, realKm = 0, realH = 0;
     if (unit === 'km') {
-      const dCan = (odoFirst != null && odoLast != null) ? (odoLast - odoFirst) : null;
-      const canOk = dCan != null && dCan >= 0 && dCan >= kmGps * 0.5 && dCan <= kmGps * 3 + 20; // contor coerent cu GPS (nu blocat, nu salt)
       // Index bord+GPS (mașini fără CAN): km reali din fișă + contorul GPS al device-ului (total_odometer) de la snapshot încoace.
       const baseKm = dev.odo_base_km != null ? parseFloat(dev.odo_base_km) : null;
       const baseDev = dev.odo_base_dev_m != null ? parseFloat(dev.odo_base_dev_m) : null;
       let tdFirst = null, tdLast = null;
       for (let i = 0; i < pts.length; i++) { const td = todo(pts[i]); if (td != null) { if (tdFirst == null) tdFirst = td; tdLast = td; } }
       const bordOk = baseKm != null && baseDev != null && tdLast != null && tdLast >= baseDev - 1000; // contor monoton (toleranță zgomot)
-      if (canOk) { startTxt = _grp(odoFirst) + ' km'; realTxt = _grp(dCan) + ' km'; endTxt = _grp(odoLast) + ' km'; src = 'CAN'; sortKey = dCan; realKm = dCan; }
+      if (odoLast != null) {
+        // Avem index CAN real (din bord) → îl arătăm ÎNTOTDEAUNA. Realizatul: delta CAN dacă e coerentă cu GPS, altfel GPS
+        // (contorul CAN vine uneori rar/o singură dată în interval → n-avem delta bună, dar indexul e valid).
+        const dCan = (odoFirst != null) ? (odoLast - odoFirst) : null;
+        const dOk = dCan != null && dCan >= 0 && dCan >= kmGps * 0.5 && dCan <= kmGps * 3 + 20;
+        const realized = dOk ? dCan : Math.round(kmGps);
+        const startKm = dOk ? odoFirst : (odoLast - realized); // delta de încredere → start real; altfel proiectăm înapoi din indexul curent (ca să se lege început + realizat = sfârșit)
+        startTxt = _grp(startKm) + ' km'; realTxt = _grp(realized) + ' km'; endTxt = _grp(odoLast) + ' km'; src = 'CAN'; sortKey = realized; realKm = realized;
+      }
       else if (bordOk) {
         const endKm = baseKm + Math.max(0, tdLast - baseDev) / 1000;
         const startKm = (tdFirst != null) ? baseKm + Math.max(0, tdFirst - baseDev) / 1000 : null;
