@@ -68,14 +68,14 @@ async function toXlsxMultiSheet(report) {
   const pv = report.perVehicle || [];
   // Sumar generic: coloanele vin din summary-ul fiecărui vehicul (trips au câmpuri bogate; restul → „Înregistrări").
   const labels = (pv[0] && pv[0].summary) ? pv[0].summary.map(s => s[0]) : [];
-  const sumCols = ['Vehicul'].concat(labels);
+  const sumCols = [report.groupLabel || 'Vehicul'].concat(labels); // ex. „Șofer" la Pontaj, „Vehicul" la restul
   const sumRows = pv.map(v => [v.vehicul].concat((v.summary || []).map(s => s[1])));
   const totals = labels.map((lbl, i) => {
     let allNum = true, any = false, sum = 0;
     for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = _summableNum(val); if (n == null) { allNum = false; break; } any = true; sum += n; }
     return (allNum && any) ? Math.round(sum * 10) / 10 : '';
   });
-  sumRows.push(['TOTAL flotă'].concat(totals));
+  sumRows.push([report.groupLabel ? 'TOTAL' : 'TOTAL flotă'].concat(totals));
   const logoId = xlLogoId(wb); // logo RA Tracks, refolosit pe toate foile
   xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], sumCols, sumRows, logoId);
   for (const v of pv) {
