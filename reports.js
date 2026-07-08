@@ -47,6 +47,13 @@ function loc(p) { return p ? p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(
 function io(p) { return p && p.io_data ? p.io_data : {}; }
 // Odometru (km) din CAN la un punct (start/stop cursă). Fallback null dacă vehiculul n-are CAN.
 function odo(p) { const i = io(p); let v = i.can_total_mileage; if (v == null) v = i.can_total_mileage_counted; if (v == null) v = i.total_odometer; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
+// Odometru REAL din CAN (km) — oglindă a panoului de detalii: can_total_mileage → _counted. FĂRĂ fallback pe total_odometer
+// (acela e contorul GPS al device-ului „de la montare", în METRI → alt scop; intră abia la indexul bord+GPS, pasul 2).
+function odoCan(p) { const i = io(p); const v = (typeof i.can_total_mileage === 'number' && i.can_total_mileage > 0) ? i.can_total_mileage : ((typeof i.can_total_mileage_counted === 'number' && i.can_total_mileage_counted > 0) ? i.can_total_mileage_counted : null); return v != null ? Math.round(v) : null; }
+// Index ore de funcționare (moto-ore) din CAN: total (IO 104, h) preferat; altfel worktime (IO 102/103, minute→h). null dacă lipsește.
+function engH(p) { const i = io(p); if (typeof i.can_engine_total_hours === 'number' && i.can_engine_total_hours > 0) return Math.round(i.can_engine_total_hours); if (typeof i.can_engine_worktime === 'number' && i.can_engine_worktime > 0) return Math.round(i.can_engine_worktime / 60); if (typeof i.can_engine_worktime_counted === 'number' && i.can_engine_worktime_counted > 0) return Math.round(i.can_engine_worktime_counted / 60); return null; }
+// Grupare mii stil RO (145320 → „145.320").
+function _grp(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 // Adresă din cache (reverse-geocode); fallback pe coordonate dacă nu e încă rezolvată.
 function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = geocode.peek(p.latitude, p.longitude); if (a) return a; } return loc(p); }
 function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
@@ -678,34 +685,41 @@ async function rHos(db, imeis, from, to, opts, devMap) {
   };
 }
 
-async function rUtilization(db, imeis, from, to, opts, devMap) { // Utilizare flotă
-  const rows = []; let totalKm = 0, totalEng = 0; const vehKm = [], vehEng = [];
+async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / ore — istoricul de index al mașinii (odometru + moto-ore), cu sursă
+  const rows = []; let totalKm = 0, nCan = 0;
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
-    let km = 0, eng = 0, maxSpeed = 0; const days = new Set();
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i];
-      if ((p.speed||0) > maxSpeed) maxSpeed = p.speed || 0;
-      if (i > 0) {
-        const pr = pts[i-1], dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude);
-        if (dist < MAX_STEP_KM) km += dist;
-        const dt = (t(p) - t(pr)) / 1000;
-        if (dt > 0 && dt < 3600 && ignOn(pr) && ignOn(p)) eng += dt;
-        if ((p.speed||0) > IDLE_SPEED) days.add(_dayKeyISO(p.timestamp));
-      }
+    // Km GPS (fallback + validarea deltei CAN)
+    let kmGps = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const pr = pts[i-1], p = pts[i], dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude);
+      if (dist < MAX_STEP_KM) kmGps += dist;
+    }
+    // Odometru CAN: prima/ultima citire validă din perioadă → indexul curent + delta reală de km
+    let odoFirst = null, odoLast = null;
+    for (let i = 0; i < pts.length; i++) { const o = odoCan(pts[i]); if (o != null) { if (odoFirst == null) odoFirst = o; odoLast = o; } }
+    // Index ore de funcționare: ultima citire validă a contorului CAN de moto-ore
+    let hours = null;
+    for (let i = pts.length - 1; i >= 0; i--) { const h = engH(pts[i]); if (h != null) { hours = h; break; } }
+
+    const hasCanOdo = (odoLast != null); if (hasCanOdo) nCan++;
+    // Km pe perioadă: delta CAN dacă e coerentă cu GPS (nu contor blocat, nu salt absurd), altfel GPS.
+    let kmPeriod = kmGps;
+    if (odoFirst != null && odoLast != null && odoLast >= odoFirst) {
+      const dCan = odoLast - odoFirst;
+      if (dCan >= 0 && dCan >= kmGps * 0.5 && dCan <= kmGps * 3 + 20) kmPeriod = dCan;
     }
     const nm = label(devMap, imei);
-    rows.push([ nm, Math.round(km), fmtDur(eng), days.size, Math.round(maxSpeed), pts.length ]);
-    totalKm += km; totalEng += eng; vehKm.push([nm, km]); vehEng.push([nm, eng / 3600]);
+    rows.push([ nm, Math.round(kmPeriod), hasCanOdo ? _grp(odoLast) + ' km' : '—', hours != null ? _grp(hours) + ' h' : '—', hasCanOdo ? 'CAN' : 'GPS (estimat)' ]);
+    totalKm += kmPeriod;
   }
   rows.sort((a, b) => b[1] - a[1]);
-  const topKm = _topN(vehKm, 10), topEng = _topN(vehEng, 10);
+  const topKm = _topN(rows.map(r => [r[0], r[1]]), 10);
   const charts = rows.length ? [
-    { type: 'bar', title: 'Km pe vehicul',        labels: topKm.labels,  datasets: [{ label: 'km', data: topKm.data }] },
-    { type: 'bar', title: 'Ore motor pe vehicul', labels: topEng.labels, datasets: [{ label: 'ore', data: topEng.data }] }
+    { type: 'bar', title: 'Km pe vehicul (perioadă)', labels: topKm.labels, datasets: [{ label: 'km', data: topKm.data }] }
   ] : [];
-  return { columns: ['Vehicul','Km','Ore motor','Zile active','Vit. max','Puncte GPS'], rows,
-    summary: { 'Vehicule': imeis.length, 'Km total': Math.round(totalKm), 'Ore motor total': fmtDur(totalEng) }, charts };
+  return { columns: ['Vehicul','Km (perioadă)','Index odometru','Ore funcționare','Sursă'], rows,
+    summary: { 'Vehicule': imeis.length, 'Km total (perioadă)': Math.round(totalKm), 'Cu odometru CAN': nCan }, charts };
 }
 
 async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: unde a STAȚIONAT ultima dată fiecare vehicul (parcarea); dacă încă merge la final → poziția curentă marcată „în mișcare"
