@@ -2452,6 +2452,7 @@ const pozitii = await r.json();</code></pre>
     let searchQuery = '';
     let detailPanelImei = null;
     let driverNameByImei = {}; // imei -> nume sofer (citit proaspat din DB la deschiderea detaliului, ca sa reflecte alocarea din Management)
+    let odoBaseByImei = {};    // imei -> { km, devM } „Km la bord" + snapshot contor GPS (din /full) → odometru real bord+GPS în panou, ca în raport
     let historyMarkers = [];
 
     // ─── Auth ───
@@ -7730,7 +7731,7 @@ const pozitii = await r.json();</code></pre>
       updateDetailPanel(imei);
       updateDetailIoPanel(imei);
       // Șofer alocat (din Management): citit proaspăt din DB, ca să reflecte ultima alocare (datele live nu conțin numele șoferului)
-      fetch('/api/devices/' + encodeURIComponent(imei) + '/full', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (full) { if (full && !full.error) { driverNameByImei[imei] = full.driver_name || ''; var _tb = document.getElementById('detail-transport-btn'); if (_tb) _tb.style.display = (full.show_transport === false) ? 'none' : ''; if (detailPanelImei === imei) updateDetailPanel(imei); } }).catch(function () {});
+      fetch('/api/devices/' + encodeURIComponent(imei) + '/full', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (full) { if (full && !full.error) { driverNameByImei[imei] = full.driver_name || ''; odoBaseByImei[imei] = { km: full.odo_base_km, devM: full.odo_base_dev_m }; var _tb = document.getElementById('detail-transport-btn'); if (_tb) _tb.style.display = (full.show_transport === false) ? 'none' : ''; if (detailPanelImei === imei) updateDetailPanel(imei); } }).catch(function () {});
       // încarcă mapările IO (setate de super-admin) și re-randează cu numele personalizate
       fetch('/api/devices/' + encodeURIComponent(imei) + '/io-mappings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (m) { if (m && !m.error) { ioMappingsCache[imei] = m; if (detailPanelImei === imei) updateDetailIoPanel(imei); } }).catch(function () {});
       showDetailView(tab || 'info');
@@ -8030,10 +8031,26 @@ const pozitii = await r.json();</code></pre>
       if (io.can_engine_total_hours !== undefined) { engineHours = String(Math.round(io.can_engine_total_hours)); }
       else if (io.can_engine_worktime) { engineHours = String(Math.floor(io.can_engine_worktime / 60)); engineHoursLabel = 'Ore funcționare motor'; }
       else if (io.can_engine_worktime_counted) { engineHours = String(Math.floor(io.can_engine_worktime_counted / 60)); engineHoursLabel = 'Ore funcționare motor'; }
-      // Odometru: CAN-ul (odometrul REAL din bord) are prioritate; total_odometer (GPS device, de la instalare) e doar fallback.
-      const _canMil = (typeof io.can_total_mileage === 'number' && io.can_total_mileage > 0) ? io.can_total_mileage
-        : ((typeof io.can_total_mileage_counted === 'number' && io.can_total_mileage_counted > 0) ? io.can_total_mileage_counted : null);
-      const odometer = _canMil != null ? _canMil.toFixed(1) + ' km' : (io.total_odometer ? (io.total_odometer / 1000).toFixed(1) + ' km' : '-');
+      // Odometru — aceeași logică ca raportul „Index km/ore": „Km la bord" (din fișă) + GPS are PRIORITATE (pe unele mașini
+      // contorul CAN e blocat/învechit, ex. Logan: CAN 32.685 dar bordul real 33.571), apoi CAN-ul real, apoi contorul GPS al device-ului.
+      // Valorile CAN pot veni ca STRING → citim cu != null + parseFloat (nu typeof==='number', care le respinge → „—" deși CAN merge).
+      var _ob = odoBaseByImei[imei] || {};
+      var _obKm = (_ob.km != null && _ob.km !== '') ? parseFloat(_ob.km) : null;
+      var _obDev = (_ob.devM != null && _ob.devM !== '') ? parseFloat(_ob.devM) : null;
+      var _tdev = io.total_odometer != null ? parseFloat(io.total_odometer) : null;        // contor GPS device (metri)
+      var _canRaw = io.can_total_mileage != null ? parseFloat(io.can_total_mileage) : null; // odometru real din bord (IO 87) — NU _counted (alt contor)
+      var _canMil = (_canRaw != null && isFinite(_canRaw) && _canRaw > 0) ? _canRaw : null;
+      var odometer = '-', odoNote = '';
+      if (_obKm != null && _obDev != null && _tdev != null && isFinite(_tdev) && _tdev >= _obDev - 1000) {
+        odometer = (_obKm + Math.max(0, _tdev - _obDev) / 1000).toFixed(1) + ' km';
+        odoNote = ' <span style="font-size:9px;color:var(--accent);" title="km reali din fișă + GPS — odometrul CAN e ignorat">(bord+GPS)</span>';
+      } else if (_canMil != null) {
+        odometer = _canMil.toFixed(1) + ' km';
+        odoNote = data.can_stale ? ' <span style="font-size:9px;color:var(--text-muted);" title="ultimele valori transmise (motor oprit)">(ultima)</span>' : '';
+      } else if (_tdev != null && isFinite(_tdev) && _tdev > 0) {
+        odometer = (_tdev / 1000).toFixed(1) + ' km';
+        odoNote = ' <span style="font-size:9px;color:var(--text-muted);" title="estimat din contorul GPS al device-ului">(GPS)</span>';
+      }
       // Fuel level - prefer sonda Escort, fallback la CAN
       let fuelLevel = '-';
       let fuelLevelNum = null;
@@ -8248,7 +8265,7 @@ const pozitii = await r.json();</code></pre>
         '<div class="info-item">' +
           '<div class="info-item-icon blue"><i class="fas fa-road"></i></div>' +
           '<div class="info-item-text">' +
-            '<div class="info-item-value">' + odometer + (odometer !== '-' ? canStaleNote : '') + '</div>' +
+            '<div class="info-item-value">' + odometer + (odometer !== '-' ? odoNote : '') + '</div>' +
             '<div class="info-item-label">Kilometraj total</div>' +
           '</div>' +
         '</div>' +
