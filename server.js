@@ -3683,10 +3683,28 @@ app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
         }
       }
     }
+    // Sumar traseu: distanță + combustibil din reports.fuelStats (identic cu „Statistici consum"),
+    // timp în deplasare/staționar calculat direct din poziții (IDLE_SPEED = 3 km/h, ca în reports.js).
+    let distanceKm = null, fuelLiters = null, fuelEstimated = false;
+    try {
+      const fs = await reports.fuelStats(db, [imei], from, to, {});
+      const pv = fs && fs.perVehicle && fs.perVehicle[0];
+      if (pv) { distanceKm = pv.km; fuelLiters = pv.liters; fuelEstimated = !!pv.estimated; }
+    } catch (e) { /* sumarul de combustibil e best-effort, nu blochează traseul */ }
+    let movingSec = 0, stationarySec = 0;
+    for (let i = 1; i < history.length; i++) {
+      const dt = (new Date(history[i].timestamp).getTime() - new Date(history[i - 1].timestamp).getTime()) / 1000;
+      if (!(dt > 0) || dt > 3600) continue; // ignoră salturile mari (offline)
+      if ((Number(history[i].speed) || 0) > 3) movingSec += dt; else stationarySec += dt;
+    }
     res.json({
       points: history,
       device: dev ? { speed_limit: limit, name: dev.name, plate: dev.plate } : null,
-      summary: { overspeedCount: oc, overspeedDurationSec: Math.round(oDur), maxOverKmh: oMax }
+      summary: {
+        overspeedCount: oc, overspeedDurationSec: Math.round(oDur), maxOverKmh: oMax,
+        distanceKm, movingSec: Math.round(movingSec), stationarySec: Math.round(stationarySec),
+        fuelLiters, fuelEstimated
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

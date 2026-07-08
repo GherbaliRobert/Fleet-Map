@@ -238,6 +238,15 @@
             <button class="history-btn" id="hp-osm-btn" onclick="hpToggleOsmLimits()" title="Colorează cu roșu unde s-a depășit limita REALĂ a drumului (date OpenStreetMap)"><i class="fas fa-gauge-high"></i> Limite reale</button>
           </div>
         </div>
+        <div id="hp-trip-summary" style="display:none;margin-top:8px;">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;padding-left:2px;">Sumar traseu</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <div class="hp-stat"><i class="fas fa-route" style="color:var(--accent);"></i><div><b id="hp-ts-dist">—</b><span>Distanță</span></div></div>
+            <div class="hp-stat"><i class="fas fa-gauge-high" style="color:#3FE07D;"></i><div><b id="hp-ts-move">—</b><span>În deplasare</span></div></div>
+            <div class="hp-stat"><i class="fas fa-pause" style="color:#f59e0b;"></i><div><b id="hp-ts-stop">—</b><span>Staționar</span></div></div>
+            <div class="hp-stat"><i class="fas fa-gas-pump" style="color:#38BDF8;"></i><div><b id="hp-ts-fuel">—</b><span>Consum</span></div></div>
+          </div>
+        </div>
         <div id="hp-summary" style="display:none;margin-top:8px;padding:6px 10px;background:var(--bg-dark);border-radius:6px;font-size:12px;"></div>
         <div id="history-playback" style="display:none;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
           <button class="history-btn primary" id="hp-play" onclick="hpToggle()" title="Redă / Pauză"><i class="fas fa-play"></i></button>
@@ -252,6 +261,11 @@
 
     <!-- Right Detail Panel -->
     <style>
+      .hp-stat { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-dark); border-radius: 8px; border: 1px solid var(--border); }
+      .hp-stat > i { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+      .hp-stat > div { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+      .hp-stat b { font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+      .hp-stat span { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
       details.io-advanced { margin-top: 8px; }
       details.io-advanced > summary { cursor: pointer; font-size: 11px; color: var(--text-muted); padding: 8px 6px; list-style: none; user-select: none; border-top: 1px solid var(--border); }
       details.io-advanced > summary::-webkit-details-marker { display: none; }
@@ -9018,6 +9032,21 @@ const pozitii = await r.json();</code></pre>
             sumEl.innerHTML = '<span style="color:var(--text-muted);"><i class="fas fa-info-circle"></i> Setează „Viteza limită" în fișa vehiculului pentru a vedea depășirile</span>';
             sumEl.style.display = 'block';
           }
+        }
+
+        // Sumar traseu (distanță / deplasare / staționar / consum) — din summary-ul serverului
+        var tsEl = document.getElementById('hp-trip-summary');
+        if (tsEl) {
+          if (summary && (summary.distanceKm != null || summary.movingSec != null)) {
+            var _hm = function (sec) { sec = Math.max(0, Math.round(sec || 0)); var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); if (m === 60) { h++; m = 0; } return h > 0 ? (h + 'h ' + (m < 10 ? '0' : '') + m + 'm') : (m + ' min'); };
+            var _grp = function (n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+            document.getElementById('hp-ts-dist').textContent = (summary.distanceKm != null && !isNaN(summary.distanceKm)) ? _grp(summary.distanceKm) + ' km' : '—';
+            document.getElementById('hp-ts-move').textContent = _hm(summary.movingSec);
+            document.getElementById('hp-ts-stop').textContent = _hm(summary.stationarySec);
+            var _f = summary.fuelLiters;
+            document.getElementById('hp-ts-fuel').textContent = (_f != null && !isNaN(_f)) ? (Number(_f).toFixed(1).replace('.', ',') + ' L' + (summary.fuelEstimated ? ' (est.)' : '')) : '—';
+            tsEl.style.display = 'block';
+          } else { tsEl.style.display = 'none'; }
         }
 
         var _expEl = document.getElementById('hp-export'); if (_expEl) _expEl.style.display = '';
