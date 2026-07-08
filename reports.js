@@ -712,26 +712,27 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
 
     let startTxt = '—', realTxt = '—', endTxt = '—', src = '—', sortKey = 0, realKm = 0, realH = 0;
     if (unit === 'km') {
-      // Index bord+GPS (mașini fără CAN): km reali din fișă + contorul GPS al device-ului (total_odometer) de la snapshot încoace.
+      // Prioritate: „Km la bord" (introdus de operator = citit de pe bord) BATE CAN-ul. Unele mașini au odometrul CAN
+      // greșit/învechit (ex. Dacia: CAN dă 32.685 „ultima", dar bordul real e 33.560) → cifra operatorului e autoritară. Apoi CAN, apoi GPS.
       const baseKm = dev.odo_base_km != null ? parseFloat(dev.odo_base_km) : null;
       const baseDev = dev.odo_base_dev_m != null ? parseFloat(dev.odo_base_dev_m) : null;
       let tdFirst = null, tdLast = null;
       for (let i = 0; i < pts.length; i++) { const td = todo(pts[i]); if (td != null) { if (tdFirst == null) tdFirst = td; tdLast = td; } }
       const bordOk = baseKm != null && baseDev != null && tdLast != null && tdLast >= baseDev - 1000; // contor monoton (toleranță zgomot)
-      if (odoLast != null) {
-        // Avem index CAN real (din bord) → îl arătăm ÎNTOTDEAUNA. Realizatul: delta CAN dacă e coerentă cu GPS, altfel GPS
+      if (bordOk) {
+        const endKm = baseKm + Math.max(0, tdLast - baseDev) / 1000;
+        const startKm = (tdFirst != null) ? baseKm + Math.max(0, tdFirst - baseDev) / 1000 : null;
+        const dlt = (tdFirst != null) ? Math.max(0, tdLast - tdFirst) / 1000 : kmGps;
+        startTxt = startKm != null ? _grp(startKm) + ' km' : '—'; realTxt = _grp(dlt) + ' km'; endTxt = _grp(endKm) + ' km'; src = 'bord+GPS'; sortKey = dlt; realKm = dlt;
+      }
+      else if (odoLast != null) {
+        // Index CAN real (din bord) — îl arătăm când există citire. Realizatul: delta CAN dacă e coerentă cu GPS, altfel GPS
         // (contorul CAN vine uneori rar/o singură dată în interval → n-avem delta bună, dar indexul e valid).
         const dCan = (odoFirst != null) ? (odoLast - odoFirst) : null;
         const dOk = dCan != null && dCan >= 0 && dCan >= kmGps * 0.5 && dCan <= kmGps * 3 + 20;
         const realized = dOk ? dCan : Math.round(kmGps);
         const startKm = dOk ? odoFirst : (odoLast - realized); // delta de încredere → start real; altfel proiectăm înapoi din indexul curent (ca să se lege început + realizat = sfârșit)
         startTxt = _grp(startKm) + ' km'; realTxt = _grp(realized) + ' km'; endTxt = _grp(odoLast) + ' km'; src = 'CAN'; sortKey = realized; realKm = realized;
-      }
-      else if (bordOk) {
-        const endKm = baseKm + Math.max(0, tdLast - baseDev) / 1000;
-        const startKm = (tdFirst != null) ? baseKm + Math.max(0, tdFirst - baseDev) / 1000 : null;
-        const dlt = (tdFirst != null) ? Math.max(0, tdLast - tdFirst) / 1000 : kmGps;
-        startTxt = startKm != null ? _grp(startKm) + ' km' : '—'; realTxt = _grp(dlt) + ' km'; endTxt = _grp(endKm) + ' km'; src = 'bord+GPS'; sortKey = dlt; realKm = dlt;
       }
       else { realTxt = _grp(kmGps) + ' km'; src = 'GPS (estimat)'; sortKey = kmGps; realKm = kmGps; } // fără CAN și fără „km la bord" → doar realizatul GPS
     } else { // ore de funcționare (moto-ore)
@@ -910,24 +911,38 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
     summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—', 'Estimate (fără senzor)': nEst }, charts };
 }
 
-async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN (snapshot ultim)
+// Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea" reală a CAN-ului: contorul de km e adesea
+// vechi/„stale" pe pingul curent — parcată nu-l mai trimite). Cheile sunt fixe (fără injecție).
+async function _lastIo(db, imei, key, to) {
+  try {
+    const r = await db.pool.query("SELECT io_data->>'" + key + "' AS v, timestamp FROM positions WHERE imei = $1 AND timestamp <= $2 AND io_data->>'" + key + "' IS NOT NULL ORDER BY timestamp DESC LIMIT 1", [imei, to]);
+    if (!r.rows[0]) return null; const n = parseFloat(r.rows[0].v); return isFinite(n) ? { v: n, ts: r.rows[0].timestamp } : null;
+  } catch (e) { return null; }
+}
+async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN (snapshot ultim + citirea reală a contoarelor de odometru)
   const rows = [];
   for (const imei of imeis) {
     const r = await db.pool.query('SELECT * FROM positions WHERE imei = $1 AND timestamp <= $2 ORDER BY timestamp DESC LIMIT 1', [imei, to]);
     const p = r.rows[0]; if (!p) continue;
     const i = p.io_data || {};
     const axle = [i.can_axle1_load, i.can_axle2_load, i.can_axle3_load, i.can_axle4_load, i.can_axle5_load].reduce((s, v) => s + (v || 0), 0) || i.can_load_weight || 0;
+    // Cele TREI contoare, citite ca ultima valoare reală (nu de pe pingul parcat curent):
+    const canMil = await _lastIo(db, imei, 'can_total_mileage', to);          // odometru REAL din bord (IO 87)
+    const canCnt = await _lastIo(db, imei, 'can_total_mileage_counted', to);   // contor „de la pornire" (IO 105) — ALT contor
+    const gpsOdo = await _lastIo(db, imei, 'total_odometer', to);              // odometru GPS device (IO 16, metri)
     rows.push([
       label(devMap, imei), fmtTs(p.timestamp),
       fuelL(p) != null ? fuelL(p).toFixed(0) + ' L' : '—',
-      i.can_engine_temp != null ? i.can_engine_temp + '°C' : '—',
       i.can_rpm != null ? i.can_rpm : '—',
-      i.can_total_mileage != null ? Math.round(i.can_total_mileage) + ' km' : '—',
+      canMil ? _grp(canMil.v) + ' km' : '—',
+      canMil ? fmtTs(canMil.ts) : '—',
+      canCnt ? _grp(canCnt.v) + ' km' : '—',
+      gpsOdo ? _grp(gpsOdo.v / 1000) + ' km' : '—',
       axle ? axle + ' kg' : '—',
       i.can_dtc_errors || 0
     ]);
   }
-  return { columns: ['Vehicul', 'Moment', 'Combustibil', 'Temp. motor', 'RPM', 'Total km', 'Sarcină axe', 'Erori DTC'], rows, summary: { 'Vehicule': rows.length } };
+  return { columns: ['Vehicul', 'Moment', 'Combustibil', 'RPM', 'Km CAN (bord)', 'CAN văzut la', 'Km „counted"', 'Odometru GPS', 'Sarcină axe', 'Erori DTC'], rows, summary: { 'Vehicule': rows.length } };
 }
 
 async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alerte declanșate)
