@@ -1,789 +1,617 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GPS Tracker — Debug Console</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Consolas', 'Monaco', monospace; background: #0f172a; color: #e2e8f0; }
-
-    #app { display: flex; height: 100vh; }
-
-    /* Sidebar */
-    #sidebar {
-      width: 300px;
-      background: #1e293b;
-      border-right: 1px solid #334155;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #sidebar-header {
-      padding: 16px;
-      border-bottom: 1px solid #334155;
-    }
-
-    #sidebar-header h1 {
-      font-size: 16px;
-      color: #f1f5f9;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .btn-sm {
-      padding: 5px 10px;
-      border-radius: 6px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #94a3b8;
-      cursor: pointer;
-      font-size: 11px;
-      text-decoration: none;
-    }
-
-    .btn-sm:hover { border-color: #38bdf8; color: #e2e8f0; }
-
-    #controls {
-      padding: 12px 16px;
-      border-bottom: 1px solid #334155;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    #controls input {
-      flex: 1;
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #e2e8f0;
-      font-size: 12px;
-      font-family: inherit;
-    }
-
-    #controls button {
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 600;
-    }
-
-    .btn-green { background: #22c55e; color: white; }
-    .btn-red { background: #ef4444; color: white; }
-    .btn-blue { background: #2563eb; color: white; }
-
-    /* Device list */
-    #device-selector {
-      padding: 8px;
-      border-bottom: 1px solid #334155;
-    }
-
-    #device-selector h3 {
-      font-size: 11px;
-      color: #94a3b8;
-      padding: 4px 8px;
-      text-transform: uppercase;
-    }
-
-    .device-btn {
-      display: block;
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      background: #0f172a;
-      color: #e2e8f0;
-      cursor: pointer;
-      font-size: 12px;
-      font-family: inherit;
-      text-align: left;
-      margin-bottom: 4px;
-    }
-
-    .device-btn:hover { border-color: #38bdf8; }
-    .device-btn.active { border-color: #38bdf8; background: #1e3a5f; }
-
-    /* Stats */
-    #stats-panel {
-      padding: 12px 16px;
-      font-size: 11px;
-      color: #94a3b8;
-      border-bottom: 1px solid #334155;
-    }
-
-    #stats-panel div { margin-bottom: 4px; }
-    #stats-panel span { color: #38bdf8; font-weight: 700; }
-
-    /* IO Live Values */
-    #io-live {
-      max-height: 40%;
-      overflow-y: auto;
-      padding: 8px;
-      border-bottom: 1px solid #334155;
-    }
-
-    #io-live h3 {
-      font-size: 11px;
-      color: #22c55e;
-      padding: 4px 8px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    .io-live-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 3px 8px;
-      font-size: 11px;
-      border-bottom: 1px solid #1e293b;
-    }
-
-    .io-live-row.updated {
-      background: #1e3a5f;
-      transition: background 0.3s;
-    }
-
-    .io-cat-header {
-      color: #a78bfa;
-      font-weight: bold;
-      padding: 6px 8px 2px;
-      font-size: 11px;
-    }
-
-    .io-live-name { color: #94a3b8; }
-    .io-live-val { color: #38bdf8; font-weight: 600; }
-
-    /* IO Reference */
-    #io-ref {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-    }
-
-    #io-ref h3 {
-      font-size: 11px;
-      color: #94a3b8;
-      padding: 4px 8px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    .io-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 3px 8px;
-      font-size: 11px;
-      border-bottom: 1px solid #1e293b;
-    }
-
-    .io-id { color: #64748b; }
-    .io-name { color: #94a3b8; }
-
-    /* Main area */
-    #main { flex: 1; display: flex; flex-direction: column; }
-
-    /* Live log */
-    #log-panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    #log-header {
-      padding: 10px 16px;
-      background: #1e293b;
-      border-bottom: 1px solid #334155;
-      font-size: 13px;
-      font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #log-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-      font-size: 12px;
-    }
-
-    .log-entry {
-      padding: 6px 10px;
-      border-radius: 6px;
-      margin-bottom: 4px;
-      cursor: pointer;
-      border-left: 3px solid transparent;
-    }
-
-    .log-entry:hover { background: #1e293b; }
-    .log-entry.selected { background: #1e293b; border-left-color: #38bdf8; }
-
-    .log-time { color: #64748b; margin-right: 8px; }
-    .log-event { font-weight: 600; margin-right: 8px; }
-
-    .event-connect { color: #22c55e; }
-    .event-imei { color: #38bdf8; }
-    .event-data { color: #a78bfa; }
-    .event-disconnect { color: #f97316; }
-    .event-error { color: #ef4444; }
-
-    .log-detail { color: #94a3b8; }
-
-    /* Detail panel */
-    #detail-panel {
-      height: 45%;
-      border-top: 1px solid #334155;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #detail-header {
-      padding: 10px 16px;
-      background: #1e293b;
-      border-bottom: 1px solid #334155;
-      font-size: 13px;
-      font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #detail-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px 16px;
-      font-size: 12px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      color: #94a3b8;
-    }
-
-    /* JSON syntax highlighting */
-    .json-key { color: #38bdf8; }
-    .json-string { color: #22c55e; }
-    .json-number { color: #f97316; }
-    .json-bool { color: #a78bfa; }
-    .json-null { color: #64748b; }
-
-    /* WS status */
-    #ws-bar {
-      padding: 4px 16px;
-      font-size: 11px;
-      text-align: center;
-      background: #1e293b;
-      border-top: 1px solid #334155;
-    }
-
-    .ws-ok { color: #22c55e; }
-    .ws-err { color: #ef4444; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RA//DEVCONSOLE</title>
+<style>
+/* ─── RA DevConsole — identitate proprie de instrument (NU tema aplicației): monospace, colțuri drepte, amber pe negru.
+   Excepția din CLAUDE.md: panoul de debug pentru dezvoltatori rămâne monospace — nu e UI pentru clienți. ─── */
+:root{
+  --bg:#0B0E12; --panel:#10151B; --panel2:#0D1117; --border:#1E2630; --border2:#2A3542;
+  --tx:#D6E2F0; --mut:#64748B; --amber:#FFB454; --cyan:#56C8FF; --ok:#3FE07D; --warn:#EAB308; --err:#FF5C5C; --mag:#C792EA;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--tx);font:12px/1.5 ui-monospace,'Cascadia Mono',Consolas,'Courier New',monospace;overflow:hidden}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--border2)}::-webkit-scrollbar-track{background:var(--panel2)}
+button,input,select{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--border);padding:4px 8px}
+button{cursor:pointer;text-transform:uppercase;letter-spacing:.6px;font-size:10.5px}
+button:hover{border-color:var(--amber);color:var(--amber)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:1px solid var(--amber);outline-offset:1px}
+button.danger:hover{border-color:var(--err);color:var(--err)}
+input,select{min-width:0}
+table{border-collapse:collapse;width:100%}
+th{color:var(--mut);text-transform:uppercase;font-size:9.5px;letter-spacing:.7px;text-align:left;padding:4px 8px;border-bottom:1px solid var(--border2);position:sticky;top:0;background:var(--panel)}
+td{padding:3px 8px;border-bottom:1px solid var(--border);vertical-align:top;font-variant-numeric:tabular-nums}
+tr:hover td{background:rgba(255,180,84,.04)}
+tr.sel td{background:rgba(86,200,255,.08)}
+.k{color:var(--mut)} .v{color:var(--cyan)} .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)} .amber{color:var(--amber)} .mag{color:var(--mag)}
+.chip{display:inline-block;border:1px solid var(--border2);padding:0 7px;font-size:10px;letter-spacing:.5px;text-transform:uppercase}
+/* ── schelet ── */
+#shell{display:grid;grid-template-rows:38px 1fr 24px;height:100vh}
+#top{display:flex;align-items:center;gap:14px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--border2)}
+#logo{font-weight:700;letter-spacing:1px;color:var(--amber);white-space:nowrap}
+#logo b{color:var(--tx)} #logo i{color:var(--mut);font-style:normal}
+#topstats{display:flex;gap:14px;margin-left:auto;font-size:10.5px;color:var(--mut);white-space:nowrap}
+#topstats b{color:var(--tx)}
+#mid{display:grid;grid-template-columns:170px 1fr;min-height:0}
+#rail{background:var(--panel2);border-right:1px solid var(--border);padding:10px 0;display:flex;flex-direction:column;gap:1px}
+#rail a{display:block;padding:7px 14px;color:var(--mut);text-decoration:none;text-transform:uppercase;font-size:10.5px;letter-spacing:.8px;border-left:2px solid transparent}
+#rail a:hover{color:var(--tx)}
+#rail a.on{color:var(--amber);border-left-color:var(--amber);background:rgba(255,180,84,.05)}
+#rail a .kbd{float:right;color:var(--border2)}
+#rail .sep{flex:1}
+#rail .foot{padding:8px 14px;color:var(--border2);font-size:9.5px;line-height:1.6}
+main{min-width:0;min-height:0;overflow:auto;padding:12px}
+section{display:none}section.on{display:block}
+#bottom{display:flex;align-items:center;gap:16px;padding:0 12px;background:var(--panel);border-top:1px solid var(--border2);font-size:10px;color:var(--mut)}
+#ws-dot{width:7px;height:7px;background:var(--err);display:inline-block;margin-right:5px}
+#ws-dot.on{background:var(--ok)}
+.hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.hdr h2{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--amber);font-weight:700}
+.hdr .sub{color:var(--mut);font-size:10.5px}
+.box{border:1px solid var(--border);background:var(--panel);margin-bottom:12px}
+.box>.bt{padding:5px 10px;border-bottom:1px solid var(--border);color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.8px;display:flex;gap:8px;align-items:center}
+.box>.bt .r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.box>.bc{padding:8px 10px;overflow:auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr}}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 14px}
+.kv .k{white-space:nowrap}
+.stat{border:1px solid var(--border);background:var(--panel);padding:8px 10px}
+.stat .n{font-size:19px;color:var(--cyan);font-variant-numeric:tabular-nums}
+.stat .l{font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.7px}
+.statrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+pre{font:inherit;white-space:pre-wrap;word-break:break-word;color:var(--tx)}
+pre .jk{color:var(--amber)} pre .js{color:var(--ok)} pre .jn{color:var(--cyan)} pre .jb{color:var(--mag)}
+/* log */
+#log{height:calc(100vh - 210px);overflow:auto;background:var(--panel2);border:1px solid var(--border);padding:4px 0}
+.le{padding:1px 10px;white-space:nowrap;cursor:pointer;display:flex;gap:8px}
+.le:hover{background:rgba(255,180,84,.05)}
+.le.sel{background:rgba(86,200,255,.1)}
+.le .t{color:var(--mut);flex:0 0 auto}
+.le .e{flex:0 0 92px;text-transform:uppercase;font-size:10.5px}
+.le .d{overflow:hidden;text-overflow:ellipsis;color:var(--tx)}
+.ev-connect{color:var(--cyan)} .ev-imei{color:var(--ok)} .ev-data{color:var(--tx)} .ev-disconnect{color:var(--mut)}
+.ev-reject,.ev-error,.ev-insert_fail{color:var(--err)} .ev-partial_parse,.ev-archived_drop,.ev-live_skip_stale{color:var(--warn)}
+#logwrap{display:grid;grid-template-columns:1fr 430px;gap:12px}
+@media(max-width:1100px){#logwrap{grid-template-columns:1fr}}
+#logdetail{height:calc(100vh - 210px);overflow:auto;border:1px solid var(--border);background:var(--panel);padding:10px}
+.mut{color:var(--mut)}
+.formrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.formrow label{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+#toast{position:fixed;right:14px;bottom:34px;background:var(--panel);border:1px solid var(--amber);color:var(--amber);padding:7px 14px;display:none;z-index:50}
+a{color:var(--cyan)}
+</style>
 </head>
 <body>
-  <div id="app">
-    <!-- Sidebar -->
-    <div id="sidebar">
-      <div id="sidebar-header">
-        <h1>
-          Debug Console
-          <a href="/" class="btn-sm">Harta</a>
-        </h1>
-      </div>
-
-      <div id="controls">
-        <input type="text" id="filter-imei" placeholder="Filtru IMEI...">
-        <button class="btn-green" id="btn-pause">Live</button>
-        <button class="btn-blue" onclick="clearLog()">Clear</button>
-      </div>
-
-      <div id="stats-panel">
-        <div>Intrari log: <span id="log-count">0</span></div>
-        <div>Dispozitive active: <span id="active-count">0</span></div>
-        <div>Conexiuni TCP: <span id="tcp-count">0</span></div>
-      </div>
-
-      <div id="device-selector">
-        <h3>Dispozitive</h3>
-        <div id="device-list"></div>
-      </div>
-
-      <div id="io-live">
-        <h3>Live IO Values</h3>
-        <div id="io-live-content" style="font-size:11px;color:#64748b;padding:4px 8px;">Selecteaza un dispozitiv pentru a vedea IO live.</div>
-      </div>
-
-      <div id="io-ref">
-        <h3>IO Elements Reference</h3>
-        <div id="io-table"></div>
-      </div>
-    </div>
-
-    <!-- Main -->
-    <div id="main">
-      <div id="log-panel">
-        <div id="log-header">
-          Live TCP Log
-          <span id="log-status" style="font-size:11px;color:#64748b;">0 intrari</span>
-        </div>
-        <div id="log-container"></div>
-      </div>
-
-      <div id="detail-panel">
-        <div id="detail-header">
-          Date detaliate
-          <button class="btn-sm" onclick="copyDetail()">Copiaza JSON</button>
-        </div>
-        <div id="detail-content">Click pe o intrare din log pentru a vedea detaliile complete.</div>
-      </div>
+<div id="shell">
+  <div id="top">
+    <span id="logo">RA<b>//</b>DEVCONSOLE <i id="envtag"></i></span>
+    <span class="chip" id="chip-strict">strict: ?</span>
+    <div id="topstats">
+      <span>conn tcp <b id="ts-conn">–</b></span>
+      <span>live <b id="ts-live">–</b></span>
+      <span>rec <b id="ts-rec">–</b></span>
+      <span>heap <b id="ts-heap">–</b></span>
+      <span>up <b id="ts-up">–</b></span>
+      <span>ver <b id="ts-ver">–</b></span>
     </div>
   </div>
+  <div id="mid">
+    <nav id="rail">
+      <a href="#tcp" class="on" data-s="tcp">TCP Live <span class="kbd">1</span></a>
+      <a href="#flota" data-s="flota">Flotă live <span class="kbd">2</span></a>
+      <a href="#inspector" data-s="inspector">IO Inspector <span class="kbd">3</span></a>
+      <a href="#mapare" data-s="mapare">Mapare IO <span class="kbd">4</span></a>
+      <a href="#conexiuni" data-s="conexiuni">Conexiuni <span class="kbd">5</span></a>
+      <a href="#sistem" data-s="sistem">Sistem <span class="kbd">6</span></a>
+      <div class="sep"></div>
+      <div class="foot">super-admin only<br>← <a href="/app" style="color:var(--mut)">înapoi în app</a></div>
+    </nav>
+    <main>
 
-  <div id="ws-bar" class="ws-err">Conectare...</div>
+      <!-- ══ 1. TCP LIVE ══ -->
+      <section id="s-tcp" class="on">
+        <div class="hdr">
+          <h2>TCP Live</h2><span class="sub">ingest Teltonika în timp real (WS) + backlog (buffer 200)</span>
+          <input id="f-imei" placeholder="filtru imei…" style="width:150px" oninput="renderLog()">
+          <select id="f-event" onchange="renderLog()">
+            <option value="">toate evenimentele</option>
+            <option>connect</option><option>imei</option><option>data</option><option>disconnect</option>
+            <option>reject</option><option>error</option><option>partial_parse</option>
+            <option>archived_drop</option><option>insert_fail</option><option>live_skip_stale</option>
+          </select>
+          <button id="b-pause" onclick="togglePause()">Pauză</button>
+          <button onclick="clearLog()">Golește</button>
+          <button onclick="copyLog()">Copiază JSON</button>
+        </div>
+        <div id="logwrap">
+          <div id="log"></div>
+          <div id="logdetail"><span class="mut">Click pe o intrare pentru detalii…</span></div>
+        </div>
+      </section>
 
-  <script>
-    // ─── Auth check ───
-    fetch('/api/me').then(r => {
-      if (!r.ok) window.location.href = '/';
-      return r.json();
-    }).then(user => {
-      if (user.role !== 'admin') window.location.href = '/';
-    }).catch(() => window.location.href = '/');
+      <!-- ══ 2. FLOTĂ LIVE ══ -->
+      <section id="s-flota">
+        <div class="hdr"><h2>Flotă live</h2><span class="sub">conținutul livePositions (toate companiile)</span>
+          <input id="fl-q" placeholder="caută…" style="width:170px" oninput="renderFleet()">
+          <button onclick="loadFleet()">Reîncarcă</button></div>
+        <div class="box"><div class="bc" style="max-height:calc(100vh - 190px)">
+          <table><thead><tr><th>imei</th><th>nume</th><th>nr</th><th>km/h</th><th>vechime</th><th>stale</th><th>can</th><th>tcp</th><th></th></tr></thead>
+          <tbody id="fl-body"></tbody></table>
+        </div></div>
+      </section>
 
-    // ─── State ───
-    const logEntries = [];
-    let isPaused = false;
-    let selectedEntry = null;
-    let filterImei = '';
-    const knownDevices = new Set();
+      <!-- ══ 3. IO INSPECTOR ══ -->
+      <section id="s-inspector">
+        <div class="hdr"><h2>IO Inspector</h2><span class="sub">tot ce știe serverul despre un vehicul — live · sticky · istoric · nume pe 3 interfețe · mapare · catalog</span></div>
+        <div class="formrow">
+          <input id="in-imei" list="imei-list" placeholder="imei…" style="width:190px">
+          <datalist id="imei-list"></datalist>
+          <button onclick="inspect()">Inspectează</button>
+          <button onclick="ioPeek()">IO-Peek (combustibil/odo)</button>
+          <button onclick="ignCheck()">Ignition-check 48h</button>
+        </div>
+        <div id="in-head" class="statrow"></div>
+        <div class="grid2">
+          <div class="box"><div class="bt">JOIN IO — live/sticky pe chei <span class="r mut" id="in-count"></span></div>
+            <div class="bc" style="max-height:56vh"><table><thead><tr><th>cheie</th><th>valoare live</th><th>sticky</th><th>catalog</th><th>mapare</th></tr></thead><tbody id="in-io"></tbody></table></div></div>
+          <div>
+            <div class="box"><div class="bt">Interfață CAN — diagnostic</div><div class="bc" id="in-iface"><span class="mut">–</span></div></div>
+            <div class="box"><div class="bt">Ultimele 5 poziții din DB (io_data)</div><div class="bc" id="in-lastio" style="max-height:34vh"><span class="mut">–</span></div></div>
+          </div>
+        </div>
+        <div class="box" id="in-diag-box" style="display:none"><div class="bt">Diagnostic <span id="in-diag-title"></span><span class="r"><button onclick="document.getElementById('in-diag-box').style.display='none'">Închide</button></span></div>
+          <div class="bc"><pre id="in-diag"></pre></div></div>
+      </section>
 
-    // ─── IO Reference table ───
-    const ioNames = {
-      1: 'digital_input_1', 2: 'digital_input_2', 3: 'digital_input_3',
-      6: 'analog_input_2', 9: 'analog_input_1', 10: 'sd_status', 11: 'iccid',
-      16: 'total_odometer', 21: 'gsm_signal', 24: 'speed_io',
-      29: 'can_fuel_level', 30: 'can_fuel_consumed', 31: 'can_fuel_rate',
-      32: 'can_speed', 33: 'can_rpm', 35: 'can_coolant_temp',
-      36: 'can_pedal_position', 37: 'can_engine_hours', 38: 'can_total_mileage',
-      66: 'external_voltage', 67: 'battery_voltage', 68: 'battery_current',
-      69: 'gnss_status', 80: 'data_mode', 83: 'fuel_used_gps',
-      84: 'fuel_rate_gps', 87: 'total_mileage', 110: 'fuel_consumed',
-      113: 'battery_level', 175: 'auto_geofence',
-      179: 'digital_output_1', 180: 'digital_output_2',
-      181: 'gnss_pdop', 182: 'gnss_hdop',
-      200: 'sleep_mode', 239: 'ignition', 240: 'movement',
-      241: 'active_gsm_operator', 246: 'towing', 247: 'crash_detection',
-      250: 'trip', 251: 'idling', 252: 'unplug',
-      253: 'green_driving_type', 254: 'green_driving_value', 255: 'over_speeding'
-    };
+      <!-- ══ 4. MAPARE IO ══ -->
+      <section id="s-mapare">
+        <div class="hdr"><h2>Mapare IO</h2><span class="sub">io_mappings per vehicul + interfața CAN + catalogul global</span></div>
+        <div class="formrow">
+          <input id="mp-imei" list="imei-list" placeholder="imei…" style="width:190px">
+          <button onclick="loadMap()">Încarcă</button>
+          <label>interfață CAN:</label>
+          <select id="mp-iface">
+            <option value="">standard (LV-CAN200/ALL-CAN300)</option>
+            <option value="lvcan">lvcan (explicit)</option>
+            <option value="fms">fms (camioane J1939 — FMC650/MAN)</option>
+            <option value="tacho">tacho (tahograf DSRC)</option>
+          </select>
+          <button onclick="setIface()">Setează interfața</button>
+        </div>
+        <div class="grid2">
+          <div class="box"><div class="bt">IO nemapate (io_&lt;id&gt; brute din live)</div>
+            <div class="bc" style="max-height:40vh"><table><thead><tr><th>id</th><th>valoare</th><th>codec std/fms/tacho</th><th></th></tr></thead><tbody id="mp-unmapped"></tbody></table></div></div>
+          <div class="box"><div class="bt">Mapări existente pe vehicul</div>
+            <div class="bc" style="max-height:40vh"><table><thead><tr><th>id</th><th>nume</th><th>tip</th><th>transform</th><th></th></tr></thead><tbody id="mp-mapped"></tbody></table></div></div>
+        </div>
+        <div class="box" id="mp-form-box" style="display:none">
+          <div class="bt">Mapare IO <span id="mp-form-id" class="amber"></span><span class="r"><button onclick="document.getElementById('mp-form-box').style.display='none'">Închide</button></span></div>
+          <div class="bc">
+            <div class="formrow">
+              <label>nume</label><input id="mf-name" style="width:170px" maxlength="60">
+              <label>tip</label><select id="mf-type"><option>raw</option><option>fuel</option><option>percent</option><option>temp</option></select>
+              <label>unitate</label><input id="mf-unit" style="width:70px" maxlength="12">
+            </div>
+            <div class="formrow">
+              <label>capacity</label><input id="mf-capacity" style="width:80px" type="number" step="any">
+              <label>rawMin</label><input id="mf-rawMin" style="width:80px" type="number" step="any">
+              <label>rawMax</label><input id="mf-rawMax" style="width:80px" type="number" step="any">
+              <label>scale</label><input id="mf-scale" style="width:80px" type="number" step="any">
+              <label>offset</label><input id="mf-offset" style="width:80px" type="number" step="any">
+            </div>
+            <div class="formrow"><span class="mut">preview:</span> <span id="mf-preview" class="v">–</span>
+              <span class="r" style="margin-left:auto"><button onclick="saveMapping()">Salvează maparea</button></span></div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="box"><div class="bt">IO necunoscute global (io_NNN fără catalog) <span class="r"><button onclick="loadUnknown()">Scanează</button></span></div>
+            <div class="bc" style="max-height:34vh"><table><thead><tr><th>id</th><th>count</th><th>ultima valoare</th><th>imei exemplu</th><th></th></tr></thead><tbody id="mp-unknown"></tbody></table></div></div>
+          <div class="box"><div class="bt">Catalog IO global <input id="ct-q" placeholder="caută…" style="width:130px;margin-left:8px" oninput="renderCatalog()"><span class="r mut" id="ct-count"></span></div>
+            <div class="bc" style="max-height:34vh"><table><thead><tr><th>id</th><th>nume</th><th>ro</th><th>unit</th><th>categ</th><th></th></tr></thead><tbody id="ct-body"></tbody></table></div></div>
+        </div>
+      </section>
 
-    const ioTable = document.getElementById('io-table');
-    ioTable.innerHTML = Object.entries(ioNames)
-      .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
-      .map(([id, name]) => `<div class="io-row"><span class="io-id">ID ${id}</span><span class="io-name">${name}</span></div>`)
-      .join('');
+      <!-- ══ 5. CONEXIUNI ══ -->
+      <section id="s-conexiuni">
+        <div class="hdr"><h2>Conexiuni</h2><span class="sub">TCP active · încercări respinse (mod STRICT) · clienți WebSocket</span>
+          <button onclick="loadConn()">Reîncarcă</button></div>
+        <div class="grid3">
+          <div class="box"><div class="bt">TCP active <span class="r mut" id="cn-count"></span></div>
+            <div class="bc" style="max-height:64vh"><table><thead><tr><th>imei</th><th>adresă</th><th>conectat</th></tr></thead><tbody id="cn-body"></tbody></table></div></div>
+          <div class="box"><div class="bt">Respinse STRICT <span class="r mut" id="at-count"></span></div>
+            <div class="bc" style="max-height:64vh"><table><thead><tr><th>imei</th><th>încercări</th><th>ultima</th><th>adresă</th><th></th></tr></thead><tbody id="at-body"></tbody></table></div></div>
+          <div class="box"><div class="bt">Clienți WS <span class="r mut" id="wc-count"></span></div>
+            <div class="bc" style="max-height:64vh"><table><thead><tr><th>user</th><th>rol</th><th>companie</th><th>scope</th><th>stare</th></tr></thead><tbody id="wc-body"></tbody></table></div></div>
+        </div>
+      </section>
 
-    // ─── Pause button ───
-    document.getElementById('btn-pause').addEventListener('click', function() {
-      isPaused = !isPaused;
-      this.textContent = isPaused ? 'Paused' : 'Live';
-      this.className = isPaused ? 'btn-red' : 'btn-green';
-    });
+      <!-- ══ 6. SISTEM ══ -->
+      <section id="s-sistem">
+        <div class="hdr"><h2>Sistem</h2><span class="sub">memorie · contoare ingest de la boot · sănătate · audit live · erori</span>
+          <button onclick="loadSystem()">Reîncarcă</button></div>
+        <div class="statrow" id="sy-stats"></div>
+        <div class="box"><div class="bt">Contoare ingest (de la boot)</div><div class="bc"><div class="kv" id="sy-ingest"></div></div></div>
+        <div class="grid2">
+          <div class="box"><div class="bt">Audit live (DB vs memorie) <span class="r"><button onclick="loadAudit(0)">Rulează</button><button class="danger" onclick="loadAudit(1)">Rulează + FIX</button></span></div>
+            <div class="bc" id="sy-audit" style="max-height:40vh"><span class="mut">–</span></div></div>
+          <div class="box"><div class="bt">Jurnal erori server <span class="r"><button onclick="loadErrors()">Reîncarcă</button><button class="danger" onclick="clearErrors()">Golește</button></span></div>
+            <div class="bc" style="max-height:40vh"><table><thead><tr><th>când</th><th>nivel</th><th>mesaj</th><th>rută</th></tr></thead><tbody id="sy-errors"></tbody></table></div></div>
+        </div>
+      </section>
 
-    // ─── Filter ───
-    document.getElementById('filter-imei').addEventListener('input', function() {
-      filterImei = this.value.trim();
-      renderLog();
-    });
+    </main>
+  </div>
+  <div id="bottom">
+    <span><span id="ws-dot"></span><span id="ws-txt">WS: deconectat</span></span>
+    <span id="bt-log">log: 0</span>
+    <span style="margin-left:auto" class="mut">RA Tracks · consolă internă de diagnosticare · datele sunt cross-tenant — nu partaja capturi</span>
+  </div>
+</div>
+<div id="toast"></div>
 
-    // ─── Log rendering ───
-    function addLogEntry(entry) {
-      logEntries.push(entry);
-      if (logEntries.length > 500) logEntries.shift();
+<script>
+'use strict';
+/* ══════════ util ══════════ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const J = (u, opt) => fetch(u, Object.assign({ credentials: 'same-origin' }, opt)).then(async r => {
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || ('HTTP ' + r.status));
+  return r.json();
+});
+function toast(m, err) { const t = $('toast'); t.textContent = m; t.style.borderColor = err ? 'var(--err)' : 'var(--amber)'; t.style.color = err ? 'var(--err)' : 'var(--amber)'; t.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 2600); }
+function ago(ts) { if (!ts) return '–'; const s = Math.round((Date.now() - new Date(ts).getTime()) / 1000); if (s < 0) return '0s'; if (s < 60) return s + 's'; if (s < 3600) return Math.round(s / 60) + 'm'; if (s < 86400) return Math.round(s / 3600) + 'h'; return Math.round(s / 86400) + 'z'; }
+function hhmm(ts) { try { return new Date(ts).toLocaleTimeString('ro-RO'); } catch (e) { return '–'; } }
+function fmtDur(s) { s = Math.round(s || 0); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return (h ? h + 'h ' : '') + m + 'm'; }
+function fmtBytes(b) { b = Number(b) || 0; if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB'; if (b >= 1024) return (b / 1024).toFixed(1) + ' KB'; return b + ' B'; }
+function hi(json) { return esc(JSON.stringify(json, null, 2)).replace(/"([^"]+)":/g, '<span class="jk">"$1"</span>:').replace(/: "([^"]*)"/g, ': <span class="js">"$1"</span>').replace(/: (-?\d[\d.]*)/g, ': <span class="jn">$1</span>').replace(/: (true|false|null)/g, ': <span class="jb">$1</span>'); }
 
-      if (entry.imei) knownDevices.add(entry.imei);
-      updateDeviceList();
-      updateStats();
+/* ══════════ auth + navigare ══════════ */
+let ME = null, IOREF = null, CATALOG = null, CAT_BY_ID = {};
+(async function boot() {
+  try {
+    ME = await J('/api/me');
+    if (!ME || ME.role !== 'superadmin') { location.href = '/app'; return; }
+  } catch (e) { location.href = '/app'; return; }
+  $('envtag').textContent = location.hostname;
+  connectWs();
+  loadBacklog();
+  refreshTop();
+  setInterval(refreshTop, 15000);
+  try { IOREF = (await J('/api/debug/io-reference')).ids || {}; } catch (e) { IOREF = {}; }
+  try { const c = await J('/api/io-catalog'); CATALOG = c.catalog || []; CATALOG.forEach(x => CAT_BY_ID[x.id] = x); renderCatalog(); } catch (e) { CATALOG = []; }
+})();
+const SECTIONS = ['tcp', 'flota', 'inspector', 'mapare', 'conexiuni', 'sistem'];
+function show(s) {
+  SECTIONS.forEach(x => { $('s-' + x).classList.toggle('on', x === s); });
+  document.querySelectorAll('#rail a[data-s]').forEach(a => a.classList.toggle('on', a.dataset.s === s));
+  if (s === 'flota') loadFleet();
+  if (s === 'conexiuni') loadConn();
+  if (s === 'sistem') loadSystem();
+}
+document.querySelectorAll('#rail a[data-s]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); show(a.dataset.s); }));
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  const i = parseInt(e.key) - 1; if (i >= 0 && i < SECTIONS.length) show(SECTIONS[i]);
+});
 
-      // Actualizeaza live IO cand primim date
-      if (entry.event === 'data' && entry.records) {
-        updateLiveIo(entry.imei, entry.records);
-      }
+/* ══════════ top stats ══════════ */
+async function refreshTop() {
+  try {
+    const s = await J('/api/debug/live-stats');
+    $('ts-conn').textContent = s.activeConnections != null ? s.activeConnections : '–';
+    $('ts-live').textContent = s.livePositions;
+    $('ts-rec').textContent = (s.ingest && s.ingest.records != null) ? s.ingest.records.toLocaleString('ro-RO') : '–';
+    $('ts-heap').textContent = s.heapUsed_mb + 'M';
+    $('ts-up').textContent = fmtDur(s.uptime_s);
+    $('chip-strict').textContent = 'strict: ' + (s.strict ? 'ON · ' + s.registeredImeis + ' imei' : 'off');
+    $('chip-strict').style.color = s.strict ? 'var(--ok)' : 'var(--warn)';
+  } catch (e) {}
+  try { const h = await J('/api/health'); $('ts-ver').textContent = h.version; } catch (e) {}
+}
 
-      if (!isPaused) renderLog();
-    }
+/* ══════════ 1. TCP LIVE ══════════ */
+let LOG = [], paused = false, selEntry = null;
+function evDetail(x) {
+  switch (x.event) {
+    case 'connect': return x.address || '';
+    case 'imei': return (x.imei || '') + ' @ ' + (x.address || '');
+    case 'data': return (x.imei || '') + ' · codec 0x' + Number(x.codecId || 0).toString(16) + ' · ' + x.numberOfRecords + ' rec';
+    case 'disconnect': return (x.imei || '?') + ' @ ' + (x.address || '');
+    case 'reject': return (x.imei || '?') + ' · ' + (x.reason || '') + ' @ ' + (x.address || '');
+    case 'error': return (x.imei || '?') + ' · ' + (x.error || '');
+    case 'partial_parse': return (x.imei || '') + ' · ' + x.valid + '/' + x.total + ' valide · ' + (x.error || '');
+    case 'archived_drop': return (x.imei || '') + ' · ' + (x.numberOfRecords || 0) + ' rec ignorate (arhivat)';
+    case 'insert_fail': return (x.imei || '') + ' · ' + (x.error || '');
+    case 'live_skip_stale': return (x.imei || '') + ' · rec ' + hhmm(x.recTs) + ' < live ' + hhmm(x.liveTs);
+    default: return x.imei || '';
+  }
+}
+function addLog(x) { LOG.push(x); if (LOG.length > 600) LOG.shift(); if (!paused) renderLog(); $('bt-log').textContent = 'log: ' + LOG.length; }
+function renderLog() {
+  const fi = $('f-imei').value.trim(), fe = $('f-event').value;
+  const el = $('log');
+  const keep = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  el.innerHTML = LOG
+    .filter(x => (!fi || (x.imei || '').includes(fi)) && (!fe || x.event === fe))
+    .map((x, i) => '<div class="le' + (x === selEntry ? ' sel' : '') + '" data-i="' + LOG.indexOf(x) + '"><span class="t">' + hhmm(x.time) + '</span><span class="e ev-' + esc(x.event) + '">' + esc(x.event) + '</span><span class="d">' + esc(evDetail(x)) + '</span></div>')
+    .join('');
+  if (keep) el.scrollTop = el.scrollHeight;
+}
+$('log').addEventListener('click', e => {
+  const le = e.target.closest('.le'); if (!le) return;
+  selEntry = LOG[parseInt(le.dataset.i)];
+  $('logdetail').innerHTML = '<pre>' + hi(selEntry) + '</pre>';
+  renderLog();
+});
+function togglePause() { paused = !paused; $('b-pause').textContent = paused ? 'Reia' : 'Pauză'; if (!paused) renderLog(); }
+function clearLog() { LOG = []; selEntry = null; renderLog(); $('logdetail').innerHTML = '<span class="mut">–</span>'; $('bt-log').textContent = 'log: 0'; }
+function copyLog() { navigator.clipboard.writeText(JSON.stringify(LOG, null, 2)).then(() => toast('Log copiat (' + LOG.length + ' intrări)')); }
+async function loadBacklog() { try { (await J('/api/debug/log?limit=200')).forEach(addLog); } catch (e) { toast('Backlog: ' + e.message, true); } }
 
-    function renderLog() {
-      const container = document.getElementById('log-container');
-      const filtered = filterImei
-        ? logEntries.filter(e => e.imei && e.imei.includes(filterImei))
-        : logEntries;
+/* ══════════ WebSocket ══════════ */
+let ws = null;
+function connectWs() {
+  try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host); } catch (e) { return; }
+  ws.onopen = () => { $('ws-dot').classList.add('on'); $('ws-txt').textContent = 'WS: conectat'; };
+  ws.onclose = () => { $('ws-dot').classList.remove('on'); $('ws-txt').textContent = 'WS: reconectare…'; setTimeout(connectWs, 3000); };
+  ws.onmessage = m => {
+    let d; try { d = JSON.parse(m.data); } catch (e) { return; }
+    if (d.type === 'debug' && d.data) addLog(d.data);
+  };
+}
 
-      container.innerHTML = filtered.map((entry, idx) => {
-        const time = new Date(entry.time).toLocaleTimeString('ro-RO', { hour12: false, fractionalSecondDigits: 1 });
-        const eventClass = `event-${entry.event}`;
-        let detail = '';
+/* ══════════ 2. FLOTĂ LIVE ══════════ */
+let FLEET = [], CONNMAP = {};
+async function loadFleet() {
+  try {
+    const [live, conn] = await Promise.all([J('/api/live'), J('/api/connections').catch(() => ({}))]);
+    FLEET = live || []; CONNMAP = conn || {};
+    $('imei-list').innerHTML = FLEET.map(p => '<option value="' + esc(p.imei) + '">' + esc(p.name || p.plate || '') + '</option>').join('');
+    renderFleet();
+  } catch (e) { toast('Flotă: ' + e.message, true); }
+}
+function renderFleet() {
+  const q = ($('fl-q').value || '').toLowerCase();
+  $('fl-body').innerHTML = FLEET
+    .filter(p => !q || (p.imei + ' ' + (p.name || '') + ' ' + (p.plate || '')).toLowerCase().includes(q))
+    .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+    .map(p => '<tr><td class="v">' + esc(p.imei) + '</td><td>' + esc(p.name || '–') + '</td><td>' + esc(p.plate || '–') + '</td>' +
+      '<td>' + (p.speed || 0) + '</td><td>' + ago(p.timestamp) + '</td>' +
+      '<td>' + (p.stale ? '<span class="warn">stale</span>' : '<span class="ok">ok</span>') + '</td>' +
+      '<td>' + (p.can_stale ? '<span class="warn">sticky</span>' : (p.io && Object.keys(p.io).some(k => k.startsWith('can_') || k.startsWith('fms_')) ? '<span class="ok">live</span>' : '<span class="mut">–</span>')) + '</td>' +
+      '<td>' + (CONNMAP[p.imei] ? '<span class="ok">●</span>' : '<span class="mut">○</span>') + '</td>' +
+      '<td><button onclick="openInspector(\'' + esc(p.imei) + '\')">inspect</button></td></tr>')
+    .join('') || '<tr><td colspan="9" class="mut">nimic</td></tr>';
+}
+function openInspector(imei) { $('in-imei').value = imei; $('mp-imei').value = imei; show('inspector'); inspect(); }
 
-        switch (entry.event) {
-          case 'connect':
-            detail = `Conexiune noua de la ${entry.address}`;
-            break;
-          case 'imei':
-            detail = `IMEI: ${entry.imei} (${entry.address})`;
-            break;
-          case 'data':
-            detail = `${entry.imei}: ${entry.numberOfRecords} record(uri), Codec 0x${(entry.codecId || 0).toString(16).toUpperCase()}`;
-            break;
-          case 'disconnect':
-            detail = `Deconectat: ${entry.imei || entry.address}`;
-            break;
-          case 'error':
-            detail = `${entry.imei}: ${entry.error}`;
-            break;
-        }
+/* ══════════ 3. IO INSPECTOR ══════════ */
+function ioRefName(key) {
+  const m = /^io_(\d+)$/.exec(key); if (!m || !IOREF) return null;
+  const r = IOREF[m[1]]; if (!r) return null;
+  return ['std:' + (r.standard || '–'), 'fms:' + (r.fms || '–'), 'tacho:' + (r.tacho || '–')].join(' · ');
+}
+function mapPreviewValue(m, raw) {
+  const n = Number(raw); if (!isFinite(n)) return '–';
+  if (m.type === 'fuel' && m.rawMax != null && m.rawMin != null && m.capacity) { const f = Math.max(0, Math.min(1, (n - m.rawMin) / ((m.rawMax - m.rawMin) || 1))); return (f * m.capacity).toFixed(1) + ' L (' + Math.round(f * 100) + '%)'; }
+  if (m.type === 'percent' && m.rawMax != null && m.rawMin != null) { const f = Math.max(0, Math.min(1, (n - m.rawMin) / ((m.rawMax - m.rawMin) || 1))); return Math.round(f * 100) + '%'; }
+  const v = n * (m.scale != null && m.scale !== '' ? Number(m.scale) : 1) + (m.offset != null && m.offset !== '' ? Number(m.offset) : 0);
+  return String(Math.round(v * 100) / 100) + (m.type === 'temp' ? ' °C' : (m.unit ? ' ' + m.unit : ''));
+}
+async function inspect() {
+  const imei = $('in-imei').value.trim(); if (!imei) return toast('Pune un IMEI', true);
+  $('in-head').innerHTML = '<div class="stat"><div class="n mut">…</div><div class="l">se încarcă</div></div>';
+  try {
+    const [lv, ifc, last, dbg, maps] = await Promise.all([
+      J('/api/debug/live/' + imei),
+      J('/api/debug/iface/' + imei).catch(e => ({ error: e.message })),
+      J('/api/debug/last-io/' + imei).catch(() => ({ rows: [] })),
+      J('/api/devices/' + imei + '/io-debug').catch(() => null),
+      J('/api/devices/' + imei + '/io-mappings').catch(() => ({})),
+    ]);
+    const live = lv.live, io = (live && live.io) || {}, sticky = (lv.sticky && lv.sticky.io) || {};
+    $('in-head').innerHTML =
+      '<div class="stat"><div class="n">' + (live ? esc(live.name || live.plate || imei) : '–') + '</div><div class="l">' + esc(imei) + '</div></div>' +
+      '<div class="stat"><div class="n ' + (lv.connected ? 'ok' : 'mut') + '">' + (lv.connected ? 'ONLINE' : 'offline') + '</div><div class="l">tcp ' + (lv.connection ? esc(lv.connection.address) : '–') + '</div></div>' +
+      '<div class="stat"><div class="n">' + (live ? ago(live.timestamp) : '–') + '</div><div class="l">ultima poziție</div></div>' +
+      '<div class="stat"><div class="n">' + (live && live.speed != null ? live.speed : '–') + '</div><div class="l">km/h</div></div>' +
+      '<div class="stat"><div class="n ' + (live && live.can_stale ? 'warn' : 'ok') + '">' + (live ? (live.can_stale ? 'sticky' : 'live') : '–') + '</div><div class="l">stare CAN</div></div>' +
+      '<div class="stat"><div class="n">' + Object.keys(sticky).length + '</div><div class="l">chei sticky</div></div>';
+    // join pe chei: live io ∪ sticky
+    const keys = Array.from(new Set([...Object.keys(io), ...Object.keys(sticky)])).sort();
+    $('in-count').textContent = keys.length + ' chei';
+    $('in-io').innerHTML = keys.map(k => {
+      const mId = (/^io_(\d+)$/.exec(k) || [])[1];
+      const cat = mId && CAT_BY_ID[mId] ? (CAT_BY_ID[mId].name_ro || CAT_BY_ID[mId].name) : '';
+      const map = mId && maps && maps[mId] ? maps[mId] : null;
+      const ref = ioRefName(k);
+      return '<tr><td class="v">' + esc(k) + (ref ? '<br><span class="mut" style="font-size:9.5px">' + esc(ref) + '</span>' : '') + '</td>' +
+        '<td>' + (k in io ? esc(JSON.stringify(io[k])) : '<span class="mut">–</span>') + '</td>' +
+        '<td>' + (k in sticky ? '<span class="warn">' + esc(JSON.stringify(sticky[k])) + '</span>' : '<span class="mut">–</span>') + '</td>' +
+        '<td>' + (cat ? esc(cat) : '<span class="mut">–</span>') + '</td>' +
+        '<td>' + (map ? '<span class="mag">' + esc(map.name) + ' = ' + esc(mapPreviewValue(map, io[k] != null ? io[k] : sticky[k])) + '</span>' : '<span class="mut">–</span>') + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="mut">fără io în memorie (vehicul offline + server restartat?) — vezi ultimele poziții din DB →</td></tr>';
+    // iface
+    $('in-iface').innerHTML = ifc.error ? '<span class="err">' + esc(ifc.error) + '</span>' :
+      '<div class="kv">' +
+      '<span class="k">db</span><span class="v">' + esc(ifc.can_interface_db || 'standard') + '</span>' +
+      '<span class="k">cache</span><span class="v">' + esc(ifc.can_interface_cached || 'standard') + '</span>' +
+      '<span class="k">chei istoric</span><span>' + esc((ifc.canKeysInLastHistorical || []).join(', ') || '–') + '</span>' +
+      '<span class="k">chei live</span><span>' + esc((ifc.canKeysInLive || []).join(', ') || '–') + '</span>' +
+      '</div>' + (ifc.hint ? '<div style="margin-top:6px" class="amber">' + esc(ifc.hint) + '</div>' : '');
+    // last io
+    $('in-lastio').innerHTML = (last.rows || []).map(r =>
+      '<div style="margin-bottom:8px"><span class="mut">' + hhmm(r.timestamp) + ' · ' + ago(r.timestamp) + '</span><pre>' + hi(r.io_data || {}) + '</pre></div>'
+    ).join('') || '<span class="mut">fără istoric</span>';
+  } catch (e) { toast('Inspector: ' + e.message, true); }
+}
+async function ioPeek() {
+  const imei = $('in-imei').value.trim(); if (!imei) return toast('Pune un IMEI', true);
+  try { const d = await J('/api/admin/io-peek?q=' + encodeURIComponent(imei)); $('in-diag-title').textContent = 'IO-Peek — ' + (d.vehicul || imei); $('in-diag').innerHTML = hi(d); $('in-diag-box').style.display = ''; }
+  catch (e) { toast('io-peek: ' + e.message, true); }
+}
+async function ignCheck() {
+  const imei = $('in-imei').value.trim(); if (!imei) return toast('Pune un IMEI', true);
+  try { const d = await J('/api/admin/ignition-check?q=' + encodeURIComponent(imei)); $('in-diag-title').textContent = 'Ignition-check — ' + (d.vehicul || imei); $('in-diag').innerHTML = hi(d); $('in-diag-box').style.display = ''; }
+  catch (e) { toast('ignition-check: ' + e.message, true); }
+}
 
-        const realIdx = logEntries.indexOf(entry);
-        return `<div class="log-entry ${selectedEntry === realIdx ? 'selected' : ''}" onclick="selectEntry(${realIdx})">
-          <span class="log-time">${time}</span>
-          <span class="log-event ${eventClass}">[${entry.event.toUpperCase()}]</span>
-          <span class="log-detail">${detail}</span>
-        </div>`;
-      }).join('');
+/* ══════════ 4. MAPARE IO ══════════ */
+let MP = { imei: null, dbg: null, editId: null, editRaw: null };
+async function loadMap() {
+  const imei = $('mp-imei').value.trim(); if (!imei) return toast('Pune un IMEI', true);
+  MP.imei = imei;
+  try {
+    const d = await J('/api/devices/' + imei + '/io-debug');
+    MP.dbg = d;
+    $('mp-iface').value = d.can_interface || '';
+    $('mp-unmapped').innerHTML = (d.unmapped || []).map(u => {
+      const r = IOREF && IOREF[u.id];
+      const ref = r ? [(r.standard || '–'), (r.fms || '–'), (r.tacho || '–')].join(' / ') : '–';
+      return '<tr><td class="v">io_' + u.id + '</td><td>' + esc(JSON.stringify(u.value)) + '</td><td class="mut">' + esc(ref) + '</td>' +
+        '<td><button onclick="editMapping(' + u.id + ',' + JSON.stringify(String(u.value)) + ')">mapează</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="mut">' + (d.hasLive ? 'nimic nemapat' : 'vehiculul nu transmite live acum — io_<id> apar doar cu date live') + '</td></tr>';
+    $('mp-mapped').innerHTML = Object.entries(d.mappings || {}).map(([id, m]) =>
+      '<tr><td class="v">io_' + esc(id) + '</td><td>' + esc(m.name) + '</td><td>' + esc(m.type || 'raw') + '</td>' +
+      '<td class="mut">' + (m.type === 'fuel' ? (m.rawMin + '–' + m.rawMax + ' → ' + m.capacity + 'L') : (m.type === 'percent' ? (m.rawMin + '–' + m.rawMax + ' → %') : ('×' + (m.scale != null ? m.scale : 1) + ' +' + (m.offset != null ? m.offset : 0) + (m.unit ? ' ' + m.unit : '')))) + '</td>' +
+      '<td><button onclick="editMapping(' + esc(id) + ',null)">edit</button> <button class="danger" onclick="delMapping(' + esc(id) + ')">șterge</button></td></tr>'
+    ).join('') || '<tr><td colspan="5" class="mut">fără mapări pe vehicul</td></tr>';
+  } catch (e) { toast('Mapare: ' + e.message, true); }
+}
+function editMapping(id, rawVal) {
+  MP.editId = id;
+  MP.editRaw = rawVal != null ? rawVal : (() => { const u = (MP.dbg && MP.dbg.unmapped || []).concat(MP.dbg && MP.dbg.mapped || []).find(x => String(x.id) === String(id)); return u ? u.value : null; })();
+  const ex = MP.dbg && MP.dbg.mappings && MP.dbg.mappings[id] || {};
+  $('mp-form-id').textContent = 'io_' + id + (MP.editRaw != null ? ' (valoare live: ' + MP.editRaw + ')' : '');
+  $('mf-name').value = ex.name || ''; $('mf-type').value = ex.type || 'raw'; $('mf-unit').value = ex.unit || '';
+  $('mf-capacity').value = ex.capacity != null ? ex.capacity : ''; $('mf-rawMin').value = ex.rawMin != null ? ex.rawMin : ''; $('mf-rawMax').value = ex.rawMax != null ? ex.rawMax : '';
+  $('mf-scale').value = ex.scale != null ? ex.scale : ''; $('mf-offset').value = ex.offset != null ? ex.offset : '';
+  $('mp-form-box').style.display = ''; updatePreview();
+}
+function _mfVals() {
+  const num = v => v === '' ? null : Number(v);
+  return { name: $('mf-name').value.trim(), type: $('mf-type').value, unit: $('mf-unit').value.trim(),
+    capacity: num($('mf-capacity').value), rawMin: num($('mf-rawMin').value), rawMax: num($('mf-rawMax').value),
+    scale: num($('mf-scale').value), offset: num($('mf-offset').value) };
+}
+function updatePreview() { $('mf-preview').textContent = MP.editRaw != null ? (MP.editRaw + ' → ' + mapPreviewValue(_mfVals(), MP.editRaw)) : 'fără valoare live'; }
+['mf-type','mf-unit','mf-capacity','mf-rawMin','mf-rawMax','mf-scale','mf-offset'].forEach(id => $(id).addEventListener('input', updatePreview));
+async function saveMapping() {
+  const b = _mfVals(); if (!b.name) return toast('Numele e obligatoriu', true);
+  try { await J('/api/devices/' + MP.imei + '/io-mappings/' + MP.editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); toast('Mapare io_' + MP.editId + ' salvată'); $('mp-form-box').style.display = 'none'; loadMap(); }
+  catch (e) { toast('Salvare: ' + e.message, true); }
+}
+async function delMapping(id) {
+  if (!confirm('Șterg maparea io_' + id + '?')) return;
+  try { await J('/api/devices/' + MP.imei + '/io-mappings/' + id, { method: 'DELETE' }); toast('Șters'); loadMap(); } catch (e) { toast(e.message, true); }
+}
+async function setIface() {
+  const imei = $('mp-imei').value.trim(); if (!imei) return toast('Pune un IMEI', true);
+  const v = $('mp-iface').value || null;
+  try { await J('/api/devices/' + imei + '/can-interface', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ can_interface: v }) }); toast('Interfață CAN: ' + (v || 'standard')); } catch (e) { toast(e.message, true); }
+}
+async function loadUnknown() {
+  try {
+    const d = await J('/api/io-catalog/unknown');
+    $('mp-unknown').innerHTML = (d.unknown || []).map(u =>
+      '<tr><td class="v">io_' + u.id + '</td><td>' + (u.count || 0) + '</td><td>' + esc(JSON.stringify(u.lastValue)) + '</td><td class="mut">' + esc(u.sampleImei || '–') + '</td>' +
+      '<td><button onclick="catalogId(' + u.id + ')">catalog</button></td></tr>').join('') || '<tr><td colspan="5" class="mut">nimic necunoscut 🎉</td></tr>';
+  } catch (e) { toast('Unknown: ' + e.message, true); }
+}
+async function catalogId(id) {
+  const name_ro = prompt('Nume RO pentru io_' + id + ':'); if (!name_ro) return;
+  const unit = prompt('Unitate (opțional):') || '';
+  try { await J('/api/io-catalog/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name_ro, unit }) }); toast('io_' + id + ' catalogat'); const c = await J('/api/io-catalog'); CATALOG = c.catalog || []; CAT_BY_ID = {}; CATALOG.forEach(x => CAT_BY_ID[x.id] = x); renderCatalog(); loadUnknown(); }
+  catch (e) { toast(e.message, true); }
+}
+function renderCatalog() {
+  if (!CATALOG) return;
+  const q = ($('ct-q').value || '').toLowerCase();
+  const rows = CATALOG.filter(x => !q || (x.id + ' ' + (x.name || '') + ' ' + (x.name_ro || '') + ' ' + (x.category || '')).toLowerCase().includes(q));
+  $('ct-count').textContent = rows.length + '/' + CATALOG.length;
+  $('ct-body').innerHTML = rows.slice(0, 300).map(x =>
+    '<tr><td class="v">' + x.id + '</td><td>' + esc(x.name || '–') + '</td><td>' + esc(x.name_ro || '–') + '</td><td>' + esc(x.unit || '') + '</td><td class="mut">' + esc(x.category || '') + '</td>' +
+    '<td><button onclick="catalogId(' + x.id + ')">edit</button></td></tr>').join('');
+}
 
-      document.getElementById('log-status').textContent = `${filtered.length} intrari`;
-      document.getElementById('log-count').textContent = logEntries.length;
+/* ══════════ 5. CONEXIUNI ══════════ */
+async function loadConn() {
+  try {
+    const [conn, att, wc] = await Promise.all([
+      J('/api/connections').catch(() => ({})),
+      J('/api/admin/device-attempts').catch(() => ({ attempts: [] })),
+      J('/api/debug/ws-clients').catch(() => ({ clients: [] })),
+    ]);
+    const ce = Object.entries(conn || {});
+    $('cn-count').textContent = ce.length;
+    $('cn-body').innerHTML = ce.map(([imei, c]) =>
+      '<tr><td class="v">' + esc(imei) + '</td><td>' + esc(c.address || '–') + '</td><td>' + ago(c.connectedAt) + '</td></tr>').join('') || '<tr><td colspan="3" class="mut">nicio conexiune TCP</td></tr>';
+    $('at-count').textContent = (att.attempts || []).length + (att.strict != null ? (att.strict ? ' · strict ON' : ' · strict off') : '');
+    $('at-body').innerHTML = (att.attempts || []).map(a =>
+      '<tr><td class="v">' + esc(a.imei) + '</td><td>' + a.count + '</td><td>' + ago(a.last) + '</td><td class="mut">' + esc(a.address || '') + '</td>' +
+      '<td><button class="danger" onclick="delAttempt(\'' + esc(a.imei) + '\')">șterge</button></td></tr>').join('') || '<tr><td colspan="5" class="mut">nicio respingere</td></tr>';
+    $('wc-count').textContent = (wc.clients || []).length;
+    $('wc-body').innerHTML = (wc.clients || []).map(c =>
+      '<tr><td>' + esc(c.userId != null ? c.userId : '?') + '</td><td>' + esc(c.role || '?') + (c.isSuper ? ' <span class="amber">★</span>' : '') + '</td><td>' + esc(c.companyId != null ? c.companyId : '–') + '</td><td class="mut">' + esc(c.scope || '') + '</td><td>' + (c.open ? '<span class="ok">open</span>' : '<span class="mut">…</span>') + '</td></tr>').join('') || '<tr><td colspan="5" class="mut">niciun client</td></tr>';
+  } catch (e) { toast('Conexiuni: ' + e.message, true); }
+}
+async function delAttempt(imei) {
+  try { await J('/api/admin/device-attempts/' + imei, { method: 'DELETE' }); toast('Șters ' + imei); loadConn(); } catch (e) { toast(e.message, true); }
+}
 
-      // Auto-scroll
-      if (!isPaused) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }
-
-    function selectEntry(idx) {
-      selectedEntry = idx;
-      const entry = logEntries[idx];
-
-      if (entry.event === 'data' && entry.records && entry.records.length > 0) {
-        // Afisare detaliata pentru intrari DATA
-        let html = `<div style="color:#38bdf8;font-weight:bold;margin-bottom:12px;">📡 ${entry.imei} — ${entry.numberOfRecords} record(uri), Codec 0x${(entry.codecId||0).toString(16).toUpperCase()}</div>`;
-
-        entry.records.forEach((rec, i) => {
-          const ts = new Date(rec.timestamp).toLocaleString('ro-RO');
-          const gps = rec.gps || {};
-          const io = rec.io || {};
-
-          html += `<div style="border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:12px;background:#0f172a;">`;
-          html += `<div style="color:#f97316;font-weight:bold;margin-bottom:8px;">Record ${i+1} — ${ts}</div>`;
-
-          // GPS Section
-          html += `<div style="margin-bottom:8px;">`;
-          html += `<div style="color:#22c55e;font-weight:bold;margin-bottom:4px;">📍 GPS</div>`;
-          html += `<table style="width:100%;font-size:11px;">`;
-          html += `<tr><td style="color:#64748b;width:140px;">Latitude</td><td style="color:#e2e8f0;">${gps.latitude || 0}</td>`;
-          html += `<td style="color:#64748b;width:140px;">Longitude</td><td style="color:#e2e8f0;">${gps.longitude || 0}</td></tr>`;
-          html += `<tr><td style="color:#64748b;">Altitude</td><td style="color:#e2e8f0;">${gps.altitude || 0} m</td>`;
-          html += `<td style="color:#64748b;">Speed</td><td style="color:#e2e8f0;">${gps.speed || 0} km/h</td></tr>`;
-          html += `<tr><td style="color:#64748b;">Angle</td><td style="color:#e2e8f0;">${gps.angle || 0}°</td>`;
-          html += `<td style="color:#64748b;">Satellites</td><td style="color:#e2e8f0;">${gps.satellites || 0}</td></tr>`;
-          html += `</table></div>`;
-
-          // IO Section - grupat pe categorii
-          const ioKeys = Object.keys(io).filter(k => k !== 'eventIoId' && k !== 'totalCount');
-          if (ioKeys.length > 0) {
-            // Categorii IO
-            const categories = {
-              '⚡ Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
-              '🚗 Motor / CAN': ['ignition', 'movement', 'can_speed', 'can_rpm', 'can_coolant_temp', 'can_pedal_position', 'can_engine_hours', 'can_total_mileage'],
-              '⛽ Combustibil': ['can_fuel_level', 'can_fuel_consumed', 'can_fuel_rate', 'fuel_used_gps', 'fuel_rate_gps', 'fuel_consumed'],
-              '📡 Retea / GPS': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'speed_io'],
-              '🔌 I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
-              '📊 Analog': ['analog_input_1', 'analog_input_2'],
-              '📏 Distanta': ['total_odometer', 'total_mileage'],
-              '⚠️ Evenimente': ['trip', 'over_speeding', 'unplug', 'crash_detection', 'idling', 'towing', 'green_driving_type', 'green_driving_value'],
-              '💤 Status': ['sleep_mode', 'data_mode', 'sd_status', 'iccid', 'auto_geofence']
-            };
-
-            const usedKeys = new Set();
-
-            for (const [catName, catKeys] of Object.entries(categories)) {
-              const present = catKeys.filter(k => io[k] !== undefined);
-              if (present.length === 0) continue;
-
-              html += `<div style="margin-bottom:8px;">`;
-              html += `<div style="color:#a78bfa;font-weight:bold;margin-bottom:4px;">${catName}</div>`;
-              html += `<table style="width:100%;font-size:11px;">`;
-
-              for (let j = 0; j < present.length; j += 2) {
-                html += `<tr>`;
-                html += `<td style="color:#64748b;width:140px;">${present[j]}</td>`;
-                html += `<td style="color:#e2e8f0;">${formatIoValue(present[j], io[present[j]])}</td>`;
-                usedKeys.add(present[j]);
-                if (present[j+1]) {
-                  html += `<td style="color:#64748b;width:140px;">${present[j+1]}</td>`;
-                  html += `<td style="color:#e2e8f0;">${formatIoValue(present[j+1], io[present[j+1]])}</td>`;
-                  usedKeys.add(present[j+1]);
-                } else {
-                  html += `<td></td><td></td>`;
-                }
-                html += `</tr>`;
-              }
-              html += `</table></div>`;
-            }
-
-            // IO necategorizate
-            const uncategorized = ioKeys.filter(k => !usedKeys.has(k));
-            if (uncategorized.length > 0) {
-              html += `<div style="margin-bottom:8px;">`;
-              html += `<div style="color:#94a3b8;font-weight:bold;margin-bottom:4px;">🔧 Alte IO</div>`;
-              html += `<table style="width:100%;font-size:11px;">`;
-              for (let j = 0; j < uncategorized.length; j += 2) {
-                html += `<tr>`;
-                html += `<td style="color:#64748b;width:140px;">${uncategorized[j]}</td>`;
-                html += `<td style="color:#e2e8f0;">${io[uncategorized[j]]}</td>`;
-                if (uncategorized[j+1]) {
-                  html += `<td style="color:#64748b;width:140px;">${uncategorized[j+1]}</td>`;
-                  html += `<td style="color:#e2e8f0;">${io[uncategorized[j+1]]}</td>`;
-                }
-                html += `</tr>`;
-              }
-              html += `</table></div>`;
-            }
-          }
-
-          html += `</div>`;
-        });
-
-        // Adauga si JSON-ul brut la final
-        html += `<details style="margin-top:12px;"><summary style="cursor:pointer;color:#64748b;font-size:11px;">JSON brut</summary>`;
-        html += `<div style="margin-top:8px;">${syntaxHighlight(JSON.stringify(entry, null, 2))}</div></details>`;
-
-        document.getElementById('detail-content').innerHTML = html;
-      } else {
-        document.getElementById('detail-content').innerHTML = syntaxHighlight(JSON.stringify(entry, null, 2));
-      }
-      renderLog();
-    }
-
-    function formatIoValue(key, value) {
-      // Formatare speciala pentru anumite valori
-      if (key === 'external_voltage') return `${(value / 1000).toFixed(2)} V (${value} mV)`;
-      if (key === 'battery_voltage') return `${(value / 1000).toFixed(2)} V (${value} mV)`;
-      if (key === 'battery_current') return `${value} mA`;
-      if (key === 'battery_level') return `${value}%`;
-      if (key === 'ignition') return value ? '<span style="color:#22c55e;">ON</span>' : '<span style="color:#ef4444;">OFF</span>';
-      if (key === 'movement') return value ? '<span style="color:#22c55e;">DA</span>' : '<span style="color:#64748b;">NU</span>';
-      if (key === 'can_rpm') return `${value} RPM`;
-      if (key === 'can_speed') return `${value} km/h`;
-      if (key === 'can_coolant_temp') return `${value}°C`;
-      if (key === 'can_fuel_level') return `${value}%`;
-      if (key === 'gsm_signal') return `${value}/5`;
-      if (key === 'total_odometer') return `${(value / 1000).toFixed(1)} km`;
-      if (key === 'total_mileage') return `${(value / 1000).toFixed(1)} km`;
-      if (key === 'can_engine_hours') return `${(value / 100).toFixed(1)} h`;
-      if (key === 'sleep_mode') {
-        const modes = { 0: 'Activ', 1: 'GPS Sleep', 2: 'Deep Sleep', 3: 'Online Sleep', 4: 'Ultra Sleep' };
-        return modes[value] || value;
-      }
-      return value;
-    }
-
-    function clearLog() {
-      logEntries.length = 0;
-      selectedEntry = null;
-      document.getElementById('detail-content').textContent = 'Log cleared.';
-      renderLog();
-    }
-
-    function copyDetail() {
-      if (selectedEntry === null) return;
-      const text = JSON.stringify(logEntries[selectedEntry], null, 2);
-      navigator.clipboard.writeText(text);
-    }
-
-    // ─── Device list ───
-    function updateDeviceList() {
-      const list = document.getElementById('device-list');
-      list.innerHTML = Array.from(knownDevices).map(imei =>
-        `<button class="device-btn ${filterImei === imei ? 'active' : ''}" onclick="filterByDevice('${imei}')">${imei}</button>`
-      ).join('');
-    }
-
-    function filterByDevice(imei) {
-      const input = document.getElementById('filter-imei');
-      if (filterImei === imei) {
-        filterImei = '';
-        input.value = '';
-        document.getElementById('io-live-content').innerHTML = '<span style="color:#64748b;">Selecteaza un dispozitiv pentru a vedea IO live.</span>';
-      } else {
-        filterImei = imei;
-        input.value = imei;
-        renderLiveIo(imei);
-      }
-      renderLog();
-      updateDeviceList();
-      loadDeviceRaw(imei);
-    }
-
-    async function loadDeviceRaw(imei) {
-      try {
-        const res = await fetch(`/api/debug/raw/${imei}?limit=5`);
-        const data = await res.json();
-        document.getElementById('detail-content').innerHTML =
-          `<div style="color:#38bdf8;margin-bottom:8px;">Ultimele 5 pozitii din DB pentru ${imei}:</div>` +
-          syntaxHighlight(JSON.stringify(data, null, 2));
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    // ─── Stats ───
-    function updateStats() {
-      document.getElementById('active-count').textContent = knownDevices.size;
-    }
-
-    // Fetch connections count
-    fetch('/api/connections').then(r => r.json()).then(data => {
-      document.getElementById('tcp-count').textContent = Object.keys(data).length;
-    }).catch(() => {});
-
-    // ─── JSON syntax highlighting ───
-    function syntaxHighlight(json) {
-      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
-        let cls = 'json-number';
-        if (/^"/.test(match)) {
-          cls = /:$/.test(match) ? 'json-key' : 'json-string';
-        } else if (/true|false/.test(match)) {
-          cls = 'json-bool';
-        } else if (/null/.test(match)) {
-          cls = 'json-null';
-        }
-        return `<span class="${cls}">${match}</span>`;
-      });
-    }
-
-    // ─── WebSocket ───
-    function connectWs() {
-      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(`${protocol}//${location.host}`);
-      const bar = document.getElementById('ws-bar');
-
-      ws.onopen = () => {
-        bar.textContent = 'Conectat — debug live';
-        bar.className = 'ws-ok';
-      };
-
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'debug') {
-          addLogEntry(msg.data);
-        }
-      };
-
-      ws.onclose = () => {
-        bar.textContent = 'Deconectat — reconectare...';
-        bar.className = 'ws-err';
-        setTimeout(connectWs, 3000);
-      };
-
-      ws.onerror = () => ws.close();
-    }
-
-    // ─── Live IO tracking ───
-    const liveIoData = {}; // per IMEI
-
-    function updateLiveIo(imei, records) {
-      if (!records || records.length === 0) return;
-
-      if (!liveIoData[imei]) liveIoData[imei] = { gps: {}, io: {} };
-
-      // Actualizeaza cu ultimul record
-      const lastRec = records[records.length - 1];
-      if (lastRec.gps) Object.assign(liveIoData[imei].gps, lastRec.gps);
-      if (lastRec.io) Object.assign(liveIoData[imei].io, lastRec.io);
-      liveIoData[imei].timestamp = lastRec.timestamp;
-      liveIoData[imei].lastUpdate = new Date().toISOString();
-
-      // Daca acest IMEI e selectat, actualizeaza panoul
-      if (filterImei === imei) renderLiveIo(imei);
-    }
-
-    function renderLiveIo(imei) {
-      const container = document.getElementById('io-live-content');
-      const data = liveIoData[imei];
-      if (!data) {
-        container.innerHTML = '<span style="color:#64748b;">Nu sunt date IO pentru acest dispozitiv.</span>';
-        return;
-      }
-
-      const gps = data.gps || {};
-      const io = data.io || {};
-      const ts = data.timestamp ? new Date(data.timestamp).toLocaleString('ro-RO') : '-';
-      const lastUp = data.lastUpdate ? new Date(data.lastUpdate).toLocaleTimeString('ro-RO') : '-';
-
-      let html = `<div style="color:#64748b;font-size:10px;margin-bottom:6px;">Ultimul update: ${lastUp} | Timestamp GPS: ${ts}</div>`;
-
-      // GPS
-      html += `<div class="io-cat-header">📍 GPS</div>`;
-      html += ioRow('Latitude', gps.latitude || 0);
-      html += ioRow('Longitude', gps.longitude || 0);
-      html += ioRow('Altitude', `${gps.altitude || 0} m`);
-      html += ioRow('Speed', `${gps.speed || 0} km/h`);
-      html += ioRow('Angle', `${gps.angle || 0}°`);
-      html += ioRow('Satellites', gps.satellites || 0);
-
-      // Categorii IO
-      const categories = {
-        '⚡ Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
-        '🚗 Motor / CAN': ['ignition', 'movement', 'can_speed', 'can_rpm', 'can_coolant_temp', 'can_pedal_position', 'can_engine_hours', 'can_total_mileage'],
-        '⛽ Combustibil': ['can_fuel_level', 'can_fuel_consumed', 'can_fuel_rate', 'fuel_used_gps', 'fuel_rate_gps', 'fuel_consumed'],
-        '📡 Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'speed_io'],
-        '🔌 I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
-        '📊 Analog': ['analog_input_1', 'analog_input_2'],
-        '📏 Distanta': ['total_odometer', 'total_mileage'],
-        '⚠️ Evenimente': ['trip', 'over_speeding', 'unplug', 'crash_detection', 'idling', 'towing', 'green_driving_type', 'green_driving_value'],
-        '💤 Status': ['sleep_mode', 'data_mode', 'sd_status', 'iccid', 'auto_geofence']
-      };
-
-      const usedKeys = new Set(['eventIoId', 'totalCount']);
-
-      for (const [catName, catKeys] of Object.entries(categories)) {
-        const present = catKeys.filter(k => io[k] !== undefined);
-        if (present.length === 0) continue;
-
-        html += `<div class="io-cat-header">${catName}</div>`;
-        present.forEach(k => {
-          html += ioRow(k, formatIoValue(k, io[k]));
-          usedKeys.add(k);
-        });
-      }
-
-      // IO necategorizate
-      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k));
-      if (uncategorized.length > 0) {
-        html += `<div class="io-cat-header">🔧 Alte IO</div>`;
-        uncategorized.forEach(k => {
-          html += ioRow(k, io[k]);
-        });
-      }
-
-      container.innerHTML = html;
-    }
-
-    function ioRow(name, value) {
-      return `<div class="io-live-row"><span class="io-live-name">${name}</span><span class="io-live-val">${value}</span></div>`;
-    }
-
-    // ─── Load existing log ───
-    fetch('/api/debug/log').then(r => r.json()).then(entries => {
-      entries.forEach(addLogEntry);
-    }).catch(() => {});
-
-    // ─── Start ───
-    connectWs();
-  </script>
+/* ══════════ 6. SISTEM ══════════ */
+async function loadSystem() {
+  try {
+    const [s, h] = await Promise.all([J('/api/debug/live-stats'), J('/api/health').catch(() => ({}))]);
+    const st = (n, l, cls) => '<div class="stat"><div class="n ' + (cls || '') + '">' + n + '</div><div class="l">' + l + '</div></div>';
+    $('sy-stats').innerHTML =
+      st(h.status === 'ok' ? 'OK' : (h.status || '?'), 'sănătate · db ' + (h.db || '?'), h.status === 'ok' ? 'ok' : 'err') +
+      st(esc(h.version || '–'), 'versiune (commit)') +
+      st(s.livePositions, 'poziții live') +
+      st(s.activeConnections != null ? s.activeConnections : '–', 'conexiuni tcp') +
+      st(s.wsClients != null ? s.wsClients : '–', 'clienți ws') +
+      st(s.rss_mb + 'M', 'rss') + st(s.heapUsed_mb + 'M', 'heap') +
+      st(fmtDur(s.uptime_s), 'uptime proces') +
+      st(s.registeredImeis, 'imei înregistrate') + st(s.archivedImeis, 'arhivate') + st(s.stickyCanEntries, 'sticky can');
+    const g = s.ingest || {};
+    $('sy-ingest').innerHTML = [
+      ['de la', esc(g.since || '–')], ['bytes primiți', fmtBytes(g.bytes)], ['conexiuni', g.connections], ['pachete AVL', g.packets],
+      ['recorduri', g.records], ['ACK-uri', g.acks], ['respinse (strict/imei)', g.rejects], ['erori framing', g.parse_errors],
+      ['parse parțial', g.partial_parses], ['drop arhivate', g.archived_drops], ['insert eșuat', g.insert_fails], ['live skip (out-of-order)', g.live_skips_stale],
+    ].map(([k, v]) => '<span class="k">' + k + '</span><span class="v">' + (v != null ? v : '–') + '</span>').join('');
+  } catch (e) { toast('Sistem: ' + e.message, true); }
+  loadErrors();
+}
+async function loadAudit(fix) {
+  $('sy-audit').innerHTML = '<span class="mut">se rulează…</span>';
+  try {
+    const d = await J('/api/debug/live-audit' + (fix ? '?fix=1' : ''));
+    const leaks = d.leaks || [];
+    $('sy-audit').innerHTML =
+      '<div class="kv"><span class="k">fixed</span><span>' + (d.fixed ? '<span class="ok">da</span>' : 'nu') + '</span>' +
+      '<span class="k">set arhivate</span><span class="v">' + d.archivedSetSize + '</span>' +
+      '<span class="k">poziții live</span><span class="v">' + d.livePositionsSize + '</span>' +
+      '<span class="k">leaks</span><span class="' + (leaks.length ? 'err' : 'ok') + '">' + (leaks.length ? esc(leaks.join(', ')) : 'niciunul') + '</span></div>' +
+      '<details style="margin-top:6px"><summary class="mut" style="cursor:pointer">devices (' + (d.devices || []).length + ')</summary><pre>' + hi(d.devices || []) + '</pre></details>';
+  } catch (e) { $('sy-audit').innerHTML = '<span class="err">' + esc(e.message) + '</span>'; }
+}
+async function loadErrors() {
+  try {
+    const rows = await J('/api/admin/errors?limit=50');
+    $('sy-errors').innerHTML = (rows || []).map(r =>
+      '<tr><td class="mut">' + hhmm(r.created_at) + '</td><td class="' + (r.level === 'error' ? 'err' : 'warn') + '">' + esc(r.level || '?') + '</td>' +
+      '<td>' + esc((r.message || '').slice(0, 160)) + '</td><td class="mut">' + esc((r.method || '') + ' ' + (r.route || '')) + '</td></tr>').join('') || '<tr><td colspan="4" class="mut">niciun eveniment 🎉</td></tr>';
+  } catch (e) { $('sy-errors').innerHTML = '<tr><td colspan="4" class="err">' + esc(e.message) + '</td></tr>'; }
+}
+async function clearErrors() {
+  if (!confirm('Golesc jurnalul de erori?')) return;
+  try { await J('/api/admin/errors', { method: 'DELETE' }); toast('Jurnal golit'); loadErrors(); } catch (e) { toast(e.message, true); }
+}
+</script>
 </body>
 </html>
