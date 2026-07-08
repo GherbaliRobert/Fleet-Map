@@ -562,9 +562,9 @@ async function rHotspot(db, imeis, from, to, opts, devMap, companyId) {
   };
 }
 
-async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (per vehicul/zi + sumar pe șofer)
+async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (per vehicul/zi + sumar HR pe șofer)
   const drv = {}; try { (await db.getDrivers()).forEach(d => drv[d.id] = d.name); } catch (e) {}
-  const rows = []; let totalKm = 0, totalDrive = 0; const dayDrive = {}; const byDriver = {};
+  const rows = []; let totalKm = 0, totalDrive = 0, totalWorked = 0; const dayDrive = {}; const byDriver = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const dv = devMap[imei] && devMap[imei].driver_id ? (drv[devMap[imei].driver_id] || '—') : '—';
@@ -585,11 +585,13 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
     trips.forEach(tr => { const day = _dayKeyISO(tr.start); const d = byDay[day]; if (!d) return; if (d.firstDep == null) d.firstDep = tr.start; d.lastArr = tr.end; });
     for (const day of Object.keys(byDay).sort()) {
       const d = byDay[day];
+      // Ore lucrate = tura reală (de la prima plecare la ultima sosire); include pauzele/încărcările din interval — e numărul de pontaj
+      const worked = (d.firstDep != null && d.lastArr != null) ? Math.max(0, (new Date(d.lastArr).getTime() - new Date(d.firstDep).getTime()) / 1000) : 0;
       const row = [ dv, nm, day, d.firstDep ? fmtHM(d.firstDep) : '—', d.lastArr ? fmtHM(d.lastArr) : '—', fmtDur(d.drive), d.km.toFixed(1) ];
       rows.push(row);
-      totalKm += d.km; totalDrive += d.drive; dayDrive[day] = (dayDrive[day] || 0) + d.drive;
-      const b = byDriver[dv] || (byDriver[dv] = { days: new Set(), drive: 0, km: 0, vehicles: new Set(), dd: {}, rows: [] });
-      b.days.add(day); b.drive += d.drive; b.km += d.km; b.vehicles.add(nm); b.dd[day] = (b.dd[day] || 0) + d.drive; b.rows.push(row);
+      totalKm += d.km; totalDrive += d.drive; totalWorked += worked; dayDrive[day] = (dayDrive[day] || 0) + d.drive;
+      const b = byDriver[dv] || (byDriver[dv] = { days: new Set(), drive: 0, worked: 0, km: 0, vehicles: new Set(), dd: {}, rows: [] });
+      b.days.add(day); b.drive += d.drive; b.worked += worked; b.km += d.km; b.vehicles.add(nm); b.dd[day] = (b.dd[day] || 0) + d.drive; b.rows.push(row);
     }
   }
   const topDrv = _topN(Object.entries(byDriver).map(([n, b]) => [n, b.km]), 10);
@@ -598,23 +600,34 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
     { type: 'bar', title: 'Km pe șofer',             labels: topDrv.labels,          datasets: [{ label: 'km', data: topDrv.data }] },
     { type: 'bar', title: 'Timp condus pe zi (ore)', labels: dayKeys.map(_dayLabel), datasets: [{ label: 'ore', data: dayKeys.map(k => Math.round(dayDrive[k] / 360) / 10) }] }
   ] : [];
-  // Sumar PE ȘOFER (HR): zile lucrate / timp condus / km / vehicule + grafic individual la selecția șoferului
+  // Sumar HR pe ȘOFER: zile lucrate / ore lucrate (tura) / ore la volan / km / media pe zi + grafic individual la selecția șoferului
   const dNames = Object.keys(byDriver).sort((a, b) => a.localeCompare(b));
+  const totalDays = dNames.reduce((s, n) => s + byDriver[n].days.size, 0);
   let perVehicle;
-  if (dNames.length >= 2) {
+  if (dNames.length >= 1) { // mereu ≥1 → sumar pe șofer + foaie „Sumar" separată în Excel, chiar și pentru un singur șofer
     perVehicle = dNames.map(dv => {
       const b = byDriver[dv], dks = Object.keys(b.dd).sort();
       return {
         vehicul: dv,
-        summary: [['Zile lucrate', b.days.size], ['Timp condus', fmtDur(b.drive)], ['Km', Math.round(b.km)], ['Vehicule', b.vehicles.size]],
+        summary: [
+          ['Zile lucrate', b.days.size],
+          ['Ore lucrate',  fmtDur(b.worked)],
+          ['La volan',     fmtDur(b.drive)],
+          ['Km',           Math.round(b.km)],
+          ['Media/zi',     b.days.size ? fmtDur(b.worked / b.days.size) : '—']
+        ],
         rows: b.rows,
         charts: dks.length ? [{ type: 'bar', title: 'Timp condus pe zi (ore)', labels: dks.map(_dayLabel), datasets: [{ label: 'ore', data: dks.map(k => Math.round(b.dd[k] / 360) / 10) }] }] : []
       };
     });
   }
-  return { columns: ['Șofer','Vehicul','Zi','Prima activ.','Ultima activ.','Timp condus','Km'], rows,
-    summary: { 'Zile-vehicul': rows.length, 'Km total': Math.round(totalKm), 'Timp condus total': fmtDur(totalDrive) },
-    charts, perVehicle, groupLabel: 'Șofer' };
+  return {
+    columns: ['Șofer','Vehicul','Zi','Prima activ.','Ultima activ.','Timp condus','Km'], rows,
+    summary: { 'Șoferi': dNames.length, 'Zile lucrate': totalDays, 'Ore lucrate': fmtDur(totalWorked), 'La volan': fmtDur(totalDrive), 'Km total': Math.round(totalKm) },
+    // TOTAL explicit pt. tabelul „Sumar pe șofer": orele se adună ca durate, Media/zi nu se adună („—") — aliniat la ordinea din summary
+    summaryTotals: [ totalDays, fmtDur(totalWorked), fmtDur(totalDrive), Math.round(totalKm), '—' ],
+    charts, perVehicle, groupLabel: 'Șofer'
+  };
 }
 
 // Ore de conducere & repaus (HOS / Reg. CE 561/2006). Sursă: stările tahograf (io 187) + contorul de conducere
