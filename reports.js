@@ -743,15 +743,12 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
   }
   items.sort((a, b) => b.sortKey - a.sortKey);
   const rows = items.map(x => [ x.nm, x.startTxt, x.realTxt, x.endTxt, x.src ]);
-  const totalKm = items.reduce((s, x) => s + x.realKm, 0), totalH = items.reduce((s, x) => s + x.realH, 0), nCan = items.filter(x => x.isCan).length;
   const topKm = _topN(items.filter(x => x.unit === 'km' && x.realKm > 0).map(x => [x.nm, x.realKm]), 10);
   const charts = (topKm.labels && topKm.labels.length) ? [
     { type: 'bar', title: 'Km realizați pe vehicul', labels: topKm.labels, datasets: [{ label: 'km', data: topKm.data }] }
   ] : [];
-  const summary = { 'Vehicule': imeis.length, 'Km total (perioadă)': Math.round(totalKm) };
-  if (totalH > 0) summary['Ore total (perioadă)'] = Math.round(totalH);
-  summary['Cu index CAN'] = nCan;
-  return { columns: ['Vehicul','Index început','Realizat','Index sfârșit','Sursă'], rows, summary, charts };
+  // FĂRĂ sumar (cerut explicit): raportul e per-vehicul (index început → realizat → sfârșit + sursă); un bloc de totaluri nu adăuga nimic util.
+  return { columns: ['Vehicul','Index început','Realizat','Index sfârșit','Sursă'], rows, charts };
 }
 
 async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: unde a STAȚIONAT ultima dată fiecare vehicul (parcarea); dacă încă merge la final → poziția curentă marcată „în mișcare"
