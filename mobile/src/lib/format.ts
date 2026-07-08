@@ -40,9 +40,13 @@ export function gsmQuality(sig?: number): { label: string; level: number } {
 export function odometerKm(io?: any): number | null {
   if (!io) return null;
   // CAN-ul (odometru real din bord) prioritar; total_odometer (GPS device, de la instalare) doar fallback.
-  if (typeof io.can_total_mileage === 'number' && io.can_total_mileage > 0) return Math.round(io.can_total_mileage);
-  if (typeof io.can_total_mileage_counted === 'number' && io.can_total_mileage_counted > 0) return Math.round(io.can_total_mileage_counted);
-  if (typeof io.total_odometer === 'number') return Math.round(io.total_odometer / 1000);
+  // Valorile CAN pot veni ca STRINGURI („32685.7") → parseFloat, NU typeof==='number' (care le respingea → cădea pe GPS).
+  const cm = parseFloat(io.can_total_mileage);
+  if (isFinite(cm) && cm > 0) return Math.round(cm);
+  const cmc = parseFloat(io.can_total_mileage_counted);
+  if (isFinite(cmc) && cmc > 0) return Math.round(cmc);
+  const td = parseFloat(io.total_odometer);
+  if (isFinite(td)) return Math.round(td / 1000);
   return null;
 }
 export function voltageStr(io?: any): string | null {
