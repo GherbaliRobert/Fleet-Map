@@ -685,41 +685,49 @@ async function rHos(db, imeis, from, to, opts, devMap) {
   };
 }
 
-async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / ore — istoricul de index al mașinii (odometru + moto-ore), cu sursă
-  const rows = []; let totalKm = 0, nCan = 0;
+// Tipuri de vehicul care se măsoară în ORE de funcționare (nu km) — ca „în bord": utilaje, tractoare, generatoare etc.
+const MACHINE_TYPES = new Set(['utilaj','buldoexcavator','excavator','tractor','motostivuitor','stivuitor','combină agricolă','combina agricola','combină','combina','combine','grup electrogen','generator','automixt','mixer','forklift']);
+async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / ore — istoricul indexului din bord: început → realizat → sfârșit (km la auto, ore la utilaje)
+  const items = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
-    // Km GPS (fallback + validarea deltei CAN)
-    let kmGps = 0;
-    for (let i = 1; i < pts.length; i++) {
-      const pr = pts[i-1], p = pts[i], dist = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude);
-      if (dist < MAX_STEP_KM) kmGps += dist;
+    let kmGps = 0; // km GPS (fallback + validarea deltei CAN)
+    for (let i = 1; i < pts.length; i++) { const pr = pts[i-1], p = pts[i], d = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (d < MAX_STEP_KM) kmGps += d; }
+    // Odometru CAN + contor moto-ore CAN: prima/ultima citire validă din interval → index început/sfârșit reale
+    let odoFirst = null, odoLast = null, hFirst = null, hLast = null;
+    for (let i = 0; i < pts.length; i++) {
+      const o = odoCan(pts[i]); if (o != null) { if (odoFirst == null) odoFirst = o; odoLast = o; }
+      const h = engH(pts[i]);   if (h != null) { if (hFirst == null) hFirst = h; hLast = h; }
     }
-    // Odometru CAN: prima/ultima citire validă din perioadă → indexul curent + delta reală de km
-    let odoFirst = null, odoLast = null;
-    for (let i = 0; i < pts.length; i++) { const o = odoCan(pts[i]); if (o != null) { if (odoFirst == null) odoFirst = o; odoLast = o; } }
-    // Index ore de funcționare: ultima citire validă a contorului CAN de moto-ore
-    let hours = null;
-    for (let i = pts.length - 1; i >= 0; i--) { const h = engH(pts[i]); if (h != null) { hours = h; break; } }
+    const dev = devMap[imei] || {};
+    const isMachine = MACHINE_TYPES.has(String(dev.vehicle_type || '').toLowerCase().trim());
+    // Metru primar = „ce e în bord": utilaj cu contor de ore → ore; altfel km (cu fallback dacă lipsesc datele).
+    let unit = (isMachine && hLast != null) ? 'ore' : 'km';
+    if (unit === 'km' && odoLast == null && kmGps <= 0 && hLast != null) unit = 'ore';
 
-    const hasCanOdo = (odoLast != null); if (hasCanOdo) nCan++;
-    // Km pe perioadă: delta CAN dacă e coerentă cu GPS (nu contor blocat, nu salt absurd), altfel GPS.
-    let kmPeriod = kmGps;
-    if (odoFirst != null && odoLast != null && odoLast >= odoFirst) {
-      const dCan = odoLast - odoFirst;
-      if (dCan >= 0 && dCan >= kmGps * 0.5 && dCan <= kmGps * 3 + 20) kmPeriod = dCan;
+    let startTxt = '—', realTxt = '—', endTxt = '—', src = '—', sortKey = 0, realKm = 0, realH = 0;
+    if (unit === 'km') {
+      const dCan = (odoFirst != null && odoLast != null) ? (odoLast - odoFirst) : null;
+      const canOk = dCan != null && dCan >= 0 && dCan >= kmGps * 0.5 && dCan <= kmGps * 3 + 20; // contor coerent cu GPS (nu blocat, nu salt)
+      if (canOk) { startTxt = _grp(odoFirst) + ' km'; realTxt = _grp(dCan) + ' km'; endTxt = _grp(odoLast) + ' km'; src = 'CAN'; sortKey = dCan; realKm = dCan; }
+      else { realTxt = _grp(kmGps) + ' km'; src = 'GPS (estimat)'; sortKey = kmGps; realKm = kmGps; } // start/sfârșit „—" până la pasul 2 (km la bord)
+    } else { // ore de funcționare (moto-ore)
+      if (hFirst != null && hLast != null && hLast >= hFirst) { const dH = hLast - hFirst; startTxt = _grp(hFirst) + ' h'; realTxt = _grp(dH) + ' h'; endTxt = _grp(hLast) + ' h'; src = 'CAN'; sortKey = dH; realH = dH; }
+      else if (hLast != null) { endTxt = _grp(hLast) + ' h'; src = 'CAN'; } // avem doar indexul curent, nu și delta
     }
-    const nm = label(devMap, imei);
-    rows.push([ nm, Math.round(kmPeriod), hasCanOdo ? _grp(odoLast) + ' km' : '—', hours != null ? _grp(hours) + ' h' : '—', hasCanOdo ? 'CAN' : 'GPS (estimat)' ]);
-    totalKm += kmPeriod;
+    items.push({ nm: label(devMap, imei), unit, startTxt, realTxt, endTxt, src, sortKey, realKm, realH, isCan: (src === 'CAN') });
   }
-  rows.sort((a, b) => b[1] - a[1]);
-  const topKm = _topN(rows.map(r => [r[0], r[1]]), 10);
-  const charts = rows.length ? [
-    { type: 'bar', title: 'Km pe vehicul (perioadă)', labels: topKm.labels, datasets: [{ label: 'km', data: topKm.data }] }
+  items.sort((a, b) => b.sortKey - a.sortKey);
+  const rows = items.map(x => [ x.nm, x.startTxt, x.realTxt, x.endTxt, x.src ]);
+  const totalKm = items.reduce((s, x) => s + x.realKm, 0), totalH = items.reduce((s, x) => s + x.realH, 0), nCan = items.filter(x => x.isCan).length;
+  const topKm = _topN(items.filter(x => x.unit === 'km' && x.realKm > 0).map(x => [x.nm, x.realKm]), 10);
+  const charts = (topKm.labels && topKm.labels.length) ? [
+    { type: 'bar', title: 'Km realizați pe vehicul', labels: topKm.labels, datasets: [{ label: 'km', data: topKm.data }] }
   ] : [];
-  return { columns: ['Vehicul','Km (perioadă)','Index odometru','Ore funcționare','Sursă'], rows,
-    summary: { 'Vehicule': imeis.length, 'Km total (perioadă)': Math.round(totalKm), 'Cu odometru CAN': nCan }, charts };
+  const summary = { 'Vehicule': imeis.length, 'Km total (perioadă)': Math.round(totalKm) };
+  if (totalH > 0) summary['Ore total (perioadă)'] = Math.round(totalH);
+  summary['Cu index CAN'] = nCan;
+  return { columns: ['Vehicul','Index început','Realizat','Index sfârșit','Sursă'], rows, summary, charts };
 }
 
 async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: unde a STAȚIONAT ultima dată fiecare vehicul (parcarea); dacă încă merge la final → poziția curentă marcată „în mișcare"
