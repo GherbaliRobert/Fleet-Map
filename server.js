@@ -12,7 +12,7 @@ const session = require('express-session');
 const crypto = require('crypto');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
-const { parseAvlPacket, convertCanValue, expandCanFlags } = require('./codec8e');
+const { parseAvlPacket, convertCanValue, expandCanFlags, getIoName } = require('./codec8e');
 // Module opționale (export PDF/Excel + programare rapoarte) — tolerante la lipsă, ca să nu pice serverul
 let reportExport = null, reportSchedules = null, geocode = null;
 try { reportExport = require('./report_export'); } catch (e) { console.warn('[REPORTS] export PDF/Excel indisponibil:', e.message); }
@@ -304,6 +304,9 @@ function _persistLastCan(imei, io, ts) {
 }
 const activeConnections = new Map(); // IMEI -> socket info
 
+// Contoare cumulative de ingest (de la boot, in-memory) — expuse în /api/debug/live-stats pentru consola de debug (/debug).
+const ingestStats = { since: new Date().toISOString(), bytes: 0, connections: 0, rejects: 0, acks: 0, packets: 0, records: 0, parse_errors: 0, partial_parses: 0, archived_drops: 0, insert_fails: 0, live_skips_stale: 0 };
+
 // ─── Debug log (circular buffer) ───
 const debugLog = [];
 const DEBUG_MAX = 200;
@@ -496,9 +499,11 @@ const tcpServer = net.createServer((socket) => {
   socket.setNoDelay(true); // ACK rapid pe handshake/AVL, fără Nagle buffering
 
   console.log(`[TCP] Conexiune nouă de la ${clientAddr}`);
+  ingestStats.connections++;
   addDebugEntry({ event: 'connect', address: clientAddr });
 
   socket.on('data', async (data) => {
+    ingestStats.bytes += data.length;
     buffer = Buffer.concat([buffer, data]);
 
     try {
@@ -518,6 +523,7 @@ const tcpServer = net.createServer((socket) => {
         // handshake (ex. „<img onerror=…>") nu mai ajunge în DB / în feed-ul de notificări al super-adminului.
         if (!/^\d{10,20}$/.test(imei)) {
           console.warn(`[TCP] IMEI invalid de la ${clientAddr}: „${imei.slice(0, 40)}" — conexiune respinsă`);
+          ingestStats.rejects++;
           addDebugEntry({ event: 'reject', address: clientAddr, reason: 'imei_invalid' });
           socket.destroy();
           imei = null;
@@ -529,6 +535,7 @@ const tcpServer = net.createServer((socket) => {
         // NU bloca — evită să pici toate device-urile la pornire.
         if (STRICT_DEVICES && registeredLoaded && (!registeredImeis.has(imei) || archivedImeis.has(imei))) {
           console.warn(`[TCP] IMEI neînregistrat/respins ${imei} de la ${clientAddr} — respins (mod strict)`);
+          ingestStats.rejects++;
           addDebugEntry({ event: 'reject', imei, address: clientAddr, reason: 'not_registered' });
           logDeviceAttempt(imei, clientAddr);
           socket.destroy();
@@ -553,6 +560,7 @@ const tcpServer = net.createServer((socket) => {
 
         // Răspunde cu 0x01 = accept IMEDIAT (înainte de orice operație DB)
         socket.write(Buffer.from([0x01]));
+        ingestStats.acks++;
 
         // Înregistrează dispozitivul în DB — asincron, nu blochează handshake-ul
         db.upsertDevice(imei)
@@ -585,6 +593,7 @@ const tcpServer = net.createServer((socket) => {
       if (parsed.error) {
         // Eroare de FRAMING (preamble/codec invalid) — pachet nevalid la nivel de plic, nu îl putem accepta.
         console.error(`[TCP] Eroare parsare de la ${imei}: ${parsed.error}`);
+        ingestStats.parse_errors++;
         addDebugEntry({ event: 'error', imei, error: parsed.error });
         socket.write(Buffer.alloc(4, 0)); // răspunde cu 0
         return;
@@ -593,10 +602,12 @@ const tcpServer = net.createServer((socket) => {
       // ACK cu numărul de recorduri din HEADER — framing-ul e deja validat (totalPacketLength), deci ACK-ul NU
       // poate bloca trackerul nici dacă un record s-a parsat parțial. Se trimite înainte de scrierea în DB.
       { const _ack = Buffer.alloc(4); _ack.writeUInt32BE(parsed.numberOfRecords); socket.write(_ack); }
+      ingestStats.acks++; ingestStats.packets++; ingestStats.records += parsed.numberOfRecords || 0;
 
       // Un record corupt → l-am sărit, dar batch-ul a fost ACK-uit integral (trackerul nu rămâne blocat în resend).
       if (parsed.parseError) {
         console.warn(`[TCP] ${imei}: record corupt sărit (${parsed.parseError}) — ${parsed.records.length}/${parsed.numberOfRecords} recorduri valide`);
+        ingestStats.partial_parses++;
         addDebugEntry({ event: 'partial_parse', imei, error: parsed.parseError, valid: parsed.records.length, total: parsed.numberOfRecords });
       }
 
@@ -605,6 +616,7 @@ const tcpServer = net.createServer((socket) => {
       // ── Dispozitiv ARHIVAT: contractul s-a încheiat. ACK deja trimis (mai sus) → trackerul nu retrimite,
       //    dar NU procesăm / NU stocăm / NU actualizăm live. Istoricul vechi rămâne intact în positions_archive.
       if (archivedImeis.has(imei)) {
+        ingestStats.archived_drops++;
         addDebugEntry({ event: 'archived_drop', imei, numberOfRecords: parsed.numberOfRecords });
         return;
       }
@@ -668,7 +680,7 @@ const tcpServer = net.createServer((socket) => {
       for (let _att = 0; ; _att++) {
         try { await db.insertPositions(imei, parsed.records); break; }
         catch (e) {
-          if (_att >= 3) { console.error(`[TCP] insertPositions ${imei} eșuat după ${_att + 1} încercări: ${e.message}`); addDebugEntry({ event: 'insert_fail', imei, error: e.message }); break; }
+          if (_att >= 3) { console.error(`[TCP] insertPositions ${imei} eșuat după ${_att + 1} încercări: ${e.message}`); ingestStats.insert_fails++; addDebugEntry({ event: 'insert_fail', imei, error: e.message }); break; }
           await new Promise(r => setTimeout(r, 200 * (_att + 1)));
         }
       }
@@ -693,6 +705,7 @@ const tcpServer = net.createServer((socket) => {
         const _toMs = t => (t == null ? 0 : (typeof t === 'number' ? t : new Date(t).getTime()));
         const _exTs = _toMs(existing.timestamp), _newTs = _toMs(liveRec.timestamp);
         if (_exTs && _newTs && _newTs < _exTs && _exTs <= Date.now() + 120000) {
+          ingestStats.live_skips_stale++;
           addDebugEntry({ event: 'live_skip_stale', imei, recTs: _newTs, liveTs: _exTs });
         } else {
         // io: combină CAN-ul din TOT batch-ul (cea mai recentă valoare per cheie) — un record GPS-only la coadă
@@ -2826,7 +2839,7 @@ app.get('/api/debug/last-io/:imei', requireAuth, requireSuperadmin, async (req, 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Stare memorie live (monitorizare scalare): dimensiune livePositions + memoria procesului.
+// Stare memorie live (monitorizare scalare): dimensiune livePositions + memoria procesului + contoare ingest.
 app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
   const mem = process.memoryUsage();
   res.json({
@@ -2837,7 +2850,54 @@ app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
     rss_mb: Math.round(mem.rss / 1048576),
     heapUsed_mb: Math.round(mem.heapUsed / 1048576),
     uptime_s: Math.round(process.uptime()),
+    ingest: ingestStats,                       // contoare cumulative de la boot (bytes/pachete/recorduri/ACK/erori)
+    wsClients: (typeof wss !== 'undefined' && wss && wss.clients) ? wss.clients.size : null,
+    strict: STRICT_DEVICES,
+    registeredImeis: registeredImeis.size,
+    archivedImeis: archivedImeis.size,
+    stickyCanEntries: lastCanIo.size,
   });
+});
+
+// Intrarea BRUTĂ din livePositions + snapshot-ul CAN sticky pentru un IMEI — pentru IO Inspector din consola /debug.
+// (/api/live e filtrat+enriched; aici vrem exact ce ține serverul în memorie: can_stale, moved_at, stale, io complet.)
+app.get('/api/debug/live/:imei', requireAuth, requireSuperadmin, (req, res) => {
+  const imei = req.params.imei;
+  const sticky = lastCanIo.get(imei) || null;
+  res.json({
+    imei,
+    live: livePositions.get(imei) || null,
+    connected: activeConnections.has(imei),
+    connection: (() => { const c = activeConnections.get(imei); return c ? { address: c.address, connectedAt: c.connectedAt } : null; })(),
+    sticky: sticky ? { io: sticky.io, ts: sticky.ts } : null,
+    sticky_persist_ts: lastCanPersistTs.get(imei) || null,
+  });
+});
+
+// Clienții WebSocket conectați (cine ascultă live feed-ul) — pentru consola /debug.
+app.get('/api/debug/ws-clients', requireAuth, requireSuperadmin, (req, res) => {
+  const list = [];
+  try {
+    wss.clients.forEach(c => list.push({
+      userId: c._userId || null, role: c._role || null, companyId: c._companyId || null,
+      authed: !!c._authed, isSuper: !!c._isSuper, open: c.readyState === 1,
+      scope: c._allowedImeis == null ? 'toate' : (c._allowedImeis.size + ' imei'),
+    }));
+  } catch (e) {}
+  res.json({ count: list.length, clients: list });
+});
+
+// Referința IO generată din SURSA reală (codec8e getIoName, per interfață) — înlocuiește tabelele hardcodate din UI.
+// Un AVL ID are sensuri diferite pe standard(LV-CAN) / FMS / tacho; consola le arată alături.
+app.get('/api/debug/io-reference', requireAuth, requireSuperadmin, (req, res) => {
+  const ref = {};
+  for (let id = 0; id <= 1200; id++) {
+    const std = getIoName(id, null), fms = getIoName(id, 'fms'), tacho = getIoName(id, 'tacho');
+    const raw = 'io_' + id;
+    if (std === raw && fms === raw && tacho === raw) continue; // necunoscut peste tot → nu-l listăm
+    ref[id] = { standard: std !== raw ? std : null, fms: fms !== raw ? fms : null, tacho: tacho !== raw ? tacho : null };
+  }
+  res.json({ ids: ref, count: Object.keys(ref).length });
 });
 
 // Audit „de ce apare X pe hartă": pentru fiecare vehicul — status DB vs set arhivat în memorie vs prezent în live.
@@ -7621,7 +7681,20 @@ app.post('/api/trips/detect', requireAuth, requireFleet, async (req, res) => {
 // ─── Debug API (doar admin) ───
 
 app.get('/api/debug/log', requireAuth, requireSuperadmin, (req, res) => { // STRICT super-admin: debugLog e buffer global cross-tenant (IMEI/GPS/IO ale tuturor companiilor)
-  res.json(debugLog);
+  // Filtre opționale pentru consola de debug: ?imei=…&event=…&limit=N
+  let rows = debugLog;
+  const fImei = (req.query.imei || '').trim(), fEvent = (req.query.event || '').trim();
+  if (fImei) rows = rows.filter(r => r.imei === fImei);
+  if (fEvent) rows = rows.filter(r => r.event === fEvent);
+  const lim = Math.min(parseInt(req.query.limit) || DEBUG_MAX, DEBUG_MAX);
+  res.json(rows.slice(-lim));
+});
+
+// Pagina consolei de debug (RA DevConsole) — gated server-side: DOAR super-admin (HTML-ul static /debug.html rămâne
+// doar un shell; toate datele vin din API-urile de mai jos, fiecare gardat individual).
+app.get('/debug', requireAuth, requireSuperadmin, (req, res) => {
+  res.set('Cache-Control', NO_CACHE);
+  res.sendFile(path.join(__dirname, 'public', 'debug.html'));
 });
 
 app.get('/api/debug/raw/:imei', requireAuth, requireAdmin, withScope, async (req, res) => {
@@ -7656,6 +7729,7 @@ async function _wsAuthContext(ws, userId, role, companyId, label) {
   ws._userId = userId;
   ws._role = role;
   ws._isAdmin = hasPerm(role, 'manageUsers');
+  ws._isSuper = isSuper(role); // frame-urile type:'debug' (buffer cross-tenant) merg DOAR la super-admin
   const wsCompanyId = await resolveCompanyId({ userId, role, companyId });
   ws._companyId = wsCompanyId;
   ws._allowedImeis = await getAllowedImeiSet(userId, role, wsCompanyId);
@@ -7718,6 +7792,7 @@ wss.on('connection', (ws, req) => {
       try { const u = await db.getUserById(req.session.userId); if (u) { role = u.role; companyId = u.company_id; } } catch (e) {}
       ws._role = role;
       ws._isAdmin = hasPerm(role, 'manageUsers');
+      ws._isSuper = isSuper(role); // frame-urile type:'debug' (buffer cross-tenant) merg DOAR la super-admin
       const wsCompanyId = await resolveCompanyId({ userId: req.session.userId, role, companyId });
       ws._companyId = wsCompanyId;
       ws._allowedImeis = await getAllowedImeiSet(req.session.userId, role, wsCompanyId);
@@ -7753,7 +7828,7 @@ function broadcastWs(message) {
   wss.clients.forEach((client) => {
     if (client.readyState !== 1) return;       // doar conexiuni OPEN
     if (!client._authed) return;               // nu trimite înainte de autentificare
-    if (isDebug && !client._isAdmin) return;   // debug doar pentru admini
+    if (isDebug && !client._isSuper) return;   // debug DOAR super-admin (buffer global cross-tenant, aliniat cu GET /api/debug/log)
     if (imei && client._allowedImeis instanceof Set && !client._allowedImeis.has(imei)) return; // filtrare pe acces
     if (imei && DEMO_SET.has(imei) && client._companyId !== demoCompanyId) return; // demo doar în contul demo
     // Tenant: NOTIFICARE imei-less (ex: expirare permis) → doar clienții companiei ei; super (allowedImeis null) o ia oricum.
