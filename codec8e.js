@@ -148,7 +148,8 @@ function parseRecord(buffer, offset, isExtended) {
       timestamp,
       priority,
       gps,
-      io: io.elements
+      io: io.elements,
+      io_raw: io._raw   // id AVL brut -> valoare (DOAR pt. debug/DevConsole; NU se stochează — insertPositions salvează doar record.io)
     },
     nextOffset: offset
   };
@@ -197,34 +198,47 @@ function parseIoElement(buffer, offset, isExtended) {
     offset += 1;
   }
 
+  const _raw = {}; // toate ID-urile brute din record (toate grupurile) — pt. rezolvarea coliziunilor de nume
+
   // 1-byte IO elements
   const result1 = parseIoGroup(buffer, offset, 1, isExtended);
-  Object.assign(elements, result1.values);
+  Object.assign(elements, result1.values); Object.assign(_raw, result1.raw);
   offset = result1.nextOffset;
 
   // 2-byte IO elements
   const result2 = parseIoGroup(buffer, offset, 2, isExtended);
-  Object.assign(elements, result2.values);
+  Object.assign(elements, result2.values); Object.assign(_raw, result2.raw);
   offset = result2.nextOffset;
 
   // 4-byte IO elements
   const result4 = parseIoGroup(buffer, offset, 4, isExtended);
-  Object.assign(elements, result4.values);
+  Object.assign(elements, result4.values); Object.assign(_raw, result4.raw);
   offset = result4.nextOffset;
 
   // 8-byte IO elements
   const result8 = parseIoGroup(buffer, offset, 8, isExtended);
-  Object.assign(elements, result8.values);
+  Object.assign(elements, result8.values); Object.assign(_raw, result8.raw);
   offset = result8.nextOffset;
 
   // Codec 8E has variable-length IO elements (NX)
   if (isExtended) {
     const nxResult = parseIoGroupNX(buffer, offset);
-    Object.assign(elements, nxResult.values);
+    Object.assign(elements, nxResult.values); Object.assign(_raw, nxResult.raw);
     offset = nxResult.nextOffset;
   }
 
-  return { elements, nextOffset: offset };
+  // ── FIX COLIZIUNI (harta STANDARD / LV-CAN200 mașini) ──
+  // Mai multe AVL ID-uri se mapează pe ACELAȘI semnal și „ultimul câștigă" (Object.assign):
+  //   RPM ← 35 (real) + 85 (=engine_load J1939) + 88 ;  km ← 36 (real) + 87 (=fuel_pct) ;  litri ← 34 (real) + 84.
+  // Un ALIAS de camion (85/87) suprascria semnalul REAL al mașinii → RPM=0, km înghețat/greșit. Forțăm ID-ul PRIMAR
+  // (35/36/34) să câștige, indiferent de ordinea din pachet. Doar iface STANDARD (null) — FMS/tacho au alte semnificații.
+  if (_ifaceForParse == null) {
+    if (_raw[35] !== undefined) elements.can_engine_rpm = _raw[35];        // RPM real (nu 85=load / 88)
+    if (_raw[36] !== undefined) elements.can_total_mileage = _raw[36];     // km real (nu 87=fuel%)
+    if (_raw[34] !== undefined) elements.can_fuel_level_liters = _raw[34]; // litri reali (nu 84)
+  }
+
+  return { elements, _raw, nextOffset: offset };
 }
 
 function parseIoGroup(buffer, offset, byteSize, isExtended) {
@@ -238,6 +252,7 @@ function parseIoGroup(buffer, offset, byteSize, isExtended) {
   }
 
   const values = {};
+  const raw = {}; // id -> value BRUT (înainte de mapare) — pt. rezolvarea coliziunilor pe nume în parseIoElement
   for (let i = 0; i < count; i++) {
     let id;
     if (isExtended) {
@@ -257,10 +272,11 @@ function parseIoGroup(buffer, offset, byteSize, isExtended) {
     }
     offset += byteSize;
 
+    raw[id] = value;
     values[getIoName(id)] = value;
   }
 
-  return { values, nextOffset: offset };
+  return { values, raw, nextOffset: offset };
 }
 
 function parseIoGroupNX(buffer, offset) {
@@ -268,6 +284,7 @@ function parseIoGroupNX(buffer, offset) {
   offset += 2;
 
   const values = {};
+  const raw = {};
   for (let i = 0; i < count; i++) {
     const id = buffer.readUInt16BE(offset);
     offset += 2;
@@ -279,10 +296,11 @@ function parseIoGroupNX(buffer, offset) {
     const value = buffer.slice(offset, offset + length).toString('hex');
     offset += length;
 
+    raw[id] = value;
     values[getIoName(id)] = value;
   }
 
-  return { values, nextOffset: offset };
+  return { values, raw, nextOffset: offset };
 }
 
 // Mapare AVL ID -> nume citibil.
