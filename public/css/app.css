@@ -750,6 +750,9 @@
     }
 
     .history-header h3 i { color: var(--accent); }
+    /* Titlu + subtitlu (numele vehiculului + nr. înmatriculare) în coloană, la stânga; butoanele rămân la dreapta. */
+    .hp-title-wrap { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .hp-veh-label { font-size: 12px; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     #history-controls {
       display: flex;

@@ -202,7 +202,10 @@
       <!-- History Panel (floating on map) -->
       <div id="history-panel">
         <div class="history-header">
-          <h3><i class="fas fa-route"></i> Istoric traseu</h3>
+          <div class="hp-title-wrap">
+            <h3><i class="fas fa-route"></i> Istoric traseu</h3>
+            <div id="hp-veh-label" class="hp-veh-label" style="display:none;"></div>
+          </div>
           <span style="display:flex;align-items:center;gap:6px;">
             <button class="history-btn" id="hp-toggle-filters" onclick="hpToggleFilters()"><i class="fas fa-sliders-h"></i> Filtre</button>
             <button class="close-btn" onclick="closeHistory()">&#10005;</button>
@@ -211,7 +214,7 @@
         <div id="history-controls">
           <div class="hp-field">
             <label for="history-imei">Vehicul</label>
-            <select id="history-imei" onchange="selectedImei=this.value"></select>
+            <select id="history-imei" onchange="selectedImei=this.value;hpSetVehicleLabel(this.value)"></select>
           </div>
           <div class="hp-interval">
             <div class="rep-interval-title"><i class="far fa-clock"></i> Interval orar</div>
@@ -8713,8 +8716,19 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── History ───
+    // Subtitlu panou Istoric traseu: numele vehiculului + nr. înmatriculare (din Map-ul `devices`; fallback pe textul opțiunii selectate). textContent = sigur.
+    function hpSetVehicleLabel(imei) {
+      var el = document.getElementById('hp-veh-label'); if (!el) return;
+      var d = imei ? devices.get(imei) : null;
+      var sel = document.getElementById('history-imei');
+      var txt = d ? ((d.name || imei) + (d.plate ? ' · ' + d.plate : ''))
+                  : ((sel && String(sel.value) === String(imei) && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : '');
+      if (!imei || !txt) { el.textContent = ''; el.style.display = 'none'; return; }
+      el.textContent = txt; el.style.display = '';
+    }
     function showHistory(imei) {
       selectedImei = imei;
+      hpSetVehicleLabel(imei);
       const panel = document.getElementById('history-panel');
       panel.classList.add('visible');
       document.body.classList.add('history-open'); // ascunde FAB pe mobile
@@ -8738,6 +8752,7 @@ const pozitii = await r.json();</code></pre>
       historyMarkers = [];
       hpClearOsmOverlay();   // curăță și segmentele roșii de limite OSM (nu le mai lasă pe hartă)
       _routePillHide();
+      hpSetVehicleLabel(null); // ascunde subtitlul cu vehiculul
     }
 
     // Culoare segment în funcție de viteză vs. limită (verde/portocaliu/roșu)
@@ -8780,6 +8795,7 @@ const pozitii = await r.json();</code></pre>
         : '<option value="">— niciun vehicul —</option>';
       if (selectedImei && list.some(d => String(d.imei) === String(selectedImei))) sel.value = selectedImei;
       else if (list.length) { sel.value = list[0].imei; selectedImei = list[0].imei; }
+      hpSetVehicleLabel(selectedImei);
       const f = document.getElementById('history-from'), t = document.getElementById('history-to');
       if (f && t && (!f.value || !t.value)) {
         // setează intervalul „azi" DIRECT, fără să apeleze hpQuick (care ar declanșa loadHistory + plierea)
@@ -8931,6 +8947,7 @@ const pozitii = await r.json();</code></pre>
       const hsel = document.getElementById('history-imei');
       if (hsel && hsel.value) selectedImei = hsel.value;
       if (!selectedImei) { alert('Selectează un vehicul din lista de sus.'); return; }
+      hpSetVehicleLabel(selectedImei);
 
       const from = document.getElementById('history-from').value;
       const to = document.getElementById('history-to').value;
