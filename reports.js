@@ -47,11 +47,12 @@ function loc(p) { return p ? p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(
 function io(p) { return p && p.io_data ? p.io_data : {}; }
 // Odometru (km) din CAN la un punct (start/stop cursă). Fallback null dacă vehiculul n-are CAN.
 function odo(p) { const i = io(p); let v = i.can_total_mileage; if (v == null) v = i.can_total_mileage_counted; if (v == null) v = i.total_odometer; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
-// Odometru REAL din CAN (km) — oglindă a panoului de detalii: can_total_mileage → _counted. FĂRĂ fallback pe total_odometer
-// (acela e contorul GPS al device-ului „de la montare", în METRI → alt scop; intră abia la indexul bord+GPS, pasul 2).
-// IMPORTANT: valorile CAN din io_data pot fi STRINGURI („32685.7") → citim cu != null + parseFloat (ca _odoFromIo din server.js),
-// NU cu typeof==='number' (care le respinge → „—" deși CAN-ul merge).
-function odoCan(p) { const i = io(p); const v = i.can_total_mileage != null ? i.can_total_mileage : (i.can_total_mileage_counted != null ? i.can_total_mileage_counted : null); if (v == null) return null; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
+// Odometru REAL din bord = DOAR can_total_mileage (IO 87). NU folosim can_total_mileage_counted (IO 105 = „de la pornire/contor",
+// ALT contor cu ALTĂ bază): amestecul lor dădea un index inflat, „din viitor" (ex. 33.158 în loc de 32.685 real din bord — când
+// mașina parchează și nu mai trimite can_total_mileage, un ping cu doar _counted „împingea" indexul). Nici total_odometer (contorul
+// GPS al device-ului, metri — intră abia la indexul bord+GPS, pasul 2).
+// IMPORTANT: valorile CAN pot fi STRINGURI („32685.7") → citim cu != null + parseFloat (ca _odoFromIo din server.js), NU typeof==='number'.
+function odoCan(p) { const v = io(p).can_total_mileage; if (v == null) return null; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
 // Index ore de funcționare (moto-ore) din CAN: total (IO 104, h) preferat; altfel worktime (IO 102/103, minute→h). null dacă lipsește.
 function engH(p) { const i = io(p); let h = i.can_engine_total_hours != null ? parseFloat(i.can_engine_total_hours) : (i.can_engine_worktime != null ? parseFloat(i.can_engine_worktime) / 60 : (i.can_engine_worktime_counted != null ? parseFloat(i.can_engine_worktime_counted) / 60 : null)); return (h != null && isFinite(h) && h > 0) ? Math.round(h) : null; }
 // Grupare mii stil RO (145320 → „145.320").
