@@ -290,6 +290,11 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inventory_number VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS ignition_source VARCHAR(10);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS show_transport BOOLEAN DEFAULT TRUE;
+        -- „Km la bord" (index manual pt. mașini fără CAN): valoarea reală introdusă de operator la montare +
+        -- snapshot-ul contorului GPS al device-ului (total_odometer, metri) și momentul → indexul se duce înainte.
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_km NUMERIC(12,1);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_dev_m NUMERIC(14,1);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_at TIMESTAMPTZ;
       END $$
     `);
 
@@ -1618,12 +1623,13 @@ const VEHICLE_DETAIL_COLS = [
   'consumption_city', 'consumption_idle', 'consumption_road', 'passenger_seats',
   'emission_class', 'tire_size', 'engine_serial', 'displacement', 'power_kw',
   'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source', 'show_transport'
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source', 'show_transport',
+  'odo_base_km'
 ];
 const NUMERIC_COLS = new Set([
   'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',
   'consumption_road', 'passenger_seats', 'displacement', 'power_kw', 'payload',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct'
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'odo_base_km'
 ]);
 // Doar acestea sunt NUMERIC(6,2) (acceptă zecimale); restul din NUMERIC_COLS sunt INTEGER → rotunjim,
 // altfel un decimal (ex. 90.5) e respins de Postgres/PGlite ("invalid input syntax for type integer") și pică tot UPDATE-ul.

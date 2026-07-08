@@ -3671,7 +3671,28 @@ app.put('/api/devices/:imei/details', requireAuth, requireFleet, withScope, asyn
     // Câmpuri rezervate SUPER-ADMIN (admin/user companie nu le pot seta) — eliminate din body dacă nu e super.
     if (!req.isSuper) { delete b.ignition_source; delete b.show_transport; }
     if (b.show_transport !== undefined) b.show_transport = (b.show_transport === true || b.show_transport === 'true'); // normalizează boolean
+    // „Km la bord" (index manual pt. mașini fără CAN): reținem valoarea veche ÎNAINTE de update, ca să (re)facem snapshot-ul
+    // contorului GPS DOAR când operatorul chiar schimbă valoarea — altfel orice resalvare a fișei ar rebaza contorul și
+    // ar pierde km-ii deja parcurși de la montare. Fișa trimite mereu câmpul, deci comparăm explicit vechi vs nou.
+    let odoPrev;
+    if (Object.prototype.hasOwnProperty.call(b, 'odo_base_km')) { try { const c = await db.pool.query('SELECT odo_base_km FROM devices WHERE imei = $1', [imei]); odoPrev = c.rows[0] ? c.rows[0].odo_base_km : null; } catch (e) { odoPrev = undefined; } }
     await db.updateVehicleDetails(imei, b);
+    if (Object.prototype.hasOwnProperty.call(b, 'odo_base_km') && odoPrev !== undefined) {
+      try {
+        const newVal = (b.odo_base_km === '' || b.odo_base_km == null) ? null : Math.round(Number(b.odo_base_km));
+        const prevVal = (odoPrev == null || odoPrev === '') ? null : Math.round(Number(odoPrev));
+        if (newVal !== prevVal) { // valoarea s-a schimbat → (re)snapshot al contorului GPS (total_odometer, IO 16, metri) + momentul; la ștergere, curățăm
+          if (newVal == null) {
+            await db.pool.query('UPDATE devices SET odo_base_dev_m = NULL, odo_base_at = NULL WHERE imei = $1', [imei]);
+          } else {
+            const r = await db.pool.query("SELECT io_data FROM positions WHERE imei = $1 AND io_data->>'total_odometer' IS NOT NULL ORDER BY timestamp DESC LIMIT 1", [imei]);
+            const pio = (r.rows[0] && r.rows[0].io_data) || {};
+            const devM = (typeof pio.total_odometer === 'number') ? pio.total_odometer : null;
+            await db.pool.query('UPDATE devices SET odo_base_dev_m = $2, odo_base_at = NOW() WHERE imei = $1', [imei, devM]);
+          }
+        }
+      } catch (e) { /* nu bloca salvarea fișei dacă snapshot-ul eșuează */ }
+    }
     if (b.ignition_source !== undefined) refreshDin1Set(); // override „contact din DIN1" → actualizează cache ingest
     invalidateLiveEnrichCache(); // fișa poate conține fuel_price/cost_per_ton_km/greutăți din enrichment
     auditReq(req, 'update', 'device', imei, { fields: Object.keys(b).length });

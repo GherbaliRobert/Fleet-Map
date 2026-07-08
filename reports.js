@@ -54,6 +54,8 @@ function odoCan(p) { const i = io(p); const v = (typeof i.can_total_mileage === 
 function engH(p) { const i = io(p); if (typeof i.can_engine_total_hours === 'number' && i.can_engine_total_hours > 0) return Math.round(i.can_engine_total_hours); if (typeof i.can_engine_worktime === 'number' && i.can_engine_worktime > 0) return Math.round(i.can_engine_worktime / 60); if (typeof i.can_engine_worktime_counted === 'number' && i.can_engine_worktime_counted > 0) return Math.round(i.can_engine_worktime_counted / 60); return null; }
 // Grupare mii stil RO (145320 → „145.320").
 function _grp(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+// Contorul GPS al device-ului „de la montare" (total_odometer, IO 16, METRI). Baza indexului bord+GPS (pasul 2). null dacă lipsește.
+function todo(p) { const i = io(p); return (typeof i.total_odometer === 'number' && i.total_odometer >= 0) ? i.total_odometer : null; }
 // Adresă din cache (reverse-geocode); fallback pe coordonate dacă nu e încă rezolvată.
 function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = geocode.peek(p.latitude, p.longitude); if (a) return a; } return loc(p); }
 function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
@@ -100,7 +102,7 @@ async function history(db, imei, from, to) {
 async function deviceNames(db, imeis) {
   const map = {};
   try {
-    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.consumption_idle, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
+    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
     r.rows.forEach(d => map[d.imei] = d);
   } catch (e) {}
   return map;
@@ -709,8 +711,20 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
     if (unit === 'km') {
       const dCan = (odoFirst != null && odoLast != null) ? (odoLast - odoFirst) : null;
       const canOk = dCan != null && dCan >= 0 && dCan >= kmGps * 0.5 && dCan <= kmGps * 3 + 20; // contor coerent cu GPS (nu blocat, nu salt)
+      // Index bord+GPS (mașini fără CAN): km reali din fișă + contorul GPS al device-ului (total_odometer) de la snapshot încoace.
+      const baseKm = dev.odo_base_km != null ? parseFloat(dev.odo_base_km) : null;
+      const baseDev = dev.odo_base_dev_m != null ? parseFloat(dev.odo_base_dev_m) : null;
+      let tdFirst = null, tdLast = null;
+      for (let i = 0; i < pts.length; i++) { const td = todo(pts[i]); if (td != null) { if (tdFirst == null) tdFirst = td; tdLast = td; } }
+      const bordOk = baseKm != null && baseDev != null && tdLast != null && tdLast >= baseDev - 1000; // contor monoton (toleranță zgomot)
       if (canOk) { startTxt = _grp(odoFirst) + ' km'; realTxt = _grp(dCan) + ' km'; endTxt = _grp(odoLast) + ' km'; src = 'CAN'; sortKey = dCan; realKm = dCan; }
-      else { realTxt = _grp(kmGps) + ' km'; src = 'GPS (estimat)'; sortKey = kmGps; realKm = kmGps; } // start/sfârșit „—" până la pasul 2 (km la bord)
+      else if (bordOk) {
+        const endKm = baseKm + Math.max(0, tdLast - baseDev) / 1000;
+        const startKm = (tdFirst != null) ? baseKm + Math.max(0, tdFirst - baseDev) / 1000 : null;
+        const dlt = (tdFirst != null) ? Math.max(0, tdLast - tdFirst) / 1000 : kmGps;
+        startTxt = startKm != null ? _grp(startKm) + ' km' : '—'; realTxt = _grp(dlt) + ' km'; endTxt = _grp(endKm) + ' km'; src = 'bord+GPS'; sortKey = dlt; realKm = dlt;
+      }
+      else { realTxt = _grp(kmGps) + ' km'; src = 'GPS (estimat)'; sortKey = kmGps; realKm = kmGps; } // fără CAN și fără „km la bord" → doar realizatul GPS
     } else { // ore de funcționare (moto-ore)
       if (hFirst != null && hLast != null && hLast >= hFirst) { const dH = hLast - hFirst; startTxt = _grp(hFirst) + ' h'; realTxt = _grp(dH) + ' h'; endTxt = _grp(hLast) + ' h'; src = 'CAN'; sortKey = dH; realH = dH; }
       else if (hLast != null) { endTxt = _grp(hLast) + ' h'; src = 'CAN'; } // avem doar indexul curent, nu și delta
