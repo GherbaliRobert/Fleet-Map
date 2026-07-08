@@ -8,6 +8,7 @@ import { statusOf, usesTachograph } from '../lib/status';
 import { fmtDateTime, fmtDuration, fmtAgo, gpsQuality, gsmQuality, odometerKm, voltageStr } from '../lib/format';
 import { Icon } from '../components/Icon';
 import { MiniMap } from '../components/MiniMap';
+import { MapModal } from '../components/MapModal';
 import { WorkSchedEditor } from '../components/WorkSchedEditor';
 import './detail.css';
 import './admin.css';
@@ -88,6 +89,7 @@ export function VehicleDetail() {
   const [sensors, setSensors] = useState<any[] | null>(null);
   const [notifs, setNotifs] = useState<NotificationItem[]>([]);
   const [navOpen, setNavOpen] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const canManage = !!me.value?.permissions?.manageFleet;
   const [editOpen, setEditOpen] = useState(false);
   const [ef, setEf] = useState<Record<string, any>>({});
@@ -249,7 +251,10 @@ export function VehicleDetail() {
         </div>
 
         {v && v.latitude != null && (
-          <div class="d-map"><MiniMap lat={v.latitude!} lng={v.longitude!} angle={v.angle || 0} color={s ? HEX[s.status] : '#3FE07D'} /></div>
+          <div class="d-map">
+            <MiniMap lat={v.latitude!} lng={v.longitude!} angle={v.angle || 0} color={s ? HEX[s.status] : '#3FE07D'} />
+            <button class="d-map-expand" onClick={() => setShowMap(true)} aria-label="Extinde harta" title="Extinde harta"><Icon name="maximize" size={18} /></button>
+          </div>
         )}
 
         <div class="d-actions">
@@ -309,6 +314,10 @@ export function VehicleDetail() {
           </div>
         </div>
       </div>
+
+      {showMap && v && v.latitude != null && (
+        <MapModal lat={v.latitude!} lng={v.longitude!} angle={v.angle || 0} color={s ? HEX[s.status] : '#3FE07D'} label={v.plate || v.name || 'Locație'} onClose={() => setShowMap(false)} />
+      )}
 
       {sheet && (
         <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget) setSheet(''); }}>
