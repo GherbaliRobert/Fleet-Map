@@ -167,6 +167,7 @@ function segmentTrack(pts, stopMinSec) {
 // Frontend-ul (renderReport) le desenează cu Chart.js și aplică paleta automat.
 function _dayKeyISO(ts) { try { return new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TZ }).format(new Date(ts)); } catch (e) { return ''; } } // YYYY-MM-DD în fusul afișat (nu UTC) → atribuire corectă a zilei lângă miezul nopții
 function _dayLabel(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] : isoKey; }
+function _dayLabelFull(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : isoKey; } // YYYY-MM-DD → DD.MM.YYYY
 // Grupează pe zi: items[], getTs(item)=timestamp, getVal(item)=valoare numerică (null ⇒ numără). Sortat cronologic.
 function _groupByDay(items, getTs, getVal) {
   const m = {};
@@ -1374,32 +1375,48 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
     summary: { 'Total scadențe': rows.length, 'Depășite': overdue, 'În ≤30 zile': soon }, charts };
 }
 
-// ── Raport NOU: Disponibilitate flotă (zile active/inactive, cea mai lungă pauză, ultima poziție) ────────
+// ── Raport: Disponibilitate flotă — zile active/inactive cu DATE exacte, cea mai lungă pauză, ultima poziție, semnal ──
 async function rFleetUptime(db, imeis, from, to, opts, devMap) {
-  const fromMs = new Date(from).getTime(), toMs = new Date(to).getTime();
-  const periodDays = Math.max(1, Math.round((toMs - fromMs) / 86400000));
-  const rows = []; let inactive = 0, dark = 0; const vIdle = [];
+  const fromMs = new Date(from).getTime(), toMs = new Date(to).getTime(), span = Math.max(1, toMs - fromMs);
+  // Toate zilele calendaristice din interval (chei YYYY-MM-DD în fusul afișat) → pentru a lista exact zilele inactive.
+  const uniqDays = []; { const seen = new Set();
+    for (let ms = fromMs; ms <= toMs; ms += 86400000) { const k = _dayKeyISO(new Date(ms).toISOString()); if (k && !seen.has(k)) { seen.add(k); uniqDays.push(k); } }
+    const kL = _dayKeyISO(new Date(toMs).toISOString()); if (kL && !seen.has(kL)) { seen.add(kL); uniqDays.push(kL); }
+  }
+  const items = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
-    const moveDays = new Set(); let maxGap = 0, prevTs = fromMs, lastTs = null;
-    for (const p of pts) { const ts = t(p); if (ts - prevTs > maxGap) maxGap = ts - prevTs; prevTs = ts;
-      if ((p.speed || 0) > IDLE_SPEED) moveDays.add(_dayKeyISO(p.timestamp)); lastTs = ts; }
+    const moveDays = new Set(); let maxGap = 0, prevTs = fromMs, lastTs = null, satSum = 0, satN = 0;
+    for (const p of pts) {
+      const ts = t(p); if (ts - prevTs > maxGap) maxGap = ts - prevTs; prevTs = ts;
+      if ((p.speed || 0) > IDLE_SPEED) moveDays.add(_dayKeyISO(p.timestamp));
+      const s = p.satellites; if (typeof s === 'number' && s > 0) { satSum += s; satN++; }
+      lastTs = ts;
+    }
     if (toMs - prevTs > maxGap) maxGap = toMs - prevTs; // pauză până la finalul perioadei
-    const activeDays = moveDays.size, idleDays = Math.max(0, periodDays - activeDays);
-    const ageH = lastTs ? Math.round((Date.now() - lastTs) / 3600000) : null;
+    // Zile active / inactive cu DATE exacte (DD.MM.YYYY), sortate cronologic.
+    const activeKeys = Array.from(moveDays).sort();
+    const inactiveKeys = uniqDays.filter(k => !moveDays.has(k));
+    const listTxt = (keys) => keys.length ? keys.length + ' zile: ' + keys.map(_dayLabelFull).join(', ') : '0 zile';
+    // Semnal pe perioadă: Inexistent (nimic / tăcut pe a doua jumătate = offline) · Bun (fix GPS bun + transmisie constantă) · Slab (rest).
+    const avgSat = satN ? Math.round(satSum / satN) : 0;
+    const tailFrac = lastTs ? (toMs - lastTs) / span : 1;
+    let signal;
+    if (pts.length === 0 || tailFrac > 0.5) signal = 'Inexistent';
+    else if (avgSat >= 8 && maxGap <= span * 0.5) signal = 'Bun (' + avgSat + ' sat.)';
+    else signal = 'Slab' + (satN ? ' (' + avgSat + ' sat.)' : '');
     const nm = label(devMap, imei);
-    rows.push([ nm, activeDays + ' / ' + periodDays, idleDays, fmtDur(maxGap / 1000), lastTs ? fmtTs(new Date(lastTs).toISOString()) : '—', ageH != null ? ageH + ' h' : '—' ]);
-    if (activeDays === 0) inactive++;
-    if (!pts.length || (ageH != null && ageH > 24)) dark++;
-    vIdle.push([nm, idleDays]);
+    items.push({ idle: inactiveKeys.length,
+      row: [ nm, listTxt(activeKeys), listTxt(inactiveKeys), fmtDur(maxGap / 1000), lastTs ? fmtTs(new Date(lastTs).toISOString()) : '—', signal ] });
   }
-  rows.sort((a, b) => b[2] - a[2]); // cele mai inactive primul
-  const topIdle = _topN(vIdle.filter(x => x[1] > 0), 10);
+  items.sort((a, b) => b.idle - a.idle); // cele mai inactive primul
+  const rows = items.map(x => x.row);
+  const topIdle = _topN(items.filter(x => x.idle > 0).map(x => [x.row[0], x.idle]), 10);
   const charts = topIdle.labels.length ? [
     { type: 'bar', title: 'Zile inactive pe vehicul', labels: topIdle.labels, datasets: [{ label: 'zile', data: topIdle.data }] }
   ] : [];
-  return { columns: ['Vehicul', 'Zile active', 'Zile inactive', 'Cea mai lungă pauză', 'Ultima poziție', 'Vechime'], rows,
-    summary: { 'Vehicule': imeis.length, 'Complet inactive': inactive, 'Fără semnal >24h': dark, 'Zile perioadă': periodDays }, charts };
+  // FĂRĂ sumar (cerut).
+  return { columns: ['Vehicul', 'Zile active', 'Zile inactive', 'Cea mai lungă pauză', 'Ultima poziție', 'Semnal'], rows, charts };
 }
 
 // ── Raport NOU: Anomalii combustibil cu scor de încredere (furt vs consum vs zgomot) ────────────────────
