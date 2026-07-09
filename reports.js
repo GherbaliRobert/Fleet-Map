@@ -996,9 +996,12 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
       items.push({ nm, p });
     }
   }
-  // Adresa exactă în loc de coordonate: pre-încărcăm un lot de adrese; restul se completează progresiv în frontend (coordonate → adresă).
+  // Adresa exactă în loc de coordonate: geocodăm TOATE pozițiile pe backend (serviciul public e ~1/s → buget generos,
+  // job în fundal). Cu eșantionare (puține rânduri) se umple tot; cache-ul face rapoartele repetate instant.
+  // Pentru rapoarte uriașe („Toate", mii de rânduri) plafonul de timp le lasă parțial → restul se completează în frontend.
   if (geocode && geocode.warm && items.length) {
-    try { await geocode.warm(items.slice(0, 400).map(x => ({ lat: x.p.latitude, lng: x.p.longitude })), { maxUnique: 150, budgetMs: 8000 }); } catch (e) {}
+    const budget = Math.min(items.length * 1100 + 4000, opts.geoBudgetMs || 30000);
+    try { await geocode.warm(items.map(x => ({ lat: x.p.latitude, lng: x.p.longitude })), { maxUnique: Math.min(items.length, 1000), budgetMs: budget }); } catch (e) {}
   }
   const rows = []; const perVeh = {}; const order = [];
   for (const { nm, p } of items) {

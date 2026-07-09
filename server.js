@@ -6211,6 +6211,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       dropMin: parseInt(req.query.dropMin) || 10,
       geofenceId: parseInt(req.query.geofenceId) || null,
       sampleSec: parseInt(req.query.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
+      geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
       priceByType: effectiveFuelPrices(_cs)
     };
     const _scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
@@ -6219,6 +6220,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     const _fmt = (req.query.format || '').toLowerCase();
     if (req.query.background === '1' && req.query.log === '1' && _fmt !== 'xlsx' && _fmt !== 'pdf' && req.auth && req.auth.userId) {
       res.json({ queued: true });
+      opts.geoBudgetMs = 60000; // job în fundal (userul e notificat la final) → geocodăm mai multe adrese fără să blocăm o cerere sincronă
       const _type = req.params.type, _uid = req.auth.userId, _uname = req.auth.username, _cid = req.companyId != null ? req.companyId : null, _imei = req.query.imei || null;
       const _jobId = req.query.jobId ? String(req.query.jobId).slice(0, 64) : null; // corelează badge-ul din client cu notificarea de finalizare
       setImmediate(async () => {
