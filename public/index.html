@@ -7660,8 +7660,8 @@ const pozitii = await r.json();</code></pre>
               '<div class="device-card-name">' +
                 '<span class="status-dot ' + statusClass + '"></span>' +
                 '<span class="device-card-icon">' + vehicleSilhouetteSVG(markerCategory(d), _silColor, 26) + '</span>' +
-                '<span class="name">' + name + '</span>' +
                 (plate ? '<span class="device-card-plate">' + plate + '</span>' : '') +
+                '<span class="name">' + name + '</span>' +
               '</div>' +
               '<span class="device-card-speed ' + (isMoving && _freshLive ? 'moving' : 'stopped') + '">' + d.speed + ' km/h</span>' +
             '</div>' +
