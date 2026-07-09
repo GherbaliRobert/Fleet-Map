@@ -983,12 +983,18 @@ async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alert
 
 async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut, poziție cu poziție) — cu ADRESĂ în loc de lat/lng
   const cap = opts.cap || 5000; let capped = false;
+  const sampleSec = parseInt(opts.sampleSec, 10) || 0; // eșantionare: păstrăm 1 poziție la `sampleSec` secunde (0 = toate)
   const items = []; // { nm, p } — colectăm întâi, ca să pre-încărcăm adresele înainte de a construi rândurile
   for (const imei of imeis) {
     if (items.length >= cap) { capped = true; break; }
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
-    for (const p of pts) { if (items.length >= cap) { capped = true; break; } items.push({ nm, p }); }
+    let lastKept = null; // ultimul moment păstrat (pe vehicul) pentru eșantionare
+    for (const p of pts) {
+      if (items.length >= cap) { capped = true; break; }
+      if (sampleSec > 0) { const tms = t(p); if (lastKept != null && (tms - lastKept) < sampleSec * 1000) continue; lastKept = tms; }
+      items.push({ nm, p });
+    }
   }
   // Adresa exactă în loc de coordonate: pre-încărcăm un lot de adrese; restul se completează progresiv în frontend (coordonate → adresă).
   if (geocode && geocode.warm && items.length) {

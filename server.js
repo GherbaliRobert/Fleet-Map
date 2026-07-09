@@ -6210,6 +6210,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       refuelMin: parseInt(req.query.refuelMin) || 10,
       dropMin: parseInt(req.query.dropMin) || 10,
       geofenceId: parseInt(req.query.geofenceId) || null,
+      sampleSec: parseInt(req.query.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
       priceByType: effectiveFuelPrices(_cs)
     };
     const _scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
@@ -6224,7 +6225,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
         try {
           const report = await reports.runReport(db, _type, imeis, from, to, opts, _scope);
           const label = (reports.REPORTS[_type] && reports.REPORTS[_type].label) || _type;
-          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId })].join('|');
+          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId, sm: opts.sampleSec })].join('|');
           const saved = await db.saveReportHistory({
             company_id: _cid, user_id: _uid, username: _uname, report_type: _type, label, imei: _imei,
             vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig,

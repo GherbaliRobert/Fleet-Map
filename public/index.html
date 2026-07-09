@@ -4890,6 +4890,7 @@ const pozitii = await r.json();</code></pre>
       else if (['stops','trips','route','daily'].includes(t)) html = '<label class="rep-f"><span>Oprire min (min)</span><input type="number" id="rep-stopmin" value="5" style="width:90px;"></label>';
       else if (['consumption','fuel'].includes(t)) html = '<label class="rep-f"><span>Prag alimentare (L)</span><input type="number" id="rep-refuel" value="10" style="width:100px;"></label>';
       else if (t === 'hotspot') html = '<label class="rep-f"><span>Hotspot (zonă)</span><select id="rep-geofence" style="min-width:170px;"><option value="">Se încarcă…</option></select></label>';
+      else if (t === 'analytic') html = '<label class="rep-f"><span>Detaliu</span><select id="rep-sample" style="min-width:150px;"><option value="0">Toate pozițiile</option><option value="30">1 la 30 sec</option><option value="60">1 la 1 min</option><option value="300" selected>1 la 5 min</option></select></label>';
       document.getElementById('rep-extra').innerHTML = html;
       if (t === 'hotspot') repLoadGeofences();
     }
@@ -4915,6 +4916,7 @@ const pozitii = await r.json();</code></pre>
       const rf = document.getElementById('rep-refuel'); if (rf) url += '&refuelMin=' + (parseInt(rf.value)||10);
       const gf = document.getElementById('rep-geofence');
       if (gf) { if (!gf.value) { alert('Alege un hotspot (zonă) pentru raport.'); return null; } url += '&geofenceId=' + encodeURIComponent(gf.value); }
+      const sp = document.getElementById('rep-sample'); if (sp) url += '&sampleSec=' + (parseInt(sp.value) || 0);
       return url;
     }
     // Popup branded RA Tracks (înlocuiește alert-ul nativ). opts: {title, message(html), icon, actions:[{label,primary,onClick}]}
