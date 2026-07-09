@@ -2028,6 +2028,7 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm" id="rep-back-btn" onclick="backToReportCatalog()"><i class="fas fa-arrow-left"></i> Catalog</button>
           <strong id="rep-title" style="font-size:14px;"></strong>
         </div>
+        <div id="rep-period" style="font-size:12px;color:var(--text-muted);font-weight:600;margin:-6px 0 10px 2px;display:none;"></div>
         <select id="rep-type" onchange="onRepType()" style="display:none;"></select>
         <div id="rep-controls">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -4853,6 +4854,7 @@ const pozitii = await r.json();</code></pre>
       document.querySelector('#rep-table thead').innerHTML = '';
       document.querySelector('#rep-table tbody').innerHTML = '';
       document.getElementById('rep-summary').innerHTML = '';
+      var _rpp = document.getElementById('rep-period'); if (_rpp) { _rpp.textContent = ''; _rpp.style.display = 'none'; }
       var _ch = document.getElementById('rep-charts'); if (_ch) _ch.innerHTML = '';
       var _vv = document.getElementById('rep-vehview'); if (_vv) { _vv.innerHTML = ''; _vv.style.display = 'none'; }
       var _fb = document.getElementById('rep-filter-bar'); if (_fb) { _fb.innerHTML = ''; _fb.style.display = 'none'; }
@@ -5285,7 +5287,11 @@ const pozitii = await r.json();</code></pre>
       var bb = document.getElementById('rep-back-btn'); if (bb) bb.innerHTML = '<i class="fas fa-arrow-left"></i> Înapoi la istoric';
       document.getElementById('rep-title').textContent = (data.label || data.report_type || 'Raport') + ' · ' + repFmtDT(data.generated_at);
       ensureRepPickers();
-      renderReport(data.report || {});
+      var _r = data.report || {};
+      // fallback pt. înregistrări vechi din istoric: dacă raportul n-are from/to, luăm intervalul din recordul de istoric
+      if (_r.from == null && data.period_from) _r.from = data.period_from;
+      if (_r.to == null && data.period_to) _r.to = data.period_to;
+      renderReport(_r);
     }
     async function repExportHistory(id, fmt) {
       try {
@@ -5404,6 +5410,9 @@ const pozitii = await r.json();</code></pre>
     }
     function renderReport(data) {
       lastReport = data; _repSort = null; _repFilter = null; _repPage = 0;
+      // Intervalul pentru care a fost generat raportul (de la – până la), sub titlu.
+      var _rp = document.getElementById('rep-period');
+      if (_rp) { if (data && data.from && data.to) { _rp.innerHTML = '<i class="far fa-calendar-alt" style="color:var(--accent);"></i> Interval: ' + repFmtDT(data.from) + ' – ' + repFmtDT(data.to); _rp.style.display = ''; } else { _rp.textContent = ''; _rp.style.display = 'none'; } }
       document.getElementById('rep-summary').innerHTML = Object.entries(data.summary||{}).map(([k,v]) => `<div class="rep-chip"><div class="v">${v}</div><div class="l">${k}</div></div>`).join('');
       _repRenderVehView(data);
       renderRepCharts(data.charts || []);
