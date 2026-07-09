@@ -8174,6 +8174,15 @@ const pozitii = await r.json();</code></pre>
       // Panou minimal pentru utilizatori (esențialul + locație + ultima interogare); super-adminul vede tot IO-ul.
       var _isSuper = !!(currentUser && currentUser.isSuper);
       grid.innerHTML = '' +
+        // Adresa PRIMA (imediat sub tab-urile Info/Rute/Raport) + buton Street View exact la coordonatele mașinii
+        '<div class="info-item full" id="detail-address-item">' +
+          '<div class="info-item-icon purple"><i class="fas fa-map-marker-alt"></i></div>' +
+          '<div class="info-item-text">' +
+            '<div class="info-item-value" style="font-size:12px;" id="detail-address"><i class="fas fa-spinner fa-spin" style="color:var(--text-muted);"></i></div>' +
+            '<div class="info-item-label">Adresa</div>' +
+          '</div>' +
+          ((data.latitude != null && data.longitude != null) ? '<a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + data.latitude + ',' + data.longitude + '" target="_blank" rel="noopener" title="Vezi exact unde e mașina — Google Street View" style="align-self:center;flex:none;display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;"><i class="fas fa-street-view"></i> Street View</a>' : '') +
+        '</div>' +
         // Row 1: Ultima interogare (mereu) + Nr. inmatriculare (super-admin)
         '<div class="info-item">' +
           '<div class="info-item-icon blue"><i class="fas fa-calendar-alt"></i></div>' +
@@ -8234,16 +8243,6 @@ const pozitii = await r.json();</code></pre>
             '<div class="info-item-label">Pozitie</div>' +
           '</div>' +
         '</div>' : '') +
-
-        // Row 5: Adresa (mereu — filled async) + buton Street View (Google) exact la coordonatele mașinii
-        '<div class="info-item full" id="detail-address-item">' +
-          '<div class="info-item-icon purple"><i class="fas fa-map-marker-alt"></i></div>' +
-          '<div class="info-item-text">' +
-            '<div class="info-item-value" style="font-size:12px;" id="detail-address"><i class="fas fa-spinner fa-spin" style="color:var(--text-muted);"></i></div>' +
-            '<div class="info-item-label">Adresa</div>' +
-          '</div>' +
-          ((data.latitude != null && data.longitude != null) ? '<a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + data.latitude + ',' + data.longitude + '" target="_blank" rel="noopener" title="Vezi exact unde e mașina — Google Street View" style="align-self:center;flex:none;display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;"><i class="fas fa-street-view"></i> Street View</a>' : '') +
-        '</div>' +
 
         // Row 6: Status contact (mereu) + Tensiune baterie (super-admin)
         '<div class="info-item">' +
