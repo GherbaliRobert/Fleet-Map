@@ -13,6 +13,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Bucharest';
 function fmtTs(ts) { return ts ? new Date(ts).toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }) : ''; }
+function fmtTsMin(ts) { return ts ? new Date(ts).toLocaleString('ro-RO', { timeZone: DISPLAY_TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; } // dată + oră, fără secunde
 function fmtHM(ts) { return ts ? new Date(ts).toLocaleTimeString('ro-RO', { timeZone: DISPLAY_TZ, hour: '2-digit', minute: '2-digit' }) : ''; } // doar ora HH:MM (ziua e deja în coloana „Zi")
 // Vechimea unei poziții (ms). isNow=true (raport „până acum") → prefix „acum X" (ex. „acum 12 min");
 // isNow=false (raport pe o zi din trecut) → durată simplă „34 min" — fără „acum", ca să nu inducă în eroare.
@@ -168,6 +169,21 @@ function segmentTrack(pts, stopMinSec) {
 function _dayKeyISO(ts) { try { return new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TZ }).format(new Date(ts)); } catch (e) { return ''; } } // YYYY-MM-DD în fusul afișat (nu UTC) → atribuire corectă a zilei lângă miezul nopții
 function _dayLabel(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] : isoKey; }
 function _dayLabelFull(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : isoKey; } // YYYY-MM-DD → DD.MM.YYYY
+// Listă compactă de zile (chei sortate „YYYY-MM-DD") → grupează zilele CONSECUTIVE în intervale: „01–05.07.2026, 08.07.2026".
+function _fmtDayRanges(keys) {
+  if (!keys || !keys.length) return '';
+  const a = keys.map(k => { const q = k.split('-').map(Number); return { y: q[0], m: q[1], d: q[2], ms: Date.UTC(q[0], q[1] - 1, q[2]) }; });
+  const g = []; let s = a[0], p = a[0];
+  for (let i = 1; i < a.length; i++) { if (a[i].ms - p.ms === 86400000) p = a[i]; else { g.push([s, p]); s = p = a[i]; } }
+  g.push([s, p]);
+  const z = n => String(n).padStart(2, '0');
+  return g.map(([x, y]) => {
+    if (x.ms === y.ms) return z(x.d) + '.' + z(x.m) + '.' + x.y;                                  // o singură zi
+    if (x.y === y.y && x.m === y.m) return z(x.d) + '–' + z(y.d) + '.' + z(y.m) + '.' + y.y;        // 01–05.07.2026
+    if (x.y === y.y) return z(x.d) + '.' + z(x.m) + '–' + z(y.d) + '.' + z(y.m) + '.' + y.y;         // 28.06–02.07.2026
+    return z(x.d) + '.' + z(x.m) + '.' + x.y + '–' + z(y.d) + '.' + z(y.m) + '.' + y.y;              // peste an
+  }).join(', ');
+}
 // Grupează pe zi: items[], getTs(item)=timestamp, getVal(item)=valoare numerică (null ⇒ numără). Sortat cronologic.
 function _groupByDay(items, getTs, getVal) {
   const m = {};
@@ -1386,18 +1402,18 @@ async function rFleetUptime(db, imeis, from, to, opts, devMap) {
   const items = [];
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
-    const moveDays = new Set(); let maxGap = 0, prevTs = fromMs, lastTs = null, satSum = 0, satN = 0;
+    const moveDays = new Set(); let maxGap = 0, gapStart = null, gapEnd = null, prevTs = fromMs, lastTs = null, satSum = 0, satN = 0;
     for (const p of pts) {
-      const ts = t(p); if (ts - prevTs > maxGap) maxGap = ts - prevTs; prevTs = ts;
+      const ts = t(p); if (ts - prevTs > maxGap) { maxGap = ts - prevTs; gapStart = prevTs; gapEnd = ts; } prevTs = ts; // O SINGURĂ pauză (nu însumată)
       if ((p.speed || 0) > IDLE_SPEED) moveDays.add(_dayKeyISO(p.timestamp));
       const s = p.satellites; if (typeof s === 'number' && s > 0) { satSum += s; satN++; }
       lastTs = ts;
     }
-    if (toMs - prevTs > maxGap) maxGap = toMs - prevTs; // pauză până la finalul perioadei
+    if (toMs - prevTs > maxGap) { maxGap = toMs - prevTs; gapStart = prevTs; gapEnd = toMs; } // pauză până la finalul perioadei
     // Zile active / inactive cu DATE exacte (DD.MM.YYYY), sortate cronologic.
     const activeKeys = Array.from(moveDays).sort();
     const inactiveKeys = uniqDays.filter(k => !moveDays.has(k));
-    const listTxt = (keys) => keys.length ? keys.length + ' zile: ' + keys.map(_dayLabelFull).join(', ') : '0 zile';
+    const listTxt = (keys) => keys.length ? keys.length + ' zile: ' + _fmtDayRanges(keys) : '0 zile';
     // Semnal pe perioadă: Inexistent (nimic / tăcut pe a doua jumătate = offline) · Bun (fix GPS bun + transmisie constantă) · Slab (rest).
     const avgSat = satN ? Math.round(satSum / satN) : 0;
     const tailFrac = lastTs ? (toMs - lastTs) / span : 1;
@@ -1407,7 +1423,9 @@ async function rFleetUptime(db, imeis, from, to, opts, devMap) {
     else signal = 'Slab' + (satN ? ' (' + avgSat + ' sat.)' : '');
     const nm = label(devMap, imei);
     items.push({ idle: inactiveKeys.length,
-      row: [ nm, listTxt(activeKeys), listTxt(inactiveKeys), fmtDur(maxGap / 1000), lastTs ? fmtTs(new Date(lastTs).toISOString()) : '—', signal ] });
+      row: [ nm, listTxt(activeKeys), listTxt(inactiveKeys),
+        fmtDur(maxGap / 1000) + (maxGap > 0 && gapStart != null ? '  ·  ' + fmtTsMin(gapStart) + ' → ' + fmtTsMin(gapEnd) : ''),
+        lastTs ? fmtTs(new Date(lastTs).toISOString()) : '—', signal ] });
   }
   items.sort((a, b) => b.idle - a.idle); // cele mai inactive primul
   const rows = items.map(x => x.row);
