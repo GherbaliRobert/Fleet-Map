@@ -1413,7 +1413,7 @@ async function rFleetUptime(db, imeis, from, to, opts, devMap) {
     // Zile active / inactive cu DATE exacte (DD.MM.YYYY), sortate cronologic.
     const activeKeys = Array.from(moveDays).sort();
     const inactiveKeys = uniqDays.filter(k => !moveDays.has(k));
-    const listTxt = (keys) => keys.length ? keys.length + ' zile: ' + _fmtDayRanges(keys) : '0 zile';
+    const listTxt = (keys) => keys.length ? keys.length + ' zile: ' + keys.map(_dayLabelFull).join(', ') : '0 zile'; // separat, fiecare dată (cerut)
     // Semnal pe perioadă: Inexistent (nimic / tăcut pe a doua jumătate = offline) · Bun (fix GPS bun + transmisie constantă) · Slab (rest).
     const avgSat = satN ? Math.round(satSum / satN) : 0;
     const tailFrac = lastTs ? (toMs - lastTs) / span : 1;
