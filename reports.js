@@ -989,11 +989,19 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
     if (items.length >= cap) { capped = true; break; }
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
+    // Combustibilul CAN vine RAR (nu pe fiecare ping) → cărăm ultima valoare cunoscută („sticky"), ca nivelul să fie
+    // CONTINUU (nu se teleportează). Seed din ultima citire dinaintea intervalului, ca să nu avem goluri la început.
+    let lastFuel = null;
+    try {
+      const r = await db.pool.query("SELECT io_data FROM positions WHERE imei = $1 AND timestamp < $2 AND (io_data->>'can_fuel_level_liters' IS NOT NULL OR io_data->>'fuel_level_liters' IS NOT NULL) ORDER BY timestamp DESC LIMIT 1", [imei, from]);
+      if (r.rows[0]) { const fv = fuelL({ io_data: r.rows[0].io_data }); if (fv != null) lastFuel = fv; }
+    } catch (e) {}
     let lastKept = null; // ultimul moment păstrat (pe vehicul) pentru eșantionare
     for (const p of pts) {
       if (items.length >= cap) { capped = true; break; }
+      const fv = fuelL(p); if (fv != null) lastFuel = fv; // actualizează pe FIECARE ping (chiar și cel sărit la eșantionare)
       if (sampleSec > 0) { const tms = t(p); if (lastKept != null && (tms - lastKept) < sampleSec * 1000) continue; lastKept = tms; }
-      items.push({ nm, p });
+      items.push({ nm, p, fuel: lastFuel });
     }
   }
   // Adresa exactă în loc de coordonate: geocodăm TOATE pozițiile pe backend (serviciul public e ~1/s → buget generos,
@@ -1004,9 +1012,9 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
     try { await geocode.warm(items.map(x => ({ lat: x.p.latitude, lng: x.p.longitude })), { maxUnique: Math.min(items.length, 1000), budgetMs: budget }); } catch (e) {}
   }
   const rows = []; const perVeh = {}; const order = [];
-  for (const { nm, p } of items) {
+  for (const { nm, p, fuel } of items) {
     const i = p.io_data || {};
-    const row = [ nm, fmtTs(p.timestamp), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'DA' : 'NU', fuelL(p) != null ? fuelL(p) : '', p.satellites || 0 ];
+    const row = [ nm, fmtTs(p.timestamp), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'DA' : 'NU', fuel != null ? fuel : '—', p.satellites || 0 ];
     rows.push(row);
     if (!perVeh[nm]) { perVeh[nm] = []; order.push(nm); }
     perVeh[nm].push(row);
