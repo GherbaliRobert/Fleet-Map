@@ -981,18 +981,34 @@ async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alert
   return { columns: ['Vehicul', 'Eveniment', 'Moment', 'Detalii'], rows, summary: { 'Evenimente': rows.length }, charts, perVehicle };
 }
 
-async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut, punct-cu-punct)
-  const cap = opts.cap || 5000; const rows = []; let capped = false;
+async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut, poziție cu poziție) — cu ADRESĂ în loc de lat/lng
+  const cap = opts.cap || 5000; let capped = false;
+  const items = []; // { nm, p } — colectăm întâi, ca să pre-încărcăm adresele înainte de a construi rândurile
   for (const imei of imeis) {
-    if (rows.length >= cap) { capped = true; break; }
+    if (items.length >= cap) { capped = true; break; }
     const pts = await history(db, imei, from, to);
-    for (const p of pts) {
-      if (rows.length >= cap) { capped = true; break; }
-      const i = p.io_data || {};
-      rows.push([ label(devMap, imei), fmtTs(p.timestamp), p.latitude.toFixed(5), p.longitude.toFixed(5), Math.round(p.speed || 0), i.ignition === 1 ? 'DA' : 'NU', fuelL(p) != null ? fuelL(p) : '', p.satellites || 0 ]);
-    }
+    const nm = label(devMap, imei);
+    for (const p of pts) { if (items.length >= cap) { capped = true; break; } items.push({ nm, p }); }
   }
-  return { columns: ['Vehicul', 'Moment', 'Lat', 'Lng', 'Viteză', 'Contact', 'Combustibil', 'Sat.'], rows, summary: { 'Puncte': rows.length, 'Plafon atins': capped ? 'da (' + cap + ')' : 'nu' } };
+  // Adresa exactă în loc de coordonate: pre-încărcăm un lot de adrese; restul se completează progresiv în frontend (coordonate → adresă).
+  if (geocode && geocode.warm && items.length) {
+    try { await geocode.warm(items.slice(0, 400).map(x => ({ lat: x.p.latitude, lng: x.p.longitude })), { maxUnique: 150, budgetMs: 8000 }); } catch (e) {}
+  }
+  const rows = []; const perVeh = {}; const order = [];
+  for (const { nm, p } of items) {
+    const i = p.io_data || {};
+    const row = [ nm, fmtTs(p.timestamp), addr(p), Math.round(p.speed || 0), i.ignition === 1 ? 'DA' : 'NU', fuelL(p) != null ? fuelL(p) : '', p.satellites || 0 ];
+    rows.push(row);
+    if (!perVeh[nm]) { perVeh[nm] = []; order.push(nm); }
+    perVeh[nm].push(row);
+  }
+  // Sumar explicit (nu genericul „Înregistrări"): câte poziții GPS are fiecare vehicul.
+  let perVehicle;
+  if (order.length >= 2) {
+    perVehicle = order.slice().sort((a, b) => a.localeCompare(b)).map(nm => ({ vehicul: nm, summary: [['Poziții GPS', perVeh[nm].length]], rows: perVeh[nm] }));
+  }
+  return { columns: ['Vehicul', 'Moment', 'Locație', 'Viteză', 'Contact', 'Combustibil', 'Sat.'], rows,
+    summary: { 'Total poziții GPS': rows.length, 'Plafon atins': capped ? 'da (' + cap + ')' : 'nu' }, perVehicle };
 }
 
 async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — scor comportament șofer
