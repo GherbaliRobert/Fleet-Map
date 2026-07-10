@@ -60,6 +60,8 @@ function engH(p) { const i = io(p); let h = i.can_engine_total_hours != null ? p
 function _grp(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 // Contorul GPS al device-ului „de la montare" (total_odometer, IO 16, METRI). Baza indexului bord+GPS (pasul 2). null dacă lipsește.
 function todo(p) { const i = io(p); if (i.total_odometer == null) return null; const n = parseFloat(i.total_odometer); return (isFinite(n) && n >= 0) ? n : null; }
+// Odometru CURENT (km) pt. mentenanța pe km — ca _odoFromIo din server.js: can_total_mileage → _counted → total_odometer/1000.
+function _odoNow(io) { if (!io) return null; let km = io.can_total_mileage != null ? parseFloat(io.can_total_mileage) : (io.can_total_mileage_counted != null ? parseFloat(io.can_total_mileage_counted) : (io.total_odometer != null ? parseFloat(io.total_odometer) / 1000 : null)); return (km != null && isFinite(km) && km > 0) ? Math.round(km) : null; }
 // Adresă din cache (reverse-geocode); fallback pe coordonate dacă nu e încă rezolvată.
 function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = geocode.peek(p.latitude, p.longitude); if (a) return a; } return loc(p); }
 function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
@@ -1370,25 +1372,46 @@ async function _consumptionMap(db, imeis, from, to, opts) {
 
 // ── Raport NOU: Scadențe documente & service (expirări ITP/RCA/roviniete/tahograf + revizii) ─────────────
 async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
-  const ref = new Date(to); const rows = []; let overdue = 0, soon = 0;
+  // „Zile rămase" mereu față de AZI (nu de finalul intervalului) — natural pt. un raport de scadențe.
+  const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate());
+  const items = []; let overdue = 0, soon = 0;
+  const rank = { 'Depășit': 0, 'Critic': 1, 'Curând': 2, 'OK': 3, '—': 4 };
+  const ramasZile = (days) => days < 0 ? Math.abs(days) + ' zile în urmă' : (days === 0 ? 'azi' : days + ' zile');
+  // Documente (scadență pe DATĂ)
   try {
     const r = await db.pool.query('SELECT imei, doc_type, number, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL', [imeis]);
-    for (const d of r.rows) { const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000);
-      rows.push([ label(devMap, d.imei), 'Document', d.doc_type || '—', fmtDate(d.expiry_date), days, _dueStatus(days) ]);
+    for (const d of r.rows) { const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000); const st = _dueStatus(days);
+      items.push({ sk1: rank[st], sk2: days, row: [ label(devMap, d.imei), 'Document', d.doc_type || '—', fmtDate(d.expiry_date), ramasZile(days), st ] });
       if (days < 0) overdue++; else if (days <= 30) soon++; }
   } catch (e) {}
+  // Service pe DATĂ
   try {
     const r = await db.pool.query("SELECT imei, type, due_date FROM maintenance WHERE imei = ANY($1) AND status <> 'done' AND due_date IS NOT NULL", [imeis]);
-    for (const m of r.rows) { const days = Math.floor((new Date(m.due_date) - ref) / 86400000);
-      rows.push([ label(devMap, m.imei), 'Service', m.type || '—', fmtDate(m.due_date), days, _dueStatus(days) ]);
+    for (const m of r.rows) { const days = Math.floor((new Date(m.due_date) - ref) / 86400000); const st = _dueStatus(days);
+      items.push({ sk1: rank[st], sk2: days, row: [ label(devMap, m.imei), 'Service', m.type || '—', fmtDate(m.due_date), ramasZile(days), st ] });
       if (days < 0) overdue++; else if (days <= 30) soon++; }
   } catch (e) {}
-  rows.sort((a, b) => a[4] - b[4]); // cele mai urgente (zile rămase mici/negative) primul
+  // Service pe KM (NOU) — odometrul curent per vehicul → „mai ai ~X km"
+  try {
+    const odoMap = {};
+    const rr = await db.pool.query('SELECT DISTINCT ON (imei) imei, io_data FROM positions WHERE imei = ANY($1) ORDER BY imei, timestamp DESC', [imeis]);
+    for (const row of rr.rows) { const km = _odoNow(row.io_data); if (km) odoMap[row.imei] = km; }
+    const r = await db.pool.query("SELECT imei, type, due_km FROM maintenance WHERE imei = ANY($1) AND status <> 'done' AND due_km IS NOT NULL", [imeis]);
+    for (const m of r.rows) {
+      const odo = odoMap[m.imei]; const kmLeft = odo != null ? (m.due_km - odo) : null;
+      const st = kmLeft == null ? '—' : (kmLeft < 0 ? 'Depășit' : kmLeft <= 500 ? 'Critic' : kmLeft <= 2000 ? 'Curând' : 'OK');
+      const ramas = kmLeft == null ? '— (fără odometru)' : (kmLeft < 0 ? '~' + _grp(-kmLeft) + ' km în urmă' : '~' + _grp(kmLeft) + ' km');
+      items.push({ sk1: rank[st], sk2: kmLeft == null ? 1e12 : kmLeft, row: [ label(devMap, m.imei), 'Service (km)', m.type || '—', 'la ' + _grp(m.due_km) + ' km', ramas, st ] });
+      if (kmLeft != null) { if (kmLeft < 0) overdue++; else if (kmLeft <= 500) soon++; }
+    }
+  } catch (e) {}
+  items.sort((a, b) => (a.sk1 - b.sk1) || (a.sk2 - b.sk2)); // după urgență (Depășit→Critic→Curând→OK), apoi cât a mai rămas
+  const rows = items.map(x => x.row);
   const charts = rows.length ? [
-    { type: 'doughnut', title: 'Stare scadențe', labels: ['Depășite', 'În 30 zile', 'OK'], datasets: [{ label: 'nr.', data: [overdue, soon, Math.max(0, rows.length - overdue - soon)] }] }
+    { type: 'doughnut', title: 'Stare scadențe', labels: ['Depășite', 'Aproape', 'OK'], datasets: [{ label: 'nr.', data: [overdue, soon, Math.max(0, rows.length - overdue - soon)] }] }
   ] : [];
-  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Zile rămase', 'Stare'], rows,
-    summary: { 'Total scadențe': rows.length, 'Depășite': overdue, 'În ≤30 zile': soon }, charts };
+  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Rămas', 'Stare'], rows,
+    summary: { 'Total scadențe': rows.length, 'Depășite': overdue, 'Aproape (≤30 zile / ≤500 km)': soon }, charts };
 }
 
 // ── Raport: Disponibilitate flotă — zile active/inactive cu DATE exacte, cea mai lungă pauză, ultima poziție, semnal ──
