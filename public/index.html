@@ -1137,10 +1137,21 @@
     .rep-chip { background:var(--bg-dark); border:1px solid var(--border); border-radius:8px; padding:8px 12px; }
     .rep-chip .v { font-size:18px; font-weight:700; color:var(--accent); }
     .rep-chip .l { font-size:11px; color:var(--text-muted); }
-    .rep-cats { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:12px; }
-    .rep-cat { padding:7px 14px; border-radius:8px; border:1px solid var(--border); background:var(--bg-panel); color:var(--text-secondary); cursor:pointer; font-size:13px; font-weight:600; }
-    .rep-cat:hover { border-color:var(--accent); color:var(--text-primary); }
-    .rep-cat.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .rep-cats { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:12px; }
+    .rep-cat { display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:11px; border:1px solid var(--border); background:var(--bg-panel); color:var(--text-secondary); cursor:pointer; font-size:14px; font-weight:600; white-space:nowrap; transition:transform .18s cubic-bezier(.2,.7,.3,1.3), box-shadow .18s ease, background .2s ease, color .2s ease, border-color .2s ease; }
+    .rep-cat svg { width:18px; height:18px; flex:none; transition:transform .2s ease; }
+    .rep-cat:hover { border-color:var(--accent); color:var(--text-primary); transform:translateY(-2px); box-shadow:0 5px 16px rgba(0,0,0,.10); }
+    .rep-cat:hover svg { transform:scale(1.12); }
+    .rep-cat.active { background:linear-gradient(135deg, var(--accent), #2ec46b); color:#fff; border-color:transparent; box-shadow:0 6px 18px rgba(63,224,125,.38); transform:translateY(-1px); animation:repCatPop .3s cubic-bezier(.34,1.56,.64,1); }
+    .rep-cat.active svg { animation:repCatIcon .5s ease; }
+    @keyframes repCatPop { 0%{transform:translateY(-1px) scale(.95)} 60%{transform:translateY(-1px) scale(1.05)} 100%{transform:translateY(-1px) scale(1)} }
+    @keyframes repCatIcon { 0%{transform:scale(1) rotate(0)} 45%{transform:scale(1.28) rotate(-8deg)} 100%{transform:scale(1) rotate(0)} }
+    @media (max-width:640px) {
+      .rep-cats { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+      .rep-cats::-webkit-scrollbar { display:none; }
+      .rep-cat { flex:0 0 auto; }
+    }
+    @media (prefers-reduced-motion:reduce) { .rep-cat, .rep-cat svg { transition:none; } .rep-cat.active, .rep-cat.active svg { animation:none; } }
     .rep-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
     .rep-card { display:flex; align-items:flex-start; gap:12px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-panel); color:var(--text-primary); cursor:pointer; transition:all .15s; text-align:left; }
     .rep-card:hover { border-color:var(--accent); box-shadow:0 2px 12px rgba(0,0,0,.08); transform:translateY(-1px); }
@@ -4802,11 +4813,19 @@ const pozitii = await r.json();</code></pre>
     let repCatalog = null, lastReport = null, repCurrentCat = null;
     let repHistoryId = null, repActiveTab = 'generate';
     const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell' };
+    // Iconițe SVG per CATEGORIE (currentColor → moștenesc culoarea tab-ului): locație / pompă / cip / clopoțel / scut.
+    const REP_CAT_ICONS = {
+      monitorizare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+      consum: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="15" y1="22" y2="22"/><line x1="4" x2="14" y1="9" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg>',
+      can: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></svg>',
+      evenimente: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+      siguranta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>'
+    };
     async function openReports() {
       if (!repCatalog) { try { repCatalog = await (await fetch('/api/reports')).json(); } catch (e) { repCatalog = { categories: [], reports: [] }; } }
       document.getElementById('rep-type').innerHTML = repCatalog.reports.map(r => `<option value="${r.type}">${r.label}</option>`).join('');
       const cats = repCatalog.categories || [];
-      document.getElementById('rep-cats').innerHTML = cats.map((c, i) => `<button class="rep-cat${i===0?' active':''}" data-cat="${c.key}" onclick="selectReportCategory('${c.key}')">${c.label}</button>`).join('');
+      document.getElementById('rep-cats').innerHTML = cats.map((c, i) => `<button class="rep-cat${i===0?' active':''}" data-cat="${c.key}" onclick="selectReportCategory('${c.key}')">${REP_CAT_ICONS[c.key]||''}<span>${c.label}</span></button>`).join('');
       repCurrentCat = cats.length ? cats[0].key : null;
       renderReportCards();
       document.getElementById('rep-runner').style.display = 'none';
@@ -4822,6 +4841,7 @@ const pozitii = await r.json();</code></pre>
     function selectReportCategory(cat) {
       repCurrentCat = cat;
       document.querySelectorAll('#rep-cats .rep-cat').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+      var _act = document.querySelector('#rep-cats .rep-cat.active'); if (_act && _act.scrollIntoView) { try { _act.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
       renderReportCards();
     }
     // ── Flatpickr: helper generic pentru perechi De la / Până la (Traseu, Hotspot) ──
