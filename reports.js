@@ -1372,46 +1372,46 @@ async function _consumptionMap(db, imeis, from, to, opts) {
 
 // ── Raport NOU: Scadențe documente & service (expirări ITP/RCA/roviniete/tahograf + revizii) ─────────────
 async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
-  // „Zile rămase" mereu față de AZI (nu de finalul intervalului) — natural pt. un raport de scadențe.
+  // Documente + service, pe DATĂ și pe KM. „Zile rămase" mereu față de AZI. Include ȘI service-ul EFECTUAT (cu data + km).
   const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate());
-  const items = []; let overdue = 0, soon = 0;
-  const rank = { 'Depășit': 0, 'Critic': 1, 'Curând': 2, 'OK': 3, '—': 4 };
+  const items = [];
+  const rank = { 'Depășit': 0, 'Critic': 1, 'Curând': 2, 'OK': 3, '—': 4, 'Efectuat': 5 };
   const ramasZile = (days) => days < 0 ? Math.abs(days) + ' zile în urmă' : (days === 0 ? 'azi' : days + ' zile');
-  // Documente (scadență pe DATĂ)
+  // Odometru curent per vehicul (pt. km rămași la service pe km)
+  const odoMap = {};
   try {
-    const r = await db.pool.query('SELECT imei, doc_type, number, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL', [imeis]);
-    for (const d of r.rows) { const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000); const st = _dueStatus(days);
-      items.push({ sk1: rank[st], sk2: days, row: [ label(devMap, d.imei), 'Document', d.doc_type || '—', fmtDate(d.expiry_date), ramasZile(days), st ] });
-      if (days < 0) overdue++; else if (days <= 30) soon++; }
-  } catch (e) {}
-  // Service pe DATĂ
-  try {
-    const r = await db.pool.query("SELECT imei, type, due_date FROM maintenance WHERE imei = ANY($1) AND status <> 'done' AND due_date IS NOT NULL", [imeis]);
-    for (const m of r.rows) { const days = Math.floor((new Date(m.due_date) - ref) / 86400000); const st = _dueStatus(days);
-      items.push({ sk1: rank[st], sk2: days, row: [ label(devMap, m.imei), 'Service', m.type || '—', fmtDate(m.due_date), ramasZile(days), st ] });
-      if (days < 0) overdue++; else if (days <= 30) soon++; }
-  } catch (e) {}
-  // Service pe KM (NOU) — odometrul curent per vehicul → „mai ai ~X km"
-  try {
-    const odoMap = {};
     const rr = await db.pool.query('SELECT DISTINCT ON (imei) imei, io_data FROM positions WHERE imei = ANY($1) ORDER BY imei, timestamp DESC', [imeis]);
     for (const row of rr.rows) { const km = _odoNow(row.io_data); if (km) odoMap[row.imei] = km; }
-    const r = await db.pool.query("SELECT imei, type, due_km FROM maintenance WHERE imei = ANY($1) AND status <> 'done' AND due_km IS NOT NULL", [imeis]);
+  } catch (e) {}
+  // Documente (scadență pe DATĂ)
+  try {
+    const r = await db.pool.query('SELECT imei, doc_type, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL', [imeis]);
+    for (const d of r.rows) { const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000); const st = _dueStatus(days);
+      items.push({ sk1: rank[st], sk2: days, row: [ label(devMap, d.imei), 'Document', d.doc_type || '—', fmtDate(d.expiry_date) + ' (' + ramasZile(days) + ')', '—', st ] }); }
+  } catch (e) {}
+  // Mentenanță — scadente (pe dată / pe km) ȘI efectuate (cu data + km la care s-au făcut)
+  try {
+    const r = await db.pool.query('SELECT imei, type, due_date, due_km, done_date, done_km, status FROM maintenance WHERE imei = ANY($1)', [imeis]);
     for (const m of r.rows) {
-      const odo = odoMap[m.imei]; const kmLeft = odo != null ? (m.due_km - odo) : null;
-      const st = kmLeft == null ? '—' : (kmLeft < 0 ? 'Depășit' : kmLeft <= 500 ? 'Critic' : kmLeft <= 2000 ? 'Curând' : 'OK');
-      const ramas = kmLeft == null ? '— (fără odometru)' : (kmLeft < 0 ? '~' + _grp(-kmLeft) + ' km în urmă' : '~' + _grp(kmLeft) + ' km');
-      items.push({ sk1: rank[st], sk2: kmLeft == null ? 1e12 : kmLeft, row: [ label(devMap, m.imei), 'Service (km)', m.type || '—', 'la ' + _grp(m.due_km) + ' km', ramas, st ] });
-      if (kmLeft != null) { if (kmLeft < 0) overdue++; else if (kmLeft <= 500) soon++; }
+      const nm = label(devMap, m.imei);
+      if (m.status === 'done') {
+        const scad = m.due_date ? fmtDate(m.due_date) : (m.due_km != null ? 'la ' + _grp(m.due_km) + ' km' : '—');
+        const efect = (m.done_date ? fmtDate(m.done_date) : '—') + (m.done_km != null ? ' · ' + _grp(m.done_km) + ' km' : '');
+        items.push({ sk1: 5, sk2: -(m.done_date ? new Date(m.done_date).getTime() : 0), row: [ nm, 'Service', m.type || '—', scad, efect, 'Efectuat' ] });
+      } else {
+        if (m.due_date != null) { const days = Math.floor((new Date(m.due_date) - ref) / 86400000); const st = _dueStatus(days);
+          items.push({ sk1: rank[st], sk2: days, row: [ nm, 'Service', m.type || '—', fmtDate(m.due_date) + ' (' + ramasZile(days) + ')', '—', st ] }); }
+        if (m.due_km != null) { const odo = odoMap[m.imei]; const kmLeft = odo != null ? (m.due_km - odo) : null;
+          const st = kmLeft == null ? '—' : (kmLeft < 0 ? 'Depășit' : kmLeft <= 500 ? 'Critic' : kmLeft <= 2000 ? 'Curând' : 'OK');
+          const detail = kmLeft == null ? 'fără odometru' : (kmLeft < 0 ? '~' + _grp(-kmLeft) + ' km în urmă' : '~' + _grp(kmLeft) + ' km');
+          items.push({ sk1: rank[st], sk2: kmLeft == null ? 1e12 : kmLeft, row: [ nm, 'Service (km)', m.type || '—', 'la ' + _grp(m.due_km) + ' km (' + detail + ')', '—', st ] }); }
+      }
     }
   } catch (e) {}
-  items.sort((a, b) => (a.sk1 - b.sk1) || (a.sk2 - b.sk2)); // după urgență (Depășit→Critic→Curând→OK), apoi cât a mai rămas
+  items.sort((a, b) => (a.sk1 - b.sk1) || (a.sk2 - b.sk2)); // scadente după urgență (Depășit→…→OK), efectuatele la final (cele mai recente primele)
   const rows = items.map(x => x.row);
-  const charts = rows.length ? [
-    { type: 'doughnut', title: 'Stare scadențe', labels: ['Depășite', 'Aproape', 'OK'], datasets: [{ label: 'nr.', data: [overdue, soon, Math.max(0, rows.length - overdue - soon)] }] }
-  ] : [];
-  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Rămas', 'Stare'], rows,
-    summary: { 'Total scadențe': rows.length, 'Depășite': overdue, 'Aproape (≤30 zile / ≤500 km)': soon }, charts };
+  // FĂRĂ sumar și fără grafic (cerut) — doar tabelul.
+  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Efectuat', 'Stare'], rows };
 }
 
 // ── Raport: Disponibilitate flotă — zile active/inactive cu DATE exacte, cea mai lungă pauză, ultima poziție, semnal ──
