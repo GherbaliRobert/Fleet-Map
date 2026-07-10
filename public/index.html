@@ -2033,15 +2033,19 @@ const pozitii = await r.json();</code></pre>
         <div id="rep-controls">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
           <label class="rep-f" style="grid-column:1 / -1;"><span>Vehicul</span><select id="rep-imei"></select></label>
-          <div class="rep-interval-title" style="grid-column:1 / -1;"><i class="far fa-clock"></i> Interval orar</div>
+          <div id="rep-int-title" class="rep-interval-title" style="grid-column:1 / -1;"><i class="far fa-clock"></i> Interval orar</div>
+          <span id="rep-int-dates" style="display:contents;">
           <label class="rep-f"><span>De la</span><input type="datetime-local" id="rep-from"></label>
           <label class="rep-f"><span>Până la</span><input type="datetime-local" id="rep-to"></label>
+          </span>
         </div>
         <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+          <span id="rep-int-quick" style="display:contents;">
           <button class="btn-sm" onclick="setRepPeriod('today')">Azi</button>
           <button class="btn-sm" onclick="setRepPeriod('yesterday')">Ieri</button>
           <button class="btn-sm" onclick="setRepPeriod('week')">7 zile</button>
           <button class="btn-sm" onclick="setRepPeriod('month')">30 zile</button>
+          </span>
           <span id="rep-extra" style="display:flex;gap:6px;align-items:center;margin-left:8px;"></span>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
         </div>
@@ -4892,6 +4896,11 @@ const pozitii = await r.json();</code></pre>
       else if (t === 'hotspot') html = '<label class="rep-f"><span>Hotspot (zonă)</span><select id="rep-geofence" style="min-width:170px;"><option value="">Se încarcă…</option></select></label>';
       else if (t === 'analytic') html = '<label class="rep-f"><span>Detaliu</span><select id="rep-sample" style="min-width:150px;"><option value="0">Toate pozițiile</option><option value="30">1 la 30 sec</option><option value="60">1 la 1 min</option><option value="300" selected>1 la 5 min</option></select></label>';
       document.getElementById('rep-extra').innerHTML = html;
+      // La „Scadențe documente & service" (due) nu are sens intervalul (zile rămase = față de AZI) → ascundem selectorul.
+      var _due = (t === 'due');
+      var _ti = document.getElementById('rep-int-title'); if (_ti) _ti.style.display = _due ? 'none' : '';
+      var _dd = document.getElementById('rep-int-dates'); if (_dd) _dd.style.display = _due ? 'none' : 'contents';
+      var _qq = document.getElementById('rep-int-quick'); if (_qq) _qq.style.display = _due ? 'none' : 'contents';
       if (t === 'hotspot') repLoadGeofences();
     }
     function repLoadGeofences() {
@@ -4905,6 +4914,8 @@ const pozitii = await r.json();</code></pre>
     function repBuildUrl() {
       const t = document.getElementById('rep-type').value;
       const imei = document.getElementById('rep-imei').value;
+      // „Scadențe" nu folosește interval (calc față de AZI) → trimitem azi (ignorat de backend) și sărim peste cererea de perioadă.
+      if (t === 'due') { const _n = new Date().toISOString(); return '/api/reports/due?from=' + _n + '&to=' + _n + (imei ? '&imei=' + encodeURIComponent(imei) : ''); }
       let fromD, toD;
       if (repFromFp && repToFp) { fromD = repFromFp.selectedDates[0] || null; toD = repToFp.selectedDates[0] || null; }
       else { const fv = document.getElementById('rep-from').value, tv = document.getElementById('rep-to').value; fromD = fv ? new Date(fv) : null; toD = tv ? new Date(tv) : null; }
