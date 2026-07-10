@@ -1410,8 +1410,8 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   } catch (e) {}
   items.sort((a, b) => (a.sk1 - b.sk1) || (a.sk2 - b.sk2)); // scadente după urgență (Depășit→…→OK), efectuatele la final (cele mai recente primele)
   const rows = items.map(x => x.row);
-  // FĂRĂ sumar și fără grafic (cerut) — doar tabelul.
-  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Efectuat', 'Stare'], rows };
+  // FĂRĂ sumar, fără grafic și fără „Sumar pe vehicul" / foaie Excel de sumar (cerut) — doar tabelul plat.
+  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Efectuat', 'Stare'], rows, noPerVehicle: true };
 }
 
 // ── Raport: Disponibilitate flotă — zile active/inactive cu DATE exacte, cea mai lungă pauză, ultima poziție, semnal ──
@@ -1631,7 +1631,7 @@ async function runReport(db, type, imeis, from, to, opts, companyId) {
   // companyId (null = super/toate) e propagat la fn-urile care citesc definiții scopabile pe companie (ex: geofence).
   const result = await def.fn(db, imeis, from, to, opts || {}, devMap, companyId);
   result.type = type; result.label = def.label; result.from = from; result.to = to;
-  if (!result.perVehicle) { try { const pv = _genericPerVehicle(result); if (pv) result.perVehicle = pv; } catch (e) {} }
+  if (!result.perVehicle && !result.noPerVehicle) { try { const pv = _genericPerVehicle(result); if (pv) result.perVehicle = pv; } catch (e) {} }
   try { _injectDriverColumn(result, imeis, devMap); } catch (e) {} // coloană „Șofer" la orice raport pe vehicule (după perVehicle → prinde și sumarele)
   return result;
 }
