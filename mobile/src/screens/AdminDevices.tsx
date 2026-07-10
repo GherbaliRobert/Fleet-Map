@@ -33,7 +33,8 @@ export function AdminDevices() {
   const [canIface, setCanIface] = useState('');
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [f, setF] = useState<any>({ imei: '', name: '', plate: '', company_id: '', vehicle_type: '', can_interface: '' });
+  const [f, setF] = useState<any>({ imei: '', name: '', plate: '', company_id: '', vehicle_type: '', can_interface: '', issue: false, issue_note: '' });
+  const [issueNote, setIssueNote] = useState('');
 
   function reload() {
     setErr('');
@@ -54,7 +55,20 @@ export function AdminDevices() {
     return list.filter((d: any) => [d.imei, d.name, d.plate, d.company_name].some((x: any) => String(x || '').toLowerCase().includes(t))).slice(0, 300);
   }, [items, q]);
 
-  function open(d: any) { setSel(d); setCompanyId(d.company_id != null ? String(d.company_id) : ''); setCanIface(d.can_interface || ''); }
+  function open(d: any) { setSel(d); setCompanyId(d.company_id != null ? String(d.company_id) : ''); setCanIface(d.can_interface || ''); setIssueNote(''); }
+
+  // Semnalare / anulare „problemă la montaj" (reversibilă) — direct din sheet-ul dispozitivului
+  async function toggleIssue(flagged: boolean) {
+    if (!sel) return;
+    setSaving(true);
+    try {
+      const r: any = await Api.setInstallIssue(sel.imei, flagged, flagged ? (issueNote.trim() || null) : null);
+      setSel({ ...sel, install_issue: r?.install_issue || null });
+      setIssueNote('');
+      showToast(flagged ? 'Problemă la montaj semnalată' : 'Semnalare anulată');
+      reload();
+    } catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setSaving(false); }
+  }
 
   async function save() {
     if (!sel) return;
@@ -68,7 +82,7 @@ export function AdminDevices() {
   }
 
   // ── Adăugare manuală (super): pre-înregistrează IMEI → allow-list (mod strict). Util până la FOTA WEB (Teltonika). ──
-  function openAdd() { setF({ imei: '', name: '', plate: '', company_id: '', vehicle_type: '', can_interface: '' }); setAdding(true); }
+  function openAdd() { setF({ imei: '', name: '', plate: '', company_id: '', vehicle_type: '', can_interface: '', issue: false, issue_note: '' }); setAdding(true); }
   const setFF = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
   async function submitAdd() {
     const imei = String(f.imei || '').trim();
@@ -80,6 +94,7 @@ export function AdminDevices() {
       if (f.plate.trim()) body.plate = f.plate.trim();
       if (f.vehicle_type) body.vehicle_type = f.vehicle_type;
       if (f.company_id) body.company_id = Number(f.company_id);
+      if (f.issue) { body.install_issue = true; if (f.issue_note.trim()) body.install_issue_note = f.issue_note.trim(); }
       await Api.createDevice(body);
       if (f.can_interface) await Api.setCanInterface(imei, f.can_interface);
       showToast('Dispozitiv adăugat'); setAdding(false); reload();
@@ -107,7 +122,7 @@ export function AdminDevices() {
                   <div class="nm">{d.name || d.imei}{d.plate ? ' · ' + d.plate : ''}</div>
                   <div class="sub">{(d.company_name || 'Neasignat') + ' · ' + (d.can_interface ? String(d.can_interface).toUpperCase() : 'auto') + ' · ' + d.imei}</div>
                 </span>
-                <span class="rt">{!d.company_id && <span class="adm-pill warn">neasignat</span>}<Icon name="chevronR" size={18} color="var(--text-muted)" /></span>
+                <span class="rt">{d.install_issue && <span class="adm-pill warn">⚠ montaj</span>}{!d.company_id && <span class="adm-pill warn">neasignat</span>}<Icon name="chevronR" size={18} color="var(--text-muted)" /></span>
               </button>
             ))}
           </div>
@@ -130,6 +145,19 @@ export function AdminDevices() {
                   <select value={canIface} onChange={(e: any) => setCanIface(e.target.value)}>
                     {CAN_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
                   </select>
+                </div>
+                <div class="fld"><label>Problemă la montaj</label>
+                  {sel.install_issue ? (
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <span class="adm-pill warn" style="flex:1;min-width:140px">⚠ {sel.install_issue.note || 'semnalată'}{sel.install_issue.at ? ' · ' + new Date(Number(sel.install_issue.at)).toLocaleDateString('ro-RO') : ''}</span>
+                      <button class="adm-act" disabled={saving} onClick={() => toggleIssue(false)}>Anulează semnalarea</button>
+                    </div>
+                  ) : (
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <input style="flex:1" value={issueNote} placeholder="detalii (opțional)" onInput={(e: any) => setIssueNote(e.target.value)} />
+                      <button class="adm-act" disabled={saving} onClick={() => toggleIssue(true)} style="color:#f59e0b">⚠ Semnalează</button>
+                    </div>
+                  )}
                 </div>
                 <div class="frm-actions"><button class="btn btn-primary" disabled={saving} onClick={save}>{saving ? 'Se salvează…' : 'Salvează'}</button></div>
               </div>
@@ -164,6 +192,11 @@ export function AdminDevices() {
                     {CAN_OPTS.map((o) => <option value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;margin:4px 0;cursor:pointer">
+                  <input type="checkbox" checked={f.issue} onChange={(e: any) => setFF('issue', e.target.checked)} />
+                  <b style="color:#f59e0b">⚠ Problemă la montaj</b> <span style="font-size:11.5px;color:var(--text-muted)">(se poate anula ulterior)</span>
+                </label>
+                {f.issue && <div class="fld"><input value={f.issue_note} placeholder="detalii (opțional) — ex. cablaj de refăcut" onInput={(e: any) => setFF('issue_note', e.target.value)} /></div>}
                 <div class="frm-actions"><button class="btn btn-primary" disabled={saving} onClick={submitAdd}>{saving ? 'Se adaugă…' : 'Adaugă dispozitiv'}</button></div>
               </div>
             </div>

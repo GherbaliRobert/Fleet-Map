@@ -2810,7 +2810,8 @@ app.get('/api/admin/devices', requireAuth, requireSuperadmin, async (req, res) =
         status: d.status || 'active',
         can_type: classifyDeviceCan(d), can_interface: d.can_interface || null,
         last_position_time: d.last_position_time || d.last_seen || null,
-        created_at: d.created_at || null
+        created_at: d.created_at || null,
+        install_issue: d.install_issue || null
       }));
     res.json(out);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -3349,6 +3350,10 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
       : req.companyId;
     const fields = {};
     ['name', 'plate', 'vehicle_type', 'vin', 'brand', 'model'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
+    // Semnalare „problemă la montaj" direct de la adăugare (anulabilă ulterior din listă)
+    const instIssue = req.body.install_issue
+      ? { note: (typeof req.body.install_issue_note === 'string' && req.body.install_issue_note.trim()) ? req.body.install_issue_note.trim().slice(0, 300) : null, at: Date.now(), by: (req.session && req.session.username) || null }
+      : null;
 
     // Dacă IMEI-ul există DEJA: ADOPȚIE dacă e neasignat (company_id NULL) — tipic un tracker care a transmis ÎNAINTE
     // de a fi înregistrat. Îl revendică compania care îl adaugă (ne-super: doar compania proprie). Dacă aparține deja
@@ -3361,6 +3366,7 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
       const adopted = await db.adoptDevice(imei, adoptCompany); // atomic: doar dacă încă e NULL (cursă închisă)
       if (!adopted) return res.status(409).json({ error: 'Există deja un vehicul cu acest IMEI' }); // altă companie l-a adoptat între timp
       if (Object.keys(fields).length) await db.updateVehicleDetails(imei, fields);
+      if (instIssue) await db.pool.query('UPDATE devices SET install_issue = $2::jsonb WHERE imei = $1', [imei, JSON.stringify(instIssue)]);
       if (_existing.status === 'archived') await db.setDeviceStatus(imei, 'active');
       registeredImeis.add(imei); deviceAttempts.delete(imei); // adoptat → intră în allow-list (mod strict)
       invalidateAccessCache(); invalidateLiveEnrichCache(); _devCompanyCache.delete(imei); await refreshWsScope();
@@ -3371,6 +3377,7 @@ app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) 
     }
 
     await db.createDevice(imei, fields, companyId);
+    if (instIssue) await db.pool.query('UPDATE devices SET install_issue = $2::jsonb WHERE imei = $1', [imei, JSON.stringify(instIssue)]);
     registeredImeis.add(imei); deviceAttempts.delete(imei); // pre-înregistrat → intră în allow-list (mod strict)
     invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
     invalidateLiveEnrichCache(); // identitatea nouă (nume/nr) să apară imediat pe /api/live, nu după 20s
@@ -6599,6 +6606,21 @@ app.put('/api/devices/:imei/work-schedule', requireAuth, requireFleet, withScope
     loadWorkSchedules().catch(() => {});
     auditReq(req, 'work-schedule', 'device', imei, {});
     res.json({ ok: true, work_schedule: w });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Semnalare „problemă la montaj" pe vehicul — set / anulare (reversibilă).
+app.put('/api/devices/:imei/install-issue', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const imei = String(req.params.imei);
+    const dev = await db.getDeviceFull(imei); if (!dev) return res.status(404).json({ error: 'Vehicul inexistent' });
+    if (!req.isSuper && dev.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
+    const flagged = !!(req.body && req.body.flagged);
+    const issue = flagged
+      ? { note: (typeof req.body.note === 'string' && req.body.note.trim()) ? req.body.note.trim().slice(0, 300) : null, at: Date.now(), by: (req.session && req.session.username) || null }
+      : null;
+    await db.pool.query('UPDATE devices SET install_issue = $2::jsonb WHERE imei = $1', [imei, issue ? JSON.stringify(issue) : null]);
+    auditReq(req, flagged ? 'install-issue-flag' : 'install-issue-clear', 'device', imei, {});
+    res.json({ ok: true, install_issue: issue });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Program de lucru — override pe GRUP.

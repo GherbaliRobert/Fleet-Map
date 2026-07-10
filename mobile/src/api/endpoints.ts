@@ -171,6 +171,7 @@ export const Api = {
   setCanInterface: (imei: string, can_interface: string | null) => api(`/api/devices/${encodeURIComponent(imei)}/can-interface`, { method: 'PUT', body: { can_interface } }), // super-admin
   setDeviceWorkSchedule: (imei: string, work_schedule: any) => api(`/api/devices/${encodeURIComponent(imei)}/work-schedule`, { method: 'PUT', body: { work_schedule } }),
   setGroupWorkSchedule: (id: number, work_schedule: any) => api(`/api/device-groups/${id}/work-schedule`, { method: 'PUT', body: { work_schedule } }),
+  setInstallIssue: (imei: string, flagged: boolean, note?: string | null) => api<any>(`/api/devices/${encodeURIComponent(imei)}/install-issue`, { method: 'PUT', body: { flagged, note: note || null } }),
 
   alerts: () => api<any[]>('/api/alerts'),
   createAlert: (b: any) => api('/api/alerts', { method: 'POST', body: b }),
