@@ -1374,6 +1374,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
 async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   // Documente + service, pe DATĂ și pe KM. „Zile rămase" mereu față de AZI. Include ȘI service-ul EFECTUAT (cu data + km).
   const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate());
+  const horizon = to ? new Date(to) : null; // „până la finalul lunii alese" → filtrează scadențele pe DATĂ (documente + service pe dată); km + efectuate rămân mereu
   const items = [];
   const rank = { 'Depășit': 0, 'Critic': 1, 'Curând': 2, 'OK': 3, '—': 4, 'Efectuat': 5 };
   const ramasZile = (days) => days < 0 ? Math.abs(days) + ' zile în urmă' : (days === 0 ? 'azi' : days + ' zile');
@@ -1386,7 +1387,7 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   // Documente (scadență pe DATĂ)
   try {
     const r = await db.pool.query('SELECT imei, doc_type, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL', [imeis]);
-    for (const d of r.rows) { const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000); const st = _dueStatus(days);
+    for (const d of r.rows) { if (horizon && new Date(d.expiry_date) > horizon) continue; const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000); const st = _dueStatus(days);
       items.push({ sk1: rank[st], sk2: days, row: [ label(devMap, d.imei), 'Document', d.doc_type || '—', fmtDate(d.expiry_date) + ' (' + ramasZile(days) + ')', '—', st ] }); }
   } catch (e) {}
   // Mentenanță — scadente (pe dată / pe km) ȘI efectuate (cu data + km la care s-au făcut)
@@ -1399,7 +1400,7 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
         const efect = (m.done_date ? fmtDate(m.done_date) : '—') + (m.done_km != null ? ' · ' + _grp(m.done_km) + ' km' : '');
         items.push({ sk1: 5, sk2: -(m.done_date ? new Date(m.done_date).getTime() : 0), row: [ nm, 'Service', m.type || '—', scad, efect, 'Efectuat' ] });
       } else {
-        if (m.due_date != null) { const days = Math.floor((new Date(m.due_date) - ref) / 86400000); const st = _dueStatus(days);
+        if (m.due_date != null && !(horizon && new Date(m.due_date) > horizon)) { const days = Math.floor((new Date(m.due_date) - ref) / 86400000); const st = _dueStatus(days);
           items.push({ sk1: rank[st], sk2: days, row: [ nm, 'Service', m.type || '—', fmtDate(m.due_date) + ' (' + ramasZile(days) + ')', '—', st ] }); }
         if (m.due_km != null) { const odo = odoMap[m.imei]; const kmLeft = odo != null ? (m.due_km - odo) : null;
           const st = kmLeft == null ? '—' : (kmLeft < 0 ? 'Depășit' : kmLeft <= 500 ? 'Critic' : kmLeft <= 2000 ? 'Curând' : 'OK');
