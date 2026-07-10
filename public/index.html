@@ -1106,6 +1106,9 @@
     .rep-mp-m { padding:8px 4px; border:1px solid transparent; border-radius:6px; background:transparent; cursor:pointer; font-size:13px; color:var(--text-primary); text-align:center; font-family:inherit; }
     .rep-mp-m:hover { background:rgba(63,224,125,.12); }
     .rep-mp-m.active { background:var(--accent); color:#06210F; font-weight:700; }
+    .rep-mp-all { width:100%; padding:8px; margin-bottom:8px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; font-size:13px; font-weight:600; color:var(--text-primary); font-family:inherit; display:flex; align-items:center; justify-content:center; gap:7px; }
+    .rep-mp-all:hover { background:rgba(63,224,125,.12); }
+    .rep-mp-all.active { background:var(--accent); color:#06210F; border-color:var(--accent); }
     #hotspot-panel .rep-dt-input { margin-bottom:6px; }
     .rep-dt-inline { width:auto; min-width:122px; }
     .flatpickr-calendar { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.28); color:var(--text-primary); }
@@ -2050,14 +2053,16 @@ const pozitii = await r.json();</code></pre>
           </span>
         </div>
         <div id="rep-month-picker" style="display:none;margin-bottom:10px;">
-          <div class="rep-interval-title"><i class="far fa-clock"></i> Scadențe până la finalul lunii</div>
+          <div class="rep-interval-title"><i class="far fa-clock"></i> Scadențe — arată</div>
           <div class="rep-mp">
+            <button type="button" id="rep-mp-all" class="rep-mp-all" onclick="repPickAll()"><i class="fas fa-list-check"></i> Tot (toate scadențele)</button>
             <div class="rep-mp-head">
               <button type="button" class="rep-mp-nav" onclick="repMonthNav(-1)"><i class="fas fa-chevron-left"></i></button>
               <span id="rep-mp-year">—</span>
               <button type="button" class="rep-mp-nav" onclick="repMonthNav(1)"><i class="fas fa-chevron-right"></i></button>
             </div>
             <div class="rep-mp-grid" id="rep-mp-grid"></div>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.35;">„Tot" = toate scadențele, nimic ascuns. O lună = doar ce e scadent până la finalul ei (restanțele, service-ul pe km și cele efectuate apar mereu).</div>
           </div>
         </div>
         <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
@@ -4910,16 +4915,18 @@ const pozitii = await r.json();</code></pre>
       }
     }
     // ─── Selector de lună pt. raportul „Scadențe" (arată tot ce e scadent până la finalul lunii alese) ───
-    var repMonthSel = null; // { year, month(0-11) }
+    var repMonthSel = null; // { year, month(0-11), all }
     var REP_MONTHS_RO = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Noi', 'Dec'];
-    function repInitMonthPicker() { var n = new Date(); repMonthSel = { year: n.getFullYear(), month: n.getMonth() }; repRenderMonths(); }
+    function repInitMonthPicker() { var n = new Date(); repMonthSel = { year: n.getFullYear(), month: n.getMonth(), all: true }; repRenderMonths(); } // implicit „Tot" → nu ascunde nimic
     function repRenderMonths() {
       if (!repMonthSel) return;
       var y = document.getElementById('rep-mp-year'); if (y) y.textContent = repMonthSel.year;
+      var allBtn = document.getElementById('rep-mp-all'); if (allBtn) allBtn.classList.toggle('active', !!repMonthSel.all);
       var g = document.getElementById('rep-mp-grid'); if (!g) return;
-      g.innerHTML = REP_MONTHS_RO.map(function (nm, i) { return '<button type="button" class="rep-mp-m' + (i === repMonthSel.month ? ' active' : '') + '" onclick="repPickMonth(' + i + ')">' + nm + '</button>'; }).join('');
+      g.innerHTML = REP_MONTHS_RO.map(function (nm, i) { return '<button type="button" class="rep-mp-m' + ((!repMonthSel.all && i === repMonthSel.month) ? ' active' : '') + '" onclick="repPickMonth(' + i + ')">' + nm + '</button>'; }).join('');
     }
-    function repPickMonth(m) { if (repMonthSel) { repMonthSel.month = m; repRenderMonths(); } }
+    function repPickAll() { if (repMonthSel) { repMonthSel.all = true; repRenderMonths(); } }
+    function repPickMonth(m) { if (repMonthSel) { repMonthSel.all = false; repMonthSel.month = m; repRenderMonths(); } }
     function repMonthNav(d) { if (repMonthSel) { repMonthSel.year += d; repRenderMonths(); } }
     function onRepType() {
       const t = document.getElementById('rep-type').value; let html = '';
@@ -4950,7 +4957,7 @@ const pozitii = await r.json();</code></pre>
       const t = document.getElementById('rep-type').value;
       const imei = document.getElementById('rep-imei').value;
       // „Scadențe": selector pe LUNĂ → from = 1 ale lunii, to = ultima zi a lunii (orizont „până la finalul lunii"). Zile rămase = față de azi (backend).
-      if (t === 'due') { const _s = repMonthSel || { year: new Date().getFullYear(), month: new Date().getMonth() }; const _f = new Date(_s.year, _s.month, 1).toISOString(); const _t = new Date(_s.year, _s.month + 1, 0, 23, 59, 59).toISOString(); return '/api/reports/due?from=' + _f + '&to=' + _t + (imei ? '&imei=' + encodeURIComponent(imei) : ''); }
+      if (t === 'due') { const _s = repMonthSel || { all: true }; const _f = _s.all ? new Date(2000, 0, 1).toISOString() : new Date(_s.year, _s.month, 1).toISOString(); const _t = _s.all ? new Date(2999, 11, 31, 23, 59, 59).toISOString() : new Date(_s.year, _s.month + 1, 0, 23, 59, 59).toISOString(); return '/api/reports/due?from=' + _f + '&to=' + _t + (imei ? '&imei=' + encodeURIComponent(imei) : ''); }
       let fromD, toD;
       if (repFromFp && repToFp) { fromD = repFromFp.selectedDates[0] || null; toD = repToFp.selectedDates[0] || null; }
       else { const fv = document.getElementById('rep-from').value, tv = document.getElementById('rep-to').value; fromD = fv ? new Date(fv) : null; toD = tv ? new Date(tv) : null; }
