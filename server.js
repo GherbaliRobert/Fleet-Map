@@ -6160,7 +6160,7 @@ app.get('/api/export/:imei', requireAuth, withScope, async (req, res) => {
 app.get('/api/reports', requireAuth, (req, res) => {
   res.json({
     categories: reports.REPORT_CATEGORIES,
-    reports: Object.entries(reports.REPORTS).map(([k, v]) => ({ type: k, label: v.label, cat: v.cat }))
+    reports: Object.entries(reports.REPORTS).map(([k, v]) => ({ type: k, label: v.label, cat: v.cat, desc: v.desc || '' }))
   });
 });
 

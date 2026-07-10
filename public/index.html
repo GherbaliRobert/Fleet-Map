@@ -1142,10 +1142,12 @@
     .rep-cat:hover { border-color:var(--accent); color:var(--text-primary); }
     .rep-cat.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     .rep-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
-    .rep-card { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-panel); color:var(--text-primary); cursor:pointer; transition:all .15s; text-align:left; }
+    .rep-card { display:flex; align-items:flex-start; gap:12px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-panel); color:var(--text-primary); cursor:pointer; transition:all .15s; text-align:left; }
     .rep-card:hover { border-color:var(--accent); box-shadow:0 2px 12px rgba(0,0,0,.08); transform:translateY(-1px); }
-    .rep-card i { font-size:18px; color:var(--accent); width:26px; text-align:center; }
+    .rep-card i { font-size:18px; color:var(--accent); width:26px; text-align:center; margin-top:1px; }
+    .rep-card .rc-text { display:flex; flex-direction:column; gap:3px; min-width:0; }
     .rep-card .rc-label { font-weight:600; font-size:13.5px; }
+    .rep-card .rc-desc { font-size:11px; font-weight:400; color:var(--text-muted); line-height:1.35; }
     /* Tab-uri Rapoarte: Generează / Istoric */
     .rep-tabs { display:flex; gap:8px; margin-bottom:14px; }
     .rep-tab { display:flex; align-items:center; gap:8px; padding:10px 18px; border-radius:10px; border:1px solid var(--border); background:var(--bg-panel); color:var(--text-secondary); cursor:pointer; font-size:14px; font-weight:700; transition:all .15s; }
@@ -4814,7 +4816,7 @@ const pozitii = await r.json();</code></pre>
     function renderReportCards() {
       const list = (repCatalog.reports || []).filter(r => r.cat === repCurrentCat);
       document.getElementById('rep-cards').innerHTML = list.map(r =>
-        `<button class="rep-card" onclick="openReportCard('${r.type}')"><i class="fas ${REP_ICONS[r.type]||'fa-file-lines'}"></i><span class="rc-label">${r.label}</span></button>`
+        `<button class="rep-card" onclick="openReportCard('${r.type}')"><i class="fas ${REP_ICONS[r.type]||'fa-file-lines'}"></i><span class="rc-text"><span class="rc-label">${r.label}</span>${r.desc ? `<span class="rc-desc">${_repEsc(r.desc)}</span>` : ''}</span></button>`
       ).join('') || '<p style="color:var(--text-muted);font-size:13px;">Niciun raport în această categorie.</p>';
     }
     function selectReportCategory(cat) {
