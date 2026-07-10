@@ -1411,8 +1411,11 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   } catch (e) {}
   items.sort((a, b) => (a.sk1 - b.sk1) || (a.sk2 - b.sk2)); // scadente după urgență (Depășit→…→OK), efectuatele la final (cele mai recente primele)
   const rows = items.map(x => x.row);
-  // FĂRĂ sumar, fără grafic și fără „Sumar pe vehicul" / foaie Excel de sumar (cerut) — doar tabelul plat.
-  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Efectuat', 'Stare'], rows, noPerVehicle: true };
+  // Foaie SEPARATĂ per mașină în Excel (+ selector online) — grupăm rândurile pe vehicul. FĂRĂ sumar: nici foaia „Sumar" (noSummarySheet), nici tabelul „Sumar pe vehicul" online (noVehSummary).
+  const groups = {}, order = [];
+  for (const r of rows) { const k = String(r[0]); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); }
+  const perVehicle = order.length >= 2 ? order.sort((a, b) => a.localeCompare(b)).map(nm => ({ vehicul: nm, summary: [], rows: groups[nm] })) : undefined;
+  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Efectuat', 'Stare'], rows, perVehicle, noSummarySheet: true, noVehSummary: true };
 }
 
 // ── Raport: Disponibilitate flotă — zile active/inactive cu DATE exacte, cea mai lungă pauză, ultima poziție, semnal ──

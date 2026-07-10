@@ -66,22 +66,24 @@ async function toXlsxMultiSheet(report) {
   const used = new Set();
   const period = { text: report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to)), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
   const pv = report.perVehicle || [];
-  // Sumar generic: coloanele vin din summary-ul fiecărui vehicul (trips au câmpuri bogate; restul → „Înregistrări").
-  const labels = (pv[0] && pv[0].summary) ? pv[0].summary.map(s => s[0]) : [];
-  const sumCols = [report.groupLabel || 'Vehicul'].concat(labels); // ex. „Șofer" la Pontaj, „Vehicul" la restul
-  const sumRows = pv.map(v => [v.vehicul].concat((v.summary || []).map(s => s[1])));
-  const totals = labels.map((lbl, i) => {
-    let allNum = true, any = false, sum = 0;
-    for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = _summableNum(val); if (n == null) { allNum = false; break; } any = true; sum += n; }
-    return (allNum && any) ? Math.round(sum * 10) / 10 : '';
-  });
-  // TOTAL: dacă raportul dă un total explicit (ex. Pontaj: orele se adună ca durate, media nu), îl folosim; altfel suma generică.
-  const totalsRow = (report.summaryTotals && report.summaryTotals.length) ? report.summaryTotals : totals;
-  sumRows.push([report.groupLabel ? 'TOTAL' : 'TOTAL flotă'].concat(totalsRow));
   const logoId = xlLogoId(wb); // logo RA Tracks, refolosit pe toate foile
-  // KPI pe flotă (report.summary) în capul foii „Sumar" — altfel s-ar pierde complet în exportul multi-sheet
-  const kpiLines = Object.entries(report.summary || {}).map(([k, v]) => ({ text: k + ':  ' + (v == null ? '—' : v), font: { size: 11, color: { argb: 'FF444444' } } }));
-  xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period].concat(kpiLines), sumCols, sumRows, logoId);
+  if (!report.noSummarySheet) { // unele rapoarte (ex. Scadențe) vor DOAR foi/mașină, fără foaia „Sumar"
+    // Sumar generic: coloanele vin din summary-ul fiecărui vehicul (trips au câmpuri bogate; restul → „Înregistrări").
+    const labels = (pv[0] && pv[0].summary) ? pv[0].summary.map(s => s[0]) : [];
+    const sumCols = [report.groupLabel || 'Vehicul'].concat(labels); // ex. „Șofer" la Pontaj, „Vehicul" la restul
+    const sumRows = pv.map(v => [v.vehicul].concat((v.summary || []).map(s => s[1])));
+    const totals = labels.map((lbl, i) => {
+      let allNum = true, any = false, sum = 0;
+      for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = _summableNum(val); if (n == null) { allNum = false; break; } any = true; sum += n; }
+      return (allNum && any) ? Math.round(sum * 10) / 10 : '';
+    });
+    // TOTAL: dacă raportul dă un total explicit (ex. Pontaj: orele se adună ca durate, media nu), îl folosim; altfel suma generică.
+    const totalsRow = (report.summaryTotals && report.summaryTotals.length) ? report.summaryTotals : totals;
+    sumRows.push([report.groupLabel ? 'TOTAL' : 'TOTAL flotă'].concat(totalsRow));
+    // KPI pe flotă (report.summary) în capul foii „Sumar" — altfel s-ar pierde complet în exportul multi-sheet
+    const kpiLines = Object.entries(report.summary || {}).map(([k, v]) => ({ text: k + ':  ' + (v == null ? '—' : v), font: { size: 11, color: { argb: 'FF444444' } } }));
+    xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period].concat(kpiLines), sumCols, sumRows, logoId);
+  }
   for (const v of pv) {
     xlWriteTable(wb.addWorksheet(xlSheetName(v.vehicul, used)), [{ text: v.vehicul }, period], report.columns || [], v.rows || [], logoId);
   }
