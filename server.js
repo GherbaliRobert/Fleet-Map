@@ -6211,6 +6211,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       dropMin: parseInt(req.query.dropMin) || 10,
       geofenceId: parseInt(req.query.geofenceId) || null,
       sampleSec: parseInt(req.query.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
+      all: req.query.all === '1', // Scadențe: „Tot" (arată toate scadențele, fără orizont de lună)
       geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
       priceByType: effectiveFuelPrices(_cs)
     };

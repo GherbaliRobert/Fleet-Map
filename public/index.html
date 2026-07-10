@@ -4957,7 +4957,12 @@ const pozitii = await r.json();</code></pre>
       const t = document.getElementById('rep-type').value;
       const imei = document.getElementById('rep-imei').value;
       // „Scadențe": selector pe LUNĂ → from = 1 ale lunii, to = ultima zi a lunii (orizont „până la finalul lunii"). Zile rămase = față de azi (backend).
-      if (t === 'due') { const _s = repMonthSel || { all: true }; const _f = _s.all ? new Date(2000, 0, 1).toISOString() : new Date(_s.year, _s.month, 1).toISOString(); const _t = _s.all ? new Date(2999, 11, 31, 23, 59, 59).toISOString() : new Date(_s.year, _s.month + 1, 0, 23, 59, 59).toISOString(); return '/api/reports/due?from=' + _f + '&to=' + _t + (imei ? '&imei=' + encodeURIComponent(imei) : ''); }
+      if (t === 'due') {
+        const _s = repMonthSel || { all: true };
+        if (_s.all) { const _y = new Date().getFullYear(); const _f = new Date(_y, 0, 1).toISOString(); const _t = new Date(_y, 11, 31, 23, 59, 59).toISOString(); return '/api/reports/due?all=1&from=' + _f + '&to=' + _t + (imei ? '&imei=' + encodeURIComponent(imei) : ''); }
+        const _f = new Date(_s.year, _s.month, 1).toISOString(); const _t = new Date(_s.year, _s.month + 1, 0, 23, 59, 59).toISOString();
+        return '/api/reports/due?from=' + _f + '&to=' + _t + (imei ? '&imei=' + encodeURIComponent(imei) : '');
+      }
       let fromD, toD;
       if (repFromFp && repToFp) { fromD = repFromFp.selectedDates[0] || null; toD = repToFp.selectedDates[0] || null; }
       else { const fv = document.getElementById('rep-from').value, tv = document.getElementById('rep-to').value; fromD = fv ? new Date(fv) : null; toD = tv ? new Date(tv) : null; }
@@ -5467,7 +5472,7 @@ const pozitii = await r.json();</code></pre>
       lastReport = data; _repSort = null; _repFilter = null; _repPage = 0;
       // Intervalul pentru care a fost generat raportul (de la – până la), sub titlu.
       var _rp = document.getElementById('rep-period');
-      if (_rp) { if (data && data.from && data.to) { _rp.innerHTML = '<i class="far fa-calendar-alt" style="color:var(--accent);"></i> Interval: ' + repFmtDT(data.from) + ' – ' + repFmtDT(data.to); _rp.style.display = ''; } else { _rp.textContent = ''; _rp.style.display = 'none'; } }
+      if (_rp) { if (data && data.periodLabel) { _rp.innerHTML = '<i class="far fa-calendar-alt" style="color:var(--accent);"></i> ' + _repEsc(data.periodLabel); _rp.style.display = ''; } else if (data && data.from && data.to) { _rp.innerHTML = '<i class="far fa-calendar-alt" style="color:var(--accent);"></i> Interval: ' + repFmtDT(data.from) + ' – ' + repFmtDT(data.to); _rp.style.display = ''; } else { _rp.textContent = ''; _rp.style.display = 'none'; } }
       document.getElementById('rep-summary').innerHTML = Object.entries(data.summary||{}).map(([k,v]) => `<div class="rep-chip"><div class="v">${v}</div><div class="l">${k}</div></div>`).join('');
       _repRenderVehView(data);
       renderRepCharts(data.charts || []);

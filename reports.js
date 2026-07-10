@@ -1374,7 +1374,8 @@ async function _consumptionMap(db, imeis, from, to, opts) {
 async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   // Documente + service, pe DATĂ și pe KM. „Zile rămase" mereu față de AZI. Include ȘI service-ul EFECTUAT (cu data + km).
   const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate());
-  const horizon = to ? new Date(to) : null; // „până la finalul lunii alese" → filtrează scadențele pe DATĂ (documente + service pe dată); km + efectuate rămân mereu
+  const showAll = !!(opts && opts.all); // „Tot" → fără orizont (arată chiar tot); altfel filtrăm „până la finalul lunii alese"
+  const horizon = showAll ? null : (to ? new Date(to) : null); // filtrează doar scadențele pe DATĂ; km + efectuate rămân mereu
   const items = [];
   const rank = { 'Depășit': 0, 'Critic': 1, 'Curând': 2, 'OK': 3, '—': 4, 'Efectuat': 5 };
   const ramasZile = (days) => days < 0 ? Math.abs(days) + ' zile în urmă' : (days === 0 ? 'azi' : days + ' zile');
@@ -1415,7 +1416,9 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   const groups = {}, order = [];
   for (const r of rows) { const k = String(r[0]); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); }
   const perVehicle = order.length >= 2 ? order.sort((a, b) => a.localeCompare(b)).map(nm => ({ vehicul: nm, summary: [], rows: groups[nm] })) : undefined;
-  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Efectuat', 'Stare'], rows, perVehicle, noSummarySheet: true, noVehSummary: true };
+  // Etichetă de perioadă cu sens (nu interval de date fals): „Toate scadențele" / „Scadențe până la <dată>".
+  const periodLabel = showAll ? ('Toate scadențele (la zi: ' + fmtDate(ref) + ')') : ('Scadențe până la ' + fmtDate(to));
+  return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Efectuat', 'Stare'], rows, perVehicle, periodLabel, noSummarySheet: true, noVehSummary: true };
 }
 
 // ── Raport: Disponibilitate flotă — zile active/inactive cu DATE exacte, cea mai lungă pauză, ultima poziție, semnal ──
