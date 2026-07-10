@@ -7333,8 +7333,10 @@ const pozitii = await r.json();</code></pre>
         { className: 'grp-pop-wrap', maxHeight: 280 }).openPopup();
     }
 
-    // ─── Spiderfy: la click pe bulă, vehiculele se „despart" animat în jurul centrului ───
-    // (în loc de popup-ul cu listă). Click pe hartă / zoom / drag → se strâng la loc.
+    // ─── Spiderfy: DEZACTIVAT (cerință 2026-07-10) — click pe bulă deschide modalul cu lista (_openGroupModal); ───
+    // ─── degruparea se face DOAR din butonul dedicat (dreapta-sus). Codul de mai jos NU mai are apelanți     ───
+    // ─── (păstrat pentru referință; _spiderActive rămâne mereu null, gărzile lui sunt no-op).                ───
+    // (istoric: la click pe bulă, vehiculele se „despărțeau" animat în jurul centrului; click pe hartă / zoom / drag → se strângeau la loc.)
     const _SPIDER_MAX = 24; // peste atât → revenim la popup (prea aglomerat pt. desfacere)
     function _ringPoints(cp, count, radius, startAngle) {
       const pts = [], a0 = (startAngle == null ? -Math.PI / 2 : startAngle);
@@ -7469,6 +7471,8 @@ const pozitii = await r.json();</code></pre>
         // grupare oprită (sau multi-select activ) → fără bule; vizibilitate normală, respectând multi-select-ul
         _groupBubbles.forEach(function (b) { try { map.removeLayer(b); } catch (e) {} });
         _groupBubbles.clear();
+        const _govOff = document.getElementById('grp-modal'); // modalul bulei nu are sens fără bule
+        if (_govOff) _govOff.classList.remove('visible');
         markers.forEach(function (mk, imei) {
           const hiddenBySel = (window._mapSel instanceof Set) && !window._mapSel.has(imei);
           if (hiddenBySel) { if (map.hasLayer(mk)) map.removeLayer(mk); }
@@ -7483,6 +7487,7 @@ const pozitii = await r.json();</code></pre>
       devices.forEach(function (d, imei) {
         if (!markers.has(imei) || d.latitude == null || d.longitude == null) return;
         if (imei === window._followImei) return;
+        if (imei === window._grpFocusImei) return; // ales din modalul bulei → individual cât timp fișa lui e deschisă
         const z = zoneOfPoint(d.latitude, d.longitude);
         if (z) {
           if (!byZone.has(z.id)) byZone.set(z.id, { zone: z, imeis: [] });
@@ -7523,7 +7528,7 @@ const pozitii = await r.json();</code></pre>
         let bubble = _groupBubbles.get(g.id);
         if (!bubble) {
           bubble = L.marker(g.center, { zIndexOffset: 1000 });
-          bubble.on('click', function () { _spiderfyGroup(bubble); }); // click → se desface animat (spiderfy)
+          bubble.on('click', function () { _openGroupModal(bubble); }); // click → modal cu vehiculele din bulă (NU desface; degruparea = doar din butonul dreapta-sus)
           bubble.addTo(map);
           _groupBubbles.set(g.id, bubble);
           bubble._count = -1;
@@ -7545,7 +7550,98 @@ const pozitii = await r.json();</code></pre>
       _groupBubbles.forEach(function (b, id) {
         if (!liveIds.has(id)) { try { map.removeLayer(b); } catch (e) {} _groupBubbles.delete(id); }
       });
+      // modalul bulei e deschis → ține-l sincron cu grupul lui (live). Id-ul grupurilor de proximitate e bazat
+      // pe componență (se schimbă când o mașină intră/iese), așa că regăsim grupul prin INTERSECȚIA membrilor
+      // (cel cu cei mai mulți membri comuni). Niciun membru comun → grupul chiar a dispărut → închidem modalul.
+      const _gov = document.getElementById('grp-modal');
+      if (_gov && _gov.classList.contains('visible')) {
+        const _prev = new Set(window._grpModalImeis || []);
+        let _g = null, _best = 0;
+        groups.forEach(function (x) {
+          let n = 0; x.imeis.forEach(function (i) { if (_prev.has(i)) n++; });
+          if (n > _best) { _best = n; _g = x; }
+        });
+        if (_g) { window._grpModalGroupId = _g.id; window._grpModalImeis = _g.imeis.slice(); _renderGroupModal(_g.imeis, _g.name); }
+        else _gov.classList.remove('visible');
+      }
     }
+
+    // ─── Modal „vehicule din bulă" ───
+    // Click pe o bulă de grupare NU mai desface grupul (gruparea/degruparea se face DOAR din butonul
+    // dedicat, dreapta-sus) — deschide lista mașinilor din bulă; click pe o mașină → fișa ei.
+    function _openGroupModal(bubble) {
+      const imeis = bubble._imeis || [], zoneName = bubble._zoneName || 'Vehicule apropiate';
+      let ov = document.getElementById('grp-modal');
+      if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'grp-modal'; ov.className = 'modal-overlay';
+        ov.innerHTML =
+          '<div class="modal" style="width:440px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;">' +
+            '<h2 style="margin-bottom:12px;">' +
+              '<span><i class="fas fa-layer-group" style="margin-right:8px;color:var(--accent);"></i><span id="grp-modal-title">Vehicule</span></span>' +
+              '<button class="close-btn" onclick="document.getElementById(\'grp-modal\').classList.remove(\'visible\')" style="position:static;font-size:18px;">&#10005;</button>' +
+            '</h2>' +
+            '<div id="grp-modal-list" style="overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>' +
+          '</div>';
+        ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('visible'); });
+        // delegare: click pe un card → vehiculul lui (data-imei; fără onclick inline, imun la ghilimele în date)
+        ov.querySelector('#grp-modal-list').addEventListener('click', function (e) {
+          const card = e.target.closest('.device-card');
+          if (card && card.dataset.imei) window._grpModalPick(card.dataset.imei);
+        });
+        document.body.appendChild(ov);
+      }
+      window._grpModalGroupId = bubble._grpId; // pt. sincronizarea live din recomputeGrouping
+      window._grpModalImeis = imeis.slice();   // membrii afișați (regăsirea grupului se face prin intersecție)
+      _renderGroupModal(imeis, zoneName);
+      ov.classList.add('visible');
+    }
+    // Randarea conținutului (titlu + carduri) — apelată la deschidere ȘI la fiecare recalcul cât modalul e vizibil,
+    // ca lista să rămână vie (vitezele/statusurile se actualizează; mașinile care ies din grup dispar din listă).
+    function _renderGroupModal(imeis, zoneName) {
+      const titleEl = document.getElementById('grp-modal-title');
+      if (titleEl) titleEl.textContent = zoneName + ' · ' + imeis.length + (imeis.length === 1 ? ' vehicul' : ' vehicule');
+      const listEl = document.getElementById('grp-modal-list');
+      if (listEl) {
+        listEl.innerHTML = imeis.map(function (imei) {
+          const d = devices.get(imei);
+          if (!d) return '';
+          // status identic cu lista din stânga (updateDeviceList): verde / galben / roșu / gri
+          const isMoving = d.speed > 3 || (raxMovedRecently(d) && ignitionOn(d.io, d.timestamp));
+          const isOnline = isDeviceOnline(d);
+          const hasIgnition = ignitionOn(d.io, d.timestamp);
+          const _freshLive = d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
+          let statusClass = 'gone';
+          if (isOnline) statusClass = (isMoving && _freshLive) ? 'moving' : ((isMoving || hasIgnition) ? 'idle' : 'stopped');
+          const _silColor = statusClass === 'moving' ? '#16A34A' : statusClass === 'idle' ? '#eab308' : statusClass === 'stopped' ? '#ef4444' : '#9ca3af';
+          const name = d.name || d.imei, plate = d.plate || '';
+          return '' +
+            '<div class="device-card" style="margin:0;" data-imei="' + _esc(imei) + '">' +
+              '<div class="device-card-top">' +
+                '<div class="device-card-name">' +
+                  '<span class="status-dot ' + statusClass + '"></span>' +
+                  '<span class="device-card-icon">' + vehicleSilhouetteSVG(markerCategory(d), _silColor, 26) + '</span>' +
+                  '<span class="name">' + _esc(name) + '</span>' +
+                  (plate ? '<span class="device-card-plate">' + _esc(plate) + '</span>' : '') +
+                '</div>' +
+                '<span class="device-card-speed ' + (isMoving && _freshLive ? 'moving' : 'stopped') + '">' + (d.speed || 0) + ' km/h</span>' +
+              '</div>' +
+              '<div class="device-card-meta">' +
+                '<span><i class="far fa-clock"></i> ' + (d.timestamp ? timeAgoPhrase(new Date(d.timestamp)) : 'fără transmisie') + '</span>' +
+              '</div>' +
+            '</div>';
+        }).join('');
+      }
+    }
+    // Click pe un vehicul din modal → închide modalul + deschide fișa (comportament identic cu lista din stânga).
+    // Vehiculul ales IESE temporar din bulă (altfel flyTo ar ateriza pe o bulă anonimă și n-ai vedea nimic selectat);
+    // revine în bulă la închiderea fișei (closeDetailPanel curăță _grpFocusImei).
+    window._grpModalPick = function (imei) {
+      const ov = document.getElementById('grp-modal');
+      if (ov) ov.classList.remove('visible');
+      window._grpFocusImei = imei;
+      selectDevice(imei); // selectDevice apelează recomputeGrouping() → markerul lui apare individual, evidențiat
+    };
 
     // ─── Roster: completează lista cu TOATE vehiculele înregistrate (din /api/devices, din DB) ───
     // Feed-ul live (/api/live) conține doar vehiculele care transmit ACUM; după un restart de server
@@ -7953,6 +8049,7 @@ const pozitii = await r.json();</code></pre>
 
     function closeDetailPanel() {
       if (window.vpClearFollow) window.vpClearFollow(); // închiderea fișei oprește urmărirea live
+      if (window._grpFocusImei) { window._grpFocusImei = null; try { scheduleGrouping(); } catch (e) {} } // vehiculul ales din bulă reintră în grup
       detailPanelImei = null;
       var _p = document.getElementById('detail-panel');
       _p.classList.remove('open');
@@ -14598,8 +14695,8 @@ const pozitii = await r.json();</code></pre>
         return '<tr><td><strong>' + esc(d.name || '—') + '</strong>' + (d.plate ? '<br><span class="rax-dev-plate">' + esc(d.plate) + '</span>' : '') + '</td>' +
           '<td class="mono">' + esc(d.imei) + '</td><td>' + co + '</td>' +
           '<td>' + (canBadge[d.can_type] || '') + ' ' + iface + '</td>' +
-          '<td>' + (stBadge[b] || '') + '</td><td class="rax-dev-lp">' + lp + '</td>' +
-          '<td class="rax-dev-act">' + act + '</td></tr>';
+          '<td>' + (stBadge[b] || '') + (d.install_issue ? ' <span class="rax-devst" style="background:rgba(245,158,11,.14);color:#f59e0b;" title="' + esc((d.install_issue.note || 'Problemă la montaj') + (d.install_issue.at ? ' — ' + new Date(Number(d.install_issue.at)).toLocaleDateString('ro-RO') : '')) + '">⚠ montaj</span>' : '') + '</td><td class="rax-dev-lp">' + lp + '</td>' +
+          '<td class="rax-dev-act">' + '<button class="rax-btn" title="' + (d.install_issue ? 'Anulează semnalarea „problemă la montaj"' : 'Semnalează problemă la montaj') + '" onclick="raxDevIssueToggle(\'' + esc(d.imei) + '\')" style="color:' + (d.install_issue ? '#f59e0b' : 'var(--text-muted)') + ';"><i class="fas fa-triangle-exclamation"></i></button> ' + act + '</td></tr>';
       }).join('');
       box.innerHTML = strictBanner + attemptsHtml + head + '<div style="overflow-x:auto;"><table class="rax-co-table rax-dev-table"><thead><tr><th>Vehicul</th><th>IMEI</th><th>Companie</th><th>Date / interfață</th><th>Stare</th><th>Ultima poziție</th><th>Acțiuni</th></tr></thead><tbody>' +
         (rows.length ? body : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text-muted)">Niciun dispozitiv în filtrul curent.</td></tr>') + '</tbody></table></div>';
@@ -14641,6 +14738,26 @@ const pozitii = await r.json();</code></pre>
       if (await _raxDevAction('/api/devices/' + encodeURIComponent(imei), { method: 'DELETE' }, 'Dispozitiv șters')) raxLoadDevices();
     };
 
+    // Semnalare / anulare „problemă la montaj" pe un dispozitiv (reversibil, cu notă opțională).
+    window.raxDevIssueToggle = async function (imei) {
+      var d = _raxDevices.filter(function (x) { return x.imei === imei; })[0];
+      var flagged = !(d && d.install_issue);
+      var note = null;
+      if (flagged) {
+        note = prompt('Detalii problemă la montaj (opțional):', '');
+        if (note === null) return; // anulat din dialog
+        note = note.trim() || null;
+      } else if (!await raConfirm('Anulezi semnalarea „problemă la montaj" pentru ' + imei + '?')) return;
+      var r;
+      try {
+        r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/install-issue', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ flagged: flagged, note: note }) }).then(function (x) { return x.json(); });
+      } catch (e) { r = { error: e.message }; }
+      if (r && r.error) { (window.raxToast || alert)(r.error, 'error'); return; }
+      if (d) d.install_issue = (r && r.install_issue) || null;
+      (window.raxToast || function () { })(flagged ? 'Problemă la montaj semnalată' : 'Semnalare anulată', 'success');
+      raxRenderDevices();
+    };
+
     // ─── Adăugare manuală dispozitiv (super-admin) — pre-înregistrează IMEI în allow-list (mod strict).
     //     Până la integrarea FOTA WEB (Teltonika) aici înregistrezi trackerele noi manual, după IMEI.
     window.raxDevAddOpen = function () {
@@ -14665,6 +14782,8 @@ const pozitii = await r.json();</code></pre>
               L('Tip vehicul', '<select id="radd-type" class="rax-field">' + typeOpts + '</select>', 'flex:1;') +
               L('Interfață CAN', '<select id="radd-if" class="rax-field">' + ifaceOpts + '</select>', 'flex:1;') +
             '</div>' +
+            '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer;"><input type="checkbox" id="radd-issue" onchange="var n=document.getElementById(\'radd-issue-note\');if(n)n.style.display=this.checked?\'\':\'none\';"> <b style="color:#f59e0b;"><i class="fas fa-triangle-exclamation"></i> Problemă la montaj</b> <span style="color:var(--text-muted);font-weight:400;">(se poate anula ulterior)</span></label>' +
+            '<input id="radd-issue-note" class="rax-field" placeholder="detalii (opțional) — ex. cablaj de refăcut" style="display:none;margin-top:6px;">' +
             '<div id="radd-err" style="color:var(--red);font-size:12px;margin-top:8px;min-height:14px;"></div>' +
             '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">' +
               '<button class="rax-btn" onclick="document.getElementById(\'rax-devadd-overlay\').classList.remove(\'open\')">Anulează</button>' +
@@ -14679,6 +14798,8 @@ const pozitii = await r.json();</code></pre>
         var ty = document.getElementById('radd-type'); if (ty) ty.value = '';
         var ifc = document.getElementById('radd-if'); if (ifc) ifc.value = '';
         var er0 = document.getElementById('radd-err'); if (er0) er0.textContent = '';
+        var isc0 = document.getElementById('radd-issue'); if (isc0) isc0.checked = false;
+        var isn0 = document.getElementById('radd-issue-note'); if (isn0) { isn0.value = ''; isn0.style.display = 'none'; }
       }
       ov.classList.add('open');
       setTimeout(function () { var e = document.getElementById('radd-imei'); if (e) e.focus(); }, 60);
@@ -14692,6 +14813,8 @@ const pozitii = await r.json();</code></pre>
       var plate = (document.getElementById('radd-plate').value || '').trim(); if (plate) body.plate = plate;
       var type = document.getElementById('radd-type').value; if (type) body.vehicle_type = type;
       var co = document.getElementById('radd-co').value; if (co) body.company_id = parseInt(co);
+      var isc = document.getElementById('radd-issue');
+      if (isc && isc.checked) { body.install_issue = true; var _isn = (document.getElementById('radd-issue-note') || {}).value || ''; if (_isn.trim()) body.install_issue_note = _isn.trim(); }
       var iface = document.getElementById('radd-if').value;
       var btn = document.getElementById('radd-save'); if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
       var ok = await _raxDevAction('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'Dispozitiv adăugat — intră în allow-list');
