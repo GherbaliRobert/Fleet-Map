@@ -48,11 +48,11 @@ export function Stats() {
               center={<div class="st-donut-center" style="text-align:center"><div class="num">{c.total}</div><div class="lbl">autovehicule</div></div>}
             />
             <div class="st-counts">
+              <CountRow accent color="var(--accent)" n={c.total} label="Toate vehiculele" onClick={() => loc.route('/vehicles?status=all')} />
               <CountRow color="#3FE07D" n={c.moving} label="În mișcare" onClick={() => loc.route('/vehicles?status=moving')} />
               <CountRow color="#eab308" n={c.idle} label="Staționate" onClick={() => loc.route('/vehicles?status=idle')} />
               <CountRow color="#ef4444" n={c.stopped} label="Oprite" onClick={() => loc.route('/vehicles?status=stopped')} />
               <CountRow color="#8A93A3" n={c.offline} label="Fără transmisie" onClick={() => loc.route('/vehicles?status=offline')} />
-              <CountRow color="var(--accent)" n={c.total} label="Toate vehiculele" onClick={() => loc.route('/vehicles?status=all')} />
             </div>
           </div>
         )}
@@ -97,13 +97,14 @@ export function Stats() {
   );
 }
 
-function CountRow({ color, n, label, onClick }: { color: string; n: number; label: string; onClick?: () => void }) {
+function CountRow({ color, n, label, onClick, accent }: { color: string; n: number; label: string; onClick?: () => void; accent?: boolean }) {
   return (
-    <button class="st-count" type="button" onClick={onClick}>
+    <button class="st-count" type="button" onClick={onClick}
+      style={accent ? 'border:1px solid var(--accent);background:color-mix(in srgb, var(--accent) 12%, var(--bg-panel));font-weight:700' : undefined}>
       <span class="bar" style={{ background: color }} />
-      <span class="n">{n}</span>
+      <span class="n" style={accent ? 'color:var(--accent)' : undefined}>{n}</span>
       <span class="lbl">{label}</span>
-      <Icon name="chevronR" size={17} color="var(--text-muted)" />
+      <Icon name="chevronR" size={17} color={accent ? 'var(--accent)' : 'var(--text-muted)'} />
     </button>
   );
 }

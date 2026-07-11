@@ -6170,17 +6170,21 @@ const pozitii = await r.json();</code></pre>
       // Notificare de raport → nu are eveniment GPS; deschide direct raportul din Istoric (nu modalul de hartă).
       if (d.type === 'report_ready' || d.type === 'report_error') { closeNotifDetail(); notifOpenReport((d.data && d.data.historyId != null) ? d.data.historyId : ''); return; }
       var sevMap = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' }, sevC = sevMap[d.severity] || '#3b82f6';
-      var isIdle = !!(d.data && d.data.alertType === 'idle_engine') || /ralanti/i.test((d.title || '') + ' ' + (d.body || '')); // ralanti → loc + interval, nu panglică de viteză
+      var isIdle = !!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idling/i.test((d.title || '') + ' ' + (d.body || '')); // ralanti → loc + interval, nu panglică de viteză
       var isSpeeding = !isIdle && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || '')); // limita OSM DOAR la alerte de viteză (nu la idle etc.)
       var rows = [];
       rows.push(['Vehicul', esc(d.vehicle || d.imei || '—')]);
       rows.push(['Când', new Date(d.at).toLocaleString('ro-RO')]);
       if (isIdle && d.idle) { // intervalul REAL al staționării (de la server: start + end/„încă în staționare")
         var _hm = function (iso) { var t = new Date(iso); var hm = t.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }); return t.toDateString() === new Date().toDateString() ? hm : (t.toLocaleDateString('ro-RO') + ' ' + hm); };
-        rows.push(['Staționare de la', _hm(d.idle.start)]);
-        rows.push(['Până la', d.idle.end ? (_hm(d.idle.end) + ' · <b>' + d.idle.minutes + ' min</b>')
-          : d.idle.ongoing ? '<b style="color:#f59e0b;">acum — încă în staționare (motor pornit)</b>'
-          : 'necunoscut (cel puțin ' + (d.idle.minutes || '?') + ' min)']);
+        rows.push(['Staționare de la', '<b>' + _hm(d.idle.start) + '</b>']);
+        rows.push(['Până la', d.idle.end ? ('<b>' + _hm(d.idle.end) + '</b>')
+          : d.idle.ongoing ? '<b style="color:#f59e0b;">acum — încă staționează</b>'
+          : 'necunoscut']);
+        if (d.idle.minutes) {
+          var _mm = d.idle.minutes >= 60 ? (Math.floor(d.idle.minutes / 60) + 'h ' + (d.idle.minutes % 60) + 'm') : (d.idle.minutes + ' min');
+          rows.push(['Durată cu motor pornit', '<b style="color:#f59e0b;">' + _mm + (!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : '') + '</b>']);
+        }
       }
       if (!isIdle && d.event && d.event.speed != null) rows.push(['Viteză în acel moment', '<b style="color:' + (d.event.speed >= (d.maxSpeed || 999) ? '#ef4444' : 'inherit') + '">' + d.event.speed + ' km/h</b>']);
       if (!isIdle && d.maxSpeed) rows.push(['Viteză maximă pe segment', d.maxSpeed + ' km/h']);

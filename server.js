@@ -5553,7 +5553,8 @@ async function _notifyPush(n) {
   const payload = { title: n.title || 'RA Track', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}) };
   for (const u of users) {
     const up = userTypePref(prefsMap, u.id, n.type);
-    if (up && up.push) sendPushToUser(u.id, payload).catch(() => {});
+    // push explicit activat SAU (fără preferință explicită + notificare CRITICĂ) → criticele ajung mereu pe telefon
+    if (up && (up.push || (up.push == null && n.severity === 'critical'))) sendPushToUser(u.id, payload).catch(() => {});
   }
 }
 
@@ -5647,6 +5648,10 @@ async function checkExpiries() {
         await deliverExpiryToSubscribers({ imei: m.imei, companyId: m.company_id, title: nKm.title, body: nKm.body, key: nKm.data.key });
       }
     } catch (e) { console.warn('[checkExpiries] km mentenanță:', e.message); }
+    // Etichetă vehicul pentru titluri: nr. înmatriculare / nume, NU IMEI-ul (ilizibil pentru client).
+    const _vehIdent = new Map();
+    try { const vr = await db.pool.query('SELECT imei, name, plate FROM devices'); for (const v of vr.rows) _vehIdent.set(v.imei, String(v.plate || v.name || '').trim() || v.imei); } catch (e) {}
+    const _vehLabel = (im) => _vehIdent.get(im) || im;
     // Documente vehicul (ITP / RCA / ROVINIETĂ) — alerte la 7, 3, 1 zile + EXPIRAT (Modul 2 E-Toll/Roviniete).
     // Bucket-uri pe cheie (vdoc-{id}-{7|3|1|exp}) → fiecare prag se declanșează o singură dată (dedup notify).
     for (const d of await db.getVehicleDocuments(null, null)) {
@@ -5663,7 +5668,7 @@ async function checkExpiries() {
       const nDoc = {
         type: 'document_expiry', severity: (days < 0 || days <= 3) ? 'critical' : 'warning',
         imei: d.imei || null, companyId: d.company_id,
-        title: label + (days < 0 ? ' EXPIRAT' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + (d.imei ? ' · ' + d.imei : ''),
+        title: label + (days < 0 ? ' EXPIRAT' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
         body: label + (d.number ? ' (' + d.number + ')' : '') + (days < 0 ? ' a expirat de ' + (-days) + ' zile' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + ' — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + '.',
         data: { key: 'vdoc-' + d.id + '-' + bucket, docId: d.id, days: days, docType: d.doc_type }
       };
@@ -5690,7 +5695,7 @@ async function checkExpiries() {
             const nEarly = {
               type: 'document_expiry', severity: 'warning', imei: d.imei || null, companyId: d.company_id,
               dedupHours: wd * 24, // o singură avertizare timpurie pe toată banda warnDays
-              title: label + ' expiră în ' + days + ' zile' + (d.imei ? ' · ' + d.imei : ''),
+              title: label + ' expiră în ' + days + ' zile' + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
               body: label + (d.number ? ' (' + d.number + ')' : '') + ' expiră în ' + days + ' zile — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + ' (regula „' + a.name + '").',
               data: { key: 'vdoc-rule-' + a.id + '-' + d.id, alertId: a.id, docId: d.id, days }
             };
@@ -5812,11 +5817,14 @@ function userTypePref(prefsMap, userId, type) {
 }
 async function deliverUserEvent(user, ev, p) {
   try {
-    const saved = await db.createNotification({ type: ev.type, severity: ev.severity || 'warning', imei: ev.imei || null, title: ev.title, body: ev.body, data: { eventType: ev.type }, userId: user.id });
+    // data completă: locul evenimentului (lat/lng) + extra per tip (ex. idling: alertType/idleStart → detaliu „De la…Până la")
+    const nd = Object.assign({ eventType: ev.type }, (ev.lat != null && ev.lng != null) ? { lat: ev.lat, lng: ev.lng } : {}, ev.extra || {});
+    const saved = await db.createNotification({ type: ev.type, severity: ev.severity || 'warning', imei: ev.imei || null, title: ev.title, body: ev.body, data: nd, userId: user.id });
     broadcastWsToUser(user.id, { type: 'notification', data: saved });
   } catch (e) {}
   if (p && p.email && user.email) channels.sendEmailTo(user.email, ev.title, ev.body).catch(() => {});
-  if (p && p.push) sendPushToUser(user.id, { title: ev.title, body: ev.body, imei: ev.imei || null, data: { type: ev.type, imei: ev.imei || '' } }).catch(() => {});
+  // push explicit SAU (fără preferință explicită + eveniment CRITIC) → criticele ajung mereu pe telefon
+  if (p && (p.push || (p.push == null && ev.severity === 'critical'))) sendPushToUser(user.id, { title: ev.title, body: ev.body, imei: ev.imei || null, data: { type: ev.type, imei: ev.imei || '' } }).catch(() => {});
 }
 
 // ─── Dispozitiv NOU conectat → anunță super-adminul ───
@@ -5979,7 +5987,8 @@ async function evaluateUserEvents(imei, data, prev) {
     if (io.ignition === 1 && speed <= 3) {
       if (!_idlingStart.has(imei)) _idlingStart.set(imei, Date.now());
       const min = (Date.now() - _idlingStart.get(imei)) / 60000;
-      if (min >= 3) cand.push({ type: 'idling', mag: Math.round(min), body: `Motor pornit, staționat de ~${Math.round(min)} min` });
+      if (min >= 3) cand.push({ type: 'idling', mag: Math.round(min), body: `Motor pornit, staționat de ~${Math.round(min)} min`,
+        extra: { alertType: 'idle_engine', idleStart: _idlingStart.get(imei), idleMinutes: Math.round(min) } }); // → detaliul arată intervalul real
     } else { _idlingStart.delete(imei); }
     // „Mișcare fără contact" (tractare/împingere): doar dacă PERSISTĂ ≥ 60s. Un singur pachet cu ignition=0 e adesea
     // un glitch tranzitoriu (ex. LV-CAN200 raportează contactul intermitent) → nu mai dă alertă falsă la fiecare flicker.
@@ -6016,7 +6025,7 @@ async function evaluateUserEvents(imei, data, prev) {
           if (def.below) { if (c.mag >= thr) continue; } else { if (c.mag < thr) continue; }
         }
         if (!userCooldownOk(u.id, c.type, imei)) continue;
-        await deliverUserEvent(u, { type: c.type, imei, severity: c.type === 'no_ignition_move' ? 'critical' : 'warning', title: eventVehTitle(def.label, data, imei), body: c.body }, up);
+        await deliverUserEvent(u, { type: c.type, imei, severity: c.type === 'no_ignition_move' ? 'critical' : 'warning', title: eventVehTitle(def.label, data, imei), body: c.body, lat: data.latitude, lng: data.longitude, extra: c.extra }, up);
       }
     }
   } catch (e) { console.error('[UEVENTS]', e.message); }
@@ -6531,7 +6540,9 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
         let ongoing = false;
         if (!end) {
           const st = _alertIdleStart.get(n.imei); // sesiunea live încă activă cu (aprox.) același start
+          const st2 = _idlingStart.get(n.imei);   // sesiunea RA Watch (evenimente user) — aceeași logică, alt tracker
           if (st && Math.abs(st.start - start) < 6 * 60000) ongoing = true;
+          else if (st2 && Math.abs(st2 - start) < 6 * 60000) ongoing = true;
           else { // fallback după restart server: poziție proaspătă, contact pornit, pe loc
             const lp = livePositions.get(n.imei);
             const fresh = lp && lp.timestamp && (Date.now() - new Date(lp.timestamp).getTime()) < 10 * 60000;

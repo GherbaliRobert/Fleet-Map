@@ -173,14 +173,14 @@ export function NotifDetail() {
         <div class="h-title">Detaliu eveniment</div>
         <div style="width:36px" />
       </header>
-      <div class="content has-tabbar" style="padding-bottom:96px">
+      <div class="content has-tabbar" style="padding:0 16px 96px">
         {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
         {!d && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
         {d && (
           <>
-            <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:9px;margin:10px 0 8px">
               <span style={'width:11px;height:11px;border-radius:50%;flex-shrink:0;background:' + sevC} />
-              <div style="font-size:16px;font-weight:700">{d.title || d.type}</div>
+              <div style="font-size:16px;font-weight:700;line-height:1.3">{d.title || d.type}</div>
             </div>
             {d.body && <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">{d.body}</div>}
             {d.event
@@ -189,23 +189,28 @@ export function NotifDetail() {
             <div class="pf-card">
               <div class="adm-kv"><span class="k">Vehicul</span><span>{d.vehicle || d.imei || '—'}</span></div>
               <div class="adm-kv"><span class="k">Când</span><span>{new Date(d.at).toLocaleString('ro-RO')}</span></div>
-              {isIdle && d.idle ? <div class="adm-kv"><span class="k">Staționare de la</span><span>{hhmm(d.idle.start)}</span></div> : null}
+              {isIdle && d.idle ? <div class="adm-kv"><span class="k">Staționare de la</span><span style="font-weight:700">{hhmm(d.idle.start)}</span></div> : null}
               {isIdle && d.idle ? (
-                <div class="adm-kv"><span class="k">Până la</span><span style={d.idle.ongoing ? 'color:#f59e0b;font-weight:700' : ''}>
-                  {d.idle.end ? hhmm(d.idle.end) + ' · ' + d.idle.minutes + ' min'
-                    : d.idle.ongoing ? 'acum — încă în staționare (motor pornit)'
-                    : 'necunoscut (cel puțin ' + (d.idle.minutes || '?') + ' min)'}
+                <div class="adm-kv"><span class="k">Până la</span><span style={d.idle.ongoing ? 'color:#f59e0b;font-weight:700' : 'font-weight:700'}>
+                  {d.idle.end ? hhmm(d.idle.end)
+                    : d.idle.ongoing ? 'acum — încă staționează'
+                    : 'necunoscut'}
                 </span></div>
+              ) : null}
+              {isIdle && d.idle && d.idle.minutes ? (
+                <div class="adm-kv"><span class="k">Durată cu motor pornit</span><span style="color:#f59e0b;font-weight:800">{d.idle.minutes >= 60 ? Math.floor(d.idle.minutes / 60) + 'h ' + (d.idle.minutes % 60) + 'm' : d.idle.minutes + ' min'}{!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : ''}</span></div>
               ) : null}
               {!isIdle && d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
               {!isIdle && d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
               {d.event && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
               {d.event && isSpeeding ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && osmRef > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (osmRef > rl ? ' · +' + (osmRef - rl) : ''))}</span></div> : null}
             </div>
-            {acked
-              ? <div style="margin-top:12px;text-align:center;color:var(--accent);font-weight:600"><Icon name="check" size={15} /> Marcat ca citit</div>
-              : <button class="btn btn-primary" style="margin-top:12px" disabled={ackBusy} onClick={markRead}>{ackBusy ? 'Se marchează…' : 'Marchează citit'}</button>}
-            {d.event ? <a class="btn" style="margin-top:10px;display:block;text-align:center;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary)" href={'https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener">Deschide în Google Maps</a> : null}
+            <div style="display:flex;gap:10px;margin-top:14px;align-items:stretch">
+              {acked
+                ? <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--accent);font-weight:600;font-size:13px;border:1px solid var(--border);border-radius:12px;padding:10px"><Icon name="check" size={14} /> Citit</div>
+                : <button class="btn btn-primary" style="flex:1;padding:10px 12px;font-size:13.5px;border-radius:12px" disabled={ackBusy} onClick={markRead}>{ackBusy ? 'Se marchează…' : 'Marchează citit'}</button>}
+              {d.event ? <a style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:12px;padding:10px;font-size:13.5px;font-weight:600" href={'https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener"><Icon name="mapPin" size={14} /> Google Maps</a> : null}
+            </div>
           </>
         )}
       </div>
