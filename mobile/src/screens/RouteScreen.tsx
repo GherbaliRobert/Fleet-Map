@@ -24,6 +24,13 @@ function ptMs(p: any) { return new Date(p.timestamp || p.server_time || p.time |
 
 type LatLng = [number, number];
 const GREEN = '#3FE07D', START = '#22c55e', STOP = '#ef4444', DIM = '#9aa3ad';
+// Trepte de gravitate pt. depășirea limitei REALE (OSM): galben ≤+30, portocaliu +30..+50, roșu >+50
+const OSM_TIERS = [
+  { label: '≤ +30', color: '#fbbf24' },
+  { label: '+30–50', color: '#f59e0b' },
+  { label: '> +50', color: '#ef4444' },
+];
+const osmTier = (delta: number) => (delta <= 30 ? 0 : delta <= 50 ? 1 : 2);
 function dot(latlng: LatLng, fill: string) {
   return L.circleMarker(latlng, { radius: 6, color: '#fff', fillColor: fill, fillOpacity: 1, weight: 2 });
 }
@@ -43,6 +50,7 @@ export function RouteScreen() {
   const [osmOn, setOsmOn] = useState(false);
   const [osmBusy, setOsmBusy] = useState(false);
   const [osmInfo, setOsmInfo] = useState<string | null>(null);
+  const [osmOver, setOsmOver] = useState(false); // există depășiri → arată legenda treptelor de culoare
 
   // ── Harta (o singură dată) ───────────────────────────────────────────────
   useEffect(() => {
@@ -127,7 +135,7 @@ export function RouteScreen() {
   // ── Overlay „limite reale" (OSM): roșu unde viteza a depășit limita REALĂ a drumului (la cerere) ──
   async function toggleOsm() {
     const og = osmLayer.current; if (!og) return;
-    if (osmOn) { og.clearLayers(); setOsmOn(false); setOsmInfo(null); return; }
+    if (osmOn) { og.clearLayers(); setOsmOn(false); setOsmInfo(null); setOsmOver(false); return; }
     // DOAR ruta selectată (dacă userul a apăsat una) — altfel toată perioada. Nu mai verifică toată ziua când e o rută apăsată.
     let data = (pts || []).filter((p) => p.latitude != null && p.longitude != null);
     if (sel != null && routes && routes[sel]) {
@@ -141,16 +149,17 @@ export function RouteScreen() {
       const lim = r.limits || [];
       og.clearLayers();
       let over = 0, withLimit = 0, maxOver = 0;
-      let chunk: LatLng[] | null = null, chunkLim = 0, chunkMaxSp = 0;
+      let chunk: LatLng[] | null = null, chunkLim = 0, chunkMaxSp = 0, chunkTier = 0;
       const GAP_MS = 3 * 60 * 1000; // >3 min între poziții = pauză/gap GPS → NU lega segmentul (altfel linie dreaptă greșită peste hartă)
-      // Închide segmentul roșu + atașează popup (tap) cu limita reală + viteza mașinii pe acel segment.
+      // Închide segmentul + atașează popup (tap) cu limita reală + viteza mașinii. Culoarea = treapta depășirii.
       const closeChunk = () => {
         if (chunk && chunk.length > 1) {
           const o = Math.round(chunkMaxSp - chunkLim);
-          L.polyline(chunk, { color: '#ef4444', weight: 6, opacity: 0.95 }).addTo(og)
-            .bindPopup(`<b style="color:#ef4444;">Depășire viteză</b><br>Limita drumului: <b>${chunkLim} km/h</b><br>Mașina: <b>${Math.round(chunkMaxSp)} km/h</b> (+${o})`);
+          const c = OSM_TIERS[chunkTier].color;
+          L.polyline(chunk, { color: c, weight: 6, opacity: 0.95 }).addTo(og)
+            .bindPopup(`<b style="color:${c};">Depășire viteză</b><br>Limita drumului: <b>${chunkLim} km/h</b><br>Mașina: <b>${Math.round(chunkMaxSp)} km/h</b> (+${o})`);
         }
-        chunk = null; chunkLim = 0; chunkMaxSp = 0;
+        chunk = null; chunkLim = 0; chunkMaxSp = 0; chunkTier = 0;
       };
       for (let i = 0; i < data.length; i++) {
         const lm = lim[i], sp = Number(data[i].speed) || 0;
@@ -160,9 +169,11 @@ export function RouteScreen() {
         const isOver = typeof lm === 'number' && sp > lm + 3; // toleranță 3 km/h (zgomot GPS)
         if (isOver) {
           over++; if (sp - lm > maxOver) maxOver = sp - lm;
+          const t = osmTier(sp - (lm as number));
+          if (chunk && t !== chunkTier) closeChunk(); // treapta se schimbă → segment nou (culoare diferită)
           if (!chunk) {
             const prev = (i > 0 && gap <= GAP_MS) ? data[i - 1] : data[i]; // pornește de la punctul anterior DOAR dacă e contiguu
-            chunk = [[prev.latitude, prev.longitude]]; chunkLim = lm as number; chunkMaxSp = 0;
+            chunk = [[prev.latitude, prev.longitude]]; chunkLim = lm as number; chunkMaxSp = 0; chunkTier = t;
           }
           chunk.push([data[i].latitude, data[i].longitude]);
           if (sp > chunkMaxSp) chunkMaxSp = sp;
@@ -171,6 +182,7 @@ export function RouteScreen() {
       }
       closeChunk();
       setOsmOn(true);
+      setOsmOver(over > 0);
       setOsmInfo(withLimit === 0 ? 'Fără limite OSM pe acest traseu (drumuri netagate)'
         : (over > 0 ? `${over} puncte peste limită${sel != null ? ' (ruta selectată)' : ''} · max +${maxOver} km/h` : 'Fără depășiri vs. limita reală' + (sel != null ? ' (ruta selectată)' : '')));
     } catch (e: any) {
@@ -208,7 +220,20 @@ export function RouteScreen() {
           </button>
         )}
       </div>
-      {osmInfo && <div class="rt-osmcap"><Icon name="gauge" size={12} /> {osmInfo} · <span class="src">© OpenStreetMap contributors</span></div>}
+      {osmInfo && (
+        <div class="rt-osmcap">
+          <Icon name="gauge" size={12} /> {osmInfo} · <span class="src">© OpenStreetMap contributors</span>
+          {osmOver && (
+            <span style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;white-space:nowrap">
+              {OSM_TIERS.map((t) => (
+                <span style="display:inline-flex;align-items:center;gap:3px">
+                  <span style={`width:8px;height:8px;border-radius:50%;display:inline-block;background:${t.color}`} />{t.label}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
 
       <div class="rt-summary">
         <div class="rt-sum"><div class="v">{loading ? '—' : km.toFixed(1)}</div><div class="l">km parcurși</div></div>

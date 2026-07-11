@@ -52,6 +52,7 @@ export function Stats() {
               <CountRow color="#eab308" n={c.idle} label="Staționate" onClick={() => loc.route('/vehicles?status=idle')} />
               <CountRow color="#ef4444" n={c.stopped} label="Oprite" onClick={() => loc.route('/vehicles?status=stopped')} />
               <CountRow color="#8A93A3" n={c.offline} label="Fără transmisie" onClick={() => loc.route('/vehicles?status=offline')} />
+              <CountRow color="var(--accent)" n={c.total} label="Toate vehiculele" onClick={() => loc.route('/vehicles?status=all')} />
             </div>
           </div>
         )}

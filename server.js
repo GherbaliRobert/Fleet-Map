@@ -5447,7 +5447,7 @@ async function evaluateAlerts(imei, data) {
           if (_idling && st && !st.alerted && _idleMin >= thr) {
             st.alerted = true;
             triggered = true;
-            alertData = { idleMinutes: Math.round(_idleMin), threshold: thr };
+            alertData = { idleMinutes: Math.round(_idleMin), threshold: thr, idleStart: st.start }; // startul REAL al sesiunii → detaliu „De la … până la …"
           }
           break;
         }
@@ -6510,6 +6510,43 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
           else if (geocode && geocode.reverseGeocode) ev.address = await Promise.race([geocode.reverseGeocode(ev.lat, ev.lng).catch(() => null), new Promise((r) => setTimeout(() => r(null), 2000))]);
         } catch (e) {}
         out.event = ev;
+      }
+      // Ralanti: intervalul REAL al sesiunii — start din alertData (sau dedus la notificările vechi),
+      // end = primul punct în mișcare DUPĂ eveniment (un query LIMIT 1, plafon +24h), altfel „încă în staționare".
+      if ((n.data || {}).alertType === 'idle_engine') {
+        const dd = n.data || {};
+        const start = Number(dd.idleStart) || (at - (Number(dd.idleMinutes) || 0) * 60000);
+        let end = null;
+        try {
+          const cap = new Date(at + 24 * 3600 * 1000).toISOString();
+          const q = await db.pool.query(
+            `SELECT timestamp FROM (
+               SELECT timestamp FROM positions WHERE imei = $1 AND timestamp > $2 AND timestamp < $3 AND speed > 3
+               UNION ALL
+               SELECT timestamp FROM positions_archive WHERE imei = $1 AND timestamp > $2 AND timestamp < $3 AND speed > 3
+             ) u ORDER BY timestamp ASC LIMIT 1`,
+            [n.imei, new Date(at).toISOString(), cap]);
+          if (q.rows[0]) end = new Date(q.rows[0].timestamp).getTime();
+        } catch (e) {}
+        let ongoing = false;
+        if (!end) {
+          const st = _alertIdleStart.get(n.imei); // sesiunea live încă activă cu (aprox.) același start
+          if (st && Math.abs(st.start - start) < 6 * 60000) ongoing = true;
+          else { // fallback după restart server: poziție proaspătă, contact pornit, pe loc
+            const lp = livePositions.get(n.imei);
+            const fresh = lp && lp.timestamp && (Date.now() - new Date(lp.timestamp).getTime()) < 10 * 60000;
+            const ignOn = lp && lp.io && (lp.io.ignition === 1 || lp.io.ignition === true);
+            if (fresh && ignOn && (Number(lp.speed) || 0) <= 3) ongoing = true;
+          }
+        }
+        out.idle = {
+          start: new Date(start).toISOString(),
+          end: end ? new Date(end).toISOString() : null,
+          ongoing: ongoing,
+          minutes: end ? Math.max(1, Math.round((end - start) / 60000))
+            : ongoing ? Math.max(1, Math.round((Date.now() - start) / 60000))
+            : (Number(dd.idleMinutes) || null), // end necunoscut & nu e live → „cel puțin X min"
+        };
       }
     }
     res.json(out);

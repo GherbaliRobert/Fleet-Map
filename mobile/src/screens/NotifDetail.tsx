@@ -45,8 +45,10 @@ export function NotifDetail() {
   // Reset stare OSM la schimbarea notificării (preact-iso refolosește instanța pe /notif/:id → altfel rămâne limita veche).
   useEffect(() => { setRl(undefined); setRlEst(false); }, [id]);
 
+  // Ralanti: hartă + câmpuri diferite (loc + interval staționare, nu panglică de viteză). Discriminator = alertType.
+  const isIdle = !!d && (!!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idle/i.test((d.title || '') + ' ' + (d.body || '')));
   // Limita legală a drumului (OSM) — DOAR la alerte de viteză (nu la idle etc.). Async; punct dublat (endpoint cere ≥2).
-  const isSpeeding = !!d && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || ''));
+  const isSpeeding = !!d && !isIdle && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || ''));
   useEffect(() => {
     if (!d || !d.event || !isSpeeding) return;
     Api.roadLimits([[d.event.lat, d.event.lng], [d.event.lat, d.event.lng]]).then((x: any) => {
@@ -60,6 +62,7 @@ export function NotifDetail() {
     const sevC = SEV[d.severity] || '#3b82f6';
     // Culoare ABSOLUTĂ pe viteză (verde=lent → roșu=rapid). Nu depinde de limită → colorat o singură dată, fără flicker.
     const speedColor = (v: number) => { const s = Number(v) || 0; if (s < 30) return '#22C55E'; if (s < 55) return '#A3E635'; if (s < 80) return '#FACC15'; if (s < 110) return '#F59E0B'; return '#EF4444'; };
+    const cleanup = () => { try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } maxHaloRef.current = null; } catch { /* */ } };
     try {
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
       const m = L.map(mapEl.current, { attributionControl: false });
@@ -67,6 +70,16 @@ export function NotifDetail() {
       const segPts: any[] = (d.segment || []).filter((p: any) => p.lat != null);
       const seg: [number, number][] = segPts.map((p: any) => [p.lat, p.lng]);
       const ev: [number, number] = [d.event.lat, d.event.lng];
+
+      // Ralanti: DOAR locul staționării (marker + rază ~60m) — fără panglică de viteză / MAX / legendă (irelevante când stă pe loc).
+      if (isIdle) {
+        L.circle(ev, { radius: 60, color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.12 }).addTo(m);
+        L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m);
+        m.setView(ev, 16);
+        setTimeout(() => { try { m.invalidateSize(); m.setView(ev, 16); } catch { /* */ } }, 160);
+        mapRef.current = m;
+        return cleanup;
+      }
 
       if (seg.length > 1) L.polyline(seg, { color: '#64748b', weight: 4, opacity: 0.45 }).addTo(m); // context ±12 min, discret
 
@@ -134,7 +147,7 @@ export function NotifDetail() {
       setTimeout(() => { try { m.invalidateSize(); if (seg.length > 1) m.fitBounds(L.latLngBounds(seg).pad(0.18), { maxZoom: 16 }); relabelPeaks(); } catch { /* */ } }, 160);
       mapRef.current = m;
     } catch { /* */ }
-    return () => { try { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } maxHaloRef.current = null; } catch { /* */ } };
+    return cleanup;
   }, [d]);
 
   // OSM: doar re-colorează halo-ul MAX dacă viteza a depășit limita reală (fără recolorare/re-zoom pe panglică).
@@ -147,6 +160,12 @@ export function NotifDetail() {
   const sevC = d ? (SEV[d.severity] || '#3b82f6') : '#3b82f6';
   // Depășirea față de limita OSM se raportează la viteza MAXIMĂ pe segment (nu la viteza din momentul alertei).
   const osmRef = d && d.event ? Math.max(d.maxSpeed || 0, d.event.speed || 0) : 0;
+  // HH:MM (cu data în față dacă nu e azi) — pt. intervalul de staționare
+  const hhmm = (iso: string) => {
+    const dt = new Date(iso);
+    const t = dt.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+    return dt.toDateString() === new Date().toDateString() ? t : (dt.toLocaleDateString('ro-RO') + ' ' + t);
+  };
   return (
     <div class="screen">
       <header class="app-header">
@@ -170,8 +189,16 @@ export function NotifDetail() {
             <div class="pf-card">
               <div class="adm-kv"><span class="k">Vehicul</span><span>{d.vehicle || d.imei || '—'}</span></div>
               <div class="adm-kv"><span class="k">Când</span><span>{new Date(d.at).toLocaleString('ro-RO')}</span></div>
-              {d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
-              {d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
+              {isIdle && d.idle ? <div class="adm-kv"><span class="k">Staționare de la</span><span>{hhmm(d.idle.start)}</span></div> : null}
+              {isIdle && d.idle ? (
+                <div class="adm-kv"><span class="k">Până la</span><span style={d.idle.ongoing ? 'color:#f59e0b;font-weight:700' : ''}>
+                  {d.idle.end ? hhmm(d.idle.end) + ' · ' + d.idle.minutes + ' min'
+                    : d.idle.ongoing ? 'acum — încă în staționare (motor pornit)'
+                    : 'necunoscut (cel puțin ' + (d.idle.minutes || '?') + ' min)'}
+                </span></div>
+              ) : null}
+              {!isIdle && d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
+              {!isIdle && d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
               {d.event && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
               {d.event && isSpeeding ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && osmRef > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (osmRef > rl ? ' · +' + (osmRef - rl) : ''))}</span></div> : null}
             </div>
