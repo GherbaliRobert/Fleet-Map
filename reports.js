@@ -1631,12 +1631,56 @@ async function fuelStats(db, imeis, from, to, opts) {
   return { range: { from, to, bucket }, kpi, series, topConsumers, perVehicle };
 }
 
+// ─── Filtru zile-din-săptămână / interval orar (Europe/Bucharest) ───
+// Aplicat prin ÎNVELIREA obiectului db: pozițiile GPS (getDeviceHistory) și alertele (getAlertHistoryRange)
+// sunt filtrate ÎNAINTE să ajungă la funcțiile de raport. NU se aplică la: due (documente/service),
+// can (snapshot direct din pool) și componentele service/acte din costs_total.
+// (Mobilul își păstrează builderul propriu — filtrul e expus doar în layoutul cascadă de pe web.)
+function _tfMatcher(tf) {
+  const daySet = tf.days && tf.days.length ? new Set(tf.days) : null;
+  const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: tf.tz || 'Europe/Bucharest', weekday: 'short', hour: '2-digit', hour12: false });
+  const hm = s => { const m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+  const fromM = hm(tf.from), toM = hm(tf.to);
+  const cache = new Map(); // bucket oră UTC -> {wd, hh}: offsetul RO e în ore întregi, DST comută pe granițe de oră → sigur
+  return (ts) => {
+    const ms = new Date(ts).getTime(); if (!isFinite(ms)) return true;
+    const bucket = Math.floor(ms / 3600000);
+    let b = cache.get(bucket);
+    if (!b) {
+      const parts = fmt.formatToParts(ms);
+      const g = t => { const p = parts.find(x => x.type === t); return p ? p.value : ''; };
+      b = { wd: g('weekday').toLowerCase().slice(0, 3), hh: parseInt(g('hour')) || 0 };
+      cache.set(bucket, b);
+    }
+    if (daySet && !daySet.has(b.wd)) return false;
+    if (fromM == null || toM == null) return true;
+    const mins = b.hh * 60 + Math.floor((ms % 3600000) / 60000);
+    return fromM <= toM ? (mins >= fromM && mins <= toM) : (mins >= fromM || mins <= toM); // interval peste miezul nopții (ex. 22:00-06:00)
+  };
+}
+function _tfWrapDb(db, tf) {
+  const match = _tfMatcher(tf);
+  const w = Object.create(db);
+  w.getDeviceHistory = async (imei, from, to, limit) => (await db.getDeviceHistory(imei, from, to, limit)).filter(p => match(p.timestamp));
+  w.getAlertHistoryRange = async (imeis, from, to, limit) => (await db.getAlertHistoryRange(imeis, from, to, limit)).filter(a => match(a.triggered_at));
+  return w;
+}
+function _tfLabel(tf) {
+  const RO = { mon: 'Lu', tue: 'Ma', wed: 'Mi', thu: 'Jo', fri: 'Vi', sat: 'Sâ', sun: 'Du' };
+  const d = tf.days && tf.days.length ? tf.days.map(x => RO[x] || x).join(',') : 'toate zilele';
+  return d + (tf.from ? (' · ' + tf.from + '–' + tf.to) : '');
+}
+
 async function runReport(db, type, imeis, from, to, opts, companyId) {
   const def = REPORTS[type];
   if (!def) throw new Error('Tip de raport necunoscut: ' + type);
   const devMap = await deviceNames(db, imeis);
+  // Filtru zile/ore (cascadă): învelim db-ul → toate rapoartele pe poziții/alerte îl respectă automat.
+  const _tf = opts && opts.timeFilter;
+  const dbx = _tf ? _tfWrapDb(db, _tf) : db;
   // companyId (null = super/toate) e propagat la fn-urile care citesc definiții scopabile pe companie (ex: geofence).
-  const result = await def.fn(db, imeis, from, to, opts || {}, devMap, companyId);
+  const result = await def.fn(dbx, imeis, from, to, opts || {}, devMap, companyId);
+  if (_tf && result && result.summary) result.summary['Filtru zile/ore'] = _tfLabel(_tf); // vizibil în UI, istoric și exporturi
   result.type = type; result.label = def.label; result.from = from; result.to = to;
   if (!result.perVehicle && !result.noPerVehicle) { try { const pv = _genericPerVehicle(result); if (pv) result.perVehicle = pv; } catch (e) {} }
   try { _injectDriverColumn(result, imeis, devMap); } catch (e) {} // coloană „Șofer" la orice raport pe vehicule (după perVehicle → prinde și sumarele)

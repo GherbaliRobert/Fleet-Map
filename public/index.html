@@ -31,7 +31,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="RA Tracks">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="/css/app.css?v=4">
+  <link rel="stylesheet" href="/css/app.css?v=5">
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
   <link rel="stylesheet" href="/css/map-tools.css?v=2">
   <link rel="stylesheet" href="/css/vehicle-popup.css?v=1">
@@ -2029,10 +2029,10 @@ const pozitii = await r.json();</code></pre>
   </div>
 
   <div id="reports-modal" class="modal-overlay">
-    <div class="modal" style="width:940px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
+    <div class="modal" id="reports-modal-box" style="width:940px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
       <h2><span><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent);"></i> Rapoarte</span>
         <span style="display:flex;gap:8px;align-items:center;">
-          <button class="btn-sm" onclick="openSchedules()" title="Rapoarte programate"><i class="fas fa-clock"></i> Programări</button>
+          <button class="btn-sm" id="rep-view-toggle" onclick="repViewModeToggle()" title="Comută aspect: cascadă / clasic"><i class="fas fa-table-columns"></i></button> <button class="btn-sm" onclick="openSchedules()" title="Rapoarte programate"><i class="fas fa-clock"></i> Programări</button>
           <button class="close-btn" onclick="closeReports()" style="position:static;font-size:18px;">&#10005;</button>
         </span></h2>
       <div class="rep-tabs">
@@ -2046,6 +2046,53 @@ const pozitii = await r.json();</code></pre>
       <div id="rep-catalog">
         <div id="rep-cats" class="rep-cats"></div>
         <div id="rep-cards" class="rep-cards"></div>
+      </div>
+
+      <div id="rep-cascade" style="display:none;flex:1;min-height:0;flex-direction:column;">
+        <div class="rep-casc-grid">
+          <div class="rep-casc-col">
+            <input id="rep2-search-rep" class="rep2-search" placeholder="🔎 Caută raport…" oninput="repCascadeRenderReports()">
+            <div id="rep2-list" class="rep2-scroll"></div>
+          </div>
+          <div class="rep-casc-col">
+            <input id="rep2-search-veh" class="rep2-search" placeholder="🔎 Caută vehicul…" oninput="repCascadeRenderVehicles()">
+            <label class="rep2-master"><input type="checkbox" id="rep2-selall" onchange="repCascadeSelAll(this.checked)"> <b>Selectează tot</b></label>
+            <div id="rep2-groups" class="rep2-scroll"></div>
+          </div>
+          <div class="rep-casc-col">
+            <div class="rep2-scroll">
+              <label class="rep-f" style="display:block;margin-bottom:8px;"><span style="font-size:11px;color:var(--text-muted);">Titlu raport</span><input id="rep2-title" maxlength="120" style="width:100%;"></label>
+              <div id="rep2-dates">
+                <div class="rep-interval-title"><i class="far fa-clock"></i> Perioada</div>
+                <label class="rep-f" style="display:block;"><span style="font-size:11px;color:var(--text-muted);">De la</span><input type="datetime-local" id="rep2-from" style="width:100%;"></label>
+                <label class="rep-f" style="display:block;margin-top:6px;"><span style="font-size:11px;color:var(--text-muted);">Până la</span><input type="datetime-local" id="rep2-to" style="width:100%;"></label>
+                <div class="rep2-quick">
+                  <button type="button" class="btn-sm" onclick="setRep2Period('today')">Azi</button>
+                  <button type="button" class="btn-sm" onclick="setRep2Period('yesterday')">Ieri</button>
+                  <button type="button" class="btn-sm" onclick="setRep2Period('week')">7 zile</button>
+                  <button type="button" class="btn-sm" onclick="setRep2Period('month')">30 zile</button>
+                </div>
+                <div class="rep-interval-title" style="margin-top:10px;">Zile din săptămână</div>
+                <div id="rep2-days" class="rep2-days"></div>
+                <div class="rep-interval-title" style="margin-top:10px;">Interval orar (zilnic)</div>
+                <div class="rep2-hours"><input type="time" id="rep2-hfrom"> <span style="color:var(--text-muted);">–</span> <input type="time" id="rep2-hto"></div>
+                <div class="rep2-quick" style="margin-top:6px;">
+                  <button type="button" class="btn-sm" onclick="repCascadeTimePreset('day')">Zi</button>
+                  <button type="button" class="btn-sm" onclick="repCascadeTimePreset('night')">Noapte</button>
+                  <button type="button" class="btn-sm" onclick="repCascadeTimePreset('always')">Oricând</button>
+                </div>
+                <div id="rep2-hint" style="font-size:10.5px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Filtrarea pe zile/ore se aplică datelor de traseu (GPS) și alertelor — nu documentelor/scadențelor.</div>
+              </div>
+              <div id="rep2-mp-slot"></div>
+              <div class="rep-interval-title" style="margin-top:10px;">Opțiuni raport</div>
+              <div id="rep2-extra-slot" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            </div>
+            <div class="rep2-actions">
+              <button class="btn-sm" onclick="repCascadeGenerate(true)" title="Primești notificare când e gata; îl găsești în Istoric"><i class="fas fa-clock"></i> În fundal</button>
+              <button class="btn-sm btn-primary" id="rep2-gen" onclick="repCascadeGenerate(false)"><i class="fas fa-play"></i> Generează</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Rulare raport selectat -->
@@ -4831,6 +4878,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('rep-runner').style.display = 'none';
       document.getElementById('rep-catalog').style.display = '';
       repShowTab('generate');
+      repApplyViewMode();
     }
     function renderReportCards() {
       const list = (repCatalog.reports || []).filter(r => r.cat === repCurrentCat);
@@ -4899,7 +4947,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('rep-runner').style.display = 'flex';
       repHistoryId = null;
       var _rc = document.getElementById('rep-controls'); if (_rc) _rc.style.display = '';
-      var _bb = document.getElementById('rep-back-btn'); if (_bb) _bb.innerHTML = '<i class="fas fa-arrow-left"></i> Catalog';
+      var _bb = document.getElementById('rep-back-btn'); if (_bb) _bb.innerHTML = '<i class="fas fa-arrow-left"></i> Catalog'; _repPlaceOpts('classic'); var _cw = document.getElementById('rep-cascade'); if (_cw) _cw.style.display = 'none';
       ensureRepPickers();
       await fillVehicleSelect('rep-imei', true, 'Toată flota');
       setRepPeriod('week'); onRepType();
@@ -4916,6 +4964,7 @@ const pozitii = await r.json();</code></pre>
       lastReport = null;
     }
     function backToReportCatalog() {
+      if (_repViewMode() === 'cascade') { _repCascadeReturn = false; repHistoryId = null; document.getElementById('rep-runner').style.display = 'none'; repApplyViewMode(); return; }
       document.getElementById('rep-runner').style.display = 'none';
       document.getElementById('rep-catalog').style.display = '';
       if (repHistoryId) { repHistoryId = null; repShowTab('history'); }
@@ -4977,7 +5026,7 @@ const pozitii = await r.json();</code></pre>
     }
     function repBuildUrl() {
       const t = document.getElementById('rep-type').value;
-      const imei = document.getElementById('rep-imei').value;
+      const imei = _repImeisList().join(','); // clasic: 0/1 elemente (URL identic); cascadă: selecția din coloana Obiecte
       // „Scadențe": selector pe LUNĂ → from = 1 ale lunii, to = ultima zi a lunii (orizont „până la finalul lunii"). Zile rămase = față de azi (backend).
       if (t === 'due') {
         const _s = repMonthSel || { all: true };
@@ -4986,7 +5035,11 @@ const pozitii = await r.json();</code></pre>
         return '/api/reports/due?from=' + _f + '&to=' + _t + (imei ? '&imei=' + encodeURIComponent(imei) : '');
       }
       let fromD, toD;
-      if (repFromFp && repToFp) { fromD = repFromFp.selectedDates[0] || null; toD = repToFp.selectedDates[0] || null; }
+      if (_repViewMode() === 'cascade') {
+        var _f2 = document.getElementById('rep2-from'), _t2 = document.getElementById('rep2-to');
+        fromD = (_f2 && _f2._fp && _f2._fp.selectedDates[0]) || (_f2 && _f2.value ? new Date(_f2.value) : null);
+        toD = (_t2 && _t2._fp && _t2._fp.selectedDates[0]) || (_t2 && _t2.value ? new Date(_t2.value) : null);
+      } else if (repFromFp && repToFp) { fromD = repFromFp.selectedDates[0] || null; toD = repToFp.selectedDates[0] || null; }
       else { const fv = document.getElementById('rep-from').value, tv = document.getElementById('rep-to').value; fromD = fv ? new Date(fv) : null; toD = tv ? new Date(tv) : null; }
       if (!fromD || !toD) { alert('Selectează perioada'); return null; }
       let url = `/api/reports/${t}?from=${fromD.toISOString()}&to=${toD.toISOString()}`;
@@ -4997,8 +5050,193 @@ const pozitii = await r.json();</code></pre>
       const gf = document.getElementById('rep-geofence');
       if (gf) { if (!gf.value) { alert('Alege un hotspot (zonă) pentru raport.'); return null; } url += '&geofenceId=' + encodeURIComponent(gf.value); }
       const sp = document.getElementById('rep-sample'); if (sp) url += '&sampleSec=' + (parseInt(sp.value) || 0);
+      if (_repViewMode() === 'cascade') {
+        url += repCascadeTimeParams();
+        const _ct = repCascadeTitle(); if (_ct) url += '&label=' + encodeURIComponent(_ct); // titlul devine eticheta din Istoric
+      }
       return url;
     }
+    // ─── Rapoarte: mod CASCADĂ (stil AxiFleet) — 3 coloane: rapoarte / obiecte / opțiuni. Toggle ⇄ clasic. ───
+    var _repCascadeSel = null, _repCascadeLoaded = false, _repCascadeVeh = [], _repCascadeGroups = [];
+    var _repAutoOpenJob = null, _repCascadeReturn = false;
+    var _repExtraAnchor = null, _repMpAnchor = null; // markere de „acasă" pt. nodurile partajate mutate în cascadă
+    function _repViewMode() { try { return localStorage.getItem('repViewMode') || 'cascade'; } catch (e) { return 'cascade'; } }
+    window.repViewModeToggle = function () {
+      var m = _repViewMode() === 'cascade' ? 'classic' : 'cascade';
+      try { localStorage.setItem('repViewMode', m); } catch (e) {}
+      repApplyViewMode();
+    };
+    // Mută nodurile PARTAJATE (#rep-extra opțiuni per-tip + #rep-month-picker) între clasic și cascadă (fără clone → fără id-uri duplicate).
+    function _repPlaceOpts(where) {
+      var extra = document.getElementById('rep-extra'), mp = document.getElementById('rep-month-picker');
+      var slotE = document.getElementById('rep2-extra-slot'), slotM = document.getElementById('rep2-mp-slot');
+      try {
+        if (extra) {
+          if (!_repExtraAnchor) { _repExtraAnchor = document.createElement('span'); _repExtraAnchor.style.display = 'none'; extra.parentNode.insertBefore(_repExtraAnchor, extra); }
+          if (where === 'cascade' && slotE) slotE.appendChild(extra);
+          else if (_repExtraAnchor.parentNode) _repExtraAnchor.parentNode.insertBefore(extra, _repExtraAnchor.nextSibling);
+        }
+        if (mp) {
+          if (!_repMpAnchor) { _repMpAnchor = document.createElement('span'); _repMpAnchor.style.display = 'none'; mp.parentNode.insertBefore(_repMpAnchor, mp); }
+          if (where === 'cascade' && slotM) slotM.appendChild(mp);
+          else if (_repMpAnchor.parentNode) _repMpAnchor.parentNode.insertBefore(mp, _repMpAnchor.nextSibling);
+        }
+      } catch (e) {}
+    }
+    window.repApplyViewMode = function () {
+      var casc = _repViewMode() === 'cascade';
+      var cw = document.getElementById('rep-cascade'), cat = document.getElementById('rep-catalog'), run = document.getElementById('rep-runner');
+      var box = document.getElementById('reports-modal-box'), tg = document.getElementById('rep-view-toggle');
+      if (!cw) return;
+      if (casc) {
+        if (cat) cat.style.display = 'none';
+        if (run) run.style.display = 'none';
+        cw.style.display = 'flex';
+        if (box) box.classList.add('rep-casc-wide');
+        _repPlaceOpts('cascade');
+        ensureRep2Pickers();
+        repCascadeLoad();
+        repCascadeRenderReports();
+      } else {
+        cw.style.display = 'none';
+        if (box) box.classList.remove('rep-casc-wide');
+        _repPlaceOpts('classic');
+        if (cat) cat.style.display = '';
+        if (run) run.style.display = 'none';
+      }
+      if (tg) tg.innerHTML = casc ? '<i class="fas fa-list"></i>' : '<i class="fas fa-table-columns"></i>';
+      if (tg) tg.title = casc ? 'Comută la aspectul clasic' : 'Comută la aspectul cascadă';
+    };
+    function ensureRep2Pickers() {
+      var f = document.getElementById('rep2-from');
+      if (f && !f._fp && typeof initRangePicker === 'function') {
+        initRangePicker('rep2-from', 'rep2-to');
+        setRep2Period('week');
+      }
+      var dz = document.getElementById('rep2-days');
+      if (dz && !dz.children.length) {
+        var DAYS = [['mon', 'Lu'], ['tue', 'Ma'], ['wed', 'Mi'], ['thu', 'Jo'], ['fri', 'Vi'], ['sat', 'Sâ'], ['sun', 'Du']];
+        dz.innerHTML = DAYS.map(function (d) { return '<button type="button" class="rep2-day on" data-d="' + d[0] + '" onclick="this.classList.toggle(\'on\')">' + d[1] + '</button>'; }).join('');
+      }
+    }
+    window.setRep2Period = function (p) {
+      var to = new Date(), from = new Date();
+      if (p === 'today') { from.setHours(0, 0, 0, 0); }
+      else if (p === 'yesterday') { from.setDate(from.getDate() - 1); from.setHours(0, 0, 0, 0); to = new Date(from); to.setHours(23, 59, 59, 0); }
+      else if (p === 'week') { from.setDate(from.getDate() - 7); }
+      else if (p === 'month') { from.setDate(from.getDate() - 30); }
+      var fmt = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+      dtSet('rep2-from', fmt(from)); dtSet('rep2-to', fmt(to));
+    };
+    // Încarcă vehiculele + grupele o singură dată per sesiune (bifele supraviețuiesc reînchiderii modalului).
+    window.repCascadeLoad = async function () {
+      if (_repCascadeLoaded) return;
+      _repCascadeLoaded = true;
+      try {
+        var r = await Promise.all([
+          fetch('/api/devices', { credentials: 'same-origin' }).then(function (x) { return x.json(); }),
+          fetch('/api/groups', { credentials: 'same-origin' }).then(function (x) { return x.json(); }).catch(function () { return []; })
+        ]);
+        _repCascadeVeh = Array.isArray(r[0]) ? r[0] : [];
+        _repCascadeGroups = Array.isArray(r[1]) ? r[1] : [];
+      } catch (e) { _repCascadeVeh = []; _repCascadeGroups = []; }
+      repCascadeRenderVehicles();
+    };
+    window.repCascadeRenderReports = function () {
+      var box = document.getElementById('rep2-list'); if (!box || !repCatalog) return;
+      var q = (document.getElementById('rep2-search-rep') || {}).value || ''; q = q.toLowerCase();
+      var cats = repCatalog.categories || [];
+      box.innerHTML = cats.map(function (c) {
+        var items = (repCatalog.reports || []).filter(function (rr) { return rr.cat === c.key && (!q || (rr.label + ' ' + (rr.desc || '')).toLowerCase().indexOf(q) >= 0); });
+        if (!items.length) return '';
+        return '<div class="rep-casc-cath">' + (REP_CAT_ICONS[c.key] || '') + ' ' + c.label + '</div>' +
+          items.map(function (rr) {
+            return '<button type="button" class="rep-casc-item' + (_repCascadeSel === rr.type ? ' active' : '') + '" data-t="' + rr.type + '" onclick="repCascadeSelectReport(\'' + rr.type + '\')">' +
+              '<span class="rci-label">' + rr.label + '</span>' + (rr.desc ? '<span class="rci-desc">' + _repEsc(rr.desc) + '</span>' : '') + '</button>';
+          }).join('');
+      }).join('') || '<p style="color:var(--text-muted);font-size:12px;padding:8px;">Niciun raport găsit.</p>';
+    };
+    window.repCascadeSelectReport = function (type) {
+      _repCascadeSel = type;
+      var sel = document.getElementById('rep-type'); if (sel) sel.value = type;
+      var rr = ((repCatalog && repCatalog.reports) || []).filter(function (x) { return x.type === type; })[0];
+      var t = document.getElementById('rep2-title'); if (t) t.value = (rr && rr.label) || '';
+      if (typeof onRepType === 'function') onRepType(); // populează #rep-extra (mutat în coloana 3) + month-picker la „due"
+      var dd = document.getElementById('rep2-dates'); if (dd) dd.style.display = (type === 'due') ? 'none' : '';
+      var lb = document.querySelectorAll('#rep2-list .rep-casc-item');
+      for (var i = 0; i < lb.length; i++) lb[i].classList.toggle('active', lb[i].getAttribute('data-t') === type);
+    };
+    window.repCascadeRenderVehicles = function () {
+      var box = document.getElementById('rep2-groups'); if (!box) return;
+      var q = (document.getElementById('rep2-search-veh') || {}).value || ''; q = q.toLowerCase();
+      var prev = {}; box.querySelectorAll('.rep2-veh').forEach(function (cb) { prev[cb.value] = cb.checked; }); // păstrează bifele la re-render
+      var byGroup = new Map(); var ung = [];
+      _repCascadeVeh.forEach(function (d) {
+        if (d.status === 'archived') return;
+        if (q && ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '')).toLowerCase().indexOf(q) < 0) return;
+        if (d.group_id != null) { if (!byGroup.has(d.group_id)) byGroup.set(d.group_id, []); byGroup.get(d.group_id).push(d); }
+        else ung.push(d);
+      });
+      var html = '';
+      var renderGroup = function (gid, gname, list) {
+        if (!list.length) return '';
+        var vehHtml = list.map(function (d) {
+          var lbl = _repEsc((d.name || d.imei) + (d.plate ? ' · ' + d.plate : ''));
+          return '<label class="rep2-vrow"><input type="checkbox" class="rep2-veh" value="' + d.imei + '" data-g="' + gid + '"' + (prev[d.imei] ? ' checked' : '') + ' onchange="repCascadeSyncGroup(\'' + gid + '\')"> ' + lbl + '</label>';
+        }).join('');
+        return '<div class="rep2-grow"><label class="rep2-ghead"><input type="checkbox" class="rep2-gcb" data-g="' + gid + '" onchange="repCascadeToggleGroup(\'' + gid + '\', this.checked)"> <b>' + _repEsc(gname) + '</b> <span class="cnt">(' + list.length + ')</span></label>' + vehHtml + '</div>';
+      };
+      _repCascadeGroups.forEach(function (g) { html += renderGroup('g' + g.id, g.name, byGroup.get(g.id) || []); });
+      html += renderGroup('none', 'Fără grupă', ung);
+      box.innerHTML = html || '<p style="color:var(--text-muted);font-size:12px;padding:8px;">Niciun vehicul.</p>';
+      _repCascadeGroups.forEach(function (g) { repCascadeSyncGroup('g' + g.id); }); repCascadeSyncGroup('none');
+    };
+    window.repCascadeToggleGroup = function (gid, on) {
+      document.querySelectorAll('.rep2-veh[data-g="' + gid + '"]').forEach(function (cb) { cb.checked = on; });
+    };
+    window.repCascadeSyncGroup = function (gid) {
+      var vs = document.querySelectorAll('.rep2-veh[data-g="' + gid + '"]');
+      var g = document.querySelector('.rep2-gcb[data-g="' + gid + '"]'); if (!g || !vs.length) return;
+      var n = 0; vs.forEach(function (cb) { if (cb.checked) n++; });
+      g.checked = n === vs.length; g.indeterminate = n > 0 && n < vs.length;
+    };
+    window.repCascadeSelAll = function (on) {
+      document.querySelectorAll('.rep2-veh').forEach(function (cb) { cb.checked = on; });
+      document.querySelectorAll('.rep2-gcb').forEach(function (cb) { cb.checked = on; cb.indeterminate = false; });
+    };
+    function repCascadeImeis() {
+      var out = []; document.querySelectorAll('.rep2-veh:checked').forEach(function (cb) { out.push(cb.value); });
+      return out;
+    }
+    function repCascadeTitle() { var t = document.getElementById('rep2-title'); return t && t.value.trim() ? t.value.trim() : ''; }
+    // Parametrii de filtrare zile/ore: 0 sau 7 zile active = fără filtru de zile; orele doar dacă ambele sunt completate.
+    function repCascadeTimeParams() {
+      var out = '';
+      var days = []; document.querySelectorAll('#rep2-days .rep2-day.on').forEach(function (b) { days.push(b.getAttribute('data-d')); });
+      if (days.length > 0 && days.length < 7) out += '&days=' + days.join(',');
+      var hf = (document.getElementById('rep2-hfrom') || {}).value || '', ht = (document.getElementById('rep2-hto') || {}).value || '';
+      if (hf && ht) out += '&hoursFrom=' + encodeURIComponent(hf) + '&hoursTo=' + encodeURIComponent(ht);
+      return out;
+    }
+    window.repCascadeTimePreset = function (p) {
+      var hf = document.getElementById('rep2-hfrom'), ht = document.getElementById('rep2-hto');
+      if (!hf || !ht) return;
+      if (p === 'day') { hf.value = '07:00'; ht.value = '19:00'; }
+      else if (p === 'night') { hf.value = '19:00'; ht.value = '07:00'; }
+      else { hf.value = ''; ht.value = ''; }
+    };
+    function _repImeisList() {
+      if (_repViewMode() === 'cascade') return repCascadeImeis();
+      var v = document.getElementById('rep-imei') ? document.getElementById('rep-imei').value : '';
+      return v ? [v] : [];
+    }
+    window.repCascadeGenerate = async function (bg) {
+      if (!_repCascadeSel) { (window.raxToast || alert)('Alege un raport din prima coloană.', 'error'); return; }
+      if (_repCascadeSel !== 'due' && !repCascadeImeis().length) { (window.raxToast || alert)('Bifează cel puțin un vehicul.', 'error'); return; }
+      await repGenerate();
+      if (!bg && _repJob) { _repAutoOpenJob = _repJob.id; _repCascadeReturn = true; }
+    };
+
     // Popup branded RA Tracks (înlocuiește alert-ul nativ). opts: {title, message(html), icon, actions:[{label,primary,onClick}]}
     // Dialog de confirmare BRANDED RA Tracks (înlocuiește confirm() nativ). Returnează Promise<boolean>.
     function raConfirm(message, opts) {
@@ -5064,7 +5302,8 @@ const pozitii = await r.json();</code></pre>
       const url = repBuildUrl(); if (!url) return;
       repHistoryId = null;
       const sel = document.getElementById('rep-type');
-      const label = (sel && sel.selectedOptions && sel.selectedOptions[0]) ? sel.selectedOptions[0].textContent.trim() : 'Raport';
+      let label = (sel && sel.selectedOptions && sel.selectedOptions[0]) ? sel.selectedOptions[0].textContent.trim() : 'Raport';
+      if (_repViewMode() === 'cascade') { const _ct = repCascadeTitle(); if (_ct) label = _ct; }
       const jobId = _repShowBadge(label);
       try {
         const res = await fetch(url + '&log=1&background=1&jobId=' + encodeURIComponent(jobId), { credentials: 'same-origin' });
@@ -5122,6 +5361,7 @@ const pozitii = await r.json();</code></pre>
       if (!_repJob || !d.jobId || d.jobId !== _repJob.id) return false;
       if (_repJob.timer) clearTimeout(_repJob.timer);
       var hid = (d.historyId != null) ? d.historyId : null, lbl = _repJob.label; _repJob = null;
+      if (_repAutoOpenJob && d.jobId === _repAutoOpenJob && hid != null) { _repAutoOpenJob = null; _repBadgeHide(); repViewHistory(hid); return true; }
       _repBadgeShow();
       document.getElementById('rep-progress-ico').innerHTML = '<i class="fas fa-circle-check" style="color:var(--accent);font-size:20px;"></i>';
       document.getElementById('rep-progress-title').textContent = 'Raport generat ✓';
@@ -5361,7 +5601,7 @@ const pozitii = await r.json();</code></pre>
       var data;
       try { var res = await fetch('/api/reports/history/' + id, { credentials: 'same-origin' }); var j = await res.json(); if (!res.ok) throw new Error(j.error || 'Eroare'); data = j; }
       catch (e) { alert(e.message || 'Nu am putut încărca raportul'); return; }
-      repHistoryId = id;
+      repHistoryId = id; var _cw2 = document.getElementById('rep-cascade'); if (_cw2) _cw2.style.display = 'none';
       repShowTab('generate');
       document.getElementById('rep-catalog').style.display = 'none';
       document.getElementById('rep-runner').style.display = 'flex';

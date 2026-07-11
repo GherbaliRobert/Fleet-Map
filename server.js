@@ -1484,6 +1484,17 @@ async function _accessBlocked(req, res) {
 }
 
 // Rezolvă vehiculele țintă pentru rapoarte (respectă accesul). null => 403.
+// Filtru zile/ore pentru rapoarte (layoutul cascadă): days=mon,tue,... + hoursFrom/hoursTo (HH:MM; poate trece peste miezul nopții).
+function parseReportTimeFilter(q) {
+  const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  let days = null;
+  if (q.days) { const l = String(q.days).toLowerCase().split(',').map(s => s.trim()).filter(d => DAYS.indexOf(d) >= 0); if (l.length && l.length < 7) days = l; }
+  const hm = v => (typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v.trim())) ? v.trim() : null;
+  let from = hm(q.hoursFrom), to = hm(q.hoursTo);
+  if (!(from && to) || (from === '00:00' && (to === '23:59' || to === '00:00'))) { from = null; to = null; }
+  if (!days && !from) return null;
+  return { days, from, to, tz: 'Europe/Bucharest' };
+}
 async function resolveReportImeis(req) {
   const imeiParam = req.query.imei || (req.body && req.body.imei);
   if (imeiParam) {
@@ -6229,6 +6240,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       sampleSec: parseInt(req.query.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
       all: req.query.all === '1', // Scadențe: „Tot" (arată toate scadențele, fără orizont de lună)
       geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
+      timeFilter: parseReportTimeFilter(req.query), // filtru zile/ore (cascadă) — null dacă nu e cerut
       priceByType: effectiveFuelPrices(_cs)
     };
     const _scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
@@ -6243,10 +6255,10 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       setImmediate(async () => {
         try {
           const report = await reports.runReport(db, _type, imeis, from, to, opts, _scope);
-          const label = (reports.REPORTS[_type] && reports.REPORTS[_type].label) || _type;
-          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId, sm: opts.sampleSec })].join('|');
+          const label = (req.query.label ? String(req.query.label).slice(0, 120) : null) || (reports.REPORTS[_type] && reports.REPORTS[_type].label) || _type;
+          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId, sm: opts.sampleSec, tf: opts.timeFilter })].join('|').slice(0, 200);
           const saved = await db.saveReportHistory({
-            company_id: _cid, user_id: _uid, username: _uname, report_type: _type, label, imei: _imei,
+            company_id: _cid, user_id: _uid, username: _uname, report_type: _type, label, imei: (_imei && _imei.indexOf(',') < 0) ? _imei : null,
             vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig,
             expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
           });
@@ -6270,13 +6282,13 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     if (req.query.log === '1' && req.auth && req.auth.userId) {
       try {
         const type = req.params.type;
-        const label = (reports.REPORTS[type] && reports.REPORTS[type].label) || type;
+        const label = (req.query.label ? String(req.query.label).slice(0, 120) : null) || (reports.REPORTS[type] && reports.REPORTS[type].label) || type;
         const sig = [type, req.query.imei || 'all', from, to,
-          JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId })].join('|');
+          JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId, tf: opts.timeFilter })].join('|').slice(0, 200);
         await db.saveReportHistory({
           company_id: req.companyId != null ? req.companyId : null,
           user_id: req.auth.userId, username: req.auth.username,
-          report_type: type, label, imei: req.query.imei || null,
+          report_type: type, label, imei: (req.query.imei && String(req.query.imei).indexOf(',') < 0) ? req.query.imei : null,
           vehicle_count: imeis.length, period_from: from, period_to: to,
           opts, data: report, signature: sig,
           expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
