@@ -1864,3 +1864,10 @@
   .rep-casc-col { max-height: 300px; }
   #reports-modal-box.rep-casc-wide { width: 940px !important; }
 }
+
+/* Fix cascadă: regula globală #reports-modal input{width:100%} întindea CHECKBOX-urile la toată lățimea
+   (textul ajungea împins la dreapta); iar SVG-urile de categorie (REP_CAT_ICONS) nu au dimensiune intrinsecă. */
+#reports-modal #rep-cascade input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
+.rep-casc-cath svg { width: 13px; height: 13px; vertical-align: -2px; }
+.rep-casc-item svg { width: 14px; height: 14px; }
+#rep-cascade .rep2-search { width: 100%; }

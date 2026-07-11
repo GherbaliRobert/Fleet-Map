@@ -2084,7 +2084,7 @@ const pozitii = await r.json();</code></pre>
                 <div id="rep2-hint" style="font-size:10.5px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Filtrarea pe zile/ore se aplică datelor de traseu (GPS) și alertelor — nu documentelor/scadențelor.</div>
               </div>
               <div id="rep2-mp-slot"></div>
-              <div class="rep-interval-title" style="margin-top:10px;">Opțiuni raport</div>
+              <div class="rep-interval-title" id="rep2-opts-title" style="margin-top:10px;display:none;">Opțiuni raport</div>
               <div id="rep2-extra-slot" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
             </div>
             <div class="rep2-actions">
@@ -5162,6 +5162,8 @@ const pozitii = await r.json();</code></pre>
       var rr = ((repCatalog && repCatalog.reports) || []).filter(function (x) { return x.type === type; })[0];
       var t = document.getElementById('rep2-title'); if (t) t.value = (rr && rr.label) || '';
       if (typeof onRepType === 'function') onRepType(); // populează #rep-extra (mutat în coloana 3) + month-picker la „due"
+      var _ot = document.getElementById('rep2-opts-title'), _ex = document.getElementById('rep-extra');
+      if (_ot) _ot.style.display = (_ex && (_ex.children.length || _ex.textContent.trim())) ? '' : 'none'; // ascunde titlul când raportul nu are opțiuni
       var dd = document.getElementById('rep2-dates'); if (dd) dd.style.display = (type === 'due') ? 'none' : '';
       var lb = document.querySelectorAll('#rep2-list .rep-casc-item');
       for (var i = 0; i < lb.length; i++) lb[i].classList.toggle('active', lb[i].getAttribute('data-t') === type);
