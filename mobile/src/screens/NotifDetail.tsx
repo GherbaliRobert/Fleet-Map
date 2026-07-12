@@ -46,7 +46,7 @@ export function NotifDetail() {
   useEffect(() => { setRl(undefined); setRlEst(false); }, [id]);
 
   // Ralanti: hartă + câmpuri diferite (loc + interval staționare, nu panglică de viteză). Discriminator = alertType.
-  const isIdle = !!d && (!!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idle/i.test((d.title || '') + ' ' + (d.body || '')));
+  const isIdle = !!d && (!!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idl/i.test((d.title || '') + ' ' + (d.body || ''))); // „idl" prinde și „idle" și „Idling" (titlurile RA Watch vechi)
   // Limita legală a drumului (OSM) — DOAR la alerte de viteză (nu la idle etc.). Async; punct dublat (endpoint cere ≥2).
   const isSpeeding = !!d && !isIdle && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || ''));
   useEffect(() => {
@@ -73,10 +73,10 @@ export function NotifDetail() {
 
       // Ralanti: DOAR locul staționării (marker + rază ~60m) — fără panglică de viteză / MAX / legendă (irelevante când stă pe loc).
       if (isIdle) {
-        L.circle(ev, { radius: 60, color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.12 }).addTo(m);
+        L.circle(ev, { radius: 45, color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.12 }).addTo(m);
         L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m);
-        m.setView(ev, 16);
-        setTimeout(() => { try { m.invalidateSize(); m.setView(ev, 16); } catch { /* */ } }, 160);
+        m.setView(ev, 17); // zoom mare — să se vadă EXACT locul staționării
+        setTimeout(() => { try { m.invalidateSize(); m.setView(ev, 17); } catch { /* */ } }, 160);
         mapRef.current = m;
         return cleanup;
       }
@@ -199,6 +199,9 @@ export function NotifDetail() {
               ) : null}
               {isIdle && d.idle && d.idle.minutes ? (
                 <div class="adm-kv"><span class="k">Durată cu motor pornit</span><span style="color:#f59e0b;font-weight:800">{d.idle.minutes >= 60 ? Math.floor(d.idle.minutes / 60) + 'h ' + (d.idle.minutes % 60) + 'm' : d.idle.minutes + ' min'}{!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : ''}</span></div>
+              ) : null}
+              {isIdle && d.idle && d.idle.fuelL != null ? (
+                <div class="adm-kv"><span class="k">Carburant irosit pe staționare</span><span style="font-weight:700">{(d.idle.fuelEstimated ? '~' : '') + String(d.idle.fuelL).replace('.', ',') + ' L' + (d.idle.fuelEstimated ? ' (estimat)' : ' (senzor)')}</span></div>
               ) : null}
               {!isIdle && d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
               {!isIdle && d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}

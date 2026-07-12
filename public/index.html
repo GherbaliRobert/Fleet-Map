@@ -6439,7 +6439,7 @@ const pozitii = await r.json();</code></pre>
       // Notificare de raport → nu are eveniment GPS; deschide direct raportul din Istoric (nu modalul de hartă).
       if (d.type === 'report_ready' || d.type === 'report_error') { closeNotifDetail(); notifOpenReport((d.data && d.data.historyId != null) ? d.data.historyId : ''); return; }
       var sevMap = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' }, sevC = sevMap[d.severity] || '#3b82f6';
-      var isIdle = !!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idling/i.test((d.title || '') + ' ' + (d.body || '')); // ralanti → loc + interval, nu panglică de viteză
+      var isIdle = !!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idl/i.test((d.title || '') + ' ' + (d.body || '')); // ralanti → loc + interval, nu panglică de viteză
       var isSpeeding = !isIdle && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || '')); // limita OSM DOAR la alerte de viteză (nu la idle etc.)
       var rows = [];
       rows.push(['Vehicul', esc(d.vehicle || d.imei || '—')]);
@@ -6453,6 +6453,9 @@ const pozitii = await r.json();</code></pre>
         if (d.idle.minutes) {
           var _mm = d.idle.minutes >= 60 ? (Math.floor(d.idle.minutes / 60) + 'h ' + (d.idle.minutes % 60) + 'm') : (d.idle.minutes + ' min');
           rows.push(['Durată cu motor pornit', '<b style="color:#f59e0b;">' + _mm + (!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : '') + '</b>']);
+        }
+        if (d.idle.fuelL != null) {
+          rows.push(['Carburant irosit pe staționare', '<b>' + (d.idle.fuelEstimated ? '~' : '') + String(d.idle.fuelL).replace('.', ',') + ' L</b> <span style="color:var(--text-muted);font-size:11px;">' + (d.idle.fuelEstimated ? '(estimat, ~1,5 L/h)' : '(senzor)') + '</span>']);
         }
       }
       if (!isIdle && d.event && d.event.speed != null) rows.push(['Viteză în acel moment', '<b style="color:' + (d.event.speed >= (d.maxSpeed || 999) ? '#ef4444' : 'inherit') + '">' + d.event.speed + ' km/h</b>']);
@@ -6485,10 +6488,10 @@ const pozitii = await r.json();</code></pre>
 
           // Ralanti: DOAR locul staționării (marker + rază ~60m) — panglica de viteză/MAX/legenda sunt irelevante când stă pe loc.
           if (isIdle) {
-            L.circle(ev, { radius: 60, color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: .12 }).addTo(m);
+            L.circle(ev, { radius: 45, color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: .12 }).addTo(m);
             L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m).bindPopup('Staționare cu motor pornit');
-            m.setView(ev, 16);
-            setTimeout(function () { try { m.invalidateSize(); m.setView(ev, 16); } catch (e) {} }, 130);
+            m.setView(ev, 17); // zoom mare — exact locul staționării
+            setTimeout(function () { try { m.invalidateSize(); m.setView(ev, 17); } catch (e) {} }, 130);
             _notifDetailMap = m;
             return;
           }

@@ -6581,13 +6581,31 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
             if (fresh && ignOn && (Number(lp.speed) || 0) <= 3) ongoing = true;
           }
         }
+        const _mins = end ? Math.max(1, Math.round((end - start) / 60000))
+          : ongoing ? Math.max(1, Math.round((Date.now() - start) / 60000))
+          : (Number(dd.idleMinutes) || null); // end necunoscut & nu e live → „cel puțin X min"
+        // Carburant consumat pe staționare: contorul CAN cumulativ (exact) → nivelul rezervorului (aprox) → estimare ~1.5 L/h (ca în raportul Ralanti)
+        let _fuelL = null, _fuelEst = false;
+        try {
+          const h2 = await db.getDeviceHistory(n.imei, new Date(start).toISOString(), new Date(end || Date.now()).toISOString(), 3000);
+          const _io2 = (p) => { let d2 = p.io_data; if (typeof d2 === 'string') { try { d2 = JSON.parse(d2); } catch (e) { d2 = null; } } return d2 || {}; };
+          const _lvl = (p) => { const i = _io2(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; };
+          const _cum = (p) => { const i = _io2(p); const v = i.can_fuel_consumed; return (typeof v === 'number' && v > 0) ? v : null; };
+          const cums = h2.map(_cum).filter(v => v != null);
+          if (cums.length >= 2 && cums[cums.length - 1] >= cums[0]) _fuelL = cums[cums.length - 1] - cums[0];
+          else {
+            const lvls = h2.map(_lvl).filter(v => v != null);
+            if (lvls.length >= 2 && lvls[0] - lvls[lvls.length - 1] >= 0.2) _fuelL = lvls[0] - lvls[lvls.length - 1];
+          }
+        } catch (e) {}
+        if (_fuelL == null && _mins) { _fuelL = _mins / 60 * 1.5; _fuelEst = true; }
         out.idle = {
           start: new Date(start).toISOString(),
           end: end ? new Date(end).toISOString() : null,
           ongoing: ongoing,
-          minutes: end ? Math.max(1, Math.round((end - start) / 60000))
-            : ongoing ? Math.max(1, Math.round((Date.now() - start) / 60000))
-            : (Number(dd.idleMinutes) || null), // end necunoscut & nu e live → „cel puțin X min"
+          minutes: _mins,
+          fuelL: _fuelL != null ? Math.round(_fuelL * 10) / 10 : null,
+          fuelEstimated: _fuelEst,
         };
       }
     }
