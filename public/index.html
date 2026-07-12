@@ -7148,43 +7148,75 @@ const pozitii = await r.json();</code></pre>
       b = Math.max(0, Math.min(255, Math.round(b + f * (amt < 0 ? b : 255 - b))));
       return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
     }
-    // ─── Iconițe IZOMETRICE 3D (proiecție oblică: față + top + latură umbrite = volum) ───
-    // Orientare FIXĂ (ca la AxiFleet) — direcția de mers e dată de o săgeată mică dedesubt (doar în mișcare).
+    // ─── Iconițe 3D „fine" — profil ¾ cu curbe, roți cu jantă, geamuri cu reflexie, umbriri stratificate ───
+    // Orientare FIXĂ (botul spre dreapta) — direcția reală de mers = săgeata mică (doar în mișcare).
     function vehicleIso(cat, color, lit) {
-      const cF = color, cT = _shade(color, 30), cS = _shade(color, -34), cEdge = _shade(color, -58);
-      const glass = 'rgba(150,205,255,0.9)', wheel = '#14171d';
-      const DX = 6.5, DY = -6.5; // vectorul de adâncime (spre dreapta-sus) → aspect 3D
-      const pts = (a) => a.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
-      // Cutie 3D oblică: (x,y)=colț față-jos-stânga; w lat, h înalt (sus=-y); dx,dy adâncime. Fața poate fi înlocuită (ex. parbriz).
-      function box(x, y, w, h, dx, dy, fFace) {
-        const top = '<polygon points="' + pts([[x, y - h], [x + w, y - h], [x + w + dx, y - h + dy], [x + dx, y - h + dy]]) + '" fill="' + cT + '" stroke="' + cEdge + '" stroke-width="0.5" stroke-linejoin="round"/>';
-        const side = '<polygon points="' + pts([[x + w, y], [x + w, y - h], [x + w + dx, y - h + dy], [x + w + dx, y + dy]]) + '" fill="' + cS + '" stroke="' + cEdge + '" stroke-width="0.5" stroke-linejoin="round"/>';
-        const front = '<polygon points="' + pts([[x, y], [x + w, y], [x + w, y - h], [x, y - h]]) + '" fill="' + (fFace || cF) + '" stroke="' + cEdge + '" stroke-width="0.5" stroke-linejoin="round"/>';
-        return side + top + front;
-      }
-      const wh = (wx, wy) => '<ellipse cx="' + wx.toFixed(1) + '" cy="' + wy.toFixed(1) + '" rx="2.5" ry="1.7" fill="' + wheel + '"/>';
-      const hl = lit ? 'rgba(255,247,200,0.98)' : 'rgba(255,255,255,0.4)';
-      const lamp = (lx, ly) => '<circle cx="' + lx + '" cy="' + ly + '" r="1.1" fill="' + hl + '"/>';
-      let s;
+      const dark = _shade(color, -42), edge = _shade(color, -55);
+      const glass = '#aecfeb', glassD = '#84aed1';
+      const bs = 'stroke="' + edge + '" stroke-width="0.8" stroke-linejoin="round"';
+      const HL = 'rgba(255,255,255,0.38)', SH = 'rgba(0,0,0,0.18)';
+      const hlF = lit ? '#ffe9a8' : 'rgba(255,255,255,0.75)';
+      // Roată cu jantă (profil): anvelopă + jantă + butuc
+      const wheel = (x, y, r) =>
+        '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="#1b1e24"/>' +
+        '<circle cx="' + x + '" cy="' + y + '" r="' + (r * 0.52).toFixed(1) + '" fill="#cfd5dc"/>' +
+        '<circle cx="' + x + '" cy="' + y + '" r="' + (r * 0.2).toFixed(1) + '" fill="#8a919b"/>';
+      // Umbrire de jos (banda întunecată de la prag) — dă „greutate" caroseriei
+      const skirt = (x1, x2, y) => '<path d="M' + x1 + ' ' + y + ' L' + x2 + ' ' + y + ' L' + x2 + ' ' + (y - 2.4) + ' L' + x1 + ' ' + (y - 2.4) + ' Z" fill="' + SH + '"/>';
+      let s = '';
       if (cat === 'truck' || cat === 'tir' || cat === 'autotractor' || cat === 'mixer') {
-        // Camion: cabină în față (joasă) + cutie/box mare în spate (înaltă).
-        s = wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) +          // roți spate (în adâncime)
-          box(12, 34, 21, 10, DX, DY) +                             // box de marfă (înalt)
-          wh(13, 35) + wh(31, 35) +                                 // roți față
-          box(12, 35, 21, 6, DX * 0.5, DY * 0.5, glass);           // cabină joasă în față (parbriz)
-      } else if (cat === 'van' || cat === 'bus') {
-        // Dubă/autobuz: un box înalt cu parbriz mare.
-        s = wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) +
-          wh(13, 35) + wh(31, 35) +
-          box(12, 35, 21, 11, DX, DY) +
-          '<polygon points="' + pts([[13, 34], [32, 34], [32, 30], [13, 30]]) + '" fill="' + glass + '"/>'; // parbriz pe fața cutiei
+        // Camion: box de marfă rotunjit + cabină scurtă cu parbriz înclinat (botul la dreapta)
+        s =
+          // box marfă
+          '<rect x="5.5" y="16.5" width="23.5" height="16.5" rx="2.2" fill="' + color + '" ' + bs + '/>' +
+          '<rect x="5.5" y="16.5" width="23.5" height="4.2" rx="2.2" fill="' + HL + '"/>' +          // muchia de sus prinsă de lumină
+          '<rect x="7" y="20.5" width="20.5" height="0.9" rx="0.45" fill="rgba(0,0,0,0.10)"/>' +      // rost lateral fin
+          '<rect x="7" y="27.5" width="20.5" height="0.9" rx="0.45" fill="rgba(0,0,0,0.10)"/>' +
+          skirt(6.5, 28.5, 33) +
+          // cabină cu parbriz curbat
+          '<path d="M30 33 L30 20.8 C30 19.3 31 18.3 32.5 18.2 L36.6 18.2 C38.2 18.3 39.3 19 40.2 20.6 L42.2 24.6 C42.7 25.7 43 26.7 43 27.8 L43 30.8 C43 32.1 42.1 33 40.8 33 Z" fill="' + color + '" ' + bs + '/>' +
+          '<path d="M33 19.6 L36.4 19.6 C37.6 19.7 38.4 20.3 39.1 21.6 L40.6 24.6 L33 24.6 C32.2 24.6 31.8 24.1 31.8 23.4 L31.8 20.9 C31.8 20.1 32.3 19.6 33 19.6 Z" fill="' + glass + '"/>' +
+          '<path d="M33 19.6 L34.8 19.6 L32.4 24.6 L31.8 24.6 L31.8 20.9 C31.8 20.1 32.3 19.6 33 19.6 Z" fill="rgba(255,255,255,0.55)"/>' + // reflexie parbriz
+          skirt(30.5, 42.5, 33) +
+          '<rect x="42" y="27.6" width="1.6" height="2.6" rx="0.8" fill="' + hlF + '"/>' +            // far
+          wheel(11.5, 33.4, 3.5) + wheel(21, 33.4, 3.5) + wheel(36.5, 33.4, 3.5);
+      } else if (cat === 'van') {
+        // Dubă: corp înalt cu bot scurt rotunjit, parbriz mare înclinat
+        s =
+          '<path d="M6.8 33 C5.6 33 4.8 32.1 4.8 30.9 L4.8 19.6 C4.8 18 5.9 16.9 7.5 16.9 L31 16.9 C33.4 16.9 35.4 17.7 36.9 19.5 L41.3 24.8 C42.4 26.1 43 27.4 43 29 L43 30.9 C43 32.1 42.2 33 41 33 Z" fill="' + color + '" ' + bs + '/>' +
+          '<path d="M7.5 16.9 L31 16.9 C33.4 16.9 35.4 17.7 36.9 19.5 L37.9 20.7 L6 20.7 L6 19.3 C6.1 17.8 6.6 16.9 7.5 16.9 Z" fill="' + HL + '"/>' + // plafonul prins de lumină
+          '<path d="M32.4 19 C33.6 19.1 34.6 19.6 35.5 20.7 L38.8 24.7 L32.6 24.7 C31.8 24.7 31.4 24.2 31.4 23.5 L31.4 20.2 C31.4 19.4 31.7 19 32.4 19 Z" fill="' + glass + '"/>' +
+          '<path d="M32.4 19 L33.8 19 L31.9 24.7 L31.4 24.7 L31.4 20.2 C31.4 19.4 31.7 19 32.4 19 Z" fill="rgba(255,255,255,0.5)"/>' +
+          '<rect x="8.4" y="20.3" width="0.9" height="10" rx="0.45" fill="rgba(0,0,0,0.12)"/>' +      // rost ușă spate
+          '<rect x="26.8" y="20.3" width="0.9" height="10.4" rx="0.45" fill="rgba(0,0,0,0.12)"/>' +   // rost ușă glisantă
+          skirt(5.6, 42.4, 33) +
+          '<rect x="42.1" y="27.4" width="1.5" height="2.6" rx="0.75" fill="' + hlF + '"/>' +
+          wheel(12, 33.4, 3.4) + wheel(35, 33.4, 3.4);
+      } else if (cat === 'bus') {
+        // Autobuz: corp lung rotunjit cu bandă continuă de geamuri
+        s =
+          '<rect x="4.8" y="16.6" width="38.4" height="16.4" rx="3" fill="' + color + '" ' + bs + '/>' +
+          '<rect x="4.8" y="16.6" width="38.4" height="4" rx="3" fill="' + HL + '"/>' +
+          '<path d="M8 20.4 L38 20.4 C39.2 20.4 40 21.2 40 22.4 L40 24.6 L6.6 24.6 L6.6 21.8 C6.6 20.9 7.1 20.4 8 20.4 Z" fill="' + glass + '"/>' +
+          '<path d="M12.5 20.4 L15.5 20.4 L13.4 24.6 L10.4 24.6 Z" fill="rgba(255,255,255,0.5)"/>' +  // reflexie diagonală
+          '<rect x="20.6" y="20.2" width="0.9" height="4.6" fill="rgba(0,0,0,0.10)"/>' +
+          '<rect x="29.6" y="20.2" width="0.9" height="4.6" fill="rgba(0,0,0,0.10)"/>' +
+          skirt(5.6, 42.4, 33) +
+          '<rect x="41.6" y="27.4" width="1.5" height="2.4" rx="0.75" fill="' + hlF + '"/>' +
+          wheel(12, 33.4, 3.3) + wheel(35, 33.4, 3.3);
       } else {
-        // Mașină: corp jos + cabină (parbriz) deasupra, retrasă.
-        s = wh(13 + DX, 33.5 + DY) + wh(30 + DX, 33.5 + DY) +       // roți spate
-          box(11, 33.5, 22, 4.5, DX, DY) +                          // corp jos
-          box(15.5, 29, 13, 4.5, DX * 0.68, DY * 0.68, glass) +     // cabină + parbriz
-          wh(14, 34.5) + wh(30, 34.5) +                             // roți față
-          lamp(13.5, 33) + lamp(30.5, 33);                          // faruri
+        // Mașină: siluetă de sedan cu capotă/parbriz/plafon/lunetă curbate
+        s =
+          '<path d="M8.6 33 C6.9 33 5.8 31.9 5.8 30.2 L5.8 28.9 C5.8 27.4 6.8 26.2 8.3 25.9 L12.2 25.2 C14.4 21.4 17.6 19.4 21.6 19.3 L25.4 19.3 C29.3 19.4 32.4 21.3 34.7 25.1 L39.5 25.9 C41.2 26.2 42.4 27.5 42.4 29.2 L42.4 30.3 C42.4 31.9 41.3 33 39.7 33 Z" fill="' + color + '" ' + bs + '/>' +
+          '<path d="M13.9 25.4 C15.9 22 18.6 20.5 21.7 20.4 L25.2 20.4 C28.4 20.5 31 22 33 25.2 L28.9 25.6 L17.8 25.6 Z" fill="' + glass + '"/>' +   // greenhouse
+          '<path d="M15.5 25.5 C17.3 22.3 19.7 20.8 22.4 20.5 L24 20.4 L21 25.6 L17.8 25.6 Z" fill="rgba(255,255,255,0.5)"/>' +                       // reflexie diagonală
+          '<rect x="23.2" y="20.8" width="0.85" height="4.6" fill="rgba(0,0,0,0.14)"/>' +             // montant ușă
+          '<path d="M8.3 26.2 C11 25.4 15 25 21.5 25 L26 25 C32 25 36.8 25.4 39.5 26.2 L39.5 27.2 C36.6 26.5 32 26.1 26 26.1 L21.5 26.1 C15.4 26.1 10.9 26.5 8.3 27.2 Z" fill="' + HL + '"/>' + // linia de lumină de pe umărul caroseriei
+          skirt(6.8, 41.4, 33) +
+          '<path d="M41 27.2 L42.2 28.6 C42 27.6 41.7 27.3 41 27.2 Z" fill="' + hlF + '"/>' +
+          '<rect x="41" y="27.6" width="1.4" height="2" rx="0.7" fill="' + hlF + '"/>' +              // far
+          '<rect x="5.9" y="27.6" width="1.2" height="2" rx="0.6" fill="rgba(255,80,80,0.9)"/>' +     // stop spate
+          wheel(13, 33.2, 3.4) + wheel(34.6, 33.2, 3.4);
       }
       return s;
     }
@@ -7532,13 +7564,14 @@ const pozitii = await r.json();</code></pre>
       if (is3d) {
         // Mod 3D: iconiță IZOMETRICĂ (orientare fixă, aspect de volum) + umbră la sol.
         // Direcția de mers = o săgeată mică deasupra care se rotește (doar când vehiculul e în mișcare).
-        const iso = '<g transform="translate(0,-5)">' + vehicleIso(cat, color, lit) + '</g>';
+        const iso = '<g transform="translate(0,-4)">' + vehicleIso(cat, color, lit) + '</g>';
         const arrow = isMoving
-          ? '<g transform="rotate(' + rot + ' 24 24)"><path d="M24 1.5 L28.4 9 L24 6.8 L19.6 9 Z" fill="' + color + '" stroke="#ffffff" stroke-width="0.9" stroke-linejoin="round"/></g>'
+          ? '<g transform="rotate(' + rot + ' 24 24)"><path d="M24 1 L28.2 8.2 L24 6.2 L19.8 8.2 Z" fill="' + color + '" stroke="#ffffff" stroke-width="0.9" stroke-linejoin="round"/></g>'
           : '';
         bodySvg =
           '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48" style="overflow:visible;">' +
-            '<ellipse cx="24" cy="33" rx="11.5" ry="3.4" fill="rgba(0,0,0,0.22)"/>' +
+            '<ellipse cx="24" cy="33.6" rx="17" ry="3.2" fill="rgba(0,0,0,0.14)"/>' +
+            '<ellipse cx="24" cy="33.6" rx="13" ry="2.4" fill="rgba(0,0,0,0.12)"/>' +
             arrow + iso +
           '</svg>';
       } else {

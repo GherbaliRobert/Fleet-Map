@@ -34,26 +34,58 @@ function catOf(vt?: string): string {
   if (/dub|van|autobuz|bus|micro/.test(t)) return 'van';
   return 'car';
 }
+// Profil ¾ „fin" — curbe, roți cu jantă, geamuri cu reflexie (identic cu web `vehicleIso`).
 function vehicleIso(cat: string, color: string): string {
-  const cT = _shade(color, 30), cS = _shade(color, -34), cEdge = _shade(color, -58);
-  const glass = 'rgba(150,205,255,0.9)', wheel = '#14171d';
-  const DX = 6.5, DY = -6.5;
-  const pts = (a: number[][]) => a.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
-  const box = (x: number, y: number, w: number, h: number, dx: number, dy: number, fFace?: string) => {
-    const top = `<polygon points="${pts([[x, y - h], [x + w, y - h], [x + w + dx, y - h + dy], [x + dx, y - h + dy]])}" fill="${cT}" stroke="${cEdge}" stroke-width="0.5" stroke-linejoin="round"/>`;
-    const side = `<polygon points="${pts([[x + w, y], [x + w, y - h], [x + w + dx, y - h + dy], [x + w + dx, y + dy]])}" fill="${cS}" stroke="${cEdge}" stroke-width="0.5" stroke-linejoin="round"/>`;
-    const front = `<polygon points="${pts([[x, y], [x + w, y], [x + w, y - h], [x, y - h]])}" fill="${fFace || color}" stroke="${cEdge}" stroke-width="0.5" stroke-linejoin="round"/>`;
-    return side + top + front;
-  };
-  const wh = (wx: number, wy: number) => `<ellipse cx="${wx.toFixed(1)}" cy="${wy.toFixed(1)}" rx="2.5" ry="1.7" fill="${wheel}"/>`;
-  if (cat === 'truck') return wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) + box(12, 34, 21, 10, DX, DY) + wh(13, 35) + wh(31, 35) + box(12, 35, 21, 6, DX * 0.5, DY * 0.5, glass);
-  if (cat === 'van') return wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) + wh(13, 35) + wh(31, 35) + box(12, 35, 21, 11, DX, DY) + `<polygon points="${pts([[13, 34], [32, 34], [32, 30], [13, 30]])}" fill="${glass}"/>`;
-  return wh(13 + DX, 33.5 + DY) + wh(30 + DX, 33.5 + DY) + box(11, 33.5, 22, 4.5, DX, DY) + box(15.5, 29, 13, 4.5, DX * 0.68, DY * 0.68, glass) + wh(14, 34.5) + wh(30, 34.5);
+  const edge = _shade(color, -55);
+  const glass = '#aecfeb';
+  const bs = `stroke="${edge}" stroke-width="0.8" stroke-linejoin="round"`;
+  const HL = 'rgba(255,255,255,0.38)', SH = 'rgba(0,0,0,0.18)';
+  const hlF = 'rgba(255,255,255,0.75)';
+  const wheel = (x: number, y: number, r: number) =>
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="#1b1e24"/>` +
+    `<circle cx="${x}" cy="${y}" r="${(r * 0.52).toFixed(1)}" fill="#cfd5dc"/>` +
+    `<circle cx="${x}" cy="${y}" r="${(r * 0.2).toFixed(1)}" fill="#8a919b"/>`;
+  const skirt = (x1: number, x2: number, y: number) => `<path d="M${x1} ${y} L${x2} ${y} L${x2} ${y - 2.4} L${x1} ${y - 2.4} Z" fill="${SH}"/>`;
+  if (cat === 'truck') {
+    return `<rect x="5.5" y="16.5" width="23.5" height="16.5" rx="2.2" fill="${color}" ${bs}/>` +
+      `<rect x="5.5" y="16.5" width="23.5" height="4.2" rx="2.2" fill="${HL}"/>` +
+      `<rect x="7" y="20.5" width="20.5" height="0.9" rx="0.45" fill="rgba(0,0,0,0.10)"/>` +
+      `<rect x="7" y="27.5" width="20.5" height="0.9" rx="0.45" fill="rgba(0,0,0,0.10)"/>` +
+      skirt(6.5, 28.5, 33) +
+      `<path d="M30 33 L30 20.8 C30 19.3 31 18.3 32.5 18.2 L36.6 18.2 C38.2 18.3 39.3 19 40.2 20.6 L42.2 24.6 C42.7 25.7 43 26.7 43 27.8 L43 30.8 C43 32.1 42.1 33 40.8 33 Z" fill="${color}" ${bs}/>` +
+      `<path d="M33 19.6 L36.4 19.6 C37.6 19.7 38.4 20.3 39.1 21.6 L40.6 24.6 L33 24.6 C32.2 24.6 31.8 24.1 31.8 23.4 L31.8 20.9 C31.8 20.1 32.3 19.6 33 19.6 Z" fill="${glass}"/>` +
+      `<path d="M33 19.6 L34.8 19.6 L32.4 24.6 L31.8 24.6 L31.8 20.9 C31.8 20.1 32.3 19.6 33 19.6 Z" fill="rgba(255,255,255,0.55)"/>` +
+      skirt(30.5, 42.5, 33) +
+      `<rect x="42" y="27.6" width="1.6" height="2.6" rx="0.8" fill="${hlF}"/>` +
+      wheel(11.5, 33.4, 3.5) + wheel(21, 33.4, 3.5) + wheel(36.5, 33.4, 3.5);
+  }
+  if (cat === 'van') {
+    return `<path d="M6.8 33 C5.6 33 4.8 32.1 4.8 30.9 L4.8 19.6 C4.8 18 5.9 16.9 7.5 16.9 L31 16.9 C33.4 16.9 35.4 17.7 36.9 19.5 L41.3 24.8 C42.4 26.1 43 27.4 43 29 L43 30.9 C43 32.1 42.2 33 41 33 Z" fill="${color}" ${bs}/>` +
+      `<path d="M7.5 16.9 L31 16.9 C33.4 16.9 35.4 17.7 36.9 19.5 L37.9 20.7 L6 20.7 L6 19.3 C6.1 17.8 6.6 16.9 7.5 16.9 Z" fill="${HL}"/>` +
+      `<path d="M32.4 19 C33.6 19.1 34.6 19.6 35.5 20.7 L38.8 24.7 L32.6 24.7 C31.8 24.7 31.4 24.2 31.4 23.5 L31.4 20.2 C31.4 19.4 31.7 19 32.4 19 Z" fill="${glass}"/>` +
+      `<path d="M32.4 19 L33.8 19 L31.9 24.7 L31.4 24.7 L31.4 20.2 C31.4 19.4 31.7 19 32.4 19 Z" fill="rgba(255,255,255,0.5)"/>` +
+      `<rect x="8.4" y="20.3" width="0.9" height="10" rx="0.45" fill="rgba(0,0,0,0.12)"/>` +
+      `<rect x="26.8" y="20.3" width="0.9" height="10.4" rx="0.45" fill="rgba(0,0,0,0.12)"/>` +
+      skirt(5.6, 42.4, 33) +
+      `<rect x="42.1" y="27.4" width="1.5" height="2.6" rx="0.75" fill="${hlF}"/>` +
+      wheel(12, 33.4, 3.4) + wheel(35, 33.4, 3.4);
+  }
+  return `<path d="M8.6 33 C6.9 33 5.8 31.9 5.8 30.2 L5.8 28.9 C5.8 27.4 6.8 26.2 8.3 25.9 L12.2 25.2 C14.4 21.4 17.6 19.4 21.6 19.3 L25.4 19.3 C29.3 19.4 32.4 21.3 34.7 25.1 L39.5 25.9 C41.2 26.2 42.4 27.5 42.4 29.2 L42.4 30.3 C42.4 31.9 41.3 33 39.7 33 Z" fill="${color}" ${bs}/>` +
+    `<path d="M13.9 25.4 C15.9 22 18.6 20.5 21.7 20.4 L25.2 20.4 C28.4 20.5 31 22 33 25.2 L28.9 25.6 L17.8 25.6 Z" fill="${glass}"/>` +
+    `<path d="M15.5 25.5 C17.3 22.3 19.7 20.8 22.4 20.5 L24 20.4 L21 25.6 L17.8 25.6 Z" fill="rgba(255,255,255,0.5)"/>` +
+    `<rect x="23.2" y="20.8" width="0.85" height="4.6" fill="rgba(0,0,0,0.14)"/>` +
+    `<path d="M8.3 26.2 C11 25.4 15 25 21.5 25 L26 25 C32 25 36.8 25.4 39.5 26.2 L39.5 27.2 C36.6 26.5 32 26.1 26 26.1 L21.5 26.1 C15.4 26.1 10.9 26.5 8.3 27.2 Z" fill="${HL}"/>` +
+    skirt(6.8, 41.4, 33) +
+    `<rect x="41" y="27.6" width="1.4" height="2" rx="0.7" fill="${hlF}"/>` +
+    `<rect x="5.9" y="27.6" width="1.2" height="2" rx="0.6" fill="rgba(255,80,80,0.9)"/>` +
+    wheel(13, 33.2, 3.4) + wheel(34.6, 33.2, 3.4);
 }
 function markerIsoSvg(color: string, cat: string, moving: boolean, angle: number) {
-  const iso = `<g transform="translate(0,-5)">${vehicleIso(cat, color)}</g>`;
-  const arrow = moving ? `<g transform="rotate(${angle} 24 24)"><path d="M24 1.5 L28.4 9 L24 6.8 L19.6 9 Z" fill="${color}" stroke="#fff" stroke-width="0.9" stroke-linejoin="round"/></g>` : '';
-  return `<svg width="42" height="42" viewBox="0 0 48 48" style="overflow:visible;display:block;"><ellipse cx="24" cy="33" rx="11.5" ry="3.4" fill="rgba(0,0,0,0.28)"/>${arrow}${iso}</svg>`;
+  const iso = `<g transform="translate(0,-4)">${vehicleIso(cat, color)}</g>`;
+  const arrow = moving ? `<g transform="rotate(${angle} 24 24)"><path d="M24 1 L28.2 8.2 L24 6.2 L19.8 8.2 Z" fill="${color}" stroke="#fff" stroke-width="0.9" stroke-linejoin="round"/></g>` : '';
+  return `<svg width="42" height="42" viewBox="0 0 48 48" style="overflow:visible;display:block;">` +
+    `<ellipse cx="24" cy="33.6" rx="17" ry="3.2" fill="rgba(0,0,0,0.14)"/>` +
+    `<ellipse cx="24" cy="33.6" rx="13" ry="2.4" fill="rgba(0,0,0,0.12)"/>${arrow}${iso}</svg>`;
 }
 
 // Conținutul unui marker (etichetă cu numărul + iconiță). Rămâne DREPT la înclinare (markerele MapLibre sunt „billboard").
