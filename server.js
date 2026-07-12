@@ -6553,9 +6553,11 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
       }
       // Ralanti: intervalul REAL al sesiunii — start din alertData (sau dedus la notificările vechi),
       // end = primul punct în mișcare DUPĂ eveniment (un query LIMIT 1, plafon +24h), altfel „încă în staționare".
-      if ((n.data || {}).alertType === 'idle_engine') {
+      // Gate ALINIAT cu clientul: alertType SAU titlu/body cu „idl"/„ralanti" (notificările vechi n-au alertType).
+      if ((n.data || {}).alertType === 'idle_engine' || /ralanti|idl/i.test((n.title || '') + ' ' + (n.body || ''))) {
         const dd = n.data || {};
-        const start = Number(dd.idleStart) || (at - (Number(dd.idleMinutes) || 0) * 60000);
+        const _bodyMin = parseInt((String(n.body || '').match(/(\d+)\s*min/) || [])[1]) || 0; // vechi: minutele doar în text („staționat de ~32 min")
+        const start = Number(dd.idleStart) || (at - (Number(dd.idleMinutes) || _bodyMin) * 60000);
         let end = null;
         try {
           const cap = new Date(at + 24 * 3600 * 1000).toISOString();

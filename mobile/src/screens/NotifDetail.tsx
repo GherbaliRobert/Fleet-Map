@@ -182,7 +182,7 @@ export function NotifDetail() {
               <span style={'width:11px;height:11px;border-radius:50%;flex-shrink:0;background:' + sevC} />
               <div style="font-size:16px;font-weight:700;line-height:1.3">{d.title || d.type}</div>
             </div>
-            {d.body && <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">{d.body}</div>}
+            {d.body && !isIdle && <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">{d.body}</div>}
             {d.event
               ? <div ref={mapEl} style="height:280px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--bg-dark);margin-bottom:12px" />
               : <div class="adm-empty" style="padding:24px">Fără poziție GPS pentru acest eveniment.</div>}
@@ -208,11 +208,13 @@ export function NotifDetail() {
               {d.event && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
               {d.event && isSpeeding ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && osmRef > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (osmRef > rl ? ' · +' + (osmRef - rl) : ''))}</span></div> : null}
             </div>
-            <div style="display:flex;gap:10px;margin-top:14px;align-items:stretch">
+            {d.body && isIdle && <div style="font-size:12px;color:var(--text-muted);margin-top:10px;text-align:center">{d.body}</div>}
+            <div style="display:flex;gap:8px;margin-top:14px;align-items:stretch">
               {acked
-                ? <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--accent);font-weight:600;font-size:13px;border:1px solid var(--border);border-radius:12px;padding:10px"><Icon name="check" size={14} /> Citit</div>
-                : <button class="btn btn-primary" style="flex:1;padding:10px 12px;font-size:13.5px;border-radius:12px" disabled={ackBusy} onClick={markRead}>{ackBusy ? 'Se marchează…' : 'Marchează citit'}</button>}
-              {d.event ? <a style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:12px;padding:10px;font-size:13.5px;font-weight:600" href={'https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener"><Icon name="mapPin" size={14} /> Google Maps</a> : null}
+                ? <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--accent);font-weight:600;font-size:12.5px;border:1px solid var(--border);border-radius:12px;padding:10px 6px"><Icon name="check" size={14} /> Citit</div>
+                : <button class="btn btn-primary" style="flex:1;padding:10px 6px;font-size:12.5px;border-radius:12px" disabled={ackBusy} onClick={markRead}>{ackBusy ? '…' : 'Marchează citit'}</button>}
+              {d.event ? <a style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:12px;padding:10px 6px;font-size:12.5px;font-weight:600" href={'https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener"><Icon name="mapPin" size={13} /> Maps</a> : null}
+              {d.event ? <a style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:12px;padding:10px 6px;font-size:12.5px;font-weight:600" href={'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + d.event.lat + ',' + d.event.lng} target="_blank" rel="noopener"><Icon name="eye" size={13} /> Street View</a> : null}
             </div>
           </>
         )}
