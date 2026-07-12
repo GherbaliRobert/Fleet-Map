@@ -49,6 +49,8 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   const ready = useRef(false);
   const layerRef = useRef<VehicleLayer | null>(null);
   const _syncRef = useRef<() => void>(() => {});
+  const prevStyle = useRef<boolean | null>(null);
+  const lastFocus = useRef<string | undefined>(undefined);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const [use3d, setUse3d] = useState<boolean>(() => { try { return localStorage.getItem('mapStyle') === '3d'; } catch { return false; } });
@@ -112,7 +114,12 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       _syncRef.current = () => { if (layerRef.current) { layerRef.current.setVisible(use3d); layerRef.current.sync(vehicles, use3d, offlineMin); } };
       _syncRef.current();
 
-      if (focusImei) {
+      // Comutarea săgeți⇄3D NU mișcă niciodată camera (era: re-rula focus/follow → zoom nedorit pe hartă).
+      const styleChanged = prevStyle.current !== null && prevStyle.current !== use3d; prevStyle.current = use3d;
+      if (styleChanged) { prevFollow.current = !!follow; return; }
+
+      if (focusImei && lastFocus.current !== focusImei) {
+        lastFocus.current = focusImei; // focusează O DATĂ per selecție, nu la fiecare update live
         const fv = vehicles.find((x) => x.imei === focusImei);
         if (fv && fv.latitude != null && fv.longitude != null) { map.easeTo({ center: [fv.longitude, fv.latitude], zoom: 15, duration: 500 }); fitted.current = true; }
       } else if (follow && n) {

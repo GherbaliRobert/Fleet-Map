@@ -24,60 +24,112 @@ function catOf(vt?: string): string {
   return 'car';
 }
 
-// Construiește un vehicul low-poly. Reper: bot spre +X, sus +Y, roțile jos; unități în „metri".
+// Construiește un vehicul low-poly RAFINAT. Reper: bot spre +X, sus +Y, roțile jos; unități în „metri".
+// Caroseria = PROFIL 2D cu curbe (Shape + Bezier) extrudat pe lățime → siluetă reală (capotă/parbriz/plafon),
+// nu cutii lipite. Geamurile = plăci subțiri incastrate pe pante/flancuri. Roți cu jantă, faruri/stopuri mici.
 function buildVehicleMesh(cat: string, color: string): THREE.Group {
   const g = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.5 });
-  const roofMat = new THREE.MeshStandardMaterial({ color: shade(color, 12), metalness: 0.35, roughness: 0.5 });
-  const glassMat = new THREE.MeshStandardMaterial({ color: '#1b3a55', metalness: 0.7, roughness: 0.15 });
-  const wheelMat = new THREE.MeshStandardMaterial({ color: '#15181d', metalness: 0.2, roughness: 0.8 });
-  const hubMat = new THREE.MeshStandardMaterial({ color: '#c7ccd3', metalness: 0.8, roughness: 0.3 });
-  const headMat = new THREE.MeshStandardMaterial({ color: '#fff7d6', emissive: '#fff2b0', emissiveIntensity: 0.7 });
-  const tailMat = new THREE.MeshStandardMaterial({ color: '#ff5555', emissive: '#ff2222', emissiveIntensity: 0.6 });
-
-  const box = (w: number, h: number, d: number, x: number, y: number, z: number, mat: THREE.Material) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); g.add(m); return m;
+  const mat = {
+    body: new THREE.MeshStandardMaterial({ color, metalness: 0.45, roughness: 0.35, side: THREE.DoubleSide }),
+    glass: new THREE.MeshStandardMaterial({ color: '#2a4a6b', metalness: 0.75, roughness: 0.15, side: THREE.DoubleSide }),
+    trim: new THREE.MeshStandardMaterial({ color: '#20242b', metalness: 0.3, roughness: 0.7 }),
+    tyre: new THREE.MeshStandardMaterial({ color: '#17191e', metalness: 0.1, roughness: 0.9 }),
+    hub: new THREE.MeshStandardMaterial({ color: '#b9bfc8', metalness: 0.85, roughness: 0.25 }),
+    head: new THREE.MeshStandardMaterial({ color: '#fffbe8', emissive: '#ffedaa', emissiveIntensity: 0.9 }),
+    tail: new THREE.MeshStandardMaterial({ color: '#e33', emissive: '#d00', emissiveIntensity: 0.7 }),
+    cargo: new THREE.MeshStandardMaterial({ color: shade(color, -6), metalness: 0.35, roughness: 0.45, side: THREE.DoubleSide }),
+  };
+  // Profil lateral extrudat pe lățime (centrat pe z)
+  const extrude = (shape: THREE.Shape, width: number, m: THREE.Material, noBevel = false) => {
+    const geo = new THREE.ExtrudeGeometry(shape, noBevel ? { depth: width, bevelEnabled: false, curveSegments: 10 } : { depth: width, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 2, curveSegments: 10 });
+    let geoNI = geo.toNonIndexed ? geo.toNonIndexed() : geo; // normale PLANE per-triunghi (fără gradiente pe flancuri)
+    geoNI.scale(1, 1, -1);          // profilele-s desenate în sens orar → flip inversează winding-ul
+    geoNI.computeVertexNormals();     // normale corecte după flip (geometrie non-indexată → flat shading curat)
+    geoNI.translate(0, 0, width / 2); // recentrare pe z
+    const mesh = new THREE.Mesh(geoNI, m); g.add(mesh); return mesh;
+  };
+  const box = (w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material, rz = 0) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    mesh.position.set(x, y, z); if (rz) mesh.rotation.z = rz; g.add(mesh); return mesh;
   };
   const wheel = (x: number, z: number, r: number, tw: number) => {
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, tw, 16), wheelMat);
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, tw, 22), mat.tyre);
     t.rotation.x = Math.PI / 2; t.position.set(x, r, z); g.add(t);
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.5, r * 0.5, tw + 0.02, 12), hubMat);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.55, r * 0.55, tw + 0.03, 18), mat.hub);
     hub.rotation.x = Math.PI / 2; hub.position.set(x, r, z); g.add(hub);
   };
-
   if (cat === 'truck') {
-    // Cabină în față + cutie de marfă în spate
-    box(2.6, 2.4, 2.5, 2.3, 1.7, 0, bodyMat);                       // cabină
-    box(2.2, 1.2, 2.3, 2.6, 2.2, 0, glassMat);                     // parbriz/geamuri cabină (sus)
-    box(6.2, 2.9, 2.55, -1.9, 2.0, 0, roofMat);                    // cutie marfă
-    box(0.3, 0.5, 2.4, 3.65, 1.0, 0, headMat);                     // far
-    box(0.3, 0.5, 2.5, -5.0, 1.2, 0, tailMat);                     // stop spate
-    wheel(2.2, 1.15, 0.7, 0.4); wheel(2.2, -1.15, 0.7, 0.4);
-    wheel(-3.3, 1.2, 0.75, 0.45); wheel(-3.3, -1.2, 0.75, 0.45);
+    // Cabină cu parbriz înclinat (profil curbat) + cutie de marfă cu muchii teșite
+    const cab = new THREE.Shape();
+    cab.moveTo(1.15, 0.55); cab.lineTo(1.15, 2.9); cab.quadraticCurveTo(1.15, 3.1, 1.35, 3.1);
+    cab.lineTo(2.4, 3.1); cab.quadraticCurveTo(2.62, 3.08, 2.78, 2.6);   // parbriz înclinat
+    cab.lineTo(3.05, 1.7); cab.quadraticCurveTo(3.12, 1.4, 3.12, 1.1);   // botul coboară
+    cab.lineTo(3.12, 0.75); cab.quadraticCurveTo(3.12, 0.55, 2.9, 0.55);     extrude(cab, 2.3, mat.body);
+    // BANDĂ de sticlă wrap-around (profil extrudat PUȚIN mai lat decât cabina → geamuri pe flancuri + parbriz, fără plăci care ies)
+    const gb = new THREE.Shape();
+    gb.moveTo(1.38, 2.12); gb.lineTo(1.38, 2.84); gb.lineTo(2.4, 2.84);
+    gb.quadraticCurveTo(2.52, 2.82, 2.62, 2.5); gb.lineTo(2.74, 2.12);     extrude(gb, 2.44, mat.glass, true);
+    // cutie marfă (dreptunghi rotunjit extrudat)
+    const bx = new THREE.Shape();
+    bx.moveTo(-4.7, 0.8); bx.lineTo(-4.7, 3.25); bx.quadraticCurveTo(-4.7, 3.42, -4.5, 3.42);
+    bx.lineTo(0.75, 3.42); bx.quadraticCurveTo(0.95, 3.42, 0.95, 3.25); bx.lineTo(0.95, 0.98);
+    bx.quadraticCurveTo(0.95, 0.8, 0.75, 0.8);     extrude(bx, 2.42, mat.cargo);
+    box(0.2, 0.32, 1.85, 3.04, 0.85, 0, mat.head);
+    box(0.16, 0.45, 2.3, -4.72, 1.1, 0, mat.tail);
+    box(7.6, 0.28, 2.0, -0.7, 0.42, 0, mat.trim);                        // șasiu
+    wheel(2.35, 1.02, 0.56, 0.34); wheel(2.35, -1.02, 0.56, 0.34);
+    wheel(-2.6, 1.02, 0.58, 0.36); wheel(-2.6, -1.02, 0.58, 0.36);
+    wheel(-3.9, 1.02, 0.58, 0.36); wheel(-3.9, -1.02, 0.58, 0.36);
   } else if (cat === 'van') {
-    box(6.2, 2.7, 2.3, 0, 1.7, 0, bodyMat);
-    box(1.6, 1.2, 2.1, 2.6, 2.0, 0, glassMat);                     // parbriz
-    box(2.2, 1.3, 2.15, 0.2, 2.05, 0, roofMat);                    // luciu plafon
-    box(0.3, 0.5, 2.2, 3.2, 1.0, 0, headMat);
-    box(0.3, 0.5, 2.2, -3.2, 1.2, 0, tailMat);
-    wheel(2.2, 1.05, 0.62, 0.35); wheel(2.2, -1.05, 0.62, 0.35);
-    wheel(-2.2, 1.05, 0.62, 0.35); wheel(-2.2, -1.05, 0.62, 0.35);
+    // Dubă: bot scurt înclinat + corp înalt cu plafonul ușor curbat spre spate
+    const s = new THREE.Shape();
+    s.moveTo(-3.15, 0.5); s.lineTo(-3.15, 2.75); s.quadraticCurveTo(-3.15, 2.95, -2.95, 2.95);   // spate vertical
+    s.lineTo(1.4, 2.95); s.quadraticCurveTo(2.1, 2.92, 2.55, 2.35);                              // plafon → parbriz înclinat
+    s.quadraticCurveTo(2.9, 1.9, 3.15, 1.35); s.quadraticCurveTo(3.28, 1.05, 3.28, 0.85);        // capotă scurtă → bot
+    s.lineTo(3.28, 0.68); s.quadraticCurveTo(3.28, 0.5, 3.05, 0.5);     extrude(s, 2.2, mat.body);
+    // bandă de sticlă wrap-around în zona cabinei (urmează panta parbrizului)
+    const gv = new THREE.Shape();
+    gv.moveTo(1.25, 1.95); gv.lineTo(1.25, 2.72); gv.quadraticCurveTo(1.85, 2.7, 2.3, 2.32);
+    gv.quadraticCurveTo(2.6, 2.05, 2.78, 1.95);     extrude(gv, 2.34, mat.glass, true);
+    box(0.05, 1.6, 1.7, -3.2, 1.6, 0, mat.trim);                         // rost uși spate
+    box(0.2, 0.3, 1.75, 3.18, 0.82, 0, mat.head);
+    box(0.14, 0.42, 2.1, -3.14, 1.0, 0, mat.tail);
+    wheel(2.1, 0.98, 0.5, 0.3); wheel(2.1, -0.98, 0.5, 0.3);
+    wheel(-2.0, 0.98, 0.5, 0.3); wheel(-2.0, -0.98, 0.5, 0.3);
   } else if (cat === 'bus') {
-    box(10.5, 3.1, 2.55, 0, 2.0, 0, bodyMat);
-    box(9.6, 1.0, 2.6, 0, 2.6, 0, glassMat);                       // bandă de geamuri
-    box(0.3, 0.6, 2.4, 5.3, 1.1, 0, headMat);
-    box(0.3, 0.6, 2.4, -5.3, 1.3, 0, tailMat);
-    wheel(3.6, 1.15, 0.72, 0.4); wheel(3.6, -1.15, 0.72, 0.4);
-    wheel(-3.6, 1.15, 0.72, 0.4); wheel(-3.6, -1.15, 0.72, 0.4);
+    // Autobuz: corp lung cu colțuri rotunjite + bandă continuă de geamuri wrap-around
+    const s = new THREE.Shape();
+    s.moveTo(-5.2, 0.5); s.lineTo(-5.2, 2.95); s.quadraticCurveTo(-5.2, 3.25, -4.9, 3.25);
+    s.lineTo(4.75, 3.25); s.quadraticCurveTo(5.15, 3.22, 5.25, 2.6);                              // fața ușor înclinată
+    s.lineTo(5.3, 0.85); s.quadraticCurveTo(5.3, 0.5, 5.0, 0.5);     extrude(s, 2.45, mat.body);
+    const gs = new THREE.Shape();                                         // banda de geamuri (profil extrudat mai lat)
+    gs.moveTo(-4.85, 2.02); gs.lineTo(-4.85, 2.8); gs.lineTo(4.75, 2.8);
+    gs.quadraticCurveTo(4.98, 2.76, 5.08, 2.35); gs.lineTo(5.14, 2.02);     extrude(gs, 2.59, mat.glass, true);
+    box(0.05, 1.45, 0.08, 2.2, 1.28, 1.26, mat.trim); box(0.05, 1.45, 0.08, -1.4, 1.28, 1.26, mat.trim); // uși (rosturi)
+    box(0.2, 0.32, 1.9, 5.2, 0.85, 0, mat.head);
+    box(0.14, 0.4, 2.25, -5.16, 1.0, 0, mat.tail);
+    wheel(3.3, 1.05, 0.55, 0.34); wheel(3.3, -1.05, 0.55, 0.34);
+    wheel(-3.3, 1.05, 0.55, 0.34); wheel(-3.3, -1.05, 0.55, 0.34);
   } else {
-    // Mașină: corp + cabină/greenhouse retrasă, cu geamuri
-    box(4.6, 0.95, 1.95, 0, 0.85, 0, bodyMat);                    // corp jos
-    box(2.6, 0.85, 1.8, -0.25, 1.55, 0, roofMat);                 // plafon
-    box(2.5, 0.7, 1.72, -0.25, 1.5, 0, glassMat);                 // geamuri (parbriz+lunetă)
-    box(0.35, 0.45, 1.7, 2.35, 0.75, 0, headMat);                 // faruri
-    box(0.35, 0.4, 1.7, -2.35, 0.8, 0, tailMat);                  // stopuri
-    wheel(1.5, 1.0, 0.5, 0.28); wheel(1.5, -1.0, 0.5, 0.28);
-    wheel(-1.5, 1.0, 0.5, 0.28); wheel(-1.5, -1.0, 0.5, 0.28);
+    // Mașină: corp până la BRÂU + „greenhouse" de sticlă separat (profil extrudat mai îngust) — fără plăci care ies
+    const s = new THREE.Shape();
+    s.moveTo(-2.28, 0.42); s.lineTo(-2.28, 0.78); s.quadraticCurveTo(-2.28, 0.98, -2.05, 1.0);   // spate + colț portbagaj
+    s.lineTo(1.15, 1.04);                                                                          // linia brâului
+    s.quadraticCurveTo(1.45, 1.0, 1.8, 0.97); s.lineTo(2.18, 0.93);                               // capotă
+    s.quadraticCurveTo(2.38, 0.9, 2.38, 0.66); s.lineTo(2.38, 0.44);                              // bot
+    s.quadraticCurveTo(2.38, 0.3, 2.16, 0.3); s.lineTo(-2.06, 0.3);
+    s.quadraticCurveTo(-2.28, 0.3, -2.28, 0.42);
+    extrude(s, 1.78, mat.body);
+    const gh = new THREE.Shape();                                          // greenhouse (parbriz+plafon+lunetă), mai îngust
+    gh.moveTo(-1.55, 1.0); gh.quadraticCurveTo(-1.08, 1.06, -0.86, 1.3);   // lunetă
+    gh.quadraticCurveTo(-0.6, 1.47, -0.24, 1.47); gh.lineTo(0.42, 1.47);   // plafon
+    gh.quadraticCurveTo(0.76, 1.44, 1.02, 1.12); gh.quadraticCurveTo(1.1, 1.02, 1.18, 1.0);       // parbriz
+        extrude(gh, 1.5, mat.glass, true);
+    box(1.1, 0.06, 1.4, 0.06, 1.49, 0, mat.body); // capac plafon colorat peste greenhouse
+    box(0.16, 0.22, 0.5, 2.36, 0.72, 0.5, mat.head); box(0.16, 0.22, 0.5, 2.36, 0.72, -0.5, mat.head);     // faruri
+    box(0.12, 0.2, 0.45, -2.26, 0.78, 0.52, mat.tail); box(0.12, 0.2, 0.45, -2.26, 0.78, -0.52, mat.tail); // stopuri
+    wheel(1.45, 0.83, 0.42, 0.26); wheel(1.45, -0.83, 0.42, 0.26);
+    wheel(-1.45, 0.83, 0.42, 0.26); wheel(-1.45, -0.83, 0.42, 0.26);
   }
   return g;
 }
@@ -103,9 +155,9 @@ export function createVehicleLayer(): VehicleLayer {
       mapRef = map;
       camera = new THREE.Camera();
       scene = new THREE.Scene();
-      scene.add(new THREE.AmbientLight(0xffffff, 1.15));
-      const dir = new THREE.DirectionalLight(0xffffff, 1.4); dir.position.set(0.4, -0.7, 1); scene.add(dir);
-      const dir2 = new THREE.DirectionalLight(0xffffff, 0.5); dir2.position.set(-0.6, 0.5, 0.8); scene.add(dir2);
+      scene.add(new THREE.AmbientLight(0xffffff, 1.7));
+      const dir = new THREE.DirectionalLight(0xffffff, 0.85); dir.position.set(0.4, -0.7, 1); scene.add(dir);
+      const dir2 = new THREE.DirectionalLight(0xffffff, 0.45); dir2.position.set(-0.6, 0.5, 0.8); scene.add(dir2);
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl as any, antialias: true });
       renderer.autoClear = false;
     },
