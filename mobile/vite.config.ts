@@ -12,4 +12,5 @@ export default defineConfig({
     },
   },
   build: { outDir: 'dist', target: 'es2020', sourcemap: false },
+  assetsInclude: ['**/*.glb'], // modele 3D vehicule (Kenney Car Kit, CC0) importate cu ?url
 });
