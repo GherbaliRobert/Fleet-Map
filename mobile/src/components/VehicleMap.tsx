@@ -61,6 +61,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
     const map = new maplibregl.Map({
       container: ref.current, style: MAP_STYLE, center: [25, 45.9], zoom: 5.2,
       attributionControl: false, pitchWithRotate: true, dragRotate: true, maxPitch: 70,
+      canvasContextAttributes: { antialias: true }, // muchii fine pe modelele 3D (context WebGL partajat cu Three.js)
     });
     // Gesturi: 2 degete pe verticală = ÎNCLINARE (pitch); 2 degete răsucite = rotire — exact ca Google Maps.
     map.touchZoomRotate.enableRotation();

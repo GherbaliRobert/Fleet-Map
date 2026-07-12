@@ -7,8 +7,14 @@ import type { Position } from '../api/endpoints';
 import { statusOf } from '../lib/status';
 
 const HEX: Record<string, string> = { moving: '#22c55e', idle: '#eab308', stopped: '#ef4444', offline: '#9aa3ad' };
-// Mărire față de scara reală — la scara 1:1 o mașină de 4.5m ar fi câțiva pixeli; o exagerăm ca s-o vezi 3D (ca Google).
-const SIZE_BOOST = 7;
+// Mărime CONSTANTĂ PE ECRAN (ca un marker): mașina ~40px lungime la ORICE zoom.
+// La scară fizică fixă era invizibilă la zoom mic și monstruoasă la zoom mare.
+const CAR_TARGET_PX = 40;   // lungimea mașinii pe ecran; camion/autobuz apar proporțional mai lungi
+const CAR_LEN_M = 4.7;      // lungimea modelului de mașină în unități-model („metri")
+// Metri reali per pixel la zoom/latitudine (MapLibre = tile-uri 512px)
+function metersPerPixel(zoom: number, lat: number): number {
+  return (40075016.686 * Math.abs(Math.cos((lat * Math.PI) / 180))) / (512 * Math.pow(2, zoom));
+}
 
 function shade(hex: string, amt: number): string {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || ''); if (!m) return hex;
@@ -145,7 +151,18 @@ export function createVehicleLayer(): VehicleLayer {
   let camera: THREE.Camera;
   let mapRef: maplibregl.Map;
   let visible = true;
-  const rec = new Map<string, { outer: THREE.Group; inner: THREE.Group; cat: string; status: string }>();
+  const rec = new Map<string, { outer: THREE.Group; inner: THREE.Group; cat: string; status: string; lat: number; unitScale: number }>();
+  // Mărime constantă pe ecran: mașina (4.7 unități-model) ocupă mereu ~CAR_TARGET_PX pixeli, indiferent de zoom.
+  const rescale = () => {
+    if (!mapRef) return;
+    const zoom = mapRef.getZoom();
+    for (const r of rec.values()) {
+      const targetMeters = CAR_TARGET_PX * metersPerPixel(zoom, r.lat); // câți metri reali = 40px la acest zoom/lat
+      const s = r.unitScale * (targetMeters / CAR_LEN_M);
+      r.outer.scale.set(s, s, s);
+    }
+    if (mapRef) mapRef.triggerRepaint();
+  };
 
   return {
     id: 'vehicles-3d',
@@ -160,6 +177,7 @@ export function createVehicleLayer(): VehicleLayer {
       const dir2 = new THREE.DirectionalLight(0xffffff, 0.45); dir2.position.set(-0.6, 0.5, 0.8); scene.add(dir2);
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl as any, antialias: true });
       renderer.autoClear = false;
+      map.on('zoom', rescale); // mărimea pe ecran rămâne constantă → re-scală la fiecare schimbare de zoom
     },
     setVisible(v: boolean) { visible = v; if (mapRef) mapRef.triggerRepaint(); },
     sync(vehicles: Position[], use3d: boolean, offlineMin: number) {
@@ -178,17 +196,18 @@ export function createVehicleLayer(): VehicleLayer {
           const inner = new THREE.Group(); outer.add(inner);
           inner.add(buildVehicleMesh(cat, color));
           scene.add(outer);
-          r = { outer, inner, cat, status: st.status };
+          r = { outer, inner, cat, status: st.status, lat: v.latitude, unitScale: 1 };
           rec.set(v.imei, r);
         }
         const merc = maplibregl.MercatorCoordinate.fromLngLat([v.longitude, v.latitude], 0);
-        const scale = merc.meterInMercatorCoordinateUnits() * SIZE_BOOST;
+        r.lat = v.latitude;
+        r.unitScale = merc.meterInMercatorCoordinateUnits(); // unități mercator per metru-model (înainte de factorul de zoom)
         r.outer.position.set(merc.x, merc.y, merc.z);
-        r.outer.scale.set(scale, scale, scale);
         r.inner.rotation.y = (((v.angle || 0) - 90) * Math.PI) / 180; // orientează botul pe direcția de mers (0=N, 90=E, 180=S, 270=V)
         r.outer.visible = use3d;
       }
       for (const [imei, r] of rec) if (!seen.has(imei)) { scene.remove(r.outer); rec.delete(imei); }
+      rescale();
       if (mapRef) mapRef.triggerRepaint();
     },
     render(gl: WebGLRenderingContext, args: any) {
