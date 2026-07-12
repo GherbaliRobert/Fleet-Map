@@ -31,7 +31,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="RA Tracks">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="/css/app.css?v=5">
+  <link rel="stylesheet" href="/css/app.css?v=6">
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
   <link rel="stylesheet" href="/css/map-tools.css?v=2">
   <link rel="stylesheet" href="/css/vehicle-popup.css?v=1">
@@ -1559,9 +1559,12 @@ const pozitii = await r.json();</code></pre>
         <span><i class="fas fa-clock" style="margin-right:8px;color:var(--accent);"></i> Rapoarte programate</span>
         <button class="close-btn" onclick="closeSchedules()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
-      <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;">
-        <strong style="font-size:13px;">Programare nouă</strong>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+      <div class="sch-card sch-form">
+        <div class="sch-card-head">
+          <span class="ic"><i class="fas fa-calendar-plus"></i></span>
+          <div><h4>Programare nouă</h4><p>Raportul se generează automat și ajunge pe email, la ora stabilită.</p></div>
+        </div>
+        <div class="sch-grid">
           <label class="rep-f"><span>Nume</span><input id="sch-name" placeholder="ex. Zilnic flotă"></label>
           <label class="rep-f"><span>Raport</span><select id="sch-type"></select></label>
           <label class="rep-f"><span>Vehicul</span><select id="sch-imei"></select></label>
@@ -1576,10 +1579,13 @@ const pozitii = await r.json();</code></pre>
           <label class="rep-f"><span>Format</span><select id="sch-format"><option value="pdf">PDF</option><option value="xlsx">Excel</option></select></label>
           <label class="rep-f" style="grid-column:span 2;"><span>Destinatari (email, separați prin virgulă)</span><input id="sch-recips" placeholder="gol = emailul tău"></label>
         </div>
-        <button class="btn-sm btn-primary" style="margin-top:10px;" onclick="schedCreate()"><i class="fas fa-plus"></i> Adaugă programarea</button>
-        <span id="sch-msg" style="font-size:12px;margin-left:8px;"></span>
+        <div class="sch-foot">
+          <button class="btn-sm btn-primary" onclick="schedCreate()"><i class="fas fa-plus"></i> Adaugă programarea</button>
+          <span id="sch-msg" style="font-size:12px;"></span>
+        </div>
       </div>
-      <div id="sched-list" style="overflow:auto;"><div style="color:var(--text-muted);font-size:13px;">Se încarcă…</div></div>
+      <div class="sch-list-head" id="sch-list-head">Programări active</div>
+      <div id="sched-list" style="overflow:auto;flex:1;min-height:0;"><div style="color:var(--text-muted);font-size:13px;">Se încarcă…</div></div>
     </div>
   </div>
 
@@ -5681,26 +5687,40 @@ const pozitii = await r.json();</code></pre>
         let cat = (typeof repCatalog !== 'undefined' && repCatalog && repCatalog.reports) ? repCatalog : await (await fetch('/api/reports', { credentials: 'same-origin' })).json();
         document.getElementById('sch-type').innerHTML = (cat.reports || []).map(r => '<option value="' + r.type + '">' + r.label + '</option>').join('');
       } catch (e) {}
-      const src = document.getElementById('rep-imei'), dst = document.getElementById('sch-imei');
-      if (src && src.options.length) dst.innerHTML = src.innerHTML;
-      else if (!dst.options.length) dst.innerHTML = '<option value="">Toată flota</option>';
+      try { await fillVehicleSelect('sch-imei', true, 'Toată flota'); } // listă reală de vehicule (nume + nr), nu IMEI brut
+      catch (e) { var _d = document.getElementById('sch-imei'); if (_d && !_d.options.length) _d.innerHTML = '<option value="">Toată flota</option>'; }
       schedLoad();
     }
     function closeSchedules() { document.getElementById('sched-modal').classList.remove('visible'); }
     async function schedLoad() {
       const E = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
       const box = document.getElementById('sched-list');
+      const head = document.getElementById('sch-list-head');
+      // Nume vehicul din opțiunile selectului (evită afișarea IMEI-ului brut)
+      const vmap = {}; const vsel = document.getElementById('sch-imei'); if (vsel) for (const o of vsel.options) if (o.value) vmap[o.value] = o.textContent;
+      const RIC = (t) => (typeof REP_ICONS !== 'undefined' && REP_ICONS[t]) || 'fa-file-lines';
+      const RLBL = (t) => { try { return (repCatalog && repCatalog.reports || []).filter(r => r.type === t)[0]?.label || t; } catch (e) { return t; } };
       try {
         const list = await fetch('/api/report-schedules', { credentials: 'same-origin' }).then(r => r.json());
-        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Nicio programare încă.</div>'; return; }
-        const FREQ = { daily: 'zilnic', weekly: 'săptămânal', monthly: 'lunar' };
-        box.innerHTML = list.map(s => '<div class="user-row" style="align-items:center;"><div style="min-width:0;">' +
-          '<strong>' + E(s.name || s.report_type) + '</strong>' +
-          '<span style="font-size:11px;color:var(--text-muted);"> · ' + E(s.report_type) + ' · ' + (FREQ[s.frequency] || s.frequency) + ' @ ' + String(s.hour).padStart(2, '0') + ':00 · ' + (s.format || 'pdf').toUpperCase() + ' · ' + (s.imei ? E(s.imei) : 'toată flota') + '</span>' +
-          '<div style="font-size:11px;color:var(--text-muted);">următoarea: ' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO') : '—') + ' · → ' + E(s.recipients || '(emailul creatorului)') + '</div>' +
-          '</div><div style="display:flex;gap:6px;flex-shrink:0;">' +
-          '<button class="btn-sm" onclick="schedRunNow(' + s.id + ')" title="Trimite acum"><i class="fas fa-paper-plane"></i></button>' +
-          '<button class="btn-sm btn-danger" onclick="schedDelete(' + s.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>' +
+        if (head) head.textContent = 'Programări active' + (Array.isArray(list) && list.length ? ' (' + list.length + ')' : '');
+        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="sch-empty"><i class="far fa-calendar-check"></i><div>Nicio programare încă.</div><span>Completează formularul de sus ca să primești rapoarte automat pe email.</span></div>'; return; }
+        const FREQ = { daily: 'Zilnic', weekly: 'Săptămânal', monthly: 'Lunar' };
+        box.innerHTML = list.map(s => '<div class="sch-item">' +
+          '<span class="sic"><i class="fas ' + RIC(s.report_type) + '"></i></span>' +
+          '<div class="mid">' +
+            '<div class="nm">' + E(s.name || RLBL(s.report_type)) + '</div>' +
+            '<div class="sch-chips">' +
+              '<span class="sch-chip"><i class="fas fa-file-lines"></i>' + E(RLBL(s.report_type)) + '</span>' +
+              '<span class="sch-chip"><i class="fas fa-repeat"></i>' + (FREQ[s.frequency] || s.frequency) + '</span>' +
+              '<span class="sch-chip"><i class="far fa-clock"></i>' + String(s.hour).padStart(2, '0') + ':00 UTC</span>' +
+              '<span class="sch-chip"><i class="far fa-file"></i>' + (s.format || 'pdf').toUpperCase() + '</span>' +
+              '<span class="sch-chip"><i class="fas fa-car"></i>' + (s.imei ? E(vmap[s.imei] || s.imei) : 'Toată flota') + '</span>' +
+            '</div>' +
+            '<div class="sch-next"><i class="far fa-calendar"></i> Următoarea: <b>' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO') : '—') + '</b> &nbsp;·&nbsp; <i class="far fa-envelope"></i> ' + E(s.recipients || 'emailul creatorului') + '</div>' +
+          '</div>' +
+          '<div class="sch-acts">' +
+            '<button class="sch-iconbtn" onclick="schedRunNow(' + s.id + ')" title="Trimite acum"><i class="fas fa-paper-plane"></i></button>' +
+            '<button class="sch-iconbtn del" onclick="schedDelete(' + s.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>' +
           '</div></div>').join('');
       } catch (e) { box.innerHTML = '<div style="color:var(--danger);font-size:13px;">Eroare la încărcare.</div>'; }
     }
