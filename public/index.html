@@ -7148,6 +7148,46 @@ const pozitii = await r.json();</code></pre>
       b = Math.max(0, Math.min(255, Math.round(b + f * (amt < 0 ? b : 255 - b))));
       return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
     }
+    // ─── Iconițe IZOMETRICE 3D (proiecție oblică: față + top + latură umbrite = volum) ───
+    // Orientare FIXĂ (ca la AxiFleet) — direcția de mers e dată de o săgeată mică dedesubt (doar în mișcare).
+    function vehicleIso(cat, color, lit) {
+      const cF = color, cT = _shade(color, 30), cS = _shade(color, -34), cEdge = _shade(color, -58);
+      const glass = 'rgba(150,205,255,0.9)', wheel = '#14171d';
+      const DX = 6.5, DY = -6.5; // vectorul de adâncime (spre dreapta-sus) → aspect 3D
+      const pts = (a) => a.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+      // Cutie 3D oblică: (x,y)=colț față-jos-stânga; w lat, h înalt (sus=-y); dx,dy adâncime. Fața poate fi înlocuită (ex. parbriz).
+      function box(x, y, w, h, dx, dy, fFace) {
+        const top = '<polygon points="' + pts([[x, y - h], [x + w, y - h], [x + w + dx, y - h + dy], [x + dx, y - h + dy]]) + '" fill="' + cT + '" stroke="' + cEdge + '" stroke-width="0.5" stroke-linejoin="round"/>';
+        const side = '<polygon points="' + pts([[x + w, y], [x + w, y - h], [x + w + dx, y - h + dy], [x + w + dx, y + dy]]) + '" fill="' + cS + '" stroke="' + cEdge + '" stroke-width="0.5" stroke-linejoin="round"/>';
+        const front = '<polygon points="' + pts([[x, y], [x + w, y], [x + w, y - h], [x, y - h]]) + '" fill="' + (fFace || cF) + '" stroke="' + cEdge + '" stroke-width="0.5" stroke-linejoin="round"/>';
+        return side + top + front;
+      }
+      const wh = (wx, wy) => '<ellipse cx="' + wx.toFixed(1) + '" cy="' + wy.toFixed(1) + '" rx="2.5" ry="1.7" fill="' + wheel + '"/>';
+      const hl = lit ? 'rgba(255,247,200,0.98)' : 'rgba(255,255,255,0.4)';
+      const lamp = (lx, ly) => '<circle cx="' + lx + '" cy="' + ly + '" r="1.1" fill="' + hl + '"/>';
+      let s;
+      if (cat === 'truck' || cat === 'tir' || cat === 'autotractor' || cat === 'mixer') {
+        // Camion: cabină în față (joasă) + cutie/box mare în spate (înaltă).
+        s = wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) +          // roți spate (în adâncime)
+          box(12, 34, 21, 10, DX, DY) +                             // box de marfă (înalt)
+          wh(13, 35) + wh(31, 35) +                                 // roți față
+          box(12, 35, 21, 6, DX * 0.5, DY * 0.5, glass);           // cabină joasă în față (parbriz)
+      } else if (cat === 'van' || cat === 'bus') {
+        // Dubă/autobuz: un box înalt cu parbriz mare.
+        s = wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) +
+          wh(13, 35) + wh(31, 35) +
+          box(12, 35, 21, 11, DX, DY) +
+          '<polygon points="' + pts([[13, 34], [32, 34], [32, 30], [13, 30]]) + '" fill="' + glass + '"/>'; // parbriz pe fața cutiei
+      } else {
+        // Mașină: corp jos + cabină (parbriz) deasupra, retrasă.
+        s = wh(13 + DX, 33.5 + DY) + wh(30 + DX, 33.5 + DY) +       // roți spate
+          box(11, 33.5, 22, 4.5, DX, DY) +                          // corp jos
+          box(15.5, 29, 13, 4.5, DX * 0.68, DY * 0.68, glass) +     // cabină + parbriz
+          wh(14, 34.5) + wh(30, 34.5) +                             // roți față
+          lamp(13.5, 33) + lamp(30.5, 33);                          // faruri
+      }
+      return s;
+    }
     function vehicleBody(cat, color, lit) {
       const wht = 'rgba(255,255,255,0.92)', win = 'rgba(130,200,255,0.62)', winR = 'rgba(130,200,255,0.4)', whl = 'rgba(20,22,28,0.92)';
       const hl = lit ? 'rgba(255,248,205,0.98)' : 'rgba(255,255,255,0.28)', tl = 'rgba(255,70,70,0.85)';
@@ -7490,19 +7530,16 @@ const pozitii = await r.json();</code></pre>
       // Direcția se citește direct din orientarea vehiculului — fără chevron/săgeată separată (stil AROBS).
       let bodySvg;
       if (is3d) {
-        // Mod 3D: umbră la sol (fixă) + corp „extrudat" — o copie mai închisă decalată spre coadă dă grosime/volum.
-        // Totul se rotește curat la orice direcție (extrudarea e în cadrul mașinii, nu pe ecran).
-        const topBody = vehicleBody(cat, color, lit);
-        const sideBody = vehicleBody(cat, _shade(color, -60), false);
-        // Umbra la sol (fixă) + o copie mai închisă a siluetei decalată ÎN JOS PE ECRAN (fix, nu cu mașina) =
-        // înălțime → mașina pare 3D indiferent de direcția de mers. Corpul colorat stă deasupra.
+        // Mod 3D: iconiță IZOMETRICĂ (orientare fixă, aspect de volum) + umbră la sol.
+        // Direcția de mers = o săgeată mică deasupra care se rotește (doar când vehiculul e în mișcare).
+        const iso = '<g transform="translate(0,-5)">' + vehicleIso(cat, color, lit) + '</g>';
+        const arrow = isMoving
+          ? '<g transform="rotate(' + rot + ' 24 24)"><path d="M24 1.5 L28.4 9 L24 6.8 L19.6 9 Z" fill="' + color + '" stroke="#ffffff" stroke-width="0.9" stroke-linejoin="round"/></g>'
+          : '';
         bodySvg =
           '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48" style="overflow:visible;">' +
-            '<ellipse cx="24" cy="28" rx="12" ry="4.2" fill="rgba(0,0,0,0.20)"/>' +
-            '<g transform="translate(0,3.6)">' +
-              '<g transform="rotate(' + rot + ' 24 24)">' + sideBody + '</g>' +
-            '</g>' +
-            '<g transform="rotate(' + rot + ' 24 24)">' + topBody + '</g>' +
+            '<ellipse cx="24" cy="33" rx="11.5" ry="3.4" fill="rgba(0,0,0,0.22)"/>' +
+            arrow + iso +
           '</svg>';
       } else {
         // Mod „săgeți": aceeași rotație, dar o săgeată simplă în loc de silueta de categorie.
