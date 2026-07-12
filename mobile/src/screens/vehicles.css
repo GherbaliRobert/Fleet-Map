@@ -19,32 +19,27 @@
 .vcard-plate { font-size: 11px; font-weight: 800; color: var(--accent); background: rgba(63,224,125,.12); padding: 2px 7px; border-radius: 5px; }
 .vcard-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
 
-.vmap-wrap { position: relative; flex: 1; min-height: 0; }
+.vmap-wrap { position: relative; flex: 1; min-height: 0; overflow: hidden; }
 .vmap { position: absolute; inset: 0; }
-.vmarker { width: 26px; height: 26px; }
 
-/* Balon hartă (popup Leaflet) — temă întunecată */
-.leaflet-popup-content-wrapper { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
-.leaflet-popup-tip { background: var(--bg-card); border: 1px solid var(--border); }
-.leaflet-popup-content { margin: 10px 12px; font-family: inherit; min-width: 150px; }
+/* Marker MapLibre (rămâne DREPT la înclinare — billboard) — etichetă nr. + iconiță */
+.vmk { cursor: pointer; }
+.vmk-inner { display: flex; flex-direction: column; align-items: center; }
+.vmk-label { background: rgba(11,14,17,.88); color: #fff; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; padding: 1px 5px; font-size: 10.5px; font-weight: 700; line-height: 1.4; box-shadow: 0 2px 6px rgba(0,0,0,.45); white-space: nowrap; margin-bottom: 2px; }
+.vmk-icon { line-height: 0; }
+
+/* Balon hartă (popup MapLibre) — temă întunecată */
+.vmk-popup .maplibregl-popup-content { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.45); padding: 10px 12px; font-family: inherit; min-width: 150px; }
+.vmk-popup .maplibregl-popup-tip { border-top-color: var(--bg-card); border-bottom-color: var(--bg-card); }
 .vmpop-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
 .vmpop-st { font-size: 12.5px; font-weight: 600; }
 .vmpop-warn { font-size: 12.5px; font-weight: 700; color: #f59e0b; display: flex; align-items: center; }
 .vmpop-bang { display: inline-flex; width: 16px; height: 16px; border-radius: 50%; background: #f59e0b; color: #06210f; font-weight: 800; font-size: 11px; align-items: center; justify-content: center; margin-right: 6px; flex: 0 0 auto; }
 .vmpop-btn { margin-top: 9px; width: 100%; background: var(--accent); color: #06210f; border: none; border-radius: 8px; padding: 7px; font-weight: 700; font-size: 13px; font-family: inherit; }
 
-/* Etichetă permanentă pe marker — numărul mașinii (stil xMonitor) */
-.leaflet-tooltip.vlabel { background: rgba(11,14,17,.88); color: #fff; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; padding: 1px 5px; font-size: 10.5px; font-weight: 700; font-family: inherit; line-height: 1.4; box-shadow: 0 2px 6px rgba(0,0,0,.45); white-space: nowrap; }
-.leaflet-tooltip.vlabel::before { display: none; } /* fără săgeată */
-
 /* Buton „Urmărire" pe hartă (follow / unfollow) */
 .vmap-follow { position: absolute; top: 10px; right: 10px; z-index: 1000; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 700; font-family: inherit; box-shadow: 0 2px 10px rgba(0,0,0,.35); cursor: pointer; }
 .vmap-follow.on { background: var(--accent); color: #06210f; border-color: var(--accent); }
 
-/* ─── Înclinare hartă (3D) — perspectivă CSS pe containerul Leaflet ─── */
-.vmap-wrap { overflow: hidden; }
-.vmap.vmap-tilt { transform: perspective(900px) rotateX(46deg) scale(1.24); transform-origin: 50% 80%; transition: transform .28s ease; }
-/* markerele (iconițele 3D) stau VERTICALE — contra-rotire cât înclinarea */
-.vmap-tilt .leaflet-marker-icon .vmarker3d { transform: rotateX(-46deg); transform-origin: 50% 100%; }
-/* etichetele cu numărul rămân lizibile */
-.vmap-tilt .leaflet-tooltip.vlabel { transform: rotateX(-46deg); }
+/* Controlul MapLibre (zoom + busolă/reset înclinare) jos-dreapta, deasupra tab-bar-ului */
+.maplibregl-ctrl-bottom-right { margin-bottom: 8px; }

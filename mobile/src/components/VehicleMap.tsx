@@ -1,20 +1,25 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import L from 'leaflet';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Position } from '../api/endpoints';
 import { statusOf, type Status, type StatusInfo } from '../lib/status';
 import { fmtAgo } from '../lib/format';
 
 const HEX: Record<Status, string> = { moving: '#3FE07D', idle: '#eab308', stopped: '#ef4444', offline: '#8A93A3' };
 
+// Stil raster OSM pentru MapLibre (motor cu pitch nativ → înclinare cu 2 degete, ca Google Maps).
+const MAP_STYLE: any = {
+  version: 8,
+  sources: { osm: { type: 'raster', tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '© OpenStreetMap' } },
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
+
 function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string)); }
 
-function markerHtml(color: string, angle: number) {
-  return `<div class="vmarker" style="transform:rotate(${angle}deg)">
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="${color}" stroke="#0B0E11" stroke-width="1.5">
-    <path d="M12 2l7 18-7-4-7 4z"/></svg></div>`;
+// ─── Iconițe (săgeată 2D + izometric 3D) ───
+function markerArrowSvg(color: string, angle: number) {
+  return `<div style="transform:rotate(${angle}deg)"><svg width="26" height="26" viewBox="0 0 24 24" fill="${color}" stroke="#0B0E11" stroke-width="1.5"><path d="M12 2l7 18-7-4-7 4z"/></svg></div>`;
 }
-
-// ─── Iconițe IZOMETRICE 3D (paritate cu web) ───
 function _shade(hex: string, amt: number): string {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || ''); if (!m) return hex;
   const n = parseInt(m[1], 16); let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; const f = amt / 100;
@@ -41,23 +46,24 @@ function vehicleIso(cat: string, color: string): string {
     return side + top + front;
   };
   const wh = (wx: number, wy: number) => `<ellipse cx="${wx.toFixed(1)}" cy="${wy.toFixed(1)}" rx="2.5" ry="1.7" fill="${wheel}"/>`;
-  if (cat === 'truck') {
-    return wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) + box(12, 34, 21, 10, DX, DY) + wh(13, 35) + wh(31, 35) + box(12, 35, 21, 6, DX * 0.5, DY * 0.5, glass);
-  }
-  if (cat === 'van') {
-    return wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) + wh(13, 35) + wh(31, 35) + box(12, 35, 21, 11, DX, DY) +
-      `<polygon points="${pts([[13, 34], [32, 34], [32, 30], [13, 30]])}" fill="${glass}"/>`;
-  }
+  if (cat === 'truck') return wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) + box(12, 34, 21, 10, DX, DY) + wh(13, 35) + wh(31, 35) + box(12, 35, 21, 6, DX * 0.5, DY * 0.5, glass);
+  if (cat === 'van') return wh(13 + DX, 34 + DY) + wh(31 + DX, 34 + DY) + wh(13, 35) + wh(31, 35) + box(12, 35, 21, 11, DX, DY) + `<polygon points="${pts([[13, 34], [32, 34], [32, 30], [13, 30]])}" fill="${glass}"/>`;
   return wh(13 + DX, 33.5 + DY) + wh(30 + DX, 33.5 + DY) + box(11, 33.5, 22, 4.5, DX, DY) + box(15.5, 29, 13, 4.5, DX * 0.68, DY * 0.68, glass) + wh(14, 34.5) + wh(30, 34.5);
 }
-function markerHtml3d(color: string, cat: string, moving: boolean, angle: number) {
+function markerIsoSvg(color: string, cat: string, moving: boolean, angle: number) {
   const iso = `<g transform="translate(0,-5)">${vehicleIso(cat, color)}</g>`;
   const arrow = moving ? `<g transform="rotate(${angle} 24 24)"><path d="M24 1.5 L28.4 9 L24 6.8 L19.6 9 Z" fill="${color}" stroke="#fff" stroke-width="0.9" stroke-linejoin="round"/></g>` : '';
-  return `<div class="vmarker3d"><svg width="40" height="40" viewBox="0 0 48 48" style="overflow:visible;">` +
-    `<ellipse cx="24" cy="33" rx="11.5" ry="3.4" fill="rgba(0,0,0,0.22)"/>${arrow}${iso}</svg></div>`;
+  return `<svg width="42" height="42" viewBox="0 0 48 48" style="overflow:visible;display:block;"><ellipse cx="24" cy="33" rx="11.5" ry="3.4" fill="rgba(0,0,0,0.28)"/>${arrow}${iso}</svg>`;
 }
 
-// Balon: nume + status; pentru vehiculele fără transmisie → semn de exclamare + de când.
+// Conținutul unui marker (etichetă cu numărul + iconiță). Rămâne DREPT la înclinare (markerele MapLibre sunt „billboard").
+function markerInner(v: Position, st: StatusInfo, use3d: boolean) {
+  const color = HEX[st.status];
+  const icon = use3d ? markerIsoSvg(color, catOf(v.vehicle_type), st.status === 'moving', v.angle || 0) : markerArrowSvg(color, v.angle || 0);
+  const label = esc(v.plate || v.name || '');
+  const lbl = label ? `<div class="vmk-label">${label}</div>` : '';
+  return `<div class="vmk-inner">${lbl}<div class="vmk-icon">${icon}</div></div>`;
+}
 function popupHtml(v: Position, st: StatusInfo, stale: boolean) {
   const title = `${esc(v.name || v.imei)}${v.plate ? ' · ' + esc(v.plate) : ''}`;
   const line = stale
@@ -70,84 +76,79 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   vehicles: Position[]; offlineMin: number; onSelect: (imei: string) => void; focusImei?: string; follow?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markers = useRef<Map<string, L.Marker>>(new Map());
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markers = useRef<Map<string, { mk: maplibregl.Marker; el: HTMLDivElement; pop: maplibregl.Popup }>>(new Map());
   const fitted = useRef(false);
   const prevFollow = useRef(false);
+  const ready = useRef(false);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const [use3d, setUse3d] = useState<boolean>(() => { try { return localStorage.getItem('mapStyle') === '3d'; } catch { return false; } });
   function toggle3d() { setUse3d((v) => { const nv = !v; try { localStorage.setItem('mapStyle', nv ? '3d' : 'arrow'); } catch {} return nv; }); }
-  const [tilt, setTilt] = useState<boolean>(() => { try { return localStorage.getItem('mapTilt') === '1'; } catch { return false; } });
-  function toggleTilt() { setTilt((v) => { const nv = !v; try { localStorage.setItem('mapTilt', nv ? '1' : '0'); } catch {} return nv; }); }
-  // Înclinarea hărții (perspectivă CSS pe container) — Leaflet calculează în dimensiunea de layout, deci markerele
-  // rămân aliniate cu tile-urile; le contra-rotim din CSS (.vmap-tilt) ca să stea verticale.
-  useEffect(() => {
-    const el = ref.current; if (!el) return;
-    el.classList.toggle('vmap-tilt', tilt);
-    setTimeout(() => { try { mapRef.current && mapRef.current.invalidateSize(); } catch {} }, 60);
-  }, [tilt]);
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
-    const map = L.map(ref.current, { zoomControl: true, attributionControl: false }).setView([45.9, 25], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, keepBuffer: 6 }).addTo(map);
-    mapRef.current = map;
-    // butonul „Detalii" din balon → ecranul vehiculului. DELEGARE (un singur listener pe container) —
-    // supraviețuiește lui setPopupContent de la update-urile live (înainte, listener-ul per-buton se pierdea → butonul nu funcționa).
+    const map = new maplibregl.Map({
+      container: ref.current, style: MAP_STYLE, center: [25, 45.9], zoom: 5.2,
+      attributionControl: false, pitchWithRotate: true, dragRotate: true, maxPitch: 70,
+    });
+    // Gesturi: 2 degete pe verticală = ÎNCLINARE (pitch); 2 degete răsucite = rotire — exact ca Google Maps.
+    map.touchZoomRotate.enableRotation();
+    map.touchPitch.enable();
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: true, showCompass: true }), 'bottom-right');
+    map.on('load', () => { ready.current = true; });
+    // buton „Detalii" din balon → ecranul vehiculului (delegare pe container, supraviețuiește re-randării)
     ref.current.addEventListener('click', (ev: any) => {
       const btn = ev.target && ev.target.closest ? ev.target.closest('.vmpop-btn') : null;
       if (btn) { ev.stopPropagation(); const imei = btn.getAttribute('data-imei'); if (imei) onSelectRef.current(imei); }
     });
-    setTimeout(() => map.invalidateSize(), 100);
-    return () => { map.remove(); mapRef.current = null; markers.current.clear(); fitted.current = false; };
+    mapRef.current = map;
+    return () => { try { map.remove(); } catch {} mapRef.current = null; markers.current.clear(); fitted.current = false; ready.current = false; };
   }, []);
 
   useEffect(() => {
     const map = mapRef.current; if (!map) return;
     try {
-    const seen = new Set<string>();
-    const pts: [number, number][] = [];
-    for (const v of vehicles) {
-      if (v.latitude == null || v.longitude == null) continue; // fără ultimă locație → doar în listă
-      seen.add(v.imei);
-      const st = statusOf(v, offlineMin);
-      const stale = st.status === 'offline';
-      const icon = use3d
-        ? L.divIcon({ className: '', html: markerHtml3d(HEX[st.status], catOf(v.vehicle_type), st.status === 'moving', v.angle || 0), iconSize: [40, 40], iconAnchor: [20, 24] })
-        : L.divIcon({ className: '', html: markerHtml(HEX[st.status], v.angle || 0), iconSize: [26, 26], iconAnchor: [13, 13] });
-      const popup = popupHtml(v, st, stale);
-      const label = esc(v.plate || v.name || ''); // eticheta permanentă lângă marker (numărul mașinii, ca xMonitor)
-      let m = markers.current.get(v.imei);
-      if (m) {
-        m.setLatLng([v.latitude, v.longitude]); m.setIcon(icon); m.setPopupContent(popup);
-        if (label) { if (m.getTooltip()) m.setTooltipContent(label); else m.bindTooltip(label, { permanent: true, direction: 'top', className: 'vlabel', offset: [0, -12] }); }
+      const seen = new Set<string>();
+      let minLng = 180, minLat = 90, maxLng = -180, maxLat = -90, n = 0;
+      for (const v of vehicles) {
+        if (v.latitude == null || v.longitude == null) continue;
+        seen.add(v.imei);
+        const st = statusOf(v, offlineMin);
+        const stale = st.status === 'offline';
+        const inner = markerInner(v, st, use3d);
+        const pophtml = popupHtml(v, st, stale);
+        let rec = markers.current.get(v.imei);
+        if (rec) {
+          rec.mk.setLngLat([v.longitude, v.latitude]);
+          rec.el.innerHTML = inner;
+          rec.pop.setHTML(pophtml);
+        } else {
+          const el = document.createElement('div');
+          el.className = 'vmk';
+          el.innerHTML = inner;
+          const pop = new maplibregl.Popup({ closeButton: false, offset: 16, className: 'vmk-popup' }).setHTML(pophtml);
+          const mk = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([v.longitude, v.latitude]).setPopup(pop).addTo(map);
+          markers.current.set(v.imei, { mk, el, pop });
+        }
+        minLng = Math.min(minLng, v.longitude); maxLng = Math.max(maxLng, v.longitude);
+        minLat = Math.min(minLat, v.latitude); maxLat = Math.max(maxLat, v.latitude); n++;
       }
-      else {
-        m = L.marker([v.latitude, v.longitude], { icon }).addTo(map);
-        m.bindPopup(popup, { closeButton: false, offset: [0, -8] });
-        if (label) m.bindTooltip(label, { permanent: true, direction: 'top', className: 'vlabel', offset: [0, -12] });
-        markers.current.set(v.imei, m);
-      }
-      pts.push([v.latitude, v.longitude]);
-    }
-    for (const [imei, m] of markers.current) if (!seen.has(imei)) { map.removeLayer(m); markers.current.delete(imei); }
+      for (const [imei, rec] of markers.current) if (!seen.has(imei)) { rec.mk.remove(); markers.current.delete(imei); }
 
-    if (focusImei) {
-      const fv = vehicles.find((x) => x.imei === focusImei);
-      if (fv && fv.latitude != null && fv.longitude != null) { map.setView([fv.latitude, fv.longitude], 15, { animate: false }); fitted.current = true; }
-    } else if (follow && pts.length) {
-      const b = L.latLngBounds(pts);
-      // La ACTIVAREA urmăririi → încadrează. În continuare → doar re-centrează (panTo), PĂSTREAZĂ zoom-ul userului
-      // (poate da zoom out fără să-i sară harta înapoi la fiecare update).
-      if (!prevFollow.current) map.fitBounds(b.pad(0.25), { animate: true });
-      else map.panTo(b.getCenter(), { animate: true });
-      fitted.current = true;
-    } else if (!fitted.current && pts.length) {
-      map.fitBounds(L.latLngBounds(pts).pad(0.25), { animate: false });
-      fitted.current = true;
-    }
-    prevFollow.current = !!follow;
+      if (focusImei) {
+        const fv = vehicles.find((x) => x.imei === focusImei);
+        if (fv && fv.latitude != null && fv.longitude != null) { map.easeTo({ center: [fv.longitude, fv.latitude], zoom: 15, duration: 500 }); fitted.current = true; }
+      } else if (follow && n) {
+        const bounds: [[number, number], [number, number]] = [[minLng, minLat], [maxLng, maxLat]];
+        if (!prevFollow.current) map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 500 });
+        else map.easeTo({ center: [(minLng + maxLng) / 2, (minLat + maxLat) / 2], duration: 500 });
+        fitted.current = true;
+      } else if (!fitted.current && n) {
+        map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 60, maxZoom: 15, duration: 0, animate: false });
+        fitted.current = true;
+      }
+      prevFollow.current = !!follow;
     } catch { /* hartă în curs de demontare */ }
   }, [vehicles, focusImei, follow, use3d]);
 
@@ -157,10 +158,6 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       <button type="button" onClick={toggle3d} aria-label="Comută iconițe 3D" title="Iconițe 3D"
         style={'position:absolute;top:10px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (use3d ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
         {use3d ? '🚚' : '▲'}
-      </button>
-      <button type="button" onClick={toggleTilt} aria-label="Înclină harta" title="Înclinare hartă (3D)"
-        style={'position:absolute;top:56px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (tilt ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:15px;font-weight:800;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
-        3D
       </button>
     </>
   );
