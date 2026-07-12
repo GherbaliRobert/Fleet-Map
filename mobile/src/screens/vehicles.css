@@ -40,3 +40,11 @@
 /* Buton „Urmărire" pe hartă (follow / unfollow) */
 .vmap-follow { position: absolute; top: 10px; right: 10px; z-index: 1000; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 700; font-family: inherit; box-shadow: 0 2px 10px rgba(0,0,0,.35); cursor: pointer; }
 .vmap-follow.on { background: var(--accent); color: #06210f; border-color: var(--accent); }
+
+/* ─── Înclinare hartă (3D) — perspectivă CSS pe containerul Leaflet ─── */
+.vmap-wrap { overflow: hidden; }
+.vmap.vmap-tilt { transform: perspective(900px) rotateX(46deg) scale(1.24); transform-origin: 50% 80%; transition: transform .28s ease; }
+/* markerele (iconițele 3D) stau VERTICALE — contra-rotire cât înclinarea */
+.vmap-tilt .leaflet-marker-icon .vmarker3d { transform: rotateX(-46deg); transform-origin: 50% 100%; }
+/* etichetele cu numărul rămân lizibile */
+.vmap-tilt .leaflet-tooltip.vlabel { transform: rotateX(-46deg); }
