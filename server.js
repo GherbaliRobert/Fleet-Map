@@ -5594,6 +5594,25 @@ async function runTripDetection() {
   } catch (e) { console.error('[TRIPS]', e.message); return 0; }
 }
 
+// Curățare unică: notificările VECHI (dinainte de fixul cu _vehLabel) au IMEI-ul brut în titlu —
+// le rescriem cu nr. înmatriculare/numele vehiculului. Idempotent: după rescriere, query-ul nu mai găsește nimic.
+async function fixOldNotifTitles() {
+  try {
+    const bad = await db.pool.query("SELECT id, imei, title FROM notifications WHERE imei IS NOT NULL AND title LIKE ('%' || imei || '%') LIMIT 1000");
+    if (!bad.rows.length) return;
+    const ident = new Map();
+    try { const vr = await db.pool.query('SELECT imei, name, plate FROM devices'); for (const v of vr.rows) ident.set(v.imei, String(v.plate || v.name || '').trim()); } catch (e) {}
+    let n = 0;
+    for (const r of bad.rows) {
+      const label = ident.get(r.imei);
+      if (!label || label === r.imei) continue; // vehicul fără nume/nr → nu avem cu ce înlocui
+      await db.pool.query('UPDATE notifications SET title = $2 WHERE id = $1', [r.id, String(r.title).split(r.imei).join(label)]);
+      n++;
+    }
+    if (n) console.log('[NOTIF] ' + n + ' titluri vechi curățate (IMEI → nr/nume vehicul)');
+  } catch (e) { /* best-effort */ }
+}
+
 // Worker: alerte expirare documente (permis șofer) + mentenanță scadentă
 async function checkExpiries() {
   const warnDays = parseInt(process.env.NOTIFY_EXPIRY_DAYS) || 30;
@@ -8152,6 +8171,7 @@ async function start() {
   setInterval(() => runTripDetection(), 15 * 60 * 1000);
   setTimeout(() => checkExpiries(), 5000);
   setInterval(() => checkExpiries(), 12 * 60 * 60 * 1000);
+  setTimeout(() => fixOldNotifTitles(), 7000); // curățare unică a titlurilor vechi cu IMEI (idempotent, best-effort)
 
   // #12: camioane care transmit CAN dar au can_interface NESETAT → maparea standard poate greși ID-urile FMS.
   // Surfacem (notificare deduplicată, vizibilă super-admin + companie) ca super-adminul să seteze interfața.
