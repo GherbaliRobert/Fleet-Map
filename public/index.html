@@ -7052,7 +7052,7 @@ const pozitii = await r.json();</code></pre>
     }
     function initMap() {
       // Preferințe afișare salvate (mod marker + grupare pe hotspot)
-      mapMarkerStyle = (localStorage.getItem('mapStyle') === 'arrows') ? 'arrows' : 'icons';
+      var _ms0 = localStorage.getItem('mapStyle'); mapMarkerStyle = (_ms0 === 'arrows' || _ms0 === '3d') ? _ms0 : 'icons';
       mapGroupOn = localStorage.getItem('mapGroup') === '1';
 
       map = L.map('map', {
@@ -7138,6 +7138,16 @@ const pozitii = await r.json();</code></pre>
     }
 
     // Siluetă top-down a vehiculului (viewBox 0..48, fața spre SUS). `lit` = faruri aprinse.
+    // Închide/deschide o culoare hex cu amt% (negativ = mai închis) — pt. „grosimea" 3D a vehiculelor.
+    function _shade(hex, amt) {
+      var m = /^#?([0-9a-fA-F]{6})$/.exec(String(hex || '')); if (!m) return hex;
+      var n = parseInt(m[1], 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      var f = amt / 100;
+      r = Math.max(0, Math.min(255, Math.round(r + f * (amt < 0 ? r : 255 - r))));
+      g = Math.max(0, Math.min(255, Math.round(g + f * (amt < 0 ? g : 255 - g))));
+      b = Math.max(0, Math.min(255, Math.round(b + f * (amt < 0 ? b : 255 - b))));
+      return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
     function vehicleBody(cat, color, lit) {
       const wht = 'rgba(255,255,255,0.92)', win = 'rgba(130,200,255,0.62)', winR = 'rgba(130,200,255,0.4)', whl = 'rgba(20,22,28,0.92)';
       const hl = lit ? 'rgba(255,248,205,0.98)' : 'rgba(255,255,255,0.28)', tl = 'rgba(255,70,70,0.85)';
@@ -7469,7 +7479,8 @@ const pozitii = await r.json();</code></pre>
       else { color = '#ef4444'; status = 'off'; plateBg = '#dc2626'; plateText = '#ffffff'; }
 
       const cat = markerCategory(dev);
-      const size = isSelected ? 38 : 30; // pictogramă top-down, compactă (stil AROBS)
+      const is3d = (mapMarkerStyle === '3d');
+      const size = is3d ? (isSelected ? 42 : 34) : (isSelected ? 38 : 30); // 3D puțin mai mare (are volum + umbră)
       const rot = Math.round((((angle || 0) % 360) + 360) % 360); // capul vehiculului (0=N); rotim silueta → botul = direcția de mers
       const lit = isMoving || hasIgnition; // faruri aprinse cât motorul merge
 
@@ -7477,14 +7488,32 @@ const pozitii = await r.json();</code></pre>
 
       // Silueta TOP-DOWN (fața spre sus în viewBox 0..48), rotită după cap: botul arată încotro merge.
       // Direcția se citește direct din orientarea vehiculului — fără chevron/săgeată separată (stil AROBS).
-      // Mod „săgeți" (la alegerea clientului): aceeași rotație, dar o săgeată simplă în loc de silueta de categorie.
-      const inner = (mapMarkerStyle === 'arrows')
-        ? '<path d="M24 5 L38 41 L24 33 L10 41 Z" fill="' + color + '" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>'
-        : vehicleBody(cat, color, lit);
-      const bodySvg =
-        '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
-          '<g transform="rotate(' + rot + ' 24 24)">' + inner + '</g>' +
-        '</svg>';
+      let bodySvg;
+      if (is3d) {
+        // Mod 3D: umbră la sol (fixă) + corp „extrudat" — o copie mai închisă decalată spre coadă dă grosime/volum.
+        // Totul se rotește curat la orice direcție (extrudarea e în cadrul mașinii, nu pe ecran).
+        const topBody = vehicleBody(cat, color, lit);
+        const sideBody = vehicleBody(cat, _shade(color, -60), false);
+        // Umbra la sol (fixă) + o copie mai închisă a siluetei decalată ÎN JOS PE ECRAN (fix, nu cu mașina) =
+        // înălțime → mașina pare 3D indiferent de direcția de mers. Corpul colorat stă deasupra.
+        bodySvg =
+          '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48" style="overflow:visible;">' +
+            '<ellipse cx="24" cy="28" rx="12" ry="4.2" fill="rgba(0,0,0,0.20)"/>' +
+            '<g transform="translate(0,3.6)">' +
+              '<g transform="rotate(' + rot + ' 24 24)">' + sideBody + '</g>' +
+            '</g>' +
+            '<g transform="rotate(' + rot + ' 24 24)">' + topBody + '</g>' +
+          '</svg>';
+      } else {
+        // Mod „săgeți": aceeași rotație, dar o săgeată simplă în loc de silueta de categorie.
+        const inner = (mapMarkerStyle === 'arrows')
+          ? '<path d="M24 5 L38 41 L24 33 L10 41 Z" fill="' + color + '" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>'
+          : vehicleBody(cat, color, lit);
+        bodySvg =
+          '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48">' +
+            '<g transform="rotate(' + rot + ' 24 24)">' + inner + '</g>' +
+          '</svg>';
+      }
 
       // Plăcuța cu numărul de înmatriculare, sub vehicul, colorată după status. La zoom mic e ascunsă din CSS.
       const plate = dev && dev.plate ? String(dev.plate) : '';
@@ -7551,10 +7580,11 @@ const pozitii = await r.json();</code></pre>
         _btnGroup.title = mapGroupOn ? 'Vehicule unite în bule (apasă pentru a desface)' : 'Unește vehiculele apropiate într-o bulă';
       }
       if (_btnStyle) {
-        const arrows = mapMarkerStyle === 'arrows';
-        _btnStyle.innerHTML = arrows ? '<i class="fas fa-location-arrow"></i>' : '<i class="fas fa-car-side"></i>';
-        _btnStyle.classList.toggle('active', arrows);
-        _btnStyle.title = arrows ? 'Afișare: săgeți (apasă pentru pictograme)' : 'Afișare: pictograme (apasă pentru săgeți)';
+        var _icon = mapMarkerStyle === 'arrows' ? 'fa-location-arrow' : (mapMarkerStyle === '3d' ? 'fa-cube' : 'fa-car-side');
+        var _lbl = mapMarkerStyle === 'arrows' ? 'săgeți' : (mapMarkerStyle === '3d' ? '3D' : 'pictograme');
+        _btnStyle.innerHTML = '<i class="fas ' + _icon + '"></i>';
+        _btnStyle.classList.toggle('active', mapMarkerStyle === '3d');
+        _btnStyle.title = 'Afișare vehicule: ' + _lbl + ' (apasă pentru a comuta: pictograme → săgeți → 3D)';
       }
     }
 
@@ -7592,7 +7622,8 @@ const pozitii = await r.json();</code></pre>
     }
 
     function toggleMapStyle() {
-      mapMarkerStyle = (mapMarkerStyle === 'arrows') ? 'icons' : 'arrows';
+      // Ciclu: pictograme → săgeți → 3D → pictograme
+      mapMarkerStyle = (mapMarkerStyle === 'icons') ? 'arrows' : (mapMarkerStyle === 'arrows') ? '3d' : 'icons';
       localStorage.setItem('mapStyle', mapMarkerStyle);
       updateViewControlUI();                 // întâi UI-ul (sigur) — butonul reflectă mereu starea
       try { rerenderAllMarkers(); } catch (e) { if (window.console) console.warn('rerenderAllMarkers:', e); }
