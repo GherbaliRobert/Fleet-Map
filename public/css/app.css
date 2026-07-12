@@ -1840,7 +1840,7 @@
 .rep2-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .rep2-search { width: 100%; padding: 8px 10px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-dark); color: var(--text-primary); font-family: inherit; font-size: 12.5px; }
 .rep-casc-cath { position: sticky; top: 0; z-index: 1; background: var(--bg-panel); font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); padding: 8px 6px 5px; border-bottom: 1px solid var(--border); }
-.rep-casc-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left; padding: 8px 9px; border: none; border-radius: 9px; background: none; color: var(--text-primary); cursor: pointer; font-family: inherit; }
+.rep-casc-item { display: flex; flex-direction: row; align-items: flex-start; gap: 9px; width: 100%; text-align: left; padding: 8px 9px; border: none; border-radius: 9px; background: none; color: var(--text-primary); cursor: pointer; font-family: inherit; }
 .rep-casc-item:hover { background: var(--bg-dark); }
 .rep-casc-item.active { background: var(--accent); color: #06210f; }
 .rep-casc-item.active .rci-desc { color: rgba(6,33,15,.75); }
@@ -1871,3 +1871,15 @@
 .rep-casc-cath svg { width: 13px; height: 13px; vertical-align: -2px; }
 .rep-casc-item svg { width: 14px; height: 14px; }
 #rep-cascade .rep2-search { width: 100%; }
+
+/* Cascadă v2: iconițe per raport + deschidere TREPTATĂ (pas 1 = doar lista; obiectele + opțiunile apar după selecție) */
+.rci-ic { color: var(--accent); font-size: 14px; width: 17px; text-align: center; flex-shrink: 0; margin-top: 2px; }
+.rep-casc-item.active .rci-ic { color: #06210f; }
+.rci-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rep-casc-grid.step1 { grid-template-columns: 1fr; }
+.rep-casc-grid.step1 .rep-casc-col:nth-child(2), .rep-casc-grid.step1 .rep-casc-col:nth-child(3) { display: none; }
+.rep-casc-grid.step1 #rep2-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 7px; align-content: start; }
+.rep-casc-grid.step1 .rep-casc-cath { grid-column: 1 / -1; }
+.rep-casc-grid.step1 .rep-casc-item { border: 1px solid var(--border); background: var(--bg-panel); }
+.rep-casc-col.casc-in { animation: rep2in .38s ease both; }
+@keyframes rep2in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }

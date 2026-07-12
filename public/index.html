@@ -4859,7 +4859,7 @@ const pozitii = await r.json();</code></pre>
     // ─── Rapoarte ───
     let repCatalog = null, lastReport = null, repCurrentCat = null;
     let repHistoryId = null, repActiveTab = 'generate';
-    const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell' };
+    const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', idling:'fa-hourglass-half', uptime:'fa-tower-broadcast', due:'fa-file-circle-exclamation', fuel_anomaly:'fa-magnifying-glass-chart', costs:'fa-coins', costs_total:'fa-sack-dollar', emissions:'fa-leaf', ecodrive:'fa-award', ecodrive_drivers:'fa-ranking-star', hos:'fa-bed', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell' };
     // Iconițe SVG per CATEGORIE (currentColor → moștenesc culoarea tab-ului): locație / pompă / cip / clopoțel / scut.
     const REP_CAT_ICONS = {
       monitorizare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
@@ -5060,7 +5060,7 @@ const pozitii = await r.json();</code></pre>
     var _repCascadeSel = null, _repCascadeLoaded = false, _repCascadeVeh = [], _repCascadeGroups = [];
     var _repAutoOpenJob = null, _repCascadeReturn = false;
     var _repExtraAnchor = null, _repMpAnchor = null; // markere de „acasă" pt. nodurile partajate mutate în cascadă
-    function _repViewMode() { try { return localStorage.getItem('repViewMode') || 'cascade'; } catch (e) { return 'cascade'; } }
+    function _repViewMode() { try { return localStorage.getItem('repViewMode') || 'classic'; } catch (e) { return 'classic'; } }
     window.repViewModeToggle = function () {
       var m = _repViewMode() === 'cascade' ? 'classic' : 'cascade';
       try { localStorage.setItem('repViewMode', m); } catch (e) {}
@@ -5093,6 +5093,7 @@ const pozitii = await r.json();</code></pre>
         if (run) run.style.display = 'none';
         cw.style.display = 'flex';
         if (box) box.classList.add('rep-casc-wide');
+        var _gr = cw.querySelector('.rep-casc-grid'); if (_gr) _gr.classList.toggle('step1', !_repCascadeSel); // pas 1: doar lista de rapoarte
         _repPlaceOpts('cascade');
         ensureRep2Pickers();
         repCascadeLoad();
@@ -5152,11 +5153,17 @@ const pozitii = await r.json();</code></pre>
         return '<div class="rep-casc-cath">' + (REP_CAT_ICONS[c.key] || '') + ' ' + c.label + '</div>' +
           items.map(function (rr) {
             return '<button type="button" class="rep-casc-item' + (_repCascadeSel === rr.type ? ' active' : '') + '" data-t="' + rr.type + '" onclick="repCascadeSelectReport(\'' + rr.type + '\')">' +
-              '<span class="rci-label">' + rr.label + '</span>' + (rr.desc ? '<span class="rci-desc">' + _repEsc(rr.desc) + '</span>' : '') + '</button>';
+              '<i class="fas ' + (REP_ICONS[rr.type] || 'fa-file-lines') + ' rci-ic"></i><span class="rci-text"><span class="rci-label">' + rr.label + '</span>' + (rr.desc ? '<span class="rci-desc">' + _repEsc(rr.desc) + '</span>' : '') + '</span></button>';
           }).join('');
       }).join('') || '<p style="color:var(--text-muted);font-size:12px;padding:8px;">Niciun raport găsit.</p>';
     };
     window.repCascadeSelectReport = function (type) {
+      var _gr2 = document.querySelector('#rep-cascade .rep-casc-grid');
+      if (_gr2 && _gr2.classList.contains('step1')) { // cascada se deschide TREPTAT: obiectele + opțiunile apar după alegerea raportului
+        _gr2.classList.remove('step1');
+        var _cols = _gr2.querySelectorAll('.rep-casc-col');
+        for (var _ci = 1; _ci < _cols.length; _ci++) { (function (el, d) { el.classList.add('casc-in'); el.style.animationDelay = (d * 90) + 'ms'; setTimeout(function () { el.classList.remove('casc-in'); el.style.animationDelay = ''; }, 600 + d * 90); })(_cols[_ci], _ci - 1); }
+      }
       _repCascadeSel = type;
       var sel = document.getElementById('rep-type'); if (sel) sel.value = type;
       var rr = ((repCatalog && repCatalog.reports) || []).filter(function (x) { return x.type === type; })[0];
