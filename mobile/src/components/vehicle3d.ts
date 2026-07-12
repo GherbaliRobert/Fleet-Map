@@ -9,7 +9,7 @@ import { statusOf } from '../lib/status';
 const HEX: Record<string, string> = { moving: '#22c55e', idle: '#eab308', stopped: '#ef4444', offline: '#9aa3ad' };
 // Mărime CONSTANTĂ PE ECRAN (ca un marker): mașina ~40px lungime la ORICE zoom.
 // La scară fizică fixă era invizibilă la zoom mic și monstruoasă la zoom mare.
-const CAR_TARGET_PX = 40;   // lungimea mașinii pe ecran; camion/autobuz apar proporțional mai lungi
+const CAR_TARGET_PX = 62;   // lungimea mașinii pe ecran; camion/autobuz apar proporțional mai lungi
 const CAR_LEN_M = 4.7;      // lungimea modelului de mașină în unități-model („metri")
 // Metri reali per pixel la zoom/latitudine (MapLibre = tile-uri 512px)
 function metersPerPixel(zoom: number, lat: number): number {
@@ -156,8 +156,9 @@ export function createVehicleLayer(): VehicleLayer {
   const rescale = () => {
     if (!mapRef) return;
     const zoom = mapRef.getZoom();
+    const tilt = 1 + (mapRef.getPitch() / 90) * 0.9; // la înclinare mare perspectiva turtește modelul → compensăm mărimea
     for (const r of rec.values()) {
-      const targetMeters = CAR_TARGET_PX * metersPerPixel(zoom, r.lat); // câți metri reali = 40px la acest zoom/lat
+      const targetMeters = CAR_TARGET_PX * tilt * metersPerPixel(zoom, r.lat);
       const s = r.unitScale * (targetMeters / CAR_LEN_M);
       r.outer.scale.set(s, s, s);
     }
@@ -177,7 +178,7 @@ export function createVehicleLayer(): VehicleLayer {
       const dir2 = new THREE.DirectionalLight(0xffffff, 0.45); dir2.position.set(-0.6, 0.5, 0.8); scene.add(dir2);
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl as any, antialias: true });
       renderer.autoClear = false;
-      map.on('zoom', rescale); // mărimea pe ecran rămâne constantă → re-scală la fiecare schimbare de zoom
+      map.on('zoom', rescale); map.on('pitch', rescale); // mărime constantă pe ecran + compensare la înclinare
     },
     setVisible(v: boolean) { visible = v; if (mapRef) mapRef.triggerRepaint(); },
     sync(vehicles: Position[], use3d: boolean, offlineMin: number) {
