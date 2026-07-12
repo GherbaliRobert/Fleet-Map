@@ -43,3 +43,6 @@
 
 /* Controlul MapLibre (zoom + busolă/reset înclinare) jos-dreapta, deasupra tab-bar-ului */
 .maplibregl-ctrl-bottom-right { margin-bottom: 8px; }
+
+/* Eticheta cu numărul, ridicată deasupra modelului 3D (mașina e randată de stratul Three.js) */
+.vmk-inner.vmk-3d { transform: translateY(-30px); }
