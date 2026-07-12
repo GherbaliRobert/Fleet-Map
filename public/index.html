@@ -6999,19 +6999,49 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Map ───
-    let mapTiles = null;
+    let mapTiles = null, mapLabelsLayer = null;
     const MAP_TILES = {
-      dark:  { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO', sub: 'abcd' },
-      light: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', sub: 'abc' },
-      sat:   { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri World Imagery', sub: '' }
+      streets: { label: 'Străzi', icon: 'fa-map', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', sub: 'abc', max: 19 },
+      light:   { label: 'Deschis', icon: 'fa-sun', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO', sub: 'abcd', max: 20 },
+      dark:    { label: 'Închis', icon: 'fa-moon', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO', sub: 'abcd', max: 20 },
+      sat:     { label: 'Satelit', icon: 'fa-satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri World Imagery', sub: '', max: 19 },
+      hybrid:  { label: 'Satelit + etichete', icon: 'fa-earth-europe', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri', sub: '', max: 19, labels: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}' },
+      terrain: { label: 'Relief', icon: 'fa-mountain', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenTopoMap (CC-BY-SA)', sub: 'abc', max: 17 }
     };
-    let satMode = false; // strat satelit forțat (util la desenare precisă)
+    const MAP_LAYER_ORDER = ['auto', 'streets', 'light', 'dark', 'sat', 'hybrid', 'terrain'];
+    // 'auto' = urmează tema aplicației (deschis/închis) — comportamentul de dinainte.
+    let mapLayerChoice = (function () { try { var v = localStorage.getItem('mapLayer'); return (v && (v === 'auto' || MAP_TILES[v])) ? v : 'auto'; } catch (e) { return 'auto'; } })();
+    let satMode = false; // strat satelit forțat (util la desenare precisă) — are prioritate peste alegerea userului
+    function _resolveLayerKey() {
+      if (satMode) return 'sat';
+      if (mapLayerChoice !== 'auto' && MAP_TILES[mapLayerChoice]) return mapLayerChoice;
+      return document.body.classList.contains('dark') ? 'dark' : 'light';
+    }
     function applyMapTheme() {
       if (typeof map === 'undefined' || !map) return;
-      const cfg = satMode ? MAP_TILES.sat : (document.body.classList.contains('dark') ? MAP_TILES.dark : MAP_TILES.light);
+      const cfg = MAP_TILES[_resolveLayerKey()] || MAP_TILES.light;
       if (mapTiles) { try { map.removeLayer(mapTiles); } catch (e) {} }
-      mapTiles = L.tileLayer(cfg.url, { attribution: cfg.attribution, subdomains: cfg.sub, maxZoom: 20 }).addTo(map);
+      if (mapLabelsLayer) { try { map.removeLayer(mapLabelsLayer); } catch (e) {} mapLabelsLayer = null; }
+      mapTiles = L.tileLayer(cfg.url, { attribution: cfg.attribution, subdomains: cfg.sub, maxZoom: cfg.max || 20 }).addTo(map);
       if (mapTiles.bringToBack) mapTiles.bringToBack();
+      if (cfg.labels) { mapLabelsLayer = L.tileLayer(cfg.labels, { maxZoom: cfg.max || 19, opacity: 0.9 }).addTo(map); } // etichete peste satelit
+      if (typeof updateLayerMenuUI === 'function') updateLayerMenuUI();
+    }
+    // Alege stratul de hartă (din selectorul de pe hartă); persistat per browser.
+    function setMapLayer(key) {
+      mapLayerChoice = key;
+      try { localStorage.setItem('mapLayer', key); } catch (e) {}
+      if (key !== 'auto') satMode = false; // alegerea manuală anulează modul satelit de desenare
+      applyMapTheme();
+      var menu = document.getElementById('map-layer-menu'); if (menu) menu.style.display = 'none';
+    }
+    function updateLayerMenuUI() {
+      var active = _resolveLayerKey();
+      document.querySelectorAll('#map-layer-menu .map-layer-opt').forEach(function (el) {
+        var k = el.getAttribute('data-k');
+        el.classList.toggle('active', k === mapLayerChoice || (mapLayerChoice === 'auto' && k === 'auto'));
+      });
+      if (_btnLayers) _btnLayers.classList.toggle('active', mapLayerChoice !== 'auto');
     }
     // Comută fundalul satelit (folosit din bara de desenare pentru trasare precisă)
     function toggleDrawSatellite(on) {
@@ -7480,7 +7510,7 @@ const pozitii = await r.json();</code></pre>
     let _hotspotZones = [];          // zone de grupare: {id,name,kind:'circle'|'poly',center,radius|ring}
     let _groupBubbles = new Map();   // zoneId -> L.marker (bula cu numărul)
     let _groupTimer = null;
-    let _btnGroup = null, _btnStyle = null;
+    let _btnGroup = null, _btnStyle = null, _btnLayers = null;
     let _spiderActive = null;        // { bubble, center, items:[{mk,imei,target,leg}], imeis:Set } — grup „desfăcut" animat
     let _spiderEvtBound = false;     // evenimentele de închidere (zoom/drag) legate o singură dată
 
@@ -7501,8 +7531,12 @@ const pozitii = await r.json();</code></pre>
           _btnGroup.innerHTML = '<i class="fas fa-arrows-to-circle"></i>';
           _btnStyle = L.DomUtil.create('a', '', div);
           _btnStyle.href = '#'; _btnStyle.setAttribute('role', 'button');
+          _btnLayers = L.DomUtil.create('a', '', div);
+          _btnLayers.href = '#'; _btnLayers.setAttribute('role', 'button'); _btnLayers.title = 'Straturi hartă';
+          _btnLayers.innerHTML = '<i class="fas fa-layer-group"></i>';
           L.DomEvent.on(_btnGroup, 'click', function (e) { L.DomEvent.stop(e); toggleMapGroup(); });
           L.DomEvent.on(_btnStyle, 'click', function (e) { L.DomEvent.stop(e); toggleMapStyle(); });
+          L.DomEvent.on(_btnLayers, 'click', function (e) { L.DomEvent.stop(e); toggleLayerMenu(); });
           L.DomEvent.disableClickPropagation(div);
           setTimeout(updateViewControlUI, 0);
           return div;
@@ -7522,6 +7556,39 @@ const pozitii = await r.json();</code></pre>
         _btnStyle.classList.toggle('active', arrows);
         _btnStyle.title = arrows ? 'Afișare: săgeți (apasă pentru pictograme)' : 'Afișare: pictograme (apasă pentru săgeți)';
       }
+    }
+
+    // Meniu „Straturi hartă" — deschis din butonul cu iconița de straturi (dreapta-sus).
+    function toggleLayerMenu() {
+      var menu = document.getElementById('map-layer-menu');
+      if (!menu) {
+        if (!document.getElementById('map-layer-menu-css')) {
+          var st = document.createElement('style'); st.id = 'map-layer-menu-css';
+          st.textContent = '#map-layer-menu{position:absolute;top:150px;right:12px;z-index:1200;background:var(--bg-panel,#fff);border:1px solid var(--border,#ddd);border-radius:11px;padding:5px;box-shadow:0 8px 26px rgba(0,0,0,.28);display:none;min-width:190px;}'
+            + '#map-layer-menu .mlt-head{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted,#888);padding:6px 10px 4px;}'
+            + '#map-layer-menu .map-layer-opt{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--text-primary,#111);font-size:13px;text-decoration:none;cursor:pointer;}'
+            + '#map-layer-menu .map-layer-opt:hover{background:var(--bg-dark,#f0f0f0);}'
+            + '#map-layer-menu .map-layer-opt.active{background:var(--accent,#3FE07D);color:#06210f;font-weight:700;}'
+            + '#map-layer-menu .map-layer-opt i{width:16px;text-align:center;color:var(--accent,#3FE07D);}'
+            + '#map-layer-menu .map-layer-opt.active i{color:#06210f;}';
+          document.head.appendChild(st);
+        }
+        menu = document.createElement('div'); menu.id = 'map-layer-menu';
+        menu.innerHTML = '<div class="mlt-head">Straturi hartă</div>' + MAP_LAYER_ORDER.map(function (k) {
+          var cfg = (k === 'auto') ? { label: 'Automat (temă)', icon: 'fa-wand-magic-sparkles' } : MAP_TILES[k];
+          return '<a href="#" class="map-layer-opt" data-k="' + k + '"><i class="fas ' + cfg.icon + '"></i> ' + cfg.label + '</a>';
+        }).join('');
+        (document.getElementById('map') || document.body).appendChild(menu);
+        menu.querySelectorAll('.map-layer-opt').forEach(function (el) {
+          el.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); setMapLayer(el.getAttribute('data-k')); });
+        });
+        document.addEventListener('click', function (e) {
+          if (menu.style.display === 'block' && !menu.contains(e.target) && (!_btnLayers || !_btnLayers.contains(e.target))) menu.style.display = 'none';
+        });
+      }
+      var show = menu.style.display !== 'block';
+      menu.style.display = show ? 'block' : 'none';
+      if (show) updateLayerMenuUI();
     }
 
     function toggleMapStyle() {
@@ -8221,6 +8288,16 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Detail Panel ───
     function openDetailPanel(imei, tab) {
+      // Schimbare de vehicul → curăță traseul desenat al celui VECHI (altfel rămâne pe hartă suprapus).
+      if (detailPanelImei && detailPanelImei !== imei) {
+        try {
+          if (historyLine) { map.removeLayer(historyLine); historyLine = null; }
+          if (historyMarkers && historyMarkers.length) { historyMarkers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} }); historyMarkers = []; }
+          if (typeof hpClearOsmOverlay === 'function') hpClearOsmOverlay();
+          _routePillHide();
+          document.querySelectorAll('.route-card').forEach(function (c) { c.classList.remove('selected'); });
+        } catch (e) {}
+      }
       detailPanelImei = imei;
       const panel = document.getElementById('detail-panel');
       panel.classList.add('open');
