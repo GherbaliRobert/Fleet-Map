@@ -32,6 +32,45 @@ function catOf(vt?: string): string {
   return 'car';
 }
 
+// ── Dâră (trail) ~30m cu fade — buffer per vehicul + segmente GeoJSON (identic cu web) ──
+const TRAIL_MAX_M = 30, TRAIL_MIN_MOVE_M = 2, TRAIL_SEG = 5, OP_HEAD = 0.7, OP_TAIL = 0.05, TRAIL_TELE_M = 50;
+function havM(a: number[], b: number[]): number {
+  const R = 6371008.8, toR = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * toR, dLng = (b[0] - a[0]) * toR, la1 = a[1] * toR, la2 = b[1] * toR;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function trailAppend(buf: number[][], ll: number[]): void {
+  if (!buf.length) { buf.push(ll); return; }
+  const d = havM(buf[buf.length - 1], ll);
+  if (d > TRAIL_TELE_M) { buf.length = 0; buf.push(ll); return; }
+  if (d < TRAIL_MIN_MOVE_M) return;
+  buf.push(ll);
+  let total = 0;
+  for (let i = buf.length - 1; i > 0; i--) total += havM(buf[i - 1], buf[i]);
+  while (buf.length > 2 && total > TRAIL_MAX_M) { total -= havM(buf[0], buf[1]); buf.shift(); }
+}
+function trailSegments(buf: number[][], color: string): any[] {
+  if (buf.length < 2) return [];
+  let total = 0; const cum = [0];
+  for (let i = 1; i < buf.length; i++) { total += havM(buf[i - 1], buf[i]); cum.push(total); }
+  if (total < 0.5) return [];
+  const N = TRAIL_SEG, pts: number[][] = [];
+  for (let s = 0; s <= N; s++) {
+    const target = (total * s) / N; let j = 1;
+    while (j < cum.length && cum[j] < target) j++;
+    const t = (target - cum[j - 1]) / Math.max(1e-9, cum[j] - cum[j - 1]);
+    const a = buf[j - 1], b = buf[j];
+    pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+  }
+  const feats: any[] = [];
+  for (let i = 0; i < N; i++) {
+    const op = OP_TAIL + (OP_HEAD - OP_TAIL) * (i / (N - 1));
+    feats.push({ type: 'Feature', properties: { color, op }, geometry: { type: 'LineString', coordinates: [pts[i], pts[i + 1]] } });
+  }
+  return feats;
+}
+
 // ─── Încărcarea + normalizarea modelelor .glb (o singură dată, cache la nivel de modul) ───
 const MODEL_URL: Record<string, string> = { car: sedanUrl, truck: truckUrl, van: vanUrl, bus: busUrl };
 const MODEL_LEN: Record<string, number> = { car: 4.7, van: 5.6, truck: 6.8, bus: 11.0 }; // lungimi „reale" (m) → scară relativă
@@ -136,6 +175,7 @@ export function createVehicleLayer(): VehicleLayer {
   let visible = true;
   let lastArgs: { vehicles: Position[]; use3d: boolean; offlineMin: number } | null = null;
   const rec = new Map<string, { outer: THREE.Group; inner: THREE.Group; cat: string; status: string; lat: number; unitScale: number; mx: number; my: number; mz: number }>();
+  const trails = new Map<string, number[][]>(); // imei → poziții recente [[lng,lat],...] (dâra ≤~30m)
 
   // Mărime constantă pe ecran: modelul ocupă mereu ~CAR_TARGET_PX px, indiferent de zoom.
   const rescale = () => {
@@ -157,12 +197,18 @@ export function createVehicleLayer(): VehicleLayer {
     const args = lastArgs; if (!scene || !args) return;
     const { vehicles, use3d, offlineMin } = args;
     const seen = new Set<string>();
+    const trailFeats: any[] = []; // dâra tuturor vehiculelor (segmente cu fade)
     for (const v of vehicles) {
       if (v.latitude == null || v.longitude == null) continue;
       seen.add(v.imei);
       const st = statusOf(v, offlineMin);
       const color = HEX[st.status] || HEX.stopped;
       const cat = catOf(v.vehicle_type);
+      // dâră: acumulează poziția când e în mișcare; șterge la offline
+      let tbuf = trails.get(v.imei); if (!tbuf) { tbuf = []; trails.set(v.imei, tbuf); }
+      if (st.status === 'moving') trailAppend(tbuf, [v.longitude, v.latitude]);
+      else if (st.status === 'offline') tbuf.length = 0;
+      const segs = trailSegments(tbuf, color); for (const sg of segs) trailFeats.push(sg);
       let r = rec.get(v.imei);
       if (!r || r.cat !== cat || r.status !== st.status) {
         if (r) scene.remove(r.outer);
@@ -185,6 +231,9 @@ export function createVehicleLayer(): VehicleLayer {
       r.outer.visible = use3d;
     }
     for (const [imei, r] of rec) if (!seen.has(imei)) { scene.remove(r.outer); rec.delete(imei); }
+    for (const imei of trails.keys()) if (!seen.has(imei)) trails.delete(imei);
+    // împinge dâra în sursa GeoJSON (adăugată de VehicleMap la load, sub stratul de vehicule)
+    try { const src: any = mapRef && (mapRef as any).getSource ? (mapRef as any).getSource('veh-trails') : null; if (src) src.setData({ type: 'FeatureCollection', features: trailFeats }); } catch {}
     rescale();
     if (mapRef) mapRef.triggerRepaint();
   };

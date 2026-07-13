@@ -1930,3 +1930,7 @@
 #map3d { position: absolute; inset: 0; z-index: 800; display: none; }
 #map3d.on { display: block; }
 #map3d canvas { outline: none; }
+
+/* Etichete nr. înmatriculare peste modelele 3D (harta MapLibre) — și țintă de click */
+.vmk3d { cursor: pointer; }
+.vmk3d-label { background: rgba(11,14,17,.85); color: #fff; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; padding: 1px 6px; font-size: 11px; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.4); pointer-events: auto; }

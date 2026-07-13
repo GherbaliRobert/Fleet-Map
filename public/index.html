@@ -7626,7 +7626,7 @@ const pozitii = await r.json();</code></pre>
     let _hotspotZones = [];          // zone de grupare: {id,name,kind:'circle'|'poly',center,radius|ring}
     let _groupBubbles = new Map();   // zoneId -> L.marker (bula cu numărul)
     let _groupTimer = null;
-    let _btnGroup = null, _btnStyle = null, _btnLayers = null, _btnLocate = null;
+    let _btnGroup = null, _btnStyle = null, _btnLayers = null, _btnLocate = null, _btnFollow = null;
     var viewerMarker = null, viewerWatchId = null;
     let _spiderActive = null;        // { bubble, center, items:[{mk,imei,target,leg}], imeis:Set } — grup „desfăcut" animat
     let _spiderEvtBound = false;     // evenimentele de închidere (zoom/drag) legate o singură dată
@@ -7654,10 +7654,14 @@ const pozitii = await r.json();</code></pre>
           _btnLocate = L.DomUtil.create('a', '', div);
           _btnLocate.href = '#'; _btnLocate.setAttribute('role', 'button'); _btnLocate.title = 'Poziția mea';
           _btnLocate.innerHTML = '<i class="fas fa-location-crosshairs"></i>';
+          _btnFollow = L.DomUtil.create('a', '', div);
+          _btnFollow.href = '#'; _btnFollow.setAttribute('role', 'button'); _btnFollow.title = 'Urmărește vehiculul selectat';
+          _btnFollow.innerHTML = '<i class="fas fa-bullseye"></i>';
           L.DomEvent.on(_btnGroup, 'click', function (e) { L.DomEvent.stop(e); toggleMapGroup(); });
           L.DomEvent.on(_btnStyle, 'click', function (e) { L.DomEvent.stop(e); toggleMapStyle(); });
           L.DomEvent.on(_btnLayers, 'click', function (e) { L.DomEvent.stop(e); toggleLayerMenu(); });
           L.DomEvent.on(_btnLocate, 'click', function (e) { L.DomEvent.stop(e); doLocate(); });
+          L.DomEvent.on(_btnFollow, 'click', function (e) { L.DomEvent.stop(e); toggleFollowSelected(); });
           L.DomEvent.disableClickPropagation(div);
           setTimeout(updateViewControlUI, 0);
           return div;
@@ -7723,10 +7727,114 @@ const pozitii = await r.json();</code></pre>
         var mins = (currentUser && currentUser.offline_minutes) || 65;
         _ml3dLayer.setVisible(true);
         _ml3dLayer.sync(list, true, mins);
+        try { push3dHitTargets(list, mins); } catch (e) {}
+        try { push3dTrails(list, mins); } catch (e) {}
+        if (window._followImei && !_ml3dMap.isMoving()) { var fd = devices.get(window._followImei); if (fd && fd.latitude != null) _ml3dMap.easeTo({ center: [fd.longitude, fd.latitude], duration: 500, essential: true }); }
       } catch (e) {}
     }
 
     // Centrează harta 3D pe flotă (o dată, la intrare).
+    // ── F1 etichete-țintă clicabile · F2 focus · F3 dâră (trail) — doar pe harta 3D ──
+    var _ml3dHit = new Map();     // imei → { mk, el } etichetă nr. înmatriculare + țintă de click peste model
+    var _ml3dTrails = new Map();  // imei → [[lng,lat],...] poziții recente (dâră ≤~30m)
+    var _TRAIL_MAX_M = 30, _TRAIL_MIN_MOVE_M = 2, _TRAIL_SEG = 5, _OP_HEAD = 0.7, _OP_TAIL = 0.05, _TRAIL_TELE_M = 50;
+    function _havM(a, b) {
+      var R = 6371008.8, toR = Math.PI / 180;
+      var dLat = (b[1] - a[1]) * toR, dLng = (b[0] - a[0]) * toR, la1 = a[1] * toR, la2 = b[1] * toR;
+      var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+    function _trailAppend(buf, ll) {
+      if (!buf.length) { buf.push(ll); return; }
+      var d = _havM(buf[buf.length - 1], ll);
+      if (d > _TRAIL_TELE_M) { buf.length = 0; buf.push(ll); return; } // salt GPS → reset
+      if (d < _TRAIL_MIN_MOVE_M) return;                               // jitter → ignoră
+      buf.push(ll);
+      var total = 0, i;
+      for (i = buf.length - 1; i > 0; i--) total += _havM(buf[i - 1], buf[i]);
+      while (buf.length > 2 && total > _TRAIL_MAX_M) { total -= _havM(buf[0], buf[1]); buf.shift(); }
+    }
+    function _trailSegments(buf, color) {
+      if (buf.length < 2) return [];
+      var total = 0, cum = [0], i;
+      for (i = 1; i < buf.length; i++) { total += _havM(buf[i - 1], buf[i]); cum.push(total); }
+      if (total < 0.5) return [];
+      var N = _TRAIL_SEG, pts = [], s, j, t, a, b;
+      for (s = 0; s <= N; s++) {
+        var target = (total * s) / N; j = 1;
+        while (j < cum.length && cum[j] < target) j++;
+        t = (target - cum[j - 1]) / Math.max(1e-9, cum[j] - cum[j - 1]);
+        a = buf[j - 1]; b = buf[j];
+        pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+      }
+      var feats = [];
+      for (i = 0; i < N; i++) {
+        var op = _OP_TAIL + (_OP_HEAD - _OP_TAIL) * (i / (N - 1)); // coadă→cap: transparent→opac
+        feats.push({ type: 'Feature', properties: { color: color, op: op }, geometry: { type: 'LineString', coordinates: [pts[i], pts[i + 1]] } });
+      }
+      return feats;
+    }
+    function _statusColor3d(d, mins) {
+      try { var st = window.RA3D.statusOf(d, mins); return window.RA3D.HEX[st.status] || window.RA3D.HEX.stopped; } catch (e) { return '#9aa3ad'; }
+    }
+    // etichete cu nr. înmatriculare, clicabile, peste modelele 3D (modelele Three.js nu sunt clicabile)
+    function push3dHitTargets(list, mins) {
+      if (!_ml3dMap) return;
+      var seen = {};
+      for (var k = 0; k < list.length; k++) {
+        var d = list[k]; if (d.latitude == null || d.longitude == null) continue;
+        seen[d.imei] = 1;
+        var label = (d.plate || d.name || '').toString();
+        var rec = _ml3dHit.get(d.imei);
+        if (rec) { rec.mk.setLngLat([d.longitude, d.latitude]); rec.el.firstChild.textContent = label; }
+        else {
+          var el = document.createElement('div'); el.className = 'vmk3d';
+          el.innerHTML = '<div class="vmk3d-label"></div>'; el.firstChild.textContent = label;
+          (function (imei) {
+            el.addEventListener('click', function (ev) {
+              ev.stopPropagation();
+              if (window.innerWidth > 768 && window.openVehiclePopup) window.openVehiclePopup(imei); else selectDevice(imei);
+              focus3dOn(imei);
+            });
+          })(d.imei);
+          var mk = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -16] }).setLngLat([d.longitude, d.latitude]).addTo(_ml3dMap);
+          _ml3dHit.set(d.imei, { mk: mk, el: el });
+        }
+      }
+      _ml3dHit.forEach(function (rec, imei) { if (!seen[imei]) { try { rec.mk.remove(); } catch (e) {} _ml3dHit.delete(imei); _ml3dTrails.delete(imei); } });
+    }
+    // construiește + trimite dâra în sursa GeoJSON (segmente cu fade + culoarea stării)
+    function push3dTrails(list, mins) {
+      if (!_ml3dMap) return;
+      var src = _ml3dMap.getSource('veh-trails'); if (!src) return;
+      var feats = [];
+      for (var k = 0; k < list.length; k++) {
+        var d = list[k]; if (d.latitude == null || d.longitude == null) continue;
+        var status = 'stopped'; try { status = window.RA3D.statusOf(d, mins).status; } catch (e) {}
+        var buf = _ml3dTrails.get(d.imei); if (!buf) { buf = []; _ml3dTrails.set(d.imei, buf); }
+        if (status === 'moving') _trailAppend(buf, [d.longitude, d.latitude]);
+        else if (status === 'offline') buf.length = 0;
+        var segs = _trailSegments(buf, _statusColor3d(d, mins));
+        for (var s = 0; s < segs.length; s++) feats.push(segs[s]);
+      }
+      src.setData({ type: 'FeatureCollection', features: feats });
+    }
+    // focus (easeTo) pe un vehicul pe harta 3D
+    function focus3dOn(imei) {
+      if (!map3dOn || !_ml3dMap) return;
+      var d = devices.get(imei); if (!d || d.latitude == null) return;
+      _ml3dMap.easeTo({ center: [d.longitude, d.latitude], zoom: Math.max(_ml3dMap.getZoom(), 15), duration: 500, essential: true });
+    }
+    // urmărire: comută urmărirea vehiculului selectat (merge și pe 2D prin window._followImei)
+    function toggleFollowSelected() {
+      if (!selectedImei) { if (window.raxToast) raxToast('Selectează un vehicul întâi (click pe el)', 'info'); return; }
+      if (window._followImei === selectedImei) window._followImei = null;
+      else { window._followImei = selectedImei; focus3dOn(selectedImei); if (typeof panFollowVehicle === 'function') { var d = devices.get(selectedImei); if (d && d.latitude != null) try { panFollowVehicle(d.latitude, d.longitude); } catch (e) {} } }
+      try { updateViewControlUI(); } catch (e) {}
+      if (window.raxToast) raxToast(window._followImei ? 'Urmărire pornită' : 'Urmărire oprită', 'info', 1200);
+    }
+
+
     function fit3dToFleet() {
       if (!_ml3dMap) return;
       var pts = []; devices.forEach(function (d) { if (d && d.latitude != null && d.longitude != null) pts.push([d.longitude, d.latitude]); });
@@ -7752,6 +7860,7 @@ const pozitii = await r.json();</code></pre>
                 _ml3dMap.addSource('ofm', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
                 _ml3dMap.addLayer({ id: '3d-buildings', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 14, filter: ['!=', ['get', 'hide_3d'], true], paint: { 'fill-extrusion-color': '#c9cfd8', 'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15.5, ['coalesce', ['get', 'render_height'], 5]], 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 0.9 } });
               } catch (e) {}
+              try { _ml3dMap.addSource('veh-trails', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); _ml3dMap.addLayer({ id: 'veh-trails-line', type: 'line', source: 'veh-trails', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-opacity': ['get', 'op'], 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 6, 19, 12] } }); } catch (e) {}
               try { _ml3dLayer = window.RA3D.createVehicleLayer(); _ml3dMap.addLayer(_ml3dLayer); } catch (e) {}
               try { fit3dToFleet(); } catch (e) {}
               push3dData();
@@ -7783,6 +7892,7 @@ const pozitii = await r.json();</code></pre>
       map3dOn = false;
       var el = document.getElementById('map3d');
       try { if (_ml3dLayer) _ml3dLayer.setVisible(false); } catch (e) {}
+      try { _ml3dHit.forEach(function (r) { try { r.mk.remove(); } catch (e) {} }); _ml3dHit.clear(); _ml3dTrails.clear(); if (_ml3dMap && _ml3dMap.getSource('veh-trails')) _ml3dMap.getSource('veh-trails').setData({ type: 'FeatureCollection', features: [] }); } catch (e) {}
       try { if (_ml3dMap && _ml3dMap.getLayer('3d-buildings')) _ml3dMap.setLayoutProperty('3d-buildings', 'visibility', 'none'); } catch (e) {}
       if (el) { el.classList.remove('on'); el.hidden = true; }
       try { if (map && map.invalidateSize) map.invalidateSize(); } catch (e) {}
@@ -7809,6 +7919,7 @@ const pozitii = await r.json();</code></pre>
 
 
     function updateViewControlUI() {
+      if (_btnFollow) _btnFollow.classList.toggle('active', !!window._followImei);
       if (_btnGroup) {
         _btnGroup.classList.toggle('active', mapGroupOn);
         _btnGroup.title = mapGroupOn ? 'Vehicule unite în bule (apasă pentru a desface)' : 'Unește vehiculele apropiate într-o bulă';
@@ -8492,6 +8603,7 @@ const pozitii = await r.json();</code></pre>
     }
 
     function selectDevice(imei) {
+      try { if (typeof map3dOn !== "undefined" && map3dOn && _ml3dMap) focus3dOn(imei); } catch (e) {}
       // „Altă comandă": selectarea unui ALT vehicul oprește follow-ul activ (badge-ul „Urmărești").
       if (window._followImei && window._followImei !== imei && window.vpClearFollow) window.vpClearFollow();
       selectedImei = imei;

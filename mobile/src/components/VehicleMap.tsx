@@ -118,6 +118,16 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
         });
         map.setLayoutProperty('3d-buildings', 'visibility', use3dRef.current ? 'visible' : 'none');
       } catch (e) { /* sursa clădiri indisponibilă */ }
+      // Dâra (trail) ~30m cu fade — sursă GeoJSON + strat de linie SUB stratul de vehicule (modelele desenează peste)
+      try {
+        map.addSource('veh-trails', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        map.addLayer({
+          id: 'veh-trails-line', type: 'line', source: 'veh-trails',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': ['get', 'color'], 'line-opacity': ['get', 'op'], 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 6, 19, 12] },
+        });
+        map.setLayoutProperty('veh-trails-line', 'visibility', use3dRef.current ? 'visible' : 'none');
+      } catch (e) { /* trail indisponibil */ }
       try { const layer = createVehicleLayer(); map.addLayer(layer); layerRef.current = layer; } catch (e) { /* WebGL indisponibil */ }
       _syncRef.current(); // randează modelele 3D imediat ce stratul e gata
     });
@@ -169,6 +179,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       _syncRef.current();
       // Clădirile 3D urmează modul: vizibile în 3D, ascunse în 2D
       try { if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', use3d ? 'visible' : 'none'); } catch {}
+      try { if (map.getLayer('veh-trails-line')) map.setLayoutProperty('veh-trails-line', 'visibility', use3d ? 'visible' : 'none'); } catch {}
 
       // Comutarea săgeți⇄3D NU mișcă niciodată camera (era: re-rula focus/follow → zoom nedorit pe hartă).
       const styleChanged = prevStyle.current !== null && prevStyle.current !== use3d; prevStyle.current = use3d;
