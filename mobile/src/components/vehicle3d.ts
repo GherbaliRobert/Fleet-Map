@@ -1,8 +1,8 @@
 // Modele 3D REALE de vehicule pe hartă (Three.js + strat custom MapLibre).
-// Folosim modele profesionale low-poly din Kenney „Car Kit" (licență CC0 — domeniu public,
-// kenney.nl/assets/car-kit). Fiecare vehicul e un model .glb texturat (culori pe vertecși),
-// așezat pe planul hărții cu direcția lui de mers → la rotirea/înclinarea hărții se văd spatele
-// și lateralul. Starea (mișcare/ralanti/oprit/offline) e redată printr-un inel colorat la sol.
+// Folosim modele elegante „Free Low Poly Vehicles Pack" de Rgsdev (licență CC0 — domeniu public,
+// opengameart.org, culori pe materiale). Fiecare vehicul e un .glb așezat pe planul hărții cu
+// direcția lui de mers → la rotirea/înclinarea hărții se văd spatele și lateralul. Starea
+// (mișcare/ralanti/oprit/offline) e redată printr-un inel colorat la sol.
 import * as THREE from 'three';
 import maplibregl from 'maplibre-gl';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -11,8 +11,7 @@ import { statusOf } from '../lib/status';
 import sedanUrl from '../assets/vehicles/sedan.glb?url';
 import truckUrl from '../assets/vehicles/truck.glb?url';
 import vanUrl from '../assets/vehicles/van.glb?url';
-import deliveryUrl from '../assets/vehicles/delivery.glb?url';
-import colormapUrl from '../assets/vehicles/colormap.png?url'; // atlasul de culori Kenney (referit extern de .glb)
+import busUrl from '../assets/vehicles/bus.glb?url';
 
 const HEX: Record<string, string> = { moving: '#22c55e', idle: '#eab308', stopped: '#ef4444', offline: '#9aa3ad' };
 // Mărime CONSTANTĂ PE ECRAN (ca un marker): mașina ~CAR_TARGET_PX px lungime la orice zoom.
@@ -32,9 +31,9 @@ function catOf(vt?: string): string {
 }
 
 // ─── Încărcarea + normalizarea modelelor .glb (o singură dată, cache la nivel de modul) ───
-const MODEL_URL: Record<string, string> = { car: sedanUrl, truck: truckUrl, van: vanUrl, bus: deliveryUrl };
-const MODEL_LEN: Record<string, number> = { car: 4.7, van: 5.4, truck: 7.0, bus: 6.0 }; // lungimi „reale" (m) → scară relativă
-const MODEL_YAW = -Math.PI / 2; // rotim modelul (bot pe -Z în Kenney) astfel încât botul să fie pe +X
+const MODEL_URL: Record<string, string> = { car: sedanUrl, truck: truckUrl, van: vanUrl, bus: busUrl };
+const MODEL_LEN: Record<string, number> = { car: 4.7, van: 5.6, truck: 6.8, bus: 11.0 }; // lungimi „reale" (m) → scară relativă
+const MODEL_YAW = Math.PI / 2; // rotim modelul (bot pe +Z în pachetul Rgsdev) astfel încât botul să fie pe +X
 const TEMPLATES: Record<string, THREE.Group> = {};
 let modelsReady = false;
 let loadStarted = false;
@@ -56,18 +55,23 @@ function normalize(root: THREE.Object3D, cat: string): THREE.Group {
 
 function startLoading() {
   if (loadStarted) return; loadStarted = true;
-  // Atlasul de culori e referit EXTERN de .glb (Textures/colormap.png) → îl încărcăm noi și îl legăm manual
-  // de materiale. glTF cere flipY=false; NearestFilter ca să nu se amestece celulele de paletă.
-  const atlas = new THREE.TextureLoader().load(colormapUrl);
-  atlas.flipY = false; atlas.colorSpace = THREE.SRGBColorSpace;
-  atlas.magFilter = THREE.NearestFilter; atlas.minFilter = THREE.NearestFilter; atlas.needsUpdate = true;
   const loader = new GLTFLoader();
   const load = (cat: string) => new Promise<void>((resolve) => {
     loader.load(MODEL_URL[cat], (g) => {
+      // Detectăm materialul „vopsea" (caroseria) = cel cu cei mai mulți vertecși, EXCLUZÂND roțile
+      // (jante/anvelope). Îl vom re-colora per-vehicul în culoarea stării (paleta Rgsdev e prea închisă).
+      const vByMat = new Map<any, number>(); const wheelMats = new Set<any>();
       g.scene.traverse((o: any) => {
-        if (o.isMesh && o.material) { o.material.map = atlas; o.material.color = new THREE.Color(0xffffff); o.material.needsUpdate = true; }
+        if (!o.isMesh) return;
+        const isWheel = /wheel|tire|tyre|rim/i.test((o.name || '') + (o.parent?.name || ''));
+        const vc = o.geometry?.attributes?.position?.count || 0;
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (const m of mats) { if (!m) continue; if (isWheel) wheelMats.add(m); vByMat.set(m, (vByMat.get(m) || 0) + vc); }
       });
-      TEMPLATES[cat] = normalize(g.scene, cat); resolve();
+      let paint: any = null, max = -1;
+      for (const [m, vc] of vByMat) { if (wheelMats.has(m)) continue; if (vc > max) { max = vc; paint = m; } }
+      const tpl = normalize(g.scene, cat); (tpl.userData as any).paintMat = paint;
+      TEMPLATES[cat] = tpl; resolve();
     }, undefined, () => resolve());
   });
   Promise.all(['car', 'truck', 'van', 'bus'].map(load)).then(() => {
@@ -75,16 +79,33 @@ function startLoading() {
   });
 }
 
-// Construiește vizualul unui vehicul: clona modelului 3D + inelul de stare la sol. Bot pe +X.
+// Construiește vizualul unui vehicul: clona modelului 3D (cu caroseria vopsită în culoarea stării)
+// + un inel discret la sol. Bot pe +X.
 function buildVehicleMesh(cat: string, color: string): THREE.Group {
   const g = new THREE.Group();
   const tpl = TEMPLATES[cat] || TEMPLATES.car;
-  if (tpl) g.add(tpl.clone(true));
-  // Inel de stare la sol (culoarea = mișcare/ralanti/oprit/offline)
+  if (tpl) {
+    const clone = tpl.clone(true); // materialele sunt PARTAJATE cu template-ul (clone() nu le copiază)
+    const paint = (tpl.userData as any).paintMat;
+    if (paint) {
+      const col = new THREE.Color(color);
+      clone.traverse((o: any) => {
+        if (o.isMesh && o.material === paint) {           // doar caroseria → culoarea stării
+          const m = o.material.clone(); m.color = col.clone();
+          if ('emissive' in m) m.emissive = col.clone().multiplyScalar(0.14);
+          if ('metalness' in m) m.metalness = 0.25;
+          if ('roughness' in m) m.roughness = 0.55;
+          o.material = m;
+        }
+      });
+    }
+    g.add(clone);
+  }
+  // Inel discret la sol — ajută la localizare/țintă de click, în aceeași culoare a stării
   const len = MODEL_LEN[cat] || CAR_LEN_M;
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(len * 0.5, len * 0.66, 40),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }),
+    new THREE.RingGeometry(len * 0.54, len * 0.64, 48),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }),
   );
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; g.add(ring);
   return g;
@@ -164,9 +185,10 @@ export function createVehicleLayer(): VehicleLayer {
       mapRef = map;
       camera = new THREE.Camera();
       scene = new THREE.Scene();
-      scene.add(new THREE.AmbientLight(0xffffff, 1.15));
-      const dir = new THREE.DirectionalLight(0xffffff, 1.35); dir.position.set(0.5, -0.6, 1.2); scene.add(dir);
-      const dir2 = new THREE.DirectionalLight(0xffffff, 0.5); dir2.position.set(-0.7, 0.5, 0.6); scene.add(dir2);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x99a2ad, 1.5)); // cer/sol → fill uniform, fără fețe negre
+      scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+      const dir = new THREE.DirectionalLight(0xffffff, 1.5); dir.position.set(0.6, 1.0, 0.7); scene.add(dir);
+      const dir2 = new THREE.DirectionalLight(0xffffff, 0.6); dir2.position.set(-0.6, 0.4, -0.5); scene.add(dir2);
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl as any, antialias: true });
       renderer.autoClear = false;
       renderer.outputColorSpace = THREE.SRGBColorSpace; // culori corecte pentru texturile glTF
