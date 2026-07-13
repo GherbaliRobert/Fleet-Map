@@ -7621,7 +7621,8 @@ const pozitii = await r.json();</code></pre>
     let _hotspotZones = [];          // zone de grupare: {id,name,kind:'circle'|'poly',center,radius|ring}
     let _groupBubbles = new Map();   // zoneId -> L.marker (bula cu numărul)
     let _groupTimer = null;
-    let _btnGroup = null, _btnStyle = null, _btnLayers = null;
+    let _btnGroup = null, _btnStyle = null, _btnLayers = null, _btnLocate = null;
+    var viewerMarker = null, viewerWatchId = null;
     let _spiderActive = null;        // { bubble, center, items:[{mk,imei,target,leg}], imeis:Set } — grup „desfăcut" animat
     let _spiderEvtBound = false;     // evenimentele de închidere (zoom/drag) legate o singură dată
 
@@ -7645,15 +7646,40 @@ const pozitii = await r.json();</code></pre>
           _btnLayers = L.DomUtil.create('a', '', div);
           _btnLayers.href = '#'; _btnLayers.setAttribute('role', 'button'); _btnLayers.title = 'Straturi hartă';
           _btnLayers.innerHTML = '<i class="fas fa-layer-group"></i>';
+          _btnLocate = L.DomUtil.create('a', '', div);
+          _btnLocate.href = '#'; _btnLocate.setAttribute('role', 'button'); _btnLocate.title = 'Poziția mea';
+          _btnLocate.innerHTML = '<i class="fas fa-location-crosshairs"></i>';
           L.DomEvent.on(_btnGroup, 'click', function (e) { L.DomEvent.stop(e); toggleMapGroup(); });
           L.DomEvent.on(_btnStyle, 'click', function (e) { L.DomEvent.stop(e); toggleMapStyle(); });
           L.DomEvent.on(_btnLayers, 'click', function (e) { L.DomEvent.stop(e); toggleLayerMenu(); });
+          L.DomEvent.on(_btnLocate, 'click', function (e) { L.DomEvent.stop(e); webLocateMe(); });
           L.DomEvent.disableClickPropagation(div);
           setTimeout(updateViewControlUI, 0);
           return div;
         }
       });
       map.addControl(new Ctrl());
+    }
+
+    // „Poziția mea": poziția dispozitivului de pe care urmărești (buton dreapta-sus) + urmărire live.
+    function webLocateMe() {
+      if (!navigator.geolocation) { if (window.raxToast) raxToast('Localizarea nu e disponibilă în acest browser', 'error'); return; }
+      if (_btnLocate) _btnLocate.classList.add('locating');
+      var show = function (lat, lng, center) {
+        var ll = [lat, lng];
+        if (!viewerMarker) {
+          viewerMarker = L.marker(ll, { icon: L.divIcon({ className: 'viewer-me', html: '<div class="viewer-me-pulse"></div><div class="viewer-me-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 10000, interactive: false }).addTo(map);
+        } else { viewerMarker.setLatLng(ll); }
+        if (center) map.setView(ll, Math.max(map.getZoom(), 16), { animate: true });
+      };
+      navigator.geolocation.getCurrentPosition(function (p) {
+        show(p.coords.latitude, p.coords.longitude, true);
+        if (_btnLocate) { _btnLocate.classList.remove('locating'); _btnLocate.classList.add('active'); }
+        if (viewerWatchId == null) viewerWatchId = navigator.geolocation.watchPosition(function (q) { show(q.coords.latitude, q.coords.longitude, false); }, function () {}, { enableHighAccuracy: true });
+      }, function (err) {
+        if (_btnLocate) _btnLocate.classList.remove('locating');
+        if (window.raxToast) raxToast(err && err.code === 1 ? 'Acces la locație refuzat' : 'Nu am putut obține poziția', 'error');
+      }, { enableHighAccuracy: true, timeout: 10000 });
     }
 
     function updateViewControlUI() {

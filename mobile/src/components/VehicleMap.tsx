@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { Geolocation } from '@capacitor/geolocation';
+import { Icon } from './Icon';
 import type { Position } from '../api/endpoints';
 import { statusOf, type Status, type StatusInfo } from '../lib/status';
 import { fmtAgo } from '../lib/format';
@@ -56,6 +58,35 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   const [use3d, setUse3d] = useState<boolean>(() => { try { return localStorage.getItem('mapStyle') === '3d'; } catch { return false; } });
   function toggle3d() { setUse3d((v) => { const nv = !v; try { localStorage.setItem('mapStyle', nv ? '3d' : 'arrow'); } catch {} return nv; }); }
   const use3dRef = useRef(use3d); use3dRef.current = use3d; // valoarea curentă, citibilă din closure-ul de „load"
+  const viewerMarker = useRef<maplibregl.Marker | null>(null); // poziția dispozitivului de pe care urmărești
+  const watchId = useRef<string | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  // „Unde sunt eu": cere permisiunea, ia poziția, pune un punct albastru + centrează, apoi urmărește live.
+  async function locateMe() {
+    const map = mapRef.current; if (!map || locating) return;
+    setLocating(true);
+    try {
+      const perm = await Geolocation.requestPermissions({ permissions: ['location'] });
+      if (perm.location === 'denied') { setLocating(false); return; }
+      const showAt = (lng: number, lat: number, center: boolean) => {
+        if (!viewerMarker.current) {
+          const el = document.createElement('div'); el.className = 'vmk-me';
+          el.innerHTML = '<div class="vmk-me-pulse"></div><div class="vmk-me-dot"></div>';
+          viewerMarker.current = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map);
+        } else viewerMarker.current.setLngLat([lng, lat]);
+        if (center) map.easeTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), duration: 600 });
+      };
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+      showAt(pos.coords.longitude, pos.coords.latitude, true);
+      if (!watchId.current) {
+        watchId.current = await Geolocation.watchPosition({ enableHighAccuracy: true }, (p) => {
+          if (p && p.coords) showAt(p.coords.longitude, p.coords.latitude, false);
+        });
+      }
+    } catch { /* GPS indisponibil / refuzat */ }
+    setLocating(false);
+  }
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -96,7 +127,11 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       if (btn) { ev.stopPropagation(); const imei = btn.getAttribute('data-imei'); if (imei) onSelectRef.current(imei); }
     });
     mapRef.current = map;
-    return () => { try { map.remove(); } catch {} mapRef.current = null; markers.current.clear(); fitted.current = false; ready.current = false; };
+    return () => {
+      if (watchId.current) { try { Geolocation.clearWatch({ id: watchId.current }); } catch {} watchId.current = null; }
+      viewerMarker.current = null;
+      try { map.remove(); } catch {} mapRef.current = null; markers.current.clear(); fitted.current = false; ready.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -162,6 +197,10 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       <button type="button" onClick={toggle3d} aria-label="Comută iconițe 3D" title="Iconițe 3D"
         style={'position:absolute;top:10px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (use3d ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
         {use3d ? '🚚' : '▲'}
+      </button>
+      <button type="button" onClick={locateMe} aria-label="Unde sunt eu" title="Poziția mea"
+        style={'position:absolute;top:56px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (locating ? 'var(--accent)' : 'var(--text-primary)') + ';box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
+        <Icon name="navigate" size={18} color="currentColor" />
       </button>
     </>
   );

@@ -47,3 +47,9 @@
 
 /* Eticheta cu numărul, ridicată deasupra modelului 3D (mașina e randată de stratul Three.js) */
 .vmk-inner.vmk-3d { transform: translateY(-30px); }
+
+/* „Poziția mea" — punct albastru cu halou pulsatoriu (dispozitivul de pe care urmărești) */
+.vmk-me { position: relative; width: 18px; height: 18px; }
+.vmk-me-dot { position: absolute; inset: 3px; border-radius: 50%; background: #2f7cf6; border: 2px solid #fff; box-shadow: 0 0 4px rgba(0,0,0,.4); }
+.vmk-me-pulse { position: absolute; inset: 0; border-radius: 50%; background: rgba(47,124,246,.35); animation: vmk-me-pulse 2s ease-out infinite; }
+@keyframes vmk-me-pulse { 0% { transform: scale(.6); opacity: .8; } 100% { transform: scale(2.6); opacity: 0; } }
