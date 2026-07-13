@@ -55,6 +55,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   onSelectRef.current = onSelect;
   const [use3d, setUse3d] = useState<boolean>(() => { try { return localStorage.getItem('mapStyle') === '3d'; } catch { return false; } });
   function toggle3d() { setUse3d((v) => { const nv = !v; try { localStorage.setItem('mapStyle', nv ? '3d' : 'arrow'); } catch {} return nv; }); }
+  const use3dRef = useRef(use3d); use3dRef.current = use3d; // valoarea curentă, citibilă din closure-ul de „load"
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -70,6 +71,22 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: true, showCompass: true }), 'bottom-left');
     map.on('load', () => {
       ready.current = true;
+      // Clădiri 3D: sursă vectorială OpenFreeMap (gratuit, fără cheie; date OSM cu înălțimi) + strat
+      // fill-extrusion. Se văd extrudate când înclini harta; ascunse în modul 2D (săgeți).
+      try {
+        map.addSource('ofm', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+        map.addLayer({
+          id: '3d-buildings', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building',
+          minzoom: 14, filter: ['!=', ['get', 'hide_3d'], true],
+          paint: {
+            'fill-extrusion-color': '#c9cfd8',
+            'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15.5, ['coalesce', ['get', 'render_height'], 5]],
+            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+            'fill-extrusion-opacity': 0.9,
+          },
+        });
+        map.setLayoutProperty('3d-buildings', 'visibility', use3dRef.current ? 'visible' : 'none');
+      } catch (e) { /* sursa clădiri indisponibilă */ }
       try { const layer = createVehicleLayer(); map.addLayer(layer); layerRef.current = layer; } catch (e) { /* WebGL indisponibil */ }
       _syncRef.current(); // randează modelele 3D imediat ce stratul e gata
     });
@@ -115,6 +132,8 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       // Modelele 3D reale (strat Three.js): ascunde-le în 2D, randează-le în 3D
       _syncRef.current = () => { if (layerRef.current) { layerRef.current.setVisible(use3d); layerRef.current.sync(vehicles, use3d, offlineMin); } };
       _syncRef.current();
+      // Clădirile 3D urmează modul: vizibile în 3D, ascunse în 2D
+      try { if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', use3d ? 'visible' : 'none'); } catch {}
 
       // Comutarea săgeți⇄3D NU mișcă niciodată camera (era: re-rula focus/follow → zoom nedorit pe hartă).
       const styleChanged = prevStyle.current !== null && prevStyle.current !== use3d; prevStyle.current = use3d;
