@@ -95,9 +95,14 @@ async function toXlsx(report) {
   const ncol = Math.max(1, cols.length);
   const wb = new ExcelJS.Workbook();
   wb.creator = 'RA Track';
-  const ws = wb.addWorksheet((report.label || 'Raport').replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Raport');
-
   const logoId = xlLogoId(wb);
+  // Sumar pe FOAIE SEPARATĂ (opt-in prin report.summarySheet) — KPI-urile flotei, curat, ca primă foaie (nu îngrămădit la baza tabelului).
+  if (report.summarySheet && report.summary && Object.keys(report.summary).length) {
+    const period = { text: report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to)), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
+    const sumRows = Object.entries(report.summary).map(([k, v]) => [k, (v == null ? '' : v)]);
+    xlWriteTable(wb.addWorksheet('Sumar'), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], ['Indicator', 'Valoare'], sumRows, logoId);
+  }
+  const ws = wb.addWorksheet((report.label || 'Raport').replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Raport');
   const base = xlPlaceLogo(ws, logoId); // logo pe rândul 1 → titlul începe de la rândul 2 (sau 1 fără logo)
 
   ws.mergeCells(base, 1, base, ncol);
@@ -129,7 +134,7 @@ async function toXlsx(report) {
     ws.getColumn(i + 1).width = Math.min(45, Math.max(10, w + 2));
   });
 
-  if (report.summary && Object.keys(report.summary).length) {
+  if (!report.summarySheet && report.summary && Object.keys(report.summary).length) {
     r += 1;
     ws.getCell(r, 1).value = 'Sumar'; ws.getCell(r, 1).font = { bold: true }; r++;
     for (const [k, v] of Object.entries(report.summary)) {

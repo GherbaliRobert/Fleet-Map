@@ -914,8 +914,8 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
   for (const imei of imeis) {
     const m = cm[imei]; if (!m) continue;
     const nm = label(devMap, imei);
-    if (!m.hasFuel && m.consumed <= 0) { rows.push([nm, '—', '—', '—', m.dist.toFixed(0), '—', '—']); continue; }
-    rows.push([ nm, m.first != null ? m.first.toFixed(0) + ' L' : '—', m.last != null ? m.last.toFixed(0) + ' L' : '—', Math.round(m.refueled) + ' L', m.dist.toFixed(0), m.consumed.toFixed(0) + ' L' + (m.estimated ? ' (est.)' : ''), m.per100 != null ? m.per100.toFixed(1) : '—' ]);
+    if (!m.hasFuel && m.consumed <= 0) { rows.push([nm, '—', '—', '—', m.dist.toFixed(0), '—', '—', '—']); continue; }
+    rows.push([ nm, m.first != null ? m.first.toFixed(0) + ' L' : '—', m.last != null ? m.last.toFixed(0) + ' L' : '—', Math.round(m.refueled) + ' L', m.dist.toFixed(0), m.consumed.toFixed(0) + ' L', m.per100 != null ? m.per100.toFixed(1) : '—', m.source ]);
     tCons += m.consumed; tDist += m.dist; vCons.push([nm, m.consumed]); if (m.per100) vPer.push([nm, m.per100]); if (m.estimated) nEst++;
   }
   const topCons = _topN(vCons, 10), topPer = _topN(vPer, 10);
@@ -923,8 +923,9 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
     { type: 'bar', title: 'Consum pe vehicul (L)', labels: topCons.labels, datasets: [{ label: 'L', data: topCons.data }] },
     { type: 'bar', title: 'L/100km pe vehicul',    labels: topPer.labels,  datasets: [{ label: 'L/100km', data: topPer.data }] }
   ] : [];
-  return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km'], rows,
-    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—', 'Estimate (fără senzor)': nEst }, charts };
+  // Sumarul pe FOAIE SEPARATĂ în Excel (summarySheet), nu îngrămădit la baza tabelului. Online rămâne ca chips.
+  return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km', 'Sursă'], rows,
+    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—', 'Estimate (fără senzor)': nEst }, charts, summarySheet: true };
 }
 
 // Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea" reală a CAN-ului: contorul de km e adesea
@@ -1365,7 +1366,8 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     let consumed = cumulOk ? cumulL : (sensorOk ? sensorL : (dist * cRoad / 100 + idleL));
     if (consumed < idleL) consumed = idleL;
     const per100 = dist > 1 ? +(consumed / dist * 100).toFixed(1) : null;
-    out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !(cumulOk || sensorOk), hasFuel: hasFuel || cumulL != null, per100, price, first, last, fuelType: c.fuelType || null };
+    const source = cumulOk ? 'CAN' : (sensorOk ? 'Senzor' : 'Estimat'); // sursa consumului: contor CAN > senzor rezervor > estimare din fișă
+    out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !(cumulOk || sensorOk), source, hasFuel: hasFuel || cumulL != null, per100, price, first, last, fuelType: c.fuelType || null };
   }
   return out;
 }
