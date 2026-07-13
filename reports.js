@@ -410,7 +410,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
 
 async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurgeri/furt
   const refuelMin = opts.refuelMin || 5, dropMin = opts.dropMin || 10;
-  const rows = []; let refuels = 0, drops = 0, addedL = 0, lostL = 0; const refs = []; const perVeh = {};
+  const rows = []; let refuels = 0, drops = 0, addedL = 0, lostL = 0; const refs = []; const evPts = []; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
@@ -424,12 +424,18 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurg
       // normal de peste mai multe ore ar apărea ca o „scădere/furt").
       if (prev != null) {
         const delta = fl - prev.v, gapH = (t(p) - prev.ts) / 3600000, ign = ignOn(p) || ignOn(prev.p);
-        if (delta >= refuelMin && gapH <= 1) { rows.push([ nm, fmtTs(p.timestamp), 'Alimentare', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); pv.refuels++; pv.added += delta; pv.refs.push({ ts: p.timestamp, v: delta }); }
-        else if (delta <= -dropMin && ((!ign && gapH <= 72) || (ign && gapH <= 1))) { rows.push([ nm, fmtTs(p.timestamp), 'Scădere/furt', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); drops++; lostL += -delta; pv.drops++; pv.lost += -delta; }
+        if (delta >= refuelMin && gapH <= 1) { rows.push([ nm, fmtTs(p.timestamp), 'Alimentare', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); evPts.push(p); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); pv.refuels++; pv.added += delta; pv.refs.push({ ts: p.timestamp, v: delta }); }
+        else if (delta <= -dropMin && ((!ign && gapH <= 72) || (ign && gapH <= 1))) { rows.push([ nm, fmtTs(p.timestamp), 'Scădere/furt', +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); evPts.push(p); drops++; lostL += -delta; pv.drops++; pv.lost += -delta; }
       }
       prev = { v: fl, ts: t(p), p };
     }
   }
+  // Adrese exacte în loc de coordonate: pre-încarcă adresele evenimentelor (sparse → puține), fallback pe coordonate
+  // + completare progresivă pe client. Umplem în loc (rândurile din perVehicle sunt aceleași referințe → primesc și ele adresa).
+  if (geocode && geocode.warm && evPts.length) {
+    try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
+  }
+  rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); });
   const refDay = _groupByDay(refs, x => x.ts, x => x.v);
   const charts = (refuels || drops) ? [
     { type: 'doughnut', title: 'Alimentări vs. scăderi suspecte', labels: ['Alimentări', 'Scăderi suspecte'], datasets: [{ label: 'evenimente', data: [refuels, drops] }] },
@@ -452,8 +458,9 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurg
       };
     });
   }
-  return { columns: ['Vehicul','Moment','Tip','Δ Litri','Nivel (L)','Locație'], rows,
-    summary: { 'Alimentări': refuels, 'Litri alimentați': Math.round(addedL), 'Scăderi suspecte': drops, 'Litri scăzuți': Math.round(lostL) }, charts, perVehicle };
+  const vehRefueled = Object.values(perVeh).filter(v => v.refuels > 0).length; // câte MAȘINI au fost alimentate în perioadă
+  return { columns: ['Vehicul','Data alimentării','Tip','Δ Litri','Nivel (L)','Locație'], rows,
+    summary: { 'Vehicule alimentate': vehRefueled, 'Alimentări': refuels, 'Litri alimentați': Math.round(addedL), 'Scăderi suspecte': drops, 'Litri scăzuți': Math.round(lostL) }, charts, perVehicle };
 }
 
 function pointInPolygon(lat, lng, poly) {
