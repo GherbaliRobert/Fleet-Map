@@ -2149,6 +2149,7 @@ const pozitii = await r.json();</code></pre>
         <div id="rep-table-wrap" style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;min-height:120px;">
           <table id="rep-table" style="width:100%;border-collapse:collapse;font-size:12px;"><thead></thead><tbody></tbody></table>
         </div>
+        <div id="rep-legend" style="display:none;margin-top:10px;padding:10px 14px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-muted);line-height:1.65;"></div>
         <div id="rep-empty" style="display:none;text-align:center;color:var(--text-muted);padding:24px;">Nu sunt date pentru perioada selectată.</div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;align-items:center;">
           <span id="rep-count" style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center;"></span>
@@ -4964,6 +4965,7 @@ const pozitii = await r.json();</code></pre>
       var _ch = document.getElementById('rep-charts'); if (_ch) _ch.innerHTML = '';
       var _vv = document.getElementById('rep-vehview'); if (_vv) { _vv.innerHTML = ''; _vv.style.display = 'none'; }
       var _fb = document.getElementById('rep-filter-bar'); if (_fb) { _fb.innerHTML = ''; _fb.style.display = 'none'; }
+      var _lg = document.getElementById('rep-legend'); if (_lg) { _lg.innerHTML = ''; _lg.style.display = 'none'; }
       document.getElementById('rep-empty').style.display = 'none';
       document.getElementById('rep-count').textContent = '';
       _repFilter = null; _repSort = null;
@@ -5771,6 +5773,16 @@ const pozitii = await r.json();</code></pre>
       const empty = !(data.rows && data.rows.length);
       document.getElementById('rep-empty').style.display = empty ? 'block' : 'none';
       document.getElementById('rep-table-wrap').style.display = empty ? 'none' : 'block';
+      _repRenderLegend(empty ? null : data.legend);
+    }
+    // Legendă sub tabel (ex. explicația coloanei „Sursă" la Consum carburant). Doar dacă raportul o are.
+    function _repRenderLegend(legend) {
+      var el = document.getElementById('rep-legend'); if (!el) return;
+      var items = (legend && legend.items && legend.items.length) ? legend.items : null;
+      if (!items) { el.style.display = 'none'; el.innerHTML = ''; return; }
+      var head = legend.title ? '<div style="font-weight:700;color:var(--text-secondary);margin-bottom:5px;"><i class="fas fa-circle-info" style="color:var(--accent);"></i> ' + _repEsc(legend.title) + '</div>' : '';
+      el.innerHTML = head + items.map(function (it) { return '<div style="margin:2px 0;"><strong style="color:var(--text-primary);">' + _repEsc(it[0]) + '</strong> — ' + _repEsc(it[1]) + '</div>'; }).join('');
+      el.style.display = '';
     }
 
     // ─── Tabel raport: sortare pe coloană (click pe cap) + drill-down din grafic ───

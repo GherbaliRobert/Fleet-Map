@@ -60,6 +60,20 @@ function xlWriteTable(ws, titleLines, columns, rows, logoId) {
   for (const row of (rows || [])) { const xr = ws.getRow(r++); (row || []).forEach((v, i) => { xr.getCell(i + 1).value = (v == null ? '' : v); }); }
   columns.forEach((c, i) => { let w = String(c).length; for (const row of (rows || [])) { const v = row && row[i]; if (v != null) w = Math.max(w, String(v).length); } ws.getColumn(i + 1).width = Math.min(45, Math.max(10, w + 2)); });
 }
+// Legendă sub tabel (ex. explicația coloanei „Sursă"): titlu îngroșat + „termen | descriere" pe rânduri.
+// Descrierea e îmbinată pe coloanele rămase și cu wrap, ca să încapă tot textul. Întoarce rândul următor liber.
+function xlWriteLegend(ws, legend, startRow, ncol) {
+  let r = startRow;
+  const n = Math.max(2, ncol);
+  if (legend.title) { ws.mergeCells(r, 1, r, n); const c = ws.getCell(r, 1); c.value = legend.title; c.font = { bold: true, size: 11, color: { argb: 'FF444444' } }; r++; }
+  for (const it of (legend.items || [])) {
+    const term = ws.getCell(r, 1); term.value = it[0]; term.font = { bold: true };
+    ws.mergeCells(r, 2, r, n);
+    const desc = ws.getCell(r, 2); desc.value = it[1]; desc.font = { color: { argb: 'FF555555' } }; desc.alignment = { wrapText: true, vertical: 'top' };
+    r++;
+  }
+  return r;
+}
 // Excel multi-sheet pt. rapoarte cu date pe vehicul (ex. Foaie de parcurs): „Sumar" + un sheet/mașină.
 async function toXlsxMultiSheet(report) {
   const wb = new ExcelJS.Workbook(); wb.creator = 'RA Track';
@@ -140,6 +154,11 @@ async function toXlsx(report) {
     for (const [k, v] of Object.entries(report.summary)) {
       ws.getCell(r, 1).value = k; ws.getCell(r, 2).value = (v == null ? '' : v); r++;
     }
+  }
+
+  // Legendă sub tabel (ex. „Sursa consumului") — sub datele de pe foaia de raport.
+  if (report.legend && report.legend.items && report.legend.items.length) {
+    xlWriteLegend(ws, report.legend, r + 1, ncol);
   }
 
   return Buffer.from(await wb.xlsx.writeBuffer());
@@ -305,6 +324,21 @@ function renderPdf(doc, report) {
     (row || []).forEach((v, i) => doc.text(v == null ? '' : String(v), left + i * colW + 2, y + 2, { width: colW - 4, height: rowH, ellipsis: true, lineBreak: false }));
     doc.moveTo(left, y + rowH).lineTo(left + usableW, y + rowH).strokeColor('#eee').lineWidth(0.5).stroke();
     y += rowH;
+  }
+
+  // 5. Legendă sub tabel (ex. explicația coloanei „Sursă") — dacă raportul o are.
+  const lg = report.legend;
+  if (lg && lg.items && lg.items.length) {
+    const lineH = 11;
+    const needed = (lg.title ? lineH : 0) + lg.items.length * lineH + 8;
+    if (y + needed > bottom) { doc.addPage(); y = doc.page.margins.top; }
+    y += 8;
+    if (lg.title) { doc.font('Nunito-Bold').fontSize(8).fillColor('#166534').text(String(lg.title), left, y, { width: usableW, lineBreak: false, ellipsis: true }); y += lineH; }
+    for (const it of lg.items) {
+      doc.font('Nunito-Bold').fontSize(7.5).fillColor('#111').text(String(it[0]) + ':  ', left, y, { continued: true });
+      doc.font('Nunito').fillColor('#555').text(String(it[1]));
+      y += lineH;
+    }
   }
 }
 

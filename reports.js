@@ -913,6 +913,15 @@ async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu — jurnal 
   };
 }
 
+// Legenda coloanei „Sursă" — explică cele 3 metode (CAN > Senzor > Estimat) + varianta „Estimat (nivel CAN)".
+// Sursă unică de adevăr: setată pe obiectul raportului → randată identic online, în Excel și în PDF.
+const CONSUMPTION_LEGEND = { title: 'Sursa consumului — cum a fost calculat', items: [
+  ['CAN', 'Contor CAN: mașina raportează exact litrii consumați. Cea mai precisă metodă.'],
+  ['Senzor', 'Nivel rezervor: consum calculat din cât a scăzut nivelul (când senzorul e precis).'],
+  ['Estimat (nivel CAN)', 'Mașina are senzor de nivel, dar prea imprecis pe acest interval → consum estimat din consumul mediu al mașinii.'],
+  ['Estimat', 'Fără contor sau senzor de încredere → consum estimat din consumul mediu al mașinii.']
+] };
+
 async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carburant (sumar)
   const cm = await _consumptionMap(db, imeis, from, to, opts);
   const rows = []; let tCons = 0, tDist = 0; const vCons = [], vPer = [];
@@ -930,7 +939,7 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
   ] : [];
   // Sumarul pe FOAIE SEPARATĂ în Excel (summarySheet), nu îngrămădit la baza tabelului. Online rămâne ca chips.
   return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km', 'Sursă'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts, summarySheet: true };
+    summary: { 'Total vehicule': imeis.length, 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts, summarySheet: true, legend: CONSUMPTION_LEGEND };
 }
 
 // Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea" reală a CAN-ului: contorul de km e adesea
