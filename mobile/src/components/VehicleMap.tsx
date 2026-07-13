@@ -66,7 +66,8 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
     // Gesturi: 2 degete pe verticală = ÎNCLINARE (pitch); 2 degete răsucite = rotire — exact ca Google Maps.
     map.touchZoomRotate.enableRotation();
     map.touchPitch.enable();
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: true, showCompass: true }), 'bottom-right');
+    // jos-STÂNGA: colțul jos-dreapta e ocupat de FAB-ul „+" iar bara de tab-uri acoperă marginea de jos
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: true, showCompass: true }), 'bottom-left');
     map.on('load', () => {
       ready.current = true;
       try { const layer = createVehicleLayer(); map.addLayer(layer); layerRef.current = layer; } catch (e) { /* WebGL indisponibil */ }

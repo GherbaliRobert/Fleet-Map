@@ -102,7 +102,7 @@ export function createVehicleLayer(): VehicleLayer {
   let mapRef: maplibregl.Map;
   let visible = true;
   let lastArgs: { vehicles: Position[]; use3d: boolean; offlineMin: number } | null = null;
-  const rec = new Map<string, { outer: THREE.Group; inner: THREE.Group; cat: string; status: string; lat: number; unitScale: number }>();
+  const rec = new Map<string, { outer: THREE.Group; inner: THREE.Group; cat: string; status: string; lat: number; unitScale: number; mx: number; my: number; mz: number }>();
 
   // Mărime constantă pe ecran: modelul ocupă mereu ~CAR_TARGET_PX px, indiferent de zoom.
   const rescale = () => {
@@ -140,12 +140,13 @@ export function createVehicleLayer(): VehicleLayer {
         // float) și modelul DISPARE. Dezactivăm culling-ul per-obiect: harta oricum clipează corect.
         outer.traverse((o) => { o.frustumCulled = false; });
         scene.add(outer);
-        r = { outer, inner, cat, status: st.status, lat: v.latitude, unitScale: 1 };
+        r = { outer, inner, cat, status: st.status, lat: v.latitude, unitScale: 1, mx: 0, my: 0, mz: 0 };
         rec.set(v.imei, r);
       }
       const merc = maplibregl.MercatorCoordinate.fromLngLat([v.longitude, v.latitude], 0);
       r.lat = v.latitude;
       r.unitScale = merc.meterInMercatorCoordinateUnits(); // unități mercator per metru-model (fără factorul de zoom)
+      r.mx = merc.x; r.my = merc.y; r.mz = merc.z;         // poziția ABSOLUTĂ; în render() o punem RELATIV la ancoră (precizie)
       r.outer.position.set(merc.x, merc.y, merc.z);
       r.inner.rotation.y = (((v.angle || 0) - 90) * Math.PI) / 180; // bot pe direcția de mers (0=N,90=E,180=S,270=V)
       r.outer.visible = use3d;
@@ -182,11 +183,21 @@ export function createVehicleLayer(): VehicleLayer {
       if (!visible) return;
       const mat = Array.isArray(args) ? args : (args && args.defaultProjectionData && args.defaultProjectionData.mainMatrix);
       if (!mat) return;
-      camera.projectionMatrix = new THREE.Matrix4().fromArray(mat as number[]);
+      // Reper-de-precizie: la zoom mare, coordonatele mercator absolute (~0.57) + extinderea minusculă a
+      // modelului depășesc precizia float32 pe GPU → geometria se „strică". Așezăm modelele RELATIV la o
+      // ancoră (centrul hărții) astfel încât GPU-ul să primească doar numere mici, și compensăm ancora în
+      // matricea de proiecție (calcul în float64 pe CPU). Rezultat identic, dar stabil la orice zoom.
+      const c = mapRef.getCenter();
+      const A = maplibregl.MercatorCoordinate.fromLngLat([c.lng, c.lat], 0);
+      for (const r of rec.values()) r.outer.position.set(r.mx - A.x, r.my - A.y, r.mz - A.z);
+      const m = new THREE.Matrix4().fromArray(mat as number[]);
+      m.multiply(new THREE.Matrix4().makeTranslation(A.x, A.y, A.z));
+      camera.projectionMatrix = m;
       renderer.resetState();
       renderer.clearDepth(); // desenăm vehiculele PESTE dale (fără ocluzie de la depth-ul hărții la zoom mare)
       renderer.render(scene, camera);
-      if (mapRef) mapRef.triggerRepaint();
+      // FĂRĂ triggerRepaint aici: ar forța o buclă de randare la fiecare frame (consum de baterie/GPU).
+      // Harta re-randează stratul la mișcare/zoom, iar sync()/rescale() cheamă triggerRepaint la nevoie.
     },
   };
 }

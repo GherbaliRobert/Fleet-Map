@@ -41,8 +41,9 @@
 .vmap-follow { position: absolute; top: 10px; right: 10px; z-index: 1000; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 700; font-family: inherit; box-shadow: 0 2px 10px rgba(0,0,0,.35); cursor: pointer; }
 .vmap-follow.on { background: var(--accent); color: #06210f; border-color: var(--accent); }
 
-/* Controlul MapLibre (zoom + busolă/reset înclinare) jos-dreapta, deasupra tab-bar-ului */
-.maplibregl-ctrl-bottom-right { margin-bottom: 8px; }
+/* Controlul MapLibre (zoom + busolă/reset înclinare) jos-STÂNGA, ridicat deasupra barei de tab-uri
+   (colțul jos-dreapta e ocupat de FAB-ul „+"; marginea de jos e acoperită de tab-bar) */
+.maplibregl-ctrl-bottom-left { margin-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); margin-left: 10px; }
 
 /* Eticheta cu numărul, ridicată deasupra modelului 3D (mașina e randată de stratul Three.js) */
 .vmk-inner.vmk-3d { transform: translateY(-30px); }
