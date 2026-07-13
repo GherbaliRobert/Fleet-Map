@@ -1923,3 +1923,10 @@
 .viewer-me .viewer-me-pulse { position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 50%; background: rgba(47,124,246,.35); animation: viewer-me-pulse 2s ease-out infinite; }
 @keyframes viewer-me-pulse { 0% { transform: scale(.5); opacity: .85; } 100% { transform: scale(2.6); opacity: 0; } }
 .map-view-ctrl a.locating { color: var(--accent); }
+
+/* Harta 3D reală (MapLibre) — suprapusă peste #map, activată de starea „3D" a comutatorului.
+   z-index 800: acoperă conținutul hărții Leaflet (dale/markeri/popup ≤700) DAR sub bara de
+   controale dreapta-sus (z 1000), ca butonul de comutare 3D→2D să rămână apăsabil. */
+#map3d { position: absolute; inset: 0; z-index: 800; display: none; }
+#map3d.on { display: block; }
+#map3d canvas { outline: none; }

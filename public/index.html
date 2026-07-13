@@ -36,6 +36,9 @@
   <link rel="stylesheet" href="/css/map-tools.css?v=2">
   <link rel="stylesheet" href="/css/vehicle-popup.css?v=1">
   <link rel="stylesheet" href="/css/weekly-report.css?v=1">
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.185.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.185.0/examples/jsm/" } }
+</script>
 </head>
 <body class="dark">
   <!-- Login Screen -->
@@ -190,6 +193,7 @@
     <!-- Map Area -->
     <div id="map-container">
       <div id="map"></div>
+      <div id="map3d" hidden></div>
       <button id="sidebar-open-btn" onclick="toggleSidebar()" title="Arată lista de vehicule" aria-label="Arată lista"><i class="fas fa-chevron-right"></i><span>Listă</span></button>
 
       <!-- Pill traseu activ -->
@@ -7073,6 +7077,7 @@ const pozitii = await r.json();</code></pre>
 
       L.control.zoom({ position: 'topright' }).addTo(map);
       addMapViewControls(); // butoane dreapta-sus: grupare pe hotspot + săgeți/pictograme
+      if (mapMarkerStyle === '3d') setTimeout(function () { try { enter3dMode(); } catch (e) {} }, 1500);
       if (map.attributionControl) map.attributionControl.setPosition('bottomleft'); // în stânga → nu se suprapune cu FAB-ul (dreapta-jos)
 
       // Plăcuțele cu numărul de înmatriculare se ascund la zoom foarte mic (hartă de țară) ca să nu se aglomereze.
@@ -7652,7 +7657,7 @@ const pozitii = await r.json();</code></pre>
           L.DomEvent.on(_btnGroup, 'click', function (e) { L.DomEvent.stop(e); toggleMapGroup(); });
           L.DomEvent.on(_btnStyle, 'click', function (e) { L.DomEvent.stop(e); toggleMapStyle(); });
           L.DomEvent.on(_btnLayers, 'click', function (e) { L.DomEvent.stop(e); toggleLayerMenu(); });
-          L.DomEvent.on(_btnLocate, 'click', function (e) { L.DomEvent.stop(e); webLocateMe(); });
+          L.DomEvent.on(_btnLocate, 'click', function (e) { L.DomEvent.stop(e); doLocate(); });
           L.DomEvent.disableClickPropagation(div);
           setTimeout(updateViewControlUI, 0);
           return div;
@@ -7681,6 +7686,127 @@ const pozitii = await r.json();</code></pre>
         if (window.raxToast) raxToast(err && err.code === 1 ? 'Acces la locație refuzat' : 'Nu am putut obține poziția', 'error');
       }, { enableHighAccuracy: true, timeout: 10000 });
     }
+
+    // ═══ Hartă 3D REALĂ (MapLibre-GL + modele 3D) — activată de starea „3D" a comutatorului ═══
+    // ADITIV: harta Leaflet 2D rămâne NEATINSĂ când 3D e oprit. MapLibre se inițializează O SINGURĂ
+    // dată (la prima intrare în 3D), apoi doar se ascunde/afișează. O singură hartă e vie la un moment dat.
+    var _ml3dMap = null, _ml3dLayer = null, _ml3dInited = false, _libs3dPromise = null, _ml3dViewer = null, _ml3dWatch = null;
+    var map3dOn = false;
+    var MAP_STYLE_3D = {
+      version: 8,
+      sources: { osm: { type: 'raster', tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '© OpenStreetMap' } },
+      layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+    };
+
+    // Încarcă LENEȘ (la prima activare) MapLibre-GL (UMD) + modulul nostru ESM (three via import-map).
+    function ensure3dLibs() {
+      if (_libs3dPromise) return _libs3dPromise;
+      _libs3dPromise = new Promise(function (resolve, reject) {
+        var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css'; document.head.appendChild(css);
+        var s = document.createElement('script'); s.src = 'https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js';
+        s.onload = function () {
+          import('/js/vehicle3d-web.js?v=1').then(function () {
+            if (window.maplibregl && window.RA3D) resolve(); else reject(new Error('3d libs missing'));
+          }).catch(reject);
+        };
+        s.onerror = function () { reject(new Error('maplibre load')); };
+        document.head.appendChild(s);
+      });
+      return _libs3dPromise;
+    }
+
+    // Împinge flota curentă (din `devices`) în stratul 3D. No-op dacă 3D e oprit.
+    function push3dData() {
+      if (!map3dOn || !_ml3dLayer) return;
+      try {
+        var list = []; devices.forEach(function (d) { list.push(d); });
+        var mins = (currentUser && currentUser.offline_minutes) || 65;
+        _ml3dLayer.setVisible(true);
+        _ml3dLayer.sync(list, true, mins);
+      } catch (e) {}
+    }
+
+    // Centrează harta 3D pe flotă (o dată, la intrare).
+    function fit3dToFleet() {
+      if (!_ml3dMap) return;
+      var pts = []; devices.forEach(function (d) { if (d && d.latitude != null && d.longitude != null) pts.push([d.longitude, d.latitude]); });
+      if (!pts.length) return;
+      if (pts.length === 1) { _ml3dMap.jumpTo({ center: pts[0], zoom: 15 }); return; }
+      try { var b = new maplibregl.LngLatBounds(pts[0], pts[0]); pts.forEach(function (p) { b.extend(p); }); _ml3dMap.fitBounds(b, { padding: 60, maxZoom: 15, duration: 0 }); } catch (e) {}
+    }
+
+    function enter3dMode() {
+      var el = document.getElementById('map3d'); if (!el) return;
+      map3dOn = true;
+      el.hidden = false; el.classList.add('on');
+      ensure3dLibs().then(function () {
+        if (!_ml3dInited) {
+          _ml3dInited = true;
+          try {
+            _ml3dMap = new maplibregl.Map({ container: 'map3d', style: MAP_STYLE_3D, center: [25, 45.9], zoom: 5.2, attributionControl: false, pitchWithRotate: true, dragRotate: true, maxPitch: 70, canvasContextAttributes: { antialias: true } });
+            _ml3dMap.touchZoomRotate.enableRotation(); _ml3dMap.touchPitch.enable();
+            _ml3dMap.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: true, showCompass: true }), 'bottom-left');
+            _ml3dMap.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+            _ml3dMap.on('load', function () {
+              try {
+                _ml3dMap.addSource('ofm', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+                _ml3dMap.addLayer({ id: '3d-buildings', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 14, filter: ['!=', ['get', 'hide_3d'], true], paint: { 'fill-extrusion-color': '#c9cfd8', 'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15.5, ['coalesce', ['get', 'render_height'], 5]], 'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0], 'fill-extrusion-opacity': 0.9 } });
+              } catch (e) {}
+              try { _ml3dLayer = window.RA3D.createVehicleLayer(); _ml3dMap.addLayer(_ml3dLayer); } catch (e) {}
+              try { fit3dToFleet(); } catch (e) {}
+              push3dData();
+              setTimeout(function () { try { _ml3dMap.resize(); } catch (e) {} }, 120);
+            });
+            // click pe butonul „Detalii →" din balon → același flux ca pe Leaflet
+            el.addEventListener('click', function (ev) {
+              var btn = ev.target && ev.target.closest ? ev.target.closest('.vmpop-btn') : null;
+              if (btn) { ev.stopPropagation(); var imei = btn.getAttribute('data-imei'); if (imei) { if (window.innerWidth > 768 && window.openVehiclePopup) window.openVehiclePopup(imei); else selectDevice(imei); } }
+            });
+          } catch (e) {
+            if (window.raxToast) raxToast('Nu am putut porni harta 3D', 'error');
+            map3dOn = false; el.hidden = true; el.classList.remove('on');
+          }
+        } else {
+          try { _ml3dMap.resize(); } catch (e) {}
+          try { if (_ml3dMap.getLayer('3d-buildings')) _ml3dMap.setLayoutProperty('3d-buildings', 'visibility', 'visible'); } catch (e) {}
+          push3dData();
+        }
+      }).catch(function () {
+        if (window.raxToast) raxToast('Nu am putut încărca harta 3D', 'error');
+        map3dOn = false; el.hidden = true; el.classList.remove('on');
+        // revenire la Leaflet: dacă eram pe „3D", cădem înapoi pe „pictograme"
+        if (mapMarkerStyle === '3d') { mapMarkerStyle = 'icons'; try { localStorage.setItem('mapStyle', 'icons'); updateViewControlUI(); rerenderAllMarkers(); } catch (e) {} }
+      });
+    }
+
+    function leave3dMode() {
+      map3dOn = false;
+      var el = document.getElementById('map3d');
+      try { if (_ml3dLayer) _ml3dLayer.setVisible(false); } catch (e) {}
+      try { if (_ml3dMap && _ml3dMap.getLayer('3d-buildings')) _ml3dMap.setLayoutProperty('3d-buildings', 'visibility', 'none'); } catch (e) {}
+      if (el) { el.classList.remove('on'); el.hidden = true; }
+      try { if (map && map.invalidateSize) map.invalidateSize(); } catch (e) {}
+    }
+
+    // „Poziția mea" pe harta 3D (geolocation browser → punct albastru pe MapLibre)
+    function webLocateMe3d() {
+      if (!navigator.geolocation || !_ml3dMap) return;
+      var show = function (lat, lng, center) {
+        if (!_ml3dViewer) {
+          var d = document.createElement('div'); d.className = 'viewer-me'; d.innerHTML = '<div class="viewer-me-pulse"></div><div class="viewer-me-dot"></div>';
+          _ml3dViewer = new maplibregl.Marker({ element: d, anchor: 'center' }).setLngLat([lng, lat]).addTo(_ml3dMap);
+        } else _ml3dViewer.setLngLat([lng, lat]);
+        if (center) _ml3dMap.easeTo({ center: [lng, lat], zoom: Math.max(_ml3dMap.getZoom(), 16), duration: 600 });
+      };
+      navigator.geolocation.getCurrentPosition(function (p) {
+        show(p.coords.latitude, p.coords.longitude, true);
+        if (_ml3dWatch == null) _ml3dWatch = navigator.geolocation.watchPosition(function (q) { show(q.coords.latitude, q.coords.longitude, false); }, function () {}, { enableHighAccuracy: true });
+      }, function (err) { if (window.raxToast) raxToast(err && err.code === 1 ? 'Acces la locație refuzat' : 'Nu am putut obține poziția', 'error'); }, { enableHighAccuracy: true, timeout: 10000 });
+    }
+
+    // dispecer buton locate: în 3D folosește MapLibre, altfel Leaflet
+    function doLocate() { if (map3dOn && _ml3dMap) webLocateMe3d(); else webLocateMe(); }
+
 
     function updateViewControlUI() {
       if (_btnGroup) {
@@ -7735,6 +7861,7 @@ const pozitii = await r.json();</code></pre>
       localStorage.setItem('mapStyle', mapMarkerStyle);
       updateViewControlUI();                 // întâi UI-ul (sigur) — butonul reflectă mereu starea
       try { rerenderAllMarkers(); } catch (e) { if (window.console) console.warn('rerenderAllMarkers:', e); }
+      try { if (mapMarkerStyle === '3d') { enter3dMode(); } else if (_ml3dMap) { leave3dMode(); } } catch (e) {}
     }
 
     function toggleMapGroup() {
@@ -8172,6 +8299,7 @@ const pozitii = await r.json();</code></pre>
     function removeVehicleFromMap(imei) {
       try { if (markers && markers.has(imei)) { map.removeLayer(markers.get(imei)); markers.delete(imei); } } catch (e) {}
       if (devices && devices.has(imei)) devices.delete(imei);
+      if (map3dOn && _ml3dLayer) { try { push3dData(); } catch (e) {} }
       if (typeof selectedImei !== 'undefined' && selectedImei === imei) selectedImei = null;
       if (typeof updateDeviceList === 'function') updateDeviceList();
       if (typeof scheduleGrouping === 'function') scheduleGrouping();
@@ -8192,6 +8320,7 @@ const pozitii = await r.json();</code></pre>
         if (data.group_name == null) data.group_name = _prev.group_name;
       }
       devices.set(imei, data);
+      if (map3dOn && _ml3dLayer) { try { push3dData(); } catch (e) {} }
 
       const isSelected = imei === selectedImei;
       const isOnline = isDeviceOnline(data);
