@@ -64,10 +64,15 @@ function todo(p) { const i = io(p); if (i.total_odometer == null) return null; c
 function _odoNow(io) { if (!io) return null; let km = io.can_total_mileage != null ? parseFloat(io.can_total_mileage) : (io.can_total_mileage_counted != null ? parseFloat(io.can_total_mileage_counted) : (io.total_odometer != null ? parseFloat(io.total_odometer) / 1000 : null)); return (km != null && isFinite(km) && km > 0) ? Math.round(km) : null; }
 // Adresă din cache (reverse-geocode); fallback pe coordonate dacă nu e încă rezolvată.
 function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = geocode.peek(p.latitude, p.longitude); if (a) return a; } return loc(p); }
-function fuelL(p) { const i = io(p); const v = (typeof i.fuel_level_liters === 'number') ? i.fuel_level_liters : i.can_fuel_level_liters; return (typeof v === 'number' && v > 0) ? v : null; }
+// Nivel rezervor (L). `fuel_level_liters` e câmpul REZOLVAT de server (din sonde, deja în litri) — îl citim
+// tolerant la string (valorile CAN vin adesea ca stringuri numerice). Fallback `can_fuel_level_liters` DOAR dacă
+// e deja număr (normalizat /10 la ingestie); nu forțăm parseFloat pe string acolo (ar ieși ×10).
+function fuelL(p) { const i = io(p); if (i.fuel_level_liters != null) { const n = parseFloat(i.fuel_level_liters); if (isFinite(n) && n > 0) return n; } return (typeof i.can_fuel_level_liters === 'number' && i.can_fuel_level_liters > 0) ? i.can_fuel_level_liters : null; }
 // Contor CUMULATIV de combustibil consumat (CAN „total fuel used", L). Monoton crescător → delta = consum EXACT,
 // chiar și pe distanțe scurte unde nivelul rezervorului nu se mișcă vizibil. Sursă PREFERATĂ pentru consum.
-function fuelCumul(p) { const i = io(p); const v = (typeof i.can_fuel_consumed === 'number') ? i.can_fuel_consumed : (typeof i.can_fuel_consumed_counted === 'number' ? i.can_fuel_consumed_counted : (typeof i.can_engine_total_fuel_used === 'number' ? i.can_engine_total_fuel_used : null)); return (typeof v === 'number' && v > 0) ? v : null; }
+// IO-urile CAN vin adesea ca STRING numeric (ca `can_total_mileage` → vezi _odoFromIo): citim cu != null + parseFloat,
+// altfel `typeof === 'number'` respinge stringul și contorul e ignorat (sursa cădea mereu pe Senzor/Estimat).
+function fuelCumul(p) { const i = io(p); const raw = i.can_fuel_consumed != null ? i.can_fuel_consumed : (i.can_fuel_consumed_counted != null ? i.can_fuel_consumed_counted : (i.can_engine_total_fuel_used != null ? i.can_engine_total_fuel_used : null)); const v = raw != null ? parseFloat(raw) : NaN; return (isFinite(v) && v > 0) ? v : null; }
 function ignOn(p) { return io(p).ignition === 1; }
 // Turația CAN (RON: „can_rpm" în raportul CAN, unele parsere „can_engine_rpm"). null dacă lipsește.
 function canRpm(p) { const i = io(p); return (typeof i.can_rpm === 'number') ? i.can_rpm : (typeof i.can_engine_rpm === 'number' ? i.can_engine_rpm : null); }
