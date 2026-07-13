@@ -1134,7 +1134,7 @@
     .flatpickr-time input:hover, .flatpickr-time input:focus, .flatpickr-time .flatpickr-am-pm:hover, .flatpickr-time .flatpickr-am-pm:focus { background:var(--bg-dark); }
     .flatpickr-time .numInputWrapper span.arrowUp:after { border-bottom-color:var(--text-muted); }
     .flatpickr-time .numInputWrapper span.arrowDown:after { border-top-color:var(--text-muted); }
-    .rep-chip { background:var(--bg-dark); border:1px solid var(--border); border-radius:8px; padding:8px 12px; }
+    .rep-chip { background:var(--bg-dark); border:1px solid var(--border); border-radius:8px; padding:8px 14px; text-align:center; min-width:120px; }
     .rep-chip .v { font-size:18px; font-weight:700; color:var(--accent); }
     .rep-chip .l { font-size:11px; color:var(--text-muted); }
     .rep-cats { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:12px; }
@@ -2142,7 +2142,7 @@ const pozitii = await r.json();</code></pre>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
         </div>
         </div><!-- /rep-controls -->
-        <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
+        <div id="rep-summary" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;"></div>
         <div id="rep-charts"></div>
         <div id="rep-vehview" style="margin-bottom:10px;"></div>
         <div id="rep-filter-bar"></div>

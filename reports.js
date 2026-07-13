@@ -915,13 +915,13 @@ async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu — jurnal 
 
 async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carburant (sumar)
   const cm = await _consumptionMap(db, imeis, from, to, opts);
-  const rows = []; let tCons = 0, tDist = 0, nEst = 0; const vCons = [], vPer = [];
+  const rows = []; let tCons = 0, tDist = 0; const vCons = [], vPer = [];
   for (const imei of imeis) {
     const m = cm[imei]; if (!m) continue;
     const nm = label(devMap, imei);
     if (!m.hasFuel && m.consumed <= 0) { rows.push([nm, '—', '—', '—', m.dist.toFixed(0), '—', '—', '—']); continue; }
     rows.push([ nm, m.first != null ? m.first.toFixed(0) + ' L' : '—', m.last != null ? m.last.toFixed(0) + ' L' : '—', Math.round(m.refueled) + ' L', m.dist.toFixed(0), m.consumed.toFixed(0) + ' L', m.per100 != null ? m.per100.toFixed(1) : '—', m.source ]);
-    tCons += m.consumed; tDist += m.dist; vCons.push([nm, m.consumed]); if (m.per100) vPer.push([nm, m.per100]); if (m.estimated) nEst++;
+    tCons += m.consumed; tDist += m.dist; vCons.push([nm, m.consumed]); if (m.per100) vPer.push([nm, m.per100]);
   }
   const topCons = _topN(vCons, 10), topPer = _topN(vPer, 10);
   const charts = vCons.length ? [
@@ -930,7 +930,7 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
   ] : [];
   // Sumarul pe FOAIE SEPARATĂ în Excel (summarySheet), nu îngrămădit la baza tabelului. Online rămâne ca chips.
   return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km', 'Sursă'], rows,
-    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—', 'Vehicule cu consum estimat': nEst }, charts, summarySheet: true };
+    summary: { 'Total vehicule': imeis.length, 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—' }, charts, summarySheet: true };
 }
 
 // Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea" reală a CAN-ului: contorul de km e adesea
