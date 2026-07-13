@@ -65,11 +65,18 @@ function xlWriteTable(ws, titleLines, columns, rows, logoId) {
 function xlWriteLegend(ws, legend, startRow, ncol) {
   let r = startRow;
   const n = Math.max(2, ncol);
+  // Lățimea zonei îmbinate (col 2..n) în „unități caracter" — ca să estimăm câte linii se înfășoară și să setăm
+  // ÎNĂLȚIMEA rândului. Excel NU auto-fit-ează înălțimea la celule îmbinate → fără asta, liniile 2+ ale unei
+  // descrieri lungi se taie la deschidere (rezolvă constatarea review-ului pt. „Estimat (nivel CAN)", 111 car.).
+  let mergedW = 0; for (let c = 2; c <= n; c++) { const w = ws.getColumn(c).width; mergedW += (w && w > 0) ? w : 10; }
+  const perLine = Math.max(20, mergedW - 2);
   if (legend.title) { ws.mergeCells(r, 1, r, n); const c = ws.getCell(r, 1); c.value = legend.title; c.font = { bold: true, size: 11, color: { argb: 'FF444444' } }; r++; }
   for (const it of (legend.items || [])) {
     const term = ws.getCell(r, 1); term.value = it[0]; term.font = { bold: true };
     ws.mergeCells(r, 2, r, n);
     const desc = ws.getCell(r, 2); desc.value = it[1]; desc.font = { color: { argb: 'FF555555' } }; desc.alignment = { wrapText: true, vertical: 'top' };
+    const lines = Math.max(1, Math.ceil(String(it[1] || '').length / perLine));
+    ws.getRow(r).height = 14 * lines + 3; // înălțime explicită (celulele îmbinate nu se auto-fit-ează)
     r++;
   }
   return r;
@@ -113,7 +120,9 @@ async function toXlsx(report) {
   // Sumar pe FOAIE SEPARATĂ (opt-in prin report.summarySheet) — KPI-urile flotei, curat, ca primă foaie (nu îngrămădit la baza tabelului).
   if (report.summarySheet && report.summary && Object.keys(report.summary).length) {
     const period = { text: report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to)), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
-    const sumRows = Object.entries(report.summary).map(([k, v]) => [k, (v == null ? '' : v)]);
+    // Valorile pur numerice (inclusiv „8.8" din toFixed) devin NUMERE reale → Excel le aliniază la dreapta
+    // ca pe celelalte cifre (751/2/66); textul real („—", etichete) rămâne neschimbat.
+    const sumRows = Object.entries(report.summary).map(([k, v]) => { const n = _summableNum(v); return [k, n != null ? n : (v == null ? '' : v)]; });
     xlWriteTable(wb.addWorksheet('Sumar'), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], ['Indicator', 'Valoare'], sumRows, logoId);
   }
   const ws = wb.addWorksheet((report.label || 'Raport').replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Raport');
