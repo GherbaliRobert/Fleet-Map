@@ -6,7 +6,6 @@
 import * as THREE from 'three';
 import maplibregl from 'maplibre-gl';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Position } from '../api/endpoints';
 import { statusOf } from '../lib/status';
@@ -77,7 +76,6 @@ function startLoading() {
           // Conversia FBX→GLB lasă fețe cu winding inconsecvent → back-face culling face „găuri" (model rupt).
           // DoubleSide le desenează pe toate; forțăm opac + depth ca să nu se vadă prin ele.
           m.side = THREE.DoubleSide; m.transparent = false; m.opacity = 1; m.depthWrite = true; m.depthTest = true;
-          if ('envMapIntensity' in m) m.envMapIntensity = 0.7; // reflexii moi din mediu
           m.needsUpdate = true;
           if (isWheel) wheelMats.add(m); vByMat.set(m, (vByMat.get(m) || 0) + vc);
         }
@@ -106,10 +104,9 @@ function buildVehicleMesh(cat: string, color: string): THREE.Group {
       clone.traverse((o: any) => {
         if (o.isMesh && o.material === paint) {           // doar caroseria → vopsea lucioasă în culoarea stării
           const m = o.material.clone(); m.color = col.clone();
-          if ('emissive' in m) m.emissive = col.clone().multiplyScalar(0.06);
-          if ('metalness' in m) m.metalness = 0.35;
-          if ('roughness' in m) m.roughness = 0.32;   // lucios → reflexii = aspect fin
-          if ('envMapIntensity' in m) m.envMapIntensity = 0.95;
+          if ('emissive' in m) m.emissive = col.clone().multiplyScalar(0.05);
+          if ('metalness' in m) m.metalness = 0.0;
+          if ('roughness' in m) m.roughness = 0.62;   // mat, culoare solidă (fără reflexii spălăcite)
           o.material = m;
         }
       });
@@ -203,12 +200,11 @@ export function createVehicleLayer(): VehicleLayer {
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl as any, antialias: true });
       renderer.autoClear = false;
       renderer.outputColorSpace = THREE.SRGBColorSpace; // culori corecte pentru texturile glTF
-      // Mediu „studio" (RoomEnvironment) → reflexii moi pe vopsea = aspect fin/premium, nu mat/plat.
-      const pmrem = new THREE.PMREMGenerator(renderer);
-      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-      pmrem.dispose();
-      scene.add(new THREE.HemisphereLight(0xffffff, 0x99a2ad, 0.9)); // env-ul dă deja fill → lumini directe mai blânde
-      const dir = new THREE.DirectionalLight(0xffffff, 1.1); dir.position.set(0.6, 1.0, 0.7); scene.add(dir);
+      // FĂRĂ mediu/reflexii (spălăceau culorile) → doar lumini directe, culori solide + shading neted.
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa3ad, 1.3));
+      scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+      const dir = new THREE.DirectionalLight(0xffffff, 1.25); dir.position.set(0.6, 1.0, 0.7); scene.add(dir);
+      const dir2 = new THREE.DirectionalLight(0xffffff, 0.5); dir2.position.set(-0.6, 0.4, -0.5); scene.add(dir2);
       map.on('zoom', rescale); map.on('pitch', rescale);
     },
     setVisible(v: boolean) { visible = v; if (mapRef) mapRef.triggerRepaint(); },
