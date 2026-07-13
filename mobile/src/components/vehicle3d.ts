@@ -6,6 +6,8 @@
 import * as THREE from 'three';
 import maplibregl from 'maplibre-gl';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Position } from '../api/endpoints';
 import { statusOf } from '../lib/status';
 import sedanUrl from '../assets/vehicles/sedan.glb?url';
@@ -65,13 +67,18 @@ function startLoading() {
       g.scene.traverse((o: any) => {
         if (!o.isMesh) return;
         const isWheel = /wheel|tire|tyre|rim/i.test((o.name || '') + (o.parent?.name || ''));
+        // Normale NETEDE pe caroserie (nu pe roți) → suprafețe fine, fără fațete. Geometria e neindexată
+        // după export → o re-indexăm (mergeVertices) apoi recalculăm normalele mediate.
+        if (!isWheel && o.geometry) { try { const merged = mergeVertices(o.geometry, 1e-4); merged.computeVertexNormals(); o.geometry = merged; } catch {} }
         const vc = o.geometry?.attributes?.position?.count || 0;
         const mats = Array.isArray(o.material) ? o.material : [o.material];
         for (const m of mats) {
           if (!m) continue;
           // Conversia FBX→GLB lasă fețe cu winding inconsecvent → back-face culling face „găuri" (model rupt).
           // DoubleSide le desenează pe toate; forțăm opac + depth ca să nu se vadă prin ele.
-          m.side = THREE.DoubleSide; m.transparent = false; m.opacity = 1; m.depthWrite = true; m.depthTest = true; m.needsUpdate = true;
+          m.side = THREE.DoubleSide; m.transparent = false; m.opacity = 1; m.depthWrite = true; m.depthTest = true;
+          if ('envMapIntensity' in m) m.envMapIntensity = 0.7; // reflexii moi din mediu
+          m.needsUpdate = true;
           if (isWheel) wheelMats.add(m); vByMat.set(m, (vByMat.get(m) || 0) + vc);
         }
       });
@@ -97,11 +104,12 @@ function buildVehicleMesh(cat: string, color: string): THREE.Group {
     if (paint) {
       const col = new THREE.Color(color);
       clone.traverse((o: any) => {
-        if (o.isMesh && o.material === paint) {           // doar caroseria → culoarea stării
+        if (o.isMesh && o.material === paint) {           // doar caroseria → vopsea lucioasă în culoarea stării
           const m = o.material.clone(); m.color = col.clone();
-          if ('emissive' in m) m.emissive = col.clone().multiplyScalar(0.14);
-          if ('metalness' in m) m.metalness = 0.25;
-          if ('roughness' in m) m.roughness = 0.55;
+          if ('emissive' in m) m.emissive = col.clone().multiplyScalar(0.06);
+          if ('metalness' in m) m.metalness = 0.35;
+          if ('roughness' in m) m.roughness = 0.32;   // lucios → reflexii = aspect fin
+          if ('envMapIntensity' in m) m.envMapIntensity = 0.95;
           o.material = m;
         }
       });
@@ -192,13 +200,15 @@ export function createVehicleLayer(): VehicleLayer {
       mapRef = map;
       camera = new THREE.Camera();
       scene = new THREE.Scene();
-      scene.add(new THREE.HemisphereLight(0xffffff, 0x99a2ad, 1.5)); // cer/sol → fill uniform, fără fețe negre
-      scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-      const dir = new THREE.DirectionalLight(0xffffff, 1.5); dir.position.set(0.6, 1.0, 0.7); scene.add(dir);
-      const dir2 = new THREE.DirectionalLight(0xffffff, 0.6); dir2.position.set(-0.6, 0.4, -0.5); scene.add(dir2);
       renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl as any, antialias: true });
       renderer.autoClear = false;
       renderer.outputColorSpace = THREE.SRGBColorSpace; // culori corecte pentru texturile glTF
+      // Mediu „studio" (RoomEnvironment) → reflexii moi pe vopsea = aspect fin/premium, nu mat/plat.
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x99a2ad, 0.9)); // env-ul dă deja fill → lumini directe mai blânde
+      const dir = new THREE.DirectionalLight(0xffffff, 1.1); dir.position.set(0.6, 1.0, 0.7); scene.add(dir);
       map.on('zoom', rescale); map.on('pitch', rescale);
     },
     setVisible(v: boolean) { visible = v; if (mapRef) mapRef.triggerRepaint(); },
