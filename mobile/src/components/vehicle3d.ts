@@ -15,7 +15,8 @@ import busUrl from '../assets/vehicles/bus.glb?url';
 
 const HEX: Record<string, string> = { moving: '#22c55e', idle: '#eab308', stopped: '#ef4444', offline: '#9aa3ad' };
 // Mărime CONSTANTĂ PE ECRAN (ca un marker): mașina ~CAR_TARGET_PX px lungime la orice zoom.
-const CAR_TARGET_PX = 62;
+// Mic & discret — modelele mari, înclinate, se aglomerau și arătau grosolan.
+const CAR_TARGET_PX = 40;
 const CAR_LEN_M = 4.7; // lungimea de referință (mașina) în „metri"-model; restul cresc proporțional
 
 // Metri reali per pixel la zoom/latitudine (MapLibre = tile-uri 512px)
@@ -66,7 +67,13 @@ function startLoading() {
         const isWheel = /wheel|tire|tyre|rim/i.test((o.name || '') + (o.parent?.name || ''));
         const vc = o.geometry?.attributes?.position?.count || 0;
         const mats = Array.isArray(o.material) ? o.material : [o.material];
-        for (const m of mats) { if (!m) continue; if (isWheel) wheelMats.add(m); vByMat.set(m, (vByMat.get(m) || 0) + vc); }
+        for (const m of mats) {
+          if (!m) continue;
+          // Conversia FBX→GLB lasă fețe cu winding inconsecvent → back-face culling face „găuri" (model rupt).
+          // DoubleSide le desenează pe toate; forțăm opac + depth ca să nu se vadă prin ele.
+          m.side = THREE.DoubleSide; m.transparent = false; m.opacity = 1; m.depthWrite = true; m.depthTest = true; m.needsUpdate = true;
+          if (isWheel) wheelMats.add(m); vByMat.set(m, (vByMat.get(m) || 0) + vc);
+        }
       });
       let paint: any = null, max = -1;
       for (const [m, vc] of vByMat) { if (wheelMats.has(m)) continue; if (vc > max) { max = vc; paint = m; } }
@@ -101,11 +108,11 @@ function buildVehicleMesh(cat: string, color: string): THREE.Group {
     }
     g.add(clone);
   }
-  // Inel discret la sol — ajută la localizare/țintă de click, în aceeași culoare a stării
+  // Inel SUBȚIRE și discret la sol — doar un indiciu de stare/țintă, fără să aglomereze
   const len = MODEL_LEN[cat] || CAR_LEN_M;
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(len * 0.54, len * 0.64, 48),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }),
+    new THREE.RingGeometry(len * 0.5, len * 0.56, 48),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
   );
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; g.add(ring);
   return g;
@@ -132,7 +139,7 @@ export function createVehicleLayer(): VehicleLayer {
     // DISPARE. Plafonăm zoom-ul de dimensionare: dincolo de prag mașina crește pe ecran (normal când te
     // apropii de un vehicul), în loc să se micșoreze în unități-lume până la dispariție.
     const zoom = Math.min(mapRef.getZoom(), 20);
-    const tilt = 1 + (mapRef.getPitch() / 90) * 0.9; // compensăm turtirea din perspectivă la înclinare mare
+    const tilt = 1 + (mapRef.getPitch() / 90) * 0.3; // compensare MICĂ la înclinare (0.9 le umfla enorm)
     for (const r of rec.values()) {
       const targetMeters = CAR_TARGET_PX * tilt * metersPerPixel(zoom, r.lat);
       const s = r.unitScale * (targetMeters / CAR_LEN_M);
