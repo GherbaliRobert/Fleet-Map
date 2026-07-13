@@ -930,7 +930,7 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
   ] : [];
   // Sumarul pe FOAIE SEPARATĂ în Excel (summarySheet), nu îngrămădit la baza tabelului. Online rămâne ca chips.
   return { columns: ['Vehicul', 'Nivel start', 'Nivel final', 'Alimentat', 'Km', 'Consumat', 'L/100km', 'Sursă'], rows,
-    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—', 'Estimate (fără senzor)': nEst }, charts, summarySheet: true };
+    summary: { 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tDist), 'Mediu L/100km': tDist > 1 ? (tCons / tDist * 100).toFixed(1) : '—', 'Vehicule cu consum estimat': nEst }, charts, summarySheet: true };
 }
 
 // Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea" reală a CAN-ului: contorul de km e adesea
@@ -1371,7 +1371,9 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     let consumed = cumulOk ? cumulL : (sensorOk ? sensorL : (dist * cRoad / 100 + idleL));
     if (consumed < idleL) consumed = idleL;
     const per100 = dist > 1 ? +(consumed / dist * 100).toFixed(1) : null;
-    const source = cumulOk ? 'CAN' : (sensorOk ? 'Senzor' : 'Estimat'); // sursa consumului: contor CAN > senzor rezervor > estimare din fișă
+    // Sursa consumului, în ordinea încrederii: contor cumulativ CAN > nivel rezervor plauzibil > are senzor de nivel
+    // CAN dar prea grosier pt. scăderi mici (consum estimat, dar mașina NU e oarbă) > fără nicio dată (pur din fișă).
+    const source = cumulOk ? 'CAN' : (sensorOk ? 'Senzor' : (hasFuel ? 'Estimat (nivel CAN)' : 'Estimat'));
     out[imei] = { dist, consumed, refueled, idleSec, idleL, estimated: !(cumulOk || sensorOk), source, hasFuel: hasFuel || cumulL != null, per100, price, first, last, fuelType: c.fuelType || null };
   }
   return out;
