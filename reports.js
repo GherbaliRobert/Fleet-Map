@@ -1367,7 +1367,9 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
     const sensorL = dropSum; // consum din nivel = suma scăderilor reale (gestionează alimentări/grad. automat)
     const sensorPer100 = (sensorL > 0 && dist > 1) ? (sensorL / dist * 100) : null;
-    const sensorOk = sensorL > 0 && dist > 1 && sensorPer100 >= 1.5 && sensorPer100 <= MAX_PER100;
+    // Prag minim 3 L/100km: sub atât pe distanță reală = ac „gros" (în trepte) care a ratat consum → NU-l credem,
+    // trecem pe estimare (evită cifre absurd de mici, gen 1.6 L/100km la Caddy). Contorul CAN cumulativ NU are pragul ăsta (e exact).
+    const sensorOk = sensorL > 0 && dist > 1 && sensorPer100 >= 3 && sensorPer100 <= MAX_PER100;
     let consumed = cumulOk ? cumulL : (sensorOk ? sensorL : (dist * cRoad / 100 + idleL));
     if (consumed < idleL) consumed = idleL;
     const per100 = dist > 1 ? +(consumed / dist * 100).toFixed(1) : null;
@@ -1606,8 +1608,9 @@ async function fuelStats(db, imeis, from, to, opts) {
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
     const sensorL = dropSum; // consum din nivel = suma scăderilor reale (gestionează alimentări/scăderi graduale automat)
     const sensorPer100 = (sensorL > 0 && dist > 1) ? (sensorL / dist * 100) : null;
-    // Senzorul de nivel e „de încredere" doar dacă dă consum > 0 pe distanță reală și un L/100km plauzibil (filtrăm zgomotul).
-    const sensorOk = sensorL > 0 && dist > 1 && sensorPer100 >= 1.5 && sensorPer100 <= MAX_PER100;
+    // Senzorul de nivel e „de încredere" doar dacă dă consum > 0 pe distanță reală și un L/100km plauzibil ≥3
+    // (sub atât = ac grosier care a ratat consum → estimăm). Ține pasul cu _consumptionMap (raportul Consum carburant).
+    const sensorOk = sensorL > 0 && dist > 1 && sensorPer100 >= 3 && sensorPer100 <= MAX_PER100;
     // Estimare din config (sau implicit pe tip) + km + ralanti — folosită când nu există nici contor, nici senzor fiabil.
     const estL = dist * cRoad / 100 + idleL;
     let liters = cumulOk ? cumulL : (sensorOk ? sensorL : estL);
