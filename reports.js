@@ -75,7 +75,7 @@ function fuelL(p) { const i = io(p); if (i.fuel_level_liters != null) { const n 
 function fuelCumul(p) { const i = io(p); const raw = i.can_fuel_consumed != null ? i.can_fuel_consumed : (i.can_fuel_consumed_counted != null ? i.can_fuel_consumed_counted : (i.can_engine_total_fuel_used != null ? i.can_engine_total_fuel_used : null)); const v = raw != null ? parseFloat(raw) : NaN; return (isFinite(v) && v > 0) ? v : null; }
 function ignOn(p) { return io(p).ignition === 1; }
 // Turația CAN (RON: „can_rpm" în raportul CAN, unele parsere „can_engine_rpm"). null dacă lipsește.
-function canRpm(p) { const i = io(p); return (typeof i.can_rpm === 'number') ? i.can_rpm : (typeof i.can_engine_rpm === 'number' ? i.can_engine_rpm : null); }
+function canRpm(p) { const i = io(p); const v = i.can_rpm != null ? i.can_rpm : (i.can_engine_rpm != null ? i.can_engine_rpm : null); const n = v != null ? parseFloat(v) : NaN; return isFinite(n) ? n : null; } // string-tolerant (valorile CAN pot veni ca string)
 // Motor pornit dacă RPM-ul CAN o arată (>300) SAU contactul e ON. RPM se ADAUGĂ ca semnal (prinde
 // contactul nesigur), NU înlocuiește — altfel o mașină care trimite can_rpm=0/nesigur ar rămâne nedetectată.
 function engineRunning(p) { return canRpm(p) > 300 || ignOn(p); }
@@ -987,6 +987,124 @@ async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN (snapshot u
   return { columns: ['Vehicul', 'Moment', 'Combustibil', 'RPM', 'Km CAN (bord)', 'CAN văzut la', 'Km „counted"', 'Odometru GPS', 'Sarcină axe', 'Erori DTC'], rows, summary: { 'Vehicule': rows.length } };
 }
 
+// ── Rapoarte CAN/FMS: Supraturații · PTO · Ore motor (gol/sarcină) ─────────────────────────────────
+async function rOverRev(db, imeis, from, to, opts, devMap) { // Supraturații — turația CAN peste prag
+  const RPM_MAX = opts.rpmMax || 2500;
+  const rows = [], worstPts = []; let fleetEvents = 0;
+  for (const imei of imeis) {
+    const nm = label(devMap, imei);
+    const pts = await history(db, imei, from, to);
+    let prevTs = null, over = false, count = 0, overSec = 0, maxRpm = 0, worst = null, hadRpm = false;
+    for (const p of pts) {
+      const rpm = canRpm(p);
+      if (rpm == null) { prevTs = null; over = false; continue; }
+      hadRpm = true; if (rpm > maxRpm) maxRpm = rpm;
+      const isOver = rpm > RPM_MAX;
+      if (isOver && !over) count++;                                   // front crescător = supraturație nouă
+      if (isOver && prevTs != null) { const dt = (t(p) - prevTs) / 1000; if (dt > 0 && dt <= 300) overSec += dt; }
+      if (isOver && (worst == null || rpm > worst.rpm)) worst = { rpm, ts: p.timestamp, p };
+      over = isOver; prevTs = t(p);
+    }
+    if (!hadRpm) { rows.push([nm, 'Fără RPM', '—', '—', '—', '—']); worstPts.push(null); continue; }
+    if (!count) { rows.push([nm, 0, fmtDur(0), maxRpm ? _grp(maxRpm) + ' rpm' : '—', '—', '—']); worstPts.push(null); continue; }
+    fleetEvents += count;
+    rows.push([nm, count, fmtDur(Math.round(overSec)), _grp(maxRpm) + ' rpm', fmtTs(worst.ts), loc(worst.p)]);
+    worstPts.push(worst.p);
+  }
+  if (geocode && geocode.warm) { const c = worstPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {} } }
+  rows.forEach((r, i) => { if (worstPts[i]) r[5] = addr(worstPts[i]); });
+  const sk = v => (typeof v === 'number' ? v : -1);
+  rows.sort((a, b) => sk(b[1]) - sk(a[1]));                          // cele mai multe supraturații sus
+  return {
+    columns: ['Vehicul', 'Supraturații', 'Timp', 'RPM max', 'Ultima', 'Locație'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Cu supraturații': rows.filter(r => typeof r[1] === 'number' && r[1] > 0).length, 'Supraturații (total)': fleetEvents, 'Prag': RPM_MAX + ' rpm' },
+    summarySheet: true,
+    legend: { title: 'Supraturații — ce înseamnă', items: [
+      ['Supraturație', 'De câte ori turația a depășit ' + RPM_MAX + ' rpm — condus agresiv, treaptă greșită sau uzură de motor.'],
+      ['Timp', 'Cât timp total a stat motorul peste prag.'],
+      ['Fără RPM', 'Mașina nu raportează turația prin CAN — nu poate fi evaluată.']
+    ] }
+  };
+}
+
+async function rPto(db, imeis, from, to, opts, devMap) { // PTO — priza de putere (macara, basculă, frigorific…)
+  const rows = [], lastPts = []; let fleetOn = 0;
+  for (const imei of imeis) {
+    const nm = label(devMap, imei);
+    const pts = await history(db, imei, from, to);
+    let prevTs = null, on = false, count = 0, activeSec = 0, last = null, hadPto = false;
+    for (const p of pts) {
+      const v = io(p).can_pto_active;
+      if (v == null) { prevTs = null; on = false; continue; }
+      hadPto = true;
+      const isOn = (v === 1 || v === true || v === '1');
+      if (isOn && !on) count++;                                       // front crescător = activare nouă
+      if (isOn && prevTs != null) { const dt = (t(p) - prevTs) / 1000; if (dt > 0 && dt <= 3600) activeSec += dt; }
+      if (isOn) last = { ts: p.timestamp, p };
+      on = isOn; prevTs = t(p);
+    }
+    if (!hadPto) { rows.push([nm, 'Fără PTO', '—', '—', '—']); lastPts.push(null); continue; }
+    if (!count) { rows.push([nm, 0, fmtDur(0), '—', '—']); lastPts.push(null); continue; }
+    fleetOn += count;
+    rows.push([nm, count, fmtDur(Math.round(activeSec)), fmtTs(last.ts), loc(last.p)]);
+    lastPts.push(last.p);
+  }
+  if (geocode && geocode.warm) { const c = lastPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {} } }
+  rows.forEach((r, i) => { if (lastPts[i]) r[4] = addr(lastPts[i]); });
+  const sk = v => (typeof v === 'number' ? v : -1);
+  rows.sort((a, b) => sk(b[1]) - sk(a[1]));
+  return {
+    columns: ['Vehicul', 'Porniri PTO', 'Timp activ', 'Ultima activare', 'Locație'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Cu PTO': rows.filter(r => typeof r[1] === 'number' && r[1] > 0).length, 'Porniri (total)': fleetOn },
+    summarySheet: true,
+    legend: { title: 'PTO — priza de putere', items: [
+      ['PTO', 'Priza de putere antrenează un echipament (macara, basculă, betonieră, frigorific) — de regulă cu vehiculul oprit.'],
+      ['Porniri PTO', 'De câte ori a fost activată priza în perioadă.'],
+      ['Fără PTO', 'Mașina nu raportează starea PTO prin CAN (sau nu are PTO).']
+    ] }
+  };
+}
+
+async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: în gol (ralanti) vs în sarcină (muncă)
+  const rows = []; let tEng = 0, tIdle = 0;
+  for (const imei of imeis) {
+    const nm = label(devMap, imei);
+    const pts = await history(db, imei, from, to);
+    let prev = null, engineSec = 0, idleSec = 0, hadEngine = false;
+    for (const p of pts) {
+      const rpm = canRpm(p);
+      const on = ignOn(p) || (rpm != null && rpm > 300);              // motor pornit
+      if (on) hadEngine = true;
+      if (prev != null && prev.on && on) {
+        const dt = (t(p) - prev.ts) / 1000;
+        if (dt > 0 && dt <= 3600) {
+          engineSec += dt;
+          const moving = (p.speed || 0) > IDLE_SPEED;
+          const pv = io(p).can_pto_active, pto = (pv === 1 || pv === true || pv === '1');
+          if (!moving && !pto) idleSec += dt;                         // în gol = pornit, staționat, fără PTO
+        }
+      }
+      prev = { ts: t(p), on };
+    }
+    if (!hadEngine || engineSec < 1) { rows.push([nm, fmtDur(0), fmtDur(0), fmtDur(0), '—']); continue; }
+    const loadSec = Math.max(0, engineSec - idleSec), pctIdle = Math.round(idleSec / engineSec * 100);
+    tEng += engineSec; tIdle += idleSec;
+    rows.push([nm, fmtDur(Math.round(engineSec)), fmtDur(Math.round(idleSec)), fmtDur(Math.round(loadSec)), pctIdle + '%']);
+  }
+  const pk = r => { const n = parseFloat(r[4]); return isFinite(n) ? n : -1; };
+  rows.sort((a, b) => pk(b) - pk(a));                                 // cel mai mare % gol sus (irosire)
+  return {
+    columns: ['Vehicul', 'Ore motor', 'În gol', 'În sarcină', '% gol'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Ore motor (total)': fmtDur(Math.round(tEng)), 'În gol (total)': fmtDur(Math.round(tIdle)), '% gol flotă': tEng > 0 ? Math.round(tIdle / tEng * 100) + '%' : '—' },
+    summarySheet: true,
+    legend: { title: 'Ore motor — gol vs sarcină', items: [
+      ['În gol (ralanti)', 'Motor pornit, dar staționat și fără PTO — timp și combustibil irosite.'],
+      ['În sarcină', 'Motor pornit ȘI în lucru: în mers sau cu priza de putere activă.'],
+      ['% gol', 'Cât din timpul cu motorul pornit a fost irosit în gol.']
+    ] }
+  };
+}
+
 async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alerte declanșate)
   // Interogare scopată pe fereastră + vehicule (NU global LIMIT 2000) — altfel, peste 2000 alerte mai noi decât
   // fereastra, TOATE evenimentele din interval erau pierdute silențios (subraportare care se înrăutățește în timp).
@@ -1559,6 +1677,9 @@ const REPORTS = {
   costs:       { label: 'Costuri combustibil',    cat: 'consum',       desc: 'Banii cheltuiți pe carburant, pe fiecare vehicul și pe total.', fn: rCosts },
   emissions:   { label: 'Emisii CO₂',             cat: 'consum',       desc: 'Amprenta de carbon a flotei, calculată din consum.', fn: rEmissions },
   can:         { label: 'Date CAN',               cat: 'can',          desc: 'Citirile din calculatorul de bord: odometru, RPM, temperaturi.', fn: rCan },
+  overrev:     { label: 'Supraturații',           cat: 'can',          desc: 'De câte ori și cât timp turația a depășit pragul — condus agresiv / uzură motor.', fn: rOverRev },
+  pto:         { label: 'PTO (priză de putere)',  cat: 'can',          desc: 'Timp și porniri cu priza de putere activă (macara, basculă, frigorific).', fn: rPto },
+  enginehours: { label: 'Ore motor: gol / sarcină', cat: 'can',        desc: 'Orele motorului: ralanti irosit (gol) vs muncă efectivă (sarcină).', fn: rEngineHours },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   desc: 'Unde, când și cu cât s-a depășit limita de viteză.', fn: rSpeeding },
   geofence:    { label: 'Vizite în zone',         cat: 'evenimente',   desc: 'Intrările și ieșirile din zonele definite: când și cât a stat.', fn: rGeofence },
   hotspot:     { label: 'Raport Hotspot',         cat: 'evenimente',   desc: 'Locurile în care flota staționează cel mai des (hartă termică).', fn: rHotspot },
