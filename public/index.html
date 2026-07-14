@@ -7843,10 +7843,73 @@ const pozitii = await r.json();</code></pre>
       try { var b = new maplibregl.LngLatBounds(pts[0], pts[0]); pts.forEach(function (p) { b.extend(p); }); _ml3dMap.fitBounds(b, { padding: 60, maxZoom: 15, duration: 0 }); } catch (e) {}
     }
 
+    // ─── Instructaj „prima dată pe harta 3D" — carusel 3 pași, o SINGURĂ dată (gate localStorage) ───
+    function show3dTour() {
+      try { if (localStorage.getItem('ra3dTourSeen')) return; } catch (e) {}
+      if (document.getElementById('ra3d-tour')) return;
+      if (!document.getElementById('ra3d-tour-css')) {
+        var stt = document.createElement('style'); stt.id = 'ra3d-tour-css';
+        stt.textContent =
+          '#ra3d-tour{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;background:rgba(6,10,14,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:ra3dtf .2s ease;}'
+          + '@keyframes ra3dtf{from{opacity:0}to{opacity:1}}'
+          + '@keyframes ra3dtp{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}'
+          + '.ra3dt-card{width:min(92vw,420px);background:var(--bg-panel,#12161b);border:1px solid var(--border,#2a2f37);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.5);padding:26px 24px 20px;position:relative;animation:ra3dtp .25s ease;text-align:center;}'
+          + '.ra3dt-x{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-muted,#8a93a3);font-size:20px;cursor:pointer;line-height:1;padding:4px;}'
+          + '.ra3dt-x:hover{color:var(--text-primary,#fff);}'
+          + '.ra3dt-ic{width:72px;height:72px;border-radius:50%;margin:6px auto 16px;display:flex;align-items:center;justify-content:center;font-size:30px;color:#06210f;background:var(--accent,#3FE07D);box-shadow:0 8px 22px rgba(63,224,125,.35);}'
+          + '.ra3dt-title{font-size:19px;font-weight:800;color:var(--text-primary,#fff);margin:0 0 8px;}'
+          + '.ra3dt-desc{font-size:14px;line-height:1.55;color:var(--text-secondary,#c2c9d2);margin:0 auto 18px;max-width:330px;}'
+          + '.ra3dt-desc b{color:var(--text-primary,#fff);font-weight:700;}'
+          + '.ra3dt-dots{display:flex;gap:7px;justify-content:center;margin:0 0 18px;}'
+          + '.ra3dt-dot{width:7px;height:7px;border-radius:50%;background:var(--border,#3a3f47);transition:all .2s;}'
+          + '.ra3dt-dot.on{background:var(--accent,#3FE07D);width:20px;}'
+          + '.ra3dt-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;}'
+          + '.ra3dt-skip{background:none;border:none;color:var(--text-muted,#8a93a3);font-size:13px;font-weight:600;cursor:pointer;padding:8px 4px;font-family:inherit;}'
+          + '.ra3dt-skip:hover{color:var(--text-secondary,#c2c9d2);}'
+          + '.ra3dt-nav{display:flex;gap:8px;}'
+          + '.ra3dt-btn{border:none;border-radius:10px;padding:9px 16px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;}'
+          + '.ra3dt-back{background:var(--bg-dark,#1c2127);color:var(--text-primary,#fff);}'
+          + '.ra3dt-next{background:var(--accent,#3FE07D);color:#06210f;}';
+        document.head.appendChild(stt);
+      }
+      var SLIDES = [
+        { ic: 'fa-city', t: 'Bine ai venit pe harta 3D', d: 'Vezi vehiculele ca <b>modele 3D reale</b>, printre <b>clădiri 3D</b>. Camera se înclină pentru o perspectivă realistă a flotei.' },
+        { ic: 'fa-arrows-up-down-left-right', t: 'Rotește și înclină', d: 'Ține apăsat <b>click-dreapta</b> (sau <b>Ctrl + click</b>) și trage ca să <b>rotești și înclini</b> harta. Rotița mouse-ului dă zoom.' },
+        { ic: 'fa-location-crosshairs', t: 'Localizare, urmărire și focus', d: '📍 Vezi-ți <b>poziția</b> · 🎯 <b>urmărește</b> flota · apasă o mașină pentru <b>focus + detalii</b>. Dâra colorată arată pe unde a trecut recent.' }
+      ];
+      var i = 0;
+      var ov = document.createElement('div'); ov.id = 'ra3d-tour';
+      ov.innerHTML = '<div class="ra3dt-card" role="dialog" aria-modal="true">'
+        + '<button class="ra3dt-x" aria-label="Închide">&times;</button>'
+        + '<div class="ra3dt-ic"><i class="fas"></i></div>'
+        + '<h3 class="ra3dt-title"></h3><p class="ra3dt-desc"></p>'
+        + '<div class="ra3dt-dots"></div>'
+        + '<div class="ra3dt-foot"><button class="ra3dt-skip">Sări peste</button>'
+        + '<div class="ra3dt-nav"><button class="ra3dt-btn ra3dt-back" style="display:none">Înapoi</button>'
+        + '<button class="ra3dt-btn ra3dt-next">Mai departe</button></div></div></div>';
+      document.body.appendChild(ov);
+      var icEl = ov.querySelector('.ra3dt-ic i'), tEl = ov.querySelector('.ra3dt-title'), dEl = ov.querySelector('.ra3dt-desc'),
+        dotsEl = ov.querySelector('.ra3dt-dots'), backEl = ov.querySelector('.ra3dt-back'), nextEl = ov.querySelector('.ra3dt-next');
+      function render() {
+        var s = SLIDES[i];
+        icEl.className = 'fas ' + s.ic; tEl.textContent = s.t; dEl.innerHTML = s.d;
+        dotsEl.innerHTML = SLIDES.map(function (_, k) { return '<div class="ra3dt-dot' + (k === i ? ' on' : '') + '"></div>'; }).join('');
+        backEl.style.display = i > 0 ? '' : 'none';
+        nextEl.textContent = i < SLIDES.length - 1 ? 'Mai departe' : 'Am înțeles ✓';
+      }
+      function done() { try { localStorage.setItem('ra3dTourSeen', '1'); } catch (e) {} try { ov.remove(); } catch (e) {} }
+      ov.querySelector('.ra3dt-x').addEventListener('click', done);
+      ov.querySelector('.ra3dt-skip').addEventListener('click', done);
+      backEl.addEventListener('click', function () { if (i > 0) { i--; render(); } });
+      nextEl.addEventListener('click', function () { if (i < SLIDES.length - 1) { i++; render(); } else done(); });
+      render();
+    }
+
     function enter3dMode() {
       var el = document.getElementById('map3d'); if (!el) return;
       map3dOn = true;
       el.hidden = false; el.classList.add('on');
+      setTimeout(function () { try { show3dTour(); } catch (e) {} }, 450);
       ensure3dLibs().then(function () {
         if (!_ml3dInited) {
           _ml3dInited = true;

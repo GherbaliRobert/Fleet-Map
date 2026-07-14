@@ -40,6 +40,13 @@ function popupHtml(v: Position, st: StatusInfo, stale: boolean) {
   return `<div class="vmpop"><div class="vmpop-name">${title}</div>${line}<button class="vmpop-btn" data-imei="${esc(v.imei)}">Detalii →</button></div>`;
 }
 
+// Instructaj „prima dată pe harta 3D" — 3 pași, gesturi pentru touch. Afișat o singură dată.
+const TOUR3D: { e: string; t: string; d: string }[] = [
+  { e: '🏙️', t: 'Bine ai venit pe harta 3D', d: 'Vezi vehiculele ca <b>modele 3D reale</b>, printre <b>clădiri 3D</b>. Harta se înclină pentru o perspectivă realistă a flotei.' },
+  { e: '✌️', t: 'Rotește și înclină', d: 'Cu <b>2 degete</b>: trage vertical ca să <b>înclini</b> harta, răsucește-le ca să <b>rotești</b>. Ciupește pentru zoom — exact ca pe Google Maps.' },
+  { e: '🎯', t: 'Localizare și dâră', d: 'Apasă <b>📍</b> ca să-ți vezi <b>poziția</b>. Apasă o mașină pentru <b>detalii</b>. Dâra colorată arată pe unde a trecut recent.' },
+];
+
 export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }: {
   vehicles: Position[]; offlineMin: number; onSelect: (imei: string) => void; focusImei?: string; follow?: boolean;
 }) {
@@ -61,6 +68,14 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   const viewerMarker = useRef<maplibregl.Marker | null>(null); // poziția dispozitivului de pe care urmărești
   const watchId = useRef<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [tour, setTour] = useState(-1); // -1 = ascuns; 0..n = pasul curent din instructaj
+  function endTour() { try { localStorage.setItem('ra3dTourSeen', '1'); } catch {} setTour(-1); }
+  // La prima activare a modului 3D (inclusiv restaurat din localStorage) → arată instructajul o singură dată.
+  useEffect(() => {
+    if (!use3d) return;
+    try { if (localStorage.getItem('ra3dTourSeen')) return; } catch {}
+    setTour(0);
+  }, [use3d]);
 
   // „Unde sunt eu": cere permisiunea, ia poziția, pune un punct albastru + centrează, apoi urmărește live.
   async function locateMe() {
@@ -213,6 +228,26 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
         style={'position:absolute;top:56px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (locating ? 'var(--accent)' : 'var(--text-primary)') + ';box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
         <Icon name="navigate" size={18} color="currentColor" />
       </button>
+      {tour >= 0 && (
+        <div class="tour3d">
+          <div class="tour3d-card" role="dialog" aria-modal="true">
+            <button class="tour3d-x" onClick={endTour} aria-label="Închide">×</button>
+            <div class="tour3d-ic">{TOUR3D[tour].e}</div>
+            <h3 class="tour3d-title">{TOUR3D[tour].t}</h3>
+            <p class="tour3d-desc" dangerouslySetInnerHTML={{ __html: TOUR3D[tour].d }} />
+            <div class="tour3d-dots">{TOUR3D.map((_, k) => <span class={'tour3d-dot' + (k === tour ? ' on' : '')} />)}</div>
+            <div class="tour3d-foot">
+              <button class="tour3d-skip" onClick={endTour}>Sări peste</button>
+              <div class="tour3d-nav">
+                {tour > 0 && <button class="tour3d-btn back" onClick={() => setTour(tour - 1)}>Înapoi</button>}
+                <button class="tour3d-btn next" onClick={() => (tour < TOUR3D.length - 1 ? setTour(tour + 1) : endTour())}>
+                  {tour < TOUR3D.length - 1 ? 'Mai departe' : 'Am înțeles ✓'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
