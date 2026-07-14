@@ -1680,6 +1680,130 @@ async function rFuelAnomaly(db, imeis, from, to, opts, devMap) {
     charts, summarySheet: true, legend: ANOMALY_LEGEND };
 }
 
+// ── Rapoarte SENZORI: sondă litrometrică · greutate · basculare · IoT ──────────────────────────────
+async function rFuelProbe(db, imeis, from, to, opts, devMap) { // Sondă litrometrică (analogică Escort / BLE) — nivel din sondă, nu din CAN
+  const rows = [];
+  for (const imei of imeis) {
+    const nm = label(devMap, imei);
+    const pts = await history(db, imei, from, to);
+    let last = null, lastTs = null, min = null, max = null, tip = null;
+    for (const p of pts) {
+      const i = io(p);
+      let v = null, t2 = null;
+      if (i.tank_level_liters != null) { v = parseFloat(i.tank_level_liters); t2 = 'Analogică'; }
+      else if (i.ble_fuel_level_1 != null) { v = parseFloat(i.ble_fuel_level_1); t2 = 'BLE'; }
+      if (v == null || !isFinite(v) || v < 0) continue;
+      last = v; lastTs = p.timestamp; tip = t2;
+      if (min == null || v < min) min = v;
+      if (max == null || v > max) max = v;
+    }
+    if (last == null) { rows.push([nm, 'Fără sondă', '—', '—', '—', '—']); continue; }
+    rows.push([nm, fmtTs(lastTs), last.toFixed(0) + ' L', min.toFixed(0) + ' L', max.toFixed(0) + ' L', tip]);
+  }
+  return {
+    columns: ['Vehicul', 'Actualizat', 'Nivel sondă', 'Min', 'Max', 'Tip sondă'], rows,
+    periodLabel: 'Nivel din sondă — ultimele valori până la ' + fmtTs(to),
+    summary: { 'Total vehicule': imeis.length, 'Cu sondă': rows.filter(r => r[5] === 'Analogică' || r[5] === 'BLE').length },
+    summarySheet: true,
+    legend: { title: 'Sondă litrometrică', items: [
+      ['Nivel sondă', 'Nivelul de combustibil citit de sonda din rezervor (NU din CAN) — util unde CAN-ul nu-l dă.'],
+      ['Tip sondă', 'Analogică (Escort/Technoton, pe intrare analogică, calibrată voltaj→litri) sau BLE (wireless).'],
+      ['Fără sondă', 'Vehiculul nu are sondă litrometrică montată.']
+    ] }
+  };
+}
+
+async function rWeight(db, imeis, from, to, opts, devMap) { // Senzori greutate (sarcină pe axe / totală)
+  const rows = [];
+  for (const imei of imeis) {
+    const nm = label(devMap, imei);
+    const pts = await history(db, imei, from, to);
+    let last = null, lastTs = null, max = null, overloads = 0, prevOver = false, hadW = false;
+    for (const p of pts) {
+      const i = io(p);
+      let w = parseFloat(i.can_load_weight);
+      if (!isFinite(w) || w <= 0) w = [i.can_axle1_load, i.can_axle2_load, i.can_axle3_load, i.can_axle4_load, i.can_axle5_load].reduce((s, v) => s + (parseFloat(v) || 0), 0);
+      if (isFinite(w) && w > 0) { hadW = true; last = w; lastTs = p.timestamp; if (max == null || w > max) max = w; }
+      const over = (i.axle_overload === 1 || i.axle_overload === true || i.axle_overload === '1');
+      if (over && !prevOver) overloads++;
+      prevOver = over;
+    }
+    if (!hadW) { rows.push([nm, 'Fără senzor', '—', '—', '—']); continue; }
+    rows.push([nm, fmtTs(lastTs), _grp(Math.round(last)) + ' kg', _grp(Math.round(max)) + ' kg', overloads]);
+  }
+  return {
+    columns: ['Vehicul', 'Actualizat', 'Greutate curentă', 'Greutate max', 'Supraîncărcări'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Cu senzor greutate': rows.filter(r => r[1] !== 'Fără senzor').length },
+    summarySheet: true,
+    legend: { title: 'Senzori greutate', items: [
+      ['Greutate', 'Sarcina totală / pe axe (kg), din senzorii de greutate ai vehiculului.'],
+      ['Supraîncărcări', 'De câte ori s-a semnalat depășirea sarcinii admise pe axe.'],
+      ['Fără senzor', 'Vehiculul nu are senzori de greutate montați.']
+    ] }
+  };
+}
+
+async function rTipping(db, imeis, from, to, opts, devMap) { // Senzor de basculare (intrare digitală — implicit DIN2)
+  const DIN = opts.tipDin || 'digital_input_2';
+  const rows = [], lastPts = [];
+  for (const imei of imeis) {
+    const nm = label(devMap, imei);
+    const pts = await history(db, imei, from, to);
+    let prevOn = false, count = 0, last = null, had = false;
+    for (const p of pts) {
+      const v = io(p)[DIN];
+      if (v == null) continue;
+      had = true;
+      const on = (v === 1 || v === true || v === '1');
+      if (on && !prevOn) { count++; last = { ts: p.timestamp, p }; }
+      prevOn = on;
+    }
+    if (!had) { rows.push([nm, 'Fără senzor', '—', '—']); lastPts.push(null); continue; }
+    rows.push([nm, count, last ? fmtTs(last.ts) : '—', last ? loc(last.p) : '—']);
+    lastPts.push(last ? last.p : null);
+  }
+  if (geocode && geocode.warm) { const c = lastPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {} } }
+  rows.forEach((r, i) => { if (lastPts[i]) r[3] = addr(lastPts[i]); });
+  const sk = v => (typeof v === 'number' ? v : -1);
+  rows.sort((a, b) => sk(b[1]) - sk(a[1]));
+  return {
+    columns: ['Vehicul', 'Basculări', 'Ultima', 'Locație'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Cu senzor': rows.filter(r => typeof r[1] === 'number').length, 'Basculări (total)': rows.reduce((s, r) => s + (typeof r[1] === 'number' ? r[1] : 0), 0) },
+    summarySheet: true,
+    legend: { title: 'Senzor de basculare', items: [
+      ['Basculări', 'De câte ori s-a ridicat bena — numărat dintr-un senzor montat pe o intrare digitală (implicit DIN2).'],
+      ['Fără senzor', 'Vehiculul nu are senzor de basculare pe intrarea digitală configurată.']
+    ] }
+  };
+}
+
+async function rIoT(db, imeis, from, to, opts, devMap) { // Senzori IoT (wireless BLE: temperatură + baterie senzor)
+  const rows = [];
+  for (const imei of imeis) {
+    const nm = label(devMap, imei);
+    const pts = await history(db, imei, from, to);
+    let temp = null, batt = null, ts = null, had = false;
+    for (const p of pts) {
+      const i = io(p);
+      const t2 = i.ble_fuel_temp_1 != null ? parseFloat(i.ble_fuel_temp_1) : null;
+      const b = i.ble_battery_voltage_1 != null ? parseFloat(i.ble_battery_voltage_1) : null;
+      if ((t2 != null && isFinite(t2)) || (b != null && isFinite(b))) { had = true; if (t2 != null && isFinite(t2)) temp = t2; if (b != null && isFinite(b)) batt = b; ts = p.timestamp; }
+    }
+    if (!had) { rows.push([nm, 'Fără senzori IoT', '—', '—']); continue; }
+    rows.push([nm, fmtTs(ts), temp != null ? temp.toFixed(1) + ' °C' : '—', batt != null ? batt.toFixed(2) + ' V' : '—']);
+  }
+  return {
+    columns: ['Vehicul', 'Actualizat', 'Temperatură', 'Baterie senzor'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Cu senzori IoT': rows.filter(r => r[1] !== 'Fără senzori IoT').length },
+    summarySheet: true,
+    legend: { title: 'Senzori IoT (wireless)', items: [
+      ['Temperatură', 'Ultima temperatură citită de un senzor wireless (BLE) — util la frigorifice / marfă sensibilă.'],
+      ['Baterie senzor', 'Tensiunea bateriei senzorului wireless — semnal că trebuie schimbată.'],
+      ['Fără senzori IoT', 'Vehiculul nu are senzori wireless conectați.']
+    ] }
+  };
+}
+
 const REPORTS = {
   trips:       { label: 'Foaie de parcurs',     cat: 'monitorizare', desc: 'Cursele oficiale (plecare–sosire, km, durată, șofer) — pentru decont.', fn: rTrips },
   route:       { label: 'Traseu',                cat: 'monitorizare', desc: 'Deplasările și opririle pe hartă: unde, când, câți km.', fn: rRoute },
@@ -1701,6 +1825,10 @@ const REPORTS = {
   overrev:     { label: 'Supraturații',           cat: 'can',          desc: 'De câte ori și cât timp turația a depășit pragul — condus agresiv / uzură motor.', fn: rOverRev },
   pto:         { label: 'PTO (priză de putere)',  cat: 'can',          desc: 'Timp și porniri cu priza de putere activă (macara, basculă, frigorific).', fn: rPto },
   enginehours: { label: 'Ore motor',              cat: 'can',          desc: 'Orele motorului împărțite: ralanti (gol), în mers, și cu PTO (lucru la utilaje).', fn: rEngineHours },
+  fuelprobe:   { label: 'Sondă litrometrică',      cat: 'senzori',      desc: 'Nivelul din sonda de combustibil (analogică sau BLE), separat de CAN.', fn: rFuelProbe },
+  weight:      { label: 'Senzori greutate',        cat: 'senzori',      desc: 'Sarcina pe axe (kg) și supraîncărcările, din senzorii de greutate.', fn: rWeight },
+  tipping:     { label: 'Senzor de basculare',     cat: 'senzori',      desc: 'Numărul de basculări (ridicări de benă), dintr-un senzor pe intrare digitală.', fn: rTipping },
+  iot:         { label: 'Senzori IoT',             cat: 'senzori',      desc: 'Citiri de la senzori wireless (temperatură marfă, baterie senzor).', fn: rIoT },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   desc: 'Unde, când și cu cât s-a depășit limita de viteză.', fn: rSpeeding },
   geofence:    { label: 'Vizite în zone',         cat: 'evenimente',   desc: 'Intrările și ieșirile din zonele definite: când și cât a stat.', fn: rGeofence },
   hotspot:     { label: 'Raport Hotspot',         cat: 'evenimente',   desc: 'Locurile în care flota staționează cel mai des (hartă termică).', fn: rHotspot },
@@ -1713,6 +1841,7 @@ const REPORT_CATEGORIES = [
   { key: 'monitorizare', label: 'Monitorizare' },
   { key: 'consum', label: 'Consum carburant' },
   { key: 'can', label: 'Date CAN' },
+  { key: 'senzori', label: 'Senzori' },
   { key: 'evenimente', label: 'Evenimente & zone' },
   { key: 'siguranta', label: 'Siguranță & EcoDrive' }
 ];
