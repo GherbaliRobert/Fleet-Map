@@ -1308,17 +1308,18 @@ async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (
     const perKm = m.dist > 1 ? co2 / m.dist * 1000 : 0; // g/km
     const nm = label(devMap, imei);
     const ftL = m.fuelType ? (_FUEL_LABEL[String(m.fuelType).toLowerCase()] || m.fuelType) : '—';
-    rows.push([nm, ftL, Math.round(m.dist), m.consumed.toFixed(0) + ' L', Math.round(co2) + ' kg', perKm ? Math.round(perKm) + ' g/km' : '—', m.source]);
-    tCo2 += co2; tKm += m.dist; tCons += m.consumed; vCo2.push([nm, co2]); if (perKm) vPerKm.push([nm, perKm]);
+    const co2t = co2 / 1000; // kg → TONE (unitatea standard de raportare CO₂: ESG / arobs). Zecimale mai multe sub 1 t.
+    rows.push([nm, ftL, Math.round(m.dist), m.consumed.toFixed(0) + ' L', co2t.toFixed(co2t < 1 ? 3 : 2) + ' t', perKm ? Math.round(perKm) + ' g/km' : '—', m.source]);
+    tCo2 += co2; tKm += m.dist; tCons += m.consumed; vCo2.push([nm, +co2t.toFixed(3)]); if (perKm) vPerKm.push([nm, perKm]);
   }
-  rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4])); // după CO₂ (col. 4, în „kg")
+  rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4])); // după CO₂ (col. 4, în tone)
   const topC = _topN(vCo2, 10), topK = _topN(vPerKm, 10);
   const charts = vCo2.length ? [
-    { type: 'bar', title: 'CO₂ pe vehicul (kg)', labels: topC.labels, datasets: [{ label: 'kg', data: topC.data }] },
+    { type: 'bar', title: 'CO₂ pe vehicul (t)', labels: topC.labels, datasets: [{ label: 't', data: topC.data }] },
     { type: 'bar', title: 'CO₂ pe km (g/km)',    labels: topK.labels, datasets: [{ label: 'g/km', data: topK.data }] }
   ] : [];
   return {
-    columns: ['Vehicul', 'Combustibil', 'Km', 'Consum', 'CO₂', 'CO₂/km', 'Sursă'], rows,
+    columns: ['Vehicul', 'Combustibil', 'Km', 'Consum', 'CO₂ (t)', 'CO₂/km', 'Sursă'], rows,
     summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor mediu (kg/L)': tCons > 0 ? (tCo2 / tCons).toFixed(2) : '—' },
     charts, summarySheet: true, legend: EMISSIONS_LEGEND
   };
