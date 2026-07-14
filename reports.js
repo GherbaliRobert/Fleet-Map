@@ -410,7 +410,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
 
 // Etichete afișate pt. tipul de combustibil (valorile din fișă vin fără diacritice: „Motorina", „Benzina", …).
 const _FUEL_LABEL = { motorina: 'Motorină', diesel: 'Motorină', benzina: 'Benzină', 'benzină': 'Benzină', gpl: 'GPL', electric: 'Electric', hibrid: 'Hibrid', altul: 'Altul' };
-async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurgeri/furt
+async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scăderi/furt
   const refuelMin = opts.refuelMin || 5, dropMin = opts.dropMin || 10;
   const rows = []; let refuels = 0, drops = 0, addedL = 0, lostL = 0; const refs = []; const evPts = []; const perVeh = {};
   for (const imei of imeis) {
@@ -1554,7 +1554,7 @@ const REPORTS = {
   uptime:      { label: 'Disponibilitate flotă',  cat: 'monitorizare', desc: 'Zile active/inactive, cea mai lungă pauză, starea semnalului.', fn: rFleetUptime },
   due:         { label: 'Scadențe documente & service', cat: 'monitorizare', desc: 'Expirări (ITP, RCA…) + revizii scadente și efectuate.', fn: rDocServiceDue },
   consumption: { label: 'Consum carburant',       cat: 'consum',       desc: 'Cât a consumat fiecare mașină: litri, medie la 100 km, sursa datelor.', fn: rConsumption },
-  fuel:        { label: 'Alimentări & scurgeri',  cat: 'consum',       desc: 'Unde, când și ce combustibil s-a alimentat + scăderi suspecte.', fn: rFuel },
+  fuel:        { label: 'Alimentări & scăderi',   cat: 'consum',       desc: 'Unde, când și ce combustibil s-a alimentat + scăderi suspecte.', fn: rFuel },
   fuel_anomaly:{ label: 'Anomalii combustibil (scor)', cat: 'consum',  desc: 'Starea fiecărei mașini: risc de scurgeri sau pierderi de combustibil (scor).', fn: rFuelAnomaly },
   costs:       { label: 'Costuri combustibil',    cat: 'consum',       desc: 'Banii cheltuiți pe carburant, pe fiecare vehicul și pe total.', fn: rCosts },
   emissions:   { label: 'Emisii CO₂',             cat: 'consum',       desc: 'Amprenta de carbon a flotei, calculată din consum.', fn: rEmissions },
