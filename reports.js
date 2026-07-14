@@ -1320,7 +1320,7 @@ async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (
   ] : [];
   return {
     columns: ['Vehicul', 'Combustibil', 'Km', 'Consum', 'CO₂ (t)', 'CO₂/km', 'Sursă'], rows,
-    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor mediu (kg/L)': tCons > 0 ? (tCo2 / tCons).toFixed(2) : '—' },
+    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'CO₂ mediu (g/km)': tKm > 1 ? Math.round(tCo2 / tKm * 1000) : '—' },
     charts, summarySheet: true, legend: EMISSIONS_LEGEND
   };
 }
