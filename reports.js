@@ -1310,7 +1310,7 @@ async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (
   ] : [];
   return {
     columns: ['Vehicul', 'Km', 'Consum', 'CO₂', 'CO₂/km'], rows,
-    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor (kg/L)': FACTOR }, charts
+    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor mediu (kg/L)': tCons > 0 ? (tCo2 / tCons).toFixed(2) : '—' }, charts
   };
 }
 
