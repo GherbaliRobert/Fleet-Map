@@ -1499,42 +1499,67 @@ async function rFleetUptime(db, imeis, from, to, opts, devMap) {
 }
 
 // ── Raport NOU: Anomalii combustibil cu scor de încredere (furt vs consum vs zgomot) ────────────────────
+// Legenda scorului de suspiciune (setată pe raport → randată identic online, în Excel și PDF).
+const ANOMALY_LEGEND = { title: 'Scorul de suspiciune — cum se citește', items: [
+  ['Probabil furt (75–100)', 'Scădere greu de explicat normal: motor stins + staționat + cantitate mare. Merită verificată.'],
+  ['Posibil (55–74)', 'Scădere suspectă, dar nu certă — poate avea și o cauză normală.'],
+  ['Scăderi minore (sub 55)', 'Probabil consum normal sau oscilație de senzor — nealarmant.'],
+  ['OK — fără anomalii', 'Mașina raportează nivel prin CAN și nu a avut nicio scădere suspectă.'],
+  ['Fără date CAN', 'Mașina nu raportează nivel (ex. pe GPL) — nu poate fi verificată automat aici.']
+] };
+// Raport de INTEGRITATE combustibil pe flotă: fiecare vehicul apare MEREU cu o stare (chiar dacă e curat) — nu ecran
+// gol → crește încrederea userului. O linie/mașină; fiecare scădere primește un scor de suspiciune 0–100.
 async function rFuelAnomaly(db, imeis, from, to, opts, devMap) {
-  const dropMin = opts.dropMin || 10; const rows = []; let high = 0, med = 0;
+  const dropMin = opts.dropMin || 10;
+  const rows = [], worstPts = []; // worstPts[i] = punctul celei mai suspecte scăderi a mașinii i (pt. geocodare)
+  let high = 0, med = 0, clean = 0, noData = 0;
   for (const imei of imeis) {
+    const nm = label(devMap, imei);
     const pts = await history(db, imei, from, to);
-    let prev = null;
+    let prev = null, hadFuel = false; const events = [];
     for (const p of pts) {
-      const fl = fuelL(p);
-      if (fl == null) continue;
+      const fl = fuelL(p); if (fl == null) continue; hadFuel = true;
       if (prev != null) {
-        const delta = fl - prev.v;
-        const ign = ignOn(p) || ignOn(prev.p);
-        const gapH = (t(p) - prev.ts) / 3600000;
-        // Motor STINS (parcat) → scăderea e suspectă chiar și peste noapte (până la 72h); motor pornit → doar
-        // citiri apropiate (<1h), altfel e consumul normal de peste mai multe ore.
+        const delta = fl - prev.v, ign = ignOn(p) || ignOn(prev.p), gapH = (t(p) - prev.ts) / 3600000;
+        // Motor STINS (parcat) → scăderea e suspectă chiar și peste noapte (până la 72h); pornit → doar citiri apropiate (<1h).
         if (delta <= -dropMin && ((!ign && gapH <= 72) || (ign && gapH <= 1))) {
-          const drop = -delta;
-          const moving = (p.speed || 0) > IDLE_SPEED;
+          const drop = -delta, moving = (p.speed || 0) > IDLE_SPEED;
           let score = 40;
           if (!ign) score += 30;                 // motor stins → nu poate fi consum
           if (!moving) score += 15;              // staționat
           if (drop >= 30) score += 15; else if (drop >= 15) score += 8;
-          score = Math.min(100, score);
-          const conf = score >= 75 ? 'Probabil furt' : score >= 55 ? 'Posibil' : 'Zgomot/consum';
-          if (score >= 75) high++; else if (score >= 55) med++;
-          rows.push([ label(devMap, imei), fmtTs(p.timestamp), drop.toFixed(1) + ' L', ign ? 'pornit' : 'oprit', Math.round(p.speed || 0), score, conf, loc(p) ]);
+          events.push({ score: Math.min(100, score), drop, ts: p.timestamp, p });
         }
       }
       prev = { v: fl, ts: t(p), p };
     }
+    // O linie de STARE per vehicul — mereu, chiar dacă e curat.
+    if (!hadFuel) {                          // ex. pe GPL / fără senzor — nu poate fi verificat
+      rows.push([nm, 'Fără date CAN', '—', '—', '—', '—', '—']); worstPts.push(null); noData++;
+    } else if (!events.length) {             // are date CAN, nicio scădere → curat
+      rows.push([nm, 'OK — fără anomalii', 0, '—', '—', '—', '—']); worstPts.push(null); clean++;
+    } else {
+      events.sort((a, b) => b.score - a.score);
+      const worst = events[0], totalDrop = events.reduce((s, e) => s + e.drop, 0);
+      const stare = worst.score >= 75 ? 'Probabil furt' : worst.score >= 55 ? 'Posibil' : 'Scăderi minore';
+      if (worst.score >= 75) high++; else if (worst.score >= 55) med++; else clean++;
+      rows.push([nm, stare, events.length, worst.score, totalDrop.toFixed(1) + ' L', fmtTs(worst.ts), loc(worst.p)]);
+      worstPts.push(worst.p);
+    }
   }
-  rows.sort((a, b) => b[5] - a[5]); // scor descrescător
-  const charts = rows.length ? [
-    { type: 'doughnut', title: 'Anomalii pe încredere', labels: ['Probabil furt', 'Posibil', 'Zgomot/consum'], datasets: [{ label: 'nr.', data: [high, med, Math.max(0, rows.length - high - med)] }] }
-  ] : [];
-  return { columns: ['Vehicul', 'Moment', 'Scădere', 'Contact', 'Viteză', 'Scor', 'Încredere', 'Locație'], rows,
-    summary: { 'Anomalii': rows.length, 'Probabil furt': high, 'Posibil': med }, charts };
+  // Adresă exactă pt. cea mai suspectă scădere (una/mașină suspectă) — ÎNAINTE de sortare (o „coacem" în r[6]).
+  if (geocode && geocode.warm) {
+    const coords = worstPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude }));
+    if (coords.length) { try { await geocode.warm(coords, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {} }
+  }
+  rows.forEach((r, i) => { if (worstPts[i]) r[6] = addr(worstPts[i]); });
+  // Sortare: suspecte (scor mare) sus → OK (scor 0) → Fără date CAN („—") la coadă.
+  const sk = v => (v === '—' || v == null ? -1 : Number(v));
+  rows.sort((a, b) => sk(b[3]) - sk(a[3]));
+  const charts = [{ type: 'doughnut', title: 'Starea flotei', labels: ['Fără probleme', 'Posibil', 'Probabil furt', 'Fără date CAN'], datasets: [{ label: 'vehicule', data: [clean, med, high, noData] }] }];
+  return { columns: ['Vehicul', 'Stare', 'Anomalii', 'Scor max', 'Litri scăzuți', 'Data', 'Locație'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Fără probleme': clean, 'Posibil': med, 'Probabil furt': high, 'Fără date CAN': noData },
+    charts, summarySheet: true, legend: ANOMALY_LEGEND };
 }
 
 const REPORTS = {
