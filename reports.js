@@ -1291,26 +1291,36 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     summary: { 'Total vehicule': imeis.length, 'Km total flotă': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts, summarySheet: true };
 }
 
+// Legenda pt. Emisii CO₂ (setată pe raport → randată online, în Excel și PDF).
+const EMISSIONS_LEGEND = { title: 'Cum se calculează CO₂', items: [
+  ['Formulă', 'CO₂ = consum (litri) × factorul combustibilului.  CO₂/km = CO₂ ÷ km.'],
+  ['Motorină', '2.68 kg CO₂ / litru'],
+  ['Benzină', '2.31 kg CO₂ / litru'],
+  ['GPL', '1.55 kg CO₂ / litru'],
+  ['Sursă', 'CO₂-ul e la fel de exact ca și consumul din care vine: CAN (contor) > Senzor (nivel) > Estimat (din fișă).']
+] };
 async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (din consum carburant)
   const cm = await _consumptionMap(db, imeis, from, to, opts);
   const rows = []; let tCo2 = 0, tKm = 0, tCons = 0; const vCo2 = [], vPerKm = [];
   for (const imei of imeis) {
     const m = cm[imei]; if (!m) continue;
-    const co2 = m.consumed * co2For(m.fuelType, opts); // factor pe tipul de combustibil (diesel/benzină/GPL)
+    const co2 = m.consumed * co2For(m.fuelType, opts); // factor pe tipul de combustibil (motorină/benzină/GPL)
     const perKm = m.dist > 1 ? co2 / m.dist * 1000 : 0; // g/km
     const nm = label(devMap, imei);
-    rows.push([nm, Math.round(m.dist), m.consumed.toFixed(0) + ' L', (co2 / 1000).toFixed(2) + ' t', perKm ? Math.round(perKm) + ' g/km' : '—']);
+    const ftL = m.fuelType ? (_FUEL_LABEL[String(m.fuelType).toLowerCase()] || m.fuelType) : '—';
+    rows.push([nm, ftL, Math.round(m.dist), m.consumed.toFixed(0) + ' L', Math.round(co2) + ' kg', perKm ? Math.round(perKm) + ' g/km' : '—', m.source]);
     tCo2 += co2; tKm += m.dist; tCons += m.consumed; vCo2.push([nm, co2]); if (perKm) vPerKm.push([nm, perKm]);
   }
-  rows.sort((a, b) => parseFloat(b[3]) - parseFloat(a[3]));
+  rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4])); // după CO₂ (col. 4, în „kg")
   const topC = _topN(vCo2, 10), topK = _topN(vPerKm, 10);
   const charts = vCo2.length ? [
     { type: 'bar', title: 'CO₂ pe vehicul (kg)', labels: topC.labels, datasets: [{ label: 'kg', data: topC.data }] },
     { type: 'bar', title: 'CO₂ pe km (g/km)',    labels: topK.labels, datasets: [{ label: 'g/km', data: topK.data }] }
   ] : [];
   return {
-    columns: ['Vehicul', 'Km', 'Consum', 'CO₂', 'CO₂/km'], rows,
-    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor mediu (kg/L)': tCons > 0 ? (tCo2 / tCons).toFixed(2) : '—' }, charts
+    columns: ['Vehicul', 'Combustibil', 'Km', 'Consum', 'CO₂', 'CO₂/km', 'Sursă'], rows,
+    summary: { 'CO₂ total (t)': (tCo2 / 1000).toFixed(2), 'Consum total (L)': Math.round(tCons), 'Km total': Math.round(tKm), 'Factor mediu (kg/L)': tCons > 0 ? (tCo2 / tCons).toFixed(2) : '—' },
+    charts, summarySheet: true, legend: EMISSIONS_LEGEND
   };
 }
 
