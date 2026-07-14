@@ -62,20 +62,20 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   const lastFocus = useRef<string | undefined>(undefined);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
-  const [use3d, setUse3d] = useState<boolean>(() => { try { return localStorage.getItem('mapStyle') === '3d'; } catch { return false; } });
-  function toggle3d() { setUse3d((v) => { const nv = !v; try { localStorage.setItem('mapStyle', nv ? '3d' : 'arrow'); } catch {} return nv; }); }
+  // Implicit 2D: modul 3D NU se restaurează la pornire (altfel s-ar încărca plăcile 3D grele fără să fie cerute). 3D doar la apăsare.
+  const [use3d, setUse3d] = useState<boolean>(false);
+  function toggle3d() {
+    const nv = !use3d;
+    try { localStorage.setItem('mapStyle', nv ? '3d' : 'arrow'); } catch {}
+    setUse3d(nv);
+    if (nv) { try { if (!localStorage.getItem('ra3dTourSeen')) setTour(0); } catch {} } // instructaj o singură dată, DOAR la activarea 3D
+  }
   const use3dRef = useRef(use3d); use3dRef.current = use3d; // valoarea curentă, citibilă din closure-ul de „load"
   const viewerMarker = useRef<maplibregl.Marker | null>(null); // poziția dispozitivului de pe care urmărești
   const watchId = useRef<string | null>(null);
   const [locating, setLocating] = useState(false);
-  const [tour, setTour] = useState(-1); // -1 = ascuns; 0..n = pasul curent din instructaj
+  const [tour, setTour] = useState(-1); // -1 = ascuns; 0..n = pasul curent din instructaj (declanșat DOAR la apăsarea butonului 3D)
   function endTour() { try { localStorage.setItem('ra3dTourSeen', '1'); } catch {} setTour(-1); }
-  // La prima activare a modului 3D (inclusiv restaurat din localStorage) → arată instructajul o singură dată.
-  useEffect(() => {
-    if (!use3d) return;
-    try { if (localStorage.getItem('ra3dTourSeen')) return; } catch {}
-    setTour(0);
-  }, [use3d]);
 
   // „Unde sunt eu": cere permisiunea, ia poziția, pune un punct albastru + centrează, apoi urmărește live.
   async function locateMe() {

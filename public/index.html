@@ -7068,7 +7068,7 @@ const pozitii = await r.json();</code></pre>
     }
     function initMap() {
       // Preferințe afișare salvate (mod marker + grupare pe hotspot)
-      var _ms0 = localStorage.getItem('mapStyle'); mapMarkerStyle = (_ms0 === 'arrows' || _ms0 === '3d') ? _ms0 : 'icons';
+      var _ms0 = localStorage.getItem('mapStyle'); mapMarkerStyle = (_ms0 === 'arrows') ? 'arrows' : 'icons'; // implicit 2D: modul 3D NU se restaurează la pornire (nu auto-încărcăm plăcile 3D grele)
       mapGroupOn = localStorage.getItem('mapGroup') === '1';
 
       map = L.map('map', {
@@ -7077,7 +7077,7 @@ const pozitii = await r.json();</code></pre>
 
       L.control.zoom({ position: 'topright' }).addTo(map);
       addMapViewControls(); // butoane dreapta-sus: grupare pe hotspot + săgeți/pictograme
-      if (mapMarkerStyle === '3d') setTimeout(function () { try { enter3dMode(); } catch (e) {} }, 1500);
+      // (Harta 3D nu mai pornește automat — se deschide DOAR când utilizatorul apasă butonul 3D. Instructajul apare tot atunci, o singură dată.)
       if (map.attributionControl) map.attributionControl.setPosition('bottomleft'); // în stânga → nu se suprapune cu FAB-ul (dreapta-jos)
 
       // Plăcuțele cu numărul de înmatriculare se ascund la zoom foarte mic (hartă de țară) ca să nu se aglomereze.
