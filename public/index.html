@@ -2046,7 +2046,7 @@ const pozitii = await r.json();</code></pre>
           <button class="close-btn" onclick="closeReports()" style="position:static;font-size:18px;">&#10005;</button>
         </span></h2>
       <div class="rep-tabs">
-        <button class="rep-tab active" id="rep-tab-btn-generate" onclick="repShowTab('generate')"><i class="fas fa-circle-plus"></i> <span class="rt-long">Generează rapoarte</span><span class="rt-short">Generează</span></button>
+        <button class="rep-tab active" id="rep-tab-btn-generate" onclick="repTabGenerate()"><i class="fas fa-circle-plus"></i> <span class="rt-long">Generează rapoarte</span><span class="rt-short">Generează</span></button>
         <button class="rep-tab" id="rep-tab-btn-history" onclick="repShowTab('history')"><i class="fas fa-clock-rotate-left"></i> <span class="rt-long">Istoric rapoarte</span><span class="rt-short">Istoric</span></button>
         <button class="rep-tab" id="rep-tab-btn-insight" onclick="repShowTab('insight')"><i class="fas fa-wand-magic-sparkles"></i> <span class="rt-long">RA Insight</span><span class="rt-short">Insight</span></button>
       </div>
@@ -4980,6 +4980,14 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('rep-runner').style.display = 'none';
       document.getElementById('rep-catalog').style.display = '';
       if (repHistoryId) { repHistoryId = null; repShowTab('history'); }
+    }
+    // Click pe tab-ul „Generează rapoarte": dacă veneam dintr-un raport din ISTORIC, mergi direct în CATALOG
+    // (nu rămâne pe raportul deschis → fără click suplimentar pe „Catalog"). Dintr-un raport live, comportament neschimbat.
+    function repTabGenerate() {
+      var fromHistory = (repHistoryId != null);
+      repHistoryId = null;
+      repShowTab('generate');
+      if (fromHistory) backToReportCatalog(); // repHistoryId e deja null → doar ascunde runner-ul și arată catalogul
     }
     function setRepPeriod(p) {
       const now = new Date(); let from = new Date();
