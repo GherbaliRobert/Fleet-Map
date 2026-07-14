@@ -1082,12 +1082,12 @@ async function rPto(db, imeis, from, to, opts, devMap) { // PTO — priza de put
   };
 }
 
-async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: în gol (ralanti) vs în sarcină (muncă)
+async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: gol (ralanti) / mers / cu PTO
   const rows = []; let tEng = 0, tIdle = 0;
   for (const imei of imeis) {
     const nm = label(devMap, imei);
     const pts = await history(db, imei, from, to);
-    let prev = null, engineSec = 0, idleSec = 0, hadEngine = false;
+    let prev = null, engineSec = 0, idleSec = 0, moveSec = 0, ptoSec = 0, hadEngine = false;
     for (const p of pts) {
       const rpm = canRpm(p);
       const on = ignOn(p) || (rpm != null && rpm > 300);              // motor pornit
@@ -1098,26 +1098,29 @@ async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: �
           engineSec += dt;
           const moving = (p.speed || 0) > IDLE_SPEED;
           const pv = io(p).can_pto_active, pto = (pv === 1 || pv === true || pv === '1');
-          if (!moving && !pto) idleSec += dt;                         // în gol = pornit, staționat, fără PTO
+          if (moving) moveSec += dt;                                  // în mers (deplasare)
+          else if (pto) ptoSec += dt;                                 // staționat, dar PTO lucrează (macara/basculă)
+          else idleSec += dt;                                         // în gol = pornit, staționat, fără PTO
         }
       }
       prev = { ts: t(p), on };
     }
-    if (!hadEngine || engineSec < 1) { rows.push([nm, fmtDur(0), fmtDur(0), fmtDur(0), '—']); continue; }
-    const loadSec = Math.max(0, engineSec - idleSec), pctIdle = Math.round(idleSec / engineSec * 100);
+    if (!hadEngine || engineSec < 1) { rows.push([nm, fmtDur(0), fmtDur(0), fmtDur(0), '—', '—']); continue; }
+    const pctIdle = Math.round(idleSec / engineSec * 100);
     tEng += engineSec; tIdle += idleSec;
-    rows.push([nm, fmtDur(Math.round(engineSec)), fmtDur(Math.round(idleSec)), fmtDur(Math.round(loadSec)), pctIdle + '%']);
+    rows.push([nm, fmtDur(Math.round(engineSec)), fmtDur(Math.round(idleSec)), fmtDur(Math.round(moveSec)), ptoSec > 0 ? fmtDur(Math.round(ptoSec)) : '—', pctIdle + '%']);
   }
-  const pk = r => { const n = parseFloat(r[4]); return isFinite(n) ? n : -1; };
+  const pk = r => { const n = parseFloat(r[5]); return isFinite(n) ? n : -1; };
   rows.sort((a, b) => pk(b) - pk(a));                                 // cel mai mare % gol sus (irosire)
   return {
-    columns: ['Vehicul', 'Ore motor', 'În gol', 'În sarcină', '% gol'], rows,
+    columns: ['Vehicul', 'Ore motor', 'În gol', 'În mers', 'Cu PTO', '% gol'], rows,
     summary: { 'Total vehicule': imeis.length, 'Ore motor (total)': fmtDur(Math.round(tEng)), 'În gol (total)': fmtDur(Math.round(tIdle)), '% gol flotă': tEng > 0 ? Math.round(tIdle / tEng * 100) + '%' : '—' },
     summarySheet: true,
-    legend: { title: 'Ore motor — gol vs sarcină', items: [
-      ['În gol (ralanti)', 'Motor pornit, dar staționat și fără PTO — timp și combustibil irosite.'],
-      ['În sarcină', 'Motor pornit ȘI în lucru: în mers sau cu priza de putere activă.'],
-      ['% gol', 'Cât din timpul cu motorul pornit a fost irosit în gol.']
+    legend: { title: 'Ore motor — cum se împarte timpul cu motorul pornit', items: [
+      ['În gol (ralanti)', 'Staționat, fără PTO — timp și combustibil irosite.'],
+      ['În mers', 'Vehiculul se deplasează (condus efectiv). La o mașină obișnuită, ăsta e tot timpul „productiv".'],
+      ['Cu PTO', 'Staționat, dar cu priza de putere activă — echipamentul lucrează (macara, basculă, betonieră). „—" la vehiculele fără PTO.'],
+      ['% gol', 'Cât din timpul cu motorul pornit a fost irosit la ralanti.']
     ] }
   };
 }
@@ -1696,7 +1699,7 @@ const REPORTS = {
   can:         { label: 'Date CAN',               cat: 'can',          desc: 'Instantaneu tehnic pe mașină: combustibil, kilometraj real (bord + GPS), erori de defect.', fn: rCan },
   overrev:     { label: 'Supraturații',           cat: 'can',          desc: 'De câte ori și cât timp turația a depășit pragul — condus agresiv / uzură motor.', fn: rOverRev },
   pto:         { label: 'PTO (priză de putere)',  cat: 'can',          desc: 'Timp și porniri cu priza de putere activă (macara, basculă, frigorific).', fn: rPto },
-  enginehours: { label: 'Ore motor: gol / sarcină', cat: 'can',        desc: 'Orele motorului: ralanti irosit (gol) vs muncă efectivă (sarcină).', fn: rEngineHours },
+  enginehours: { label: 'Ore motor: gol / mers / PTO', cat: 'can',     desc: 'Orele motorului împărțite: ralanti (gol), în mers, și cu PTO (lucru la utilaje).', fn: rEngineHours },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   desc: 'Unde, când și cu cât s-a depășit limita de viteză.', fn: rSpeeding },
   geofence:    { label: 'Vizite în zone',         cat: 'evenimente',   desc: 'Intrările și ieșirile din zonele definite: când și cât a stat.', fn: rGeofence },
   hotspot:     { label: 'Raport Hotspot',         cat: 'evenimente',   desc: 'Locurile în care flota staționează cel mai des (hartă termică).', fn: rHotspot },
