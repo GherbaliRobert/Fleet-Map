@@ -1021,7 +1021,7 @@ async function rOverRev(db, imeis, from, to, opts, devMap) { // Supraturații �
       over = isOver; prevTs = t(p);
     }
     const prag = _grp(RPM_MAX) + ' rpm';
-    if (!hadRpm) { rows.push([nm, 'Fără RPM', '—', '—', prag, '—', '—']); worstPts.push(null); continue; }
+    if (!hadRpm) { rows.push([nm, '—', '—', 'Fără RPM', prag, '—', '—']); worstPts.push(null); continue; } // „Fără RPM" în coloana RPM max (nu în Supraturații)
     if (!count) { rows.push([nm, 0, fmtDur(0), maxRpm ? _grp(maxRpm) + ' rpm' : '—', prag, '—', '—']); worstPts.push(null); continue; }
     fleetEvents += count;
     rows.push([nm, count, fmtDur(Math.round(overSec)), _grp(maxRpm) + ' rpm', prag, fmtTs(worst.ts), loc(worst.p)]);
