@@ -463,7 +463,7 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scurg
     });
   }
   const vehRefueled = Object.values(perVeh).filter(v => v.refuels > 0).length; // câte MAȘINI au fost alimentate în perioadă
-  return { columns: ['Vehicul','Data','Tip','Combustibil','Δ Litri','Nivel (L)','Locație'], rows,
+  return { columns: ['Vehicul','Data','Eveniment','Combustibil','Δ Litri','Nivel (L)','Locație'], rows,
     summary: { 'Vehicule alimentate': vehRefueled, 'Alimentări': refuels, 'Litri alimentați': Math.round(addedL), 'Scăderi suspecte': drops, 'Litri scăzuți': Math.round(lostL) }, charts, perVehicle, summarySheet: true };
 }
 
