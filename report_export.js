@@ -52,7 +52,8 @@ function xlSheetName(name, used) {
 function xlWriteTable(ws, titleLines, columns, rows, logoId) {
   const ncol = Math.max(1, columns.length);
   let r = xlPlaceLogo(ws, logoId); // logo pe rândul 1 → titlul/tabelul încep de la rândul 2 (sau 1 fără logo)
-  for (const tl of (titleLines || [])) { ws.mergeCells(r, 1, r, ncol); const c = ws.getCell(r, 1); c.value = tl.text; c.font = tl.font || { bold: true, size: 13 }; r++; }
+  // Fără merge pe titlu/perioadă → textul lung se revarsă în celulele goale din dreapta (vizibil fără să tragi de coloane).
+  for (const tl of (titleLines || [])) { const c = ws.getCell(r, 1); c.value = tl.text; c.font = tl.font || { bold: true, size: 13 }; r++; }
   r++;
   const hr = r;
   columns.forEach((c, i) => { const cell = ws.getCell(hr, i + 1); cell.value = c; cell.font = { bold: true }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } }; cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } }; });
@@ -128,10 +129,9 @@ async function toXlsx(report) {
   const ws = wb.addWorksheet((report.label || 'Raport').replace(/[\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Raport');
   const base = xlPlaceLogo(ws, logoId); // logo pe rândul 1 → titlul începe de la rândul 2 (sau 1 fără logo)
 
-  ws.mergeCells(base, 1, base, ncol);
+  // Fără merge pe titlu/perioadă → textul lung se revarsă în celulele goale din dreapta (vizibil fără să tragi de coloane).
   ws.getCell(base, 1).value = report.label || 'Raport';
   ws.getCell(base, 1).font = { bold: true, size: 14 };
-  ws.mergeCells(base + 1, 1, base + 1, ncol);
   ws.getCell(base + 1, 1).value = report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to));
   ws.getCell(base + 1, 1).font = { italic: true, size: 10, color: { argb: 'FF777777' } };
 
