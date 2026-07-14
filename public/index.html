@@ -7049,6 +7049,7 @@ const pozitii = await r.json();</code></pre>
       try { localStorage.setItem('mapLayer', key); } catch (e) {}
       if (key !== 'auto') satMode = false; // alegerea manuală anulează modul satelit de desenare
       applyMapTheme();
+      _apply3dLayer(); // dacă harta 3D e activă, schimbă și baza ei (ex: Satelit)
       var menu = document.getElementById('map-layer-menu'); if (menu) menu.style.display = 'none';
     }
     function updateLayerMenuUI() {
@@ -7063,6 +7064,7 @@ const pozitii = await r.json();</code></pre>
     function toggleDrawSatellite(on) {
       satMode = (typeof on === 'boolean') ? on : !satMode;
       applyMapTheme();
+      _apply3dLayer(); // sincronizează și harta 3D dacă e activă
       const btn = document.getElementById('draw-sat-btn');
       if (btn) btn.classList.toggle('active', satMode);
     }
@@ -7694,13 +7696,35 @@ const pozitii = await r.json();</code></pre>
     // ═══ Hartă 3D REALĂ (MapLibre-GL + modele 3D) — activată de starea „3D" a comutatorului ═══
     // ADITIV: harta Leaflet 2D rămâne NEATINSĂ când 3D e oprit. MapLibre se inițializează O SINGURĂ
     // dată (la prima intrare în 3D), apoi doar se ascunde/afișează. O singură hartă e vie la un moment dat.
-    var _ml3dMap = null, _ml3dLayer = null, _ml3dInited = false, _libs3dPromise = null, _ml3dViewer = null, _ml3dWatch = null, _ml3dRO = null;
+    var _ml3dMap = null, _ml3dLayer = null, _ml3dInited = false, _libs3dPromise = null, _ml3dViewer = null, _ml3dWatch = null, _ml3dRO = null, _ml3dLayerPending = false;
     var map3dOn = false;
-    var MAP_STYLE_3D = {
-      version: 8,
-      sources: { osm: { type: 'raster', tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: '© OpenStreetMap' } },
-      layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-    };
+    // Harta 3D urmează stratul ales de utilizator (meniul „Straturi hartă") → SATELIT funcționează și în 3D.
+    // Convertește un tile-template Leaflet ({s} subdomenii, {r} retina) în lista de URL-uri cerută de MapLibre.
+    function _ml3dTilesFor(key) {
+      var cfg = MAP_TILES[key] || MAP_TILES.light;
+      var tiles = cfg.sub ? cfg.sub.split('').map(function (s) { return cfg.url.replace('{s}', s).replace('{r}', ''); })
+        : [cfg.url.replace('{r}', '')];
+      return { tiles: tiles, attribution: cfg.attribution, max: cfg.max || 19, labels: cfg.labels || null };
+    }
+    function _ml3dStyle() {
+      var t = _ml3dTilesFor(_resolveLayerKey());
+      var sources = { osm: { type: 'raster', tiles: t.tiles, tileSize: 256, maxzoom: t.max, attribution: t.attribution } };
+      var layers = [{ id: 'osm', type: 'raster', source: 'osm' }];
+      if (t.labels) { sources['osm-labels'] = { type: 'raster', tiles: [t.labels], tileSize: 256, maxzoom: t.max }; layers.push({ id: 'osm-labels', type: 'raster', source: 'osm-labels' }); }
+      return { version: 8, sources: sources, layers: layers };
+    }
+    // Schimbă LIVE stratul de bază al hărții 3D (când userul alege din meniu), păstrând clădirile/vehiculele/dâra deasupra.
+    function _apply3dLayer() {
+      if (!map3dOn || !_ml3dMap) return;
+      var _loaded = false; try { _loaded = _ml3dMap.isStyleLoaded(); } catch (e) {}
+      if (!_loaded) { if (!_ml3dLayerPending) { _ml3dLayerPending = true; try { _ml3dMap.once('idle', _apply3dLayer); } catch (e) {} } return; } // o singură programare 'idle' activă → nu stivuim handlere la schimbări rapide
+      _ml3dLayerPending = false;
+      var t = _ml3dTilesFor(_resolveLayerKey());
+      ['osm-labels', 'osm'].forEach(function (id) { try { if (_ml3dMap.getLayer(id)) _ml3dMap.removeLayer(id); } catch (e) {} try { if (_ml3dMap.getSource(id)) _ml3dMap.removeSource(id); } catch (e) {} });
+      var firstId = ((_ml3dMap.getStyle().layers || [])[0] || {}).id; // re-inserăm baza SUB primul strat rămas (clădiri/dâră/vehicule)
+      try { _ml3dMap.addSource('osm', { type: 'raster', tiles: t.tiles, tileSize: 256, maxzoom: t.max, attribution: t.attribution }); _ml3dMap.addLayer({ id: 'osm', type: 'raster', source: 'osm' }, firstId); } catch (e) {}
+      if (t.labels) { try { _ml3dMap.addSource('osm-labels', { type: 'raster', tiles: [t.labels], tileSize: 256, maxzoom: t.max }); _ml3dMap.addLayer({ id: 'osm-labels', type: 'raster', source: 'osm-labels' }, firstId); } catch (e) {} }
+    }
 
     // Încarcă LENEȘ (la prima activare) MapLibre-GL (UMD) + modulul nostru ESM (three via import-map).
     function ensure3dLibs() {
@@ -7914,7 +7938,7 @@ const pozitii = await r.json();</code></pre>
         if (!_ml3dInited) {
           _ml3dInited = true;
           try {
-            _ml3dMap = new maplibregl.Map({ container: 'map3d', style: MAP_STYLE_3D, center: [25, 45.9], zoom: 5.2, attributionControl: false, pitchWithRotate: true, dragRotate: true, maxPitch: 70, canvasContextAttributes: { antialias: true } });
+            _ml3dMap = new maplibregl.Map({ container: 'map3d', style: _ml3dStyle(), center: [25, 45.9], zoom: 5.2, attributionControl: false, pitchWithRotate: true, dragRotate: true, maxPitch: 70, canvasContextAttributes: { antialias: true } });
             _ml3dMap.touchZoomRotate.enableRotation(); _ml3dMap.touchPitch.enable();
             // Când se deschide panoul de detaliu (sau se schimbă layout-ul), #map-container se redimensionează.
             // Leaflet primește invalidateSize, dar MapLibre NU → canvasul nu mai umple containerul și harta
@@ -7951,6 +7975,7 @@ const pozitii = await r.json();</code></pre>
         } else {
           try { _ml3dMap.resize(); } catch (e) {}
           try { if (_ml3dMap.getLayer('3d-buildings')) _ml3dMap.setLayoutProperty('3d-buildings', 'visibility', 'visible'); } catch (e) {}
+          try { _apply3dLayer(); } catch (e) {} // reintrare în 3D → sincronizează stratul ales între timp în 2D
           push3dData();
         }
       }).catch(function () {

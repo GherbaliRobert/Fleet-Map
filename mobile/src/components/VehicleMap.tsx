@@ -17,6 +17,10 @@ const MAP_STYLE: any = {
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 };
 
+// Straturi de bază comutabile: străzi (OSM) ⇄ satelit (Esri World Imagery — aceeași sursă ca pe web).
+const OSM_TILES = ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'];
+const SAT_TILES = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
+
 function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string)); }
 
 // ─── Iconițe (săgeată 2D + izometric 3D) ───
@@ -74,6 +78,15 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   const viewerMarker = useRef<maplibregl.Marker | null>(null); // poziția dispozitivului de pe care urmărești
   const watchId = useRef<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [sat, setSat] = useState<boolean>(() => { try { return localStorage.getItem('mapSat') === '1'; } catch { return false; } });
+  const satRef = useRef(sat); satRef.current = sat;
+  function toggleSat() { const nv = !sat; try { localStorage.setItem('mapSat', nv ? '1' : '0'); } catch {} setSat(nv); }
+  // Comută baza străzi ⇄ satelit LIVE (funcționează în ambele moduri, 2D și 3D). La montare harta e null → se aplică din on('load').
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    const apply = () => { try { const src: any = map.getSource('osm'); if (src && src.setTiles) src.setTiles(sat ? SAT_TILES : OSM_TILES); } catch {} };
+    if (map.isStyleLoaded()) apply(); else map.once('load', apply);
+  }, [sat]);
   const [tour, setTour] = useState(-1); // -1 = ascuns; 0..n = pasul curent din instructaj (declanșat DOAR la apăsarea butonului 3D)
   function endTour() { try { localStorage.setItem('ra3dTourSeen', '1'); } catch {} setTour(-1); }
 
@@ -145,6 +158,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       } catch (e) { /* trail indisponibil */ }
       try { const layer = createVehicleLayer(); map.addLayer(layer); layerRef.current = layer; } catch (e) { /* WebGL indisponibil */ }
       _syncRef.current(); // randează modelele 3D imediat ce stratul e gata
+      try { if (satRef.current) { const src: any = map.getSource('osm'); if (src && src.setTiles) src.setTiles(SAT_TILES); } } catch { /* satelit restaurat din sesiunea anterioară */ }
     });
     // buton „Detalii" din balon → ecranul vehiculului (delegare pe container, supraviețuiește re-randării)
     ref.current.addEventListener('click', (ev: any) => {
@@ -227,6 +241,10 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       <button type="button" onClick={locateMe} aria-label="Unde sunt eu" title="Poziția mea"
         style={'position:absolute;top:56px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (locating ? 'var(--accent)' : 'var(--text-primary)') + ';box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
         <Icon name="navigate" size={18} color="currentColor" />
+      </button>
+      <button type="button" onClick={toggleSat} aria-label="Strat satelit" title={sat ? 'Hartă stradală' : 'Satelit'}
+        style={'position:absolute;top:102px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (sat ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
+        🛰️
       </button>
       {tour >= 0 && (
         <div class="tour3d">
