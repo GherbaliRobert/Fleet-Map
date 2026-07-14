@@ -1288,7 +1288,7 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     { type: 'bar', title: 'Cost pe km (RON)',                  labels: topK.labels, datasets: [{ label: 'RON/km', data: topK.data }] }
   ] : [];
   return { columns: ['Vehicul', 'Km efectuați', 'Consumat', 'Preț (RON/L)', 'Cost combustibil', 'Cost/km'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Km total flotă': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts };
+    summary: { 'Total vehicule': imeis.length, 'Km total flotă': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts, summarySheet: true };
 }
 
 async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (din consum carburant)
