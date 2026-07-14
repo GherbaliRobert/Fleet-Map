@@ -961,30 +961,43 @@ async function _lastIo(db, imei, key, to) {
     if (!r.rows[0]) return null; const n = parseFloat(r.rows[0].v); return isFinite(n) ? { v: n, ts: r.rows[0].timestamp } : null;
   } catch (e) { return null; }
 }
-async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN (snapshot ultim + citirea reală a contoarelor de odometru)
+async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN — instantaneu tehnic pe vehicul (ULTIMELE valori reale)
   const rows = [];
   for (const imei of imeis) {
+    const nm = label(devMap, imei);
     const r = await db.pool.query('SELECT * FROM positions WHERE imei = $1 AND timestamp <= $2 ORDER BY timestamp DESC LIMIT 1', [imei, to]);
-    const p = r.rows[0]; if (!p) continue;
+    const p = r.rows[0]; if (!p) { rows.push([nm, '—', '—', '—', '—', '—', 0]); continue; }
     const i = p.io_data || {};
-    const axle = [i.can_axle1_load, i.can_axle2_load, i.can_axle3_load, i.can_axle4_load, i.can_axle5_load].reduce((s, v) => s + (v || 0), 0) || i.can_load_weight || 0;
-    // Cele TREI contoare, citite ca ultima valoare reală (nu de pe pingul parcat curent):
-    const canMil = await _lastIo(db, imei, 'can_total_mileage', to);          // odometru REAL din bord (IO 87)
-    const canCnt = await _lastIo(db, imei, 'can_total_mileage_counted', to);   // contor „de la pornire" (IO 105) — ALT contor
-    const gpsOdo = await _lastIo(db, imei, 'total_odometer', to);              // odometru GPS device (IO 16, metri)
+    // Sarcină axe + DTC de pe ultimul ping (string-tolerant: valorile CAN pot veni ca string → altfel se concatenau greșit).
+    const axle = [i.can_axle1_load, i.can_axle2_load, i.can_axle3_load, i.can_axle4_load, i.can_axle5_load].reduce((s, v) => s + (parseFloat(v) || 0), 0) || parseFloat(i.can_load_weight) || 0;
+    const dtc = parseFloat(i.can_dtc_errors) || 0;
+    // Combustibil + odometre citite ca ULTIMA valoare REALĂ (nu de pe pingul parcat, care adesea nu mai trimite CAN → apărea „—").
+    const fuel = (await _lastIo(db, imei, 'fuel_level_liters', to)) || (await _lastIo(db, imei, 'can_fuel_level_liters', to));
+    const canMil = await _lastIo(db, imei, 'can_total_mileage', to);   // odometru REAL din bord (contorul mașinii)
+    const gpsOdo = await _lastIo(db, imei, 'total_odometer', to);      // odometru GPS al device-ului (metri) — de la montaj
     rows.push([
-      label(devMap, imei), fmtTs(p.timestamp),
-      fuelL(p) != null ? fuelL(p).toFixed(0) + ' L' : '—',
-      i.can_rpm != null ? i.can_rpm : '—',
-      canMil ? _grp(canMil.v) + ' km' : '—',
-      canMil ? fmtTs(canMil.ts) : '—',
-      canCnt ? _grp(canCnt.v) + ' km' : '—',
-      gpsOdo ? _grp(gpsOdo.v / 1000) + ' km' : '—',
-      axle ? axle + ' kg' : '—',
-      i.can_dtc_errors || 0
+      nm,
+      fmtTs(p.timestamp),                                             // Actualizat = ultimul contact cu mașina
+      fuel ? fuel.v.toFixed(0) + ' L' : '—',
+      canMil ? _grp(canMil.v) + ' km' : '—',                          // Km bord (CAN)
+      gpsOdo ? _grp(gpsOdo.v / 1000) + ' km' : '—',                   // Km GPS (device)
+      axle ? _grp(axle) + ' kg' : '—',
+      dtc
     ]);
   }
-  return { columns: ['Vehicul', 'Moment', 'Combustibil', 'RPM', 'Km CAN (bord)', 'CAN văzut la', 'Km „counted"', 'Odometru GPS', 'Sarcină axe', 'Erori DTC'], rows, summary: { 'Vehicule': rows.length } };
+  return {
+    columns: ['Vehicul', 'Actualizat', 'Combustibil', 'Km bord (CAN)', 'Km GPS (device)', 'Sarcină axe', 'Erori DTC'], rows,
+    periodLabel: 'Instantaneu — ultimele valori disponibile până la ' + fmtTs(to),
+    summary: { 'Total vehicule': rows.length, 'Cu erori DTC': rows.filter(r => typeof r[6] === 'number' && r[6] > 0).length },
+    summarySheet: true,
+    legend: { title: 'Date CAN — ce înseamnă coloanele', items: [
+      ['Actualizat', 'Când am primit ultima dată date de la mașină (ultimul contact).'],
+      ['Km bord (CAN)', 'Kilometrajul REAL din bordul mașinii — contorul mașinii.'],
+      ['Km GPS (device)', 'Cât a măsurat trackerul din GPS de la montare — de obicei mai mic (pornește de la 0 la instalare). Diferența față de „Km bord" e normală.'],
+      ['Sarcină axe', 'Greutatea pe axe (kg) — doar la camioane cu senzori de sarcină; „—" la mașinile fără.'],
+      ['Erori DTC', 'Câte coduri de defect raportează mașina (0 = niciunul). Peste 0 → de verificat la service.']
+    ] }
+  };
 }
 
 // ── Rapoarte CAN/FMS: Supraturații · PTO · Ore motor (gol/sarcină) ─────────────────────────────────
@@ -1676,7 +1689,7 @@ const REPORTS = {
   fuel_anomaly:{ label: 'Anomalii combustibil (scor)', cat: 'consum',  desc: 'Starea fiecărei mașini: risc de scurgeri sau pierderi de combustibil (scor).', fn: rFuelAnomaly },
   costs:       { label: 'Costuri combustibil',    cat: 'consum',       desc: 'Banii cheltuiți pe carburant, pe fiecare vehicul și pe total.', fn: rCosts },
   emissions:   { label: 'Emisii CO₂',             cat: 'consum',       desc: 'Amprenta de carbon a flotei, calculată din consum.', fn: rEmissions },
-  can:         { label: 'Date CAN',               cat: 'can',          desc: 'Citirile din calculatorul de bord: odometru, RPM, temperaturi.', fn: rCan },
+  can:         { label: 'Date CAN',               cat: 'can',          desc: 'Instantaneu tehnic pe mașină: combustibil, kilometraj real (bord + GPS), erori de defect.', fn: rCan },
   overrev:     { label: 'Supraturații',           cat: 'can',          desc: 'De câte ori și cât timp turația a depășit pragul — condus agresiv / uzură motor.', fn: rOverRev },
   pto:         { label: 'PTO (priză de putere)',  cat: 'can',          desc: 'Timp și porniri cu priza de putere activă (macara, basculă, frigorific).', fn: rPto },
   enginehours: { label: 'Ore motor: gol / sarcină', cat: 'can',        desc: 'Orele motorului: ralanti irosit (gol) vs muncă efectivă (sarcină).', fn: rEngineHours },
