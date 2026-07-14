@@ -7694,7 +7694,7 @@ const pozitii = await r.json();</code></pre>
     // ═══ Hartă 3D REALĂ (MapLibre-GL + modele 3D) — activată de starea „3D" a comutatorului ═══
     // ADITIV: harta Leaflet 2D rămâne NEATINSĂ când 3D e oprit. MapLibre se inițializează O SINGURĂ
     // dată (la prima intrare în 3D), apoi doar se ascunde/afișează. O singură hartă e vie la un moment dat.
-    var _ml3dMap = null, _ml3dLayer = null, _ml3dInited = false, _libs3dPromise = null, _ml3dViewer = null, _ml3dWatch = null;
+    var _ml3dMap = null, _ml3dLayer = null, _ml3dInited = false, _libs3dPromise = null, _ml3dViewer = null, _ml3dWatch = null, _ml3dRO = null;
     var map3dOn = false;
     var MAP_STYLE_3D = {
       version: 8,
@@ -7793,7 +7793,7 @@ const pozitii = await r.json();</code></pre>
           (function (imei) {
             el.addEventListener('click', function (ev) {
               ev.stopPropagation();
-              if (window.innerWidth > 768 && window.openVehiclePopup) window.openVehiclePopup(imei); else selectDevice(imei);
+              selectDevice(imei); // în 3D: panoul de detaliu (vizibil) + focus; balonul Leaflet ar cădea sub harta 3D
               focus3dOn(imei);
             });
           })(d.imei);
@@ -7853,6 +7853,16 @@ const pozitii = await r.json();</code></pre>
           try {
             _ml3dMap = new maplibregl.Map({ container: 'map3d', style: MAP_STYLE_3D, center: [25, 45.9], zoom: 5.2, attributionControl: false, pitchWithRotate: true, dragRotate: true, maxPitch: 70, canvasContextAttributes: { antialias: true } });
             _ml3dMap.touchZoomRotate.enableRotation(); _ml3dMap.touchPitch.enable();
+            // Când se deschide panoul de detaliu (sau se schimbă layout-ul), #map-container se redimensionează.
+            // Leaflet primește invalidateSize, dar MapLibre NU → canvasul nu mai umple containerul și harta
+            // Leaflet ascunsă „iese" pe dedesubt (hărțile se suprapun). Observăm containerul și redimensionăm 3D-ul.
+            try {
+              if (window.ResizeObserver && !_ml3dRO) {
+                var _mc3d = document.getElementById('map-container') || el;
+                _ml3dRO = new ResizeObserver(function () { try { if (_ml3dMap) _ml3dMap.resize(); } catch (e) {} });
+                _ml3dRO.observe(_mc3d);
+              }
+            } catch (e) {}
             _ml3dMap.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: true, showCompass: true }), 'bottom-left');
             _ml3dMap.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
             _ml3dMap.on('load', function () {
