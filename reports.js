@@ -1083,7 +1083,7 @@ async function rPto(db, imeis, from, to, opts, devMap) { // PTO — priza de put
 }
 
 async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: gol (ralanti) / mers / cu PTO
-  const rows = []; let tEng = 0, tIdle = 0;
+  const rows = []; let tEng = 0, tIdle = 0, tMove = 0, tPto = 0;
   for (const imei of imeis) {
     const nm = label(devMap, imei);
     const pts = await history(db, imei, from, to);
@@ -1107,14 +1107,15 @@ async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: g
     }
     if (!hadEngine || engineSec < 1) { rows.push([nm, fmtDur(0), fmtDur(0), fmtDur(0), '—', '—']); continue; }
     const pctIdle = Math.round(idleSec / engineSec * 100);
-    tEng += engineSec; tIdle += idleSec;
+    tEng += engineSec; tIdle += idleSec; tMove += moveSec; tPto += ptoSec;
     rows.push([nm, fmtDur(Math.round(engineSec)), fmtDur(Math.round(idleSec)), fmtDur(Math.round(moveSec)), ptoSec > 0 ? fmtDur(Math.round(ptoSec)) : '—', pctIdle + '%']);
   }
   const pk = r => { const n = parseFloat(r[5]); return isFinite(n) ? n : -1; };
   rows.sort((a, b) => pk(b) - pk(a));                                 // cel mai mare % gol sus (irosire)
   return {
+    // Sumar cu TOTALURI care se adună (Ore motor = gol + mers + PTO) — fără procent derivat care se confundă cu media.
     columns: ['Vehicul', 'Ore motor', 'În gol', 'În mers', 'Cu PTO', '% gol'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Ore motor (total)': fmtDur(Math.round(tEng)), 'În gol (total)': fmtDur(Math.round(tIdle)), '% gol flotă': tEng > 0 ? Math.round(tIdle / tEng * 100) + '%' : '—' },
+    summary: { 'Total vehicule': imeis.length, 'Ore motor (total)': fmtDur(Math.round(tEng)), 'În gol (total)': fmtDur(Math.round(tIdle)), 'În mers (total)': fmtDur(Math.round(tMove)), 'Cu PTO (total)': tPto > 0 ? fmtDur(Math.round(tPto)) : '—' },
     summarySheet: true,
     legend: { title: 'Ore motor — cum se împarte timpul cu motorul pornit', items: [
       ['În gol (ralanti)', 'Staționat, fără PTO — timp și combustibil irosite.'],
@@ -1699,7 +1700,7 @@ const REPORTS = {
   can:         { label: 'Date CAN',               cat: 'can',          desc: 'Instantaneu tehnic pe mașină: combustibil, kilometraj real (bord + GPS), erori de defect.', fn: rCan },
   overrev:     { label: 'Supraturații',           cat: 'can',          desc: 'De câte ori și cât timp turația a depășit pragul — condus agresiv / uzură motor.', fn: rOverRev },
   pto:         { label: 'PTO (priză de putere)',  cat: 'can',          desc: 'Timp și porniri cu priza de putere activă (macara, basculă, frigorific).', fn: rPto },
-  enginehours: { label: 'Ore motor: gol / mers / PTO', cat: 'can',     desc: 'Orele motorului împărțite: ralanti (gol), în mers, și cu PTO (lucru la utilaje).', fn: rEngineHours },
+  enginehours: { label: 'Ore motor',              cat: 'can',          desc: 'Orele motorului împărțite: ralanti (gol), în mers, și cu PTO (lucru la utilaje).', fn: rEngineHours },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   desc: 'Unde, când și cu cât s-a depășit limita de viteză.', fn: rSpeeding },
   geofence:    { label: 'Vizite în zone',         cat: 'evenimente',   desc: 'Intrările și ieșirile din zonele definite: când și cât a stat.', fn: rGeofence },
   hotspot:     { label: 'Raport Hotspot',         cat: 'evenimente',   desc: 'Locurile în care flota staționează cel mai des (hartă termică).', fn: rHotspot },
