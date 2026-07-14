@@ -1501,8 +1501,8 @@ async function rFleetUptime(db, imeis, from, to, opts, devMap) {
 // ── Raport NOU: Anomalii combustibil cu scor de încredere (furt vs consum vs zgomot) ────────────────────
 // Legenda scorului de suspiciune (setată pe raport → randată identic online, în Excel și PDF).
 const ANOMALY_LEGEND = { title: 'Scorul de suspiciune — cum se citește', items: [
-  ['Probabil furt (75–100)', 'Scădere greu de explicat normal: motor stins + staționat + cantitate mare. Merită verificată.'],
-  ['Posibil (55–74)', 'Scădere suspectă, dar nu certă — poate avea și o cauză normală.'],
+  ['Risc ridicat (75–100)', 'Scădere greu de explicat normal: motor stins + staționat + cantitate mare. Merită verificată.'],
+  ['Risc mediu (55–74)', 'Scădere suspectă, dar nu certă — poate avea și o cauză normală.'],
   ['Scăderi minore (sub 55)', 'Probabil consum normal sau oscilație de senzor — nealarmant.'],
   ['OK — fără anomalii', 'Mașina raportează nivel prin CAN și nu a avut nicio scădere suspectă.'],
   ['Fără date CAN', 'Mașina nu raportează nivel (ex. pe GPL) — nu poate fi verificată automat aici.']
@@ -1541,7 +1541,7 @@ async function rFuelAnomaly(db, imeis, from, to, opts, devMap) {
     } else {
       events.sort((a, b) => b.score - a.score);
       const worst = events[0], totalDrop = events.reduce((s, e) => s + e.drop, 0);
-      const stare = worst.score >= 75 ? 'Probabil furt' : worst.score >= 55 ? 'Posibil' : 'Scăderi minore';
+      const stare = worst.score >= 75 ? 'Risc ridicat' : worst.score >= 55 ? 'Risc mediu' : 'Scăderi minore';
       if (worst.score >= 75) high++; else if (worst.score >= 55) med++; else clean++;
       rows.push([nm, stare, events.length, worst.score, totalDrop.toFixed(1) + ' L', fmtTs(worst.ts), loc(worst.p)]);
       worstPts.push(worst.p);
@@ -1556,9 +1556,9 @@ async function rFuelAnomaly(db, imeis, from, to, opts, devMap) {
   // Sortare: suspecte (scor mare) sus → OK (scor 0) → Fără date CAN („—") la coadă.
   const sk = v => (v === '—' || v == null ? -1 : Number(v));
   rows.sort((a, b) => sk(b[3]) - sk(a[3]));
-  const charts = [{ type: 'doughnut', title: 'Starea flotei', labels: ['Fără probleme', 'Posibil', 'Probabil furt', 'Fără date CAN'], datasets: [{ label: 'vehicule', data: [clean, med, high, noData] }] }];
+  const charts = [{ type: 'doughnut', title: 'Starea flotei', labels: ['Fără probleme', 'Risc mediu', 'Risc ridicat', 'Fără date CAN'], datasets: [{ label: 'vehicule', data: [clean, med, high, noData] }] }];
   return { columns: ['Vehicul', 'Stare', 'Anomalii', 'Scor max', 'Litri scăzuți', 'Data', 'Locație'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Fără probleme': clean, 'Posibil': med, 'Probabil furt': high, 'Fără date CAN': noData },
+    summary: { 'Total vehicule': imeis.length, 'Fără probleme': clean, 'Risc mediu': med, 'Risc ridicat': high, 'Fără date CAN': noData },
     charts, summarySheet: true, legend: ANOMALY_LEGEND };
 }
 
