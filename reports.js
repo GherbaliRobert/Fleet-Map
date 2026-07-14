@@ -113,7 +113,7 @@ async function history(db, imei, from, to) {
 async function deviceNames(db, imeis) {
   const map = {};
   try {
-    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.fuel_type, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
+    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.fuel_type, d.tank_capacity, d.tank_calibration, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
     r.rows.forEach(d => map[d.imei] = d);
   } catch (e) {}
   return map;
@@ -1685,6 +1685,10 @@ async function rFuelProbe(db, imeis, from, to, opts, devMap) { // Sondă litrome
   const rows = [];
   for (const imei of imeis) {
     const nm = label(devMap, imei);
+    const d = devMap[imei] || {};
+    const cap = parseFloat(d.tank_capacity) || 0; // capacitate rezervor din fișă → pentru „%"
+    const calRaw = d.tank_calibration;             // JSONB voltaj→litri; prezent = sondă calibrată
+    const calibrated = !!(calRaw && (Array.isArray(calRaw) ? calRaw.length : (typeof calRaw === 'object' ? Object.keys(calRaw).length : 0)));
     const pts = await history(db, imei, from, to);
     let last = null, lastTs = null, min = null, max = null, tip = null;
     for (const p of pts) {
@@ -1697,17 +1701,21 @@ async function rFuelProbe(db, imeis, from, to, opts, devMap) { // Sondă litrome
       if (min == null || v < min) min = v;
       if (max == null || v > max) max = v;
     }
-    if (last == null) { rows.push([nm, 'Fără sondă', '—', '—', '—', '—']); continue; }
-    rows.push([nm, fmtTs(lastTs), last.toFixed(0) + ' L', min.toFixed(0) + ' L', max.toFixed(0) + ' L', tip]);
+    if (last == null) { rows.push([nm, 'Fără sondă', '—', '—', '—', '—', '—']); continue; }
+    const pct = cap > 0 ? Math.round(last / cap * 100) : null;
+    const nivel = last.toFixed(0) + ' L' + (pct != null ? ' (' + pct + '%)' : '');
+    const calibr = (tip === 'Analogică') ? (calibrated ? 'Da' : 'Nu') : '—'; // calibrarea contează doar la sonda analogică
+    rows.push([nm, fmtTs(lastTs), nivel, min.toFixed(0) + ' L', max.toFixed(0) + ' L', tip, calibr]);
   }
   return {
-    columns: ['Vehicul', 'Actualizat', 'Nivel sondă', 'Min', 'Max', 'Tip sondă'], rows,
+    columns: ['Vehicul', 'Actualizat', 'Nivel', 'Min', 'Max', 'Tip sondă', 'Calibrare'], rows,
     periodLabel: 'Nivel din sondă — ultimele valori până la ' + fmtTs(to),
-    summary: { 'Total vehicule': imeis.length, 'Cu sondă': rows.filter(r => r[5] === 'Analogică' || r[5] === 'BLE').length },
+    summary: { 'Total vehicule': imeis.length, 'Cu sondă': rows.filter(r => r[5] === 'Analogică' || r[5] === 'BLE').length, 'Necalibrate': rows.filter(r => r[6] === 'Nu').length },
     summarySheet: true,
     legend: { title: 'Sondă litrometrică', items: [
-      ['Nivel sondă', 'Nivelul de combustibil citit de sonda din rezervor (NU din CAN) — util unde CAN-ul nu-l dă.'],
-      ['Tip sondă', 'Analogică (Escort/Technoton, pe intrare analogică, calibrată voltaj→litri) sau BLE (wireless).'],
+      ['Nivel', 'Nivelul din sonda din rezervor (NU din CAN), în litri și „%" din capacitate (capacitatea rezervorului din fișă).'],
+      ['Tip sondă', 'Analogică (Escort/Technoton, voltaj→litri) sau BLE (wireless, dă direct litri).'],
+      ['Calibrare', 'Doar la sonda analogică: „Da" = are calibrare voltaj→litri (litri corecți); „Nu" = necalibrată → valorile nu sunt de încredere.'],
       ['Fără sondă', 'Vehiculul nu are sondă litrometrică montată.']
     ] }
   };
