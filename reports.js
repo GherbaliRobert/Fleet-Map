@@ -1001,11 +1001,13 @@ async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN — instant
 }
 
 // ── Rapoarte CAN/FMS: Supraturații · PTO · Ore motor (gol/sarcină) ─────────────────────────────────
-async function rOverRev(db, imeis, from, to, opts, devMap) { // Supraturații — turația CAN peste prag
-  const RPM_MAX = opts.rpmMax || 2500;
+// Prag de supraturație pe tip de combustibil: diesel toarce jos (linie roșie ~2500–3000); benzină/GPL toarcă sus (~6000).
+function _revThreshold(fuelType) { return _ftKey(fuelType) === 'motorina' ? 2500 : 4000; }
+async function rOverRev(db, imeis, from, to, opts, devMap) { // Supraturații — turația CAN peste prag (adaptat pe tip de combustibil)
   const rows = [], worstPts = []; let fleetEvents = 0;
   for (const imei of imeis) {
     const nm = label(devMap, imei);
+    const RPM_MAX = opts.rpmMax || _revThreshold(devMap[imei] && devMap[imei].fuel_type); // prag adaptat motorului
     const pts = await history(db, imei, from, to);
     let prevTs = null, over = false, count = 0, overSec = 0, maxRpm = 0, worst = null, hadRpm = false;
     for (const p of pts) {
@@ -1018,22 +1020,24 @@ async function rOverRev(db, imeis, from, to, opts, devMap) { // Supraturații �
       if (isOver && (worst == null || rpm > worst.rpm)) worst = { rpm, ts: p.timestamp, p };
       over = isOver; prevTs = t(p);
     }
-    if (!hadRpm) { rows.push([nm, 'Fără RPM', '—', '—', '—', '—']); worstPts.push(null); continue; }
-    if (!count) { rows.push([nm, 0, fmtDur(0), maxRpm ? _grp(maxRpm) + ' rpm' : '—', '—', '—']); worstPts.push(null); continue; }
+    const prag = _grp(RPM_MAX) + ' rpm';
+    if (!hadRpm) { rows.push([nm, 'Fără RPM', '—', '—', prag, '—', '—']); worstPts.push(null); continue; }
+    if (!count) { rows.push([nm, 0, fmtDur(0), maxRpm ? _grp(maxRpm) + ' rpm' : '—', prag, '—', '—']); worstPts.push(null); continue; }
     fleetEvents += count;
-    rows.push([nm, count, fmtDur(Math.round(overSec)), _grp(maxRpm) + ' rpm', fmtTs(worst.ts), loc(worst.p)]);
+    rows.push([nm, count, fmtDur(Math.round(overSec)), _grp(maxRpm) + ' rpm', prag, fmtTs(worst.ts), loc(worst.p)]);
     worstPts.push(worst.p);
   }
   if (geocode && geocode.warm) { const c = worstPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {} } }
-  rows.forEach((r, i) => { if (worstPts[i]) r[5] = addr(worstPts[i]); });
+  rows.forEach((r, i) => { if (worstPts[i]) r[6] = addr(worstPts[i]); });
   const sk = v => (typeof v === 'number' ? v : -1);
   rows.sort((a, b) => sk(b[1]) - sk(a[1]));                          // cele mai multe supraturații sus
   return {
-    columns: ['Vehicul', 'Supraturații', 'Timp', 'RPM max', 'Ultima', 'Locație'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Cu supraturații': rows.filter(r => typeof r[1] === 'number' && r[1] > 0).length, 'Supraturații (total)': fleetEvents, 'Prag': RPM_MAX + ' rpm' },
+    columns: ['Vehicul', 'Supraturații', 'Timp', 'RPM max', 'Prag', 'Ultima', 'Locație'], rows,
+    summary: { 'Total vehicule': imeis.length, 'Cu supraturații': rows.filter(r => typeof r[1] === 'number' && r[1] > 0).length, 'Supraturații (total)': fleetEvents },
     summarySheet: true,
     legend: { title: 'Supraturații — ce înseamnă', items: [
-      ['Supraturație', 'De câte ori turația a depășit ' + RPM_MAX + ' rpm — condus agresiv, treaptă greșită sau uzură de motor.'],
+      ['Supraturație', 'De câte ori turația a depășit pragul mașinii — condus agresiv, treaptă greșită sau uzură de motor.'],
+      ['Prag pe combustibil', 'Motorină 2500 rpm (motoare care toarcă jos); Benzină și GPL 4000 rpm (toarcă sus). Setează „Tip combustibil" în fișa mașinii ca pragul să fie corect.'],
       ['Timp', 'Cât timp total a stat motorul peste prag.'],
       ['Fără RPM', 'Mașina nu raportează turația prin CAN — nu poate fi evaluată.']
     ] }
