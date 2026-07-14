@@ -1291,38 +1291,6 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     summary: { 'Total vehicule': imeis.length, 'Km total flotă': Math.round(tKm), 'Consum total (L)': Math.round(tCons), 'Cost total (RON)': Math.round(tCost) }, charts };
 }
 
-async function rCostsTotal(db, imeis, from, to, opts, devMap) { // Costuri totale: combustibil (auto din telemetrie) + service (mentenanță) + acte (documente)
-  const d0 = String(from).slice(0, 10), d1 = String(to).slice(0, 10);
-  const cm = await _consumptionMap(db, imeis, from, to, opts);
-  const svcMap = {}; try {
-    const r = await db.pool.query("SELECT imei, COALESCE(SUM(cost),0)::float AS c FROM maintenance WHERE status='done' AND imei = ANY($1) AND COALESCE(done_date, done_at::date) BETWEEN $2 AND $3 GROUP BY imei", [imeis, d0, d1]);
-    r.rows.forEach(x => svcMap[x.imei] = x.c);
-  } catch (e) {}
-  const docMap = {}; try {
-    const r = await db.pool.query("SELECT imei, COALESCE(SUM(cost),0)::float AS c FROM vehicle_documents WHERE imei = ANY($1) AND issue_date BETWEEN $2 AND $3 GROUP BY imei", [imeis, d0, d1]);
-    r.rows.forEach(x => docMap[x.imei] = x.c);
-  } catch (e) {}
-  const rows = []; let tFuel = 0, tSvc = 0, tDoc = 0, tKm = 0; const vTotal = [];
-  for (const imei of imeis) {
-    const m = cm[imei] || { consumed: 0, dist: 0, price: resolvePrice(null, opts) };
-    const fuelCost = m.consumed * m.price;
-    const svc = svcMap[imei] || 0, doc = docMap[imei] || 0;
-    const total = fuelCost + svc + doc, perKm = m.dist > 1 ? total / m.dist : 0;
-    const nm = label(devMap, imei);
-    rows.push([nm, Math.round(fuelCost) + ' RON', Math.round(svc) + ' RON', Math.round(doc) + ' RON', Math.round(total) + ' RON', perKm ? perKm.toFixed(2) + ' RON' : '—']);
-    tFuel += fuelCost; tSvc += svc; tDoc += doc; tKm += m.dist; if (total) vTotal.push([nm, total]);
-  }
-  rows.sort((a, b) => parseFloat(b[4]) - parseFloat(a[4]));
-  const grand = tFuel + tSvc + tDoc;
-  const topT = _topN(vTotal, 10);
-  const charts = grand ? [
-    { type: 'doughnut', title: 'Costuri pe categorie (RON)', labels: ['Combustibil', 'Service', 'Acte'], datasets: [{ label: 'RON', data: [Math.round(tFuel), Math.round(tSvc), Math.round(tDoc)] }] },
-    { type: 'bar', title: 'Cost total pe vehicul (RON)', labels: topT.labels, datasets: [{ label: 'RON', data: topT.data }] }
-  ] : [];
-  return { columns: ['Vehicul', 'Combustibil', 'Service', 'Acte', 'Total', 'Cost/km'], rows,
-    summary: { 'Combustibil (RON)': Math.round(tFuel), 'Service (RON)': Math.round(tSvc), 'Acte (RON)': Math.round(tDoc), 'TOTAL (RON)': Math.round(grand), 'Km total': Math.round(tKm) }, charts };
-}
-
 async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (din consum carburant)
   const cm = await _consumptionMap(db, imeis, from, to, opts);
   const rows = []; let tCo2 = 0, tKm = 0, tCons = 0; const vCo2 = [], vPerKm = [];
@@ -1578,7 +1546,6 @@ const REPORTS = {
   fuel:        { label: 'Alimentări & scurgeri',  cat: 'consum',       desc: 'Unde și când s-a alimentat + scăderi suspecte de combustibil.', fn: rFuel },
   fuel_anomaly:{ label: 'Anomalii combustibil (scor)', cat: 'consum',  desc: 'Scor de suspiciune pe vehicul: posibile furturi sau pierderi.', fn: rFuelAnomaly },
   costs:       { label: 'Costuri combustibil',    cat: 'consum',       desc: 'Banii cheltuiți pe carburant, pe fiecare vehicul și pe total.', fn: rCosts },
-  costs_total: { label: 'Costuri totale (toate)', cat: 'consum',       desc: 'Tot costul flotei la un loc: carburant + service + documente.', fn: rCostsTotal },
   emissions:   { label: 'Emisii CO₂',             cat: 'consum',       desc: 'Amprenta de carbon a flotei, calculată din consum.', fn: rEmissions },
   can:         { label: 'Date CAN',               cat: 'can',          desc: 'Citirile din calculatorul de bord: odometru, RPM, temperaturi.', fn: rCan },
   speeding:    { label: 'Depășiri viteză',        cat: 'evenimente',   desc: 'Unde, când și cu cât s-a depășit limita de viteză.', fn: rSpeeding },
@@ -1690,8 +1657,8 @@ async function fuelStats(db, imeis, from, to, opts) {
 
 // ─── Filtru zile-din-săptămână / interval orar (Europe/Bucharest) ───
 // Aplicat prin ÎNVELIREA obiectului db: pozițiile GPS (getDeviceHistory) și alertele (getAlertHistoryRange)
-// sunt filtrate ÎNAINTE să ajungă la funcțiile de raport. NU se aplică la: due (documente/service),
-// can (snapshot direct din pool) și componentele service/acte din costs_total.
+// sunt filtrate ÎNAINTE să ajungă la funcțiile de raport. NU se aplică la: due (documente/service)
+// și can (snapshot direct din pool).
 // (Mobilul își păstrează builderul propriu — filtrul e expus doar în layoutul cascadă de pe web.)
 function _tfMatcher(tf) {
   const daySet = tf.days && tf.days.length ? new Set(tf.days) : null;
