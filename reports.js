@@ -1738,7 +1738,7 @@ async function rFuelProbe(db, imeis, from, to, opts, devMap) { // Sondă litrome
       }
       prevFl = fl; prevTs = t(p);
     }
-    if (last == null) { const r = [nm, '—', 'Fără sondă', '—', '—', '—']; rows.push(r); evPts.push(null); continue; } // fără sondă → doar în tabelul principal, nu în drill-down
+    if (last == null) { const r = [nm, '—', 'Fără sondă', '—', '—', '—']; rows.push(r); evPts.push(null); perVehicle.push({ vehicul: nm, summary: [['Nivel', '—'], ['Tip sondă', 'Fără sondă'], ['Calibrare', '—'], ['Alimentări', 0], ['Scăderi', 0]], rows: [r], charts: [] }); continue; } // fără sondă → tot cu foaie proprie (structură de sumar identică pt. foaia Sumar)
     if (!vEvRows.length) { const r = [nm, '—', '(fără evenimente)', '—', '—', '—']; vEvRows.push(r); vEvPts.push(null); }
     vEvRows.forEach((r, k) => { rows.push(r); evPts.push(vEvPts[k]); });
     // Grafic multi-metric: Nivel combustibil (stânga) + Viteză (dreapta) în timp.
