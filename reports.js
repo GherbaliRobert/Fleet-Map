@@ -1703,43 +1703,66 @@ function _senzChart(vTotal, vSeries, totalTitle, unit, perTitlePrefix, perType) 
 }
 
 // ── Rapoarte SENZORI: sondă litrometrică · greutate · basculare · IoT ──────────────────────────────
-async function rFuelProbe(db, imeis, from, to, opts, devMap) { // Sondă litrometrică (analogică Escort / BLE) — nivel din sondă, nu din CAN
-  const rows = [], vLast = [], vSeries = [];
+// Rărește o serie la ~maxN puncte, uniform, păstrând ultimul.
+function _sampleSeries(arr, maxN) {
+  if (arr.length <= maxN) return arr;
+  const out = [], step = arr.length / maxN;
+  for (let i = 0; i < maxN; i++) out.push(arr[Math.floor(i * step)]);
+  if (out[out.length - 1] !== arr[arr.length - 1]) out.push(arr[arr.length - 1]);
+  return out;
+}
+async function rFuelProbe(db, imeis, from, to, opts, devMap) { // Sondă litrometrică — analiză per-mașină (grafic multi-metric + jurnal evenimente)
+  const refuelMin = opts.refuelMin || 5, dropMin = opts.dropMin || 10;
+  const rows = [], evPts = [], perVehicle = [], vLevel = [];
   for (const imei of imeis) {
     const nm = label(devMap, imei);
     const d = devMap[imei] || {};
-    const cap = parseFloat(d.tank_capacity) || 0; // capacitate rezervor din fișă → pentru „%"
-    const calRaw = d.tank_calibration;             // JSONB voltaj→litri; prezent = sondă calibrată
+    const cap = parseFloat(d.tank_capacity) || 0;
+    const calRaw = d.tank_calibration;
     const calibrated = !!(calRaw && (Array.isArray(calRaw) ? calRaw.length : (typeof calRaw === 'object' ? Object.keys(calRaw).length : 0)));
     const pts = await history(db, imei, from, to);
-    let last = null, lastTs = null, min = null, max = null, tip = null; const readings = [];
+    let last = null, tip = null, prevFl = null, prevTs = 0, fills = 0, drops = 0;
+    const series = [], vEvRows = [], vEvPts = [];
     for (const p of pts) {
       const i = io(p);
-      let v = null, t2 = null;
-      if (i.tank_level_liters != null) { v = parseFloat(i.tank_level_liters); t2 = 'Analogică'; }
-      else if (i.ble_fuel_level_1 != null) { v = parseFloat(i.ble_fuel_level_1); t2 = 'BLE'; }
-      if (v == null || !isFinite(v) || v < 0) continue;
-      last = v; lastTs = p.timestamp; tip = t2; readings.push({ ts: p.timestamp, v });
-      if (min == null || v < min) min = v;
-      if (max == null || v > max) max = v;
+      let fl = null, tp = null;
+      if (i.tank_level_liters != null) { fl = parseFloat(i.tank_level_liters); tp = 'Analogică'; }
+      else if (i.ble_fuel_level_1 != null) { fl = parseFloat(i.ble_fuel_level_1); tp = 'BLE'; }
+      if (fl == null || !isFinite(fl) || fl < 0) continue;
+      last = fl; tip = tp;
+      series.push({ ts: p.timestamp, fuel: +fl.toFixed(1), speed: Math.round(p.speed || 0) });
+      if (prevFl != null) {
+        const delta = fl - prevFl, gapH = (t(p) - prevTs) / 3600000, eng = ignOn(p);
+        if (delta >= refuelMin && gapH <= 1) { vEvRows.push([nm, fmtTs(p.timestamp), 'Alimentare', '+' + delta.toFixed(1) + ' L', fl.toFixed(0) + ' L', loc(p)]); vEvPts.push(p); fills++; }
+        else if (delta <= -dropMin && ((!eng && gapH <= 72) || (eng && gapH <= 1))) { vEvRows.push([nm, fmtTs(p.timestamp), eng ? 'Scădere' : 'Scădere/furt', delta.toFixed(1) + ' L', fl.toFixed(0) + ' L', loc(p)]); vEvPts.push(p); drops++; }
+      }
+      prevFl = fl; prevTs = t(p);
     }
-    if (last == null) { rows.push([nm, 'Fără sondă', '—', '—', '—', '—', '—']); continue; }
+    if (last == null) { const r = [nm, '—', 'Fără sondă', '—', '—', '—']; rows.push(r); evPts.push(null); continue; } // fără sondă → doar în tabelul principal, nu în drill-down
+    if (!vEvRows.length) { const r = [nm, '—', '(fără evenimente)', '—', '—', '—']; vEvRows.push(r); vEvPts.push(null); }
+    vEvRows.forEach((r, k) => { rows.push(r); evPts.push(vEvPts[k]); });
+    // Grafic multi-metric: Nivel combustibil (stânga) + Viteză (dreapta) în timp.
+    const S = _sampleSeries(series, 120), labels = S.map(s => fmtTsMin(s.ts));
+    const charts = [{ type: 'line', title: 'Nivel combustibil vs viteză — ' + nm, labels, datasets: [
+      { label: 'Nivel combustibil (L)', data: S.map(s => s.fuel), yAxisID: 'y' },
+      { label: 'Viteză (km/h)', data: S.map(s => s.speed), yAxisID: 'y1' }
+    ] }];
     const pct = cap > 0 ? Math.round(last / cap * 100) : null;
-    const nivel = last.toFixed(0) + ' L' + (pct != null ? ' (' + pct + '%)' : '');
-    const calibr = (tip === 'Analogică') ? (calibrated ? 'Da' : 'Nu') : '—'; // calibrarea contează doar la sonda analogică
-    rows.push([nm, fmtTs(lastTs), nivel, min.toFixed(0) + ' L', max.toFixed(0) + ' L', tip, calibr]);
-    vLast.push([nm, Math.round(last)]); vSeries.push({ nm, s: _dailySeries(readings, 'last') });
+    perVehicle.push({ vehicul: nm, summary: [['Nivel', last.toFixed(0) + ' L' + (pct != null ? ' (' + pct + '%)' : '')], ['Tip sondă', tip], ['Calibrare', tip === 'Analogică' ? (calibrated ? 'Da' : 'Nu') : '—'], ['Alimentări', fills], ['Scăderi', drops]], rows: vEvRows, charts });
+    vLevel.push([nm, Math.round(last)]);
   }
-  const charts = _senzChart(vLast, vSeries, 'Nivel curent pe vehicul (L)', 'L', 'Nivel sondă în timp — ', 'line');
+  if (geocode && geocode.warm) { const c = evPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {} } }
+  rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); }); // adresele „se coc" în rânduri (perVehicle folosește aceleași referințe)
+  const charts = vLevel.length ? [{ type: 'bar', title: 'Nivel curent pe vehicul (L)', labels: _topN(vLevel, 20).labels, datasets: [{ label: 'L', data: _topN(vLevel, 20).data }] }] : [];
   return {
-    columns: ['Vehicul', 'Actualizat', 'Nivel', 'Min', 'Max', 'Tip sondă', 'Calibrare'], rows,
-    periodLabel: 'Nivel din sondă — ultimele valori până la ' + fmtTs(to),
-    summary: { 'Total vehicule': imeis.length, 'Cu sondă': rows.filter(r => r[5] === 'Analogică' || r[5] === 'BLE').length, 'Necalibrate': rows.filter(r => r[6] === 'Nu').length },
-    charts, summarySheet: true,
-    legend: { title: 'Sondă litrometrică', items: [
-      ['Nivel', 'Nivelul din sonda din rezervor (NU din CAN), în litri și „%" din capacitate (capacitatea rezervorului din fișă).'],
-      ['Tip sondă', 'Analogică (Escort/Technoton, voltaj→litri) sau BLE (wireless, dă direct litri).'],
-      ['Calibrare', 'Doar la sonda analogică: „Da" = are calibrare voltaj→litri (litri corecți); „Nu" = necalibrată → valorile nu sunt de încredere.'],
+    columns: ['Vehicul', 'Data', 'Eveniment', 'Δ litri', 'Nivel', 'Locație'], rows,
+    perVehicle, charts,
+    summary: { 'Total vehicule': imeis.length, 'Cu sondă': vLevel.length, 'Necalibrate': perVehicle.filter(v => v.summary.some(s => s[0] === 'Calibrare' && s[1] === 'Nu')).length },
+    legend: { title: 'Sondă litrometrică — analiză', items: [
+      ['Grafic', 'Nivel combustibil (axa stângă) + Viteză (axa dreaptă) în timp → vezi scăderile corelate cu deplasarea.'],
+      ['Alimentare', 'Nivelul a urcat (realimentare).'],
+      ['Scădere', 'Nivel scăzut cu motorul PORNIT — de regulă consum normal.'],
+      ['Scădere/furt', 'Nivel scăzut cu motorul STINS — suspect (furt/scurgere).'],
       ['Fără sondă', 'Vehiculul nu are sondă litrometrică montată.']
     ] }
   };

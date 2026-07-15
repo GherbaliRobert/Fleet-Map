@@ -6005,11 +6005,12 @@ const pozitii = await r.json();</code></pre>
         const single = (c.datasets || []).length <= 1;
         const ds = (c.datasets || []).map((d, di) => {
           let bg;
-          if (isLine) bg = 'rgba(63,224,125,.12)';
+          if (isLine) bg = single ? 'rgba(63,224,125,.12)' : 'transparent'; // linii multiple: fără umplere (s-ar suprapune)
           else if (isPie) bg = (d.data || []).map((_, k) => palette[k % palette.length]);
           else if (single) bg = palette[0];
           else bg = palette[di % palette.length];
-          return Object.assign({ backgroundColor: bg, borderColor: isLine ? palette[0] : (isPie ? '#0b1f17' : bg), borderWidth: isLine ? 2 : (isPie ? 2 : 0), hoverOffset: isPie ? 10 : 0, hoverBorderWidth: isPie ? 3 : 0, tension: .35, fill: isLine, pointRadius: 2, pointHoverRadius: 5, borderRadius: isPie || isLine ? 0 : 4 }, d);
+          const lineCol = single ? palette[0] : palette[di % palette.length]; // culoare distinctă per linie la multi-line
+          return Object.assign({ backgroundColor: bg, borderColor: isLine ? lineCol : (isPie ? '#0b1f17' : bg), borderWidth: isLine ? 2 : (isPie ? 2 : 0), hoverOffset: isPie ? 10 : 0, hoverBorderWidth: isPie ? 3 : 0, tension: .35, fill: isLine && single, pointRadius: single ? 2 : 0, pointHoverRadius: 5, borderRadius: isPie || isLine ? 0 : 4 }, d);
         });
         const um = (c.title || '').match(/\(([^)]+)\)/); const unit = um ? ' ' + um[1] : '';
         createChart(id, c.type, { labels: c.labels || [], datasets: ds }, {
@@ -6023,7 +6024,7 @@ const pozitii = await r.json();</code></pre>
               afterLabel: (ctx) => { if ((c.datasets || []).length > 1) return ''; const arr = ctx.dataset.data || []; const v = (ctx.parsed && ctx.parsed.y != null) ? ctx.parsed.y : ctx.parsed; const rank = arr.filter(x => (+x || 0) > v).length + 1; return 'Loc ' + rank + ' din ' + arr.length; }
             } }
           },
-          scales: isPie ? {} : { y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,.12)' } }, x: { grid: { display: false } } }
+          scales: isPie ? {} : Object.assign({ y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,.12)' } }, x: { grid: { display: false } } }, (c.datasets || []).some(d => d.yAxisID === 'y1') ? { y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } } } : {})
         });
       });
       window._repChartIds.forEach(cid => { const ch = window._charts && window._charts[cid]; if (ch && ch.canvas) ch.canvas.addEventListener('mouseleave', () => _repHoverHighlight(null)); });
@@ -6065,8 +6066,9 @@ const pozitii = await r.json();</code></pre>
       const isPie = c.type === 'doughnut' || c.type === 'pie', isLine = c.type === 'line';
       const single = (c.datasets || []).length <= 1;
       const ds = (c.datasets || []).map((d, di) => {
-        const bg = isLine ? 'rgba(63,224,125,.15)' : isPie ? (d.data || []).map((_, k) => PDF_PALETTE[k % PDF_PALETTE.length]) : single ? PDF_PALETTE[0] : PDF_PALETTE[di % PDF_PALETTE.length];
-        return Object.assign({ backgroundColor: bg, borderColor: isLine ? PDF_PALETTE[0] : (isPie ? '#fff' : bg), borderWidth: isLine ? 3 : (isPie ? 2 : 0), tension: .35, fill: isLine, pointRadius: 0, borderRadius: isPie || isLine ? 0 : 4 }, d);
+        const bg = isLine ? (single ? 'rgba(63,224,125,.15)' : 'transparent') : isPie ? (d.data || []).map((_, k) => PDF_PALETTE[k % PDF_PALETTE.length]) : single ? PDF_PALETTE[0] : PDF_PALETTE[di % PDF_PALETTE.length];
+        const lineCol = single ? PDF_PALETTE[0] : PDF_PALETTE[di % PDF_PALETTE.length];
+        return Object.assign({ backgroundColor: bg, borderColor: isLine ? lineCol : (isPie ? '#fff' : bg), borderWidth: isLine ? (single ? 3 : 2) : (isPie ? 2 : 0), tension: .35, fill: isLine && single, pointRadius: 0, borderRadius: isPie || isLine ? 0 : 4 }, d);
       });
       const INK = '#1f2937', GRID = 'rgba(0,0,0,.10)';
       let chart, img = '';
@@ -6076,7 +6078,7 @@ const pozitii = await r.json();</code></pre>
           options: {
             responsive: false, maintainAspectRatio: false, devicePixelRatio: 2, animation: false,
             plugins: { legend: { display: !single || isPie, position: 'bottom', labels: { color: INK, boxWidth: 12, font: { family: 'Nunito', size: 13 } } }, tooltip: { enabled: false }, title: { display: false } },
-            scales: isPie ? {} : { y: { beginAtZero: true, ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { color: GRID } }, x: { ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { display: false } } }
+            scales: isPie ? {} : Object.assign({ y: { beginAtZero: true, ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { color: GRID } }, x: { ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { display: false } } }, (c.datasets || []).some(d => d.yAxisID === 'y1') ? { y1: { position: 'right', beginAtZero: true, ticks: { color: INK, font: { family: 'Nunito', size: 12 } }, grid: { display: false } } } : {})
           }
         });
         img = chart.toBase64Image('image/png', 1); // animation:false → primul frame e cel final, sincron
