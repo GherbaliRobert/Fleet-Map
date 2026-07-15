@@ -2118,13 +2118,19 @@ const pozitii = await r.json();</code></pre>
         <div id="rep-period" style="font-size:12px;color:var(--text-muted);font-weight:600;margin:-6px 0 10px 2px;display:none;"></div>
         <select id="rep-type" onchange="onRepType()" style="display:none;"></select>
         <div id="rep-controls">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <label class="rep-f" style="grid-column:1 / -1;"><span>Vehicul</span><select id="rep-imei"></select></label>
-          <div id="rep-int-title" class="rep-interval-title" style="grid-column:1 / -1;"><i class="far fa-clock"></i> Interval orar <span class="rep-today-badge" id="rep-today-badge"></span></div>
-          <span id="rep-int-dates" style="display:contents;">
+        <label class="rep-f" style="margin-bottom:14px;"><span>Vehicul</span><select id="rep-imei"></select></label>
+        <div id="rep-time-card" class="rep-time-card">
+          <div id="rep-int-title" class="rep-interval-title"><i class="far fa-clock"></i> Interval orar</div>
+          <span id="rep-int-dates">
           <label class="rep-f"><span>De la</span><input type="datetime-local" id="rep-from"></label>
           <label class="rep-f"><span>Până la</span><input type="datetime-local" id="rep-to"></label>
           </span>
+          <div id="rep-int-quick" class="rep-quick-row">
+          <button class="rep-quick" data-period="today" onclick="setRepPeriod('today',this)">Azi</button>
+          <button class="rep-quick" data-period="yesterday" onclick="setRepPeriod('yesterday',this)">Ieri</button>
+          <button class="rep-quick" data-period="week" onclick="setRepPeriod('week',this)">7 zile</button>
+          <button class="rep-quick" data-period="month" onclick="setRepPeriod('month',this)">30 zile</button>
+          </div>
         </div>
         <div id="rep-month-picker" style="display:none;margin-bottom:10px;">
           <div class="rep-interval-title"><i class="far fa-clock"></i> Scadențe — arată</div>
@@ -2139,14 +2145,8 @@ const pozitii = await r.json();</code></pre>
             <div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.35;">„Tot" = toate scadențele, nimic ascuns. O lună = doar ce e scadent până la finalul ei (restanțele, service-ul pe km și cele efectuate apar mereu).</div>
           </div>
         </div>
-        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-          <span id="rep-int-quick" style="display:contents;">
-          <button class="rep-quick" data-period="today" onclick="setRepPeriod('today',this)">Azi</button>
-          <button class="rep-quick" data-period="yesterday" onclick="setRepPeriod('yesterday',this)">Ieri</button>
-          <button class="rep-quick" data-period="week" onclick="setRepPeriod('week',this)">7 zile</button>
-          <button class="rep-quick" data-period="month" onclick="setRepPeriod('month',this)">30 zile</button>
-          </span>
-          <span id="rep-extra" style="display:flex;gap:6px;align-items:center;margin-left:8px;"></span>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+          <span id="rep-extra" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"></span>
           <button class="btn-sm btn-primary" style="margin-left:auto;" onclick="repGenerate()"><i class="fas fa-play"></i> Generează</button>
         </div>
         </div><!-- /rep-controls -->
@@ -5044,9 +5044,10 @@ const pozitii = await r.json();</code></pre>
       var _rx = document.getElementById('rep-extra'); _rx.innerHTML = html; _rx.style.flexWrap = (t === 'speeding') ? 'wrap' : '';
       // La „Scadențe" (due): ascundem intervalul pe zile și arătăm selectorul de LUNĂ (scadențe până la finalul lunii alese).
       var _due = (t === 'due');
+      var _tc = document.getElementById('rep-time-card'); if (_tc) _tc.style.display = _due ? 'none' : '';
       var _ti = document.getElementById('rep-int-title'); if (_ti) _ti.style.display = _due ? 'none' : '';
-      var _dd = document.getElementById('rep-int-dates'); if (_dd) _dd.style.display = _due ? 'none' : 'contents';
-      var _qq = document.getElementById('rep-int-quick'); if (_qq) _qq.style.display = _due ? 'none' : 'contents';
+      var _dd = document.getElementById('rep-int-dates'); if (_dd) _dd.style.display = _due ? 'none' : '';
+      var _qq = document.getElementById('rep-int-quick'); if (_qq) _qq.style.display = _due ? 'none' : '';
       var _mp = document.getElementById('rep-month-picker'); if (_mp) _mp.style.display = _due ? '' : 'none';
       if (_due) { if (!repMonthSel) repInitMonthPicker(); else repRenderMonths(); }
       if (t === 'hotspot') repLoadGeofences();
@@ -12383,16 +12384,16 @@ const pozitii = await r.json();</code></pre>
     /* Selector vehicul cu căutare (searchable combobox peste un <select> nativ) — modernizat 2026 */
     .ss-wrap { position: relative; }
     .ss-native { display: none !important; }
-    .ss-input { width: 100%; background-color: var(--bg-card); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%233FE07D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 11l1.6-4A2 2 0 0 1 8.5 6h7a2 2 0 0 1 1.9 1.3L19 11'/%3E%3Cpath d='M4 11h16v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1H7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4Z'/%3E%3Ccircle cx='8' cy='14' r='1' fill='%233FE07D' stroke='none'/%3E%3Ccircle cx='16' cy='14' r='1' fill='%233FE07D' stroke='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 14px center; background-size: 19px; border: 1.5px solid var(--border); color: var(--text-primary); border-radius: 11px; padding: 12px 40px 12px 44px; font-size: 14px; font-weight: 700; font-family: inherit; box-sizing: border-box; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+    .ss-input { width: 100%; background-color: var(--bg-card); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%233FE07D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 11l1.6-4A2 2 0 0 1 8.5 6h7a2 2 0 0 1 1.9 1.3L19 11'/%3E%3Cpath d='M4 11h16v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1H7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4Z'/%3E%3Ccircle cx='8' cy='14' r='1' fill='%233FE07D' stroke='none'/%3E%3Ccircle cx='16' cy='14' r='1' fill='%233FE07D' stroke='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 15px center; background-size: 20px; border: 1.5px solid var(--border); color: var(--text-primary); border-radius: 12px; padding: 14px 42px 14px 47px; font-size: 14.5px; font-weight: 800; font-family: inherit; box-sizing: border-box; cursor: pointer; transition: border-color .15s, box-shadow .15s, background-color .15s; }
     .ss-input::placeholder { font-weight: 600; color: var(--text-muted); }
     .ss-input:hover { border-color: var(--border-light); }
     .ss-input:focus, .ss-wrap.ss-open .ss-input { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(63,224,125,.14); }
     .ss-wrap::after { content: "▾"; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; transition: transform .18s, color .15s; }
     .ss-wrap.ss-open::after { color: var(--accent); transform: translateY(-50%) rotate(180deg); }
-    .ss-panel { display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 2000; max-height: 280px; overflow-y: auto; background: var(--bg-panel, var(--bg-dark)); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 34px rgba(0,0,0,.18); padding: 6px; }
+    .ss-panel { position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 2000; max-height: 300px; overflow-y: auto; background: var(--bg-panel, var(--bg-dark)); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 18px 44px rgba(2,6,23,.22); padding: 7px; opacity: 0; visibility: hidden; transform: translateY(-10px) scale(.97); transform-origin: top center; pointer-events: none; transition: opacity .18s ease, transform .22s cubic-bezier(.2,.9,.25,1), visibility .18s; }
     /* #7: deschide în SUS când nu e loc jos (ex: selector aproape de baza unui bottom-sheet pe mobil) */
-    .ss-wrap.ss-up .ss-panel { top: auto; bottom: calc(100% + 6px); box-shadow: 0 -12px 34px rgba(0,0,0,.18); }
-    .ss-wrap.ss-open .ss-panel { display: block; }
+    .ss-wrap.ss-up .ss-panel { top: auto; bottom: calc(100% + 8px); transform: translateY(10px) scale(.97); transform-origin: bottom center; box-shadow: 0 -18px 44px rgba(2,6,23,.22); }
+    .ss-wrap.ss-open .ss-panel { opacity: 1; visibility: visible; transform: translateY(0) scale(1); pointer-events: auto; }
     .ss-item { padding: 10px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 8px; }
     .ss-item:hover, .ss-item.ss-active { background: var(--bg-dark); }
     .ss-item.ss-sel { color: var(--accent); font-weight: 800; background: rgba(63,224,125,.10); }
@@ -12414,6 +12415,18 @@ const pozitii = await r.json();</code></pre>
     #rep-back-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(63,224,125,.08); }
     /* Etichetele De la / Până la — uppercase discret */
     #rep-int-dates label.rep-f > span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-left: 2px; }
+    /* Cardul „Interval orar" — bordat, mai mare */
+    .rep-time-card { border: 1.5px solid var(--border); border-radius: 14px; background: var(--bg-card); padding: 16px 16px 18px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 14px; }
+    .rep-time-card .rep-interval-title { margin: 0; font-size: 13.5px; }
+    #rep-int-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+    .rep-quick-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    /* Câmpuri numerice / select din opțiunile de raport — moderne */
+    #rep-controls input[type="number"], #rep-extra input[type="number"] { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: 800; font-family: inherit; color: var(--text-primary); box-sizing: border-box; transition: border-color .15s, box-shadow .15s; }
+    #rep-controls input[type="number"]:hover, #rep-extra input[type="number"]:hover { border-color: var(--border-light); }
+    #rep-controls input[type="number"]:focus, #rep-extra input[type="number"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(63,224,125,.14); }
+    #rep-extra select { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: 700; font-family: inherit; color: var(--text-primary); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+    #rep-extra select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(63,224,125,.14); }
+    @media (prefers-reduced-motion: reduce) { .ss-panel, .rep-quick, .rep-tab, .rep-dt-input, .ss-input { transition: none !important; } }
     /* Dropdown-uri în meniu (sidebar) — părinte pliabil + scurtături-copil */
     .nav-group { display: flex; flex-direction: column; }
     .nav-group-head { display: flex; align-items: center; width: 100%; }
