@@ -372,7 +372,7 @@ function _speedingOsmLegend(skipped) {
     ['Depășire', 'Viteza a depășit limita drumului cu peste 3 km/h (toleranță pentru zgomotul GPS), grupată în evenimente ca pe hartă.'],
     ['© OpenStreetMap contributors', 'Limitele de viteză provin din OpenStreetMap, sub licența ODbL.']
   ];
-  if (skipped && skipped.length) items.push(['Vehicule sărite', skipped.join('; ') + '. Restrânge perioada (o zi) sau selectează mai puține mașini.']);
+  if (skipped && skipped.length) items.push(['Vehicule sărite (neanalizate)', skipped.map(s => s.nm + ' — ' + s.reason).join('; ') + '. Apar și în tabel cu „Neanalizat".']);
   return { title: 'Limite reale (OpenStreetMap) — cum se citesc', items };
 }
 
@@ -389,10 +389,10 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     let lims = null;
     if (useOsm) {
       if (pts.length < 2) continue;
-      if (osmTried >= OSM_MAX_VEH) { skipped.push(nm + ' (plafon OSM/rulare)'); continue; }
+      if (osmTried >= OSM_MAX_VEH) { skipped.push({ nm, reason: 'plafon OSM/rulare (restrânge selecția)' }); continue; }
       osmTried++;
       try { const rl = await roadlimits.limitsForPoints(pts.map(p => [p.latitude, p.longitude])); lims = rl.limits; osmOk++; }
-      catch (e) { skipped.push(nm + (e && e.code === 'AREA' ? ' (traseu prea întins)' : ' (OSM indisponibil)')); continue; }
+      catch (e) { skipped.push({ nm, reason: (e && e.code === 'AREA') ? 'traseu prea întins (restrânge perioada la o zi)' : 'OSM indisponibil momentan' }); continue; }
     }
     let ev = null;
     const flush = () => {
@@ -423,6 +423,8 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
   rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); }); // Locație e col. 5
+  // Mașinile care NU au putut fi analizate apar EXPLICIT în tabel — ca să nu fie confundate cu cele „curate" (verificate, fără depășiri).
+  skipped.forEach(s => rows.push([ s.nm, '—', '—', '—', '—', 'Neanalizat — ' + s.reason ]));
   const nDay = _groupByDay(evs, x => x.start, null);
   const buckets = useOsm ? [30, 50] : [limit + 10, limit + 20, limit + 35]; // OSM: cu cât s-a depășit (trepte ca pe hartă); clasic: viteză absolută
   const spdTitle = useOsm ? 'Cât s-a depășit limita reală (km/h)' : 'Distribuție viteză depășire (km/h)';
@@ -435,9 +437,9 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
   ] : [];
   const evNames = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
   let perVehicle;
-  if (evNames.length >= 2) {
+  if (evNames.length + skipped.length >= 2) {
     const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
-    perVehicle = evNames.map(nm => {
+    const evEntries = evNames.map(nm => {
       const ve = evs.filter(e => e.nm === nm), nD = _groupByDay(ve, x => x.start, null), sD = _histogram(ve.map(x => useOsm ? x.over : x.max), buckets);
       return {
         vehicul: nm,
@@ -449,6 +451,14 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
         ] : []
       };
     });
+    // Mașinile sărite: aceleași chei de sumar (→ tabelul „Sumar" rămâne aliniat), marcate „neanalizat", cu motivul pe foaia proprie.
+    const skipEntries = skipped.map(s => ({
+      vehicul: s.nm,
+      summary: [['Depășiri', 'neanalizat'], [useOsm ? 'Max peste limită' : 'Viteză max', '—']],
+      rows: rowsByName[String(s.nm)] || [],
+      charts: []
+    }));
+    perVehicle = evEntries.concat(skipEntries);
   }
   const columns = ['Vehicul', 'Data', 'Durată', useOsm ? 'Limită drum (km/h)' : 'Limită (km/h)', 'Viteză max (km/h)', 'Locație'];
   const summary = useOsm
