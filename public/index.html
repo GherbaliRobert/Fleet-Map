@@ -5052,13 +5052,11 @@ const pozitii = await r.json();</code></pre>
       if (minWrap) minWrap.style.display = on ? '' : 'none';   // în OSM apare pragul absolut de afișare
       if (!h) return;
       if (on) {
-        h.innerHTML = '<b><i class="fas fa-circle-info"></i> Limite reale (OpenStreetMap) — cum funcționează și cum eviți erorile</b>'
-          + '<div style="margin-top:5px;">• Compară viteza cu <b>limita reală a fiecărui drum</b> (ex. 50 în oraș), nu cu pragul fix de 90 — prinde depășirile din localități.</div>'
-          + '<div>• <b>„Afișează depășirile"</b>: filtrezi după <b>cu cât s-a depășit limita drumului</b> — la fel pe orice drum. La „+20" (recomandat): 75 pe un drum de 70 (doar +5) nu apare, dar 72 pe unul de 50 (+22), da. Alege „Toate" ca să vezi tot.</div>'
-          + '<div>• Merge cel mai bine pe <b>puține mașini și o perioadă scurtă (ideal o zi)</b>; fiecare traseu cere o interogare la OpenStreetMap.</div>'
-          + '<div>• Traseele întinse pe o zonă mare sau drumurile <b>netagate în OSM</b> sunt <b>sărite și notate</b> în raport (apar cu „Neanalizat"), nu ascunse — nu e o eroare.</div>'
-          + '<div>• Pe toată flota pe o lună va fi lent și multe mașini vor fi sărite (plafon de protecție). <b>Restrânge selecția.</b></div>'
-          + '<div style="margin-top:4px;color:var(--text-muted);">Gratuit · date © OpenStreetMap contributors. Bifa stinsă = raportul clasic cu prag fix, pe toată flota.</div>';
+        h.innerHTML = '<b><i class="fas fa-circle-info"></i> Limite reale (OpenStreetMap)</b>'
+          + '<div style="margin-top:4px;">• Compară cu <b>limita reală a fiecărui drum</b> — prinde și depășirile din oraș, nu doar pe autostradă.</div>'
+          + '<div>• <b>„Afișează"</b> filtrează după cât s-a depășit (la +20: 75 pe 70 nu apare, 72 pe 50 da).</div>'
+          + '<div>• Ideal pe <b>puține mașini / o zi</b>. Ce nu se poate analiza apare „Neanalizat", nu dispare.</div>'
+          + '<div style="margin-top:3px;color:var(--text-muted);">Gratuit · © OpenStreetMap contributors</div>';
         h.style.display = 'block';
       } else { h.style.display = 'none'; }
     }
