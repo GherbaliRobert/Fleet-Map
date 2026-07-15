@@ -1822,38 +1822,44 @@ async function rWeight(db, imeis, from, to, opts, devMap) { // Senzori greutate 
   };
 }
 
-async function rTipping(db, imeis, from, to, opts, devMap) { // Senzor de basculare (intrare digitală — implicit DIN2)
+async function rTipping(db, imeis, from, to, opts, devMap) { // Senzor de basculare — jurnal per-mașină (nr., oră, durată, unde)
   const DIN = opts.tipDin || 'digital_input_2';
-  const rows = [], lastPts = [], vCount = [], vSeries = [];
+  const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + 'h ' + m + 'm') : (m > 0 ? (m + 'm ' + s + 's') : (s + 's')); };
+  const rows = [], evPts = [], perVehicle = [], vCount = [];
   for (const imei of imeis) {
     const nm = label(devMap, imei);
     const pts = await history(db, imei, from, to);
-    let prevOn = false, count = 0, last = null, had = false; const events = [];
+    let onStart = null, onStartP = null, had = false; const events = []; // {startTs, dur, p}
     for (const p of pts) {
       const v = io(p)[DIN];
       if (v == null) continue;
       had = true;
       const on = (v === 1 || v === true || v === '1');
-      if (on && !prevOn) { count++; last = { ts: p.timestamp, p }; events.push({ ts: p.timestamp }); }
-      prevOn = on;
+      if (on && onStart == null) { onStart = t(p); onStartP = p; }                                   // ridicare benă (front crescător)
+      else if (!on && onStart != null) { events.push({ startTs: onStartP.timestamp, dur: (t(p) - onStart) / 1000, p: onStartP }); onStart = null; onStartP = null; } // coborâre → basculare completă
     }
-    if (!had) { rows.push([nm, 'Fără senzor', '—', '—']); lastPts.push(null); continue; }
-    rows.push([nm, count, last ? fmtTs(last.ts) : '—', last ? loc(last.p) : '—']);
-    lastPts.push(last ? last.p : null);
-    vCount.push([nm, count]); vSeries.push({ nm, s: _dailySeries(events, 'count') });
+    if (onStart != null && pts.length) events.push({ startTs: onStartP.timestamp, dur: (t(pts[pts.length - 1]) - onStart) / 1000, p: onStartP }); // încă ridicată la finalul perioadei
+    if (!had) { const r = [nm, '—', 'Fără senzor', '—', '—']; rows.push(r); evPts.push(null); perVehicle.push({ vehicul: nm, summary: [['Basculări', 0], ['Durată totală', '—'], ['Ultima', '—']], rows: [r], charts: [] }); continue; }
+    const vEvRows = [], vEvPts = []; let totDur = 0;
+    events.forEach((e, idx) => { vEvRows.push([nm, '#' + (idx + 1), fmtTs(e.startTs), dur(e.dur), loc(e.p)]); vEvPts.push(e.p); totDur += e.dur; });
+    if (!vEvRows.length) { const r = [nm, '—', '(fără basculări)', '—', '—']; vEvRows.push(r); vEvPts.push(null); }
+    vEvRows.forEach((r, k) => { rows.push(r); evPts.push(vEvPts[k]); });
+    const daily = _dailySeries(events.map(e => ({ ts: e.startTs })), 'count');
+    perVehicle.push({ vehicul: nm, summary: [['Basculări', events.length], ['Durată totală', events.length ? dur(totDur) : '—'], ['Ultima', events.length ? fmtTs(events[events.length - 1].startTs) : '—']], rows: vEvRows, charts: events.length ? [{ type: 'bar', title: 'Basculări pe zi — ' + nm, labels: daily.labels, datasets: [{ label: 'basculări', data: daily.data }] }] : [] });
+    vCount.push([nm, events.length]);
   }
-  if (geocode && geocode.warm) { const c = lastPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {} } }
-  rows.forEach((r, i) => { if (lastPts[i]) r[3] = addr(lastPts[i]); });
-  const sk = v => (typeof v === 'number' ? v : -1);
-  rows.sort((a, b) => sk(b[1]) - sk(a[1]));
-  const charts = _senzChart(vCount, vSeries, 'Basculări pe vehicul', 'basculări', 'Basculări pe zi — ', 'bar');
+  if (geocode && geocode.warm) { const c = evPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {} } }
+  rows.forEach((r, i) => { if (evPts[i]) r[4] = addr(evPts[i]); });
+  const charts = vCount.length ? [{ type: 'bar', title: 'Basculări pe vehicul', labels: _topN(vCount, 20).labels, datasets: [{ label: 'basculări', data: _topN(vCount, 20).data }] }] : [];
   return {
-    columns: ['Vehicul', 'Basculări', 'Ultima', 'Locație'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Cu senzor': rows.filter(r => typeof r[1] === 'number').length, 'Basculări (total)': rows.reduce((s, r) => s + (typeof r[1] === 'number' ? r[1] : 0), 0) },
-    charts, summarySheet: true,
-    legend: { title: 'Senzor de basculare', items: [
-      ['Basculări', 'De câte ori s-a ridicat bena — numărat dintr-un senzor montat pe o intrare digitală (implicit DIN2).'],
-      ['Fără senzor', 'Vehiculul nu are senzor de basculare pe intrarea digitală configurată.']
+    columns: ['Vehicul', 'Nr.', 'Data', 'Durată', 'Locație'], rows,
+    perVehicle, charts,
+    summary: { 'Total vehicule': imeis.length, 'Cu senzor': vCount.length, 'Basculări (total flotă)': vCount.reduce((s, v) => s + v[1], 0) },
+    legend: { title: 'Senzor de basculare — jurnal', items: [
+      ['Nr.', 'Numărul basculării în perioada selectată (numerotate per mașină).'],
+      ['Durată', 'Cât a stat bena ridicată (de la ridicare la coborâre).'],
+      ['Locație', 'Unde s-a basculat (adresă).'],
+      ['Fără senzor', 'Vehiculul nu are senzor de basculare pe intrarea digitală configurată (implicit DIN2).']
     ] }
   };
 }
