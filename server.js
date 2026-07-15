@@ -6257,7 +6257,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       dropMin: parseInt(req.query.dropMin) || 10,
       geofenceId: parseInt(req.query.geofenceId) || null,
       osm: req.query.osm === '1', // Depășiri viteză: compară cu limita reală a drumului (OpenStreetMap) în loc de pragul fix
-      osmMin: parseInt(req.query.osmMin) || 0, // OSM: prag absolut de viteză — arată doar depășirile unde viteza a atins cel puțin atât
+      osmOver: parseInt(req.query.osmOver) || 0, // OSM: prag relativ — arată doar depășirile de peste atât peste limita drumului (universal, indiferent de drum)
       sampleSec: parseInt(req.query.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
       all: req.query.all === '1', // Scadențe: „Tot" (arată toate scadențele, fără orizont de lună)
       geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
@@ -6277,7 +6277,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
         try {
           const report = await reports.runReport(db, _type, imeis, from, to, opts, _scope);
           const label = (req.query.label ? String(req.query.label).slice(0, 120) : null) || (reports.REPORTS[_type] && reports.REPORTS[_type].label) || _type;
-          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId, sm: opts.sampleSec, o: opts.osm, om: opts.osmMin, tf: opts.timeFilter })].join('|').slice(0, 200);
+          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId, sm: opts.sampleSec, o: opts.osm, oo: opts.osmOver, tf: opts.timeFilter })].join('|').slice(0, 200);
           const saved = await db.saveReportHistory({
             company_id: _cid, user_id: _uid, username: _uname, report_type: _type, label, imei: (_imei && _imei.indexOf(',') < 0) ? _imei : null,
             vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig,

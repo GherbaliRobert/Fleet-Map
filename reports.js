@@ -366,12 +366,12 @@ async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / stațion�
 }
 
 // Legenda modului „Limite reale (OSM)" — sursă, toleranță și atribuirea ODbL (obligatorie la afișarea datelor OpenStreetMap).
-function _speedingOsmLegend(skipped, osmMin) {
+function _speedingOsmLegend(skipped, osmOver) {
   const items = [
     ['Limită drum', 'Limita reală a fiecărui drum, citită din OpenStreetMap (unde lipsește tag-ul, e estimată din tipul drumului).'],
     ['Depășire', 'Viteza a depășit limita drumului cu peste 3 km/h (toleranță pentru zgomotul GPS), grupată în evenimente ca pe hartă.']
   ];
-  if (osmMin > 0) items.push(['Prag afișare', 'Arătăm DOAR evenimentele unde viteza a atins cel puțin ' + osmMin + ' km/h — filtrăm depășirile mărunte (ex. 60 într-o zonă de 50, sau 45 într-una de 30). Reglabil din câmpul „Arată doar peste".']);
+  if (osmOver > 0) items.push(['Prag afișare', 'Arătăm DOAR depășirile de peste +' + osmOver + ' km/h față de limita fiecărui drum — la fel pe orice drum (50, 70, 90...). Așa 75 pe un drum de 70 (doar +5) nu apare, dar 72 pe unul de 50 (+22), da. Reglabil din „Afișează depășirile".']);
   items.push(['© OpenStreetMap contributors', 'Limitele de viteză provin din OpenStreetMap, sub licența ODbL.']);
   if (skipped && skipped.length) items.push(['Vehicule sărite (neanalizate)', skipped.map(s => s.nm + ' — ' + s.reason).join('; ') + '. Apar și în tabel cu „Neanalizat".']);
   return { title: 'Limite reale (OpenStreetMap) — cum se citesc', items };
@@ -380,7 +380,7 @@ function _speedingOsmLegend(skipped, osmMin) {
 async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri viteză
   const useOsm = !!opts.osm && roadlimits && roadlimits.limitsForPoints; // „Limite reale": compară cu limita reală a fiecărui drum (OSM), nu cu un prag fix
   const limit = opts.limit || 90;   // mod clasic: prag fix pentru toată flota (implicit 90, reglabil din formular)
-  const osmMin = useOsm ? (opts.osmMin || 0) : 0; // OSM: prag absolut — arătăm doar evenimentele unde viteza a atins cel puțin atât (filtrează depășirile mărunte din oraș: 60 într-o zonă de 50 etc.)
+  const osmOver = useOsm ? (opts.osmOver || 0) : 0; // OSM: prag RELATIV — arătăm doar depășirile de peste atât peste limita drumului (universal, indiferent de drum: 75 pe 70 = +5 mărunt, 72 pe 50 = +22 real)
   const OSM_MAX_VEH = 25;           // plafon interogări OSM per rulare — protejează serviciul gratuit Overpass de supraîncărcare
   const GAP_MS = 3 * 60 * 1000;     // rupe evenimentul la pauze GPS >3 min (ca pe hartă) — nu lega puncte îndepărtate în timp
   const rows = []; let events = 0, maxSpeed = 0, maxOver = 0; const evs = []; const evPts = []; const perVeh = {};
@@ -399,7 +399,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     let ev = null;
     const flush = () => {
       if (!ev) return;
-      if (osmMin > 0 && ev.max < osmMin) { ev = null; return; } // sub pragul absolut de viteză → filtrat (nu-l arătăm)
+      if (osmOver > 0 && ev.over <= osmOver) { ev = null; return; } // depășire prea mică față de limita drumului → filtrată (nu o arătăm)
       const durSec = Math.max(0, (ev.endMs - ev.startMs) / 1000);
       rows.push([ nm, fmtTs(ev.start), fmtDur(durSec), ev.lim, Math.round(ev.max), loc(ev.p) ]);
       events++; if (ev.max > maxSpeed) maxSpeed = ev.max; if (ev.over > maxOver) maxOver = ev.over;
@@ -467,10 +467,10 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
   const summary = useOsm
     ? { 'Depășiri (vs. limită reală)': events, 'Max peste limită (km/h)': Math.round(maxOver), 'Vehicule verificate': osmOk }
     : { 'Depășiri': events, 'Viteză maximă (km/h)': Math.round(maxSpeed), 'Limită folosită': limit };
-  if (useOsm && osmMin > 0) summary['Afișate doar peste (km/h)'] = osmMin;
+  if (useOsm && osmOver > 0) summary['Doar depășiri peste'] = '+' + osmOver + ' km/h';
   if (useOsm && skipped.length) summary['Vehicule sărite'] = skipped.length;
   const result = { columns, rows, summary, charts, perVehicle, summarySheet: true };
-  if (useOsm) result.legend = _speedingOsmLegend(skipped, osmMin);
+  if (useOsm) result.legend = _speedingOsmLegend(skipped, osmOver);
   return result;
 }
 
