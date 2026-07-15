@@ -1867,7 +1867,7 @@ async function rTipping(db, imeis, from, to, opts, devMap) { // Senzor de bascul
 async function rArm(db, imeis, from, to, opts, devMap) { // Senzor de braț (utilaje: excavator/macara/încărcător) — jurnal sesiuni de lucru
   const DIN = opts.armDin || 'digital_input_3';
   const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + 'h ' + m + 'm') : (m > 0 ? (m + 'm ' + s + 's') : (s + 's')); };
-  const rows = [], evPts = [], perVehicle = [], vCount = [];
+  const rows = [], evPts = [], perVehicle = [], vHours = []; let fleetSec = 0, fleetSessions = 0;
   for (const imei of imeis) {
     const nm = label(devMap, imei);
     const pts = await history(db, imei, from, to);
@@ -1881,22 +1881,22 @@ async function rArm(db, imeis, from, to, opts, devMap) { // Senzor de braț (uti
       else if (!on && onStart != null) { events.push({ startTs: onStartP.timestamp, dur: (t(p) - onStart) / 1000, p: onStartP }); onStart = null; onStartP = null; } // dezactivat → sesiune completă
     }
     if (onStart != null && pts.length) events.push({ startTs: onStartP.timestamp, dur: (t(pts[pts.length - 1]) - onStart) / 1000, p: onStartP });
-    if (!had) { const r = [nm, '—', 'Fără senzor', '—', '—']; rows.push(r); evPts.push(null); perVehicle.push({ vehicul: nm, summary: [['Sesiuni braț', 0], ['Durată totală', '—'], ['Ultima', '—']], rows: [r], charts: [] }); continue; }
+    if (!had) { const r = [nm, '—', 'Fără senzor', '—', '—']; rows.push(r); evPts.push(null); perVehicle.push({ vehicul: nm, summary: [['Sesiuni braț', 0], ['Durată totală', '—'], ['Ore lucru', 0], ['Ultima', '—']], rows: [r], charts: [] }); continue; }
     const vEvRows = [], vEvPts = []; let totDur = 0;
     events.forEach((e, idx) => { vEvRows.push([nm, '#' + (idx + 1), fmtTs(e.startTs), dur(e.dur), loc(e.p)]); vEvPts.push(e.p); totDur += e.dur; });
     if (!vEvRows.length) { const r = [nm, '—', '(fără activări)', '—', '—']; vEvRows.push(r); vEvPts.push(null); }
     vEvRows.forEach((r, k) => { rows.push(r); evPts.push(vEvPts[k]); });
-    const daily = _dailySeries(events.map(e => ({ ts: e.startTs })), 'count');
-    perVehicle.push({ vehicul: nm, summary: [['Sesiuni braț', events.length], ['Durată totală', events.length ? dur(totDur) : '—'], ['Ultima', events.length ? fmtTs(events[events.length - 1].startTs) : '—']], rows: vEvRows, charts: events.length ? [{ type: 'bar', title: 'Sesiuni braț pe zi — ' + nm, labels: daily.labels, datasets: [{ label: 'sesiuni', data: daily.data }] }] : [] });
-    vCount.push([nm, events.length]);
+    const dh = {}; events.forEach(e => { const k = _dayKeyISO(e.startTs); dh[k] = (dh[k] || 0) + e.dur / 3600; }); const dhk = Object.keys(dh).sort();
+    perVehicle.push({ vehicul: nm, summary: [['Sesiuni braț', events.length], ['Durată totală', events.length ? dur(totDur) : '—'], ['Ore lucru', +(totDur / 3600).toFixed(1)], ['Ultima', events.length ? fmtTs(events[events.length - 1].startTs) : '—']], rows: vEvRows, charts: events.length ? [{ type: 'bar', title: 'Ore lucru pe zi — ' + nm, labels: dhk.map(_dayLabel), datasets: [{ label: 'ore', data: dhk.map(k => +dh[k].toFixed(2)) }] }] : [] });
+    vHours.push([nm, +(totDur / 3600).toFixed(1)]); fleetSec += totDur; fleetSessions += events.length;
   }
   if (geocode && geocode.warm) { const c = evPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {} } }
   rows.forEach((r, i) => { if (evPts[i]) r[4] = addr(evPts[i]); });
-  const charts = vCount.length ? [{ type: 'bar', title: 'Sesiuni braț pe vehicul', labels: _topN(vCount, 20).labels, datasets: [{ label: 'sesiuni', data: _topN(vCount, 20).data }] }] : [];
+  const charts = vHours.length ? [{ type: 'bar', title: 'Ore lucru pe vehicul (h)', labels: _topN(vHours, 20).labels, datasets: [{ label: 'ore', data: _topN(vHours, 20).data }] }] : [];
   return {
     columns: ['Vehicul', 'Nr.', 'Data', 'Durată', 'Locație'], rows,
     perVehicle, charts,
-    summary: { 'Total vehicule': imeis.length, 'Cu senzor': vCount.length, 'Sesiuni braț (total flotă)': vCount.reduce((s, v) => s + v[1], 0) },
+    summary: { 'Total vehicule': imeis.length, 'Cu senzor': vHours.length, 'Sesiuni braț (total flotă)': fleetSessions, 'Ore lucru (total flotă)': (fleetSec / 3600).toFixed(1) + ' h' },
     legend: { title: 'Senzor de braț — jurnal', items: [
       ['Nr.', 'Numărul sesiunii de lucru cu brațul, în perioada selectată (per utilaj).'],
       ['Durată', 'Cât a lucrat brațul (de la activare la dezactivare) — util pt. facturare pe ore de lucru.'],
