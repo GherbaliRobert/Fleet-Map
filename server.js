@@ -6257,7 +6257,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       dropMin: parseInt(req.query.dropMin) || 10,
       geofenceId: parseInt(req.query.geofenceId) || null,
       osm: req.query.osm === '1', // Depășiri viteză: compară cu limita reală a drumului (OpenStreetMap) în loc de pragul fix
-      osmOver: parseInt(req.query.osmOver) || 0, // OSM: prag relativ — arată doar depășirile de peste atât peste limita drumului (universal, indiferent de drum)
+      osmOver: req.query.osmOver != null ? (parseInt(req.query.osmOver) || 0) : 20, // OSM: prag relativ (km/h peste limita drumului). Lipsă (client vechi în cache) → default recomandat +20, nu „tot"
       sampleSec: parseInt(req.query.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
       all: req.query.all === '1', // Scadențe: „Tot" (arată toate scadențele, fără orizont de lună)
       geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
