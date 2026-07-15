@@ -113,7 +113,7 @@ async function history(db, imei, from, to) {
 async function deviceNames(db, imeis) {
   const map = {};
   try {
-    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.fuel_type, d.tank_capacity, d.tank_calibration, d.payload, d.temp_min, d.temp_max, d.speed_limit, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
+    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.fuel_type, d.tank_capacity, d.tank_calibration, d.payload, d.temp_min, d.temp_max, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
     r.rows.forEach(d => map[d.imei] = d);
   } catch (e) {}
   return map;
@@ -365,18 +365,16 @@ async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / stațion�
 }
 
 async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri viteză
-  const formLimit = opts.limit || 90; // limita din formular = fallback pt. vehiculele fără „Viteza limită" în fișă
+  const limit = opts.limit || 90; // limită standard, aceeași pentru toată flota (implicit 90, reglabilă din formular)
   const rows = []; let events = 0, maxOverall = 0; const evs = []; const evPts = []; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
-    const d = devMap[imei] || {};
-    const vLimit = (d.speed_limit != null && Number(d.speed_limit) > 0) ? Number(d.speed_limit) : formLimit; // fiecare vehicul cu limita lui (TIR 90, dubă 110 etc.)
     let ev = null;
-    const flush = () => { if (!ev) return; const durSec = Math.max(0, (ev.endMs - ev.startMs) / 1000); rows.push([ nm, fmtTs(ev.start), fmtDur(durSec), vLimit, Math.round(ev.max), loc(ev.p) ]); events++; if (ev.max > maxOverall) maxOverall = ev.max; evs.push({ start: ev.start, max: ev.max, nm }); evPts.push(ev.p); perVeh[nm] = (perVeh[nm] || 0) + 1; ev = null; };
+    const flush = () => { if (!ev) return; const durSec = Math.max(0, (ev.endMs - ev.startMs) / 1000); rows.push([ nm, fmtTs(ev.start), fmtDur(durSec), limit, Math.round(ev.max), loc(ev.p) ]); events++; if (ev.max > maxOverall) maxOverall = ev.max; evs.push({ start: ev.start, max: ev.max, nm }); evPts.push(ev.p); perVeh[nm] = (perVeh[nm] || 0) + 1; ev = null; };
     for (const p of pts) {
       const sp = p.speed || 0;
-      if (sp > vLimit) { if (!ev) ev = { start: p.timestamp, startMs: t(p), max: sp, p }; else if (sp > ev.max) { ev.max = sp; ev.p = p; } ev.end = p.timestamp; ev.endMs = t(p); }
+      if (sp > limit) { if (!ev) ev = { start: p.timestamp, startMs: t(p), max: sp, p }; else if (sp > ev.max) { ev.max = sp; ev.p = p; } ev.end = p.timestamp; ev.endMs = t(p); }
       else flush();
     }
     flush();
@@ -387,7 +385,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
   }
   rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); }); // Locație e col. 5
   const nDay = _groupByDay(evs, x => x.start, null);
-  const spd = _histogram(evs.map(x => x.max), [formLimit + 10, formLimit + 20, formLimit + 35]);
+  const spd = _histogram(evs.map(x => x.max), [limit + 10, limit + 20, limit + 35]);
   const topV = _topN(Object.entries(perVeh), 10);
   const charts = evs.length ? [
     { type: 'bar',      title: 'Depășiri pe zi',                     labels: nDay.labels, datasets: [{ label: 'depășiri', data: nDay.data }] },
@@ -399,7 +397,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
   if (evNames.length >= 2) {
     const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
     perVehicle = evNames.map(nm => {
-      const ve = evs.filter(e => e.nm === nm), nD = _groupByDay(ve, x => x.start, null), sD = _histogram(ve.map(x => x.max), [formLimit + 10, formLimit + 20, formLimit + 35]);
+      const ve = evs.filter(e => e.nm === nm), nD = _groupByDay(ve, x => x.start, null), sD = _histogram(ve.map(x => x.max), [limit + 10, limit + 20, limit + 35]);
       return {
         vehicul: nm,
         summary: [['Depășiri', perVeh[nm]], ['Viteză max', ve.length ? Math.round(Math.max.apply(null, ve.map(e => e.max))) : 0]],
@@ -412,7 +410,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     });
   }
   return { columns: ['Vehicul','Data','Durată','Limită (km/h)','Viteză max (km/h)','Locație'], rows,
-    summary: { 'Depășiri': events, 'Viteză maximă (km/h)': Math.round(maxOverall), 'Limită implicită (km/h)': formLimit }, charts, perVehicle, summarySheet: true };
+    summary: { 'Depășiri': events, 'Viteză maximă (km/h)': Math.round(maxOverall), 'Limită folosită': limit }, charts, perVehicle, summarySheet: true };
 }
 
 // Etichete afișate pt. tipul de combustibil (valorile din fișă vin fără diacritice: „Motorina", „Benzina", …).
