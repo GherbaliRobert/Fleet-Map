@@ -2046,7 +2046,7 @@ const pozitii = await r.json();</code></pre>
     <div class="modal" id="reports-modal-box" style="width:940px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
       <h2><span><i class="fas fa-file-alt" style="margin-right:8px;color:var(--accent);"></i> Rapoarte</span>
         <span style="display:flex;gap:8px;align-items:center;">
-          <button class="btn-sm" id="rep-view-toggle" onclick="repViewModeToggle()" title="Comută aspect: cascadă / clasic"><i class="fas fa-table-columns"></i></button> <button class="btn-sm" onclick="openSchedules()" title="Rapoarte programate"><i class="fas fa-clock"></i> Programări</button>
+          <button class="btn-sm rep-top-btn" id="rep-view-toggle" onclick="repViewModeToggle()" title="Comută aspect: cascadă / clasic"><i class="fas fa-table-columns"></i></button> <button class="btn-sm rep-top-btn" onclick="openSchedules()" title="Rapoarte programate"><i class="fas fa-clock"></i> Programări</button>
           <button class="close-btn" onclick="closeReports()" style="position:static;font-size:18px;">&#10005;</button>
         </span></h2>
       <div class="rep-tabs">
@@ -5161,6 +5161,7 @@ const pozitii = await r.json();</code></pre>
       }
       if (tg) tg.innerHTML = casc ? '<i class="fas fa-list"></i>' : '<i class="fas fa-table-columns"></i>';
       if (tg) tg.title = casc ? 'Comută la aspectul clasic' : 'Comută la aspectul cascadă';
+      if (tg) tg.classList.toggle('active', casc); // fundal verde când cascada e activă
     };
     function ensureRep2Pickers() {
       var f = document.getElementById('rep2-from');
@@ -12413,6 +12414,11 @@ const pozitii = await r.json();</code></pre>
     /* Butonul „Catalog" (înapoi) — pastilă modernă cu verde la hover */
     #rep-back-btn { border: 1.5px solid var(--border); background: var(--bg-card); color: var(--text-secondary); font-weight: 800; border-radius: 10px; padding: 8px 15px; transition: border-color .14s, color .14s, background .14s; }
     #rep-back-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(63,224,125,.08); }
+    /* Butoanele de sus din modalul Rapoarte — comutare vizualizare + Programări */
+    .rep-top-btn { border: 1.5px solid var(--border); background: var(--bg-card); color: var(--text-secondary); font-weight: 800; border-radius: 10px; padding: 8px 13px; transition: border-color .14s, color .14s, background .14s, box-shadow .14s; }
+    .rep-top-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(63,224,125,.08); }
+    .rep-top-btn.active { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 4px 12px rgba(63,224,125,.3); }
+    .rep-top-btn.active:hover { color: #06210F; }
     /* Etichetele De la / Până la — uppercase discret */
     #rep-int-dates label.rep-f > span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-left: 2px; }
     /* Cardul „Interval orar" — bordat, mai mare */
@@ -12427,6 +12433,16 @@ const pozitii = await r.json();</code></pre>
     #rep-extra select { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: 700; font-family: inherit; color: var(--text-primary); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
     #rep-extra select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(63,224,125,.14); }
     @media (prefers-reduced-motion: reduce) { .ss-panel, .rep-quick, .rep-tab, .rep-dt-input, .ss-input { transition: none !important; } }
+    /* Responsive (mobil / tabletă) — controalele modernizate de raport */
+    @media (max-width: 640px) {
+      .rep-time-card { padding: 13px 12px 15px; border-radius: 12px; gap: 12px; }
+      #rep-int-dates { grid-template-columns: 1fr; gap: 10px; }
+      .rep-quick { flex: 1 1 calc(50% - 4px); text-align: center; padding: 11px 8px; }
+      .ss-input { font-size: 15px; padding: 14px 40px 14px 46px; }
+      .rep-dt-input { padding: 13px 14px 13px 40px; }
+      .rep-top-btn { padding: 8px 11px; font-size: 12px; }
+      .rep-time-card .rep-interval-title { font-size: 13px; }
+    }
     /* Dropdown-uri în meniu (sidebar) — părinte pliabil + scurtături-copil */
     .nav-group { display: flex; flex-direction: column; }
     .nav-group-head { display: flex; align-items: center; width: 100%; }
