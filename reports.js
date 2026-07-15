@@ -469,7 +469,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     : { 'Depășiri': events, 'Viteză maximă (km/h)': Math.round(maxSpeed), 'Limită folosită': limit };
   if (useOsm && osmOver > 0) summary['Doar depășiri peste'] = '+' + osmOver + ' km/h';
   if (useOsm && skipped.length) summary['Vehicule sărite'] = skipped.length;
-  const result = { columns, rows, summary, charts, perVehicle, summarySheet: true };
+  const result = { columns, rows, summary, charts, perVehicle, summarySheet: true, noFleetTotal: true }; // fără rând TOTAL — ar dubla KPI-urile din capul foii Sumar
   if (useOsm) result.legend = _speedingOsmLegend(skipped, osmOver);
   return result;
 }

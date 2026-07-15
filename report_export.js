@@ -102,8 +102,11 @@ async function toXlsxMultiSheet(report) {
       return (allNum && any) ? Math.round(acc * 10) / 10 : '';
     });
     // TOTAL: dacă raportul dă un total explicit (ex. Pontaj: orele se adună ca durate, media nu), îl folosim; altfel suma generică.
-    const totalsRow = (report.summaryTotals && report.summaryTotals.length) ? report.summaryTotals : totals;
-    sumRows.push([report.groupLabel ? 'TOTAL' : 'TOTAL flotă'].concat(totalsRow));
+    // Unele rapoarte cer să NU aibă rând TOTAL (ex. Depășiri viteză: ar dubla KPI-urile din capul foii) → report.noFleetTotal.
+    if (!report.noFleetTotal) {
+      const totalsRow = (report.summaryTotals && report.summaryTotals.length) ? report.summaryTotals : totals;
+      sumRows.push([report.groupLabel ? 'TOTAL' : 'TOTAL flotă'].concat(totalsRow));
+    }
     // KPI pe flotă (report.summary) în capul foii „Sumar" — altfel s-ar pierde complet în exportul multi-sheet
     const kpiLines = Object.entries(report.summary || {}).map(([k, v]) => ({ text: k + ':  ' + (v == null ? '—' : v), font: { size: 11, color: { argb: 'FF444444' } } }));
     xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period].concat(kpiLines), sumCols, sumRows, logoId);
