@@ -95,9 +95,11 @@ async function toXlsxMultiSheet(report) {
     const sumCols = [report.groupLabel || 'Vehicul'].concat(labels); // ex. „Șofer" la Pontaj, „Vehicul" la restul
     const sumRows = pv.map(v => [v.vehicul].concat((v.summary || []).map(s => s[1])));
     const totals = labels.map((lbl, i) => {
-      let allNum = true, any = false, sum = 0;
-      for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = _summableNum(val); if (n == null) { allNum = false; break; } any = true; sum += n; }
-      return (allNum && any) ? Math.round(sum * 10) / 10 : '';
+      // Coloanele de tip „max" (ex. „Max peste limită", „Viteză max") NU se adună — maximul flotei e cel mai mare, nu suma maximelor.
+      const isMax = /\bmax/i.test(String(lbl));
+      let allNum = true, any = false, acc = isMax ? -Infinity : 0;
+      for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = _summableNum(val); if (n == null) { allNum = false; break; } any = true; acc = isMax ? Math.max(acc, n) : acc + n; }
+      return (allNum && any) ? Math.round(acc * 10) / 10 : '';
     });
     // TOTAL: dacă raportul dă un total explicit (ex. Pontaj: orele se adună ca durate, media nu), îl folosim; altfel suma generică.
     const totalsRow = (report.summaryTotals && report.summaryTotals.length) ? report.summaryTotals : totals;
