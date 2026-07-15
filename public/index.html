@@ -5026,6 +5026,7 @@ const pozitii = await r.json();</code></pre>
       const t = document.getElementById('rep-type').value; let html = '';
       if (t === 'speeding') html = '<label class="rep-f"><span>Limită (km/h)</span><input type="number" id="rep-limit" value="90" style="width:90px;"></label>'
         + '<label class="rep-f" style="flex-direction:row;align-items:center;gap:5px;white-space:nowrap;" title="Compară cu limita reală a fiecărui drum din OpenStreetMap"><input type="checkbox" id="rep-osm" onchange="repOsmHint()" style="width:auto;flex:none;"><span>Limite reale (OSM)</span></label>'
+        + '<label class="rep-f" id="rep-osm-min-wrap" style="display:none;"><span>Arată doar peste (km/h)</span><input type="number" id="rep-osm-min" value="70" min="0" style="width:120px;"></label>'
         + '<div id="rep-osm-hint" style="flex-basis:100%;display:none;font-size:11.5px;color:var(--text-secondary);line-height:1.55;background:rgba(127,127,127,.10);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:4px;"></div>';
       else if (['stops','trips','route','daily'].includes(t)) html = '<label class="rep-f"><span>Oprire min (min)</span><input type="number" id="rep-stopmin" value="5" style="width:90px;"></label>';
       else if (['consumption','fuel'].includes(t)) html = '<label class="rep-f"><span>Prag alimentare (L)</span><input type="number" id="rep-refuel" value="10" style="width:100px;"></label>';
@@ -5043,12 +5044,19 @@ const pozitii = await r.json();</code></pre>
     }
     // Panou de ajutor pt. bifa „Limite reale (OSM)" — apare la bifare, ca userul să știe riscurile și cum să evite erorile.
     function repOsmHint() {
-      var c = document.getElementById('rep-osm'), h = document.getElementById('rep-osm-hint'); if (!h) return;
-      if (c && c.checked) {
-        h.innerHTML = '<b><i class="fas fa-circle-info"></i> Limite reale (OpenStreetMap) — cum eviți erorile</b>'
+      var c = document.getElementById('rep-osm'), h = document.getElementById('rep-osm-hint');
+      var on = !!(c && c.checked);
+      var limEl = document.getElementById('rep-limit'), limWrap = limEl ? limEl.closest('.rep-f') : null;
+      var minWrap = document.getElementById('rep-osm-min-wrap');
+      if (limWrap) limWrap.style.display = on ? 'none' : '';   // în OSM pragul fix nu se aplică → ascundem câmpul „Limită"
+      if (minWrap) minWrap.style.display = on ? '' : 'none';   // în OSM apare pragul absolut de afișare
+      if (!h) return;
+      if (on) {
+        h.innerHTML = '<b><i class="fas fa-circle-info"></i> Limite reale (OpenStreetMap) — cum funcționează și cum eviți erorile</b>'
           + '<div style="margin-top:5px;">• Compară viteza cu <b>limita reală a fiecărui drum</b> (ex. 50 în oraș), nu cu pragul fix de 90 — prinde depășirile din localități.</div>'
+          + '<div>• <b>„Arată doar peste"</b>: afișăm doar depășirile unde viteza a atins acel prag (implicit 70). Așa nu te îneacă mărunțișurile — 62 într-o zonă de 50 sau 45 într-una de 30 nu apar; 72 într-o zonă de 50, da. Pune <b>0</b> ca să vezi tot.</div>'
           + '<div>• Merge cel mai bine pe <b>puține mașini și o perioadă scurtă (ideal o zi)</b>; fiecare traseu cere o interogare la OpenStreetMap.</div>'
-          + '<div>• Traseele întinse pe o zonă mare sau drumurile <b>netagate în OSM</b> sunt <b>sărite și notate</b> în raport, nu ascunse — nu e o eroare.</div>'
+          + '<div>• Traseele întinse pe o zonă mare sau drumurile <b>netagate în OSM</b> sunt <b>sărite și notate</b> în raport (apar cu „Neanalizat"), nu ascunse — nu e o eroare.</div>'
           + '<div>• Pe toată flota pe o lună va fi lent și multe mașini vor fi sărite (plafon de protecție). <b>Restrânge selecția.</b></div>'
           + '<div style="margin-top:4px;color:var(--text-muted);">Gratuit · date © OpenStreetMap contributors. Bifa stinsă = raportul clasic cu prag fix, pe toată flota.</div>';
         h.style.display = 'block';
@@ -5083,7 +5091,7 @@ const pozitii = await r.json();</code></pre>
       let url = `/api/reports/${t}?from=${fromD.toISOString()}&to=${toD.toISOString()}`;
       if (imei) url += '&imei=' + encodeURIComponent(imei);
       const lim = document.getElementById('rep-limit'); if (lim) url += '&limit=' + (parseInt(lim.value)||90);
-      const osm = document.getElementById('rep-osm'); if (osm && osm.checked) url += '&osm=1'; // Depășiri viteză: limite reale OSM
+      const osm = document.getElementById('rep-osm'); if (osm && osm.checked) { url += '&osm=1'; const om = document.getElementById('rep-osm-min'); url += '&osmMin=' + (om ? (parseInt(om.value) || 0) : 0); } // Depășiri viteză: limite reale OSM + prag afișare
       const sm = document.getElementById('rep-stopmin'); if (sm) url += '&stopMin=' + (parseInt(sm.value)||5);
       const rf = document.getElementById('rep-refuel'); if (rf) url += '&refuelMin=' + (parseInt(rf.value)||10);
       const gf = document.getElementById('rep-geofence');

@@ -366,12 +366,13 @@ async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / stațion�
 }
 
 // Legenda modului „Limite reale (OSM)" — sursă, toleranță și atribuirea ODbL (obligatorie la afișarea datelor OpenStreetMap).
-function _speedingOsmLegend(skipped) {
+function _speedingOsmLegend(skipped, osmMin) {
   const items = [
     ['Limită drum', 'Limita reală a fiecărui drum, citită din OpenStreetMap (unde lipsește tag-ul, e estimată din tipul drumului).'],
-    ['Depășire', 'Viteza a depășit limita drumului cu peste 3 km/h (toleranță pentru zgomotul GPS), grupată în evenimente ca pe hartă.'],
-    ['© OpenStreetMap contributors', 'Limitele de viteză provin din OpenStreetMap, sub licența ODbL.']
+    ['Depășire', 'Viteza a depășit limita drumului cu peste 3 km/h (toleranță pentru zgomotul GPS), grupată în evenimente ca pe hartă.']
   ];
+  if (osmMin > 0) items.push(['Prag afișare', 'Arătăm DOAR evenimentele unde viteza a atins cel puțin ' + osmMin + ' km/h — filtrăm depășirile mărunte (ex. 60 într-o zonă de 50, sau 45 într-una de 30). Reglabil din câmpul „Arată doar peste".']);
+  items.push(['© OpenStreetMap contributors', 'Limitele de viteză provin din OpenStreetMap, sub licența ODbL.']);
   if (skipped && skipped.length) items.push(['Vehicule sărite (neanalizate)', skipped.map(s => s.nm + ' — ' + s.reason).join('; ') + '. Apar și în tabel cu „Neanalizat".']);
   return { title: 'Limite reale (OpenStreetMap) — cum se citesc', items };
 }
@@ -379,6 +380,7 @@ function _speedingOsmLegend(skipped) {
 async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri viteză
   const useOsm = !!opts.osm && roadlimits && roadlimits.limitsForPoints; // „Limite reale": compară cu limita reală a fiecărui drum (OSM), nu cu un prag fix
   const limit = opts.limit || 90;   // mod clasic: prag fix pentru toată flota (implicit 90, reglabil din formular)
+  const osmMin = useOsm ? (opts.osmMin || 0) : 0; // OSM: prag absolut — arătăm doar evenimentele unde viteza a atins cel puțin atât (filtrează depășirile mărunte din oraș: 60 într-o zonă de 50 etc.)
   const OSM_MAX_VEH = 25;           // plafon interogări OSM per rulare — protejează serviciul gratuit Overpass de supraîncărcare
   const GAP_MS = 3 * 60 * 1000;     // rupe evenimentul la pauze GPS >3 min (ca pe hartă) — nu lega puncte îndepărtate în timp
   const rows = []; let events = 0, maxSpeed = 0, maxOver = 0; const evs = []; const evPts = []; const perVeh = {};
@@ -397,6 +399,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     let ev = null;
     const flush = () => {
       if (!ev) return;
+      if (osmMin > 0 && ev.max < osmMin) { ev = null; return; } // sub pragul absolut de viteză → filtrat (nu-l arătăm)
       const durSec = Math.max(0, (ev.endMs - ev.startMs) / 1000);
       rows.push([ nm, fmtTs(ev.start), fmtDur(durSec), ev.lim, Math.round(ev.max), loc(ev.p) ]);
       events++; if (ev.max > maxSpeed) maxSpeed = ev.max; if (ev.over > maxOver) maxOver = ev.over;
@@ -420,7 +423,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
   }
   // Adrese exacte în loc de coordonate (ca la restul rapoartelor): pre-încarcă adresele evenimentelor, fallback pe coordonate + completare progresivă pe client.
   if (geocode && geocode.warm && evPts.length) {
-    try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
+    try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 300, budgetMs: opts.geoBudgetMs || (imeis.length <= 1 ? 14000 : 8000) }); } catch (e) {}
   }
   rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); }); // Locație e col. 5
   // Mașinile care NU au putut fi analizate apar EXPLICIT în tabel — ca să nu fie confundate cu cele „curate" (verificate, fără depășiri).
@@ -464,9 +467,10 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
   const summary = useOsm
     ? { 'Depășiri (vs. limită reală)': events, 'Max peste limită (km/h)': Math.round(maxOver), 'Vehicule verificate': osmOk }
     : { 'Depășiri': events, 'Viteză maximă (km/h)': Math.round(maxSpeed), 'Limită folosită': limit };
+  if (useOsm && osmMin > 0) summary['Afișate doar peste (km/h)'] = osmMin;
   if (useOsm && skipped.length) summary['Vehicule sărite'] = skipped.length;
   const result = { columns, rows, summary, charts, perVehicle, summarySheet: true };
-  if (useOsm) result.legend = _speedingOsmLegend(skipped);
+  if (useOsm) result.legend = _speedingOsmLegend(skipped, osmMin);
   return result;
 }
 
