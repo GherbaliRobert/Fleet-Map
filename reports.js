@@ -1768,34 +1768,56 @@ async function rFuelProbe(db, imeis, from, to, opts, devMap) { // Sondă litrome
   };
 }
 
-async function rWeight(db, imeis, from, to, opts, devMap) { // Senzori greutate (sarcină pe axe / totală)
-  const rows = [], vMax = [], vSeries = [];
+async function rWeight(db, imeis, from, to, opts, devMap) { // Senzori greutate — analiză per-mașină (jurnal încărcări/descărcări/supraîncărcări + grafic cu limită)
+  const wMin = opts.weightMin || 500; // prag pt. eveniment de încărcare/descărcare (kg); sub atât = zgomot
+  const rows = [], evPts = [], perVehicle = [], vMax = [];
   for (const imei of imeis) {
     const nm = label(devMap, imei);
+    const d = devMap[imei] || {};
+    const payload = parseFloat(d.payload) || 0; // sarcina utilă (limită) din fișă
     const pts = await history(db, imei, from, to);
-    let last = null, lastTs = null, max = null, overloads = 0, prevOver = false, hadW = false; const readings = [];
+    let last = null, max = null, prevW = null, loads = 0, unloads = 0, overs = 0, overNow = false, hadW = false;
+    const series = [], vEvRows = [], vEvPts = [];
     for (const p of pts) {
       const i = io(p);
+      const present = i.can_load_weight != null || i.can_axle1_load != null || i.can_axle2_load != null || i.can_axle3_load != null || i.can_axle4_load != null || i.can_axle5_load != null;
+      if (!present) continue;
       let w = parseFloat(i.can_load_weight);
-      if (!isFinite(w) || w <= 0) w = [i.can_axle1_load, i.can_axle2_load, i.can_axle3_load, i.can_axle4_load, i.can_axle5_load].reduce((s, v) => s + (parseFloat(v) || 0), 0);
-      if (isFinite(w) && w > 0) { hadW = true; last = w; lastTs = p.timestamp; readings.push({ ts: p.timestamp, v: w }); if (max == null || w > max) max = w; }
-      const over = (i.axle_overload === 1 || i.axle_overload === true || i.axle_overload === '1');
-      if (over && !prevOver) overloads++;
-      prevOver = over;
+      if (!isFinite(w)) w = [i.can_axle1_load, i.can_axle2_load, i.can_axle3_load, i.can_axle4_load, i.can_axle5_load].reduce((s, v) => s + (parseFloat(v) || 0), 0);
+      if (!isFinite(w) || w < 0) continue;
+      hadW = true; last = w; if (max == null || w > max) max = w;
+      series.push({ ts: p.timestamp, w: Math.round(w) });
+      if (prevW != null) {
+        const delta = w - prevW;
+        if (delta >= wMin) { vEvRows.push([nm, fmtTs(p.timestamp), 'Încărcare', '+' + _grp(Math.round(delta)) + ' kg', _grp(Math.round(w)) + ' kg', loc(p)]); vEvPts.push(p); loads++; }
+        else if (delta <= -wMin) { vEvRows.push([nm, fmtTs(p.timestamp), 'Descărcare', '-' + _grp(Math.round(-delta)) + ' kg', _grp(Math.round(w)) + ' kg', loc(p)]); vEvPts.push(p); unloads++; }
+      }
+      if (payload > 0 && w > payload) { if (!overNow) { vEvRows.push([nm, fmtTs(p.timestamp), 'Supraîncărcare', '+' + _grp(Math.round(w - payload)) + ' kg', _grp(Math.round(w)) + ' kg', loc(p)]); vEvPts.push(p); overs++; overNow = true; } }
+      else overNow = false;
+      prevW = w;
     }
-    if (!hadW) { rows.push([nm, 'Fără senzor', '—', '—', '—']); continue; }
-    rows.push([nm, fmtTs(lastTs), _grp(Math.round(last)) + ' kg', _grp(Math.round(max)) + ' kg', overloads]);
-    vMax.push([nm, Math.round(max)]); vSeries.push({ nm, s: _dailySeries(readings, 'max') });
+    if (!hadW) { const r = [nm, '—', 'Fără senzor', '—', '—', '—']; rows.push(r); evPts.push(null); perVehicle.push({ vehicul: nm, summary: [['Greutate', '—'], ['Greutate max', '—'], ['Sarcină utilă', '—'], ['Încărcări', 0], ['Descărcări', 0], ['Supraîncărcări', 0]], rows: [r], charts: [] }); continue; }
+    if (!vEvRows.length) { const r = [nm, '—', '(fără evenimente)', '—', '—', '—']; vEvRows.push(r); vEvPts.push(null); }
+    vEvRows.forEach((r, k) => { rows.push(r); evPts.push(vEvPts[k]); });
+    const S = _sampleSeries(series, 120), labels = S.map(s => fmtTsMin(s.ts));
+    const datasets = [{ label: 'Greutate (kg)', data: S.map(s => s.w), yAxisID: 'y' }];
+    if (payload > 0) datasets.push({ label: 'Sarcină utilă (kg)', data: S.map(() => payload), yAxisID: 'y' });
+    perVehicle.push({ vehicul: nm, summary: [['Greutate', _grp(Math.round(last)) + ' kg'], ['Greutate max', _grp(Math.round(max)) + ' kg'], ['Sarcină utilă', payload > 0 ? _grp(payload) + ' kg' : '—'], ['Încărcări', loads], ['Descărcări', unloads], ['Supraîncărcări', overs]], rows: vEvRows, charts: [{ type: 'line', title: 'Greutate în timp — ' + nm, labels, datasets }] });
+    vMax.push([nm, Math.round(max)]);
   }
-  const charts = _senzChart(vMax, vSeries, 'Greutate max pe vehicul (kg)', 'kg', 'Greutate în timp — ', 'line');
+  if (geocode && geocode.warm) { const c = evPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {} } }
+  rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); });
+  const charts = vMax.length ? [{ type: 'bar', title: 'Greutate max pe vehicul (kg)', labels: _topN(vMax, 20).labels, datasets: [{ label: 'kg', data: _topN(vMax, 20).data }] }] : [];
   return {
-    columns: ['Vehicul', 'Actualizat', 'Greutate curentă', 'Greutate max', 'Supraîncărcări'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Cu senzor greutate': rows.filter(r => r[1] !== 'Fără senzor').length },
-    charts, summarySheet: true,
-    legend: { title: 'Senzori greutate', items: [
-      ['Greutate', 'Sarcina totală / pe axe (kg), din senzorii de greutate ai vehiculului.'],
-      ['Supraîncărcări', 'De câte ori s-a semnalat depășirea sarcinii admise pe axe.'],
-      ['Fără senzor', 'Vehiculul nu are senzori de greutate montați.']
+    columns: ['Vehicul', 'Data', 'Eveniment', 'Δ greutate', 'Greutate', 'Locație'], rows,
+    perVehicle, charts,
+    summary: { 'Total vehicule': imeis.length, 'Cu senzor greutate': vMax.length, 'Supraîncărcări (total)': perVehicle.reduce((s, v) => s + (v.summary.find(x => x[0] === 'Supraîncărcări') || [0, 0])[1], 0) },
+    legend: { title: 'Senzori greutate — analiză', items: [
+      ['Grafic', 'Greutatea în timp + linia „Sarcină utilă" (limita din fișă) → vezi unde curba trece de limită (supraîncărcare).'],
+      ['Încărcare', 'Greutatea a urcat cu ≥ ' + _grp(wMin) + ' kg (s-a încărcat).'],
+      ['Descărcare', 'Greutatea a scăzut cu ≥ ' + _grp(wMin) + ' kg (s-a descărcat).'],
+      ['Supraîncărcare', 'Greutatea a depășit sarcina utilă din fișă — risc de amendă / uzură.'],
+      ['Fără senzor', 'Vehiculul nu are senzor de greutate montat.']
     ] }
   };
 }
