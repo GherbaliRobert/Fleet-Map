@@ -5024,12 +5024,14 @@ const pozitii = await r.json();</code></pre>
     function repMonthNav(d) { if (repMonthSel) { repMonthSel.year += d; repRenderMonths(); } }
     function onRepType() {
       const t = document.getElementById('rep-type').value; let html = '';
-      if (t === 'speeding') html = '<label class="rep-f"><span>Limită (km/h)</span><input type="number" id="rep-limit" value="90" style="width:90px;"></label>';
+      if (t === 'speeding') html = '<label class="rep-f"><span>Limită (km/h)</span><input type="number" id="rep-limit" value="90" style="width:90px;"></label>'
+        + '<label class="rep-f" style="flex-direction:row;align-items:center;gap:5px;white-space:nowrap;" title="Compară cu limita reală a fiecărui drum din OpenStreetMap"><input type="checkbox" id="rep-osm" onchange="repOsmHint()" style="width:auto;flex:none;"><span>Limite reale (OSM)</span></label>'
+        + '<div id="rep-osm-hint" style="flex-basis:100%;display:none;font-size:11.5px;color:var(--text-secondary);line-height:1.55;background:rgba(127,127,127,.10);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:4px;"></div>';
       else if (['stops','trips','route','daily'].includes(t)) html = '<label class="rep-f"><span>Oprire min (min)</span><input type="number" id="rep-stopmin" value="5" style="width:90px;"></label>';
       else if (['consumption','fuel'].includes(t)) html = '<label class="rep-f"><span>Prag alimentare (L)</span><input type="number" id="rep-refuel" value="10" style="width:100px;"></label>';
       else if (t === 'hotspot') html = '<label class="rep-f"><span>Hotspot (zonă)</span><select id="rep-geofence" style="min-width:170px;"><option value="">Se încarcă…</option></select></label>';
       else if (t === 'analytic') html = '<label class="rep-f"><span>Detaliu</span><select id="rep-sample" style="min-width:150px;"><option value="0">Toate pozițiile</option><option value="30">1 la 30 sec</option><option value="60">1 la 1 min</option><option value="300" selected>1 la 5 min</option></select></label>';
-      document.getElementById('rep-extra').innerHTML = html;
+      var _rx = document.getElementById('rep-extra'); _rx.innerHTML = html; _rx.style.flexWrap = (t === 'speeding') ? 'wrap' : '';
       // La „Scadențe" (due): ascundem intervalul pe zile și arătăm selectorul de LUNĂ (scadențe până la finalul lunii alese).
       var _due = (t === 'due');
       var _ti = document.getElementById('rep-int-title'); if (_ti) _ti.style.display = _due ? 'none' : '';
@@ -5038,6 +5040,19 @@ const pozitii = await r.json();</code></pre>
       var _mp = document.getElementById('rep-month-picker'); if (_mp) _mp.style.display = _due ? '' : 'none';
       if (_due) { if (!repMonthSel) repInitMonthPicker(); else repRenderMonths(); }
       if (t === 'hotspot') repLoadGeofences();
+    }
+    // Panou de ajutor pt. bifa „Limite reale (OSM)" — apare la bifare, ca userul să știe riscurile și cum să evite erorile.
+    function repOsmHint() {
+      var c = document.getElementById('rep-osm'), h = document.getElementById('rep-osm-hint'); if (!h) return;
+      if (c && c.checked) {
+        h.innerHTML = '<b><i class="fas fa-circle-info"></i> Limite reale (OpenStreetMap) — cum eviți erorile</b>'
+          + '<div style="margin-top:5px;">• Compară viteza cu <b>limita reală a fiecărui drum</b> (ex. 50 în oraș), nu cu pragul fix de 90 — prinde depășirile din localități.</div>'
+          + '<div>• Merge cel mai bine pe <b>puține mașini și o perioadă scurtă (ideal o zi)</b>; fiecare traseu cere o interogare la OpenStreetMap.</div>'
+          + '<div>• Traseele întinse pe o zonă mare sau drumurile <b>netagate în OSM</b> sunt <b>sărite și notate</b> în raport, nu ascunse — nu e o eroare.</div>'
+          + '<div>• Pe toată flota pe o lună va fi lent și multe mașini vor fi sărite (plafon de protecție). <b>Restrânge selecția.</b></div>'
+          + '<div style="margin-top:4px;color:var(--text-muted);">Gratuit · date © OpenStreetMap contributors. Bifa stinsă = raportul clasic cu prag fix, pe toată flota.</div>';
+        h.style.display = 'block';
+      } else { h.style.display = 'none'; }
     }
     function repLoadGeofences() {
       fetch('/api/geofences', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (gfs) {
@@ -5068,6 +5083,7 @@ const pozitii = await r.json();</code></pre>
       let url = `/api/reports/${t}?from=${fromD.toISOString()}&to=${toD.toISOString()}`;
       if (imei) url += '&imei=' + encodeURIComponent(imei);
       const lim = document.getElementById('rep-limit'); if (lim) url += '&limit=' + (parseInt(lim.value)||90);
+      const osm = document.getElementById('rep-osm'); if (osm && osm.checked) url += '&osm=1'; // Depășiri viteză: limite reale OSM
       const sm = document.getElementById('rep-stopmin'); if (sm) url += '&stopMin=' + (parseInt(sm.value)||5);
       const rf = document.getElementById('rep-refuel'); if (rf) url += '&refuelMin=' + (parseInt(rf.value)||10);
       const gf = document.getElementById('rep-geofence');
