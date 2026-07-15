@@ -285,6 +285,8 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS displacement INTEGER;
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS power_kw INTEGER;
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS payload INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS temp_min INTEGER;
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS temp_max INTEGER;
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS road_tax_category VARCHAR(30);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_center VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inventory_number VARCHAR(40);
@@ -1625,12 +1627,12 @@ const VEHICLE_DETAIL_COLS = [
   'emission_class', 'tire_size', 'engine_serial', 'displacement', 'power_kw',
   'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
   'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source', 'show_transport',
-  'odo_base_km'
+  'odo_base_km', 'temp_min', 'temp_max'
 ];
 const NUMERIC_COLS = new Set([
   'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',
   'consumption_road', 'passenger_seats', 'displacement', 'power_kw', 'payload',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'odo_base_km'
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'odo_base_km', 'temp_min', 'temp_max'
 ]);
 // Doar acestea sunt NUMERIC(6,2) (acceptă zecimale); restul din NUMERIC_COLS sunt INTEGER → rotunjim,
 // altfel un decimal (ex. 90.5) e respins de Postgres/PGlite ("invalid input syntax for type integer") și pică tot UPDATE-ul.

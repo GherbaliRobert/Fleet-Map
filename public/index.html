@@ -647,6 +647,8 @@
           <div class="form-group"><label>Capacitate rezervor (L)</label><input type="number" id="edit-tank-capacity" placeholder="ex: 400"></div>
           <div class="form-group"><label>Volum util GPL (L)</label><input type="number" id="edit-lpg-volume" placeholder="ex: 0"></div>
           <div class="form-group"><label>Sarcină utilă (kg)</label><input type="number" id="edit-payload" placeholder="ex: 24000"></div>
+          <div class="form-group"><label>Interval temperatură — min (°C)</label><input type="number" id="edit-temp-min" placeholder="ex: -20 (frigorific)"></div>
+          <div class="form-group"><label>Interval temperatură — max (°C)</label><input type="number" id="edit-temp-max" placeholder="ex: -16"></div>
           <div class="form-group"><label>Consum oraș (l/100km)</label><input type="number" step="0.1" id="edit-cons-city" placeholder="ex: 35"></div>
           <div class="form-group"><label>Consum afară (l/100km)</label><input type="number" step="0.1" id="edit-cons-road" placeholder="ex: 28"></div>
           <div class="form-group"><label>Consum staționar (l/h)</label><input type="number" step="0.1" id="edit-cons-idle" placeholder="ex: 2"></div>
@@ -10732,6 +10734,7 @@ const pozitii = await r.json();</code></pre>
           setv('edit-tire-size', dev.tire_size); setv('edit-passenger-seats', dev.passenger_seats);
           setv('edit-speed-limit', dev.speed_limit); setv('edit-tank-capacity', dev.tank_capacity);
           setv('edit-lpg-volume', dev.lpg_volume); setv('edit-payload', dev.payload);
+          setv('edit-temp-min', dev.temp_min); setv('edit-temp-max', dev.temp_max);
           setv('edit-cons-city', dev.consumption_city); setv('edit-cons-road', dev.consumption_road);
           setv('edit-cons-idle', dev.consumption_idle); setv('edit-road-tax', dev.road_tax_category);
           setv('edit-cost-center', dev.cost_center); setv('edit-inventory', dev.inventory_number);
@@ -10792,6 +10795,7 @@ const pozitii = await r.json();</code></pre>
         emission_class: strOrNull('edit-emission-class'), tire_size: strOrNull('edit-tire-size'),
         passenger_seats: numOrNull('edit-passenger-seats'), speed_limit: numOrNull('edit-speed-limit'),
         tank_capacity: numOrNull('edit-tank-capacity'), lpg_volume: numOrNull('edit-lpg-volume'),
+        temp_min: numOrNull('edit-temp-min'), temp_max: numOrNull('edit-temp-max'),
         payload: numOrNull('edit-payload'), consumption_city: numOrNull('edit-cons-city'),
         consumption_road: numOrNull('edit-cons-road'), consumption_idle: numOrNull('edit-cons-idle'),
         road_tax_category: strOrNull('edit-road-tax'), cost_center: strOrNull('edit-cost-center'),

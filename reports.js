@@ -113,7 +113,7 @@ async function history(db, imei, from, to) {
 async function deviceNames(db, imeis) {
   const map = {};
   try {
-    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.fuel_type, d.tank_capacity, d.tank_calibration, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
+    const r = await db.pool.query('SELECT d.imei, d.name, d.plate, d.driver_id, d.group_id, d.vehicle_type, d.fuel_type, d.tank_capacity, d.tank_calibration, d.payload, d.temp_min, d.temp_max, d.consumption_idle, d.odo_base_km, d.odo_base_dev_m, dr.name AS driver_name FROM devices d LEFT JOIN drivers dr ON dr.id = d.driver_id');
     r.rows.forEach(d => map[d.imei] = d);
   } catch (e) {}
   return map;
@@ -1906,31 +1906,59 @@ async function rArm(db, imeis, from, to, opts, devMap) { // Senzor de braț (uti
   };
 }
 
-async function rIoT(db, imeis, from, to, opts, devMap) { // Senzori IoT (wireless BLE: temperatură + baterie senzor)
-  const rows = [], vTemp = [], vSeries = [];
+async function rIoT(db, imeis, from, to, opts, devMap) { // Senzori IoT (frigorific) — temperatură + jurnal de excursii (alarme) + baterie senzor
+  const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + 'h ' + m + 'm') : (m > 0 ? (m + 'm ' + s + 's') : (s + 's')); };
+  const rows = [], evPts = [], perVehicle = [], vTemp = [];
   for (const imei of imeis) {
     const nm = label(devMap, imei);
+    const dd = devMap[imei] || {};
+    const tMin = dd.temp_min != null && isFinite(parseFloat(dd.temp_min)) ? parseFloat(dd.temp_min) : null;
+    const tMax = dd.temp_max != null && isFinite(parseFloat(dd.temp_max)) ? parseFloat(dd.temp_max) : null;
     const pts = await history(db, imei, from, to);
-    let temp = null, batt = null, ts = null, had = false; const readings = [];
+    let lastTemp = null, minT = null, maxT = null, batt = null, had = false;
+    const series = [], events = []; let exStart = null, exStartP = null, exPeak = null, exPeakDev = -1;
     for (const p of pts) {
       const i = io(p);
-      const t2 = i.ble_fuel_temp_1 != null ? parseFloat(i.ble_fuel_temp_1) : null;
+      let temp = null;
+      for (const k of ['ble_fuel_temp_1', 'ble_fuel_temp_2', 'ble_fuel_temp_3', 'ble_fuel_temp_4']) { if (i[k] != null) { const v = parseFloat(i[k]); if (isFinite(v)) { temp = v; break; } } }
       const b = i.ble_battery_voltage_1 != null ? parseFloat(i.ble_battery_voltage_1) : null;
-      if ((t2 != null && isFinite(t2)) || (b != null && isFinite(b))) { had = true; if (t2 != null && isFinite(t2)) { temp = t2; readings.push({ ts: p.timestamp, v: t2 }); } if (b != null && isFinite(b)) batt = b; ts = p.timestamp; }
+      if (b != null && isFinite(b)) { batt = b; had = true; }
+      if (temp == null) continue;
+      had = true; lastTemp = temp;
+      if (minT == null || temp < minT) minT = temp;
+      if (maxT == null || temp > maxT) maxT = temp;
+      series.push({ ts: p.timestamp, temp: +temp.toFixed(1) });
+      const dev = (tMax != null && temp > tMax) ? (temp - tMax) : (tMin != null && temp < tMin ? (tMin - temp) : 0);
+      if (dev > 0) { if (exStart == null) { exStart = t(p); exStartP = p; exPeak = temp; exPeakDev = dev; } else if (dev > exPeakDev) { exPeak = temp; exPeakDev = dev; } }
+      else if (exStart != null) { events.push({ startTs: exStartP.timestamp, dur: (t(p) - exStart) / 1000, peak: exPeak, p: exStartP }); exStart = null; exStartP = null; exPeak = null; exPeakDev = -1; }
     }
-    if (!had) { rows.push([nm, 'Fără senzori IoT', '—', '—']); continue; }
-    rows.push([nm, fmtTs(ts), temp != null ? temp.toFixed(1) + ' °C' : '—', batt != null ? batt.toFixed(2) + ' V' : '—']);
-    if (temp != null) { vTemp.push([nm, Math.round(temp * 10) / 10]); vSeries.push({ nm, s: _dailySeries(readings, 'last') }); }
+    if (exStart != null && pts.length) events.push({ startTs: exStartP.timestamp, dur: (t(pts[pts.length - 1]) - exStart) / 1000, peak: exPeak, p: exStartP });
+    const interval = (tMin != null || tMax != null) ? ((tMin != null ? tMin : '−∞') + '…' + (tMax != null ? tMax : '+∞') + ' °C') : '—';
+    if (!had) { const r = [nm, '—', 'Fără senzori IoT', '—', '—', '—']; rows.push(r); evPts.push(null); perVehicle.push({ vehicul: nm, summary: [['Temp curentă', '—'], ['Min', '—'], ['Max', '—'], ['Interval', '—'], ['Excursii', 0], ['Baterie', '—']], rows: [r], charts: [] }); continue; }
+    const vEvRows = [], vEvPts = [];
+    events.forEach((e, idx) => { vEvRows.push([nm, '#' + (idx + 1), fmtTs(e.startTs), dur(e.dur), (e.peak != null ? e.peak.toFixed(1) + ' °C' : '—'), loc(e.p)]); vEvPts.push(e.p); });
+    if (!vEvRows.length) { const r = [nm, '—', (tMin != null || tMax != null) ? '(fără excursii)' : '(interval nesetat în fișă)', '—', '—', '—']; vEvRows.push(r); vEvPts.push(null); }
+    vEvRows.forEach((r, k) => { rows.push(r); evPts.push(vEvPts[k]); });
+    const S = _sampleSeries(series, 120), labels = S.map(s => fmtTsMin(s.ts));
+    const datasets = [{ label: 'Temperatură (°C)', data: S.map(s => s.temp), yAxisID: 'y' }];
+    if (tMin != null) datasets.push({ label: 'Min admis', data: S.map(() => tMin), yAxisID: 'y' });
+    if (tMax != null) datasets.push({ label: 'Max admis', data: S.map(() => tMax), yAxisID: 'y' });
+    perVehicle.push({ vehicul: nm, summary: [['Temp curentă', lastTemp != null ? lastTemp.toFixed(1) + ' °C' : '—'], ['Min', minT != null ? minT.toFixed(1) + ' °C' : '—'], ['Max', maxT != null ? maxT.toFixed(1) + ' °C' : '—'], ['Interval', interval], ['Excursii', events.length], ['Baterie', batt != null ? batt.toFixed(2) + ' V' : '—']], rows: vEvRows, charts: series.length ? [{ type: 'line', title: 'Temperatură în timp — ' + nm, labels, datasets }] : [] });
+    if (lastTemp != null) vTemp.push([nm, +lastTemp.toFixed(1)]);
   }
-  const charts = _senzChart(vTemp, vSeries, 'Temperatură curentă pe vehicul (°C)', '°C', 'Temperatură în timp — ', 'line');
+  if (geocode && geocode.warm) { const c = evPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {} } }
+  rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); });
+  const charts = vTemp.length ? [{ type: 'bar', title: 'Temperatură curentă pe vehicul (°C)', labels: _topN(vTemp, 20).labels, datasets: [{ label: '°C', data: _topN(vTemp, 20).data }] }] : [];
   return {
-    columns: ['Vehicul', 'Actualizat', 'Temperatură', 'Baterie senzor'], rows,
-    summary: { 'Total vehicule': imeis.length, 'Cu senzori IoT': rows.filter(r => r[1] !== 'Fără senzori IoT').length },
-    charts, summarySheet: true,
-    legend: { title: 'Senzori IoT (wireless)', items: [
-      ['Temperatură', 'Ultima temperatură citită de un senzor wireless (BLE) — util la frigorifice / marfă sensibilă.'],
-      ['Baterie senzor', 'Tensiunea bateriei senzorului wireless — semnal că trebuie schimbată.'],
-      ['Fără senzori IoT', 'Vehiculul nu are senzori wireless conectați.']
+    columns: ['Vehicul', 'Nr.', 'Data', 'Durată', 'Vârf', 'Locație'], rows,
+    perVehicle, charts,
+    summary: { 'Total vehicule': imeis.length, 'Cu senzori IoT': vTemp.length, 'Excursii (total flotă)': perVehicle.reduce((s, v) => s + (v.summary.find(x => x[0] === 'Excursii') || [0, 0])[1], 0) },
+    legend: { title: 'Senzori IoT — temperatură & alarme', items: [
+      ['Grafic', 'Temperatura în timp + liniile „Min/Max admis" (intervalul din fișă) → vezi când iese din interval.'],
+      ['Excursie', 'Cât timp temperatura a fost în afara intervalului sigur (prea cald/prea rece) — alarmă lanț frig.'],
+      ['Vârf', 'Cea mai extremă temperatură atinsă în timpul excursiei.'],
+      ['Interval', 'Intervalul sigur (min…max °C) din fișa vehiculului. Fără el nu se pot detecta excursii.'],
+      ['Fără senzori IoT', 'Vehiculul nu are senzori wireless (temperatură/baterie) conectați.']
     ] }
   };
 }
