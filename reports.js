@@ -257,6 +257,7 @@ function _injectDriverColumn(result, imeis, devMap) {
       if (Array.isArray(v.summary)) v.summary = [['Șofer', (l2d[String(v.vehicul)] || '—')]].concat(v.summary);
     });
   }
+  if (Array.isArray(result.summaryTotals)) result.summaryTotals = [''].concat(result.summaryTotals); // rândul TOTAL: aliniază cu coloana „Șofer" adăugată în tabelul Sumar
 }
 
 async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
@@ -569,6 +570,7 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
     const c = typeof g.coordinates === 'string' ? JSON.parse(g.coordinates) : g.coordinates;
     return { name: g.name, type: g.type, center: c && c.center, radius: c && c.radius, coords: Array.isArray(c) ? c : null };
   });
+  const minSec = (opts.zoneMin || 0) * 60; // ignoră vizitele mai scurte (trecere pe lângă marginea zonei / zgomot GPS)
   const rows = []; let total = 0, totalDwell = 0; const all = []; const visByZone = {}, dwellByZone = {}; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
@@ -576,6 +578,7 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
     for (const z of zones) {
       const visits = zoneVisits(pts, z);
       for (const v of visits) {
+        if (v.durationSec < minSec) continue; // sub pragul de durată → nu o socotim vizită
         rows.push([ nm, z.name, fmtTs(v.enter), fmtTs(v.exit), fmtDur(v.durationSec) ]); total++; totalDwell += v.durationSec; all.push(v);
         visByZone[z.name] = (visByZone[z.name] || 0) + 1; dwellByZone[z.name] = (dwellByZone[z.name] || 0) + v.durationSec;
         const pv = perVeh[nm] || (perVeh[nm] = { visits: [], visZ: {}, dwellZ: {}, total: 0, dwell: 0 });
@@ -609,8 +612,10 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
       };
     });
   }
+  const summary = { 'Vizite': total, 'Timp total în zone': fmtDur(totalDwell) };
+  if (minSec > 0) summary['Doar vizite peste'] = opts.zoneMin + ' min';
   return { columns: ['Vehicul','Zonă','Intrare','Ieșire','Durată'], rows,
-    summary: { 'Vizite': total, 'Timp total în zone': fmtDur(totalDwell) }, charts, perVehicle };
+    summary, charts, perVehicle, summarySheet: true, summaryTotals: [ total, fmtDur(totalDwell) ] };
 }
 
 // Raport Hotspot: pentru un hotspot (geofence) ales, defalcă timpul fiecărui vehicul în perimetru

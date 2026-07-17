@@ -5039,6 +5039,7 @@ const pozitii = await r.json();</code></pre>
         + '<div id="rep-osm-hint" style="flex-basis:100%;display:none;font-size:11.5px;color:var(--text-secondary);line-height:1.55;background:rgba(127,127,127,.10);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:4px;"></div>';
       else if (['stops','trips','route','daily'].includes(t)) html = '<label class="rep-f"><span>Oprire min (min)</span><input type="number" id="rep-stopmin" value="5" style="width:90px;"></label>';
       else if (['consumption','fuel'].includes(t)) html = '<label class="rep-f"><span>Prag alimentare (L)</span><input type="number" id="rep-refuel" value="10" style="width:100px;"></label>';
+      else if (t === 'geofence') html = '<label class="rep-f"><span>Durată min. vizită (min)</span><input type="number" id="rep-zonemin" value="2" min="0" style="width:130px;"></label>';
       else if (t === 'hotspot') html = '<label class="rep-f"><span>Hotspot (zonă)</span><select id="rep-geofence" style="min-width:170px;"><option value="">Se încarcă…</option></select></label>';
       else if (t === 'analytic') html = '<label class="rep-f"><span>Detaliu</span><select id="rep-sample" style="min-width:150px;"><option value="0">Toate pozițiile</option><option value="30">1 la 30 sec</option><option value="60">1 la 1 min</option><option value="300" selected>1 la 5 min</option></select></label>';
       var _rx = document.getElementById('rep-extra'); _rx.innerHTML = html; _rx.style.flexWrap = (t === 'speeding') ? 'wrap' : '';
@@ -5101,6 +5102,7 @@ const pozitii = await r.json();</code></pre>
       const osm = document.getElementById('rep-osm'); if (osm && osm.checked) { url += '&osm=1'; const om = document.getElementById('rep-osm-over'); url += '&osmOver=' + (om ? (parseInt(om.value) || 0) : 20); } // Depășiri viteză: limite reale OSM + prag „peste limită"
       const sm = document.getElementById('rep-stopmin'); if (sm) url += '&stopMin=' + (parseInt(sm.value)||5);
       const rf = document.getElementById('rep-refuel'); if (rf) url += '&refuelMin=' + (parseInt(rf.value)||10);
+      const zm = document.getElementById('rep-zonemin'); if (zm) url += '&zoneMin=' + (parseFloat(zm.value) || 0); // Vizite în zone: durată min. vizită
       const gf = document.getElementById('rep-geofence');
       if (gf) { if (!gf.value) { alert('Alege un hotspot (zonă) pentru raport.'); return null; } url += '&geofenceId=' + encodeURIComponent(gf.value); }
       const sp = document.getElementById('rep-sample'); if (sp) url += '&sampleSec=' + (parseInt(sp.value) || 0);
