@@ -612,10 +612,9 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
       };
     });
   }
-  const summary = { 'Vizite': total, 'Timp total în zone': fmtDur(totalDwell) };
-  if (minSec > 0) summary['Doar vizite peste'] = opts.zoneMin + ' min';
+  // Fără sumar (la cererea userului): nici KPI-uri online, nici foaie „Sumar" în Excel — doar tabelul + graficele + foile per vehicul.
   return { columns: ['Vehicul','Zonă','Intrare','Ieșire','Durată'], rows,
-    summary, charts, perVehicle, summarySheet: true, summaryTotals: [ total, fmtDur(totalDwell) ] };
+    summary: {}, charts, perVehicle, noSummarySheet: true };
 }
 
 // Raport Hotspot: pentru un hotspot (geofence) ales, defalcă timpul fiecărui vehicul în perimetru
