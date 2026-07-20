@@ -629,44 +629,59 @@ async function rHotspot(db, imeis, from, to, opts, devMap, companyId) {
   const zone = { name: g.name, type: g.type, center: c && c.center, radius: c && c.radius, coords: Array.isArray(c) ? c : null };
   const GAP = 1800; // s — pauză peste 30 min între puncte din zonă = device adormit (parcat, motor oprit)
 
-  const recs = [];
+  const rows = [];
   let T_move = 0, T_idle = 0, T_off = 0, T_total = 0, T_visits = 0, T_km = 0, vehs = 0;
+  const fleetDay = {};   // dayKey -> secunde totale în perimetru (grafic pe zi)
+  const perVehEng = {};  // nume -> ore de funcționare (grafic pe vehicul)
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
     if (!pts.length) continue;
-    const visits = zoneVisits(pts, zone);
-    let move = 0, idle = 0, off = 0, km = 0;
+    const nm = label(devMap, imei);
+    const byDay = {};    // dayKey -> { move, idle, off, km, visits, first, last }
+    const D = ts => { const k = _dayKeyISO(ts); return byDay[k] || (byDay[k] = { move: 0, idle: 0, off: 0, km: 0, visits: 0, first: null, last: null }); };
     for (let i = 1; i < pts.length; i++) {
       const pr = pts[i - 1], p = pts[i];
       if (!insideZone(pr.latitude, pr.longitude, zone) || !insideZone(p.latitude, p.longitude, zone)) continue;
       const dt = (t(p) - t(pr)) / 1000;
       if (dt <= 0) continue;
+      const b = D(pr.timestamp); // atribuie intervalul zilei punctului anterior
       const dkm = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); // km parcurși în perimetru
-      if (dkm < MAX_STEP_KM) km += dkm;
-      if (dt > GAP) off += dt;                              // pauză = parcat cu motorul oprit în zonă
-      else if ((pr.speed || 0) > IDLE_SPEED) move += dt;   // în mișcare
-      else if (ignOn(pr)) idle += dt;                      // ralanti (motor pornit, pe loc)
-      else off += dt;                                       // motor oprit
+      if (dkm < MAX_STEP_KM) b.km += dkm;
+      if (dt > GAP) b.off += dt;                              // pauză = parcat cu motorul oprit în zonă
+      else if ((pr.speed || 0) > IDLE_SPEED) b.move += dt;    // în mișcare
+      else if (ignOn(pr)) b.idle += dt;                       // ralanti (motor pornit, pe loc)
+      else b.off += dt;                                        // motor oprit
     }
-    const total = move + idle + off;
-    if (total <= 0 && !visits.length) continue;
-    vehs++; T_move += move; T_idle += idle; T_off += off; T_total += total; T_visits += visits.length; T_km += km;
-    recs.push({ name: label(devMap, imei), total, move, idle, off, eng: move + idle, km, visits: visits.length,
-      first: visits.length ? visits[0].enter : null, last: visits.length ? visits[visits.length - 1].exit : null });
+    for (const v of zoneVisits(pts, zone)) { // vizitele, atribuite zilei intrării
+      const b = D(v.enter); b.visits++;
+      if (!b.first || new Date(v.enter) < new Date(b.first)) b.first = v.enter;
+      if (!b.last || new Date(v.exit) > new Date(b.last)) b.last = v.exit;
+    }
+    const dayKeys = Object.keys(byDay).sort();
+    if (!dayKeys.length) continue;
+    vehs++; let eng = 0;
+    for (const k of dayKeys) {
+      const b = byDay[k], total = b.move + b.idle + b.off;
+      rows.push([ nm, _dayLabelFull(k), fmtDur(total), fmtDur(b.move), fmtDur(b.idle), fmtDur(b.off), fmtDur(b.move + b.idle), b.km.toFixed(1) + ' km', b.visits, fmtTs(b.first), fmtTs(b.last) ]);
+      T_move += b.move; T_idle += b.idle; T_off += b.off; T_total += total; T_visits += b.visits; T_km += b.km;
+      fleetDay[k] = (fleetDay[k] || 0) + total; eng += b.move + b.idle;
+    }
+    perVehEng[nm] = (perVehEng[nm] || 0) + eng;
   }
-  recs.sort((a, b) => b.total - a.total);
-  const rows = recs.map(r => [ r.name, fmtDur(r.total), fmtDur(r.move), fmtDur(r.idle), fmtDur(r.off), fmtDur(r.eng), r.km.toFixed(1) + ' km', r.visits, fmtTs(r.first), fmtTs(r.last) ]);
-  const top = recs.slice(0, 10);
-  const charts = recs.length ? [
-    { type: 'doughnut', title: 'Timp pe stări (în perimetru)', labels: ['În mișcare', 'Ralanti', 'Motor oprit'], datasets: [{ label: 'min', data: [Math.round(T_move / 60), Math.round(T_idle / 60), Math.round(T_off / 60)] }] },
-    { type: 'bar', title: 'Ore de funcționare pe vehicul (h)', labels: top.map(r => r.name), datasets: [{ label: 'ore', data: top.map(r => Math.round(r.eng / 360) / 10) }] }
+  const dayKeysAll = Object.keys(fleetDay).sort();
+  const topV = _topN(Object.entries(perVehEng).map(([n, s]) => [n, Math.round(s / 360) / 10]), 10);
+  const charts = rows.length ? [
+    { type: 'bar',      title: 'Timp în perimetru pe zi (h)',       labels: dayKeysAll.map(_dayLabel), datasets: [{ label: 'ore', data: dayKeysAll.map(k => Math.round(fleetDay[k] / 360) / 10) }] },
+    { type: 'doughnut', title: 'Timp pe stări (în perimetru)',      labels: ['În mișcare', 'Ralanti', 'Motor oprit'], datasets: [{ label: 'min', data: [Math.round(T_move / 60), Math.round(T_idle / 60), Math.round(T_off / 60)] }] },
+    { type: 'bar',      title: 'Ore de funcționare pe vehicul (h)', labels: topV.labels, datasets: [{ label: 'ore', data: topV.data }] }
   ] : [];
   return {
-    columns: ['Vehicul', 'Timp în perimetru', 'În mișcare', 'Ralanti', 'Motor oprit', 'Ore funcționare', 'Km parcurși', 'Vizite', 'Prima intrare', 'Ultima ieșire'],
+    columns: ['Vehicul', 'Zi', 'Timp în perimetru', 'În mișcare', 'Ralanti', 'Motor oprit', 'Ore funcționare', 'Km parcurși', 'Vizite', 'Prima intrare', 'Ultima ieșire'],
     rows,
     summary: {
       'Hotspot': g.name,
       'Vehicule în perimetru': vehs,
+      'Zile cu activitate': dayKeysAll.length,
       'Timp total în perimetru': fmtDur(T_total),
       'În mișcare': fmtDur(T_move),
       'Ralanti': fmtDur(T_idle),
@@ -675,7 +690,7 @@ async function rHotspot(db, imeis, from, to, opts, devMap, companyId) {
       'Km parcurși': T_km.toFixed(1) + ' km',
       'Vizite totale': T_visits
     },
-    charts
+    charts, summarySheet: true, noPerVehicle: true // sumar pe foaie separată; un singur tabel cu rânduri pe zi (fără split per vehicul)
   };
 }
 
