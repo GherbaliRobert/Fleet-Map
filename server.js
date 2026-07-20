@@ -6272,9 +6272,10 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     // ─── Generare în FUNDAL (background=1): răspundem imediat, generăm async, apoi notificăm userul ───
     // Notificarea „report_ready" ajunge în clopoțel (WS) pe web + push FCM pe APK + în lista de notificări.
     const _fmt = (req.query.format || '').toLowerCase();
+    if (_fmt === 'xlsx' || _fmt === 'pdf') opts.geoBudgetMs = 60000; // export de fișier (deliberat) → buget de geocodare mai mare, ca să nu iasă coordonate amestecate cu adrese
     if (req.query.background === '1' && req.query.log === '1' && _fmt !== 'xlsx' && _fmt !== 'pdf' && req.auth && req.auth.userId) {
       res.json({ queued: true });
-      opts.geoBudgetMs = 60000; // job în fundal (userul e notificat la final) → geocodăm mai multe adrese fără să blocăm o cerere sincronă
+      opts.geoBudgetMs = 90000; // job în fundal (userul e notificat la final) → geocodăm mai multe adrese fără să blocăm o cerere sincronă
       const _type = req.params.type, _uid = req.auth.userId, _uname = req.auth.username, _cid = req.companyId != null ? req.companyId : null, _imei = req.query.imei || null;
       const _jobId = req.query.jobId ? String(req.query.jobId).slice(0, 64) : null; // corelează badge-ul din client cu notificarea de finalizare
       setImmediate(async () => {
