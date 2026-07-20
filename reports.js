@@ -1211,19 +1211,52 @@ async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: g
   };
 }
 
+// Etichete prietenoase pt. tipurile de alertă (oglindesc ALERT_TYPES din frontend).
+const _ALERT_LABELS = {
+  overspeed: 'Depășire viteză', fuel_drop: 'Scădere combustibil (furt)', ignition_on: 'Pornire motor', ignition_off: 'Oprire motor',
+  geofence_enter: 'Intrare în zonă', geofence_exit: 'Ieșire din zonă', engine_temp: 'Temperatură motor mare', dtc_error: 'Erori motor (DTC)',
+  overload_legal: 'Supraîncărcare (legal)', overload_construct: 'Supraîncărcare (constructiv)', axle_overload: 'Supraîncărcare pe axă',
+  pto_active: 'PTO activat', brake_pad_wear: 'Uzură plăcuțe frână', service_due: 'Service aproape',
+  idle_engine: 'Staționare cu motor pornit (ralanti)', document_expiry: 'Expirare documente'
+};
+function _alertTypeLabel(v) { return _ALERT_LABELS[v] || v || '—'; }
+// Detaliu lizibil per tip (oglindește alertSummary din server.js) — în loc de JSON brut.
+function _alertDetail(type, d) {
+  d = d || {};
+  switch (type) {
+    case 'overspeed': return `Viteză ${d.speed} km/h (limită ${d.limit})`;
+    case 'fuel_drop': return `Scădere combustibil ${d.drop != null ? Number(d.drop).toFixed(1) : '?'} L`;
+    case 'engine_temp': return `Temperatură ${d.temp}°C (limită ${d.limit})`;
+    case 'geofence_enter': case 'geofence_exit': return (d.event || _alertTypeLabel(type)) + (d.geofence ? ': ' + d.geofence : '');
+    case 'overload_legal': case 'overload_construct': return `Greutate ${d.totalKg} kg (limită ${d.limit})`;
+    case 'axle_overload': return d.axle ? `Supraîncărcare axa ${d.axle} (${d.kg} kg)` : 'Supraîncărcare pe axă';
+    case 'dtc_error': return `${d.dtcCount != null ? d.dtcCount : '?'} erori motor`;
+    case 'idle_engine': return `Ralanti ${d.idleMinutes} min (prag ${d.threshold} min)`;
+    default: return d.event || '';
+  }
+}
+
 async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alerte declanșate)
   // Interogare scopată pe fereastră + vehicule (NU global LIMIT 2000) — altfel, peste 2000 alerte mai noi decât
   // fereastra, TOATE evenimentele din interval erau pierdute silențios (subraportare care se înrăutățește în timp).
   const all = await db.getAlertHistoryRange(imeis, from, to, 5000);
-  const rows = []; const evs = []; const byType = {}; const perVeh = {};
+  const rows = []; const evs = []; const byType = {}; const perVeh = {}; const evPts = [];
   for (const e of all) {
-    const typ = e.alert_name || e.alert_type || '—';
+    let d = e.data || {}; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { d = {}; } }
+    const typ = e.alert_name || _alertTypeLabel(e.alert_type);   // nume prietenos ca fallback la codul tehnic
     const nm = label(devMap, e.imei);
-    rows.push([ nm, typ, fmtTs(e.triggered_at), e.data ? JSON.stringify(e.data).slice(0, 90) : '' ]);
+    const p = (d.lat != null && d.lng != null) ? { latitude: +d.lat, longitude: +d.lng } : null; // locul unde s-a declanșat
+    rows.push([ nm, typ, fmtTs(e.triggered_at), _alertDetail(e.alert_type, d), p ? loc(p) : '' ]);
+    evPts.push(p);
     evs.push({ ts: e.triggered_at }); byType[typ] = (byType[typ] || 0) + 1;
     const pv = perVeh[nm] || (perVeh[nm] = { evs: [], byType: {}, n: 0 });
     pv.evs.push({ ts: e.triggered_at }); pv.byType[typ] = (pv.byType[typ] || 0) + 1; pv.n++;
   }
+  // Adresă la locul alertei (dacă avem coordonate): pre-încarcă + fallback pe coordonate + completare progresivă pe client.
+  if (geocode && geocode.warm && evPts.some(Boolean)) {
+    try { await geocode.warm(evPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 300, budgetMs: opts.geoBudgetMs || (imeis.length <= 1 ? 14000 : 8000) }); } catch (e) {}
+  }
+  rows.forEach((r, i) => { if (evPts[i]) r[4] = addr(evPts[i]); }); // Locație e col. 4
   const nDay = _groupByDay(evs, x => x.ts, null);
   const topT = _topN(Object.entries(byType), 8);
   const charts = rows.length ? [
@@ -1232,7 +1265,7 @@ async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alert
   ] : [];
   const eNames = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
   let perVehicle;
-  if (eNames.length >= 2) {
+  if (eNames.length >= 1) { // fiecare mașină are foaia ei (chiar și una singură)
     const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
     perVehicle = eNames.map(nm => {
       const pv = perVeh[nm], nD = _groupByDay(pv.evs, x => x.ts, null), tT = _topN(Object.entries(pv.byType), 8);
@@ -1247,7 +1280,8 @@ async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alert
       };
     });
   }
-  return { columns: ['Vehicul', 'Eveniment', 'Moment', 'Detalii'], rows, summary: { 'Evenimente': rows.length }, charts, perVehicle };
+  // Fără sumar (la cererea userului): nici KPI online, nici foaie „Sumar" în Excel — doar o foaie per mașină.
+  return { columns: ['Vehicul', 'Eveniment', 'Data', 'Detalii', 'Locație'], rows, summary: {}, charts, perVehicle, noSummarySheet: true };
 }
 
 async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut, poziție cu poziție) — cu ADRESĂ în loc de lat/lng
