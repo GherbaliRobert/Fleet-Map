@@ -1336,10 +1336,12 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
   const HARSH_ACCEL = opts.harshAccel || 7; // km/h pe secundă (~1.9 m/s²)
   const HARSH_BRAKE = opts.harshBrake || 9; // km/h pe secundă (~2.5 m/s²)
   const HARSH_TURN = opts.harshTurn || 25;  // grade/secundă la viteză > 25 km/h
-  const rows = []; let fleetScoreW = 0, fleetKm = 0, fleetVeh = 0, totA = 0, totB = 0, totT = 0; const vehScore = [];
+  const rows = []; const evPts = []; let fleetScoreW = 0, fleetKm = 0, fleetVeh = 0, totA = 0, totB = 0, totT = 0; const vehScore = []; const perVeh = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
+    const nm = label(devMap, imei);
     let km = 0, accel = 0, brake = 0, hardTurn = 0, speedOverSec = 0, idleSec = 0, driveSec = 0;
+    const events = []; // jurnal: { ts, type, detail, p }
     for (let i = 1; i < pts.length; i++) {
       const pr = pts[i - 1], p = pts[i];
       const dt = (t(p) - t(pr)) / 1000;
@@ -1352,9 +1354,9 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
       // evenimentele bruște au sens doar pe intervale scurte (accelerația pe gap mare nu e relevantă)
       if (dt <= 30) {
         const a = (sp - spPr) / dt;
-        if (a > HARSH_ACCEL) accel++;
-        if (a < -HARSH_BRAKE) brake++;
-        if (sp > 25) { let da = Math.abs((p.angle || 0) - (pr.angle || 0)); if (da > 180) da = 360 - da; if (da / dt > HARSH_TURN) hardTurn++; }
+        if (a > HARSH_ACCEL) { accel++; events.push({ ts: p.timestamp, type: 'Accelerare bruscă', detail: '+' + Math.round(a) + ' km/h/s (' + Math.round(spPr) + '→' + Math.round(sp) + ')', p }); }
+        if (a < -HARSH_BRAKE) { brake++; events.push({ ts: p.timestamp, type: 'Frânare bruscă', detail: Math.round(a) + ' km/h/s (' + Math.round(spPr) + '→' + Math.round(sp) + ')', p }); }
+        if (sp > 25) { let da = Math.abs((p.angle || 0) - (pr.angle || 0)); if (da > 180) da = 360 - da; if (da / dt > HARSH_TURN) { hardTurn++; events.push({ ts: p.timestamp, type: 'Viraj brusc', detail: Math.round(da / dt) + '°/s la ' + Math.round(sp) + ' km/h', p }); } }
       }
     }
     if (km < 0.5 && driveSec < 60) continue;
@@ -1369,19 +1371,41 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
     pen += Math.min(15, idleShare * 40);
     const score = Math.max(0, Math.round(100 - pen));
     const grade = score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'E';
-    rows.push([label(devMap, imei), score + ' · ' + grade, accel, brake, hardTurn, fmtDur(speedOverSec), Math.round(idleShare * 100) + '%', Math.round(km)]);
-    const w = Math.max(1, km); fleetScoreW += score * w; fleetKm += w; fleetVeh++; totA += accel; totB += brake; totT += hardTurn; vehScore.push([label(devMap, imei), score]);
+    events.sort((x, y) => t(x.p) - t(y.p));
+    for (const ev of events) { rows.push([ nm, fmtTs(ev.ts), ev.type, ev.detail, loc(ev.p) ]); evPts.push(ev.p); }
+    perVeh[nm] = { score, grade, accel, brake, turn: hardTurn, speedOverSec, idleShare, km: Math.round(km) };
+    const w = Math.max(1, km); fleetScoreW += score * w; fleetKm += w; fleetVeh++; totA += accel; totB += brake; totT += hardTurn; vehScore.push([nm, score]);
   }
-  rows.sort((a, b) => parseInt(b[1]) - parseInt(a[1]));
+  // Adresă la locul fiecărui eveniment brusc (pre-încarcă + fallback pe coordonate + completare progresivă pe client).
+  if (geocode && geocode.warm && evPts.length) {
+    try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 300, budgetMs: opts.geoBudgetMs || (imeis.length <= 1 ? 14000 : 8000) }); } catch (e) {}
+  }
+  rows.forEach((r, i) => { if (evPts[i]) r[4] = addr(evPts[i]); }); // Locație e col. 4
   const topS = _topN(vehScore, 10);
   const charts = vehScore.length ? [
     { type: 'bar',      title: 'Scor EcoDrive pe vehicul',  labels: topS.labels, datasets: [{ label: 'scor', data: topS.data }] },
     { type: 'doughnut', title: 'Evenimente bruște (total)', labels: ['Accelerări', 'Frânări', 'Viraje'], datasets: [{ label: 'evenimente', data: [totA, totB, totT] }] }
   ] : [];
+  // Deep-dive: Sumar = scoreboard (Scor/Notă separate); o foaie per mașină = jurnalul ei de evenimente bruște.
+  const names = Object.keys(perVeh).sort((a, b) => (perVeh[b].score - perVeh[a].score) || a.localeCompare(b));
+  let perVehicle;
+  if (names.length >= 1) {
+    const rowsByName = {}; rows.forEach(r => { (rowsByName[String(r[0])] || (rowsByName[String(r[0])] = [])).push(r); });
+    perVehicle = names.map(nm => {
+      const pv = perVeh[nm];
+      return {
+        vehicul: nm,
+        summary: [['Scor', pv.score], ['Notă', pv.grade], ['Accel. bruște', pv.accel], ['Frânări bruște', pv.brake], ['Viraje bruște', pv.turn], ['Timp peste viteză', fmtDur(pv.speedOverSec)], ['Ralanti', Math.round(pv.idleShare * 100) + '%'], ['Km', pv.km]],
+        rows: rowsByName[nm] || [],
+        charts: [ { type: 'doughnut', title: 'Evenimente bruște', labels: ['Accelerări', 'Frânări', 'Viraje'], datasets: [{ label: 'evenimente', data: [pv.accel, pv.brake, pv.turn] }] } ]
+      };
+    });
+  }
   return {
-    columns: ['Vehicul', 'Scor · Notă', 'Accel. bruște', 'Frânări bruște', 'Viraje bruște', 'Timp peste viteză', 'Ralanti', 'Km'],
+    columns: ['Vehicul', 'Data', 'Eveniment', 'Detaliu', 'Locație'],
     rows,
-    summary: { 'Scor flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Vehicule evaluate': fleetVeh, 'Accelerări bruște': totA, 'Frânări bruște': totB }, charts
+    summary: { 'Scor flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Vehicule evaluate': fleetVeh, 'Accelerări bruște': totA, 'Frânări bruște': totB, 'Viraje bruște': totT },
+    charts, perVehicle, noFleetTotal: true // scorurile nu se adună → fără rând TOTAL în Sumar
   };
 }
 

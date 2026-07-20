@@ -5040,9 +5040,12 @@ const pozitii = await r.json();</code></pre>
       else if (['stops','trips','route','daily'].includes(t)) html = '<label class="rep-f"><span>Oprire min (min)</span><input type="number" id="rep-stopmin" value="5" style="width:90px;"></label>';
       else if (['consumption','fuel'].includes(t)) html = '<label class="rep-f"><span>Prag alimentare (L)</span><input type="number" id="rep-refuel" value="10" style="width:100px;"></label>';
       else if (t === 'geofence') html = '<label class="rep-f"><span>Durată min. vizită (min)</span><input type="number" id="rep-zonemin" value="2" min="0" style="width:130px;"></label>';
+      else if (['ecodrive','ecodrive_drivers'].includes(t)) html = '<label class="rep-f"><span>Accel. bruscă (km/h/s)</span><input type="number" id="rep-accel" value="7" min="1" style="width:150px;"></label>'
+        + '<label class="rep-f"><span>Frânare bruscă (km/h/s)</span><input type="number" id="rep-brake" value="9" min="1" style="width:160px;"></label>'
+        + '<label class="rep-f"><span>Viraj brusc (°/s)</span><input type="number" id="rep-turn" value="25" min="1" style="width:130px;"></label>';
       else if (t === 'hotspot') html = '<label class="rep-f"><span>Hotspot (zonă)</span><select id="rep-geofence" style="min-width:170px;"><option value="">Se încarcă…</option></select></label>';
       else if (t === 'analytic') html = '<label class="rep-f"><span>Detaliu</span><select id="rep-sample" style="min-width:150px;"><option value="0">Toate pozițiile</option><option value="30">1 la 30 sec</option><option value="60">1 la 1 min</option><option value="300" selected>1 la 5 min</option></select></label>';
-      var _rx = document.getElementById('rep-extra'); _rx.innerHTML = html; _rx.style.flexWrap = (t === 'speeding') ? 'wrap' : '';
+      var _rx = document.getElementById('rep-extra'); _rx.innerHTML = html; _rx.style.flexWrap = ['speeding','ecodrive','ecodrive_drivers'].includes(t) ? 'wrap' : '';
       // La „Scadențe" (due): ascundem intervalul pe zile și arătăm selectorul de LUNĂ (scadențe până la finalul lunii alese).
       var _due = (t === 'due');
       var _tc = document.getElementById('rep-time-card'); if (_tc) _tc.style.display = _due ? 'none' : '';
@@ -5103,6 +5106,9 @@ const pozitii = await r.json();</code></pre>
       const sm = document.getElementById('rep-stopmin'); if (sm) url += '&stopMin=' + (parseInt(sm.value)||5);
       const rf = document.getElementById('rep-refuel'); if (rf) url += '&refuelMin=' + (parseInt(rf.value)||10);
       const zm = document.getElementById('rep-zonemin'); if (zm) url += '&zoneMin=' + (parseFloat(zm.value) || 0); // Vizite în zone: durată min. vizită
+      const ha = document.getElementById('rep-accel'); if (ha) url += '&harshAccel=' + (parseFloat(ha.value) || 7); // EcoDrive: praguri
+      const hb = document.getElementById('rep-brake'); if (hb) url += '&harshBrake=' + (parseFloat(hb.value) || 9);
+      const ht = document.getElementById('rep-turn'); if (ht) url += '&harshTurn=' + (parseFloat(ht.value) || 25);
       const gf = document.getElementById('rep-geofence');
       if (gf) { if (!gf.value) { alert('Alege un hotspot (zonă) pentru raport.'); return null; } url += '&geofenceId=' + encodeURIComponent(gf.value); }
       const sp = document.getElementById('rep-sample'); if (sp) url += '&sampleSec=' + (parseInt(sp.value) || 0);
