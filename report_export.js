@@ -60,6 +60,7 @@ function xlWriteTable(ws, titleLines, columns, rows, logoId) {
   r = hr + 1;
   for (const row of (rows || [])) { const xr = ws.getRow(r++); (row || []).forEach((v, i) => { xr.getCell(i + 1).value = (v == null ? '' : v); }); }
   columns.forEach((c, i) => { let w = String(c).length; for (const row of (rows || [])) { const v = row && row[i]; if (v != null) w = Math.max(w, String(v).length); } ws.getColumn(i + 1).width = Math.min(45, Math.max(10, w + 2)); });
+  return r; // rândul următor liber (după ultimul rând de date) — ca să putem atașa o legendă sub tabel
 }
 // Legendă sub tabel (ex. explicația coloanei „Sursă"): titlu îngroșat + „termen | descriere" pe rânduri.
 // Descrierea e îmbinată pe coloanele rămase și cu wrap, ca să încapă tot textul. Întoarce rândul următor liber.
@@ -109,7 +110,10 @@ async function toXlsxMultiSheet(report) {
     }
     // KPI pe flotă (report.summary) în capul foii „Sumar" — altfel s-ar pierde complet în exportul multi-sheet
     const kpiLines = Object.entries(report.summary || {}).map(([k, v]) => ({ text: k + ':  ' + (v == null ? '—' : v), font: { size: 11, color: { argb: 'FF444444' } } }));
-    xlWriteTable(wb.addWorksheet(xlSheetName('Sumar', used)), [{ text: (report.label || 'Raport') + ' — Sumar' }, period].concat(kpiLines), sumCols, sumRows, logoId);
+    const sumWs = wb.addWorksheet(xlSheetName('Sumar', used));
+    const sumEnd = xlWriteTable(sumWs, [{ text: (report.label || 'Raport') + ' — Sumar' }, period].concat(kpiLines), sumCols, sumRows, logoId);
+    // Legenda raportului (ex. calificativele EcoDrive) — sub tabelul din foaia Sumar (altfel lipsea complet în multi-sheet).
+    if (report.legend && report.legend.items && report.legend.items.length) xlWriteLegend(sumWs, report.legend, sumEnd + 2, sumCols.length);
   }
   for (const v of pv) {
     xlWriteTable(wb.addWorksheet(xlSheetName(v.vehicul, used)), [{ text: v.vehicul }, period], report.columns || [], v.rows || [], logoId);
