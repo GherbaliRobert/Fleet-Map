@@ -1331,6 +1331,16 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
     summary: { 'Total poziții GPS': rows.length, 'Plafon atins': capped ? 'da (' + cap + ')' : 'nu' }, perVehicle };
 }
 
+// Legenda scorului EcoDrive — explică notele A–E și cum se calculează.
+const ECODRIVE_LEGEND = { title: 'Scorul EcoDrive — cum se citește', items: [
+  ['A · 90–100', 'Condus foarte bun, defensiv. Puține sau deloc manevre bruște.'],
+  ['B · 75–89', 'Condus bun. Ocazional câte o manevră bruscă.'],
+  ['C · 60–74', 'Acceptabil. Manevre bruște sau depășiri de viteză frecvente — loc de îmbunătățit.'],
+  ['D · 40–59', 'Slab. Condus agresiv — consum și uzură mari, risc crescut.'],
+  ['E · sub 40', 'Foarte slab / riscant. Necesită atenție și instruire urgentă.'],
+  ['Cum se calculează', 'Pornește de la 100 și scade pentru accelerări/frânări/viraje bruște, timp peste viteză și ralanti (raportat la 100 km).']
+] };
+
 async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — scor comportament șofer
   const limit = opts.limit || 90;
   const HARSH_ACCEL = opts.harshAccel || 7; // km/h pe secundă (~1.9 m/s²)
@@ -1405,7 +1415,7 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
     columns: ['Vehicul', 'Data', 'Eveniment', 'Detaliu', 'Locație'],
     rows,
     summary: { 'Scor flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Vehicule evaluate': fleetVeh, 'Accelerări bruște': totA, 'Frânări bruște': totB, 'Viraje bruște': totT },
-    charts, perVehicle, noFleetTotal: true // scorurile nu se adună → fără rând TOTAL în Sumar
+    charts, perVehicle, noFleetTotal: true, legend: ECODRIVE_LEGEND // scorurile nu se adună → fără rând TOTAL în Sumar
   };
 }
 
