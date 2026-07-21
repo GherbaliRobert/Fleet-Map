@@ -767,6 +767,7 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
 // Marchează încălcări: conducere continuă > 4h30 (fără pauză ≥45 min) și conducere zilnică > 9h.
 // Legenda HOS — regulile Reg. 561 verificate + sursa (tahograf vs GPS) + limitele estimării.
 const HOS_LEGEND = { title: 'Reg. (CE) 561/2006 — regulile verificate', items: [
+  ['Se aplică la', 'Camioane peste 3,5t și autobuze (>9 locuri). La autoturisme/autoutilitare ușoare apare „Nu se aplică".'],
   ['Condus continuu', 'Max 4h30 la volan fără o pauză de 45 min. Peste → încălcare.'],
   ['Condus zilnic', 'Max 9h/zi, extensibil la 10h de cel mult 2 ori/săptămână. Peste 10h sau a 3-a zi extinsă → încălcare.'],
   ['Repaus zilnic', 'Min 11h, reductibil la 9h de cel mult 3 ori/săptămână. Se verifică DOAR cu tahograf (din GPS, repausul cu motorul oprit nu e vizibil).'],
@@ -788,9 +789,12 @@ async function rHos(db, imeis, from, to, opts, devMap) {
     const name = did != null ? (drv[did] || ('Șofer #' + did)) : label(devMap, imei);
     (byDriver[key] || (byDriver[key] = { name, imeis: [] })).imeis.push(imei);
   }
-  const rows = []; let totDrive = 0, totRest = 0, totWork = 0, totInfr = 0; const dayDrive = {};
+  const rows = []; let totDrive = 0, totRest = 0, totWork = 0, totInfr = 0; const dayDrive = {}; const perSubj = [];
   for (const key of Object.keys(byDriver)) {
     const { name, imeis: dImeis } = byDriver[key];
+    // Reg. 561 se aplică la CAMIOANE (>3,5t) și AUTOBUZE — NU la turisme/autoutilitare ușoare. Determinăm din tipul mașinii (fișă).
+    const vtypes = dImeis.map((i) => String((devMap[i] || {}).vehicle_type || '').toLowerCase());
+    const subject = !(vtypes.length && vtypes.every((tp) => /car|autoturism|van|autoutilitar/.test(tp)));
     // Timeline UNIFICAT al șoferului (toate mașinile lui), cronologic → condusul continuu și zilnic se calculează corect peste schimbări de mașină.
     const merged = []; let useTacho = false;
     for (const imei of dImeis) {
@@ -821,34 +825,52 @@ async function rHos(db, imeis, from, to, opts, devMap) {
       else closeRest(); // orice non-repaus închide seria de repaus → atribuită zilei în care a început (sigur peste miezul nopții)
     }
     closeRest();
-    // #4: reguli suplimentare pe săptămână (zile extinse >9h max 2, reduceri de repaus <11h max 3, condus săptămânal max 56h).
+    // #4: reguli suplimentare pe săptămână (zile extinse >9h max 2, reduceri de repaus <11h max 3, condus săptămânal max 56h) — DOAR dacă vehiculul e subiect Reg. 561.
     const weekDrive = {}, weekExt = {}, weekRed = {};
+    const subjRows = []; let sDrive = 0, sRest = 0, sInfr = 0; const sVehs = new Set();
     for (const day of Object.keys(byDay).sort()) {
       const d = byDay[day]; const wk = _weekKey(day); const infr = [];
-      if (d.contMax > 4.5) infr.push('condus continuu ' + fmtDur(d.contMax * 3600));
-      const dh = d.drive / 3600;
-      if (dh > 10) infr.push('condus zilnic ' + fmtDur(d.drive) + ' (>10h)');
-      else if (dh > 9) { weekExt[wk] = (weekExt[wk] || 0) + 1; if (weekExt[wk] > 2) infr.push('a ' + weekExt[wk] + '-a zi extinsă (>9h)/săpt.'); }
-      if (useTacho && d.drive > 0 && d.restMax > 0) { // repausul se verifică DOAR cu tahograf: din GPS, repausul cu motorul oprit e „gap", nu se vede → am da fals-pozitive
-        const rh = d.restMax / 3600;
-        if (rh < 9) infr.push('repaus zilnic ' + fmtDur(d.restMax) + ' (<9h)');
-        else if (rh < 11) { weekRed[wk] = (weekRed[wk] || 0) + 1; if (weekRed[wk] > 3) infr.push('a ' + weekRed[wk] + '-a reducere de repaus/săpt.'); }
+      if (subject) {
+        if (d.contMax > 4.5) infr.push('condus continuu ' + fmtDur(d.contMax * 3600));
+        const dh = d.drive / 3600;
+        if (dh > 10) infr.push('condus zilnic ' + fmtDur(d.drive) + ' (>10h)');
+        else if (dh > 9) { weekExt[wk] = (weekExt[wk] || 0) + 1; if (weekExt[wk] > 2) infr.push('a ' + weekExt[wk] + '-a zi extinsă (>9h)/săpt.'); }
+        if (useTacho && d.drive > 0 && d.restMax > 0) { // repausul se verifică DOAR cu tahograf: din GPS, repausul cu motorul oprit e „gap", nu se vede → am da fals-pozitive
+          const rh = d.restMax / 3600;
+          if (rh < 9) infr.push('repaus zilnic ' + fmtDur(d.restMax) + ' (<9h)');
+          else if (rh < 11) { weekRed[wk] = (weekRed[wk] || 0) + 1; if (weekRed[wk] > 3) infr.push('a ' + weekRed[wk] + '-a reducere de repaus/săpt.'); }
+        }
+        weekDrive[wk] = (weekDrive[wk] || 0) + d.drive;
+        if (weekDrive[wk] / 3600 > 56 && (weekDrive[wk] - d.drive) / 3600 <= 56) infr.push('condus săptămânal >56h');
       }
-      weekDrive[wk] = (weekDrive[wk] || 0) + d.drive;
-      if (weekDrive[wk] / 3600 > 56 && (weekDrive[wk] - d.drive) / 3600 <= 56) infr.push('condus săptămânal >56h');
-      const status = infr.length ? 'Încălcare' : 'Conform';
-      rows.push([name, [...d.vehs].join(', '), day, fmtDur(d.drive), fmtDur(d.work), fmtDur(d.rest), fmtDur(d.contMax * 3600), useTacho ? 'tahograf' : 'GPS (est.)', status, infr.join('; ') || '—']);
+      const status = subject ? (infr.length ? 'Încălcare' : 'Conform') : 'Nu se aplică';
+      const incCell = subject ? (infr.join('; ') || '—') : 'Reg. 561 nu se aplică';
+      const row = [name, [...d.vehs].join(', '), day, fmtDur(d.drive), fmtDur(d.work), fmtDur(d.rest), fmtDur(d.contMax * 3600), useTacho ? 'tahograf' : 'GPS (est.)', status, incCell];
+      rows.push(row); subjRows.push(row);
+      [...d.vehs].forEach((v) => sVehs.add(v));
+      sDrive += d.drive; sRest += d.rest; sInfr += infr.length;
       totDrive += d.drive; totWork += d.work; totRest += d.rest; totInfr += infr.length;
       dayDrive[day] = (dayDrive[day] || 0) + d.drive;
     }
+    if (subjRows.length) perSubj.push({ name, rows: subjRows, drive: sDrive, rest: sRest, infr: sInfr, days: subjRows.length, vehs: sVehs, subject });
   }
   const dayKeys = Object.keys(dayDrive).sort();
   const charts = rows.length ? [{ type: 'bar', title: 'Ore conducere pe zi', labels: dayKeys.map(_dayLabel), datasets: [{ label: 'ore', data: dayKeys.map((k) => Math.round(dayDrive[k] / 360) / 10) }] }] : [];
+  // O foaie per MAȘINĂ (la 1 șofer/1 mașină) sau per ȘOFER (dacă a condus mai multe) — jurnalul lui pe zile.
+  let perVehicle;
+  if (perSubj.length >= 1) {
+    perVehicle = perSubj.map((s) => ({
+      vehicul: s.vehs.size === 1 ? [...s.vehs][0] : s.name,
+      summary: [['Șofer', s.name], ['Zile', s.days], ['Condus total', fmtDur(s.drive)], ['Repaus total', fmtDur(s.rest)], ['Încălcări', s.subject ? s.infr : '—']],
+      rows: s.rows,
+      charts: []
+    }));
+  }
   return {
     columns: ['Șofer', 'Vehicul', 'Zi', 'Condus', 'Muncă', 'Repaus', 'Continuă max', 'Sursă', 'Status', 'Încălcări (Reg. 561)'],
     rows,
     summary: { 'Zile evaluate': rows.length, 'Condus total': fmtDur(totDrive), 'Repaus total': fmtDur(totRest), 'Încălcări (561)': totInfr },
-    charts, legend: HOS_LEGEND, summarySheet: true
+    charts, perVehicle, legend: HOS_LEGEND, groupLabel: 'Vehicul', noFleetTotal: true
   };
 }
 
