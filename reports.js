@@ -1473,7 +1473,8 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
     const w = Math.max(1, b.km); fleetScoreW += score * w; fleetKm += w; totA += b.accel; totB += b.brake;
   }
   scored.sort((x, y) => y.score - x.score);
-  const rows = scored.map((r, i) => [i + 1, r.name, r.vehicles, r.score + ' · ' + r.grade, r.accel, r.brake, r.hardTurn, r.per100ev, r.km]);
+  // Top LEAN pe șofer: rang + scor/notă (separate) + evenimente/100km (comparație corectă). Fără accel/frânări/viraje pe mașină — alea sunt în EcoDrive comportament (nu dublăm).
+  const rows = scored.map((r, i) => [i + 1, r.name, r.score, r.grade, r.per100ev, r.km]);
   const topS = _topN(scored.map(s => [s.name, s.score]), 10);
   const topE = _topN(scored.map(s => [s.name, s.per100ev]), 10);
   const charts = scored.length ? [
@@ -1481,9 +1482,10 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
     { type: 'bar', title: 'Evenimente bruște / 100 km', labels: topE.labels, datasets: [{ label: 'ev/100km', data: topE.data }] }
   ] : [];
   return {
-    columns: ['Rang', 'Șofer', 'Vehicule', 'Scor · Notă', 'Accel. bruște', 'Frânări bruște', 'Viraje bruște', 'Evenim./100km', 'Km'],
+    columns: ['Rang', 'Șofer', 'Scor', 'Notă', 'Evenim./100km', 'Km'],
     rows,
-    summary: { 'Scor mediu flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB }, charts
+    summary: { 'Scor mediu flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB },
+    charts, legend: ECODRIVE_LEGEND
   };
 }
 
