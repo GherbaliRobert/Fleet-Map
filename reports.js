@@ -1485,7 +1485,7 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
     columns: ['Rang', 'Șofer', 'Scor', 'Notă', 'Evenim./100km', 'Km'],
     rows,
     summary: { 'Scor mediu flotă (0-100)': fleetKm > 0 ? Math.round(fleetScoreW / fleetKm) : 0, 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB },
-    charts, legend: ECODRIVE_LEGEND
+    charts, legend: ECODRIVE_LEGEND, summarySheet: true // sumarul pe foaie „Sumar" separată, nu îngrămădit sub tabel
   };
 }
 
