@@ -765,37 +765,79 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
 // Ore de conducere & repaus (HOS / Reg. CE 561/2006). Sursă: stările tahograf (io 187) + contorul de conducere
 // continuă (io 189) dacă vehiculul are tahograf conectat (autoritar); altfel estimare din GPS (mișcare/contact).
 // Marchează încălcări: conducere continuă > 4h30 (fără pauză ≥45 min) și conducere zilnică > 9h.
+// Legenda HOS — regulile Reg. 561 verificate + sursa (tahograf vs GPS) + limitele estimării.
+const HOS_LEGEND = { title: 'Reg. (CE) 561/2006 — regulile verificate', items: [
+  ['Condus continuu', 'Max 4h30 la volan fără o pauză de 45 min. Peste → încălcare.'],
+  ['Condus zilnic', 'Max 9h/zi, extensibil la 10h de cel mult 2 ori/săptămână. Peste 10h sau a 3-a zi extinsă → încălcare.'],
+  ['Repaus zilnic', 'Min 11h, reductibil la 9h de cel mult 3 ori/săptămână. Se verifică DOAR cu tahograf (din GPS, repausul cu motorul oprit nu e vizibil).'],
+  ['Condus săptămânal', 'Max 56h într-o săptămână (luni–duminică). Peste → încălcare.'],
+  ['Sursă', '„tahograf" = citit din tahograful digital (exact, valoare legală). „GPS (est.)" = estimat din viteză/contact (orientativ).'],
+  ['Atenție', 'Estimările GPS sunt orientative, NU înlocuiesc cardul de tahograf. Repausul săptămânal (45h) și limita pe 2 săptămâni (90h) nu sunt incluse.']
+] };
+
 async function rHos(db, imeis, from, to, opts, devMap) {
   const drv = {}; try { (await db.getDrivers()).forEach(d => drv[d.id] = d.name); } catch (e) {}
   const stOf = (p) => { const io = p.io_data || {}; const v = io.tacho_driver1_working_state; return (typeof v === 'number') ? v : null; };
   const contMinOf = (p) => { const io = p.io_data || {}; const v = io.tacho_driver1_continuous_time; return (typeof v === 'number' && v >= 0) ? v : null; };
-  const rows = []; let totDrive = 0, totRest = 0, totWork = 0, totInfr = 0; const dayDrive = {};
+  const _weekKey = (isoDay) => { try { const d = new Date(isoDay + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); } catch (e) { return isoDay; } }; // lunea săptămânii
+  // #5: grupare pe ȘOFER (mașinile fără șofer → propriul bucket, cu numele mașinii) → orele se adună pe persoană, chiar dacă a condus mai multe mașini.
+  const byDriver = {};
   for (const imei of imeis) {
-    const pts = await history(db, imei, from, to);
-    if (pts.length < 2) continue;
-    const dvName = devMap[imei] && devMap[imei].driver_id ? (drv[devMap[imei].driver_id] || '—') : '—';
-    const useTacho = pts.some((p) => stOf(p) != null);
-    const byDay = {}; let contSec = 0, restSec = 0;
-    for (let i = 1; i < pts.length; i++) {
-      const pr = pts[i - 1], p = pts[i];
+    const did = devMap[imei] && devMap[imei].driver_id;
+    const key = did != null ? ('d' + did) : ('v_' + imei);
+    const name = did != null ? (drv[did] || ('Șofer #' + did)) : label(devMap, imei);
+    (byDriver[key] || (byDriver[key] = { name, imeis: [] })).imeis.push(imei);
+  }
+  const rows = []; let totDrive = 0, totRest = 0, totWork = 0, totInfr = 0; const dayDrive = {};
+  for (const key of Object.keys(byDriver)) {
+    const { name, imeis: dImeis } = byDriver[key];
+    // Timeline UNIFICAT al șoferului (toate mașinile lui), cronologic → condusul continuu și zilnic se calculează corect peste schimbări de mașină.
+    const merged = []; let useTacho = false;
+    for (const imei of dImeis) {
+      const pts = await history(db, imei, from, to);
+      if (pts.some((p) => stOf(p) != null)) useTacho = true;
+      const vn = label(devMap, imei);
+      for (const p of pts) merged.push({ p, vn });
+    }
+    if (merged.length < 2) continue;
+    merged.sort((a, b) => t(a.p) - t(b.p));
+    const byDay = {}; let contSec = 0, restRun = 0, restRunDay = null;
+    const closeRest = () => { if (restRun > 0 && restRunDay && byDay[restRunDay]) { if (restRun > byDay[restRunDay].restMax) byDay[restRunDay].restMax = restRun; } restRun = 0; restRunDay = null; };
+    for (let i = 1; i < merged.length; i++) {
+      const pr = merged[i - 1].p, p = merged[i].p;
       const dt = (t(p) - t(pr)) / 1000;
-      if (!(dt > 0 && dt < 3 * 3600)) { contSec = 0; restSec = 0; continue; }
+      if (!(dt > 0 && dt < 3 * 3600)) { contSec = 0; closeRest(); continue; }
       const day = _dayKeyISO(pr.timestamp);
-      const d = byDay[day] || (byDay[day] = { drive: 0, work: 0, rest: 0, avail: 0, contMax: 0 });
+      const d = byDay[day] || (byDay[day] = { drive: 0, work: 0, rest: 0, contMax: 0, restMax: 0, vehs: new Set() });
+      d.vehs.add(merged[i - 1].vn);
       let kind;
       if (useTacho) { const s = stOf(pr); kind = s === 3 ? 'drive' : s === 2 ? 'work' : s === 1 ? 'avail' : 'rest'; }
       else { kind = (pr.speed || 0) > IDLE_SPEED ? 'drive' : (ignOn(pr) ? 'work' : 'rest'); }
-      d[kind] += dt;
+      d[kind === 'avail' ? 'work' : kind] += dt; // „disponibil" (tahograf) → contorizat ca muncă
       const cm = contMinOf(pr);
       if (cm != null) { if (cm / 60 > d.contMax) d.contMax = cm / 60; }
-      else if (kind === 'drive') { contSec += dt; restSec = 0; if (contSec / 3600 > d.contMax) d.contMax = contSec / 3600; }
-      else if (kind === 'rest') { restSec += dt; if (restSec >= 45 * 60) contSec = 0; }
+      else if (kind === 'drive') { contSec += dt; if (contSec / 3600 > d.contMax) d.contMax = contSec / 3600; }
+      if (kind === 'rest') { if (restRun === 0) restRunDay = day; restRun += dt; if (restRun >= 45 * 60) contSec = 0; } // pauza de 45 min resetează condusul continuu
+      else closeRest(); // orice non-repaus închide seria de repaus → atribuită zilei în care a început (sigur peste miezul nopții)
     }
+    closeRest();
+    // #4: reguli suplimentare pe săptămână (zile extinse >9h max 2, reduceri de repaus <11h max 3, condus săptămânal max 56h).
+    const weekDrive = {}, weekExt = {}, weekRed = {};
     for (const day of Object.keys(byDay).sort()) {
-      const d = byDay[day]; const infr = [];
-      if (d.contMax > 4.5) infr.push('continuă ' + fmtDur(d.contMax * 3600));
-      if (d.drive / 3600 > 9) infr.push('zilnic ' + fmtDur(d.drive));
-      rows.push([dvName, label(devMap, imei), day, fmtDur(d.drive), fmtDur(d.work), fmtDur(d.rest), fmtDur(d.contMax * 3600), useTacho ? 'tahograf' : 'GPS (est.)', infr.join('; ') || '✓']);
+      const d = byDay[day]; const wk = _weekKey(day); const infr = [];
+      if (d.contMax > 4.5) infr.push('condus continuu ' + fmtDur(d.contMax * 3600));
+      const dh = d.drive / 3600;
+      if (dh > 10) infr.push('condus zilnic ' + fmtDur(d.drive) + ' (>10h)');
+      else if (dh > 9) { weekExt[wk] = (weekExt[wk] || 0) + 1; if (weekExt[wk] > 2) infr.push('a ' + weekExt[wk] + '-a zi extinsă (>9h)/săpt.'); }
+      if (useTacho && d.drive > 0 && d.restMax > 0) { // repausul se verifică DOAR cu tahograf: din GPS, repausul cu motorul oprit e „gap", nu se vede → am da fals-pozitive
+        const rh = d.restMax / 3600;
+        if (rh < 9) infr.push('repaus zilnic ' + fmtDur(d.restMax) + ' (<9h)');
+        else if (rh < 11) { weekRed[wk] = (weekRed[wk] || 0) + 1; if (weekRed[wk] > 3) infr.push('a ' + weekRed[wk] + '-a reducere de repaus/săpt.'); }
+      }
+      weekDrive[wk] = (weekDrive[wk] || 0) + d.drive;
+      if (weekDrive[wk] / 3600 > 56 && (weekDrive[wk] - d.drive) / 3600 <= 56) infr.push('condus săptămânal >56h');
+      const status = infr.length ? 'Încălcare' : 'Conform';
+      rows.push([name, [...d.vehs].join(', '), day, fmtDur(d.drive), fmtDur(d.work), fmtDur(d.rest), fmtDur(d.contMax * 3600), useTacho ? 'tahograf' : 'GPS (est.)', status, infr.join('; ') || '—']);
       totDrive += d.drive; totWork += d.work; totRest += d.rest; totInfr += infr.length;
       dayDrive[day] = (dayDrive[day] || 0) + d.drive;
     }
@@ -803,10 +845,10 @@ async function rHos(db, imeis, from, to, opts, devMap) {
   const dayKeys = Object.keys(dayDrive).sort();
   const charts = rows.length ? [{ type: 'bar', title: 'Ore conducere pe zi', labels: dayKeys.map(_dayLabel), datasets: [{ label: 'ore', data: dayKeys.map((k) => Math.round(dayDrive[k] / 360) / 10) }] }] : [];
   return {
-    columns: ['Șofer', 'Vehicul', 'Zi', 'Condus', 'Muncă', 'Repaus', 'Continuă max', 'Sursă', 'Încălcări (Reg. 561)'],
+    columns: ['Șofer', 'Vehicul', 'Zi', 'Condus', 'Muncă', 'Repaus', 'Continuă max', 'Sursă', 'Status', 'Încălcări (Reg. 561)'],
     rows,
-    summary: { 'Zile-vehicul': rows.length, 'Condus total': fmtDur(totDrive), 'Repaus total': fmtDur(totRest), 'Încălcări (561)': totInfr },
-    charts,
+    summary: { 'Zile evaluate': rows.length, 'Condus total': fmtDur(totDrive), 'Repaus total': fmtDur(totRest), 'Încălcări (561)': totInfr },
+    charts, legend: HOS_LEGEND, summarySheet: true
   };
 }
 
