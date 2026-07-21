@@ -1187,6 +1187,14 @@
     #rep-tab-insight .rax-row.ai .rax-msg { max-width:92%; }
     #rep-history th { position:sticky; top:0; background:var(--bg-dark); padding:9px 11px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12px; color:var(--text-secondary); }
     #rep-history td { padding:9px 11px; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12.5px; }
+    /* Nume lung → trunchiat cu „…" pe desktop; coloana „Acțiuni" lipită la dreapta (mereu vizibilă, chiar dacă tabelul e mai lat decât modalul). Nume complet la hover (title). */
+    @media (min-width: 769px) {
+      #rep-history .rh-name-txt { display:inline-block; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
+      #rep-history th:last-child, #rep-history td:last-child { position:sticky; right:0; background:var(--bg-panel); }
+      #rep-history th:last-child { background:var(--bg-dark); z-index:3; }
+      #rep-history td:last-child { box-shadow:-9px 0 10px -8px rgba(0,0,0,.13); }
+      #rep-history tbody tr:hover td:last-child { background:var(--bg-dark); }
+    }
     #rep-history tbody tr:nth-child(even) { background:rgba(127,127,127,.06); }
     #rep-history tbody tr:hover { background:rgba(127,127,127,.12); }
     .rh-badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(63,224,125,.16); color:var(--accent); }
@@ -2186,7 +2194,7 @@ const pozitii = await r.json();</code></pre>
         <div id="rep-history-wrap" style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px;min-height:120px;">
           <table id="rep-history" style="width:100%;border-collapse:collapse;">
             <thead><tr>
-              <th class="rh-cbhead" style="width:36px;text-align:center;"></th><th>Denumire raport</th><th>Perioada</th><th>Data generării</th><th>Vehicule</th><th>Stare</th><th>Disponibil până la</th><th>Acțiuni</th>
+              <th class="rh-cbhead" style="width:36px;text-align:center;"></th><th>Denumire raport</th><th>Perioada</th><th>Data generării</th><th>Vehicule</th><th>Disponibil până la</th><th>Acțiuni</th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -5655,11 +5663,10 @@ const pozitii = await r.json();</code></pre>
         var veh = n + ' ' + (n === 1 ? 'vehicul' : 'vehicule');
         return '<tr>' +
           '<td class="rh-cbcell" data-label="Selectează"><input type="checkbox" class="rh-cb" value="' + h.id + '" onclick="rhUpdateBulkBar()"></td>' +
-          '<td class="rh-name" data-label="Denumire raport">' + E(h.label || h.report_type) + '</td>' +
+          '<td class="rh-name" data-label="Denumire raport" title="' + E(h.label || h.report_type) + '"><span class="rh-name-txt">' + E(h.label || h.report_type) + '</span></td>' +
           '<td data-label="Perioada">' + E(period) + '</td>' +
           '<td data-label="Data generării">' + E(repFmtDT(h.generated_at)) + '</td>' +
           '<td data-label="Vehicule">' + E(veh) + '</td>' +
-          '<td data-label="Stare"><span class="rh-badge">Finalizat</span></td>' +
           '<td data-label="Disponibil până la">' + E(repFmtD(h.expires_at)) + '</td>' +
           '<td data-label="Acțiuni">' +
             '<button class="rh-act rh-view" onclick="repViewHistory(' + h.id + ')" title="Vezi raportul"><i class="fas fa-eye"></i> Vezi</button> ' +

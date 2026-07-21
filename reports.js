@@ -2192,7 +2192,7 @@ const REPORTS = {
   events:      { label: 'Evenimente (alerte)',    cat: 'evenimente',   desc: 'Toate alertele declanșate, pe vehicul: ce, când, unde și detaliile evenimentului.', fn: rEvents },
   ecodrive:    { label: 'EcoDrive (comportament)', cat: 'siguranta',   desc: 'Stil de condus: accelerări/frânări bruște, scor pe vehicul.', fn: rEcoDrive },
   ecodrive_drivers: { label: 'EcoDrive — clasament șoferi', cat: 'siguranta', desc: 'Clasamentul șoferilor după scorul de condus.', fn: rEcoDriveDrivers },
-  hos:         { label: 'Ore conducere & repaus (HOS, Reg. 561)', cat: 'siguranta', desc: 'Timpii de conducere și pauzele față de Regulamentul 561.', fn: rHos }
+  hos:         { label: 'Condus & repaus (Reg. 561)', cat: 'siguranta', desc: 'Timpii de conducere și pauzele față de Regulamentul 561 (HOS).', fn: rHos }
 };
 const REPORT_CATEGORIES = [
   { key: 'monitorizare', label: 'Monitorizare' },
