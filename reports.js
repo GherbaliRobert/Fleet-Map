@@ -1386,11 +1386,11 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
     perVeh[nm] = { score, grade, accel, brake, turn: hardTurn, speedOverSec, idleShare, km: Math.round(km) };
     const w = Math.max(1, km); fleetScoreW += score * w; fleetKm += w; fleetVeh++; totA += accel; totB += brake; totT += hardTurn; vehScore.push([nm, score]);
   }
-  // Adresă la locul fiecărui eveniment brusc (pre-încarcă + fallback pe coordonate + completare progresivă pe client).
-  if (geocode && geocode.warm && evPts.length) {
+  // Adresă la locul fiecărui eveniment brusc — DOAR dacă userul a ales „Adrese exacte" (opts.geo). Altfel rămân coordonate (rapid, fără amestec).
+  if (opts.geo !== false && geocode && geocode.warm && evPts.length) {
     try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 300, budgetMs: opts.geoBudgetMs || (imeis.length <= 1 ? 14000 : 8000) }); } catch (e) {}
+    rows.forEach((r, i) => { if (evPts[i]) r[4] = addr(evPts[i]); }); // Locație e col. 4
   }
-  rows.forEach((r, i) => { if (evPts[i]) r[4] = addr(evPts[i]); }); // Locație e col. 4
   const topS = _topN(vehScore, 10);
   const charts = vehScore.length ? [
     { type: 'bar',      title: 'Scor EcoDrive pe vehicul',  labels: topS.labels, datasets: [{ label: 'scor', data: topS.data }] },
