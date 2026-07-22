@@ -17,9 +17,37 @@ const MAP_STYLE: any = {
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 };
 
-// Straturi de bază comutabile: străzi (OSM) ⇄ satelit (Esri World Imagery — aceeași sursă ca pe web).
+// Straturi de bază (paritate cu web): 6 tipuri. {s} extins în URL-uri explicite (MapLibre cere listă), {r} eliminat.
 const OSM_TILES = ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'];
 const SAT_TILES = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
+const HYBRID_LABELS = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+const MTILES: Record<string, { label: string; icon: string; tiles: string[]; labels?: string; maxzoom: number }> = {
+  streets: { label: 'Străzi', icon: '🗺️', tiles: OSM_TILES, maxzoom: 19 },
+  light: { label: 'Deschis', icon: '☀️', tiles: ['a', 'b', 'c', 'd'].map((s) => `https://${s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png`), maxzoom: 20 },
+  dark: { label: 'Închis', icon: '🌙', tiles: ['a', 'b', 'c', 'd'].map((s) => `https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png`), maxzoom: 20 },
+  sat: { label: 'Satelit', icon: '🛰️', tiles: SAT_TILES, maxzoom: 19 },
+  hybrid: { label: 'Satelit + etichete', icon: '🌍', tiles: SAT_TILES, labels: HYBRID_LABELS, maxzoom: 19 },
+  terrain: { label: 'Relief', icon: '⛰️', tiles: ['a', 'b', 'c'].map((s) => `https://${s}.tile.opentopomap.org/{z}/{x}/{y}.png`), maxzoom: 17 },
+};
+const MLAYER_ORDER = ['streets', 'light', 'dark', 'sat', 'hybrid', 'terrain'];
+// Aplică un strat de bază: schimbă tile-urile sursei 'osm' + gestionează overlay-ul de etichete (hibrid). Păstrează clădirile/vehiculele deasupra.
+function applyMapLayer(map: maplibregl.Map, key: string) {
+  const cfg = MTILES[key] || MTILES.streets;
+  try { const src: any = map.getSource('osm'); if (src && src.setTiles) src.setTiles(cfg.tiles); } catch { /* */ }
+  try {
+    const hasLbl = !!cfg.labels;
+    const hasLayer = !!map.getLayer('osm-labels');
+    if (hasLbl && !hasLayer) {
+      if (!map.getSource('osm-labels')) map.addSource('osm-labels', { type: 'raster', tiles: [cfg.labels!], tileSize: 256, maxzoom: cfg.maxzoom });
+      const beforeId = (map.getStyle().layers || []).find((l: any) => l.id !== 'osm')?.id;
+      map.addLayer({ id: 'osm-labels', type: 'raster', source: 'osm-labels' }, beforeId);
+    } else if (hasLbl && hasLayer) {
+      (map.getSource('osm-labels') as any).setTiles([cfg.labels!]);
+    } else if (!hasLbl && hasLayer) {
+      map.removeLayer('osm-labels');
+    }
+  } catch { /* */ }
+}
 
 function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string)); }
 
@@ -78,15 +106,16 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   const viewerMarker = useRef<maplibregl.Marker | null>(null); // poziția dispozitivului de pe care urmărești
   const watchId = useRef<string | null>(null);
   const [locating, setLocating] = useState(false);
-  const [sat, setSat] = useState<boolean>(() => { try { return localStorage.getItem('mapSat') === '1'; } catch { return false; } });
-  const satRef = useRef(sat); satRef.current = sat;
-  function toggleSat() { const nv = !sat; try { localStorage.setItem('mapSat', nv ? '1' : '0'); } catch {} setSat(nv); }
-  // Comută baza străzi ⇄ satelit LIVE (funcționează în ambele moduri, 2D și 3D). La montare harta e null → se aplică din on('load').
+  const [layer, setLayer] = useState<string>(() => { try { const v = localStorage.getItem('mapLayer'); if (v && MTILES[v]) return v; if (localStorage.getItem('mapSat') === '1') return 'sat'; } catch { /* */ } return 'streets'; });
+  const layerRefC = useRef(layer); layerRefC.current = layer;
+  const [layerSheet, setLayerSheet] = useState(false);
+  function pickLayer(k: string) { try { localStorage.setItem('mapLayer', k); } catch { /* */ } setLayer(k); setLayerSheet(false); }
+  // Aplică stratul de bază LIVE (funcționează în 2D și 3D). La montare harta e null → se aplică din on('load').
   useEffect(() => {
     const map = mapRef.current; if (!map) return;
-    const apply = () => { try { const src: any = map.getSource('osm'); if (src && src.setTiles) src.setTiles(sat ? SAT_TILES : OSM_TILES); } catch {} };
+    const apply = () => { try { applyMapLayer(map, layer); } catch { /* */ } };
     if (map.isStyleLoaded()) apply(); else map.once('load', apply);
-  }, [sat]);
+  }, [layer]);
   const [tour, setTour] = useState(-1); // -1 = ascuns; 0..n = pasul curent din instructaj (declanșat DOAR la apăsarea butonului 3D)
   function endTour() { try { localStorage.setItem('ra3dTourSeen', '1'); } catch {} setTour(-1); }
 
@@ -158,7 +187,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
       } catch (e) { /* trail indisponibil */ }
       try { const layer = createVehicleLayer(); map.addLayer(layer); layerRef.current = layer; } catch (e) { /* WebGL indisponibil */ }
       _syncRef.current(); // randează modelele 3D imediat ce stratul e gata
-      try { if (satRef.current) { const src: any = map.getSource('osm'); if (src && src.setTiles) src.setTiles(SAT_TILES); } } catch { /* satelit restaurat din sesiunea anterioară */ }
+      try { applyMapLayer(map, layerRefC.current); } catch { /* strat restaurat din sesiunea anterioară */ }
     });
     // buton „Detalii" din balon → ecranul vehiculului (delegare pe container, supraviețuiește re-randării)
     ref.current.addEventListener('click', (ev: any) => {
@@ -242,10 +271,25 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
         style={'position:absolute;top:56px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (locating ? 'var(--accent)' : 'var(--text-primary)') + ';box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
         <Icon name="navigate" size={18} color="currentColor" />
       </button>
-      <button type="button" onClick={toggleSat} aria-label="Strat satelit" title={sat ? 'Hartă stradală' : 'Satelit'}
-        style={'position:absolute;top:102px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (sat ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
-        🛰️
+      <button type="button" onClick={() => setLayerSheet(true)} aria-label="Straturi hartă" title="Straturi hartă"
+        style={'position:absolute;top:102px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (layer !== 'streets' ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
+        {MTILES[layer]?.icon || '🗺️'}
       </button>
+      {layerSheet && (
+        <div onClick={(e) => { if (e.target === e.currentTarget) setLayerSheet(false); }}
+          style="position:absolute;inset:0;z-index:2500;background:rgba(6,10,14,.5);display:flex;align-items:flex-end">
+          <div style="width:100%;background:var(--bg-panel);border-top-left-radius:18px;border-top-right-radius:18px;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.4)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b style="font-size:15px">Straturi hartă</b><button onClick={() => setLayerSheet(false)} style="background:transparent;border:none;color:var(--text-muted);font-size:20px">×</button></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              {MLAYER_ORDER.map((k) => (
+                <button onClick={() => pickLayer(k)} style={'display:flex;align-items:center;gap:9px;padding:12px;border-radius:12px;border:1px solid ' + (layer === k ? 'var(--accent)' : 'var(--border)') + ';background:' + (layer === k ? 'rgba(63,224,125,.12)' : 'var(--bg-card)') + ';color:var(--text-primary);font-weight:700;font-size:12.5px;font-family:inherit;text-align:left'}>
+                  <span style="font-size:18px">{MTILES[k].icon}</span> {MTILES[k].label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {tour >= 0 && (
         <div class="tour3d">
           <div class="tour3d-card" role="dialog" aria-modal="true">
