@@ -859,7 +859,7 @@
           <div class="chart-section-title" style="display:flex;justify-content:space-between;align-items:center;">
             <span><i class="fas fa-robot" style="color:var(--accent);margin-right:6px;"></i>Constatări agenți AI</span>
             <span style="display:flex;gap:6px;">
-              <button class="btn-sm" onclick="insightAsk('Ce probleme are flota?')" style="font-size:11px;background:var(--purple);color:#160c30;border:none;font-weight:800;"><i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight</button>
+              <button class="btn-sm" onclick="insightAsk('Ce probleme are flota?')" style="font-size:11px;background:var(--accent);color:#06210F;border:none;font-weight:800;"><i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight</button>
               <button class="btn-sm" onclick="showView('agenti')" style="font-size:11px;">Vezi toate</button>
             </span>
           </div>
@@ -2041,9 +2041,9 @@ const pozitii = await r.json();</code></pre>
     .agp-model .agp-h + .agp-h{border-left:1px solid var(--border)}
     .agp-model .agp-tile{width:40px;height:40px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:18px}
     .agp-model .g .agp-tile{background:rgba(63,224,125,.13);color:var(--accent)}
-    .agp-model .p .agp-tile{background:rgba(167,139,250,.16);color:var(--purple)}
+    .agp-model .p .agp-tile{background:rgba(63,224,125,.13);color:var(--accent)}
     .agp-model .agp-k{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin-bottom:2px}
-    .agp-model .g .agp-k{color:var(--accent)} .agp-model .p .agp-k{color:var(--purple)}
+    .agp-model .g .agp-k{color:var(--accent)} .agp-model .p .agp-k{color:var(--accent)}
     .agp-model .agp-h b{font-size:14.5px;font-weight:800}
     .agp-model .agp-h p{margin:2px 0 0;font-size:12px;color:var(--text-muted)}
     .agp-model .agp-h .btn-sm{margin-top:8px}
@@ -2060,7 +2060,7 @@ const pozitii = await r.json();</code></pre>
     .agp-card .agp-role{color:var(--text-muted);font-size:11.5px}
     .agp-status{margin-left:auto;flex:none;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);background:rgba(63,224,125,.12);border:1px solid rgba(63,224,125,.3);border-radius:999px;padding:3px 9px}
     .agp-info{width:22px;height:22px;flex:none;border-radius:50%;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-muted);cursor:pointer;font-size:11px;display:grid;place-items:center;padding:0;font-family:inherit}
-    .agp-info:hover{color:var(--purple);border-color:var(--purple)}
+    .agp-info:hover{color:var(--accent);border-color:var(--accent)}
     .agp-desc{color:var(--text-secondary);font-size:12px;margin-top:10px;line-height:1.45}
     .agp-sep{height:1px;background:var(--border);margin:11px 0}
     .agp-find{display:flex;gap:8px;align-items:flex-start}
@@ -2069,13 +2069,13 @@ const pozitii = await r.json();</code></pre>
     .agp-find .ft .tm{color:var(--text-muted)}
     .agp-cf{display:flex;align-items:center;gap:10px;margin-top:11px;font-size:11px;color:var(--text-muted)}
     .agp-cf .cnt{display:inline-flex;align-items:center;gap:5px;font-weight:700}
-    .agp-cf a{margin-left:auto;color:var(--purple);text-decoration:none;font-weight:800;cursor:pointer}
-    .agp-note{margin-top:16px;padding:12px 15px;border-radius:12px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.24);font-size:12px;color:var(--text-secondary);display:flex;gap:10px;align-items:center;flex-wrap:wrap;line-height:1.45}
-    .agp-note > i{color:var(--purple);flex:none}
+    .agp-cf a{margin-left:auto;color:var(--accent);text-decoration:none;font-weight:800;cursor:pointer}
+    .agp-note{margin-top:16px;padding:12px 15px;border-radius:12px;background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.22);font-size:12px;color:var(--text-secondary);display:flex;gap:10px;align-items:center;flex-wrap:wrap;line-height:1.45}
+    .agp-note > i{color:var(--accent);flex:none}
     .ag-t-green{background:rgba(63,224,125,.13);color:var(--accent)}
     .ag-t-blue{background:rgba(96,160,218,.16);color:#7fb4e6}
     .ag-t-orange{background:rgba(249,115,22,.15);color:var(--orange)}
-    .ag-t-purple{background:rgba(167,139,250,.16);color:var(--purple)}
+    .ag-t-purple{background:rgba(79,196,184,.15);color:#4fc4b8}
     .ag-t-grey{background:rgba(138,147,163,.16);color:#aab4c2}
     @media (max-width:960px){ .agp-grid{grid-template-columns:repeat(2,1fr)} }
     @media (max-width:620px){ .agp-grid{grid-template-columns:1fr} .agp-model{grid-template-columns:1fr} .agp-model .agp-h + .agp-h{border-left:0;border-top:1px solid var(--border)} }
@@ -2223,7 +2223,7 @@ const pozitii = await r.json();</code></pre>
         <div id="rep-empty" style="display:none;text-align:center;color:var(--text-muted);padding:24px;">Nu sunt date pentru perioada selectată.</div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;align-items:center;">
           <span id="rep-count" style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center;"></span>
-          <button class="btn-sm rep-insight" onclick="insightSummarizeReport()" style="background:var(--purple);color:#160c30;border:none;font-weight:800;" title="Rezumat executiv cu RA Insight"><i class="fas fa-wand-magic-sparkles"></i> Rezumă cu RA Insight</button>
+          <button class="btn-sm rep-insight" onclick="insightSummarizeReport()" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" title="Rezumat executiv cu RA Insight"><i class="fas fa-wand-magic-sparkles"></i> Rezumă cu RA Insight</button>
           <span style="font-size:12px;color:var(--text-muted);">Descarcă:</span>
           <button class="btn-sm rep-dl rep-dl-csv" onclick="exportReport('csv')" title="Descarcă CSV"><i class="fas fa-file-csv"></i> CSV</button>
           <button class="btn-sm rep-dl rep-dl-xls" onclick="repExport('xlsx')" title="Descarcă Excel (.xlsx)"><i class="fas fa-file-excel"></i> Excel</button>
@@ -6454,7 +6454,7 @@ const pozitii = await r.json();</code></pre>
         // „Explică-mi" — doar pe alerte/evenimente (nu pe notificările de raport). Deschide RA Insight cu contextul alertei.
         const explainBtn = isReport
           ? ''
-          : `<button class="btn-sm" style="padding:3px 7px;background:var(--purple);color:#160c30;border:none;font-weight:800;" title="Explică-mi cu RA Insight" onclick="insightExplainNotif(${n.id})"><i class="fas fa-wand-magic-sparkles"></i></button>`;
+          : `<button class="btn-sm" style="padding:3px 7px;background:var(--accent);color:#06210F;border:none;font-weight:800;" title="Explică-mi cu RA Insight" onclick="insightExplainNotif(${n.id})"><i class="fas fa-wand-magic-sparkles"></i></button>`;
         return `
         <div style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);${n.acknowledged?'opacity:.5;':''}">
           <span style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;background:${sev[n.severity]||'#3b82f6'};"></span>
@@ -12422,7 +12422,7 @@ const pozitii = await r.json();</code></pre>
     #rax-fabs { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 1200; display: none; flex-direction: column; gap: 10px; align-items: flex-end; }
     .rax-fab { -webkit-appearance: none; appearance: none; border: none; cursor: pointer; height: 50px; min-width: 50px; padding: 0 16px; border-radius: 26px; background: var(--accent); color: #06210F; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
     .rax-fab.secondary { background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border); }
-    .rax-fab.insight { background: var(--purple); color: #160c30; }
+    .rax-fab.insight { background: var(--accent); color: #06210F; }
     .rax-fab i { font-size: 16px; }
     #rax-co-chip { font-size: 11px; color: var(--text-muted); background: var(--bg-panel); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #rax-actions { display: none; flex-direction: column; gap: 10px; align-items: flex-end; margin-bottom: 4px; }
@@ -12650,8 +12650,8 @@ const pozitii = await r.json();</code></pre>
     <div class="rax-card" style="max-width:480px;height:78vh;height:78dvh;">
       <div class="rax-head">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div class="rax-av" style="width:34px;height:34px;font-size:15px;background:var(--purple);color:#160c30;"><i class="fas fa-wand-magic-sparkles"></i></div>
-          <div><h3 style="margin:0;">RA Insight</h3><div style="font-size:11px;color:var(--purple);">● asistentul flotei · live · istoric · alerte</div></div>
+          <div class="rax-av" style="width:34px;height:34px;font-size:15px;background:var(--accent);color:#06210F;"><i class="fas fa-wand-magic-sparkles"></i></div>
+          <div><h3 style="margin:0;">RA Insight</h3><div style="font-size:11px;color:var(--accent);">● asistentul flotei · live · istoric · alerte</div></div>
         </div>
         <button class="rax-x" onclick="raxToggleAI()">&times;</button>
       </div>
@@ -13140,7 +13140,7 @@ const pozitii = await r.json();</code></pre>
     function addMsg(role, text) {
       var row = document.createElement('div'); row.className = 'rax-row ' + role;
       if (role === 'ai') {
-        var av = document.createElement('div'); av.className = 'rax-av'; av.style.background = 'var(--purple)'; av.style.color = '#160c30'; av.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
+        var av = document.createElement('div'); av.className = 'rax-av'; av.style.background = 'var(--accent)'; av.style.color = '#06210F'; av.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
         var m = document.createElement('div'); m.className = 'rax-msg ai'; m.innerHTML = raxMd(text);
         row.appendChild(av); row.appendChild(m);
       } else if (role === 'user') {
@@ -16179,7 +16179,7 @@ const pozitii = await r.json();</code></pre>
 
       var model = '<div class="agp-model">'
         + '<div class="agp-h g"><div class="agp-tile"><i class="fas fa-robot"></i></div><div><div class="agp-k">Agenții veghează</div><b>Automat, în fundal</b><p>Verifică flota periodic și ridică alerte, fără să faci nimic.</p></div></div>'
-        + '<div class="agp-h p"><div class="agp-tile"><i class="fas fa-wand-magic-sparkles"></i></div><div><div class="agp-k">RA Insight răspunde</div><b>La cerere, când vrei</b><p>Un singur asistent pe care-l întrebi orice.</p><button class="btn-sm" style="background:var(--purple);color:#160c30;border:none;font-weight:800;" onclick="insightAsk(\'Ce probleme are flota?\')"><i class="fas fa-wand-magic-sparkles"></i> Deschide RA Insight</button></div></div>'
+        + '<div class="agp-h p"><div class="agp-tile"><i class="fas fa-wand-magic-sparkles"></i></div><div><div class="agp-k">RA Insight răspunde</div><b>La cerere, când vrei</b><p>Un singur asistent pe care-l întrebi orice.</p><button class="btn-sm" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="insightAsk(\'Ce probleme are flota?\')"><i class="fas fa-wand-magic-sparkles"></i> Deschide RA Insight</button></div></div>'
         + '</div>';
 
       var chips = '<div class="agp-chips">'
@@ -16215,7 +16215,7 @@ const pozitii = await r.json();</code></pre>
         + '<div class="agp-sub" style="margin:0;flex:1;min-width:200px;">Echipa ta de agenți care monitorizează flota automat. Pentru întrebări, folosește asistentul RA Insight.</div>'
         + '<button class="btn-sm" id="agp-run" onclick="agPageRun()"><i class="fas fa-bolt" style="color:var(--accent)"></i> Rulează acum</button></div>'
         + model + chips + '<div class="agp-grid">' + cards + '</div>'
-        + '<div class="agp-note"><i class="fas fa-wand-magic-sparkles"></i> <span>Agenții veghează singuri. Vrei o explicație sau un plan de acțiune pentru o constatare? Apasă „Explică-mi" — o preia <b style="color:var(--purple)">RA Insight</b>. Nu știi ce face un agent? Apasă „?" pe cardul lui.</span></div>';
+        + '<div class="agp-note"><i class="fas fa-wand-magic-sparkles"></i> <span>Agenții veghează singuri. Vrei o explicație sau un plan de acțiune pentru o constatare? Apasă „Explică-mi" — o preia <b style="color:var(--accent)">RA Insight</b>. Nu știi ce face un agent? Apasă „?" pe cardul lui.</span></div>';
     };
     window.agPageRun = async function () {
       var btn = $('agp-run'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se analizează…'; }
@@ -16263,7 +16263,7 @@ const pozitii = await r.json();</code></pre>
     };
     function _agpTutSec(icon, title, body) {
       return '<div style="display:flex;gap:11px;">'
-        + '<div style="width:30px;height:30px;flex:none;border-radius:8px;background:var(--bg-dark);display:grid;place-items:center;color:var(--purple);"><i class="fas ' + icon + '"></i></div>'
+        + '<div style="width:30px;height:30px;flex:none;border-radius:8px;background:var(--bg-dark);display:grid;place-items:center;color:var(--accent);"><i class="fas ' + icon + '"></i></div>'
         + '<div><div style="font-weight:800;font-size:12.5px;margin-bottom:3px;">' + title + '</div><div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;">' + body + '</div></div></div>';
     }
     window.agpTutorial = function (k) {
@@ -16287,7 +16287,7 @@ const pozitii = await r.json();</code></pre>
         + _agpTutSec('fa-circle-check', 'Ce faci când te anunță', t.act)
         + '</div>'
         + '<div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">'
-        + '<button class="btn-sm" style="background:var(--purple);color:#160c30;border:none;font-weight:800;" onclick="agpTutAsk(\'' + k + '\')"><i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight</button>'
+        + '<button class="btn-sm" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="agpTutAsk(\'' + k + '\')"><i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight</button>'
         + '</div></div>';
     };
     window.agpTutAsk = function (k) {
