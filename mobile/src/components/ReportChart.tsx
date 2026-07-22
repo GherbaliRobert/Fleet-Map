@@ -32,7 +32,7 @@ export function ReportChart({ def }: { def: ReportChartDef }) {
       const dashed = !!(ds as any).dash;                          // linie punctată (ex. preț de referință)
       const noFill = dashed || (ds as any).fill === false;        // linie punctată/de referință → fără umplere
       if (isLine) return {
-        label: ds.label, data: ds.data, borderColor: c, borderWidth: dashed ? 1.5 : 2.5, tension: dashed ? 0 : 0.35, fill: noFill ? false : true,
+        label: ds.label, data: ds.data, yAxisID: (ds as any).yAxisID, borderColor: c, borderWidth: dashed ? 1.5 : 2.5, tension: dashed ? 0 : 0.35, fill: noFill ? false : true,
         borderDash: dashed ? [6, 4] : undefined,
         pointRadius: dashed ? 0 : 3, pointHoverRadius: dashed ? 0 : 6, pointBackgroundColor: c, pointBorderColor: '#0b0e11', pointBorderWidth: 1.5, pointHitRadius: 18,
         backgroundColor: (ctx: any) => {
@@ -42,7 +42,7 @@ export function ReportChart({ def }: { def: ReportChartDef }) {
         },
       } as any;
       return {
-        label: ds.label, data: ds.data,
+        label: ds.label, data: ds.data, yAxisID: (ds as any).yAxisID,
         backgroundColor: single ? def.labels.map((_, j) => PALETTE[j % PALETTE.length]) : c,
         hoverBackgroundColor: single ? def.labels.map((_, j) => PALETTE[j % PALETTE.length] + 'cc') : c + 'cc',
         borderRadius: 6, borderSkipped: false, maxBarThickness: 46,
@@ -94,6 +94,8 @@ export function ReportChart({ def }: { def: ReportChartDef }) {
             ? { type: 'linear', grid: { display: false }, border: { color: grid }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, autoSkipPadding: 12, callback: (v: any) => { const f = (def as any).xTick; return f ? f(v) : v; } } }
             : { grid: { display: false }, border: { color: grid }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, autoSkipPadding: 8 } },
           y: { beginAtZero: (def as any).yZero !== false, grid: { color: grid }, border: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 6 } },
+          // A doua axă Y (dreapta) când un dataset cere yAxisID:'y1' (ex. Nivel combustibil vs Viteză la sonda litrometrică).
+          ...(def.datasets.some((ds) => (ds as any).yAxisID === 'y1') ? { y1: { position: 'right' as const, beginAtZero: true, grid: { drawOnChartArea: false }, border: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 6 } } } : {}),
         },
         animation: { duration: 600, easing: 'easeOutQuart' },
       },

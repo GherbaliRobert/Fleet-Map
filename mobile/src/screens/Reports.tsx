@@ -58,6 +58,7 @@ export function Reports() {
   const [fdays, setFdays] = useState<string[]>([]); // filtru zile săptămână (mon..sun); gol = toate
   const [hFrom, setHFrom] = useState('');           // interval orar HH:MM
   const [hTo, setHTo] = useState('');
+  const [pvOpen, setPvOpen] = useState<number>(-1); // secțiunea „pe vehicul" deschisă (-1 = niciuna)
 
   // Perioada efectivă (gestionează intervalul personalizat).
   function curRange(): { from: string; to: string } {
@@ -333,6 +334,41 @@ export function Reports() {
                 </div>
               </>
             ) : (!res.charts || res.charts.length === 0) && <div class="center-msg">Fără date în perioada selectată.</div>}
+            {res.perVehicle && res.perVehicle.length > 0 && (
+              <div style="margin-top:14px">
+                <div class="rp-table-title">Pe vehicul ({res.perVehicle.length})</div>
+                {res.perVehicle.map((pv, i) => {
+                  const nm = pv.vehicul || pv.name || pv.imei || ('Vehicul ' + (i + 1));
+                  const open = pvOpen === i;
+                  const cols = (pv as any).columns || res.columns || [];
+                  return (
+                    <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden">
+                      <button onClick={() => setPvOpen(open ? -1 : i)} style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 13px;background:transparent;border:none;color:var(--text-primary);font-weight:700;font-size:14px;font-family:inherit">
+                        <span>{nm}</span><span style="color:var(--text-muted)">{open ? '▲' : '▼'}</span>
+                      </button>
+                      {open && (
+                        <div style="padding:0 13px 13px">
+                          {pv.summary && pv.summary.length > 0 && (
+                            <div class="rp-summary" style="margin-top:0">
+                              {pv.summary.map(([k, v]) => <div class="rp-kpi"><div class="v">{String(v)}</div><div class="l">{k}</div></div>)}
+                            </div>
+                          )}
+                          {(pv.charts || []).map((c) => <ReportChart def={c} />)}
+                          {pv.rows && pv.rows.length > 0 && (
+                            <div class="rp-table-wrap">
+                              <table class="rp-table">
+                                <thead><tr>{cols.map((c: string) => <th>{c}</th>)}</tr></thead>
+                                <tbody>{pv.rows.slice(0, 200).map((row) => <tr>{row.map((cell) => <td>{cell == null ? '' : String(cell)}</td>)}</tr>)}</tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {res.legend && res.legend.items && res.legend.items.length > 0 && (
               <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:12px 13px;margin-top:12px">
                 <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);margin-bottom:8px">{res.legend.title || 'Legendă'}</div>
