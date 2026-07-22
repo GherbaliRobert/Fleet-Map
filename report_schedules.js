@@ -103,7 +103,7 @@ async function runSchedule(s, deps, now) {
     const saved = await db.saveReportHistory({
       company_id: s.company_id != null ? s.company_id : null, user_id: s.user_id != null ? s.user_id : null, username: uname,
       report_type: s.report_type, label: report.label || s.report_type, imei: s.imei || null,
-      vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig,
+      vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig, status: 'scheduled',
       expires_at: new Date(now.getTime() + 7 * 24 * 3600 * 1000).toISOString()
     });
     historyId = saved && saved.id;

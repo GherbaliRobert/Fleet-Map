@@ -1191,6 +1191,10 @@
     #rep-tab-insight .rax-row.ai .rax-msg { max-width:92%; }
     #rep-history th { position:sticky; top:0; background:var(--bg-dark); padding:9px 11px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12px; color:var(--text-secondary); }
     #rep-history td { padding:9px 11px; border-bottom:1px solid var(--border); white-space:nowrap; font-size:12.5px; }
+    /* Rapoarte din programări: chip distinct + o dungă verde la stânga rândului */
+    .rh-sched { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; color:var(--accent); background:rgba(63,224,125,.13); border:1px solid rgba(63,224,125,.36); border-radius:6px; padding:2px 6px; vertical-align:middle; white-space:nowrap; }
+    #rep-history tr.rh-row-sched td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
+    @media (max-width:768px){ #rep-history tbody tr.rh-row-sched { border-left:3px solid var(--accent); } }
     /* Nume lung → trunchiat cu „…" pe desktop; coloana „Acțiuni" lipită la dreapta (mereu vizibilă, chiar dacă tabelul e mai lat decât modalul). Nume complet la hover (title). */
     @media (min-width: 769px) {
       #rep-history .rh-name-txt { display:inline-block; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
@@ -5720,9 +5724,12 @@ const pozitii = await r.json();</code></pre>
         var period = repFmtDT(h.period_from) + ' – ' + repFmtDT(h.period_to);
         var n = h.imei ? 1 : (h.vehicle_count || 0);
         var veh = n + ' ' + (n === 1 ? 'vehicul' : 'vehicule');
-        return '<tr>' +
+        var schedTag = (h.status === 'scheduled')
+          ? '<span class="rh-sched" title="Generat automat de o programare"><i class="fas fa-clock"></i> Programat</span> '
+          : '';
+        return '<tr' + (h.status === 'scheduled' ? ' class="rh-row-sched"' : '') + '>' +
           '<td class="rh-cbcell" data-label="Selectează"><input type="checkbox" class="rh-cb" value="' + h.id + '" onclick="rhUpdateBulkBar()"></td>' +
-          '<td class="rh-name" data-label="Denumire raport" title="' + E(h.label || h.report_type) + '"><span class="rh-name-txt">' + E(h.label || h.report_type) + '</span></td>' +
+          '<td class="rh-name" data-label="Denumire raport" title="' + E(h.label || h.report_type) + '">' + schedTag + '<span class="rh-name-txt">' + E(h.label || h.report_type) + '</span></td>' +
           '<td data-label="Perioada">' + E(period) + '</td>' +
           '<td data-label="Data generării">' + E(repFmtDT(h.generated_at)) + '</td>' +
           '<td data-label="Vehicule">' + E(veh) + '</td>' +
