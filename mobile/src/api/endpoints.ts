@@ -25,11 +25,21 @@ export interface NotificationItem {
 }
 export interface Group { id: number; name: string; color?: string; count?: number; }
 export interface DocItem { id: number; imei?: string; doc_type?: string; expiry_date?: string; number?: string; [k: string]: any; }
-export interface ReportTypeInfo { type: string; label: string; cat: string; }
+export interface ReportTypeInfo { type: string; label: string; cat: string; desc?: string; }
 export interface EventType { key: string; label: string; unit?: string; def?: number; threshold?: boolean; below?: boolean; }
 export interface NotifPref { enabled: boolean; threshold?: number; email?: boolean; push?: boolean; }
 export interface ReportChartDef { type: string; title: string; labels: string[]; datasets: { label: string; data: number[] }[]; }
-export interface ReportResult { columns: string[]; rows: any[][]; summary: Record<string, any>; charts?: ReportChartDef[]; label?: string; type?: string; }
+export interface ReportPerVehicle { vehicul?: string; name?: string; imei?: string; summary?: [string, any][]; charts?: ReportChartDef[]; rows?: any[][]; }
+export interface ReportLegend { title?: string; items: [string, string][]; }
+export interface ReportResult { columns: string[]; rows: any[][]; summary: Record<string, any>; charts?: ReportChartDef[]; label?: string; type?: string; perVehicle?: ReportPerVehicle[]; legend?: ReportLegend; }
+
+// Opțiuni de raport (eșantionare, OSM, locație, zile/ore etc.) → query string. Ignoră valorile goale.
+export type ReportOpts = Record<string, string | number | boolean | undefined>;
+export function reportOptsQuery(opts?: ReportOpts): string {
+  if (!opts) return '';
+  const e = encodeURIComponent;
+  return Object.entries(opts).filter(([, v]) => v != null && v !== '').map(([k, v]) => `&${e(k)}=${e(String(v))}`).join('');
+}
 
 export const Api = {
   mobileLogin: (username: string, password: string, device?: string) =>
@@ -202,20 +212,20 @@ export const Api = {
   insightPresets: () => api<{ key: string; title: string }[]>('/api/insight/presets'), // RA Insight — întrebări predefinite (fără AI)
   insightRun: (key: string) => api<{ title: string; label?: string; reportType?: string; period?: any; summary: Record<string, any>; columns?: string[]; rows?: any[][] }>('/api/insight/run', { method: 'POST', body: { key } }),
   reportTypes: () => api<{ categories: { key: string; label: string }[]; reports: ReportTypeInfo[] }>('/api/reports'),
-  runReport: (type: string, from: string, to: string, imeis?: string[]) => {
+  runReport: (type: string, from: string, to: string, imeis?: string[], opts?: ReportOpts) => {
     const e = encodeURIComponent;
     let q = `?from=${e(from)}&to=${e(to)}&log=1`; // log=1 → se salvează în istoricul de rapoarte (per utilizator, retenție 7 zile)
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
-    return api<ReportResult>(`/api/reports/${e(type)}${q}`);
+    return api<ReportResult>(`/api/reports/${e(type)}${q}${reportOptsQuery(opts)}`);
   },
   // Generare în FUNDAL: serverul răspunde imediat ({queued}), generează async și trimite o notificare (push) când e gata.
   // jobId → corelează badge-ul din client cu notificarea report_ready.
-  runReportBg: (type: string, from: string, to: string, imeis?: string[], jobId?: string) => {
+  runReportBg: (type: string, from: string, to: string, imeis?: string[], jobId?: string, opts?: ReportOpts) => {
     const e = encodeURIComponent;
     let q = `?from=${e(from)}&to=${e(to)}&log=1&background=1`;
     if (jobId) q += `&jobId=${e(jobId)}`;
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
-    return api<{ queued?: boolean }>(`/api/reports/${e(type)}${q}`);
+    return api<{ queued?: boolean }>(`/api/reports/${e(type)}${q}${reportOptsQuery(opts)}`);
   },
   // Istoric rapoarte (izolat pe user pe server: getReportHistory(uid) / getReportHistoryById(id, uid) / delete(id, uid)).
   reportHistory: () => api<any[]>('/api/reports/history'),

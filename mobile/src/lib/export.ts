@@ -1,12 +1,13 @@
 // Export raport în PDF/Excel. Pe web: descărcare blob. Pe device: scrie în Cache + Share.
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { API_BASE, getAuthToken } from '../api/client';
+import { reportOptsQuery, type ReportOpts } from '../api/endpoints';
 
-function buildUrl(type: string, from: string, to: string, imeis: string[] | undefined, format: 'pdf' | 'xlsx') {
+function buildUrl(type: string, from: string, to: string, imeis: string[] | undefined, format: 'pdf' | 'xlsx', opts?: ReportOpts) {
   const e = encodeURIComponent;
   let q = `?from=${e(from)}&to=${e(to)}&format=${format}`;
   if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
-  return API_BASE + `/api/reports/${e(type)}` + q;
+  return API_BASE + `/api/reports/${e(type)}` + q + reportOptsQuery(opts);
 }
 
 // Descarcă (web) sau salvează-în-cache + Share (device) un fișier de la un URL autentificat.
@@ -39,8 +40,8 @@ async function fetchAndSave(url: string, fname: string) {
   }
 }
 
-export async function exportReport(type: string, from: string, to: string, imeis: string[] | undefined, format: 'pdf' | 'xlsx') {
-  await fetchAndSave(buildUrl(type, from, to, imeis, format), `raport_${type}_${from.slice(0, 10)}.${format}`);
+export async function exportReport(type: string, from: string, to: string, imeis: string[] | undefined, format: 'pdf' | 'xlsx', opts?: ReportOpts) {
+  await fetchAndSave(buildUrl(type, from, to, imeis, format, opts), `raport_${type}_${from.slice(0, 10)}.${format}`);
 }
 
 // Export al unui raport DIN ISTORIC (după id) — endpoint-ul îl scoate din snapshot-ul salvat, izolat pe user.
