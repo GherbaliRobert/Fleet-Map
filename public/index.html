@@ -2067,9 +2067,11 @@ const pozitii = await r.json();</code></pre>
     .agp-find .fd{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none}
     .agp-find .ft{font-size:12px;color:var(--text-secondary);line-height:1.35}
     .agp-find .ft .tm{color:var(--text-muted)}
-    .agp-cf{display:flex;align-items:center;gap:10px;margin-top:11px;font-size:11px;color:var(--text-muted)}
+    .agp-cf{display:flex;align-items:center;gap:10px;margin-top:11px;font-size:11px;color:var(--text-muted);flex-wrap:wrap}
     .agp-cf .cnt{display:inline-flex;align-items:center;gap:5px;font-weight:700}
-    .agp-cf a{margin-left:auto;color:var(--accent);text-decoration:none;font-weight:800;cursor:pointer}
+    .agp-cf .agp-acts{margin-left:auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+    .agp-cf a{color:var(--accent);text-decoration:none;font-weight:800;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+    .agp-cf a:hover{text-decoration:underline}
     .agp-note{margin-top:16px;padding:12px 15px;border-radius:12px;background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.22);font-size:12px;color:var(--text-secondary);display:flex;gap:10px;align-items:center;flex-wrap:wrap;line-height:1.45}
     .agp-note > i{color:var(--accent);flex:none}
     .ag-t-green{background:rgba(63,224,125,.13);color:var(--accent)}
@@ -16204,10 +16206,13 @@ const pozitii = await r.json();</code></pre>
         return '<div class="agp-card">'
           + '<div class="agp-ch"><div class="agp-ct ' + m.tile + '"><i class="fas ' + m.icon + '"></i></div>'
           + '<div><div class="agp-an">' + m.name + '</div><div class="agp-role">' + m.role + '</div></div>'
-          + '<div style="margin-left:auto;display:flex;align-items:center;gap:8px;"><button class="agp-info" title="Cum funcționează ' + m.name + '" onclick="agpTutorial(\'' + k + '\')"><i class="fas fa-circle-question"></i></button><span class="agp-status" style="margin-left:0;">activ</span></div></div>'
+          + '<span class="agp-status">activ</span></div>'
           + '<div class="agp-desc">' + m.desc + '</div>'
           + '<div class="agp-sep"></div>' + findingHtml
-          + '<div class="agp-cf">' + cntHtml + (last ? '<a onclick="agpExplain(\'' + k + '\')">Explică-mi →</a>' : '<a onclick="agpTutorial(\'' + k + '\')">Cum funcționează →</a>') + '</div>'
+          + '<div class="agp-cf">' + cntHtml + '<span class="agp-acts">'
+          + '<a onclick="agpTutorial(\'' + k + '\')" title="Ghid: ce face și cum îl folosești"><i class="fas fa-circle-question"></i> Cum funcționează</a>'
+          + '<a onclick="agpExplain(\'' + k + '\')" title="RA Insight îți explică pe datele tale"><i class="fas fa-wand-magic-sparkles"></i> Explică-mi</a>'
+          + '</span></div>'
           + '</div>';
       }).join('');
 
@@ -16215,7 +16220,7 @@ const pozitii = await r.json();</code></pre>
         + '<div class="agp-sub" style="margin:0;flex:1;min-width:200px;">Echipa ta de agenți care monitorizează flota automat. Pentru întrebări, folosește asistentul RA Insight.</div>'
         + '<button class="btn-sm" id="agp-run" onclick="agPageRun()"><i class="fas fa-bolt" style="color:var(--accent)"></i> Rulează acum</button></div>'
         + model + chips + '<div class="agp-grid">' + cards + '</div>'
-        + '<div class="agp-note"><i class="fas fa-wand-magic-sparkles"></i> <span>Agenții veghează singuri. Vrei o explicație sau un plan de acțiune pentru o constatare? Apasă „Explică-mi" — o preia <b style="color:var(--accent)">RA Insight</b>. Nu știi ce face un agent? Apasă „?" pe cardul lui.</span></div>';
+        + '<div class="agp-note"><i class="fas fa-wand-magic-sparkles"></i> <span>Agenții veghează singuri. Vrei o explicație sau un plan de acțiune pentru o constatare? Apasă „Explică-mi" — o preia <b style="color:var(--accent)">RA Insight</b>. Nu știi ce face un agent? Apasă „Cum funcționează".</span></div>';
     };
     window.agPageRun = async function () {
       var btn = $('agp-run'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se analizează…'; }
