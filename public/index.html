@@ -16150,12 +16150,12 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Pagina „Agenți AI" (client-facing) + launcher RA Insight ───
     var AGP_META = {
-      watch:      { name: 'RA Watch',      icon: 'fa-shield-halved',   tile: 'ag-t-green',  role: 'Paznic 24/7',    desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.' },
-      dispatch:   { name: 'RA Dispatch',   icon: 'fa-compass',         tile: 'ag-t-green',  role: 'Dispecerat',     desc: 'Vehicule disponibile acum și cele subutilizate în ziua curentă.' },
-      care:       { name: 'RA Care',       icon: 'fa-wrench',          tile: 'ag-t-green',  role: 'Mentenanță',     desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.' },
-      optimize:   { name: 'RA Optimize',   icon: 'fa-leaf',            tile: 'ag-t-green',  role: 'Eco-driving',    desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.' },
-      compliance: { name: 'RA Compliance', icon: 'fa-clipboard-check', tile: 'ag-t-green',  role: 'Ore de condus',  desc: 'Condus continuu și zilnic, estimat din GPS (Reg. 561).' },
-      client:     { name: 'RA Client',     icon: 'fa-file-lines',      tile: 'ag-t-green',  role: 'Digest zilnic',  desc: 'Un rezumat pe zi al flotei: km, vehicule active, cel mai activ.' }
+      watch:      { name: 'RA Watch',      icon: 'fa-shield-halved',   tile: 'ag-t-green',  role: 'Paznic 24/7',    desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.', checks: 'fiecare vehicul pentru semnal (offline), ralanti prelungit, scădere și furt de combustibil și tahograf neconfigurat' },
+      dispatch:   { name: 'RA Dispatch',   icon: 'fa-compass',         tile: 'ag-t-green',  role: 'Dispecerat',     desc: 'Vehicule disponibile acum și cele subutilizate în ziua curentă.', checks: 'ce vehicule sunt disponibile acum și care sunt subutilizate' },
+      care:       { name: 'RA Care',       icon: 'fa-wrench',          tile: 'ag-t-green',  role: 'Mentenanță',     desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.', checks: 'scadențele de ITP, RCA, revizii și intervalele de service' },
+      optimize:   { name: 'RA Optimize',   icon: 'fa-leaf',            tile: 'ag-t-green',  role: 'Eco-driving',    desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', checks: 'scorul eco, frânările/accelerările bruște, viteza și risipa la ralanti' },
+      compliance: { name: 'RA Compliance', icon: 'fa-clipboard-check', tile: 'ag-t-green',  role: 'Ore de condus',  desc: 'Condus continuu și zilnic, estimat din GPS (Reg. 561).', checks: 'orele de condus continuu și zilnic (Reg. 561)' },
+      client:     { name: 'RA Client',     icon: 'fa-file-lines',      tile: 'ag-t-green',  role: 'Digest zilnic',  desc: 'Un rezumat pe zi al flotei: km, vehicule active, cel mai activ.', checks: 'activitatea zilnică a flotei' }
     };
     var AGP_ORDER = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
     var _agpLast = {}, _agpLastRun = {}, _agpState = { findings: [], canCfg: false, mode: 'grid', agent: null };
@@ -16163,7 +16163,7 @@ const pozitii = await r.json();</code></pre>
     function _agpStatusLine(k, last) {
       if (last) return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">' + _agpEsc(last.title) + ' <span class="tm">· ' + _agpAgo(last.created_at) + '</span></span></div>';
       var t = _agpLastRun[k];
-      return '<div class="agp-find"><span class="fd" style="background:var(--accent)"></span><span class="ft" style="color:var(--text-muted)"><i class="fas fa-check" style="color:var(--accent)"></i> Nimic de semnalat' + (t ? ' · verificat la ' + _agpTime(t) : '') + '</span></div>';
+      return '<div class="agp-find"><span class="fd" style="background:var(--accent)"></span><span class="ft" style="color:var(--text-muted)"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Totul e în regulă' + (t ? ' · verificat ' + _agpTime(t) : '') + '</span></div>';
     }
     function _agpEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
     function _agpAgo(ts) {
@@ -16275,7 +16275,11 @@ const pozitii = await r.json();</code></pre>
         }).join('');
       } else {
         var t = _agpLastRun[k];
-        feed = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b"><div class="ti"><i class="fas fa-check" style="color:var(--accent)"></i> Nimic de semnalat</div><div class="tm">' + (t ? 'Verificat la ' + _agpTime(t) + ' — nicio alertă' : 'Apasă „Rulează" pentru o verificare acum') + '</div></div></div>';
+        feed = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b">'
+          + '<div class="ti"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Totul e în regulă — nicio alertă</div>'
+          + '<div class="bo">Am verificat ' + (m.checks || 'flota') + '. N-am găsit nicio problemă — poți sta liniștit.</div>'
+          + '<div class="tm">' + (t ? 'Ultima verificare: ' + _agpTime(t) + ' · ' : '') + 'verifică automat la fiecare 30 min</div>'
+          + '</div></div>';
       }
       host.innerHTML = '<div class="agp-detail agp-cascade">'
         + '<button type="button" class="agp-back" onclick="renderAgentsPage()"><i class="fas fa-arrow-left"></i> Toți agenții</button>'
