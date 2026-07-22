@@ -16363,10 +16363,14 @@ const pozitii = await r.json();</code></pre>
     // ── Praguri / limite per agent (mutate din Setări direct pe card) ──
     var AGP_THRESH = {
       watch: { fields: [
-        { key: 'offlineMin', label: 'Offline (fără semnal)', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de peste atâtea minute.' },
-        { key: 'idleMaxMin', label: 'Ralanti prelungit', unit: 'min', min: 5, max: 1440, def: 120, hint: 'Alertă când motorul rulează staționat peste atâtea minute.' },
-        { key: 'fuelDropL', label: 'Scădere combustibil', unit: 'L', min: 1, max: 1000, def: 15, hint: 'Alertă la scădere bruscă de combustibil.' },
-        { key: 'fuelTheftL', label: 'Furt combustibil — prag', unit: 'L', min: 1, max: 1000, def: '', hint: 'Scădere la parcare sau în mers, confirmată dacă nu revine în ~1h. Gol = dezactivat.' }
+        { key: 'offlineMin', label: 'Offline (fără semnal)', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de atâta timp.',
+          options: [{ v: 15, t: '15 minute' }, { v: 30, t: '30 minute' }, { v: 60, t: '1 oră (recomandat)' }, { v: 120, t: '2 ore' }, { v: 360, t: '6 ore' }, { v: 720, t: '12 ore' }] },
+        { key: 'idleMaxMin', label: 'Ralanti prelungit', unit: 'min', min: 5, max: 1440, def: 120, hint: 'Alertă când motorul merge staționat (pe loc) de atâta timp.',
+          options: [{ v: 15, t: '15 minute' }, { v: 30, t: '30 minute' }, { v: 60, t: '1 oră' }, { v: 120, t: '2 ore (recomandat)' }, { v: 180, t: '3 ore' }] },
+        { key: 'fuelDropL', label: 'Scădere combustibil', unit: 'L', min: 1, max: 1000, def: 15, hint: 'Alertă la o cădere bruscă de nivel.',
+          options: [{ v: 10, t: '10 litri' }, { v: 15, t: '15 litri (recomandat)' }, { v: 20, t: '20 litri' }, { v: 30, t: '30 litri' }, { v: 50, t: '50 litri' }] },
+        { key: 'fuelTheftL', label: 'Furt combustibil — prag', unit: 'L', min: 1, max: 1000, def: '', hint: 'Scădere la parcare sau în mers, confirmată dacă nu revine în ~1h.',
+          options: [{ v: '', t: 'Dezactivat (recomandat)' }, { v: 15, t: '15 litri' }, { v: 20, t: '20 litri' }, { v: 30, t: '30 litri' }, { v: 50, t: '50 litri' }] }
       ] },
       care: { fields: [
         { key: 'serviceSoonKm', label: 'Avertisment service', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de scadența reviziei să apară alerta.' }
@@ -16397,11 +16401,23 @@ const pozitii = await r.json();</code></pre>
       var inner;
       if (conf.fields.length) {
         inner = conf.fields.map(function (f) {
-          var v = thr[f.key] != null ? thr[f.key] : '';
+          var saved = thr[f.key];
+          var control;
+          if (f.options) {
+            var v = (saved != null) ? saved : (f.def === '' ? '' : f.def);
+            var opts = f.options.slice();
+            if (v !== '' && v != null && !opts.some(function (o) { return String(o.v) === String(v); })) opts.unshift({ v: v, t: v + ' (curent)' });
+            control = '<select id="agp-th-' + f.key + '" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13px;cursor:pointer;">'
+              + opts.map(function (o) { return '<option value="' + o.v + '"' + (String(o.v) === String(v) ? ' selected' : '') + '>' + o.t + '</option>'; }).join('')
+              + '</select>';
+          } else {
+            var vn = (saved != null) ? saved : '';
+            control = '<input id="agp-th-' + f.key + '" type="number" min="' + f.min + '" max="' + f.max + '" step="1" value="' + vn + '" placeholder="' + (f.def === '' ? 'gol = dezactivat' : ('implicit ' + f.def)) + '" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13px;">';
+          }
           return '<label style="display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;">'
             + '<span>' + f.label + ' <span style="color:var(--text-muted);font-weight:600;">(' + f.unit + ')</span></span>'
-            + '<input id="agp-th-' + f.key + '" type="number" min="' + f.min + '" max="' + f.max + '" step="1" value="' + v + '" placeholder="' + (f.def === '' ? 'gol = dezactivat' : ('implicit ' + f.def)) + '" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13px;">'
-            + '<span style="font-weight:500;color:var(--text-muted);font-size:11px;">' + f.hint + ' <span style="opacity:.7;">(interval ' + f.min + '–' + f.max + ')</span></span></label>';
+            + control
+            + '<span style="font-weight:500;color:var(--text-muted);font-size:11px;">' + f.hint + '</span></label>';
         }).join('');
       } else {
         inner = '<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.55;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">' + (conf.fixed || 'Acest agent nu are praguri de reglat.') + '</div>'
