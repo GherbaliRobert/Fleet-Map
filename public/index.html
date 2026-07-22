@@ -2072,6 +2072,8 @@ const pozitii = await r.json();</code></pre>
     .agp-cf .agp-acts{margin-left:auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
     .agp-cf a{color:var(--accent);text-decoration:none;font-weight:800;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
     .agp-cf a:hover{text-decoration:underline}
+    .agp-cf a.agp-run1{background:rgba(63,224,125,.12);border:1px solid rgba(63,224,125,.32);border-radius:7px;padding:3px 9px}
+    .agp-cf a.agp-run1:hover{text-decoration:none;background:rgba(63,224,125,.2)}
     .agp-note{margin-top:16px;padding:12px 15px;border-radius:12px;background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.22);font-size:12px;color:var(--text-secondary);display:flex;gap:10px;align-items:center;flex-wrap:wrap;line-height:1.45}
     .agp-note > i{color:var(--accent);flex:none}
     .ag-t-green{background:rgba(63,224,125,.13);color:var(--accent)}
@@ -16210,6 +16212,7 @@ const pozitii = await r.json();</code></pre>
           + '<div class="agp-desc">' + m.desc + '</div>'
           + '<div class="agp-sep"></div>' + findingHtml
           + '<div class="agp-cf">' + cntHtml + '<span class="agp-acts">'
+          + '<a id="agp-run-' + k + '" class="agp-run1" onclick="agpRunOne(\'' + k + '\')" title="Verifică acest agent acum"><i class="fas fa-bolt"></i> Rulează</a>'
           + '<a onclick="agpTutorial(\'' + k + '\')" title="Ghid: ce face și cum îl folosești"><i class="fas fa-circle-question"></i> Cum funcționează</a>'
           + '<a onclick="agpExplain(\'' + k + '\')" title="RA Insight îți explică pe datele tale"><i class="fas fa-wand-magic-sparkles"></i> Explică-mi</a>'
           + '</span></div>'
@@ -16225,6 +16228,13 @@ const pozitii = await r.json();</code></pre>
     window.agPageRun = async function () {
       var btn = $('agp-run'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se analizează…'; }
       try { await fetch('/api/agents/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ agent: 'all', companyId: window.gSuperCompany || undefined }) }).then(function (r) { return r.json(); }); } catch (e) {}
+      try { raxRefreshAgBadge(); } catch (e) {}
+      renderAgentsPage();
+    };
+    // Rulează UN singur agent (verificare pe loc) — pentru testat unul câte unul din cardul lui.
+    window.agpRunOne = async function (k) {
+      var el = $('agp-run-' + k); if (el) { el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rulez…'; el.style.pointerEvents = 'none'; el.style.opacity = '.7'; }
+      try { await fetch('/api/agents/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ agent: k, companyId: window.gSuperCompany || undefined }) }).then(function (r) { return r.json(); }); } catch (e) {}
       try { raxRefreshAgBadge(); } catch (e) {}
       renderAgentsPage();
     };
