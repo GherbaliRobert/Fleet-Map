@@ -16301,7 +16301,7 @@ const pozitii = await r.json();</code></pre>
     var AGP_TUT = {
       watch: {
         face: 'Veghează non-stop și te anunță la: vehicul offline (fără semnal), posibil furt de combustibil, scădere bruscă de combustibil, ralanti prelungit și tahograf neconfigurat pe camioane.',
-        use: 'Pragurile se reglează în Setări → „Agenți AI activi" (minute până la „offline", litri pentru scădere/furt, minute de ralanti).',
+        use: 'Pragurile le reglezi chiar de aici, din butonul „Praguri" al agentului (offline, ralanti, scădere și furt de combustibil) — alegi din liste, nu scrii nimic.',
         act: 'La „furt combustibil" verifici ora și traseul; la „offline" verifici dacă vehiculul e parcat/oprit sau are o problemă la tracker.'
       },
       dispatch: {
@@ -16311,12 +16311,12 @@ const pozitii = await r.json();</code></pre>
       },
       care: {
         face: 'Urmărește ITP, RCA/asigurare, reviziile și intervalul de service (pe dată sau pe km din bord) și te avertizează înainte de scadență.',
-        use: 'Adaugi documentele și reviziile în „Mentenanță" (cu dată sau km de scadență); pragul „km până la service" e în Setări → Agenți AI.',
+        use: 'Adaugi documentele și reviziile în „Mentenanță" (cu dată sau km de scadență); pragul „km până la service" îl reglezi din butonul „Praguri" al agentului.',
         act: 'Programezi ITP/revizia din timp ca să eviți amenzi și opriri neplanificate.'
       },
       optimize: {
         face: 'Dă un scor eco /100 per vehicul (penalizează accelerările/frânările bruște, virajele dure, depășirile și ralanti-ul) și estimează risipa de combustibil la ralanti, în lei.',
-        use: 'Pragul „scor eco minim" e în Setări → Agenți AI. Limita de viteză setată per vehicul contează la calcul.',
+        use: 'Pragul „scor eco minim" îl reglezi din butonul „Praguri" al agentului. Limita de viteză setată per vehicul contează la calcul.',
         act: 'Scor mic = o discuție/instruire cu șoferul. Vezi unde pierzi bani pe ralanti și reduci opririle cu motorul pornit.'
       },
       compliance: {
