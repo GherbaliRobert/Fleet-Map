@@ -24,6 +24,7 @@ import { NotifPrefs } from './screens/NotifPrefs';
 import { ReportSchedules } from './screens/ReportSchedules';
 import { AiChat } from './screens/AiChat';
 import { AiAssistants } from './screens/AiAssistants';
+import { AiAgents } from './screens/AiAgents';
 import { ETransport } from './screens/ETransport';
 import { Tahograf } from './screens/Tahograf';
 import { AdminDocuments } from './screens/AdminDocuments';
@@ -101,6 +102,7 @@ function Shell() {
         <Route path="/report-schedules" component={ReportSchedules} />
         <Route path="/ai" component={AiChat} />
         <Route path="/ai-stats" component={AiAssistants} />
+        <Route path="/ai-agents" component={AiAgents} />
         <Route path="/etransport" component={ETransport} />
         <Route path="/tahograf" component={Tahograf} />
         <Route path="/admin/documents" component={AdminDocuments} />

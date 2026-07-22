@@ -32,6 +32,7 @@ export interface ReportChartDef { type: string; title: string; labels: string[];
 export interface ReportPerVehicle { vehicul?: string; name?: string; imei?: string; summary?: [string, any][]; charts?: ReportChartDef[]; rows?: any[][]; }
 export interface ReportLegend { title?: string; items: [string, string][]; }
 export interface ReportResult { columns: string[]; rows: any[][]; summary: Record<string, any>; charts?: ReportChartDef[]; label?: string; type?: string; perVehicle?: ReportPerVehicle[]; legend?: ReportLegend; }
+export interface AgentFinding { id?: number; agent?: string; severity?: string; title?: string; body?: string; imei?: string | null; fkey?: string; status?: string; created_at?: string; }
 
 // Opțiuni de raport (eșantionare, OSM, locație, zile/ore etc.) → query string. Ignoră valorile goale.
 export type ReportOpts = Record<string, string | number | boolean | undefined>;
@@ -211,6 +212,11 @@ export const Api = {
   reportsAgent: (message: string) => api<{ reply?: string; disabled?: boolean; limited?: boolean }>('/api/ai/reports-agent', { method: 'POST', body: { message } }), // RA Insight — mod AI (text liber, opțional)
   insightPresets: () => api<{ key: string; title: string }[]>('/api/insight/presets'), // RA Insight — întrebări predefinite (fără AI)
   insightRun: (key: string) => api<{ title: string; label?: string; reportType?: string; period?: any; summary: Record<string, any>; columns?: string[]; rows?: any[][] }>('/api/insight/run', { method: 'POST', body: { key } }),
+  // Agenți AI operaționali (RA Watch/Care/Optimize/Compliance/Client): listă + rulare + constatări.
+  aiAgents: () => api<{ agents: { key: string; name: string; desc: string }[]; enabledKeys?: string[] }>('/api/agents'),
+  runAgents: (agent: string, imeis?: string[]) => api<{ findings: AgentFinding[]; aiSummary: string | null; stored: number; message?: string }>('/api/agents/run', { method: 'POST', body: { agent, imei: imeis && imeis.length ? imeis.join(',') : undefined } }),
+  agentFindings: () => api<AgentFinding[]>('/api/agents/findings'),
+  agentFindingAction: (id: number, action: 'dismiss' | 'ack') => api(`/api/agents/findings/${id}/${action}`, { method: 'POST' }),
   reportTypes: () => api<{ categories: { key: string; label: string }[]; reports: ReportTypeInfo[] }>('/api/reports'),
   runReport: (type: string, from: string, to: string, imeis?: string[], opts?: ReportOpts) => {
     const e = encodeURIComponent;

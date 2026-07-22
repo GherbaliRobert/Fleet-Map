@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { Icon, type IconName } from '../components/Icon';
 import './reports.css'; // .rp-periods / .rp-period / .center-msg
@@ -17,6 +18,7 @@ function fmtTok(n: any) { const v = Number(n) || 0; if (v >= 1e6) return (v / 1e
 function fmtWhen(s: string | null | undefined) { if (!s) return null; const d = new Date(s); if (isNaN(d.getTime())) return null; return d.toLocaleDateString('ro-RO', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 export function AiAssistants() {
+  const loc = useLocation();
   const [days, setDays] = useState<Days>(30);
   const [d, setD] = useState<Awaited<ReturnType<typeof Api.aiUsageStats>> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,11 @@ export function AiAssistants() {
                         <Icon name={last ? 'clock' : 'x'} size={12} style="vertical-align:-1px;margin-right:5px" />
                         {last ? `Ultima folosire: ${last}` : 'Neutilizat în perioada aleasă'}
                       </div>
+                      {a.kind === 'agents' && (
+                        <button class="btn btn-block" onClick={() => loc.route('/ai-agents')} style="margin-top:10px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);font-weight:700;font-size:13px;border-radius:10px;padding:9px;display:flex;align-items:center;justify-content:center;gap:6px">
+                          Deschide panoul de agenți <Icon name="chevronR" size={14} />
+                        </button>
+                      )}
                     </div>
                   );
                 })}
