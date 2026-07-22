@@ -2221,6 +2221,7 @@ const pozitii = await r.json();</code></pre>
         <div id="rep-empty" style="display:none;text-align:center;color:var(--text-muted);padding:24px;">Nu sunt date pentru perioada selectată.</div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;align-items:center;">
           <span id="rep-count" style="margin-right:auto;font-size:12px;color:var(--text-muted);align-self:center;"></span>
+          <button class="btn-sm rep-insight" onclick="insightSummarizeReport()" style="background:var(--purple);color:#160c30;border:none;font-weight:800;" title="Rezumat executiv cu RA Insight"><i class="fas fa-wand-magic-sparkles"></i> Rezumă cu RA Insight</button>
           <span style="font-size:12px;color:var(--text-muted);">Descarcă:</span>
           <button class="btn-sm rep-dl rep-dl-csv" onclick="exportReport('csv')" title="Descarcă CSV"><i class="fas fa-file-csv"></i> CSV</button>
           <button class="btn-sm rep-dl rep-dl-xls" onclick="repExport('xlsx')" title="Descarcă Excel (.xlsx)"><i class="fas fa-file-excel"></i> Excel</button>
@@ -6427,6 +6428,8 @@ const pozitii = await r.json();</code></pre>
       list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;padding:12px;">Se încarcă...</p>';
       let rows = []; try { rows = await (await fetch('/api/notifications?limit=80')).json(); } catch (e) {}
       if (!Array.isArray(rows) || !rows.length) { list.innerHTML = '<p style="color:var(--text-muted);font-size:12px;padding:16px;text-align:center;">Nicio notificare.</p>'; return; }
+      // Cache pe id → RA Insight citește titlul/corpul de aici (nu injectăm text în onclick = fără XSS/rupturi).
+      window._raNotifCache = {}; rows.forEach(function (n) { window._raNotifCache[n.id] = n; });
       const sev = { info:'#3b82f6', warning:'#f59e0b', critical:'#ef4444' };
       // Escapare HTML — titlul/corpul pot conține text necontrolat (ex. IMEI dintr-un handshake TCP). NU
       // interpola direct în innerHTML (risc XSS stocat). Tratează & < > " '.
@@ -6446,6 +6449,10 @@ const pozitii = await r.json();</code></pre>
         const reportBtn = (n.type === 'report_ready')
           ? `<button class="btn-sm btn-primary" style="padding:3px 8px;white-space:nowrap;" title="Mergi la rapoarte generate" onclick="notifGoReports()"><i class="fas fa-arrow-right"></i> Rapoarte</button>`
           : '';
+        // „Explică-mi" — doar pe alerte/evenimente (nu pe notificările de raport). Deschide RA Insight cu contextul alertei.
+        const explainBtn = isReport
+          ? ''
+          : `<button class="btn-sm" style="padding:3px 7px;background:var(--purple);color:#160c30;border:none;font-weight:800;" title="Explică-mi cu RA Insight" onclick="insightExplainNotif(${n.id})"><i class="fas fa-wand-magic-sparkles"></i></button>`;
         return `
         <div style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);${n.acknowledged?'opacity:.5;':''}">
           <span style="width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;background:${sev[n.severity]||'#3b82f6'};"></span>
@@ -6456,6 +6463,7 @@ const pozitii = await r.json();</code></pre>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
             ${reportBtn}
+            ${explainBtn}
             ${n.acknowledged?'':`<button class="btn-sm" style="padding:3px 7px;" title="Marchează citit" onclick="ackNotif(${n.id})"><i class="fas fa-check"></i></button>`}
           </div>
         </div>`;
@@ -16223,6 +16231,19 @@ const pozitii = await r.json();</code></pre>
       var ov = $('rax-ai-overlay');
       if (ov && !ov.classList.contains('open')) { try { raxToggleAI(); } catch (e) {} }
       setTimeout(function () { var inp = $('rax-ai-input'); if (inp) { inp.value = prefill || ''; if (prefill) { try { raxSendAI(); } catch (e) {} } inp.focus(); } }, 160);
+    };
+    // „Rezumă cu RA Insight" din antetul raportului → deschide asistentul + rezumă tabelul vizibil.
+    window.insightSummarizeReport = function () {
+      var ov = $('rax-ai-overlay');
+      if (ov && !ov.classList.contains('open')) { try { raxToggleAI(); } catch (e) {} }
+      setTimeout(function () { try { raxSummarizeVisibleReport(); } catch (e) {} }, 180);
+    };
+    // „Explică-mi" pe o alertă din notificări → RA Insight cu contextul alertei (text din cache, nu din HTML).
+    window.insightExplainNotif = function (id) {
+      var n = (window._raNotifCache || {})[id]; if (!n) return;
+      var t = (n.title || n.type || '') + (n.body ? ' — ' + n.body : '');
+      try { if (typeof closeNotifications === 'function') closeNotifications(); } catch (e) {}
+      insightAsk('Explică-mi această alertă și ce ar trebui să fac: ' + t);
     };
 
     // ── Abonament (facturare) ──
