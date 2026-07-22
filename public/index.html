@@ -1595,7 +1595,7 @@ const pozitii = await r.json();</code></pre>
           <label class="rep-f"><span>Frecvență</span><select id="sch-freq">
             <option value="daily">Zilnic</option><option value="weekly">Săptămânal (luni)</option>
             <option value="monthly">Lunar (ziua 1)</option></select></label>
-          <label class="rep-f"><span>Ora (UTC)</span><input id="sch-hour" type="number" min="0" max="23" value="6"></label>
+          <label class="rep-f"><span>Ora (România)</span><input id="sch-hour" type="number" min="0" max="23" value="6"></label>
           <label class="rep-f"><span>Format</span><select id="sch-format"><option value="pdf">PDF</option><option value="xlsx">Excel</option></select></label>
           <label class="rep-f" style="grid-column:span 2;"><span>Destinatari (email, separați prin virgulă)</span><input id="sch-recips" placeholder="gol = emailul tău"></label>
         </div>
@@ -5841,7 +5841,7 @@ const pozitii = await r.json();</code></pre>
               '<span class="sch-chip"><i class="far fa-file"></i>' + (s.format || 'pdf').toUpperCase() + '</span>' +
               '<span class="sch-chip"><i class="fas fa-car"></i>' + (s.imei ? E(vmap[s.imei] || s.imei) : 'Toată flota') + '</span>' +
             '</div>' +
-            '<div class="sch-next"><i class="far fa-calendar"></i> Următoarea: <b>' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO') : '—') + '</b> &nbsp;·&nbsp; <i class="far fa-envelope"></i> ' + E(s.recipients || 'emailul creatorului') + '</div>' +
+            '<div class="sch-next"><i class="far fa-calendar"></i> Următoarea: <b>' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—') + '</b> &nbsp;·&nbsp; <i class="far fa-envelope"></i> ' + E(s.recipients || 'emailul creatorului') + '</div>' +
           '</div>' +
           '<div class="sch-acts">' +
             '<button class="sch-iconbtn" onclick="schedRunNow(' + s.id + ')" title="Trimite acum"><i class="fas fa-paper-plane"></i></button>' +

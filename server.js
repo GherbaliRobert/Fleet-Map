@@ -6500,7 +6500,7 @@ app.post('/api/report-schedules/:id/run', requireAuth, requirePerm('viewReports'
     if (!(await ownsRow(req, 'report_schedules', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     const s = await db.getReportScheduleById(req.params.id);
     if (!s) return res.status(404).json({ error: 'Programare inexistentă' });
-    const result = await reportSchedules.runSchedule(s, { db, reports, reportExport, channels }, new Date());
+    const result = await reportSchedules.runSchedule(s, { db, reports, reportExport, channels, notify }, new Date());
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -8272,7 +8272,7 @@ async function start() {
   setTimeout(() => checkUnconfiguredTruckInterfaces(), 60000);
   setInterval(() => checkUnconfiguredTruckInterfaces(), 6 * 60 * 60 * 1000);
   // Rapoarte programate — rulează scadențele la fiecare 5 min (doar dacă modulul e disponibil)
-  if (reportSchedules) setInterval(() => reportSchedules.tickDue({ db, reports, reportExport, channels })
+  if (reportSchedules) setInterval(() => reportSchedules.tickDue({ db, reports, reportExport, channels, notify })
     .then(r => { if (r && r.length) console.log('[PROGRAMĂRI] ' + r.length + ' rapoarte rulate'); })
     .catch(e => console.error('[PROGRAMĂRI]', e.message)), 5 * 60 * 1000);
 
