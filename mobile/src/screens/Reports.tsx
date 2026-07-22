@@ -70,7 +70,7 @@ export function Reports() {
   // Opțiunile trimise serverului, în funcție de tipul de raport ales.
   function buildOpts(): ReportOpts {
     const o: ReportOpts = {};
-    if (type === 'analytics' && sampleSec) o.sampleSec = sampleSec;
+    if (type === 'analytic' && sampleSec) o.sampleSec = sampleSec;
     if (type === 'speeding' && osm) { o.osm = 1; o.osmOver = osmOver; }
     if ((type === 'ecodrive' || type === 'ecodrive_drivers') && !geoAddr) o.geo = 0;
     if (type === 'geofence') o.zoneMin = zoneMin;
@@ -232,7 +232,7 @@ export function Reports() {
           </button>
           {showOpts && (
             <div style="background:var(--bg-panel);border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;margin-top:-1px;padding:12px 13px;display:flex;flex-direction:column;gap:14px">
-              {type === 'analytics' && (
+              {type === 'analytic' && (
                 <div>
                   <div class="rp-opt-lbl">Detaliu (eșantionare)</div>
                   <div class="rp-seg">
