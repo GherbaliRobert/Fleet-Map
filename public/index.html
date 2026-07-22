@@ -1776,7 +1776,7 @@ const pozitii = await r.json();</code></pre>
             <button class="set-tab active" data-stab="prefs" onclick="usTab('prefs')"><i class="fas fa-user"></i> Preferințe</button>
             <button class="set-tab" data-stab="company" id="set-tab-company" style="display:none;" onclick="usTab('company')"><i class="fas fa-building"></i> Companie</button>
             <button class="set-tab" data-stab="agents" id="set-tab-agents" style="display:none;" onclick="usTab('agents')"><i class="fas fa-shield-halved"></i> Agenți AI</button>
-            <button class="set-tab" data-stab="thresholds" id="set-tab-thresholds" style="display:none;" onclick="usTab('thresholds')"><i class="fas fa-bell"></i> Praguri</button>
+            <button class="set-tab" data-stab="thresholds" id="set-tab-thresholds" style="display:none;" onclick="usTab('thresholds')"><i class="fas fa-business-time"></i> Program</button>
           </div>
 
           <!-- Panel: Preferințe -->
@@ -1816,45 +1816,12 @@ const pozitii = await r.json();</code></pre>
             </div>
           </div>
 
-          <!-- Panel: Agenți AI -->
-          <div class="set-panel" data-spanel="agents" style="display:none;">
-            <div class="set-sec-h"><i class="fas fa-shield-halved"></i> Agenți AI activi</div>
-            <p class="set-note">Activează/dezactivează agenții AI pentru această companie. Default-ul depinde de planul de abonament.</p>
-            <div id="us-agents-list"></div>
-          </div>
+          <!-- Panel „Agenți AI" mutat pe pagina „Agenți AI" (fiecare card are pragurile lui) -->
 
           <!-- Panel: Praguri -->
           <div class="set-panel" data-spanel="thresholds" style="display:none;">
-            <div class="set-sec-h"><i class="fas fa-bell"></i> Praguri alertă agenți</div>
-            <p class="set-note">Pragurile peste/sub care agenții generează alertă. Lasă gol pentru default.</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când un vehicul nu trimite date de peste atâtea minute">
-                <span><i class="fas fa-wifi" style="color:var(--accent);font-size:9px;"></i> RA Watch — Offline (minute)</span>
-                <input type="number" id="us-th-offline" min="5" max="1440" placeholder="60" step="1" onblur="usSetThreshold('offlineMin', this.value)" style="margin-top:4px;">
-              </label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă la scădere bruscă de combustibil (posibil furt)">
-                <span><i class="fas fa-gas-pump" style="color:var(--accent);font-size:9px;"></i> RA Watch — Scădere combustibil (litri)</span>
-                <input type="number" id="us-th-fuel" min="1" max="1000" placeholder="15" step="1" onblur="usSetThreshold('fuelDropL', this.value)" style="margin-top:4px;">
-              </label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Watch — alertă când motorul rulează staționat (ralanti) peste atâtea minute consecutive">
-                <span><i class="fas fa-pause-circle" style="color:var(--accent);font-size:9px;"></i> RA Watch — Ralanti (minute)</span>
-                <input type="number" id="us-th-idle" min="5" max="1440" placeholder="120" step="1" onblur="usSetThreshold('idleMaxMin', this.value)" style="margin-top:4px;">
-              </label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);" title="RA Optimize — alertă când scorul eco al unui șofer scade sub această valoare">
-                <span><i class="fas fa-leaf" style="color:var(--accent);font-size:9px;"></i> RA Optimize — Scor eco minim (0-100)</span>
-                <input type="number" id="us-th-eco" min="0" max="100" placeholder="60" step="1" onblur="usSetThreshold('ecoScoreMin', this.value)" style="margin-top:4px;">
-              </label>
-              <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);grid-column:1 / -1;" title="RA Care — cu câți km înainte de scadența unei revizii să apară alerta">
-                <span><i class="fas fa-wrench" style="color:var(--accent);font-size:9px;"></i> RA Care — Avertisment service (km înainte de scadență)</span>
-                <input type="number" id="us-th-srv" min="100" max="50000" placeholder="1500" step="1" onblur="usSetThreshold('serviceSoonKm', this.value)" style="margin-top:4px;">
-              </label>
-            </div>
-            <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;"><i class="fas fa-gas-pump"></i> Alertă furt combustibil</div>
-            <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px;">Primești alertă când combustibilul scade cu mai mult de atâția litri — fie <b>cât vehiculul stă oprit</b> (între oprire și următoarea pornire), fie <b>brusc în mers</b> (confirmată doar dacă nivelul NU revine în ~1h, ca să excludem clătinarea pe pantă). Lasă gol = dezactivat.</p>
-            <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);max-width:340px;" title="Alertă dacă scăderea de combustibil depășește acest număr de litri (parcare sau în mers)">
-              <span><i class="fas fa-gas-pump" style="color:var(--accent);font-size:9px;"></i> Prag scădere combustibil (litri)</span>
-              <input type="number" id="us-th-fueltheft" min="1" max="1000" placeholder="ex. 20" step="1" onblur="usSetThreshold('fuelTheftL', this.value)" style="margin-top:4px;">
-            </label>
+            <div class="set-sec-h"><i class="fas fa-business-time"></i> Program de lucru</div>
+            <p class="set-note">Intervalul de lucru al companiei (folosit în rapoarte și alerte). Pragurile agenților au trecut pe pagina „Agenți AI" — fiecare card are butonul lui de praguri.</p>
             <div id="us-worksched" style="margin:18px 0 0;padding-top:16px;border-top:1px solid var(--border);"></div>
           </div>
 
@@ -2061,6 +2028,9 @@ const pozitii = await r.json();</code></pre>
     .agp-status{margin-left:auto;flex:none;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);background:rgba(63,224,125,.12);border:1px solid rgba(63,224,125,.3);border-radius:999px;padding:3px 9px}
     .agp-info{width:22px;height:22px;flex:none;border-radius:50%;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-muted);cursor:pointer;font-size:11px;display:grid;place-items:center;padding:0;font-family:inherit}
     .agp-info:hover{color:var(--accent);border-color:var(--accent)}
+    .agp-hactions{margin-left:auto;display:flex;align-items:center;gap:8px}
+    .agp-gear{width:26px;height:26px;flex:none;border-radius:7px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-muted);cursor:pointer;font-size:12px;display:grid;place-items:center;padding:0;font-family:inherit}
+    .agp-gear:hover{color:var(--accent);border-color:var(--accent)}
     .agp-desc{color:var(--text-secondary);font-size:12px;margin-top:10px;line-height:1.45}
     .agp-sep{height:1px;background:var(--border);margin:11px 0}
     .agp-find{display:flex;gap:8px;align-items:flex-start}
@@ -3420,7 +3390,7 @@ const pozitii = await r.json();</code></pre>
         // Vizibilitatea tab-urilor + sub-secțiunilor după permisiuni („Preferințe" e mereu vizibil)
         var _usShow = function (id, on) { var e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
         _usShow('set-tab-company', canMgr || canFleet);
-        _usShow('set-tab-agents', canMgr);
+        _usShow('set-tab-agents', false); // „Agenți AI" mutat pe pagina dedicată (fiecare card cu pragurile lui)
         _usShow('set-tab-thresholds', canMgr);
         _usShow('us-company-defaults', canMgr);
         var fuelSec = document.getElementById('us-fuel-section');
@@ -16193,6 +16163,7 @@ const pozitii = await r.json();</code></pre>
         + (cInfo ? '<span class="agp-chip"><span class="d" style="background:var(--accent)"></span><b>' + cInfo + '</b> informative</span>' : '')
         + '</div>';
 
+      var canCfg = !!(currentUser && (currentUser.isSuper || (currentUser.permissions && currentUser.permissions.manageUsers)));
       var cards = keys.map(function (k) {
         var m = AGP_META[k];
         var fs = (byAgent[k] || []).slice().sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
@@ -16208,7 +16179,7 @@ const pozitii = await r.json();</code></pre>
         return '<div class="agp-card">'
           + '<div class="agp-ch"><div class="agp-ct ' + m.tile + '"><i class="fas ' + m.icon + '"></i></div>'
           + '<div><div class="agp-an">' + m.name + '</div><div class="agp-role">' + m.role + '</div></div>'
-          + '<span class="agp-status">activ</span></div>'
+          + '<div class="agp-hactions">' + (canCfg ? '<button class="agp-gear" title="Praguri / limite" onclick="agpSettings(\'' + k + '\')"><i class="fas fa-sliders"></i></button>' : '') + '<span class="agp-status" style="margin-left:0;">activ</span></div></div>'
           + '<div class="agp-desc">' + m.desc + '</div>'
           + '<div class="agp-sep"></div>' + findingHtml
           + '<div class="agp-cf">' + cntHtml + '<span class="agp-acts">'
@@ -16309,6 +16280,84 @@ const pozitii = await r.json();</code></pre>
       var mm = AGP_META[k] || { name: k };
       var e = document.getElementById('agp-tut-modal'); if (e) e.style.display = 'none';
       insightAsk('Cum stă „' + mm.name + '" pentru flota mea și ce ar trebui să fac?');
+    };
+    // ── Praguri / limite per agent (mutate din Setări direct pe card) ──
+    var AGP_THRESH = {
+      watch: { fields: [
+        { key: 'offlineMin', label: 'Offline (fără semnal)', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de peste atâtea minute.' },
+        { key: 'idleMaxMin', label: 'Ralanti prelungit', unit: 'min', min: 5, max: 1440, def: 120, hint: 'Alertă când motorul rulează staționat peste atâtea minute.' },
+        { key: 'fuelDropL', label: 'Scădere combustibil', unit: 'L', min: 1, max: 1000, def: 15, hint: 'Alertă la scădere bruscă de combustibil.' },
+        { key: 'fuelTheftL', label: 'Furt combustibil — prag', unit: 'L', min: 1, max: 1000, def: '', hint: 'Scădere la parcare sau în mers, confirmată dacă nu revine în ~1h. Gol = dezactivat.' }
+      ] },
+      care: { fields: [
+        { key: 'serviceSoonKm', label: 'Avertisment service', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de scadența reviziei să apară alerta.' }
+      ] },
+      optimize: { fields: [
+        { key: 'ecoScoreMin', label: 'Scor eco minim', unit: '/100', min: 0, max: 100, def: 60, hint: 'Alertă când scorul eco al unui vehicul scade sub această valoare.' }
+      ] },
+      dispatch: { fields: [], fixed: 'Reguli fixe: vehicul „disponibil" = online sub ~65 min și oprit; „subutilizat" = sub 1 km după ora 12.' },
+      compliance: { fields: [], fixed: 'Praguri legale (Reg. CE 561/2006): alertă peste 4h30 condus continuu sau 9h pe zi. Fixe prin lege.' },
+      client: { fields: [], fixed: 'Rulează o dată pe zi (digest al flotei). Nu are praguri de reglat.' }
+    };
+    function _agpModal(id) {
+      var ov = document.getElementById(id);
+      if (!ov) {
+        ov = document.createElement('div'); ov.id = id;
+        ov.style.cssText = 'position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+        ov.addEventListener('click', function (e) { if (e.target === ov) ov.style.display = 'none'; });
+        document.body.appendChild(ov);
+      }
+      ov.style.display = 'flex'; return ov;
+    }
+    window.agpSettings = async function (k) {
+      var m = AGP_META[k]; var conf = AGP_THRESH[k] || { fields: [] }; if (!m) return;
+      var ov = _agpModal('agp-set-modal');
+      ov.innerHTML = '<div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;width:480px;max-width:94vw;"><div style="padding:24px;text-align:center;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div></div>';
+      var thr = {};
+      try { var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); thr = (cs && cs.alert_thresholds) || {}; } catch (e) {}
+      var inner;
+      if (conf.fields.length) {
+        inner = conf.fields.map(function (f) {
+          var v = thr[f.key] != null ? thr[f.key] : '';
+          return '<label style="display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;">'
+            + '<span>' + f.label + ' <span style="color:var(--text-muted);font-weight:600;">(' + f.unit + ')</span></span>'
+            + '<input id="agp-th-' + f.key + '" type="number" min="' + f.min + '" max="' + f.max + '" step="1" value="' + v + '" placeholder="' + (f.def === '' ? 'gol = dezactivat' : ('implicit ' + f.def)) + '" style="padding:9px 11px;border-radius:9px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:13px;">'
+            + '<span style="font-weight:500;color:var(--text-muted);font-size:11px;">' + f.hint + ' <span style="opacity:.7;">(interval ' + f.min + '–' + f.max + ')</span></span></label>';
+        }).join('');
+      } else {
+        inner = '<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.55;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">' + (conf.fixed || 'Acest agent nu are praguri de reglat.') + '</div>'
+          + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:10px;">Vrei praguri reglabile și aici? Spune-ne și le adăugăm.</div>';
+      }
+      var saveBtn = conf.fields.length ? '<button id="agp-th-save" class="btn-sm" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="agpSaveThresholds(\'' + k + '\')"><i class="fas fa-floppy-disk"></i> Salvează</button>' : '';
+      ov.innerHTML = '<div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;width:480px;max-width:94vw;max-height:88vh;overflow:auto;">'
+        + '<div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border);">'
+        + '<div class="' + m.tile + '" style="width:38px;height:38px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:18px;"><i class="fas fa-sliders"></i></div>'
+        + '<div style="flex:1;min-width:0;"><div style="font-weight:800;font-size:16px;">' + m.name + ' — praguri</div><div style="font-size:12px;color:var(--text-muted);">Când te alertează acest agent</div></div>'
+        + '<button class="btn-sm" onclick="var e=document.getElementById(\'agp-set-modal\');if(e)e.style.display=\'none\';" title="Închide"><i class="fas fa-times"></i></button></div>'
+        + '<div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;">' + inner + '</div>'
+        + (saveBtn ? '<div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' + saveBtn + '</div>' : '')
+        + '</div>';
+    };
+    window.agpSaveThresholds = async function (k) {
+      var conf = AGP_THRESH[k] || { fields: [] }; var payload = { alert_thresholds: {} }; var bad = false;
+      conf.fields.forEach(function (f) {
+        var el = document.getElementById('agp-th-' + f.key); if (!el) return;
+        el.style.borderColor = 'var(--border)';
+        var raw = (el.value || '').trim();
+        if (raw === '') { payload.alert_thresholds[f.key] = null; return; }
+        var n = Number(raw);
+        if (!isFinite(n) || n < f.min || n > f.max) { bad = true; el.style.borderColor = 'var(--red)'; return; }
+        payload.alert_thresholds[f.key] = Math.round(n);
+      });
+      if (bad) { (window.raxToast || alert)('Valori invalide — verifică intervalele.', 'error'); return; }
+      var btn = document.getElementById('agp-th-save'); var orig = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvez…'; }
+      try {
+        var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) });
+        if (!r.ok) { (window.raxToast || alert)('Eroare la salvare', 'error'); if (btn) { btn.disabled = false; btn.innerHTML = orig; } return; }
+        (window.raxToast || function () {})('Praguri salvate ✓', 'success');
+        var e = document.getElementById('agp-set-modal'); if (e) e.style.display = 'none';
+      } catch (err) { (window.raxToast || alert)('Eroare de rețea', 'error'); if (btn) { btn.disabled = false; btn.innerHTML = orig; } }
     };
     // Launcher unic RA Insight — deschide asistentul și (opțional) trimite o întrebare.
     window.insightAsk = function (prefill) {
