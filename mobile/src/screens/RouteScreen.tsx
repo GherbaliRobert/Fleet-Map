@@ -3,7 +3,7 @@ import { useRoute } from 'preact-iso';
 import L from 'leaflet';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
-import { showToast } from '../app/store';
+import { showToast, vehicles } from '../app/store';
 import './route.css';
 
 type Period = 'today' | 'yesterday' | 'week';
@@ -200,11 +200,15 @@ export function RouteScreen() {
   const moveSec = summary && summary.movingTime != null ? Number(summary.movingTime) : 0;
   const idleSec = summary && summary.engineIdleTime != null ? Number(summary.engineIdleTime) : 0;
 
+  const veh = vehicles.value.find((v) => v.imei === imei);
   return (
     <div class="screen">
       <header class="app-header">
         <button class="h-btn" onClick={() => history.back()}><Icon name="chevronL" /></button>
-        <div class="h-title">Traseu</div>
+        <div class="h-title" style="display:flex;flex-direction:column;line-height:1.15">
+          <span>Traseu</span>
+          {veh ? <span style="font-size:11.5px;font-weight:600;color:var(--text-muted)">{veh.name || veh.imei}{veh.plate ? ' · ' + veh.plate : ''}</span> : null}
+        </div>
       </header>
       <div class="rt-periods">
         {(['today', 'yesterday', 'week'] as Period[]).map((p) => (

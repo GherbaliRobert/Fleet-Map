@@ -270,6 +270,7 @@ export function VehicleDetail() {
               <a onClick={() => openUrl(`https://waze.com/ul?ll=${ll}&navigate=yes`)}><Icon name="navigate" size={16} /> Waze</a>
             </div>
           )}
+          {ll && <button class="d-act" onClick={() => openUrl(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll}`)}><Icon name="eye" size={18} class="ic" /> Street View</button>}
         </div>
 
         <div class="card d-detail">

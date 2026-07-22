@@ -16,8 +16,8 @@ export function VehicleCard({ v, offlineMin, onClick }: { v: Position; offlineMi
       <span class="dot" style={{ background: s.color, boxShadow: `0 0 6px ${s.color}` }} />
       <div class="vcard-main">
         <div class="vcard-name">
-          {v.name || v.imei}
           {v.plate ? <span class="vcard-plate">{v.plate}</span> : null}
+          {v.name || v.imei}
           {noData3d ? <Icon name="alert" size={14} color="#f59e0b" style="flex:0 0 auto" /> : null}
         </div>
         <div class="vcard-sub">{sub}</div>
