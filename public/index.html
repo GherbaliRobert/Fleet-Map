@@ -134,6 +134,7 @@
           </div>
         </div>
         <button class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
+        <button class="nav-item" id="nav-agenti" data-view="agenti" onclick="showView('agenti')" style="display:none;"><i class="fas fa-shield-halved"></i><span>Agenți AI</span></button>
         <button class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
         <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
       </nav>
@@ -857,7 +858,10 @@
         <div id="dash-agents-wrap" style="margin-bottom:16px;display:none;">
           <div class="chart-section-title" style="display:flex;justify-content:space-between;align-items:center;">
             <span><i class="fas fa-shield-halved" style="color:var(--accent);margin-right:6px;"></i>Constatări agenți AI</span>
-            <button class="btn-sm" onclick="raxOpenAgents()" style="font-size:11px;">Vezi toate</button>
+            <span style="display:flex;gap:6px;">
+              <button class="btn-sm" onclick="insightAsk('Ce probleme are flota?')" style="font-size:11px;background:var(--purple);color:#160c30;border:none;font-weight:800;"><i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight</button>
+              <button class="btn-sm" onclick="showView('agenti')" style="font-size:11px;">Vezi toate</button>
+            </span>
           </div>
           <div id="dash-agents" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;"></div>
         </div>
@@ -2027,6 +2031,54 @@ const pozitii = await r.json();</code></pre>
 
   <!-- Pagina „Raport săptămânal flotă" (populată de weekly-report-ui.js) -->
   <div id="weekly-report-view" class="modal-overlay"></div>
+
+  <!-- Pagina „Agenți AI" (populată de renderAgentsPage) -->
+  <style id="agenti-page-css">
+    #agenti-view .agp-wrap{max-width:1060px;margin:0 auto}
+    #agenti-view .agp-sub{color:var(--text-muted);font-size:13px;margin:-4px 0 16px;line-height:1.5}
+    .agp-model{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px;background:var(--bg-dark)}
+    .agp-model .agp-h{padding:15px 16px;display:flex;gap:12px;align-items:flex-start}
+    .agp-model .agp-h + .agp-h{border-left:1px solid var(--border)}
+    .agp-model .agp-tile{width:40px;height:40px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:18px}
+    .agp-model .g .agp-tile{background:rgba(63,224,125,.13);color:var(--accent)}
+    .agp-model .p .agp-tile{background:rgba(167,139,250,.16);color:var(--purple)}
+    .agp-model .agp-k{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin-bottom:2px}
+    .agp-model .g .agp-k{color:var(--accent)} .agp-model .p .agp-k{color:var(--purple)}
+    .agp-model .agp-h b{font-size:14.5px;font-weight:800}
+    .agp-model .agp-h p{margin:2px 0 0;font-size:12px;color:var(--text-muted)}
+    .agp-model .agp-h .btn-sm{margin-top:8px}
+    .agp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .agp-chip{display:inline-flex;align-items:center;gap:7px;background:var(--bg-dark);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--text-secondary)}
+    .agp-chip .d{width:8px;height:8px;border-radius:50%}
+    .agp-chip b{color:var(--text-primary)}
+    .agp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .agp-card{background:var(--bg-dark);border:1px solid var(--border);border-radius:14px;padding:15px;transition:border-color .15s}
+    .agp-card:hover{border-color:var(--border-light)}
+    .agp-card .agp-ch{display:flex;align-items:center;gap:11px}
+    .agp-card .agp-ct{width:38px;height:38px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:18px}
+    .agp-card .agp-an{font-weight:800;font-size:14.5px;line-height:1.15}
+    .agp-card .agp-role{color:var(--text-muted);font-size:11.5px}
+    .agp-status{margin-left:auto;flex:none;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);background:rgba(63,224,125,.12);border:1px solid rgba(63,224,125,.3);border-radius:999px;padding:3px 9px}
+    .agp-desc{color:var(--text-secondary);font-size:12px;margin-top:10px;line-height:1.45}
+    .agp-sep{height:1px;background:var(--border);margin:11px 0}
+    .agp-find{display:flex;gap:8px;align-items:flex-start}
+    .agp-find .fd{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none}
+    .agp-find .ft{font-size:12px;color:var(--text-secondary);line-height:1.35}
+    .agp-find .ft .tm{color:var(--text-muted)}
+    .agp-cf{display:flex;align-items:center;gap:10px;margin-top:11px;font-size:11px;color:var(--text-muted)}
+    .agp-cf .cnt{display:inline-flex;align-items:center;gap:5px;font-weight:700}
+    .agp-cf a{margin-left:auto;color:var(--purple);text-decoration:none;font-weight:800;cursor:pointer}
+    .agp-note{margin-top:16px;padding:12px 15px;border-radius:12px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.24);font-size:12px;color:var(--text-secondary);display:flex;gap:10px;align-items:center;flex-wrap:wrap;line-height:1.45}
+    .agp-note > i{color:var(--purple);flex:none}
+    .ag-t-green{background:rgba(63,224,125,.13);color:var(--accent)}
+    .ag-t-blue{background:rgba(96,160,218,.16);color:#7fb4e6}
+    .ag-t-orange{background:rgba(249,115,22,.15);color:var(--orange)}
+    .ag-t-purple{background:rgba(167,139,250,.16);color:var(--purple)}
+    .ag-t-grey{background:rgba(138,147,163,.16);color:#aab4c2}
+    @media (max-width:960px){ .agp-grid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:620px){ .agp-grid{grid-template-columns:1fr} .agp-model{grid-template-columns:1fr} .agp-model .agp-h + .agp-h{border-left:0;border-top:1px solid var(--border)} }
+  </style>
+  <div id="agenti-view" class="modal-overlay"></div>
 
   <div id="fuel-stats-modal" class="modal-overlay">
     <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;">
@@ -6764,8 +6816,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', weeklyreport: 'weekly-report-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', weeklyreport: 'weekly-report-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -12360,6 +12412,7 @@ const pozitii = await r.json();</code></pre>
     #rax-fabs { position: fixed; right: calc(16px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 1200; display: none; flex-direction: column; gap: 10px; align-items: flex-end; }
     .rax-fab { -webkit-appearance: none; appearance: none; border: none; cursor: pointer; height: 50px; min-width: 50px; padding: 0 16px; border-radius: 26px; background: var(--accent); color: #06210F; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
     .rax-fab.secondary { background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border); }
+    .rax-fab.insight { background: var(--purple); color: #160c30; }
     .rax-fab i { font-size: 16px; }
     #rax-co-chip { font-size: 11px; color: var(--text-muted); background: var(--bg-panel); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #rax-actions { display: none; flex-direction: column; gap: 10px; align-items: flex-end; margin-bottom: 4px; }
@@ -12576,10 +12629,10 @@ const pozitii = await r.json();</code></pre>
       <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
       <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
       <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
-      <button class="rax-fab" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-robot"></i> Asistent AI</button>
+      <button class="rax-fab insight" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-wand-magic-sparkles"></i> RA Insight</button>
     </div>
-    <button class="rax-fab" id="rax-main-fab" onclick="raxToggleAI()" aria-label="Asistent AI" title="Asistent AI flotă">
-      <i class="fas fa-robot" id="rax-main-icon"></i>
+    <button class="rax-fab insight" id="rax-main-fab" onclick="raxToggleAI()" aria-label="RA Insight" title="RA Insight — asistentul flotei">
+      <i class="fas fa-wand-magic-sparkles" id="rax-main-icon"></i>
     </button>
   </div>
 
@@ -12587,8 +12640,8 @@ const pozitii = await r.json();</code></pre>
     <div class="rax-card" style="max-width:480px;height:78vh;height:78dvh;">
       <div class="rax-head">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div class="rax-av" style="width:34px;height:34px;font-size:15px;"><i class="fas fa-robot"></i></div>
-          <div><h3 style="margin:0;">Asistent RA Tracks</h3><div style="font-size:11px;color:var(--accent);">● online · răspunsuri instant</div></div>
+          <div class="rax-av" style="width:34px;height:34px;font-size:15px;background:var(--purple);color:#160c30;"><i class="fas fa-wand-magic-sparkles"></i></div>
+          <div><h3 style="margin:0;">RA Insight</h3><div style="font-size:11px;color:var(--purple);">● asistentul flotei · live · istoric · alerte</div></div>
         </div>
         <button class="rax-x" onclick="raxToggleAI()">&times;</button>
       </div>
@@ -12867,6 +12920,9 @@ const pozitii = await r.json();</code></pre>
       // FAB redus la UN SINGUR buton rotund = direct Asistent AI. Toate celelalte butoane raman ascunse (#rax-actions e display:none !important).
       // Daca feature-ul ai_assistant e dezactivat -> ascunde tot FAB-ul.
       if (feats.ai_assistant === false) $('rax-fabs').style.display = 'none';
+      // RA Insight (asistentul unificat) răspunde și pe rapoarte → necesită permisiunea viewReports.
+      if (!(me.isSuper || (me.permissions && me.permissions.viewReports))) $('rax-fabs').style.display = 'none';
+      var na = $('nav-agenti'); if (na) na.style.display = (feats.agents !== false && me.permissions && me.permissions.viewReports) ? '' : 'none';
     }
     setInterval(refresh, 4000); refresh();
 
@@ -13038,7 +13094,7 @@ const pozitii = await r.json();</code></pre>
     };
 
     // ── AI ──
-    var SUGG = ['Unde sunt vehiculele acum?', 'Cât au mers azi?', 'Care merge cel mai repede?', 'Sunt vehicule oprite?'];
+    var SUGG = ['Unde sunt vehiculele acum?', 'Ce probleme are flota?', 'Km — săptămâna asta', 'Consum — 30 zile'];
     window.raxToggleAI = function () {
       var ov = $('rax-ai-overlay'); var open = !ov.classList.contains('open');
       ov.classList.toggle('open', open);
@@ -13046,7 +13102,7 @@ const pozitii = await r.json();</code></pre>
       if (open && !$('rax-ai-msgs').dataset.init) {
         $('rax-ai-msgs').dataset.init = '1';
         // Întotdeauna: salut + întrebări rapide (răspund LOCAL, instant, fără tokeni AI)
-        addMsg('ai', 'Salut! Sunt asistentul RA Tracks. Întrebările rapide de mai jos răspund **instant**, fără să consume AI.');
+        addMsg('ai', 'Salut! Sunt **RA Insight** — asistentul flotei tale. Întreabă-mă orice: unde sunt vehiculele **acum**, ce **probleme** are flota, sau analize pe perioadă (km, consum, viteze). Întrebările rapide de mai jos răspund **instant**, fără tokeni.');
         var s = document.createElement('div'); s.className = 'rax-suggest';
         SUGG.forEach(function (t) { var c = document.createElement('span'); c.className = 'rax-chip'; c.textContent = t; c.onclick = function () { $('rax-ai-input').value = t; raxSendAI(); }; s.appendChild(c); });
         var rc = document.createElement('span'); rc.className = 'rax-chip'; rc.style.borderColor = 'var(--accent)'; rc.innerHTML = '📄 Rezumă raportul afișat'; rc.onclick = raxSummarizeVisibleReport; s.appendChild(rc);
@@ -13074,7 +13130,7 @@ const pozitii = await r.json();</code></pre>
     function addMsg(role, text) {
       var row = document.createElement('div'); row.className = 'rax-row ' + role;
       if (role === 'ai') {
-        var av = document.createElement('div'); av.className = 'rax-av'; av.innerHTML = '<i class="fas fa-robot"></i>';
+        var av = document.createElement('div'); av.className = 'rax-av'; av.style.background = 'var(--purple)'; av.style.color = '#160c30'; av.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
         var m = document.createElement('div'); m.className = 'rax-msg ai'; m.innerHTML = raxMd(text);
         row.appendChild(av); row.appendChild(m);
       } else if (role === 'user') {
@@ -13103,11 +13159,30 @@ const pozitii = await r.json();</code></pre>
       inp.value = ''; addMsg('user', msg);
       var thinking = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
       try {
-        var r = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg, history: aiHistory.slice(-6) }) });
+        // RA Insight unificat: „unde/oprite/status" primesc răspuns local gratuit pe server (short-circuit),
+        // restul rulează pe agentul cu unelte (live + istoric + alerte) și întorc și sursele (rapoartele folosite).
+        var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
         var j = await r.json();
         thinking.remove();
         var reply = j.reply || j.error || 'Eroare AI.';
-        addMsg('ai', reply);
+        var row = addMsg('ai', reply);
+        if (row && Array.isArray(j.sources) && j.sources.length) {
+          var bubble = row.querySelector('.rax-msg.ai');
+          if (bubble) {
+            var wrap = document.createElement('div');
+            wrap.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;';
+            j.sources.slice(0, 6).forEach(function (s) {
+              var c = document.createElement('span');
+              c.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--accent);background:rgba(63,224,125,.1);border:1px solid rgba(63,224,125,.28);border-radius:8px;padding:4px 8px;cursor:pointer;';
+              c.innerHTML = '<i class="fas fa-up-right-from-square"></i> ';
+              c.appendChild(document.createTextNode(String(s.label || s.type || 'Raport') + (s.vehicle ? ' · ' + s.vehicle : '')));
+              c.title = 'Deschide Rapoarte';
+              c.onclick = function () { try { raxToggleAI(); } catch (e) {} showView('rapoarte'); };
+              wrap.appendChild(c);
+            });
+            bubble.appendChild(wrap);
+          }
+        }
         aiHistory.push({ role: 'user', content: msg }); aiHistory.push({ role: 'assistant', content: reply });
       } catch (e) { thinking.remove(); addMsg('ai', 'Eroare de rețea: ' + e.message); }
     };
@@ -16043,6 +16118,112 @@ const pozitii = await r.json();</code></pre>
     window.raxLoadCompanies = raxLoadCompanies; window.raxLoadUnassigned = raxLoadUnassigned;
     window.raxLoadAccounts = raxLoadAccounts; window.raxLoadTacho = raxLoadTacho; window.raxLoadEt = raxLoadEt;
     window.raxReload = function () { raxLoadFindings(); raxRefreshAgBadge(); };
+
+    // ─── Pagina „Agenți AI" (client-facing) + launcher RA Insight ───
+    var AGP_META = {
+      watch:      { name: 'RA Watch',      icon: 'fa-shield-halved',   tile: 'ag-t-green',  role: 'Paznic 24/7',    desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.' },
+      dispatch:   { name: 'RA Dispatch',   icon: 'fa-compass',         tile: 'ag-t-blue',   role: 'Dispecerat',     desc: 'Vehicule disponibile acum și cele subutilizate în ziua curentă.' },
+      care:       { name: 'RA Care',       icon: 'fa-wrench',          tile: 'ag-t-orange', role: 'Mentenanță',     desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.' },
+      optimize:   { name: 'RA Optimize',   icon: 'fa-leaf',            tile: 'ag-t-green',  role: 'Eco-driving',    desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.' },
+      compliance: { name: 'RA Compliance', icon: 'fa-clipboard-check', tile: 'ag-t-purple', role: 'Ore de condus',  desc: 'Condus continuu și zilnic, estimat din GPS (Reg. 561).' },
+      client:     { name: 'RA Client',     icon: 'fa-file-lines',      tile: 'ag-t-grey',   role: 'Digest zilnic',  desc: 'Un rezumat pe zi al flotei: km, vehicule active, cel mai activ.' }
+    };
+    var AGP_ORDER = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
+    var _agpLast = {};
+    function _agpEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function _agpAgo(ts) {
+      var t = new Date(ts).getTime(); if (!t) return '';
+      var s = Math.max(0, (Date.now() - t) / 1000);
+      if (s < 90) return 'acum';
+      if (s < 3600) return 'acum ' + Math.round(s / 60) + 'm';
+      if (s < 86400) return 'acum ' + Math.round(s / 3600) + 'h';
+      return new Date(ts).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' });
+    }
+    function _agpSevCol(s) { return s === 'critical' ? 'var(--red)' : (s === 'warning' ? 'var(--orange)' : 'var(--accent)'); }
+    window.renderAgentsPage = async function () {
+      var host = $('agenti-view'); if (!host) return;
+      host.innerHTML = '<div class="modal" style="width:1060px;max-width:96vw;max-height:92vh;">'
+        + '<h2><span><i class="fas fa-shield-halved" style="margin-right:8px;color:var(--accent);"></i> Agenți AI</span>'
+        + '<button class="close-btn" onclick="showView(\'localizare\')" style="position:static;font-size:18px;">&#10005;</button></h2>'
+        + '<div class="agp-wrap" id="agp-body"><div class="rax-co-meta" style="padding:24px;text-align:center;"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div></div></div>';
+      var body = $('agp-body'); if (!body) return;
+      var enabled = null, findings = [];
+      try { var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); enabled = ag && ag.enabledKeys; } catch (e) {}
+      try { var fl = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); }); if (Array.isArray(fl)) findings = fl; } catch (e) {}
+      var keys = (Array.isArray(enabled) ? enabled : AGP_ORDER).filter(function (k) { return AGP_META[k]; });
+      keys.sort(function (a, b) { return AGP_ORDER.indexOf(a) - AGP_ORDER.indexOf(b); });
+
+      var byAgent = {}, totNew = 0, cCrit = 0, cWarn = 0, cInfo = 0;
+      _agpLast = {};
+      findings.forEach(function (f) {
+        if (f.status && f.status !== 'new') return;
+        totNew++;
+        if (f.severity === 'critical') cCrit++; else if (f.severity === 'warning') cWarn++; else cInfo++;
+        (byAgent[f.agent] = byAgent[f.agent] || []).push(f);
+      });
+
+      if (!keys.length) {
+        body.innerHTML = '<div class="agp-note"><i class="fas fa-info-circle"></i> <span>Niciun agent activ pe planul tău. Agenții operaționali sunt incluși în planurile Premium și Enterprise — scrie-ne pentru upgrade.</span></div>';
+        return;
+      }
+
+      var model = '<div class="agp-model">'
+        + '<div class="agp-h g"><div class="agp-tile"><i class="fas fa-shield-halved"></i></div><div><div class="agp-k">Agenții veghează</div><b>Automat, în fundal</b><p>Verifică flota periodic și ridică alerte. Gratuit — rulează pe reguli, fără tokeni AI.</p></div></div>'
+        + '<div class="agp-h p"><div class="agp-tile"><i class="fas fa-wand-magic-sparkles"></i></div><div><div class="agp-k">RA Insight răspunde</div><b>La cerere, când vrei</b><p>Un singur asistent pe care-l întrebi orice.</p><button class="btn-sm" style="background:var(--purple);color:#160c30;border:none;font-weight:800;" onclick="insightAsk(\'Ce probleme are flota?\')"><i class="fas fa-wand-magic-sparkles"></i> Deschide RA Insight</button></div></div>'
+        + '</div>';
+
+      var chips = '<div class="agp-chips">'
+        + '<span class="agp-chip"><b>' + totNew + '</b> constatări noi</span>'
+        + (cCrit ? '<span class="agp-chip"><span class="d" style="background:var(--red)"></span><b>' + cCrit + '</b> critice</span>' : '')
+        + (cWarn ? '<span class="agp-chip"><span class="d" style="background:var(--orange)"></span><b>' + cWarn + '</b> avertismente</span>' : '')
+        + (cInfo ? '<span class="agp-chip"><span class="d" style="background:var(--accent)"></span><b>' + cInfo + '</b> informative</span>' : '')
+        + '</div>';
+
+      var cards = keys.map(function (k) {
+        var m = AGP_META[k];
+        var fs = (byAgent[k] || []).slice().sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        var last = fs[0];
+        _agpLast[k] = last ? (last.title || '') : null;
+        var findingHtml = last
+          ? '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">' + _agpEsc(last.title) + ' <span class="tm">· ' + _agpAgo(last.created_at) + '</span></span></div>'
+          : '<div class="agp-find"><span class="fd" style="background:var(--accent)"></span><span class="ft" style="color:var(--text-muted)"><i class="fas fa-check" style="color:var(--accent)"></i> Nimic de semnalat</span></div>';
+        var nNew = (byAgent[k] || []).length;
+        var cntHtml = nNew
+          ? '<span class="cnt"><span class="d" style="width:7px;height:7px;border-radius:50%;background:' + _agpSevCol(last ? last.severity : 'info') + ';display:inline-block"></span>' + nNew + ' ' + (nNew === 1 ? 'constatare' : 'constatări') + '</span>'
+          : '<span class="cnt" style="color:var(--accent)"><i class="fas fa-check"></i> în regulă</span>';
+        return '<div class="agp-card">'
+          + '<div class="agp-ch"><div class="agp-ct ' + m.tile + '"><i class="fas ' + m.icon + '"></i></div>'
+          + '<div><div class="agp-an">' + m.name + '</div><div class="agp-role">' + m.role + '</div></div>'
+          + '<span class="agp-status">activ</span></div>'
+          + '<div class="agp-desc">' + m.desc + '</div>'
+          + '<div class="agp-sep"></div>' + findingHtml
+          + '<div class="agp-cf">' + cntHtml + '<a onclick="agpExplain(\'' + k + '\')">' + (last ? 'Explică-mi →' : 'Întreabă →') + '</a></div>'
+          + '</div>';
+      }).join('');
+
+      body.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
+        + '<div class="agp-sub" style="margin:0;flex:1;min-width:200px;">Echipa ta de agenți care monitorizează flota automat. Pentru întrebări, folosește asistentul RA Insight.</div>'
+        + '<button class="btn-sm" id="agp-run" onclick="agPageRun()"><i class="fas fa-bolt" style="color:var(--accent)"></i> Rulează acum</button></div>'
+        + model + chips + '<div class="agp-grid">' + cards + '</div>'
+        + '<div class="agp-note"><i class="fas fa-wand-magic-sparkles"></i> <span>Agenții sunt <b style="color:var(--text-primary)">gratuiți</b> și veghează singuri. Vrei o explicație sau un plan de acțiune? Apasă „Explică-mi" pe o constatare — o preia <b style="color:var(--purple)">RA Insight</b>.</span></div>';
+    };
+    window.agPageRun = async function () {
+      var btn = $('agp-run'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se analizează…'; }
+      try { await fetch('/api/agents/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ agent: 'all', companyId: window.gSuperCompany || undefined }) }).then(function (r) { return r.json(); }); } catch (e) {}
+      try { raxRefreshAgBadge(); } catch (e) {}
+      renderAgentsPage();
+    };
+    window.agpExplain = function (k) {
+      var t = _agpLast[k];
+      var m = AGP_META[k] || { name: k };
+      insightAsk(t ? ('Explică-mi această constatare și ce ar trebui să fac: ' + t) : ('Cum stă „' + m.name + '" pentru flota mea acum?'));
+    };
+    // Launcher unic RA Insight — deschide asistentul și (opțional) trimite o întrebare.
+    window.insightAsk = function (prefill) {
+      var ov = $('rax-ai-overlay');
+      if (ov && !ov.classList.contains('open')) { try { raxToggleAI(); } catch (e) {} }
+      setTimeout(function () { var inp = $('rax-ai-input'); if (inp) { inp.value = prefill || ''; if (prefill) { try { raxSendAI(); } catch (e) {} } inp.focus(); } }, 160);
+    };
 
     // ── Abonament (facturare) ──
     window.raxOpenSub = async function () {

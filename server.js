@@ -2025,6 +2025,29 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
   try {
     const message = ((req.body && req.body.message) || '').toString().slice(0, 2000).trim();
     if (!message) return res.status(400).json({ error: 'Mesaj gol' });
+
+    // Întrebări rapide (live) → răspuns LOCAL instant, GRATUIT (zero tokeni), înainte de agentul plătit.
+    // Face din RA Insight un singur asistent: „unde/oprite/cel mai rapid/status" nu costă tokeni, restul merg pe agent.
+    try {
+      if (fleetQuick) {
+        const intent = fleetQuick.detectIntent(message);
+        if (intent) {
+          const snap = _fleetSnapshot(req);
+          try { if (geocode) await geocode.warm(snap.map(v => ({ lat: Number(v.lat), lng: Number(v.lng) }))); } catch (e) {}
+          for (const v of snap) { try { const lbl = geocode ? geocode.peek(Number(v.lat), Number(v.lng)) : null; if (lbl) v.locatie = lbl; } catch (e) {} delete v.lat; delete v.lng; }
+          let todayQ = [];
+          try {
+            const imeisQ = (await db.getDevices()).map(d => d.imei).filter(imei => canAccessImei(req, imei));
+            const fq = new Date(); fq.setHours(0, 0, 0, 0);
+            todayQ = await db.getTripsSummaryForImeis(imeisQ, fq.toISOString(), new Date().toISOString());
+          } catch (e) { /* fără sumar curse */ }
+          const aq = fleetQuick.answer(intent, { snapshot: snap, today: todayQ, now: Date.now() });
+          auditReq(req, 'ai_local', 'assistant', null, { intent, via: 'insight' });
+          return res.json({ reply: aq.reply, sources: [], source: 'local' });
+        }
+      }
+    } catch (e) { /* dacă euristica pică, continuăm pe agentul AI */ }
+
     if (!ai.aiEnabled()) return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
     if (await aiLimitReached(req.companyId)) return res.json({ reply: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
 
