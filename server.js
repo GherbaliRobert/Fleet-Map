@@ -6033,7 +6033,8 @@ async function evaluateUserEvents(imei, data, prev) {
     const cf = (typeof io.fuel_level_liters === 'number') ? io.fuel_level_liters : io.can_fuel_level_liters;
     if (typeof pf === 'number' && typeof cf === 'number') {
       const drop = pf - cf;
-      if (drop >= 2) cand.push({ type: 'fuel_drop', mag: drop, body: `Scădere ${drop.toFixed(1)} L (${pf} → ${cf} L)` });
+      if (drop >= 2) cand.push({ type: 'fuel_drop', mag: drop, body: `Scădere ${drop.toFixed(1)} L (${pf} → ${cf} L)`,
+        extra: { alertType: 'fuel_drop', fromL: Math.round(pf * 10) / 10, toL: Math.round(cf * 10) / 10, drop: Math.round(drop * 10) / 10 } }); // → detaliul arată de la cât la cât + cantitatea
     }
     if (speed >= 50) cand.push({ type: 'overspeed', mag: speed, body: `Viteză ${speed} km/h` });
     if (typeof io.can_engine_temp === 'number' && io.can_engine_temp >= 80) cand.push({ type: 'engine_temp', mag: io.can_engine_temp, body: `Temperatură motor ${io.can_engine_temp}°C` });
@@ -6640,6 +6641,30 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
           fuelL: _fuelL != null ? Math.round(_fuelL * 10) / 10 : null,
           fuelEstimated: _fuelEst,
         };
+      }
+      // Scădere/furt combustibil: de la X L → la Y L + cantitatea (din alertData; la notificările vechi, parsat din text)
+      if ((n.data || {}).alertType === 'fuel_theft' || (n.data || {}).alertType === 'fuel_drop'
+        || /scădere\s*(?:combustibil\s*)?[\d.,]+\s*l\b/i.test(String(n.body || ''))) {
+        const dd = n.data || {};
+        let fromL = Number(dd.fromL), toL = Number(dd.toL), drop = Number(dd.drop);
+        // Alerta configurabilă „fuel_drop" (evaluateAlerts) salvează nivelurile ca previousLevel/currentLevel, nu fromL/toL.
+        if (!Number.isFinite(fromL) && Number.isFinite(Number(dd.previousLevel))) fromL = Number(dd.previousLevel);
+        if (!Number.isFinite(toL) && Number.isFinite(Number(dd.currentLevel))) toL = Number(dd.currentLevel);
+        const _b = String(n.body || '');
+        if (!Number.isFinite(fromL) || !Number.isFinite(toL)) {
+          const m = _b.match(/de la\s*([\d.,]+)\s*l\s*la\s*([\d.,]+)\s*l/i) || _b.match(/\(\s*([\d.,]+)\s*→\s*([\d.,]+)\s*l\s*\)/i);
+          if (m) { fromL = parseFloat(m[1].replace(',', '.')); toL = parseFloat(m[2].replace(',', '.')); }
+        }
+        if (!Number.isFinite(drop)) { const m = _b.match(/scădere\s*(?:combustibil\s*)?([\d.,]+)\s*l/i); if (m) drop = parseFloat(m[1].replace(',', '.')); }
+        if (!Number.isFinite(drop) && Number.isFinite(fromL) && Number.isFinite(toL)) drop = fromL - toL;
+        if (Number.isFinite(drop) || Number.isFinite(fromL)) {
+          out.fuel = {
+            fromL: Number.isFinite(fromL) ? Math.round(fromL * 10) / 10 : null,
+            toL: Number.isFinite(toL) ? Math.round(toL * 10) / 10 : null,
+            drop: Number.isFinite(drop) ? Math.round(drop * 10) / 10 : null,
+            mode: dd.mode || null,
+          };
+        }
       }
     }
     res.json(out);

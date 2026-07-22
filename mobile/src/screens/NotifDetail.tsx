@@ -47,8 +47,10 @@ export function NotifDetail() {
 
   // Ralanti: hartă + câmpuri diferite (loc + interval staționare, nu panglică de viteză). Discriminator = alertType.
   const isIdle = !!d && (!!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idl/i.test((d.title || '') + ' ' + (d.body || ''))); // „idl" prinde și „idle" și „Idling" (titlurile RA Watch vechi)
-  // Limita legală a drumului (OSM) — DOAR la alerte de viteză (nu la idle etc.). Async; punct dublat (endpoint cere ≥2).
-  const isSpeeding = !!d && !isIdle && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || ''));
+  // Scădere/furt combustibil → loc + de la/la + cantitate (nu panglică de viteză). Discriminator = alertType sau textul.
+  const isFuel = !!d && !isIdle && (!!(d.data && (d.data.alertType === 'fuel_theft' || d.data.alertType === 'fuel_drop')) || /scădere\s*(?:combustibil\s*)?[\d.,]+\s*l\b|furt combustibil/i.test((d.title || '') + ' ' + (d.body || '')));
+  // Limita legală a drumului (OSM) — DOAR la alerte de viteză (nu la idle/combustibil etc.). Async; punct dublat (endpoint cere ≥2).
+  const isSpeeding = !!d && !isIdle && !isFuel && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || ''));
   useEffect(() => {
     if (!d || !d.event || !isSpeeding) return;
     Api.roadLimits([[d.event.lat, d.event.lng], [d.event.lat, d.event.lng]]).then((x: any) => {
@@ -77,6 +79,16 @@ export function NotifDetail() {
         L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m);
         m.setView(ev, 17); // zoom mare — să se vadă EXACT locul staționării
         setTimeout(() => { try { m.invalidateSize(); m.setView(ev, 17); } catch { /* */ } }, 160);
+        mapRef.current = m;
+        return cleanup;
+      }
+
+      // Scădere/furt combustibil: DOAR locul scăderii (marker + rază) — fără panglică de viteză (irelevantă pentru furt/scurgere).
+      if (isFuel) {
+        L.circle(ev, { radius: 45, color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12 }).addTo(m);
+        L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m);
+        m.setView(ev, 16);
+        setTimeout(() => { try { m.invalidateSize(); m.setView(ev, 16); } catch { /* */ } }, 160);
         mapRef.current = m;
         return cleanup;
       }
@@ -182,7 +194,7 @@ export function NotifDetail() {
               <span style={'width:11px;height:11px;border-radius:50%;flex-shrink:0;background:' + sevC} />
               <div style="font-size:16px;font-weight:700;line-height:1.3">{d.title || d.type}</div>
             </div>
-            {d.body && !isIdle && <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">{d.body}</div>}
+            {d.body && !isIdle && !(isFuel && d.fuel) && <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">{d.body}</div>}
             {d.event
               ? <div ref={mapEl} style="height:280px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--bg-dark);margin-bottom:12px" />
               : <div class="adm-empty" style="padding:24px">Fără poziție GPS pentru acest eveniment.</div>}
@@ -203,8 +215,14 @@ export function NotifDetail() {
               {isIdle && d.idle && d.idle.fuelL != null ? (
                 <div class="adm-kv"><span class="k">Carburant irosit pe staționare</span><span style="font-weight:700">{(d.idle.fuelEstimated ? '~' : '') + String(d.idle.fuelL).replace('.', ',') + ' L' + (d.idle.fuelEstimated ? ' (estimat)' : ' (senzor)')}</span></div>
               ) : null}
-              {!isIdle && d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
-              {!isIdle && d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
+              {isFuel && d.fuel && d.fuel.fromL != null && d.fuel.toL != null ? (
+                <div class="adm-kv"><span class="k">Nivel combustibil</span><span style="font-weight:700">{String(d.fuel.fromL).replace('.', ',')} L → {String(d.fuel.toL).replace('.', ',')} L</span></div>
+              ) : null}
+              {isFuel && d.fuel && d.fuel.drop != null ? (
+                <div class="adm-kv"><span class="k">Cantitate scăzută</span><span style="color:var(--red);font-weight:800">−{String(d.fuel.drop).replace('.', ',')} L{d.fuel.mode ? (d.fuel.mode === 'parked' ? ' (cât a stat oprit)' : ' (în mers)') : ''}</span></div>
+              ) : null}
+              {!isIdle && !isFuel && d.event && d.event.speed != null ? <div class="adm-kv"><span class="k">Viteză în acel moment</span><span style={d.event.speed >= (d.maxSpeed || 999) ? 'color:var(--red);font-weight:700' : ''}>{d.event.speed} km/h</span></div> : null}
+              {!isIdle && !isFuel && d.maxSpeed ? <div class="adm-kv"><span class="k">Viteză maximă pe segment</span><span>{d.maxSpeed} km/h</span></div> : null}
               {d.event && d.event.address ? <div class="adm-kv"><span class="k">Locație</span><span style="text-align:right;max-width:60%">{d.event.address}</span></div> : null}
               {d.event && isSpeeding ? <div class="adm-kv"><span class="k">Limită drum (OSM)</span><span style={(rl != null && osmRef > rl) ? 'color:var(--red);font-weight:700' : ''}>{rl === undefined ? 'se verifică…' : rl == null ? 'necunoscută' : (rl + ' km/h' + (rlEst ? ' (est.)' : '') + (osmRef > rl ? ' · +' + (osmRef - rl) : ''))}</span></div> : null}
             </div>

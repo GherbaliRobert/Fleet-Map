@@ -6582,7 +6582,8 @@ const pozitii = await r.json();</code></pre>
       if (d.type === 'report_ready' || d.type === 'report_error') { closeNotifDetail(); notifOpenReport((d.data && d.data.historyId != null) ? d.data.historyId : ''); return; }
       var sevMap = { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444' }, sevC = sevMap[d.severity] || '#3b82f6';
       var isIdle = !!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idl/i.test((d.title || '') + ' ' + (d.body || '')); // ralanti → loc + interval, nu panglică de viteză
-      var isSpeeding = !isIdle && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || '')); // limita OSM DOAR la alerte de viteză (nu la idle etc.)
+      var isFuel = !isIdle && ((d.data && (d.data.alertType === 'fuel_theft' || d.data.alertType === 'fuel_drop')) || /scădere\s*(?:combustibil\s*)?[\d.,]+\s*l\b|furt combustibil/i.test((d.title || '') + ' ' + (d.body || ''))); // scădere/furt combustibil → loc + de la/la + cantitate
+      var isSpeeding = !isIdle && !isFuel && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || '')); // limita OSM DOAR la alerte de viteză (nu la idle/combustibil etc.)
       var rows = [];
       rows.push(['Vehicul', esc(d.vehicle || d.imei || '—')]);
       rows.push(['Când', new Date(d.at).toLocaleString('ro-RO')]);
@@ -6600,15 +6601,19 @@ const pozitii = await r.json();</code></pre>
           rows.push(['Carburant irosit pe staționare', '<b>' + (d.idle.fuelEstimated ? '~' : '') + String(d.idle.fuelL).replace('.', ',') + ' L</b> <span style="color:var(--text-muted);font-size:11px;">' + (d.idle.fuelEstimated ? '(estimat, ~1,5 L/h)' : '(senzor)') + '</span>']);
         }
       }
-      if (!isIdle && d.event && d.event.speed != null) rows.push(['Viteză în acel moment', '<b style="color:' + (d.event.speed >= (d.maxSpeed || 999) ? '#ef4444' : 'inherit') + '">' + d.event.speed + ' km/h</b>']);
-      if (!isIdle && d.maxSpeed) rows.push(['Viteză maximă pe segment', d.maxSpeed + ' km/h']);
+      if (isFuel && d.fuel) { // scădere combustibil: de la cât la cât + cantitatea
+        if (d.fuel.fromL != null && d.fuel.toL != null) rows.push(['Nivel combustibil', '<b>' + String(d.fuel.fromL).replace('.', ',') + ' L</b> → <b>' + String(d.fuel.toL).replace('.', ',') + ' L</b>']);
+        if (d.fuel.drop != null) rows.push(['Cantitate scăzută', '<b style="color:#ef4444;">−' + String(d.fuel.drop).replace('.', ',') + ' L</b>' + (d.fuel.mode ? ' <span style="color:var(--text-muted);font-size:11px;">(' + (d.fuel.mode === 'parked' ? 'cât a stat oprit' : 'în mers') + ')</span>' : '')]);
+      }
+      if (!isIdle && !isFuel && d.event && d.event.speed != null) rows.push(['Viteză în acel moment', '<b style="color:' + (d.event.speed >= (d.maxSpeed || 999) ? '#ef4444' : 'inherit') + '">' + d.event.speed + ' km/h</b>']);
+      if (!isIdle && !isFuel && d.maxSpeed) rows.push(['Viteză maximă pe segment', d.maxSpeed + ' km/h']);
       if (d.event && d.event.address) rows.push(['Locație', esc(d.event.address)]);
       if (d.event) rows.push(['Coordonate', d.event.lat.toFixed(5) + ', ' + d.event.lng.toFixed(5) + ' &nbsp;<a href="https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Google Maps</a> · <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Street View</a>']);
       if (d.event && isSpeeding) rows.push(['Limită drum (OSM)', '<span id="notif-rl" style="color:var(--text-muted);">se verifică…</span>']);
       var detailHtml = rows.map(function (r) { return '<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--text-muted);flex-shrink:0;">' + r[0] + '</span><span style="font-weight:600;text-align:right;">' + r[1] + '</span></div>'; }).join('');
       body.innerHTML =
         '<div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;"><span style="width:11px;height:11px;border-radius:50%;flex-shrink:0;background:' + sevC + ';"></span><div style="font-size:15.5px;font-weight:700;">' + esc(d.title || d.type) + '</div></div>' +
-        (d.body && !isIdle ? '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">' + esc(d.body) + '</div>' : '') +
+        (d.body && !isIdle && !(isFuel && d.fuel) ? '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">' + esc(d.body) + '</div>' : '') +
         '<div id="notif-detail-map" style="height:300px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg-dark);margin-bottom:12px;"></div>' +
         detailHtml +
         (!d.event ? '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Fără poziție GPS pentru acest eveniment.</div>' : '') +
@@ -6635,6 +6640,16 @@ const pozitii = await r.json();</code></pre>
             L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m).bindPopup('Staționare cu motor pornit');
             m.setView(ev, 17); // zoom mare — exact locul staționării
             setTimeout(function () { try { m.invalidateSize(); m.setView(ev, 17); } catch (e) {} }, 130);
+            _notifDetailMap = m;
+            return;
+          }
+
+          // Scădere/furt combustibil: DOAR locul scăderii (marker + rază) — fără panglică de viteză (irelevantă pentru furt/scurgere).
+          if (isFuel) {
+            L.circle(ev, { radius: 45, color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: .12 }).addTo(m);
+            L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m).bindPopup('Scădere combustibil' + (d.fuel && d.fuel.drop != null ? ': −' + String(d.fuel.drop).replace('.', ',') + ' L' : ''));
+            m.setView(ev, 16);
+            setTimeout(function () { try { m.invalidateSize(); m.setView(ev, 16); } catch (e) {} }, 130);
             _notifDetailMap = m;
             return;
           }
