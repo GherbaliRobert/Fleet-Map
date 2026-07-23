@@ -5891,8 +5891,11 @@ const pozitii = await r.json();</code></pre>
       try {
         const res = await fetch('/api/report-schedules/' + id + '/run', { method: 'POST', credentials: 'same-origin' });
         const d = await res.json(); if (!res.ok) throw new Error(d.error || 'Eroare');
-        msg.style.color = d.emailSent ? 'var(--accent)' : 'var(--orange)';
-        msg.textContent = d.emailSent ? ('Trimis ✓ (' + d.rows + ' rânduri)') : ('Generat (' + d.rows + ' rânduri), dar emailul nu e configurat (SMTP)');
+        try { loadReportHistory(); } catch (e) {}  // raportul tocmai s-a salvat în Istoric → reîmprospătează lista
+        try { schedLoad(); } catch (e) {}           // actualizează „Ultima rulare"
+        var mailPart = d.emailSent ? ' · trimis pe email ✓' : ' · emailul nu e configurat (SMTP)';
+        msg.style.color = d.historyId ? 'var(--accent)' : 'var(--orange)';
+        msg.textContent = 'Generat (' + d.rows + ' rânduri)' + (d.historyId ? ' · salvat în Istoric ✓' : ' · NU s-a salvat în Istoric') + mailPart;
       } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
     }
     function renderReport(data) {
