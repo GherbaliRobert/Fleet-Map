@@ -5847,11 +5847,12 @@ const pozitii = await r.json();</code></pre>
             '<div class="sch-chips">' +
               '<span class="sch-chip"><i class="fas fa-file-lines"></i>' + E(RLBL(s.report_type)) + '</span>' +
               '<span class="sch-chip"><i class="fas fa-repeat"></i>' + (FREQ[s.frequency] || s.frequency) + '</span>' +
-              '<span class="sch-chip"><i class="far fa-clock"></i>' + String(s.hour).padStart(2, '0') + ':00 UTC</span>' +
+              '<span class="sch-chip"><i class="far fa-clock"></i>' + String(s.hour).padStart(2, '0') + ':00</span>' +
               '<span class="sch-chip"><i class="far fa-file"></i>' + (s.format || 'pdf').toUpperCase() + '</span>' +
               '<span class="sch-chip"><i class="fas fa-car"></i>' + (s.imei ? E(vmap[s.imei] || s.imei) : 'Toată flota') + '</span>' +
             '</div>' +
             '<div class="sch-next"><i class="far fa-calendar"></i> Următoarea: <b>' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—') + '</b> &nbsp;·&nbsp; <i class="far fa-envelope"></i> ' + E(s.recipients || 'emailul creatorului') + '</div>' +
+            '<div class="sch-next"><i class="far fa-calendar-check"></i> Ultima rulare: <b>' + (s.last_run ? new Date(s.last_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '— încă n-a rulat') + '</b></div>' +
           '</div>' +
           '<div class="sch-acts">' +
             '<button class="sch-iconbtn" onclick="schedRunNow(' + s.id + ')" title="Trimite acum"><i class="fas fa-paper-plane"></i></button>' +

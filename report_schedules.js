@@ -107,7 +107,7 @@ async function runSchedule(s, deps, now) {
       expires_at: new Date(now.getTime() + 7 * 24 * 3600 * 1000).toISOString()
     });
     historyId = saved && saved.id;
-  } catch (e) { /* istoricul nu trebuie să rupă rularea/emailul */ }
+  } catch (e) { try { console.warn('[PROGRAMĂRI] salvare în Istoric eșuată (schedule ' + s.id + '):', e && e.message); } catch (_) {} }
 
   let recips = (s.recipients || '').split(/[,;\s]+/).map(x => x.trim()).filter(Boolean);
   if (!recips.length && s.user_id) {
