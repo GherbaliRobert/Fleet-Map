@@ -2831,16 +2831,19 @@ async function setScheduleRun(id, lastRunIso, nextRunIso) {
 // JSON.stringify rezistent la referințe circulare / valori non-serializabile — altfel un raport „problematic"
 // făcea INSERT-ul să pice și nu ajungea în Istoric (mai ales rapoartele programate).
 function _safeJson(o) {
-  try { return JSON.stringify(o); } catch (e) {
+  let s;
+  try { s = JSON.stringify(o); } catch (e) {
     const seen = new WeakSet();
     try {
-      return JSON.stringify(o, function (k, v) {
+      s = JSON.stringify(o, function (k, v) {
         if (typeof v === 'bigint') return String(v);
         if (typeof v === 'object' && v !== null) { if (seen.has(v)) return undefined; seen.add(v); }
         return v;
       });
     } catch (e2) { return '{}'; }
   }
+  // Postgres JSONB respinge  (null bytes) în stringuri → altfel INSERT-ul pică. Le eliminăm.
+  return s ? s.replace(/\\u0000/g, '') : '{}';
 }
 async function saveReportHistory(h) {
   // Fără dedup: fiecare generare din UI = un rând nou în istoric (se păstrează toate, până la expirarea de 7 zile).
