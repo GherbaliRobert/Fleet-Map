@@ -13,7 +13,9 @@ const THRESHOLDS = [
   { k: 'fuelTheftL', label: 'Furt combustibil — prag (L)', sub: 'RA Watch', min: 1, max: 1000 },
   { k: 'idleMaxMin', label: 'Ralanti prelungit (min)', sub: 'RA Watch', min: 5, max: 1440 },
   { k: 'ecoScoreMin', label: 'Scor minim eco-driving', sub: 'RA Optimize', min: 0, max: 100 },
-  { k: 'serviceSoonKm', label: 'Km până la service', sub: 'RA Care', min: 100, max: 50000 },
+  { k: 'serviceSoonKm', label: 'Km până la service (bord/CAN)', sub: 'RA Care', min: 100, max: 50000 },
+  { k: 'careDaysLead', label: 'Avertisment scadențe (zile înainte)', sub: 'RA Care + push', min: 1, max: 365 },
+  { k: 'careKmLead', label: 'Avertisment scadențe (km înainte)', sub: 'RA Care + push', min: 50, max: 50000 },
 ];
 
 export function Settings() {

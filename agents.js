@@ -228,23 +228,38 @@ async function raWatch(ctx) {
 }
 
 // ─── RA Care — mentenanță predictivă (revizii, ITP, asigurări) ───
+// Praguri UNIFICATE cu canalul push (checkExpiries): careDaysLead (def 14 zile) + careKmLead (def 500 km),
+// configurabile per companie. serviceSoonKm rămâne DOAR pentru distanța-până-la-service din bord (CAN).
 async function raCare(ctx) {
   const { db, imeis, livePositions, companyId } = ctx; const findings = []; const now = Date.now(); const DAY = 86400000;
   const thresholds = (ctx && ctx.alertThresholds) || {};
   const serviceSoonKm = Number.isFinite(thresholds.serviceSoonKm) && thresholds.serviceSoonKm > 0 ? thresholds.serviceSoonKm : SERVICE_SOON_KM;
+  const daysLead = Number.isFinite(thresholds.careDaysLead) && thresholds.careDaysLead > 0 ? thresholds.careDaysLead : 14;
+  const kmLead = Number.isFinite(thresholds.careKmLead) && thresholds.careKmLead > 0 ? thresholds.careKmLead : 500;
+  // Documentele vehiculelor (ITP/RCA/rovinietă…) — o singură citire per rulare, grupate pe imei.
+  const docsByImei = new Map();
+  try {
+    const docs = await db.getVehicleDocuments(null, companyId == null ? null : companyId);
+    for (const d of (docs || [])) { if (!d.imei) continue; if (!docsByImei.has(d.imei)) docsByImei.set(d.imei, []); docsByImei.get(d.imei).push(d); }
+  } catch (e) {}
   for (const imei of imeis) {
     const live = livePositions.get(imei); const name = nameOf(live, imei);
+    // Vechimea odometrului: CAN „sticky" (carry-forward) sau poziție mai veche de 48h → etichetăm estimările pe km.
+    const posMs = live && live.timestamp ? new Date(live.timestamp).getTime() : null;
+    const odoStale = !!(live && (live.can_stale || (posMs && (now - posMs) > 48 * 3600 * 1000)));
+    const staleNote = odoStale ? ' Odometru din ' + roDate(live.can_snapshot_ts || live.timestamp) + ' (vehicul fără date recente).' : '';
 
     // 1) Distanță până la service din CAN (dacă vehiculul o expune)
     const dts = live ? num(io(live).can_distance_to_service) : null;
     if (dts != null) {
-      if (dts <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_service_' + imei, title: name + ': service DEPĂȘIT cu ' + Math.round(-dts) + ' km', body: 'Vehiculul a depășit intervalul de revizie indicat de bord. Programează service-ul urgent.' });
-      else if (dts <= serviceSoonKm) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_service_' + imei, title: name + ': revizie în ' + Math.round(dts) + ' km', body: 'Se apropie intervalul de service (prag ' + Math.round(serviceSoonKm) + ' km). Programează din timp.' });
+      if (dts <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_service_' + imei, title: name + ': service DEPĂȘIT cu ' + Math.round(-dts) + ' km', body: 'Vehiculul a depășit intervalul de revizie indicat de bord. Programează service-ul urgent.' + staleNote });
+      else if (dts <= serviceSoonKm) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_service_' + imei, title: name + ': revizie în ' + Math.round(dts) + ' km', body: 'Se apropie intervalul de service (prag ' + Math.round(serviceSoonKm) + ' km). Programează din timp.' + staleNote });
     }
 
-    // 2) Înregistrări de mentenanță (ITP, asigurare, revizie) — pe dată sau pe km
+    // 2) Înregistrări de mentenanță (revizie, distribuție…) — pe dată sau pe km
     let recs = []; try { recs = await db.getMaintenance(imei, companyId == null ? null : companyId); } catch (e) { recs = []; }
     const odo = live ? odoKm(live) : null;
+    let hasKmDue = false;
     for (const m of recs) {
       const st = (m.status || '').toLowerCase();
       if (st === 'done' || st === 'completed' || m.done_date) continue;
@@ -252,13 +267,27 @@ async function raCare(ctx) {
       if (m.due_date) {
         const days = Math.ceil((new Date(m.due_date).getTime() - now) / DAY);
         if (days <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_due_' + m.id, title: name + ': ' + tlabel + ' scadent', body: (m.description ? m.description + '. ' : '') + 'Termen depășit (' + roDate(m.due_date) + ').' });
-        else if (days <= 30) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_due_' + m.id, title: name + ': ' + tlabel + ' expiră în ' + days + ' zile', body: (m.description ? m.description + '. ' : '') + 'Scadent la ' + roDate(m.due_date) + '.' });
+        else if (days <= daysLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_due_' + m.id, title: name + ': ' + tlabel + ' expiră în ' + days + (days === 1 ? ' zi' : ' zile'), body: (m.description ? m.description + '. ' : '') + 'Scadent la ' + roDate(m.due_date) + '.' });
       }
-      if (m.due_km && odo != null) {
-        const left = m.due_km - odo;
-        if (left <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' — km depășiți', body: 'Odometru ' + Math.round(odo) + ' km ≥ scadență ' + m.due_km + ' km.' });
-        else if (left <= serviceSoonKm) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' în ' + Math.round(left) + ' km', body: 'Programează service-ul din timp (prag ' + Math.round(serviceSoonKm) + ' km).' });
+      if (m.due_km) {
+        hasKmDue = true;
+        if (odo != null) {
+          const left = m.due_km - odo;
+          if (left <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' — km depășiți', body: 'Odometru ' + Math.round(odo) + ' km ≥ scadență ' + m.due_km + ' km.' + staleNote });
+          else if (left <= kmLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' în ' + Math.round(left) + ' km', body: 'Programează service-ul din timp (prag ' + Math.round(kmLead) + ' km).' + staleNote });
+        }
       }
+    }
+    // Scadență pe km dar FĂRĂ odometru → altfel ar fi nesupravegheată în tăcere.
+    if (hasKmDue && odo == null) findings.push({ imei, severity: 'info', agent: 'care', fkey: 'care_km_nosrc_' + imei, title: name + ': scadență pe km nesupravegheată', body: 'Există mentenanță cu scadență pe kilometri, dar vehiculul nu transmite odometru (CAN). Verifică interfața CAN sau folosește scadență pe dată.' });
+
+    // 3) Documente (ITP / RCA / rovinietă…) — aceeași fereastră daysLead ca push-ul
+    for (const d of (docsByImei.get(imei) || [])) {
+      if (!d.expiry_date) continue;
+      const days = Math.ceil((new Date(d.expiry_date).getTime() - now) / DAY);
+      const dl = String(d.doc_type || 'Document').toUpperCase();
+      if (days <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' EXPIRAT' + (days < 0 ? ' de ' + (-days) + ' zile' : ''), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' a expirat la ' + roDate(d.expiry_date) + '. Reînnoiește urgent.' });
+      else if (days <= daysLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' expiră în ' + days + (days === 1 ? ' zi' : ' zile'), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' expiră la ' + roDate(d.expiry_date) + '.' });
     }
   }
   return { findings };

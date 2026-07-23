@@ -2267,7 +2267,9 @@ const ALERT_THRESHOLD_SPECS = [
   { k: 'fuelTheftL', min: 1, max: 1000, round: true },     // Furt combustibil — prag scădere (L): parcare + în mers (reverificat 1h)
   { k: 'idleMaxMin', min: 5, max: 1440, round: true },     // RA Watch — ralanti prelungit (min)
   { k: 'ecoScoreMin', min: 0, max: 100, round: true },     // RA Optimize — scor minim eco-driving
-  { k: 'serviceSoonKm', min: 100, max: 50000, round: true } // RA Care — km până la scadență
+  { k: 'serviceSoonKm', min: 100, max: 50000, round: true }, // RA Care — km până la service-ul din BORD (CAN)
+  { k: 'careDaysLead', min: 1, max: 365, round: true },    // RA Care + push — zile înainte de scadența pe DATĂ (mentenanță/documente)
+  { k: 'careKmLead', min: 50, max: 50000, round: true }    // RA Care + push — km înainte de scadența pe KM (mentenanță)
 ];
 // Praguri alertă (RA Watch + RA Optimize + RA Care) — citite din companies.settings.alert_thresholds; fallback la defaulturi (agents.js)
 function _alertThresholdsFromSettings(settings) {
@@ -5009,9 +5011,11 @@ function _odoFromIo(io) {
 // Praguri alertă mentenanță — O SINGURĂ sursă (worker + /api/maintenance pt. colorarea listei).
 const MAINT_DAYS_LEAD = 14;  // se aprinde roșu cu N zile înainte de scadența pe dată
 const MAINT_KM_LEAD = 500;   // se aprinde roșu cu N km înainte de scadența pe km
+// Închisă? — REGULĂ UNICĂ (RA Care + checkExpiries + colorarea listei): status done/completed SAU done_date setat.
+function _maintClosed(m) { if (!m) return true; const st = String(m.status || '').toLowerCase(); return st === 'done' || st === 'completed' || !!m.done_date; }
 // Starea de scadență pt. UI: 'overdue' (depășit) | 'due_soon' (în fereastra de alertă) | 'ok'.
 function maintenanceDueState(m, odo) {
-  if (!m || m.status === 'done') return 'ok';
+  if (!m || _maintClosed(m)) return 'ok';
   let soon = false;
   if (m.due_date) {
     const days = Math.ceil((new Date(m.due_date).getTime() - Date.now()) / 86400000);
@@ -5034,20 +5038,47 @@ async function stampMaintenanceDone(body) {
     try { const km = _odoFromIo(await db.getLastIo(body.imei)); if (km) body.done_km = km; } catch (e) {}
   }
 }
+// RECURENȚĂ: la bifarea „efectuat" a unei mentenanțe cu interval setat, creează AUTOMAT următoarea scadență
+// (due_km = done_km + interval_km; due_date = done_date + interval_months) — altfel acoperirea expiră în tăcere.
+async function maybeCreateNextMaintenance(oldRow, body, companyId) {
+  try {
+    if (!body || body.status !== 'done') return;
+    if (oldRow && String(oldRow.status || '') === 'done') return; // era deja închisă → nu re-crea
+    const ikm = parseInt(body.interval_km != null ? body.interval_km : (oldRow && oldRow.interval_km)) || 0;
+    const imo = parseInt(body.interval_months != null ? body.interval_months : (oldRow && oldRow.interval_months)) || 0;
+    if (!ikm && !imo) return;
+    const next = {
+      imei: body.imei || (oldRow && oldRow.imei), type: body.type || (oldRow && oldRow.type) || 'Mentenanță',
+      description: (body.description != null ? body.description : (oldRow && oldRow.description)) || null,
+      status: 'pending', interval_km: ikm || null, interval_months: imo || null, due_date: null, due_km: null,
+    };
+    if (!next.imei) return;
+    if (imo) { const base = new Date(body.done_date || Date.now()); base.setMonth(base.getMonth() + imo); next.due_date = base.toISOString().slice(0, 10); }
+    if (ikm) { const baseKm = Number(body.done_km) || Number(oldRow && oldRow.due_km) || 0; if (baseKm) next.due_km = baseKm + ikm; }
+    if (!next.due_date && !next.due_km) return;
+    const created = await db.createMaintenance(next, companyId != null ? companyId : ((oldRow && oldRow.company_id) != null ? oldRow.company_id : null));
+    console.log('[MAINT] recurență: creată următoarea scadență #' + (created && created.id) + ' (' + next.type + (next.due_km ? ' la ' + next.due_km + ' km' : '') + (next.due_date ? ' la ' + next.due_date : '') + ')');
+  } catch (e) { console.warn('[MAINT] recurență:', e.message); }
+}
 
 app.post('/api/maintenance', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
     if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await stampMaintenanceDone(req.body);
-    const m = await db.createMaintenance(req.body, req.companyId); auditReq(req, 'create', 'maintenance', m.id, { imei: req.body.imei, type: req.body.type }); res.json(m);
+    const m = await db.createMaintenance(req.body, req.companyId); auditReq(req, 'create', 'maintenance', m.id, { imei: req.body.imei, type: req.body.type });
+    maybeCreateNextMaintenance(null, req.body, req.companyId).catch(() => {}); // creată direct „efectuată" cu interval → programează următoarea
+    res.json(m);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    let _oldM = null; try { _oldM = (await db.pool.query('SELECT * FROM maintenance WHERE id = $1', [req.params.id])).rows[0] || null; } catch (e) {}
     await stampMaintenanceDone(req.body);
-    await db.updateMaintenance(req.params.id, req.body); auditReq(req, 'update', 'maintenance', req.params.id); res.json({ ok: true });
+    await db.updateMaintenance(req.params.id, req.body); auditReq(req, 'update', 'maintenance', req.params.id);
+    maybeCreateNextMaintenance(_oldM, req.body, req.companyId).catch(() => {}); // pending→done cu interval → programează următoarea
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -5661,16 +5692,20 @@ async function checkExpiries() {
       await deliverExpiryToSubscribers({ companyId: dr.company_id, title: nDrv.title, body: nDrv.body, key: nDrv.data.key });
     }
     const _mntList = await db.getMaintenance();
-    // a) Scadență pe DATĂ — praguri 14 / 3 / 1 zile + DEPĂȘIT (fiecare se declanșează ~o dată)
+    // Praguri PER COMPANIE (aceleași ca RA Care: careDaysLead/careKmLead din alert_thresholds) — fallback la globale.
+    const _coLeads = new Map();
+    try { for (const co of await db.getCompanies()) { const t = _alertThresholdsFromSettings(co.settings); _coLeads.set(co.id, { days: (t && t.careDaysLead) || MAINT_DAYS_LEAD, km: (t && t.careKmLead) || MAINT_KM_LEAD }); } } catch (e) {}
+    const _leadsOf = (cid) => (cid != null && _coLeads.get(cid)) || { days: MAINT_DAYS_LEAD, km: MAINT_KM_LEAD };
+    // a) Scadență pe DATĂ — praguri lead / 3 / 1 zile + DEPĂȘIT (fiecare se declanșează ~o dată)
     const _mntDateDedup = { '14': 11 * 24, '3': 2 * 24, '1': 24, 'exp': 24 };
     for (const m of _mntList) {
-      if (m.status === 'done' || !m.due_date) continue;
+      if (_maintClosed(m) || !m.due_date) continue;
       const days = Math.ceil((new Date(m.due_date).getTime() - now) / (24 * 3600 * 1000));
       let bucket = null;
       if (days < 0) bucket = 'exp';
       else if (days <= 1) bucket = '1';
       else if (days <= 3) bucket = '3';
-      else if (days <= MAINT_DAYS_LEAD) bucket = '14';
+      else if (days <= _leadsOf(m.company_id).days) bucket = '14';
       if (bucket === null) continue;
       const nMnt = {
         type: 'maintenance_due', severity: (days < 0 || days <= 3) ? 'critical' : 'warning', imei: m.imei, companyId: m.company_id,
@@ -5686,14 +5721,13 @@ async function checkExpiries() {
     try {
       const _odo = {};
       for (const d of await db.getDevices()) { const km = _odoFromIo(d.io_data); if (km) _odo[d.imei] = km; }
-      const KM_LEAD = MAINT_KM_LEAD;
       for (const m of _mntList) {
-        if (m.status === 'done' || !m.due_km) continue;
+        if (_maintClosed(m) || !m.due_km) continue;
         const odo = _odo[m.imei]; if (!odo) continue;
         const remaining = m.due_km - odo;
         let bucket = null;
         if (remaining <= 0) bucket = 'exp';
-        else if (remaining <= KM_LEAD) bucket = 'warn';
+        else if (remaining <= _leadsOf(m.company_id).km) bucket = 'warn';
         if (bucket === null) continue;
         const nKm = {
           type: 'maintenance_due', severity: remaining <= 0 ? 'critical' : 'warning', imei: m.imei, companyId: m.company_id,

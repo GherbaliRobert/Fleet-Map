@@ -643,6 +643,8 @@ async function initDb() {
         ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS work_schedule JSONB;   -- program de lucru (override pe grup)
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS work_schedule JSONB;         -- program de lucru (override pe vehicul)
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS install_issue JSONB;         -- semnalare „problemă la montaj" {note, at, by} / NULL
+        ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_km INTEGER;     -- recurență: următoarea scadență la +N km după „efectuat"
+        ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_months INTEGER; -- recurență: următoarea scadență la +N luni după „efectuat"
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS photo_b64 TEXT;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS company_id INTEGER;
@@ -1519,13 +1521,25 @@ async function setSetting(key, value) {
 }
 
 // ─── Agenți AI: constatări ───
+// Dedup INTELIGENT (nu doar pe timp): (1) aceeași cheie în ultimele 12h → suprimat, DAR o ESCALADARE de
+// severitate (warning→critical) trece mereu; (2) respectăm „Ignoră": o constatare respinsă nu reapare ~7 zile
+// decât dacă escaladează. Altfel panoul devenea spam (aceeași constatare reînvia de 2×/zi timp de o lună).
 async function createAgentFinding(f) {
   if (f.fkey) {
+    const _rank = (s) => (s === 'critical' ? 2 : s === 'warning' ? 1 : 0);
     const ex = await pool.query(
-      "SELECT 1 FROM agent_findings WHERE company_id IS NOT DISTINCT FROM $1 AND fkey = $2 AND created_at > NOW() - INTERVAL '12 hours' LIMIT 1",
+      'SELECT severity, status, created_at FROM agent_findings WHERE company_id IS NOT DISTINCT FROM $1 AND fkey = $2 ORDER BY created_at DESC LIMIT 1',
       [f.companyId == null ? null : f.companyId, f.fkey]
     );
-    if (ex.rows.length) return null; // deja semnalat recent
+    if (ex.rows.length) {
+      const prev = ex.rows[0];
+      const ageH = (Date.now() - new Date(prev.created_at).getTime()) / 3600000;
+      const escalated = _rank(f.severity || 'info') > _rank(prev.severity || 'info');
+      if (!escalated) {
+        if (ageH < 12) return null;                                          // deja semnalat recent
+        if (prev.status === 'dismissed' && ageH < 7 * 24) return null;       // userul a respins-o → nu insista
+      }
+    }
   }
   const r = await pool.query(
     'INSERT INTO agent_findings (company_id, agent, severity, fkey, imei, title, body) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
@@ -2674,16 +2688,16 @@ async function getMaintenance(imei, companyId) {
 
 async function createMaintenance(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO maintenance (imei, type, description, due_date, due_km, cost, status, company_id, done_date, done_km, done_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-    [data.imei, data.type, data.description, data.due_date, data.due_km, data.cost, data.status || 'pending', companyId || null, data.done_date || null, data.done_km || null, data.done_at || null]
+    'INSERT INTO maintenance (imei, type, description, due_date, due_km, cost, status, company_id, done_date, done_km, done_at, interval_km, interval_months) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+    [data.imei, data.type, data.description, data.due_date, data.due_km, data.cost, data.status || 'pending', companyId || null, data.done_date || null, data.done_km || null, data.done_at || null, data.interval_km || null, data.interval_months || null]
   );
   return result.rows[0];
 }
 
 async function updateMaintenance(id, data) {
   await pool.query(
-    'UPDATE maintenance SET type=$2, description=$3, due_date=$4, due_km=$5, done_date=$6, done_km=$7, cost=$8, status=$9, done_at=$10 WHERE id=$1',
-    [id, data.type, data.description, data.due_date, data.due_km, data.done_date, data.done_km, data.cost, data.status, data.done_at || null]
+    'UPDATE maintenance SET type=$2, description=$3, due_date=$4, due_km=$5, done_date=$6, done_km=$7, cost=$8, status=$9, done_at=$10, interval_km=$11, interval_months=$12 WHERE id=$1',
+    [id, data.type, data.description, data.due_date, data.due_km, data.done_date, data.done_km, data.cost, data.status, data.done_at || null, data.interval_km || null, data.interval_months || null]
   );
 }
 

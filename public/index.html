@@ -1754,6 +1754,8 @@ const pozitii = await r.json();</code></pre>
             <label style="grid-column:1/-1;"><span>Descriere</span><input type="text" id="mnt-desc"></label>
             <label><span>Scadent la data</span><input type="date" id="mnt-due-date"></label>
             <label><span>Scadent la km</span><input type="number" id="mnt-due-km"></label>
+            <label><span>Repetă la fiecare (km)</span><input type="number" id="mnt-int-km" placeholder="ex. 10000 — gol = fără"></label>
+            <label><span>Repetă la fiecare (luni)</span><input type="number" id="mnt-int-mo" placeholder="ex. 12 — gol = fără"></label>
             <label><span>Cost (RON)</span><input type="number" step="0.01" id="mnt-cost"></label>
             <div style="grid-column:1/-1;display:flex;gap:6px;"><button class="btn-sm btn-primary" onclick="saveMaintenance()" style="flex:1;"><i class="fas fa-save"></i> <span id="mnt-btn">Adaugă</span></button><button class="btn-sm" onclick="resetMaintenanceForm()">↺</button></div>
           </div>
@@ -4205,10 +4207,12 @@ const pozitii = await r.json();</code></pre>
       dtSet('mnt-due-date', m.due_date ? m.due_date.slice(0,10) : '');
       document.getElementById('mnt-due-km').value = m.due_km || '';
       document.getElementById('mnt-cost').value = m.cost || '';
+      document.getElementById('mnt-int-km').value = m.interval_km || '';
+      document.getElementById('mnt-int-mo').value = m.interval_months || '';
       document.getElementById('mnt-btn').textContent = 'Salvează';
     }
     function resetMaintenanceForm() {
-      ['mnt-id','mnt-type','mnt-desc','mnt-due-date','mnt-due-km','mnt-cost'].forEach(clearField);
+      ['mnt-id','mnt-type','mnt-desc','mnt-due-date','mnt-due-km','mnt-cost','mnt-int-km','mnt-int-mo'].forEach(clearField);
       document.getElementById('mnt-type').style.display = 'none';
       document.getElementById('mnt-type-sel').selectedIndex = 0;
       document.getElementById('mnt-done').checked = false;
@@ -4225,7 +4229,9 @@ const pozitii = await r.json();</code></pre>
         status: document.getElementById('mnt-done').checked ? 'done' : 'pending',
         due_date: document.getElementById('mnt-due-date').value || null,
         due_km: parseInt(document.getElementById('mnt-due-km').value) || null,
-        cost: parseFloat(document.getElementById('mnt-cost').value) || null
+        cost: parseFloat(document.getElementById('mnt-cost').value) || null,
+        interval_km: parseInt(document.getElementById('mnt-int-km').value) || null,
+        interval_months: parseInt(document.getElementById('mnt-int-mo').value) || null
       };
       if (!body.imei || !body.type) return alert('Alege vehiculul și tipul');
       // status „done" → serverul ștampilează ora exactă (done_at) + km-ul curent
@@ -16426,7 +16432,9 @@ const pozitii = await r.json();</code></pre>
           options: [{ v: '', t: 'Dezactivat (recomandat)' }, { v: 15, t: '15 litri' }, { v: 20, t: '20 litri' }, { v: 30, t: '30 litri' }, { v: 50, t: '50 litri' }] }
       ] },
       care: { fields: [
-        { key: 'serviceSoonKm', label: 'Avertisment service', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de scadența reviziei să apară alerta.' }
+        { key: 'serviceSoonKm', label: 'Avertisment service', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de scadența reviziei să apară alerta.' },
+        { key: 'careDaysLead', label: 'Avertisment scadențe (zile)', unit: 'zile înainte', min: 1, max: 365, def: 14, hint: 'Cu câte zile înainte de scadența pe DATĂ (mentenanță + documente) să apară alerta. Folosit și de notificările push.' },
+        { key: 'careKmLead', label: 'Avertisment scadențe (km)', unit: 'km înainte', min: 50, max: 50000, def: 500, hint: 'Cu câți km înainte de scadența pe KILOMETRI a mentenanței să apară alerta. Folosit și de notificările push.' }
       ] },
       optimize: { fields: [
         { key: 'ecoScoreMin', label: 'Scor eco minim', unit: '/100', min: 0, max: 100, def: 60, hint: 'Alertă când scorul eco al unui vehicul scade sub această valoare.' }
@@ -16581,7 +16589,14 @@ const pozitii = await r.json();</code></pre>
         + '<h4><i class="fas ' + ic + '" style="color:' + col + '"></i> ' + esc(f.title || '') + '</h4>'
         + '<div class="rax-co-meta">' + esc(f.body || '') + '</div>'
         + '<div class="rax-co-meta" style="font-size:10px;margin-top:3px;opacity:.8;"><i class="fas ' + am.icon + '"></i> ' + esc(am.name) + ' · ' + new Date(f.created_at).toLocaleString('ro-RO') + (done ? ' · ' + (f.status === 'acknowledged' ? 'citit ✓' : 'respins') : '') + '</div>'
-        + (done ? '' : '<label class="rax-find-read" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;color:var(--text-muted);margin-top:8px;user-select:none;"><input type="checkbox" onchange="raxFindingAction(' + f.id + ',\'ack\')" style="cursor:pointer;width:15px;height:15px;margin:0;"> Marchează citit</label>')
+        + (done ? '' : (function () {
+          var mm = /^care_(?:due|km)_(\d+)$/.exec(f.fkey || '');
+          var acts = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;">'
+            + '<label class="rax-find-read" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;color:var(--text-muted);user-select:none;"><input type="checkbox" onchange="raxFindingAction(' + f.id + ',\'ack\')" style="cursor:pointer;width:15px;height:15px;margin:0;"> Marchează citit</label>';
+          if (mm) acts += '<button class="rax-btn" style="font-size:11px;padding:4px 9px;" onclick="raxFindingMaintDone(' + mm[1] + ',' + f.id + ')" title="Marchează mentenanța ca efectuată"><i class="fas fa-check" style="color:var(--accent)"></i> Efectuat</button>'
+            + '<button class="rax-btn" style="font-size:11px;padding:4px 9px;" onclick="raxFindingGoMaint()" title="Deschide Administrare → Mentenanță"><i class="fas fa-wrench"></i> Vezi mentenanța</button>';
+          return acts + '</div>';
+        })())
         + '</div>';
     }
     var _raxFindings = [];
@@ -16635,6 +16650,17 @@ const pozitii = await r.json();</code></pre>
         raxRenderFindings();
       } catch (e) { raxToast('Eroare de rețea', 'error'); raxRenderFindings(); }
       raxRefreshAgBadge();
+    };
+    // Constatare RA Care legată de o mentenanță → „Efectuat" direct din panou (refolosește completeMaintenance,
+    // care trimite rândul ÎNTREG — serverul ștampilează done_at/done_km și creează recurența dacă are interval).
+    window.raxFindingMaintDone = async function (mid, fid) {
+      try { await completeMaintenance(mid); } catch (e) { raxToast('Eroare la marcarea mentenanței', 'error'); return; }
+      raxToast('Mentenanță marcată ca efectuată ✓', 'success');
+      raxFindingAction(fid, 'ack');
+    };
+    window.raxFindingGoMaint = function () {
+      var ov = document.getElementById('rax-ag-overlay'); if (ov) ov.classList.remove('open');
+      if (window.goManage) goManage('maintenance');
     };
     // „Marchează toate citite" — ack pe toate constatările NOI (în paralel), apoi update local + re-randare.
     window.raxAckAllFindings = async function () {

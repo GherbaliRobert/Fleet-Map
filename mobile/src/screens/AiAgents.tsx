@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
 import { Api, type AgentFinding } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { showToast } from '../app/store';
@@ -8,6 +9,7 @@ import './reports.css';
 const SEV: Record<string, string> = { critical: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
 
 export function AiAgents() {
+  const loc = useLocation();
   const [agents, setAgents] = useState<{ key: string; name: string; desc: string }[]>([]);
   const [findings, setFindings] = useState<AgentFinding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,21 @@ export function AiAgents() {
     if (f.id == null) return;
     setFindings((cur) => cur.filter((x) => x.id !== f.id));
     try { await Api.agentFindingAction(f.id, action); } catch { loadFindings(); }
+  }
+
+  // Constatare RA Care legată de o mentenanță (fkey care_due_<id>/care_km_<id>) → id-ul mentenanței
+  const maintIdOf = (f: AgentFinding) => { const m = /^care_(?:due|km)_(\d+)$/.exec((f as any).fkey || ''); return m ? Number(m[1]) : null; };
+  async function markMaintDone(f: AgentFinding, mid: number) {
+    try {
+      // PUT-ul suprascrie TOATE coloanele → trimitem rândul întreg (ca pe web); serverul ștampilează done_at/done_km + recurența
+      const all: any[] = await Api.maintenance();
+      const m = (all || []).find((x: any) => Number(x.id) === mid);
+      if (!m) { showToast('Mentenanța nu a fost găsită', true); return; }
+      m.status = 'done';
+      await Api.updateMaintenance(mid, m);
+      showToast('Mentenanță marcată ca efectuată ✓');
+      act(f, 'ack');
+    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
   }
 
   return (
@@ -87,9 +104,15 @@ export function AiAgents() {
                       <span style="font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px">{f.agent}</span>
                     </div>
                     {f.body ? <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.45">{f.body}</div> : null}
-                    <div style="display:flex;gap:8px;margin-top:9px">
-                      <button onClick={() => act(f, 'ack')} style="flex:1;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px;font-size:12px;font-weight:700;font-family:inherit"><Icon name="check" size={13} /> Am văzut</button>
-                      <button onClick={() => act(f, 'dismiss')} style="flex:1;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:7px;font-size:12px;font-weight:700;font-family:inherit"><Icon name="x" size={13} /> Ignoră</button>
+                    <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
+                      <button onClick={() => act(f, 'ack')} style="flex:1;min-width:90px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px;font-size:12px;font-weight:700;font-family:inherit"><Icon name="check" size={13} /> Am văzut</button>
+                      <button onClick={() => act(f, 'dismiss')} style="flex:1;min-width:80px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:7px;font-size:12px;font-weight:700;font-family:inherit"><Icon name="x" size={13} /> Ignoră</button>
+                      {maintIdOf(f) != null ? (
+                        <>
+                          <button onClick={() => markMaintDone(f, maintIdOf(f)!)} style="flex:1;min-width:90px;background:var(--bg-dark);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:7px;font-size:12px;font-weight:700;font-family:inherit"><Icon name="wrench" size={13} /> Efectuat</button>
+                          <button onClick={() => loc.route('/admin/maintenance')} style="flex:1;min-width:70px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px;font-size:12px;font-weight:700;font-family:inherit"><Icon name="chevronR" size={13} /> Vezi</button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 ))}

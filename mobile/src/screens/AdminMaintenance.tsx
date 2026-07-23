@@ -36,6 +36,8 @@ export function AdminMaintenance() {
       { key: 'description', label: 'Detalii', type: 'textarea', placeholder: 'Opțional' },
       { key: 'due_date', label: 'Scadență (dată)', type: 'date', half: true },
       { key: 'due_km', label: 'Scadență (km)', type: 'number', half: true, placeholder: 'km' },
+      { key: 'interval_km', label: 'Repetă la fiecare (km)', type: 'number', half: true, placeholder: 'ex. 10000' },
+      { key: 'interval_months', label: 'Repetă la fiecare (luni)', type: 'number', half: true, placeholder: 'ex. 12' },
       { key: 'cost', label: 'Cost estimat (lei)', type: 'number', placeholder: 'Opțional' },
       { key: 'status', label: 'Status', type: 'select', default: 'pending', options: [
         { value: 'pending', label: 'În așteptare' },
