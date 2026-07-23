@@ -7,15 +7,17 @@ import { WorkSchedEditor } from '../components/WorkSchedEditor';
 import './admin.css';
 
 // Setări de COMPANIE: prețuri combustibil (manageFleet) + praguri agenți AI (manageUsers). Serverul scope-uiește pe req.companyId.
-const THRESHOLDS = [
-  { k: 'offlineMin', label: 'Offline — alertă după (min)', sub: 'RA Watch', min: 5, max: 1440 },
-  { k: 'fuelDropL', label: 'Scădere combustibil (L)', sub: 'RA Watch', min: 1, max: 1000 },
-  { k: 'fuelTheftL', label: 'Furt combustibil — prag (L)', sub: 'RA Watch', min: 1, max: 1000 },
-  { k: 'idleMaxMin', label: 'Ralanti prelungit (min)', sub: 'RA Watch', min: 5, max: 1440 },
-  { k: 'ecoScoreMin', label: 'Scor minim eco-driving', sub: 'RA Optimize', min: 0, max: 100 },
-  { k: 'serviceSoonKm', label: 'Km până la service (bord/CAN)', sub: 'RA Care', min: 100, max: 50000 },
-  { k: 'careDaysLead', label: 'Avertisment scadențe (zile înainte)', sub: 'RA Care + push', min: 1, max: 365 },
-  { k: 'careKmLead', label: 'Avertisment scadențe (km înainte)', sub: 'RA Care + push', min: 50, max: 50000 },
+// Pragurile sunt DROPDOWN-uri cu valori predefinite, explicite (nu input liber) — aliniate cu panoul AGP de pe web.
+type ThrOpt = [number | '', string];
+const THRESHOLDS: { k: string; label: string; sub: string; min: number; max: number; options: ThrOpt[] }[] = [
+  { k: 'offlineMin', label: 'Offline — alertă după', sub: 'RA Watch', min: 5, max: 1440, options: [[15, '15 minute'], [30, '30 minute'], [60, '1 oră (recomandat)'], [120, '2 ore'], [360, '6 ore'], [720, '12 ore']] },
+  { k: 'fuelDropL', label: 'Scădere combustibil', sub: 'RA Watch', min: 1, max: 1000, options: [[10, '10 litri'], [15, '15 litri (recomandat)'], [20, '20 litri'], [30, '30 litri'], [50, '50 litri']] },
+  { k: 'fuelTheftL', label: 'Furt combustibil — prag', sub: 'RA Watch', min: 1, max: 1000, options: [['', 'Dezactivat (recomandat)'], [15, '15 litri'], [20, '20 litri'], [30, '30 litri'], [50, '50 litri']] },
+  { k: 'idleMaxMin', label: 'Ralanti prelungit', sub: 'RA Watch', min: 5, max: 1440, options: [[15, '15 minute'], [30, '30 minute'], [60, '1 oră'], [120, '2 ore (recomandat)'], [180, '3 ore']] },
+  { k: 'ecoScoreMin', label: 'Scor eco minim', sub: 'RA Optimize', min: 0, max: 100, options: [[40, 'sub 40 — doar cazurile grave'], [50, 'sub 50 — relaxat'], [60, 'sub 60 (recomandat)'], [70, 'sub 70 — exigent'], [80, 'sub 80 — foarte exigent']] },
+  { k: 'serviceSoonKm', label: 'Avertisment service (bord/CAN)', sub: 'RA Care', min: 100, max: 50000, options: [[500, '500 km înainte'], [1000, '1.000 km înainte'], [1500, '1.500 km înainte (recomandat)'], [2000, '2.000 km înainte'], [3000, '3.000 km înainte'], [5000, '5.000 km înainte']] },
+  { k: 'careDaysLead', label: 'Avertisment scadențe (dată)', sub: 'RA Care + push', min: 1, max: 365, options: [[7, '7 zile înainte'], [14, '14 zile înainte (recomandat)'], [21, '3 săptămâni înainte'], [30, '30 zile înainte (o lună)'], [60, '60 zile înainte']] },
+  { k: 'careKmLead', label: 'Avertisment scadențe (km)', sub: 'RA Care + push', min: 50, max: 50000, options: [[250, '250 km înainte'], [500, '500 km înainte (recomandat)'], [1000, '1.000 km înainte'], [1500, '1.500 km înainte'], [2000, '2.000 km înainte']] },
 ];
 
 export function Settings() {
@@ -79,12 +81,21 @@ export function Settings() {
         {canUsers && (
           <div class="pf-card">
             <h3>Praguri agenți AI</h3>
-            {THRESHOLDS.map((t) => (
-              <div class="np-thr" style="padding:8px 0;border-bottom:1px solid var(--border)">
-                <label>{t.label}<br /><span style="font-size:11px;color:var(--text-muted)">{t.sub} · {t.min}–{t.max}</span></label>
-                <input type="number" value={thr[t.k] ?? ''} onInput={(e: any) => setThr({ ...thr, [t.k]: e.target.value })} placeholder="implicit" />
-              </div>
-            ))}
+            {THRESHOLDS.map((t) => {
+              const cur = thr[t.k];
+              const curStr = cur == null ? '' : String(cur);
+              const inOpts = t.options.some(([v]) => String(v) === curStr);
+              return (
+                <div class="np-thr" style="padding:8px 0;border-bottom:1px solid var(--border)">
+                  <label>{t.label}<br /><span style="font-size:11px;color:var(--text-muted)">{t.sub}</span></label>
+                  <select value={curStr} onChange={(e: any) => setThr({ ...thr, [t.k]: e.target.value })} style="max-width:56%">
+                    {curStr === '' && !t.options.some(([v]) => v === '') ? <option value="">Implicit (nesetat)</option> : null}
+                    {curStr !== '' && !inOpts ? <option value={curStr}>{curStr} (curent)</option> : null}
+                    {t.options.map(([v, l]) => <option value={String(v)}>{l}</option>)}
+                  </select>
+                </div>
+              );
+            })}
             <button class="btn btn-primary" style="margin-top:12px" disabled={busy === 'thr'} onClick={saveThr}>{busy === 'thr' ? '…' : 'Salvează pragurile'}</button>
           </div>
         )}

@@ -859,7 +859,6 @@
           <div class="chart-section-title" style="display:flex;justify-content:space-between;align-items:center;">
             <span><i class="fas fa-robot" style="color:var(--accent);margin-right:6px;"></i>Constatări agenți AI</span>
             <span style="display:flex;gap:6px;">
-              <button class="btn-sm" onclick="insightAsk('Ce probleme are flota?')" style="font-size:11px;background:var(--accent);color:#06210F;border:none;font-weight:800;"><i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight</button>
               <button class="btn-sm" onclick="showView('agenti')" style="font-size:11px;">Vezi toate</button>
             </span>
           </div>
@@ -16382,7 +16381,7 @@ const pozitii = await r.json();</code></pre>
       client: {
         face: 'Îți dă un rezumat zilnic al flotei: câte vehicule au fost active, km totali și cel mai activ vehicul.',
         use: 'Apare automat, o dată pe zi. E informativ — o privire rapidă „cum a mers ziua".',
-        act: 'Pentru detalii, deschizi raportul respectiv sau întrebi RA Insight.'
+        act: 'Pentru detalii, deschizi raportul respectiv din Rapoarte.'
       }
     };
     function _agpTutSec(icon, title, body) {
@@ -16410,14 +16409,7 @@ const pozitii = await r.json();</code></pre>
         + _agpTutSec('fa-sliders', 'Cum îl folosești / reglezi', t.use)
         + _agpTutSec('fa-circle-check', 'Ce faci când te anunță', t.act)
         + '</div>'
-        + '<div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">'
-        + '<button class="btn-sm" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="agpTutAsk(\'' + k + '\')"><i class="fas fa-wand-magic-sparkles"></i> Întreabă RA Insight</button>'
-        + '</div></div>';
-    };
-    window.agpTutAsk = function (k) {
-      var mm = AGP_META[k] || { name: k };
-      var e = document.getElementById('agp-tut-modal'); if (e) e.style.display = 'none';
-      insightAsk('Cum stă „' + mm.name + '" pentru flota mea și ce ar trebui să fac?');
+        + '</div>';
     };
     // ── Praguri / limite per agent (mutate din Setări direct pe card) ──
     var AGP_THRESH = {
@@ -16432,12 +16424,16 @@ const pozitii = await r.json();</code></pre>
           options: [{ v: '', t: 'Dezactivat (recomandat)' }, { v: 15, t: '15 litri' }, { v: 20, t: '20 litri' }, { v: 30, t: '30 litri' }, { v: 50, t: '50 litri' }] }
       ] },
       care: { fields: [
-        { key: 'serviceSoonKm', label: 'Avertisment service', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de scadența reviziei să apară alerta.' },
-        { key: 'careDaysLead', label: 'Avertisment scadențe (zile)', unit: 'zile înainte', min: 1, max: 365, def: 14, hint: 'Cu câte zile înainte de scadența pe DATĂ (mentenanță + documente) să apară alerta. Folosit și de notificările push.' },
-        { key: 'careKmLead', label: 'Avertisment scadențe (km)', unit: 'km înainte', min: 50, max: 50000, def: 500, hint: 'Cu câți km înainte de scadența pe KILOMETRI a mentenanței să apară alerta. Folosit și de notificările push.' }
+        { key: 'serviceSoonKm', label: 'Avertisment service (bord/CAN)', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de service-ul indicat de BORDUL mașinii să apară alerta.',
+          options: [{ v: 500, t: '500 km înainte' }, { v: 1000, t: '1.000 km înainte' }, { v: 1500, t: '1.500 km înainte (recomandat)' }, { v: 2000, t: '2.000 km înainte' }, { v: 3000, t: '3.000 km înainte' }, { v: 5000, t: '5.000 km înainte' }] },
+        { key: 'careDaysLead', label: 'Avertisment scadențe (zile)', unit: 'zile înainte', min: 1, max: 365, def: 14, hint: 'Cu câte zile înainte de scadența pe DATĂ (mentenanță + documente) să apară alerta. Folosit și de notificările push.',
+          options: [{ v: 7, t: '7 zile înainte' }, { v: 14, t: '14 zile înainte (recomandat)' }, { v: 21, t: '3 săptămâni înainte' }, { v: 30, t: '30 zile înainte (o lună)' }, { v: 60, t: '60 zile înainte' }] },
+        { key: 'careKmLead', label: 'Avertisment scadențe (km)', unit: 'km înainte', min: 50, max: 50000, def: 500, hint: 'Cu câți km înainte de scadența pe KILOMETRI a mentenanței să apară alerta. Folosit și de notificările push.',
+          options: [{ v: 250, t: '250 km înainte' }, { v: 500, t: '500 km înainte (recomandat)' }, { v: 1000, t: '1.000 km înainte' }, { v: 1500, t: '1.500 km înainte' }, { v: 2000, t: '2.000 km înainte' }] }
       ] },
       optimize: { fields: [
-        { key: 'ecoScoreMin', label: 'Scor eco minim', unit: '/100', min: 0, max: 100, def: 60, hint: 'Alertă când scorul eco al unui vehicul scade sub această valoare.' }
+        { key: 'ecoScoreMin', label: 'Scor eco minim', unit: '/100', min: 0, max: 100, def: 60, hint: 'Alertă când scorul eco al unui vehicul scade sub această valoare.',
+          options: [{ v: 40, t: 'sub 40 — doar cazurile grave' }, { v: 50, t: 'sub 50 — relaxat' }, { v: 60, t: 'sub 60 (recomandat)' }, { v: 70, t: 'sub 70 — exigent' }, { v: 80, t: 'sub 80 — foarte exigent' }] }
       ] },
       dispatch: { fields: [], fixed: 'Reguli fixe: vehicul „disponibil" = online sub ~65 min și oprit; „subutilizat" = sub 1 km după ora 12.' },
       compliance: { fields: [], fixed: 'Praguri legale (Reg. CE 561/2006): alertă peste 4h30 condus continuu sau 9h pe zi. Fixe prin lege.' },
