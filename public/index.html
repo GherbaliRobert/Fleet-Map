@@ -6362,14 +6362,14 @@ const pozitii = await r.json();</code></pre>
         var vs = j.vehicles || [];
         if (!vs.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Niciun vehicul accesibil.</div>'; return; }
         var avail = vs.filter(function (v) { return v.available; }).length;
-        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + avail + ' disponibile · ' + vs.length + ' total · ETA estimativ (linie dreaptă)</div>' + vs.map(function (v, i) {
+        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + avail + ' disponibile · ' + vs.length + ' total · <span title="ETA = timp estimat de sosire. Calculat în linie dreaptă (nu pe drumuri reale) — orientativ." style="cursor:help;border-bottom:1px dotted var(--text-muted);">ETA orientativ <i class="fas fa-circle-info" style="opacity:.7;"></i></span></div>' + vs.map(function (v, i) {
           var col = v.available ? 'var(--green)' : 'var(--text-muted)';
           var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'offline');
           return '<div style="border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:6px;background:var(--bg-dark);">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
             + '<span style="font-weight:600;font-size:12px;">' + (i + 1) + '. ' + x(v.name) + ((v.plate && String(v.plate).toLowerCase() !== String(v.name).toLowerCase()) ? ' <span style="color:var(--text-muted);font-weight:500;">(' + x(v.plate) + ')</span>' : '') + '</span>'
             + '<span style="font-size:10px;color:' + col + ';font-weight:700;white-space:nowrap;">' + badge + '</span></div>'
-            + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + v.distanceKm + ' km · ~' + v.etaMin + ' min</div>'
+            + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + v.distanceKm + ' km · <span title="Timp estimat de sosire (orientativ, în linie dreaptă)">~' + v.etaMin + ' min</span></div>'
             + '<div style="margin-top:5px;"><button class="btn-sm" onclick="dispatchShow(' + v.lat + ',' + v.lon + ',' + lat + ',' + lon + ')"><i class="fas fa-location-arrow"></i> Arată pe hartă</button></div>'
             + '</div>';
         }).join('');
