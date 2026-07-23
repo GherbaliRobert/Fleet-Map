@@ -2085,6 +2085,9 @@ const pozitii = await r.json();</code></pre>
     .agp-fi .ti{font-weight:700;font-size:13px}
     .agp-fi .bo{font-size:12px;color:var(--text-secondary);margin-top:3px;line-height:1.45}
     .agp-fi .tm{font-size:11px;color:var(--text-muted);margin-top:4px}
+    .agp-lastrun{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+    .agp-lastrun i{color:var(--accent)}
+    .agp-lastrun b{color:var(--text-secondary);font-weight:700}
     @media (max-width:960px){ .agp-grid{grid-template-columns:repeat(2,1fr)} }
     @media (max-width:620px){ .agp-grid{grid-template-columns:1fr} .agp-model{grid-template-columns:1fr} .agp-model .agp-h + .agp-h{border-left:0;border-top:1px solid var(--border)} }
   </style>
@@ -16160,6 +16163,13 @@ const pozitii = await r.json();</code></pre>
     var AGP_ORDER = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
     var _agpLast = {}, _agpLastRun = {}, _agpState = { findings: [], canCfg: false, mode: 'grid', agent: null };
     function _agpTime(t) { return t ? new Date(t).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : ''; }
+    function _agpWhen(t) {
+      if (!t) return '';
+      var d = new Date(t), now = new Date(), hm = _agpTime(t);
+      if (d.toDateString() === now.toDateString()) return 'azi ' + hm;
+      if (d.toDateString() === new Date(now.getTime() - 864e5).toDateString()) return 'ieri ' + hm;
+      return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
+    }
     function _agpStatusLine(k, last) {
       if (last) return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">' + _agpEsc(last.title) + ' <span class="tm">· ' + _agpAgo(last.created_at) + '</span></span></div>';
       var t = _agpLastRun[k];
@@ -16183,7 +16193,7 @@ const pozitii = await r.json();</code></pre>
         + '<div class="agp-wrap" id="agp-body"><div class="rax-co-meta" style="padding:24px;text-align:center;"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div></div></div>';
       var body = $('agp-body'); if (!body) return;
       var enabled = null, findings = [];
-      try { var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); enabled = ag && ag.enabledKeys; } catch (e) {}
+      try { var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); enabled = ag && ag.enabledKeys; _agpState.lastRun = ag && ag.lastRun; _agpState.auto = !(ag && ag.auto === false); } catch (e) {}
       try { var fl = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); }); if (Array.isArray(fl)) findings = fl; } catch (e) {}
       var keys = (Array.isArray(enabled) ? enabled : AGP_ORDER).filter(function (k) { return AGP_META[k]; });
       keys.sort(function (a, b) { return AGP_ORDER.indexOf(a) - AGP_ORDER.indexOf(b); });
@@ -16274,13 +16284,14 @@ const pozitii = await r.json();</code></pre>
           return '<div class="agp-fi"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + '<div class="tm">' + _agpAgo(f.created_at) + '</div></div></div>';
         }).join('');
       } else {
-        var t = _agpLastRun[k];
         feed = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b">'
           + '<div class="ti"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Totul e în regulă — nicio alertă</div>'
           + '<div class="bo">Am verificat ' + (m.checks || 'flota') + '. N-am găsit nicio problemă — poți sta liniștit.</div>'
-          + '<div class="tm">' + (t ? 'Ultima verificare: ' + _agpTime(t) + ' · ' : '') + 'verifică automat la fiecare 30 min</div>'
           + '</div></div>';
       }
+      var autoOn = _agpState.auto !== false;
+      var lastMs = Math.max(_agpLastRun[k] || 0, (_agpState.lastRun ? new Date(_agpState.lastRun).getTime() : 0));
+      var footer = '<div class="agp-lastrun"><i class="fas fa-clock"></i> ' + (lastMs ? 'Ultima rulare: <b>' + _agpWhen(lastMs) + '</b>' : 'Nicio rulare încă') + ' · ' + (autoOn ? 'verifică automat la fiecare 30 min' : 'verificarea automată e oprită (rulează manual)') + '</div>';
       host.innerHTML = '<div class="agp-detail agp-cascade">'
         + '<button type="button" class="agp-back" onclick="renderAgentsPage()"><i class="fas fa-arrow-left"></i> Toți agenții</button>'
         + '<div class="agp-dhead"><div class="agp-ct ag-t-green" style="width:52px;height:52px;font-size:23px;"><i class="fas ' + m.icon + '"></i></div>'
@@ -16294,6 +16305,7 @@ const pozitii = await r.json();</code></pre>
         + '</div>'
         + '<div class="agp-feed-h">Verificări &amp; alerte</div>'
         + '<div class="agp-feed">' + feed + '</div>'
+        + footer
         + '</div>';
       host.scrollTop = 0;
     };

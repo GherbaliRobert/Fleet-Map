@@ -2287,7 +2287,10 @@ async function _getAlertThresholds(companyId) {
 app.get('/api/agents', requireAuth, withCompany, async (req, res) => {
   if (!agents) return res.json({ agents: [] });
   const enabled = await _getEnabledAgents(req.companyId);
-  res.json({ agents: enabled.filter(k => agents.AGENTS[k]).map(function (k) { return { key: k, name: agents.AGENTS[k].name, desc: agents.AGENTS[k].desc }; }), enabledKeys: enabled });
+  let lastRun = null, auto = true;
+  try { lastRun = (req.companyId != null ? await db.getSetting('agents_lastrun_' + req.companyId) : null) || await db.getSetting('agents_lastrun') || null; } catch (e) {}
+  try { auto = (await getSystemSettings()).agents_auto !== false; } catch (e) {}
+  res.json({ agents: enabled.filter(k => agents.AGENTS[k]).map(function (k) { return { key: k, name: agents.AGENTS[k].name, desc: agents.AGENTS[k].desc }; }), enabledKeys: enabled, lastRun: lastRun, auto: auto });
 });
 app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
   try {
@@ -2380,7 +2383,9 @@ async function runAgentsWorker() {
       const _coFP = effectiveFuelPrices(co && co.settings).motorina || 7.5;
       const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds, fuelPrice: _coFP }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
+      try { await db.setSetting('agents_lastrun_' + co.id, new Date().toISOString()); } catch (e) {} // „ultima rulare" per companie
     }
+    try { await db.setSetting('agents_lastrun', new Date().toISOString()); } catch (e) {} // fallback global (super-admin)
   } catch (e) { console.warn('[AGENTS] worker:', e.message); }
 }
 
