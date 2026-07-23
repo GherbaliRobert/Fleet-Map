@@ -12857,7 +12857,7 @@ const pozitii = await r.json();</code></pre>
       <div class="rax-body">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
           <button class="rax-btn primary" id="rax-ag-run" onclick="raxRunAgents()"><i class="fas fa-play"></i> Rulează toți agenții</button>
-          <span style="font-size:11px;color:var(--text-muted)">6 agenți · rulează automat la 30 min</span>
+          <span style="font-size:11px;color:var(--text-muted)">6 agenți · rulează automat din oră în oră</span>
         </div>
         <div id="rax-company-wrap" style="display:none;align-items:center;gap:6px;margin-bottom:8px;">
           <i class="fas fa-building" style="color:var(--accent);font-size:12px;"></i>
@@ -13500,7 +13500,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="margin-bottom:8px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">Anunț global (banner pentru toți userii — gol = fără banner)</div>' +
           '<textarea id="rax-sys-ann" rows="2" style="width:100%;box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px;font-size:13px;" placeholder="ex: Mentenanță programată duminică 02:00–03:00…">' + esc(s.announcement || '') + '</textarea></div>' +
           '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' +
-            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rax-sys-agents" ' + (s.agents_auto ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:var(--accent);"> Agenți AI automat (30 min)</label>' +
+            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rax-sys-agents" ' + (s.agents_auto ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:var(--accent);"> Agenți AI automat (din oră în oră)</label>' +
             '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Prag offline (min): <input type="number" id="rax-sys-off" value="' + (s.offline_minutes || 65) + '" min="5" max="1440" style="width:72px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 6px;"></label>' +
             '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Viteză implicită (km/h): <input type="number" id="rax-sys-spd" value="' + (s.default_speed_limit || 90) + '" min="10" max="200" style="width:72px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 6px;"></label>' +
           '</div>' +
@@ -16291,7 +16291,7 @@ const pozitii = await r.json();</code></pre>
       }
       var autoOn = _agpState.auto !== false;
       var lastMs = Math.max(_agpLastRun[k] || 0, (_agpState.lastRun ? new Date(_agpState.lastRun).getTime() : 0));
-      var footer = '<div class="agp-lastrun"><i class="fas fa-clock"></i> ' + (lastMs ? 'Ultima rulare: <b>' + _agpWhen(lastMs) + '</b>' : 'Nicio rulare încă') + ' · ' + (autoOn ? 'verifică automat la fiecare 30 min' : 'verificarea automată e oprită (rulează manual)') + '</div>';
+      var footer = '<div class="agp-lastrun"><i class="fas fa-clock"></i> ' + (lastMs ? 'Ultima rulare: <b>' + _agpWhen(lastMs) + '</b>' : 'Nicio rulare încă') + ' · ' + (autoOn ? 'verifică automat din oră în oră' : 'verificarea automată e oprită (rulează manual)') + '</div>';
       host.innerHTML = '<div class="agp-detail agp-cascade">'
         + '<button type="button" class="agp-back" onclick="renderAgentsPage()"><i class="fas fa-arrow-left"></i> Toți agenții</button>'
         + '<div class="agp-dhead"><div class="agp-ct ag-t-green" style="width:52px;height:52px;font-size:23px;"><i class="fas ' + m.icon + '"></i></div>'

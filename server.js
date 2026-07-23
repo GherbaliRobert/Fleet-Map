@@ -8294,8 +8294,8 @@ async function start() {
   // e-Transport: trimite pozițiile la ANAF la fiecare 3 min (no-op dacă nu e configurat)
   if (etransportEnabled()) { console.log('[e-Transport] Activ — trimitere poziții la ANAF'); setInterval(sendEtransportPositions, 3 * 60 * 1000); }
 
-  // Agenți AI: RA Watch rulează automat la fiecare 30 min (prima dată după 1 min)
-  if (agents) { setTimeout(runAgentsWorker, 60 * 1000); setInterval(runAgentsWorker, 30 * 60 * 1000); }
+  // Agenți AI: agenții rulează automat din oră în oră (prima dată la 1 min după pornire) — o oră e realist și pentru flote mari
+  if (agents) { setTimeout(runAgentsWorker, 60 * 1000); setInterval(runAgentsWorker, 60 * 60 * 1000); }
 
   // Webhooks: reîmprospătează flag-ul „există webhook-uri active" (fast-path pentru evaluateUserEvents).
   setTimeout(refreshAnyWebhooks, 8000);
