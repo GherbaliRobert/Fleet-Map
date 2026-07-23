@@ -80,8 +80,14 @@ async function runSchedule(s, deps, now) {
     } else {
       imeis = [s.imei];
     }
-  } else {
+  } else if (s.company_id != null) {
     imeis = await db.getCompanyActiveImeis(s.company_id);
+  } else {
+    // Super-admin (company_id NULL) → „Toată flota" = TOATE dispozitivele nearhivate.
+    // getCompanyActiveImeis(null) ar întoarce [] fiindcă „company_id = NULL" nu se potrivește cu nimic în SQL
+    // → programarea genera raport GOL (0 rânduri) și nu se salva în Istoric. (mirror al resolveReportImeis pt. super-admin)
+    try { const all = await db.getDevices(); imeis = (all || []).filter(d => d && d.status !== 'archived').map(d => d.imei); }
+    catch (e) { imeis = []; }
   }
   if (!imeis || !imeis.length) return { ok: false, reason: 'fără vehicule accesibile', rows: 0, emailSent: false };
 

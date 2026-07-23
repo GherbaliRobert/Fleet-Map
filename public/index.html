@@ -1586,7 +1586,7 @@ const pozitii = await r.json();</code></pre>
       <div class="sch-card sch-form">
         <div class="sch-card-head">
           <span class="ic"><i class="fas fa-calendar-plus"></i></span>
-          <div><h4>Programare nouă</h4><p>Raportul se generează automat și ajunge pe email, la ora stabilită.</p></div>
+          <div><h4 id="sch-form-title">Programare nouă</h4><p>Raportul se generează automat, se salvează în Istoric și ajunge pe email, la ora stabilită.</p></div>
         </div>
         <div class="sch-grid">
           <label class="rep-f"><span>Nume</span><input id="sch-name" placeholder="ex. Zilnic flotă"></label>
@@ -1604,7 +1604,8 @@ const pozitii = await r.json();</code></pre>
           <label class="rep-f" style="grid-column:span 2;"><span>Destinatari (email, separați prin virgulă)</span><input id="sch-recips" placeholder="gol = emailul tău"></label>
         </div>
         <div class="sch-foot">
-          <button class="btn-sm btn-primary" onclick="schedCreate()"><i class="fas fa-plus"></i> Adaugă programarea</button>
+          <button class="btn-sm btn-primary" id="sch-submit" onclick="schedCreate()"><i class="fas fa-plus"></i> Adaugă programarea</button>
+          <button class="btn-sm" id="sch-cancel-edit" onclick="schedEditCancel()" style="display:none;"><i class="fas fa-xmark"></i> Anulează</button>
           <span id="sch-msg" style="font-size:12px;"></span>
         </div>
       </div>
@@ -5838,6 +5839,7 @@ const pozitii = await r.json();</code></pre>
       const RLBL = (t) => { try { return (repCatalog && repCatalog.reports || []).filter(r => r.type === t)[0]?.label || t; } catch (e) { return t; } };
       try {
         const list = await fetch('/api/report-schedules', { credentials: 'same-origin' }).then(r => r.json());
+        window._schedList = Array.isArray(list) ? list : []; // pentru butonul de editare
         if (head) head.textContent = 'Programări active' + (Array.isArray(list) && list.length ? ' (' + list.length + ')' : '');
         if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="sch-empty"><i class="far fa-calendar-check"></i><div>Nicio programare încă.</div><span>Completează formularul de sus ca să primești rapoarte automat pe email.</span></div>'; return; }
         const FREQ = { daily: 'Zilnic', weekly: 'Săptămânal', monthly: 'Lunar' };
@@ -5856,11 +5858,13 @@ const pozitii = await r.json();</code></pre>
             '<div class="sch-next"><i class="far fa-calendar-check"></i> Ultima rulare: <b>' + (s.last_run ? new Date(s.last_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '— încă n-a rulat') + '</b></div>' +
           '</div>' +
           '<div class="sch-acts">' +
+            '<button class="sch-iconbtn" onclick="schedEdit(' + s.id + ')" title="Editează"><i class="fas fa-pen"></i></button>' +
             '<button class="sch-iconbtn" onclick="schedRunNow(' + s.id + ')" title="Trimite acum"><i class="fas fa-paper-plane"></i></button>' +
             '<button class="sch-iconbtn del" onclick="schedDelete(' + s.id + ')" title="Șterge"><i class="fas fa-trash"></i></button>' +
           '</div></div>').join('');
       } catch (e) { box.innerHTML = '<div style="color:var(--danger);font-size:13px;">Eroare la încărcare.</div>'; }
     }
+    var _schedEditId = null; // != null → formularul editează programarea cu acest id (PUT), altfel adaugă (POST)
     async function schedCreate() {
       const body = {
         name: document.getElementById('sch-name').value.trim(),
@@ -5875,12 +5879,36 @@ const pozitii = await r.json();</code></pre>
       const msg = document.getElementById('sch-msg');
       if (!body.report_type) { msg.style.color = 'var(--danger)'; msg.textContent = 'Alege un raport.'; return; }
       try {
-        const res = await fetch('/api/report-schedules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        const editing = _schedEditId != null;
+        const url = editing ? ('/api/report-schedules/' + _schedEditId) : '/api/report-schedules';
+        const res = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
         const d = await res.json(); if (!res.ok) throw new Error(d.error || 'Eroare');
-        msg.style.color = 'var(--accent)'; msg.textContent = 'Adăugată ✓';
-        document.getElementById('sch-name').value = ''; document.getElementById('sch-recips').value = '';
+        msg.style.color = 'var(--accent)'; msg.textContent = editing ? 'Modificată ✓' : 'Adăugată ✓';
+        if (editing) schedEditCancel(); else { document.getElementById('sch-name').value = ''; document.getElementById('sch-recips').value = ''; }
         schedLoad();
       } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
+    }
+    // Editează o programare existentă: încarcă valorile în formular și comută pe modul „Salvează modificările".
+    function schedEdit(id) {
+      const s = (window._schedList || []).filter(function (x) { return x.id === id; })[0];
+      if (!s) return;
+      const set = function (elId, val) { const el = document.getElementById(elId); if (el) el.value = (val == null ? '' : val); };
+      set('sch-name', s.name); set('sch-type', s.report_type); set('sch-imei', s.imei || '');
+      set('sch-period', s.period || 'yesterday'); set('sch-freq', s.frequency || 'daily');
+      set('sch-hour', s.hour != null ? s.hour : 6); set('sch-format', s.format || 'pdf'); set('sch-recips', s.recipients || '');
+      _schedEditId = id;
+      const t = document.getElementById('sch-form-title'); if (t) t.textContent = 'Editează programarea';
+      const b = document.getElementById('sch-submit'); if (b) b.innerHTML = '<i class="fas fa-check"></i> Salvează modificările';
+      const c = document.getElementById('sch-cancel-edit'); if (c) c.style.display = '';
+      const m = document.getElementById('sch-msg'); if (m) m.textContent = '';
+      try { document.querySelector('#sched-modal .modal').scrollTop = 0; } catch (e) {}
+    }
+    function schedEditCancel() {
+      _schedEditId = null;
+      document.getElementById('sch-name').value = ''; document.getElementById('sch-recips').value = '';
+      const t = document.getElementById('sch-form-title'); if (t) t.textContent = 'Programare nouă';
+      const b = document.getElementById('sch-submit'); if (b) b.innerHTML = '<i class="fas fa-plus"></i> Adaugă programarea';
+      const c = document.getElementById('sch-cancel-edit'); if (c) c.style.display = 'none';
     }
     async function schedDelete(id) {
       if (!await raConfirm('Ștergi programarea?')) return;
@@ -5888,15 +5916,19 @@ const pozitii = await r.json();</code></pre>
       schedLoad();
     }
     async function schedRunNow(id) {
-      const msg = document.getElementById('sch-msg'); msg.style.color = ''; msg.textContent = 'Se trimite...';
+      const msg = document.getElementById('sch-msg'); msg.style.color = ''; msg.textContent = 'Se generează...';
       try {
         const res = await fetch('/api/report-schedules/' + id + '/run', { method: 'POST', credentials: 'same-origin' });
         const d = await res.json(); if (!res.ok) throw new Error(d.error || 'Eroare');
-        try { loadReportHistory(); } catch (e) {}  // raportul tocmai s-a salvat în Istoric → reîmprospătează lista
-        try { schedLoad(); } catch (e) {}           // actualizează „Ultima rulare"
-        var mailPart = d.emailSent ? ' · trimis pe email ✓' : ' · emailul nu e configurat (SMTP)';
-        msg.style.color = d.historyId ? 'var(--accent)' : 'var(--orange)';
-        msg.textContent = 'Generat (' + d.rows + ' rânduri)' + (d.historyId ? ' · salvat în Istoric ✓' : (' · NU s-a salvat' + (d.historyError ? ': ' + d.historyError : ''))) + mailPart;
+        const saved = d.historyId != null;
+        try { if (typeof loadReportHistory === 'function') loadReportHistory(); } catch (e) {} // raportul s-a salvat în Istoric → reîmprospătează lista
+        try { schedLoad(); } catch (e) {}                                                      // actualizează „Ultima rulare"
+        const parts = ['Generat ' + (saved ? '✓ ' : '') + '(' + (d.rows || 0) + ' rânduri)'];
+        parts.push(saved ? 'salvat în Istoric' : ('NU s-a salvat' + (d.historyError ? ': ' + d.historyError : (d.reason ? ' (' + d.reason + ')' : ''))));
+        if (d.emailSent) parts.push('trimis pe email');
+        else if (d.recipients && d.recipients.length) parts.push('email indisponibil (SMTP neconfigurat)');
+        msg.style.color = saved ? 'var(--accent)' : 'var(--orange)';
+        msg.textContent = parts.join(' · ');
       } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
     }
     function renderReport(data) {

@@ -31,6 +31,7 @@ export function ReportSchedules() {
   const [rtypes, setRtypes] = useState<ReportTypeInfo[]>([]);
   const [err, setErr] = useState('');
   const [add, setAdd] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null); // != null → sheet-ul editează programarea (PUT)
   const [confirmDel, setConfirmDel] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<any>({ name: '', report_type: '', imei: '', period: 'yesterday', frequency: 'daily', hour: '6', format: 'pdf', recipients: '' });
@@ -45,26 +46,40 @@ export function ReportSchedules() {
     Api.reportTypes().then((r) => setRtypes(r.reports || [])).catch(() => {});
   }, []);
 
-  function openAdd() { setForm({ name: '', report_type: rtypes[0]?.type || '', imei: '', period: 'yesterday', frequency: 'daily', hour: '6', format: 'pdf', recipients: '' }); setAdd(true); }
+  function openAdd() { setEditId(null); setForm({ name: '', report_type: rtypes[0]?.type || '', imei: '', period: 'yesterday', frequency: 'daily', hour: '6', format: 'pdf', recipients: '' }); setAdd(true); }
+  function openEdit(s: any) {
+    setEditId(s.id);
+    setForm({ name: s.name || '', report_type: s.report_type || '', imei: s.imei || '', period: s.period || 'yesterday', frequency: s.frequency || 'daily', hour: String(s.hour != null ? s.hour : 6), format: s.format || 'pdf', recipients: s.recipients || '' });
+    setAdd(true);
+  }
+  function closeSheet() { setAdd(false); setEditId(null); }
   const setF = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
 
   async function save() {
     if (!form.report_type) { showToast('Alege un tip de raport', true); return; }
     setBusy(true);
     try {
-      await Api.createReportSchedule({
+      const body = {
         name: form.name.trim() || null, report_type: form.report_type, imei: form.imei || null,
         period: form.period, frequency: form.frequency, hour: parseInt(form.hour) || 6,
         format: form.format, recipients: form.recipients.trim() || null,
-      });
-      showToast('Programare adăugată'); setAdd(false); await reload();
+      };
+      if (editId != null) { await Api.updateReportSchedule(editId, body); showToast('Programare modificată'); }
+      else { await Api.createReportSchedule(body); showToast('Programare adăugată'); }
+      closeSheet(); await reload();
     } catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); }
     finally { setBusy(false); }
   }
   async function runNow(s: any) {
     setBusy(true);
-    try { await Api.runReportSchedule(s.id); showToast('Raport trimis pe email'); }
-    catch (e: any) { showToast(e?.message || 'Eroare la trimitere', true); }
+    try {
+      const r = await Api.runReportSchedule(s.id);
+      const saved = r && r.historyId != null;
+      const parts = ['Generat (' + ((r && r.rows) || 0) + ' rânduri)', saved ? 'salvat în Istoric' : ('nesalvat' + (r && r.reason ? ' (' + r.reason + ')' : ''))];
+      if (r && r.emailSent) parts.push('trimis pe email');
+      showToast(parts.join(' · '), !saved);
+      await reload();
+    } catch (e: any) { showToast(e?.message || 'Eroare la trimitere', true); }
     finally { setBusy(false); }
   }
   async function doDelete(s: any) {
@@ -97,6 +112,7 @@ export function ReportSchedules() {
                   <div class="sub">{FREQ_LBL[s.frequency] || s.frequency} @ {String(s.hour).padStart(2, '0')}:00 · {(s.format || 'pdf').toUpperCase()} · {s.imei ? vname(s.imei) : 'toată flota'}</div>
                 </span>
                 <span class="rt">
+                  {canWrite && <button class="icon-btn-sm" onClick={() => openEdit(s)} title="Editează"><Icon name="edit" size={16} /></button>}
                   {canWrite && <button class="icon-btn-sm" disabled={busy} onClick={() => runNow(s)} title="Trimite acum" style="color:var(--accent)"><Icon name="navigate" size={17} /></button>}
                   {canWrite && <button class="icon-btn-sm danger" onClick={() => setConfirmDel(s)}><Icon name="trash" size={17} /></button>}
                 </span>
@@ -109,9 +125,9 @@ export function ReportSchedules() {
       {canWrite && <button class="fab" onClick={openAdd} aria-label="Adaugă programare"><Icon name="plus" size={26} color="#06210f" /></button>}
 
       {add && (
-        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !busy) setAdd(false); }}>
+        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !busy) closeSheet(); }}>
           <div class="sheet">
-            <div class="sheet-h"><b><Icon name="calendar" size={18} color="var(--accent)" /> Programare raport</b><button class="h-btn" onClick={() => setAdd(false)}><Icon name="x" /></button></div>
+            <div class="sheet-h"><b><Icon name="calendar" size={18} color="var(--accent)" /> {editId != null ? 'Editează programarea' : 'Programare raport'}</b><button class="h-btn" onClick={closeSheet}><Icon name="x" /></button></div>
             <div class="sheet-body">
               <div class="frm">
                 <div class="fld"><label>Nume (opțional)</label><input value={form.name} onInput={(e) => setF('name', (e.target as HTMLInputElement).value)} placeholder="Ex: Raport zilnic flotă" /></div>
@@ -142,7 +158,7 @@ export function ReportSchedules() {
                   <div class="fld"><label>Ora (0–23)</label><input type="number" inputMode="numeric" value={form.hour} onInput={(e) => setF('hour', (e.target as HTMLInputElement).value)} /></div>
                 </div>
                 <div class="fld"><label>Destinatari (email)</label><input type="text" value={form.recipients} onInput={(e) => setF('recipients', (e.target as HTMLInputElement).value)} placeholder="gol = emailul tău; separă cu virgulă" autocapitalize="none" /></div>
-                <div class="frm-actions"><button class="btn btn-primary" disabled={busy} onClick={save}>{busy ? 'Se salvează…' : 'Programează'}</button></div>
+                <div class="frm-actions"><button class="btn btn-primary" disabled={busy} onClick={save}>{busy ? 'Se salvează…' : (editId != null ? 'Salvează modificările' : 'Programează')}</button></div>
               </div>
             </div>
           </div>
