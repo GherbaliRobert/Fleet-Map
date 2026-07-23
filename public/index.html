@@ -16243,6 +16243,7 @@ const pozitii = await r.json();</code></pre>
       var byAgent = {}, totNew = 0, cCrit = 0, cWarn = 0, cInfo = 0;
       _agpLast = {};
       findings.forEach(function (f) {
+        if (f.agent === 'dispatch') return; // dispatch = stare live, nu constatări persistate (nu îngroșa badge-urile)
         if (f.status && f.status !== 'new') return;
         totNew++;
         if (f.severity === 'critical') cCrit++; else if (f.severity === 'warning') cWarn++; else cInfo++;
@@ -16319,21 +16320,33 @@ const pozitii = await r.json();</code></pre>
       var host = $('agp-body'); var m = AGP_META[k]; if (!host || !m) return;
       _agpState.mode = 'detail'; _agpState.agent = k;
       var canCfg = _agpState.canCfg;
-      var fs = (_agpState.findings || []).filter(function (f) { return f.agent === k && (!f.status || f.status === 'new'); }).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-      var feed;
-      if (fs.length) {
-        feed = fs.map(function (f) {
-          return '<div class="agp-fi"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + '<div class="tm">' + _agpAgo(f.created_at) + '</div></div></div>';
-        }).join('');
+      var isDispatch = (k === 'dispatch');
+      var feed, feedHead, footer, actRun;
+      if (isDispatch) {
+        // RA Dispatch = stare LIVE (disponibilitatea e de moment, nu istoric). Se încarcă din /api/agents/dispatch/live după randare.
+        feedHead = 'Disponibile acum';
+        feed = '<div id="agp-disp-live"><div class="agp-fi"><span class="fd" style="background:var(--text-muted)"></span><div class="agp-fi-b"><div class="ti"><i class="fas fa-spinner fa-spin"></i> Se verifică flota…</div></div></div></div>';
+        footer = '<div class="agp-lastrun" id="agp-disp-when"><i class="fas fa-clock"></i> Se verifică…</div>';
+        actRun = '<button type="button" class="btn-sm" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="raxOpenDispatch()"><i class="fas fa-compass"></i> Dispecerizare — alege o destinație</button>'
+          + '<button type="button" class="btn-sm" onclick="agpDispatchRefresh()"><i class="fas fa-rotate"></i> Verifică acum</button>';
       } else {
-        feed = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b">'
-          + '<div class="ti"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Totul e în regulă — nicio alertă</div>'
-          + '<div class="bo">Am verificat ' + (m.checks || 'flota') + '. N-am găsit nicio problemă — poți sta liniștit.</div>'
-          + '</div></div>';
+        var fs = (_agpState.findings || []).filter(function (f) { return f.agent === k && (!f.status || f.status === 'new'); }).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        if (fs.length) {
+          feed = fs.map(function (f) {
+            return '<div class="agp-fi"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + '<div class="tm">' + _agpAgo(f.created_at) + '</div></div></div>';
+          }).join('');
+        } else {
+          feed = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b">'
+            + '<div class="ti"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Totul e în regulă — nicio alertă</div>'
+            + '<div class="bo">Am verificat ' + (m.checks || 'flota') + '. N-am găsit nicio problemă — poți sta liniștit.</div>'
+            + '</div></div>';
+        }
+        feedHead = 'Verificări &amp; alerte';
+        var autoOn = _agpState.auto !== false;
+        var lastMs = Math.max(_agpLastRun[k] || 0, (_agpState.lastRun ? new Date(_agpState.lastRun).getTime() : 0));
+        footer = '<div class="agp-lastrun"><i class="fas fa-clock"></i> ' + (lastMs ? 'Ultima rulare: <b>' + _agpWhen(lastMs) + '</b>' : 'Nicio rulare încă') + ' · ' + (autoOn ? 'verifică automat din oră în oră' : 'verificarea automată e oprită (rulează manual)') + '</div>';
+        actRun = '<button type="button" class="btn-sm" id="agp-run-' + k + '" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="agpRunOne(\'' + k + '\')"><i class="fas fa-bolt"></i> Rulează</button>';
       }
-      var autoOn = _agpState.auto !== false;
-      var lastMs = Math.max(_agpLastRun[k] || 0, (_agpState.lastRun ? new Date(_agpState.lastRun).getTime() : 0));
-      var footer = '<div class="agp-lastrun"><i class="fas fa-clock"></i> ' + (lastMs ? 'Ultima rulare: <b>' + _agpWhen(lastMs) + '</b>' : 'Nicio rulare încă') + ' · ' + (autoOn ? 'verifică automat din oră în oră' : 'verificarea automată e oprită (rulează manual)') + '</div>';
       host.innerHTML = '<div class="agp-detail agp-cascade">'
         + '<button type="button" class="agp-back" onclick="renderAgentsPage()"><i class="fas fa-arrow-left"></i> Toți agenții</button>'
         + '<div class="agp-dhead"><div class="agp-ct ag-t-green" style="width:52px;height:52px;font-size:23px;"><i class="fas ' + m.icon + '"></i></div>'
@@ -16341,15 +16354,40 @@ const pozitii = await r.json();</code></pre>
         + '<span class="agp-status">activ</span></div>'
         + '<div class="agp-ddesc">' + ((AGP_TUT[k] && AGP_TUT[k].face) || m.desc) + '</div>'
         + '<div class="agp-dact">'
-        + '<button type="button" class="btn-sm" id="agp-run-' + k + '" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="agpRunOne(\'' + k + '\')"><i class="fas fa-bolt"></i> Rulează</button>'
+        + actRun
         + (canCfg ? '<button type="button" class="btn-sm" onclick="agpSettings(\'' + k + '\')"><i class="fas fa-sliders"></i> Praguri</button>' : '')
         + '<button type="button" class="btn-sm" onclick="agpTutorial(\'' + k + '\')"><i class="fas fa-circle-question"></i> Cum funcționează</button>'
         + '</div>'
-        + '<div class="agp-feed-h">Verificări &amp; alerte</div>'
+        + '<div class="agp-feed-h">' + feedHead + '</div>'
         + '<div class="agp-feed">' + feed + '</div>'
         + footer
         + '</div>';
       host.scrollTop = 0;
+      if (isDispatch) agpDispatchRefresh();
+    };
+    // RA Dispatch — reîncarcă starea LIVE (disponibile acum + subutilizate azi) din endpoint-ul dedicat (fără persistență, fără AI).
+    window.agpDispatchRefresh = async function () {
+      var box = $('agp-disp-live'), whenEl = $('agp-disp-when');
+      if (box) box.innerHTML = '<div class="agp-fi"><span class="fd" style="background:var(--text-muted)"></span><div class="agp-fi-b"><div class="ti"><i class="fas fa-spinner fa-spin"></i> Se verifică flota…</div></div></div>';
+      var data = null;
+      try { data = await fetch('/api/agents/dispatch/live' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
+      if (!box) return;
+      var fsl = (data && Array.isArray(data.findings)) ? data.findings : [];
+      if (fsl.length) {
+        box.innerHTML = fsl.map(function (f) {
+          return '<div class="agp-fi"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + '</div></div>';
+        }).join('');
+      } else {
+        box.innerHTML = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b">'
+          + '<div class="ti"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Niciun vehicul disponibil acum</div>'
+          + '<div class="bo">Momentan niciun vehicul online și oprit, gata de o cursă. Apasă „Dispecerizare" ca să cauți cel mai apropiat vehicul de o destinație.</div>'
+          + '</div></div>';
+      }
+      if (whenEl) {
+        var t = (data && data.checkedAt) ? new Date(data.checkedAt) : new Date();
+        var when = t.toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        whenEl.innerHTML = '<i class="fas fa-clock"></i> Verificat: <b>' + when + '</b> · se actualizează când deschizi pagina sau apeși „Verifică acum".';
+      }
     };
     // ── Tutorial per agent (ghid de folosire) ──
     var AGP_TUT = {

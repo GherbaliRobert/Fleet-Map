@@ -2341,7 +2341,7 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds, fuelPrice: _coFP || 7.5 };
     const findings = (which === 'all' ? await agents.runAll(base, enabled) : await agents.runAgent(which, base)).findings || [];
     let stored = 0;
-    for (const f of findings) { const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; }
+    for (const f of findings) { if (f.agent === 'dispatch') continue; const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; } // dispatch = live-only, nu se persistă (stare de moment, nu istoric)
     let aiSummary = null;
     if (ai && ai.aiEnabled() && findings.length) {
       try {
@@ -2358,6 +2358,23 @@ app.get('/api/agents/findings', requireAuth, withCompany, async (req, res) => {
     await applyCompanyFilter(req);
     const cid = req.isSuper ? (req.filterCompanyId != null ? req.filterCompanyId : null) : req.companyId;
     res.json(await db.getAgentFindings(cid, 80));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// RA Dispatch — stare LIVE (disponibile acum + subutilizate azi). Calculată la cerere, FĂRĂ persistență și FĂRĂ AI:
+// disponibilitatea e o stare de moment, nu un eveniment de istoric → nu acumulăm constatări care se repetă/expiră.
+app.get('/api/agents/dispatch/live', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!agents) return res.status(503).json({ error: 'Agenții indisponibili' });
+    await applyCompanyFilter(req);
+    const imeis = await resolveReportImeis(req);
+    if (!imeis) return res.status(403).json({ error: 'Acces interzis' });
+    const storeCompany = (req.isSuper && req.filterCompanyId != null) ? req.filterCompanyId : req.companyId;
+    // Dispatch e „live-only" → curăță eventualele snapshot-uri vechi persistate (migrare de la vechiul comportament).
+    try { await db.pool.query("DELETE FROM agent_findings WHERE agent = 'dispatch' AND company_id IS NOT DISTINCT FROM $1", [storeCompany == null ? null : storeCompany]); } catch (e) {}
+    const alertThresholds = await _getAlertThresholds(storeCompany);
+    const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds };
+    const out = await agents.runAgent('dispatch', base);
+    res.json({ findings: (out && out.findings) || [], checkedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/agents/findings/:id/:action', requireAuth, withCompany, async (req, res) => {
@@ -2407,7 +2424,7 @@ async function runAgentsWorker() {
     const companies = await db.getCompanies();
     for (const co of companies) {
       if (co.is_demo) continue;
-      const enabled = plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS);
+      const enabled = (plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS)).filter(function (k) { return k !== 'dispatch'; }); // dispatch = live-only (calculat la deschiderea paginii), nu în fundal
       if (!enabled.length) continue; // planul „start" nu rulează niciun agent
       const imeis = await db.getCompanyActiveImeis(co.id); // agenții nu rulează pe vehicule arhivate
       if (!imeis.length) continue;

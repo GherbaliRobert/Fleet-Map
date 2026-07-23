@@ -387,7 +387,7 @@ async function raDispatch(ctx) {
   }
   if (available.length) {
     const names = available.slice(0, 8).map(a => a.name).join(', ') + (available.length > 8 ? ' …' : '');
-    findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: available.length + ' vehicule disponibile acum pentru curse', body: 'Online și staționate: ' + names + '. Deschide „Dispecerizare" ca să găsești cel mai apropiat vehicul de o destinație.' });
+    findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: available.length + ' vehicule disponibile acum pentru curse', body: 'Online și staționate: ' + names + '.' });
   }
   // Subutilizate (după-amiaza): disponibile dar fără rulaj azi → candidate pentru o cursă nouă
   if (new Date().getHours() >= IDLE_HOUR) {
