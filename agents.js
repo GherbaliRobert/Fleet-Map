@@ -99,7 +99,7 @@ async function raWatch(ctx) {
   const offlineMin = Number.isFinite(thresholds.offlineMin) && thresholds.offlineMin > 0 ? thresholds.offlineMin : OFFLINE_MIN;
   const fuelDropL = Number.isFinite(thresholds.fuelDropL) && thresholds.fuelDropL > 0 ? thresholds.fuelDropL : FUEL_DROP_L;
   const fuelDropPct = Number.isFinite(thresholds.fuelDropPct) && thresholds.fuelDropPct > 0 ? thresholds.fuelDropPct : FUEL_DROP_PCT;
-  const fuelTheftL = Number.isFinite(thresholds.fuelDropTheftL) && thresholds.fuelDropTheftL > 0 ? thresholds.fuelDropTheftL : FUEL_DROP_THEFT_L;
+  const fuelTheftL = Number.isFinite(thresholds.fuelTheftL) && thresholds.fuelTheftL > 0 ? thresholds.fuelTheftL : FUEL_DROP_THEFT_L;
   const idleMaxMinPrag = Number.isFinite(thresholds.idleMaxMin) && thresholds.idleMaxMin > 0 ? thresholds.idleMaxMin : IDLE_MIN_MINUTES;
   const tachoGraceMin = Number.isFinite(thresholds.tachoGraceMin) && thresholds.tachoGraceMin > 0 ? thresholds.tachoGraceMin : TACHO_GRACE_MIN;
   for (const imei of imeis) {
@@ -374,7 +374,10 @@ async function raClient(ctx) {
 // ─── RA Dispatch — alocare curse (disponibilitate + echilibrare flotă) ───
 async function raDispatch(ctx) {
   const { imeis, livePositions } = ctx; const findings = []; const now = Date.now();
-  const ONLINE_MS = 65 * 60000; // 1h + tampon (parcate care trimit o dată/oră rămân disponibile)
+  const th = (ctx && ctx.alertThresholds) || {}; // praguri reglabile per companie (fallback la valorile clasice)
+  const ONLINE_MS = (Number.isFinite(th.dispOnlineMin) && th.dispOnlineMin > 0 ? th.dispOnlineMin : 65) * 60000;
+  const IDLE_HOUR = (Number.isFinite(th.dispIdleHour) && th.dispIdleHour >= 0 && th.dispIdleHour <= 23) ? th.dispIdleHour : 12;
+  const IDLE_KM = (Number.isFinite(th.dispIdleKm) && th.dispIdleKm > 0) ? th.dispIdleKm : 1;
   const available = [];
   for (const imei of imeis) {
     const live = livePositions.get(imei); if (!live || !live.timestamp) continue;
@@ -387,12 +390,12 @@ async function raDispatch(ctx) {
     findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: available.length + ' vehicule disponibile acum pentru curse', body: 'Online și staționate: ' + names + '. Deschide „Dispecerizare" ca să găsești cel mai apropiat vehicul de o destinație.' });
   }
   // Subutilizate (după-amiaza): disponibile dar fără rulaj azi → candidate pentru o cursă nouă
-  if (new Date().getHours() >= 12) {
+  if (new Date().getHours() >= IDLE_HOUR) {
     for (const a of available) {
       const pts = await ctx.hist(a.imei);
       let km = 0;
       for (let i = 1; i < pts.length; i++) { const d = haversineKm(pts[i - 1].latitude, pts[i - 1].longitude, pts[i].latitude, pts[i].longitude); if (d < 10) km += d; }
-      if (km < 1) findings.push({ imei: a.imei, severity: 'info', agent: 'dispatch', fkey: 'disp_idle_' + a.imei, title: a.name + ': nefolosit azi — disponibil', body: 'Sub 1 km parcurși azi și staționat acum. Candidat bun pentru o cursă nouă.' });
+      if (km < IDLE_KM) findings.push({ imei: a.imei, severity: 'info', agent: 'dispatch', fkey: 'disp_idle_' + a.imei, title: a.name + ': nefolosit azi — disponibil', body: 'Sub ' + IDLE_KM + ' km parcurși azi și staționat acum. Candidat bun pentru o cursă nouă.' });
     }
   }
   return { findings };

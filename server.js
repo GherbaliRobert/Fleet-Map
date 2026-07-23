@@ -2269,7 +2269,10 @@ const ALERT_THRESHOLD_SPECS = [
   { k: 'ecoScoreMin', min: 0, max: 100, round: true },     // RA Optimize — scor minim eco-driving
   { k: 'serviceSoonKm', min: 100, max: 50000, round: true }, // RA Care — km până la service-ul din BORD (CAN)
   { k: 'careDaysLead', min: 1, max: 365, round: true },    // RA Care + push — zile înainte de scadența pe DATĂ (mentenanță/documente)
-  { k: 'careKmLead', min: 50, max: 50000, round: true }    // RA Care + push — km înainte de scadența pe KM (mentenanță)
+  { k: 'careKmLead', min: 50, max: 50000, round: true },   // RA Care + push — km înainte de scadența pe KM (mentenanță)
+  { k: 'dispOnlineMin', min: 5, max: 240, round: true },   // RA Dispatch — „disponibil": ultimul semnal sub (min)
+  { k: 'dispIdleHour', min: 0, max: 23, round: true },     // RA Dispatch — verifică „subutilizat" după ora (0-23)
+  { k: 'dispIdleKm', min: 1, max: 100, round: true }       // RA Dispatch — „nefolosit azi": sub (km)
 ];
 // Praguri alertă (RA Watch + RA Optimize + RA Care) — citite din companies.settings.alert_thresholds; fallback la defaulturi (agents.js)
 function _alertThresholdsFromSettings(settings) {

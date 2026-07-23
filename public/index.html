@@ -16435,7 +16435,14 @@ const pozitii = await r.json();</code></pre>
         { key: 'ecoScoreMin', label: 'Scor eco minim', unit: '/100', min: 0, max: 100, def: 60, hint: 'Alertă când scorul eco al unui vehicul scade sub această valoare.',
           options: [{ v: 40, t: 'sub 40 — doar cazurile grave' }, { v: 50, t: 'sub 50 — relaxat' }, { v: 60, t: 'sub 60 (recomandat)' }, { v: 70, t: 'sub 70 — exigent' }, { v: 80, t: 'sub 80 — foarte exigent' }] }
       ] },
-      dispatch: { fields: [], fixed: 'Reguli fixe: vehicul „disponibil" = online sub ~65 min și oprit; „subutilizat" = sub 1 km după ora 12.' },
+      dispatch: { fields: [
+        { key: 'dispOnlineMin', label: 'Disponibil — ultimul semnal sub', unit: 'min', min: 5, max: 240, def: 65, hint: 'Un vehicul e „disponibil" dacă a transmis semnal mai recent de atât și e oprit.',
+          options: [{ v: 30, t: '30 minute' }, { v: 45, t: '45 minute' }, { v: 65, t: '65 minute (recomandat)' }, { v: 90, t: '90 minute' }, { v: 120, t: '2 ore' }] },
+        { key: 'dispIdleHour', label: 'Verifică „subutilizat" după', unit: 'ora zilei', min: 0, max: 23, def: 12, hint: 'De la ce oră a zilei semnalăm vehiculele disponibile dar fără rulaj azi.',
+          options: [{ v: 10, t: '10:00' }, { v: 11, t: '11:00' }, { v: 12, t: '12:00 (recomandat)' }, { v: 13, t: '13:00' }, { v: 14, t: '14:00' }] },
+        { key: 'dispIdleKm', label: 'Nefolosit azi — sub', unit: 'km', min: 1, max: 100, def: 1, hint: 'Sub câți km parcurși azi un vehicul disponibil e considerat neutilizat.',
+          options: [{ v: 1, t: '1 km (recomandat)' }, { v: 2, t: '2 km' }, { v: 5, t: '5 km' }, { v: 10, t: '10 km' }] }
+      ] },
       compliance: { fields: [], fixed: 'Praguri legale (Reg. CE 561/2006): alertă peste 4h30 condus continuu sau 9h pe zi. Fixe prin lege.' },
       client: { fields: [], fixed: 'Rulează o dată pe zi (digest al flotei). Nu are praguri de reglat.' }
     };
