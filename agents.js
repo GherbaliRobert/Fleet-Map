@@ -51,6 +51,13 @@ function fuelReading(p) {
 }
 function odoKm(p) { const i = io(p); return num(i.can_total_mileage) != null ? num(i.can_total_mileage) : (num(i.can_total_mileage_counted) != null ? num(i.can_total_mileage_counted) : (num(i.total_odometer) != null ? i.total_odometer / 1000 : null)); }
 function nameOf(live, imei) { return (live && (live.name || live.plate)) || imei; }
+// Etichetă completă pentru dispecerizare: „Nume (Nr. înmatriculare)" — arată și numărul de înmatriculare.
+function labelOf(live, imei) {
+  const name = live && live.name ? String(live.name).trim() : '';
+  const plate = live && live.plate ? String(live.plate).trim() : '';
+  if (name && plate && name.toLowerCase() !== plate.toLowerCase()) return name + ' (' + plate + ')';
+  return name || plate || imei;
+}
 function tms(p) { return new Date(p.timestamp).getTime(); }
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
@@ -383,11 +390,13 @@ async function raDispatch(ctx) {
     const live = livePositions.get(imei); if (!live || !live.timestamp) continue;
     const online = (now - new Date(live.timestamp).getTime()) < ONLINE_MS;
     const stopped = (live.speed || 0) <= 3;
-    if (online && stopped) available.push({ imei, name: nameOf(live, imei) });
+    if (online && stopped) available.push({ imei, name: labelOf(live, imei) });
   }
   if (available.length) {
-    const names = available.slice(0, 8).map(a => a.name).join(', ') + (available.length > 8 ? ' …' : '');
-    findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: available.length + ' vehicule disponibile acum pentru curse', body: 'Online și staționate: ' + names + '.' });
+    const n = available.length;
+    const names = available.slice(0, 8).map(a => a.name).join(', ') + (n > 8 ? ' …' : '');
+    const noun = n === 1 ? 'vehicul disponibil' : 'vehicule disponibile'; // acord gramatical corect (1 vehicul / N vehicule)
+    findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: n + ' ' + noun + ' acum pentru curse', body: 'Online și staționate: ' + names + '.' });
   }
   // Subutilizate (după-amiaza): disponibile dar fără rulaj azi → candidate pentru o cursă nouă
   if (new Date().getHours() >= IDLE_HOUR) {
