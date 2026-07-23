@@ -2285,9 +2285,35 @@ function _alertThresholdsFromSettings(settings) {
   });
   return out;
 }
+// Whitelist + clamping pentru praguri primite de la client (sursă unică de validare — SPECS canonice).
+function _mergeAlertThresholds(cur, incoming) {
+  const a = Object.assign({}, cur || {});
+  if (incoming && typeof incoming === 'object') {
+    ALERT_THRESHOLD_SPECS.forEach(function (sp) {
+      if (Object.prototype.hasOwnProperty.call(incoming, sp.k)) {
+        const v = incoming[sp.k];
+        if (v === null) { delete a[sp.k]; return; }           // null = revino la default (agents.js)
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= sp.min && n <= sp.max) a[sp.k] = sp.round ? Math.round(n) : n;
+        // valori invalide → ignorate (nu suprascriu)
+      }
+    });
+  }
+  return a;
+}
+// Praguri GLOBALE (Setări sistem) — setate de super-admin (nu are companie proprie), aplicate ca BAZĂ tuturor companiilor.
+async function _getGlobalAlertThresholds() {
+  try {
+    const raw = await db.getSetting('alert_thresholds_global');
+    if (!raw) return {};
+    const parsed = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+    return _alertThresholdsFromSettings({ alert_thresholds: parsed });
+  } catch (e) { return {}; }
+}
 async function _getAlertThresholds(companyId) {
-  if (companyId == null) return {};
-  try { const co = await db.getCompanyById(companyId); return _alertThresholdsFromSettings(co && co.settings); } catch (e) { return {}; }
+  const global = await _getGlobalAlertThresholds();
+  if (companyId == null) return global; // super-admin: doar praguri globale
+  try { const co = await db.getCompanyById(companyId); return Object.assign({}, global, _alertThresholdsFromSettings(co && co.settings)); } catch (e) { return global; }
 }
 app.get('/api/agents', requireAuth, withCompany, async (req, res) => {
   if (!agents) return res.json({ agents: [] });
@@ -2377,6 +2403,7 @@ async function runAgentsWorker() {
   try {
     let _sysSpeed = 90;
     try { const _sys = await getSystemSettings(); if (!_sys.agents_auto) return; _sysSpeed = _sys.default_speed_limit; } catch (e) {} // toggle + viteză implicită din Setări sistem
+    const globalThresholds = await _getGlobalAlertThresholds(); // praguri platformă (super-admin) = bază pentru toate companiile
     const companies = await db.getCompanies();
     for (const co of companies) {
       if (co.is_demo) continue;
@@ -2384,7 +2411,7 @@ async function runAgentsWorker() {
       if (!enabled.length) continue; // planul „start" nu rulează niciun agent
       const imeis = await db.getCompanyActiveImeis(co.id); // agenții nu rulează pe vehicule arhivate
       if (!imeis.length) continue;
-      const alertThresholds = _alertThresholdsFromSettings(co && co.settings);
+      const alertThresholds = Object.assign({}, globalThresholds, _alertThresholdsFromSettings(co && co.settings)); // compania suprascrie global
       const _coFP = effectiveFuelPrices(co && co.settings).motorina || 7.5;
       const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds, fuelPrice: _coFP }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
@@ -6777,7 +6804,7 @@ app.put('/api/me/ui-prefs', requireAuth, async (req, res) => {
 app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
   try {
     const a = getAuth(req);
-    if (a.companyId == null) return res.json({ ui_defaults: {}, alert_thresholds: {} }); // super-admin fără companie
+    if (a.companyId == null) return res.json({ ui_defaults: {}, alert_thresholds: await _getGlobalAlertThresholds() }); // super-admin fără companie → praguri globale (platformă)
     const s = await db.getCompanySettings(a.companyId);
     res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {}, weekly_report: s.weekly_report || null, work_schedule: s.work_schedule || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -6785,7 +6812,16 @@ app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
 app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
   try {
     const a = getAuth(req);
-    if (a.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
+    if (a.companyId == null) {
+      // Super-adminul nu are companie proprie → pragurile agenților se salvează GLOBAL (bază pentru toate companiile).
+      if (req.body && req.body.alert_thresholds && typeof req.body.alert_thresholds === 'object') {
+        const merged = _mergeAlertThresholds(await _getGlobalAlertThresholds(), req.body.alert_thresholds);
+        await db.setSetting('alert_thresholds_global', JSON.stringify(merged));
+        auditReq(req, 'update', 'alert_thresholds_global', null, { keys: Object.keys(req.body.alert_thresholds) });
+        return res.json({ ok: true, alert_thresholds: merged });
+      }
+      return res.status(400).json({ error: 'Super-adminul nu are companie proprie' });
+    }
     const next = await _applyCompanySettingsPatch(a.companyId, req.body || {});
     if (req.body && req.body.work_schedule !== undefined) loadWorkSchedules().catch(() => {}); // refresh cache detecție
     auditReq(req, 'update', 'company_settings', a.companyId, { keys: Object.keys(req.body || {}) });
@@ -6855,17 +6891,7 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   }
   // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie (SPECS canonice — vezi sus).
   if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {
-    const a = Object.assign({}, cur.alert_thresholds || {});
-    ALERT_THRESHOLD_SPECS.forEach(function (sp) {
-      if (Object.prototype.hasOwnProperty.call(body.alert_thresholds, sp.k)) {
-        const v = body.alert_thresholds[sp.k];
-        if (v === null) { delete a[sp.k]; return; }
-        const n = Number(v);
-        if (Number.isFinite(n) && n >= sp.min && n <= sp.max) a[sp.k] = sp.round ? Math.round(n) : n;
-        // valori invalide → ignorate (nu suprascriu)
-      }
-    });
-    next.alert_thresholds = a;
+    next.alert_thresholds = _mergeAlertThresholds(cur.alert_thresholds, body.alert_thresholds);
   } else if (body.alert_thresholds === null) {
     delete next.alert_thresholds;
   }
