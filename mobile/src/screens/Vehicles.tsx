@@ -67,7 +67,7 @@ export function Vehicles() {
 
       {showMap ? (
         <div class="vmap-wrap">
-          <VehicleMap vehicles={filtered} offlineMin={off} follow={follow} onSelect={(imei) => loc.route('/vehicles/' + encodeURIComponent(imei))} />
+          <VehicleMap vehicles={filtered} offlineMin={off} follow={follow} onFocus={() => setFollow(false)} onSelect={(imei) => loc.route('/vehicles/' + encodeURIComponent(imei))} />
           <button class={'vmap-follow' + (follow ? ' on' : '')} onClick={() => setFollow((f) => !f)} aria-label="urmărește mașinile">
             {follow ? 'Urmărire ✓' : 'Urmărire'}
           </button>

@@ -79,8 +79,8 @@ const TOUR3D: { e: string; t: string; d: string }[] = [
   { e: '🎯', t: 'Localizare și dâră', d: 'Apasă <b>📍</b> ca să-ți vezi <b>poziția</b>. Apasă o mașină pentru <b>detalii</b>. Dâra colorată arată pe unde a trecut recent.' },
 ];
 
-export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }: {
-  vehicles: Position[]; offlineMin: number; onSelect: (imei: string) => void; focusImei?: string; follow?: boolean;
+export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, onFocus }: {
+  vehicles: Position[]; offlineMin: number; onSelect: (imei: string) => void; focusImei?: string; follow?: boolean; onFocus?: (imei: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -94,6 +94,8 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
   const lastFocus = useRef<string | undefined>(undefined);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onFocusRef = useRef(onFocus);
+  onFocusRef.current = onFocus;
   // Implicit 2D: modul 3D NU se restaurează la pornire (altfel s-ar încărca plăcile 3D grele fără să fie cerute). 3D doar la apăsare.
   const [use3d, setUse3d] = useState<boolean>(false);
   function toggle3d() {
@@ -225,6 +227,11 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow }
           el.innerHTML = inner;
           const pop = new maplibregl.Popup({ closeButton: false, offset: 16, className: 'vmk-popup' }).setHTML(pophtml);
           const mk = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([v.longitude, v.latitude]).setPopup(pop).addTo(map);
+          const tapImei = v.imei;
+          el.addEventListener('click', () => { // tap pe mașină → centrează harta pe EA + oprește urmărirea flotei (altfel revine „între" mașini la următorul update)
+            try { map.easeTo({ center: mk.getLngLat(), zoom: Math.max(map.getZoom(), 15), duration: 500 }); } catch { /* */ }
+            if (onFocusRef.current) onFocusRef.current(tapImei);
+          });
           markers.current.set(v.imei, { mk, el, pop });
         }
         minLng = Math.min(minLng, v.longitude); maxLng = Math.max(maxLng, v.longitude);
