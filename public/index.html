@@ -6345,7 +6345,16 @@ const pozitii = await r.json();</code></pre>
       if (dispatchTargetMarker) { try { map.removeLayer(dispatchTargetMarker); } catch (e) {} }
       if (dispatchLine) { try { map.removeLayer(dispatchLine); } catch (e) {} dispatchLine = null; }
       dispatchTargetMarker = L.marker([lat, lon]).addTo(map).bindPopup('Destinație').openPopup();
-      document.getElementById('dispatch-target').innerHTML = '<i class="fas fa-map-pin" style="color:var(--accent)"></i> Destinație: ' + lat.toFixed(4) + ', ' + lon.toFixed(4);
+      var tgtEl = document.getElementById('dispatch-target');
+      tgtEl.innerHTML = '<i class="fas fa-map-pin" style="color:var(--accent)"></i> Destinație: <span style="color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> se caută adresa…</span>';
+      // Adresă exactă în loc de coordonate (reverse-geocode, cu cache) — actualizează și popup-ul destinației.
+      var _myMarker = dispatchTargetMarker;
+      (async function () {
+        var addr; try { addr = await reverseGeocode(lat, lon); } catch (e) { addr = lat.toFixed(4) + ', ' + lon.toFixed(4); }
+        if (dispatchTargetMarker !== _myMarker) return; // s-a ales altă destinație între timp
+        tgtEl.innerHTML = '<i class="fas fa-map-pin" style="color:var(--accent)"></i> Destinație: ' + x(addr);
+        try { _myMarker.setPopupContent('Destinație: ' + x(addr)); _myMarker.openPopup(); } catch (e) {}
+      })();
       var box = document.getElementById('dispatch-results'); box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Caut vehicule…</div>';
       try {
         var j = await fetch('/api/dispatch/suggest?lat=' + lat + '&lon=' + lon, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
@@ -6358,7 +6367,7 @@ const pozitii = await r.json();</code></pre>
           var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'offline');
           return '<div style="border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:6px;background:var(--bg-dark);">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
-            + '<span style="font-weight:600;font-size:12px;">' + (i + 1) + '. ' + x(v.name) + '</span>'
+            + '<span style="font-weight:600;font-size:12px;">' + (i + 1) + '. ' + x(v.name) + ((v.plate && String(v.plate).toLowerCase() !== String(v.name).toLowerCase()) ? ' <span style="color:var(--text-muted);font-weight:500;">(' + x(v.plate) + ')</span>' : '') + '</span>'
             + '<span style="font-size:10px;color:' + col + ';font-weight:700;white-space:nowrap;">' + badge + '</span></div>'
             + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + v.distanceKm + ' km · ~' + v.etaMin + ' min</div>'
             + '<div style="margin-top:5px;"><button class="btn-sm" onclick="dispatchShow(' + v.lat + ',' + v.lon + ',' + lat + ',' + lon + ')"><i class="fas fa-location-arrow"></i> Arată pe hartă</button></div>'
