@@ -286,7 +286,7 @@ export function Reports() {
               </div>
             </div>
           )}
-          <button class="btn btn-primary btn-block rp-gen" onClick={generate} disabled={loading || job?.status === 'running'}>
+          <button class="btn btn-primary btn-block rp-gen" onClick={generate} disabled={loading || job?.status === 'running' || (period === 'custom' && (!customFrom || !customTo))}>
             {(loading || job?.status === 'running') ? <span class="spin" style="border-top-color:#06210F" /> : <><Icon name="chart" size={18} /> Generează raport</>}
           </button>
           {job && (
