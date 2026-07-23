@@ -2828,15 +2828,28 @@ async function setScheduleRun(id, lastRunIso, nextRunIso) {
 }
 
 // ─── Istoric rapoarte (per user, retenție 7 zile) ───
+// JSON.stringify rezistent la referințe circulare / valori non-serializabile — altfel un raport „problematic"
+// făcea INSERT-ul să pice și nu ajungea în Istoric (mai ales rapoartele programate).
+function _safeJson(o) {
+  try { return JSON.stringify(o); } catch (e) {
+    const seen = new WeakSet();
+    try {
+      return JSON.stringify(o, function (k, v) {
+        if (typeof v === 'bigint') return String(v);
+        if (typeof v === 'object' && v !== null) { if (seen.has(v)) return undefined; seen.add(v); }
+        return v;
+      });
+    } catch (e2) { return '{}'; }
+  }
+}
 async function saveReportHistory(h) {
   // Fără dedup: fiecare generare din UI = un rând nou în istoric (se păstrează toate, până la expirarea de 7 zile).
-  // Semnătura rămâne stocată (utilă pentru filtrări viitoare), dar NU mai înlocuiește rândurile anterioare.
   const r = await pool.query(
     `INSERT INTO report_history (company_id, user_id, username, report_type, label, imei, vehicle_count, period_from, period_to, opts, data, signature, status, expires_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id, generated_at, expires_at`,
     [h.company_id != null ? h.company_id : null, h.user_id != null ? h.user_id : null, h.username || null,
      h.report_type, h.label || null, h.imei || null, h.vehicle_count || 0,
-     h.period_from || null, h.period_to || null, JSON.stringify(h.opts || {}), JSON.stringify(h.data || {}),
+     h.period_from || null, h.period_to || null, _safeJson(h.opts || {}), _safeJson(h.data || {}),
      h.signature || null, h.status || 'done', h.expires_at || null]
   );
   return r.rows[0];
@@ -2844,7 +2857,7 @@ async function saveReportHistory(h) {
 async function getReportHistory(userId, limit) {
   try { await pool.query('DELETE FROM report_history WHERE expires_at IS NOT NULL AND expires_at < NOW()'); } catch (e) {}
   const r = await pool.query(
-    `SELECT id, company_id, user_id, username, report_type, label, imei, vehicle_count, period_from, period_to, status, generated_at, expires_at
+    `SELECT id, company_id, user_id, username, report_type, label, imei, vehicle_count, period_from, period_to, status, signature, generated_at, expires_at
      FROM report_history WHERE user_id = $1 ORDER BY generated_at DESC LIMIT $2`,
     [userId, Math.min(parseInt(limit) || 100, 500)]
   );

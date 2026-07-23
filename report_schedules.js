@@ -95,19 +95,19 @@ async function runSchedule(s, deps, now) {
   const filename = (report.type || 'raport') + '_' + from.slice(0, 10) + '.' + fmt;
 
   // Salvează în Istoric rapoarte → apare automat, descărcabil (Excel/PDF), pe user-ul programării.
-  let historyId = null;
+  let historyId = null, historyError = null;
   try {
     let uname = null;
     try { if (s.user_id) { const u = await db.getUserById(s.user_id); if (u) uname = u.username; } } catch (e) {}
-    const sig = [s.report_type, s.imei || 'all', from, to, 'sched'].join('|').slice(0, 200);
+    const sig = ['sched', s.report_type, s.imei || 'all', from, to].join('|').slice(0, 200);
     const saved = await db.saveReportHistory({
       company_id: s.company_id != null ? s.company_id : null, user_id: s.user_id != null ? s.user_id : null, username: uname,
       report_type: s.report_type, label: report.label || s.report_type, imei: s.imei || null,
-      vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig, status: 'scheduled',
+      vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig,
       expires_at: new Date(now.getTime() + 7 * 24 * 3600 * 1000).toISOString()
     });
     historyId = saved && saved.id;
-  } catch (e) { try { console.warn('[PROGRAMĂRI] salvare în Istoric eșuată (schedule ' + s.id + '):', e && e.message); } catch (_) {} }
+  } catch (e) { historyError = (e && e.message) || String(e); try { console.warn('[PROGRAMĂRI] salvare în Istoric eșuată (schedule ' + s.id + '):', historyError); } catch (_) {} }
 
   let recips = (s.recipients || '').split(/[,;\s]+/).map(x => x.trim()).filter(Boolean);
   if (!recips.length && s.user_id) {
@@ -133,7 +133,7 @@ async function runSchedule(s, deps, now) {
         data: { historyId, reportType: s.report_type, key: 'report_' + historyId }, userId: s.user_id, companyId: s.company_id });
     } catch (e) {}
   }
-  return { ok: true, rows: rowsN, recipients: recips, emailSent, bytes: buf.length, format: fmt, historyId };
+  return { ok: true, rows: rowsN, recipients: recips, emailSent, bytes: buf.length, format: fmt, historyId, historyError };
 }
 
 // Rulează toate programările scadente și reprogramează-le.

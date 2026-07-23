@@ -5727,10 +5727,11 @@ const pozitii = await r.json();</code></pre>
         var period = repFmtDT(h.period_from) + ' – ' + repFmtDT(h.period_to);
         var n = h.imei ? 1 : (h.vehicle_count || 0);
         var veh = n + ' ' + (n === 1 ? 'vehicul' : 'vehicule');
-        var schedTag = (h.status === 'scheduled')
+        var _isSched = (h.status === 'scheduled') || (h.signature && h.signature.indexOf('sched') === 0);
+        var schedTag = _isSched
           ? '<span class="rh-sched" title="Generat automat de o programare"><i class="fas fa-clock"></i> Programat</span> '
           : '';
-        return '<tr' + (h.status === 'scheduled' ? ' class="rh-row-sched"' : '') + '>' +
+        return '<tr' + (_isSched ? ' class="rh-row-sched"' : '') + '>' +
           '<td class="rh-cbcell" data-label="Selectează"><input type="checkbox" class="rh-cb" value="' + h.id + '" onclick="rhUpdateBulkBar()"></td>' +
           '<td class="rh-name" data-label="Denumire raport" title="' + E(h.label || h.report_type) + '">' + schedTag + '<span class="rh-name-txt">' + E(h.label || h.report_type) + '</span></td>' +
           '<td data-label="Perioada">' + E(period) + '</td>' +
@@ -5895,7 +5896,7 @@ const pozitii = await r.json();</code></pre>
         try { schedLoad(); } catch (e) {}           // actualizează „Ultima rulare"
         var mailPart = d.emailSent ? ' · trimis pe email ✓' : ' · emailul nu e configurat (SMTP)';
         msg.style.color = d.historyId ? 'var(--accent)' : 'var(--orange)';
-        msg.textContent = 'Generat (' + d.rows + ' rânduri)' + (d.historyId ? ' · salvat în Istoric ✓' : ' · NU s-a salvat în Istoric') + mailPart;
+        msg.textContent = 'Generat (' + d.rows + ' rânduri)' + (d.historyId ? ' · salvat în Istoric ✓' : (' · NU s-a salvat' + (d.historyError ? ': ' + d.historyError : ''))) + mailPart;
       } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
     }
     function renderReport(data) {
