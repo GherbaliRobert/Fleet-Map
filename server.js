@@ -5739,10 +5739,13 @@ async function checkExpiries() {
       await deliverExpiryToSubscribers({ companyId: dr.company_id, title: nDrv.title, body: nDrv.body, key: nDrv.data.key });
     }
     const _mntList = await db.getMaintenance();
-    // Praguri PER COMPANIE (aceleași ca RA Care: careDaysLead/careKmLead din alert_thresholds) — fallback la globale.
+    // Praguri lead: companie → GLOBAL (super-admin) → constante. Identic cu agentul RA Care (careDaysLead/careKmLead).
+    const _globalLeads = await _getGlobalAlertThresholds();
+    const _defDays = (_globalLeads && _globalLeads.careDaysLead) || MAINT_DAYS_LEAD;
+    const _defKm = (_globalLeads && _globalLeads.careKmLead) || MAINT_KM_LEAD;
     const _coLeads = new Map();
-    try { for (const co of await db.getCompanies()) { const t = _alertThresholdsFromSettings(co.settings); _coLeads.set(co.id, { days: (t && t.careDaysLead) || MAINT_DAYS_LEAD, km: (t && t.careKmLead) || MAINT_KM_LEAD }); } } catch (e) {}
-    const _leadsOf = (cid) => (cid != null && _coLeads.get(cid)) || { days: MAINT_DAYS_LEAD, km: MAINT_KM_LEAD };
+    try { for (const co of await db.getCompanies()) { const t = _alertThresholdsFromSettings(co.settings); _coLeads.set(co.id, { days: (t && t.careDaysLead) || _defDays, km: (t && t.careKmLead) || _defKm }); } } catch (e) {}
+    const _leadsOf = (cid) => (cid != null && _coLeads.get(cid)) || { days: _defDays, km: _defKm };
     // a) Scadență pe DATĂ — praguri lead / 3 / 1 zile + DEPĂȘIT (fiecare se declanșează ~o dată)
     const _mntDateDedup = { '14': 11 * 24, '3': 2 * 24, '1': 24, 'exp': 24 };
     for (const m of _mntList) {
