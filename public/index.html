@@ -16264,6 +16264,20 @@ const pozitii = await r.json();</code></pre>
         return;
       }
 
+      // Agenții „live" (dispatch, care) nu au constatări salvate → interoghează starea ACUM, ca să apară pe carduri (semnalări).
+      var _liveKeys = keys.filter(function (k) { return k === 'dispatch' || k === 'care'; });
+      try {
+        var _liveRes = await Promise.all(_liveKeys.map(function (lk) {
+          return fetch('/api/agents/' + lk + '/live' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); }).then(function (d) { return { k: lk, d: d }; }).catch(function () { return { k: lk, d: null }; });
+        }));
+        _liveRes.forEach(function (res) {
+          var _fl = (res.d && Array.isArray(res.d.findings)) ? res.d.findings : [];
+          var _when = (res.d && res.d.checkedAt) ? res.d.checkedAt : new Date().toISOString();
+          _fl.forEach(function (f) { (byAgent[res.k] = byAgent[res.k] || []).push(Object.assign({}, f, { created_at: f.created_at || _when })); });
+        });
+      } catch (e) {}
+
       var model = '<div class="agp-model">'
         + '<div class="agp-h g" onclick="renderAgentsPage()" style="cursor:pointer;" title="Apasă pentru a reafișa agenții"><div class="agp-tile"><i class="fas fa-robot"></i></div><div><div class="agp-k">Agenții veghează</div><b>Automat, în fundal</b><p>Verifică flota periodic și ridică alerte, fără să faci nimic.</p></div></div>'
         + '<div class="agp-h p"><div class="agp-tile"><i class="fas fa-wand-magic-sparkles"></i></div><div><div class="agp-k">RA Insight răspunde</div><b>La cerere, când vrei</b><p>Asistentul pe care-l întrebi tu ce vrei (nu pornește singur).</p><button class="btn-sm" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="insightAsk()"><i class="fas fa-wand-magic-sparkles"></i> Deschide RA Insight</button></div></div>'
@@ -16280,13 +16294,14 @@ const pozitii = await r.json();</code></pre>
       _agpState.findings = findings; _agpState.canCfg = canCfg; _agpState.mode = 'grid'; _agpState.agent = null;
       var cards = keys.map(function (k, i) {
         var m = AGP_META[k];
-        var fs = (byAgent[k] || []).slice().sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-        var last = fs[0];
+        var _rk = function (s) { return s === 'critical' ? 2 : s === 'warning' ? 1 : 0; };
+        var fs = (byAgent[k] || []).slice().sort(function (a, b) { return _rk(b.severity) - _rk(a.severity) || (new Date(b.created_at) - new Date(a.created_at)); });
+        var last = fs[0]; // cea mai gravă semnalare (pt. preview + culoare)
         _agpLast[k] = last ? (last.title || '') : null;
-        var nNew = (byAgent[k] || []).length;
+        var nNew = fs.length;
         var sev = last ? last.severity : 'info';
         var badge = nNew
-          ? '<span class="agp-badge" style="color:' + _agpSevCol(sev) + ';border-color:' + _agpSevCol(sev) + '66;">' + nNew + ' ' + (nNew === 1 ? 'nou' : 'noi') + '</span>'
+          ? '<span class="agp-badge" style="color:' + _agpSevCol(sev) + ';border-color:' + _agpSevCol(sev) + '66;">' + nNew + ' ' + (nNew === 1 ? 'semnalare' : 'semnalări') + '</span>'
           : '<span class="agp-badge ok"><i class="fas fa-check"></i> ok</span>';
         return '<button type="button" class="agp-card agp-cascade" style="animation-delay:' + (i * 55) + 'ms;" onclick="agpOpen(\'' + k + '\')">'
           + '<div class="agp-ch"><div class="agp-ct ag-t-green"><i class="fas ' + m.icon + '"></i></div>'
