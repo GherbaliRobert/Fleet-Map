@@ -2381,7 +2381,7 @@ app.get('/api/agents/:key/live', requireAuth, withScope, async (req, res) => {
     const alertThresholds = await _getAlertThresholds(storeCompany);
     const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds };
     const out = await agents.runAgent(key, base);
-    res.json({ findings: (out && out.findings) || [], checkedAt: new Date().toISOString() });
+    res.json(Object.assign({}, out, { findings: (out && out.findings) || [], checkedAt: new Date().toISOString() })); // trece și meta agentului (ex. optimize.evaluated)
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/agents/findings/:id/:action', requireAuth, withCompany, async (req, res) => {

@@ -16212,7 +16212,7 @@ const pozitii = await r.json();</code></pre>
       client:     { name: 'RA Client',     icon: 'fa-file-lines',      tile: 'ag-t-green',  role: 'Digest zilnic',  desc: 'Un rezumat pe zi al flotei: km, vehicule active, cel mai activ.', checks: 'activitatea zilnică a flotei' }
     };
     var AGP_ORDER = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
-    var _agpLast = {}, _agpLastRun = {}, _agpState = { findings: [], canCfg: false, mode: 'grid', agent: null };
+    var _agpLast = {}, _agpLastRun = {}, _agpOptEvaluated = null, _agpState = { findings: [], canCfg: false, mode: 'grid', agent: null };
     function _agpTime(t) { return t ? new Date(t).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : ''; }
     function _agpWhen(t) {
       if (!t) return '';
@@ -16233,6 +16233,11 @@ const pozitii = await r.json();</code></pre>
           return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft"><b>' + count + '</b> cu scor slab</span></div>';
         }
         return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">' + _agpEsc(last.title) + ' <span class="tm">· ' + _agpAgo(last.created_at) + '</span></span></div>';
+      }
+      // RA Optimize: „fără semnalări" e ambiguu → arată cinstit: au condus eco vs. n-avem date de rulaj azi.
+      if (k === 'optimize') {
+        if (_agpOptEvaluated === 0) return '<div class="agp-find"><span class="fd" style="background:var(--text-muted)"></span><span class="ft" style="color:var(--text-muted)"><i class="fas fa-hourglass-half"></i> Încă n-avem date de rulaj azi</span></div>';
+        if (_agpOptEvaluated > 0) return '<div class="agp-find"><span class="fd" style="background:var(--accent)"></span><span class="ft" style="color:var(--text-muted)"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Toate cele <b>' + _agpOptEvaluated + '</b> au condus eco azi</span></div>';
       }
       var t = _agpLastRun[k];
       return '<div class="agp-find"><span class="fd" style="background:var(--accent)"></span><span class="ft" style="color:var(--text-muted)"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Totul e în regulă' + (t ? ' · verificat ' + _agpTime(t) : '') + '</span></div>';
@@ -16277,6 +16282,7 @@ const pozitii = await r.json();</code></pre>
 
       // Agenții „live" (dispatch, care) nu au constatări salvate → interoghează starea ACUM, ca să apară pe carduri (semnalări).
       var _liveKeys = keys.filter(function (k) { return k === 'dispatch' || k === 'care' || k === 'optimize'; });
+      _agpOptEvaluated = null;
       try {
         var _liveRes = await Promise.all(_liveKeys.map(function (lk) {
           return fetch('/api/agents/' + lk + '/live' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' })
@@ -16285,6 +16291,7 @@ const pozitii = await r.json();</code></pre>
         _liveRes.forEach(function (res) {
           var _fl = (res.d && Array.isArray(res.d.findings)) ? res.d.findings : [];
           var _when = (res.d && res.d.checkedAt) ? res.d.checkedAt : new Date().toISOString();
+          if (res.k === 'optimize' && res.d && Number.isFinite(res.d.evaluated)) _agpOptEvaluated = res.d.evaluated; // câte vehicule chiar au rulat azi
           _fl.forEach(function (f) { (byAgent[res.k] = byAgent[res.k] || []).push(Object.assign({}, f, { created_at: f.created_at || _when })); });
         });
       } catch (e) {}
@@ -16421,7 +16428,13 @@ const pozitii = await r.json();</code></pre>
           ? { t: 'Niciun vehicul disponibil acum', b: 'Momentan niciun vehicul online și oprit, gata de o cursă. Apasă „Dispecerizare" ca să cauți cel mai apropiat vehicul de o destinație.' }
           : (k === 'care')
           ? { t: 'Nicio scadență acum — totul e în regulă', b: 'N-am găsit revizii, ITP/RCA sau service aproape de scadență. Poți sta liniștit.' }
-          : { t: 'Conducere eco — totul e în regulă', b: 'Niciun vehicul sub pragul de scor eco azi și fără risipă notabilă la ralanti. Bravo flotei.' };
+          : (function () {
+              // RA Optimize: distinge „au condus eco" de „n-avem date de rulaj azi" (nu mint că e ok).
+              var ev = (data && Number.isFinite(data.evaluated)) ? data.evaluated : null;
+              if (ev === 0) return { t: 'Încă n-avem date de rulaj azi', b: 'Flota n-a rulat suficient azi ca să evaluăm consumul / scorul eco. Revino după ce vehiculele rulează.' };
+              if (ev > 0) return { t: 'Toate cele ' + ev + ' vehicule au condus eco azi', b: 'Niciun vehicul sub pragul de scor eco și fără risipă notabilă la ralanti. Bravo flotei.' };
+              return { t: 'Conducere eco — totul e în regulă', b: 'Niciun vehicul sub pragul de scor eco azi.' };
+            })();
         box.innerHTML = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b">'
           + '<div class="ti"><i class="fas fa-circle-check" style="color:var(--accent)"></i> ' + okMsg.t + '</div>'
           + '<div class="bo">' + okMsg.b + '</div>'

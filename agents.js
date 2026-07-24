@@ -302,7 +302,7 @@ async function raCare(ctx) {
 
 // ─── RA Optimize — eco-driving & costuri ───
 async function raOptimize(ctx) {
-  const { imeis, livePositions } = ctx; const findings = []; let fleetIdleSec = 0;
+  const { imeis, livePositions } = ctx; const findings = []; let fleetIdleSec = 0, evaluated = 0;
   const thresholds = (ctx && ctx.alertThresholds) || {};
   const ecoScoreMin = Number.isFinite(thresholds.ecoScoreMin) && thresholds.ecoScoreMin >= 0 && thresholds.ecoScoreMin <= 100 ? thresholds.ecoScoreMin : 60;
   for (const imei of imeis) {
@@ -321,6 +321,7 @@ async function raOptimize(ctx) {
     }
     fleetIdleSec += idleSec;
     if (km < 0.5 && driveSec < 60) continue;
+    evaluated++; // vehicul care a rulat efectiv azi → chiar a fost evaluat (pt. mesaj cinstit „au condus eco" vs „fără date")
     const per100 = km > 1 ? 100 / km : 0;
     const speedShare = driveSec > 0 ? speedOverSec / driveSec : 0;
     const idleShare = (driveSec + idleSec) > 0 ? idleSec / (driveSec + idleSec) : 0;
@@ -340,7 +341,7 @@ async function raOptimize(ctx) {
     const wasteL = fleetIdleH * IDLE_BURN_LPH; const cost = wasteL * _fp;
     findings.push({ imei: null, severity: 'info', agent: 'optimize', fkey: 'opt_fleet_idle', title: 'Flotă: ' + hmH(fleetIdleH) + ' ralanti azi', body: 'Risipă estimată ~' + wasteL.toFixed(1) + ' L (~' + Math.round(cost) + ' lei). Reducerea ralantiului scade direct costurile.' });
   }
-  return { findings };
+  return { findings, evaluated }; // evaluated = câte vehicule au rulat efectiv azi (mesaj cinstit când nu-s semnalări)
 }
 
 // ─── RA Compliance — ore de condus (estimativ din GPS, Reg. CE 561/2006) ───
