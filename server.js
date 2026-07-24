@@ -189,6 +189,9 @@ let fleetQuick = null;
 try { fleetQuick = require('./fleet_quick'); } catch (e) { console.warn('[AI] euristici locale indisponibile:', e.message); }
 const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
 let demoCompanyId = null;
+// Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
+// istoric. dispatch = disponibilitate acum; care = scadențe curente (alertele „reale" merg oricum prin push/checkExpiries).
+const LIVE_AGENTS = new Set(['dispatch', 'care']);
 const webpush = require('web-push');
 const https = require('https');
 const httpMod = require('http');
@@ -2341,7 +2344,7 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds, fuelPrice: _coFP || 7.5 };
     const findings = (which === 'all' ? await agents.runAll(base, enabled) : await agents.runAgent(which, base)).findings || [];
     let stored = 0;
-    for (const f of findings) { if (f.agent === 'dispatch') continue; const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; } // dispatch = live-only, nu se persistă (stare de moment, nu istoric)
+    for (const f of findings) { if (LIVE_AGENTS.has(f.agent)) continue; const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; } // agenții live (dispatch/care) nu se persistă (stare de moment, nu istoric)
     let aiSummary = null;
     if (ai && ai.aiEnabled() && findings.length) {
       try {
@@ -2360,20 +2363,23 @@ app.get('/api/agents/findings', requireAuth, withCompany, async (req, res) => {
     res.json(await db.getAgentFindings(cid, 80));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// RA Dispatch — stare LIVE (disponibile acum + subutilizate azi). Calculată la cerere, FĂRĂ persistență și FĂRĂ AI:
-// disponibilitatea e o stare de moment, nu un eveniment de istoric → nu acumulăm constatări care se repetă/expiră.
-app.get('/api/agents/dispatch/live', requireAuth, withScope, async (req, res) => {
+// Agenți „live" (dispatch, care) — stare de MOMENT calculată la cerere, FĂRĂ persistență și FĂRĂ AI:
+// e o stare curentă, nu un eveniment de istoric → nu acumulăm constatări care se repetă/expiră.
+// (Alertele „reale" de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
+app.get('/api/agents/:key/live', requireAuth, withScope, async (req, res) => {
   try {
     if (!agents) return res.status(503).json({ error: 'Agenții indisponibili' });
+    const key = String(req.params.key || '');
+    if (!agents.AGENTS[key] || !LIVE_AGENTS.has(key)) return res.status(404).json({ error: 'Agent live necunoscut' });
     await applyCompanyFilter(req);
     const imeis = await resolveReportImeis(req);
     if (!imeis) return res.status(403).json({ error: 'Acces interzis' });
     const storeCompany = (req.isSuper && req.filterCompanyId != null) ? req.filterCompanyId : req.companyId;
-    // Dispatch e „live-only" → curăță eventualele snapshot-uri vechi persistate (migrare de la vechiul comportament).
-    try { await db.pool.query("DELETE FROM agent_findings WHERE agent = 'dispatch' AND company_id IS NOT DISTINCT FROM $1", [storeCompany == null ? null : storeCompany]); } catch (e) {}
+    // Live-only → curăță eventualele snapshot-uri vechi persistate ale agentului (migrare de la vechiul comportament).
+    try { await db.pool.query('DELETE FROM agent_findings WHERE agent = $1 AND company_id IS NOT DISTINCT FROM $2', [key, storeCompany == null ? null : storeCompany]); } catch (e) {}
     const alertThresholds = await _getAlertThresholds(storeCompany);
     const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds };
-    const out = await agents.runAgent('dispatch', base);
+    const out = await agents.runAgent(key, base);
     res.json({ findings: (out && out.findings) || [], checkedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2424,7 +2430,7 @@ async function runAgentsWorker() {
     const companies = await db.getCompanies();
     for (const co of companies) {
       if (co.is_demo) continue;
-      const enabled = (plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS)).filter(function (k) { return k !== 'dispatch'; }); // dispatch = live-only (calculat la deschiderea paginii), nu în fundal
+      const enabled = (plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS)).filter(function (k) { return !LIVE_AGENTS.has(k); }); // agenții live (dispatch/care) se calculează la deschiderea paginii, nu în fundal
       if (!enabled.length) continue; // planul „start" nu rulează niciun agent
       const imeis = await db.getCompanyActiveImeis(co.id); // agenții nu rulează pe vehicule arhivate
       if (!imeis.length) continue;
