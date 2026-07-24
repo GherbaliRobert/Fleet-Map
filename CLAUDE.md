@@ -37,3 +37,10 @@ Note pentru sesiunile viitoare. De respectat la **orice** modificare.
 - CSS-ul aplicației e în `public/css/app.css` (servit `NO_CACHE` printr-o rută dedicată în `server.js`).
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).
 - Verificarea versiunii LIVE: `ratrack.ro/api/health` → câmpul `version` = prefixul commit-ului deployat.
+
+## Compania DEMO (⚠️ DE ȘTERS ÎNAINTE DE LANSARE)
+Aplicația seedează la pornire o **companie demo** built-in — „RA Track Demo", 5 vehicule **sintetice** (DEMO-1..5: Timișoara, București, Iași, Brașov, Cluj-Napoca) + cont `demo` (viewer) + simulator de poziții. Vezi `server.js` (blocul „DEMO mode", gated pe `process.env.DEMO_DISABLED !== 'true'`) + `demo-sim.js` (`DEMO_IMEIS`, `ROUTES`).
+
+- **Sunt ascunse de flota REALĂ peste tot** prin `DEMO_SET` (= `demoSim.DEMO_IMEIS`) + `demoCompanyId`: `canAccessImei` (hartă live, dispecerizare, insight/analitice, dashboards), `resolveReportImeis` (rapoarte live) și ramura super-admin din `report_schedules.js` (rapoarte programate). Regula: `if (req.companyId !== demoCompanyId) ... filtrează !DEMO_SET.has(imei)`. La orice cale NOUĂ care listează vehicule/poziții pentru flota reală, exclude demo la fel.
+- **NU apar în niciun raport** (live sau programat). Dacă adaugi o cale de raport/analiză nouă, mirror-uiește excluderea demo.
+- **DE FĂCUT înainte de lansare: ștergerea FIZICĂ.** Comutatorul `DEMO_DISABLED=true` (variabilă de mediu în Railway) face acum, la boot, **ștergere definitivă** din DB: vehiculele demo (`deleteDeviceCompletely` per imei — cascadă sigură), contul `demo`, compania demo (slug `demo`). Idempotent, scoped pe imei-uri sintetice (nu atinge vehicule reale). Alternativă discutată: ștergere automată necondiționată (fără variabilă) — de decis la momentul lansării.
