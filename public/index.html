@@ -16221,8 +16221,15 @@ const pozitii = await r.json();</code></pre>
       if (d.toDateString() === new Date(now.getTime() - 864e5).toDateString()) return 'ieri ' + hm;
       return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
     }
-    function _agpStatusLine(k, last) {
-      if (last) return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">' + _agpEsc(last.title) + ' <span class="tm">· ' + _agpAgo(last.created_at) + '</span></span></div>';
+    function _agpStatusLine(k, last, count) {
+      if (last) {
+        // RA Care: pe card arătăm doar TOTALUL (câte scadențe) — detaliile exacte la „Deschide agentul".
+        if (k === 'care') {
+          var n = count || 1;
+          return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">Ai <b>' + n + '</b> ' + (n === 1 ? 'scadență' : 'scadențe') + ' de urmărit</span></div>';
+        }
+        return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">' + _agpEsc(last.title) + ' <span class="tm">· ' + _agpAgo(last.created_at) + '</span></span></div>';
+      }
       var t = _agpLastRun[k];
       return '<div class="agp-find"><span class="fd" style="background:var(--accent)"></span><span class="ft" style="color:var(--text-muted)"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Totul e în regulă' + (t ? ' · verificat ' + _agpTime(t) : '') + '</span></div>';
     }
@@ -16308,7 +16315,7 @@ const pozitii = await r.json();</code></pre>
           + '<div class="agp-cn"><div class="agp-an">' + m.name + '</div><div class="agp-role">' + m.role + '</div></div>'
           + badge + '</div>'
           + '<div class="agp-desc">' + m.desc + '</div>'
-          + '<div class="agp-sep"></div>' + _agpStatusLine(k, last)
+          + '<div class="agp-sep"></div>' + _agpStatusLine(k, last, nNew)
           + '<div class="agp-open">Deschide agentul <i class="fas fa-chevron-right"></i></div>'
           + '</button>';
       }).join('');
