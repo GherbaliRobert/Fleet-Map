@@ -79,7 +79,7 @@ export function AiAgents() {
               </div>
             )}
             <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px">
-              {agents.length === 0 && !err ? <div class="center-msg">Niciun agent activ pe acest plan.</div> : null}
+              {agents.length === 0 && !err ? <div class="center-msg">Agenții AI nu sunt activați pentru compania ta. Contactează echipa RA Tracks pentru activare.</div> : null}
               {agents.map((a) => (
                 <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:12px 13px;display:flex;align-items:center;gap:11px">
                   <span style="width:38px;height:38px;border-radius:10px;background:var(--bg-dark);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto"><Icon name="robot" size={19} color="var(--accent)" /></span>

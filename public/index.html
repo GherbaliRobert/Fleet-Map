@@ -16276,7 +16276,7 @@ const pozitii = await r.json();</code></pre>
       });
 
       if (!keys.length) {
-        body.innerHTML = '<div class="agp-note"><i class="fas fa-info-circle"></i> <span>Niciun agent activ pe planul tău. Agenții operaționali sunt incluși în planurile Premium și Enterprise — scrie-ne pentru upgrade.</span></div>';
+        body.innerHTML = '<div class="agp-note"><i class="fas fa-info-circle"></i> <span>Agenții AI nu sunt activați pentru compania ta. Scrie-ne și configurăm agenții pentru flota ta — activarea se face de către echipa RA Tracks, pe oferta ta personalizată.</span></div>';
         return;
       }
 
@@ -16669,7 +16669,7 @@ const pozitii = await r.json();</code></pre>
       try { var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); enabled = ag.enabledKeys; } catch (e) {}
       var keys = Array.isArray(enabled) ? enabled.filter(function (k) { return RAX_AGENTS[k]; }) : Object.keys(RAX_AGENTS);
       if (!keys.length) {
-        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:6px;"><i class="fas fa-info-circle"></i> Niciun agent activ pe planul tău. Upgrade din „Abonament".</div>';
+        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:6px;"><i class="fas fa-info-circle"></i> Agenții AI nu sunt activați pentru compania ta — contactează-ne pentru activare.</div>';
         return;
       }
       box.innerHTML = keys.map(function (k) {
