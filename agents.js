@@ -332,7 +332,22 @@ async function raOptimize(ctx) {
     pen += Math.min(25, speedShare * 100);
     pen += Math.min(15, idleShare * 40);
     const score = Math.max(0, Math.round(100 - pen));
-    if (score < ecoScoreMin) findings.push({ imei, severity: 'warning', agent: 'optimize', fkey: 'opt_eco_' + imei, title: name + ': scor eco ' + score + '/100', body: 'Conducere agresivă azi (' + accel + ' accel. bruște, ' + brake + ' frânări, ' + hardTurn + ' viraje). Prag alertă: sub ' + ecoScoreMin + '. Recomandă instruire șofer.' });
+    if (score < ecoScoreMin) {
+      // Ce a tras scorul jos (aceleași formule ca la penalizare) + sugestie CONCRETĂ per problemă, nu doar „instruire".
+      const comps = [
+        { pen: Math.min(35, brake * per100 * 3.0), label: brake + (brake === 1 ? ' frânare bruscă' : ' frânări bruște'), tip: 'anticipează traficul și frânează lin, din timp — ține distanță față de mașina din față' },
+        { pen: Math.min(30, accel * per100 * 2.5), label: accel + (accel === 1 ? ' accelerare bruscă' : ' accelerări bruște'), tip: 'demarează lin, fără apăsări bruște pe accelerație' },
+        { pen: Math.min(25, speedShare * 100), label: 'depășiri de viteză', tip: 'respectă limitele de viteză (viteza mare crește consumul)' },
+        { pen: Math.min(20, hardTurn * per100 * 2.0), label: hardTurn + (hardTurn === 1 ? ' viraj dur' : ' viraje dure'), tip: 'redu viteza înainte de curbe și ia-le mai lin' },
+        { pen: Math.min(15, idleShare * 40), label: 'timp mult la ralanti', tip: 'oprește motorul la staționările lungi (peste ~1–2 min)' }
+      ].filter(c => c.pen >= 3).sort((a, b) => b.pen - a.pen); // doar contribuitorii reali, cei mai mari primii
+      const issues = comps.slice(0, 3).map(c => c.label).join(', ');
+      const tips = comps.slice(0, 2).map(c => c.tip).join('; ') || 'condus lin: accelerări/frânări blânde, viteză constantă, mai puțin ralanti';
+      const body = 'Scor eco ' + score + '/100 (prag: sub ' + ecoScoreMin + '). ' +
+        (issues ? 'Ce a tras scorul jos azi: ' + issues + '. ' : '') +
+        'Sugestii pentru șofer: ' + tips + '.';
+      findings.push({ imei, severity: 'warning', agent: 'optimize', fkey: 'opt_eco_' + imei, title: name + ': scor eco ' + score + '/100', body });
+    }
   }
   // Cost ralanti la nivel de flotă (o singură constatare, distinctă de RA Watch)
   const fleetIdleH = fleetIdleSec / 3600;
