@@ -8277,6 +8277,18 @@ async function start() {
       if (demoUser) { try { await db.setUserAccess(demoUser.id, demoSim.DEMO_IMEIS, []); invalidateAccessCache(demoUser.id); } catch (e) {} }
       demoSim.start({ livePositions, broadcastWs, insertPositions: db.insertPositions });
     } catch (e) { console.warn('[DEMO] seed:', e.message); }
+  } else {
+    // DEMO_DISABLED=true → ștergere FIZICĂ (o singură dată, idempotent) a companiei demo: vehicule + cont + companie.
+    // DEMO_IMEIS sunt imei-uri SINTETICE, deci deleteDeviceCompletely nu poate atinge niciun vehicul real.
+    // Simulatorul NU pornește (nu se re-creează nimic). La boot-urile următoare nu mai găsește ce șterge.
+    try {
+      let _wiped = 0;
+      for (const imei of demoSim.DEMO_IMEIS) { try { _wiped += await db.deleteDeviceCompletely(imei); } catch (e) {} }
+      try { const du = await db.getUserByUsername('demo'); if (du) await db.deleteUser(du.id); } catch (e) {}
+      try { const dc = await db.getCompanyBySlug('demo'); if (dc) await db.deleteCompany(dc.id); } catch (e) {}
+      demoCompanyId = null;
+      if (_wiped) console.log('[DEMO] DEMO_DISABLED=true → ' + _wiped + ' vehicule demo + cont + companie șterse din DB.');
+    } catch (e) { console.warn('[DEMO] cleanup:', e.message); }
   }
 
   // Error middleware — înregistrat ULTIMUL, după toate rutele (definite la încărcarea modulului).
