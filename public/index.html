@@ -16228,6 +16228,10 @@ const pozitii = await r.json();</code></pre>
           var n = count || 1;
           return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">Ai <b>' + n + '</b> ' + (n === 1 ? 'scadență' : 'scadențe') + ' de urmărit</span></div>';
         }
+        // RA Optimize: totalul de pe card = câte vehicule au scor slab (detaliile la „Deschide agentul").
+        if (k === 'optimize' && count > 0) {
+          return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft"><b>' + count + '</b> cu scor slab</span></div>';
+        }
         return '<div class="agp-find"><span class="fd" style="background:' + _agpSevCol(last.severity) + '"></span><span class="ft">' + _agpEsc(last.title) + ' <span class="tm">· ' + _agpAgo(last.created_at) + '</span></span></div>';
       }
       var t = _agpLastRun[k];
@@ -16259,7 +16263,7 @@ const pozitii = await r.json();</code></pre>
       var byAgent = {}, totNew = 0, cCrit = 0, cWarn = 0, cInfo = 0;
       _agpLast = {};
       findings.forEach(function (f) {
-        if (f.agent === 'dispatch' || f.agent === 'care') return; // agenți live (stare de moment) — nu îngroșa badge-urile din constatări persistate
+        if (f.agent === 'dispatch' || f.agent === 'care' || f.agent === 'optimize') return; // agenți live (stare de moment) — nu îngroșa badge-urile din constatări persistate
         if (f.status && f.status !== 'new') return;
         totNew++;
         if (f.severity === 'critical') cCrit++; else if (f.severity === 'warning') cWarn++; else cInfo++;
@@ -16272,7 +16276,7 @@ const pozitii = await r.json();</code></pre>
       }
 
       // Agenții „live" (dispatch, care) nu au constatări salvate → interoghează starea ACUM, ca să apară pe carduri (semnalări).
-      var _liveKeys = keys.filter(function (k) { return k === 'dispatch' || k === 'care'; });
+      var _liveKeys = keys.filter(function (k) { return k === 'dispatch' || k === 'care' || k === 'optimize'; });
       try {
         var _liveRes = await Promise.all(_liveKeys.map(function (lk) {
           return fetch('/api/agents/' + lk + '/live' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' })
@@ -16307,6 +16311,7 @@ const pozitii = await r.json();</code></pre>
         _agpLast[k] = last ? (last.title || '') : null;
         var nNew = fs.length;
         var sev = last ? last.severity : 'info';
+        var summaryCount = (k === 'optimize') ? fs.filter(function (f) { return (f.fkey || '').indexOf('opt_eco') === 0; }).length : nNew; // optimize: doar vehiculele cu scor slab (fără notificarea de ralanti-flotă)
         var badge = nNew
           ? '<span class="agp-badge" style="color:' + _agpSevCol(sev) + ';border-color:' + _agpSevCol(sev) + '66;">' + nNew + ' ' + (nNew === 1 ? 'semnalare' : 'semnalări') + '</span>'
           : '<span class="agp-badge ok"><i class="fas fa-check"></i> ok</span>';
@@ -16315,7 +16320,7 @@ const pozitii = await r.json();</code></pre>
           + '<div class="agp-cn"><div class="agp-an">' + m.name + '</div><div class="agp-role">' + m.role + '</div></div>'
           + badge + '</div>'
           + '<div class="agp-desc">' + m.desc + '</div>'
-          + '<div class="agp-sep"></div>' + _agpStatusLine(k, last, nNew)
+          + '<div class="agp-sep"></div>' + _agpStatusLine(k, last, summaryCount)
           + '<div class="agp-open">Deschide agentul <i class="fas fa-chevron-right"></i></div>'
           + '</button>';
       }).join('');
@@ -16351,11 +16356,11 @@ const pozitii = await r.json();</code></pre>
       var host = $('agp-body'); var m = AGP_META[k]; if (!host || !m) return;
       _agpState.mode = 'detail'; _agpState.agent = k;
       var canCfg = _agpState.canCfg;
-      var isLive = (k === 'dispatch' || k === 'care'); // agenți „live": stare de moment, fără istoric acumulat
+      var isLive = (k === 'dispatch' || k === 'care' || k === 'optimize'); // agenți „live": stare de moment, fără istoric acumulat
       var feed, feedHead, footer, actRun;
       if (isLive) {
-        // Stare LIVE (dispatch = disponibilitate acum; care = scadențe curente). Se încarcă din /api/agents/<k>/live după randare.
-        feedHead = (k === 'dispatch') ? 'Disponibile acum' : 'Scadențe acum';
+        // Stare LIVE (dispatch = disponibilitate; care = scadențe; optimize = scor eco de azi). Din /api/agents/<k>/live după randare.
+        feedHead = (k === 'dispatch') ? 'Disponibile acum' : (k === 'care' ? 'Scadențe acum' : 'Scor eco — azi');
         feed = '<div id="agp-live"><div class="agp-fi"><span class="fd" style="background:var(--text-muted)"></span><div class="agp-fi-b"><div class="ti"><i class="fas fa-spinner fa-spin"></i> Se verifică flota…</div></div></div></div>';
         footer = '<div class="agp-lastrun" id="agp-when"><i class="fas fa-clock"></i> Se verifică…</div>';
         actRun = '<button type="button" class="btn-sm" id="agp-run-' + k + '" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="agpLiveRefresh(\'' + k + '\')"><i class="fas fa-bolt"></i> Rulează</button>'
@@ -16414,7 +16419,9 @@ const pozitii = await r.json();</code></pre>
       } else {
         var okMsg = (k === 'dispatch')
           ? { t: 'Niciun vehicul disponibil acum', b: 'Momentan niciun vehicul online și oprit, gata de o cursă. Apasă „Dispecerizare" ca să cauți cel mai apropiat vehicul de o destinație.' }
-          : { t: 'Nicio scadență acum — totul e în regulă', b: 'N-am găsit revizii, ITP/RCA sau service aproape de scadență. Poți sta liniștit.' };
+          : (k === 'care')
+          ? { t: 'Nicio scadență acum — totul e în regulă', b: 'N-am găsit revizii, ITP/RCA sau service aproape de scadență. Poți sta liniștit.' }
+          : { t: 'Conducere eco — totul e în regulă', b: 'Niciun vehicul sub pragul de scor eco azi și fără risipă notabilă la ralanti. Bravo flotei.' };
         box.innerHTML = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b">'
           + '<div class="ti"><i class="fas fa-circle-check" style="color:var(--accent)"></i> ' + okMsg.t + '</div>'
           + '<div class="bo">' + okMsg.b + '</div>'

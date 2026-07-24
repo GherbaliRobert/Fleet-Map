@@ -190,8 +190,9 @@ try { fleetQuick = require('./fleet_quick'); } catch (e) { console.warn('[AI] eu
 const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
 let demoCompanyId = null;
 // Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
-// istoric. dispatch = disponibilitate acum; care = scadențe curente (alertele „reale" merg oricum prin push/checkExpiries).
-const LIVE_AGENTS = new Set(['dispatch', 'care']);
+// istoric. dispatch = disponibilitate acum; care = scadențe curente; optimize = scor eco de azi.
+// (Alertele „reale" de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
+const LIVE_AGENTS = new Set(['dispatch', 'care', 'optimize']);
 const webpush = require('web-push');
 const https = require('https');
 const httpMod = require('http');
