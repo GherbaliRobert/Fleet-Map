@@ -1198,6 +1198,17 @@ function canAccessImei(req, imei) {
 }
 
 // Verifică dacă un utilizator țintă aparține companiei celui care face cererea (super-adminul trece peste tot)
+// Gardă anti-blocare: platforma trebuie să rămână MEREU cu cel puțin un super-admin activ.
+// Fără asta, doi super-admini se pot „stinge" reciproc (protecția existentă acoperă doar propriul cont)
+// și rămâi fără niciun cont care poate administra companiile — recuperabil doar din baza de date.
+async function _isLastActiveSuperadmin(targetId) {
+  try {
+    const t = await db.getUserById(targetId);
+    if (!t || t.role !== 'superadmin' || t.active === false) return false;
+    const r = await db.pool.query("SELECT COUNT(*)::int AS n FROM users WHERE role = 'superadmin' AND active IS NOT FALSE");
+    return (r.rows[0] ? r.rows[0].n : 0) <= 1;
+  } catch (e) { return false; } // la eroare NU blocăm operația (fail-open: gardă de siguranță, nu regulă de securitate)
+}
 async function sameCompanyUser(req, targetId) {
   if (req.isSuper) return true;
   const u = await db.getUserById(targetId);
@@ -1764,6 +1775,9 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     // compania noului user: a adminului; super-adminul poate specifica ?company / body.company_id
     let companyId = req.companyId;
     if (req.isSuper) companyId = (req.body.company_id != null ? parseInt(req.body.company_id) : null);
+    // Un super-admin e cont de PLATFORMĂ: nu aparține niciunei companii. Chiar dacă interfața trimite din
+    // greșeală o companie, o ignorăm — altfel filtrele pe companie s-ar aplica peste un cont care trebuie să vadă tot.
+    if (isSuper(finalRole)) companyId = null;
     if (!isSuper(finalRole) && companyId == null) {
       return res.status(400).json({ error: 'Selectează compania pentru utilizator' });
     }
@@ -1795,6 +1809,10 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     const adminRoles = ['superadmin', 'company_admin', 'admin'];
     if (id === req.auth.userId && (active === false || (role && !adminRoles.includes(role)))) {
       return res.status(400).json({ error: 'Nu te poți dezactiva sau retrograda pe tine' });
+    }
+    // Ultimul super-admin activ nu poate fi retrogradat sau dezactivat (rămâneai fără acces la platformă)
+    if ((active === false || (role && role !== 'superadmin')) && await _isLastActiveSuperadmin(id)) {
+      return res.status(400).json({ error: 'Acesta e ultimul super-admin activ — creează altul înainte de a-l retrograda sau dezactiva.' });
     }
     await db.updateUserProfile(id, { role, full_name, email, phone, active });
     invalidateAccessCache(id);
@@ -1853,6 +1871,9 @@ app.delete('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req,
       return res.status(400).json({ error: 'Nu te poți șterge pe tine' });
     }
     if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
+    if (await _isLastActiveSuperadmin(id)) {
+      return res.status(400).json({ error: 'Acesta e ultimul super-admin activ — creează altul înainte de a-l șterge.' });
+    }
     await db.deleteUser(id);
     invalidateAccessCache(id);
     auditReq(req, 'delete', 'user', id);

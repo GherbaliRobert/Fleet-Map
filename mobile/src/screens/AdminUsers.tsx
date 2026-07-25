@@ -13,8 +13,9 @@ const COMPANY_ROLES = [
   { v: 'client', label: 'Client' },
   { v: 'viewer', label: 'Vizualizare' },
 ];
-const SUPER_ROLES = [{ v: 'company_admin', label: 'Administrator companie' }, { v: 'admin', label: 'Admin' }, ...COMPANY_ROLES];
-const roleLabel = (v: string) => ({ company_admin: 'Administrator', admin: 'Administrator', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare' } as Record<string, string>)[v] || v;
+// „superadmin" = cont de PLATFORMĂ (toate companiile), nu de companie → doar un super-admin îl poate acorda.
+const SUPER_ROLES = [{ v: 'company_admin', label: 'Administrator companie' }, { v: 'admin', label: 'Admin' }, ...COMPANY_ROLES, { v: 'superadmin', label: '⚠ Super-admin (platformă)' }];
+const roleLabel = (v: string) => ({ company_admin: 'Administrator', admin: 'Administrator', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare', superadmin: 'Super-admin' } as Record<string, string>)[v] || v;
 
 export function AdminUsers() {
   const loc = useLocation();
@@ -51,6 +52,11 @@ export function AdminUsers() {
     if (!isEdit) {
       if (!form.username.trim() || form.username.trim().length < 3) { showToast('Username minim 3 caractere', true); return; }
       if (!form.password || form.password.length < 4) { showToast('Parola minim 4 caractere', true); return; }
+    }
+    // Acordarea rolului de platformă e ireversibilă din perspectiva datelor văzute → confirmare explicită.
+    if (form.role === 'superadmin' && (!isEdit || editing.role !== 'superadmin')) {
+      const who = isEdit ? editing.username : form.username.trim();
+      if (!confirm('Acorzi rolul de SUPER-ADMIN?\n\n„' + who + '" va vedea și administra TOATE companiile, toate vehiculele și facturarea platformei — nu doar o companie.')) return;
     }
     setSaving(true);
     try {
@@ -130,6 +136,11 @@ export function AdminUsers() {
                     <select value={form.role} onChange={(e) => setF('role', (e.target as HTMLSelectElement).value)} disabled={isSelf}>
                       {roleOpts.map((r) => <option value={r.v}>{r.label}</option>)}
                     </select>
+                  )}
+                  {form.role === 'superadmin' && (
+                    <div style="background:rgba(239,68,68,.12);color:var(--red);border-radius:8px;padding:7px 10px;margin-top:6px;font-size:11.5px;line-height:1.45">
+                      Cont de <b>platformă</b>: vede și administrează <b>toate companiile</b>, toate vehiculele, facturarea și jurnalul de audit. Nu se leagă de nicio companie.
+                    </div>
                   )}
                 </div>
                 {isEdit && !isSelf && (
