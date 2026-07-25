@@ -71,6 +71,7 @@ export function Menu() {
             <div class="mn-sec">Administrare</div>
             {perms.manageFleet && item('user', 'Șoferi', () => loc.route('/admin/drivers'))}
             {perms.manageFleet && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
+            {item('mapPin', 'Zone (geofence)', () => loc.route('/admin/geofences'))}
             {perms.manageFleet && item('wrench', 'Mentenanță', () => loc.route('/admin/maintenance'))}
             {perms.manageFleet && item('report', 'Documente vehicule', () => loc.route('/admin/documents'))}
             {perms.manageFleet && item('droplet', 'Card combustibil', () => loc.route('/fuelcard'))}

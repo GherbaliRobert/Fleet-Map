@@ -38,6 +38,7 @@ import { CostControl } from './screens/CostControl';
 import { Offers } from './screens/Offers';
 import { DemoRequests } from './screens/DemoRequests';
 import { Dispatch } from './screens/Dispatch';
+import { AdminGeofences } from './screens/AdminGeofences';
 import { Hotspot } from './screens/Hotspot';
 import { EToll } from './screens/EToll';
 import { Settings } from './screens/Settings';
@@ -118,6 +119,7 @@ function Shell() {
         <Route path="/admin/offers" component={Offers} />
         <Route path="/admin/demo-requests" component={DemoRequests} />
         <Route path="/dispatch" component={Dispatch} />
+        <Route path="/admin/geofences" component={AdminGeofences} />
         <Route path="/hotspot" component={Hotspot} />
         <Route path="/etoll" component={EToll} />
         <Route path="/settings" component={Settings} />

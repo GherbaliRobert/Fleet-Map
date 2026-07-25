@@ -196,6 +196,10 @@ export const Api = {
   createAlert: (b: any) => api('/api/alerts', { method: 'POST', body: b }),
   deleteAlert: (id: number) => api(`/api/alerts/${id}`, { method: 'DELETE' }),
   geofences: () => api<any[]>('/api/geofences'),
+  // CRUD zone — până acum mobilul avea doar citire, deci zonele se puteau crea exclusiv de pe web.
+  createGeofence: (b: any) => api<any>('/api/geofences', { method: 'POST', body: b }),
+  updateGeofence: (id: number, b: any) => api<any>(`/api/geofences/${id}`, { method: 'PUT', body: b }),
+  deleteGeofence: (id: number) => api<any>(`/api/geofences/${id}`, { method: 'DELETE' }),
   etransport: () => api<any[]>('/api/etransport'),
   tachoFiles: () => api<any[]>('/api/tacho'),
   tachoFile: (id: number) => api<any>(`/api/tacho/${id}`),
