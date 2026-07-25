@@ -24,8 +24,9 @@ const PLANS = [
     stripePriceId: process.env.STRIPE_PRICE_PRO || '',
     features: [
       'Tot din Start',
-      'Toate rapoartele (19+) + programare email',
-      'Sonde combustibil + tahograf + e-Transport',
+      'Toate cele 32 de rapoarte + programare pe email',
+      'Sonde combustibil (nivel, alimentări, furt)',
+      'Tahograf + e-Transport — în curând (azi doar demonstrativ)',
       'Notificări avansate (email / Web Push)',
       'Acces API (chei)'
     ]
@@ -39,7 +40,7 @@ const PLANS = [
       'Tot din Pro',
       'Cei 6 agenți AI (Watch / Care / Optimize / Compliance / Client / Dispatch)',
       'Asistent AI (chat flotă) + rezumate AI',
-      'RA Dispatch (alocare curse) + dashboard avansat'
+      'Dashboard avansat + RA Dispatch (sugestie de vehicul; alocarea curselor — în curând)'
     ]
   },
   {
@@ -155,13 +156,17 @@ function computeCompanyPrice(company, canCounts, opts) {
 // ─── Funcții (module) controlabile per-companie de super-admin (checkbox-uri) ───
 // Stocate în companies.settings.features = { agents, ai_assistant, etransport, tahograf } (booleeni expliciți).
 // Cheie lipsă → cade pe default-ul planului companiei.
-const FEATURE_KEYS = ['agents', 'ai_assistant', 'etransport', 'tahograf'];
+const FEATURE_KEYS = ['agents', 'ai_assistant', 'etransport', 'tahograf', 'etoll'];
+// e-Transport, tahograf și e-Toll sunt DEMONSTRATIVE: coduri UIT generate local (UIT_DEMO_*), descărcarea
+// fișierului .DDD răspunde 501, iar costurile de drum vin dintr-un generator pseudo-aleator semănat din IMEI.
+// NU se mai activează singure pe niciun plan plătit — un client care plătește nu trebuie să dea peste date
+// fabricate crezând că sunt reale. Le pornește super-adminul, deliberat, per companie, pentru demonstrații.
 const FEATURE_DEFAULTS_BY_PLAN = {
-  start:      { agents: false, ai_assistant: false, etransport: false, tahograf: false },
-  pro:        { agents: false, ai_assistant: false, etransport: true,  tahograf: true  },
-  premium:    { agents: true,  ai_assistant: true,  etransport: true,  tahograf: true  },
-  enterprise: { agents: true,  ai_assistant: true,  etransport: true,  tahograf: true  },
-  custom:     { agents: true,  ai_assistant: true,  etransport: true,  tahograf: true  }
+  start:      { agents: false, ai_assistant: false, etransport: false, tahograf: false, etoll: false },
+  pro:        { agents: false, ai_assistant: false, etransport: false, tahograf: false, etoll: false },
+  premium:    { agents: true,  ai_assistant: true,  etransport: false, tahograf: false, etoll: false },
+  enterprise: { agents: true,  ai_assistant: true,  etransport: false, tahograf: false, etoll: false },
+  custom:     { agents: true,  ai_assistant: true,  etransport: false, tahograf: false, etoll: false }
 };
 function featuresFor(company) {
   const settings = (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {};

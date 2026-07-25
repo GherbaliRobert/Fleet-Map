@@ -220,7 +220,9 @@ function register(app, deps) {
       res.json({ ok: true, selected: p });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
-  app.get('/api/etoll/costs', requireAuth, withCompany, async function (req, res) {
+  // Cifrele sunt SIMULATE (generator pseudo-aleator semănat din IMEI) → modulul primește o poartă, ca
+  // e-Transport și tahograf. Fără ea, orice client plătitor vedea costuri inventate fără să știe.
+  app.get('/api/etoll/costs', requireAuth, withCompany, requireFeature('etoll'), async function (req, res) {
     try {
       const seed = req.query.imei || ('co' + (req.companyId != null ? req.companyId : 'demo'));
       // `simulated: true` = marcaj EXPLICIT pentru clienți: datele sunt generate, nu preluate de la un furnizor.
