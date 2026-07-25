@@ -2080,14 +2080,19 @@ const pozitii = await r.json();</code></pre>
     .agp-dtitle{font-weight:800;font-size:20px;letter-spacing:-.01em}
     .agp-ddesc{color:var(--text-secondary);font-size:13.5px;line-height:1.6;background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
     .agp-dact{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 4px}
-    .agp-feed-h{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin:16px 0 10px}
+    .agp-feed-h{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin:16px 0 10px}
     .agp-feed{display:flex;flex-direction:column;gap:10px}
     .agp-fi{display:flex;gap:11px;background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
     .agp-fi .fd{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:none}
-    .agp-fi-b{min-width:0}
+    .agp-fi-b{min-width:0;flex:1}
     .agp-fi .ti{font-weight:700;font-size:13px}
     .agp-fi .bo{font-size:12px;color:var(--text-secondary);margin-top:3px;line-height:1.45}
     .agp-fi .tm{font-size:11px;color:var(--text-muted);margin-top:4px}
+    .agp-fa{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+    .agp-fb{display:inline-flex;align-items:center;gap:6px;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-secondary);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.15s}
+    .agp-fb:hover{border-color:var(--accent);color:var(--text-primary)}
+    .agp-fb.ok{border-color:var(--accent);color:var(--accent)}
+    .agp-fb:disabled{opacity:.5;cursor:default}
     .agp-lastrun{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
     .agp-lastrun i{color:var(--accent)}
     .agp-lastrun b{color:var(--text-secondary);font-weight:700}
@@ -16404,7 +16409,7 @@ const pozitii = await r.json();</code></pre>
         var fs = (_agpState.findings || []).filter(function (f) { return f.agent === k && (!f.status || f.status === 'new'); }).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
         if (fs.length) {
           feed = fs.map(function (f) {
-            return '<div class="agp-fi"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + '<div class="tm">' + _agpAgo(f.created_at) + '</div></div></div>';
+            return '<div class="agp-fi" id="agp-fi-' + f.id + '"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + '<div class="tm">' + _agpAgo(f.created_at) + '</div>' + _agpActs(f) + '</div></div>';
           }).join('');
         } else {
           feed = '<div class="agp-fi ok"><span class="fd" style="background:var(--accent)"></span><div class="agp-fi-b">'
@@ -16412,7 +16417,8 @@ const pozitii = await r.json();</code></pre>
             + '<div class="bo">Am verificat ' + (m.checks || 'flota') + '. N-am găsit nicio problemă — poți sta liniștit.</div>'
             + '</div></div>';
         }
-        feedHead = 'Verificări &amp; alerte';
+        feedHead = 'Verificări &amp; alerte'
+          + (fs.length > 1 ? '<button type="button" class="agp-fb" id="agp-ackall" onclick="agpAckAll(\'' + k + '\')" style="text-transform:none;letter-spacing:0;"><i class="fas fa-check-double" style="color:var(--accent)"></i> Toate văzute (' + fs.length + ')</button>' : '');
         var autoOn = _agpState.auto !== false;
         var lastMs = Math.max(_agpLastRun[k] || 0, (_agpState.lastRun ? new Date(_agpState.lastRun).getTime() : 0));
         footer = '<div class="agp-lastrun"><i class="fas fa-clock"></i> ' + (lastMs ? 'Ultima rulare: <b>' + _agpWhen(lastMs) + '</b>' : 'Nicio rulare încă') + ' · ' + (autoOn ? 'verifică automat din oră în oră' : 'verificarea automată e oprită (rulează manual)') + '</div>';
@@ -16436,6 +16442,70 @@ const pozitii = await r.json();</code></pre>
       host.scrollTop = 0;
       if (isLive) agpLiveRefresh(k);
     };
+    // Constatare RA Care legată de o mentenanță (fkey care_due_<id> / care_km_<id>) → id-ul mentenanței.
+    function _agpMaintId(f) { var m = /^care_(?:due|km)_(\d+)$/.exec((f && f.fkey) || ''); return m ? m[1] : null; }
+    // Butoanele de pe o semnalare: închiderea ei e a UTILIZATORULUI, nu doar a super-adminului. Înainte acțiunile
+    // existau NUMAI în panoul [data-super] → clientul obișnuit vedea badge-ul crescând la infinit, fără cale de a-l goli.
+    function _agpActs(f) {
+      if (f.id == null) return '';
+      var mid = _agpMaintId(f);
+      return '<div class="agp-fa">'
+        + '<button type="button" class="agp-fb" onclick="agpFindAct(' + f.id + ',\'ack\')" title="Am văzut — scoate semnalarea din listă"><i class="fas fa-check"></i> Am văzut</button>'
+        + '<button type="button" class="agp-fb" onclick="agpFindAct(' + f.id + ',\'dismiss\')" title="Nu e relevantă — ignoră semnalarea"><i class="fas fa-xmark"></i> Ignoră</button>'
+        + (mid ? '<button type="button" class="agp-fb ok" onclick="agpMaintDone(' + mid + ',' + f.id + ')" title="Marchează mentenanța ca efectuată"><i class="fas fa-wrench"></i> Efectuat</button>' : '')
+        + '</div>';
+    }
+    // Feed LIVE (RA Care): n-avem ce „bifa" (starea nu se persistă), dar scadența se poate rezolva pe loc — ca pe telefon.
+    function _agpMaintActs(f, k) {
+      if (k !== 'care') return '';
+      var mid = _agpMaintId(f); if (!mid) return '';
+      return '<div class="agp-fa">'
+        + '<button type="button" class="agp-fb ok" onclick="agpMaintDone(' + mid + ',null)" title="Marchează mentenanța ca efectuată"><i class="fas fa-wrench"></i> Efectuat</button>'
+        + '<button type="button" class="agp-fb" onclick="agpGoMaint()" title="Deschide Administrare → Mentenanță"><i class="fas fa-arrow-right"></i> Vezi mentenanța</button>'
+        + '</div>';
+    }
+    window.agpFindAct = async function (id, action) {
+      var el = $('agp-fi-' + id); if (el) { el.style.opacity = '.4'; el.style.pointerEvents = 'none'; }
+      var undo = function () { if (el) { el.style.opacity = ''; el.style.pointerEvents = ''; } };
+      try {
+        var r = await fetch('/api/agents/findings/' + id + '/' + action, { method: 'POST', credentials: 'same-origin' });
+        if (!r.ok) { var e = await r.json().catch(function () { return {}; }); if (window.raxToast) raxToast((e && e.error) || 'Nu s-a putut', 'error'); undo(); return false; }
+      } catch (e) { if (window.raxToast) raxToast('Eroare de rețea', 'error'); undo(); return false; }
+      var st = action === 'dismiss' ? 'dismissed' : 'acknowledged';
+      // Ține sincron AMBELE cache-uri (pagina de agenți + panoul flotant), altfel semnalarea „reînvie" la re-randare.
+      (_agpState.findings || []).forEach(function (f) { if (String(f.id) === String(id)) f.status = st; });
+      _raxFindings.forEach(function (f) { if (String(f.id) === String(id)) f.status = st; });
+      if (window.raxToast) raxToast(action === 'dismiss' ? 'Semnalare ignorată' : '✓ Marcat ca văzut', 'success');
+      if (_agpState.mode === 'detail' && _agpState.agent) agpOpen(_agpState.agent);
+      raxRefreshAgBadge(true);
+      return true;
+    };
+    window.agpAckAll = async function (k) {
+      var news = (_agpState.findings || []).filter(function (f) { return f.agent === k && f.id != null && (!f.status || f.status === 'new'); });
+      if (!news.length) return;
+      if (window.raConfirm && !await raConfirm('Marchezi toate cele ' + news.length + ' semnalări ca văzute?')) return;
+      var btn = $('agp-ackall'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se marchează…'; }
+      var results = await Promise.all(news.map(function (f) {
+        return fetch('/api/agents/findings/' + f.id + '/ack', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.ok; }).catch(function () { return false; });
+      }));
+      news.forEach(function (f, i) {
+        if (!results[i]) return;
+        f.status = 'acknowledged';
+        _raxFindings.forEach(function (g) { if (String(g.id) === String(f.id)) g.status = 'acknowledged'; });
+      });
+      var okN = results.filter(Boolean).length;
+      if (window.raxToast) raxToast(okN === news.length ? '✓ Toate marcate ca văzute' : (okN + '/' + news.length + ' marcate'), okN ? 'success' : 'error');
+      agpOpen(k); raxRefreshAgBadge(true);
+    };
+    // „Efectuat" pe o scadență: refolosește completeMaintenance (trimite rândul ÎNTREG → serverul ștampilează
+    // done_at/done_km și creează automat următoarea, dacă mentenanța are interval recurent).
+    window.agpMaintDone = async function (mid, fid) {
+      try { await completeMaintenance(Number(mid)); } catch (e) { if (window.raxToast) raxToast('Eroare la marcarea mentenanței', 'error'); return; }
+      if (window.raxToast) raxToast('Mentenanță marcată ca efectuată ✓', 'success');
+      if (fid != null) { agpFindAct(fid, 'ack'); return; }
+      if (_agpState.agent) agpLiveRefresh(_agpState.agent); // agent live → recitim starea de moment
+    };
+    window.agpGoMaint = function () { if (window.goManage) goManage('maintenance'); };
     // Agenți „live" (dispatch/care) — reîncarcă starea de moment din endpoint-ul dedicat (fără persistență, fără AI).
     window.agpLiveRefresh = async function (k) {
       var box = $('agp-live'), whenEl = $('agp-when'), btn = $('agp-run-' + k);
@@ -16449,7 +16519,7 @@ const pozitii = await r.json();</code></pre>
       var fsl = (data && Array.isArray(data.findings)) ? data.findings : [];
       if (fsl.length) {
         box.innerHTML = fsl.map(function (f) {
-          return '<div class="agp-fi"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + '</div></div>';
+          return '<div class="agp-fi"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + _agpMaintActs(f, k) + '</div></div>';
         }).join('');
       } else {
         var okMsg = (k === 'dispatch')
@@ -16838,9 +16908,9 @@ const pozitii = await r.json();</code></pre>
       window.addEventListener('unhandledrejection', function (e) { var r = e && e.reason; _rep('unhandledrejection: ' + (r && r.message ? r.message : String(r)), r && r.stack); });
     })();
     var _agBadgeTs = 0;
-    async function raxRefreshAgBadge() {
+    async function raxRefreshAgBadge(force) {
       if (!(me && me.permissions && me.permissions.viewReports)) return;
-      var now = (new Date()).getTime(); if (now - _agBadgeTs < 20000) return; _agBadgeTs = now;
+      var now = (new Date()).getTime(); if (!force && now - _agBadgeTs < 20000) return; _agBadgeTs = now;
       try {
         var list = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         var n = Array.isArray(list) ? list.filter(function (f) { return f.status === 'new'; }).length : 0;
