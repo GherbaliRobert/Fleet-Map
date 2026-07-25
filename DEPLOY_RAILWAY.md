@@ -35,34 +35,95 @@ cade automat pe Postgres simplu, fără să crape):
    app adaugi o referință: `DATABASE_URL = ${{Postgres.DATABASE_URL}}` (Railway completează automat).
 
 ## 3. Setează variabilele de mediu (Variables) pe serviciul app
-Obligatorii:
+
+> **Verificare rapidă, din aplicație:** *Administrare → Dashboard platformă → „Stare producție"* arată
+> care dintre variabilele de mai jos lipsesc pe serverul care rulează ACUM, cu verdict (ok/atenție/critic)
+> și consecința fiecăreia. Nu afișează niciodată valorile, doar dacă sunt setate. Endpoint: `GET /api/admin/health`.
+
+### 3a. Pornire (fără ele aplicația nu funcționează corect)
 
 | Variabilă | Valoare | De ce |
 |---|---|---|
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` sau string-ul de la Timescale Cloud | activează modul PostgreSQL |
-| `SESSION_SECRET` | *(valoarea generată, din chat)* | altfel sesiunile pică la fiecare redeploy |
-| `VAPID_PUBLIC_KEY` | *(generată)* | notificări push stabile între deploy-uri |
-| `VAPID_PRIVATE_KEY` | *(generată)* | idem |
-| `ADMIN_PASSWORD` | *(parolă aleasă de tine, tare)* | la primul boot creează userul `admin` (super-admin) |
-| `COOKIE_SECURE` | `true` | cookie sigur pe HTTPS |
-| `TCP_PORT` | `5027` | portul de ingestie Teltonika |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` sau string-ul de la Timescale Cloud | activează modul PostgreSQL (altfel PGlite local = date pierdute la redeploy) |
+| `SESSION_SECRET` | 64 caractere hex aleatoare | fără el se folosește un fișier local → toți utilizatorii sunt deconectați la fiecare redeploy |
+| `ADMIN_PASSWORD` | parolă tare | **⚠ Dacă NU era setată la primul boot, contul `admin` s-a creat cu parola implicită `admin123`** (`server.js:8354`). Cât timp variabila e setată, parola se **resetează din ea la FIECARE pornire** — deci nu o mai poți schimba din interfață; scoate variabila după ce ai stabilit parola dorită. |
+| `COOKIE_SECURE` | `true` | cookie de sesiune doar pe HTTPS + activează HSTS |
+| `TCP_PORT` | `5027` | portul de ingestie Teltonika în container (Railway îl expune extern prin TCP proxy, ex. `gps.ratrack.ro:21015`) |
 
-> **NU** seta `PORT` — Railway îl injectează automat, iar aplicația îl folosește.
+> **NU** seta `PORT` — Railway îl injectează automat. **NU** seta `TZ` — codul forțează `UTC` pe prima linie.
 
-Opționale:
+### 3b. Date & continuitate (fără ele riști pierderea datelor)
 
-| Variabilă | Valoare | Efect |
+| Variabilă | Valoare | De ce |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | cheia ta Claude | activează Asistentul AI (alternativ: o lipești în UI ca super-admin → se salvează în DB) |
-| `AI_MODEL` | `claude-3-5-haiku-latest` | model AI (implicit deja acesta) |
-| `VAPID_SUBJECT` | `mailto:robertgherbali@gmail.com` | contact push |
-| `POSITION_RETENTION_DAYS` | `180` | după câte zile se șterg pozițiile (Timescale retention) |
-| `PG_POOL_MAX` | `10` | conexiuni max în pool |
-| `DISPLAY_TZ` | `Europe/Bucharest` | fus orar afișat în rapoarte |
-| `PGSSL` | `disable` / `require` | de obicei **nu e nevoie** — SSL se auto-detectează (intern Railway = off, cloud public = on). Setează doar ca override |
-| SMTP_*/TELEGRAM_* | — | canale notificări (vezi `channels.js`) |
+| `BACKUP_S3_ENDPOINT` | `https://<account_id>.r2.cloudflarestorage.com` | **fără cele 4 variabile S3, backup-ul se generează și se ARUNCĂ.** Filesystemul containerului Railway e efemer. |
+| `BACKUP_S3_BUCKET` | ex. `ratracks-backup` | |
+| `BACKUP_S3_KEY_ID` | access key id (R2 → *Manage API tokens*) | |
+| `BACKUP_S3_SECRET` | secret access key | |
+| `BACKUP_S3_REGION` | `auto` pentru R2 | la AWS: regiunea reală |
+| `BACKUP_PASSPHRASE` | frază lungă, păstrată separat de Railway | dump-ul conține hash-uri de parole, chei API și date de clienți — fără ea pleacă **necriptat** |
+| `POSITION_RETENTION_DAYS` | `180` | ștergerea automată a pozițiilor (necesită TimescaleDB activ — vezi „Stare producție") |
 
-După ce adaugi variabilele → **Redeploy**.
+### 3c. Comunicare cu clienții (fără ele nu poți face onboarding)
+
+| Variabilă | Valoare | De ce |
+|---|---|---|
+| `SMTP_HOST` | ex. `smtp.zoho.eu` | **fără SMTP: invitațiile de cont nu pleacă, resetarea parolei nu funcționează, rapoartele programate nu ajung pe email** |
+| `SMTP_USER` | ex. `noreply@ratrack.ro` | |
+| `SMTP_PASS` | parola/app-password | ⚠ `mailer.enabled()` verifică doar HOST+USER — dacă uiți PASS, aplicația se crede configurată și trimiterile eșuează tăcut |
+| `SMTP_PORT` | `587` (implicit) | |
+| `SMTP_SECURE` | `true` **doar** pentru portul 465 | pe 587 lasă nesetat |
+| `SMTP_FROM` | `RA Tracks <noreply@ratrack.ro>` | implicit se compune din `SMTP_USER` |
+| `SUPPORT_EMAIL` | adresa unde ajung sesizările din aplicație | altfel se caută în setările din DB |
+
+### 3d. Înainte de lansare
+
+| Variabilă | Valoare | De ce |
+|---|---|---|
+| `DEMO_DISABLED` | `true` | la boot **șterge definitiv** compania demo, cele 5 vehicule sintetice și contul `demo` |
+| `SENTRY_DSN` | DSN-ul proiectului | altfel erorile rămân doar în jurnalul intern |
+| `OSRM_URL` | instanță proprie | implicit `router.project-osrm.org` = **serverul public de demonstrație**, cu limitări și fără garanții pentru uz comercial |
+| `GEOCODE_URL` + `GEOCODE_UA` | instanță Nominatim proprie + user-agent cu contact | implicit Nominatim public: max ~1 req/s, politica de utilizare interzice trafic comercial greu |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | pereche generată | notificări push în **browser**. Push-ul pe Android merge prin `FIREBASE_SA_JSON` (deja activ). |
+
+### 3e. Facturare (doar dacă pornești modulul)
+
+| Variabilă | Valoare | De ce |
+|---|---|---|
+| `STRIPE_SECRET_KEY` | `sk_live_...` | plata cu cardul |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_...` | **cheia singură nu ajunge** — fără webhook, facturile nu se marchează plătite automat |
+| `INVOICE_SERIES` | implicit `RAT` | seria facturilor (A-Z0-9, max 16) |
+| `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` | din SPV | e-Factura |
+| `ANAF_EFACTURA_TEST` | `false` | ⚠ **implicit `true`** — fără asta trimiți în mediul de TEST al ANAF, crezând că e real (`efactura.js:15`) |
+| `ANAF_ETRANSPORT_TEST` | `false` | idem pentru e-Transport (`anaf.js:17`) |
+
+### 3f. Opționale / tuning (au valori implicite bune)
+
+| Variabilă | Implicit | Efect |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | — | Asistentul AI + rezumatele agenților (alternativ: se lipește din UI, se salvează în DB) |
+| `AI_MODEL` | `claude-3-5-haiku-latest` | modelul folosit |
+| `PG_POOL_MAX` | `12` | conexiuni max în pool |
+| `DISPLAY_TZ` | `Europe/Bucharest` | fusul orar afișat în rapoarte |
+| `NOTIFY_EXPIRY_DAYS` | `30` | cu câte zile înainte se anunță scadențele |
+| `FINDINGS_RETENTION_DAYS` | `90` | cât timp se păstrează constatările agenților |
+| `ARCHIVE_RETENTION_DAYS` | `730` | arhiva de poziții (2 ani) |
+| `TRIAL_DAYS` | `14` | perioada de probă |
+| `SPEED_ALERT_BASE` / `SPEED_ALERT_MARGIN` | `50` / `10` | pragul minim și toleranța pentru alerta de viteză |
+| `PGSSL` | auto | SSL se auto-detectează; setează doar ca override |
+
+### 3g. NU seta (sau setează doar știind ce faci)
+
+| Variabilă | De ce nu |
+|---|---|
+| `PORT` | îl injectează Railway; dacă îl fixezi greșit, healthcheck-ul pică |
+| `TZ` | e suprascrisă cu `UTC` de cod |
+| `API_CORS_ORIGIN` | nesetată = API accesibil doar de pe același domeniu (corect). Setează doar dacă un site extern trebuie să apeleze API-ul. |
+| `WEBHOOK_ALLOW_PRIVATE=true` | dezactivează protecția SSRF pe webhook-urile ieșite |
+| `CSP_ENABLED=false` / `RATE_LIMIT_ENABLED=false` | dezactivează Content-Security-Policy, respectiv limitarea de rată — există doar ca supapă de urgență |
+| `STRICT_DEVICES=false` | orice tracker necunoscut s-ar putea conecta (implicit e mod strict, cu allow-list) |
+
+După ce adaugi variabilele → **Redeploy**, apoi verifică în *„Stare producție"* că nu mai e nimic roșu.
 
 ## 4. Verifică în loguri
 În tab-ul **Deployments → Logs** ar trebui să vezi:
