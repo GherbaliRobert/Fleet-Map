@@ -1381,6 +1381,7 @@
           <button class="aside-item" data-super data-atab="dashboard" onclick="raxAdminTab('dashboard')"><i class="fas fa-chart-line"></i> Dashboard platformă</button>
           <button class="aside-item" data-super data-atab="costs" onclick="raxAdminTab('costs')"><i class="fas fa-wallet"></i> Control costuri</button>
           <button class="aside-item" data-super data-atab="ofertare" onclick="raxAdminTab('ofertare')"><i class="fas fa-tag"></i> Ofertare Live</button>
+          <button class="aside-item" data-super data-atab="demoreq" onclick="raxAdminTab('demoreq')"><i class="fas fa-envelope-open-text"></i> Cereri demo <span id="rax-demoreq-badge" class="rax-tag" style="display:none;background:var(--red);color:#fff;margin-left:auto;"></span></button>
           <div class="aside-grp">Sistem</div>
           <button class="aside-item" onclick="openApiKeys()"><i class="fas fa-key"></i> Chei API</button>
           <button class="aside-item" data-super onclick="openAudit()"><i class="fas fa-clipboard-list"></i> Jurnal audit</button>
@@ -1409,6 +1410,7 @@
           <div id="admin-tab-dashboard" style="display:none;"></div>
           <div id="admin-tab-costs" style="display:none;"></div>
           <div id="admin-tab-ofertare" style="display:none;"></div>
+          <div id="admin-tab-demoreq" style="display:none;"></div>
       <div id="admin-tab-users" style="display:none;">
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
@@ -2093,6 +2095,14 @@ const pozitii = await r.json();</code></pre>
     .agp-fi .ti{font-weight:700;font-size:13px}
     .agp-fi .bo{font-size:12px;color:var(--text-secondary);margin-top:3px;line-height:1.45}
     .agp-fi .tm{font-size:11px;color:var(--text-muted);margin-top:4px}
+    .dq-item{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--bg-panel);flex-wrap:wrap}
+    .dq-nm{font-size:13.5px;font-weight:700;color:var(--text-primary)}
+    .dq-meta{font-size:11.5px;color:var(--text-muted);margin-top:3px}
+    .dq-meta a{color:var(--text-secondary)}
+    .dq-msg{font-size:12.5px;color:var(--text-secondary);line-height:1.45;margin-top:6px;white-space:pre-wrap}
+    .dq-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .dq-days{padding:6px 9px;border-radius:8px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;font-size:12px;cursor:pointer}
+    @media(max-width:640px){.dq-acts{width:100%}}
     .agp-fa{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
     .agp-fb{display:inline-flex;align-items:center;gap:6px;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-secondary);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:.15s}
     .agp-fb:hover{border-color:var(--accent);color:var(--text-primary)}
@@ -2808,8 +2818,8 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
-      var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare' };
-      var titles = { companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live' };
+      var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare', demoreq: 'admin-tab-demoreq' };
+      var titles = { companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live', demoreq: 'Cereri demo' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       Object.keys(map).forEach(function (k) {
         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
@@ -2851,13 +2861,16 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadCosts) window.raxLoadCosts();
       } else if (name === 'ofertare') {
         if (window.raxLoadOfertare) window.raxLoadOfertare();
+      } else if (name === 'demoreq') {
+        if (window.raxLoadDemoReq) window.raxLoadDemoReq();
       }
     };
 
     // Acasă: arată cardurile-sumar + reîncarcă statisticile (meniul lateral rămâne mereu vizibil).
     window.raxAdminHome = function () {
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = '';
-      ['admin-tab-companies', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived', 'admin-tab-agents', 'admin-tab-tahograf', 'admin-tab-etransport', 'admin-tab-dashboard'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+      ['admin-tab-companies', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived', 'admin-tab-agents', 'admin-tab-tahograf', 'admin-tab-etransport', 'admin-tab-dashboard',
+       'admin-tab-billing', 'admin-tab-myinvoices', 'admin-tab-costs', 'admin-tab-ofertare', 'admin-tab-demoreq'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
       _raxSideActive('dash');
       var t = document.getElementById('admin-title'); if (t) t.textContent = 'Panou administrare';
       if (window.loadAdminDash) window.loadAdminDash();
@@ -6579,9 +6592,12 @@ const pozitii = await r.json();</code></pre>
         // Notificările de raport (report_ready/report_error) NU au poziție GPS → click-ul deschide raportul din
         // Istoric (nu modalul de eveniment) + un buton dedicat „Rapoarte".
         let nd = n.data; if (typeof nd === 'string') { try { nd = JSON.parse(nd); } catch (e) { nd = null; } }
+        const isDemoReq = (n.type === 'demo_request'); // nu are poziție GPS → n-are ce căuta în modalul cu hartă
         const isReport = (n.type === 'report_ready' || n.type === 'report_error');
         const hid = (nd && nd.historyId != null) ? nd.historyId : '';
-        const clickAttr = isReport
+        const clickAttr = isDemoReq
+          ? `onclick="goSistem('demoreq')" title="Deschide Cereri demo"`
+          : isReport
           ? `onclick="notifOpenReport('${hid}')" title="Deschide raportul în Istoric"`
           : `onclick="openNotifDetail(${n.id})" title="Vezi pe hartă ce s-a întâmplat"`;
         const footIcon = isReport
@@ -15274,6 +15290,70 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + r.annual.toFixed(0) + ' lei</b></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + r.contractTotal.toFixed(0) + ' lei</b></div>' +
         '</div>' + montajBlock + hwBlock;
+    };
+    // ─── Cereri de cont demo (super-admin) ───
+    // Demo-ul nu se mai ia singur de pe site: aici vin cererile, iar accesul se acordă cu termen.
+    var _demoReqFilter = '';
+    window.raxLoadDemoReq = async function () {
+      var box = $('admin-tab-demoreq'); if (!box) return;
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      var list = [];
+      try { list = await fetch('/api/admin/demo-requests' + (_demoReqFilter ? '?status=' + _demoReqFilter : ''), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); } catch (e) {}
+      if (!Array.isArray(list)) list = [];
+      var nNew = list.filter(function (r) { return r.status === 'new'; }).length;
+      var b = $('rax-demoreq-badge'); if (b) { b.style.display = nNew ? 'inline-block' : 'none'; b.textContent = String(nNew); }
+
+      var tabs = [['', 'Toate'], ['new', 'Noi'], ['approved', 'Aprobate'], ['rejected', 'Respinse']].map(function (t) {
+        return '<button class="btn-sm' + (_demoReqFilter === t[0] ? ' btn-primary' : '') + '" onclick="_demoReqFilter=\'' + t[0] + '\';raxLoadDemoReq()">' + t[1] + '</button>';
+      }).join(' ');
+      var head = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">' + tabs +
+        '<span style="margin-left:auto;font-size:11.5px;color:var(--text-muted);">' + list.length + ' cereri</span></div>';
+
+      if (!list.length) { box.innerHTML = head + '<div class="rax-co-meta" style="padding:16px;">Nicio cerere.</div>'; return; }
+      var STC = { new: 'var(--accent)', approved: 'var(--text-muted)', rejected: '#ef4444' };
+      var STL = { new: 'nouă', approved: 'aprobată', rejected: 'respinsă' };
+      box.innerHTML = head + list.map(function (r) {
+        var when = r.created_at ? new Date(Number(r.created_at)).toLocaleString('ro-RO') : '—';
+        var until = r.access_until ? new Date(Number(r.access_until)).toLocaleDateString('ro-RO') : null;
+        var acts = (r.status === 'new')
+          ? '<div class="dq-acts">'
+            + '<select id="dq-days-' + r.id + '" class="dq-days"><option value="3">3 zile</option><option value="7" selected>7 zile</option><option value="14">14 zile</option><option value="30">30 zile</option></select>'
+            + '<button class="rax-btn primary" onclick="raxDemoReqApprove(' + r.id + ')"><i class="fas fa-check"></i> Aprobă</button>'
+            + '<button class="rax-btn" onclick="raxDemoReqReject(' + r.id + ')"><i class="fas fa-xmark"></i> Respinge</button>'
+            + '</div>'
+          : '<div class="dq-acts"><button class="rax-btn" onclick="raxDemoReqDelete(' + r.id + ')" title="Șterge cererea din listă"><i class="fas fa-trash"></i></button></div>';
+        return '<div class="dq-item" style="border-left:3px solid ' + (STC[r.status] || 'var(--border)') + ';">'
+          + '<div style="min-width:0;flex:1;">'
+            + '<div class="dq-nm">' + esc(r.name || '(fără nume)') + (r.company ? ' · <span style="color:var(--text-muted);font-weight:600;">' + esc(r.company) + '</span>' : '')
+              + (r.wants_demo ? ' <span class="rax-tag" style="background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);">cere demo</span>' : '')
+              + ' <span class="rax-tag" style="color:' + (STC[r.status] || '') + ';">' + (STL[r.status] || r.status) + '</span></div>'
+            + '<div class="dq-meta"><a href="mailto:' + esc(r.email) + '">' + esc(r.email) + '</a>'
+              + (r.phone ? ' · <a href="tel:' + esc(r.phone) + '">' + esc(r.phone) + '</a>' : '') + ' · ' + when
+              + (until ? ' · acces până la <b>' + until + '</b>' : '') + '</div>'
+            + (r.message ? '<div class="dq-msg">' + esc(r.message) + '</div>' : '')
+          + '</div>' + acts + '</div>';
+      }).join('');
+    };
+    window.raxDemoReqApprove = async function (id) {
+      var sel = $('dq-days-' + id); var days = sel ? parseInt(sel.value) : 7;
+      if (!await raConfirm('Acorzi acces demo pentru ' + days + ' de zile?\n\nSe creează un cont pe adresa solicitantului, cu vehiculele demonstrative, și primește pe email link de setare a parolei.', { okLabel: 'Acordă acces', danger: false })) return;
+      try {
+        var r = await fetch('/api/admin/demo-requests/' + id + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ days: days }) });
+        var j = await r.json();
+        if (!r.ok) { raxToast(j.error || 'Nu s-a putut aproba', 'error', 6000); return; }
+        raxToast(j.warning ? ('Acces acordat, DAR: ' + j.warning) : ('Acces acordat ' + j.days + ' zile ✓ — invitația a plecat pe email'), j.warning ? 'error' : 'success', j.warning ? 9000 : 4000);
+      } catch (e) { raxToast('Eroare de rețea', 'error'); }
+      raxLoadDemoReq();
+    };
+    window.raxDemoReqReject = async function (id) {
+      if (!await raConfirm('Respingi cererea?', { okLabel: 'Respinge' })) return;
+      try { await fetch('/api/admin/demo-requests/' + id + '/reject', { method: 'POST', credentials: 'same-origin' }); raxToast('Cerere respinsă', 'success'); } catch (e) {}
+      raxLoadDemoReq();
+    };
+    window.raxDemoReqDelete = async function (id) {
+      if (!await raConfirm('Ștergi cererea din listă? Datele solicitantului dispar definitiv.', { okLabel: 'Șterge' })) return;
+      try { await fetch('/api/admin/demo-requests/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxToast('Ștearsă', 'success'); } catch (e) {}
+      raxLoadDemoReq();
     };
     window.raxLoadOfertare = async function () {
       var box = document.getElementById('admin-tab-ofertare'); if (!box) return;

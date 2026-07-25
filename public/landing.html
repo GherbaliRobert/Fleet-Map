@@ -541,7 +541,7 @@
         <p class="sub">RA Tracks iti aduce localizare live, rapoarte detaliate, consum de combustibil si alerte instant — totul intr-un singur dashboard rapid, clar si construit pentru operatiuni reale de transport.</p>
         <div class="hero-ctas">
           <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intra in aplicatie</a>
-          <button type="button" class="btn btn-ghost" onclick="raxDemo(this)"><i class="fa-solid fa-play"></i> Incearca demo live</button>
+          <button type="button" class="btn btn-ghost" onclick="raxDemoAsk()"><i class="fa-solid fa-envelope-open-text"></i> Cere cont demo</button>
         </div>
         <div class="hero-stats">
           <div class="stat">
@@ -760,6 +760,13 @@
           </div>
         </div>
 
+        <style>
+          .cf-check{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.45;margin:2px 0 4px;cursor:pointer}
+          .cf-check input{margin-top:3px;width:16px;height:16px;flex:0 0 auto;accent-color:#16a34a;cursor:pointer}
+          .cf-status{font-size:13.5px;line-height:1.5;margin-top:10px;display:none}
+          .cf-status.ok{display:block;color:#16a34a}
+          .cf-status.err{display:block;color:#ef4444}
+        </style>
         <form class="contact-form reveal" id="contactForm">
           <div class="field">
             <label for="cf-name">Nume</label>
@@ -770,10 +777,23 @@
             <input type="email" id="cf-email" name="email" placeholder="adresa@email.ro" required>
           </div>
           <div class="field">
+            <label for="cf-company">Firma</label>
+            <input type="text" id="cf-company" name="company" placeholder="Numele firmei">
+          </div>
+          <div class="field">
+            <label for="cf-phone">Telefon</label>
+            <input type="tel" id="cf-phone" name="phone" placeholder="07xx xxx xxx">
+          </div>
+          <div class="field">
             <label for="cf-msg">Mesaj</label>
             <textarea id="cf-msg" name="message" placeholder="Cate vehicule ai si ce vrei sa monitorizezi?" required></textarea>
           </div>
-          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Trimite mesajul</button>
+          <label class="cf-check"><input type="checkbox" id="cf-demo" checked> <span>Vreau un <b>cont demo</b> — acces temporar, cu vehicule si trasee demonstrative</span></label>
+          <label class="cf-check"><input type="checkbox" id="cf-consent" required> <span>Sunt de acord cu prelucrarea datelor pentru a fi contactat (<a href="/confidentialitate.html" target="_blank" rel="noopener">politica de confidentialitate</a>)</span></label>
+          <!-- Capcana pentru roboti: un om nu vede si nu completeaza campul asta. -->
+          <input type="text" id="cf-website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+          <button type="submit" class="btn btn-primary" id="cf-submit"><i class="fa-solid fa-paper-plane"></i> Trimite cererea</button>
+          <div id="cf-status" class="cf-status" role="status" aria-live="polite"></div>
         </form>
       </div>
     </div>
@@ -860,15 +880,43 @@
       });
     })();
 
-    // contact form -> mailto
-    document.getElementById('contactForm').addEventListener('submit',function(e){
+    // Formularul ajunge pe SERVER (înainte deschidea clientul de email, deci nu rămânea nicio urmă la noi).
+    // Momentul încărcării paginii e trimis ca să putem respinge completările instantanee, tipice roboților.
+    var _cfLoadedAt = Date.now();
+    document.getElementById('contactForm').addEventListener('submit', async function (e) {
       e.preventDefault();
-      var name=document.getElementById('cf-name').value.trim();
-      var email=document.getElementById('cf-email').value.trim();
-      var msg=document.getElementById('cf-msg').value.trim();
-      var subject=encodeURIComponent('Cerere RA Tracks de la '+name);
-      var body=encodeURIComponent('Nume: '+name+'\nEmail: '+email+'\n\nMesaj:\n'+msg);
-      window.location.href='mailto:contact@ratrack.ro?subject='+subject+'&body='+body;
+      var btn = document.getElementById('cf-submit');
+      var st = document.getElementById('cf-status');
+      var val = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+      var chk = function (id) { var el = document.getElementById(id); return !!(el && el.checked); };
+      if (!chk('cf-consent')) { st.className = 'cf-status err'; st.textContent = 'Bifeaza acordul pentru a putea fi contactat.'; return; }
+      var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Se trimite…';
+      st.className = 'cf-status'; st.textContent = '';
+      try {
+        var r = await fetch('/api/public/demo-request', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: val('cf-name'), email: val('cf-email'), company: val('cf-company'), phone: val('cf-phone'),
+            message: val('cf-msg'), wants_demo: chk('cf-demo'), consent: chk('cf-consent'),
+            website: val('cf-website'), ts: _cfLoadedAt
+          })
+        });
+        var j = await r.json().catch(function () { return {}; });
+        if (r.ok) {
+          st.className = 'cf-status ok';
+          st.textContent = chk('cf-demo')
+            ? 'Am primit cererea. Verificam si iti trimitem datele de acces pe email — de obicei in aceeasi zi lucratoare.'
+            : 'Am primit mesajul. Te contactam in cel mai scurt timp.';
+          document.getElementById('contactForm').reset();
+        } else {
+          st.className = 'cf-status err';
+          st.textContent = j.error || 'Nu am putut trimite cererea. Incearca din nou.';
+        }
+      } catch (err) {
+        st.className = 'cf-status err';
+        st.textContent = 'Conexiune intrerupta. Incearca din nou.';
+      }
+      btn.disabled = false; btn.innerHTML = old;
     });
 
     // reveal on scroll (respecta prefers-reduced-motion)
@@ -890,16 +938,13 @@
     // year
     document.getElementById('year').textContent=new Date().getFullYear();
 
-    // Demo live: autentificare în contul demo (read-only) apoi intrare în aplicație
-    window.raxDemo = async function (btn) {
-      var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Se pregătește demo…';
-      try {
-        var r = await fetch('/api/demo/login', { method: 'POST', credentials: 'same-origin' });
-        if (r.ok) { location.href = '/app'; return; }
-        var j = await r.json().catch(function () { return {}; });
-        alert(j.error || 'Demo indisponibil momentan.');
-      } catch (e) { alert('Eroare: ' + e.message); }
-      btn.disabled = false; btn.innerHTML = old;
+    // Contul demo se acordă la CERERE, aprobat de noi, cu durată limitată. Butonul duce la formular,
+    // cu bifa de demo deja pusă — nu mai există autentificare automată de pe site.
+    window.raxDemoAsk = function () {
+      var sec = document.getElementById('contact');
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      var d = document.getElementById('cf-demo'); if (d) d.checked = true;
+      setTimeout(function () { var n = document.getElementById('cf-name'); if (n) n.focus({ preventScroll: true }); }, 420);
     };
   </script>
 

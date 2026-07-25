@@ -1084,9 +1084,18 @@ async function refreshAuth(req, res, next) {
       let c = roleCache.get(uid);
       if (!c || Date.now() - c.ts > 30000) {
         const u = await db.getUserById(uid);
-        if (u) { c = { ts: Date.now(), role: u.role, companyId: u.company_id }; roleCache.set(uid, c); }
+        if (u) { c = { ts: Date.now(), role: u.role, companyId: u.company_id, accessUntil: u.access_until }; roleCache.set(uid, c); }
       }
-      if (c) req._freshAuth = { role: c.role, companyId: c.companyId };
+      if (c) {
+        req._freshAuth = { role: c.role, companyId: c.companyId, accessUntil: c.accessUntil };
+        // Sesiunea deschisă înainte de expirare nu se invalidează singură (cookie 24h) → o oprim aici.
+        // Lăsăm doar /api/me și /api/logout, ca interfața să poată afișa motivul și să iasă curat.
+        if (userAccessExpired({ access_until: c.accessUntil }) && req.path !== '/api/me' && req.path !== '/api/logout') {
+          try { if (req.session) req.session.destroy(function () {}); } catch (e) {}
+          roleCache.delete(uid);
+          return res.status(403).json({ error: DEMO_EXPIRED_MSG, demo_expired: true });
+        }
+      }
     }
   } catch (e) { /* fallback la sesiune */ }
   next();
@@ -1141,7 +1150,8 @@ async function apiKeyAuth(req, res, next) {
     if (!key && req.headers['x-api-key']) key = String(req.headers['x-api-key']).trim();
     if (key) {
       const user = await db.getUserByApiKey(hashApiKey(key));
-      if (user && user.active !== false) {
+      // Tokenul mobil trăiește 90 de zile — fără verificarea asta, un cont demo expirat ar rămâne logat pe telefon.
+      if (user && user.active !== false && !userAccessExpired(user)) {
         req.apiAuth = { userId: user.id, username: user.username, role: user.role, companyId: user.company_id, viaApiKey: true };
       }
     }
@@ -1212,6 +1222,13 @@ async function findUserForLogin(username) {
   if (!u) { const lc = raw.toLowerCase(); if (lc !== raw) u = await db.getUserByUsername(lc); }
   return u;
 }
+
+// Expirare PER UTILIZATOR (conturi demo temporare). Deliberat SEPARAT de companyAccessStatus(), care
+// acordă 15 zile de grație — pentru un demo de 7 zile ar însemna 22. Aici termenul e ferm.
+function userAccessExpired(u) {
+  return !!(u && u.access_until != null && Date.now() > Number(u.access_until));
+}
+const DEMO_EXPIRED_MSG = 'Accesul demo a expirat. Scrie-ne dacă vrei o prelungire sau o ofertă.';
 
 // Gardă anti-blocare: platforma trebuie să rămână MEREU cu cel puțin un super-admin activ.
 // Fără asta, doi super-admini se pot „stinge" reciproc (protecția existentă acoperă doar propriul cont)
@@ -1621,6 +1638,8 @@ app.post('/api/login', async (req, res) => {
     if (user.active === false) {
       return res.status(403).json({ error: 'Cont dezactivat. Contactează administratorul.' });
     }
+    // Cont demo cu termen depășit: refuzat la POARTĂ, nu doar ascuns după autentificare.
+    if (userAccessExpired(user)) return res.status(403).json({ error: DEMO_EXPIRED_MSG, demo_expired: true });
 
     // Acces pe bază de plată: blochează login-ul dacă abonamentul companiei a expirat (super-adminul e exceptat).
     // Încărcăm compania o singură dată și reutilizăm pentru răspuns (features/access — ca să apară bannerul imediat).
@@ -1669,6 +1688,7 @@ app.post('/api/mobile/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) { recordLoginFail(ip, username); return res.status(401).json({ error: 'Username sau parola greșită' }); }
     if (user.active === false) return res.status(403).json({ error: 'Cont dezactivat. Contactează administratorul.' });
+    if (userAccessExpired(user)) return res.status(403).json({ error: DEMO_EXPIRED_MSG, demo_expired: true });
     let company = null, features = null, access = null;
     if (user.company_id != null) {
       try {
@@ -1734,23 +1754,19 @@ app.get('/api/me', async (req, res) => {
   try { if (a.userId) { const _u = await db.getUserById(a.userId); if (_u) fullName = _u.full_name || null; } } catch (e) {}
   res.json({
     username: a.username, full_name: fullName, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
+    accessUntil: (req._freshAuth && req._freshAuth.accessUntil != null) ? Number(req._freshAuth.accessUntil) : null,
     isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access,
     announcement: sys.announcement, offline_minutes: sys.offline_minutes
   });
 });
 
 // Demo: autentificare rapidă în contul demo (read-only, companie izolată) — pentru butonul de pe landing
-app.post('/api/demo/login', async (req, res) => {
-  try {
-    if (process.env.DEMO_DISABLED === 'true') return res.status(404).json({ error: 'Demo dezactivat' });
-    const u = await db.getUserByUsername('demo');
-    if (!u) return res.status(404).json({ error: 'Demo indisponibil' });
-    req.session.userId = u.id;
-    req.session.username = u.username;
-    req.session.role = u.role;
-    req.session.companyId = u.company_id != null ? u.company_id : null;
-    res.json({ ok: true, username: u.username, role: u.role });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+// Demo-ul NU se mai ia singur de pe site. Ruta veche era login FĂRĂ parolă, fără limitare de rată și
+// fără regenerarea sesiunii — adică oricine putea deschide o sesiune validă (și, prin CSRF, putea înlocui
+// cookie-ul unui utilizator real). Acum accesul demo se cere din formularul public și îl aprobă un
+// super-admin, cu durată limitată. Răspundem 410 (nu 404) ca să se vadă că ruta a existat și a fost retrasă.
+app.post('/api/demo/login', (req, res) => {
+  res.status(410).json({ error: 'Contul demo se acordă la cerere. Completează formularul de pe site și îl aprobăm noi.', requestUrl: '/#contact' });
 });
 
 // ─── Managementul utilizatorilor (doar admin) ───
@@ -2826,6 +2842,78 @@ app.post('/api/auth/set-password', async (req, res) => {
 });
 
 // Forgot password — public (răspuns identic indiferent de existență, anti-enumerare)
+// ─── Formular public: contact + cerere de cont demo ────────────────────────────────────────────────
+// E singurul mod în care un vizitator mai poate ajunge la demo (ruta de auto-login a fost retrasă).
+// Fiind PUBLIC, are nevoie de apărare proprie: limitatorul global e 1200 req/min/IP, adică inexistent aici.
+const _demoReqHits = new Map(); // ip -> { n, ts }
+const DEMO_REQ_MAX = 3, DEMO_REQ_WINDOW_MS = 60 * 60 * 1000;
+function _demoReqThrottled(ip) {
+  const now = Date.now();
+  const cur = _demoReqHits.get(ip);
+  if (!cur || now - cur.ts > DEMO_REQ_WINDOW_MS) { _demoReqHits.set(ip, { n: 1, ts: now }); return false; }
+  cur.n++;
+  return cur.n > DEMO_REQ_MAX;
+}
+app.post('/api/public/demo-request', async (req, res) => {
+  const ip = clientIp(req);
+  try {
+    const b = req.body || {};
+    // Capcană pentru roboți: câmp ascuns care nu trebuie completat NICIODATĂ de un om.
+    // Răspundem 200, ca botul să creadă că a reușit și să nu reîncerce cu altă tactică.
+    if (String(b.website || '').trim()) return res.json({ ok: true });
+    // Formular completat în mai puțin de 3 secunde = automat.
+    const ts = parseInt(b.ts);
+    if (Number.isFinite(ts) && Date.now() - ts < 3000) return res.json({ ok: true });
+    if (_demoReqThrottled(ip)) return res.status(429).json({ error: 'Prea multe cereri. Încearcă din nou peste o oră.' });
+
+    const email = normUsername(b.email);
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Completează o adresă de email validă.' });
+    const cut = (v, n) => String(v == null ? '' : v).trim().slice(0, n) || null;
+    // Aceeași adresă nu poate inunda panoul: o cerere la 24h.
+    try { if (await db.countDemoRequestsByEmail(email, Date.now() - 24 * 3600 * 1000) >= 1) return res.json({ ok: true }); } catch (e) {}
+
+    const row = await db.createDemoRequest({
+      name: cut(b.name, 120), company: cut(b.company, 160), email: email, phone: cut(b.phone, 40),
+      message: cut(b.message, 4000), wants_demo: !!b.wants_demo, consent: !!b.consent,
+      ip: cut(ip, 60), userAgent: cut(req.headers['user-agent'], 300)
+    });
+    notifyDemoRequest(row).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DEMO-REQ]', e.message);
+    res.status(500).json({ error: 'Nu am putut înregistra cererea. Încearcă din nou.' });
+  }
+});
+// Anunțarea super-adminilor. NU folosim notify(): acela difuzează pe email/Telegram/webhook, iar aici
+// ar căra date personale. Datele solicitantului rămân EXCLUSIV în demo_requests; notificarea trimite doar id-ul.
+async function notifyDemoRequest(row) {
+  if (!row) return;
+  try {
+    const n = await db.createNotification({
+      type: 'demo_request', severity: 'info', imei: null,
+      title: row.wants_demo ? 'Cerere de cont demo' : 'Mesaj nou din formularul de contact',
+      body: 'Deschide Administrare → Cereri demo pentru detalii și aprobare.',
+      data: { key: 'demoreq:' + row.id, requestId: row.id },
+      userId: null, companyId: null
+    });
+    const all = await db.getAllActiveUsers();
+    for (const u of all) {
+      if (u.role !== 'superadmin') continue;
+      try { broadcastWsToUser(u.id, { type: 'notification', data: n }); } catch (e) {}
+      try { await sendPushToUser(u.id, n.title, n.body, { notifId: n.id }); } catch (e) {}
+    }
+  } catch (e) { console.warn('[DEMO-REQ] notificare:', e.message); }
+  // Email de alertă către noi — best-effort, doar dacă SMTP e configurat.
+  try {
+    const to = process.env.DEMO_REQUEST_EMAIL || process.env.SUPPORT_EMAIL || (await db.getSetting('support_email').catch(() => null));
+    if (to && channels.emailConfigured && channels.emailConfigured()) {
+      await channels.sendEmailTo(to, 'RA Tracks — cerere nouă din formular',
+        [row.wants_demo ? 'CERERE DE CONT DEMO' : 'Mesaj de contact', 'Nume: ' + (row.name || '—'), 'Firmă: ' + (row.company || '—'),
+         'Email: ' + row.email, 'Telefon: ' + (row.phone || '—'), '', (row.message || '')].join('\n'));
+    }
+  } catch (e) { /* best-effort */ }
+}
+
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const email = ((req.body && req.body.email) || '').trim();
@@ -3468,7 +3556,8 @@ try {
 } catch (e) { console.warn('[DEMO-MODULES] nu s-au putut monta:', e.message); }
 
 // ─── Suport clienți — mesaje din butonul headset (UI). Persistate (vizibile super-admin) + email best-effort. ───
-app.post('/api/support', requireAuth, async (req, res) => {
+app.post('/api/support', requireAuth, withCompany, async (req, res) => {
+  if (_demoBlocked(req, res)) return;
   try {
     const msg = String((req.body && req.body.message) || '').slice(0, 4000).trim();
     if (!msg) return res.status(400).json({ error: 'Mesaj gol' });
@@ -6712,7 +6801,17 @@ app.get('/api/report-schedules', requireAuth, requirePerm('viewReports'), withSc
   try { res.json(await db.getReportSchedules(req.isSuper ? null : req.companyId)); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Conturile demo nu pot programa rapoarte: câmpul „destinatari" e liber, iar trimiterea pleacă de pe SMTP-ul
+// nostru — ar transforma demo-ul în releu de spam, cu reputația domeniului ratrack.ro drept garanție.
+function _demoBlocked(req, res) {
+  if (demoCompanyId != null && req.companyId === demoCompanyId) {
+    res.status(403).json({ error: 'Indisponibil în contul demo. Scrie-ne dacă vrei o demonstrație completă.' });
+    return true;
+  }
+  return false;
+}
 app.post('/api/report-schedules', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  if (_demoBlocked(req, res)) return;
   try {
     const b = req.body || {};
     if (!b.report_type) return res.status(400).json({ error: 'report_type obligatoriu' });
@@ -7966,6 +8065,79 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
     res.json(Object.assign({}, spend, { budget: budget, available: available, creditUsd: creditUsd, creditDate: creditDate, creditConfigured: creditConfigured, spentSince: spentSince, soldRemaining: soldRemaining, soldError: soldError }));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ─── Cereri de cont demo (super-admin) ─────────────────────────────────────────────────────────────
+app.get('/api/admin/demo-requests', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await db.listDemoRequests({ status: req.query.status || null })); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Aprobare = se creează un cont propriu pentru solicitant, în compania demo, cu termen ales de super-admin.
+app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const r = await db.getDemoRequestById(id); if (!r) return res.status(404).json({ error: 'Cerere inexistentă' });
+    if (demoCompanyId == null) return res.status(409).json({ error: 'Compania demo nu există pe acest server — nu am unde crea contul.' });
+    const days = Math.min(Math.max(parseInt(req.body && req.body.days) || 7, 1), 90);
+    const until = Date.now() + days * 24 * 3600 * 1000;
+    const uname = normUsername(r.email);
+    if (!EMAIL_RE.test(uname)) return res.status(400).json({ error: 'Cererea nu are o adresă de email validă.' });
+
+    let u = await db.getUserByUsername(uname);
+    let created = false;
+    if (u) {
+      // Există deja un cont pe adresa asta: NU-l atingem dacă e un client real — doar prelungim un demo.
+      if (u.company_id !== demoCompanyId) return res.status(409).json({ error: 'Există deja un cont real pe această adresă. Prelungește-i accesul din Utilizatori.' });
+    } else {
+      const tmp = await bcrypt.hash(crypto.randomBytes(18).toString('hex'), 10); // parolă imposibil de ghicit; se setează prin link
+      u = await db.createUser(uname, tmp, 'viewer', { full_name: r.name || 'Cont demo', email: uname, phone: r.phone || null, company_id: demoCompanyId });
+      created = true;
+    }
+    // Viewer NU are viewAll → fără ACL explicit n-ar vedea niciun vehicul.
+    try { await db.setUserAccess(u.id, demoSim.DEMO_IMEIS, []); } catch (e) {}
+    await db.setUserAccessUntil(u.id, until);
+    try { await db.pool.query('UPDATE users SET demo_request_id = $2 WHERE id = $1', [u.id, id]); } catch (e) {}
+    invalidateAccessCache(u.id); roleCache.delete(u.id); // altfel cache-ul de 30s ar întârzia accesul
+
+    let invited = false;
+    try { invited = await sendSetPasswordEmail(req, Object.assign({}, u, { email: uname }), { invite: true }); } catch (e) {}
+    await db.updateDemoRequest(id, { status: 'approved', user_id: u.id, approved_by: getAuth(req).userId, access_until: until });
+    auditReq(req, 'approve', 'demo_request', id, { user: uname, days: days });
+    res.json({ ok: true, username: uname, days: days, accessUntil: until, created: created, invited: invited,
+      warning: invited ? null : 'Contul e activ, dar emailul cu linkul de setare a parolei NU a putut fi trimis (SMTP neconfigurat). Trimite-i manual linkul de resetare.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/admin/demo-requests/:id/reject', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const r = await db.updateDemoRequest(id, { status: 'rejected', notes: (req.body && String(req.body.notes || '').slice(0, 500)) || null });
+    if (!r) return res.status(404).json({ error: 'Cerere inexistentă' });
+    auditReq(req, 'reject', 'demo_request', id, {});
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/admin/demo-requests/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    await db.deleteDemoRequest(id);
+    auditReq(req, 'delete', 'demo_request', id, {});
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Prelungire / revocare a TERMENULUI unui cont (conturi demo). Calea e 'access-until', NU 'access':
+// '/api/users/:id/access' înseamnă deja ALTCEVA (acces la vehicule/grupe) și, fiind definită mai sus,
+// ar fi câștigat ea — ștergând ACL-ul utilizatorului în loc să-i schimbe termenul.
+app.put('/api/users/:id/access-until', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const days = req.body && req.body.days != null ? parseInt(req.body.days) : null;
+    const until = (days != null && Number.isFinite(days)) ? (Date.now() + Math.min(Math.max(days, 1), 3650) * 24 * 3600 * 1000)
+      : (req.body && req.body.until != null ? parseInt(req.body.until) : null);
+    await db.setUserAccessUntil(id, until);
+    invalidateAccessCache(id); roleCache.delete(id);
+    auditReq(req, 'set_access', 'user', id, { until: until });
+    res.json({ ok: true, accessUntil: until });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Ofertare Live: CRUD oferte salvate (super-admin) ───
 app.get('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.listOffers()); } catch (err) { res.status(500).json({ error: err.message }); }
@@ -8312,8 +8484,8 @@ wss.on('connection', (ws, req) => {
       try {
         const key = decodeURIComponent(tokenMatch[1]);
         const user = await db.getUserByApiKey(hashApiKey(key));
-        if (!user || user.active === false) {
-          try { ws.send(JSON.stringify({ type: 'error', data: { error: 'Neautorizat' } })); } catch (e) {}
+        if (!user || user.active === false || userAccessExpired(user)) {
+          try { ws.send(JSON.stringify({ type: 'error', data: { error: userAccessExpired(user) ? DEMO_EXPIRED_MSG : 'Neautorizat' } })); } catch (e) {}
           return ws.close();
         }
         await _wsAuthContext(ws, user.id, user.role, user.company_id, 'token:' + user.username);
@@ -8535,17 +8707,15 @@ async function start() {
       demoSim.start({ livePositions, broadcastWs, insertPositions: db.insertPositions });
     } catch (e) { console.warn('[DEMO] seed:', e.message); }
   } else {
-    // DEMO_DISABLED=true → ștergere FIZICĂ (o singură dată, idempotent) a companiei demo: vehicule + cont + companie.
-    // DEMO_IMEIS sunt imei-uri SINTETICE, deci deleteDeviceCompletely nu poate atinge niciun vehicul real.
-    // Simulatorul NU pornește (nu se re-creează nimic). La boot-urile următoare nu mai găsește ce șterge.
+    // DEMO_DISABLED=true NU mai șterge compania demo. De când demo-ul se acordă la cerere, compania e parte
+    // din produs (acolo trăiesc conturile temporare aprobate) — ștergerea ar rupe fluxul de vânzare.
+    // Comutatorul oprește acum DOAR simulatorul de poziții: flota demo îngheață, nimic nu se pierde.
+    // Ștergerea completă rămâne o operație DELIBERATĂ, din panoul de super-admin, nu un efect al unei variabile.
     try {
-      let _wiped = 0;
-      for (const imei of demoSim.DEMO_IMEIS) { try { _wiped += await db.deleteDeviceCompletely(imei); } catch (e) {} }
-      try { const du = await db.getUserByUsername('demo'); if (du) await db.deleteUser(du.id); } catch (e) {}
-      try { const dc = await db.getCompanyBySlug('demo'); if (dc) await db.deleteCompany(dc.id); } catch (e) {}
-      demoCompanyId = null;
-      if (_wiped) console.log('[DEMO] DEMO_DISABLED=true → ' + _wiped + ' vehicule demo + cont + companie șterse din DB.');
-    } catch (e) { console.warn('[DEMO] cleanup:', e.message); }
+      const dc = await db.getCompanyBySlug('demo');
+      demoCompanyId = dc ? dc.id : null;
+      console.log('[DEMO] DEMO_DISABLED=true → simulatorul e OPRIT' + (dc ? ' (compania demo rămâne, pentru conturile acordate la cerere)' : ' (nu există companie demo)'));
+    } catch (e) { console.warn('[DEMO] stare:', e.message); demoCompanyId = null; }
   }
 
   // Error middleware — înregistrat ULTIMUL, după toate rutele (definite la încărcarea modulului).
@@ -8584,6 +8754,7 @@ async function start() {
   setInterval(() => {
     const now = Date.now();
     try { for (const [k, v] of _clientErrHits) if (now - v.ts > 5 * 60000) _clientErrHits.delete(k); } catch (e) {}
+    try { for (const [k, v] of _demoReqHits) if (now - v.ts > DEMO_REQ_WINDOW_MS) _demoReqHits.delete(k); } catch (e) {}
     try { for (const [k, v] of alertCooldowns) if (now - v > 24 * 3600000) alertCooldowns.delete(k); } catch (e) {}
     try { for (const [k, v] of _userEvtCooldown) if (now - v > 24 * 3600000) _userEvtCooldown.delete(k); } catch (e) {}
     try { for (const [k, v] of _wsCooldown) if (now - v > 24 * 3600000) _wsCooldown.delete(k); } catch (e) {}

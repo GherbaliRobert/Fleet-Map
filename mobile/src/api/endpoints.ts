@@ -136,6 +136,11 @@ export const Api = {
   refreshFuelPrices: () => api<any>('/api/admin/fuel-prices/refresh', { method: 'POST', body: {} }), // super-admin
   companySettings: () => api<any>('/api/companies/me/settings'),
   saveCompanySettings: (b: any) => api<any>('/api/companies/me/settings', { method: 'PUT', body: b }),
+  // ── Super-admin: Cereri de cont demo (formularul public de pe landing) ──
+  demoRequests: (status?: string) => api<any[]>('/api/admin/demo-requests' + (status ? '?status=' + encodeURIComponent(status) : '')),
+  approveDemoRequest: (id: number, b: any) => api<any>(`/api/admin/demo-requests/${id}/approve`, { method: 'POST', body: b }),
+  rejectDemoRequest: (id: number) => api<any>(`/api/admin/demo-requests/${id}/reject`, { method: 'POST' }),
+  deleteDemoRequest: (id: number) => api<any>(`/api/admin/demo-requests/${id}`, { method: 'DELETE' }),
   // ── Super-admin: Ofertare Live ──
   offers: () => api<any[]>('/api/admin/offers'),
   createOffer: (b: any) => api<any>('/api/admin/offers', { method: 'POST', body: b }),

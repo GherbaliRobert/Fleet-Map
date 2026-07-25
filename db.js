@@ -486,6 +486,8 @@ async function initDb() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires BIGINT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS access_until BIGINT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS demo_request_id INTEGER;
       END $$
     `);
 
@@ -834,6 +836,19 @@ async function initDb() {
         }
       }
     } catch (e) { if (typeof console !== 'undefined') console.warn('[costs] seed Google:', e && e.message); }
+    // Cereri de cont demo trimise din formularul public de pe landing (lead-uri comerciale).
+    // Datele personale stau DOAR aici; notificarea către super-admin nu conține niciun câmp PII.
+    // NOTĂ: o instrucțiune per client.query() — protocolul extins nu acceptă două CREATE TABLE într-un apel.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS demo_requests (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(120), company VARCHAR(160), email VARCHAR(160) NOT NULL, phone VARCHAR(40),
+        message TEXT, wants_demo BOOLEAN DEFAULT false, consent BOOLEAN DEFAULT false,
+        status VARCHAR(20) DEFAULT 'new', ip VARCHAR(60), user_agent VARCHAR(300),
+        user_id INTEGER, approved_by INTEGER, access_until BIGINT, notes TEXT,
+        created_at BIGINT, updated_at BIGINT
+      )
+    `);
     // Ofertare Live: oferte salvate (configurator de preț cu istoric)
     await client.query(`
       CREATE TABLE IF NOT EXISTS offers (
@@ -852,6 +867,8 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_offers_created ON offers(created_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_demoreq_created ON demo_requests(created_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_demoreq_email ON demo_requests(email, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_company ON devices(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_groups_company ON device_groups(company_id)`);
@@ -2063,7 +2080,7 @@ async function countSuperadminsInIds(ids) {
 
 async function getUserById(id) {
   const result = await pool.query(
-    'SELECT id, username, role, full_name, email, phone, active, last_login, company_id, created_at FROM users WHERE id = $1',
+    'SELECT id, username, role, full_name, email, phone, active, last_login, company_id, created_at, access_until, demo_request_id FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0] || null;
@@ -2189,7 +2206,7 @@ async function getApiKeyCompany(id) {
 
 async function getUserByApiKey(keyHash) {
   const result = await pool.query(`
-    SELECT u.id, u.username, u.role, u.active, u.company_id, k.id AS key_id
+    SELECT u.id, u.username, u.role, u.active, u.company_id, u.access_until, k.id AS key_id
     FROM api_keys k JOIN users u ON u.id = k.user_id
     WHERE k.key_hash = $1 AND k.revoked = false
       AND (k.expires_at IS NULL OR k.expires_at > NOW())
@@ -2995,6 +3012,61 @@ async function getCompanyAdminEmails(companyId) {
   return r.rows.map(x => x.email);
 }
 
+
+// ─── Cereri de cont demo (lead-uri din formularul public de pe landing) ─────────────────────────────
+// Datele personale stau DOAR în tabela asta; notificarea către super-admin nu conține niciun câmp PII.
+async function createDemoRequest(r) {
+  const now = Date.now();
+  const q = await pool.query(
+    `INSERT INTO demo_requests (name, company, email, phone, message, wants_demo, consent, status, ip, user_agent, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'new',$8,$9,$10,$10) RETURNING *`,
+    [r.name || null, r.company || null, String(r.email).toLowerCase(), r.phone || null, r.message || null, !!r.wants_demo, !!r.consent, r.ip || null, r.userAgent || null, now]
+  );
+  return q.rows[0];
+}
+async function listDemoRequests(opts) {
+  opts = opts || {};
+  const where = opts.status ? 'WHERE status = $1' : '';
+  const params = opts.status ? [opts.status] : [];
+  const lim = Math.min(parseInt(opts.limit) || 200, 500);
+  const q = await pool.query(`SELECT * FROM demo_requests ${where} ORDER BY created_at DESC LIMIT ${lim}`, params);
+  return q.rows;
+}
+async function getDemoRequestById(id) {
+  const q = await pool.query('SELECT * FROM demo_requests WHERE id = $1', [parseInt(id)]);
+  return q.rows[0] || null;
+}
+// Actualizare parțială — doar cheile din allow-list (nu se poate rescrie emailul/mesajul original).
+async function updateDemoRequest(id, patch) {
+  const allowed = ['status', 'user_id', 'approved_by', 'access_until', 'notes'];
+  const sets = [], params = [parseInt(id)];
+  for (const k of allowed) {
+    if (patch[k] === undefined) continue;
+    params.push(patch[k]); sets.push(k + ' = $' + params.length);
+  }
+  if (!sets.length) return await getDemoRequestById(id);
+  params.push(Date.now()); sets.push('updated_at = $' + params.length);
+  const q = await pool.query('UPDATE demo_requests SET ' + sets.join(', ') + ' WHERE id = $1 RETURNING *', params);
+  return q.rows[0] || null;
+}
+async function deleteDemoRequest(id) {
+  await pool.query('DELETE FROM demo_requests WHERE id = $1', [parseInt(id)]);
+}
+// Anti-spam: câte cereri a trimis adresa asta după un anumit moment.
+async function countDemoRequestsByEmail(email, sinceMs) {
+  const q = await pool.query('SELECT COUNT(*)::int AS n FROM demo_requests WHERE email = $1 AND created_at > $2', [String(email || '').toLowerCase(), Math.round(sinceMs)]);
+  return q.rows[0] ? q.rows[0].n : 0;
+}
+// Expirare PER UTILIZATOR (conturi demo temporare). null = fără limită. Epoch ms, ca la companies.access_until.
+async function setUserAccessUntil(id, untilMs) {
+  await pool.query('UPDATE users SET access_until = $2 WHERE id = $1', [id, untilMs == null ? null : Math.round(untilMs)]);
+}
+// TOȚI utilizatorii unei companii, inclusiv cei inactivi (pentru curățarea completă a companiei demo).
+async function listUsersByCompany(companyId) {
+  const q = await pool.query('SELECT id, username, role, active, access_until FROM users WHERE company_id = $1', [companyId]);
+  return q.rows;
+}
+
 module.exports = {
   saveWeeklyReport, weeklyReportExists, getLatestWeeklyReport, getWeeklyReports, getWeeklyReportById, markWeeklyReportEmailed, getCompanyAdminEmails,
   pool,
@@ -3011,6 +3083,8 @@ module.exports = {
   pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
+  createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
+  setUserAccessUntil, listUsersByCompany,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,

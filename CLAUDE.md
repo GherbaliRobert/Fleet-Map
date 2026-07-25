@@ -38,9 +38,28 @@ Note pentru sesiunile viitoare. De respectat la **orice** modificare.
 - Service worker-ul (`public/sw.js`) e **network-first** pentru HTML și CSS; la schimbări mari de assets, bumpează `CACHE` (`ratracks-vNN`).
 - Verificarea versiunii LIVE: `ratrack.ro/api/health` → câmpul `version` = prefixul commit-ului deployat.
 
-## Compania DEMO (⚠️ DE ȘTERS ÎNAINTE DE LANSARE)
+## Compania DEMO (acces la CERERE, aprobat de super-admin)
 Aplicația seedează la pornire o **companie demo** built-in — „RA Track Demo", 5 vehicule **sintetice** (DEMO-1..5: Timișoara, București, Iași, Brașov, Cluj-Napoca) + cont `demo` (viewer) + simulator de poziții. Vezi `server.js` (blocul „DEMO mode", gated pe `process.env.DEMO_DISABLED !== 'true'`) + `demo-sim.js` (`DEMO_IMEIS`, `ROUTES`).
 
 - **Sunt ascunse de flota REALĂ peste tot** prin `DEMO_SET` (= `demoSim.DEMO_IMEIS`) + `demoCompanyId`: `canAccessImei` (hartă live, dispecerizare, insight/analitice, dashboards), `resolveReportImeis` (rapoarte live) și ramura super-admin din `report_schedules.js` (rapoarte programate). Regula: `if (req.companyId !== demoCompanyId) ... filtrează !DEMO_SET.has(imei)`. La orice cale NOUĂ care listează vehicule/poziții pentru flota reală, exclude demo la fel.
 - **NU apar în niciun raport** (live sau programat). Dacă adaugi o cale de raport/analiză nouă, mirror-uiește excluderea demo.
-- **DE FĂCUT înainte de lansare: ștergerea FIZICĂ.** Comutatorul `DEMO_DISABLED=true` (variabilă de mediu în Railway) face acum, la boot, **ștergere definitivă** din DB: vehiculele demo (`deleteDeviceCompletely` per imei — cascadă sigură), contul `demo`, compania demo (slug `demo`). Idempotent, scoped pe imei-uri sintetice (nu atinge vehicule reale). Alternativă discutată: ștergere automată necondiționată (fără variabilă) — de decis la momentul lansării.
+### Accesul demo se ACORDĂ, nu se ia singur (decizie 2026-07-25)
+Vizitatorul NU mai poate intra în demo de pe site. `POST /api/demo/login` a fost **retras** (răspunde 410) —
+era login fără parolă, fără limitare de rată și fără regenerarea sesiunii.
+
+- **Fluxul:** butonul „Cere cont demo" din landing → formularul din `#contact` (cu bifa „Vreau un cont demo")
+  → `POST /api/public/demo-request` (public, dar cu limitare 3/oră/IP, capcană pentru roboți, timp minim de
+  completare și o cerere/adresă/24h) → rând în `demo_requests` + notificare in-app către super-admini
+  (**fără date personale în notificare** — PII stă doar în tabelă).
+- **Aprobarea** (Administrare → Cereri demo, web + APK): super-adminul alege durata (3/7/14/30 zile) și se
+  creează un **cont propriu** pe adresa solicitantului, în compania demo, rol `viewer`, cu ACL pe `DEMO_IMEIS`
+  + link de setare a parolei pe email. Contul partajat `demo` rămâne doar ca deținător istoric al ACL-ului.
+- **Expirarea** e per utilizator (`users.access_until`, epoch ms) și se verifică pe **toate** căile de
+  autentificare: `/api/login`, `/api/mobile/login`, cheie API/token mobil, WebSocket, plus per-request în
+  `refreshAuth` (sesiunea deschisă nu se invalidează singură — cookie 24h). Cutoff HARD: NU refolosi
+  `companyAccessStatus`, care acordă 15 zile de grație.
+- **Conturile demo nu pot trimite emailuri prin serverul nostru** (`_demoBlocked`): fără rapoarte programate
+  și fără formularul de suport — altfel demo-ul devine releu de spam pe reputația domeniului.
+- **`DEMO_DISABLED=true` NU mai șterge nimic.** De când demo-ul se acordă la cerere, compania demo e parte din
+  produs (acolo trăiesc conturile temporare). Comutatorul oprește DOAR simulatorul de poziții. Ștergerea
+  completă rămâne o operație deliberată, nu efectul unei variabile de mediu.

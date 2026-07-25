@@ -87,6 +87,7 @@ export function Menu() {
             {item('trash', 'Dispozitive arhivate', () => loc.route('/admin/archived'))}
             {item('zap', 'Control costuri', () => loc.route('/admin/costs'))}
             {item('fileBar', 'Ofertare Live', () => loc.route('/admin/offers'))}
+            {item('mail', 'Cereri demo', () => loc.route('/admin/demo-requests'))}
           </>
         )}
 
