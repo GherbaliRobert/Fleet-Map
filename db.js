@@ -2427,24 +2427,38 @@ async function getPushSubscriptions(userId) {
   const r = await pool.query('SELECT endpoint, subscription FROM push_subscriptions WHERE user_id = $1', [userId]);
   return r.rows.map(x => ({ endpoint: x.endpoint, subscription: typeof x.subscription === 'string' ? JSON.parse(x.subscription) : x.subscription }));
 }
-async function deletePushSubscription(endpoint) {
-  await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+// Aceeași regulă ca la token-urile native: cu `userId` se șterge doar propria abonare;
+// fără el e curățare de sistem (endpoint respins cu 404/410 de serviciul de push).
+async function deletePushSubscription(endpoint, userId) {
+  if (userId != null) await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2', [endpoint, userId]);
+  else await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
 }
 
 // ─── Token-uri native (FCM/APNs) pentru aplicația mobilă ───
+// Reatribuirea tokenului către alt utilizator e un flux LEGITIM: același telefon, alt cont care se
+// autentifică (logout-ul din aplicație nu dezînregistrează tokenul). De aceea nu o blocăm — dar întoarcem
+// proprietarul anterior, ca preluarea unui token care aparținea altcuiva să lase urmă în jurnalul de audit.
 async function saveDeviceToken(userId, token, platform) {
+  const prev = await pool.query('SELECT user_id FROM device_tokens WHERE token = $1', [token]);
+  const prevUserId = prev.rows[0] ? prev.rows[0].user_id : null;
   await pool.query(
     `INSERT INTO device_tokens (user_id, token, platform) VALUES ($1,$2,$3)
      ON CONFLICT (token) DO UPDATE SET user_id = EXCLUDED.user_id, platform = EXCLUDED.platform, last_seen = NOW()`,
     [userId, token, platform || 'android']
   );
+  return { prevUserId: prevUserId, takenOver: prevUserId != null && prevUserId !== userId };
 }
 async function getDeviceTokens(userId) {
   const r = await pool.query('SELECT token, platform FROM device_tokens WHERE user_id = $1', [userId]);
   return r.rows;
 }
-async function deleteDeviceToken(token) {
-  await pool.query('DELETE FROM device_tokens WHERE token = $1', [token]);
+// `userId` dat → se șterge DOAR propria înregistrare (cerere venită de la un utilizator).
+// `userId` omis → curățare de sistem (FCM a răspuns că tokenul e invalid/expirat), fără proprietar.
+// Fără această distincție, orice utilizator autentificat care cunoaște tokenul altcuiva îi putea
+// opri notificările — inclusiv alertele de furt — cu un singur apel.
+async function deleteDeviceToken(token, userId) {
+  if (userId != null) await pool.query('DELETE FROM device_tokens WHERE token = $1 AND user_id = $2', [token, userId]);
+  else await pool.query('DELETE FROM device_tokens WHERE token = $1', [token]);
 }
 
 // Utilizatori care au acces la un vehicul (pentru livrarea per-user a evenimentelor)

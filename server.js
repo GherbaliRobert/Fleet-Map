@@ -8251,7 +8251,7 @@ app.post('/api/push/subscribe', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
-  try { if (req.body && req.body.endpoint) await db.deletePushSubscription(req.body.endpoint); res.json({ ok: true }); }
+  try { if (req.body && req.body.endpoint) await db.deletePushSubscription(req.body.endpoint, req.auth.userId); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Token-uri native (FCM Android / APNs iOS) pentru aplicația mobilă.
@@ -8259,7 +8259,9 @@ app.post('/api/push/device', requireAuth, async (req, res) => {
   try {
     const { token, platform } = req.body || {};
     if (!token) return res.status(400).json({ error: 'Token lipsă' });
-    await db.saveDeviceToken(req.auth.userId, String(token), (platform === 'ios' ? 'ios' : 'android'));
+    const _st = await db.saveDeviceToken(req.auth.userId, String(token), (platform === 'ios' ? 'ios' : 'android'));
+    // Preluarea e normală când alt cont se loghează pe același telefon; devine semnal de abuz doar dacă se repetă.
+    if (_st && _st.takenOver) auditReq(req, 'takeover', 'push_token', _st.prevUserId, { note: 'token mutat de la alt utilizator' });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -8366,7 +8368,7 @@ app.get('/api/admin/ignition-check', requireAuth, requireSuperadmin, async (req,
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/push/device/unregister', requireAuth, async (req, res) => {
-  try { if (req.body && req.body.token) await db.deleteDeviceToken(String(req.body.token)); res.json({ ok: true }); }
+  try { if (req.body && req.body.token) await db.deleteDeviceToken(String(req.body.token), req.auth.userId); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
