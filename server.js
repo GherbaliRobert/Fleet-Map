@@ -7459,10 +7459,34 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   const add = (key, label, level, detail) => checks.push({ key, label, level, detail });
 
   add('db', 'Bază de date', dbOk ? 'ok' : 'crit', dbOk ? (process.env.DATABASE_URL ? 'PostgreSQL' : 'PGlite (local)') : 'inaccesibilă');
+
+  // Contul „admin" se creează la primul boot cu parola din ADMIN_PASSWORD, altfel cu una IMPLICITĂ, publică.
+  // Verificăm efectiv hash-ul din DB — nu prezența variabilei (care poate fi adăugată după ce contul există).
+  try {
+    const _a = await db.getUserByUsername('admin');
+    if (_a && _a.password_hash) {
+      const _weak = await bcrypt.compare('admin123', _a.password_hash);
+      // NU scriem parola în răspuns: ecranul ăsta ajunge în capturi de ecran și în bug reports.
+      add('admin_password', 'Parola contului „admin"', _weak ? 'crit' : 'ok',
+        _weak ? 'este ÎNCĂ parola implicită de instalare, cunoscută public (vezi DEPLOY_RAILWAY.md). Schimb-o acum: setează ADMIN_PASSWORD, redeploy, apoi ȘTERGE variabila — altfel parola se resetează din ea la fiecare pornire.'
+              : 'schimbată față de cea implicită');
+    }
+  } catch (e) {}
+
+  // Retenția pozițiilor are DOUĂ căi: politica TimescaleDB (dacă extensia există) SAU ștergerea de rezervă
+  // din server.js — dar aceasta din urmă rulează NUMAI dacă POSITION_RETENTION_DAYS e setat explicit
+  // (nu are valoare implicită). Fără niciuna, `positions` crește la nesfârșit. Raportăm separat de compresie.
+  const _posRet = parseInt(process.env.POSITION_RETENTION_DAYS);
+  const _fallbackArmed = Number.isFinite(_posRet) && _posRet > 0;
   if (ts && ts.usePg) {
-    add('timescale', 'TimescaleDB (compresie + retenție poziții)', ts.enabled ? 'ok' : 'crit',
-      ts.enabled ? ('activ · retenție ' + ts.retentionDays + ' zile, compresie după ' + ts.compressAfterDays + ' zile')
-                 : ('INACTIV → fără compresie și fără ștergere automată: storage-ul crește nelimitat, iar retenția de 180 zile promisă NU se aplică. Motiv: ' + (ts.reason || 'necunoscut')));
+    add('timescale', 'TimescaleDB (compresie poziții)', ts.enabled ? 'ok' : 'warn',
+      ts.enabled ? ('activ · compresie după ' + ts.compressAfterDays + ' zile')
+                 : ('INACTIV → pozițiile se stochează NECOMPRIMAT (Timescale comprimă ~85-90%): costul de storage crește pe măsură ce adaugi vehicule. Motiv: ' + (ts.reason || 'necunoscut') + '. Remediu: mută baza pe un Postgres cu TimescaleDB (ex. Timescale Cloud).'));
+    const retOk = ts.enabled || _fallbackArmed;
+    add('retention', 'Ștergerea automată a pozițiilor vechi', retOk ? 'ok' : 'crit',
+      ts.enabled ? ('politică TimescaleDB · ' + ts.retentionDays + ' zile')
+        : (_fallbackArmed ? ('ștergere de rezervă activă · ' + _posRet + ' zile (rulează zilnic)')
+          : 'NIMIC nu șterge pozițiile vechi: Timescale e inactiv, iar POSITION_RETENTION_DAYS nu e setat → tabela `positions` crește la nesfârșit, iar „180 zile istoric" din materiale nu se respectă. Remediu imediat: setează POSITION_RETENTION_DAYS=180.'));
   }
   add('backup_offsite', 'Backup off-site (S3/R2)', bk.s3Configured ? (bk.protected ? 'ok' : 'warn') : 'crit',
     bk.s3Configured ? (bk.protected ? ('ultima copie: ' + (bk.at || '—')) : 'configurat, dar ultima rulare nu a urcat nimic')
