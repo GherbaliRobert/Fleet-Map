@@ -61,6 +61,7 @@
         <button type="submit" class="btn btn-primary">
           <i class="fas fa-sign-in-alt"></i> Autentificare
         </button>
+        <div style="text-align:center;margin-top:14px;"><a href="#" onclick="raxForgotPassword();return false;" style="color:var(--text-muted);font-size:12.5px;text-decoration:none;border-bottom:1px dotted var(--text-muted);">Am uitat parola</a></div>
       </form>
     </div>
   </div>
@@ -2655,6 +2656,22 @@ const pozitii = await r.json();</code></pre>
     let historyMarkers = [];
 
     // ─── Auth ───
+    // Recuperare parolă: endpointul /api/auth/forgot-password exista deja, dar NU era apelat de nicăieri
+    // → un client care își uita parola rămânea blocat definitiv (fără cale de recuperare în UI).
+    window.raxForgotPassword = async function () {
+      var email = prompt('Introdu adresa de email a contului. Primești un link de resetare a parolei.');
+      if (email == null) return;
+      email = String(email).trim();
+      if (!email) return;
+      var box = document.getElementById('login-error');
+      try {
+        var r = await fetch('/api/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (box) { box.style.color = 'var(--accent)'; box.textContent = j.message || 'Dacă adresa există, vei primi un email cu instrucțiuni.'; box.style.display = 'block'; }
+      } catch (e) {
+        if (box) { box.style.color = ''; box.textContent = 'Eroare de rețea. Încearcă din nou.'; box.style.display = 'block'; }
+      }
+    };
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('login-username').value;
@@ -16127,6 +16144,7 @@ const pozitii = await r.json();</code></pre>
         if (u && p) {
           var a = await fetch('/api/companies/' + c.id + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ username: u, password: p }) }).then(function (r) { return r.json(); });
           if (a.error) { msg.textContent = 'Companie creată, dar admin: ' + a.error; }
+          else if (a.warning) { msg.style.color = '#f59e0b'; msg.textContent = a.warning; return; } // invitația nu a plecat → contul e inaccesibil
         }
         msg.style.color = 'var(--accent)'; msg.textContent = 'Companie creată ✓';
         $('rax-co-name').value = ''; $('rax-co-admin-user').value = ''; $('rax-co-admin-pass').value = '';

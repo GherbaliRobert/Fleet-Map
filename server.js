@@ -2724,10 +2724,22 @@ app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req,
     if (!invite && password.length < 4) return res.status(400).json({ error: 'Parola: minim 4 caractere' });
     const hash = await bcrypt.hash(invite ? crypto.randomBytes(24).toString('hex') : password, 10);
     const u = await db.createUser(username, hash, 'company_admin', { full_name, email, company_id: companyId });
-    let invited = false;
-    if (invite) { try { invited = await sendSetPasswordEmail(req, u, { invite: true, company: co }); } catch (e) {} }
+    let invited = false, inviteError = null;
+    if (invite) {
+      try { invited = await sendSetPasswordEmail(req, u, { invite: true, company: co }); }
+      catch (e) { inviteError = e.message; }
+      // Eșecul era TĂCUT: contul rămânea cu parolă random, fără email și fără cale de recuperare
+      // → cont inaccesibil, iar cel care l-a creat nu afla niciodată. Acum se vede în log + în răspuns.
+      if (!invited) console.warn('[INVITE] Emailul de invitație NU a plecat pentru „' + username + '" (companie ' + companyId + '): ' + (inviteError || (channels.emailConfigured && channels.emailConfigured() ? 'trimitere eșuată' : 'SMTP neconfigurat')));
+    }
     auditReq(req, 'create', 'company_admin', u.id, { companyId, invited });
-    res.json(Object.assign({}, u, { invited, inviteEmailConfigured: !!(channels.emailConfigured && channels.emailConfigured()) }));
+    res.json(Object.assign({}, u, {
+      invited,
+      inviteEmailConfigured: !!(channels.emailConfigured && channels.emailConfigured()),
+      warning: (invite && !invited)
+        ? 'Contul a fost creat, dar emailul de invitație NU a putut fi trimis (SMTP neconfigurat sau eroare). Utilizatorul NU își poate seta parola — setează-i una manual sau configurează SMTP.'
+        : undefined
+    }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

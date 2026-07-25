@@ -5,6 +5,12 @@ import preact from '@preact/preset-vite';
 // Pe device, app-ul folosește CapacitorHttp cu URL absolut (VITE_API_BASE) → fără CORS.
 export default defineConfig({
   plugins: [preact()],
+  // Push nativ ACTIV implicit: `google-services.json` e prezent în android/app, deci Firebase e configurat.
+  // Înainte, flagul trebuia dat manual la build (VITE_ENABLE_PUSH=1) și lipsea din `npm run build` →
+  // ORICE APK construit normal ieșea TĂCUT fără notificări push. Se poate dezactiva cu VITE_ENABLE_PUSH=0.
+  define: {
+    'import.meta.env.VITE_ENABLE_PUSH': JSON.stringify(process.env.VITE_ENABLE_PUSH ?? '1'),
+  },
   server: {
     port: 5173,
     proxy: {
