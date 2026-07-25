@@ -1,14 +1,8 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <!-- Google Analytics (GA4) — trafic site → panoul Control costuri (super-admin) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CQCGC0C705"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-CQCGC0C705');
-  </script>
+  <!-- Analytics (GA4) se încarcă DOAR după consimțământ explicit — vezi public/js/consent.js. -->
+  <script src="/js/consent.js"></script>
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -107,8 +101,14 @@
     conexiuni HTTPS, control pe roluri, jurnal de audit. Niciun sistem nu e 100% sigur, dar tratăm securitatea ca prioritate.</p>
 
     <h2>11. Cookie-uri</h2>
-    <p>Folosim doar cookie-uri <b>strict necesare</b> (sesiunea de autentificare). Nu folosim cookie-uri de publicitate/tracking.
-    Dacă vom adăuga analytics, vom solicita consimțământ.</p>
+    <p><b>Strict necesare</b> (mereu active, nu pot fi refuzate): cookie-ul de sesiune, care te ține autentificat.
+    Fără el aplicația nu funcționează. Nu folosim cookie-uri de publicitate și nu vindem date către nimeni.</p>
+    <p><b>Statistici de trafic</b> (opționale, active doar cu acordul tău): folosim <b>Google Analytics 4</b> ca să
+    vedem câți vizitatori are site-ul și ce pagini sunt citite. Nu se încarcă deloc până nu apeși „Accept" în
+    bannerul de la prima vizită; dacă refuzi, site-ul funcționează identic. Adresa IP e anonimizată, iar semnalele
+    de publicitate și personalizare sunt dezactivate. Furnizor: Google Ireland Limited.</p>
+    <p>Îți poți schimba alegerea oricând:
+    <a href="#" onclick="if(window.raConsentReset){raConsentReset();}return false;">redeschide setările de cookie-uri</a>.</p>
 
     <h2>12. Modificări & contact</h2>
     <p>Putem actualiza această politică; versiunea curentă e publicată aici. Contact: <b>[contact@ratrack.ro]</b>.</p>
