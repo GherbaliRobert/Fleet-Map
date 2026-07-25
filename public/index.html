@@ -3123,7 +3123,8 @@ const pozitii = await r.json();</code></pre>
       const body = { username, password, role, full_name, email: username, phone };
       // Cont de PLATFORMĂ: nu ține de nicio companie și vede/administrează TOT → cere confirmare explicită.
       if (role === 'superadmin') {
-        if (!await raConfirm('Creezi un cont de SUPER-ADMIN?\n\n„' + username + '" va avea acces la TOATE companiile, la toate vehiculele și la datele de facturare ale platformei — nu doar la o companie.')) return;
+        if (!await raConfirm('„' + username + '" va avea acces la TOATE companiile, la toate vehiculele și la datele de facturare ale platformei — nu doar la o companie.',
+          { title: 'Creezi un cont de SUPER-ADMIN?', okLabel: 'Creează contul' })) return;
       } else {
         // Super-admin: alege compania noului cont (admin de companie → automat compania lui, pe backend).
         const _csel = document.getElementById('new-company');
@@ -3150,7 +3151,7 @@ const pozitii = await r.json();</code></pre>
     }
 
     async function deleteUser(id) {
-      if (!await raConfirm('Sigur vrei să ștergi acest utilizator?')) return;
+      if (!await raConfirm('Sigur vrei să ștergi acest utilizator?', { okLabel: 'Șterge' })) return;
       await fetch('/api/users/' + id, { method: 'DELETE' });
       await loadUsers();
     }
@@ -3874,7 +3875,7 @@ const pozitii = await r.json();</code></pre>
         const headers = raw[0].map(h => (h || '').trim().toLowerCase());
         if (!headers.includes('imei')) { alert('Lipsește coloana „imei". Descarcă întâi Template-ul.'); input.value = ''; return; }
         const objs = raw.slice(1).map(r => { const o = {}; headers.forEach((h, idx) => o[h] = (r[idx] || '').trim()); return o; });
-        if (!await raConfirm('Imporți ' + objs.length + ' vehicule din „' + file.name + '"?')) { input.value = ''; return; }
+        if (!await raConfirm('Imporți ' + objs.length + ' vehicule din „' + file.name + '"?', { okLabel: 'Importă' })) { input.value = ''; return; }
         const res = await fetch('/api/devices/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: objs }) });
         const out = await res.json().catch(() => ({}));
         if (!res.ok) { alert('Eroare: ' + (out.error || res.status)); input.value = ''; return; }
@@ -4005,7 +4006,7 @@ const pozitii = await r.json();</code></pre>
       resetDriverForm(); await loadDrivers();
     }
     async function deleteDriver(id) {
-      if (!await raConfirm('Ștergi acest șofer?')) return;
+      if (!await raConfirm('Ștergi acest șofer?', { okLabel: 'Șterge' })) return;
       await fetch('/api/drivers/' + id, { method: 'DELETE' }); await loadDrivers();
     }
 
@@ -4050,7 +4051,7 @@ const pozitii = await r.json();</code></pre>
       resetGroupForm(); await loadGroups();
     }
     async function deleteGroup(id) {
-      if (!await raConfirm('Ștergi grupa? Vehiculele rămân, dar fără grup.')) return;
+      if (!await raConfirm('Ștergi grupa? Vehiculele rămân, dar fără grup.', { okLabel: 'Șterge' })) return;
       await fetch('/api/groups/' + id, { method: 'DELETE' }); await loadGroups();
     }
 
@@ -4125,7 +4126,7 @@ const pozitii = await r.json();</code></pre>
       await loadAlerts();
     }
     async function deleteAlert(id) {
-      if (!await raConfirm('Ștergi regula de alertă?')) return;
+      if (!await raConfirm('Ștergi regula de alertă?', { okLabel: 'Șterge' })) return;
       await fetch('/api/alerts/' + id, { method: 'DELETE' }); await loadAlerts();
     }
     async function openAlertHistory() {
@@ -4308,7 +4309,7 @@ const pozitii = await r.json();</code></pre>
       await loadMaintenance();
     }
     async function deleteMaintenance(id) {
-      if (!await raConfirm('Ștergi intrarea de mentenanță?')) return;
+      if (!await raConfirm('Ștergi intrarea de mentenanță?', { okLabel: 'Șterge' })) return;
       await fetch('/api/maintenance/' + id, { method: 'DELETE' }); await loadMaintenance();
     }
 
@@ -4382,7 +4383,7 @@ const pozitii = await r.json();</code></pre>
       await loadDocuments();
     }
     async function deleteDocument(id) {
-      if (!await raConfirm('Ștergi documentul?')) return;
+      if (!await raConfirm('Ștergi documentul?', { okLabel: 'Șterge' })) return;
       await fetch('/api/documents/' + id, { method: 'DELETE' }); await loadDocuments();
     }
 
@@ -4491,7 +4492,7 @@ const pozitii = await r.json();</code></pre>
       if (l) { showView('localizare'); setTimeout(() => { try { map.fitBounds(l.getBounds(), { maxZoom: 16, padding: [40,40] }); } catch(e){} }, 120); }
     }
     async function deleteGeofenceItem(id) {
-      if (!await raConfirm('Ștergi hotspot-ul?')) return;
+      if (!await raConfirm('Ștergi hotspot-ul?', { okLabel: 'Șterge' })) return;
       await fetch('/api/geofences/' + id, { method: 'DELETE' });
       await openHotspotView(); await loadGeofencesOnMap();
     }
@@ -5458,6 +5459,10 @@ const pozitii = await r.json();</code></pre>
 
     // Popup branded RA Tracks (înlocuiește alert-ul nativ). opts: {title, message(html), icon, actions:[{label,primary,onClick}]}
     // Dialog de confirmare BRANDED RA Tracks (înlocuiește confirm() nativ). Returnează Promise<boolean>.
+    // `danger` (implicit true) dă doar CULOAREA roșie + iconița de avertisment — nu înseamnă „ștergere".
+    // Eticheta implicită a fost „Șterge", deci orice confirmare care NU era o ștergere (arhivare, import,
+    // marcare factură plătită, mutare vehicule, creare cont) afișa un buton roșu pe care scria „Șterge".
+    // Implicit e acum „Confirmă" — niciodată greșit; unde contează verbul exact, se dă prin `opts.okLabel`.
     function raConfirm(message, opts) {
       opts = opts || {};
       return new Promise(function (resolve) {
@@ -5477,7 +5482,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="width:54px;height:54px;border-radius:50%;background:' + halo + ';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"><i class="fas ' + icon + '" style="font-size:26px;color:' + accent + ';"></i></div>' +
           (opts.title ? '<div style="font-size:16px;font-weight:800;margin-bottom:6px;">' + opts.title + '</div>' : '') +
           '<div style="font-size:13.5px;color:var(--text-muted,#64748b);line-height:1.5;margin-bottom:20px;">' + msgHtml + '</div>' +
-          '<div style="display:flex;gap:8px;justify-content:center;"><button id="rac-cancel" style="padding:9px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;background:transparent;color:var(--text-primary);border:1px solid var(--border);">' + (opts.cancelLabel || 'Anulează') + '</button><button id="rac-ok" style="padding:9px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;border:none;color:#fff;background:' + accent + ';">' + (opts.okLabel || (danger ? 'Șterge' : 'OK')) + '</button></div>';
+          '<div style="display:flex;gap:8px;justify-content:center;"><button id="rac-cancel" style="padding:9px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;background:transparent;color:var(--text-primary);border:1px solid var(--border);">' + (opts.cancelLabel || 'Anulează') + '</button><button id="rac-ok" style="padding:9px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;border:none;color:#fff;background:' + accent + ';">' + (opts.okLabel || (danger ? 'Confirmă' : 'OK')) + '</button></div>';
         ov.appendChild(card); document.body.appendChild(ov);
         var onKey; var done = function (val) { if (ov.parentNode) ov.remove(); document.removeEventListener('keydown', onKey); resolve(val); };
         onKey = function (e) { if (e.key === 'Escape') done(false); else if (e.key === 'Enter') done(true); };
@@ -5852,7 +5857,7 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { alert('Export eșuat: ' + e.message); }
     }
     async function repDeleteHistory(id) {
-      if (!await raConfirm('Ștergi acest raport din istoric?')) return;
+      if (!await raConfirm('Ștergi acest raport din istoric?', { okLabel: 'Șterge' })) return;
       try { await fetch('/api/reports/history/' + id, { method: 'DELETE', credentials: 'same-origin' }); } catch (e) {}
       loadReportHistory();
     }
@@ -5981,7 +5986,7 @@ const pozitii = await r.json();</code></pre>
       const c = document.getElementById('sch-cancel-edit'); if (c) c.style.display = 'none';
     }
     async function schedDelete(id) {
-      if (!await raConfirm('Ștergi programarea?')) return;
+      if (!await raConfirm('Ștergi programarea?', { okLabel: 'Șterge' })) return;
       await fetch('/api/report-schedules/' + id, { method: 'DELETE', credentials: 'same-origin' });
       schedLoad();
     }
@@ -10772,7 +10777,7 @@ const pozitii = await r.json();</code></pre>
       loadVehicleDocuments();
     }
     async function deleteVehicleDoc(id) {
-      if (!await raConfirm('Ștergi documentul?')) return;
+      if (!await raConfirm('Ștergi documentul?', { okLabel: 'Șterge' })) return;
       const r = await fetch('/api/documents/' + id, { method: 'DELETE' });
       if (!r.ok) { alert('Eroare la ștergere'); return; }
       loadVehicleDocuments();
@@ -10821,7 +10826,7 @@ const pozitii = await r.json();</code></pre>
       loadVehicleService();
     }
     async function deleteVehicleService(id) {
-      if (!await raConfirm('Ștergi elementul de service?')) return;
+      if (!await raConfirm('Ștergi elementul de service?', { okLabel: 'Șterge' })) return;
       const r = await fetch('/api/maintenance/' + id, { method: 'DELETE' });
       if (!r.ok) { alert('Eroare la ștergere'); return; }
       loadVehicleService();
@@ -13461,7 +13466,7 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); if (btn) { btn.disabled = false; btn.innerHTML = o; } }
     };
     window.raxFcDelete = async function (id) {
-      if (!await raConfirm('Ștergi această alimentare?')) return;
+      if (!await raConfirm('Ștergi această alimentare?', { okLabel: 'Șterge' })) return;
       try { await fetch('/api/fuel-transactions/' + id, { method: 'DELETE', credentials: 'same-origin' }); loadFuelCard(); } catch (e) {}
     };
     // Lista de verificări a producției: răspunde la „ce e setat pe serverul care rulează ACUM" — până acum
@@ -13648,7 +13653,7 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare la încărcarea jurnalului.</div>'; }
     };
     window.raxErrClear = async function () {
-      if (!await raConfirm('Golești jurnalul de erori al platformei?')) return;
+      if (!await raConfirm('Golești jurnalul de erori al platformei?', { okLabel: 'Golește' })) return;
       try { await fetch('/api/admin/errors', { method: 'DELETE', credentials: 'same-origin' }); (window.raxToast || function () {})('Jurnal golit ✓', 'success'); raxErrLoad(); }
       catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
@@ -14955,7 +14960,7 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { if (msg) msg.innerHTML = '<span style="color:var(--red)">Eroare: ' + esc(e.message) + '</span>'; if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Salvează'; } }
     };
     window.raxCostMarkPaid = async function (id) {
-      if (!await raConfirm('Marchezi acest cost ca plătit? Scadența avansează cu un ciclu.')) return;
+      if (!await raConfirm('Marchezi acest cost ca plătit? Scadența avansează cu un ciclu.', { okLabel: 'Marchează plătit' })) return;
       try {
         var j = await fetch('/api/admin/costs/' + id + '/paid', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({}) }).then(function (r) { return r.json(); });
         if (j.error) { if (window.raxToast) raxToast(j.error, 'error'); else alert(j.error); return; }
@@ -15372,7 +15377,7 @@ const pozitii = await r.json();</code></pre>
       }, 40);
     };
     window.raxOfDelete = async function (id) {
-      if (!await raConfirm('Ștergi această ofertă?')) return;
+      if (!await raConfirm('Ștergi această ofertă?', { okLabel: 'Șterge' })) return;
       try { await fetch('/api/admin/offers/' + id, { method: 'DELETE', credentials: 'same-origin' }); if (window.raxToast) raxToast('Ofertă ștearsă ✓', 'success'); if (_raxOf.editingId === id) raxOfReset(); else raxOfLoadList(); } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
     };
     window.raxOfReset = function () { _raxOf.editingId = null; _raxOf.prices = Object.assign({ pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0 }, _OF_MONTAJ_DEF, _OF_DEVICE_DEF); raxLoadOfertare(); };
@@ -15647,7 +15652,7 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { try { w.close(); } catch (_) {} if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
     };
     window.raxInvoiceMarkPaid = async function (id) {
-      if (!await raConfirm('Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea și se extinde accesul companiei.')) return;
+      if (!await raConfirm('Marchezi factura ca PLĂTITĂ? Se înregistrează încasarea și se extinde accesul companiei.', { okLabel: 'Marchează plătită' })) return;
       try {
         var r = await fetch('/api/invoices/' + id + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'paid' }) });
         var j = await r.json().catch(function () { return {}; });
@@ -16570,7 +16575,7 @@ const pozitii = await r.json();</code></pre>
     window.agpAckAll = async function (k) {
       var news = (_agpState.findings || []).filter(function (f) { return f.agent === k && f.id != null && (!f.status || f.status === 'new'); });
       if (!news.length) return;
-      if (window.raConfirm && !await raConfirm('Marchezi toate cele ' + news.length + ' semnalări ca văzute?')) return;
+      if (window.raConfirm && !await raConfirm('Marchezi toate cele ' + news.length + ' semnalări ca văzute?', { okLabel: 'Marchează văzute' })) return;
       var btn = $('agp-ackall'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se marchează…'; }
       var results = await Promise.all(news.map(function (f) {
         return fetch('/api/agents/findings/' + f.id + '/ack', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.ok; }).catch(function () { return false; });
@@ -16949,7 +16954,7 @@ const pozitii = await r.json();</code></pre>
     window.raxAckAllFindings = async function () {
       var news = _raxFindings.filter(function (f) { return !f.status || f.status === 'new'; });
       if (!news.length) return;
-      if (!await raConfirm('Marchezi toate cele ' + news.length + ' constatări noi ca citite?')) return;
+      if (!await raConfirm('Marchezi toate cele ' + news.length + ' constatări noi ca citite?', { okLabel: 'Marchează citite' })) return;
       try {
         var results = await Promise.all(news.map(function (f) {
           return fetch('/api/agents/findings/' + f.id + '/ack', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.ok; }).catch(function () { return false; });
