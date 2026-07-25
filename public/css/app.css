@@ -217,6 +217,11 @@
     /* Desktop: burger-ul pliază/depliază meniul lateral (map-ul se extinde) */
     body.nav-collapsed #navrail { width: 0 !important; min-width: 0 !important; padding-left: 0; padding-right: 0; overflow: hidden; border-right: none; }
     body.nav-collapsed .modal-overlay.as-view { left: 0; }
+    /* Linkurile legale din subsolul meniului lateral — discrete, dar mereu la îndemână (cerință și de store). */
+    .nav-legal { margin-top: auto; padding: 14px 12px 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border); }
+    .nav-legal a { color: var(--text-muted); text-decoration: none; }
+    .nav-legal a:hover { color: var(--accent); text-decoration: underline; }
+    body.nav-collapsed .nav-legal { display: none; }
     .nav-item {
       display: flex; align-items: center; gap: 12px; padding: 11px 12px;
       border: none; background: transparent; color: var(--text-secondary); cursor: pointer;

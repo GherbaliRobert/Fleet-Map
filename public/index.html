@@ -132,6 +132,16 @@
         <button class="nav-item" id="nav-agenti" data-view="agenti" onclick="showView('agenti')" style="display:none;"><i class="fas fa-robot"></i><span>Agenți AI</span></button>
         <button class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
         <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
+
+        <!-- Documentele legale trebuie să fie accesibile din APLICAȚIE, nu doar din subsolul paginii publice:
+             un utilizator care primește cont direct (invitație / cont demo) nu trece niciodată prin landing. -->
+        <div class="nav-legal">
+          <a href="/termeni.html" target="_blank" rel="noopener">Termeni</a>
+          <span aria-hidden="true">·</span>
+          <a href="/confidentialitate.html" target="_blank" rel="noopener">Confidențialitate</a>
+          <span aria-hidden="true">·</span>
+          <a href="#" onclick="if(window.raConsentReset){raConsentReset();}return false;" title="Schimbă alegerea privind cookie-urile de statistici">Cookie-uri</a>
+        </div>
       </nav>
 
       <main id="main-view">

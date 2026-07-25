@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { me, theme, toggleTheme, logout, showToast } from '../app/store';
 import { Api } from '../api/endpoints';
+import { API_BASE } from '../api/client'; // documentele legale sunt servite de server, nu împachetate în APK
 import { Icon, type IconName } from '../components/Icon';
 import './menu.css';
 import './detail.css'; // pentru .sheet*
@@ -100,7 +101,16 @@ export function Menu() {
         {item('headset', 'Suport clienți', () => setSupport(true))}
         {item('logout', 'Deconectare', () => logout(), null, 'danger')}
 
-        <div class="mn-foot">RA Tracks · v0.1</div>
+        {/* Documentele legale trebuie să fie accesibile din aplicație, nu doar de pe site: utilizatorul care
+            primește cont direct nu trece niciodată prin pagina publică. E și cerință Google Play. */}
+        <div class="mn-foot">
+          <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <a href={API_BASE + '/termeni.html'} target="_blank" rel="noopener" style="color:var(--text-muted)">Termeni</a>
+            <span aria-hidden="true">·</span>
+            <a href={API_BASE + '/confidentialitate.html'} target="_blank" rel="noopener" style="color:var(--text-muted)">Confidențialitate</a>
+          </div>
+          RA Tracks · v0.1
+        </div>
       </div>
 
       {support && (
