@@ -2544,6 +2544,12 @@ const pozitii = await r.json();</code></pre>
   <script src="/js/weekly-report-ui.js?v=3"></script>
   <script>
     // ─── Global State ───
+    // Escape HTML — GLOBAL pentru acest bloc de script. Mai multe funcții își definesc un `esc` LOCAL (care
+    // îl umbrește pe acesta, fără efecte secundare), dar altele îl foloseau fără să existe în domeniul lor:
+    // rezultatul era un ReferenceError care oprea randarea în TĂCERE, la mijloc, fără mesaj pentru utilizator.
+    // Așa dispăruse complet lista din „Utilizatori": `renderUsersGrouped` arunca înainte de a scrie în DOM,
+    // deci se vedea doar formularul de adăugare, ca și cum n-ar exista niciun cont.
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
     let currentUser = null;
     var ioMappingsCache = {}; // imei -> { '<id>': {name,type,unit,capacity,rawMin,rawMax,scale,offset} } (mapate de super-admin)
     function ioMapValue(m, raw) {
