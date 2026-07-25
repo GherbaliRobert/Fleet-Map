@@ -17,7 +17,10 @@ async function getModuleConfig(db) {
   const companyCardHost = await get('company_card_host', '');
   return {
     etransport: { mode: anafConnected ? 'real' : 'demo', anafConnected, tokenSet: !!(anaf && anaf.enabled()), test: !!(anaf && anaf.cfg().test) },
-    etoll: { provider: etollProvider, mode: etollProvider ? 'real' : 'demo' },
+    // e-Toll: NU există (încă) integrare reală cu vreun furnizor — cifrele vin din simulator.
+    // Selectarea unui furnizor din listă e doar o PREFERINȚĂ salvată, nu o conexiune; de aceea modul
+    // rămâne 'demo' până când există API real + credențiale (altfel afișam badge „REAL" peste date inventate).
+    etoll: { provider: etollProvider, mode: 'demo', providerSelected: !!etollProvider, integrationReady: false },
     tahograf: { mode: companyCardHost ? 'real' : 'demo', companyCardHost }
   };
 }
@@ -220,7 +223,8 @@ function register(app, deps) {
   app.get('/api/etoll/costs', requireAuth, withCompany, async function (req, res) {
     try {
       const seed = req.query.imei || ('co' + (req.companyId != null ? req.companyId : 'demo'));
-      res.json(simulateEtollCosts(seed, parseInt(req.query.days) || 30));
+      // `simulated: true` = marcaj EXPLICIT pentru clienți: datele sunt generate, nu preluate de la un furnizor.
+      res.json(Object.assign({ simulated: true }, simulateEtollCosts(seed, parseInt(req.query.days) || 30)));
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
@@ -229,7 +233,7 @@ function register(app, deps) {
   app.get('/api/tacho-status', requireAuth, withCompany, requireFeature('tahograf'), async function (req, res) {
     try {
       const drivers = await db.getDrivers(scopeOf(req));
-      const files = await db.getTachoFiles(scopeOf(req));
+      const files = await db.getTachoFiles(scopeOf(req), true); // include fișierele demo — ecranul demonstrativ
       const lastByDriver = {};
       files.forEach(function (f) {
         const k = (f.driver_name || '').trim(); if (!k) return;
@@ -252,7 +256,7 @@ function register(app, deps) {
       try {
         await db.createTachoFile({
           companyId: req.companyId, imei: null, driverName: drv ? drv.name : 'Demo',
-          filename: 'demo_' + Date.now() + '.ddd', kind: 'driver_card',
+          filename: 'DEMO_' + Date.now() + '.ddd', kind: 'demo', // kind=demo → exclus din lista reală de fișiere tahograf
           periodFrom: analysis.date, periodTo: analysis.date, parsed: analysis, rawB64: ''
         });
       } catch (e) {}

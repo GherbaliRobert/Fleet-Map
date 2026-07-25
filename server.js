@@ -1023,9 +1023,13 @@ function permsFor(role) { return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.view
 function hasPerm(role, perm) { return !!permsFor(role)[perm]; }
 function isSuper(role) { return role === 'superadmin'; }
 
+// IP-ul REAL al clientului. NU citim primul element din X-Forwarded-For — acela e scris de client și e
+// spoofabil (rotindu-l, un atacator ocolea complet rate-limit-ul de login și polua jurnalul de audit).
+// Ordine: CF-Connecting-IP (Cloudflare, în fața noastră) → req.ip (Express, cu `trust proxy` setat) → socket.
 function clientIp(req) {
-  const xff = req.headers && req.headers['x-forwarded-for'];
-  if (xff) return String(xff).split(',')[0].trim();
+  const cf = req.headers && req.headers['cf-connecting-ip'];
+  if (cf) return String(cf).trim();
+  if (req.ip) return String(req.ip);
   return req.socket ? req.socket.remoteAddress : null;
 }
 
@@ -1526,20 +1530,30 @@ async function applyCompanyFilter(req) {
   try { req.allowedImeis = new Set(await db.getCompanyImeis(cid)); } catch (e) { req.allowedImeis = new Set(); }
 }
 
-// Rate-limit simplu pentru login (per IP): max 10 eșecuri / 15 min
+// Rate-limit login: per IP (max 10 eșecuri / 15 min) ȘI per CONT (max 12 / 15 min).
+// Cheia pe cont e esențială: e imună la spoofing de IP (X-Forwarded-For / IPv6 rotativ / botnet),
+// deci un atac distribuit pe un singur user rămâne blocat chiar dacă fiecare cerere vine de pe alt IP.
 const loginAttempts = new Map();
-function loginBlocked(ip) {
-  const rec = loginAttempts.get(ip);
-  return !!(rec && (Date.now() - rec.ts) < 15 * 60 * 1000 && rec.count >= 10);
+const LOGIN_WINDOW_MS = 15 * 60 * 1000, LOGIN_MAX_IP = 10, LOGIN_MAX_USER = 12;
+function _lkUser(u) { return 'u:' + String(u || '').trim().toLowerCase(); }
+function _lkIp(ip) { return 'i:' + (ip || 'x'); }
+function _lBlocked(key, max) {
+  const rec = loginAttempts.get(key);
+  return !!(rec && (Date.now() - rec.ts) < LOGIN_WINDOW_MS && rec.count >= max);
 }
-function recordLoginFail(ip) {
+function _lFail(key) {
   const now = Date.now();
-  let rec = loginAttempts.get(ip);
-  if (!rec || (now - rec.ts) > 15 * 60 * 1000) rec = { count: 0, ts: now };
+  let rec = loginAttempts.get(key);
+  if (!rec || (now - rec.ts) > LOGIN_WINDOW_MS) rec = { count: 0, ts: now };
   rec.count++; rec.ts = now;
-  loginAttempts.set(ip, rec);
+  loginAttempts.set(key, rec);
+  if (loginAttempts.size > 20000) { // plafon anti-OOM: curăță intrările expirate
+    for (const [k, v] of loginAttempts) if ((now - v.ts) > LOGIN_WINDOW_MS) loginAttempts.delete(k);
+  }
 }
-function clearLoginFails(ip) { loginAttempts.delete(ip); }
+function loginBlocked(ip, username) { return _lBlocked(_lkIp(ip), LOGIN_MAX_IP) || (username ? _lBlocked(_lkUser(username), LOGIN_MAX_USER) : false); }
+function recordLoginFail(ip, username) { _lFail(_lkIp(ip)); if (username) _lFail(_lkUser(username)); }
+function clearLoginFails(ip, username) { loginAttempts.delete(_lkIp(ip)); if (username) loginAttempts.delete(_lkUser(username)); }
 
 // ─── Rute autentificare ───
 
@@ -1551,19 +1565,19 @@ app.post('/api/login', async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
     }
-    if (loginBlocked(ip)) {
+    if (loginBlocked(ip, username)) {
       return res.status(429).json({ error: 'Prea multe încercări. Reîncearcă peste 15 minute.' });
     }
 
     const user = await db.getUserByUsername(username);
     if (!user) {
-      recordLoginFail(ip);
+      recordLoginFail(ip, username);
       return res.status(401).json({ error: 'Username sau parola greșită' });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
-      recordLoginFail(ip);
+      recordLoginFail(ip, username);
       return res.status(401).json({ error: 'Username sau parola greșită' });
     }
 
@@ -1589,7 +1603,7 @@ app.post('/api/login', async (req, res) => {
     }
     if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
 
-    clearLoginFails(ip);
+    clearLoginFails(ip, username);
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.role = user.role;
@@ -1612,11 +1626,11 @@ app.post('/api/mobile/login', async (req, res) => {
   try {
     const { username, password, device } = req.body || {};
     if (!username || !password) return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
-    if (loginBlocked(ip)) return res.status(429).json({ error: 'Prea multe încercări. Reîncearcă peste 15 minute.' });
+    if (loginBlocked(ip, username)) return res.status(429).json({ error: 'Prea multe încercări. Reîncearcă peste 15 minute.' });
     const user = await db.getUserByUsername(username);
-    if (!user) { recordLoginFail(ip); return res.status(401).json({ error: 'Username sau parola greșită' }); }
+    if (!user) { recordLoginFail(ip, username); return res.status(401).json({ error: 'Username sau parola greșită' }); }
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) { recordLoginFail(ip); return res.status(401).json({ error: 'Username sau parola greșită' }); }
+    if (!valid) { recordLoginFail(ip, username); return res.status(401).json({ error: 'Username sau parola greșită' }); }
     if (user.active === false) return res.status(403).json({ error: 'Cont dezactivat. Contactează administratorul.' });
     let company = null, features = null, access = null;
     if (user.company_id != null) {
@@ -1631,7 +1645,7 @@ app.post('/api/mobile/login', async (req, res) => {
       } catch (e) { /* lăsăm login-ul să continue */ }
     }
     if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
-    clearLoginFails(ip);
+    clearLoginFails(ip, username);
     const token = 'gpsk_' + crypto.randomBytes(24).toString('hex');
     // Token mobil cu expirare 90 zile (telefonul = vector de scurgere); clientul re-loghează la 401.
     const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
@@ -2347,7 +2361,18 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     let stored = 0;
     for (const f of findings) { if (LIVE_AGENTS.has(f.agent)) continue; const r = await db.createAgentFinding(Object.assign({}, f, { companyId: storeCompany })); if (r) stored++; } // agenții live (dispatch/care) nu se persistă (stare de moment, nu istoric)
     let aiSummary = null;
-    if (ai && ai.aiEnabled() && findings.length) {
+    // COST: rezumatul AI consumă tokeni plătiți → DOAR dacă modulul AI e activ pentru companie
+    // ȘI limita lunară nu e atinsă. Euristicile (constatările) rămân gratuite și disponibile mereu.
+    let _aiAllowed = !!(ai && ai.aiEnabled() && findings.length);
+    if (_aiAllowed && storeCompany != null) {
+      try {
+        const _co = await db.getCompanyById(storeCompany);
+        const _f = (plans && _co) ? plans.featuresFor(_co) : null;
+        if (_f && _f.ai_assistant === false) _aiAllowed = false;
+      } catch (e) {}
+      if (_aiAllowed && await aiLimitReached(storeCompany)) _aiAllowed = false;
+    }
+    if (_aiAllowed) {
       try {
         const system = 'Ești coordonatorul agenților AI ai unei flote de transport (RA Watch, RA Care, RA Optimize, RA Compliance, RA Client). Primești constatările lor de azi. Scrie un rezumat scurt (2-4 propoziții) în limba română care prioritizează urgențele (furt combustibil, service depășit, încălcarea orelor de condus) și recomandă acțiuni concrete. Fără introduceri lungi.';
         aiSummary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Constatări:\n' + JSON.stringify(findings.map(f => ({ a: f.agent, sev: f.severity, t: f.title }))) }], maxTokens: 400, onUsage: u => db.recordAiUsage(storeCompany, 'agents', u).catch(() => {}) });
@@ -2357,11 +2382,15 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     res.json({ findings, aiSummary, stored });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.get('/api/agents/findings', requireAuth, withCompany, async (req, res) => {
+app.get('/api/agents/findings', requireAuth, withScope, async (req, res) => {
   try {
     await applyCompanyFilter(req);
     const cid = req.isSuper ? (req.filterCompanyId != null ? req.filterCompanyId : null) : req.companyId;
-    res.json(await db.getAgentFindings(cid, 80));
+    let list = await db.getAgentFindings(cid, 80);
+    // Scope pe vehicule: un rol cu acces restrâns (dispatcher/client/viewer) nu vede constatări
+    // ale vehiculelor la care nu are drept — până acum vedea numele ÎNTREGII flote a companiei.
+    if (req.allowedImeis != null) list = list.filter(f => !f.imei || req.allowedImeis.has(f.imei));
+    res.json(list);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Agenți „live" (dispatch, care) — stare de MOMENT calculată la cerere, FĂRĂ persistență și FĂRĂ AI:
@@ -2384,9 +2413,16 @@ app.get('/api/agents/:key/live', requireAuth, withScope, async (req, res) => {
     res.json(Object.assign({}, out, { findings: (out && out.findings) || [], checkedAt: new Date().toISOString() })); // trece și meta agentului (ex. optimize.evaluated)
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/agents/findings/:id/:action', requireAuth, withCompany, async (req, res) => {
+app.post('/api/agents/findings/:id/:action', requireAuth, withScope, async (req, res) => {
   try {
     const status = req.params.action === 'dismiss' ? 'dismissed' : 'acknowledged';
+    // Scope pe vehicul: un rol restrâns nu poate închide constatări ale vehiculelor din afara accesului său.
+    if (req.allowedImeis != null) {
+      try {
+        const _f = (await db.pool.query('SELECT imei FROM agent_findings WHERE id = $1', [parseInt(req.params.id)])).rows[0];
+        if (_f && _f.imei && !req.allowedImeis.has(_f.imei)) return res.status(403).json({ error: 'Acces interzis' });
+      } catch (e) {}
+    }
     const ok = await db.updateAgentFinding(req.params.id, status, req.isSuper ? null : req.companyId);
     if (!ok) return res.status(404).json({ error: 'Inexistent' });
     res.json({ ok: true });
@@ -2719,7 +2755,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // ─── Facturare (Stripe) — se activează doar dacă STRIPE_SECRET_KEY e setat ───
-app.get('/api/plans', (req, res) => {
+// Grila internă de planuri = default-uri de configurare, NU ofertă publică (RA Tracks vinde oferte
+// personalizate, stabilite de fondatori per companie). Endpointul era PUBLIC și expunea prețurile
+// oricui (inclusiv concurenței) → acum cere autentificare.
+app.get('/api/plans', requireAuth, (req, res) => {
   res.json({ plans: plans ? plans.publicPlans() : [], trialDays: plans ? plans.TRIAL_DAYS : 0, billingEnabled: !!(billing && billing.enabled()) });
 });
 app.get('/api/billing/status', requireAuth, withCompany, async (req, res) => {
@@ -7312,7 +7351,8 @@ app.get('/api/invoices/:id/efactura/status', requireAuth, requireSuperadmin, asy
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Link de plată cu CARDUL (Stripe, one-time) pentru o factură. Super-admin (generează link de trimis) SAU client (propria factură).
-app.post('/api/invoices/:id/pay-link', requireAuth, withCompany, async (req, res) => {
+// requirePerm: doar administratorii companiei — un `viewer` nu are ce căuta în fluxul de plată.
+app.post('/api/invoices/:id/pay-link', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
   try {
     if (!(billing && billing.enabled())) return res.status(503).json({ error: 'Plata cu cardul nu e configurată (STRIPE_SECRET_KEY).' });
     const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
@@ -7766,11 +7806,21 @@ app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), wit
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const invoices = await db.getPayments(cid, 200);
     let issuer = {}; try { issuer = (await getSystemSettings()).invoice_issuer || {}; } catch (e) {}
+    // Prima factură FISCALĂ neachitată + starea Stripe → clientul primește un buton de plată REAL
+    // (nu unul decorativ). Fără Stripe configurat, UI-ul afișează datele pentru transfer bancar.
+    let unpaid = null;
+    try {
+      const fis = await db.getInvoices({ companyId: cid, limit: 50 });
+      const u = (fis || []).filter(f => f.status !== 'paid' && f.status !== 'canceled')[0];
+      if (u) unpaid = { id: u.id, series: u.series || null, number: u.number || null, total: u.total, due_date: u.due_date || null };
+    } catch (e) {}
     res.json({
       company: { id: co.id, name: co.name, cui: co.cui || null, reg_com: co.reg_com || null, address: co.address || null, contact_email: co.contact_email || null, phone: co.phone || null, plan: co.plan || null },
       access: companyAccessStatus(co),
       invoices,
-      issuer
+      issuer,
+      unpaidInvoice: unpaid,
+      billingEnabled: !!(billing && billing.enabled())
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

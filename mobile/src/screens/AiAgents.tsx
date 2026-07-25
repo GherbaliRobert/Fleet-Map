@@ -15,6 +15,7 @@ export function AiAgents() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(''); // cheia agentului în rulare ('all' sau key)
   const [summary, setSummary] = useState<string | null>(null);
+  const [live, setLive] = useState<{ agent: string; findings: AgentFinding[] } | null>(null); // rezultatul agenților live
   const [err, setErr] = useState('');
 
   async function loadFindings() { try { setFindings(await Api.agentFindings()); } catch { /* */ } }
@@ -26,14 +27,24 @@ export function AiAgents() {
     ]).finally(() => setLoading(false));
   }, []);
 
+  // Agenții „live" nu se salvează în agent_findings (stare de moment) → constatările lor se afișează
+  // direct din răspuns, nu prin re-încărcarea listei (altfel: „N constatări" peste o listă goală).
+  const LIVE = ['care', 'dispatch', 'optimize'];
   async function run(agent: string) {
     if (running) return;
-    setRunning(agent); setSummary(null); setErr('');
+    setRunning(agent); setSummary(null); setErr(''); setLive(null);
     try {
       const r = await Api.runAgents(agent);
       setSummary(r.aiSummary || null);
-      showToast(r.message || `${r.findings?.length || 0} constatări · ${r.stored} noi`, false);
-      await loadFindings();
+      const isLive = agent !== 'all' && LIVE.indexOf(agent) >= 0;
+      if (isLive) {
+        const f = r.findings || [];
+        setLive({ agent, findings: f });
+        showToast(f.length ? `${f.length} ${f.length === 1 ? 'semnalare' : 'semnalări'}` : 'Nicio problemă găsită', false);
+      } else {
+        showToast(r.message || `${r.findings?.length || 0} constatări · ${r.stored} noi`, false);
+        await loadFindings();
+      }
     } catch (e: any) { setErr(e?.message || 'Rulare eșuată'); showToast(e?.message || 'Rulare eșuată', true); }
     finally { setRunning(''); }
   }
@@ -93,6 +104,32 @@ export function AiAgents() {
                 </div>
               ))}
             </div>
+            {live ? (
+              <div style="margin-bottom:16px">
+                <div class="rp-table-title">Stare acum — {(agents.find((a) => a.key === live.agent) || { name: live.agent }).name} ({live.findings.length})</div>
+                {live.findings.length === 0 ? (
+                  <div class="center-msg" style="color:var(--accent)"><Icon name="check" size={15} /> Nicio problemă găsită acum.</div>
+                ) : (
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    {live.findings.map((f) => (
+                      <div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:11px 12px">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                          <span style={'width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:' + (SEV[f.severity || 'info'] || '#3b82f6')} />
+                          <span style="font-weight:800;font-size:13.5px;flex:1;min-width:0">{f.title}</span>
+                        </div>
+                        {f.body ? <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.45">{f.body}</div> : null}
+                        {maintIdOf(f) != null ? (
+                          <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
+                            <button onClick={() => markMaintDone(f, maintIdOf(f)!)} style="flex:1;min-width:90px;background:var(--bg-dark);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:7px;font-size:12px;font-weight:700;font-family:inherit"><Icon name="wrench" size={13} /> Efectuat</button>
+                            <button onClick={() => loc.route('/admin/maintenance')} style="flex:1;min-width:70px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px;font-size:12px;font-weight:700;font-family:inherit"><Icon name="chevronR" size={13} /> Vezi</button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
             <div class="rp-table-title">Constatări recente ({findings.length})</div>
             {findings.length === 0 ? <div class="center-msg">Nicio constatare. Rulează agenții pentru a verifica flota.</div> : (
               <div style="display:flex;flex-direction:column;gap:8px">

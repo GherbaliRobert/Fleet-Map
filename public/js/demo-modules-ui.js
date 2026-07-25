@@ -158,19 +158,16 @@
       '<div class="dm-driver-top"><b>' + esc(d.driver) + '</b><span class="dm-pill" style="background:' + col + '22;color:' + col + '">' + esc(label) + '</span></div>' +
       '<div class="dm-progress"><div class="dm-progress-bar" style="width:' + d.progressPct + '%;background:' + col + '"></div></div>' +
       '<div class="dm-driver-bot"><span class="dm-muted">' + (d.lastDownload ? 'ultima descărcare: ' + new Date(d.lastDownload).toLocaleDateString('ro-RO') : 'fără descărcare') + '</span>' +
-      '<button class="dm-btn primary sm" id="tdl-' + d.driverId + '" onclick="tachoDownload(' + d.driverId + ',\'' + esc(d.driver) + '\')"><i class="fas fa-download"></i> Descarcă card la distanță</button></div>' +
+      '<button class="dm-btn primary sm" id="tdl-' + d.driverId + '" onclick="tachoDownload(' + d.driverId + ',\'' + esc(d.driver) + '\')"><i class="fas fa-flask"></i> Generează analiză demonstrativă</button></div>' +
       '<div class="dm-dl-prog" id="tdlp-' + d.driverId + '" style="display:none"><div class="dm-dl-prog-bar"></div><span class="dm-dl-txt"></span></div>' +
     '</div>';
   }
   window.tachoDownload = async function (driverId, name) {
     var btn = el('tdl-' + driverId), prog = el('tdlp-' + driverId), bar = prog.querySelector('.dm-dl-prog-bar'), txt = prog.querySelector('.dm-dl-txt');
     btn.disabled = true; prog.style.display = 'flex';
-    // bară de progres 5s ca și cum se descarcă prin GPS (K-Line/tacho)
-    var steps = ['Conectare la tahograf (K-Line)…', 'Autentificare card companie…', 'Descărcare blocuri activitate…', 'Verificare semnătură digitală…', 'Analiză Reg. 561/2006…'];
-    for (var i = 0; i < steps.length; i++) {
-      bar.style.width = ((i + 1) / steps.length * 100) + '%'; txt.textContent = steps[i];
-      await new Promise(function (r) { setTimeout(r, 1000); });
-    }
+    // FĂRĂ pași falși de conectare: nu simulăm o descărcare reală prin K-Line care nu are loc.
+    // Arătăm doar starea reală a cererii; dacă modul e „real", serverul răspunde 501 și userul află imediat.
+    bar.style.width = '60%'; txt.textContent = 'Se generează analiza demonstrativă…';
     var res = await postJSON('/api/tacho-download/' + driverId, {});
     btn.disabled = false; prog.style.display = 'none'; bar.style.width = '0';
     if (res.error) { toast(res.error, 'error'); return; }

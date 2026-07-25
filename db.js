@@ -1475,8 +1475,13 @@ async function createTachoFile(rec) {
   );
   return r.rows[0];
 }
-async function getTachoFiles(companyId) {
-  const where = companyId != null ? 'WHERE company_id = $1' : '';
+// Fișiere tahograf. Implicit EXCLUDE rândurile kind='demo' (generate de modulul demonstrativ) — altfel
+// apăreau în lista reală ca și cum ar fi descărcări legale. `includeDemo` doar pentru ecranul demo.
+async function getTachoFiles(companyId, includeDemo) {
+  const demoFilter = includeDemo ? '' : " kind IS DISTINCT FROM 'demo'";
+  const where = companyId != null
+    ? ('WHERE company_id = $1' + (demoFilter ? ' AND' + demoFilter : ''))
+    : (demoFilter ? 'WHERE' + demoFilter : '');
   const params = companyId != null ? [companyId] : [];
   const r = await pool.query(`SELECT id, company_id, imei, driver_name, filename, kind, period_from, period_to, parsed, uploaded_at FROM tacho_files ${where} ORDER BY uploaded_at DESC`, params);
   return r.rows;

@@ -14497,7 +14497,7 @@ const pozitii = await r.json();</code></pre>
       var banner = '<div style="border:1px solid var(--border);border-left:4px solid ' + sm[1] + ';border-radius:10px;padding:14px 16px;margin-bottom:16px;background:var(--bg-dark);">' +
         '<div style="font-weight:700;font-size:15px;color:' + sm[1] + ';">' + sm[0] + '</div>' +
         (until ? '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">Acces până la <b>' + until + '</b></div>' : '') +
-        '<button class="rax-btn primary" style="margin-top:12px;" onclick="raxPayPrepare()"><i class="fas fa-credit-card"></i> Plătește</button>' +
+        raxPayCta(d) +
         '</div>';
       var inv = d.invoices || [];
       var rows;
@@ -14519,10 +14519,20 @@ const pozitii = await r.json();</code></pre>
       box.innerHTML = banner +
         '<h4 style="font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-primary);"><i class="fas fa-receipt" style="color:var(--accent);margin-right:6px;"></i>Facturile mele</h4>' + rows;
     };
-    // Buton de plată PREGĂTIT (fără plată reală încă) — afișează info; integrarea online se activează ulterior.
-    window.raxPayPrepare = function () {
-      if (window.raxToast) raxToast('Plata online va fi disponibilă în curând. Momentan plata se face prin transfer bancar — datele apar pe factură.', 'success');
-    };
+    // Plată: buton REAL de card doar dacă există factură fiscală neachitată ȘI Stripe e configurat.
+    // Altfel NU mai arătăm un buton decorativ, ci datele concrete pentru transfer bancar.
+    function raxPayCta(d) {
+      var u = d && d.unpaidInvoice;
+      if (u && d.billingEnabled) {
+        var et = (u.series ? esc(u.series) + ' ' : '') + (u.number != null ? u.number : '');
+        return '<button class="rax-btn primary" style="margin-top:12px;" onclick="raxPayNow(' + u.id + ')"><i class="fas fa-credit-card"></i> Plătește cu cardul' + (et ? ' (' + et + ')' : '') + '</button>';
+      }
+      var iss = (d && d.issuer) || {};
+      var bank = [iss.bank, iss.iban].filter(Boolean).join(' · ');
+      if (!u) return ''; // nimic de plătit → fără îndemn
+      return '<div style="margin-top:10px;font-size:12px;color:var(--text-muted);line-height:1.5;">Plata se face prin <b>transfer bancar</b>' + (bank ? ' în contul ' + esc(bank) : ' — datele de plată sunt pe factură') + '.</div>';
+    }
+    window.raxPayNow = function (id) { raxInvoicePayLink(id); };
     window.raxOpenPaymentModal = function (companyId) {
       var ov = document.getElementById('rax-pay-overlay'); if (!ov) return;
       var cos = (companiesCache || []).filter(function (c) { return !c.is_demo; });

@@ -41,8 +41,14 @@ export function Billing() {
   );
 }
 
-function payPrepare() {
-  showToast('Plata online va fi disponibilă în curând. Momentan plata se face prin transfer bancar — datele apar pe factură.');
+// Plată card REALĂ (Stripe) pentru factura fiscală neachitată. Butonul apare DOAR când există
+// factură de plătit ȘI Stripe e configurat — altfel afișăm datele pentru transfer bancar (fără buton mort).
+async function payNow(id: number) {
+  try {
+    const r: any = await Api.invoicePayLink(id);
+    if (r && r.url) { window.open(r.url, '_blank'); return; }
+    showToast('Link de plată indisponibil', true);
+  } catch (e: any) { showToast(e?.message || 'Eroare la generarea linkului', true); }
 }
 
 // ─── Admin firmă: status abonament + facturile proprii + buton plată (pregătit) ───
@@ -65,7 +71,11 @@ function MyBilling() {
       <div class="bill-banner" style={`border-left:4px solid ${sm[1]}`}>
         <div class="st" style={`color:${sm[1]}`}>{sm[0]}</div>
         {a.access_until ? <div class="sub">Acces până la <b>{fmtD(a.access_until)}</b></div> : null}
-        <button class="btn btn-primary" style="margin-top:12px;width:auto" onClick={payPrepare}><Icon name="report" size={16} color="#06210f" /> Plătește</button>
+        {data.unpaidInvoice && data.billingEnabled ? (
+          <button class="btn btn-primary" style="margin-top:12px;width:auto" onClick={() => payNow(data.unpaidInvoice.id)}><Icon name="report" size={16} color="#06210f" /> Plătește cu cardul</button>
+        ) : data.unpaidInvoice ? (
+          <div class="sub" style="margin-top:8px;line-height:1.5">Plata se face prin <b>transfer bancar</b>{(data.issuer && (data.issuer.iban || data.issuer.bank)) ? ' în contul ' + [data.issuer.bank, data.issuer.iban].filter(Boolean).join(' · ') : ' — datele de plată sunt pe factură'}.</div>
+        ) : null}
       </div>
       <div class="mn-sec">Facturile mele</div>
       {inv.length === 0
