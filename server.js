@@ -903,6 +903,7 @@ const sessionMiddleware = session({
 app.use(sessionMiddleware);
 app.use(apiKeyAuth); // permite și autentificarea programatică prin cheie API
 app.use(refreshAuth); // re-sincronizează rol/companie din DB (sesiuni vechi cu rol învechit)
+app.use(accessGate);  // abonament expirat → 402 pe TOATE rutele /api (mai puțin cele din ACCESS_FREE)
 
 // ─── Headere de securitate (toate răspunsurile) ───
 const _hsts = (process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production');
@@ -1550,10 +1551,20 @@ async function _accessStatusCached(companyId) {
 }
 // Gate central: blochează (402) requesturile companiilor EXPIRATE (non-super) — sesiuni vechi, chei API, orice endpoint de date.
 // Allowlist ca userul blocat să-și poată vedea starea / plăti: /api/me, /api/logout, /api/billing/*.
+// Căi care rămân deschise unui cont cu abonamentul expirat — altfel omul e blocat ȘI din a-și rezolva
+// situația. Include explicit `/api/invoices`: linkul de plată e `/api/invoices/:id/pay-link`, NU sub
+// `/api/billing`, deci înainte era blocat exact endpointul prin care clientul ar fi putut plăti.
+const ACCESS_FREE = [
+  '/api/health', '/api/login', '/api/logout', '/api/me', '/api/mobile/login',
+  '/api/auth/', '/api/public/', '/api/billing', '/api/invoices', '/api/client-error', '/api/demo/login'
+];
+function _accessFreePath(p) {
+  for (let i = 0; i < ACCESS_FREE.length; i++) { const a = ACCESS_FREE[i]; if (p === a || p.indexOf(a) === 0) return true; }
+  return false;
+}
 async function _accessBlocked(req, res) {
   if (req.isSuper || req.companyId == null) return false;
-  const p = req.path || req.originalUrl || '';
-  if (p === '/api/me' || p === '/api/logout' || p.indexOf('/api/billing') === 0) return false;
+  if (_accessFreePath(req.path || req.originalUrl || '')) return false;
   try {
     if ((await _accessStatusCached(req.companyId)).status === 'expired') {
       res.status(402).json({ error: 'Abonament expirat — acces suspendat. Contactați furnizorul.', access_expired: true });
@@ -1561,6 +1572,27 @@ async function _accessBlocked(req, res) {
     }
   } catch (e) { /* la eroare nu blocăm */ }
   return false;
+}
+
+// Aceeași verificare, dar ca middleware GLOBAL. `_accessBlocked` rula doar din withCompany/withScope, deci
+// orice rută montată cu `requireAuth` simplu sau doar cu `requirePerm` o ocolea — printre ele catalogul de
+// rapoarte, Istoricul rapoartelor ȘI descărcarea unui raport din istoric, raportul săptămânal, map-matching-ul
+// și limitele de viteză. Adică un client cu abonamentul expirat își lua în continuare rapoartele.
+// Montat o singură dată, imediat după refreshAuth: o singură regulă, valabilă pentru toate rutele viitoare.
+async function accessGate(req, res, next) {
+  try {
+    const p = req.path || '';
+    if (p.indexOf('/api') !== 0 || _accessFreePath(p)) return next();
+    const a = getAuth(req);
+    if (!a || !a.userId) return next();          // neautentificat → se ocupă requireAuth
+    if (isSuper(a.role)) return next();
+    const cid = (a.companyId !== undefined && a.companyId !== null) ? a.companyId : await resolveCompanyId(a);
+    if (cid == null) return next();
+    if ((await _accessStatusCached(cid)).status === 'expired') {
+      return res.status(402).json({ error: 'Abonament expirat — acces suspendat. Contactați furnizorul.', access_expired: true });
+    }
+  } catch (e) { /* fail-open, ca și înainte: o eroare de interogare nu blochează platforma */ }
+  next();
 }
 
 // Rezolvă vehiculele țintă pentru rapoarte (respectă accesul). null => 403.
