@@ -106,15 +106,37 @@ async function raWatch(ctx) {
   const offlineMin = Number.isFinite(thresholds.offlineMin) && thresholds.offlineMin > 0 ? thresholds.offlineMin : OFFLINE_MIN;
   const fuelDropL = Number.isFinite(thresholds.fuelDropL) && thresholds.fuelDropL > 0 ? thresholds.fuelDropL : FUEL_DROP_L;
   const fuelDropPct = Number.isFinite(thresholds.fuelDropPct) && thresholds.fuelDropPct > 0 ? thresholds.fuelDropPct : FUEL_DROP_PCT;
-  const fuelTheftL = Number.isFinite(thresholds.fuelTheftL) && thresholds.fuelTheftL > 0 ? thresholds.fuelTheftL : FUEL_DROP_THEFT_L;
+  // Furt combustibil: valoarea goală / 0 înseamnă **DEZACTIVAT**, exact ca în alerta în timp real
+  // (server.js checkFuelTheft: `if (!Number.isFinite(X) || X <= 0) return`). Înainte, agentul cădea aici pe
+  // pragul implicit, deci clientul care alegea „Dezactivat (recomandat)" oprea doar notificarea push și
+  // continua să primească de la RA Watch constatări `critical` „posibil furt combustibil".
+  const _ftRaw = Number(thresholds.fuelTheftL);
+  const fuelTheftOff = !(Number.isFinite(_ftRaw) && _ftRaw > 0);
+  const fuelTheftL = fuelTheftOff ? 0 : _ftRaw;
   const idleMaxMinPrag = Number.isFinite(thresholds.idleMaxMin) && thresholds.idleMaxMin > 0 ? thresholds.idleMaxMin : IDLE_MIN_MINUTES;
   const tachoGraceMin = Number.isFinite(thresholds.tachoGraceMin) && thresholds.tachoGraceMin > 0 ? thresholds.tachoGraceMin : TACHO_GRACE_MIN;
+
+  // Rezervă pentru detecția „offline": ultima transmisie din DB, pentru vehiculele care au ieșit deja din
+  // livePositions (purjare la 24h). O singură interogare pentru toată flota, nu una per vehicul.
+  let lastSeenByImei = null;
+  try {
+    if (ctx.db && ctx.db.pool && imeis.length) {
+      const r = await ctx.db.pool.query('SELECT imei, last_seen FROM devices WHERE imei = ANY($1)', [imeis]);
+      lastSeenByImei = new Map();
+      for (const row of r.rows) { const t = row.last_seen ? new Date(row.last_seen).getTime() : NaN; if (Number.isFinite(t)) lastSeenByImei.set(row.imei, t); }
+    }
+  } catch (e) { lastSeenByImei = null; /* fără rezervă → comportamentul de dinainte, doar din livePositions */ }
+
   for (const imei of imeis) {
     const live = livePositions.get(imei);
     const name = nameOf(live, imei);
-    // (1) Offline. Garda superioară de 7 zile (era 24h) — nu mai colizionează cu pragul user-ales până la 1440 min.
-    if (live && live.timestamp) {
-      const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
+    // (1) Offline. ATENȚIE la sursa de date: `livePositions` e purjat la 24h (LIVE_PURGE_MS), deci garda de
+    // 7 zile de mai jos era teoretică — un vehicul dispărut de 3 zile ieșea complet din Map și NU mai producea
+    // nicio constatare, exact cazul care contează cel mai mult (tracker furat, deconectat, fără alimentare).
+    // De aceea căutăm întâi în livePositions și, dacă nu-l găsim, cădem pe `devices.last_seen` din DB.
+    const lastTs = (live && live.timestamp) ? new Date(live.timestamp).getTime() : (lastSeenByImei ? lastSeenByImei.get(imei) : null);
+    if (Number.isFinite(lastTs)) {
+      const ageMin = (now - lastTs) / 60000;
       if (ageMin > offlineMin && ageMin < 7 * 24 * 60) {
         const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
         const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
@@ -191,7 +213,9 @@ async function raWatch(ctx) {
                   const d = base.value - endVal; // scădere care NU a revenit (endVal = nivelul la finalul ferestrei)
                   if (d > FUEL_RETURN_TOL) {
                     const prag = base.unit === 'pct' ? fuelDropPct : fuelTheftL;
-                    if (d >= prag && (!theft || d > theft.drop)) theft = { drop: d, unit: base.unit, from: base.value, to: endVal };
+                    // `fuelTheftOff` oprește detecția CU TOTUL (și pe litri, și pe procente): utilizatorul a ales
+                    // „Dezactivat", nu „prag 0". Fără garda asta, pragul ar deveni 0 și ar semnala orice scădere.
+                    if (!fuelTheftOff && d >= prag && (!theft || d > theft.drop)) theft = { drop: d, unit: base.unit, from: base.value, to: endVal };
                   }
                 }
               }

@@ -16837,12 +16837,33 @@ const pozitii = await r.json();</code></pre>
       }
       ov.style.display = 'flex'; return ov;
     }
+    // Spune EXPLICIT pe cine se aplică pragurile. Un super-admin fără companie selectată schimbă baza
+    // platformei pentru toate companiile — lucru care înainte se întâmpla fără niciun indiciu în interfață.
+    function _agpScopeNote(coId) {
+      if (!isSuperUser()) return '';
+      if (coId) {
+        // Numele companiei îl luăm din selectorul de sus (același folosit de gSuperCompany).
+        var sel = document.getElementById('rax-company-filter') || document.getElementById('dash-company-filter');
+        var nume = '';
+        if (sel) { for (var i = 0; i < sel.options.length; i++) if (String(sel.options[i].value) === String(coId)) nume = sel.options[i].textContent; }
+        return '<div style="margin:14px 18px 0;padding:9px 12px;border-radius:9px;font-size:12px;line-height:1.45;background:color-mix(in srgb, var(--accent) 12%, transparent);color:var(--accent);">'
+          + '<i class="fas fa-building"></i> Se aplică doar companiei <b>' + esc(nume || ('#' + coId)) + '</b>.</div>';
+      }
+      return '<div style="margin:14px 18px 0;padding:9px 12px;border-radius:9px;font-size:12px;line-height:1.45;background:rgba(245,158,11,.12);color:#f59e0b;">'
+        + '<i class="fas fa-triangle-exclamation"></i> Nicio companie selectată: modifici <b>baza platformei</b>, valabilă pentru TOATE companiile care n-au praguri proprii. '
+        + 'Alege o companie din selectorul de sus dacă vrei să schimbi doar pentru ea.</div>';
+    }
     window.agpSettings = async function (k) {
       var m = AGP_META[k]; var conf = AGP_THRESH[k] || { fields: [] }; if (!m) return;
       var ov = _agpModal('agp-set-modal');
       ov.innerHTML = '<div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;width:480px;max-width:94vw;"><div style="padding:24px;text-align:center;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div></div>';
+      // Super-adminul cu o companie SELECTATĂ editează pragurile COMPANIEI ALEIA. Înainte se citea și se
+      // scria mereu prin /api/companies/me/settings, iar acolo un cont fără companie proprie ajunge pe
+      // `alert_thresholds_global` — adică schimba baza platformei pentru TOATE companiile, fără niciun semn.
+      var _thrCo = window.gSuperCompany || null;
+      var _thrUrl = _thrCo ? ('/api/companies/' + encodeURIComponent(_thrCo) + '/settings') : '/api/companies/me/settings';
       var thr = {};
-      try { var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); thr = (cs && cs.alert_thresholds) || {}; } catch (e) {}
+      try { var cs = await fetch(_thrUrl, { credentials: 'same-origin' }).then(function (r) { return r.json(); }); thr = (cs && cs.alert_thresholds) || {}; } catch (e) {}
       var inner;
       if (conf.fields.length) {
         inner = conf.fields.map(function (f) {
@@ -16874,6 +16895,7 @@ const pozitii = await r.json();</code></pre>
         + '<div class="' + m.tile + '" style="width:38px;height:38px;flex:none;border-radius:10px;display:grid;place-items:center;font-size:18px;"><i class="fas fa-sliders"></i></div>'
         + '<div style="flex:1;min-width:0;"><div style="font-weight:800;font-size:16px;">' + m.name + ' — praguri</div><div style="font-size:12px;color:var(--text-muted);">Când te alertează acest agent</div></div>'
         + '<button class="btn-sm" onclick="var e=document.getElementById(\'agp-set-modal\');if(e)e.style.display=\'none\';" title="Închide"><i class="fas fa-times"></i></button></div>'
+        + _agpScopeNote(_thrCo)
         + '<div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;">' + inner + '</div>'
         + (saveBtn ? '<div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">' + saveBtn + '</div>' : '')
         + '</div>';
@@ -16893,9 +16915,12 @@ const pozitii = await r.json();</code></pre>
       var btn = document.getElementById('agp-th-save'); var orig = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvez…'; }
       try {
-        var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) });
+        // Aceeași țintă ca la citire: compania selectată dacă există, altfel baza globală a platformei.
+        var _saveCo = window.gSuperCompany || null;
+        var _saveUrl = _saveCo ? ('/api/companies/' + encodeURIComponent(_saveCo) + '/settings') : '/api/companies/me/settings';
+        var r = await fetch(_saveUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) });
         if (!r.ok) { (window.raxToast || alert)('Eroare la salvare', 'error'); if (btn) { btn.disabled = false; btn.innerHTML = orig; } return; }
-        (window.raxToast || function () {})('Praguri salvate ✓', 'success');
+        (window.raxToast || function () {})(_saveCo ? 'Praguri salvate pentru compania selectată ✓' : 'Praguri salvate ✓', 'success');
         var e = document.getElementById('agp-set-modal'); if (e) e.style.display = 'none';
       } catch (err) { (window.raxToast || alert)('Eroare de rețea', 'error'); if (btn) { btn.disabled = false; btn.innerHTML = orig; } }
     };
