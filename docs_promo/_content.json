@@ -1,0 +1,646 @@
+{
+ "inventory": {
+  "brandTaglineIdeas": [
+   "RA Tracks — flota ta, sub control, în timp real.",
+   "Vezi tot. Consumă mai puțin. Conduci mai sigur.",
+   "GPS fleet management făcut pentru flotele din România.",
+   "De la poziția pe hartă până la ora de condus — o singură platformă.",
+   "Date reale din CAN-bus, nu estimări. Decizii mai bune pentru flota ta.",
+   "Web + Android. Aceleași funcții, oriunde ești.",
+   "Monitorizare, rapoarte și AI — pentru flote de la 5 la 2000 de vehicule."
+  ],
+  "realFeatures": [
+   {
+    "group": "Monitorizare live",
+    "name": "Urmărire GPS în timp real pe hartă",
+    "whatItDoes": "Poziția fiecărui vehicul se actualizează pe hartă prin WebSocket (push în timp real, nu reîncărcare), cu marker orientat după direcția de mers, categorie și stare (în mișcare / ralanti / oprit).",
+    "benefit": "Știi în orice moment unde e fiecare mașină, fără să dai refresh — dispecerul răspunde instant clienților."
+   },
+   {
+    "group": "Monitorizare live",
+    "name": "Fișă vehicul detaliată live",
+    "whatItDoes": "La click pe un vehicul vezi viteza reală, combustibil (litri + procent din capacitatea rezervorului), kilometraj, temperaturi și date CAN, plus semnul de limită de viteză citit de camera mașinii (unde există).",
+    "benefit": "Toate datele importante despre o mașină într-un singur ecran, în timp real."
+   },
+   {
+    "group": "Monitorizare live",
+    "name": "Semn limită viteză din cameră (ADAS)",
+    "whatItDoes": "Afișează limita de viteză recunoscută de camera de recunoaștere a indicatoarelor a vehiculului (IO 1116), sub formă de indicator rutier lângă viteza curentă; se colorează roșu când viteza reală depășește limita.",
+    "benefit": "Vezi imediat când un șofer depășește limita afișată pe drum, chiar pe acel segment."
+   },
+   {
+    "group": "Istoric & trasee",
+    "name": "Replay traseu / istoric",
+    "whatItDoes": "Reconstituie traseul parcurs pe orice interval, colorat după viteză, cu ajustare pe drum (map-matching OSRM) și export CSV/KML.",
+    "benefit": "Verifici exact pe unde a fost mașina și cât de repede — util pentru dispute și verificări."
+   },
+   {
+    "group": "Istoric & trasee",
+    "name": "Limite reale de drum din OpenStreetMap",
+    "whatItDoes": "Overlay opțional pe replay care marchează cu roșu segmentele unde s-a depășit limita REALĂ a drumului (din OSM, cu inferență din tipul drumului acolo unde lipsește), cu atribuire ODbL.",
+    "benefit": "Depistezi depășirile față de limita legală a fiecărui segment, nu doar față de o limită fixă pe vehicul."
+   },
+   {
+    "group": "Alerte & notificări",
+    "name": "Motor de alerte configurabil",
+    "whatItDoes": "Alerte pentru depășire viteză, scădere bruscă de combustibil (posibil furt), ralanti prelungit, temperatură motor mare, supraîncărcare, tensiune scăzută, mișcare fără contact (remorcare/furt), erori motor DTC, intrare/ieșire din geozone și expirare documente — cu praguri reglabile per companie.",
+    "benefit": "Ești anunțat automat despre problemele care contează, cu praguri pe care le stabilești tu."
+   },
+   {
+    "group": "Alerte & notificări",
+    "name": "Notificări push, e-mail și Telegram",
+    "whatItDoes": "Livrează alertele prin push (FCM) în aplicația mobilă, e-mail și Telegram; detaliul unei alerte de viteză arată pe hartă exact unde s-a depășit, cu heatmap de viteză.",
+    "benefit": "Afli de incidente în timp real, pe canalul care ți se potrivește, cu context clar."
+   },
+   {
+    "group": "Geozone",
+    "name": "Geozone (geofencing) cu intrare/ieșire",
+    "whatItDoes": "Definești zone (cerc sau poligon) și primești alertă la intrarea/ieșirea vehiculelor; raport de vizite și timp petrecut per zonă.",
+    "benefit": "Confirmi automat sosirile/plecările din puncte de interes (depozite, clienți, șantiere)."
+   },
+   {
+    "group": "Management vehicule",
+    "name": "Fișă vehicul completă (paritate AROBS)",
+    "whatItDoes": "Peste 15 câmpuri tehnice per vehicul (limită viteză, consumuri oraș/drum/ralanti, GPL, clasă emisii, putere, sarcină utilă, centru de cost etc.), listă Administrare → Vehicule cu status activ/arhivat, căutare și adăugare/arhivare IMEI.",
+    "benefit": "Ai un dosar tehnic complet pentru fiecare mașină, ca într-o platformă enterprise."
+   },
+   {
+    "group": "Management vehicule",
+    "name": "Import/Export CSV vehicule",
+    "whatItDoes": "Export și template CSV (cu protecție anti-injecție de formule) și import în masă (creare/actualizare după IMEI, până la 5000 rânduri), scopat pe companie.",
+    "benefit": "Muți sau actualizezi zeci de vehicule în câteva minute, fără introducere manuală."
+   },
+   {
+    "group": "Management vehicule",
+    "name": "Documente, ITP/RCA și scadențe service",
+    "whatItDoes": "Evidența documentelor (ITP, RCA, CASCO etc.) cu date de expirare colorate și mentenanță per vehicul; raport de scadențe și alerte de expirare.",
+    "benefit": "Nu mai prinzi niciodată un ITP sau o asigurare expirată — ești avertizat din timp."
+   },
+   {
+    "group": "Management flotă",
+    "name": "Șoferi, grupe și mentenanță",
+    "whatItDoes": "Gestionezi șoferi (cu alocare pe vehicul), grupe de vehicule și planuri de mentenanță; multe ecrane folosesc un modul CRUD generic identic pe web și mobil.",
+    "benefit": "Organizezi flota pe echipe/proiecte și ții service-ul sub control dintr-un singur loc."
+   },
+   {
+    "group": "Rapoarte",
+    "name": "Motor de rapoarte (28 tipuri)",
+    "whatItDoes": "Rapoarte pe categorii: monitorizare (foaie de parcurs, staționări, situație zilnică, pontaj șofer, disponibilitate flotă, scadențe), consum (consum carburant, alimentări & scurgeri, anomalii combustibil, costuri, emisii CO₂), CAN, evenimente (depășiri, geozone, hotspot, alerte) și siguranță (EcoDrive vehicule/șoferi, HOS Reg. 561).",
+    "benefit": "Răspunzi la aproape orice întrebare despre flotă cu un raport gata făcut."
+   },
+   {
+    "group": "Rapoarte",
+    "name": "Export PDF/Excel și rapoarte programate",
+    "whatItDoes": "Orice raport se exportă în PDF sau Excel; programezi rapoarte recurente care se generează și se trimit automat pe e-mail; istoric de rapoarte per utilizator.",
+    "benefit": "Primești automat raportul de care ai nevoie, în inbox, fără să-l ceri de fiecare dată."
+   },
+   {
+    "group": "Combustibil",
+    "name": "Statistici consum (senzor + estimat)",
+    "whatItDoes": "Calculează consumul din contorul CAN cumulativ sau din scăderile reale de nivel; când nu există senzor, estimează din km × consum configurat + ralanti, marcând clar 'estimat' vs 'senzor'.",
+    "benefit": "Vezi consumul real acolo unde ai senzor și o estimare onestă acolo unde nu ai — fără cifre umflate."
+   },
+   {
+    "group": "Combustibil",
+    "name": "Modul preț combustibil",
+    "whatItDoes": "Prețuri curente pe tip (motorină/benzină/GPL) din media națională actualizată automat (PrețCarburant.ro) plus override pe companie, cu grafic de tendință pe 30/90/365 zile.",
+    "benefit": "Costurile de combustibil folosesc prețul real de piață, nu o valoare fixă învechită."
+   },
+   {
+    "group": "Combustibil",
+    "name": "Reconciliere card combustibil",
+    "whatItDoes": "Importă tranzacțiile de card (CSV) și le compară cu creșterea de nivel din CAN (±3h) → marchează fiecare bon ca reconciliat / suspect / parțial / fără CAN.",
+    "benefit": "Prinzi furtul de combustibil: un card de 50L fără creștere în rezervor apare imediat ca suspect."
+   },
+   {
+    "group": "Siguranță șoferi",
+    "name": "Scoring comportament șofer (EcoDrive)",
+    "whatItDoes": "Punctează șoferii și vehiculele (0-100, notă A-E) pe baza accelerărilor/frânărilor/virajelor bruște, vitezei și ralantiului, cu clasament.",
+    "benefit": "Identifici șoferii riscanți și îi îmbunătățești — mai puține accidente, uzură și consum."
+   },
+   {
+    "group": "Siguranță șoferi",
+    "name": "Ore de condus & repaus (HOS, Reg. 561)",
+    "whatItDoes": "Raport de condus/muncă/repaus cu conducere continuă maximă și încălcări ale Reg. CE 561 (>4h30 continuu, >9h zilnic), din tahograf dacă există sau estimat din GPS, cu coloană 'Sursă'.",
+    "benefit": "Verifici conformitatea timpilor de condus fără să descarci manual cardurile."
+   },
+   {
+    "group": "Date tehnice",
+    "name": "Decodare CAN-bus / tahograf (codec8e)",
+    "whatItDoes": "Decodează IO Teltonika prin codec8e cu catalog IO editabil, două scheme CAN (LV-CAN200 și FMS/J1939) comutabile per dispozitiv și mapări de senzori personalizate (scale/offset) per vehicul.",
+    "benefit": "Combustibil, RPM, kilometraj, AdBlue și temperaturi direct din calculatorul mașinii — date exacte, nu estimate."
+   },
+   {
+    "group": "Date tehnice",
+    "name": "Monitorizare temperatură (lanț frig)",
+    "whatItDoes": "Citește senzori de temperatură Dallas 1-wire (până la 4) și BLE, plus temperaturi CAN motor/ambiant; alertă la temperatură motor mare.",
+    "benefit": "Monitorizezi temperatura mărfii pe frig/reefer și starea termică a motorului."
+   },
+   {
+    "group": "Inteligență artificială",
+    "name": "Asistent AI + RA Insight",
+    "whatItDoes": "Asistent AI conversațional despre flotă (cu locații reale geocodate, nu coordonate brute) și RA Insight, un agent analitic care citește rapoartele prin tool-use; ambele pe web și mobil.",
+    "benefit": "Pui întrebări în limbaj natural despre flotă și primești răspunsuri clare, cu context."
+   },
+   {
+    "group": "Inteligență artificială",
+    "name": "Agenți AI de monitorizare",
+    "whatItDoes": "Agenți care rulează verificări automate: RA Watch (offline + scădere combustibil), RA Care (mentenanță predictivă ITP/RCA/revizii), RA Optimize (eco-driving & costuri cu preț real), RA Compliance (ore de condus), RA Client (raport zilnic).",
+    "benefit": "Platforma îți semnalează singură problemele, ca un analist care veghează non-stop."
+   },
+   {
+    "group": "Integrare & API",
+    "name": "Webhooks și API REST",
+    "whatItDoes": "Trimite evenimente către URL-urile tale prin webhooks semnate HMAC (X-RaTracks-Signature) cu protecție anti-SSRF; API REST cu chei API cu durată limitată.",
+    "benefit": "Conectezi RA Tracks la ERP-ul, TMS-ul sau sistemele tale, în siguranță."
+   },
+   {
+    "group": "Platformă & securitate",
+    "name": "Multi-tenant cu izolare per companie",
+    "whatItDoes": "Fiecare companie își vede doar propriile date; roluri și permisiuni (RBAC), audit log, jurnal de erori și rate-limiting la login (blocare 15 min).",
+    "benefit": "Datele flotei tale rămân separate și protejate, cu control fin pe cine ce poate face."
+   },
+   {
+    "group": "Platformă & securitate",
+    "name": "Backup automat + error tracking",
+    "whatItDoes": "Backup zilnic al datelor de business (33 tabele, gzip + criptare AES opțională, upload S3-compatibil) cu restaurare; erorile de server și client se colectează, cu forward opțional către Sentry.",
+    "benefit": "Datele tale sunt salvate off-site, iar problemele se prind repede — liniște operațională."
+   },
+   {
+    "group": "Aplicație mobilă",
+    "name": "Aplicație nativă Android",
+    "whatItDoes": "Aplicație nativă (Capacitor/Preact, pachet ro.ratracks.app) cu paritate operațională față de web: hartă live, trasee, rapoarte + istoric, alerte, fișă vehicul, admin, AI, card combustibil.",
+    "benefit": "Ai flota în buzunar — aceleași funcții pe telefon ca în browser."
+   },
+   {
+    "group": "Super-admin",
+    "name": "Control costuri platformă",
+    "whatItDoes": "Panou super-admin cu registru de costuri (RoTLD, Railway, Cloudflare, Anthropic) și panouri de detaliu per furnizor (capacitate DB, utilizare, cheltuieli lunare) prin token-uri configurate ca variabile de mediu.",
+    "benefit": "Operatorul platformei vede costurile reale de infrastructură într-un singur loc."
+   }
+  ],
+  "comingSoon": [
+   {
+    "name": "e-Transport ANAF (raportare UIT în timp real)",
+    "note": "DEMO: UI complet + generare cod UIT mock; clientul OAuth real (anaf.js) există dar e DORMANT până la provizionarea token-ului ANAF + CIF, iar schema declarației trebuie validată pe mediul de test ANAF. NU prezenta ca live."
+   },
+   {
+    "name": "e-Toll / roviniete",
+    "note": "DEMO/simulat: fără integrare reală cu un provider; trece pe ramura reală doar când se configurează un provider. NU prezenta ca live."
+   },
+   {
+    "name": "Tahograf — descărcare card la distanță",
+    "note": "PARȚIAL: parsarea fișierelor .DDD și motorul de infracțiuni Reg. 561 funcționează, dar fluxul de citire/descărcare a cardului de la distanță este mock (răspunde 501 pe ramura reală). Analiza de fișier e reală; descărcarea remote nu."
+   },
+   {
+    "name": "RA Dispatch (alocare curse)",
+    "note": "STUB: agentul de alocare curse (vehicul disponibil + cel mai apropiat de destinație) este schițat, nu un modul de dispatch complet. Nu promite optimizare de rute end-to-end."
+   },
+   {
+    "name": "Facturare / plăți Stripe",
+    "note": "Codul Stripe (billing.js/plans.js, webhook checkout) există, dar calea LIVE de încasare este plata MANUALĂ (recordPayment). Nu prezenta plata automată cu cardul ca funcțională azi."
+   },
+   {
+    "name": "Object storage pentru atașamente documente",
+    "note": "Amânat: vehicle_documents stochează doar metadate (fără fișierul propriu-zis); pozele de șofer sunt base64 capate la 1.5MB. Migrarea la object storage e pe roadmap."
+   }
+  ],
+  "specs": {
+   "hardware": [
+    "Teltonika familia FMB (ex. FMB series)",
+    "Teltonika familia FMC (FMC130, FMC150)",
+    "Teltonika FMC650 (pentru camioane, FMS/J1939)",
+    "Adaptor CAN LV-CAN200 (autoturisme — ex. Dacia Logan)",
+    "Interfață FMS/J1939 (camioane — ex. MAN TGS)",
+    "Senzori temperatură Dallas 1-wire (până la 4) și BLE",
+    "Cameră ADAS de recunoaștere indicatoare (semn limită viteză, IO 1116)"
+   ],
+   "protocols": [
+    "Teltonika codec8e peste TCP (ingest raw, port container :5027)",
+    "WebSocket pentru actualizări live push",
+    "Firebase Cloud Messaging (FCM) pentru push mobil",
+    "Webhooks HTTP semnate HMAC-SHA256 (anti-SSRF)",
+    "CAN-bus: LV-CAN200 (Standard) și FMS / J1939",
+    "REST API (JSON) cu chei API"
+   ],
+   "platforms": [
+    "Web PWA (single-page app, service worker network-first)",
+    "Aplicație nativă Android (Capacitor/Preact, ro.ratracks.app)"
+   ],
+   "security": [
+    "Izolare multi-tenant per companie (scoping pe company_id)",
+    "RBAC — roluri și permisiuni granulare",
+    "Audit log + jurnal de erori (error_log)",
+    "Chei API cu expirare (TTL; token mobil 90 zile)",
+    "Rate-limiting la login (blocare 15 min după încercări eșuate)",
+    "Webhooks semnate HMAC-SHA256 + protecție anti-SSRF (blocare IP interne/private + redirect)",
+    "Backup zilnic al datelor de business (gzip + criptare AES opțională, upload S3-compatibil SigV4)",
+    "Error tracking cu forward opțional către Sentry",
+    "Rate-limit public pe endpoint-ul de erori client (20/min/IP)"
+   ],
+   "integrations": [
+    "REST API (JSON)",
+    "Webhooks de evenimente (semnate HMAC)",
+    "PrețCarburant.ro (media națională preț combustibil, actualizat automat)",
+    "OpenStreetMap / Overpass (limite reale de drum, ODbL) + Nominatim (geocodare) + OSRM (map-matching)",
+    "E-mail (SMTP) și Telegram pentru notificări + rapoarte programate",
+    "Firebase Cloud Messaging (push)",
+    "Anthropic Claude (Asistent AI, RA Insight, agenți)",
+    "Import card combustibil (CSV generic)",
+    "Storage S3-compatibil (backup off-site, ex. Cloudflare R2)"
+   ],
+   "scale": "Multi-tenant SaaS proiectat pentru 30+ companii / ~2000 vehicule Teltonika; producție pe Railway cu PostgreSQL + TimescaleDB (hypertable pe positions, compresie >7 zile, retenție 180 zile); mod dual DB (PostgreSQL/TimescaleDB în producție, PGlite pentru dev/demo local)."
+  },
+  "differentiators": [
+   "Date reale din CAN-bus (combustibil, RPM, kilometraj, AdBlue, temperaturi) prin codec8e, cu două scheme CAN (LV-CAN200 pentru autoturisme și FMS/J1939 pentru camioane) comutabile per vehicul — nu doar poziție GPS.",
+   "Onestitate în consum: distinge clar consumul măsurat (senzor/contor CAN) de cel estimat, în loc să prezinte estimări ca date reale.",
+   "Reconciliere card combustibil vs. creșterea reală din rezervor — prinde furtul de combustibil automat.",
+   "Limite de viteză REALE de drum din OpenStreetMap pe replay, plus semnul de limită citit de camera mașinii — nu doar o limită fixă pe vehicul.",
+   "AI integrat nativ: asistent conversațional, agent analitic RA Insight și agenți de monitorizare (Watch/Care/Optimize/Compliance/Client), pe web ȘI mobil.",
+   "Paritate web ↔ Android impusă ca regulă: orice funcție de pe web e adăugată și în aplicația nativă în aceeași iterație.",
+   "28 de tipuri de rapoarte cu export PDF/Excel și programare automată pe e-mail.",
+   "Conformitate: pontaj șofer și ore de condus (HOS Reg. CE 561), scadențe ITP/RCA cu alerte, decodare tahograf.",
+   "Securitate serioasă pentru scară: multi-tenant izolat, RBAC + audit, webhooks semnate HMAC cu anti-SSRF, chei API cu TTL, backup criptat off-site.",
+   "Fișă vehicul de nivel enterprise (paritate AROBS) cu import/export CSV, documente și mentenanță."
+  ],
+  "truthfulNumbers": [
+   {
+    "value": "Timp real (push)",
+    "label": "Actualizare poziții live prin WebSocket (event-driven, nu polling)"
+   },
+   {
+    "value": "2×/zi",
+    "label": "Actualizare automată preț combustibil național (PrețCarburant.ro)"
+   },
+   {
+    "value": "180 zile",
+    "label": "Retenție date poziții în TimescaleDB (compresie după 7 zile)"
+   },
+   {
+    "value": "7 zile",
+    "label": "Cache pentru limitele reale de drum din OpenStreetMap"
+   },
+   {
+    "value": "28",
+    "label": "Tipuri de rapoarte disponibile (monitorizare, consum, CAN, evenimente, siguranță)"
+   },
+   {
+    "value": "Zilnic",
+    "label": "Backup automat al datelor de business (33 tabele; criptare AES opțională)"
+   },
+   {
+    "value": "90 zile",
+    "label": "Durata de valabilitate a token-ului API mobil"
+   },
+   {
+    "value": "15 min",
+    "label": "Blocare la login după prea multe încercări eșuate (rate-limiting)"
+   },
+   {
+    "value": "5",
+    "label": "Agenți AI de monitorizare (Watch, Care, Optimize, Compliance, Client)"
+   },
+   {
+    "value": "±3h",
+    "label": "Fereastra de reconciliere card combustibil vs. creștere nivel CAN"
+   },
+   {
+    "value": "30+ companii / ~2000 vehicule",
+    "label": "Scară țintă proiectată a platformei"
+   },
+   {
+    "value": "10 (+geozone)",
+    "label": "Tipuri de alerte configurabile (viteză, combustibil, ralanti, temp, supraîncărcare, tensiune, mișcare fără contact, DTC, documente, intrare/ieșire geozonă)"
+   },
+   {
+    "value": "până la 4",
+    "label": "Senzori de temperatură Dallas 1-wire suportați per vehicul (plus BLE)"
+   }
+  ]
+ },
+ "pexels": {
+  "images": [
+   {
+    "photoId": "14005602",
+    "url": "https://images.pexels.com/photos/14005602/pexels-photo-14005602.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Camion de marfă pe autostradă, vedere aeriană - flota ta, monitorizată în timp real.",
+    "use": "hero"
+   },
+   {
+    "photoId": "18612459",
+    "url": "https://images.pexels.com/photos/18612459/pexels-photo-18612459.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Camioane pe un drum sinuos, filmate din dronă - urmărire GPS pe orice traseu.",
+    "use": "section-tracking"
+   },
+   {
+    "photoId": "9195241",
+    "url": "https://images.pexels.com/photos/9195241/pexels-photo-9195241.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Camion cu container pe șosea de-a lungul pădurii - transport de marfă sub control.",
+    "use": "section-fleet"
+   },
+   {
+    "photoId": "16325212",
+    "url": "https://images.pexels.com/photos/16325212/pexels-photo-16325212.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Camioane și mașini în trafic pe autostradă - vizibilitate completă asupra flotei.",
+    "use": "section-fleet"
+   },
+   {
+    "photoId": "13297280",
+    "url": "https://images.pexels.com/photos/13297280/pexels-photo-13297280.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Dubă albă parcată pe stradă - livrări urbane urmărite în timp real.",
+    "use": "section-fleet"
+   },
+   {
+    "photoId": "6169582",
+    "url": "https://images.pexels.com/photos/6169582/pexels-photo-6169582.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Șofer la volanul unei dube de livrare - fiecare cursă, sub monitorizare.",
+    "use": "section-driver"
+   },
+   {
+    "photoId": "7541981",
+    "url": "https://images.pexels.com/photos/7541981/pexels-photo-7541981.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Șofer în cabina camionului, noaptea - siguranță și comportament la volan analizate.",
+    "use": "section-driver"
+   },
+   {
+    "photoId": "17229385",
+    "url": "https://images.pexels.com/photos/17229385/pexels-photo-17229385.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Motostivuitor în depozit - de la rampă la client, tot lanțul logistic conectat.",
+    "use": "section-fleet"
+   },
+   {
+    "photoId": "12969403",
+    "url": "https://images.pexels.com/photos/12969403/pexels-photo-12969403.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Laptop cu tablou de bord și date în timp real - telematică pentru decizii rapide.",
+    "use": "tech"
+   },
+   {
+    "photoId": "20500733",
+    "url": "https://images.pexels.com/photos/20500733/pexels-photo-20500733.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Alimentare la pompă - consum de combustibil monitorizat și optimizat.",
+    "use": "section-fuel"
+   },
+   {
+    "photoId": "11783119",
+    "url": "https://images.pexels.com/photos/11783119/pexels-photo-11783119.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Operator urmărind mai multe ecrane - dispecerat și rapoarte dintr-un singur loc.",
+    "use": "section-reports"
+   },
+   {
+    "photoId": "5101752",
+    "url": "https://images.pexels.com/photos/5101752/pexels-photo-5101752.jpeg?auto=compress&cs=tinysrgb&w=1600",
+    "captionRo": "Autostradă la apus, vedere aeriană - rute europene urmărite kilometru cu kilometru.",
+    "use": "cta"
+   }
+  ]
+ },
+ "marketing": {
+  "tagline": "RA Tracks — flota ta, sub control, în timp real.",
+  "heroHeadline": "Nu-ți mai imaginezi ce face flota ta. O vezi.",
+  "heroSub": "De la poziția pe hartă până la ultimul litru de motorină din rezervor, RA Tracks îți aduce flota întreagă pe un singur ecran — cu date reale din CAN-bus, nu estimări. Web și Android, aceleași funcții, oriunde ești.",
+  "pillars": [
+   {
+    "title": "Timp real, nu întârziat",
+    "text": "Fiecare vehicul se mișcă pe hartă prin WebSocket, event-driven — fără refresh, fără polling. Dispecerul răspunde clienților în secunda în care întreabă."
+   },
+   {
+    "title": "Date reale, nu presupuneri",
+    "text": "Combustibil, RPM, kilometraj, AdBlue și temperaturi citite direct din calculatorul mașinii prin codec8e, cu două scheme CAN comutabile per vehicul. Iar unde nu există senzor, îți spunem cinstit: „estimat”."
+   },
+   {
+    "title": "Inteligență care veghează non-stop",
+    "text": "Șase agenți AI de monitorizare și un asistent conversațional îți semnalează singuri problemele — de la scăderi suspecte de combustibil la scadențe ITP — ca un analist care nu doarme niciodată."
+   },
+   {
+    "title": "Făcut pentru scară, construit pe seriozitate",
+    "text": "Multi-tenant izolat, RBAC cu audit, webhooks semnate HMAC, backup criptat off-site. De la 5 la 2000 de vehicule, aceeași platformă, aceeași liniște operațională."
+   }
+  ],
+  "sections": [
+   {
+    "title": "Harta care nu clipește",
+    "lead": "Deschizi RA Tracks și toată flota respiră în fața ta. Fiecare marker e orientat după direcția de mers, colorat după stare — în mișcare, la ralanti, oprit — și se mută singur, în timp real, prin WebSocket. Un click și ai fișa vehiculului: viteza reală, litrii din rezervor și procentul, kilometrajul, temperaturile și datele CAN, toate într-un singur ecran care se actualizează live. Nu mai dai refresh. Nu mai aștepți. Doar vezi.",
+    "bullets": [
+     "Poziții push în timp real, event-driven — fără reîncărcare, fără polling",
+     "Marker orientat după direcția de mers, cu categorie și stare (mișcare / ralanti / oprit)",
+     "Fișă vehicul live: viteză, combustibil în litri și procent, kilometraj, temperaturi, date CAN",
+     "Semnul de limită de viteză citit de camera ADAS a mașinii, roșu când șoferul depășește",
+     "Replay traseu pe orice interval, colorat după viteză, cu map-matching OSRM și export CSV/KML"
+    ]
+   },
+   {
+    "title": "Alerte care ajung înaintea problemei",
+    "lead": "O platformă bună nu-ți arată doar ce s-a întâmplat — te avertizează înainte să te coste. Motorul de alerte RA Tracks urmărește peste zece tipuri de evenimente cu praguri pe care le stabilești tu: depășire de viteză, scădere bruscă de combustibil care miroase a furt, ralanti prelungit, temperatură mare de motor, supraîncărcare, mișcare fără contact, erori DTC, intrări și ieșiri din geozone, documente pe cale să expire. Iar când s-a depășit, îți arătăm pe hartă exact pe ce segment — comparând cu limita REALĂ a drumului din OpenStreetMap, nu cu o cifră fixă.",
+    "bullets": [
+     "Peste 10 tipuri de alerte configurabile, plus intrare/ieșire din geozone, cu praguri per companie",
+     "Notificări livrate prin push (FCM), e-mail și Telegram — pe canalul care ți se potrivește",
+     "Detaliul alertei de viteză arată pe hartă exact unde s-a depășit, cu heatmap",
+     "Limite REALE de drum din OpenStreetMap pe replay — depistezi depășirile față de legea fiecărui segment",
+     "Scoring de comportament EcoDrive (0-100, notă A-E) care îți arată șoferii riscanți și îi îmbunătățește"
+    ]
+   },
+   {
+    "title": "Fiecare vehicul, cu dosarul lui complet",
+    "lead": "Flota nu se administrează din memorie și din tabele Excel rătăcite. RA Tracks îți dă o fișă de vehicul de nivel enterprise, cu paritate AROBS: peste 15 câmpuri tehnice, de la limita de viteză și consumurile pe oraș/drum/ralanti până la clasa de emisii, puterea, sarcina utilă și centrul de cost. Documentele — ITP, RCA, CASCO — au date de expirare colorate și te avertizează din timp, așa că nu mai prinzi niciodată o asigurare expirată. Iar când muți sau actualizezi zeci de mașini, un import CSV le rezolvă în câteva minute.",
+    "bullets": [
+     "Fișă vehicul completă cu peste 15 câmpuri tehnice și status activ/arhivat",
+     "Documente ITP/RCA/CASCO cu scadențe colorate și alerte de expirare din timp",
+     "Import/Export CSV până la 5000 de rânduri, cu protecție anti-injecție de formule",
+     "Șoferi, grupe și planuri de mentenanță organizate pe echipe și proiecte",
+     "Modul CRUD generic identic pe web și mobil — aceeași experiență peste tot"
+    ]
+   },
+   {
+    "title": "Fiecare litru, socotit corect",
+    "lead": "Combustibilul e cea mai mare gaură din bugetul unei flote — și cea mai ușoară de furat. RA Tracks îl măsoară din contorul CAN cumulativ sau din scăderile reale de nivel, iar acolo unde nu există senzor estimează cinstit din kilometri și consum, marcând clar „estimat” față de „senzor”. Costurile folosesc prețul real de piață, actualizat automat de două ori pe zi din media națională. Iar reconcilierea cardului de combustibil prinde furtul singură: un bon de 50 de litri fără nicio creștere în rezervor apare imediat ca suspect.",
+    "bullets": [
+     "Consum din senzor/contor CAN acolo unde ai, estimare onestă acolo unde nu ai — fără cifre umflate",
+     "Preț combustibil real din media națională (PrețCarburant.ro), actualizat automat de 2×/zi",
+     "Grafic de tendință a prețului pe 30/90/365 de zile, cu override per companie",
+     "Reconciliere card combustibil vs. creșterea reală din CAN (±3h): reconciliat / suspect / parțial",
+     "Raport de emisii CO₂ și de anomalii de combustibil, gata de export"
+    ]
+   },
+   {
+    "title": "Rapoarte care răspund. AI care înțelege.",
+    "lead": "Douăzeci și opt de tipuri de rapoarte acoperă aproape orice întrebare despre flotă — foaie de parcurs, staționări, pontaj șofer, consum, anomalii de combustibil, emisii, evenimente, EcoDrive, ore de condus HOS după Reg. CE 561. Orice raport se exportă în PDF sau Excel și se poate programa să ajungă singur în inbox, recurent. Iar deasupra tuturor stă inteligența: pui o întrebare în limbaj natural despre flotă și Asistentul AI îți răspunde cu locații reale geocodate, în timp ce agenții de monitorizare veghează în fundal.",
+    "bullets": [
+     "28 de tipuri de rapoarte: monitorizare, consum, CAN, evenimente și siguranță",
+     "Export PDF/Excel și rapoarte programate care se trimit automat pe e-mail",
+     "Asistent AI conversațional cu locații reale geocodate + RA Insight, agentul analitic",
+     "6 agenți AI: RA Watch, RA Care, RA Optimize, RA Dispatch, RA Compliance, RA Client — verificări automate non-stop",
+     "Conformitate reală: ore de condus HOS Reg. 561, pontaj șofer, scadențe ITP/RCA"
+    ]
+   },
+   {
+    "title": "Toată flota, în buzunarul tău",
+    "lead": "Nu ești mereu la birou, dar flota nu ia pauză. Aplicația nativă Android RA Tracks îți dă aceleași funcții ca în browser — hartă live, trasee, rapoarte cu istoric, alerte, fișă vehicul, administrare, AI și card combustibil — pentru că paritatea web ↔ Android e la noi o regulă, nu o promisiune. Ce apare pe web apare și pe telefon, în aceeași iterație. Iar sub capotă, o platformă construită pe standarde serioase îți ține datele separate, protejate și salvate off-site.",
+    "bullets": [
+     "Aplicație nativă Android (Capacitor/Preact) cu paritate operațională față de web",
+     "Push în timp real prin Firebase Cloud Messaging, direct pe telefon",
+     "Multi-tenant izolat per companie, RBAC granular, audit log și rate-limiting la login",
+     "Webhooks semnate HMAC-SHA256 cu anti-SSRF și API REST cu chei cu expirare",
+     "Backup zilnic criptat off-site (S3-compatibil) și error tracking cu forward către Sentry"
+    ]
+   }
+  ],
+  "whyUs": [
+   "Date reale din CAN-bus — combustibil, RPM, kilometraj, AdBlue, temperaturi — nu doar o poziție pe hartă.",
+   "Onestitate în consum: distingem clar ce e măsurat de senzor de ce e estimat. Fără cifre umflate.",
+   "Reconciliere card combustibil vs. creșterea reală din rezervor — prinde furtul de combustibil automat.",
+   "Limite de viteză REALE de drum din OpenStreetMap plus semnul citit de camera mașinii — nu o limită fixă.",
+   "AI integrat nativ: asistent, agent analitic și 6 agenți de monitorizare, pe web ȘI pe Android.",
+   "Paritate web ↔ Android impusă ca regulă și securitate serioasă pentru scară: HMAC, RBAC, backup criptat."
+  ],
+  "statsBanner": [
+   {
+    "value": "Timp real",
+    "label": "Poziții live prin WebSocket, event-driven — nu polling"
+   },
+   {
+    "value": "28",
+    "label": "Tipuri de rapoarte, cu export PDF/Excel și programare pe e-mail"
+   },
+   {
+    "value": "5",
+    "label": "Agenți AI de monitorizare care veghează non-stop"
+   },
+   {
+    "value": "30+ / ~2000",
+    "label": "Companii și vehicule — scara pentru care e proiectată platforma"
+   }
+  ],
+  "ctaHeadline": "Flota ta merită să fie văzută. Toată. În timp real.",
+  "ctaText": "Fie că ai 5 vehicule sau 2000, RA Tracks îți aduce controlul, economia și liniștea într-o singură platformă — web și Android, cu date reale și AI care veghează pentru tine. Programează o demonstrație și vezi cu ochii tăi cum arată flota ta când nu mai lași nimic la voia întâmplării."
+ },
+ "technical": {
+  "intro": "RA Tracks (TrackGPS) este o platformă SaaS multi-tenant de fleet management GPS, construită pentru flotele din România și dimensionată pentru scalare de la câteva vehicule până la ținta proiectată de 30+ companii și ~2000 de vehicule Teltonika. Spre deosebire de soluțiile care oferă doar poziție pe hartă, RA Tracks extrage date reale din calculatorul mașinii prin CAN-bus (combustibil, RPM, kilometraj, AdBlue, temperaturi) folosind decodarea codec8e, cu două scheme CAN comutabile per dispozitiv — LV-CAN200 pentru autoturisme și FMS/J1939 pentru camioane. Documentul de față descrie arhitectura tehnică, hardware-ul suportat, protocoalele de date, modelul de securitate, integrările, motorul de rapoarte, aplicația nativă și modelul de deployment, adresându-se CTO-ilor și managerilor de flotă care evaluează platforma. Principiul de bază al platformei este onestitatea datelor: consumul măsurat prin senzor/contor CAN este marcat distinct față de cel estimat, iar funcțiile aflate încă în stadiu de demo sau roadmap (e-Transport ANAF, e-Toll, descărcare tahograf la distanță, RA Dispatch, plăți automate Stripe, object storage pentru atașamente) sunt marcate explicit ca atare în secțiunile relevante și NU sunt prezentate ca funcționale în producție.",
+  "architecture": "Arhitectura este împărțită pe straturi clare, de la ingestie până la prezentare. Dispozitivele Teltonika deschid o conexiune TCP brută către serverul de ingestie (port container 5027) și trimit cadre în protocolul codec8e, decodate în timp real; datele decodate (poziții, parametri IO, valori CAN) trec printr-un strat de procesare care evaluează regulile de alerte, actualizează starea live în memorie și persistă pozițiile. Persistența se face în PostgreSQL, cu TimescaleDB pentru tabela `positions` transformată în hypertable (compresie după 7 zile, retenție implicită 180 de zile, configurabilă via `POSITION_RETENTION_DAYS`). Stratul de prezentare este o aplicație web PWA single-page care primește actualizări de poziții și alerte prin WebSocket (push event-driven, nu polling), plus o aplicație nativă Android cu paritate operațională. Baza de date rulează în mod dual (`db.js`): PostgreSQL/TimescaleDB în producție, PGlite pentru dezvoltare și demo local, cu migrarea izolată în acest modul.",
+  "architectureLayers": [
+   "Ingestie: server TCP dedicat (port container 5027) care primește cadre codec8e brute de la trackerele Teltonika și le decodează în timp real",
+   "Procesare & alerte: evaluarea regulilor de alerte per companie (viteză, combustibil, ralanti, temperatură, geozone etc.), actualizarea stării live în memorie și pregătirea pentru persistență",
+   "Persistență: PostgreSQL + TimescaleDB — `positions` ca hypertable cu compresie >7 zile și retenție 180 zile; mod dual DB (PGlite pentru dev/demo local) izolat în db.js",
+   "Prezentare web: aplicație PWA single-page (service worker network-first) cu actualizări live prin WebSocket (push, nu reîncărcare)",
+   "Live push: WebSocket cu autentificare pe handshake pe baza sesiunii — clienții neautentificați nu primesc date",
+   "Aplicație mobilă: Android nativ (Capacitor/Preact, ro.ratracks.app) cu paritate operațională față de web, alimentat prin aceleași API-uri REST + push FCM"
+  ],
+  "hardware": "Platforma este agnostică la modelul exact de tracker în cadrul ecosistemului Teltonika și suportă familiile FMB și FMC, inclusiv unități pentru autoturisme (FMC130, FMC150) și unitatea FMC650 dedicată camioanelor, care operează pe FMS/J1939. Pentru datele de motor, autoturismele folosesc de regulă adaptorul CAN LV-CAN200 (ex. Dacia Logan), iar camioanele folosesc interfața FMS/J1939 nativă (ex. MAN TGS); schema CAN se comută per dispozitiv, iar maparea senzorilor (scale/offset) se poate personaliza per vehicul. La nivel de senzoristică, platforma citește până la 4 senzori de temperatură Dallas 1-wire plus senzori BLE pentru monitorizarea lanțului de frig, precum și temperaturile de motor/ambiant din CAN. Unde vehiculul are cameră ADAS de recunoaștere a indicatoarelor, semnul de limită de viteză (IO 1116) este afișat lângă viteza curentă. Pentru tahograf, parsarea fișierelor .DDD și motorul de infracțiuni Reg. 561 sunt reale; descărcarea cardului de la distanță este însă mock (răspunde 501 pe ramura reală) și este marcată ca funcție parțială/roadmap.",
+  "hardwareDevices": [
+   "Teltonika familia FMB (ex. seria FMB)",
+   "Teltonika familia FMC — FMC130, FMC150 (autoturisme)",
+   "Teltonika FMC650 — camioane, FMS/J1939",
+   "Adaptor CAN LV-CAN200 — autoturisme (ex. Dacia Logan)",
+   "Interfață FMS/J1939 — camioane (ex. MAN TGS)",
+   "Senzori temperatură Dallas 1-wire (până la 4) și BLE — lanț de frig",
+   "Cameră ADAS de recunoaștere indicatoare — semn limită viteză (IO 1116)",
+   "Tahograf — parsare .DDD și motor Reg. 561 reale; descărcare card la distanță = mock/roadmap (501)"
+  ],
+  "dataProtocols": [
+   "Teltonika codec8e peste TCP — ingest de cadre brute pe portul container 5027",
+   "WebSocket pentru actualizări live push (event-driven), cu autentificare pe handshake din sesiune",
+   "Firebase Cloud Messaging (FCM) pentru notificări push în aplicația mobilă",
+   "Decodare CAN-bus cu două scheme comutabile per dispozitiv: LV-CAN200 (Standard, autoturisme) și FMS/J1939 (camioane), cu catalog IO editabil și mapări scale/offset per vehicul",
+   "Limite reale de drum din OpenStreetMap prin Overpass (cu inferență din tipul drumului, atribuire ODbL) — on-demand, cache 7 zile",
+   "Geocodare Nominatim (adrese din coordonate) și map-matching OSRM (ajustarea traseului pe drum) pentru replay"
+  ],
+  "security": [
+   "Izolare multi-tenant per companie — fiecare companie vede doar propriile date (scoping pe company_id)",
+   "RBAC — roluri și permisiuni granulare, plus audit log și jurnal de erori (error_log)",
+   "Chei API cu expirare (TTL); token-ul API mobil are valabilitate 90 de zile",
+   "Rate-limiting propriu la login — blocare 15 minute după prea multe încercări eșuate; rate-limit public pe endpoint-ul de erori client (20/min/IP)",
+   "Backup zilnic al datelor de business (33 de tabele): dump logic → gzip → criptare opțională AES-256-GCM → upload S3-compatibil (SigV4), off-site",
+   "Error tracking pe server și client, cu forward opțional către Sentry",
+   "Webhooks semnate HMAC-SHA256 (X-RaTracks-Signature) cu protecție anti-SSRF (blocare IP interne/private și pe redirect)",
+   "HTTPS în producție prin Cloudflare (ratrack.ro); în deployment self-hosted, HTTPS automat prin Caddy"
+  ],
+  "integrations": [
+   "REST API (JSON) cu chei API cu TTL, pentru integrare cu ERP/TMS și sisteme proprii",
+   "Webhooks de evenimente către URL-urile tale, semnate HMAC-SHA256 și cu protecție anti-SSRF",
+   "PrețCarburant.ro — media națională a prețului la combustibil, actualizată automat (2×/zi)",
+   "OpenStreetMap/Overpass (limite reale de drum, ODbL), Nominatim (geocodare) și OSRM (map-matching)",
+   "Notificări și rapoarte programate prin e-mail (SMTP) și Telegram",
+   "Firebase Cloud Messaging pentru push mobil",
+   "Anthropic Claude — Asistent AI, RA Insight (agent analitic) și agenții de monitorizare",
+   "Import card combustibil din CSV generic (reconciliere vs. creșterea de nivel din CAN)",
+   "Storage S3-compatibil pentru backup off-site (ex. Cloudflare R2)",
+   "Notă roadmap/demo: e-Transport ANAF, e-Toll și plăți automate Stripe NU sunt live — client OAuth ANAF dormant, e-Toll simulat, iar plata reală se înregistrează manual (recordPayment)"
+  ],
+  "reporting": [
+   "Motor de rapoarte cu 28 de tipuri, pe categorii: monitorizare (foaie de parcurs, staționări, situație zilnică, pontaj șofer, disponibilitate flotă, scadențe), consum, CAN, evenimente și siguranță",
+   "Rapoarte programate care se generează recurent și se trimit automat pe e-mail, cu istoric de rapoarte per utilizator",
+   "Export în PDF și Excel pentru orice raport",
+   "Consum/combustibil: statistici din contorul CAN cumulativ sau din scăderile reale de nivel, cu marcaj clar „senzor” vs „estimat”; rapoarte de alimentări & scurgeri, anomalii, costuri (cu preț real de piață) și emisii CO₂",
+   "HOS Reg. CE 561: raport condus/muncă/repaus cu conducere continuă maximă și încălcări (>4h30 continuu, >9h zilnic), din tahograf sau estimat din GPS, cu coloană „Sursă”",
+   "Lanț de frig: monitorizare temperatură din senzori Dallas 1-wire/BLE și CAN, cu alertă la temperatură motor mare",
+   "Comportament șofer (EcoDrive): scoring 0-100 și notă A-E pe accelerări/frânări/viraje bruște, viteză și ralanti, cu clasament vehicule și șoferi"
+  ],
+  "mobile": [
+   "Aplicație nativă Android (Capacitor/Preact, pachet ro.ratracks.app) — nu doar pagină web servită",
+   "Paritate operațională față de web: hartă live, trasee/istoric, rapoarte, alerte, fișă vehicul, admin, AI și card combustibil",
+   "Notificări push prin Firebase Cloud Messaging (FCM), cu detaliul alertelor de viteză pe hartă",
+   "Regulă de proiect: orice funcție nouă de pe web este adăugată și în aplicația nativă în aceeași iterație (paritate web ↔ Android impusă)",
+   "Multe ecrane folosesc un modul CRUD generic identic pe web și mobil, pentru consistență",
+   "Token API mobil cu valabilitate 90 de zile; PWA web cu service worker network-first pentru robustețe la rețea"
+  ],
+  "deployment": [
+   "Producție pe Railway, cu PostgreSQL + TimescaleDB gestionat",
+   "TimescaleDB: `positions` ca hypertable, compresie după 7 zile, retenție implicită 180 de zile (configurabilă)",
+   "Mod dual DB izolat în db.js: PostgreSQL/TimescaleDB în producție, PGlite pentru dev/demo local",
+   "Backup zilnic automat al datelor de business (33 tabele), gzip + criptare AES-256-GCM opțională, upload S3-compatibil (SigV4) off-site, cu restaurare",
+   "HTTPS în producție prin Cloudflare (ratrack.ro); ingestul trackerelor pe TCP dedicat (port container 5027)",
+   "Opțiune self-hosted pe VPS via docker-compose + Caddy (HTTPS automat), cu portul 5027 expus pentru dispozitivele Teltonika",
+   "Scară țintă proiectată: 30+ companii / ~2000 vehicule Teltonika",
+   "Observabilitate: error tracking server+client cu forward opțional către Sentry; verificarea versiunii live prin /api/health"
+  ],
+  "specTable": [
+   {
+    "k": "Actualizare poziții",
+    "v": "Timp real, push prin WebSocket (event-driven, nu polling)"
+   },
+   {
+    "k": "Protocol ingestie",
+    "v": "Teltonika codec8e peste TCP (port container 5027)"
+   },
+   {
+    "k": "Decodare date motor",
+    "v": "CAN-bus — LV-CAN200 (autoturisme) și FMS/J1939 (camioane), comutabil per dispozitiv"
+   },
+   {
+    "k": "Bază de date",
+    "v": "PostgreSQL + TimescaleDB (hypertable positions); mod dual cu PGlite pentru dev/demo"
+   },
+   {
+    "k": "Retenție poziții",
+    "v": "180 zile (compresie după 7 zile), configurabilă via POSITION_RETENTION_DAYS"
+   },
+   {
+    "k": "Rapoarte",
+    "v": "28 tipuri (monitorizare, consum, CAN, evenimente, siguranță), export PDF/Excel + programare pe e-mail"
+   },
+   {
+    "k": "Platforme",
+    "v": "Web PWA (SPA, service worker network-first) + Android nativ (Capacitor/Preact, ro.ratracks.app)"
+   },
+   {
+    "k": "Hardware suportat",
+    "v": "Teltonika FMB/FMC (FMC130/150), FMC650; LV-CAN200; FMS/J1939; Dallas 1-wire + BLE; cameră ADAS (IO 1116)"
+   },
+   {
+    "k": "Securitate",
+    "v": "Multi-tenant izolat, RBAC + audit, chei API cu TTL (mobil 90z), rate-limit login (15 min), webhooks HMAC-SHA256 anti-SSRF"
+   },
+   {
+    "k": "Integrare",
+    "v": "REST API (JSON) + webhooks semnate HMAC pentru ERP/TMS; PrețCarburant.ro; OSM/Overpass/Nominatim/OSRM; SMTP/Telegram/FCM"
+   },
+   {
+    "k": "Backup",
+    "v": "Zilnic, 33 tabele de business, gzip + AES-256-GCM opțional, upload S3-compatibil (SigV4) off-site"
+   },
+   {
+    "k": "Deployment & scară",
+    "v": "Railway (HTTPS via Cloudflare) sau self-hosted docker-compose + Caddy; țintă 30+ companii / ~2000 vehicule"
+   }
+  ]
+ }
+}

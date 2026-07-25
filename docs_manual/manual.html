@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RA Tracks — Manual & Documentație</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root{
+    --green:#16a34a; --green2:#3FE07D; --ink:#1a2235; --muted:#5b6b82; --line:#e2e8f0;
+    --dbg:#0f1524; --dpanel:#151c2e; --dborder:#26304a; --dtext:#e8edf7; --dmut:#8b96ad; --acc:#3FE07D; --red:#ff5c6c; --amber:#f59e0b; --blue:#38bdf8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  @page{ size:A4; margin:0; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:'Nunito',-apple-system,Arial,sans-serif; color:var(--ink); font-size:11.2pt; line-height:1.55; background:#fff; }
+  .page{ width:210mm; min-height:297mm; padding:18mm 17mm 20mm; page-break-after:always; position:relative; overflow:hidden; }
+  .page:last-child{ page-break-after:auto; }
+  /* running footer */
+  .foot{ position:absolute; left:17mm; right:17mm; bottom:10mm; display:flex; justify-content:space-between; align-items:center; font-size:8.5pt; color:var(--muted); border-top:1px solid var(--line); padding-top:5px; }
+  .foot .brand{ font-weight:800; color:var(--green); }
+  .brandmark{ font-weight:800; color:var(--green); font-size:15pt; letter-spacing:-.3px; }
+  .brandmark .t{ color:var(--ink); }
+
+  h1{ font-size:22pt; font-weight:800; color:var(--ink); margin:0 0 4px; letter-spacing:-.4px; }
+  h2{ font-size:16.5pt; font-weight:800; color:var(--green); margin:0 0 10px; padding-bottom:7px; border-bottom:3px solid var(--green2); display:flex; align-items:center; gap:9px; }
+  h2 .n{ background:var(--green); color:#fff; width:30px; height:30px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:13pt; flex:none; }
+  h3{ font-size:12.5pt; font-weight:800; color:var(--ink); margin:16px 0 6px; }
+  h4{ font-size:11pt; font-weight:800; color:var(--green); margin:12px 0 4px; text-transform:uppercase; letter-spacing:.4px; font-size:9.5pt; }
+  p{ margin:0 0 8px; }
+  ul,ol{ margin:0 0 9px 18px; } li{ margin:2px 0; }
+  b,strong{ font-weight:700; }
+  .lead{ font-size:12pt; color:var(--muted); }
+  .kbd{ background:#eef2f7; border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:9.5pt; font-weight:700; white-space:nowrap; }
+  .path{ color:var(--green); font-weight:700; }
+
+  /* callouts */
+  .cal{ border-radius:10px; padding:10px 13px; margin:10px 0; font-size:10.4pt; display:flex; gap:9px; align-items:flex-start; }
+  .cal i{ margin-top:2px; font-size:12pt; }
+  .tip{ background:#effaf1; border:1px solid #bfe6c9; } .tip i{ color:var(--green); }
+  .note{ background:#eef6fd; border:1px solid #c4e0f5; } .note i{ color:#2b8fd6; }
+  .warn{ background:#fef6ec; border:1px solid #f6ddb4; } .warn i{ color:#d98b17; }
+
+  /* steps */
+  .steps{ counter-reset:st; list-style:none; margin:8px 0 10px; padding:0; }
+  .steps li{ counter-increment:st; position:relative; padding:5px 0 5px 34px; margin:0; border-bottom:1px dashed var(--line); }
+  .steps li:last-child{ border-bottom:none; }
+  .steps li::before{ content:counter(st); position:absolute; left:0; top:5px; width:23px; height:23px; background:var(--green); color:#fff; border-radius:50%; font-weight:800; font-size:10pt; display:flex; align-items:center; justify-content:center; }
+
+  /* feature table */
+  table.ft{ width:100%; border-collapse:collapse; margin:8px 0 10px; font-size:10pt; }
+  table.ft th{ background:#f1f5f9; text-align:left; padding:6px 9px; font-size:8.6pt; text-transform:uppercase; color:#475569; letter-spacing:.3px; border-bottom:2px solid var(--line); }
+  table.ft td{ padding:6px 9px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.ft tr:nth-child(even) td{ background:#fafcfe; }
+  .pill{ display:inline-block; font-size:8.5pt; font-weight:700; padding:1px 7px; border-radius:999px; }
+  .pill.w{ background:#e6f0ff; color:#2563eb; } .pill.m{ background:#e9fbef; color:var(--green); } .pill.s{ background:#fdeaea; color:#c0392b; }
+
+  /* ── MOCKUP „screenshot" (temă dark ca aplicația) ── */
+  .shot{ margin:12px 0 6px; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(20,30,60,.16); border:1px solid #cdd6e4; }
+  .cap{ font-size:9pt; color:var(--muted); text-align:center; margin:-2px 0 12px; font-style:italic; }
+  .win{ background:var(--dbg); color:var(--dtext); font-size:9pt; }
+  .win .bar{ background:#0b1120; display:flex; align-items:center; gap:6px; padding:7px 11px; border-bottom:1px solid #1d2740; }
+  .win .bar .dot{ width:9px; height:9px; border-radius:50%; } .dot.r{background:#ff5f57} .dot.y{background:#febc2e} .dot.g{background:#28c840}
+  .win .bar .url{ margin-left:10px; background:#161f34; color:#93a1bd; border-radius:6px; padding:2px 10px; font-size:8pt; flex:1; }
+  .win .body{ padding:12px; }
+  .topbar{ display:flex; align-items:center; gap:12px; padding:6px 4px 12px; border-bottom:1px solid var(--dborder); margin-bottom:12px; }
+  .topbar .logo{ font-weight:800; color:var(--acc); font-size:12pt; } .topbar .logo .t{color:#fff}
+  .topbar .sp{ flex:1; } .topbar .ic{ color:var(--dmut); }
+  .d-accent{ color:var(--acc); } .d-mut{ color:var(--dmut); }
+  .d-card{ background:var(--dpanel); border:1px solid var(--dborder); border-radius:11px; padding:11px 13px; }
+  .d-kpi{ background:var(--dpanel); border:1px solid var(--dborder); border-left:3px solid var(--acc); border-radius:11px; padding:10px 13px; }
+  .d-kpi .v{ font-size:16pt; font-weight:800; color:var(--acc); } .d-kpi .l{ font-size:8.5pt; color:var(--dmut); }
+  .d-btn{ background:var(--acc); color:#06210f; font-weight:800; border-radius:8px; padding:5px 12px; font-size:9pt; display:inline-block; }
+  .d-btn.ghost{ background:transparent; border:1px solid var(--dborder); color:var(--dtext); }
+  .grid{ display:grid; gap:10px; }
+  .mk-table{ width:100%; border-collapse:collapse; font-size:8.4pt; }
+  .mk-table th{ text-align:left; color:var(--dmut); font-weight:700; padding:5px 8px; border-bottom:1px solid var(--dborder); }
+  .mk-table td{ padding:5px 8px; border-bottom:1px solid var(--dborder); color:var(--dtext); }
+  /* map mock */
+  .map{ height:250px; background:
+      linear-gradient(#1b2740,#1b2740) padding-box,
+      repeating-linear-gradient(0deg, #24324f 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(90deg, #24324f 0 1px, transparent 1px 26px),
+      #16223b; position:relative; border-radius:8px; overflow:hidden; }
+  .road{ position:absolute; background:#33456b; border-radius:6px; }
+  .pin{ position:absolute; width:16px; height:16px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); box-shadow:0 2px 4px rgba(0,0,0,.4); border:2px solid #0b1120; }
+  .pin.g{ background:var(--acc); } .pin.y{ background:var(--amber); } .pin.gr{ background:#7b8aa5; } .pin.r{ background:var(--red); }
+  .popup{ position:absolute; background:#0d1424; border:1px solid var(--dborder); border-radius:8px; padding:8px 10px; font-size:8pt; box-shadow:0 6px 18px rgba(0,0,0,.5); }
+  /* phone frame */
+  .phone{ width:230px; background:#0b0f1a; border:8px solid #232a3b; border-radius:26px; overflow:hidden; box-shadow:0 10px 30px rgba(20,30,60,.22); }
+  .phone .scr{ background:var(--dbg); color:var(--dtext); }
+  .phone .ph-top{ background:var(--dpanel); padding:9px 12px; font-weight:800; font-size:9.5pt; border-bottom:1px solid var(--dborder); display:flex; align-items:center; gap:8px; }
+  .phone .ph-tab{ display:flex; border-top:1px solid var(--dborder); }
+  .phone .ph-tab div{ flex:1; text-align:center; padding:7px 0; font-size:7.5pt; color:var(--dmut); }
+  .phone .ph-tab div.on{ color:var(--acc); }
+  .cols2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+  .toc a{ color:var(--ink); text-decoration:none; }
+  .toc .row{ display:flex; align-items:baseline; gap:8px; padding:3.5px 0; border-bottom:1px dotted #dbe3ee; font-size:10.6pt; }
+  .toc .row .num{ color:var(--green); font-weight:800; width:26px; }
+  .toc .row .dots{ flex:1; border-bottom:1px dotted #cbd5e1; margin:0 4px 3px; }
+  .toc .grp{ font-size:9pt; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:14px 0 4px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ COPERTĂ ═══════════ -->
+<section class="page" style="padding:0;display:flex;flex-direction:column;">
+  <div style="flex:1;background:linear-gradient(160deg,#0f1524 0%,#122b1f 60%,#0f2a1c 100%);color:#fff;padding:34mm 20mm 0;position:relative;">
+    <div style="font-size:26pt;font-weight:800;letter-spacing:-.5px;"><span style="color:var(--acc)">RA</span> Tracks</div>
+    <div style="width:64px;height:4px;background:var(--acc);border-radius:3px;margin:14px 0 40mm;"></div>
+    <div style="font-size:34pt;font-weight:800;line-height:1.1;letter-spacing:-1px;">Manual de utilizare<br>&amp; Documentație</div>
+    <div style="font-size:14pt;color:#a9b6cf;margin-top:16px;max-width:130mm;">Platforma de monitorizare a flotei GPS — aplicația <b style="color:#fff">Web</b> (ratrack.ro) și aplicația <b style="color:#fff">mobilă Android</b>.</div>
+    <div style="position:absolute;bottom:26mm;left:20mm;right:20mm;display:flex;justify-content:space-between;align-items:flex-end;color:#8fa0bd;font-size:10.5pt;">
+      <div>
+        <div style="display:flex;gap:22px;margin-bottom:10px;">
+          <span><i class="fas fa-map-location-dot" style="color:var(--acc)"></i> Localizare live</span>
+          <span><i class="fas fa-file-lines" style="color:var(--acc)"></i> Rapoarte</span>
+          <span><i class="fas fa-robot" style="color:var(--acc)"></i> Agenți AI</span>
+          <span><i class="fas fa-mobile-screen" style="color:var(--acc)"></i> APK</span>
+        </div>
+        <div>ratrack.ro · Ediția 2026</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CUPRINS ═══════════ -->
+<section class="page">
+  <h1>Cuprins</h1>
+  <div class="toc">
+    <div class="grp">Partea I — Manual de utilizare</div>
+    <div class="row"><span class="num">1</span> Introducere &amp; primii pași <span class="dots"></span></div>
+    <div class="row"><span class="num">2</span> Harta &amp; Localizare live <span class="dots"></span></div>
+    <div class="row"><span class="num">3</span> Fișa vehiculului <span class="dots"></span></div>
+    <div class="row"><span class="num">4</span> Trasee (replay) <span class="dots"></span></div>
+    <div class="row"><span class="num">5</span> Rapoarte <span class="dots"></span></div>
+    <div class="row"><span class="num">6</span> Statistici (Dashboard flotă) <span class="dots"></span></div>
+    <div class="row"><span class="num">7</span> Statistici consum <span class="dots"></span></div>
+    <div class="row"><span class="num">8</span> Preț combustibil <span class="dots"></span></div>
+    <div class="row"><span class="num">9</span> Hotspot &amp; Rutare <span class="dots"></span></div>
+    <div class="row"><span class="num">10</span> Notificări &amp; Alerte <span class="dots"></span></div>
+    <div class="row"><span class="num">11</span> Agenți AI &amp; Asistent AI <span class="dots"></span></div>
+    <div class="row"><span class="num">12</span> Module: e-Transport, E-Toll, Tahograf <span class="dots"></span></div>
+    <div class="row"><span class="num">13</span> Aplicația mobilă (APK) <span class="dots"></span></div>
+    <div class="row"><span class="num">14</span> Setări <span class="dots"></span></div>
+    <div class="grp">Partea II — Anexă tehnică &amp; administrare</div>
+    <div class="row"><span class="num">A1</span> Arhitectura platformei <span class="dots"></span></div>
+    <div class="row"><span class="num">A2</span> Roluri, permisiuni &amp; izolarea pe companie <span class="dots"></span></div>
+    <div class="row"><span class="num">A3</span> Administrare (companii, flotă, utilizatori) <span class="dots"></span></div>
+    <div class="row"><span class="num">A4</span> Panouri super-admin (platformă, costuri, ofertare) <span class="dots"></span></div>
+    <div class="row"><span class="num">A5</span> Date &amp; senzori (GPS/CAN/FMS, combustibil) <span class="dots"></span></div>
+    <div class="row"><span class="num">A6</span> Integrări &amp; API <span class="dots"></span></div>
+    <div class="row"><span class="num">A7</span> Instalare APK &amp; publicare (deploy) <span class="dots"></span></div>
+  </div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>Manual &amp; Documentație</span><span>2</span></div>
+</section>
+
+<!-- ═══════════ 1. INTRODUCERE ═══════════ -->
+<section class="page">
+  <h2><span class="n">1</span> Introducere &amp; primii pași</h2>
+  <p class="lead">RA Tracks este o platformă de monitorizare a flotei prin GPS: vezi pe hartă în timp real unde sunt vehiculele, generezi rapoarte (foaie de parcurs, consum, costuri), primești alerte automate și analizezi activitatea flotei — din browser și din aplicația mobilă Android.</p>
+
+  <h3>Cele două aplicații</h3>
+  <table class="ft">
+    <tr><th style="width:26%">Aplicație</th><th>Cum o accesezi</th><th>Pentru ce</th></tr>
+    <tr><td><b>Web</b> <span class="pill w">browser</span></td><td>Deschizi <span class="path">ratrack.ro</span> în Chrome/Edge/Firefox</td><td>Toate funcțiile: hartă, rapoarte, administrare, costuri, ofertare.</td></tr>
+    <tr><td><b>Mobilă</b> <span class="pill m">Android</span></td><td>Instalezi aplicația (APK) pe telefon</td><td>Localizare, fișă vehicul, statistici, notificări push, trasee, rapoarte — în teren.</td></tr>
+  </table>
+
+  <h3>Autentificare</h3>
+  <ol class="steps">
+    <li>Deschizi <span class="path">ratrack.ro</span> (web) sau aplicația (telefon).</li>
+    <li>Introduci <b>utilizatorul</b> și <b>parola</b> primite de la administrator.</li>
+    <li>Apeși <b>Autentificare</b>. Ești dus direct pe hartă, cu vehiculele companiei tale.</li>
+  </ol>
+  <div class="cal note"><i class="fas fa-circle-info"></i><div>Fiecare cont vede <b>doar vehiculele companiei sale</b>. Datele altor companii nu sunt niciodată vizibile (izolare strictă pe companie — vezi Anexa A2).</div></div>
+
+  <h3>Interfața web — de unde pornește totul</h3>
+  <div class="shot"><div class="win">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">ratrack.ro</span></div>
+    <div class="body" style="padding:0;">
+      <div style="display:flex;">
+        <div style="width:150px;background:#0c1220;border-right:1px solid var(--dborder);padding:10px 8px;font-size:8.3pt;">
+          <div style="font-weight:800;color:var(--acc);font-size:11pt;margin:2px 4px 12px;">RA <span style="color:#fff">Tracks</span></div>
+          <div style="padding:6px 8px;border-radius:7px;background:rgba(63,224,125,.14);color:var(--acc);font-weight:700;margin-bottom:3px;"><i class="fas fa-map-location-dot"></i> Localizare</div>
+          <div style="padding:6px 8px;color:var(--dmut);"><i class="fas fa-route"></i> Traseu</div>
+          <div style="padding:6px 8px;color:var(--dmut);"><i class="fas fa-chart-simple"></i> Analize ▾</div>
+          <div style="padding:6px 8px;color:var(--dmut);"><i class="fas fa-file-lines"></i> Rapoarte</div>
+          <div style="padding:6px 8px;color:var(--dmut);"><i class="fas fa-coins"></i> Preț combustibil</div>
+          <div style="padding:6px 8px;color:var(--dmut);"><i class="fas fa-gears"></i> Administrare ▾</div>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--dborder);">
+            <input style="flex:1;background:#0d1424;border:1px solid var(--dborder);border-radius:7px;padding:4px 9px;color:var(--dmut);font-size:8pt;" value="🔎 Caută vehicul…" disabled>
+            <span class="d-mut"><i class="fas fa-headset"></i></span><span class="d-mut"><i class="fas fa-moon"></i></span>
+            <span style="position:relative;"><i class="fas fa-bell d-mut"></i><span style="position:absolute;top:-5px;right:-6px;background:var(--red);color:#fff;font-size:6.5pt;font-weight:800;border-radius:8px;padding:0 4px;">3</span></span>
+            <span style="font-size:8pt;"><b>admin</b><br><span class="d-mut" style="font-size:7pt;">superadmin</span></span>
+          </div>
+          <div class="map" style="height:210px;border-radius:0;">
+            <div class="road" style="left:0;top:70px;width:100%;height:9px;"></div>
+            <div class="road" style="left:120px;top:0;width:9px;height:100%;"></div>
+            <div class="pin g" style="left:90px;top:60px;"></div>
+            <div class="pin y" style="left:200px;top:110px;"></div>
+            <div class="pin gr" style="left:300px;top:70px;"></div>
+            <div class="popup" style="left:110px;top:78px;"><b>Dacia Logan 3</b><br><span class="d-accent">În mișcare · 54 km/h</span><br><span class="d-mut">Str. Pantelimon</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="cap">Interfața web: meniu (stânga), bara de sus (căutare, notificări 🔔, cont), harta live cu vehicule.</div>
+
+  <ul>
+    <li><b>Meniu (stânga):</b> comuți între secțiuni — Localizare, Traseu, Analize, Rapoarte, Preț combustibil, Administrare.</li>
+    <li><b>Bara de sus:</b> căutare vehicul, temă (zi/noapte 🌙), <b>notificări 🔔</b> (cu numărul de necitite) și contul tău.</li>
+    <li><b>Harta:</b> centrul aplicației — fiecare vehicul e un marcaj colorat (vezi capitolul 2).</li>
+  </ul>
+  <div class="foot"><span class="brand">RA Tracks</span><span>1 · Introducere</span><span>3</span></div>
+</section>
+
+<!-- ═══════════ 2. HARTA & LOCALIZARE ═══════════ -->
+<section class="page">
+  <h2><span class="n">2</span> Harta &amp; Localizare live</h2>
+  <p>Ecranul principal. Fiecare vehicul apare ca un <b>marcaj colorat</b> care se actualizează automat (live). Culoarea îți spune din prima starea vehiculului:</p>
+  <table class="ft">
+    <tr><th style="width:22%">Culoare</th><th>Stare</th><th>Ce înseamnă</th></tr>
+    <tr><td><span class="pin g" style="position:static;display:inline-block;transform:rotate(-45deg)"></span> &nbsp;Verde</td><td><b>În mișcare</b></td><td>Vehiculul rulează (viteză &gt; 3 km/h), semnal recent.</td></tr>
+    <tr><td><span class="pin y" style="position:static;display:inline-block;transform:rotate(-45deg)"></span> &nbsp;Galben</td><td><b>Staționat</b></td><td>Oprit cu contactul pornit, sau oprit recent (memorie ~2,5 min pentru trafic bară-la-bară).</td></tr>
+    <tr><td><span class="pin gr" style="position:static;display:inline-block;transform:rotate(-45deg)"></span> &nbsp;Gri</td><td><b>Oprit / Offline</b></td><td>Contact oprit, sau nu a mai transmis de peste pragul de offline (implicit 65 min).</td></tr>
+  </table>
+  <div class="cal tip"><i class="fas fa-lightbulb"></i><div>Un vehicul „bară-la-bară" în trafic rămâne <b>verde/galben</b>, nu „staționat" — logica ține cont de mișcarea recentă, nu doar de viteza instantanee.</div></div>
+
+  <h3>Ce poți face pe hartă</h3>
+  <ul>
+    <li><b>Lista de vehicule</b> (lateral): fiecare cu nume, stare și ultima poziție. Clic pe un vehicul îl <b>centrează pe hartă</b> și îi deschide fișa.</li>
+    <li><b>Popup pe marcaj:</b> clic pe un marcaj → un balon cu numele, starea, viteza și adresa curentă.</li>
+    <li><b>Urmărire (follow):</b> harta poate urmări vehiculul selectat, cu zoom automat.</li>
+    <li><b>Căutare:</b> scrie numele/numărul în bara de sus ca să găsești rapid un vehicul.</li>
+  </ul>
+  <div class="cal note"><i class="fas fa-circle-info"></i><div>Datele vin de la trackerul montat pe vehicul (Teltonika), prin GPS + CAN. Frecvența de actualizare depinde de configurația trackerului.</div></div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>2 · Harta &amp; Localizare</span><span>4</span></div>
+</section>
+
+<!-- ═══════════ 3. FIȘA VEHICULULUI ═══════════ -->
+<section class="page">
+  <h2><span class="n">3</span> Fișa vehiculului</h2>
+  <p>Clic pe un vehicul (din listă sau de pe hartă) → se deschide <b>fișa</b>, cu tot ce trebuie să știi despre el.</p>
+  <div class="cols2">
+    <div>
+      <h3>Ce conține</h3>
+      <ul>
+        <li><b>Identificare:</b> nume, număr, marcă/model, IMEI dispozitiv, șofer alocat.</li>
+        <li><b>Stare live:</b> în mișcare/staționat/oprit, viteză, poziție, adresă.</li>
+        <li><b>Statistici azi:</b> km parcurși, viteză medie/maximă, opriri, ore motor, consum.</li>
+        <li><b>Combustibil:</b> nivel (litri și %, dacă e setată capacitatea rezervorului).</li>
+        <li><b>Date CAN/IO:</b> odometru, RPM, temperaturi, tensiune baterie (dacă vehiculul le trimite).</li>
+        <li><b>Documente &amp; mentenanță:</b> ITP, RCA, revizii — cu alerte la expirare.</li>
+      </ul>
+      <h4>Acțiuni rapide</h4>
+      <p><span class="d-btn" style="background:#0e1320;border:1px solid var(--dborder);color:var(--dtext)"><i class="fas fa-route"></i> Traseu</span> &nbsp; <span class="d-btn" style="background:#0e1320;border:1px solid var(--dborder);color:var(--dtext)"><i class="fas fa-file-alt"></i> Raport</span></p>
+    </div>
+    <div>
+      <div class="shot"><div class="win"><div class="body">
+        <div style="font-weight:800;font-size:11pt;">Dacia Logan 3 <span class="d-mut" style="font-weight:500;font-size:8pt;">· B 00 ABC</span></div>
+        <div style="margin:6px 0 10px;"><span style="background:rgba(63,224,125,.16);color:var(--acc);font-size:8pt;font-weight:700;padding:2px 9px;border-radius:999px;">● În mișcare · 54 km/h</span></div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;">
+          <div class="d-kpi"><div class="v" style="font-size:13pt;">23.2</div><div class="l">km azi</div></div>
+          <div class="d-kpi"><div class="v" style="font-size:13pt;">71</div><div class="l">viteză max</div></div>
+          <div class="d-kpi"><div class="v" style="font-size:13pt;">7</div><div class="l">opriri</div></div>
+          <div class="d-kpi"><div class="v" style="font-size:13pt;">2.1 h</div><div class="l">ore motor</div></div>
+        </div>
+        <div class="d-card" style="margin-top:10px;font-size:8.5pt;">
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--dborder);"><span class="d-mut">Combustibil</span><span>38 L · 76%</span></div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--dborder);"><span class="d-mut">Odometru</span><span>402 757 km</span></div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;"><span class="d-mut">Șofer</span><span>Ion Popescu</span></div>
+        </div>
+      </div></div></div>
+      <div class="cap">Fișa vehiculului — stare live, statistici azi, combustibil.</div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>3 · Fișa vehiculului</span><span>5</span></div>
+</section>
+
+<!-- ═══════════ 4. TRASEE ═══════════ -->
+<section class="page">
+  <h2><span class="n">4</span> Trasee (replay)</h2>
+  <p>„Rejoacă" pe hartă drumul parcurs de un vehicul într-un interval ales — util pentru verificări, contestații, dovezi.</p>
+  <ol class="steps">
+    <li>Meniu → <b>Traseu</b> (web) sau, pe telefon, din fișa vehiculului → <b>Traseu</b>.</li>
+    <li>Alege <b>vehiculul</b> și <b>intervalul</b> (De la – Până la).</li>
+    <li>Traseul se desenează pe hartă, <b>colorat după viteză</b> (verde = lent, roșu = rapid).</li>
+    <li>Poți derula (play) și vedea unde a fost la fiecare moment.</li>
+  </ol>
+  <div class="cal tip"><i class="fas fa-gauge-high"></i><div><b>Limite de drum (OSM):</b> la alertele de depășire viteză, traseul poate afișa limita legală reală a drumului (din OpenStreetMap) în punctul respectiv, ca să vezi cu cât s-a depășit.</div></div>
+  <h3>La ce ajută</h3>
+  <ul>
+    <li>Verifici dacă un șofer a respectat ruta stabilită.</li>
+    <li>Vezi unde și cât a staționat.</li>
+    <li>Ai dovada exactă a poziției la o anumită oră.</li>
+  </ul>
+  <div class="foot"><span class="brand">RA Tracks</span><span>4 · Trasee</span><span>6</span></div>
+</section>
+
+<!-- ═══════════ 5. RAPOARTE ═══════════ -->
+<section class="page">
+  <h2><span class="n">5</span> Rapoarte</h2>
+  <p>Inima analizei. Generezi rapoarte pe orice perioadă și orice vehicul (sau toată flota), le vezi în aplicație și le exporți în <b>Excel</b> sau <b>PDF</b>.</p>
+  <h3>Tipuri de rapoarte</h3>
+  <table class="ft">
+    <tr><th style="width:30%">Raport</th><th>Ce arată</th></tr>
+    <tr><td><b>Foaie de parcurs</b></td><td>Fiecare cursă: plecare/sosire (oră + adresă), durată, distanță, viteză medie/max.</td></tr>
+    <tr><td><b>Consum carburant</b></td><td>Consum pe perioadă (măsurat din senzor/CAN sau estimat), litri/100 km.</td></tr>
+    <tr><td><b>Costuri combustibil</b></td><td>Costul consumului × prețul carburantului (vezi cap. 8).</td></tr>
+    <tr><td><b>Opriri &amp; staționări</b></td><td>Unde și cât a staționat fiecare vehicul.</td></tr>
+    <tr><td><b>Depășiri de viteză</b></td><td>Evenimentele de depășire, cu viteza și limita.</td></tr>
+    <tr><td><b>Alimentări &amp; scurgeri</b></td><td>Creșteri (alimentări) și scăderi suspecte de combustibil (posibil furt).</td></tr>
+    <tr><td><b>Analitic / Zone (geofence)</b></td><td>Activitate agregată, vizite în zone definite.</td></tr>
+  </table>
+
+  <h3>Cum generezi un raport</h3>
+  <ol class="steps">
+    <li>Meniu → <b>Rapoarte</b> → alege tipul din catalog (ex. „Foaie de parcurs").</li>
+    <li>Alege <b>vehiculul</b> (sau „Toată flota") și <b>perioada</b> (Azi/Ieri/7 zile/30 zile sau interval custom).</li>
+    <li>Apeși <b>Generează</b>.</li>
+  </ol>
+
+  <h4>Generare în fundal + notificare</h4>
+  <p>Rapoartele mari se generează pe server, în fundal. La apăsare apare un <b>badge</b> („Se generează raportul…") cu opțiunea <b>„Lasă în fundal"</b> — poți continua orice altceva. Când e gata, primești o <b>notificare 🔔</b> (și push pe telefon), iar badge-ul devine „Raport generat ✓ · Vezi raportul".</p>
+  <div class="shot" style="max-width:320px;"><div class="win"><div class="body" style="padding:14px;">
+    <div style="display:flex;align-items:center;gap:11px;"><i class="fas fa-circle-check" style="color:var(--acc);font-size:18pt;"></i><div><div style="font-weight:800;font-size:9.5pt;">Raport generat ✓</div><div class="d-mut" style="font-size:8pt;">Foaie de parcurs — gata în Istoric rapoarte</div></div></div>
+    <div style="text-align:right;margin-top:10px;"><span class="d-btn ghost" style="font-size:8pt;">Închide</span> <span class="d-btn" style="font-size:8pt;"><i class="fas fa-eye"></i> Vezi raportul</span></div>
+  </div></div></div>
+  <div class="cap">Badge-ul de finalizare (dreapta-jos). Dispare singur după câteva secunde; rămâne în clopoțel.</div>
+
+  <h4>Modalul cu raportul</h4>
+  <p>Clic pe notificarea de raport (sau „Vezi raportul") deschide raportul <b>complet</b>, structurat clar: <b>carduri de sinteză</b> sus (ex. Curse, Distanță totală, Durată totală), apoi <b>secțiuni pe vehicul</b>, fiecare cu tabelul curselor. Butonul <b>„Rapoarte"</b> din notificare te duce în <b>Istoric rapoarte</b> (lista tuturor rapoartelor generate).</p>
+  <div class="shot"><div class="win"><div class="body">
+    <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--dborder);padding-bottom:8px;margin-bottom:10px;"><i class="fas fa-file-lines d-accent"></i><b style="font-size:9.5pt;">Foaie de parcurs · 04.07.2026</b></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;">
+      <div class="d-kpi"><div class="v" style="font-size:13pt;">18</div><div class="l">Curse</div></div>
+      <div class="d-kpi"><div class="v" style="font-size:13pt;">142.6</div><div class="l">Distanță totală (km)</div></div>
+      <div class="d-kpi"><div class="v" style="font-size:13pt;">5h 47m</div><div class="l">Durată totală</div></div>
+    </div>
+    <div class="d-card" style="padding:0;overflow:hidden;">
+      <div style="background:#0e1320;padding:7px 12px;border-bottom:1px solid var(--dborder);"><i class="fas fa-car d-accent"></i> <b style="font-size:9pt;">VW CADDY (B 268 ROY)</b> <span class="d-mut" style="font-size:7.5pt;float:right;">Km totali: 142.6 · Curse: 8</span></div>
+      <table class="mk-table"><tr><th>Plecare</th><th>Sosire</th><th>Durată</th><th style="text-align:right">Distanță</th></tr>
+        <tr><td>10:05 · Migdalilor</td><td>10:21 · Fundeni 217</td><td>16m</td><td style="text-align:right">6.16</td></tr>
+        <tr><td>10:32 · Fundeni 217</td><td>11:05 · Lămâiței</td><td>33m</td><td style="text-align:right">12.06</td></tr>
+        <tr><td>12:37 · Migdalilor</td><td>13:00 · Migdalilor</td><td>22m</td><td style="text-align:right">2.86</td></tr>
+      </table>
+    </div>
+    <div style="text-align:right;margin-top:10px;"><span class="d-btn ghost" style="font-size:8pt;"><i class="fas fa-file-excel"></i> Excel</span> <span class="d-btn ghost" style="font-size:8pt;"><i class="fas fa-file-pdf"></i> PDF</span> <span class="d-btn" style="font-size:8pt;"><i class="fas fa-arrow-right"></i> Deschide în Rapoarte</span></div>
+  </div></div></div>
+  <div class="cap">Modalul de raport: sinteză (KPI) + curse grupate pe vehicul + export.</div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>5 · Rapoarte</span><span>7</span></div>
+</section>
+
+<!-- ═══════════ 6. STATISTICI / DASHBOARD ═══════════ -->
+<section class="page">
+  <h2><span class="n">6</span> Statistici (Dashboard flotă)</h2>
+  <p>O privire de ansamblu asupra întregii flote: câte vehicule sunt online, în mișcare, oprite, câți km și cât combustibil azi, câte alerte.</p>
+  <div class="shot"><div class="win"><div class="body">
+    <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px;">
+      <div class="d-kpi"><div class="v">40</div><div class="l">Vehicule</div></div>
+      <div class="d-kpi"><div class="v">1 284</div><div class="l">Km azi</div></div>
+      <div class="d-kpi"><div class="v">176 L</div><div class="l">Consum azi</div></div>
+      <div class="d-kpi" style="border-left-color:var(--amber)"><div class="v" style="color:var(--amber)">3</div><div class="l">Alerte</div></div>
+    </div>
+    <div style="height:22px;border-radius:6px;overflow:hidden;display:flex;font-size:7pt;font-weight:700;color:#06210f;margin-bottom:4px;">
+      <div style="width:45%;background:var(--acc);display:flex;align-items:center;justify-content:center;">18 în mișcare</div>
+      <div style="width:20%;background:var(--amber);display:flex;align-items:center;justify-content:center;">8 staționat</div>
+      <div style="width:20%;background:#7b8aa5;display:flex;align-items:center;justify-content:center;color:#fff;">8 oprit</div>
+      <div style="width:15%;background:#3b4560;color:#fff;display:flex;align-items:center;justify-content:center;">6 offline</div>
+    </div>
+    <div class="d-mut" style="font-size:8pt;margin-bottom:12px;">Stare flotă acum · Ore motor azi: 61h 24m</div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;">
+      <div class="d-card"><div style="font-size:8pt;font-weight:700;color:var(--acc);margin-bottom:6px;">TOP KM AZI</div>
+        <div style="font-size:8pt;margin-bottom:5px;">Trans Rapid 1 <div style="height:6px;background:var(--dborder);border-radius:3px;margin-top:2px;"><div style="width:90%;height:100%;background:var(--acc);border-radius:3px;"></div></div></div>
+        <div style="font-size:8pt;">Dacia Logan 3 <div style="height:6px;background:var(--dborder);border-radius:3px;margin-top:2px;"><div style="width:62%;height:100%;background:var(--acc);border-radius:3px;"></div></div></div>
+      </div>
+      <div class="d-card"><div style="font-size:8pt;font-weight:700;color:var(--acc);margin-bottom:6px;">TOP CONSUM AZI</div>
+        <div style="font-size:8pt;margin-bottom:5px;">VW Caddy <div style="height:6px;background:var(--dborder);border-radius:3px;margin-top:2px;"><div style="width:80%;height:100%;background:var(--amber);border-radius:3px;"></div></div></div>
+        <div style="font-size:8pt;">MAN TGX <div style="height:6px;background:var(--dborder);border-radius:3px;margin-top:2px;"><div style="width:55%;height:100%;background:var(--amber);border-radius:3px;"></div></div></div>
+      </div>
+    </div>
+  </div></div></div>
+  <div class="cap">Dashboard flotă: KPI-uri, bara de stare (verde/galben/gri/offline) și topuri.</div>
+  <div class="cal note"><i class="fas fa-circle-info"></i><div>Orele de motor și consumul apar în format zecimal (ex. „11.0 h", „176 L") pentru citire rapidă.</div></div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>6 · Statistici</span><span>8</span></div>
+</section>
+
+<!-- ═══════════ 7. STATISTICI CONSUM ═══════════ -->
+<section class="page">
+  <h2><span class="n">7</span> Statistici consum</h2>
+  <p>Analiză dedicată consumului de combustibil pe flotă: total, tendință în timp, top consumatori și defalcare pe vehicul.</p>
+  <ul>
+    <li><b>Consum agregat</b> pe perioada aleasă (azi/7z/30z).</li>
+    <li><b>Grafic de tendință</b> — cum a variat consumul zilnic.</li>
+    <li><b>Top consumatori</b> — care vehicule consumă cel mai mult.</li>
+    <li><b>Per vehicul</b> — tabel cu km, litri, L/100 km.</li>
+  </ul>
+  <div class="cal note"><i class="fas fa-gas-pump"></i><div><b>Măsurat vs. estimat:</b> vehiculele cu senzor de combustibil / CAN au consum <b>măsurat</b> (exact). Cele fără senzor (ex. unele Logan) primesc un consum <b>estimat</b> din km × consum configurat, marcat clar ca „estimat". Vezi Anexa A5.</div></div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>7 · Statistici consum</span><span>9</span></div>
+</section>
+
+<!-- ═══════════ 8. PREȚ COMBUSTIBIL ═══════════ -->
+<section class="page">
+  <h2><span class="n">8</span> Preț combustibil</h2>
+  <p>Vezi prețul curent al combustibilului și evoluția lui în timp — folosit automat la calculul costurilor în rapoarte.</p>
+  <ul>
+    <li><b>Prețuri curente</b> pe tip (motorină, benzină, GPL) — media națională (sursa <b>PretCarburant.ro</b>), sau <b>prețul companiei</b> dacă l-ai setat tu în Setări.</li>
+    <li><b>Grafic de evoluție</b> pe 30 / 90 zile / 1 an — cu axă de timp reală (spațierea reflectă timpul).</li>
+    <li><b>Prețul companiei</b> apare ca <b>linie punctată</b> peste trendul național — îl compari direct.</li>
+  </ul>
+  <div class="shot"><div class="win"><div class="body">
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px;">
+      <div class="d-kpi" style="border-left-color:var(--amber)"><div class="v" style="color:var(--amber)">9.48</div><div class="l">Motorină · lei/L</div></div>
+      <div class="d-kpi"><div class="v">8.65</div><div class="l">Benzină · lei/L</div></div>
+      <div class="d-kpi" style="border-left-color:var(--blue)"><div class="v" style="color:var(--blue)">4.55</div><div class="l">GPL · lei/L</div></div>
+    </div>
+    <svg viewBox="0 0 520 150" style="width:100%;height:130px;background:#0e1320;border-radius:8px;">
+      <line x1="30" y1="120" x2="500" y2="120" stroke="#26304a"/><line x1="30" y1="80" x2="500" y2="80" stroke="#1c2540"/><line x1="30" y1="40" x2="500" y2="40" stroke="#1c2540"/>
+      <polyline points="35,95 130,45 220,55 330,60 400,62 470,61" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+      <polyline points="35,100 130,70 220,58 330,80 400,82 470,82" fill="none" stroke="#3FE07D" stroke-width="2.5"/>
+      <polyline points="35,118 130,112 220,108 330,108 400,108 470,108" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+      <line x1="35" y1="52" x2="470" y2="52" stroke="#f59e0b" stroke-width="1.3" stroke-dasharray="5,4"/>
+      <text x="35" y="140" fill="#8b96ad" font-size="8">iun. ’25</text><text x="220" y="140" fill="#8b96ad" font-size="8">mar. ’26</text><text x="440" y="140" fill="#8b96ad" font-size="8">iul. ’26</text>
+    </svg>
+    <div class="d-mut" style="font-size:7.5pt;text-align:center;margin-top:5px;">■ Motorină ■ Benzină ■ GPL · - - preț companie</div>
+  </div></div></div>
+  <div class="cap">Preț combustibil: prețuri curente + evoluția reală pe ultimul an.</div>
+  <div class="cal tip"><i class="fas fa-lightbulb"></i><div>Lanțul de preț folosit în rapoarte: <b>preț pe vehicul → prețul companiei (Setări) → media națională → 7.5 lei</b> (ultima rezervă). Setezi prețul companiei în <span class="path">Setări → Prețuri combustibil</span>.</div></div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>8 · Preț combustibil</span><span>10</span></div>
+</section>
+
+<!-- ═══════════ 9. HOTSPOT ═══════════ -->
+<section class="page">
+  <h2><span class="n">9</span> Hotspot &amp; Rutare</h2>
+  <p>Vezi pe o <b>hartă termică (heatmap)</b> unde staționează sau circulă cel mai des flota — util pentru optimizarea rutelor și identificarea punctelor de interes.</p>
+  <ol class="steps">
+    <li>Meniu → <b>Hotspot &amp; Rutare</b>.</li>
+    <li>Alege <b>modul</b>: „Opriri" (unde staționează) sau „Poziții" (densitate de trecere).</li>
+    <li>Alege <b>vehiculul</b> (sau toată flota) și <b>perioada</b>.</li>
+    <li>Zonele <b>roșii</b> = frecvență mare; verzi = frecvență mică.</li>
+  </ol>
+  <div class="cols2">
+    <div>
+      <h4>Analiză zonă</h4>
+      <p>Poți <b>desena o zonă</b> pe hartă (poligon sau cerc) și afla câte vehicule au intrat, de câte ori și cât timp au petrecut acolo — util pentru puncte de lucru, clienți, depozite.</p>
+      <div class="cal note"><i class="fas fa-draw-polygon"></i><div>Apeși „Desenează zonă", atingi harta pentru colțuri (poligon) sau centru + rază (cerc), apoi „Analizează".</div></div>
+    </div>
+    <div>
+      <div class="shot"><div class="win"><div class="body" style="padding:0;">
+        <div class="map" style="height:180px;border-radius:0;">
+          <div style="position:absolute;left:80px;top:40px;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,#ef4444 0%,#f59e0b 40%,transparent 72%);"></div>
+          <div style="position:absolute;left:200px;top:90px;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,#f59e0b 0%,#3FE07D 55%,transparent 78%);"></div>
+          <div style="position:absolute;left:150px;top:30px;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,#3FE07D 0%,transparent 75%);"></div>
+        </div>
+      </div></div></div>
+      <div class="cap">Heatmap: zone roșii = staționări/treceri frecvente.</div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>9 · Hotspot</span><span>11</span></div>
+</section>
+
+<!-- ═══════════ 10. NOTIFICĂRI ═══════════ -->
+<section class="page">
+  <h2><span class="n">10</span> Notificări &amp; Alerte</h2>
+  <p>Aplicația te anunță automat când se întâmplă ceva important. Notificările apar în <b>clopoțelul 🔔</b> din bara de sus (web) și ca <b>push</b> pe telefon.</p>
+  <h3>Tipuri de alerte</h3>
+  <table class="ft">
+    <tr><th style="width:30%">Alertă</th><th>Când se declanșează</th></tr>
+    <tr><td><b>Depășire viteză</b></td><td>Vehiculul depășește pragul (sau limita reală a drumului).</td></tr>
+    <tr><td><b>Ralanti prelungit</b></td><td>Motor pornit, staționat, peste X minute.</td></tr>
+    <tr><td><b>Furt combustibil</b></td><td>Scădere bruscă de combustibil (parcare sau în mers).</td></tr>
+    <tr><td><b>Offline</b></td><td>Vehiculul nu mai transmite de peste pragul setat.</td></tr>
+    <tr><td><b>Intrare/ieșire zonă</b></td><td>Vehiculul intră/iese dintr-o zonă (geofence).</td></tr>
+    <tr><td><b>Raport generat</b></td><td>Un raport pornit în fundal e gata (cu buton spre Rapoarte).</td></tr>
+  </table>
+  <h3>Preferințe notificări</h3>
+  <p>Din <span class="path">🔔 → ⚙ Preferințe</span> alegi ce alerte primești, pragurile tale și canalele (în aplicație, email, push). Se aplică doar contului tău.</p>
+  <div class="cal tip"><i class="fas fa-bell"></i><div>La click pe o alertă de eveniment (ex. depășire viteză) se deschide un modal cu <b>locul exact pe hartă</b>. Notificarea de „Raport generat" deschide direct raportul.</div></div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>10 · Notificări</span><span>12</span></div>
+</section>
+
+<!-- ═══════════ 11. AGENȚI AI ═══════════ -->
+<section class="page">
+  <h2><span class="n">11</span> Agenți AI &amp; Asistent AI</h2>
+  <p>RA Tracks include „agenți" inteligenți care supraveghează flota în locul tău și un asistent conversațional.</p>
+  <table class="ft">
+    <tr><th style="width:24%">Agent</th><th>Ce face</th></tr>
+    <tr><td><b>RA Watch</b> <i class="fas fa-shield-halved" style="color:var(--green)"></i></td><td>Supraveghere &amp; alerte: offline (fără semnal), scădere/furt combustibil, ralanti prelungit, tahograf neconfigurat.</td></tr>
+    <tr><td><b>RA Optimize</b> <i class="fas fa-leaf" style="color:var(--green)"></i></td><td>Comportament de condus &amp; scor eco: frânări/accelerări bruște, șoferi sub scor.</td></tr>
+    <tr><td><b>RA Care</b> <i class="fas fa-wrench" style="color:var(--green)"></i></td><td>Mentenanță: avertizează cu X km înainte de o revizie/ITP/RCA scadentă.</td></tr>
+    <tr><td><b>RA Dispatch</b> <i class="fas fa-route" style="color:var(--green)"></i></td><td>Dispecerizare: vehicule disponibile lângă o destinație, vehicule subutilizate.</td></tr>
+    <tr><td><b>RA Compliance</b> <i class="fas fa-gavel" style="color:var(--green)"></i></td><td>Ore de condus &amp; repaus (Reg. CE 561/2006) — semnalări orientative.</td></tr>
+    <tr><td><b>RA Client</b> <i class="fas fa-envelope-open-text" style="color:var(--green)"></i></td><td>Rezumat zilnic al flotei: vehicule active, km totali, cel mai activ vehicul.</td></tr>
+  </table>
+  <p>Pragurile se configurează per companie la RA Watch, RA Optimize și RA Care (vezi cap. 14 și Anexa A4). RA Dispatch, RA Compliance și RA Client folosesc reguli fixe.</p>
+  <h3>Asistent AI (chat)</h3>
+  <p>Un chat unde poți întreba în limbaj natural despre flotă (ex. „câți km a făcut Logan azi?"). Disponibil pe web și pe APK.</p>
+  <h3>RA Insight</h3>
+  <p>Pe lângă rapoarte, poți cere o <b>analiză AI</b> a datelor — un rezumat în cuvinte al tendințelor și anomaliilor.</p>
+  <div class="foot"><span class="brand">RA Tracks</span><span>11 · Agenți AI</span><span>13</span></div>
+</section>
+
+<!-- ═══════════ 12. MODULE ═══════════ -->
+<section class="page">
+  <h2><span class="n">12</span> Module: e-Transport, E-Toll, Tahograf</h2>
+  <table class="ft">
+    <tr><th style="width:22%">Modul</th><th>Ce face</th><th style="width:22%">Stare</th></tr>
+    <tr><td><b>e-Transport</b></td><td>Generează cod UIT (ANAF) pentru transporturi și urmărește traseul.</td><td><span class="pill s">Demo</span> / Real (cu token ANAF)</td></tr>
+    <tr><td><b>E-Toll / Roviniete</b></td><td>Estimează costurile de taxare pe km, pe țară; furnizor extern (DKV/Shell/AS24…).</td><td><span class="pill s">Demo</span> / Real</td></tr>
+    <tr><td><b>Tahograf</b></td><td>Urmărire descărcare card șofer (ciclu 28 zile), stare per șofer.</td><td><span class="pill s">Demo</span> / Real</td></tr>
+  </table>
+  <div class="cal note"><i class="fas fa-circle-info"></i><div><b>Demo vs. Real:</b> modulele au un badge care arată dacă rulează în <b>Demo</b> (date simulate, pentru prezentare) sau <b>Real</b> (conectat la furnizorul/serviciul oficial). Trecerea pe „Real" se face de super-admin, cu tokenul/host-ul aferent.</div></div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>12 · Module</span><span>14</span></div>
+</section>
+
+<!-- ═══════════ 13. APLICAȚIA MOBILĂ ═══════════ -->
+<section class="page">
+  <h2><span class="n">13</span> Aplicația mobilă (APK)</h2>
+  <p>Aceleași funcții esențiale, în teren, pe telefon Android. Notificările push te țin la curent chiar și cu aplicația închisă.</p>
+  <div class="cols2">
+    <div>
+      <h3>Instalare</h3>
+      <ol class="steps">
+        <li>Primești fișierul <span class="kbd">RA-Tracks-app-debug.apk</span> de la administrator.</li>
+        <li>Îl deschizi pe telefon și accepți instalarea din surse necunoscute (sideload).</li>
+        <li>Te autentifici cu același utilizator/parolă ca pe web.</li>
+      </ol>
+      <h3>Ecrane</h3>
+      <ul>
+        <li><b>Autovehicule</b> + hartă live</li>
+        <li><b>Fișa vehiculului</b> (stare, statistici, combustibil)</li>
+        <li><b>Statistici</b> &amp; <b>Notificări</b></li>
+        <li><b>Traseu</b> (replay) &amp; <b>Rapoarte</b> (+ generare în fundal)</li>
+        <li><b>Preț combustibil, Hotspot, E-Toll, Setări</b></li>
+        <li>Meniul „Platformă" (doar super-admin): companii, costuri, ofertare…</li>
+      </ul>
+    </div>
+    <div style="display:flex;justify-content:center;">
+      <div class="phone">
+        <div class="scr">
+          <div class="ph-top"><i class="fas fa-bars d-mut"></i> Autovehicule</div>
+          <div class="map" style="height:150px;border-radius:0;">
+            <div class="pin g" style="left:60px;top:40px;"></div><div class="pin y" style="left:150px;top:90px;"></div><div class="pin gr" style="left:110px;top:60px;"></div>
+          </div>
+          <div style="padding:8px 10px;font-size:8pt;">
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--dborder);"><span><b>Dacia Logan 3</b><br><span class="d-accent" style="font-size:7pt;">În mișcare · 54 km/h</span></span><i class="fas fa-chevron-right d-mut"></i></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0;"><span><b>VW Caddy</b><br><span class="d-mut" style="font-size:7pt;">Staționat</span></span><i class="fas fa-chevron-right d-mut"></i></div>
+          </div>
+          <div class="ph-tab"><div class="on"><i class="fas fa-car"></i><br>Vehicule</div><div><i class="fas fa-chart-simple"></i><br>Statistici</div><div><i class="fas fa-bell"></i><br>Notificări</div><div><i class="fas fa-bars"></i><br>Meniu</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap" style="text-align:center;">Aplicația mobilă — hartă live, listă vehicule, bara de jos.</div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>13 · Aplicația mobilă</span><span>15</span></div>
+</section>
+
+<!-- ═══════════ 14. SETĂRI ═══════════ -->
+<section class="page">
+  <h2><span class="n">14</span> Setări</h2>
+  <h3>Preferințele tale</h3>
+  <p>Fiecare cont își poate ajusta preferințele de afișare și notificare (se aplică doar ție).</p>
+  <h3>Setări de companie</h3>
+  <ul>
+    <li><b>Prețuri combustibil</b> (necesită drept de administrare flotă): setezi prețul companiei pe motorină/benzină/GPL; dacă lași gol, se folosește media națională.</li>
+    <li><b>Praguri alerte agenți</b> (administrator companie): offline (min), scădere combustibil (litri), ralanti (min), scor eco minim, avertisment service (km).</li>
+    <li><b>Sursă ignition (DIN1)</b> — pentru vehiculele unde „pornit/oprit" e detectat greșit (se setează per vehicul, de super-admin).</li>
+  </ul>
+  <div class="cal warn"><i class="fas fa-triangle-exclamation"></i><div>Confirmările de ștergere folosesc un dialog <b>propriu RA Tracks</b> (nu cel de browser), cu buton roșu „Șterge" — ca să fie clar când o acțiune e ireversibilă.</div></div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>14 · Setări</span><span>16</span></div>
+</section>
+
+<!-- ═══════════ DIVIDER PARTEA II ═══════════ -->
+<section class="page" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f1524,#122b1f);">
+  <div style="text-align:center;color:#fff;">
+    <div style="font-size:11pt;letter-spacing:3px;color:var(--acc);font-weight:800;">PARTEA II</div>
+    <div style="font-size:26pt;font-weight:800;margin-top:8px;">Anexă tehnică<br>&amp; administrare</div>
+    <div style="color:#9fb0cd;margin-top:14px;max-width:120mm;font-size:11pt;">Arhitectură, roluri &amp; permisiuni, panouri de administrare, date &amp; senzori, integrări, deploy.</div>
+  </div>
+</section>
+
+<!-- ═══════════ A1. ARHITECTURĂ ═══════════ -->
+<section class="page">
+  <h2><span class="n">A1</span> Arhitectura platformei</h2>
+  <table class="ft">
+    <tr><th style="width:26%">Componentă</th><th>Tehnologie</th></tr>
+    <tr><td><b>Server (backend)</b></td><td>Node.js + Express (<span class="path">server.js</span>), acces date prin <span class="path">db.js</span>.</td></tr>
+    <tr><td><b>Bază de date</b></td><td>PostgreSQL + TimescaleDB (producție, pe Railway) / PGlite (local, dezvoltare) — dual-mode în <span class="path">db.js</span>.</td></tr>
+    <tr><td><b>Web (frontend)</b></td><td>Aplicație SPA în <span class="path">public/index.html</span> + <span class="path">public/css/app.css</span> + <span class="path">public/js/*</span> (vanilla JS). Font <b>Nunito</b>.</td></tr>
+    <tr><td><b>Aplicația mobilă</b></td><td>Capacitor + Preact + TypeScript (folderul <span class="path">mobile/</span>), împachetată ca APK Android.</td></tr>
+    <tr><td><b>Găzduire</b></td><td>Railway; domeniu <b>ratrack.ro</b> prin Cloudflare (DNS/CDN).</td></tr>
+    <tr><td><b>Recepție GPS</b></td><td>Trackere Teltonika → <b>gps.ratrack.ro:21015</b> (protocol codec8e), decodare IO/CAN pe server.</td></tr>
+    <tr><td><b>Live updates</b></td><td>WebSocket (poziții + notificări live) cu fallback la polling.</td></tr>
+  </table>
+  <div class="cal note"><i class="fas fa-circle-info"></i><div>Versiunea publicată se verifică la <span class="path">ratrack.ro/api/health</span> (câmpul <b>version</b> = prefixul commit-ului deployat).</div></div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>A1 · Arhitectură</span><span>18</span></div>
+</section>
+
+<!-- ═══════════ A2. ROLURI & IZOLARE ═══════════ -->
+<section class="page">
+  <h2><span class="n">A2</span> Roluri, permisiuni &amp; izolarea pe companie</h2>
+  <h3>Roluri &amp; permisiuni</h3>
+  <table class="ft">
+    <tr><th style="width:26%">Permisiune</th><th>Ce deblochează</th></tr>
+    <tr><td><b>manageCompanies</b> (super-admin)</td><td>Toate companiile + panourile de platformă (costuri, ofertare, dispozitive).</td></tr>
+    <tr><td><b>manageUsers</b></td><td>Utilizatori, default-uri companie, praguri agenți, abonament/facturi.</td></tr>
+    <tr><td><b>manageFleet</b></td><td>Vehicule, șoferi, grupe, mentenanță, documente, prețuri combustibil.</td></tr>
+    <tr><td><b>viewReports</b></td><td>Rapoarte, statistici, hotspot.</td></tr>
+    <tr><td><b>viewAll</b></td><td>Toată flota companiei (nu doar vehiculele alocate).</td></tr>
+  </table>
+  <h3>Izolarea pe companie (multi-tenant)</h3>
+  <p>Fiecare cerere trece prin middleware care <b>limitează datele la compania utilizatorului</b> (<span class="path">withScope</span> / <span class="path">withCompany</span>), iar panourile de super-admin sunt protejate cu <span class="path">requireSuperadmin</span> — respinse înainte de handler (403) pentru orice non-super. Un utilizator de companie nu poate vedea niciodată date ale altei companii sau panouri de platformă. Aceeași protecție se aplică pe web ȘI pe APK (același lanț de middleware).</p>
+  <div class="foot"><span class="brand">RA Tracks</span><span>A2 · Roluri &amp; izolare</span><span>19</span></div>
+</section>
+
+<!-- ═══════════ A3. ADMINISTRARE ═══════════ -->
+<section class="page">
+  <h2><span class="n">A3</span> Administrare (companii, flotă, utilizatori)</h2>
+  <p>Din meniul <b>Administrare</b>, în funcție de drepturi, gestionezi:</p>
+  <table class="ft">
+    <tr><th style="width:26%">Zonă</th><th>Ce faci</th></tr>
+    <tr><td><b>Vehicule</b></td><td>Fișă completă, editare, import/export CSV, documente + service, interfață CAN.</td></tr>
+    <tr><td><b>Șoferi</b></td><td>Adăugare/editare, alocare la vehicul, expirare permis.</td></tr>
+    <tr><td><b>Grupe</b></td><td>Organizarea vehiculelor pe grupe.</td></tr>
+    <tr><td><b>Alerte</b></td><td>Reguli de alertă (viteză, geofence, supraîncărcare etc.).</td></tr>
+    <tr><td><b>Mentenanță &amp; Documente</b></td><td>Revizii, ITP, RCA, CASCO — cu scadențe și alerte.</td></tr>
+    <tr><td><b>Utilizatori</b></td><td>Conturi, roluri, permisiuni (administrator companie).</td></tr>
+    <tr><td><b>Setări companie</b></td><td>Prețuri combustibil, praguri agenți, default-uri.</td></tr>
+    <tr><td><b>Dispozitive &amp; mutare</b> (super-admin)</td><td>Toate dispozitivele, adoptare/arhivare, mutare vehicule între companii (individual sau în masă).</td></tr>
+  </table>
+  <div class="foot"><span class="brand">RA Tracks</span><span>A3 · Administrare</span><span>20</span></div>
+</section>
+
+<!-- ═══════════ A4. SUPER-ADMIN ═══════════ -->
+<section class="page">
+  <h2><span class="n">A4</span> Panouri super-admin (platformă, costuri, ofertare)</h2>
+  <h3>Dashboard platformă</h3>
+  <p>Venituri estimate (MRR/ARR, abonamente active), sănătatea flotei la nivel de platformă (online/offline, semnal slab), stare server (RAM, uptime, poziții live), backup date și log de erori.</p>
+  <h3>Control costuri (Cash-flow)</h3>
+  <p>Vedere <b>venituri vs. cheltuieli → profit lunar</b>. Venituri = abonamentele încasate de la companiile-client; cheltuieli = costurile de infrastructură (Railway/Cloudflare/Anthropic) + operaționale. Panouri per-furnizor cu consum real (token-uri doar în variabile de mediu, niciodată în client). Plus registrul de costuri recurente.</p>
+  <div class="shot"><div class="win"><div class="body">
+    <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px;">
+      <div class="d-kpi"><div class="v" style="font-size:13pt;">80 000</div><div class="l">Venituri · lei</div></div>
+      <div class="d-kpi" style="border-left-color:var(--red)"><div class="v" style="font-size:13pt;color:var(--red)">20 950</div><div class="l">Cheltuieli · lei</div></div>
+      <div class="d-kpi"><div class="v" style="font-size:13pt;">59 050</div><div class="l">Profit · lei</div></div>
+      <div class="d-kpi"><div class="v" style="font-size:13pt;">73.8%</div><div class="l">Marjă</div></div>
+    </div>
+    <div class="d-mut" style="font-size:8pt;">Evoluție lunară · venit (verde) vs cheltuială (roșu) → profit</div>
+  </div></div></div>
+  <div class="cap">Control costuri — cash-flow venituri vs cheltuieli (doar super-admin).</div>
+  <h3>Ofertare Live</h3>
+  <p>Calculator de preț pentru oferte: vehicule (GPS/CAN/FMS), AI, retenție date, secțiune montaj (tarife + deplasare lei/km), echipamente — cu rezumat lunar/anual/contract și export PDF. Ofertele se salvează și se pot re-deschide.</p>
+  <div class="foot"><span class="brand">RA Tracks</span><span>A4 · Super-admin</span><span>21</span></div>
+</section>
+
+<!-- ═══════════ A5. DATE & SENZORI ═══════════ -->
+<section class="page">
+  <h2><span class="n">A5</span> Date &amp; senzori (GPS/CAN/FMS, combustibil)</h2>
+  <ul>
+    <li><b>GPS:</b> poziție, viteză, direcție, sateliți, semnal GSM.</li>
+    <li><b>CAN / IO (Teltonika):</b> odometru, RPM, nivel combustibil, temperaturi, tensiune, contact — decodate din codec8e. Mașinile diferite folosesc scheme diferite (ex. Dacia = LV-CAN200; camioane FMC650/MAN = FMS).</li>
+    <li><b>„Sticky CAN":</b> ultima valoare CAN validă e reținută pentru vehiculele parcate, ca fișa să nu apară goală.</li>
+  </ul>
+  <h3>Combustibil: măsurat vs. estimat</h3>
+  <p>Consumul se determină, în ordine: (1) contor CAN cumulativ (exact), (2) suma scăderilor reale de nivel, (3) estimare km × consum configurat. Vehiculele fără senzor primesc <b>consum estimat</b>, marcat clar. Nivelul în % se calculează din litri ÷ capacitatea rezervorului (se ascunde dacă rezervorul nu e setat, pentru că % brut de la CAN e nesigur).</p>
+  <div class="foot"><span class="brand">RA Tracks</span><span>A5 · Date &amp; senzori</span><span>22</span></div>
+</section>
+
+<!-- ═══════════ A6. INTEGRĂRI & API ═══════════ -->
+<section class="page">
+  <h2><span class="n">A6</span> Integrări &amp; API</h2>
+  <table class="ft">
+    <tr><th style="width:30%">Integrare</th><th>Detalii</th></tr>
+    <tr><td><b>Webhooks (ERP/TMS)</b></td><td>Trimitere evenimente către sisteme externe.</td></tr>
+    <tr><td><b>Chei API</b></td><td>Acces programatic, cu expirare (TTL, implicit 90 zile) și revocare.</td></tr>
+    <tr><td><b>Preț combustibil</b></td><td>PretCarburant.ro (media națională, zilnic) + puncte istorice GlobalPetrolPrices.com.</td></tr>
+    <tr><td><b>Token-uri furnizori</b></td><td>Railway / Cloudflare / Anthropic (AI) / Firebase (push) — <b>doar în variabile de mediu pe server</b>, niciodată în browser/APK/chat.</td></tr>
+  </table>
+  <h4>Câteva endpoint-uri principale</h4>
+  <table class="ft">
+    <tr><th>Metodă &amp; rută</th><th>Rol</th></tr>
+    <tr><td>GET <span class="path">/api/devices</span></td><td>Vehiculele companiei + stare live.</td></tr>
+    <tr><td>GET <span class="path">/api/reports/:type</span></td><td>Generează un raport (opțional <span class="kbd">background=1</span>).</td></tr>
+    <tr><td>GET <span class="path">/api/reports/history</span></td><td>Istoric rapoarte (per utilizator).</td></tr>
+    <tr><td>GET <span class="path">/api/fuel-prices</span> · <span class="path">/api/fuel-price-history</span></td><td>Prețuri curente + istoric.</td></tr>
+    <tr><td>GET <span class="path">/api/hotspot</span> · POST <span class="path">/api/zone-report</span></td><td>Heatmap + analiză zonă.</td></tr>
+    <tr><td>GET <span class="path">/api/admin/finance</span></td><td>Cash-flow platformă (super-admin).</td></tr>
+    <tr><td>GET <span class="path">/api/health</span></td><td>Stare + versiune deployată.</td></tr>
+  </table>
+  <div class="foot"><span class="brand">RA Tracks</span><span>A6 · Integrări &amp; API</span><span>23</span></div>
+</section>
+
+<!-- ═══════════ A7. DEPLOY ═══════════ -->
+<section class="page">
+  <h2><span class="n">A7</span> Instalare APK &amp; publicare (deploy)</h2>
+  <h3>Build APK (Android)</h3>
+  <ol class="steps">
+    <li><span class="kbd">cd mobile &amp;&amp; npm run build</span> (compilează Preact/TS).</li>
+    <li><span class="kbd">npx cap sync android</span> (sincronizează în proiectul Android).</li>
+    <li><span class="kbd">cd android &amp;&amp; ./gradlew assembleDebug</span> → rezultă <span class="path">app-debug.apk</span>.</li>
+    <li>Se distribuie prin sideload (instalare manuală) sau MDM.</li>
+  </ol>
+  <h3>Publicare web (deploy)</h3>
+  <p>Modificările se comit în git și se împing pe branch-ul principal; Railway reconstruiește și publică automat pe <b>ratrack.ro</b>. Verifici versiunea live la <span class="path">/api/health</span>.</p>
+  <div class="cal tip"><i class="fas fa-shield-halved"></i><div><b>Regulă de dezvoltare:</b> orice modificare pe web se replică și pe APK în aceeași sesiune (paritate web↔mobil), cu excepția panourilor exclusiv super-admin.</div></div>
+
+  <div style="margin-top:40px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;text-align:center;">
+    <div class="brandmark" style="font-size:18pt;">RA <span class="t">Tracks</span></div>
+    <div style="color:var(--muted);font-size:10pt;margin-top:6px;">Monitorizare flotă GPS · Web &amp; Android · ratrack.ro</div>
+    <div style="color:var(--muted);font-size:9pt;margin-top:4px;">Pentru asistență, contactează administratorul platformei.</div>
+  </div>
+  <div class="foot"><span class="brand">RA Tracks</span><span>A7 · Deploy</span><span>24</span></div>
+</section>
+</body>
+</html>

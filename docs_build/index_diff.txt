@@ -1,0 +1,311 @@
+diff --git a/public/index.html b/public/index.html
+index d74b497..9a6add7 100644
+--- a/public/index.html
++++ b/public/index.html
+@@ -1222,6 +1222,32 @@
+     .rax-abo-plans { display: flex; gap: 8px; flex-wrap: wrap; }
+     .rax-abo-plan { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 9px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+     .rax-abo-plan.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
++    .rax-abo-vehlist { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); border-radius: 9px; }
++    .rax-abo-veh { display: flex; align-items: center; gap: 10px; padding: 8px 11px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px; }
++    .rax-abo-veh:last-child { border-bottom: none; }
++    .rax-abo-veh:hover { background: var(--bg-dark); }
++    .rax-abo-veh input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto; }
++    .rax-abo-veh .vn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++    .rax-abo-veh .va { flex: 0 0 auto; }
++    /* Modul Dispozitive (super-admin) */
++    .rax-dev-bar { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
++    .rax-dev-chip { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 20px; padding: 6px 13px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
++    .rax-dev-chip.on { background: var(--accent); color: #06210F; border-color: var(--accent); }
++    .rax-dev-chip .cnt { opacity: .75; }
++    .rax-dev-search { flex: 1; min-width: 180px; margin: 0; }
++    .rax-dev-alert { background: rgba(245,158,11,.12); border: 1px solid var(--orange); color: var(--orange); border-radius: 9px; padding: 9px 12px; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
++    .rax-dev-table td { vertical-align: middle; }
++    .rax-dev-table .mono { font-size: 11.5px; color: var(--text-secondary); }
++    .rax-dev-plate { font-size: 11px; font-weight: 800; color: var(--accent); }
++    .rax-dev-co, .rax-dev-if { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 7px; padding: 5px 8px; font-size: 12px; font-family: inherit; max-width: 160px; }
++    .rax-dev-if { max-width: 104px; margin-left: 4px; }
++    .rax-dev-lp { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
++    .rax-dev-act { white-space: nowrap; }
++    .rax-dev-act .rax-btn { font-size: 11px; padding: 4px 9px; }
++    .rax-devst { display: inline-block; border-radius: 20px; padding: 2px 9px; font-size: 11px; font-weight: 800; }
++    .rax-devst.active { background: rgba(63,224,125,.14); color: var(--accent); }
++    .rax-devst.pend { background: rgba(245,158,11,.16); color: var(--orange); }
++    .rax-devst.arch { background: rgba(138,147,163,.16); color: var(--text-muted); }
+     /* Dashboard: secțiune avansată pliabilă */
+     .rax-dash-adv > summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--text-secondary); padding: 9px 11px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; list-style: none; display: flex; align-items: center; gap: 8px; }
+     .rax-dash-adv > summary::-webkit-details-marker { display: none; }
+@@ -1254,6 +1280,7 @@
+           <div class="aside-grp">Gestiune</div>
+           <button class="aside-item active" data-atab="dash" onclick="raxAdminHome()"><i class="fas fa-gauge"></i> Acasă</button>
+           <button class="aside-item" data-super data-atab="companies" onclick="raxAdminTab('companies')"><i class="fas fa-building"></i> Companii</button>
++          <button class="aside-item" data-super data-atab="devices" onclick="raxAdminTab('devices')"><i class="fas fa-microchip"></i> Dispozitive</button>
+           <button class="aside-item users-only" data-atab="users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
+           <button class="aside-item users-only company-admin-only" data-atab="myinvoices" onclick="raxAdminTab('myinvoices')"><i class="fas fa-file-invoice-dollar"></i> Facturile mele</button>
+           <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
+@@ -1282,6 +1309,7 @@
+           </div>
+ 
+           <div id="admin-tab-companies" style="display:none;"></div>
++          <div id="admin-tab-devices" style="display:none;"></div>
+           <div id="admin-tab-accounts" style="display:none;"></div>
+           <div id="admin-tab-archived" style="display:none;"></div>
+           <div id="admin-tab-billing" style="display:none;"></div>
+@@ -2402,8 +2430,8 @@ const pozitii = await r.json();</code></pre>
+     }
+     window.raxAdminTab = function (name) {
+       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
+-      var map = { companies: 'admin-tab-companies', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
+-      var titles = { companies: 'Companii & Dispozitive', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
++      var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard' };
++      var titles = { companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă' };
+       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
+       Object.keys(map).forEach(function (k) {
+         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
+@@ -2420,6 +2448,8 @@ const pozitii = await r.json();</code></pre>
+         if (window.raxLoadAccounts) window.raxLoadAccounts();
+       } else if (name === 'archived') {
+         if (window.loadArchivedDevices) window.loadArchivedDevices();
++      } else if (name === 'devices') {
++        if (window.raxLoadDevices) window.raxLoadDevices();
+       } else if (name === 'billing') {
+         if (window.raxLoadBilling) window.raxLoadBilling();
+       } else if (name === 'myinvoices') {
+@@ -11537,34 +11567,44 @@ const pozitii = await r.json();</code></pre>
+     var _raxAbo = null;
+     var _RAX_PRESETS = [['start', 'Start'], ['pro', 'Pro'], ['premium', 'Premium AI'], ['custom', 'Custom (ofertă personalizată)']];
+     function _raxN(v) { v = parseFloat(v); return (isFinite(v) && v >= 0) ? v : 0; }
+-    // Oglindă client-side a plans.computeCompanyPrice — pentru preview live, fără apel server.
++    // Oglindă client-side a plans.computeCompanyPrice (model DIRECT) — preview live, fără apel server.
+     function _raxClientPrice(counts, o, feats) {
+-      var none = +counts.none || 0, can = +counts.can || 0, fms = +counts.fms || 0, total = none + can + fms;
+-      if (o.flatPriceRON !== '' && o.flatPriceRON != null) { var f = _raxN(o.flatPriceRON); return { model: 'flat', total: f, base: f, can: 0, fms: 0, aiA: 0, aiAg: 0, perVeh: f, ai: 0, n: { none: none, can: can, fms: fms, total: total } }; }
+-      if (o.basePerVehicleRON !== '' && o.basePerVehicleRON != null) {
+-        var base = _raxN(o.basePerVehicleRON) * total, canT = _raxN(o.canAddonRON) * can, fmsT = _raxN(o.fmsAddonRON) * fms;
+-        var aiA = (feats.ai_assistant ? _raxN(o.aiAssistantRON) : 0), aiAg = (feats.agents ? _raxN(o.aiAgentsRON) : 0);
+-        var perVeh = base + canT + fmsT, ai = aiA + aiAg;
+-        return { model: 'tiered', total: perVeh + ai, base: base, can: canT, fms: fmsT, aiA: aiA, aiAg: aiAg, perVeh: perVeh, ai: ai, n: { none: none, can: can, fms: fms, total: total } };
++      var none = +counts.none || 0, can = +counts.can || 0, total = none + can;
++      var aiA = (feats.ai_assistant ? _raxN(o.aiAssistantRON) : 0), aiAg = (feats.agents ? _raxN(o.aiAgentsRON) : 0), ai = aiA + aiAg;
++      if (o.flatPriceRON !== '' && o.flatPriceRON != null) { var f = _raxN(o.flatPriceRON); return { model: 'flat', total: f, none: f, can: 0, aiA: 0, aiAg: 0, ai: 0, n: { none: none, can: can, total: total } }; }
++      if (o.priceNoneRON !== '' && o.priceNoneRON != null) {
++        var pn = _raxN(o.priceNoneRON), pc = (o.priceCanRON !== '' && o.priceCanRON != null) ? _raxN(o.priceCanRON) : pn;
++        var noneT = pn * none, canT = pc * can;
++        return { model: 'direct', total: noneT + canT + ai, none: noneT, can: canT, aiA: aiA, aiAg: aiAg, ai: ai, n: { none: none, can: can, total: total } };
+       }
+-      var ppv = _raxN(o.pricePerVehicleRON) * total; return { model: 'preset', total: ppv, base: ppv, can: 0, fms: 0, aiA: 0, aiAg: 0, perVeh: ppv, ai: 0, n: { none: none, can: can, fms: fms, total: total } };
++      var ppv = _raxN(o.pricePerVehicleRON) * total; return { model: 'preset', total: ppv, none: ppv, can: 0, aiA: 0, aiAg: 0, ai: 0, n: { none: none, can: can, total: total } };
+     }
+     function _raxCodAbonament(d) {
+-      var c = d.company, o = d.offer || {}, counts = d.counts || {};
++      var c = d.company, o = d.offer || {}, vehicles = (d.vehicles || []);
+       var pick = function (v) { return (v != null ? String(v) : ''); };
++      var s = {}; vehicles.forEach(function (v) { if (v.bill_can) s[v.imei] = true; }); // bife CAN inițiale (override sau auto)
+       _raxAbo = {
+-        id: c.id,
+-        counts: { none: counts.none || 0, can: counts.can || 0, fms: counts.fms || 0 },
++        id: c.id, vehicles: vehicles, canImeis: s,
+         feats: Object.assign({ ai_assistant: false, agents: false }, d.features || {}),
+         planKey: (o.key === 'custom' ? 'custom' : (c.plan || 'start')),
+         offer: {
+-          name: o.name || '', basePerVehicleRON: pick(o.basePerVehicleRON), canAddonRON: pick(o.canAddonRON),
+-          fmsAddonRON: pick(o.fmsAddonRON), aiAssistantRON: pick(o.aiAssistantRON), aiAgentsRON: pick(o.aiAgentsRON),
++          name: o.name || '', priceNoneRON: pick(o.priceNoneRON), priceCanRON: pick(o.priceCanRON),
++          aiAssistantRON: pick(o.aiAssistantRON), aiAgentsRON: pick(o.aiAgentsRON),
+           pricePerVehicleRON: pick(o.pricePerVehicleRON), flatPriceRON: pick(o.flatPriceRON), vehicleLimit: pick(o.vehicleLimit), note: o.note || ''
+         }
+       };
+       return _raxAboHtml();
+     }
++    function _raxAboCanCount() { var n = 0, s = _raxAbo.canImeis; for (var k in s) if (s[k]) n++; return n; }
++    function _raxAboVehList() {
++      var s = _raxAbo;
++      if (!s.vehicles.length) return '<div class="hint">Niciun vehicul în companie.</div>';
++      return '<div class="rax-abo-vehlist">' + s.vehicles.map(function (v) {
++        var on = !!s.canImeis[v.imei];
++        var badge = v.can_type === 'fms' ? '<span class="rax-can fms">FMS</span>' : v.can_type === 'can' ? '<span class="rax-can can">CAN</span>' : '<span class="rax-can none">fără</span>';
++        return '<label class="rax-abo-veh"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="raxAboToggleVeh(\'' + esc(v.imei) + '\',this.checked)"><span class="vn"><strong>' + esc(v.name || v.imei) + '</strong>' + (v.plate ? ' · ' + esc(v.plate) : '') + '</span><span class="va" title="detectat automat din date">' + badge + '</span></label>';
++      }).join('') + '</div>';
++    }
+     function _raxAboHtml() {
+       var s = _raxAbo, o = s.offer, isCustom = (s.planKey === 'custom');
+       var fld = function (label, key, ph, hint) {
+@@ -11574,17 +11614,21 @@ const pozitii = await r.json();</code></pre>
+       var html = '<div class="rax-abo">';
+       html += '<div class="rax-abo-sect"><h4>Tip abonament</h4>' +
+         '<div class="rax-abo-plans">' + presetBtns + '</div>' +
+-        '<div class="hint" style="margin-top:8px;">Presetările au un preț unic/vehicul. „Custom" îți dă preț de bază + spor CAN/FMS + AI la plată.</div></div>';
++        '<div class="hint" style="margin-top:8px;">Presetările (Start/Pro/Premium) au un preț unic/vehicul. „Custom" îți dă preț per client: <b>fără CAN</b> / <b>cu CAN</b> + AI.</div></div>';
+       if (isCustom) {
+-        html += '<div class="rax-abo-sect"><h4>Ofertă custom (RON / lună, fără TVA)</h4>' +
+-          '<div class="rax-abo-f" style="margin-bottom:10px;"><label>Nume ofertă</label><input type="text" id="rax-abo-name" value="' + esc(o.name || '') + '" placeholder="ex. Ofertă Unitip" oninput="raxAboRecalc()"></div>' +
++        html += '<div class="rax-abo-sect"><h4>Preț / vehicul (RON / lună, fără TVA)</h4>' +
++          '<div class="rax-abo-grid">' +
++            fld('Fără CAN', 'priceNoneRON', 'ex. 21', 'vehiculele nebifate') +
++            fld('Cu CAN', 'priceCanRON', 'ex. 45', 'vehiculele bifate mai jos') +
++          '</div>' +
++          '<div class="rax-abo-f" style="margin-top:10px;max-width:340px;"><label>Nume ofertă (opțional)</label><input type="text" id="rax-abo-name" value="' + esc(o.name || '') + '" placeholder="ex. Ofertă Unitip" oninput="raxAboRecalc()"></div></div>';
++        html += '<div class="rax-abo-sect"><h4>Vehicule „cu CAN" (bifează)</h4>' +
++          '<div class="hint" style="margin-bottom:8px;">Bifat = preț „cu CAN"; nebifat = „fără CAN". Bifa pornește din detecția automată (badge), dar o poți schimba per vehicul.</div>' +
++          _raxAboVehList() + '</div>';
++        html += '<div class="rax-abo-sect"><h4>Add-on AI (RON / lună)</h4>' +
+           '<div class="rax-abo-grid">' +
+-            fld('Preț de bază / vehicul', 'basePerVehicleRON', 'ex. 20', 'pe TOATE vehiculele') +
+-            fld('+ Spor CAN / vehicul', 'canAddonRON', 'ex. 10', 'vehiculele cu CAN') +
+-            fld('+ Spor FMS / vehicul', 'fmsAddonRON', 'ex. 25', 'vehiculele FMS') +
+-            fld('Asistent AI / lună', 'aiAssistantRON', 'ex. 150', 'add-on fix (dacă e activ)') +
+-            fld('Agenți AI / lună', 'aiAgentsRON', 'ex. 300', 'add-on fix (dacă e activ)') +
+-            fld('Limită vehicule (opțional)', 'vehicleLimit', 'ex. 50', '') +
++            fld('Asistent AI', 'aiAssistantRON', 'ex. 150', 'taxat dacă modulul e activ') +
++            fld('Agenți AI', 'aiAgentsRON', 'ex. 300', 'taxat dacă modulul e activ') +
+           '</div>' +
+           '<div class="rax-abo-f" style="margin-top:10px;"><label>Notă (intern)</label><input type="text" id="rax-abo-note" value="' + esc(o.note || '') + '" placeholder="detalii ofertă / contract"></div>' +
+           '<button class="rax-btn primary" style="margin-top:12px;" onclick="raxAboSaveOffer(this)"><i class="fas fa-check"></i> Salvează oferta</button></div>';
+@@ -11609,29 +11653,30 @@ const pozitii = await r.json();</code></pre>
+     }
+     function _raxAboReadFields() {
+       if (!_raxAbo) return;
+-      ['basePerVehicleRON', 'canAddonRON', 'fmsAddonRON', 'aiAssistantRON', 'aiAgentsRON', 'pricePerVehicleRON', 'flatPriceRON', 'vehicleLimit'].forEach(function (k) {
++      ['priceNoneRON', 'priceCanRON', 'aiAssistantRON', 'aiAgentsRON', 'pricePerVehicleRON', 'flatPriceRON', 'vehicleLimit'].forEach(function (k) {
+         var el = document.getElementById('rax-abo-' + k); if (el) _raxAbo.offer[k] = el.value;
+       });
+       var nm = document.getElementById('rax-abo-name'); if (nm) _raxAbo.offer.name = nm.value;
+       var nt = document.getElementById('rax-abo-note'); if (nt) _raxAbo.offer.note = nt.value;
+     }
++    window.raxAboToggleVeh = function (imei, on) { if (!_raxAbo) return; if (on) _raxAbo.canImeis[imei] = true; else delete _raxAbo.canImeis[imei]; raxAboRecalc(); };
+     window.raxAboRecalc = function () {
+       if (!_raxAbo) return;
+       _raxAboReadFields();
+-      var pr = _raxClientPrice(_raxAbo.counts, _raxAbo.offer, _raxAbo.feats);
++      var canN = _raxAboCanCount(), totalN = _raxAbo.vehicles.length, noneN = Math.max(0, totalN - canN);
++      var pr = _raxClientPrice({ none: noneN, can: canN }, _raxAbo.offer, _raxAbo.feats);
+       _raxAbo._price = pr;
+       var box = document.getElementById('rax-abo-preview');
+       if (box) {
+         var ln = function (label, val, dim) { return '<div class="rax-abo-ln' + (dim ? ' dim' : '') + '"><span>' + label + '</span><span>' + val.toLocaleString('ro-RO') + ' lei</span></div>'; };
+         var rows = '';
+-        if (pr.model === 'flat') { rows = ln('Tarif fix lunar', pr.base); }
+-        else {
+-          rows += ln('Bază · ' + pr.n.total + ' vehicule', pr.base);
+-          if (pr.can) rows += ln('+ CAN × ' + pr.n.can, pr.can);
+-          if (pr.fms) rows += ln('+ FMS × ' + pr.n.fms, pr.fms);
++        if (pr.model === 'flat') { rows = ln('Tarif fix lunar', pr.none); }
++        else if (pr.model === 'direct') {
++          rows += ln('Fără CAN · ' + pr.n.none + ' veh.', pr.none);
++          if (pr.can) rows += ln('Cu CAN · ' + pr.n.can + ' veh.', pr.can);
+           if (pr.aiA) rows += ln('+ Asistent AI', pr.aiA);
+           if (pr.aiAg) rows += ln('+ Agenți AI', pr.aiAg);
+-        }
++        } else { rows += ln('Preset · ' + pr.n.total + ' vehicule', pr.none); }
+         box.innerHTML = rows + '<div class="rax-abo-ln total"><span>Total / lună</span><span>' + pr.total.toLocaleString('ro-RO') + ' lei</span></div>';
+       }
+       var ov = document.getElementById('rax-abo-override'), amt = document.getElementById('rax-abo-amount'), mo = document.getElementById('rax-abo-months');
+@@ -11646,10 +11691,12 @@ const pozitii = await r.json();</code></pre>
+     window.raxAboSaveOffer = function (btn) {
+       if (!_raxAbo) return; _raxAboReadFields();
+       var o = _raxAbo.offer;
+-      if ((o.basePerVehicleRON === '' || o.basePerVehicleRON == null) && (o.pricePerVehicleRON === '' || o.pricePerVehicleRON == null) && (o.flatPriceRON === '' || o.flatPriceRON == null)) {
+-        (window.raxToast || alert)('Pune cel puțin un preț (bază/vehicul, per vehicul sau fix/lună).', 'error'); return;
++      if (o.priceNoneRON === '' || o.priceNoneRON == null) {
++        (window.raxToast || alert)('Pune cel puțin „Preț / vehicul fără CAN".', 'error'); return;
+       }
+-      raxAboPutPlan({ plan: 'custom', custom: o }, 'Ofertă salvată', btn);
++      var canImeis = []; for (var k in _raxAbo.canImeis) if (_raxAbo.canImeis[k]) canImeis.push(k);
++      var custom = Object.assign({}, o, { canImeis: canImeis });
++      raxAboPutPlan({ plan: 'custom', custom: custom }, 'Ofertă salvată', btn);
+     };
+     async function raxAboPutPlan(body, okMsg, btn) {
+       if (btn) btn.disabled = true;
+@@ -12136,6 +12183,92 @@ const pozitii = await r.json();</code></pre>
+       } catch (e) { alert('Eroare: ' + e.message); }
+     };
+ 
++    // ─── Modul „Dispozitive" (super-admin): toate / neasignate / active / arhivate + adoptă / respinge / mută / interfață CAN ───
++    var _raxDevices = [], _raxDevFilter = 'all', _raxDevSearch = '';
++    var _RAX_IFACE = [['', 'Auto'], ['fms', 'FMS'], ['lvcan', 'LV-CAN'], ['tacho', 'Tahograf']];
++    function _raxDevBucket(d) { if (d.status === 'archived') return 'archived'; if (d.company_id == null) return 'unassigned'; return 'active'; }
++    function _raxDevCoOptions(sel) {
++      var cos = (companiesCache || []).filter(function (c) { return !c.is_demo; });
++      return '<option value="">— neasignat —</option>' + cos.map(function (c) { return '<option value="' + c.id + '"' + (String(sel) === String(c.id) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
++    }
++    window.raxLoadDevices = async function () {
++      var box = document.getElementById('admin-tab-devices'); if (!box) return;
++      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
++      try {
++        var r = await Promise.all([
++          fetch('/api/admin/devices', { credentials: 'same-origin' }).then(function (x) { return x.json(); }),
++          (Array.isArray(companiesCache) && companiesCache.length) ? Promise.resolve(companiesCache) : fetch('/api/companies', { credentials: 'same-origin' }).then(function (x) { return x.json(); }).catch(function () { return []; })
++        ]);
++        _raxDevices = Array.isArray(r[0]) ? r[0] : [];
++        if ((!companiesCache || !companiesCache.length) && Array.isArray(r[1])) companiesCache = r[1];
++      } catch (e) { box.innerHTML = '<div class="rax-co-meta" style="color:var(--red)">Eroare: ' + esc(e.message) + '</div>'; return; }
++      raxRenderDevices();
++    };
++    window.raxDevFilter = function (k) { _raxDevFilter = k; raxRenderDevices(); };
++    window.raxRenderDevices = function () {
++      var box = document.getElementById('admin-tab-devices'); if (!box) return;
++      var all = _raxDevices, q = (_raxDevSearch || '').toLowerCase();
++      var counts = { all: all.length, unassigned: 0, active: 0, archived: 0 };
++      all.forEach(function (d) { counts[_raxDevBucket(d)]++; });
++      var rows = all.filter(function (d) {
++        if (_raxDevFilter !== 'all' && _raxDevBucket(d) !== _raxDevFilter) return false;
++        if (q && ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + (d.company_name || '')).toLowerCase().indexOf(q) < 0) return false;
++        return true;
++      }).sort(function (a, b) { return (Number(b.last_position_time) || 0) - (Number(a.last_position_time) || 0); });
++      var chip = function (k, label) { return '<button class="rax-dev-chip' + (_raxDevFilter === k ? ' on' : '') + '" onclick="raxDevFilter(\'' + k + '\')">' + label + ' <span class="cnt">' + counts[k] + '</span></button>'; };
++      var canBadge = { fms: '<span class="rax-can fms">FMS</span>', can: '<span class="rax-can can">CAN</span>', none: '<span class="rax-can none">fără</span>' };
++      var stBadge = { active: '<span class="rax-devst active">activ</span>', unassigned: '<span class="rax-devst pend">neasignat</span>', archived: '<span class="rax-devst arch">arhivat</span>' };
++      var head = (counts.unassigned > 0 ? '<div class="rax-dev-alert"><i class="fas fa-bell"></i> ' + counts.unassigned + ' dispozitiv(e) neasignat(e) s-au conectat — adoptă-le sau respinge-le.</div>' : '') +
++        '<div class="rax-dev-bar">' + chip('all', 'Toate') + chip('unassigned', 'Neasignate') + chip('active', 'Active') + chip('archived', 'Arhivate') +
++        '<input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / companie" value="' + esc(_raxDevSearch || '') + '" oninput="_raxDevSearch=this.value;raxRenderDevices()"></div>';
++      var body = rows.map(function (d) {
++        var b = _raxDevBucket(d);
++        var co = (b === 'archived') ? (d.company_name ? esc(d.company_name) : '<span style="color:var(--text-muted)">—</span>')
++          : '<select class="rax-dev-co" onchange="raxDevSetCompany(\'' + esc(d.imei) + '\',this.value)">' + _raxDevCoOptions(d.company_id) + '</select>';
++        var iface = '<select class="rax-dev-if" title="Interfață CAN (decodare)" onchange="raxDevSetIface(\'' + esc(d.imei) + '\',this.value)">' +
++          _RAX_IFACE.map(function (it) { return '<option value="' + it[0] + '"' + ((d.can_interface || '') === it[0] ? ' selected' : '') + '>' + it[1] + '</option>'; }).join('') + '</select>';
++        var lp = d.last_position_time ? new Date(Number(d.last_position_time)).toLocaleString('ro-RO') : '—';
++        var act = (b === 'archived')
++          ? '<button class="rax-btn" onclick="raxDevRestore(\'' + esc(d.imei) + '\')"><i class="fas fa-rotate-left"></i> Restaurează</button> <button class="rax-btn" style="color:var(--red)" onclick="raxDevDelete(\'' + esc(d.imei) + '\')"><i class="fas fa-trash"></i> Șterge</button>'
++          : '<button class="rax-btn" onclick="raxDevArchive(\'' + esc(d.imei) + '\',' + (b === 'unassigned' ? 'true' : 'false') + ')"><i class="fas fa-ban"></i> ' + (b === 'unassigned' ? 'Respinge' : 'Arhivează') + '</button>';
++        return '<tr><td><strong>' + esc(d.name || '—') + '</strong>' + (d.plate ? '<br><span class="rax-dev-plate">' + esc(d.plate) + '</span>' : '') + '</td>' +
++          '<td class="mono">' + esc(d.imei) + '</td><td>' + co + '</td>' +
++          '<td>' + (canBadge[d.can_type] || '') + ' ' + iface + '</td>' +
++          '<td>' + (stBadge[b] || '') + '</td><td class="rax-dev-lp">' + lp + '</td>' +
++          '<td class="rax-dev-act">' + act + '</td></tr>';
++      }).join('');
++      box.innerHTML = head + '<div style="overflow-x:auto;"><table class="rax-co-table rax-dev-table"><thead><tr><th>Vehicul</th><th>IMEI</th><th>Companie</th><th>Date / interfață</th><th>Stare</th><th>Ultima poziție</th><th>Acțiuni</th></tr></thead><tbody>' +
++        (rows.length ? body : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text-muted)">Niciun dispozitiv în filtrul curent.</td></tr>') + '</tbody></table></div>';
++    };
++    async function _raxDevAction(url, opts, okMsg) {
++      try {
++        var r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts));
++        var j = await r.json().catch(function () { return {}; });
++        if (!r.ok || (j && j.error)) { (window.raxToast || alert)((j && j.error) || ('Eroare ' + r.status), 'error'); return false; }
++        if (okMsg) (window.raxToast || function () { })(okMsg, 'success');
++        return true;
++      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); return false; }
++    }
++    window.raxDevSetCompany = async function (imei, val) {
++      var ok = await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/company', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: val === '' ? null : parseInt(val) }) }, val === '' ? 'Dispozitiv dezasignat' : 'Asignat la companie');
++      if (ok) raxLoadDevices();
++    };
++    window.raxDevSetIface = async function (imei, val) {
++      await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/can-interface', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ can_interface: val || null }) }, 'Interfață CAN: ' + (val || 'auto'));
++      var d = _raxDevices.filter(function (x) { return x.imei === imei; })[0]; if (d) d.can_interface = val || null;
++    };
++    window.raxDevArchive = async function (imei, isReject) {
++      if (!confirm((isReject ? 'Respingi' : 'Arhivezi') + ' dispozitivul ' + imei + '?\nNu se mai stochează date de la el (reversibil prin Restaurează).')) return;
++      if (await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'archived' }) }, isReject ? 'Dispozitiv respins' : 'Dispozitiv arhivat')) raxLoadDevices();
++    };
++    window.raxDevRestore = async function (imei) {
++      if (await _raxDevAction('/api/devices/' + encodeURIComponent(imei) + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) }, 'Dispozitiv restaurat')) raxLoadDevices();
++    };
++    window.raxDevDelete = async function (imei) {
++      if (!confirm('ȘTERGI DEFINITIV dispozitivul ' + imei + ' + tot istoricul lui?\nIreversibil.')) return;
++      if (await _raxDevAction('/api/devices/' + encodeURIComponent(imei), { method: 'DELETE' }, 'Dispozitiv șters')) raxLoadDevices();
++    };
++
+     // ─── Mutare entități (vehicule / utilizatori / șoferi) între companii (super-admin) ───
+     // Configurație per tip: cum se încarcă, cum se afișează, cum se mută. Un singur motor de randare.
+     var RAX_MOVE_CFG = {
