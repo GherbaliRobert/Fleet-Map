@@ -7657,7 +7657,31 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   const checks = [];
   const add = (key, label, level, detail) => checks.push({ key, label, level, detail });
 
-  add('db', 'Bază de date', dbOk ? 'ok' : 'crit', dbOk ? (process.env.DATABASE_URL ? 'PostgreSQL' : 'PGlite (local)') : 'inaccesibilă');
+  // PGlite scrie în directorul containerului. Pe Railway acel disc e EFEMER: la fiecare redeploy se pierd
+  // companiile, utilizatorii, vehiculele, plățile. Verdictul „ok" pe PGlite era cel mai periculos verde
+  // posibil — arăta bine exact în scenariul în care pierzi tot. Local (dev) rămâne normal.
+  const _onPlatform = !!(process.env.RAILWAY_GIT_COMMIT_SHA || process.env.RAILWAY_PROJECT_ID || process.env.NODE_ENV === 'production');
+  if (!dbOk) add('db', 'Bază de date', 'crit', 'inaccesibilă');
+  else if (process.env.DATABASE_URL) add('db', 'Bază de date', 'ok', 'PostgreSQL (persistent)');
+  else if (_onPlatform) add('db', 'Bază de date', 'crit', 'rulează pe PGlite, în containerul aplicației: discul e EFEMER, deci TOATE datele (companii, utilizatori, vehicule, plăți) se pierd la următorul redeploy. Setează DATABASE_URL în Railway.');
+  else add('db', 'Bază de date', 'info', 'PGlite local (dezvoltare) — normal pe calculatorul tău, inacceptabil pe server');
+
+  // Cea mai scumpă pană posibilă e tăcută: trackerele nu mai trimit, dar aplicația arată perfect.
+  // Ne uităm la cea mai recentă poziție din memoria live — dacă flota are vehicule dar nimeni n-a transmis
+  // de mult, e o problemă de ingest (port TCP, SIM, alimentare), nu de interfață.
+  try {
+    let newest = 0, live = 0;
+    for (const [, p] of livePositions) { const t = new Date(p.timestamp).getTime(); if (Number.isFinite(t)) { live++; if (t > newest) newest = t; } }
+    const totalDev = (await db.pool.query("SELECT COUNT(*)::int AS n FROM devices WHERE status IS DISTINCT FROM 'archived'")).rows[0].n;
+    if (!totalDev) add('ingest', 'Recepție poziții GPS', 'info', 'niciun vehicul înregistrat încă');
+    else if (!newest) add('ingest', 'Recepție poziții GPS', 'crit', totalDev + ' vehicule înregistrate, dar NICIO poziție primită de la pornirea serverului. Verifică portul TCP (' + TCP_PORT + ') și configurarea trackerelor.');
+    else {
+      const minutes = Math.round((Date.now() - newest) / 60000);
+      const lvl = minutes > 60 ? 'crit' : (minutes > 15 ? 'warn' : 'ok');
+      add('ingest', 'Recepție poziții GPS', lvl, live + ' din ' + totalDev + ' vehicule transmit · ultima poziție acum ' + (minutes < 1 ? 'sub un minut' : minutes + ' min')
+        + (lvl === 'ok' ? '' : ' → verifică portul TCP, SIM-urile sau alimentarea'));
+    }
+  } catch (e) {}
 
   // Contul „admin" se creează la primul boot cu parola din ADMIN_PASSWORD, altfel cu una IMPLICITĂ, publică.
   // Verificăm efectiv hash-ul din DB — nu prezența variabilei (care poate fi adăugată după ce contul există).
@@ -7702,15 +7726,30 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   add('push', 'Push nativ (FCM)', _fcm ? 'ok' : 'warn', _fcmStatus || (_fcm ? 'activ' : 'FIREBASE_SA_JSON nesetat'));
   add('sentry', 'Raportare erori (Sentry)', errortrack.enabled() ? 'ok' : 'warn', errortrack.enabled() ? 'activ' : 'SENTRY_DSN nesetat → erorile rămân doar în jurnalul intern');
   add('strict_devices', 'Înregistrare strictă dispozitive', STRICT_DEVICES ? 'ok' : 'warn', STRICT_DEVICES ? 'doar IMEI-uri pre-înregistrate' : 'STRICT_DEVICES=false → orice tracker se poate conecta');
-  add('demo', 'Companie DEMO', demoLeft ? 'warn' : 'ok', demoLeft ? (demoLeft + ' companie demo încă în bază — de șters înainte de lansare (DEMO_DISABLED=true)') : 'ștearsă');
+  // Informativ, NU avertisment: de când demo-ul se acordă la cerere, compania demo e parte din produs.
+  // Cât timp rămânea „warn", ecranul nu putea ajunge niciodată pe verde, iar un semnal veșnic portocaliu
+  // e un semnal pe care nu-l mai citește nimeni.
+  add('demo', 'Companie DEMO', 'info', demoLeft
+    ? 'prezentă — aici se creează conturile demo aprobate' + (process.env.DEMO_DISABLED === 'true' ? '; simulatorul de poziții e OPRIT (DEMO_DISABLED=true)' : '')
+    : 'absentă — aprobarea unei cereri demo va eșua până o recreezi (scoate DEMO_DISABLED și repornește)');
+  add('webpush', 'Notificări în browser (VAPID)', (isSet(process.env.VAPID_PUBLIC_KEY) && isSet(process.env.VAPID_PRIVATE_KEY)) ? 'ok' : 'warn',
+    (isSet(process.env.VAPID_PUBLIC_KEY) && isSet(process.env.VAPID_PRIVATE_KEY)) ? 'configurat' : 'VAPID_* lipsă → notificările în browser nu funcționează (pe Android merg oricum prin FCM)');
+  // Modul ANAF: implicit e TEST, deci se poate crede că trimiți declarații reale când de fapt nu trimiți.
+  const _anafTok = isSet(process.env.ANAF_EFACTURA_TOKEN) || isSet(process.env.ANAF_ETRANSPORT_TOKEN);
+  const _anafTest = String(process.env.ANAF_EFACTURA_TEST || 'true') === 'true' || String(process.env.ANAF_ETRANSPORT_TEST || 'true') === 'true';
+  add('anaf', 'ANAF (e-Factura / e-Transport)', _anafTok ? (_anafTest ? 'warn' : 'ok') : 'info',
+    _anafTok ? (_anafTest ? 'token setat, dar rulează în mediul de TEST (implicit) → pune ANAF_EFACTURA_TEST=false / ANAF_ETRANSPORT_TEST=false pentru trimiteri reale' : 'mediu de PRODUCȚIE')
+      : 'fără token SPV → modulele ANAF rămân demonstrative');
   add('ai', 'Cheie AI (Anthropic)', isSet(process.env.ANTHROPIC_API_KEY) ? 'ok' : 'info', isSet(process.env.ANTHROPIC_API_KEY) ? 'setată' : 'nesetată → asistentul liber și rezumatele AI sunt oprite');
   add('stripe', 'Plăți card (Stripe)', isSet(process.env.STRIPE_SECRET_KEY) ? (isSet(process.env.STRIPE_WEBHOOK_SECRET) ? 'ok' : 'warn') : 'info',
     isSet(process.env.STRIPE_SECRET_KEY) ? (isSet(process.env.STRIPE_WEBHOOK_SECRET) ? 'activ' : 'cheie setată dar STRIPE_WEBHOOK_SECRET lipsește → facturile nu se marchează plătite automat') : 'nesetat → încasare doar prin transfer bancar');
 
+  // Nivelul „info" e context, nu problemă: nu împiedică ecranul să ajungă pe verde.
   const worst = checks.some(c => c.level === 'crit') ? 'crit' : (checks.some(c => c.level === 'warn') ? 'warn' : 'ok');
+  const counts = { crit: checks.filter(c => c.level === 'crit').length, warn: checks.filter(c => c.level === 'warn').length, ok: checks.filter(c => c.level === 'ok').length };
   res.set('Cache-Control', 'no-store');
   res.json({
-    overall: worst,
+    overall: worst, counts: counts,
     server: { version: COMMIT_VER, uptime_s: Math.round((Date.now() - _startedAt) / 1000), node: process.version, mode: process.env.DATABASE_URL ? 'postgres' : 'pglite' },
     db: { ok: dbOk, pool: poolStats, timescale: ts },
     backup: bk,

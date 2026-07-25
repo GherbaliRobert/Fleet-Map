@@ -62,7 +62,7 @@ cade automat pe Postgres simplu, fără să crape):
 | `BACKUP_S3_SECRET` | secret access key | |
 | `BACKUP_S3_REGION` | `auto` pentru R2 | la AWS: regiunea reală |
 | `BACKUP_PASSPHRASE` | frază lungă, păstrată separat de Railway | dump-ul conține hash-uri de parole, chei API și date de clienți — fără ea pleacă **necriptat** |
-| `POSITION_RETENTION_DAYS` | `180` | ștergerea automată a pozițiilor (necesită TimescaleDB activ — vezi „Stare producție") |
+| `POSITION_RETENTION_DAYS` | `180` | ⚠ **cu atât mai necesară cu cât TimescaleDB LIPSEȘTE** (invers față de ce scria aici înainte). Cu Timescale activ, retenția vine din politica lui. Fără Timescale — cazul Postgres-ului Railway — singura ștergere e cea de rezervă din `server.js`, iar ea rulează **doar dacă variabila e setată explicit** (`parseInt` fără valoare implicită). Nesetată + fără Timescale = tabela `positions` crește la nesfârșit. |
 
 ### 3c. Comunicare cu clienții (fără ele nu poți face onboarding)
 
@@ -94,6 +94,9 @@ cade automat pe Postgres simplu, fără să crape):
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` | **cheia singură nu ajunge** — fără webhook, facturile nu se marchează plătite automat |
 | `INVOICE_SERIES` | implicit `RAT` | seria facturilor (A-Z0-9, max 16) |
 | `ANAF_EFACTURA_TOKEN`, `ANAF_CIF` | din SPV | e-Factura |
+| `ANAF_ETRANSPORT_TOKEN` | din SPV | e-Transport (separat de cel de e-Factura) |
+| `STRIPE_PRICE_START`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_PREMIUM` | id-urile de preț din Stripe | fără ele checkout-ul răspunde 400 „Plan neconfigurat în Stripe" |
+| `FIREBASE_SA_JSON` | JSON-ul contului de serviciu | notificările push pe Android. **Deja setat** — verifică-l în „Stare producție", rândul „Push nativ (FCM)". |
 | `ANAF_EFACTURA_TEST` | `false` | ⚠ **implicit `true`** — fără asta trimiți în mediul de TEST al ANAF, crezând că e real (`efactura.js:15`) |
 | `ANAF_ETRANSPORT_TEST` | `false` | idem pentru e-Transport (`anaf.js:17`) |
 
