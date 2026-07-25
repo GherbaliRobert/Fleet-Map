@@ -10,9 +10,14 @@ import './admin.css';
 // formularul public, iar aici se acordă accesul, cu termen ales. Paritate cu tabul „Cereri demo" de pe web.
 const STATUS_LABEL: Record<string, string> = { new: 'nouă', approved: 'aprobată', rejected: 'respinsă' };
 const STATUS_COLOR: Record<string, string> = { new: 'var(--accent)', approved: 'var(--text-muted)', rejected: 'var(--red)' };
-const DAYS = [3, 7, 14, 30];
+// Durata se exprimă în ORE (serverul lucrează tot în ore): de la câteva ore la 30 de zile.
+const DURATIONS: { h: number; label: string }[] = [
+  { h: 2, label: '2 ore' }, { h: 6, label: '6 ore' }, { h: 12, label: '12 ore' }, { h: 24, label: '24 ore' },
+  { h: 72, label: '3 zile' }, { h: 168, label: '7 zile' }, { h: 336, label: '14 zile' }, { h: 720, label: '30 zile' },
+];
 const fmtDT = (v: any) => { if (!v) return '—'; try { return new Date(Number(v)).toLocaleString('ro-RO'); } catch { return String(v); } };
-const fmtD = (v: any) => { if (!v) return ''; try { return new Date(Number(v)).toLocaleDateString('ro-RO'); } catch { return ''; } };
+// Cu durate de ordinul orelor, doar data nu spune nimic → afișăm și ora.
+const fmtD = (v: any) => { if (!v) return ''; try { return new Date(Number(v)).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
 export function DemoRequests() {
   const loc = useLocation();
@@ -22,7 +27,7 @@ export function DemoRequests() {
   const [filter, setFilter] = useState('');
   const [busy, setBusy] = useState(false);
   const [approving, setApproving] = useState<any | null>(null);
-  const [days, setDays] = useState(7);
+  const [hours, setHours] = useState(168); // implicit 7 zile
 
   function reload() {
     setErr('');
@@ -36,9 +41,10 @@ export function DemoRequests() {
     if (!approving) return;
     setBusy(true);
     try {
-      const r: any = await Api.approveDemoRequest(approving.id, { days });
+      const r: any = await Api.approveDemoRequest(approving.id, { hours });
       // „Acordat" nu înseamnă și „a plecat emailul": dacă SMTP nu e configurat, o spunem explicit.
-      showToast(r?.warning ? ('Acces acordat, DAR: ' + r.warning) : ('Acces acordat ' + (r?.days || days) + ' zile ✓'), !!r?.warning);
+      const lbl = r?.duration || (DURATIONS.find((d) => d.h === hours)?.label || hours + ' ore');
+      showToast(r?.warning ? ('Acces acordat, DAR: ' + r.warning) : ('Acces acordat: ' + lbl + ' ✓'), !!r?.warning);
       setApproving(null); reload();
     } catch (e: any) { showToast(e?.message || 'Nu s-a putut aproba', true); }
     finally { setBusy(false); }
@@ -99,7 +105,7 @@ export function DemoRequests() {
                     <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
                       {r.status === 'new' ? (
                         <>
-                          <button disabled={busy} onClick={() => { setDays(7); setApproving(r); }} style="flex:1;min-width:110px;background:var(--accent);border:none;color:#06210F;border-radius:8px;padding:8px;font-size:12.5px;font-weight:800;font-family:inherit">Acordă acces</button>
+                          <button disabled={busy} onClick={() => { setHours(168); setApproving(r); }} style="flex:1;min-width:110px;background:var(--accent);border:none;color:#06210F;border-radius:8px;padding:8px;font-size:12.5px;font-weight:800;font-family:inherit">Acordă acces</button>
                           <button disabled={busy} onClick={() => doReject(r)} style="flex:1;min-width:90px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:8px;font-size:12.5px;font-weight:700;font-family:inherit">Respinge</button>
                         </>
                       ) : (
@@ -123,16 +129,19 @@ export function DemoRequests() {
                 Se creează un cont pe <b>{approving.email}</b>, cu vehiculele demonstrative, și îi trimitem link de setare a parolei.
               </div>
               <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:6px">Durata accesului</div>
-              <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px">
-                {DAYS.map((d) => (
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px">
+                {DURATIONS.map((d) => (
                   <button
-                    onClick={() => setDays(d)}
-                    style={'flex:1;min-width:70px;padding:10px;border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;border:1px solid ' + (days === d ? 'var(--accent)' : 'var(--border)') + ';cursor:pointer;'
-                      + (days === d ? 'background:var(--accent);color:#06210F' : 'background:var(--bg-dark);color:var(--text-primary)')}
-                  >{d} zile</button>
+                    onClick={() => setHours(d.h)}
+                    style={'padding:10px 4px;border-radius:9px;font-size:12.5px;font-weight:700;font-family:inherit;border:1px solid ' + (hours === d.h ? 'var(--accent)' : 'var(--border)') + ';cursor:pointer;'
+                      + (hours === d.h ? 'background:var(--accent);color:#06210F' : 'background:var(--bg-dark);color:var(--text-primary)')}
+                  >{d.label}</button>
                 ))}
               </div>
-              <button class="btn btn-primary" disabled={busy} onClick={doApprove} style="width:100%">{busy ? 'Se acordă…' : 'Acordă ' + days + ' zile'}</button>
+              <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px">
+                Expiră la <b>{new Date(Date.now() + hours * 3600 * 1000).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</b>
+              </div>
+              <button class="btn btn-primary" disabled={busy} onClick={doApprove} style="width:100%">{busy ? 'Se acordă…' : 'Acordă ' + (DURATIONS.find((d) => d.h === hours)?.label || hours + ' ore')}</button>
             </div>
           </div>
         </div>

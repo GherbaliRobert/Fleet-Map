@@ -1228,6 +1228,24 @@ async function findUserForLogin(username) {
 function userAccessExpired(u) {
   return !!(u && u.access_until != null && Date.now() > Number(u.access_until));
 }
+// Durata unui acces demo. Unitatea internă e ORA (un demo de 2 ore e la fel de legitim ca unul de 30 de zile);
+// `days` rămâne acceptat pentru compatibilitate. Plafon 90 de zile, prag minim 1 oră.
+const DEMO_MAX_HOURS = 90 * 24;
+function _demoDurationHours(body) {
+  const b = body || {};
+  let h = null;
+  if (b.hours != null && Number.isFinite(Number(b.hours))) h = Number(b.hours);
+  else if (b.days != null && Number.isFinite(Number(b.days))) h = Number(b.days) * 24;
+  if (h == null || !(h > 0)) h = 24 * 7; // implicit: o săptămână
+  return Math.min(Math.max(Math.round(h), 1), DEMO_MAX_HOURS);
+}
+// Text pentru om: „6 ore" / „7 zile" / „2 zile și 6 ore".
+function _demoDurationLabel(h) {
+  const d = Math.floor(h / 24), r = h % 24;
+  if (!d) return h + (h === 1 ? ' oră' : ' ore');
+  if (!r) return d + (d === 1 ? ' zi' : ' zile');
+  return d + (d === 1 ? ' zi' : ' zile') + ' și ' + r + (r === 1 ? ' oră' : ' ore');
+}
 const DEMO_EXPIRED_MSG = 'Accesul demo a expirat. Scrie-ne dacă vrei o prelungire sau o ofertă.';
 
 // Gardă anti-blocare: platforma trebuie să rămână MEREU cu cel puțin un super-admin activ.
@@ -8076,8 +8094,8 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const r = await db.getDemoRequestById(id); if (!r) return res.status(404).json({ error: 'Cerere inexistentă' });
     if (demoCompanyId == null) return res.status(409).json({ error: 'Compania demo nu există pe acest server — nu am unde crea contul.' });
-    const days = Math.min(Math.max(parseInt(req.body && req.body.days) || 7, 1), 90);
-    const until = Date.now() + days * 24 * 3600 * 1000;
+    const hours = _demoDurationHours(req.body);
+    const until = Date.now() + hours * 3600 * 1000;
     const uname = normUsername(r.email);
     if (!EMAIL_RE.test(uname)) return res.status(400).json({ error: 'Cererea nu are o adresă de email validă.' });
 
@@ -8100,8 +8118,8 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
     let invited = false;
     try { invited = await sendSetPasswordEmail(req, Object.assign({}, u, { email: uname }), { invite: true }); } catch (e) {}
     await db.updateDemoRequest(id, { status: 'approved', user_id: u.id, approved_by: getAuth(req).userId, access_until: until });
-    auditReq(req, 'approve', 'demo_request', id, { user: uname, days: days });
-    res.json({ ok: true, username: uname, days: days, accessUntil: until, created: created, invited: invited,
+    auditReq(req, 'approve', 'demo_request', id, { user: uname, hours: hours });
+    res.json({ ok: true, username: uname, hours: hours, days: Math.round(hours / 24 * 10) / 10, duration: _demoDurationLabel(hours), accessUntil: until, created: created, invited: invited,
       warning: invited ? null : 'Contul e activ, dar emailul cu linkul de setare a parolei NU a putut fi trimis (SMTP neconfigurat). Trimite-i manual linkul de resetare.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -8128,9 +8146,10 @@ app.delete('/api/admin/demo-requests/:id', requireAuth, requireSuperadmin, async
 app.put('/api/users/:id/access-until', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
-    const days = req.body && req.body.days != null ? parseInt(req.body.days) : null;
-    const until = (days != null && Number.isFinite(days)) ? (Date.now() + Math.min(Math.max(days, 1), 3650) * 24 * 3600 * 1000)
-      : (req.body && req.body.until != null ? parseInt(req.body.until) : null);
+    const b = req.body || {};
+    const relative = (b.hours != null || b.days != null);
+    const until = relative ? (Date.now() + _demoDurationHours(b) * 3600 * 1000)
+      : (b.until != null ? parseInt(b.until) : null); // until=null → acces nelimitat (revocarea limitei)
     await db.setUserAccessUntil(id, until);
     invalidateAccessCache(id); roleCache.delete(id);
     auditReq(req, 'set_access', 'user', id, { until: until });

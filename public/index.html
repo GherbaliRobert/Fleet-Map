@@ -15314,10 +15314,13 @@ const pozitii = await r.json();</code></pre>
       var STL = { new: 'nouă', approved: 'aprobată', rejected: 'respinsă' };
       box.innerHTML = head + list.map(function (r) {
         var when = r.created_at ? new Date(Number(r.created_at)).toLocaleString('ro-RO') : '—';
-        var until = r.access_until ? new Date(Number(r.access_until)).toLocaleDateString('ro-RO') : null;
+        // Cu durate de ordinul orelor, doar data nu spune nimic → afișăm și ora expirării.
+        var until = r.access_until ? new Date(Number(r.access_until)).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
         var acts = (r.status === 'new')
           ? '<div class="dq-acts">'
-            + '<select id="dq-days-' + r.id + '" class="dq-days"><option value="3">3 zile</option><option value="7" selected>7 zile</option><option value="14">14 zile</option><option value="30">30 zile</option></select>'
+            + '<select id="dq-days-' + r.id + '" class="dq-days" title="Cât timp are acces contul">'
+              + '<optgroup label="Ore"><option value="2">2 ore</option><option value="6">6 ore</option><option value="12">12 ore</option><option value="24">24 de ore</option></optgroup>'
+              + '<optgroup label="Zile"><option value="72">3 zile</option><option value="168" selected>7 zile</option><option value="336">14 zile</option><option value="720">30 zile</option></optgroup></select>'
             + '<button class="rax-btn primary" onclick="raxDemoReqApprove(' + r.id + ')"><i class="fas fa-check"></i> Aprobă</button>'
             + '<button class="rax-btn" onclick="raxDemoReqReject(' + r.id + ')"><i class="fas fa-xmark"></i> Respinge</button>'
             + '</div>'
@@ -15335,13 +15338,15 @@ const pozitii = await r.json();</code></pre>
       }).join('');
     };
     window.raxDemoReqApprove = async function (id) {
-      var sel = $('dq-days-' + id); var days = sel ? parseInt(sel.value) : 7;
-      if (!await raConfirm('Acorzi acces demo pentru ' + days + ' de zile?\n\nSe creează un cont pe adresa solicitantului, cu vehiculele demonstrative, și primește pe email link de setare a parolei.', { okLabel: 'Acordă acces', danger: false })) return;
+      // Valoarea selectorului e în ORE (2h … 30 zile) — serverul lucrează tot în ore.
+      var sel = $('dq-days-' + id); var hours = sel ? parseInt(sel.value) : 168;
+      var lbl = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : (hours + ' ore');
+      if (!await raConfirm('Acorzi acces demo pentru ' + lbl + '?\n\nSe creează un cont pe adresa solicitantului, cu vehiculele demonstrative, și primește pe email link de setare a parolei.', { okLabel: 'Acordă acces', danger: false })) return;
       try {
-        var r = await fetch('/api/admin/demo-requests/' + id + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ days: days }) });
+        var r = await fetch('/api/admin/demo-requests/' + id + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ hours: hours }) });
         var j = await r.json();
         if (!r.ok) { raxToast(j.error || 'Nu s-a putut aproba', 'error', 6000); return; }
-        raxToast(j.warning ? ('Acces acordat, DAR: ' + j.warning) : ('Acces acordat ' + j.days + ' zile ✓ — invitația a plecat pe email'), j.warning ? 'error' : 'success', j.warning ? 9000 : 4000);
+        raxToast(j.warning ? ('Acces acordat, DAR: ' + j.warning) : ('Acces acordat: ' + (j.duration || lbl) + ' ✓ — invitația a plecat pe email'), j.warning ? 'error' : 'success', j.warning ? 9000 : 4000);
       } catch (e) { raxToast('Eroare de rețea', 'error'); }
       raxLoadDemoReq();
     };
