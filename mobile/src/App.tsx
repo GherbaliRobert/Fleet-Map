@@ -37,6 +37,7 @@ import { PlatformDashboard } from './screens/PlatformDashboard';
 import { CostControl } from './screens/CostControl';
 import { Offers } from './screens/Offers';
 import { DemoRequests } from './screens/DemoRequests';
+import { Dispatch } from './screens/Dispatch';
 import { Hotspot } from './screens/Hotspot';
 import { EToll } from './screens/EToll';
 import { Settings } from './screens/Settings';
@@ -116,6 +117,7 @@ function Shell() {
         <Route path="/admin/costs" component={CostControl} />
         <Route path="/admin/offers" component={Offers} />
         <Route path="/admin/demo-requests" component={DemoRequests} />
+        <Route path="/dispatch" component={Dispatch} />
         <Route path="/hotspot" component={Hotspot} />
         <Route path="/etoll" component={EToll} />
         <Route path="/settings" component={Settings} />

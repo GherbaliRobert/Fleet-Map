@@ -55,6 +55,8 @@ export const Api = {
   history: (imei: string, from: string, to: string) => api<any[]>(`/api/history/${encodeURIComponent(imei)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&ext=1`),
   report: (imei: string, from: string, to: string) => api<any>(`/api/report/${encodeURIComponent(imei)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   roadLimits: (points: [number, number][]) => api<{ limits: (number | null)[]; attribution: string; ways: number }>('/api/road-limits', { method: 'POST', body: { points } }),
+  // Dispecerizare: vehiculele cele mai apropiate de o destinație, clasate (disponibile întâi).
+  dispatchSuggest: (lat: number, lon: number) => api<any>(`/api/dispatch/suggest?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`),
   notifications: () => api<NotificationItem[]>('/api/notifications'),
   unreadCount: () => api<{ count: number }>('/api/notifications/unread-count'),
   ackNotification: (id: number) => api(`/api/notifications/${id}/ack`, { method: 'POST' }),

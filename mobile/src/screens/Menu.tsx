@@ -63,6 +63,7 @@ export function Menu() {
           ? item('route', 'E-Toll & Roviniete', () => loc.route('/etoll'))
           : soon('route', 'E-Toll & Roviniete')}
         {u?.features?.tahograf && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
+        {item('compass', 'Dispecerizare', () => loc.route('/dispatch'))}
         {perms.viewReports && item('mapPin', 'Hotspot & Rutare', () => loc.route('/hotspot'))}
 
         {(perms.manageFleet || perms.manageUsers) && (
