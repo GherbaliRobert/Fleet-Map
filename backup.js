@@ -31,9 +31,29 @@ const BUSINESS_TABLES = [
 
 const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | tag(16) | ciphertext
 
-let _last = { at: null, ok: null, target: null, sizeBytes: 0, tables: null, error: null, encrypted: false };
-function getStatus() { return Object.assign({}, _last, { s3Configured: s3Configured() }); }
+// `ok` = dump-ul s-a generat fără eroare. NU înseamnă că datele sunt în siguranță!
+// `offsite` = dump-ul a ajuns EFECTIV în afara containerului (S3/R2). Fără S3 configurat, dump-ul se
+// generează și se ARUNCĂ — pe Railway filesystemul e efemer, deci un „ok" fără „offsite" = zero protecție.
+// Le ținem separate ca UI-ul să nu mai poată raporta „backup rulat ✓" pentru o rulare care n-a salvat nimic.
+let _last = { at: null, ok: null, offsite: false, target: null, sizeBytes: 0, tables: null, error: null, encrypted: false, warning: null };
+function passphraseSet() { return !!process.env.BACKUP_PASSPHRASE; }
+function getStatus() {
+  const ageH = _last.at ? (Date.now() - new Date(_last.at).getTime()) / 3600000 : null;
+  return Object.assign({}, _last, {
+    s3Configured: s3Configured(),
+    passphraseSet: passphraseSet(),
+    ageHours: ageH == null ? null : Math.round(ageH * 10) / 10,
+    stale: ageH == null ? true : ageH > 48,      // backup zilnic → peste 48h înseamnă că workerul n-a mai rulat
+    protected: !!(_last.ok && _last.offsite)     // singurul indicator care chiar înseamnă „datele sunt în siguranță"
+  });
+}
 function s3Configured() { return !!(process.env.BACKUP_S3_ENDPOINT && process.env.BACKUP_S3_BUCKET && process.env.BACKUP_S3_KEY_ID && process.env.BACKUP_S3_SECRET); }
+// Avertismentul de configurare — același text pe web, pe APK și în log (o singură sursă de adevăr).
+function configWarning(uploaded) {
+  if (!s3Configured()) return 'BACKUP_S3_* nu e configurat → dump-ul NU a fost salvat în afara serverului. Pe Railway filesystemul containerului se pierde la redeploy: în acest moment singura copie e cea descărcată manual.';
+  if (uploaded && !passphraseSet()) return 'BACKUP_PASSPHRASE nu e setat → backup-ul a fost urcat NECRIPTAT, deși conține hash-uri de parole, chei API și date de clienți.';
+  return null;
+}
 
 // ── Dump logic ──
 async function buildDump(db, commit) {
@@ -127,15 +147,17 @@ async function runScheduledBackup(db, commit) {
       await s3Put(key, b.buf, 'application/octet-stream');
       target = 'S3:' + key;
     }
-    _last = { at: new Date().toISOString(), ok: true, target: target, sizeBytes: b.buf.length, tables: b.meta.tables, error: null, encrypted: b.encrypted };
-    if (target === 'none') console.warn('[BACKUP] dump generat (' + b.rows + ' rânduri, ' + Math.round(b.buf.length / 1024) + ' KB) dar S3 neconfigurat → doar download manual disponibil.');
-    else console.log('[BACKUP] ' + target + ' (' + b.rows + ' rânduri, ' + Math.round(b.buf.length / 1024) + ' KB, ' + (b.encrypted ? 'criptat' : 'necriptat') + ')');
-    return _last;
+    const offsite = target !== 'none';
+    const warning = configWarning(offsite);
+    _last = { at: new Date().toISOString(), ok: true, offsite: offsite, target: target, sizeBytes: b.buf.length, tables: b.meta.tables, error: null, encrypted: b.encrypted, warning: warning };
+    if (!offsite) console.warn('[BACKUP] ⚠ dump generat (' + b.rows + ' rânduri, ' + Math.round(b.buf.length / 1024) + ' KB) dar NU s-a salvat nicăieri: ' + warning);
+    else console.log('[BACKUP] ' + target + ' (' + b.rows + ' rânduri, ' + Math.round(b.buf.length / 1024) + ' KB, ' + (b.encrypted ? 'criptat' : 'NECRIPTAT ⚠') + ')');
+    return getStatus();
   } catch (e) {
-    _last = Object.assign({}, _last, { at: new Date().toISOString(), ok: false, error: e.message });
+    _last = Object.assign({}, _last, { at: new Date().toISOString(), ok: false, offsite: false, error: e.message, warning: null });
     console.error('[BACKUP] eșuat:', e.message);
-    return _last;
+    return getStatus();
   }
 }
 
-module.exports = { BUSINESS_TABLES, buildDump, serialize, deserialize, makeBackup, runScheduledBackup, getStatus, s3Configured };
+module.exports = { BUSINESS_TABLES, buildDump, serialize, deserialize, makeBackup, runScheduledBackup, getStatus, s3Configured, passphraseSet, configWarning };

@@ -95,6 +95,7 @@ export const Api = {
   adminErrors: (limit = 50) => api<any[]>(`/api/admin/errors?limit=${limit}`),
   clearAdminErrors: () => api('/api/admin/errors', { method: 'DELETE' }),
   liveStats: () => api<any>('/api/debug/live-stats'),
+  adminHealth: () => api<any>('/api/admin/health'),
   backupStatus: () => api<any>('/api/admin/backup/status'),
   backupRun: () => api<any>('/api/admin/backup/run', { method: 'POST' }),
   // ── Card combustibil (alimentări + reconciliere) ──

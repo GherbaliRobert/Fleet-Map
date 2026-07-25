@@ -17,6 +17,7 @@ export function PlatformDashboard() {
   const [live, setLive] = useState<any | null>(null);
   const [errs, setErrs] = useState<any[] | null>(null);
   const [bk, setBk] = useState<any | null>(null);
+  const [hl, setHl] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [bkBusy, setBkBusy] = useState(false);
@@ -28,6 +29,7 @@ export function PlatformDashboard() {
     Api.liveStats().then(setLive).catch(() => {});
     Api.adminErrors(20).then(setErrs).catch(() => setErrs([]));
     Api.backupStatus().then(setBk).catch(() => {});
+    Api.adminHealth().then(setHl).catch(() => {});
   }
   useEffect(reload, []);
 
@@ -38,9 +40,18 @@ export function PlatformDashboard() {
   }
   async function runBackup() {
     setBkBusy(true);
-    try { const st = await Api.backupRun(); setBk(st); showToast(st?.ok ? ('Backup: ' + (st.target || 'rulat')) : ('Eșuat: ' + (st?.error || '')), !st?.ok); }
+    try {
+      const st = await Api.backupRun(); setBk(st);
+      // ONESTITATE: `ok` spune doar că dump-ul s-a generat. Dacă `offsite` e fals, fișierul n-a plecat
+      // nicăieri (filesystemul containerului e efemer) → raportăm asta ca PROBLEMĂ, nu ca succes.
+      if (!st?.ok) showToast('Backup eșuat: ' + (st?.error || ''), true);
+      else if (st.offsite) showToast('Backup salvat off-site ✓' + (st.encrypted ? ' (criptat)' : ' — NECRIPTAT'), !st.encrypted);
+      else showToast('Dump generat, dar NU s-a salvat nicăieri (S3 neconfigurat)', true);
+      Api.adminHealth().then(setHl).catch(() => {});
+    }
     catch (e: any) { showToast(e?.message || 'Eroare backup', true); } finally { setBkBusy(false); }
   }
+  const HCOL: Record<string, string> = { ok: 'var(--accent)', warn: '#f59e0b', crit: 'var(--red)', info: 'var(--text-muted)' };
 
   const rev = ov?.revenue || {};
   const health = ov?.totals?.health || ov?.platform?.health || {};
@@ -96,14 +107,55 @@ export function PlatformDashboard() {
               {bk ? (
                 <>
                   <div class="adm-kv"><span class="k">Ultimul automat</span><span>{bk.ok === false ? 'EȘUAT' : (bk.at ? fmtDT(bk.at) : 'nerulat încă')}</span></div>
-                  <div class="adm-kv"><span class="k">Destinație</span><span style={'color:' + (bk.s3Configured ? 'var(--text-primary)' : '#f59e0b')}>{bk.s3Configured ? (String(bk.target || '').indexOf('S3') === 0 ? 'off-site (S3) ✓' : 'S3 configurat') : 'S3 neconfigurat'}</span></div>
-                  {bk.sizeBytes ? <div class="adm-kv"><span class="k">Dimensiune</span><span>{Math.round(bk.sizeBytes / 1024)} KB{bk.encrypted ? ' · 🔒' : ''}</span></div> : null}
+                  <div class="adm-kv"><span class="k">Destinație</span><span style={'color:' + (bk.offsite ? 'var(--accent)' : 'var(--red)')}>{bk.offsite ? 'off-site (S3) ✓' : (bk.s3Configured ? 'S3 configurat, dar ultima rulare n-a urcat' : 'nicăieri — S3 neconfigurat')}</span></div>
+                  <div class="adm-kv"><span class="k">Datele sunt protejate</span><span style={'color:' + (bk.protected ? 'var(--accent)' : 'var(--red)')}>{bk.protected ? 'da' : 'NU'}</span></div>
+                  {bk.sizeBytes ? <div class="adm-kv"><span class="k">Dimensiune</span><span>{Math.round(bk.sizeBytes / 1024)} KB{bk.encrypted ? ' · 🔒 criptat' : ' · necriptat'}</span></div> : null}
+                  {bk.warning ? <div style="color:var(--red);font-size:12px;line-height:1.45;padding:6px 0">⚠ {bk.warning}</div> : null}
                   {bk.error ? <div style="color:var(--red);font-size:12px;padding:4px 0">{bk.error}</div> : null}
                 </>
               ) : <div class="spin" style="margin:8px auto" />}
               <button class="btn btn-primary" style="margin-top:10px" disabled={bkBusy} onClick={runBackup}>{bkBusy ? 'Se rulează…' : 'Rulează backup off-site acum'}</button>
               <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px">Descărcarea fișierului de backup se face din aplicația web (Dashboard platformă).</div>
             </div>
+
+            {hl && Array.isArray(hl.checks) && (
+              <div class="pf-card">
+                <h3>Stare producție</h3>
+                {(() => {
+                  const nCrit = hl.checks.filter((c: any) => c.level === 'crit').length;
+                  const nWarn = hl.checks.filter((c: any) => c.level === 'warn').length;
+                  const txt = nCrit ? (nCrit + (nCrit === 1 ? ' problemă critică' : ' probleme critice') + (nWarn ? ' · ' + nWarn + ' de verificat' : ''))
+                    : (nWarn ? (nWarn + ' lucruri de verificat') : 'Totul e configurat pentru producție');
+                  const col = nCrit ? 'var(--red)' : (nWarn ? '#f59e0b' : 'var(--accent)');
+                  return <div style={'font-size:12.5px;font-weight:700;color:' + col + ';padding:2px 0 8px'}>{txt}</div>;
+                })()}
+                {hl.checks.map((c: any) => (
+                  <div style="display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border)">
+                    <span style={'width:9px;height:9px;border-radius:50%;margin-top:5px;flex:0 0 auto;background:' + (HCOL[c.level] || HCOL.info)} />
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:12.5px;font-weight:700;color:var(--text-primary)">{c.label}</div>
+                      <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:1px">{c.detail}</div>
+                    </div>
+                  </div>
+                ))}
+                <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;margin:12px 0 4px">Workere de fundal</div>
+                {(hl.workers || []).map((w: any) => (
+                  <div style="display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border)">
+                    <span style={'width:9px;height:9px;border-radius:50%;margin-top:5px;flex:0 0 auto;background:' + (w.lastError ? 'var(--red)' : (w.running ? '#f59e0b' : 'var(--accent)'))} />
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:12.5px;font-weight:700;color:var(--text-primary)">{w.label}{w.running ? ' (rulează acum)' : ''}</div>
+                      <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:1px">
+                        {w.lastAt ? fmtDT(w.lastAt) : 'încă n-a rulat'}
+                        {w.lastMs != null ? ' · ' + (w.lastMs > 1000 ? Math.round(w.lastMs / 100) / 10 + 's' : w.lastMs + 'ms') : ''}
+                        {w.skipped ? ' · ' + w.skipped + ' ture sărite' : ''}
+                        {w.lastError ? ' · ' + w.lastError : ''}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Versiune {hl.server?.version} · {hl.server?.mode}{hl.db?.pool ? ' · conexiuni DB: ' + hl.db.pool.total : ''}</div>
+              </div>
+            )}
 
             <div class="pf-card">
               <h3>Erori recente{errs && errs.length > 0 ? <button class="adm-act danger" disabled={busy} onClick={clearErrs}><Icon name="trash" size={13} /> Golește</button> : null}</h3>

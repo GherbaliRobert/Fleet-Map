@@ -2471,12 +2471,17 @@ app.get('/api/dispatch/suggest', requireAuth, withScope, async (req, res) => {
 // Worker: agenții rulează automat per companie (heuristici, fără AI ca să nu consume tokeni)
 async function runAgentsWorker() {
   if (!agents) return;
-  try {
+  return await _runWorker('agents', _runAgentsWorkerBody);
+}
+async function _runAgentsWorkerBody() {
+  {
     let _sysSpeed = 90;
-    try { const _sys = await getSystemSettings(); if (!_sys.agents_auto) return; _sysSpeed = _sys.default_speed_limit; } catch (e) {} // toggle + viteză implicită din Setări sistem
+    try { const _sys = await getSystemSettings(); if (!_sys.agents_auto) return 'oprit din Setări'; _sysSpeed = _sys.default_speed_limit; } catch (e) {} // toggle + viteză implicită din Setări sistem
     const globalThresholds = await _getGlobalAlertThresholds(); // praguri platformă (super-admin) = bază pentru toate companiile
     const companies = await db.getCompanies();
+    let _nCo = 0, _nFind = 0;
     for (const co of companies) {
+      await _yield(); // o companie per tick → agenții nu monopolizează pool-ul de conexiuni
       if (co.is_demo) continue;
       const enabled = (plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS)).filter(function (k) { return !LIVE_AGENTS.has(k); }); // agenții live (dispatch/care) se calculează la deschiderea paginii, nu în fundal
       if (!enabled.length) continue; // planul „start" nu rulează niciun agent
@@ -2486,10 +2491,12 @@ async function runAgentsWorker() {
       const _coFP = effectiveFuelPrices(co && co.settings).motorina || 7.5;
       const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds, fuelPrice: _coFP }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
+      _nCo++; _nFind += (result.findings || []).length;
       try { await db.setSetting('agents_lastrun_' + co.id, new Date().toISOString()); } catch (e) {} // „ultima rulare" per companie
     }
     try { await db.setSetting('agents_lastrun', new Date().toISOString()); } catch (e) {} // fallback global (super-admin)
-  } catch (e) { console.warn('[AGENTS] worker:', e.message); }
+    return _nCo + ' companii · ' + _nFind + ' constatări';
+  }
 }
 
 // ─── MULTI-TENANT: Companii (doar super-admin) ───
@@ -5761,13 +5768,51 @@ async function detectAndSaveTrips(imei) {
     return mapped.length;
   } catch (e) { return 0; }
 }
-async function runTripDetection() {
+// ─── Workere globale: stare + gardă anti-suprapunere ───────────────────────────────────────────────
+// La 30 de companii / ~2000 vehicule, o rulare de detecție curse poate depăși intervalul de 15 min. Fără
+// gardă, rulările s-ar suprapune și ar consuma același pool de conexiuni ca ingestul de poziții (care e
+// prioritar — pierderea de telemetrie nu se recuperează). Ținem și durata/ultima rulare, ca să fie
+// vizibile în /api/admin/health în loc să se ghicească din loguri.
+const WORKERS = {
+  trips:     { label: 'Detecție curse',        running: false, startedAt: null, lastAt: null, lastMs: null, lastResult: null, lastError: null, skipped: 0, runs: 0 },
+  agents:    { label: 'Agenți AI (fundal)',    running: false, startedAt: null, lastAt: null, lastMs: null, lastResult: null, lastError: null, skipped: 0, runs: 0 },
+  expiries:  { label: 'Scadențe & expirări',   running: false, startedAt: null, lastAt: null, lastMs: null, lastResult: null, lastError: null, skipped: 0, runs: 0 }
+};
+async function _runWorker(key, fn) {
+  const w = WORKERS[key]; if (!w) return null;
+  if (w.running) { // rulare anterioară încă în desfășurare → SĂRIM tura asta (nu ne suprapunem peste ea)
+    w.skipped++;
+    const forMin = w.startedAt ? Math.round((Date.now() - w.startedAt) / 60000) : '?';
+    console.warn('[WORKER] „' + w.label + '" rulează de ' + forMin + ' min — sar peste tura curentă (total sărite: ' + w.skipped + ')');
+    return null;
+  }
+  w.running = true; w.startedAt = Date.now();
   try {
+    const out = await fn();
+    w.lastResult = out; w.lastError = null;
+    return out;
+  } catch (e) {
+    w.lastError = e.message; w.lastResult = null;
+    console.error('[WORKER] „' + w.label + '" a eșuat:', e.message);
+    return null;
+  } finally {
+    w.lastMs = Date.now() - w.startedAt; w.lastAt = new Date().toISOString(); w.runs++;
+    w.running = false; w.startedAt = null;
+  }
+}
+// Cedează bucla de evenimente ca ingestul TCP (poziții în timp real) să nu aștepte după worker.
+const _yield = () => new Promise((r) => setImmediate(r));
+
+async function runTripDetection() {
+  return await _runWorker('trips', async () => {
     const devs = await db.getDevices();
-    let total = 0;
-    for (const d of devs) total += await detectAndSaveTrips(d.imei);
+    let total = 0, i = 0;
+    for (const d of devs) {
+      total += await detectAndSaveTrips(d.imei);
+      if (++i % 25 === 0) await _yield(); // porții de 25 de vehicule → ingestul nu rămâne blocat pe flote mari
+    }
     return total;
-  } catch (e) { console.error('[TRIPS]', e.message); return 0; }
+  }) || 0;
 }
 
 // Curățare unică: notificările VECHI (dinainte de fixul cu _vehLabel) au IMEI-ul brut în titlu —
@@ -5790,7 +5835,8 @@ async function fixOldNotifTitles() {
 }
 
 // Worker: alerte expirare documente (permis șofer) + mentenanță scadentă
-async function checkExpiries() {
+async function checkExpiries() { return await _runWorker('expiries', _checkExpiriesBody); }
+async function _checkExpiriesBody() {
   const warnDays = parseInt(process.env.NOTIFY_EXPIRY_DAYS) || 30;
   const now = Date.now(), horizon = now + warnDays * 24 * 3600 * 1000;
   try {
@@ -7393,6 +7439,62 @@ app.post('/api/invoices/:id/pay-link', requireAuth, requirePerm('manageUsers'), 
 // ─── Control costuri (cheltuielile NOASTRE de platformă) — STRICT super-admin ───
 // ─── Backup date business (super-admin) — vezi backup.js + restore-backup.js ───
 app.get('/api/admin/backup/status', requireAuth, requireSuperadmin, (req, res) => { res.json(backup.getStatus()); });
+
+// ─── Stare producție (super-admin) ────────────────────────────────────────────────────────────────
+// Multe lucruri critice depind de variabile de mediu setate în Railway și, până acum, singurul mod de a
+// ști dacă sunt puse era să te uiți în panoul Railway (invizibil din aplicație). Aici răspundem la
+// întrebarea „ce e configurat ACUM pe serverul care rulează", cu verdicte, nu cu valori:
+// NU întoarcem NICIODATĂ conținutul variabilelor (chei, parole, DSN) — doar dacă sunt setate.
+app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) => {
+  const isSet = (v) => !!(v && String(v).trim());
+  let dbOk = false, poolStats = null, demoLeft = null;
+  try { await db.pool.query('SELECT 1'); dbOk = true; } catch (e) {}
+  try { poolStats = { total: db.pool.totalCount, idle: db.pool.idleCount, waiting: db.pool.waitingCount }; } catch (e) {}
+  try { demoLeft = (await db.pool.query("SELECT COUNT(*)::int AS n FROM companies WHERE slug = 'demo' OR is_demo = TRUE")).rows[0].n; } catch (e) {}
+  const ts = (typeof db.getTimescaleStatus === 'function') ? db.getTimescaleStatus() : null;
+  const bk = backup.getStatus();
+
+  // „checks" = lista care înlocuiește verificarea manuală din Railway. level: ok | warn | crit | info
+  const checks = [];
+  const add = (key, label, level, detail) => checks.push({ key, label, level, detail });
+
+  add('db', 'Bază de date', dbOk ? 'ok' : 'crit', dbOk ? (process.env.DATABASE_URL ? 'PostgreSQL' : 'PGlite (local)') : 'inaccesibilă');
+  if (ts && ts.usePg) {
+    add('timescale', 'TimescaleDB (compresie + retenție poziții)', ts.enabled ? 'ok' : 'crit',
+      ts.enabled ? ('activ · retenție ' + ts.retentionDays + ' zile, compresie după ' + ts.compressAfterDays + ' zile')
+                 : ('INACTIV → fără compresie și fără ștergere automată: storage-ul crește nelimitat, iar retenția de 180 zile promisă NU se aplică. Motiv: ' + (ts.reason || 'necunoscut')));
+  }
+  add('backup_offsite', 'Backup off-site (S3/R2)', bk.s3Configured ? (bk.protected ? 'ok' : 'warn') : 'crit',
+    bk.s3Configured ? (bk.protected ? ('ultima copie: ' + (bk.at || '—')) : 'configurat, dar ultima rulare nu a urcat nimic')
+                    : 'BACKUP_S3_* nesetat → datele de business NU sunt salvate nicăieri în afara containerului');
+  add('backup_crypt', 'Criptare backup', bk.passphraseSet ? 'ok' : (bk.s3Configured ? 'crit' : 'warn'),
+    bk.passphraseSet ? 'BACKUP_PASSPHRASE setat (AES-256-GCM)' : 'BACKUP_PASSPHRASE nesetat → dump-ul (hash-uri de parole, chei API) ar pleca necriptat');
+  add('backup_fresh', 'Prospețime backup', bk.stale ? 'warn' : 'ok', bk.at ? ('acum ' + bk.ageHours + 'h') : 'nicio rulare de la pornirea serverului');
+  add('cookie_secure', 'Cookie sesiune „secure"', process.env.COOKIE_SECURE === 'true' ? 'ok' : 'crit',
+    process.env.COOKIE_SECURE === 'true' ? 'da (+ HSTS)' : 'COOKIE_SECURE≠true → cookie-ul de sesiune poate pleca și pe HTTP');
+  add('session_secret', 'SESSION_SECRET', isSet(process.env.SESSION_SECRET) ? 'ok' : 'warn',
+    isSet(process.env.SESSION_SECRET) ? 'setat din mediu' : 'negenerat din mediu → se folosește fișierul local; la reconstruirea containerului toate sesiunile pică');
+  add('smtp', 'Email (SMTP)', (mailer && mailer.enabled()) ? 'ok' : 'crit',
+    (mailer && mailer.enabled()) ? 'activ' : 'neconfigurat → invitațiile de cont, resetarea parolei și rapoartele programate NU pleacă');
+  add('push', 'Push nativ (FCM)', _fcm ? 'ok' : 'warn', _fcmStatus || (_fcm ? 'activ' : 'FIREBASE_SA_JSON nesetat'));
+  add('sentry', 'Raportare erori (Sentry)', errortrack.enabled() ? 'ok' : 'warn', errortrack.enabled() ? 'activ' : 'SENTRY_DSN nesetat → erorile rămân doar în jurnalul intern');
+  add('strict_devices', 'Înregistrare strictă dispozitive', STRICT_DEVICES ? 'ok' : 'warn', STRICT_DEVICES ? 'doar IMEI-uri pre-înregistrate' : 'STRICT_DEVICES=false → orice tracker se poate conecta');
+  add('demo', 'Companie DEMO', demoLeft ? 'warn' : 'ok', demoLeft ? (demoLeft + ' companie demo încă în bază — de șters înainte de lansare (DEMO_DISABLED=true)') : 'ștearsă');
+  add('ai', 'Cheie AI (Anthropic)', isSet(process.env.ANTHROPIC_API_KEY) ? 'ok' : 'info', isSet(process.env.ANTHROPIC_API_KEY) ? 'setată' : 'nesetată → asistentul liber și rezumatele AI sunt oprite');
+  add('stripe', 'Plăți card (Stripe)', isSet(process.env.STRIPE_SECRET_KEY) ? (isSet(process.env.STRIPE_WEBHOOK_SECRET) ? 'ok' : 'warn') : 'info',
+    isSet(process.env.STRIPE_SECRET_KEY) ? (isSet(process.env.STRIPE_WEBHOOK_SECRET) ? 'activ' : 'cheie setată dar STRIPE_WEBHOOK_SECRET lipsește → facturile nu se marchează plătite automat') : 'nesetat → încasare doar prin transfer bancar');
+
+  const worst = checks.some(c => c.level === 'crit') ? 'crit' : (checks.some(c => c.level === 'warn') ? 'warn' : 'ok');
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    overall: worst,
+    server: { version: COMMIT_VER, uptime_s: Math.round((Date.now() - _startedAt) / 1000), node: process.version, mode: process.env.DATABASE_URL ? 'postgres' : 'pglite' },
+    db: { ok: dbOk, pool: poolStats, timescale: ts },
+    backup: bk,
+    workers: Object.keys(WORKERS).map((k) => Object.assign({ key: k }, WORKERS[k])),
+    checks: checks
+  });
+});
 app.post('/api/admin/backup/run', requireAuth, requireSuperadmin, async (req, res) => {
   const st = await backup.runScheduledBackup(db, COMMIT_VER);
   auditReq(req, 'run', 'backup', null, { target: st.target, ok: st.ok });

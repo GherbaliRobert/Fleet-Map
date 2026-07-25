@@ -10,6 +10,11 @@ let pool, _pglite = null;
 // Flag: există index UNIQUE pe positions(imei, timestamp)? Dacă da, insertPositions folosește ON CONFLICT DO NOTHING
 // (previne duplicate la retry tracker când ACK-ul e pierdut). Setat în initDb; dacă crearea eșuează → false → INSERT simplu.
 let positionsUniqueIdx = false;
+// Starea REALĂ a TimescaleDB. Fără extensie, `positions` rămâne un tabel Postgres obișnuit: fără compresie
+// și fără retenție automată — adică promisiunea „180 zile istoric, storage sub control" nu se ține.
+// Până acum asta se vedea doar într-un `console.warn` de la boot; acum e interogabilă (/api/admin/health).
+let _timescale = { attempted: false, enabled: false, retentionDays: null, compressAfterDays: null, reason: USE_PG ? null : 'PGlite local — Timescale nu se aplică' };
+function getTimescaleStatus() { return Object.assign({ usePg: USE_PG }, _timescale); }
 
 if (USE_PG) {
   // ─── PostgreSQL real (pg.Pool are nativ .query și .connect → drop-in, fără mutex, concurență reală) ───
@@ -173,15 +178,21 @@ async function initDb() {
     if (USE_PG) {
       try {
         await client.query('CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE');
+        _timescale.attempted = true;
         await client.query('ALTER TABLE positions DROP CONSTRAINT IF EXISTS positions_pkey'); // hypertable cere ca PK să includă timestamp
         await client.query("SELECT create_hypertable('positions','timestamp', if_not_exists => TRUE, migrate_data => TRUE)");
         await client.query("ALTER TABLE positions SET (timescaledb.compress, timescaledb.compress_segmentby = 'imei')");
         await client.query("SELECT add_compression_policy('positions', INTERVAL '7 days', if_not_exists => TRUE)");
         const retDays = parseInt(process.env.POSITION_RETENTION_DAYS) || 180;
         await client.query("SELECT add_retention_policy('positions', INTERVAL '" + retDays + " days', if_not_exists => TRUE)");
+        _timescale = { attempted: true, enabled: true, retentionDays: retDays, compressAfterDays: 7, reason: null };
         console.log('[DB] TimescaleDB activ: hypertable positions + compresie >7z + retenție ' + retDays + 'z');
       } catch (e) {
-        console.warn('[DB] TimescaleDB indisponibil → rulez pe Postgres simplu:', e.message);
+        // Degradare TĂCUTĂ până acum: fără Timescale nu există NICI compresie, NICI ștergere automată a
+        // pozițiilor vechi → storage-ul crește la nesfârșit, iar „retenția 180 zile" promisă nu se aplică.
+        // Reținem motivul ca să apară în /api/admin/health, nu doar într-o linie de log de la boot.
+        _timescale = { attempted: true, enabled: false, retentionDays: null, compressAfterDays: null, reason: e.message };
+        console.warn('[DB] ⚠ TimescaleDB indisponibil → Postgres simplu: FĂRĂ compresie și FĂRĂ retenție automată pe positions —', e.message);
       }
     }
 
@@ -2987,6 +2998,7 @@ async function getCompanyAdminEmails(companyId) {
 module.exports = {
   saveWeeklyReport, weeklyReportExists, getLatestWeeklyReport, getWeeklyReports, getWeeklyReportById, markWeeklyReportEmailed, getCompanyAdminEmails,
   pool,
+  getTimescaleStatus,
   initDb,
   ensureTenancy,
   createReportSchedule, getReportSchedules, getReportScheduleById, updateReportSchedule, deleteReportSchedule, getDueReportSchedules, setScheduleRun,

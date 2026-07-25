@@ -2080,6 +2080,12 @@ const pozitii = await r.json();</code></pre>
     .agp-dtitle{font-weight:800;font-size:20px;letter-spacing:-.01em}
     .agp-ddesc{color:var(--text-secondary);font-size:13.5px;line-height:1.6;background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
     .agp-dact{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 4px}
+    .hcheck{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid var(--border)}
+    .hcheck:last-child{border-bottom:none}
+    .hcheck .hd{width:9px;height:9px;border-radius:50%;margin-top:5px;flex:none}
+    .hcheck .hl{font-size:12.5px;font-weight:700;color:var(--text-primary)}
+    .hcheck .hx{font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:1px}
+    .hbanner{display:flex;align-items:center;gap:9px;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;margin-bottom:10px}
     .agp-feed-h{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin:16px 0 10px}
     .agp-feed{display:flex;flex-direction:column;gap:10px}
     .agp-fi{display:flex;gap:11px;background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
@@ -13424,12 +13430,50 @@ const pozitii = await r.json();</code></pre>
       if (!await raConfirm('Ștergi această alimentare?')) return;
       try { await fetch('/api/fuel-transactions/' + id, { method: 'DELETE', credentials: 'same-origin' }); loadFuelCard(); } catch (e) {}
     };
+    // Lista de verificări a producției: răspunde la „ce e setat pe serverul care rulează ACUM" — până acum
+    // singurul mod de a ști era să deschizi panoul Railway. Serverul întoarce DOAR verdicte, niciodată valori.
+    window.raxRenderHealth = async function () {
+      var box = $('rax-health-box'); if (!box) return;
+      var h = null;
+      try { h = await fetch('/api/admin/health', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
+      if (!h || !Array.isArray(h.checks)) { box.innerHTML = '<div class="rax-co-meta">Starea producției e indisponibilă.</div>'; return; }
+      var COL = { ok: 'var(--accent)', warn: '#f59e0b', crit: '#ef4444', info: 'var(--text-muted)' };
+      var nCrit = h.checks.filter(function (c) { return c.level === 'crit'; }).length;
+      var nWarn = h.checks.filter(function (c) { return c.level === 'warn'; }).length;
+      var banner = nCrit
+        ? '<div class="hbanner" style="background:rgba(239,68,68,.12);color:#ef4444;"><i class="fas fa-circle-exclamation"></i><span>' + nCrit + (nCrit === 1 ? ' problemă critică' : ' probleme critice') + ' de rezolvat înainte de lansare' + (nWarn ? ' · ' + nWarn + ' de verificat' : '') + '</span></div>'
+        : (nWarn ? '<div class="hbanner" style="background:rgba(245,158,11,.12);color:#f59e0b;"><i class="fas fa-triangle-exclamation"></i><span>' + nWarn + ' lucruri de verificat</span></div>'
+                 : '<div class="hbanner" style="background:color-mix(in srgb, var(--accent) 14%, transparent);color:var(--accent);"><i class="fas fa-circle-check"></i><span>Totul e configurat pentru producție</span></div>');
+      var rows = h.checks.map(function (c) {
+        return '<div class="hcheck"><span class="hd" style="background:' + (COL[c.level] || COL.info) + '"></span>'
+          + '<div style="min-width:0;flex:1;"><div class="hl">' + esc(c.label) + '</div><div class="hx">' + esc(c.detail || '') + '</div></div></div>';
+      }).join('');
+      // Workerele de fundal: ultima rulare + durată + câte ture s-au sărit (suprapunere = flotă prea mare pt. interval)
+      var wr = (h.workers || []).map(function (w) {
+        var when = w.lastAt ? new Date(w.lastAt).toLocaleString('ro-RO') : 'încă n-a rulat';
+        var dur = (w.lastMs != null) ? (' · ' + (w.lastMs > 1000 ? Math.round(w.lastMs / 100) / 10 + 's' : w.lastMs + 'ms')) : '';
+        var sk = w.skipped ? ' · <span style="color:#f59e0b">' + w.skipped + ' ture sărite (rulare încă în curs)</span>' : '';
+        var er = w.lastError ? ' · <span style="color:#ef4444">' + esc(w.lastError) + '</span>' : '';
+        return '<div class="hcheck"><span class="hd" style="background:' + (w.lastError ? '#ef4444' : (w.running ? '#f59e0b' : 'var(--accent)')) + '"></span>'
+          + '<div style="min-width:0;flex:1;"><div class="hl">' + esc(w.label) + (w.running ? ' <span style="color:#f59e0b;font-weight:600;">(rulează acum)</span>' : '') + '</div>'
+          + '<div class="hx">' + when + dur + sk + er + '</div></div></div>';
+      }).join('');
+      box.innerHTML = banner + rows
+        + '<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;margin:12px 0 4px;">Workere de fundal</div>' + wr
+        + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:8px;">Versiune <b>' + esc(h.server.version) + '</b> · pornit de ' + Math.round(h.server.uptime_s / 3600) + 'h · ' + esc(h.server.mode) + (h.db && h.db.pool ? ' · conexiuni DB: ' + h.db.pool.total + ' (' + h.db.pool.idle + ' libere' + (h.db.pool.waiting ? ', ' + h.db.pool.waiting + ' în așteptare' : '') + ')' : '') + '</div>';
+    };
     window.raxRunBackup = async function (btn) {
       var old = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se rulează…'; }
       try {
         var st = await fetch('/api/admin/backup/run', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (window.raxToast) raxToast(st.ok ? ('Backup rulat: ' + (st.target || 'local')) : ('Backup eșuat: ' + (st.error || '')), st.ok ? 'success' : 'error');
+        // ONESTITATE: „ok" înseamnă doar că dump-ul s-a generat. Dacă n-a plecat off-site, datele NU sunt
+        // salvate nicăieri (filesystemul containerului e efemer) → nu mai raportăm asta ca succes.
+        if (window.raxToast) {
+          if (!st.ok) raxToast('Backup eșuat: ' + (st.error || ''), 'error');
+          else if (st.offsite) raxToast('Backup salvat off-site ✓' + (st.encrypted ? ' (criptat)' : ' — NECRIPTAT'), st.encrypted ? 'success' : 'error');
+          else raxToast('Dump generat, dar NU s-a salvat nicăieri — vezi „Stare producție"', 'error', 6000);
+        }
         if (window.raxLoadDashboard) raxLoadDashboard('admin-tab-dashboard');
       } catch (e) { if (window.raxToast) raxToast('Eroare la backup', 'error'); }
       finally { if (btn) { btn.disabled = false; btn.innerHTML = old; } }
@@ -13490,9 +13534,14 @@ const pozitii = await r.json();</code></pre>
         }
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-database"></i> Backup date (business)</div>';
         html += '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px;">' + _bkTxt + '</div>';
+        if (bk && bk.warning) html += '<div class="hbanner" style="background:rgba(239,68,68,.12);color:#ef4444;"><i class="fas fa-triangle-exclamation"></i><span>' + esc(bk.warning) + '</span></div>';
         html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">'
           + '<button class="rax-btn primary" onclick="window.open(\'/api/admin/backup/download\',\'_blank\')"><i class="fas fa-download"></i> Descarcă backup acum</button>'
           + '<button class="rax-btn" onclick="raxRunBackup(this)"><i class="fas fa-cloud-arrow-up"></i> Rulează backup off-site</button></div>';
+
+        // ─── Stare producție: ce e CONFIGURAT pe serverul care rulează acum ───
+        html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-heart-pulse"></i> Stare producție</div>';
+        html += '<div id="rax-health-box"><div class="rax-co-meta">Se verifică…</div></div>';
 
         var rows = (d.companies || []).map(function (c) {
           return '<tr style="border-bottom:1px solid var(--border);">' +
@@ -13538,6 +13587,7 @@ const pozitii = await r.json();</code></pre>
         html += '<div id="rax-err-body"><div class="rax-co-meta">Se încarcă…</div></div>';
         html += '</div></details>';
         box.innerHTML = html;
+        raxRenderHealth();
         raxIoLoadVehicles();
         raxSysLoad();
         raxErrLoad();
