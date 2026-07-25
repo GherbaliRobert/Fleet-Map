@@ -1406,7 +1406,18 @@ async function billingAutoInvoiceTick() {
         subtotal: calc.subtotal, vatAmount: calc.vatAmount, total: calc.total, lines: calc.lines, issuer: iss, client: _clientSnapshot(co), note: 'Factură lunară automată', createdBy: null
       });
       await db.createNotification({ type: 'invoice_issued', severity: 'info', companyId: co.id, userId: null, title: 'Factură nouă: ' + num.full, body: 'Am emis factura lunară de ' + calc.total.toFixed(2) + ' lei. Scadență în ' + termDays + ' zile.', data: { invoiceFull: num.full, total: calc.total } }).catch(function () {});
-      if (efactura && efactura.enabled()) { try { const r = await efactura.uploadInvoice(inv, {}); if (r.ok) await db.updateInvoice(inv.id, { efacturaStatus: 'uploaded', efacturaId: r.index }); } catch (e) {} }
+      // e-Factura ANAF: eșecul era ÎNGHIȚIT (catch gol) → dacă ANAF respingea factura, nimeni nu afla.
+      if (efactura && efactura.enabled()) {
+        try {
+          const r = await efactura.uploadInvoice(inv, {});
+          if (r.ok) await db.updateInvoice(inv.id, { efacturaStatus: 'uploaded', efacturaId: r.index });
+          else { console.error('[E-FACTURA] ANAF a respins factura ' + num.full + ':', r.error || 'eroare necunoscută'); await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: String(r.error || 'respinsă de ANAF').slice(0, 300) }).catch(function () {}); }
+        } catch (e) {
+          console.error('[E-FACTURA] EȘEC la trimiterea facturii ' + num.full + ':', e.message);
+          try { captureError(e, { route: 'efactura-auto-upload', context: { invoice: num.full } }); } catch (_) {}
+          await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: String(e.message).slice(0, 300) }).catch(function () {});
+        }
+      }
       if (mailer && mailer.enabled() && co.contact_email) { mailer.send({ to: co.contact_email, subject: 'Factură ' + num.full + ' — RA Tracks', html: _invoiceEmailHtml(inv, iss), text: 'Factura ' + num.full + ', total ' + calc.total.toFixed(2) + ' lei.' }).catch(function () {}); }
       out.issued.push(num.full);
       console.log('[BILLING] factură automată ' + num.full + ' → companie #' + co.id + ' (' + calc.total.toFixed(2) + ' lei)');
@@ -2887,11 +2898,12 @@ app.post('/api/billing/webhook', async (req, res) => {
         try {
           const inv = await db.getInvoice(invoiceId);
           if (inv && inv.status !== 'paid') {
-            const pay = await db.recordPayment({ companyId: inv.company_id, amountRon: Number(inv.total) || null, periodStart: inv.period_start, periodEnd: inv.period_end, method: 'card', note: 'Stripe card · Factură ' + inv.full_number, createdBy: null });
-            await db.updateInvoice(inv.id, { status: 'paid', paidAt: Date.now(), paymentId: pay.id, stripeInvoiceId: obj.payment_intent || obj.id });
+            // ATOMIC: plata și marcarea facturii într-o singură tranzacție (înainte: două await-uri →
+            // eșecul celui de-al doilea lăsa plata înregistrată cu factura NEACHITATĂ).
+            await db.payInvoiceAtomic(inv.id, { companyId: inv.company_id, amountRon: Number(inv.total) || null, periodStart: inv.period_start, periodEnd: inv.period_end, method: 'card', note: 'Stripe card · Factură ' + inv.full_number, createdBy: null }, { stripeInvoiceId: obj.payment_intent || obj.id });
             _invalidateAccessCache(inv.company_id);
           }
-        } catch (e) { console.warn('[BILLING] invoice pay:', e.message); }
+        } catch (e) { console.error('[BILLING] EȘEC la înregistrarea plății cu cardul (factura ' + invoiceId + '):', e.message); try { captureError(e, { route: 'stripe-webhook', context: { invoiceId: invoiceId } }); } catch (_) {} }
       } else {
         const companyId = obj.client_reference_id ? parseInt(obj.client_reference_id) : null;
         if (companyId) await db.setCompanyBilling(companyId, { status: 'active', customerId: obj.customer, subscriptionId: obj.subscription });
@@ -8391,6 +8403,18 @@ async function start() {
 
   // Întreținere: curăță sesiunile expirate din oră în oră
   setInterval(() => { db.cleanupExpiredSessions().catch(() => {}); }, 60 * 60 * 1000);
+  // Întreținere memorie + retenție constatări (rulează la 6h; mapele in-memory creșteau NELIMITAT —
+  // cea mai expusă e _clientErrHits, cheiată pe IP pe un endpoint PUBLIC = creștere provocabilă din exterior).
+  setInterval(() => {
+    const now = Date.now();
+    try { for (const [k, v] of _clientErrHits) if (now - v.ts > 5 * 60000) _clientErrHits.delete(k); } catch (e) {}
+    try { for (const [k, v] of alertCooldowns) if (now - v > 24 * 3600000) alertCooldowns.delete(k); } catch (e) {}
+    try { for (const [k, v] of _userEvtCooldown) if (now - v > 24 * 3600000) _userEvtCooldown.delete(k); } catch (e) {}
+    try { for (const [k, v] of _wsCooldown) if (now - v > 24 * 3600000) _wsCooldown.delete(k); } catch (e) {}
+    db.pruneAgentFindings(parseInt(process.env.FINDINGS_RETENTION_DAYS) || 90)
+      .then(n => { if (n) console.log(`[RETENȚIE] Șterse ${n} constatări de agenți mai vechi de 90 zile`); })
+      .catch(() => {});
+  }, 6 * 60 * 60 * 1000);
 
   // Retenție opțională pentru poziții (setează POSITION_RETENTION_DAYS în .env ca să o activezi)
   const retentionDays = parseInt(process.env.POSITION_RETENTION_DAYS);

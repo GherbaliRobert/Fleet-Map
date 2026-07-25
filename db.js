@@ -681,6 +681,12 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS vat_payer BOOLEAN DEFAULT true;        -- clientul e plătitor de TVA (informativ pe factură)
       END $$
     `);
+    // Indecși pt. interogările REALE ale clopoțelului (listă + contor necitite, pollat de UI). Se creează AICI,
+    // DUPĂ ALTER-ele care adaugă company_id/user_id — altfel ar eșua pe o bază nouă (coloane inexistente).
+    // Fără ei, COUNT(*) cu `imei = ANY($2)` pe ~2000 IMEI făcea seq scan pe toată tabela.
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_notif_co_created ON notifications (company_id, created_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_notif_imei_created ON notifications (imei, created_at DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_notif_user_created ON notifications (user_id, created_at DESC)`);
     // ─── Plăți (gestionate manual de super-admin; schema pregătită și pentru Stripe) ───
     await client.query(`
       CREATE TABLE IF NOT EXISTS payments (
@@ -1220,6 +1226,36 @@ async function updateInvoice(id, f) {
   const r = await pool.query(`UPDATE invoices SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, args);
   return r.rows[0] || null;
 }
+// ATOMIC: încasare + marcarea facturii ca plătită într-o SINGURĂ tranzacție.
+// Înainte erau două await-uri separate: dacă al doilea eșua, rămâneai cu plată înregistrată și factură
+// NEACHITATĂ (doar un console.warn) — inconsistență contabilă. Critic la plata cu cardul, la scară.
+async function payInvoiceAtomic(invoiceId, payment, invoiceFields) {
+  const client = await pool.connect();
+  const now = Date.now();
+  try {
+    await client.query('BEGIN');
+    const pr = await client.query(
+      `INSERT INTO payments (company_id, amount_ron, period_start, period_end, method, note, paid_at, created_by, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [payment.companyId, (payment.amountRon != null ? payment.amountRon : null), payment.periodStart || null,
+       payment.periodEnd || null, payment.method || 'manual', payment.note || null, payment.paidAt || now, payment.createdBy || null, now]
+    );
+    const pay = pr.rows[0];
+    const f = Object.assign({ status: 'paid', paidAt: now, paymentId: pay.id }, invoiceFields || {});
+    const map = { status: 'status', efacturaStatus: 'efactura_status', efacturaId: 'efactura_id', efacturaError: 'efactura_error',
+      stripeInvoiceId: 'stripe_invoice_id', paymentId: 'payment_id', paidAt: 'paid_at', dueDate: 'due_date', note: 'note' };
+    const sets = [], args = [invoiceId];
+    for (const k of Object.keys(map)) { if (f[k] !== undefined) { args.push(f[k]); sets.push(map[k] + ' = $' + args.length); } }
+    args.push(now); sets.push('updated_at = $' + args.length);
+    const ir = await client.query(`UPDATE invoices SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, args);
+    await client.query('COMMIT');
+    // accesul companiei se prelungește DUPĂ commit (nu face parte din consistența contabilă)
+    if (payment.periodEnd) { try { await setCompanyAccessUntil(payment.companyId, payment.periodEnd); } catch (e) {} }
+    return { payment: pay, invoice: ir.rows[0] || null };
+  } catch (e) { try { await client.query('ROLLBACK'); } catch (_) {} throw e; }
+  finally { client.release(); }
+}
+
 // ─── Control costuri (platform_costs) ───
 async function listPlatformCosts(opts) {
   opts = opts || {};
@@ -1557,6 +1593,13 @@ async function getAgentFindings(companyId, limit = 100) {
   const params = companyId != null ? [companyId, limit] : [limit];
   const r = await pool.query(`SELECT * FROM agent_findings ${where} ORDER BY created_at DESC LIMIT $${params.length}`, params);
   return r.rows;
+}
+// Retenție constatări: fără ea, agent_findings creștea la nesfârșit (panoul are limită de 80 → 
+// constatările vechi împingeau afară pe cele noi, iar tabela nu se golea niciodată).
+async function pruneAgentFindings(days) {
+  const d = Math.max(7, parseInt(days) || 90);
+  const r = await pool.query("DELETE FROM agent_findings WHERE created_at < NOW() - INTERVAL '" + d + " days'");
+  return r.rowCount || 0;
 }
 // Număr constatări noi ale agenților (pentru dashboard platformă). null = toate companiile.
 async function countNewFindings() {
@@ -2952,7 +2995,8 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
-  nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice,
+  nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,
+  pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
