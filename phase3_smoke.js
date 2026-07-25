@@ -41,8 +41,8 @@ async function api(method, path, opts={}) { const h={'Content-Type':'application
   check('analiză zonă: ≥1 vehicul cu vizită', zone.status===200 && zone.body.rows && zone.body.rows.length >= 1, zone.body && zone.body.summary);
 
   console.log('\n— Acces (client scopat) —');
-  await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'cli_rep', password: 'test12', role: 'client' } });
-  const cl = await login('cli_rep', 'test12'); const C = { cookie: cl.cookie };
+  await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'cli.rep@test.ro', full_name: 'Client Rapoarte', password: 'test12', role: 'client' } });
+  const cl = await login('cli.rep@test.ro', 'test12'); const C = { cookie: cl.cookie };
   const cTrips = await api('GET', '/api/reports/trips?imei=TEST111&from='+from+'&to='+to, C);
   check('client FĂRĂ acces e blocat pe raport TEST111 (403)', cTrips.status === 403, cTrips.status);
 

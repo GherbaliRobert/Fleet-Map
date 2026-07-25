@@ -50,9 +50,11 @@ export function AdminUsers() {
 
   async function save() {
     if (!isEdit) {
-      if (!form.username.trim() || form.username.trim().length < 3) { showToast('Username minim 3 caractere', true); return; }
+      // Contul se creează pe adresa de email: ea e utilizatorul de autentificare ȘI adresa de recuperare.
+      if (!/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(form.username.trim())) { showToast('Utilizatorul trebuie să fie o adresă de email validă', true); return; }
       if (!form.password || form.password.length < 4) { showToast('Parola minim 4 caractere', true); return; }
     }
+    if (!String(form.full_name || '').trim() || String(form.full_name).trim().length < 2) { showToast('Completează numele afișat', true); return; }
     // Acordarea rolului de platformă e ireversibilă din perspectiva datelor văzute → confirmare explicită.
     if (form.role === 'superadmin' && (!isEdit || editing.role !== 'superadmin')) {
       const who = isEdit ? editing.username : form.username.trim();
@@ -64,7 +66,8 @@ export function AdminUsers() {
         await Api.updateUser(editing.id, { role: form.role, full_name: form.full_name || null, email: form.email || null, phone: form.phone || null, active: form.active });
         showToast('Salvat');
       } else {
-        await Api.createUser({ username: form.username.trim(), password: form.password, role: form.role, full_name: form.full_name || null, email: form.email || null, phone: form.phone || null });
+        const _u = form.username.trim().toLowerCase();
+        await Api.createUser({ username: _u, password: form.password, role: form.role, full_name: form.full_name.trim(), email: _u, phone: form.phone || null });
         showToast('Utilizator creat');
       }
       setEditing(null); await reload();
@@ -120,13 +123,12 @@ export function AdminUsers() {
                   <div class="fld"><label>Utilizator</label><input value={form.username} disabled style="opacity:.6" /></div>
                 ) : (
                   <>
-                    <div class="fld"><label>Utilizator <span class="req">*</span></label><input value={form.username} onInput={(e) => setF('username', (e.target as HTMLInputElement).value)} placeholder="min. 3 caractere" autocapitalize="none" /></div>
+                    <div class="fld"><label>Email (= utilizator) <span class="req">*</span></label><input type="email" value={form.username} onInput={(e) => setF('username', (e.target as HTMLInputElement).value)} placeholder="ion.popescu@firma.ro" autocapitalize="none" autocomplete="off" spellcheck={false} /></div>
                     <div class="fld"><label>Parolă <span class="req">*</span></label><input type="password" value={form.password} onInput={(e) => setF('password', (e.target as HTMLInputElement).value)} placeholder="min. 4 caractere" /></div>
                   </>
                 )}
-                <div class="fld"><label>Nume complet</label><input value={form.full_name} onInput={(e) => setF('full_name', (e.target as HTMLInputElement).value)} placeholder="Opțional" /></div>
+                <div class="fld"><label>Nume afișat <span class="req">*</span></label><input value={form.full_name} onInput={(e) => setF('full_name', (e.target as HTMLInputElement).value)} placeholder="Ion Popescu" /></div>
                 <div class="frm-row">
-                  <div class="fld"><label>Email</label><input type="email" value={form.email} onInput={(e) => setF('email', (e.target as HTMLInputElement).value)} /></div>
                   <div class="fld"><label>Telefon</label><input type="tel" value={form.phone} onInput={(e) => setF('phone', (e.target as HTMLInputElement).value)} /></div>
                 </div>
                 <div class="fld"><label>Rol</label>

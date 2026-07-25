@@ -54,8 +54,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check('unread = 0 după ack-all', (await api('GET', '/api/notifications/unread-count', A)).body.count === 0);
 
   console.log('\n— Scoping notificări personale —');
-  await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'cli_ev', password: 'test12', role: 'client' } });
-  const cl = await login('cli_ev', 'test12'); const C = { cookie: cl.cookie };
+  await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'cli.ev@test.ro', full_name: 'Client Evenimente', password: 'test12', role: 'client' } });
+  const cl = await login('cli.ev@test.ro', 'test12'); const C = { cookie: cl.cookie };
   const cn = await api('GET', '/api/notifications', C);
   check('clientul NU vede notificările personale ale adminului', Array.isArray(cn.body) && !cn.body.some(n => n.type === 'fuel_drop'), cn.body && cn.body.length);
 

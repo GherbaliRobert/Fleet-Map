@@ -27,9 +27,9 @@ async function req(jar, method, path, body) {
   const B = (await req(su, 'POST', '/api/companies', { name: 'Beta SRL ' + Date.now() })).data;
   ok(A && A.id, 'companie A creată #' + (A && A.id));
   ok(B && B.id, 'companie B creată #' + (B && B.id));
-  const uA = 'admin_a_' + (A.id), uB = 'admin_b_' + (B.id);
-  const ca = await req(su, 'POST', `/api/companies/${A.id}/admin`, { username: uA, password: 'pass1234' });
-  const cb = await req(su, 'POST', `/api/companies/${B.id}/admin`, { username: uB, password: 'pass1234' });
+  const uA = 'admin.a.' + (A.id) + '@test.ro', uB = 'admin.b.' + (B.id) + '@test.ro';
+  const ca = await req(su, 'POST', `/api/companies/${A.id}/admin`, { username: uA, password: 'pass1234', full_name: 'Admin A' });
+  const cb = await req(su, 'POST', `/api/companies/${B.id}/admin`, { username: uB, password: 'pass1234', full_name: 'Admin B' });
   ok(ca.status === 200, 'admin A creat (' + ca.status + ')');
   ok(cb.status === 200, 'admin B creat (' + cb.status + ')');
 
@@ -39,8 +39,8 @@ async function req(jar, method, path, body) {
   ok(r1.status === 200 && r2.status === 200, 'device assignment ok');
 
   console.log('# login company admins');
-  ok((await req(aA, 'POST', '/api/login', { username: uA, password: 'pass1234' })).status === 200, 'admin A login');
-  ok((await req(aB, 'POST', '/api/login', { username: uB, password: 'pass1234' })).status === 200, 'admin B login');
+  ok((await req(aA, 'POST', '/api/login', { username: uA, password: 'pass1234', full_name: 'Admin A' })).status === 200, 'admin A login');
+  ok((await req(aB, 'POST', '/api/login', { username: uB, password: 'pass1234', full_name: 'Admin B' })).status === 200, 'admin B login');
 
   console.log('# device list isolation');
   const devA = ((await req(aA, 'GET', '/api/devices')).data || []).map(d => d.imei);

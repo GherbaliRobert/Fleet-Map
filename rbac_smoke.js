@@ -46,14 +46,14 @@ async function api(method, path, opts = {}) {
   check('asignare TEST111 la companie', (await api('PUT', '/api/devices/TEST111/company', { cookie: admin.cookie, body: { company_id: company.id } })).status === 200);
 
   console.log('\n— Creare client în companie + acces (doar TEST111) —');
-  const create = await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'client_test_' + company.id, password: 'test12', role: 'client', full_name: 'Client Test', company_id: company.id } });
+  const create = await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'client.test.' + company.id + '@test.ro', password: 'test12', role: 'client', full_name: 'Client Test', company_id: company.id } });
   check('creare client 200', create.status === 200, create.body);
   const cid = create.body.id;
   const grant = await api('PUT', '/api/users/' + cid + '/access', { cookie: admin.cookie, body: { devices: ['TEST111'], groups: [] } });
   check('atribuire acces 200', grant.status === 200, grant.body);
 
   console.log('\n— Client (sesiune, scoped) —');
-  const client = await login('client_test_' + company.id, 'test12');
+  const client = await login('client.test.' + company.id + '@test.ro', 'test12');
   check('login client 200', client.status === 200, client.status);
   check('client manageUsers=false', client.body.permissions && client.body.permissions.manageUsers === false);
   check('client manageFleet=false', client.body.permissions && client.body.permissions.manageFleet === false);

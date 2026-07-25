@@ -48,12 +48,12 @@ async function api(method, path, opts={}) { const h={'Content-Type':'application
 
   console.log('\n— ACCES PE GRUP (client vede vehiculul prin grupă) —');
   await api('PUT', '/api/users/_purge', A).catch(()=>{}); // no-op
-  const cu = await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'client_grup', password: 'test12', role: 'client' } });
+  const cu = await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'client.grup@test.ro', full_name: 'Client Grup', password: 'test12', role: 'client' } });
   check('creare client', cu.status === 200, cu.body); const cid = cu.body.id;
   // acces DOAR pe grup (fără device direct)
   const grant = await api('PUT', '/api/users/' + cid + '/access', { cookie: admin.cookie, body: { devices: [], groups: [gid] } });
   check('acordare acces pe grupă', grant.status === 200);
-  const cl = await login('client_grup', 'test12'); const C = { cookie: cl.cookie };
+  const cl = await login('client.grup@test.ro', 'test12'); const C = { cookie: cl.cookie };
   const cdev = await api('GET', '/api/devices', C);
   check('client vede TEST111 PRIN GRUPĂ', Array.isArray(cdev.body) && cdev.body.length === 1 && cdev.body[0].imei === 'TEST111', cdev.body && cdev.body.map && cdev.body.map(x=>x.imei));
   check('client NU vede TEST222', Array.isArray(cdev.body) && !cdev.body.some(x => x.imei === 'TEST222'));

@@ -1198,6 +1198,21 @@ function canAccessImei(req, imei) {
 }
 
 // Verifică dacă un utilizator țintă aparține companiei celui care face cererea (super-adminul trece peste tot)
+// ─── Identitatea contului: utilizatorul ESTE adresa de email ────────────────────────────────────────
+// Regulă pentru conturile NOI: username = email (o singură identitate de reținut, iar recuperarea parolei
+// și invitațiile au întotdeauna unde să ajungă). Conturile VECHI cu username clasic („admin") continuă să
+// funcționeze neschimbat — nu forțăm o migrare care ar bloca oameni în afara aplicației.
+const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+function normUsername(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+// Căutare tolerantă la MAJUSCULE: cineva care tastează „Ion@Firma.ro" trebuie să intre în contul
+// „ion@firma.ro". Întâi potrivire exactă (comportamentul vechi, intact), apoi varianta cu litere mici.
+async function findUserForLogin(username) {
+  const raw = String(username == null ? '' : username).trim();
+  let u = await db.getUserByUsername(raw);
+  if (!u) { const lc = raw.toLowerCase(); if (lc !== raw) u = await db.getUserByUsername(lc); }
+  return u;
+}
+
 // Gardă anti-blocare: platforma trebuie să rămână MEREU cu cel puțin un super-admin activ.
 // Fără asta, doi super-admini se pot „stinge" reciproc (protecția existentă acoperă doar propriul cont)
 // și rămâi fără niciun cont care poate administra companiile — recuperabil doar din baza de date.
@@ -1591,7 +1606,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(429).json({ error: 'Prea multe încercări. Reîncearcă peste 15 minute.' });
     }
 
-    const user = await db.getUserByUsername(username);
+    const user = await findUserForLogin(username); // emailul se poate tasta cu MAJUSCULE
     if (!user) {
       recordLoginFail(ip, username);
       return res.status(401).json({ error: 'Username sau parola greșită' });
@@ -1649,7 +1664,7 @@ app.post('/api/mobile/login', async (req, res) => {
     const { username, password, device } = req.body || {};
     if (!username || !password) return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
     if (loginBlocked(ip, username)) return res.status(429).json({ error: 'Prea multe încercări. Reîncearcă peste 15 minute.' });
-    const user = await db.getUserByUsername(username);
+    const user = await findUserForLogin(username); // idem web: tastarea cu majuscule nu blochează accesul
     if (!user) { recordLoginFail(ip, username); return res.status(401).json({ error: 'Username sau parola greșită' }); }
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) { recordLoginFail(ip, username); return res.status(401).json({ error: 'Username sau parola greșită' }); }
@@ -1714,8 +1729,11 @@ app.get('/api/me', async (req, res) => {
   if (!features) features = { agents: true, ai_assistant: true, etransport: true, tahograf: true };
   let sys = { announcement: '', offline_minutes: 65 };
   try { const s = await getSystemSettings(); sys = { announcement: s.announcement, offline_minutes: s.offline_minutes }; } catch (e) {}
+  // Numele afișat: e ce vede omul în aplicație (bara de sus), în locul adresei de email cu care s-a logat.
+  let fullName = null;
+  try { if (a.userId) { const _u = await db.getUserById(a.userId); if (_u) fullName = _u.full_name || null; } } catch (e) {}
   res.json({
-    username: a.username, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
+    username: a.username, full_name: fullName, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
     isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access,
     announcement: sys.announcement, offline_minutes: sys.offline_minutes
   });
@@ -1759,15 +1777,21 @@ app.get('/api/users/lite', requireAuth, requireAdmin, withCompany, async (req, r
 
 app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
-    const { username, password, role, full_name, email, phone } = req.body;
+    const { password, role, email, phone } = req.body;
+    const username = normUsername(req.body.username);
+    const full_name = String(req.body.full_name == null ? '' : req.body.full_name).trim();
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username și parola sunt obligatorii' });
+      return res.status(400).json({ error: 'Emailul și parola sunt obligatorii' });
     }
-    if (username.length < 3) {
-      return res.status(400).json({ error: 'Username-ul trebuie să aibă minim 3 caractere' });
+    // Conturile NOI se creează pe adresa de email (vezi normUsername/EMAIL_RE)
+    if (!EMAIL_RE.test(username)) {
+      return res.status(400).json({ error: 'Utilizatorul trebuie să fie o adresă de email validă (ex. ion.popescu@firma.ro)' });
     }
     if (password.length < 4) {
       return res.status(400).json({ error: 'Parola trebuie să aibă minim 4 caractere' });
+    }
+    if (full_name.length < 2) {
+      return res.status(400).json({ error: 'Numele afișat este obligatoriu (așa apare persoana în aplicație)' });
     }
     // company_admin poate atribui doar roluri din companie (nu superadmin); super-admin poate orice
     const allowed = req.isSuper ? VALID_ROLES : COMPANY_ASSIGNABLE_ROLES;
@@ -1788,7 +1812,9 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await db.createUser(username, hash, finalRole, { full_name, email, phone, company_id: companyId });
+    // Emailul contului = username-ul. Îl salvăm explicit ca recuperarea parolei și invitațiile să aibă
+    // întotdeauna o adresă, fără să depindă de un al doilea câmp completat de mână.
+    const user = await db.createUser(username, hash, finalRole, { full_name, email: (email && String(email).trim()) || username, phone, company_id: companyId });
     auditReq(req, 'create', 'user', user.id, { username, role: finalRole, company_id: companyId });
     res.json(user);
   } catch (err) {
@@ -2755,11 +2781,14 @@ app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req,
     const companyId = parseInt(req.params.id);
     const co = await db.getCompanyById(companyId);
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-    const { username, password, full_name, email } = req.body;
-    if (!username) return res.status(400).json({ error: 'Username obligatoriu' });
-    if (await db.getUserByUsername(username)) return res.status(409).json({ error: 'Username-ul există deja' });
+    const { password } = req.body;
+    const username = normUsername(req.body.username);
+    const full_name = String(req.body.full_name == null ? '' : req.body.full_name).trim();
+    if (!username) return res.status(400).json({ error: 'Emailul administratorului e obligatoriu' });
+    if (!EMAIL_RE.test(username)) return res.status(400).json({ error: 'Utilizatorul trebuie să fie o adresă de email validă (pe ea pleacă și invitația)' });
+    if (await db.getUserByUsername(username)) return res.status(409).json({ error: 'Există deja un cont cu acest email' });
+    const email = (req.body.email && String(req.body.email).trim()) || username; // emailul = username-ul
     const invite = !password; // fără parolă → invitație prin email
-    if (invite && !email) return res.status(400).json({ error: 'Pune o parolă SAU un email pentru invitație' });
     if (!invite && password.length < 4) return res.status(400).json({ error: 'Parola: minim 4 caractere' });
     const hash = await bcrypt.hash(invite ? crypto.randomBytes(24).toString('hex') : password, 10);
     const u = await db.createUser(username, hash, 'company_admin', { full_name, email, company_id: companyId });

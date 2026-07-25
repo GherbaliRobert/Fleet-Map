@@ -42,8 +42,8 @@ async function api(method, path, opts={}) { const h={'Content-Type':'application
   check('eveniment fuel_drop din sonda mapată', Array.isArray(notifs.body) && notifs.body.some(n => n.type === 'fuel_drop'));
 
   console.log('\n— Acces (client fără drept nu poate seta sonde) —');
-  await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'cli_fs', password: 'test12', role: 'client' } });
-  const cl = await login('cli_fs', 'test12');
+  await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'cli.fs@test.ro', full_name: 'Client Senzori', password: 'test12', role: 'client' } });
+  const cl = await login('cli.fs@test.ro', 'test12');
   check('client NU poate seta sonde (403)', (await api('PUT', '/api/devices/TEST111/fuel-sensors', { cookie: cl.cookie, body: { sensors: [] } })).status === 403);
 
   console.log('\n=== Sonde: ' + pass + ' passed, ' + fail + ' failed ===');

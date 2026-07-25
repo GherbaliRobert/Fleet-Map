@@ -53,8 +53,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check('unread = 0 după ack-all', u3.body.count === 0, u3.body);
 
   console.log('\n— Scoping notificări —');
-  await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'cli_notif', password: 'test12', role: 'client' } });
-  const cl = await login('cli_notif', 'test12'); const C = { cookie: cl.cookie };
+  await api('POST', '/api/users', { cookie: admin.cookie, body: { username: 'cli.notif@test.ro', full_name: 'Client Notificari', password: 'test12', role: 'client' } });
+  const cl = await login('cli.notif@test.ro', 'test12'); const C = { cookie: cl.cookie };
   const cn = await api('GET', '/api/notifications', C);
   check('client (fără acces) NU vede notificarea mentenanță TEST111', Array.isArray(cn.body) && !cn.body.some(n => n.type === 'maintenance_due' && n.imei === 'TEST111'), cn.body && cn.body.map && cn.body.map(n=>n.type));
 

@@ -1414,11 +1414,10 @@
       <div style="border-top:1px solid var(--border);padding-top:12px;">
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
         <div class="add-user-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <input type="text" id="new-username" placeholder="Username *">
-          <input type="password" id="new-password" placeholder="Parolă *">
-          <input type="text" id="new-fullname" placeholder="Nume complet">
-          <input type="email" id="new-email" placeholder="Email">
-          <input type="text" id="new-phone" placeholder="Telefon">
+          <input type="email" id="new-username" placeholder="Email (= utilizator) *" autocomplete="off" autocapitalize="none" spellcheck="false">
+          <input type="password" id="new-password" placeholder="Parolă *" autocomplete="new-password">
+          <input type="text" id="new-fullname" placeholder="Nume afișat *">
+          <input type="tel" id="new-phone" placeholder="Telefon">
           <select id="new-company" class="super-only"><option value="">— alege compania —</option></select>
           <select id="new-role">
             <option value="manager">Manager (toată flota, editează)</option>
@@ -2734,7 +2733,10 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('app').classList.add('visible');
 
       applyTheme(localStorage.getItem('gpsTheme') || 'dark');
-      document.getElementById('topbar-username').textContent = currentUser.username || '';
+      // Arătăm numele afișat, nu adresa de email cu care s-a autentificat (emailul rămâne în tooltip).
+      var _tbu = document.getElementById('topbar-username');
+      _tbu.textContent = currentUser.full_name || currentUser.username || '';
+      _tbu.title = currentUser.username || '';
       document.getElementById('topbar-role').textContent = ROLE_LABELS[currentUser.role] || currentUser.role || '';
 
       applyPermissionsUI();
@@ -3106,16 +3108,19 @@ const pozitii = await r.json();</code></pre>
     };
 
     async function addUser() {
-      const username = document.getElementById('new-username').value.trim();
+      // Contul se creează pe adresa de email: ea e și utilizatorul de autentificare, și adresa pe care
+      // pleacă invitația / resetarea parolei. Numele afișat e cel văzut în aplicație de colegi.
+      const username = document.getElementById('new-username').value.trim().toLowerCase();
       const password = document.getElementById('new-password').value;
       const role = document.getElementById('new-role').value;
       const full_name = document.getElementById('new-fullname').value.trim();
-      const email = document.getElementById('new-email').value.trim();
       const phone = document.getElementById('new-phone').value.trim();
 
-      if (!username || !password) return alert('Username și parola sunt obligatorii');
+      if (!username || !password) return alert('Emailul și parola sunt obligatorii');
+      if (!/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(username)) return alert('Utilizatorul trebuie să fie o adresă de email validă (ex. ion.popescu@firma.ro).');
+      if (full_name.length < 2) return alert('Completează numele afișat — așa apare persoana în aplicație.');
 
-      const body = { username, password, role, full_name, email, phone };
+      const body = { username, password, role, full_name, email: username, phone };
       // Cont de PLATFORMĂ: nu ține de nicio companie și vede/administrează TOT → cere confirmare explicită.
       if (role === 'superadmin') {
         if (!await raConfirm('Creezi un cont de SUPER-ADMIN?\n\n„' + username + '" va avea acces la TOATE companiile, la toate vehiculele și la datele de facturare ale platformei — nu doar la o companie.')) return;
@@ -3136,7 +3141,7 @@ const pozitii = await r.json();</code></pre>
       if (!res.ok) { const err = await res.json(); return alert(err.error); }
 
       const created = await res.json();
-      ['new-username','new-password','new-fullname','new-email','new-phone'].forEach(id => document.getElementById(id).value = '');
+      ['new-username','new-password','new-fullname','new-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       await loadUsers();
       // Pentru roluri scoped, deschide direct atribuirea de vehicule
       // Rolurile „scoped" au nevoie de atribuire de vehicule; super-adminul vede TOT, deci n-are ce atribui.
