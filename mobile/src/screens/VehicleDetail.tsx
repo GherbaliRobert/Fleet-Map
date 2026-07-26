@@ -10,10 +10,9 @@ import { Icon } from '../components/Icon';
 import { MiniMap } from '../components/MiniMap';
 import { MapModal } from '../components/MapModal';
 import { WorkSchedEditor } from '../components/WorkSchedEditor';
+import { VehicleSpecsView, VehicleSpecsForm, specsFromFull } from '../components/VehicleSpecs';
 import './detail.css';
 import './admin.css';
-
-const VEHICLE_TYPES = ['Auto', 'Camion', 'Duba', 'Motocicleta', 'Autobuz', 'Utilaj', 'Remorca', 'Altul'];
 
 const HEX: Record<string, string> = { moving: '#3FE07D', idle: '#eab308', stopped: '#ef4444', offline: '#8A93A3' };
 const CAN_LABELS: Record<string, [string, string]> = {
@@ -108,15 +107,15 @@ export function VehicleDetail() {
   }, [imei]);
 
   function openEdit() {
-    setEf({
+    // Fișa COMPLETĂ (~35 câmpuri) + cele două atribuiri, care merg pe rute separate.
+    setEf(Object.assign(specsFromFull(full), {
       name: full?.name || v?.name || '',
       plate: full?.plate || v?.plate || '',
       vehicle_type: (full as any)?.vehicle_type || v?.vehicle_type || '',
       driver_id: (full as any)?.driver_id != null ? String((full as any).driver_id) : '',
       group_id: (full as any)?.group_id != null ? String((full as any).group_id) : '',
       can_interface: (full as any)?.can_interface || '',
-      ignition_source: (full as any)?.ignition_source || '',
-    });
+    }));
     setEditOpen(true);
     if (!drivers.length) Api.driversLite().then((d) => setDrivers(Array.isArray(d) ? d : [])).catch(() => {});
     if (!groups.length) Api.groupsAll().then((g) => setGroups(Array.isArray(g) ? g : [])).catch(() => {});
@@ -126,7 +125,11 @@ export function VehicleDetail() {
   async function saveEdit() {
     setSavingEdit(true);
     try {
-      await Api.updateDevice(imei, Object.assign({ name: ef.name || null, plate: ef.plate || null, vehicle_type: ef.vehicle_type || null }, me.value?.isSuper ? { ignition_source: ef.ignition_source || null } : {}));
+      // Fișa completă merge pe /details — ruta scurtă (/api/devices/:imei) salvează DOAR nume/număr/tip.
+      // Câmpurile rezervate super-adminului sunt oricum eliminate din body pe server dacă nu ai dreptul.
+      const spec: any = specsFromFull(ef);
+      spec.name = ef.name || null; spec.plate = ef.plate || null; spec.vehicle_type = ef.vehicle_type || null;
+      await Api.updateDeviceDetails(imei, spec);
       await Api.assignDevice(imei, ef.driver_id ? Number(ef.driver_id) : null, ef.group_id ? Number(ef.group_id) : null);
       if (me.value?.isSuper) await Api.setCanInterface(imei, ef.can_interface || null).catch(() => {}); // doar super-admin
       showToast('Vehicul actualizat');
@@ -300,6 +303,9 @@ export function VehicleDetail() {
           </div>
         </div>
 
+        {/* Fișa tehnică — arată doar secțiunile care au ceva completat, ca să nu umple ecranul cu liniuțe. */}
+        <VehicleSpecsView full={full} />
+
         <div class="card d-stats">
           <h3>Activitate astăzi</h3>
           <div class="d-stat"><Icon name="route" size={18} class="ic" /><span class="lbl">Distanță parcursă</span><span class="val">{daily ? daily.totalKm.toFixed(2) : '0.00'} km</span></div>
@@ -347,16 +353,9 @@ export function VehicleDetail() {
             </div>
             <div class="sheet-body">
               <div class="frm">
-                <div class="fld"><label>Denumire</label><input value={ef.name} onInput={(e) => setEF('name', (e.target as HTMLInputElement).value)} placeholder="Ex: Logan Alb" /></div>
-                <div class="frm-row">
-                  <div class="fld"><label>Nr. înmatriculare</label><input value={ef.plate} onInput={(e) => setEF('plate', (e.target as HTMLInputElement).value)} placeholder="B 123 ABC" /></div>
-                  <div class="fld"><label>Categorie</label>
-                    <select value={ef.vehicle_type} onChange={(e) => setEF('vehicle_type', (e.target as HTMLSelectElement).value)}>
-                      <option value="">— alege —</option>
-                      {VEHICLE_TYPES.map((t) => <option value={t}>{t === 'Duba' ? 'Dubă' : t === 'Motocicleta' ? 'Motocicletă' : t === 'Remorca' ? 'Remorcă' : t}</option>)}
-                    </select>
-                  </div>
-                </div>
+                {/* Fișa tehnică, pe secțiuni pliabile — „Identificare" (nume, număr, tip, marcă, VIN…) e deschisă
+                    implicit, restul se deschid la nevoie, ca formularul să nu fie un perete de 35 de câmpuri. */}
+                <VehicleSpecsForm val={ef} set={setEF} isSuper={!!me.value?.isSuper} />
                 <div class="fld"><label>Șofer alocat</label>
                   <select value={ef.driver_id} onChange={(e) => setEF('driver_id', (e.target as HTMLSelectElement).value)}>
                     <option value="">Nealocat</option>
@@ -379,15 +378,7 @@ export function VehicleDetail() {
                     <div style="font-size:11px;color:var(--text-muted);margin-top:3px">„FMS" la camioane cu FMC650 — altfel RPM/combustibil/temperatură pot fi greșit decodate. Se aplică pachetelor noi.</div>
                   </div>
                 )}
-                {me.value?.isSuper && (
-                  <div class="fld"><label>Sursă contact <span style="color:var(--accent);font-size:10px">super-admin</span></label>
-                    <select value={ef.ignition_source} onChange={(e) => setEF('ignition_source', (e.target as HTMLSelectElement).value)}>
-                      <option value="">Automat (IO 239, implicit)</option>
-                      <option value="din1">DIN1 (intrare digitală 1)</option>
-                    </select>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:3px">Folosește „DIN1" doar dacă contactul vine pe intrarea digitală, nu pe IO 239.</div>
-                  </div>
-                )}
+                {/* „Sursă contact" stă acum în secțiunea Tehnic (super-admin) din fișă — un singur loc pentru el. */}
                 <div class="frm-actions">
                   <button class="btn btn-primary" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Se salvează…' : 'Salvează'}</button>
                 </div>
