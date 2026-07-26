@@ -10,16 +10,25 @@ const ROUTES = [
   { city: 'Brașov', center: [45.6427, 25.5887], r: 0.040 }
 ];
 
-let started = false;
+// Simulatorul se poate OPRI, nu doar porni: fără niciun cont demo activ el scria degeaba ~86.000 de poziții
+// pe zi în bază și trimitea 100 de actualizări pe minut pe WebSocket. `_timer` e păstrat exact pentru asta.
+let started = false, _timer = null;
+function isRunning() { return started; }
+function stop() {
+  if (!started) return false;
+  clearInterval(_timer); _timer = null; started = false;
+  console.log('[DEMO] Simulator oprit');
+  return true;
+}
 function start({ livePositions, broadcastWs, insertPositions }) {
-  if (started) return;
+  if (started) return false;
   started = true;
   const phase = {};
   const fuelLvl = {}; // nivel combustibil per vehicul (litri), scade realist + realimentare
   // fază inițială deterministă (fără Math.random la boot, dar variată per index)
   DEMO_IMEIS.forEach((imei, i) => { phase[imei] = (i * 1.7) % (Math.PI * 2); fuelLvl[imei] = 160 + i * 8; });
   let tick = 0;
-  setInterval(async () => {
+  _timer = setInterval(async () => {
     tick++;
     for (let i = 0; i < DEMO_IMEIS.length; i++) {
       const imei = DEMO_IMEIS[i];
@@ -54,6 +63,7 @@ function start({ livePositions, broadcastWs, insertPositions }) {
     }
   }, 3000);
   console.log('[DEMO] Simulator pornit (' + DEMO_IMEIS.length + ' vehicule demo, la 3s)');
+  return true;
 }
 
-module.exports = { start, DEMO_IMEIS, ROUTES };
+module.exports = { start, stop, isRunning, DEMO_IMEIS, ROUTES };

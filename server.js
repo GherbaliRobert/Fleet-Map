@@ -189,6 +189,43 @@ let fleetQuick = null;
 try { fleetQuick = require('./fleet_quick'); } catch (e) { console.warn('[AI] euristici locale indisponibile:', e.message); }
 const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
 let demoCompanyId = null;
+
+// ─── Simulatorul demo merge DOAR când are pentru cine ───
+// Înainte scria non-stop ~86.000 de poziții pe zi și 100 de actualizări pe minut pe WebSocket, chiar și când
+// nu exista niciun cont demo — cost de bază pur, plătit ca să se învârtă cinci camioane inventate pe o hartă
+// pe care n-o vedea nimeni. Acum starea lui e o funcție de „câte conturi demo sunt valabile acum".
+// Excepția e deliberată: super-adminul poate forța pornirea pentru o demonstrație live, cu termen scurt.
+let _demoSimForcedUntil = 0;
+let _demoSimState = { running: false, active: 0, forced: false, reason: 'neinițializat', at: null };
+async function syncDemoSim(reason) {
+  const now = Date.now();
+  const forced = now < _demoSimForcedUntil;
+  let active = 0, why;
+  if (process.env.DEMO_DISABLED === 'true') { why = 'DEMO_DISABLED=true'; }
+  else if (demoCompanyId == null) { why = 'nu există companie demo'; }
+  else {
+    try { active = await db.countActiveDemoUsers(demoCompanyId, now); }
+    catch (e) { active = 0; why = 'nu am putut număra conturile demo: ' + e.message; }
+  }
+  const shouldRun = !why && (active > 0 || forced);
+  if (shouldRun && !demoSim.isRunning()) {
+    demoSim.start({ livePositions, broadcastWs, insertPositions: db.insertPositions });
+    console.log('[DEMO] Simulator PORNIT (' + (forced ? 'forțat de super-admin' : active + ' conturi demo active') + ') — ' + reason);
+  } else if (!shouldRun && demoSim.isRunning()) {
+    demoSim.stop();
+    console.log('[DEMO] Simulator OPRIT (' + (why || 'niciun cont demo activ') + ') — ' + reason);
+  }
+  _demoSimState = {
+    running: demoSim.isRunning(), active, forced,
+    forcedUntil: forced ? _demoSimForcedUntil : null,
+    // `blocked` = nici pornirea manuală nu are efect. Fără el, interfața ar arăta un buton care nu face nimic.
+    blocked: !!why,
+    reason: why || (active > 0 ? active + ' conturi demo active' : (forced ? 'pornit manual de super-admin' : 'niciun cont demo activ')),
+    at: new Date(now).toISOString(),
+  };
+  return _demoSimState;
+}
+function demoSimStatus() { return Object.assign({}, _demoSimState, { running: demoSim.isRunning() }); }
 // Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
 // istoric. dispatch = disponibilitate acum; care = scadențe curente; optimize = scor eco de azi.
 // (Alertele „reale" de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
@@ -1968,6 +2005,7 @@ app.delete('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req,
     }
     await db.deleteUser(id);
     invalidateAccessCache(id);
+    await syncDemoSim('utilizator șters').catch(() => {}); // dacă era ultimul cont demo, simulatorul se oprește
     auditReq(req, 'delete', 'user', id);
     res.json({ ok: true });
   } catch (err) {
@@ -5994,7 +6032,10 @@ const _yield = () => new Promise((r) => setImmediate(r));
 
 async function runTripDetection() {
   return await _runWorker('trips', async () => {
-    const devs = await db.getDevices();
+    // Vehiculele demo sunt excluse ca peste tot (vezi DEMO_SET): altfel workerul făcea la fiecare 15 minute
+    // DELETE+INSERT pe `trips` pentru cinci camioane inventate — a doua sursă de scrieri fără destinatar,
+    // independentă de simulator, care rula chiar și cu simulatorul oprit.
+    const devs = (await db.getDevices()).filter(d => !DEMO_SET.has(d.imei));
     let total = 0, i = 0;
     for (const d of devs) {
       total += await detectAndSaveTrips(d.imei);
@@ -7729,9 +7770,14 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   // Informativ, NU avertisment: de când demo-ul se acordă la cerere, compania demo e parte din produs.
   // Cât timp rămânea „warn", ecranul nu putea ajunge niciodată pe verde, iar un semnal veșnic portocaliu
   // e un semnal pe care nu-l mai citește nimeni.
+  const _ds = demoSimStatus();
   add('demo', 'Companie DEMO', 'info', demoLeft
     ? 'prezentă — aici se creează conturile demo aprobate' + (process.env.DEMO_DISABLED === 'true' ? '; simulatorul de poziții e OPRIT (DEMO_DISABLED=true)' : '')
     : 'absentă — aprobarea unei cereri demo va eșua până o recreezi (scoate DEMO_DISABLED și repornește)');
+  // Simulatorul e cost de bază: ~86.000 de poziții scrise pe zi. Arătăm explicit dacă merge și pentru cine.
+  add('demo_sim', 'Simulator demo', 'info', _ds.running
+    ? 'PORNIT · ' + _ds.reason + (_ds.forced ? ' (expiră singur)' : '')
+    : 'oprit · ' + _ds.reason + ' — nu se mai scriu poziții sintetice în bază');
   add('webpush', 'Notificări în browser (VAPID)', (isSet(process.env.VAPID_PUBLIC_KEY) && isSet(process.env.VAPID_PRIVATE_KEY)) ? 'ok' : 'warn',
     (isSet(process.env.VAPID_PUBLIC_KEY) && isSet(process.env.VAPID_PRIVATE_KEY)) ? 'configurat' : 'VAPID_* lipsă → notificările în browser nu funcționează (pe Android merg oricum prin FCM)');
   // Modul ANAF: implicit e TEST, deci se poate crede că trimiți declarații reale când de fapt nu trimiți.
@@ -8189,6 +8235,7 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
     let invited = false;
     try { invited = await sendSetPasswordEmail(req, Object.assign({}, u, { email: uname }), { invite: true }); } catch (e) {}
     await db.updateDemoRequest(id, { status: 'approved', user_id: u.id, approved_by: getAuth(req).userId, access_until: until });
+    await syncDemoSim('cerere demo aprobată').catch(() => {}); // contul nou → vehiculele demo trebuie să se miște
     auditReq(req, 'approve', 'demo_request', id, { user: uname, hours: hours });
     res.json({ ok: true, username: uname, hours: hours, days: Math.round(hours / 24 * 10) / 10, duration: _demoDurationLabel(hours), accessUntil: until, created: created, invited: invited,
       warning: invited ? null : 'Contul e activ, dar emailul cu linkul de setare a parolei NU a putut fi trimis (SMTP neconfigurat). Trimite-i manual linkul de resetare.' });
@@ -8223,8 +8270,28 @@ app.put('/api/users/:id/access-until', requireAuth, requireSuperadmin, async (re
       : (b.until != null ? parseInt(b.until) : null); // until=null → acces nelimitat (revocarea limitei)
     await db.setUserAccessUntil(id, until);
     invalidateAccessCache(id); roleCache.delete(id);
+    await syncDemoSim('termen de acces modificat').catch(() => {}); // prelungire → pornește; revocare → poate opri
     auditReq(req, 'set_access', 'user', id, { until: until });
     res.json({ ok: true, accessUntil: until });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Starea simulatorului demo + pornire manuală pe termen scurt.
+// De ce butonul: de când simulatorul merge doar pentru conturi demo active, super-adminul care vrea să arate
+// aplicația „vie" unui prospect, fără să creeze cont, ar fi găsit cinci camioane înghețate. Termenul e scurt
+// și ține în memorie: la un redeploy pornirea forțată dispare, ceea ce e exact comportamentul dorit.
+app.get('/api/admin/demo-sim', requireAuth, requireSuperadmin, (req, res) => res.json(demoSimStatus()));
+app.post('/api/admin/demo-sim', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (b.on === false) { _demoSimForcedUntil = 0; }
+    else {
+      const h = Math.max(0.25, Math.min(24, Number(b.hours) || 2)); // între 15 minute și 24 de ore
+      _demoSimForcedUntil = Date.now() + h * 3600 * 1000;
+    }
+    const st = await syncDemoSim(b.on === false ? 'oprire manuală (super-admin)' : 'pornire manuală (super-admin)');
+    auditReq(req, 'update', 'demo_sim', 0, { on: b.on !== false, running: st.running });
+    res.json(st);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -8796,7 +8863,6 @@ async function start() {
       }
       // contul demo (viewer, read-only) primește acces la toate vehiculele demo
       if (demoUser) { try { await db.setUserAccess(demoUser.id, demoSim.DEMO_IMEIS, []); invalidateAccessCache(demoUser.id); } catch (e) {} }
-      demoSim.start({ livePositions, broadcastWs, insertPositions: db.insertPositions });
     } catch (e) { console.warn('[DEMO] seed:', e.message); }
   } else {
     // DEMO_DISABLED=true NU mai șterge compania demo. De când demo-ul se acordă la cerere, compania e parte
@@ -8809,6 +8875,11 @@ async function start() {
       console.log('[DEMO] DEMO_DISABLED=true → simulatorul e OPRIT' + (dc ? ' (compania demo rămâne, pentru conturile acordate la cerere)' : ' (nu există companie demo)'));
     } catch (e) { console.warn('[DEMO] stare:', e.message); demoCompanyId = null; }
   }
+  // Evaluarea stării se face pe AMBELE ramuri, altfel „Stare producție" ar arăta „neinițializat" până la
+  // prima acțiune administrativă. Verificarea periodică e singurul lucru care observă EXPIRAREA unui termen:
+  // `userAccessExpired` e verificat leneș, per cerere, deci fără ea simulatorul ar merge până la următorul login.
+  await syncDemoSim('pornire server').catch((e) => console.warn('[DEMO] sync:', e.message));
+  setInterval(() => syncDemoSim('verificare periodică').catch(() => {}), 10 * 60 * 1000);
 
   // Error middleware — înregistrat ULTIMUL, după toate rutele (definite la încărcarea modulului).
   app.use(errorMiddleware);

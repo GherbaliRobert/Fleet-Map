@@ -143,6 +143,9 @@ export const Api = {
   approveDemoRequest: (id: number, b: any) => api<any>(`/api/admin/demo-requests/${id}/approve`, { method: 'POST', body: b }),
   rejectDemoRequest: (id: number) => api<any>(`/api/admin/demo-requests/${id}/reject`, { method: 'POST' }),
   deleteDemoRequest: (id: number) => api<any>(`/api/admin/demo-requests/${id}`, { method: 'DELETE' }),
+  // Simulatorul demo merge doar cât timp există un cont demo valabil; pornirea manuală e pentru prezentări.
+  demoSim: () => api<any>('/api/admin/demo-sim'),
+  setDemoSim: (b: any) => api<any>('/api/admin/demo-sim', { method: 'POST', body: b }),
   // ── Super-admin: Ofertare Live ──
   offers: () => api<any[]>('/api/admin/offers'),
   createOffer: (b: any) => api<any>('/api/admin/offers', { method: 'POST', body: b }),

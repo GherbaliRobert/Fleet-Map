@@ -3075,6 +3075,18 @@ async function countDemoRequestsByEmail(email, sinceMs) {
 async function setUserAccessUntil(id, untilMs) {
   await pool.query('UPDATE users SET access_until = $2 WHERE id = $1', [id, untilMs == null ? null : Math.round(untilMs)]);
 }
+// Câte conturi demo sunt ACUM valabile — asta decide dacă simulatorul de poziții mai are pentru cine să meargă.
+// `access_until IS NOT NULL` e esențial: contul partajat „demo" n-are termen și ar ține simulatorul pornit la
+// nesfârșit; el e doar deținătorul istoric al ACL-ului, nu un client care se uită la hartă.
+async function countActiveDemoUsers(companyId, nowMs) {
+  if (companyId == null) return 0;
+  const q = await pool.query(
+    'SELECT COUNT(*) AS n FROM users WHERE company_id = $1 AND active IS NOT FALSE AND access_until IS NOT NULL AND access_until > $2',
+    [companyId, Math.round(nowMs == null ? Date.now() : nowMs)]
+  );
+  return Number((q.rows[0] && q.rows[0].n) || 0);
+}
+
 // TOȚI utilizatorii unei companii, inclusiv cei inactivi (pentru curățarea completă a companiei demo).
 async function listUsersByCompany(companyId) {
   const q = await pool.query('SELECT id, username, role, active, access_until FROM users WHERE company_id = $1', [companyId]);
@@ -3098,7 +3110,7 @@ module.exports = {
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
-  setUserAccessUntil, listUsersByCompany,
+  setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,

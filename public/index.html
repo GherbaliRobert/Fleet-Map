@@ -15299,6 +15299,35 @@ const pozitii = await r.json();</code></pre>
     // ─── Cereri de cont demo (super-admin) ───
     // Demo-ul nu se mai ia singur de pe site: aici vin cererile, iar accesul se acordă cu termen.
     var _demoReqFilter = '';
+    // Simulatorul de poziții demo merge doar cât timp există un cont demo valabil. Fără banda asta,
+    // super-adminul care deschide flota demo ar vedea cinci camioane înghețate fără să înțeleagă de ce.
+    async function _demoSimStrip() {
+      var s = null;
+      try { s = await fetch('/api/admin/demo-sim', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }); } catch (e) {}
+      if (!s) return '';
+      var pornit = !!s.running;
+      var pana = s.forcedUntil ? new Date(Number(s.forcedUntil)).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : null;
+      return '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 12px;margin-bottom:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-panel);">'
+        + '<span style="width:9px;height:9px;border-radius:50%;flex:none;background:' + (pornit ? 'var(--accent)' : 'var(--text-muted)') + ';' + (pornit ? 'box-shadow:0 0 6px var(--accent);' : '') + '"></span>'
+        + '<b style="font-size:12.5px;">Simulator demo · ' + (pornit ? 'pornit' : 'oprit') + '</b>'
+        + '<span style="font-size:11.5px;color:var(--text-muted);">' + esc(s.reason || '') + (pana ? ' · până la ' + pana : '') + '</span>'
+        + '<span style="margin-left:auto;display:flex;gap:6px;">'
+        // Fără vreun buton când pornirea e blocată din mediu (DEMO_DISABLED / lipsă companie demo):
+        // un buton care nu poate funcționa e mai rău decât niciun buton.
+        + (s.blocked ? ''
+          : (pornit && s.forced ? '<button class="rax-btn" onclick="raxDemoSimToggle(false)"><i class="fas fa-stop"></i> Oprește</button>' : '')
+            + (pornit && !s.forced ? '' : '<button class="rax-btn" onclick="raxDemoSimToggle(true)"><i class="fas fa-play"></i> Pornește 2 ore</button>'))
+        + '</span></div>';
+    }
+    window.raxDemoSimToggle = async function (on) {
+      try {
+        var r = await fetch('/api/admin/demo-sim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(on ? { on: true, hours: 2 } : { on: false }) });
+        var j = await r.json();
+        if (!r.ok) { raxToast(j.error || 'Nu s-a putut schimba', 'error'); return; }
+        raxToast(j.running ? 'Simulator pornit — vehiculele demo se mișcă' : 'Simulator oprit — nu se mai scriu poziții sintetice', 'success');
+      } catch (e) { raxToast('Eroare de rețea', 'error'); }
+      raxLoadDemoReq();
+    };
     window.raxLoadDemoReq = async function () {
       var box = $('admin-tab-demoreq'); if (!box) return;
       box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
@@ -15312,7 +15341,8 @@ const pozitii = await r.json();</code></pre>
         return '<button class="btn-sm' + (_demoReqFilter === t[0] ? ' btn-primary' : '') + '" onclick="_demoReqFilter=\'' + t[0] + '\';raxLoadDemoReq()">' + t[1] + '</button>';
       }).join(' ');
       var head = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">' + tabs +
-        '<span style="margin-left:auto;font-size:11.5px;color:var(--text-muted);">' + list.length + ' cereri</span></div>';
+        '<span style="margin-left:auto;font-size:11.5px;color:var(--text-muted);">' + list.length + ' cereri</span></div>'
+        + await _demoSimStrip();
 
       if (!list.length) { box.innerHTML = head + '<div class="rax-co-meta" style="padding:16px;">Nicio cerere.</div>'; return; }
       var STC = { new: 'var(--accent)', approved: 'var(--text-muted)', rejected: '#ef4444' };

@@ -28,14 +28,28 @@ export function DemoRequests() {
   const [busy, setBusy] = useState(false);
   const [approving, setApproving] = useState<any | null>(null);
   const [hours, setHours] = useState(168); // implicit 7 zile
+  const [sim, setSim] = useState<any | null>(null);
 
   function reload() {
     setErr('');
     Api.demoRequests(filter || undefined)
       .then(setItems)
       .catch((e: any) => { setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare la încărcare')); setItems([]); });
+    Api.demoSim().then(setSim).catch(() => setSim(null));
   }
   useEffect(reload, [filter]);
+
+  // Simulatorul de poziții demo merge doar cât timp există un cont demo valabil. Fără indicatorul ăsta,
+  // super-adminul care deschide flota demo ar vedea cinci camioane înghețate fără să înțeleagă de ce.
+  async function toggleSim(on: boolean) {
+    setBusy(true);
+    try {
+      const s: any = await Api.setDemoSim(on ? { on: true, hours: 2 } : { on: false });
+      setSim(s);
+      showToast(s?.running ? 'Simulator pornit — vehiculele demo se mișcă' : 'Simulator oprit — nu se mai scriu poziții sintetice');
+    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
+    finally { setBusy(false); }
+  }
 
   async function doApprove() {
     if (!approving) return;
@@ -82,6 +96,18 @@ export function DemoRequests() {
                 >{l}</button>
               ))}
             </div>
+            {sim && (
+              <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--bg-panel);border:1px solid var(--border);border-radius:11px;padding:10px 12px;margin-bottom:12px">
+                <span style={'width:9px;height:9px;border-radius:50%;flex:none;background:' + (sim.running ? 'var(--accent)' : 'var(--text-muted)')} />
+                <b style="font-size:12.5px">Simulator demo · {sim.running ? 'pornit' : 'oprit'}</b>
+                <span style="font-size:11px;color:var(--text-muted);flex:1;min-width:120px">{sim.reason}</span>
+                {/* Când pornirea e blocată din mediu (DEMO_DISABLED / lipsă companie demo) nu arătăm
+                    niciun buton: unul care nu poate funcționa e mai rău decât niciun buton. */}
+                {sim.blocked ? null : sim.running && sim.forced
+                  ? <button disabled={busy} onClick={() => toggleSim(false)} style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:7px 11px;font-size:12px;font-weight:700;font-family:inherit">Oprește</button>
+                  : (!sim.running && <button disabled={busy} onClick={() => toggleSim(true)} style="background:var(--accent);border:none;color:#06210F;border-radius:8px;padding:7px 11px;font-size:12px;font-weight:800;font-family:inherit">Pornește 2 ore</button>)}
+              </div>
+            )}
             {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
             {items == null && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}
             {items && items.length === 0 && !err && <div class="adm-empty"><Icon name="mail" size={40} class="ic" /><div>Nicio cerere.</div></div>}

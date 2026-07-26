@@ -17,7 +17,8 @@
     "test:phase4": "node phase4_smoke.js",
     "test:events": "node phase6_smoke.js",
     "test:sensors": "node phase7_smoke.js",
-    "test:ws": "node ws_smoke.js"
+    "test:ws": "node ws_smoke.js",
+    "test:demosim": "node verify_demo_sim.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.0",
