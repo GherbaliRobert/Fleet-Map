@@ -172,6 +172,9 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_posarch_imei_ts ON positions_archive (imei, timestamp)`);
+    // Index pe timestamp SINGUR, pentru purjarea pe loturi: cel de mai sus începe cu `imei`, deci nu poate
+    // servi un `WHERE timestamp < …`. Fără el, fiecare lot ar fi însemnat un seq scan pe toată arhiva.
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_posarch_ts ON positions_archive (timestamp)`);
 
     // ─── TimescaleDB (doar pe Postgres real): hypertable + compresie + retenție pe `positions` ───
     // La 4s × multe vehicule, asta ține storage-ul în frâu (compresie ~85-90% + ștergere automată a datelor vechi).
@@ -1700,7 +1703,19 @@ async function getArchivedImeis() {
 // (un tabel inexistent/fără coloană imei nu blochează restul); rândul `devices` cară JSONB-urile
 // (io_mappings/fuel_sensors/last_can). Numele tabelelor sunt fixe în cod → fără injection.
 async function deleteDeviceCompletely(imei) {
-  const tables = ['positions', 'positions_archive', 'notifications', 'agent_findings', 'vehicle_documents',
+  // Pozițiile se șterg pe loturi: un vehicul cu ani de istoric înseamnă milioane de rânduri, iar aici
+  // ștergerea e declanșată dintr-un click în interfață — adică exact în timpul unei zile de lucru.
+  for (const t of ['positions', 'positions_archive']) {
+    try {
+      for (;;) {
+        const r = await pool.query(`DELETE FROM ${t} WHERE ctid IN (SELECT ctid FROM ${t} WHERE imei = $1 LIMIT ${BATCH_ROWS})`, [imei]);
+        const n = r.affectedRows || (r.rowCount || 0);
+        if (n < BATCH_ROWS) break;
+        if (BATCH_PAUSE_MS) await new Promise(res => setTimeout(res, BATCH_PAUSE_MS));
+      }
+    } catch (e) { /* tabel inexistent */ }
+  }
+  const tables = ['notifications', 'agent_findings', 'vehicle_documents',
     'alerts', 'alert_history', 'trips', 'maintenance', 'user_device_access', 'tacho_files', 'etransport', 'report_schedules'];
   for (const t of tables) {
     try { await pool.query(`DELETE FROM ${t} WHERE imei = $1`, [imei]); } catch (e) { /* tabel/coloană inexistentă */ }
@@ -2257,13 +2272,44 @@ async function cleanupExpiredSessions() {
   try { await pool.query('DELETE FROM user_sessions WHERE expire < NOW()'); } catch (e) { /* tabela poate lipsi încă */ }
 }
 
-async function deleteOldPositions(days) {
-  const result = await pool.query(
-    `DELETE FROM positions WHERE timestamp < NOW() - ($1 || ' days')::interval`,
-    [String(days)]
-  );
-  return result.affectedRows || (result.rowCount || 0);
+// ─── Ștergere pe LOTURI ───
+// Un singur `DELETE FROM positions WHERE timestamp < …` pe o tabelă de zeci de milioane de rânduri e o
+// tranzacție uriașă: WAL pentru fiecare tuplu, cinci indexuri de actualizat și blocare lungă. Dacă în timpul
+// ei pool-ul (max 12 conexiuni) se epuizează, ingestul nu doar întârzie — PIERDE date: `insertPositions`
+// reîncearcă de câteva ori în ~1,2 s, apoi renunță, iar ACK-ul a plecat deja spre tracker.
+// Loturile mici, cu pauză între ele și cu buget total de timp, transformă asta într-o sarcină de fundal.
+//
+// Batching-ul se face pe `ctid`, NU pe `id`: cheia primară `id` există doar când TimescaleDB N-a reușit să
+// creeze hypertable-ul (`ALTER TABLE positions DROP CONSTRAINT positions_pkey` rulează doar pe calea Timescale).
+// `timestamp` e indexat în ambele cazuri — indexul e creat explicit „pentru curățare date vechi".
+const BATCH_ROWS = Math.max(500, Math.min(50000, parseInt(process.env.RETENTION_BATCH_ROWS) || 5000));
+const BATCH_PAUSE_MS = Math.max(0, parseInt(process.env.RETENTION_BATCH_PAUSE_MS) || 200);
+const BATCH_BUDGET_MS = Math.max(5000, parseInt(process.env.RETENTION_BUDGET_MS) || 10 * 60 * 1000);
+
+async function _deleteOldBatched(table, days, opts) {
+  const budgetMs = (opts && opts.budgetMs) || BATCH_BUDGET_MS;
+  const batch = (opts && opts.batch) || BATCH_ROWS;
+  const deadline = Date.now() + budgetMs;
+  let total = 0, loturi = 0, epuizat = false;
+  for (;;) {
+    if (Date.now() >= deadline) { epuizat = true; break; }   // reluăm la rularea următoare, de unde am rămas
+    const r = await pool.query(
+      `DELETE FROM ${table} WHERE ctid IN (
+         SELECT ctid FROM ${table} WHERE timestamp < NOW() - ($1 || ' days')::interval
+         ORDER BY timestamp LIMIT ${batch})`,
+      [String(days)]
+    );
+    const n = r.affectedRows || (r.rowCount || 0);
+    total += n; loturi++;
+    if (n < batch) break;                                     // s-a terminat ce era de șters
+    if (BATCH_PAUSE_MS) await new Promise(res => setTimeout(res, BATCH_PAUSE_MS)); // lasă ingestul să respire
+  }
+  return { total, loturi, epuizat };
 }
+
+// Întoarce numărul de rânduri șterse (apelanții îl loghează). Detaliile lotizării, prin `deleteOldPositionsDetail`.
+async function deleteOldPositions(days, opts) { return (await _deleteOldBatched('positions', days, opts)).total; }
+async function deleteOldPositionsDetail(days, opts) { return await _deleteOldBatched('positions', days, opts); }
 
 // La arhivarea unui dispozitiv: copiază istoricul lui din `positions` în `positions_archive` (snapshot înghețat).
 // ON CONFLICT (imei, timestamp) DO NOTHING → idempotent la re-arhivare (arhivează → restaurează → arhivează).
@@ -2278,13 +2324,10 @@ async function archiveDevicePositions(imei) {
 }
 
 // Purjează arhiva mai veche de N zile (politică aleasă: arhivate 2 ani = 730z).
-async function purgeArchivedPositions(days) {
-  const r = await pool.query(
-    `DELETE FROM positions_archive WHERE timestamp < NOW() - ($1 || ' days')::interval`,
-    [String(days)]
-  );
-  return r.affectedRows || (r.rowCount || 0);
-}
+// Tot pe loturi. Aici indexul dedicat pe `timestamp` e obligatoriu: singurul index existent era
+// (imei, timestamp), iar un index compus care începe cu `imei` NU ajută la `WHERE timestamp < …` —
+// fără el, fiecare lot ar fi făcut seq scan și lotizarea ar fi ieșit mai rea decât ștergerea monolitică.
+async function purgeArchivedPositions(days, opts) { return (await _deleteOldBatched('positions_archive', days, opts)).total; }
 
 // IMEI-urile dispozitivelor arhivate — pentru oprirea ingestului în memoria serverului (set verificat la fiecare pachet).
 async function getArchivedImeis() {
@@ -3168,7 +3211,7 @@ module.exports = {
   revokeApiKey,
   deleteApiKey,
   cleanupExpiredSessions,
-  deleteOldPositions,
+  deleteOldPositions, deleteOldPositionsDetail,
   archiveDevicePositions,
   purgeArchivedPositions,
   getArchivedImeis,

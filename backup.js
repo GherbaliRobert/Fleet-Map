@@ -27,6 +27,12 @@ const BUSINESS_TABLES = [
   'payments', 'platform_costs', 'costs_payments', 'offers', 'agent_findings',
   'weekly_reports', 'report_schedules', 'report_history', 'api_keys', 'webhooks',
   'tacho_files', 'etransport', 'settings', 'ai_usage', 'ui_prefs', 'trips', 'audit_log',
+  // Lipseau, deși sunt exact genul de date care nu se pot reconstrui:
+  //  · `invoices` + `invoice_counters` — facturile emise și CONTORUL de numerotare fiscală. O restaurare
+  //    fără contor repornește seria de facturi de la 1, ceea ce e o problemă fiscală, nu una tehnică.
+  //  · `demo_requests` — datele solicitanților (și singurul loc unde stau; notificarea e fără PII).
+  //  · `fuel_price_history` — istoricul prețurilor pe care se calculează retroactiv costurile din rapoarte.
+  'invoices', 'invoice_counters', 'demo_requests', 'fuel_price_history',
 ];
 
 const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | tag(16) | ciphertext
@@ -36,14 +42,37 @@ const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | ta
 // generează și se ARUNCĂ — pe Railway filesystemul e efemer, deci un „ok" fără „offsite" = zero protecție.
 // Le ținem separate ca UI-ul să nu mai poată raporta „backup rulat ✓" pentru o rulare care n-a salvat nimic.
 let _last = { at: null, ok: null, offsite: false, target: null, sizeBytes: 0, tables: null, error: null, encrypted: false, warning: null };
+let _loaded = false;   // starea a fost citită din bază (altfel „nicio rulare" poate însemna doar „server repornit")
+
+// Starea trăia DOAR în memoria procesului. Pe Railway, orice redeploy o resetează: ecranul spunea „nicio
+// rulare de la pornirea serverului" și `backup_offsite` cădea din verde în galben, deși bucket-ul era plin.
+// Invers, un backup mort de șase luni arăta identic cu un server repornit acum — adică nu se putea distinge
+// „nu știu" de „e rău". O persistăm în `settings`.
+const STATE_KEY = 'backup_last_state';
+async function loadState(db) {
+  try {
+    const raw = await db.getSetting(STATE_KEY);
+    if (raw) { const s = JSON.parse(raw); if (s && s.at) { _last = Object.assign(_last, s); } }
+  } catch (e) { /* prima pornire / tabelă lipsă */ }
+  _loaded = true;
+  return _last;
+}
+async function saveState(db) {
+  try { await db.setSetting(STATE_KEY, JSON.stringify(_last)); } catch (e) { /* nu bloca backup-ul pt. starea lui */ }
+}
+
 function passphraseSet() { return !!process.env.BACKUP_PASSPHRASE; }
 function getStatus() {
   const ageH = _last.at ? (Date.now() - new Date(_last.at).getTime()) / 3600000 : null;
   return Object.assign({}, _last, {
     s3Configured: s3Configured(),
     passphraseSet: passphraseSet(),
+    stateLoaded: _loaded,
     ageHours: ageH == null ? null : Math.round(ageH * 10) / 10,
     stale: ageH == null ? true : ageH > 48,      // backup zilnic → peste 48h înseamnă că workerul n-a mai rulat
+    // „foarte vechi" e altceva decât „nu s-a rulat încă": primul e o pană, al doilea doar o necunoscută.
+    dead: ageH != null && ageH > 96,
+    never: ageH == null,
     protected: !!(_last.ok && _last.offsite)     // singurul indicator care chiar înseamnă „datele sunt în siguranță"
   });
 }
@@ -150,14 +179,98 @@ async function runScheduledBackup(db, commit) {
     const offsite = target !== 'none';
     const warning = configWarning(offsite);
     _last = { at: new Date().toISOString(), ok: true, offsite: offsite, target: target, sizeBytes: b.buf.length, tables: b.meta.tables, error: null, encrypted: b.encrypted, warning: warning };
+    await saveState(db);
     if (!offsite) console.warn('[BACKUP] ⚠ dump generat (' + b.rows + ' rânduri, ' + Math.round(b.buf.length / 1024) + ' KB) dar NU s-a salvat nicăieri: ' + warning);
     else console.log('[BACKUP] ' + target + ' (' + b.rows + ' rânduri, ' + Math.round(b.buf.length / 1024) + ' KB, ' + (b.encrypted ? 'criptat' : 'NECRIPTAT ⚠') + ')');
     return getStatus();
   } catch (e) {
     _last = Object.assign({}, _last, { at: new Date().toISOString(), ok: false, offsite: false, error: e.message, warning: null });
+    await saveState(db);
     console.error('[BACKUP] eșuat:', e.message);
     return getStatus();
   }
 }
 
-module.exports = { BUSINESS_TABLES, buildDump, serialize, deserialize, makeBackup, runScheduledBackup, getStatus, s3Configured, passphraseSet, configWarning };
+// ── Arhivarea POZIȚIILOR pe S3, înainte ca retenția să le șteargă ──
+//
+// `positions` e exclusă deliberat din dump-ul logic de mai sus: la 2000 de vehicule înseamnă milioane de
+// rânduri pe zi, imposibil de serializat într-un singur JSON în procesul aplicației. Dar asta lăsa o gaură
+// reală: retenția șterge la 180 de zile, iar dacă snapshot-urile Railway au o fereastră mai scurtă (de regulă
+// zile, nu luni), datele dispăreau DEFINITIV fără nicio copie.
+// Aici exportăm ziua-cu-ziua, în NDJSON gzip (+ criptat cu aceeași parolă), citit în loturi ca să nu ținem
+// niciodată o zi întreagă în memorie. ~30 B/rând comprimat → o zi de flotă mare intră în zeci de MB.
+const POS_EXPORT_BATCH = Math.max(1000, Math.min(50000, parseInt(process.env.POSITIONS_EXPORT_BATCH) || 20000));
+let _posLast = { at: null, days: 0, rows: 0, bytes: 0, error: null, lastDay: null };
+function positionsStatus() {
+  const ageH = _posLast.at ? (Date.now() - new Date(_posLast.at).getTime()) / 3600000 : null;
+  return Object.assign({}, _posLast, { enabled: s3Configured(), ageHours: ageH == null ? null : Math.round(ageH * 10) / 10 });
+}
+
+// Exportă zilele COMPLETE dintre `fromDay` și `toDay` (exclusiv ziua curentă) care încă n-au fost exportate.
+// Idempotent prin marca din `settings`: reluăm de unde am rămas, deci o rulare întreruptă nu pierde nimic.
+async function exportPositionsRange(db, opts) {
+  if (!s3Configured()) return { skipped: 'BACKUP_S3_* neconfigurat' };
+  const maxDays = (opts && opts.maxDays) || 7;              // câte zile pe rulare (recuperare treptată)
+  const prefix = (process.env.BACKUP_S3_PREFIX || 'ratracks-backup').replace(/^\/+|\/+$/g, '') + '/positions';
+  const marker = 'positions_export_until';                  // ultima zi exportată (YYYY-MM-DD)
+  let from = null;
+  try { from = await db.getSetting(marker); } catch (e) {}
+  // Fără marcă: pornim de la cea mai veche zi care există în tabelă (prima rulare pe o bază existentă).
+  if (!from) {
+    const r = await db.pool.query("SELECT to_char(MIN(timestamp), 'YYYY-MM-DD') AS d FROM positions");
+    from = (r.rows[0] && r.rows[0].d) || null;
+    if (!from) return { days: 0, rows: 0, note: 'nicio poziție de exportat' };
+  } else {
+    from = new Date(Date.parse(from + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10); // ziua următoare
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  let day = from, days = 0, rows = 0, bytes = 0, lastDay = null;
+  while (day < today && days < maxDays) {
+    const next = new Date(Date.parse(day + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
+    const parts = [];
+    let n = 0, offset = 0;
+    for (;;) {
+      const q = await db.pool.query(
+        `SELECT imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, company_id
+           FROM positions WHERE timestamp >= $1 AND timestamp < $2 ORDER BY timestamp, imei LIMIT ${POS_EXPORT_BATCH} OFFSET ${offset}`,
+        [day, next]
+      );
+      const batch = q.rows || [];
+      if (!batch.length) break;
+      parts.push(Buffer.from(batch.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf8'));
+      n += batch.length; offset += POS_EXPORT_BATCH;
+      if (batch.length < POS_EXPORT_BATCH) break;
+      await new Promise(r => setTimeout(r, 50));            // nu monopoliza pool-ul: ingestul are prioritate
+    }
+    if (n) {
+      const gz = zlib.gzipSync(Buffer.concat(parts), { level: 9 });
+      const pass = process.env.BACKUP_PASSPHRASE || null;
+      let body = gz, ext = 'ndjson.gz';
+      if (pass) {
+        const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
+        const key = crypto.scryptSync(pass, salt, 32);
+        const c = crypto.createCipheriv('aes-256-gcm', key, iv);
+        const ct = Buffer.concat([c.update(gz), c.final()]);
+        body = Buffer.concat([Buffer.from(MAGIC), salt, iv, c.getAuthTag(), ct]); // același format ca dump-ul
+        ext = 'ndjson.gz.enc';
+      }
+      await s3Put(prefix + '/' + day + '.' + ext, body, 'application/octet-stream');
+      bytes += body.length; rows += n;
+      console.log('[POZIȚII] ' + day + ': ' + n + ' rânduri → ' + Math.round(body.length / 1024) + ' KB' + (pass ? ' (criptat)' : ' ⚠ NECRIPTAT'));
+    }
+    try { await db.setSetting(marker, day); } catch (e) {}   // marchez ziua ca terminată chiar dacă era goală
+    lastDay = day; day = next; days++;
+  }
+  _posLast = { at: new Date().toISOString(), days, rows, bytes, error: null, lastDay: lastDay || _posLast.lastDay };
+  return { days, rows, bytes, lastDay };
+}
+async function runPositionsExport(db) {
+  try { return await exportPositionsRange(db, { maxDays: parseInt(process.env.POSITIONS_EXPORT_MAX_DAYS) || 7 }); }
+  catch (e) {
+    _posLast = Object.assign({}, _posLast, { at: new Date().toISOString(), error: e.message });
+    console.warn('[POZIȚII] export eșuat:', e.message);
+    return { error: e.message };
+  }
+}
+
+module.exports = { BUSINESS_TABLES, buildDump, serialize, deserialize, makeBackup, runScheduledBackup, getStatus, loadState, s3Configured, passphraseSet, configWarning, exportPositionsRange, runPositionsExport, positionsStatus };

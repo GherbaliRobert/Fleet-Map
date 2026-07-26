@@ -226,6 +226,18 @@ async function syncDemoSim(reason) {
   return _demoSimState;
 }
 function demoSimStatus() { return Object.assign({}, _demoSimState, { running: demoSim.isRunning() }); }
+
+// Rezultatul ULTIMEI rulări de retenție. „Variabila e setată" nu înseamnă „ștergerea chiar funcționează":
+// până acum eroarea era înghițită tăcut, deci o retenție moartă arăta identic cu una sănătoasă.
+let _retentionLast = null;
+function _retentionSummary() {
+  if (!_retentionLast) return 'încă nicio rulare de la pornire';
+  if (_retentionLast.error) return 'ULTIMA RULARE A EȘUAT: ' + _retentionLast.error;
+  const h = Math.round((Date.now() - _retentionLast.at) / 360000) / 10;
+  if (!_retentionLast.rows) return 'ultima rulare acum ' + h + 'h: nimic de șters';
+  return 'ultima rulare acum ' + h + 'h: ' + _retentionLast.rows + ' rânduri în ' + _retentionLast.batches + ' loturi'
+    + (_retentionLast.exhausted ? ' (buget epuizat — continuă la următoarea)' : '');
+}
 // Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
 // istoric. dispatch = disponibilitate acum; care = scadențe curente; optimize = scor eco de azi.
 // (Alertele „reale" de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
@@ -7749,15 +7761,28 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     const retOk = ts.enabled || _fallbackArmed;
     add('retention', 'Ștergerea automată a pozițiilor vechi', retOk ? 'ok' : 'crit',
       ts.enabled ? ('politică TimescaleDB · ' + ts.retentionDays + ' zile')
-        : (_fallbackArmed ? ('ștergere de rezervă activă · ' + _posRet + ' zile (rulează zilnic)')
+        : (_fallbackArmed ? ('ștergere de rezervă activă · ' + _posRet + ' zile, pe loturi, la 6 ore · ' + _retentionSummary())
           : 'NIMIC nu șterge pozițiile vechi: Timescale e inactiv, iar POSITION_RETENTION_DAYS nu e setat → tabela `positions` crește la nesfârșit, iar „180 zile istoric" din materiale nu se respectă. Remediu imediat: setează POSITION_RETENTION_DAYS=180.'));
   }
   add('backup_offsite', 'Backup off-site (S3/R2)', bk.s3Configured ? (bk.protected ? 'ok' : 'warn') : 'crit',
     bk.s3Configured ? (bk.protected ? ('ultima copie: ' + (bk.at || '—')) : 'configurat, dar ultima rulare nu a urcat nimic')
                     : 'BACKUP_S3_* nesetat → datele de business NU sunt salvate nicăieri în afara containerului');
+  // Telemetria NU intră în dump-ul logic (e prea mare) — se arhivează separat, zi cu zi. Fără ea, retenția
+  // de 180 de zile ar fi însemnat pierdere definitivă dacă fereastra de snapshot-uri a bazei e mai scurtă.
+  const bp = backup.positionsStatus();
+  add('backup_positions', 'Arhivă poziții (telemetrie)', !bp.enabled ? 'warn' : (bp.error ? 'crit' : (bp.at ? 'ok' : 'info')),
+    !bp.enabled ? 'BACKUP_S3_* nesetat → pozițiile șterse de retenție NU au nicio copie; verifică separat ce fereastră de snapshot-uri are baza'
+      : bp.error ? ('ultimul export a eșuat: ' + bp.error)
+        : bp.at ? ('ultimul export acum ' + bp.ageHours + 'h · ' + bp.days + ' zile, ' + bp.rows + ' rânduri' + (bp.lastDay ? ' (până la ' + bp.lastDay + ')' : ''))
+          : 'programat, dar încă nicio rulare (prima pornește la 8 minute după boot)');
   add('backup_crypt', 'Criptare backup', bk.passphraseSet ? 'ok' : (bk.s3Configured ? 'crit' : 'warn'),
     bk.passphraseSet ? 'BACKUP_PASSPHRASE setat (AES-256-GCM)' : 'BACKUP_PASSPHRASE nesetat → dump-ul (hash-uri de parole, chei API) ar pleca necriptat');
-  add('backup_fresh', 'Prospețime backup', bk.stale ? 'warn' : 'ok', bk.at ? ('acum ' + bk.ageHours + 'h') : 'nicio rulare de la pornirea serverului');
+  // Distingem cele trei stări care înainte arătau la fel: proaspăt · vechi de zile (pană reală) · niciodată.
+  // Marca de timp e persistată, deci „niciodată" chiar înseamnă niciodată, nu „serverul s-a repornit".
+  add('backup_fresh', 'Prospețime backup', bk.never ? 'info' : (bk.dead ? 'crit' : (bk.stale ? 'warn' : 'ok')),
+    bk.never ? 'nicio rulare înregistrată încă (prima pornește la 5 minute după boot)'
+      : (bk.dead ? ('ULTIMA COPIE ARE ' + bk.ageHours + 'h — workerul de backup nu mai rulează' + (bk.error ? ': ' + bk.error : ''))
+        : ('acum ' + bk.ageHours + 'h')));
   add('cookie_secure', 'Cookie sesiune „secure"', process.env.COOKIE_SECURE === 'true' ? 'ok' : 'crit',
     process.env.COOKIE_SECURE === 'true' ? 'da (+ HSTS)' : 'COOKIE_SECURE≠true → cookie-ul de sesiune poate pleca și pe HTTP');
   add('session_secret', 'SESSION_SECRET', isSet(process.env.SESSION_SECRET) ? 'ok' : 'warn',
@@ -8889,8 +8914,19 @@ async function start() {
   setInterval(() => db.pruneErrors(2000).catch(() => {}), 24 * 60 * 60 * 1000);
 
   // Backup zilnic al datelor de business (off-site dacă BACKUP_S3_* e configurat; altfel doar status + download manual). Vezi backup.js.
+  // Starea ULTIMEI rulări se încarcă din bază: pe Railway procesul reporneşte des, iar fără asta ecranul
+  // spunea „nicio rulare de la pornirea serverului" chiar cu bucket-ul plin de copii.
+  await backup.loadState(db).catch(() => {});
   setTimeout(() => backup.runScheduledBackup(db, COMMIT_VER).catch(() => {}), 5 * 60 * 1000);
   setInterval(() => backup.runScheduledBackup(db, COMMIT_VER).catch(() => {}), 24 * 60 * 60 * 1000);
+
+  // Arhivarea POZIȚIILOR pe S3, zi cu zi. Rulează doar dacă bucket-ul e configurat și e independentă de
+  // retenție: exportă mereu zilele complete rămase, deci până când ștergerea ajunge la ele (180 de zile
+  // implicit) copia există de mult. Fără ea, retenția ar fi fost o pierdere definitivă de date.
+  if (backup.s3Configured()) {
+    setTimeout(() => backup.runPositionsExport(db).catch(() => {}), 8 * 60 * 1000);
+    setInterval(() => backup.runPositionsExport(db).catch(() => {}), 24 * 60 * 60 * 1000);
+  }
 
   // Pornește serverul TCP — reîncarcă allow-list-ul (mod strict) chiar ÎNAINTE, ca să includă orice device creat/seed-uit la pornire
   await loadRegisteredImeis();
@@ -8926,18 +8962,26 @@ async function start() {
       .catch(() => {});
   }, 6 * 60 * 60 * 1000);
 
-  // Retenție opțională pentru poziții (setează POSITION_RETENTION_DAYS în .env ca să o activezi)
+  // ─── Retenție poziții (opțională: setează POSITION_RETENTION_DAYS) ───
+  // Rulează la 6 ore, nu zilnic: fiecare rulare are atunci puțin de șters, iar bugetul de timp per rulare
+  // (RETENTION_BUDGET_MS) e suficient. Prima rulare e amânată — la pornire serverul are deja de încărcat
+  // istoricul în memorie și de acceptat conexiunile trackerelor.
   const retentionDays = parseInt(process.env.POSITION_RETENTION_DAYS);
   if (retentionDays > 0) {
-    const runRetention = () => db.deleteOldPositions(retentionDays)
-      .then(n => { if (n) console.log(`[RETENȚIE] Șterse ${n} poziții mai vechi de ${retentionDays} zile`); })
-      .catch(() => {});
-    runRetention();
-    setInterval(runRetention, 24 * 60 * 60 * 1000);
+    const runRetention = () => db.deleteOldPositionsDetail(retentionDays)
+      .then(r => {
+        _retentionLast = { at: Date.now(), rows: r.total, batches: r.loturi, exhausted: r.epuizat, error: null };
+        if (r.total) console.log('[RETENȚIE] Șterse ' + r.total + ' poziții mai vechi de ' + retentionDays + ' zile, în ' + r.loturi + ' loturi' + (r.epuizat ? ' (buget de timp epuizat — se continuă la rularea următoare)' : ''));
+      })
+      // Înghițirea tăcută de până acum era exact greșeala care face ca „nu se șterge nimic" să treacă
+      // neobservat luni de zile: singurul semn ar fi fost creșterea bazei.
+      .catch(e => { _retentionLast = { at: Date.now(), rows: 0, batches: 0, exhausted: false, error: e.message }; console.warn('[RETENȚIE] eșuat:', e.message); });
+    setTimeout(runRetention, 60 * 1000);
+    setInterval(runRetention, 6 * 60 * 60 * 1000);
   }
 
   // Retenție ARHIVĂ (positions_archive): dispozitivele arhivate se păstrează 2 ani (730z), apoi se purjează.
-  // Rulează mereu (PG + PGlite); tabela conține doar arhivate → DELETE ieftin. Configurabil prin ARCHIVE_RETENTION_DAYS.
+  // Rulează mereu (PG + PGlite). Configurabil prin ARCHIVE_RETENTION_DAYS.
   const archiveRetentionDays = parseInt(process.env.ARCHIVE_RETENTION_DAYS) || 730;
   const runArchivePurge = () => db.purgeArchivedPositions(archiveRetentionDays)
     .then(n => { if (n) console.log(`[ARHIVĂ] Purjate ${n} poziții arhivate mai vechi de ${archiveRetentionDays} zile`); })
