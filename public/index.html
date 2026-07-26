@@ -4791,6 +4791,8 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('draw-info').textContent = 'Trage colțurile pentru a ajusta';
     }
     function updateCorridorWidth() { updateDrawMetrics(); }
+    // Reținut o dată per sesiune: dacă serverul de rutare nu e configurat, butonul nu mai invită la reîncercări.
+    var _snapIndisponibil = false;
     async function snapCorridorToRoads() {
       if (!drawState || drawState.mode !== 'corridor') return;
       let pts = (drawState.layer && drawState.finished) ? ((layerLatLngs() || {}).line || []) : drawState.points.slice();
@@ -4807,9 +4809,20 @@ const pozitii = await r.json();</code></pre>
             try { if (drawState.layer.pm && drawState.layer.pm.enabled()) { drawState.layer.pm.disable(); drawState.layer.pm.enable({ allowSelfIntersection: false, snappable: true, snapDistance: 20 }); } } catch (e) {}
             updateDrawMetrics();
           } else redrawPoly();
+        } else if (j && j.reason === 'osrm_neconfigurat') {
+          // NU da vina pe utilizator când serviciul e oprit: mesajul vechi („puncte prea puține") îl trimitea
+          // să adauge puncte la nesfârșit pentru o funcție care oricum nu putea răspunde.
+          _snapIndisponibil = true;
+          raxToast('Alinierea pe străzi nu e disponibilă: serverul de rutare nu e configurat. Desenează coridorul manual — funcționează la fel.', 'error', 8000);
         } else { alert('Nu am putut alinia traseul pe drumuri (puncte prea puține sau drum negăsit). Încearcă mai multe puncte.'); }
       } catch (e) { alert('Eroare la lipirea pe străzi.'); }
-      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-road"></i> Lipește pe străzi'; } }
+      finally {
+        if (btn) {
+          btn.disabled = _snapIndisponibil;
+          btn.innerHTML = _snapIndisponibil ? '<i class="fas fa-road"></i> Lipire indisponibilă' : '<i class="fas fa-road"></i> Lipește pe străzi';
+          if (_snapIndisponibil) btn.title = 'Serverul de rutare (OSRM_URL) nu e configurat.';
+        }
+      }
     }
     function onCircleClick(e) {
       if (!drawState || drawState.layer) return;
