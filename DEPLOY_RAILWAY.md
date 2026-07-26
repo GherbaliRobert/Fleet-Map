@@ -80,11 +80,41 @@ cade automat pe Postgres simplu, fără să crape):
 
 | Variabilă | Valoare | De ce |
 |---|---|---|
-| `DEMO_DISABLED` | `true` | la boot **șterge definitiv** compania demo, cele 5 vehicule sintetice și contul `demo` |
+| `DEMO_DISABLED` | **NU o seta** | de când demo-ul se acordă la cerere, compania demo e parte din produs (acolo trăiesc conturile aprobate). Simulatorul de poziții pornește oricum doar când există un cont demo valabil — nu mai e nevoie de comutator. |
 | `SENTRY_DSN` | DSN-ul proiectului | altfel erorile rămân doar în jurnalul intern |
-| `OSRM_URL` | instanță proprie | implicit `router.project-osrm.org` = **serverul public de demonstrație**, cu limitări și fără garanții pentru uz comercial |
-| `GEOCODE_URL` + `GEOCODE_UA` | instanță Nominatim proprie + user-agent cu contact | implicit Nominatim public: max ~1 req/s, politica de utilizare interzice trafic comercial greu |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | pereche generată | notificări push în **browser**. Push-ul pe Android merge prin `FIREBASE_SA_JSON` (deja activ). |
+
+### 3d-bis. Servicii de hartă externe — două decizii de luat
+
+Aplicația folosește trei servicii externe. Două dintre ele au implicit servere **publice de demonstrație**, pe
+care scrie explicit că nu sunt pentru producție. Codul e pregătit: trecerea pe altceva înseamnă **o variabilă
+de mediu**, fără nicio modificare.
+
+**Geocodare (coordonate → adresă) — `GEOCODE_URL`**
+
+Tot traficul trece acum prin serverul nostru (`/api/geocode/reverse`): o singură coadă, un singur cache, o
+singură identitate. Înainte, browserul și APK-ul apelau Nominatim direct, deci variabila nu acoperea aproape
+nimic din traficul real.
+
+| Opțiune | Cost lunar | Observații |
+|---|---|---|
+| Nominatim public (implicit) | 0 | ~1 cerere/s, interzice utilizarea intensivă → risc de blocare a IP-ului |
+| **LocationIQ** GeoCoding Lite (5.000/zi) | ~$49 | **compatibil Nominatim** → doar `GEOCODE_URL`, fără atins codul |
+| MapTiler Flex (~16.000/zi) | ~$25 | format propriu → mic adaptor în `shorten()` din `geocode.js` |
+| Nominatim propriu (România) | ~$120 compute | ~8 GB RAM, import de 1–3 h, replicare de întreținut — **nerecomandat**: costă mai mult decât un furnizor cu SLA |
+
+Decizia se poate lua **după** ce se citesc contoarele: „Stare producție" → rândul *Geocodare* arată numărul de
+cereri reușite, eșecurile și rata de potriviri din cache. Până acum eșecurile erau complet tăcute.
+
+**Map-matching (lipirea traseului de drumuri) — `OSRM_URL`**
+
+Nesetată, funcția e **oprită** și traseele se afișează brute — deliberat, nu din defecțiune. Implicitul public
+(`router.project-osrm.org`, serverul de demonstrație FOSSGIS) a fost scos. Self-host: extract România
+(~309 MB `.osm.pbf` de la Geofabrik), profil `car`, algoritm MLD, ~2 GB RAM ≈ **$30/lună pe Railway**.
+
+**Limite de viteză OSM — `OVERPASS_URL`** (opțional): volumul nu crește cu flota, ci cu numărul de click-uri pe
+„Limite reale", și e deja plafonat (1 cerere/s, cache 7 zile, max 25 vehicule/raport). Instanțele publice sunt
+în regulă aici; variabila există doar ca supapă.
 
 ### 3e. Facturare (doar dacă pornești modulul)
 

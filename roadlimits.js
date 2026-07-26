@@ -4,10 +4,15 @@
 // Aici: o SINGURĂ interogare bbox per traseu (la cerere, când userul deschide un traseu), throttled + cache agresiv.
 // Datele OSM sunt ODbL → orice afișare necesită atribuirea „© OpenStreetMap contributors".
 
-const ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-];
+// Configurabil (una sau mai multe adrese, separate prin virgulă), ca să se poată trece pe o instanță
+// proprie fără atins codul. Implicit rămân cele publice: aici volumul NU crește cu flota, ci cu numărul de
+// click-uri pe „Limite reale", și e deja plafonat structural (1 cerere/s, cache 7 zile, max 25 vehicule/raport).
+const ENDPOINTS = (process.env.OVERPASS_URL || '').split(',').map(s => s.trim()).filter(Boolean).length
+  ? process.env.OVERPASS_URL.split(',').map(s => s.trim()).filter(Boolean)
+  : [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+  ];
 const ATTRIBUTION = '© OpenStreetMap contributors';
 const CACHE_TTL = 7 * 24 * 3600 * 1000;  // 7 zile (limitele de viteză se schimbă rar)
 const MIN_INTERVAL = 1000;               // ms minim între apeluri Overpass (politică de uz)

@@ -3985,9 +3985,45 @@ app.get('/api/live', requireAuth, withScope, async (req, res) => {
   res.json(positions);
 });
 
+// ─── Geocodare inversă, PRIN SERVERUL NOSTRU ───
+// Până acum browserul și APK-ul loveau `nominatim.openstreetmap.org` DIRECT: fără throttle (politica lor
+// cere ≤1 cerere/s pe aplicație), fără User-Agent identificabil (browserele nu-l pot seta), cu un cache
+// separat per filă. Cu zeci de operatori × sute de vehicule, asta e exact „heavy use"-ul pentru care
+// Nominatim blochează IP-uri — și `GEOCODE_URL` de pe server nu acoperea nimic din traficul ăla.
+// Acum totul trece pe aici: o singură coadă, un singur cache, o singură identitate, un singur furnizor
+// de schimbat printr-o variabilă de mediu.
+const GEO_MAX_POINTS = 200;   // plafon per cerere: o listă de curse nu trebuie să devină o rafală
+app.post('/api/geocode/reverse', requireAuth, async (req, res) => {
+  if (!geocode) return res.json({ labels: [], reason: 'geocodare indisponibilă' });
+  try {
+    let pts = Array.isArray(req.body && req.body.points) ? req.body.points : [];
+    pts = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).slice(0, GEO_MAX_POINTS);
+    if (!pts.length) return res.json({ labels: [] });
+    const coords = pts.map(p => ({ lat: Number(p[0]), lng: Number(p[1]) }));
+    // `warm` are buget de timp: ce nu apucă rămâne null, iar clientul reîncearcă la următoarea randare.
+    // Preferăm un răspuns parțial rapid unei așteptări lungi cu tot.
+    await geocode.warm(coords, { maxUnique: GEO_MAX_POINTS, budgetMs: Number(req.body && req.body.budgetMs) || undefined });
+    res.json({ labels: coords.map(c => { const v = geocode.peek(c.lat, c.lng); return v === undefined ? null : v; }) });
+  } catch (e) { res.json({ labels: [], error: e.message }); }
+});
+
 // ─── Map-matching: lipește traseul GPS de drumuri (OSRM) ───
-// OSRM_URL configurabil — implicit serverul public (test/volum mic); pentru producție → self-hosted (o variabilă env).
-const OSRM_URL = (process.env.OSRM_URL || 'https://router.project-osrm.org').replace(/\/+$/, '');
+// FĂRĂ implicit public. `router.project-osrm.org` e serverul de DEMONSTRAȚIE al FOSSGIS, pe care scrie
+// explicit că nu e pentru uz în producție — iar noi îl loveam la fiecare deschidere de traseu, din toate
+// conturile. Acum, fără OSRM_URL, map-matching-ul e pur și simplu OPRIT: traseul rămâne cel brut (degradarea
+// era deja gestionată în interfață), în loc să folosim tăcut infrastructura altcuiva contra regulilor ei.
+const OSRM_URL = (process.env.OSRM_URL || '').replace(/\/+$/, '');
+const OSRM_ON = !!OSRM_URL;
+if (!OSRM_ON) console.log('[OSRM] OSRM_URL nesetat → map-matching OPRIT (traseele rămân brute). Setează OSRM_URL ca să-l activezi.');
+// Serializare + buget total: până acum un traseu lung însemna 16 bucăți × 9 s, secvențial, fără nicio
+// limită globală — până la ~2,5 minute de cerere Express ținută deschisă.
+const OSRM_BUDGET_MS = parseInt(process.env.OSRM_BUDGET_MS) || 20000;
+let _osrmChain = Promise.resolve();
+function _osrmSlot() {
+  const p = _osrmChain.then(() => new Promise(r => setTimeout(r, parseInt(process.env.OSRM_MIN_INTERVAL_MS) || 100)));
+  _osrmChain = p.catch(() => {});
+  return p;
+}
 const _matchCache = new Map(); // key cursă -> geometrie lipită [[lat,lng]...]
 function _matchKey(pts) {
   let s = pts.length + ':'; const step = Math.max(1, Math.floor(pts.length / 8));
@@ -4011,13 +4047,16 @@ async function _osrmMatchChunk(coords) { // coords [[lng,lat]...] (≤100) -> [[
   } catch (e) { clearTimeout(to); return null; }
 }
 async function osrmMatch(pts) { // pts [[lat,lng]...] -> [[lat,lng]...] sau null (chunk ≤95, concat)
-  if (!pts || pts.length < 2) return null;
+  if (!OSRM_ON || !pts || pts.length < 2) return null;
   let coords = pts.map(p => [p[1], p[0]]);                       // [lng,lat]
   if (coords.length > 1500) { const st = Math.ceil(coords.length / 1500); coords = coords.filter((_, i) => i % st === 0); }
   const CHUNK = 95, OVERLAP = 1; let out = [];
+  const deadline = Date.now() + OSRM_BUDGET_MS;
   for (let start = 0; start < coords.length - 1; start += (CHUNK - OVERLAP)) {
+    if (Date.now() > deadline) break;                            // răspundem cu ce avem, nu ținem cererea deschisă
     const slice = coords.slice(start, start + CHUNK);
     if (slice.length < 2) break;
+    await _osrmSlot();
     const m = await _osrmMatchChunk(slice);
     if (m) { if (out.length) m.shift(); out = out.concat(m); }   // evită dublarea punctului de overlap
   }
@@ -4025,6 +4064,8 @@ async function osrmMatch(pts) { // pts [[lat,lng]...] -> [[lat,lng]...] sau null
 }
 app.post('/api/match', requireAuth, async (req, res) => {
   try {
+    // Fără server propriu, spunem clar de ce nu lipim traseul de drumuri, în loc să tăcem cu `matched:null`.
+    if (!OSRM_ON) return res.json({ matched: null, reason: 'osrm_neconfigurat' });
     let pts = Array.isArray(req.body && req.body.points) ? req.body.points : [];
     pts = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]));
     if (pts.length < 2) return res.json({ matched: null });
@@ -7792,6 +7833,26 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   add('push', 'Push nativ (FCM)', _fcm ? 'ok' : 'warn', _fcmStatus || (_fcm ? 'activ' : 'FIREBASE_SA_JSON nesetat'));
   add('sentry', 'Raportare erori (Sentry)', errortrack.enabled() ? 'ok' : 'warn', errortrack.enabled() ? 'activ' : 'SENTRY_DSN nesetat → erorile rămân doar în jurnalul intern');
   add('strict_devices', 'Înregistrare strictă dispozitive', STRICT_DEVICES ? 'ok' : 'warn', STRICT_DEVICES ? 'doar IMEI-uri pre-înregistrate' : 'STRICT_DEVICES=false → orice tracker se poate conecta');
+
+  // Servicii de hartă externe. Un deploy care rulează pe serverele PUBLICE de demonstrație arăta până acum
+  // complet verde, deși folosea infrastructură pe care scrie explicit că nu e pentru producție.
+  try {
+    const gs = geocode && geocode.getStats ? geocode.getStats() : null;
+    if (gs) {
+      const eșecuri = gs.err429 + gs.errHttp + gs.errNet + gs.timeouts;
+      const rată = gs.misses ? Math.round(eșecuri / gs.misses * 100) : 0;
+      add('geocode', 'Geocodare (adrese)', gs.public ? 'warn' : (rată > 30 ? 'crit' : 'ok'),
+        (gs.public
+          ? 'Nominatim PUBLIC — politica lui permite ~1 cerere/s și interzice utilizarea intensivă; la creșterea flotei riști blocarea adresei IP. Setează GEOCODE_URL (furnizor propriu sau plătit).'
+          : 'furnizor propriu: ' + gs.provider)
+        + ' · ' + gs.ok + ' reușite, ' + eșecuri + ' eșecuri (' + rată + '%)'
+        + (gs.err429 ? ', din care ' + gs.err429 + ' refuzate pentru depășirea limitei' : '')
+        + ' · cache ' + gs.cacheSize + (gs.hitRate != null ? ' (potriviri ' + gs.hitRate + '%)' : ''));
+    }
+    add('osrm', 'Lipirea traseului de drumuri (OSRM)', OSRM_ON ? 'ok' : 'info',
+      OSRM_ON ? ('server propriu: ' + OSRM_URL)
+        : 'OSRM_URL nesetat → funcția e OPRITĂ, traseele se afișează brute. Implicitul public era serverul de demonstrație FOSSGIS, interzis în producție — l-am scos deliberat, nu e o defecțiune.');
+  } catch (e) {}
   // Informativ, NU avertisment: de când demo-ul se acordă la cerere, compania demo e parte din produs.
   // Cât timp rămânea „warn", ecranul nu putea ajunge niciodată pe verde, iar un semnal veșnic portocaliu
   // e un semnal pe care nu-l mai citește nimeni.

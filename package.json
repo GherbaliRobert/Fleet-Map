@@ -19,7 +19,8 @@
     "test:sensors": "node phase7_smoke.js",
     "test:ws": "node ws_smoke.js",
     "test:demosim": "node verify_demo_sim.js",
-    "test:retention": "node verify_retention.js"
+    "test:retention": "node verify_retention.js",
+    "test:geo": "node verify_geo.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.0",
