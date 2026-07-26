@@ -67,6 +67,9 @@ function boot(extra) {
       GEOCODE_URL: 'http://localhost:' + NOMPORT + '/reverse',
       GEOCODE_MIN_INTERVAL_MS: '0',      // serverul fals n-are limite; testăm logica, nu așteptarea
       GEOCODE_TIMEOUT_MS: '2000',
+      // Port mort: alinierea de rezervă prin OpenStreetMap trebuie să eșueze RAPID și DETERMINIST.
+      // Fără asta, testul ar lovi Overpass-ul public real — lent, capricios și nepoliticos într-un test.
+      OVERPASS_URL: 'http://127.0.0.1:1/api/interpreter',
     }, extra || {});
     delete env.DATABASE_URL;
     if (!(extra && extra.OSRM_URL)) delete env.OSRM_URL;
@@ -131,11 +134,16 @@ async function health(key) {
     t('recunoaște că NU e Nominatim public', hg && /furnizor propriu/.test(hg.detail || ''), hg && hg.detail);
     t('numără și eșecurile (429-ul de mai sus)', hg && /refuzate pentru depășirea limitei/.test(hg.detail || ''), hg && hg.detail);
 
-    // ── 6. OSRM: FĂRĂ OSRM_URL funcția e oprită, nu lovim serverul public ──
+    // ── 6. OSRM: FĂRĂ OSRM_URL nu lovim serverul public de demonstrație ──
+    // Apelul AUTOMAT (la deschiderea unui traseu) nu încearcă nici alinierea de rezervă prin OpenStreetMap:
+    // ar însemna o interogare Overpass la fiecare vizualizare, exact ce interzice politica lor.
     osrmHits = 0;
-    const m1 = await req('POST', '/api/match', { points: [[45, 21], [45.001, 21.001], [45.002, 21.002]] });
-    t('fără OSRM_URL, map-matching-ul e oprit', m1.body && m1.body.matched === null && m1.body.reason === 'osrm_neconfigurat', JSON.stringify(m1.body));
+    const m1 = await req('POST', '/api/match', { points: [[45, 21], [45.001, 21.001], [45.002, 21.002]], auto: true });
+    t('fără OSRM_URL, alinierea automată e oprită', m1.body && m1.body.matched === null && m1.body.reason === 'osrm_neconfigurat', JSON.stringify(m1.body));
     t('și NU a plecat nicio cerere externă', osrmHits === 0, 'apeluri=' + osrmHits);
+    // La cerere, se încearcă metoda gratuită; cu Overpass indisponibil trebuie să spună ASTA, nu „fără drumuri".
+    const m1b = await req('POST', '/api/match', { points: [[45, 21], [45.001, 21.001], [45.002, 21.002]] });
+    t('la cerere, încearcă metoda gratuită și raportează corect indisponibilitatea', m1b.body && m1b.body.reason === 'osm_indisponibil', JSON.stringify(m1b.body));
     const ho = await health('osrm');
     t('„Stare producție" explică de ce e oprit', ho && /OSRM_URL nesetat/.test(ho.detail || ''), ho && ho.detail);
 

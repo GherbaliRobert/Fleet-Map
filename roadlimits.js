@@ -97,15 +97,78 @@ async function _overpassBbox(s, w, n, e) {
   throw lastErr || new Error('Overpass indisponibil');
 }
 
-// Distanță punct→segment în metri (proiecție echirectangulară locală — destul de precisă la scară de stradă).
-function _distToSeg(plat, plng, alat, alng, blat, blng) {
+// Proiecția punctului pe segment: distanța în metri ȘI punctul proiectat.
+// (proiecție echirectangulară locală — destul de precisă la scară de stradă)
+// Proiecția se calcula deja aici, pentru distanță, dar se arunca; e exact ce trebuie ca să „lipim" un punct
+// GPS pe carosabil, deci o întoarcem. Vezi `snapPoints`.
+function _projToSeg(plat, plng, alat, alng, blat, blng) {
   const R = 6371000, rad = Math.PI / 180, clat = Math.cos(plat * rad);
   const X = (lo) => lo * rad * clat * R, Y = (la) => la * rad * R;
   const px = X(plng), py = Y(plat), ax = X(alng), ay = Y(alat), bx = X(blng), by = Y(blat);
   const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
   let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
   t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  const qx = ax + t * dx, qy = ay + t * dy;
+  return {
+    d: Math.hypot(px - qx, py - qy),
+    lat: qy / (rad * R),
+    lng: clat ? qx / (rad * clat * R) : plng,   // clat=0 doar la poli — irelevant aici, dar nu împărțim la 0
+  };
+}
+function _distToSeg(plat, plng, alat, alng, blat, blng) {
+  return _projToSeg(plat, plng, alat, alng, blat, blng).d;
+}
+
+// Drumurile din zona traseului: calculul bbox + garda de suprafață + cache-ul de 7 zile, într-un singur loc
+// (le folosesc și limitele de viteză, și alinierea pe drumuri — pe același traseu se face O SINGURĂ interogare).
+async function _waysFor(points) {
+  let s = 90, w = 180, n = -90, e = -180;
+  for (const p of points) {
+    const la = +p[0], lo = +p[1];
+    if (!isFinite(la) || !isFinite(lo)) continue;
+    if (la < s) s = la; if (la > n) n = la; if (lo < w) w = lo; if (lo > e) e = lo;
+  }
+  if (s > n) return null;
+  s -= 0.003; w -= 0.003; n += 0.003; e += 0.003;
+  if ((n - s) * (e - w) > AREA_GUARD) { const err = new Error('Traseu prea mare pentru datele OSM — apropie pe un segment'); err.code = 'AREA'; throw err; }
+  const key = [s, w, n, e].map(x => x.toFixed(2)).join(',');
+  const c = _cache.get(key);
+  if (c && (Date.now() - c.ts) < CACHE_TTL) return c.ways;
+  const ways = await _enqueue(() => _overpassBbox(s, w, n, e));
+  _cache.set(key, { ts: Date.now(), ways });
+  if (_cache.size > 200) _cache.delete(_cache.keys().next().value);
+  return ways;
+}
+
+// „Lipirea" punctelor pe carosabil, fără OSRM: fiecare punct se mută pe cel mai apropiat drum, dacă e destul
+// de aproape. NU e map-matching adevărat — nu reconstruiește drumul DINTRE puncte și nu ține cont de topologie
+// (la pasaje suprapuse sau străzi paralele poate alege greșit). Pentru desenarea coridoarelor, unde punctele
+// sunt puse manual și dese, rezultatul e practic identic; pentru trasee cu poziții rare, linia tot taie
+// colțurile — doar că fiecare colț ajunge pe stradă.
+// Un punct fără drum în raza SNAP_M rămâne NEATINS: mai bine nemișcat decât mutat aiurea.
+const SNAP_M = 40;   // mai larg decât MATCH_M (30): aici acceptăm și deriva GPS din oraș, nu doar apartenența
+async function snapPoints(points) {
+  if (!Array.isArray(points) || points.length < 2) return null;
+  if (points.length > MAX_POINTS) points = points.slice(0, MAX_POINTS);
+  const ways = await _waysFor(points);
+  if (!ways || !ways.length) return null;
+  const out = []; let mutate = 0;
+  for (const p of points) {
+    const plat = +p[0], plng = +p[1];
+    if (!isFinite(plat) || !isFinite(plng)) { out.push([plat, plng]); continue; }
+    let best = null, bestD = SNAP_M;
+    for (const wy of ways) {
+      const bb = wy.bbox;
+      if (plat < bb[0] - 0.001 || plat > bb[2] + 0.001 || plng < bb[1] - 0.001 || plng > bb[3] + 0.001) continue;
+      for (let i = 1; i < wy.pts.length; i++) {
+        const pr = _projToSeg(plat, plng, wy.pts[i - 1][0], wy.pts[i - 1][1], wy.pts[i][0], wy.pts[i][1]);
+        if (pr.d < bestD) { bestD = pr.d; best = pr; }
+      }
+    }
+    if (best) { out.push([best.lat, best.lng]); mutate++; } else out.push([plat, plng]);
+  }
+  // Dacă aproape nimic n-a nimerit un drum (zonă fără acoperire OSM, off-road), nu pretindem că am aliniat.
+  return mutate >= Math.max(2, Math.round(points.length * 0.3)) ? { points: out, snapped: mutate, attribution: ATTRIBUTION } : null;
 }
 
 // Pentru fiecare punct [lat,lng], limita drumului celui mai apropiat (≤ MATCH_M m), altfel null.
@@ -113,25 +176,8 @@ function _distToSeg(plat, plng, alat, alng, blat, blng) {
 async function limitsForPoints(points) {
   if (!Array.isArray(points) || points.length < 2) return { limits: (points || []).map(() => null), attribution: ATTRIBUTION, ways: 0 };
   if (points.length > MAX_POINTS) points = points.slice(0, MAX_POINTS);
-  let s = 90, w = 180, n = -90, e = -180;
-  for (const p of points) {
-    const la = +p[0], lo = +p[1];
-    if (!isFinite(la) || !isFinite(lo)) continue;
-    if (la < s) s = la; if (la > n) n = la; if (lo < w) w = lo; if (lo > e) e = lo;
-  }
-  if (s > n) return { limits: points.map(() => null), attribution: ATTRIBUTION, ways: 0 };
-  s -= 0.003; w -= 0.003; n += 0.003; e += 0.003;
-  if ((n - s) * (e - w) > AREA_GUARD) { const err = new Error('Traseu prea mare pentru limite OSM — apropie pe un segment'); err.code = 'AREA'; throw err; }
-
-  const key = [s, w, n, e].map(x => x.toFixed(2)).join(',');
-  let ways;
-  const c = _cache.get(key);
-  if (c && (Date.now() - c.ts) < CACHE_TTL) ways = c.ways;
-  else {
-    ways = await _enqueue(() => _overpassBbox(s, w, n, e));
-    _cache.set(key, { ts: Date.now(), ways });
-    if (_cache.size > 200) _cache.delete(_cache.keys().next().value);
-  }
+  const ways = await _waysFor(points);
+  if (!ways) return { limits: points.map(() => null), attribution: ATTRIBUTION, ways: 0 };
 
   const limits = [], estimated = [];
   for (const p of points) {
@@ -151,4 +197,4 @@ async function limitsForPoints(points) {
   return { limits, estimated, attribution: ATTRIBUTION, ways: ways.length };
 }
 
-module.exports = { limitsForPoints, parseMaxspeed, ATTRIBUTION };
+module.exports = { limitsForPoints, snapPoints, parseMaxspeed, ATTRIBUTION };

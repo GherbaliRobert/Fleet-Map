@@ -20,7 +20,8 @@
     "test:ws": "node ws_smoke.js",
     "test:demosim": "node verify_demo_sim.js",
     "test:retention": "node verify_retention.js",
-    "test:geo": "node verify_geo.js"
+    "test:geo": "node verify_geo.js",
+    "test:snap": "node verify_snap.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.0",

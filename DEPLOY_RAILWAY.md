@@ -106,11 +106,28 @@ nimic din traficul real.
 Decizia se poate lua **după** ce se citesc contoarele: „Stare producție" → rândul *Geocodare* arată numărul de
 cereri reușite, eșecurile și rata de potriviri din cache. Până acum eșecurile erau complet tăcute.
 
-**Map-matching (lipirea traseului de drumuri) — `OSRM_URL`**
+**Alinierea traseului pe drumuri — `OSRM_URL` (opțional)**
 
-Nesetată, funcția e **oprită** și traseele se afișează brute — deliberat, nu din defecțiune. Implicitul public
-(`router.project-osrm.org`, serverul de demonstrație FOSSGIS) a fost scos. Self-host: extract România
-(~309 MB `.osm.pbf` de la Geofabrik), profil `car`, algoritm MLD, ~2 GB RAM ≈ **$30/lună pe Railway**.
+Există **două** metode, în ordinea calității:
+
+1. **OSRM** (`OSRM_URL` setat) — map-matching adevărat: reconstruiește drumul *dintre* puncte și ține cont de
+   topologie. Se aplică **automat**, la fiecare deschidere de traseu.
+2. **Proiecția pe cel mai apropiat drum** — gratuită, fără infrastructură. Folosește datele OpenStreetMap pe
+   care modulul de limite de viteză le descarcă oricum, cu același cache de 7 zile. Mută punctele pe carosabil,
+   dar **nu** umple golurile dintre ele. E **doar la cerere** (butonul „Aliniază pe drumuri" din traseu și
+   „Lipește pe străzi" din desenarea coridoarelor) — un apel automat ar însemna o interogare Overpass la
+   fiecare vizualizare, exact ce interzice politica lor.
+
+Fără `OSRM_URL` totul funcționează, doar că alinierea e manuală și mai puțin precisă. Implicitul public
+(`router.project-osrm.org`, serverul de demonstrație FOSSGIS) a fost scos deliberat.
+
+**Limitele metodei gratuite, măsurate:** pe un drum neambiguu proiecția e exactă (sub 1 m de axă). Într-o
+zonă densă cu străzi paralele, un punct poate prinde strada vecină. Instanțele publice Overpass sunt și
+capricioase (504 / timeout) — atunci interfața spune că serviciul nu răspunde, nu că traseul e greșit.
+
+**Self-host OSRM**, dacă alinierea automată contează: extract România (~309 MB `.osm.pbf` de la Geofabrik),
+profil `car`, algoritm MLD, ~1 GB RAM la rulare. Pe Railway ≈ **$30/lună**; pe un VPS mic (Hetzner CX23,
+4 GB) ≈ **€6/lună** — de cinci ori mai ieftin pentru exact același container.
 
 **Limite de viteză OSM — `OVERPASS_URL`** (opțional): volumul nu crește cu flota, ci cu numărul de click-uri pe
 „Limite reale", și e deja plafonat (1 cerere/s, cache 7 zile, max 25 vehicule/raport). Instanțele publice sunt

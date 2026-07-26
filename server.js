@@ -4062,18 +4062,45 @@ async function osrmMatch(pts) { // pts [[lat,lng]...] -> [[lat,lng]...] sau null
   }
   return out.length > 1 ? out : null;
 }
+// Alinierea traseului pe drumuri. DOUĂ metode, în ordinea calității:
+//   1. OSRM (dacă OSRM_URL e setat) — map-matching adevărat: reconstruiește drumul DINTRE puncte, ține cont
+//      de topologie (sensuri, pasaje, intersecții).
+//   2. Proiecția pe cel mai apropiat drum din OpenStreetMap, folosind datele pe care modulul de limite de
+//      viteză le descarcă oricum de la Overpass, cu același cache de 7 zile. Nu e map-matching: mută punctele
+//      existente pe carosabil, dar nu umple golurile dintre ele. Gratuită și fără infrastructură proprie.
+// Răspunsul spune care metodă a răspuns (`source`), ca interfața să nu promită mai mult decât s-a făcut.
 app.post('/api/match', requireAuth, async (req, res) => {
   try {
-    // Fără server propriu, spunem clar de ce nu lipim traseul de drumuri, în loc să tăcem cu `matched:null`.
-    if (!OSRM_ON) return res.json({ matched: null, reason: 'osrm_neconfigurat' });
     let pts = Array.isArray(req.body && req.body.points) ? req.body.points : [];
     pts = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]));
     if (pts.length < 2) return res.json({ matched: null });
-    const key = _matchKey(pts);
-    if (_matchCache.has(key)) return res.json({ matched: _matchCache.get(key) });
-    const matched = await osrmMatch(pts);
-    if (matched) { if (_matchCache.size > 300) _matchCache.clear(); _matchCache.set(key, matched); }
-    res.json({ matched: matched || null });
+    const key = (OSRM_ON ? 'r:' : 'o:') + _matchKey(pts);
+    if (_matchCache.has(key)) { const c = _matchCache.get(key); return res.json({ matched: c.pts, source: c.src, attribution: c.attr || undefined }); }
+
+    // `auto:true` = apel automat la deschiderea unui traseu. Acolo folosim DOAR OSRM: metoda gratuită trece
+    // prin Overpass, iar o interogare la fiecare deschidere de traseu ar fi exact utilizarea pe care politica
+    // lor o interzice. Pentru ea există butonul „Aliniază pe drumuri", care apelează fără flagul ăsta.
+    const auto = !!(req.body && req.body.auto);
+    let matched = null, source = null, attribution;
+    if (OSRM_ON) { matched = await osrmMatch(pts); if (matched) source = 'osrm'; }
+    if (auto && !matched) return res.json({ matched: null, reason: OSRM_ON ? 'fara_potrivire' : 'osrm_neconfigurat' });
+    if (!matched && roadlimits && roadlimits.snapPoints) {
+      try {
+        const sn = await roadlimits.snapPoints(pts);
+        if (sn) { matched = sn.points; source = 'osm'; attribution = sn.attribution; }
+      } catch (e) {
+        // Traseu prea întins pentru o singură interogare Overpass — e o limită reală, nu o defecțiune.
+        if (e && e.code === 'AREA') return res.json({ matched: null, reason: 'zona_prea_mare' });
+        // Serviciul OSM a picat (504 / timeout). NU e același lucru cu „nu există drumuri pe acolo", iar
+        // instanțele publice Overpass chiar cad des — dacă spunem greșit, operatorul caută vina în date.
+        return res.json({ matched: null, reason: 'osm_indisponibil' });
+      }
+    }
+    if (matched) {
+      if (_matchCache.size > 300) _matchCache.clear();
+      _matchCache.set(key, { pts: matched, src: source, attr: attribution });
+    }
+    res.json({ matched: matched || null, source: source || undefined, attribution: attribution, reason: matched ? undefined : 'fara_drumuri' });
   } catch (e) { res.json({ matched: null }); }
 });
 

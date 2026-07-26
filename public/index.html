@@ -249,6 +249,7 @@
             <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>
             <button class="history-btn success" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
             <button class="history-btn" id="hp-osm-btn" onclick="hpToggleOsmLimits()" title="Colorează cu roșu unde s-a depășit limita REALĂ a drumului (date OpenStreetMap)"><i class="fas fa-gauge-high"></i> Limite reale</button>
+            <button class="history-btn" id="hp-snap-btn" onclick="hpSnapToRoads()" title="Mută punctele traseului pe carosabil (date OpenStreetMap)"><i class="fas fa-road"></i> Aliniază pe drumuri</button>
           </div>
         </div>
         <div id="hp-trip-summary" style="display:none;margin-top:8px;">
@@ -4791,8 +4792,6 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('draw-info').textContent = 'Trage colțurile pentru a ajusta';
     }
     function updateCorridorWidth() { updateDrawMetrics(); }
-    // Reținut o dată per sesiune: dacă serverul de rutare nu e configurat, butonul nu mai invită la reîncercări.
-    var _snapIndisponibil = false;
     async function snapCorridorToRoads() {
       if (!drawState || drawState.mode !== 'corridor') return;
       let pts = (drawState.layer && drawState.finished) ? ((layerLatLngs() || {}).line || []) : drawState.points.slice();
@@ -4809,20 +4808,14 @@ const pozitii = await r.json();</code></pre>
             try { if (drawState.layer.pm && drawState.layer.pm.enabled()) { drawState.layer.pm.disable(); drawState.layer.pm.enable({ allowSelfIntersection: false, snappable: true, snapDistance: 20 }); } } catch (e) {}
             updateDrawMetrics();
           } else redrawPoly();
-        } else if (j && j.reason === 'osrm_neconfigurat') {
-          // NU da vina pe utilizator când serviciul e oprit: mesajul vechi („puncte prea puține") îl trimitea
-          // să adauge puncte la nesfârșit pentru o funcție care oricum nu putea răspunde.
-          _snapIndisponibil = true;
-          raxToast('Alinierea pe străzi nu e disponibilă: serverul de rutare nu e configurat. Desenează coridorul manual — funcționează la fel.', 'error', 8000);
-        } else { alert('Nu am putut alinia traseul pe drumuri (puncte prea puține sau drum negăsit). Încearcă mai multe puncte.'); }
+        } else if (j && j.reason === 'zona_prea_mare') {
+          // Limită reală a interogării OSM pe suprafață, nu o defecțiune — și e acționabilă.
+          raxToast('Zona e prea întinsă pentru alinierea pe drumuri. Desenează pe o porțiune mai mică.', 'error', 7000);
+        } else if (j && j.reason === 'osm_indisponibil') {
+          raxToast('Serviciul OpenStreetMap nu răspunde acum. Încearcă din nou peste câteva minute — sau desenează coridorul manual.', 'error', 8000);
+        } else { alert('Nu am putut alinia traseul pe drumuri (niciun drum aproape de puncte). Verifică dacă punctele sunt pe stradă.'); }
       } catch (e) { alert('Eroare la lipirea pe străzi.'); }
-      finally {
-        if (btn) {
-          btn.disabled = _snapIndisponibil;
-          btn.innerHTML = _snapIndisponibil ? '<i class="fas fa-road"></i> Lipire indisponibilă' : '<i class="fas fa-road"></i> Lipește pe străzi';
-          if (_snapIndisponibil) btn.title = 'Serverul de rutare (OSRM_URL) nu e configurat.';
-        }
-      }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-road"></i> Lipește pe străzi'; } }
     }
     function onCircleClick(e) {
       if (!drawState || drawState.layer) return;
@@ -10243,6 +10236,49 @@ const pozitii = await r.json();</code></pre>
     var _OSM_TIER_COLORS = ['#fbbf24', '#f59e0b', '#ef4444'];
     var _OSM_TIER_LABELS = ['≤ +30', '+30–50', '> +50'];
     function _osmOverTier(delta) { return delta <= 30 ? 0 : delta <= 50 ? 1 : 2; }
+    // „Aliniază pe drumuri", LA CERERE. Fără server OSRM propriu, alinierea se face proiectând fiecare punct
+    // pe cel mai apropiat drum din OpenStreetMap — aceleași date (și același cache de 7 zile) ca „Limite reale",
+    // deci pe un traseu unde ai folosit deja butonul celălalt nu se mai interoghează nimic.
+    // NU e map-matching adevărat: mută punctele pe carosabil, dar nu reconstruiește drumul dintre ele.
+    window.hpSnapToRoads = async function () {
+      var btn = document.getElementById('hp-snap-btn');
+      if (!hpLastData || hpLastData.length < 2) { (window.raxToast || alert)('Încarcă întâi un traseu.', 'error'); return; }
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se aliniază…'; }
+      try {
+        var pts = hpLastData.map(function (d) { return [d.latitude, d.longitude]; });
+        var r = await fetch('/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: pts }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (j && Array.isArray(j.matched) && j.matched.length > 1) {
+          // Culorile de viteză: proiecția păstrează punctele 1:1, deci vitezele se mapează direct. (OSRM
+          // returnează altă geometrie → atunci luăm viteza celui mai apropiat punct brut, ca la afișare.)
+          var _pref = {}; try { _pref = await _loadUiPrefs(); } catch (e) {}
+          var _vit = null;
+          if (_pref.overspeed_heatmap !== false && hpSpeedLimit) {
+            if (j.matched.length === hpLastData.length) _vit = hpLastData.map(function (d) { return d.speed; });
+            else {
+              _vit = []; var _k = 0;
+              var _d2 = function (ay, ax, by, bx) { var dy = ay - by, dx = ax - bx; return dy * dy + dx * dx; };
+              for (var _i = 0; _i < j.matched.length; _i++) {
+                var _v = j.matched[_i];
+                while (_k < hpLastData.length - 1 && _d2(_v[0], _v[1], hpLastData[_k + 1].latitude, hpLastData[_k + 1].longitude) <= _d2(_v[0], _v[1], hpLastData[_k].latitude, hpLastData[_k].longitude)) _k++;
+                _vit.push(hpLastData[_k] ? hpLastData[_k].speed : 0);
+              }
+            }
+          }
+          _renderRoute(j.matched, _vit);
+          if (btn) { btn.classList.add('primary'); btn.title = 'Traseu aliniat pe drumuri' + (j.attribution ? ' · ' + j.attribution : ''); }
+          (window.raxToast || alert)('Traseu aliniat pe drumuri' + (j.source === 'osm' ? ' (© OpenStreetMap contributors)' : ''), 'success');
+        } else if (j && j.reason === 'zona_prea_mare') {
+          (window.raxToast || alert)('Traseul e prea întins pentru aliniere. Alege un interval mai scurt.', 'error', 7000);
+        } else if (j && j.reason === 'osm_indisponibil') {
+          // Serverele publice OpenStreetMap chiar cad des — nu lăsa operatorul să creadă că e ceva cu datele lui.
+          (window.raxToast || alert)('Serviciul OpenStreetMap nu răspunde acum. Încearcă din nou peste câteva minute.', 'error', 7000);
+        } else {
+          (window.raxToast || alert)('Nu am găsit drumuri aproape de traseu (zonă fără acoperire OSM sau deplasare în afara drumurilor).', 'error', 7000);
+        }
+      } catch (e) { (window.raxToast || alert)('Eroare la aliniere.', 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-road"></i> Aliniază pe drumuri'; } }
+    };
     // Overlay „limite reale" (OSM): colorează gradat (galben/portocaliu/roșu) unde viteza a depășit limita REALĂ a drumului (date OpenStreetMap, la cerere).
     window.hpToggleOsmLimits = async function () {
       var btn = document.getElementById('hp-osm-btn');
@@ -10364,15 +10400,18 @@ const pozitii = await r.json();</code></pre>
         var _osmBtn0 = document.getElementById('hp-osm-btn'); if (_osmBtn0) _osmBtn0.classList.remove('primary');
         // Focus pe TOT traseul (mobil: lasă jos loc pentru panoul de control)
         fitRouteToMap(points);
-        // Map-matching: lipește traseul de drumuri (async; păstrează brutul dacă eșuează)
+        // Alinierea pe drumuri, automat — DOAR cu server OSRM propriu (`auto:true`). Metoda gratuită, prin
+        // OpenStreetMap, NU se cheamă aici: ar însemna o interogare Overpass la fiecare deschidere de traseu,
+        // exact utilizarea pe care politica lor o interzice. Pentru ea există butonul „Aliniază pe drumuri".
         (function () {
           const _mImei = selectedImei;
-          fetch('/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: points }) })
+          fetch('/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: points, auto: true }) })
             .then(function (r) { return r.json(); })
             .then(function (mr) {
               if (!mr || !Array.isArray(mr.matched) || mr.matched.length < 2) return;
               if (selectedImei !== _mImei || !historyLine) return;   // s-a schimbat vehiculul / s-a închis fișa
               _renderRoute(mr.matched, _speeds ? _mapSpeeds(mr.matched) : null);
+              var _sb = document.getElementById('hp-snap-btn'); if (_sb) _sb.style.display = 'none'; // deja aliniat
             }).catch(function () {});
         })();
         document.body.classList.add('history-open'); // ascunde FAB pe mobil cât e afișat un traseu
