@@ -153,9 +153,10 @@
             <div class="sidebar-brand">
 
         <div class="sidebar-search">
-          <div class="search-input-wrap">
+          <div class="search-input-wrap" id="search-wrap">
             <i class="fas fa-search"></i>
-            <input type="text" id="search-input" placeholder="Cauta vehicul, IMEI, numar..." oninput="applyFilters()">
+            <input type="text" id="search-input" placeholder="Caută vehicul, IMEI, număr…" oninput="applyFilters()">
+            <button class="search-clear" type="button" onclick="clearVehicleSearch()" title="Golește căutarea" aria-label="Golește căutarea"><i class="fas fa-xmark"></i></button>
           </div>
           <button id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Ascunde lista" aria-label="Ascunde lista"><i class="fas fa-chevron-left"></i></button>
         </div>
@@ -168,23 +169,25 @@
           <button class="filter-btn" data-filter="oprit" onclick="setFilter('oprit', this)">Oprit</button>
         </div>
 
+        <!-- Cadranele sunt și scurtături de filtrare: arată un număr, deci e firesc să duci la vehiculele
+             care îl compun. Starea „apăsat" se ține în pas cu pastilele de mai sus (vezi setFilter). -->
         <div class="stats-bar">
-          <div class="stat-chip">
+          <button type="button" class="stat-chip active" data-filter="all" onclick="setFilter('all')" title="Arată toate vehiculele">
             <div class="stat-value" id="stat-total">0</div>
             <div class="stat-label">Total</div>
-          </div>
-          <div class="stat-chip online">
+          </button>
+          <button type="button" class="stat-chip online" data-filter="pornit" onclick="setFilter('pornit')" title="Arată vehiculele cu motorul pornit">
             <div class="stat-value" id="stat-pornit">0</div>
             <div class="stat-label">Pornit</div>
-          </div>
-          <div class="stat-chip moving">
+          </button>
+          <button type="button" class="stat-chip moving" data-filter="moving" onclick="setFilter('moving')" title="Arată vehiculele în mișcare">
             <div class="stat-value" id="stat-moving">0</div>
             <div class="stat-label">În mișcare</div>
-          </div>
-          <div class="stat-chip stationat">
-            <div class="stat-value" id="stat-stationat" style="color:var(--yellow);">0</div>
+          </button>
+          <button type="button" class="stat-chip stationat" data-filter="stationat" onclick="setFilter('stationat')" title="Arată vehiculele staționate cu motorul pornit">
+            <div class="stat-value" id="stat-stationat">0</div>
             <div class="stat-label">Staționat</div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -8910,17 +8913,33 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Filtering & Search ───
+    // Filtrul poate fi apăsat din DOUĂ locuri (pastilele de sus și cadranele de contorizare), deci starea
+    // „apăsat" se deduce din `data-filter`, nu din butonul primit. Altfel cele două seturi se dezacordau:
+    // apăsai un cadran și pastila rămânea evidențiată pe filtrul vechi.
     function setFilter(filter, btn) {
       currentFilter = filter;
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      document.querySelectorAll('.filter-btn, .stat-chip').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-filter') === filter);
+      });
+      // „Oprit" n-are cadran propriu → niciunul nu rămâne aprins, ceea ce e corect.
+      if (btn && btn.classList.contains('filter-btn')) btn.classList.add('active');
       updateDeviceList();
     }
 
     function applyFilters() {
-      searchQuery = document.getElementById('search-input').value.toLowerCase();
+      var inp = document.getElementById('search-input');
+      searchQuery = inp.value.toLowerCase();
+      var wrap = document.getElementById('search-wrap');
+      if (wrap) wrap.classList.toggle('has-text', !!inp.value); // butonul de golire apare doar când ai ce goli
       updateDeviceList();
     }
+    window.clearVehicleSearch = function () {
+      var inp = document.getElementById('search-input');
+      if (!inp) return;
+      inp.value = '';
+      applyFilters();
+      inp.focus();   // golirea e un pas în căutare, nu sfârșitul ei
+    };
 
     // Predicate status „pe motor" (consistente cu serverul): Pornit = În mișcare + Staționat
     function vehMoving(d) { return isDeviceOnline(d) && (d.speed || 0) > 3 && isFreshLive(d); }
