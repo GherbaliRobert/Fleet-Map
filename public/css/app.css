@@ -442,61 +442,24 @@
     }
     #sidebar-collapse-btn:active { transform: translateY(0); }
 
-    /* Pastile de filtrare */
-    .filter-bar {
-      display: flex;
-      flex-wrap: wrap;          /* etichete RO lungi → rânduri echilibrate în loc de tăiere/înghesuire */
-      gap: 7px;
-      padding: 0 18px 12px;
-    }
-
-    .filter-btn {
-      flex: 0 1 auto;           /* lățime după conținut: „TOATE" nu mai ocupă cât „ÎN MIȘCARE" */
-      min-width: 0;
-      white-space: nowrap;      /* eticheta nu se rupe pe 2 linii */
-      padding: 8px 14px;
-      border-radius: 999px;     /* pastilă — forma care spune „mă poți apăsa" fără să aibă nevoie de chenar gros */
-      border: 1px solid var(--border);
-      background: var(--bg-dark);
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 11.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .4px;
-      text-align: center;
-      transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
-    }
-
-    .filter-btn:hover {
-      border-color: var(--accent);
-      color: var(--text-primary);
-      background: color-mix(in srgb, var(--accent) 12%, var(--bg-dark));
-      transform: translateY(-1px);
-    }
-    .filter-btn:active { transform: translateY(0); }
-    .filter-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
-    .filter-btn.active {
-      background: var(--blue); color: var(--bg-dark); border-color: var(--blue);
-      box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 38%, transparent);
-    }
-    .filter-btn.active:hover { background: var(--blue-hover); border-color: var(--blue-hover); }
-
-    /* Cadrane de contorizare — și butoane: apasă pe „ÎN MIȘCARE" și lista se filtrează la fel ca din pastile */
+    /* Cadranele de contorizare SUNT filtrul — rândul de pastile de deasupra a fost scos, pentru că repeta
+       exact aceleași cinci stări. Grilă în loc de flex: cinci coloane perfect egale, indiferent cât de
+       lungă e eticheta („Total" nu se strânge, „Staționat" nu se lățește). */
     .stats-bar {
-      display: flex;
-      gap: 7px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
       padding: 0 18px 14px;
     }
 
     .stat-chip {
-      flex: 1; min-width: 0;
+      min-width: 0;
       position: relative;
       overflow: hidden;                     /* bara de accent de sus nu iese din colțurile rotunjite */
       background: var(--bg-dark);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 10px 5px 9px;                /* strâns pe orizontală: patru cadrane într-o bară de 340 px */
+      padding: 10px 3px 9px;                /* strâns pe orizontală: cinci cadrane într-o bară de 340 px */
       text-align: center;
       font-family: inherit;
       cursor: pointer;
@@ -524,7 +487,7 @@
     .stat-chip.active::before { opacity: 1; }
 
     .stat-chip .stat-value {
-      font-size: 21px;
+      font-size: 20px;
       font-weight: 800;
       color: var(--chip-color, var(--accent));
       line-height: 1.15;
@@ -535,17 +498,19 @@
        tăia, iar micșorarea fontului până încăpea îl făcea ilizibil (8 px). Scrierea normală încape la
        10,5 px, pe un singur rând, și arată mai puțin strident. */
     .stat-chip .stat-label {
-      font-size: 10.5px;
+      font-size: 9.5px;
       color: var(--text-muted);
-      letter-spacing: 0;
+      letter-spacing: -.1px;                /* „Staționat" e cel mai lung cuvânt: trebuie să încapă pe un rând */
       font-weight: 700;
       margin-top: 2px;
       line-height: 1.2;
+      white-space: nowrap;                  /* mai bine strâns decât rupt în două rânduri inegale */
     }
 
     .stat-chip.online   { --chip-color: var(--green); }
     .stat-chip.moving   { --chip-color: var(--orange); }
     .stat-chip.stationat{ --chip-color: var(--yellow); }
+    .stat-chip.oprit    { --chip-color: var(--red); }   /* aceeași culoare ca punctul „oprit" din listă */
 
     /* Device List */
     #device-list {
@@ -1712,13 +1677,10 @@
       .brand-title h1 { font-size: 16px; }
       .btn-icon { width: 36px; height: 36px; font-size: 14px; }
       .stats-bar { padding: 0 12px 12px; gap: 6px; }
-      .stat-chip { padding: 9px 4px 8px; border-radius: 12px; }
+      .stat-chip { padding: 9px 3px 8px; border-radius: 12px; }
       .stat-chip .stat-value { font-size: 18px; }
-      .stat-chip .stat-label { font-size: 10px; }
+      .stat-chip .stat-label { font-size: 9.5px; }
       .sidebar-search { padding: 0 12px; }
-      .filter-bar { padding: 0 12px 10px; gap: 6px; }
-      /* Pe telefon pastilele se întind pe rând: mai ușor de nimerit cu degetul decât lățimea după text. */
-      .filter-btn { flex: 1 1 28%; padding: 9px 8px; font-size: 11px; }
       .device-card { padding: 12px; }
       .device-card-name .name { font-size: 13px; }
       .device-card-meta { font-size: 12px; gap: 10px; }
@@ -1824,10 +1786,10 @@
       .info-grid { grid-template-columns: 1fr; }
       .info-item.full { grid-column: 1; }
 
-      .stats-bar { gap: 4px; }
-      .stat-chip .stat-value { font-size: 16px; }
-
-      .filter-bar { flex-wrap: wrap; }
+      /* Ecrane înguste: cinci cadrane pe un rând ar face etichetele ilizibile → 3 + 2, tot pe grilă. */
+      .stats-bar { gap: 5px; grid-template-columns: repeat(3, 1fr); }
+      .stat-chip .stat-value { font-size: 17px; }
+      .stat-chip .stat-label { font-size: 10px; letter-spacing: 0; }
 
       #sidebar {
         width: 100vw;
@@ -1888,8 +1850,8 @@
     }
     /* ─── RA Track: text inchis pe elementele cu fundal verde (lizibilitate) ─── */
     .btn-primary, .nav-item.active, .history-btn.primary, .report-period-btn.active,
-    .detail-history-buttons .btn-load, .rep-cat.active, .filter-btn.active { color: #06210F !important; }
-    .btn-primary i, .nav-item.active i, .filter-btn.active i { color: #06210F !important; }
+    .detail-history-buttons .btn-load, .rep-cat.active { color: #06210F !important; }
+    .btn-primary i, .nav-item.active i { color: #06210F !important; }
     /* Logo RA Tracks: monogramă "RA |" (imagine, urmează tema) + cuvântul "Tracks" ca text */
     .ralogo { display: inline-flex; align-items: center; gap: 9px; }
     .ralogo .ralm { display: block; }

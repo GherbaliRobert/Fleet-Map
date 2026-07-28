@@ -161,16 +161,8 @@
           <button id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Ascunde lista" aria-label="Ascunde lista"><i class="fas fa-chevron-left"></i></button>
         </div>
 
-        <div class="filter-bar">
-          <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">Toate</button>
-          <button class="filter-btn" data-filter="pornit" onclick="setFilter('pornit', this)">Pornit</button>
-          <button class="filter-btn" data-filter="moving" onclick="setFilter('moving', this)">În mișcare</button>
-          <button class="filter-btn" data-filter="stationat" onclick="setFilter('stationat', this)">Staționat</button>
-          <button class="filter-btn" data-filter="oprit" onclick="setFilter('oprit', this)">Oprit</button>
-        </div>
-
-        <!-- Cadranele sunt și scurtături de filtrare: arată un număr, deci e firesc să duci la vehiculele
-             care îl compun. Starea „apăsat" se ține în pas cu pastilele de mai sus (vezi setFilter). -->
+        <!-- Cadranele SUNT filtrul: fiecare arată un număr și duce la vehiculele care îl compun. Rândul de
+             butoane de deasupra a fost scos — repeta exact aceleași cinci stări, ocupând un rând întreg. -->
         <div class="stats-bar">
           <button type="button" class="stat-chip active" data-filter="all" onclick="setFilter('all')" title="Arată toate vehiculele">
             <div class="stat-value" id="stat-total">0</div>
@@ -187,6 +179,10 @@
           <button type="button" class="stat-chip stationat" data-filter="stationat" onclick="setFilter('stationat')" title="Arată vehiculele staționate cu motorul pornit">
             <div class="stat-value" id="stat-stationat">0</div>
             <div class="stat-label">Staționat</div>
+          </button>
+          <button type="button" class="stat-chip oprit" data-filter="oprit" onclick="setFilter('oprit')" title="Arată vehiculele cu motorul oprit">
+            <div class="stat-value" id="stat-oprit">0</div>
+            <div class="stat-label">Oprit</div>
           </button>
         </div>
       </div>
@@ -498,7 +494,7 @@
          Folosesc :where() pentru specificitate zero — nu suprascrie regulile :hover, doar le anulează vizual. */
       @media (hover: none), (pointer: coarse) {
         :where(button, a, .btn, .btn-sm, .btn-primary, .btn-danger, .btn-icon, .topbar-icon, .rax-fab, .rax-btn,
-               .admin-tab, .device-card, .nav-item, .detail-action-btn, .filter-btn, .route-card,
+               .admin-tab, .device-card, .nav-item, .detail-action-btn, .route-card,
                .history-btn, .modal-btn, .nav-rail-item, .stat-chip, .meta-ignition, .icon-btn, .close-btn):hover {
           background-color: inherit !important;
           color: inherit !important;
@@ -510,7 +506,7 @@
       /* Tap delay eliminat pe butoane/elemente interactive (iOS Safari) — global */
       button, a, [role="button"], input, select, textarea, label, .btn-sm, .btn-primary,
       .topbar-icon, .rax-fab, .rax-btn, .admin-tab, .device-card, .nav-item,
-      .detail-action-btn, .filter-btn, .route-card, .history-btn { touch-action: manipulation; }
+      .detail-action-btn, .route-card, .history-btn { touch-action: manipulation; }
     </style>
   </div>
 
@@ -8913,16 +8909,14 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Filtering & Search ───
-    // Filtrul poate fi apăsat din DOUĂ locuri (pastilele de sus și cadranele de contorizare), deci starea
-    // „apăsat" se deduce din `data-filter`, nu din butonul primit. Altfel cele două seturi se dezacordau:
-    // apăsai un cadran și pastila rămânea evidențiată pe filtrul vechi.
-    function setFilter(filter, btn) {
+    // Filtrul se apasă din cadranele de contorizare (rândul de butoane de deasupra a fost scos — repeta
+    // aceleași cinci stări). Starea „apăsat" se deduce din `data-filter`, nu din elementul primit, ca să
+    // rămână corectă și când filtrul e schimbat din cod, nu dintr-un clic.
+    function setFilter(filter) {
       currentFilter = filter;
-      document.querySelectorAll('.filter-btn, .stat-chip').forEach(function (b) {
+      document.querySelectorAll('.stat-chip').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-filter') === filter);
       });
-      // „Oprit" n-are cadran propriu → niciunul nu rămâne aprins, ceea ce e corect.
-      if (btn && btn.classList.contains('filter-btn')) btn.classList.add('active');
       updateDeviceList();
     }
 
@@ -8980,6 +8974,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('stat-pornit').textContent = allDevices.filter(vehPornit).length;
       document.getElementById('stat-moving').textContent = allDevices.filter(vehMoving).length;
       document.getElementById('stat-stationat').textContent = allDevices.filter(vehStationat).length;
+      document.getElementById('stat-oprit').textContent = allDevices.filter(vehOprit).length;
 
       if (filtered.length === 0) {
         list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;"><i class="fas fa-search" style="font-size:24px;display:block;margin-bottom:8px;"></i>Niciun vehicul gasit</div>';
