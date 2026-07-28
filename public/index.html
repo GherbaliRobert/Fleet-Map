@@ -9677,11 +9677,12 @@ const pozitii = await r.json();</code></pre>
           '</div>' +
         '</div>' : '');
 
-      // Async load address
+      // Adresa COMPLETĂ (stradă nr, cartier, localitate, comună, județ) — e fișa unui vehicul anume,
+      // unde doar numele localității nu ajută pe cine trebuie să ajungă acolo.
       if (data.latitude && data.longitude) {
-        reverseGeocode(data.latitude, data.longitude).then(addr => {
+        reverseGeocode(data.latitude, data.longitude, 'full').then(addr => {
           const el = document.getElementById('detail-address');
-          if (el) el.textContent = addr;
+          if (el) { el.textContent = addr; el.title = addr; }
         });
       }
 
@@ -10720,22 +10721,25 @@ const pozitii = await r.json();</code></pre>
     // fiecare filă avea propriul cache, iar `GEOCODE_URL` de pe server nu acoperea nimic din traficul ăsta.
     // Cheia de cache e pe 3 zecimale (~110 m) — ACEEAȘI ca pe server; pe 4 (~11 m) rata de potrivire
     // scădea de ~10 ori și volumul real de apeluri creștea.
-    const geocodeCache = {};
+    // Două cache-uri: forma scurtă („Stradă nr, Oraș", bună într-un tabel) și cea completă (cu cartier,
+    // comună și județ, pentru fișa vehiculului). Serverul le derivă pe amândouă din același răspuns.
+    const geocodeCache = {}, geocodeCacheFull = {};
     function _geoKey(lat, lng) { return Number(lat).toFixed(3) + ',' + Number(lng).toFixed(3); }
-    async function reverseGeocodeMany(points) {
+    async function reverseGeocodeMany(points, detail) {
       // points: [[lat,lng], …] → [label|null, …], în aceeași ordine. Un singur apel pentru toată lista.
+      var C = detail === 'full' ? geocodeCacheFull : geocodeCache;
       var out = new Array(points.length).fill(null);
       var cerute = [], idx = [];
       points.forEach(function (p, i) {
         var k = _geoKey(p[0], p[1]);
-        if (geocodeCache[k] !== undefined) { out[i] = geocodeCache[k]; return; }
+        if (C[k] !== undefined) { out[i] = C[k]; return; }
         cerute.push([Number(p[0]), Number(p[1])]); idx.push(i);
       });
       if (!cerute.length) return out;
       try {
         const r = await fetch('/api/geocode/reverse', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-          body: JSON.stringify({ points: cerute.slice(0, 200) })
+          body: JSON.stringify({ points: cerute.slice(0, 200), detail: detail === 'full' ? 'full' : undefined })
         });
         const j = await r.json();
         const labels = (j && j.labels) || [];
@@ -10744,15 +10748,16 @@ const pozitii = await r.json();</code></pre>
           out[idx[n]] = lb || null;
           // Doar rezultatele REALE se memorează. Un eșec temporar memorat ar lăsa celula fără adresă
           // până la reîncărcarea paginii — aceeași capcană reparată și pe server.
-          if (lb) geocodeCache[_geoKey(cerute[n][0], cerute[n][1])] = lb;
+          if (lb) C[_geoKey(cerute[n][0], cerute[n][1])] = lb;
         });
       } catch (e) { /* rețea → rămân null, se reîncearcă */ }
       return out;
     }
-    async function reverseGeocode(lat, lng) {
+    async function reverseGeocode(lat, lng, detail) {
+      const C = detail === 'full' ? geocodeCacheFull : geocodeCache;
       const k = _geoKey(lat, lng);
-      if (geocodeCache[k] !== undefined) return geocodeCache[k];
-      const r = await reverseGeocodeMany([[lat, lng]]);
+      if (C[k] !== undefined) return C[k];
+      const r = await reverseGeocodeMany([[lat, lng]], detail);
       return r[0] || k;   // fără adresă → arătăm coordonatele, ca înainte
     }
 

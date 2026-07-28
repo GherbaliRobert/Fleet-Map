@@ -141,7 +141,9 @@ export function VehicleDetail() {
   }
 
   useEffect(() => {
-    if (v && v.latitude != null && v.longitude != null) reverseGeocode(v.latitude, v.longitude).then(setAddr).catch(() => {});
+    // Adresa COMPLETĂ (stradă nr, cartier, localitate, comună, județ): în fișa unui vehicul, doar numele
+    // localității nu ajută pe cine trebuie să ajungă acolo.
+    if (v && v.latitude != null && v.longitude != null) reverseGeocode(v.latitude, v.longitude, 'full').then(setAddr).catch(() => {});
   }, [v?.latitude, v?.longitude]);
 
   const s = v ? statusOf(v, off) : null;

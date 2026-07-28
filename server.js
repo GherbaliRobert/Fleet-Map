@@ -4000,10 +4000,13 @@ app.post('/api/geocode/reverse', requireAuth, async (req, res) => {
     pts = pts.filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1])).slice(0, GEO_MAX_POINTS);
     if (!pts.length) return res.json({ labels: [] });
     const coords = pts.map(p => ({ lat: Number(p[0]), lng: Number(p[1]) }));
+    // `detail:'full'` → adresa completă (stradă nr, cartier, localitate, comună, județ), pentru fișa
+    // vehiculului. Implicit rămâne forma scurtă, potrivită într-un tabel de raport.
+    const detail = (req.body && req.body.detail === 'full') ? 'full' : undefined;
     // `warm` are buget de timp: ce nu apucă rămâne null, iar clientul reîncearcă la următoarea randare.
     // Preferăm un răspuns parțial rapid unei așteptări lungi cu tot.
     await geocode.warm(coords, { maxUnique: GEO_MAX_POINTS, budgetMs: Number(req.body && req.body.budgetMs) || undefined });
-    res.json({ labels: coords.map(c => { const v = geocode.peek(c.lat, c.lng); return v === undefined ? null : v; }) });
+    res.json({ labels: coords.map(c => { const v = geocode.peek(c.lat, c.lng, detail); return v === undefined ? null : v; }) });
   } catch (e) { res.json({ labels: [], error: e.message }); }
 });
 

@@ -166,8 +166,10 @@
   function enrich(imei) {
     var d = DEVS() && DEVS().get(imei); if (!d) return;
     if (window.reverseGeocode && d.latitude != null) {
-      window.reverseGeocode(d.latitude, d.longitude).then(function (addr) {
-        var a = el('vp-adr-' + imei); if (a) { a.textContent = addr; a.style.color = 'var(--text-primary)'; }
+      // Adresa COMPLETĂ, nu forma scurtă: aici e fișa unui vehicul anume, iar „Olteni" (doar localitatea)
+      // nu-i spune dispecerului unde să trimită pe cineva. Coordonatele rămân pe rândul lor.
+      window.reverseGeocode(d.latitude, d.longitude, 'full').then(function (addr) {
+        var a = el('vp-adr-' + imei); if (a) { a.textContent = addr; a.style.color = 'var(--text-primary)'; a.title = addr; }
       }).catch(function () {});
     }
     if (fullCache[imei]) applyFull(imei); // randare instant din cache (brand/șofer); ancorele staționare/motor se reîmprospătează prin re-fetch mai jos

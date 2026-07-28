@@ -52,6 +52,43 @@ function throttleSlot() {
   return p;
 }
 
+// Adresă DETALIATĂ: „Stradă nr, cartier, localitate, comună, județ".
+// Forma scurtă de mai jos e potrivită într-un tabel, dar în fișa vehiculului devine inutilă: un vehicul
+// parcat în afara unui drum cartografiat rămânea cu „Olteni" — o localitate, nu o adresă. Aici păstrăm tot
+// lanțul administrativ, care în România chiar contează (zeci de sate omonime).
+function detailed(j) {
+  const a = (j && j.address) || {};
+  const out = [];
+  const push = (v) => { if (v && out.indexOf(v) === -1) out.push(v); };
+  const road = a.road || a.pedestrian || a.footway || a.cycleway || a.path || '';
+  if (road) push(road + (a.house_number ? ' ' + a.house_number : ''));
+  // Fără drum: un reper numit (benzinărie, depozit, clădire) spune mai mult decât nimic.
+  else push(a.amenity || a.building || a.shop || a.tourism || a.industrial || a.leisure || '');
+  push(a.neighbourhood || a.suburb || a.quarter || a.hamlet || '');
+  push(a.city_district || '');                                          // sectorul, în București
+  push(a.city || a.town || a.village || a.municipality || '');
+
+  // COMUNA lipsește cu totul din `address` pentru satele din România — apare DOAR în `display_name`, exact
+  // înaintea județului (ex. „Olteni, **Clinceni**, Ilfov"). O luăm de acolo, țintit: o completare mai
+  // generoasă ar lipi resturi, pentru că `display_name` desparte numărul de stradă ca element separat
+  // („3, Strada Emanuil Ungureanu, …").
+  if (a.county && j && j.display_name) {
+    const dn = j.display_name.split(',').map(s => s.trim());
+    const iJud = dn.indexOf(a.county);
+    if (iJud > 0) { const com = dn[iJud - 1]; if (com && !/^\d+$/.test(com)) push(com); }
+  }
+  push(a.county || '');                                                 // județul
+  push(a.postcode || '');                                               // codul poștal — reduce ambiguitatea
+
+  if (out.length) return out.slice(0, 6).join(', ');
+  // Fără niciun câmp util (rar): lanțul brut, fără țară.
+  if (j && j.display_name) {
+    const dn = j.display_name.split(',').map(s => s.trim()).filter(Boolean).filter(s => s !== a.country);
+    if (dn.length) return dn.slice(0, 6).join(', ');
+  }
+  return null;
+}
+
 // Adresă scurtă, prietenoasă: „Stradă nr, Oraș" din câmpurile Nominatim.
 function shorten(j) {
   const a = (j && j.address) || {};
@@ -70,21 +107,25 @@ function shorten(j) {
 // scriau în cache ca `null`, permanent: un singur 429 sau un timeout de rețea otrăvea celula pentru totdeauna
 // (până la repornirea procesului), iar utilizatorul rămânea cu coordonate în loc de adresă fără nicio
 // explicație. Acum eșecul NU se memorează — se reîncearcă la următoarea cerere.
-async function reverseGeocode(lat, lng) {
+// Cache-ul ține AMBELE forme (scurtă + detaliată) din același răspuns: sunt derivate din aceleași câmpuri,
+// deci a doua nu costă niciun apel de rețea în plus.
+const _lab = (v, detail) => (v == null ? null : (detail === 'full' ? (v.f || v.s) : v.s));
+
+async function reverseGeocode(lat, lng, detail) {
   if (!ok(lat) || !ok(lng)) return null;
   const k = key(lat, lng);
-  if (cache.has(k)) { stats.hits++; return cache.get(k); }
+  if (cache.has(k)) { stats.hits++; return _lab(cache.get(k), detail); }
   stats.misses++;
   let label = null, esec = false;
   try {
     await throttleSlot(); // respectă limita ~1 req/s pentru Nominatim public
-    if (cache.has(k)) { stats.cached++; return cache.get(k); } // alt apel a populat cache-ul cât așteptam
+    if (cache.has(k)) { stats.cached++; return _lab(cache.get(k), detail); } // alt apel a populat cache-ul cât așteptam
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     const url = PROVIDER + '?format=jsonv2&zoom=18&addressdetails=1&accept-language=ro&lat=' + lat + '&lon=' + lng;
     const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' }, signal: ctrl.signal });
     clearTimeout(timer);
-    if (res.ok) { label = shorten(await res.json()); stats.ok++; }
+    if (res.ok) { const j = await res.json(); label = { s: shorten(j), f: detailed(j) }; stats.ok++; }
     else { esec = true; if (res.status === 429) stats.err429++; else stats.errHttp++; }
   } catch (e) {
     esec = true;
@@ -93,11 +134,16 @@ async function reverseGeocode(lat, lng) {
   if (esec) return null;                      // NU memorăm eșecurile: se reîncearcă data viitoare
   if (cache.size > MAX_CACHE) cache.clear();
   cache.set(k, label);
-  return label;
+  return _lab(label, detail);
 }
 
 // Citire DOAR din cache (fără apel de rețea). Returnează label | null | undefined(necunoscut).
-function peek(lat, lng) { return (ok(lat) && ok(lng)) ? cache.get(key(lat, lng)) : undefined; }
+function peek(lat, lng, detail) {
+  if (!ok(lat) || !ok(lng)) return undefined;
+  const k = key(lat, lng);
+  if (!cache.has(k)) return undefined;        // „necunoscut" trebuie să rămână distinct de „fără adresă"
+  return _lab(cache.get(k), detail);
+}
 
 // Pre-încarcă adresele pentru o listă de {lat,lng}: dedupe pe cheie + plafon + concurență limitată.
 // budgetMs: cât timp blocăm apelantul (ex. chat AI) — restul se încarcă pe fundal, peek() le ia ulterior.

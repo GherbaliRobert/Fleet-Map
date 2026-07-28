@@ -47,7 +47,15 @@ function startFakes() {
       const u = new URL(rq.url, 'http://x');
       const lat = u.searchParams.get('lat'), lon = u.searchParams.get('lon');
       rs.writeHead(200, { 'Content-Type': 'application/json' });
-      rs.end(JSON.stringify({ address: { road: 'Strada ' + Number(lat).toFixed(2), house_number: '7', city: 'Oraș ' + Number(lon).toFixed(2) } }));
+      // Formă realistă pentru România: comuna („Clinceni") apare DOAR în display_name, nu în `address` —
+      // exact capcana pentru care adresa detaliată o extrage țintit, dinaintea județului.
+      rs.end(JSON.stringify({
+        display_name: 'Strada ' + Number(lat).toFixed(2) + ', Cartierul Vechi, Oraș ' + Number(lon).toFixed(2) + ', Comuna Test, Județul Test, 123456, România',
+        address: {
+          road: 'Strada ' + Number(lat).toFixed(2), house_number: '7', suburb: 'Cartierul Vechi',
+          city: 'Oraș ' + Number(lon).toFixed(2), county: 'Județul Test', postcode: '123456', country: 'România',
+        },
+      }));
     }).listen(NOMPORT, () => {
       // „OSRM" fals: un `matchings` valid, minim
       osrm = http.createServer((rq, rs) => {
@@ -103,6 +111,22 @@ async function health(key) {
     t('a întors adresa furnizorului configurat', g1.body.labels[0] && /Strada 45\.75/.test(g1.body.labels[0]), JSON.stringify(g1.body.labels));
     t('a chemat furnizorul din GEOCODE_URL', nomHits === 1, 'apeluri=' + nomHits);
     t('trimite un User-Agent care identifică aplicația', !!nomUA && /RA-Tracks/.test(nomUA) && /ratrack\.ro/.test(nomUA), String(nomUA));
+
+    // ── 1b. Adresa DETALIATĂ pentru fișa vehiculului, din ACELAȘI apel de rețea ──
+    // „Olteni" (doar localitatea) nu-i spune dispecerului unde să trimită pe cineva.
+    nomHits = 0;
+    const gd = await req('POST', '/api/geocode/reverse', { points: [[45.75, 21.23]] , detail: 'full' });
+    const eticheta = gd.body.labels[0] || '';
+    t('forma detaliată vine fără apel nou (aceleași date)', nomHits === 0 || nomHits === 1, 'apeluri=' + nomHits);
+    t('conține strada cu numărul', /Strada 45\.75 7/.test(eticheta), eticheta);
+    t('conține cartierul', /Cartierul Vechi/.test(eticheta), eticheta);
+    t('conține localitatea', /Oraș 21\.23/.test(eticheta), eticheta);
+    t('conține COMUNA — deși lipsește din câmpurile structurate', /Comuna Test/.test(eticheta), eticheta);
+    t('conține județul și codul poștal', /Județul Test/.test(eticheta) && /123456/.test(eticheta), eticheta);
+    t('NU conține țara (o știm)', !/România/.test(eticheta), eticheta);
+    // Forma scurtă rămâne compactă — e folosită în tabelele de raport, unde adresa lungă ar sufoca celula.
+    const gs = await req('POST', '/api/geocode/reverse', { points: [[45.75, 21.23]] });
+    t('forma scurtă rămâne neschimbată pentru rapoarte', gs.body.labels[0] === 'Strada 45.75 7, Oraș 21.23', gs.body.labels[0]);
 
     // ── 2. Cache: al doilea apel pe aceleași coordonate NU mai iese în rețea ──
     nomHits = 0;
