@@ -465,12 +465,13 @@ async function raClient(ctx) {
   const peers = Array.isArray(ctx.peerFindings) ? ctx.peerFindings : [];
   const nOf = function (agent, pref) { return peers.filter(function (f) { return f.agent === agent && (!pref || String(f.fkey || '').indexOf(pref) === 0); }).length; };
   const hasCrit = peers.some(function (f) { return f.severity === 'critical'; });
-  const bits = [];
+  const issues = [];
   const nWatch = nOf('watch'), nCare = nOf('care'), nOpt = nOf('optimize', 'opt_eco'), nComp = nOf('compliance');
-  if (nWatch) bits.push(nWatch + (nWatch === 1 ? ' alertă de monitorizare' : ' alerte de monitorizare') + ' (RA Watch)');
-  if (nCare) bits.push(nCare + (nCare === 1 ? ' scadență' : ' scadențe') + ' (RA Care)');
-  if (nOpt) bits.push(nOpt + (nOpt === 1 ? ' vehicul cu scor slab' : ' vehicule cu scor slab') + ' (RA Optimize)');
-  if (nComp) bits.push(nComp + (nComp === 1 ? ' semnalare la orele de condus' : ' semnalări la orele de condus') + ' (RA Compliance)');
+  if (nWatch) issues.push({ key: 'watch', agent: 'RA Watch', text: nWatch + (nWatch === 1 ? ' alertă de monitorizare' : ' alerte de monitorizare') });
+  if (nCare) issues.push({ key: 'care', agent: 'RA Care', text: nCare + (nCare === 1 ? ' scadență' : ' scadențe') });
+  if (nOpt) issues.push({ key: 'optimize', agent: 'RA Optimize', text: nOpt + (nOpt === 1 ? ' vehicul cu scor slab' : ' vehicule cu scor slab') });
+  if (nComp) issues.push({ key: 'compliance', agent: 'RA Compliance', text: nComp + (nComp === 1 ? ' semnalare la orele de condus' : ' semnalări la orele de condus') });
+  const bits = issues.map(function (b) { return b.text + ' (' + b.agent + ')'; });
 
   const title = 'Azi: ' + Math.round(totalKm) + ' km · ' + active + '/' + fleetSize + ' active' + cmp;
   const body = 'Flotă: ' + fleetSize + (fleetSize === 1 ? ' vehicul' : ' vehicule') + ' · active azi: ' + active + (unused ? ' · nefolosite azi: ' + unused : '')
@@ -478,7 +479,8 @@ async function raClient(ctx) {
     + (ydKm != null ? ' · ieri, până la aceeași oră: ' + Math.round(ydKm) + ' km' : '') + '. '
     + (bits.length ? 'De verificat: ' + bits.join(' · ') + '.' : 'Ceilalți agenți n-au semnalat nimic — zi curată.');
   findings.push({ imei: null, severity: hasCrit ? 'warning' : 'info', agent: 'client', fkey: 'client_digest', title, body });
-  return { findings, summary: { fleetSize, active, unused, totalKm: Math.round(totalKm), ydKm: ydKm == null ? null : Math.round(ydKm), pct, issues: bits.length } };
+  // `summary` = date STRUCTURATE pentru interfață (ca sinteza să fie afișată aerisit, nu ca un bloc de text).
+  return { findings, summary: { fleetSize, active, unused, totalKm: Math.round(totalKm), ydKm: ydKm == null ? null : Math.round(ydKm), pct, top: topKm > 0 ? { name: topName, km: Math.round(topKm) } : null, issues } };
 }
 
 // ─── RA Dispatch — alocare curse (disponibilitate + echilibrare flotă) ───

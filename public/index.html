@@ -16840,6 +16840,42 @@ const pozitii = await r.json();</code></pre>
       if (_agpState.agent) agpLiveRefresh(_agpState.agent); // agent live → recitim starea de moment
     };
     window.agpGoMaint = function () { if (window.goManage) goManage('maintenance'); };
+    // RA Client — sinteza zilei, afișată AERISIT (cifre mari + listă), nu ca un bloc de text înghesuit.
+    function _agpClientCard(s) {
+      var tile = function (val, lbl, col) {
+        return '<div style="flex:1 1 110px;min-width:100px;background:var(--bg-dark);border:1px solid var(--border);border-radius:11px;padding:11px 13px;">'
+          + '<div style="font-size:21px;font-weight:800;line-height:1.15;' + (col ? 'color:' + col + ';' : '') + '">' + val + '</div>'
+          + '<div style="font-size:11px;color:var(--text-muted);font-weight:600;margin-top:2px;">' + lbl + '</div></div>';
+      };
+      var pctTxt = '—', pctCol = '';
+      if (s.pct != null) { pctTxt = (s.pct >= 0 ? '+' : '') + s.pct + '%'; pctCol = s.pct >= 0 ? 'var(--accent)' : 'var(--orange)'; }
+      var html = '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px;">'
+        + tile(s.totalKm + ' <span style="font-size:12px;font-weight:600;color:var(--text-muted)">km</span>', 'Parcurși azi')
+        + tile(s.active + '<span style="font-size:13px;font-weight:600;color:var(--text-muted)">/' + s.fleetSize + '</span>', 'Vehicule active')
+        + tile(s.unused, 'Nefolosite azi', s.unused > 0 ? 'var(--orange)' : '')
+        + tile(pctTxt, 'Față de ieri', pctCol)
+        + '</div>';
+      var lines = [];
+      if (s.top) lines.push('<i class="fas fa-trophy" style="color:var(--accent);width:15px;"></i> Cel mai activ: <b>' + _agpEsc(s.top.name) + '</b> — ' + s.top.km + ' km');
+      if (s.ydKm != null) lines.push('<i class="fas fa-clock-rotate-left" style="color:var(--text-muted);width:15px;"></i> Ieri, până la aceeași oră: <b>' + s.ydKm + ' km</b>');
+      if (lines.length) html += '<div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--text-secondary);margin-bottom:12px;">' + lines.map(function (l) { return '<div>' + l + '</div>'; }).join('') + '</div>';
+      var iss = (s.issues && s.issues.length) ? s.issues : [];
+      if (iss.length) {
+        html += '<div style="border-top:1px solid var(--border);padding-top:11px;">'
+          + '<div style="font-size:11px;font-weight:800;letter-spacing:.4px;color:var(--text-muted);margin-bottom:7px;">DE VERIFICAT</div>'
+          + iss.map(function (b) {
+              return '<button type="button" onclick="agpOpen(\'' + b.key + '\')" style="display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:var(--bg-dark);border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:6px;cursor:pointer;color:inherit;font-family:inherit;font-size:12.5px;">'
+                + '<span style="width:7px;height:7px;border-radius:50%;background:var(--orange);flex:none;"></span>'
+                + '<span style="flex:1;"><b>' + _agpEsc(b.text) + '</b> <span style="color:var(--text-muted);">· ' + _agpEsc(b.agent) + '</span></span>'
+                + '<i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:11px;"></i></button>';
+            }).join('')
+          + '</div>';
+      } else {
+        html += '<div style="border-top:1px solid var(--border);padding-top:11px;font-size:12.5px;color:var(--text-muted);">'
+          + '<i class="fas fa-circle-check" style="color:var(--accent);"></i> Ceilalți agenți n-au semnalat nimic — zi curată.</div>';
+      }
+      return html;
+    }
     // Agenți „live" (dispatch/care) — reîncarcă starea de moment din endpoint-ul dedicat (fără persistență, fără AI).
     window.agpLiveRefresh = async function (k) {
       var box = $('agp-live'), whenEl = $('agp-when'), btn = $('agp-run-' + k);
@@ -16851,7 +16887,8 @@ const pozitii = await r.json();</code></pre>
       if (btn) { btn.disabled = false; btn.innerHTML = orig; }
       if (!box) return;
       var fsl = (data && Array.isArray(data.findings)) ? data.findings : [];
-      if (fsl.length) {
+      if (k === 'client' && data && data.summary) { box.innerHTML = _agpClientCard(data.summary); }
+      else if (fsl.length) {
         box.innerHTML = fsl.map(function (f) {
           return '<div class="agp-fi"><span class="fd" style="background:' + _agpSevCol(f.severity) + '"></span><div class="agp-fi-b"><div class="ti">' + _agpEsc(f.title) + '</div>' + (f.body ? '<div class="bo">' + _agpEsc(f.body) + '</div>' : '') + _agpMaintActs(f, k) + '</div></div>';
         }).join('');
@@ -16915,7 +16952,7 @@ const pozitii = await r.json();</code></pre>
         act: 'Primești și ce ai de făcut: „programează pauza de 45 min în ~N min", „planifică schimbul de șofer". Atenție: e o estimare din GPS — pentru control oficial rămâne valabil tahograful.'
       },
       client: {
-        face: '„Raportul de seară al șefului": sinteza zilei (km, vehicule active, nefolosite, cel mai activ) + comparație cu ieri la aceeași oră ȘI concluziile celorlalți agenți într-un singur rând — ce a găsit RA Watch, RA Care, RA Optimize, RA Compliance.',
+        face: 'Rezumă activitatea zilei într-un singur loc: km parcurși, vehicule active și nefolosite, cel mai activ vehicul și comparația cu ieri la aceeași oră. În plus, centralizează ce au semnalat ceilalți agenți (RA Watch, RA Care, RA Optimize, RA Compliance).',
         use: 'Se recalculează când deschizi pagina sau apeși „Rulează" — arată ziua curentă, nu un istoric. Nu are praguri de reglat.',
         act: 'E locul unde vezi toată ziua dintr-o privire: dacă scrie „De verificat", deschizi agentul respectiv pentru detalii.'
       }
