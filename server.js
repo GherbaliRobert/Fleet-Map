@@ -2917,7 +2917,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     const billCounts = { can: vehicles.filter(v => v.bill_can).length, none: vehicles.filter(v => !v.bill_can).length, fms: 0 };
     const features = plans ? plans.featuresFor(company) : {};
     const price = plans ? plans.computeCompanyPrice(company, billCounts, { features }) : null;
-    res.json({ company, access: companyAccessStatus(company), counts, billCounts, users, vehicles, payments, offer, price, features });
+    res.json({ company, access: companyAccessStatus(company), counts, billCounts, users, vehicles, payments, offer, price, features, ai_quota: _aiQuotaFromSettings(company.settings) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res) => {
@@ -7461,7 +7461,7 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const s = await db.getCompanySettings(id);
     const planAgents = plans && plans.enabledAgentsFor(co);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null) });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
@@ -7469,7 +7469,7 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const next = await _applyCompanySettingsPatch(id, req.body || {}, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
     auditReq(req, 'update', 'company_settings', id, { keys: Object.keys(req.body || {}) });
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {} });
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, ai_quota: next.ai_quota || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Catalog IO Teltonika (138 ID-uri din wiki + override-uri globale super-admin) ─────────

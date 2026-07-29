@@ -14396,6 +14396,7 @@ const pozitii = await r.json();</code></pre>
       _raxAbo = {
         id: c.id, vehicles: vehicles, canImeis: s,
         feats: Object.assign({ ai_assistant: false, agents: false }, d.features || {}),
+        aiQuota: Object.assign({ questions: 0, overage: true, overagePriceEur: 0.20 }, d.ai_quota || {}),
         planKey: (o.key === 'custom' ? 'custom' : (c.plan || 'start')),
         offer: {
           name: o.name || '', priceNoneRON: pick(o.priceNoneRON), priceCanRON: pick(o.priceCanRON),
@@ -14446,7 +14447,18 @@ const pozitii = await r.json();</code></pre>
       html += '<div class="rax-abo-sect"><h4>Module AI (la plată)</h4>' +
         '<label class="rax-abo-tog"><input type="checkbox" ' + (s.feats.ai_assistant ? 'checked' : '') + ' onchange="raxAboToggleFeat(\'ai_assistant\',this.checked)"> Asistent AI <span class="hint">chat + RA Insight</span></label>' +
         '<label class="rax-abo-tog"><input type="checkbox" ' + (s.feats.agents ? 'checked' : '') + ' onchange="raxAboToggleFeat(\'agents\',this.checked)"> Agenți AI <span class="hint">cei 6 agenți (Watch / Dispatch / …)</span></label>' +
-        '<div class="hint">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții individuali + limita AI se setează din „Module &amp; limite" (tab Detalii).</div></div>';
+        '<div class="hint">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții individuali + limita AI se setează din „Module &amp; limite" (tab Detalii).</div>' +
+        // Cota de apeluri RA Insight — ce vede clientul în contorul lui.
+        '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' +
+          '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">Apeluri RA Insight incluse</div>' +
+          '<div class="rax-abo-grid">' +
+            '<div class="rax-abo-f"><label>Apeluri / lună</label><input type="number" id="rax-aiq-n" min="0" max="100000" step="10" value="' + (s.aiQuota.questions || '') + '" placeholder="gol = nelimitat"></div>' +
+            '<div class="rax-abo-f"><label>Preț / apel peste cotă (€)</label><input type="number" id="rax-aiq-p" min="0" max="100" step="0.05" value="' + (s.aiQuota.overagePriceEur != null ? s.aiQuota.overagePriceEur : '') + '" placeholder="0.20"></div>' +
+          '</div>' +
+          '<label class="rax-abo-tog"><input type="checkbox" id="rax-aiq-ov" ' + (s.aiQuota.overage !== false ? 'checked' : '') + '> Poate depăși cota <span class="hint">(altfel se oprește la epuizare)</span></label>' +
+          '<button class="rax-btn primary" style="margin-top:6px;" onclick="raxSaveAiQuota()"><i class="fas fa-floppy-disk"></i> Salvează cota</button>' +
+          '<div class="hint" style="margin-top:6px;">Clientul vede un contor: „îți mai rămân N din X apeluri", iar la depășire i se arată cât îl costă în plus.</div>' +
+        '</div></div>';
       html += '<div class="rax-abo-sect"><h4>Preț lunar estimat</h4><div id="rax-abo-preview"></div></div>';
       html += '<div class="rax-abo-sect"><h4>Înregistrează plată</h4>' +
         '<div class="rax-abo-grid">' +
@@ -14519,6 +14531,22 @@ const pozitii = await r.json();</code></pre>
         raxOpenCompanyDetail(_raxAbo.id, 'abonament');
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); if (btn) btn.disabled = false; }
     }
+    // Salvează cota de apeluri RA Insight pentru compania deschisă (super-admin).
+    window.raxSaveAiQuota = async function () {
+      if (!_raxAbo) return;
+      var nEl = document.getElementById('rax-aiq-n'), pEl = document.getElementById('rax-aiq-p'), oEl = document.getElementById('rax-aiq-ov');
+      var n = (nEl && nEl.value !== '') ? Number(nEl.value) : 0;
+      var p = (pEl && pEl.value !== '') ? Number(pEl.value) : 0.20;
+      if (!isFinite(n) || n < 0 || n > 100000) { (window.raxToast || alert)('Număr de apeluri invalid.', 'error'); return; }
+      if (!isFinite(p) || p < 0 || p > 100) { (window.raxToast || alert)('Preț invalid.', 'error'); return; }
+      var q = { questions: Math.round(n), overage: !!(oEl && oEl.checked), overagePriceEur: p };
+      try {
+        var j = await fetch('/api/companies/' + _raxAbo.id + '/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ ai_quota: q }) }).then(function (r) { return r.json(); });
+        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+        _raxAbo.aiQuota = q;
+        (window.raxToast || function () { })(q.questions ? ('Cotă salvată: ' + q.questions + ' apeluri/lună ✓') : 'Cotă eliminată (nelimitat) ✓', 'success');
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
     window.raxAboToggleFeat = async function (key, on) {
       if (!_raxAbo) return;
       _raxAbo.feats[key] = !!on; raxAboRecalc();
@@ -15346,6 +15374,7 @@ const pozitii = await r.json();</code></pre>
         offerName: g('of-name'),
         nVeh: Math.max(0, Math.round(_ofN(g('of-nveh')))), nCan: Math.max(0, Math.round(_ofN(g('of-ncan')))), nFms: Math.max(0, Math.round(_ofN(g('of-nfms')))),
         aiA: c('of-aiA'), aiAg: c('of-aiAg'),
+        aiqN: Math.max(0, Math.round(_ofN(g('of-aiqN')))), aiqP: Math.max(0, _ofN(g('of-aiqP'))),
         retTier: g('of-ret') || '6', retCustomMonths: Math.max(0, Math.round(_ofN(g('of-retcustom-m')))),
         contractMonths: Math.max(1, Math.round(_ofN(g('of-contract')) || 12)), notes: g('of-notes'),
         montaj: {
@@ -15392,7 +15421,7 @@ const pozitii = await r.json();</code></pre>
       if (nPlain > 0) lines.push({ label: 'Vehicule GPS (fără CAN)', qty: nPlain, unit: p.pPlain, total: nPlain * p.pPlain });
       if (nCan > 0) lines.push({ label: 'Vehicule cu CAN', qty: nCan, unit: p.pCan, total: nCan * p.pCan });
       if (nFms > 0) lines.push({ label: 'Vehicule cu FMS (camioane)', qty: nFms, unit: p.pFms, total: nFms * p.pFms });
-      if (cfg.aiA) lines.push({ label: 'Asistent AI', qty: 1, unit: p.pAiA, total: p.pAiA });
+      if (cfg.aiA) lines.push({ label: 'Asistent AI' + (cfg.aiqN > 0 ? ' — ' + cfg.aiqN + ' apeluri/lună' : ' — apeluri nelimitate'), qty: 1, unit: p.pAiA, total: p.pAiA });
       if (cfg.aiAg) lines.push({ label: 'Agenți AI', qty: 1, unit: p.pAiAg, total: p.pAiAg });
       var retA = _ofRetAddon(cfg, p); if (retA > 0) lines.push({ label: 'Păstrare date ' + _ofRetLabel(cfg), qty: 1, unit: retA, total: retA });
       var monthly = lines.reduce(function (s, l) { return s + l.total; }, 0);
@@ -15405,6 +15434,7 @@ const pozitii = await r.json();</code></pre>
     window.raxOfRecalc = function () {
       var r = _ofCalc();
       var cm = document.getElementById('of-retcustom-wrap'); if (cm) cm.style.display = (r.cfg.retTier === 'custom') ? 'inline-flex' : 'none';
+      var aq = document.getElementById('of-aiq-wrap'); if (aq) aq.style.display = r.cfg.aiA ? 'flex' : 'none'; // cota apare doar dacă Asistentul AI e inclus
       var host = document.getElementById('rax-of-summary'); if (!host) return;
       var rows = r.lines.map(function (l) { return '<tr><td>' + esc(l.label) + (l.qty > 1 ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num" style="color:var(--text-muted);">' + l.unit.toFixed(0) + '</td><td class="num"><b>' + l.total.toFixed(0) + '</b></td></tr>'; }).join('') || '<tr><td colspan="3" style="color:var(--text-muted);">Adaugă vehicule…</td></tr>';
       var mRows = r.montajLines.map(function (l) { return '<tr><td>' + esc(l.label) + ((l.qty > 1 && !l.perKm) ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num" style="color:var(--text-muted);">' + l.unit.toFixed(0) + (l.perKm ? '/km' : '') + '</td><td class="num"><b>' + l.total.toFixed(0) + '</b></td></tr>'; }).join('');
@@ -15544,6 +15574,14 @@ const pozitii = await r.json();</code></pre>
         row('din care cu FMS', fNum('of-nfms', 0), 'camioane / tahograf'));
       var featCard = card('<i class="fas fa-robot"></i> Opțiuni',
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiA" onchange="raxOfRecalc()"> Asistent AI</label>' + fNum('of-pAiA', p.pAiA, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +
+        // Cota de apeluri inclusă în abonament (se trece în oferta clientului și se setează pe companie la activare).
+        '<div id="of-aiq-wrap" style="display:none;align-items:center;gap:8px;margin:-2px 0 10px 24px;">' +
+          '<span style="font-size:11.5px;color:var(--text-muted);flex:1;">└ apeluri RA Insight incluse</span>' +
+          '<select id="of-aiqN" onchange="raxOfRecalc()" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;cursor:pointer;">' +
+            '<option value="0">nelimitat</option><option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="200">200 / lună</option><option value="500">500 / lună</option>' +
+          '</select>' +
+          '<span style="font-size:11px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 1, '', 60) + '<span style="font-size:11px;color:var(--text-muted);">lei/apel</span>' +
+        '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiAg" onchange="raxOfRecalc()"> Agenți AI (RA Optimize / Care)</label>' + fNum('of-pAiAg', p.pAiAg, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
         row('Durată contract', fNum('of-contract', 12, '', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span>'));
@@ -15623,6 +15661,7 @@ const pozitii = await r.json();</code></pre>
         set('of-cl-name', (cfg.client && cfg.client.name) || o.client_name); set('of-cl-cui', (cfg.client && cfg.client.cui) || o.client_cui); set('of-cl-contact', (cfg.client && cfg.client.contact) || o.client_contact);
         set('of-name', cfg.offerName || o.name); set('of-nveh', cfg.nVeh); set('of-ncan', cfg.nCan); set('of-nfms', cfg.nFms);
         set('of-aiA', cfg.aiA); set('of-aiAg', cfg.aiAg); set('of-ret', cfg.retTier || '6'); set('of-retcustom-m', cfg.retCustomMonths); set('of-contract', cfg.contractMonths); set('of-notes', cfg.notes);
+        if (cfg.aiqN != null) set('of-aiqN', String(cfg.aiqN)); if (cfg.aiqP != null) set('of-aiqP', cfg.aiqP); // cota de apeluri RA Insight
         var mj = cfg.montaj || {};
         set('of-qGps', mj.qGps); set('of-qLvCan', mj.qLvCan); set('of-qCanInc', mj.qCanInc); set('of-qFms', mj.qFms); set('of-qUninstall', mj.qUninstall); set('of-qReplace', mj.qReplace); set('of-kmTravel', mj.kmTravel);
         var dv = cfg.devices || {};
