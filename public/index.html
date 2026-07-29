@@ -7059,7 +7059,7 @@ const pozitii = await r.json();</code></pre>
             '<div class="aia-name">' + esc(a.name) + '<span class="aia-badge' + (used ? ' on' : '') + '">' + (used ? fmtN(calls) + (calls === 1 ? ' utilizare' : ' utilizări') : 'disponibil · 0 utilizări') + '</span></div></div>' +
             '<div class="aia-desc">' + esc(a.desc) + '</div>' +
             '<div class="aia-stats">' +
-              '<div><span class="v">' + fmtN(calls) + '</span><span class="k">Apeluri</span></div>' +
+              '<div><span class="v">' + fmtN(calls) + '</span><span class="k">Cereri API</span></div>' +
               '<div><span class="v">' + fmtTok(u.input_tokens) + '</span><span class="k">Tokeni in</span></div>' +
               '<div><span class="v">' + fmtTok(u.output_tokens) + '</span><span class="k">Tokeni out</span></div>' +
             '</div>' +
@@ -13388,11 +13388,11 @@ const pozitii = await r.json();</code></pre>
       var col = over ? 'var(--orange)' : (q.remaining <= Math.max(3, q.questions * 0.15) ? 'var(--orange)' : 'var(--accent)');
       var head, sub;
       if (over) {
-        head = '<b>Cotă epuizată</b> · ' + q.overageCount + ' ' + (q.overageCount === 1 ? 'întrebare suplimentară' : 'întrebări suplimentare');
-        sub = 'Ești pe <b>cost suplimentar</b>: ' + q.overagePriceEur.toFixed(2).replace('.', ',') + ' €/întrebare · în plus luna asta: <b>' + q.overageCostEur.toFixed(2).replace('.', ',') + ' €</b>';
+        head = '<b>Cotă epuizată</b> · ' + q.overageCount + ' ' + (q.overageCount === 1 ? 'apel suplimentar' : 'apeluri suplimentare');
+        sub = 'Ești pe <b>cost suplimentar</b>: ' + q.overagePriceEur.toFixed(2).replace('.', ',') + ' €/apel · în plus luna asta: <b>' + q.overageCostEur.toFixed(2).replace('.', ',') + ' €</b>';
       } else {
-        head = 'Îți mai rămân <b>' + q.remaining + '</b> din ' + q.questions + ' întrebări';
-        sub = 'Se reînnoiește pe ' + reset + (q.overage ? ' · peste cotă: ' + q.overagePriceEur.toFixed(2).replace('.', ',') + ' €/întrebare' : ' · la epuizare se oprește');
+        head = 'Îți mai rămân <b>' + q.remaining + '</b> din ' + q.questions + ' apeluri';
+        sub = 'Se reînnoiește pe ' + reset + (q.overage ? ' · peste cotă: ' + q.overagePriceEur.toFixed(2).replace('.', ',') + ' €/apel' : ' · la epuizare se oprește');
       }
       box.style.display = 'block';
       box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
@@ -13708,7 +13708,7 @@ const pozitii = await r.json();</code></pre>
         // ─── AI usage cards ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-robot"></i> Consum AI (30z)</div>';
         html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
-          _raxCard('Tokeni IN', _raxFmt(t.ai_input)) + _raxCard('Tokeni OUT', _raxFmt(t.ai_output)) + _raxCard('Apeluri', t.ai_calls) +
+          _raxCard('Tokeni IN', _raxFmt(t.ai_input)) + _raxCard('Tokeni OUT', _raxFmt(t.ai_output)) + _raxCard('Cereri API', t.ai_calls) +
           '</div>';
         html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI estimat: <strong style="color:var(--accent);">$' + _raxCost(t.ai_input, t.ai_output).toFixed(2) + '</strong> · model ' + esc(d.model || '') + ' · <em>estimativ ($' + RAX_TOK_IN_RATE + '/$' + RAX_TOK_OUT_RATE + ' per 1M in/out)</em></div>';
 
@@ -13761,7 +13761,7 @@ const pozitii = await r.json();</code></pre>
             '<td style="padding:6px 8px;text-align:right;color:var(--accent);">$' + _raxCost(pf.ai_input, pf.ai_output).toFixed(3) + '</td><td style="padding:6px 8px;text-align:right;color:var(--text-muted);">∞</td></tr>';
         }
         html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Apeluri</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită (cereri)</th></tr></thead><tbody>' +
+          '<thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;text-align:right;">Veh.</th><th style="padding:6px 8px;text-align:right;">Useri</th><th style="padding:6px 8px;text-align:right;">MRR (lei)</th><th style="padding:6px 8px;">Stare GPS/SIM (live)</th><th style="padding:6px 8px;text-align:right;">Tokeni in/out</th><th style="padding:6px 8px;text-align:right;">Cereri API</th><th style="padding:6px 8px;text-align:right;">Cost est.</th><th style="padding:6px 8px;text-align:right;">Limită (cereri)</th></tr></thead><tbody>' +
           (rows || '<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text-muted);">Nicio companie.</td></tr>') + '</tbody></table></div>';
         // ─── Avansat & sistem (pliat implicit ca să rămână dashboard-ul curat) ───
         html += '<details class="rax-dash-adv" style="margin-top:18px;"><summary><i class="fas fa-sliders"></i> Avansat &amp; sistem (debug IO, scurtături, setări, jurnal erori)</summary><div style="padding-top:10px;">';
