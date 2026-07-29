@@ -515,13 +515,15 @@ async function raDispatch(ctx) {
   return { findings };
 }
 
+// SURSĂ UNICĂ pentru numele și descrierea agenților: de aici pleacă spre /api/agents → web ȘI APK.
+// Textele sunt cele afișate clientului; nu ține liste paralele în interfețe (așa apăruseră descrieri vechi).
 const AGENTS = {
-  watch: { name: 'RA Watch', desc: 'Monitorizare — vehicule offline (> prag minute) + scădere combustibil (> prag litri). Pragurile sunt configurabile per companie în Setări.', run: raWatch },
-  dispatch: { name: 'RA Dispatch', desc: 'Alocare curse — vehicule disponibile acum + cel mai apropiat de o destinație.', run: raDispatch },
-  care: { name: 'RA Care', desc: 'Mentenanță predictivă — revizii, ITP și asigurări scadente (pe dată sau pe km).', run: raCare },
-  optimize: { name: 'RA Optimize', desc: 'Eco-driving & costuri — scor șofer, frânări/accelerări bruște, risipă la ralanti.', run: raOptimize },
-  compliance: { name: 'RA Compliance', desc: 'Ore de condus — conducere continuă/zilnică (estimativ GPS, Reg. CE 561/2006).', run: raCompliance },
-  client: { name: 'RA Client', desc: 'Raport zilnic automat — sinteză flotă pentru clienți (km, vehicule active, top).', run: raClient }
+  watch: { name: 'RA Watch', role: 'Paznic 24/7', desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.', run: raWatch },
+  dispatch: { name: 'RA Dispatch', role: 'Dispecerat', desc: 'Vehicule disponibile acum și cele subutilizate în ziua curentă.', run: raDispatch },
+  care: { name: 'RA Care', role: 'Mentenanță', desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.', run: raCare },
+  optimize: { name: 'RA Optimize', role: 'Eco-driving', desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', run: raOptimize },
+  compliance: { name: 'RA Compliance', role: 'Ore de condus', desc: 'Condus continuu și zilnic (Reg. 561) — doar vehicule cu tahograf, nu turisme.', run: raCompliance },
+  client: { name: 'RA Client', role: 'Sinteza zilei', desc: 'Ziua într-un rând: km, active, comparație cu ieri + ce au găsit ceilalți agenți.', run: raClient }
 };
 
 // Context comun cu cache de istoric (azi) partajat între agenți, ca să nu reinterogăm DB.

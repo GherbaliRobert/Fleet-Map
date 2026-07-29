@@ -6431,7 +6431,6 @@ const pozitii = await r.json();</code></pre>
     // ─── RA Dispatch (alocare curse: destinație → cele mai apropiate vehicule disponibile) ───
     var dispatchTargetMarker = null, dispatchLine = null;
     function raxOpenDispatch() {
-      var ov = document.getElementById('rax-ag-overlay'); if (ov) ov.classList.remove('open');
       try { showView('localizare'); } catch (e) {}
       document.getElementById('dispatch-panel').style.display = 'block';
       document.getElementById('dispatch-results').innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Apasă „Alege destinația pe hartă".</div>';
@@ -11959,7 +11958,6 @@ const pozitii = await r.json();</code></pre>
       window.gSuperCompany = val || '';
       ['dash-company-filter', 'rax-company-filter', 'agp-company-filter'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = window.gSuperCompany; });
       try { if (document.getElementById('dashboard-modal').classList.contains('visible')) openDashboard(); } catch (e) {}
-      try { if (window.raxReload && document.getElementById('rax-ag-overlay').classList.contains('open')) window.raxReload(); } catch (e) {}
       // Pagina „Agenți AI" (super-admin): reîncarcă pentru compania aleasă — constatările și starea live sunt per companie.
       // Doar dacă pagina e chiar deschisă, altfel schimbarea companiei din Dashboard ar declanșa interogări inutile.
       try { if (window.renderAgentsPage && currentView === 'agenti') window.renderAgentsPage(); } catch (e) {}
@@ -12914,7 +12912,7 @@ const pozitii = await r.json();</code></pre>
       <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
       <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
       <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
-      <button class="rax-fab secondary" id="rax-ag-btn" style="display:none;" onclick="raxOpenAgents()"><i class="fas fa-shield-halved"></i> Agenți AI <span id="rax-ag-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:2px;"></span></button>
+      <!-- buton „Agenți AI" flotant eliminat: pagina din meniul lateral îl înlocuiește -->
       <button class="rax-fab insight" id="rax-ai-btn" style="display:none;" onclick="raxToggleAI()"><i class="fas fa-wand-magic-sparkles"></i> RA Insight</button>
     </div>
     <button class="rax-fab insight" id="rax-main-fab" onclick="raxToggleAI()" aria-label="RA Insight" title="RA Insight — asistentul flotei">
@@ -13106,25 +13104,7 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
-  <div class="rax-overlay" id="rax-ag-overlay">
-    <div class="rax-card">
-      <div class="rax-head"><h3><i class="fas fa-shield-halved" style="color:var(--accent)"></i> Agenți AI</h3><button class="rax-x" onclick="document.getElementById('rax-ag-overlay').classList.remove('open')">&times;</button></div>
-      <div class="rax-body">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <button class="rax-btn primary" id="rax-ag-run" onclick="raxRunAgents()"><i class="fas fa-play"></i> Rulează toți agenții</button>
-          <span style="font-size:11px;color:var(--text-muted)">6 agenți · rulează automat din oră în oră</span>
-        </div>
-        <div id="rax-company-wrap" style="display:none;align-items:center;gap:6px;margin-bottom:8px;">
-          <i class="fas fa-building" style="color:var(--accent);font-size:12px;"></i>
-          <select id="rax-company-filter" onchange="setSuperCompany(this.value)" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);flex:1;"></select>
-        </div>
-        <div id="rax-ag-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
-        <button class="rax-btn" style="width:100%;margin-bottom:10px;justify-content:center;" onclick="raxOpenDispatch()"><i class="fas fa-compass" style="color:var(--accent)"></i> Dispecerizare — găsește vehicul pentru o cursă</button>
-        <div id="rax-ag-summary" style="font-size:13px;margin-bottom:10px;"></div>
-        <div id="rax-ag-list"><div class="rax-co-meta">Se încarcă…</div></div>
-      </div>
-    </div>
-  </div>
+  <!-- Vechiul panou flotant de agenți a fost eliminat: pagina „Agenți AI" din meniul lateral îl înlocuiește complet. -->
 
   <!-- Configurare per-companie (super-admin): plan + module + agenți AI + limită AI într-un singur loc -->
   <div class="rax-overlay" id="rax-cfg-overlay">
@@ -13720,7 +13700,11 @@ const pozitii = await r.json();</code></pre>
         html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
           _raxCard('Tokeni IN', _raxFmt(t.ai_input)) + _raxCard('Tokeni OUT', _raxFmt(t.ai_output)) + _raxCard('Cereri API', t.ai_calls) +
           '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI estimat: <strong style="color:var(--accent);">$' + _raxCost(t.ai_input, t.ai_output).toFixed(2) + '</strong> · model ' + esc(d.model || '') + ' · <em>estimativ ($' + RAX_TOK_IN_RATE + '/$' + RAX_TOK_OUT_RATE + ' per 1M in/out)</em></div>';
+        // Costul vine calculat de la server (aceleași prețuri ca la facturare, cu tokenii din cache
+        // taxați corect). Formula locală rămâne doar ca rezervă dacă serverul nu-l trimite.
+        var _cUsd = (t.ai_cost_usd != null) ? Number(t.ai_cost_usd) : _raxCost(t.ai_input, t.ai_output);
+        var _cEur = (t.ai_cost_eur != null) ? Number(t.ai_cost_eur) : null;
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Cost AI: <strong style="color:var(--accent);">$' + _cUsd.toFixed(2) + '</strong>' + (_cEur != null ? ' <span style="color:var(--text-muted);">(' + _cEur.toFixed(2) + ' €)</span>' : '') + ' · model ' + esc(d.model || '') + (t.ai_cache_read ? ' · <span title="Tokeni recitiți din cache — costă ~10%">cache: ' + _raxFmt(t.ai_cache_read) + '</span>' : '') + '</div>';
 
         // ─── Cheie AI (gestionată DOAR de super-admin, aici) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-key"></i> Cheie AI (Anthropic)</div>';
@@ -16741,7 +16725,7 @@ const pozitii = await r.json();</code></pre>
       dispatch: { name: 'RA Dispatch', icon: 'fa-compass' }
     };
     function raxAgMeta(k) { return RAX_AGENTS[k] || { name: k || 'Agent', icon: 'fa-robot' }; }
-    window.raxOpenAgents = function () { $('rax-ag-overlay').classList.add('open'); $('rax-ag-summary').innerHTML = ''; if (window.loadSuperCompanies) window.loadSuperCompanies(); raxRenderAgChips(); raxLoadFindings(); };
+    // raxOpenAgents eliminat odată cu panoul flotant (înlocuit de pagina „Agenți AI").
     // Expune funcțiile de încărcare ca taburile din Administrare/Management să le poată apela din scope-ul principal.
     window.raxLoadCompanies = raxLoadCompanies; window.raxLoadUnassigned = raxLoadUnassigned;
     window.raxLoadAccounts = raxLoadAccounts; window.raxLoadTacho = raxLoadTacho; window.raxLoadEt = raxLoadEt;
@@ -16818,7 +16802,18 @@ const pozitii = await r.json();</code></pre>
         + '<div class="agp-wrap" id="agp-body"><div class="rax-co-meta" style="padding:24px;text-align:center;"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div></div></div>';
       var body = $('agp-body'); if (!body) return;
       var enabled = null, findings = [];
-      try { var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); enabled = ag && ag.enabledKeys; _agpState.lastRun = ag && ag.lastRun; _agpState.auto = !(ag && ag.auto === false); } catch (e) {}
+      try {
+        var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        enabled = ag && ag.enabledKeys; _agpState.lastRun = ag && ag.lastRun; _agpState.auto = !(ag && ag.auto === false);
+        // Numele/rolul/descrierea vin de la SERVER (agents.js) — sursă unică, aceeași pe web și în APK.
+        // AGP_META rămâne doar pentru prezentare (iconiță, culoare, „ce verifică").
+        (ag && ag.agents || []).forEach(function (a) {
+          var m = AGP_META[a.key]; if (!m) return;
+          if (a.name) m.name = a.name;
+          if (a.role) m.role = a.role;
+          if (a.desc) m.desc = a.desc;
+        });
+      } catch (e) {}
       try { var fl = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); }); if (Array.isArray(fl)) findings = fl; } catch (e) {}
       var keys = (Array.isArray(enabled) ? enabled : AGP_ORDER).filter(function (k) { return AGP_META[k]; });
       keys.sort(function (a, b) { return AGP_ORDER.indexOf(a) - AGP_ORDER.indexOf(b); });
@@ -17472,7 +17467,6 @@ const pozitii = await r.json();</code></pre>
       raxFindingAction(fid, 'ack');
     };
     window.raxFindingGoMaint = function () {
-      var ov = document.getElementById('rax-ag-overlay'); if (ov) ov.classList.remove('open');
       if (window.goManage) goManage('maintenance');
     };
     // „Marchează toate citite" — ack pe toate constatările NOI (în paralel), apoi update local + re-randare.

@@ -2132,18 +2132,12 @@ app.put('/api/companies/:id/ai-limit', requireAuth, requireSuperadmin, async (re
 
 // Limită AI lunară per companie = număr de PROMPTURI (apeluri AI) / 30 zile, gestionată de super-admin.
 // 0/null = nelimitat; super-admin/platformă fără limită. Întrebările rapide (locale) NU consumă din limită.
+// UN SINGUR contor: cota pe lună calendaristică. Limita veche `ai_monthly_limit` nu mai blochează
+// separat — e preluată ca valoare de cotă în aiQuotaState (vezi acolo), ca să nu mai existe două
+// robinete cu reguli diferite care se contrazic în fața clientului.
 async function aiLimitReached(companyId) {
   if (companyId == null) return false;
-  try {
-    // (1) cota nouă pe întrebări/lună (din ofertă) — blochează doar dacă depășirea NU e permisă
-    const q = await aiQuotaState(companyId);
-    if (q.blocked) return true;
-    // (2) limita veche `ai_monthly_limit` (apeluri/30 zile) rămâne valabilă — nu o dezactivăm tăcut
-    const co = await db.getCompanyById(companyId);
-    const lim = co && co.ai_monthly_limit;
-    if (!lim || lim <= 0) return false;
-    return (await db.getAiCallsForCompany(companyId, 30)) >= lim;
-  } catch (e) { return false; }
+  try { return !!(await aiQuotaState(companyId)).blocked; } catch (e) { return false; }
 }
 // ─── Cotă AI per companie (negociată în ofertă), pe LUNĂ CALENDARISTICĂ ───
 // settings.ai_quota = { questions: 50, overage: true, overagePriceEur: 0.20 }
@@ -2169,6 +2163,11 @@ async function aiQuotaState(companyId) {
   if (companyId == null) return base; // super-admin: fără cotă
   let co = null; try { co = await db.getCompanyById(companyId); } catch (e) {}
   const q = _aiQuotaFromSettings(co && co.settings);
+  // Compatibilitate: dacă un client are doar limita VECHE (`ai_monthly_limit`), o folosim ca număr de
+  // apeluri incluse, fără drept de depășire (vechea limită bloca dur). Așa rămâne un singur contor,
+  // iar clientul vede în sfârșit în interfață de ce s-a oprit.
+  const legacy = Number(co && co.ai_monthly_limit) || 0;
+  if (!q.questions && legacy > 0) { q.questions = Math.round(legacy); q.overage = false; }
   let used = 0;
   try { used = (await db.getAiMonthUsage(companyId)).questions; } catch (e) {}
   if (!q.questions) return Object.assign(base, { used: used, overage: q.overage, overagePriceEur: q.overagePriceEur });
@@ -2637,7 +2636,7 @@ app.get('/api/agents', requireAuth, withCompany, async (req, res) => {
   let lastRun = null, auto = true;
   try { lastRun = (req.companyId != null ? await db.getSetting('agents_lastrun_' + req.companyId) : null) || await db.getSetting('agents_lastrun') || null; } catch (e) {}
   try { auto = (await getSystemSettings()).agents_auto !== false; } catch (e) {}
-  res.json({ agents: enabled.filter(k => agents.AGENTS[k]).map(function (k) { return { key: k, name: agents.AGENTS[k].name, desc: agents.AGENTS[k].desc }; }), enabledKeys: enabled, lastRun: lastRun, auto: auto });
+  res.json({ agents: enabled.filter(k => agents.AGENTS[k]).map(function (k) { return { key: k, name: agents.AGENTS[k].name, role: agents.AGENTS[k].role || '', desc: agents.AGENTS[k].desc }; }), enabledKeys: enabled, lastRun: lastRun, auto: auto });
 });
 app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
   try {
@@ -2831,11 +2830,12 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
     // Compania demo nu apare în dashboard-ul de business (nici tabel, nici totaluri/venituri/health).
     const demoIds = new Set(companies.filter(function (c) { return c.is_demo; }).map(function (c) { return c.id; }));
     const realCompanies = companies.filter(function (c) { return !c.is_demo; });
-    const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0;
+    const usageMap = {}; let totIn = 0, totOut = 0, totCalls = 0, totCr = 0, totCw = 0;
     usage.forEach(function (u) {
       usageMap[u.company_id == null ? 'null' : u.company_id] = u;
       if (u.company_id != null && demoIds.has(u.company_id)) return; // exclude demo din totalurile AI
       totIn += Number(u.input_tokens) || 0; totOut += Number(u.output_tokens) || 0; totCalls += Number(u.calls) || 0;
+      totCr += Number(u.cache_read_tokens) || 0; totCw += Number(u.cache_write_tokens) || 0;
     });
     // ─── GPS + SIM health (din livePositions, real-time) per companie ───
     // Hartă imei → company_id (din devices)
@@ -2927,6 +2927,11 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         vehicles: realCompanies.reduce(function (s, c) { return s + (c.device_count || 0); }, 0),
         users: realCompanies.reduce(function (s, c) { return s + (c.user_count || 0); }, 0),
         ai_input: totIn, ai_output: totOut, ai_calls: totCalls,
+        ai_cache_read: totCr, ai_cache_write: totCw,
+        // Costul se calculează O SINGURĂ DATĂ, pe server, cu prețurile din config și cu tokenii din
+        // cache taxați corect — interfața nu mai are formulă proprie care să divergă.
+        ai_cost_usd: ai ? Math.round(ai.costUsd({ input_tokens: totIn, output_tokens: totOut, cache_read_input_tokens: totCr, cache_creation_input_tokens: totCw }) * 100) / 100 : 0,
+        ai_cost_eur: ai ? Math.round(ai.costEur({ input_tokens: totIn, output_tokens: totOut, cache_read_input_tokens: totCr, cache_creation_input_tokens: totCw }) * 100) / 100 : 0,
         findings_new: findingsNew,
         health: totalsHealth
       }
