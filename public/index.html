@@ -1376,7 +1376,7 @@
           <button class="aside-item users-only company-admin-only" data-atab="myinvoices" onclick="raxAdminTab('myinvoices')"><i class="fas fa-file-invoice-dollar"></i> Facturile mele</button>
           <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
           <div class="aside-grp" data-super>AI &amp; Module</div>
-          <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-shield-halved"></i> Agenți AI</button>
+          <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-wand-magic-sparkles"></i> Utilizare RA Insight</button>
           <button class="aside-item" data-super data-atab="tahograf" onclick="raxAdminTab('tahograf')"><i class="fas fa-gauge-high"></i> Tahograf</button>
           <button class="aside-item" data-super data-atab="etransport" onclick="raxAdminTab('etransport')"><i class="fas fa-truck-fast"></i> e-Transport</button>
           <div class="aside-grp" data-super>Business</div>
@@ -2849,10 +2849,9 @@ const pozitii = await r.json();</code></pre>
       } else if (name === 'users') {
         if (window.loadUsers) window.loadUsers();
       } else if (name === 'agents') {
-        _raxMountBody('#rax-ag-overlay', 'admin-tab-agents');
-        if (window.loadSuperCompanies) window.loadSuperCompanies();
-        if (window.raxRenderAgChips) window.raxRenderAgChips();
-        if (window.raxLoadFindings) window.raxLoadFindings();
+        // Nu mai duplicăm pagina „Agenți AI" din meniul lateral. Aici, fiind panou de admin,
+        // arătăm cine FOLOSEȘTE RA Insight — privire de ansamblu pe clienți.
+        if (window.raxLoadAiUsage) window.raxLoadAiUsage();
       } else if (name === 'tahograf') {
         _raxMountBody('#rax-tacho-overlay', 'admin-tab-tahograf');
         if (window.raxLoadTacho) window.raxLoadTacho();
@@ -15537,6 +15536,46 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
         '</div>' + montajBlock + hwBlock +
         '<div style="margin-top:10px;font-size:10.5px;color:var(--text-muted);text-align:right;">Curs BNR: 1 € = ' + _fxRate.toFixed(4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + ' · 1 leu = ' + (100 / _fxRate).toFixed(1) + ' cenți</div>';
+    };
+    // ─── Utilizare RA Insight (super-admin): cine îl folosește, cât din cotă, cât ne costă ───
+    window.raxLoadAiUsage = async function () {
+      var box = document.getElementById('admin-tab-agents'); if (!box) return;
+      box.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>';
+      var d = null;
+      try { d = await fetch('/api/admin/ai-usage', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
+      if (!d || d.error) { box.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare: ' + esc((d && d.error) || 'indisponibil') + '</div>'; return; }
+      var s = d.summary || {}, rows = d.rows || [];
+      var card = function (t, v, sub, col) {
+        return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:13px 15px;">'
+          + '<div style="font-size:22px;font-weight:800;' + (col ? 'color:' + col + ';' : '') + '">' + v + '</div>'
+          + '<div style="font-size:11px;color:var(--text-muted);font-weight:600;margin-top:2px;">' + t + '</div>'
+          + (sub ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">' + sub + '</div>' : '') + '</div>';
+      };
+      var body = rows.map(function (r) {
+        var stare = !r.enabled ? '<span style="color:var(--text-muted);">fără modul</span>'
+          : (r.used > 0 ? '<span style="color:var(--accent);font-weight:700;">● folosește</span>' : '<span style="color:var(--orange);">○ activat, nefolosit</span>');
+        var cota = r.quota ? (r.used + ' / ' + r.quota + (r.over > 0 ? ' <b style="color:var(--orange);">(+' + r.over + ')</b>' : '')) : (r.used + ' <span style="color:var(--text-muted);">/ ∞</span>');
+        var bar = r.pct == null ? '' : '<div style="height:4px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:4px;"><div style="height:100%;width:' + Math.min(100, r.pct) + '%;background:' + (r.over > 0 ? 'var(--orange)' : 'var(--accent)') + ';"></div></div>';
+        var last = r.lastUsed ? new Date(r.lastUsed).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' }) : '—';
+        return '<tr><td style="padding:7px 8px;">' + esc(r.name) + '</td>'
+          + '<td style="padding:7px 8px;">' + stare + '</td>'
+          + '<td style="padding:7px 8px;text-align:right;white-space:nowrap;">' + cota + bar + '</td>'
+          + '<td style="padding:7px 8px;text-align:right;color:var(--text-muted);white-space:nowrap;">' + r.costEur.toFixed(2) + ' €</td>'
+          + '<td style="padding:7px 8px;text-align:right;color:var(--text-muted);white-space:nowrap;">' + last + '</td></tr>';
+      }).join('') || '<tr><td colspan="5" style="padding:14px;color:var(--text-muted);">Nicio companie.</td></tr>';
+      box.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;"><i class="fas fa-wand-magic-sparkles"></i> Utilizare RA Insight — luna curentă</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;">'
+        + card('Clienți cu modul activ', s.withFeature + ' / ' + s.companies)
+        + card('Îl folosesc efectiv', s.active, 'din ' + s.withFeature + ' care îl au', s.adoptionPct >= 50 ? 'var(--accent)' : 'var(--orange)')
+        + card('Rată de folosire', s.adoptionPct + '%', 'dintre cei cu modul activ', s.adoptionPct >= 50 ? 'var(--accent)' : 'var(--orange)')
+        + card('Apeluri luna asta', s.totalCalls)
+        + card('Ne costă', s.totalCostEur.toFixed(2) + ' €', 'total, luna curentă')
+        + '</div>'
+        + '<table class="rax-co-table" style="width:100%;"><thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);">'
+        + '<th style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;">Stare</th>'
+        + '<th style="padding:6px 8px;text-align:right;">Apeluri / cotă</th><th style="padding:6px 8px;text-align:right;">Cost</th>'
+        + '<th style="padding:6px 8px;text-align:right;">Ultima dată</th></tr></thead><tbody>' + body + '</tbody></table>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5;">„Activat, nefolosit" = plătește (sau are inclus) modulul, dar nu l-a deschis luna asta — candidat pentru un telefon de activare. Agenții AI (cei 6) se configurează din pagina <b>Agenți AI</b> din meniul lateral.</div>';
     };
     // ─── Cereri de cont demo (super-admin) ───
     // Demo-ul nu se mai ia singur de pe site: aici vin cererile, iar accesul se acordă cu termen.

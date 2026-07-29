@@ -2209,6 +2209,45 @@ app.get('/api/fx', requireAuth, async (req, res) => {
   try { const f = await fxEurRon(); res.json({ eur: f.eur, date: f.date, source: f.source }); }
   catch (e) { res.json({ eur: EUR_RON_FALLBACK, date: null, source: 'fallback' }); }
 });
+// Privire de ansamblu (super-admin): cine folosește RA Insight, cât din cotă a consumat și cât ne costă.
+// Răspunde la „ce procent din clienți folosesc efectiv asistentul" — nu doar cine îl are activat.
+app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const [companies, usage] = await Promise.all([db.getCompanies(), db.getAiMonthUsageByCompany()]);
+    const byId = {}; usage.forEach(function (u) { byId[u.company_id] = u; });
+    const rows = companies.filter(function (c) { return !c.is_demo; }).map(function (c) {
+      const u = byId[c.id] || {};
+      const feats = plans ? plans.featuresFor(c) : {};
+      const q = _aiQuotaFromSettings(c.settings);
+      const used = Number(u.questions) || 0;
+      const cost = ai ? ai.costEur({ input_tokens: u.input_tokens, output_tokens: u.output_tokens, cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens }) : 0;
+      return {
+        id: c.id, name: c.name,
+        enabled: !!feats.ai_assistant,          // are modulul activ (îl poate folosi)
+        used: used,                              // apeluri luna asta
+        quota: q.questions || 0,                 // 0 = nelimitat
+        pct: q.questions ? Math.round((used / q.questions) * 100) : null,
+        over: q.questions ? Math.max(0, used - q.questions) : 0,
+        costEur: Math.round(cost * 100) / 100,
+        lastUsed: u.last_used || null
+      };
+    });
+    const withFeature = rows.filter(function (r) { return r.enabled; });
+    const active = withFeature.filter(function (r) { return r.used > 0; });
+    res.json({
+      rows: rows.sort(function (a, b) { return b.used - a.used; }),
+      summary: {
+        companies: rows.length,
+        withFeature: withFeature.length,
+        active: active.length,
+        // procentul cerut: dintre cei care AU modulul, câți chiar îl folosesc
+        adoptionPct: withFeature.length ? Math.round((active.length / withFeature.length) * 100) : 0,
+        totalCalls: rows.reduce(function (s, r) { return s + r.used; }, 0),
+        totalCostEur: Math.round(rows.reduce(function (s, r) { return s + r.costEur; }, 0) * 100) / 100
+      }
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // Contorul pe care-l vede clientul (ca la Claude): cât a consumat luna asta și ce-l costă peste cotă.
 app.get('/api/ai/quota', requireAuth, async (req, res) => {
   try {

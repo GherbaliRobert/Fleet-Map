@@ -1109,6 +1109,23 @@ async function recordAiUsage(companyId, kind, usage, userId) {
 // Consumul lunii CALENDARISTICE curente (nu 30 de zile rulante) — ca să se potrivească cu factura.
 // `kinds` = tipurile care se numără drept „întrebare" a clientului (restul sunt automatisme interne).
 const AI_BILLABLE_KINDS = ['insight', 'chat', 'report'];
+// Utilizarea RA Insight pe LUNA CURENTĂ, grupată pe companie — pentru privirea de ansamblu
+// a super-adminului: cine folosește, cât, și cât ne costă.
+async function getAiMonthUsageByCompany(kinds) {
+  const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
+  const r = await pool.query(
+    `SELECT company_id,
+            COUNT(*)::int AS questions,
+            COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
+            COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
+            COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens,
+            MAX(created_at) AS last_used
+       FROM ai_usage
+      WHERE kind = ANY($1) AND created_at >= date_trunc('month', NOW())
+      GROUP BY company_id`, [k]);
+  return r.rows;
+}
 async function getAiMonthUsage(companyId, kinds) {
   const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
   const r = await pool.query(
@@ -3181,7 +3198,7 @@ module.exports = {
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
-  getAiMonthUsage, AI_BILLABLE_KINDS,
+  getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,
