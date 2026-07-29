@@ -443,16 +443,42 @@ async function raCompliance(ctx) {
 
 // ─── RA Client — raport zilnic automat pentru clienți (sinteză flotă) ───
 async function raClient(ctx) {
-  const { db, imeis, livePositions, todayStart, toIso } = ctx; const findings = [];
+  const { db, imeis, livePositions, todayStart, toIso } = ctx; const findings = []; const DAY = 86400000;
   let summ = []; try { summ = await db.getTripsSummaryForImeis(imeis, todayStart.toISOString(), toIso); } catch (e) { summ = []; }
   let totalKm = 0, active = 0, top = null;
   for (const s of summ) { const km = parseFloat(s.km) || 0; totalKm += km; if (km > 0.5) active++; if (!top || km > (parseFloat(top.km) || 0)) top = s; }
   const fleetSize = imeis.length;
+  const unused = Math.max(0, fleetSize - active);
   const topKm = top ? (parseFloat(top.km) || 0) : 0;
-  const topName = top ? nameOf(livePositions.get(top.imei), top.imei) : '—';
-  const body = 'Vehicule în flotă: ' + fleetSize + ' · active azi: ' + active + ' · distanță totală: ' + Math.round(totalKm) + ' km' + (topKm > 0 ? ' · cel mai activ: ' + topName + ' (' + Math.round(topKm) + ' km)' : '') + '.';
-  findings.push({ imei: null, severity: 'info', agent: 'client', fkey: 'client_digest', title: 'Raport zilnic flotă — ' + Math.round(totalKm) + ' km, ' + active + '/' + fleetSize + ' active', body });
-  return { findings };
+  const topName = top ? labelOf(livePositions.get(top.imei), top.imei) : '—'; // cu nr. de înmatriculare, ca peste tot
+  // Comparație cu IERI, pe aceeași fereastră orară (altfel dimineața ar ieși mereu „mai puțin ca ieri").
+  let ydKm = null;
+  try {
+    const ys = await db.getTripsSummaryForImeis(imeis, new Date(todayStart.getTime() - DAY).toISOString(), new Date(new Date(toIso).getTime() - DAY).toISOString());
+    ydKm = (ys || []).reduce(function (a, s) { return a + (parseFloat(s.km) || 0); }, 0);
+  } catch (e) { ydKm = null; }
+  let pct = null;
+  if (ydKm != null && ydKm > 0.5) pct = Math.round(((totalKm - ydKm) / ydKm) * 100);
+  const cmp = (pct == null) ? '' : (' · ' + (pct >= 0 ? '+' : '') + pct + '% față de ieri');
+
+  // Sinteza celorlalți agenți din ACEEAȘI rulare (RA Client rulează ultimul — vezi runAll).
+  const peers = Array.isArray(ctx.peerFindings) ? ctx.peerFindings : [];
+  const nOf = function (agent, pref) { return peers.filter(function (f) { return f.agent === agent && (!pref || String(f.fkey || '').indexOf(pref) === 0); }).length; };
+  const hasCrit = peers.some(function (f) { return f.severity === 'critical'; });
+  const bits = [];
+  const nWatch = nOf('watch'), nCare = nOf('care'), nOpt = nOf('optimize', 'opt_eco'), nComp = nOf('compliance');
+  if (nWatch) bits.push(nWatch + (nWatch === 1 ? ' alertă de monitorizare' : ' alerte de monitorizare') + ' (RA Watch)');
+  if (nCare) bits.push(nCare + (nCare === 1 ? ' scadență' : ' scadențe') + ' (RA Care)');
+  if (nOpt) bits.push(nOpt + (nOpt === 1 ? ' vehicul cu scor slab' : ' vehicule cu scor slab') + ' (RA Optimize)');
+  if (nComp) bits.push(nComp + (nComp === 1 ? ' semnalare la orele de condus' : ' semnalări la orele de condus') + ' (RA Compliance)');
+
+  const title = 'Azi: ' + Math.round(totalKm) + ' km · ' + active + '/' + fleetSize + ' active' + cmp;
+  const body = 'Flotă: ' + fleetSize + (fleetSize === 1 ? ' vehicul' : ' vehicule') + ' · active azi: ' + active + (unused ? ' · nefolosite azi: ' + unused : '')
+    + (topKm > 0 ? ' · cel mai activ: ' + topName + ' (' + Math.round(topKm) + ' km)' : '')
+    + (ydKm != null ? ' · ieri, până la aceeași oră: ' + Math.round(ydKm) + ' km' : '') + '. '
+    + (bits.length ? 'De verificat: ' + bits.join(' · ') + '.' : 'Ceilalți agenți n-au semnalat nimic — zi curată.');
+  findings.push({ imei: null, severity: hasCrit ? 'warning' : 'info', agent: 'client', fkey: 'client_digest', title, body });
+  return { findings, summary: { fleetSize, active, unused, totalKm: Math.round(totalKm), ydKm: ydKm == null ? null : Math.round(ydKm), pct, issues: bits.length } };
 }
 
 // ─── RA Dispatch — alocare curse (disponibilitate + echilibrare flotă) ───
@@ -516,14 +542,21 @@ async function runAgent(key, base) {
 }
 
 // Rulează toți agenții (sau doar cei din `allowedKeys` dacă e setat) pe același context. Un agent care eșuează nu blochează restul.
+// Întoarce și `meta` (câmpurile extra ale fiecărui agent: evaluated, monitored, summary…), pe lângă findings.
 async function runAll(base, allowedKeys) {
-  const ctx = buildCtx(base); const all = [];
-  const keys = Array.isArray(allowedKeys) ? allowedKeys.filter(k => AGENTS[k]) : Object.keys(AGENTS);
+  const ctx = buildCtx(base); const all = []; const meta = {};
+  const keys = (Array.isArray(allowedKeys) ? allowedKeys.filter(k => AGENTS[k]) : Object.keys(AGENTS))
+    .slice().sort((a, b) => (a === 'client' ? 1 : 0) - (b === 'client' ? 1 : 0)); // RA Client agregă concluziile → rulează ULTIMUL
   for (const key of keys) {
-    try { const r = await AGENTS[key].run(ctx); if (r && r.findings) all.push.apply(all, r.findings); }
+    try {
+      if (key === 'client') ctx.peerFindings = all.slice(); // ce au găsit ceilalți în aceeași rulare
+      const r = await AGENTS[key].run(ctx);
+      if (r && r.findings) all.push.apply(all, r.findings);
+      if (r) { const rest = Object.assign({}, r); delete rest.findings; if (Object.keys(rest).length) meta[key] = rest; }
+    }
     catch (e) { /* izolează eșecul unui agent */ }
   }
-  return { findings: all };
+  return { findings: all, meta };
 }
 
 module.exports = { AGENTS, runAgent, runAll };

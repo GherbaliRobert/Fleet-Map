@@ -241,7 +241,7 @@ function _retentionSummary() {
 // Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
 // istoric. dispatch = disponibilitate acum; care = scadențe curente; optimize = scor eco de azi.
 // (Alertele „reale" de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
-const LIVE_AGENTS = new Set(['dispatch', 'care', 'optimize', 'compliance']);
+const LIVE_AGENTS = new Set(['dispatch', 'care', 'optimize', 'compliance', 'client']);
 const webpush = require('web-push');
 const https = require('https');
 const httpMod = require('http');
@@ -2585,7 +2585,15 @@ app.get('/api/agents/:key/live', requireAuth, withScope, async (req, res) => {
     try { await db.pool.query('DELETE FROM agent_findings WHERE agent = $1 AND company_id IS NOT DISTINCT FROM $2', [key, storeCompany == null ? null : storeCompany]); } catch (e) {}
     const alertThresholds = await _getAlertThresholds(storeCompany);
     const base = { db, imeis, livePositions, companyId: storeCompany, defaultSpeedLimit: (await getSystemSettings()).default_speed_limit, alertThresholds: alertThresholds };
-    const out = await agents.runAgent(key, base);
+    let out;
+    if (key === 'client') {
+      // RA Client = sinteza zilei + concluziile CELORLALȚI agenți → are nevoie de o rulare completă (runAll îl pune ultimul).
+      const enabledForAgg = await _getEnabledAgents(storeCompany);
+      const r = await agents.runAll(base, enabledForAgg);
+      out = Object.assign({ findings: (r.findings || []).filter(function (f) { return f.agent === 'client'; }) }, (r.meta && r.meta.client) || {});
+    } else {
+      out = await agents.runAgent(key, base);
+    }
     res.json(Object.assign({}, out, { findings: (out && out.findings) || [], checkedAt: new Date().toISOString() })); // trece și meta agentului (ex. optimize.evaluated)
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

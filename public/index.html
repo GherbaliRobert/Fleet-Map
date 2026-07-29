@@ -16557,9 +16557,11 @@ const pozitii = await r.json();</code></pre>
       care:       { name: 'RA Care',       icon: 'fa-wrench',          tile: 'ag-t-green',  role: 'Mentenanță',     desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.', checks: 'scadențele de ITP, RCA, revizii și intervalele de service' },
       optimize:   { name: 'RA Optimize',   icon: 'fa-leaf',            tile: 'ag-t-green',  role: 'Eco-driving',    desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', checks: 'scorul eco, frânările/accelerările bruște, viteza și risipa la ralanti' },
       compliance: { name: 'RA Compliance', icon: 'fa-clipboard-check', tile: 'ag-t-green',  role: 'Ore de condus',  desc: 'Condus continuu și zilnic (Reg. 561) — doar vehicule cu tahograf, nu turisme.', checks: 'orele de condus continuu și zilnic la vehiculele cu tahograf (Reg. 561)' },
-      client:     { name: 'RA Client',     icon: 'fa-file-lines',      tile: 'ag-t-green',  role: 'Digest zilnic',  desc: 'Un rezumat pe zi al flotei: km, vehicule active, cel mai activ.', checks: 'activitatea zilnică a flotei' }
+      client:     { name: 'RA Client',     icon: 'fa-file-lines',      tile: 'ag-t-green',  role: 'Sinteza zilei',  desc: 'Ziua într-un rând: km, active, comparație cu ieri + ce au găsit ceilalți agenți.', checks: 'activitatea zilei și concluziile celorlalți agenți' }
     };
     var AGP_ORDER = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
+    // Agenți „live" (stare de moment, calculată la cerere) — oglindește LIVE_AGENTS din server.js.
+    var LIVE_AGENT_KEYS = ['dispatch', 'care', 'optimize', 'compliance', 'client'];
     var _agpLast = {}, _agpLastRun = {}, _agpOptEvaluated = null, _agpCompMonitored = null, _agpState = { findings: [], canCfg: false, mode: 'grid', agent: null };
     function _agpTime(t) { return t ? new Date(t).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : ''; }
     function _agpWhen(t) {
@@ -16626,7 +16628,7 @@ const pozitii = await r.json();</code></pre>
       var byAgent = {}, totNew = 0, cCrit = 0, cWarn = 0, cInfo = 0;
       _agpLast = {};
       findings.forEach(function (f) {
-        if (f.agent === 'dispatch' || f.agent === 'care' || f.agent === 'optimize' || f.agent === 'compliance') return; // agenți live (stare de moment) — nu îngroșa badge-urile din constatări persistate
+        if (LIVE_AGENT_KEYS.indexOf(f.agent) >= 0) return; // agenți live (stare de moment) — nu îngroșa badge-urile din constatări persistate
         if (f.status && f.status !== 'new') return;
         totNew++;
         if (f.severity === 'critical') cCrit++; else if (f.severity === 'warning') cWarn++; else cInfo++;
@@ -16639,7 +16641,7 @@ const pozitii = await r.json();</code></pre>
       }
 
       // Agenții „live" (dispatch, care) nu au constatări salvate → interoghează starea ACUM, ca să apară pe carduri (semnalări).
-      var _liveKeys = keys.filter(function (k) { return k === 'dispatch' || k === 'care' || k === 'optimize' || k === 'compliance'; });
+      var _liveKeys = keys.filter(function (k) { return LIVE_AGENT_KEYS.indexOf(k) >= 0; });
       _agpOptEvaluated = null; _agpCompMonitored = null;
       try {
         var _liveRes = await Promise.all(_liveKeys.map(function (lk) {
@@ -16678,9 +16680,14 @@ const pozitii = await r.json();</code></pre>
         var nNew = fs.length;
         var sev = last ? last.severity : 'info';
         var summaryCount = (k === 'optimize') ? fs.filter(function (f) { return (f.fkey || '').indexOf('opt_eco') === 0; }).length : nNew; // optimize: doar vehiculele cu scor slab (fără notificarea de ralanti-flotă)
-        var badge = nNew
-          ? '<span class="agp-badge" style="color:' + _agpSevCol(sev) + ';border-color:' + _agpSevCol(sev) + '66;">' + nNew + ' ' + (nNew === 1 ? 'semnalare' : 'semnalări') + '</span>'
-          : '<span class="agp-badge ok"><i class="fas fa-check"></i> ok</span>';
+        // RA Client e o SINTEZĂ (mereu o constatare) — „1 semnalare" ar fi înșelător.
+        var badge = (k === 'client')
+          ? (nNew && sev !== 'info'
+              ? '<span class="agp-badge" style="color:' + _agpSevCol(sev) + ';border-color:' + _agpSevCol(sev) + '66;">de verificat</span>'
+              : '<span class="agp-badge ok"><i class="fas fa-file-lines"></i> sinteză</span>')
+          : (nNew
+              ? '<span class="agp-badge" style="color:' + _agpSevCol(sev) + ';border-color:' + _agpSevCol(sev) + '66;">' + nNew + ' ' + (nNew === 1 ? 'semnalare' : 'semnalări') + '</span>'
+              : '<span class="agp-badge ok"><i class="fas fa-check"></i> ok</span>');
         return '<button type="button" class="agp-card agp-cascade" style="animation-delay:' + (i * 55) + 'ms;" onclick="agpOpen(\'' + k + '\')">'
           + '<div class="agp-ch"><div class="agp-ct ag-t-green"><i class="fas ' + m.icon + '"></i></div>'
           + '<div class="agp-cn"><div class="agp-an">' + m.name + '</div><div class="agp-role">' + m.role + '</div></div>'
@@ -16722,11 +16729,12 @@ const pozitii = await r.json();</code></pre>
       var host = $('agp-body'); var m = AGP_META[k]; if (!host || !m) return;
       _agpState.mode = 'detail'; _agpState.agent = k;
       var canCfg = _agpState.canCfg;
-      var isLive = (k === 'dispatch' || k === 'care' || k === 'optimize' || k === 'compliance'); // agenți „live": stare de moment, fără istoric acumulat
+      var isLive = LIVE_AGENT_KEYS.indexOf(k) >= 0; // agenți „live": stare de moment, fără istoric acumulat
       var feed, feedHead, footer, actRun;
       if (isLive) {
-        // Stare LIVE (dispatch = disponibilitate; care = scadențe; optimize = scor eco; compliance = ore de condus azi).
-        feedHead = (k === 'dispatch') ? 'Disponibile acum' : (k === 'care' ? 'Scadențe acum' : (k === 'optimize' ? 'Scor eco — azi' : 'Ore de condus — azi'));
+        // Stare LIVE (dispatch = disponibilitate; care = scadențe; optimize = scor eco; compliance = ore; client = sinteza zilei).
+        var _fh = { dispatch: 'Disponibile acum', care: 'Scadențe acum', optimize: 'Scor eco — azi', compliance: 'Ore de condus — azi', client: 'Sinteza zilei' };
+        feedHead = _fh[k] || 'Stare acum';
         feed = '<div id="agp-live"><div class="agp-fi"><span class="fd" style="background:var(--text-muted)"></span><div class="agp-fi-b"><div class="ti"><i class="fas fa-spinner fa-spin"></i> Se verifică flota…</div></div></div></div>';
         footer = '<div class="agp-lastrun" id="agp-when"><i class="fas fa-clock"></i> Se verifică…</div>';
         actRun = '<button type="button" class="btn-sm" id="agp-run-' + k + '" style="background:var(--accent);color:#06210F;border:none;font-weight:800;" onclick="agpLiveRefresh(\'' + k + '\')"><i class="fas fa-bolt"></i> Rulează</button>'
@@ -16907,9 +16915,9 @@ const pozitii = await r.json();</code></pre>
         act: 'Primești și ce ai de făcut: „programează pauza de 45 min în ~N min", „planifică schimbul de șofer". Atenție: e o estimare din GPS — pentru control oficial rămâne valabil tahograful.'
       },
       client: {
-        face: 'Îți dă un rezumat zilnic al flotei: câte vehicule au fost active, km totali și cel mai activ vehicul.',
-        use: 'Apare automat, o dată pe zi. E informativ — o privire rapidă „cum a mers ziua".',
-        act: 'Pentru detalii, deschizi raportul respectiv din Rapoarte.'
+        face: '„Raportul de seară al șefului": sinteza zilei (km, vehicule active, nefolosite, cel mai activ) + comparație cu ieri la aceeași oră ȘI concluziile celorlalți agenți într-un singur rând — ce a găsit RA Watch, RA Care, RA Optimize, RA Compliance.',
+        use: 'Se recalculează când deschizi pagina sau apeși „Rulează" — arată ziua curentă, nu un istoric. Nu are praguri de reglat.',
+        act: 'E locul unde vezi toată ziua dintr-o privire: dacă scrie „De verificat", deschizi agentul respectiv pentru detalii.'
       }
     };
     function _agpTutSec(icon, title, body) {
@@ -16977,7 +16985,7 @@ const pozitii = await r.json();</code></pre>
         { key: 'compDailyWarnMin', label: 'Avertizează la conducere zilnică de', unit: 'înainte de 9h', min: 120, max: 540, def: 540, hint: 'Când să te anunțe că se apropie ziua de 9h, ca să planifici schimbul sau încheierea zilei.',
           options: [{ v: 420, t: '7h00 — din timp' }, { v: 480, t: '8h00 (recomandat)' }, { v: 510, t: '8h30 — pe ultima sută' }, { v: 540, t: 'doar la depășire (9h)' }] }
       ] },
-      client: { fields: [], fixed: 'Rulează o dată pe zi (digest al flotei). Nu are praguri de reglat.' }
+      client: { fields: [], fixed: 'Sinteza zilei curente — se recalculează când deschizi pagina sau apeși „Rulează". Nu are praguri proprii: preia pragurile celorlalți agenți, fiindcă le rezumă concluziile.' }
     };
     function _agpModal(id) {
       var ov = document.getElementById(id);
