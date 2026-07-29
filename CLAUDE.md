@@ -63,3 +63,28 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
 - **`DEMO_DISABLED=true` NU mai șterge nimic.** De când demo-ul se acordă la cerere, compania demo e parte din
   produs (acolo trăiesc conturile temporare). Comutatorul oprește DOAR simulatorul de poziții. Ștergerea
   completă rămâne o operație deliberată, nu efectul unei variabile de mediu.
+
+## Ofertare Live — DE CONTINUAT (customizare)
+Secțiunea **Administrare → Business → Ofertare Live** e funcțională, dar **nu e terminată** — se va reveni
+pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
+
+- **Monedă dublă:** toate sumele apar în lei ȘI euro, la **cursul BNR** al zilei (`GET /api/fx` →
+  `nbrfxrates.xml`, cache 12h, rezervă `EUR_RON_RATE`, implicit 5.0). Clientul are `window.raFx()`.
+- **RA Insight** (fostul „Asistent AI") se vinde cu **pachet de apeluri**: 50/100/150/200/nelimitat.
+  Alegerea pachetului completează automat prețul propus (`AIQ_PRICE` = 19/29/49/59 lei), calculat ca
+  ~1,5× costul din scenariul negru → profit garantat chiar și la un client care pune numai apeluri grele.
+  `AIQ_SUGGEST` = pragul minim sub care apare avertisment.
+- **Costul real** e măsurat, nu presupus: `AIQ_COST_LEI` ≈ 0,04 lei/apel (bucla agentului CU prompt caching).
+  Blocul arată „Ne costă / la uz intens / Profitul nostru / minim garantat / pe an".
+- **Cei 6 agenți NU se facturează** (reguli fixe, zero tokeni). Scoși din calculator; `pAiAg` = 0.
+  ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
+  ar schimba facturarea unor clienți existenți.
+
+### Reguli de respectat aici
+- **Numele/descrierile agenților au o SINGURĂ sursă: `AGP_META`** (expus ca `window.AGP_META`).
+  Panoul Administrare le citește de acolo. NU rescrie liste paralele de `labels`/`descs` — exact așa
+  apăruseră descrieri vechi, nesincronizate.
+- Câmpurile numerice din ofertă sunt generate cu `fNum(id, val, ph, w, step)`; pentru valori zecimale
+  (ex. €/apel) **trebuie dat `step`** — altfel browserul respinge valoarea (step implicit = 1).
+- Cota vândută în ofertă se setează apoi pe companie: `settings.ai_quota = { questions, overage,
+  overagePriceEur }` (doar super-admin). Fără cotă = nelimitat.

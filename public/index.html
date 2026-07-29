@@ -3548,8 +3548,15 @@ const pozitii = await r.json();</code></pre>
               try {
                 var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(r => r.json());
                 var allKeys = ['watch','dispatch','care','optimize','compliance','client'];
-                var labels = { watch:'RA Watch', dispatch:'RA Dispatch', care:'RA Care', optimize:'RA Optimize', compliance:'RA Compliance', client:'RA Client' };
-                var descs = { watch:'Monitorizare 24/7 — offline, scădere combustibil, ralanti prelungit + tahograf neconfigurat la camioane', dispatch:'Alocare curse — vehicule disponibile aproape', care:'Mentenanță predictivă (ITP, RCA, revizii)', optimize:'Eco-driving & costuri (depășiri viteză, frânări bruște, ralanti)', compliance:'Ore de condus (CE 561/2006)', client:'Raport zilnic automat (sinteză flotă)' };
+                // Numele/descrierile vin din AGP_META (pagina Agenți AI) — o singură sursă, ca să nu mai
+                // rămână aici o listă paralelă care se învechește la fiecare schimbare de agent.
+                var _M = window.AGP_META || {};
+                var labels = {}, descs = {};
+                allKeys.forEach(function (k) {
+                  var m = _M[k] || {};
+                  labels[k] = m.name || k;
+                  descs[k] = m.desc || '';
+                });
                 var enabledKeys = ag.enabledKeys || [];
                 var agLocked = !(currentUser && currentUser.isSuper); // agenții AI = funcție cu plată → adminul firmei îi vede DOAR read-only
                 var agNote = agLocked ? '<div style="font-size:11px;color:var(--text-muted);margin:0 0 10px;padding:9px 11px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;line-height:1.5;"><i class="fas fa-lock" style="color:var(--accent);margin-right:5px;"></i>Agenții AI sunt o <b>funcție cu plată</b>, activată de administratorul platformei (RA Tracks). Mai jos vezi ce e activ pentru compania ta. Pentru activare, contactează-ne.</div>' : '';
@@ -16710,6 +16717,7 @@ const pozitii = await r.json();</code></pre>
       compliance: { name: 'RA Compliance', icon: 'fa-clipboard-check', tile: 'ag-t-green',  role: 'Ore de condus',  desc: 'Condus continuu și zilnic (Reg. 561) — doar vehicule cu tahograf, nu turisme.', checks: 'orele de condus continuu și zilnic la vehiculele cu tahograf (Reg. 561)' },
       client:     { name: 'RA Client',     icon: 'fa-file-lines',      tile: 'ag-t-green',  role: 'Sinteza zilei',  desc: 'Ziua într-un rând: km, active, comparație cu ieri + ce au găsit ceilalți agenți.', checks: 'activitatea zilei și concluziile celorlalți agenți' }
     };
+    window.AGP_META = AGP_META; // sursă UNICĂ pentru nume/descrieri de agenți (și panoul Administrare o folosește)
     var AGP_ORDER = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
     // Agenți „live" (stare de moment, calculată la cerere) — oglindește LIVE_AGENTS din server.js.
     var LIVE_AGENT_KEYS = ['dispatch', 'care', 'optimize', 'compliance', 'client'];
