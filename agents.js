@@ -386,22 +386,59 @@ async function raOptimize(ctx) {
 // ─── RA Compliance — ore de condus (estimativ din GPS, Reg. CE 561/2006) ───
 async function raCompliance(ctx) {
   const { imeis, livePositions } = ctx; const findings = [];
-  if (!segmentTrack) return { findings };
+  if (!segmentTrack) return { findings, monitored: 0, skipped: 0 };
+  const th = (ctx && ctx.alertThresholds) || {};
+  // Avertisment TIMPURIU (înainte de depășire) — ca dispecerul să programeze pauza la timp, nu să afle după amendă.
+  // Fallback = chiar limita legală (adică fără avertisment devreme, comportamentul clasic).
+  const CONT_LIMIT_MIN = 270, DAILY_LIMIT_MIN = 540; // 4h30 condus continuu / 9h pe zi (Reg. CE 561/2006)
+  const contWarnMin = (Number.isFinite(th.compContWarnMin) && th.compContWarnMin > 0 && th.compContWarnMin <= CONT_LIMIT_MIN) ? th.compContWarnMin : CONT_LIMIT_MIN;
+  const dailyWarnMin = (Number.isFinite(th.compDailyWarnMin) && th.compDailyWarnMin > 0 && th.compDailyWarnMin <= DAILY_LIMIT_MIN) ? th.compDailyWarnMin : DAILY_LIMIT_MIN;
+  let monitored = 0, skipped = 0;
   for (const imei of imeis) {
+    // Reg. 561 + tahograf se aplică vehiculelor de peste 3,5 t (camioane/autocare), NU turismelor.
+    // Pe un autoturism „4h30 continuu" nu e o obligație legală → nu inventăm încălcări care nu există.
+    if (!(await _isTruck(ctx, imei))) { skipped++; continue; }
     const live = livePositions.get(imei); const name = nameOf(live, imei);
     const pts = await ctx.hist(imei); if (pts.length < 5) continue;
     const { trips } = segmentTrack(pts, 45 * 60); // o oprire ≥45 min = pauză legală (separă cursele)
     if (!trips.length) continue;
+    monitored++;
     let daily = 0, cont = 0, maxCont = 0;
     for (let i = 0; i < trips.length; i++) {
       if (i > 0) { const gap = (new Date(trips[i].start).getTime() - new Date(trips[i - 1].end).getTime()) / 1000; if (gap >= 45 * 60) cont = 0; else cont += gap; }
       cont += trips[i].durationSec; daily += trips[i].durationSec; maxCont = Math.max(maxCont, cont);
     }
+    const contMin = maxCont / 60, dailyMin = daily / 60;
     const contH = maxCont / 3600, dailyH = daily / 3600;
-    if (contH > 4.5) findings.push({ imei, severity: contH > 5.5 ? 'critical' : 'warning', agent: 'compliance', fkey: 'comp_cont_' + imei, title: name + ': conducere continuă ~' + hmH(contH), body: 'Estimativ din GPS. Limita legală: 4h30 de condus fără pauză de 45 min (Reg. CE 561/2006).' });
-    if (dailyH > 9) findings.push({ imei, severity: dailyH > 10 ? 'critical' : 'warning', agent: 'compliance', fkey: 'comp_daily_' + imei, title: name + ': conducere zilnică ~' + hmH(dailyH), body: 'Estimativ din GPS. Limita zilnică: 9h (extensibil la 10h de cel mult 2 ori/săptămână).' });
+    const est = ' Estimare din GPS — pentru control oficial rămâne valabil tahograful.';
+    // (1) Conducere continuă — o singură constatare: depășire SAU avertisment timpuriu.
+    if (contMin > CONT_LIMIT_MIN) {
+      findings.push({ imei, severity: contH > 5.5 ? 'critical' : 'warning', agent: 'compliance', fkey: 'comp_cont_' + imei,
+        title: name + ': conducere continuă ~' + hmH(contH) + ' — limită depășită',
+        body: 'Limita legală e 4h30 fără pauză de 45 min (Reg. CE 561/2006). Ce faci acum: oprește vehiculul pentru pauza obligatorie de 45 min.' + est });
+    } else if (contMin >= contWarnMin) {
+      const left = Math.max(1, Math.round(CONT_LIMIT_MIN - contMin));
+      findings.push({ imei, severity: 'warning', agent: 'compliance', fkey: 'comp_cont_' + imei,
+        title: name + ': conducere continuă ~' + hmH(contH) + ' — se apropie limita',
+        body: 'Mai are ~' + left + ' min până la limita de 4h30. Ce faci acum: anunță șoferul să-și programeze pauza de 45 min în următoarele ' + left + ' min.' + est });
+    }
+    // (2) Conducere zilnică — 9h, extensibil la 10h de cel mult 2 ori/săptămână.
+    if (dailyH > 10) {
+      findings.push({ imei, severity: 'critical', agent: 'compliance', fkey: 'comp_daily_' + imei,
+        title: name + ': conducere zilnică ~' + hmH(dailyH) + ' — peste maximul de 10h',
+        body: 'Maximul zilnic (10h) a fost depășit. Ce faci acum: încheie ziua de lucru și asigură odihna zilnică de 11h.' + est });
+    } else if (dailyMin > DAILY_LIMIT_MIN) {
+      findings.push({ imei, severity: 'warning', agent: 'compliance', fkey: 'comp_daily_' + imei,
+        title: name + ': conducere zilnică ~' + hmH(dailyH) + ' — peste 9h',
+        body: 'Peste 9h e permis doar de cel mult 2 ori pe săptămână (max. 10h). Ce faci acum: verifică de câte ori s-a întâmplat săptămâna asta și planifică odihna de 11h.' + est });
+    } else if (dailyMin >= dailyWarnMin) {
+      const left = Math.max(1, Math.round(DAILY_LIMIT_MIN - dailyMin));
+      findings.push({ imei, severity: 'warning', agent: 'compliance', fkey: 'comp_daily_' + imei,
+        title: name + ': conducere zilnică ~' + hmH(dailyH) + ' — se apropie limita',
+        body: 'Mai are ~' + left + ' min până la 9h. Ce faci acum: planifică încheierea zilei sau schimbul de șofer.' + est });
+    }
   }
-  return { findings };
+  return { findings, monitored, skipped }; // monitored = vehicule cu tahograf urmărite; skipped = turisme (nu intră sub Reg. 561)
 }
 
 // ─── RA Client — raport zilnic automat pentru clienți (sinteză flotă) ───

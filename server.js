@@ -241,7 +241,7 @@ function _retentionSummary() {
 // Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
 // istoric. dispatch = disponibilitate acum; care = scadențe curente; optimize = scor eco de azi.
 // (Alertele „reale" de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
-const LIVE_AGENTS = new Set(['dispatch', 'care', 'optimize']);
+const LIVE_AGENTS = new Set(['dispatch', 'care', 'optimize', 'compliance']);
 const webpush = require('web-push');
 const https = require('https');
 const httpMod = require('http');
@@ -2464,7 +2464,9 @@ const ALERT_THRESHOLD_SPECS = [
   { k: 'careKmLead', min: 50, max: 50000, round: true },   // RA Care + push — km înainte de scadența pe KM (mentenanță)
   { k: 'dispOnlineMin', min: 5, max: 240, round: true },   // RA Dispatch — „disponibil": ultimul semnal sub (min)
   { k: 'dispIdleHour', min: 0, max: 23, round: true },     // RA Dispatch — verifică „subutilizat" după ora (0-23)
-  { k: 'dispIdleKm', min: 1, max: 100, round: true }       // RA Dispatch — „nefolosit azi": sub (km)
+  { k: 'dispIdleKm', min: 1, max: 100, round: true },      // RA Dispatch — „nefolosit azi": sub (km)
+  { k: 'compContWarnMin', min: 60, max: 270, round: true },  // RA Compliance — avertisment timpuriu conducere continuă (min; 270 = 4h30 = doar la limită)
+  { k: 'compDailyWarnMin', min: 120, max: 540, round: true } // RA Compliance — avertisment timpuriu conducere zilnică (min; 540 = 9h = doar la limită)
 ];
 // Praguri alertă (RA Watch + RA Optimize + RA Care) — citite din companies.settings.alert_thresholds; fallback la defaulturi (agents.js)
 function _alertThresholdsFromSettings(settings) {
