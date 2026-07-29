@@ -15425,7 +15425,7 @@ const pozitii = await r.json();</code></pre>
       if (nPlain > 0) lines.push({ label: 'Vehicule GPS (fără CAN)', qty: nPlain, unit: p.pPlain, total: nPlain * p.pPlain });
       if (nCan > 0) lines.push({ label: 'Vehicule cu CAN', qty: nCan, unit: p.pCan, total: nCan * p.pCan });
       if (nFms > 0) lines.push({ label: 'Vehicule cu FMS (camioane)', qty: nFms, unit: p.pFms, total: nFms * p.pFms });
-      if (cfg.aiA) lines.push({ label: 'Asistent AI' + (cfg.aiqN > 0 ? ' — ' + cfg.aiqN + ' apeluri/lună' : ' — apeluri nelimitate'), qty: 1, unit: p.pAiA, total: p.pAiA });
+      if (cfg.aiA) lines.push({ label: 'RA Insight' + (cfg.aiqN > 0 ? ' — ' + cfg.aiqN + ' apeluri/lună' : ' — apeluri nelimitate'), qty: 1, unit: p.pAiA, total: p.pAiA });
       // Agenții AI NU se mai facturează: rulează pe reguli fixe, fără tokeni → cost zero pentru noi.
       var retA = _ofRetAddon(cfg, p); if (retA > 0) lines.push({ label: 'Păstrare date ' + _ofRetLabel(cfg), qty: 1, unit: retA, total: retA });
       var monthly = lines.reduce(function (s, l) { return s + l.total; }, 0);
@@ -15462,24 +15462,27 @@ const pozitii = await r.json();</code></pre>
       var costMax = n * AIQ_COST_LEI * 5;     // scenariul negru: numai apeluri grele (de ~5× mai scumpe)
       var pret = _ofN((document.getElementById('of-pAiA') || {}).value) || 0;
       var sug = AIQ_SUGGEST[n] || Math.round(n * 0.25);
+      // Grilă etichetă/valoare cu etichete SCURTE — în coloana îngustă a ofertei, textele
+      // lungi se rupeau pe 3-4 rânduri și blocul devenea ilizibil.
       var row = function (label, val, col, strong) {
-        return '<div style="display:flex;justify-content:space-between;gap:10px;">'
-          + '<span style="color:var(--text-muted);">' + label + '</span>'
-          + '<span style="' + (col ? 'color:' + col + ';' : 'color:var(--text-secondary);') + (strong ? 'font-weight:800;' : 'font-weight:600;') + 'white-space:nowrap;">' + val + '</span></div>';
+        return '<div style="display:contents;">'
+          + '<span style="color:var(--text-muted);white-space:nowrap;">' + label + '</span>'
+          + '<span style="text-align:right;white-space:nowrap;' + (col ? 'color:' + col + ';' : 'color:var(--text-secondary);') + (strong ? 'font-weight:800;' : 'font-weight:600;') + '">' + val + '</span></div>';
       };
-      var html = row('Ne costă', '~' + cost.toFixed(0) + ' lei/lună')
-        + row('Dacă pune numai apeluri grele', 'până la ' + costMax.toFixed(0) + ' lei');
+      var g = '<div style="display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:baseline;">';
+      var html = g + row('Ne costă', '~' + cost.toFixed(0) + ' lei/lună') + row('la uz intens', 'până la ' + costMax.toFixed(0) + ' lei') + '</div>';
       if (pret > 0) {
         var profit = pret - cost, profitMin = pret - costMax;
         var pc = profit > 0 ? 'var(--accent)' : 'var(--red)';
-        html += '<div style="border-top:1px dashed var(--border);margin:6px 0 5px;"></div>'
+        html += '<div style="border-top:1px dashed var(--border);margin:7px 0 6px;"></div>' + g
           + row('Profitul nostru', profit.toFixed(0) + ' lei/lună', pc, true)
-          + row('În cazul cel mai prost', profitMin.toFixed(0) + ' lei/lună', profitMin > 0 ? 'var(--text-secondary)' : 'var(--red)')
-          + row('Pe an (×12)', (profit * 12).toFixed(0) + ' lei', pc);
-        if (pret < sug) html += '<div style="margin-top:5px;color:var(--orange);font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Sub pragul minim de ' + sug + ' lei — rămâi fără marjă la un client intens.</div>';
+          + row('minim garantat', profitMin.toFixed(0) + ' lei/lună', profitMin > 0 ? 'var(--text-secondary)' : 'var(--red)')
+          + row('pe an', (profit * 12).toFixed(0) + ' lei', pc)
+          + '</div>';
+        if (pret < sug) html += '<div style="margin-top:7px;color:var(--orange);font-weight:700;line-height:1.45;"><i class="fas fa-triangle-exclamation"></i> Sub pragul minim de ' + sug + ' lei.</div>';
       }
       var rec = AIQ_PRICE[String(n)];
-      if (rec && Math.abs(pret - rec) > 0.5) html += '<div style="margin-top:6px;"><a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + rec + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;">Aplică prețul propus (' + rec + ' lei)</a></div>';
+      if (rec && Math.abs(pret - rec) > 0.5) html += '<div style="margin-top:8px;"><a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + rec + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;">Aplică prețul propus: ' + rec + ' lei</a></div>';
       box.innerHTML = html;
     }
     // ─── Curs BNR (EUR→RON): ofertele arată AMBELE monede, ca să nu convertească nimeni în cap ───
@@ -15645,21 +15648,20 @@ const pozitii = await r.json();</code></pre>
         row('din care cu CAN', fNum('of-ncan', 0), 'date motor/combustibil') +
         row('din care cu FMS', fNum('of-nfms', 0), 'camioane / tahograf'));
       var featCard = card('<i class="fas fa-robot"></i> Opțiuni',
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiA" onchange="raxOfRecalc()"> Asistent AI</label>' + fNum('of-pAiA', p.pAiA, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiA" onchange="raxOfRecalc()"> RA Insight</label>' + fNum('of-pAiA', p.pAiA, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +
         // Cota de apeluri inclusă în abonament (se trece în oferta clientului și se setează pe companie la activare).
-        '<div id="of-aiq-wrap" style="display:none;margin:2px 0 12px 22px;padding:10px 12px;border-left:2px solid var(--accent);background:var(--bg-dark);border-radius:0 9px 9px 0;">' +
-          '<div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;">Apeluri RA Insight incluse</div>' +
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<select id="of-aiqN" onchange="raxOfAiqPreset(this.value)" style="font-size:12px;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);font-family:inherit;cursor:pointer;">' +
+        '<div id="of-aiq-wrap" style="display:none;margin:2px 0 12px 22px;padding:11px 13px;border-left:2px solid var(--accent);background:var(--bg-dark);border-radius:0 10px 10px 0;">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;">' +
+            '<span style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;">Apeluri incluse</span>' +
+            '<select id="of-aiqN" onchange="raxOfAiqPreset(this.value)" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);font-family:inherit;cursor:pointer;">' +
               '<option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="150">150 / lună</option><option value="200">200 / lună</option><option value="0">nelimitat</option>' +
             '</select>' +
-            '<span style="font-size:11.5px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 0.20, '', 62, 0.05) + '<span style="font-size:11.5px;color:var(--text-muted);">€/apel</span>' +
+            '<span style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;">peste cotă</span>' + fNum('of-aiqP', 0.20, '', 58, 0.05) + '<span style="font-size:11.5px;color:var(--text-muted);">€</span>' +
           '</div>' +
-          '<div id="of-aiq-cost" style="margin-top:9px;font-size:11.5px;line-height:1.7;"></div>' +
+          '<div id="of-aiq-cost" style="font-size:11.5px;"></div>' +
         '</div>' +
         // Cei 6 agenți (Watch/Dispatch/Care/Optimize/Compliance/Client) rulează pe reguli fixe, ZERO tokeni AI
         // → nu ne costă nimic, deci nu se facturează separat. Incluși în abonament, nu ca add-on.
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12.5px;color:var(--text-muted);"><i class="fas fa-robot" style="color:var(--accent);"></i> Cei 6 agenți AI sunt <b style="color:var(--text-secondary);">incluși</b> — nu consumă tokeni, deci nu se taxează.</div>' +
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
         row('Durată contract', fNum('of-contract', 12, '', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span>'));
       var montajCard = card('<i class="fas fa-screwdriver-wrench"></i> Montaj (cost unic, opțional)',
