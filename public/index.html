@@ -15608,7 +15608,7 @@ const pozitii = await r.json();</code></pre>
     window.raxLoadOfertare = async function () {
       var box = document.getElementById('admin-tab-ofertare'); if (!box) return;
       var p = _raxOf.prices;
-      function fNum(id, val, ph, w) { return '<input id="' + id + '" type="number" min="0" step="1" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + (ph || '') + '" oninput="raxOfRecalc()" class="rax-field" style="width:' + (w || 80) + 'px;margin:0;">'; }
+      function fNum(id, val, ph, w, step) { return '<input id="' + id + '" type="number" min="0" step="' + (step || 1) + '" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + (ph || '') + '" oninput="raxOfRecalc()" class="rax-field" style="width:' + (w || 80) + 'px;margin:0;">'; }
       function row(label, inner, hint) { return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;"><span style="font-size:12.5px;min-width:150px;">' + label + '</span>' + inner + (hint ? '<span style="font-size:10.5px;color:var(--text-muted);">' + hint + '</span>' : '') + '</div>'; }
       function lei() { return '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span>'; }
       function leiU(u) { return '<span style="font-size:11px;color:var(--text-muted);">lei/' + u + '</span>'; }
@@ -15630,7 +15630,7 @@ const pozitii = await r.json();</code></pre>
           '<select id="of-aiqN" onchange="raxOfRecalc()" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;cursor:pointer;">' +
             '<option value="0">nelimitat</option><option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="200">200 / lună</option><option value="500">500 / lună</option>' +
           '</select>' +
-          '<span style="font-size:11px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 0.20, '', 60) + '<span style="font-size:11px;color:var(--text-muted);">€/apel</span>' +
+          '<span style="font-size:11px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 0.20, '', 60, 0.05) + '<span style="font-size:11px;color:var(--text-muted);">€/apel</span>' +
         '</div>' +
         '<div id="of-aiq-cost" style="display:none;margin:-6px 0 10px 24px;font-size:11px;color:var(--text-muted);line-height:1.5;"></div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiAg" onchange="raxOfRecalc()"> Agenți AI (RA Optimize / Care)</label>' + fNum('of-pAiAg', p.pAiAg, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +
