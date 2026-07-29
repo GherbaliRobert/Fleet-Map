@@ -11943,7 +11943,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var cos = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; });
         var opts = '<option value="">Toate companiile</option>' + (cos || []).map(function (c) { return '<option value="' + c.id + '">' + (c.name ? String(c.name).replace(/</g, '&lt;') : ('#' + c.id)) + '</option>'; }).join('');
-        ['dash-company-filter', 'rax-company-filter'].forEach(function (id) { var el = document.getElementById(id); if (el) { el.innerHTML = opts; el.value = window.gSuperCompany || ''; } });
+        ['dash-company-filter', 'rax-company-filter', 'agp-company-filter'].forEach(function (id) { var el = document.getElementById(id); if (el) { el.innerHTML = opts; el.value = window.gSuperCompany || ''; } });
         var dw = document.getElementById('dash-company-wrap'); if (dw) dw.style.display = 'flex';
         var rw = document.getElementById('rax-company-wrap'); if (rw) rw.style.display = 'flex';
       } catch (e) {}
@@ -11951,9 +11951,12 @@ const pozitii = await r.json();</code></pre>
     window.loadSuperCompanies = loadSuperCompanies;
     function setSuperCompany(val) {
       window.gSuperCompany = val || '';
-      ['dash-company-filter', 'rax-company-filter'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = window.gSuperCompany; });
+      ['dash-company-filter', 'rax-company-filter', 'agp-company-filter'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = window.gSuperCompany; });
       try { if (document.getElementById('dashboard-modal').classList.contains('visible')) openDashboard(); } catch (e) {}
       try { if (window.raxReload && document.getElementById('rax-ag-overlay').classList.contains('open')) window.raxReload(); } catch (e) {}
+      // Pagina „Agenți AI" (super-admin): reîncarcă pentru compania aleasă — constatările și starea live sunt per companie.
+      // Doar dacă pagina e chiar deschisă, altfel schimbarea companiei din Dashboard ar declanșa interogări inutile.
+      try { if (window.renderAgentsPage && currentView === 'agenti') window.renderAgentsPage(); } catch (e) {}
     }
     window.setSuperCompany = setSuperCompany;
 
@@ -16698,11 +16701,20 @@ const pozitii = await r.json();</code></pre>
           + '</button>';
       }).join('');
 
+      // Super-admin: selector de companie CHIAR AICI — pragurile și constatările sunt per companie, iar
+      // fără el (era doar în Dashboard) modificai fără să vrei baza platformei, crezând că schimbi un client.
+      var coPick = isSuperUser()
+        ? '<div style="display:flex;align-items:center;gap:7px;background:var(--bg-dark);border:1px solid var(--border);border-radius:9px;padding:5px 9px;">'
+          + '<i class="fas fa-building" style="color:var(--accent);font-size:12px;"></i>'
+          + '<select id="agp-company-filter" onchange="setSuperCompany(this.value)" title="Pentru ce companie vezi agenții și setezi pragurile" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);font-family:inherit;cursor:pointer;min-width:150px;"></select></div>'
+        : '';
       body.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
         + '<div class="agp-sub" style="margin:0;flex:1;min-width:200px;">Echipa ta de agenți care monitorizează flota automat. Apasă un agent pentru pagina lui.</div>'
+        + coPick
         + '<button class="btn-sm" id="agp-run" onclick="agPageRun()"><i class="fas fa-bolt" style="color:var(--accent)"></i> Rulează acum</button></div>'
         + model + chips + '<div class="agp-grid" id="agp-grid">' + cards + '</div>'
         + '<div class="agp-note"><i class="fas fa-shield-halved"></i> <span>Agenții veghează singuri și te anunță când e ceva. Apasă un agent pentru status, praguri și ghid.</span></div>';
+      if (isSuperUser() && window.loadSuperCompanies) window.loadSuperCompanies(); // umple selectorul (și-l pune pe compania curentă)
     };
     async function _agpRefetchRender() {
       try { var fl = await fetch('/api/agents/findings' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); }); if (Array.isArray(fl)) _agpState.findings = fl; } catch (e) {}
@@ -17040,7 +17052,7 @@ const pozitii = await r.json();</code></pre>
       if (!isSuperUser()) return '';
       if (coId) {
         // Numele companiei îl luăm din selectorul de sus (același folosit de gSuperCompany).
-        var sel = document.getElementById('rax-company-filter') || document.getElementById('dash-company-filter');
+        var sel = document.getElementById('agp-company-filter') || document.getElementById('rax-company-filter') || document.getElementById('dash-company-filter');
         var nume = '';
         if (sel) { for (var i = 0; i < sel.options.length; i++) if (String(sel.options[i].value) === String(coId)) nume = sel.options[i].textContent; }
         return '<div style="margin:14px 18px 0;padding:9px 12px;border-radius:9px;font-size:12px;line-height:1.45;background:color-mix(in srgb, var(--accent) 12%, transparent);color:var(--accent);">'
