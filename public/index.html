@@ -15443,22 +15443,34 @@ const pozitii = await r.json();</code></pre>
     var AIQ_SUGGEST = { 50: 15, 100: 25, 200: 50, 500: 120 };
     function _ofAiqCostHint(r) {
       var box = document.getElementById('of-aiq-cost'); if (!box) return;
-      if (!r.cfg.aiA) { box.style.display = 'none'; return; }
-      box.style.display = 'block';
+      if (!r.cfg.aiA) return;
       var n = r.cfg.aiqN || 0;
-      if (!n) { // nelimitat → nu putem plafona costul, doar avertizăm
-        box.innerHTML = '<i class="fas fa-triangle-exclamation" style="color:var(--orange);"></i> Nelimitat: costul nu are plafon. Un client intens poate depăși 100 lei/lună. Recomand un pachet.';
+      if (!n) { // nelimitat → costul n-are plafon, deci profitul nu poate fi garantat
+        box.innerHTML = '<span style="color:var(--orange);"><i class="fas fa-triangle-exclamation"></i> <b>Nelimitat:</b> costul nu are plafon, deci profitul nu poate fi estimat. Un client intens poate trece de 100 lei/lună. Recomand un pachet.</span>';
         return;
       }
-      var cost = n * AIQ_COST_LEI;                 // uz normal
-      var costMax = n * AIQ_COST_LEI * 5;          // scenariul negru: numai apeluri grele
+      var cost = n * AIQ_COST_LEI;            // uz normal
+      var costMax = n * AIQ_COST_LEI * 5;     // scenariul negru: numai apeluri grele (de ~5× mai scumpe)
       var pret = _ofN((document.getElementById('of-pAiA') || {}).value) || 0;
       var sug = AIQ_SUGGEST[n] || Math.round(n * 0.25);
-      var marja = cost > 0 && pret > 0 ? (pret / cost) : 0;
-      box.innerHTML = 'Te costă <b>~' + cost.toFixed(0) + ' lei/lună</b> (max ' + costMax.toFixed(0) + ' lei dacă pune numai apeluri grele)'
-        + (pret > 0 ? ' · la ' + pret.toFixed(0) + ' lei marja e <b style="color:' + (marja >= 3 ? 'var(--accent)' : 'var(--orange)') + ';">' + marja.toFixed(0) + '×</b>' : '')
-        + (pret > 0 && pret < sug ? ' · <b style="color:var(--orange);">sub pragul minim de ' + sug + ' lei</b>' : '')
-        + ' · <a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + sug + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;" title="Pragul de siguranță — nu prețul recomandat de vânzare">minim ' + sug + ' lei</a>';
+      var row = function (label, val, col, strong) {
+        return '<div style="display:flex;justify-content:space-between;gap:10px;">'
+          + '<span style="color:var(--text-muted);">' + label + '</span>'
+          + '<span style="' + (col ? 'color:' + col + ';' : 'color:var(--text-secondary);') + (strong ? 'font-weight:800;' : 'font-weight:600;') + 'white-space:nowrap;">' + val + '</span></div>';
+      };
+      var html = row('Te costă', '~' + cost.toFixed(0) + ' lei/lună')
+        + row('Dacă pune numai apeluri grele', 'până la ' + costMax.toFixed(0) + ' lei');
+      if (pret > 0) {
+        var profit = pret - cost, profitMin = pret - costMax;
+        var pc = profit > 0 ? 'var(--accent)' : 'var(--red)';
+        html += '<div style="border-top:1px dashed var(--border);margin:6px 0 5px;"></div>'
+          + row('Profit estimat', profit.toFixed(0) + ' lei/lună', pc, true)
+          + row('Profit în cazul cel mai prost', profitMin.toFixed(0) + ' lei/lună', profitMin > 0 ? 'var(--text-secondary)' : 'var(--red)')
+          + row('Pe an (×12)', (profit * 12).toFixed(0) + ' lei', pc);
+        if (pret < sug) html += '<div style="margin-top:5px;color:var(--orange);font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Sub pragul minim de ' + sug + ' lei — rămâi fără marjă la un client intens.</div>';
+      }
+      html += '<div style="margin-top:6px;"><a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + sug + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;" title="Pragul de siguranță sub care nu cobori — NU prețul recomandat de vânzare">Aplică pragul minim (' + sug + ' lei)</a></div>';
+      box.innerHTML = html;
     }
     // ─── Curs BNR (EUR→RON): ofertele arată AMBELE monede, ca să nu convertească nimeni în cap ───
     var _fxRate = Number(localStorage.getItem('raFxEur')) || 5.0, _fxDate = localStorage.getItem('raFxDate') || '';
@@ -15625,14 +15637,16 @@ const pozitii = await r.json();</code></pre>
       var featCard = card('<i class="fas fa-robot"></i> Opțiuni',
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiA" onchange="raxOfRecalc()"> Asistent AI</label>' + fNum('of-pAiA', p.pAiA, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +
         // Cota de apeluri inclusă în abonament (se trece în oferta clientului și se setează pe companie la activare).
-        '<div id="of-aiq-wrap" style="display:none;align-items:center;gap:8px;margin:-2px 0 10px 24px;">' +
-          '<span style="font-size:11.5px;color:var(--text-muted);flex:1;">└ apeluri RA Insight incluse</span>' +
-          '<select id="of-aiqN" onchange="raxOfRecalc()" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;cursor:pointer;">' +
-            '<option value="0">nelimitat</option><option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="200">200 / lună</option><option value="500">500 / lună</option>' +
-          '</select>' +
-          '<span style="font-size:11px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 0.20, '', 60, 0.05) + '<span style="font-size:11px;color:var(--text-muted);">€/apel</span>' +
+        '<div id="of-aiq-wrap" style="display:none;margin:2px 0 12px 22px;padding:10px 12px;border-left:2px solid var(--accent);background:var(--bg-dark);border-radius:0 9px 9px 0;">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;">Apeluri RA Insight incluse</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            '<select id="of-aiqN" onchange="raxOfRecalc()" style="font-size:12px;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);font-family:inherit;cursor:pointer;">' +
+              '<option value="0">nelimitat</option><option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="200">200 / lună</option><option value="500">500 / lună</option>' +
+            '</select>' +
+            '<span style="font-size:11.5px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 0.20, '', 62, 0.05) + '<span style="font-size:11.5px;color:var(--text-muted);">€/apel</span>' +
+          '</div>' +
+          '<div id="of-aiq-cost" style="margin-top:9px;font-size:11.5px;line-height:1.7;"></div>' +
         '</div>' +
-        '<div id="of-aiq-cost" style="display:none;margin:-6px 0 10px 24px;font-size:11px;color:var(--text-muted);line-height:1.5;"></div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiAg" onchange="raxOfRecalc()"> Agenți AI (RA Optimize / Care)</label>' + fNum('of-pAiAg', p.pAiAg, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
         row('Durată contract', fNum('of-contract', 12, '', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span>'));
