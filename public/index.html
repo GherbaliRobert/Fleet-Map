@@ -13387,12 +13387,16 @@ const pozitii = await r.json();</code></pre>
       var over = q.overageCount > 0;
       var col = over ? 'var(--orange)' : (q.remaining <= Math.max(3, q.questions * 0.15) ? 'var(--orange)' : 'var(--accent)');
       var head, sub;
+      // Sumele se arată în LEI (moneda clientului) cu echivalentul în € — curs BNR.
+      var fx = (window.raFx ? window.raFx().eur : 5.0);
+      var lei = function (eur) { return (eur * fx).toFixed(2).replace('.', ',') + ' lei'; };
+      var both = function (eur) { return lei(eur) + ' <span style="opacity:.65;">(' + eur.toFixed(2).replace('.', ',') + ' €)</span>'; };
       if (over) {
         head = '<b>Cotă epuizată</b> · ' + q.overageCount + ' ' + (q.overageCount === 1 ? 'apel suplimentar' : 'apeluri suplimentare');
-        sub = 'Ești pe <b>cost suplimentar</b>: ' + q.overagePriceEur.toFixed(2).replace('.', ',') + ' €/apel · în plus luna asta: <b>' + q.overageCostEur.toFixed(2).replace('.', ',') + ' €</b>';
+        sub = 'Ești pe <b>cost suplimentar</b>: ' + lei(q.overagePriceEur) + '/apel · în plus luna asta: <b>' + both(q.overageCostEur) + '</b>';
       } else {
         head = 'Îți mai rămân <b>' + q.remaining + '</b> din ' + q.questions + ' apeluri';
-        sub = 'Se reînnoiește pe ' + reset + (q.overage ? ' · peste cotă: ' + q.overagePriceEur.toFixed(2).replace('.', ',') + ' €/apel' : ' · la epuizare se oprește');
+        sub = 'Se reînnoiește pe ' + reset + (q.overage ? ' · peste cotă: ' + lei(q.overagePriceEur) + '/apel' : ' · la epuizare se oprește');
       }
       box.style.display = 'block';
       box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
@@ -15456,6 +15460,24 @@ const pozitii = await r.json();</code></pre>
         + (pret > 0 && pret < sug ? ' · <b style="color:var(--orange);">sub pragul minim de ' + sug + ' lei</b>' : '')
         + ' · <a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + sug + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;" title="Pragul de siguranță — nu prețul recomandat de vânzare">minim ' + sug + ' lei</a>';
     }
+    // ─── Curs BNR (EUR→RON): ofertele arată AMBELE monede, ca să nu convertească nimeni în cap ───
+    var _fxRate = Number(localStorage.getItem('raFxEur')) || 5.0, _fxDate = localStorage.getItem('raFxDate') || '';
+    window.raFx = function () { return { eur: _fxRate, date: _fxDate }; }; // și pentru contorul clientului
+    (async function () {
+      try {
+        var f = await fetch('/api/fx', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (f && f.eur > 1) {
+          _fxRate = f.eur; _fxDate = f.date || '';
+          try { localStorage.setItem('raFxEur', String(f.eur)); localStorage.setItem('raFxDate', _fxDate); } catch (e) {}
+          if (document.getElementById('rax-of-summary')) { try { raxOfRecalc(); } catch (e) {} }
+        }
+      } catch (e) {}
+    })();
+    function _lei2eur(v) { return (Number(v) || 0) / _fxRate; }
+    function _eur2lei(v) { return (Number(v) || 0) * _fxRate; }
+    // „150 lei (30 €)" — moneda principală + echivalentul, discret.
+    function _fmtLei(v) { return (Number(v) || 0).toFixed(0) + ' lei <span style="font-weight:400;color:var(--text-muted);font-size:.82em;">(' + _lei2eur(v).toFixed(v < 100 ? 1 : 0) + ' €)</span>'; }
+    function _fmtEur(v) { return (Number(v) || 0).toFixed(0) + ' € <span style="font-weight:400;color:var(--text-muted);font-size:.82em;">(' + _eur2lei(v).toFixed(0) + ' lei)</span>'; }
     window.raxOfRecalc = function () {
       var r = _ofCalc();
       var cm = document.getElementById('of-retcustom-wrap'); if (cm) cm.style.display = (r.cfg.retTier === 'custom') ? 'inline-flex' : 'none';
@@ -15467,20 +15489,22 @@ const pozitii = await r.json();</code></pre>
       var montajBlock = r.montaj > 0 ?
         ('<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:16px 0 6px;"><i class="fas fa-screwdriver-wrench"></i> Montaj (cost unic)</div>' +
          '<table class="rax-co-table" style="margin-bottom:8px;"><thead><tr><th>Operațiune</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead><tbody>' + mRows + '</tbody></table>' +
-         '<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--border);padding-top:8px;"><span style="font-size:13px;color:var(--text-muted);">Total montaj (o dată)</span><span style="font-size:20px;font-weight:800;color:var(--text-primary);">' + r.montaj.toFixed(0) + ' lei</span></div>' +
-         '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Total inițial (montaj + prima lună)</span><b>' + r.initial.toFixed(0) + ' lei</b></div>') : '';
+         '<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--border);padding-top:8px;"><span style="font-size:13px;color:var(--text-muted);">Total montaj (o dată)</span><span style="font-size:20px;font-weight:800;color:var(--text-primary);">' + _fmtLei(r.montaj) + '</span></div>' +
+         '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Total inițial (montaj + prima lună)</span><b>' + _fmtLei(r.initial) + '</b></div>') : '';
       var hwRows = r.deviceLines.map(function (l) { return '<tr><td>' + esc(l.label) + (l.qty > 1 ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num" style="color:var(--text-muted);">' + l.unit.toFixed(0) + ' €</td><td class="num"><b>' + l.total.toFixed(0) + ' €</b></td></tr>'; }).join('');
       var hwBlock = r.hwTotal > 0 ?
         ('<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:16px 0 6px;"><i class="fas fa-microchip"></i> Echipamente (cost unic)</div>' +
          '<table class="rax-co-table" style="margin-bottom:8px;"><thead><tr><th>Echipament</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead><tbody>' + hwRows + '</tbody></table>' +
-         '<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--border);padding-top:8px;"><span style="font-size:13px;color:var(--text-muted);">Total echipamente (o dată)</span><span style="font-size:20px;font-weight:800;color:var(--text-primary);">' + r.hwTotal.toFixed(0) + ' €</span></div>') : '';
+         '<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--border);padding-top:8px;"><span style="font-size:13px;color:var(--text-muted);">Total echipamente (o dată)</span><span style="font-size:20px;font-weight:800;color:var(--text-primary);">' + _fmtEur(r.hwTotal) + '</span></div>') : '';
       host.innerHTML =
         '<table class="rax-co-table" style="margin-bottom:10px;"><thead><tr><th>Componentă</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
         '<div style="border-top:2px solid var(--accent);padding-top:10px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:13px;color:var(--text-muted);">Total lunar</span><span style="font-size:26px;font-weight:800;color:var(--accent);">' + r.monthly.toFixed(0) + ' lei</span></div>' +
-          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + r.annual.toFixed(0) + ' lei</b></div>' +
-          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + r.contractTotal.toFixed(0) + ' lei</b></div>' +
-        '</div>' + montajBlock + hwBlock;
+          '<div style="display:flex;justify-content:flex-end;font-size:13px;color:var(--text-muted);margin-top:-2px;">≈ <b style="color:var(--text-secondary);margin-left:4px;">' + _lei2eur(r.monthly).toFixed(2) + ' €</b>/lună</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + _fmtLei(r.annual) + '</b></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
+        '</div>' + montajBlock + hwBlock +
+        '<div style="margin-top:10px;font-size:10.5px;color:var(--text-muted);text-align:right;">Curs BNR: 1 € = ' + _fxRate.toFixed(4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + ' · 1 leu = ' + (100 / _fxRate).toFixed(1) + ' cenți</div>';
     };
     // ─── Cereri de cont demo (super-admin) ───
     // Demo-ul nu se mai ia singur de pe site: aici vin cererile, iar accesul se acordă cu termen.
@@ -15606,7 +15630,7 @@ const pozitii = await r.json();</code></pre>
           '<select id="of-aiqN" onchange="raxOfRecalc()" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;cursor:pointer;">' +
             '<option value="0">nelimitat</option><option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="200">200 / lună</option><option value="500">500 / lună</option>' +
           '</select>' +
-          '<span style="font-size:11px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 1, '', 60) + '<span style="font-size:11px;color:var(--text-muted);">lei/apel</span>' +
+          '<span style="font-size:11px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 0.20, '', 60) + '<span style="font-size:11px;color:var(--text-muted);">€/apel</span>' +
         '</div>' +
         '<div id="of-aiq-cost" style="display:none;margin:-6px 0 10px 24px;font-size:11px;color:var(--text-muted);line-height:1.5;"></div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiAg" onchange="raxOfRecalc()"> Agenți AI (RA Optimize / Care)</label>' + fNum('of-pAiAg', p.pAiAg, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +

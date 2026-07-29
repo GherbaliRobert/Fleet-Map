@@ -2183,6 +2183,32 @@ async function aiQuotaState(companyId) {
     periodEnd: periodEnd.toISOString()
   };
 }
+// ─── Curs valutar EUR→RON (BNR, oficial) — pentru ofertare/facturare în ambele monede ───
+// BNR publică o dată pe zi lucrătoare (~13:00). Cache în memorie; dacă interogarea eșuează,
+// păstrăm ultima valoare bună, iar la pornire cădem pe EUR_RON_RATE (implicit 5.0).
+const EUR_RON_FALLBACK = Number(process.env.EUR_RON_RATE) || 5.0;
+let _fx = { eur: EUR_RON_FALLBACK, date: null, source: 'fallback', fetchedAt: 0 };
+async function fxEurRon() {
+  const DAY = 12 * 3600 * 1000; // reîncearcă de 2 ori pe zi, suficient pentru un curs zilnic
+  if (_fx.fetchedAt && (Date.now() - _fx.fetchedAt) < DAY) return _fx;
+  try {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 6000);
+    const xml = await fetch('https://www.bnr.ro/nbrfxrates.xml', { signal: ctrl.signal }).then(r => r.ok ? r.text() : null);
+    clearTimeout(t);
+    if (xml) {
+      const m = xml.match(/<Rate[^>]*currency="EUR"[^>]*>([\d.]+)<\/Rate>/i);
+      const d = xml.match(/<Cube[^>]*date="([\d-]+)"/i);
+      const v = m ? parseFloat(m[1]) : NaN;
+      if (Number.isFinite(v) && v > 1 && v < 100) _fx = { eur: v, date: (d && d[1]) || null, source: 'BNR', fetchedAt: Date.now() };
+    }
+  } catch (e) { /* rețea/BNR indisponibil → păstrăm ultima valoare bună */ }
+  if (!_fx.fetchedAt) _fx.fetchedAt = Date.now(); // nu insista la fiecare cerere dacă BNR e jos
+  return _fx;
+}
+app.get('/api/fx', requireAuth, async (req, res) => {
+  try { const f = await fxEurRon(); res.json({ eur: f.eur, date: f.date, source: f.source }); }
+  catch (e) { res.json({ eur: EUR_RON_FALLBACK, date: null, source: 'fallback' }); }
+});
 // Contorul pe care-l vede clientul (ca la Claude): cât a consumat luna asta și ce-l costă peste cotă.
 app.get('/api/ai/quota', requireAuth, async (req, res) => {
   try {
