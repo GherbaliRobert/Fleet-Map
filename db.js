@@ -684,6 +684,9 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS current_period_end BIGINT;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS custom_plan JSONB;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_monthly_limit BIGINT;
+        ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_read_tokens INTEGER DEFAULT 0;
+        ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_write_tokens INTEGER DEFAULT 0;
+        ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS user_id INTEGER;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS access_until BIGINT;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS cui VARCHAR(40);
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS reg_com VARCHAR(40);
@@ -1089,15 +1092,45 @@ async function getCompanies() {
 }
 
 // ─── Consum AI (tokeni) per companie ───
-async function recordAiUsage(companyId, kind, usage) {
+async function recordAiUsage(companyId, kind, usage, userId) {
   if (!usage) return;
   const inp = parseInt(usage.input_tokens) || 0;
   const out = parseInt(usage.output_tokens) || 0;
-  if (!inp && !out) return;
+  const cr = parseInt(usage.cache_read_input_tokens) || 0;
+  const cw = parseInt(usage.cache_creation_input_tokens) || 0;
+  if (!inp && !out && !cr && !cw) return;
+  // UN rând = O întrebare a userului (agentul RA Insight face mai multe apeluri pe întrebare, dar
+  // consumul lor e însumat înainte de a ajunge aici) → COUNT(*) e chiar numărul de întrebări.
   await pool.query(
-    'INSERT INTO ai_usage (company_id, kind, input_tokens, output_tokens) VALUES ($1, $2, $3, $4)',
-    [companyId != null ? companyId : null, String(kind || 'ai').slice(0, 20), inp, out]
+    'INSERT INTO ai_usage (company_id, kind, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, user_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    [companyId != null ? companyId : null, String(kind || 'ai').slice(0, 20), inp, out, cr, cw, userId != null ? userId : null]
   );
+}
+// Consumul lunii CALENDARISTICE curente (nu 30 de zile rulante) — ca să se potrivească cu factura.
+// `kinds` = tipurile care se numără drept „întrebare" a clientului (restul sunt automatisme interne).
+const AI_BILLABLE_KINDS = ['insight', 'chat', 'report'];
+async function getAiMonthUsage(companyId, kinds) {
+  const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
+  const r = await pool.query(
+    `SELECT COUNT(*)::int AS questions,
+            COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
+            COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
+            COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+       FROM ai_usage
+      WHERE company_id IS NOT DISTINCT FROM $1
+        AND kind = ANY($2)
+        AND created_at >= date_trunc('month', NOW())`,
+    [companyId != null ? companyId : null, k]
+  );
+  const row = r.rows[0] || {};
+  return {
+    questions: Number(row.questions) || 0,
+    input_tokens: Number(row.input_tokens) || 0,
+    output_tokens: Number(row.output_tokens) || 0,
+    cache_read_tokens: Number(row.cache_read_tokens) || 0,
+    cache_write_tokens: Number(row.cache_write_tokens) || 0
+  };
 }
 async function getAiUsageByCompany(sinceDays) {
   const days = parseInt(sinceDays);
@@ -1107,6 +1140,8 @@ async function getAiUsageByCompany(sinceDays) {
     `SELECT company_id,
        COALESCE(SUM(input_tokens), 0)::bigint AS input_tokens,
        COALESCE(SUM(output_tokens), 0)::bigint AS output_tokens,
+       COALESCE(SUM(cache_read_tokens), 0)::bigint AS cache_read_tokens,
+       COALESCE(SUM(cache_write_tokens), 0)::bigint AS cache_write_tokens,
        COUNT(*)::int AS calls
      FROM ai_usage ${where} GROUP BY company_id`, params);
   return r.rows;
@@ -3146,6 +3181,7 @@ module.exports = {
   saveReportHistory, getReportHistory, getReportHistoryById, deleteReportHistory,
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
+  getAiMonthUsage, AI_BILLABLE_KINDS,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,

@@ -2135,12 +2135,62 @@ app.put('/api/companies/:id/ai-limit', requireAuth, requireSuperadmin, async (re
 async function aiLimitReached(companyId) {
   if (companyId == null) return false;
   try {
+    // (1) cota nouă pe întrebări/lună (din ofertă) — blochează doar dacă depășirea NU e permisă
+    const q = await aiQuotaState(companyId);
+    if (q.blocked) return true;
+    // (2) limita veche `ai_monthly_limit` (apeluri/30 zile) rămâne valabilă — nu o dezactivăm tăcut
     const co = await db.getCompanyById(companyId);
     const lim = co && co.ai_monthly_limit;
     if (!lim || lim <= 0) return false;
     return (await db.getAiCallsForCompany(companyId, 30)) >= lim;
   } catch (e) { return false; }
 }
+// ─── Cotă AI per companie (negociată în ofertă), pe LUNĂ CALENDARISTICĂ ───
+// settings.ai_quota = { questions: 50, overage: true, overagePriceEur: 0.20 }
+//   questions      = câte întrebări sunt incluse în abonament (0/absent = nelimitat)
+//   overage        = are voie să depășească (contra cost) sau se blochează la epuizare
+//   overagePriceEur= cât costă clientul fiecare întrebare peste cotă
+const AI_OVERAGE_PRICE_EUR = Number(process.env.AI_OVERAGE_PRICE_EUR) || 0.20;
+function _aiQuotaFromSettings(settings) {
+  const s = (settings && (typeof settings === 'string' ? (function () { try { return JSON.parse(settings); } catch (e) { return {}; } })() : settings)) || {};
+  const q = s.ai_quota || {};
+  const n = Number(q.questions);
+  return {
+    questions: Number.isFinite(n) && n > 0 ? Math.round(n) : 0,   // 0 = nelimitat
+    overage: q.overage !== false,                                  // implicit: poate depăși
+    overagePriceEur: (Number.isFinite(Number(q.overagePriceEur)) && Number(q.overagePriceEur) >= 0) ? Number(q.overagePriceEur) : AI_OVERAGE_PRICE_EUR
+  };
+}
+// Starea contorului pentru o companie: cât a folosit, cât mai are, dacă e pe cost suplimentar.
+async function aiQuotaState(companyId) {
+  const now = new Date();
+  const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const base = { questions: 0, used: 0, remaining: null, unlimited: true, overage: true, overagePriceEur: AI_OVERAGE_PRICE_EUR, overageCount: 0, overageCostEur: 0, blocked: false, periodEnd: periodEnd.toISOString() };
+  if (companyId == null) return base; // super-admin: fără cotă
+  let co = null; try { co = await db.getCompanyById(companyId); } catch (e) {}
+  const q = _aiQuotaFromSettings(co && co.settings);
+  let used = 0;
+  try { used = (await db.getAiMonthUsage(companyId)).questions; } catch (e) {}
+  if (!q.questions) return Object.assign(base, { used: used, overage: q.overage, overagePriceEur: q.overagePriceEur });
+  const overageCount = Math.max(0, used - q.questions);
+  return {
+    questions: q.questions, used: used,
+    remaining: Math.max(0, q.questions - used),
+    unlimited: false, overage: q.overage, overagePriceEur: q.overagePriceEur,
+    overageCount: overageCount,
+    overageCostEur: Math.round(overageCount * q.overagePriceEur * 100) / 100,
+    blocked: overageCount > 0 && !q.overage,   // a depășit ȘI nu are voie pe cost suplimentar
+    periodEnd: periodEnd.toISOString()
+  };
+}
+// Contorul pe care-l vede clientul (ca la Claude): cât a consumat luna asta și ce-l costă peste cotă.
+app.get('/api/ai/quota', requireAuth, async (req, res) => {
+  try {
+    const a = getAuth(req);
+    const st = await aiQuotaState(a.companyId);
+    res.json(Object.assign({ ok: true }, st));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'), async (req, res) => {
   try {
@@ -2388,11 +2438,18 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
       'REGULI: (1) Răspunde DOAR pe baza datelor întoarse de unelte — nu inventa cifre. (2) Dacă o valoare lipsește (ex: consum fără senzor de rezervor montat), spune sincer că nu e disponibilă, nu estima ca și cum ar fi măsurată. (3) Nu afișa coordonate GPS brute; folosește numele vehiculelor și adresele. (4) Fii concis și modern: titlu scurt cu **bold**, apoi puncte cu „• " și cifrele-cheie; dacă există alerte critice, pune-le primele. (5) Acoperă tot ce a cerut clientul. (6) Nu enumera la final uneltele apelate.'
     ].join('\n\n');
 
+    const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
     const result = await ai.runAgent({
       system, messages: [{ role: 'user', content: message }], tools, toolHandlers,
       model: ai.AI_AGENT_MODEL, maxTokens: 1100, maxIters: 8,
-      onUsage: u => db.recordAiUsage(req.companyId, 'insight', u).catch(() => {})
+      onUsage: u => { // agentul face mai multe apeluri pe ÎNTREBARE → însumăm și scriem UN rând (1 rând = 1 întrebare)
+        _agg.input_tokens += Number(u.input_tokens) || 0;
+        _agg.output_tokens += Number(u.output_tokens) || 0;
+        _agg.cache_read_input_tokens += Number(u.cache_read_input_tokens) || 0;
+        _agg.cache_creation_input_tokens += Number(u.cache_creation_input_tokens) || 0;
+      }
     });
+    db.recordAiUsage(req.companyId, 'insight', _agg, req.auth && req.auth.userId).catch(() => {});
     auditReq(req, 'ai_insight', 'assistant', null, { len: message.length, reports: reportCalls });
 
     // Surse unice (type+imei+perioadă) pentru chips-urile „Deschide raportul".
@@ -2755,6 +2812,9 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         id: c.id, name: c.name, is_demo: !!c.is_demo, plan: c.plan || null,
         vehicles: c.device_count || 0, users: c.user_count || 0,
         ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0,
+        // Cât ne COSTĂ efectiv clientul ăsta, în euro (nu doar tokeni) — baza pentru preț în ofertă.
+        ai_cost_eur: ai ? Math.round(ai.costEur({ input_tokens: u.input_tokens, output_tokens: u.output_tokens, cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens }) * 10000) / 10000 : 0,
+        ai_quota: _aiQuotaFromSettings(c.settings).questions || 0,
         ai_limit: Number(c.ai_monthly_limit) || 0,
         mrr: plans ? Math.round(_companyMrr(c).mrr) : 0,
         health: _healthSummary(hbc[c.id])
@@ -7357,6 +7417,18 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     const f = Object.assign({}, cur.features || {});
     fvalid.forEach(function (k) { if (typeof body.features[k] === 'boolean') f[k] = body.features[k]; });
     next.features = f;
+  }
+  // Cota AI (comercial: se negociază în ofertă) → STRICT super-admin, ca și `features`.
+  if (body.ai_quota && typeof body.ai_quota === 'object' && opts && opts.allowFeatures) {
+    const q = Object.assign({}, cur.ai_quota || {});
+    const n = Number(body.ai_quota.questions);
+    if (Number.isFinite(n) && n >= 0 && n <= 100000) q.questions = Math.round(n);
+    if (typeof body.ai_quota.overage === 'boolean') q.overage = body.ai_quota.overage;
+    const p = Number(body.ai_quota.overagePriceEur);
+    if (Number.isFinite(p) && p >= 0 && p <= 100) q.overagePriceEur = Math.round(p * 100) / 100;
+    next.ai_quota = q;
+  } else if (body.ai_quota === null && opts && opts.allowFeatures) {
+    delete next.ai_quota; // fără cotă = nelimitat
   }
   // Praguri alertă (RA Watch + RA Optimize + RA Care). Whitelist + clamping per cheie (SPECS canonice — vezi sus).
   if (body.alert_thresholds && typeof body.alert_thresholds === 'object') {

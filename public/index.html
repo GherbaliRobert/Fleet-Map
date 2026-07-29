@@ -12925,6 +12925,7 @@ const pozitii = await r.json();</code></pre>
         </div>
         <button class="rax-x" onclick="raxToggleAI()">&times;</button>
       </div>
+      <div id="rax-ai-quota" style="display:none;"></div>
       <div class="rax-body" id="rax-ai-msgs"></div>
       <div id="rax-ai-foot">
         <textarea id="rax-ai-input" rows="1" placeholder="Întreabă ceva despre flotă…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();raxSendAI();}"></textarea>
@@ -13375,9 +13376,37 @@ const pozitii = await r.json();</code></pre>
 
     // ── AI ──
     var SUGG = ['Unde sunt vehiculele acum?', 'Ce probleme are flota?', 'Km — săptămâna asta', 'Consum — 30 zile'];
+    // ─── Contor întrebări (ca la Claude): cât mai ai din luna curentă + ce te costă peste cotă ───
+    window.raxLoadQuota = async function () {
+      var box = $('rax-ai-quota'); if (!box) return;
+      var q = null;
+      try { q = await fetch('/api/ai/quota', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
+      if (!q || q.error || q.unlimited) { box.style.display = 'none'; return; } // fără cotă → nu arătăm nimic
+      var pct = Math.min(100, Math.round((q.used / Math.max(1, q.questions)) * 100));
+      var reset = q.periodEnd ? new Date(q.periodEnd).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' }) : '';
+      var over = q.overageCount > 0;
+      var col = over ? 'var(--orange)' : (q.remaining <= Math.max(3, q.questions * 0.15) ? 'var(--orange)' : 'var(--accent)');
+      var head, sub;
+      if (over) {
+        head = '<b>Cotă epuizată</b> · ' + q.overageCount + ' ' + (q.overageCount === 1 ? 'întrebare suplimentară' : 'întrebări suplimentare');
+        sub = 'Ești pe <b>cost suplimentar</b>: ' + q.overagePriceEur.toFixed(2).replace('.', ',') + ' €/întrebare · în plus luna asta: <b>' + q.overageCostEur.toFixed(2).replace('.', ',') + ' €</b>';
+      } else {
+        head = 'Îți mai rămân <b>' + q.remaining + '</b> din ' + q.questions + ' întrebări';
+        sub = 'Se reînnoiește pe ' + reset + (q.overage ? ' · peste cotă: ' + q.overagePriceEur.toFixed(2).replace('.', ',') + ' €/întrebare' : ' · la epuizare se oprește');
+      }
+      box.style.display = 'block';
+      box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
+      box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;margin-bottom:5px;">'
+        + '<span style="color:var(--text-secondary);">' + head + '</span>'
+        + (over ? '<span style="color:var(--orange);font-weight:800;font-size:11px;"><i class="fas fa-circle-exclamation"></i> extra</span>' : '')
+        + '</div>'
+        + '<div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';transition:width .3s;"></div></div>'
+        + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:5px;">' + sub + '</div>';
+    };
     window.raxToggleAI = function () {
       var ov = $('rax-ai-overlay'); var open = !ov.classList.contains('open');
       ov.classList.toggle('open', open);
+      if (open) { try { raxLoadQuota(); } catch (e) {} }
       if (!open) { ov.style.top = ''; ov.style.height = ''; } // #9: reset poziționarea de tastatură la închidere
       if (open && !$('rax-ai-msgs').dataset.init) {
         $('rax-ai-msgs').dataset.init = '1';
@@ -13444,6 +13473,7 @@ const pozitii = await r.json();</code></pre>
         var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
         var j = await r.json();
         thinking.remove();
+        try { raxLoadQuota(); } catch (e) {} // contorul scade imediat după întrebare
         var reply = j.reply || j.error || 'Eroare AI.';
         var row = addMsg('ai', reply);
         if (row && Array.isArray(j.sources) && j.sources.length) {
