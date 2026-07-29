@@ -15431,10 +15431,36 @@ const pozitii = await r.json();</code></pre>
       var hwTotal = deviceLines.reduce(function (s, l) { return s + l.total; }, 0);
       return { cfg: cfg, p: p, nPlain: nPlain, nCan: nCan, nFms: nFms, lines: lines, monthly: Math.round(monthly * 100) / 100, annual: Math.round(monthly * 12 * 100) / 100, contractTotal: Math.round(monthly * cfg.contractMonths * 100) / 100, montajLines: montajLines, montaj: Math.round(montaj * 100) / 100, initial: Math.round((montaj + monthly) * 100) / 100, deviceLines: deviceLines, hwTotal: Math.round(hwTotal * 100) / 100 };
     }
+    // Cost REAL al unui apel RA Insight (măsurat pe bucla agentului, cu prompt caching): ~0,008 € ≈ 0,04 lei.
+    var AIQ_COST_LEI = 0.04;
+    // Preț sugerat pe pachet — acoperă și clientul care pune numai întrebări grele (de ~5× mai scumpe).
+    // PRAG MINIM (nu preț-țintă): sub el ieși pe pierdere la un client care pune numai apeluri grele.
+    // Prețul real de vânzare e decizia ta — dacă piața acceptă mai mult, nu-l cobori la minim.
+    var AIQ_SUGGEST = { 50: 15, 100: 25, 200: 50, 500: 120 };
+    function _ofAiqCostHint(r) {
+      var box = document.getElementById('of-aiq-cost'); if (!box) return;
+      if (!r.cfg.aiA) { box.style.display = 'none'; return; }
+      box.style.display = 'block';
+      var n = r.cfg.aiqN || 0;
+      if (!n) { // nelimitat → nu putem plafona costul, doar avertizăm
+        box.innerHTML = '<i class="fas fa-triangle-exclamation" style="color:var(--orange);"></i> Nelimitat: costul nu are plafon. Un client intens poate depăși 100 lei/lună. Recomand un pachet.';
+        return;
+      }
+      var cost = n * AIQ_COST_LEI;                 // uz normal
+      var costMax = n * AIQ_COST_LEI * 5;          // scenariul negru: numai apeluri grele
+      var pret = _ofN((document.getElementById('of-pAiA') || {}).value) || 0;
+      var sug = AIQ_SUGGEST[n] || Math.round(n * 0.25);
+      var marja = cost > 0 && pret > 0 ? (pret / cost) : 0;
+      box.innerHTML = 'Te costă <b>~' + cost.toFixed(0) + ' lei/lună</b> (max ' + costMax.toFixed(0) + ' lei dacă pune numai apeluri grele)'
+        + (pret > 0 ? ' · la ' + pret.toFixed(0) + ' lei marja e <b style="color:' + (marja >= 3 ? 'var(--accent)' : 'var(--orange)') + ';">' + marja.toFixed(0) + '×</b>' : '')
+        + (pret > 0 && pret < sug ? ' · <b style="color:var(--orange);">sub pragul minim de ' + sug + ' lei</b>' : '')
+        + ' · <a href="#" onclick="event.preventDefault();var e=document.getElementById(\'of-pAiA\');if(e){e.value=' + sug + ';raxOfRecalc();}" style="color:var(--accent);font-weight:700;" title="Pragul de siguranță — nu prețul recomandat de vânzare">minim ' + sug + ' lei</a>';
+    }
     window.raxOfRecalc = function () {
       var r = _ofCalc();
       var cm = document.getElementById('of-retcustom-wrap'); if (cm) cm.style.display = (r.cfg.retTier === 'custom') ? 'inline-flex' : 'none';
       var aq = document.getElementById('of-aiq-wrap'); if (aq) aq.style.display = r.cfg.aiA ? 'flex' : 'none'; // cota apare doar dacă Asistentul AI e inclus
+      _ofAiqCostHint(r); // cât ne costă pachetul ales + preț sugerat (ca să vezi marja când negociezi)
       var host = document.getElementById('rax-of-summary'); if (!host) return;
       var rows = r.lines.map(function (l) { return '<tr><td>' + esc(l.label) + (l.qty > 1 ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num" style="color:var(--text-muted);">' + l.unit.toFixed(0) + '</td><td class="num"><b>' + l.total.toFixed(0) + '</b></td></tr>'; }).join('') || '<tr><td colspan="3" style="color:var(--text-muted);">Adaugă vehicule…</td></tr>';
       var mRows = r.montajLines.map(function (l) { return '<tr><td>' + esc(l.label) + ((l.qty > 1 && !l.perKm) ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num" style="color:var(--text-muted);">' + l.unit.toFixed(0) + (l.perKm ? '/km' : '') + '</td><td class="num"><b>' + l.total.toFixed(0) + '</b></td></tr>'; }).join('');
@@ -15582,6 +15608,7 @@ const pozitii = await r.json();</code></pre>
           '</select>' +
           '<span style="font-size:11px;color:var(--text-muted);">peste cotă</span>' + fNum('of-aiqP', 1, '', 60) + '<span style="font-size:11px;color:var(--text-muted);">lei/apel</span>' +
         '</div>' +
+        '<div id="of-aiq-cost" style="display:none;margin:-6px 0 10px 24px;font-size:11px;color:var(--text-muted);line-height:1.5;"></div>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiAg" onchange="raxOfRecalc()"> Agenți AI (RA Optimize / Care)</label>' + fNum('of-pAiAg', p.pAiAg, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span></div>' +
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
         row('Durată contract', fNum('of-contract', 12, '', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span>'));
