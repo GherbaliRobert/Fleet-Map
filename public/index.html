@@ -2038,6 +2038,13 @@ const pozitii = await r.json();</code></pre>
     .agp-model .p .agp-tile:hover > i{animation:raxCast .7s ease-in-out infinite}
     @keyframes raxCast{0%,100%{transform:rotate(0) scale(1);filter:drop-shadow(0 0 8px rgba(63,224,125,.9))}22%{transform:rotate(-17deg) scale(1.13)}52%{transform:rotate(11deg) scale(1.2)}78%{transform:rotate(-5deg) scale(1.1)}}
     @media (prefers-reduced-motion:reduce){.agp-model .p .agp-tile > i,.agp-model .p .agp-tile::before,.agp-model .p .agp-tile::after{animation:none!important}.agp-model .p .agp-tile > i{filter:none}}
+    /* ── „Agenții veghează": robotul scanează calm în fundal (mai discret ca RA Insight, ca să rămână vedeta) ── */
+    .agp-model .g .agp-tile > i{transform-origin:center;will-change:transform,filter;animation:raxWatch 4.6s ease-in-out infinite}
+    @keyframes raxWatch{0%,100%{transform:rotate(-6deg);filter:drop-shadow(0 0 0 rgba(63,224,125,0))}25%{transform:rotate(6deg)}50%{transform:rotate(-4deg);filter:drop-shadow(0 0 5px rgba(63,224,125,.55))}75%{transform:rotate(4deg)}}
+    .agp-model .g .agp-tile:hover{box-shadow:0 0 0 5px rgba(63,224,125,.1)}
+    .agp-model .g .agp-tile:hover > i{animation:raxWatchScan 1s ease-in-out infinite}
+    @keyframes raxWatchScan{0%,100%{transform:rotate(0) translateY(0)}20%{transform:rotate(-10deg) translateY(-1px)}50%{transform:rotate(9deg) translateY(-2px)}80%{transform:rotate(-5deg) translateY(0)}}
+    @media (prefers-reduced-motion:reduce){.agp-model .g .agp-tile > i{animation:none!important;filter:none}}
     .agp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
     .agp-chip{display:inline-flex;align-items:center;gap:7px;background:var(--bg-dark);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--text-secondary)}
     .agp-chip .d{width:8px;height:8px;border-radius:50%}
