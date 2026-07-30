@@ -452,45 +452,39 @@
       padding: 0 18px 14px;
     }
 
+    /* „Card premium": accent colorat pe muchia din stânga + fundal în degrade ușor spre culoarea stării.
+       Înlocuiește vechea dungă de sus — se citește la fel de repede care cadran e care, dar arată mai îngrijit. */
     .stat-chip {
       min-width: 0;
       position: relative;
-      overflow: hidden;                     /* bara de accent de sus nu iese din colțurile rotunjite */
-      background: var(--bg-dark);
+      overflow: hidden;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--chip-color, var(--accent)) 9%, var(--bg-dark)), var(--bg-dark) 72%);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 10px 3px 9px;                /* strâns pe orizontală: cinci cadrane într-o bară de 340 px */
-      text-align: center;
+      border-left: 3px solid var(--chip-color, var(--accent));
+      border-radius: 12px;
+      padding: 9px 3px 8px 8px;             /* aliniat la stânga; strâns ca „În mișcare" să încapă în bara îngustă */
+      text-align: left;
       font-family: inherit;
       cursor: pointer;
       transition: border-color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease;
     }
-    /* Dunga de sus preia culoarea stării: se citește dintr-o privire care cadran e care. */
-    .stat-chip::before {
-      content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
-      background: var(--chip-color, var(--accent));
-      opacity: .55; transition: opacity .18s ease;
-    }
     .stat-chip:hover {
-      border-color: var(--chip-color, var(--accent));
-      background: color-mix(in srgb, var(--chip-color, var(--accent)) 9%, var(--bg-dark));
       transform: translateY(-1px);
-      box-shadow: 0 4px 14px color-mix(in srgb, var(--chip-color, var(--accent)) 20%, transparent);
+      box-shadow: 0 6px 16px color-mix(in srgb, var(--chip-color, var(--accent)) 22%, transparent);
     }
-    .stat-chip:hover::before { opacity: 1; }
     .stat-chip:active { transform: translateY(0); }
     .stat-chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--chip-color, var(--accent)) 30%, transparent); }
     .stat-chip.active {
-      border-color: var(--chip-color, var(--accent));
-      background: color-mix(in srgb, var(--chip-color, var(--accent)) 14%, var(--bg-dark));
+      border-left-width: 4px;               /* selectat = muchie mai groasă + degrade mai intens + strălucire */
+      background: linear-gradient(135deg, color-mix(in srgb, var(--chip-color, var(--accent)) 18%, var(--bg-dark)), var(--bg-dark) 82%);
+      box-shadow: 0 6px 16px color-mix(in srgb, var(--chip-color, var(--accent)) 24%, transparent);
     }
-    .stat-chip.active::before { opacity: 1; }
 
     .stat-chip .stat-value {
-      font-size: 20px;
+      font-size: 22px;                       /* mai mare = aspect premium */
       font-weight: 800;
       color: var(--chip-color, var(--accent));
-      line-height: 1.15;
+      line-height: 1.05;
       font-variant-numeric: tabular-nums;   /* cifrele nu mai „țopăie" când 9 devine 10 */
     }
 
@@ -498,9 +492,9 @@
        tăia, iar micșorarea fontului până încăpea îl făcea ilizibil (8 px). Scrierea normală încape la
        10,5 px, pe un singur rând, și arată mai puțin strident. */
     .stat-chip .stat-label {
-      font-size: 9.5px;
+      font-size: 9px;
       color: var(--text-muted);
-      letter-spacing: -.1px;                /* „Staționat" e cel mai lung cuvânt: trebuie să încapă pe un rând */
+      letter-spacing: -.3px;                /* „În mișcare" e cel mai lung: trebuie să încapă pe un rând, aliniat stânga */
       font-weight: 700;
       margin-top: 2px;
       line-height: 1.2;
