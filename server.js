@@ -8593,6 +8593,28 @@ app.delete('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, 
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Aplică pachetul RA Insight dintr-o ofertă direct pe o companie (după semnare). Așa cota vândută
+// în ofertă NU mai trebuie recopiată manual în fișa clientului — se activează modulul + se scrie cota.
+app.post('/api/admin/offers/:id/apply-to-company', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID ofertă invalid' });
+    const companyId = parseInt((req.body || {}).company_id); if (!Number.isFinite(companyId)) return res.status(400).json({ error: 'Alege o companie' });
+    const offer = await db.getOfferById(id); if (!offer) return res.status(404).json({ error: 'Oferta nu există' });
+    const company = await db.getCompanyById(companyId); if (!company) return res.status(404).json({ error: 'Compania nu există' });
+    const cfg = (offer.config && offer.config.cfg) || {};
+    if (!cfg.aiA) return res.status(400).json({ error: 'Oferta nu include RA Insight — nu e nimic de aplicat.' });
+    // aiqN = 0 în ofertă înseamnă „nelimitat" → cotă absentă (fără plafon). altfel = numărul de apeluri/lună.
+    const n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
+    const priceEur = Math.max(0, Math.round((Number(cfg.aiqP) || 0.20) * 100) / 100);
+    const patch = {
+      features: { ai_assistant: true },                 // modulul devine activ
+      ai_quota: n > 0 ? { questions: n, overage: true, overagePriceEur: priceEur } : null  // null = nelimitat
+    };
+    await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
+    auditReq(req, 'apply_offer', 'company', companyId, { offer_id: id, quota: n, priceEur: priceEur });
+    res.json({ ok: true, company: company.name, quota: n, overagePriceEur: priceEur, unlimited: n === 0 });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).
 // Super-adminul (fără companie proprie) folosește în continuare Facturarea completă; aici primește listă goală.
 app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {

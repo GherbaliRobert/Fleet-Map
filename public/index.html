@@ -15758,7 +15758,11 @@ const pozitii = await r.json();</code></pre>
       var rows = _raxOf.offers || [];
       if (!rows.length) { host.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Oferte salvate</div><div class="rax-co-meta">Nicio ofertă salvată încă.</div>'; return; }
       host.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Oferte salvate (' + rows.length + ')</div><table class="rax-co-table"><thead><tr><th>Ofertă</th><th>Client</th><th class="num">Lunar</th><th>Data</th><th></th></tr></thead><tbody>' +
-        rows.map(function (o) { return '<tr><td><b>' + esc(o.name || '—') + '</b></td><td>' + esc(o.client_name || '—') + '</td><td class="num"><b>' + Number(o.monthly_total || 0).toFixed(0) + ' ' + esc(o.currency || 'RON') + '</b></td><td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;"><button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button> <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>'; }).join('') + '</tbody></table>';
+        rows.map(function (o) {
+          var hasAi = !!((o.config && o.config.cfg && o.config.cfg.aiA));
+          var applyBtn = hasAi ? ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;color:var(--accent);" onclick="raxOfApply(' + o.id + ')" title="Aplică pachetul RA Insight pe o companie"><i class="fas fa-wand-magic-sparkles"></i></button>' : '';
+          return '<tr><td><b>' + esc(o.name || '—') + '</b>' + (hasAi ? ' <span style="font-size:9.5px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;vertical-align:middle;">AI</span>' : '') + '</td><td>' + esc(o.client_name || '—') + '</td><td class="num"><b>' + Number(o.monthly_total || 0).toFixed(0) + ' ' + esc(o.currency || 'RON') + '</b></td><td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;"><button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button>' + applyBtn + ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
+        }).join('') + '</tbody></table>';
     };
     window.raxOfLoad = function (id) {
       var o = (_raxOf.offers || []).find(function (x) { return x.id === id; }); if (!o) return;
@@ -15783,6 +15787,42 @@ const pozitii = await r.json();</code></pre>
     window.raxOfDelete = async function (id) {
       if (!await raConfirm('Ștergi această ofertă?', { okLabel: 'Șterge' })) return;
       try { await fetch('/api/admin/offers/' + id, { method: 'DELETE', credentials: 'same-origin' }); if (window.raxToast) raxToast('Ofertă ștearsă ✓', 'success'); if (_raxOf.editingId === id) raxOfReset(); else raxOfLoadList(); } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); }
+    };
+    // Aplică pachetul RA Insight dintr-o ofertă direct pe o companie (activează modulul + scrie cota).
+    window.raxOfApply = async function (id) {
+      var o = (_raxOf.offers || []).find(function (x) { return x.id === id; }); if (!o) return;
+      var cfg = (o.config && o.config.cfg) || {};
+      var n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
+      var priceEur = Number(cfg.aiqP) || 0.20;
+      var pachet = n > 0 ? (n + ' apeluri/lună') : 'apeluri nelimitate';
+      var cos = [];
+      try { cos = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); } catch (e) {}
+      cos = (Array.isArray(cos) ? cos : []).filter(function (c) { return !c.is_demo; });
+      if (!cos.length) { if (window.raxToast) raxToast('Nicio companie disponibilă', 'error'); return; }
+      var ex = document.getElementById('ra-of-apply'); if (ex) ex.remove();
+      var ov = document.createElement('div'); ov.id = 'ra-of-apply';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);padding:20px;';
+      var opts = cos.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name || ('#' + c.id)) + '</option>'; }).join('');
+      ov.innerHTML = '<div style="background:var(--bg-card,#fff);color:var(--text-primary);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.4);max-width:430px;width:100%;padding:22px;font-family:inherit;">'
+        + '<div style="font-size:15px;font-weight:800;margin-bottom:4px;"><i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i> Aplică RA Insight pe companie</div>'
+        + '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">Din oferta <b>' + esc(o.name || '—') + '</b>: <b style="color:var(--accent);">' + pachet + '</b>' + (n > 0 ? ' · peste cotă ' + priceEur.toFixed(2) + ' €/apel' : '') + '. Se activează modulul și se scrie cota pe compania aleasă.</div>'
+        + '<select id="ra-of-apply-co" class="rax-field" style="width:100%;margin-bottom:16px;">' + opts + '</select>'
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+        + '<button class="rax-btn" onclick="document.getElementById(\'ra-of-apply\').remove()">Anulează</button>'
+        + '<button class="rax-btn primary" id="ra-of-apply-ok"><i class="fas fa-check"></i> Aplică</button></div></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+      document.getElementById('ra-of-apply-ok').onclick = async function () {
+        var cid = document.getElementById('ra-of-apply-co').value;
+        this.disabled = true; this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se aplică…';
+        try {
+          var resp = await fetch('/api/admin/offers/' + id + '/apply-to-company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: cid }) });
+          var j = await resp.json().catch(function () { return {}; });
+          if (!resp.ok) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); this.disabled = false; this.innerHTML = '<i class="fas fa-check"></i> Aplică'; return; }
+          ov.remove();
+          if (window.raxToast) raxToast('RA Insight aplicat pe ' + (j.company || 'companie') + ' ✓ (' + (j.unlimited ? 'nelimitat' : j.quota + ' apeluri/lună') + ')', 'success');
+        } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); this.disabled = false; this.innerHTML = '<i class="fas fa-check"></i> Aplică'; }
+      };
     };
     window.raxOfReset = function () { _raxOf.editingId = null; _raxOf.prices = Object.assign({ pPlain: 29, pCan: 45, pFms: 65, pAiA: 150, pAiAg: 300, ret6: 0, ret12: 0, ret24: 50, ret36: 100, retCustom: 0 }, _OF_MONTAJ_DEF, _OF_DEVICE_DEF); raxLoadOfertare(); };
     window.raxOfExportPdf = function () {
