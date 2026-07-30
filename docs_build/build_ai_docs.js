@@ -5,6 +5,10 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const A = path.join(__dirname, 'assets');
+// Logo REAL de producție (RGBA, transparent). CLAUDE.md: logo.png = varianta ALBĂ (fundal închis),
+// logo-light.png = varianta ÎNCHISĂ (fundal alb). 694x135 → raport ~5.14:1.
+const LOGO_DARK = path.join(__dirname, '..', 'public', 'logo.png');        // pe fundal ÎNCHIS (copertă)
+const LOGO_LIGHT = path.join(__dirname, '..', 'public', 'logo-light.png'); // pe fundal ALB (antet pagini)
 
 const GREEN = '#3FE07D', GREEN_D = '#16a34a', INK = '#0b1f17', DARK = '#0d1411', DARK2 = '#15241c';
 const TXT = '#1f2937', MUTED = '#6b7280', LINE = '#e5e7eb', LIGHT = '#f8fafc';
@@ -16,7 +20,7 @@ const FA = {
   check: _c('f00c'), circleCheck: _c('f058'), bolt: _c('f0e7'), gauge: _c('f625'),
   truck: _c('f0d1'), pin: _c('f3c5'), gas: _c('f52f'), clock: _c('f017'), warn: _c('f071'),
   coins: _c('f51e'), route: _c('f4d7'), phone: _c('f095'), trend: _c('e098'), database: _c('f1c0'),
-  bell: _c('f0f3'), lock: _c('f023'), sparkle: _c('e2ca')
+  bell: _c('f0f3'), lock: _c('f023'), sparkle: _c('e2ca'), envelope: _c('f0e0'), globe: _c('f0ac')
 };
 
 function reg(doc) {
@@ -33,11 +37,9 @@ function aStroke(doc, x, y, w, h, r, hex, a, lw) { doc.roundedRect(x, y, w, h, r
 
 // ─── Șablon pagină (identic cu build_docs.js) ───
 function pageHeader(doc, M, sub) {
-  doc.roundedRect(M, M, 30, 22, 5).fillColor(GREEN).fill();
-  doc.font('NX').fontSize(14).fillColor(INK).text('RA', M, M + 4, { width: 30, align: 'center', lineBreak: false });
-  doc.font('NX').fontSize(16).fillColor('#111').text('Tracks', M + 36, M + 4, { lineBreak: false });
-  if (sub) doc.font('N').fontSize(9).fillColor(MUTED).text(sub, M, M + 6, { width: doc.page.width - 2 * M, align: 'right', lineBreak: false });
-  doc.moveTo(M, M + 30).lineTo(doc.page.width - M, M + 30).strokeColor(GREEN).lineWidth(2).stroke();
+  try { doc.image(LOGO_LIGHT, M, M + 2, { height: 24 }); } catch (e) {}
+  if (sub) doc.font('N').fontSize(9).fillColor(MUTED).text(sub, M, M + 8, { width: doc.page.width - 2 * M, align: 'right', lineBreak: false });
+  doc.moveTo(M, M + 32).lineTo(doc.page.width - M, M + 32).strokeColor(GREEN).lineWidth(2).stroke();
 }
 function pageFooter(doc, M, n) {
   const fy = doc.page.height - M - 12;
@@ -194,16 +196,14 @@ function build() {
   // ══════ COPERTĂ (dark, ca flyer-ul) ══════
   doc.rect(0, 0, W, H).fillColor(DARK).fill();
   doc.rect(0, 0, W, 6).fillColor(GREEN).fill();
-  doc.roundedRect(M, 44, 40, 30, 7).fillColor(GREEN).fill();
-  doc.font('NX').fontSize(19).fillColor(INK).text('RA', M, 51, { width: 40, align: 'center', lineBreak: false });
-  doc.font('NX').fontSize(21).fillColor('#fff').text('Tracks', M + 50, 52, { lineBreak: false });
+  try { doc.image(LOGO_DARK, M, 42, { height: 40 }); } catch (e) {}
   doc.font('NB').fontSize(10).fillColor(GREEN).text('INTELIGENȚĂ ARTIFICIALĂ PENTRU FLOTA TA', M, 150, { characterSpacing: 1 });
   doc.font('NX').fontSize(36).fillColor('#fff').text('6 agenți AI', M, 172, { width: CW });
   doc.font('NX').fontSize(36).fillColor(GREEN).text('+ RA Insight', M, 214, { width: CW });
   doc.font('N').fontSize(12).fillColor('#c9ddd3').text('Șase agenți care veghează flota non-stop — și un asistent AI care răspunde la orice întrebare despre ea. Fiecare cu rolul lui, direct în aplicație.', M, 268, { width: CW - 30 });
 
   // constelația celor 6 agenți (grilă de iconițe)
-  const agIcons = [[FA.shield, 'Watch'], [FA.compass, 'Dispatch'], [FA.wrench, 'Care'], [FA.leaf, 'Optimize'], [FA.clipboard, 'Compliance'], [FA.file, 'Client']];
+  const agIcons = [[FA.shield, 'Watch', 'Paznic 24/7'], [FA.compass, 'Dispatch', 'Dispecerat'], [FA.wrench, 'Care', 'Mentenanță'], [FA.leaf, 'Optimize', 'Eco-driving'], [FA.clipboard, 'Compliance', 'Ore de condus'], [FA.file, 'Client', 'Sinteza zilei']];
   const gy = 330, gcw = CW / 3;
   agIcons.forEach(function (g, i) {
     const gx = M + (i % 3) * gcw, gyy = gy + Math.floor(i / 3) * 92;
@@ -212,7 +212,7 @@ function build() {
     aFill(doc, gx + 14, gyy + 14, 32, 32, 8, GREEN, 0.16);
     icon(doc, g[0], gx + 22, gyy + 22, 16, GREEN);
     doc.font('NB').fontSize(11).fillColor('#fff').text('RA ' + g[1], gx + 54, gyy + 20, { lineBreak: false });
-    doc.font('N').fontSize(7.5).fillColor('#8aa89c').text('rule-based · 0 tokeni', gx + 54, gyy + 36, { width: gcw - 70, lineBreak: false });
+    doc.font('N').fontSize(7.5).fillColor('#8aa89c').text(g[2], gx + 54, gyy + 36, { width: gcw - 70, lineBreak: false });
   });
 
   // banda RA Insight (vedeta)
@@ -222,7 +222,7 @@ function build() {
   aFill(doc, M + 22, iy + 24, 40, 40, 10, GREEN, 0.18);
   icon(doc, FA.wand, M + 33, iy + 33, 20, GREEN);
   doc.font('NX').fontSize(15).fillColor('#fff').text('RA Insight — asistentul AI al flotei', M + 78, iy + 22, { lineBreak: false });
-  doc.font('N').fontSize(9.5).fillColor('#c9ddd3').text('Singurul cu AI generativ (Claude Haiku). Întrebi în limbaj natural, îți răspunde despre flota ta și îți rezumă rapoartele. Se vinde cu pachet de apeluri, cu contor vizibil.', M + 78, iy + 42, { width: CW - 100 });
+  doc.font('N').fontSize(9.5).fillColor('#c9ddd3').text('Asistentul care leagă tot. Îl întrebi orice despre flotă, în limbaj natural, și îți răspunde pe loc — plus rezumate de rapoarte, la cerere.', M + 78, iy + 42, { width: CW - 100 });
 
   doc.font('N').fontSize(9).fillColor('#7e948a').text('Monitorizare GPS & management de flotă · ratrack.ro', M, H - 46, { lineBreak: false });
 
@@ -234,7 +234,7 @@ function build() {
 
   // 3 diferențiatori
   [[FA.bolt, 'Rulează singuri', 'automat, din oră în oră — plus rulare manuală oricând, cu un click'],
-   [FA.circleCheck, 'Zero tokeni AI', 'funcționează pe reguli, nu pe modele — nu te costă nimic per verificare'],
+   [FA.circleCheck, 'Incluși în platformă', 'veghează non-stop, fără să miști un deget — fac parte din aplicație'],
    [FA.bell, 'Îți spun doar ce contează', 'când e „totul în regulă", tac; când apare o problemă, o semnalează']
   ].forEach(function (d, i) {
     const cy2 = y + i * 62;
@@ -247,12 +247,12 @@ function build() {
   });
   y += 3 * 62 + 12;
 
-  // distincție cheie: 6 rule-based vs RA Insight
+  // distincție cheie: supraveghere automată (cei 6) vs. răspuns la cerere (RA Insight) — pe COMPORTAMENT, nu pe tokeni
   doc.roundedRect(M, y, CW, 96, 11).fillColor(DARK).fill();
   doc.rect(M, y, 5, 96).fillColor(GREEN).fill();
   icon(doc, FA.bolt, M + 22, y + 20, 15, GREEN);
-  doc.font('NB').fontSize(9).fillColor(GREEN).text('DIFERENȚA IMPORTANTĂ', M + 46, y + 15, { lineBreak: false });
-  doc.font('N').fontSize(10.5).fillColor('#e6f3ec').text('Cei 6 agenți sunt incluși în platformă și nu consumă AI — sunt reguli care veghează non-stop. RA Insight e singurul cu inteligență artificială reală (răspunde la întrebări în limbaj natural), de aceea se vinde separat, cu pachet de apeluri.', M + 46, y + 32, { width: CW - 70 });
+  doc.font('NB').fontSize(9).fillColor(GREEN).text('SUPRAVEGHERE + RĂSPUNS LA CERERE', M + 46, y + 15, { lineBreak: false });
+  doc.font('N').fontSize(10.5).fillColor('#e6f3ec').text('Cei 6 agenți lucrează singuri și te anunță când găsesc ceva — supraveghere non-stop. RA Insight e altfel: nu așteaptă, îl întrebi tu direct, în limbaj natural, orice despre flotă și îți răspunde pe loc. Împreună acoperă și pază automată, și răspuns la cerere.', M + 46, y + 32, { width: CW - 70 });
   y += 96 + 20;
   doc.font('N').fontSize(9.5).fillColor(MUTED).text('Pe paginile următoare: fiecare agent cu rolul lui, ce face, ce date îți dă și cum te ajută — cu un exemplu real din aplicație.', M, y, { width: CW });
   pageFooter(doc, M, 2);
@@ -297,42 +297,35 @@ function build() {
   doc.roundedRect(M, y, 44, 44, 10).fillColor('#f0fdf4').fill();
   icon(doc, FA.wand, M + 12, y + 12, 20, GREEN_D);
   doc.font('NX').fontSize(22).fillColor('#111').text('RA Insight', M + 56, y + 2, { lineBreak: false });
-  doc.font('N').fontSize(10.5).fillColor(MUTED).text('Singurul agent cu inteligență artificială reală. Îl întrebi orice despre flotă, în limbaj natural — el caută în date și îți răspunde. Tot el rezumă rapoartele într-un paragraf clar.', M + 56, y + 28, { width: CW - 56 });
-  y += 66;
+  doc.font('N').fontSize(10.5).fillColor(MUTED).text('Asistentul care leagă tot. Îl întrebi orice despre flotă, în limbaj natural — caută în datele tale și îți răspunde pe loc: de la poziții și consum, la scadențe și ore de condus. Tot el rezumă rapoartele într-un paragraf clar.', M + 56, y + 28, { width: CW - 56 });
+  y += 72;
   mockInsight(doc, M, y, CW, 158); y += 172;
 
-  doc.font('NX').fontSize(13).fillColor('#111').text('Cum se vinde — pe pachet de apeluri', M, y); y += 22;
-  // tabel pachete
-  const pk = [['50', '19 lei', 'client mic'], ['100', '29 lei', 'uz mediu'], ['150', '49 lei', 'uz intens'], ['200', '59 lei', 'flotă mare']];
-  const cw4 = CW / 4;
-  pk.forEach(function (p, i) {
-    const px = M + i * cw4;
-    doc.roundedRect(px, y, cw4 - 10, 62, 9).fillColor(LIGHT).fill();
-    doc.roundedRect(px, y, cw4 - 10, 62, 9).strokeColor(LINE).lineWidth(1).stroke();
-    doc.font('NX').fontSize(17).fillColor(GREEN_D).text(p[0], px + 12, y + 10, { lineBreak: false });
-    doc.font('N').fontSize(7.5).fillColor(MUTED).text('apeluri/lună', px + 12, y + 30, { lineBreak: false });
-    doc.font('NB').fontSize(11).fillColor('#111').text(p[1], px + 12, y + 40, { lineBreak: false });
-  });
-  y += 62 + 8;
-  pk.forEach(function (p, i) { const px = M + i * cw4; doc.font('N').fontSize(7.5).fillColor(MUTED).text(p[2], px + 12, y, { width: cw4 - 16, lineBreak: false }); });
-  y += 22;
-
-  // 3 puncte cheie despre facturare
-  [[FA.gauge, 'Contor vizibil clientului', 'vede oricând câte apeluri i-au mai rămas din luna curentă, exact ca la Claude'],
-   [FA.coins, 'Depășire ca la telefon', 'când termină pachetul, îi apare automat costul suplimentar pe apel — nu se blochează brusc'],
-   [FA.trend, 'Profit garantat', 'un apel ne costă ~0,04 lei; pachetul e calculat să rămână profitabil chiar și la uz intens']
+  // ce obții cu RA Insight (valoare, fără mecanica de vânzare)
+  [[FA.wand, 'Întrebi în limbaj natural', 'nu înveți rapoarte — scrii întrebarea ca unui coleg și primești răspunsul'],
+   [FA.file, 'Rezumate de rapoarte', 'transformă un raport lung într-un paragraf clar, gata de trimis'],
+   [FA.gauge, 'Transparență totală', 'vezi oricând cât ai folosit din luna curentă — fără surprize']
   ].forEach(function (d, i) {
-    const cy2 = y + i * 46;
+    const cy2 = y + i * 44;
     doc.roundedRect(M + 14, cy2 + 2, 28, 28, 7).fillColor('#f0fdf4').fill();
     icon(doc, d[0], M + 21, cy2 + 8, 14, GREEN_D);
     doc.font('NB').fontSize(11).fillColor('#111').text(d[1], M + 52, cy2 + 2, { lineBreak: false });
     doc.font('N').fontSize(9.5).fillColor(MUTED).text(d[2], M + 52, cy2 + 17, { width: CW - 66, lineBreak: false });
   });
-  y += 3 * 46 + 8;
-  doc.roundedRect(M, y, CW, 44, 9).fillColor(DARK).fill();
-  doc.rect(M, y, 5, 44).fillColor(GREEN).fill();
-  icon(doc, FA.bolt, M + 20, y + 15, 13, GREEN);
-  doc.font('N').fontSize(10).fillColor('#e6f3ec').text('Întrebările predefinite rămân gratuite. Se taxează doar chat-ul liber — controlat, cu limită lunară pe care o vede clientul.', M + 44, y + 14, { width: CW - 64 });
+  y += 3 * 44 + 10;
+
+  // ofertă personalizată + contact (fără prețuri/mecanica de vânzare)
+  doc.roundedRect(M, y, CW, 92, 12).fillColor(DARK).fill();
+  doc.rect(M, y, 5, 92).fillColor(GREEN).fill();
+  doc.font('NX').fontSize(14).fillColor('#fff').text('Ofertă personalizată', M + 26, y + 18, { lineBreak: false });
+  doc.font('N').fontSize(10).fillColor('#c9ddd3').text('Prețul se stabilește în funcție de flota și de nevoile tale. Spune-ne ce ai și îți pregătim o ofertă pe măsură.', M + 26, y + 40, { width: CW * 0.52 });
+  const cxx = M + CW * 0.60;
+  icon(doc, FA.envelope, cxx, y + 20, 11, GREEN);
+  doc.font('NB').fontSize(10.5).fillColor('#fff').text('contact@ratrack.ro', cxx + 20, y + 19, { lineBreak: false });
+  icon(doc, FA.phone, cxx, y + 42, 11, GREEN);
+  doc.font('NB').fontSize(10.5).fillColor('#fff').text('+40 7XX XXX XXX', cxx + 20, y + 41, { lineBreak: false });
+  icon(doc, FA.globe, cxx, y + 64, 11, GREEN);
+  doc.font('NB').fontSize(10.5).fillColor('#fff').text('ratrack.ro', cxx + 20, y + 63, { lineBreak: false });
   pageFooter(doc, M, 6);
 
   // ══════ P7 — Închidere ══════
@@ -359,7 +352,7 @@ function build() {
   // stats
   doc.roundedRect(M, y, CW, 58, 8).fillColor('#f0fdf4').fill();
   aStroke(doc, M, y, CW, 58, 8, GREEN, 0.5, 1);
-  [['6', 'agenți incluși'], ['0', 'tokeni / verificare'], ['24/7', 'supraveghere'], ['1', 'asistent AI']].forEach(function (k, i) {
+  [['6', 'agenți incluși'], ['24/7', 'supraveghere'], ['1', 'asistent AI'], ['0', 'configurări']].forEach(function (k, i) {
     const kx = M + 16 + i * (CW / 4);
     doc.font('NX').fontSize(20).fillColor(GREEN_D).text(k[0], kx, y + 11, { lineBreak: false });
     doc.font('N').fontSize(8.5).fillColor(MUTED).text(k[1], kx, y + 37, { lineBreak: false });
