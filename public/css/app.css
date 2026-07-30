@@ -507,6 +507,9 @@
       white-space: nowrap;                  /* mai bine strâns decât rupt în două rânduri inegale */
     }
 
+    /* „Total" = suma întregii flote, nu o stare. Verde-închis (dim): din familia verde („activ/flotă"),
+       dar clar distinct de „Pornit" care e verdele viu. Fără el, Total cădea pe --accent = același verde. */
+    .stat-chip.total    { --chip-color: var(--green-dim); }
     .stat-chip.online   { --chip-color: var(--green); }
     .stat-chip.moving   { --chip-color: var(--orange); }
     .stat-chip.stationat{ --chip-color: var(--yellow); }
