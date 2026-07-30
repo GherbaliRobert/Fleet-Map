@@ -36,7 +36,7 @@
     var bar = document.createElement('div'); bar.id = 'map-search-bar'; bar.className = 'msb';
     bar.innerHTML =
       '<div class="msb-search"><i class="fas fa-search"></i><input id="msb-input" placeholder="Caută vehicul, IMEI, nr…" autocomplete="off"></div>' +
-      '<button class="msb-toggle" id="msb-toggle" title="Vehicule afișate pe hartă — apasă pentru a alege"><i class="fas fa-eye msb-ico"></i><span id="msb-count" class="msb-count">0/0</span><i class="fas fa-chevron-down msb-cv"></i></button>' +
+      '<button class="msb-toggle" id="msb-toggle" title="Vehicule afișate pe hartă — apasă pentru a alege"><i class="fas fa-list-ul msb-ico"></i><span id="msb-count" class="msb-count">0/0</span><i class="fas fa-chevron-down msb-cv"></i></button>' +
       '<div class="msb-dropdown" id="msb-dropdown" style="display:none;">' +
         '<div class="msb-dd-head"><a href="#" id="msb-all"><i class="fas fa-check-double"></i> Toate</a><a href="#" id="msb-none"><i class="fas fa-xmark"></i> Niciuna</a></div>' +
         '<div id="msb-list" class="msb-list"></div>' +
