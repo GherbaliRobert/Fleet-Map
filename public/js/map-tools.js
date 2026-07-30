@@ -11,7 +11,13 @@
   function allImeis() { var a = []; try { DEVS().forEach(function (d, imei) { a.push(imei); }); } catch (e) {} return a; }
   function isSel(imei) { return !(window._mapSel instanceof Set) || window._mapSel.has(imei); }
   function selCount() { return (window._mapSel instanceof Set) ? window._mapSel.size : allImeis().length; }
-  function updateCount() { var b = el('msb-count'); if (b) b.textContent = selCount() + ' / ' + allImeis().length; }
+  function updateCount() {
+    var b = el('msb-count'); if (!b) return;
+    var sel = selCount(), tot = allImeis().length;
+    b.innerHTML = '<b>' + sel + '</b><span class="msb-tot">/' + tot + '</span>';
+    // „filtrat" = nu toate vehiculele sunt afișate → pastila devine portocalie ca semnal vizual.
+    var tg = el('msb-toggle'); if (tg) tg.classList.toggle('filtered', sel < tot);
+  }
 
   // Aplică selecția pe toți markerii (afișează doar bifații).
   window.applyMapSelection = function () {
@@ -30,7 +36,7 @@
     var bar = document.createElement('div'); bar.id = 'map-search-bar'; bar.className = 'msb';
     bar.innerHTML =
       '<div class="msb-search"><i class="fas fa-search"></i><input id="msb-input" placeholder="Caută vehicul, IMEI, nr…" autocomplete="off"></div>' +
-      '<button class="msb-toggle" id="msb-toggle" title="Selectează vehicule pe hartă"><i class="fas fa-car-side"></i> <span id="msb-count">0 / 0</span> <i class="fas fa-chevron-down" style="font-size:10px"></i></button>' +
+      '<button class="msb-toggle" id="msb-toggle" title="Vehicule afișate pe hartă — apasă pentru a alege"><i class="fas fa-eye msb-ico"></i><span id="msb-count" class="msb-count">0/0</span><i class="fas fa-chevron-down msb-cv"></i></button>' +
       '<div class="msb-dropdown" id="msb-dropdown" style="display:none;">' +
         '<div class="msb-dd-head"><a href="#" id="msb-all"><i class="fas fa-check-double"></i> Toate</a><a href="#" id="msb-none"><i class="fas fa-xmark"></i> Niciuna</a></div>' +
         '<div id="msb-list" class="msb-list"></div>' +
@@ -51,8 +57,8 @@
     });
     updateCount();
   }
-  function openDropdown() { el('msb-dropdown').style.display = 'block'; renderList(); }
-  function closeDropdown() { var d = el('msb-dropdown'); if (d) d.style.display = 'none'; }
+  function openDropdown() { el('msb-dropdown').style.display = 'block'; var t = el('msb-toggle'); if (t) t.classList.add('open'); renderList(); }
+  function closeDropdown() { var d = el('msb-dropdown'); if (d) d.style.display = 'none'; var t = el('msb-toggle'); if (t) t.classList.remove('open'); }
   function toggleDropdown() { var d = el('msb-dropdown'); if (d.style.display === 'none') openDropdown(); else closeDropdown(); }
 
   // ── Grupuri în dropdown (filtrare pe categorie) ──
