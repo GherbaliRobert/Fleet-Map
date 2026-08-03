@@ -2,6 +2,7 @@ import type { Position } from '../api/endpoints';
 import { statusOf } from '../lib/status';
 import { fmtAgo } from '../lib/format';
 import { Icon } from './Icon';
+import { VehicleArt, vehCatOf } from './VehicleArt';
 
 export function VehicleCard({ v, offlineMin, onClick }: { v: Position; offlineMin: number; onClick: () => void }) {
   const s = statusOf(v, offlineMin);
@@ -14,6 +15,8 @@ export function VehicleCard({ v, offlineMin, onClick }: { v: Position; offlineMi
   return (
     <button class="vcard" onClick={onClick}>
       <span class="dot" style={{ background: s.color, boxShadow: `0 0 6px ${s.color}` }} />
+      {/* Silueta categoriei, colorată după stare — același set „Plutitor cu umbră" ca pe web. */}
+      <VehicleArt cat={vehCatOf(v as any)} color={s.color} width={34} />
       <div class="vcard-main">
         <div class="vcard-name">
           {v.plate ? <span class="vcard-plate">{v.plate}</span> : null}
