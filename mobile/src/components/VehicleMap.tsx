@@ -7,6 +7,8 @@ import type { Position } from '../api/endpoints';
 import { statusOf, type Status, type StatusInfo } from '../lib/status';
 import { fmtAgo } from '../lib/format';
 import { createVehicleLayer, type VehicleLayer } from './vehicle3d';
+import { markerTopSvg } from './VehicleTop';
+import { vehCatOf } from './VehicleArt';
 
 const HEX: Record<Status, string> = { moving: '#3FE07D', idle: '#eab308', stopped: '#ef4444', offline: '#8A93A3' };
 
@@ -51,18 +53,14 @@ function applyMapLayer(map: maplibregl.Map, key: string) {
 
 function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string)); }
 
-// ─── Iconițe (săgeată 2D + izometric 3D) ───
-function markerArrowSvg(color: string, angle: number) {
-  return `<div style="transform:rotate(${angle}deg)"><svg width="26" height="26" viewBox="0 0 24 24" fill="${color}" stroke="#0B0E11" stroke-width="1.5"><path d="M12 2l7 18-7-4-7 4z"/></svg></div>`;
-}
-
 // Conținutul unui marker. În modul 3D: DOAR eticheta cu numărul (mașina e model 3D real pe hartă,
-// randat de stratul Three.js). În 2D: săgeata plată. Eticheta rămâne dreaptă la înclinare.
+// randat de stratul Three.js). În 2D: silueta „Realist top-down" (stil AROBS), rotită după direcția de
+// mers — botul arată încotro merge, fără săgeată separată. Aceeași ca pe harta web.
 function markerInner(v: Position, st: StatusInfo, use3d: boolean) {
   const label = esc(v.plate || v.name || '');
   const lbl = label ? `<div class="vmk-label">${label}</div>` : '';
   if (use3d) return `<div class="vmk-inner vmk-3d">${lbl}</div>`;
-  return `<div class="vmk-inner">${lbl}<div class="vmk-icon">${markerArrowSvg(HEX[st.status], v.angle || 0)}</div></div>`;
+  return `<div class="vmk-inner">${lbl}<div class="vmk-icon">${markerTopSvg(vehCatOf(v as any), HEX[st.status], v.angle || 0)}</div></div>`;
 }
 function popupHtml(v: Position, st: StatusInfo, stale: boolean) {
   const title = `${esc(v.name || v.imei)}${v.plate ? ' · ' + esc(v.plate) : ''}`;
