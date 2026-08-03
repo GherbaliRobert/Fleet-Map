@@ -684,9 +684,6 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS current_period_end BIGINT;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS custom_plan JSONB;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_monthly_limit BIGINT;
-        ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_read_tokens INTEGER DEFAULT 0;
-        ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_write_tokens INTEGER DEFAULT 0;
-        ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS user_id INTEGER;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS access_until BIGINT;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS cui VARCHAR(40);
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS reg_com VARCHAR(40);
@@ -970,9 +967,19 @@ async function initDb() {
         kind VARCHAR(20),
         input_tokens INTEGER DEFAULT 0,
         output_tokens INTEGER DEFAULT 0,
+        cache_read_tokens INTEGER DEFAULT 0,
+        cache_write_tokens INTEGER DEFAULT 0,
+        user_id INTEGER,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
+    // Migrare pentru bazele EXISTENTE (coloanele de mai sus acoperă doar bazele proaspete). ATENȚIE la
+    // ordine: aceste ALTER-uri stăteau în blocul mare de migrări de la începutul funcției, care rulează
+    // ÎNAINTE de CREATE TABLE — pe o bază goală (CI, instalare nouă, sandbox) serverul murea la pornire
+    // cu „relation ai_usage does not exist". Migrarea unei tabele stă DUPĂ crearea ei.
+    await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_read_tokens INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_write_tokens INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS user_id INTEGER`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_company ON ai_usage (company_id, created_at)`);
 
     // Preferințe UI per user (toggle-uri: overspeed_heatmap, replay_marker, etc.) — separat de notification_prefs ca să nu interfere
