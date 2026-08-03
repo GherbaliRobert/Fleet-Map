@@ -3360,6 +3360,46 @@ app.get('/api/admin/devices', requireAuth, requireSuperadmin, async (req, res) =
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Inventar echipamente GPS ───
+// Super-admin → toate companiile; admin de companie (manageFleet) → doar flota lui.
+// Coloane: client, mașină, IMEI, model GPS, cartelă SIM, ultima transmisie.
+function _invScope(req) {
+  // null = toate companiile (doar super-admin). Altfel, compania utilizatorului.
+  return req.isSuper ? null : req.companyId;
+}
+async function _deviceInventory(req) {
+  const rows = await db.getDeviceInventory(_invScope(req));
+  // Demo NU intră în inventarul flotei reale (regula din CLAUDE.md), exceptând chiar compania demo.
+  return rows.filter(function (r) {
+    if (req.companyId === demoCompanyId) return true;
+    return !DEMO_SET.has(r.imei);
+  });
+}
+app.get('/api/device-inventory', requireAuth, requireFleet, async (req, res) => {
+  try { res.json(await _deviceInventory(req)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Export brandat: trece prin sendReport → nume „RA-Tracks - Raport ... - data" + logo (regula din CLAUDE.md).
+app.get('/api/device-inventory/export', requireAuth, requireFleet, async (req, res) => {
+  try {
+    if (!reportExport) return res.status(503).json({ error: 'Exportul nu e disponibil pe acest server' });
+    const rows = await _deviceInventory(req);
+    const fmt = (req.query.format === 'pdf') ? 'pdf' : 'xlsx';
+    const fmtTs = function (t) { return t ? new Date(t).toLocaleString('ro-RO') : '—'; };
+    const report = {
+      type: 'device_inventory',
+      label: 'Inventar dispozitive',
+      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + rows.length + ' dispozitive',
+      columns: ['Client', 'Nr. înmatriculare', 'IMEI', 'Model dispozitiv', 'Cartelă SIM', 'Ultima transmisie'],
+      rows: rows.map(function (r) {
+        return [r.company_name || '—', r.plate || r.name || '—', r.imei, r.gps_model || '—', r.sim_number || '—', fmtTs(r.last_tx)];
+      })
+    };
+    auditReq(req, 'export', 'device_inventory', null, { count: rows.length, format: fmt });
+    return reportExport.sendReport(res, report, fmt);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Debug super-admin: vezi io_data brut + can_interface pentru un IMEI (troubleshoot tracker fără date CAN) ───
 // GET /api/debug/last-io/:imei → ultimele 5 io_data parsate din DB
 // GET /api/debug/iface/:imei   → can_interface DB + cache + cheile CAN din ultima poziție
@@ -4341,6 +4381,10 @@ app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, 
     const { name, vehicle_type, plate } = req.body;
     await db.updateDeviceInfo(imei, name, vehicle_type, plate);
     invalidateLiveEnrichCache(); // /api/live ia identitatea din acest cache → invalidează ca să nu servească nr. vechi
+    // Inventar echipament GPS (model tracker + cartelă SIM) — se completează la instalare.
+    if (req.body.gps_model !== undefined || req.body.sim_number !== undefined) {
+      await db.setDeviceGpsInfo(imei, req.body.gps_model, req.body.sim_number);
+    }
     // Sursa stării de contact (auto = IO 239 / din1 = DIN1) — DOAR super-admin (nu admin/user companie).
     if (req.body.ignition_source !== undefined && req.isSuper) {
       await db.setDeviceIgnitionSource(imei, req.body.ignition_source);

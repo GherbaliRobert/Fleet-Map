@@ -286,6 +286,11 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS color VARCHAR(7);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS notes TEXT;
+        -- Inventar ECHIPAMENT GPS (nu vehicul): modelul trackerului (ex. FMB140) și numărul cartelei SIM.
+        -- ATENȚIE: coloana "model" de mai sus e modelul VEHICULULUI (Logan, Transit) — lucruri diferite.
+        -- Se completează manual la instalare (modelul NU vine în datele trimise de tracker).
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS gps_model VARCHAR(60);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS sim_number VARCHAR(30);
         -- Fișă vehicul extinsă (paritate AROBS)
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS speed_limit INTEGER;
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS consumption_city NUMERIC(6,2);
@@ -1740,6 +1745,40 @@ async function updateDeviceInfo(imei, name, vehicleType, plate) {
     SET name = $2, vehicle_type = $3, plate = $4
     WHERE imei = $1
   `, [imei, name, vehicleType, plate]);
+}
+// Inventar echipament GPS: modelul trackerului + numărul cartelei SIM. Trimite null ca să ștergi valoarea;
+// undefined lasă câmpul neatins (ca să nu golim din greșeală la un update parțial).
+async function setDeviceGpsInfo(imei, gpsModel, simNumber) {
+  const sets = [], vals = [imei];
+  if (gpsModel !== undefined) { vals.push(gpsModel === null ? null : String(gpsModel).trim().slice(0, 60) || null); sets.push('gps_model = $' + vals.length); }
+  if (simNumber !== undefined) { vals.push(simNumber === null ? null : String(simNumber).trim().slice(0, 30) || null); sets.push('sim_number = $' + vals.length); }
+  if (!sets.length) return;
+  await pool.query('UPDATE devices SET ' + sets.join(', ') + ' WHERE imei = $1', vals);
+}
+// Inventarul de echipamente: un rând per dispozitiv, cu clientul, mașina, IMEI, model GPS, SIM și ultima
+// transmisie. companyId = null → toate companiile (super-admin); altfel doar flota companiei.
+async function getDeviceInventory(companyId) {
+  const params = [];
+  let where = "d.status IS DISTINCT FROM 'archived'";
+  if (companyId != null) { params.push(companyId); where += ' AND d.company_id = $1'; }
+  // „Ultima transmisie" = cea mai recentă poziție (LATERAL, ca în getDevices), cu `last_seen` ca rezervă
+  // pentru dispozitivele care s-au conectat dar n-au trimis încă nicio poziție.
+  const r = await pool.query(
+    `SELECT d.imei, d.name, d.plate, d.gps_model, d.sim_number,
+            d.company_id, c.name AS company_name,
+            GREATEST(COALESCE(p.timestamp, to_timestamp(0)), COALESCE(d.last_seen, to_timestamp(0))) AS last_tx
+       FROM devices d
+       LEFT JOIN companies c ON c.id = d.company_id
+       LEFT JOIN LATERAL (
+         SELECT timestamp FROM positions WHERE positions.imei = d.imei ORDER BY timestamp DESC LIMIT 1
+       ) p ON true
+      WHERE ${where}
+      ORDER BY c.name NULLS LAST, d.plate NULLS LAST, d.imei`, params);
+  return r.rows.map(function (x) {
+    const t = x.last_tx && new Date(x.last_tx).getTime() > 0 ? x.last_tx : null;
+    return { imei: x.imei, name: x.name || null, plate: x.plate || null, gps_model: x.gps_model || null,
+      sim_number: x.sim_number || null, company_id: x.company_id, company_name: x.company_name || null, last_tx: t };
+  });
 }
 // Sursa stării de „contact": 'auto' (IO 239 calculat de device, implicit) sau 'din1' (folosește DIN1 — pentru
 // trackere cu sursa de ignition configurată greșit). Override aplicat la ingest (live + stocat).
@@ -3223,7 +3262,7 @@ module.exports = {
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
-  updateDeviceInfo, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
+  updateDeviceInfo, setDeviceGpsInfo, getDeviceInventory, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
   updateVehicleDetails,
   deviceExists,
   createDevice,

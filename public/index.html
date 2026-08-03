@@ -666,6 +666,9 @@
         <div class="vgrid2">
           <div class="form-group"><label>Centru de cost</label><input type="text" id="edit-cost-center" placeholder="ex: Șantier Nord"></div>
           <div class="form-group"><label>Număr inventar</label><input type="text" id="edit-inventory"></div>
+          <!-- Echipament GPS (nu vehicul): apar în „Inventar dispozitive" din Administrare. Nu vin de la tracker. -->
+          <div class="form-group"><label>Model dispozitiv GPS</label><input type="text" id="edit-gps-model" placeholder="ex: FMB140"></div>
+          <div class="form-group"><label>Număr cartelă SIM</label><input type="text" id="edit-sim-number" placeholder="ex: 0757036943"></div>
           <div class="form-group" style="grid-column:1 / -1;"><label>Pictogramă</label>
             <div class="icon-select" id="icon-select">
               <button type="button" class="icon-select-trigger" id="icon-select-trigger" onclick="toggleIconPicker(event)" aria-haspopup="listbox" aria-expanded="false">
@@ -1374,6 +1377,7 @@
           <button class="aside-item" data-super data-atab="devices" onclick="raxAdminTab('devices')"><i class="fas fa-microchip"></i> Dispozitive</button>
           <button class="aside-item users-only" data-atab="users" onclick="raxAdminTab('users')"><i class="fas fa-users"></i> Utilizatori</button>
           <button class="aside-item users-only company-admin-only" data-atab="myinvoices" onclick="raxAdminTab('myinvoices')"><i class="fas fa-file-invoice-dollar"></i> Facturile mele</button>
+          <button class="aside-item users-only" data-atab="inventar" onclick="raxAdminTab('inventar')"><i class="fas fa-clipboard-list"></i> Inventar dispozitive</button>
           <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
           <div class="aside-grp" data-super>AI &amp; Module</div>
           <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-wand-magic-sparkles"></i> Utilizare RA Insight</button>
@@ -1404,6 +1408,7 @@
 
           <div id="admin-tab-companies" style="display:none;"></div>
           <div id="admin-tab-devices" style="display:none;"></div>
+          <div id="admin-tab-inventar" style="display:none;"></div>
           <div id="admin-tab-accounts" style="display:none;"></div>
           <div id="admin-tab-archived" style="display:none;"></div>
           <div id="admin-tab-billing" style="display:none;"></div>
@@ -2866,7 +2871,7 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
-      var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare', demoreq: 'admin-tab-demoreq' };
+      var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', inventar: 'admin-tab-inventar', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare', demoreq: 'admin-tab-demoreq' };
       var titles = { companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live', demoreq: 'Cereri demo' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
       Object.keys(map).forEach(function (k) {
@@ -2892,6 +2897,8 @@ const pozitii = await r.json();</code></pre>
         if (window.raxLoadMyInvoices) window.raxLoadMyInvoices();
       } else if (name === 'users') {
         if (window.loadUsers) window.loadUsers();
+      } else if (name === 'inventar') {
+        if (window.raxLoadInventar) window.raxLoadInventar();
       } else if (name === 'agents') {
         // Nu mai duplicăm pagina „Agenți AI" din meniul lateral. Aici, fiind panou de admin,
         // arătăm cine FOLOSEȘTE RA Insight — privire de ansamblu pe clienți.
@@ -11213,6 +11220,7 @@ const pozitii = await r.json();</code></pre>
           setv('edit-cons-city', dev.consumption_city); setv('edit-cons-road', dev.consumption_road);
           setv('edit-cons-idle', dev.consumption_idle); setv('edit-road-tax', dev.road_tax_category);
           setv('edit-cost-center', dev.cost_center); setv('edit-inventory', dev.inventory_number);
+          setv('edit-gps-model', dev.gps_model); setv('edit-sim-number', dev.sim_number);
           setv('edit-odo-base', dev.odo_base_km != null && dev.odo_base_km !== '' ? Math.round(dev.odo_base_km) : '');
           setIconPicker(dev.icon || iconFromType(dev.vehicle_type) || 'car'); setv('edit-notes', dev.notes);
           if (dev.color) setv('edit-color', dev.color);
@@ -11275,6 +11283,7 @@ const pozitii = await r.json();</code></pre>
         consumption_road: numOrNull('edit-cons-road'), consumption_idle: numOrNull('edit-cons-idle'),
         road_tax_category: strOrNull('edit-road-tax'), cost_center: strOrNull('edit-cost-center'),
         inventory_number: strOrNull('edit-inventory'), odo_base_km: numOrNull('edit-odo-base'),
+        gps_model: strOrNull('edit-gps-model'), sim_number: strOrNull('edit-sim-number'),
         icon: (document.getElementById('edit-icon').value || null),
         color: (document.getElementById('edit-color').value || null),
         notes: strOrNull('edit-notes')
@@ -15612,6 +15621,99 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
         '</div>' + montajBlock + hwBlock +
         '<div style="margin-top:10px;font-size:10.5px;color:var(--text-muted);text-align:right;">Curs BNR: 1 € = ' + _fxRate.toFixed(4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + ' · 1 leu = ' + (100 / _fxRate).toFixed(1) + ' cenți</div>';
+    };
+    // ─── Inventar dispozitive GPS (super-admin = toate companiile · admin companie = flota lui) ───
+    // Un rând per echipament: client, mașină, IMEI, model GPS, cartelă SIM, ultima transmisie.
+    var _invRows = [], _invQ = {}, _invTimer = null, _invSort = { k: 'company_name', dir: 1 };
+    var INV_COLS = [
+      { k: 'company_name', label: 'Client' },
+      { k: 'plate', label: 'Nr. înmatriculare' },
+      { k: 'imei', label: 'IMEI' },
+      { k: 'gps_model', label: 'Model dispozitiv' },
+      { k: 'sim_number', label: 'Cartelă SIM' },
+      { k: 'last_tx', label: 'Ultima transmisie' }
+    ];
+    function _invVal(r, k) { return k === 'plate' ? (r.plate || r.name || '') : (r[k] == null ? '' : String(r[k])); }
+    // Vechimea ultimei transmisii = semnal de sănătate: >7 zile e roșu (echipament mort/demontat), >24h portocaliu.
+    function _invAge(t) {
+      if (!t) return { txt: 'niciodată', col: 'var(--red)', title: 'Nu a transmis niciodată' };
+      var d = Date.now() - new Date(t).getTime(), h = d / 3600000;
+      var txt = new Date(t).toLocaleString('ro-RO');
+      if (h > 168) return { txt: txt, col: 'var(--red)', title: 'Fără transmisie de peste 7 zile' };
+      if (h > 24) return { txt: txt, col: 'var(--orange)', title: 'Fără transmisie de peste 24 de ore' };
+      return { txt: txt, col: '', title: '' };
+    }
+    function _invFiltered() {
+      var out = _invRows.filter(function (r) {
+        return INV_COLS.every(function (c) {
+          var q = (_invQ[c.k] || '').trim().toLowerCase(); if (!q) return true;
+          var v = c.k === 'last_tx' ? _invAge(r.last_tx).txt : _invVal(r, c.k);
+          return String(v).toLowerCase().indexOf(q) >= 0;
+        });
+      });
+      var k = _invSort.k, dir = _invSort.dir;
+      return out.sort(function (a, b) {
+        if (k === 'last_tx') { return dir * ((a.last_tx ? new Date(a.last_tx).getTime() : 0) - (b.last_tx ? new Date(b.last_tx).getTime() : 0)); }
+        return dir * _invVal(a, k).localeCompare(_invVal(b, k), 'ro', { numeric: true });
+      });
+    }
+    window.raxInvSort = function (k) { if (_invSort.k === k) _invSort.dir = -_invSort.dir; else { _invSort.k = k; _invSort.dir = 1; } _invRender(); };
+    window.raxInvSearch = function (k, v) { _invQ[k] = v; _invRender(); };
+    window.raxInvClear = function () { _invQ = {}; _invRender(); };
+    window.raxInvExport = function (fmt) { window.open('/api/device-inventory/export?format=' + (fmt || 'xlsx'), '_blank'); };
+    function _invRender() {
+      var host = document.getElementById('admin-tab-inventar'); if (!host) return;
+      var rows = _invFiltered(), anyQ = Object.keys(_invQ).some(function (k) { return (_invQ[k] || '').trim(); });
+      var noGps = _invRows.filter(function (r) { return !r.gps_model || !r.sim_number; }).length;
+      var head = INV_COLS.map(function (c) {
+        var ar = _invSort.k === c.k ? (_invSort.dir > 0 ? ' <i class="fas fa-arrow-up" style="font-size:9px;"></i>' : ' <i class="fas fa-arrow-down" style="font-size:9px;"></i>') : '';
+        return '<th style="padding:7px 9px;text-align:left;white-space:nowrap;cursor:pointer;" onclick="raxInvSort(\'' + c.k + '\')">' + c.label + ar + '</th>';
+      }).join('');
+      var filt = INV_COLS.map(function (c) {
+        return '<th style="padding:4px 6px;"><input value="' + esc(_invQ[c.k] || '') + '" oninput="raxInvSearch(\'' + c.k + '\',this.value)" placeholder="Caută" style="width:100%;min-width:90px;font-size:11.5px;padding:5px 7px;border-radius:6px;border:1px solid var(--border);background:var(--bg-dark);color:var(--text-primary);font-family:inherit;"></th>';
+      }).join('');
+      var body = rows.map(function (r) {
+        var a = _invAge(r.last_tx), miss = 'color:var(--text-muted);font-style:italic;';
+        return '<tr>'
+          + '<td style="padding:7px 9px;">' + esc(r.company_name || '—') + '</td>'
+          + '<td style="padding:7px 9px;font-weight:700;">' + esc(r.plate || r.name || '—') + '</td>'
+          + '<td style="padding:7px 9px;">' + esc(r.imei) + '</td>'
+          + '<td style="padding:7px 9px;' + (r.gps_model ? '' : miss) + '">' + esc(r.gps_model || 'necompletat') + '</td>'
+          + '<td style="padding:7px 9px;' + (r.sim_number ? '' : miss) + '">' + esc(r.sim_number || 'necompletat') + '</td>'
+          + '<td style="padding:7px 9px;white-space:nowrap;' + (a.col ? 'color:' + a.col + ';font-weight:700;' : '') + '" title="' + esc(a.title) + '">' + esc(a.txt) + '</td>'
+          + '</tr>';
+      }).join('') || '<tr><td colspan="6" style="padding:16px;color:var(--text-muted);text-align:center;">Niciun dispozitiv' + (anyQ ? ' pentru filtrele curente.' : '.') + '</td></tr>';
+      host.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">'
+        + '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-clipboard-list"></i> Inventar dispozitive</div>'
+        + '<span style="font-size:11.5px;color:var(--text-muted);">' + rows.length + (anyQ ? ' din ' + _invRows.length : '') + ' echipamente</span>'
+        + (noGps ? '<span style="font-size:11px;color:var(--orange);font-weight:700;"><i class="fas fa-triangle-exclamation"></i> ' + noGps + ' fără model/SIM completat</span>' : '')
+        + '<div style="margin-left:auto;display:flex;gap:8px;">'
+        + (anyQ ? '<button class="rax-btn" onclick="raxInvClear()"><i class="fas fa-xmark"></i> Șterge filtrele</button>' : '')
+        + '<button class="rax-btn primary" onclick="raxInvExport(\'xlsx\')"><i class="fas fa-file-excel"></i> Exportă Excel</button>'
+        + '<button class="rax-btn" onclick="raxInvExport(\'pdf\')"><i class="fas fa-file-pdf"></i> PDF</button>'
+        + '</div></div>'
+        + '<div style="overflow-x:auto;"><table class="rax-co-table" style="width:100%;"><thead>'
+        + '<tr style="color:var(--text-muted);border-bottom:1px solid var(--border);">' + head + '</tr>'
+        + '<tr>' + filt + '</tr></thead><tbody>' + body + '</tbody></table></div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5;">Modelul dispozitivului și cartela SIM se completează în fișa vehiculului (nu vin automat de la tracker). „Ultima transmisie" se împrospătează la 60 de secunde; portocaliu = peste 24h fără date, roșu = peste 7 zile.</div>';
+    }
+    window.raxLoadInventar = async function () {
+      var host = document.getElementById('admin-tab-inventar'); if (!host) return;
+      if (!_invRows.length) host.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>';
+      try {
+        var d = await fetch('/api/device-inventory', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d && d.error) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare: ' + esc(d.error) + '</div>'; return; }
+        _invRows = Array.isArray(d) ? d : [];
+      } catch (e) { host.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Eroare de rețea.</div>'; return; }
+      _invRender();
+      // reîmprospătare la 60s cât timp tabul e vizibil (trackerele transmit la ~30s; mai des ar fi risipă)
+      if (_invTimer) clearInterval(_invTimer);
+      _invTimer = setInterval(function () {
+        var h = document.getElementById('admin-tab-inventar');
+        if (!h || h.style.display === 'none' || !h.offsetParent) { clearInterval(_invTimer); _invTimer = null; return; }
+        fetch('/api/device-inventory', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+          .then(function (x) { if (Array.isArray(x)) { _invRows = x; _invRender(); } }).catch(function () {});
+      }, 60000);
     };
     // ─── Utilizare RA Insight (super-admin): cine îl folosește, cât din cotă, cât ne costă ───
     window.raxLoadAiUsage = async function () {
