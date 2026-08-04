@@ -97,6 +97,35 @@ Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
 - [ ] **Contul de test ca utilizator.** Deocamdată testați totul ca super-admin, care trece prin
   toate porțile. Ecranele goale și mesajele „nu ai acces" nu le vede niciunul dintre voi.
 
+### AMÂNDOI · Traseu: butoane tăiate, calendar tăiat, aspect învechit — `în curs`
+
+**Ce am schimbat:** trei lucruri în panoul „Istoric traseu".
+
+1. **Al patrulea buton se tăia.** Rândul de export avea patru butoane (CSV, KML, Limite reale,
+   Aliniază pe drumuri) pe un singur rând, iar bara laterală are 340px. „Aliniază pe drumuri" se
+   termina la 387px — ieșea 47px în afara panoului și se reteza la margine. Cauza: rândul era
+   construit să nu se rupă niciodată pe două rânduri. Acum sunt două câte două.
+2. **Calendarul se tăia la partea de jos.** Pe un laptop cu fereastră mai joasă (1366×610),
+   calendarul de la „Până la" ieșea 53px sub marginea ecranului — exact peste zona unde se alege
+   ORA. Biblioteca îl răstoarnă deasupra doar dacă încape integral acolo; când nu încape nici sus,
+   nici jos, îl lăsa să iasă. Acum e tras înapoi în fereastră. Se aplică **tuturor** selectoarelor
+   de dată din aplicație, nu doar celor din Traseu.
+3. **Butoanele arată ca restul aplicației.** N-aveau niciun fundal definit, deci moșteneau griul
+   implicit al browserului. Acum au colț rotunjit, contur discret și se ridică ușor la hover —
+   același limbaj ca cipurile din Localizare și ca butoanele din APK.
+
+**Fondatorul vede:** exact ce vede și clientul — e același ecran.
+
+**Clientul vede:** butonul „Aliniază pe drumuri", care înainte era invizibil pe ecrane normale.
+Practic, o funcție pe care o plătea și nu o putea folosi.
+
+> Verificat prin măsurare, la 1366×610 și la 1306×821 (dimensiunea din captura voastră): niciun
+> element nu mai iese din panou, niciun calendar nu mai iese din fereastră.
+
+**Pe APK:** ecranul Traseu e construit altfel — are butoane de perioadă în loc de calendare și
+n-are rând de export — deci defectul nu există acolo. Butoanele lui erau deja rotunjite și
+conturate; web-ul era cel care ieșea din rând.
+
 ---
 
 ## Decizie: ce vedem din conturile clienților

@@ -5299,6 +5299,28 @@ const pozitii = await r.json();</code></pre>
       });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSingleDatePickers); else initSingleDatePickers();
+    // Calendarul are ~344px înălțime. Flatpickr îl răstoarnă deasupra câmpului doar dacă încape ACOLO
+    // integral; când nu încape nici sus, nici jos — laptop cu fereastră joasă, câmpul „Până la" la
+    // mijlocul panoului — îl lasă să iasă din ecran și se taie fix partea de jos, unde se alege ora.
+    // Îl tragem înapoi în fereastră. Se aplică TUTUROR selectoarelor de dată din aplicație, nu doar
+    // celor din Traseu, fiindcă toate folosesc aceeași bibliotecă.
+    if (typeof flatpickr !== 'undefined' && flatpickr.setDefaults) {
+      flatpickr.setDefaults({
+        onOpen: function (sel, str, fp) {
+          // setTimeout, NU requestAnimationFrame: flatpickr își calculează poziția DUPĂ acest cârlig,
+          // iar rAF nu se execută deloc într-o filă de fundal sau o fereastră care nu desenează —
+          // corecția n-ar fi rulat niciodată acolo, tăcut.
+          setTimeout(function () {
+            var c = fp && fp.calendarContainer;
+            if (!c || c.classList.contains('inline') || c.classList.contains('static')) return;
+            var depasire = c.getBoundingClientRect().bottom - (window.innerHeight - 8);
+            if (depasire > 0) c.style.top = (parseFloat(c.style.top || 0) - depasire) + 'px';
+            var sus = c.getBoundingClientRect().top;                // dacă a ajuns prea sus, îl coborâm
+            if (sus < 8) c.style.top = (parseFloat(c.style.top || 0) + (8 - sus)) + 'px';
+          }, 0);
+        }
+      });
+    }
     function initRangePicker(fromId, toId, opts) {
       opts = opts || {};
       if (typeof flatpickr === 'undefined') return;
