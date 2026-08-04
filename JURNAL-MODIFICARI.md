@@ -90,14 +90,49 @@ Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
   lucrurile de pus pe masă: cine primește ce (vezi punctul următor), pragurile și răcirea de 5
   minute, ce ajunge pe telefon și ce rămâne doar în clopoțel, și dacă tipurile de alertă acoperă
   ce cer clienții.
-- [ ] **Super-adminul primește notificările tuturor clienților.** `getUsersForImei` (db.js:2637)
-  include `role = 'superadmin'` necondiționat, pentru orice vehicul. Cu 3 companii merge; la 30 vă
-  veți opri push-ul cu totul. **Contrazice și ce ați spus voi:** nu vreți să vedeți ce face fiecare
-  companie. → de decis: primiți doar notificările de platformă + companiile pe care le bifați?
+- [ ] **Ce vedem noi din conturile clienților** — decizia cea mai mare. Are secțiune proprie mai
+  jos: [Ce vedem din conturile clienților](#decizie-ce-vedem-din-conturile-clienților).
 - [ ] **Editorul de Zone n-are selector de companie.** Zonele desenate de voi rămân fără companie.
   Funcționează (motorul le acceptă), dar nu le puteți atribui unui client anume.
 - [ ] **Contul de test ca utilizator.** Deocamdată testați totul ca super-admin, care trece prin
   toate porțile. Ecranele goale și mesajele „nu ai acces" nu le vede niciunul dintre voi.
+
+---
+
+## Decizie: ce vedem din conturile clienților
+
+**Cum va arăta după lansare (stabilit de Robert, 04.08):** fiecare client are contul lui și își
+gestionează singur flota. *Transport SRL* → utilizatorul Alin încarcă 5 mașini → cele 5 stau în
+contul Transport SRL, iar el face ce vrea acolo. Compania e granița.
+
+**Ce ne rămâne de hotărât:** din tot ce se întâmplă în acel cont, ce vedem noi ca fondatori și ce
+nu. Acum vedem **tot**, peste tot, fiindcă în cod super-adminul e tratat uniform ca „fără companie
+= toate companiile" (`req.isSuper ? null : req.companyId`, peste zeci de rute). Nu e o scăpare
+punctuală, e regula generală — deci schimbarea ei e o decizie, nu o reparație.
+
+Inventarul de mai jos e ca să bifați pe îndelete *vrem / nu vrem*. Nu e exhaustiv, dar acoperă tot
+ce e vizibil în interfață azi.
+
+| Ce vedem acum | Bifați |
+|---|---|
+| **Vehiculele și pozițiile live** ale tuturor companiilor, pe hartă | vrem / nu vrem |
+| **Traseele istorice** ale oricărui vehicul, cu opriri și viteze | vrem / nu vrem |
+| **Rapoartele** — fără vehicul ales, un raport cuprinde flotele TUTUROR companiilor într-un singur document | vrem / nu vrem |
+| **Notificările** — fiecare alertă a fiecărui vehicul ajunge și la noi (db.js:2637) | vrem / nu vrem |
+| **Setările clientului** — alertele, zonele, grupele, șoferii, mentenanța, documentele lui | vrem / nu vrem |
+| **Utilizatorii lui** — ce conturi are, ce roluri, cine la ce vehicule are acces | vrem / nu vrem |
+| **Jurnalul de audit** — cine ce a făcut în contul lui, cu IP și oră | vrem / nu vrem |
+| **Facturarea** — plăți, abonament, consum | vrem / nu vrem |
+| **Chei API, fișiere tahograf, constatările agenților AI** | vrem / nu vrem |
+| **DevConsole (`/debug`)** — poziții brute, în timp real, per IMEI | vrem / nu vrem |
+
+Trei lucruri de avut în minte când decideți:
+
+1. **„Nu vrem" nu înseamnă mereu „ascundem".** Pentru suport, uneori chiar trebuie să vedeți —
+   diferența e între *acces permanent* și *acces la cerere, lăsând urmă în audit*.
+2. **Notificările sunt cazul urgent.** Cu push-ul pornit implicit, la 30 de companii telefoanele vă
+   sună continuu și îl veți opri cu totul — pierzând și ce contează pentru voi.
+3. **Ce le spuneți clienților** despre asta ține de politica de confidențialitate, nu doar de cod.
 
 ---
 
