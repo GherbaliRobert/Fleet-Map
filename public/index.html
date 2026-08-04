@@ -158,7 +158,13 @@
             <input type="text" id="search-input" placeholder="Caută vehicul, IMEI, număr…" oninput="applyFilters()">
             <button class="search-clear" type="button" onclick="clearVehicleSearch()" title="Golește căutarea" aria-label="Golește căutarea"><i class="fas fa-xmark"></i></button>
           </div>
+          <button id="veh-pick-btn" onclick="locOpenPicker()" title="Alege vehiculele afișate pe hartă" aria-label="Alege vehiculele afișate"><i class="fas fa-list-check"></i></button>
           <button id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Ascunde lista" aria-label="Ascunde lista"><i class="fas fa-chevron-left"></i></button>
+        </div>
+        <!-- Când e activă o selecție, se SPUNE. Altfel omul crede că i-au dispărut vehiculele. -->
+        <div id="loc-sel-bar" style="display:none;">
+          <i class="fas fa-filter"></i><span id="loc-sel-txt"></span>
+          <button type="button" onclick="locClearSel()">Arată tot</button>
         </div>
 
         <!-- Cadranele SUNT filtrul: fiecare arată un număr și duce la vehiculele care îl compun. Rândul de
@@ -223,7 +229,7 @@
         <div id="history-controls">
           <div class="hp-field">
             <label>Lista vehicule</label>
-            <input id="hp-veh-filter" type="text" placeholder="Caută vehicul…" autocomplete="off" oninput="hpVehRender()">
+            <button type="button" class="history-btn hp-pick" onclick="hpOpenPicker()"><i class="fas fa-list-check"></i> <span id="hp-pick-label">Alege vehiculele</span></button>
             <div id="hp-veh-list"></div>
             <!-- Selectorul vechi rămâne, ascuns: îl citesc fișa vehiculului, „închide ruta" și eticheta din
                  antet. Îl ținem sincronizat cu vehiculul ACTIV, ca să nu rescriem acele căi. -->
@@ -2427,6 +2433,31 @@ const pozitii = await r.json();</code></pre>
   </div>
 
   <!-- ═══ Preferințe notificări (per utilizator) ═══ -->
+  <!-- Alegerea vehiculelor — aceeași fereastră în Traseu și în Localizare. La 200 de vehicule o listă
+       cu derulare e inutilizabilă, de aceea CĂUTAREA e primul lucru și primește focusul la deschidere:
+       scrii două litere și rămân trei rânduri de bifat. -->
+  <div id="veh-picker" class="modal-overlay" onclick="if(event.target===this) vehPickerClose()">
+    <div class="modal vp-box">
+      <h2><span><i class="fas fa-list-check" style="margin-right:8px;color:var(--accent);"></i> <span id="vp-title">Alege vehiculele</span></span>
+        <button class="close-btn" onclick="vehPickerClose()" style="position:static;font-size:18px;">&#10005;</button></h2>
+      <div class="vp-search">
+        <i class="fas fa-search"></i>
+        <input type="text" id="vp-q" placeholder="Scrie numele, numărul de înmatriculare sau IMEI-ul…" autocomplete="off" oninput="vpRender()" onkeydown="vpKey(event)">
+        <button type="button" onclick="document.getElementById('vp-q').value='';vpRender();document.getElementById('vp-q').focus();" title="Golește căutarea"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="vp-actions">
+        <button type="button" class="btn-sm" onclick="vpAll(true)">Bifează ce se vede</button>
+        <button type="button" class="btn-sm" onclick="vpAll(false)">Golește tot</button>
+        <span id="vp-count"></span>
+      </div>
+      <div id="vp-list" class="vp-list"></div>
+      <div class="vp-foot">
+        <button type="button" class="history-btn" onclick="vehPickerClose()">Anulează</button>
+        <button type="button" class="history-btn primary" id="vp-ok" onclick="vpApply()">Aplică</button>
+      </div>
+    </div>
+  </div>
+
   <div id="notif-prefs-modal" class="modal-overlay">
     <div class="modal" style="width:700px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;">
       <h2><span><i class="fas fa-bell" style="margin-right:8px;color:var(--accent);"></i> Preferințe notificări</span>
@@ -9221,6 +9252,11 @@ const pozitii = await r.json();</code></pre>
     function getFilteredDevices() {
       let arr = Array.from(devices.values());
 
+      // Selecția explicită din fereastra „Alege vehiculele". Se aplică PRIMA și se COMBINĂ cu restul:
+      // „dintre cele alese, arată-mi-le pe cele în mișcare". Markerele o respectă deja prin
+      // recomputeGrouping; fără rândul ăsta, lista laterală ar arăta vehicule care nu sunt pe hartă.
+      if (window._mapSel instanceof Set) arr = arr.filter(d => window._mapSel.has(String(d.imei)));
+
       // Search filter
       if (searchQuery) {
         arr = arr.filter(d => {
@@ -10424,13 +10460,108 @@ const pozitii = await r.json();</code></pre>
     // Butonul din pasul 2: șterge traseele de pe hartă și te întoarce la pasul 1 (alegerea vehiculelor
     // și a intervalului). O singură apăsare, un singur rezultat — nu o pliere care lasă traseele agățate
     // pe hartă în timp ce tu alegi altceva.
-    // Bifele din „Lista vehicule" rămân puse: de obicei vrei să ajustezi selecția, nu s-o iei de la zero.
+    // Golește și selecția din „Lista vehicule": anulezi tot, deci pleci de la zero. Bifarea rămâne
+    // decizia utilizatorului, nu ceva moștenit dintr-o încărcare anulată.
     function hpToggleFilters() {
       try { hpClearAll(); } catch (e) {}
+      hpChecked = new Set();
       const p = document.getElementById('history-panel'); if (p) p.classList.remove('hp-collapsed');
       try { hpVehRender(); } catch (e) {}
       setTimeout(function () { if (map) map.invalidateSize(); }, 250);
     }
+    // ─── Alegerea vehiculelor: o singură fereastră, în Traseu și în Localizare ───────────────────
+    // De ce fereastră și nu listă înfiptă în panou: la 200 de vehicule și utilaje, derularea e o corvoadă.
+    // Aici scrii două litere, rămân trei rânduri, bifezi. Enter bifează direct când a rămas un singur
+    // rezultat — poți alege cinci mașini fără să atingi mausul.
+    var _vpAll = [], _vpSel = new Set(), _vpApply = null;
+    function vehPickerOpen(opts) {
+      opts = opts || {};
+      _vpAll = Array.isArray(opts.items) ? opts.items.slice() : [];
+      _vpAll.sort(function (a, b) { return String(a.name || a.imei).localeCompare(String(b.name || b.imei), 'ro'); });
+      _vpSel = new Set((opts.selected || []).map(String));
+      _vpApply = (typeof opts.onApply === 'function') ? opts.onApply : null;
+      document.getElementById('vp-title').textContent = opts.title || 'Alege vehiculele';
+      var q = document.getElementById('vp-q'); q.value = '';
+      document.getElementById('veh-picker').classList.add('visible');
+      vpRender();
+      setTimeout(function () { try { q.focus(); } catch (e) {} }, 60);
+    }
+    function vehPickerClose() { document.getElementById('veh-picker').classList.remove('visible'); }
+    function _vpFiltered() {
+      var q = ((document.getElementById('vp-q') || {}).value || '').trim().toLowerCase();
+      if (!q) return _vpAll;
+      return _vpAll.filter(function (d) {
+        return [d.name, d.plate, d.imei, d.company_name].some(function (x) { return String(x || '').toLowerCase().indexOf(q) >= 0; });
+      });
+    }
+    function vpRender() {
+      var list = _vpFiltered(), box = document.getElementById('vp-list');
+      if (!box) return;
+      box.innerHTML = list.length ? list.map(function (d) {
+        var im = String(d.imei), on = _vpSel.has(im);
+        return '<label class="vp-item' + (on ? ' on' : '') + '">'
+          + '<input type="checkbox"' + (on ? ' checked' : '') + ' value="' + esc(im) + '" onchange="vpToggle(this.value, this.checked)">'
+          + '<span class="nm">' + esc(d.name || im) + '</span>'
+          + (d.plate ? '<span class="pl">' + esc(d.plate) + '</span>' : '')
+          + (d.company_name ? '<span class="co">' + esc(d.company_name) + '</span>' : '')
+          + '</label>';
+      }).join('') : '<div class="vp-empty"><i class="fas fa-magnifying-glass"></i><div>Niciun vehicul nu se potrivește.</div></div>';
+      var c = document.getElementById('vp-count');
+      if (c) c.textContent = _vpSel.size + ' alese · ' + list.length + ' afișate din ' + _vpAll.length;
+      var ok = document.getElementById('vp-ok');
+      if (ok) ok.textContent = _vpSel.size ? ('Aplică (' + _vpSel.size + ')') : 'Aplică';
+    }
+    function vpToggle(imei, on) { if (on) _vpSel.add(String(imei)); else _vpSel.delete(String(imei)); vpRender(); }
+    function vpAll(on) {
+      // „Bifează ce se vede" lucrează pe rezultatul căutării, nu pe toată flota: scrii „remorca",
+      // apeși o dată și ai bifat toate remorcile.
+      _vpFiltered().forEach(function (d) { if (on) _vpSel.add(String(d.imei)); else _vpSel.delete(String(d.imei)); });
+      vpRender();
+    }
+    function vpKey(ev) {
+      if (ev.key === 'Escape') { vehPickerClose(); return; }
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      var list = _vpFiltered();
+      if (list.length === 1) {                       // un singur rezultat → bifează-l și golește căutarea
+        var im = String(list[0].imei);
+        if (_vpSel.has(im)) _vpSel.delete(im); else _vpSel.add(im);
+        document.getElementById('vp-q').value = '';
+        vpRender();
+      } else if (list.length === 0) { vpApply(); }
+    }
+    function vpApply() { var out = Array.from(_vpSel); vehPickerClose(); if (_vpApply) _vpApply(out); }
+
+    // ── Localizare: selecția restrânge harta ȘI lista. Se COMBINĂ cu cadranele de stare, nu le
+    // înlocuiește: „dintre cele alese, arată-mi-le pe cele în mișcare". Markerele ascultă deja de
+    // window._mapSel (vezi recomputeGrouping / updateMarker), deci doar îl setăm și recalculăm.
+    function locOpenPicker() {
+      vehPickerOpen({
+        title: 'Alege vehiculele afișate pe hartă',
+        items: Array.from(devices.values()),
+        selected: (window._mapSel instanceof Set) ? Array.from(window._mapSel) : [],
+        onApply: function (list) {
+          window._mapSel = list.length ? new Set(list.map(String)) : null;
+          locSelBar();
+          try { recomputeGrouping(); } catch (e) {}
+          applyFilters();
+        }
+      });
+    }
+    function locClearSel() {
+      window._mapSel = null; locSelBar();
+      try { recomputeGrouping(); } catch (e) {}
+      applyFilters();
+    }
+    function locSelBar() {
+      var b = document.getElementById('loc-sel-bar'), t = document.getElementById('loc-sel-txt');
+      if (!b || !t) return;
+      if (!(window._mapSel instanceof Set) || !window._mapSel.size) { b.style.display = 'none'; return; }
+      var n = window._mapSel.size;
+      t.textContent = n + (n === 1 ? ' vehicul ales' : ' vehicule alese');
+      b.style.display = 'flex';
+    }
+
     // ─── Traseu pe mai multe vehicule ───────────────────────────────────────────────────────────
     // hpLoaded ține câte o stare completă per vehicul (traseu, puncte, sumar, strat pe hartă, steaguri),
     // iar hpActive spune care e „în față": lui i se arată sumarul, pe el merge redarea și pe el se aplică
@@ -10442,23 +10573,42 @@ const pozitii = await r.json();</code></pre>
     var hpRange = { from: null, to: null };
     var HP_COLORS = ['#38BDF8', '#f59e0b', '#a855f7', '#22c55e', '#ec4899', '#14b8a6', '#f43f5e', '#84cc16'];
 
+    // În panou rămâne doar REZUMATUL a ce ai ales; lista completă stă în fereastra de alegere.
     function hpVehRender() {
       var box = document.getElementById('hp-veh-list'); if (!box) return;
-      var q = ((document.getElementById('hp-veh-filter') || {}).value || '').trim().toLowerCase();
-      var list = hpVehAll.filter(function (d) {
-        if (!q) return true;
-        return [d.name, d.plate, d.imei, d.company_name].some(function (x) { return String(x || '').toLowerCase().indexOf(q) >= 0; });
+      var lbl = document.getElementById('hp-pick-label');
+      if (lbl) lbl.textContent = hpChecked.size ? ('Alege vehiculele (' + hpChecked.size + ')') : 'Alege vehiculele';
+      if (!hpChecked.size) {
+        box.innerHTML = '<div class="hp-veh-empty">Niciun vehicul ales — apasă butonul de mai sus.</div>';
+        return;
+      }
+      var byImei = {}; hpVehAll.forEach(function (d) { byImei[String(d.imei)] = d; });
+      box.innerHTML = Array.from(hpChecked).map(function (im) {
+        var d = byImei[im] || {}, st = hpLoaded.get(im);
+        var nume = (d.name || im) + (d.plate ? ' · ' + d.plate : '');
+        return '<span class="hp-chip"' + (st ? ' style="--tc:' + st.color + '"' : '') + '>'
+          + (st ? '<span class="dot"></span>' : '') + esc(nume)
+          + '<button type="button" title="Scoate din selecție" onclick="hpVehToggle(&quot;' + esc(im) + '&quot;, false)">&#10005;</button></span>';
+      }).join('');
+    }
+    function hpOpenPicker() {
+      vehPickerOpen({
+        title: 'Alege vehiculele pentru traseu',
+        items: hpVehAll,
+        selected: Array.from(hpChecked),
+        onApply: function (list) {
+          var noua = new Set(list.map(String));
+          // Vehiculele scoase din selecție dispar și de pe hartă, dacă erau deja încărcate.
+          Array.from(hpChecked).forEach(function (im) { if (!noua.has(im) && hpLoaded.has(im)) hpDropVehicle(im); });
+          hpChecked = noua;
+          var first = list.length ? String(list[0]) : null;
+          if (first) {
+            var sel = document.getElementById('history-imei'); if (sel) sel.value = first;
+            selectedImei = first; hpSetVehicleLabel(first);
+          }
+          hpVehRender();
+        }
       });
-      box.innerHTML = list.length ? list.map(function (d) {
-        var im = String(d.imei), on = hpChecked.has(im);
-        var st = hpLoaded.get(im);
-        var dot = st ? '<span class="dot" style="background:' + st.color + '"></span>' : '';
-        return '<label class="hp-veh-item' + (on ? ' on' : '') + '">'
-          + '<input type="checkbox"' + (on ? ' checked' : '') + ' onchange="hpVehToggle(this.value, this.checked)" value="' + esc(im) + '">'
-          + dot + '<span class="nm">' + esc(d.name || im) + (d.plate ? ' · ' + esc(d.plate) : '') + '</span></label>';
-      }).join('') : '<div class="hp-veh-empty">Niciun vehicul găsit.</div>';
-      var c = document.getElementById('hp-veh-count');
-      if (c) c.textContent = hpChecked.size ? hpChecked.size + ' bifate' : '';
     }
     function hpVehToggle(imei, on) {
       imei = String(imei);
@@ -10709,8 +10859,11 @@ const pozitii = await r.json();</code></pre>
       if (!gasite) { alert('Nu sunt date pentru perioada selectată.'); return; }
 
       document.body.classList.add('history-open');   // ascunde FAB pe mobil cât e afișat un traseu
+      // Traseele sunt ÎNCĂRCATE, dar NEBIFATE. Altfel ar veni toate bifate, iar indicația de dedesubt
+      // („bifează una singură ca să vezi detaliile") ar contrazice ce vezi pe ecran. Bifarea rămâne
+      // decizia ta; kilometrii se văd oricum, per mașină și la total.
+      hpLoaded.forEach(function (st) { st.visible = false; });
       hpApplySelection();
-      hpFitAll();
       // Pasul 1 (alegerea vehiculelor + intervalul) se închide singur. Rămâne doar lista traseelor
       // încărcate, sumarul și redarea — altfel panoul devine un teanc prin care trebuie să derulezi.
       // „Schimbă selecția", din antet, îl aduce înapoi.
@@ -10891,13 +11044,15 @@ const pozitii = await r.json();</code></pre>
         var d = st.summary && st.summary.distanceKm;
         return (d != null && !isNaN(d)) ? String(Math.round(d)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' km' : '—';
       };
-      var n = 0, total = 0;
+      // Totalul se face pe traseele ÎNCĂRCATE, nu pe cele bifate: altfel ar dispărea exact când n-ai
+      // bifat încă nimic, adică atunci când compari kilometrii ca să te hotărăști ce deschizi.
+      var nVaz = 0, total = 0;
       hpLoaded.forEach(function (st) {
-        if (!st.visible) return;
-        n++;
+        if (st.visible) nVaz++;
         var d = st.summary && st.summary.distanceKm;
         if (d != null && !isNaN(d)) total += Number(d);
       });
+      var n = hpLoaded.size;
       var out = ['<div class="hp-step2-h"><span>Trasee încărcate</span></div>'];
       hpLoaded.forEach(function (st) {
         out.push('<label class="hp-tab' + (st.visible ? ' on' : '') + '" style="--tc:' + st.color + ';">'
@@ -10906,10 +11061,13 @@ const pozitii = await r.json();</code></pre>
           + '<span class="km">' + _km(st) + '</span></label>');
       });
       if (n > 1) {
-        out.push('<div class="hp-step2-tot"><span>Total ' + n + ' vehicule</span><b>'
+        out.push('<div class="hp-step2-tot"><span>Total ' + n + ' vehicule încărcate</span><b>'
           + String(Math.round(total)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' km</b></div>');
-        out.push('<div class="hp-step2-hint">(bifează una singură ca să vezi detaliile ei: timp în '
-          + 'deplasare, staționare, consum — și traseul redat)</div>');
+      }
+      // Indicația apare cât timp nu e bifată exact una — adică fix atunci când n-ai detalii pe ecran.
+      if (nVaz !== 1) {
+        out.push('<div class="hp-step2-hint">(bifează un vehicul ca să-l vezi pe hartă, cu detaliile lui: '
+          + 'timp în deplasare, staționare, consum — și traseul redat)</div>');
       }
       box.innerHTML = out.join('');
       box.style.display = 'flex';

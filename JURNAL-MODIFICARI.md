@@ -219,6 +219,45 @@ n-are pasul 1. Ar fi funcție nouă, nu ajustare.
 
 ---
 
+### AMÂNDOI · O fereastră de alegere a vehiculelor, cu scriere manuală — `în curs`
+
+**Ce am schimbat:** alegerea vehiculelor se face acum într-o fereastră, aceeași în **Traseu** și în
+**Localizare**: câmp de căutare sus (cu focus din prima) și bifă pe fiecare rând.
+
+La 200 de vehicule și utilaje, derularea unei liste e o corvoadă. Aici scrii două litere, rămân trei
+rânduri, bifezi. „Bifează ce se vede" lucrează pe rezultatul căutării, nu pe toată flota: scrii
+„remorca", apeși o dată și le-ai bifat pe toate. Enter bifează direct când a rămas un singur
+rezultat — poți alege cinci mașini fără să atingi mausul.
+
+**În Traseu:** panoul arată doar ce ai ales, ca niște etichete mici cu ✕. Lista completă stă în
+fereastră. După încărcare, traseele apar **nebifate** — bifarea rămâne decizia ta, iar indicația de
+dedesubt („bifează un vehicul ca să-l vezi") nu mai contrazice ce e pe ecran. Kilometrii se văd
+oricum: per mașină, pe fiecare rând, plus totalul vehiculelor încărcate.
+
+**În Localizare — funcție nouă:** poți alege ce vehicule apar pe hartă. Selecția se **combină** cu
+cadranele de stare, nu le înlocuiește: „dintre cele alese, arată-mi-le pe cele în mișcare". Cât e
+activă, o bandă verde spune „N vehicule alese" și oferă „Arată tot" — altfel omul crede că i-au
+dispărut mașinile.
+
+**Fondatorul vede:** exact ce vede și clientul.
+
+**Clientul vede:** cu o flotă mare, poate ajunge la o mașină scriind, nu derulând. Și își poate lăsa
+pe hartă doar mașinile care-l interesează azi.
+
+> Verificat: fereastra se deschide cu focusul pe căutare; scrii „logan" și din 5 rămân 2; în Traseu
+> traseele vin nebifate, cu 10 km / 16 km pe rânduri și 26 km la total; bifezi una → apare pe hartă
+> cu sumarul ei; „Anulează traseele încărcate" golește și bifele. În Localizare: 2 alese → lista 2 și
+> markerele 2; cu „în mișcare" pe deasupra → 1; „Arată tot" → 5 și 3.
+
+> Am folosit un mecanism care exista deja în cod, `window._mapSel`: era citit în patru locuri
+> (markere, grupare, spiderfy) dar nu-l scria nimeni — un cârlig fără interfață. Acum are una.
+
+**Pe APK:** neschimbat. Acolo alegerea vehiculului se face din lista ecranului, care are deja
+căutare, iar Traseul se deschide dintr-o singură mașină. Fereastra cu bifă e o funcție nouă pe
+telefon, nu o ajustare — de pus pe listă dacă o vreți și acolo.
+
+---
+
 ## De verificat înainte de lansare
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.

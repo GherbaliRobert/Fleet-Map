@@ -891,27 +891,83 @@
     /* Butonul principal are mai multă prezență decât restul rândului. */
     .hp-load { padding: 12px 16px; border-radius: 11px; font-size: 13.5px; }
 
-    /* ─── Traseu: „Lista vehicule" cu bifă ─── */
-    #hp-veh-filter { margin-bottom: 6px; }
-    #hp-veh-list {
-      max-height: 168px; overflow-y: auto;
-      border: 1px solid var(--border); border-radius: 10px;
-      background: var(--bg-dark); padding: 4px;
-      display: flex; flex-direction: column; gap: 1px;
-    }
-    .hp-veh-item {
+    /* ─── Fereastra de alegere a vehiculelor (Traseu + Localizare) ─── */
+    .vp-box { width: 560px; max-width: 96vw; max-height: 88vh; display: flex; flex-direction: column; }
+    .vp-search {
       display: flex; align-items: center; gap: 9px;
-      padding: 7px 9px; border-radius: 7px; cursor: pointer;
-      font-size: 12.5px; color: var(--text-primary); text-transform: none; letter-spacing: normal;
-      font-weight: 500; transition: background .13s ease;
+      border: 1px solid var(--border); border-radius: 10px; background: var(--bg-dark);
+      padding: 0 11px; margin-bottom: 9px;
     }
-    .hp-veh-item:hover { background: rgba(127,127,127,.12); }
-    .hp-veh-item.on { background: rgba(63,224,125,.13); font-weight: 700; }
-    .hp-veh-item input { width: auto !important; flex: none; margin: 0; cursor: pointer; }
-    /* Bulina de culoare apare doar după încărcare: e culoarea cu care vehiculul e desenat pe hartă. */
-    .hp-veh-item .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px rgba(255,255,255,.55); }
-    .hp-veh-item .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .hp-veh-empty { padding: 10px; font-size: 12px; color: var(--text-muted); text-align: center; }
+    .vp-search > i { color: var(--text-muted); font-size: 13px; flex: none; }
+    .vp-search input {
+      flex: 1; min-width: 0; border: none; background: none; outline: none;
+      padding: 11px 0; font-size: 14px; color: var(--text-primary);
+    }
+    .vp-search button { border: none; background: none; cursor: pointer; color: var(--text-muted); padding: 6px; }
+    .vp-search button:hover { color: var(--text-primary); }
+    .vp-actions { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .vp-actions #vp-count { margin-left: auto; font-size: 11.5px; color: var(--text-muted); }
+    .vp-list {
+      flex: 1; min-height: 140px; overflow-y: auto;
+      border: 1px solid var(--border); border-radius: 10px; background: var(--bg-dark);
+      padding: 4px; display: flex; flex-direction: column; gap: 1px;
+    }
+    .vp-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border-radius: 8px; cursor: pointer;
+      font-size: 13px; color: var(--text-primary); transition: background .12s ease;
+    }
+    .vp-item:hover { background: rgba(127,127,127,.12); }
+    .vp-item.on { background: rgba(63,224,125,.13); }
+    .vp-item input { width: auto !important; flex: none; margin: 0; cursor: pointer; }
+    .vp-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .vp-item .pl { flex: none; font-size: 11.5px; font-weight: 700; color: var(--text-secondary);
+      background: rgba(127,127,127,.16); padding: 2px 7px; border-radius: 5px; }
+    .vp-item .co { flex: none; font-size: 11px; color: var(--text-muted); max-width: 120px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vp-empty { padding: 26px 10px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    .vp-empty i { display: block; font-size: 22px; margin-bottom: 8px; opacity: .6; }
+    .vp-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+    /* ─── Traseu: butonul de alegere + rezumatul vehiculelor alese ─── */
+    .hp-pick { width: 100%; justify-content: center; margin-bottom: 7px; }
+    #hp-veh-list { display: flex; flex-wrap: wrap; gap: 5px; }
+    .hp-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 6px 5px 9px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg-dark);
+      font-size: 12px; font-weight: 600; color: var(--text-primary);
+      text-transform: none; letter-spacing: normal;
+    }
+    /* Bulina apare doar după încărcare: e culoarea cu care vehiculul e desenat pe hartă. */
+    .hp-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--tc);
+      box-shadow: 0 0 0 1.5px rgba(255,255,255,.5); }
+    .hp-chip button { border: none; background: none; cursor: pointer; color: var(--text-muted);
+      font-size: 11px; line-height: 1; padding: 3px 4px; border-radius: 4px; }
+    .hp-chip button:hover { color: var(--red, #ef4444); background: rgba(239,68,68,.12); }
+    .hp-veh-empty { padding: 9px; font-size: 12px; color: var(--text-muted); text-transform: none;
+      letter-spacing: normal; font-weight: 400; }
+
+    /* ─── Localizare: butonul de alegere + bara care spune că selecția e activă ─── */
+    #veh-pick-btn {
+      flex: none; width: 38px; height: 38px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: border-color .14s ease, color .14s ease, transform .14s ease;
+    }
+    #veh-pick-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    #loc-sel-bar {
+      display: flex; align-items: center; gap: 8px; margin: 0 14px 8px;
+      padding: 7px 11px; border-radius: 9px; font-size: 12px; font-weight: 600;
+      color: var(--accent); background: rgba(63,224,125,.13);
+      box-shadow: inset 0 0 0 1px rgba(63,224,125,.35);
+    }
+    #loc-sel-bar i { font-size: 11px; }
+    #loc-sel-bar span { flex: 1; }
+    #loc-sel-bar button {
+      border: none; background: none; cursor: pointer; padding: 2px 4px;
+      font-size: 12px; font-weight: 700; color: var(--accent); text-decoration: underline;
+    }
 
     /* ─── PASUL 2: traseele încărcate. Un singur control pe rând — bifa. ───
        Rândurile sunt pe toată lățimea, ca în „Lista vehicule": aceeași formă, aceeași mișcare, deci
