@@ -5991,11 +5991,17 @@ async function evaluateAlerts(imei, data) {
 
       const cond = alert.condition || {};
       const cooldownKey = alert.id + '_' + imei;
-      const lastTriggered = alertCooldowns.get(cooldownKey);
-      if (lastTriggered && (Date.now() - lastTriggered) < 300000) continue; // 5 min cooldown
+      // Alertele de zonă își au răcirea PER ZONĂ (mai jos, la emitere): o regulă poate urmări mai multe
+      // zone, iar o răcire comună ar fi înghițit a doua trecere dintr-o oră. Restul tipurilor: ca înainte.
+      const _isGeo = alert.type === 'geofence_enter' || alert.type === 'geofence_exit';
+      if (!_isGeo) {
+        const lastTriggered = alertCooldowns.get(cooldownKey);
+        if (lastTriggered && (Date.now() - lastTriggered) < 300000) continue; // 5 min cooldown
+      }
 
       let triggered = false;
       let alertData = {};
+      const events = []; // { zone?, data } — tipurile de zonă pot produce mai multe evenimente odată
 
       switch (alert.type) {
         case 'overspeed': {
@@ -6049,12 +6055,20 @@ async function evaluateAlerts(imei, data) {
 
         case 'geofence_exit':
         case 'geofence_enter':
-          if (cond.geofenceId && lat && lng) {
+          // O regulă poate urmări MAI MULTE zone (`geofenceIds`). `geofenceId` la singular rămâne citit
+          // pentru regulile create înainte. Fiecare zonă e evaluată separat și raportată separat: dacă
+          // mașina trece prin trei zone urmărite într-o zi, primești trei anunțuri, nu unul.
+          if (lat && lng) {
             try {
+              const ids = (Array.isArray(cond.geofenceIds) && cond.geofenceIds.length)
+                ? cond.geofenceIds
+                : (cond.geofenceId ? [cond.geofenceId] : []);
+              if (!ids.length) break;
               // Tenant: doar zonele companiei alertei — o alertă nu poate referi geofence-ul altei companii.
-              const geofences = await db.getGeofences(alert.company_id);
-              const gf = geofences.find(g => g.id === cond.geofenceId);
-              if (gf && gf.coordinates) {
+              const geofences = await db.getGeofencesForScope(alert.company_id);
+              for (const gid of ids) {
+                const gf = geofences.find(g => Number(g.id) === Number(gid));
+                if (!gf || !gf.coordinates) continue;
                 const coords = typeof gf.coordinates === 'string' ? JSON.parse(gf.coordinates) : gf.coordinates;
                 let isInside = false;
 
@@ -6070,11 +6084,9 @@ async function evaluateAlerts(imei, data) {
                 const wasInside = geofenceStates.get(stateKey);
 
                 if (alert.type === 'geofence_exit' && wasInside === true && !isInside) {
-                  triggered = true;
-                  alertData = { geofence: gf.name || gf.id, event: 'Iesire din zona' };
+                  events.push({ zone: gf.id, data: { geofence: gf.name || gf.id, geofenceId: gf.id, event: 'Ieșire din zonă' } });
                 } else if (alert.type === 'geofence_enter' && wasInside === false && isInside) {
-                  triggered = true;
-                  alertData = { geofence: gf.name || gf.id, event: 'Intrare in zona' };
+                  events.push({ zone: gf.id, data: { geofence: gf.name || gf.id, geofenceId: gf.id, event: 'Intrare în zonă' } });
                 }
 
                 geofenceStates.set(stateKey, isInside);
@@ -6161,17 +6173,25 @@ async function evaluateAlerts(imei, data) {
         }
       }
 
-      if (triggered) {
-        alertCooldowns.set(cooldownKey, Date.now());
-        alertData.imei = imei;
-        alertData.vehicleName = data.name || imei;
-        alertData.lat = lat;
-        alertData.lng = lng;
-        alertData.timestamp = new Date().toISOString();
+      if (triggered) events.push({ data: alertData });
+
+      for (const ev of events) {
+        // Răcire proprie pentru fiecare zonă → două zone traversate în aceeași oră dau două anunțuri.
+        const ck = ev.zone != null ? cooldownKey + '_z' + ev.zone : cooldownKey;
+        const last = alertCooldowns.get(ck);
+        if (last && (Date.now() - last) < 300000) continue;
+        alertCooldowns.set(ck, Date.now());
+
+        const d = ev.data;
+        d.imei = imei;
+        d.vehicleName = data.name || imei;
+        d.lat = lat;
+        d.lng = lng;
+        d.timestamp = new Date().toISOString();
 
         // Save to DB
         try {
-          await db.insertAlertEvent(alert.id, imei, alertData);
+          await db.insertAlertEvent(alert.id, imei, d);
         } catch (e) { /* DB error */ }
 
         // Broadcast alert via WebSocket
@@ -6181,7 +6201,7 @@ async function evaluateAlerts(imei, data) {
             alertId: alert.id,
             alertName: alert.name,
             alertType: alert.type,
-            ...alertData
+            ...d
           }
         });
 
@@ -6189,11 +6209,11 @@ async function evaluateAlerts(imei, data) {
         notify({
           type: 'alert', severity: 'warning', imei,
           title: alert.name,
-          body: alertSummary(alert.type, alertData),
-          data: { alertId: alert.id, alertType: alert.type, ...alertData }
+          body: alertSummary(alert.type, d),
+          data: { alertId: alert.id, alertType: alert.type, ...d }
         });
 
-        console.log(`[ALERT] ${alert.name} triggered for ${imei}: ${JSON.stringify(alertData)}`);
+        console.log(`[ALERT] ${alert.name} triggered for ${imei}: ${JSON.stringify(d)}`);
       }
     }
   } catch (err) {
@@ -6495,9 +6515,15 @@ const EVENT_TYPES = [
   { key: 'low_voltage',      label: 'Tensiune scăzută',           unit: 'V',     def: 11.8,  threshold: true, below: true },
   { key: 'no_ignition_move', label: 'Mișcare fără contact',       threshold: false },
   { key: 'dtc_error',        label: 'Erori motor (DTC)',          threshold: false },
-  { key: 'document_expiry',  label: 'Expirare documente',         threshold: false }
+  { key: 'document_expiry',  label: 'Expirare documente',         threshold: false },
+  // Regulile definite manual în „Alerte" (viteză, zone, ralanti…) trimit notificări cu type='alert'.
+  // Tipul LIPSEA din catalog, deci nu exista nicio bifă pentru el — iar push-ul se trimite doar pentru
+  // tipuri bifate. Rezultatul: o regulă de alertă nu putea ajunge NICIODATĂ pe telefon, indiferent ce
+  // configurai. Push implicit PORNIT: regula a fost creată tocmai ca să fii anunțat.
+  { key: 'alert',            label: 'Reguli de alertă (secțiunea Alerte)', threshold: false, pushDefault: true }
 ];
 const EVENT_TYPE_MAP = Object.fromEntries(EVENT_TYPES.map(e => [e.key, e]));
+const PUSH_DEFAULT_TYPES = new Set(EVENT_TYPES.filter(e => e.pushDefault).map(e => e.key));
 
 // ─── Web Push (VAPID generat o singură dată și persistat local) ───
 let VAPID = null;
@@ -6586,9 +6612,13 @@ const _noIgnMoveStart = new Map(); // imei -> ts de când e „mișcare cu conta
 
 // Preferința unui user pentru un tip: dacă nu are nicio preferință salvată → implicit doar in-app
 function userTypePref(prefsMap, userId, type) {
+  // Tipurile din PUSH_DEFAULT_TYPES pornesc cu push ACTIV cât timp utilizatorul n-a atins setarea.
+  // Altfel, cine avea deja preferințe salvate (fără cheia nouă) ar fi rămas fără push pe alerte — exact
+  // tăcerea pe care o reparăm. O debifare explicită se respectă: atunci cheia EXISTĂ, cu push=false.
+  const dflt = PUSH_DEFAULT_TYPES.has(type) ? { enabled: true, push: true } : { enabled: true };
   const up = prefsMap[userId];
-  if (!up || !up.types) return { enabled: true };           // fără preferințe → in-app implicit pornit
-  return up.types[type] || null;                            // are preferințe dar nu a bifat acest tip → null
+  if (!up || !up.types) return dflt;                        // fără preferințe → in-app implicit pornit
+  return up.types[type] || (PUSH_DEFAULT_TYPES.has(type) ? dflt : null); // bifă lipsă → implicit / null
 }
 async function deliverUserEvent(user, ev, p) {
   try {

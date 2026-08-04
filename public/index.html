@@ -4165,8 +4165,8 @@ const pozitii = await r.json();</code></pre>
       { v:'fuel_drop', label:'Scădere combustibil (furt)', fields:[{k:'dropLiters',label:'Scădere minimă (L)',def:10}] },
       { v:'ignition_on', label:'Pornire motor', fields:[] },
       { v:'ignition_off', label:'Oprire motor', fields:[] },
-      { v:'geofence_enter', label:'Intrare în zonă', fields:[{k:'geofenceId',label:'Zonă',geofence:true}] },
-      { v:'geofence_exit', label:'Ieșire din zonă', fields:[{k:'geofenceId',label:'Zonă',geofence:true}] },
+      { v:'geofence_enter', label:'Intrare în zonă', fields:[{k:'geofenceIds',label:'Zone urmărite',geofence:true}] },
+      { v:'geofence_exit', label:'Ieșire din zonă', fields:[{k:'geofenceIds',label:'Zone urmărite',geofence:true}] },
       { v:'engine_temp', label:'Temperatură motor mare', fields:[{k:'maxTemp',label:'Temp max (°C)',def:105}] },
       { v:'dtc_error', label:'Erori motor (DTC)', fields:[] },
       { v:'overload_legal', label:'Supraîncărcare (legal)', fields:[{k:'maxKg',label:'Limită (kg)',def:40000}] },
@@ -4187,9 +4187,27 @@ const pozitii = await r.json();</code></pre>
       let html = '';
       for (const f of def.fields) {
         if (f.geofence) {
+          // Listă cu bifă, nu un singur selector: o regulă poate urmări mai multe zone deodată, iar
+          // fiecare zonă traversată e raportată separat (răcire per zonă în motor).
           if (!alertGeofencesCache.length) { try { alertGeofencesCache = await (await fetch('/api/geofences')).json(); } catch(e){} }
-          html += `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>${f.label}</span>
-            <select id="alert-cf-${f.k}">${alertGeofencesCache.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')||'<option value="">(nicio zonă — creează una)</option>'}</select></label>`;
+          // Zonele altei companii n-ar fi găsite de motor (caută în zonele companiei regulii) → le ascundem.
+          const coSel = (document.getElementById('alert-company') || {}).value;
+          const zones = (coSel && coSel !== '__all__')
+            ? alertGeofencesCache.filter(g => g.company_id == null || String(g.company_id) === String(coSel))
+            : alertGeofencesCache;
+          html += `<div style="grid-column:1/-1;font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:5px;">
+            <span>${f.label} <span id="alert-zone-count" style="color:var(--text-muted);"></span></span>
+            ${zones.length ? `<div style="display:flex;gap:8px;margin-bottom:2px;">
+                <button type="button" class="btn-sm" onclick="alertZonesAll(true)">Bifează tot</button>
+                <button type="button" class="btn-sm" onclick="alertZonesAll(false)">Golește</button>
+              </div>
+              <div id="alert-cf-${f.k}" style="max-height:168px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:7px 9px;display:flex;flex-direction:column;gap:5px;">
+                ${zones.map(g=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;color:var(--text-primary);">
+                  <input type="checkbox" class="alert-zone" value="${g.id}" onchange="alertZonesCount()">
+                  <span>${esc(g.name || ('Zona #' + g.id))}</span></label>`).join('')}
+              </div>`
+            : `<div id="alert-cf-${f.k}" style="padding:9px;border:1px dashed var(--border);border-radius:8px;">Nicio zonă definită${coSel && coSel !== '__all__' ? ' pentru compania aleasă' : ''} — creează una în Zone.</div>`}
+          </div>`;
         } else {
           html += `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>${f.label}</span>
             <input type="number" id="alert-cf-${f.k}" value="${f.def!=null?f.def:''}"></label>`;
@@ -4199,6 +4217,18 @@ const pozitii = await r.json();</code></pre>
         html += [1,2,3,4,5].map(n => `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>Limită axa ${n} (kg)</span><input type="number" id="alert-cf-axle${n}" placeholder="ex: 10000"></label>`).join('');
       }
       box.innerHTML = html;
+      alertZonesCount();
+    }
+    // Bifarea zonelor: contor live + „bifează tot / golește" (o regulă poate urmări zeci de zone).
+    function alertZonesCount() {
+      const el = document.getElementById('alert-zone-count'); if (!el) return;
+      const n = document.querySelectorAll('.alert-zone:checked').length;
+      el.textContent = n ? '— ' + n + ' bifate' : '— niciuna bifată';
+      el.style.color = n ? 'var(--accent)' : 'var(--text-muted)';
+    }
+    function alertZonesAll(on) {
+      document.querySelectorAll('.alert-zone').forEach(c => { c.checked = !!on; });
+      alertZonesCount();
     }
     // Companiile, pentru selectorul de alerte + eticheta de domeniu din listă (doar super-admin le poate citi).
     let _alertCompanies = null;
@@ -4239,8 +4269,17 @@ const pozitii = await r.json();</code></pre>
         note.textContent = 'Alege compania pentru care creezi regula — administratorul ei o va vedea și o va putea edita.';
         populateVehicleSelect('alert-imei', true);
       }
+      // Zonele se filtrează după aceeași companie: motorul caută zona în zonele companiei regulii, deci
+      // o zonă din altă companie n-ar fi găsită niciodată. Re-randăm doar dacă tipul are câmp de zonă.
+      if (document.getElementById('alert-zone-count')) renderAlertCond();
+    }
+    function _alertZoneName(id) {
+      const g = (alertGeofencesCache || []).find(x => Number(x.id) === Number(id));
+      return g ? (g.name || ('Zona #' + id)) : ('Zona #' + id);
     }
     async function loadAlerts() {
+      // Zonele sunt necesare ca să scriem NUMELE lor în listă, nu doar id-uri.
+      if (!alertGeofencesCache.length) { try { alertGeofencesCache = await (await fetch('/api/geofences')).json(); } catch (e) {} }
       const r = await fetch('/api/alerts'); const list = await r.json();
       const el = document.getElementById('admin-alerts-list');
       const isSuper = !!(currentUser && currentUser.isSuper);
@@ -4252,9 +4291,17 @@ const pozitii = await r.json();</code></pre>
           : (a.company_id != null
             ? 'Toate vehiculele' + (isSuper ? ' · ' + esc(_alertCoName(a.company_id)) : '')
             : '<span style="color:var(--orange);"><i class="fas fa-triangle-exclamation"></i> TOATE companiile</span>');
+        // Câte zone urmărește regula — altfel „Intrare în zonă" nu spune nimic despre CE zone.
+        const c = a.condition || {};
+        const zIds = Array.isArray(c.geofenceIds) ? c.geofenceIds : (c.geofenceId ? [c.geofenceId] : []);
+        const zTxt = zIds.length
+          ? ' · ' + (zIds.length === 1
+            ? esc(_alertZoneName(zIds[0]))
+            : zIds.length + ' zone: ' + esc(zIds.slice(0, 3).map(_alertZoneName).join(', ')) + (zIds.length > 3 ? ' +' + (zIds.length - 3) : ''))
+          : '';
         return `<div class="admin-row"><div>
           <strong>${a.name}</strong> <span class="role">${alertTypeLabel(a.type)}</span>
-          <div class="meta">${scope} · ${a.enabled ? 'activă' : 'inactivă'}</div>
+          <div class="meta">${scope}${zTxt} · ${a.enabled ? 'activă' : 'inactivă'}</div>
         </div><button class="btn-sm btn-danger" onclick="deleteAlert(${a.id})"><i class="fas fa-trash"></i></button></div>`;
       }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio regulă.</p>';
     }
@@ -4267,8 +4314,14 @@ const pozitii = await r.json();</code></pre>
       const def = ALERT_TYPES.find(t => t.v === type) || { fields: [] };
       const condition = {};
       for (const f of def.fields) {
+        if (f.geofence) {
+          const ids = Array.from(document.querySelectorAll('.alert-zone:checked')).map(c => Number(c.value));
+          if (!ids.length) return alert('Bifează cel puțin o zonă pentru regulă.');
+          condition[f.k] = ids;
+          continue;
+        }
         const v = document.getElementById('alert-cf-' + f.k).value;
-        condition[f.k] = f.geofence ? Number(v) : (v === '' ? null : Number(v));
+        condition[f.k] = (v === '' ? null : Number(v));
       }
       if (def.axles) {
         condition.axleLimits = {};
@@ -7057,14 +7110,18 @@ const pozitii = await r.json();</code></pre>
       const hasPrefs = !!(prefs && prefs.types);
       document.getElementById('prefs-rows').innerHTML = _eventTypes.map(t => {
         const p = types[t.key] || {};
-        const enabled = hasPrefs ? !!p.enabled : true;
+        const hasRow = !!types[t.key];
+        // Un tip NOU (fără rând salvat) pornește activ și cu push-ul implicit al tipului, chiar dacă
+        // restul preferințelor există deja — altfel ar apărea debifat, contrazicând serverul.
+        const enabled = (hasPrefs && hasRow) ? !!p.enabled : true;
+        const push = hasRow ? !!p.push : !!t.pushDefault;
         const thr = (p.threshold != null && p.threshold !== '') ? p.threshold : (t.def != null ? t.def : '');
         return `<tr style="border-top:1px solid var(--border);" data-key="${t.key}">
           <td style="padding:8px 10px;">${t.label}</td>
           <td style="text-align:center;"><input type="checkbox" class="pf-en" ${enabled?'checked':''}></td>
           <td style="text-align:center;">${t.threshold ? `<input type="number" class="pf-thr" value="${thr}" style="width:74px;padding:4px;border:1px solid var(--border);border-radius:5px;background:var(--bg-dark);color:var(--text,#222);"> <span style="color:var(--text-muted);font-size:11px;">${t.unit||''}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
           <td style="text-align:center;"><input type="checkbox" class="pf-email" ${p.email?'checked':''}></td>
-          <td style="text-align:center;"><input type="checkbox" class="pf-push" ${p.push?'checked':''}></td>
+          <td style="text-align:center;"><input type="checkbox" class="pf-push" ${push?'checked':''}></td>
         </tr>`;
       }).join('');
       refreshPushState();

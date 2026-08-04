@@ -12,8 +12,8 @@ type AType = { v: string; label: string; fields: AField[] };
 const ALERT_TYPES: AType[] = [
   { v: 'overspeed', label: 'Depășire viteză', fields: [{ k: 'maxSpeed', label: 'Viteză max (km/h)', def: 90 }] },
   { v: 'fuel_drop', label: 'Scădere combustibil (furt)', fields: [{ k: 'dropLiters', label: 'Scădere minimă (L)', def: 10 }] },
-  { v: 'geofence_enter', label: 'Intrare în zonă', fields: [{ k: 'geofenceId', label: 'Zonă', geofence: true }] },
-  { v: 'geofence_exit', label: 'Ieșire din zonă', fields: [{ k: 'geofenceId', label: 'Zonă', geofence: true }] },
+  { v: 'geofence_enter', label: 'Intrare în zonă', fields: [{ k: 'geofenceIds', label: 'Zone urmărite', geofence: true }] },
+  { v: 'geofence_exit', label: 'Ieșire din zonă', fields: [{ k: 'geofenceIds', label: 'Zone urmărite', geofence: true }] },
   { v: 'ignition_on', label: 'Pornire motor', fields: [] },
   { v: 'ignition_off', label: 'Oprire motor', fields: [] },
   { v: 'engine_temp', label: 'Temperatură motor mare', fields: [{ k: 'maxTemp', label: 'Temp max (°C)', def: 105 }] },
@@ -47,6 +47,15 @@ export function AdminAlerts() {
   const [form, setForm] = useState<any>({ name: '', type: 'overspeed', imei: '', co: '', enabled: 'true', cond: {} as Record<string, any> });
 
   const coName = (id: any) => { const c = cos.find((x) => Number(x.id) === Number(id)); return c ? c.name : ('compania #' + id); };
+  const zName = (id: any) => { const g = geofences.find((x) => Number(x.id) === Number(id)); return g ? (g.name || ('Zona #' + id)) : ('Zona #' + id); };
+  // Câte zone urmărește regula — „Intrare în zonă" singur nu spune despre CE zone e vorba.
+  function zoneText(a: any) {
+    const c = a.condition || {};
+    const ids: any[] = Array.isArray(c.geofenceIds) ? c.geofenceIds : (c.geofenceId ? [c.geofenceId] : []);
+    if (!ids.length) return '';
+    if (ids.length === 1) return ' · ' + zName(ids[0]);
+    return ' · ' + ids.length + ' zone: ' + ids.slice(0, 2).map(zName).join(', ') + (ids.length > 2 ? ' +' + (ids.length - 2) : '');
+  }
   // Vehiculele companiei alese; pentru „toată platforma" rămân toate, cu compania scrisă lângă nume.
   // Cele NEASIGNATE (fără company_id) rămân vizibile oricum — altfel ar dispărea din toate listele
   // deodată și n-ai afla niciodată că există. Sunt etichetate „fără companie".
@@ -68,17 +77,29 @@ export function AdminAlerts() {
   function openAdd() {
     const t = ALERT_TYPES[0];
     const cond: Record<string, any> = {};
-    for (const f of t.fields) cond[f.k] = f.def ?? '';
+    for (const f of t.fields) cond[f.k] = f.geofence ? [] : (f.def ?? '');
     setForm({ name: '', type: t.v, imei: '', co: '', enabled: 'true', cond });
     setAdd(true);
   }
   function changeType(v: string) {
     const t = ALERT_TYPES.find((x) => x.v === v) || ALERT_TYPES[0];
     const cond: Record<string, any> = {};
-    for (const f of t.fields) cond[f.k] = f.def ?? '';
+    for (const f of t.fields) cond[f.k] = f.geofence ? [] : (f.def ?? '');
     setForm((p: any) => ({ ...p, type: v, cond }));
   }
   const curType = ALERT_TYPES.find((t) => t.v === form.type) || ALERT_TYPES[0];
+  const zoneKey = (curType.fields.find((f) => f.geofence) || { k: '' }).k;
+  // Zonele companiei alese — motorul caută zona în zonele companiei regulii, deci una din altă
+  // companie n-ar fi găsită niciodată. Cele fără companie rămân vizibile (aceeași logică ca la vehicule).
+  const formZones = (isSuper && form.co && form.co !== '__all__')
+    ? geofences.filter((g: any) => Number(g.company_id) === Number(form.co) || g.company_id == null)
+    : geofences;
+  const setZones = (ids: number[]) => setForm((p: any) => ({ ...p, cond: { ...p.cond, [zoneKey]: ids } }));
+  const toggleZone = (id: number) => setForm((p: any) => {
+    const cur: number[] = Array.isArray(p.cond[zoneKey]) ? p.cond[zoneKey] : [];
+    const next = cur.some((z) => Number(z) === id) ? cur.filter((z) => Number(z) !== id) : cur.concat(id);
+    return { ...p, cond: { ...p.cond, [zoneKey]: next } };
+  });
 
   async function save() {
     if (!form.name.trim()) { showToast('Dă un nume regulii', true); return; }
@@ -86,7 +107,12 @@ export function AdminAlerts() {
     const condition: Record<string, any> = {};
     for (const f of curType.fields) {
       const v = form.cond[f.k];
-      if (f.geofence && (v === '' || v == null)) { showToast('Alege o zonă', true); return; }
+      if (f.geofence) {
+        const ids = (Array.isArray(v) ? v : []).map(Number);
+        if (!ids.length) { showToast('Bifează cel puțin o zonă', true); return; }
+        condition[f.k] = ids;
+        continue;
+      }
       condition[f.k] = (v === '' || v == null) ? null : Number(v);
     }
     const body: any = { name: form.name.trim(), type: form.type, imei: form.imei || null, enabled: form.enabled === 'true', condition };
@@ -126,7 +152,7 @@ export function AdminAlerts() {
                 <span class="mid">
                   <div class="nm">{a.name}</div>
                   <div class="sub">
-                    {typeLabel(a.type)} · {a.imei
+                    {typeLabel(a.type)}{zoneText(a)} · {a.imei
                       ? vname(a.imei)
                       : (a.company_id != null
                         ? 'Toate vehiculele' + (isSuper ? ' · ' + coName(a.company_id) : '')
@@ -174,14 +200,29 @@ export function AdminAlerts() {
                   </select>
                 </div>
                 {curType.fields.map((f) => (
-                  <div class="fld"><label>{f.label}</label>
+                  <div class="fld"><label>{f.label}{f.geofence ? <span class="muted" style="font-weight:400"> — {(form.cond[f.k] || []).length} bifate</span> : null}</label>
                     {f.geofence ? (
-                      geofences.length ? (
-                        <select value={form.cond[f.k] ?? ''} onChange={(e) => { const v = (e.target as HTMLSelectElement).value; setForm((p: any) => ({ ...p, cond: { ...p.cond, [f.k]: v } })); }}>
-                          <option value="">— alege zona —</option>
-                          {geofences.map((g) => <option value={String(g.id)}>{g.name}</option>)}
-                        </select>
-                      ) : <div class="muted" style="font-size:12.5px">Nicio zonă definită. Creează zone în aplicația web.</div>
+                      // Bifă, nu un singur selector: regula poate urmări mai multe zone, iar fiecare
+                      // traversare e raportată separat. Zonele altei companii n-ar fi găsite de motor.
+                      formZones.length ? (
+                        <div>
+                          <div style="display:flex;gap:8px;margin-bottom:7px">
+                            <button type="button" class="btn" style="padding:5px 11px;font-size:12.5px" onClick={() => setZones(formZones.map((g) => Number(g.id)))}>Bifează tot</button>
+                            <button type="button" class="btn" style="padding:5px 11px;font-size:12.5px" onClick={() => setZones([])}>Golește</button>
+                          </div>
+                          <div style="max-height:190px;overflow:auto;border:1px solid var(--border);border-radius:9px;padding:8px 10px">
+                            {formZones.map((g) => {
+                              const on = (form.cond[f.k] || []).some((z: any) => Number(z) === Number(g.id));
+                              return (
+                                <label style="display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13.5px">
+                                  <input type="checkbox" checked={on} onChange={() => toggleZone(Number(g.id))} />
+                                  <span>{g.name || ('Zona #' + g.id)}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : <div class="muted" style="font-size:12.5px">Nicio zonă definită{isSuper && form.co && form.co !== '__all__' ? ' pentru compania aleasă' : ''}. Creează zone în secțiunea Zone.</div>
                     ) : (
                       <input type="number" inputMode="numeric" value={form.cond[f.k] ?? ''} onInput={(e) => { const v = (e.target as HTMLInputElement).value; setForm((p: any) => ({ ...p, cond: { ...p.cond, [f.k]: v } })); }} />
                     )}

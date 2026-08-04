@@ -2808,6 +2808,16 @@ async function deleteGroup(id) {
 
 // ─── Funcții geofences ───
 
+// Zonele vizibile unei REGULI de alertă: cele ale companiei + cele FĂRĂ companie.
+// De ce și cele fără companie: o zonă desenată de super-admin se salvează cu company_id NULL (el n-are
+// companie), exact ca alertele înainte de reparație. Cu un filtru strict pe companie, o alertă legată de
+// o companie n-ar găsi NICIODATĂ acea zonă, iar regula ar tăcea la nesfârșit, fără nicio eroare.
+async function getGeofencesForScope(companyId) {
+  if (companyId == null) return getGeofences(null);
+  const r = await pool.query('SELECT * FROM geofences WHERE company_id = $1 OR company_id IS NULL', [companyId]);
+  return r.rows;
+}
+
 async function getGeofences(companyId) {
   const where = companyId != null ? 'WHERE g.company_id = $1' : '';
   const params = companyId != null ? [companyId] : [];
@@ -3363,7 +3373,7 @@ module.exports = {
   closeDb,
   getDrivers, createDriver, updateDriver, deleteDriver,
   getGroups, createGroup, updateGroup, deleteGroup,
-  getGeofences, createGeofence, updateGeofence, deleteGeofence,
+  getGeofences, getGeofencesForScope, createGeofence, updateGeofence, deleteGeofence,
   getAlerts, createAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,

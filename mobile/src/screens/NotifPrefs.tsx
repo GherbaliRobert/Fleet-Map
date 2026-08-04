@@ -23,10 +23,12 @@ export function NotifPrefs() {
         for (const t of et) {
           const p = (saved && saved[t.key]) || null;
           init[t.key] = {
-            enabled: saved ? !!(p && p.enabled) : true, // implicit: toate active dacă n-au fost salvate niciodată
+            // Un tip NOU (fără rând salvat) pornește activ, chiar dacă restul preferințelor există deja —
+            // altfel ar apărea debifat, contrazicând serverul, care îl tratează ca implicit pornit.
+            enabled: (saved && p) ? !!p.enabled : true,
             threshold: p && p.threshold != null ? p.threshold : (t.def != null ? t.def : undefined),
             email: !!(p && p.email),
-            push: !!(p && p.push),
+            push: p ? !!p.push : !!(t as any).pushDefault,
           };
         }
         setPrefs(init); setTypes(et);
