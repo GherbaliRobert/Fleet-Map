@@ -207,6 +207,11 @@ de 763px** — de aici senzația de îngrămădit. Acum intră fix.
 > titlu (10 km Logan ↔ 16 km Caddy); click pe traseu → rămâne bifat doar el; „Schimbă selecția"
 > readuce lista completă.
 
+**Completare (04.08):** cu două sau mai multe bifate nu mai e chiar gol — fiecare rând își arată
+kilometrii parcurși, iar dedesubt apare totalul lor și indicația *(bifează una singură ca să vezi
+detaliile ei)*. Compari două mașini dintr-o privire, fără să lungim panoul: 16 km + 10 km = 26 km.
+Sumarul complet — timp în deplasare, staționare, consum — rămâne rezervat mașinii bifate singure.
+
 **Pe APK:** neschimbat. Ecranul de acolo deschide un vehicul o dată, din fișa lui — n-are listă și
 n-are pasul 1. Ar fi funcție nouă, nu ajustare.
 

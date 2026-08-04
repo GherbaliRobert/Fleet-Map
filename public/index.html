@@ -10879,14 +10879,32 @@ const pozitii = await r.json();</code></pre>
     function hpRenderTabs() {
       var box = document.getElementById('hp-tabs'); if (!box) return;
       if (!hpLoaded.size) { box.style.display = 'none'; box.innerHTML = ''; return; }
-      var n = 0; hpLoaded.forEach(function (st) { if (st.visible) n++; });
-      var out = ['<div class="hp-step2-h"><span>Trasee încărcate</span>'
-        + (n > 1 ? '<span class="hint">bifează una singură pentru sumar</span>' : '') + '</div>'];
+      // Kilometrii stau pe fiecare rând, nu într-un bloc separat: aici compari două mașini dintr-o
+      // privire, fără să lungim panoul — exact ce am scurtat cu pasul 2.
+      var _km = function (st) {
+        var d = st.summary && st.summary.distanceKm;
+        return (d != null && !isNaN(d)) ? String(Math.round(d)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' km' : '—';
+      };
+      var n = 0, total = 0;
+      hpLoaded.forEach(function (st) {
+        if (!st.visible) return;
+        n++;
+        var d = st.summary && st.summary.distanceKm;
+        if (d != null && !isNaN(d)) total += Number(d);
+      });
+      var out = ['<div class="hp-step2-h"><span>Trasee încărcate</span></div>'];
       hpLoaded.forEach(function (st) {
         out.push('<label class="hp-tab' + (st.visible ? ' on' : '') + '" style="--tc:' + st.color + ';">'
           + '<input type="checkbox"' + (st.visible ? ' checked' : '') + ' value="' + esc(st.imei) + '" onchange="hpTabVisible(this.value, this.checked)">'
-          + '<span class="dot"></span><span class="nm">' + esc(st.label) + '</span></label>');
+          + '<span class="dot"></span><span class="nm">' + esc(st.label) + '</span>'
+          + '<span class="km">' + _km(st) + '</span></label>');
       });
+      if (n > 1) {
+        out.push('<div class="hp-step2-tot"><span>Total ' + n + ' vehicule</span><b>'
+          + String(Math.round(total)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' km</b></div>');
+        out.push('<div class="hp-step2-hint">(bifează una singură ca să vezi detaliile ei: timp în '
+          + 'deplasare, staționare, consum — și traseul redat)</div>');
+      }
       box.innerHTML = out.join('');
       box.style.display = 'flex';
     }
