@@ -145,7 +145,7 @@ funcție nouă, nu o ajustare; hotărât împreună să rămână pe altă dată
 
 ---
 
-### AMÂNDOI · Traseu: mai multe vehicule pe aceeași hartă — `în curs`
+### AMÂNDOI · Traseu: mai multe vehicule pe aceeași hartă — `90b9488`
 
 **Ce am schimbat:** selectorul „Vehicul" a devenit **„Lista vehicule"**, cu bifă pe fiecare rând și
 căutare deasupra. Bifezi o mașină → vezi doar traseul ei, exact ca înainte. Bifezi două → apar
