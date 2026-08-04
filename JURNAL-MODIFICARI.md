@@ -81,22 +81,6 @@ pentru fiecare. Înainte, a doua zonă dintr-o oră era înghițită în tăcere
 
 ---
 
-## De verificat înainte de lansare
-
-Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
-
-- [ ] **Notificările se revizuiesc înainte de lansare — hotărât de voi, 04.08.** Rămân deocamdată
-  cum sunt; le testați pe teren și veniți cu ce nu merge. Când ajungem la revizuire, aici sunt
-  lucrurile de pus pe masă: cine primește ce (vezi punctul următor), pragurile și răcirea de 5
-  minute, ce ajunge pe telefon și ce rămâne doar în clopoțel, și dacă tipurile de alertă acoperă
-  ce cer clienții.
-- [ ] **Ce vedem noi din conturile clienților** — decizia cea mai mare. Are secțiune proprie mai
-  jos: [Ce vedem din conturile clienților](#decizie-ce-vedem-din-conturile-clienților).
-- [ ] **Editorul de Zone n-are selector de companie.** Zonele desenate de voi rămân fără companie.
-  Funcționează (motorul le acceptă), dar nu le puteți atribui unui client anume.
-- [ ] **Contul de test ca utilizator.** Deocamdată testați totul ca super-admin, care trece prin
-  toate porțile. Ecranele goale și mesajele „nu ai acces" nu le vede niciunul dintre voi.
-
 ### AMÂNDOI · Traseu: butoane tăiate, calendar tăiat, aspect învechit — `93866ff`
 
 **Ce am schimbat:** trei lucruri în panoul „Istoric traseu".
@@ -127,6 +111,24 @@ n-are rând de export — deci defectul nu există acolo. Butoanele lui erau dej
 conturate; web-ul era cel care ieșea din rând.
 
 ---
+
+---
+
+## De verificat înainte de lansare
+
+Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
+
+- [ ] **Notificările se revizuiesc înainte de lansare — hotărât de voi, 04.08.** Rămân deocamdată
+  cum sunt; le testați pe teren și veniți cu ce nu merge. Când ajungem la revizuire, aici sunt
+  lucrurile de pus pe masă: cine primește ce (vezi punctul următor), pragurile și răcirea de 5
+  minute, ce ajunge pe telefon și ce rămâne doar în clopoțel, și dacă tipurile de alertă acoperă
+  ce cer clienții.
+- [ ] **Ce vedem noi din conturile clienților** — decizia cea mai mare. Are secțiune proprie mai
+  jos: [Ce vedem din conturile clienților](#decizie-ce-vedem-din-conturile-clienților).
+- [ ] **Editorul de Zone n-are selector de companie.** Zonele desenate de voi rămân fără companie.
+  Funcționează (motorul le acceptă), dar nu le puteți atribui unui client anume.
+- [ ] **Contul de test ca utilizator.** Deocamdată testați totul ca super-admin, care trece prin
+  toate porțile. Ecranele goale și mesajele „nu ai acces" nu le vede niciunul dintre voi.
 
 ## Decizie: ce vedem din conturile clienților
 
