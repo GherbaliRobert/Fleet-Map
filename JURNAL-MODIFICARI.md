@@ -97,7 +97,7 @@ Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
 - [ ] **Contul de test ca utilizator.** Deocamdată testați totul ca super-admin, care trece prin
   toate porțile. Ecranele goale și mesajele „nu ai acces" nu le vede niciunul dintre voi.
 
-### AMÂNDOI · Traseu: butoane tăiate, calendar tăiat, aspect învechit — `în curs`
+### AMÂNDOI · Traseu: butoane tăiate, calendar tăiat, aspect învechit — `93866ff`
 
 **Ce am schimbat:** trei lucruri în panoul „Istoric traseu".
 
