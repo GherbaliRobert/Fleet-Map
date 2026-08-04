@@ -176,6 +176,42 @@ n-are listă de vehicule. E o funcție nouă pe telefon, nu o ajustare; de pus p
 
 ---
 
+### AMÂNDOI · Traseu: o singură bifă și un flux în doi pași — `în curs`
+
+**Ce am schimbat:** ecranul avea **două selecții suprapuse pe același rând** — bifa (se vede pe hartă)
+și numele (e „în față", primește sumarul). Două controale lipite, cu înțelesuri diferite. De aceea „se
+comuta greu": trebuia să nimerești textul, nu bifa de lângă el, și să ții minte care ce face.
+
+Am scos a doua selecție cu totul. A rămas **bifa**:
+
+- **o singură mașină bifată** → traseul ei, sumarul ei, redarea și „Limite reale";
+- **două sau mai multe** → doar traseele pe hartă. Fără sumar, fără redare — un sumar comun n-ar
+  spune nimic, iar redarea n-ar ști pe cine să plimbe.
+
+Click pe o linie de pe hartă o lasă singură bifată — scurtătura firească: te uiți la un traseu, îl
+apeși, îl ai singur, cu sumarul lui.
+
+**Fluxul e acum în doi pași**, în același panou din stânga:
+
+1. **Pregătirea** — alegi vehiculele și intervalul, apeși „Încarcă traseul".
+2. **Vizionarea** — pasul 1 se închide singur. Rămân doar traseele încărcate cu bifă, sumarul și
+   redarea. Butonul **„Schimbă selecția"** din antet te duce înapoi la pasul 1.
+
+**Fondatorul vede:** exact ce vede și clientul.
+
+**Clientul vede:** un panou care nu mai derulează. Măsurat: conținutul era **1040px într-o fereastră
+de 763px** — de aici senzația de îngrămădit. Acum intră fix.
+
+> Verificat pas cu pas: după încărcare pasul 1 e închis și butonul de întoarcere apare; cu ambele
+> bifate nu există sumar, redare sau „Limite reale"; debifezi una → apar toate trei, cu numele ei în
+> titlu (10 km Logan ↔ 16 km Caddy); click pe traseu → rămâne bifat doar el; „Schimbă selecția"
+> readuce lista completă.
+
+**Pe APK:** neschimbat. Ecranul de acolo deschide un vehicul o dată, din fișa lui — n-are listă și
+n-are pasul 1. Ar fi funcție nouă, nu ajustare.
+
+---
+
 ## De verificat înainte de lansare
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.

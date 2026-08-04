@@ -216,7 +216,7 @@
             <div id="hp-veh-label" class="hp-veh-label" style="display:none;"></div>
           </div>
           <span style="display:flex;align-items:center;gap:6px;">
-            <button class="history-btn" id="hp-toggle-filters" onclick="hpToggleFilters()"><i class="fas fa-sliders-h"></i> Filtre</button>
+            <button class="history-btn" id="hp-toggle-filters" onclick="hpToggleFilters()"><i class="fas fa-sliders-h"></i> Schimbă selecția</button>
             <button class="close-btn" onclick="closeHistory()">&#10005;</button>
           </span>
         </div>
@@ -248,13 +248,15 @@
             <button class="history-btn" onclick="hpQuick('week', this)">7 zile</button>
           </div>
           <button class="history-btn primary hp-load" onclick="loadHistory()"><i class="fas fa-download"></i> Încarcă traseul</button>
-          <div id="hp-tabs" style="display:none;"></div>
-          <div id="hp-export" class="hp-row hp-export" style="display:none;">
-            <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>
-            <button class="history-btn success" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
-            <button class="history-btn" id="hp-osm-btn" onclick="hpToggleOsmLimits()" title="Colorează cu roșu unde s-a depășit limita REALĂ a drumului (date OpenStreetMap)"><i class="fas fa-gauge-high"></i> Limite reale</button>
-            <button class="history-btn" id="hp-snap-btn" onclick="hpSnapToRoads()" title="Mută punctele traseului pe carosabil (date OpenStreetMap)"><i class="fas fa-road"></i> Aliniază pe drumuri</button>
-          </div>
+        </div>
+        <!-- PASUL 2 — vizionarea. Stă în AFARA lui #history-controls, altfel s-ar plia odată cu pasul 1
+             (pregătirea) și n-ai mai vedea nimic după încărcare. -->
+        <div id="hp-tabs" style="display:none;"></div>
+        <div id="hp-export" class="hp-row hp-export" style="display:none;">
+          <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>
+          <button class="history-btn success" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
+          <button class="history-btn" id="hp-osm-btn" onclick="hpToggleOsmLimits()" title="Colorează cu roșu unde s-a depășit limita REALĂ a drumului (date OpenStreetMap)"><i class="fas fa-gauge-high"></i> Limite reale</button>
+          <button class="history-btn" id="hp-snap-btn" onclick="hpSnapToRoads()" title="Mută punctele traseului pe carosabil (date OpenStreetMap)"><i class="fas fa-road"></i> Aliniază pe drumuri</button>
         </div>
         <div id="hp-trip-summary" style="display:none;margin-top:8px;">
           <div id="hp-ts-title" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;padding-left:2px;">Sumar traseu</div>
@@ -10421,6 +10423,7 @@ const pozitii = await r.json();</code></pre>
     // Pliere panou Traseu: după „Încarcă" se ascund filtrele (rămâne bara mică) → se vede harta+traseul.
     function hpToggleFilters() {
       const p = document.getElementById('history-panel'); if (p) p.classList.toggle('hp-collapsed');
+      if (p && !p.classList.contains('hp-collapsed')) { try { hpVehRender(); } catch (e) {} }
     }
     // ─── Traseu pe mai multe vehicule ───────────────────────────────────────────────────────────
     // hpLoaded ține câte o stare completă per vehicul (traseu, puncte, sumar, strat pe hartă, steaguri),
@@ -10700,13 +10703,12 @@ const pozitii = await r.json();</code></pre>
       if (!gasite) { alert('Nu sunt date pentru perioada selectată.'); return; }
 
       document.body.classList.add('history-open');   // ascunde FAB pe mobil cât e afișat un traseu
-      var primul = imeis.map(String).filter(function (i) { return hpLoaded.has(i); })[0];
-      hpSetActive(primul);
-      hpVehRender();
+      hpApplySelection();
       hpFitAll();
-      var _expEl = document.getElementById('hp-export'); if (_expEl) _expEl.style.display = '';
-      // Pe mobil: pliază filtrele după încărcare → se vede harta (rămâne bara de redare + butonul „Filtre")
-      if (window.innerWidth <= 768) { var hp = document.getElementById('history-panel'); if (hp) hp.classList.add('hp-collapsed'); }
+      // Pasul 1 (alegerea vehiculelor + intervalul) se închide singur. Rămâne doar lista traseelor
+      // încărcate, sumarul și redarea — altfel panoul devine un teanc prin care trebuie să derulezi.
+      // „Schimbă selecția", din antet, îl aduce înapoi.
+      var hp = document.getElementById('history-panel'); if (hp) hp.classList.add('hp-collapsed');
     }
 
     // Aduce datele unui vehicul și îl desenează. Întoarce false dacă n-are poziții în interval.
@@ -10742,7 +10744,7 @@ const pozitii = await r.json();</code></pre>
       if (geom) st.geom = geom;
       var g = st.geom || st.points;
       if (!st.visible || !g || g.length < 2) return;
-      var activ = (st.imei === hpActive);
+      var activ = (st.imei === hpActive);   // hpActive e setat DOAR când e bifată exact o mașină
       var sg = L.featureGroup().addTo(map);
       st.layer = sg;
       L.polyline(g, { color: '#0B0E11', weight: activ ? 9 : 7, opacity: 0.9 }).addTo(sg);          // contur
@@ -10761,7 +10763,7 @@ const pozitii = await r.json();</code></pre>
       }
       L.polyline(g, { weight: 22, opacity: 0 }).addTo(sg);   // zonă de click lată (tap ușor pe mobil)
       sg.on('click', function (e) {
-        if (st.imei !== hpActive) { hpSetActive(st.imei); return; }   // click pe un traseu din spate = îl aduce în față
+        if (st.imei !== hpActive) { hpSoloVehicle(st.imei); return; } // click pe un traseu, când sunt mai multe = rămâne doar el
         hpRouteClick(e);
       });
       if (activ) historyLine = sg;   // căile vechi („închide ruta", încadrare) lucrează cu vehiculul activ
@@ -10812,37 +10814,78 @@ const pozitii = await r.json();</code></pre>
       return out;
     }
 
-    // Trece un vehicul „în față": sumarul, redarea și „Limite reale" îl urmează.
-    function hpSetActive(imei) {
-      imei = String(imei || '');
-      var st = hpLoaded.get(imei); if (!st) return;
-      hpActive = imei;
-      selectedImei = imei;
-      var sel = document.getElementById('history-imei'); if (sel) sel.value = imei;
-      hpSetVehicleLabel(imei);
-      hpSpeedLimit = st.speedLimit;
-      hpLastData = st.data;                       // „Limite reale" / „Aliniază" lucrează pe vehiculul activ
-      hpClearOsmOverlay();
-      var _ob = document.getElementById('hp-osm-btn'); if (_ob) _ob.classList.remove('primary');
-      var _sb = document.getElementById('hp-snap-btn'); if (_sb) _sb.style.display = st.snapped ? 'none' : '';
-      hpLoaded.forEach(function (v) { hpDrawVehicle(v); });   // culorile se schimbă: activul primește viteza
-      hpRenderSummary(st);
-      hpRenderPill(st);
+    // O SINGURĂ selecție în tot ecranul: bifa. Bifată exact o mașină → ea primește sumarul, redarea,
+    // colorarea pe viteză și uneltele care lucrează pe un traseu („Limite reale", „Aliniază pe drumuri").
+    // Două sau mai multe bifate → pe hartă rămân doar traseele: un sumar comun n-ar spune nimic, iar
+    // redarea n-ar ști pe cine să plimbe. Înainte existau DOUĂ selecții suprapuse pe același rând —
+    // bifa (se vede) și numele (e în față) — și se încurcau între ele.
+    function hpApplySelection() {
+      var vizibile = [];
+      hpLoaded.forEach(function (st) { if (st.visible) vizibile.push(st); });
+      var solo = (vizibile.length === 1) ? vizibile[0] : null;
+      hpActive = solo ? solo.imei : null;
+
+      hpLoaded.forEach(function (st) { hpDrawVehicle(st); });
+
+      var osm = document.getElementById('hp-osm-btn'), snap = document.getElementById('hp-snap-btn');
+      var exp = document.getElementById('hp-export'); if (exp) exp.style.display = vizibile.length ? '' : 'none';
+      var pb = document.getElementById('history-playback');
+      var ts = document.getElementById('hp-trip-summary'), sm = document.getElementById('hp-summary');
+
+      if (solo) {
+        selectedImei = solo.imei;
+        var sel = document.getElementById('history-imei'); if (sel) sel.value = solo.imei;
+        hpSetVehicleLabel(solo.imei);
+        hpSpeedLimit = solo.speedLimit;
+        hpLastData = solo.data;                 // „Limite reale" / „Aliniază" lucrează pe ea
+        hpClearOsmOverlay();
+        if (osm) { osm.style.display = ''; osm.classList.remove('primary'); }
+        if (snap) snap.style.display = solo.snapped ? 'none' : '';
+        hpRenderSummary(solo);
+        hpRenderPill(solo);
+        try { hpInit(solo.data); } catch (e) { console.warn('replay indisponibil:', e); }
+      } else {
+        hpSetVehicleLabel(null);
+        hpClearOsmOverlay();
+        if (osm) osm.style.display = 'none';
+        if (snap) snap.style.display = 'none';
+        try { hpStop(); } catch (e) {}
+        if (hpMarker) { try { map.removeLayer(hpMarker); } catch (e) {} hpMarker = null; }
+        if (pb) pb.style.display = 'none';
+        if (ts) ts.style.display = 'none';
+        if (sm) sm.style.display = 'none';
+        if (vizibile.length) hpRenderPillMulti(vizibile); else _routePillHide();
+      }
       hpRenderTabs();
-      try { hpInit(st.data); } catch (e) { console.warn('replay indisponibil:', e); }
+      hpVehRender();
+    }
+    // Click pe un traseu când sunt mai multe pe hartă: rămâne bifat doar el, deci îi apare și sumarul.
+    // E scurtătura firească — te uiți la o linie, o apeși, o ai singură.
+    function hpSoloVehicle(imei) {
+      imei = String(imei);
+      hpLoaded.forEach(function (st) { st.visible = (st.imei === imei); });
+      hpApplySelection();
+      hpFitAll();
+    }
+    function hpRenderPillMulti(list) {
+      var _fmt = function (d) { return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }); };
+      var el = document.getElementById('route-active-pill'), lbl = document.getElementById('route-pill-label');
+      if (!el || !lbl) return;
+      lbl.textContent = list.length + ' vehicule · ' + _fmt(new Date(hpRange.from)) + ' – ' + _fmt(new Date(hpRange.to));
+      el.style.display = 'flex';
     }
 
-    // Capetele de comutare (mini-meniul). Apar de la două vehicule în sus. Bifa = arată/ascunde pe hartă,
-    // numele = adu-l în față.
+    // Pasul 2: lista traseelor încărcate. O singură acțiune pe rând — bifa.
     function hpRenderTabs() {
       var box = document.getElementById('hp-tabs'); if (!box) return;
-      if (hpLoaded.size < 2) { box.style.display = 'none'; box.innerHTML = ''; return; }
-      var out = [];
+      if (!hpLoaded.size) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      var n = 0; hpLoaded.forEach(function (st) { if (st.visible) n++; });
+      var out = ['<div class="hp-step2-h"><span>Trasee încărcate</span>'
+        + (n > 1 ? '<span class="hint">bifează una singură pentru sumar</span>' : '') + '</div>'];
       hpLoaded.forEach(function (st) {
-        out.push('<div class="hp-tab' + (st.imei === hpActive ? ' on' : '') + (st.visible ? '' : ' off') + '" style="--tc:' + st.color + ';">'
-          + '<input type="checkbox"' + (st.visible ? ' checked' : '') + ' title="Arată pe hartă" value="' + esc(st.imei) + '" onchange="hpTabVisible(this.value, this.checked)">'
-          + '<button type="button" title="Adu în față" onclick="hpSetActive(this.value)" value="' + esc(st.imei) + '">' + esc(st.label) + '</button>'
-          + '</div>');
+        out.push('<label class="hp-tab' + (st.visible ? ' on' : '') + '" style="--tc:' + st.color + ';">'
+          + '<input type="checkbox"' + (st.visible ? ' checked' : '') + ' value="' + esc(st.imei) + '" onchange="hpTabVisible(this.value, this.checked)">'
+          + '<span class="dot"></span><span class="nm">' + esc(st.label) + '</span></label>');
       });
       box.innerHTML = out.join('');
       box.style.display = 'flex';
@@ -10850,12 +10893,8 @@ const pozitii = await r.json();</code></pre>
     function hpTabVisible(imei, on) {
       var st = hpLoaded.get(String(imei)); if (!st) return;
       st.visible = !!on;
-      hpDrawVehicle(st);
-      if (!on && st.imei === hpActive) {          // ai ascuns vehiculul activ → trece pe primul rămas vizibil
-        var next = null; hpLoaded.forEach(function (v) { if (!next && v.visible) next = v.imei; });
-        if (next) hpSetActive(next);
-      }
-      hpRenderTabs(); hpFitAll();
+      hpApplySelection();
+      hpFitAll();
     }
     // Scoate complet un vehicul (debifat din „Lista vehicule").
     function hpDropVehicle(imei) {
@@ -10864,12 +10903,8 @@ const pozitii = await r.json();</code></pre>
       if (st.layer) { try { map.removeLayer(st.layer); } catch (e) {} }
       st.markers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
       hpLoaded.delete(imei);
-      if (hpActive === imei) {
-        hpActive = null;
-        var next = null; hpLoaded.forEach(function (v) { if (!next) next = v.imei; });
-        if (next) hpSetActive(next); else { hpClearAll(); return; }
-      }
-      hpRenderTabs(); hpFitAll();
+      if (!hpLoaded.size) { hpClearAll(); return; }
+      hpApplySelection(); hpFitAll();
     }
     // Golește tot: hartă, capete, sumare, redare. Chemat și de X-ul din pastila rutei.
     function hpClearAll() {
