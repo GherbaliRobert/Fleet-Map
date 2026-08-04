@@ -216,7 +216,7 @@
             <div id="hp-veh-label" class="hp-veh-label" style="display:none;"></div>
           </div>
           <span style="display:flex;align-items:center;gap:6px;">
-            <button class="history-btn" id="hp-toggle-filters" onclick="hpToggleFilters()"><i class="fas fa-sliders-h"></i> Schimbă selecția</button>
+            <button class="history-btn" id="hp-toggle-filters" onclick="hpToggleFilters()" title="Șterge traseele de pe hartă și revino la alegerea vehiculelor"><i class="fas fa-rotate-left"></i> Anulează traseele încărcate</button>
             <button class="close-btn" onclick="closeHistory()">&#10005;</button>
           </span>
         </div>
@@ -10421,9 +10421,15 @@ const pozitii = await r.json();</code></pre>
     function invalidateUiPrefs() { hpUiPrefs = null; }
     // Populează selectorul de vehicul din panoul Istoric traseu + auto-selectează + interval default
     // Pliere panou Traseu: după „Încarcă" se ascund filtrele (rămâne bara mică) → se vede harta+traseul.
+    // Butonul din pasul 2: șterge traseele de pe hartă și te întoarce la pasul 1 (alegerea vehiculelor
+    // și a intervalului). O singură apăsare, un singur rezultat — nu o pliere care lasă traseele agățate
+    // pe hartă în timp ce tu alegi altceva.
+    // Bifele din „Lista vehicule" rămân puse: de obicei vrei să ajustezi selecția, nu s-o iei de la zero.
     function hpToggleFilters() {
-      const p = document.getElementById('history-panel'); if (p) p.classList.toggle('hp-collapsed');
-      if (p && !p.classList.contains('hp-collapsed')) { try { hpVehRender(); } catch (e) {} }
+      try { hpClearAll(); } catch (e) {}
+      const p = document.getElementById('history-panel'); if (p) p.classList.remove('hp-collapsed');
+      try { hpVehRender(); } catch (e) {}
+      setTimeout(function () { if (map) map.invalidateSize(); }, 250);
     }
     // ─── Traseu pe mai multe vehicule ───────────────────────────────────────────────────────────
     // hpLoaded ține câte o stare completă per vehicul (traseu, puncte, sumar, strat pe hartă, steaguri),

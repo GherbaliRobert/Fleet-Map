@@ -195,7 +195,9 @@ apeși, îl ai singur, cu sumarul lui.
 
 1. **Pregătirea** — alegi vehiculele și intervalul, apeși „Încarcă traseul".
 2. **Vizionarea** — pasul 1 se închide singur. Rămân doar traseele încărcate cu bifă, sumarul și
-   redarea. Butonul **„Schimbă selecția"** din antet te duce înapoi la pasul 1.
+   redarea. Butonul **„Anulează traseele încărcate"** din antet șterge traseele de pe hartă și te
+   duce înapoi la pasul 1. Bifele din listă rămân puse — de obicei vrei să ajustezi selecția, nu
+   s-o iei de la zero.
 
 **Fondatorul vede:** exact ce vede și clientul.
 
