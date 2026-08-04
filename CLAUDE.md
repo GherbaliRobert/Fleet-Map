@@ -88,3 +88,18 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
   (ex. €/apel) **trebuie dat `step`** — altfel browserul respinge valoarea (step implicit = 1).
 - Cota vândută în ofertă se setează apoi pe companie: `settings.ai_quota = { questions, overage,
   overagePriceEur }` (doar super-admin). Fără cotă = nelimitat.
+
+## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
+
+Fondatorii (Robert + echipa) au **conturi de super-admin** și testează aplicația jucând ambele
+roluri: uneori ca proprietari de platformă, alteori punându-se în locul clientului. Ca să nu se
+amestece, **fiecare modificare se trece în `JURNAL-MODIFICARI.md`**, cu una din etichetele
+`FONDATOR` / `CLIENT` / `AMÂNDOI` și cu cele trei rânduri: *ce am schimbat*, *ce vede fondatorul*,
+*ce vede clientul*.
+
+- Spune eticheta și **în răspunsul din conversație**, nu doar în fișier — o propoziție, la obiect.
+- Când o modificare gândită pentru fondatori ajunge sub ochii clientului (sau invers), trece-o la
+  **„De verificat înainte de lansare"**, la finalul jurnalului. Aia e lista pe care o parcurgem
+  împreună înainte de lansare.
+- Jurnalul e pentru ei, nu pentru mine: scris pe înțelesul tuturor, fără jargon. Numele de fișiere
+  și commit-urile se pun ca reper, nu ca explicație.
