@@ -3498,13 +3498,18 @@ const pozitii = await r.json();</code></pre>
       const sel = document.getElementById(id); if (!sel) return;
       const isSuper = !!(currentUser && currentUser.isSuper);
       let list = adminDevicesCache;
-      if (coId != null && coId !== '') list = list.filter(d => String(d.company_id) === String(coId));
+      // Vehiculele NEASIGNATE (company_id gol) rămân în listă chiar și când s-a ales o companie — altfel
+      // ar dispărea din toate listele deodată și n-ai ști niciodată că există. Sunt etichetate ca atare.
+      if (coId != null && coId !== '') {
+        list = list.filter(d => String(d.company_id) === String(coId) || d.company_id == null);
+      }
       const allLabel = (withAll
         ? (coId != null && coId !== '' ? 'Toate vehiculele companiei' : 'Toate vehiculele')
         : '-- Alege vehicul --');
       const opts = `<option value="">${allLabel}</option>`
         + list.map(d => {
-          const co = (isSuper && !coId && d.company_name) ? ' — ' + d.company_name : '';
+          const co = d.company_id == null ? ' — fără companie'
+            : ((isSuper && !coId && d.company_name) ? ' — ' + d.company_name : '');
           return `<option value="${d.imei}">${(d.name||d.imei)}${d.plate?' · '+d.plate:''}${co}</option>`;
         }).join('');
       sel.innerHTML = opts;

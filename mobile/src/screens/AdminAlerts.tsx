@@ -48,8 +48,10 @@ export function AdminAlerts() {
 
   const coName = (id: any) => { const c = cos.find((x) => Number(x.id) === Number(id)); return c ? c.name : ('compania #' + id); };
   // Vehiculele companiei alese; pentru „toată platforma" rămân toate, cu compania scrisă lângă nume.
+  // Cele NEASIGNATE (fără company_id) rămân vizibile oricum — altfel ar dispărea din toate listele
+  // deodată și n-ai afla niciodată că există. Sunt etichetate „fără companie".
   const formVehicles = (form.co && form.co !== '__all__')
-    ? vlist.filter((v: any) => Number(v.company_id) === Number(form.co))
+    ? vlist.filter((v: any) => Number(v.company_id) === Number(form.co) || v.company_id == null)
     : vlist;
 
   async function reload() {
@@ -190,7 +192,8 @@ export function AdminAlerts() {
                     <option value="">{form.co && form.co !== '__all__' ? 'Toate vehiculele companiei' : 'Toate vehiculele'}</option>
                     {formVehicles.slice().sort((a, b) => (a.name || a.imei).localeCompare(b.name || b.imei)).map((v: any) => (
                       <option value={v.imei}>
-                        {(v.name || v.plate || v.imei) + (isSuper && form.co === '__all__' && v.company_name ? ' — ' + v.company_name : '')}
+                        {(v.name || v.plate || v.imei) + (v.company_id == null ? ' — fără companie'
+                          : (isSuper && form.co === '__all__' && v.company_name ? ' — ' + v.company_name : ''))}
                       </option>
                     ))}
                   </select>

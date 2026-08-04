@@ -1080,6 +1080,19 @@ async function ensureTenancy() {
       // primul admin (cel mai vechi) devine super-admin platformă, fără companie
       await pool.query("UPDATE users SET role='superadmin', company_id=NULL WHERE id=(SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1)");
     }
+    // Migrarea de mai jos e pentru date LEGACY (dinainte de multi-tenancy) și trebuie să ruleze O SINGURĂ
+    // DATĂ. Fără marcaj, se reaprindea la fiecare pornire: era de ajuns un vehicul neasignat — un dispozitiv
+    // nou adoptat, de pildă — ca să mature în „Compania mea" TOATE rândurile fără companie din șapte tabele,
+    // inclusiv alertele și zonele definite pe toată platforma. Un vehicul nou schimba astfel, tăcut,
+    // apartenența unor reguli care n-aveau nicio legătură cu el.
+    // Vehiculele neasignate sunt de altfel o stare LEGITIMĂ a produsului (există lista „fără companie" din
+    // Dispozitive, vezi getUnassignedDevices) — operatorul le repartizează, nu o bază de date la repornire.
+    if (await getSetting('tenancy_migrated')) return;
+    // Bază care are DEJA companii reale = platformă multi-tenant funcțională: nu mai există date „dinainte
+    // de companii" de mutat. O marcăm ca migrată fără să atingem nimic — altfel prima pornire după acest
+    // fix ar mai executa o dată exact măturarea pe care o oprim.
+    const co = (await pool.query('SELECT COUNT(*)::int AS n FROM companies WHERE is_demo IS NOT TRUE')).rows[0].n;
+    if (co > 0) { await setSetting('tenancy_migrated', String(Date.now())); return; }
     const nullDev = (await pool.query('SELECT COUNT(*)::int AS n FROM devices WHERE company_id IS NULL')).rows[0].n;
     const nullUsr = (await pool.query("SELECT COUNT(*)::int AS n FROM users WHERE company_id IS NULL AND role<>'superadmin'")).rows[0].n;
     if (nullDev > 0 || nullUsr > 0) {
@@ -1092,6 +1105,7 @@ async function ensureTenancy() {
       await pool.query("UPDATE users SET company_id=NULL WHERE role='superadmin'");
       console.log('[DB] Tenancy: date legacy migrate în compania Default (#' + def + ')');
     }
+    await setSetting('tenancy_migrated', String(Date.now()));
   } catch (e) { console.warn('[DB] ensureTenancy:', e.message); }
 }
 

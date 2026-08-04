@@ -74,6 +74,15 @@ function kill(p) { return new Promise((r) => { if (!p) return r(); p.once('exit'
     t('fiecare vehicul își poartă compania (pentru eticheta din selector)',
       dev.every(d => !!d.company_name), dev.map(d => d.name + '→' + d.company_name).join(' | '));
 
+    // ── Vehicul NEASIGNAT: trebuie să rămână vizibil, nu să dispară din toate listele ──
+    const IMEI_X = '860000000011103';
+    await req(S, 'POST', '/api/devices', { imei: IMEI_X, name: 'Fara companie', plate: 'B 999 XXX' });
+    const dev2 = (await req(S, 'GET', '/api/devices')).body || [];
+    const orphanDev = dev2.find(d => d.imei === IMEI_X);
+    t('vehiculul fără companie apare în listă (nu e înghițit de JOIN)', !!orphanDev, dev2.length + ' vehicule');
+    t('vehiculul fără companie e recunoscut ca atare', orphanDev && orphanDev.company_id == null,
+      orphanDev && JSON.stringify(orphanDev.company_id));
+
     // ── Regula creată de super-admin PENTRU o companie ──
     const r1 = await req(S, 'POST', '/api/alerts', { name: 'Ralanti Unitip', type: 'idle_engine', imei: null, condition: { minutes: 5 }, enabled: true, company_id: coB.id });
     t('regulă creată pe compania aleasă', r1.status === 200 && r1.body && Number(r1.body.company_id) === Number(coB.id), JSON.stringify(r1.body));
@@ -121,8 +130,15 @@ function kill(p) { return new Promise((r) => { if (!p) return r(); p.once('exit'
     const left = after.find(a => a.id === orphanGlobal.id);
     t('regula veche PE UN VEHICUL a primit compania vehiculului',
       fixed && Number(fixed.company_id) === Number(coB.id), JSON.stringify(fixed && fixed.company_id));
+    // Regresia care a dat peste cap testul întâi: ensureTenancy rula la FIECARE pornire și, dacă exista
+    // măcar un vehicul fără companie, muta în „Compania mea" toate rândurile fără companie din șapte
+    // tabele — inclusiv alertele pe toată platforma. Un vehicul nou adoptat rescria tăcut reguli
+    // care n-aveau nicio legătură cu el.
     t('regula veche FĂRĂ vehicul rămâne neatinsă (nu se ghicește compania)',
       left && left.company_id == null, JSON.stringify(left && left.company_id));
+    const stillOrphan = (await req(S2, 'GET', '/api/devices')).body.find(d => d.imei === IMEI_X);
+    t('vehiculul neasignat NU e mutat automat într-o companie la repornire',
+      stillOrphan && stillOrphan.company_id == null, stillOrphan && JSON.stringify(stillOrphan.company_id));
 
     const U2 = mkJar();
     await req(U2, 'POST', '/api/login', { username: 'admin.unitip@test.ro', password: 'Parola123!' });
