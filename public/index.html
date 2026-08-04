@@ -1744,6 +1744,12 @@ const pozitii = await r.json();</code></pre>
           <div class="admin-add" style="grid-template-columns:repeat(2,1fr);">
             <label><span>Nume regulă *</span><input type="text" id="alert-name"></label>
             <label><span>Tip</span><select id="alert-type" onchange="renderAlertCond()"></select></label>
+            <!-- Compania regulii — DOAR super-admin. Fără ea, o regulă creată de platformă rămânea fără
+                 companie: se declanșa pentru TOATE flotele și nu era vizibilă niciunui administrator. -->
+            <label id="alert-co-wrap" style="display:none;grid-column:1/-1;"><span>Compania regulii *</span>
+              <select id="alert-company" onchange="onAlertCompanyChange()"></select>
+              <span id="alert-co-note" style="font-size:11px;color:var(--text-muted);margin-top:3px;display:block;"></span>
+            </label>
             <label><span>Vehicul</span><select id="alert-imei"><option value="">Toate vehiculele</option></select></label>
             <label><span>Activă</span><select id="alert-enabled"><option value="true">Da</option><option value="false">Nu</option></select></label>
             <div id="alert-cond-fields" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
@@ -3486,16 +3492,28 @@ const pozitii = await r.json();</code></pre>
       const d = adminDevicesCache.find(x => x.imei === imei);
       return d ? ((d.name || imei) + (d.plate ? ' · ' + d.plate : '')) : imei;
     }
-    function populateVehicleSelect(id, withAll) {
+    // `coId`: dacă e dat, arată DOAR vehiculele companiei respective. Pentru super-admin adaugă și numele
+    // companiei la fiecare vehicul — cu flote în mai multe companii, „VW CADDY" singur nu spune a cui e.
+    function populateVehicleSelect(id, withAll, coId) {
       const sel = document.getElementById(id); if (!sel) return;
-      const opts = (withAll ? '<option value="">Toate vehiculele</option>' : '<option value="">-- Alege vehicul --</option>')
-        + adminDevicesCache.map(d => `<option value="${d.imei}">${(d.name||d.imei)}${d.plate?' · '+d.plate:''}</option>`).join('');
+      const isSuper = !!(currentUser && currentUser.isSuper);
+      let list = adminDevicesCache;
+      if (coId != null && coId !== '') list = list.filter(d => String(d.company_id) === String(coId));
+      const allLabel = (withAll
+        ? (coId != null && coId !== '' ? 'Toate vehiculele companiei' : 'Toate vehiculele')
+        : '-- Alege vehicul --');
+      const opts = `<option value="">${allLabel}</option>`
+        + list.map(d => {
+          const co = (isSuper && !coId && d.company_name) ? ' — ' + d.company_name : '';
+          return `<option value="${d.imei}">${(d.name||d.imei)}${d.plate?' · '+d.plate:''}${co}</option>`;
+        }).join('');
       sel.innerHTML = opts;
     }
 
     async function openAdmin() {
       document.getElementById('admin-modal').classList.add('visible');
       await adminLoadDevices();
+      await initAlertCompanySelect();
       populateVehicleSelect('alert-imei', true);
       populateVehicleSelect('mnt-imei', false);
       populateVehicleSelect('mdoc-imei', false);
@@ -4177,13 +4195,63 @@ const pozitii = await r.json();</code></pre>
       }
       box.innerHTML = html;
     }
+    // Companiile, pentru selectorul de alerte + eticheta de domeniu din listă (doar super-admin le poate citi).
+    let _alertCompanies = null;
+    async function initAlertCompanySelect() {
+      const wrap = document.getElementById('alert-co-wrap');
+      if (!wrap) return;
+      if (!(currentUser && currentUser.isSuper)) { wrap.style.display = 'none'; return; }
+      wrap.style.display = '';
+      if (_alertCompanies === null) {
+        try { _alertCompanies = await (await fetch('/api/companies', { credentials: 'same-origin' })).json(); }
+        catch (e) { _alertCompanies = []; }
+        if (!Array.isArray(_alertCompanies)) _alertCompanies = [];
+      }
+      const sel = document.getElementById('alert-company');
+      sel.innerHTML = '<option value="">— alege compania —</option>'
+        + _alertCompanies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')
+        + '<option value="__all__">⚠ Toată platforma (toate companiile)</option>';
+      onAlertCompanyChange();
+    }
+    function _alertCoName(id) {
+      if (id == null) return null;
+      const c = (_alertCompanies || []).find(x => String(x.id) === String(id));
+      return c ? c.name : ('companie #' + id);
+    }
+    // Compania aleasă restrânge lista de vehicule: nu poți da din greșeală o regulă pe mașina altui client.
+    function onAlertCompanyChange() {
+      const sel = document.getElementById('alert-company'); if (!sel) return;
+      const v = sel.value;
+      const note = document.getElementById('alert-co-note');
+      if (v === '__all__') {
+        note.innerHTML = '<span style="color:var(--orange);"><i class="fas fa-triangle-exclamation"></i> Regula se aplică vehiculelor <b>tuturor companiilor</b> și nu va fi vizibilă administratorilor lor.</span>';
+        populateVehicleSelect('alert-imei', true);
+      } else if (v) {
+        const n = (adminDevicesCache || []).filter(d => String(d.company_id) === String(v)).length;
+        note.textContent = n + (n === 1 ? ' vehicul în această companie.' : ' vehicule în această companie.');
+        populateVehicleSelect('alert-imei', true, v);
+      } else {
+        note.textContent = 'Alege compania pentru care creezi regula — administratorul ei o va vedea și o va putea edita.';
+        populateVehicleSelect('alert-imei', true);
+      }
+    }
     async function loadAlerts() {
       const r = await fetch('/api/alerts'); const list = await r.json();
       const el = document.getElementById('admin-alerts-list');
-      el.innerHTML = list.length ? list.map(a => `<div class="admin-row"><div>
+      const isSuper = !!(currentUser && currentUser.isSuper);
+      el.innerHTML = list.length ? list.map(a => {
+        // Domeniul regulii, scris explicit: fără el, „Toate vehiculele" ascundea diferența dintre
+        // „toată flota unei companii" și „toate flotele de pe platformă".
+        const scope = a.imei
+          ? vehicleLabel(a.imei)
+          : (a.company_id != null
+            ? 'Toate vehiculele' + (isSuper ? ' · ' + esc(_alertCoName(a.company_id)) : '')
+            : '<span style="color:var(--orange);"><i class="fas fa-triangle-exclamation"></i> TOATE companiile</span>');
+        return `<div class="admin-row"><div>
           <strong>${a.name}</strong> <span class="role">${alertTypeLabel(a.type)}</span>
-          <div class="meta">${a.imei ? vehicleLabel(a.imei) : 'Toate vehiculele'} · ${a.enabled ? 'activă' : 'inactivă'}</div>
-        </div><button class="btn-sm btn-danger" onclick="deleteAlert(${a.id})"><i class="fas fa-trash"></i></button></div>`).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio regulă.</p>';
+          <div class="meta">${scope} · ${a.enabled ? 'activă' : 'inactivă'}</div>
+        </div><button class="btn-sm btn-danger" onclick="deleteAlert(${a.id})"><i class="fas fa-trash"></i></button></div>`;
+      }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio regulă.</p>';
     }
     async function saveAlert() {
       const name = document.getElementById('alert-name').value.trim();
@@ -4201,7 +4269,20 @@ const pozitii = await r.json();</code></pre>
         condition.axleLimits = {};
         [1,2,3,4,5].forEach(n => { const v = document.getElementById('alert-cf-axle'+n).value; if (v) condition.axleLimits['axle'+n] = Number(v); });
       }
-      const res = await fetch('/api/alerts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, type, imei, condition, enabled }) });
+      // Super-adminul TREBUIE să spună pentru cine e regula. Înainte, orice regulă a lui se salva fără
+      // companie → se declanșa pentru toate flotele și rămânea invizibilă administratorilor lor.
+      let companyId;
+      if (currentUser && currentUser.isSuper) {
+        const cv = document.getElementById('alert-company').value;
+        if (!cv) return alert('Alege compania pentru care creezi regula.');
+        if (cv === '__all__') {
+          if (!await raConfirm('Regula se va aplica vehiculelor TUTUROR companiilor de pe platformă, iar administratorii lor nu o vor vedea și nu o vor putea opri.\n\nEști sigur?', { okLabel: 'Da, pentru toată platforma', danger: true })) return;
+          companyId = null;
+        } else companyId = Number(cv);
+      }
+      const body = { name, type, imei, condition, enabled };
+      if (currentUser && currentUser.isSuper) body.company_id = companyId;
+      const res = await fetch('/api/alerts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
       document.getElementById('alert-name').value = '';
       await loadAlerts();

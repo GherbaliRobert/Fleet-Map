@@ -5566,7 +5566,27 @@ app.get('/api/alerts', requireAuth, withScope, async (req, res) => {
 app.post('/api/alerts', requireAuth, requireFleet, withScope, async (req, res) => {
   try {
     if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
-    const a = await db.createAlert(req.body, req.companyId); auditReq(req, 'create', 'alert', a.id, { type: req.body.type }); res.json(a);
+    // Compania regulii: pentru super-admin vine din formular (compania nu se poate deduce — el n-are una).
+    // Înainte se folosea `req.companyId`, care pentru super-admin e NULL: regula ieșea „fără companie", iar
+    // motorul o aplica ATUNCI vehiculelor TUTUROR companiilor (vezi evaluateAlerts), fără ca administratorii
+    // lor s-o vadă în listă (getAlerts filtrează pe company_id). `null` explicit rămâne posibil, dar acum e
+    // o alegere conștientă („toată platforma"), nu un efect secundar.
+    let coId = req.companyId;
+    if (req.isSuper && Object.prototype.hasOwnProperty.call(req.body, 'company_id')) {
+      coId = (req.body.company_id === null || req.body.company_id === '') ? null : Number(req.body.company_id);
+      if (coId != null && !Number.isFinite(coId)) return res.status(400).json({ error: 'Companie invalidă' });
+    }
+    // Vehicul + companie: dacă sunt date amândouă, trebuie să se potrivească — altfel regula n-ar porni
+    // niciodată (motorul cere `alert.imei === imei`, iar lista o arată sub compania greșită).
+    if (req.body.imei && coId != null) {
+      const devCo = await getDeviceCompanyCached(req.body.imei);
+      if (devCo != null && Number(devCo) !== Number(coId)) {
+        return res.status(400).json({ error: 'Vehiculul nu aparține companiei alese.' });
+      }
+    }
+    const a = await db.createAlert(req.body, coId);
+    auditReq(req, 'create', 'alert', a.id, { type: req.body.type, company_id: coId });
+    res.json(a);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

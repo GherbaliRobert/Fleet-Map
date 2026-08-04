@@ -104,7 +104,9 @@ export async function refreshRoster() {
     roster.value = (Array.isArray(devs) ? devs : [])
       .filter((d: any) => d && d.imei && d.status !== 'archived')
       .map((d: any) => ({
-        imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type, company_name: d.company_name,
+        // company_id, nu doar numele: ecranul de alerte filtrează vehiculele după compania aleasă.
+        imei: d.imei, name: d.name, plate: d.plate, vehicle_type: d.vehicle_type,
+        company_name: d.company_name, company_id: d.company_id,
         latitude: d.latitude, longitude: d.longitude, speed: d.speed, angle: d.angle, satellites: d.satellites,
         timestamp: d.last_position_time || null, io: d.io_data || {},
       } as Position));

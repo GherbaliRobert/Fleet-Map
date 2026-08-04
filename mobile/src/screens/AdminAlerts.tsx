@@ -31,16 +31,26 @@ const typeLabel = (v: string) => ALERT_TYPES.find((t) => t.v === v)?.label || v;
 export function AdminAlerts() {
   const loc = useLocation();
   const canWrite = !!me.value?.permissions?.manageFleet;
+  // Super-adminul nu are companie proprie. Fără o alegere explicită, regula s-ar salva „fără companie":
+  // s-ar declanșa pentru flotele TUTUROR clienților și n-ar apărea în lista niciunuia dintre ei.
+  const isSuper = !!me.value?.isSuper;
   const vlist = vehicles.value;
   const vname = (imei: string) => { const v = vlist.find((x) => x.imei === imei); return v ? (v.name || v.plate || imei) : imei; };
 
   const [items, setItems] = useState<any[] | null>(null);
   const [geofences, setGeofences] = useState<any[]>([]);
+  const [cos, setCos] = useState<any[]>([]);
   const [err, setErr] = useState('');
   const [add, setAdd] = useState(false);
   const [confirmDel, setConfirmDel] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<any>({ name: '', type: 'overspeed', imei: '', enabled: 'true', cond: {} as Record<string, any> });
+  const [form, setForm] = useState<any>({ name: '', type: 'overspeed', imei: '', co: '', enabled: 'true', cond: {} as Record<string, any> });
+
+  const coName = (id: any) => { const c = cos.find((x) => Number(x.id) === Number(id)); return c ? c.name : ('compania #' + id); };
+  // Vehiculele companiei alese; pentru „toată platforma" rămân toate, cu compania scrisă lângă nume.
+  const formVehicles = (form.co && form.co !== '__all__')
+    ? vlist.filter((v: any) => Number(v.company_id) === Number(form.co))
+    : vlist;
 
   async function reload() {
     setErr('');
@@ -50,13 +60,14 @@ export function AdminAlerts() {
   useEffect(() => {
     reload();
     Api.geofences().then((g) => setGeofences(Array.isArray(g) ? g : [])).catch(() => {});
+    if (isSuper) Api.companies().then((c) => setCos(Array.isArray(c) ? c : [])).catch(() => {});
   }, []);
 
   function openAdd() {
     const t = ALERT_TYPES[0];
     const cond: Record<string, any> = {};
     for (const f of t.fields) cond[f.k] = f.def ?? '';
-    setForm({ name: '', type: t.v, imei: '', enabled: 'true', cond });
+    setForm({ name: '', type: t.v, imei: '', co: '', enabled: 'true', cond });
     setAdd(true);
   }
   function changeType(v: string) {
@@ -69,15 +80,18 @@ export function AdminAlerts() {
 
   async function save() {
     if (!form.name.trim()) { showToast('Dă un nume regulii', true); return; }
+    if (isSuper && !form.co) { showToast('Alege compania pentru care creezi regula', true); return; }
     const condition: Record<string, any> = {};
     for (const f of curType.fields) {
       const v = form.cond[f.k];
       if (f.geofence && (v === '' || v == null)) { showToast('Alege o zonă', true); return; }
       condition[f.k] = (v === '' || v == null) ? null : Number(v);
     }
+    const body: any = { name: form.name.trim(), type: form.type, imei: form.imei || null, enabled: form.enabled === 'true', condition };
+    if (isSuper) body.company_id = form.co === '__all__' ? null : Number(form.co);
     setSaving(true);
     try {
-      await Api.createAlert({ name: form.name.trim(), type: form.type, imei: form.imei || null, enabled: form.enabled === 'true', condition });
+      await Api.createAlert(body);
       showToast('Alertă creată'); setAdd(false); await reload();
     } catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); }
     finally { setSaving(false); }
@@ -109,7 +123,13 @@ export function AdminAlerts() {
                 <span class="ic-wrap"><Icon name="alert" size={19} /></span>
                 <span class="mid">
                   <div class="nm">{a.name}</div>
-                  <div class="sub">{typeLabel(a.type)} · {a.imei ? vname(a.imei) : 'Toate vehiculele'}</div>
+                  <div class="sub">
+                    {typeLabel(a.type)} · {a.imei
+                      ? vname(a.imei)
+                      : (a.company_id != null
+                        ? 'Toate vehiculele' + (isSuper ? ' · ' + coName(a.company_id) : '')
+                        : <span style="color:var(--orange,#f59e0b)">TOATE companiile</span>)}
+                  </div>
                 </span>
                 <span class="rt">
                   <span class={'adm-pill ' + (a.enabled ? 'ok' : '')}>{a.enabled ? 'activă' : 'inactivă'}</span>
@@ -130,6 +150,22 @@ export function AdminAlerts() {
             <div class="sheet-body">
               <div class="frm">
                 <div class="fld"><label>Nume regulă <span class="req">*</span></label><input value={form.name} onInput={(e) => setForm((p: any) => ({ ...p, name: (e.target as HTMLInputElement).value }))} placeholder="Ex: Viteză peste 90" /></div>
+                {isSuper && (
+                  <div class="fld"><label>Compania regulii <span class="req">*</span></label>
+                    <select value={form.co} onChange={(e) => { const v = (e.target as HTMLSelectElement).value; setForm((p: any) => ({ ...p, co: v, imei: '' })); }}>
+                      <option value="">— alege compania —</option>
+                      {cos.map((c) => <option value={String(c.id)}>{c.name}</option>)}
+                      <option value="__all__">⚠ Toată platforma (toate companiile)</option>
+                    </select>
+                    <div class="muted" style="font-size:11.5px;margin-top:4px">
+                      {form.co === '__all__'
+                        ? 'Regula se aplică vehiculelor tuturor companiilor și nu va fi vizibilă administratorilor lor.'
+                        : form.co
+                          ? formVehicles.length + ' vehicule în această companie.'
+                          : 'Alege compania pentru care creezi regula — administratorul ei o va vedea și o va putea edita.'}
+                    </div>
+                  </div>
+                )}
                 <div class="fld"><label>Tip alertă</label>
                   <select value={form.type} onChange={(e) => changeType((e.target as HTMLSelectElement).value)}>
                     {ALERT_TYPES.map((t) => <option value={t.v}>{t.label}</option>)}
@@ -151,8 +187,12 @@ export function AdminAlerts() {
                 ))}
                 <div class="fld"><label>Vehicul</label>
                   <select value={form.imei} onChange={(e) => setForm((p: any) => ({ ...p, imei: (e.target as HTMLSelectElement).value }))}>
-                    <option value="">Toate vehiculele</option>
-                    {vlist.slice().sort((a, b) => (a.name || a.imei).localeCompare(b.name || b.imei)).map((v) => <option value={v.imei}>{v.name || v.plate || v.imei}</option>)}
+                    <option value="">{form.co && form.co !== '__all__' ? 'Toate vehiculele companiei' : 'Toate vehiculele'}</option>
+                    {formVehicles.slice().sort((a, b) => (a.name || a.imei).localeCompare(b.name || b.imei)).map((v: any) => (
+                      <option value={v.imei}>
+                        {(v.name || v.plate || v.imei) + (isSuper && form.co === '__all__' && v.company_name ? ' — ' + v.company_name : '')}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div class="fld"><label>Stare</label>

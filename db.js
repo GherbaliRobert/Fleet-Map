@@ -708,6 +708,16 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_notif_co_created ON notifications (company_id, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_notif_imei_created ON notifications (imei, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_notif_user_created ON notifications (user_id, created_at DESC)`);
+    // Reparare: reguli de alertă rămase FĂRĂ companie. Se creau așa când le salva super-adminul (el n-are
+    // companie proprie, iar formularul nu cerea una) — și atunci se declanșau pentru flotele TUTUROR
+    // clienților, invizibile în lista fiecăruia. Unde regula are un vehicul, compania e neechivocă: e a
+    // vehiculului. Regulile fără vehicul ȘI fără companie NU se ating (ar fi o ghicitoare) — interfața le
+    // marchează acum vizibil cu „TOATE companiile", ca să fie o alegere, nu o scăpare.
+    await client.query(`
+      UPDATE alerts a SET company_id = d.company_id
+        FROM devices d
+       WHERE a.imei = d.imei AND a.company_id IS NULL AND d.company_id IS NOT NULL
+    `);
     // ─── Plăți (gestionate manual de super-admin; schema pregătită și pentru Stripe) ───
     await client.query(`
       CREATE TABLE IF NOT EXISTS payments (
