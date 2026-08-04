@@ -222,8 +222,12 @@
         </div>
         <div id="history-controls">
           <div class="hp-field">
-            <label for="history-imei">Vehicul</label>
-            <select id="history-imei" onchange="selectedImei=this.value;hpSetVehicleLabel(this.value)"></select>
+            <label>Lista vehicule</label>
+            <input id="hp-veh-filter" type="text" placeholder="Caută vehicul…" autocomplete="off" oninput="hpVehRender()">
+            <div id="hp-veh-list"></div>
+            <!-- Selectorul vechi rămâne, ascuns: îl citesc fișa vehiculului, „închide ruta" și eticheta din
+                 antet. Îl ținem sincronizat cu vehiculul ACTIV, ca să nu rescriem acele căi. -->
+            <select id="history-imei" style="display:none;" aria-hidden="true"></select>
           </div>
           <div class="hp-interval">
             <div class="rep-interval-title"><i class="far fa-clock"></i> Interval orar</div>
@@ -244,6 +248,7 @@
             <button class="history-btn" onclick="hpQuick('week', this)">7 zile</button>
           </div>
           <button class="history-btn primary hp-load" onclick="loadHistory()"><i class="fas fa-download"></i> Încarcă traseul</button>
+          <div id="hp-tabs" style="display:none;"></div>
           <div id="hp-export" class="hp-row hp-export" style="display:none;">
             <button class="history-btn success" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>
             <button class="history-btn success" onclick="exportKML()" title="Descarcă traseul ca fișier KML (Google Earth / Maps)"><i class="fas fa-earth-europe"></i> KML</button>
@@ -252,7 +257,7 @@
           </div>
         </div>
         <div id="hp-trip-summary" style="display:none;margin-top:8px;">
-          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;padding-left:2px;">Sumar traseu</div>
+          <div id="hp-ts-title" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;padding-left:2px;">Sumar traseu</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
             <div class="hp-stat"><i class="fas fa-route" style="color:var(--accent);"></i><div><b id="hp-ts-dist">—</b><span>Distanță</span></div></div>
             <div class="hp-stat"><i class="fas fa-gauge-high" style="color:#3FE07D;"></i><div><b id="hp-ts-move">—</b><span>În deplasare</span></div></div>
@@ -9505,6 +9510,9 @@ const pozitii = await r.json();</code></pre>
     }
     function _routePillHide() { var p = document.getElementById('route-active-pill'); if (p) p.style.display = 'none'; }
     function clearActiveRoute() {
+      // Golește TOATE vehiculele de pe hartă, nu doar unul: cu mai multe trasee deschise, X-ul trebuie să
+      // închidă tot, inclusiv sumarele și capetele de comutare.
+      try { hpClearAll(); } catch (e) {}
       if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
       historyMarkers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
       historyMarkers = [];
@@ -10414,6 +10422,48 @@ const pozitii = await r.json();</code></pre>
     function hpToggleFilters() {
       const p = document.getElementById('history-panel'); if (p) p.classList.toggle('hp-collapsed');
     }
+    // ─── Traseu pe mai multe vehicule ───────────────────────────────────────────────────────────
+    // hpLoaded ține câte o stare completă per vehicul (traseu, puncte, sumar, strat pe hartă, steaguri),
+    // iar hpActive spune care e „în față": lui i se arată sumarul, pe el merge redarea și pe el se aplică
+    // „Limite reale". Restul rămân desenate, ca reper, fiecare cu culoarea lui.
+    var hpVehAll = [];                    // toate vehiculele, pentru listă + filtru
+    var hpChecked = new Set();            // bifate în „Lista vehicule"
+    var hpLoaded = new Map();             // imei -> stare încărcată
+    var hpActive = null;
+    var hpRange = { from: null, to: null };
+    var HP_COLORS = ['#38BDF8', '#f59e0b', '#a855f7', '#22c55e', '#ec4899', '#14b8a6', '#f43f5e', '#84cc16'];
+
+    function hpVehRender() {
+      var box = document.getElementById('hp-veh-list'); if (!box) return;
+      var q = ((document.getElementById('hp-veh-filter') || {}).value || '').trim().toLowerCase();
+      var list = hpVehAll.filter(function (d) {
+        if (!q) return true;
+        return [d.name, d.plate, d.imei, d.company_name].some(function (x) { return String(x || '').toLowerCase().indexOf(q) >= 0; });
+      });
+      box.innerHTML = list.length ? list.map(function (d) {
+        var im = String(d.imei), on = hpChecked.has(im);
+        var st = hpLoaded.get(im);
+        var dot = st ? '<span class="dot" style="background:' + st.color + '"></span>' : '';
+        return '<label class="hp-veh-item' + (on ? ' on' : '') + '">'
+          + '<input type="checkbox"' + (on ? ' checked' : '') + ' onchange="hpVehToggle(this.value, this.checked)" value="' + esc(im) + '">'
+          + dot + '<span class="nm">' + esc(d.name || im) + (d.plate ? ' · ' + esc(d.plate) : '') + '</span></label>';
+      }).join('') : '<div class="hp-veh-empty">Niciun vehicul găsit.</div>';
+      var c = document.getElementById('hp-veh-count');
+      if (c) c.textContent = hpChecked.size ? hpChecked.size + ' bifate' : '';
+    }
+    function hpVehToggle(imei, on) {
+      imei = String(imei);
+      if (on) hpChecked.add(imei); else hpChecked.delete(imei);
+      // Debifat din listă = dispare și de pe hartă, dacă era încărcat (cerința 2).
+      if (!on && hpLoaded.has(imei)) hpDropVehicle(imei);
+      var first = hpChecked.size ? Array.from(hpChecked)[0] : null;
+      if (first) {
+        var sel = document.getElementById('history-imei'); if (sel) sel.value = first;
+        selectedImei = first; hpSetVehicleLabel(first);
+      }
+      hpVehRender();
+    }
+
     async function fillHistoryVehicle() {
       const p = document.getElementById('history-panel'); if (p) p.classList.remove('hp-collapsed'); // la deschidere arată filtrele
       const sel = document.getElementById('history-imei'); if (!sel) return;
@@ -10425,6 +10475,11 @@ const pozitii = await r.json();</code></pre>
       if (selectedImei && list.some(d => String(d.imei) === String(selectedImei))) sel.value = selectedImei;
       else if (list.length) { sel.value = list[0].imei; selectedImei = list[0].imei; }
       hpSetVehicleLabel(selectedImei);
+      // Aceeași listă alimentează și „Lista vehicule" cu bifă. Vehiculul deschis din fișă vine deja bifat,
+      // ca apăsarea pe „Încarcă traseul" să facă exact ce te aștepți.
+      hpVehAll = list;
+      if (selectedImei && !hpChecked.size) hpChecked.add(String(selectedImei));
+      hpVehRender();
       const f = document.getElementById('history-from'), t = document.getElementById('history-to');
       if (f && t && (!f.value || !t.value)) {
         // setează intervalul „azi" DIRECT, fără să apeleze hpQuick (care ar declanșa loadHistory + plierea)
@@ -10484,7 +10539,7 @@ const pozitii = await r.json();</code></pre>
       rebuild();
     }
     (function initVehicleSearch() {
-      function go() { ['history-imei', 'rep-imei', 'sch-imei', 'alert-imei', 'mnt-imei', 'hs-imei'].forEach(function (id) { const el = document.getElementById(id); if (el) enhanceSelectSearch(el); }); }
+      function go() { ['rep-imei', 'sch-imei', 'alert-imei', 'mnt-imei', 'hs-imei'].forEach(function (id) { const el = document.getElementById(id); if (el) enhanceSelectSearch(el); }); }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
     })();
 
@@ -10622,151 +10677,265 @@ const pozitii = await r.json();</code></pre>
       finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-gauge-high"></i> Limite reale'; } }
     };
 
+    // Încarcă traseul pentru TOATE vehiculele bifate. Vehiculul „activ" (capul selectat) primește
+    // sumarul, redarea și „Limite reale"; restul rămân desenate ca reper, fiecare cu culoarea lui.
     async function loadHistory() {
-      const hsel = document.getElementById('history-imei');
-      if (hsel && hsel.value) selectedImei = hsel.value;
-      if (!selectedImei) { alert('Selectează un vehicul din lista de sus.'); return; }
-      hpSetVehicleLabel(selectedImei);
-
-      const from = document.getElementById('history-from').value;
-      const to = document.getElementById('history-to').value;
+      var imeis = Array.from(hpChecked);
+      if (!imeis.length && selectedImei) imeis = [String(selectedImei)];   // deschis din fișa vehiculului
+      if (!imeis.length) { alert('Bifează cel puțin un vehicul din „Lista vehicule".'); return; }
+      var from = document.getElementById('history-from').value;
+      var to = document.getElementById('history-to').value;
       if (!from || !to) { alert('Alege intervalul (De la / Până la), sau apasă Azi / Ieri / 7 zile.'); return; }
+      hpRange = { from: from, to: to };
 
-      try {
-        let prefs = {}; try { prefs = await _loadUiPrefs(); } catch (e) {}
-        const useHeatmap = prefs.overspeed_heatmap !== false; // default ON
-        const res = await fetch('/api/history/' + selectedImei + '?ext=1&from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString());
-        const payload = await res.json();
-        // Backwards-compat: dacă răspunsul e array (ext nu a fost respectat), îl normalizăm
-        const data = Array.isArray(payload) ? payload : (payload.points || []);
-        const dev = payload && payload.device ? payload.device : null;
-        const summary = payload && payload.summary ? payload.summary : null;
-        hpSpeedLimit = dev && dev.speed_limit ? Number(dev.speed_limit) : null;
+      var prefs = {}; try { prefs = await _loadUiPrefs(); } catch (e) {}
+      var useHeatmap = prefs.overspeed_heatmap !== false;   // implicit pornit
 
-        if (historyLine) map.removeLayer(historyLine);
-        historyMarkers.forEach(m => map.removeLayer(m));
-        historyMarkers = [];
-
-        if (!data.length) { alert('Nu sunt date pentru perioada selectată'); return; }
-
-        const points = data.map(p => [p.latitude, p.longitude]);
-        const _speeds = (useHeatmap && hpSpeedLimit) ? data.map(function (d) { return d.speed; }) : null;
-        // Desenează traseul (casing + segmente colorate pe viteză + zonă click lată) într-un singur featureGroup.
-        const _renderRoute = function (geom, speeds) {
-          if (!geom || geom.length < 2) return;
-          if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
-          const sg = L.featureGroup().addTo(map); historyLine = sg;
-          L.polyline(geom, { color: '#0B0E11', weight: 7, opacity: 0.9 }).addTo(sg); // casing dedesubt
-          if (speeds && hpSpeedLimit) {
-            let cc = _hpSegColor(speeds[1], hpSpeedLimit); let chunk = [geom[0]];
-            for (let i = 1; i < geom.length; i++) {
-              const c = _hpSegColor(speeds[i], hpSpeedLimit);
-              if (c !== cc) { L.polyline(chunk, { color: cc, weight: 4, opacity: 0.95 }).addTo(sg); chunk = [geom[i - 1]]; cc = c; }
-              chunk.push(geom[i]);
-            }
-            if (chunk.length > 1) L.polyline(chunk, { color: cc, weight: 4, opacity: 0.95 }).addTo(sg);
-          } else {
-            L.polyline(geom, { color: '#38BDF8', weight: 4, opacity: 0.95 }).addTo(sg);
-          }
-          L.polyline(geom, { weight: 22, opacity: 0 }).addTo(sg); // zonă click lată (tap ușor pe mobil)
-          sg.on('click', hpRouteClick);
-        };
-        // Pentru traseul lipit de drum: viteza la fiecare vârf = viteza celui mai apropiat punct brut.
-        const _mapSpeeds = function (geom) {
-          let j = 0; const out = new Array(geom.length);
-          const d2 = function (ay, ax, by, bx) { const dy = ay - by, dx = ax - bx; return dy * dy + dx * dx; };
-          for (let k = 0; k < geom.length; k++) { const v = geom[k]; while (j < data.length - 1 && d2(v[0], v[1], data[j + 1].latitude, data[j + 1].longitude) <= d2(v[0], v[1], data[j].latitude, data[j].longitude)) j++; out[k] = data[j] ? data[j].speed : 0; }
-          return out;
-        };
-        _renderRoute(points, _speeds);               // brut acum (instant)
-        hpLastData = data;                           // pentru overlay-ul „limite reale" (OSM)
-        if (hpOsmLayer) { try { map.removeLayer(hpOsmLayer); } catch (e) {} hpOsmLayer = null; }
-        var _osmBtn0 = document.getElementById('hp-osm-btn'); if (_osmBtn0) _osmBtn0.classList.remove('primary');
-        // Focus pe TOT traseul (mobil: lasă jos loc pentru panoul de control)
-        fitRouteToMap(points);
-        // Alinierea pe drumuri, automat — DOAR cu server OSRM propriu (`auto:true`). Metoda gratuită, prin
-        // OpenStreetMap, NU se cheamă aici: ar însemna o interogare Overpass la fiecare deschidere de traseu,
-        // exact utilizarea pe care politica lor o interzice. Pentru ea există butonul „Aliniază pe drumuri".
-        (function () {
-          const _mImei = selectedImei;
-          fetch('/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: points, auto: true }) })
-            .then(function (r) { return r.json(); })
-            .then(function (mr) {
-              if (!mr || !Array.isArray(mr.matched) || mr.matched.length < 2) return;
-              if (selectedImei !== _mImei || !historyLine) return;   // s-a schimbat vehiculul / s-a închis fișa
-              _renderRoute(mr.matched, _speeds ? _mapSpeeds(mr.matched) : null);
-              var _sb = document.getElementById('hp-snap-btn'); if (_sb) _sb.style.display = 'none'; // deja aliniat
-            }).catch(function () {});
-        })();
-        document.body.classList.add('history-open'); // ascunde FAB pe mobil cât e afișat un traseu
-
-        // Steagurile de plecare și de sosire. Reperul NU e marginea intervalului cerut, ci prima și ultima
-        // MIȘCARE reală: dacă ceri „ieri, 00:00–23:59" și mașina a stat în curte până la 07:12, un steag pus
-        // la 00:00 ar susține că a pornit la miezul nopții. Ce vrei să afli e când a plecat de fapt.
-        var MOVE_KMH = 3;                                  // sub atât = pe loc (același prag ca la ralanti)
-        var iGo = -1, iStop = -1;
-        for (var _i = 0; _i < data.length; _i++) if ((data[_i].speed || 0) > MOVE_KMH) { iGo = _i; break; }
-        for (var _j = data.length - 1; _j >= 0; _j--) if ((data[_j].speed || 0) > MOVE_KMH) { iStop = _j; break; }
-        var _staticaTot = (iGo < 0);                       // n-a mișcat deloc în intervalul cerut
-        if (_staticaTot) { iGo = 0; iStop = data.length - 1; }
-        var startMarker = hpFlagMarker(points[iGo], data[iGo], '#16A34A',
-          _staticaTot ? 'Nu s-a deplasat' : 'Pornire',
-          _staticaTot ? null : (new Date(data[iGo].timestamp) - new Date(data[0].timestamp)), 'înainte');
-        var endMarker = hpFlagMarker(points[iStop], data[iStop], '#ef4444',
-          _staticaTot ? 'Ultima poziție' : 'Oprire',
-          _staticaTot ? null : (new Date(data[data.length - 1].timestamp) - new Date(data[iStop].timestamp)), 'de atunci');
-        historyMarkers.push(startMarker, endMarker);
-
-        // Afișează pill-ul de rută activă
-        (function () {
-          var _hselEl = document.getElementById('history-imei');
-          var _vn = (_hselEl && _hselEl.selectedIndex >= 0) ? _hselEl.options[_hselEl.selectedIndex].text : (typeof vehicleLabel === 'function' ? vehicleLabel(selectedImei) : selectedImei);
-          var _d1 = new Date(from), _d2 = new Date(to);
-          var _fmt = function (d) { return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }); };
-          var _pillEl = document.getElementById('route-active-pill'), _pillLbl = document.getElementById('route-pill-label');
-          if (_pillEl && _pillLbl) { _pillLbl.textContent = _vn + ' · ' + _fmt(_d1) + ' – ' + _fmt(_d2); _pillEl.style.display = 'flex'; }
-        })();
-
-        // Summary depășiri sub bara de playback (banner)
-        var sumEl = document.getElementById('hp-summary');
-        if (sumEl) {
-          if (summary && summary.overspeedCount > 0) {
-            var dur = summary.overspeedDurationSec || 0;
-            var durStr = dur < 60 ? dur + 's' : Math.floor(dur / 60) + 'min ' + (dur % 60) + 's';
-            sumEl.innerHTML = '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + summary.overspeedCount + ' depășiri</span> · max +' + summary.maxOverKmh + ' km/h · durată ' + durStr + (hpSpeedLimit ? ' · limită ' + hpSpeedLimit + ' km/h' : '');
-            sumEl.style.display = 'block';
-          } else if (hpSpeedLimit) {
-            sumEl.innerHTML = '<span style="color:#3FE07D;"><i class="fas fa-check"></i> Fără depășiri (limită ' + hpSpeedLimit + ' km/h)</span>';
-            sumEl.style.display = 'block';
-          } else {
-            sumEl.innerHTML = '<span style="color:var(--text-muted);"><i class="fas fa-info-circle"></i> Setează „Viteza limită" în fișa vehiculului pentru a vedea depășirile</span>';
-            sumEl.style.display = 'block';
-          }
-        }
-
-        // Sumar traseu (distanță / deplasare / staționar / consum) — din summary-ul serverului
-        var tsEl = document.getElementById('hp-trip-summary');
-        if (tsEl) {
-          if (summary && (summary.distanceKm != null || summary.movingSec != null)) {
-            var _hm = function (sec) { sec = Math.max(0, Math.round(sec || 0)); var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); if (m === 60) { h++; m = 0; } return h > 0 ? (h + 'h ' + (m < 10 ? '0' : '') + m + 'm') : (m + ' min'); };
-            var _grp = function (n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
-            document.getElementById('hp-ts-dist').textContent = (summary.distanceKm != null && !isNaN(summary.distanceKm)) ? _grp(summary.distanceKm) + ' km' : '—';
-            document.getElementById('hp-ts-move').textContent = _hm(summary.movingSec);
-            document.getElementById('hp-ts-stop').textContent = _hm(summary.stationarySec);
-            var _f = summary.fuelLiters;
-            document.getElementById('hp-ts-fuel').textContent = (_f != null && !isNaN(_f)) ? (Number(_f).toFixed(1).replace('.', ',') + ' L' + (summary.fuelEstimated ? ' (est.)' : '')) : '—';
-            tsEl.style.display = 'block';
-          } else { tsEl.style.display = 'none'; }
-        }
-
-        var _expEl = document.getElementById('hp-export'); if (_expEl) _expEl.style.display = '';
-        try { hpInit(data); } catch (e) { console.warn('replay indisponibil:', e); } // replay interactiv (non-fatal)
-        // Pe mobil: pliază filtrele după încărcare → se vede harta cu traseul (rămâne bara de playback + buton „Filtre")
-        if (window.innerWidth <= 768) { const hp = document.getElementById('history-panel'); if (hp) hp.classList.add('hp-collapsed'); }
-      } catch (err) {
-        console.error('Eroare incarcare istoric:', err);
-        alert('Eroare la încărcarea traseului: ' + (err && err.message ? err.message : err));
+      hpClearAll();
+      var gasite = 0;
+      for (var k = 0; k < imeis.length; k++) {
+        try { if (await hpFetchOne(String(imeis[k]), from, to, HP_COLORS[k % HP_COLORS.length], useHeatmap)) gasite++; }
+        catch (e) { console.warn('[traseu]', imeis[k], e && e.message); }
       }
+      if (!gasite) { alert('Nu sunt date pentru perioada selectată.'); return; }
+
+      document.body.classList.add('history-open');   // ascunde FAB pe mobil cât e afișat un traseu
+      var primul = imeis.map(String).filter(function (i) { return hpLoaded.has(i); })[0];
+      hpSetActive(primul);
+      hpVehRender();
+      hpFitAll();
+      var _expEl = document.getElementById('hp-export'); if (_expEl) _expEl.style.display = '';
+      // Pe mobil: pliază filtrele după încărcare → se vede harta (rămâne bara de redare + butonul „Filtre")
+      if (window.innerWidth <= 768) { var hp = document.getElementById('history-panel'); if (hp) hp.classList.add('hp-collapsed'); }
+    }
+
+    // Aduce datele unui vehicul și îl desenează. Întoarce false dacă n-are poziții în interval.
+    async function hpFetchOne(imei, from, to, color, useHeatmap) {
+      var res = await fetch('/api/history/' + imei + '?ext=1&from=' + new Date(from).toISOString() + '&to=' + new Date(to).toISOString());
+      var payload = await res.json();
+      var data = Array.isArray(payload) ? payload : (payload.points || []);   // compat: răspuns simplu, fără ext
+      if (!data.length) return false;
+      var dev = payload && payload.device ? payload.device : null;
+      var d0 = (devices && devices.get) ? devices.get(imei) : null;
+      var st = {
+        imei: imei, color: color, data: data, dev: dev,
+        points: data.map(function (p) { return [p.latitude, p.longitude]; }),
+        summary: (payload && payload.summary) ? payload.summary : null,
+        speedLimit: (dev && dev.speed_limit) ? Number(dev.speed_limit) : null,
+        useHeatmap: !!useHeatmap,
+        label: d0 ? ((d0.name || imei) + (d0.plate ? ' · ' + d0.plate : '')) : ((dev && dev.name) || imei),
+        layer: null, geom: null, markers: [], visible: true, snapped: false
+      };
+      hpLoaded.set(imei, st);
+      hpDrawVehicle(st);
+      hpSnapAuto(st);
+      return true;
+    }
+
+    // Desenează un vehicul. Cel ACTIV primește colorarea pe viteză (ca atunci când era singurul pe hartă),
+    // peste o dungă groasă în culoarea lui, ca să știi al cui e traseul. Celelalte rămân plate, în culoarea
+    // proprie: dacă le-am colora pe toate după viteză, n-ai mai putea deosebi mașinile între ele.
+    function hpDrawVehicle(st, geom, speeds) {
+      if (st.layer) { try { map.removeLayer(st.layer); } catch (e) {} st.layer = null; }
+      st.markers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
+      st.markers = [];
+      if (geom) st.geom = geom;
+      var g = st.geom || st.points;
+      if (!st.visible || !g || g.length < 2) return;
+      var activ = (st.imei === hpActive);
+      var sg = L.featureGroup().addTo(map);
+      st.layer = sg;
+      L.polyline(g, { color: '#0B0E11', weight: activ ? 9 : 7, opacity: 0.9 }).addTo(sg);          // contur
+      L.polyline(g, { color: st.color, weight: activ ? 7 : 4, opacity: activ ? 0.95 : 0.85 }).addTo(sg); // identitate
+      var sp = (activ && st.useHeatmap && st.speedLimit)
+        ? (speeds || (st.geom === st.points ? st.data.map(function (d) { return d.speed; }) : hpMapSpeeds(st, g)))
+        : null;
+      if (sp) {
+        var cc = _hpSegColor(sp[1], st.speedLimit), chunk = [g[0]];
+        for (var i = 1; i < g.length; i++) {
+          var c = _hpSegColor(sp[i], st.speedLimit);
+          if (c !== cc) { L.polyline(chunk, { color: cc, weight: 4, opacity: 0.95 }).addTo(sg); chunk = [g[i - 1]]; cc = c; }
+          chunk.push(g[i]);
+        }
+        if (chunk.length > 1) L.polyline(chunk, { color: cc, weight: 4, opacity: 0.95 }).addTo(sg);
+      }
+      L.polyline(g, { weight: 22, opacity: 0 }).addTo(sg);   // zonă de click lată (tap ușor pe mobil)
+      sg.on('click', function (e) {
+        if (st.imei !== hpActive) { hpSetActive(st.imei); return; }   // click pe un traseu din spate = îl aduce în față
+        hpRouteClick(e);
+      });
+      if (activ) historyLine = sg;   // căile vechi („închide ruta", încadrare) lucrează cu vehiculul activ
+      hpAddFlags(st);
+    }
+
+    // Steagurile stau pe coordonatele BRUTE, nu pe traseul lipit de drum: acolo indicii nu mai corespund,
+    // iar ora plecării trebuie citită din punctul real, nu dintr-un vârf interpolat.
+    function hpAddFlags(st) {
+      var data = st.data, MOVE_KMH = 3, iGo = -1, iStop = -1;
+      for (var i = 0; i < data.length; i++) if ((data[i].speed || 0) > MOVE_KMH) { iGo = i; break; }
+      for (var j = data.length - 1; j >= 0; j--) if ((data[j].speed || 0) > MOVE_KMH) { iStop = j; break; }
+      var stat = (iGo < 0); if (stat) { iGo = 0; iStop = data.length - 1; }
+      var nume = (hpLoaded.size > 1) ? st.label : null;   // cu mai multe mașini, popup-ul spune a cui e steagul
+      st.markers.push(hpFlagMarker([data[iGo].latitude, data[iGo].longitude], data[iGo], '#16A34A',
+        stat ? 'Nu s-a deplasat' : 'Pornire',
+        stat ? null : (new Date(data[iGo].timestamp) - new Date(data[0].timestamp)), 'înainte', nume));
+      st.markers.push(hpFlagMarker([data[iStop].latitude, data[iStop].longitude], data[iStop], '#ef4444',
+        stat ? 'Ultima poziție' : 'Oprire',
+        stat ? null : (new Date(data[data.length - 1].timestamp) - new Date(data[iStop].timestamp)), 'de atunci', nume));
+      historyMarkers.push.apply(historyMarkers, st.markers);
+    }
+
+    // Alinierea pe drumuri, automat — DOAR cu server OSRM propriu (`auto:true`). Metoda gratuită, prin
+    // OpenStreetMap, NU se cheamă aici: ar însemna o interogare Overpass la fiecare traseu deschis, exact
+    // utilizarea pe care politica lor o interzice. Pentru ea există butonul „Aliniază pe drumuri".
+    function hpSnapAuto(st) {
+      fetch('/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ points: st.points, auto: true }) })
+        .then(function (r) { return r.json(); })
+        .then(function (mr) {
+          if (!mr || !Array.isArray(mr.matched) || mr.matched.length < 2) return;
+          if (hpLoaded.get(st.imei) !== st) return;    // între timp a fost scos de pe hartă
+          st.snapped = true;
+          hpDrawVehicle(st, mr.matched);
+          var _sb = document.getElementById('hp-snap-btn');
+          if (_sb && st.imei === hpActive) _sb.style.display = 'none';
+        }).catch(function () {});
+    }
+    // Viteza la fiecare vârf al traseului lipit de drum = viteza celui mai apropiat punct brut.
+    function hpMapSpeeds(st, geom) {
+      var j = 0, out = new Array(geom.length), data = st.data;
+      var d2 = function (ay, ax, by, bx) { var dy = ay - by, dx = ax - bx; return dy * dy + dx * dx; };
+      for (var k = 0; k < geom.length; k++) {
+        var v = geom[k];
+        while (j < data.length - 1 && d2(v[0], v[1], data[j + 1].latitude, data[j + 1].longitude) <= d2(v[0], v[1], data[j].latitude, data[j].longitude)) j++;
+        out[k] = data[j] ? data[j].speed : 0;
+      }
+      return out;
+    }
+
+    // Trece un vehicul „în față": sumarul, redarea și „Limite reale" îl urmează.
+    function hpSetActive(imei) {
+      imei = String(imei || '');
+      var st = hpLoaded.get(imei); if (!st) return;
+      hpActive = imei;
+      selectedImei = imei;
+      var sel = document.getElementById('history-imei'); if (sel) sel.value = imei;
+      hpSetVehicleLabel(imei);
+      hpSpeedLimit = st.speedLimit;
+      hpLastData = st.data;                       // „Limite reale" / „Aliniază" lucrează pe vehiculul activ
+      hpClearOsmOverlay();
+      var _ob = document.getElementById('hp-osm-btn'); if (_ob) _ob.classList.remove('primary');
+      var _sb = document.getElementById('hp-snap-btn'); if (_sb) _sb.style.display = st.snapped ? 'none' : '';
+      hpLoaded.forEach(function (v) { hpDrawVehicle(v); });   // culorile se schimbă: activul primește viteza
+      hpRenderSummary(st);
+      hpRenderPill(st);
+      hpRenderTabs();
+      try { hpInit(st.data); } catch (e) { console.warn('replay indisponibil:', e); }
+    }
+
+    // Capetele de comutare (mini-meniul). Apar de la două vehicule în sus. Bifa = arată/ascunde pe hartă,
+    // numele = adu-l în față.
+    function hpRenderTabs() {
+      var box = document.getElementById('hp-tabs'); if (!box) return;
+      if (hpLoaded.size < 2) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      var out = [];
+      hpLoaded.forEach(function (st) {
+        out.push('<div class="hp-tab' + (st.imei === hpActive ? ' on' : '') + (st.visible ? '' : ' off') + '" style="--tc:' + st.color + ';">'
+          + '<input type="checkbox"' + (st.visible ? ' checked' : '') + ' title="Arată pe hartă" value="' + esc(st.imei) + '" onchange="hpTabVisible(this.value, this.checked)">'
+          + '<button type="button" title="Adu în față" onclick="hpSetActive(this.value)" value="' + esc(st.imei) + '">' + esc(st.label) + '</button>'
+          + '</div>');
+      });
+      box.innerHTML = out.join('');
+      box.style.display = 'flex';
+    }
+    function hpTabVisible(imei, on) {
+      var st = hpLoaded.get(String(imei)); if (!st) return;
+      st.visible = !!on;
+      hpDrawVehicle(st);
+      if (!on && st.imei === hpActive) {          // ai ascuns vehiculul activ → trece pe primul rămas vizibil
+        var next = null; hpLoaded.forEach(function (v) { if (!next && v.visible) next = v.imei; });
+        if (next) hpSetActive(next);
+      }
+      hpRenderTabs(); hpFitAll();
+    }
+    // Scoate complet un vehicul (debifat din „Lista vehicule").
+    function hpDropVehicle(imei) {
+      imei = String(imei);
+      var st = hpLoaded.get(imei); if (!st) return;
+      if (st.layer) { try { map.removeLayer(st.layer); } catch (e) {} }
+      st.markers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
+      hpLoaded.delete(imei);
+      if (hpActive === imei) {
+        hpActive = null;
+        var next = null; hpLoaded.forEach(function (v) { if (!next) next = v.imei; });
+        if (next) hpSetActive(next); else { hpClearAll(); return; }
+      }
+      hpRenderTabs(); hpFitAll();
+    }
+    // Golește tot: hartă, capete, sumare, redare. Chemat și de X-ul din pastila rutei.
+    function hpClearAll() {
+      hpLoaded.forEach(function (st) {
+        if (st.layer) { try { map.removeLayer(st.layer); } catch (e) {} }
+        st.markers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
+      });
+      hpLoaded.clear(); hpActive = null;
+      historyMarkers.forEach(function (m) { try { map.removeLayer(m); } catch (e) {} });
+      historyMarkers = [];
+      if (historyLine) { try { map.removeLayer(historyLine); } catch (e) {} historyLine = null; }
+      try { hpClearOsmOverlay(); } catch (e) {}
+      try { hpStop(); } catch (e) {}
+      if (hpMarker) { try { map.removeLayer(hpMarker); } catch (e) {} hpMarker = null; }
+      ['hp-trip-summary', 'hp-summary', 'hp-tabs', 'hp-export'].forEach(function (i) {
+        var e = document.getElementById(i); if (e) e.style.display = 'none';
+      });
+      var pb = document.getElementById('history-playback'); if (pb) pb.style.display = 'none';
+      _routePillHide();
+    }
+    function hpFitAll() {
+      var all = [];
+      hpLoaded.forEach(function (st) { if (st.visible) all = all.concat(st.points); });
+      if (all.length) fitRouteToMap(all);
+    }
+
+    // Sumarul vehiculului activ (km / deplasare / staționar / consum) + bannerul de depășiri.
+    function hpRenderSummary(st) {
+      var summary = st.summary;
+      var tsEl = document.getElementById('hp-trip-summary');
+      if (tsEl) {
+        if (summary && (summary.distanceKm != null || summary.movingSec != null)) {
+          var _hm = function (sec) { sec = Math.max(0, Math.round(sec || 0)); var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); if (m === 60) { h++; m = 0; } return h > 0 ? (h + 'h ' + (m < 10 ? '0' : '') + m + 'm') : (m + ' min'); };
+          var _grp = function (n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+          document.getElementById('hp-ts-dist').textContent = (summary.distanceKm != null && !isNaN(summary.distanceKm)) ? _grp(summary.distanceKm) + ' km' : '—';
+          document.getElementById('hp-ts-move').textContent = _hm(summary.movingSec);
+          document.getElementById('hp-ts-stop').textContent = _hm(summary.stationarySec);
+          var _f = summary.fuelLiters;
+          document.getElementById('hp-ts-fuel').textContent = (_f != null && !isNaN(_f)) ? (Number(_f).toFixed(1).replace('.', ',') + ' L' + (summary.fuelEstimated ? ' (est.)' : '')) : '—';
+          var _ttl = document.getElementById('hp-ts-title');
+          if (_ttl) _ttl.textContent = hpLoaded.size > 1 ? ('Sumar · ' + st.label) : 'Sumar traseu';
+          tsEl.style.display = 'block';
+        } else { tsEl.style.display = 'none'; }
+      }
+      var sumEl = document.getElementById('hp-summary');
+      if (sumEl) {
+        if (summary && summary.overspeedCount > 0) {
+          var dur = summary.overspeedDurationSec || 0;
+          var durStr = dur < 60 ? dur + 's' : Math.floor(dur / 60) + 'min ' + (dur % 60) + 's';
+          sumEl.innerHTML = '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + summary.overspeedCount + ' depășiri</span> · max +' + summary.maxOverKmh + ' km/h · durată ' + durStr + (st.speedLimit ? ' · limită ' + st.speedLimit + ' km/h' : '');
+        } else if (st.speedLimit) {
+          sumEl.innerHTML = '<span style="color:#3FE07D;"><i class="fas fa-check"></i> Fără depășiri (limită ' + st.speedLimit + ' km/h)</span>';
+        } else {
+          sumEl.innerHTML = '<span style="color:var(--text-muted);"><i class="fas fa-info-circle"></i> Setează „Viteza limită" în fișa vehiculului pentru a vedea depășirile</span>';
+        }
+        sumEl.style.display = 'block';
+      }
+    }
+    function hpRenderPill(st) {
+      var _d1 = new Date(hpRange.from), _d2 = new Date(hpRange.to);
+      var _fmt = function (d) { return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }); };
+      var _pillEl = document.getElementById('route-active-pill'), _pillLbl = document.getElementById('route-pill-label');
+      if (!_pillEl || !_pillLbl) return;
+      var nume = hpLoaded.size > 1 ? (st.label + ' +' + (hpLoaded.size - 1)) : st.label;
+      _pillLbl.textContent = nume + ' · ' + _fmt(_d1) + ' – ' + _fmt(_d2);
+      _pillEl.style.display = 'flex';
     }
 
     // ─── Replay interactiv istoric traseu ───
@@ -10790,9 +10959,10 @@ const pozitii = await r.json();</code></pre>
       if (h >= 24) return Math.floor(h / 24) + 'z ' + (h % 24) + 'h';
       return h + 'h ' + (r < 10 ? '0' : '') + r + 'm';
     }
-    function hpFlagMarker(latlng, pos, color, label, standMs, when) {
+    function hpFlagMarker(latlng, pos, color, label, standMs, when, vehName) {
       var t = new Date(pos.timestamp);
       var head = '<div class="hp-flagpop"><b style="color:' + color + ';"><i class="fas fa-flag"></i> ' + label + '</b>'
+        + (vehName ? '<div class="v">' + esc(vehName) + '</div>' : '')
         + '<div class="t">' + t.toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>';
       var stand = (standMs != null && standMs > 60000)
         ? '<div class="s"><i class="fas fa-pause"></i> A staționat ' + _hpDur(standMs) + ' ' + when + '</div>' : '';

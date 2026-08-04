@@ -888,6 +888,48 @@
     /* Butonul principal are mai multă prezență decât restul rândului. */
     .hp-load { padding: 12px 16px; border-radius: 11px; font-size: 13.5px; }
 
+    /* ─── Traseu: „Lista vehicule" cu bifă ─── */
+    #hp-veh-filter { margin-bottom: 6px; }
+    #hp-veh-list {
+      max-height: 168px; overflow-y: auto;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg-dark); padding: 4px;
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .hp-veh-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 9px; border-radius: 7px; cursor: pointer;
+      font-size: 12.5px; color: var(--text-primary); text-transform: none; letter-spacing: normal;
+      font-weight: 500; transition: background .13s ease;
+    }
+    .hp-veh-item:hover { background: rgba(127,127,127,.12); }
+    .hp-veh-item.on { background: rgba(63,224,125,.13); font-weight: 700; }
+    .hp-veh-item input { width: auto !important; flex: none; margin: 0; cursor: pointer; }
+    /* Bulina de culoare apare doar după încărcare: e culoarea cu care vehiculul e desenat pe hartă. */
+    .hp-veh-item .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px rgba(255,255,255,.55); }
+    .hp-veh-item .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hp-veh-empty { padding: 10px; font-size: 12px; color: var(--text-muted); text-align: center; }
+
+    /* ─── Capetele de comutare între vehiculele încărcate (apar de la două în sus) ─── */
+    #hp-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .hp-tab {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 10px 6px 8px; border-radius: 9px;
+      border: 1px solid var(--border); background: var(--bg-dark);
+      /* linia de sus = culoarea cu care e desenat vehiculul pe hartă */
+      box-shadow: inset 0 2.5px 0 0 var(--tc);
+      transition: border-color .14s ease, background .14s ease;
+    }
+    .hp-tab.on { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 12%, transparent); }
+    .hp-tab.off { opacity: .5; }
+    .hp-tab input { width: auto !important; flex: none; margin: 0; cursor: pointer; }
+    .hp-tab button {
+      background: none; border: none; padding: 0; cursor: pointer;
+      font-size: 12.5px; font-weight: 700; color: var(--text-primary);
+      max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .hp-tab.on button { color: var(--tc); }
+
     /* ─── Traseu: steagurile de plecare/sosire + vehiculul care se plimbă la redare ─── */
     /* Leaflet pune implicit fundal alb și chenar pe divIcon — le scoatem, desenul e în SVG. */
     .hp-flag, .hp-veh { background: none; border: none; }
@@ -900,6 +942,7 @@
     .hp-flagpop { min-width: 190px; }
     .hp-flagpop b { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800;
       text-transform: uppercase; letter-spacing: .3px; }
+    .hp-flagpop .v { font-size: 12px; font-weight: 700; margin-top: 3px; color: var(--text-primary); }
     .hp-flagpop .t { font-weight: 700; font-size: 15px; margin-top: 4px; color: var(--text-primary); }
     .hp-flagpop .a { font-size: 12px; margin-top: 4px; color: var(--text-secondary); display: flex; gap: 6px; }
     .hp-flagpop .s { font-size: 11.5px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);

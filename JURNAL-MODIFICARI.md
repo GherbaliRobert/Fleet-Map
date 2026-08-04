@@ -145,6 +145,37 @@ funcție nouă, nu o ajustare; hotărât împreună să rămână pe altă dată
 
 ---
 
+### AMÂNDOI · Traseu: mai multe vehicule pe aceeași hartă — `în curs`
+
+**Ce am schimbat:** selectorul „Vehicul" a devenit **„Lista vehicule"**, cu bifă pe fiecare rând și
+căutare deasupra. Bifezi o mașină → vezi doar traseul ei, exact ca înainte. Bifezi două → apar
+**capete de comutare** deasupra butoanelor, câte unul per mașină, fiecare cu culoarea cu care e
+desenată pe hartă.
+
+Pe fiecare cap sunt două lucruri: o **bifă**, care arată sau ascunde mașina de pe hartă, și
+**numele**, care o aduce în față. Mașina din față primește sumarul, redarea și „Limite reale";
+celelalte rămân desenate, ca reper. X-ul din pastila rutei golește tot — hartă, sumare, capete,
+redare.
+
+**Fondatorul vede:** exact ce vede și clientul.
+
+**Clientul vede:** poate compara două mașini pe aceeași zi, fără să încarce traseul de două ori și
+fără să piardă sumarul niciuneia.
+
+> **De ce culoarea liniei nu mai înseamnă viteza pentru toate:** cu două mașini pe hartă, culoarea
+> trebuie să spună CARE mașină e. Mașina din față păstrează colorarea pe viteză, peste o dungă în
+> culoarea ei; celelalte rămân plate, în culoarea lor. Cu o singură mașină bifată, totul arată exact
+> ca înainte.
+
+> Verificat pe două trasee reale: 2 straturi pe hartă și 4 steaguri; comuți capul → sumarul trece de
+> la 16 km la 10 km și redarea sare pe datele celeilalte mașini; debifezi un cap → 1 strat, 2
+> steaguri; apeși X → totul gol.
+
+**Pe APK:** neschimbat deocamdată. Ecranul de acolo arată un vehicul o dată, deschis din fișa lui —
+n-are listă de vehicule. E o funcție nouă pe telefon, nu o ajustare; de pus pe listă dacă o vreți.
+
+---
+
 ## De verificat înainte de lansare
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
