@@ -176,7 +176,7 @@ n-are listă de vehicule. E o funcție nouă pe telefon, nu o ajustare; de pus p
 
 ---
 
-### AMÂNDOI · Traseu: o singură bifă și un flux în doi pași — `în curs`
+### AMÂNDOI · Traseu: o singură bifă și un flux în doi pași — `d5fed32`
 
 **Ce am schimbat:** ecranul avea **două selecții suprapuse pe același rând** — bifa (se vede pe hartă)
 și numele (e „în față", primește sumarul). Două controale lipite, cu înțelesuri diferite. De aceea „se
