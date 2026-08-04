@@ -219,7 +219,7 @@ n-are pasul 1. Ar fi funcție nouă, nu ajustare.
 
 ---
 
-### AMÂNDOI · O fereastră de alegere a vehiculelor, cu scriere manuală — `în curs`
+### AMÂNDOI · O fereastră de alegere a vehiculelor, cu scriere manuală — `74c962f`
 
 **Ce am schimbat:** alegerea vehiculelor se face acum într-o fereastră, aceeași în **Traseu** și în
 **Localizare**: câmp de căutare sus (cu focus din prima) și bifă pe fiecare rând.
