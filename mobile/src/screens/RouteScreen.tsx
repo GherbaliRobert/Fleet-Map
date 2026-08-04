@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { showToast, vehicles } from '../app/store';
+import { reverseGeocode } from '../api/geocode';
 import './route.css';
 
 type Period = 'today' | 'yesterday' | 'week';
@@ -33,6 +34,54 @@ const OSM_TIERS = [
 const osmTier = (delta: number) => (delta <= 30 ? 0 : delta <= 50 ? 1 : 2);
 function dot(latlng: LatLng, fill: string) {
   return L.circleMarker(latlng, { radius: 6, color: '#fff', fillColor: fill, fillOpacity: 1, weight: 2 });
+}
+
+// ── Steagurile de plecare/sosire — aceleași desene ca pe web (public/index.html → hpFlagIcon).
+// Dacă le schimbi, schimbă-le în AMBELE locuri. Vârful catargului = punctul exact, de aceea iconAnchor
+// nu e la centrul imaginii.
+function flagIcon(color: string) {
+  return L.divIcon({
+    className: 'rt-flag',
+    html: '<svg width="26" height="34" viewBox="0 0 26 34">'
+      + '<path d="M4.6 33 V2.4" stroke="#ffffff" stroke-width="4.4" stroke-linecap="round"/>'
+      + '<path d="M4.6 33 V2.4" stroke="#2b3440" stroke-width="2" stroke-linecap="round"/>'
+      + '<path d="M6 3.2 H20.6 L17.3 8.5 L20.6 13.8 H6 Z" fill="' + color + '" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>'
+      + '<circle cx="4.6" cy="32.4" r="2.9" fill="' + color + '" stroke="#ffffff" stroke-width="1.6"/>'
+      + '</svg>',
+    iconSize: [26, 34], iconAnchor: [4.6, 33], popupAnchor: [7, -29],
+  });
+}
+function escHtml(s: string) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+}
+// Steag cu popup: oră, adresă (cerută abia la deschidere, ca să nu geocodăm degeaba) și cât a stat pe loc.
+function flagMarker(latlng: LatLng, color: string, label: string, ts: string | null, standMs: number | null, when: string) {
+  const t = ts ? new Date(ts) : null;
+  const head = '<div class="rt-flagpop"><b style="color:' + color + '">' + escHtml(label) + '</b>'
+    + (t ? '<div class="t">' + t.toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>' : '');
+  const stand = (standMs != null && standMs > 60000)
+    ? '<div class="s">A staționat ' + fmtDur(Math.round(standMs / 1000)) + ' ' + when + '</div>' : '';
+  const m = L.marker(latlng, { icon: flagIcon(color), zIndexOffset: 900 })
+    .bindPopup(head + '<div class="a">Se caută adresa…</div>' + stand + '</div>');
+  let cerut = false;
+  m.on('popupopen', () => {
+    if (cerut) return;
+    cerut = true;
+    reverseGeocode(latlng[0], latlng[1], 'full')
+      .then((a) => m.setPopupContent(head + '<div class="a">' + escHtml(a || '—') + '</div>' + stand + '</div>'))
+      .catch(() => { cerut = false; });
+  });
+  return m;
+}
+// Prima și ultima MIȘCARE reală, nu marginile intervalului: dacă mașina a stat în curte până la 07:12,
+// un steag pus la 00:00 ar susține că a pornit la miezul nopții.
+const MOVE_KMH = 3;
+function moveBounds(pts: any[]) {
+  let go = -1, stop = -1;
+  for (let i = 0; i < pts.length; i++) if ((pts[i].speed || 0) > MOVE_KMH) { go = i; break; }
+  for (let i = pts.length - 1; i >= 0; i--) if ((pts[i].speed || 0) > MOVE_KMH) { stop = i; break; }
+  if (go < 0) return { go: 0, stop: Math.max(0, pts.length - 1), moved: false };
+  return { go, stop, moved: true };
 }
 
 export function RouteScreen() {
@@ -106,27 +155,41 @@ export function RouteScreen() {
           if (isSel) focus = s;
         });
         if (sel != null && focus) {
-          dot((focus as LatLng[])[0], START).addTo(lg); dot((focus as LatLng[])[(focus as LatLng[]).length - 1], STOP).addTo(lg);
+          // O cursă selectată e deja delimitată de mișcare — capetele ei SUNT plecarea și sosirea.
+          const rr = routes && routes[sel] ? routes[sel] : null;
+          const f = focus as LatLng[];
+          flagMarker(f[0], START, 'Pornire', rr && rr.start ? rr.start : null, null, '').addTo(lg);
+          flagMarker(f[f.length - 1], STOP, 'Oprire', rr && rr.end ? rr.end : null, null, '').addTo(lg);
           map.fitBounds(L.latLngBounds(focus).pad(0.15), { animate: false });
         } else if (sel != null && routes && routes[sel]) {
           // Ruta selectată dar cu <2 puncte în istoric → centrează pe coordonatele rutei din raport (mereu prezente)
           const r = routes[sel];
-          if (r.startLat != null && r.startLng != null) dot([r.startLat, r.startLng], START).addTo(lg);
-          if (r.endLat != null && r.endLng != null) dot([r.endLat, r.endLng], STOP).addTo(lg);
+          if (r.startLat != null && r.startLng != null) flagMarker([r.startLat, r.startLng], START, 'Pornire', r.start || null, null, '').addTo(lg);
+          if (r.endLat != null && r.endLng != null) flagMarker([r.endLat, r.endLng], STOP, 'Oprire', r.end || null, null, '').addTo(lg);
           const b = L.latLngBounds([[r.startLat, r.startLng], [r.endLat, r.endLng]] as LatLng[]);
           if (b.isValid()) map.fitBounds(b.pad(0.15), { animate: false });
         } else {
           const all = slices.flat();
-          const firstS = slices.find((s) => s.length); const lastS = [...slices].reverse().find((s) => s.length);
-          if (firstS) dot(firstS[0], START).addTo(lg);
-          if (lastS) dot(lastS[lastS.length - 1], STOP).addTo(lg);
+          // Fără cursă selectată: steagurile marchează prima și ultima mișcare din TOT intervalul,
+          // iar popup-ul spune cât a stat pe loc înainte de plecare și de la oprire încoace.
+          const b = moveBounds(pts);
+          const p0 = pts[b.go], p1 = pts[b.stop];
+          if (p0) flagMarker([p0.latitude, p0.longitude], START, b.moved ? 'Pornire' : 'Nu s-a deplasat',
+            p0.timestamp, b.moved ? (ptMs(p0) - ptMs(pts[0])) : null, 'înainte').addTo(lg);
+          if (p1) flagMarker([p1.latitude, p1.longitude], STOP, b.moved ? 'Oprire' : 'Ultima poziție',
+            p1.timestamp, b.moved ? (ptMs(pts[pts.length - 1]) - ptMs(p1)) : null, 'de atunci').addTo(lg);
           if (all.length) map.fitBounds(L.latLngBounds(all).pad(0.15), { animate: false });
         }
       } else if (pts.length >= 2) {
         // Fallback: nicio rută detectată → o singură linie din toate punctele
         const ll = pts.map((p) => [p.latitude, p.longitude] as LatLng);
         L.polyline(ll, { color: GREEN, weight: 4 }).addTo(lg);
-        dot(ll[0], START).addTo(lg); dot(ll[ll.length - 1], STOP).addTo(lg);
+        const bb = moveBounds(pts);
+        const q0 = pts[bb.go], q1 = pts[bb.stop];
+        if (q0) flagMarker([q0.latitude, q0.longitude], START, bb.moved ? 'Pornire' : 'Nu s-a deplasat',
+          q0.timestamp, bb.moved ? (ptMs(q0) - ptMs(pts[0])) : null, 'înainte').addTo(lg);
+        if (q1) flagMarker([q1.latitude, q1.longitude], STOP, bb.moved ? 'Oprire' : 'Ultima poziție',
+          q1.timestamp, bb.moved ? (ptMs(pts[pts.length - 1]) - ptMs(q1)) : null, 'de atunci').addTo(lg);
         map.fitBounds(L.latLngBounds(ll).pad(0.15), { animate: false });
       }
     } catch { /* hartă în curs de demontare */ }

@@ -114,6 +114,39 @@ conturate; web-ul era cel care ieșea din rând.
 
 ---
 
+### AMÂNDOI · Traseu: steaguri de plecare/sosire și mașina care se plimbă — `în curs`
+
+**Ce am schimbat:** două lucruri cerute după comparația cu AROBS.
+
+1. **Steaguri, nu buline.** La capetele traseului erau două cerculețe de 7px. Acum sunt două steaguri
+   desenate — verde la plecare, roșu la sosire. La click, popup-ul spune ora, **adresa** și cât a stat
+   pe loc înainte de plecare, respectiv de la oprire încoace.
+
+   Reperul nu mai e marginea intervalului cerut, ci **mișcarea reală**. Dacă ceri „ieri, 00:00–23:59"
+   și mașina a stat în curte până la 07:12, steagul verde stă la 07:12, nu la miezul nopții. Verificat
+   pe un traseu de probă: interval 00:00–14:00, steag verde la **07:12**, roșu la **08:02**.
+
+2. **Se plimbă mașina, nu un cerc.** La redare se mișcă acum aceeași siluetă ca pe harta live, rotită
+   după direcția de mers — botul arată încotro merge. Culoarea spune ce făcea în acel moment:
+   verde în mișcare, portocaliu oprită cu motorul pornit, gri oprită de tot.
+
+**Fondatorul vede:** exact ce vede și clientul.
+
+**Clientul vede:** poate răspunde din două click-uri la „la ce oră a plecat mașina și de unde" —
+întrebarea pentru care înainte trebuia să citească coordonate.
+
+**Pe APK:** steagurile cu popup — da, sunt aceleași desene și aceleași texte. Mașina care se plimbă —
+**nu**, fiindcă ecranul de acolo n-are deloc derulare (nici bară, nici buton de redare). Ar însemna o
+funcție nouă, nu o ajustare; hotărât împreună să rămână pe altă dată.
+
+> Capcană notată pentru viitor: culoarea „oprit cu motorul pornit" n-a apărut la prima încercare,
+> fiindcă funcția care citește contactul cere ca poziția să fie recentă (sub ~65 min) — o regulă
+> corectă pe harta live, ca să nu susțină că motorul merge pe baza unui pachet vechi. În istoric
+> însă TOATE punctele sunt vechi, deci verificarea dădea mereu „oprit". Acolo contactul se citește
+> direct din pachet.
+
+---
+
 ## De verificat înainte de lansare
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.

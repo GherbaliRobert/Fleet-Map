@@ -10700,10 +10700,21 @@ const pozitii = await r.json();</code></pre>
         })();
         document.body.classList.add('history-open'); // ascunde FAB pe mobil cât e afișat un traseu
 
-        const startMarker = L.circleMarker(points[0], { radius: 7, color: '#3FE07D', fillColor: '#3FE07D', fillOpacity: 1, weight: 2 })
-          .bindPopup('Start: ' + new Date(data[0].timestamp).toLocaleString('ro-RO')).addTo(map);
-        const endMarker = L.circleMarker(points[points.length - 1], { radius: 7, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1, weight: 2 })
-          .bindPopup('Stop: ' + new Date(data[data.length - 1].timestamp).toLocaleString('ro-RO')).addTo(map);
+        // Steagurile de plecare și de sosire. Reperul NU e marginea intervalului cerut, ci prima și ultima
+        // MIȘCARE reală: dacă ceri „ieri, 00:00–23:59" și mașina a stat în curte până la 07:12, un steag pus
+        // la 00:00 ar susține că a pornit la miezul nopții. Ce vrei să afli e când a plecat de fapt.
+        var MOVE_KMH = 3;                                  // sub atât = pe loc (același prag ca la ralanti)
+        var iGo = -1, iStop = -1;
+        for (var _i = 0; _i < data.length; _i++) if ((data[_i].speed || 0) > MOVE_KMH) { iGo = _i; break; }
+        for (var _j = data.length - 1; _j >= 0; _j--) if ((data[_j].speed || 0) > MOVE_KMH) { iStop = _j; break; }
+        var _staticaTot = (iGo < 0);                       // n-a mișcat deloc în intervalul cerut
+        if (_staticaTot) { iGo = 0; iStop = data.length - 1; }
+        var startMarker = hpFlagMarker(points[iGo], data[iGo], '#16A34A',
+          _staticaTot ? 'Nu s-a deplasat' : 'Pornire',
+          _staticaTot ? null : (new Date(data[iGo].timestamp) - new Date(data[0].timestamp)), 'înainte');
+        var endMarker = hpFlagMarker(points[iStop], data[iStop], '#ef4444',
+          _staticaTot ? 'Ultima poziție' : 'Oprire',
+          _staticaTot ? null : (new Date(data[data.length - 1].timestamp) - new Date(data[iStop].timestamp)), 'de atunci');
         historyMarkers.push(startMarker, endMarker);
 
         // Afișează pill-ul de rută activă
@@ -10759,14 +10770,90 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Replay interactiv istoric traseu ───
+    // ── Steagurile de plecare/sosire de pe traseu ────────────────────────────────────────────────────
+    function hpFlagIcon(color) {
+      return L.divIcon({
+        className: 'hp-flag',
+        html: '<svg width="26" height="34" viewBox="0 0 26 34">'
+          + '<path d="M4.6 33 V2.4" stroke="#ffffff" stroke-width="4.4" stroke-linecap="round"/>'
+          + '<path d="M4.6 33 V2.4" stroke="#2b3440" stroke-width="2" stroke-linecap="round"/>'
+          + '<path d="M6 3.2 H20.6 L17.3 8.5 L20.6 13.8 H6 Z" fill="' + color + '" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>'
+          + '<circle cx="4.6" cy="32.4" r="2.9" fill="' + color + '" stroke="#ffffff" stroke-width="1.6"/>'
+          + '</svg>',
+        iconSize: [26, 34], iconAnchor: [4.6, 33], popupAnchor: [7, -29]   // vârful catargului = punctul exact
+      });
+    }
+    function _hpDur(ms) {
+      var m = Math.max(0, Math.round(ms / 60000));
+      if (m < 60) return m + ' min';
+      var h = Math.floor(m / 60), r = m % 60;
+      if (h >= 24) return Math.floor(h / 24) + 'z ' + (h % 24) + 'h';
+      return h + 'h ' + (r < 10 ? '0' : '') + r + 'm';
+    }
+    function hpFlagMarker(latlng, pos, color, label, standMs, when) {
+      var t = new Date(pos.timestamp);
+      var head = '<div class="hp-flagpop"><b style="color:' + color + ';"><i class="fas fa-flag"></i> ' + label + '</b>'
+        + '<div class="t">' + t.toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>';
+      var stand = (standMs != null && standMs > 60000)
+        ? '<div class="s"><i class="fas fa-pause"></i> A staționat ' + _hpDur(standMs) + ' ' + when + '</div>' : '';
+      var m = L.marker(latlng, { icon: hpFlagIcon(color), zIndexOffset: 900 })
+        .bindPopup(head + '<div class="a">Se caută adresa…</div>' + stand + '</div>').addTo(map);
+      // Adresa se cere DOAR când deschizi popup-ul. Altfel fiecare traseu încărcat ar consuma două
+      // interogări de geocodare degeaba — inclusiv când nu dai click pe niciun steag.
+      var _cerut = false;
+      m.on('popupopen', function () {
+        if (_cerut) return;
+        _cerut = true;
+        reverseGeocode(latlng[0], latlng[1], 'full').then(function (a) {
+          m.setPopupContent(head + '<div class="a"><i class="fas fa-location-dot"></i> ' + esc(a || '—') + '</div>' + stand + '</div>');
+        }).catch(function () { _cerut = false; });
+      });
+      return m;
+    }
+
     var hpData = [], hpTimer = null, hpIndex = 0, hpSpeed = 4, hpMarker = null;
+    var hpCat = 'car', hpMoveState = null;
+    // Iconița care se plimbă pe traseu = ACEEAȘI siluetă ca pe harta live, rotită după direcția de mers
+    // (unghiul vine din fiecare poziție, deci botul arată încotro merge). Culoarea spune ce făcea vehiculul
+    // exact în acel moment: verde = în mișcare, portocaliu = oprit cu motorul pornit, gri = oprit de tot.
+    function _hpState(p) {
+      if ((p.speed || 0) > 3) return 'moving';
+      var io = p.io_data || p.io || {};
+      // Contactul se citește DIRECT din pachet, nu prin `ignitionOn`: acela cere ca poziția să fie
+      // recentă (sub ~65 min), ca harta live să nu susțină că motorul merge pe baza unui pachet vechi.
+      // În istoric însă toate punctele sunt vechi prin definiție, deci verificarea ar da mereu „oprit",
+      // iar starea portocalie („staționează cu motorul pornit") n-ar apărea niciodată.
+      var ign = (io.ignition === 1 || io.ignition === true);
+      return ign ? 'idle' : 'off';
+    }
+    function _hpRot(p) { return Math.round((((p.angle || 0) % 360) + 360) % 360); }
+    function hpVehIcon(p) {
+      var col = { moving: '#16A34A', idle: '#f59e0b', off: '#9ca3af' }[_hpState(p)];
+      return L.divIcon({
+        className: 'hp-veh',
+        html: '<div class="hp-veh-rot" style="transform:rotate(' + _hpRot(p) + 'deg);">'
+            + '<svg width="34" height="34" viewBox="0 0 48 48">' + vehicleTopModern(hpCat, col) + '</svg></div>',
+        iconSize: [34, 34], iconAnchor: [17, 17]
+      });
+    }
     function hpStop() {
       if (hpTimer) { clearInterval(hpTimer); hpTimer = null; }
       var b = document.getElementById('hp-play'); if (b) b.innerHTML = '<i class="fas fa-play"></i>';
     }
     function hpRender() {
       var p = hpData[hpIndex]; if (!p) return;
-      if (hpMarker && map) hpMarker.setLatLng([p.latitude, p.longitude]);
+      if (hpMarker && map) {
+        hpMarker.setLatLng([p.latitude, p.longitude]);
+        var st = _hpState(p);
+        // Iconița se reconstruiește DOAR când se schimbă starea (rar). Rotația, care se schimbă la fiecare
+        // punct, se face prin `transform` pe elementul existent — altfel am reface nodul de zeci de ori pe
+        // secundă la redare 16×.
+        if (st !== hpMoveState) { hpMoveState = st; hpMarker.setIcon(hpVehIcon(p)); }
+        else {
+          var _el = hpMarker.getElement(), _rt = _el && _el.querySelector('.hp-veh-rot');
+          if (_rt) _rt.style.transform = 'rotate(' + _hpRot(p) + 'deg)';
+        }
+      }
       var sl = document.getElementById('hp-slider'); if (sl) sl.value = hpIndex;
       var ro = document.getElementById('hp-readout');
       if (ro) {
@@ -10795,9 +10882,12 @@ const pozitii = await r.json();</code></pre>
       if (hpData.length < 2) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
       var sl = document.getElementById('hp-slider'); if (sl) { sl.max = hpData.length - 1; sl.value = 0; }
+      // Categoria vehiculului (autoturism / dubă / camion…) → aceeași siluetă ca pe harta live.
+      var _hdev = (typeof devices !== 'undefined' && devices && devices.get) ? devices.get(selectedImei) : null;
+      hpCat = (typeof markerCategory === 'function') ? markerCategory(_hdev) : 'car';
+      hpMoveState = _hpState(hpData[0]);
       hpMarker = L.marker([hpData[0].latitude, hpData[0].longitude], {
-        zIndexOffset: 1000,
-        icon: L.divIcon({ className: '', html: '<div style="width:16px;height:16px;border-radius:50%;background:#3FE07D;border:3px solid #fff;box-shadow:0 0 0 2px #3FE07D,0 1px 5px rgba(0,0,0,.6);cursor:pointer;"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
+        zIndexOffset: 1000, icon: hpVehIcon(hpData[0])
       }).addTo(map);
       hpMarker.on('click', function () { hpShowInfoPopup(hpIndex); });
       historyMarkers.push(hpMarker);
