@@ -112,8 +112,6 @@ conturate; web-ul era cel care ieșea din rând.
 
 ---
 
----
-
 ### AMÂNDOI · Traseu: steaguri de plecare/sosire și mașina care se plimbă — `ba1bdd5`
 
 **Ce am schimbat:** două lucruri cerute după comparația cu AROBS.
