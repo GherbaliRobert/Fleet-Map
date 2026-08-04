@@ -32,6 +32,11 @@ portocaliu în listă.
 **Clientul vede:** regulile pe care le faceți pentru compania lui îi apar acum în lista **lui** de
 alerte și le poate opri. Înainte primea notificări de la reguli pe care nu le vedea nicăieri.
 
+**Stare (04.08):** Loganul, care lipsea din lista de vehicule a formularului de alertă, apare acum.
+Cauza n-a fost identificată — nu ținea de apartenența la companie (super-adminul vede vehiculele
+tuturor companiilor, verificat în cod și în test). Închis ca rezolvat, fără explicație. Dacă
+reapare, primul lucru de verificat e starea vehiculului, nu compania lui.
+
 ---
 
 ### FONDATOR · Nu se mai schimbă singură apartenența la companii — `1b50a9a`
@@ -80,6 +85,11 @@ pentru fiecare. Înainte, a doua zonă dintr-o oră era înghițită în tăcere
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
 
+- [ ] **Notificările se revizuiesc înainte de lansare — hotărât de voi, 04.08.** Rămân deocamdată
+  cum sunt; le testați pe teren și veniți cu ce nu merge. Când ajungem la revizuire, aici sunt
+  lucrurile de pus pe masă: cine primește ce (vezi punctul următor), pragurile și răcirea de 5
+  minute, ce ajunge pe telefon și ce rămâne doar în clopoțel, și dacă tipurile de alertă acoperă
+  ce cer clienții.
 - [ ] **Super-adminul primește notificările tuturor clienților.** `getUsersForImei` (db.js:2637)
   include `role = 'superadmin'` necondiționat, pentru orice vehicul. Cu 3 companii merge; la 30 vă
   veți opri push-ul cu totul. **Contrazice și ce ați spus voi:** nu vreți să vedeți ce face fiecare
