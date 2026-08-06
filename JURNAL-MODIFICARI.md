@@ -258,7 +258,7 @@ telefon, nu o ajustare — de pus pe listă dacă o vreți și acolo.
 
 ---
 
-### CLIENT · Ecran nou pe telefon: „Date CAN" — `în curs`
+### CLIENT · Ecran nou pe telefon: „Date CAN" — `da3806a`
 
 **Ce am schimbat:** pe telefon, butonul „Date CAN" din fișa vehiculului deschide acum un **ecran** cu
 datele primite de la mașină, în dale — viteză, turație, combustibil (procent și litri), kilometraj,
