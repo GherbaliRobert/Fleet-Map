@@ -27,7 +27,12 @@ const CAN_LABELS: Record<string, [string, string]> = {
   can_door_status: ['Stare uși', ''],          // bitmask (0 = toate închise)
   can_engine_worktime_counted: ['Timp funcționare motor', 'min'],
   can_fuel_consumed_counted: ['Combustibil consumat', 'L'],
-  can_axle_load: ['Sarcină axe', 'kg'], can_ambient_temp: ['Temp. exterioară', '°C'],
+  // `can_axle_load` (la singular) NU există în codec8e — era o etichetă pentru o cheie fantomă, deci
+  // nu se afișa niciodată. Cheile reale sunt pe axă (AVL 118-122) plus greutatea totală (AVL 187).
+  can_axle1_load: ['Sarcină axa 1', 'kg'], can_axle2_load: ['Sarcină axa 2', 'kg'],
+  can_axle3_load: ['Sarcină axa 3', 'kg'], can_axle4_load: ['Sarcină axa 4', 'kg'],
+  can_axle5_load: ['Sarcină axa 5', 'kg'], can_load_weight: ['Greutate totală', 'kg'],
+  can_ambient_temp: ['Temp. exterioară', '°C'],
 };
 // Cheie necunoscută → etichetă prezentabilă (fără „can_…" brut): can_door_status → „Door status"
 function prettyKey(k: string): string {
@@ -265,7 +270,7 @@ export function VehicleDetail() {
         <div class="d-actions">
           <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/route`)}><Icon name="route" size={18} class="ic" /> Vezi traseu</button>
           <button class="d-act" onClick={() => loc.route(`/reports?imei=${encodeURIComponent(imei)}`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>
-          <button class="d-act" onClick={() => setSheet('can')}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
+          <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/can`)}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
           {sensors && sensors.length > 0 && <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>}
           {me.value?.features?.tahograf && tachoOk && <button class="d-act" onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>}
           <button class="d-act" disabled={!ll} onClick={() => setNavOpen((o) => !o)}><Icon name="navigate" size={18} class="ic" /> Navighează</button>
@@ -417,7 +422,7 @@ function SignalBars({ value, max = 5 }: { value: number; max?: number }) {
   );
 }
 
-function CanList({ io, adblueOk, showRaw }: { io: any; adblueOk?: boolean; showRaw?: boolean }) {
+export function CanList({ io, adblueOk, showRaw }: { io: any; adblueOk?: boolean; showRaw?: boolean }) {
   const d = io || {};
   const ignOn = (d.ignition === 1 || d.ignition === true);
   const voltage = (typeof d.external_voltage === 'number' && d.external_voltage > 0) ? (d.external_voltage / 1000).toFixed(2) + ' V' : null;

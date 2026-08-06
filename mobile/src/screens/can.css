@@ -1,0 +1,44 @@
+/* Ecranul „Date CAN" — grilă de dale cu iconiță la stânga, valoare + etichetă la dreapta.
+   Clase prefixate `can-`: importurile de CSS sunt globale în aplicație (fără CSS modules), deci
+   un nume generic (.tile, .grid) s-ar ciocni cu alt ecran. */
+
+.can-hero .plate { font-size: 20px; font-weight: 800; letter-spacing: .3px; }
+.can-hero .st { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 13px; font-weight: 700; }
+.can-hero .st .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.can-hero .ago { margin-top: 7px; font-size: 11.5px; color: var(--text-muted); }
+/* Avertisment cinstit: unele valori CAN sunt cărate din ultimul pachet, nu citite acum. */
+.can-hero .stale { margin-top: 7px; font-size: 11.5px; line-height: 1.4; color: var(--orange); }
+
+.can-vin { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.can-vin .v { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.can-vin .src { font-size: 10.5px; color: var(--text-muted); font-weight: 400; }
+.can-vin button { flex: none; border: 1px solid var(--border); background: var(--bg-dark, transparent);
+  color: var(--text-secondary); border-radius: 8px; padding: 7px 9px; cursor: pointer; }
+
+.can-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.can-t {
+  display: flex; gap: 10px; align-items: flex-start; min-width: 0;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px;
+}
+.can-t.full { grid-column: 1 / -1; }   /* folosit de dalele pe toată lățimea */
+.can-t .ic { color: var(--text-muted); flex: 0 0 auto; }
+.can-t .mid { min-width: 0; }
+.can-v { font-size: 17px; font-weight: 800; overflow-wrap: anywhere; }
+.can-v.red { color: var(--red); }
+.can-l { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.35; }
+/* Pastila de proveniență. Discretă intenționat — spune de unde vine cifra, nu strigă ca în alte aplicații. */
+.can-src { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px;
+  border-radius: 6px; margin-top: 5px; }
+.can-src.read { color: var(--text-muted); border: 1px solid var(--border); }
+.can-src.calc { color: var(--orange); border: 1px solid var(--orange); }
+
+.can-note { font-size: 11.5px; line-height: 1.45; color: var(--text-muted); padding: 0 2px; }
+
+/* Explicația provenienței, ca TEXT vizibil. Într-un WebView pe touch, `title=` nu se declanșează
+   niciodată — exact informația care justifică ecranul ar fi rămas inaccesibilă pe telefon. */
+.can-why { font-size: 10.5px; line-height: 1.4; color: var(--text-muted); margin-top: 5px; }
+/* Ambele stări ale pastilei au chenar, ca să se citească drept două variante ale aceluiași indicator,
+   nu ca „o alertă" și „o notă". */
+.can-src.read { color: var(--text-secondary); border: 1px solid var(--text-muted); opacity: .85; }
+.can-raw { margin-top: 10px; width: 100%; justify-content: center; }

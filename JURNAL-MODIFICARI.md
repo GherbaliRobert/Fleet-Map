@@ -258,6 +258,42 @@ telefon, nu o ajustare — de pus pe listă dacă o vreți și acolo.
 
 ---
 
+### CLIENT · Ecran nou pe telefon: „Date CAN" — `în curs`
+
+**Ce am schimbat:** pe telefon, butonul „Date CAN" din fișa vehiculului deschide acum un **ecran** cu
+datele primite de la mașină, în dale — viteză, turație, combustibil (procent și litri), kilometraj,
+temperatură, greutate pe axe, AdBlue, consum mediu. Sus: numărul de înmatriculare, starea, ultima
+transmisie și VIN-ul, cu buton de copiere.
+
+Înainte era o foaie ridicată de jos. Am făcut-o ecran dintr-un motiv practic: **butonul fizic de
+„înapoi" al telefonului nu închide o foaie** — te scotea direct din ecran.
+
+**Fondatorul vede:** în plus, un card „Tehnic" cu voltajul, interfața CAN și IMEI-ul, plus butonul
+„Vezi toate semnalele", care aduce lista completă de semnale brute — unealta de diagnoză când un
+client întreabă de ce nu-i apare combustibilul.
+
+**Clientul vede:** doar ce transmite mașina lui, fiecare cifră marcată dacă e **citită de la mașină**
+sau **calculată de noi**, cu explicația dedesubt.
+
+> **De ce contează marcajul:** un client care vede „113.767 km" trebuie să știe dacă e contorul de
+> bord sau o estimare din GPS. Sunt lucruri diferite, iar diferența ajunge în facturi de service.
+
+**Ce am reparat după verificare** (am pus 4 analizatori independenți să caute minciuni în ecran, și au
+găsit trei etichete false pe care le scrisesem eu):
+
+1. **Combustibilul.** Marcasem drept „citită" o valoare care, la vehiculele cu sondă montată, e de fapt
+   **interpolată de noi** din tabelul de calibrare. Acum eticheta se decide după existența senzorilor.
+2. **Kilometrajul la camioane.** Pe magistrala FMS, aceeași cheie înseamnă **odometrul real de bord**,
+   nu contorul GPS. Un MAN cu 318.420 km reali ar fi arătat „calculată din GPS".
+3. **Consumul mediu.** Scria „din contorul de consum al mașinii" și când cifra venea, de fapt, din
+   scăderile de nivel ale rezervorului. Două lucruri diferite.
+
+Plus: turația **chiar se păstrează** până la 15 minute (comentariul meu spunea invers), valorile
+imposibile (65535 RPM = semnalul „indisponibil" al magistralei) nu se mai afișează ca reale,
+explicațiile sunt text vizibil și nu tooltip — pe telefon un tooltip nu apare niciodată.
+
+---
+
 ## De verificat înainte de lansare
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
@@ -271,6 +307,16 @@ Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
   jos: [Ce vedem din conturile clienților](#decizie-ce-vedem-din-conturile-clienților).
 - [ ] **Editorul de Zone n-are selector de companie.** Zonele desenate de voi rămân fără companie.
   Funcționează (motorul le acceptă), dar nu le puteți atribui unui client anume.
+- [ ] **Eticheta falsă „Consum azi (senzor)" din APK.** Fișa vehiculului o afișează MEREU, inclusiv pe
+  mașini fără niciun senzor, fiindcă endpointul nu întoarce niciodată câmpul pe care se bazează. Nu am
+  propagat-o pe ecranul nou, dar în fișă e încă acolo.
+- [ ] **Turația motorului ajunge acum la client, pe telefon.** Pe web, RPM-ul e vizibil DOAR
+  super-adminului. Ecranul nou îl arată oricui — pentru că așa arăta și modelul cerut. E o schimbare
+  de produs, nu de interfață: fie o acceptăm și pe web, fie o restrângem pe telefon. De decis împreună.
+- [ ] **Ecranul „Date CAN" nu are pereche pe web.** Acolo informația e împrăștiată între fișă și panoul
+  „IO Live". Dacă îl vreți și pe web, e o lucrare separată.
+- [ ] **Verdele aplicației e aproape ilizibil pe tema luminoasă** (nu e redefinit pentru fundal alb).
+  Afectează toate ecranele, nu doar cel nou.
 - [ ] **Contul de test ca utilizator.** Deocamdată testați totul ca super-admin, care trece prin
   toate porțile. Ecranele goale și mesajele „nu ai acces" nu le vede niciunul dintre voi.
 
