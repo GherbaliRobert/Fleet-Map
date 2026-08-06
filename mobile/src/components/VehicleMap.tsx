@@ -84,6 +84,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markers = useRef<Map<string, { mk: maplibregl.Marker; el: HTMLDivElement; pop: maplibregl.Popup }>>(new Map());
   const fitted = useRef(false);
+  const userMoved = useRef(false);   // a atins omul harta? → nu-i mai luăm camera cu încadrarea automată
   const prevFollow = useRef(false);
   const ready = useRef(false);
   const layerRef = useRef<VehicleLayer | null>(null);
@@ -155,6 +156,10 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
     // Gesturi: 2 degete pe verticală = ÎNCLINARE (pitch); 2 degete răsucite = rotire — exact ca Google Maps.
     map.touchZoomRotate.enableRotation();
     map.touchPitch.enable();
+    // Harta se deschide pe toată România și e interactivă IMEDIAT, dar încadrarea pe flotă vine abia când
+    // sosesc pozițiile de la server. Pe date mobile, între cele două momente apuci să tragi de hartă — și
+    // camera ți-ar sări din mână. `originalEvent` există doar la gesturi, nu la easeTo/fitBounds programatic.
+    map.on('movestart', (e: any) => { if (e && e.originalEvent) userMoved.current = true; });
     // jos-STÂNGA: colțul jos-dreapta e ocupat de FAB-ul „+" iar bara de tab-uri acoperă marginea de jos
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: true, showCompass: true }), 'bottom-left');
     map.on('load', () => {
@@ -257,7 +262,9 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
         if (!prevFollow.current) map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 500 });
         else map.easeTo({ center: [(minLng + maxLng) / 2, (minLat + maxLat) / 2], duration: 500 });
         fitted.current = true;
-      } else if (!fitted.current && n) {
+      } else if (!fitted.current && !userMoved.current && n) {
+        // Încadrarea AUTOMATĂ de la prima încărcare — singura care poate ateriza peste navigarea manuală.
+        // „Urmărește" și focalizarea pe un vehicul rămân neatinse: alea le ceri tu, deci au voie să mute camera.
         map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 60, maxZoom: 15, duration: 0, animate: false });
         fitted.current = true;
       }

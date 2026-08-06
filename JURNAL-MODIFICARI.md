@@ -315,6 +315,15 @@ pornește dacă ai atins deja harta. Butonul de încadrare, apăsat de tine, fun
 > automată nu mai mișcă nimic (cameră neatinsă la 44.43 / 26.10); o mișcare programatică — urmărirea
 > unui vehicul — NU blochează încadrarea; iar forțat, se încadrează normal.
 
+**Pe APK — aceeași gardă, alt declanșator.** Harta de pe telefon era deja mai bine păzită: încadrarea
+inițială rula o singură dată, focalizarea pe un vehicul o dată per selecție, iar comutarea 2D⇄3D nu
+mișca deloc camera. Rămăsese însă o fereastră: harta se deschide tot pe toată România, iar încadrarea
+vine **când sosesc pozițiile de la server** — nu când se încarcă stilul. Pe date mobile, între cele
+două momente apuci să tragi de hartă.
+
+Acum, dacă ai atins harta, încadrarea automată nu mai pornește. „Urmărește flota" și apăsarea pe un
+vehicul rămân neatinse — alea le ceri tu, deci au voie să mute camera.
+
 ---
 
 ## De verificat înainte de lansare
