@@ -294,6 +294,29 @@ explicațiile sunt text vizibil și nu tooltip — pe telefon un tooltip nu apar
 
 ---
 
+### AMÂNDOI · Harta 3D nu-ți mai smulge camera din mână — `în curs`
+
+**Ce am schimbat:** pe harta 3D, dacă începeai să navighezi, la câteva secunde camera sărea singură
+la mijlocul distanței dintre mașini.
+
+**Cauza:** harta 3D se deschidea pe toată România și era gata de folosit **imediat**, dar încadrarea
+pe flotă era legată de momentul în care termina de încărcat stilul hărții — care vine din rețea. Deci
+apucai să tragi de hartă, apoi sosea stilul și camera sărea. Cu cât internetul era mai lent, cu atât
+mai târziu te trezeai mutat.
+
+Acum: harta se încadrează pe flotă **din prima**, iar încadrarea automată de mai târziu nu mai
+pornește dacă ai atins deja harta. Butonul de încadrare, apăsat de tine, funcționează oricând.
+
+**Fondatorul vede:** exact ce vede și clientul.
+
+**Clientul vede:** harta 3D se deschide direct pe mașinile lui, și rămâne unde o lasă.
+
+> Verificat pe cinci situații: harta se deschide încadrată pe flotă; după un gest de mână, încadrarea
+> automată nu mai mișcă nimic (cameră neatinsă la 44.43 / 26.10); o mișcare programatică — urmărirea
+> unui vehicul — NU blochează încadrarea; iar forțat, se încadrează normal.
+
+---
+
 ## De verificat înainte de lansare
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.

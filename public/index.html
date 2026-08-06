@@ -8310,6 +8310,9 @@ const pozitii = await r.json();</code></pre>
     // ADITIV: harta Leaflet 2D rămâne NEATINSĂ când 3D e oprit. MapLibre se inițializează O SINGURĂ
     // dată (la prima intrare în 3D), apoi doar se ascunde/afișează. O singură hartă e vie la un moment dat.
     var _ml3dMap = null, _ml3dLayer = null, _ml3dInited = false, _libs3dPromise = null, _ml3dViewer = null, _ml3dWatch = null, _ml3dRO = null, _ml3dLayerPending = false;
+    // Camera 3D: a mișcat-o omul? s-a încadrat deja pe flotă? Fără evidența asta, încadrarea automată
+    // ajungea peste navigarea manuală — vezi comentariul de la fit3dToFleet.
+    var _ml3dUserMoved = false, _ml3dFitted = false;
     var map3dOn = false;
     // Harta 3D urmează stratul ales de utilizator (meniul „Straturi hartă") → SATELIT funcționează și în 3D.
     // Convertește un tile-template Leaflet ({s} subdomenii, {r} retina) în lista de URL-uri cerută de MapLibre.
@@ -8472,12 +8475,21 @@ const pozitii = await r.json();</code></pre>
     }
 
 
-    function fit3dToFleet() {
-      if (!_ml3dMap) return;
+    // Încadrare pe flotă. `fortat` = apăsat de om (buton); fără el, respectă navigarea manuală.
+    // De ce contează: harta 3D e interactivă din prima, dar stilul vine din rețea. Încadrarea era legată
+    // DOAR de evenimentul `load`, deci putea ateriza la câteva secunde după ce utilizatorul începuse deja
+    // să tragă de hartă — și camera îi sărea singură la mijlocul distanței dintre mașini.
+    function fit3dToFleet(fortat) {
+      if (!_ml3dMap) return false;
+      if (!fortat && _ml3dUserMoved) return false;      // omul navighează → nu-i luăm camera
       var pts = []; devices.forEach(function (d) { if (d && d.latitude != null && d.longitude != null) pts.push([d.longitude, d.latitude]); });
-      if (!pts.length) return;
-      if (pts.length === 1) { _ml3dMap.jumpTo({ center: pts[0], zoom: 15 }); return; }
-      try { var b = new maplibregl.LngLatBounds(pts[0], pts[0]); pts.forEach(function (p) { b.extend(p); }); _ml3dMap.fitBounds(b, { padding: 60, maxZoom: 15, duration: 0 }); } catch (e) {}
+      if (!pts.length) return false;                    // nicio poziție încă → încercăm iar la `load`
+      if (pts.length === 1) { _ml3dMap.jumpTo({ center: pts[0], zoom: 15 }); _ml3dFitted = true; return true; }
+      try {
+        var b = new maplibregl.LngLatBounds(pts[0], pts[0]); pts.forEach(function (p) { b.extend(p); });
+        _ml3dMap.fitBounds(b, { padding: 60, maxZoom: 15, duration: 0 });
+        _ml3dFitted = true; return true;
+      } catch (e) { return false; }
     }
 
     // ─── Instructaj „prima dată pe harta 3D" — carusel 3 pași, o SINGURĂ dată (gate localStorage) ───
@@ -8553,6 +8565,14 @@ const pozitii = await r.json();</code></pre>
           try {
             _ml3dMap = new maplibregl.Map({ container: 'map3d', style: _ml3dStyle(), center: [25, 45.9], zoom: 5.2, attributionControl: false, pitchWithRotate: true, dragRotate: true, maxPitch: 70, canvasContextAttributes: { antialias: true } });
             _ml3dMap.touchZoomRotate.enableRotation(); _ml3dMap.touchPitch.enable();
+            // Orice mișcare pornită de OM (`originalEvent` există doar la gesturi, nu la easeTo/fitBounds
+            // programatice) blochează încadrarea automată de mai târziu.
+            _ml3dUserMoved = false; _ml3dFitted = false;
+            _ml3dMap.on('movestart', function (ev) { if (ev && ev.originalEvent) _ml3dUserMoved = true; });
+            // Încadrăm ACUM, nu abia la `load`: pozițiile sunt deja în `devices` (harta 2D le are), iar
+            // camera pornește direct pe flotă. Fără asta, harta se deschidea pe toată România și sărea
+            // pe flotă abia când termina de încărcat stilul.
+            try { fit3dToFleet(true); } catch (e) {}
             // Când se deschide panoul de detaliu (sau se schimbă layout-ul), #map-container se redimensionează.
             // Leaflet primește invalidateSize, dar MapLibre NU → canvasul nu mai umple containerul și harta
             // Leaflet ascunsă „iese" pe dedesubt (hărțile se suprapun). Observăm containerul și redimensionăm 3D-ul.
@@ -8572,7 +8592,9 @@ const pozitii = await r.json();</code></pre>
               } catch (e) {}
               try { _ml3dMap.addSource('veh-trails', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }); _ml3dMap.addLayer({ id: 'veh-trails-line', type: 'line', source: 'veh-trails', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-opacity': ['get', 'op'], 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 6, 19, 12] } }); } catch (e) {}
               try { _ml3dLayer = window.RA3D.createVehicleLayer(); _ml3dMap.addLayer(_ml3dLayer); } catch (e) {}
-              try { fit3dToFleet(); } catch (e) {}
+              // A doua încercare, DOAR dacă prima n-a avut ce încadra (fără poziții la deschidere) și
+              // omul n-a atins între timp harta. Altfel îi smulgeam camera din mână.
+              try { if (!_ml3dFitted && !_ml3dUserMoved) fit3dToFleet(); } catch (e) {}
               push3dData();
               setTimeout(function () { try { _ml3dMap.resize(); } catch (e) {} }, 120);
             });
