@@ -294,7 +294,7 @@ explicațiile sunt text vizibil și nu tooltip — pe telefon un tooltip nu apar
 
 ---
 
-### AMÂNDOI · Harta 3D nu-ți mai smulge camera din mână — `în curs`
+### AMÂNDOI · Harta 3D nu-ți mai smulge camera din mână — `bdd10f2`
 
 **Ce am schimbat:** pe harta 3D, dacă începeai să navighezi, la câteva secunde camera sărea singură
 la mijlocul distanței dintre mașini.
