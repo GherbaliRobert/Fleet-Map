@@ -1669,6 +1669,25 @@ async function getActiveEtransports() {
 }
 
 // ─── Setări globale (cheie-valoare) ───
+// Contul de instalare „admin": câți ALȚI super-admini activi există? Zero înseamnă că retragerea lui
+// v-ar închide pe dinafara propriei platforme — de aceea e singura condiție care o oprește.
+async function altiSuperadminiActivi() {
+  const r = await pool.query(
+    "SELECT COUNT(*)::int AS n FROM users WHERE role = 'superadmin' AND active IS NOT FALSE AND LOWER(username) <> 'admin'"
+  );
+  return r.rows[0] ? r.rows[0].n : 0;
+}
+async function dezactiveazaContulDeInstalare() {
+  const r = await pool.query("UPDATE users SET active = false WHERE LOWER(username) = 'admin' AND active IS NOT FALSE RETURNING id");
+  return r.rows.length > 0;
+}
+// Calea de avarie: ADMIN_PASSWORD readuce contul la viață. Fără reactivare, schimbarea parolei n-ar
+// folosi la nimic — autentificarea respinge contul dezactivat înainte să verifice parola.
+async function reactiveazaContulDeInstalare() {
+  const r = await pool.query("UPDATE users SET active = true WHERE LOWER(username) = 'admin' AND active IS FALSE RETURNING id");
+  return r.rows.length > 0;
+}
+
 async function getSetting(key) {
   const r = await pool.query('SELECT value FROM settings WHERE key = $1', [key]);
   return r.rows[0] ? r.rows[0].value : null;
@@ -3297,6 +3316,7 @@ module.exports = {
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   getWebhooks, getEnabledWebhooks, getWebhookById, createWebhook, deleteWebhook, updateWebhookStatus,
   getSetting, setSetting,
+  altiSuperadminiActivi, dezactiveazaContulDeInstalare, reactiveazaContulDeInstalare,
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,

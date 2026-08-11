@@ -9233,8 +9233,27 @@ async function start() {
     adminPass = require('crypto').randomBytes(18).toString('base64url'); // ~24 caractere
     _generata = true;
   }
+  // ── Contul de instalare „admin" se RETRAGE ─────────────────────────────────────────────────────
+  // Decizie 2026-08-11: nu mai trebuie să funcționeze. E un cont cu nume previzibil, cunoscut public
+  // din documentația de deploy, care administrează TOATE companiile — prima țintă a oricui.
+  // Singura condiție care oprește retragerea: să existe ALT super-admin activ. Altfel v-ar închide
+  // pe dinafara propriei platforme, iar asta nu e o decizie pe care o poate lua o pornire de server.
+  // Recuperare (break-glass): setezi ADMIN_PASSWORD în Railway și redeploy — contul revine activ, cu
+  // parola aia. Accesul la variabilele de mediu e, practic, dovada că ești proprietarul platformei.
+  const _alti = await db.altiSuperadminiActivi().catch(() => 0);
+  if (_alti > 0 && !process.env.ADMIN_PASSWORD) {
+    const retras = await db.dezactiveazaContulDeInstalare().catch(() => false);
+    if (retras) console.log('[AUTH] Contul de instalare „admin" a fost DEZACTIVAT (există ' + _alti + ' super-admin activ). Autentificarea se face cu conturile personale.');
+  }
+  // Avertismentul pentru cazul „e singurul super-admin" se dă mai jos, DUPĂ crearea contului —
+  // aici, pe o instalare nouă, el încă nu există.
+
   const adminUser = await db.getUserByUsername('admin');
-  if (!adminUser) {
+  if (!adminUser && _alti > 0) {
+    // Cineva l-a șters, dar platforma are deja super-admini. NU-l readucem la viață: ar fi exact contul
+    // previzibil pe care tocmai l-am retras.
+    console.log('[AUTH] Contul „admin" nu există și NU se recreează — platforma are ' + _alti + ' super-admin activ.');
+  } else if (!adminUser) {
     const hash = await bcrypt.hash(adminPass, 10);
     // proprietarul platformei = super-admin (vede/administrează toate companiile)
     await db.createUser('admin', hash, 'superadmin');
@@ -9247,10 +9266,20 @@ async function start() {
       console.log('══════════════════════════════════════════════════════════════\n');
     }
   } else if (process.env.ADMIN_PASSWORD) {
-    // Reseteaza parola admin la cea din env var
+    // Calea de avarie. Resetează parola ȘI reactivează contul — altfel schimbarea parolei n-ar folosi
+    // la nimic: autentificarea respinge contul dezactivat înainte să se uite la parolă.
     const hash = await bcrypt.hash(adminPass, 10);
     await db.updateUserPassword(adminUser.id, hash);
-    console.log('[AUTH] Parola admin actualizata din ADMIN_PASSWORD');
+    const reactivat = await db.reactiveazaContulDeInstalare().catch(() => false);
+    console.log('[AUTH] Parola contului „admin" actualizată din ADMIN_PASSWORD' + (reactivat ? ' + cont REACTIVAT (cale de avarie)' : ''));
+    if (reactivat) console.warn('[AUTH] ⚠ Contul de instalare e activ din nou. Șterge ADMIN_PASSWORD din mediu după ce-ți recapeți accesul — altfel se reactivează la fiecare pornire.');
+  }
+
+  // Avertismentul se dă AICI, după ce știm sigur că respectivul cont există: pe o instalare nouă,
+  // verificarea de mai sus rulează înainte ca „admin" să fie creat.
+  if (_alti === 0) {
+    const _a = await db.getUserByUsername('admin');
+    if (_a && _a.active !== false) console.warn('[AUTH] ⚠ Contul „admin" e ÎNCĂ activ fiindcă e singurul super-admin. Creează-ți un cont personal de super-admin — „admin" se va retrage singur la următoarea pornire.');
   }
 
   // Seed de test (doar pentru rularea testelor): SEED_TEST=1
