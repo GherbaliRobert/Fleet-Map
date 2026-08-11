@@ -1,0 +1,22 @@
+ext {
+    // Versiunea aplicatiei. UN SINGUR loc — build.gradle o citeste de aici.
+    // appVersionCode: numar intreg, CRESTE la fiecare livrare. Android refuza sa instaleze peste
+    //   o versiune cu numar mai mare, iar Google Play refuza acelasi numar de doua ori.
+    // appVersionName: ce vede clientul in ecranul „Despre".
+    appVersionCode = 2
+    appVersionName = '1.0.0'
+    minSdkVersion = 22
+    compileSdkVersion = 34
+    targetSdkVersion = 34
+    androidxActivityVersion = '1.8.0'
+    androidxAppCompatVersion = '1.6.1'
+    androidxCoordinatorLayoutVersion = '1.2.0'
+    androidxCoreVersion = '1.12.0'
+    androidxFragmentVersion = '1.6.2'
+    coreSplashScreenVersion = '1.0.1'
+    androidxWebkitVersion = '1.9.0'
+    junitVersion = '4.13.2'
+    androidxJunitVersion = '1.1.5'
+    androidxEspressoCoreVersion = '3.5.1'
+    cordovaAndroidVersion = '10.1.1'
+}

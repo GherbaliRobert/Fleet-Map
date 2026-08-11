@@ -326,7 +326,7 @@ vehicul rămân neatinse — alea le ceri tu, deci au voie să mute camera.
 
 ---
 
-### FONDATOR · APK-ul livrat clienților era o versiune de test — `PLACEHOLDER`
+### FONDATOR · APK-ul livrat clienților era o versiune de test — `a71d994`
 
 **Ce am schimbat:** aplicația pe care o instalăm pe telefoane era construită în regim de **depanare**
 („debug"). Sună tehnic, dar are două urmări concrete:
@@ -363,6 +363,19 @@ cea veche, păstrându-i setările — în loc să fie nevoie de dezinstalare ș
 - *Micșorarea aplicației.* Instrumentul care face asta poate rupe în tăcere notificările și
   localizarea, iar asta se vede abia pe telefonul clientului. Se pornește separat, după o testare pe
   un telefon adevărat — nu în același pas cu semnătura, care e o reparație de securitate.
+
+**Trei lucruri găsite de audit imediat după, în aceeași zonă, reparate odată cu ele:**
+
+- **Jetonul de autentificare urca în copia de rezervă Google a telefonului.** Aplicația avea pornită
+  salvarea automată în cloud, iar cheia care ține telefonul conectat la cont stă într-un fișier
+  obișnuit de setări. Practic, cheia se plimba prin contul Google al șoferului și ajungea, la
+  restaurare, pe orice telefon nou al lui. Acum salvarea în cloud e oprită.
+- **Versiunea aplicației era înțepenită la 1.** Fiecare APK arăta ca aceeași versiune — nu puteai
+  spune dacă cineva a primit sau nu actualizarea, iar magazinul Google refuză același număr de două
+  ori. Acum e într-un singur loc (`mobile/android/variables.gradle`), la 2 / „1.0.0", și crește la
+  fiecare livrare.
+- **Încă două fișiere care se pierdeau la fel:** cel cu permisiunile aplicației și cel cu versiunile.
+  Aceeași poveste ca la semnătură — erau doar pe un calculator. Acum sunt urmărite.
 
 **Ceva ce era gata să se piardă:** folderul aplicației de Android **nu era ținut în git** (e generat
 automat de unealta de build). Configurarea semnăturii ar fi existat doar pe calculatorul ăsta și ar

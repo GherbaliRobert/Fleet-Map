@@ -10,6 +10,11 @@ android/*
 !android/app/
 android/app/*
 !android/app/build.gradle
+!android/variables.gradle
+!android/app/src/
+android/app/src/**
+!android/app/src/main/
+!android/app/src/main/AndroidManifest.xml
 !android/keystore.properties.exemplu
 ios/
 
