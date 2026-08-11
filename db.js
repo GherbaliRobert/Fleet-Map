@@ -1985,6 +1985,10 @@ function _sanitizeIo(io) {
 
 async function insertPositions(imei, records) {
   if (records.length === 0) return;
+  // Avarie simulată — comutatorul se poate aprinde DOAR prin ruta de test, care nu se înregistrează
+  // decât cu NODE_ENV=test. Serverul trebuie să reacționeze exact ca la o pană reală: nu confirmă
+  // batch-ul, iar trackerul îl retrimite.
+  if (module.exports._simulateWriteFailure) throw new Error('avarie simulată de bază de date (test)');
 
   // company_id moștenit de la vehicul (izolare per-tenant + retenție per-companie)
   let companyId = null;

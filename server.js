@@ -652,10 +652,22 @@ const tcpServer = net.createServer((socket) => {
         return;
       }
 
-      // ACK cu numărul de recorduri din HEADER — framing-ul e deja validat (totalPacketLength), deci ACK-ul NU
-      // poate bloca trackerul nici dacă un record s-a parsat parțial. Se trimite înainte de scrierea în DB.
-      { const _ack = Buffer.alloc(4); _ack.writeUInt32BE(parsed.numberOfRecords); socket.write(_ack); }
-      ingestStats.acks++; ingestStats.packets++; ingestStats.records += parsed.numberOfRecords || 0;
+      // ACK-ul NU e o formalitate de protocol: e confirmarea că am păstrat datele. Trackerul Teltonika
+      // șterge batch-ul din memoria lui abia după ce îl primește. Trimis ÎNAINTE de scriere, transforma
+      // orice pană de bază de date (restart Railway, pool epuizat într-un vârf) în pierdere DEFINITIVĂ,
+      // fără urmă recuperabilă — exact plasa de siguranță pe care protocolul o oferă gratis.
+      // Acum confirmăm DUPĂ ce scrierea a reușit. Dacă nu reușește, tăcem: trackerul retrimite mai
+      // târziu, iar `ON CONFLICT DO NOTHING` face re-scrierea idempotentă, deci nu se duplică nimic.
+      // Numărul rămâne cel din HEADER, nu cel al recordurilor valide — altfel un record corupt ar ține
+      // trackerul într-o buclă de retrimitere la nesfârșit.
+      let _acked = false;
+      const _ack = () => {
+        if (_acked) return;
+        _acked = true;
+        const b = Buffer.alloc(4); b.writeUInt32BE(parsed.numberOfRecords); socket.write(b);
+        ingestStats.acks++;
+      };
+      ingestStats.packets++; ingestStats.records += parsed.numberOfRecords || 0;
 
       // Un record corupt → l-am sărit, dar batch-ul a fost ACK-uit integral (trackerul nu rămâne blocat în resend).
       if (parsed.parseError) {
@@ -666,9 +678,11 @@ const tcpServer = net.createServer((socket) => {
 
       console.log(`[TCP] ${imei}: ${parsed.numberOfRecords} recorduri primite`);
 
-      // ── Dispozitiv ARHIVAT: contractul s-a încheiat. ACK deja trimis (mai sus) → trackerul nu retrimite,
-      //    dar NU procesăm / NU stocăm / NU actualizăm live. Istoricul vechi rămâne intact în positions_archive.
+      // ── Dispozitiv ARHIVAT: contractul s-a încheiat. Aici confirmăm INTENȚIONAT fără să scriem —
+      //    altfel un tracker rămas montat pe o mașină ieșită din contract ar retrimite la nesfârșit.
+      //    NU procesăm / NU stocăm / NU actualizăm live. Istoricul vechi rămâne în positions_archive.
       if (archivedImeis.has(imei)) {
+        _ack();
         ingestStats.archived_drops++;
         addDebugEntry({ event: 'archived_drop', imei, numberOfRecords: parsed.numberOfRecords });
         return;
@@ -730,11 +744,24 @@ const tcpServer = net.createServer((socket) => {
       // dacă scrierea dă eroare TRANZITORIE (drop conexiune Railway, pool epuizat), reîncercăm în loc să pierdem
       // definitiv batch-ul. ON CONFLICT DO NOTHING face re-scrierile idempotente. La eșec definitiv NU aruncăm
       // (break) → poziția live tot se actualizează din memorie, doar rândul de istoric lipsește (logat).
-      for (let _att = 0; ; _att++) {
-        try { await db.insertPositions(imei, parsed.records); break; }
-        catch (e) {
-          if (_att >= 3) { console.error(`[TCP] insertPositions ${imei} eșuat după ${_att + 1} încercări: ${e.message}`); ingestStats.insert_fails++; addDebugEntry({ event: 'insert_fail', imei, error: e.message }); break; }
-          await new Promise(r => setTimeout(r, 200 * (_att + 1)));
+      if (!parsed.records.length) {
+        _ack();   // heartbeat / pachet fără poziții — n-avem ce scrie, dar trackerul așteaptă confirmare
+      } else {
+        let _scris = false;
+        for (let _att = 0; ; _att++) {
+          try { await db.insertPositions(imei, parsed.records); _scris = true; break; }
+          catch (e) {
+            if (_att >= 3) { console.error(`[TCP] insertPositions ${imei} eșuat după ${_att + 1} încercări: ${e.message}`); ingestStats.insert_fails++; addDebugEntry({ event: 'insert_fail', imei, error: e.message }); break; }
+            await new Promise(r => setTimeout(r, 200 * (_att + 1)));
+          }
+        }
+        if (_scris) _ack();
+        else {
+          // NU confirmăm. Trackerul păstrează batch-ul și îl retrimite — singura cale prin care datele
+          // supraviețuiesc unei pene de bază. Poziția live se actualizează oricum, din memorie, mai jos:
+          // harta rămâne corectă chiar dacă istoricul se scrie abia la retransmisie.
+          console.error(`[TCP] ${imei}: batch NEconfirmat (${parsed.numberOfRecords} recorduri) — trackerul îl va retrimite`);
+          addDebugEntry({ event: 'nack', imei, numberOfRecords: parsed.numberOfRecords });
         }
       }
 
@@ -3455,6 +3482,19 @@ app.get('/api/debug/last-io/:imei', requireAuth, requireSuperadmin, async (req, 
 });
 
 // Stare memorie live (monitorizare scalare): dimensiune livePositions + memoria procesului + contoare ingest.
+// ─── Avarie simulată, DOAR pentru teste ───────────────────────────────────────────────────────────
+// Rutele astea NU se înregistrează decât cu NODE_ENV=test. În producție nu există deloc — nu e o
+// poartă de protejat, e cod care nu ajunge în aplicație. Servesc la un singur lucru: să dovedim că
+// o pană de bază de date NU pierde poziții (vezi verify_ack_durabil.js).
+if (process.env.NODE_ENV === 'test') {
+  app.get('/api/debug/break-db', requireAuth, requireSuperadmin, (req, res) => {
+    db._simulateWriteFailure = true; res.json({ ok: true, scrierile: 'vor eșua' });
+  });
+  app.get('/api/debug/fix-db', requireAuth, requireSuperadmin, (req, res) => {
+    db._simulateWriteFailure = false; res.json({ ok: true, scrierile: 'funcționează' });
+  });
+}
+
 app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
   const mem = process.memoryUsage();
   res.json({
