@@ -7314,7 +7314,18 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
     const r = await db.pool.query('SELECT * FROM notifications WHERE id = $1', [parseInt(req.params.id)]);
     const n = r.rows[0];
     if (!n) return res.status(404).json({ error: 'Notificare negăsită' });
-    if (n.imei && !canAccessImei(req, n.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    // Poarta pe VEHICUL nu e suficientă: notificările FĂRĂ vehicul (expirare permis șofer — cu nume și
+    // serie —, facturi emise, scadențe de abonament) treceau nefiltrate. Orice cont autentificat putea
+    // cere /api/notifications/1/context, /2/context, … și aduna datele tuturor companiilor de pe platformă.
+    // Regula de mai jos oglindește `_notifWhere` din db.js, care filtrează corect LISTA; ruta asta o ocolea.
+    if (n.imei) {
+      if (!canAccessImei(req, n.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    } else if (!req.isSuper) {
+      const aMea = (n.user_id != null && Number(n.user_id) === Number(req.auth.userId));
+      const aCompaniei = (n.user_id == null && n.company_id != null && Number(n.company_id) === Number(req.companyId));
+      // 404, nu 403: un 403 ar confirma că notificarea EXISTĂ, deci s-ar putea număra clienții și facturile.
+      if (!aMea && !aCompaniei) return res.status(404).json({ error: 'Notificare negăsită' });
+    }
     const at = new Date(n.created_at).getTime();
     const out = { id: n.id, type: n.type, severity: n.severity, title: n.title, body: n.body, at: n.created_at, imei: n.imei, acknowledged: !!n.acknowledged, vehicle: null, event: null, segment: [], maxSpeed: 0, data: n.data || {} };
     if (n.imei) {
