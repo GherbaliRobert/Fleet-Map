@@ -6054,6 +6054,12 @@ async function evaluateAlerts(imei, data) {
       _alertIdleStart.delete(imei);
     }
 
+    // Starea „era în zonă" se avansează O SINGURĂ DATĂ per poziție, nu per alertă. Altfel, când există
+    // DOUĂ reguli pe aceeași zonă + același vehicul (intrare + ieșire), prima regulă evaluată suprascria
+    // starea, iar a doua citea deja starea nouă → tranziția era „consumată" și alerta a doua NU se
+    // declanșa niciodată. Practic: mergea doar intrarea, ieșirea niciodată (sau invers, după ordinea lor).
+    const _gfPending = new Map(); // stateKey -> isInside, aplicat DUPĂ ce toate alertele au citit starea veche
+
     for (const alert of alerts) {
       if (!alert.enabled) continue;
       if (alert.type === 'document_expiry') continue; // bazat pe dată, nu pe poziție → tratat în checkExpiries()
@@ -6160,7 +6166,7 @@ async function evaluateAlerts(imei, data) {
                   events.push({ zone: gf.id, data: { geofence: gf.name || gf.id, geofenceId: gf.id, event: 'Intrare în zonă' } });
                 }
 
-                geofenceStates.set(stateKey, isInside);
+                _gfPending.set(stateKey, isInside); // NU direct în geofenceStates: vezi nota de la _gfPending
               }
             } catch (e) { /* geofence check failed */ }
           }
@@ -6287,6 +6293,9 @@ async function evaluateAlerts(imei, data) {
         console.log(`[ALERT] ${alert.name} triggered for ${imei}: ${JSON.stringify(d)}`);
       }
     }
+
+    // Abia acum avansăm starea zonelor: toate regulile au citit deja starea DE DINAINTE de poziția asta.
+    _gfPending.forEach(function (isInside, stateKey) { geofenceStates.set(stateKey, isInside); });
   } catch (err) {
     console.error(`[ALERTS] Error: ${err.message}`);
   }
