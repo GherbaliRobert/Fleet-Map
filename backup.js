@@ -169,6 +169,18 @@ async function runScheduledBackup(db, commit) {
   try {
     const b = await makeBackup(db, commit);
     let target = 'none';
+    // REFUZĂM urcarea necriptată. Dump-ul conține hash-uri de parole, chei API, datele tuturor
+    // clienților și pozițiile lor. Un bucket configurat greșit, o cheie scursă sau un angajat al
+    // furnizorului de stocare — și totul e citibil. Mai bine niciun backup extern decât unul care,
+    // singur, e o breșă. Avertismentul apare în „Stare producție" până se setează parola.
+    if (s3Configured() && !passphraseSet()) {
+      const w = 'BACKUP_PASSPHRASE nu e setată → REFUZ să urc dump-ul necriptat (conține hash-uri de parole, chei API și datele clienților). Setează variabila și backup-ul extern pornește singur.';
+      _last = { at: new Date().toISOString(), ok: false, offsite: false, target: 'refuzat',
+        sizeBytes: b.buf.length, tables: b.meta.tables, error: w, encrypted: false, warning: w };
+      await saveState(db);
+      console.error('[BACKUP] ⛔ ' + w);
+      return getStatus();
+    }
     if (s3Configured()) {
       const prefix = (process.env.BACKUP_S3_PREFIX || 'ratracks-backup').replace(/^\/+|\/+$/g, '');
       const d = new Date();

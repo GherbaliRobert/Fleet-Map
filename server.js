@@ -1076,11 +1076,45 @@ function isSuper(role) { return role === 'superadmin'; }
 // IP-ul REAL al clientului. NU citim primul element din X-Forwarded-For — acela e scris de client și e
 // spoofabil (rotindu-l, un atacator ocolea complet rate-limit-ul de login și polua jurnalul de audit).
 // Ordine: CF-Connecting-IP (Cloudflare, în fața noastră) → req.ip (Express, cu `trust proxy` setat) → socket.
+// Antetul CF-Connecting-IP e pus de Cloudflare, dar ORICINE îl poate trimite. Dacă aplicația nu stă
+// chiar în spatele Cloudflare, oricine își alege singur „IP-ul" și scapă de TOATE limitările pe IP:
+// forța brută la login, limita de cereri, capcana formularului de demo. Îl acceptăm doar când spunem
+// explicit că suntem în spatele proxy-ului (TRUST_CF_IP=true).
+const _TRUST_CF = String(process.env.TRUST_CF_IP || '').toLowerCase() === 'true';
 function clientIp(req) {
-  const cf = req.headers && req.headers['cf-connecting-ip'];
-  if (cf) return String(cf).trim();
+  if (_TRUST_CF) {
+    const cf = req.headers && req.headers['cf-connecting-ip'];
+    if (cf) return String(cf).trim();
+  }
   if (req.ip) return String(req.ip);
   return req.socket ? req.socket.remoteAddress : null;
+}
+
+// ─── Politica de parole — O SINGURĂ regulă, în toate cele patru locuri unde se pune o parolă ───
+// Erau praguri diferite (4, 4, 4 și 6 caractere), fără nicio verificare de conținut: un client își
+// putea face cont cu „1234". Contul deschide date de localizare ale angajaților și facturi.
+const PAROLE_UZUALE = new Set(['parola', 'parola123', 'password', 'password1', '12345678', '123456789',
+  '1234567890', 'qwerty123', 'admin123', 'administrator', 'ratracks', 'ratrack', 'welcome1', 'iloveyou',
+  'qwertyuiop', 'abcd1234', 'p@ssw0rd', 'passw0rd', 'test1234', 'schimba123']);
+const PAROLA_MIN = 10;
+// Întoarce un mesaj de eroare, sau null dacă parola e acceptabilă.
+function verificaParola(parola, username) {
+  const p = String(parola == null ? '' : parola);
+  if (p.length < PAROLA_MIN) return 'Parola trebuie să aibă minim ' + PAROLA_MIN + ' caractere.';
+  if (p.length > 200) return 'Parola e prea lungă (maxim 200 de caractere).';
+  const jos = p.toLowerCase();
+  if (PAROLE_UZUALE.has(jos)) return 'Parola asta e prea cunoscută. Alege alta.';
+  if (/^(.)\1+$/.test(p)) return 'Parola nu poate fi un singur caracter repetat.';
+  if (/^(0123456789|1234567890|abcdefghij|qwertyuiop)/.test(jos)) return 'Parola nu poate fi o secvență de pe tastatură.';
+  if (username) {
+    const u = String(username).toLowerCase().split('@')[0];
+    if (u.length >= 3 && jos.includes(u)) return 'Parola nu poate conține numele de utilizator.';
+  }
+  // Cel puțin două feluri de caractere — nu cerem simboluri obligatorii (fac parolele mai slabe, oamenii
+  // le notează pe hârtie), dar nici zece litere mici la rând nu e o parolă.
+  const feluri = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((re) => re.test(p)).length;
+  if (feluri < 2) return 'Parola trebuie să combine cel puțin două feluri de caractere (litere și cifre, de exemplu).';
+  return null;
 }
 
 // ─── Ingest erori de client (web + mobil) → error_log + Sentry. Public (erorile pot apărea pre-login), dar rate-limited (20/min/IP) + capat. ───
@@ -1902,9 +1936,7 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     if (!EMAIL_RE.test(username)) {
       return res.status(400).json({ error: 'Utilizatorul trebuie să fie o adresă de email validă (ex. ion.popescu@firma.ro)' });
     }
-    if (password.length < 4) {
-      return res.status(400).json({ error: 'Parola trebuie să aibă minim 4 caractere' });
-    }
+    { const e = verificaParola(password, username); if (e) return res.status(400).json({ error: e }); }
     if (full_name.length < 2) {
       return res.status(400).json({ error: 'Numele afișat este obligatoriu (așa apare persoana în aplicație)' });
     }
@@ -1969,9 +2001,7 @@ app.post('/api/users/:id/password', requireAuth, requireAdmin, withCompany, asyn
     const id = parseInt(req.params.id);
     if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     const { password } = req.body;
-    if (!password || password.length < 4) {
-      return res.status(400).json({ error: 'Parola trebuie să aibă minim 4 caractere' });
-    }
+    { const e = verificaParola(password, null); if (e) return res.status(400).json({ error: e }); }
     const hash = await bcrypt.hash(password, 10);
     await db.updateUserPassword(id, hash);
     auditReq(req, 'reset_password', 'user', id);
@@ -3045,7 +3075,7 @@ app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req,
     if (await db.getUserByUsername(username)) return res.status(409).json({ error: 'Există deja un cont cu acest email' });
     const email = (req.body.email && String(req.body.email).trim()) || username; // emailul = username-ul
     const invite = !password; // fără parolă → invitație prin email
-    if (!invite && password.length < 4) return res.status(400).json({ error: 'Parola: minim 4 caractere' });
+    if (!invite) { const e = verificaParola(password, username); if (e) return res.status(400).json({ error: e }); }
     const hash = await bcrypt.hash(invite ? crypto.randomBytes(24).toString('hex') : password, 10);
     const u = await db.createUser(username, hash, 'company_admin', { full_name, email, company_id: companyId });
     let invited = false, inviteError = null;
@@ -3072,7 +3102,8 @@ app.post('/api/auth/set-password', async (req, res) => {
   try {
     const token = (req.body && req.body.token) || '';
     const password = (req.body && req.body.password) || '';
-    if (!token || String(password).length < 6) return res.status(400).json({ error: 'Token + parolă (minim 6 caractere) obligatorii' });
+    if (!token) return res.status(400).json({ error: 'Token lipsă.' });
+    { const e = verificaParola(password, null); if (e) return res.status(400).json({ error: e }); }
     const u = await db.getUserByResetToken(token);
     if (!u) return res.status(400).json({ error: 'Link invalid sau expirat. Cere o nouă invitație.' });
     const hash = await bcrypt.hash(String(password), 10);
@@ -9150,14 +9181,31 @@ async function start() {
   // Încarcă cheia AI salvată din UI (dacă nu e deja în env)
   try { if (!ai.aiEnabled()) { const k = await db.getSetting('anthropic_api_key'); if (k) { ai.setKey(k); console.log('[AI] Cheie Anthropic încărcată din setări'); } } } catch (e) {}
 
-  // Creează sau actualizează userul admin
-  const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+  // Creează sau actualizează userul admin.
+  // NU mai există parolă implicită. `admin123` era publică (scrisă în DEPLOY_RAILWAY.md), iar contul
+  // e super-admin peste TOATE companiile — cea mai ieftină breșă cu putință. Dacă ADMIN_PASSWORD nu e
+  // setată la primul boot, generăm una aleatoare și o tipărim O SINGURĂ DATĂ în log.
+  // Excepție: rularea testelor (NODE_ENV=test), unde parola fixă e necesară și baza e efemeră.
+  const _test = process.env.NODE_ENV === 'test';
+  let adminPass = process.env.ADMIN_PASSWORD || (_test ? 'admin123' : null);
+  let _generata = false;
+  if (!adminPass) {
+    adminPass = require('crypto').randomBytes(18).toString('base64url'); // ~24 caractere
+    _generata = true;
+  }
   const adminUser = await db.getUserByUsername('admin');
   if (!adminUser) {
     const hash = await bcrypt.hash(adminPass, 10);
     // proprietarul platformei = super-admin (vede/administrează toate companiile)
     await db.createUser('admin', hash, 'superadmin');
     console.log('[AUTH] Utilizator super-admin creat (admin)');
+    if (_generata) {
+      console.log('\n══════════════════════════════════════════════════════════════');
+      console.log('  PAROLA CONTULUI „admin" (generată acum, se afișează O SINGURĂ DATĂ):');
+      console.log('  ' + adminPass);
+      console.log('  Notează-o ACUM și schimb-o din aplicație după prima autentificare.');
+      console.log('══════════════════════════════════════════════════════════════\n');
+    }
   } else if (process.env.ADMIN_PASSWORD) {
     // Reseteaza parola admin la cea din env var
     const hash = await bcrypt.hash(adminPass, 10);
