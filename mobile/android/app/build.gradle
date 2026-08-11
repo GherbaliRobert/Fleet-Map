@@ -1,0 +1,126 @@
+apply plugin: 'com.android.application'
+
+// ─── Semnătura de RELEASE ────────────────────────────────────────────────────────────────────────
+// APK-ul livrat clienților era un build de DEBUG: `debuggable=true`, deci datele aplicației —
+// inclusiv tokenul de autentificare — se pot citi de pe orice telefon, fără root, cu `adb`.
+// Cheia NU stă în git. Se citește din `keystore.properties` (ignorat de git) sau, dacă lipsește,
+// din variabile de mediu — ca să meargă și dintr-un sistem automat de build.
+// Fără cheie, `assembleDebug` funcționează exact ca înainte; doar `assembleRelease` se oprește.
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file('keystore.properties')
+if (keystoreFile.exists()) {
+    keystoreFile.withInputStream { keystoreProps.load(it) }
+}
+def ksPath  = keystoreProps.getProperty('storeFile')     ?: System.getenv('RATRACKS_KEYSTORE')
+def ksPass  = keystoreProps.getProperty('storePassword') ?: System.getenv('RATRACKS_KEYSTORE_PASSWORD')
+def ksAlias = keystoreProps.getProperty('keyAlias')      ?: System.getenv('RATRACKS_KEY_ALIAS')
+def ksKeyPw = keystoreProps.getProperty('keyPassword')   ?: System.getenv('RATRACKS_KEY_PASSWORD')
+def potSemna = ksPath != null && ksPass != null && ksAlias != null && ksKeyPw != null && file(ksPath).exists()
+
+android {
+    namespace "ro.ratracks.app"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "ro.ratracks.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (potSemna) {
+            release {
+                storeFile file(ksPath)
+                storePassword ksPass
+                keyAlias ksAlias
+                keyPassword ksKeyPw
+                // v1 (JAR) pentru Android vechi + v2/v3 (APK Signature Scheme) pentru cele noi
+                v1SigningEnabled true
+                v2SigningEnabled true
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Fără semnătură, un „release" e la fel de nefolositor ca un debug: nu se poate instala
+            // ca actualizare peste versiunea anterioară. Oprim build-ul cu un mesaj clar, nu-l lăsăm
+            // să producă un APK nesemnat pe care cineva l-ar putea distribui din greșeală.
+            if (potSemna) { signingConfig signingConfigs.release }
+            // `minifyEnabled` rămâne OPRIT deliberat. R8 poate rupe tăcut pluginurile Capacitor
+            // (notificări push, geolocație) dacă lipsesc regulile de păstrare, iar asta se vede abia
+            // pe telefonul clientului. Se pornește DUPĂ o testare pe dispozitiv real, nu odată cu
+            // semnătura — semnătura e reparația de securitate, minificarea e optimizare.
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            // Aici fusese `applicationIdSuffix ".debug"`, ca să poți ține pe același telefon și
+            // versiunea de test, și pe cea reală. NU se poate: `google-services.json` de la Firebase
+            // are înregistrat un singur pachet, `ro.ratracks.app`. Cu alt applicationId, build-ul
+            // eșuează, iar dacă l-am fi înregistrat forțat, APK-ul de test ar fi rămas fără
+            // notificări push. Se poate reveni DOAR după ce se adaugă un al doilea client în Firebase.
+            versionNameSuffix "-debug"
+        }
+    }
+}
+
+// Garda de release. Verificarea stă pe GRAFUL de task-uri, nu în `buildTypes`: metoda `doFirst` nu
+// există pe un buildType, iar o greșeală acolo rupe și `assembleDebug`, pentru că eșuează la
+// configurarea proiectului — nu la build. Așa, build-ul de dezvoltare rămâne complet neatins, iar
+// un release fără cheie se oprește imediat, înainte să compileze ceva, cu instrucțiunile la vedere.
+if (!potSemna) {
+    gradle.taskGraph.whenReady { graph ->
+        if (graph.allTasks.any { it.name ==~ /(?i)(assemble|bundle|package).*release.*/ }) {
+            // Mesajul e FARA diacritice intentionat: consola Windows le afiseaza ca „?", iar asta e
+            // un text pe care cineva il citeste ca sa stie ce sa faca — nu e text de aplicatie.
+            throw new GradleException([
+                '',
+                'Lipseste cheia de semnatura - nu produc un APK de release nesemnat.',
+                'Creeaz-o O SINGURA DATA, din folderul mobile/android:',
+                '',
+                '  keytool -genkeypair -v -keystore ratracks-release.jks -alias ratracks -keyalg RSA -keysize 4096 -validity 10000',
+                '',
+                'apoi copiaza keystore.properties.exemplu in keystore.properties si completeaza-l.',
+                'PASTREAZA fisierul .jks si parolele: fara ele NU mai poti publica actualizari',
+                'pentru aplicatia deja instalata pe telefoanele clientilor.',
+                '',
+            ].join('\n'))
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

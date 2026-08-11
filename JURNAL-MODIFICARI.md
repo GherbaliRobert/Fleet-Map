@@ -326,10 +326,60 @@ vehicul rămân neatinse — alea le ceri tu, deci au voie să mute camera.
 
 ---
 
+### FONDATOR · APK-ul livrat clienților era o versiune de test — `PLACEHOLDER`
+
+**Ce am schimbat:** aplicația pe care o instalăm pe telefoane era construită în regim de **depanare**
+(„debug"). Sună tehnic, dar are două urmări concrete:
+
+1. **Datele din aplicație se pot citi de pe telefon.** O aplicație de depanare își lasă dosarul intern
+   deschis: cine are telefonul și un cablu poate scoate din el, în câteva minute și fără parolă,
+   inclusiv jetonul cu care telefonul rămâne conectat la contul șoferului.
+2. **Nu se poate actualiza.** Android acceptă o actualizare doar dacă e semnată cu **aceeași cheie**
+   ca versiunea instalată. O versiune de test nu are cheia noastră, deci la prima actualizare reală
+   fiecare client ar fi trebuit să dezinstaleze și să reinstaleze aplicația de la zero.
+
+Acum aplicația poate fi construită **semnată cu cheia noastră**, iar dacă cheia lipsește, construirea
+versiunii de livrare **se oprește cu un mesaj care spune exact ce ai de făcut** — ca să nu se poată
+trimite din greșeală, încă o dată, o versiune de test către clienți.
+
+**Fondatorul vede:** un pas nou, o singură dată — creezi cheia și o pui la păstrare (vezi mai jos).
+De atunci înainte nu se mai schimbă nimic în felul în care lucrezi.
+
+**Clientul vede:** nimic azi. La prima actualizare a aplicației: aceasta se instalează singură peste
+cea veche, păstrându-i setările — în loc să fie nevoie de dezinstalare și reinstalare.
+
+> ⚠ **Ce trebuie să faci tu, o singură dată.** Cheia de semnătură se creează pe calculatorul tău și
+> **nu intră niciodată în git** — comanda e scrisă în `mobile/android/keystore.properties.exemplu`.
+> Fișierul rezultat (`.jks`) și parolele lui **trebuie păstrate în seiful de parole ȘI într-o copie
+> offline.** Dacă se pierd, nu mai există nicio cale de a actualiza aplicația celor care o au deja
+> instalată — nici măcar cu ajutorul Google. E singurul lucru din tot proiectul care nu se poate
+> reface dacă dispare.
+
+**Două lucruri pe care le-am încercat și le-am dat înapoi, ca să știți de ce nu sunt:**
+
+- *Versiunea de test și cea reală, în paralel pe același telefon.* Ar fi fost util la testare, dar
+  Firebase (serviciul de notificări) are înregistrat un singur nume de aplicație. Cu numele schimbat,
+  aplicația de test rămânea **fără notificări push** — exact lucrul pe care îl testăm cel mai des.
+- *Micșorarea aplicației.* Instrumentul care face asta poate rupe în tăcere notificările și
+  localizarea, iar asta se vede abia pe telefonul clientului. Se pornește separat, după o testare pe
+  un telefon adevărat — nu în același pas cu semnătura, care e o reparație de securitate.
+
+**Ceva ce era gata să se piardă:** folderul aplicației de Android **nu era ținut în git** (e generat
+automat de unealta de build). Configurarea semnăturii ar fi existat doar pe calculatorul ăsta și ar
+fi dispărut la prima construire de pe alt calculator. Acum fișierul acela e urmărit în git — dar
+cheia propriu-zisă rămâne exclusă, ca să nu ajungă niciodată acolo.
+
+---
+
 ## De verificat înainte de lansare
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
 
+- [ ] **Cheia de semnătură a aplicației de telefon — de creat și de pus la păstrare.** Cel mai
+  ireversibil punct din listă: fără ea nu se pot trimite actualizări celor care au deja aplicația
+  instalată, iar dacă se pierde după lansare nu există nicio soluție. Comanda e în
+  `mobile/android/keystore.properties.exemplu`. Până se creează, construirea versiunii de livrare
+  se oprește singură, cu instrucțiunile pe ecran.
 - [ ] **Notificările se revizuiesc înainte de lansare — hotărât de voi, 04.08.** Rămân deocamdată
   cum sunt; le testați pe teren și veniți cu ce nu merge. Când ajungem la revizuire, aici sunt
   lucrurile de pus pe masă: cine primește ce (vezi punctul următor), pragurile și răcirea de 5

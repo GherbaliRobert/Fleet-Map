@@ -2,8 +2,20 @@ node_modules/
 dist/
 .env
 *.local
-android/
+# Proiectul nativ Android e generat de Capacitor și NU se ține în git — cu o excepție: fișierul
+# de build al aplicației, care conține configurația de SEMNĂTURĂ. Fără el urmărit, semnarea ar
+# exista doar pe calculatorul pe care a fost scrisă, iar o clonă nouă ar produce iar APK nesemnat.
+# (git nu poate re-include un fișier dintr-un director exclus → excludem CONȚINUTUL, nu directorul)
+android/*
+!android/app/
+android/app/*
+!android/app/build.gradle
+!android/keystore.properties.exemplu
 ios/
+
+# Cheia propriu-zisă și parolele ei NU intră NICIODATĂ în git.
+*.jks
+keystore.properties
 .DS_Store
 *.keystore
 google-services.json
