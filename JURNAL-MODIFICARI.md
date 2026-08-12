@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-12
 
-### AMÂNDOI · Comutatorul stins chiar stinge — push-urile de viteză nu mai treceau pe lângă el — `9c69df6`
+### AMÂNDOI · Comutatorul stins chiar stinge — push-urile de viteză nu mai treceau pe lângă el — `3d7df68`
 
 **Ce am schimbat:** ai stins „Depășire viteză" din Preferințe notificări și tot primeai push-uri de
 viteză. Nu era o închipuire și nici o întârziere: **sunt două motoare separate care produc aceeași
