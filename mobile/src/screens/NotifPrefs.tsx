@@ -45,7 +45,12 @@ export function NotifPrefs() {
       for (const k of Object.keys(prefs)) {
         const p = prefs[k];
         const out: NotifPref = { enabled: !!p.enabled, email: !!p.email, push: !!p.push };
-        if (p.threshold != null && !isNaN(Number(p.threshold))) out.threshold = Number(p.threshold);
+        // Câmpul de prag ține un ȘIR (vine din <input>). Golit, e '' — iar `'' != null` e adevărat,
+        // `Number('')` e 0 și `isNaN(0)` e fals, deci vechea condiție salva pragul ZERO. Efectul:
+        // ștergeai pragul de viteză crezând că revii la implicit (90) și primeai alerte de la 50 în
+        // sus. Web-ul făcea deja corect (`if (thrEl.value !== '')`); acum și telefonul.
+        const thr = p.threshold as unknown;
+        if (thr != null && String(thr).trim() !== '' && !isNaN(Number(thr))) out.threshold = Number(thr);
         body[k] = out;
       }
       await Api.saveNotifPrefs(body);

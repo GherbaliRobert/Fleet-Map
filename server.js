@@ -6385,6 +6385,11 @@ async function _notifyPush(n) {
     // Regulă din „Alerte" pe un tip pe care utilizatorul l-a stins explicit → tăcem, oricât de
     // pornit ar fi rândul general „Reguli de alertă". Comutatorul stins trebuie să stingă.
     if (n.type === 'alert' && tipulReguliiStins(prefsMap, u.id, n.data)) continue;
+    // Comutatorul PRINCIPAL al tipului, stins → tăcere totală. Lipsea de aici, deși cealaltă cale îl
+    // verifica (`if (!up || !up.enabled) continue`). Se vedea mai ales pe telefon: acolo, stingând
+    // comutatorul principal, bifele de canal DISPAR din ecran — dar valoarea `push:true` rămâne
+    // salvată dedesubt. Arăta stins și suna mai departe.
+    if (up && up.enabled === false) continue;
     // push explicit activat SAU (fără preferință explicită + notificare CRITICĂ) → criticele ajung mereu pe telefon
     if (up && (up.push || (up.push == null && n.severity === 'critical'))) sendPushToUser(u.id, payload).catch(() => {});
   }

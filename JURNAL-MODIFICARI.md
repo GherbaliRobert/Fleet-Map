@@ -57,6 +57,38 @@ Fără potrivirea asta, exact acele trei ar fi rămas mai departe surde la comut
 
 ---
 
+### AMÂNDOI · Încă două motive pentru care push-urile treceau pe lângă comutator — `HASH2`
+
+Reparația de mai sus a scos la iveală alte două, găsite pornind de la întrebarea „trebuie actualizat
+și APK-ul?". Ambele duceau la același lucru: butonul arăta stins, telefonul suna.
+
+**1. Comutatorul principal al unui tip nu oprea push-ul.** Fiecare tip de notificare are un comutator
+mare (pornit/oprit) și, sub el, bifele de canal (telefon / email). Serverul se uita **doar la bifa de
+telefon**, niciodată la comutatorul mare. Cealaltă cale de notificări îl verifica corect de ani de
+zile — aici lipsea pur și simplu.
+
+**Se vedea cel mai urât pe telefon.** Acolo, când stingi comutatorul mare, bifele de canal **dispar
+din ecran** — normal, n-ai ce face cu ele. Dar valoarea „telefon: pornit" rămânea salvată dedesubt,
+invizibilă. Deci ecranul arăta stins de tot, iar serverul citea exact acea valoare ascunsă și trimitea
+mai departe. Nu aveai cum să-ți dai seama uitându-te la aplicație.
+
+**2. Ștergeai pragul de viteză și primeai alerte de la 50 km/h.** Pe telefon, dacă goleai căsuța
+pragului — crezând că revii la valoarea implicită de 90 — se salva pragul **zero**. Iar de la zero în
+sus înseamnă practic orice deplasare. Pe web era corect; doar telefonul avea greșeala.
+
+**Fondatorul vede:** aceeași reparație.
+
+**Clientul vede:** comutatorul mare stinge de tot, iar căsuța de prag golită înseamnă „lasă cum era",
+nu „anunță-mă la orice".
+
+> 20 de verificări, toate trecute. Trei dintre ele confirmă că **gărzile chiar există în server** —
+> dacă cineva le scoate mai târziu, testul cade singur, nu trece pe o copie veche a logicii.
+
+**Da, APK-ul a fost refăcut** — reparația pragului trăiește în aplicația de pe telefon. Prima
+reparație (cea cu regulile de alertă) e pe server și mergea deja fără actualizare.
+
+---
+
 ## 2026-08-04
 
 ### AMÂNDOI · Alertele create de voi aparțin unei companii anume — `b0753a9`
