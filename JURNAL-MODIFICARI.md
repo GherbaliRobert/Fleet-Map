@@ -18,6 +18,45 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-08-12
+
+### AMÂNDOI · Comutatorul stins chiar stinge — push-urile de viteză nu mai treceau pe lângă el — `9c69df6`
+
+**Ce am schimbat:** ai stins „Depășire viteză" din Preferințe notificări și tot primeai push-uri de
+viteză. Nu era o închipuire și nici o întârziere: **sunt două motoare separate care produc aceeași
+notificare**, iar ele se uitau la **rânduri diferite** din aceeași listă de preferințe.
+
+- **Evenimentele automate** (aplicația observă singură flota) trimit o notificare marcată „viteză".
+  Aceea se uita la rândul „Depășire viteză" — pe ea o stingeai corect.
+- **Regulile din secțiunea „Alerte"** (cele create de tine, pe un vehicul sau pe flotă) trimit o
+  notificare marcată doar „regulă de alertă". Ce fel de regulă era — viteză, combustibil, ralanti —
+  călătorea mai departe într-un colț al mesajului **pe care nu-l citea nimeni**. Așa că ea se uita la
+  rândul „Reguli de alertă (secțiunea Alerte)", care era pornit.
+
+Un întrerupător părea că stinge lumina, dar becul era pe celălalt.
+
+Acum, când o regulă de alertă e pe un tip pe care l-ai stins explicit, tace. Fără altă bifă, fără să
+trebuiască să știi că există două drumuri.
+
+**Fondatorul vede:** exact ce vede și clientul. Merită știut de unde vine: rândul „Reguli de alertă"
+l-am adăugat tot azi (`1333a7c`), ca să repar situația inversă — o regulă de alertă **nu putea
+ajunge niciodată** pe telefon, oricâte butoane apăsai. Reparația aceea a pornit soneria; asta o pune
+sub comanda ta.
+
+**Clientul vede:** când stinge un tip de notificare, se stinge de tot — indiferent dacă notificarea
+vine din supravegherea automată sau dintr-o regulă pe care și-a făcut-o singur.
+
+> Verificat pe 12 situații, cu logica citită direct din server (testul pică singur dacă ea se
+> schimbă): viteza stinsă tace pe amândouă drumurile; **combustibilul și zonele sună mai departe** —
+> stingerea e țintită, nu amuțește tot; cine n-a atins nimic primește exact ca înainte; iar rândul
+> general „Reguli de alertă" rămâne acolo pentru cine vrea liniște completă.
+
+**O capcană rezolvată pe drum:** trei tipuri de regulă nu se numesc la fel ca rândul din preferințe
+(„ralanti" ≠ „Idling prelungit", iar supraîncărcarea are trei feluri de reguli și un singur rând).
+Fără potrivirea asta, exact acele trei ar fi rămas mai departe surde la comutator.
+
+---
+
 ## 2026-08-04
 
 ### AMÂNDOI · Alertele create de voi aparțin unei companii anume — `b0753a9`

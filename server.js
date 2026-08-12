@@ -6348,6 +6348,27 @@ async function notify(n) {
 }
 // Fan-out push nativ pentru notify(): rezolvă utilizatorii țintă (userId / imei / companie) și trimite DOAR
 // celor care au push activat pentru acest tip. No-op dacă FCM nu e configurat (sendPushToUser iese devreme).
+// O regulă din secțiunea „Alerte" ajunge la notificare cu type='alert', iar tipul ei REAL (viteză,
+// combustibil, ralanti…) călătorește doar în data.alertType — unde nimeni nu se uita la filtrare.
+// Efectul: stingeai „Depășire viteză" din Preferințe notificări, opreai evenimentele automate, dar
+// regulile din „Alerte" continuau să sune, pentru că se verifica alt rând din aceeași listă.
+// Câteva tipuri de regulă nu se numesc la fel ca rândul din preferințe — de aici echivalențele.
+const ALERT_TIP_EVENIMENT = {
+  idle_engine: 'idling',
+  overload_legal: 'overload', overload_construct: 'overload', axle_overload: 'overload',
+};
+// true = utilizatorul a stins EXPLICIT tipul concret al regulii. Dacă n-a atins rândul, întoarce
+// false și rămâne comportamentul de dinainte (regula sună) — nu presupunem tăcere din tăcere.
+function tipulReguliiStins(prefsMap, userId, data) {
+  const brut = data && data.alertType ? String(data.alertType) : null;
+  if (!brut) return false;
+  const cheie = ALERT_TIP_EVENIMENT[brut] || brut;
+  const up = prefsMap[userId];
+  const p = (up && up.types) ? up.types[cheie] : null;
+  if (!p) return false;
+  return p.push === false || p.enabled === false;
+}
+
 async function _notifyPush(n) {
   if (!_fcm) return;
   let users = [];
@@ -6361,6 +6382,9 @@ async function _notifyPush(n) {
   const payload = { title: n.title || 'RA Track', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}) };
   for (const u of users) {
     const up = userTypePref(prefsMap, u.id, n.type);
+    // Regulă din „Alerte" pe un tip pe care utilizatorul l-a stins explicit → tăcem, oricât de
+    // pornit ar fi rândul general „Reguli de alertă". Comutatorul stins trebuie să stingă.
+    if (n.type === 'alert' && tipulReguliiStins(prefsMap, u.id, n.data)) continue;
     // push explicit activat SAU (fără preferință explicită + notificare CRITICĂ) → criticele ajung mereu pe telefon
     if (up && (up.push || (up.push == null && n.severity === 'critical'))) sendPushToUser(u.id, payload).catch(() => {});
   }
