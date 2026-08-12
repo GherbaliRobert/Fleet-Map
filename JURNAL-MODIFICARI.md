@@ -57,7 +57,7 @@ Fără potrivirea asta, exact acele trei ar fi rămas mai departe surde la comut
 
 ---
 
-### AMÂNDOI · Încă două motive pentru care push-urile treceau pe lângă comutator — `HASH2`
+### AMÂNDOI · Încă două motive pentru care push-urile treceau pe lângă comutator — `4a08f14`
 
 Reparația de mai sus a scos la iveală alte două, găsite pornind de la întrebarea „trebuie actualizat
 și APK-ul?". Ambele duceau la același lucru: butonul arăta stins, telefonul suna.
