@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-13
 
-### FONDATOR · Testele devin poartă înainte de livrare — `HASH5`
+### FONDATOR · Testele devin poartă înainte de livrare — `1b69d77`
 
 **Ce am schimbat:** azi, codul ajunge la clienți **și dacă testele sunt roșii**. Railway livrează la
 fiecare `git push`, fără să se uite dacă verificările au trecut. Am pățit-o chiar eu în sesiunea
