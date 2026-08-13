@@ -6344,9 +6344,9 @@ const pozitii = await r.json();</code></pre>
       if (!pv.length) { host.innerHTML = ''; host.style.display = 'none'; return; }
       host.style.display = 'block';
       var ss = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px 12px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;min-width:220px;';
-      var gl = (data && data.groupLabel) || 'Vehicul', glL = gl.toLowerCase(), gicon = (gl === 'Vehicul') ? 'fa-truck' : 'fa-id-card';
+      var gl = (data && data.groupLabel) || 'Vehicul', glL = gl.toLowerCase();   // fără iconiță: eticheta se citește singură
       var opts = '<option value="">▦ Sumar — general</option>' + pv.map(function (v, i) { return '<option value="' + i + '">' + _repEsc(v.vehicul) + '</option>'; }).join('');
-      host.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;"><span style="font-size:12px;color:var(--text-muted);font-weight:700;"><i class="fas ' + gicon + '"></i> Vezi ' + glL + ':</span><select id="rep-vehsel" onchange="repVehSelect(this.value)" style="' + ss + '">' + opts + '</select></div><div id="rep-vehsum">' + ((data && data.noVehSummary) ? '' : _repVehSummaryHtml(pv, gl, data && data.summaryTotals)) + '</div>';
+      host.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;"><span style="font-size:12px;color:var(--text-muted);font-weight:700;">Vezi ' + glL + ':</span><select id="rep-vehsel" onchange="repVehSelect(this.value)" style="' + ss + '">' + opts + '</select></div><div id="rep-vehsum">' + ((data && data.noVehSummary) ? '' : _repVehSummaryHtml(pv, gl, data && data.summaryTotals)) + '</div>';
     }
     function _repVehSummaryHtml(pv, gl, totOverride) {
       gl = gl || 'Vehicul'; var glL = gl.toLowerCase();
