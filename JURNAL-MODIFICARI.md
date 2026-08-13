@@ -146,6 +146,29 @@ doborâtă de un tracker stricat, iar conturile închise rămân închise.
 
 ## 2026-08-12
 
+### CLIENT · Fișa vehiculului: două butoane scoase, iar din rapoarte dispar iconițele de mașină
+
+**Ce am schimbat:** când dai click pe o mașină, panoul de detalii avea patru butoane: Info, Rute,
+**Raport** și **Transport**. Ultimele două duceau spre niște ferestre sărace de raport — deși
+aplicația are o **secțiune Rapoarte** întreagă, cu perioadă, mai multe vehicule și export. Două
+drumuri spre același lucru, iar cel din fișă era cel slab. Au rămas **Info** și **Rute**.
+
+Din rapoarte am scos și iconițele de mașină care nu spuneau nimic: cea din capul fiecărui bloc de
+vehicul (la rapoartele pe mai multe mașini) și cea din eticheta rapoartelor programate. Numele
+mașinii se citește singur, nu are nevoie de un desen generic lângă el.
+
+**Fondatorul vede:** ferestrele vechi de raport din fișă nu au fost șterse, doar nu mai au buton —
+se pun înapoi dintr-o linie. Iconița din antetul lor a rămas acolo, nefolosită.
+
+**Clientul vede:** fișa vehiculului are două butoane în loc de patru, iar rapoartele sunt curate,
+fără mașinuțe decorative.
+
+> **Verificat pe drum:** pictograma din capul fișei vehiculului **era deja** cea corectă pe categorie
+> — camion pentru camion, dubă pentru dubă. Camionul din cod e doar un substitut care se înlocuiește
+> înainte să se vadă panoul. Aici nu era nimic de reparat.
+
+---
+
 ### CLIENT · O singură căutare în „Localizare", iar bifele comandă și lista
 
 **Ce am schimbat:** pe harta „Localizare" erau **două** casete de căutare (una în bara din stânga, una

@@ -309,8 +309,9 @@
       <div class="detail-actions">
         <button class="detail-action-btn" onclick="showDetailView('info')"><i class="fas fa-info-circle"></i> Info</button>
         <button class="detail-action-btn" onclick="showDetailView('routes')"><i class="fas fa-route"></i> Rute</button>
-        <button class="detail-action-btn" onclick="if(detailPanelImei) openReportModal(detailPanelImei)"><i class="fas fa-file-alt"></i> Raport</button>
-        <button class="detail-action-btn" id="detail-transport-btn" onclick="if(detailPanelImei) openTransportReport(detailPanelImei)"><i class="fas fa-weight-hanging"></i> Transport</button>
+        <!-- „Raport" și „Transport" au fost scoase de aici: rapoartele se fac din secțiunea Rapoarte,
+             care e mai bogată (perioadă, mai multe vehicule, export). Aveam două drumuri spre același
+             lucru, iar cel de aici era cel sărac. Funcțiile rămân definite, dacă se vor înapoi. -->
       </div>
 
       <div class="detail-content">
@@ -6208,7 +6209,7 @@ const pozitii = await r.json();</code></pre>
               '<span class="sch-chip"><i class="fas fa-repeat"></i>' + (FREQ[s.frequency] || s.frequency) + '</span>' +
               '<span class="sch-chip"><i class="far fa-clock"></i>' + String(s.hour).padStart(2, '0') + ':00</span>' +
               '<span class="sch-chip"><i class="far fa-file"></i>' + (s.format || 'pdf').toUpperCase() + '</span>' +
-              '<span class="sch-chip"><i class="fas fa-car"></i>' + (s.imei ? E(vmap[s.imei] || s.imei) : 'Toată flota') + '</span>' +
+              '<span class="sch-chip">' + (s.imei ? E(vmap[s.imei] || s.imei) : 'Toată flota') + '</span>' +   // fără iconiță de vehicul
             '</div>' +
             '<div class="sch-next"><i class="far fa-calendar"></i> Următoarea: <b>' + (s.next_run ? new Date(s.next_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—') + '</b> &nbsp;·&nbsp; <i class="far fa-envelope"></i> ' + E(s.recipients || 'emailul creatorului') + '</div>' +
             '<div class="sch-next"><i class="far fa-calendar-check"></i> Ultima rulare: <b>' + (s.last_run ? new Date(s.last_run).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '— încă n-a rulat') + '</b></div>' +
@@ -6918,7 +6919,7 @@ const pozitii = await r.json();</code></pre>
           var vsum = Array.isArray(v.summary) ? v.summary : [];
           return '<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:12px;overflow:hidden;">' +
             '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--bg-dark);border-bottom:1px solid var(--border);">' +
-              '<i class="fas fa-car" style="color:var(--accent);"></i><b style="font-size:13.5px;">' + esc(v.vehicul) + '</b>' +
+              '<b style="font-size:13.5px;">' + esc(v.vehicul) + '</b>' +   // fără iconiță: numele vehiculului se citește singur
               '<span style="margin-left:auto;display:flex;gap:14px;flex-wrap:wrap;">' + vsum.map(function (s) { return '<span style="font-size:11.5px;color:var(--text-muted);">' + esc(s[0]) + ': <b style="color:var(--text-primary);">' + esc(s[1]) + '</b></span>'; }).join('') + '</span>' +
             '</div>' + _hrmTable(dispCols, vrows) + '</div>';
         }).join('');
