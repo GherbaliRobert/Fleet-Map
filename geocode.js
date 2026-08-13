@@ -122,7 +122,14 @@ async function reverseGeocode(lat, lng, detail) {
     if (cache.has(k)) { stats.cached++; return _lab(cache.get(k), detail); } // alt apel a populat cache-ul cât așteptam
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    const url = PROVIDER + '?format=jsonv2&zoom=18&addressdetails=1&accept-language=ro&lat=' + lat + '&lon=' + lng;
+    // Semnul de legătură se alege după cum arată adresa furnizorului, nu se pune orbește „?".
+    // Furnizorii cu cheia în adresă o trec chiar acolo — exact cazul documentat în .env.example:
+    // `https://eu1.locationiq.com/v1/reverse?key=<cheia>`. Cu „?" lipit necondiționat ieșea
+    // `...?key=CHEIA?format=jsonv2...`, deci cheia devenea „CHEIA?format=jsonv2" și furnizorul
+    // răspundea 401. Adică promisiunea „schimbi doar variabila" nu era adevărată pentru niciun
+    // furnizor cu cheie în adresă — se descoperea abia după ce plăteai abonamentul.
+    const leg = PROVIDER.includes('?') ? '&' : '?';
+    const url = PROVIDER + leg + 'format=jsonv2&zoom=18&addressdetails=1&accept-language=ro&lat=' + lat + '&lon=' + lng;
     const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' }, signal: ctrl.signal });
     clearTimeout(timer);
     if (res.ok) { const j = await res.json(); label = { s: shorten(j), f: detailed(j) }; stats.ok++; }
