@@ -146,19 +146,22 @@ doborâtă de un tracker stricat, iar conturile închise rămân închise.
 
 ## 2026-08-12
 
-### CLIENT · „Statistici": scoasă bara de stare care repeta cadranele din Localizare
+### CLIENT · Tabelul „Flota" din Statistici: capul de tabel stă acum deasupra cifrelor
 
-**Ce am schimbat:** pagina Statistici avea o bară „Status flotă acum" cu În mișcare / Staționat /
-Oprit / Offline. Exact aceleași patru cifre stau în **Localizare**, în cadranele de sus — unde sunt
-și mai bune: **le apeși și îți filtrează lista**. Aici erau doar cifre moarte, pe care le vedeai a
-doua oară.
+**Ce am schimbat:** numele coloanelor (KM AZI, CONSUM, VIT. MAX…) erau lipite la stânga, iar cifrele
+de sub ele la dreapta — fiecare titlu stătea deasupra altei coloane decât cea pe care o denumea. În
+plus, capul de tabel avea un spațiu interior puțin diferit de rânduri, ceea ce mai adăuga o mică
+deplasare.
 
-Am păstrat **„Ore motor azi"**, care stătea în același bloc — asta nu se găsește în altă parte.
+Acum coloanele cu cifre au titlul aliniat la dreapta, ca valorile, iar spațierea e aceeași sus și
+jos. „Vehicul" și „Status" rămân la stânga, fiind text.
 
-**Fondatorul vede:** au fost scoase și calculul barei, și stilurile ei, ca să nu rămână cod fără
-obiect. Blocul cu constatările agenților a rămas neatins, la cererea voastră.
+**Fondatorul vede:** aceeași pagină ca și clientul.
 
-**Clientul vede:** pagina Statistici e mai scurtă și nu mai repetă ce a văzut deja pe hartă.
+**Clientul vede:** un tabel citibil — te uiți în jos pe o coloană și titlul chiar e deasupra ei.
+
+> Tot aici: bara „Status flotă acum", scoasă într-o versiune anterioară, **a fost pusă la loc**, la
+> cererea voastră. Rămâne cum era.
 
 ---
 
