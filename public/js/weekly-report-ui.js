@@ -150,9 +150,13 @@
   }
   function syncToolbar() {
     var lbl = el('wr-weeklbl'); if (lbl) lbl.textContent = _state.week ? weekLabel(_state.week) : 'Alege săptămâna';
+    // Când super-adminul n-are companie aleasă, ascundem CONTAINERELE .wr-pw — deci tot ele trebuie
+    // arătate înapoi aici, nu doar butoanele dinăuntru (altfel calendarul și istoricul rămân invizibile).
+    var tb = el('wr-tools');
+    if (tb) tb.querySelectorAll('.wr-pw').forEach(function (x) { x.style.display = ''; });
     var g = el('wr-gen-btn'); if (g) g.style.display = _state.canManage ? '' : 'none';
-    var h = el('wr-hist-btn'); if (h) h.style.display = '';
     var w = el('wr-weekbtn'); if (w) w.style.display = _state.canManage ? '' : 'none';
+    var h = el('wr-hist-btn'); if (h) h.style.display = '';
   }
 
   // ── Calendar propriu, în română (cel din browser e mereu în engleză) ──
