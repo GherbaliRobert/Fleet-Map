@@ -160,8 +160,6 @@ let ioCatalog = null;
 try { ioCatalog = require('./io_catalog'); } catch (e) { console.warn('[IO_CATALOG] indisponibil:', e.message); }
 let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
-let weeklyReports = null;
-try { weeklyReports = require('./weekly_report'); } catch (e) { console.warn('[WEEKLY] raport săptămânal indisponibil:', e.message); }
 let fuelprice = null;
 try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
 let roadlimits = null;
@@ -7388,64 +7386,8 @@ app.post('/api/admin/fuel-prices/refresh', requireAuth, requireSuperadmin, async
   try { await refreshFuelPrices(); res.json({ ok: true, auto: _fuelAuto || null }); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Raport săptămânal de activitate a flotei (per companie, generat automat lunea, analizat AI) ───
-function weeklyDeps(req) {
-  return { db, reports, ai, channels, appBaseUrl: (req ? appBaseUrl(req) : (process.env.APP_BASE_URL || 'https://ratrack.ro')) };
-}
-// Raportul acoperă TOATĂ flota companiei → vizibil doar rolurilor cu viewAll (admin/manager/company_admin), izolat pe companie.
-function canViewWeekly(req) { const a = getAuth(req); return !!(a && hasPerm(a.role, 'viewAll')); }
-
-app.get('/api/weekly-report/latest', requireAuth, requirePerm('viewReports'), async (req, res) => {
-  try {
-    if (!canViewWeekly(req)) return res.status(403).json({ error: 'Acces interzis' });
-    const a = getAuth(req);
-    let companyId = a.companyId;
-    if (a.companyId == null) { // super-admin: alege compania prin ?companyId= (n-are companie proprie)
-      const q = parseInt(req.query.companyId);
-      if (!q) return res.json({ report: null, isSuper: true });
-      companyId = q;
-    }
-    const r = await db.getLatestWeeklyReport(companyId);
-    const s = await db.getCompanySettings(companyId);
-    const enabled = !(s && s.weekly_report && s.weekly_report.enabled === false);
-    res.json({ report: r, enabled, recipients: (s && s.weekly_report && s.weekly_report.recipients) || [], canManage: hasPerm(a.role, 'manageUsers'), isSuper: a.companyId == null, companyId });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-app.get('/api/weekly-reports', requireAuth, requirePerm('viewReports'), async (req, res) => {
-  try {
-    if (!canViewWeekly(req)) return res.status(403).json({ error: 'Acces interzis' });
-    const a = getAuth(req);
-    let companyId = a.companyId;
-    if (a.companyId == null) { const q = parseInt(req.query.companyId); if (!q) return res.json([]); companyId = q; }
-    res.json(await db.getWeeklyReports(companyId, parseInt(req.query.limit) || 26));
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-app.get('/api/weekly-report/:id', requireAuth, requirePerm('viewReports'), async (req, res) => {
-  try {
-    if (!canViewWeekly(req)) return res.status(403).json({ error: 'Acces interzis' });
-    const a = getAuth(req);
-    const r = await db.getWeeklyReportById(req.params.id, a.companyId == null ? undefined : a.companyId);
-    if (!r) return res.status(404).json({ error: 'Raport inexistent' });
-    res.json(r);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-// Generare la cerere (admin) — implicit pentru ultima săptămână completă; opțional from/to pentru previzualizare.
-app.post('/api/weekly-report/generate', requireAuth, requirePerm('manageUsers'), async (req, res) => {
-  try {
-    if (!weeklyReports) return res.status(501).json({ error: 'Modul indisponibil' });
-    const a = getAuth(req);
-    const b = req.body || {};
-    let companyId = a.companyId;
-    if (a.companyId == null) { companyId = parseInt(b.companyId); if (!companyId) return res.status(400).json({ error: 'Selectează o companie' }); } // super → companie din body
-    const co = await db.getCompanyById(companyId);
-    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-    const period = (b.from && b.to) ? { from: new Date(b.from).toISOString(), to: new Date(b.to).toISOString() } : weeklyReports.lastCompletedWeek(new Date());
-    const saved = await weeklyReports.generateForCompany(weeklyDeps(req), co, period);
-    if (!saved) return res.status(400).json({ error: 'Compania nu are vehicule' });
-    auditReq(req, 'generate', 'weekly_report', companyId, { period_from: period.from });
-    res.json({ ok: true, report: saved });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+// Raportul săptămânal de flotă a fost RETRAS (2026-08-13). Nu mai există modul, rute, pagină sau
+// generare automată. Rapoartele obișnuite (secțiunea Rapoarte) și cele programate acoperă nevoia.
 
 // ─── Rapoarte programate (trimise automat pe email) ───
 app.get('/api/report-schedules', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
@@ -7753,7 +7695,7 @@ app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
     const a = getAuth(req);
     if (a.companyId == null) return res.json({ ui_defaults: {}, alert_thresholds: await _getGlobalAlertThresholds() }); // super-admin fără companie → praguri globale (platformă)
     const s = await db.getCompanySettings(a.companyId);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {}, weekly_report: s.weekly_report || null, work_schedule: s.work_schedule || null });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {}, work_schedule: s.work_schedule || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
@@ -7858,15 +7800,6 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   if (body.work_schedule !== undefined) {
     if (body.work_schedule === null) delete next.work_schedule;
     else if (workSched) { const w = workSched.sanitize(body.work_schedule); if (w) next.work_schedule = w; }
-  }
-  // Raport săptămânal de flotă: { enabled: bool, recipients: [emailuri] }. Admin-ul companiei îl poate dezactiva.
-  if (body.weekly_report && typeof body.weekly_report === 'object') {
-    const w = Object.assign({}, cur.weekly_report || {});
-    if (typeof body.weekly_report.enabled === 'boolean') w.enabled = body.weekly_report.enabled;
-    if (Array.isArray(body.weekly_report.recipients)) {
-      w.recipients = body.weekly_report.recipients.map(x => String(x).trim()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)).slice(0, 20);
-    }
-    next.weekly_report = w;
   }
   // Scriere directă (NU prin db.setCompanySettings, care face încă un merge cu vechiul cur și readuce cheile șterse)
   await db.pool.query('UPDATE companies SET settings = $2 WHERE id = $1', [companyId, JSON.stringify(next)]);
@@ -9681,16 +9614,6 @@ async function start() {
   if (reportSchedules) setInterval(() => reportSchedules.tickDue({ db, reports, reportExport, channels, notify })
     .then(r => { if (r && r.length) console.log('[PROGRAMĂRI] ' + r.length + ' rapoarte rulate'); })
     .catch(e => console.error('[PROGRAMĂRI]', e.message)), 5 * 60 * 1000);
-
-  // Raport săptămânal de flotă — verificare orară (catch-up): generează pentru ultima săptămână completă (Luni→Luni),
-  // per companie cu funcția activă, dacă nu există deja; analizat AI + trimis pe email adminilor.
-  if (weeklyReports) {
-    const _weeklyTick = () => weeklyReports.tickWeekly({ db, reports, ai, channels, appBaseUrl: (process.env.APP_BASE_URL || 'https://ratrack.ro') })
-      .then(r => { const ok = (r || []).filter(x => x && x.ok).length; if (ok) console.log('[RAPORT SĂPT] ' + ok + ' rapoarte generate'); })
-      .catch(e => console.error('[RAPORT SĂPT]', e.message));
-    setTimeout(_weeklyTick, 45000);
-    setInterval(_weeklyTick, 60 * 60 * 1000);
-  }
 
   // e-Transport: trimite pozițiile la ANAF la fiecare 3 min (no-op dacă nu e configurat)
   if (etransportEnabled()) { console.log('[e-Transport] Activ — trimitere poziții la ANAF'); setInterval(sendEtransportPositions, 3 * 60 * 1000); }

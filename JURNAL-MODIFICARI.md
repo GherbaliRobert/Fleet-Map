@@ -20,6 +20,40 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-13
 
+### AMÂNDOI · Raportul săptămânal a fost scos din aplicație, complet
+
+**Ce am schimbat:** am șters „Raport săptămânal" din tot produsul — pagina din *Analize statistice*,
+ecranul din aplicația de telefon, generarea automată de lunea și emailul care pleca odată cu ea.
+
+Nu e o ascundere: modulul, pagina, stilurile și toate rutele de server nu mai există în cod. Am
+verificat, după ștergere, că nu a rămas nicio urmă care să ducă la ele.
+
+**De ce contează, dincolo de un buton în minus:** raportul era singurul loc din aplicație care
+chema inteligența artificială **fără să treacă prin socoteala noastră**. Textul „Analiză automată"
+de sub cifre era scris de Claude, la fiecare companie, în fiecare luni. Costul nu apărea nicăieri
+în statisticile de consum și nu scădea din pachetul de apeluri al clientului — mergea în fiecare
+săptămână, inclusiv la companii care nu cumpăraseră RA Insight. Odată cu ștergerea, se oprește și
+asta.
+
+**Fondatorul vede:** un consum de AI necontorizat care dispare, plus o secțiune mai puțin de
+întreținut. Nimic din ce se măsura până acum (apeluri, cost, rată de folosire) nu se schimbă —
+raportul oricum nu apărea acolo.
+
+**Clientul vede:** intrarea „Raport săptămânal" nu mai e în meniu, nici pe web, nici pe telefon.
+Clienții care primeau lunea emailul cu rezumatul flotei **nu îl vor mai primi**. Pentru aceleași
+cifre rămân *Rapoarte* (32 de tipuri, pe orice perioadă) și *Rapoarte programate*, care le poate
+trimite tot săptămânal pe email, doar că alese de client.
+
+**Ce am lăsat intenționat:** rapoartele deja generate rămân salvate în baza de date. Nu le mai
+citește și nu le mai scrie nimic — sunt doar o arhivă. Ștergerea lor definitivă e o operație
+separată, pe care o fac doar dacă îmi spuneți.
+
+> Șterse: modulul de raport, pagina din aplicație, stilurile ei, ecranul din telefon, patru rute de
+> server, șase funcții de bază de date și verificarea orară care genera totul singură.
+
+---
+
+
 ### FONDATOR · Testele devin poartă înainte de livrare — `1b69d77`
 
 **Ce am schimbat:** azi, codul ajunge la clienți **și dacă testele sunt roșii**. Railway livrează la
@@ -825,6 +859,9 @@ Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
   Afectează toate ecranele, nu doar cel nou.
 - [ ] **Contul de test ca utilizator.** Deocamdată testați totul ca super-admin, care trece prin
   toate porțile. Ecranele goale și mesajele „nu ai acces" nu le vede niciunul dintre voi.
+- [ ] **Rapoartele săptămânale rămase în baza de date.** Funcția a fost scoasă din aplicație pe
+  13.08, dar rapoartele generate până atunci sunt încă salvate. Nu le mai citește nimic. De hotărât
+  dacă le ștergem definitiv înainte de lansare sau le păstrăm ca arhivă.
 
 ## Decizie: ce vedem din conturile clienților
 

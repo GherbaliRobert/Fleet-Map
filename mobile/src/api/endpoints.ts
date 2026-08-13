@@ -74,8 +74,6 @@ export const Api = {
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
     return api<any>(`/api/fuel-stats${q}`);
   },
-  weeklyLatest: () => api<{ report: any | null; enabled?: boolean; canManage?: boolean; note?: string }>('/api/weekly-report/latest'),
-  weeklyGenerate: () => api<{ ok: boolean; report: any }>('/api/weekly-report/generate', { method: 'POST', body: {} }),
   support: (message: string) => api('/api/support', { method: 'POST', body: { message } }),
   // ── Administrare (CRUD) ──
   drivers: () => api<any[]>('/api/drivers'),

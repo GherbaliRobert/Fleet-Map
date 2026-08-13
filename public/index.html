@@ -29,7 +29,6 @@
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
   <link rel="stylesheet" href="/css/map-tools.css?v=2">
   <link rel="stylesheet" href="/css/vehicle-popup.css?v=1">
-  <link rel="stylesheet" href="/css/weekly-report.css?v=1">
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.185.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.185.0/examples/jsm/" } }
 </script>
@@ -102,7 +101,6 @@
                  folosire, per companie). Agenții au secțiunea lor dedicată, „Agenți AI". -->
             <button class="nav-item nav-sub" onclick="navGo(this, goAnalizeConsum)"><i class="fas fa-gas-pump"></i><span>Statistici consum</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goFuelPrice)"><i class="fas fa-coins"></i><span>Preț combustibil</span></button>
-            <button class="nav-item nav-sub" onclick="navGo(this, goWeeklyReport)"><i class="fas fa-calendar-week"></i><span>Raport săptămânal</span></button>
           </div>
         </div>
         <div class="nav-group fleet-only" data-group="management">
@@ -2032,9 +2030,6 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
-  <!-- Pagina „Raport săptămânal flotă" (populată de weekly-report-ui.js) -->
-  <div id="weekly-report-view" class="modal-overlay"></div>
-
   <!-- Pagina „Agenți AI" (populată de renderAgentsPage) -->
   <style id="agenti-page-css">
     #agenti-view .agp-wrap{max-width:1060px;margin:0 auto}
@@ -2648,7 +2643,6 @@ const pozitii = await r.json();</code></pre>
   <script src="/js/demo-modules-ui.js?v=2"></script>
   <script src="/js/map-tools.js?v=7"></script>
   <script src="/js/vehicle-popup.js?v=7"></script>
-  <script src="/js/weekly-report-ui.js?v=3"></script>
   <script>
     // ─── Global State ───
     // Escape HTML — GLOBAL pentru acest bloc de script. Mai multe funcții își definesc un `esc` LOCAL (care
@@ -7275,8 +7269,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', weeklyreport: 'weekly-report-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', weeklyreport: 'openWeeklyReport', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', fuelcard: 'fuelcard-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', fuelcard: 'loadFuelCard', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -7289,7 +7283,6 @@ const pozitii = await r.json();</code></pre>
     function goManage(tab) { window._pendingAdminTab = tab; showView('management'); }
     function goSistem(tab) { if ((tab === 'companies' || tab === 'accounts' || tab === 'audit') && !can('manageCompanies')) return; showView('administrare'); setTimeout(function () { try { if (tab === 'audit') openAudit(); else if (window.raxAdminTab) raxAdminTab(tab); } catch (e) {} }, 180); }
     function goAnalizeConsum() { showView('fuelstats'); }
-    function goWeeklyReport() { showView('weeklyreport'); }
     // ─── Pagina „Asistenți AI" (Analize statistice → utilizare per asistent, cartonașe) ───
     var _aiaDays = 30;
     // Rosterul de asistenți AI (kind = eticheta din ai_usage). Culorile sunt variabile de temă (light/dark safe).
