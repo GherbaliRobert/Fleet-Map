@@ -20,6 +20,26 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-12
 
+### CLIENT · Iconițele agenților prind viață pe site, ca în aplicație
+
+**Ce am schimbat:** în aplicație, iconițele agenților se animează când treci cursorul peste ele —
+fiecare cu o mișcare potrivită rolului. Pe site stăteau nemișcate. Acum fac la fel.
+
+Iconițele de pe site nu sunt aceleași cu cele din aplicație la patru din șase agenți, așa că
+mișcarea e potrivită pe desenul de acolo: scutul pulsează (veghează), cheia se rotește (strânge),
+frunza se leagănă, **balanța se echilibrează**, **plicul se ridică** (raportul e prezentat), iar
+**traseul înaintează**. RA Insight se mișcă tot timpul, nu doar la hover — bagheta se leagănă,
+strălucește, și două steluțe sclipesc în jurul ei. E vedeta, deci atrage privirea și fără să pui
+mâna pe ea.
+
+**Fondatorul vede:** aceeași pagină. Sunt doar stiluri, nicio logică nouă. Cine are pornit
+„animații reduse" în sistem nu vede nimic mișcând — respectăm setarea de accesibilitate.
+
+**Clientul vede:** pe site, iconițele celor șase agenți se animează la trecerea cursorului, iar cea
+de la RA Insight se mișcă permanent.
+
+---
+
 ### CLIENT · RA Insight lipsea de pe site — vizitatorul vedea doar cei 6 agenți
 
 **Ce am schimbat:** pe pagina publică, secțiunea „Agenți AI" prezenta cei șase agenți, dar
