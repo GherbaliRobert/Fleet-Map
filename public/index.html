@@ -7335,7 +7335,22 @@ const pozitii = await r.json();</code></pre>
         }).join('');
         var totCalls = (d.usage || []).reduce(function (s, u) { return s + (Number(u.calls) || 0); }, 0);
         var note = document.getElementById('aia-note');
-        if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Utilizarea AI din ' + (_aiaDays ? ('ultimele ' + _aiaDays + ' zile') : 'tot istoricul') + ' — <b>' + fmtN(totCalls) + '</b> apeluri în total' + (d.model ? ' · model: <b>' + esc(d.model) + '</b>' : '') + (d.enabled === false ? ' · <span style="color:var(--orange);">AI neconfigurat (fără cheie)</span>' : '') + '. Tokenii sunt însumați (intrare/ieșire) pe fiecare asistent.';
+        if (note) {
+          // Licența CC BY 4.0 cere atribuire VIZIBILĂ — deci linkul rămâne mereu pe ecran. Restul
+          // (istoric, referințe, ce înseamnă „Preț companie") stă sub „i", ca să nu fie perete de text.
+          var _src = (cur && cur.source) || 'PretCarburant.ro';
+          note.innerHTML =
+            '<span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+              'Sursa: <a href="https://pretcarburant.ro" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">' + _src + '</a>' +
+              '<button type="button" onclick="_fpToggleInfo()" title="Cum se calculează" aria-label="Detalii despre date" ' +
+                'style="width:18px;height:18px;flex:none;border-radius:50%;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-muted);cursor:pointer;font-size:10px;line-height:1;padding:0;font-family:inherit;">i</button>' +
+            '</span>' +
+            '<div id="fp-note-more" style="display:none;margin-top:8px;padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:9px;line-height:1.55;">' +
+              'Media națională, sub licență CC BY 4.0, actualizată automat de 2×/zi și acumulată zilnic pe grafic.<br>' +
+              'Istoricul ultimului an: referințe <b>GlobalPetrolPrices.com</b> + medii lunare din arhive publice de piață (motorină și benzină; pentru GPL doar referințe).<br>' +
+              '<b>„Preț companie"</b> (linia punctată) = tariful setat de tine în Setări → Prețuri combustibil. Dacă nu l-ai setat, se folosește media națională.' +
+            '</div>';
+        }
       } catch (e) {
         if (host) host.innerHTML = '<div style="padding:16px;color:var(--red);">Eroare la încărcarea statisticilor AI.</div>';
       }
@@ -7356,6 +7371,11 @@ const pozitii = await r.json();</code></pre>
         if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Sursa: <b>' + ((cur && cur.source) || 'PretCarburant.ro') + '</b> — media națională (licență CC BY 4.0), actualizată automat de 2×/zi și acumulată zilnic pe grafic. Istoricul (ultimul an): referințe <b>GlobalPetrolPrices.com</b> + medii lunare din arhive publice de piață (motorină/benzină; GPL doar referințe). „Preț companie" = tariful setat de tine în Setări → Prețuri combustibil (linia punctată); altfel se folosește media națională.';
       } catch (e) { if (cards) cards.innerHTML = '<div style="padding:16px;color:var(--red);">Eroare la încărcarea prețurilor.</div>'; }
     }
+    // Deschide/închide explicația de sub atribuire. Linkul „Sursa" rămâne mereu vizibil (cerință CC BY 4.0).
+    window._fpToggleInfo = function () {
+      var m = document.getElementById('fp-note-more'); if (!m) return;
+      m.style.display = (m.style.display === 'none' || !m.style.display) ? 'block' : 'none';
+    };
     function _fpCards(cur) {
       var el = document.getElementById('fp-cards'); if (!el) return;
       var auto = (cur && cur.auto) || {}, eff = (cur && cur.effective) || {}, comp = (cur && cur.company) || {};

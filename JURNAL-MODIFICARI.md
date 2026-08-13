@@ -146,6 +146,28 @@ doborâtă de un tracker stricat, iar conturile închise rămân închise.
 
 ## 2026-08-12
 
+### CLIENT · „Preț combustibil": sursa rămâne, dar nu mai e un perete de text
+
+**Ce am schimbat:** sub grafic stătea un paragraf lung — sursa, licența, cum se face istoricul, ce
+înseamnă linia punctată. Acum se vede doar rândul scurt **„Sursa: PretCarburant.ro"**, iar restul se
+deschide la click pe un **„i"** mic de lângă.
+
+**De ce NU am scos-o de tot:** datele de preț vin sub licența **CC BY 4.0**. Aia înseamnă că le poți
+folosi gratuit, inclusiv într-un produs pe care îl vinzi, **cu o singură condiție: să scrii de unde
+sunt**. Atribuirea e plata. Dacă o ștergem, folosim munca altcuiva în afara înțelegerii — un risc
+inutil pentru un produs cu clienți care plătesc.
+
+Pe lângă asta, sursa citată lucrează în favoarea noastră: primul gând al unui patron care vede
+prețuri în aplicație e „de unde le știe ăsta?". Fără sursă, răspunsul lui e „le-o fi inventat".
+
+**Fondatorul vede:** atribuirea rămâne permanent pe ecran, cum cere licența — doar explicația s-a
+mutat sub „i".
+
+**Clientul vede:** o pagină curată, cu un rând discret în loc de un paragraf. Dacă îl interesează de
+unde vin cifrele, apasă „i" și află tot.
+
+---
+
 ### AMÂNDOI · „Asistenți AI" scos din meniu — le arăta clienților tokenii noștri
 
 **Ce am schimbat:** în Analize statistice era o intrare „Asistenți AI" care ducea la o pagină cu
