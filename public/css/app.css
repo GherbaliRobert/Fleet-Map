@@ -433,10 +433,13 @@
     .search-clear:hover { background: var(--bg-darkest); color: var(--text-primary); }
 
     /* Buton „ascunde lista" — aceeași înălțime și același limbaj vizual ca al câmpului de căutare */
+    /* Perechea lui e „#sidebar-open-btn" (butonul „Listă" de pe hartă) — aceeași înălțime, aceeași rază
+       și același fel de etichetă, ca să arate ca două stări ale aceluiași lucru, nu ca două butoane. */
     #sidebar-collapse-btn {
-      flex: 0 0 auto; width: 40px; height: 40px; padding: 0; border-radius: 12px;
-      background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary);
-      cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px;
+      flex: 0 0 auto; height: 34px; padding: 0 13px; border-radius: 9px;
+      background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-primary);
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 700; font-family: inherit;
       transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
     }
     #sidebar-collapse-btn:hover {
