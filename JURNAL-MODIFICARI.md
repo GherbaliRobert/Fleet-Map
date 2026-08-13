@@ -20,6 +20,26 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-12
 
+### CLIENT · Titlul secțiunii „Funcții" spune acum ce vindem, nu ce face butonul
+
+**Ce am schimbat:** scria „Tot ce ai nevoie ca să **controlezi flota**". „Control" descrie o funcție,
+nu un beneficiu — orice GPS de 5 euro zice la fel. Titlul e acum:
+
+> **Management de flotă**, complet, dintr-un singur ecran
+> *Tot ce ai nevoie pentru un control integral.*
+
+Am pus și un **subtitlu** între titlu și paragraf — promisiunea, scurtă și apăsată. Paragraful de
+dedesubt l-am rescris ca să nu repete „dintr-o singură platformă" (era deja în titlu) și ca să
+numească funcțiile noi: mentenanță, aplicație mobilă.
+
+**Fondatorul vede:** aceeași pagină. „Management de flotă" e și expresia pe care o caută oamenii pe
+Google — nu strică să fie chiar în titlu.
+
+**Clientul vede:** un titlu care spune că e vorba de management de flotă, nu doar de urmărire pe
+hartă, plus un rând scurt care promite controlul integral.
+
+---
+
 ### CLIENT · Secțiunea „Funcții" de pe site era rămasă în urmă — și ne subestima
 
 **Ce am schimbat:** site-ul spunea că avem **„14+ tipuri" de rapoarte**. În catalog sunt **32**.

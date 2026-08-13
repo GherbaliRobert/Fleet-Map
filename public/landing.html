@@ -245,6 +245,10 @@
     .section h2{font-size:clamp(28px,4vw,42px);font-weight:800;letter-spacing:-1px;line-height:1.12}
     .section h2 .accent{color:var(--accent)}
     .section .lead{color:var(--muted);font-size:17px;margin-top:14px}
+    /* Subtitlu intre titlu si lead: promisiunea, scurta si apasata. Mai mare si mai deschis la culoare
+       decat lead-ul, ca sa se citeasca drept al doilea nivel, nu ca inca un paragraf. */
+    .section .subhead{color:#dfe7ee;font-size:19px;font-weight:700;margin-top:12px;letter-spacing:-.2px}
+    @media (max-width:640px){.section .subhead{font-size:17px}}
 
     /* ---------- FEATURES ---------- */
     .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
@@ -640,8 +644,9 @@
     <div class="wrap">
       <div class="section-head reveal">
         <span class="eyebrow">Functii</span>
-        <h2>Tot ce ai nevoie ca sa <span class="accent">controlezi flota</span></h2>
-        <p class="lead">Un set complet de instrumente, dintr-o singura platforma — de la harta live pana la integrari prin API.</p>
+        <h2><span class="accent">Management de flota</span>, complet, dintr-un singur ecran</h2>
+        <p class="subhead">Tot ce ai nevoie pentru un control integral.</p>
+        <p class="lead">De la harta live si rapoarte, pana la mentenanta, combustibil, aplicatie mobila si integrari prin API.</p>
       </div>
 
       <div class="features-grid">
