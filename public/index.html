@@ -8647,6 +8647,14 @@ const pozitii = await r.json();</code></pre>
     function doLocate() { if (map3dOn && _ml3dMap) webLocateMe3d(); else webLocateMe(); }
 
 
+    // Mașina de pe butonul „mod de afișare": exact desenul top-down folosit ca marker pe hartă, dar
+    // FĂRĂ elipsa de umbră — ea are rost pe hartă (așază vehiculul pe teren), într-un buton de 30px
+    // doar îngroașă conturul. Butonul e mereu pe fundal alb (Leaflet), deci verdele de brand se vede.
+    function _mapStyleCarSvg() {
+      var body = vehicleTopModern('car', '#3FE07D').replace(/^\s*<ellipse\b[^>]*opacity="0\.25"[^>]*\/>/, '');
+      return '<svg width="21" height="21" viewBox="0 0 48 48" aria-hidden="true">' + body + '</svg>';
+    }
+
     function updateViewControlUI() {
       if (_btnFollow) _btnFollow.classList.toggle('active', !!window._followImei);
       if (_btnGroup) {
@@ -8654,9 +8662,12 @@ const pozitii = await r.json();</code></pre>
         _btnGroup.title = mapGroupOn ? 'Vehicule unite în bule (apasă pentru a desface)' : 'Unește vehiculele apropiate într-o bulă';
       }
       if (_btnStyle) {
-        var _icon = mapMarkerStyle === 'arrows' ? 'fa-location-arrow' : (mapMarkerStyle === '3d' ? 'fa-cube' : 'fa-car-side');
         var _lbl = mapMarkerStyle === 'arrows' ? 'săgeți' : (mapMarkerStyle === '3d' ? '3D' : 'pictograme');
-        _btnStyle.innerHTML = '<i class="fas ' + _icon + '"></i>';
+        // Pentru modul „pictograme" butonul arată CHIAR desenul de pe hartă (setul top-down), nu o
+        // iconiță generică de mașină — altfel butonul promite un stil și harta livrează altul.
+        _btnStyle.innerHTML = (mapMarkerStyle === 'arrows' || mapMarkerStyle === '3d')
+          ? '<i class="fas ' + (mapMarkerStyle === 'arrows' ? 'fa-location-arrow' : 'fa-cube') + '"></i>'
+          : _mapStyleCarSvg();
         _btnStyle.classList.toggle('active', mapMarkerStyle === '3d');
         _btnStyle.title = 'Afișare vehicule: ' + _lbl + ' (apasă pentru a comuta: pictograme → săgeți → 3D)';
       }
