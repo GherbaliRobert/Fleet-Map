@@ -20,6 +20,28 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-12
 
+### CLIENT · RA Insight lipsea de pe site — vizitatorul vedea doar cei 6 agenți
+
+**Ce am schimbat:** pe pagina publică, secțiunea „Agenți AI" prezenta cei șase agenți, dar
+**RA Insight nu apărea nicăieri** — deși în aplicație e instrumentul cel mai vizibil. Un vizitator
+care intra pe site nu avea de unde să afle că există.
+
+I-am făcut o bandă proprie, sub cele șase carduri. Nu un al șaptelea card identic — pentru că nu e
+același lucru: **cei șase veghează singuri, RA Insight răspunde când îl întrebi tu.** Asta e
+diferența pe care o spune și textul, plus trei exemple de întrebări reale, ca omul să înțeleagă din
+prima ce poate cere.
+
+**Fondatorul vede:** aceeași pagină ca și clientul. De reținut cum e formulat: diferențierea e pe
+**comportament** (automat vs. la cerere), nu pe cum e construit fiecare pe dinăuntru. Pagina nu
+spune nicăieri cine consumă și cine nu, nu spune „se vinde cu pachet de apeluri" și nu-l prezintă ca
+„singurul cu inteligență artificială reală" — exact regulile stabilite pentru PDF-ul de prezentare,
+aplicate acum și pe site. Butonul de la final duce tot la „cere o ofertă personalizată".
+
+**Clientul vede:** pe site, sub cei șase agenți, o secțiune RA Insight care explică pe scurt ce face
+și arată trei întrebări-exemplu. Textul din titlu spune acum că, atunci când vrea să afle ceva
+anume, întreabă direct asistentul.
+
+
 ### AMÂNDOI · Comutatorul stins chiar stinge — push-urile de viteză nu mai treceau pe lângă el — `3d7df68`
 
 **Ce am schimbat:** ai stins „Depășire viteză" din Preferințe notificări și tot primeai push-uri de

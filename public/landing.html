@@ -311,6 +311,41 @@
     .agent .role{font-size:11.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
     .agent h3{font-size:19px;font-weight:700;margin-bottom:9px;letter-spacing:-.3px}
     .agent p{color:var(--muted);font-size:14.5px;line-height:1.6}
+    /* RA Insight — banda separata: nu e un al 7-lea agent de fundal, ci asistentul pe care il intrebi tu. */
+    .ra-insight{
+      position:relative;overflow:hidden;margin-top:22px;
+      background:linear-gradient(135deg,rgba(63,224,125,.09) 0%,var(--surface) 46%,#121519 100%);
+      border:1px solid rgba(63,224,125,.32);border-radius:var(--radius);
+      padding:30px 32px;
+      display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start;
+    }
+    .ra-insight::after{
+      content:"";position:absolute;inset:0;pointer-events:none;
+      background:radial-gradient(90% 120% at 100% 0%, rgba(63,224,125,.14), transparent 58%);
+    }
+    .ra-insight .ic{
+      width:58px;height:58px;border-radius:16px;flex:0 0 auto;
+      display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--accent);
+      background:rgba(63,224,125,.1);border:1px solid rgba(63,224,125,.3);
+    }
+    .ri-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+    .ri-head h3{font-size:22px;font-weight:700;letter-spacing:-.3px}
+    .ri-tag{
+      font-size:11.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent);
+      background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.25);padding:4px 11px;border-radius:999px;
+    }
+    .ra-insight > div:last-child > p{color:var(--muted);font-size:15px;line-height:1.65;max-width:62ch}
+    .ri-qs{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+    .ri-qs span{
+      font-size:13.5px;color:#cfe9dd;background:rgba(255,255,255,.03);
+      border:1px solid var(--border);border-radius:999px;padding:8px 15px;
+    }
+    .ri-qs span::before{content:"\201E"}
+    .ri-qs span::after{content:"\201D"}
+    @media (max-width:760px){
+      .ra-insight{grid-template-columns:1fr;padding:24px 20px;gap:16px}
+      .ri-head h3{font-size:19px}
+    }
     .agents-foot{text-align:center;margin-top:34px}
     .agents-foot a{display:inline-flex;align-items:center;gap:9px;color:var(--accent);font-weight:600;font-size:15px;transition:gap .2s var(--ease)}
     .agents-foot a:hover{gap:14px}
@@ -611,7 +646,7 @@
       <div class="section-head reveal">
         <span class="eyebrow">Inteligenta artificiala</span>
         <h2>6 agenti AI care iti <span class="accent">supravegheaza flota 24/7</span></h2>
-        <p class="lead">Fiecare agent are o misiune clara si lucreaza non-stop in fundal. Tu primesti doar concluziile care conteaza — nu sute de notificari.</p>
+        <p class="lead">Fiecare agent are o misiune clara si lucreaza non-stop in fundal. Tu primesti doar concluziile care conteaza — nu sute de notificari. Iar cand vrei sa afli ceva anume, intrebi direct asistentul RA Insight.</p>
       </div>
 
       <div class="agents-grid">
@@ -676,8 +711,26 @@
         </div>
       </div>
 
+      <!-- RA Insight: diferentierea e pe COMPORTAMENT (cei 6 vegheaza singuri / el raspunde la cerere),
+           nu pe cum e construit. Fara mecanica de vanzare aici — doar „oferta personalizata". -->
+      <div class="ra-insight reveal">
+        <div class="ic"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+        <div>
+          <div class="ri-head">
+            <h3>RA Insight</h3>
+            <span class="ri-tag">Asistentul flotei</span>
+          </div>
+          <p>Cei sase agenti lucreaza singuri si te anunta cand gasesc ceva. RA Insight e altfel: nu asteapta — il intrebi tu, in limbaj natural, orice despre flota ta, si iti raspunde pe loc. Tot el iti transforma un raport lung intr-un paragraf clar, gata de trimis.</p>
+          <div class="ri-qs">
+            <span>Care vehicul a consumat cel mai mult saptamana asta?</span>
+            <span>Cate curse a facut Logan-ul luna trecuta?</span>
+            <span>Ce masini au ITP-ul aproape de expirare?</span>
+          </div>
+        </div>
+      </div>
+
       <div class="agents-foot reveal">
-        <a href="#contact">Vrei cei 6 agenti AI pe flota ta? Cere o oferta personalizata <i class="fa-solid fa-arrow-right"></i></a>
+        <a href="#contact">Vrei agentii AI si RA Insight pe flota ta? Cere o oferta personalizata <i class="fa-solid fa-arrow-right"></i></a>
       </div>
     </div>
   </section>
