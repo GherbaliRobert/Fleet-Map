@@ -304,7 +304,9 @@
     }
     /* Buton mic „ascunde lista" — lângă căutare (desktop). Stilul lui stă lângă bara de căutare,
        ca să rămână vizibil că cele două trebuie să arate la fel. */
-    @media (max-width: 768px) { #sidebar-collapse-btn { display: none; } }
+    /* Pe telefon lista se închide cu „Înapoi la hartă", deci săgeata nu are rost. Cum ea e acum
+       singurul lucru din rând, ascundem tot rândul — altfel ar rămâne o bandă goală deasupra listei. */
+    @media (max-width: 768px) { #sidebar-collapse-btn { display: none; } .sidebar-search { display: none; } }
     /* Buton „arată lista" — apare pe hartă când lista e ascunsă */
     #sidebar-open-btn {
       position: absolute; top: 12px; left: 12px; z-index: 500; display: none;
@@ -371,10 +373,12 @@
     /* ─── Bara de filtrare din „Localizare": căutare + pastile de stare + cadrane de contorizare ───
        Colțuri rotunjite consecvente, stări de hover clare și o singură scară de mișcare (translateY 1px):
        destul cât să simți că elementul răspunde, prea puțin cât să sară layout-ul. */
+    /* A rămas doar butonul de ascundere a listei (căutarea și alegerea vehiculelor s-au mutat în bara
+       de sus). Îl împingem la dreapta, unde era și înainte, ca să nu atârne singur în stânga. */
     .sidebar-search {
       padding: 0 18px;
       margin-bottom: 12px;
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; gap: 8px; justify-content: flex-end;
     }
 
     .search-input-wrap {

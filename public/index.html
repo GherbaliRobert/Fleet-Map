@@ -152,13 +152,9 @@
             <button class="sidebar-back-mobile" onclick="closeMobileSidebar()"><i class="fas fa-arrow-left"></i> Înapoi la hartă</button>
             <div class="sidebar-brand">
 
+        <!-- Căutarea și alegerea vehiculelor stau ACUM doar în bara de sus (centru): acolo bifezi ce
+             urmărești, iar lista de mai jos se potrivește singură. Aici a rămas doar ascunderea listei. -->
         <div class="sidebar-search">
-          <div class="search-input-wrap" id="search-wrap">
-            <i class="fas fa-search"></i>
-            <input type="text" id="search-input" placeholder="Caută vehicul, IMEI, număr…" oninput="applyFilters()">
-            <button class="search-clear" type="button" onclick="clearVehicleSearch()" title="Golește căutarea" aria-label="Golește căutarea"><i class="fas fa-xmark"></i></button>
-          </div>
-          <button id="veh-pick-btn" onclick="locOpenPicker()" title="Alege vehiculele afișate pe hartă" aria-label="Alege vehiculele afișate"><i class="fas fa-list-check"></i></button>
           <button id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Ascunde lista" aria-label="Ascunde lista"><i class="fas fa-chevron-left"></i></button>
         </div>
         <!-- Când e activă o selecție, se SPUNE. Altfel omul crede că i-au dispărut vehiculele. -->
@@ -8932,6 +8928,7 @@ const pozitii = await r.json();</code></pre>
       }
       return clusters;
     }
+    window.recomputeGrouping = recomputeGrouping;   // folosit si din map-tools.js (bara de sus)
     function recomputeGrouping() {
       try { _recomputeGroupingImpl(); } catch (e) { if (window.console) console.warn('recomputeGrouping:', e); }
     }
@@ -9250,12 +9247,22 @@ const pozitii = await r.json();</code></pre>
     }
 
     function applyFilters() {
+      // Caseta de căutare din bara laterală a fost scoasă — căutarea e acum una singură, în bara de sus,
+      // care ne trimite textul prin `setVehicleSearch`. Păstrăm citirea ei dacă mai există undeva.
       var inp = document.getElementById('search-input');
-      searchQuery = inp.value.toLowerCase();
-      var wrap = document.getElementById('search-wrap');
-      if (wrap) wrap.classList.toggle('has-text', !!inp.value); // butonul de golire apare doar când ai ce goli
+      if (inp) {
+        searchQuery = inp.value.toLowerCase();
+        var wrap = document.getElementById('search-wrap');
+        if (wrap) wrap.classList.toggle('has-text', !!inp.value);
+      }
       updateDeviceList();
     }
+    // Filtrează lista laterală după textul din bara de căutare de sus (map-tools.js).
+    window.setVehicleSearch = function (q) {
+      searchQuery = String(q == null ? '' : q).toLowerCase();
+      updateDeviceList();
+    };
+    window.applyFilters = applyFilters;
     window.clearVehicleSearch = function () {
       var inp = document.getElementById('search-input');
       if (!inp) return;
@@ -10575,6 +10582,7 @@ const pozitii = await r.json();</code></pre>
       try { recomputeGrouping(); } catch (e) {}
       applyFilters();
     }
+    window.locSelBar = locSelBar;   // folosit si din map-tools.js (bara de sus)
     function locSelBar() {
       var b = document.getElementById('loc-sel-bar'), t = document.getElementById('loc-sel-txt');
       if (!b || !t) return;

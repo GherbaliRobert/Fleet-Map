@@ -70,6 +70,28 @@ doborâtă de un tracker stricat, iar conturile închise rămân închise.
 
 ## 2026-08-12
 
+### CLIENT · O singură căutare în „Localizare", iar bifele comandă și lista
+
+**Ce am schimbat:** pe harta „Localizare" erau **două** casete de căutare (una în bara din stânga, una
+sus în mijloc) și **două** locuri din care alegeai ce vehicule urmărești (butonul cu bife din stânga
+și pastila verde de sus). Două butoane diferite pentru exact același lucru.
+
+Acum bara de sus le face pe toate:
+- **bifele de sus comandă și lista din stânga** — bifezi două mașini, în listă rămân două; bifezi tot,
+  apar toate. Înainte bifele mișcau doar markerele de pe hartă, iar lista rămânea neschimbată;
+- **căutarea de sus filtrează și lista** din stânga, nu doar rezultatele din dropdown;
+- în bara din stânga a rămas **doar săgeata** de ascundere a listei.
+
+**Fondatorul vede:** butonul vechi „Alege vehiculele" din stânga scria exact aceeași stare ca pastila
+de sus — erau două interfețe peste aceeași valoare. Am lăsat funcția lui în cod, nefolosită, ca să
+se poată pune butonul înapoi dintr-o linie dacă vă răzgândiți.
+
+**Clientul vede:** un singur loc de căutat și de bifat, sus. Ce bifează acolo se vede și pe hartă, și
+în lista din stânga. Pe telefon, rândul acela din stânga dispare de tot — acolo lista se închide cu
+„Înapoi la hartă", deci săgeata nu avea ce căuta.
+
+---
+
 ### CLIENT · Titlul secțiunii „Funcții" spune acum ce vindem, nu ce face butonul
 
 **Ce am schimbat:** scria „Tot ce ai nevoie ca să **controlezi flota**". „Control" descrie o funcție,

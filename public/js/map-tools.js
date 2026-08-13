@@ -19,14 +19,22 @@
     var tg = el('msb-toggle'); if (tg) tg.classList.toggle('filtered', sel < tot);
   }
 
-  // Aplică selecția pe toți markerii (afișează doar bifații).
+  // Aplică selecția pe toți markerii (afișează doar bifații) ȘI pe lista din stânga.
+  // Bifele de aici sunt SINGURUL loc de unde se aleg vehiculele urmărite: ce bifezi apare pe hartă
+  // și în listă, ce debifezi dispare din amândouă. Fără sincronizarea de mai jos, lista rămânea
+  // neschimbată — deși `applyFilters` respectă `_mapSel`, nimeni nu o rula după bifare.
   window.applyMapSelection = function () {
-    if (!MAP() || !MKS()) return;
-    MKS().forEach(function (mk, imei) {
-      var show = isSel(imei);
-      if (show) { if (!MAP().hasLayer(mk)) mk.addTo(MAP()); }
-      else if (MAP().hasLayer(mk)) MAP().removeLayer(mk);
-    });
+    if (MAP() && MKS()) {
+      MKS().forEach(function (mk, imei) {
+        var show = isSel(imei);
+        if (show) { if (!MAP().hasLayer(mk)) mk.addTo(MAP()); }
+        else if (MAP().hasLayer(mk)) MAP().removeLayer(mk);
+      });
+    }
+    // aceleași trei operații pe care le făcea fereastra „Alege vehiculele" din bara laterală
+    try { if (typeof window.locSelBar === 'function') window.locSelBar(); } catch (e) {}
+    try { if (typeof window.recomputeGrouping === 'function') window.recomputeGrouping(); } catch (e) {}
+    try { if (typeof window.applyFilters === 'function') window.applyFilters(); } catch (e) {}
     updateCount();
   };
 
@@ -43,7 +51,12 @@
       '</div>';
     // Montează bara în centrul topbar-ului (lângă butoane); fallback pe body dacă topbar-ul nu există.
     (el('topbar-center') || document.body).appendChild(bar);
-    el('msb-input').addEventListener('input', renderList);
+    // Căutarea de aici e SINGURA din pagină: filtrează atât rezultatele din dropdown, cât și lista
+    // laterală (înainte exista o a doua casetă de căutare în bara din stânga, care făcea doar a doua parte).
+    el('msb-input').addEventListener('input', function () {
+      renderList();
+      try { if (typeof window.setVehicleSearch === 'function') window.setVehicleSearch(el('msb-input').value); } catch (e) {}
+    });
     el('msb-input').addEventListener('focus', openDropdown);
     el('msb-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var f = (el('msb-list').querySelector('.msb-item-name')); if (f) f.click(); } });
     el('msb-toggle').addEventListener('click', function (e) { e.stopPropagation(); toggleDropdown(); });
