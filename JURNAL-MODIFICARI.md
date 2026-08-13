@@ -18,6 +18,56 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-08-13
+
+### AMÂNDOI · Patru reparații care blocau lansarea — `HASH3`
+
+**1. Un singur tracker defect putea opri tot serverul.** Fiecare pachet primit spune la început cât e
+de lung. Câmpul acela permite până la **4 gigaocteți**, iar serverul aduna cuminte în memorie până
+ajungea la cât i se ceruse — abia apoi verifica ceva. Un tracker desincronizat (sau oricine deschide
+o conexiune și trimite gunoi) umfla memoria până cădea tot: **toate companiile deodată**.
+
+Acum antetul se verifică *înainte* de a mai aștepta octeți, iar o conexiune care trimite prostii se
+închide. Trackerul reconectează curat și retrimite ce n-a fost confirmat, deci nu se pierd poziții.
+
+**2. Resetarea parolei reînvia conturile dezactivate.** Dezactivai un angajat plecat; el cerea „am
+uitat parola" pe adresa lui de serviciu și **contul revenea la viață**. Setarea parolei punea
+necondiționat contul pe „activ". Nu servea nici măcar invitațiilor — conturile se creează active din
+start. Acum: parola și dreptul de acces sunt două lucruri separate, iar un cont dezactivat nici nu
+mai primește link de resetare. Mesajul rămâne același ca la un link greșit, ca nimeni să nu poată
+afla ce adrese există în sistem.
+
+**3. Regulile de alertă se citeau din bază la fiecare poziție.** Și nu doar ale companiei
+respective — **ale tuturor companiilor, de fiecare dată**. Costul creștea cu clienți × poziții, adică
+înmulțit, nu adunat. La 1000 de vehicule ar fi epuizat conexiunile spre bază și ingestul s-ar fi
+oprit. Acum se țin minte 30 de secunde, iar orice regulă nouă golește memoria — deci intră în vigoare
+imediat, nu peste jumătate de minut.
+
+**4. Nu exista nicio cale prin care un client își cere sau își șterge datele.** Obligație legală, nu
+opțiune: urmărim poziția unor persoane fizice — șoferii.
+
+Acum sunt două: **exportul** (administratorul companiei își descarcă tot ce ținem despre flota lui) și
+**ștergerea**, în doi pași — întâi îți arată exact ce ar dispărea, fără să șteargă, iar ștergerea
+propriu-zisă cere numele companiei tastat exact. O confirmare „da/nu" se apasă din greșeală; un nume
+tastat, nu.
+
+Două decizii din spate, ca să știți de ce așa:
+- **Tabelele se caută la rulare, nu dintr-o listă scrisă de mână.** O listă rămâne tăcut în urmă la
+  prima adăugare, iar la o obligație legală „credeam că am șters" e mai rău decât o eroare — nu se
+  vede. Ce nu poate fi legat de o companie e **raportat explicit** în export, nu trecut sub tăcere.
+- **Traseele brute nu intră în fișier**, ci se numără și se descriu (câte sunt, din ce perioadă). Sunt
+  sute de milioane de rânduri; se descarcă separat, pe vehicul, cu exportul care exista deja.
+
+**Fondatorul vede:** două intrări noi în Administrare, pentru export și ștergere.
+
+**Clientul vede:** nimic schimbat în felul în care lucrează. Doar că aplicația nu mai poate fi
+doborâtă de un tracker stricat, iar conturile închise rămân închise.
+
+> 30 de verificări, toate trecute — inclusiv trei atacuri reale pe portul de trackere, cu serverul
+> verificat că e viu după fiecare. Plus toate suitele vechi: 55 de verificări, niciuna picată.
+
+---
+
 ## 2026-08-12
 
 ### CLIENT · Titlul secțiunii „Funcții" spune acum ce vindem, nu ce face butonul

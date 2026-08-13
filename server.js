@@ -541,6 +541,14 @@ function mirrorSendPacket(imei, rawPacket) {
 // ══════════════════════════════════════════════
 // 1. SERVER TCP — primește date de la FMB140
 // ══════════════════════════════════════════════
+// Plafoane de siguranță pe ce acceptăm să ținem în memorie pentru O conexiune.
+// Câmpul de lungime al unui pachet AVL e pe 32 de biți: un tracker desincronizat (sau oricine
+// deschide un socket și trimite gunoi) putea cere serverului să adune până la 4 GB înainte de
+// PRIMA verificare. Un singur dispozitiv defect oprea tot serverul — deci toate companiile.
+// Referință: la Teltonika, un pachet AVL real stă în ordinul kilobyților (max 255 înregistrări);
+// 128 KB e larg chiar și pentru codec8E cu multe IO-uri.
+const MAX_AVL_DATA = 128 * 1024;
+const MAX_TCP_BUFFER = 256 * 1024;
 const tcpServer = net.createServer((socket) => {
   let imei = null;
   let buffer = Buffer.alloc(0);
@@ -558,6 +566,17 @@ const tcpServer = net.createServer((socket) => {
   socket.on('data', async (data) => {
     ingestStats.bytes += data.length;
     buffer = Buffer.concat([buffer, data]);
+
+    // Plasa de siguranță a memoriei. Dacă am strâns atâta fără să putem încheia un pachet, celălalt
+    // capăt nu vorbește protocolul nostru — nu are rost să adunăm mai departe.
+    if (buffer.length > MAX_TCP_BUFFER) {
+      console.warn(`[TCP] ${imei || clientAddr}: ${buffer.length} octeți nefolosiți în tampon — conexiune închisă`);
+      ingestStats.rejects++;
+      addDebugEntry({ event: 'reject', imei, address: clientAddr, reason: 'buffer_overflow' });
+      buffer = Buffer.alloc(0);
+      socket.destroy();
+      return;
+    }
 
     try {
       // Pasul 1: Dispozitivul trimite IMEI-ul
@@ -629,7 +648,21 @@ const tcpServer = net.createServer((socket) => {
       // Verifică dacă avem destule date (minim 12 bytes: preamble + size + codec + count)
       if (buffer.length < 12) return;
 
+      // Antetul se verifică ÎNAINTE de a mai aștepta octeți, nu după. Altfel un antet aiurit ne
+      // punea să acumulăm până la lungimea cerută de el — adică oricât.
+      const preamble = buffer.readUInt32BE(0);
       const dataFieldLength = buffer.readUInt32BE(4);
+      if (preamble !== 0 || dataFieldLength < 1 || dataFieldLength > MAX_AVL_DATA) {
+        // Fluxul e desincronizat: nu putem ști de unde începe pachetul următor, iar a ghici ar
+        // însemna să interpretăm gunoi ca poziții. Închidem; trackerul reconectează curat și
+        // retrimite ce n-a fost confirmat (ACK-ul se dă doar după scriere).
+        console.warn(`[TCP] ${imei}: antet AVL nevalid (preambul ${preamble}, lungime ${dataFieldLength}) — conexiune închisă`);
+        ingestStats.parse_errors++;
+        addDebugEntry({ event: 'reject', imei, address: clientAddr, reason: 'antet_nevalid' });
+        buffer = Buffer.alloc(0);
+        socket.destroy();
+        return;
+      }
       const totalPacketLength = 8 + dataFieldLength + 4; // preamble(4) + size(4) + data + crc(4)
 
       if (buffer.length < totalPacketLength) return;
@@ -3060,6 +3093,62 @@ app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ─── GDPR: dreptul de acces și dreptul la ștergere ───────────────────────────────────────────────
+// Urmărim poziția unor persoane fizice (șoferii). Clientul e operatorul de date, noi împuternicitul —
+// deci clientul trebuie să poată scoate tot ce ținem despre flota lui și să ceară ștergerea. Vezi
+// `gdpr.js` pentru de ce tabelele se descoperă la rulare în loc să fie scrise într-o listă.
+const gdpr = require('./gdpr');
+
+// Exportul: administratorul își ia propria companie; super-adminul trebuie să spună pe care.
+app.get('/api/gdpr/export', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
+  try {
+    const cid = req.isSuper ? parseInt(req.query.company_id) : req.companyId;
+    if (!Number.isFinite(cid)) return res.status(400).json({ error: 'Alege compania (company_id).' });
+    if (!req.isSuper && cid !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
+    const co = await db.getCompanyById(cid);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+
+    const pachet = await gdpr.exportaCompanie(db.pool, cid);
+    // Cererea de acces se consemnează: e o dovadă că am răspuns, dacă cineva întreabă mai târziu.
+    auditReq(req, 'export', 'gdpr', cid, { company: co.name, tabele: pachet.rezumat.length });
+    const nume = String(co.name || 'companie').replace(/[^\w\-]+/g, '-').slice(0, 40);
+    res.setHeader('Content-Disposition', `attachment; filename="RA-Tracks - Date ${nume} - ${new Date().toISOString().slice(0, 10)}.json"`);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.send(JSON.stringify(pachet, null, 2));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Pasul 1 al ștergerii: NU șterge nimic, doar arată exact ce ar dispărea.
+app.get('/api/gdpr/erase-preview/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const cid = parseInt(req.params.id);
+    const co = await db.getCompanyById(cid);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const r = await gdpr.stergeCompanie(db.pool, cid, { uscat: true });
+    res.json(Object.assign({ companie: co.name, confirmareCeruta: co.name }, r));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Pasul 2: ștergerea propriu-zisă. Ireversibilă, deci cere numele companiei tastat exact — o
+// confirmare de tip „da/nu" se apasă din greșeală, un nume tastat nu.
+app.post('/api/gdpr/erase/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const cid = parseInt(req.params.id);
+    const co = await db.getCompanyById(cid);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const confirm = String((req.body && req.body.confirm) || '');
+    if (confirm !== co.name) {
+      return res.status(400).json({ error: `Scrie exact numele companiei ca să confirmi: „${co.name}"` });
+    }
+    // Consemnăm ÎNAINTE: jurnalul de audit al companiei dispare odată cu ea, iar urma trebuie să rămână.
+    auditReq(req, 'erase', 'gdpr', cid, { company: co.name });
+    const r = await gdpr.stergeCompanie(db.pool, cid, { uscat: false });
+    console.warn(`[GDPR] Compania „${co.name}" (${cid}) ȘTEARSĂ definitiv de ${req.auth && req.auth.username}: ${r.total} rânduri`);
+    try { invalidateAccessCache(); invalidateReguliCache(); await refreshWsScope(); } catch (_) {}
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Creează adminul unei companii (super-admin)
 // ─── Onboarding: invitație prin email + set/reset parolă cu token ───
 function appBaseUrl(req) {
@@ -3133,6 +3222,12 @@ app.post('/api/auth/set-password', async (req, res) => {
     { const e = verificaParola(password, null); if (e) return res.status(400).json({ error: e }); }
     const u = await db.getUserByResetToken(token);
     if (!u) return res.status(400).json({ error: 'Link invalid sau expirat. Cere o nouă invitație.' });
+    // Un cont dezactivat sau cu accesul expirat (demo) nu-și poate seta parola. Răspundem cu ACELAȘI
+    // mesaj ca la un token greșit: altfel am confirma cuiva că adresa există, doar că e blocată.
+    if (u.active === false || (u.access_until != null && Number(u.access_until) < Date.now())) {
+      console.warn(`[AUTH] set-password refuzat pentru contul inactiv/expirat ${u.username}`);
+      return res.status(400).json({ error: 'Link invalid sau expirat. Cere o nouă invitație.' });
+    }
     const hash = await bcrypt.hash(String(password), 10);
     await db.consumeUserResetToken(u.id, hash);
     res.json({ ok: true, username: u.username });
@@ -3215,7 +3310,14 @@ async function notifyDemoRequest(row) {
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const email = ((req.body && req.body.email) || '').trim();
-    if (email) { const u = await db.getUserByEmail(email); if (u) { try { await sendSetPasswordEmail(req, u, { hours: 2 }); } catch (e) {} } }
+    // Conturile dezactivate sau expirate nu primesc link de resetare — nu are ce debloca, iar
+    // trimiterea lui era primul pas al reactivării accidentale. Răspunsul de mai jos rămâne identic
+    // în toate cazurile, ca nimeni să nu poată afla ce adrese există.
+    if (email) {
+      const u = await db.getUserByEmail(email);
+      const potrivit = u && u.active !== false && !(u.access_until != null && Number(u.access_until) < Date.now());
+      if (potrivit) { try { await sendSetPasswordEmail(req, u, { hours: 2 }); } catch (e) {} }
+    }
   } catch (e) {}
   res.json({ ok: true, message: 'Dacă adresa există, vei primi un email cu instrucțiuni.' });
 });
@@ -3492,6 +3594,14 @@ if (process.env.NODE_ENV === 'test') {
   });
   app.get('/api/debug/fix-db', requireAuth, requireSuperadmin, (req, res) => {
     db._simulateWriteFailure = false; res.json({ ok: true, scrierile: 'funcționează' });
+  });
+  // Pune un token de resetare fără să trimită email — ca testul să poată verifica CHIAR că un cont
+  // dezactivat nu-și poate seta parola, în loc să sară peste verificarea aia.
+  app.get('/api/debug/set-reset-token', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      await db.setUserResetToken(parseInt(req.query.user), String(req.query.token), Date.now() + 3600 * 1000);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 }
 
@@ -5606,21 +5716,21 @@ app.get('/api/geofences', requireAuth, withCompany, async (req, res) => {
 });
 
 app.post('/api/geofences', requireAuth, requireFleet, withCompany, async (req, res) => {
-  try { const g = await db.createGeofence(await enrichGeofence(req.body), req.companyId); auditReq(req, 'create', 'geofence', g.id, { name: req.body.name }); res.json(g); }
+  try { const g = await db.createGeofence(await enrichGeofence(req.body), req.companyId); invalidateReguliCache(); auditReq(req, 'create', 'geofence', g.id, { name: req.body.name }); res.json(g); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/geofences/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
-    await db.updateGeofence(req.params.id, await enrichGeofence(req.body)); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true });
+    await db.updateGeofence(req.params.id, await enrichGeofence(req.body)); invalidateReguliCache(); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/geofences/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
-    await db.deleteGeofence(req.params.id); auditReq(req, 'delete', 'geofence', req.params.id); res.json({ ok: true });
+    await db.deleteGeofence(req.params.id); invalidateReguliCache(); auditReq(req, 'delete', 'geofence', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -5655,7 +5765,7 @@ app.post('/api/alerts', requireAuth, requireFleet, withScope, async (req, res) =
         return res.status(400).json({ error: 'Vehiculul nu aparține companiei alese.' });
       }
     }
-    const a = await db.createAlert(req.body, coId);
+    const a = await db.createAlert(req.body, coId); invalidateReguliCache();
     auditReq(req, 'create', 'alert', a.id, { type: req.body.type, company_id: coId });
     res.json(a);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -5664,7 +5774,7 @@ app.post('/api/alerts', requireAuth, requireFleet, withScope, async (req, res) =
 app.delete('/api/alerts/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'alerts', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
-    await db.deleteAlert(req.params.id); auditReq(req, 'delete', 'alert', req.params.id); res.json({ ok: true });
+    await db.deleteAlert(req.params.id); invalidateReguliCache(); auditReq(req, 'delete', 'alert', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -6027,9 +6137,33 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000);
 
+// Regulile de alertă și zonele se citeau din baza de date la FIECARE poziție primită. Cum
+// `getAlerts()` aduce regulile TUTUROR companiilor, costul creștea cu clienți × poziții — produs,
+// nu sumă. La 1000 de vehicule ajungeam la peste 100 de interogări pe secundă printr-un pool de 12
+// conexiuni: se epuiza, iar ingestul se oprea. Aceeași soluție ca la `_devCompanyCache`: memorie
+// scurtă, golită explicit la orice modificare, deci o regulă nouă intră în vigoare imediat.
+let _alertsCache = null;                 // { ts, rows }
+const _geoScopeCache = new Map();        // companyId -> { ts, rows }
+const REGULI_CACHE_MS = 30000;
+async function getAlertsCached() {
+  if (_alertsCache && (Date.now() - _alertsCache.ts) < REGULI_CACHE_MS) return _alertsCache.rows;
+  const rows = await db.getAlerts();
+  _alertsCache = { ts: Date.now(), rows };
+  return rows;
+}
+async function getGeofencesForScopeCached(companyId) {
+  const k = companyId == null ? '_' : String(companyId);
+  const c = _geoScopeCache.get(k);
+  if (c && (Date.now() - c.ts) < REGULI_CACHE_MS) return c.rows;
+  const rows = await db.getGeofencesForScope(companyId);
+  _geoScopeCache.set(k, { ts: Date.now(), rows });
+  return rows;
+}
+function invalidateReguliCache() { _alertsCache = null; _geoScopeCache.clear(); }
+
 async function evaluateAlerts(imei, data) {
   try {
-    const alerts = await db.getAlerts();
+    const alerts = await getAlertsCached();
     if (!alerts || alerts.length === 0) return;
     const devCompany = await getDeviceCompanyCached(imei);
 
@@ -6142,7 +6276,7 @@ async function evaluateAlerts(imei, data) {
                 : (cond.geofenceId ? [cond.geofenceId] : []);
               if (!ids.length) break;
               // Tenant: doar zonele companiei alertei — o alertă nu poate referi geofence-ul altei companii.
-              const geofences = await db.getGeofencesForScope(alert.company_id);
+              const geofences = await getGeofencesForScopeCached(alert.company_id);
               for (const gid of ids) {
                 const gf = geofences.find(g => Number(g.id) === Number(gid));
                 if (!gf || !gf.coordinates) continue;

@@ -2720,7 +2720,11 @@ async function getUserByResetToken(token) {
   return r.rows[0] || null;
 }
 async function consumeUserResetToken(id, passwordHash) {
-  await pool.query('UPDATE users SET password_hash = $2, reset_token = NULL, reset_expires = NULL, active = true WHERE id = $1', [id, passwordHash]);
+  // Aici era și `active = true`. Setarea parolei REACTIVA un cont dezactivat: dezactivai un angajat
+  // plecat, el cerea „am uitat parola" pe adresa lui și contul revenea la viață. Nu servea nici
+  // invitațiilor — conturile se creează active din start (`active BOOLEAN DEFAULT true`).
+  // Schimbarea parolei nu are ce căuta în dreptul de acces; sunt două lucruri diferite.
+  await pool.query('UPDATE users SET password_hash = $2, reset_token = NULL, reset_expires = NULL WHERE id = $1', [id, passwordHash]);
 }
 async function getUserByEmail(email) {
   if (!email) return null;
