@@ -146,6 +146,29 @@ doborâtă de un tracker stricat, iar conturile închise rămân închise.
 
 ## 2026-08-12
 
+### CLIENT · Raport săptămânal: istoricul primul, iar acum poți cere ORICE săptămână
+
+**Ce am schimbat:** pagina te arunca direct în ultimul raport, cu arhiva ascunsă într-un meniu
+derulant, iar butonul de generare făcea **doar ultima săptămână încheiată**. Nu puteai cere o
+săptămână anume.
+
+Acum, când intri, vezi **istoricul rapoartelor** — fiecare rând cu perioada, kilometrii și câte
+vehicule au fost active; apeși pe el și se deschide. Dedesubt, despărțit de o linie, **„Generează o
+săptămână"**: alegi din ultimele 12 săptămâni și apeși butonul verde.
+
+Din raport te întorci cu **„Înapoi la istoric"**.
+
+**Fondatorul vede:** săptămânile deja generate apar bifate în listă, iar dacă alegi una dintre ele
+**se deschide raportul existent** în loc să se refacă — altfel s-ar consuma AI degeaba pentru
+aceleași cifre. Selectorul arată săptămâni întregi (luni→duminică), nu zile libere, pentru că exact
+așa se calculează raportul; un calendar cu zile ar fi lăsat omul să aleagă miercuri–vineri, iar noi
+tot săptămâna întreagă i-am fi dat.
+
+**Clientul vede:** intră și are în față toate rapoartele lui. Dacă vrea altă săptămână, o alege
+dintr-o listă și apasă „Generează".
+
+---
+
 ### CLIENT · „Preț combustibil": sursa rămâne, dar nu mai e un perete de text
 
 **Ce am schimbat:** sub grafic stătea un paragraf lung — sursa, licența, cum se face istoricul, ce

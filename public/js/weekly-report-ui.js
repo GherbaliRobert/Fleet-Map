@@ -20,12 +20,13 @@
           '<button class="close-btn" onclick="showView(\'localizare\')" style="position:static;font-size:18px;">&#10005;</button></h2>' +
         '<div class="wr-toolbar">' +
           '<select id="wr-company" class="rax-field" style="width:auto;min-width:190px;margin:0;display:none;" onchange="wrSetCompany(this.value)"></select>' +
-          '<select id="wr-archive" class="rax-field" style="width:auto;min-width:230px;margin:0;" onchange="wrLoadSelected()"></select>' +
           '<span id="wr-period" class="wr-period"></span>' +
           '<span style="flex:1"></span>' +
           '<span id="wr-admin" class="wr-admin" style="display:none;"></span>' +
         '</div>' +
-        '<div id="wr-body" style="overflow:auto;flex:1;min-height:0;padding-right:4px;">' +
+        // Ecranul de pornire: ISTORICUL primul, generarea dedesubt. Raportul se deschide peste el.
+        '<div id="wr-home" style="overflow:auto;flex:1;min-height:0;padding-right:4px;"></div>' +
+        '<div id="wr-body" style="overflow:auto;flex:1;min-height:0;padding-right:4px;display:none;">' +
           '<div class="wr-loading">Se încarcă…</div>' +
         '</div>' +
       '</div>';
@@ -35,6 +36,7 @@
   // ─── Încărcare ───
   window.openWeeklyReport = function () {
     var host = ensureSkeleton(); if (!host) return;
+    // Pornim pe ISTORIC (nu direct pe ultimul raport): întâi vezi ce ai, apoi ceri altceva.
     loadLatest(_state.companyId || null);
   };
   function loadLatest(companyId) {
@@ -48,13 +50,14 @@
         ensureCompanyPicker();
         renderAdmin();
         if (_state.isSuper && !_state.companyId) { // super-admin: trebuie să aleagă o companie întâi
-          var ar = el('wr-archive'); if (ar) ar.style.display = 'none';
+          _state.needsCompany = true;
+          var hh = el('wr-home'), bb = el('wr-body');
+          if (hh) hh.style.display = ''; if (bb) bb.style.display = 'none';
           renderPickCompany(); return;
         }
-        var ar2 = el('wr-archive'); if (ar2) ar2.style.display = '';
-        loadArchive();
-        if (d.report) { _state.current = d.report; render(d.report); }
-        else renderEmpty();
+        _state.needsCompany = false;
+        // Ecranul de start = ISTORICUL, nu ultimul raport. Raportul se deschide de acolo.
+        window.wrShowHome();
       })
       .catch(function (e) {
         var body = el('wr-body');
@@ -75,28 +78,14 @@
   }
   window.wrSetCompany = function (v) { _state.companyId = v ? parseInt(v) : null; loadLatest(_state.companyId); };
   function renderPickCompany() {
-    var body = el('wr-body'); if (!body) return;
+    var body = el('wr-home') || el('wr-body'); if (!body) return;   // ecranul de start, nu zona raportului
     body.innerHTML = '<div class="wr-empty"><i class="fas fa-building" style="font-size:34px;color:var(--text-muted);margin-bottom:10px;"></i>' +
       '<div>Alege o companie din selectorul de sus pentru a vedea sau genera raportul săptămânal.</div></div>';
     var p = el('wr-period'); if (p) p.textContent = '';
   }
 
-  function loadArchive() {
-    var qs = '?limit=26' + (_state.companyId ? '&companyId=' + encodeURIComponent(_state.companyId) : '');
-    fetch('/api/weekly-reports' + qs, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (list) {
-      var sel = el('wr-archive'); if (!sel || !Array.isArray(list)) return;
-      if (!list.length) { sel.innerHTML = '<option>— niciun raport —</option>'; return; }
-      sel.innerHTML = list.map(function (w, i) {
-        return '<option value="' + w.id + '">' + (i === 0 ? '● ' : '') + 'Săptămâna ' + fmtDate(w.period_from) + ' → ' + fmtDateEnd(w.period_to) + '</option>';
-      }).join('');
-    }).catch(function () {});
-  }
-  window.wrLoadSelected = function () {
-    var sel = el('wr-archive'); if (!sel || !sel.value || isNaN(parseInt(sel.value))) return;
-    var body = el('wr-body'); if (body) body.innerHTML = '<div class="wr-loading">Se încarcă…</div>';
-    fetch('/api/weekly-report/' + parseInt(sel.value), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
-      .then(function (w) { if (w && w.data) { _state.current = w; render(w); } else renderEmpty(); }).catch(function () {});
-  };
+  // loadArchive()/wrLoadSelected() scoase: dropdown-ul „wr-archive" a fost înlocuit de lista de istoric
+
 
   function renderEmpty() {
     var body = el('wr-body'); if (!body) return;
@@ -104,10 +93,99 @@
       '<div>Niciun raport generat încă.</div>' +
       '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Raportul se generează automat în fiecare luni pentru săptămâna încheiată.' +
       (_state.canManage ? ' Sau generează-l acum:' : '') + '</div>' +
-      (_state.canManage ? '<button class="btn-primary" style="margin-top:14px;" onclick="wrGenerate(this)"><i class="fas fa-bolt"></i> Generează raportul acum</button>' : '') +
+      '<button class="btn-primary" style="margin-top:14px;max-width:260px;" onclick="wrShowHome()"><i class="fas fa-arrow-left"></i> Înapoi la istoric</button>' +
       '</div>';
     el('wr-period') && (el('wr-period').textContent = '');
   }
+
+  // ─── Ecran de pornire: istoric + alegerea săptămânii ───
+  // Săptămâna raportului e Luni→Luni (UTC), exact ca pe server (weekly_report.lastCompletedWeek).
+  function mondayUTC(d) {
+    var day = d.getUTCDay(), off = (day === 0 ? 6 : day - 1);
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - off));
+  }
+  // Ultimele N săptămâni ÎNCHEIATE, cea mai recentă prima.
+  function lastWeeks(n) {
+    var thisMon = mondayUTC(new Date()), out = [];
+    for (var i = 1; i <= n; i++) {
+      var from = new Date(thisMon.getTime() - i * 7 * 864e5);
+      out.push({ from: from.toISOString(), to: new Date(from.getTime() + 7 * 864e5).toISOString() });
+    }
+    return out;
+  }
+  function weekLabel(w) {
+    var a = new Date(w.from), b = new Date(new Date(w.to).getTime() - 864e5); // ultima zi INCLUSĂ
+    var mo = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','noi','dec'];
+    var sameMonth = a.getUTCMonth() === b.getUTCMonth();
+    return a.getUTCDate() + (sameMonth ? '' : ' ' + mo[a.getUTCMonth()]) + ' – ' + b.getUTCDate() + ' ' + mo[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
+  }
+  function dayKeyOf(iso) { return String(iso).slice(0, 10); }
+
+  window.wrShowHome = function () {
+    var home = el('wr-home'), body = el('wr-body');
+    if (home) home.style.display = ''; if (body) body.style.display = 'none';
+    var per = el('wr-period'); if (per) per.textContent = '';
+    loadHome();
+  };
+  function loadHome() {
+    var home = el('wr-home'); if (!home) return;
+    if (_state.companyId == null && _state.needsCompany) { renderPickCompany(); return; }
+    home.innerHTML = '<div class="wr-loading">Se încarcă…</div>';
+    var qs = '?limit=26' + (_state.companyId ? '&companyId=' + encodeURIComponent(_state.companyId) : '');
+    fetch('/api/weekly-reports' + qs, { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (list) { renderHome(Array.isArray(list) ? list : []); })
+      .catch(function () { renderHome([]); });
+  }
+  function renderHome(list) {
+    var home = el('wr-home'); if (!home) return;
+    _state.history = list;
+    var done = {};                     // săptămânile deja generate, după ziua de început
+    list.forEach(function (w) { done[dayKeyOf(w.period_from)] = w.id; });
+
+    var rows = list.map(function (w, i) {
+      var d = w.data || {}, k = d.kpi || {};
+      var km = k.totalKm != null ? num(Math.round(k.totalKm)) + ' km' : '—';
+      var veh = k.vehiclesActive != null ? k.vehiclesActive + ' vehicule active' : '';
+      return '<button type="button" class="wr-hrow" onclick="wrOpenReport(' + w.id + ')">' +
+        '<span class="wr-hdot"' + (i === 0 ? ' data-last="1"' : '') + '></span>' +
+        '<span class="wr-hper">' + esc(weekLabel({ from: w.period_from, to: w.period_to })) + '</span>' +
+        '<span class="wr-hkpi">' + esc(km) + (veh ? ' · ' + esc(veh) : '') + '</span>' +
+        '<span class="wr-hgo">Deschide <i class="fas fa-chevron-right"></i></span>' +
+      '</button>';
+    }).join('');
+
+    var opts = lastWeeks(12).map(function (w) {
+      var gen = done[dayKeyOf(w.from)];
+      return '<option value="' + esc(w.from) + '|' + esc(w.to) + '"' + (gen ? ' data-gen="' + gen + '"' : '') + '>' +
+        esc(weekLabel(w)) + (gen ? '  ✓ generat' : '') + '</option>';
+    }).join('');
+
+    home.innerHTML =
+      '<div class="wr-sec-t">Istoric rapoarte' + (list.length ? ' <span class="wr-cnt">' + list.length + '</span>' : '') + '</div>' +
+      (rows ? '<div class="wr-hlist">' + rows + '</div>'
+            : '<div class="wr-empty" style="padding:26px 10px;"><i class="fas fa-chart-line" style="font-size:30px;color:var(--text-muted);margin-bottom:8px;"></i>' +
+              '<div>Niciun raport generat încă.</div>' +
+              '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Se generează automat în fiecare luni, pentru săptămâna încheiată. Sau alege una mai jos.</div></div>') +
+      (_state.canManage
+        ? '<div class="wr-gen">' +
+            '<div class="wr-sec-t" style="margin-top:0;">Generează o săptămână</div>' +
+            '<div class="wr-genrow">' +
+              '<select id="wr-week" class="rax-field" style="margin:0;min-width:220px;width:auto;">' + opts + '</select>' +
+              '<button class="btn-primary wr-genbtn" onclick="wrGenerate(this)"><i class="fas fa-bolt"></i> Generează</button>' +
+            '</div>' +
+            '<div class="wr-genhint">Săptămânile bifate au deja raport — se deschide cel existent, fără să-l refacem.</div>' +
+          '</div>'
+        : '');
+  }
+  window.wrOpenReport = function (id) {
+    var home = el('wr-home'), body = el('wr-body');
+    if (home) home.style.display = 'none';
+    if (body) { body.style.display = ''; body.innerHTML = '<div class="wr-loading">Se încarcă…</div>'; }
+    fetch('/api/weekly-report/' + parseInt(id), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      .then(function (w) { if (w && w.data) { _state.current = w; render(w); } else renderEmpty(); })
+      .catch(function () { renderEmpty(); });
+  };
 
   // ─── Randare raport ───
   function fmtDate(s) { try { return new Date(s).toLocaleDateString('ro-RO'); } catch (e) { return String(s).slice(0, 10); } }
@@ -144,6 +222,8 @@
     var d = w.data || {}; var k = d.kpi || {}; var rk = d.rankings || {}; var s = d.series || {};
     var pj = el('wr-period'); if (pj) pj.textContent = fmtDate(w.period_from) + ' — ' + fmtDateEnd(w.period_to) + ' (Luni–Duminică)';
 
+    var back = '<button type="button" class="wr-back" onclick="wrShowHome()"><i class="fas fa-arrow-left"></i> Înapoi la istoric</button>';
+
     var kpis = '<div class="wr-kpi">' +
       kpiCard(num(k.vehiclesActive) + ' / ' + num(k.vehiclesTotal), 'Vehicule active', '', 'var(--accent)') +
       kpiCard(num(k.totalKm) + ' km', 'Distanță totală', '', 'var(--accent)') +
@@ -164,7 +244,7 @@
 
     var ai = '<div class="wr-ai"><div class="wr-ai-title"><i class="fas fa-robot"></i> Analiză automată</div><div class="wr-ai-body">' + aiHtml(w.ai_analysis) + '</div></div>';
 
-    body.innerHTML = kpis + charts + ai + tableHtml(d.perVehicle || []);
+    body.innerHTML = back + kpis + charts + ai + tableHtml(d.perVehicle || []);
     drawCharts(d);
   }
 
@@ -234,14 +314,30 @@
       .catch(function () { cb.checked = !enabled; });
   };
   window.wrGenerate = function (btn) {
+    var sel = el('wr-week');
+    var opt = sel && sel.options[sel.selectedIndex];
+    // Săptămâna are deja raport → îl deschidem pe cel existent. Regenerarea ar consuma AI degeaba.
+    var already = opt && opt.getAttribute('data-gen');
+    if (already) { window.wrOpenReport(parseInt(already)); return; }
+    var payload = {};
+    if (_state.companyId) payload.companyId = _state.companyId;
+    if (sel && sel.value && sel.value.indexOf('|') > 0) {
+      var parts = sel.value.split('|'); payload.from = parts[0]; payload.to = parts[1];
+    }
     if (btn) { btn.disabled = true; btn.dataset._t = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se generează…'; }
-    fetch('/api/weekly-report/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(_state.companyId ? { companyId: _state.companyId } : {}) })
+    fetch('/api/weekly-report/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset._t || 'Generează acum'; }
-        if (j && j.report) { _state.current = j.report; loadArchive(); render(j.report); if (window.toast) window.toast('Raport generat'); }
-        else if (window.toast) window.toast((j && j.error) || 'Eroare la generare', true);
+        if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset._t || 'Generează'; }
+        if (j && j.report) {
+          _state.current = j.report;
+          var home = el('wr-home'), body = el('wr-body');
+          if (home) home.style.display = 'none'; if (body) body.style.display = '';
+          render(j.report);
+          if (window.toast) window.toast('Raport generat');
+        } else if (window.toast) window.toast((j && j.error) || 'Eroare la generare', true);
       })
-      .catch(function () { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset._t || 'Generează acum'; } });
+      .catch(function () { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset._t || 'Generează'; } });
   };
+;
 })();
