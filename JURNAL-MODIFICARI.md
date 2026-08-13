@@ -20,6 +20,43 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-13
 
+### FONDATOR · Testele devin poartă înainte de livrare — `HASH5`
+
+**Ce am schimbat:** azi, codul ajunge la clienți **și dacă testele sunt roșii**. Railway livrează la
+fiecare `git push`, fără să se uite dacă verificările au trecut. Am pățit-o chiar eu în sesiunea
+asta: am împins cu testele picate, pentru că o comandă ascundea eroarea.
+
+Cu un singur om atent, treci. Cu doi care livrează des, nu.
+
+**Partea care nu cere cod: Railway are un comutator „Wait for CI"** — pornit, așteaptă ca
+verificările să treacă înainte să livreze; dacă pică, livrarea e sărită. E o bifă în panoul lor, la
+setările serviciului. **Rămâne s-o pui tu** — n-o pot porni din cod.
+
+**Partea de care m-am ocupat eu:** poarta n-avea sens așa cum era. Verificările automate se uitau
+doar la sintaxă și la separarea între companii — **niciuna dintre reparațiile de securitate din
+ultimele zile nu era acoperită.** Adică ai fi pornit o poartă care lasă să treacă exact lucrurile de
+care ne temem.
+
+Acum verifică, la fiecare livrare, și că:
+- un tracker defect nu poate doborî serverul;
+- resetarea parolei nu reînvie un cont dezactivat;
+- notificarea altei companii nu se poate citi;
+- confirmarea către tracker vine după scriere (deci nu se pierd poziții);
+- contul de instalare rămâne retras, dar nu vă închide afară;
+- comutatorul de notificări stins chiar stinge;
+- exportul și ștergerea datelor unui client funcționează.
+
+**Fondatorul vede:** o livrare care se oprește singură când ceva s-a stricat, în loc să ducă
+problema la clienți.
+
+**Clientul vede:** nimic. Exact ăsta e scopul.
+
+> 85 de verificări adăugate ca poartă, rulate în serie și probate toate înainte de a le lega.
+> Cad la prima problemă, nu la sfârșit.
+
+---
+
+
 ### FONDATOR · Stivă gata de VPS propriu, probată cap-coadă — `b03e5d7`
 
 **Ce am schimbat:** exista deja un fișier de pornire pentru server propriu, dar el pornea aplicația

@@ -48,6 +48,20 @@ jobs:
       - name: Smoke tests (server)
         run: npm test
 
+      # 4) Securitate — fiecare suită apără o reparație care a fost cândva o gaură REALĂ.
+      # Rulează în serie (fiecare pornește propriul server, pe porturi proprii) și cade la primul
+      # eșec. Fără ele, poarta de dinaintea livrării ar fi verificat doar sintaxa și izolarea
+      # între companii — adică nimic din ce s-a reparat aici.
+      - name: Securitate (autentificare, IDOR, ingest, notificări, GDPR)
+        run: |
+          set -e
+          node verify_push_viteza.js        # comutatorul stins chiar stinge push-ul (2 motoare, 1 preferință)
+          node verify_auth_hardening.js     # politica de parole + adresa IP care nu se poate falsifica
+          node verify_notif_idor.js         # notificarea altei companii nu se poate citi după id
+          node verify_ack_durabil.js        # confirmarea către tracker vine DUPĂ scriere (zero poziții pierdute)
+          node verify_admin_retras.js       # contul de instalare se retrage, dar nu ne închide afară
+          node verify_reparatii_lansare.js  # plafon TCP, resetare parolă, cache reguli, export/ștergere GDPR
+
       # NOTĂ test-debt: phase2-7_smoke, ws_smoke și verify_{sys,io,fms,tenant,faza2}
       # NU sunt încă în CI — au eșecuri de asserțiune pre-existente sau hardcodează portul 3000.
       # De curățat într-un pass dedicat înainte de a le adăuga ca gate (vezi AUDIT-RA-TRACKS.md, P0.4).
