@@ -96,7 +96,10 @@
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-chart-column"></i><span>Analize statistice</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici</span></button>
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('aiasist'); })"><i class="fas fa-robot"></i><span>Asistenți AI</span></button>
+            <!-- „Asistenți AI" scos din meniu: arăta ORICUI (n-avea data-super) numărul de „Tokeni in/out"
+                 și „Cereri API" — detalii tehnice care ne privesc doar pe noi. Pentru fondatori, aceleași
+                 date, mai bine puse, sunt în Administrare → Utilizare RA Insight (apeluri, cost, rată de
+                 folosire, per companie). Agenții au secțiunea lor dedicată, „Agenți AI". -->
             <button class="nav-item nav-sub" onclick="navGo(this, goAnalizeConsum)"><i class="fas fa-gas-pump"></i><span>Statistici consum</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goFuelPrice)"><i class="fas fa-coins"></i><span>Preț combustibil</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goWeeklyReport)"><i class="fas fa-calendar-week"></i><span>Raport săptămânal</span></button>

@@ -146,6 +146,30 @@ doborâtă de un tracker stricat, iar conturile închise rămân închise.
 
 ## 2026-08-12
 
+### AMÂNDOI · „Asistenți AI" scos din meniu — le arăta clienților tokenii noștri
+
+**Ce am schimbat:** în Analize statistice era o intrare „Asistenți AI" care ducea la o pagină cu
+patru cartonașe. Pe fiecare scria **„Tokeni in", „Tokeni out"** și **„Cereri API"**.
+
+Pagina aceea **nu era restricționată** — o vedea orice client al oricărei firme. Adică exact
+informația tehnică despre care am stabilit că **rămâne între noi**.
+
+Am scos-o din meniu. Nu se mai poate ajunge la ea în niciun fel: nu există navigare prin adresă,
+iar butonul era singura cale.
+
+**Fondatorul vede:** nimic pierdut. Aceleași date, mai bine puse, sunt în **Administrare → Utilizare
+RA Insight**: apeluri luna asta, cât ne costă, rata de folosire, care clienți au modulul activ și
+care îl folosesc efectiv — toate per companie. Aia e restricționată corect la super-admin.
+
+**Clientul vede:** o intrare mai puțin în meniu. Nu pierde nicio funcție — pagina doar număra, nu
+făcea nimic. Agenții și RA Insight se folosesc din secțiunile lor, ca până acum.
+
+> **De reținut pentru mine:** când am verificat prima dată că expresia „0 tokeni" nu apare în
+> aplicație, am căutat exact acea formulare și am raportat că e curat. Pagina asta scria „Tokeni
+> in/out", deci mi-a scăpat. Verificarea a fost prea îngustă.
+
+---
+
 ### CLIENT · Tabelul „Flota" din Statistici: capul de tabel stă acum deasupra cifrelor
 
 **Ce am schimbat:** numele coloanelor (KM AZI, CONSUM, VIT. MAX…) erau lipite la stânga, iar cifrele
