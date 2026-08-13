@@ -7002,7 +7002,15 @@ const pozitii = await r.json();</code></pre>
       var isFuel = !isIdle && ((d.data && (d.data.alertType === 'fuel_theft' || d.data.alertType === 'fuel_drop')) || /scădere\s*(?:combustibil\s*)?[\d.,]+\s*l\b|furt combustibil/i.test((d.title || '') + ' ' + (d.body || ''))); // scădere/furt combustibil → loc + de la/la + cantitate
       var isSpeeding = !isIdle && !isFuel && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || '')); // limita OSM DOAR la alerte de viteză (nu la idle/combustibil etc.)
       var rows = [];
-      rows.push(['Vehicul', esc(d.vehicle || d.imei || '—')]);
+      // Numele singur nu identifică mașina: poți avea trei „Dacia Logan 3" în flotă. Punem și numărul
+      // de înmatriculare, luat din flota încărcată (serverul trimite în notificare doar numele).
+      var _vn = d.vehicle || d.imei || '—';
+      try {
+        var _vd = (d.imei && typeof devices !== 'undefined' && devices.get) ? devices.get(String(d.imei)) : null;
+        var _vp = _vd && _vd.plate ? String(_vd.plate).trim() : '';
+        if (_vp && _vn.indexOf(_vp) < 0) _vn += ' · ' + _vp;   // dacă numele conține deja numărul, nu-l repetăm
+      } catch (e) { /* vehicul nemaiîncărcat (arhivat) → rămâne doar numele */ }
+      rows.push(['Vehicul', esc(_vn)]);
       rows.push(['Când', new Date(d.at).toLocaleString('ro-RO')]);
       if (isIdle && d.idle) { // intervalul REAL al staționării (de la server: start + end/„încă în staționare")
         var _hm = function (iso) { var t = new Date(iso); var hm = t.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }); return t.toDateString() === new Date().toDateString() ? hm : (t.toLocaleDateString('ro-RO') + ' ' + hm); };
