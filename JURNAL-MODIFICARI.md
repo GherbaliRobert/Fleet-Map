@@ -20,6 +20,25 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-12
 
+### CLIENT · Secțiunea „Funcții" de pe site era rămasă în urmă — și ne subestima
+
+**Ce am schimbat:** site-ul spunea că avem **„14+ tipuri" de rapoarte**. În catalog sunt **32**.
+Ne vindeam la jumătate din cât livrăm. Corectat.
+
+Lipseau și funcții pe care le avem de mult. Am adăugat trei carduri:
+**Aplicație mobilă** (Android — harta live, fișa vehiculului, rapoarte, notificări push),
+**Mentenanță & documente** (ITP, RCA, revizii, pe dată sau pe kilometri) și
+**Istoric traseu & hartă de căldură** (reia orice cursă, lipită pe drum). Secțiunea are acum nouă
+carduri, exact trei rânduri de câte trei — nu rămâne niciun gol în grilă.
+
+**Fondatorul vede:** ce e important e ce **nu** am pus. Tahograful și e-Transportul **nu** apar,
+pentru că nu sunt gata — exact cum le-a marcat Robert în materialele de prezentare. Site-ul rămâne
+o listă cu lucruri care chiar funcționează azi. Când se termină, se adaugă.
+
+**Clientul vede:** trei funcții în plus pe pagina de prezentare și numărul corect de rapoarte.
+
+---
+
 ### CLIENT · Iconițele agenților prind viață pe site, ca în aplicație
 
 **Ce am schimbat:** în aplicație, iconițele agenților se animează când treci cursorul peste ele —
