@@ -20,6 +20,45 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-13
 
+### FONDATOR · Stivă gata de VPS propriu, probată cap-coadă — `HASH4`
+
+**Ce am schimbat:** exista deja un fișier de pornire pentru server propriu, dar el pornea aplicația
+pe **baza de date de probă** — un fișier, potrivit pentru câteva vehicule, nu pentru sute de
+milioane de rânduri. Cine l-ar fi folosit crezând că e de producție ar fi aflat târziu.
+
+Acum există o stivă separată, de producție, cu PostgreSQL adevărat. Și, odată cu ea, ghidul
+`DEPLOY-VPS.md` — cu toți pașii rulați efectiv, nu doar scriși.
+
+**Descoperirea care schimbă socoteala de costuri pe care ți-am dat-o ieri:** pe server propriu se
+activează **singur** un mecanism care pe Railway nu e disponibil deloc. El comprimă pozițiile vechi
+(cu ~85–90%) și le șterge automat după perioada stabilită. Consecințe:
+
+- **Costul de disc scade de câteva ori.** Estimările de ieri erau făcute fără compresie, pentru că
+  pe Railway compresia nu există. Pe server propriu, aceeași flotă cere un plan mai mic.
+- **Ștergerea automată nu mai depinde de memoria nimănui.** Era pe lista de dinaintea lansării
+  tocmai pentru că pornea doar dacă cineva seta o variabilă. Aici pornește de la sine.
+
+**Lucrul care face mutarea posibilă fără deplasări pe teren:** trackerele au înscris în ele un nume
+și un port. Numele e al nostru (`gps.ratrack.ro`), deci se mută printr-un rând de DNS. Portul îl
+alegem noi pe mașina noastră — **deci îl alegem pe cel pe care îl folosesc deja.** Rezultat: mutarea
+înseamnă o schimbare de DNS și **niciun tracker atins**. Ghidul insistă pe punctul ăsta, pentru că e
+diferența dintre o seară de lucru și o lună de deplasări.
+
+**Fondatorul vede:** un ghid pe care îl poate urma pas cu pas, și o stivă care pornește corect.
+
+**Clientul vede:** nimic. E despre unde rulează aplicația, nu despre ce face.
+
+> Probat pe calculator, nu presupus: stiva pornită, mecanismul de compresie confirmat activ în bază
+> (cu ambele politici înregistrate), un tracker adevărat trimițând pe portul public, iar poziția
+> regăsită în PostgreSQL. Am verificat inclusiv că baza NU e expusă pe internet.
+
+**Ceva ce am aflat pe drum și e de fapt o veste bună:** la probă, aplicația a refuzat să dea cookie
+de sesiune pe conexiune necriptată. Nu e un defect — e setarea de securitate care își face treaba.
+Merită știut, ca să nu pară eroare la prima pornire înainte ca certificatul să fie gata.
+
+---
+
+
 ### AMÂNDOI · Patru reparații care blocau lansarea — `d73cb6a`
 
 **1. Un singur tracker defect putea opri tot serverul.** Fiecare pachet primit spune la început cât e

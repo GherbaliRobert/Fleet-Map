@@ -1,0 +1,115 @@
+# RA Tracks — stivă de PRODUCȚIE pentru VPS propriu (Hostico sau oricare altul).
+#
+# Diferența față de `docker-compose.yml` (care e pentru probe și demonstrații): acolo aplicația
+# rulează pe PGlite, o bază care trăiește într-un fișier. E potrivită pentru câteva vehicule, nu
+# pentru sute de milioane de rânduri. Aici pornim PostgreSQL adevărat.
+#
+# ─── De ce imaginea TimescaleDB și nu postgres simplu ────────────────────────────────────────────
+# Aplicația ȘTIE deja să folosească TimescaleDB și o face SINGURĂ, la prima pornire, dacă extensia
+# e disponibilă: transformă tabela de poziții, o comprimă după 7 zile (~85-90% mai puțin spațiu) și
+# șterge automat ce e mai vechi de 180 de zile.
+#
+# Asta rezolvă două probleme dintr-un foc:
+#   • Discul unui VPS e FIX. Disc plin = baza se oprește = nu mai intră poziții. Compresia și
+#     ștergerea automată sunt exact ce ține discul în frâu.
+#   • Pe Postgres-ul obișnuit, ștergerea automată pornea DOAR dacă cineva seta o variabilă de
+#     mediu. Aici pornește singură — nu mai depinde de memoria nimănui.
+# Pe Railway extensia nu e disponibilă, deci nimic din toate astea nu funcționa acolo.
+#
+# ─── Pornire ─────────────────────────────────────────────────────────────────────────────────────
+#   cp .env.prod.exemplu .env && nano .env      (completează, vezi DEPLOY-VPS.md)
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  # Numele serviciului e „postgres" INTENȚIONAT: db.js recunoaște gazda asta ca fiind în rețeaua
+  # internă și dezactivează SSL-ul (o rețea privată de containere nu are certificate). PGSSL îl
+  # setăm și explicit mai jos — mai bine spus de două ori decât să depindem de o potrivire de text.
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME:-ratracks}
+      - POSTGRES_USER=${DB_USER:-ratracks}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?pune DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # NU expunem niciun port în afară: baza se vede DOAR din rețeaua containerelor. Dacă ai nevoie
+    # să te conectezi de pe laptop, fă-o printr-un tunel SSH, nu deschizând portul 5432 pe internet.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ratracks} -d ${DB_NAME:-ratracks}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy   # aplicația nu pornește înaintea bazei
+    environment:
+      - PORT=3000
+      - TCP_PORT=5027
+      - NODE_ENV=production
+      - COOKIE_SECURE=true
+      - DATABASE_URL=postgres://${DB_USER:-ratracks}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-ratracks}
+      - PGSSL=disable
+      # Pe VPS propriu nu mai suntem legați de plafonul mic de conexiuni al unui plan găzduit.
+      # Postgres acceptă 100 implicit; 24 lasă loc berechet și pentru mentenanță.
+      - PG_POOL_MAX=${PG_POOL_MAX:-24}
+      - SESSION_SECRET=${SESSION_SECRET:?pune SESSION_SECRET in .env}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?pune ADMIN_PASSWORD in .env}
+      # Câte zile de poziții păstrăm. TimescaleDB o aplică singur, ca politică pe tabelă.
+      - POSITION_RETENTION_DAYS=${POSITION_RETENTION_DAYS:-180}
+      # Adresa reală a clientului. NU o pune pe „true" decât dacă traficul chiar vine prin Cloudflare,
+      # altfel oricine își poate falsifica adresa IP într-un antet.
+      - TRUST_CF_IP=${TRUST_CF_IP:-false}
+      # Copia de rezervă în afara serverului. Fără ele, copia se face și se aruncă.
+      - BACKUP_PASSPHRASE=${BACKUP_PASSPHRASE:-}
+      - BACKUP_S3_ENDPOINT=${BACKUP_S3_ENDPOINT:-}
+      - BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET:-}
+      - BACKUP_S3_KEY=${BACKUP_S3_KEY:-}
+      - BACKUP_S3_SECRET=${BACKUP_S3_SECRET:-}
+      # Email, urmărirea erorilor, adrese — vezi .env.example pentru lista completă.
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - GEOCODE_URL=${GEOCODE_URL:-}
+      - OSRM_URL=${OSRM_URL:-}
+    volumes:
+      # Aici NU mai stă baza (e în Postgres), dar stau secretul de sesiune și cheile notificărilor
+      # din browser. Fără volumul ăsta, toți utilizatorii sunt delogați la fiecare actualizare, iar
+      # notificările din browser se rup tăcut, pentru că își schimbă cheile.
+      - appdata:/app/data
+    ports:
+      # Portul pe care ASCULTĂ trackerele, văzut din internet.
+      # ⚠ Pune aici EXACT portul pe care îl au trackerele configurate azi. Dacă până acum ați fost
+      # pe Railway, acela e portul dat de proxy-ul lor (ex. 21015) — nu 5027. Așa, mutarea înseamnă
+      # un singur rând de DNS schimbat și NICIUN tracker atins pe teren.
+      - "${TCP_PUBLIC_PORT:-5027}:5027"
+    expose:
+      - "3000"                       # web/API — accesibil doar prin Caddy, niciodată direct
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      - DOMAIN=${DOMAIN:?pune DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  appdata:
+  caddy_data:
+  caddy_config:
