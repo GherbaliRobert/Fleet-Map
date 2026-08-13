@@ -83,3 +83,8 @@
   .wr-pop { left: auto; right: 0; }
   .wr-cal, .wr-hist { width: min(300px, 88vw); }
 }
+
+/* Numărul de înmatriculare, lângă numele vehiculului în tabel (clasa exista în HTML, dar nu era stilizată) */
+.wr-plate { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  color: var(--accent); font-size: 10.5px; font-weight: 800; letter-spacing: .2px; vertical-align: middle; }
