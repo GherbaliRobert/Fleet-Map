@@ -3,6 +3,9 @@
  * Self-contained; populează containerul #weekly-report-view. */
 (function () {
   'use strict';
+  // Mesajele mergeau la window.toast, care nu există în aplicație — deci nu se vedea nimic.
+  function say(msg, kind) { if (window.raxToast) window.raxToast(msg, kind || 'success'); }
+
   function el(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function num(n, d) { return (n == null || isNaN(n)) ? (d || 0) : n; }
@@ -66,8 +69,8 @@
         // preîncarc istoricul, ca bifele „✓ are raport" din calendar să fie corecte de la prima deschidere
         var hq = '?limit=26' + (_state.companyId ? '&companyId=' + encodeURIComponent(_state.companyId) : '');
         fetch('/api/weekly-reports' + hq, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
-          .then(function (l) { _state.history = Array.isArray(l) ? l : []; }).catch(function () {});
-        if (d.report) { _state.current = d.report; render(d.report); } else renderEmpty();
+          .then(function (l) { _state.history = Array.isArray(l) ? l : []; syncToolbar(); }).catch(function () {});
+        renderEmpty();   // nu generăm/afișăm nimic automat: omul alege săptămâna și apasă „Generează"
       })
       .catch(function (e) {
         var body = el('wr-body');
@@ -156,7 +159,8 @@
     if (tb) tb.querySelectorAll('.wr-pw').forEach(function (x) { x.style.display = ''; });
     var g = el('wr-gen-btn'); if (g) g.style.display = _state.canManage ? '' : 'none';
     var w = el('wr-weekbtn'); if (w) w.style.display = _state.canManage ? '' : 'none';
-    var h = el('wr-hist-btn'); if (h) h.style.display = '';
+    var hasH = (_state.history || []).length > 0;
+    var hw = el('wr-hist-btn'); if (hw && hw.parentNode) hw.parentNode.style.display = hasH ? '' : 'none';
   }
 
   // ── Calendar propriu, în română (cel din browser e mereu în engleză) ──
@@ -371,19 +375,19 @@
     var enabled = !!cb.checked;
     fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ weekly_report: { enabled: enabled } }) })
       .then(function (r) { return r.json(); })
-      .then(function () { _state.enabled = enabled; if (window.toast) window.toast(enabled ? 'Raport săptămânal activat' : 'Raport săptămânal dezactivat'); })
+      .then(function () { _state.enabled = enabled; say(enabled ? 'Raport săptămânal activat' : 'Raport săptămânal dezactivat'); })
       .catch(function () { cb.checked = !enabled; });
   };
   window.wrGenerate = function (btn) {
     var w = window.wrPickedWeek();
-    if (!w) { if (window.toast) window.toast('Alege o săptămână din calendar', true); return; }
+    if (!w) { say('Alege o săptămână din calendar', 'error'); return; }
     var thisMon = mondayUTC(new Date());
     if (new Date(w.from).getTime() >= thisMon.getTime()) {
-      if (window.toast) window.toast('Săptămâna aceea nu s-a încheiat încă', true); return;
+      say('Săptămâna aceea nu s-a încheiat încă', 'error'); return;
     }
-    // Are deja raport → îl deschidem. Regenerarea ar consuma AI pentru aceleași cifre.
+    // Are deja raport → îl anunțăm, nu-l regenerăm. Îl găsește în „Istoric".
     var gen = (_state.history || []).filter(function (x) { return dayKeyOf(x.period_from) === dayKeyOf(w.from); })[0];
-    if (gen) { window.wrOpenReport(gen.id); return; }
+    if (gen) { say('Săptămâna ' + weekLabel(w) + ' are deja raport — îl găsești în Istoric', 'info'); return; }
 
     var payload = { from: w.from, to: w.to };
     if (_state.companyId) payload.companyId = _state.companyId;
@@ -398,8 +402,9 @@
           render(j.report);
           if (!Array.isArray(_state.history)) _state.history = [];
           _state.history.unshift(j.report);   // apare imediat în istoric și bifat în calendar
-          if (window.toast) window.toast('Raport generat');
-        } else if (window.toast) window.toast((j && j.error) || 'Eroare la generare', true);
+          syncToolbar();                      // ...iar butonul „Istoric" devine vizibil
+          say('Raport generat');
+        } else say((j && j.error) || 'Eroare la generare', 'error');
       })
       .catch(function () { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset._t || 'Generează'; } });
   };
