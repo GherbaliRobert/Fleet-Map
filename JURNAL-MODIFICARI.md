@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-13
 
-### FONDATOR · Stivă gata de VPS propriu, probată cap-coadă — `HASH4`
+### FONDATOR · Stivă gata de VPS propriu, probată cap-coadă — `b03e5d7`
 
 **Ce am schimbat:** exista deja un fișier de pornire pentru server propriu, dar el pornea aplicația
 pe **baza de date de probă** — un fișier, potrivit pentru câteva vehicule, nu pentru sute de
