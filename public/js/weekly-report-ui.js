@@ -9,7 +9,7 @@
   // Secunde → „Xh Ym" (ore+minute, nu zecimal). null dacă nu avem secunde (rapoarte vechi) → apelantul cade pe orele zecimale.
   function hm(sec) { if (sec == null || isNaN(sec)) return null; sec = Math.round(sec); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h > 0 ? (m > 0 ? h + 'h ' + m + 'm' : h + 'h') : m + 'm'; }
 
-  var _state = { canManage: false, enabled: true, recipients: [], current: null };
+  var _state = { canManage: false, enabled: true, recipients: [], current: null, history: [], week: null, calMonth: null };
 
   function ensureSkeleton() {
     var host = el('weekly-report-view'); if (!host) return null;
@@ -18,15 +18,21 @@
       '<div class="modal" style="width:1180px;max-width:97vw;max-height:94vh;display:flex;flex-direction:column;">' +
         '<h2 style="flex:0 0 auto;"><span><i class="fas fa-chart-line" style="margin-right:8px;color:var(--accent);"></i> Raport săptămânal flotă</span>' +
           '<button class="close-btn" onclick="showView(\'localizare\')" style="position:static;font-size:18px;">&#10005;</button></h2>' +
-        '<div class="wr-toolbar">' +
-          '<select id="wr-company" class="rax-field" style="width:auto;min-width:190px;margin:0;display:none;" onchange="wrSetCompany(this.value)"></select>' +
+        '<div class="wr-toolbar" id="wr-tools">' +
+          '<select id="wr-company" class="rax-field" style="width:auto;min-width:180px;margin:0;display:none;" onchange="wrSetCompany(this.value)"></select>' +
+          // calendar propriu (în română) + generare + istoric — toate lângă selectorul de companie
+          '<div class="wr-pw"><button type="button" id="wr-weekbtn" class="wr-cbtn" onclick="wrCalToggle()">' +
+            '<i class="fas fa-calendar-days"></i> <span id="wr-weeklbl">Alege săptămâna</span> <i class="fas fa-chevron-down" style="font-size:9px;opacity:.7;"></i>' +
+          '</button><div class="wr-pop wr-cal" id="wr-cal"></div></div>' +
+          '<button type="button" id="wr-gen-btn" class="wr-genbtn btn-primary" onclick="wrGenerate(this)"><i class="fas fa-bolt"></i> Generează</button>' +
+          '<div class="wr-pw"><button type="button" id="wr-hist-btn" class="wr-cbtn" onclick="wrHistToggle()">' +
+            '<i class="fas fa-clock-rotate-left"></i> Istoric <i class="fas fa-chevron-down" style="font-size:9px;opacity:.7;"></i>' +
+          '</button><div class="wr-pop wr-hist" id="wr-hist"></div></div>' +
           '<span id="wr-period" class="wr-period"></span>' +
           '<span style="flex:1"></span>' +
           '<span id="wr-admin" class="wr-admin" style="display:none;"></span>' +
         '</div>' +
-        // Ecranul de pornire: ISTORICUL primul, generarea dedesubt. Raportul se deschide peste el.
-        '<div id="wr-home" style="overflow:auto;flex:1;min-height:0;padding-right:4px;"></div>' +
-        '<div id="wr-body" style="overflow:auto;flex:1;min-height:0;padding-right:4px;display:none;">' +
+        '<div id="wr-body" style="overflow:auto;flex:1;min-height:0;padding-right:4px;">' +
           '<div class="wr-loading">Se încarcă…</div>' +
         '</div>' +
       '</div>';
@@ -51,13 +57,17 @@
         renderAdmin();
         if (_state.isSuper && !_state.companyId) { // super-admin: trebuie să aleagă o companie întâi
           _state.needsCompany = true;
-          var hh = el('wr-home'), bb = el('wr-body');
-          if (hh) hh.style.display = ''; if (bb) bb.style.display = 'none';
+          var tb = el('wr-tools'); if (tb) tb.querySelectorAll('.wr-pw,#wr-gen-btn').forEach(function (x) { x.style.display = 'none'; });
           renderPickCompany(); return;
         }
         _state.needsCompany = false;
-        // Ecranul de start = ISTORICUL, nu ultimul raport. Raportul se deschide de acolo.
-        window.wrShowHome();
+        if (!_state.week) _state.week = lastWeeks(1)[0];   // implicit: ultima săptămână încheiată
+        syncToolbar();
+        // preîncarc istoricul, ca bifele „✓ are raport" din calendar să fie corecte de la prima deschidere
+        var hq = '?limit=26' + (_state.companyId ? '&companyId=' + encodeURIComponent(_state.companyId) : '');
+        fetch('/api/weekly-reports' + hq, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+          .then(function (l) { _state.history = Array.isArray(l) ? l : []; }).catch(function () {});
+        if (d.report) { _state.current = d.report; render(d.report); } else renderEmpty();
       })
       .catch(function (e) {
         var body = el('wr-body');
@@ -78,7 +88,7 @@
   }
   window.wrSetCompany = function (v) { _state.companyId = v ? parseInt(v) : null; loadLatest(_state.companyId); };
   function renderPickCompany() {
-    var body = el('wr-home') || el('wr-body'); if (!body) return;   // ecranul de start, nu zona raportului
+    var body = el('wr-body'); if (!body) return;
     body.innerHTML = '<div class="wr-empty"><i class="fas fa-building" style="font-size:34px;color:var(--text-muted);margin-bottom:10px;"></i>' +
       '<div>Alege o companie din selectorul de sus pentru a vedea sau genera raportul săptămânal.</div></div>';
     var p = el('wr-period'); if (p) p.textContent = '';
@@ -93,7 +103,7 @@
       '<div>Niciun raport generat încă.</div>' +
       '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Raportul se generează automat în fiecare luni pentru săptămâna încheiată.' +
       (_state.canManage ? ' Sau generează-l acum:' : '') + '</div>' +
-      '<button class="btn-primary" style="margin-top:14px;max-width:260px;" onclick="wrShowHome()"><i class="fas fa-arrow-left"></i> Înapoi la istoric</button>' +
+      '<div style="color:var(--text-muted);font-size:12.5px;margin-top:10px;">Alege o săptămână din calendar și apasă „Generează", sau deschide „Istoric".</div>' +
       '</div>';
     el('wr-period') && (el('wr-period').textContent = '');
   }
@@ -121,116 +131,115 @@
   }
   function dayKeyOf(iso) { return String(iso).slice(0, 10); }
 
-  window.wrShowHome = function () {
-    var home = el('wr-home'), body = el('wr-body');
-    if (home) home.style.display = ''; if (body) body.style.display = 'none';
-    var per = el('wr-period'); if (per) per.textContent = '';
-    loadHome();
-  };
-  function loadHome() {
-    var home = el('wr-home'); if (!home) return;
-    if (_state.companyId == null && _state.needsCompany) { renderPickCompany(); return; }
-    home.innerHTML = '<div class="wr-loading">Se încarcă…</div>';
-    var qs = '?limit=26' + (_state.companyId ? '&companyId=' + encodeURIComponent(_state.companyId) : '');
-    fetch('/api/weekly-reports' + qs, { credentials: 'same-origin' })
-      .then(function (r) { return r.json(); })
-      .then(function (list) { renderHome(Array.isArray(list) ? list : []); })
-      .catch(function () { renderHome([]); });
-  }
-  function renderHome(list) {
-    var home = el('wr-home'); if (!home) return;
-    _state.history = list;
-    var done = {};                     // săptămânile deja generate, după ziua de început
-    list.forEach(function (w) { done[dayKeyOf(w.period_from)] = w.id; });
+  // ─── Bara de sus: calendar (săptămână) + Generează + Istoric ───
+  var RO_LUNI = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
+  var RO_LUNI_S = ['ian','feb','mar','apr','mai','iun','iul','aug','sep','oct','noi','dec'];
+  var RO_ZILE = ['L','M','M','J','V','S','D'];
 
-    var rows = list.map(function (w, i) {
-      var d = w.data || {}, k = d.kpi || {};
-      var km = k.totalKm != null ? num(Math.round(k.totalKm)) + ' km' : '—';
-      var veh = k.vehiclesActive != null ? k.vehiclesActive + ' vehicule active' : '';
+  function weekOf(d) { var m = mondayUTC(d); return { from: m.toISOString(), to: new Date(m.getTime() + 7 * 864e5).toISOString() }; }
+  function weekLabel(w) {
+    var a = new Date(w.from), b = new Date(new Date(w.to).getTime() - 864e5);
+    var same = a.getUTCMonth() === b.getUTCMonth();
+    return a.getUTCDate() + (same ? '' : ' ' + RO_LUNI_S[a.getUTCMonth()]) + ' – ' + b.getUTCDate() + ' ' + RO_LUNI_S[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
+  }
+  function dayKeyOf(iso) { return String(iso).slice(0, 10); }
+  function lastWeeks(n) {
+    var t = mondayUTC(new Date()), o = [];
+    for (var i = 1; i <= n; i++) { var f = new Date(t.getTime() - i * 7 * 864e5); o.push({ from: f.toISOString(), to: new Date(f.getTime() + 7 * 864e5).toISOString() }); }
+    return o;
+  }
+  function syncToolbar() {
+    var lbl = el('wr-weeklbl'); if (lbl) lbl.textContent = _state.week ? weekLabel(_state.week) : 'Alege săptămâna';
+    var g = el('wr-gen-btn'); if (g) g.style.display = _state.canManage ? '' : 'none';
+    var h = el('wr-hist-btn'); if (h) h.style.display = '';
+    var w = el('wr-weekbtn'); if (w) w.style.display = _state.canManage ? '' : 'none';
+  }
+
+  // ── Calendar propriu, în română (cel din browser e mereu în engleză) ──
+  window.wrCalToggle = function () {
+    var p = el('wr-cal'); if (!p) return;
+    var open = p.style.display !== 'block';
+    closePops(); if (open) { p.style.display = 'block'; renderCal(); }
+  };
+  function renderCal() {
+    var p = el('wr-cal'); if (!p) return;
+    var cur = _state.calMonth ? new Date(_state.calMonth) : new Date(_state.week ? _state.week.from : Date.now());
+    var y = cur.getUTCFullYear(), m = cur.getUTCMonth();
+    _state.calMonth = Date.UTC(y, m, 1);
+    var first = mondayUTC(new Date(Date.UTC(y, m, 1)));
+    var thisMon = mondayUTC(new Date());
+    var sel = _state.week ? dayKeyOf(_state.week.from) : null;
+    var done = {}; (_state.history || []).forEach(function (x) { done[dayKeyOf(x.period_from)] = 1; });
+
+    var rows = '';
+    for (var r = 0; r < 6; r++) {
+      var ws = new Date(first.getTime() + r * 7 * 864e5);
+      var key = dayKeyOf(ws.toISOString());
+      if (r > 0 && ws.getUTCMonth() !== m && ws > new Date(Date.UTC(y, m, 1))) break;
+      var future = ws.getTime() >= thisMon.getTime();
+      var cells = '';
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(ws.getTime() + i * 864e5);
+        cells += '<span class="wr-cd' + (d.getUTCMonth() === m ? '' : ' out') + '">' + d.getUTCDate() + '</span>';
+      }
+      rows += '<button type="button" class="wr-cw' + (key === sel ? ' sel' : '') + (future ? ' off' : '') + '"' +
+        (future ? ' disabled title="Săptămâna nu s-a încheiat"' : ' onclick="wrCalPick(\'' + ws.toISOString() + '\')"') + '>' +
+        cells + '<span class="wr-cflag">' + (done[key] ? '✓' : '') + '</span></button>';
+    }
+    p.innerHTML =
+      '<div class="wr-cnav"><button type="button" onclick="wrCalMove(-1)" aria-label="Luna anterioară">‹</button>' +
+        '<b>' + RO_LUNI[m] + ' ' + y + '</b>' +
+        '<button type="button" onclick="wrCalMove(1)" aria-label="Luna următoare">›</button></div>' +
+      '<div class="wr-chead">' + RO_ZILE.map(function (z) { return '<span>' + z + '</span>'; }).join('') + '<span></span></div>' +
+      rows +
+      '<div class="wr-chint">Alegi o săptămână întreagă (luni–duminică). ✓ = are deja raport.</div>';
+  }
+  window.wrCalMove = function (dir) {
+    var d = new Date(_state.calMonth);
+    _state.calMonth = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + dir, 1);
+    renderCal();
+  };
+  window.wrCalPick = function (iso) {
+    _state.week = weekOf(new Date(iso));
+    closePops(); syncToolbar();
+  };
+
+  // ── Istoric: se deschide la buton, nu stă înșirat pe pagină ──
+  window.wrHistToggle = function () {
+    var p = el('wr-hist'); if (!p) return;
+    var open = p.style.display !== 'block';
+    closePops();
+    if (!open) return;
+    p.style.display = 'block';
+    p.innerHTML = '<div class="wr-loading" style="padding:14px;">Se încarcă…</div>';
+    var qs = '?limit=26' + (_state.companyId ? '&companyId=' + encodeURIComponent(_state.companyId) : '');
+    fetch('/api/weekly-reports' + qs, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      .then(function (list) { _state.history = Array.isArray(list) ? list : []; renderHist(); })
+      .catch(function () { _state.history = []; renderHist(); });
+  };
+  function renderHist() {
+    var p = el('wr-hist'); if (!p) return;
+    var list = _state.history || [];
+    if (!list.length) { p.innerHTML = '<div class="wr-hempty">Niciun raport generat încă.</div>'; return; }
+    p.innerHTML = list.map(function (w, i) {
+      var k = (w.data && w.data.kpi) || {};
+      var meta = (k.totalKm != null ? num(Math.round(k.totalKm)) + ' km' : '') + (k.vehiclesActive != null ? ' · ' + k.vehiclesActive + ' active' : '');
       return '<button type="button" class="wr-hrow" onclick="wrOpenReport(' + w.id + ')">' +
         '<span class="wr-hdot"' + (i === 0 ? ' data-last="1"' : '') + '></span>' +
         '<span class="wr-hper">' + esc(weekLabel({ from: w.period_from, to: w.period_to })) + '</span>' +
-        '<span class="wr-hkpi">' + esc(km) + (veh ? ' · ' + esc(veh) : '') + '</span>' +
-        '<span class="wr-hgo">Deschide <i class="fas fa-chevron-right"></i></span>' +
-      '</button>';
+        '<span class="wr-hkpi">' + esc(meta) + '</span></button>';
     }).join('');
-
-    // Calendar pe SĂPTĂMÂNI: browserul arată o lună și lasă să alegi un rând întreg (o săptămână).
-    // Unde `type="week"` nu e suportat (Firefox/Safari), cădem pe un calendar normal și potrivim
-    // singuri săptămâna din ziua aleasă — tot o săptămână iese, omul nu poate cere miercuri–vineri.
-    var lastW = lastWeeks(1)[0];
-
-    home.innerHTML =
-      '<div class="wr-sec-t">Istoric rapoarte' + (list.length ? ' <span class="wr-cnt">' + list.length + '</span>' : '') + '</div>' +
-      (rows ? '<div class="wr-hlist">' + rows + '</div>'
-            : '<div class="wr-empty" style="padding:26px 10px;"><i class="fas fa-chart-line" style="font-size:30px;color:var(--text-muted);margin-bottom:8px;"></i>' +
-              '<div>Niciun raport generat încă.</div>' +
-              '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Se generează automat în fiecare luni, pentru săptămâna încheiată. Sau alege una din calendar.</div></div>') +
-      (_state.canManage
-        ? '<div class="wr-gen">' +
-            '<div class="wr-sec-t" style="margin-top:0;">Generează o săptămână</div>' +
-            '<div class="wr-genrow">' +
-              '<input type="week" id="wr-week" class="rax-field" style="margin:0;width:auto;min-width:190px;" onchange="wrWeekPick()">' +
-              '<button class="btn-primary wr-genbtn" onclick="wrGenerate(this)"><i class="fas fa-bolt"></i> Generează</button>' +
-            '</div>' +
-            '<div class="wr-genhint" id="wr-weekinfo"></div>' +
-          '</div>'
-        : '');
-
-    var inp = el('wr-week');
-    if (inp) {
-      if (inp.type !== 'week') {                       // browser fără suport → calendar pe zile
-        inp.type = 'date';
-        inp.title = 'Alege o zi — se ia săptămâna din care face parte';
-      }
-      setWeekInput(inp, lastW.from);                   // implicit: ultima săptămână încheiată
-      window.wrWeekPick();
-    }
   }
-  // Scrie în input săptămâna care conține ziua dată (ISO).
-  function setWeekInput(inp, iso) {
-    var d = new Date(iso);
-    if (inp.type === 'week') {
-      var t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-      t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));            // joi din săptămâna ISO
-      var y1 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
-      var wk = Math.ceil((((t - y1) / 864e5) + 1) / 7);
-      inp.value = t.getUTCFullYear() + '-W' + String(wk).padStart(2, '0');
-    } else {
-      inp.value = d.toISOString().slice(0, 10);
-    }
+  function closePops() {
+    ['wr-cal', 'wr-hist'].forEach(function (id) { var x = el(id); if (x) x.style.display = 'none'; });
   }
-  // Săptămâna aleasă, normalizată Luni→Luni. Întoarce null dacă nu e nimic ales.
-  window.wrPickedWeek = function () {
-    var inp = el('wr-week'); if (!inp || !inp.value) return null;
-    var base;
-    if (inp.type === 'week') {
-      var m = /^(\d{4})-W(\d{1,2})$/.exec(inp.value); if (!m) return null;
-      var jan4 = new Date(Date.UTC(+m[1], 0, 4));
-      base = new Date(jan4.getTime() + (parseInt(m[2], 10) - 1) * 7 * 864e5);
-    } else {
-      base = new Date(inp.value + 'T00:00:00Z'); if (isNaN(base.getTime())) return null;
-    }
-    var from = mondayUTC(base);
-    return { from: from.toISOString(), to: new Date(from.getTime() + 7 * 864e5).toISOString() };
-  };
-  // Arată ce săptămână s-a ales și dacă are deja raport.
-  window.wrWeekPick = function () {
-    var info = el('wr-weekinfo'); if (!info) return;
-    var w = window.wrPickedWeek();
-    if (!w) { info.textContent = 'Alege o săptămână din calendar.'; return; }
-    var thisMon = mondayUTC(new Date());
-    if (new Date(w.from).getTime() >= thisMon.getTime()) {   // săptămâna curentă/viitoare nu e încheiată
-      info.innerHTML = '<span style="color:var(--orange);">Săptămâna ' + esc(weekLabel(w)) + ' nu s-a încheiat încă — alege una trecută.</span>';
-      return;
-    }
-    var gen = (_state.history || []).filter(function (x) { return dayKeyOf(x.period_from) === dayKeyOf(w.from); })[0];
-    info.innerHTML = 'Săptămâna aleasă: <b>' + esc(weekLabel(w)) + '</b>' +
-      (gen ? ' · <span style="color:var(--accent);">are deja raport — se deschide cel existent</span>' : '');
-  };
+  document.addEventListener('click', function (e) {
+    var t = el('wr-tools'); if (t && !t.contains(e.target)) closePops();
+  });
+
   window.wrOpenReport = function (id) {
-    var home = el('wr-home'), body = el('wr-body');
-    if (home) home.style.display = 'none';
+    closePops();
+    var body = el('wr-body');
     if (body) { body.style.display = ''; body.innerHTML = '<div class="wr-loading">Se încarcă…</div>'; }
     fetch('/api/weekly-report/' + parseInt(id), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
       .then(function (w) { if (w && w.data) { _state.current = w; render(w); } else renderEmpty(); })
@@ -272,8 +281,6 @@
     var d = w.data || {}; var k = d.kpi || {}; var rk = d.rankings || {}; var s = d.series || {};
     var pj = el('wr-period'); if (pj) pj.textContent = fmtDate(w.period_from) + ' — ' + fmtDateEnd(w.period_to) + ' (Luni–Duminică)';
 
-    var back = '<button type="button" class="wr-back" onclick="wrShowHome()"><i class="fas fa-arrow-left"></i> Înapoi la istoric</button>';
-
     var kpis = '<div class="wr-kpi">' +
       kpiCard(num(k.vehiclesActive) + ' / ' + num(k.vehiclesTotal), 'Vehicule active', '', 'var(--accent)') +
       kpiCard(num(k.totalKm) + ' km', 'Distanță totală', '', 'var(--accent)') +
@@ -294,7 +301,7 @@
 
     var ai = '<div class="wr-ai"><div class="wr-ai-title"><i class="fas fa-robot"></i> Analiză automată</div><div class="wr-ai-body">' + aiHtml(w.ai_analysis) + '</div></div>';
 
-    body.innerHTML = back + kpis + charts + ai + tableHtml(d.perVehicle || []);
+    body.innerHTML = kpis + charts + ai + tableHtml(d.perVehicle || []);
     drawCharts(d);
   }
 
@@ -383,9 +390,10 @@
         if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset._t || 'Generează'; }
         if (j && j.report) {
           _state.current = j.report;
-          var home = el('wr-home'), body = el('wr-body');
-          if (home) home.style.display = 'none'; if (body) body.style.display = '';
+          var body = el('wr-body'); if (body) body.style.display = '';
           render(j.report);
+          if (!Array.isArray(_state.history)) _state.history = [];
+          _state.history.unshift(j.report);   // apare imediat în istoric și bifat în calendar
           if (window.toast) window.toast('Raport generat');
         } else if (window.toast) window.toast((j && j.error) || 'Eroare la generare', true);
       })
