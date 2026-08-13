@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-13
 
-### AMÂNDOI · Patru reparații care blocau lansarea — `HASH3`
+### AMÂNDOI · Patru reparații care blocau lansarea — `d73cb6a`
 
 **1. Un singur tracker defect putea opri tot serverul.** Fiecare pachet primit spune la început cât e
 de lung. Câmpul acela permite până la **4 gigaocteți**, iar serverul aduna cuminte în memorie până
