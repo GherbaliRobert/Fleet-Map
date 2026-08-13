@@ -20,9 +20,16 @@
 .msb-toggle .msb-count .msb-tot { opacity: .6; font-weight: 700; margin-left: 1px; }
 .msb-toggle .msb-cv { font-size: 9px; opacity: .75; margin-left: 1px; transition: transform .2s ease; }
 .msb-toggle.open .msb-cv { transform: rotate(180deg); }
-/* „filtrat" = harta nu arată toate vehiculele → semnal portocaliu, ca să știi că e un filtru activ. */
-.msb-toggle.filtered { background: var(--orange, #f97316); color: #2a1102; box-shadow: 0 2px 8px rgba(249,115,22,.32); }
-.msb-toggle.filtered:hover { box-shadow: 0 5px 16px rgba(249,115,22,.42); }
+/* Pastila rămâne VERDE și când urmărești doar o parte din flotă: a filtra e o alegere normală, nu o
+   problemă. Portocaliul de dinainte arăta ca un avertisment. Cât vezi din total spune deja contorul
+   („1/2"), iar mai jos, sub el, scrie explicit câte sunt ascunse. */
+.msb-toggle.filtered .msb-count .msb-tot { opacity: .75; }
+.msb-note {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 1199;
+  font-size: 11.5px; font-weight: 600; color: var(--text-muted);
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 4px 10px; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.25);
+}
 .msb-dropdown {
   position: absolute; top: calc(100% + 8px); right: 0; width: 320px; max-width: 90vw; max-height: 60vh; overflow: hidden;
   z-index: 1200;

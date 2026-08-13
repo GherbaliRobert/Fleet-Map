@@ -1,5 +1,5 @@
 // Service worker — PWA (instalabil + shell offline) + Web Push pentru RA Track
-const CACHE = 'ratracks-v192';
+const CACHE = 'ratracks-v193';
 const SHELL = ['/app', '/index.html', '/css/app.css', '/manifest.json', '/icon.svg', '/icon-192.png', '/logo-mark.png', '/logo-mark-light.png', '/vendor/leaflet-heat.js'];
 
 self.addEventListener('install', function (e) {
@@ -21,9 +21,12 @@ self.addEventListener('fetch', function (e) {
   const url = new URL(req.url);
   // Nu intercepta API, WebSocket sau alt origin — datele sunt mereu live
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api')) return;
-  // HTML + CSS: network-first (cod proaspăt la fiecare actualizare), cu fallback offline.
+  // HTML + CSS + JS: network-first (cod proaspăt la fiecare actualizare), cu fallback offline.
   // CSS-ul era cache-first => actualizarile de stil nu apareau pana la schimbarea versiunii cache.
-  if (req.mode === 'navigate' || url.pathname.endsWith('.css')) {
+  // JS-ul avea ACEEAȘI problemă, dar mai gravă: index.html (network-first) se actualiza, iar fișierele
+  // din /js rămâneau vechi => cod nou care apelează funcții pe care fișierul vechi nu le cheamă niciodată.
+  // Așa a apărut „am debifat sus, lista din stânga n-a reacționat": map-tools.js era versiunea din cache.
+  if (req.mode === 'navigate' || url.pathname.endsWith('.css') || url.pathname.endsWith('.js')) {
     e.respondWith(
       fetch(req).then(res => {
         const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy));

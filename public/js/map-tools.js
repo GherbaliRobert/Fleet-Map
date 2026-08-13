@@ -13,10 +13,18 @@
   function selCount() { return (window._mapSel instanceof Set) ? window._mapSel.size : allImeis().length; }
   function updateCount() {
     var b = el('msb-count'); if (!b) return;
-    var sel = selCount(), tot = allImeis().length;
+    var sel = selCount(), tot = allImeis().length, hidden = tot - sel;
     b.innerHTML = '<b>' + sel + '</b><span class="msb-tot">/' + tot + '</span>';
-    // „filtrat" = nu toate vehiculele sunt afișate → pastila devine portocalie ca semnal vizual.
-    var tg = el('msb-toggle'); if (tg) tg.classList.toggle('filtered', sel < tot);
+    var tg = el('msb-toggle'); if (tg) tg.classList.toggle('filtered', hidden > 0);
+    // În loc să colorăm pastila în portocaliu (părea avertisment), spunem simplu câte sunt ascunse.
+    // Nota dispare singură când urmărești toată flota și nu se suprapune peste dropdown-ul deschis.
+    var bar = document.getElementById('map-search-bar'); if (!bar) return;
+    var note = el('msb-note');
+    var ddOpen = (el('msb-dropdown') || {}).style && el('msb-dropdown').style.display === 'block';
+    if (hidden > 0 && !ddOpen) {
+      if (!note) { note = document.createElement('div'); note.id = 'msb-note'; note.className = 'msb-note'; bar.appendChild(note); }
+      note.textContent = hidden === 1 ? '1 vehicul ascuns' : (hidden + ' vehicule ascunse');
+    } else if (note) { note.remove(); }
   }
 
   // Aplică selecția pe toți markerii (afișează doar bifații) ȘI pe lista din stânga.
@@ -70,8 +78,8 @@
     });
     updateCount();
   }
-  function openDropdown() { el('msb-dropdown').style.display = 'block'; var t = el('msb-toggle'); if (t) t.classList.add('open'); renderList(); }
-  function closeDropdown() { var d = el('msb-dropdown'); if (d) d.style.display = 'none'; var t = el('msb-toggle'); if (t) t.classList.remove('open'); }
+  function openDropdown() { el('msb-dropdown').style.display = 'block'; var t = el('msb-toggle'); if (t) t.classList.add('open'); renderList(); updateCount(); }
+  function closeDropdown() { var d = el('msb-dropdown'); if (d) d.style.display = 'none'; var t = el('msb-toggle'); if (t) t.classList.remove('open'); updateCount(); }
   function toggleDropdown() { var d = el('msb-dropdown'); if (d.style.display === 'none') openDropdown(); else closeDropdown(); }
 
   // ── Grupuri în dropdown (filtrare pe categorie) ──
