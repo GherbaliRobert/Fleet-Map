@@ -146,6 +146,22 @@ doborâtă de un tracker stricat, iar conturile închise rămân închise.
 
 ## 2026-08-12
 
+### CLIENT · „Statistici": scoasă bara de stare care repeta cadranele din Localizare
+
+**Ce am schimbat:** pagina Statistici avea o bară „Status flotă acum" cu În mișcare / Staționat /
+Oprit / Offline. Exact aceleași patru cifre stau în **Localizare**, în cadranele de sus — unde sunt
+și mai bune: **le apeși și îți filtrează lista**. Aici erau doar cifre moarte, pe care le vedeai a
+doua oară.
+
+Am păstrat **„Ore motor azi"**, care stătea în același bloc — asta nu se găsește în altă parte.
+
+**Fondatorul vede:** au fost scoase și calculul barei, și stilurile ei, ca să nu rămână cod fără
+obiect. Blocul cu constatările agenților a rămas neatins, la cererea voastră.
+
+**Clientul vede:** pagina Statistici e mai scurtă și nu mai repetă ce a văzut deja pe hartă.
+
+---
+
 ### CLIENT · Fișa vehiculului: două butoane scoase, iar din rapoarte dispar iconițele de mașină
 
 **Ce am schimbat:** când dai click pe o mașină, panoul de detalii avea patru butoane: Info, Rute,

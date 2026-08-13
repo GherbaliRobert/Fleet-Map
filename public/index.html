@@ -869,7 +869,9 @@
         </div>
         <!-- HERO KPI (4 carduri mari) + bară status -->
         <div id="dash-hero" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;"></div>
-        <div class="chart-section-title"><i class="fas fa-signal" style="color:var(--accent);margin-right:6px;"></i>Status flotă acum</div>
+        <!-- Bara „Status flotă acum" (În mișcare/Staționat/Oprit/Offline) a fost scoasă: repeta exact
+             cadranele din „Localizare", unde sunt și clicabile (filtrează lista). Containerul rămâne —
+             ține „Ore motor azi", care nu se găsește în altă parte. -->
         <div id="dash-status" style="margin-bottom:20px;"></div>
 
         <!-- Constatări agenți AI -->
@@ -12786,29 +12788,9 @@ const pozitii = await r.json();</code></pre>
           heroCard('fa-gas-pump', 'var(--orange)', 'var(--orange)', 'Consum azi', d.totalFuel, ' L', _consPer100) +
           heroCard('fa-bell', (_alertOn ? 'var(--red)' : 'var(--green)'), (_alertOn ? 'var(--red)' : 'var(--green)'), 'Alerte', d.totalAlerts, '', (_alertOn ? d.totalAlerts + ' necitite' : 'nicio alertă'));
 
-        // ─── Bară status (În mișcare / Staționat / Oprit / Offline) — CSS flex, nu Chart.js ───
-        var _moving = d.movingCount || 0, _stat = d.stationatCount || 0;
-        var _oprit = Math.max(0, (d.onlineCount || 0) - _moving - _stat), _offline = d.offlineCount || 0;
-        var _tot = d.totalDevices || 0;
-        var _segs = [
-          { n: _moving, c: 'var(--green)', tc: '#0f3d22', lbl: 'În mișcare' },
-          { n: _stat, c: 'var(--yellow)', tc: '#3a2e05', lbl: 'Staționat' },
-          { n: _oprit, c: 'var(--red)', tc: '#fff', lbl: 'Oprit' },
-          { n: _offline, c: 'var(--text-muted)', tc: '#fff', lbl: 'Offline' }
-        ];
-        var barHtml = '', legHtml = '';
-        if (_tot > 0) {
-          _segs.forEach(function (s) {
-            if (s.n <= 0) return;
-            var pct = Math.round(s.n / _tot * 100), showTxt = (s.n / _tot) > 0.12;
-            barHtml += '<span title="' + s.lbl + ': ' + s.n + ' (' + pct + '%)" style="flex:' + s.n + ';min-width:2px;background:' + s.c + ';color:' + s.tc + '">' + (showTxt ? s.n + ' · ' + pct + '%' : '') + '</span>';
-          });
-        } else { barHtml = '<span style="flex:1;background:var(--bg-panel);color:var(--text-muted);font-weight:600;">Fără vehicule</span>'; }
-        _segs.forEach(function (s) { legHtml += '<span style="opacity:' + (s.n > 0 ? 1 : .45) + '"><i class="dot" style="background:' + s.c + '"></i>' + s.lbl + ' <b>' + s.n + '</b></span>'; });
+        // ─── Ore motor azi ─── (bara de status a fost scoasă: repeta cadranele din „Localizare")
         document.getElementById('dash-status').innerHTML =
-          '<div class="dash-statbar">' + barHtml + '</div>' +
-          '<div class="dash-statleg">' + legHtml + '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:9px;"><i class="fas fa-clock"></i> Ore motor azi: <b>' + (d.totalEngineTime > 0 ? formatDuration(d.totalEngineTime) : '0h 0m') + '</b></div>';
+          '<div style="font-size:11px;color:var(--text-muted);"><i class="fas fa-clock"></i> Ore motor azi: <b>' + (d.totalEngineTime > 0 ? formatDuration(d.totalEngineTime) : '0h 0m') + '</b></div>';
 
         var _fn = document.getElementById('dash-fleet-n'); if (_fn) _fn.textContent = '(' + (d.totalDevices || 0) + ')';
 
