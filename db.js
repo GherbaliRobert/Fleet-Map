@@ -674,6 +674,9 @@ async function initDb() {
         ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_months INTEGER; -- recurență: următoarea scadență la +N luni după „efectuat"
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS photo_b64 TEXT;
+        -- Categoriile de pe permis, ca listă scurtă („B,C,CE"). Codurile valide și încadrarea
+        -- (șofer / șofer profesionist) stau în license_cats.js — aici păstrăm doar textul.
+        ALTER TABLE drivers ADD COLUMN IF NOT EXISTS license_categories TEXT;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS description VARCHAR(255);
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS category VARCHAR(60);
@@ -2793,16 +2796,16 @@ async function setDriversCompanyBulk(ids, companyId) {
 
 async function createDriver(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO drivers (name, phone, email, license_number, license_expiry, photo_b64, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-    [data.name, data.phone, data.email, data.license_number, data.license_expiry, data.photo_b64 || null, companyId || null]
+    'INSERT INTO drivers (name, phone, email, license_number, license_expiry, photo_b64, license_categories, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+    [data.name, data.phone, data.email, data.license_number, data.license_expiry, data.photo_b64 || null, data.license_categories || null, companyId || null]
   );
   return result.rows[0];
 }
 
 async function updateDriver(id, data) {
   await pool.query(
-    'UPDATE drivers SET name=$2, phone=$3, email=$4, license_number=$5, license_expiry=$6, photo_b64=$7 WHERE id=$1',
-    [id, data.name, data.phone, data.email, data.license_number, data.license_expiry, data.photo_b64 || null]
+    'UPDATE drivers SET name=$2, phone=$3, email=$4, license_number=$5, license_expiry=$6, photo_b64=$7, license_categories=$8 WHERE id=$1',
+    [id, data.name, data.phone, data.email, data.license_number, data.license_expiry, data.photo_b64 || null, data.license_categories || null]
   );
 }
 

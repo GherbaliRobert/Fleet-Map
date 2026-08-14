@@ -58,6 +58,39 @@ zi — ca să-i punem preț pe cifre, nu din burtă, exact ca la RA Insight.
 
 ## 2026-08-13
 
+### CLIENT · Categorii de permis pe fiecare șofer, cu încadrare automată și raport
+
+**Ce am schimbat:** în fișa șoferului există acum **toate categoriile de pe permisul românesc** — de la
+AM și A1 până la CE, DE, tractor, troleibuz și tramvai. Le bifezi ca pe niște butoane, grupate exact
+ca pe act: Moto, Auto, Marfă, Persoane, Speciale.
+
+**Încadrarea se face singură.** Dacă bifezi o categorie de marfă sau de persoane (C, CE, D, DE și
+rudele lor), omul devine **„Șofer profesionist"**. Dacă are doar A, B, BE sau tractor, rămâne
+**„Șofer"**. Se vede pe loc, sub bife, iar în listă apare o etichetă lângă nume. Categoriile care
+schimbă încadrarea au un punct lângă cod, ca să se vadă de ce.
+
+**Raportul cerut:** la *Rapoarte → Monitorizare* e unul nou, **„Șoferi — categorii de permis"**. Îți
+spune dintr-o generare: **câți profesioniști ai, câți șoferi obișnuiți, câți n-au nimic completat,
+câte permise sunt expirate și câte expiră în 30 de zile** — plus, pe fiecare om, ce categorii are, ce
+permis, când expiră și pe ce mașini e pus. Are și două grafice: încadrarea flotei de oameni și câți
+șoferi ai pe fiecare categorie (util când vrei să știi câți oameni cu CE ai, de fapt).
+
+**Fondatorul vede:** la fel, plus compania fiecărui șofer. În catalogul de rapoarte sunt acum 33.
+
+**Clientul vede:** o listă de bife în fișa șoferului, o etichetă în listă și un raport nou.
+
+**Ce am avut grijă să NU stric:** lista de categorii și regula „ce înseamnă profesionist" stau
+**într-un singur fișier**. Formularul, lista și raportul o citesc pe aceeași. Dacă mâine se schimbă
+legea și o categorie trece dintr-o parte în alta, se schimbă într-un loc și se vede peste tot — nu
+rămâne o listă veche prin colțuri, cum s-a întâmplat cu descrierile agenților.
+
+> Verificat pe cod real: 44 de controale automate — inclusiv cazurile murdare (categorii inventate
+> trimise din afară, scrise cu litere mici, duplicate, separatori amestecați) și numărătoarea din
+> raport pe o flotă cu profesioniști, șoferi obișnuiți, neîncadrați și permise expirate.
+
+---
+
+
 ### AMÂNDOI · Șoferi: ecranul spune acum dacă permisul e valabil și pe ce mașină e omul
 
 **Ce am schimbat:** lista de șoferi arăta doar numele și compania. Restul datelor existau în fișă,

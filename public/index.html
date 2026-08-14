@@ -1792,7 +1792,10 @@ const pozitii = await r.json();</code></pre>
           body.dark .drv-av.c4 { background: rgba(251, 146, 60, .16); color: #FB923C; }
           body.dark .drv-av.c5 { background: rgba(244, 114, 182, .16); color: #F472B6; }
 
-          .drv-nm { font-weight: 800; font-size: 14px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          /* Numele se scurtează cu „…", dar eticheta de încadrare rămâne mereu întreagă. */
+          .drv-nm { font-weight: 800; font-size: 14px; color: var(--text-primary); display: flex; align-items: center; min-width: 0; }
+          .drv-nm-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .drv-tag { flex: 0 0 auto; }
           .drv-sub { font-size: 11.5px; color: var(--text-muted); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .drv-line { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-secondary); font-weight: 600; min-width: 0; }
           .drv-line + .drv-line { margin-top: 3px; }
@@ -1810,6 +1813,26 @@ const pozitii = await r.json();</code></pre>
           .drv-act { display: flex; gap: 7px; justify-content: flex-end; }
           .drv-act .btn-sm { width: 34px; height: 34px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
           .drv-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+          /* ── Categorii de permis: bife sub formă de pastile, grupate ca pe act ── */
+          .drv-cats { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 8px; }
+          .drv-cg { display: flex; flex-direction: column; gap: 4px; }
+          .drv-cg-t { font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); }
+          .drv-cg-b { display: flex; flex-wrap: wrap; gap: 5px; }
+          .drv-cat { min-width: 38px; height: 30px; padding: 0 9px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-secondary); font-family: inherit; font-size: 12px; font-weight: 800; cursor: pointer; transition: all .12s ease; }
+          .drv-cat:hover { border-color: var(--accent); color: var(--text-primary); }
+          .drv-cat.on { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 6px rgba(63, 224, 125, .3); }
+          /* Categoriile care fac un șofer „profesionist" au un punct, ca să se vadă de ce s-a schimbat încadrarea. */
+          .drv-cat.pro::after { content: '•'; margin-left: 4px; opacity: .55; }
+          .drv-cls { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; padding: 5px 11px; border-radius: 20px; }
+          .drv-cls.pro { background: rgba(63, 224, 125, .14); color: var(--drv-ink); border: 1px solid rgba(63, 224, 125, .4); }
+          .drv-cls.basic { background: var(--bg-dark); color: var(--text-secondary); border: 1px solid var(--border-light); }
+          .drv-cls.none { background: var(--bg-dark); color: var(--text-muted); border: 1px solid var(--border); font-weight: 600; }
+          /* Eticheta din listă, lângă nume */
+          .drv-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; margin-left: 7px; vertical-align: 1px; white-space: nowrap; }
+          .drv-tag.pro { background: rgba(63, 224, 125, .16); color: var(--drv-ink); }
+          .drv-tag.basic { background: var(--bg-dark); color: var(--text-muted); }
+          .drv-catlist { font-size: 11px; font-weight: 800; color: var(--text-secondary); letter-spacing: .3px; margin-top: 4px; }
         </style>
         <div id="atab-drivers" class="admin-tab-content" style="display:none;">
           <div class="toolbar-row">
@@ -1848,6 +1871,11 @@ const pozitii = await r.json();</code></pre>
             <label><span>Email</span><input type="email" id="drv-email"></label>
             <label><span>Nr. permis</span><input type="text" id="drv-license"></label>
             <label><span>Expirare permis</span><input type="date" id="drv-expiry"></label>
+            <div style="grid-column:1/-1;">
+              <span style="font-size:12px;color:var(--text-secondary);">Categorii permis</span>
+              <div id="drv-cats" class="drv-cats"></div>
+              <div id="drv-class"></div>
+            </div>
             <label class="super-only"><span>Companie *</span><select id="drv-company" style="font-family:inherit;padding:6px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);width:100%;"></select></label>
             <div style="display:flex;align-items:flex-end;gap:6px;">
               <button class="btn-sm btn-primary" onclick="saveDriver()" style="flex:1;"><i class="fas fa-save"></i> <span id="drv-btn">Adaugă</span></button>
@@ -2766,6 +2794,9 @@ const pozitii = await r.json();</code></pre>
   <script src="/js/demo-modules-ui.js?v=2"></script>
   <script src="/js/map-tools.js?v=7"></script>
   <script src="/js/vehicle-popup.js?v=7"></script>
+  <!-- Categoriile de permis + care sunt „profesioniste" — generate de server din license_cats.js.
+       Interfața NU ține o listă proprie: adaugi o categorie acolo, apare aici fără altă modificare. -->
+  <script src="/js/license-cats.js"></script>
   <script>
     // ─── Global State ───
     // Escape HTML — GLOBAL pentru acest bloc de script. Mai multe funcții își definesc un `esc` LOCAL (care
@@ -4204,10 +4235,13 @@ const pozitii = await r.json();</code></pre>
         const contact = (d.phone ? `<div class="drv-line"><i class="fas fa-phone"></i><span>${esc(d.phone)}</span></div>` : '')
           + (d.email ? `<div class="drv-line"><i class="fas fa-envelope"></i><span>${esc(d.email)}</span></div>` : '')
           || '<span class="drv-none">fără telefon</span>';
-        const lic = L.st === 'none'
+        const cats = String(d.license_categories || '').split(',').map(s => s.trim()).filter(Boolean);
+        const K = drvClassify(cats);
+        const catRow = cats.length ? `<div class="drv-catlist">${esc(cats.join(' · '))}</div>` : '';
+        const lic = (L.st === 'none' && !cats.length)
           ? '<span class="drv-pill none">fără permis în fișă</span>'
-          : `<div class="drv-line"><i class="fas fa-id-card"></i><span>${esc(L.num) || '—'}</span></div>`
-            + (L.st === 'nodate' ? '<span class="drv-pill none" style="margin-top:5px;">fără dată de expirare</span>'
+          : `<div class="drv-line"><i class="fas fa-id-card"></i><span>${esc(L.num) || '—'}</span></div>` + catRow
+            + (L.st === 'nodate' || L.st === 'none' ? '<span class="drv-pill none" style="margin-top:5px;">fără dată de expirare</span>'
               : `<div><span class="drv-pill ${L.st}">${L.st === 'exp' ? 'expirat de ' + (-L.days) + ' zile' : L.st === 'soon' ? (L.days === 0 ? 'expiră azi' : 'mai are ' + L.days + (L.days === 1 ? ' zi' : ' zile')) : 'până ' + L.date}</span></div>`);
         const vs = driverVehicles(d.id);
         const veh = vs.length
@@ -4215,7 +4249,7 @@ const pozitii = await r.json();</code></pre>
           : '<span class="drv-none">nealocat</span>';
         return `<div class="drv-row">
           <div class="drv-c-av">${av}</div>
-          <div class="drv-c-who"><div class="drv-nm">${esc(d.name)}</div>${showCo && d.company_name ? `<div class="drv-sub">${esc(d.company_name)}</div>` : ''}</div>
+          <div class="drv-c-who"><div class="drv-nm"><span class="drv-nm-t">${esc(d.name)}</span>${K.key !== 'none' ? `<span class="drv-tag ${K.key}">${K.short}</span>` : ''}</div>${showCo && d.company_name ? `<div class="drv-sub">${esc(d.company_name)}</div>` : ''}</div>
           <div class="drv-c-contact">${contact}</div>
           <div class="drv-c-lic">${lic}</div>
           <div class="drv-c-veh">${veh}</div>
@@ -4225,6 +4259,38 @@ const pozitii = await r.json();</code></pre>
           </div>
         </div>`;
       }).join('') : `<div class="drv-empty">${q ? 'Niciun șofer care să se potrivească.' : (fco ? 'Niciun șofer în această companie.' : 'Niciun șofer.')}</div>`;
+    }
+    // ─── Categorii de permis ───────────────────────────────────────────────────────────────────
+    // Lista și regula „ce înseamnă profesionist" vin de la server (license_cats.js → /js/license-cats.js).
+    // Aici NU se scrie nicio categorie de mână: dacă apare una nouă pe permis, o adaugi într-un
+    // singur loc și se vede și în formular, și în listă, și în raport.
+    var _drvCats = [];
+    function drvClassify(cats) {
+      const a = cats || _drvCats;
+      if (!a.length) return { key: 'none', label: 'Neîncadrat — bifează categoriile de pe permis' };
+      const pro = (window.RA_LICENSE && RA_LICENSE.pro) || [];
+      return a.some(c => pro.indexOf(c) >= 0)
+        ? { key: 'pro', label: 'Șofer profesionist', short: 'Profesionist' }
+        : { key: 'basic', label: 'Șofer', short: 'Șofer' };
+    }
+    function drvToggleCat(code) {
+      const i = _drvCats.indexOf(code);
+      if (i >= 0) _drvCats.splice(i, 1); else _drvCats.push(code);
+      renderDrvCats();
+    }
+    function renderDrvCats() {
+      const wrap = document.getElementById('drv-cats');
+      const cls = document.getElementById('drv-class');
+      if (!wrap) return;
+      if (!window.RA_LICENSE) { wrap.innerHTML = '<span style="font-size:12px;color:var(--text-muted);">Lista de categorii nu s-a încărcat.</span>'; return; }
+      const byGroup = {};
+      RA_LICENSE.categories.forEach(c => { (byGroup[c.group] = byGroup[c.group] || []).push(c); });
+      wrap.innerHTML = RA_LICENSE.groups.map(g => (byGroup[g] || []).length ? `<div class="drv-cg">
+        <span class="drv-cg-t">${g}</span>
+        <div class="drv-cg-b">${byGroup[g].map(c =>
+          `<button type="button" class="drv-cat${_drvCats.indexOf(c.code) >= 0 ? ' on' : ''}${c.pro ? ' pro' : ''}" title="${c.label}${c.pro ? ' — categorie profesionistă' : ''}" onclick="drvToggleCat('${c.code}')">${c.code}</button>`
+        ).join('')}</div></div>` : '').join('');
+      if (cls) { const k = drvClassify(); cls.innerHTML = `<span class="drv-cls ${k.key}">${k.key === 'pro' ? '<i class="fas fa-award"></i>' : ''}${k.label}</span>`; }
     }
     // Formularul nu mai stă deschis permanent — ocupa jumătate de ecran fără să fie cerut.
     function toggleDrvAdd() {
@@ -4244,6 +4310,8 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('drv-email').value = d.email || '';
       document.getElementById('drv-license').value = d.license_number || '';
       dtSet('drv-expiry', d.license_expiry ? d.license_expiry.slice(0,10) : '');
+      _drvCats = String(d.license_categories || '').split(',').map(s => s.trim()).filter(Boolean);
+      renderDrvCats();
       var _coSel = document.getElementById('drv-company'); if (_coSel && d.company_id != null) _coSel.value = d.company_id;
       document.getElementById('drv-photo').value = '';
       drvPhotoSet(d.photo_b64 || '');
@@ -4264,6 +4332,7 @@ const pozitii = await r.json();</code></pre>
     }
     function resetDriverForm() {
       ['drv-id','drv-name','drv-phone','drv-email','drv-license','drv-expiry'].forEach(clearField);
+      _drvCats = []; renderDrvCats();
       var _coSel = document.getElementById('drv-company'); if (_coSel) _coSel.value = '';
       document.getElementById('drv-photo').value = '';
       drvPhotoSet('');
@@ -4313,6 +4382,7 @@ const pozitii = await r.json();</code></pre>
         email: document.getElementById('drv-email').value.trim(),
         license_number: document.getElementById('drv-license').value.trim(),
         license_expiry: document.getElementById('drv-expiry').value || null,
+        license_categories: _drvCats.length ? _drvCats.join(',') : null,
         photo_b64: document.getElementById('drv-photo-data').value || null
       };
       if (!body.name) return alert('Numele e obligatoriu');
@@ -5459,7 +5529,7 @@ const pozitii = await r.json();</code></pre>
     // Iconiță proprie pentru FIECARE tip de raport (catalogul are 32). Fallback: fa-file-lines — dacă apare,
     // înseamnă că s-a adăugat un raport nou în reports.js fără iconiță aici.
     const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', idling:'fa-hourglass-half', uptime:'fa-tower-broadcast', due:'fa-file-circle-exclamation', fuel_anomaly:'fa-magnifying-glass-chart', costs:'fa-coins', emissions:'fa-leaf', ecodrive:'fa-award', ecodrive_drivers:'fa-ranking-star', hos:'fa-bed', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell',
-      overrev:'fa-gauge-simple-high', pto:'fa-gears', enginehours:'fa-stopwatch', fuelprobe:'fa-ruler-vertical', weight:'fa-weight-hanging', tipping:'fa-dumpster', arm:'fa-tractor', iot:'fa-temperature-half' };
+      overrev:'fa-gauge-simple-high', pto:'fa-gears', enginehours:'fa-stopwatch', fuelprobe:'fa-ruler-vertical', weight:'fa-weight-hanging', tipping:'fa-dumpster', arm:'fa-tractor', iot:'fa-temperature-half', drivers_lic:'fa-id-badge' };
     // Iconițe SVG per CATEGORIE (currentColor → moștenesc culoarea tab-ului): locație / pompă / cip / clopoțel / scut.
     const REP_CAT_ICONS = {
       monitorizare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',

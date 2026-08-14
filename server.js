@@ -160,6 +160,7 @@ let ioCatalog = null;
 try { ioCatalog = require('./io_catalog'); } catch (e) { console.warn('[IO_CATALOG] indisponibil:', e.message); }
 let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
+const licenseCats = require('./license_cats');   // categorii permis + încadrare șofer (sursă unică)
 let fuelprice = null;
 try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
 let roadlimits = null;
@@ -1092,6 +1093,12 @@ app.get(['/api-docs', '/docs'], (req, res) => res.sendFile(path.join(__dirname, 
 app.get('/sw.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.sendFile(path.join(__dirname, 'public', 'sw.js')); });
 // Stylesheet extras: fără cache (la fel ca /app și /sw.js), altfel Cloudflare/edge servește CSS vechi după actualizări.
 app.get('/css/app.css', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('text/css'); res.sendFile(path.join(__dirname, 'public', 'css', 'app.css')); });
+// Categoriile de permis, generate din license_cats.js — interfața NU ține o listă proprie. Dacă adaugi
+// o categorie sau muți una la „profesionist", se schimbă în același timp și în formular, și în raport.
+const _LICENSE_JS = 'window.RA_LICENSE=' + JSON.stringify({
+  categories: licenseCats.CATEGORIES, groups: licenseCats.GROUPS, pro: licenseCats.PRO
+}) + ';';
+app.get('/js/license-cats.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_LICENSE_JS); });
 
 // Healthcheck public (monitorizare/uptime + Railway) — verifică și conexiunea la DB
 const _startedAt = Date.now();
@@ -5601,6 +5608,9 @@ app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res
       targetCompany = parseInt(req.body.company_id);
       if (!Number.isFinite(targetCompany) || !(await db.getCompanyById(targetCompany))) return res.status(400).json({ error: 'Companie invalidă' });
     }
+    // Categoriile vin de la client → NU le credem pe cuvânt: păstrăm doar codurile care există
+    // pe un permis, normalizate și în ordinea de pe act.
+    req.body.license_categories = licenseCats.format(req.body.license_categories);
     const d = await db.createDriver(req.body, targetCompany);
     auditReq(req, 'create', 'driver', d.id, { name: req.body.name, company_id: targetCompany });
     res.json(d);
@@ -5611,6 +5621,7 @@ app.put('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, 
   try {
     if (req.body && req.body.photo_b64 && String(req.body.photo_b64).length > 1.5 * 1024 * 1024) return res.status(413).json({ error: 'Poza e prea mare' });
     if (!(await ownsRow(req, 'drivers', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    req.body.license_categories = licenseCats.format(req.body.license_categories);
     await db.updateDriver(req.params.id, req.body); auditReq(req, 'update', 'driver', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
