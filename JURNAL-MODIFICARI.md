@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-14
 
-### AMÂNDOI · Actele mașinii încep să completeze singure fișa — fundația — `HASH6`
+### AMÂNDOI · Actele mașinii încep să completeze singure fișa — fundația — `9b60482`
 
 **Ce am schimbat:** ideea lui Alin din 14.08 — încarci talonul, RCA-ul, ITP-ul, iar fișa vehiculului
 se completează singură — are acum fundația construită pe server. Partea văzută (butonul de încărcare,
