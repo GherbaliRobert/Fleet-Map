@@ -20,6 +20,42 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-14
 
+### AMÂNDOI · Încarci actul, aplicația completează — tu confirmi — `HASH8`
+
+**Ce am schimbat:** în fișa vehiculului, fila Documente are acum o zonă de încărcare: pui actul
+(poză sau PDF) și aplicația îl citește. Un RCA venit ca PDF se citește **gratuit** (are textul în
+el); o poză de talon trece prin citirea AI — costă puțin și **o singură dată per vehicul**, nu la
+fiecare deschidere.
+
+Ce iese nu se salvează singur. Apare o listă: „am citit asta, atât de sigur sunt" — iar tu bifezi
+ce intră. Trei reguli gândite să nu-ți strice datele:
+
+- **Ce ai scris tu nu se suprascrie.** Un câmp deja completat vine nebifat, marcat „deja completat".
+  Bifezi doar dacă vrei să-l înlocuiești.
+- **Ce intră automat se vede.** Câmpurile completate din act primesc un contur verde, care dispare
+  la prima ta editare — știi mereu ce n-ai scris tu.
+- **Renunțarea nu lasă urme.** Fișierul se atașează actului abia la „Adaugă"; dacă te răzgândești,
+  pe server nu rămâne nimic.
+
+Actul salvat păstrează o copie comprimată, vizibilă oricând din listă (butonul cu imagine). Datele
+de expirare intră direct în sistemul de alerte — cel reparat ieri, care acum chiar anunță.
+
+**Fondatorul vede:** costul citirilor AI apare separat în Control costuri („docscan"), măsurat per
+apel — îi punem preț DUPĂ ce vedem cât costă pe acte reale, nu invers.
+
+**Clientul vede:** completarea fișei se face din acte, nu din tastat. Pozele făcute cu telefonul se
+micșorează automat înainte de trimitere (o poză de 8 MB devine ~300 KB), iar dacă serverul n-are
+cheia AI, mesajul spune cinstit: „pozele cer cheia AI; PDF-urile cu text merg și fără ea".
+
+> Probat pe viu, în browser, pe sandboxul local: un PDF de RCA construit realist a trecut prin tot
+> lanțul — citit gratuit (sursa: text din PDF), toate cele 7 câmpuri extrase corect, expirarea
+> 28.02.2027 intrată în act, VIN-ul completat în fișă și marcat verde, numărul de înmatriculare
+> DEJA scris de om lăsat nebifat, fișierul atașat salvat și servit înapoi (JPEG, 6 KB), starea
+> golită după salvare. Plus: poza fără cheie AI refuzată cu mesaj omenesc, nu cu eroare criptică.
+
+---
+
+
 ### AMÂNDOI · Alertele de expirare devin de încredere — `bbbc469`
 
 **Ce am schimbat:** trei boli ale alertelor pe acte, găsite când am pregătit completarea automată.

@@ -822,11 +822,27 @@
         }
         #edit-tab-documents .doc-actions, #edit-tab-service .doc-actions{ display:flex; align-items:flex-end; }
         #edit-tab-documents .doc-actions .btn-sm, #edit-tab-service .doc-actions .btn-sm{ width:100%; padding:11px 12px; border-radius:10px; }
+        /* Câmp completat din act — omul vede ce n-a scris el; marcajul dispare la prima editare manuală. */
+        .scan-filled{ border-color:var(--accent) !important; box-shadow:0 0 0 2px rgba(34,197,94,.14); }
+        #doc-scan-zone:hover{ border-color:var(--accent); }
       </style>
 
       <!-- Tab: Documente -->
       <div id="edit-tab-documents" class="edit-tab-content" style="display:none;">
         <div style="font-size:12px;font-weight:700;margin:4px 0 10px;color:var(--accent);"><i class="fas fa-file-contract"></i> Documente vehicul <span id="veh-docs-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
+
+        <!-- Scanarea actului: poză sau PDF → propuneri de câmpuri, confirmate de om. Nimic nu se salvează singur. -->
+        <div id="doc-scan-zone" style="border:1.5px dashed var(--border);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center;cursor:pointer;" onclick="document.getElementById('doc-scan-file').click()">
+          <input type="file" id="doc-scan-file" accept="image/*,application/pdf" style="display:none;" onchange="docScanRun(this.files[0]); this.value='';">
+          <div id="doc-scan-idle">
+            <i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i>
+            <span style="font-size:13px;font-weight:600;"> Încarcă actul (poză sau PDF) și completez câmpurile</span>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Talon / CIV → fișa vehiculului · RCA / ITP / CASCO / Rovinietă → datele și expirarea actului. Tu confirmi tot înainte de salvare.</div>
+          </div>
+          <div id="doc-scan-busy" style="display:none;font-size:13px;"><i class="fas fa-circle-notch fa-spin"></i> Citesc actul…</div>
+        </div>
+        <div id="doc-scan-result" style="display:none;margin-bottom:12px;"></div>
+
         <div id="veh-docs-list" style="margin-bottom:12px;"></div>
         <div class="doc-form">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
@@ -11942,6 +11958,130 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Documente & service per vehicul ───
     function _docEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    // ─── Scanarea actelor: fișierul ales → propuneri → omul confirmă → fișă + act ───
+    // Fișierul comprimat se ține aici până la „Adaugă": se atașează actului DOAR la salvare,
+    // ca anularea să nu lase nimic în urmă. Se golește la schimbarea vehiculului (openEditModal).
+    let _docScanFile = null;   // { b64, mime, name }
+    let _docScanProp = null;   // răspunsul /scan păstrat pentru aplicare
+
+    // Pozele de telefon au 5-12 MB; limita serverului e 4. Comprimăm ÎNAINTE de trimitere — max
+    // 1600px, JPEG 0.78 — destul pentru citit un talon, de 10× mai mic. PDF-urile nu se pot
+    // comprima în browser: peste limită, mesaj cinstit, nu eroare criptică de server.
+    function _docScanShrink(file) {
+      return new Promise((resolve, reject) => {
+        if (file.type === 'application/pdf') {
+          if (file.size > 4 * 1024 * 1024) return reject(new Error('PDF-ul are ' + (file.size / 1048576).toFixed(1) + ' MB — peste limita de 4. Fă-i o poză paginii cu actul, sau exportă un PDF mai mic.'));
+          const fr = new FileReader();
+          fr.onload = () => resolve({ b64: String(fr.result).split(',')[1], mime: 'application/pdf', name: file.name });
+          fr.onerror = () => reject(new Error('Nu am putut citi fișierul.'));
+          fr.readAsDataURL(file);
+          return;
+        }
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scara = Math.min(1, 1600 / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * scara); c.height = Math.round(img.height * scara);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          const dataUrl = c.toDataURL('image/jpeg', 0.78);
+          resolve({ b64: dataUrl.split(',')[1], mime: 'image/jpeg', name: (file.name || 'act').replace(/\.[^.]+$/, '') + '.jpg' });
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Fișierul nu e o imagine sau un PDF.')); };
+        img.src = url;
+      });
+    }
+
+    async function docScanRun(file) {
+      if (!file) return;
+      const idle = document.getElementById('doc-scan-idle'), busy = document.getElementById('doc-scan-busy'), rez = document.getElementById('doc-scan-result');
+      idle.style.display = 'none'; busy.style.display = ''; rez.style.display = 'none';
+      try {
+        const f = await _docScanShrink(file);
+        const r = await fetch('/api/documents/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ b64: f.b64, mime: f.mime, tip: 'auto' }) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || ('Eroare ' + r.status));
+        _docScanFile = f; _docScanProp = j;
+        _docScanRender(j);
+      } catch (e) {
+        rez.style.display = '';
+        rez.innerHTML = '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:12.5px;color:#f59e0b;"><i class="fas fa-triangle-exclamation"></i> ' + _docEsc(e.message) + '</div>';
+      } finally { idle.style.display = ''; busy.style.display = 'none'; }
+    }
+
+    // Câmpurile propuse → unde se duc în formular. Documentul (jos, în aceeași filă) și fișa
+    // (celelalte file ale ACELUIAȘI modal deschis — inputurile există în DOM chiar dacă nu se văd).
+    const _SCAN_DOC = { doc_type: 'doc-type', number: 'doc-number', issuer: 'doc-issuer', issue_date: 'doc-issue', expiry_date: 'doc-expiry' };
+    const _SCAN_FISA = {
+      plate: { id: 'edit-plate', et: 'Nr. înmatriculare' }, vin: { id: 'edit-vin', et: 'Serie șasiu (VIN)' },
+      brand: { id: 'edit-brand', et: 'Marca' }, model: { id: 'edit-model', et: 'Model' }, year: { id: 'edit-year', et: 'An' },
+      fuel_type: { id: 'edit-fuel-type', et: 'Combustibil' }, displacement: { id: 'edit-displacement', et: 'Cilindree' },
+      power_kw: { id: 'edit-power-kw', et: 'Putere (kW)' }, passenger_seats: { id: 'edit-passenger-seats', et: 'Locuri' },
+      tare_weight: { id: 'edit-tare', et: 'Masă proprie (Config Camion)' }, max_weight_legal: { id: 'edit-max-legal', et: 'Masă maximă (Config Camion)' },
+      vehicle_type: { id: 'edit-vehicle-type', et: 'Categorie (propusă din talon)' },
+    };
+    const _incBadge = (v) => v >= 0.85 ? '<span style="color:var(--accent);font-size:10.5px;">sigur</span>'
+      : v >= 0.6 ? '<span style="color:#f59e0b;font-size:10.5px;">probabil</span>'
+      : '<span style="color:#ef4444;font-size:10.5px;">verifică</span>';
+
+    function _docScanRender(r) {
+      const rez = document.getElementById('doc-scan-result');
+      const c = r.campuri || {}, inc = r.incredere || {};
+      const randuri = [];
+      // Actul întâi — el pornește alertele.
+      for (const k of Object.keys(_SCAN_DOC)) if (c[k] != null)
+        randuri.push({ k, tinta: 'act', et: { doc_type: 'Tip act', number: 'Serie/nr.', issuer: 'Emitent', issue_date: 'Emis la', expiry_date: 'EXPIRĂ la' }[k], val: c[k], inc: inc[k] || 0 });
+      for (const k of Object.keys(_SCAN_FISA)) if (c[k] != null) {
+        const el = document.getElementById(_SCAN_FISA[k].id);
+        const ocupat = el && String(el.value || '').trim() !== '';
+        randuri.push({ k, tinta: 'fisa', et: _SCAN_FISA[k].et, val: c[k], inc: inc[k] || 0, ocupat });
+      }
+      if (!randuri.length) {
+        rez.style.display = '';
+        rez.innerHTML = '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:12.5px;color:var(--text-muted);">N-am putut citi nimic utilizabil din act (' + _docEsc(r.sursa || '?') + '). Completează manual — sau încearcă o poză mai dreaptă, fără reflexii.</div>';
+        return;
+      }
+      // Bifat implicit: propunerile în care avem încredere ȘI care nu calcă peste ce a scris omul.
+      rez.style.display = '';
+      rez.innerHTML =
+        '<div style="background:var(--bg-dark);border:1px solid var(--accent);border-radius:12px;padding:12px;">' +
+        '<div style="font-size:12px;font-weight:700;margin-bottom:8px;"><i class="fas fa-clipboard-check" style="color:var(--accent);"></i> Am citit din act (' + (r.sursa === 'pdf-text' ? 'text din PDF, gratuit' : 'citire AI') + ') — debifează ce nu vrei:</div>' +
+        randuri.map((x, i) =>
+          '<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:12.5px;cursor:pointer;">' +
+          '<input type="checkbox" class="scan-prop" data-k="' + x.k + '" data-tinta="' + x.tinta + '"' + ((x.inc >= 0.6 && !x.ocupat) ? ' checked' : '') + '>' +
+          '<span style="min-width:170px;color:var(--text-muted);">' + x.et + '</span>' +
+          '<strong style="flex:1;">' + _docEsc(String(x.val)) + '</strong>' + _incBadge(x.inc) +
+          (x.ocupat ? ' <span style="font-size:10.5px;color:#f59e0b;" title="Câmpul are deja o valoare — bifează doar dacă vrei să o înlocuiești">deja completat</span>' : '') +
+          '</label>').join('') +
+        '<div style="display:flex;gap:8px;margin-top:10px;">' +
+        '<button class="btn-sm btn-primary" onclick="docScanApply()"><i class="fas fa-check"></i> Completează câmpurile bifate</button>' +
+        '<button class="btn-sm" onclick="docScanCancel()">Renunță</button></div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Nimic nu se salvează încă: câmpurile se completează în formular, iar salvarea rămâne a ta — „Adaugă" pentru act, „Salvează" pentru fișă.</div>' +
+        '</div>';
+    }
+
+    function docScanApply() {
+      const c = (_docScanProp && _docScanProp.campuri) || {};
+      let inAct = 0, inFisa = 0;
+      document.querySelectorAll('#doc-scan-result .scan-prop:checked').forEach(cb => {
+        const k = cb.dataset.k, val = c[k];
+        if (cb.dataset.tinta === 'act') {
+          const el = document.getElementById(_SCAN_DOC[k]); if (el) { el.value = val; inAct++; }
+        } else {
+          const el = document.getElementById(_SCAN_FISA[k].id);
+          if (el) { el.value = val; el.classList.add('scan-filled'); el.addEventListener('input', () => el.classList.remove('scan-filled'), { once: true }); inFisa++; }
+          if (k === 'vehicle_type' && typeof onVehicleTypeChange === 'function') onVehicleTypeChange(); // pictograma urmează categoria
+        }
+      });
+      document.getElementById('doc-scan-result').style.display = 'none';
+      if (window.raxToast) raxToast('Completat: ' + inAct + ' câmpuri la act, ' + inFisa + ' în fișă. Verifică și salvează.', 'success');
+    }
+    function docScanCancel() {
+      _docScanFile = null; _docScanProp = null;
+      document.getElementById('doc-scan-result').style.display = 'none';
+    }
+
     async function loadVehicleDocuments() {
       const imei = document.getElementById('edit-imei').value; if (!imei) return;
       var _vp = document.getElementById('veh-docs-plate'); if (_vp) _vp.textContent = (typeof vehicleLabel === 'function' ? '· ' + vehicleLabel(imei) : '');
@@ -11952,15 +12092,19 @@ const pozitii = await r.json();</code></pre>
           const exp = d.expiry_date ? new Date(d.expiry_date) : null;
           let badge = 'fără dată expirare';
           if (exp) { const diff = exp.getTime() - now; const txt = exp.toLocaleDateString('ro-RO'); badge = diff < 0 ? '<span style="color:#ef4444;font-weight:600;">EXPIRAT (' + txt + ')</span>' : (diff < soon ? '<span style="color:#f59e0b;font-weight:600;">expiră ' + txt + '</span>' : '<span style="color:var(--accent);">valid până ' + txt + '</span>'); }
-          return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + (d.cost ? ' · ' + Math.round(parseFloat(d.cost)) + ' RON' : '') + '</div></div><button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div>';
+          const fisier = d.has_file ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" title="Vezi actul scanat" style="margin-right:6px;"><i class="fas fa-file-image"></i></a>' : '';
+          return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + (d.cost ? ' · ' + Math.round(parseFloat(d.cost)) + ' RON' : '') + '</div></div><div style="display:flex;align-items:center;">' + fisier + '<button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div></div>';
         }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
       } catch (e) { document.getElementById('veh-docs-list').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }
     }
     async function saveVehicleDocument() {
       const imei = document.getElementById('edit-imei').value;
       const body = { imei, doc_type: document.getElementById('doc-type').value, number: document.getElementById('doc-number').value.trim(), issuer: document.getElementById('doc-issuer').value.trim(), issue_date: document.getElementById('doc-issue').value || null, expiry_date: document.getElementById('doc-expiry').value || null, cost: parseFloat(document.getElementById('doc-cost').value) || null };
+      // Actul scanat se atașează ABIA aici — dacă omul renunță, nu rămâne nimic pe server.
+      if (_docScanFile) { body.file_b64 = _docScanFile.b64; body.file_mime = _docScanFile.mime; body.file_name = _docScanFile.name; }
       const r = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return; }
+      _docScanFile = null; _docScanProp = null;
       ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
       loadVehicleDocuments();
     }
@@ -12132,6 +12276,9 @@ const pozitii = await r.json();</code></pre>
     async function openEditModal(imei) {
       document.getElementById('edit-modal').classList.add('visible');
       document.getElementById('edit-imei').value = imei;
+      // Propunerile scanate aparțin vehiculului DINAINTE — nu au voie să supraviețuiască schimbării.
+      if (typeof docScanCancel === 'function') docScanCancel();
+      document.querySelectorAll('.scan-filled').forEach(el => el.classList.remove('scan-filled'));
 
       // Reset to basic tab
       const basicBtn = document.querySelector('.edit-tab[data-tab="basic"]');
