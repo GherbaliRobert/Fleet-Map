@@ -20,6 +20,33 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-14
 
+### AMÂNDOI · Scanarea actelor și pe telefon — cu camera, direct din fișă — `HASH9`
+
+**Ce am schimbat:** aceeași funcție ca pe web, pe telefon: în editarea vehiculului există acum
+secțiunea „Documente vehicul" — lista actelor cu starea lor (valid / expiră / EXPIRAT / fără dată),
+un buton care **deschide camera** și fotografiază actul, ecranul de confirmare cu bifele, și
+formularul de adăugare manuală. Propunerile confirmate intră direct în formularul de editare
+deschis — aceleași câmpuri, aceeași salvare, nicio cale nouă de scriere.
+
+Poza se micșorează pe telefon înainte de trimitere (o poză de 8-12 MB devine ~300 KB), iar actul
+salvat cu fișier se poate vedea din listă.
+
+**O decizie de construcție care merită o propoziție:** n-am adăugat modul nativ de cameră.
+Butonul folosește camera prin pagina web încorporată — zero permisiuni noi, zero dependințe,
+zero risc la build. Modulul nativ ar fi adus doar reglaje de care o poză de talon nu are nevoie.
+
+**Fondatorul vede:** paritatea web↔telefon respectată în aceeași zi, APK-ul reconstruit.
+
+**Clientul vede:** șoferul sau administratorul fotografiază talonul și RCA-ul de pe teren, iar
+fișa și alertele se completează pe loc — fără laptop.
+
+> Verificat: compilarea de tip strictă și build-ul au trecut; componenta folosește exact rutele
+> probate pe web (scan, salvare cu fișier, vizualizare cu autentificare pe token — un link simplu
+> n-ar fi cărat tokenul și ar fi picat tăcut doar pe telefon).
+
+---
+
+
 ### AMÂNDOI · Încarci actul, aplicația completează — tu confirmi — `6fa5a19`
 
 **Ce am schimbat:** în fișa vehiculului, fila Documente are acum o zonă de încărcare: pui actul

@@ -11,6 +11,7 @@ import { MiniMap } from '../components/MiniMap';
 import { MapModal } from '../components/MapModal';
 import { WorkSchedEditor } from '../components/WorkSchedEditor';
 import { VehicleSpecsView, VehicleSpecsForm, specsFromFull } from '../components/VehicleSpecs';
+import { VehicleDocs } from '../components/VehicleDocs';
 import './detail.css';
 import './admin.css';
 
@@ -393,6 +394,9 @@ export function VehicleDetail() {
                   <div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-bottom:2px"><Icon name="clock" size={13} /> Program de lucru (vehicul)</div>
                   <WorkSchedEditor value={(full as any)?.work_schedule} allowInherit onSave={(ws: any) => Api.setDeviceWorkSchedule(imei, ws).then(() => loadFull())} />
                 </div>
+                {/* Actele vehiculului + scanarea lor. setFisa varsă propunerile confirmate direct în
+                    formularul de deasupra (ef) — aceleași câmpuri, aceeași salvare, nicio cale nouă. */}
+                <VehicleDocs imei={imei} fisa={ef} setFisa={(patch: any) => setEf((p: any) => ({ ...p, ...patch }))} />
               </div>
             </div>
           </div>
