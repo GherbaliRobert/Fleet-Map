@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-14
 
-### AMÂNDOI · Încarci actul, aplicația completează — tu confirmi — `HASH8`
+### AMÂNDOI · Încarci actul, aplicația completează — tu confirmi — `6fa5a19`
 
 **Ce am schimbat:** în fișa vehiculului, fila Documente are acum o zonă de încărcare: pui actul
 (poză sau PDF) și aplicația îl citește. Un RCA venit ca PDF se citește **gratuit** (are textul în
