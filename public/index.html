@@ -390,13 +390,21 @@
         .detail-action-btn { min-height: 36px; padding: 7px 8px; }
         .detail-close { min-width: 36px; min-height: 36px; }
 
-        /* Tabel Vehicule: ascund Grup + Marcă pe mobile (rămân nume/nr/șofer/transmisie/acțiuni) */
-        #veh-tbody td:nth-child(4), /* Grup */
-        #veh-tbody td:nth-child(7), /* Marcă */
-        #atab-vehicles thead th:nth-child(4),
-        #atab-vehicles thead th:nth-child(7) { display: none; }
-        #atab-vehicles table { font-size: 11px; }
-        #atab-vehicles table td, #atab-vehicles table th { padding: 5px 6px; }
+        /* Vehicule pe mobil: cardul se pliază pe două rânduri (pictogramă+vehicul+acțiuni / șofer+transmisie).
+           Grupul și compania pică — le vezi în „Editare"; pe 360px lățime n-au unde încăpea lizibil. */
+        .veh-colh { display: none; }
+        .veh-row {
+          grid-template-columns: 46px 1fr auto;
+          grid-template-areas: "pic veh act" "drv drv last";
+          gap: 8px 10px; padding: 11px 12px;
+        }
+        .veh-c-pic { grid-area: pic; } .veh-c-veh { grid-area: veh; } .veh-c-act { grid-area: act; }
+        .veh-c-drv { grid-area: drv; } .veh-c-last { grid-area: last; text-align: right; }
+        .veh-c-grp, .veh-c-co { display: none; }
+        /* Pe telefon rămâne doar „acum 4 min"; data completă lungește rândul cât ecranul și
+           oricum o vezi în „Editare". */
+        .veh-c-last .veh-sub { display: none; }
+        .veh-pic { width: 44px; height: 36px; }
 
         /* Toolbar Vehicule: search ia tot rândul, butoanele compact pe rândul 2 */
         #atab-vehicles .toolbar-row .toolbar-spacer { min-width: 100% !important; order: -1; }
@@ -1654,16 +1662,65 @@ const pozitii = await r.json();</code></pre>
       <div style="overflow-y:auto;flex:1;padding-right:4px;">
 
         <!-- Vehicule -->
+        <style id="veh-cards-css">
+          /* Vehicule — rânduri-card cu muchie de stare. Muchia din stânga spune dintr-o privire cine
+             transmite (verde), cine tace de câteva ore (portocaliu) și cine e mut de o zi (gri).
+             Verdele mărcii e superb pe buton, dar ilizibil ca TEXT pe fundal alb → pe tema deschisă
+             scrisul verde folosește o nuanță mai adâncă; pe tema închisă rămâne verdele de brand. */
+          #atab-vehicles { --veh-ink: #0E7A3C; }
+          body.dark #atab-vehicles { --veh-ink: var(--accent); }
+
+          /* Toolbar: toate butoanele pe aceeași înălțime, unul singur plin (acțiunea principală). */
+          #atab-vehicles .veh-seg { display: inline-flex; gap: 3px; background: var(--bg-dark); border-radius: 10px; padding: 3px; }
+          #atab-vehicles .veh-seg .btn-sm { height: 30px; padding: 0 15px; border: none; background: transparent; color: var(--text-muted); font-weight: 800; font-size: 12.5px; border-radius: 8px; width: auto; }
+          #atab-vehicles .veh-seg .btn-sm.btn-primary { background: var(--accent); color: #06210F; }
+          #atab-vehicles .toolbar-row > .btn-sm { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; background: var(--bg-panel); width: auto; }
+          #atab-vehicles .toolbar-row > .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
+          #veh-search { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 12px; font-family: inherit; font-size: 13px; }
+          #veh-co-filter { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-secondary); padding: 0 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; }
+          #veh-count { font-size: 12px; font-weight: 800; color: var(--veh-ink); background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); padding: 4px 10px; border-radius: 20px; }
+
+          /* Cap de coloane + rânduri */
+          .veh-colh, .veh-row { display: grid; grid-template-columns: 56px minmax(150px, 1.5fr) 1fr 1fr 1.1fr .9fr 92px; gap: 14px; }
+          /* stânga 18px = muchia de 4px + cei 14px de padding ai rândului, ca titlul să cadă exact
+             peste conținutul lui; dreapta 14px, cât padding-ul rândului (acolo nu e muchie) */
+          .veh-colh { padding: 0 14px 8px 18px; font-size: 10.5px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; color: var(--text-muted); }
+          .veh-colh > :last-child { text-align: right; }
+          /* Fără coloana „Companie" (o vede doar super-adminul) rămân 6 coloane, nu 7 — altfel
+             rândul păstra o coloană goală și tot ce urma îi ieșea din dreptul capului de tabel.
+             Regula stă sub min-width, ca varianta de mobil (mai jos) să nu fie călcată de ea. */
+          @media (min-width: 769px) {
+            body:not(.is-super) .veh-colh, body:not(.is-super) .veh-row { grid-template-columns: 56px minmax(150px, 1.5fr) 1fr 1fr 1.1fr 92px; }
+          }
+          .veh-rows { display: flex; flex-direction: column; gap: 9px; }
+          .veh-row { align-items: center; background: var(--bg-panel); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; padding: 12px 14px; transition: border-color .15s ease, box-shadow .15s ease; }
+          .veh-row.st-on { border-left-color: var(--accent); }      /* transmite acum */
+          .veh-row.st-idle { border-left-color: #f59e0b; }          /* tace de câteva ore */
+          .veh-row.st-off { border-left-color: var(--border-light); } /* mut de peste o zi, sau arhivat */
+          .veh-row:hover { border-color: var(--accent); box-shadow: 0 4px 14px rgba(15, 23, 42, .08); }
+          .veh-pic { width: 46px; height: 38px; border-radius: 9px; background: rgba(63, 224, 125, .12); display: flex; align-items: center; justify-content: center; color: var(--veh-ink); }
+          .veh-row.st-off .veh-pic { background: var(--bg-dark); color: var(--text-muted); }
+          .veh-nm { font-weight: 800; font-size: 13.5px; line-height: 1.25; color: var(--text-primary); }
+          .veh-pl { font-size: 11.5px; font-weight: 800; letter-spacing: .5px; color: var(--veh-ink); }
+          /* Fără asta, celulele de grilă refuză să coboare sub lățimea conținutului (min-width: auto
+             e implicit) și cardul iese din ecran în loc să taie textul cu „…". */
+          .veh-row > * { min-width: 0; }
+          .veh-cel { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .veh-sub { font-size: 11px; color: var(--text-muted); }
+          .veh-act { display: flex; gap: 6px; justify-content: flex-end; }
+          .veh-act .btn-sm { width: 34px; height: 34px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+          .veh-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        </style>
         <div id="atab-vehicles" class="admin-tab-content" style="display:none;">
           <div class="toolbar-row">
-            <div style="display:flex;gap:2px;background:var(--bg-dark);border-radius:8px;padding:2px;">
+            <div class="veh-seg">
               <button id="veh-tab-active" class="btn-sm btn-primary" onclick="setVehScope('active')">Active</button>
               <button id="veh-tab-archived" class="btn-sm" onclick="setVehScope('archived')">Arhivate</button>
             </div>
             <input type="text" id="veh-search" placeholder="Caută nume / nr. / marcă..." oninput="renderVehicles()" class="toolbar-spacer">
-            <select id="veh-co-filter" class="super-only" onchange="renderVehicles()" title="Filtrează pe companie" style="font-family:inherit;padding:5px 10px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);"></select>
+            <select id="veh-co-filter" class="super-only" onchange="renderVehicles()" title="Filtrează pe companie"></select>
             <span id="veh-count" class="toolbar-count"></span>
-            <button class="btn-sm" onclick="downloadTemplate()" title="Descarcă șablon CSV"><i class="fas fa-file-csv"></i> Template</button>
+            <button class="btn-sm" onclick="downloadTemplate()" title="Descarcă șablon CSV"><i class="fas fa-file-csv"></i> Șablon</button>
             <button class="btn-sm" onclick="exportVehicles()" title="Exportă toate în CSV"><i class="fas fa-download"></i> Exportă</button>
             <button class="btn-sm" onclick="document.getElementById('veh-import-file').click()" title="Importă din CSV"><i class="fas fa-upload"></i> Importă</button>
             <button class="btn-sm btn-primary" onclick="toggleVehAdd()"><i class="fas fa-plus"></i> Adaugă vehicul</button>
@@ -1680,16 +1737,11 @@ const pozitii = await r.json();</code></pre>
             </div>
           </div>
 
-          <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-              <thead><tr style="text-align:left;border-bottom:1px solid var(--border);color:var(--text-muted);">
-                <th style="padding:6px 8px;">Status</th><th style="padding:6px 8px;">Nr.</th><th style="padding:6px 8px;">Nume</th>
-                <th style="padding:6px 8px;">Grup</th><th style="padding:6px 8px;">Șofer</th>
-                <th style="padding:6px 8px;">Ultima transmisie</th><th style="padding:6px 8px;">Marcă</th><th class="veh-co-col" style="padding:6px 8px;">Companie</th><th style="padding:6px 8px;">Acțiuni</th>
-              </tr></thead>
-              <tbody id="veh-tbody"></tbody>
-            </table>
+          <div class="veh-colh">
+            <span></span><span>Vehicul</span><span>Grup</span><span>Șofer</span>
+            <span>Ultima transmisie</span><span class="veh-co-col">Companie</span><span>Acțiuni</span>
           </div>
+          <div class="veh-rows" id="veh-rows"></div>
         </div>
 
         <!-- Șoferi -->
@@ -3937,29 +3989,34 @@ const pozitii = await r.json();</code></pre>
       if (q) rows = rows.filter(d => ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.brand || '') + ' ' + (d.imei || '')).toLowerCase().includes(q));
       document.getElementById('veh-count').textContent = rows.length + ' vehicule';
       const now = Date.now();
-      document.getElementById('veh-tbody').innerHTML = rows.map(d => {
+      document.getElementById('veh-rows').innerHTML = rows.map(d => {
         const lastT = d.last_position_time || d.last_seen;
-        const online = lastT ? (now - new Date(lastT).getTime()) / 60000 < 30 : false;
-        const dot = '<span class="status-dot ' + (online ? 'moving' : 'offline') + '"></span>';
+        const mins = lastT ? (now - new Date(lastT).getTime()) / 60000 : Infinity;
+        const archived = d.status === 'archived';
+        // Muchia din stânga = cât de proaspătă e transmisia. Arhivatele sunt mereu gri: nu mai transmit.
+        const st = archived ? 'off' : (mins < 30 ? 'on' : (mins < 1440 ? 'idle' : 'off'));
+        const stTitle = archived ? 'Vehicul arhivat' : (st === 'on' ? 'Transmite acum' : st === 'idle' ? 'Fără semnal de câteva ore' : 'Fără semnal de peste o zi');
         const last = lastT ? new Date(lastT).toLocaleString('ro-RO') : '—';
+        const rel = lastT ? timeAgoPhrase(new Date(lastT)) : 'niciodată';
         const grp = d.group_name || (d.group_id ? (vehGroups[d.group_id] || '') : '');
         const drv = d.driver_id ? (vehDrivers[d.driver_id] || '') : '';
-        const archived = d.status === 'archived';
-        return `<tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:6px 8px;">${dot}</td>
-          <td style="padding:6px 8px;font-weight:600;">${esc(d.plate || '')}</td>
-          <td style="padding:6px 8px;">${esc(d.name || d.imei)}</td>
-          <td style="padding:6px 8px;">${esc(grp)}</td>
-          <td style="padding:6px 8px;">${esc(drv)}</td>
-          <td style="padding:6px 8px;color:var(--text-muted);">${last}</td>
-          <td style="padding:6px 8px;">${esc(d.brand || '')}</td>
-          <td class="veh-co-col" style="padding:6px 8px;color:var(--text-muted);">${esc(d.company_name || '')}</td>
-          <td style="padding:6px 8px;white-space:nowrap;">
+        // Pictograma vine din ACEEAȘI sursă ca markerul de pe hartă și ca fișa vehiculului:
+        // markerCategory citește iconița aleasă la editare, iar dacă lipsește, tipul vehiculului.
+        // Aici nu există listă paralelă — schimbi tipul în „Editare", se schimbă și în listă.
+        const pic = vehicleSilhouetteSVG(markerCategory(d), 'currentColor', 30);
+        return `<div class="veh-row st-${st}" title="${stTitle}">
+          <div class="veh-c-pic"><span class="veh-pic">${pic}</span></div>
+          <div class="veh-c-veh"><div class="veh-nm">${esc(d.name || d.imei)}</div><div class="veh-pl">${esc(d.plate || '—')}</div></div>
+          <div class="veh-c-grp veh-cel">${esc(grp) || '—'}</div>
+          <div class="veh-c-drv veh-cel">${esc(drv) || '—'}</div>
+          <div class="veh-c-last"><div class="veh-cel">${rel}</div><div class="veh-sub">${last}</div></div>
+          <div class="veh-c-co veh-cel veh-co-col">${esc(d.company_name || '')}</div>
+          <div class="veh-c-act veh-act">
             <button class="btn-sm" title="Editează" onclick="closeAdmin();openEditModal('${esc(d.imei)}')"><i class="fas fa-pen"></i></button>
             <button class="btn-sm ${archived ? 'btn-primary' : 'btn-danger'}" title="${archived ? 'Restaurează' : 'Arhivează'}" onclick="setVehArchive('${esc(d.imei)}', ${archived ? 'false' : 'true'})"><i class="fas fa-${archived ? 'undo' : 'archive'}"></i></button>
-          </td>
-        </tr>`;
-      }).join('') || '<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--text-muted);">Niciun vehicul.</td></tr>';
+          </div>
+        </div>`;
+      }).join('') || '<div class="veh-empty">Niciun vehicul.</div>';
     }
     async function createVehicle() {
       const imei = (document.getElementById('veh-new-imei').value || '').trim();

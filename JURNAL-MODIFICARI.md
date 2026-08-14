@@ -20,6 +20,42 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-13
 
+### AMÂNDOI · Lista de vehicule: din tabel searbăd, în carduri care spun starea dintr-o privire
+
+**Ce am schimbat:** ecranul *Management → Vehicule* arăta ca un tabel gol, cu butoane mărunte și
+palide. Acum fiecare vehicul e un card, cu o **dungă colorată în stânga**: verde = transmite acum,
+portocaliu = tace de câteva ore, gri = mut de peste o zi (sau arhivat). Nu mai trebuie să citești
+datele ca să-ți dai seama cine merge și cine nu.
+
+**Pictograma fiecărui vehicul e a lui.** Dacă la editare ai trecut că e camion, în listă apare
+camion; dubă → dubă; TIR → TIR. Nu e o listă nouă de desene: e **exact aceeași sursă** din care se
+desenează și mașina de pe hartă. Schimbi tipul la „Editare", se schimbă și în listă, automat.
+
+**Restul schimbărilor:**
+- Numele vehiculului e mare, iar **numărul de înmatriculare stă sub el**, colorat — înainte era un
+  text ca oricare altul.
+- La „Ultima transmisie" scrie acum **„acum 4 min"**, cu data completă dedesubt. Ora exactă îți spune
+  mai puțin decât cât timp a trecut.
+- Butoanele au toate aceeași înălțime și aceeași formă; unul singur e plin cu verde — „Adaugă
+  vehicul", ca să se vadă care e acțiunea principală.
+- **Verdele scris pe alb era aproape ilizibil.** Pe tema deschisă, textul verde folosește acum o
+  nuanță mai adâncă; pe tema închisă rămâne verdele de brand. (E problema notată mai jos, la lista
+  de dinaintea lansării — aici e reparată, deocamdată doar pe ecranul ăsta.)
+- Coloana „Marcă" a dispărut din listă. Marca e aproape mereu în numele vehiculului („Dacia Logan 3")
+  și oricum o vezi la „Editare".
+
+**Fondatorul vede:** în plus față de client, coloana „Companie" — restul e identic.
+
+**Clientul vede:** aceeași listă, fără coloana „Companie". Pe telefon cardul se pliază pe două
+rânduri și păstrează ce contează: pictograma, numele, numărul, șoferul și cât timp a trecut.
+
+> Verificat pe cod real, nu pe o machetă: 21 de controale automate (pictograma se schimbă cu tipul,
+> culoarea dungii urmărește transmisia, nicio clasă fără stil) plus măsurarea lățimii la 320, 360,
+> 768 și 1180 px — niciun rând nu iese din ecran.
+
+---
+
+
 ### AMÂNDOI · Raportul săptămânal a fost scos din aplicație, complet
 
 **Ce am schimbat:** am șters „Raport săptămânal" din tot produsul — pagina din *Analize statistice*,
