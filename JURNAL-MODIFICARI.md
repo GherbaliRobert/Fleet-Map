@@ -20,6 +20,40 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-14
 
+### AMÂNDOI · Alertele de expirare devin de încredere — `HASH7`
+
+**Ce am schimbat:** trei boli ale alertelor pe acte, găsite când am pregătit completarea automată.
+Fără reparațiile astea, „încarci actul și ești acoperit" ar fi fost o promisiune falsă.
+
+1. **Pragul era bătut în cuie la 7 zile, deși setarea promitea altceva.** În trei locuri (setări web,
+   telefon, RA Care) scria că „zilele de preaviz" acoperă mentenanța *și documentele*. Pentru
+   documente era fals: oricâte zile puneai, alerta venea tot la 7. Acum setarea chiar comandă —
+   pui 30, ești anunțat cu 30 de zile înainte. Nesetată, rămâne 7: nimic nu se schimbă pentru cine
+   n-a umblat la ea.
+2. **Un act expirat suna o dată pe zi, la nesfârșit.** Iar un anunț zilnic pe care înveți să-l ignori
+   e mai rău decât niciunul. Acum: o alertă la fiecare prag (preaviz, 3 zile, 1 zi) și un memento pe
+   săptămână după expirare. La fel și permisele de șofer, care sunau zilnic pe toată luna de preaviz.
+3. **Un act fără dată de expirare era invizibil, în tăcere.** Proprietarul credea că e acoperit
+   tocmai pentru că actul „e în aplicație" — dar aplicația n-avea de unde ști când expiră și nu
+   spunea nimănui. Acum compania primește un rezumat pe săptămână: „N acte fără dată — nu ești
+   alertat pentru ele", cu actele și mașinile numite.
+
+**Fondatorul vede:** aceleași alerte, dar oneste.
+
+**Clientul vede:** setarea de preaviz chiar funcționează; telefonul nu mai țiuie zilnic pentru
+același act uitat; și află negru pe alb dacă are acte pentru care nu e păzit.
+
+> 13 verificări cap-coadă pe server pornit, pe ruta reală (pragul setat de un admin de companie,
+> exact ca în producție): actul la 15 zile tace pe pragul implicit și alertează cu pragul pe 30;
+> două rulări nu dublează; actul expirat rămâne la O alertă după trei rulări; rezumatul „fără dată"
+> numește actul și mașina și nu se repetă. Plus toată regresia verde.
+
+*Notă de tranziție: la primul deploy, alertele deja active pot suna o singură dată în plus (cheile
+interne de dedup s-au schimbat). O notificare dublă o dată — nu un comportament nou.*
+
+---
+
+
 ### AMÂNDOI · Actele mașinii încep să completeze singure fișa — fundația — `9b60482`
 
 **Ce am schimbat:** ideea lui Alin din 14.08 — încarci talonul, RCA-ul, ITP-ul, iar fișa vehiculului

@@ -6669,11 +6669,20 @@ async function _checkExpiriesBody() {
       const exp = new Date(dr.license_expiry).getTime();
       if (exp > horizon) continue;
       const days = Math.ceil((exp - now) / (24 * 3600 * 1000));
+      // Cheia era fără prag și fără durată de dedup → o notificare PE ZI, toate cele 30 de zile de
+      // preaviz, plus la nesfârșit după expirare. Aceleași bucket-uri ca la documente: o alertă per
+      // prag, memento săptămânal după expirare.
+      let bDrv, dedupDrv;
+      if (days < 0) { bDrv = 'exp'; dedupDrv = 7 * 24; }
+      else if (days <= 1) { bDrv = '1'; dedupDrv = 24; }
+      else if (days <= 3) { bDrv = '3'; dedupDrv = 2 * 24; }
+      else { bDrv = 'lead'; dedupDrv = Math.max(24, (warnDays - 3) * 24); }
       const nDrv = {
         type: 'document_expiry', severity: days < 0 ? 'critical' : 'warning', companyId: dr.company_id,
+        dedupHours: dedupDrv,
         title: `Permis șofer ${days < 0 ? 'EXPIRAT' : 'expiră curând'}: ${dr.name}`,
         body: `Permisul ${dr.license_number || ''} ${days < 0 ? 'a expirat de ' + (-days) + ' zile' : 'expiră în ' + days + ' zile'} (${new Date(dr.license_expiry).toLocaleDateString('ro-RO')}).`,
-        data: { key: 'drv-license-' + dr.id, driverId: dr.id, days }
+        data: { key: 'drv-license-' + dr.id + '-' + bDrv, driverId: dr.id, days }
       };
       await notify(nDrv);
       await deliverExpiryToSubscribers({ companyId: dr.company_id, title: nDrv.title, body: nDrv.body, key: nDrv.data.key });
@@ -6734,29 +6743,72 @@ async function _checkExpiriesBody() {
     const _vehIdent = new Map();
     try { const vr = await db.pool.query('SELECT imei, name, plate FROM devices'); for (const v of vr.rows) _vehIdent.set(v.imei, String(v.plate || v.name || '').trim() || v.imei); } catch (e) {}
     const _vehLabel = (im) => _vehIdent.get(im) || im;
-    // Documente vehicul (ITP / RCA / ROVINIETĂ) — alerte la 7, 3, 1 zile + EXPIRAT (Modul 2 E-Toll/Roviniete).
-    // Bucket-uri pe cheie (vdoc-{id}-{7|3|1|exp}) → fiecare prag se declanșează o singură dată (dedup notify).
+    // Documente vehicul (ITP / RCA / ROVINIETĂ) — alerte la lead / 3 / 1 zile + EXPIRAT.
+    //
+    // Pragul „lead" e ACELAȘI careDaysLead per companie ca la mentenanță — interfața promitea asta
+    // în trei locuri (setări web, mobil, RA Care), dar bucla de aici era bătută în cuie pe 7 zile.
+    // Nesetat, rămâne 7: comportamentul vechi nu se schimbă pentru nimeni care n-a atins setarea.
+    //
+    // Dedup pe DURATA bucketului, ca la mentenanță (_mntDateDedup) — nu pe implicitul de 20h, care
+    // făcea ca fiecare bucket să sune zilnic cât timp era activ, iar „EXPIRAT" să sune zilnic LA
+    // NESFÂRȘIT. Acum: o alertă per prag, iar pentru actul expirat un memento pe săptămână — un act
+    // uitat nu trebuie să devină zgomot pe care înveți să-l ignori.
+    // Pragul se citește din setarea BRUTĂ a companiei, nu din _coLeads — acela a amestecat deja
+    // implicitul mentenanței (14), iar documentele au implicitul lor istoric, 7. Doar o valoare
+    // pusă de om schimbă comportamentul; Math.max(7, …) păstrează pragurile urgente intacte.
+    const _docLeadRaw = new Map();
+    try { for (const co of await db.getCompanies()) { const t = _alertThresholdsFromSettings(co.settings); if (t && t.careDaysLead) _docLeadRaw.set(co.id, parseInt(t.careDaysLead)); } } catch (e) {}
+    const _docLeadOf = (cid) => Math.max(7, (cid != null && _docLeadRaw.get(cid)) || (_globalLeads && parseInt(_globalLeads.careDaysLead)) || 7);
+    const _faraData = [];
     for (const d of await db.getVehicleDocuments(null, null)) {
-      if (!d.expiry_date) continue;
+      if (!d.expiry_date) { _faraData.push(d); continue; }   // colectat, nu sărit tăcut — vezi mai jos
       const exp = new Date(d.expiry_date).getTime();
       const days = Math.ceil((exp - now) / (24 * 3600 * 1000));
-      let bucket = null;
-      if (days < 0) bucket = 'exp';
-      else if (days <= 1) bucket = '1';
-      else if (days <= 3) bucket = '3';
-      else if (days <= 7) bucket = '7';
-      if (bucket === null) continue; // mai mult de 7 zile → nu alertăm încă
+      const lead = _docLeadOf(d.company_id);
+      let bucket = null, dedupH = null;
+      if (days < 0) { bucket = 'exp'; dedupH = 7 * 24; }               // memento săptămânal, nu zilnic
+      else if (days <= 1) { bucket = '1'; dedupH = 24; }
+      else if (days <= 3) { bucket = '3'; dedupH = 2 * 24; }
+      else if (days <= lead) { bucket = 'lead'; dedupH = Math.max(24, (lead - 3) * 24); }  // o dată pe toată banda 4..lead
+      if (bucket === null) continue; // peste prag → nu alertăm încă
       const label = String(d.doc_type || 'Document').toUpperCase();
       const nDoc = {
         type: 'document_expiry', severity: (days < 0 || days <= 3) ? 'critical' : 'warning',
         imei: d.imei || null, companyId: d.company_id,
+        dedupHours: dedupH,
         title: label + (days < 0 ? ' EXPIRAT' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
         body: label + (d.number ? ' (' + d.number + ')' : '') + (days < 0 ? ' a expirat de ' + (-days) + ' zile' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + ' — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + '.',
+        // Cheia bucketului vechi „7" devine „lead" — cheile vechi din tabelă nu se mai potrivesc,
+        // deci la primul deploy alertele active pot suna o dată în plus. Acceptat: o notificare
+        // dublă o singură dată e mai ieftină decât o schemă de migrare pe chei de dedup.
         data: { key: 'vdoc-' + d.id + '-' + bucket, docId: d.id, days: days, docType: d.doc_type }
       };
       await notify(nDoc);
       await deliverExpiryToSubscribers({ imei: d.imei, companyId: d.company_id, title: nDoc.title, body: nDoc.body, key: nDoc.data.key });
     }
+
+    // Actele FĂRĂ dată de expirare — până acum, sărite tăcut. Un act fără dată e invizibil pentru
+    // tot sistemul de alerte, iar proprietarul crede că e acoperit tocmai pentru că actul „e în
+    // aplicație". O dată pe săptămână, compania primește UN rezumat — nu câte o notificare per act.
+    try {
+      const peCompanie = new Map();
+      for (const d of _faraData) {
+        if (d.company_id == null) continue;
+        if (!peCompanie.has(d.company_id)) peCompanie.set(d.company_id, []);
+        peCompanie.get(d.company_id).push(String(d.doc_type || 'act') + (d.imei ? ' · ' + _vehLabel(d.imei) : ''));
+      }
+      for (const [cid, lista] of peCompanie) {
+        await notify({
+          type: 'document_expiry', severity: 'warning', companyId: cid,
+          dedupHours: 7 * 24,
+          title: lista.length === 1 ? 'Un act fără dată de expirare' : lista.length + ' acte fără dată de expirare',
+          body: 'Nu ești alertat pentru ele — aplicația nu are de unde ști când expiră: ' +
+                lista.slice(0, 5).join(', ') + (lista.length > 5 ? ' și încă ' + (lista.length - 5) : '') +
+                '. Completează data din fișa vehiculului → Documente.',
+          data: { key: 'vdoc-nodate-' + cid, count: lista.length }
+        });
+      }
+    } catch (e) { console.warn('[checkExpiries] acte fără dată:', e.message); }
 
     // Reguli „Expirare documente" (Management → Alerte): avertizare TIMPURIE la pragul warnDays per regulă
     // (un vehicul sau toată compania). Pragurile urgente 7/3/1/EXPIRAT de mai sus rămân pentru toate documentele.
