@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-14
 
-### AMÂNDOI · Alertele de expirare devin de încredere — `HASH7`
+### AMÂNDOI · Alertele de expirare devin de încredere — `bbbc469`
 
 **Ce am schimbat:** trei boli ale alertelor pe acte, găsite când am pregătit completarea automată.
 Fără reparațiile astea, „încarci actul și ești acoperit" ar fi fost o promisiune falsă.
