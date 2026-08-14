@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-14
 
-### AMÂNDOI · Scanarea actelor și pe telefon — cu camera, direct din fișă — `HASH9`
+### AMÂNDOI · Scanarea actelor și pe telefon — cu camera, direct din fișă — `de85206`
 
 **Ce am schimbat:** aceeași funcție ca pe web, pe telefon: în editarea vehiculului există acum
 secțiunea „Documente vehicul" — lista actelor cu starea lor (valid / expiră / EXPIRAT / fără dată),
