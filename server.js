@@ -5943,6 +5943,41 @@ app.delete('/api/documents/:id', requireAuth, requireFleet, withCompany, async (
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── Citirea actelor: fișierul completează fișa ───────────────────────────────────────────────────
+// POST /api/documents/scan — primește actul (poză sau PDF), întoarce PROPUNERI de câmpuri.
+// NU scrie nimic în baza de date: regula de aur e că omul confirmă în interfață, apoi salvarea
+// merge pe căile existente (POST /api/documents + PUT /api/devices/:imei/details).
+// PDF cu strat de text = gratuit (extras local); poză = un apel de model, contorizat în ai_usage.
+const docscan = require('./docscan');
+app.post('/api/documents/scan', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const { b64, mime, tip } = req.body || {};
+    const r = await docscan.scan({
+      b64, mime, tip: tip || 'auto',
+      // 'docscan': fel separat în ai_usage → costul citirii de acte se vede singur în Control costuri,
+      // nu amestecat cu întrebările RA Insight. Se măsoară ÎNAINTE să-i punem preț.
+      onUsage: (u) => db.recordAiUsage(req.companyId, 'docscan', u, req.auth && req.auth.userId).catch(() => {}),
+    });
+    auditReq(req, 'scan', 'document', null, { sursa: r.sursa, tip: r.tipDetectat, campuri: Object.keys(r.campuri).length });
+    res.json(r);
+  } catch (err) {
+    // Mesajele din docscan sunt scrise pentru oameni („PDF-ul e o scanare fără text...") — le dăm mai departe.
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Imaginea actului, doar la cerere (listarea nu o cară — vezi getVehicleDocuments).
+app.get('/api/documents/:id/file', requireAuth, withScope, async (req, res) => {
+  try {
+    const row = await db.getVehicleDocumentFile(parseInt(req.params.id), req.isSuper ? null : req.companyId);
+    if (!row || !row.file_b64) return res.status(404).json({ error: 'Actul nu are fișier atașat' });
+    const buf = Buffer.from(row.file_b64, 'base64');
+    res.setHeader('Content-Type', row.file_mime || 'image/jpeg');
+    res.setHeader('Content-Disposition', 'inline; filename="' + String(row.file_name || 'act').replace(/[^\w.\-]+/g, '_') + '"');
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── Export CSV ───
 
 // ─── Detectie automata tara camion ───

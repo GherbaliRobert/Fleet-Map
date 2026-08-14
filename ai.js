@@ -58,6 +58,28 @@ async function callClaude({ system, messages, maxTokens = 800, model, onUsage })
   return (j.content && j.content[0] && j.content[0].text) || '';
 }
 
+// Citirea unei IMAGINI (poză de talon, CIV, RCA…). Până aici tot fișierul vorbea doar text; blocul
+// de imagine e singura noutate. Modelul primește poza + o instrucțiune și întoarce DOAR textul
+// transcris de pe document — extragerea câmpurilor rămâne în docparse.js, pe reguli, gratuit.
+// De ce așa și nu „modelul completează direct câmpurile": transcrierea e sarcina la care modelul
+// greșește cel mai puțin, iar regulile noastre sunt verificabile și testate (test_docparse.js).
+// mediaType: 'image/jpeg' | 'image/png' | 'image/webp'.
+async function readImage({ b64, mediaType, prompt, maxTokens = 1500, model, onUsage }) {
+  const j = await _rawCall({
+    model: model || AI_MODEL,
+    max_tokens: maxTokens,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType || 'image/jpeg', data: b64 } },
+        { type: 'text', text: prompt },
+      ],
+    }],
+  });
+  if (onUsage && j.usage) { try { onUsage(j.usage); } catch (e) {} }
+  return (j.content && j.content[0] && j.content[0].text) || '';
+}
+
 // Agent cu tool-use: rulează bucla model → execută unelte → model, până la stop_reason !== 'tool_use' sau maxIters.
 // toolHandlers: { numeUnealtă: async (input) => rezultat } — rezultatul e serializat ca JSON pentru model.
 // Întoarce { text, toolCalls: [{name, input}] }. Consumul (tokeni) e raportat per fiecare răspuns prin onUsage.
@@ -98,4 +120,4 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
   return { text, toolCalls: used };
 }
 
-module.exports = { aiEnabled, hasKey, setKey, callClaude, runAgent, AI_MODEL, AI_AGENT_MODEL, costUsd, costEur, USD_EUR, PRICE_IN, PRICE_OUT };
+module.exports = { aiEnabled, hasKey, setKey, callClaude, readImage, runAgent, AI_MODEL, AI_AGENT_MODEL, costUsd, costEur, USD_EUR, PRICE_IN, PRICE_OUT };

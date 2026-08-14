@@ -18,6 +18,44 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-08-14
+
+### AMÂNDOI · Actele mașinii încep să completeze singure fișa — fundația — `HASH6`
+
+**Ce am schimbat:** ideea lui Alin din 14.08 — încarci talonul, RCA-ul, ITP-ul, iar fișa vehiculului
+se completează singură — are acum fundația construită pe server. Partea văzută (butonul de încărcare,
+ecranul de confirmare) vine în pașii următori; aici e motorul.
+
+Cum funcționează, în trei trepte, de la ieftin la scump:
+1. **Un PDF cu text în el** (RCA-ul de pe email) se citește direct — **gratuit**, fără AI.
+2. **O poză** (talonul fotografiat cu telefonul) e transcrisă de model — cost mic, **o dată per act**.
+3. În ambele cazuri, câmpurile se extrag apoi **pe reguli, nu pe ghicite**: talonul are coduri
+   standard europene (A = numărul, E = seria de șasiu, P.3 = combustibilul…), seria de șasiu are fix
+   17 caractere și nu conține niciodată literele I, O sau Q — deci o citire greșită se prinde din
+   cod. Redresăm automat și confuziile clasice (O citit în loc de 0), pe context: într-un VIN, O e
+   mereu 0; în „VOLVO", niciodată.
+
+**Regula de aur: nimic nu se salvează singur.** Scanarea doar PROPUNE, cu un grad de încredere pe
+fiecare câmp; omul confirmă. Un număr de șasiu greșit salvat tăcut e mai rău decât un câmp gol —
+golul se vede, greșeala nu.
+
+**Fondatorul vede:** costul citirilor apare separat în Control costuri („docscan"), măsurat din prima
+zi — ca să-i punem preț pe cifre, nu din burtă, exact ca la RA Insight.
+
+**Clientul vede:** deocamdată nimic — butonul de încărcare vine în pasul următor.
+
+> 51 de verificări noi (32 pe extragere + 19 cap-coadă pe server), plus toată regresia: CI verde,
+> 30/30 pe reparațiile de lansare. Printre ele: scanarea NU scrie nimic în bază; PDF-ul merge FĂRĂ
+> cheie de AI; fișierul actului nu e cărat la fiecare listare, ci doar la cerere.
+
+**Două scurgeri tăcute reparate pe drum:**
+- pe stiva de VPS scrisesem greșit numele unei variabile — copia de rezervă externă **nu pleca**,
+  fără nicio eroare (greșeala mea de ieri, prinsă la cartografierea de azi);
+- „Model GPS" și „Număr SIM" completate în fișă **se pierdeau tăcut la salvare** — se trimiteau,
+  dar serverul nu le accepta din formularul acela.
+
+---
+
 ## 2026-08-13
 
 ### AMÂNDOI · Șoferi: ecranul spune acum dacă permisul e valabil și pe ce mașină e omul

@@ -69,7 +69,7 @@ services:
       - BACKUP_PASSPHRASE=${BACKUP_PASSPHRASE:-}
       - BACKUP_S3_ENDPOINT=${BACKUP_S3_ENDPOINT:-}
       - BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET:-}
-      - BACKUP_S3_KEY=${BACKUP_S3_KEY:-}
+      - BACKUP_S3_KEY_ID=${BACKUP_S3_KEY_ID:-}
       - BACKUP_S3_SECRET=${BACKUP_S3_SECRET:-}
       # Email, urmărirea erorilor, adrese — vezi .env.example pentru lista completă.
       - SMTP_HOST=${SMTP_HOST:-}

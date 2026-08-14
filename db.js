@@ -634,7 +634,13 @@ async function initDb() {
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS io_mappings JSONB`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS can_interface VARCHAR(8)`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_can JSONB`,
-      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS cost NUMERIC(10,2)`
+      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS cost NUMERIC(10,2)`,
+      // Actul propriu-zis, ca imagine COMPRIMATĂ pentru vizualizare (nu originalul: acela se
+      // folosește la citire și se aruncă — pe VPS discul e fix). Base64 în TEXT, ca la poza de
+      // șofer; ~200-400 KB per act după compresia din client.
+      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS file_b64 TEXT`,
+      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS file_mime VARCHAR(40)`,
+      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(160)`
     ];
     for (const sql of migrateColumns) {
       try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
@@ -1874,7 +1880,11 @@ const VEHICLE_DETAIL_COLS = [
   'emission_class', 'tire_size', 'engine_serial', 'displacement', 'power_kw',
   'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
   'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source', 'show_transport',
-  'odo_base_km', 'temp_min', 'temp_max'
+  'odo_base_km', 'temp_min', 'temp_max',
+  // Fișa vehiculului le trimite dintotdeauna (index.html, secțiunea „Administrativ & afișare"),
+  // dar lipseau de aici — deci se salvau DOAR prin PUT /api/devices/:imei (alt formular), iar din
+  // fișă se pierdeau tăcut: completai modelul de GPS, apăsai Salvează, câmpul rămânea gol.
+  'gps_model', 'sim_number'
 ];
 const NUMERIC_COLS = new Set([
   'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',
@@ -3064,7 +3074,13 @@ async function getLastIo(imei) {
 
 // ─── Documente vehicul (ITP/RCA/CASCO/...) ───
 async function getVehicleDocuments(imei, companyId) {
-  let query = 'SELECT * FROM vehicle_documents WHERE 1=1';
+  // FĂRĂ file_b64 la listare, deliberat. Lista e chemată de checkExpiries pe TOATE documentele
+  // (de două ori pe rulare) și de fiecare deschidere de fișă — a căra imaginea actului peste tot
+  // ar însemna sute de KB pe rând pentru un câmp de care are nevoie doar butonul „Vezi actul".
+  // `has_file` spune interfeței dacă există ceva de arătat; imaginea vine din getVehicleDocumentFile.
+  let query = `SELECT id, imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id,
+                      created_at, cost, file_mime, file_name, (file_b64 IS NOT NULL) AS has_file
+               FROM vehicle_documents WHERE 1=1`;
   const params = [];
   if (imei) { params.push(imei); query += ` AND imei = $${params.length}`; }
   if (companyId != null) { params.push(companyId); query += ` AND company_id = $${params.length}`; }
@@ -3072,10 +3088,21 @@ async function getVehicleDocuments(imei, companyId) {
   const result = await pool.query(query, params);
   return result.rows;
 }
+// Imaginea actului, DOAR la cerere. companyId nul = super-admin (vede tot).
+async function getVehicleDocumentFile(id, companyId) {
+  const params = [id];
+  let q = 'SELECT id, company_id, file_b64, file_mime, file_name FROM vehicle_documents WHERE id = $1';
+  if (companyId != null) { params.push(companyId); q += ' AND company_id = $2'; }
+  const r = await pool.query(q, params);
+  return r.rows[0] || null;
+}
 async function createVehicleDocument(data, companyId) {
   const result = await pool.query(
-    'INSERT INTO vehicle_documents (imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id, cost) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-    [data.imei, data.doc_type, data.number || null, data.issuer || null, data.issue_date || null, data.expiry_date || null, data.notes || null, companyId != null ? companyId : null, (data.cost != null && data.cost !== '') ? data.cost : null]
+    `INSERT INTO vehicle_documents (imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id, cost, file_b64, file_mime, file_name)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     RETURNING id, imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id, created_at, cost, file_mime, file_name, (file_b64 IS NOT NULL) AS has_file`,
+    [data.imei, data.doc_type, data.number || null, data.issuer || null, data.issue_date || null, data.expiry_date || null, data.notes || null, companyId != null ? companyId : null, (data.cost != null && data.cost !== '') ? data.cost : null,
+     data.file_b64 || null, data.file_mime || null, data.file_name || null]
   );
   return result.rows[0];
 }
@@ -3363,5 +3390,6 @@ module.exports = {
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
   listFuelTransactions, createFuelTransaction, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,
   saveFuelPriceSnapshot, getFuelPriceHistory,
-  getVehicleDocuments, createVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
+  getVehicleDocuments,
+  getVehicleDocumentFile, createVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
 };
