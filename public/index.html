@@ -406,6 +406,18 @@
         .veh-c-last .veh-sub { display: none; }
         .veh-pic { width: 44px; height: 36px; }
 
+        /* Șoferi pe mobil: rândul se pliază pe trei — cine e / contactul / permisul + vehiculul. */
+        .drv-colh { display: none; }
+        .drv-row {
+          grid-template-columns: 44px 1fr auto;
+          grid-template-areas: "av who act" "con con con" "lic lic veh";
+          gap: 8px 10px; padding: 12px;
+        }
+        .drv-c-av { grid-area: av; } .drv-c-who { grid-area: who; } .drv-c-act { grid-area: act; }
+        .drv-c-contact { grid-area: con; } .drv-c-lic { grid-area: lic; }
+        .drv-c-veh { grid-area: veh; justify-self: end; }
+        .drv-av { width: 42px; height: 42px; font-size: 15px; }
+
         /* Toolbar Vehicule: search ia tot rândul, butoanele compact pe rândul 2 */
         #atab-vehicles .toolbar-row .toolbar-spacer { min-width: 100% !important; order: -1; }
 
@@ -1745,13 +1757,72 @@ const pozitii = await r.json();</code></pre>
         </div>
 
         <!-- Șoferi -->
+        <style id="drv-cards-css">
+          /* Șoferi — rânduri înalte cu pastilă de permis. Aceleași reguli de culoare ca la Vehicule:
+             verdele de brand e ilizibil ca TEXT pe alb → scrisul verde folosește o nuanță adâncă pe
+             tema deschisă și verdele de brand pe cea închisă. */
+          #atab-drivers { --drv-ink: #0E7A3C; --drv-amber: #b45309; }
+          body.dark #atab-drivers { --drv-ink: var(--accent); --drv-amber: #fbbf24; }
+
+          #atab-drivers .toolbar-row > .btn-sm { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; background: var(--bg-panel); width: auto; }
+          #atab-drivers .toolbar-row > .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
+          #drv-search { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 12px; font-family: inherit; font-size: 13px; }
+          #drv-co-filter { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-secondary); padding: 0 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; }
+          #drv-count { font-size: 12px; font-weight: 800; color: var(--drv-ink); background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); padding: 4px 10px; border-radius: 20px; }
+
+          .drv-colh, .drv-row { display: grid; grid-template-columns: 60px minmax(140px, 1.5fr) 1.2fr 1.2fr 1fr 92px; gap: 16px; align-items: center; }
+          .drv-colh { padding: 10px 16px; font-size: 10.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px 10px 0 0; }
+          .drv-colh > :last-child { text-align: right; }
+          .drv-list { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
+          .drv-row { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
+          .drv-row:last-child { border-bottom: none; }
+          .drv-row:hover { background: rgba(63, 224, 125, .05); }
+          .drv-row > * { min-width: 0; }   /* altfel celulele refuză să se strângă și rândul iese din ecran */
+
+          /* Poza lipsă → inițiale colorate. Fără asta toată lista arăta cu aceeași siluetă gri. */
+          .drv-av { width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; letter-spacing: .3px; flex: 0 0 auto; object-fit: cover; }
+          .drv-av.c1 { background: rgba(14, 122, 60, .14); color: #0E7A3C; }
+          .drv-av.c2 { background: rgba(3, 105, 161, .13); color: #0369A1; }
+          .drv-av.c3 { background: rgba(109, 40, 217, .13); color: #6D28D9; }
+          .drv-av.c4 { background: rgba(180, 83, 9, .13); color: #B45309; }
+          .drv-av.c5 { background: rgba(190, 24, 93, .12); color: #BE185D; }
+          body.dark .drv-av.c1 { background: rgba(63, 224, 125, .16); color: #3FE07D; }
+          body.dark .drv-av.c2 { background: rgba(56, 189, 248, .16); color: #38BDF8; }
+          body.dark .drv-av.c3 { background: rgba(167, 139, 250, .16); color: #A78BFA; }
+          body.dark .drv-av.c4 { background: rgba(251, 146, 60, .16); color: #FB923C; }
+          body.dark .drv-av.c5 { background: rgba(244, 114, 182, .16); color: #F472B6; }
+
+          .drv-nm { font-weight: 800; font-size: 14px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .drv-sub { font-size: 11.5px; color: var(--text-muted); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .drv-line { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-secondary); font-weight: 600; min-width: 0; }
+          .drv-line + .drv-line { margin-top: 3px; }
+          .drv-line i { color: var(--text-muted); font-size: 11px; width: 13px; text-align: center; flex: 0 0 auto; }
+          .drv-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .drv-none { font-size: 11.5px; color: var(--text-muted); font-style: italic; }
+          .drv-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap; margin-top: 5px; }
+          .drv-pill.ok { background: rgba(63, 224, 125, .12); color: var(--drv-ink); border: 1px solid rgba(63, 224, 125, .38); }
+          .drv-pill.soon { background: rgba(245, 158, 11, .13); color: var(--drv-amber); border: 1px solid rgba(245, 158, 11, .4); }
+          .drv-pill.exp { background: rgba(220, 38, 38, .1); color: var(--red); border: 1px solid rgba(220, 38, 38, .32); }
+          .drv-pill.none { background: var(--bg-dark); color: var(--text-muted); border: 1px solid var(--border); margin-top: 0; }
+          .drv-vch { display: inline-flex; align-items: center; gap: 8px; background: rgba(63, 224, 125, .1); border: 1px solid rgba(63, 224, 125, .3); border-radius: 9px; padding: 5px 10px; font-size: 12px; font-weight: 800; color: var(--drv-ink); max-width: 100%; }
+          .drv-vch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .drv-vmore { font-size: 11px; color: var(--text-muted); font-weight: 700; margin-left: 6px; }
+          .drv-act { display: flex; gap: 7px; justify-content: flex-end; }
+          .drv-act .btn-sm { width: 34px; height: 34px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+          .drv-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        </style>
         <div id="atab-drivers" class="admin-tab-content" style="display:none;">
-          <div class="super-only" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--text-muted);"><i class="fas fa-building"></i> Companie:</span>
-            <select id="drv-co-filter" onchange="renderDriversList()" style="font-family:inherit;padding:5px 10px;border-radius:6px;background:var(--bg-dark);color:inherit;border:1px solid var(--border);"></select>
+          <div class="toolbar-row">
+            <input type="text" id="drv-search" placeholder="Caută nume, telefon sau număr de permis..." oninput="renderDriversList()" class="toolbar-spacer">
+            <select id="drv-co-filter" class="super-only" onchange="renderDriversList()" title="Filtrează pe companie"></select>
+            <span id="drv-count" class="toolbar-count"></span>
+            <button class="btn-sm btn-primary" onclick="toggleDrvAdd()"><i class="fas fa-plus"></i> Adaugă șofer</button>
           </div>
-          <div id="admin-drivers-list"></div>
-          <div class="admin-add" id="drv-form" style="grid-template-columns:repeat(2,1fr);">
+          <div class="drv-colh">
+            <span></span><span>Șofer</span><span>Contact</span><span>Permis</span><span>Vehicul</span><span>Acțiuni</span>
+          </div>
+          <div id="admin-drivers-list" class="drv-list"></div>
+          <div class="admin-add" id="drv-form" style="grid-template-columns:repeat(2,1fr);display:none;">
             <input type="hidden" id="drv-id">
             <input type="hidden" id="drv-photo-data">
             <div id="drv-form-title" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;padding-bottom:8px;border-bottom:1px solid var(--border);">
@@ -4086,32 +4157,83 @@ const pozitii = await r.json();</code></pre>
       if (currentUser && currentUser.isSuper) { await ensureAdminCompanies(); fillCompanyOptions(document.getElementById('drv-co-filter'), true); fillCompanyOptions(document.getElementById('drv-company'), false); }
       renderDriversList();
     }
+    // Vehiculele pe care e pus șoferul. Legătura există deja (devices.driver_id), dar nu se vedea
+    // nicăieri dinspre șofer. Citim din ce e încărcat: vehAll (tab-ul Vehicule) sau harta live.
+    function driverVehicles(driverId) {
+      const out = [], seen = new Set();
+      const add = d => {
+        if (!d || d.status === 'archived' || String(d.driver_id) !== String(driverId)) return;
+        const key = d.imei || d.plate;
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        out.push({ label: d.plate || d.name || d.imei, cat: markerCategory(d) });
+      };
+      try { (Array.isArray(vehAll) ? vehAll : []).forEach(add); } catch (e) { }
+      try { if (typeof devices !== 'undefined' && devices && devices.forEach) devices.forEach(add); } catch (e) { }
+      return out;
+    }
+    // Starea permisului. Comparăm pe zile calendaristice, nu pe milisecunde: un permis care expiră
+    // azi nu trebuie să apară „expirat" doar pentru că e ora 15:00.
+    function driverLicense(d) {
+      const num = (d.license_number || '').trim();
+      if (!d.license_expiry) return { st: num ? 'nodate' : 'none', num: num };
+      const e = new Date(d.license_expiry), now = new Date();
+      const dayE = Date.UTC(e.getFullYear(), e.getMonth(), e.getDate());
+      const dayN = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+      const days = Math.round((dayE - dayN) / 86400000);
+      return { st: days < 0 ? 'exp' : (days <= 30 ? 'soon' : 'ok'), num: num, days: days, date: e.toLocaleDateString('ro-RO') };
+    }
     function renderDriversList() {
       const el = document.getElementById('admin-drivers-list');
       const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const showCo = !!(currentUser && currentUser.isSuper); // super-admin: arată compania fiecărui șofer
       const fEl = document.getElementById('drv-co-filter');
       const fco = (showCo && fEl && fEl.value) ? String(fEl.value) : '';
+      const qEl = document.getElementById('drv-search');
+      const q = (qEl && qEl.value || '').trim().toLowerCase();
       let list = Array.isArray(_driversAll) ? _driversAll : [];
       if (fco) list = list.filter(d => String(d.company_id) === fco);
-      el.innerHTML = list.length ? list.map(d => {
-        const exp = d.license_expiry ? new Date(d.license_expiry) : null;
-        const expSoon = exp && (exp - new Date()) < 30*24*3600*1000;
-        const coTag = (showCo && d.company_name) ? ` <span class="co-tag"><i class="fas fa-building"></i>${esc(d.company_name)}</span>` : '';
+      if (q) list = list.filter(d => ((d.name || '') + ' ' + (d.phone || '') + ' ' + (d.email || '') + ' ' + (d.license_number || '')).toLowerCase().includes(q));
+      const cEl = document.getElementById('drv-count');
+      if (cEl) cEl.textContent = list.length + (list.length === 1 ? ' șofer' : ' șoferi');
+      el.innerHTML = list.length ? list.map((d, i) => {
+        const L = driverLicense(d);
         const av = d.photo_b64
-          ? `<img src="${esc(d.photo_b64)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;">`
-          : `<span style="width:40px;height:40px;border-radius:50%;background:var(--bg-dark);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);flex-shrink:0;"><i class="fas fa-user"></i></span>`;
-        return `<div class="admin-row"><div style="display:flex;align-items:center;gap:10px;min-width:0;">
-          ${av}
-          <div style="min-width:0;">
-            <strong>${esc(d.name)}</strong>${coTag}
-            <div class="meta">${esc(d.phone||'')}${d.email?' · '+esc(d.email):''}${d.license_number?' · permis '+esc(d.license_number):''}${exp?' · expiră '+exp.toLocaleDateString('ro-RO')+(expSoon?' ⚠':''):''}</div>
+          ? `<img class="drv-av" src="${esc(d.photo_b64)}" alt="">`
+          : `<span class="drv-av c${(i % 5) + 1}">${esc((d.name || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase())}</span>`;
+        const contact = (d.phone ? `<div class="drv-line"><i class="fas fa-phone"></i><span>${esc(d.phone)}</span></div>` : '')
+          + (d.email ? `<div class="drv-line"><i class="fas fa-envelope"></i><span>${esc(d.email)}</span></div>` : '')
+          || '<span class="drv-none">fără telefon</span>';
+        const lic = L.st === 'none'
+          ? '<span class="drv-pill none">fără permis în fișă</span>'
+          : `<div class="drv-line"><i class="fas fa-id-card"></i><span>${esc(L.num) || '—'}</span></div>`
+            + (L.st === 'nodate' ? '<span class="drv-pill none" style="margin-top:5px;">fără dată de expirare</span>'
+              : `<div><span class="drv-pill ${L.st}">${L.st === 'exp' ? 'expirat de ' + (-L.days) + ' zile' : L.st === 'soon' ? (L.days === 0 ? 'expiră azi' : 'mai are ' + L.days + (L.days === 1 ? ' zi' : ' zile')) : 'până ' + L.date}</span></div>`);
+        const vs = driverVehicles(d.id);
+        const veh = vs.length
+          ? `<span class="drv-vch">${vehicleSilhouetteSVG(vs[0].cat, 'currentColor', 20)}<span>${esc(vs[0].label)}</span></span>${vs.length > 1 ? `<span class="drv-vmore">+${vs.length - 1}</span>` : ''}`
+          : '<span class="drv-none">nealocat</span>';
+        return `<div class="drv-row">
+          <div class="drv-c-av">${av}</div>
+          <div class="drv-c-who"><div class="drv-nm">${esc(d.name)}</div>${showCo && d.company_name ? `<div class="drv-sub">${esc(d.company_name)}</div>` : ''}</div>
+          <div class="drv-c-contact">${contact}</div>
+          <div class="drv-c-lic">${lic}</div>
+          <div class="drv-c-veh">${veh}</div>
+          <div class="drv-c-act drv-act">
+            <button class="btn-sm" title="Editează" onclick="editDriver(${d.id})"><i class="fas fa-pen"></i></button>
+            <button class="btn-sm btn-danger" title="Șterge" onclick="deleteDriver(${d.id})"><i class="fas fa-trash"></i></button>
           </div>
-        </div><div style="display:flex;gap:6px;">
-          <button class="btn-sm" onclick="editDriver(${d.id})"><i class="fas fa-pen"></i></button>
-          <button class="btn-sm btn-danger" onclick="deleteDriver(${d.id})"><i class="fas fa-trash"></i></button>
-        </div></div>`;
-      }).join('') : '<p style="color:var(--text-muted);font-size:12px;">' + (fco ? 'Niciun șofer în această companie.' : 'Niciun șofer.') + '</p>';
+        </div>`;
+      }).join('') : `<div class="drv-empty">${q ? 'Niciun șofer care să se potrivească.' : (fco ? 'Niciun șofer în această companie.' : 'Niciun șofer.')}</div>`;
+    }
+    // Formularul nu mai stă deschis permanent — ocupa jumătate de ecran fără să fie cerut.
+    function toggleDrvAdd() {
+      const f = document.getElementById('drv-form');
+      if (!f) return;
+      if (f.style.display !== 'none') { f.style.display = 'none'; return; }
+      resetDriverForm();
+      f.style.display = 'grid';
+      f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     function editDriver(idOrObj) {
       const d = (idOrObj && typeof idOrObj === 'object') ? idOrObj : (_driversAll || []).find(x => String(x.id) === String(idOrObj));
@@ -4131,6 +4253,7 @@ const pozitii = await r.json();</code></pre>
       var _fi = document.getElementById('drv-form-icon'); if (_fi) _fi.className = 'fas fa-user-pen';
       var _form = document.getElementById('drv-form');
       if (_form) {
+        _form.style.display = 'grid';   // formularul e ascuns implicit → editarea trebuie să-l deschidă
         _form.style.border = '1px solid var(--accent)';
         _form.style.borderRadius = '10px';
         _form.style.padding = '14px';
@@ -4196,7 +4319,9 @@ const pozitii = await r.json();</code></pre>
       if (currentUser && currentUser.isSuper && !id) { const coSel = document.getElementById('drv-company'); if (!coSel || !coSel.value) return alert('Alege compania pentru noul șofer'); body.company_id = parseInt(coSel.value); }
       const res = await fetch('/api/drivers' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
-      resetDriverForm(); await loadDrivers();
+      resetDriverForm();
+      var _f = document.getElementById('drv-form'); if (_f) _f.style.display = 'none';   // salvat → se închide
+      await loadDrivers();
     }
     async function deleteDriver(id) {
       if (!await raConfirm('Ștergi acest șofer?', { okLabel: 'Șterge' })) return;

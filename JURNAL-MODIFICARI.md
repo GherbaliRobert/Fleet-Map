@@ -20,6 +20,41 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-13
 
+### AMÂNDOI · Șoferi: ecranul spune acum dacă permisul e valabil și pe ce mașină e omul
+
+**Ce am schimbat:** lista de șoferi arăta doar numele și compania. Restul datelor existau în fișă,
+dar nu se vedeau nicăieri. Acum fiecare rând arată **contactul, permisul și vehiculul pe care e pus
+șoferul**, iar permisul are o pastilă colorată care spune direct **„mai are 29 zile"**, **„expirat de
+43 zile"** sau **„până 17.03.2028"**.
+
+**Partea care aduce bani, nu doar frumusețe:** aplicația avea deja alarmă pentru expirarea
+permisului, dar ea pornește numai dacă cineva completează data. La voi, la ambii șoferi, e goală —
+deci funcția stătea moartă. Acum, când deschizi ecranul, scrie negru pe alb „fără permis în fișă",
+așa că lipsa se vede și se completează.
+
+**Restul schimbărilor:**
+- **Vehiculul alocat apare lângă șofer.** Legătura om–mașină exista deja, dar o vedeai doar dinspre
+  mașină. Dacă un șofer are mai multe vehicule, apare primul și „+1". Vehiculele arhivate nu se
+  numără — omul nu conduce o mașină scoasă din flotă.
+- **Poza lipsă devine inițialele lui, colorate.** Înainte toți aveau aceeași siluetă gri, deci lista
+  arăta identic pe toate rândurile.
+- **Formularul de adăugare nu mai stă deschis permanent.** Ocupa jumătate de ecran chiar dacă nu
+  adăugai pe nimeni; acum intră sub butonul „Adaugă șofer" și se închide singur după salvare.
+- **Am pus căutare și contor** — nu existau deloc. Cauți după nume, telefon sau număr de permis.
+- **Câmpurile goale spun ceva** („fără telefon"), în loc să lase rândul pustiu.
+
+**Fondatorul vede:** în plus, compania fiecărui șofer, scrisă sub nume.
+
+**Clientul vede:** aceeași listă, fără companie. Pe telefon rândul se pliază pe trei linii și
+păstrează tot: cine e, contactul, permisul și mașina.
+
+> Verificat pe cod real: 22 de controale automate — inclusiv cazurile-capcană (permis care expiră
+> CHIAR AZI trebuie să scrie „expiră azi", nu „expirat"; un șofer cu o singură mașină, arhivată,
+> trebuie să apară „nealocat") — plus măsurarea lățimii la 360 și 1180 px.
+
+---
+
+
 ### AMÂNDOI · Lista de vehicule: din tabel searbăd, în carduri care spun starea dintr-o privire
 
 **Ce am schimbat:** ecranul *Management → Vehicule* arăta ca un tabel gol, cu butoane mărunte și
