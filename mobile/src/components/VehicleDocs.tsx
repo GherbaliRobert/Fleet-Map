@@ -77,10 +77,13 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
       setFisier(f); setProp(r);
       // Bifat implicit: încredere ≥0.6 ȘI câmpul-țintă gol — ce a scris omul nu se suprascrie tăcut.
       const b: Record<string, boolean> = {};
-      const c = r.campuri || {}, inc = r.incredere || {};
+      const c = r.campuri || {};
       for (const k of Object.keys(c)) {
         const ocupat = k in FISA_ET ? String(fisa?.[k] ?? '').trim() !== '' : false;
-        b[k] = (inc[k] || 0) >= 0.6 && !ocupat;
+        // Bifat = tot ce s-a citit, mai puțin ce ai scris deja tu. Încrederea doar etichetează
+        // (sigur/probabil/verifică) — dacă ar și reține bifa, câmpurile citite mai greu ar rămâne
+        // goale după „confirmă", iar funcția ar părea că nu merge.
+        b[k] = !ocupat;
       }
       setBife(b);
     } catch (e: any) { showToast(e?.message || 'Nu am putut citi actul', true); }
@@ -125,6 +128,19 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
       const url = URL.createObjectURL(await res.blob());
       if (poza) URL.revokeObjectURL(poza.url);
       setPoza({ id, url });
+    } catch (e: any) { showToast(e?.message || 'Nu am putut deschide actul', true); }
+  }
+
+  // PDF-ul nu se poate afișa în pagină pe telefon. Îl aducem cu tokenul (un link simplu nu-l cară)
+  // și îl predăm sistemului: se deschide în vizualizatorul de PDF-uri și se poate salva de acolo.
+  async function deschideFisier(id: number) {
+    try {
+      const res = await fetch(API_BASE + '/api/documents/' + id + '/file', { headers: getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : undefined });
+      if (!res.ok) throw new Error('Actul nu are fișier');
+      const url = URL.createObjectURL(await res.blob());
+      try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); }
+      // Nu revocăm imediat: vizualizatorul citește adresa după ce ecranul nostru pierde focusul.
+      setTimeout(() => { try { URL.revokeObjectURL(url); } catch {} }, 60000);
     } catch (e: any) { showToast(e?.message || 'Nu am putut deschide actul', true); }
   }
 
@@ -180,8 +196,12 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
                 <b style="font-size:13px">{d.doc_type}</b>{d.number ? <span style="font-size:12px"> · {d.number}</span> : null}
                 <div style="font-size:11.5px">{badge}</div>
               </div>
-              {/* Doar imaginile se pot arăta într-un <img>; un PDF atașat rămâne vizibil pe web. */}
-              {d.has_file && String(d.file_mime || '').startsWith('image/') && <button class="h-btn" onClick={() => veziPoza(d.id)} aria-label="Vezi actul"><Icon name="eye" size={16} /></button>}
+              {/* Imaginile se deschid AICI, sub act. Un PDF nu intră într-un <img>, deci pentru el
+                  butonul deschide fișierul în afara aplicației (vizualizator/descărcare) — altfel
+                  actul ar fi fost stocat și inaccesibil de pe telefon. */}
+              {d.has_file && (String(d.file_mime || '').startsWith('image/')
+                ? <button class="h-btn" onClick={() => veziPoza(d.id)} aria-label="Vezi actul"><Icon name="eye" size={16} /></button>
+                : <button class="h-btn" onClick={() => deschideFisier(d.id)} aria-label="Deschide actul"><Icon name="fileBar" size={16} /></button>)}
               <button class="h-btn" onClick={() => Api.deleteDocument(d.id).then(reload).catch(() => showToast('Eroare la ștergere', true))} aria-label="Șterge"><Icon name="trash" size={16} /></button>
             </div>
             {poza && poza.id === d.id && (

@@ -81,6 +81,62 @@ async function scan({ b64, mime, tip = 'auto', onUsage }) {
   }
 
   const rezultat = docparse.parse(text, tip);
+
+  // ─── Plasa de siguranță: modelul, pe TEXT ────────────────────────────────────────────────────
+  // Regulile acoperă talonul foarte bine (are coduri tipărite), dar o poliță RCA e liber
+  // formatată: fiecare asigurător își pune datele altfel. Când regulile ratează tocmai câmpul
+  // care contează — DATA EXPIRĂRII, cea care pornește alertele — întrebăm modelul.
+  //
+  // Costă neglijabil, pentru că trimitem TEXTUL deja extras, nu imaginea: ~1-2 mii de tokeni,
+  // adică fracțiuni de ban, și doar când regulile n-au reușit. Un act citit pe jumătate e mai
+  // rău decât unul necitit: omul vede câmpuri completate, crede că e gata, și pleacă fără dată
+  // de expirare — adică fără alerte, exact ce venise să obțină.
+  const lipsesc = ['expiry_date', 'issue_date', 'issuer'].filter((k) => rezultat.campuri[k] == null);
+  if (lipsesc.length && rezultat.tip === 'document' && ai.aiEnabled() && String(text).trim().length > 40) {
+    try {
+      const raspuns = await ai.callClaude({
+        system: 'Ești un extractor de date din acte auto românești. Răspunzi NUMAI cu JSON, fără explicații.',
+        messages: [{
+          role: 'user',
+          content:
+            'Din textul de mai jos (act auto românesc: RCA, ITP, CASCO sau rovinietă) extrage EXACT aceste câmpuri:\n' +
+            '- "issuer": denumirea firmei care a emis actul (asigurător / stație ITP / CNAIR)\n' +
+            '- "issue_date": data de la care e valabil, format AAAA-LL-ZZ\n' +
+            '- "expiry_date": data până la care e valabil, format AAAA-LL-ZZ\n' +
+            '- "number": seria și numărul actului\n\n' +
+            'Reguli: dacă un câmp nu apare în text, pune null. NU inventa. Datele românești sunt zi.lună.an — ' +
+            'convertește-le. Dacă vezi un interval („valabil de la X până la Y"), X e issue_date și Y e expiry_date.\n\n' +
+            'TEXT:\n' + String(text).slice(0, 6000) + '\n\nRăspunde doar cu obiectul JSON.',
+        }],
+        maxTokens: 300,
+        onUsage,
+      });
+      const brut = String(raspuns || '').match(/\{[\s\S]*\}/);
+      if (brut) {
+        const j = JSON.parse(brut[0]);
+        for (const k of lipsesc) {
+          let v = j[k];
+          if (v == null || v === '') continue;
+          // Datele trec prin ACELAȘI validator ca restul — modelul poate întoarce o dată imposibilă,
+          // iar o dată greșită de expirare e mai rea decât una lipsă.
+          if (k.endsWith('_date')) {
+            const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) continue;
+            const iso = docparse.ziLunaAn(m[3], m[2], m[1]);
+            if (!iso) continue;
+            v = iso;
+          }
+          rezultat.campuri[k] = String(v).slice(0, 120);
+          rezultat.incredere[k] = 0.8;   // citit de model, verificat de om în ecranul de confirmare
+        }
+        if (sursa === 'pdf-text') sursa = 'pdf-text+ai';
+      }
+    } catch (e) {
+      // Plasa e opțională: dacă modelul nu răspunde, rămân câmpurile găsite pe reguli.
+      console.warn('[DOCSCAN] completarea cu modelul a eșuat:', e.message);
+    }
+  }
+
   return {
     sursa,
     tipDetectat: rezultat.tip,

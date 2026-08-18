@@ -12053,7 +12053,11 @@ const pozitii = await r.json();</code></pre>
         '<div style="font-size:12px;font-weight:700;margin-bottom:8px;"><i class="fas fa-clipboard-check" style="color:var(--accent);"></i> Am citit din act (' + (r.sursa === 'pdf-text' ? 'text din PDF, gratuit' : 'citire AI') + ') — debifează ce nu vrei:</div>' +
         randuri.map((x, i) =>
           '<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:12.5px;cursor:pointer;">' +
-          '<input type="checkbox" class="scan-prop" data-k="' + x.k + '" data-tinta="' + x.tinta + '"' + ((x.inc >= 0.6 && !x.ocupat) ? ' checked' : '') + '>' +
+          // Se bifează TOT ce s-a citit, cu o singură excepție: câmpurile pe care le-ai completat
+          // deja tu. Încrederea ETICHETEAZĂ („sigur/probabil/verifică"), nu reține — altfel exact
+          // datele citite mai greu (data expirării, la polițe) rămâneau nebifate, omul apăsa
+          // „completează" și vedea câmpurile tot goale. Adică „nu funcționează".
+          '<input type="checkbox" class="scan-prop" data-k="' + x.k + '" data-tinta="' + x.tinta + '"' + (x.ocupat ? '' : ' checked') + '>' +
           '<span style="min-width:170px;color:var(--text-muted);">' + x.et + '</span>' +
           '<strong style="flex:1;">' + _docEsc(String(x.val)) + '</strong>' + _incBadge(x.inc) +
           (x.ocupat ? ' <span style="font-size:10.5px;color:#f59e0b;" title="Câmpul are deja o valoare — bifează doar dacă vrei să o înlocuiești">deja completat</span>' : '') +
@@ -12096,7 +12100,14 @@ const pozitii = await r.json();</code></pre>
           const exp = d.expiry_date ? new Date(d.expiry_date) : null;
           let badge = 'fără dată expirare';
           if (exp) { const diff = exp.getTime() - now; const txt = exp.toLocaleDateString('ro-RO'); badge = diff < 0 ? '<span style="color:#ef4444;font-weight:600;">EXPIRAT (' + txt + ')</span>' : (diff < soon ? '<span style="color:#f59e0b;font-weight:600;">expiră ' + txt + '</span>' : '<span style="color:var(--accent);">valid până ' + txt + '</span>'); }
-          const fisier = d.has_file ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" title="Vezi actul scanat" style="margin-right:6px;"><i class="fas fa-file-image"></i></a>' : '';
+          // Două butoane, nu unul: „vezi" deschide actul în filă nouă (PDF-ul se randează, poza se
+          // afișează), „descarcă" îl salvează pe calculator cu un nume care spune ce e — nu „file".
+          const numeFis = (d.doc_type + '-' + (d.number || d.imei)).replace(/[^\w\-]+/g, '-')
+            + (String(d.file_mime || '').includes('pdf') ? '.pdf' : '.jpg');
+          const fisier = d.has_file
+            ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" rel="noopener" title="Vezi actul" style="margin-right:4px;"><i class="fas fa-eye"></i></a>'
+            + '<a class="btn-sm" href="/api/documents/' + d.id + '/file" download="' + esc(numeFis) + '" title="Descarcă actul" style="margin-right:6px;"><i class="fas fa-download"></i></a>'
+            : '';
           return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + (d.cost ? ' · ' + Math.round(parseFloat(d.cost)) + ' RON' : '') + '</div></div><div style="display:flex;align-items:center;">' + fisier + '<button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div></div>';
         }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
       } catch (e) { document.getElementById('veh-docs-list').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }

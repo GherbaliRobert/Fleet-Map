@@ -20,6 +20,46 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### AMÂNDOI · Actul încărcat completează acum TOT, nu pe jumătate — `HASHC`
+
+**Ce s-a întâmplat:** ai încărcat o poliță RCA și s-au completat doar tipul și seria. Emitentul și
+ambele date au rămas goale — adică exact **data expirării, cea care pornește alertele**. Din punctul
+tău de vedere, funcția nu mergea. Aveai dreptate, și vina era în trei locuri, toate ale mele.
+
+**1. Bifele.** Fiecare valoare citită primește o notă de încredere. Eu o folosisem ca să *rețin*
+bifa: ce era citit „doar probabil" venea nebifat. Cum datele dintr-o poliță sunt tocmai partea citită
+mai greu, ele rămâneau nebifate — apăsai „completează" și câmpurile rămâneau goale. Acum **se bifează
+tot ce s-a citit**, mai puțin ce ai scris deja tu; nota doar etichetează („sigur / probabil /
+verifică"), iar tu debifezi ce nu vrei. Ăsta era motivul principal.
+
+**2. Regulile de citire erau croite pe acte „ideale".** Într-un PDF de poliță, eticheta și valoarea
+ajung des la capete opuse ale rândului, iar seria e scrisă „Seria CU **Nr.** 10309310". Am lărgit
+căutarea, am adăugat forma „valabilă de la … până la …", și am scos capcanele: „Nr. înmatriculare"
+ajungea număr de act, iar emitentul păstra cuvântul-etichetă în față.
+
+**3. Când regulile tot nu reușesc, întreabă modelul — pe TEXT, nu pe poză.** Dacă lipsește data
+expirării, textul deja extras se trimite modelului, care scoate emitentul și datele. Costă fracțiuni
+de ban, pentru că nu trimitem imaginea, și se întâmplă doar când regulile au ratat. Un act citit pe
+jumătate e mai rău decât unul necitit: crezi că e gata și rămâi fără alerte.
+
+**Ce ai cerut și e acum acolo: actul se păstrează și se poate deschide.** În listă apar două butoane —
+**vezi** (deschide actul) și **descarcă** (îl salvează cu un nume care spune ce e, nu „file"). Pe
+telefon, PDF-urile se deschid în vizualizatorul sistemului; înainte butonul apărea doar la poze, deci
+un PDF se stoca și rămânea inaccesibil de pe telefon.
+
+**Fondatorul vede:** aceleași reparații.
+
+**Clientul vede:** încarcă actul, apasă o dată „completează", și câmpurile sunt pline — inclusiv
+expirarea. Iar actul rămâne atașat, de văzut sau de descărcat oricând.
+
+> 22 de verificări pe forme diferite de act (poliță în tabel, poliță pe un rând, ITP, talon), plus
+> lanțul complet 19/19 și alertele 13/13. Testul mi-a găsit și un defect pe care nu-l căutam:
+> **„31 februarie" trecea ca dată validă.** O dată de expirare greșită e mai rea decât una lipsă —
+> acum ziua se verifică pe luna ei, cu ani bisecți cu tot.
+
+---
+
+
 ### CLIENT · „Merg după el" — ecran de urmărit o mașină din trafic — `26d69c2`
 
 **Ce ai cerut:** Android Auto, ca să mergi după o mașină anume.

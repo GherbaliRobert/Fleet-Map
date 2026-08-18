@@ -92,7 +92,12 @@ const RE_NUMAR = /\b([A-Z]{1,2})\s?-?\s?(\d{2,3})\s?-?\s?([A-Z]{3})\b/g;
 function ziLunaAn(zi, luna, an) {
   let z = parseInt(zi, 10), l = parseInt(luna, 10), a = parseInt(an, 10);
   if (a < 100) a += a < 70 ? 2000 : 1900;   // „26" = 2026, „98" = 1998
-  if (!(z >= 1 && z <= 31 && l >= 1 && l <= 12 && a >= 1900 && a <= 2100)) return null;
+  if (!(z >= 1 && l >= 1 && l <= 12 && a >= 1900 && a <= 2100)) return null;
+  // Ziua se verifică pe LUNA ei, nu pe un plafon de 31: altfel „31.02.2027" trecea ca dată bună,
+  // iar o dată de expirare GREȘITĂ e mai rea decât una lipsă — alertele s-ar declanșa aiurea, iar
+  // omul ar crede că e acoperit. Verificarea prin Date prinde și 29 februarie în ani nebisecți.
+  const dt = new Date(Date.UTC(a, l - 1, z));
+  if (dt.getUTCFullYear() !== a || dt.getUTCMonth() !== l - 1 || dt.getUTCDate() !== z) return null;
   return `${a}-${String(l).padStart(2, '0')}-${String(z).padStart(2, '0')}`;
 }
 
@@ -219,14 +224,22 @@ function parseDocument(textBrut, tipCerut) {
 
   // Perioada de valabilitate: două date, cea mai mică e începutul, cea mare e expirarea.
   // Preferăm datele care apar lângă cuvintele potrivite; dacă nu, luăm perechea din text.
-  const langa = (re) => {
+  // Fereastra de căutare e 220 de caractere, nu 60: într-un PDF de poliță, eticheta și valoarea
+  // ajung des în celule diferite de tabel, iar extragerea le pune la distanță pe același rând.
+  const langa = (re, fereastra) => {
     const m = T.match(re); if (!m) return null;
-    const bucata = T.slice(m.index, m.index + 60);
-    const d = toateDatele(bucata)[0];
+    const d = toateDatele(T.slice(m.index, m.index + (fereastra || 220)))[0];
     return d ? d.iso : null;
   };
-  const de_la = langa(/VALABIL(?:Ă|A)?\s*(?:DE\s*LA|DIN)|DATA\s*(?:DE\s*)?(?:ÎNCEPUT|INCEPUT|EMITERE)|EMIS/);
-  const pana = langa(/P[ÂA]N[ĂA]\s*LA|VALABIL(?:Ă|A)?\s*P[ÂA]N[ĂA]|DATA\s*EXPIR|EXPIR(?:Ă|A|ARE)|SCADEN[ȚT]/);
+  // Cazul cel mai frecvent pe RCA: un INTERVAL scris într-o suflare — „valabilă de la 01.03.2026
+  // până la 28.02.2027". Îl prindem întreg, ca să nu depindem de două potriviri separate.
+  const interval = T.match(/(?:VALABIL\w*|PERIOAD\w*|ASIGURAR\w*)[^\n]{0,40}?(\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4})[^\n]{0,30}?(?:P[ÂA]N[ĂA]|LA|[-–])\s*(\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4})/);
+  if (interval) {
+    const a = toateDatele(interval[1])[0], b = toateDatele(interval[2])[0];
+    if (a && b) { pune('issue_date', a.iso, 0.9); pune('expiry_date', b.iso, 0.92); }
+  }
+  const de_la = langa(/VALABIL(?:Ă|A)?\s*(?:DE\s*LA|DIN)|DATA\s*(?:DE\s*)?(?:ÎNCEPUT|INCEPUT|EMITERE|EMISIE)|EMIS[ĂA]?\s*(?:LA|ÎN|IN)?|INTRARE\s*[ÎI]N\s*VIGOARE/);
+  const pana = langa(/P[ÂA]N[ĂA]\s*LA|VALABIL(?:Ă|A|ITATE)?\s*P[ÂA]N[ĂA]|DATA\s*EXPIR|EXPIR(?:Ă|A|ARE|ARII)|SCADEN[ȚT]|TERMEN\s*DE\s*VALABILITATE/);
   if (de_la) pune('issue_date', de_la, 0.85);
   if (pana) pune('expiry_date', pana, 0.9);
 
@@ -241,14 +254,46 @@ function parseDocument(textBrut, tipCerut) {
     }
   }
 
-  // Asigurătorul.
+  // Emitentul. Lista de nume cunoscute e o scurtătură, nu o barieră: piața se schimbă, iar un act
+  // de la un asigurător care nu e în listă nu are voie să rămână fără emitent. Deci, dacă nu se
+  // potrivește niciun nume, căutăm tiparul unei firme românești (…S.A. / …SRL / „ASIGURARI").
   const as = ASIGURATORI.find((a) => T.includes(a));
   if (as) pune('issuer', as, 0.85);
+  else {
+    const m = T.match(/([A-ZĂÂÎȘȚ][A-ZĂÂÎȘȚ0-9 .&\-]{3,40}?(?:ASIGUR[ĂA]RI|INSURANCE|S\.?A\.?|S\.?R\.?L\.?))(?:\s|$)/);
+    if (m) {
+      // Curățăm cuvintele-etichetă din față („ASIGURATOR: X SA" → „X SA") — altfel eticheta intră
+      // în numele firmei și rămâne acolo, în fișa clientului.
+      const nume = m[1].trim().replace(/\s+/g, ' ')
+        .replace(/^(?:ASIGUR[ĂA]TOR(?:UL)?|EMITENT(?:UL)?|SOCIETATEA|COMPANIA|FIRMA)\s*[:\-]?\s*/i, '')
+        .trim();
+      // Filtrăm potrivirile accidentale: un „SA" izolat sau un cuvânt scurt nu e o firmă.
+      if (nume.length >= 6 && /[A-ZĂÂÎȘȚ]{3}/.test(nume)) pune('issuer', nume.slice(0, 60), 0.55);
+    }
+  }
+  // ITP-ul nu e emis de un asigurător, ci de o stație autorizată — alt tipar, altă etichetă.
+  if (campuri.issuer == null && /INSPEC[ȚT]IE TEHNIC|\bI\.?T\.?P\b/.test(T)) {
+    const m = T.match(/(?:STA[ȚT]IA|EFECTUAT[ĂA]?\s*(?:DE|LA)|OPERATOR)\s*:?\s*([A-ZĂÂÎȘȚ][A-ZĂÂÎȘȚ0-9 .&\-]{3,40})/);
+    if (m) pune('issuer', m[1].trim().slice(0, 60), 0.6);
+  }
 
-  // Numărul poliței / documentului: șiruri lungi alfanumerice care nu sunt VIN sau dată.
-  const candidat = (T.match(/\b(?:SERIA\s*)?([A-Z]{2,4})[\s\/-]?(\d{6,12})\b/) || []);
-  if (candidat[1] && candidat[2]) pune('number', candidat[1] + '/' + candidat[2], 0.7);
-  else { const m2 = T.match(/\b(?:NR\.?|NUM[ĂA]R(?:UL)?|POLI[ȚT]A)\s*[:\.]?\s*([A-Z0-9\/-]{6,20})\b/); if (m2) pune('number', m2[1], 0.6); }
+  // Numărul actului. Forma românească uzuală e „Seria XX Nr. 1234567" — seria și numărul sunt
+  // despărțite de cuvântul „Nr.", deci un tipar care le cere lipite pierde seria.
+  // Cuvinte care NU pot fi o serie, oricât de bine s-ar potrivi tiparul. Fără lista asta, „Nr.
+  // înmatriculare" ajungea serie de act, iar „Seria RO/22/H22 Nr 123..." dădea seria „NR".
+  const NU_E_SERIE = /^(NR|SERIA|SERIE|NUMAR|NUMĂR|POLITA|POLIȚA|INMATRICULARE|ÎNMATRICULARE|VALABIL|DATA|CNP|CUI|TOTAL|LEI|RON)$/;
+  // Seria poate conține cifre și bare („RO/22/H22"), deci nu se poate cere doar litere.
+  const serieNr = T.match(/SERIA\s*[:.]?\s*([A-Z][A-Z0-9\/\-]{0,11})\s*(?:NR\.?|NUM[ĂA]RUL?)?\s*[:.]?\s*(\d{5,12})\b/);
+  if (serieNr && !NU_E_SERIE.test(serieNr[1])) pune('number', serieNr[1] + '/' + serieNr[2], 0.85);
+  else {
+    const lipit = T.match(/\b([A-Z]{2,4})[\s\/-]?(\d{6,12})\b/);
+    if (lipit && !NU_E_SERIE.test(lipit[1])) pune('number', lipit[1] + '/' + lipit[2], 0.7);
+    else {
+      const m2 = T.match(/\b(?:NR\.?|NUM[ĂA]R(?:UL)?|POLI[ȚT]A)\s*[:\.]?\s*([A-Z0-9][A-Z0-9\/-]{5,19})\b/);
+      // Trebuie să conțină măcar o cifră: un număr de act fără cifre e un cuvânt prins din greșeală.
+      if (m2 && /\d/.test(m2[1]) && !NU_E_SERIE.test(m2[1])) pune('number', m2[1], 0.6);
+    }
+  }
 
   return { tip: 'document', campuri, incredere, text };
 }

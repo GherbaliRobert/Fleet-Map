@@ -62,6 +62,7 @@ jobs:
           node verify_admin_retras.js       # contul de instalare se retrage, dar nu ne închide afară
           node verify_reparatii_lansare.js  # plafon TCP, resetare parolă, cache reguli, export/ștergere GDPR
           node verify_docscan.js            # citirea actelor: PDF gratuit, propuneri, nimic salvat singur
+          node verify_docparse_acte.js      # extragerea din acte, pe forme reale de așezare în pagină
           node verify_expirari.js           # alertele de expirare: prag configurabil, dedup, fără-dată vizibil
           node verify_follow.js             # „merg după el": distanța, direcția, formatarea (fără server)
 
