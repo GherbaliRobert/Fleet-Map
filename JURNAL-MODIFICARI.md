@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
-### AMÂNDOI · Datele nu apăreau în căsuțe, iar filele nu se ascundeau pentru tine — `HASHG`
+### AMÂNDOI · Datele nu apăreau în căsuțe, iar filele nu se ascundeau pentru tine — `3da1c15`
 
 **1. De ce nu se completau datele.** Câmpurile de dată din aplicație au calendar. Calendarul ascunde
 căsuța originală și pune în locul ei una a lui, pe care o vezi. Codul meu scria în căsuța **ascunsă**
