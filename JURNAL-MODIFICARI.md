@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
-### AMÂNDOI · O singură apăsare: validezi și actul e în listă — `HASHE`
+### AMÂNDOI · O singură apăsare: validezi și actul e în listă — `7bb57c8`
 
 **Ce lipsea:** după ce confirmai datele citite, câmpurile se completau în formular — dar actul nu era
 salvat. Mai trebuia o apăsare pe „Adaugă". Practic ți se cerea să confirmi de două ori același
