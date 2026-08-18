@@ -5708,6 +5708,20 @@ async function _driversExportData(req) {
 }
 // Aceeași poartă ca lista de șoferi: cine vede lista poate scoate și documentul. `withScope` face
 // și ce face `withCompany`, plus IMEI-urile permise — nu le punem pe amândouă.
+// CSV brut — aceleași date, fără antet și logo. Pentru cine vrea să le prelucreze mai departe.
+app.get('/api/drivers/export.csv', requireAuth, withScope, async (req, res) => {
+  try {
+    const items = await _driversExportData(req);
+    const cols = ['Sofer', 'Incadrare', 'Categorii permis', 'Nr permis', 'Expira', 'Stare', 'Vehicule', 'Telefon', 'Email'];
+    if (req.isSuper) cols.push('Companie');
+    const lines = items.map(x => (req.isSuper ? x.row.concat([x.co || '']) : x.row).map(csvCell).join(','));
+    const csv = '﻿' + [cols.join(','), ...lines].join('\r\n'); // BOM → Excel deschide UTF-8 cu diacritice
+    auditReq(req, 'export', 'drivers', null, { count: items.length, format: 'csv' });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="soferi.csv"');
+    res.send(csv);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/drivers/export', requireAuth, withScope, async (req, res) => {
   try {
     if (!reportExport) return res.status(503).json({ error: 'Exportul nu e disponibil pe acest server' });

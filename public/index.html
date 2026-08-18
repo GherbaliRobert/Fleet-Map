@@ -1750,8 +1750,9 @@ const pozitii = await r.json();</code></pre>
             <select id="veh-co-filter" class="super-only" onchange="renderVehicles()" title="Filtrează pe companie"></select>
             <span id="veh-count" class="toolbar-count"></span>
             <span class="tb-lbl">Exportă:</span>
+            <span class="exp-grp"><button class="btn-sm" onclick="exportVehicles('csv')" title="CSV brut, cu toate câmpurile — se poate edita și re-importa"><i class="fas fa-file-csv"></i> CSV</button>
             <button class="btn-sm" onclick="exportVehicles('xlsx')" title="Document Excel brandat, cu situația flotei"><i class="fas fa-file-excel"></i> Excel</button>
-            <button class="btn-sm" onclick="exportVehicles('pdf')" title="Document PDF brandat, cu situația flotei"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button class="btn-sm" onclick="exportVehicles('pdf')" title="Document PDF brandat, cu situația flotei"><i class="fas fa-file-pdf"></i> PDF</button></span>
             <button class="btn-sm" onclick="downloadTemplate()" title="Șablon CSV pentru import"><i class="fas fa-file-csv"></i> Șablon</button>
             <button class="btn-sm" onclick="document.getElementById('veh-import-file').click()" title="Importă din CSV"><i class="fas fa-upload"></i> Importă</button>
             <button class="btn-sm btn-primary" onclick="toggleVehAdd()"><i class="fas fa-plus"></i> Adaugă vehicul</button>
@@ -1854,6 +1855,15 @@ const pozitii = await r.json();</code></pre>
           .drv-catlist { font-size: 11px; font-weight: 800; color: var(--text-secondary); letter-spacing: .3px; margin-top: 4px; }
           /* Eticheta dinaintea butoanelor de descărcare — aceeași formă ca „Descarcă:" din Rapoarte */
           .tb-lbl { font-size: 11.5px; font-weight: 700; color: var(--text-muted); white-space: nowrap; margin-left: 2px; }
+          /* CSV / Excel / PDF, lipite într-un singur control. Fereastra Administrare are 880px —
+             trei butoane separate, cu spațiu între ele, împingeau „Adaugă" pe rândul următor. */
+          .exp-grp { display: inline-flex; flex: 0 0 auto; }
+          .exp-grp .btn-sm { height: 36px; padding: 0 11px; border-radius: 0; margin-left: -1px; width: auto;
+            display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 12.5px; font-weight: 700;
+            background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; }
+          .exp-grp .btn-sm:first-child { border-radius: 9px 0 0 9px; margin-left: 0; }
+          .exp-grp .btn-sm:last-child { border-radius: 0 9px 9px 0; }
+          .exp-grp .btn-sm:hover { border-color: var(--accent); color: var(--text-primary); position: relative; z-index: 1; }
         </style>
         <div id="atab-drivers" class="admin-tab-content" style="display:none;">
           <div class="toolbar-row">
@@ -1861,8 +1871,9 @@ const pozitii = await r.json();</code></pre>
             <select id="drv-co-filter" class="super-only" onchange="renderDriversList()" title="Filtrează pe companie"></select>
             <span id="drv-count" class="toolbar-count"></span>
             <span class="tb-lbl">Exportă:</span>
+            <span class="exp-grp"><button class="btn-sm" onclick="exportDrivers('csv')" title="CSV brut, pentru prelucrare mai departe"><i class="fas fa-file-csv"></i> CSV</button>
             <button class="btn-sm" onclick="exportDrivers('xlsx')" title="Document Excel brandat, cu situația șoferilor"><i class="fas fa-file-excel"></i> Excel</button>
-            <button class="btn-sm" onclick="exportDrivers('pdf')" title="Document PDF brandat, cu situația șoferilor"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button class="btn-sm" onclick="exportDrivers('pdf')" title="Document PDF brandat, cu situația șoferilor"><i class="fas fa-file-pdf"></i> PDF</button></span>
             <button class="btn-sm btn-primary" onclick="toggleDrvAdd()"><i class="fas fa-plus"></i> Adaugă șofer</button>
           </div>
           <div class="drv-colh">
@@ -4174,11 +4185,17 @@ const pozitii = await r.json();</code></pre>
     // Document brandat (logo + „RA-Tracks - Raport ... - data"), nu CSV brut. Respectă și fila
     // curentă: dacă te uiți la „Arhivate", documentul e despre arhivate.
     function exportVehicles(fmt) {
+      // CSV = fișierul cu TOATE câmpurile, pe care îl reînghite importul (export → editezi → reimporți).
+      // Excel/PDF = documentul brandat, de citit și de trimis.
+      if (fmt === 'csv') { window.open('/api/devices/export.csv', '_blank'); return; }
       const f = (fmt === 'pdf') ? 'pdf' : 'xlsx';
       const sc = (typeof vehScope !== 'undefined' && vehScope === 'archived') ? '&scope=archived' : '';
       window.open('/api/devices/export?format=' + f + sc, '_blank');
     }
-    function exportDrivers(fmt) { window.open('/api/drivers/export?format=' + ((fmt === 'pdf') ? 'pdf' : 'xlsx'), '_blank'); }
+    function exportDrivers(fmt) {
+      if (fmt === 'csv') { window.open('/api/drivers/export.csv', '_blank'); return; }
+      window.open('/api/drivers/export?format=' + ((fmt === 'pdf') ? 'pdf' : 'xlsx'), '_blank');
+    }
     // Parser CSV (gestionează câmpuri citate cu virgule/ghilimele/linii noi)
     function parseCSV(text) {
       text = String(text).replace(/^﻿/, '');

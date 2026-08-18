@@ -420,10 +420,10 @@ răspunsul pe care voiai să-l dea documentul.
 butonul, iar două căi către același document înseamnă, mai devreme sau mai târziu, două documente
 diferite. Catalogul a revenit la 32 de rapoarte.
 
-**Un lucru pe care l-ați pierdut, ca să știți:** vechiul CSV se putea descărca, edita în Excel și
-**re-importa** ca să modificați multe vehicule odată. Butonul nu-l mai scoate. Șablonul de import a
-rămas (gol), iar fișierul cu datele actuale se poate scoate la loc oricând — spuneți dacă îl folosiți
-și îl pun înapoi lângă „Importă".
+**CSV-ul a rămas, lângă celelalte două.** Fiecare secțiune are acum trei butoane lipite:
+**CSV · Excel · PDF**. CSV-ul de la Vehicule e exact fișierul de dinainte, cu toate câmpurile — deci
+fluxul „descarci, editezi în Excel, re-imporți" merge mai departe neatins. Excel și PDF sunt
+documentele brandate, de citit și de trimis.
 
 **Fondatorul vede:** în plus, coloana „Companie" în ambele documente.
 
