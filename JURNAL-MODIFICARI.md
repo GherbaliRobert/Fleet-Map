@@ -20,6 +20,41 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### AMÂNDOI · Datele nu apăreau în căsuțe, iar filele nu se ascundeau pentru tine — `HASHG`
+
+**1. De ce nu se completau datele.** Câmpurile de dată din aplicație au calendar. Calendarul ascunde
+căsuța originală și pune în locul ei una a lui, pe care o vezi. Codul meu scria în căsuța **ascunsă**
+— valoarea chiar ajungea acolo, dar tu te uitai la cealaltă, care rămânea goală. Se întâmpla atât la
+completarea din act, cât și la modificare.
+
+Aplicația avea deja funcția corectă pentru *golirea* unui asemenea câmp; îi lipsea perechea, pentru
+*scriere*. Am adăugat-o și o folosesc peste tot.
+
+> **Ce m-a păcălit pe mine:** verificarea mea automată citea valoarea din căsuța ascunsă — și trecea,
+> în timp ce ecranul era gol. Verificam ce zice programul, nu ce vede omul. Acum proba citește exact
+> căsuța vizibilă, în format românesc (27.07.2027).
+
+**2. De ce vedeai în continuare filele de camion.** Aici greșeala de proiectare e a mea și e mai
+ridicolă: făcusem excepție pentru super-admin, „ca să poată configura orice". Rezultatul — exact
+omul care a cerut curățenia era singurul care n-o vedea niciodată.
+
+Acum regula se aplică tuturor: la un autoturism fără sonde rămân patru file. Iar portița există în
+altă formă — un „**+ arată toate filele**", discret, în bara de file, vizibil doar pentru super-admin
+și doar când chiar sunt file ascunse. Se stinge când închizi fișa: e o excepție de moment, nu o
+setare care să se strecoare înapoi în obișnuință.
+
+**Fondatorul vede:** fișa curată ca oricine altcineva, plus butonașul când are nevoie de tot.
+
+**Clientul vede:** datele completate în căsuțe, cum se cuvine.
+
+> Probat pe viu, de data asta din partea vizibilă: la „VW Caddy" (Auto, fără sonde) rămân 4 file;
+> butonul apare, iar la apăsare revin toate 7; la redeschiderea fișei se ascund din nou. Modificarea
+> unui act arată 28.07.2026 și 27.07.2027 în căsuțe, cu seria întreagă. Completarea din scanare
+> salvează actul cu expirarea corectă.
+
+---
+
+
 ### AMÂNDOI · Butonul de modificare la acte + fișa arată doar filele care au sens — `dcc6ee9`
 
 **1. Actele se pot modifica, nu doar șterge.** Până acum, o greșeală la data expirării se repara

@@ -5593,6 +5593,19 @@ const pozitii = await r.json();</code></pre>
     }
     // Golește un câmp respectând flatpickr (calendarul modern). Pt. câmpuri normale → value = ''.
     function clearField(i) { var el = document.getElementById(i); if (!el) return; if (el._fp) el._fp.clear(); else el.value = ''; }
+    // Perechea lui clearField, care lipsea. Câmpurile de dată sunt gestionate de calendar: acesta
+    // ASCUNDE inputul original și afișează altul, al lui. Un `el.value = ...` scrie în cel ascuns,
+    // iar omul se uită la cel vizibil — deci completarea automată părea că nu face nimic, deși
+    // valoarea era acolo. (Și un test care citește `.value` trece, în timp ce ecranul e gol.)
+    function setField(i, v) {
+      var el = document.getElementById(i); if (!el) return;
+      var val = (v == null ? '' : String(v));
+      if (el._fp) {
+        // Doar aici se taie la 10: serverul întoarce „2027-07-27T00:00:00.000Z", calendarul vrea ziua.
+        var zi = val.slice(0, 10);
+        if (zi) el._fp.setDate(zi, false); else el._fp.clear();
+      } else el.value = val;   // restul câmpurilor rămân întregi (o serie de act e mai lungă de 10)
+    }
     // Calendar modern (flatpickr) și pe câmpurile simple de dată — nu doar pe selectoarele de interval.
     // Lună din dropdown + an tastabil direct → salt rapid la ani anteriori/viitori. Valoarea rămâne YYYY-MM-DD.
     function initSingleDatePickers() {
@@ -11958,6 +11971,10 @@ const pozitii = await r.json();</code></pre>
     // cel care instalează hardware-ul — le vede întotdeauna.
     const TIPURI_CU_AXE = ['Autotractor', 'Camion', 'TIR', 'Remorca', 'Remorcă tehnologică', 'Automixt', 'Utilaj', 'Tractor', 'Buldoexcavator', 'Combină agricolă'];
     let _areSondeCurent = false;   // reținut, ca schimbarea tipului să nu ceară recitirea sondelor
+    // Portița: super-adminul poate cere filele ascunse pentru vehiculul din față — altfel prima
+    // sondă n-ar putea fi montată de nicăieri. Se stinge la închiderea fișei: e o excepție, nu o
+    // setare, și nu trebuie să se transforme tăcut în comportamentul obișnuit.
+    let _taburiToate = false;
 
     async function aplicaVizibilitateTaburi(dev, areSonde) {
       if (areSonde !== undefined) _areSondeCurent = !!areSonde;
@@ -11966,10 +11983,12 @@ const pozitii = await r.json();</code></pre>
       // căreia îi lipsește o filă de care ai nevoie.
       let cfg = {};
       try { cfg = await _loadUiPrefs(); } catch (e) { cfg = {}; }
-      const esteSuper = !!(currentUser && currentUser.isSuper);
       const tip = (dev && dev.vehicle_type) || document.getElementById('edit-vehicle-type').value || '';
-      const arataCamion = (cfg.tab_camion !== false) && (esteSuper || TIPURI_CU_AXE.indexOf(tip) >= 0);
-      const arataSonde = (cfg.tab_sonde !== false) && (esteSuper || _areSondeCurent);
+      // Regula se aplică TUTUROR, inclusiv super-adminului: dacă mașina e „Auto", fila de axe n-are
+      // ce căuta acolo nici pentru noi. Prima variantă îl scutea pe super-admin, iar rezultatul era
+      // că exact cine a cerut curățenia n-o vedea niciodată.
+      const arataCamion = (cfg.tab_camion !== false) && (_taburiToate || TIPURI_CU_AXE.indexOf(tip) >= 0);
+      const arataSonde = (cfg.tab_sonde !== false) && (_taburiToate || _areSondeCurent);
       const pune = (numeTab, vizibil) => {
         const b = document.querySelector('.edit-tab[data-tab="' + numeTab + '"]');
         if (b) b.style.display = vizibil ? '' : 'none';
@@ -11977,6 +11996,25 @@ const pozitii = await r.json();</code></pre>
       pune('truck', arataCamion);
       pune('calibration', arataSonde);
       pune('sensors', arataSonde);
+
+      // Butonul „arată tot" apare DOAR la super-admin și DOAR când chiar există file ascunse —
+      // altfel ar fi un buton care nu face nimic, adică zgomot.
+      const ascunse = (!arataCamion) || (!arataSonde);
+      let b = document.getElementById('edit-tabs-all');
+      if (currentUser && currentUser.isSuper && ascunse && !_taburiToate) {
+        if (!b) {
+          b = document.createElement('button');
+          b.id = 'edit-tabs-all';
+          b.type = 'button';
+          b.style.cssText = 'margin-left:auto;background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;padding:10px 8px;';
+          b.title = 'Filele ascunse pentru că nu se potrivesc acestui vehicul (super-admin)';
+          b.textContent = '+ arată toate filele';
+          b.onclick = function () { _taburiToate = true; aplicaVizibilitateTaburi(dev); };
+          const bara = document.querySelector('.edit-tab') && document.querySelector('.edit-tab').parentNode;
+          if (bara) bara.appendChild(b);
+        }
+        b.style.display = '';
+      } else if (b) { b.style.display = 'none'; }
       // Dacă fila deschisă tocmai a fost ascunsă, ne întoarcem la prima — altfel rămâne un conținut
       // vizibil fără niciun tab activ, ceea ce arată ca o defecțiune.
       const activ = document.querySelector('.edit-tab.active');
@@ -12118,7 +12156,10 @@ const pozitii = await r.json();</code></pre>
       document.querySelectorAll('#doc-scan-result .scan-prop:checked').forEach(cb => {
         const k = cb.dataset.k, val = c[k];
         if (cb.dataset.tinta === 'act') {
-          const el = document.getElementById(_SCAN_DOC[k]); if (el) { el.value = val; inAct++; }
+          // Prin setField, nu prin .value: câmpurile de dată au calendar, iar scrisul direct ajunge
+          // în inputul ascuns — datele citite din act păreau că nu se completează deloc.
+          const idc = _SCAN_DOC[k];
+          if (document.getElementById(idc)) { setField(idc, val); inAct++; }
         } else {
           const el = document.getElementById(_SCAN_FISA[k].id);
           if (el) { el.value = val; el.classList.add('scan-filled'); el.addEventListener('input', () => el.classList.remove('scan-filled'), { once: true }); inFisa++; }
@@ -12200,12 +12241,12 @@ const pozitii = await r.json();</code></pre>
       const d = (Array.isArray(docs) ? docs : []).find(x => x.id === id);
       if (!d) return;
       _docEditId = id;
-      const zi = (v) => v ? String(v).slice(0, 10) : '';
       document.getElementById('doc-type').value = d.doc_type || 'ITP';
       document.getElementById('doc-number').value = d.number || '';
       document.getElementById('doc-issuer').value = d.issuer || '';
-      document.getElementById('doc-issue').value = zi(d.issue_date);
-      document.getElementById('doc-expiry').value = zi(d.expiry_date);
+      // Datele TREBUIE puse prin setField: sunt gestionate de calendar (vezi comentariul de acolo).
+      setField('doc-issue', d.issue_date);
+      setField('doc-expiry', d.expiry_date);
       document.getElementById('doc-cost').value = d.cost != null ? d.cost : '';
       _docModRender();
       document.getElementById('doc-type').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -12401,6 +12442,7 @@ const pozitii = await r.json();</code></pre>
       // supraviețuiască schimbării. Altfel ai edita actul altei mașini fără să-ți dai seama.
       if (typeof docScanCancel === 'function') docScanCancel();
       if (typeof docEditCancel === 'function') docEditCancel();
+      _taburiToate = false;   // portița e per-vehicul, nu o setare care rămâne
       document.querySelectorAll('.scan-filled').forEach(el => el.classList.remove('scan-filled'));
 
       // Reset to basic tab
