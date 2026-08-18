@@ -23,18 +23,54 @@ const PROMPT_TRANSCRIE =
   'D.1, E, F.1, P.3 etc.), fiecare pe rândul lui, urmate de valoarea lor. Nu comenta, nu rezuma, ' +
   'nu traduce — doar textul, rând cu rând.';
 
+// Reconstruiește textul din PDF PĂSTRÂND rândurile și cuvintele.
+//
+// Varianta naivă — `items.map(it => it.str).join(' ')` — pare rezonabilă și e greșită în două feluri,
+// amândouă văzute pe o poliță RCA adevărată:
+//   • Un PDF poate emite fiecare LITERĂ ca element separat (titluri cu spațiere mărită). Lipite cu
+//     spațiu, „ORIGINAL" devine „O R I G I N A L" — nepotrivibil cu orice regulă.
+//   • Rândurile dispar, iar coloanele unui tabel se amestecă: eticheta unui câmp ajunge lipită de
+//     valoarea altuia. De acolo veneau emitenți de forma „9. NUMELE SI ADRESA".
+//
+// Corect: grupăm elementele pe RÂND (după coordonata verticală), le ordonăm pe orizontală, și punem
+// spațiu doar unde există o distanță reală între ele.
 async function _textDinPdf(buf) {
   const pdfjs = require('pdfjs-dist/legacy/build/pdf.mjs');
   const d = await pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true }).promise;
-  let text = '';
+  const randuriTot = [];
   const pagini = Math.min(d.numPages, 8);   // un act are 1-2 pagini; 8 e plasă, nu invitație
   for (let i = 1; i <= pagini; i++) {
     const p = await d.getPage(i);
     const tc = await p.getTextContent();
-    text += tc.items.map((it) => it.str).join(' ') + '\n';
+    // transform = [a, b, c, d, x, y] — ultimele două sunt poziția în pagină.
+    const buc = tc.items
+      .filter((it) => it.str != null && String(it.str).length)
+      .map((it) => ({ s: String(it.str), x: it.transform[4], y: it.transform[5], w: it.width || 0 }));
+    // Grupare pe rând: elementele de pe același rând au aproximativ același y (toleranță 2.5 pt,
+    // ca să prindem și indicii/exponenții care sar puțin).
+    const randuri = [];
+    for (const b of buc) {
+      const r = randuri.find((rr) => Math.abs(rr.y - b.y) < 2.5);
+      if (r) r.buc.push(b); else randuri.push({ y: b.y, buc: [b] });
+    }
+    randuri.sort((a, b) => b.y - a.y);                    // de sus în jos
+    for (const r of randuri) {
+      r.buc.sort((a, b) => a.x - b.x);                    // de la stânga la dreapta
+      let linie = '';
+      let capat = null;                                   // unde s-a terminat bucata anterioară
+      for (const b of r.buc) {
+        // Spațiu doar dacă există o distanță reală. Sub prag, bucățile fac parte din același cuvânt
+        // — exact cazul titlurilor cu litere spațiate.
+        if (capat != null && b.x - capat > 1.2) linie += ' ';
+        linie += b.s;
+        capat = b.x + b.w;
+      }
+      const curat = linie.replace(/\s+/g, ' ').trim();
+      if (curat) randuriTot.push(curat);
+    }
   }
   try { await d.destroy(); } catch (e) {}
-  return text;
+  return randuriTot.join('\n');
 }
 
 // Un PDF „are text" dacă extragerea produce destul conținut cât să merite parsarea. Un scan pur

@@ -71,6 +71,33 @@ t('cilindree, putere, locuri', d.displacement === 1461 && d.power_kw === 66 && d
 t('masele', d.max_weight_legal === 1900 && d.tare_weight === 1200, d.max_weight_legal + '/' + d.tare_weight);
 t('anul din data primei înmatriculări', d.year === 2019, d.year);
 
+// ── Cazul REAL raportat (Robert, 18.08): PDF care scrie titlul cu litere spațiate și e plin de
+// etichete de formular. Emitentul ieșea „O R I G I N A L 9. N UMELE SI ADRESA". ──
+console.log('\n── Poliță reală: litere spațiate + etichete de formular ──');
+const g = P([
+  'O R I G I N A L',
+  'POLITA DE ASIGURARE RCA',
+  '9. NUMELE SI ADRESA ASIGURATULUI',
+  'POPESCU ION, STR. LUNGA 5',
+  'Seria CU Nr. 10309310',
+  'B 268 ROY   WV2ZZZ2KZ8X017409',
+  'Valabila de la 28.07.2026 pana la 27.07.2027',
+].join('\n'));
+t('eticheta de formular NU devine emitent', !/UMELE|ADRESA|ORIGINAL/.test(String(g.issuer || '')), g.issuer);
+t('expirarea', g.expiry_date === '2027-07-27', g.expiry_date);
+t('emiterea', g.issue_date === '2026-07-28', g.issue_date);
+t('seria', g.number === 'CU/10309310', g.number);
+t('VIN-ul din poliță', g.vin === 'WV2ZZZ2KZ8X017409', g.vin);
+
+// Litere spațiate în titlu: fără lipirea lor, nicio regulă nu se potrivește.
+const h = P(['P O L I T A DE ASIGURARE RCA', 'GROUPAMA ASIGURARI S.A.', 'Valabil pana la 01.01.2028'].join('\n'));
+t('„P O L I T A" lipit → tipul se recunoaște', h.doc_type === 'RCA', h.doc_type);
+t('asigurătorul din listă', h.issuer === 'GROUPAMA', h.issuer);
+
+// Asigurător care NU e în listă: se prinde generic, dar curat.
+const k = P(['POLITA RCA', 'ASIGURATOR: VIENNA LIFE ASIGURARI S.A.', 'Valabil de la 01.01.2027 pana la 31.12.2027'].join('\n'));
+t('firmă necunoscută, fără cuvântul-etichetă', !!k.issuer && !/ASIGURATOR/.test(k.issuer), k.issuer);
+
 // ── Ce NU trebuie să se întâmple ──
 console.log('\n── Prudență ──');
 const e = P('Document oarecare fara date si fara numere de act.');

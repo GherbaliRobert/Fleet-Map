@@ -20,6 +20,42 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### AMÂNDOI · Emitentul citit greșit: cauza era în felul în care citeam PDF-ul — `HASHD`
+
+**Ce ai văzut:** la emitent scria „O R I G I N A L 9. N UMELE SI ADRESA". Datele și seria erau
+corecte, doar emitentul aiurea.
+
+**Ce mi-a spus poza aia, de fapt.** Erau două probleme, iar prima explică forma ciudată:
+
+**1. Citeam PDF-ul lipind toate bucățile cu spațiu între ele.** Un PDF nu conține „text", ci bucăți
+de text cu poziția lor în pagină. Când un titlu e scris cu litere răsfirate, fiecare literă e o
+bucată — iar lipite cu spațiu deveneau „O R I G I N A L". Mai rău: dispăreau rândurile, deci
+eticheta unei rubrici se lipea de valoarea alteia, din cealaltă coloană a tabelului.
+
+Acum textul se reconstruiește **după poziția reală în pagină**: bucățile se grupează pe rânduri, se
+ordonează de la stânga la dreapta, iar spațiul se pune doar unde chiar există o distanță. Asta
+repară nu doar emitentul, ci calitatea citirii pe tot documentul.
+
+**2. Regula de emitent lua etichetele formularului.** O poliță e plină de titluri scrise cu
+majuscule — „9. NUMELE ȘI ADRESA", „ASIGURATUL", „ORIGINAL" — care arată exact ca un nume de firmă.
+Acum sunt refuzate explicit, iar numerotarea rubricii („9.") se taie din față.
+
+Am pus și o plasă: dacă vreun PDF tot scapă cu litere răsfirate, ele se lipesc la loc înainte de
+citire — altfel nicio regulă nu se potrivește pe „P O L I T A".
+
+**Fondatorul vede:** aceeași reparație.
+
+**Clientul vede:** emitentul corect, sau gol — nu o bucată de formular. Dacă regulile nu-l găsesc,
+îl completează modelul, ca până acum.
+
+> 30 de verificări, între care **exact cazul din poza ta**, adăugat ca test permanent: titlu cu
+> litere răsfirate + etichete de formular + serie + VIN + ambele date. Plus lanțul complet cu PDF
+> adevărat, 19/19 — reconstrucția nouă e cod nou, deci a fost probată pe un fișier real, nu doar pe
+> text de laborator.
+
+---
+
+
 ### AMÂNDOI · Actul încărcat completează acum TOT, nu pe jumătate — `76c89d9`
 
 **Ce s-a întâmplat:** ai încărcat o poliță RCA și s-au completat doar tipul și seria. Emitentul și

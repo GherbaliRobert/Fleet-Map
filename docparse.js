@@ -76,11 +76,18 @@ function normVin(s) {
   return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
     .replace(/[IO]/g, (c) => (c === 'I' ? '1' : '0')).replace(/Q/g, '0');
 }
+// Unele PDF-uri scriu titlurile cu litere spațiate („O R I G I N A L", „P O L I T A"). Dacă
+// reconstrucția din pagină n-a prins cazul, îl reparăm aici: patru sau mai multe litere singure,
+// despărțite de câte un spațiu, sunt UN cuvânt, nu opt. Fără asta, nicio regulă nu se potrivește.
+function lipesteLitereRazlete(linie) {
+  return linie.replace(/(?:^|\s)((?:[A-ZĂÂÎȘȚ]\s){3,}[A-ZĂÂÎȘȚ])(?=\s|$)/g,
+    (tot, grup) => tot.replace(grup, grup.replace(/\s/g, '')));
+}
 function curataText(t) {
   return String(t || '')
     .replace(/\r/g, '')
     .replace(/[ \t]+/g, ' ')
-    .split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+    .split('\n').map((l) => lipesteLitereRazlete(l.trim())).filter(Boolean).join('\n');
 }
 
 // ─── Cărămizile ───────────────────────────────────────────────────────────────────────────────────
@@ -260,15 +267,28 @@ function parseDocument(textBrut, tipCerut) {
   const as = ASIGURATORI.find((a) => T.includes(a));
   if (as) pune('issuer', as, 0.85);
   else {
-    const m = T.match(/([A-ZĂÂÎȘȚ][A-ZĂÂÎȘȚ0-9 .&\-]{3,40}?(?:ASIGUR[ĂA]RI|INSURANCE|S\.?A\.?|S\.?R\.?L\.?))(?:\s|$)/);
-    if (m) {
-      // Curățăm cuvintele-etichetă din față („ASIGURATOR: X SA" → „X SA") — altfel eticheta intră
-      // în numele firmei și rămâne acolo, în fișa clientului.
-      const nume = m[1].trim().replace(/\s+/g, ' ')
+    // Un formular de poliță e plin de ETICHETE scrise cu majuscule („9. NUMELE ȘI ADRESA",
+    // „ASIGURATUL", „PROPRIETAR"). Fără filtrul de mai jos, ele arată exact ca un nume de firmă
+    // și ajung în fișa clientului ca emitent. Prima poliță reală ne-a dat „9. NUMELE SI ADRESA".
+    const ETICHETA_FORMULAR = /(NUMELE|ADRESA|ASIGURAT|PROPRIETAR|UTILIZATOR|DEȚIN[ĂA]TOR|DETIN[ĂA]TOR|CONTRACTANT|VALABIL|PERIOAD|OBIECT|ORIGINAL|COPIE|EXEMPLAR|SERIA|POLI[ȚT]|VEHICUL|AUTOVEHICUL|DATE\b|RUBRIC)/;
+    const candidati = [];
+    const re = /([A-ZĂÂÎȘȚ][A-ZĂÂÎȘȚ0-9 .&\-]{3,40}?(?:ASIGUR[ĂA]RI|INSURANCE|S\.?A\.?|S\.?R\.?L\.?))(?:\s|$)/g;
+    let m;
+    while ((m = re.exec(T))) candidati.push(m[1]);
+    for (const brut of candidati) {
+      const nume = brut.trim().replace(/\s+/g, ' ')
+        // Cuvintele-etichetă din față se taie („ASIGURATOR: X SA" → „X SA").
         .replace(/^(?:ASIGUR[ĂA]TOR(?:UL)?|EMITENT(?:UL)?|SOCIETATEA|COMPANIA|FIRMA)\s*[:\-]?\s*/i, '')
+        // Numerotarea de rubrică din față („9. X SA" → „X SA").
+        .replace(/^\d+\s*[.)]\s*/, '')
         .trim();
-      // Filtrăm potrivirile accidentale: un „SA" izolat sau un cuvânt scurt nu e o firmă.
-      if (nume.length >= 6 && /[A-ZĂÂÎȘȚ]{3}/.test(nume)) pune('issuer', nume.slice(0, 60), 0.55);
+      if (nume.length < 6) continue;
+      if (ETICHETA_FORMULAR.test(nume)) continue;             // e o etichetă, nu o firmă
+      if (!/[A-ZĂÂÎȘȚ]{3}/.test(nume)) continue;
+      // O firmă are cel mult câteva cuvinte; o propoziție de formular are multe.
+      if (nume.split(' ').length > 6) continue;
+      pune('issuer', nume.slice(0, 60), 0.55);
+      break;
     }
   }
   // ITP-ul nu e emis de un asigurător, ci de o stație autorizată — alt tipar, altă etichetă.
