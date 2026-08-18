@@ -20,6 +20,41 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### AMÂNDOI · Butonul de modificare la acte + fișa arată doar filele care au sens — `HASHF`
+
+**1. Actele se pot modifica, nu doar șterge.** Până acum, o greșeală la data expirării se repara
+ștergând actul și adăugându-l din nou — iar la re-adăugare **pierdeai scanul**, dacă nu-l încărcai
+încă o dată. Acum fiecare act are un buton de creion: îl deschizi în același formular, corectezi ce
+trebuie, salvezi. **Fișierul rămâne atașat**, pentru că se trimite doar dacă ai scanat unul nou.
+
+**2. Fișa vehiculului nu mai arată file care n-au ce căuta acolo.** Ai dreptate că e logic: un
+autoturism n-are sarcini pe axe de configurat, iar o mașină fără sondă de combustibil n-are ce
+calibra. Regula are două straturi:
+
+- **automat, după vehicul** — „Config Camion" apare doar la camioane, autotractoare, TIR-uri,
+  remorci și utilaje; filele de sonde, doar la vehiculele care chiar au sonde montate;
+- **comutator per companie** (Setări, la super-admin) — poți scoate filele de tot pentru un client
+  care nu le folosește niciodată.
+
+Dacă schimbi tipul vehiculului în „Camion", fila de axe apare pe loc — nu trebuie să închizi și să
+redeschizi fișa.
+
+> **Capcana pe care am tratat-o dinadins:** dacă filele de sonde s-ar ascunde *ori de câte ori*
+> mașina n-are sondă, n-ar mai exista niciun loc din care să adaugi PRIMA sondă. De aceea
+> super-adminul — cel care montează echipamentul — le vede întotdeauna.
+
+**Fondatorul vede:** două comutatoare noi în Setări și toate filele, mereu.
+
+**Clientul vede:** o fișă mai scurtă, cu ce îl privește; și poate corecta un act fără să-l piardă.
+
+> Probat pe viu: ca super-admin apar toate cele 7 file; ca administrator de firmă, la un autoturism
+> fără sonde rămân 4; la același client, un camion capătă fila de axe, iar o mașină cu sonde capătă
+> filele de calibrare. La modificare: data schimbată, seria și emitentul neatinse, **fișierul păstrat
+> și încă deschizabil**. Plus 9 verificări pe server, inclusiv golirea unui câmp și refuzul tipului gol.
+
+---
+
+
 ### AMÂNDOI · O singură apăsare: validezi și actul e în listă — `7bb57c8`
 
 **Ce lipsea:** după ce confirmai datele citite, câmpurile se completau în formular — dar actul nu era

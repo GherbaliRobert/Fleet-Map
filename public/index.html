@@ -852,6 +852,7 @@
             <label>Data emiterii<input type="date" id="doc-issue"></label>
             <label>Data expirării<input type="date" id="doc-expiry"></label>
             <label>Cost (RON)<input type="number" step="0.01" id="doc-cost"></label>
+            <!-- Conținutul se redesenează din JS (_docModRender): „Adaugă" sau „Salvează modificarea". -->
             <div class="doc-actions"><button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-plus"></i> Adaugă</button></div>
           </div>
         </div>
@@ -3765,7 +3766,9 @@ const pozitii = await r.json();</code></pre>
       { k: 'overspeed_heatmap', label: 'Afișează depășiri viteză pe traseu (heatmap)', desc: 'Colorează traseul de istoric verde/portocaliu/roșu în funcție de viteză vs. limita vehiculului.' },
       { k: 'replay_marker', label: 'Afișează marker mobil în replay', desc: 'Punctul verde animat pe traseu la redarea istoricului.' },
       { k: 'geocoded_address', label: 'Afișează adresa (reverse-geocode)', desc: 'În panoul de detaliu, conversia coordonatelor în adresă (Nominatim).' },
-      { k: 'show_driver_names', label: 'Afișează numele șoferilor', desc: 'Numele șoferului în panoul de detaliu și listă.' }
+      { k: 'show_driver_names', label: 'Afișează numele șoferilor', desc: 'Numele șoferului în panoul de detaliu și listă.' },
+      { k: 'tab_camion', label: 'Fila „Config Camion" în fișa vehiculului', desc: 'Tara, masele maxime și sarcinile pe axe. Apare oricum DOAR la vehiculele de tip camion/autotractor/TIR/remorcă — aici o poți scoate de tot, pentru companiile fără camioane.' },
+      { k: 'tab_sonde', label: 'Filele pentru sonde de combustibil', desc: 'Calibrarea sondei și sondele avansate. Apar oricum DOAR la vehiculele care au sonde configurate — aici le poți scoate de tot. Super-adminul le vede mereu, ca să poată instala prima sondă.' }
     ];
     function _usEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function _usRow(t, val, source) {
@@ -11943,6 +11946,46 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── Edit Device ───
+    // ─── Ce file se văd în fișa vehiculului ──────────────────────────────────────────────────────
+    // O fișă cu șapte file, dintre care patru n-au sens pentru mașina din față, e mai greu de citit
+    // decât una cu trei. Regula are două straturi:
+    //   1. AUTOMAT, după vehicul: „Config Camion" doar la vehicule care au mase și axe de configurat;
+    //      filele de sonde doar la vehiculele care CHIAR au sonde.
+    //   2. Comutator per companie (super-admin): scoate fila de tot, pentru clienți care n-o folosesc.
+    //
+    // CAPCANA, tratată explicit: dacă filele de sonde s-ar ascunde ori de câte ori vehiculul n-are
+    // sonde, n-ar mai exista niciun loc din care să adaugi PRIMA sondă. De aceea super-adminul —
+    // cel care instalează hardware-ul — le vede întotdeauna.
+    const TIPURI_CU_AXE = ['Autotractor', 'Camion', 'TIR', 'Remorca', 'Remorcă tehnologică', 'Automixt', 'Utilaj', 'Tractor', 'Buldoexcavator', 'Combină agricolă'];
+    let _areSondeCurent = false;   // reținut, ca schimbarea tipului să nu ceară recitirea sondelor
+
+    async function aplicaVizibilitateTaburi(dev, areSonde) {
+      if (areSonde !== undefined) _areSondeCurent = !!areSonde;
+      // Refolosim încărcătorul de preferințe care există deja (cu cache) — nu adăugăm un al doilea
+      // drum către aceleași date. Implicit: se văd; o fișă cu o filă în plus e mai bună decât una
+      // căreia îi lipsește o filă de care ai nevoie.
+      let cfg = {};
+      try { cfg = await _loadUiPrefs(); } catch (e) { cfg = {}; }
+      const esteSuper = !!(currentUser && currentUser.isSuper);
+      const tip = (dev && dev.vehicle_type) || document.getElementById('edit-vehicle-type').value || '';
+      const arataCamion = (cfg.tab_camion !== false) && (esteSuper || TIPURI_CU_AXE.indexOf(tip) >= 0);
+      const arataSonde = (cfg.tab_sonde !== false) && (esteSuper || _areSondeCurent);
+      const pune = (numeTab, vizibil) => {
+        const b = document.querySelector('.edit-tab[data-tab="' + numeTab + '"]');
+        if (b) b.style.display = vizibil ? '' : 'none';
+      };
+      pune('truck', arataCamion);
+      pune('calibration', arataSonde);
+      pune('sensors', arataSonde);
+      // Dacă fila deschisă tocmai a fost ascunsă, ne întoarcem la prima — altfel rămâne un conținut
+      // vizibil fără niciun tab activ, ceea ce arată ca o defecțiune.
+      const activ = document.querySelector('.edit-tab.active');
+      if (activ && activ.style.display === 'none') {
+        const primul = document.querySelector('.edit-tab[data-tab="basic"]');
+        if (primul) switchEditTab('basic', primul);
+      }
+    }
+
     function switchEditTab(tab, btn) {
       document.querySelectorAll('.edit-tab').forEach(t => {
         t.classList.remove('active');
@@ -12123,7 +12166,9 @@ const pozitii = await r.json();</code></pre>
             ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" rel="noopener" title="Vezi actul" style="margin-right:4px;"><i class="fas fa-eye"></i></a>'
             + '<a class="btn-sm" href="/api/documents/' + d.id + '/file" download="' + esc(numeFis) + '" title="Descarcă actul" style="margin-right:6px;"><i class="fas fa-download"></i></a>'
             : '';
-          return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + (d.cost ? ' · ' + Math.round(parseFloat(d.cost)) + ' RON' : '') + '</div></div><div style="display:flex;align-items:center;">' + fisier + '<button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div></div>';
+          return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + (d.cost ? ' · ' + Math.round(parseFloat(d.cost)) + ' RON' : '') + '</div></div><div style="display:flex;align-items:center;">' + fisier
+            + '<button class="btn-sm" onclick="editVehicleDoc(' + d.id + ')" title="Modifică actul" style="margin-right:4px;"><i class="fas fa-pen"></i></button>'
+            + '<button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div></div>';
         }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
       } catch (e) { document.getElementById('veh-docs-list').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }
     }
@@ -12131,16 +12176,56 @@ const pozitii = await r.json();</code></pre>
       const imei = document.getElementById('edit-imei').value;
       const body = { imei, doc_type: document.getElementById('doc-type').value, number: document.getElementById('doc-number').value.trim(), issuer: document.getElementById('doc-issuer').value.trim(), issue_date: document.getElementById('doc-issue').value || null, expiry_date: document.getElementById('doc-expiry').value || null, cost: parseFloat(document.getElementById('doc-cost').value) || null };
       // Actul scanat se atașează ABIA aici — dacă omul renunță, nu rămâne nimic pe server.
+      // La MODIFICARE, fișierul se trimite doar dacă s-a scanat unul nou: altfel o corectură de
+      // dată ar șterge scanul existent.
       if (_docScanFile) { body.file_b64 = _docScanFile.b64; body.file_mime = _docScanFile.mime; body.file_name = _docScanFile.name; }
-      const r = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const r = _docEditId
+        ? await fetch('/api/documents/' + _docEditId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        : await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       // Întoarce dacă a mers: cine cheamă funcția asta (inclusiv validarea scanării) trebuie să
       // poată spune adevărul. Un „salvat ✓" după o salvare eșuată e mai rău decât eroarea însăși.
       if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return false; }
       _docScanFile = null; _docScanProp = null;
+      _docEditId = null; _docModRender();
       ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
       loadVehicleDocuments();
       return true;
     }
+    // Editarea unui act: se folosește ACELAȘI formular de jos, comutat în modul „modifică".
+    // Un al doilea formular ar fi însemnat două locuri de întreținut și două ocazii de a diverge.
+    let _docEditId = null;
+    async function editVehicleDoc(id) {
+      const imei = document.getElementById('edit-imei').value;
+      const docs = await (await fetch('/api/documents?imei=' + encodeURIComponent(imei))).json().catch(() => []);
+      const d = (Array.isArray(docs) ? docs : []).find(x => x.id === id);
+      if (!d) return;
+      _docEditId = id;
+      const zi = (v) => v ? String(v).slice(0, 10) : '';
+      document.getElementById('doc-type').value = d.doc_type || 'ITP';
+      document.getElementById('doc-number').value = d.number || '';
+      document.getElementById('doc-issuer').value = d.issuer || '';
+      document.getElementById('doc-issue').value = zi(d.issue_date);
+      document.getElementById('doc-expiry').value = zi(d.expiry_date);
+      document.getElementById('doc-cost').value = d.cost != null ? d.cost : '';
+      _docModRender();
+      document.getElementById('doc-type').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    // Butonul spune ce face, iar când ești în modificare apare și „renunță" — altfel n-ai cum să
+    // ieși din modul de editare decât închizând fișa.
+    function _docModRender() {
+      const b = document.querySelector('#edit-tab-documents .doc-actions');
+      if (!b) return;
+      b.innerHTML = _docEditId
+        ? '<button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-check"></i> Salvează modificarea</button>'
+          + '<button class="btn-sm" onclick="docEditCancel()" style="margin-left:6px;">Renunță</button>'
+        : '<button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-plus"></i> Adaugă</button>';
+    }
+    function docEditCancel() {
+      _docEditId = null;
+      ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
+      _docModRender();
+    }
+
     async function deleteVehicleDoc(id) {
       if (!await raConfirm('Ștergi documentul?', { okLabel: 'Șterge' })) return;
       const r = await fetch('/api/documents/' + id, { method: 'DELETE' });
@@ -12304,13 +12389,18 @@ const pozitii = await r.json();</code></pre>
       const t = (document.getElementById('edit-vehicle-type') || {}).value;
       const mapped = iconFromType(t);
       if (mapped) setIconPicker(mapped);
+      // Schimbi tipul în „Camion" → fila de axe apare pe loc. Altfel ar trebui să închizi și să
+      // redeschizi fișa ca să configurezi ce tocmai ai declarat.
+      if (typeof aplicaVizibilitateTaburi === 'function') aplicaVizibilitateTaburi(null);
     }
 
     async function openEditModal(imei) {
       document.getElementById('edit-modal').classList.add('visible');
       document.getElementById('edit-imei').value = imei;
-      // Propunerile scanate aparțin vehiculului DINAINTE — nu au voie să supraviețuiască schimbării.
+      // Propunerile scanate și modul „modifică act" aparțin vehiculului DINAINTE — nu au voie să
+      // supraviețuiască schimbării. Altfel ai edita actul altei mașini fără să-ți dai seama.
       if (typeof docScanCancel === 'function') docScanCancel();
+      if (typeof docEditCancel === 'function') docEditCancel();
       document.querySelectorAll('.scan-filled').forEach(el => el.classList.remove('scan-filled'));
 
       // Reset to basic tab
@@ -12387,7 +12477,12 @@ const pozitii = await r.json();</code></pre>
             cal.forEach(pt => addCalibrationRow(pt.voltage, pt.liters));
           }
           // Sonde combustibil (avansat)
-          try { const fsList = await (await fetch('/api/devices/' + imei + '/fuel-sensors')).json(); renderFuelSensors(Array.isArray(fsList) ? fsList : []); } catch (e) { renderFuelSensors([]); }
+          let _sonde = [];
+          try { const fsList = await (await fetch('/api/devices/' + imei + '/fuel-sensors')).json(); _sonde = Array.isArray(fsList) ? fsList : []; renderFuelSensors(_sonde); } catch (e) { renderFuelSensors([]); }
+          // Filele care n-au ce căuta la vehiculul ăsta se ascund. „Are sonde" = sonde configurate
+          // SAU o calibrare existentă (o sondă simplă, fără intrare în lista avansată).
+          const _areSonde = _sonde.length > 0 || !!(cal && Array.isArray(cal) && cal.length > 0);
+          aplicaVizibilitateTaburi(dev, _areSonde);
         }
       } catch (e) {
         console.error('Load device info failed:', e);

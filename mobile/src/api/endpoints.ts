@@ -65,6 +65,8 @@ export const Api = {
   groups: () => api<Group[]>('/api/groups'),
   documents: () => api<DocItem[]>('/api/documents'),
   createDocument: (b: any) => api('/api/documents', { method: 'POST', body: b }),
+  // Modificare parțială: fișierul atașat rămâne neatins dacă nu se trimite unul nou.
+  updateDocument: (id: number, b: any) => api(`/api/documents/${id}`, { method: 'PUT', body: b }),
   deleteDocument: (id: number) => api(`/api/documents/${id}`, { method: 'DELETE' }),
   registerDevice: (token: string, platform: string) => api('/api/push/device', { method: 'POST', body: { token, platform } }),
   unregisterDevice: (token: string) => api('/api/push/device/unregister', { method: 'POST', body: { token } }),

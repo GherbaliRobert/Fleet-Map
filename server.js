@@ -5945,6 +5945,21 @@ app.post('/api/documents', requireAuth, requireFleet, withScope, async (req, res
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Modificarea unui act existent. Până acum se putea doar șterge și re-adăuga — iar la re-adăugare
+// se pierdea fișierul atașat, dacă nu-l încărcai din nou. O greșeală de tastare la data expirării
+// costa astfel actul scanat.
+// Fișierul NU se atinge dacă nu se trimite unul nou: câmpurile se corectează fără să pierzi scanul.
+app.put('/api/documents/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'vehicle_documents', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    if (req.body && req.body.doc_type === '') return res.status(400).json({ error: 'Tipul documentului e obligatoriu' });
+    const doc = await db.updateVehicleDocument(parseInt(req.params.id), req.body || {});
+    if (!doc) return res.status(404).json({ error: 'Document inexistent' });
+    auditReq(req, 'update', 'document', req.params.id, { type: doc.doc_type });
+    res.json(doc);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.delete('/api/documents/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'vehicle_documents', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
@@ -7745,8 +7760,10 @@ app.put('/api/notification-prefs', requireAuth, async (req, res) => {
 
 // ─── Preferințe UI (per user) cu cascadă: app default → companie → user ───
 // Whitelist de chei UI permise (previne injection în JSONB cu chei arbitrare)
-const UI_PREF_KEYS = ['overspeed_heatmap', 'replay_marker', 'geocoded_address', 'show_driver_names'];
-const UI_PREF_DEFAULTS = { overspeed_heatmap: true, replay_marker: true, geocoded_address: true, show_driver_names: true };
+// Ultimele două nu sunt preferințe de afișare, ci „compania asta folosește funcția X": ascund file
+// întregi din fișa vehiculului pentru clienții care nu au sonde de combustibil sau nu au camioane.
+const UI_PREF_KEYS = ['overspeed_heatmap', 'replay_marker', 'geocoded_address', 'show_driver_names', 'tab_camion', 'tab_sonde'];
+const UI_PREF_DEFAULTS = { overspeed_heatmap: true, replay_marker: true, geocoded_address: true, show_driver_names: true, tab_camion: true, tab_sonde: true };
 function _filterUiKeys(obj) {
   const out = {};
   if (!obj || typeof obj !== 'object') return out;

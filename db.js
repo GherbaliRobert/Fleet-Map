@@ -3109,6 +3109,27 @@ async function createVehicleDocument(data, companyId) {
   );
   return result.rows[0];
 }
+// Actualizare parțială: se ating DOAR câmpurile trimise. Fișierul atașat rămâne neatins dacă nu
+// vine unul nou — altfel o corectură de dată ar șterge scanul actului.
+async function updateVehicleDocument(id, data) {
+  const PERMISE = ['doc_type', 'number', 'issuer', 'issue_date', 'expiry_date', 'notes', 'cost', 'file_b64', 'file_mime', 'file_name'];
+  const set = [], val = [id];
+  for (const k of PERMISE) {
+    if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+    let v = data[k];
+    if (v === '' ) v = null;                                  // câmp golit în formular = fără valoare
+    val.push(v);
+    set.push(`${k} = $${val.length}`);
+  }
+  if (!set.length) return null;
+  const r = await pool.query(
+    `UPDATE vehicle_documents SET ${set.join(', ')} WHERE id = $1
+     RETURNING id, imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id, created_at, cost,
+               file_mime, file_name, (file_b64 IS NOT NULL) AS has_file`,
+    val
+  );
+  return r.rows[0] || null;
+}
 async function deleteVehicleDocument(id) {
   await pool.query('DELETE FROM vehicle_documents WHERE id = $1', [id]);
 }
@@ -3394,5 +3415,5 @@ module.exports = {
   listFuelTransactions, createFuelTransaction, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,
   saveFuelPriceSnapshot, getFuelPriceHistory,
   getVehicleDocuments,
-  getVehicleDocumentFile, createVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
+  getVehicleDocumentFile, createVehicleDocument, updateVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
 };

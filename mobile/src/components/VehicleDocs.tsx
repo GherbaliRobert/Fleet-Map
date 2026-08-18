@@ -64,6 +64,7 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
   const [fisier, setFisier] = useState<{ b64: string; mime: string; name: string } | null>(null);
   const [form, setForm] = useState<any>({ doc_type: 'ITP', number: '', issuer: '', issue_date: '', expiry_date: '', cost: '' });
   const [poza, setPoza] = useState<{ id: number; url: string } | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);   // actul aflat în modificare
 
   const reload = () => api<any[]>('/api/documents?imei=' + encodeURIComponent(imei)).then((d) => setDocs(Array.isArray(d) ? d : [])).catch(() => setDocs([]));
   useEffect(() => { reload(); setProp(null); setFisier(null); }, [imei]);
@@ -111,6 +112,18 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
     else showToast('Completat în formular — alege tipul actului și apasă „Adaugă".');
   }
 
+  // Modificarea unui act: același formular, comutat în modul „modifică". Fără al doilea formular,
+  // care ar fi însemnat două locuri de întreținut și două ocazii de a diverge.
+  function editeaza(d: any) {
+    const zi = (v: any) => (v ? String(v).slice(0, 10) : '');
+    setEditId(d.id);
+    setForm({ doc_type: d.doc_type || 'ITP', number: d.number || '', issuer: d.issuer || '', issue_date: zi(d.issue_date), expiry_date: zi(d.expiry_date), cost: d.cost != null ? String(d.cost) : '' });
+  }
+  function anuleazaEditarea() {
+    setEditId(null);
+    setForm({ doc_type: 'ITP', number: '', issuer: '', issue_date: '', expiry_date: '', cost: '' });
+  }
+
   // `date` permite salvarea din valori calculate pe loc (după validarea scanării), fără să aștepte
   // ca starea formularului să se actualizeze.
   async function adauga(date?: any, campuriFisa?: number) {
@@ -118,11 +131,13 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
     if (!f.doc_type) { showToast('Alege tipul actului', true); return; }
     try {
       const body: any = { imei, doc_type: f.doc_type, number: f.number || null, issuer: f.issuer || null, issue_date: f.issue_date || null, expiry_date: f.expiry_date || null, cost: f.cost !== '' && f.cost != null ? Number(f.cost) : null };
-      // Fișierul se atașează DOAR aici — renunțarea nu lasă nimic pe server.
+      // Fișierul se atașează DOAR aici — renunțarea nu lasă nimic pe server. La MODIFICARE se
+      // trimite doar dacă s-a scanat unul nou: o corectură de dată nu are voie să șteargă scanul.
       if (fisier) { body.file_b64 = fisier.b64; body.file_mime = fisier.mime; body.file_name = fisier.name; }
-      await Api.createDocument(body);
+      if (editId) await Api.updateDocument(editId, body); else await Api.createDocument(body);
+      setEditId(null);
       setFisier(null); setForm({ doc_type: 'ITP', number: '', issuer: '', issue_date: '', expiry_date: '', cost: '' });
-      showToast('Act salvat'
+      showToast((editId ? 'Act modificat' : 'Act salvat')
         + (f.expiry_date ? ' — alertele de expirare sunt active' : ' — fără dată de expirare, nu vei fi alertat')
         + (campuriFisa ? ' · ' + campuriFisa + ' câmpuri în fișă, apasă „Salvează"' : ''));
       reload();
@@ -213,6 +228,7 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
               {d.has_file && (String(d.file_mime || '').startsWith('image/')
                 ? <button class="h-btn" onClick={() => veziPoza(d.id)} aria-label="Vezi actul"><Icon name="eye" size={16} /></button>
                 : <button class="h-btn" onClick={() => deschideFisier(d.id)} aria-label="Deschide actul"><Icon name="fileBar" size={16} /></button>)}
+              <button class="h-btn" onClick={() => editeaza(d)} aria-label="Modifică actul"><Icon name="edit" size={16} /></button>
               <button class="h-btn" onClick={() => Api.deleteDocument(d.id).then(reload).catch(() => showToast('Eroare la ștergere', true))} aria-label="Șterge"><Icon name="trash" size={16} /></button>
             </div>
             {poza && poza.id === d.id && (
@@ -234,9 +250,12 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
         <div class="fld"><label>Emis la</label><input type="date" value={form.issue_date} onInput={(e) => setF('issue_date', (e.target as HTMLInputElement).value)} /></div>
         <div class="fld"><label>Expiră la</label><input type="date" value={form.expiry_date} onInput={(e) => setF('expiry_date', (e.target as HTMLInputElement).value)} /></div>
       </div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px" onClick={() => adauga()}>
-        {fisier ? 'Adaugă actul (cu fișierul scanat)' : 'Adaugă actul'}
-      </button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-primary" style="flex:1" onClick={() => adauga()}>
+          {editId ? 'Salvează modificarea' : (fisier ? 'Adaugă actul (cu fișierul scanat)' : 'Adaugă actul')}
+        </button>
+        {editId ? <button class="btn" onClick={anuleazaEditarea}>Renunță</button> : null}
+      </div>
     </div>
   );
 }
