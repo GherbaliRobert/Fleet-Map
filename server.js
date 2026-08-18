@@ -5709,18 +5709,106 @@ async function _driversExportData(req) {
 // Aceeași poartă ca lista de șoferi: cine vede lista poate scoate și documentul. `withScope` face
 // și ce face `withCompany`, plus IMEI-urile permise — nu le punem pe amândouă.
 // CSV brut — aceleași date, fără antet și logo. Pentru cine vrea să le prelucreze mai departe.
+// ─── CSV șoferi: ACELEAȘI coloane la ieșire și la intrare ───────────────────────────────────────
+// Ca la vehicule: CSV-ul e formatul de lucru (scoți → editezi → reimporți), iar Excel/PDF sunt
+// documentele de citit. De aceea aici NU apar câmpurile calculate (încadrare, stare, vehicule):
+// nu ai ce face cu ele la import, iar un fișier care nu se poate întoarce nu e un CSV de lucru.
+const DRIVER_CSV_COLS = [
+  { h: 'nume', f: 'name' }, { h: 'telefon', f: 'phone' }, { h: 'email', f: 'email' },
+  { h: 'nr_permis', f: 'license_number' }, { h: 'expirare_permis', f: 'license_expiry' },
+  { h: 'categorii', f: 'license_categories' }
+];
+// Acceptă 2026-09-12, 12.09.2026 și 12/09/2026. Orice altceva → null (rândul nu e respins pentru atât).
+function _parseDateLoose(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return m[1] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[3]).padStart(2, '0');
+  m = s.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})$/);
+  if (m) return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+  return null;
+}
+function _driverCsvCell(d, f) {
+  if (f === 'license_expiry') return d.license_expiry ? new Date(d.license_expiry).toISOString().slice(0, 10) : '';
+  return d[f];
+}
 app.get('/api/drivers/export.csv', requireAuth, withScope, async (req, res) => {
   try {
-    const items = await _driversExportData(req);
-    const cols = ['Sofer', 'Incadrare', 'Categorii permis', 'Nr permis', 'Expira', 'Stare', 'Vehicule', 'Telefon', 'Email'];
-    if (req.isSuper) cols.push('Companie');
-    const lines = items.map(x => (req.isSuper ? x.row.concat([x.co || '']) : x.row).map(csvCell).join(','));
-    const csv = '﻿' + [cols.join(','), ...lines].join('\r\n'); // BOM → Excel deschide UTF-8 cu diacritice
-    auditReq(req, 'export', 'drivers', null, { count: items.length, format: 'csv' });
+    let drivers = await db.getDrivers(req.isSuper ? null : req.companyId);
+    if (req.companyId !== demoCompanyId) drivers = drivers.filter(d => d.company_id !== demoCompanyId);
+    const header = DRIVER_CSV_COLS.map(c => c.h).join(',');
+    const lines = drivers.map(d => DRIVER_CSV_COLS.map(c => csvCell(_driverCsvCell(d, c.f))).join(','));
+    const csv = '﻿' + [header, ...lines].join('\r\n'); // BOM → Excel deschide UTF-8 cu diacritice
+    auditReq(req, 'export', 'drivers', null, { count: drivers.length, format: 'csv' });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="soferi.csv"');
     res.send(csv);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/drivers/template.csv', requireAuth, (req, res) => {
+  const ex = { nume: 'Popescu Ion', telefon: '0722145890', email: 'ion.popescu@firma.ro', nr_permis: 'B 1938472', expirare_permis: '2028-09-12', categorii: 'B,C,CE' };
+  const csv = '﻿' + [DRIVER_CSV_COLS.map(c => c.h).join(','), DRIVER_CSV_COLS.map(c => csvCell(ex[c.h])).join(',')].join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="template_soferi.csv"');
+  res.send(csv);
+});
+// Import șoferi. Spre deosebire de vehicule, aici NU există o cheie naturală ca IMEI-ul, așa că
+// potrivim în ordine: numărul de permis → email → nume. Dacă numele nimerește în două persoane,
+// rândul e SĂRIT cu explicație — mai bine îl rezolvi tu decât să suprascriem omul greșit.
+app.post('/api/drivers/import', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+    if (!rows.length) return res.status(400).json({ error: 'Niciun rând de importat' });
+    if (rows.length > 2000) return res.status(400).json({ error: 'Prea multe rânduri (max 2000)' });
+    // Super-adminul n-are companie proprie → trebuie să spună UNDE intră șoferii, altfel ar rămâne orfani.
+    let target = req.companyId;
+    if (req.isSuper) {
+      target = parseInt(req.body.company_id);
+      if (!target || !(await db.getCompanyById(target))) return res.status(400).json({ error: 'Alege întâi compania din filtrul de sus, apoi importă.' });
+    }
+    const existing = await db.getDrivers(target);
+    const byLic = new Map(), byMail = new Map(), byName = new Map();
+    for (const d of existing) {
+      const l = (d.license_number || '').trim().toUpperCase(); if (l) byLic.set(l, d);
+      const m = (d.email || '').trim().toLowerCase(); if (m) byMail.set(m, d);
+      const n = (d.name || '').trim().toLowerCase();
+      if (n) byName.set(n, byName.has(n) ? 'AMBIGUU' : d);
+    }
+    let created = 0, updated = 0; const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || {}, line = i + 2;
+      const name = String(row.nume || '').trim();
+      if (!name) { errors.push({ line, error: 'Lipsește numele' }); continue; }
+      const data = {
+        name,
+        phone: String(row.telefon || '').trim() || null,
+        email: String(row.email || '').trim() || null,
+        license_number: String(row.nr_permis || '').trim() || null,
+        license_expiry: _parseDateLoose(row.expirare_permis),
+        license_categories: licenseCats.format(row.categorii),
+        photo_b64: null
+      };
+      try {
+        const lic = (data.license_number || '').toUpperCase();
+        const mail = (data.email || '').toLowerCase();
+        let match = (lic && byLic.get(lic)) || (mail && byMail.get(mail)) || byName.get(name.toLowerCase()) || null;
+        if (match === 'AMBIGUU') { errors.push({ line, error: 'Există doi șoferi cu numele „' + name + '" — completează numărul de permis ca să știm care e' }); continue; }
+        if (match) {
+          // Poza rămâne a lui: CSV-ul n-o conține, iar updateDriver ar șterge-o cu null.
+          data.photo_b64 = match.photo_b64 || null;
+          await db.updateDriver(match.id, data);
+          updated++;
+        } else {
+          const nd = await db.createDriver(data, target);
+          if (lic) byLic.set(lic, nd); if (mail) byMail.set(mail, nd);
+          byName.set(name.toLowerCase(), byName.has(name.toLowerCase()) ? 'AMBIGUU' : nd);
+          created++;
+        }
+      } catch (e) { errors.push({ line, error: e.message }); }
+    }
+    auditReq(req, 'import', 'driver', null, { created, updated, errors: errors.length, company_id: target });
+    res.json({ created, updated, errors: errors.slice(0, 50) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/drivers/export', requireAuth, withScope, async (req, res) => {
   try {

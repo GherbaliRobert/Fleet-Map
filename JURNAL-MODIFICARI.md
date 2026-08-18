@@ -400,6 +400,43 @@ zi — ca să-i punem preț pe cifre, nu din burtă, exact ca la RA Insight.
 
 ## 2026-08-13
 
+### CLIENT · Șoferii se pot încărca dintr-un fișier, nu doar bătuți la tastatură
+
+**De ce:** un client care vine la noi are deja lista de șoferi într-un Excel. Până acum trebuia s-o
+retasteze om cu om. Acum are, ca la vehicule, **Șablon** și **Importă**.
+
+**Cum merge:** descarci Șablonul (un fișier gol, cu capul de tabel și un rând de exemplu), completezi
+nume, telefon, email, numărul de permis, expirarea și categoriile — apoi îl încarci. Îți spune câți
+au fost adăugați și câți actualizați.
+
+**Partea delicată, rezolvată:** la vehicule există IMEI-ul, un număr unic după care se știe exact
+despre ce mașină e vorba. La oameni nu există așa ceva. Așa că potrivim în ordine: **numărul de
+permis**, apoi **emailul**, apoi **numele**. Dacă numele nimerește în două persoane, rândul **nu se
+importă** și primești explicația („există doi șoferi cu numele …, completează numărul de permis") —
+mai bine îl lămurești tu decât să suprascriem omul greșit.
+
+**Ce nu strică:** poza șoferului rămâne a lui (fișierul n-o conține, deci n-o ștergem). Datele merg
+scrise oricum — `12.09.2028`, `12/09/2028` sau `2028-09-12`. Categoriile scrise cu litere mici sau
+în altă ordine se îndreaptă singure.
+
+**Am reparat și o inconsecvență de-a mea:** CSV-ul de șoferi scotea coloane de citit („Încadrare",
+„Stare", „Vehicule") care **nu se pot reimporta**. Acum scoate exact aceleași coloane pe care le
+primește la import — deci ce scoți poți să pui înapoi, ca la vehicule. Informația de citit a rămas
+acolo unde îi e locul: în documentele Excel și PDF.
+
+**Fondatorul vede:** la import trebuie să alegi întâi compania din filtrul de sus — altfel șoferii
+ar rămâne fără companie. Dacă n-ai ales, îți spune.
+
+**Clientul vede:** două butoane noi la Șoferi, „Șablon" și „Importă". Șoferii intră în compania lui.
+
+> Verificat pe cod real, rulând chiar handlerul de import: 30 de controale — inclusiv potrivirea
+> după permis/email/nume, numele ambiguu care trebuie sărit, poza care nu trebuie pierdută, același
+> om de două ori în același fișier (1 creat + 1 actualizat, nu 2 duplicate) și fișierele care trebuie
+> refuzate.
+
+---
+
+
 ### CLIENT · Butonul „Exportă" scoate acum un document de firmă, nu un fișier de date
 
 **Ce am schimbat:** butonul „Exportă" din *Vehicule* scotea un fișier CSV — un tabel gol, fără logo,

@@ -1874,6 +1874,9 @@ const pozitii = await r.json();</code></pre>
             <span class="exp-grp"><button class="btn-sm" onclick="exportDrivers('csv')" title="CSV brut, pentru prelucrare mai departe"><i class="fas fa-file-csv"></i> CSV</button>
             <button class="btn-sm" onclick="exportDrivers('xlsx')" title="Document Excel brandat, cu situația șoferilor"><i class="fas fa-file-excel"></i> Excel</button>
             <button class="btn-sm" onclick="exportDrivers('pdf')" title="Document PDF brandat, cu situația șoferilor"><i class="fas fa-file-pdf"></i> PDF</button></span>
+            <button class="btn-sm" onclick="window.open('/api/drivers/template.csv','_blank')" title="Șablon CSV pentru import"><i class="fas fa-file-csv"></i> Șablon</button>
+            <button class="btn-sm" onclick="document.getElementById('drv-import-file').click()" title="Importă șoferi din CSV"><i class="fas fa-upload"></i> Importă</button>
+            <input type="file" id="drv-import-file" accept=".csv,text/csv" style="display:none;" onchange="importDriversFile(this)">
             <button class="btn-sm btn-primary" onclick="toggleDrvAdd()"><i class="fas fa-plus"></i> Adaugă șofer</button>
           </div>
           <div class="drv-colh">
@@ -4195,6 +4198,32 @@ const pozitii = await r.json();</code></pre>
     function exportDrivers(fmt) {
       if (fmt === 'csv') { window.open('/api/drivers/export.csv', '_blank'); return; }
       window.open('/api/drivers/export?format=' + ((fmt === 'pdf') ? 'pdf' : 'xlsx'), '_blank');
+    }
+    // Import șoferi din CSV — pentru clientul care are deja lista în Excel și n-are chef s-o retasteze.
+    async function importDriversFile(input) {
+      const file = input.files && input.files[0]; if (!file) return;
+      try {
+        const raw = parseCSV(await file.text()).filter(r => r.some(c => (c || '').trim() !== ''));
+        if (raw.length < 2) { alert('CSV gol sau fără rânduri de date.'); input.value = ''; return; }
+        const headers = raw[0].map(h => (h || '').trim().toLowerCase());
+        if (!headers.includes('nume')) { alert('Lipsește coloana „nume". Descarcă întâi Șablonul.'); input.value = ''; return; }
+        const objs = raw.slice(1).map(r => { const o = {}; headers.forEach((h, i) => o[h] = (r[i] || '').trim()); return o; });
+        // Super-adminul n-are companie proprie → o ia din filtrul de sus, ca să nu creeze șoferi orfani.
+        const body = { rows: objs };
+        if (currentUser && currentUser.isSuper) {
+          const co = document.getElementById('drv-co-filter');
+          if (!co || !co.value) { alert('Alege întâi compania din filtrul de sus, apoi importă.'); input.value = ''; return; }
+          body.company_id = parseInt(co.value);
+        }
+        if (!await raConfirm('Imporți ' + objs.length + ' șoferi din „' + file.name + '"?', { okLabel: 'Importă' })) { input.value = ''; return; }
+        const res = await fetch('/api/drivers/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const out = await res.json().catch(() => ({}));
+        if (!res.ok) { alert('Eroare: ' + (out.error || res.status)); input.value = ''; return; }
+        let msg = 'Import gata: ' + out.created + ' adăugați, ' + out.updated + ' actualizați.';
+        if (out.errors && out.errors.length) msg += '\n' + out.errors.length + ' sărite. Ex: linia ' + out.errors[0].line + ': ' + out.errors[0].error;
+        alert(msg);
+        input.value = ''; await loadDrivers();
+      } catch (e) { alert('Eroare la citirea fișierului: ' + e.message); input.value = ''; }
     }
     // Parser CSV (gestionează câmpuri citate cu virgule/ghilimele/linii noi)
     function parseCSV(text) {
