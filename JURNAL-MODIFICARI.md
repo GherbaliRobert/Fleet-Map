@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
-### AMÂNDOI · Mașina se recunoaște după NUMĂR, și ecranul e cu adevărat complet pe telefon — `HASHA`
+### AMÂNDOI · Mașina se recunoaște după NUMĂR, și ecranul e cu adevărat complet pe telefon — `eba21d9`
 
 **Ce am schimbat (1): peste tot, întâi numărul de înmatriculare, apoi numele.** Până acum aplicația
 scria „VW Caddy · B 268 ROY" — numele întâi. Numele e liber și se repetă (cinci mașini pot fi toate
