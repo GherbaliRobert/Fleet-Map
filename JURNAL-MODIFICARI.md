@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
-### AMÂNDOI · Actul încărcat completează acum TOT, nu pe jumătate — `HASHC`
+### AMÂNDOI · Actul încărcat completează acum TOT, nu pe jumătate — `76c89d9`
 
 **Ce s-a întâmplat:** ai încărcat o poliță RCA și s-au completat doar tipul și seria. Emitentul și
 ambele date au rămas goale — adică exact **data expirării, cea care pornește alertele**. Din punctul
