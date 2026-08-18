@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
-### AMÂNDOI · Butonul de modificare la acte + fișa arată doar filele care au sens — `HASHF`
+### AMÂNDOI · Butonul de modificare la acte + fișa arată doar filele care au sens — `dcc6ee9`
 
 **1. Actele se pot modifica, nu doar șterge.** Până acum, o greșeală la data expirării se repara
 ștergând actul și adăugându-l din nou — iar la re-adăugare **pierdeai scanul**, dacă nu-l încărcai
