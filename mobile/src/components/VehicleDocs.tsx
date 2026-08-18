@@ -90,30 +90,41 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
     finally { setBusy(false); }
   }
 
-  function aplica() {
+  // Validarea SALVEAZĂ actul, nu doar completează căsuțele: fluxul e unul singur — încarci, vezi ce
+  // s-a citit, confirmi, actul e în listă. Câmpurile FIȘEI rămân doar completate, pentru că aparțin
+  // vehiculului și se salvează cu butonul lui.
+  async function aplica() {
     const c = (prop && prop.campuri) || {};
-    const patchFisa: any = {}; let inAct = 0, inFisa = 0;
+    const patchFisa: any = {}; let inFisa = 0;
     const f2 = { ...form };
     for (const k of Object.keys(c)) {
       if (!bife[k]) continue;
-      if (k in ACT_ET) { (f2 as any)[k] = String(c[k]); inAct++; }
+      if (k in ACT_ET) (f2 as any)[k] = String(c[k]);
       else if (k in FISA_ET) { patchFisa[k] = c[k]; inFisa++; }
     }
     setForm(f2);
     if (inFisa) setFisa(patchFisa);
     setProp(null);
-    showToast('Completat: ' + inAct + ' câmpuri la act, ' + inFisa + ' în fișă. Verifică și salvează.');
+    // Salvăm din valorile calculate ACUM (f2), nu din starea formularului: setForm e asincron, iar
+    // o citire imediată a stării ar trimite valorile vechi.
+    if (f2.doc_type) await adauga(f2, inFisa);
+    else showToast('Completat în formular — alege tipul actului și apasă „Adaugă".');
   }
 
-  async function adauga() {
-    if (!form.doc_type) { showToast('Alege tipul actului', true); return; }
+  // `date` permite salvarea din valori calculate pe loc (după validarea scanării), fără să aștepte
+  // ca starea formularului să se actualizeze.
+  async function adauga(date?: any, campuriFisa?: number) {
+    const f = date || form;
+    if (!f.doc_type) { showToast('Alege tipul actului', true); return; }
     try {
-      const body: any = { imei, doc_type: form.doc_type, number: form.number || null, issuer: form.issuer || null, issue_date: form.issue_date || null, expiry_date: form.expiry_date || null, cost: form.cost !== '' ? Number(form.cost) : null };
+      const body: any = { imei, doc_type: f.doc_type, number: f.number || null, issuer: f.issuer || null, issue_date: f.issue_date || null, expiry_date: f.expiry_date || null, cost: f.cost !== '' && f.cost != null ? Number(f.cost) : null };
       // Fișierul se atașează DOAR aici — renunțarea nu lasă nimic pe server.
       if (fisier) { body.file_b64 = fisier.b64; body.file_mime = fisier.mime; body.file_name = fisier.name; }
       await Api.createDocument(body);
       setFisier(null); setForm({ doc_type: 'ITP', number: '', issuer: '', issue_date: '', expiry_date: '', cost: '' });
-      showToast('Act salvat' + (form.expiry_date ? ' — alertele de expirare sunt active' : ''));
+      showToast('Act salvat'
+        + (f.expiry_date ? ' — alertele de expirare sunt active' : ' — fără dată de expirare, nu vei fi alertat')
+        + (campuriFisa ? ' · ' + campuriFisa + ' câmpuri în fișă, apasă „Salvează"' : ''));
       reload();
     } catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); }
   }
@@ -175,10 +186,10 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
             );
           })}
           <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn btn-primary" style="flex:1" onClick={aplica}>Completează bifatele</button>
+            <button class="btn btn-primary" style="flex:1" onClick={aplica}>Validează și adaugă actul</button>
             <button class="btn" onClick={() => { setProp(null); setFisier(null); }}>Renunță</button>
           </div>
-          <div style="font-size:10.5px;color:var(--text-muted);margin-top:6px">Nimic nu e salvat încă — verifici și salvezi tu.</div>
+          <div style="font-size:10.5px;color:var(--text-muted);margin-top:6px">La validare actul se salvează și apare în listă. Câmpurile pentru fișă se completează în formular — pe alea le salvezi cu „Salvează".</div>
         </div>
       )}
 
@@ -223,7 +234,7 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
         <div class="fld"><label>Emis la</label><input type="date" value={form.issue_date} onInput={(e) => setF('issue_date', (e.target as HTMLInputElement).value)} /></div>
         <div class="fld"><label>Expiră la</label><input type="date" value={form.expiry_date} onInput={(e) => setF('expiry_date', (e.target as HTMLInputElement).value)} /></div>
       </div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px" onClick={adauga}>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px" onClick={() => adauga()}>
         {fisier ? 'Adaugă actul (cu fișierul scanat)' : 'Adaugă actul'}
       </button>
     </div>

@@ -20,6 +20,36 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### AMÂNDOI · O singură apăsare: validezi și actul e în listă — `HASHE`
+
+**Ce lipsea:** după ce confirmai datele citite, câmpurile se completau în formular — dar actul nu era
+salvat. Mai trebuia o apăsare pe „Adaugă". Practic ți se cerea să confirmi de două ori același
+lucru, iar între cele două apăsări părea că nu s-a întâmplat nimic.
+
+**Fluxul e acum cel pe care l-ai descris:**
+
+1. încarci actul;
+2. e citit (gratuit din PDF, cu model doar dacă e poză sau dacă regulile ratează);
+3. **vezi ce s-a citit**, cu bifele deja puse;
+4. apeși **„Validează și adaugă actul"** — și actul e în listă, cu fișierul atașat.
+
+**Un lucru rămâne separat, intenționat.** Câmpurile care aparțin *vehiculului* (VIN, marcă, model,
+combustibil, mase) se completează în fișă, dar se salvează cu butonul „Salvează". Sunt două lucruri
+diferite — actul e al actului, fișa e a mașinii — și ar fi înșelător să salvez fișa fără să apeși tu.
+Mesajul de confirmare îți spune exact câte câmpuri au rămas de salvat acolo.
+
+**Fondatorul vede:** aceeași schimbare.
+
+**Clientul vede:** o apăsare, nu două. Iar dacă actul n-are dată de expirare, mesajul o spune pe
+față: „fără dată de expirare, nu vei fi alertat".
+
+> Probat pe viu, cap-coadă: din 0 documente, o singură apăsare a dus în listă polița cu expirarea
+> 27.07.2027, emitentul, seria și fișierul atașat — iar VIN-ul a intrat în fișă, marcat. Numărul de
+> înmatriculare, deja completat, a rămas nebifat, cum trebuie.
+
+---
+
+
 ### AMÂNDOI · Emitentul citit greșit: cauza era în felul în care citeam PDF-ul — `4fc28f7`
 
 **Ce ai văzut:** la emitent scria „O R I G I N A L 9. N UMELE SI ADRESA". Datele și seria erau

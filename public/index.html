@@ -12063,9 +12063,9 @@ const pozitii = await r.json();</code></pre>
           (x.ocupat ? ' <span style="font-size:10.5px;color:#f59e0b;" title="Câmpul are deja o valoare — bifează doar dacă vrei să o înlocuiești">deja completat</span>' : '') +
           '</label>').join('') +
         '<div style="display:flex;gap:8px;margin-top:10px;">' +
-        '<button class="btn-sm btn-primary" onclick="docScanApply()"><i class="fas fa-check"></i> Completează câmpurile bifate</button>' +
+        '<button class="btn-sm btn-primary" onclick="docScanApply()"><i class="fas fa-check"></i> Validează și adaugă actul</button>' +
         '<button class="btn-sm" onclick="docScanCancel()">Renunță</button></div>' +
-        '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Nimic nu se salvează încă: câmpurile se completează în formular, iar salvarea rămâne a ta — „Adaugă" pentru act, „Salvează" pentru fișă.</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">La validare, <b>actul se salvează</b> și apare în listă, cu fișierul atașat. Câmpurile bifate pentru fișa vehiculului se completează în formular — pe alea le salvezi cu „Salvează".</div>' +
         '</div>';
     }
 
@@ -12083,7 +12083,22 @@ const pozitii = await r.json();</code></pre>
         }
       });
       document.getElementById('doc-scan-result').style.display = 'none';
-      if (window.raxToast) raxToast('Completat: ' + inAct + ' câmpuri la act, ' + inFisa + ' în fișă. Verifică și salvează.', 'success');
+
+      // Validarea SALVEAZĂ actul, nu doar completează căsuțele. Fluxul așteptat e unul singur:
+      // încarci → vezi ce s-a citit → confirmi → actul e în listă. A cere încă o apăsare pe
+      // „Adaugă" după ce omul tocmai a confirmat datele înseamnă să-i ceri să confirme de două ori.
+      //
+      // Câmpurile FIȘEI rămân doar completate: ele aparțin vehiculului, care se salvează cu butonul
+      // lui („Salvează"). Sunt două lucruri diferite și e cinstit să rămână două acțiuni.
+      if (document.getElementById('doc-type').value) {
+        saveVehicleDocument().then((mers) => {
+          if (mers && window.raxToast) raxToast(
+            'Act salvat' + (inFisa ? ' · ' + inFisa + ' câmpuri completate în fișă — apasă „Salvează" pentru ele' : ''),
+            'success');
+        }).catch(() => {});
+      } else if (window.raxToast) {
+        raxToast('Completat: ' + inAct + ' câmpuri la act, ' + inFisa + ' în fișă. Verifică și salvează.', 'success');
+      }
     }
     function docScanCancel() {
       _docScanFile = null; _docScanProp = null;
@@ -12118,10 +12133,13 @@ const pozitii = await r.json();</code></pre>
       // Actul scanat se atașează ABIA aici — dacă omul renunță, nu rămâne nimic pe server.
       if (_docScanFile) { body.file_b64 = _docScanFile.b64; body.file_mime = _docScanFile.mime; body.file_name = _docScanFile.name; }
       const r = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return; }
+      // Întoarce dacă a mers: cine cheamă funcția asta (inclusiv validarea scanării) trebuie să
+      // poată spune adevărul. Un „salvat ✓" după o salvare eșuată e mai rău decât eroarea însăși.
+      if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return false; }
       _docScanFile = null; _docScanProp = null;
       ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
       loadVehicleDocuments();
+      return true;
     }
     async function deleteVehicleDoc(id) {
       if (!await raConfirm('Ștergi documentul?', { okLabel: 'Șterge' })) return;
