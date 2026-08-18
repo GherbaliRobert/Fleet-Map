@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
-### AMÂNDOI · Emitentul citit greșit: cauza era în felul în care citeam PDF-ul — `HASHD`
+### AMÂNDOI · Emitentul citit greșit: cauza era în felul în care citeam PDF-ul — `4fc28f7`
 
 **Ce ai văzut:** la emitent scria „O R I G I N A L 9. N UMELE SI ADRESA". Datele și seria erau
 corecte, doar emitentul aiurea.
