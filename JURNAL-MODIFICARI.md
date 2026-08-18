@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
-### CLIENT · „Merg după el" — ecran de urmărit o mașină din trafic — `HASHB`
+### CLIENT · „Merg după el" — ecran de urmărit o mașină din trafic — `26d69c2`
 
 **Ce ai cerut:** Android Auto, ca să mergi după o mașină anume.
 
