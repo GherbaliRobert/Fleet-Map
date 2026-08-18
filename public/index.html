@@ -3470,7 +3470,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('ue-devices').innerHTML = devices.length ? devices.map(d => `
         <label class="ue-check" data-name="${((d.name||'')+' '+(d.plate||'')+' '+d.imei).replace(/"/g,'')}">
           <input type="checkbox" class="ue-dev" value="${d.imei}" ${devSet.has(d.imei)?'checked':''}>
-          <span>${d.name || d.imei}${d.plate ? ' · ' + d.plate : ''}</span>
+          <span>${d.plate || d.name || d.imei}${(d.plate && d.name) ? ' · ' + d.name : ''}</span>
         </label>`).join('') : '<span style="color:var(--text-muted);font-size:12px;">Niciun vehicul.</span>';
 
       document.getElementById('ue-groups').innerHTML = groups.length ? groups.map(g => `
@@ -3690,9 +3690,13 @@ const pozitii = await r.json();</code></pre>
     async function adminLoadDevices() {
       try { const r = await fetch('/api/devices'); adminDevicesCache = await r.json(); } catch (e) { adminDevicesCache = []; }
     }
+    // Vehiculul se identifică prin NUMĂRUL DE ÎNMATRICULARE, nu prin nume.
+    // Numele e liber și se repetă („VW Caddy" pe cinci mașini); numărul e unic, e ce se scrie în
+    // acte, în foaia de parcurs și ce spune șoferul la telefon. Numele rămâne, dar în urmă.
     function vehicleLabel(imei) {
       const d = adminDevicesCache.find(x => x.imei === imei);
-      return d ? ((d.name || imei) + (d.plate ? ' · ' + d.plate : '')) : imei;
+      if (!d) return imei;
+      return d.plate ? (d.plate + (d.name ? ' · ' + d.name : '')) : (d.name || imei);
     }
     // `coId`: dacă e dat, arată DOAR vehiculele companiei respective. Pentru super-admin adaugă și numele
     // companiei la fiecare vehicul — cu flote în mai multe companii, „VW CADDY" singur nu spune a cui e.
@@ -3712,7 +3716,7 @@ const pozitii = await r.json();</code></pre>
         + list.map(d => {
           const co = d.company_id == null ? ' — fără companie'
             : ((isSuper && !coId && d.company_name) ? ' — ' + d.company_name : '');
-          return `<option value="${d.imei}">${(d.name||d.imei)}${d.plate?' · '+d.plate:''}${co}</option>`;
+          return `<option value="${d.imei}">${d.plate || d.name || d.imei}${(d.plate && d.name) ? ' · '+d.name : ''}${co}</option>`;
         }).join('');
       sel.innerHTML = opts;
     }
@@ -4124,7 +4128,7 @@ const pozitii = await r.json();</code></pre>
         const pic = vehicleSilhouetteSVG(markerCategory(d), 'currentColor', 30);
         return `<div class="veh-row st-${st}" title="${stTitle}">
           <div class="veh-c-pic"><span class="veh-pic">${pic}</span></div>
-          <div class="veh-c-veh"><div class="veh-nm">${esc(d.name || d.imei)}</div><div class="veh-pl">${esc(d.plate || '—')}</div></div>
+          <div class="veh-c-veh"><div class="veh-nm">${esc(d.plate || d.name || d.imei)}</div><div class="veh-pl">${esc(d.plate ? (d.name || '—') : '—')}</div></div>
           <div class="veh-c-grp veh-cel">${esc(grp) || '—'}</div>
           <div class="veh-c-drv veh-cel">${esc(drv) || '—'}</div>
           <div class="veh-c-last"><div class="veh-cel">${rel}</div><div class="veh-sub">${last}</div></div>
@@ -5948,7 +5952,7 @@ const pozitii = await r.json();</code></pre>
       var renderGroup = function (gid, gname, list) {
         if (!list.length) return '';
         var vehHtml = list.map(function (d) {
-          var lbl = _repEsc((d.name || d.imei) + (d.plate ? ' · ' + d.plate : ''));
+          var lbl = _repEsc(d.plate ? (d.plate + (d.name ? ' · ' + d.name : '')) : (d.name || d.imei));
           return '<label class="rep2-vrow"><input type="checkbox" class="rep2-veh" value="' + d.imei + '" data-g="' + gid + '"' + (prev[d.imei] ? ' checked' : '') + ' onchange="repCascadeSyncGroup(\'' + gid + '\')"> ' + lbl + '</label>';
         }).join('');
         return '<div class="rep2-grow"><label class="rep2-ghead"><input type="checkbox" class="rep2-gcb" data-g="' + gid + '" onchange="repCascadeToggleGroup(\'' + gid + '\', this.checked)"> <b>' + _repEsc(gname) + '</b> <span class="cnt">(' + list.length + ')</span></label>' + vehHtml + '</div>';

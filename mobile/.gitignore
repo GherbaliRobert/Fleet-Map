@@ -15,6 +15,12 @@ android/app/*
 android/app/src/**
 !android/app/src/main/
 !android/app/src/main/AndroidManifest.xml
+# Tema aplicatiei (bare de sistem transparente = ecran complet). Ca si AndroidManifest: se editeaza
+# de mana, nu e regenerata de cap sync — deci trebuie sa supravietuiasca unei clone noi.
+!android/app/src/main/res/
+android/app/src/main/res/**
+!android/app/src/main/res/values/
+!android/app/src/main/res/values/styles.xml
 !android/keystore.properties.exemplu
 ios/
 

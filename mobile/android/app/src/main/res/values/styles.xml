@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <!-- Tema aplicației. „Ecran complet" înseamnă aici că pagina desenează SUB barele sistemului,
+         nu că barele dispar: butoanele de navigare și ceasul rămân vizibile, dar peste fundalul
+         nostru, nu peste o bandă de altă culoare.
+
+         Bara de sus era deja tratată (overlaysWebView în capacitor.config.ts). Bara de JOS nu era
+         configurată NICĂIERI — de acolo venea dunga de altă culoare sub conținut.
+
+         windowLightStatusBar / windowLightNavigationBar = false → pictogramele sistemului rămân
+         ALBE, ca să se vadă pe fundalul nostru închis. Pe tema deschisă a aplicației se schimbă
+         din cod, prin plugin, nu de aici.
+
+         enforceNavigationBarContrast = false: Android 10+ pune singur un voal semi-transparent
+         peste bara de navigare „ca să se vadă butoanele". Exact acel voal se vedea ca o bandă
+         gri deasupra fundalului nostru. -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+    </style>
+
+
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@drawable/splash</item>
+    </style>
+</resources>

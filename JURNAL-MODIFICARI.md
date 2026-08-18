@@ -18,6 +18,36 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-08-18
+
+### AMÂNDOI · Mașina se recunoaște după NUMĂR, și ecranul e cu adevărat complet pe telefon — `HASHA`
+
+**Ce am schimbat (1): peste tot, întâi numărul de înmatriculare, apoi numele.** Până acum aplicația
+scria „VW Caddy · B 268 ROY" — numele întâi. Numele e liber și se repetă (cinci mașini pot fi toate
+„VW Caddy"), pe când numărul e unic, e ce scrie în acte, în foaia de parcurs și ce spune șoferul la
+telefon. Acum scrie „B 268 ROY · VW Caddy" — în liste, în alegerea vehiculului, în rapoarte, în
+tabelul de administrare și pe hartă.
+
+*Căutarea căuta deja și după număr* — și pe web, și pe telefon. Ce nu mergea era **recunoașterea**:
+găseai mașina, dar în listă vedeai un nume care se repeta.
+
+**Ce am schimbat (2): banda de altă culoare de sus și de jos, pe telefon.** Bara de sus era deja
+tratată. Bara de JOS nu era configurată nicăieri — de acolo venea dunga. Acum ambele sunt
+transparente, iar pagina desenează sub ele. Butoanele de navigare și ceasul rămân vizibile (așa
+trebuie), dar peste fundalul aplicației, nu peste o bandă gri.
+
+Android punea singur un „voal" semi-transparent peste bara de jos, ca să se vadă butoanele — exact
+acela se vedea ca o dungă. L-am oprit.
+
+**Fondatorul vede:** fișierul cu tema aplicației era în afara git-ului, ca și celelalte de acolo —
+reparația ar fi trăit doar pe un calculator. Acum e urmărit.
+
+**Clientul vede:** își recunoaște mașinile după număr, iar aplicația ocupă tot ecranul telefonului.
+
+> Verificat că tema chiar ajunge în APK, nu doar în fișier: e compilată în două variante (Android
+> vechi / Android nou), a doua cu toate cele zece setări. Și că `cap sync` nu o rescrie.
+
+---
 ## 2026-08-14
 
 ### AMÂNDOI · Scanarea actelor și pe telefon — cu camera, direct din fișă — `de85206`

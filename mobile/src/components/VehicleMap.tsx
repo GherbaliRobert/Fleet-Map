@@ -63,7 +63,8 @@ function markerInner(v: Position, st: StatusInfo, use3d: boolean) {
   return `<div class="vmk-inner">${lbl}<div class="vmk-icon">${markerTopSvg(vehCatOf(v as any), HEX[st.status], v.angle || 0)}</div></div>`;
 }
 function popupHtml(v: Position, st: StatusInfo, stale: boolean) {
-  const title = `${esc(v.name || v.imei)}${v.plate ? ' · ' + esc(v.plate) : ''}`;
+  // Numărul de înmatriculare primul: el e identitatea vehiculului, nu numele (care se repetă).
+  const title = v.plate ? `${esc(v.plate)}${v.name ? ' · ' + esc(v.name) : ''}` : esc(v.name || v.imei);
   const line = stale
     ? `<div class="vmpop-warn"><span class="vmpop-bang">!</span>Fără transmisie · ${esc(fmtAgo(v.timestamp))}</div>`
     : `<div class="vmpop-st" style="color:${st.color}">${esc(st.label)}${v.speed ? ' · ' + Math.round(v.speed) + ' km/h' : ''}</div>`;
