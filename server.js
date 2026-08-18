@@ -4201,6 +4201,42 @@ app.get('/api/devices/export.csv', requireAuth, withScope, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── Export brandat: „Situația flotei" (Excel/PDF) ──────────────────────────────────────────────
+// Butonul „Exportă" din Vehicule. CSV-ul de mai sus rămâne, dar pentru altceva: e formatul pe care
+// îl reînghite importul (export → editezi → reimporți). Documentul ăsta e pentru citit și trimis.
+app.get('/api/devices/export', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!reportExport) return res.status(503).json({ error: 'Exportul nu e disponibil pe acest server' });
+    let devices = await db.getDevices();
+    if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
+    if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei));
+    const archived = String(req.query.scope || '') === 'archived';
+    devices = devices.filter(d => archived ? d.status === 'archived' : d.status !== 'archived');
+    // Numele șoferilor, ca documentul să nu arate un id de bază de date
+    const drvName = {};
+    try { for (const d of await db.getDrivers(req.isSuper ? null : req.companyId)) drvName[d.id] = d.name; } catch (e) {}
+    devices.sort((a, b) => String(a.plate || a.name || '').localeCompare(String(b.plate || b.name || '')));
+    const fmtTs = t => t ? new Date(t).toLocaleString('ro-RO') : '—';
+    const cols = ['Nr. înmatriculare', 'Nume', 'Categorie', 'Marcă', 'Model', 'An', 'Combustibil', 'Grup', 'Șofer', 'Ultima transmisie', 'IMEI'];
+    const rows = devices.map(d => [
+      d.plate || '—', d.name || d.imei, d.vehicle_type || '—', d.brand || '—', d.model || '—',
+      d.year || '—', d.fuel_type || '—', d.group_name || '—',
+      d.driver_id ? (drvName[d.driver_id] || '—') : '—',
+      fmtTs(d.last_position_time || d.last_seen), d.imei
+    ]);
+    if (req.isSuper) { cols.push('Companie'); devices.forEach((d, i) => rows[i].push(d.company_name || '—')); }
+    const fmt = (req.query.format === 'pdf') ? 'pdf' : 'xlsx';
+    const report = {
+      type: 'fleet_inventory',
+      label: archived ? 'Vehicule arhivate' : 'Situația flotei',
+      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + devices.length + ' vehicule',
+      columns: cols, rows
+    };
+    auditReq(req, 'export', 'devices', null, { count: devices.length, format: fmt, scope: archived ? 'archived' : 'active' });
+    return reportExport.sendReport(res, report, fmt);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/devices/template.csv', requireAuth, (req, res) => {
   const header = VEHICLE_CSV_COLS.map(c => c.h).join(',');
   const ex = { imei: '350612345678901', nume: 'Camion exemplu', nr_inmatriculare: 'B 123 ABC', categorie: 'Camion', marca: 'Volvo', model: 'FH16', an: '2019', combustibil: 'Motorina', capacitate_rezervor: '400', putere_kw: '397' };
@@ -5624,6 +5660,77 @@ app.put('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, 
     req.body.license_categories = licenseCats.format(req.body.license_categories);
     await db.updateDriver(req.params.id, req.body); auditReq(req, 'update', 'driver', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Export brandat: „Situația șoferilor" (Excel/PDF) ───────────────────────────────────────────
+// Trece prin sendReport → nume „RA-Tracks - Raport ... - data" + logo, ca ORICE document descărcat
+// din aplicație (regula din CLAUDE.md). Nu e o cale paralelă de export.
+function _drvLicRow(d, vehByDriver) {
+  const cats = licenseCats.parse(d.license_categories);
+  const cls = licenseCats.classify(cats);
+  const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate());
+  let exp = '—', stare;
+  if (d.license_expiry) {
+    // Comparăm pe zile calendaristice: un permis care expiră azi NU e „expirat".
+    const e = new Date(d.license_expiry);
+    const days = Math.round((Date.UTC(e.getFullYear(), e.getMonth(), e.getDate())
+      - Date.UTC(ref.getFullYear(), ref.getMonth(), ref.getDate())) / 86400000);
+    exp = e.toLocaleDateString('ro-RO');
+    stare = days < 0 ? 'Expirat de ' + (-days) + ' zile' : (days === 0 ? 'Expiră azi' : (days <= 30 ? 'Expiră în ' + days + ' zile' : 'Valabil'));
+    // „Fără dată de expirare" nu încape în coloana din PDF și se tăia cu „…". Lângă coloana
+    // „Expiră", care arată „—", forma scurtă spune exact același lucru.
+  } else { stare = (d.license_number || cats.length) ? 'Fără dată' : 'Fără permis în fișă'; }
+  const vh = (vehByDriver[d.id] || []).slice().sort((a, b) => a.localeCompare(b));
+  return { cls: cls.key,
+    row: [d.name || '—', cls.short, cats.length ? cats.join(', ') : '—', d.license_number || '—',
+          exp, stare, vh.length ? vh.join(', ') : '—', d.phone || '—', d.email || '—'] };
+}
+async function _driversExportData(req) {
+  const companyId = req.isSuper ? null : req.companyId;
+  let drivers = await db.getDrivers(companyId);
+  // Șoferii companiei demo nu intră în situația unei flote reale (aceeași regulă ca la vehicule).
+  if (req.companyId !== demoCompanyId) drivers = drivers.filter(d => d.company_id !== demoCompanyId);
+  // Vehiculele fiecărui șofer — doar cele pe care cel care cere raportul are voie să le vadă.
+  const vehByDriver = {};
+  try {
+    let devs = await db.getDevices();
+    if (req.allowedImeis != null) devs = devs.filter(d => req.allowedImeis.has(d.imei));
+    if (req.companyId !== demoCompanyId) devs = devs.filter(d => !DEMO_SET.has(d.imei));
+    for (const d of devs) {
+      if (d.driver_id == null || d.status === 'archived') continue;
+      (vehByDriver[d.driver_id] = vehByDriver[d.driver_id] || []).push(d.plate || d.name || d.imei);
+    }
+  } catch (e) { /* fără vehicule, situația șoferilor rămâne validă */ }
+  const RANK = { pro: 0, basic: 1, none: 2 };
+  const items = drivers.map(d => Object.assign(_drvLicRow(d, vehByDriver), { co: d.company_name || '', nm: d.name || '' }));
+  items.sort((a, b) => (RANK[a.cls] - RANK[b.cls]) || a.nm.localeCompare(b.nm));
+  return items;
+}
+// Aceeași poartă ca lista de șoferi: cine vede lista poate scoate și documentul. `withScope` face
+// și ce face `withCompany`, plus IMEI-urile permise — nu le punem pe amândouă.
+app.get('/api/drivers/export', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!reportExport) return res.status(503).json({ error: 'Exportul nu e disponibil pe acest server' });
+    const items = await _driversExportData(req);
+    const fmt = (req.query.format === 'pdf') ? 'pdf' : 'xlsx';
+    const nPro = items.filter(x => x.cls === 'pro').length;
+    const nBas = items.filter(x => x.cls === 'basic').length;
+    const nNone = items.filter(x => x.cls === 'none').length;
+    const nExp = items.filter(x => /^Expirat/.test(x.row[5])).length;
+    const cols = ['Șofer', 'Încadrare', 'Categorii permis', 'Nr. permis', 'Expiră', 'Stare', 'Vehicul(e)', 'Telefon', 'Email'];
+    const rows = items.map(x => x.row);
+    if (req.isSuper) { cols.push('Companie'); items.forEach((x, i) => rows[i].push(x.co || '—')); }
+    const report = {
+      type: 'drivers_licenses',
+      label: 'Situația șoferilor',
+      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + items.length + ' șoferi'
+        + ' · ' + nPro + ' profesioniști, ' + nBas + ' șoferi, ' + nNone + ' neîncadrați'
+        + (nExp ? ' · ' + nExp + ' permise expirate' : ''),
+      columns: cols, rows
+    };
+    auditReq(req, 'export', 'drivers', null, { count: items.length, format: fmt });
+    return reportExport.sendReport(res, report, fmt);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, res) => {

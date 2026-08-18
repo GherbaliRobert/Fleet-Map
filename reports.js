@@ -5,7 +5,6 @@ const IDLE_SPEED = 3;        // km/h sub care vehiculul e considerat oprit
 const MAX_STEP_KM = 10;      // ignoră salturi GPS mai mari (puncte aberante)
 let geocode = null; try { geocode = require('./geocode'); } catch (e) {} // reverse-geocode (adrese în Foaie de parcurs)
 let roadlimits = null; try { roadlimits = require('./roadlimits'); } catch (e) {} // limite reale de viteză din OpenStreetMap (mod OSM la „Depășiri viteză")
-const licenseCats = require('./license_cats'); // categorii permis + încadrare (aceeași sursă ca formularul)
 
 function t(p) { return new Date(p.timestamp).getTime(); }
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -2183,79 +2182,6 @@ async function rIoT(db, imeis, from, to, opts, devMap) { // Senzori IoT (frigori
   };
 }
 
-// ── Raport: Șoferi — categorii de permis ──────────────────────────────────────────────────────────
-// NU e un raport pe perioadă: e o fotografie a stării de AZI (ce categorii are fiecare, cum se
-// încadrează, ce permise expiră). Sursa încadrării e license_cats.js, aceeași pe care o folosește
-// formularul din „Șoferi" — nu există aici o a doua listă de categorii.
-async function rDriverLicenses(db, imeis, from, to, opts, devMap) {
-  const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate());
-  // Companiile din vehiculele cerute. `imeis` vine deja filtrat pe drepturile celui care cere
-  // raportul, deci pornind de la ele rămânem în interiorul companiilor lui.
-  let drivers = [];
-  try {
-    const cr = await db.pool.query('SELECT DISTINCT company_id FROM devices WHERE imei = ANY($1)', [imeis]);
-    const ids = cr.rows.map(r => r.company_id);
-    const real = ids.filter(x => x != null);
-    const hasNull = ids.some(x => x == null);   // vehicule fără companie (platformă) → și șoferii lor
-    const cond = [], params = [];
-    if (real.length) { params.push(real); cond.push('company_id = ANY($' + params.length + ')'); }
-    if (hasNull) cond.push('company_id IS NULL');
-    if (cond.length) {
-      const r = await db.pool.query(
-        'SELECT id, name, phone, license_number, license_expiry, license_categories FROM drivers WHERE ('
-        + cond.join(' OR ') + ') ORDER BY name', params);
-      drivers = r.rows;
-    }
-  } catch (e) { drivers = []; }
-  // Vehiculele fiecărui șofer (doar cele din scopul cerut, ca să nu scape mașini din altă companie)
-  const byDriver = {};
-  try {
-    const r = await db.pool.query('SELECT imei, driver_id FROM devices WHERE imei = ANY($1) AND driver_id IS NOT NULL', [imeis]);
-    for (const row of r.rows) { (byDriver[row.driver_id] = byDriver[row.driver_id] || []).push(label(devMap, row.imei)); }
-  } catch (e) {}
-
-  const RANK = { pro: 0, basic: 1, none: 2 };
-  const items = drivers.map(d => {
-    const cats = licenseCats.parse(d.license_categories);
-    const cls = licenseCats.classify(cats);
-    let exp = '—', stare = 'Fără dată';
-    if (d.license_expiry) {
-      const days = Math.floor((new Date(d.license_expiry) - ref) / 86400000);
-      exp = fmtDate(d.license_expiry);
-      stare = days < 0 ? 'Expirat' : (days === 0 ? 'Expiră azi' : (days <= 30 ? 'Expiră în ' + days + ' zile' : 'Valabil'));
-    } else if (!d.license_number && !cats.length) { stare = 'Fără permis în fișă'; }
-    const vh = (byDriver[d.id] || []).sort((a, b) => a.localeCompare(b));
-    return { k: RANK[cls.key], nm: d.name || '—',
-      row: [d.name || '—', cls.short, cats.length ? cats.join(', ') : '—', d.license_number || '—', exp, stare,
-            vh.length ? vh.join(', ') : '—', d.phone || '—'] };
-  });
-  items.sort((a, b) => (a.k - b.k) || a.nm.localeCompare(b.nm));
-
-  const nPro = items.filter(x => x.k === 0).length;
-  const nBas = items.filter(x => x.k === 1).length;
-  const nNone = items.filter(x => x.k === 2).length;
-  const nExp = items.filter(x => x.row[5] === 'Expirat').length;
-  const nSoon = items.filter(x => /^Expiră/.test(x.row[5])).length;
-  // Câți șoferi au fiecare categorie — arată din ce e făcută flota de oameni (câți au CE, câți D etc.)
-  const perCat = {};
-  for (const d of drivers) for (const c of licenseCats.parse(d.license_categories)) perCat[c] = (perCat[c] || 0) + 1;
-  const catLabels = licenseCats.CATEGORIES.map(c => c.code).filter(c => perCat[c]);
-
-  const charts = items.length ? [
-    { type: 'doughnut', title: 'Încadrarea șoferilor', labels: ['Profesioniști', 'Șoferi', 'Neîncadrați'], datasets: [{ label: 'șoferi', data: [nPro, nBas, nNone] }] }
-  ] : [];
-  if (catLabels.length) charts.push({ type: 'bar', title: 'Câți șoferi au fiecare categorie', labels: catLabels, datasets: [{ label: 'șoferi', data: catLabels.map(c => perCat[c]) }] });
-
-  return {
-    columns: ['Șofer', 'Încadrare', 'Categorii', 'Nr. permis', 'Expiră', 'Stare', 'Vehicul(e)', 'Telefon'],
-    rows: items.map(x => x.row),
-    summary: { 'Șoferi': items.length, 'Profesioniști': nPro, 'Șoferi (B/A)': nBas, 'Neîncadrați': nNone, 'Permise expirate': nExp, 'Expiră în 30 zile': nSoon },
-    charts,
-    periodLabel: 'Situație la ' + fmtDate(ref),
-    noVehSummary: true, noSummarySheet: true
-  };
-}
-
 const REPORTS = {
   trips:       { label: 'Foaie de parcurs',     cat: 'monitorizare', desc: 'Cursele oficiale (plecare–sosire, km, durată, șofer) — pentru decont.', fn: rTrips },
   route:       { label: 'Traseu',                cat: 'monitorizare', desc: 'Deplasările și opririle pe hartă: unde, când, câți km.', fn: rRoute },
@@ -2288,8 +2214,7 @@ const REPORTS = {
   events:      { label: 'Evenimente (alerte)',    cat: 'evenimente',   desc: 'Toate alertele declanșate, pe vehicul: ce, când, unde și detaliile evenimentului.', fn: rEvents },
   ecodrive:    { label: 'EcoDrive (comportament)', cat: 'siguranta',   desc: 'Stil de condus: accelerări/frânări bruște, scor pe vehicul.', fn: rEcoDrive },
   ecodrive_drivers: { label: 'EcoDrive — clasament șoferi', cat: 'siguranta', desc: 'Clasamentul șoferilor după scorul de condus.', fn: rEcoDriveDrivers },
-  hos:         { label: 'Condus & repaus (Reg. 561)', cat: 'siguranta', desc: 'Timpii de conducere și pauzele față de Regulamentul 561 (HOS).', fn: rHos },
-  drivers_lic: { label: 'Șoferi — categorii de permis', cat: 'monitorizare', desc: 'Câți șoferi profesioniști ai și câți obișnuiți, cu ce categorii și ce permise expiră.', fn: rDriverLicenses }
+  hos:         { label: 'Condus & repaus (Reg. 561)', cat: 'siguranta', desc: 'Timpii de conducere și pauzele față de Regulamentul 561 (HOS).', fn: rHos }
 };
 const REPORT_CATEGORIES = [
   { key: 'monitorizare', label: 'Monitorizare' },

@@ -400,6 +400,44 @@ zi — ca să-i punem preț pe cifre, nu din burtă, exact ca la RA Insight.
 
 ## 2026-08-13
 
+### CLIENT · Butonul „Exportă" scoate acum un document de firmă, nu un fișier de date
+
+**Ce am schimbat:** butonul „Exportă" din *Vehicule* scotea un fișier CSV — un tabel gol, fără logo,
+fără titlu, fără dată. Bun de prelucrat, prost de arătat cuiva. Acum ambele secțiuni, **Vehicule** și
+**Șoferi**, au butoane **Excel** și **PDF** care scot un **document brandat RA Tracks**: logo în
+antet, titlu, data generării și numele de fișier ca la toate rapoartele.
+
+**„Situația flotei"** (Vehicule): număr, nume, categorie, marcă, model, an, combustibil, grup, șofer,
+ultima transmisie, IMEI. Ține cont de fila pe care ești — dacă te uiți la „Arhivate", documentul e
+despre vehiculele arhivate.
+
+**„Situația șoferilor"** (Șoferi): fiecare om cu **categoriile lui de permis** și **încadrarea**
+(profesionist / șofer), numărul de permis, expirarea, starea, mașinile pe care e pus și contactul.
+Sus, în antet, scrie direct **câți profesioniști, câți șoferi și câte permise expirate** ai — ăsta e
+răspunsul pe care voiai să-l dea documentul.
+
+**Am scos raportul „Șoferi — categorii de permis" din secțiunea Rapoarte.** Făcea exact ce face acum
+butonul, iar două căi către același document înseamnă, mai devreme sau mai târziu, două documente
+diferite. Catalogul a revenit la 32 de rapoarte.
+
+**Un lucru pe care l-ați pierdut, ca să știți:** vechiul CSV se putea descărca, edita în Excel și
+**re-importa** ca să modificați multe vehicule odată. Butonul nu-l mai scoate. Șablonul de import a
+rămas (gol), iar fișierul cu datele actuale se poate scoate la loc oricând — spuneți dacă îl folosiți
+și îl pun înapoi lângă „Importă".
+
+**Fondatorul vede:** în plus, coloana „Companie" în ambele documente.
+
+**Clientul vede:** două butoane, Excel și PDF, în loc de „Exportă". Documentele lui conțin doar flota
+și șoferii lui.
+
+> Verificat pe cod real: 26 de controale — inclusiv generarea efectivă a celor patru documente
+> (Excel + PDF, pentru fiecare secțiune), verificarea că logo-ul chiar e înglobat și că numele
+> fișierului respectă regula „RA-Tracks - Raport … - data". Textul din PDF a fost citit înapoi din
+> document, cu diacritice, ca să fim siguri că nu iese ilizibil.
+
+---
+
+
 ### CLIENT · Categorii de permis pe fiecare șofer, cu încadrare automată și raport
 
 **Ce am schimbat:** în fișa șoferului există acum **toate categoriile de pe permisul românesc** — de la
@@ -411,13 +449,11 @@ rudele lor), omul devine **„Șofer profesionist"**. Dacă are doar A, B, BE sa
 **„Șofer"**. Se vede pe loc, sub bife, iar în listă apare o etichetă lângă nume. Categoriile care
 schimbă încadrarea au un punct lângă cod, ca să se vadă de ce.
 
-**Raportul cerut:** la *Rapoarte → Monitorizare* e unul nou, **„Șoferi — categorii de permis"**. Îți
-spune dintr-o generare: **câți profesioniști ai, câți șoferi obișnuiți, câți n-au nimic completat,
-câte permise sunt expirate și câte expiră în 30 de zile** — plus, pe fiecare om, ce categorii are, ce
-permis, când expiră și pe ce mașini e pus. Are și două grafice: încadrarea flotei de oameni și câți
-șoferi ai pe fiecare categorie (util când vrei să știi câți oameni cu CE ai, de fapt).
+**Raportul cerut:** a apărut întâi la *Rapoarte → Monitorizare*, dar **l-am mutat în aceeași zi** pe
+butonul „Exportă" din *Șoferi* — vezi însemnarea de mai sus, „Butonul «Exportă»…". Conținutul e
+același: câți profesioniști, câți obișnuiți, câți neîncadrați, ce permise expiră.
 
-**Fondatorul vede:** la fel, plus compania fiecărui șofer. În catalogul de rapoarte sunt acum 33.
+**Fondatorul vede:** la fel, plus compania fiecărui șofer.
 
 **Clientul vede:** o listă de bife în fișa șoferului, o etichetă în listă și un raport nou.
 

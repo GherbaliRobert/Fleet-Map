@@ -1749,8 +1749,10 @@ const pozitii = await r.json();</code></pre>
             <input type="text" id="veh-search" placeholder="Caută nume / nr. / marcă..." oninput="renderVehicles()" class="toolbar-spacer">
             <select id="veh-co-filter" class="super-only" onchange="renderVehicles()" title="Filtrează pe companie"></select>
             <span id="veh-count" class="toolbar-count"></span>
-            <button class="btn-sm" onclick="downloadTemplate()" title="Descarcă șablon CSV"><i class="fas fa-file-csv"></i> Șablon</button>
-            <button class="btn-sm" onclick="exportVehicles()" title="Exportă toate în CSV"><i class="fas fa-download"></i> Exportă</button>
+            <span class="tb-lbl">Exportă:</span>
+            <button class="btn-sm" onclick="exportVehicles('xlsx')" title="Document Excel brandat, cu situația flotei"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-sm" onclick="exportVehicles('pdf')" title="Document PDF brandat, cu situația flotei"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button class="btn-sm" onclick="downloadTemplate()" title="Șablon CSV pentru import"><i class="fas fa-file-csv"></i> Șablon</button>
             <button class="btn-sm" onclick="document.getElementById('veh-import-file').click()" title="Importă din CSV"><i class="fas fa-upload"></i> Importă</button>
             <button class="btn-sm btn-primary" onclick="toggleVehAdd()"><i class="fas fa-plus"></i> Adaugă vehicul</button>
             <input type="file" id="veh-import-file" accept=".csv,text/csv" style="display:none;" onchange="importVehiclesFile(this)">
@@ -1850,12 +1852,17 @@ const pozitii = await r.json();</code></pre>
           .drv-tag.pro { background: rgba(63, 224, 125, .16); color: var(--drv-ink); }
           .drv-tag.basic { background: var(--bg-dark); color: var(--text-muted); }
           .drv-catlist { font-size: 11px; font-weight: 800; color: var(--text-secondary); letter-spacing: .3px; margin-top: 4px; }
+          /* Eticheta dinaintea butoanelor de descărcare — aceeași formă ca „Descarcă:" din Rapoarte */
+          .tb-lbl { font-size: 11.5px; font-weight: 700; color: var(--text-muted); white-space: nowrap; margin-left: 2px; }
         </style>
         <div id="atab-drivers" class="admin-tab-content" style="display:none;">
           <div class="toolbar-row">
             <input type="text" id="drv-search" placeholder="Caută nume, telefon sau număr de permis..." oninput="renderDriversList()" class="toolbar-spacer">
             <select id="drv-co-filter" class="super-only" onchange="renderDriversList()" title="Filtrează pe companie"></select>
             <span id="drv-count" class="toolbar-count"></span>
+            <span class="tb-lbl">Exportă:</span>
+            <button class="btn-sm" onclick="exportDrivers('xlsx')" title="Document Excel brandat, cu situația șoferilor"><i class="fas fa-file-excel"></i> Excel</button>
+            <button class="btn-sm" onclick="exportDrivers('pdf')" title="Document PDF brandat, cu situația șoferilor"><i class="fas fa-file-pdf"></i> PDF</button>
             <button class="btn-sm btn-primary" onclick="toggleDrvAdd()"><i class="fas fa-plus"></i> Adaugă șofer</button>
           </div>
           <div class="drv-colh">
@@ -4164,7 +4171,14 @@ const pozitii = await r.json();</code></pre>
       await loadVehicles();
     }
     function downloadTemplate() { window.open('/api/devices/template.csv', '_blank'); }
-    function exportVehicles() { window.open('/api/devices/export.csv', '_blank'); }
+    // Document brandat (logo + „RA-Tracks - Raport ... - data"), nu CSV brut. Respectă și fila
+    // curentă: dacă te uiți la „Arhivate", documentul e despre arhivate.
+    function exportVehicles(fmt) {
+      const f = (fmt === 'pdf') ? 'pdf' : 'xlsx';
+      const sc = (typeof vehScope !== 'undefined' && vehScope === 'archived') ? '&scope=archived' : '';
+      window.open('/api/devices/export?format=' + f + sc, '_blank');
+    }
+    function exportDrivers(fmt) { window.open('/api/drivers/export?format=' + ((fmt === 'pdf') ? 'pdf' : 'xlsx'), '_blank'); }
     // Parser CSV (gestionează câmpuri citate cu virgule/ghilimele/linii noi)
     function parseCSV(text) {
       text = String(text).replace(/^﻿/, '');
@@ -5552,7 +5566,7 @@ const pozitii = await r.json();</code></pre>
     // Iconiță proprie pentru FIECARE tip de raport (catalogul are 32). Fallback: fa-file-lines — dacă apare,
     // înseamnă că s-a adăugat un raport nou în reports.js fără iconiță aici.
     const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', idling:'fa-hourglass-half', uptime:'fa-tower-broadcast', due:'fa-file-circle-exclamation', fuel_anomaly:'fa-magnifying-glass-chart', costs:'fa-coins', emissions:'fa-leaf', ecodrive:'fa-award', ecodrive_drivers:'fa-ranking-star', hos:'fa-bed', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell',
-      overrev:'fa-gauge-simple-high', pto:'fa-gears', enginehours:'fa-stopwatch', fuelprobe:'fa-ruler-vertical', weight:'fa-weight-hanging', tipping:'fa-dumpster', arm:'fa-tractor', iot:'fa-temperature-half', drivers_lic:'fa-id-badge' };
+      overrev:'fa-gauge-simple-high', pto:'fa-gears', enginehours:'fa-stopwatch', fuelprobe:'fa-ruler-vertical', weight:'fa-weight-hanging', tipping:'fa-dumpster', arm:'fa-tractor', iot:'fa-temperature-half' };
     // Iconițe SVG per CATEGORIE (currentColor → moștenesc culoarea tab-ului): locație / pompă / cip / clopoțel / scut.
     const REP_CAT_ICONS = {
       monitorizare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
