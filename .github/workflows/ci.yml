@@ -63,6 +63,7 @@ jobs:
           node verify_reparatii_lansare.js  # plafon TCP, resetare parolă, cache reguli, export/ștergere GDPR
           node verify_docscan.js            # citirea actelor: PDF gratuit, propuneri, nimic salvat singur
           node verify_expirari.js           # alertele de expirare: prag configurabil, dedup, fără-dată vizibil
+          node verify_follow.js             # „merg după el": distanța, direcția, formatarea (fără server)
 
       # NOTĂ test-debt: phase2-7_smoke, ws_smoke și verify_{sys,io,fms,tenant,faza2}
       # NU sunt încă în CI — au eșecuri de asserțiune pre-existente sau hardcodează portul 3000.

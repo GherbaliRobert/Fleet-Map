@@ -11,6 +11,7 @@ import { Stats } from './screens/Stats';
 import { Notifications } from './screens/Notifications';
 import { RouteScreen } from './screens/RouteScreen';
 import { CanScreen } from './screens/CanScreen';
+import { FollowScreen } from './screens/FollowScreen';
 import { Reports } from './screens/Reports';
 import { Menu } from './screens/Menu';
 import { FuelStats } from './screens/FuelStats';
@@ -90,6 +91,7 @@ function Shell() {
         <Route path="/vehicles/:imei" component={VehicleDetail} />
         <Route path="/vehicles/:imei/route" component={RouteScreen} />
         <Route path="/vehicles/:imei/can" component={CanScreen} />
+        <Route path="/vehicles/:imei/follow" component={FollowScreen} />
         <Route path="/stats" component={Stats} />
         <Route path="/reports" component={Reports} />
         <Route path="/notifications" component={Notifications} />

@@ -20,6 +20,45 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### CLIENT · „Merg după el" — ecran de urmărit o mașină din trafic — `HASHB`
+
+**Ce ai cerut:** Android Auto, ca să mergi după o mașină anume.
+
+**De ce n-am făcut Android Auto — verificat, nu presupus.** Google acceptă acolo doar patru feluri
+de aplicații: navigație, puncte de interes, dispozitive inteligente și meteo. Urmărirea de flotă nu
+e printre ele, deci n-ar trece de aprobare. Și, chiar dacă ar trece, aplicația noastră e o pagină
+web împachetată, pe când Android Auto cere ecrane native scrise cu biblioteca lor. Ar fi o aplicație
+nouă, de la zero, pentru o categorie în care oricum nu ne încadrăm.
+
+**Ce am făcut în loc — și rezolvă exact nevoia.** Un ecran nou pe telefon, „Merg după el", pornit
+dintr-un buton din fișa vehiculului. Arată trei lucruri, cu cifre mari, fără derulare:
+
+- **cât mai e până la el** — și dacă te apropii, ții pasul sau rămâi în urmă;
+- **încotro e** — o săgeată raportată la direcția TA de mers, nu la nord („ia-o la dreapta" e util,
+  „azimut 273°" nu e). Dacă stai pe loc, o spune cinstit: nu are cum să știe încotro ești întors;
+- **cu cât merge el și cu cât mergi tu** — de acolo știi dacă îl prinzi.
+
+Sub ele scrie **cât de veche e fiecare informație**. Un ecran care arată „acum" de trei minute e mai
+periculos decât unul gol.
+
+**Partea care lipsea de fapt din navigația obișnuită:** Maps te duce unde ERA mașina când ai apăsat.
+La 90 km/h, după zece minute ținta e la 15 km de unde ai țintit. Butonul mare de jos relansează
+navigația **la poziția de acum**, cu o singură apăsare. Iar Maps și Waze rulează pe Android Auto —
+deci partea de condus rămâne pe ecranul mașinii, iar urmărirea pe telefon.
+
+Ecranul rămâne aprins cât ești pe el.
+
+**Fondatorul vede:** același ecran.
+
+**Clientul vede:** deschide fișa mașinii → „Merg după el" → pune telefonul în suport și conduce.
+
+> 17 verificări pe matematica din spate, pe repere cu răspuns știut dinainte (Timișoara→Arad ≈ 50 km,
+> cele patru puncte cardinale, rotunjirile, și ceasul nesincronizat care nu produce aiureli).
+> Testul CITEȘTE funcțiile din ecran, nu o copie — dacă cineva le schimbă, testul vede noua versiune.
+
+---
+
+
 ### AMÂNDOI · Mașina se recunoaște după NUMĂR, și ecranul e cu adevărat complet pe telefon — `eba21d9`
 
 **Ce am schimbat (1): peste tot, întâi numărul de înmatriculare, apoi numele.** Până acum aplicația

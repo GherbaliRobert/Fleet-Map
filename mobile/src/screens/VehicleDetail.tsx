@@ -274,6 +274,8 @@ export function VehicleDetail() {
           <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/can`)}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
           {sensors && sensors.length > 0 && <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>}
           {me.value?.features?.tahograf && tachoOk && <button class="d-act" onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>}
+          {/* „Merg după el" — navigatia obisnuita te duce unde ERA masina; asta arata unde e ACUM. */}
+          <button class="d-act" disabled={!ll} onClick={() => loc.route('/vehicles/' + imei + '/follow')}><Icon name="compass" size={18} class="ic" /> Merg după el</button>
           <button class="d-act" disabled={!ll} onClick={() => setNavOpen((o) => !o)}><Icon name="navigate" size={18} class="ic" /> Navighează</button>
           {navOpen && ll && (
             <div class="d-nav">
