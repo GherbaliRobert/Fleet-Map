@@ -20,6 +20,42 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### CLIENT · Trei funcții noi pe site: dispecerizare, acte automate, evidența șoferilor
+
+**Ce am schimbat:** secțiunea „Funcții" de pe pagina publică avea 9 lucruri. Acum are **12**, iar cele
+trei adăugate sunt funcții care există de mult în aplicație, dar pe care nu le spuneam nimănui.
+
+**1. „Dispecerizare: ce mașină trimiți".** Asta era cea mai mare tăcere. Aplicația știe deja să
+răspundă la întrebarea „am o cursă la adresa X, pe cine trimit?" — calculează distanța până la
+fiecare mașină, le marchează pe cele **libere** (pornite și oprite din mers), le pune primele și
+spune în cât timp ajung. Nimeni din afară n-avea de unde ști. Nu se suprapune cu „Localizare live":
+aia e o hartă pe care te uiți, asta e o decizie care ți se dă.
+
+**2. „Acte încărcate, fișa completată automat".** Munca lui Robert, spusă pe scurt: încarci talonul
+sau polița, iar datele intră singure în fișă — inclusiv data expirării. Accentul e pe *nu mai
+introduci date manual*, nu pe cum funcționează pe dinăuntru.
+
+**3. „Evidența șoferilor și a permiselor".** Categoriile de pe permis, încadrarea, expirările și
+mașina fiecăruia. E prezentată ca **evidență**, nu ca buton de descărcat — cine cumpără vrea să știe
+că are situația la zi, nu că există un buton.
+
+**De ce contează așezarea:** cu 12 în loc de 9, grila iese fix pe 4 rânduri de câte 3. La 11 ar fi
+rămas un rând ciung. Dispecerizarea am pus-o a doua, imediat după „Localizare live", pentru că e
+prima care se vede și e cea mai convingătoare; actele și șoferii stau lângă „Mentenanță & documente",
+ca să se citească împreună.
+
+**Fondatorul vede:** aceeași pagină. Nimic despre costuri, apeluri sau cum se citește un act — alea
+rămân între noi.
+
+**Clientul vede:** trei funcții în plus și o frază de introducere care le cuprinde.
+
+> Iconițele au fost verificate în fontul real, nu din memorie: că există, că nu se repetă cu cele 9
+> vechi și că **se desenează** — cu o iconiță inventată drept martor, ca să fiu sigur că proba chiar
+> prinde o lipsă. (Am pățit-o o dată cu una care nu exista.)
+
+---
+
+
 ### AMÂNDOI · Datele nu apăreau în căsuțe, iar filele nu se ascundeau pentru tine — `3da1c15`
 
 **1. De ce nu se completau datele.** Câmpurile de dată din aplicație au calendar. Calendarul ascunde
