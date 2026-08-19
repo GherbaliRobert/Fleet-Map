@@ -53,9 +53,20 @@ Fiecare modificare intră în jurnalul de audit, cu ce câmpuri s-au schimbat.
 **Clientul vede:** reguli pe care le recunoaște dintr-o privire, pe care le poate opri cu un clic și
 corecta fără să le refacă.
 
-> Verificat pe cod real, 32 de controale — inclusiv că toate cele 16 tipuri au iconiță (niciunul
+**Corectate imediat după livrare, la trei observații ale lui Alin:**
+- **Regula se scrie acum într-o fereastră proprie**, nu într-un formular înghesuit sub listă. Titlul
+  spune ce faci — „Regulă nouă" sau „Modifici: …" — iar câmpurile au aer între ele.
+- **Zonele se scriu pe nume, nu „2 zone".** Scurtasem prea mult: la o singură zonă se vedea numele,
+  la mai multe apărea doar numărul, deci nu mai știai ce urmărește regula. Acum apar primele două
+  nume, restul ca „+N", iar la trecerea cu mouse-ul le vezi pe toate.
+- **Numărul de înmatriculare iese în față.** Era scris la fel ca numele mașinii („B 268 ROY · VW
+  CADDY") și se citeau ca un singur șir. Acum numărul e îngroșat și închis la culoare, numele mai
+  șters lângă el.
+
+> Verificat pe cod real, 37 de controale — inclusiv că toate cele 16 tipuri au iconiță (niciunul
 > uitat), că intrarea și ieșirea din zonă au desene DIFERITE, că regula fără prag nu afișează o
-> pastilă goală și că modificarea parțială nu șterge restul regulii.
+> pastilă goală, că modificarea parțială nu șterge restul regulii și că fereastra nouă stă DEASUPRA
+> celei de Administrare (altfel s-ar fi deschis dedesubt, invizibilă).
 
 ---
 

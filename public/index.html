@@ -1672,6 +1672,34 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
+      <!-- Regula se scrie într-o fereastră proprie, nu într-un formular înghesuit sub listă.
+           Câmpurile și-au păstrat id-urile, deci saveAlert/renderAlertCond/editAlert merg neschimbate. -->
+      <div id="alert-modal" class="modal-overlay">
+        <div class="modal alr-modal">
+          <h2>
+            <span><i class="fas fa-bell" style="margin-right:8px;color:var(--accent);"></i> <span id="alert-modal-title">Regulă nouă</span></span>
+            <button class="close-btn" onclick="resetAlertForm(true)" style="position:static;font-size:18px;">&#10005;</button>
+          </h2>
+          <div class="admin-add" id="alert-form" style="grid-template-columns:repeat(2,1fr);">
+          <input type="hidden" id="alert-id">
+          <label><span>Nume regulă *</span><input type="text" id="alert-name"></label>
+          <label><span>Tip</span><select id="alert-type" onchange="renderAlertCond()"></select></label>
+          <!-- Compania regulii — DOAR super-admin. Fără ea, o regulă creată de platformă rămânea fără
+               companie: se declanșa pentru TOATE flotele și nu era vizibilă niciunui administrator. -->
+          <label id="alert-co-wrap" style="display:none;grid-column:1/-1;"><span>Compania regulii *</span>
+            <select id="alert-company" onchange="onAlertCompanyChange()"></select>
+            <span id="alert-co-note" style="font-size:11px;color:var(--text-muted);margin-top:3px;display:block;"></span>
+          </label>
+          <label><span>Vehicul</span><select id="alert-imei"><option value="">Toate vehiculele</option></select></label>
+          <label><span>Activă</span><select id="alert-enabled"><option value="true">Da</option><option value="false">Nu</option></select></label>
+          <div id="alert-cond-fields" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
+          <div class="alr-foot" style="grid-column:1/-1;">
+            <button class="btn-sm" onclick="resetAlertForm(true)">Renunță</button>
+            <button class="btn-sm btn-primary" onclick="saveAlert()"><i class="fas fa-save"></i> <span id="alert-btn">Adaugă regula</span></button>
+          </div>
+          </div>
+        </div>
+      </div>
   <div id="admin-modal" class="modal-overlay">
     <div class="modal" style="width:880px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;">
       <h2>
@@ -2011,6 +2039,26 @@ const pozitii = await r.json();</code></pre>
           .alr-act { display: flex; gap: 6px; justify-content: flex-end; }
           .alr-act .btn-sm { width: 34px; height: 34px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
           .alr-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
+          /* Numărul de înmatriculare iese în față; numele mașinii îl însoțește, mai șters. */
+          .alr-plate { font-weight: 800; color: var(--text-primary); letter-spacing: .3px; }
+          .alr-vnm { color: var(--text-muted); font-weight: 600; }
+          .alr-plate + .alr-vnm::before { content: '·'; margin: 0 5px; opacity: .55; }
+
+          /* ── Fereastra de scris regula ── */
+          /* Deasupra ferestrei Administrare: ambele sunt .modal-overlay (z-index 2000), iar asta apare
+             mai devreme în pagină, deci fără ridicare ar rămâne dedesubt. 5000 = nivelul folosit deja
+             de celelalte ferestre suprapuse (istoricul de alerte, detaliul notificării). */
+          #alert-modal { z-index: 5000; }
+          .alr-modal { width: 620px; max-width: 96vw; max-height: 92vh; overflow-y: auto; }
+          /* Formularul stătea înghesuit sub listă: rânduri lipite, etichete peste câmpuri. Aici are aer. */
+          #alert-form { gap: 14px; margin-top: 4px; padding-top: 0; border-top: none; }
+          #alert-form label { gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+          #alert-form input, #alert-form select { height: 38px; border-radius: 9px; padding: 0 11px; font-size: 13.5px; }
+          #alert-form #alert-cond-fields { gap: 14px; }
+          .alr-foot { display: flex; gap: 9px; justify-content: flex-end; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border); }
+          .alr-foot .btn-sm { height: 38px; padding: 0 16px; border-radius: 9px; font-size: 13px; font-weight: 700; width: auto; display: inline-flex; align-items: center; gap: 7px; }
+          .alr-foot .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .3); }
+          @media (max-width: 640px) { #alert-form { grid-template-columns: 1fr !important; } #alert-form #alert-cond-fields { grid-template-columns: 1fr !important; } }
 
           /* Comutator pornit/oprit — regula se putea doar șterge, nu și opri temporar. */
           .alr-sw { width: 38px; height: 22px; border-radius: 20px; background: var(--accent); position: relative; cursor: pointer; border: none; padding: 0; flex: 0 0 auto; }
@@ -2046,26 +2094,7 @@ const pozitii = await r.json();</code></pre>
             <button class="btn-sm btn-primary" onclick="toggleAlertAdd()"><i class="fas fa-plus"></i> Adaugă regulă</button>
           </div>
           <div id="admin-alerts-list" class="alr-list"></div>
-          <div class="admin-add" id="alert-form" style="grid-template-columns:repeat(2,1fr);display:none;">
-            <input type="hidden" id="alert-id">
-            <label><span>Nume regulă *</span><input type="text" id="alert-name"></label>
-            <label><span>Tip</span><select id="alert-type" onchange="renderAlertCond()"></select></label>
-            <!-- Compania regulii — DOAR super-admin. Fără ea, o regulă creată de platformă rămânea fără
-                 companie: se declanșa pentru TOATE flotele și nu era vizibilă niciunui administrator. -->
-            <label id="alert-co-wrap" style="display:none;grid-column:1/-1;"><span>Compania regulii *</span>
-              <select id="alert-company" onchange="onAlertCompanyChange()"></select>
-              <span id="alert-co-note" style="font-size:11px;color:var(--text-muted);margin-top:3px;display:block;"></span>
-            </label>
-            <label><span>Vehicul</span><select id="alert-imei"><option value="">Toate vehiculele</option></select></label>
-            <label><span>Activă</span><select id="alert-enabled"><option value="true">Da</option><option value="false">Nu</option></select></label>
-            <div id="alert-cond-fields" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
-            <div style="grid-column:1/-1;display:flex;gap:8px;">
-              <button class="btn-sm btn-primary" onclick="saveAlert()" style="flex:1;"><i class="fas fa-save"></i> <span id="alert-btn">Adaugă regula</span></button>
-              <button class="btn-sm" onclick="resetAlertForm(true)" title="Renunță">↺</button>
-            </div>
-          </div>
         </div>
-
         <!-- Hotspot-uri: mutat în meniul „Hotspot & Rutare" (vezi #hotspot-view) -->
 
         <!-- Mentenanță -->
@@ -4890,10 +4919,15 @@ const pozitii = await r.json();</code></pre>
         const m = ALERT_META[a.type] || { i: 'fa-bell', f: 'f-neutral' };
         const prag = alertPragLabel(a);
         // Zonele urmărite: chip separat, nu înghesuite în linia de dedesubt.
-        const zChip = zIds.length ? `<span class="alr-chip"><i class="fas fa-draw-polygon"></i><span>${zIds.length === 1 ? esc(_alertZoneName(zIds[0])) : zIds.length + ' zone'}</span></span>` : '';
+        // Zonele se scriu pe NUME, nu ca „2 zone" — altfel nu știi ce urmărește regula. Peste două,
+        // arătăm primele două și „+N", iar la trecerea cu mouse-ul apar toate.
+        const zNames = zIds.map(_alertZoneName);
+        const zChip = zNames.length
+          ? `<span class="alr-chip" title="${esc(zNames.join(', '))}"><i class="fas fa-draw-polygon"></i><span>${esc(zNames.slice(0, 2).join(', '))}${zNames.length > 2 ? ' +' + (zNames.length - 2) : ''}</span></span>`
+          : '';
         const scChip = a.company_id == null && !a.imei
           ? '<span class="alr-chip warn"><i class="fas fa-triangle-exclamation"></i><span>TOATE companiile</span></span>'
-          : `<span class="alr-chip"><span>${scope}</span></span>`;
+          : (a.imei ? alertVehChip(a.imei) : `<span class="alr-chip"><span>${scope}</span></span>`);
         return `<div class="alr-row ${m.f}${a.enabled ? '' : ' off'}">
           <div class="alr-c-ic"><span class="alr-ic"><i class="fas ${m.i}"></i></span></div>
           <div class="alr-c-nm"><div class="alr-nm">${esc(a.name)}</div><div class="alr-ty">${alertTypeLabel(a.type)}</div></div>
@@ -4908,6 +4942,16 @@ const pozitii = await r.json();</code></pre>
       }).join('') : '<div class="alr-empty">Nicio regulă de alertă.</div>';
       const cEl = document.getElementById('alert-count');
       if (cEl) cEl.textContent = list.length + (list.length === 1 ? ' regulă' : ' reguli');
+    }
+    // Eticheta vehiculului: numărul de înmatriculare ÎNGROȘAT și închis la culoare, numele mai șters.
+    // Scrise la fel („B 268 ROY · VW CADDY"), se citeau ca un singur șir și numărul se pierdea.
+    function alertVehChip(imei) {
+      const d = (typeof adminDevicesCache !== 'undefined' ? adminDevicesCache : []).find(x => x.imei === imei);
+      const plate = d && d.plate ? String(d.plate).trim() : '';
+      const nm = d ? (d.name || '') : '';
+      if (!plate) return '<span class="alr-chip"><span>' + esc(nm || imei) + '</span></span>';
+      return '<span class="alr-chip"><b class="alr-plate">' + esc(plate) + '</b>'
+        + (nm ? '<span class="alr-vnm">' + esc(nm) + '</span>' : '') + '</span>';
     }
     // Pragul regulii, scris scurt pentru pastilă. Unitatea ține de câmpul din condiție, nu de tip,
     // ca să nu ținem încă o listă paralelă cu ALERT_TYPES.
@@ -4930,13 +4974,12 @@ const pozitii = await r.json();</code></pre>
         await loadAlerts();
       } catch (e) { alert('Eroare: ' + e.message); }
     }
-    function toggleAlertAdd() {
-      const f = document.getElementById('alert-form');
-      if (!f) return;
-      if (f.style.display !== 'none') { f.style.display = 'none'; return; }
-      resetAlertForm(); f.style.display = 'grid'; f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    function alertModalOpen(on) {
+      const m = document.getElementById('alert-modal');
+      if (m) m.classList.toggle('visible', !!on);
     }
-    function resetAlertForm(hide) {
+    function toggleAlertAdd() { resetAlertForm(); alertModalOpen(true); }
+    function resetAlertForm(close) {
       const g = id => document.getElementById(id);
       if (g('alert-id')) g('alert-id').value = '';
       if (g('alert-name')) g('alert-name').value = '';
@@ -4944,8 +4987,8 @@ const pozitii = await r.json();</code></pre>
       if (g('alert-imei')) g('alert-imei').value = '';
       if (g('alert-company')) g('alert-company').value = '';
       if (g('alert-btn')) g('alert-btn').textContent = 'Adaugă regula';
-      const f = g('alert-form');
-      if (f) { f.style.border = ''; f.style.background = ''; if (hide) f.style.display = 'none'; }
+      if (g('alert-modal-title')) g('alert-modal-title').textContent = 'Regulă nouă';
+      if (close) alertModalOpen(false);
       try { renderAlertCond(); } catch (e) { }
     }
     // Modificarea unei reguli: până acum trebuia ștearsă și refăcută.
@@ -4968,11 +5011,8 @@ const pozitii = await r.json();</code></pre>
       if (zIds.length) document.querySelectorAll('.alert-zone').forEach(ch => { ch.checked = zIds.indexOf(Number(ch.value)) >= 0; });
       if (c.axleLimits) [1, 2, 3, 4, 5].forEach(n => { const el = g('alert-cf-axle' + n); if (el) el.value = c.axleLimits['axle' + n] || ''; });
       g('alert-btn').textContent = 'Salvează';
-      const f = g('alert-form');
-      f.style.display = 'grid';
-      f.style.border = '1px solid var(--accent)';
-      f.style.background = 'rgba(63,224,125,0.06)';
-      f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (g('alert-modal-title')) g('alert-modal-title').textContent = 'Modifici: ' + (a.name || 'regula');
+      alertModalOpen(true);
     }
     async function saveAlert() {
       const name = document.getElementById('alert-name').value.trim();
