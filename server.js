@@ -4722,6 +4722,25 @@ app.put('/api/devices/:imei/truck-config', requireAuth, requireFleet, withScope,
   }
 });
 
+// Mută un vehicul într-o grupă (sau îl scoate, cu group_id null) — folosit din ecranul „Grupe".
+// Separat de /assign fiindcă acela scrie ȘI driver_id: mutarea între grupe ar rămâne fără șofer.
+app.put('/api/devices/:imei/group', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const gid = (req.body.group_id === null || req.body.group_id === '' || req.body.group_id === undefined)
+      ? null : parseInt(req.body.group_id);
+    if (gid !== null) {
+      if (!Number.isFinite(gid)) return res.status(400).json({ error: 'Grupă invalidă' });
+      // Grupa trebuie să fie a companiei celui care cere — altfel s-ar putea muta vehicule în grupa altcuiva.
+      if (!(await ownsRow(req, 'device_groups', gid))) return res.status(403).json({ error: 'Acces interzis' });
+    }
+    await db.setDeviceGroup(req.params.imei, gid);
+    invalidateAccessCache(); // grupa dă acces → cine vede ce se schimbă pe loc
+    auditReq(req, 'assign', 'device', req.params.imei, { group_id: gid });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Atribuire grup + șofer pe vehicul (grupul afectează accesul multi-client)
 app.put('/api/devices/:imei/assign', requireAuth, requireFleet, withScope, async (req, res) => {
   try {

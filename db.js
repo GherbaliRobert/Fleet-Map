@@ -1918,6 +1918,11 @@ async function assignDevice(imei, driverId, groupId) {
     [imei, driverId || null, groupId || null]
   );
 }
+// Schimbă DOAR grupa. `assignDevice` scrie și driver_id, deci mutarea unui vehicul dintr-o grupă în
+// alta i-ar șterge șoferul dacă n-ar exista funcția asta.
+async function setDeviceGroup(imei, groupId) {
+  await pool.query('UPDATE devices SET group_id = $2 WHERE imei = $1', [imei, groupId || null]);
+}
 
 // Adăugare manuală vehicul (pre-înregistrare IMEI înainte să se conecteze trackerul)
 async function deviceExists(imei) {
@@ -2819,8 +2824,13 @@ async function deleteDriver(id) {
 async function getGroups(companyId) {
   const where = companyId != null ? 'WHERE company_id = $1' : '';
   const params = companyId != null ? [companyId] : [];
+  // Vehiculele ARHIVATE nu se numără: nu mai fac parte din flotă, iar altfel numărul de aici n-ar
+  // corespunde cu mașinile listate în grupă. `user_count` = câți oameni au acces PRIN grupa asta,
+  // care e rolul principal al grupelor (user_group_access), nu doar o etichetă.
   const result = await pool.query(
-    `SELECT g.*, (SELECT COUNT(*)::int FROM devices d WHERE d.group_id = g.id) AS vehicle_count
+    `SELECT g.*,
+            (SELECT COUNT(*)::int FROM devices d WHERE d.group_id = g.id AND d.status IS DISTINCT FROM 'archived') AS vehicle_count,
+            (SELECT COUNT(*)::int FROM user_group_access uga WHERE uga.group_id = g.id) AS user_count
        FROM device_groups g ${where} ORDER BY name`,
     params
   );
@@ -3337,6 +3347,7 @@ module.exports = {
   createDevice,
   setDeviceStatus,
   assignDevice,
+  setDeviceGroup,
   updateTruckConfig,
   updateTankCalibration,
   setFuelSensors,

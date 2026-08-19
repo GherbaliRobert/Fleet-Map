@@ -20,6 +20,42 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### AMÂNDOI · Grupe: vezi ce mașini are fiecare și le muți de acolo, nu din 20 de fișe
+
+**Ce am schimbat:** ecranul Grupe arăta un nume, o descriere și un număr. Ca să afli CARE mașini sunt
+într-o grupă, deschideai fișa fiecărui vehicul, pe rând. Ca să pui 20 de camioane în „Camioane",
+deschideai 20 de fișe.
+
+Acum apeși pe o grupă și se desface: **vezi mașinile ei**, le scoți cu un „✕" și adaugi altele dintr-o
+listă. Fără să pleci din ecran.
+
+**Ce se vede în plus, fără să deschizi nimic:**
+- **câți oameni văd flota prin grupa aia** — ăsta e rolul principal al grupelor, și nu se vedea nicăieri;
+- **dacă grupa are program de lucru propriu** — până acum aflai doar dacă apăsai pe creion.
+
+**Ștergerea spune acum tot adevărul.** Înainte scria „vehiculele rămân, dar fără grup". Adevărat, dar
+pe jumătate: oamenii care vedeau acele mașini **prin grupă** își pierd accesul pe loc. Acum
+avertismentul îți spune câți sunt.
+
+**O capcană evitată la timp.** Aplicația avea deja o cale prin care se schimbă grupa unui vehicul —
+dar aceea scrie ȘI șoferul. Dacă o foloseam, mutarea unei mașini dintr-o grupă în alta **i-ar fi
+șters șoferul**, tăcut. Am făcut o cale separată, care atinge doar grupa.
+
+**Încă o nepotrivire reparată:** numărul de vehicule al grupei includea și mașinile **arhivate**. Vedeai
+„3 vehicule" și, la desfacere, doar două. Acum arhivatele nu se mai numără nicăieri.
+
+**Fondatorul vede:** la fel. Mutările rămân în jurnalul de audit, iar accesul se recalculează imediat.
+
+**Clientul vede:** grupele se desfac, mașinile se mută cu două apăsări, iar la ștergere știe pe cine
+lasă fără acces.
+
+> Verificat pe cod real, 32 de controale — inclusiv capcanele: mașina arhivată nu apare și nu se
+> numără, lista de adăugare nu propune mașini deja în grupă, desfacerea uneia nu arată mașinile
+> alteia, iar ruta nouă nu atinge șoferul.
+
+---
+
+
 ### CLIENT · Trei funcții noi pe site: dispecerizare, acte automate, evidența șoferilor
 
 **Ce am schimbat:** secțiunea „Funcții" de pe pagina publică avea 9 lucruri. Acum are **12**, iar cele
