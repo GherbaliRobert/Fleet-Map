@@ -20,6 +20,46 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-18
 
+### AMÂNDOI · Alerte: se recunosc după desen, se pot opri și, în sfârșit, se pot modifica
+
+**Ce am schimbat la aspect:** cele 16 feluri de alertă arătau toate la fel — un nume îngroșat și un
+rând de text mărunt. Acum fiecare tip are **iconița și culoarea lui**: zonele verde, viteza și
+temperatura roșu, ralanti și service portocaliu, combustibilul albastru, încărcarea și documentele
+violet. Recunoști regula fără s-o citești.
+
+Pragul (90 km/h, 15 min, 10 L) apare ca pastilă, iar zona urmărită ca etichetă separată.
+
+**Bâlbâiala din listă a dispărut.** Scria „Intrare zona **Intrare în zonă**" — numele regulii și tipul
+ei, unul lângă altul, la fel de apăsate. Acum numele e titlul, tipul e o etichetă mai mică, colorată.
+
+**Două lucruri care lipseau cu totul din aplicație:**
+
+1. **Nu puteai modifica o regulă.** Serverul avea „creează" și „șterge", atât. Ca să schimbi pragul
+   de la 90 la 80, ștergeai regula și o făceai de la capăt — cu tot cu zone bifate și companie
+   aleasă. Acum are buton de creion: se deschide același formular, completat, și salvezi.
+2. **Nu puteai opri o regulă temporar.** Steagul „activă/inactivă" exista în date, dar în ecran era
+   doar un cuvânt. Acum fiecare regulă are **comutator**; oprită, rândul se estompează, ca să se vadă
+   că nu lucrează.
+
+**Ce am avut grijă la modificare:** se scriu DOAR câmpurile trimise. Comutatorul trimite numai
+starea, deci o regulă pornită/oprită nu-și pierde numele, condiția sau zonele. Verificarea „vehiculul
+trebuie să fie din compania regulii" se face pe valorile FINALE, nu doar pe ce s-a trimis acum —
+altfel puteai schimba doar vehiculul și obțineai o regulă care nu s-ar fi declanșat niciodată. Doar
+super-adminul poate muta o regulă în altă companie.
+
+**Fondatorul vede:** în plus, avertismentul portocaliu „TOATE companiile" rămâne la fel de vizibil.
+Fiecare modificare intră în jurnalul de audit, cu ce câmpuri s-au schimbat.
+
+**Clientul vede:** reguli pe care le recunoaște dintr-o privire, pe care le poate opri cu un clic și
+corecta fără să le refacă.
+
+> Verificat pe cod real, 32 de controale — inclusiv că toate cele 16 tipuri au iconiță (niciunul
+> uitat), că intrarea și ieșirea din zonă au desene DIFERITE, că regula fără prag nu afișează o
+> pastilă goală și că modificarea parțială nu șterge restul regulii.
+
+---
+
+
 ### AMÂNDOI · Grupe: vezi ce mașini are fiecare și le muți de acolo, nu din 20 de fișe
 
 **Ce am schimbat:** ecranul Grupe arăta un nume, o descriere și un număr. Ca să afli CARE mașini sunt

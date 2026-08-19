@@ -2925,6 +2925,22 @@ async function createAlert(data, companyId) {
   return result.rows[0];
 }
 
+// Modificare PARȚIALĂ: scriem doar câmpurile trimise. Comutatorul din listă trimite numai `enabled`
+// — dacă am scrie toate coloanele, o regulă pornită/oprită și-ar pierde numele și condiția.
+async function updateAlert(id, data) {
+  const sets = [], params = [parseInt(id)];
+  const add = (col, val) => { params.push(val); sets.push(col + ' = $' + params.length); };
+  if (data.name !== undefined) add('name', data.name);
+  if (data.type !== undefined) add('type', data.type);
+  if (data.imei !== undefined) add('imei', data.imei || null);
+  if (data.condition !== undefined) add('condition', JSON.stringify(data.condition || {}));
+  if (data.enabled !== undefined) add('enabled', !!data.enabled);
+  if (data.company_id !== undefined) add('company_id', data.company_id == null ? null : parseInt(data.company_id));
+  if (!sets.length) return null;
+  const r = await pool.query('UPDATE alerts SET ' + sets.join(', ') + ' WHERE id = $1 RETURNING *', params);
+  return r.rows[0] || null;
+}
+
 async function deleteAlert(id) {
   await pool.query('DELETE FROM alert_history WHERE alert_id = $1', [id]);
   await pool.query('DELETE FROM alerts WHERE id = $1', [id]);
@@ -3420,7 +3436,7 @@ module.exports = {
   getDrivers, createDriver, updateDriver, deleteDriver,
   getGroups, createGroup, updateGroup, deleteGroup,
   getGeofences, getGeofencesForScope, createGeofence, updateGeofence, deleteGeofence,
-  getAlerts, createAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
+  getAlerts, createAlert, updateAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
   listFuelTransactions, createFuelTransaction, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,

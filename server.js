@@ -6008,6 +6008,37 @@ app.post('/api/alerts', requireAuth, requireFleet, withScope, async (req, res) =
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Modificarea unei reguli. Până acum NU exista: ca să schimbi un prag de la 90 la 80 ștergeai regula
+// și o făceai din nou. Acceptă și schimbări parțiale — comutatorul din listă trimite doar `enabled`.
+app.put('/api/alerts/:id', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'alerts', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    const b = req.body || {};
+    if (b.imei && !canAccessImei(req, b.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const patch = {};
+    for (const k of ['name', 'type', 'imei', 'condition', 'enabled']) if (b[k] !== undefined) patch[k] = b[k];
+    // Doar super-adminul poate muta o regulă în altă companie; pentru ceilalți câmpul e ignorat.
+    if (req.isSuper && Object.prototype.hasOwnProperty.call(b, 'company_id')) {
+      patch.company_id = (b.company_id === null || b.company_id === '') ? null : Number(b.company_id);
+      if (patch.company_id != null && !Number.isFinite(patch.company_id)) return res.status(400).json({ error: 'Companie invalidă' });
+    }
+    if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nimic de modificat' });
+    // Vehicul + companie trebuie să se potrivească, ca la creare — altfel regula n-ar porni niciodată.
+    // Verificăm valorile FINALE (ce rămâne după modificare), nu doar ce s-a trimis acum.
+    const cur = (await db.pool.query('SELECT imei, company_id FROM alerts WHERE id = $1', [parseInt(req.params.id)])).rows[0] || {};
+    const fImei = patch.imei !== undefined ? patch.imei : cur.imei;
+    const fCo = patch.company_id !== undefined ? patch.company_id : cur.company_id;
+    if (fImei && fCo != null) {
+      const devCo = await getDeviceCompanyCached(fImei);
+      if (devCo != null && Number(devCo) !== Number(fCo)) return res.status(400).json({ error: 'Vehiculul nu aparține companiei alese.' });
+    }
+    const a = await db.updateAlert(req.params.id, patch);
+    invalidateReguliCache();   // motorul de alerte ține regulile în memorie
+    auditReq(req, 'update', 'alert', req.params.id, { fields: Object.keys(patch) });
+    res.json(a);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.delete('/api/alerts/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'alerts', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });

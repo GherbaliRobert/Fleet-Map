@@ -1984,13 +1984,70 @@ const pozitii = await r.json();</code></pre>
         </div>
 
         <!-- Alerte -->
+        <style id="alr-cards-css">
+          /* Alerte — rânduri-card cu iconiță pe tip. Cele 16 tipuri arătau identic; acum se recunosc
+             după desen și culoare. Culorile stau pe FAMILII (nu una per tip), ca să existe și varianta
+             de temă închisă fără 32 de reguli de stil. */
+          #atab-alerts .toolbar-row > .btn-sm { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; background: var(--bg-panel); width: auto; }
+          #atab-alerts .toolbar-row > .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
+          #alert-count { font-size: 12px; font-weight: 800; color: #0E7A3C; background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); padding: 4px 10px; border-radius: 20px; }
+          body.dark #alert-count { color: var(--accent); }
+
+          .alr-list { display: flex; flex-direction: column; gap: 9px; }
+          .alr-row { display: grid; grid-template-columns: 42px minmax(0, 1.4fr) minmax(0, 1.2fr) auto 44px 80px; gap: 14px; align-items: center; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; transition: border-color .15s ease, box-shadow .15s ease; }
+          .alr-row:hover { border-color: var(--accent); box-shadow: 0 4px 14px rgba(15, 23, 42, .07); }
+          .alr-row.off { opacity: .6; }   /* regulă oprită — se vede că nu lucrează */
+          .alr-row > * { min-width: 0; }
+          .alr-ic { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+          .alr-nm { font-weight: 800; font-size: 14px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          /* Tipul e etichetă, nu al doilea titlu: înainte numele și tipul erau scrise la fel de apăsat,
+             unul lângă altul, și ieșea „Intrare zona Intrare în zonă". */
+          .alr-ty { font-size: 11.5px; font-weight: 700; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .alr-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 7px; padding: 3px 9px; max-width: 100%; }
+          .alr-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .alr-chip.warn { color: var(--orange); background: rgba(245, 158, 11, .12); border-color: rgba(245, 158, 11, .35); }
+          .alr-chip + .alr-chip { margin-top: 4px; }
+          .alr-prag { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+          .alr-act { display: flex; gap: 6px; justify-content: flex-end; }
+          .alr-act .btn-sm { width: 34px; height: 34px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+          .alr-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+          /* Comutator pornit/oprit — regula se putea doar șterge, nu și opri temporar. */
+          .alr-sw { width: 38px; height: 22px; border-radius: 20px; background: var(--accent); position: relative; cursor: pointer; border: none; padding: 0; flex: 0 0 auto; }
+          .alr-sw.off { background: var(--border-light); }
+          .alr-sw::after { content: ''; position: absolute; top: 3px; left: 19px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s ease; }
+          .alr-sw.off::after { left: 3px; }
+
+          /* Familiile de culoare */
+          .f-zone    { --fc: #0E7A3C; --fb: rgba(63, 224, 125, .14); }
+          .f-danger  { --fc: #DC2626; --fb: rgba(220, 38, 38, .11); }
+          .f-fuel    { --fc: #0369A1; --fb: rgba(3, 105, 161, .12); }
+          .f-load    { --fc: #6D28D9; --fb: rgba(109, 40, 217, .12); }
+          .f-service { --fc: #B45309; --fb: rgba(245, 158, 11, .14); }
+          .f-neutral { --fc: #64748B; --fb: rgba(100, 116, 139, .12); }
+          body.dark .f-zone { --fc: #3FE07D; } body.dark .f-danger { --fc: #F87171; }
+          body.dark .f-fuel { --fc: #38BDF8; } body.dark .f-load { --fc: #A78BFA; }
+          body.dark .f-service { --fc: #FBBF24; } body.dark .f-neutral { --fc: #94A3B8; }
+          .alr-ic, .alr-prag { background: var(--fb); color: var(--fc); }
+          .alr-ty { color: var(--fc); }
+
+          @media (max-width: 768px) {
+            .alr-row { grid-template-columns: 38px 1fr auto; grid-template-areas: "ic nm act" "sc sc sc" "pr pr sw"; gap: 8px 10px; padding: 11px 12px; }
+            .alr-c-ic { grid-area: ic; } .alr-c-nm { grid-area: nm; } .alr-c-act { grid-area: act; }
+            .alr-c-sc { grid-area: sc; } .alr-c-pr { grid-area: pr; } .alr-c-sw { grid-area: sw; justify-self: end; }
+            .alr-ic { width: 34px; height: 34px; font-size: 14px; }
+          }
+        </style>
         <div id="atab-alerts" class="admin-tab-content" style="display:none;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <div class="admin-section-title" style="margin:0;">Reguli de alertă</div>
+          <div class="toolbar-row">
+            <span class="toolbar-spacer"></span>
+            <span id="alert-count" class="toolbar-count"></span>
             <button class="btn-sm" onclick="openAlertHistory()"><i class="fas fa-history"></i> Istoric alerte</button>
+            <button class="btn-sm btn-primary" onclick="toggleAlertAdd()"><i class="fas fa-plus"></i> Adaugă regulă</button>
           </div>
-          <div id="admin-alerts-list"></div>
-          <div class="admin-add" style="grid-template-columns:repeat(2,1fr);">
+          <div id="admin-alerts-list" class="alr-list"></div>
+          <div class="admin-add" id="alert-form" style="grid-template-columns:repeat(2,1fr);display:none;">
+            <input type="hidden" id="alert-id">
             <label><span>Nume regulă *</span><input type="text" id="alert-name"></label>
             <label><span>Tip</span><select id="alert-type" onchange="renderAlertCond()"></select></label>
             <!-- Compania regulii — DOAR super-admin. Fără ea, o regulă creată de platformă rămânea fără
@@ -2002,7 +2059,10 @@ const pozitii = await r.json();</code></pre>
             <label><span>Vehicul</span><select id="alert-imei"><option value="">Toate vehiculele</option></select></label>
             <label><span>Activă</span><select id="alert-enabled"><option value="true">Da</option><option value="false">Nu</option></select></label>
             <div id="alert-cond-fields" style="grid-column:1/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
-            <button class="btn-sm btn-primary" onclick="saveAlert()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă regula</button>
+            <div style="grid-column:1/-1;display:flex;gap:8px;">
+              <button class="btn-sm btn-primary" onclick="saveAlert()" style="flex:1;"><i class="fas fa-save"></i> <span id="alert-btn">Adaugă regula</span></button>
+              <button class="btn-sm" onclick="resetAlertForm(true)" title="Renunță">↺</button>
+            </div>
           </div>
         </div>
 
@@ -4686,6 +4746,26 @@ const pozitii = await r.json();</code></pre>
       { v:'idle_engine', label:'Staționare cu motor pornit (ralanti)', fields:[{k:'idleMinutes',label:'Minute consecutive',def:15}] },
       { v:'document_expiry', label:'Expirare documente', fields:[{k:'warnDays',label:'Avertizare cu (zile) înainte',def:30}] }
     ];
+    // Iconița și familia de culoare pentru fiecare tip. Culorile propriu-zise stau în CSS (clasele
+    // f-*), ca tema închisă să aibă nuanțele ei fără a dubla lista aici.
+    const ALERT_META = {
+      overspeed:          { i: 'fa-gauge-high',              f: 'f-danger' },
+      engine_temp:        { i: 'fa-temperature-high',        f: 'f-danger' },
+      dtc_error:          { i: 'fa-triangle-exclamation',    f: 'f-danger' },
+      fuel_drop:          { i: 'fa-droplet',                 f: 'f-fuel' },
+      pto_active:         { i: 'fa-gears',                   f: 'f-fuel' },
+      geofence_enter:     { i: 'fa-right-to-bracket',        f: 'f-zone' },
+      geofence_exit:      { i: 'fa-right-from-bracket',      f: 'f-zone' },
+      ignition_on:        { i: 'fa-key',                     f: 'f-zone' },
+      ignition_off:       { i: 'fa-power-off',               f: 'f-neutral' },
+      overload_legal:     { i: 'fa-weight-hanging',          f: 'f-load' },
+      overload_construct: { i: 'fa-weight-hanging',          f: 'f-load' },
+      axle_overload:      { i: 'fa-truck-ramp-box',          f: 'f-load' },
+      document_expiry:    { i: 'fa-file-circle-exclamation', f: 'f-load' },
+      brake_pad_wear:     { i: 'fa-compact-disc',            f: 'f-service' },
+      service_due:        { i: 'fa-wrench',                  f: 'f-service' },
+      idle_engine:        { i: 'fa-hourglass-half',          f: 'f-service' }
+    };
     let alertGeofencesCache = [];
     function alertTypeLabel(v) { const t = ALERT_TYPES.find(x => x.v === v); return t ? t.label : v; }
     async function renderAlertCond() {
@@ -4807,11 +4887,92 @@ const pozitii = await r.json();</code></pre>
             ? esc(_alertZoneName(zIds[0]))
             : zIds.length + ' zone: ' + esc(zIds.slice(0, 3).map(_alertZoneName).join(', ')) + (zIds.length > 3 ? ' +' + (zIds.length - 3) : ''))
           : '';
-        return `<div class="admin-row"><div>
-          <strong>${a.name}</strong> <span class="role">${alertTypeLabel(a.type)}</span>
-          <div class="meta">${scope}${zTxt} · ${a.enabled ? 'activă' : 'inactivă'}</div>
-        </div><button class="btn-sm btn-danger" onclick="deleteAlert(${a.id})"><i class="fas fa-trash"></i></button></div>`;
-      }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Nicio regulă.</p>';
+        const m = ALERT_META[a.type] || { i: 'fa-bell', f: 'f-neutral' };
+        const prag = alertPragLabel(a);
+        // Zonele urmărite: chip separat, nu înghesuite în linia de dedesubt.
+        const zChip = zIds.length ? `<span class="alr-chip"><i class="fas fa-draw-polygon"></i><span>${zIds.length === 1 ? esc(_alertZoneName(zIds[0])) : zIds.length + ' zone'}</span></span>` : '';
+        const scChip = a.company_id == null && !a.imei
+          ? '<span class="alr-chip warn"><i class="fas fa-triangle-exclamation"></i><span>TOATE companiile</span></span>'
+          : `<span class="alr-chip"><span>${scope}</span></span>`;
+        return `<div class="alr-row ${m.f}${a.enabled ? '' : ' off'}">
+          <div class="alr-c-ic"><span class="alr-ic"><i class="fas ${m.i}"></i></span></div>
+          <div class="alr-c-nm"><div class="alr-nm">${esc(a.name)}</div><div class="alr-ty">${alertTypeLabel(a.type)}</div></div>
+          <div class="alr-c-sc">${scChip}${zChip}</div>
+          <div class="alr-c-pr">${prag ? `<span class="alr-prag">${esc(prag)}</span>` : ''}</div>
+          <div class="alr-c-sw"><button class="alr-sw${a.enabled ? '' : ' off'}" title="${a.enabled ? 'Activă — apasă ca s-o oprești' : 'Oprită — apasă ca s-o pornești'}" onclick="alertToggle(${a.id}, ${a.enabled ? 'false' : 'true'})"></button></div>
+          <div class="alr-c-act alr-act">
+            <button class="btn-sm" title="Modifică" onclick='editAlert(${JSON.stringify(a).replace(/'/g, "&#39;")})'><i class="fas fa-pen"></i></button>
+            <button class="btn-sm btn-danger" title="Șterge" onclick="deleteAlert(${a.id})"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>`;
+      }).join('') : '<div class="alr-empty">Nicio regulă de alertă.</div>';
+      const cEl = document.getElementById('alert-count');
+      if (cEl) cEl.textContent = list.length + (list.length === 1 ? ' regulă' : ' reguli');
+    }
+    // Pragul regulii, scris scurt pentru pastilă. Unitatea ține de câmpul din condiție, nu de tip,
+    // ca să nu ținem încă o listă paralelă cu ALERT_TYPES.
+    const COND_UNIT = { maxSpeed: ' km/h', dropLiters: ' L', maxTemp: ' °C', maxKg: ' kg', minPercent: '%', warnKm: ' km', idleMinutes: ' min', warnDays: ' zile' };
+    function alertPragLabel(a) {
+      const c = a.condition || {};
+      for (const k in COND_UNIT) {
+        if (c[k] !== undefined && c[k] !== null && c[k] !== '') return c[k] + COND_UNIT[k];
+      }
+      if (c.axleLimits && Object.keys(c.axleLimits).length) return Object.keys(c.axleLimits).length + ' axe';
+      return '';
+    }
+    async function alertToggle(id, on) {
+      try {
+        const res = await fetch('/api/alerts/' + id, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: on })   // doar starea; restul regulii rămâne neatins
+        });
+        if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || 'Eroare'); return; }
+        await loadAlerts();
+      } catch (e) { alert('Eroare: ' + e.message); }
+    }
+    function toggleAlertAdd() {
+      const f = document.getElementById('alert-form');
+      if (!f) return;
+      if (f.style.display !== 'none') { f.style.display = 'none'; return; }
+      resetAlertForm(); f.style.display = 'grid'; f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function resetAlertForm(hide) {
+      const g = id => document.getElementById(id);
+      if (g('alert-id')) g('alert-id').value = '';
+      if (g('alert-name')) g('alert-name').value = '';
+      if (g('alert-enabled')) g('alert-enabled').value = 'true';
+      if (g('alert-imei')) g('alert-imei').value = '';
+      if (g('alert-company')) g('alert-company').value = '';
+      if (g('alert-btn')) g('alert-btn').textContent = 'Adaugă regula';
+      const f = g('alert-form');
+      if (f) { f.style.border = ''; f.style.background = ''; if (hide) f.style.display = 'none'; }
+      try { renderAlertCond(); } catch (e) { }
+    }
+    // Modificarea unei reguli: până acum trebuia ștearsă și refăcută.
+    async function editAlert(a) {
+      const g = id => document.getElementById(id);
+      g('alert-id').value = a.id;
+      g('alert-name').value = a.name || '';
+      g('alert-type').value = a.type || '';
+      if (g('alert-company')) g('alert-company').value = (a.company_id == null) ? (currentUser && currentUser.isSuper ? '__all__' : '') : String(a.company_id);
+      if (typeof onAlertCompanyChange === 'function') { try { onAlertCompanyChange(); } catch (e) { } }
+      await renderAlertCond();          // câmpurile de condiție depind de tip → întâi le desenăm
+      g('alert-imei').value = a.imei || '';
+      g('alert-enabled').value = a.enabled ? 'true' : 'false';
+      const c = a.condition || {};
+      for (const k in c) {
+        const el = g('alert-cf-' + k);
+        if (el && typeof c[k] !== 'object') el.value = c[k];
+      }
+      const zIds = Array.isArray(c.geofenceIds) ? c.geofenceIds : (c.geofenceId ? [c.geofenceId] : []);
+      if (zIds.length) document.querySelectorAll('.alert-zone').forEach(ch => { ch.checked = zIds.indexOf(Number(ch.value)) >= 0; });
+      if (c.axleLimits) [1, 2, 3, 4, 5].forEach(n => { const el = g('alert-cf-axle' + n); if (el) el.value = c.axleLimits['axle' + n] || ''; });
+      g('alert-btn').textContent = 'Salvează';
+      const f = g('alert-form');
+      f.style.display = 'grid';
+      f.style.border = '1px solid var(--accent)';
+      f.style.background = 'rgba(63,224,125,0.06)';
+      f.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     async function saveAlert() {
       const name = document.getElementById('alert-name').value.trim();
@@ -4848,9 +5009,13 @@ const pozitii = await r.json();</code></pre>
       }
       const body = { name, type, imei, condition, enabled };
       if (currentUser && currentUser.isSuper) body.company_id = companyId;
-      const res = await fetch('/api/alerts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      // Cu id → modificăm regula existentă; fără → creăm una nouă. Înainte exista doar a doua cale.
+      const editId = (document.getElementById('alert-id') || {}).value || '';
+      const res = await fetch('/api/alerts' + (editId ? '/' + editId : ''), {
+        method: editId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
       if (!res.ok) { const e = await res.json().catch(()=>({})); return alert(e.error || 'Eroare'); }
-      document.getElementById('alert-name').value = '';
+      resetAlertForm(true);
       await loadAlerts();
     }
     async function deleteAlert(id) {
