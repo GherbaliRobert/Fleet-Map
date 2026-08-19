@@ -1934,9 +1934,14 @@ const pozitii = await r.json();</code></pre>
 
           .grp-list { display: flex; flex-direction: column; gap: 9px; }
           .grp { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-panel); }
-          .grp-head { display: grid; grid-template-columns: 22px minmax(0, 1.3fr) auto auto 92px; gap: 14px; align-items: center; padding: 13px 15px; cursor: pointer; }
+          .grp-head { display: grid; grid-template-columns: 16px minmax(0, 1.3fr) auto auto 92px; gap: 14px; align-items: center; padding: 13px 15px; cursor: pointer; }
           .grp-head:hover { background: rgba(63, 224, 125, .05); }
-          .grp-dot { width: 12px; height: 12px; border-radius: 4px; flex: 0 0 auto; }
+          /* Săgeata e singurul lucru care spune că rândul se deschide. Fără ea, ecranul arată ca o
+             listă moartă și nimeni nu apasă — exact ce s-a întâmplat la prima livrare. */
+          .grp-caret { color: var(--text-muted); font-size: 12px; transition: transform .15s ease; justify-self: center; }
+          .grp.open .grp-caret { transform: rotate(90deg); color: var(--grp-ink); }
+          .grp-head:hover .grp-caret { color: var(--grp-ink); }
+          .grp-dot { width: 11px; height: 11px; border-radius: 4px; flex: 0 0 auto; display: inline-block; margin-right: 8px; vertical-align: 0; }
           .grp-nm { font-weight: 800; font-size: 14.5px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .grp-desc { font-size: 12.5px; color: var(--text-secondary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .grp-cnt { font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
@@ -1955,8 +1960,8 @@ const pozitii = await r.json();</code></pre>
           .grp-pick { height: 32px; border-radius: 9px; border: 1px solid var(--accent); background: var(--bg-panel); color: var(--text-primary); font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 0 8px; }
           .grp-empty { padding: 26px; text-align: center; color: var(--text-muted); font-size: 13px; }
           @media (max-width: 768px) {
-            .grp-head { grid-template-columns: 18px 1fr auto; grid-template-areas: "dot nm act" "meta meta meta"; gap: 8px 10px; }
-            .grp-head > :nth-child(1) { grid-area: dot; } .grp-head > :nth-child(2) { grid-area: nm; }
+            .grp-head { grid-template-columns: 16px 1fr auto; grid-template-areas: "car nm act" "meta meta meta"; gap: 8px 10px; }
+            .grp-head > :nth-child(1) { grid-area: car; } .grp-head > :nth-child(2) { grid-area: nm; }
             .grp-head > :nth-child(3), .grp-head > :nth-child(4) { grid-area: meta; }
             .grp-head > :nth-child(4) { justify-self: end; }
             .grp-head > :nth-child(5) { grid-area: act; }
@@ -4571,10 +4576,10 @@ const pozitii = await r.json();</code></pre>
             <span id="grp-add-slot-${g.id}">${grpAddControl(g.id)}</span>
           </div>
         </div>` : '';
-        return `<div class="grp">
-          <div class="grp-head" onclick="grpToggle(${g.id})">
-            <span class="grp-dot" style="background:${esc(col)}"></span>
-            <div><div class="grp-nm">${esc(g.name)}</div>${g.description ? `<div class="grp-desc">${esc(g.description)}</div>` : ''}</div>
+        return `<div class="grp${open ? ' open' : ''}">
+          <div class="grp-head" onclick="grpToggle(${g.id})" title="${open ? 'Ascunde mașinile' : 'Apasă ca să vezi și să muți mașinile'}">
+            <i class="fas fa-chevron-right grp-caret"></i>
+            <div><div class="grp-nm"><span class="grp-dot" style="background:${esc(col)}"></span>${esc(g.name)}</div>${g.description ? `<div class="grp-desc">${esc(g.description)}</div>` : ''}</div>
             <span class="grp-cnt" style="color:${esc(col)};background:${esc(col)}1f">${grpVehLabel(vs.length)}</span>
             <span>${users}${users && sched ? ' &nbsp;·&nbsp; ' : ''}${sched}</span>
             <div class="grp-act">

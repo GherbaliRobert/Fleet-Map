@@ -49,9 +49,15 @@ dar aceea scrie ȘI șoferul. Dacă o foloseam, mutarea unei mașini dintr-o gru
 **Clientul vede:** grupele se desfac, mașinile se mută cu două apăsări, iar la ștergere știe pe cine
 lasă fără acces.
 
-> Verificat pe cod real, 32 de controale — inclusiv capcanele: mașina arhivată nu apare și nu se
+**Corectat imediat după livrare:** prima versiune n-avea nicio **săgeată** pe rând. Funcționa — apăsai
+și se deschidea — dar nimic nu-ți spunea asta, așa că ecranul arăta ca o listă moartă și Alin a
+raportat, pe bună dreptate, că „nu se vede modificarea". Acum fiecare rând are o săgeată care se
+rotește la deschidere, plus explicație la trecerea cu mouse-ul. O funcție pe care n-o găsești e o
+funcție care nu există.
+
+> Verificat pe cod real, 38 de controale — inclusiv capcanele: mașina arhivată nu apare și nu se
 > numără, lista de adăugare nu propune mașini deja în grupă, desfacerea uneia nu arată mașinile
-> alteia, iar ruta nouă nu atinge șoferul.
+> alteia, ruta nouă nu atinge șoferul, iar apăsatul chiar deschide și închide (simulat, nu presupus).
 
 ---
 
