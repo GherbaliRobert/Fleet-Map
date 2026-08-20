@@ -20,6 +20,22 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Numarul masinii statea PESTE iconita, in ferestrele de Alerta si de Lucrare
+
+**Ce se vedea:** in fereastra „Lucrare noua" (si in „Regula noua"), la campul Vehicul, sub numarul
+masinii se ghicea o umbra verzuie. Parea o pata; era iconita de masina a campului, peste care
+scria textul.
+
+**De ce:** campul de vehicul are cautare — isi deseneaza iconita in FUNDAL, la 15 pixeli de
+margine, si de aceea cere spatiu in stanga. Cand am facut cele doua ferestre noi, am pus o regula
+care aliniaza toate campurile din ele si care taia spatiul ala la 11 pixeli. Textul intra peste
+desen.
+
+**Fondatorul vede:** campul asezat cum trebuie, cu iconita la stanga si numarul dupa ea.
+
+**Clientul vede:** la fel.
+
+
 ### AMÂNDOI · Un singur drum pentru scadențe: fișa mașinii, Mentenanța și Documentele spun același lucru
 
 Datele erau deja comune — ce scriai în fișa mașinii apărea și în Management. Dar cele trei ecrane

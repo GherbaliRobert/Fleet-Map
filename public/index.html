@@ -2107,6 +2107,11 @@ const pozitii = await r.json();</code></pre>
           #alert-form { gap: 14px; margin-top: 4px; padding-top: 0; border-top: none; }
           #alert-form label { gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
           #alert-form input, #alert-form select { height: 38px; border-radius: 9px; padding: 0 11px; font-size: 13.5px; }
+          /* Selectorul de vehicul cu căutare (.ss-input) își desenează iconița de mașină în FUNDAL,
+             la 15px de margine, și de aceea are nevoie de spațiu în stânga. Regula de deasupra i-l
+             tăia la 11px, așa că numărul de înmatriculare cădea PESTE desen — se vedea ca o umbră
+             sub text. Aici i se dă spațiul înapoi. */
+          #alert-form .ss-input { padding: 0 40px 0 45px; }
           #alert-form #alert-cond-fields { gap: 14px; }
           .alr-foot { display: flex; gap: 9px; justify-content: flex-end; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border); }
           .alr-foot .btn-sm { height: 38px; padding: 0 16px; border-radius: 9px; font-size: 13px; font-weight: 700; width: auto; display: inline-flex; align-items: center; gap: 7px; }
@@ -2243,6 +2248,8 @@ const pozitii = await r.json();</code></pre>
           #mnt-form { gap: 14px; margin-top: 4px; padding-top: 0; border-top: none; }
           #mnt-form label { gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
           #mnt-form input, #mnt-form select { height: 38px; border-radius: 9px; padding: 0 11px; font-size: 13.5px; }
+          /* Vezi nota de la #alert-form .ss-input: iconița de mașină e fundal, are nevoie de margine. */
+          #mnt-form .ss-input { padding: 0 40px 0 45px; }
           .mnt-fs { border: 1px solid var(--border); border-radius: 11px; padding: 12px 13px 11px; }
           .mnt-fs-t { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin-bottom: 9px; }
           .mnt-fs-g { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
