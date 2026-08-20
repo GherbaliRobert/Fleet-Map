@@ -59,8 +59,8 @@ export function Menu() {
           ? item('truck', 'e-Transport (ANAF)', () => loc.route('/etransport'))
           : soon('truck', 'e-Transport (ANAF)')}
         {u?.features?.etoll
-          ? item('route', 'E-Toll & Roviniete', () => loc.route('/etoll'))
-          : soon('route', 'E-Toll & Roviniete')}
+          ? item('route', 'Taxa de drum (TollRo)', () => loc.route('/etoll'))
+          : soon('route', 'Taxa de drum (TollRo)')}
         {u?.features?.tahograf && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
         {item('compass', 'Dispecerizare', () => loc.route('/dispatch'))}
         {perms.viewReports && item('mapPin', 'Hotspot & Rutare', () => loc.route('/hotspot'))}

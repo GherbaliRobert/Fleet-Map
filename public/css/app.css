@@ -537,6 +537,58 @@
     .stat-chip.stationat{ --chip-color: var(--yellow); }
     .stat-chip.oprit    { --chip-color: var(--red); }   /* aceeași culoare ca punctul „oprit" din listă */
 
+
+    /* ─── TollRo: taxa rutieră pe kilometru ─────────────────────────────────────────────────── */
+    /* Profilul vehiculului: câmpuri citite din fișă, NU tastate. Un câmp gol se vede (clasa .gol),
+       fiindcă tocmai lipsa lui schimbă suma de plată. */
+    .tr-profil { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+    .tr-f { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; min-width: 0; }
+    .tr-f span { display: block; font-size: 10.5px; color: var(--text-muted); font-weight: 700; }
+    .tr-f b { display: block; font-size: 13px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tr-f b.gol { color: var(--red); font-weight: 600; }
+
+    .tr-nota { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45;
+      border-radius: 10px; padding: 9px 11px; margin-top: 9px; border: 1px solid; }
+    .tr-nota.verde  { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .tr-nota.galben { color: #f59e0b; border-color: #f59e0b55; background: #f59e0b14; }
+    .tr-nota.rosu   { color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, transparent); background: color-mix(in srgb, var(--red) 10%, transparent); }
+    .tr-nota b { color: var(--text-primary); }
+
+    .tr-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .tr-tab { flex: 1; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-dark);
+      color: var(--text-muted); font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+    .tr-tab.on { border-color: var(--accent); color: var(--text-primary); background: color-mix(in srgb, var(--accent) 12%, var(--bg-dark)); }
+
+    /* Sumarul: distanța la stânga, TOTALUL mare la dreapta — cifra pentru care se deschide ecranul. */
+    .tr-sumar { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px;
+      padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .tr-sumar span { display: block; font-size: 10.5px; color: var(--text-muted); font-weight: 700; }
+    .tr-sumar b { font-size: 17px; font-weight: 800; }
+    .tr-sumar .tot { text-align: right; }
+    .tr-sumar .tot b { font-size: 25px; color: var(--accent); }
+
+    .tr-linie { margin-bottom: 11px; }
+    .tr-linie .cap { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; }
+    .tr-linie .cap b { margin-left: auto; font-weight: 800; }
+    .tr-linie .pct { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .tr-linie .sub { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 4px 16px; }
+    .tr-linie .bara { height: 5px; border-radius: 3px; background: var(--bg-dark); overflow: hidden; }
+    .tr-linie .bara i { display: block; height: 100%; border-radius: 3px; }
+
+    /* Grila de tarife: două cifre pe celulă (autostradă / național). Celulele nepublicate sunt
+       marcate — un tarif estimat afișat ca oficial e mai rău decât lipsa lui. */
+    .tr-grid { border-collapse: collapse; font-size: 12px; width: 100%; }
+    .tr-grid th, .tr-grid td { border: 1px solid var(--border); padding: 5px 7px; text-align: center; }
+    .tr-grid thead th { background: var(--bg-dark); font-size: 11px; color: var(--text-muted); }
+    .tr-grid tbody th { background: var(--bg-dark); text-align: left; white-space: nowrap; font-size: 11.5px; }
+    .tr-grid td { position: relative; }
+    .tr-grid td span { display: inline-block; min-width: 34px; }
+    .tr-grid td span + span { color: var(--text-muted); }
+    .tr-grid input.tr-cel { width: 48px; padding: 3px 4px; font-size: 11.5px; text-align: center;
+      background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-family: inherit; }
+    .tr-grid td.presupus { background: #f59e0b12; }
+    .tr-grid td.presupus i { position: absolute; top: 1px; right: 2px; font-size: 8px; color: #f59e0b; }
+
     /* Device List */
     #device-list {
       flex: 1;

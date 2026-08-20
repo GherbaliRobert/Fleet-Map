@@ -128,6 +128,13 @@ export const Api = {
   // Analiză zonă desenată (poligon/cerc) → vizite pe vehicul. imei opțional (gol = toată flota).
   zoneReport: (zone: any, from: string, to: string, imei?: string) =>
     api<any>('/api/zone-report', { method: 'POST', body: imei ? { zone, from, to, imei } : { zone, from, to } }),
+  // TollRo — taxa rutiera pe km. Vehiculul se alege DIN FLOTA; profilul (masa, axe, norma Euro)
+  // vine de la server, din fisa lui, nu se trimite de aici.
+  tollroConfig: () => api<any>('/api/tollro/config'),
+  tollroSetConfig: (grila: any) => api<any>('/api/tollro/config', { method: 'PUT', body: { grila } }), // super-admin
+  tollroProfil: (imei: string) => api<any>('/api/tollro/profil/' + encodeURIComponent(imei)),
+  tollroEstimate: (imei: string, km: any) => api<any>('/api/tollro/estimate', { method: 'POST', body: { imei, km } }),
+  tollroDinIstoric: (imei: string, from: string, to: string) => api<any>('/api/tollro/din-istoric', { method: 'POST', body: { imei, from, to } }),
   etollCosts: (imei?: string, days = 30) => api<any>(`/api/etoll/costs?days=${days}${imei ? '&imei=' + encodeURIComponent(imei) : ''}`),
   etollProviders: () => api<any>('/api/etoll/providers'),
   etollSetProvider: (provider: string) => api<any>('/api/etoll/provider', { method: 'PUT', body: { provider } }), // super-admin

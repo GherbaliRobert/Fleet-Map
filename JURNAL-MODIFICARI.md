@@ -88,6 +88,50 @@ desen.
 
 **Clientul vede:** la fel.
 
+### AMÂNDOI · Taxa de drum (TollRo) — calculator pe flota ta — `COMMIT_HASH`
+
+Din toamnă, camioanele de peste 3,5 t nu mai plătesc rovinietă pe perioadă, ci **taxă pe kilometru**,
+în funcție de tipul drumului, masă și normă de poluare. Concurența a scos deja un calculator; l-am
+făcut și noi, dar altfel.
+
+**Diferența, și e cea care contează.** La ei tastezi de fiecare dată numărul, VIN-ul, masa, axele și
+norma Euro — pentru orice camion, chiar dacă nu e al tău. La noi **alegi mașina din flotă** și atât:
+profilul de taxare se citește din fișa ei. Nu poți calcula pentru un vehicul care nu e al tău, și nu
+mai retastezi date pe care aplicația le știe deja. (Exact cum ați cerut.)
+
+**Ce face.** Alegi vehiculul, apoi kilometrii vin în două feluri:
+
+1. **Din traseul deja parcurs** — asta nu poate face niciun calculator public, fiindcă are nevoie de
+   istoricul GPS al mașinii. Luăm drumul real al camionului pe intervalul ales și, bucată cu bucată,
+   aflăm din OpenStreetMap ce fel de drum e: autostradă, drum național sau drum netaxat. Rezultatul e
+   costul real al lunii trecute, nu o presupunere.
+2. **Îi introduci tu** — dacă vrei să pui un preț pe o cursă viitoare.
+
+Rezultatul arată ca la ei: bare colorate pe tip de drum, km × lei/km, total mare. Pentru ruta din
+exemplul vostru (Clinceni–Brașov, 228,5 km) iese **62,13 lei** — aceeași cifră.
+
+**Ce am refuzat să facem.** Dacă alegi un autoturism, nu-ți dăm un cost inventat: scrie limpede că
+sub 3,5 t vehiculul **nu intră la TollRo** și rămâne pe rovinietă. Dacă în fișă lipsește masa, nu
+ghicim — spunem că nu se poate încadra. Dacă lipsește norma Euro, calculăm la **tariful maxim** și te
+anunțăm: mai bine o estimare prudentă decât una optimistă pe care o pui în ofertă și pierzi bani.
+
+**Tarifele sunt reale, dar se pot schimba — de aceea nu sunt îngropate în cod.** Grila (masă × normă
+Euro × tip de drum) e un tabel pe care **super-adminul îl poate corecta**, cu data de la care se
+aplică. Data intrării în vigoare s-a mutat deja de trei ori; dacă valorile ar fi fost fixe în cod, la
+prima ordonanță calculatorul ar fi început să mintă și ar fi fost nevoie de o nouă versiune.
+Valorile pe care statul **nu le-a publicat încă** (treapta 7,5–12 t și pozițiile intermediare pe
+Euro 4/5) sunt marcate cu ⚠ în tabel — sunt estimările noastre, nu cifre oficiale. Un tarif presupus,
+afișat ca oficial, e mai rău decât lipsa lui.
+
+- **Ce vede fondatorul:** în plus, tabelul de tarife, editabil, cu data de aplicare.
+- **Ce vede clientul:** meniul „Taxa de drum", unde își alege camionul și află cât îl costă.
+
+Și pe telefon. **Excepție de paritate asumată:** pe telefon tabelul de tarife se **vede**, dar se
+modifică doar din web — 24 de căsuțe numerice pe ecran de telefon sunt o invitație la greșeli, iar
+greșeala aici înseamnă un preț greșit trimis unui client.
+
+**De verificat când apare ordonanța:** valorile marcate cu ⚠ și data de aplicare. Sunt într-un
+singur loc, se schimbă în două minute, fără programator.
 
 ### AMÂNDOI · Un singur drum pentru scadențe: fișa mașinii, Mentenanța și Documentele spun același lucru
 
@@ -1906,6 +1950,10 @@ cheia propriu-zisă rămâne exclusă, ca să nu ajungă niciodată acolo.
 ---
 
 ## De verificat înainte de lansare
+
+- **Grila TollRo: valorile marcate cu ⚠ și data de aplicare.** Treapta 7,5–12 t și pozițiile
+  intermediare pe Euro 4/5 nu erau publicate la 20.08 — sunt estimările noastre. La apariția
+  ordonanței, se corectează din Administrare → Taxa de drum, fără deploy. *(20.08)*
 
 - **Furtul de combustibil e OPRIT pentru companiile care nu și-au setat pragul.** Decizia din
   26.07 („prag nesetat = utilizatorul a ales Dezactivat") e corectă ca principiu, dar un client nou

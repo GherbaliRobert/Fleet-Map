@@ -144,6 +144,7 @@ let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* op
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
 const fueltheft = require('./fueltheft');   // decizia "chiar a disparut combustibil?" - modul pur, verificabil
+const tollro = require('./tollro');           // taxa rutiera pe km (TollRo) - grila + calcul, modul pur
 const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
 // Regula alertei de viteză: prag MINIM (sub asta nu alertăm niciodată — fără absurdități în zone rezidențiale)
 // + MARJĂ peste limită (toleranță). Alertă DOAR dacă speed > max(BASE, limita configurată) + MARGIN.
@@ -4083,6 +4084,161 @@ try {
   });
   console.log('[DEMO-MODULES] e-Transport / E-Toll / Tahograf — endpoint-uri demo montate');
 } catch (e) { console.warn('[DEMO-MODULES] nu s-au putut monta:', e.message); }
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+//  TollRo — taxa rutieră pe kilometru pentru marfă peste 3,5 t
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// Deosebirea față de calculatoarele publice: acolo tastezi numărul și VIN-ul oricărui camion.
+// Aici vehiculul se ALEGE DIN FLOTĂ — profilul (masă, axe, normă Euro) vine din fișa lui, iar
+// `canAccessImei` se asigură că nu poți calcula pentru mașina altei companii. Nu există cale prin
+// care un client să afle ceva despre un vehicul care nu e al lui.
+const TOLLRO_GRID_KEY = 'tollro_grid';
+
+async function _tollroGrila() {
+  let raw = null;
+  try { raw = await db.getSetting(TOLLRO_GRID_KEY); } catch (e) { raw = null; }
+  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch (e) { raw = null; } }
+  return tollro.grilaValida(raw);
+}
+
+// Catalogul (trepte de masă, norme Euro, clase de drum) + grila în vigoare.
+app.get('/api/tollro/config', requireAuth, withScope, async (req, res) => {
+  try {
+    res.json({
+      categorii: tollro.CATEGORII, euro: tollro.EURO, claseDrum: tollro.CLASE_DRUM,
+      grila: await _tollroGrila(), implicit: tollro.GRILA_IMPLICITA, editabil: !!req.isSuper,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Grila se schimbă prin ordonanță, deci o poate corecta DOAR super-adminul — e prețul pe care îl
+// plătesc toți clienții, nu o preferință de companie.
+app.put('/api/tollro/config', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const g = tollro.grilaValida(req.body && req.body.grila);
+    await db.setSetting(TOLLRO_GRID_KEY, JSON.stringify(g));
+    auditReq(req, 'update', 'tollro_grid', null, { aplicabilDin: g.aplicabilDin });
+    res.json({ ok: true, grila: g });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Profilul de taxare al unui vehicul DIN FLOTĂ, citit din fișa lui.
+async function _tollroProfil(imei) {
+  const d = await db.getDeviceFull(imei);
+  if (!d) return null;
+  const axe = (function () {
+    try {
+      const a = typeof d.max_axle_loads === 'string' ? JSON.parse(d.max_axle_loads) : (d.max_axle_loads || {});
+      const n = Object.keys(a || {}).filter(function (k) { return Number(a[k]) > 0; }).length;
+      return n > 0 ? n : null;
+    } catch (e) { return null; }
+  })();
+  return {
+    imei: d.imei, nume: d.name || null, numar: d.plate || null, vin: d.vin || null,
+    masaKg: d.max_weight_legal != null ? Number(d.max_weight_legal) : null,
+    euro: d.emission_class || null, axe: axe, tip: d.vehicle_type || null,
+  };
+}
+
+// Profilul de taxare al unui vehicul, ca sa se vada pe ecran EXACT ce sta la baza calculului.
+// Daca ecranul l-ar citi din lista incarcata in browser, cele doua ar putea sa se desparta tacut —
+// iar aici se afiseaza bani.
+app.get('/api/tollro/profil/:imei', requireAuth, withScope, async (req, res) => {
+  try {
+    const imei = String(req.params.imei || '');
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const prof = await _tollroProfil(imei);
+    if (!prof) return res.status(404).json({ error: 'Vehicul negasit' });
+    const g = await _tollroGrila();
+    const cat = tollro.categorieDupaMasa(prof.masaKg);
+    const euro = tollro.euroNormalizat(prof.euro);
+    res.json({
+      vehicul: prof,
+      incadrare: cat ? {
+        categorie: cat, euro: euro || 'euro3', euroCunoscut: !!euro,
+        leiPerKm: g.tarife[cat][euro || 'euro3'],
+      } : null,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Estimare din kilometri DAȚI (introduși de om sau veniți din altă parte).
+app.post('/api/tollro/estimate', requireAuth, withScope, async (req, res) => {
+  try {
+    const imei = String((req.body && req.body.imei) || '');
+    if (!imei || !canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const prof = await _tollroProfil(imei);
+    if (!prof) return res.status(404).json({ error: 'Vehicul negăsit' });
+    const km = (req.body && req.body.km) || {};
+    const rez = tollro.estimeaza({ masaKg: prof.masaKg, euro: prof.euro }, km, await _tollroGrila());
+    res.json({ vehicul: prof, rezultat: rez });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Estimare din TRASEUL DEJA PARCURS — asta nu poate face niciun calculator public: are nevoie de
+// istoricul GPS al mașinii. Punctele se rărește la un eșantion la ~250 m (destul ca să prindem
+// schimbarea tipului de drum, fără să inundăm OpenStreetMap), fiecare eșantion primește clasa
+// drumului, iar distanța dintre eșantioane se pune în dreptul clasei de la care pleacă.
+app.post('/api/tollro/din-istoric', requireAuth, withScope, async (req, res) => {
+  try {
+    const imei = String((req.body && req.body.imei) || '');
+    if (!imei || !canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const prof = await _tollroProfil(imei);
+    if (!prof) return res.status(404).json({ error: 'Vehicul negăsit' });
+
+    const from = req.body.from, to = req.body.to;
+    if (!from || !to) return res.status(400).json({ error: 'Alege intervalul' });
+    if (Date.parse(to) - Date.parse(from) > 8 * 24 * 3600 * 1000) {
+      return res.status(400).json({ error: 'Interval prea lung — maxim 8 zile odată (datele despre drumuri se iau de la OpenStreetMap, care are limite de uz).' });
+    }
+
+    let hist = [];
+    try { hist = await db.getDeviceHistory(imei, from, to, 20000); } catch (e) { hist = []; }
+    const pts = hist.filter(function (p) { return p.latitude != null && p.longitude != null; })
+      .map(function (p) { return [Number(p.latitude), Number(p.longitude)]; });
+    if (pts.length < 2) return res.json({ vehicul: prof, rezultat: null, error: 'Nu există traseu în intervalul ales.' });
+
+    // Rărire la ~250 m: păstrăm primul punct, apoi doar cele care s-au depărtat destul.
+    const PAS_M = 250;
+    const esant = [pts[0]];
+    let ultim = pts[0];
+    for (let i = 1; i < pts.length; i++) {
+      if (haversineDistance(ultim[0], ultim[1], pts[i][0], pts[i][1]) * 1000 >= PAS_M) { esant.push(pts[i]); ultim = pts[i]; }
+    }
+    if (esant.length < 2) return res.json({ vehicul: prof, rezultat: null, error: 'Vehiculul aproape nu s-a deplasat în intervalul ales.' });
+
+    // Modulul de drumuri e optional la pornire (require intr-un try) — daca lipseste, spunem clar
+    // ca functia e indisponibila, nu cadem cu 500 pe „classesForPoints of null".
+    if (!roadlimits || typeof roadlimits.classesForPoints !== 'function') {
+      return res.status(503).json({ error: 'Datele despre tipul drumurilor nu sunt disponibile pe acest server.' });
+    }
+    let cls;
+    try { cls = await roadlimits.classesForPoints(esant); }
+    catch (e) { return res.status(e.code === 'AREA' ? 400 : 502).json({ error: e.message }); }
+
+    // Distanța fiecărui segment merge la clasa punctului de la care pleacă. Segmentele fără drum
+    // identificat (off-road, zonă fără date OSM) se raportează separat — nu le împingem în „netaxat"
+    // ca și cum am ști că nu se taxează.
+    const km = { autostrada: 0, national: 0, alte: 0 };
+    let kmNecunoscut = 0;
+    for (let i = 1; i < esant.length; i++) {
+      const d = haversineDistance(esant[i - 1][0], esant[i - 1][1], esant[i][0], esant[i][1]);
+      const hw = cls.classes[i - 1];
+      if (hw == null) { kmNecunoscut += d; continue; }
+      km[tollro.clasaDinOsm(hw)] += d;
+    }
+    for (const k of Object.keys(km)) km[k] = Math.round(km[k] * 10) / 10;
+    kmNecunoscut = Math.round(kmNecunoscut * 10) / 10;
+
+    const rez = tollro.estimeaza({ masaKg: prof.masaKg, euro: prof.euro }, km, await _tollroGrila());
+    if (kmNecunoscut > 0) rez.avertismente.push(kmNecunoscut.toString().replace('.', ',') + ' km nu s-au putut încadra pe un drum cunoscut (zonă fără date OSM sau în afara carosabilului) — nu sunt taxați în estimarea de mai sus.');
+    res.json({
+      vehicul: prof, rezultat: rez, km, kmNecunoscut,
+      esantioane: esant.length, zone: cls.tiles, traseu: esant,
+      atribuire: cls.attribution, sursa: 'traseul real al vehiculului + tipul drumului din OpenStreetMap',
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // ─── Suport clienți — mesaje din butonul headset (UI). Persistate (vizibile super-admin) + email best-effort. ───
 app.post('/api/support', requireAuth, withCompany, async (req, res) => {

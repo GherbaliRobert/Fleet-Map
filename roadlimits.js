@@ -89,7 +89,9 @@ async function _overpassBbox(s, w, n, e) {
         const pts = el.geometry.map(g => [g.lat, g.lon]);
         let mnLa = 90, mnLo = 180, mxLa = -90, mxLo = -180;
         for (const [a, b] of pts) { if (a < mnLa) mnLa = a; if (a > mxLa) mxLa = a; if (b < mnLo) mnLo = b; if (b > mxLo) mxLo = b; }
-        ways.push({ maxspeed: ms, estimated: estimated, bbox: [mnLa, mnLo, mxLa, mxLo], pts });
+        // `hw` = clasa drumului (motorway/trunk/primary/…). Până acum o foloseam doar ca să deducem
+        // limita când lipsea `maxspeed`, apoi o aruncam — iar taxa rutieră se calculează exact pe ea.
+        ways.push({ maxspeed: ms, estimated: estimated, hw: String(tags.highway || ''), ref: String(tags.ref || ''), bbox: [mnLa, mnLo, mxLa, mxLo], pts });
       }
       return ways;
     } catch (e) { lastErr = e; }
@@ -197,4 +199,76 @@ async function limitsForPoints(points) {
   return { limits, estimated, attribution: ATTRIBUTION, ways: ways.length };
 }
 
-module.exports = { limitsForPoints, snapPoints, parseMaxspeed, ATTRIBUTION };
+// ── Clasa drumului pentru fiecare punct (pentru taxa rutieră pe kilometru) ─────────────────────
+// De ce nu merge cu o singură interogare: `_waysFor` refuză suprafețele mari (AREA_GUARD), iar un
+// traseu Clinceni–Brașov acoperă de câteva ori limita. Deci împărțim traseul în bucăți consecutive,
+// fiecare destul de mică pentru o interogare, și le luăm pe rând. Bucățile se cache-uiesc după
+// coordonate rotunjite, așa că al doilea camion pe același coridor nu mai interoghează nimic.
+const TILE_AREA = 0.05;     // deg² per bucată — sub AREA_GUARD, cu marjă
+const MAX_TILES = 40;       // plafon DUR: peste el refuzăm explicit, nu ținem omul 5 minute în „se încarcă"
+
+function _arie(pts) {
+  let s = 90, w = 180, n = -90, e = -180;
+  for (const p of pts) {
+    const la = +p[0], lo = +p[1];
+    if (!isFinite(la) || !isFinite(lo)) continue;
+    if (la < s) s = la; if (la > n) n = la; if (lo < w) w = lo; if (lo > e) e = lo;
+  }
+  if (s > n) return 0;
+  return (n - s + 0.006) * (e - w + 0.006);
+}
+
+// Taie lista de puncte în bucăți CONSECUTIVE, fiecare sub TILE_AREA.
+function _bucati(points) {
+  const out = [];
+  let cur = [];
+  for (const p of points) {
+    cur.push(p);
+    if (cur.length >= 3 && _arie(cur) > TILE_AREA) {
+      out.push(cur);
+      cur = [p];              // DUPLICAT intenționat: p e ultimul punct al bucății închise ȘI primul
+                              // celei următoare. Fără suprapunere s-ar pierde câte un punct la fiecare
+                              // graniță, iar lista de clase s-ar decala față de lista de puncte — adică
+                              // exact felul de eroare care nu se vede, dar strică suma de plată.
+    }
+  }
+  if (cur.length) out.push(cur);
+  return out;
+}
+
+// Pentru fiecare punct [lat,lng], clasa drumului celui mai apropiat (≤ MATCH_M m), altfel null.
+// Întoarce { classes: [ 'motorway' | 'primary' | … | null ], refs: [ 'A1' | 'DN1' | null ], tiles }.
+async function classesForPoints(points) {
+  if (!Array.isArray(points) || points.length < 2) return { classes: (points || []).map(() => null), refs: [], tiles: 0, attribution: ATTRIBUTION };
+  if (points.length > MAX_POINTS) points = points.slice(0, MAX_POINTS);
+  const bucati = _bucati(points);
+  if (bucati.length > MAX_TILES) {
+    const err = new Error('Perioada aleasă acoperă un traseu prea lung pentru datele OSM (' + bucati.length + ' zone, maxim ' + MAX_TILES + '). Alege un interval mai scurt.');
+    err.code = 'AREA';
+    throw err;
+  }
+  const classes = [], refs = [];
+  for (const b of bucati) {
+    let ways = null;
+    try { ways = await _waysFor(b); } catch (e) { ways = null; }   // o bucată căzută nu strică tot traseul
+    // Prima bucată contribuie cu toate punctele; următoarele sar peste primul (e ultimul celei dinainte).
+    const start = (classes.length === 0) ? 0 : 1;
+    for (let i = start; i < b.length; i++) {
+      const plat = +b[i][0], plng = +b[i][1];
+      if (!ways || !isFinite(plat) || !isFinite(plng)) { classes.push(null); refs.push(null); continue; }
+      let bestHw = null, bestRef = null, bestD = MATCH_M;
+      for (const wy of ways) {
+        const bb = wy.bbox;
+        if (plat < bb[0] - 0.001 || plat > bb[2] + 0.001 || plng < bb[1] - 0.001 || plng > bb[3] + 0.001) continue;
+        for (let k = 1; k < wy.pts.length; k++) {
+          const d = _distToSeg(plat, plng, wy.pts[k - 1][0], wy.pts[k - 1][1], wy.pts[k][0], wy.pts[k][1]);
+          if (d < bestD) { bestD = d; bestHw = wy.hw || null; bestRef = wy.ref || null; }
+        }
+      }
+      classes.push(bestHw); refs.push(bestRef);
+    }
+  }
+  return { classes, refs, tiles: bucati.length, attribution: ATTRIBUTION };
+}
+
+module.exports = { limitsForPoints, snapPoints, classesForPoints, parseMaxspeed, ATTRIBUTION };

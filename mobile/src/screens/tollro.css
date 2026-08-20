@@ -1,0 +1,55 @@
+/* tollro.css — taxa rutieră pe kilometru. Aceleași forme ca pe web (.tr-*): cele două aplicații
+   trebuie să arate ca un singur produs, nu ca două care fac același lucru. */
+.tr-din { font-size: 10.5px; font-weight: 800; color: var(--accent); background: rgba(63,224,125,.12);
+  padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.tr-h { font-size: 12.5px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.tr-mic { font-size: 11.5px; color: var(--text-muted); line-height: 1.45; margin-top: 6px; }
+
+.tr-sel { width: 100%; padding: 10px 11px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--bg-dark); color: var(--text-primary); font-family: inherit; font-size: 13.5px; }
+
+/* Profilul vehiculului: citit din fișă, NU tastat. Câmpul gol se vede roșu — tocmai lipsa lui
+   schimbă suma de plată. */
+.tr-profil { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 7px; margin-top: 10px; }
+.tr-f { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 6px 9px; min-width: 0; }
+.tr-f span { display: block; font-size: 10px; color: var(--text-muted); font-weight: 700; }
+.tr-f b { display: block; font-size: 12.5px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-f b.gol { color: var(--red); font-weight: 600; }
+
+.tr-nota { font-size: 12.5px; line-height: 1.45; border-radius: 10px; padding: 9px 11px; margin-top: 9px; border: 1px solid; }
+.tr-nota.verde  { color: var(--accent); border-color: rgba(63,224,125,.4); background: rgba(63,224,125,.10); }
+.tr-nota.galben { color: #f59e0b; border-color: #f59e0b55; background: #f59e0b14; }
+.tr-nota.rosu   { color: var(--red); border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.10); }
+.tr-nota b { color: var(--text-primary); }
+
+.tr-tabs { display: flex; gap: 6px; }
+.tr-tab { flex: 1; padding: 8px 6px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-dark);
+  color: var(--text-muted); font-family: inherit; font-size: 12px; font-weight: 700; }
+.tr-tab.on { border-color: var(--accent); color: var(--text-primary); background: rgba(63,224,125,.12); }
+
+.tr-linii2 { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.tr-lb { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-muted); font-weight: 700; }
+.tr-lb input { padding: 9px 11px; border-radius: 11px; border: 1px solid var(--border);
+  background: var(--bg-dark); color: var(--text-primary); font-family: inherit; font-size: 13.5px; }
+.tr-act { width: 100%; margin-top: 10px; border-radius: 12px; }
+
+.tr-sumar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+  padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
+.tr-sumar span { display: block; font-size: 10px; color: var(--text-muted); font-weight: 700; }
+.tr-sumar b { font-size: 15px; font-weight: 800; }
+.tr-sumar .tot { text-align: right; }
+.tr-sumar .tot b { font-size: 23px; color: var(--accent); }
+
+.tr-linie { margin-bottom: 11px; }
+.tr-linie .cap { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; }
+.tr-linie .cap b { margin-left: auto; font-weight: 800; }
+.tr-linie .pct { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.tr-linie .sub { font-size: 11px; color: var(--text-muted); margin: 2px 0 4px 16px; }
+.tr-linie .bara { height: 5px; border-radius: 3px; background: var(--bg-dark); overflow: hidden; }
+.tr-linie .bara i { display: block; height: 100%; border-radius: 3px; }
+
+.tr-grid { border-collapse: collapse; font-size: 11px; width: 100%; }
+.tr-grid th, .tr-grid td { border: 1px solid var(--border); padding: 5px 6px; text-align: center; white-space: nowrap; }
+.tr-grid thead th { background: var(--bg-dark); font-size: 10px; color: var(--text-muted); }
+.tr-grid tbody th { background: var(--bg-dark); text-align: left; font-size: 10.5px; }
+.tr-grid td.presupus { background: #f59e0b12; color: #f59e0b; }

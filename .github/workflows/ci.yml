@@ -44,6 +44,7 @@ jobs:
           node test_billing.js
           node verify_fueltheft.js
           node verify_fuel_parcare.js
+          node verify_tollro.js
 
       # 3) Smoke — server embedded (PGlite + SEED_TEST): izolare multi-tenant + RBAC
       - name: Smoke tests (server)

@@ -14,7 +14,7 @@
   // ── Containere view (injectate o singură dată) ──
   function ensureContainers() {
     [['etransport-view', 'fa-truck-fast', 'e-Transport (ANAF)'],
-     ['etoll-view', 'fa-road', 'E-Toll'],
+     ['etoll-view', 'fa-road', 'Taxa de drum (TollRo)'],
      ['tahograf-view', 'fa-id-card', 'Tahograf']].forEach(function (v) {
       if (el(v[0])) return;
       var d = document.createElement('div');
@@ -102,42 +102,198 @@
     box.innerHTML = '<div class="dm-sim-head"><b>' + s.points + '</b> coordonate trimise · <span class="dm-muted">' + s.elapsedSec + 's</span> <span class="dm-live">● LIVE</span></div>' + rows;
   }
 
-  /* ═══════════════ MODUL 2: E-Toll & Roviniete ═══════════════ */
-  var _etollChart = null;
+  /* ═══════════════ MODUL 2: TollRo — taxa rutieră pe kilometru ═══════════════ */
+  // Deosebirea față de calculatoarele publice (unde tastezi numărul și VIN-ul oricărui camion):
+  // aici vehiculul se ALEGE DIN FLOTĂ, iar profilul de taxare vine din fișa lui. Nu poți calcula
+  // pentru o mașină care nu e a ta, și nu mai tastezi de fiecare dată masa, axele și norma Euro.
+  var _tr = { cfg: null, imei: '', profil: null, sursa: 'istoric', rezultat: null };
+
   window.openEtollDemo = async function () {
     ensureContainers();
-    var cfg = await api('/api/demo-modules/config').catch(function () { return {}; });
-    el('etoll-view-mode').innerHTML = modeBadge((cfg.etoll && cfg.etoll.mode) || 'demo');
-    var prov = await api('/api/etoll/providers').catch(function () { return { providers: [], selected: '' }; });
+    _tr.cfg = await api('/api/tollro/config').catch(function () { return null; });
+    // Fara eticheta „DEMO": calculul e REAL — tarifele sunt cele publicate, vehiculul e din flota,
+    // kilometrii vin din traseul lui. Provizorii sunt doar cateva valori din grila, iar alea sunt
+    // marcate acolo unde sunt. O eticheta „DEMO" peste tot i-ar face pe oameni sa nu creada nici
+    // cifrele adevarate.
+    var _d = _tr.cfg && _tr.cfg.grila ? _tr.cfg.grila.aplicabilDin : null;
+    el('etoll-view-mode').innerHTML = _d
+      ? '<span class="dm-badge dm-real" title="Data de la care se aplica taxa">din ' + esc(trData(_d)) + '</span>' : '';
+    trRender();
+  };
+
+  function trData(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); return m ? (m[3] + '.' + m[2] + '.' + m[1]) : String(iso || ''); }
+  function trNum(v) { return Number(v || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function trKm(v) { return Number(v || 0).toLocaleString('ro-RO', { maximumFractionDigits: 1 }); }
+
+  function trRender() {
+    var azi = new Date().toISOString().slice(0, 10);
+    var acum7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    var g = _tr.cfg && _tr.cfg.grila;
     el('etoll-view-body').innerHTML =
-      '<div class="dm-card"><h3>E-Toll Europa — costuri estimate</h3>' +
-        '<div class="dm-row" style="align-items:center"><label class="dm-lbl" style="margin:0">Furnizor extern:</label>' +
-        '<select id="etoll-provider" class="dm-input" style="width:160px" onchange="etollSetProvider()"><option value="">— niciunul —</option>' +
-        (prov.providers || []).map(function (p) { return '<option' + (p === prov.selected ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') + '</select></div>' +
-        '<div class="dm-toll-total" id="etoll-total"></div>' +
-        '<canvas id="etoll-chart" height="150"></canvas>' +
-        '<div class="dm-muted" id="etoll-src" style="font-size:11px;margin-top:6px"></div>' +
-      '</div>';
-    etollLoadCosts();
-  };
-  // Cardul „Acte vehicul" a fost mutat în secțiunea Documente (Management) / fișa vehiculului — E-Toll rămâne doar costuri toll.
-  window.etollSetProvider = async function () {
-    var p = el('etoll-provider').value;
-    await api('/api/etoll/provider', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: p }) });
-    toast(p ? ('Furnizor: ' + p) : 'Furnizor deconectat', 'success');
-  };
-  async function etollLoadCosts() {
-    var c = await api('/api/etoll/costs?days=30').catch(function () { return null; }); if (!c) return;
-    el('etoll-total').innerHTML = '<b>' + c.totalEur.toLocaleString('ro-RO') + ' €</b> / 30 zile · ' + c.totalKm.toLocaleString('ro-RO') + ' km';
-    el('etoll-src').textContent = c.source;
-    var ctx = el('etoll-chart'); if (!ctx || !window.Chart) return;
-    if (_etollChart) _etollChart.destroy();
-    _etollChart = new Chart(ctx, {
-      type: 'bar',
-      data: { labels: c.perCountry.map(function (x) { return x.country; }), datasets: [{ label: 'Cost (€)', data: c.perCountry.map(function (x) { return x.costEur; }), backgroundColor: '#3FE07D' }] },
-      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-    });
+      '<div class="dm-card">' +
+        '<h3>Vehiculul</h3>' +
+        '<div class="dm-row" style="align-items:center;flex-wrap:wrap">' +
+          '<select id="tr-veh" class="dm-input" style="min-width:230px" onchange="trAlegeVehicul()">' + vehicleOptions() + '</select>' +
+          '<span class="dm-muted" style="font-size:11.5px">Doar vehiculele din flota ta — profilul se ia din fișă.</span>' +
+        '</div>' +
+        '<div id="tr-profil" style="margin-top:10px"></div>' +
+      '</div>' +
+
+      '<div class="dm-card">' +
+        '<h3>Kilometrii</h3>' +
+        '<div class="tr-tabs">' +
+          '<button class="tr-tab' + (_tr.sursa === 'istoric' ? ' on' : '') + '" onclick="trSursa(\'istoric\')"><i class="fas fa-route"></i> Din traseul parcurs</button>' +
+          '<button class="tr-tab' + (_tr.sursa === 'manual' ? ' on' : '') + '" onclick="trSursa(\'manual\')"><i class="fas fa-keyboard"></i> Îi introduc eu</button>' +
+        '</div>' +
+        (_tr.sursa === 'istoric'
+          ? '<div class="dm-row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">' +
+              '<label class="dm-lbl">De la<input type="date" id="tr-de-la" class="dm-input" value="' + acum7 + '" max="' + azi + '"></label>' +
+              '<label class="dm-lbl">Până la<input type="date" id="tr-pana-la" class="dm-input" value="' + azi + '" max="' + azi + '"></label>' +
+              '<button class="rax-btn primary" onclick="trDinIstoric()"><i class="fas fa-calculator"></i> Calculează din traseu</button>' +
+            '</div>' +
+            '<div class="dm-muted" style="font-size:11.5px;margin-top:6px">Luăm traseul real al mașinii și, pentru fiecare bucată, aflăm din OpenStreetMap ce fel de drum e. Maxim 8 zile odată.</div>'
+          : '<div class="dm-row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">' +
+              '<label class="dm-lbl">Autostradă / expres (km)<input type="number" id="tr-km-a" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
+              '<label class="dm-lbl">Drum național (km)<input type="number" id="tr-km-n" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
+              '<label class="dm-lbl">Alte drumuri (km)<input type="number" id="tr-km-x" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
+              '<button class="rax-btn primary" onclick="trManual()"><i class="fas fa-calculator"></i> Calculează</button>' +
+            '</div>') +
+      '</div>' +
+
+      '<div class="dm-card" id="tr-rezultat"><h3>Detalii costuri</h3>' +
+        '<div class="dm-muted">Alege vehiculul și perioada, apoi apasă „Calculează".</div></div>' +
+
+      (g ? '<div class="dm-card"><h3>Grila de tarife' + (_tr.cfg.editabil ? '' : ' (doar informativ)') + '</h3>' +
+        '<div class="dm-muted" style="font-size:11.5px;margin-bottom:8px">Se aplică din <b>' + esc(trData(g.aplicabilDin)) + '</b>. ' +
+        'Valorile se stabilesc prin ordonanță și s-au tot amânat — de aceea stau aici, editabile, nu îngropate în cod.</div>' +
+        trGrilaHtml(g, _tr.cfg.editabil) + '</div>' : '');
+    if (_tr.imei) { var sel = el('tr-veh'); if (sel) sel.value = _tr.imei; trAlegeVehicul(); }
   }
+
+  function trGrilaHtml(g, editabil) {
+    var cat = _tr.cfg.categorii, euro = _tr.cfg.euro;
+    var h = '<div style="overflow-x:auto"><table class="tr-grid"><thead><tr><th>Masă</th>' +
+      euro.map(function (e) { return '<th>' + esc(e.eticheta) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    cat.forEach(function (c) {
+      h += '<tr><th>' + esc(c.eticheta) + '</th>';
+      euro.forEach(function (e) {
+        var t = g.tarife[c.key][e.key];
+        h += '<td' + (t.presupus ? ' class="presupus" title="Tarif nepublicat oficial — estimarea noastră"' : '') + '>' +
+          (editabil
+            ? '<input type="number" step="0.01" min="0" max="10" value="' + t.autostrada + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="autostrada" class="tr-cel">' +
+              '<input type="number" step="0.01" min="0" max="10" value="' + t.national + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="national" class="tr-cel">'
+            : '<span>' + t.autostrada + '</span><span>' + t.national + '</span>') +
+          (t.presupus ? '<i class="fas fa-triangle-exclamation"></i>' : '') + '</td>';
+      });
+      h += '</tr>';
+    });
+    h += '</tbody></table></div><div class="dm-muted" style="font-size:11px;margin-top:6px">Prima cifră = autostradă/drum expres, a doua = drum național (lei/km). ' +
+      '<i class="fas fa-triangle-exclamation" style="color:#f59e0b"></i> = tarif nepublicat încă, estimat de noi.</div>';
+    if (editabil) h += '<div class="dm-row" style="margin-top:10px;align-items:flex-end;gap:10px">' +
+      '<label class="dm-lbl">Se aplică din<input type="date" id="tr-din" class="dm-input" value="' + esc(g.aplicabilDin) + '"></label>' +
+      '<button class="rax-btn primary" onclick="trSalveazaGrila()"><i class="fas fa-save"></i> Salvează grila</button></div>';
+    return h;
+  }
+
+  window.trSursa = function (s) { _tr.sursa = s; trRender(); };
+
+  window.trAlegeVehicul = async function () {
+    var sel = el('tr-veh'); if (!sel) return;
+    _tr.imei = sel.value;
+    var box = el('tr-profil'); if (!box) return;
+    if (!_tr.imei) { _tr.profil = null; box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se citește fișa…</div>';
+    // Profilul vine de la SERVER, nu din lista încărcată în browser: pe ecran trebuie să scrie exact
+    // datele cu care se face calculul, altfel cele două s-ar putea despărți tăcut.
+    var r = await api('/api/tollro/profil/' + encodeURIComponent(_tr.imei)).catch(function () { return null; });
+    if (!r || r.error || !r.vehicul) { box.innerHTML = '<div class="tr-nota rosu">' + esc((r && r.error) || 'Nu s-a putut citi fișa vehiculului') + '</div>'; return; }
+    _tr.profil = r;
+    var d = r.vehicul, masa = d.masaKg || null;
+    var lipsa = [];
+    if (!masa) lipsa.push('masa maximă autorizată');
+    if (!d.euro) lipsa.push('norma de poluare');
+    var camp = function (et, v) { return '<div class="tr-f"><span>' + et + '</span><b' + (v ? '' : ' class="gol"') + '>' + esc(v || '—') + '</b></div>'; };
+    var inc = r.incadrare;
+    box.innerHTML =
+      '<div class="tr-profil">' +
+        camp('Număr', d.numar) + camp('VIN', d.vin) +
+        camp('MTMA', masa ? (masa / 1000).toLocaleString('ro-RO') + ' t' : '') +
+        camp('Axe', d.axe ? String(d.axe) : '') +
+        camp('Normă', d.euro) +
+      '</div>' +
+      (masa && masa < 3500
+        ? '<div class="tr-nota rosu"><i class="fas fa-circle-info"></i> Sub 3,5 t — vehiculul <b>nu intră la TollRo</b>. Pentru el rămâne rovinieta, plătită pe perioadă.</div>'
+        : inc
+          ? '<div class="tr-nota verde"><i class="fas fa-circle-check"></i> Se taxează cu <b>' +
+            inc.leiPerKm.autostrada.toLocaleString('ro-RO', { minimumFractionDigits: 2 }) + ' lei/km</b> pe autostradă și <b>' +
+            inc.leiPerKm.national.toLocaleString('ro-RO', { minimumFractionDigits: 2 }) + ' lei/km</b> pe drum național.' +
+            (inc.euroCunoscut ? '' : ' (normă necunoscută → tarif maxim)') + '</div>'
+          : '') +
+      (lipsa.length ? '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> Lipsește <b>' + lipsa.join('</b> și <b>') +
+        '</b> din fișa vehiculului. ' + (masa ? 'Calculăm la tariful maxim până o completezi.' : 'Fără masă nu putem încadra vehiculul.') + '</div>' : '');
+  };
+
+  function trCereVehicul() {
+    if (!_tr.imei) { toast('Alege întâi vehiculul din flotă', 'error'); return false; }
+    return true;
+  }
+
+  window.trManual = async function () {
+    if (!trCereVehicul()) return;
+    var km = { autostrada: parseFloat(el('tr-km-a').value) || 0, national: parseFloat(el('tr-km-n').value) || 0, alte: parseFloat(el('tr-km-x').value) || 0 };
+    var r = await postJSON('/api/tollro/estimate', { imei: _tr.imei, km: km });
+    trAfiseaza(r, null);
+  };
+
+  window.trDinIstoric = async function () {
+    if (!trCereVehicul()) return;
+    var box = el('tr-rezultat');
+    box.innerHTML = '<h3>Detalii costuri</h3><div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se citește traseul și se întreabă OpenStreetMap ce fel de drumuri sunt… poate dura până la un minut.</div>';
+    var from = el('tr-de-la').value, to = el('tr-pana-la').value;
+    var r = await postJSON('/api/tollro/din-istoric', { imei: _tr.imei, from: from + 'T00:00:00', to: to + 'T23:59:59' });
+    trAfiseaza(r, r && r.atribuire);
+  };
+
+  function trAfiseaza(r, atribuire) {
+    var box = el('tr-rezultat'); if (!box) return;
+    if (!r || r.error) { box.innerHTML = '<h3>Detalii costuri</h3><div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc((r && r.error) || 'Eroare la calcul') + '</div>'; return; }
+    var z = r.rezultat;
+    if (!z) { box.innerHTML = '<h3>Detalii costuri</h3><div class="dm-muted">Fără rezultat.</div>'; return; }
+    if (!z.aplicabil) {
+      box.innerHTML = '<h3>Detalii costuri</h3><div class="tr-nota rosu"><i class="fas fa-circle-info"></i> ' + esc(z.motiv) + '</div>';
+      return;
+    }
+    var maxCost = Math.max.apply(null, z.linii.map(function (l) { return l.cost; }).concat([0.01]));
+    var kmTotal = z.linii.reduce(function (a, l) { return a + l.km; }, 0);
+    box.innerHTML =
+      '<h3>Detalii costuri <span class="dm-muted" style="font-weight:400;font-size:12px">· ' + esc(z.categorieEticheta) + ' · ' + esc(z.euroEticheta) + '</span></h3>' +
+      '<div class="tr-sumar"><div><span>Distanță totală</span><b>' + trKm(kmTotal) + ' km</b></div>' +
+        '<div class="tot"><span>Total</span><b>' + trNum(z.total) + ' ' + esc(z.moneda) + '</b></div></div>' +
+      z.linii.map(function (l) {
+        return '<div class="tr-linie">' +
+          '<div class="cap"><span class="pct" style="background:' + l.culoare + '"></span>' + esc(l.eticheta) +
+            '<b>' + (l.taxabil ? trNum(l.cost) + ' ' + esc(z.moneda) : 'netaxat') + '</b></div>' +
+          '<div class="sub">' + trKm(l.km) + ' km' + (l.taxabil ? ' · ' + l.leiPerKm.toLocaleString('ro-RO', { minimumFractionDigits: 2 }) + ' lei/km' : '') + '</div>' +
+          '<div class="bara"><i style="width:' + Math.round((l.cost / maxCost) * 100) + '%;background:' + l.culoare + '"></i></div>' +
+        '</div>';
+      }).join('') +
+      (r.kmNecunoscut ? '' : '') +
+      (z.avertismente || []).map(function (a) { return '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> ' + esc(a) + '</div>'; }).join('') +
+      '<div class="dm-muted" style="font-size:11px;margin-top:8px">Costuri estimative — tarifele se stabilesc de autoritățile române și se pot modifica.' +
+      (r.sursa ? ' Sursa kilometrilor: ' + esc(r.sursa) + '.' : '') + (atribuire ? ' ' + esc(atribuire) + '.' : '') + '</div>';
+  }
+
+  window.trSalveazaGrila = async function () {
+    var g = { aplicabilDin: el('tr-din').value, tarife: {} };
+    document.querySelectorAll('.tr-cel').forEach(function (i) {
+      var c = i.getAttribute('data-c'), e = i.getAttribute('data-e'), k = i.getAttribute('data-k');
+      g.tarife[c] = g.tarife[c] || {}; g.tarife[c][e] = g.tarife[c][e] || {};
+      g.tarife[c][e][k] = parseFloat(i.value);
+    });
+    var r = await api('/api/tollro/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grila: g }) });
+    if (r && r.ok) { _tr.cfg.grila = r.grila; toast('Grila de tarife a fost salvată', 'success'); trRender(); }
+    else toast((r && r.error) || 'Nu s-a putut salva', 'error');
+  };
 
   /* ═══════════════ MODUL 3: Tahograf ═══════════════ */
   var _tachoChart = null;
