@@ -5,12 +5,17 @@ const ok = (c, m) => { c ? pass++ : fail++; console.log((c ? 'PASS' : 'FAIL') + 
 const t0 = Date.parse('2026-06-12T08:00:00Z');
 const pt = (min, ign, fuelPct, speed) => ({ timestamp: new Date(t0 + min * 60000).toISOString(), latitude: 44, longitude: 26, speed: speed || 0, io_data: { ignition: ign, can_fuel_level_pct: fuelPct } });
 
-async function run(hist) {
+// Pragul companiei TREBUIE trimis: din 26.07 („onestitate: trei locuri în care interfața spunea
+// altceva decât făcea codul"), `fuelTheftL` nesetat înseamnă „utilizatorul a ales Dezactivat", nu
+// „prag 0" — și oprește detecția cu totul, inclusiv pe procente. Testul rula cu praguri goale, deci
+// verifica o cale moartă și pica din 26.07 încoace, în CI, fără ca nimeni să se uite.
+// Ultimul caz de mai jos apără chiar regula asta, ca să nu se piardă în cealaltă direcție.
+async function run(hist, thresholds) {
   const base = {
     db: { getDeviceHistory: async () => hist, getDeviceFull: async () => ({ vehicle_type: 'Camion', tank_capacity: 400 }) },
     imeis: ['T1'],
     livePositions: new Map([['T1', { name: 'Cap tractor', timestamp: hist[hist.length - 1].timestamp, io: hist[hist.length - 1].io_data }]]),
-    companyId: 1, alertThresholds: {}
+    companyId: 1, alertThresholds: (thresholds === undefined ? { fuelTheftL: 20 } : thresholds)
   };
   const r = await agents.runAgent('watch', base);
   return (r.findings || []).find(f => f.fkey === 'fuel_theft_T1') || null;
@@ -37,6 +42,11 @@ async function run(hist) {
   // 5) Scădere normală în mers (fără oprire→pornire) → NU declanșează regula de furt post-pornire
   f = await run([pt(0,1,55,30), pt(10,1,50,40), pt(20,1,45,50)]);
   ok(!f, 'Scădere graduală în mers (fără stop→start) → fără alertă furt post-pornire (corect)');
+
+  // 6) Compania NU și-a setat pragul → detecția e oprită cu totul (decizia din 26.07).
+  //    Aceleași date ca la cazul 1, care ACOLO dau alertă.
+  f = await run([pt(0,1,55,30), pt(5,0,55,0), pt(40,0,55,0), pt(60,1,55,0), pt(62,1,50,5), pt(64,1,45,10), pt(70,1,45,20)], {});
+  ok(!f, 'Fără prag setat pe companie → agentul nu semnalează furt (corect, dar vezi jurnalul)');
 
   console.log('\nRESULT: ' + pass + ' pass / ' + fail + ' fail');
   process.exit(fail ? 1 : 0);

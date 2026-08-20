@@ -169,7 +169,7 @@
         <div class="stats-bar">
           <button type="button" class="stat-chip active total" data-filter="all" onclick="setFilter('all')" title="Arată toate vehiculele">
             <div class="stat-value" id="stat-total">0</div>
-            <div class="stat-label">Total</div>
+            <div class="stat-label">Total vehicule</div>
           </button>
           <button type="button" class="stat-chip online" data-filter="pornit" onclick="setFilter('pornit')" title="Arată vehiculele cu motorul pornit">
             <div class="stat-value" id="stat-pornit">0</div>
@@ -2992,6 +2992,22 @@ const pozitii = await r.json();</code></pre>
     // Așa dispăruse complet lista din „Utilizatori": `renderUsersGrouped` arunca înainte de a scrie în DOM,
     // deci se vedea doar formularul de adăugare, ca și cum n-ar exista niciun cont.
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+
+    // Căutarea vehiculelor, într-un singur loc. Numărul de înmatriculare se scrie cu spații
+    // („B 154 UIP"), dar omul îl tastează cum îi vine: „b154uip", „B-154-UIP". Înainte, oricare
+    // dintre variantele astea nu găsea nimic — și părea că mașina nu e în aplicație.
+    // Scoatem spațiile, cratimele, punctele și diacriticele din AMÂNDOUĂ părțile, apoi comparăm.
+    // „dacia logan" rămâne găsit: devine „dacialogan", iar numele devine „dacialogan3".
+    function raNorm(x) {
+      return String(x == null ? '' : x).toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // ș/ț/ă/î → s/t/a/i
+        .replace(/[\s\-\._\/]/g, '');
+    }
+    function raCauta(q, ...campuri) {
+      var nq = raNorm(q);
+      if (!nq) return true;
+      return raNorm(campuri.join(' ')).indexOf(nq) >= 0;
+    }
     let currentUser = null;
     var ioMappingsCache = {}; // imei -> { '<id>': {name,type,unit,capacity,rawMin,rawMax,scale,offset} } (mapate de super-admin)
     function ioMapValue(m, raw) {
@@ -4281,7 +4297,7 @@ const pozitii = await r.json();</code></pre>
       let rows = vehAll.filter(d => (vehScope === 'archived') ? d.status === 'archived' : d.status !== 'archived');
       const _coF = document.getElementById('veh-co-filter'); const _fco = (currentUser && currentUser.isSuper && _coF && _coF.value) ? String(_coF.value) : '';
       if (_fco) rows = rows.filter(d => String(d.company_id) === _fco);
-      if (q) rows = rows.filter(d => ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.brand || '') + ' ' + (d.imei || '')).toLowerCase().includes(q));
+      if (q) rows = rows.filter(d => raCauta(q, d.name, d.plate, d.brand, d.imei));
       document.getElementById('veh-count').textContent = rows.length + ' vehicule';
       const now = Date.now();
       document.getElementById('veh-rows').innerHTML = rows.map(d => {
@@ -6393,7 +6409,7 @@ const pozitii = await r.json();</code></pre>
       var byGroup = new Map(); var ung = [];
       _repCascadeVeh.forEach(function (d) {
         if (d.status === 'archived') return;
-        if (q && ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '')).toLowerCase().indexOf(q) < 0) return;
+        if (q && !raCauta(q, d.name, d.plate, d.imei)) return;
         if (d.group_id != null) { if (!byGroup.has(d.group_id)) byGroup.set(d.group_id, []); byGroup.get(d.group_id).push(d); }
         else ung.push(d);
       });
@@ -10169,14 +10185,7 @@ const pozitii = await r.json();</code></pre>
       if (window._mapSel instanceof Set) arr = arr.filter(d => window._mapSel.has(String(d.imei)));
 
       // Search filter
-      if (searchQuery) {
-        arr = arr.filter(d => {
-          const name = (d.name || '').toLowerCase();
-          const imei = (d.imei || '').toLowerCase();
-          const plate = (d.plate || '').toLowerCase();
-          return name.includes(searchQuery) || imei.includes(searchQuery) || plate.includes(searchQuery);
-        });
-      }
+      if (searchQuery) arr = arr.filter(d => raCauta(searchQuery, d.name, d.imei, d.plate));
 
       // Status filter (pe motor: pornit / mișcare / staționat / oprit)
       if (currentFilter === 'pornit') arr = arr.filter(vehPornit);
@@ -11402,7 +11411,7 @@ const pozitii = await r.json();</code></pre>
       var q = ((document.getElementById('vp-q') || {}).value || '').trim().toLowerCase();
       if (!q) return _vpAll;
       return _vpAll.filter(function (d) {
-        return [d.name, d.plate, d.imei, d.company_name].some(function (x) { return String(x || '').toLowerCase().indexOf(q) >= 0; });
+        return raCauta(q, d.name, d.plate, d.imei, d.company_name);
       });
     }
     function vpRender() {
@@ -18383,7 +18392,7 @@ const pozitii = await r.json();</code></pre>
       all.forEach(function (d) { counts[_raxDevBucket(d)]++; });
       var rows = all.filter(function (d) {
         if (_raxDevFilter !== 'all' && _raxDevBucket(d) !== _raxDevFilter) return false;
-        if (q && ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + (d.company_name || '')).toLowerCase().indexOf(q) < 0) return false;
+        if (q && !raCauta(q, d.name, d.plate, d.imei, d.company_name)) return false;
         return true;
       }).sort(function (a, b) { return (Number(b.last_position_time) || 0) - (Number(a.last_position_time) || 0); });
       var chip = function (k, label) { return '<button class="rax-dev-chip' + (_raxDevFilter === k ? ' on' : '') + '" onclick="raxDevFilter(\'' + k + '\')">' + label + ' <span class="cnt">' + counts[k] + '</span></button>'; };
@@ -18557,7 +18566,7 @@ const pozitii = await r.json();</code></pre>
         bulkUrl: '/api/devices/company/bulk', bulkIdsKey: 'imeis',
         name: function (d) { return d.name || d.imei; },
         sub: function (d) { return [d.plate, d.imei].filter(Boolean).join(' · '); },
-        text: function (d, co) { return ((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + co).toLowerCase(); }
+        text: function (d, co) { return raNorm((d.name || '') + ' ' + (d.plate || '') + ' ' + (d.imei || '') + ' ' + co); }
       },
       users: {
         label: 'utilizatori', idKey: 'id', empty: 'Niciun utilizator.',
@@ -18622,7 +18631,7 @@ const pozitii = await r.json();</code></pre>
       var sel = _raxMove.selected[entity];
       var demo = _raxDemoIds();
       var all = (_raxMove.data[entity] || []).filter(cfg.keep || function () { return true; }).filter(function (d) { return !demo[d.company_id]; });
-      var list = all.filter(function (d) { if (!q) return true; return cfg.text(d, coMap[d.company_id] || '').indexOf(q) >= 0; });
+      var list = all.filter(function (d) { if (!q) return true; return cfg.text(d, coMap[d.company_id] || '').indexOf(raNorm(q)) >= 0; });
       if (!list.length) { box.innerHTML = '<div class="rax-co-meta">' + cfg.empty + '</div>'; _raxUpdateMoveCount(); return; }
       box.innerHTML = list.slice(0, 80).map(function (d) {
         var id = String(d[cfg.idKey]);
@@ -18662,7 +18671,7 @@ const pozitii = await r.json();</code></pre>
       var sel = _raxMove.selected[entity];
       var demo = _raxDemoIds();
       (_raxMove.data[entity] || []).filter(cfg.keep || function () { return true; }).filter(function (d) { return !demo[d.company_id]; }).forEach(function (d) {
-        if (q && cfg.text(d, coMap[d.company_id] || '').indexOf(q) < 0) return;
+        if (q && cfg.text(d, coMap[d.company_id] || '').indexOf(raNorm(q)) < 0) return;
         var id = String(d[cfg.idKey]);
         if (on) sel[id] = true; else delete sel[id];
       });

@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon';
 import { ReportChart } from '../components/ReportChart';
 import { InsightPanel } from '../components/InsightPanel';
 import { exportReport, exportHistoryReport } from '../lib/export';
+import { raCauta } from '../lib/format';
 import './reports.css';
 import '../screens/detail.css'; // pentru .sheet*
 
@@ -186,7 +187,7 @@ export function Reports() {
   }
 
   const filteredTypes = (catKey: string) => types.filter((t) => t.cat === catKey && (!tq || t.label.toLowerCase().includes(tq.toLowerCase())));
-  const filteredVeh = list.filter((v) => !vq || (`${v.name || ''} ${v.plate || ''} ${v.imei}`).toLowerCase().includes(vq.toLowerCase()))
+  const filteredVeh = list.filter((v) => raCauta(vq, v.name, v.plate, v.imei))
     .slice().sort((a, b) => (a.name || a.imei).localeCompare(b.name || b.imei));
 
   return (

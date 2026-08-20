@@ -82,9 +82,26 @@ export function ReportChart({ def }: { def: ReportChartDef }) {
             backgroundColor: 'rgba(11,14,17,.95)', borderColor: grid, borderWidth: 1, cornerRadius: 9, padding: 10,
             titleColor: '#ffffff', bodyColor: '#cfd6dd', titleFont: { weight: 700, size: 12.5 }, bodyFont: { size: 12 }, displayColors: !single,
             callbacks: {
+              // Pe o axă X liniară (ex. prețul carburantului, unde X = ziua ca număr), Chart.js
+              // scrie în tooltip valoarea BRUTĂ — „20.407" în loc de „27 nov. '25". `xTick` era
+              // aplicat doar etichetelor de sub grafic, nu și aici. Acum e același format în
+              // ambele locuri, ca pe web.
+              title: (items: any[]) => {
+                const it = items && items[0];
+                if (!it) return '';
+                const f = (def as any).xTick;
+                if ((def as any).xLinear && f && it.parsed && it.parsed.x != null) return f(it.parsed.x);
+                return it.label != null ? String(it.label) : '';
+              },
               label: (c: any) => {
                 const v = (c.parsed && c.parsed.y != null) ? c.parsed.y : c.parsed;
-                return (c.dataset.label ? c.dataset.label + ': ' : '') + fmtNum(v);
+                // Cifra fără unitate nu spune nimic: „6,85" poate fi lei, litri sau km.
+                const u = (def as any).unit ? ' ' + (def as any).unit : '';
+                const zec = (def as any).decimals;
+                const txt = Number.isFinite(Number(zec)) && Number.isFinite(Number(v))
+                  ? Number(v).toFixed(Number(zec)).replace('.', ',')
+                  : fmtNum(v);
+                return (c.dataset.label ? c.dataset.label + ': ' : '') + txt + u;
               },
             },
           },

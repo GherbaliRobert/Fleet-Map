@@ -53,3 +53,19 @@ export function voltageStr(io?: any): string | null {
   if (io && typeof io.external_voltage === 'number' && io.external_voltage > 0) return (io.external_voltage / 1000).toFixed(2) + ' V';
   return null;
 }
+
+// Căutarea vehiculelor, într-un singur loc (oglinda lui raCauta din aplicația web).
+// Numărul de înmatriculare se scrie cu spații („B 154 UIP"), dar omul îl tastează cum îi vine:
+// „b154uip", „B-154-UIP". Înainte, oricare dintre variante nu găsea nimic — și părea că mașina
+// nu e în aplicație. Scoatem spații, cratime, puncte și diacritice din AMÂNDOUĂ părțile.
+// „dacia logan" rămâne găsit: devine „dacialogan", iar numele devine „dacialogan3".
+export function raNorm(x: any): string {
+  return String(x == null ? '' : x).toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[\s\-\._\/]/g, '');
+}
+export function raCauta(q: any, ...campuri: any[]): boolean {
+  const nq = raNorm(q);
+  if (!nq) return true;
+  return raNorm(campuri.join(' ')).indexOf(nq) >= 0;
+}

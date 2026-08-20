@@ -454,10 +454,26 @@
        lungă e eticheta („Total" nu se strânge, „Staționat" nu se lățește). */
     .stats-bar {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 6px;
       padding: 0 18px 14px;
     }
+
+    /* „Total" e altceva decât celelalte patru: nu e o stare, e ÎNTREAGA flotă — deci stă singur,
+       lat, deasupra. Cinci cadrane egale îl puneau pe picior de egalitate cu „Staționat" și
+       strângeau toate etichetele până deveneau greu de citit în bara îngustă. Acum numărul care
+       contează cel mai des se vede de la distanță, iar cele patru stări au cu un sfert mai mult loc. */
+    .stat-chip.total {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px 11px 13px;
+      margin-bottom: 2px;
+      border-left-width: 4px;
+    }
+    .stat-chip.total .stat-value { font-size: 31px; }
+    .stat-chip.total .stat-label { font-size: 12px; margin-top: 0; letter-spacing: 0; }
 
     /* „Card premium": accent colorat pe muchia din stânga + fundal în degrade ușor spre culoarea stării.
        Înlocuiește vechea dungă de sus — se citește la fel de repede care cadran e care, dar arată mai îngrijit. */
@@ -506,6 +522,9 @@
       margin-top: 2px;
       line-height: 1.2;
       white-space: nowrap;                  /* mai bine strâns decât rupt în două rânduri inegale */
+      overflow: hidden;
+      text-overflow: ellipsis;              /* plasă de siguranță: pe o bară foarte îngustă apare
+                                               „În mișca…", nu o literă retezată la jumătate */
     }
 
     /* „Total" folosește verdele viu de brand (--accent, #3FE07D) — iese cel mai mult în evidență.
@@ -1840,6 +1859,10 @@
       .stat-chip { padding: 9px 3px 8px; border-radius: 12px; }
       .stat-chip .stat-value { font-size: 18px; }
       .stat-chip .stat-label { font-size: 9.5px; }
+      /* Regula de mai sus pune padding-left 3px pentru cadranele mici; cardul lat își păstrează al lui. */
+      .stat-chip.total { padding: 10px 12px; }
+      .stat-chip.total .stat-value { font-size: 27px; }
+      .stat-chip.total .stat-label { font-size: 11.5px; }
       .sidebar-search { padding: 0 12px; }
       .device-card { padding: 12px; }
       .device-card-name .name { font-size: 13px; }
@@ -1946,10 +1969,15 @@
       .info-grid { grid-template-columns: 1fr; }
       .info-item.full { grid-column: 1; }
 
-      /* Ecrane înguste: cinci cadrane pe un rând ar face etichetele ilizibile → 3 + 2, tot pe grilă. */
-      .stats-bar { gap: 5px; grid-template-columns: repeat(3, 1fr); }
+      /* Ecrane înguste: cardul lat sus + patru cadrane dedesubt. Pe telefon bara ocupă tot ecranul,
+         deci cele patru încap; înainte erau cinci și trebuiau rupte 3 + 2, cu un rând ciunt. */
+      .stats-bar { gap: 5px; grid-template-columns: repeat(4, 1fr); }
       .stat-chip .stat-value { font-size: 17px; }
-      .stat-chip .stat-label { font-size: 10px; letter-spacing: 0; }
+      /* 10px cu letter-spacing 0 tăia „În mișcare" pe barele sub 280 px. Cu 9 px și spațiere
+         negativă încape de la ~240 px în sus — restul îl prinde ellipsis-ul de mai sus. */
+      .stat-chip .stat-label { font-size: 9px; letter-spacing: -.3px; }
+      .stat-chip.total .stat-value { font-size: 29px; }
+      .stat-chip.total .stat-label { font-size: 12px; }
 
       #sidebar {
         width: 100vw;

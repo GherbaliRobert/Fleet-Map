@@ -20,6 +20,58 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Alarma falsă de combustibil, căutarea după număr și cadranele de stare — `COMMIT_HASH`
+
+**1. „Scădere de la 43 L la 32 L" — fără să se fi întâmplat nimic.** Robert a primit notificarea pe
+20.08. Nu senzorul era de vină, ci regula noastră.
+
+Alerta „cât a stat oprit" compara **o singură citire** de la oprirea motorului cu **o singură
+citire** de la pornire. Iar citirea de la pornire e cea mai nesigură din tot ciclul: sonda nu s-a
+așezat încă, multe magistrale CAN raportează în primele cadre un nivel vechi, iar dacă mașina a
+parcat pe pantă și pornește pe drept diferența e de câțiva litri. La un rezervor mare, 11 litri
+înseamnă sub 3% — adică sub eroarea obișnuită a unei sonde.
+
+Alerta „în mers" avea deja apărarea corectă: ține o suspiciune o oră și o anulează dacă nivelul
+revine. Cea de la parcare n-avea niciuna. Acum are aceeași disciplină: se așteaptă ca sonda să se
+așeze, iar alerta pleacă doar dacă nivelul **rămâne** jos câteva minute. Dacă revine, nu se mai
+trimite nimic.
+
+A doua cauză, mai ascunsă: aplicația citește nivelul din trei surse (rezervor calibrat, nivel
+calculat, CAN brut) — **scări diferite**. Dacă la oprire mașina raporta una și la pornire alta,
+comparam mere cu pere, iar „scăderea" era pur și simplu diferența dintre două moduri de a măsura.
+Acum se compară doar sursă cu sursă.
+
+Întârzierea de câteva minute nu costă nimic: dacă motorina chiar a fost furată noaptea, paguba s-a
+produs demult. Dar alarmele false sunt scumpe — după două-trei, omul începe să ignore notificările.
+
+**Ce am găsit pe drum, tot la combustibil:** proba automată care apăra detectarea furtului **pica de
+pe 26 iulie**, fără ca cineva să observe. Motivul: pe 26 iulie s-a decis, corect, că „prag nesetat"
+înseamnă „utilizatorul a ales Dezactivat", nu „prag 0" — dar proba n-a fost actualizată. Am
+reparat-o și am adăugat un caz care apără chiar regula asta.
+⚠ **Consecință de discutat:** o companie care nu și-a setat pragul de furt **nu primește deloc**
+alerte de furt de la agentul RA Watch. E o alegere deliberată, dar clientul n-are de unde ști. Trecut
+la „De verificat înainte de lansare".
+
+**2. Căutarea vehiculelor găsește numărul scris oricum.** Căuta și după nume, și după număr, și după
+IMEI — dar numărul se scrie cu spații („B 154 UIP"), iar oamenii îl tastează cum le vine: „b154uip",
+„B-154-UIP". Niciuna dintre variante nu găsea nimic, și părea că mașina nu e în aplicație. Acum se
+ignoră spațiile, cratimele și diacriticele, în toate cele opt locuri unde se caută un vehicul (web +
+telefon) — o singură regulă, nu opt.
+
+**3. Cadranele de stare, remodelate.** „Total" nu e o stare, e întreaga flotă — stătea pe picior de
+egalitate cu „Staționat" și strângea toate etichetele. Acum e un **card lat deasupra**, cu numărul
+mare, iar cele patru stări stau dedesubt și au cu un sfert mai mult loc. La fel în aplicația de
+telefon — cele două trebuie să arate ca un singur produs.
+
+**4. Graficul de preț la carburant (telefon).** La atingere scria „20.407" — numărul brut al zilei,
+nu data. Acum scrie data și prețul cu unitate: „27 nov. '25 — Motorină: 6,85 lei/L".
+
+- **Ce vede fondatorul:** la fel ca clientul.
+- **Ce vede clientul:** mai puține alarme false la combustibil, își găsește mașina după număr oricum
+  ar scrie, și un panou de stare mai limpede.
+
+APK reconstruit.
+
 ### AMÂNDOI · Notificările arată acum lucrul despre care vorbesc — `3544e92`
 
 Trei notificări deschideau aceeași hartă generică: o panglică de viteză pe drumul parcurs. Bună
@@ -1630,6 +1682,12 @@ cheia propriu-zisă rămâne exclusă, ca să nu ajungă niciodată acolo.
 ---
 
 ## De verificat înainte de lansare
+
+- **Furtul de combustibil e OPRIT pentru companiile care nu și-au setat pragul.** Decizia din
+  26.07 („prag nesetat = utilizatorul a ales Dezactivat") e corectă ca principiu, dar un client nou
+  nu are de unde ști că trebuie să intre în setări ca să primească alertele. De ales una din două:
+  fie punem un prag implicit rezonabil la crearea companiei, fie scriem explicit în interfață
+  „detecția e oprită până setezi un prag". Acum nu se vede nici una, nici alta. *(20.08)*
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
 

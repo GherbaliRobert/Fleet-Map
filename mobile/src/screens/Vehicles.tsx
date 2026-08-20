@@ -5,6 +5,7 @@ import { statusOf, countByStatus, type Status } from '../lib/status';
 import { VehicleCard } from '../components/VehicleCard';
 import { VehicleMap } from '../components/VehicleMap';
 import { Icon } from '../components/Icon';
+import { raCauta } from '../lib/format';
 import './vehicles.css';
 
 type Filter = 'all' | Status;
@@ -26,18 +27,20 @@ export function Vehicles() {
   const off = offlineMinutes.value;
   const list = vehicles.value;
   const counts = countByStatus(list, off);
-  const qq = q.trim().toLowerCase();
+
   const filtered = list
     .filter((v) => filter === 'all' || statusOf(v, off).status === filter)
-    .filter((v) => !qq || (`${v.name || ''} ${v.plate || ''} ${v.imei}`).toLowerCase().includes(qq))
+    .filter((v) => raCauta(q, v.name, v.plate, v.imei))
     .sort((a, b) => (a.name || a.imei).localeCompare(b.name || b.imei));
 
-  const FILTERS: { k: Filter; label: string; n: number }[] = [
-    { k: 'all', label: 'Toate', n: counts.total },
-    { k: 'moving', label: 'În mișcare', n: counts.moving },
-    { k: 'idle', label: 'Staționate', n: counts.idle },
-    { k: 'stopped', label: 'Oprite', n: counts.stopped },
-    { k: 'offline', label: 'Fără transmisie', n: counts.offline },
+  // „Toate" nu e o stare, e ÎNTREAGA flotă — deci stă singur, lat, deasupra celorlalte patru.
+  // Pe un rând de cinci pastile egale, numărul care se citește cel mai des arăta ca oricare altul.
+  const TOTAL: { k: Filter; label: string; n: number; culoare: string } = { k: 'all', label: 'Total vehicule', n: counts.total, culoare: 'var(--accent)' };
+  const FILTERS: { k: Filter; label: string; n: number; culoare: string }[] = [
+    { k: 'moving', label: 'În mișcare', n: counts.moving, culoare: '#f59e0b' },
+    { k: 'idle', label: 'Staționate', n: counts.idle, culoare: '#eab308' },
+    { k: 'stopped', label: 'Oprite', n: counts.stopped, culoare: 'var(--red)' },
+    { k: 'offline', label: 'Fără semnal', n: counts.offline, culoare: 'var(--text-muted)' },
   ];
 
   return (
@@ -56,11 +59,16 @@ export function Vehicles() {
           <input placeholder="Caută vehicul, nr., IMEI" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
         </div>
       )}
-      {/* Chips de stare — vizibile și pe hartă, ca să poți comuta filtrul (În mișcare / Staționate / …) */}
-      <div class="vfilters">
+      {/* Cadranele SUNT filtrul — vizibile și pe hartă, ca să poți comuta (În mișcare / Staționate / …) */}
+      <div class="vstats">
+        <button class={'vstat total' + (filter === TOTAL.k ? ' on' : '')} style={'--cip:' + TOTAL.culoare}
+          onClick={() => setFilter(TOTAL.k)}>
+          <span class="n">{TOTAL.n}</span><span class="l">{TOTAL.label}</span>
+        </button>
         {FILTERS.map((f) => (
-          <button class={'vfilter' + (filter === f.k ? ' on' : '')} onClick={() => setFilter(f.k)}>
-            {f.label} <span class="cnt">{f.n}</span>
+          <button class={'vstat' + (filter === f.k ? ' on' : '')} style={'--cip:' + f.culoare}
+            onClick={() => setFilter(f.k)}>
+            <span class="n">{f.n}</span><span class="l">{f.label}</span>
           </button>
         ))}
       </div>

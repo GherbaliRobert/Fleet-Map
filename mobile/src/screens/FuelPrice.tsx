@@ -35,7 +35,7 @@ export function FuelPrice() {
   const dnum = (day: string) => { const t = Date.parse(day + 'T00:00:00'); return isFinite(t) ? Math.round(t / 86400000) : null; };
   const xs: number[] = hist ? hist.map((h) => dnum(h.day)).filter((x): x is number => x != null) : [];
   const trend = (hist && xs.length) ? {
-    type: 'line', title: 'Preț național vs. prețul companiei (lei/L)', xLinear: true, xTick: fpTick, yZero: false, labels: [],
+    type: 'line', title: 'Preț național vs. prețul companiei (lei/L)', xLinear: true, xTick: fpTick, yZero: false, unit: 'lei/L', decimals: 2, labels: [],
     datasets: [
       ...TYPES.map((t) => ({ label: t.label, color: t.color, data: hist.filter((h) => dnum(h.day) != null && h[t.k] != null).map((h) => ({ x: dnum(h.day), y: h[t.k] })) })),
       ...TYPES.filter((t) => { const v = parseFloat(comp[t.k]); return Number.isFinite(v) && v > 0; })
