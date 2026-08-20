@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
-### AMÂNDOI · Actele dau acum și datele tehnice + primii pași de căutare pe Google — `be879a4`
+### AMÂNDOI · Actele dau acum și datele tehnice + primii pași de căutare pe Google — `47a4437`
 
 **1. „De ce nu preia puterea și cilindreea?"** Pentru că le căutam doar în talon, unde au coduri
 standard. O poliță RCA le conține adesea — dar scrise în cuvinte („Capacitate cilindrica: 1598 cm3"),
