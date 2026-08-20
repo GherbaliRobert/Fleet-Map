@@ -88,7 +88,7 @@ desen.
 
 **Clientul vede:** la fel.
 
-### AMÂNDOI · Taxa de drum (TollRo) — calculator pe flota ta — `COMMIT_HASH`
+### AMÂNDOI · Taxa de drum (TollRo) — calculator pe flota ta — `085f30d`
 
 Din toamnă, camioanele de peste 3,5 t nu mai plătesc rovinietă pe perioadă, ci **taxă pe kilometru**,
 în funcție de tipul drumului, masă și normă de poluare. Concurența a scos deja un calculator; l-am
