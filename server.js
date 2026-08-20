@@ -8049,6 +8049,83 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
         }
       }
     }
+
+    // Zona (geofence) la care se referă alerta. Fără geometria ei, harta arăta un traseu oarecare,
+    // iar întrebarea firească — „unde e zona și pe unde a intrat?" — rămânea fără răspuns.
+    // Motorul de alerte pune deja `geofenceId` în notificare; aici aducem forma propriu-zisă.
+    try {
+      const gid = (n.data || {}).geofenceId;
+      if (gid != null) {
+        const gr = await db.pool.query('SELECT id, name, type, coordinates, color FROM geofences WHERE id = $1', [gid]);
+        const g = gr.rows[0];
+        if (g) {
+          const coord = typeof g.coordinates === 'string' ? (function () { try { return JSON.parse(g.coordinates); } catch (e) { return null; } })() : g.coordinates;
+          out.geofence = { id: g.id, name: g.name, type: g.type, color: g.color || null, coordinates: coord };
+        }
+      }
+    } catch (e) { /* zona ștearsă între timp → harta cade elegant pe punctul evenimentului */ }
+
+    // Scadențe: notificarea spune „ITP expiră în 5 zile", dar modalul nu spunea CARE act, cu ce număr,
+    // de la cine și dacă avem scanul lui. Aici aducem rândul propriu-zis — și îl recalculăm la ZIUA DE
+    // AZI, nu la ziua în care s-a trimis notificarea (o notificare de acum două săptămâni spunea „mai
+    // ai 30 de zile" când, de fapt, mai erau 16).
+    try {
+      const dd = n.data || {};
+      const _zile = (iso) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+      if (dd.docId != null) {
+        const q = await db.pool.query('SELECT * FROM vehicle_documents WHERE id = $1', [dd.docId]);
+        const doc = q.rows[0];
+        // Actul poate fi al altei companii doar dacă notificarea a fost greșit legată; verificăm oricum.
+        const vizibil = doc && (req.isSuper || req.companyId == null || doc.company_id == null || Number(doc.company_id) === Number(req.companyId));
+        if (vizibil) {
+          let veh = null;
+          if (doc.imei) { try { const vr = await db.pool.query('SELECT name, plate FROM devices WHERE imei = $1', [doc.imei]); if (vr.rows[0]) veh = [vr.rows[0].name, vr.rows[0].plate].filter(Boolean).join(' · '); } catch (e) {} }
+          out.document = {
+            id: doc.id, docType: doc.doc_type, number: doc.number || null, issuer: doc.issuer || null,
+            issueDate: doc.issue_date || null, expiryDate: doc.expiry_date || null,
+            cost: doc.cost != null ? Number(doc.cost) : null,
+            days: doc.expiry_date ? _zile(doc.expiry_date) : null,
+            imei: doc.imei || null, vehicle: veh,
+            // Scanul actului: îl anunțăm, nu-l trimitem — poate avea sute de KB, iar modalul îl cere
+            // separat doar dacă omul apasă „Vezi actul".
+            hasFile: !!doc.file_b64, fileName: doc.file_name || null, fileMime: doc.file_mime || null,
+          };
+        }
+      } else if (dd.driverId != null) {
+        const q = await db.pool.query('SELECT id, name, license_number, license_expiry, phone, company_id FROM drivers WHERE id = $1', [dd.driverId]);
+        const dr2 = q.rows[0];
+        if (dr2 && (req.isSuper || req.companyId == null || dr2.company_id == null || Number(dr2.company_id) === Number(req.companyId))) {
+          out.driverDoc = {
+            id: dr2.id, name: dr2.name, number: dr2.license_number || null, phone: dr2.phone || null,
+            expiryDate: dr2.license_expiry || null,
+            days: dr2.license_expiry ? _zile(dr2.license_expiry) : null,
+          };
+        }
+      } else if (String(dd.key || '').startsWith('vdoc-nodate-')) {
+        // Rezumatul săptămânal „acte fără dată de expirare": lista efectivă, ca omul să știe pe care
+        // să le completeze. Fără ea, notificarea spunea un număr și trimitea la căutat prin flotă.
+        const cid = Number(String(dd.key).replace('vdoc-nodate-', ''));
+        if (req.isSuper || req.companyId == null || Number(req.companyId) === cid) {
+          const q = await db.pool.query(
+            `SELECT vd.id, vd.doc_type, vd.imei, vd.number, d.name, d.plate
+               FROM vehicle_documents vd LEFT JOIN devices d ON d.imei = vd.imei
+              WHERE vd.company_id = $1 AND vd.expiry_date IS NULL
+              ORDER BY vd.doc_type LIMIT 60`, [cid]);
+          out.documentsFaraData = q.rows.map(r => ({
+            id: r.id, docType: r.doc_type, number: r.number || null, imei: r.imei || null,
+            vehicle: [r.name, r.plate].filter(Boolean).join(' · ') || null,
+          }));
+        }
+      }
+    } catch (e) { /* act șters între timp → modalul rămâne pe text, fără detalii */ }
+
+    // Tensiune scăzută: valoarea măsurată, ca să nu fie nevoie s-o citească din titlu.
+    if ((n.data || {}).alertType === 'low_voltage' || /tensiune/i.test(String(n.title || ''))) {
+      const dd = n.data || {};
+      let v = Number(dd.voltage);
+      if (!Number.isFinite(v)) { const m = String(n.body || n.title || '').match(/([\d.,]+)\s*V\b/i); if (m) v = parseFloat(m[1].replace(',', '.')); }
+      if (Number.isFinite(v)) out.voltage = Math.round(v * 10) / 10;
+    }
     res.json(out);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

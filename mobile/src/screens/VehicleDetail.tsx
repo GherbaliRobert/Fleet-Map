@@ -102,6 +102,10 @@ export function VehicleDetail() {
   const [groups, setGroups] = useState<any[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Venit din notificarea de scadență („ITP expiră în 3 zile") → deschidem direct editarea, unde
+  // stau actele. Fără asta, notificarea te lăsa în fișă și porneai să cauți butonul de editare.
+  const _cerutDocs = new URLSearchParams((loc.url || '').split('?')[1] || '').get('edit') === 'docs';
+
   function loadFull() { Api.deviceFull(imei).then(setFull).catch(() => {}); }
   useEffect(() => {
     loadFull();
@@ -126,6 +130,14 @@ export function VehicleDetail() {
     if (!drivers.length) Api.driversLite().then((d) => setDrivers(Array.isArray(d) ? d : [])).catch(() => {});
     if (!groups.length) Api.groupsAll().then((g) => setGroups(Array.isArray(g) ? g : [])).catch(() => {});
   }
+  // Deschiderea automată așteaptă fișa completă (openEdit citește din `full`); altfel formularul
+  // s-ar deschide gol și ar salva peste datele vehiculului cu câmpuri necompletate.
+  useEffect(() => {
+    if (!_cerutDocs || !full || editOpen || !canManage) return;
+    openEdit();
+    setTimeout(() => { try { document.querySelector('.veh-docs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* */ } }, 260);
+  }, [full, _cerutDocs]);
+
   function setEF(k: string, val: any) { setEf((p) => ({ ...p, [k]: val })); }
 
   async function saveEdit() {

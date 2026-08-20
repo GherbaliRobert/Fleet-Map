@@ -7701,6 +7701,16 @@ const pozitii = await r.json();</code></pre>
         try { var p = document.getElementById('notif-panel'); if (p && p.style.display === 'flex') loadNotifications(); } catch (e) {}
       } catch (e) { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Marchează citit'; } }
     }
+    // Din notificarea de scadență direct în fila Documente a vehiculului. Fără ea, omul citea „ITP
+    // expiră în 3 zile", închidea modalul și pornea să caute mașina prin listă.
+    async function notifOpenVehicleDocs(imei) {
+      try { closeNotifDetail(); } catch (e) {}
+      try {
+        await openEditModal(imei);
+        var b = document.querySelector('#edit-modal .edit-tab[data-tab="documents"]');
+        if (b) switchEditTab('documents', b);
+      } catch (e) { toast('Nu s-a putut deschide fișa vehiculului', 'error'); }
+    }
     async function openNotifDetail(id) {
       var myReq = ++_notifDetailSeq; // captează deschiderea curentă — răspunsurile OSM întârziate de la o deschidere anterioară se ignoră
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
@@ -7719,6 +7729,13 @@ const pozitii = await r.json();</code></pre>
       var isIdle = !!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idl/i.test((d.title || '') + ' ' + (d.body || '')); // ralanti → loc + interval, nu panglică de viteză
       var isFuel = !isIdle && ((d.data && (d.data.alertType === 'fuel_theft' || d.data.alertType === 'fuel_drop')) || /scădere\s*(?:combustibil\s*)?[\d.,]+\s*l\b|furt combustibil/i.test((d.title || '') + ' ' + (d.body || ''))); // scădere/furt combustibil → loc + de la/la + cantitate
       var isSpeeding = !isIdle && !isFuel && /overspeed|speeding|vitez/i.test((d.type || '') + ' ' + (d.title || '')); // limita OSM DOAR la alerte de viteză (nu la idle/combustibil etc.)
+      // Zona: avem geometria de la server → o desenăm și încadrăm harta pe EA, nu pe un traseu oarecare.
+      var isZona = !!d.geofence || /geofence/i.test((d.data && d.data.alertType) || '') || /zon[ăa]/i.test(d.title || '');
+      // Tensiune: contează LOCUL unde stă mașina și valoarea, nu segmentul de drum parcurs.
+      var isTens = !isIdle && !isFuel && (/low_voltage/i.test((d.data && d.data.alertType) || '') || /tensiune/i.test(d.title || ''));
+      // Scadențe (documente, service): n-au poziție și n-au ce căuta pe hartă. Caseta goală gri era
+      // mai rea decât lipsa ei — arăta a defecțiune.
+      var isScadenta = /document_expiry|maintenance_due/i.test(d.type || '') || (!d.event && /expir|scaden/i.test((d.title || '') + ' ' + (d.body || '')));
       var rows = [];
       // Numele singur nu identifică mașina: poți avea trei „Dacia Logan 3" în flotă. Punem și numărul
       // de înmatriculare, luat din flota încărcată (serverul trimite în notificare doar numele).
@@ -7748,19 +7765,73 @@ const pozitii = await r.json();</code></pre>
         if (d.fuel.fromL != null && d.fuel.toL != null) rows.push(['Nivel combustibil', '<b>' + String(d.fuel.fromL).replace('.', ',') + ' L</b> → <b>' + String(d.fuel.toL).replace('.', ',') + ' L</b>']);
         if (d.fuel.drop != null) rows.push(['Cantitate scăzută', '<b style="color:#ef4444;">−' + String(d.fuel.drop).replace('.', ',') + ' L</b>' + (d.fuel.mode ? ' <span style="color:var(--text-muted);font-size:11px;">(' + (d.fuel.mode === 'parked' ? 'cât a stat oprit' : 'în mers') + ')</span>' : '')]);
       }
-      if (!isIdle && !isFuel && d.event && d.event.speed != null) rows.push(['Viteză în acel moment', '<b style="color:' + (d.event.speed >= (d.maxSpeed || 999) ? '#ef4444' : 'inherit') + '">' + d.event.speed + ' km/h</b>']);
-      if (!isIdle && !isFuel && d.maxSpeed) rows.push(['Viteză maximă pe segment', d.maxSpeed + ' km/h']);
-      if (d.event && d.event.address) rows.push(['Locație', esc(d.event.address)]);
-      if (d.event) rows.push(['Coordonate', d.event.lat.toFixed(5) + ', ' + d.event.lng.toFixed(5) + ' &nbsp;<a href="https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Google Maps</a> · <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Street View</a>']);
+      if (!isIdle && !isFuel && !isScadenta && d.event && d.event.speed != null) rows.push(['Viteză în acel moment', '<b style="color:' + (d.event.speed >= (d.maxSpeed || 999) ? '#ef4444' : 'inherit') + '">' + d.event.speed + ' km/h</b>']);
+      if (!isIdle && !isFuel && !isScadenta && d.maxSpeed) rows.push(['Viteză maximă pe segment', d.maxSpeed + ' km/h']);
+      if (isTens && d.voltage != null) rows.push(['Tensiune măsurată', '<b style="color:#f59e0b;">' + String(d.voltage).replace('.', ',') + ' V</b> <span style="color:var(--text-muted);font-size:11px;">(sub 12 V, bateria se descarcă)</span>']);
+      // SCADENȚE: până acum modalul repeta textul notificării și atât. Acum arată ACTUL — ce e, ce
+      // număr are, cine l-a emis, când expiră (recalculat LA ZI, nu la data notificării) — și duce
+      // direct la el. Asta e tot ce vrei să afli când îți sună telefonul că „ITP-ul expiră".
+      var scadHtml = '', scadBtns = '';
+      var _dLoc = function (s) { try { return new Date(s).toLocaleDateString('ro-RO'); } catch (e) { return String(s || '—'); } };
+      var _zileTxt = function (z) { return z < 0 ? ('EXPIRAT de ' + (-z) + (z === -1 ? ' zi' : ' zile')) : z === 0 ? 'EXPIRĂ ASTĂZI' : ('mai ' + (z === 1 ? 'este 1 zi' : 'sunt ' + z + ' zile')); };
+      var _zileCol = function (z) { return (z == null) ? 'var(--text-muted)' : (z < 0 || z <= 3) ? '#ef4444' : (z <= 14 ? '#f59e0b' : 'var(--accent)'); };
+      var _banner = function (z, sub) {
+        var c = _zileCol(z);
+        return '<div style="text-align:center;padding:14px 12px;border-radius:12px;margin-bottom:12px;border:1px solid ' + c + '55;background:' + c + '14;">' +
+          '<div style="font-size:19px;font-weight:800;color:' + c + ';">' + _zileTxt(z) + '</div>' +
+          (sub ? '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">' + sub + '</div>' : '') + '</div>';
+      };
+      if (d.document) {
+        var dc = d.document;
+        rows.push(['Act', '<b>' + esc(String(dc.docType || 'Document').toUpperCase()) + '</b>' + (dc.number ? ' · ' + esc(dc.number) : '')]);
+        if (dc.issuer) rows.push(['Emis de', esc(dc.issuer)]);
+        if (dc.issueDate) rows.push(['Data emiterii', _dLoc(dc.issueDate)]);
+        rows.push(['Expiră la', dc.expiryDate
+          ? '<b style="color:' + _zileCol(dc.days) + '">' + _dLoc(dc.expiryDate) + '</b>'
+          : '<span style="color:#ef4444;">fără dată — nu ești alertat</span>']);
+        if (dc.cost != null) rows.push(['Cost', Number(dc.cost).toFixed(2).replace('.', ',') + ' lei']);
+        if (dc.days != null) scadHtml = _banner(dc.days, dc.expiryDate ? ('până la ' + _dLoc(dc.expiryDate)) : '');
+        // „Vezi actul" apare doar dacă scanul chiar există — un buton care deschide o pagină goală e
+        // mai rău decât lipsa lui.
+        if (dc.hasFile) scadBtns += '<a class="rax-btn" href="/api/documents/' + dc.id + '/file" target="_blank" rel="noopener" style="flex:1;justify-content:center;"><i class="fas fa-eye"></i> Vezi actul</a>';
+        if (dc.imei) scadBtns += '<button class="rax-btn" style="flex:1;justify-content:center;" onclick="notifOpenVehicleDocs(\'' + esc(dc.imei) + '\')"><i class="fas fa-folder-open"></i> Documentele vehiculului</button>';
+      }
+      if (d.driverDoc) {
+        var dv = d.driverDoc;
+        rows.push(['Șofer', '<b>' + esc(dv.name || '—') + '</b>']);
+        if (dv.number) rows.push(['Permis nr.', esc(dv.number)]);
+        if (dv.phone) rows.push(['Telefon', '<a href="tel:' + esc(dv.phone) + '" style="color:var(--accent);">' + esc(dv.phone) + '</a>']);
+        rows.push(['Expiră la', dv.expiryDate ? '<b style="color:' + _zileCol(dv.days) + '">' + _dLoc(dv.expiryDate) + '</b>' : '—']);
+        if (dv.days != null) scadHtml = _banner(dv.days, dv.expiryDate ? ('până la ' + _dLoc(dv.expiryDate)) : '');
+      }
+      if (d.documentsFaraData && d.documentsFaraData.length) {
+        // Rezumatul „acte fără dată": lista efectivă. Un număr fără listă trimite omul să caute
+        // prin toată flota exact actele pe care aplicația le știe deja.
+        scadHtml = '<div style="border:1px solid #f59e0b55;background:#f59e0b14;border-radius:12px;padding:12px;margin-bottom:12px;">' +
+          '<div style="font-weight:700;color:#f59e0b;margin-bottom:8px;font-size:13px;"><i class="fas fa-triangle-exclamation"></i> Acte fără dată de expirare — nu ești alertat pentru ele</div>' +
+          d.documentsFaraData.map(function (x) {
+            return '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:5px 0;border-top:1px solid var(--border);font-size:12.5px;">' +
+              '<span><b>' + esc(String(x.docType || 'act').toUpperCase()) + '</b>' + (x.number ? ' · ' + esc(x.number) : '') +
+              (x.vehicle ? ' <span style="color:var(--text-muted);">— ' + esc(x.vehicle) + '</span>' : '') + '</span>' +
+              (x.imei ? '<button class="btn-sm" onclick="notifOpenVehicleDocs(\'' + esc(x.imei) + '\')" title="Completează data"><i class="fas fa-pen"></i></button>' : '') +
+            '</div>';
+          }).join('') + '</div>';
+      }
+      if (isZona && d.geofence) rows.push(['Zona', '<b>' + esc(d.geofence.name || ('#' + d.geofence.id)) + '</b>']);
+      // Pe o scadență, unde se afla mașina când a sunat memento-ul nu spune nimic — doar lungește lista.
+      if (!isScadenta && d.event && d.event.address) rows.push(['Locație', esc(d.event.address)]);
+      if (d.event && !isScadenta) rows.push(['Coordonate', d.event.lat.toFixed(5) + ', ' + d.event.lng.toFixed(5) + ' &nbsp;<a href="https://www.google.com/maps?q=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Google Maps</a> · <a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + d.event.lat + ',' + d.event.lng + '" target="_blank" style="color:var(--accent);">Street View</a>']);
       if (d.event && isSpeeding) rows.push(['Limită drum (OSM)', '<span id="notif-rl" style="color:var(--text-muted);">se verifică…</span>']);
       var detailHtml = rows.map(function (r) { return '<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--text-muted);flex-shrink:0;">' + r[0] + '</span><span style="font-weight:600;text-align:right;">' + r[1] + '</span></div>'; }).join('');
       body.innerHTML =
         '<div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;"><span style="width:11px;height:11px;border-radius:50%;flex-shrink:0;background:' + sevC + ';"></span><div style="font-size:15.5px;font-weight:700;">' + esc(d.title || d.type) + '</div></div>' +
         (d.body && !isIdle && !(isFuel && d.fuel) ? '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">' + esc(d.body) + '</div>' : '') +
-        '<div id="notif-detail-map" style="height:300px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg-dark);margin-bottom:12px;"></div>' +
+        scadHtml +
+        (isScadenta || !d.event ? '' : '<div id="notif-detail-map" style="height:300px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg-dark);margin-bottom:12px;"></div>') +
         detailHtml +
-        (!d.event ? '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Fără poziție GPS pentru acest eveniment.</div>' : '') +
+        (!d.event && !isScadenta ? '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Fără poziție GPS pentru acest eveniment.</div>' : '') +
         (isIdle && d.body ? '<div style="font-size:12px;color:var(--text-muted);margin-top:10px;text-align:center;">' + esc(d.body) + '</div>' : '') +
+        (scadBtns ? '<div style="display:flex;gap:8px;margin-top:12px;">' + scadBtns + '</div>' : '') +
         (d.acknowledged
           ? '<div style="margin-top:14px;text-align:center;color:var(--accent);font-weight:600;font-size:13px;"><i class="fas fa-check-circle"></i> Marcat ca citit</div>'
           : '<button id="notif-ack-btn" class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxNotifAck(' + d.id + ', this)"><i class="fas fa-check"></i> Marchează citit</button>');
@@ -7793,6 +7864,60 @@ const pozitii = await r.json();</code></pre>
             L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 }).addTo(m).bindPopup('Scădere combustibil' + (d.fuel && d.fuel.drop != null ? ': −' + String(d.fuel.drop).replace('.', ',') + ' L' : ''));
             m.setView(ev, 16);
             setTimeout(function () { try { m.invalidateSize(); m.setView(ev, 16); } catch (e) {} }, 130);
+            _notifDetailMap = m;
+            return;
+          }
+
+          // ZONA: desenăm forma reală și încadrăm harta pe ea + pe punctul de trecere. Așa se vede
+          // dintr-o privire UNDE e zona și PE UNDE a intrat sau a ieșit mașina — întrebarea pentru
+          // care se deschide, de fapt, notificarea. Fără forma zonei, harta arăta un traseu oarecare.
+          if (isZona && d.geofence && d.geofence.coordinates) {
+            var g = d.geofence, cul = g.color || '#3b82f6', forma = null;
+            // Formatul zonelor în toată aplicația e PERECHEA [lat, lng] — așa le salvează editorul web
+            // (layerLatLngs) și așa le citește motorul de alerte (isPointInCircle/isPointInPolygon).
+            // Un `{lat, lng}` ar fi arătat rezonabil și n-ar fi desenat nimic, tăcut.
+            var pct = function (p) { return Array.isArray(p) ? [Number(p[0]), Number(p[1])] : [Number(p.lat), Number(p.lng)]; };
+            try {
+              if (g.type === 'circle' && g.coordinates.center) {
+                forma = L.circle(pct(g.coordinates.center), { radius: Number(g.coordinates.radius) || 200, color: cul, weight: 2, fillColor: cul, fillOpacity: .10 }).addTo(m);
+              } else if (Array.isArray(g.coordinates.line)) {
+                var lin = g.coordinates.line.map(pct);
+                // Coridorul e o linie cu lățime: îl desenăm gros, ca să se vadă ca o bandă, nu ca un traseu.
+                forma = L.polyline(lin, { color: cul, weight: Math.max(6, Math.min(30, (Number(g.coordinates.width) || 100) / 12)), opacity: .35 }).addTo(m);
+                L.polyline(lin, { color: cul, weight: 2, opacity: .9 }).addTo(m);
+              } else if (Array.isArray(g.coordinates)) {
+                forma = L.polygon(g.coordinates.map(pct), { color: cul, weight: 2, fillColor: cul, fillOpacity: .10 }).addTo(m);
+              }
+            } catch (e) { forma = null; }
+
+            // Bucata de traseu din jurul trecerii — arată din ce direcție a venit.
+            if (seg.length > 1) L.polyline(seg, { color: '#64748b', weight: 3, opacity: .5 }).addTo(m);
+
+            var intra = /intrare|enter/i.test((d.title || '') + ' ' + ((d.data && d.data.event) || ''));
+            L.circleMarker(ev, { radius: 9, color: '#fff', weight: 3, fillColor: intra ? '#22C55E' : '#EF4444', fillOpacity: 1 })
+              .addTo(m).bindPopup((intra ? 'A intrat' : 'A ieșit') + (g.name ? ' — ' + g.name : ''));
+
+            // Încadrare pe zonă + punct, cu o margine confortabilă. Dacă zona n-a putut fi desenată,
+            // rămânem pe punct, cu zoom mare — tot mai util decât o hartă la scară de județ.
+            setTimeout(function () {
+              try {
+                m.invalidateSize();
+                if (forma && forma.getBounds && forma.getBounds().isValid()) {
+                  m.fitBounds(forma.getBounds().extend(L.latLng(ev[0], ev[1])), { padding: [28, 28], maxZoom: 17 });
+                } else { m.setView(ev, 16); }
+              } catch (e) { try { m.setView(ev, 16); } catch (e2) {} }
+            }, 130);
+            _notifDetailMap = m;
+            return;
+          }
+
+          // TENSIUNE SCĂZUTĂ: contează unde stă mașina, nu cât de repede a mers. Panglica de viteză
+          // și punctul MAX n-au nicio legătură cu o baterie care se descarcă.
+          if (isTens) {
+            L.circle(ev, { radius: 40, color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: .12 }).addTo(m);
+            L.circleMarker(ev, { radius: 8, color: '#fff', weight: 2, fillColor: sevC, fillOpacity: 1 })
+              .addTo(m).bindPopup('Tensiune scăzută' + (d.voltage != null ? ': ' + String(d.voltage).replace('.', ',') + ' V' : ''));
+            setTimeout(function () { try { m.invalidateSize(); m.setView(ev, 17); } catch (e) {} }, 130);
             _notifDetailMap = m;
             return;
           }

@@ -20,6 +20,41 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Notificările arată acum lucrul despre care vorbesc — `COMMIT_HASH`
+
+Trei notificări deschideau aceeași hartă generică: o panglică de viteză pe drumul parcurs. Bună
+pentru o depășire de viteză, nepotrivită pentru restul. Acum fiecare arată ce trebuie.
+
+**1. Intrare / ieșire din zonă.** Harta desena traseul mașinii, dar **nu desena zona**. Se vedea o
+mașină pe un drum și scria „a intrat în zonă" — fără să se vadă unde e zona sau pe unde a trecut.
+
+Acum se desenează zona propriu-zisă (cerc, poligon sau coridor, cu culoarea ei) și harta se
+strânge pe ea plus punctul trecerii. Punctul e **verde la intrare și roșu la ieșire**, iar bucata
+de traseu dinainte arată din ce direcție a venit. Se vede dintr-o privire pe ce latură a intrat.
+
+**2. Tensiune scăzută.** Bateria se descarcă acolo unde stă mașina — cât de repede a mers înainte
+n-are nicio legătură. Harta arată acum **doar locul, la zoom mare**, fără panglica de viteză, iar
+în listă apare **valoarea măsurată** (ex. „11,3 V"), pe care înainte trebuia s-o citești din text.
+
+**3. Expirarea documentelor.** Aici era cel mai gol: scria „RCA expiră în 5 zile" și atât — plus o
+hartă cu locul unde se afla mașina când a sunat memento-ul, ceea ce nu spune nimic.
+
+Acum arată **actul**: ce e, ce număr are, cine l-a emis, când a fost emis, cât a costat, și un
+număr mare de zile rămase, colorat (roșu sub 3 zile, portocaliu sub 14). Zilele se recalculează
+**la ziua de azi** — o notificare de acum două săptămâni spunea „mai ai 30 de zile" când mai erau
+16. Două butoane: **„Vezi actul"** (apare doar dacă scanul chiar există) și **„Documentele
+vehiculului"**, care te duce direct în fișă, la fila cu acte. Harta și rândurile de viteză au
+dispărut de pe scadențe.
+
+Tot aici: notificarea săptămânală „aveți acte fără dată de expirare" spunea doar un număr. Acum
+**listează actele**, fiecare cu vehiculul lui și cu un buton de completare — actele fără dată sunt
+exact cele pentru care nu ești alertat deloc.
+
+- **Ce vede fondatorul:** la fel ca clientul, pe toate companiile.
+- **Ce vede clientul:** notificări din care înțelege situația fără să mai deschidă altceva.
+
+Aceleași trei ecrane și în aplicația de telefon. APK reconstruit.
+
 ### AMÂNDOI · Actele dau acum și datele tehnice + primii pași de căutare pe Google — `47a4437`
 
 **1. „De ce nu preia puterea și cilindreea?"** Pentru că le căutam doar în talon, unde au coduri

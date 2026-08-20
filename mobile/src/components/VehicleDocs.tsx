@@ -174,7 +174,7 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
   const setF = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
 
   return (
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+    <div class="veh-docs" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
       <div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-bottom:8px"><Icon name="fileBar" size={13} /> Documente vehicul</div>
 
       {/* Scanare */}
