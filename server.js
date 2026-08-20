@@ -1156,7 +1156,7 @@ app.get('/js/license-cats.js', (req, res) => { res.set('Cache-Control', NO_CACHE
 
 // Tipurile de lucrări la service + lista de acte, tot dintr-o sursă (maint_types.js). Înainte
 // erau scrise de mână în două locuri din pagină, cu conținut diferit.
-const _MAINT_JS = 'window.RA_MAINT=' + JSON.stringify({ work: maintTypes.WORK, docs: maintTypes.DOCS }) + ';';
+const _MAINT_JS = 'window.RA_MAINT=' + JSON.stringify({ work: maintTypes.WORK, docs: maintTypes.DOCS, classes: maintTypes.CLASSES, classMap: maintTypes.CLASS_MAP }) + ';';
 app.get('/js/maint-types.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_MAINT_JS); });
 
 // Healthcheck public (monitorizare/uptime + Railway) — verifică și conexiunea la DB
@@ -6283,6 +6283,55 @@ app.delete('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async
   try {
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteMaintenance(req.params.id); auditReq(req, 'delete', 'maintenance', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Intervale de service: la cât se repetă fiecare lucrare ───
+// Implicitul stă în maint_types.js; ce schimbă compania stă în settings.maint_intervals și îl bate.
+// Super-adminul (fără companie proprie) scrie GLOBAL — baza pentru toate companiile, ca la praguri.
+async function _maintOverrides(companyId) {
+  try {
+    if (companyId == null) {
+      const raw = await db.getSetting('maint_intervals_global');
+      return maintTypes.sanitizeOverrides(raw ? JSON.parse(raw) : {});
+    }
+    const s = await db.getCompanySettings(companyId);
+    const glob = await db.getSetting('maint_intervals_global');
+    // Compania pornește de la ce a stabilit platforma, apoi pune peste ce a schimbat ea.
+    return Object.assign(
+      maintTypes.sanitizeOverrides(glob ? JSON.parse(glob) : {}),
+      maintTypes.sanitizeOverrides((s && s.maint_intervals) || {})
+    );
+  } catch (e) { return {}; }
+}
+// Tabelul întreg, gata calculat. Se trimite AȘA, ca să nu existe două logici de îmbinare (una pe
+// server, una în pagină) care să se depărteze — exact greșeala din care veneau listele duble.
+function _maintIntervalTable(ov) {
+  return maintTypes.WORK.map(w => {
+    const row = { type: w.type, icon: w.icon, fam: w.fam, def: {}, custom: {} };
+    maintTypes.CLASSES.forEach(c => {
+      row[c.key] = maintTypes.intervalFor(w.type, c.key, ov);
+      row.def[c.key] = maintTypes.intervalFor(w.type, c.key, null);
+      const o = ov[maintTypes.norm(w.type)];
+      row.custom[c.key] = !!(o && Object.prototype.hasOwnProperty.call(o, c.key));
+    });
+    return row;
+  });
+}
+app.get('/api/maint-intervals', requireAuth, withCompany, async (req, res) => {
+  try {
+    const ov = await _maintOverrides(req.companyId);
+    res.json({ classes: maintTypes.CLASSES, rows: _maintIntervalTable(ov) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/maint-intervals', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const clean = maintTypes.sanitizeOverrides((req.body && req.body.overrides) || {});
+    if (req.companyId == null) await db.setSetting('maint_intervals_global', JSON.stringify(clean));
+    else await db.setCompanySettings(req.companyId, { maint_intervals: clean });
+    auditReq(req, 'update', 'maint_intervals', req.companyId, { lucrari: Object.keys(clean).length });
+    const ov = await _maintOverrides(req.companyId);
+    res.json({ ok: true, classes: maintTypes.CLASSES, rows: _maintIntervalTable(ov) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

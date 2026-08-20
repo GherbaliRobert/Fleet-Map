@@ -1707,35 +1707,50 @@ const pozitii = await r.json();</code></pre>
           </h2>
           <div class="admin-add" id="mnt-form" style="grid-template-columns:repeat(2,1fr);">
             <input type="hidden" id="mnt-id">
-            <label><span>Vehicul *</span><select id="mnt-imei"></select></label>
+            <!-- Fereastra făcea DOUĂ treburi cu aceleași câmpuri: „programez o lucrare" și „notez
+                 una făcută". Câmpul „La data" însemna altceva în fiecare caz, dar scria la fel —
+                 de-acolo venea încurcătura „de efectuat / efectuat". Acum alegi de la început. -->
+            <div class="mnt-mode" style="grid-column:1/-1;">
+              <button type="button" class="on" data-mm="plan" onclick="mntSetMode('plan')"><i class="fas fa-calendar-plus"></i> O programez</button>
+              <button type="button" data-mm="done" onclick="mntSetMode('done')"><i class="fas fa-circle-check"></i> Am făcut-o deja</button>
+            </div>
+            <label><span>Vehicul *</span><select id="mnt-imei" onchange="mntProposeSchedule()"></select></label>
             <label><span>Lucrare *</span>
               <select id="mnt-type-sel" onchange="mntTypeChange()"></select>
-              <input type="text" id="mnt-type" placeholder="Scrie lucrarea" style="display:none;margin-top:6px;">
+              <input type="text" id="mnt-type" placeholder="Scrie lucrarea" style="display:none;margin-top:6px;" oninput="mntProposeSchedule()">
             </label>
             <label style="grid-column:1/-1;"><span>Descriere</span><input type="text" id="mnt-desc" placeholder="ex. ulei 5W30, filtru ulei + aer"></label>
-            <div class="mnt-fs" style="grid-column:1/-1;">
-              <div class="mnt-fs-t">Când e scadentă</div>
+
+            <!-- MOD „O programez" -->
+            <div class="mnt-fs" id="mnt-fs-plan" style="grid-column:1/-1;">
+              <div class="mnt-fs-t">Când trebuie făcută</div>
               <div class="mnt-fs-g">
-                <label><span>La data</span><input type="date" id="mnt-due-date"></label>
-                <label><span>La kilometraj</span><input type="number" id="mnt-due-km" placeholder="ex. 150000"></label>
+                <label><span>La data</span><input type="date" id="mnt-due-date" oninput="mntTouched(this)"></label>
+                <label><span>La kilometraj</span><input type="number" id="mnt-due-km" placeholder="ex. 150000" oninput="mntTouched(this)"></label>
               </div>
               <div class="mnt-hint">Poți pune una, alta sau amândouă. Cu amândouă, se aprinde la prima care vine.</div>
+              <div class="mnt-prop" id="mnt-prop" style="display:none;"></div>
             </div>
+
+            <!-- MOD „Am făcut-o deja" -->
+            <div class="mnt-fs" id="mnt-fs-done" style="grid-column:1/-1;display:none;">
+              <div class="mnt-fs-t">Când am făcut-o</div>
+              <div class="mnt-fs-g">
+                <label><span>Data</span><input type="date" id="mnt-done-date"></label>
+                <label><span>Kilometrajul atunci</span><input type="number" id="mnt-done-km" placeholder="km"></label>
+              </div>
+              <div class="mnt-hint">Completate cu ziua de azi și cu kilometrajul citit acum din mașină. Schimbă-le dacă lucrarea s-a făcut altă dată.</div>
+            </div>
+
             <div class="mnt-fs" style="grid-column:1/-1;">
               <div class="mnt-fs-t">Se repetă</div>
               <div class="mnt-fs-g">
-                <label><span>La fiecare (km)</span><input type="number" id="mnt-int-km" placeholder="gol = nu se repetă"></label>
-                <label><span>La fiecare (luni)</span><input type="number" id="mnt-int-mo" placeholder="gol = nu se repetă"></label>
+                <label><span>La fiecare (km)</span><input type="number" id="mnt-int-km" placeholder="gol = nu se repetă" oninput="mntTouched(this)"></label>
+                <label><span>La fiecare (luni)</span><input type="number" id="mnt-int-mo" placeholder="gol = nu se repetă" oninput="mntTouched(this)"></label>
               </div>
-              <div class="mnt-hint">Când bifezi „efectuat", următoarea scadență se creează singură.</div>
+              <div class="mnt-hint" id="mnt-rep-hint">Când o treci ca efectuată, următoarea scadență se creează singură.</div>
             </div>
-            <label><span>Cost (RON)</span><input type="number" step="0.01" id="mnt-cost" placeholder="cât a costat"></label>
-            <label><span>Stare</span>
-              <span class="mnt-chk" style="height:38px;">
-                <input type="checkbox" id="mnt-done">
-                <span style="font-size:12.5px;color:var(--text-muted);font-weight:600;">Deja efectuată</span>
-              </span>
-            </label>
+            <label style="grid-column:1/-1;"><span id="mnt-cost-lbl">Cost estimat (RON)</span><input type="number" step="0.01" id="mnt-cost" placeholder="opțional"></label>
             <div class="mnt-foot" style="grid-column:1/-1;">
               <button class="btn-sm" onclick="mntModalOpen(false)">Renunță</button>
               <button class="btn-sm btn-primary" onclick="saveMaintenance()"><i class="fas fa-save"></i> <span id="mnt-btn">Adaugă lucrarea</span></button>
@@ -2254,6 +2269,47 @@ const pozitii = await r.json();</code></pre>
           .mnt-fs-t { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin-bottom: 9px; }
           .mnt-fs-g { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
           .mnt-hint { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 8px; line-height: 1.45; }
+          /* Comutatorul „O programez / Am făcut-o deja" — prima alegere din fereastră. */
+          .mnt-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+          .mnt-mode button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px;
+            border: 1.5px solid var(--border); background: var(--bg-dark); color: var(--text-muted);
+            border-radius: 11px; font-family: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; transition: all .15s; }
+          .mnt-mode button:hover { border-color: var(--border-light); color: var(--text-secondary); }
+          .mnt-mode button.on { background: rgba(63, 224, 125, .12); border-color: var(--accent); color: #0E7A3C; }
+          body.dark .mnt-mode button.on { color: var(--accent); }
+
+          /* Propunerea aplicației, scrisă în cuvinte sub câmpuri. */
+          .mnt-prop { margin-top: 9px; padding: 9px 11px; border-radius: 9px; background: rgba(63, 224, 125, .10);
+            border: 1px solid rgba(63, 224, 125, .34); font-size: 11.5px; font-weight: 700; color: #0E7A3C; line-height: 1.5; }
+          body.dark .mnt-prop { color: var(--accent); }
+          .mnt-prop b { font-weight: 800; }
+          .mnt-prop button { margin-left: 7px; border: none; background: none; font-family: inherit; font-size: 11.5px;
+            font-weight: 800; color: inherit; text-decoration: underline; cursor: pointer; padding: 0; }
+
+          /* ── Fila „Intervale": la cât se repetă fiecare lucrare, pe fiecare fel de mașină ── */
+          .mnt-iv-hint { font-size: 12px; color: var(--text-secondary); font-weight: 600; line-height: 1.55; margin-bottom: 13px; }
+          /* Tabelul e lat prin natura lui (3 feluri de mașini x 2 cifre). Pe ecran mic se derulează
+             pe orizontală, în cutia lui — pagina nu se strâmbă. */
+          .mnt-iv-wrap { overflow-x: auto; }
+          .mnt-iv { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-panel); min-width: 660px; }
+          .mnt-ivh, .mnt-ivr { display: grid; grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr)); gap: 10px; align-items: center; padding: 10px 12px; }
+          .mnt-ivh { background: var(--bg-dark); border-bottom: 1px solid var(--border); }
+          .mnt-ivh span { font-size: 10.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+          .mnt-ivr { border-bottom: 1px solid var(--border); }
+          .mnt-ivr:last-child { border-bottom: none; }
+          .mnt-ivr:hover { background: rgba(63, 224, 125, .04); }
+          .mnt-ivn { display: flex; align-items: center; gap: 9px; min-width: 0; }
+          .mnt-ivn span { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          /* Câmpul de km trebuie să încapă „150000"; cel de luni, doar „60". De-aia nu sunt egale —
+             cu flex egal, kilometrii ieșeau tăiați („1500(" în loc de 15000). */
+          .mnt-ivc { display: grid; grid-template-columns: minmax(0, 1fr) 15px minmax(0, .7fr) 21px; gap: 3px; align-items: center; }
+          .mnt-ivc input { width: 100%; min-width: 0; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--bg-dark); color: var(--text-primary); padding: 0 5px; font-family: inherit; font-size: 12px; font-weight: 700; text-align: right; }
+          .mnt-ivc input.custom { border-color: var(--accent); background: rgba(63, 224, 125, .08); }
+          .mnt-ivc em { font-size: 9.5px; color: var(--text-muted); font-style: normal; font-weight: 700; flex: 0 0 auto; }
+          .mnt-ivsave { display: flex; align-items: center; gap: 11px; justify-content: flex-end; margin-top: 13px; }
+          .mnt-ivsave .msg { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-right: auto; }
+
           .mnt-chk { display: flex; align-items: center; gap: 9px; cursor: pointer; }
           .mnt-chk input { width: 17px; height: 17px; height: 17px !important; cursor: pointer; flex: 0 0 auto; }
           .mnt-foot { display: flex; gap: 9px; justify-content: flex-end; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border); }
@@ -2278,6 +2334,7 @@ const pozitii = await r.json();</code></pre>
               <button class="on" data-mv="agenda" onclick="mntSetView('agenda')" title="Tot ce e de făcut pe flotă, în ordinea scadenței"><i class="fas fa-list-check"></i> <span>Agendă</span></button>
               <button data-mv="veh" onclick="mntSetView('veh')" title="Grupat pe mașină"><i class="fas fa-car"></i> <span>Pe vehicul</span></button>
               <button data-mv="done" onclick="mntSetView('done')" title="Lucrările efectuate, cu costurile lor"><i class="fas fa-clock-rotate-left"></i> <span>Istoric</span></button>
+              <button data-mv="intervale" onclick="mntSetView('intervale')" title="La cât se repetă fiecare lucrare"><i class="fas fa-sliders"></i> <span>Intervale</span></button>
             </div>
             <span class="toolbar-spacer"></span>
             <span id="mnt-count" class="toolbar-count"></span>
@@ -5488,6 +5545,17 @@ const pozitii = await r.json();</code></pre>
       if (addBtn) addBtn.style.display = canEdit ? '' : 'none';
       document.querySelectorAll('#mnt-seg button').forEach(function (b) { b.classList.toggle('on', b.dataset.mv === _mntView); });
 
+      // „Intervale" nu e o listă de lucrări: n-are ce căuta nici căutarea, nici cifrele de cost.
+      const srch = document.querySelector('#atab-maintenance .mnt-search');
+      if (srch) srch.style.display = (_mntView === 'intervale') ? 'none' : '';
+      if (addBtn) addBtn.style.display = (canEdit && _mntView !== 'intervale') ? '' : 'none';
+      if (_mntView === 'intervale') {
+        const c = document.getElementById('mnt-count'); if (c) c.textContent = '';
+        if (!_mntIv) { el.innerHTML = '<div class="mnt-empty">Se încarcă…</div>'; mntLoadIntervals().then(renderMaintenance); return; }
+        el.innerHTML = renderMntIntervals(canEdit);
+        return;
+      }
+
       let list = Array.isArray(_mntAll) ? _mntAll.slice() : [];
       const q = _mntNorm(_mntQ);
       if (q) list = list.filter(function (m) { return _mntNorm([m.type, m.description, mntPlate(m.imei), mntModel(m.imei)].join(' ')).indexOf(q) >= 0; });
@@ -5602,19 +5670,178 @@ const pozitii = await r.json();</code></pre>
         if (keep) sel.value = keep;
       });
     }
+    // ─── Intervalele: la cât se repetă fiecare lucrare, pe fiecare fel de mașină ───
+    // Tabelul vine GATA CALCULAT de la server (implicit + ce a schimbat compania). Nu îmbinăm
+    // nimic aici: dacă am face-o, ar exista două logici care se pot depărta — exact greșeala din
+    // care veniseră listele duble de tipuri.
+    let _mntIv = null, _mntIvMsg = '';
+    async function mntLoadIntervals(force) {
+      if (_mntIv && !force) return _mntIv;
+      try { _mntIv = await (await fetch('/api/maint-intervals')).json(); } catch (e) { _mntIv = { classes: [], rows: [] }; }
+      if (!_mntIv || !Array.isArray(_mntIv.rows)) _mntIv = { classes: [], rows: [] };
+      return _mntIv;
+    }
+    // Ce fel de mașină e, din punctul de vedere al service-ului. Categoria vine din markerCategory
+    // (aceeași care alege pictograma de pe hartă), iar potrivirea pe clase stă în maint_types.js.
+    function mntClassOf(imei) {
+      const d = (typeof adminDevicesCache !== 'undefined' ? adminDevicesCache : []).find(function (x) { return x.imei === imei; });
+      const cat = (typeof markerCategory === 'function') ? markerCategory(d) : 'car';
+      const map = (window.RA_MAINT && window.RA_MAINT.classMap) || {};
+      return map[cat] || 'truck';
+    }
+    // Kilometrajul de acum. Întâi cel calculat de server pe lucrările mașinii (_odo), apoi, dacă
+    // n-avem niciuna, direct din datele CAN. Regula e cea din server.js (_odoFromIo):
+    // can_total_mileage e deja în km, total_odometer e în METRI.
+    function mntOdo(imei) {
+      const fromList = (Array.isArray(_mntAll) ? _mntAll : []).find(function (m) { return m.imei === imei && m._odo; });
+      if (fromList) return fromList._odo;
+      const d = (typeof adminDevicesCache !== 'undefined' ? adminDevicesCache : []).find(function (x) { return x.imei === imei; });
+      const io = d && d.io_data; if (!io) return null;
+      let km = null;
+      if (io.can_total_mileage != null) km = parseFloat(io.can_total_mileage);
+      else if (io.can_total_mileage_counted != null) km = parseFloat(io.can_total_mileage_counted);
+      else if (io.total_odometer != null) km = parseFloat(io.total_odometer) / 1000;
+      return (km != null && isFinite(km) && km > 0) ? Math.round(km) : null;
+    }
+    function mntIntervalFor(type, imei) {
+      if (!_mntIv) return null;
+      const cls = mntClassOf(imei), k = _mntNorm(type);
+      const row = _mntIv.rows.find(function (r) { return _mntNorm(r.type) === k; });
+      return row ? row[cls] : null;
+    }
+
+    // Tabelul de intervale. Cifrele albastre-verzui sunt cele schimbate de companie; restul sunt
+    // implicitul aplicației. Gol = „la nevoie", fără propunere.
+    function renderMntIntervals(canEdit) {
+      const classes = (_mntIv && _mntIv.classes) || [];
+      const cell = function (row, ck) {
+        const v = row[ck] || {}, def = (row.def && row.def[ck]) || null;
+        const custom = !!(row.custom && row.custom[ck]);
+        const title = def ? 'Implicit: ' + [def.km ? mntNf(def.km) + ' km' : '', def.months ? def.months + ' luni' : ''].filter(Boolean).join(' / ')
+          : 'Implicit: la nevoie';
+        const inp = function (kind, val, ph) {
+          return '<input type="number" inputmode="numeric" data-t="' + esc(row.type) + '" data-c="' + ck + '" data-k="' + kind + '"'
+            + ' value="' + (val || '') + '" placeholder="' + ph + '" title="' + esc(title) + '"'
+            + (custom ? ' class="custom"' : '') + (canEdit ? '' : ' disabled') + ' oninput="mntIvTouch()">';
+        };
+        return '<span class="mnt-ivc">' + inp('km', v.km, '—') + '<em>km</em>' + inp('mo', v.months, '—') + '<em>luni</em></span>';
+      };
+      return '<div class="mnt-iv-hint"><b>La cât se face fiecare lucrare.</b> Cifrele sunt punctul nostru de plecare — '
+        + 'schimbă-le dacă la voi se face altfel. Când adaugi o lucrare, aplicația completează singură scadența '
+        + 'după tabelul ăsta și după felul mașinii. Lăsat gol = fără propunere, o pui manual.</div>'
+        + '<div class="mnt-iv-wrap"><div class="mnt-iv"><div class="mnt-ivh"><span>Lucrare</span>'
+        + classes.map(function (c) { return '<span>' + esc(c.label) + '</span>'; }).join('') + '</div>'
+        + (_mntIv.rows || []).map(function (r) {
+          const meta = mntMeta(r.type);
+          return '<div class="mnt-ivr"><span class="mnt-ivn"><span class="mnt-ic ' + meta.fam + '" style="width:28px;height:28px;font-size:12px;border-radius:8px;"><i class="fas ' + meta.icon + '"></i></span>'
+            + '<span>' + esc(r.type) + '</span></span>'
+            + classes.map(function (c) { return cell(r, c.key); }).join('') + '</div>';
+        }).join('') + '</div></div>'
+        + (canEdit ? '<div class="mnt-ivsave"><span class="msg" id="mnt-iv-msg">' + esc(_mntIvMsg) + '</span>'
+          + '<button class="btn-sm" onclick="mntIvReset()"><i class="fas fa-rotate-left"></i> Revino la cifrele noastre</button>'
+          + '<button class="btn-sm btn-primary" onclick="saveMntIntervals()"><i class="fas fa-save"></i> Salvează intervalele</button></div>' : '');
+    }
+    function mntIvTouch() { const m = document.getElementById('mnt-iv-msg'); if (m) { _mntIvMsg = 'Ai modificări nesalvate.'; m.textContent = _mntIvMsg; } }
+    async function mntIvReset() {
+      if (!await raConfirm('Se șterg toate intervalele puse de voi și rămân cifrele propuse de aplicație.\n\nLucrările deja programate NU se schimbă — doar propunerile de aici înainte.',
+        { okLabel: 'Revino la implicit' })) return;
+      const res = await fetch('/api/maint-intervals', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ overrides: {} }) });
+      if (!res.ok) { const e = await res.json().catch(function () { return {}; }); return alert(e.error || 'Eroare'); }
+      _mntIv = await res.json(); _mntIvMsg = 'Revenit la cifrele aplicației.';
+      renderMaintenance();
+    }
+    async function saveMntIntervals() {
+      const ov = {};
+      document.querySelectorAll('#admin-maintenance-list .mnt-ivc input').forEach(function (i) {
+        const t = i.dataset.t, c = i.dataset.c, v = parseInt(i.value) || 0;
+        ov[t] = ov[t] || {}; ov[t][c] = ov[t][c] || {};
+        if (i.dataset.k === 'km') ov[t][c].km = v; else ov[t][c].months = v;
+      });
+      const res = await fetch('/api/maint-intervals', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ overrides: ov }) });
+      if (!res.ok) { const e = await res.json().catch(function () { return {}; }); return alert(e.error || 'Eroare'); }
+      _mntIv = await res.json();
+      _mntIvMsg = 'Salvat. Lucrările deja programate rămân cum sunt; propunerile de-acum înainte folosesc cifrele astea.';
+      renderMaintenance();
+    }
+
+    // ─── Fereastra: două moduri, ca să nu mai însemne același câmp două lucruri ───
+    let _mntMode = 'plan';   // 'plan' = o programez · 'done' = am făcut-o deja
+    // Un câmp „atins" de om nu se mai rescrie de aplicație. Fără asta, propunerea ar șterge
+    // exact cifra pe care tocmai a scris-o utilizatorul.
+    function mntTouched(el) { if (el) el.dataset.auto = ''; }
+    function _mntSet(id, val, auto) {
+      const el = document.getElementById(id); if (!el) return;
+      if (!auto || el.dataset.auto === '1' || !el.value) {
+        if (id.indexOf('date') >= 0) dtSet(id, val); else el.value = val;
+        if (auto) el.dataset.auto = '1';
+      }
+    }
+    function mntSetMode(m) {
+      _mntMode = (m === 'done') ? 'done' : 'plan';
+      document.querySelectorAll('#mnt-form .mnt-mode button').forEach(function (b) { b.classList.toggle('on', b.dataset.mm === _mntMode); });
+      const plan = document.getElementById('mnt-fs-plan'), done = document.getElementById('mnt-fs-done');
+      if (plan) plan.style.display = _mntMode === 'plan' ? '' : 'none';
+      if (done) done.style.display = _mntMode === 'done' ? '' : 'none';
+      const cl = document.getElementById('mnt-cost-lbl');
+      if (cl) cl.textContent = _mntMode === 'done' ? 'Cât a costat (RON)' : 'Cost estimat (RON)';
+      const rh = document.getElementById('mnt-rep-hint');
+      if (rh) rh.textContent = _mntMode === 'done'
+        ? 'Cu un interval pus aici, următoarea scadență se programează singură, pornind de la data și kilometrajul de mai sus.'
+        : 'Când o treci ca efectuată, următoarea scadență se creează singură.';
+      const b = document.getElementById('mnt-btn');
+      if (b && !document.getElementById('mnt-id').value) b.textContent = _mntMode === 'done' ? 'Salvează în istoric' : 'Adaugă lucrarea';
+      if (_mntMode === 'done') {
+        const imei = document.getElementById('mnt-imei').value, odo = mntOdo(imei);
+        _mntSet('mnt-done-date', new Date().toISOString().slice(0, 10), true);
+        if (odo) _mntSet('mnt-done-km', odo, true);
+      }
+      mntProposeSchedule();
+    }
+    // Aplicația completează singură: alegi lucrarea, ea știe la cât se face pe felul ăsta de mașină
+    // și pune intervalul + scadența propusă. Tot ce completează rămâne editabil.
+    function mntProposeSchedule() {
+      const prop = document.getElementById('mnt-prop'); if (prop) { prop.style.display = 'none'; prop.innerHTML = ''; }
+      const sel = document.getElementById('mnt-type-sel'); if (!sel) return;
+      const type = (sel.value === '__alt') ? (document.getElementById('mnt-type').value || '').trim() : sel.value;
+      const imei = document.getElementById('mnt-imei').value;
+      if (!type || !imei) return;
+      const iv = mntIntervalFor(type, imei);
+      if (!iv) return;                                   // „la nevoie" → nu propunem nimic
+      _mntSet('mnt-int-km', iv.km || '', true);
+      _mntSet('mnt-int-mo', iv.months || '', true);
+      if (_mntMode !== 'plan') return;                   // în „am făcut-o deja" scadența o calculează serverul
+      const odo = mntOdo(imei), parts = [];
+      if (iv.km && odo) { _mntSet('mnt-due-km', odo + iv.km, true); parts.push('la <b>' + mntNf(odo + iv.km) + ' km</b> (peste ' + mntNf(iv.km) + ')'); }
+      else if (iv.km) parts.push('la fiecare <b>' + mntNf(iv.km) + ' km</b> — mașina nu raportează kilometrajul, pune-l tu');
+      if (iv.months) {
+        const d = new Date(); d.setMonth(d.getMonth() + iv.months);
+        _mntSet('mnt-due-date', d.toISOString().slice(0, 10), true);
+        parts.push('sau pe <b>' + d.toLocaleDateString('ro-RO') + '</b>');
+      }
+      if (!parts.length || !prop) return;
+      const cls = ((window.RA_MAINT && window.RA_MAINT.classes) || []).find(function (c) { return c.key === mntClassOf(imei); });
+      prop.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Propunere pentru <b>' + esc((cls && cls.label) || 'mașina asta').toLowerCase() + '</b>: '
+        + parts.join(' ') + '.<button type="button" onclick="mntSetView(\'intervale\'); mntModalOpen(false);">Schimbă intervalele</button>';
+      prop.style.display = '';
+    }
     function mntTypeChange() {
       const sel = document.getElementById('mnt-type-sel'), inp = document.getElementById('mnt-type');
       const alt = sel.value === '__alt';
       inp.style.display = alt ? '' : 'none';
       if (alt) inp.focus(); else inp.value = '';
+      mntProposeSchedule();
     }
     function mntModalOpen(on) {
       const ov = document.getElementById('mnt-modal'); if (!ov) return;
-      if (on) mntFillTypes();
+      if (on) { mntFillTypes(); mntLoadIntervals().then(mntProposeSchedule); }
       ov.classList.toggle('visible', !!on);
       if (!on) resetMaintenanceForm();
     }
-    function toggleMntAdd() { resetMaintenanceForm(); mntModalOpen(true); }
+    function toggleMntAdd(imei) {
+      resetMaintenanceForm();
+      if (imei) { const s = document.getElementById('mnt-imei'); if (s) { s.value = imei; if (s._ssSync) s._ssSync(); } }
+      mntModalOpen(true);
+    }
 
     // Modificarea se face DUPĂ id, nu prin împachetarea întregului rând în atributul onclick.
     // Așa cum era, un apostrof în descriere („Bosch d'Auto") tăia atributul în două și creionul
@@ -5622,31 +5849,42 @@ const pozitii = await r.json();</code></pre>
     function editMaintenance(id) {
       const m = mntFind(id);
       if (!m) return;
+      resetMaintenanceForm();
       mntFillTypes();
       document.getElementById('mnt-id').value = m.id;
-      document.getElementById('mnt-imei').value = m.imei;
+      const si = document.getElementById('mnt-imei'); si.value = m.imei; if (si._ssSync) si._ssSync();
       const sel = document.getElementById('mnt-type-sel'), inp = document.getElementById('mnt-type');
       const known = Array.from(sel.options).some(function (o) { return o.value === m.type && o.value !== '__alt'; });
       if (known) { sel.value = m.type; inp.style.display = 'none'; inp.value = ''; }
       else { sel.value = '__alt'; inp.style.display = ''; inp.value = m.type || ''; }
-      document.getElementById('mnt-done').checked = mntDone(m);
       document.getElementById('mnt-desc').value = m.description || '';
-      dtSet('mnt-due-date', _mntDate(m.due_date) || '');
-      document.getElementById('mnt-due-km').value = m.due_km || '';
       document.getElementById('mnt-cost').value = m.cost || '';
       document.getElementById('mnt-int-km').value = m.interval_km || '';
       document.getElementById('mnt-int-mo').value = m.interval_months || '';
+      // Câmpurile completate din baza de date NU sunt „propuneri": nu se rescriu.
+      ['mnt-int-km', 'mnt-int-mo', 'mnt-due-km', 'mnt-due-date'].forEach(function (i) { const e = document.getElementById(i); if (e) e.dataset.auto = ''; });
+      if (mntDone(m)) {
+        dtSet('mnt-done-date', _mntDate(m.done_date) || (m.done_at ? String(m.done_at).slice(0, 10) : ''));
+        document.getElementById('mnt-done-km').value = m.done_km || '';
+        mntSetMode('done');
+      } else {
+        dtSet('mnt-due-date', _mntDate(m.due_date) || '');
+        document.getElementById('mnt-due-km').value = m.due_km || '';
+        mntSetMode('plan');
+      }
       document.getElementById('mnt-btn').textContent = 'Salvează';
       document.getElementById('mnt-modal-title').textContent = 'Modifici: ' + m.type;
       mntModalOpen(true);
     }
     function resetMaintenanceForm() {
-      ['mnt-id', 'mnt-type', 'mnt-desc', 'mnt-due-date', 'mnt-due-km', 'mnt-cost', 'mnt-int-km', 'mnt-int-mo'].forEach(clearField);
+      ['mnt-id', 'mnt-type', 'mnt-desc', 'mnt-due-date', 'mnt-due-km', 'mnt-done-date', 'mnt-done-km',
+       'mnt-cost', 'mnt-int-km', 'mnt-int-mo'].forEach(clearField);
+      ['mnt-due-date', 'mnt-due-km', 'mnt-int-km', 'mnt-int-mo', 'mnt-done-date', 'mnt-done-km']
+        .forEach(function (i) { const e = document.getElementById(i); if (e) e.dataset.auto = ''; });
       const inp = document.getElementById('mnt-type'); if (inp) inp.style.display = 'none';
       const sel = document.getElementById('mnt-type-sel'); if (sel) sel.selectedIndex = 0;
-      const dn = document.getElementById('mnt-done'); if (dn) dn.checked = false;
-      const b = document.getElementById('mnt-btn'); if (b) b.textContent = 'Adaugă lucrarea';
       const t = document.getElementById('mnt-modal-title'); if (t) t.textContent = 'Lucrare nouă';
+      mntSetMode('plan');
     }
     async function saveMaintenance() {
       const id = document.getElementById('mnt-id').value;
@@ -5656,17 +5894,31 @@ const pozitii = await r.json();</code></pre>
         imei: document.getElementById('mnt-imei').value,
         type: type,
         description: document.getElementById('mnt-desc').value.trim(),
-        status: document.getElementById('mnt-done').checked ? 'done' : 'pending',
-        due_date: document.getElementById('mnt-due-date').value || null,
-        due_km: parseInt(document.getElementById('mnt-due-km').value) || null,
         cost: parseFloat(document.getElementById('mnt-cost').value) || null,
         interval_km: parseInt(document.getElementById('mnt-int-km').value) || null,
         interval_months: parseInt(document.getElementById('mnt-int-mo').value) || null
       };
+      if (_mntMode === 'done') {
+        // Data aleasă e cea reală, nu „acum": o revizie notată peste o săptămână intră în istoric
+        // cu ziua ei, altfel costurile pe lună ies greșit.
+        const d = document.getElementById('mnt-done-date').value || null;
+        body.status = 'done';
+        body.done_date = d;
+        body.done_km = parseInt(document.getElementById('mnt-done-km').value) || null;
+        body.done_at = d ? new Date(d + 'T12:00:00').toISOString() : null;
+        body.due_date = null; body.due_km = null;
+      } else {
+        body.status = 'pending';
+        body.due_date = document.getElementById('mnt-due-date').value || null;
+        body.due_km = parseInt(document.getElementById('mnt-due-km').value) || null;
+        body.done_date = null; body.done_km = null; body.done_at = null;
+      }
       if (!body.imei || !body.type) return alert('Alege vehiculul și lucrarea');
+      if (_mntMode === 'plan' && !body.due_date && !body.due_km
+        && !await raConfirm('Lucrarea n-are nici dată, nici kilometraj — deci nimeni n-o să-ți amintească de ea.\n\nO salvezi așa?',
+          { title: 'Fără termen', danger: false, icon: 'fa-circle-question', okLabel: 'Salvez fără termen', cancelLabel: 'Pun un termen' })) return;
       // Un act nu are ce căuta aici — granița e explicată în maint_types.js.
       if (mntIsDoc(body.type) && !await raConfirm('„' + body.type + '" este un ACT, nu o lucrare la service.\n\nLocul lui e în Management → Documente, unde ține minte valabilitatea și te anunță înainte să expire.\n\nÎl salvezi totuși aici?', { title: 'Ăsta e act, nu lucrare', danger: false, icon: 'fa-file-circle-exclamation', okLabel: 'Salvează oricum', cancelLabel: 'Renunț' })) return;
-      // status „done" → serverul ștampilează ora exactă (done_at) + km-ul curent
       const res = await fetch('/api/maintenance' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(function () { return {}; }); return alert(e.error || 'Eroare'); }
       mntModalOpen(false);
@@ -12047,6 +12299,9 @@ const pozitii = await r.json();</code></pre>
       let items = [], activeIdx = -1;
       function rebuild() { items = Array.from(sel.options).map(function (o) { return { value: o.value, label: o.textContent }; }); syncDisplay(); }
       function syncDisplay() { const cur = items.find(function (it) { return it.value === sel.value; }); input.value = cur ? cur.label : ''; }
+      // Când codul pune valoarea din afară (`sel.value = ...`), selectul nativ e ascuns, deci
+      // câmpul vizibil ar rămâne cu textul vechi. De-aia sincronizarea trebuie să se poată cere.
+      sel._ssSync = function () { rebuild(); };
       function render(filter) {
         const f = (filter || '').trim().toLowerCase();
         const matched = f ? items.filter(function (it) { return it.label.toLowerCase().indexOf(f) >= 0; }) : items;

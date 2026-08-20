@@ -15,24 +15,63 @@
 // ITP e cazul care înșală: te duci fizic la o stație, ca la service. Dar ce cumperi acolo e
 // certificatul, nu reparația — dacă mașina nu trece, plătești reparația SEPARAT, și AIA e mentenanță.
 
-// Familiile de culoare sunt aceleași ca la Alerte (f-*, definite în app.css / mnt-cards-css).
+// Cele trei feluri de mașini pentru care intervalele diferă REAL. Un Logan și un Scania nu fac
+// revizia la aceiași kilometri, iar dacă aplicația propune o singură cifră, propune greșit pentru
+// jumătate din flotă. Mai fin de-atât (pe motorizare, pe marcă) n-are rost: clientul poate corecta.
+const CLASSES = [
+  { key: 'car',   label: 'Autoturism' },
+  { key: 'van',   label: 'Utilitară / dubă' },
+  { key: 'truck', label: 'Camion / TIR' },
+];
+
+// Categoria de pe hartă (markerCategory) → clasa de service. Tot ce e greu intră la „camion":
+// autobuz, autotractor, utilaj, combină — se întrețin la intervale de camion, nu de autoturism.
+const _CLS = {
+  car: 'car', motorcycle: 'car', electric: 'car', phev: 'car', hybrid: 'car', cng: 'car',
+  ambulance: 'car', boat: 'car',
+  van: 'van',
+};
+function classOf(cat) { return _CLS[String(cat || '').trim()] || (cat ? 'truck' : 'car'); }
+// Expus si in pagina (window.RA_MAINT.classMap): acolo categoria vine din markerCategory(),
+// care intoarce mereu ceva, deci regula e simplu `classMap[cat] || 'truck'`.
+
+// `every` = la cât se face, implicit, pe fiecare clasă: { km, months }. null = „la nevoie" —
+// aplicația nu propune nimic, o pui manual când apare problema.
+// Cifrele sunt un PUNCT DE PLECARE, discutat cu clientul: fiecare companie și le poate schimba
+// din Mentenanță → Intervale (se salvează în settings.maint_intervals și bat valorile de aici).
 const WORK = [
-  { type: 'Schimb ulei + filtru',      icon: 'fa-oil-can',             fam: 'f-service' },
-  { type: 'Revizie generală',          icon: 'fa-screwdriver-wrench',  fam: 'f-zone' },
-  { type: 'Plăcuțe/discuri frână',     icon: 'fa-car-burst',           fam: 'f-danger' },
-  { type: 'Distribuție',               icon: 'fa-gears',               fam: 'f-load' },
-  { type: 'Ambreiaj',                  icon: 'fa-circle-half-stroke',  fam: 'f-load' },
-  { type: 'Amortizoare',               icon: 'fa-compress',            fam: 'f-load' },
-  { type: 'Anvelope',                  icon: 'fa-circle-notch',        fam: 'f-neutral' },
-  { type: 'Geometrie',                 icon: 'fa-ruler-combined',      fam: 'f-neutral' },
-  { type: 'Filtre (aer/polen/comb.)',  icon: 'fa-filter',              fam: 'f-service' },
-  { type: 'Baterie',                   icon: 'fa-car-battery',         fam: 'f-fuel' },
-  { type: 'Antigel/lichide',           icon: 'fa-droplet',             fam: 'f-fuel' },
-  { type: 'Curea accesorii',           icon: 'fa-rotate',              fam: 'f-load' },
-  { type: 'Sistem de răcire',          icon: 'fa-temperature-low',     fam: 'f-fuel' },
-  { type: 'Instalație electrică',      icon: 'fa-bolt',                fam: 'f-service' },
-  { type: 'Caroserie / tinichigerie',  icon: 'fa-hammer',              fam: 'f-neutral' },
-  { type: 'Spălare / curățenie',       icon: 'fa-spray-can-sparkles',  fam: 'f-zone' },
+  { type: 'Schimb ulei + filtru',      icon: 'fa-oil-can',             fam: 'f-service',
+    every: { car: { km: 15000, months: 12 }, van: { km: 20000, months: 12 }, truck: { km: 40000, months: 12 } } },
+  { type: 'Revizie generală',          icon: 'fa-screwdriver-wrench',  fam: 'f-zone',
+    every: { car: { km: 30000, months: 24 }, van: { km: 40000, months: 24 }, truck: { km: 80000, months: 12 } } },
+  { type: 'Plăcuțe/discuri frână',     icon: 'fa-car-burst',           fam: 'f-danger',
+    every: { car: { km: 40000 }, van: { km: 50000 }, truck: { km: 120000 } } },
+  { type: 'Distribuție',               icon: 'fa-gears',               fam: 'f-load',
+    every: { car: { km: 120000, months: 60 }, van: { km: 150000, months: 60 }, truck: null } },  // camioanele au lanț
+  { type: 'Ambreiaj',                  icon: 'fa-circle-half-stroke',  fam: 'f-load',
+    every: { car: { km: 150000 }, van: { km: 180000 }, truck: { km: 400000 } } },
+  { type: 'Amortizoare',               icon: 'fa-compress',            fam: 'f-load',
+    every: { car: { km: 80000 }, van: { km: 100000 }, truck: { km: 250000 } } },
+  { type: 'Anvelope',                  icon: 'fa-circle-notch',        fam: 'f-neutral',
+    every: { car: { km: 40000, months: 60 }, van: { km: 60000, months: 60 }, truck: { km: 150000, months: 60 } } },
+  { type: 'Geometrie',                 icon: 'fa-ruler-combined',      fam: 'f-neutral',
+    every: { car: { km: 30000, months: 24 }, van: { km: 40000 }, truck: { km: 100000 } } },
+  { type: 'Filtre (aer/polen/comb.)',  icon: 'fa-filter',              fam: 'f-service',
+    every: { car: { km: 15000, months: 12 }, van: { km: 20000, months: 12 }, truck: { km: 40000, months: 12 } } },
+  { type: 'Baterie',                   icon: 'fa-car-battery',         fam: 'f-fuel',
+    every: { car: { months: 48 }, van: { months: 48 }, truck: { months: 36 } } },
+  { type: 'Antigel/lichide',           icon: 'fa-droplet',             fam: 'f-fuel',
+    every: { car: { km: 60000, months: 36 }, van: { km: 60000, months: 36 }, truck: { km: 150000, months: 24 } } },
+  { type: 'Curea accesorii',           icon: 'fa-rotate',              fam: 'f-load',
+    every: { car: { km: 90000, months: 60 }, van: { km: 100000, months: 60 }, truck: { km: 200000 } } },
+  { type: 'Sistem de răcire',          icon: 'fa-temperature-low',     fam: 'f-fuel',
+    every: { car: { km: 60000, months: 48 }, van: { km: 60000, months: 48 }, truck: { km: 200000 } } },
+  { type: 'Instalație electrică',      icon: 'fa-bolt',                fam: 'f-service',
+    every: { car: null, van: null, truck: null } },
+  { type: 'Caroserie / tinichigerie',  icon: 'fa-hammer',              fam: 'f-neutral',
+    every: { car: null, van: null, truck: null } },
+  { type: 'Spălare / curățenie',       icon: 'fa-spray-can-sparkles',  fam: 'f-zone',
+    every: { car: { months: 1 }, van: { months: 1 }, truck: { months: 1 } } },
 ];
 
 // Ce NU e mentenanță, ci act. E ȘI lista din care se umple alegerea de tip la Documente — în două
@@ -71,10 +110,67 @@ _canon[norm('ITP (inspectie tehnica)')] = 'ITP';
 _canon[norm('rovineta')] = 'Rovinietă';
 function canonDocType(t) { return _canon[norm(t)] || 'Altul'; }
 
+// ─── Intervale: implicitul de mai sus + ce a schimbat compania ───
+// Limitele nu sunt mofturi: fără ele, un „interval" de 9 miliarde de km ar face ca propunerea
+// aplicației să iasă mereu absurdă, iar nimeni n-ar mai avea încredere în ea.
+const KM_MIN = 100, KM_MAX = 2000000, MO_MIN = 1, MO_MAX = 240;
+
+function _curata(v) {
+  if (!v || typeof v !== 'object') return null;
+  let km = parseInt(v.km) || 0, months = parseInt(v.months) || 0;
+  if (km && (km < KM_MIN || km > KM_MAX)) km = 0;
+  if (months && (months < MO_MIN || months > MO_MAX)) months = 0;
+  if (!km && !months) return null;
+  const out = {};
+  if (km) out.km = km;
+  if (months) out.months = months;
+  return out;
+}
+
+// Cât de des se face lucrarea, pentru clasa asta de mașină. Ce a pus compania bate implicitul.
+// `overrides` = { '<tip normalizat>': { car: {km,months}|null, van: …, truck: … } }
+function intervalFor(type, cls, overrides) {
+  const c = CLASSES.some(x => x.key === cls) ? cls : 'car';
+  const k = norm(type);
+  const ov = overrides && overrides[k];
+  if (ov && Object.prototype.hasOwnProperty.call(ov, c)) return _curata(ov[c]);
+  const w = _byNorm[k];
+  return _curata(w && w.every ? w.every[c] : null);
+}
+
+// Ce vine de la client, curățat: doar lucrări și clase cunoscute, doar numere plauzibile.
+// `null` explicit se păstrează — înseamnă „la lucrarea asta nu vreau propunere".
+function sanitizeOverrides(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const key of Object.keys(raw)) {
+    const k = norm(key);
+    if (!_byNorm[k]) continue;                     // lucrare necunoscută → ignorată
+    const src = raw[key]; if (!src || typeof src !== 'object') continue;
+    const dst = {};
+    for (const c of CLASSES) {
+      if (!Object.prototype.hasOwnProperty.call(src, c.key)) continue;
+      const v = src[c.key], curat = _curata(v);
+      if (curat) { dst[c.key] = curat; continue; }
+      // Nimic valid. Două cazuri DIFERITE, care nu trebuie confundate:
+      //  - câmpuri goale → omul chiar vrea „la nevoie", fără propunere: păstrăm null;
+      //  - o cifră imposibilă (99 km, 900 de luni) → e o greșeală de tastare. Dacă am păstra null,
+      //    o scăpare de tastatură ar stinge tăcut propunerea. Ignorăm și rămâne implicitul.
+      const aScrisOCifra = v && typeof v === 'object' && ((parseInt(v.km) > 0) || (parseInt(v.months) > 0));
+      if (!aScrisOCifra) dst[c.key] = null;
+    }
+    if (Object.keys(dst).length) out[k] = dst;
+  }
+  return out;
+}
+
 // Iconița + familia de culoare a unui tip. Tipurile scrise liber („Altele…") primesc cheia neutră.
 function meta(t) {
   const w = _byNorm[norm(t)];
   return w ? { icon: w.icon, fam: w.fam } : { icon: DEFAULT_ICON, fam: DEFAULT_FAM };
 }
 
-module.exports = { WORK, DOCS, isDocType, canonDocType, meta, norm, DEFAULT_ICON, DEFAULT_FAM };
+module.exports = {
+  WORK, DOCS, CLASSES, CLASS_MAP: _CLS, isDocType, canonDocType, meta, norm, classOf,
+  intervalFor, sanitizeOverrides, DEFAULT_ICON, DEFAULT_FAM
+};

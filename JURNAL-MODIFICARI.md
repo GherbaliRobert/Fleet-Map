@@ -20,6 +20,59 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Aplicatia propune singura la cat se face lucrarea, iar fereastra nu mai are doua intelesuri
+
+**Ce te incurca.** Fereastra de mentenanta facea DOUA treburi cu aceleasi campuri: „programez un
+schimb de ulei" si „notez unul facut ieri". Campul „La data" insemna altceva in fiecare caz, dar
+scria la fel. De-acolo venea amestecul „de efectuat / efectuat".
+
+**Acum alegi de la inceput,** din doua butoane mari:
+
+- **O programez** → *Cand trebuie facuta*: data si/sau kilometrajul.
+- **Am facut-o deja** → *Cand am facut-o*: data (pusa pe azi) si kilometrajul (cel citit acum din
+  masina). Eticheta costului devine „Cat a costat", iar butonul „Salveaza in istoric".
+
+Fiecare camp spune exact ce inseamna. Nu mai exista un camp cu doua intelesuri.
+
+**Si nu mai completezi tu cifrele.** Alegi lucrarea, iar aplicatia stie la cat se face pe felul ala
+de masina si pune singura totul:
+
+> Alegi „Schimb ulei + filtru" pe B 154 UIP (Logan, 88.450 km acum) →
+> *se repeta la 15.000 km / 12 luni*, *scadenta la 103.450 km sau pe 20.08.2027*.
+
+Pe un Scania, aceeasi lucrare propune 40.000 km, nu 15.000 — aplicatia se uita la ce fel de masina
+e (autoturism / utilitara / camion), din fisa ei. Daca masina nu raporteaza kilometrajul, nu
+inventeaza o cifra: spune ca trebuie pus manual.
+
+**Tot ce completeaza ramane editabil.** Iar ce ai scris tu NU se mai rescrie: daca ai tastat o
+cifra si apoi schimbi lucrarea, cifra ta ramane.
+
+### AMÂNDOI · Fila „Intervale": cifrele noastre sunt un punct de plecare, nu o lege
+
+In Mentenanta a aparut a patra fila, **Intervale** — un tabel cu toate lucrarile si, pe trei coloane
+(autoturism, utilitara, camion), la cati kilometri si la cate luni se fac.
+
+Cifrele de pornire le-am pus noi, discutate impreuna. Clientul le poate schimba pe ale lui, direct
+de acolo: ce modifica el se coloreaza verde si bate implicitul. Lasat gol = „la nevoie", fara
+propunere. Exista si un buton care readuce totul la cifrele noastre.
+
+Doua lucruri de stiut:
+- **Lucrarile deja programate NU se schimba** cand modifici tabelul. Se schimba doar propunerile de
+  aici inainte — altfel o corectura ti-ar rescrie scadentele existente pe toata flota.
+- **O cifra imposibila (99 km, 900 de luni) e ignorata**, si ramane implicitul. Fara asta, o
+  scapare de tastatura ar fi stins tacut propunerea pentru lucrarea aia.
+
+**Fondatorul vede:** in plus, poate stabili cifrele la nivel de PLATFORMA — devin punctul de
+plecare pentru toate companiile care nu si le-au schimbat.
+
+**Clientul vede:** un tabel pe care il poate ajusta la felul lui de lucru, in Mentenanta, nu
+ingropat in Administrare.
+
+> Verificat pe cod real, 66 de controale — inclusiv ca propunerea difera intre Logan si Scania, ca
+> masina fara kilometraj citit nu primeste o cifra inventata, ca ce a tastat omul nu se rescrie, ca
+> cele doua moduri trimit campurile corecte, si ca o cifra imposibila nu strica nimic.
+
+
 ### AMÂNDOI · Numarul masinii statea PESTE iconita, in ferestrele de Alerta si de Lucrare
 
 **Ce se vedea:** in fereastra „Lucrare noua" (si in „Regula noua"), la campul Vehicul, sub numarul
