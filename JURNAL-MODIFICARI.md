@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
-### AMÂNDOI · Notificările arată acum lucrul despre care vorbesc — `COMMIT_HASH`
+### AMÂNDOI · Notificările arată acum lucrul despre care vorbesc — `3544e92`
 
 Trei notificări deschideau aceeași hartă generică: o panglică de viteză pe drumul parcurs. Bună
 pentru o depășire de viteză, nepotrivită pentru restul. Acum fiecare arată ce trebuie.
