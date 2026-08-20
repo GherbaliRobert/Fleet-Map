@@ -98,6 +98,45 @@ t('asigurătorul din listă', h.issuer === 'GROUPAMA', h.issuer);
 const k = P(['POLITA RCA', 'ASIGURATOR: VIENNA LIFE ASIGURARI S.A.', 'Valabil de la 01.01.2027 pana la 31.12.2027'].join('\n'));
 t('firmă necunoscută, fără cuvântul-etichetă', !!k.issuer && !/ASIGURATOR/.test(k.issuer), k.issuer);
 
+// ── Polița care conține și DATELE TEHNICE. Întrebarea lui Robert (18.08): „de ce nu preia mai
+// multe date, ex. puterea, capacitatea cilindrică?" Răspuns: talonul le are ca CODURI, polița le
+// are ca ETICHETE ÎN CUVINTE — iar pe alea nu le culegeam deloc. Acum da. ──
+console.log('\n── Poliță cu date tehnice (merg în fișa vehiculului) ──');
+const m = P([
+  'POLITA DE ASIGURARE OBLIGATORIE RCA',
+  'ASIGURATOR: GROUPAMA ASIGURARI S.A.',
+  'Seria CU Nr. 10309310',
+  'DATE VEHICUL',
+  'Numar inmatriculare: B 268 ROY',
+  'Serie sasiu: WV2ZZZ2KZ8X017409',
+  'Marca: VOLKSWAGEN',
+  'Model: CADDY',
+  'An fabricatie: 2019',
+  'Capacitate cilindrica: 1598 cm3',
+  'Putere: 75 kW',
+  'Masa totala maxima autorizata: 2280 kg',
+  'Numar locuri: 5',
+  'Categoria: N1',
+  'Combustibil: MOTORINA',
+  'Valabila de la 28.07.2026 pana la 27.07.2027',
+].join('\n'));
+t('marca', m.brand === 'VOLKSWAGEN', m.brand);
+t('modelul', m.model === 'CADDY', m.model);
+t('CAPACITATEA CILINDRICĂ', m.displacement === 1598, m.displacement);
+t('PUTEREA în kW', m.power_kw === 75, m.power_kw);
+t('masa maximă', m.max_weight_legal === 2280, m.max_weight_legal);
+t('numărul de locuri', m.passenger_seats === 5, m.passenger_seats);
+t('anul de fabricație', m.year === 2019, m.year);
+t('combustibilul, în vocabularul fișei', m.fuel_type === 'Motorina', m.fuel_type);
+t('categoria N1 → autoutilitară', m.vehicle_type === 'autoutilitara', m.vehicle_type);
+t('și datele actului rămân corecte', m.expiry_date === '2027-07-27' && m.issuer === 'GROUPAMA', m.expiry_date + ' / ' + m.issuer);
+
+// Valori absurde: mai bine gol decât greșit. O cilindree de 7 cmc „completată automat" nu mai e
+// verificată de nimeni.
+const n2 = P(['RCA', 'Capacitate cilindrica: 7 cm3', 'Putere: 99999 kW', 'Numar locuri: 900'].join('\n'));
+t('cilindree absurdă respinsă', n2.displacement == null, n2.displacement);
+t('putere absurdă respinsă', n2.power_kw == null, n2.power_kw);
+t('număr de locuri absurd respins', n2.passenger_seats == null, n2.passenger_seats);
 // ── Ce NU trebuie să se întâmple ──
 console.log('\n── Prudență ──');
 const e = P('Document oarecare fara date si fara numere de act.');

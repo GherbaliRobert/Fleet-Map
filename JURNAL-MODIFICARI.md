@@ -18,6 +18,53 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-08-20
+
+### AMÂNDOI · Actele dau acum și datele tehnice + primii pași de căutare pe Google — `be879a4`
+
+**1. „De ce nu preia puterea și cilindreea?"** Pentru că le căutam doar în talon, unde au coduri
+standard. O poliță RCA le conține adesea — dar scrise în cuvinte („Capacitate cilindrica: 1598 cm3"),
+iar pe alea nu le citeam deloc.
+
+Acum le culege și de acolo. Dintr-o poliță obișnuită ies **16 câmpuri în loc de 6**: marca, modelul,
+anul, cilindreea, puterea, masa maximă, numărul de locuri, combustibilul și categoria — pe lângă
+datele actului. Toate merg în fișa vehiculului, tot cu confirmarea ta.
+
+Valorile absurde sunt respinse: o cilindree de 7 cmc sau o putere de 99999 kW nu intră în fișă.
+Un câmp completat automat nu-l mai verifică nimeni — deci mai bine gol decât greșit.
+
+**2. Site-ul: bazele care lipseau.** Cea mai costisitoare lipsă nu era la Google, ci pe WhatsApp:
+un link către `ratrack.ro` apărea **complet gol** — fără titlu, fără imagine. În B2B, unde ofertele
+circulă pe WhatsApp, asta e o pierdere zilnică. Acum linkul arată o copertă cu logo, titlu și
+descriere. Coperta se generează dintr-o comandă, deci se reface singură dacă schimbați logoul.
+
+Mai departe: **titlul paginii era scris invers** — „RA Tracks — Monitorizare GPS" pune brandul
+primul, dar nimeni nu caută „RA Tracks". Acum începe cu ce se caută. Am adăugat și fișierele prin
+care Google înțelege site-ul (`robots.txt`, `sitemap.xml`, date structurate), generate de server —
+o pagină nouă intră automat în listă, nu rămâne uitată.
+
+**3. Pagină nouă: Întrebări frecvente** (`ratrack.ro/intrebari-frecvente`), cu 11 întrebări reale —
+cât costă, ce echipament trebuie, **dacă e legal**, cum se măsoară consumul, ce se întâmplă cu datele
+dacă renunți. Sunt marcate special, deci Google le poate arăta desfășurate direct în rezultate.
+
+Valoarea lor mai mare nu e la căutări: răspund obiecțiilor **înainte** să întrebe omul.
+
+**Fondatorul vede:** linkuri care arată ca lumea când le trimiți, și o pagină la care poți trimite
+un prospect în loc să scrii același răspuns a zecea oară.
+
+**Clientul vede:** răspunsuri la ce l-ar fi făcut să ezite.
+
+> Probat pe server pornit: `robots.txt` și `sitemap.xml` răspund cu adresele corecte, pagina de
+> întrebări se deschide, coperta se servește ca imagine de 28 KB. Datele structurate sunt validate,
+> iar fiecare întrebare din ele apare **identic** în pagină — un răspuns „pentru Google" diferit de
+> cel pentru om e exact ce se sancționează.
+
+**Rămâne pe tine, 10 minute:** înregistrarea site-ului în Google Search Console. Codul care citește
+pozițiile în căutări există deja în aplicație; fără înregistrare, nu putem ști dacă ceva din toate
+astea funcționează. Măsurăm după, nu înainte.
+
+---
+
 ## 2026-08-18
 
 ### AMÂNDOI · Alerte: se recunosc după desen, se pot opri și, în sfârșit, se pot modifica

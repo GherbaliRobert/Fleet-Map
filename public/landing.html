@@ -7,8 +7,73 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <script>if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app');}</script>
-  <title>RA Tracks — Monitorizare GPS flota</title>
-  <meta name="description" content="RA Tracks — platforma de monitorizare GPS in timp real pentru flote: localizare live, rapoarte, combustibil si sonde litrometrice, alerte. Compatibil Teltonika, CAN, Escort/EuroSens.">
+  <title>Monitorizare GPS flotă auto și camioane în România | RA Tracks</title>
+  <meta name="description" content="Monitorizare GPS în timp real pentru flote de camioane și autoutilitare: localizare live, rapoarte de consum, sonde de combustibil, alerte la expirarea ITP și RCA. Compatibil Teltonika. Cont demo la cerere.">
+  <!-- ─── Partajare și indexare ──────────────────────────────────────────────────────────────────
+       Fără og:, un link trimis pe WhatsApp sau LinkedIn apare GOL — fără titlu, fără imagine. În
+       B2B-ul românesc ofertele circulă pe WhatsApp, deci ăsta era un cost de vânzări zilnic, nu
+       unul de SEO. Adresa absolută e obligatorie: rețelele nu urmează căi relative. -->
+  <link rel="canonical" href="https://ratrack.ro/">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="RA Tracks">
+  <meta property="og:locale" content="ro_RO">
+  <meta property="og:url" content="https://ratrack.ro/">
+  <meta property="og:title" content="Monitorizare GPS flotă auto și camioane în România">
+  <meta property="og:description" content="Localizare live, rapoarte de consum, sonde de combustibil și alerte la expirarea ITP și RCA. Construit de oameni care operează flote.">
+  <meta property="og:image" content="https://ratrack.ro/og-cover.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="RA Tracks — monitorizare GPS pentru flote">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Monitorizare GPS flotă auto și camioane în România">
+  <meta name="twitter:description" content="Localizare live, rapoarte de consum, alerte la expirarea ITP și RCA. Cont demo la cerere.">
+  <meta name="twitter:image" content="https://ratrack.ro/og-cover.png">
+  <!-- ─── Date structurate ───────────────────────────────────────────────────────────────────────
+       Îi spun lui Google CE suntem, în loc să-l lăsăm să deducă din text. Fără ele, un SaaS arată
+       ca orice altă pagină. NU conțin promisiuni pe care produsul nu le ține: fără note, fără
+       recenzii inventate, fără preț fals — date false aici se pedepsesc, nu se recompensează. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://ratrack.ro/#organizatie",
+        "name": "RA Tracks",
+        "url": "https://ratrack.ro/",
+        "logo": "https://ratrack.ro/logo-light.png",
+        "areaServed": { "@type": "Country", "name": "România" }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://ratrack.ro/#site",
+        "url": "https://ratrack.ro/",
+        "name": "RA Tracks",
+        "inLanguage": "ro-RO",
+        "publisher": { "@id": "https://ratrack.ro/#organizatie" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "RA Tracks",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, Android",
+        "inLanguage": "ro-RO",
+        "url": "https://ratrack.ro/",
+        "publisher": { "@id": "https://ratrack.ro/#organizatie" },
+        "description": "Platformă de monitorizare GPS pentru flote de camioane și autoutilitare: localizare în timp real, rapoarte de consum, sonde de combustibil, alerte la expirarea documentelor.",
+        "featureList": [
+          "Localizare GPS în timp real",
+          "Istoric trasee și rapoarte de consum",
+          "Sonde de combustibil și detectare alimentări/scurgeri",
+          "Alerte la expirarea ITP, RCA și rovinietă",
+          "Citirea automată a actelor vehiculului",
+          "Aplicație Android"
+        ]
+      }
+    ]
+  }
+  </script>
   <meta name="theme-color" content="#0B0E11">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="apple-touch-icon" href="/icon-180.png">
@@ -963,7 +1028,7 @@
       </div>
 
       <div class="foot-bottom">
-        <span>&copy; <span id="year"></span> RA Tracks. Toate drepturile rezervate. · <a href="/termeni.html" style="color:inherit">Termeni</a> · <a href="/confidentialitate.html" style="color:inherit">Confidențialitate</a></span>
+        <span>&copy; <span id="year"></span> RA Tracks. Toate drepturile rezervate. · <a href="/intrebari-frecvente" style="color:inherit">Întrebări frecvente</a> · <a href="/termeni" style="color:inherit">Termeni</a> · <a href="/confidentialitate" style="color:inherit">Confidențialitate</a></span>
         <div class="socials">
           <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
           <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>

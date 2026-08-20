@@ -161,6 +161,53 @@ function primulNumar(s) {
   return Number.isFinite(n) ? n : null;
 }
 
+// ─── Datele vehiculului scrise în CUVINTE, nu în coduri ───────────────────────────────────────────
+// Talonul are coduri tipărite (D.1, P.1, P.2…) și de aceea se citește ușor. O poliță RCA, un CIV sau
+// un certificat ITP conțin ADESEA aceleași date — marca, cilindreea, puterea, masele — dar scrise cu
+// etichete în română. Până acum le ignoram complet, deci un client care încărca doar polița rămânea
+// cu fișa goală, deși informația era acolo, sub ochii noștri.
+//
+// Fiecare tipar cere eticheta, apoi valoarea. Unitățile („cm3", „kW", „kg") se acceptă dar nu se cer:
+// unele acte le scriu, altele nu.
+const CAMP_ETICHETA = [
+  // [câmp, tipar, cum se transformă valoarea, încredere]
+  ['brand',            /\bMARCA\s*[:\-]?\s*([A-Z0-9ĂÂÎȘȚ][A-Z0-9ĂÂÎȘȚ \-\.]{1,24})/,                    (v) => v.trim(), 0.75],
+  ['model',            /\b(?:MODEL|TIPUL?|DENUMIRE\s*COMERCIAL[ĂA])\s*[:\-]?\s*([A-Z0-9ĂÂÎȘȚ][A-Z0-9ĂÂÎȘȚ \-\.\/]{1,30})/, (v) => v.trim(), 0.65],
+  ['displacement',     /\bCAPACITATE\s*(?:CILINDRIC[ĂA])?\s*[:\-]?\s*(\d{2,5})\s*(?:CM3|CMC|CM\^?3)?/,   (v) => parseInt(v, 10), 0.85],
+  ['power_kw',         /\bPUTERE(?:A)?\s*(?:MAXIM[ĂA])?\s*(?:NET[ĂA])?\s*[:\-]?\s*(\d{1,4})\s*KW/,        (v) => parseInt(v, 10), 0.85],
+  ['max_weight_legal', /\bMAS[ĂA]\s*(?:TOTAL[ĂA]\s*)?MAXIM[ĂA]\s*(?:AUTORIZAT[ĂA]|ADMIS[ĂA])?\s*[:\-]?\s*(\d{3,6})/, (v) => parseInt(v, 10), 0.8],
+  ['tare_weight',      /\bMAS[ĂA]\s*(?:PROPRIE|GOL)\s*[:\-]?\s*(\d{3,6})/,                                (v) => parseInt(v, 10), 0.8],
+  ['passenger_seats',  /\b(?:NUM[ĂA]R(?:UL)?\s*(?:DE\s*)?LOCURI|NR\.?\s*LOCURI|LOCURI)\s*[:\-]?\s*(\d{1,3})\b/, (v) => parseInt(v, 10), 0.75],
+  ['year',             /\bAN(?:UL)?\s*(?:DE\s*)?FABRICA[ȚT]IE\s*[:\-]?\s*((?:19|20)\d{2})/,               (v) => parseInt(v, 10), 0.85],
+];
+
+// Culege în `pune` tot ce găsește. Verificările de plauzibilitate există pentru că un tipar prea
+// îngăduitor produce valori absurde, iar o cilindree de 7 cmc în fișa clientului e mai rea decât
+// un câmp gol: nimeni n-o mai verifică după ce a fost „completată automat".
+function culegeCampuriVehicul(T, pune) {
+  for (const [camp, re, conv, inc] of CAMP_ETICHETA) {
+    const m = T.match(re);
+    if (!m) continue;
+    const v = conv(m[1]);
+    if (v == null || v === '' || (typeof v === 'number' && !Number.isFinite(v))) continue;
+    if (camp === 'displacement' && (v < 50 || v > 30000)) continue;
+    if (camp === 'power_kw' && (v < 1 || v > 2000)) continue;
+    if (camp === 'max_weight_legal' && (v < 300 || v > 60000)) continue;
+    if (camp === 'tare_weight' && (v < 200 || v > 50000)) continue;
+    if (camp === 'passenger_seats' && (v < 1 || v > 100)) continue;
+    if (camp === 'year' && (v < 1950 || v > new Date().getFullYear() + 1)) continue;
+    if (typeof v === 'string' && (v.length < 2 || NU_E_VALOARE.test(v))) continue;
+    pune(camp, v, inc);
+  }
+  // Combustibilul și categoria: aceleași dicționare ca la talon, ca să nu existe două vocabulare.
+  const f = COMBUSTIBIL.find(([re2]) => re2.test(T));
+  if (f) pune('fuel_type', f[1], 0.7);
+  const cat = T.match(/\bCATEGORIA?\s*[:\-]?\s*([MNOL]\d?|T)\b/);
+  if (cat && CATEGORIE_VEHICUL[cat[1]]) pune('vehicle_type', CATEGORIE_VEHICUL[cat[1]], 0.7);
+}
+// Cuvinte care nu pot fi o marcă sau un model — apar ca etichete vecine în formulare.
+const NU_E_VALOARE = /^(DE|LA|SI|ȘI|NR|SERIA|TIP|MARCA|MODEL|VEHICUL|AUTO|ASIGURAT|CATEGORIE|TOTAL)$/;
+
 // ─── Talon / CIV → câmpuri din fișa vehiculului ───────────────────────────────────────────────────
 function parseTalon(textBrut) {
   const text = curataText(textBrut);
@@ -228,6 +275,9 @@ function parseDocument(textBrut, tipCerut) {
   // Vehiculul la care se leagă documentul — ne ajută să-l atașăm automat mașinii potrivite.
   const vin = gasesteVin(T); if (vin) pune('vin', vin, 0.9);
   const nr = gasesteNumar(T); if (nr) pune('plate', nr, 0.85);
+  // …iar dacă actul conține și datele tehnice (polițele RCA și CIV-urile le au, scrise în cuvinte),
+  // le culegem și pe alea. Merg în FIȘA vehiculului, nu în act — și tot omul le confirmă.
+  culegeCampuriVehicul(T, pune);
 
   // Perioada de valabilitate: două date, cea mai mică e începutul, cea mare e expirarea.
   // Preferăm datele care apar lângă cuvintele potrivite; dacă nu, luăm perechea din text.

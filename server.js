@@ -1087,6 +1087,58 @@ if (API_CORS_ORIGIN) {
 // (altfel un CDN/edge ca Cloudflare poate servi versiuni vechi, iar SW-ul nu se mai actualizează).
 const NO_CACHE = 'no-cache, no-store, must-revalidate';
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')));
+// ─── Indexare: robots.txt + sitemap.xml ───────────────────────────────────────────────────────────
+// Generate de server, nu fișiere statice: o pagină nouă adăugată în listă intră automat în sitemap,
+// iar `lastmod` nu rămâne mințind luni de zile. Adresa se ia din SITE_URL (sau din antetul cererii),
+// ca sitemap-ul să nu trimită spre alt domeniu când rulăm pe alt mediu (probe, VPS nou).
+const PAGINI_PUBLICE = [
+  { cale: '/', prio: '1.0', freq: 'weekly' },
+  { cale: '/intrebari-frecvente', prio: '0.8', freq: 'monthly' },
+  { cale: '/termeni', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', prio: '0.3', freq: 'yearly' },
+];
+function _adresaSite(req) {
+  const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
+  if (dinEnv) return dinEnv;
+  return (req.headers['x-forwarded-proto'] || req.protocol || 'https') + '://' + req.get('host');
+}
+app.get('/robots.txt', (req, res) => {
+  // Aplicația în sine n-are ce căuta în index: e în spatele autentificării, iar paginile ei n-ar
+  // produce în rezultate decât drumuri care se termină la un ecran de login.
+  const randuri = [
+    'User-agent: *',
+    'Disallow: /app',
+    'Disallow: /api/',
+    'Disallow: /debug',
+    'Disallow: /set-password',
+    'Allow: /',
+    '',
+    'Sitemap: ' + _adresaSite(req) + '/sitemap.xml',
+    '',
+  ];
+  res.type('text/plain').send(randuri.join('\n'));
+});
+app.get('/sitemap.xml', (req, res) => {
+  const baza = _adresaSite(req);
+  const azi = new Date().toISOString().slice(0, 10);
+  const bucati = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'];
+  for (const p of PAGINI_PUBLICE) {
+    bucati.push('  <url>');
+    bucati.push('    <loc>' + baza + p.cale + '</loc>');
+    bucati.push('    <lastmod>' + azi + '</lastmod>');
+    bucati.push('    <changefreq>' + p.freq + '</changefreq>');
+    bucati.push('    <priority>' + p.prio + '</priority>');
+    bucati.push('  </url>');
+  }
+  bucati.push('</urlset>', '');
+  res.type('application/xml').send(bucati.join('\n'));
+});
+// Adresele „frumoase" ale paginilor publice. Fără ele, un link din sitemap ar da 404, iar Google
+// ar raporta erori exact pentru paginile pe care i le-am arătat noi.
+app.get('/intrebari-frecvente', (req, res) => res.sendFile(path.join(__dirname, 'public', 'faq.html')));
+app.get('/termeni', (req, res) => res.sendFile(path.join(__dirname, 'public', 'termeni.html')));
+app.get('/confidentialitate', (req, res) => res.sendFile(path.join(__dirname, 'public', 'confidentialitate.html')));
+
 app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 // Documentație API pentru clienți (publică, fără secrete)
 app.get(['/api-docs', '/docs'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'api-docs.html')));

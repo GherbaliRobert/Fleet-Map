@@ -127,7 +127,13 @@ async function scan({ b64, mime, tip = 'auto', onUsage }) {
   // adică fracțiuni de ban, și doar când regulile n-au reușit. Un act citit pe jumătate e mai
   // rău decât unul necitit: omul vede câmpuri completate, crede că e gata, și pleacă fără dată
   // de expirare — adică fără alerte, exact ce venise să obțină.
-  const lipsesc = ['expiry_date', 'issue_date', 'issuer'].filter((k) => rezultat.campuri[k] == null);
+  // Cerem modelului și datele TEHNICE lipsă: o poliță le conține adesea, dar fiecare
+  // asigurător le scrie altfel, iar un tipar nu poate acoperi toate formele. Costul
+  // rămâne al unui singur apel pe TEXT, nu pe imagine.
+  const CHEI_AI = ['expiry_date', 'issue_date', 'issuer', 'number',
+    'brand', 'model', 'year', 'displacement', 'power_kw', 'max_weight_legal', 'passenger_seats'];
+  const NUMERICE = { year: [1950, 2100], displacement: [50, 30000], power_kw: [1, 2000], max_weight_legal: [300, 60000], passenger_seats: [1, 100] };
+  const lipsesc = CHEI_AI.filter((k) => rezultat.campuri[k] == null);
   if (lipsesc.length && rezultat.tip === 'document' && ai.aiEnabled() && String(text).trim().length > 40) {
     try {
       const raspuns = await ai.callClaude({
@@ -139,7 +145,11 @@ async function scan({ b64, mime, tip = 'auto', onUsage }) {
             '- "issuer": denumirea firmei care a emis actul (asigurător / stație ITP / CNAIR)\n' +
             '- "issue_date": data de la care e valabil, format AAAA-LL-ZZ\n' +
             '- "expiry_date": data până la care e valabil, format AAAA-LL-ZZ\n' +
-            '- "number": seria și numărul actului\n\n' +
+            '- "number": seria și numărul actului\n' +
+            '- date TEHNICE ale vehiculului, DOAR dacă apar în act: "brand" (marca),' +
+            ' "model", "year" (an fabricație), "displacement" (capacitate cilindrică, cm3),' +
+            ' "power_kw" (putere, kW), "max_weight_legal" (masa maximă, kg),' +
+            ' "passenger_seats" (număr locuri) — toate ca NUMERE, fără unitate\n\n' +
             'Reguli: dacă un câmp nu apare în text, pune null. NU inventa. Datele românești sunt zi.lună.an — ' +
             'convertește-le. Dacă vezi un interval („valabil de la X până la Y"), X e issue_date și Y e expiry_date.\n\n' +
             'TEXT:\n' + String(text).slice(0, 6000) + '\n\nRăspunde doar cu obiectul JSON.',
@@ -155,7 +165,14 @@ async function scan({ b64, mime, tip = 'auto', onUsage }) {
           if (v == null || v === '') continue;
           // Datele trec prin ACELAȘI validator ca restul — modelul poate întoarce o dată imposibilă,
           // iar o dată greșită de expirare e mai rea decât una lipsă.
-          if (k.endsWith('_date')) {
+          // Numerele trec prin aceleași plaje de plauzibilitate ca la reguli: modelul poate
+          // întoarce „1598 cm3" ca text sau o putere de 99999, iar o valoare absurdă
+          // completată automat nu mai e verificată de nimeni.
+          if (NUMERICE[k]) {
+            const n = parseInt(String(v).replace(/[^0-9-]/g, ''), 10);
+            if (!Number.isFinite(n) || n < NUMERICE[k][0] || n > NUMERICE[k][1]) continue;
+            v = n;
+          } else if (k.endsWith('_date')) {
             const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
             if (!m) continue;
             const iso = docparse.ziLunaAn(m[3], m[2], m[1]);
