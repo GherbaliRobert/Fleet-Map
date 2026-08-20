@@ -53,3 +53,11 @@
 .tr-grid thead th { background: var(--bg-dark); font-size: 10px; color: var(--text-muted); }
 .tr-grid tbody th { background: var(--bg-dark); text-align: left; font-size: 10.5px; }
 .tr-grid td.presupus { background: #f59e0b12; color: #f59e0b; }
+
+/* Câmp lipsă din fișă → căsuță de completat, marcată cu creion. Fără asta, calculul se bloca pe o
+   mașină reală doar fiindcă nimeni nu-i trecuse masa. */
+.tr-f.edit { border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.05); }
+.tr-f.edit input { width: 100%; margin-top: 2px; padding: 3px 5px; font-size: 12.5px; font-weight: 700;
+  background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-primary); font-family: inherit; }
+.tr-salv { display: block; width: 100%; margin-top: 8px; padding: 7px; font-size: 12px; border-radius: 9px; }

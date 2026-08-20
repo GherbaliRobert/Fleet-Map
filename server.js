@@ -4126,7 +4126,12 @@ app.put('/api/tollro/config', requireAuth, requireSuperadmin, async (req, res) =
 async function _tollroProfil(imei) {
   const d = await db.getDeviceFull(imei);
   if (!d) return null;
+  // Numarul de axe: intai coloana lui (completata in fisa sau chiar de aici), apoi rezerva istorica
+  // — numaratoarea sarcinilor per axa din Config Camion. Aceea presupune ca omul le-a completat pe
+  // toate, ceea ce se intampla rar; de aceea exista acum si un camp propriu.
   const axe = (function () {
+    const direct = Number(d.axle_count);
+    if (Number.isFinite(direct) && direct > 0) return Math.round(direct);
     try {
       const a = typeof d.max_axle_loads === 'string' ? JSON.parse(d.max_axle_loads) : (d.max_axle_loads || {});
       const n = Object.keys(a || {}).filter(function (k) { return Number(a[k]) > 0; }).length;
@@ -4162,6 +4167,49 @@ app.get('/api/tollro/profil/:imei', requireAuth, withScope, async (req, res) => 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Completarile de mana: se accepta DOAR pentru campurile pe care fisa nu le are. Daca fisa spune
+// 30 t, nimeni nu poate „calcula la 5 t" trimitand alta masa — altfel taxa ar deveni negociabila din
+// browser, iar cifra pusa in oferta n-ar mai avea nicio legatura cu vehiculul.
+// Ce s-a completat de mana se raporteaza inapoi, ca ecranul sa poata spune „valoare introdusa acum,
+// nesalvata in fisa".
+function _tollroCuManual(prof, manual) {
+  const m = (manual && typeof manual === 'object') ? manual : {};
+  const completat = {};
+  const out = Object.assign({}, prof);
+  if (out.masaKg == null || !(out.masaKg > 0)) {
+    const v = Number(m.masaKg);
+    if (Number.isFinite(v) && v >= 500 && v <= 100000) { out.masaKg = Math.round(v); completat.masaKg = true; }
+  }
+  if (out.axe == null) {
+    const v = Number(m.axe);
+    if (Number.isFinite(v) && v >= 2 && v <= 12) { out.axe = Math.round(v); completat.axe = true; }
+  }
+  return { profil: out, completat };
+}
+
+// Salvarea in fisa a valorilor completate de mana — ca data viitoare sa vina singure. Trece prin
+// aceeasi cale ca fisa vehiculului (requireFleet + whitelist-ul din db.js), nu pe o scurtatura.
+app.put('/api/tollro/profil/:imei', requireAuth, requireFleet, withScope, async (req, res) => {
+  try {
+    const imei = String(req.params.imei || '');
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+    // `canAccessImei` e permisiv pentru super-admin, deci NU spune si daca vehiculul exista. Fara
+    // verificarea asta, un UPDATE pe un IMEI inexistent raspundea 200 („s-a salvat") desi n-a atins
+    // niciun rand — exact felul de „succes" care te lasa sa crezi ca ai completat fisa.
+    if (!(await _tollroProfil(imei))) return res.status(404).json({ error: 'Vehicul negasit' });
+    const b = req.body || {};
+    const patch = {};
+    const masa = Number(b.masaKg);
+    if (Number.isFinite(masa) && masa >= 500 && masa <= 100000) patch.max_weight_legal = Math.round(masa);
+    const axe = Number(b.axe);
+    if (Number.isFinite(axe) && axe >= 2 && axe <= 12) patch.axle_count = Math.round(axe);
+    if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nimic de salvat' });
+    await db.updateVehicleDetails(imei, patch);
+    auditReq(req, 'update', 'device_details', imei, patch);
+    res.json({ ok: true, vehicul: await _tollroProfil(imei) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Estimare din kilometri DAȚI (introduși de om sau veniți din altă parte).
 app.post('/api/tollro/estimate', requireAuth, withScope, async (req, res) => {
   try {
@@ -4170,8 +4218,9 @@ app.post('/api/tollro/estimate', requireAuth, withScope, async (req, res) => {
     const prof = await _tollroProfil(imei);
     if (!prof) return res.status(404).json({ error: 'Vehicul negăsit' });
     const km = (req.body && req.body.km) || {};
-    const rez = tollro.estimeaza({ masaKg: prof.masaKg, euro: prof.euro }, km, await _tollroGrila());
-    res.json({ vehicul: prof, rezultat: rez });
+    const cm = _tollroCuManual(prof, req.body && req.body.manual);
+    const rez = tollro.estimeaza({ masaKg: cm.profil.masaKg, euro: cm.profil.euro }, km, await _tollroGrila());
+    res.json({ vehicul: cm.profil, completatManual: cm.completat, rezultat: rez });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -4230,10 +4279,11 @@ app.post('/api/tollro/din-istoric', requireAuth, withScope, async (req, res) => 
     for (const k of Object.keys(km)) km[k] = Math.round(km[k] * 10) / 10;
     kmNecunoscut = Math.round(kmNecunoscut * 10) / 10;
 
-    const rez = tollro.estimeaza({ masaKg: prof.masaKg, euro: prof.euro }, km, await _tollroGrila());
+    const cmI = _tollroCuManual(prof, req.body && req.body.manual);
+    const rez = tollro.estimeaza({ masaKg: cmI.profil.masaKg, euro: cmI.profil.euro }, km, await _tollroGrila());
     if (kmNecunoscut > 0) rez.avertismente.push(kmNecunoscut.toString().replace('.', ',') + ' km nu s-au putut încadra pe un drum cunoscut (zonă fără date OSM sau în afara carosabilului) — nu sunt taxați în estimarea de mai sus.');
     res.json({
-      vehicul: prof, rezultat: rez, km, kmNecunoscut,
+      vehicul: cmI.profil, completatManual: cmI.completat, rezultat: rez, km, kmNecunoscut,
       esantioane: esant.length, zone: cls.tiles, traseu: esant,
       atribuire: cls.attribution, sursa: 'traseul real al vehiculului + tipul drumului din OpenStreetMap',
     });

@@ -307,6 +307,7 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS temp_min INTEGER;
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS temp_max INTEGER;
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS road_tax_category VARCHAR(30);
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS axle_count INTEGER;   -- nr. de axe: cerut la taxa rutiera; pana acum se putea deduce doar din sarcinile per axa, ceea ce presupunea completate TOATE
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS cost_center VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inventory_number VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS ignition_source VARCHAR(10);
@@ -1888,7 +1889,7 @@ const VEHICLE_DETAIL_COLS = [
   'consumption_city', 'consumption_idle', 'consumption_road', 'passenger_seats',
   'emission_class', 'tire_size', 'engine_serial', 'displacement', 'power_kw',
   'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'ignition_source', 'show_transport',
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'axle_count', 'ignition_source', 'show_transport',
   'odo_base_km', 'temp_min', 'temp_max',
   // Fișa vehiculului le trimite dintotdeauna (index.html, secțiunea „Administrativ & afișare"),
   // dar lipseau de aici — deci se salvau DOAR prin PUT /api/devices/:imei (alt formular), iar din
@@ -1898,7 +1899,7 @@ const VEHICLE_DETAIL_COLS = [
 const NUMERIC_COLS = new Set([
   'year', 'tank_capacity', 'lpg_volume', 'speed_limit', 'consumption_city', 'consumption_idle',
   'consumption_road', 'passenger_seats', 'displacement', 'power_kw', 'payload',
-  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'odo_base_km', 'temp_min', 'temp_max'
+  'tare_weight', 'max_weight_legal', 'max_weight_construct', 'axle_count', 'odo_base_km', 'temp_min', 'temp_max'
 ]);
 // Doar acestea sunt NUMERIC(6,2) (acceptă zecimale); restul din NUMERIC_COLS sunt INTEGER → rotunjim,
 // altfel un decimal (ex. 90.5) e respins de Postgres/PGlite ("invalid input syntax for type integer") și pică tot UPDATE-ul.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
-import { vehicles, showToast } from '../app/store';
+import { vehicles, showToast, me } from '../app/store';
 import { Icon } from '../components/Icon';
 import './admin.css';
 import './tollro.css';
@@ -30,14 +30,34 @@ export function EToll() {
   const [de, setDe] = useState(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
   const [pana, setPana] = useState(azi);
   const [kmA, setKmA] = useState(''), [kmN, setKmN] = useState(''), [kmX, setKmX] = useState('');
+  // Ce se scrie de mana pentru campurile care LIPSESC din fisa. Nu se salveaza singur — pentru asta
+  // e butonul; iar daca fisa are deja valoarea, serverul ignora completarea (fisa e adevarul).
+  const [mMasa, setMMasa] = useState(''), [mAxe, setMAxe] = useState('');
+  const [salvez, setSalvez] = useState(false);
+  const manual = () => ({ masaKg: parseFloat(mMasa) || undefined, axe: parseFloat(mAxe) || undefined });
 
   useEffect(() => { Api.tollroConfig().then(setCfg).catch((e: any) => setErr(e?.message || 'Eroare')); }, []);
 
   useEffect(() => {
-    setProf(null); setRez(null);
+    setProf(null); setRez(null); setMMasa(''); setMAxe('');   // alt vehicul, alte date
     if (!imei) return;
     Api.tollroProfil(imei).then(setProf).catch(() => setProf(null));
   }, [imei]);
+
+  async function salveazaInFisa() {
+    const b: any = {};
+    if (parseFloat(mMasa) > 0) b.masaKg = parseFloat(mMasa);
+    if (parseFloat(mAxe) > 0) b.axe = parseFloat(mAxe);
+    if (!b.masaKg && !b.axe) { showToast('Completează întâi valorile'); return; }
+    setSalvez(true);
+    try {
+      await Api.tollroSalveazaProfil(imei, b);
+      showToast('Salvat în fișa vehiculului');
+      setMMasa(''); setMAxe('');
+      setProf(await Api.tollroProfil(imei));
+    } catch (e: any) { showToast(e?.message || 'Nu s-a putut salva'); }
+    finally { setSalvez(false); }
+  }
 
   function cereVehicul() {
     if (!imei) { showToast('Alege întâi vehiculul din flotă'); return false; }
@@ -47,7 +67,7 @@ export function EToll() {
   async function calcManual() {
     if (!cereVehicul()) return;
     setBusy(true); setErr('');
-    try { setRez(await Api.tollroEstimate(imei, { autostrada: parseFloat(kmA) || 0, national: parseFloat(kmN) || 0, alte: parseFloat(kmX) || 0 })); }
+    try { setRez(await Api.tollroEstimate(imei, { autostrada: parseFloat(kmA) || 0, national: parseFloat(kmN) || 0, alte: parseFloat(kmX) || 0 }, manual())); }
     catch (e: any) { setErr(e?.message || 'Eroare la calcul'); }
     finally { setBusy(false); }
   }
@@ -55,15 +75,14 @@ export function EToll() {
   async function calcIstoric() {
     if (!cereVehicul()) return;
     setBusy(true); setErr(''); setRez(null);
-    try { setRez(await Api.tollroDinIstoric(imei, de + 'T00:00:00', pana + 'T23:59:59')); }
+    try { setRez(await Api.tollroDinIstoric(imei, de + 'T00:00:00', pana + 'T23:59:59', manual())); }
     catch (e: any) { setErr(e?.message || 'Eroare la calcul'); }
     finally { setBusy(false); }
   }
 
   const v = prof?.vehicul, inc = prof?.incadrare;
   const masa = v?.masaKg || null;
-  const lipsa: string[] = [];
-  if (v) { if (!masa) lipsa.push('masa maximă autorizată'); if (!v.euro) lipsa.push('norma de poluare'); }
+  const poateEdita = !!(me.value?.isSuper || me.value?.permissions?.manageFleet);
   const z = rez?.rezultat;
   const maxCost = z?.linii?.length ? Math.max(0.01, ...z.linii.map((l: any) => l.cost)) : 1;
   const kmTotal = z?.linii?.reduce((a: number, l: any) => a + l.km, 0) || 0;
@@ -92,8 +111,12 @@ export function EToll() {
               <div class="tr-profil">
                 <div class="tr-f"><span>Număr</span><b class={v.numar ? '' : 'gol'}>{v.numar || '—'}</b></div>
                 <div class="tr-f"><span>VIN</span><b class={v.vin ? '' : 'gol'}>{v.vin || '—'}</b></div>
-                <div class="tr-f"><span>MTMA</span><b class={masa ? '' : 'gol'}>{masa ? (masa / 1000).toLocaleString('ro-RO') + ' t' : '—'}</b></div>
-                <div class="tr-f"><span>Axe</span><b class={v.axe ? '' : 'gol'}>{v.axe || '—'}</b></div>
+                {masa
+                  ? <div class="tr-f"><span>MTMA</span><b>{(masa / 1000).toLocaleString('ro-RO')} t</b></div>
+                  : <div class="tr-f edit"><span>MTMA (kg) ✎</span><input type="number" min="500" max="100000" placeholder="ex. 30000" value={mMasa} onInput={(e) => setMMasa((e.target as HTMLInputElement).value)} /></div>}
+                {v.axe
+                  ? <div class="tr-f"><span>Axe</span><b>{v.axe}</b></div>
+                  : <div class="tr-f edit"><span>Axe ✎</span><input type="number" min="2" max="12" placeholder="ex. 4" value={mAxe} onInput={(e) => setMAxe((e.target as HTMLInputElement).value)} /></div>}
                 <div class="tr-f"><span>Normă</span><b class={v.euro ? '' : 'gol'}>{v.euro || '—'}</b></div>
               </div>
               {masa && masa < 3500
@@ -101,9 +124,14 @@ export function EToll() {
                 : inc
                   ? <div class="tr-nota verde">Se taxează cu <b>{nr(inc.leiPerKm.autostrada)} lei/km</b> pe autostradă și <b>{nr(inc.leiPerKm.national)} lei/km</b> pe drum național.{inc.euroCunoscut ? '' : ' (normă necunoscută → tarif maxim)'}</div>
                   : null}
-              {lipsa.length > 0 && (
-                <div class="tr-nota galben">Lipsește <b>{lipsa.join(' și ')}</b> din fișa vehiculului. {masa ? 'Calculăm la tariful maxim până o completezi.' : 'Fără masă nu putem încadra vehiculul.'}</div>
+              {(!masa || !v.axe) && (
+                <div class="tr-nota galben">
+                  {!masa && !v.axe ? 'Masa și numărul de axe lipsesc' : (!masa ? 'Masa maximă autorizată lipsește' : 'Numărul de axe lipsește')} din fișa vehiculului — completează-le mai sus ca să poți calcula.
+                  {poateEdita && <button class="btn tr-salv" disabled={salvez} onClick={salveazaInFisa}>{salvez ? 'Se salvează…' : 'Salvează în fișă'}</button>}
+                </div>
               )}
+              {!v.euro && <div class="tr-nota galben">Norma de poluare lipsește din fișă — calculăm la tariful maxim. Se completează din fișa vehiculului.</div>}
+              {(v.axe || mAxe) && <div class="tr-mic">Numărul de axe nu schimbă suma: grila publicată diferențiază doar după masă și normă Euro. Îl păstrăm pentru cazul în care ordonanța finală îl va folosi.</div>}
             </>
           )}
         </div>

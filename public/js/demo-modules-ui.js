@@ -106,7 +106,7 @@
   // Deosebirea față de calculatoarele publice (unde tastezi numărul și VIN-ul oricărui camion):
   // aici vehiculul se ALEGE DIN FLOTĂ, iar profilul de taxare vine din fișa lui. Nu poți calcula
   // pentru o mașină care nu e a ta, și nu mai tastezi de fiecare dată masa, axele și norma Euro.
-  var _tr = { cfg: null, imei: '', profil: null, sursa: 'istoric', rezultat: null };
+  var _tr = { cfg: null, imei: '', profil: null, sursa: 'istoric', rezultat: null, manual: {} };
 
   window.openEtollDemo = async function () {
     ensureContainers();
@@ -201,6 +201,7 @@
     var sel = el('tr-veh'); if (!sel) return;
     _tr.imei = sel.value;
     var box = el('tr-profil'); if (!box) return;
+    _tr.manual = {};   // alt vehicul, alte date — nu caram masa camionului dinainte
     if (!_tr.imei) { _tr.profil = null; box.innerHTML = ''; return; }
     box.innerHTML = '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se citește fișa…</div>';
     // Profilul vine de la SERVER, nu din lista încărcată în browser: pe ecran trebuie să scrie exact
@@ -212,13 +213,22 @@
     var lipsa = [];
     if (!masa) lipsa.push('masa maximă autorizată');
     if (!d.euro) lipsa.push('norma de poluare');
+    // Un camp pe care fisa il ARE se afiseaza si atat — se modifica in fisa, nu de aici, ca sa nu
+    // existe doua adevaruri. Un camp pe care fisa NU il are devine casuta de completat: altfel
+    // calculul se blocheaza pe o masina reala doar fiindca cineva n-a apucat sa-i treaca masa.
     var camp = function (et, v) { return '<div class="tr-f"><span>' + et + '</span><b' + (v ? '' : ' class="gol"') + '>' + esc(v || '—') + '</b></div>'; };
+    var campEdit = function (et, id, ph, min, max, val) {
+      return '<div class="tr-f edit"><span>' + et + ' <i class="fas fa-pen"></i></span>' +
+        '<input type="number" id="' + id + '" min="' + min + '" max="' + max + '" step="1" placeholder="' + ph + '"' +
+        (val ? ' value="' + val + '"' : '') + ' oninput="trManualSchimbat()"></div>';
+    };
     var inc = r.incadrare;
+    var potSalva = !!(window.currentUser && (currentUser.isSuper || (currentUser.permissions && currentUser.permissions.manageFleet)));
     box.innerHTML =
       '<div class="tr-profil">' +
         camp('Număr', d.numar) + camp('VIN', d.vin) +
-        camp('MTMA', masa ? (masa / 1000).toLocaleString('ro-RO') + ' t' : '') +
-        camp('Axe', d.axe ? String(d.axe) : '') +
+        (masa ? camp('MTMA', (masa / 1000).toLocaleString('ro-RO') + ' t') : campEdit('MTMA (kg)', 'tr-m-masa', 'ex. 30000', 500, 100000, _tr.manual.masaKg)) +
+        (d.axe ? camp('Axe', String(d.axe)) : campEdit('Axe', 'tr-m-axe', 'ex. 4', 2, 12, _tr.manual.axe)) +
         camp('Normă', d.euro) +
       '</div>' +
       (masa && masa < 3500
@@ -229,8 +239,33 @@
             inc.leiPerKm.national.toLocaleString('ro-RO', { minimumFractionDigits: 2 }) + ' lei/km</b> pe drum național.' +
             (inc.euroCunoscut ? '' : ' (normă necunoscută → tarif maxim)') + '</div>'
           : '') +
-      (lipsa.length ? '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> Lipsește <b>' + lipsa.join('</b> și <b>') +
-        '</b> din fișa vehiculului. ' + (masa ? 'Calculăm la tariful maxim până o completezi.' : 'Fără masă nu putem încadra vehiculul.') + '</div>' : '');
+      ((!masa || !d.axe)
+        ? '<div class="tr-nota galben"><i class="fas fa-pen"></i> ' +
+            (!masa && !d.axe ? 'Masa și numărul de axe lipsesc' : (!masa ? 'Masa maximă autorizată lipsește' : 'Numărul de axe lipsește')) +
+            ' din fișa vehiculului — completează-le mai sus ca să poți calcula.' +
+            (potSalva ? ' <button class="btn-sm" onclick="trSalveazaInFisa()"><i class="fas fa-save"></i> Salvează în fișă</button>' : '') +
+          '</div>' : '') +
+      (!d.euro ? '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> Norma de poluare lipsește din fișă — calculăm la tariful maxim. Se completează din fișa vehiculului.</div>' : '') +
+      (d.axe || _tr.manual.axe ? '<div class="dm-muted" style="font-size:11px;margin-top:6px">Numărul de axe nu schimbă suma: grila publicată diferențiază doar după masă și normă Euro. Îl păstrăm pentru cazul în care ordonanța finală îl va folosi.</div>' : '');
+  };
+
+  // Ce s-a scris de mana se tine in memorie, ca sa nu se piarda la re-desenare si sa plece odata cu
+  // calculul. NU se salveaza singur in fisa — pentru asta e butonul.
+  window.trManualSchimbat = function () {
+    var m = el('tr-m-masa'), a = el('tr-m-axe');
+    _tr.manual.masaKg = m ? m.value : _tr.manual.masaKg;
+    _tr.manual.axe = a ? a.value : _tr.manual.axe;
+  };
+
+  window.trSalveazaInFisa = async function () {
+    trManualSchimbat();
+    var body = {};
+    if (_tr.manual.masaKg) body.masaKg = parseFloat(_tr.manual.masaKg);
+    if (_tr.manual.axe) body.axe = parseFloat(_tr.manual.axe);
+    if (!body.masaKg && !body.axe) { toast('Completează întâi valorile', 'error'); return; }
+    var r = await api('/api/tollro/profil/' + encodeURIComponent(_tr.imei), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (r && r.ok) { toast('Salvat în fișa vehiculului', 'success'); _tr.manual = {}; trAlegeVehicul(); }
+    else toast((r && r.error) || 'Nu s-a putut salva', 'error');
   };
 
   function trCereVehicul() {
@@ -241,7 +276,8 @@
   window.trManual = async function () {
     if (!trCereVehicul()) return;
     var km = { autostrada: parseFloat(el('tr-km-a').value) || 0, national: parseFloat(el('tr-km-n').value) || 0, alte: parseFloat(el('tr-km-x').value) || 0 };
-    var r = await postJSON('/api/tollro/estimate', { imei: _tr.imei, km: km });
+    trManualSchimbat();
+    var r = await postJSON('/api/tollro/estimate', { imei: _tr.imei, km: km, manual: _tr.manual });
     trAfiseaza(r, null);
   };
 
@@ -249,8 +285,9 @@
     if (!trCereVehicul()) return;
     var box = el('tr-rezultat');
     box.innerHTML = '<h3>Detalii costuri</h3><div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se citește traseul și se întreabă OpenStreetMap ce fel de drumuri sunt… poate dura până la un minut.</div>';
+    trManualSchimbat();
     var from = el('tr-de-la').value, to = el('tr-pana-la').value;
-    var r = await postJSON('/api/tollro/din-istoric', { imei: _tr.imei, from: from + 'T00:00:00', to: to + 'T23:59:59' });
+    var r = await postJSON('/api/tollro/din-istoric', { imei: _tr.imei, from: from + 'T00:00:00', to: to + 'T23:59:59', manual: _tr.manual });
     trAfiseaza(r, r && r.atribuire);
   };
 

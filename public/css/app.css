@@ -2218,3 +2218,12 @@
 /* Etichete nr. înmatriculare peste modelele 3D (harta MapLibre) — și țintă de click */
 .vmk3d { cursor: pointer; }
 .vmk3d-label { background: rgba(11,14,17,.85); color: #fff; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; padding: 1px 6px; font-size: 11px; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.4); pointer-events: auto; }
+
+    /* Câmp din profil care LIPSEȘTE din fișă: devine căsuță de completat, marcată cu un creion.
+       Fără asta, calculul se bloca pe o mașină reală doar fiindcă nimeni nu-i trecuse masa. */
+    .tr-f.edit { border-color: color-mix(in srgb, #f59e0b 45%, var(--border)); background: #f59e0b0d; }
+    .tr-f.edit span i { font-size: 8px; color: #f59e0b; margin-left: 2px; }
+    .tr-f.edit input { width: 100%; margin-top: 2px; padding: 2px 4px; font-size: 13px; font-weight: 700;
+      background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-primary); font-family: inherit; }
+    .tr-nota .btn-sm { margin-left: 6px; vertical-align: 1px; }

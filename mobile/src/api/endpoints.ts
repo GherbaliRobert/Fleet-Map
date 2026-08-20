@@ -133,8 +133,9 @@ export const Api = {
   tollroConfig: () => api<any>('/api/tollro/config'),
   tollroSetConfig: (grila: any) => api<any>('/api/tollro/config', { method: 'PUT', body: { grila } }), // super-admin
   tollroProfil: (imei: string) => api<any>('/api/tollro/profil/' + encodeURIComponent(imei)),
-  tollroEstimate: (imei: string, km: any) => api<any>('/api/tollro/estimate', { method: 'POST', body: { imei, km } }),
-  tollroDinIstoric: (imei: string, from: string, to: string) => api<any>('/api/tollro/din-istoric', { method: 'POST', body: { imei, from, to } }),
+  tollroSalveazaProfil: (imei: string, body: any) => api<any>('/api/tollro/profil/' + encodeURIComponent(imei), { method: 'PUT', body }),
+  tollroEstimate: (imei: string, km: any, manual?: any) => api<any>('/api/tollro/estimate', { method: 'POST', body: { imei, km, manual } }),
+  tollroDinIstoric: (imei: string, from: string, to: string, manual?: any) => api<any>('/api/tollro/din-istoric', { method: 'POST', body: { imei, from, to, manual } }),
   etollCosts: (imei?: string, days = 30) => api<any>(`/api/etoll/costs?days=${days}${imei ? '&imei=' + encodeURIComponent(imei) : ''}`),
   etollProviders: () => api<any>('/api/etoll/providers'),
   etollSetProvider: (provider: string) => api<any>('/api/etoll/provider', { method: 'PUT', body: { provider } }), // super-admin

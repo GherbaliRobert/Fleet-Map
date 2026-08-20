@@ -130,6 +130,22 @@ afișat ca oficial, e mai rău decât lipsa lui.
 modifică doar din web — 24 de căsuțe numerice pe ecran de telefon sunt o invitație la greșeli, iar
 greșeala aici înseamnă un preț greșit trimis unui client.
 
+**Completare pe loc, când fișa e goală (cerut de Robert, 20.08).** Dacă un camion n-are trecute masa
+sau numărul de axe, calculul nu se mai blochează: cele două câmpuri devin căsuțe și le completezi
+acolo. Un buton **„Salvează în fișă"** le trece definitiv la vehicul, ca data viitoare să vină
+singure — se salvează pe aceeași cale ca fișa, deci se supune acelorași drepturi (un cont care nu
+poate edita flota nu vede butonul).
+
+Două reguli pe care le-am pus dinadins:
+- **Completarea merge DOAR unde fișa e goală.** Dacă în fișă scrie 30 t, nu poți „calcula la 5 t"
+  scriind altceva — altfel taxa ar deveni negociabilă din browser, iar cifra pusă în ofertă n-ar mai
+  avea legătură cu camionul. Fișa e adevărul.
+- **Ce scrii nu se salvează singur.** Rămâne doar pentru calculul curent până apeși butonul.
+
+Numărul de axe **nu schimbă suma** — grila publicată diferențiază doar după masă și normă Euro — și
+scrie asta pe ecran, ca să nu pară defect. Îl păstrăm fiindcă ordonanța finală s-ar putea să-l
+folosească, și fiindcă oricum e o dată bună de avut la vehicul.
+
 **De verificat când apare ordonanța:** valorile marcate cu ⚠ și data de aplicare. Sunt într-un
 singur loc, se schimbă în două minute, fără programator.
 
