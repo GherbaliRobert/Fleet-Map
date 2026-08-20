@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
-### AMÂNDOI · Alarma falsă de combustibil, căutarea după număr și cadranele de stare — `COMMIT_HASH`
+### AMÂNDOI · Alarma falsă de combustibil, căutarea după număr și cadranele de stare — `2e13d65`
 
 **1. „Scădere de la 43 L la 32 L" — fără să se fi întâmplat nimic.** Robert a primit notificarea pe
 20.08. Nu senzorul era de vină, ci regula noastră.
