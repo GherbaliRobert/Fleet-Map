@@ -2049,9 +2049,10 @@ const pozitii = await r.json();</code></pre>
           .alr-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
           /* Numărul de înmatriculare, fără pastilă: mare deasupra, modelul mărunt dedesubt. În pastilă
              gri, numărul și modelul se citeau ca un singur șir. */
-          .alr-veh { min-width: 0; }
-          .alr-plate { display: block; font-weight: 800; font-size: 13.5px; letter-spacing: .5px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          .alr-vnm { display: block; font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          /* Doar numărul mașinii; compania, în paranteză, apare numai pentru super-admin. */
+          .alr-plate { font-weight: 800; font-size: 13.5px; letter-spacing: .5px; color: var(--text-primary); }
+          .alr-allveh { font-weight: 700; font-size: 13px; color: var(--text-secondary); }
+          .alr-co { color: var(--text-muted); font-weight: 600; font-size: 12px; }
 
           /* ── Fereastra de scris regula ── */
           /* Deasupra ferestrei Administrare: ambele sunt .modal-overlay (z-index 2000), iar asta apare
@@ -4940,12 +4941,7 @@ const pozitii = await r.json();</code></pre>
             ? '<span class="alr-chip" title="' + esc(zNames.join(', ')) + '"><i class="fas fa-draw-polygon"></i><span>'
               + esc(zNames.slice(0, 2).join(', ')) + (zNames.length > 2 ? ' +' + (zNames.length - 2) : '') + '</span></span>'
             : '';
-          // Domeniul regulii, scris explicit: „Toate vehiculele" nu spunea dacă e o companie sau toată platforma.
-          const scope = a.imei
-            ? alertVehChip(a.imei)
-            : (a.company_id != null
-              ? '<span class="alr-chip"><span>Toate vehiculele' + (isSuper ? ' · ' + esc(_alertCoName(a.company_id)) : '') + '</span></span>'
-              : '<span class="alr-chip warn"><i class="fas fa-triangle-exclamation"></i><span>TOATE companiile</span></span>');
+          const scope = alertScopeLabel(a, isSuper);
           const prag = alertPragLabel(a);
           return '<div class="alr-r' + (a.enabled ? '' : ' off') + '">'
             + '<div class="alr-c-sc">' + scope + '</div>'
@@ -4969,16 +4965,20 @@ const pozitii = await r.json();</code></pre>
       _alertOpenType = (String(_alertOpenType) === String(tp)) ? '' : tp;   // '' = închis explicit, nu „niciodată deschis"
       renderAlerts();
     }
-    // Eticheta vehiculului: numărul de înmatriculare ÎNGROȘAT și închis la culoare, numele mai șters.
-    // Scrise la fel („B 268 ROY · VW CADDY"), se citeau ca un singur șir și numărul se pierdea.
-    function alertVehChip(imei) {
-      const d = (typeof adminDevicesCache !== 'undefined' ? adminDevicesCache : []).find(x => x.imei === imei);
-      const plate = d && d.plate ? String(d.plate).trim() : '';
-      const nm = d ? (d.name || '') : '';
-      if (!plate) return '<span class="alr-chip"><span>' + esc(nm || imei) + '</span></span>';
-      // Fără pastilă: pastila gri lipea numărul de model și se citeau ca un singur șir.
-      return '<div class="alr-veh"><b class="alr-plate">' + esc(plate) + '</b>'
-        + (nm ? '<span class="alr-vnm">' + esc(nm) + '</span>' : '') + '</div>';
+    // Pentru cine e regula, scris cât mai scurt: NUMĂRUL mașinii, iar compania doar în paranteză și
+    // doar pentru noi. Clientul vede numai numărul — compania lui e subînțeleasă, iar regulile altor
+    // companii nici nu ajung la el (getAlerts filtrează pe companie).
+    function alertScopeLabel(a, isSuper) {
+      const co = (isSuper && a.company_id != null)
+        ? ' <span class="alr-co">(' + esc(_alertCoName(a.company_id)) + ')</span>' : '';
+      if (a.imei) {
+        const d = (typeof adminDevicesCache !== 'undefined' ? adminDevicesCache : []).find(x => x.imei === a.imei);
+        const plate = (d && d.plate) ? String(d.plate).trim() : ((d && d.name) ? d.name : a.imei);
+        return '<span class="alr-plate">' + esc(plate) + '</span>' + co;
+      }
+      if (a.company_id != null) return '<span class="alr-allveh">Toate vehiculele</span>' + co;
+      // Fără companie = toate flotele de pe platformă. Doar super-adminul ajunge să vadă așa ceva.
+      return '<span class="alr-chip warn"><i class="fas fa-triangle-exclamation"></i><span>Toate companiile</span></span>';
     }
     // Pragul regulii, scris scurt pentru pastilă. Unitatea ține de câmpul din condiție, nu de tip,
     // ca să nu ținem încă o listă paralelă cu ALERT_TYPES.

@@ -124,9 +124,28 @@ apăsare ca să vezi tot ce ai.
 **Numărul de înmatriculare nu mai stă în pastilă.** E scris mare, deasupra, cu modelul mărunt
 dedesubt. În pastila gri, numărul și modelul se citeau ca un singur șir.
 
-> Verificat pe cod real, 35 de controale — inclusiv că două reguli de același tip chiar se unesc
+**Coloana „pentru cine e regula" s-a simplificat până la capăt.** Alin s-a uitat la listă și a
+întrebat, pe bună dreptate, de ce la o regulă scrie numărul mașinii, iar la alta scrie „TOATE
+companiile" — două lucruri fără nicio legătură între ele, unul sub altul. Erau, de fapt, trei
+situații diferite amestecate: regulă pe o mașină anume, regulă pe toată flota unei companii, și
+regulă pe toată platforma. Acum coloana spune un singur lucru, scurt:
+
+- **regulă pe o mașină** → doar **numărul** ei. Modelul („VW CADDY") a dispărut — numărul e
+  suficient ca s-o recunoști, iar modelul lungea rândul fără să adauge nimic;
+- **regulă pe toată compania** → „Toate vehiculele";
+- **regulă pe toată platforma** → avertismentul portocaliu „Toate companiile" (numai la noi ajunge
+  așa ceva).
+
+**Fondatorul vede:** în plus, **compania în paranteză** — „B 268 ROY (Unitip Test)" — fiindcă noi
+avem în față mașini din firme diferite și fără paranteză n-am ști a cui e regula.
+
+**Clientul vede:** DOAR numărul mașinii. Compania lui e subînțeleasă — toate regulile din ecranul
+lui sunt ale lui — iar regulile altor firme nici nu ajung până la el.
+
+> Verificat pe cod real, 37 de controale — inclusiv că două reguli de același tip chiar se unesc
 > într-un rând, că deschiderea unui tip nu arată regulile altuia, că apăsatul deschide și închide,
-> că zonele se scriu pe nume și că modificarea parțială nu șterge restul regulii.
+> că zonele se scriu pe nume, că modificarea parțială nu șterge restul regulii și că paranteza cu
+> compania apare la super-admin, dar NU și la client.
 
 ---
 
