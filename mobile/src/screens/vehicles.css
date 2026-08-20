@@ -7,9 +7,9 @@
    Aceeași formă ca în aplicația web — cele două trebuie să arate ca un singur produs.
    Muchia colorată din stânga spune care e care fără să adauge un rând de legendă. */
 .vstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 4px 14px 10px; }
-.vstat { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; text-align: left;
+.vstat { min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center;
   background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--cip, var(--accent));
-  border-radius: 12px; padding: 8px 4px 7px 8px; }
+  border-radius: 12px; padding: 8px 4px 7px; }
 .vstat .n { font-size: 17px; font-weight: 800; color: var(--cip, var(--accent)); line-height: 1.05; font-variant-numeric: tabular-nums; }
 /* Etichetele se scurtează elegant pe telefoanele înguste, în loc să fie retezate la jumătate de literă. */
 .vstat .l { font-size: 9px; font-weight: 700; color: var(--text-muted); letter-spacing: -.3px; margin-top: 2px;

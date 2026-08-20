@@ -487,8 +487,8 @@
       border: 1px solid var(--border);
       border-left: 3px solid var(--chip-color, var(--accent));
       border-radius: 12px;
-      padding: 9px 3px 8px 8px;             /* aliniat la stânga; strâns ca „În mișcare" să încapă în bara îngustă */
-      text-align: left;
+      padding: 9px 4px 8px;                 /* simetric: altfel „centrat" ar fi cu 2,5px pe lângă */
+      text-align: center;
       font-family: inherit;
       cursor: pointer;
       transition: border-color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease;
@@ -519,7 +519,7 @@
     .stat-chip .stat-label {
       font-size: 9px;
       color: var(--text-muted);
-      letter-spacing: -.3px;                /* „În mișcare" e cel mai lung: trebuie să încapă pe un rând, aliniat stânga */
+      letter-spacing: -.3px;                /* „În mișcare" e cel mai lung: trebuie să încapă pe un rând */
       font-weight: 700;
       margin-top: 2px;
       line-height: 1.2;
@@ -1858,7 +1858,7 @@
       .brand-title h1 { font-size: 16px; }
       .btn-icon { width: 36px; height: 36px; font-size: 14px; }
       .stats-bar { padding: 0 12px 12px; gap: 6px; }
-      .stat-chip { padding: 9px 3px 8px; border-radius: 12px; }
+      .stat-chip { padding: 9px 3px 8px; border-radius: 12px; }   /* deja simetric pe orizontală */
       .stat-chip .stat-value { font-size: 18px; }
       .stat-chip .stat-label { font-size: 9.5px; }
       /* Regula de mai sus pune padding-left 3px pentru cadranele mici; cardul lat își păstrează al lui. */

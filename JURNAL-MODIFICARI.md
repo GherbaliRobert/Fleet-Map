@@ -215,9 +215,8 @@ telefon) — o singură regulă, nu opt.
 **3. Cadranele de stare, remodelate.** „Total" nu e o stare, e întreaga flotă — stătea pe picior de
 egalitate cu „Staționat" și strângea toate etichetele. Acum e un **card lat deasupra**, cu numărul
 mare, iar cele patru stări stau dedesubt și au cu un sfert mai mult loc. La fel în aplicația de
-telefon — cele două trebuie să arate ca un singur produs. Numărul și eticheta stau **centrate** pe
-cardul lat (cerut de Robert, 20.08) — aliniate la stânga arătau lipite de muchie pe un card care
-ocupă tot rândul.
+telefon — cele două trebuie să arate ca un singur produs. Scrisul stă **centrat** pe toate cinci
+(cerut de Robert, 20.08) — aliniat la stânga arăta lipit de muchie.
 
 **4. Graficul de preț la carburant (telefon).** La atingere scria „20.407" — numărul brut al zilei,
 nu data. Acum scrie data și prețul cu unitate: „27 nov. '25 — Motorină: 6,85 lei/L".
