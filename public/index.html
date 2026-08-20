@@ -846,7 +846,7 @@
         <div id="veh-docs-list" style="margin-bottom:12px;"></div>
         <div class="doc-form">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
-            <label>Tip<select id="doc-type"><option>ITP</option><option>RCA</option><option>CASCO</option><option>Rovinietă</option><option>Licență transport</option><option>Tahograf</option><option>Altul</option></select></label>
+            <label>Tip<select id="doc-type"></select></label>
             <label>Serie / nr. act (opțional)<input type="text" id="doc-number"></label>
             <label>Emitent<input type="text" id="doc-issuer"></label>
             <label>Data emiterii<input type="date" id="doc-issue"></label>
@@ -859,21 +859,16 @@
       </div>
 
       <!-- Tab: Service -->
+      <!-- Aceleași lucrări ca în Management → Mentenanță, aceleași rânduri, ACEEAȘI fereastră de
+           scris. Aici era un formular al lui, mai sărac: nu putea pune repetarea (deci lucrarea nu
+           se mai reprograma niciodată singură), nu avea descriere, nu se putea modifica, iar starea
+           scria „planificat" și după trei luni de întârziere. -->
       <div id="edit-tab-service" class="edit-tab-content" style="display:none;">
-        <div style="font-size:12px;font-weight:700;margin:4px 0 10px;color:var(--accent);"><i class="fas fa-wrench"></i> Plan service / mentenanță <span id="veh-svc-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
-        <div id="veh-service-list" style="margin-bottom:12px;"></div>
-        <div class="doc-form">
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;align-items:end;">
-            <!-- Lista de lucrări o umple mntFillTypes() din maint_types.js. Aici era scrisă de mână,
-                 cu 7 tipuri, în vreme ce ecranul Mentenanță avea 14 — două liste care se depărtau. -->
-            <label>Lucrare<select id="svc-type-sel" onchange="svcTypeChange()"></select><input type="text" id="svc-type" placeholder="Scrie lucrarea" style="display:none;margin-top:6px;"></label>
-            <label>Dată<input type="date" id="svc-date"></label>
-            <label>Km<input type="number" id="svc-km"></label>
-            <label class="svc-check" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;"><input type="checkbox" id="svc-done" style="width:16px;height:16px;cursor:pointer;"><span style="color:var(--text-muted);">Revizie deja efectuată (intră în istoric, cu data și km-ul de mai sus). Nebifat = lucrare planificată (scadență).</span></label>
-            <label>Cost (RON)<input type="number" step="0.01" id="svc-cost"></label>
-            <div class="doc-actions" style="grid-column:1/-1;"><button class="btn-sm btn-primary" onclick="saveVehicleService()"><i class="fas fa-plus"></i> Adaugă</button></div>
-          </div>
+        <div style="display:flex;align-items:center;gap:9px;margin:4px 0 12px;">
+          <div style="font-size:12px;font-weight:700;color:var(--accent);"><i class="fas fa-wrench"></i> Plan service / mentenanță <span id="veh-svc-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
+          <button class="btn-sm btn-primary" style="margin-left:auto;width:auto;" onclick="mntAddForVehicle()"><i class="fas fa-plus"></i> Adaugă lucrare</button>
         </div>
+        <div id="veh-service-list"></div>
       </div>
 
       <div id="edit-tab-workschedule" class="edit-tab-content" style="display:none;">
@@ -2204,9 +2199,11 @@ const pozitii = await r.json();</code></pre>
           .mnt-sub { font-size: 10.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin: 4px 0 6px 3px; }
 
           /* ── Rândul-card ── */
-          .mnt-r { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto auto 76px; gap: 12px; align-items: center;
+          /* Ultima coloană ține TREI butoane de 32px (bifă, creion, coș) + două spații: 106px.
+             La 76px, cât era, butoanele se turteau și tăiau costul de lângă ele („380 R…"). */
+          .mnt-r { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto auto 106px; gap: 12px; align-items: center;
                    background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--sc); border-radius: 10px; padding: 9px 11px; margin-bottom: 6px; }
-          .mnt-r.dated { grid-template-columns: 56px 38px minmax(0, 1fr) auto auto 76px; }
+          .mnt-r.dated { grid-template-columns: 56px 38px minmax(0, 1fr) auto auto 106px; }
           .mnt-r:last-child { margin-bottom: 0; }
           .mnt-r.dn { opacity: .74; }
           .mnt-r > * { min-width: 0; }
@@ -2222,7 +2219,7 @@ const pozitii = await r.json();</code></pre>
           .mnt-c { font-size: 12.5px; font-weight: 800; white-space: nowrap; color: var(--text-primary); }
           .mnt-c em { font-size: 10.5px; font-weight: 600; color: var(--text-muted); font-style: normal; }
           .mnt-act { display: flex; gap: 5px; justify-content: flex-end; }
-          .mnt-act .btn-sm { width: 32px; height: 32px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+          .mnt-act .btn-sm { width: 32px; height: 32px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
           .mnt-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
           /* Avertisment pentru intrările vechi care sunt ACTE, nu lucrări (vezi maint_types.js). */
@@ -2291,7 +2288,7 @@ const pozitii = await r.json();</code></pre>
           <div id="admin-documente-list"></div>
           <div class="admin-add" style="grid-template-columns:repeat(3,1fr);">
             <label><span>Vehicul *</span><select id="mdoc-imei"></select></label>
-            <label><span>Tip *</span><select id="mdoc-type"><option>ITP</option><option>RCA</option><option>CASCO</option><option>Rovinietă</option><option>Licență transport</option><option>Tahograf</option><option>Altul</option></select></label>
+            <label><span>Tip *</span><select id="mdoc-type"></select></label>
             <label><span>Serie / nr. act (opțional)</span><input type="text" id="mdoc-number"></label>
             <label><span>Emitent</span><input type="text" id="mdoc-issuer"></label>
             <label><span>Dată emitere</span><input type="date" id="mdoc-issue"></label>
@@ -5439,6 +5436,23 @@ const pozitii = await r.json();</code></pre>
       if (!Array.isArray(_mntAll)) _mntAll = [];
       renderMaintenance();
     }
+    // O lucrare poate fi pe ecran în două locuri: ecranul Mentenanță și fila Service a mașinii.
+    // Butoanele (creion, bifă, coș) o caută în amândouă — altfel, apăsate din fișa mașinii când
+    // ecranul Mentenanță nu fusese deschis niciodată, nu găseau nimic și nu făceau nimic.
+    function mntFind(id) {
+      const a = (Array.isArray(_mntAll) ? _mntAll : []).find(function (x) { return String(x.id) === String(id); });
+      if (a) return a;
+      return (Array.isArray(_mntVehRows) ? _mntVehRows : []).find(function (x) { return String(x.id) === String(id); });
+    }
+    // După orice schimbare împrospătăm AMBELE locuri: sunt aceleași date, iar dacă reîncărcam doar
+    // unul, celălalt rămânea cu cifre vechi pe ecran.
+    async function mntRefresh() {
+      const jobs = [];
+      if (document.getElementById('admin-maintenance-list')) jobs.push(loadMaintenance());
+      const im = document.getElementById('edit-imei');
+      if (im && im.value && document.getElementById('veh-service-list')) jobs.push(loadVehicleService());
+      await Promise.all(jobs);
+    }
     function mntSetView(v) { _mntView = v; renderMaintenance(); }
     function mntSetQ(v) { _mntQ = v || ''; renderMaintenance(); }
     function mntToggle(imei) { _mntOpen[imei] = !_mntOpen[imei]; renderMaintenance(); }
@@ -5557,15 +5571,28 @@ const pozitii = await r.json();</code></pre>
       el.innerHTML = costBar + body;
     }
 
-    // Tipurile vin din maint_types.js. Umple ȘI lista din fila Service a vehiculului — erau două
-    // liste scrise de mână, cu conținut diferit (14 tipuri într-un loc, 7 în celălalt).
+    // Tipurile vin din maint_types.js — o singură listă. Fila Service a vehiculului avea propria
+    // listă, scrisă de mână, cu 7 tipuri față de 14; acum folosește ACEEAȘI fereastră, deci și lista.
     function mntFillTypes() {
       const work = (window.RA_MAINT && window.RA_MAINT.work) || [];
       if (!work.length) return;
-      ['mnt-type-sel', 'svc-type-sel'].forEach(function (id) {
+      ['mnt-type-sel'].forEach(function (id) {
         const sel = document.getElementById(id); if (!sel || sel.dataset.filled) return;
         sel.innerHTML = work.map(function (w) { return '<option value="' + esc(w.type) + '">' + esc(w.type) + '</option>'; }).join('') + '<option value="__alt">Altele…</option>';
         sel.dataset.filled = '1';
+      });
+    }
+    // Tipurile de ACTE, tot dintr-o sursă (maint_types.js → DOCS). Erau scrise de mână în două
+    // locuri: fișa vehiculului și Management. Identice azi, libere să se depărteze mâine.
+    function docFillTypes() {
+      const docs = (window.RA_MAINT && window.RA_MAINT.docs) || [];
+      if (!docs.length) return;
+      ['doc-type', 'mdoc-type'].forEach(function (id) {
+        const sel = document.getElementById(id); if (!sel || sel.dataset.filled) return;
+        const keep = sel.value;
+        sel.innerHTML = docs.map(function (d) { return '<option value="' + esc(d) + '">' + esc(d) + '</option>'; }).join('') + '<option value="Altul">Altul</option>';
+        sel.dataset.filled = '1';
+        if (keep) sel.value = keep;
       });
     }
     function mntTypeChange() {
@@ -5586,7 +5613,7 @@ const pozitii = await r.json();</code></pre>
     // Așa cum era, un apostrof în descriere („Bosch d'Auto") tăia atributul în două și creionul
     // nu mai făcea nimic — fără nicio eroare vizibilă.
     function editMaintenance(id) {
-      const m = (Array.isArray(_mntAll) ? _mntAll : []).find(function (x) { return String(x.id) === String(id); });
+      const m = mntFind(id);
       if (!m) return;
       mntFillTypes();
       document.getElementById('mnt-id').value = m.id;
@@ -5636,12 +5663,12 @@ const pozitii = await r.json();</code></pre>
       const res = await fetch('/api/maintenance' + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(function () { return {}; }); return alert(e.error || 'Eroare'); }
       mntModalOpen(false);
-      await loadMaintenance();
+      await mntRefresh();
     }
     // Bifarea „efectuat" întreabă și cât a costat: altfel marcai lucrarea, apoi deschideai creionul
     // ca să scrii suma — două operații pentru una, și de obicei suma nu se mai scria deloc.
     async function completeMaintenance(id) {
-      const m = (Array.isArray(_mntAll) ? _mntAll : []).find(function (x) { return String(x.id) === String(id); });
+      const m = mntFind(id);
       if (!m) return;
       const cost = await raConfirm('Se trece în istoric cu data și ora de acum' + (m._odo ? ', la ' + mntNf(m._odo) + ' km' : '') + '.'
         + (mntRepeat(m) ? '\n\nUrmătoarea scadență (la ' + mntRepeat(m) + ') se creează singură.' : ''),
@@ -5652,79 +5679,115 @@ const pozitii = await r.json();</code></pre>
       const c = parseFloat(cost); if (isFinite(c) && c > 0) body.cost = c;
       const res = await fetch('/api/maintenance/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const e = await res.json().catch(function () { return {}; }); return alert(e.error || 'Eroare'); }
-      await loadMaintenance();
+      await mntRefresh();
     }
     async function deleteMaintenance(id) {
-      const m = (Array.isArray(_mntAll) ? _mntAll : []).find(function (x) { return String(x.id) === String(id); });
+      const m = mntFind(id);
       const cost = m ? parseFloat(m.cost) : 0;
       const warn = (m && mntDone(m) && cost)
         ? 'Ștergi „' + m.type + '" din istoric?\n\nSe pierd și cei ' + mntNf(Math.round(cost)) + ' lei din totalul de service.'
         : 'Ștergi lucrarea' + (m ? ' „' + m.type + '"' : '') + '?';
       if (!await raConfirm(warn, { okLabel: 'Șterge' })) return;
       await fetch('/api/maintenance/' + id, { method: 'DELETE' });
-      await loadMaintenance();
+      await mntRefresh();
     }
     // Mută o intrare care e de fapt act (ITP, RCA, rovinietă…) în Management → Documente.
     async function mntMoveToDoc(id) {
-      const m = (Array.isArray(_mntAll) ? _mntAll : []).find(function (x) { return String(x.id) === String(id); });
+      const m = mntFind(id);
       if (!m) return;
       if (!await raConfirm('Se mută „' + m.type + '" la Management → Documente, pe ' + mntPlate(m.imei) + '.\n\nScadența devine data de expirare a actului, iar costul se păstrează. Din Mentenanță dispare.',
         { title: 'Mută la Documente', danger: false, icon: 'fa-right-left', okLabel: 'Mută' })) return;
       const res = await fetch('/api/maintenance/' + id + '/to-document', { method: 'POST' });
       const out = await res.json().catch(function () { return {}; });
       if (!res.ok) return alert(out.error || 'Eroare la mutare');
-      await loadMaintenance();
+      await mntRefresh();
       if (typeof loadDocuments === 'function') loadDocuments();
       if (typeof raNotify === 'function') raNotify({ title: 'Mutat la Documente', message: m.type + ' · ' + mntPlate(m.imei) });
     }
-    // ─── Documente (Management) — fișă pe vehicul: acte CURENTE + reînnoire (înlocuiește actul vechi). Fără istoric. ───
-    let _docAll = null, _docFilterImei = '', _docOpen = {};
+    // ─── Documente (Management) — fișă pe vehicul: actele VALABILE + istoricul lor ───
+    // Reînnoirea nu mai șterge actul vechi: îl trece în istoricul mașinii (decizie 2026-08-20).
+    // Starea („expirat / expiră curând / valabil") vine gata calculată de la server, cu preavizul
+    // companiei — înainte era socotită aici, cu 30 de zile bătute în cod, iar alerta suna la 7.
+    let _docAll = null, _docHist = null, _docFilterImei = '', _docOpen = {}, _docHistOpen = {};
     async function loadDocuments() {
       try { _docAll = await (await fetch('/api/documents')).json(); } catch (e) { _docAll = []; }
       if (!Array.isArray(_docAll)) _docAll = [];
+      try { _docHist = await (await fetch('/api/documents/history')).json(); } catch (e) { _docHist = []; }
+      if (!Array.isArray(_docHist)) _docHist = [];
       renderDocuments();
     }
     function docSetFilter(val) { _docFilterImei = val; renderDocuments(); }
     function docToggle(imei) { _docOpen[imei] = (_docOpen[imei] === false); renderDocuments(); }
+    function docHistToggle(imei) { _docHistOpen[imei] = !_docHistOpen[imei]; renderDocuments(); }
+    function docDays(d) {
+      if (d._days != null) return d._days;
+      return d.expiry_date ? Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000) : null;
+    }
     function docRow(d, canEdit) {
-      const exp = d.expiry_date ? new Date(d.expiry_date) : null;
+      const ds = d.expiry_date ? new Date(d.expiry_date).toLocaleDateString('ro-RO') : '';
+      const st = d._due || (d.expiry_date ? 'ok' : 'none');
+      const days = docDays(d);
       let badge = '<span class="role">fără dată</span>', border = '';
-      if (exp) {
-        const days = Math.ceil((exp - new Date()) / 86400000);
-        const ds = exp.toLocaleDateString('ro-RO');
-        if (days < 0) { badge = '<span style="color:#ef4444;font-weight:700;font-size:11px;">EXPIRAT · ' + ds + '</span>'; border = 'border-color:#ef4444;'; }
-        else if (days <= 30) { badge = '<span style="color:#ef4444;font-size:11px;">expiră curând · ' + ds + ' (' + days + (days === 1 ? ' zi' : ' zile') + ')</span>'; border = 'border-color:#ef4444;'; }
-        else badge = '<span style="color:var(--accent);font-size:11px;">valid până ' + ds + '</span>';
-      }
+      if (st === 'expired') { badge = '<span style="color:var(--red);font-weight:700;font-size:11px;">EXPIRAT · ' + ds + '</span>'; border = 'border-color:var(--red);'; }
+      else if (st === 'soon') { badge = '<span style="color:#B45309;font-weight:700;font-size:11px;">expiră curând · ' + ds + ' (' + days + (days === 1 ? ' zi' : ' zile') + ')</span>'; border = 'border-color:rgba(245,158,11,.5);'; }
+      else if (st === 'ok') badge = '<span style="color:var(--accent);font-size:11px;">valabil până ' + ds + '</span>';
       const meta = [d.number, d.issuer, (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : ''), (d.cost ? Math.round(parseFloat(d.cost)) + ' RON' : '')].filter(Boolean).join(' · ');
       const actions = canEdit ? '<button class="btn-sm btn-danger" onclick="deleteDocument(' + d.id + ')"><i class="fas fa-trash"></i></button>' : '';
       return '<div class="admin-row" style="' + border + '"><div><strong>' + _docEsc(d.doc_type) + '</strong> ' + badge + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div>' + actions + '</div>';
     }
+    // Un act înlocuit: nu mai are stare (a ieșit din uz), dar ține minte cât a valorat și cât a costat.
+    function docHistRow(d) {
+      const meta = [
+        d.number, d.issuer,
+        (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : ''),
+        (d.expiry_date ? 'valabil până ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') : ''),
+        (d.cost ? Math.round(parseFloat(d.cost)) + ' RON' : '')
+      ].filter(Boolean).join(' · ');
+      const inloc = d.replaced_at ? 'înlocuit ' + new Date(d.replaced_at).toLocaleDateString('ro-RO') : 'înlocuit';
+      return '<div class="admin-row" style="opacity:.72;"><div><strong>' + _docEsc(d.doc_type) + '</strong> '
+        + '<span class="role">' + _docEsc(inloc) + '</span>'
+        + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div></div>';
+    }
     function renderDocuments() {
       const el = document.getElementById('admin-documente-list'); if (!el) return;
       const canEdit = (typeof can === 'function') ? !!can('manageFleet') : true;
+      docFillTypes();
       const form = document.querySelector('#atab-documente .admin-add'); if (form) form.style.display = canEdit ? '' : 'none';
       const list = Array.isArray(_docAll) ? _docAll : [];
-      if (!list.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>'; return; }
+      const hist = Array.isArray(_docHist) ? _docHist : [];
+      if (!list.length && !hist.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>'; return; }
       const byVeh = new Map();
       list.forEach(d => { if (!byVeh.has(d.imei)) byVeh.set(d.imei, []); byVeh.get(d.imei).push(d); });
-      const allImeis = Array.from(byVeh.keys()).sort((a, b) => String(vehicleLabel(a)).localeCompare(String(vehicleLabel(b))));
+      const histVeh = new Map();
+      hist.forEach(d => { if (!histVeh.has(d.imei)) histVeh.set(d.imei, []); histVeh.get(d.imei).push(d); });
+      const allImeis = Array.from(new Set(Array.from(byVeh.keys()).concat(Array.from(histVeh.keys()))))
+        .sort((a, b) => String(vehicleLabel(a)).localeCompare(String(vehicleLabel(b))));
       const ss = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;margin-left:5px;';
       const filters = '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;"><label style="font-size:11px;color:var(--text-muted);">Vehicul<select onchange="docSetFilter(this.value)" style="' + ss + '"><option value="">Toate vehiculele</option>' + allImeis.map(i => '<option value="' + i + '" ' + (i === _docFilterImei ? 'selected' : '') + '>' + vehicleLabel(i) + '</option>').join('') + '</select></label></div>';
       const imeis = _docFilterImei ? allImeis.filter(i => i === _docFilterImei) : allImeis;
       let groups = '';
       imeis.forEach(imei => {
         const entries = (byVeh.get(imei) || []).slice().sort((a, b) => (a.expiry_date || '').localeCompare(b.expiry_date || ''));
-        if (!entries.length) return;
-        const now = new Date();
-        const alertCount = entries.filter(d => d.expiry_date && Math.ceil((new Date(d.expiry_date) - now) / 86400000) <= 30).length;
+        const old = (histVeh.get(imei) || []);
+        if (!entries.length && !old.length) return;
+        const alertCount = entries.filter(d => d._due === 'expired' || d._due === 'soon').length;
         const open = _docOpen[imei] !== false;
-        groups += '<div style="margin-bottom:8px;"><div onclick="docToggle(\'' + imei + '\')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 4px;font-weight:700;border-bottom:1px solid var(--border);"><i class="fas fa-chevron-' + (open ? 'down' : 'right') + '" style="font-size:11px;color:var(--text-muted);width:12px;text-align:center;"></i><span>' + vehicleLabel(imei) + '</span>' + (alertCount ? '<span style="color:#ef4444;font-size:11px;">' + alertCount + ' de reînnoit</span>' : '') + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + entries.length + ' ' + (entries.length === 1 ? 'act' : 'acte') + '</span></div>' + (open ? '<div style="padding:4px 0 8px;">' + entries.map(d => docRow(d, canEdit)).join('') + '</div>' : '') + '</div>';
+        const ho = !!_docHistOpen[imei];
+        const istoric = old.length
+          ? '<div onclick="docHistToggle(\'' + imei + '\')" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 4px;font-size:11.5px;font-weight:700;color:var(--text-muted);">'
+            + '<i class="fas fa-chevron-' + (ho ? 'down' : 'right') + '" style="font-size:10px;width:10px;"></i>'
+            + '<i class="fas fa-clock-rotate-left"></i> Istoric acte · ' + old.length + ' înlocuit' + (old.length > 1 ? 'e' : '') + '</div>'
+            + (ho ? old.map(docHistRow).join('') : '')
+          : '';
+        groups += '<div style="margin-bottom:8px;"><div onclick="docToggle(\'' + imei + '\')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 4px;font-weight:700;border-bottom:1px solid var(--border);"><i class="fas fa-chevron-' + (open ? 'down' : 'right') + '" style="font-size:11px;color:var(--text-muted);width:12px;text-align:center;"></i><span>' + vehicleLabel(imei) + '</span>' + (alertCount ? '<span style="color:var(--red);font-size:11px;">' + alertCount + ' de reînnoit</span>' : '') + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + entries.length + ' ' + (entries.length === 1 ? 'act' : 'acte') + '</span></div>'
+          + (open ? '<div style="padding:4px 0 8px;">' + entries.map(d => docRow(d, canEdit)).join('') + istoric + '</div>' : '') + '</div>';
       });
       if (!groups) groups = '<p style="color:var(--text-muted);font-size:12px;">Niciun document pentru filtrul ales.</p>';
-      // Contor costuri acte: luna + anul curent (după data emiterii)
+      // Costurile acoperă ȘI actele înlocuite — altfel „cât am dat pe acte" ar uita tot ce e mai
+      // vechi de o reînnoire, adică exact ce face istoricul să merite.
       const _now = new Date(), _y = _now.getFullYear(), _m = _now.getMonth();
-      const _src = _docFilterImei ? list.filter(d => d.imei === _docFilterImei) : list;
+      const _srcAll = list.concat(hist);
+      const _src = _docFilterImei ? _srcAll.filter(d => d.imei === _docFilterImei) : _srcAll;
       let cM = 0, cY = 0, cAll = 0;
       _src.forEach(d => { const c = parseFloat(d.cost) || 0; if (!c) return; cAll += c; if (!d.issue_date) return; const dt = new Date(d.issue_date); if (dt.getFullYear() === _y) { cY += c; if (dt.getMonth() === _m) cM += c; } });
       const costBar = costCards(cM, cY, cAll, _y, 'fa-file-contract', _docFilterImei ? 'Total acte' : 'Total acte · flotă');
@@ -13153,14 +13216,22 @@ const pozitii = await r.json();</code></pre>
 
     async function loadVehicleDocuments() {
       const imei = document.getElementById('edit-imei').value; if (!imei) return;
+      docFillTypes();
       var _vp = document.getElementById('veh-docs-plate'); if (_vp) _vp.textContent = (typeof vehicleLabel === 'function' ? '· ' + vehicleLabel(imei) : '');
       try {
         const docs = await (await fetch('/api/documents?imei=' + encodeURIComponent(imei))).json();
-        const now = Date.now(), soon = 30 * 24 * 3600 * 1000;
-        document.getElementById('veh-docs-list').innerHTML = (Array.isArray(docs) && docs.length) ? docs.map(d => {
-          const exp = d.expiry_date ? new Date(d.expiry_date) : null;
+        let hist = [];
+        try { hist = await (await fetch('/api/documents/history?imei=' + encodeURIComponent(imei))).json(); } catch (e) { hist = []; }
+        if (!Array.isArray(hist)) hist = [];
+        const rand = function (d) {
+          // Starea vine de la SERVER (_due), cu preavizul companiei. Era socotită aici, cu 30 de zile
+          // bătute în cod — a doua copie a aceleiași reguli, care se bătea cap în cap cu alerta.
+          const st = d._due || (d.expiry_date ? 'ok' : 'none');
+          const txt = d.expiry_date ? new Date(d.expiry_date).toLocaleDateString('ro-RO') : '';
           let badge = 'fără dată expirare';
-          if (exp) { const diff = exp.getTime() - now; const txt = exp.toLocaleDateString('ro-RO'); badge = diff < 0 ? '<span style="color:#ef4444;font-weight:600;">EXPIRAT (' + txt + ')</span>' : (diff < soon ? '<span style="color:#f59e0b;font-weight:600;">expiră ' + txt + '</span>' : '<span style="color:var(--accent);">valid până ' + txt + '</span>'); }
+          if (st === 'expired') badge = '<span style="color:var(--red);font-weight:700;">EXPIRAT (' + txt + ')</span>';
+          else if (st === 'soon') badge = '<span style="color:#B45309;font-weight:700;">expiră ' + txt + (d._days != null ? ' (' + d._days + (d._days === 1 ? ' zi' : ' zile') + ')' : '') + '</span>';
+          else if (st === 'ok') badge = '<span style="color:var(--accent);">valabil până ' + txt + '</span>';
           // Două butoane, nu unul: „vezi" deschide actul în filă nouă (PDF-ul se randează, poza se
           // afișează), „descarcă" îl salvează pe calculator cu un nume care spune ce e — nu „file".
           const numeFis = (d.doc_type + '-' + (d.number || d.imei)).replace(/[^\w\-]+/g, '-')
@@ -13172,9 +13243,30 @@ const pozitii = await r.json();</code></pre>
           return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + (d.cost ? ' · ' + Math.round(parseFloat(d.cost)) + ' RON' : '') + '</div></div><div style="display:flex;align-items:center;">' + fisier
             + '<button class="btn-sm" onclick="editVehicleDoc(' + d.id + ')" title="Modifică actul" style="margin-right:4px;"><i class="fas fa-pen"></i></button>'
             + '<button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div></div>';
-        }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
+        };
+        // Actele înlocuite: ce RCA aveai anul trecut, la ce firmă și cât ai dat. Până acum se ștergeau.
+        const randVechi = function (d) {
+          const meta = [d.number, d.issuer,
+            (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : ''),
+            (d.expiry_date ? 'valabil până ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') : ''),
+            (d.cost ? Math.round(parseFloat(d.cost)) + ' RON' : '')].filter(Boolean).join(' · ');
+          return '<div class="admin-row" style="opacity:.72;"><div><strong>' + _docEsc(d.doc_type) + '</strong> '
+            + '<span class="role">' + _docEsc(d.replaced_at ? 'înlocuit ' + new Date(d.replaced_at).toLocaleDateString('ro-RO') : 'înlocuit') + '</span>'
+            + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div></div>';
+        };
+        const lista = (Array.isArray(docs) && docs.length) ? docs.map(rand).join('')
+          : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
+        const istoric = hist.length
+          ? '<div onclick="vehDocHistToggle()" id="veh-docs-hist-head" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 4px;font-size:11.5px;font-weight:700;color:var(--text-muted);border-top:1px solid var(--border);margin-top:8px;">'
+            + '<i class="fas fa-chevron-' + (_vehDocHistOpen ? 'down' : 'right') + '" style="font-size:10px;width:10px;"></i>'
+            + '<i class="fas fa-clock-rotate-left"></i> Istoric acte · ' + hist.length + ' înlocuit' + (hist.length > 1 ? 'e' : '') + '</div>'
+            + (_vehDocHistOpen ? hist.map(randVechi).join('') : '')
+          : '';
+        document.getElementById('veh-docs-list').innerHTML = lista + istoric;
       } catch (e) { document.getElementById('veh-docs-list').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }
     }
+    let _vehDocHistOpen = false;
+    function vehDocHistToggle() { _vehDocHistOpen = !_vehDocHistOpen; loadVehicleDocuments(); }
     async function saveVehicleDocument() {
       const imei = document.getElementById('edit-imei').value;
       const body = { imei, doc_type: document.getElementById('doc-type').value, number: document.getElementById('doc-number').value.trim(), issuer: document.getElementById('doc-issuer').value.trim(), issue_date: document.getElementById('doc-issue').value || null, expiry_date: document.getElementById('doc-expiry').value || null, cost: parseFloat(document.getElementById('doc-cost').value) || null };
@@ -13235,55 +13327,35 @@ const pozitii = await r.json();</code></pre>
       if (!r.ok) { alert('Eroare la ștergere'); return; }
       loadVehicleDocuments();
     }
+    // Lucrările mașinii, cu ACELEAȘI rânduri ca în ecranul Mentenanță (mntCard) — deci vezi și aici
+    // „depășit cu 2.300 km", cu roșu, nu un „planificat" galben care minte.
+    let _mntVehRows = null;
     async function loadVehicleService() {
       const imei = document.getElementById('edit-imei').value; if (!imei) return;
-      if (typeof mntFillTypes === 'function') mntFillTypes();   // aceleași lucrări ca în ecranul Mentenanță
+      const el = document.getElementById('veh-service-list'); if (!el) return;
       var _sp = document.getElementById('veh-svc-plate'); if (_sp) _sp.textContent = (typeof vehicleLabel === 'function' ? '· ' + vehicleLabel(imei) : '');
+      const canEdit = (typeof can === 'function') ? !!can('manageFleet') : true;
       try {
         const rows = await (await fetch('/api/maintenance?imei=' + encodeURIComponent(imei))).json();
-        document.getElementById('veh-service-list').innerHTML = (Array.isArray(rows) && rows.length) ? rows.map(m => {
-          const done = m.status === 'done';
-          const when = done ? (m.done_at ? new Date(m.done_at).toLocaleDateString('ro-RO') : (m.done_date ? new Date(m.done_date).toLocaleDateString('ro-RO') : '')) : (m.due_date ? new Date(m.due_date).toLocaleDateString('ro-RO') : '');
-          const km = done ? (m.done_km ? m.done_km + ' km' : '') : (m.due_km ? 'la ' + m.due_km + ' km' : '');
-          const cost = m.cost ? Math.round(parseFloat(m.cost)) + ' RON' : '';
-          const tag = done ? '<span class="role">efectuat</span>' : '<span style="color:#f59e0b;font-size:11px;">planificat</span>';
-          const meta = [when, km, cost].filter(Boolean).join(' · ');
-          return '<div class="admin-row"><div><strong>' + _docEsc(m.type) + '</strong> ' + tag + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div><button class="btn-sm btn-danger" onclick="deleteVehicleService(' + m.id + ')"><i class="fas fa-trash"></i></button></div>';
-        }).join('') : '<p style="color:var(--text-muted);font-size:12px;">Niciun element de service.</p>';
-      } catch (e) { }
+        _mntVehRows = Array.isArray(rows) ? rows : [];
+        const pending = _mntVehRows.filter(function (m) { return !mntDone(m); })
+          .sort(function (a, b) { const da = mntDaysLeft(a), db = mntDaysLeft(b); if (da == null && db == null) return 0; if (da == null) return 1; if (db == null) return -1; return da - db; });
+        const done = _mntVehRows.filter(mntDone)
+          .sort(function (a, b) { return String(b.done_at || b.done_date || '').localeCompare(String(a.done_at || a.done_date || '')); });
+        el.innerHTML = (pending.length || done.length)
+          ? (pending.length ? pending.map(function (m) { return mntCard(m, false, false, canEdit); }).join('') : '<div class="mnt-sub">Nimic de făcut</div>')
+            + (done.length ? '<div class="mnt-sub">Efectuate</div>' + done.map(function (m) { return mntCard(m, false, false, canEdit); }).join('') : '')
+          : '<p style="color:var(--text-muted);font-size:12px;">Nicio lucrare de service pentru mașina asta.</p>';
+      } catch (e) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }
     }
-    function svcTypeChange() {
-      const sel = document.getElementById('svc-type-sel'); const inp = document.getElementById('svc-type');
-      const alt = sel.value === '__alt';
-      inp.style.display = alt ? '' : 'none';
-      if (alt) inp.focus(); else inp.value = '';
-    }
-    async function saveVehicleService() {
-      const imei = document.getElementById('edit-imei').value;
-      const sel = document.getElementById('svc-type-sel');
-      const type = (sel.value === '__alt') ? document.getElementById('svc-type').value.trim() : sel.value;
-      if (!type) { alert('Alege tipul'); return; }
-      const dateVal = document.getElementById('svc-date').value || null;
-      const km = parseInt(document.getElementById('svc-km').value) || null;
-      const cost = parseFloat(document.getElementById('svc-cost').value) || null;
-      const done = document.getElementById('svc-done').checked;
-      // Efectuat = ultima revizie → intră în istoric cu data + km-ul introduse (done_at fixat pe data aleasă, nu „acum").
-      const body = done
-        ? { imei, type, status: 'done', done_date: dateVal, done_km: km, cost, done_at: dateVal ? new Date(dateVal + 'T12:00:00').toISOString() : null }
-        : { imei, type, status: 'pending', due_date: dateVal, due_km: km, cost };
-      const r = await fetch('/api/maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok) { alert('Eroare la salvare service'); return; }
-      ['svc-type', 'svc-date', 'svc-km', 'svc-cost'].forEach(clearField);
-      document.getElementById('svc-type-sel').selectedIndex = 0;
-      document.getElementById('svc-type').style.display = 'none';
-      document.getElementById('svc-done').checked = false;
-      loadVehicleService();
-    }
-    async function deleteVehicleService(id) {
-      if (!await raConfirm('Ștergi elementul de service?', { okLabel: 'Șterge' })) return;
-      const r = await fetch('/api/maintenance/' + id, { method: 'DELETE' });
-      if (!r.ok) { alert('Eroare la ștergere'); return; }
-      loadVehicleService();
+    // „Adaugă lucrare" din fișa mașinii deschide FEREASTRA din Mentenanță, cu vehiculul completat.
+    function mntAddForVehicle() {
+      const imei = document.getElementById('edit-imei').value; if (!imei) return;
+      resetMaintenanceForm();
+      mntFillTypes();
+      if (typeof populateVehicleSelect === 'function') { try { populateVehicleSelect('mnt-imei', false); } catch (e) {} }
+      const sel = document.getElementById('mnt-imei'); if (sel) sel.value = imei;
+      mntModalOpen(true);
     }
 
     function addCalibrationRow(voltage, liters) {
@@ -19675,10 +19747,13 @@ const pozitii = await r.json();</code></pre>
       care: { fields: [
         { key: 'serviceSoonKm', label: 'Avertisment service (bord/CAN)', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de service-ul indicat de BORDUL mașinii să apară alerta.',
           options: [{ v: 500, t: '500 km înainte' }, { v: 1000, t: '1.000 km înainte' }, { v: 1500, t: '1.500 km înainte (recomandat)' }, { v: 2000, t: '2.000 km înainte' }, { v: 3000, t: '3.000 km înainte' }, { v: 5000, t: '5.000 km înainte' }] },
-        { key: 'careDaysLead', label: 'Avertisment scadențe (zile)', unit: 'zile înainte', min: 1, max: 365, def: 14, hint: 'Cu câte zile înainte de scadența pe DATĂ (mentenanță + documente) să apară alerta. Folosit și de notificările push.',
+        { key: 'careDaysLead', label: 'Avertisment lucrări service (zile)', unit: 'zile înainte', min: 1, max: 365, def: 14, hint: 'Cu câte zile înainte de scadența unei LUCRĂRI pe dată să se aprindă. Aceeași cifră colorează rândul în Mentenanță ȘI trimite notificarea.',
           options: [{ v: 7, t: '7 zile înainte' }, { v: 14, t: '14 zile înainte (recomandat)' }, { v: 21, t: '3 săptămâni înainte' }, { v: 30, t: '30 zile înainte (o lună)' }, { v: 60, t: '60 zile înainte' }] },
-        { key: 'careKmLead', label: 'Avertisment scadențe (km)', unit: 'km înainte', min: 50, max: 50000, def: 500, hint: 'Cu câți km înainte de scadența pe KILOMETRI a mentenanței să apară alerta. Folosit și de notificările push.',
-          options: [{ v: 250, t: '250 km înainte' }, { v: 500, t: '500 km înainte (recomandat)' }, { v: 1000, t: '1.000 km înainte' }, { v: 1500, t: '1.500 km înainte' }, { v: 2000, t: '2.000 km înainte' }] }
+        { key: 'careKmLead', label: 'Avertisment lucrări service (km)', unit: 'km înainte', min: 50, max: 50000, def: 500, hint: 'Cu câți km înainte de scadența pe KILOMETRI să se aprindă. Aceeași cifră colorează rândul ȘI trimite notificarea.',
+          options: [{ v: 250, t: '250 km înainte' }, { v: 500, t: '500 km înainte (recomandat)' }, { v: 1000, t: '1.000 km înainte' }, { v: 1500, t: '1.500 km înainte' }, { v: 2000, t: '2.000 km înainte' }] },
+        // Actele au preavizul lor: un RCA sau un ITP nu se rezolvă într-o zi, un schimb de ulei da.
+        { key: 'docDaysLead', label: 'Avertisment acte (ITP, RCA, rovinietă)', unit: 'zile înainte', min: 1, max: 365, def: 30, hint: 'Cu câte zile înainte de expirarea unui ACT să se aprindă. Aceeași cifră colorează rândul în Documente ȘI trimite notificarea.',
+          options: [{ v: 7, t: '7 zile înainte' }, { v: 14, t: '14 zile înainte' }, { v: 30, t: '30 zile înainte (recomandat)' }, { v: 45, t: '45 zile înainte' }, { v: 60, t: '60 zile înainte (două luni)' }] }
       ] },
       optimize: { fields: [
         { key: 'ecoScoreMin', label: 'Scor eco minim', unit: '/100', min: 0, max: 100, def: 60, hint: 'Alertă când scorul eco al unui vehicul scade sub această valoare.',

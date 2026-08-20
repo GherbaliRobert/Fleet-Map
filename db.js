@@ -640,7 +640,13 @@ async function initDb() {
       // șofer; ~200-400 KB per act după compresia din client.
       `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS file_b64 TEXT`,
       `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS file_mime VARCHAR(40)`,
-      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(160)`
+      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(160)`,
+      // ISTORICUL ACTELOR, per mașină (decizie 2026-08-20). Până acum, reînnoirea ȘTERGEA actul
+      // vechi: nu mai știai ce RCA aveai anul trecut, la ce firmă și cât ai dat. Acum actul înlocuit
+      // rămâne, doar că primește data înlocuirii. NULL = actul valabil ACUM.
+      // Tot ce înseamnă „starea de azi" (liste, alerte de expirare, rapoarte) filtrează pe NULL —
+      // altfel fiecare RCA reînnoit ar suna la nesfârșit că „a expirat".
+      `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS replaced_at TIMESTAMP`
     ];
     for (const sql of migrateColumns) {
       try { await client.query(sql); } catch (e) { console.warn('[DB] Migration warning:', e.message); }
@@ -3107,15 +3113,38 @@ async function getVehicleDocuments(imei, companyId) {
   // (de două ori pe rulare) și de fiecare deschidere de fișă — a căra imaginea actului peste tot
   // ar însemna sute de KB pe rând pentru un câmp de care are nevoie doar butonul „Vezi actul".
   // `has_file` spune interfeței dacă există ceva de arătat; imaginea vine din getVehicleDocumentFile.
+  // Doar actele VALABILE ACUM (replaced_at IS NULL). Cele înlocuite rămân în tabelă, dar se cer
+  // separat, cu getVehicleDocumentHistory — vezi comentariul de la migrarea coloanei.
   let query = `SELECT id, imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id,
                       created_at, cost, file_mime, file_name, (file_b64 IS NOT NULL) AS has_file
-               FROM vehicle_documents WHERE 1=1`;
+               FROM vehicle_documents WHERE replaced_at IS NULL`;
   const params = [];
   if (imei) { params.push(imei); query += ` AND imei = $${params.length}`; }
   if (companyId != null) { params.push(companyId); query += ` AND company_id = $${params.length}`; }
   query += ' ORDER BY expiry_date ASC NULLS LAST, doc_type';
   const result = await pool.query(query, params);
   return result.rows;
+}
+// Actele ÎNLOCUITE, cele mai noi întâi. „Ce RCA aveam anul trecut și cât am dat pe el."
+async function getVehicleDocumentHistory(imei, companyId) {
+  let query = `SELECT id, imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id,
+                      created_at, replaced_at, cost, file_mime, file_name, (file_b64 IS NOT NULL) AS has_file
+               FROM vehicle_documents WHERE replaced_at IS NOT NULL`;
+  const params = [];
+  if (imei) { params.push(imei); query += ` AND imei = $${params.length}`; }
+  if (companyId != null) { params.push(companyId); query += ` AND company_id = $${params.length}`; }
+  query += ' ORDER BY replaced_at DESC, doc_type';
+  const result = await pool.query(query, params);
+  return result.rows;
+}
+// Reînnoire = actul vechi de același tip trece în istoric (NU se mai șterge).
+async function archiveVehicleDocumentsByType(imei, docType, companyId) {
+  const r = await pool.query(
+    `UPDATE vehicle_documents SET replaced_at = NOW()
+      WHERE imei = $1 AND doc_type = $2 AND company_id IS NOT DISTINCT FROM $3 AND replaced_at IS NULL`,
+    [imei, docType, companyId != null ? companyId : null]
+  );
+  return r.rowCount;
 }
 // Imaginea actului, DOAR la cerere. companyId nul = super-admin (vede tot).
 async function getVehicleDocumentFile(id, companyId) {
@@ -3159,7 +3188,9 @@ async function updateVehicleDocument(id, data) {
 async function deleteVehicleDocument(id) {
   await pool.query('DELETE FROM vehicle_documents WHERE id = $1', [id]);
 }
-// Reînnoire = înlocuire: scoate actele vechi de același tip ale vehiculului (cel nou rămâne singurul curent).
+// ȘTERGERE DEFINITIVĂ a tuturor actelor de un tip, ISTORIC CU TOT. NU se mai folosește la reînnoire —
+// acolo e archiveVehicleDocumentsByType. Rămâne doar pentru curățenii deliberate (ex. un tip de act
+// introdus din greșeală pe toată flota). Dacă o chemi, pierzi și istoricul.
 async function deleteVehicleDocumentsByType(imei, docType, companyId) {
   await pool.query(
     'DELETE FROM vehicle_documents WHERE imei = $1 AND doc_type = $2 AND company_id IS NOT DISTINCT FROM $3',
@@ -3442,5 +3473,6 @@ module.exports = {
   listFuelTransactions, createFuelTransaction, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,
   saveFuelPriceSnapshot, getFuelPriceHistory,
   getVehicleDocuments,
-  getVehicleDocumentFile, createVehicleDocument, updateVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType
+  getVehicleDocumentFile, createVehicleDocument, updateVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType,
+  getVehicleDocumentHistory, archiveVehicleDocumentsByType
 };

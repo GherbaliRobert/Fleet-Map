@@ -35,9 +35,11 @@ const WORK = [
   { type: 'Spălare / curățenie',       icon: 'fa-spray-can-sparkles',  fam: 'f-zone' },
 ];
 
-// Ce NU e mentenanță, ci act. Ține locul listei din fila Documente + servește la depistarea
-// intrărilor vechi, scrise greșit în Mentenanță înainte de granița asta.
-const DOCS = ['ITP', 'RCA', 'CASCO', 'Rovinietă', 'Licență transport', 'Tahograf', 'Card tahograf', 'Asigurare marfă'];
+// Ce NU e mentenanță, ci act. E ȘI lista din care se umple alegerea de tip la Documente — în două
+// locuri (fișa vehiculului + Management), care până acum o aveau scrisă de mână, separat.
+// „Altul" se adaugă la final de interfață, nu stă aici: nu e un tip de act, e supapa pentru rest.
+// Card tahograf NU e aici: e actul ȘOFERULUI, nu al mașinii.
+const DOCS = ['ITP', 'RCA', 'CASCO', 'Rovinietă', 'Licență transport', 'Tahograf', 'Asigurare marfă'];
 
 const DEFAULT_ICON = 'fa-wrench', DEFAULT_FAM = 'f-neutral';
 

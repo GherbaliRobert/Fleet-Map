@@ -20,6 +20,63 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Un singur drum pentru scadențe: fișa mașinii, Mentenanța și Documentele spun același lucru
+
+Datele erau deja comune — ce scriai în fișa mașinii apărea și în Management. Dar cele trei ecrane
+**judecau diferit aceleași date**, iar fișa mașinii nu putea scrie tot.
+
+**1. Un singur număr pentru fiecare avertisment.** Existau șase, pentru aceeași idee de „curând":
+
+| Unde | Se aprindea la |
+|---|---|
+| Mentenanță — culoarea din listă | 14 zile / 500 km, bătut în cod |
+| Mentenanță — notificarea | preavizul din Administrare |
+| Documente — culoarea în Management | 30 de zile, bătut în cod |
+| Documente — culoarea în fișa mașinii | 30 de zile, **a doua copie** |
+| Documente — notificarea | 7 zile |
+
+Deci un ITP era portocaliu **30 de zile**, dar telefonul suna abia la **7** — trei săptămâni în care
+ecranul striga și telefonul tăcea. Și dacă schimbai preavizul din Administrare, se muta **doar**
+notificarea; culorile rămâneau pe loc, așa că setarea părea că nu face nimic.
+
+Acum fiecare fel de scadență are **o cifră, folosită în ambele locuri**:
+- **lucrări la service:** 14 zile sau 500 km (un schimb de ulei se face într-o oră)
+- **acte:** 30 de zile (un RCA sau un ITP nu se rezolvă într-o zi)
+
+Sunt reglabile per companie, în Administrare, și de acum înainte reglajul **mută și culorile**.
+Starea actelor se calculează pe server, ca la lucrări — nu mai socotește fiecare ecran pe cont propriu.
+
+**2. Istoricul actelor, pe fiecare mașină.** Până acum, reînnoirea **ștergea** actul vechi: nu mai
+știai ce RCA aveai anul trecut, la ce firmă și cât ai dat. Acum actul înlocuit rămâne, marcat cu data
+înlocuirii, sub „Istoric acte" în fișa mașinii și în Management. **Totalul cheltuit pe acte îl
+include** — altfel „cât dau pe acte" uita tot ce era mai vechi de o reînnoire.
+
+Nimic din ce e vechi nu se pierde și nimic nu se schimbă pentru actele curente: listele, alertele și
+rapoartele se uită în continuare **numai** la actul valabil acum. Altfel fiecare RCA reînnoit ar fi
+sunat la nesfârșit că „a expirat".
+
+**3. Fila „Service" din fișa mașinii era cea slabă.** Nu putea pune repetarea — deci o lucrare
+adăugată de acolo **nu se reprograma niciodată singură**. Nu avea descriere. Nu se putea modifica,
+doar ștearsă și refăcută. Și scria „planificat", cu galben, **chiar și după trei luni de întârziere**.
+
+Acum e **același lucru ca în Mentenanță**: aceleași rânduri (vezi „depășit cu 2.300 km", cu roșu) și
+**aceeași fereastră** de scris, deschisă cu mașina completată deja. Nu mai sunt două formulare care
+se pot depărta unul de altul.
+
+**4. O singură listă de tipuri de acte.** Era scrisă de mână în două locuri — fișa mașinii și
+Management. Identice atunci, libere să se depărteze oricând.
+
+**Fondatorul vede:** un singur loc de reglat preavizul, care chiar se vede în ecran.
+
+**Clientul vede:** aceeași lucrare, aceeași stare și aceeași fereastră, din orice parte a aplicației
+o deschide. Plus istoricul actelor mașinii, care înainte nu exista.
+
+> Verificat pe cod real, 46 de controale — inclusiv că preavizul companiei schimbă ȘI culoarea, ȘI
+> alerta; că actele înlocuite nu mai ajung în alerte, în rapoarte sau în rezumatul „acte fără dată";
+> că ruta de istoric nu e confundată cu un id; și că butoanele funcționează din ambele ecrane.
+
+---
+
 ### AMÂNDOI · Mentenanța răspunde acum la „ce am de făcut", nu doar la „ce are mașina asta"
 
 **Cum era.** Un singur fel de a privi lucrările: grupate pe mașină, cu TOATE grupele deschise. Ca să

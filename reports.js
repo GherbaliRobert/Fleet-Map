@@ -1755,7 +1755,9 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   } catch (e) {}
   // Documente (scadență pe DATĂ)
   try {
-    const r = await db.pool.query('SELECT imei, doc_type, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL', [imeis]);
+    // replaced_at IS NULL = doar actul valabil acum; cele înlocuite stau în istoric și nu au ce căuta
+    // într-un raport de scadențe (altfel fiecare RCA reînnoit ar apărea etern ca „expirat").
+    const r = await db.pool.query('SELECT imei, doc_type, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL AND replaced_at IS NULL', [imeis]);
     for (const d of r.rows) { if (horizon && new Date(d.expiry_date) > horizon) continue; const days = Math.floor((new Date(d.expiry_date) - ref) / 86400000); const st = _dueStatus(days);
       items.push({ sk1: rank[st], sk2: days, row: [ label(devMap, d.imei), 'Document', d.doc_type || '—', fmtDate(d.expiry_date) + ' (' + ramasZile(days) + ')', '—', st ] }); }
   } catch (e) {}

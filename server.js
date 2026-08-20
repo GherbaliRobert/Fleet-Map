@@ -2735,8 +2735,12 @@ const ALERT_THRESHOLD_SPECS = [
   { k: 'idleMaxMin', min: 5, max: 1440, round: true },     // RA Watch — ralanti prelungit (min)
   { k: 'ecoScoreMin', min: 0, max: 100, round: true },     // RA Optimize — scor minim eco-driving
   { k: 'serviceSoonKm', min: 100, max: 50000, round: true }, // RA Care — km până la service-ul din BORD (CAN)
-  { k: 'careDaysLead', min: 1, max: 365, round: true },    // RA Care + push — zile înainte de scadența pe DATĂ (mentenanță/documente)
-  { k: 'careKmLead', min: 50, max: 50000, round: true },   // RA Care + push — km înainte de scadența pe KM (mentenanță)
+  { k: 'careDaysLead', min: 1, max: 365, round: true },    // RA Care + push + culoarea listei — zile înainte de scadența LUCRĂRII pe dată
+  { k: 'careKmLead', min: 50, max: 50000, round: true },   // RA Care + push + culoarea listei — km înainte de scadența LUCRĂRII pe km
+  // ACTELE au preavizul lor, separat de lucrări: un RCA sau un ITP nu se rezolvă într-o zi, un
+  // schimb de ulei da. Înainte, documentele împrumutau careDaysLead cu un Math.max(7, …) — deci
+  // pragul mentenanței muta, pe furiș, și alerta actelor.
+  { k: 'docDaysLead', min: 1, max: 365, round: true },     // push + culoarea listei — zile înainte de expirarea ACTULUI
   { k: 'dispOnlineMin', min: 5, max: 240, round: true },   // RA Dispatch — „disponibil": ultimul semnal sub (min)
   { k: 'dispIdleHour', min: 0, max: 23, round: true },     // RA Dispatch — verifică „subutilizat" după ora (0-23)
   { k: 'dispIdleKm', min: 1, max: 100, round: true },      // RA Dispatch — „nefolosit azi": sub (km)
@@ -6134,9 +6138,12 @@ app.get('/api/maintenance', requireAuth, withScope, async (req, res) => {
     // _due/_odo/_kmLeft sunt DOAR pt. afișare — updateMaintenance scrie pe coloane explicite, deci se ignoră la PUT.
     const odoMap = {};
     try { for (const d of await db.getDevices()) { const km = _odoFromIo(d.io_data); if (km) odoMap[d.imei] = km; } } catch (e) {}
+    // Preavizul companiei decide culoarea din listă, exact ca la alerte — o singură cifră, două locuri.
+    const leads = await _leadsByCompany();
     rows = rows.map(m => {
       const odo = odoMap[m.imei] || null;
-      return { ...m, _odo: odo, _kmLeft: (m.due_km && odo) ? (m.due_km - odo) : null, _due: maintenanceDueState(m, odo) };
+      const L = leads.of(m.company_id);
+      return { ...m, _odo: odo, _kmLeft: (m.due_km && odo) ? (m.due_km - odo) : null, _due: maintenanceDueState(m, odo, L), _lead: L.days, _leadKm: L.km };
     });
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -6154,26 +6161,70 @@ function _odoFromIo(io) {
   return (km != null && isFinite(km) && km > 0) ? Math.round(km) : null;
 }
 
-// Praguri alertă mentenanță — O SINGURĂ sursă (worker + /api/maintenance pt. colorarea listei).
-const MAINT_DAYS_LEAD = 14;  // se aprinde roșu cu N zile înainte de scadența pe dată
-const MAINT_KM_LEAD = 500;   // se aprinde roșu cu N km înainte de scadența pe km
+// Preavizul — CÂT DE DEVREME spunem că ceva „vine curând". O singură cifră pentru fiecare fel de
+// scadență, folosită în AMBELE locuri: culoarea din listă ȘI alerta la clopoțel/telefon.
+//
+// Înainte erau șase numere diferite pentru aceeași idee: lista de acte se colora la 30 de zile, dar
+// alerta suna la 7 (trei săptămâni în care ecranul striga și telefonul tăcea), iar dacă schimbai
+// preavizul din Administrare se muta DOAR alerta — culorile rămâneau bătute în cod, deci setarea
+// părea că nu face nimic.
+//
+// Valorile de aici sunt doar punctul de plecare; fiecare companie și le poate schimba
+// (careDaysLead / careKmLead / docDaysLead în alert_thresholds).
+const MAINT_DAYS_LEAD = 14;  // LUCRĂRI, pe dată — un schimb de ulei se face într-o oră
+const MAINT_KM_LEAD = 500;   // LUCRĂRI, pe km
+const DOC_DAYS_LEAD = 30;    // ACTE — un RCA sau un ITP vrea o lună de preaviz, nu o săptămână
+
+// Preavizul fiecărei companii, într-o singură interogare. Ordinea: setarea companiei → setarea
+// globală (super-admin) → constantele de mai sus.
+async function _leadsByCompany() {
+  const g = await _getGlobalAlertThresholds();
+  const base = {
+    days: parseInt(g && g.careDaysLead) || MAINT_DAYS_LEAD,
+    km: parseInt(g && g.careKmLead) || MAINT_KM_LEAD,
+    docDays: parseInt(g && g.docDaysLead) || DOC_DAYS_LEAD
+  };
+  const m = new Map();
+  try {
+    for (const co of await db.getCompanies()) {
+      const t = _alertThresholdsFromSettings(co.settings) || {};
+      m.set(co.id, {
+        days: parseInt(t.careDaysLead) || base.days,
+        km: parseInt(t.careKmLead) || base.km,
+        docDays: parseInt(t.docDaysLead) || base.docDays
+      });
+    }
+  } catch (e) {}
+  return { base: base, of: function (cid) { return (cid != null && m.get(cid)) || base; } };
+}
 // Închisă? — REGULĂ UNICĂ (RA Care + checkExpiries + colorarea listei): status done/completed SAU done_date setat.
 function _maintClosed(m) { if (!m) return true; const st = String(m.status || '').toLowerCase(); return st === 'done' || st === 'completed' || !!m.done_date; }
 // Starea de scadență pt. UI: 'overdue' (depășit) | 'due_soon' (în fereastra de alertă) | 'ok'.
-function maintenanceDueState(m, odo) {
+// `leads` = preavizul companiei (vezi _leadsByCompany); lipsă → constantele implicite.
+function maintenanceDueState(m, odo, leads) {
   if (!m || _maintClosed(m)) return 'ok';
+  const dLead = (leads && leads.days) || MAINT_DAYS_LEAD;
+  const kLead = (leads && leads.km) || MAINT_KM_LEAD;
   let soon = false;
   if (m.due_date) {
     const days = Math.ceil((new Date(m.due_date).getTime() - Date.now()) / 86400000);
     if (days < 0) return 'overdue';
-    if (days <= MAINT_DAYS_LEAD) soon = true;
+    if (days <= dLead) soon = true;
   }
   if (m.due_km && odo) {
     const left = m.due_km - odo;
     if (left <= 0) return 'overdue';
-    if (left <= MAINT_KM_LEAD) soon = true;
+    if (left <= kLead) soon = true;
   }
   return soon ? 'due_soon' : 'ok';
+}
+// Aceeași poveste pentru ACTE, ca ecranele să nu mai calculeze fiecare pe cont propriu.
+// 'expired' | 'soon' | 'ok' | 'none' (fără dată de expirare).
+function documentDueState(d, leadDays) {
+  if (!d || !d.expiry_date) return 'none';
+  const days = Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000);
+  if (days < 0) return 'expired';
+  return days <= ((leadDays) || DOC_DAYS_LEAD) ? 'soon' : 'ok';
 }
 // La marcarea „efectuat": înregistrează momentul EXACT (done_at) + data + km-ul curent (best-effort).
 async function stampMaintenanceDone(body) {
@@ -6268,6 +6319,26 @@ app.get('/api/documents', requireAuth, withScope, async (req, res) => {
     if (req.query.imei && !canAccessImei(req, req.query.imei)) return res.status(403).json({ error: 'Acces interzis' });
     let rows = await db.getVehicleDocuments(req.query.imei, req.isSuper ? null : req.companyId);
     if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei)); // scope per-vehicul (deja aplicat)
+    // Starea („expirat / expiră curând / valabil") se calculează AICI, ca la mentenanță. Înainte o
+    // socotea fiecare ecran pe cont propriu, cu 30 de zile bătute în cod în două locuri — iar alerta
+    // suna după alt prag. Acum ecranul și telefonul folosesc aceeași cifră.
+    const leads = await _leadsByCompany();
+    rows = rows.map(d => {
+      const L = leads.of(d.company_id);
+      return { ...d, _due: documentDueState(d, L.docDays), _lead: L.docDays,
+               _days: d.expiry_date ? Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000) : null };
+    });
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Istoricul actelor unei mașini: ce a fost înlocuit, cu ce dată de expirare avea și cât a costat.
+// Până la 2026-08-20 actul vechi se ștergea la reînnoire, deci istoricul ăsta pur și simplu nu exista.
+app.get('/api/documents/history', requireAuth, withScope, async (req, res) => {
+  try {
+    if (req.query.imei && !canAccessImei(req, req.query.imei)) return res.status(403).json({ error: 'Acces interzis' });
+    let rows = await db.getVehicleDocumentHistory(req.query.imei, req.isSuper ? null : req.companyId);
+    if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei));
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -6279,10 +6350,11 @@ app.post('/api/documents', requireAuth, requireFleet, withScope, async (req, res
     // company_id = al vehiculului (proprietarul real al documentului), nu al celui care-l adaugă
     const dev = await db.getDeviceFull(req.body.imei);
     const companyId = dev && dev.company_id != null ? dev.company_id : req.companyId;
-    // Reînnoire = înlocuire: un act nou de același tip îl scoate pe cel vechi al vehiculului
-    // (excepție „Altul" → poate exista în mai multe exemplare). Punctul 4 din planul client.
+    // Reînnoire = actul vechi de același tip iese din uz — dar NU se mai șterge, trece în ISTORICUL
+    // mașinii (decizie 2026-08-20). Așa vezi ce RCA aveai anul trecut, la ce firmă și cât ai dat.
+    // Excepție „Altul" → poate exista în mai multe exemplare, deci nu înlocuiește nimic.
     if (req.body.doc_type !== 'Altul') {
-      try { await db.deleteVehicleDocumentsByType(req.body.imei, req.body.doc_type, companyId); } catch (e) {}
+      try { await db.archiveVehicleDocumentsByType(req.body.imei, req.body.doc_type, companyId); } catch (e) {}
     }
     const doc = await db.createVehicleDocument(req.body, companyId);
     auditReq(req, 'create', 'document', doc.id, { imei: req.body.imei, type: req.body.doc_type });
@@ -7015,13 +7087,10 @@ async function _checkExpiriesBody() {
       await deliverExpiryToSubscribers({ companyId: dr.company_id, title: nDrv.title, body: nDrv.body, key: nDrv.data.key });
     }
     const _mntList = await db.getMaintenance();
-    // Praguri lead: companie → GLOBAL (super-admin) → constante. Identic cu agentul RA Care (careDaysLead/careKmLead).
-    const _globalLeads = await _getGlobalAlertThresholds();
-    const _defDays = (_globalLeads && _globalLeads.careDaysLead) || MAINT_DAYS_LEAD;
-    const _defKm = (_globalLeads && _globalLeads.careKmLead) || MAINT_KM_LEAD;
-    const _coLeads = new Map();
-    try { for (const co of await db.getCompanies()) { const t = _alertThresholdsFromSettings(co.settings); _coLeads.set(co.id, { days: (t && t.careDaysLead) || _defDays, km: (t && t.careKmLead) || _defKm }); } } catch (e) {}
-    const _leadsOf = (cid) => (cid != null && _coLeads.get(cid)) || { days: _defDays, km: _defKm };
+    // Preavizul: companie → global (super-admin) → constante. ACEEAȘI funcție care colorează listele
+    // în /api/maintenance și /api/documents — o singură cifră, nu una pentru ecran și alta pentru push.
+    const _allLeads = await _leadsByCompany();
+    const _leadsOf = (cid) => _allLeads.of(cid);
     // a) Scadență pe DATĂ — praguri lead / 3 / 1 zile + DEPĂȘIT (fiecare se declanșează ~o dată)
     const _mntDateDedup = { '14': 11 * 24, '3': 2 * 24, '1': 24, 'exp': 24 };
     for (const m of _mntList) {
@@ -7080,12 +7149,10 @@ async function _checkExpiriesBody() {
     // făcea ca fiecare bucket să sune zilnic cât timp era activ, iar „EXPIRAT" să sune zilnic LA
     // NESFÂRȘIT. Acum: o alertă per prag, iar pentru actul expirat un memento pe săptămână — un act
     // uitat nu trebuie să devină zgomot pe care înveți să-l ignori.
-    // Pragul se citește din setarea BRUTĂ a companiei, nu din _coLeads — acela a amestecat deja
-    // implicitul mentenanței (14), iar documentele au implicitul lor istoric, 7. Doar o valoare
-    // pusă de om schimbă comportamentul; Math.max(7, …) păstrează pragurile urgente intacte.
-    const _docLeadRaw = new Map();
-    try { for (const co of await db.getCompanies()) { const t = _alertThresholdsFromSettings(co.settings); if (t && t.careDaysLead) _docLeadRaw.set(co.id, parseInt(t.careDaysLead)); } } catch (e) {}
-    const _docLeadOf = (cid) => Math.max(7, (cid != null && _docLeadRaw.get(cid)) || (_globalLeads && parseInt(_globalLeads.careDaysLead)) || 7);
+    // Preavizul actelor are acum cheia LUI (docDaysLead, implicit 30) și e ACELAȘI număr care
+    // colorează lista în /api/documents. Înainte împrumuta careDaysLead cu un Math.max(7, …): lista
+    // se colora la 30 de zile, iar telefonul suna abia la 7 — trei săptămâni de tăcere.
+    const _docLeadOf = (cid) => _allLeads.of(cid).docDays;
     const _faraData = [];
     for (const d of await db.getVehicleDocuments(null, null)) {
       if (!d.expiry_date) { _faraData.push(d); continue; }   // colectat, nu sărit tăcut — vezi mai jos
@@ -8110,7 +8177,7 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
           const q = await db.pool.query(
             `SELECT vd.id, vd.doc_type, vd.imei, vd.number, d.name, d.plate
                FROM vehicle_documents vd LEFT JOIN devices d ON d.imei = vd.imei
-              WHERE vd.company_id = $1 AND vd.expiry_date IS NULL
+              WHERE vd.company_id = $1 AND vd.expiry_date IS NULL AND vd.replaced_at IS NULL
               ORDER BY vd.doc_type LIMIT 60`, [cid]);
           out.documentsFaraData = q.rows.map(r => ({
             id: r.id, docType: r.doc_type, number: r.number || null, imei: r.imei || null,
