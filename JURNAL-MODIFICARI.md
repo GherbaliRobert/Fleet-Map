@@ -63,10 +63,23 @@ corecta fără să le refacă.
   CADDY") și se citeau ca un singur șir. Acum numărul e îngroșat și închis la culoare, numele mai
   șters lângă el.
 
-> Verificat pe cod real, 37 de controale — inclusiv că toate cele 16 tipuri au iconiță (niciunul
-> uitat), că intrarea și ieșirea din zonă au desene DIFERITE, că regula fără prag nu afișează o
-> pastilă goală, că modificarea parțială nu șterge restul regulii și că fereastra nouă stă DEASUPRA
-> celei de Administrare (altfel s-ar fi deschis dedesubt, invizibilă).
+**Încă două schimbări, tot la cererea lui Alin:**
+
+**Lista se grupează pe TIPUL alertei.** Aveai două reguli „Depășire viteză" pe mașini diferite, iar
+în listă stăteau despărțite de alte alerte. Acum rândul de sus e tipul — „Depășire viteză · 2 reguli
+· 1 oprită" — iar dedesubt, când îl deschizi, sunt regulile lui cu mașinile lor. Lista rămâne scurtă
+oricâte reguli ai: cel mult câte tipuri folosești, nu câte reguli.
+
+Tipurile stau în ordinea din catalog, deci „Intrare în zonă" și „Ieșire din zonă" rămân vecine, iar
+ordinea nu sare de la o încărcare la alta. Dacă ai un singur tip, se deschide singur — n-are rost o
+apăsare ca să vezi tot ce ai.
+
+**Numărul de înmatriculare nu mai stă în pastilă.** E scris mare, deasupra, cu modelul mărunt
+dedesubt. În pastila gri, numărul și modelul se citeau ca un singur șir.
+
+> Verificat pe cod real, 35 de controale — inclusiv că două reguli de același tip chiar se unesc
+> într-un rând, că deschiderea unui tip nu arată regulile altuia, că apăsatul deschide și închide,
+> că zonele se scriu pe nume și că modificarea parțială nu șterge restul regulii.
 
 ---
 
