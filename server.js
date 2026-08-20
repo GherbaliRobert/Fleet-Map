@@ -162,6 +162,7 @@ try { ioCatalog = require('./io_catalog'); } catch (e) { console.warn('[IO_CATAL
 let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
 const licenseCats = require('./license_cats');   // categorii permis + încadrare șofer (sursă unică)
+const maintTypes = require('./maint_types');     // tipuri de lucrări la service + granița față de Documente
 let fuelprice = null;
 try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
 let roadlimits = null;
@@ -1152,6 +1153,11 @@ const _LICENSE_JS = 'window.RA_LICENSE=' + JSON.stringify({
   categories: licenseCats.CATEGORIES, groups: licenseCats.GROUPS, pro: licenseCats.PRO
 }) + ';';
 app.get('/js/license-cats.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_LICENSE_JS); });
+
+// Tipurile de lucrări la service + lista de acte, tot dintr-o sursă (maint_types.js). Înainte
+// erau scrise de mână în două locuri din pagină, cu conținut diferit.
+const _MAINT_JS = 'window.RA_MAINT=' + JSON.stringify({ work: maintTypes.WORK, docs: maintTypes.DOCS }) + ';';
+app.get('/js/maint-types.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_MAINT_JS); });
 
 // Healthcheck public (monitorizare/uptime + Railway) — verifică și conexiunea la DB
 const _startedAt = Date.now();
@@ -6226,6 +6232,33 @@ app.delete('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async
   try {
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteMaintenance(req.params.id); auditReq(req, 'delete', 'maintenance', req.params.id); res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// MUTĂ un act scris din greșeală în Mentenanță (ITP, RCA, rovinietă…) acolo unde îi e locul: Documente.
+// Vezi maint_types.js pentru graniță. Nu suprascrie niciodată un act existent: dacă vehiculul are deja
+// acel tip, răspunde 409 și lasă omul să decidă — altfel mutarea ar înlocui un act complet, cu scan,
+// cu unul sărac, refăcut dintr-o linie de mentenanță.
+app.post('/api/maintenance/:id/to-document', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
+    const m = (await db.pool.query('SELECT * FROM maintenance WHERE id = $1', [req.params.id])).rows[0];
+    if (!m) return res.status(404).json({ error: 'Intrarea nu mai există' });
+    if (!maintTypes.isDocType(m.type)) return res.status(400).json({ error: '„' + m.type + '" e o lucrare la service, nu un act.' });
+    const docType = maintTypes.canonDocType(m.type);
+    const dev = await db.getDeviceFull(m.imei);
+    const companyId = (dev && dev.company_id != null) ? dev.company_id : m.company_id;
+    const existing = (await db.getVehicleDocuments(m.imei, companyId) || []).find(d => d.doc_type === docType);
+    if (existing) return res.status(409).json({ error: 'Vehiculul are deja un act „' + docType + '".', existing: { id: existing.id, expiry_date: existing.expiry_date } });
+    const doc = await db.createVehicleDocument({
+      imei: m.imei, doc_type: docType,
+      expiry_date: m.due_date || null,          // scadența lucrării = valabilitatea actului
+      issue_date: m.done_date || null,          // data efectuării = data emiterii
+      cost: m.cost, notes: m.description || null
+    }, companyId);
+    await db.deleteMaintenance(m.id);
+    auditReq(req, 'update', 'maintenance', m.id, { mutat_la_document: doc.id, tip: m.type });
+    res.json({ ok: true, document: doc });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

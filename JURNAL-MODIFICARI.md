@@ -20,6 +20,103 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Mentenanța răspunde acum la „ce am de făcut", nu doar la „ce are mașina asta"
+
+**Cum era.** Un singur fel de a privi lucrările: grupate pe mașină, cu TOATE grupele deschise. Ca să
+afli ce e urgent pe flotă, trebuia să citești tot ecranul, mașină cu mașină. La 30 de mașini, un ecran
+pe care-l derulai minute întregi. Formularul de adăugare stătea jos, sub listă, înghesuit în trei
+coloane.
+
+**Cum e acum.** Aceleași lucrări, trei feluri de a le privi, dintr-un comutator sus:
+
+| | La ce răspunde |
+|---|---|
+| **Agendă** (implicit) | „Ce am de făcut?" — toată flota, în ordinea scadenței, tăiată în *Depășite / Zilele astea / Mai târziu / Fără termen* |
+| **Pe vehicul** | „Ce are mașina asta?" — grupe care se desfac; deschise implicit doar cele cu lucrări depășite |
+| **Istoric** | „Ce s-a făcut și cât a costat?" |
+
+Plus **căutare** după număr, lucrare sau descriere — până acum aveai doar două liste derulante.
+
+**Ce se vede acum și nu se vedea, deși aplicația avea datele:**
+- **Kilometrajul real al mașinii**, citit din ea. Serverul îl trimitea la fiecare încărcare și nu-l
+  arăta nicăieri.
+- **„Mai sunt 7.700 km"** — înainte apărea abia sub 500 km. Adică aflai când era deja târziu.
+- **Repetarea** („la 10.000 km / 12 luni"). O aveai setată, dar nimic din ecran nu ți-o spunea, deci
+  nu știai care lucrări se reprogramează singure.
+
+**Nouă defecte reparate**, toate găsite rulând codul, nu privindu-l:
+
+1. **Ordinea era greșită.** O lucrare scadentă la kilometri (peste un an) urca DEASUPRA uneia deja
+   depășite. Zilele și kilometrii nu se puteau compara, așa că lista ieșea aiurea. Acum se aduc la
+   aceeași unitate și primul rând e chiar cel mai urgent.
+2. **Trei cifre de bani care se contraziceau.** „Luna" și „Anul" se socoteau din toată lista, iar
+   „Total service" doar din ce era afișat pe ecran — deci la filtrul „De făcut" scria *Total 0 lei*
+   sub un *An 4.295 lei*. Acum toate trei vin din același loc.
+3. **Text nescapat.** Ce scriai la „Altele…" intra ca **cod viu** în pagină. La Documente era
+   reparat, la Mentenanță nu.
+4. **Un apostrof rupea creionul.** „Bosch d'Auto" în descriere → butonul de modificare nu mai făcea
+   nimic, fără nicio eroare. Se împacheta tot rândul în buton; acum se trimite doar numărul lui.
+5. **Depășit și „curând" erau amândouă roșii.** O lucrare de peste două săptămâni striga la fel de
+   tare ca una restantă de o lună. Acum: roșu = depășit, portocaliu = curând.
+6. **Toate grupele deschise** la fiecare intrare în ecran.
+7. **Zilele se numărau din ceas în ceas**, nu de la o zi de calendar la alta: o scadență pe 29
+   apărea, pe 20, ca „peste 10 zile". Omul numără zile.
+8. **Bifa „efectuat" nu întreba costul.** Marcai lucrarea, apoi deschideai creionul ca să scrii
+   suma — două operații pentru una, și de obicei suma nu se mai scria deloc. Acum întreabă pe loc.
+9. **Ștergerea unei lucrări din istoric** nu spunea că se pierd și banii ei din totalul de service.
+   Acum îți spune exact câți.
+
+**Formularul s-a mutat într-o fereastră proprie**, ca la Alerte, cu câmpurile strânse pe înțeles:
+*Când e scadentă* (dată și/sau kilometraj) și *Se repetă* (km și/sau luni), fiecare cu explicația lui.
+
+**Fondatorul vede:** la fel ca clientul. Toate modificările rămân în jurnalul de audit.
+
+**Clientul vede:** un ecran care începe cu ce e restant, nu cu o listă alfabetică de mașini.
+
+> Verificat pe cod real, 53 de controale — inclusiv că depășitul e primul, că aceeași sumă apare în
+> toate cele trei file, că apostroful nu mai rupe nimic, că grupa fără urgențe rămâne închisă și că
+> se deschide la apăsare.
+
+---
+
+### AMÂNDOI · Am tras granița: Mentenanță = ce se face la service, Documente = ce expiră
+
+**Problema.** Lista de tipuri din Mentenanță conținea **ITP, RCA, Rovinietă, Casco, Tahograf** — exact
+aceleași care există și în fila **Documente**. Același ITP putea fi scris în două locuri, iar agentul
+RA Care îl număra de două ori. Nimic nu spunea care e locul corect.
+
+**Regula, de acum înainte:**
+
+- **MENTENANȚĂ** = ce se face la service. O lucrare mecanică: se consumă piese, se plătește manoperă,
+  se repetă la kilometri sau la luni. La final ai o mașină reparată.
+- **DOCUMENTE** = ce se plătește și **expiră**. La final ai o hârtie cu dată de valabilitate.
+
+Testul care le separă: *„la final rămân cu un act care are dată de expirare?"* → Documente.
+
+**ITP e cazul care înșală:** te duci fizic la o stație, ca la service. Dar ce cumperi acolo e
+certificatul, nu reparația — dacă mașina nu trece, plătești reparația SEPARAT, și aia e mentenanță.
+
+**Ce s-a schimbat concret:**
+- Actele **au ieșit** din lista de lucrări. În loc, lista are acum 16 lucrări adevărate (ambreiaj,
+  amortizoare, curea accesorii, sistem de răcire, instalație electrică, tinichigerie…).
+- **Intrările vechi nu s-au atins.** Dacă ai deja un „ITP" scris în Mentenanță, rândul lui capătă o
+  bandă portocalie — *„ITP" e un act, nu o lucrare la service* — și un buton **Mută la Documente**.
+  Mutarea duce scadența ca dată de expirare și păstrează costul.
+- Dacă cineva scrie totuși un act prin „Altele…", aplicația îl întreabă înainte să salveze.
+- **Nu se suprascrie nimic.** Dacă mașina are deja actul acela, mutarea se oprește și îți spune —
+  altfel un act complet, cu scan, ar fi fost înlocuit de unul sărac, refăcut dintr-o linie de
+  mentenanță.
+
+**Și o listă dublă a dispărut.** Tipurile erau scrise de mână în DOUĂ locuri: ecranul Mentenanță avea
+14, fila „Service" din editarea vehiculului avea 7, altfel ordonate. Acum amândouă citesc din același
+fișier (`maint_types.js`), deci nu se mai pot depărta.
+
+**Fondatorul vede:** o graniță pe care o putem explica unui client în două propoziții.
+
+**Clientul vede:** nu-și pierde nimic. Ce a scris greșit rămâne, semnalat, cu un buton care-l mută.
+
+---
+
 ### AMÂNDOI · Alarma falsă de combustibil, căutarea după număr și cadranele de stare — `2e13d65`
 
 **1. „Scădere de la 43 L la 32 L" — fără să se fi întâmplat nimic.** Robert a primit notificarea pe
