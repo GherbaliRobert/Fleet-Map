@@ -15,7 +15,8 @@
 .vstat .l { font-size: 9px; font-weight: 700; color: var(--text-muted); letter-spacing: -.3px; margin-top: 2px;
   line-height: 1.2; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .vstat.on { border-left-width: 4px; background: var(--bg-dark); box-shadow: 0 4px 14px rgba(0,0,0,.25); }
-.vstat.total { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 10px; padding: 11px 13px; margin-bottom: 2px; }
+.vstat.total { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: center;
+  text-align: center; gap: 10px; padding: 11px 13px; margin-bottom: 2px; }
 .vstat.total .n { font-size: 29px; }
 .vstat.total .l { font-size: 12px; margin-top: 0; letter-spacing: 0; }
 
