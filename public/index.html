@@ -2409,7 +2409,7 @@ const pozitii = await r.json();</code></pre>
           .doc-miss .mnt-ic { opacity: .55; }
           /* Rândul lipsă are un buton cu TEXT, nu o iconiță — coloana de acțiuni a rândului obișnuit
              (76px, croită pentru trei iconițe) e prea îngustă și butonul ieșea din card. */
-          .doc-miss.dated { grid-template-columns: 56px 38px minmax(0, 1fr) auto auto 108px; }
+          .doc-miss.dated { grid-template-columns: 56px 38px minmax(0, 1fr) auto auto 152px; }
           /* Butoanele din .mnt-act sunt pătrate (32x32), croite pentru iconițe. Ăsta are TEXT, deci
              își cere lățimea înapoi — altfel rămâne un pătrat din care scrisul curge afară. */
           .mnt-act .doc-add-miss { width: auto; height: 30px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
@@ -2418,6 +2418,21 @@ const pozitii = await r.json();</code></pre>
           .doc-renew { color: #0E7A3C; border-color: rgba(63, 224, 125, .45); background: rgba(63, 224, 125, .10); }
           body.dark .doc-renew { color: var(--accent); }
           .doc-clip { font-size: 10.5px; color: var(--text-muted); margin-left: 3px; }
+          /* Butoanele de pe rândul mașinii (scanează / adaugă). Capul grupei are trei coloane; a
+             patra e a lor, altfel s-ar fi înghesuit peste eticheta de stare. */
+          .mnt-ghead.doc-ghead { grid-template-columns: 16px minmax(0, 1fr) auto auto; }
+          .doc-ghead-act { display: flex; gap: 6px; }
+          .doc-ghead-act .btn-sm { width: 32px; height: 32px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+          @media (max-width: 768px) { .mnt-ghead.doc-ghead { grid-template-columns: 14px minmax(0, 1fr) auto; } .doc-ghead-act { display: none; } }
+
+          /* Rândul de recunoaștere a mașinii din act. */
+          .doc-scan-veh { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 9px; margin-bottom: 10px; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
+          .doc-scan-veh.ok { background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); color: #0E7A3C; }
+          body.dark .doc-scan-veh.ok { color: var(--accent); }
+          .doc-scan-veh.warn { background: rgba(245, 158, 11, .13); border: 1px solid rgba(245, 158, 11, .4); color: #B45309; }
+          body.dark .doc-scan-veh.warn { color: #FBBF24; }
+          .doc-scan-veh b { font-weight: 800; }
+          .doc-scan-veh .btn-sm { margin-left: auto; height: 28px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
           .doc-reqc select { width: 100%; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-panel);
                              color: var(--text-primary); font-family: inherit; font-size: 12px; font-weight: 700; padding: 0 8px; }
           .doc-reqc select.custom { border-color: var(--accent); background: rgba(63, 224, 125, .08); }
@@ -2443,7 +2458,7 @@ const pozitii = await r.json();</code></pre>
             </div>
             <span class="toolbar-spacer"></span>
             <span id="doc-count" class="toolbar-count"></span>
-            <button class="btn-sm doc-addbtn" onclick="docModalOpen(true, null, null, true)" title="Încarcă poza actului și completez eu câmpurile"><i class="fas fa-file-arrow-up"></i> Scanează act</button>
+            <button class="btn-sm doc-addbtn" onclick="docModalOpen(true, null, null, true)" title="Pune poza actului: recunosc mașina după numărul de pe el"><i class="fas fa-file-arrow-up"></i> Scanează act</button>
             <button class="btn-sm btn-primary doc-addbtn" onclick="docModalOpen(true)"><i class="fas fa-plus"></i> Adaugă act</button>
           </div>
           <div class="mnt-search doc-search">
@@ -6227,8 +6242,12 @@ const pozitii = await r.json();</code></pre>
         + '<div class="mnt-s"><span>' + (req ? 'obligatoriu, dar nu e introdus în aplicație' : 'opțional — nu e introdus') + '</span></div></div>'
         + '<span class="mnt-pill mnt-c-pi"><i class="fas ' + (req ? 'fa-triangle-exclamation' : 'fa-circle-minus') + '"></i>' + (req ? 'lipsește' : 'neintrodus') + '</span>'
         + '<span class="mnt-c mnt-c-co"></span>'
-        + (canEdit ? '<div class="mnt-act mnt-c-ac"><button class="btn-sm btn-primary doc-add-miss" onclick="docModalOpen(true, \'' + esc(imei) + '\', \'' + esc(m.type) + '\')"><i class="fas fa-plus"></i> Adaugă</button></div>'
-                   : '<div class="mnt-c-ac"></div>') + '</div>';
+        // Aici aplicația știe ȘI mașina, ȘI tipul actului — deci scanarea e cea mai scurtă cale:
+        // pui poza și gata. „Manual" rămâne alături, pentru cine n-are actul la îndemână.
+        + (canEdit ? '<div class="mnt-act mnt-c-ac">'
+            + '<button class="btn-sm btn-primary doc-add-miss" title="Pune poza actului și completez eu" onclick="docModalOpen(true, \'' + esc(imei) + '\', \'' + esc(m.type) + '\', true)"><i class="fas fa-file-arrow-up"></i> Scanează</button>'
+            + '<button class="btn-sm" title="Completează manual" onclick="docModalOpen(true, \'' + esc(imei) + '\', \'' + esc(m.type) + '\')"><i class="fas fa-plus"></i></button>'
+          + '</div>' : '<div class="mnt-c-ac"></div>') + '</div>';
     }
 
     function renderDocuments() {
@@ -6365,10 +6384,18 @@ const pozitii = await r.json();</code></pre>
         else if (soon) badge = '<span class="mnt-gn soon">' + soon + ' expiră curând</span>';
         else badge = '<span class="mnt-gn ok">în regulă · ' + acte.length + (acte.length === 1 ? ' act' : ' acte') + '</span>';
         body += '<div class="mnt-g' + (open ? ' open' : '') + '">'
-          + '<div class="mnt-ghead" onclick="docToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' actele">'
+          + '<div class="mnt-ghead' + (canEdit ? ' doc-ghead' : '') + '" onclick="docToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' actele">'
           + '<i class="fas fa-chevron-right mnt-caret"></i>'
           + '<div><div class="mnt-gp">' + esc(mntPlate(imei)) + '</div><div class="mnt-gm">' + esc(mntModel(imei)) + '</div></div>'
-          + badge + '</div>'
+          + badge
+          // Scanarea stă LÂNGĂ MAȘINĂ, nu într-un buton general: aici aplicația știe deja pentru cine
+          // e actul, deci nu mai trebuie s-o întrebe pe om. (Din capul listei, o afla din act — dar
+          // asta e a doua cale, nu prima.)
+          + (canEdit ? '<div class="doc-ghead-act">'
+              + '<button class="btn-sm" title="Scanează un act pentru ' + esc(mntPlate(imei)) + '" onclick="event.stopPropagation();docModalOpen(true, \'' + esc(imei) + '\', null, true)"><i class="fas fa-file-arrow-up"></i></button>'
+              + '<button class="btn-sm" title="Adaugă un act pentru ' + esc(mntPlate(imei)) + '" onclick="event.stopPropagation();docModalOpen(true, \'' + esc(imei) + '\')"><i class="fas fa-plus"></i></button>'
+            + '</div>' : '')
+          + '</div>'
           + (open ? '<div class="mnt-gbody">'
               + (acte.length ? acte.map(function (d) { return docCard(d, false, canEdit); }).join('') : '')
               + (lip.length ? '<div class="mnt-sub">Nu sunt introduse</div>' + lip.map(function (m) { return docMissingCard(m, imei, canEdit); }).join('') : '')
@@ -6450,7 +6477,7 @@ const pozitii = await r.json();</code></pre>
       _docEditId = null;
       ['doc-id', 'doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
       const t = document.getElementById('doc-type'); if (t) t.selectedIndex = 0;
-      _docScanFile = null; _docScanProp = null;
+      _docScanFile = null; _docScanProp = null; _docScanVeh = null;
       const r = document.getElementById('doc-scan-result'); if (r) r.style.display = 'none';
       docModRender();
     }
@@ -13834,6 +13861,7 @@ const pozitii = await r.json();</code></pre>
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || ('Eroare ' + r.status));
         _docScanFile = f; _docScanProp = j;
+        _docScanPotriveste(j && j.campuri);   // actul spune a cui e — îl legăm de mașină singuri
         _docScanRender(j);
       } catch (e) {
         rez.style.display = '';
@@ -13856,6 +13884,47 @@ const pozitii = await r.json();</code></pre>
       : v >= 0.6 ? '<span style="color:#f59e0b;font-size:10.5px;">probabil</span>'
       : '<span style="color:#ef4444;font-size:10.5px;">verifică</span>';
 
+    // Numărul de înmatriculare, adus la o formă comparabilă: fără spații, cratime sau litere mici.
+    // „B 268 ROY", „B-268-ROY" și „b268roy" sunt aceeași mașină.
+    function _plateKey(p) { return String(p == null ? '' : p).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+    function docVehByPlate(plate) {
+      const k = _plateKey(plate); if (k.length < 4) return null;
+      return (typeof adminDevicesCache !== 'undefined' ? adminDevicesCache : [])
+        .find(function (d) { return _plateKey(d.plate) === k; }) || null;
+    }
+    // Ce mașină scrie pe actul tocmai citit: { stare, plate, imei }.
+    //   'ales'    – n-aveai una aleasă, am pus-o eu
+    //   'confirma'– e chiar cea pe care ai deschis fereastra
+    //   'altul'   – actul e al ALTEI mașini decât cea deschisă (cazul periculos)
+    //   'strain'  – numărul de pe act nu e în flotă
+    let _docScanVeh = null;
+    function _docScanPotriveste(campuri) {
+      _docScanVeh = null;
+      const pl = campuri && campuri.plate; if (!pl) return;
+      const v = docVehByPlate(pl);
+      const sel = document.getElementById('doc-imei');
+      const ales = sel ? sel.value : '';
+      if (!v) { _docScanVeh = { stare: 'strain', plate: String(pl) }; return; }
+      if (!ales) { setVehSelect('doc-imei', v.imei); _docScanVeh = { stare: 'ales', plate: v.plate, imei: v.imei }; return; }
+      _docScanVeh = (ales === v.imei)
+        ? { stare: 'confirma', plate: v.plate, imei: v.imei }
+        : { stare: 'altul', plate: v.plate, imei: v.imei, deschis: mntPlate(ales) };
+    }
+    function docScanMuta(imei) {
+      setVehSelect('doc-imei', imei);
+      if (_docScanVeh) _docScanVeh.stare = 'confirma';
+      if (_docScanProp) _docScanRender(_docScanProp);
+    }
+    // Rândul care spune a cui e actul. Fără el, la scanarea din capul listei omul trebuia să caute
+    // manual mașina scrisă chiar pe hârtia din fața lui.
+    function _docScanVehBanner() {
+      const m = _docScanVeh; if (!m) return '';
+      if (m.stare === 'ales') return '<div class="doc-scan-veh ok"><i class="fas fa-circle-check"></i><span>Actul e pentru <b>' + esc(m.plate) + '</b> — am ales-o eu, după numărul de pe act.</span></div>';
+      if (m.stare === 'confirma') return '<div class="doc-scan-veh ok"><i class="fas fa-circle-check"></i><span>Numărul de pe act se potrivește cu <b>' + esc(m.plate) + '</b>.</span></div>';
+      if (m.stare === 'altul') return '<div class="doc-scan-veh warn"><i class="fas fa-triangle-exclamation"></i><span>Actul e pentru <b>' + esc(m.plate) + '</b>, dar ai deschis fereastra pe <b>' + esc(m.deschis) + '</b>.</span>'
+        + '<button type="button" class="btn-sm" onclick="docScanMuta(\'' + esc(m.imei) + '\')">Pune-l pe ' + esc(m.plate) + '</button></div>';
+      return '<div class="doc-scan-veh warn"><i class="fas fa-circle-question"></i><span>Pe act scrie <b>' + esc(m.plate) + '</b>, dar nu găsesc mașina asta în flotă. Alege tu vehiculul.</span></div>';
+    }
     function _docScanRender(r) {
       const rez = document.getElementById('doc-scan-result');
       const c = r.campuri || {}, inc = r.incredere || {};
@@ -13870,13 +13939,14 @@ const pozitii = await r.json();</code></pre>
       }
       if (!randuri.length) {
         rez.style.display = '';
-        rez.innerHTML = '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:12.5px;color:var(--text-muted);">N-am putut citi nimic utilizabil din act (' + _docEsc(r.sursa || '?') + '). Completează manual — sau încearcă o poză mai dreaptă, fără reflexii.</div>';
+        rez.innerHTML = _docScanVehBanner() + '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:12.5px;color:var(--text-muted);">N-am putut citi nimic utilizabil din act (' + _docEsc(r.sursa || '?') + '). Completează manual — sau încearcă o poză mai dreaptă, fără reflexii.</div>';
         return;
       }
       // Bifat implicit: propunerile în care avem încredere ȘI care nu calcă peste ce a scris omul.
       rez.style.display = '';
       rez.innerHTML =
         '<div style="background:var(--bg-dark);border:1px solid var(--accent);border-radius:12px;padding:12px;">' +
+        _docScanVehBanner() +
         '<div style="font-size:12px;font-weight:700;margin-bottom:8px;"><i class="fas fa-clipboard-check" style="color:var(--accent);"></i> Am citit din act (' + (r.sursa === 'pdf-text' ? 'text din PDF, gratuit' : 'citire AI') + ') — debifează ce nu vrei:</div>' +
         randuri.map((x, i) =>
           '<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:12.5px;cursor:pointer;">' +
@@ -13931,7 +14001,7 @@ const pozitii = await r.json();</code></pre>
       }
     }
     function docScanCancel() {
-      _docScanFile = null; _docScanProp = null;
+      _docScanFile = null; _docScanProp = null; _docScanVeh = null;
       document.getElementById('doc-scan-result').style.display = 'none';
     }
 

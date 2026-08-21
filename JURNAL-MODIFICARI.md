@@ -20,6 +20,43 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Scanarea știe singură pentru ce mașină e actul
+
+**Ce nu mergea.** Butonul „Scanează act" din capul listei deschidea o fereastră goală: prima
+întrebare era *„care mașină?"*. Alin: *„nu cumva logica bună era ca scanarea să fie în dreptul
+mașinilor, să știe unde se atribuie? Adică să lucrăm inteligent."* Avea dreptate.
+
+**Acum sunt trei căi, de la cea mai scurtă la cea mai lungă:**
+
+1. **Pe rândul actului care lipsește** — aplicația știe ȘI mașina, ȘI tipul. Butonul zice
+   **„Scanează"**: pui poza și gata. Alături, un „＋" pentru completare manuală.
+2. **Pe rândul mașinii** — două butoane mici: scanează / adaugă. Nu mai trebuie s-o alegi.
+3. **Din capul listei** — rămâne, dar acum **recunoaște mașina din act**.
+
+**Recunoașterea.** Actul are numărul de înmatriculare scris pe el, iar scanarea îl citea deja —
+doar că nu-l folosea la nimic. Acum:
+
+| Situația | Ce face |
+|---|---|
+| n-ai ales nicio mașină | o alege singură: *„Actul e pentru **B 268 ROY** — am ales-o eu, după numărul de pe act."* |
+| ai ales-o și se potrivește | confirmă scurt |
+| **actul e al ALTEI mașini** | avertisment portocaliu + buton „Pune-l pe TM 07 RAT". **Nu schimbă tăcut** — altfel ai lipi RCA-ul pe mașina greșită |
+| numărul nu e în flotă | o spune: *„nu găsesc mașina asta în flotă"*. Nu ghicește. |
+
+Numerele se compară fără spații și cratime: „B 268 ROY", „B-268-ROY" și „b268roy" sunt aceeași mașină.
+
+**Fondatorul vede:** o funcție care se explică singură la demo.
+
+**Clientul vede:** pune poza actului și restul se completează, inclusiv mașina.
+
+> Verificat pe cod real, 83 de controale — inclusiv cele patru situații de mai sus, cu flotă de probă.
+> Prima așezare a butoanelor de pe rândul mașinii era legată de containerul `#atab-documente`, deci
+> nu se aplica nicăieri altundeva și butoanele cădeau pe al doilea rând; regula e acum pe o clasă a
+> rândului. Găsit randând, nu citind.
+
+---
+
+
 ### AMÂNDOI · Documentele arată ca Mentenanța și, în sfârșit, spun ce LIPSEȘTE
 
 **Aspectul.** Ecranul Documente rămăsese cel vechi: rânduri gri, fără iconiță pe tip, formularul
