@@ -20,6 +20,30 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Filele Mentenanței se numesc acum „De făcut" și „Făcute"
+
+**De ce.** Alin, uitându-se la ecran: *„istoric — este ceea ce a făcut. În agendă sunt cele
+viitoare? Sau cum? Că mă duce în eroare."*
+
+Avea dreptate. „Agendă" sună a calendar de VIITOR, dar acolo stăteau și restanțele de acum trei
+luni. Împărțirea reală nu e trecut/viitor, ci **nefăcut / făcut**:
+
+| Se numea | Se numește | Ce e înăuntru |
+|---|---|---|
+| Agendă | **De făcut** | tot ce nu s-a făcut: și restanțele, și ce urmează |
+| Istoric | **Făcute** | ce s-a terminat, cu data și cât a costat |
+
+**Și un singur cuvânt peste tot.** Ecranul folosea când „efectuat", când „făcut" — două cuvinte
+pentru același lucru, în aceeași listă. Acum e „făcută" peste tot: eticheta de pe rând, butonul cu
+bifă („Bifează: am făcut-o"), mesajele de confirmare.
+
+**Fondatorul vede:** la fel ca clientul.
+
+**Clientul vede:** două file al căror nume spune exact ce e în ele.
+
+---
+
+
 ### AMÂNDOI · Mentenanța, pe mașini: fiecare are agenda ei și istoricul ei
 
 **Ce s-a schimbat.** Erau trei file — Agendă (o listă lungă pe toată flota), Pe vehicul, Istoric.
