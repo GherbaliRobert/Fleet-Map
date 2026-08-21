@@ -398,6 +398,9 @@ async function initDb() {
 
     // Alimentări card combustibil (import CSV / manual) + reconciliere cu nivelul CAN al rezervorului (detecție furt)
     await client.query(`
+      -- ARHIVĂ. Ecranul „Card combustibil" a fost scos din Management pe 2026-08-21 (decizia lui
+      -- Alin: gestiunea alimentărilor pe card rămâne la altcineva). Tabela rămâne, cu datele
+      -- importate până atunci — ștergerea lor e o operație deliberată, nu efectul scoaterii unui ecran.
       CREATE TABLE IF NOT EXISTS fuel_transactions (
         id SERIAL PRIMARY KEY,
         company_id INTEGER,
@@ -3044,52 +3047,6 @@ async function deleteMaintenance(id) {
   await pool.query('DELETE FROM maintenance WHERE id = $1', [id]);
 }
 
-// ─── Card combustibil (alimentări + reconciliere cu nivelul CAN) ───
-async function listFuelTransactions(companyId, opts = {}) {
-  let q = 'SELECT ft.*, d.plate, d.name AS vehicle_name FROM fuel_transactions ft LEFT JOIN devices d ON d.imei = ft.imei WHERE ft.company_id IS NOT DISTINCT FROM $1';
-  const p = [companyId || null];
-  if (opts.imei) { p.push(opts.imei); q += ' AND ft.imei = $' + p.length; }
-  if (opts.from) { p.push(parseInt(opts.from)); q += ' AND ft.ts >= $' + p.length; }
-  if (opts.to) { p.push(parseInt(opts.to)); q += ' AND ft.ts <= $' + p.length; }
-  p.push(Math.min(parseInt(opts.limit) || 2000, 5000));
-  q += ' ORDER BY ft.ts DESC NULLS LAST LIMIT $' + p.length;
-  const r = await pool.query(q, p);
-  return r.rows;
-}
-// Alimentarea asta o avem deja? Decontul se importă lună de lună și e ușor să dai de două ori
-// același fișier. Aceeași mașină (sau același card), în aceeași zi, cu aceiași litri = același
-// bon. Fereastra de o zi acoperă și cazul în care furnizorul scrie ora, iar noi n-o avem.
-async function findFuelTxDuplicate(companyId, d) {
-  if (!d || d.liters == null || !d.ts) return null;
-  const zi = 24 * 3600 * 1000;
-  const r = await pool.query(
-    `SELECT id FROM fuel_transactions
-      WHERE company_id IS NOT DISTINCT FROM $1
-        AND ts BETWEEN $2 AND $3
-        AND ABS(COALESCE(liters,0) - $4) < 0.05
-        AND ( (imei IS NOT NULL AND imei = $5)
-           OR (imei IS NULL AND $5 IS NULL AND card_number IS NOT DISTINCT FROM $6) )
-      LIMIT 1`,
-    [companyId || null, Number(d.ts) - zi, Number(d.ts) + zi, Number(d.liters), d.imei || null, d.card_number || null]
-  );
-  return r.rows[0] ? r.rows[0].id : null;
-}
-async function createFuelTransaction(d, companyId) {
-  const r = await pool.query(
-    `INSERT INTO fuel_transactions (company_id, imei, driver_id, ts, station, country, liters, amount, currency, card_number, source, status, tank_delta, note, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
-    [companyId || null, d.imei || null, d.driver_id || null, d.ts || null, d.station || null, d.country || null,
-      d.liters != null ? d.liters : null, d.amount != null ? d.amount : null, d.currency || 'RON', d.card_number || null,
-      d.source || 'manual', d.status || 'nou', d.tank_delta != null ? d.tank_delta : null, d.note || null, Date.now()]
-  );
-  return r.rows[0];
-}
-async function deleteFuelTransaction(id, companyId) {
-  await pool.query('DELETE FROM fuel_transactions WHERE id = $1 AND company_id IS NOT DISTINCT FROM $2', [id, companyId || null]);
-}
-async function setFuelTxReconcile(id, status, tankDelta, companyId) {
-  await pool.query('UPDATE fuel_transactions SET status = $2, tank_delta = $3 WHERE id = $1 AND company_id IS NOT DISTINCT FROM $4', [id, status, tankDelta, companyId || null]);
-}
 async function getDeviceImeiByPlate(plate, companyId) {
   if (!plate) return null;
   const r = await pool.query("SELECT imei FROM devices WHERE company_id IS NOT DISTINCT FROM $2 AND UPPER(REPLACE(plate,' ','')) = UPPER(REPLACE($1,' ','')) LIMIT 1", [String(plate), companyId || null]);
@@ -3489,7 +3446,7 @@ module.exports = {
   getAlerts, createAlert, updateAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
-  listFuelTransactions, createFuelTransaction, findFuelTxDuplicate, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,
+  getDeviceImeiByPlate,
   saveFuelPriceSnapshot, getFuelPriceHistory,
   getVehicleDocuments,
   getVehicleDocumentFile, createVehicleDocument, updateVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType,

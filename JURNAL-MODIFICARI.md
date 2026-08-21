@@ -20,6 +20,33 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · „Card combustibil" a fost scos din Management
+
+**Decizia lui Alin, 21.08:** *„până la urmă situația alimentărilor rămâne gestionată de altcineva,
+nu de noi. Șterge card combustibil din management."*
+
+Motivele, așa cum le-a spus: oricum trebuie să intri de fiecare dată să încarci fișierul de la
+furnizor; sunt mașini fără card alocat; iar dacă cu un card alimentează două mașini, comparația nu
+mai are cum să iasă. Nu merita complicația.
+
+**Ce am șters:** intrarea din meniu, ecranul cu tot ce ținea de el, rutele de pe server (import,
+previzualizare, verificare, ștergere), funcțiile din baza de date și ecranul din aplicația de
+telefon. Aproximativ 530 de rânduri.
+
+**Ce am PĂSTRAT, fiindcă nu ține de carduri:**
+- **Consum combustibil** (Analize) — se calculează din GPS și CAN, n-are treabă cu decontul
+- **Preț combustibil** — media națională și evoluția ei
+- **Alertele de scădere bruscă a nivelului** (furt din rezervor) — merg direct din senzor, fără card
+- **Tabela cu alimentările importate până acum** — rămâne, ca arhivă. Ștergerea datelor e o decizie
+  separată, nu efectul scoaterii unui ecran. Dacă o vreți curățată, se face la cerere.
+
+**Fondatorul vede:** un meniu Management mai scurt cu o poziție.
+
+**Clientul vede:** la fel — nu mai are „Card combustibil".
+
+---
+
+
 ### AMÂNDOI · Combustibilul, văzut din două unghiuri — și omul se uită doar unde nu se potrivesc
 
 **Ce a cerut Alin:** *„cardul X al mașinii Y indică 100 de litri luna asta, cu 1000 de lei; CAN-ul
