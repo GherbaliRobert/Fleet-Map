@@ -1696,7 +1696,7 @@ const pozitii = await r.json();</code></pre>
               <div id="doc-scan-idle">
                 <i class="fas fa-file-arrow-up" style="color:var(--accent);"></i>
                 <span style="font-size:13px;font-weight:700;"> Încarcă actul (poză sau PDF) și completez eu câmpurile</span>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-weight:600;">RCA / ITP / CASCO / Rovinietă → datele și expirarea. Talon / CIV → și fișa vehiculului, dacă ai deschis fereastra din fișa lui. Tu confirmi tot înainte de salvare.</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-weight:600;">RCA / ITP / CASCO / Rovinietă → datele și expirarea actului. Talon / CIV → și fișa mașinii (marcă, model, VIN, cilindree…), completată direct. Tu confirmi tot înainte de salvare.</div>
               </div>
               <div id="doc-scan-busy" style="display:none;font-size:13px;"><i class="fas fa-circle-notch fa-spin"></i> Citesc actul…</div>
             </div>
@@ -2396,8 +2396,6 @@ const pozitii = await r.json();</code></pre>
              Doar ce e specific actelor stă mai jos, cu prefix .doc-. */
           #atab-documente .toolbar-row > .btn-sm { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; background: var(--bg-panel); width: auto; }
           #atab-documente .toolbar-row > .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
-          #doc-count { font-size: 12px; font-weight: 800; color: #0E7A3C; background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); padding: 4px 10px; border-radius: 20px; }
-          body.dark #doc-count { color: var(--accent); }
 
           /* Actul lipsă: rândul e gol prin definiție, deci se desenează punctat — se vede că e o
              gaură, nu o intrare. */
@@ -2415,6 +2413,12 @@ const pozitii = await r.json();</code></pre>
           /* Reînnoirea e acțiunea principală a unui act — se vede că nu e un buton oarecare. */
           .doc-renew { color: #0E7A3C; border-color: rgba(63, 224, 125, .45); background: rgba(63, 224, 125, .10); }
           body.dark .doc-renew { color: var(--accent); }
+          /* Avertismentul de sus scrie pe rânduri: număr de mașină + ce anume e în neregulă. */
+          .doc-alert { align-items: flex-start; }
+          .doc-alert i { margin-top: 2px; }
+          .doc-al-list { display: flex; flex-direction: column; gap: 3px; }
+          .doc-al-p { font-weight: 800; letter-spacing: .4px; }
+          .doc-al-rest { opacity: .8; font-weight: 600; }
           .doc-clip { font-size: 10.5px; color: var(--text-muted); margin-left: 3px; }
           /* Butoanele de pe rândul mașinii (scanează / adaugă). Capul grupei are trei coloane; a
              patra e a lor, altfel s-ar fi înghesuit peste eticheta de stare. */
@@ -2451,7 +2455,6 @@ const pozitii = await r.json();</code></pre>
               <button data-dv="cerute" onclick="docSetView('cerute')" title="Ce acte trebuie să aibă fiecare fel de mașină"><i class="fas fa-list-check"></i> <span>Acte cerute</span></button>
             </div>
             <span class="toolbar-spacer"></span>
-            <span id="doc-count" class="toolbar-count"></span>
             <!-- Fără butoane generale aici. Fiecare act se încarcă de pe rândul LUI, la mașina lui:
                  acolo aplicația știe deja și mașina, și tipul, deci nu mai are ce întreba. -->
           </div>
@@ -6300,7 +6303,6 @@ const pozitii = await r.json();</code></pre>
       });
 
       if (_docView === 'cerute') {
-        const c = document.getElementById('doc-count'); if (c) c.textContent = '';
         if (!_docReq) { el.innerHTML = '<div class="mnt-empty">Se încarcă…</div>'; docReqLoad(true).then(renderDocuments); return; }
         el.innerHTML = renderDocReq(canEdit);
         return;
@@ -6338,8 +6340,6 @@ const pozitii = await r.json();</code></pre>
           const ub = byVeh.get(b).reduce(function (x, d) { return String(d.replaced_at || '') > x ? String(d.replaced_at || '') : x; }, '');
           return ua !== ub ? ub.localeCompare(ua) : String(mntPlate(a)).localeCompare(String(mntPlate(b)));
         });
-        const cnt = document.getElementById('doc-count');
-        if (cnt) cnt.textContent = hist.length + (hist.length === 1 ? ' act înlocuit' : ' acte înlocuite');
         imeis.forEach(function (imei) {
           const items = byVeh.get(imei).slice().sort(function (a, b) { return String(b.replaced_at || '').localeCompare(String(a.replaced_at || '')); });
           const key = 'hist:' + imei;
@@ -6387,21 +6387,35 @@ const pozitii = await r.json();</code></pre>
           return sa !== sb ? sa - sb : String(mntPlate(a)).localeCompare(String(mntPlate(b)));
         });
 
-      const cnt = document.getElementById('doc-count');
-      if (cnt) cnt.textContent = list.length + (list.length === 1 ? ' act valabil' : ' acte');
-
       if (imeis.length) {
-        const nExp = imeis.filter(function (i) { return (byVeh.get(i) || []).some(function (d) { return docState(d) === 'expired'; }); }).length;
-        const nSoon = imeis.filter(function (i) { return (byVeh.get(i) || []).some(function (d) { return docState(d) === 'soon'; }); }).length;
-        const nLip = imeis.filter(function (i) { return (lipsaDe[i] || []).some(function (m) { return m.need === 'req'; }); }).length;
-        const parti = [];
-        if (nExp) parti.push('<b>' + nExp + (nExp === 1 ? ' mașină are acte expirate' : ' mașini au acte expirate') + '.</b>');
-        if (nSoon) parti.push(nSoon + (nSoon === 1 ? ' mașină are un act care expiră curând.' : ' mașini au acte care expiră curând.'));
-        if (nLip) parti.push('<b>' + nLip + (nLip === 1 ? ' mașină n-are un act obligatoriu' : ' mașini n-au acte obligatorii') + '.</b>');
-        const cls = nExp || nLip ? 's-over' : nSoon ? 's-soon' : 's-done';
-        const ico = nExp || nLip ? 'fa-triangle-exclamation' : nSoon ? 'fa-clock' : 'fa-circle-check';
-        body += '<div class="mnt-banner ' + cls + '"><i class="fas ' + ico + '"></i><span>'
-          + (parti.length ? parti.join(' ') : '<b>Toate actele sunt în regulă.</b>') + '</span></div>';
+        // „1 mașină are acte expirate" nu ajută pe nimeni: trebuie să te uiți prin toată lista ca
+        // să afli CARE. Aici scriem numărul mașinii și ce anume îi lipsește sau i-a expirat.
+        const linii = [];
+        imeis.forEach(function (imei) {
+          const exp = (byVeh.get(imei) || []).filter(function (d) { return docState(d) === 'expired'; }).map(function (d) { return d.doc_type; });
+          const soon = (byVeh.get(imei) || []).filter(function (d) { return docState(d) === 'soon'; }).map(function (d) { return d.doc_type; });
+          const lipsa = (lipsaDe[imei] || []).filter(function (m) { return m.need === 'req'; }).map(function (m) { return m.type; });
+          if (!exp.length && !soon.length && !lipsa.length) return;
+          const p = [];
+          if (exp.length) p.push('<b>' + esc(exp.join(', ')) + '</b> ' + (exp.length === 1 ? 'expirat' : 'expirate'));
+          if (lipsa.length) p.push('nu are <b>' + esc(lipsa.join(', ')) + '</b>');
+          if (soon.length) p.push('<b>' + esc(soon.join(', ')) + '</b> ' + (soon.length === 1 ? 'expiră curând' : 'expiră curând'));
+          linii.push({ imei: imei, grav: exp.length || lipsa.length ? 0 : 1,
+                       html: '<span class="doc-al-p">' + esc(mntPlate(imei)) + '</span> ' + p.join(' · ') });
+        });
+        if (!linii.length) {
+          body += '<div class="mnt-banner s-done"><i class="fas fa-circle-check"></i><span><b>Toate actele sunt în regulă.</b></span></div>';
+        } else {
+          linii.sort(function (a, b) { return a.grav - b.grav; });
+          const grav = linii.some(function (l) { return l.grav === 0; });
+          // Lista se taie la 6: mai mult decât atât nu mai e un avertisment, e a doua listă.
+          const arata = linii.slice(0, 6), rest = linii.length - arata.length;
+          body += '<div class="mnt-banner doc-alert ' + (grav ? 's-over' : 's-soon') + '">'
+            + '<i class="fas ' + (grav ? 'fa-triangle-exclamation' : 'fa-clock') + '"></i>'
+            + '<div class="doc-al-list">' + arata.map(function (l) { return '<div>' + l.html + '</div>'; }).join('')
+            + (rest > 0 ? '<div class="doc-al-rest">și încă ' + rest + (rest === 1 ? ' mașină' : ' mașini') + ' mai jos</div>' : '')
+            + '</div></div>';
+        }
       }
 
       imeis.forEach(function (imei) {
@@ -13960,9 +13974,18 @@ const pozitii = await r.json();</code></pre>
       // Actul întâi — el pornește alertele.
       for (const k of Object.keys(_SCAN_DOC)) if (c[k] != null)
         randuri.push({ k, tinta: 'act', et: { doc_type: 'Tip act', number: 'Serie/nr.', issuer: 'Emitent', issue_date: 'Emis la', expiry_date: 'EXPIRĂ la' }[k], val: c[k], inc: inc[k] || 0 });
+      // Ce vehicul primește datele de fișă: cel din fereastra actului (sau cel deschis în fișă).
+      const _vehTinta = (document.getElementById('doc-imei') && document.getElementById('doc-imei').value)
+        || (document.getElementById('edit-imei') && document.getElementById('edit-imei').value) || '';
+      const _vehRec = (typeof adminDevicesCache !== 'undefined' ? adminDevicesCache : [])
+        .find(function (x) { return x.imei === _vehTinta; }) || null;
       for (const k of Object.keys(_SCAN_FISA)) if (c[k] != null) {
         const el = document.getElementById(_SCAN_FISA[k].id);
-        const ocupat = el && String(el.value || '').trim() !== '';
+        // „Deja completat" se afla doar din câmpul din pagină. Când fișa nu e deschisă (adici din
+        // ecranul Documente) nu există niciun câmp, deci aplicația ar fi propus vesel să rescrie
+        // date pe care mașina le are deja. Acum se uită și în fișa salvată.
+        const ocupat = el ? (String(el.value || '').trim() !== '')
+                          : !!(_vehRec && _vehRec[k] != null && String(_vehRec[k]).trim() !== '');
         randuri.push({ k, tinta: 'fisa', et: _SCAN_FISA[k].et, val: c[k], inc: inc[k] || 0, ocupat });
       }
       if (!randuri.length) {
@@ -13997,6 +14020,7 @@ const pozitii = await r.json();</code></pre>
     function docScanApply() {
       const c = (_docScanProp && _docScanProp.campuri) || {};
       let inAct = 0, inFisa = 0;
+      const _fisaPatch = {};   // ce se salvează direct pe mașină, când fișa ei nu e deschisă
       document.querySelectorAll('#doc-scan-result .scan-prop:checked').forEach(cb => {
         const k = cb.dataset.k, val = c[k];
         if (cb.dataset.tinta === 'act') {
@@ -14006,8 +14030,18 @@ const pozitii = await r.json();</code></pre>
           if (document.getElementById(idc)) { setField(idc, val); inAct++; }
         } else {
           const el = document.getElementById(_SCAN_FISA[k].id);
-          if (el) { el.value = val; el.classList.add('scan-filled'); el.addEventListener('input', () => el.classList.remove('scan-filled'), { once: true }); inFisa++; }
-          if (k === 'vehicle_type' && typeof onVehicleTypeChange === 'function') onVehicleTypeChange(); // pictograma urmează categoria
+          if (el) {
+            // Fișa e deschisă: completăm câmpul, iar omul o salvează cu butonul ei.
+            el.value = val; el.classList.add('scan-filled');
+            el.addEventListener('input', () => el.classList.remove('scan-filled'), { once: true });
+            inFisa++;
+            if (k === 'vehicle_type' && typeof onVehicleTypeChange === 'function') onVehicleTypeChange();
+          } else {
+            // Fișa NU e deschisă (încarci actul din ecranul Documente). Câmpurile citite din talon
+            // sau din poliță se salvează DIRECT pe mașină — altfel se pierdeau, iar omul le-ar fi
+            // tastat pe toate cu mâna, exact munca de care actul ar trebui să-l scutească.
+            _fisaPatch[k] = val; inFisa++;
+          }
         }
       });
       document.getElementById('doc-scan-result').style.display = 'none';
@@ -14018,15 +14052,34 @@ const pozitii = await r.json();</code></pre>
       //
       // Câmpurile FIȘEI rămân doar completate: ele aparțin vehiculului, care se salvează cu butonul
       // lui („Salvează"). Sunt două lucruri diferite și e cinstit să rămână două acțiuni.
+      const imeiT = (document.getElementById('doc-imei') && document.getElementById('doc-imei').value) || '';
+      const nFisa = Object.keys(_fisaPatch).length;
       if (document.getElementById('doc-type').value) {
-        docSave().then((mers) => {
+        docSave().then(async (mers) => {
+          let scris = 0;
+          if (mers && nFisa && imeiT) scris = await _salveazaFisaDinAct(imeiT, _fisaPatch);
           if (mers && window.raxToast) raxToast(
-            'Act salvat' + (inFisa ? ' · ' + inFisa + ' câmpuri completate în fișă — apasă „Salvează" pentru ele' : ''),
+            'Act salvat'
+            + (scris ? ' · am completat și fișa mașinii (' + scris + (scris === 1 ? ' câmp)' : ' câmpuri)') : '')
+            + (!scris && inFisa ? ' · ' + inFisa + ' câmpuri completate în fișă — apasă „Salvează" pentru ele' : ''),
             'success');
         }).catch(() => {});
       } else if (window.raxToast) {
         raxToast('Completat: ' + inAct + ' câmpuri la act, ' + inFisa + ' în fișă. Verifică și salvează.', 'success');
       }
+    }
+    // Scrie pe mașină datele citite din act (talon, CIV, poliță). Ruta face actualizare PARȚIALĂ:
+    // atinge doar coloanele trimise, deci restul fișei rămâne neatins.
+    async function _salveazaFisaDinAct(imei, patch) {
+      const n = Object.keys(patch).length; if (!imei || !n) return 0;
+      try {
+        const r = await fetch('/api/devices/' + encodeURIComponent(imei) + '/details', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch)
+        });
+        if (!r.ok) return 0;
+        if (typeof adminLoadDevices === 'function') await adminLoadDevices();   // lista să arate noile date
+        return n;
+      } catch (e) { return 0; }
     }
     function docScanCancel() {
       _docScanFile = null; _docScanProp = null; _docScanVeh = null;

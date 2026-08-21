@@ -20,6 +20,48 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Documente: fără total, avertisment pe mașină, iar actul completează fișa
+
+**1. Totalul de sus a dispărut.** Scria „8 acte" — o cifră care nu spunea nimic: nu e o listă de
+făcut, e inventarul. Ocupa un loc degeaba.
+
+**2. Avertismentul spune ACUM care mașină și ce anume.** Înainte:
+*„1 mașină are acte expirate. 1 mașină n-are un act obligatoriu."* — și te puneai să cauți prin
+listă care sunt. Acum:
+
+> ⚠ **B 268 ROY** ITP expirat · Rovinietă expiră curând
+> **TM 07 RAT** nu are RCA, Licență transport, Tahograf
+
+Mașinile cu probleme grave (act expirat sau act obligatoriu lipsă) stau primele. Peste 6 mașini,
+lista se taie și scrie „și încă N mai jos" — altfel avertismentul devine a doua listă.
+
+**3. Actul încărcat completează și fișa mașinii — fără muncă manuală.**
+
+Robert făcuse citirea din talon și din polițe: marca, model, VIN, cilindree, putere, masă, locuri,
+an, combustibil. Dar mergea **doar** dacă aveai deschisă fișa vehiculului, fiindcă scria direct în
+câmpurile ei. Din ecranul Documente, câmpurile alea nu există — deci tot ce se citea despre mașină
+se pierdea, iar omul le tasta pe toate cu mâna.
+
+Acum, când încarci actul din Documente, ce ține de mașină **se salvează direct pe ea**, iar mesajul
+spune ce s-a întâmplat: *„Act salvat · am completat și fișa mașinii (6 câmpuri)"*.
+
+Două lucruri de care am avut grijă:
+- **Nu se rescrie ce mașina are deja.** Bifa „deja completat" se uita doar la câmpul din pagină;
+  cu fișa închisă nu exista niciun câmp, deci aplicația ar fi propus vesel să înlocuiască date bune.
+  Acum se uită și în fișa salvată.
+- **Restul fișei rămâne neatins**: ruta de detalii scrie doar coloanele trimise.
+
+**Fondatorul vede:** la fel ca clientul.
+
+**Clientul vede:** încarcă poza talonului și îi apar completate și actul, și datele mașinii.
+
+> Verificat pe cod real, 97 de controale. Încă o greșeală a probei, găsită acum: funcția care taie
+> grupa unei mașini lua bucata de DINAINTEA primei grupe — iar acolo stă acum avertismentul, care
+> conține chiar numerele mașinilor. Verificările păreau că trec pe conținut gol.
+
+---
+
+
 ### AMÂNDOI · Documentele, simplu: fiecare mașină cu actele ei, fiecare act cu „Încarcă"
 
 **Ce am greșit.** Făcusem un buton „Scanează act" în capul listei și încă unul pe rândul mașinii,
