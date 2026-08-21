@@ -2648,6 +2648,18 @@ const pozitii = await r.json();</code></pre>
     .fc-v { font-size: 23px; font-weight: 800; line-height: 1.15; margin-top: 3px; color: var(--text-primary); }
     .fc-v em { font-size: 12px; font-weight: 600; color: var(--text-muted); font-style: normal; }
     .fc-s { font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-top: 3px; }
+    .fc-gm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .fc-ang { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); }
+    .fc-ang b { color: var(--text-primary); font-weight: 800; }
+    .fc-ang em { font-style: normal; font-weight: 600; color: var(--text-muted); }
+    .fc-ang.muted, .fc-ang.muted b { color: var(--text-muted); font-weight: 600; }
+    .fc-ang i { opacity: .65; }
+    .fc-vs { color: var(--text-muted); font-weight: 800; }
+    .fc-filt { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-radius: 10px; margin-bottom: 10px;
+               background: var(--bg-dark); border: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .fc-filt i { color: var(--text-muted); }
+    .fc-filt b { font-weight: 800; color: var(--text-primary); }
+    .fc-filt .btn-sm { margin-left: auto; height: 30px; padding: 0 11px; font-size: 12px; white-space: nowrap; }
     .fc-note { font-size: 11.5px; color: var(--text-muted); margin-top: 12px; line-height: 1.55; }
     .fc-prep { background: var(--bg-dark); border: 1px solid var(--accent); border-radius: 12px; padding: 13px 15px; margin-bottom: 12px; font-size: 12.5px; }
     .fc-prep.err { border-color: var(--red); color: var(--red); }
@@ -16771,7 +16783,7 @@ const pozitii = await r.json();</code></pre>
     // Ritualul lunar: exporți decontul de la card (DKV, OMV…), îl imporți aici, iar aplicația îl
     // pune față în față cu ce a intrat REAL în rezervoare (CAN sau sondă calibrată) și arată unde
     // sunt abateri. Înainte era un tabel plat, fără concluzie: trebuia să aduni tu din rânduri.
-    let _fcRows = null, _fcPeriod = 'prev', _fcOpen = {}, _fcPrep = null;
+    let _fcRows = null, _fcPeriod = 'prev', _fcOpen = {}, _fcPrep = null, _fcDoar = true;
 
     // Cuvintele: „reconciliat/suspect" e limbaj de contabil. Omul vrea să știe dacă motorina a
     // ajuns în rezervor.
@@ -16811,6 +16823,7 @@ const pozitii = await r.json();</code></pre>
     }
     window.fcSetPeriod = function (p) { _fcPeriod = p; renderFuelCard(); };
     window.fcToggle = function (k) { _fcOpen[k] = !_fcOpen[k]; renderFuelCard(); };
+    window.fcSetDoar = function (v) { _fcDoar = !!v; renderFuelCard(); };
 
     window.loadFuelCard = async function () {
       const host = document.getElementById('fuelcard-host'); if (!host) return;
@@ -16871,26 +16884,58 @@ const pozitii = await r.json();</code></pre>
         return String(fcVeh(a)).localeCompare(String(fcVeh(b)));
       });
 
-      let lista = '';
-      chei.forEach(k => {
+      // Fiecare mașină, văzută din DOUĂ unghiuri: ce zice cardul și ce zice rezervorul. Omul se
+      // uită doar acolo unde nu se potrivesc — restul nu-i cere timp.
+      const veh = chei.map(k => {
         const list = byVeh.get(k).slice().sort((a, b) => fcLipsaGrava(b) - fcLipsaGrava(a) || (Number(b.ts) || 0) - (Number(a.ts) || 0));
+        const cardL = list.reduce((x, r) => x + (Number(r.liters) || 0), 0);
+        const cardLei = list.reduce((x, r) => x + (Number(r.amount) || 0), 0);
+        const verif = list.filter(fcVerificabil);
+        const rezL = verif.reduce((x, r) => x + (Number(r.tank_delta) || 0), 0);
         const lipsa = list.reduce((x, r) => x + fcLipsaGrava(r), 0);
         const lei = list.reduce((x, r) => x + fcLipsaGrava(r) * fcLeiPeL(r), 0);
-        const nVer = list.filter(fcVerificabil).length;
-        if (_fcOpen[k] === undefined) _fcOpen[k] = lipsa > 0 || chei.length === 1;
+        return { k, list, cardL, cardLei, rezL, lipsa, lei, verif: verif.length, total: list.length };
+      });
+      const deVerificat = veh.filter(x => x.lipsa > 0);
+      const potrivite = veh.filter(x => x.lipsa <= 0 && x.verif > 0);
+      const nuStim = veh.filter(x => x.lipsa <= 0 && !x.verif);
+      // Când e ceva de verificat, ascundem restul: ăsta e tot rostul — să nu pui om să se uite
+      // peste mașinile care ies la socoteală.
+      const arata = (_fcDoar && deVerificat.length) ? deVerificat : veh;
+
+      let lista = '';
+      if (deVerificat.length && _fcDoar && (potrivite.length || nuStim.length)) {
+        lista += '<div class="fc-filt"><i class="fas fa-filter"></i><span>Arăt doar mașinile la care cifrele <b>nu se potrivesc</b>'
+          + ' — ' + potrivite.length + (potrivite.length === 1 ? ' iese' : ' ies') + ' la socoteală'
+          + (nuStim.length ? ', ' + nuStim.length + ' nu se ' + (nuStim.length === 1 ? 'poate verifica' : 'pot verifica') : '') + '.</span>'
+          + '<button class="btn-sm" onclick="fcSetDoar(false)">Arată toate mașinile</button></div>';
+      } else if (!_fcDoar && deVerificat.length) {
+        lista += '<div class="fc-filt"><i class="fas fa-list"></i><span>Le vezi pe toate.</span>'
+          + '<button class="btn-sm" onclick="fcSetDoar(true)">Doar cele de verificat</button></div>';
+      }
+
+      arata.forEach(x => {
+        const k = x.k;
+        if (_fcOpen[k] === undefined) _fcOpen[k] = x.lipsa > 0 || arata.length === 1;
         const open = _fcOpen[k];
-        const badge = lipsa > 0
-          ? '<span class="mnt-gn al">lipsă ' + nf1(lipsa) + ' L · ' + nf0(lei) + ' lei</span>'
-          : (nVer ? '<span class="mnt-gn ok">în regulă · ' + list.length + (list.length === 1 ? ' alimentare' : ' alimentări') + '</span>'
-                  : '<span class="mnt-gn">neverificabil · ' + list.length + (list.length === 1 ? ' alimentare' : ' alimentări') + '</span>');
+        const badge = x.lipsa > 0
+          ? '<span class="mnt-gn al">lipsesc ' + nf1(x.lipsa) + ' L · ' + nf0(x.lei) + ' lei</span>'
+          : (x.verif ? '<span class="mnt-gn ok">se potrivesc</span>'
+                     : '<span class="mnt-gn">nu se poate verifica</span>');
+        // Cele două unghiuri, unul lângă altul. Asta cere Alin să se vadă: „cardul zice X, rezervorul zice Y".
+        const unghiuri = '<span class="fc-ang"><i class="fas fa-credit-card"></i> card <b>' + nf1(x.cardL) + ' L</b>'
+          + (x.cardLei ? ' · ' + nf0(x.cardLei) + ' lei' : '') + '</span>'
+          + '<span class="fc-vs">→</span>'
+          + (x.verif
+              ? '<span class="fc-ang"><i class="fas fa-gas-pump"></i> în rezervor <b>' + nf1(x.rezL) + ' L</b>'
+                + (x.verif < x.total ? ' <em>(din ' + x.verif + ' din ' + x.total + ' alimentări)</em>' : '') + '</span>'
+              : '<span class="fc-ang muted"><i class="fas fa-circle-question"></i> rezervorul nu raportează</span>');
         lista += '<div class="mnt-g' + (open ? ' open' : '') + '">'
           + '<div class="mnt-ghead" onclick="fcToggle(\'' + esc(k) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' alimentările">'
           + '<i class="fas fa-chevron-right mnt-caret"></i>'
-          + '<div><div class="mnt-gp">' + esc(fcVeh(k)) + '</div><div class="mnt-gm">'
-          + esc(list.reduce((x, r) => x + (Number(r.liters) || 0), 0).toFixed(0) + ' L · '
-                + Math.round(list.reduce((x, r) => x + (Number(r.amount) || 0), 0)) + ' lei') + '</div></div>'
+          + '<div><div class="mnt-gp">' + esc(fcVeh(k)) + '</div><div class="mnt-gm fc-gm">' + unghiuri + '</div></div>'
           + badge + '</div>'
-          + (open ? '<div class="mnt-gbody">' + list.map(fcRow).join('') + '</div>' : '')
+          + (open ? '<div class="mnt-gbody">' + x.list.map(fcRow).join('') + '</div>' : '')
           + '</div>';
       });
       if (!rows.length) lista = '<div class="mnt-empty"><i class="fas fa-credit-card" style="font-size:22px;opacity:.4;display:block;margin-bottom:8px;"></i>'

@@ -20,6 +20,42 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Combustibilul, văzut din două unghiuri — și omul se uită doar unde nu se potrivesc
+
+**Ce a cerut Alin:** *„cardul X al mașinii Y indică 100 de litri luna asta, cu 1000 de lei; CAN-ul
+și sonda indică 100 de litri intrați. Practic vedem intrările de carburant din două unghiuri și nu
+mai pui om să verifice decât unde e dubios."*
+
+Comparația exista deja — dar ecranul arăta doar **diferența**, nu cele două cifre din care iese ea.
+Acum, în capul fiecărei mașini:
+
+> **TM 07 RAT**
+> 💳 card **580 L** · 4.060 lei → ⛽ în rezervor **210 L**   |   *lipsesc 370 L · 2.590 lei*
+
+Trei verdicte, atât:
+
+| | |
+|---|---|
+| cifrele se potrivesc | **se potrivesc** (verde) |
+| nu se potrivesc | **lipsesc X L · Y lei** (roșu) |
+| mașina nu are senzor | **nu se poate verifica** |
+
+**Și, mai important: ecranul ascunde ce e în regulă.** Implicit vezi doar mașinile la care cele două
+unghiuri nu se potrivesc, cu un rând care spune ce a ascuns și de ce: *„Arăt doar mașinile la care
+cifrele nu se potrivesc — 1 iese la socoteală, 1 nu se poate verifica."* Un buton le aduce înapoi pe
+toate.
+
+Ăsta e tot rostul: la 30 de mașini, nu te uiți la 30 — te uiți la două.
+
+**Fondatorul vede:** o funcție care se explică într-o propoziție la demo.
+
+**Clientul vede:** exact mașinile care-i mănâncă bani, fără să citească nimic altceva.
+
+> Verificat pe cod real, 45 de controale.
+
+---
+
+
 ### AMÂNDOI · Card combustibil: îți spune cât lipsește și de la ce mașină
 
 **Ritualul, așa cum l-a descris Alin:** clientul lucrează cu DKV, toată flota alimentează cu
