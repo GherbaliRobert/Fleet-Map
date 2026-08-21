@@ -18,10 +18,14 @@
 // Cele trei feluri de mașini pentru care intervalele diferă REAL. Un Logan și un Scania nu fac
 // revizia la aceiași kilometri, iar dacă aplicația propune o singură cifră, propune greșit pentru
 // jumătate din flotă. Mai fin de-atât (pe motorizare, pe marcă) n-are rost: clientul poate corecta.
+// `art` = articolul, ca propoziția din propunere să sune românește: „La UN autoturism…",
+// „La O utilitară…". Fără el ar fi trebuit ghicit din nume, și ar fi ieșit „La un utilitară".
+// `low` = cum se scrie clasa în mijlocul unei propoziții. Nu e `label` cu litere mici: aia ar fi
+// dat „La un camion / tir", cu TIR stricat, și „La o utilitară / dubă" — corect, dar greoi.
 const CLASSES = [
-  { key: 'car',   label: 'Autoturism' },
-  { key: 'van',   label: 'Utilitară / dubă' },
-  { key: 'truck', label: 'Camion / TIR' },
+  { key: 'car',   label: 'Autoturism',        art: 'un', low: 'autoturism' },
+  { key: 'van',   label: 'Utilitară / dubă',  art: 'o',  low: 'utilitară' },
+  { key: 'truck', label: 'Camion / TIR',      art: 'un', low: 'camion' },
 ];
 
 // Categoria de pe hartă (markerCategory) → clasa de service. Tot ce e greu intră la „camion":

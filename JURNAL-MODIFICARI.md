@@ -20,6 +20,63 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Mentenanța, pe mașini: fiecare are agenda ei și istoricul ei
+
+**Ce s-a schimbat.** Erau trei file — Agendă (o listă lungă pe toată flota), Pe vehicul, Istoric.
+Alin a cerut altceva, mai simplu: *„orice mașină are agendă și istoric. Când intri pe agendă ai
+mașinile; deschizi una, îi vezi agenda. La istoric la fel."*
+
+Acum sunt două file, amândouă liste de **mașini**:
+
+| | Ce vezi când deschizi o mașină |
+|---|---|
+| **Agendă** | ce are ea de făcut, cel mai urgent sus |
+| **Istoric** | ce s-a făcut la ea, cu data și cât a costat |
+
+Fila „Pe vehicul" a dispărut — Agenda E pe vehicul.
+
+**Mașinile stau în ordinea în care te doare.** În Agendă, cele cu lucrări restante sunt primele și
+se deschid singure. În Istoric, prima e mașina la care s-a lucrat cel mai recent. Alfabetic ar fi
+fost predictibil, dar ar fi împrăștiat urgențele oriunde prin listă.
+
+**Un rând sus, scris în cuvinte:** *„2 mașini au lucrări restante. Încă una se apropie de scadență."*
+Sau, dacă e curat, *„Toate mașinile sunt la zi."* Ca să afli asta trebuia altfel să te uiți la
+fiecare etichetă în parte.
+
+**Fondatorul vede:** la fel ca clientul.
+
+**Clientul vede:** un ecran care începe cu mașina care are probleme, nu cu o listă de lucrări.
+
+---
+
+### AMÂNDOI · Propunerea de scadență, explicată ca unui om
+
+**Ce era.** Un singur rând: „Propunere pentru autoturism: la 76.941 km (peste 40.000) sau pe
+21.08.2031." Corect, dar nu spunea nici de unde vin cifrele, nici că se aprinde la **prima** dintre
+ele. Iar iconița era o baghetă magică — sugera că e AI, ceea ce nu e.
+
+**Ce e acum**, în patru bucăți:
+
+1. **Cine propune:** „RA TRACKS PROPUNE", cu o cheie fixă. Nu e AI, e un tabel din aplicație.
+2. **Regula:** „La un autoturism, «Anvelope» se face la fiecare **40.000 km** sau la **5 ani** —
+   care vine prima." Lunile se scriu omenește: 60 de luni = *5 ani*, 12 = *un an*.
+3. **Socoteala pe mașina ta:** „B 154 UIP are acum 36.941 km, deci: la 76.941 km · pe 21.08.2031.
+   Te anunțăm la **prima** dintre ele."
+4. **De unde le schimbi:** „Poți scrie tu alte cifre mai jos. Cifrele noastre se schimbă din fila
+   **Intervale**" — cu buton care te duce acolo.
+
+Dacă mașina nu-și raportează kilometrajul, o spune pe față: „mașina nu-și raportează kilometrajul,
+așa că scrie tu de la ce cifră pornim". Nu inventează o cifră.
+
+**Fondatorul vede:** o casetă pe care o poate arăta unui client fără să mai explice nimic pe lângă.
+
+**Clientul vede:** de ce i se propune cifra aia și ce poate face dacă nu-i convine.
+
+> Verificat pe cod real, 64 de controale.
+
+---
+
+
 ### AMÂNDOI · Aplicatia propune singura la cat se face lucrarea, iar fereastra nu mai are doua intelesuri
 
 **Ce te incurca.** Fereastra de mentenanta facea DOUA treburi cu aceleasi campuri: „programez un

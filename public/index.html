@@ -2215,6 +2215,16 @@ const pozitii = await r.json();</code></pre>
           /* „curând" e portocaliu și în capul grupei, ca pe rânduri — nu roșu, ca depășitul. */
           .mnt-gn.soon { background: rgba(245, 158, 11, .13); color: #B45309; }
           body.dark .mnt-gn.soon { color: #FBBF24; }
+          .mnt-gn.ok { background: rgba(63, 224, 125, .13); color: #0E7A3C; }
+          body.dark .mnt-gn.ok { color: var(--accent); }
+
+          /* Rândul de sus, în cuvinte: „2 mașini au lucrări restante". Ca să afli asta trebuia
+             altfel să te uiți la fiecare etichetă din listă, pe rând. */
+          .mnt-banner { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 11px; margin-bottom: 12px;
+                        background: var(--sb); border: 1px solid var(--sbd);
+                        color: var(--sc); font-size: 13px; font-weight: 600; line-height: 1.4; }
+          .mnt-banner i { font-size: 15px; flex: 0 0 auto; }
+          .mnt-banner b { font-weight: 800; }
           .mnt-gbody { border-top: 1px solid var(--border); background: var(--bg-dark); padding: 8px 9px 9px; }
           .mnt-sub { font-size: 10.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin: 4px 0 6px 3px; }
 
@@ -2249,11 +2259,11 @@ const pozitii = await r.json();</code></pre>
 
           /* Stările — depășit e ROȘU, „curând" e PORTOCALIU. Erau amândouă roșii, deci o lucrare de
              peste două săptămâni striga la fel de tare ca una restantă de o lună. */
-          .s-over { --sc: #DC2626; --sb: rgba(220, 38, 38, .10); }
-          .s-soon { --sc: #B45309; --sb: rgba(245, 158, 11, .13); }
-          .s-ok   { --sc: #64748B; --sb: rgba(100, 116, 139, .10); }
-          .s-none { --sc: #94A3B8; --sb: rgba(148, 163, 184, .12); }
-          .s-done { --sc: #0E7A3C; --sb: rgba(63, 224, 125, .13); }
+          .s-over { --sc: #DC2626; --sb: rgba(220, 38, 38, .10); --sbd: rgba(220, 38, 38, .32); }
+          .s-soon { --sc: #B45309; --sb: rgba(245, 158, 11, .13); --sbd: rgba(245, 158, 11, .38); }
+          .s-ok   { --sc: #64748B; --sb: rgba(100, 116, 139, .10); --sbd: rgba(100, 116, 139, .28); }
+          .s-none { --sc: #94A3B8; --sb: rgba(148, 163, 184, .12); --sbd: rgba(148, 163, 184, .30); }
+          .s-done { --sc: #0E7A3C; --sb: rgba(63, 224, 125, .13); --sbd: rgba(63, 224, 125, .34); }
           body.dark .s-over { --sc: #F87171; } body.dark .s-soon { --sc: #FBBF24; }
           body.dark .s-ok { --sc: #94A3B8; } body.dark .s-done { --sc: #3FE07D; }
 
@@ -2278,12 +2288,23 @@ const pozitii = await r.json();</code></pre>
           .mnt-mode button.on { background: rgba(63, 224, 125, .12); border-color: var(--accent); color: #0E7A3C; }
           body.dark .mnt-mode button.on { color: var(--accent); }
 
-          /* Propunerea aplicației, scrisă în cuvinte sub câmpuri. */
-          .mnt-prop { margin-top: 9px; padding: 9px 11px; border-radius: 9px; background: rgba(63, 224, 125, .10);
-            border: 1px solid rgba(63, 224, 125, .34); font-size: 11.5px; font-weight: 700; color: #0E7A3C; line-height: 1.5; }
-          body.dark .mnt-prop { color: var(--accent); }
+          /* Propunerea aplicației, scrisă pe larg: regula, socoteala pe mașina asta, și de unde se
+             schimbă cifrele. Un singur rând cu două numere și un „sau" nu spunea nici că se aprinde
+             la PRIMA dintre ele, nici de unde vin cifrele. */
+          .mnt-prop { margin-top: 10px; padding: 12px 14px; border-radius: 11px; background: rgba(63, 224, 125, .09);
+            border: 1px solid rgba(63, 224, 125, .32); font-size: 12.5px; font-weight: 600; color: #0E7A3C; line-height: 1.55; }
+          body.dark .mnt-prop { color: #B8F5D0; background: rgba(63, 224, 125, .07); }
           .mnt-prop b { font-weight: 800; }
-          .mnt-prop button { margin-left: 7px; border: none; background: none; font-family: inherit; font-size: 11.5px;
+          .mnt-prop-t { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+            display: flex; align-items: center; gap: 6px; opacity: .85; margin-bottom: 7px; }
+          .mnt-prop-r { margin-bottom: 8px; }
+          .mnt-prop-c ul { list-style: none; margin: 4px 0 0; padding: 0; }
+          .mnt-prop-c li { padding: 1px 0 1px 15px; position: relative; }
+          .mnt-prop-c li::before { content: '•'; position: absolute; left: 3px; opacity: .7; }
+          .mnt-prop-first { margin-top: 5px; }
+          .mnt-prop-f { margin-top: 9px; padding-top: 8px; border-top: 1px solid rgba(63, 224, 125, .28);
+            font-size: 11.5px; font-weight: 600; opacity: .92; }
+          .mnt-prop-f button { border: none; background: none; font-family: inherit; font-size: 11.5px;
             font-weight: 800; color: inherit; text-decoration: underline; cursor: pointer; padding: 0; }
 
           /* ── Fila „Intervale": la cât se repetă fiecare lucrare, pe fiecare fel de mașină ── */
@@ -2331,9 +2352,8 @@ const pozitii = await r.json();</code></pre>
         <div id="atab-maintenance" class="admin-tab-content" style="display:none;">
           <div class="toolbar-row">
             <div class="mnt-seg" id="mnt-seg">
-              <button class="on" data-mv="agenda" onclick="mntSetView('agenda')" title="Tot ce e de făcut pe flotă, în ordinea scadenței"><i class="fas fa-list-check"></i> <span>Agendă</span></button>
-              <button data-mv="veh" onclick="mntSetView('veh')" title="Grupat pe mașină"><i class="fas fa-car"></i> <span>Pe vehicul</span></button>
-              <button data-mv="done" onclick="mntSetView('done')" title="Lucrările efectuate, cu costurile lor"><i class="fas fa-clock-rotate-left"></i> <span>Istoric</span></button>
+              <button class="on" data-mv="agenda" onclick="mntSetView('agenda')" title="Ce are de făcut fiecare mașină"><i class="fas fa-list-check"></i> <span>Agendă</span></button>
+              <button data-mv="done" onclick="mntSetView('done')" title="Ce s-a făcut la fiecare mașină, cu costurile"><i class="fas fa-clock-rotate-left"></i> <span>Istoric</span></button>
               <button data-mv="intervale" onclick="mntSetView('intervale')" title="La cât se repetă fiecare lucrare"><i class="fas fa-sliders"></i> <span>Intervale</span></button>
             </div>
             <span class="toolbar-spacer"></span>
@@ -5519,7 +5539,7 @@ const pozitii = await r.json();</code></pre>
     }
     function mntSetView(v) { _mntView = v; renderMaintenance(); }
     function mntSetQ(v) { _mntQ = v || ''; renderMaintenance(); }
-    function mntToggle(imei) { _mntOpen[imei] = !_mntOpen[imei]; renderMaintenance(); }
+    function mntToggle(key) { _mntOpen[key] = !_mntOpen[key]; renderMaintenance(); }
 
     // Carduri de cost (Luna / Anul / Total) — folosite la Mentenanță și Documente. „Mai mult decât text".
     function costCards(cM, cY, grand, year, icon, totalLabel) {
@@ -5587,61 +5607,80 @@ const pozitii = await r.json();</code></pre>
       });
       done.sort(function (a, b) { return String(b.done_at || b.done_date || '').localeCompare(String(a.done_at || a.done_date || '')); });
 
+      // Agenda ȘI Istoricul sunt liste de MAȘINI. Deschizi o mașină și vezi ce are ea — de făcut
+      // într-o filă, făcut deja în cealaltă. Așa a cerut Alin: „orice mașină are agendă și istoric".
+      // Înainte, Agenda era o listă plată pe toată flota, iar mașina o vedeai doar în a treia filă.
+      const istoric = (_mntView === 'done');
+      const sursa = istoric ? done : pending;
+
       const cnt = document.getElementById('mnt-count');
-      if (cnt) {
-        const n = (_mntView === 'done') ? done.length : pending.length;
-        const w = (_mntView === 'done') ? (n === 1 ? 'efectuată' : 'efectuate') : (n === 1 ? 'de făcut' : 'de făcut');
-        cnt.textContent = n + ' ' + w;
-      }
+      if (cnt) cnt.textContent = sursa.length + ' ' + (istoric ? (sursa.length === 1 ? 'efectuată' : 'efectuate') : 'de făcut');
+
+      const byVeh = new Map();
+      sursa.forEach(function (m) { if (!byVeh.has(m.imei)) byVeh.set(m.imei, []); byVeh.get(m.imei).push(m); });
+      // Ordinea mașinilor: în Agendă, cele cu probleme primele; în Istoric, cea la care s-a lucrat
+      // cel mai recent. Alfabetic ar fi fost predictibil, dar ar fi pus urgențele oriunde.
+      const rang = { over: 0, soon: 1, ok: 2, none: 3 };
+      const imeis = Array.from(byVeh.keys()).sort(function (a, b) {
+        const la = byVeh.get(a), lb = byVeh.get(b);
+        if (istoric) {
+          const ua = la.reduce(function (x, m) { return String(m.done_at || m.done_date || '') > x ? String(m.done_at || m.done_date || '') : x; }, '');
+          const ub = lb.reduce(function (x, m) { return String(m.done_at || m.done_date || '') > x ? String(m.done_at || m.done_date || '') : x; }, '');
+          if (ua !== ub) return ub.localeCompare(ua);
+        } else {
+          const ra = Math.min.apply(null, la.map(function (m) { return rang[mntState(m)]; }));
+          const rb = Math.min.apply(null, lb.map(function (m) { return rang[mntState(m)]; }));
+          if (ra !== rb) return ra - rb;
+        }
+        return String(mntPlate(a)).localeCompare(String(mntPlate(b)));
+      });
 
       let body = '';
-      if (_mntView === 'done') {
-        body = done.length
-          ? done.map(function (m) { return mntCard(m, true, true, canEdit); }).join('')
-          : '<div class="mnt-empty"><i class="fas fa-clock-rotate-left" style="font-size:22px;opacity:.4;display:block;margin-bottom:8px;"></i>Nicio lucrare efectuată' + (q ? ' pentru „' + esc(_mntQ) + '"' : '') + '.</div>';
-      } else if (_mntView === 'veh') {
-        const byVeh = new Map();
-        list.forEach(function (m) { if (!byVeh.has(m.imei)) byVeh.set(m.imei, []); byVeh.get(m.imei).push(m); });
-        const imeis = Array.from(byVeh.keys()).sort(function (a, b) { return String(mntPlate(a)).localeCompare(String(mntPlate(b))); });
-        imeis.forEach(function (imei) {
-          const all = byVeh.get(imei) || [];
-          const p = pending.filter(function (m) { return m.imei === imei; });
-          const d = done.filter(function (m) { return m.imei === imei; });
-          const over = p.filter(function (m) { return mntState(m) === 'over'; }).length;
-          const soon = p.filter(function (m) { return mntState(m) === 'soon'; }).length;
-          // Deschise implicit DOAR mașinile cu lucrări depășite (sau dacă e una singură). Înainte
-          // se deschideau toate: la 30 de mașini, un ecran pe care trebuia să-l derulezi minute.
-          if (_mntOpen[imei] === undefined) _mntOpen[imei] = (over > 0 || imeis.length === 1);
-          const open = _mntOpen[imei];
-          const odo = all.reduce(function (s, m) { return Math.max(s, m._odo || 0); }, 0);
-          const md = mntModel(imei);
-          const sub = [md, odo ? mntNf(odo) + ' km' : ''].filter(Boolean).join(' · ');
-          const badge = over ? '<span class="mnt-gn al">' + over + ' depășit' + (over > 1 ? 'e' : '') + '</span>'
-            : soon ? '<span class="mnt-gn soon">' + soon + ' curând</span>'
-            : '<span class="mnt-gn">' + p.length + ' de făcut</span>';
-          body += '<div class="mnt-g' + (open ? ' open' : '') + '">'
-            + '<div class="mnt-ghead" onclick="mntToggle(\'' + esc(imei) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' lucrările">'
-            + '<i class="fas fa-chevron-right mnt-caret"></i>'
-            + '<div><div class="mnt-gp">' + esc(mntPlate(imei)) + '</div>' + (sub ? '<div class="mnt-gm">' + esc(sub) + '</div>' : '') + '</div>'
-            + badge + '</div>'
-            + (open ? '<div class="mnt-gbody">'
-                + (p.length ? p.map(function (m) { return mntCard(m, false, false, canEdit); }).join('') : '<div class="mnt-sub">Nimic de făcut</div>')
-                + (d.length ? '<div class="mnt-sub">Efectuate</div>' + d.map(function (m) { return mntCard(m, false, false, canEdit); }).join('') : '')
-              + '</div>' : '')
-            + '</div>';
-        });
-        if (!imeis.length) body = '<div class="mnt-empty">Nicio lucrare' + (q ? ' pentru „' + esc(_mntQ) + '"' : '') + '.</div>';
-      } else {
-        const SEC = [['over', 'Depășite'], ['soon', 'Zilele astea'], ['ok', 'Mai târziu'], ['none', 'Fără termen']];
-        const by = { over: [], soon: [], ok: [], none: [] };
-        pending.forEach(function (m) { (by[mntState(m)] || by.ok).push(m); });
-        SEC.forEach(function (s) {
-          const items = by[s[0]]; if (!items.length) return;
-          body += '<div class="mnt-sec s-' + s[0] + '"><div class="mnt-sech"><b>' + s[1] + '</b><span class="n">' + items.length + '</span><span class="ln"></span></div>'
-            + items.map(function (m) { return mntCard(m, true, true, canEdit); }).join('') + '</div>';
-        });
-        if (!pending.length) body = '<div class="mnt-empty"><i class="fas fa-circle-check" style="font-size:22px;color:var(--accent);display:block;margin-bottom:8px;"></i>'
-          + (q ? 'Nicio lucrare pentru „' + esc(_mntQ) + '".' : 'Nimic de făcut. Toate lucrările sunt la zi.') + '</div>';
+      // Un rând sus care spune, în cuvinte, cât de rău stai. Fără el, ca să afli dacă ai ceva
+      // restant trebuia să te uiți la fiecare etichetă în parte.
+      if (!istoric && imeis.length) {
+        const cuRest = imeis.filter(function (i) { return byVeh.get(i).some(function (m) { return mntState(m) === 'over'; }); }).length;
+        const cuCurand = imeis.filter(function (i) { return !byVeh.get(i).some(function (m) { return mntState(m) === 'over'; })
+          && byVeh.get(i).some(function (m) { return mntState(m) === 'soon'; }); }).length;
+        if (cuRest) body += '<div class="mnt-banner s-over"><i class="fas fa-triangle-exclamation"></i><span><b>' + cuRest + (cuRest === 1 ? ' mașină are' : ' mașini au') + ' lucrări restante.</b>' + (cuCurand ? (cuCurand === 1 ? ' Încă una se apropie de scadență.' : ' Alte ' + cuCurand + ' se apropie de scadență.') : '') + '</span></div>';
+        else if (cuCurand) body += '<div class="mnt-banner s-soon"><i class="fas fa-clock"></i><span><b>' + cuCurand + (cuCurand === 1 ? ' mașină se apropie' : ' mașini se apropie') + ' de scadență.</b> Nimic restant.</span></div>';
+        else body += '<div class="mnt-banner s-done"><i class="fas fa-circle-check"></i><span><b>Toate mașinile sunt la zi.</b></span></div>';
+      }
+
+      imeis.forEach(function (imei) {
+        const items = byVeh.get(imei) || [];
+        const over = items.filter(function (m) { return mntState(m) === 'over'; }).length;
+        const soon = items.filter(function (m) { return mntState(m) === 'soon'; }).length;
+        // Se deschid singure doar mașinile cu lucrări restante (sau dacă e una singură în listă).
+        // În Istoric nimic nu se deschide singur: acolo intri când cauți ceva anume.
+        const key = _mntView + ':' + imei;
+        if (_mntOpen[key] === undefined) _mntOpen[key] = (!istoric && over > 0) || imeis.length === 1;
+        const open = _mntOpen[key];
+        const odo = items.reduce(function (x, m) { return Math.max(x, m._odo || 0); }, 0);
+        const sub = [mntModel(imei), odo ? mntNf(odo) + ' km' : ''].filter(Boolean).join(' · ');
+        let badge;
+        if (istoric) {
+          const lei = items.reduce(function (x, m) { return x + (parseFloat(m.cost) || 0); }, 0);
+          badge = '<span class="mnt-gn">' + items.length + (items.length === 1 ? ' lucrare' : ' lucrări')
+            + (lei ? ' · ' + mntNf(Math.round(lei)) + ' lei' : '') + '</span>';
+        } else if (over) badge = '<span class="mnt-gn al">' + over + (over === 1 ? ' restantă' : ' restante') + '</span>';
+        else if (soon) badge = '<span class="mnt-gn soon">' + soon + ' curând</span>';
+        else badge = '<span class="mnt-gn ok">la zi · ' + items.length + (items.length === 1 ? ' lucrare' : ' lucrări') + '</span>';
+        body += '<div class="mnt-g' + (open ? ' open' : '') + '">'
+          + '<div class="mnt-ghead" onclick="mntToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + (istoric ? ' istoricul' : ' lucrările') + '">'
+          + '<i class="fas fa-chevron-right mnt-caret"></i>'
+          + '<div><div class="mnt-gp">' + esc(mntPlate(imei)) + '</div>' + (sub ? '<div class="mnt-gm">' + esc(sub) + '</div>' : '') + '</div>'
+          + badge + '</div>'
+          + (open ? '<div class="mnt-gbody">' + items.map(function (m) { return mntCard(m, false, false, canEdit); }).join('') + '</div>' : '')
+          + '</div>';
+      });
+
+      if (!imeis.length) {
+        body = istoric
+          ? '<div class="mnt-empty"><i class="fas fa-clock-rotate-left" style="font-size:22px;opacity:.4;display:block;margin-bottom:8px;"></i>'
+            + (q ? 'Nicio lucrare efectuată pentru „' + esc(_mntQ) + '".' : 'Nicio lucrare efectuată încă. Aici ajung lucrările pe care le bifezi ca făcute.') + '</div>'
+          : '<div class="mnt-empty"><i class="fas fa-circle-check" style="font-size:22px;color:var(--accent);display:block;margin-bottom:8px;"></i>'
+            + (q ? 'Nicio lucrare pentru „' + esc(_mntQ) + '".' : 'Nimic de făcut. Toate mașinile sunt la zi.') + '</div>';
       }
       el.innerHTML = costBar + body;
     }
@@ -5799,6 +5838,15 @@ const pozitii = await r.json();</code></pre>
     }
     // Aplicația completează singură: alegi lucrarea, ea știe la cât se face pe felul ăsta de mașină
     // și pune intervalul + scadența propusă. Tot ce completează rămâne editabil.
+    // „12 luni" spus omenește: un an. Cifra brută citea greu — „la 60 de luni" nu-ți spune 5 ani.
+    function _mntDurata(luni) {
+      const n = parseInt(luni) || 0;
+      if (!n) return '';
+      if (n === 1) return 'o lună';
+      if (n < 12 || n % 12 !== 0) return n + ' luni';
+      const a = n / 12;
+      return a === 1 ? 'un an' : a + ' ani';
+    }
     function mntProposeSchedule() {
       const prop = document.getElementById('mnt-prop'); if (prop) { prop.style.display = 'none'; prop.innerHTML = ''; }
       const sel = document.getElementById('mnt-type-sel'); if (!sel) return;
@@ -5809,19 +5857,46 @@ const pozitii = await r.json();</code></pre>
       if (!iv) return;                                   // „la nevoie" → nu propunem nimic
       _mntSet('mnt-int-km', iv.km || '', true);
       _mntSet('mnt-int-mo', iv.months || '', true);
-      if (_mntMode !== 'plan') return;                   // în „am făcut-o deja" scadența o calculează serverul
-      const odo = mntOdo(imei), parts = [];
-      if (iv.km && odo) { _mntSet('mnt-due-km', odo + iv.km, true); parts.push('la <b>' + mntNf(odo + iv.km) + ' km</b> (peste ' + mntNf(iv.km) + ')'); }
-      else if (iv.km) parts.push('la fiecare <b>' + mntNf(iv.km) + ' km</b> — mașina nu raportează kilometrajul, pune-l tu');
+      const odo = mntOdo(imei);
+      // Scadența se completează DOAR când o programezi; la „am făcut-o deja" o calculează serverul.
+      if (_mntMode === 'plan' && iv.km && odo) _mntSet('mnt-due-km', odo + iv.km, true);
+      let dataProp = null;
       if (iv.months) {
-        const d = new Date(); d.setMonth(d.getMonth() + iv.months);
-        _mntSet('mnt-due-date', d.toISOString().slice(0, 10), true);
-        parts.push('sau pe <b>' + d.toLocaleDateString('ro-RO') + '</b>');
+        dataProp = new Date(); dataProp.setMonth(dataProp.getMonth() + iv.months);
+        if (_mntMode === 'plan') _mntSet('mnt-due-date', dataProp.toISOString().slice(0, 10), true);
       }
-      if (!parts.length || !prop) return;
+      if (!prop) return;
       const cls = ((window.RA_MAINT && window.RA_MAINT.classes) || []).find(function (c) { return c.key === mntClassOf(imei); });
-      prop.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Propunere pentru <b>' + esc((cls && cls.label) || 'mașina asta').toLowerCase() + '</b>: '
-        + parts.join(' ') + '.<button type="button" onclick="mntSetView(\'intervale\'); mntModalOpen(false);">Schimbă intervalele</button>';
+      const clsLbl = (cls && (cls.low || cls.label)) || 'mașina asta';
+      const art = (cls && cls.art) || 'un';
+      // Regula, scrisă ca o propoziție. Alin: „hai să o facem mai explicit, să înțeleagă omul".
+      // Înainte era un singur rând cu două cifre și un „sau" — nimeni nu ghicea că se aprinde la
+      // PRIMA dintre ele, nici de unde vin cifrele.
+      let regula = 'La ' + art + ' <b>' + esc(clsLbl) + '</b>, „' + esc(type) + '" se face ';
+      if (iv.km && iv.months) regula += 'la fiecare <b>' + mntNf(iv.km) + ' km</b> sau la <b>' + _mntDurata(iv.months) + '</b> — care vine prima.';
+      else if (iv.km) regula += 'la fiecare <b>' + mntNf(iv.km) + ' km</b>.';
+      else regula += 'o dată la <b>' + _mntDurata(iv.months) + '</b>.';
+
+      let calcul = '';
+      if (_mntMode === 'plan') {
+        const li = [];
+        if (iv.km && odo) li.push('la <b>' + mntNf(odo + iv.km) + ' km</b>');
+        else if (iv.km) li.push('la fiecare <b>' + mntNf(iv.km) + ' km</b> — dar mașina nu-și raportează kilometrajul, așa că scrie tu de la ce cifră pornim');
+        if (iv.months && dataProp) li.push('pe <b>' + dataProp.toLocaleDateString('ro-RO') + '</b>');
+        if (li.length) {
+          calcul = '<div class="mnt-prop-c">' + esc(mntPlate(imei)) + (odo ? ' are acum <b>' + mntNf(odo) + ' km</b>, deci' : '') + ':'
+            + '<ul>' + li.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'
+            + (li.length > 1 ? '<div class="mnt-prop-first">Te anunțăm la <b>prima</b> dintre ele.</div>' : '') + '</div>';
+        }
+      } else {
+        calcul = '<div class="mnt-prop-c">După ce salvezi, următoarea scadență se programează singură, pornind de la data și kilometrajul pe care le pui mai sus.</div>';
+      }
+
+      prop.innerHTML = '<div class="mnt-prop-t"><i class="fas fa-screwdriver-wrench"></i> RA Tracks propune</div>'
+        + '<div class="mnt-prop-r">' + regula + '</div>'
+        + calcul
+        + '<div class="mnt-prop-f">Poți scrie tu alte cifre mai jos. Cifrele noastre se schimbă din fila '
+        + '<button type="button" onclick="mntSetView(\'intervale\'); mntModalOpen(false);">Intervale ›</button></div>';
       prop.style.display = '';
     }
     function mntTypeChange() {
