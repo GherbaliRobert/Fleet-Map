@@ -833,10 +833,6 @@
       <div id="edit-tab-documents" class="edit-tab-content" style="display:none;">
         <div style="display:flex;align-items:center;gap:9px;margin:4px 0 12px;flex-wrap:wrap;">
           <div style="font-size:12px;font-weight:700;color:var(--accent);"><i class="fas fa-file-contract"></i> Documente vehicul <span id="veh-docs-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
-          <div style="display:flex;gap:7px;">
-            <button class="btn-sm" onclick="docModalOpen(true, document.getElementById('edit-imei').value, null, true)"><i class="fas fa-file-arrow-up"></i> Scanează act</button>
-            <button class="btn-sm btn-primary" onclick="docModalOpen(true, document.getElementById('edit-imei').value)"><i class="fas fa-plus"></i> Adaugă act</button>
-          </div>
         </div>
         <div id="veh-docs-list"></div>
       </div>
@@ -1683,6 +1679,7 @@ const pozitii = await r.json();</code></pre>
       <!-- Actul se scrie într-o fereastră proprie, folosită de AMÂNDOUĂ locurile: ecranul Documente
            și fila Documente din fișa mașinii. Erau două formulare cu aceleași câmpuri, dintre care
            doar unul știa să scaneze și doar unul putea modifica. -->
+      <input type="file" id="doc-upload-file" accept="image/*,application/pdf" style="display:none;" onchange="docUploadPicked(this.files[0]); this.value='';">
       <div id="doc-modal" class="modal-overlay">
         <div class="modal doc-modal">
           <h2>
@@ -2409,22 +2406,19 @@ const pozitii = await r.json();</code></pre>
           .doc-miss .mnt-ic { opacity: .55; }
           /* Rândul lipsă are un buton cu TEXT, nu o iconiță — coloana de acțiuni a rândului obișnuit
              (76px, croită pentru trei iconițe) e prea îngustă și butonul ieșea din card. */
-          .doc-miss.dated { grid-template-columns: 56px 38px minmax(0, 1fr) auto auto 152px; }
+          .doc-slot.dated { grid-template-columns: 56px 38px minmax(0, 1fr) auto auto 190px; }
+          .doc-miss.dated { grid-template-columns: 56px 38px minmax(0, 1fr) auto auto 132px; }
           /* Butoanele din .mnt-act sunt pătrate (32x32), croite pentru iconițe. Ăsta are TEXT, deci
              își cere lățimea înapoi — altfel rămâne un pătrat din care scrisul curge afară. */
-          .mnt-act .doc-add-miss { width: auto; height: 30px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
-          @media (max-width: 768px) { .doc-miss.dated { grid-template-columns: 34px minmax(0, 1fr) auto; } }
+          .mnt-act .doc-up { width: auto; height: 30px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+          @media (max-width: 768px) { .doc-slot.dated, .doc-miss.dated { grid-template-columns: 34px minmax(0, 1fr) auto; } }
           /* Reînnoirea e acțiunea principală a unui act — se vede că nu e un buton oarecare. */
           .doc-renew { color: #0E7A3C; border-color: rgba(63, 224, 125, .45); background: rgba(63, 224, 125, .10); }
           body.dark .doc-renew { color: var(--accent); }
           .doc-clip { font-size: 10.5px; color: var(--text-muted); margin-left: 3px; }
           /* Butoanele de pe rândul mașinii (scanează / adaugă). Capul grupei are trei coloane; a
              patra e a lor, altfel s-ar fi înghesuit peste eticheta de stare. */
-          .mnt-ghead.doc-ghead { grid-template-columns: 16px minmax(0, 1fr) auto auto; }
-          .doc-ghead-act { display: flex; gap: 6px; }
-          .doc-ghead-act .btn-sm { width: 32px; height: 32px; padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
-          @media (max-width: 768px) { .mnt-ghead.doc-ghead { grid-template-columns: 14px minmax(0, 1fr) auto; } .doc-ghead-act { display: none; } }
-
+          
           /* Rândul de recunoaștere a mașinii din act. */
           .doc-scan-veh { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 9px; margin-bottom: 10px; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
           .doc-scan-veh.ok { background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); color: #0E7A3C; }
@@ -2458,8 +2452,8 @@ const pozitii = await r.json();</code></pre>
             </div>
             <span class="toolbar-spacer"></span>
             <span id="doc-count" class="toolbar-count"></span>
-            <button class="btn-sm doc-addbtn" onclick="docModalOpen(true, null, null, true)" title="Pune poza actului: recunosc mașina după numărul de pe el"><i class="fas fa-file-arrow-up"></i> Scanează act</button>
-            <button class="btn-sm btn-primary doc-addbtn" onclick="docModalOpen(true)"><i class="fas fa-plus"></i> Adaugă act</button>
+            <!-- Fără butoane generale aici. Fiecare act se încarcă de pe rândul LUI, la mașina lui:
+                 acolo aplicația știe deja și mașina, și tipul, deci nu mai are ce întreba. -->
           </div>
           <div class="mnt-search doc-search">
             <i class="fas fa-magnifying-glass"></i>
@@ -6178,34 +6172,94 @@ const pozitii = await r.json();</code></pre>
       return r ? { icon: r.icon, fam: r.fam } : { icon: 'fa-file-contract', fam: 'f-neutral' };
     }
 
-    // Un act. Butoanele NU sunt cele de la lucrări: aici nu bifezi „am făcut-o", ci reînnoiești.
-    function docCard(d, showVeh, canEdit) {
-      const st = docState(d), meta = docMetaOf(d.doc_type);
+    // Toate actele unei mașini, într-o listă STABILĂ: cele cerute (în ordinea din „Acte cerute"),
+    // pline sau goale, plus orice act în plus pe care l-a încărcat omul. Ordinea nu se schimbă de
+    // la o încărcare la alta — înveți unde e ITP-ul și rămâne acolo; urgența o spune culoarea.
+    function docSlotsOf(imei, acte) {
+      const ale = acte || [];
+      const luate = {};
+      const out = [];
+      docNeedsOf(imei).forEach(function (m) {
+        const d = ale.find(function (x) { return _mntNorm(x.doc_type) === _mntNorm(m.type) && !luate[x.id]; });
+        if (d) luate[d.id] = 1;
+        out.push(d ? { d: d } : { tip: m.type, need: m.need, imei: imei });
+      });
+      ale.forEach(function (d) { if (!luate[d.id]) out.push({ d: d }); });   // acte în plus („Altul")
+      return out;
+    }
+
+    // Un rand = un ACT AL MAȘINII, gol sau plin. Un singur fel de rând, o singură acțiune limpede:
+    //   gol  → „Încarcă"
+    //   plin → „Vezi" (dacă are fișier), „Editează", „Nou" (când îl reînnoiești), coș.
+    // Înainte erau două feluri de rânduri și patru butoane, dintre care unul se chema „Scanează" —
+    // cuvânt greșit: omul încarcă un act, nu scanează ceva. Iar butoanele generale de sus întrebau
+    // mereu „care mașină?", deși răspunsul e chiar rândul pe care apeși.
+    function docSlotCard(o, canEdit) {
+      // o = { d } pentru un act existent, sau { tip, need, imei } pentru unul neîncărcat
+      const d = o.d || null;
+      const tip = d ? d.doc_type : o.tip;
+      const imei = d ? d.imei : o.imei;
+      const meta = docMetaOf(tip);
+      const cls = d ? (_DOC_ST[docState(d)] || 's-none') : (o.need === 'req' ? 's-over' : 's-none');
+
       const bits = [];
-      if (showVeh) { const md = mntModel(d.imei); bits.push('<span class="pl">' + esc(mntPlate(d.imei)) + '</span>' + (md ? ' ' + esc(md) : '')); }
-      if (d.expiry_date) bits.push('până ' + docDate(d.expiry_date));
-      if (d.number) bits.push(esc(d.number));
-      if (d.issuer) bits.push(esc(d.issuer));
-      const cost = parseFloat(d.cost);
-      // Fișierul scanat se vede ACUM și din Management, nu doar din fișa mașinii.
-      const fis = d.has_file
-        ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" rel="noopener" title="Vezi actul scanat"><i class="fas fa-eye"></i></a>'
-        : '';
-      const act = canEdit
-        ? '<div class="mnt-act mnt-c-ac">' + fis
-          + '<button class="btn-sm doc-renew" title="Reînnoiește: pui actul nou, ăsta trece în istoric" onclick="docRenew(' + d.id + ')"><i class="fas fa-rotate"></i></button>'
-          + '<button class="btn-sm" title="Corectează datele actului" onclick="docEdit(' + d.id + ')"><i class="fas fa-pen"></i></button>'
-          + '<button class="btn-sm btn-danger" title="Șterge" onclick="docDelete(' + d.id + ')"><i class="fas fa-trash"></i></button></div>'
-        : '<div class="mnt-c-ac">' + fis + '</div>';
-      return '<div class="mnt-r dated ' + (_DOC_ST[st] || 's-none') + '">'
-        + docDateCell(d)
+      if (d) {
+        if (d.expiry_date) bits.push('valabil până ' + docDate(d.expiry_date));
+        if (d.number) bits.push(esc(d.number));
+        if (d.issuer) bits.push(esc(d.issuer));
+        if (!bits.length) bits.push('fără date completate');
+      } else {
+        bits.push(o.need === 'req' ? 'obligatoriu — nu e încărcat' : 'opțional — nu e încărcat');
+      }
+      const cost = d ? parseFloat(d.cost) : 0;
+
+      const pill = d
+        ? '<span class="mnt-pill mnt-c-pi"><i class="fas ' + docIcon(d) + '"></i>' + esc(docLeftLabel(d)) + '</span>'
+        : '<span class="mnt-pill mnt-c-pi"><i class="fas ' + (o.need === 'req' ? 'fa-triangle-exclamation' : 'fa-circle-minus') + '"></i>'
+          + (o.need === 'req' ? 'lipsește' : 'neîncărcat') + '</span>';
+
+      let act;
+      if (!canEdit) {
+        act = '<div class="mnt-c-ac">' + (d && d.has_file ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" rel="noopener" title="Vezi actul"><i class="fas fa-eye"></i></a>' : '') + '</div>';
+      } else if (!d) {
+        act = '<div class="mnt-act mnt-c-ac"><button class="btn-sm btn-primary doc-up" onclick="docUpload(\'' + esc(imei) + '\', \'' + esc(tip) + '\')"><i class="fas fa-arrow-up-from-bracket"></i> Încarcă</button></div>';
+      } else {
+        act = '<div class="mnt-act mnt-c-ac">'
+          + (d.has_file ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" rel="noopener" title="Vezi actul încărcat"><i class="fas fa-eye"></i></a>' : '')
+          + '<button class="btn-sm" title="Editează datele actului" onclick="docEdit(' + d.id + ')"><i class="fas fa-pen"></i></button>'
+          + '<button class="btn-sm doc-renew doc-up" title="Încarcă actul nou — ăsta trece în istoric" onclick="docUpload(\'' + esc(imei) + '\', \'' + esc(tip) + '\')"><i class="fas fa-arrow-up-from-bracket"></i> Nou</button>'
+          + '<button class="btn-sm btn-danger" title="Șterge" onclick="docDelete(' + d.id + ')"><i class="fas fa-trash"></i></button></div>';
+      }
+
+      return '<div class="mnt-r dated doc-slot' + (d ? '' : ' doc-miss') + ' ' + cls + '">'
+        + (d ? docDateCell(d) : '<div class="mnt-d"><b>—</b><span>' + (o.need === 'req' ? 'lipsă' : 'gol') + '</span></div>')
         + '<span class="mnt-ic mnt-c-ic ' + meta.fam + '"><i class="fas ' + meta.icon + '"></i></span>'
-        + '<div class="mnt-c-tt"><div class="mnt-t">' + esc(d.doc_type) + (d.has_file ? ' <i class="fas fa-paperclip doc-clip" title="Are actul scanat"></i>' : '') + '</div>'
-        + '<div class="mnt-s">' + (bits.length ? '<span>' + bits.join(' · ') + '</span>' : '') + '</div></div>'
-        + '<span class="mnt-pill mnt-c-pi"><i class="fas ' + docIcon(d) + '"></i>' + esc(docLeftLabel(d)) + '</span>'
+        + '<div class="mnt-c-tt"><div class="mnt-t">' + esc(tip) + (d && d.has_file ? ' <i class="fas fa-paperclip doc-clip" title="Are actul încărcat"></i>' : '') + '</div>'
+        + '<div class="mnt-s"><span>' + bits.join(' · ') + '</span></div></div>'
+        + pill
         + '<span class="mnt-c mnt-c-co">' + (cost ? mntNf(Math.round(cost)) + ' <em>RON</em>' : '') + '</span>'
         + act + '</div>';
     }
+    function docCard(d, showVeh, canEdit) { return docSlotCard({ d: d }, canEdit); }
+    function docMissingCard(m, imei, canEdit) { return docSlotCard({ tip: m.type, need: m.need, imei: imei }, canEdit); }
+
+    // „Încarcă" deschide selectorul de fișier DIRECT, în clicul omului. Deschideam întâi fereastra
+    // și abia apoi ceream fișierul, printr-un clic pornit din cod — pe care browserele îl ignoră.
+    // Așa apărea formularul gol și părea că butonul face altceva decât scrie pe el.
+    let _docUploadCtx = null;
+    function docUpload(imei, tip) {
+      _docUploadCtx = { imei: imei, tip: tip };
+      const inp = document.getElementById('doc-upload-file');
+      if (inp) { inp.value = ''; inp.click(); }
+    }
+    async function docUploadPicked(file) {
+      if (!file) return;
+      const c = _docUploadCtx || {};
+      _docEditId = null;                       // e mereu un act NOU; reînnoirea întreabă la salvare
+      docModalOpen(true, c.imei, c.tip);
+      if (typeof docScanRun === 'function') await docScanRun(file);
+    }
+
     // Act înlocuit: nu mai are stare, dar ține minte cât a valorat și cât a costat.
     function docHistCard(d) {
       const meta = docMetaOf(d.doc_type);
@@ -6232,22 +6286,6 @@ const pozitii = await r.json();</code></pre>
       const cls = mntClassOf(imei);
       return rows.map(function (r) { return { type: r.type, need: r[cls], icon: r.icon, fam: r.fam }; })
                  .filter(function (r) { return r.need === 'req' || r.need === 'opt'; });
-    }
-    function docMissingCard(m, imei, canEdit) {
-      const req = m.need === 'req';
-      return '<div class="mnt-r dated doc-miss ' + (req ? 's-over' : 's-none') + '">'
-        + '<div class="mnt-d"><b>—</b><span>lipsă</span></div>'
-        + '<span class="mnt-ic mnt-c-ic ' + m.fam + '"><i class="fas ' + m.icon + '"></i></span>'
-        + '<div class="mnt-c-tt"><div class="mnt-t">' + esc(m.type) + '</div>'
-        + '<div class="mnt-s"><span>' + (req ? 'obligatoriu, dar nu e introdus în aplicație' : 'opțional — nu e introdus') + '</span></div></div>'
-        + '<span class="mnt-pill mnt-c-pi"><i class="fas ' + (req ? 'fa-triangle-exclamation' : 'fa-circle-minus') + '"></i>' + (req ? 'lipsește' : 'neintrodus') + '</span>'
-        + '<span class="mnt-c mnt-c-co"></span>'
-        // Aici aplicația știe ȘI mașina, ȘI tipul actului — deci scanarea e cea mai scurtă cale:
-        // pui poza și gata. „Manual" rămâne alături, pentru cine n-are actul la îndemână.
-        + (canEdit ? '<div class="mnt-act mnt-c-ac">'
-            + '<button class="btn-sm btn-primary doc-add-miss" title="Pune poza actului și completez eu" onclick="docModalOpen(true, \'' + esc(imei) + '\', \'' + esc(m.type) + '\', true)"><i class="fas fa-file-arrow-up"></i> Scanează</button>'
-            + '<button class="btn-sm" title="Completează manual" onclick="docModalOpen(true, \'' + esc(imei) + '\', \'' + esc(m.type) + '\')"><i class="fas fa-plus"></i></button>'
-          + '</div>' : '<div class="mnt-c-ac"></div>') + '</div>';
     }
 
     function renderDocuments() {
@@ -6384,21 +6422,12 @@ const pozitii = await r.json();</code></pre>
         else if (soon) badge = '<span class="mnt-gn soon">' + soon + ' expiră curând</span>';
         else badge = '<span class="mnt-gn ok">în regulă · ' + acte.length + (acte.length === 1 ? ' act' : ' acte') + '</span>';
         body += '<div class="mnt-g' + (open ? ' open' : '') + '">'
-          + '<div class="mnt-ghead' + (canEdit ? ' doc-ghead' : '') + '" onclick="docToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' actele">'
+          + '<div class="mnt-ghead" onclick="docToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' actele">'
           + '<i class="fas fa-chevron-right mnt-caret"></i>'
           + '<div><div class="mnt-gp">' + esc(mntPlate(imei)) + '</div><div class="mnt-gm">' + esc(mntModel(imei)) + '</div></div>'
-          + badge
-          // Scanarea stă LÂNGĂ MAȘINĂ, nu într-un buton general: aici aplicația știe deja pentru cine
-          // e actul, deci nu mai trebuie s-o întrebe pe om. (Din capul listei, o afla din act — dar
-          // asta e a doua cale, nu prima.)
-          + (canEdit ? '<div class="doc-ghead-act">'
-              + '<button class="btn-sm" title="Scanează un act pentru ' + esc(mntPlate(imei)) + '" onclick="event.stopPropagation();docModalOpen(true, \'' + esc(imei) + '\', null, true)"><i class="fas fa-file-arrow-up"></i></button>'
-              + '<button class="btn-sm" title="Adaugă un act pentru ' + esc(mntPlate(imei)) + '" onclick="event.stopPropagation();docModalOpen(true, \'' + esc(imei) + '\')"><i class="fas fa-plus"></i></button>'
-            + '</div>' : '')
-          + '</div>'
+          + badge + '</div>'
           + (open ? '<div class="mnt-gbody">'
-              + (acte.length ? acte.map(function (d) { return docCard(d, false, canEdit); }).join('') : '')
-              + (lip.length ? '<div class="mnt-sub">Nu sunt introduse</div>' + lip.map(function (m) { return docMissingCard(m, imei, canEdit); }).join('') : '')
+              + docSlotsOf(imei, acte).map(function (o) { return docSlotCard(o, canEdit); }).join('')
             + '</div>' : '')
           + '</div>';
       });
@@ -6460,7 +6489,7 @@ const pozitii = await r.json();</code></pre>
 
     // ── Fereastra actului: aceeași pentru Management ȘI pentru fișa mașinii ──
     let _docEditId = null;
-    function docModalOpen(on, imei, tip, scan) {
+    function docModalOpen(on, imei, tip) {
       const ov = document.getElementById('doc-modal'); if (!ov) return;
       if (on) {
         docFillTypes();
@@ -6471,7 +6500,6 @@ const pozitii = await r.json();</code></pre>
       }
       ov.classList.toggle('visible', !!on);
       if (!on) { docResetForm(); docScanCancel(); }
-      if (on && scan) setTimeout(function () { const f = document.getElementById('doc-scan-file'); if (f) f.click(); }, 120);
     }
     function docResetForm() {
       _docEditId = null;
@@ -14036,9 +14064,7 @@ const pozitii = await r.json();</code></pre>
       const lip = docNeedsOf(imei).filter(function (m) { return are.indexOf(_mntNorm(m.type)) < 0; });
 
       el.innerHTML =
-        (acte.length ? acte.map(function (d) { return docCard(d, false, canEdit); }).join('')
-                     : '<div class="mnt-empty" style="padding:18px;">Niciun act introdus pentru mașina asta.</div>')
-        + (lip.length ? '<div class="mnt-sub">Nu sunt introduse</div>' + lip.map(function (m) { return docMissingCard(m, imei, canEdit); }).join('') : '')
+        docSlotsOf(imei, acte).map(function (o) { return docSlotCard(o, canEdit); }).join('')
         + (hist.length
             ? '<div class="mnt-g' + (_vehDocHistOpen ? ' open' : '') + '" style="margin-top:10px;">'
               + '<div class="mnt-ghead" onclick="vehDocHistToggle()" title="' + (_vehDocHistOpen ? 'Ascunde' : 'Arată') + ' actele înlocuite">'

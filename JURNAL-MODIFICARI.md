@@ -20,6 +20,47 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Documentele, simplu: fiecare mașină cu actele ei, fiecare act cu „Încarcă"
+
+**Ce am greșit.** Făcusem un buton „Scanează act" în capul listei și încă unul pe rândul mașinii,
+plus rânduri de două feluri și patru butoane diferite. Alin: *„nu înțeleg de ce deschide manual…
+e simplu ce îți cer: fiecare mașină are actele ei, fiecare act are buton de încărcare. «Scanează»
+e greșit. Ne complicăm atât?"* Avea dreptate pe toate.
+
+**Cum e acum.** Deschizi o mașină și vezi **lista ei de acte** — aceleași, în aceeași ordine, de
+fiecare dată. Fiecare rând are o singură acțiune limpede:
+
+| Rândul | Ce poți face |
+|---|---|
+| act **neîncărcat** | **Încarcă** |
+| act **încărcat** | 👁 Vezi · ✎ Editează · **Nou** (când îl reînnoiești) · 🗑 |
+
+Atât. **Butoanele generale de sus au dispărut** — nu mai are cine să întrebe „care mașină?", fiindcă
+răspunsul e chiar rândul pe care apeși. La fel și în fișa vehiculului: aceleași rânduri, aceleași
+butoane.
+
+**Cuvântul „Scanează" a dispărut.** Omul încarcă un act, nu scanează ceva. Citirea automată se
+întâmplă tot, dar e ce face aplicația după ce primește fișierul — nu numele butonului.
+
+**De ce se deschidea formularul gol.** Butonul deschidea întâi fereastra și abia apoi cerea fișierul,
+printr-un clic pornit din cod, la 120 de milisecunde. Browserele ignoră un asemenea clic — nu vine
+din gestul omului. Rămâneai cu formularul în față. Acum „Încarcă" deschide **direct** selectorul de
+fișier, iar fereastra se deschide după, deja completată din act.
+
+**Ordinea actelor nu se mai schimbă.** Lista vine din „Acte cerute": înveți unde e ITP-ul și rămâne
+acolo. Urgența o spune culoarea, nu poziția.
+
+**Fondatorul vede:** un ecran pe care nu mai are ce explica.
+
+**Clientul vede:** mașina lui, actele ei, un buton pe fiecare.
+
+> Verificat pe cod real, 87 de controale. Două greșeli ale PROBEI, găsite pe drum: tăia grupa
+> mașinii la `class="mnt-g`, care prinde și `mnt-gp`/`mnt-gn` — deci verifica o bucată goală și
+> trecea degeaba; iar extragerea funcțiilor înghițea funcțiile vecine.
+
+---
+
+
 ### AMÂNDOI · Scanarea știe singură pentru ce mașină e actul
 
 **Ce nu mergea.** Butonul „Scanează act" din capul listei deschidea o fereastră goală: prima
