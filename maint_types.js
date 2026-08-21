@@ -84,6 +84,34 @@ const WORK = [
 // Card tahograf NU e aici: e actul ȘOFERULUI, nu al mașinii.
 const DOCS = ['ITP', 'RCA', 'CASCO', 'Rovinietă', 'Licență transport', 'Tahograf', 'Asigurare marfă'];
 
+// Iconița și culoarea fiecărui act — ca la lucrări, ca să se recunoască dintr-o privire.
+const DOC_META = {
+  'ITP':               { icon: 'fa-clipboard-check',    fam: 'f-zone' },
+  'RCA':               { icon: 'fa-shield-halved',      fam: 'f-fuel' },
+  'CASCO':             { icon: 'fa-umbrella',           fam: 'f-load' },
+  'Rovinietă':         { icon: 'fa-road',               fam: 'f-service' },
+  'Licență transport': { icon: 'fa-certificate',        fam: 'f-load' },
+  'Tahograf':          { icon: 'fa-gauge',              fam: 'f-neutral' },
+  'Asigurare marfă':   { icon: 'fa-box-open',           fam: 'f-service' },
+};
+const DOC_DEFAULT_ICON = 'fa-file-contract';
+
+// CE ACTE TREBUIE SĂ AIBĂ fiecare fel de mașină. Perechea lui `every` de la lucrări.
+//   'req' = obligatoriu — dacă lipsește, ecranul o spune cu roșu
+//   'opt' = opțional    — dacă lipsește, tăcere; dacă există, e urmărit normal
+//   null  = nu se cere deloc pe felul ăsta de mașină
+// Fără lista asta, o mașină fără RCA introdus deloc arăta identic cu una în regulă: ecranul n-avea
+// de unde ști ce ar fi TREBUIT să existe. Un act lipsă e la fel de periculos ca unul expirat.
+const DOC_NEED = {
+  'ITP':               { car: 'req', van: 'req', truck: 'req' },
+  'RCA':               { car: 'req', van: 'req', truck: 'req' },
+  'Rovinietă':         { car: 'req', van: 'req', truck: 'req' },
+  'Licență transport': { car: null,  van: null,  truck: 'req' },
+  'Tahograf':          { car: null,  van: null,  truck: 'req' },
+  'Asigurare marfă':   { car: null,  van: null,  truck: 'opt' },   // decis cu Alin: opțional, nu obligatoriu
+  'CASCO':             { car: 'opt', van: 'opt', truck: 'opt' },
+};
+
 const DEFAULT_ICON = 'fa-wrench', DEFAULT_FAM = 'f-neutral';
 
 // Comparare iertătoare: fără diacritice, fără majuscule, fără spații de prisos.
@@ -168,6 +196,48 @@ function sanitizeOverrides(raw) {
   return out;
 }
 
+// ─── Acte cerute: implicitul de mai sus + ce a schimbat compania ───
+const NEED_VALS = ['req', 'opt', null];
+const _needByNorm = {};
+Object.keys(DOC_NEED).forEach(k => { _needByNorm[norm(k)] = DOC_NEED[k]; });
+const _docMetaByNorm = {};
+Object.keys(DOC_META).forEach(k => { _docMetaByNorm[norm(k)] = DOC_META[k]; });
+
+function docMeta(t) {
+  return _docMetaByNorm[norm(t)] || { icon: DOC_DEFAULT_ICON, fam: DEFAULT_FAM };
+}
+
+// Se cere actul ăsta pe felul ăsta de mașină? 'req' | 'opt' | null. Ce a pus compania bate implicitul.
+function docNeedFor(type, cls, overrides) {
+  const c = CLASSES.some(x => x.key === cls) ? cls : 'car';
+  const k = norm(type);
+  const ov = overrides && overrides[k];
+  if (ov && Object.prototype.hasOwnProperty.call(ov, c)) {
+    return NEED_VALS.indexOf(ov[c]) >= 0 ? ov[c] : null;
+  }
+  const d = _needByNorm[k];
+  return (d && NEED_VALS.indexOf(d[c]) >= 0) ? d[c] : null;
+}
+
+// Ce vine de la client, curățat: doar acte și clase cunoscute, doar valorile permise.
+function sanitizeDocNeeds(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const key of Object.keys(raw)) {
+    const k = norm(key);
+    if (!_needByNorm[k]) continue;                 // act necunoscut → ignorat
+    const src = raw[key]; if (!src || typeof src !== 'object') continue;
+    const dst = {};
+    for (const c of CLASSES) {
+      if (!Object.prototype.hasOwnProperty.call(src, c.key)) continue;
+      const v = src[c.key];
+      dst[c.key] = NEED_VALS.indexOf(v) >= 0 ? v : null;
+    }
+    if (Object.keys(dst).length) out[k] = dst;
+  }
+  return out;
+}
+
 // Iconița + familia de culoare a unui tip. Tipurile scrise liber („Altele…") primesc cheia neutră.
 function meta(t) {
   const w = _byNorm[norm(t)];
@@ -175,6 +245,8 @@ function meta(t) {
 }
 
 module.exports = {
-  WORK, DOCS, CLASSES, CLASS_MAP: _CLS, isDocType, canonDocType, meta, norm, classOf,
-  intervalFor, sanitizeOverrides, DEFAULT_ICON, DEFAULT_FAM
+  WORK, DOCS, CLASSES, CLASS_MAP: _CLS, DOC_META, DOC_NEED,
+  isDocType, canonDocType, meta, docMeta, norm, classOf,
+  intervalFor, sanitizeOverrides, docNeedFor, sanitizeDocNeeds,
+  DEFAULT_ICON, DEFAULT_FAM, DOC_DEFAULT_ICON
 };

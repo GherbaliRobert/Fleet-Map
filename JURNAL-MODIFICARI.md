@@ -20,6 +20,65 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Documentele arată ca Mentenanța și, în sfârșit, spun ce LIPSEȘTE
+
+**Aspectul.** Ecranul Documente rămăsese cel vechi: rânduri gri, fără iconiță pe tip, formularul
+înghesuit jos sub listă, toate mașinile deschise, fără căutare. Acum are exact înfățișarea de la
+Mentenanță — dar logica actelor, care e alta.
+
+**Trei file, pe mașină:**
+
+| Filă | Ce vezi când deschizi o mașină |
+|---|---|
+| **Valabile** | actele ei, cel mai urgent sus, **plus ce-i lipsește** |
+| **Istoric** | actele înlocuite, cu ce au costat |
+| **Acte cerute** | ce acte trebuie să aibă fiecare fel de mașină |
+
+**Cel mai important: ecranul nu mai tace când un act LIPSEȘTE.** Până acum, o mașină fără RCA
+introdus deloc arăta identic cu una în regulă — aplicația n-avea de unde ști ce ar fi trebuit să
+existe. Acum știe, din fila „Acte cerute":
+
+- **obligatoriu** → dacă lipsește, apare un rând roșu punctat: *„RCA — obligatoriu, dar nu e
+  introdus"*, cu buton „Adaugă" care deschide fereastra completată
+- **opțional** → apare gri, ca reper, fără să te bată la cap
+- **nu se cere** → nu apare deloc
+
+Implicit: ITP, RCA și rovinieta la toate; licență de transport și tahograf doar la camioane; CASCO
+și asigurarea de marfă **opționale** (așa a hotărât Alin). Fiecare companie își poate schimba lista.
+
+**Butoanele sunt altele decât la lucrări**, fiindcă un act nu se „face", ci se **reînnoiește**:
+
+| Mentenanță | Documente |
+|---|---|
+| ✓ „am făcut-o" | 🔄 **Reînnoiește** — pui actul nou, cel vechi trece în istoric |
+| — | 👁 **Vezi actul scanat** — apare acum și în Management, nu doar în fișa mașinii |
+| ✎ modifică | ✎ **corectează** (fără să pierzi scanul) |
+
+**Reînnoirea întreabă înainte:** *„B 268 ROY are deja un act «RCA», valabil până 12.03.2027. Îl trimit
+în istoric și pun actul nou în locul lui?"* Înainte se întâmpla tăcut.
+
+**Scanarea a ieșit din ascunzătoare.** Cea mai bună funcție de aici — încarci poza actului și se
+completează singur — trăia doar în fila Documente a fișei vehiculului. Acum e în fereastra comună,
+deci există un buton „Scanează act" și în ecranul principal.
+
+**Un singur formular pentru amândouă locurile.** Erau două, cu aceleași câmpuri: unul știa să
+scaneze, celălalt nu; unul putea modifica, celălalt doar șterge. Acum e o singură fereastră.
+
+**Corectate pe drum:** costul unui act fără dată de emitere intra în „Total" dar nu și în „Luna"/„Anul"
+— trei cifre care nu se adunau; acum, când lipsește data emiterii, se ia ziua în care actul a fost
+introdus. Iar butonul „Adaugă" de pe rândul lipsă rămânea strivit într-un pătrat de 32 de pixeli,
+croit pentru iconițe, și textul curgea din el.
+
+**Fondatorul vede:** la fel ca clientul.
+
+**Clientul vede:** un ecran care-i spune nu doar ce expiră, ci și **ce n-a introdus niciodată**.
+
+> Verificat pe cod real, 65 de controale. Butonul strivit a fost găsit măsurându-l în browser, nu
+> privind poza — prima bănuială (că iese din card) era greșită.
+
+---
+
+
 ### AMÂNDOI · Filele Mentenanței se numesc acum „De făcut" și „Făcute"
 
 **De ce.** Alin, uitându-se la ecran: *„istoric — este ceea ce a făcut. În agendă sunt cele

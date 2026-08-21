@@ -6524,6 +6524,53 @@ function _maintIntervalTable(ov) {
     return row;
   });
 }
+// ─── Acte cerute: ce trebuie să aibă fiecare fel de mașină ───
+// Aceeași mecanică precum intervalele: implicit în maint_types.js, peste el ce a pus platforma
+// (global), iar peste tot ce a schimbat compania. O singură cale de îmbinare, pe server.
+async function _docNeedOverrides(companyId) {
+  try {
+    if (companyId == null) {
+      const raw = await db.getSetting('doc_needs_global');
+      return maintTypes.sanitizeDocNeeds(raw ? JSON.parse(raw) : {});
+    }
+    const s = await db.getCompanySettings(companyId);
+    const glob = await db.getSetting('doc_needs_global');
+    return Object.assign(
+      maintTypes.sanitizeDocNeeds(glob ? JSON.parse(glob) : {}),
+      maintTypes.sanitizeDocNeeds((s && s.doc_needs) || {})
+    );
+  } catch (e) { return {}; }
+}
+function _docNeedTable(ov) {
+  return maintTypes.DOCS.map(t => {
+    const m = maintTypes.docMeta(t);
+    const row = { type: t, icon: m.icon, fam: m.fam, def: {}, custom: {} };
+    maintTypes.CLASSES.forEach(c => {
+      row[c.key] = maintTypes.docNeedFor(t, c.key, ov);
+      row.def[c.key] = maintTypes.docNeedFor(t, c.key, null);
+      const o = ov[maintTypes.norm(t)];
+      row.custom[c.key] = !!(o && Object.prototype.hasOwnProperty.call(o, c.key));
+    });
+    return row;
+  });
+}
+app.get('/api/doc-requirements', requireAuth, withCompany, async (req, res) => {
+  try {
+    const ov = await _docNeedOverrides(req.companyId);
+    res.json({ classes: maintTypes.CLASSES, rows: _docNeedTable(ov) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/doc-requirements', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const clean = maintTypes.sanitizeDocNeeds((req.body && req.body.overrides) || {});
+    if (req.companyId == null) await db.setSetting('doc_needs_global', JSON.stringify(clean));
+    else await db.setCompanySettings(req.companyId, { doc_needs: clean });
+    auditReq(req, 'update', 'doc_needs', req.companyId, { acte: Object.keys(clean).length });
+    const ov = await _docNeedOverrides(req.companyId);
+    res.json({ ok: true, classes: maintTypes.CLASSES, rows: _docNeedTable(ov) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/maint-intervals', requireAuth, withCompany, async (req, res) => {
   try {
     const ov = await _maintOverrides(req.companyId);

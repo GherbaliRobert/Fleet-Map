@@ -828,34 +828,17 @@
       </style>
 
       <!-- Tab: Documente -->
+      <!-- Aceleași rânduri ca în Management → Documente și ACEEAȘI fereastră de scris. Aici era un
+           formular al lui, plus singura scanare din aplicație — ascunsă, deci nefolosită. -->
       <div id="edit-tab-documents" class="edit-tab-content" style="display:none;">
-        <div style="font-size:12px;font-weight:700;margin:4px 0 10px;color:var(--accent);"><i class="fas fa-file-contract"></i> Documente vehicul <span id="veh-docs-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
-
-        <!-- Scanarea actului: poză sau PDF → propuneri de câmpuri, confirmate de om. Nimic nu se salvează singur. -->
-        <div id="doc-scan-zone" style="border:1.5px dashed var(--border);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center;cursor:pointer;" onclick="document.getElementById('doc-scan-file').click()">
-          <input type="file" id="doc-scan-file" accept="image/*,application/pdf" style="display:none;" onchange="docScanRun(this.files[0]); this.value='';">
-          <div id="doc-scan-idle">
-            <i class="fas fa-wand-magic-sparkles" style="color:var(--accent);"></i>
-            <span style="font-size:13px;font-weight:600;"> Încarcă actul (poză sau PDF) și completez câmpurile</span>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Talon / CIV → fișa vehiculului · RCA / ITP / CASCO / Rovinietă → datele și expirarea actului. Tu confirmi tot înainte de salvare.</div>
-          </div>
-          <div id="doc-scan-busy" style="display:none;font-size:13px;"><i class="fas fa-circle-notch fa-spin"></i> Citesc actul…</div>
-        </div>
-        <div id="doc-scan-result" style="display:none;margin-bottom:12px;"></div>
-
-        <div id="veh-docs-list" style="margin-bottom:12px;"></div>
-        <div class="doc-form">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end;">
-            <label>Tip<select id="doc-type"></select></label>
-            <label>Serie / nr. act (opțional)<input type="text" id="doc-number"></label>
-            <label>Emitent<input type="text" id="doc-issuer"></label>
-            <label>Data emiterii<input type="date" id="doc-issue"></label>
-            <label>Data expirării<input type="date" id="doc-expiry"></label>
-            <label>Cost (RON)<input type="number" step="0.01" id="doc-cost"></label>
-            <!-- Conținutul se redesenează din JS (_docModRender): „Adaugă" sau „Salvează modificarea". -->
-            <div class="doc-actions"><button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-plus"></i> Adaugă</button></div>
+        <div style="display:flex;align-items:center;gap:9px;margin:4px 0 12px;flex-wrap:wrap;">
+          <div style="font-size:12px;font-weight:700;color:var(--accent);"><i class="fas fa-file-contract"></i> Documente vehicul <span id="veh-docs-plate" style="color:var(--text-muted);font-weight:600;"></span></div>
+          <div style="display:flex;gap:7px;">
+            <button class="btn-sm" onclick="docModalOpen(true, document.getElementById('edit-imei').value, null, true)"><i class="fas fa-file-arrow-up"></i> Scanează act</button>
+            <button class="btn-sm btn-primary" onclick="docModalOpen(true, document.getElementById('edit-imei').value)"><i class="fas fa-plus"></i> Adaugă act</button>
           </div>
         </div>
+        <div id="veh-docs-list"></div>
       </div>
 
       <!-- Tab: Service -->
@@ -1697,6 +1680,45 @@ const pozitii = await r.json();</code></pre>
           </div>
         </div>
       </div>
+      <!-- Actul se scrie într-o fereastră proprie, folosită de AMÂNDOUĂ locurile: ecranul Documente
+           și fila Documente din fișa mașinii. Erau două formulare cu aceleași câmpuri, dintre care
+           doar unul știa să scaneze și doar unul putea modifica. -->
+      <div id="doc-modal" class="modal-overlay">
+        <div class="modal doc-modal">
+          <h2>
+            <span><i class="fas fa-file-contract" style="margin-right:8px;color:var(--accent);"></i> <span id="doc-modal-title">Act nou</span></span>
+            <button class="close-btn" onclick="docModalOpen(false)" style="position:static;font-size:18px;">&#10005;</button>
+          </h2>
+          <div class="admin-add" id="doc-form" style="grid-template-columns:repeat(2,1fr);">
+            <input type="hidden" id="doc-id">
+
+            <!-- Scanarea: poză sau PDF → propuneri de câmpuri, confirmate de om. Nimic nu se salvează
+                 singur. Era ascunsă în fișa mașinii; acum e în fereastra pe care o deschizi oriunde. -->
+            <div id="doc-scan-zone" style="grid-column:1/-1;border:1.5px dashed var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;" onclick="document.getElementById('doc-scan-file').click()">
+              <input type="file" id="doc-scan-file" accept="image/*,application/pdf" style="display:none;" onchange="docScanRun(this.files[0]); this.value='';">
+              <div id="doc-scan-idle">
+                <i class="fas fa-file-arrow-up" style="color:var(--accent);"></i>
+                <span style="font-size:13px;font-weight:700;"> Încarcă actul (poză sau PDF) și completez eu câmpurile</span>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-weight:600;">RCA / ITP / CASCO / Rovinietă → datele și expirarea. Talon / CIV → și fișa vehiculului, dacă ai deschis fereastra din fișa lui. Tu confirmi tot înainte de salvare.</div>
+              </div>
+              <div id="doc-scan-busy" style="display:none;font-size:13px;"><i class="fas fa-circle-notch fa-spin"></i> Citesc actul…</div>
+            </div>
+            <div id="doc-scan-result" style="display:none;grid-column:1/-1;"></div>
+
+            <label><span>Vehicul *</span><select id="doc-imei"></select></label>
+            <label><span>Tip act *</span><select id="doc-type"></select></label>
+            <label><span>Serie / număr</span><input type="text" id="doc-number" placeholder="opțional"></label>
+            <label><span>Emitent</span><input type="text" id="doc-issuer" placeholder="cine l-a eliberat"></label>
+            <label><span>Data emiterii</span><input type="date" id="doc-issue"></label>
+            <label><span>Data expirării</span><input type="date" id="doc-expiry"></label>
+            <label><span>Cost (RON)</span><input type="number" step="0.01" id="doc-cost" placeholder="cât ai dat pe el"></label>
+            <div class="doc-foot" style="grid-column:1/-1;">
+              <button class="btn-sm" onclick="docModalOpen(false)">Renunță</button>
+              <button class="btn-sm btn-primary" onclick="docSave()"><i class="fas fa-save"></i> <span id="doc-btn">Adaugă actul</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- Lucrarea de service se scrie într-o fereastră proprie, nu într-un formular înghesuit sub
            listă. La nivel de pagină, ca #alert-modal, ca să nu fie prinsă în ferestra Administrare. -->
       <div id="mnt-modal" class="modal-overlay">
@@ -2370,19 +2392,65 @@ const pozitii = await r.json();</code></pre>
         </div>
 
         <!-- Documente (oglinda Mentenanței: fișă pe vehicul, acte curente + reînnoire care înlocuiește) -->
+        <style id="doc-cards-css">
+          /* Documentele folosesc ACELEAȘI clase de aspect ca Mentenanța (.mnt-g, .mnt-r, .mnt-seg…).
+             E look-ul comun al listelor din Management, definit o singură dată — dacă l-aș fi copiat
+             aici, cele două ecrane s-ar fi depărtat la prima modificare, exact ca listele de tipuri.
+             Doar ce e specific actelor stă mai jos, cu prefix .doc-. */
+          #atab-documente .toolbar-row > .btn-sm { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; background: var(--bg-panel); width: auto; }
+          #atab-documente .toolbar-row > .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
+          #doc-count { font-size: 12px; font-weight: 800; color: #0E7A3C; background: rgba(63, 224, 125, .12); border: 1px solid rgba(63, 224, 125, .35); padding: 4px 10px; border-radius: 20px; }
+          body.dark #doc-count { color: var(--accent); }
+
+          /* Actul lipsă: rândul e gol prin definiție, deci se desenează punctat — se vede că e o
+             gaură, nu o intrare. */
+          .doc-miss { border-style: dashed; background: transparent; }
+          .doc-miss .mnt-t { color: var(--text-secondary); }
+          .doc-miss .mnt-ic { opacity: .55; }
+          /* Rândul lipsă are un buton cu TEXT, nu o iconiță — coloana de acțiuni a rândului obișnuit
+             (76px, croită pentru trei iconițe) e prea îngustă și butonul ieșea din card. */
+          .doc-miss.dated { grid-template-columns: 56px 38px minmax(0, 1fr) auto auto 108px; }
+          /* Butoanele din .mnt-act sunt pătrate (32x32), croite pentru iconițe. Ăsta are TEXT, deci
+             își cere lățimea înapoi — altfel rămâne un pătrat din care scrisul curge afară. */
+          .mnt-act .doc-add-miss { width: auto; height: 30px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+          @media (max-width: 768px) { .doc-miss.dated { grid-template-columns: 34px minmax(0, 1fr) auto; } }
+          /* Reînnoirea e acțiunea principală a unui act — se vede că nu e un buton oarecare. */
+          .doc-renew { color: #0E7A3C; border-color: rgba(63, 224, 125, .45); background: rgba(63, 224, 125, .10); }
+          body.dark .doc-renew { color: var(--accent); }
+          .doc-clip { font-size: 10.5px; color: var(--text-muted); margin-left: 3px; }
+          .doc-reqc select { width: 100%; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-panel);
+                             color: var(--text-primary); font-family: inherit; font-size: 12px; font-weight: 700; padding: 0 8px; }
+          .doc-reqc select.custom { border-color: var(--accent); background: rgba(63, 224, 125, .08); }
+
+          /* ── Fereastra actului ── */
+          #doc-modal { z-index: 5000; }
+          .doc-modal { width: 660px; max-width: 96vw; max-height: 92vh; overflow-y: auto; }
+          #doc-form { gap: 14px; margin-top: 4px; padding-top: 0; border-top: none; }
+          #doc-form label { gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+          #doc-form input, #doc-form select { height: 38px; border-radius: 9px; padding: 0 11px; font-size: 13.5px; }
+          #doc-form .ss-input { padding: 0 40px 0 45px; }   /* iconița de mașină e fundal — vezi nota de la #alert-form */
+          .doc-foot { display: flex; gap: 9px; justify-content: flex-end; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border); }
+          .doc-foot .btn-sm { height: 38px; padding: 0 16px; border-radius: 9px; font-size: 13px; font-weight: 700; width: auto; display: inline-flex; align-items: center; gap: 7px; }
+          .doc-foot .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .3); }
+          @media (max-width: 768px) { #doc-form { grid-template-columns: 1fr !important; } }
+        </style>
         <div id="atab-documente" class="admin-tab-content" style="display:none;">
-          <div id="admin-documente-list"></div>
-          <div class="admin-add" style="grid-template-columns:repeat(3,1fr);">
-            <label><span>Vehicul *</span><select id="mdoc-imei"></select></label>
-            <label><span>Tip *</span><select id="mdoc-type"></select></label>
-            <label><span>Serie / nr. act (opțional)</span><input type="text" id="mdoc-number"></label>
-            <label><span>Emitent</span><input type="text" id="mdoc-issuer"></label>
-            <label><span>Dată emitere</span><input type="date" id="mdoc-issue"></label>
-            <label><span>Dată expirare</span><input type="date" id="mdoc-expiry"></label>
-            <label><span>Cost (RON)</span><input type="number" step="0.01" id="mdoc-cost"></label>
-            <div style="grid-column:1/-1;"><button class="btn-sm btn-primary" onclick="saveDocument()" style="width:100%;"><i class="fas fa-save"></i> Adaugă / reînnoiește</button></div>
+          <div class="toolbar-row">
+            <div class="mnt-seg" id="doc-seg">
+              <button class="on" data-dv="valid" onclick="docSetView('valid')" title="Actele valabile ale fiecărei mașini, plus ce lipsește"><i class="fas fa-file-shield"></i> <span>Valabile</span></button>
+              <button data-dv="hist" onclick="docSetView('hist')" title="Actele înlocuite, cu ce au costat"><i class="fas fa-clock-rotate-left"></i> <span>Istoric</span></button>
+              <button data-dv="cerute" onclick="docSetView('cerute')" title="Ce acte trebuie să aibă fiecare fel de mașină"><i class="fas fa-list-check"></i> <span>Acte cerute</span></button>
+            </div>
+            <span class="toolbar-spacer"></span>
+            <span id="doc-count" class="toolbar-count"></span>
+            <button class="btn-sm doc-addbtn" onclick="docModalOpen(true, null, null, true)" title="Încarcă poza actului și completez eu câmpurile"><i class="fas fa-file-arrow-up"></i> Scanează act</button>
+            <button class="btn-sm btn-primary doc-addbtn" onclick="docModalOpen(true)"><i class="fas fa-plus"></i> Adaugă act</button>
           </div>
-          <p style="font-size:11px;color:var(--text-muted);margin:8px 2px 0;">La reînnoire (același tip), actul vechi e înlocuit automat — rămâne doar cel curent.</p>
+          <div class="mnt-search doc-search">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="search" id="doc-q" placeholder="Caută după număr, act sau emitent…" oninput="docSetQ(this.value)">
+          </div>
+          <div id="admin-documente-list"></div>
         </div>
 
         <!-- Setări -->
@@ -4158,7 +4226,7 @@ const pozitii = await r.json();</code></pre>
       await initAlertCompanySelect();
       populateVehicleSelect('alert-imei', true);
       populateVehicleSelect('mnt-imei', false);
-      populateVehicleSelect('mdoc-imei', false);
+      populateVehicleSelect('doc-imei', false);
       // tipuri alerte
       document.getElementById('alert-type').innerHTML = ALERT_TYPES.map(t => `<option value="${t.v}">${t.label}</option>`).join('');
       renderAlertCond();
@@ -5703,7 +5771,7 @@ const pozitii = await r.json();</code></pre>
     function docFillTypes() {
       const docs = (window.RA_MAINT && window.RA_MAINT.docs) || [];
       if (!docs.length) return;
-      ['doc-type', 'mdoc-type'].forEach(function (id) {
+      ['doc-type'].forEach(function (id) {
         const sel = document.getElementById(id); if (!sel || sel.dataset.filled) return;
         const keep = sel.value;
         sel.innerHTML = docs.map(function (d) { return '<option value="' + esc(d) + '">' + esc(d) + '</option>'; }).join('') + '<option value="Altul">Altul</option>';
@@ -6040,114 +6108,428 @@ const pozitii = await r.json();</code></pre>
       if (typeof loadDocuments === 'function') loadDocuments();
       if (typeof raNotify === 'function') raNotify({ title: 'Mutat la Documente', message: m.type + ' · ' + mntPlate(m.imei) });
     }
-    // ─── Documente (Management) — fișă pe vehicul: actele VALABILE + istoricul lor ───
-    // Reînnoirea nu mai șterge actul vechi: îl trece în istoricul mașinii (decizie 2026-08-20).
-    // Starea („expirat / expiră curând / valabil") vine gata calculată de la server, cu preavizul
-    // companiei — înainte era socotită aici, cu 30 de zile bătute în cod, iar alerta suna la 7.
-    let _docAll = null, _docHist = null, _docFilterImei = '', _docOpen = {}, _docHistOpen = {};
+    // ─── Documente ───
+    // Aceeași înfățișare ca la Mentenanță (clasele .mnt-* sunt look-ul comun al listelor din
+    // Management, folosit de amândouă — o singură definiție, ca să nu se depărteze), dar LOGICA e
+    // alta: actul n-are kilometri, nu se „face", ci se REÎNNOIEȘTE, și există unul singur valabil
+    // de fiecare tip. De aceea și butoanele sunt altele.
+    let _docAll = null, _docHist = null, _docReq = null, _docView = 'valid', _docQ = '', _docOpen = {};
+    let _docReqMsg = '';
+
     async function loadDocuments() {
       try { _docAll = await (await fetch('/api/documents')).json(); } catch (e) { _docAll = []; }
       if (!Array.isArray(_docAll)) _docAll = [];
       try { _docHist = await (await fetch('/api/documents/history')).json(); } catch (e) { _docHist = []; }
       if (!Array.isArray(_docHist)) _docHist = [];
+      await docReqLoad();
       renderDocuments();
     }
-    function docSetFilter(val) { _docFilterImei = val; renderDocuments(); }
-    function docToggle(imei) { _docOpen[imei] = (_docOpen[imei] === false); renderDocuments(); }
-    function docHistToggle(imei) { _docHistOpen[imei] = !_docHistOpen[imei]; renderDocuments(); }
+    async function docReqLoad(force) {
+      if (_docReq && !force) return _docReq;
+      try { _docReq = await (await fetch('/api/doc-requirements')).json(); } catch (e) { _docReq = null; }
+      return _docReq;
+    }
+    function docSetView(v) { _docView = v; renderDocuments(); }
+    function docSetQ(v) { _docQ = v || ''; renderDocuments(); }
+    function docToggle(key) { _docOpen[key] = !_docOpen[key]; renderDocuments(); }
+
     function docDays(d) {
       if (d._days != null) return d._days;
-      return d.expiry_date ? Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000) : null;
+      return d.expiry_date ? Math.ceil((new Date(String(d.expiry_date).slice(0, 10) + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000) : null;
     }
-    function docRow(d, canEdit) {
-      const ds = d.expiry_date ? new Date(d.expiry_date).toLocaleDateString('ro-RO') : '';
-      const st = d._due || (d.expiry_date ? 'ok' : 'none');
-      const days = docDays(d);
-      let badge = '<span class="role">fără dată</span>', border = '';
-      if (st === 'expired') { badge = '<span style="color:var(--red);font-weight:700;font-size:11px;">EXPIRAT · ' + ds + '</span>'; border = 'border-color:var(--red);'; }
-      else if (st === 'soon') { badge = '<span style="color:#B45309;font-weight:700;font-size:11px;">expiră curând · ' + ds + ' (' + days + (days === 1 ? ' zi' : ' zile') + ')</span>'; border = 'border-color:rgba(245,158,11,.5);'; }
-      else if (st === 'ok') badge = '<span style="color:var(--accent);font-size:11px;">valabil până ' + ds + '</span>';
-      const meta = [d.number, d.issuer, (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : ''), (d.cost ? Math.round(parseFloat(d.cost)) + ' RON' : '')].filter(Boolean).join(' · ');
-      const actions = canEdit ? '<button class="btn-sm btn-danger" onclick="deleteDocument(' + d.id + ')"><i class="fas fa-trash"></i></button>' : '';
-      return '<div class="admin-row" style="' + border + '"><div><strong>' + _docEsc(d.doc_type) + '</strong> ' + badge + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div>' + actions + '</div>';
+    // Starea o calculează SERVERUL (_due), cu pragul companiei — ca ecranul și telefonul să sune
+    // pe aceeași cifră. Aici doar traducem.
+    function docState(d) { return d._due || (d.expiry_date ? 'ok' : 'none'); }
+    const _DOC_ST = { expired: 's-over', soon: 's-soon', ok: 's-done', none: 's-none' };
+    function docDate(d) { return d ? new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString('ro-RO') : ''; }
+    function docLeftLabel(d) {
+      const st = docState(d), n = docDays(d);
+      if (st === 'none') return 'fără dată';
+      if (n == null) return '';
+      if (n < 0) return 'expirat de ' + (-n) + (n === -1 ? ' zi' : ' zile');
+      if (n === 0) return 'expiră azi';
+      return (st === 'soon' ? 'expiră peste ' : 'mai are ') + n + (n === 1 ? ' zi' : ' zile');
     }
-    // Un act înlocuit: nu mai are stare (a ieșit din uz), dar ține minte cât a valorat și cât a costat.
-    function docHistRow(d) {
-      const meta = [
-        d.number, d.issuer,
-        (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : ''),
-        (d.expiry_date ? 'valabil până ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') : ''),
-        (d.cost ? Math.round(parseFloat(d.cost)) + ' RON' : '')
-      ].filter(Boolean).join(' · ');
-      const inloc = d.replaced_at ? 'înlocuit ' + new Date(d.replaced_at).toLocaleDateString('ro-RO') : 'înlocuit';
-      return '<div class="admin-row" style="opacity:.72;"><div><strong>' + _docEsc(d.doc_type) + '</strong> '
-        + '<span class="role">' + _docEsc(inloc) + '</span>'
-        + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div></div>';
+    function docIcon(d) { const s = docState(d); return s === 'expired' ? 'fa-triangle-exclamation' : s === 'soon' ? 'fa-clock' : s === 'none' ? 'fa-circle-question' : 'fa-circle-check'; }
+    function docDateCell(d) {
+      const raw = d.expiry_date ? String(d.expiry_date).slice(0, 10) : null;
+      if (!raw) return '<div class="mnt-d"><b>—</b><span>fără</span></div>';
+      const t = new Date(raw + 'T12:00:00');
+      return '<div class="mnt-d"><b>' + t.getDate() + '</b><span>' + MNT_LUNI[t.getMonth()] + '</span></div>';
     }
+    function docMetaOf(type) {
+      const rows = (_docReq && _docReq.rows) || [];
+      const r = rows.find(function (x) { return _mntNorm(x.type) === _mntNorm(type); });
+      return r ? { icon: r.icon, fam: r.fam } : { icon: 'fa-file-contract', fam: 'f-neutral' };
+    }
+
+    // Un act. Butoanele NU sunt cele de la lucrări: aici nu bifezi „am făcut-o", ci reînnoiești.
+    function docCard(d, showVeh, canEdit) {
+      const st = docState(d), meta = docMetaOf(d.doc_type);
+      const bits = [];
+      if (showVeh) { const md = mntModel(d.imei); bits.push('<span class="pl">' + esc(mntPlate(d.imei)) + '</span>' + (md ? ' ' + esc(md) : '')); }
+      if (d.expiry_date) bits.push('până ' + docDate(d.expiry_date));
+      if (d.number) bits.push(esc(d.number));
+      if (d.issuer) bits.push(esc(d.issuer));
+      const cost = parseFloat(d.cost);
+      // Fișierul scanat se vede ACUM și din Management, nu doar din fișa mașinii.
+      const fis = d.has_file
+        ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" rel="noopener" title="Vezi actul scanat"><i class="fas fa-eye"></i></a>'
+        : '';
+      const act = canEdit
+        ? '<div class="mnt-act mnt-c-ac">' + fis
+          + '<button class="btn-sm doc-renew" title="Reînnoiește: pui actul nou, ăsta trece în istoric" onclick="docRenew(' + d.id + ')"><i class="fas fa-rotate"></i></button>'
+          + '<button class="btn-sm" title="Corectează datele actului" onclick="docEdit(' + d.id + ')"><i class="fas fa-pen"></i></button>'
+          + '<button class="btn-sm btn-danger" title="Șterge" onclick="docDelete(' + d.id + ')"><i class="fas fa-trash"></i></button></div>'
+        : '<div class="mnt-c-ac">' + fis + '</div>';
+      return '<div class="mnt-r dated ' + (_DOC_ST[st] || 's-none') + '">'
+        + docDateCell(d)
+        + '<span class="mnt-ic mnt-c-ic ' + meta.fam + '"><i class="fas ' + meta.icon + '"></i></span>'
+        + '<div class="mnt-c-tt"><div class="mnt-t">' + esc(d.doc_type) + (d.has_file ? ' <i class="fas fa-paperclip doc-clip" title="Are actul scanat"></i>' : '') + '</div>'
+        + '<div class="mnt-s">' + (bits.length ? '<span>' + bits.join(' · ') + '</span>' : '') + '</div></div>'
+        + '<span class="mnt-pill mnt-c-pi"><i class="fas ' + docIcon(d) + '"></i>' + esc(docLeftLabel(d)) + '</span>'
+        + '<span class="mnt-c mnt-c-co">' + (cost ? mntNf(Math.round(cost)) + ' <em>RON</em>' : '') + '</span>'
+        + act + '</div>';
+    }
+    // Act înlocuit: nu mai are stare, dar ține minte cât a valorat și cât a costat.
+    function docHistCard(d) {
+      const meta = docMetaOf(d.doc_type);
+      const bits = [];
+      if (d.issue_date) bits.push('emis ' + docDate(d.issue_date));
+      if (d.expiry_date) bits.push('era valabil până ' + docDate(d.expiry_date));
+      if (d.number) bits.push(esc(d.number));
+      if (d.issuer) bits.push(esc(d.issuer));
+      const cost = parseFloat(d.cost);
+      return '<div class="mnt-r dated s-none dn">'
+        + (d.replaced_at ? '<div class="mnt-d"><b>' + new Date(d.replaced_at).getDate() + '</b><span>' + MNT_LUNI[new Date(d.replaced_at).getMonth()] + '</span></div>'
+                         : '<div class="mnt-d"><b>—</b><span>înloc.</span></div>')
+        + '<span class="mnt-ic mnt-c-ic ' + meta.fam + '"><i class="fas ' + meta.icon + '"></i></span>'
+        + '<div class="mnt-c-tt"><div class="mnt-t">' + esc(d.doc_type) + '</div>'
+        + '<div class="mnt-s">' + (bits.length ? '<span>' + bits.join(' · ') + '</span>' : '') + '</div></div>'
+        + '<span class="mnt-pill mnt-c-pi"><i class="fas fa-clock-rotate-left"></i>înlocuit</span>'
+        + '<span class="mnt-c mnt-c-co">' + (cost ? mntNf(Math.round(cost)) + ' <em>RON</em>' : '') + '</span>'
+        + '<div class="mnt-c-ac"></div></div>';
+    }
+    // Actele pe care mașina ar TREBUI să le aibă, după felul ei. Fără asta, o mașină fără RCA
+    // introdus deloc arăta identic cu una în regulă — ecranul n-avea de unde ști ce lipsește.
+    function docNeedsOf(imei) {
+      const rows = (_docReq && _docReq.rows) || [];
+      const cls = mntClassOf(imei);
+      return rows.map(function (r) { return { type: r.type, need: r[cls], icon: r.icon, fam: r.fam }; })
+                 .filter(function (r) { return r.need === 'req' || r.need === 'opt'; });
+    }
+    function docMissingCard(m, imei, canEdit) {
+      const req = m.need === 'req';
+      return '<div class="mnt-r dated doc-miss ' + (req ? 's-over' : 's-none') + '">'
+        + '<div class="mnt-d"><b>—</b><span>lipsă</span></div>'
+        + '<span class="mnt-ic mnt-c-ic ' + m.fam + '"><i class="fas ' + m.icon + '"></i></span>'
+        + '<div class="mnt-c-tt"><div class="mnt-t">' + esc(m.type) + '</div>'
+        + '<div class="mnt-s"><span>' + (req ? 'obligatoriu, dar nu e introdus în aplicație' : 'opțional — nu e introdus') + '</span></div></div>'
+        + '<span class="mnt-pill mnt-c-pi"><i class="fas ' + (req ? 'fa-triangle-exclamation' : 'fa-circle-minus') + '"></i>' + (req ? 'lipsește' : 'neintrodus') + '</span>'
+        + '<span class="mnt-c mnt-c-co"></span>'
+        + (canEdit ? '<div class="mnt-act mnt-c-ac"><button class="btn-sm btn-primary doc-add-miss" onclick="docModalOpen(true, \'' + esc(imei) + '\', \'' + esc(m.type) + '\')"><i class="fas fa-plus"></i> Adaugă</button></div>'
+                   : '<div class="mnt-c-ac"></div>') + '</div>';
+    }
+
     function renderDocuments() {
       const el = document.getElementById('admin-documente-list'); if (!el) return;
       const canEdit = (typeof can === 'function') ? !!can('manageFleet') : true;
       docFillTypes();
-      const form = document.querySelector('#atab-documente .admin-add'); if (form) form.style.display = canEdit ? '' : 'none';
-      const list = Array.isArray(_docAll) ? _docAll : [];
-      const hist = Array.isArray(_docHist) ? _docHist : [];
-      if (!list.length && !hist.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>'; return; }
-      const byVeh = new Map();
-      list.forEach(d => { if (!byVeh.has(d.imei)) byVeh.set(d.imei, []); byVeh.get(d.imei).push(d); });
-      const histVeh = new Map();
-      hist.forEach(d => { if (!histVeh.has(d.imei)) histVeh.set(d.imei, []); histVeh.get(d.imei).push(d); });
-      const allImeis = Array.from(new Set(Array.from(byVeh.keys()).concat(Array.from(histVeh.keys()))))
-        .sort((a, b) => String(vehicleLabel(a)).localeCompare(String(vehicleLabel(b))));
-      const ss = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;margin-left:5px;';
-      const filters = '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;"><label style="font-size:11px;color:var(--text-muted);">Vehicul<select onchange="docSetFilter(this.value)" style="' + ss + '"><option value="">Toate vehiculele</option>' + allImeis.map(i => '<option value="' + i + '" ' + (i === _docFilterImei ? 'selected' : '') + '>' + vehicleLabel(i) + '</option>').join('') + '</select></label></div>';
-      const imeis = _docFilterImei ? allImeis.filter(i => i === _docFilterImei) : allImeis;
-      let groups = '';
-      imeis.forEach(imei => {
-        const entries = (byVeh.get(imei) || []).slice().sort((a, b) => (a.expiry_date || '').localeCompare(b.expiry_date || ''));
-        const old = (histVeh.get(imei) || []);
-        if (!entries.length && !old.length) return;
-        const alertCount = entries.filter(d => d._due === 'expired' || d._due === 'soon').length;
-        const open = _docOpen[imei] !== false;
-        const ho = !!_docHistOpen[imei];
-        const istoric = old.length
-          ? '<div onclick="docHistToggle(\'' + imei + '\')" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 4px;font-size:11.5px;font-weight:700;color:var(--text-muted);">'
-            + '<i class="fas fa-chevron-' + (ho ? 'down' : 'right') + '" style="font-size:10px;width:10px;"></i>'
-            + '<i class="fas fa-clock-rotate-left"></i> Istoric acte · ' + old.length + ' înlocuit' + (old.length > 1 ? 'e' : '') + '</div>'
-            + (ho ? old.map(docHistRow).join('') : '')
-          : '';
-        groups += '<div style="margin-bottom:8px;"><div onclick="docToggle(\'' + imei + '\')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 4px;font-weight:700;border-bottom:1px solid var(--border);"><i class="fas fa-chevron-' + (open ? 'down' : 'right') + '" style="font-size:11px;color:var(--text-muted);width:12px;text-align:center;"></i><span>' + vehicleLabel(imei) + '</span>' + (alertCount ? '<span style="color:var(--red);font-size:11px;">' + alertCount + ' de reînnoit</span>' : '') + '<span style="margin-left:auto;font-size:11px;color:var(--text-muted);">' + entries.length + ' ' + (entries.length === 1 ? 'act' : 'acte') + '</span></div>'
-          + (open ? '<div style="padding:4px 0 8px;">' + entries.map(d => docRow(d, canEdit)).join('') + istoric + '</div>' : '') + '</div>';
+      document.querySelectorAll('#doc-seg button').forEach(function (b) { b.classList.toggle('on', b.dataset.dv === _docView); });
+      const srch = document.querySelector('#atab-documente .doc-search');
+      if (srch) srch.style.display = (_docView === 'cerute') ? 'none' : '';
+      document.querySelectorAll('#atab-documente .toolbar-row .doc-addbtn').forEach(function (b) {
+        b.style.display = (canEdit && _docView !== 'cerute') ? '' : 'none';
       });
-      if (!groups) groups = '<p style="color:var(--text-muted);font-size:12px;">Niciun document pentru filtrul ales.</p>';
-      // Costurile acoperă ȘI actele înlocuite — altfel „cât am dat pe acte" ar uita tot ce e mai
-      // vechi de o reînnoire, adică exact ce face istoricul să merite.
-      const _now = new Date(), _y = _now.getFullYear(), _m = _now.getMonth();
-      const _srcAll = list.concat(hist);
-      const _src = _docFilterImei ? _srcAll.filter(d => d.imei === _docFilterImei) : _srcAll;
+
+      if (_docView === 'cerute') {
+        const c = document.getElementById('doc-count'); if (c) c.textContent = '';
+        if (!_docReq) { el.innerHTML = '<div class="mnt-empty">Se încarcă…</div>'; docReqLoad(true).then(renderDocuments); return; }
+        el.innerHTML = renderDocReq(canEdit);
+        return;
+      }
+
+      const q = _mntNorm(_docQ);
+      const pot = function (d) { return !q || _mntNorm([d.doc_type, d.number, d.issuer, mntPlate(d.imei), mntModel(d.imei)].join(' ')).indexOf(q) >= 0; };
+      const list = (Array.isArray(_docAll) ? _docAll : []).filter(pot);
+      const hist = (Array.isArray(_docHist) ? _docHist : []).filter(pot);
+
+      // Banii: și actele înlocuite intră la socoteală — altfel „cât am dat pe acte" ar uita tot ce e
+      // mai vechi de o reînnoire, adică exact ce face istoricul să merite.
+      const now = new Date(), _y = now.getFullYear(), _m = now.getMonth();
       let cM = 0, cY = 0, cAll = 0;
-      _src.forEach(d => { const c = parseFloat(d.cost) || 0; if (!c) return; cAll += c; if (!d.issue_date) return; const dt = new Date(d.issue_date); if (dt.getFullYear() === _y) { cY += c; if (dt.getMonth() === _m) cM += c; } });
-      const costBar = costCards(cM, cY, cAll, _y, 'fa-file-contract', _docFilterImei ? 'Total acte' : 'Total acte · flotă');
-      el.innerHTML = filters + costBar + groups;
-    }
-    async function saveDocument() {
-      const body = {
-        imei: document.getElementById('mdoc-imei').value,
-        doc_type: document.getElementById('mdoc-type').value,
-        number: document.getElementById('mdoc-number').value.trim(),
-        issuer: document.getElementById('mdoc-issuer').value.trim(),
-        issue_date: document.getElementById('mdoc-issue').value || null,
-        expiry_date: document.getElementById('mdoc-expiry').value || null,
-        cost: parseFloat(document.getElementById('mdoc-cost').value) || null
+      list.concat(hist).forEach(function (d) {
+        const c = parseFloat(d.cost) || 0; if (!c) return;
+        cAll += c;
+        // Fără dată de emitere, costul cădea în „Total" dar nu și în lună/an — trei cifre care nu se
+        // adunau. Ca reper de timp folosim atunci ziua în care actul a fost introdus în aplicație.
+        const dd = (d.issue_date ? String(d.issue_date) : (d.created_at ? String(d.created_at) : '')).slice(0, 10);
+        if (!dd) return;
+        const dt = new Date(dd + 'T12:00:00');
+        if (dt.getFullYear() === _y) { cY += c; if (dt.getMonth() === _m) cM += c; }
+      });
+      const costBar = costCards(cM, cY, cAll, _y, 'fa-file-contract', 'Total acte');
+
+      const istoric = (_docView === 'hist');
+      let body = '';
+
+      if (istoric) {
+        const byVeh = new Map();
+        hist.forEach(function (d) { if (!byVeh.has(d.imei)) byVeh.set(d.imei, []); byVeh.get(d.imei).push(d); });
+        const imeis = Array.from(byVeh.keys()).sort(function (a, b) {
+          const ua = byVeh.get(a).reduce(function (x, d) { return String(d.replaced_at || '') > x ? String(d.replaced_at || '') : x; }, '');
+          const ub = byVeh.get(b).reduce(function (x, d) { return String(d.replaced_at || '') > x ? String(d.replaced_at || '') : x; }, '');
+          return ua !== ub ? ub.localeCompare(ua) : String(mntPlate(a)).localeCompare(String(mntPlate(b)));
+        });
+        const cnt = document.getElementById('doc-count');
+        if (cnt) cnt.textContent = hist.length + (hist.length === 1 ? ' act înlocuit' : ' acte înlocuite');
+        imeis.forEach(function (imei) {
+          const items = byVeh.get(imei).slice().sort(function (a, b) { return String(b.replaced_at || '').localeCompare(String(a.replaced_at || '')); });
+          const key = 'hist:' + imei;
+          if (_docOpen[key] === undefined) _docOpen[key] = imeis.length === 1;
+          const open = _docOpen[key];
+          const lei = items.reduce(function (x, d) { return x + (parseFloat(d.cost) || 0); }, 0);
+          body += '<div class="mnt-g' + (open ? ' open' : '') + '">'
+            + '<div class="mnt-ghead" onclick="docToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' actele înlocuite">'
+            + '<i class="fas fa-chevron-right mnt-caret"></i>'
+            + '<div><div class="mnt-gp">' + esc(mntPlate(imei)) + '</div><div class="mnt-gm">' + esc(mntModel(imei)) + '</div></div>'
+            + '<span class="mnt-gn">' + items.length + (items.length === 1 ? ' act' : ' acte') + (lei ? ' · ' + mntNf(Math.round(lei)) + ' lei' : '') + '</span></div>'
+            + (open ? '<div class="mnt-gbody">' + items.map(docHistCard).join('') + '</div>' : '')
+            + '</div>';
+        });
+        if (!imeis.length) body = '<div class="mnt-empty"><i class="fas fa-clock-rotate-left" style="font-size:22px;opacity:.4;display:block;margin-bottom:8px;"></i>'
+          + (q ? 'Niciun act înlocuit pentru „' + esc(_docQ) + '".' : 'Niciun act înlocuit încă. Aici ajung actele vechi, când pui unul nou în locul lor.') + '</div>';
+        el.innerHTML = costBar + body;
+        return;
+      }
+
+      // ── Valabile: fiecare mașină, cu actele ei ȘI cu ce-i lipsește ──
+      const byVeh = new Map();
+      list.forEach(function (d) { if (!byVeh.has(d.imei)) byVeh.set(d.imei, []); byVeh.get(d.imei).push(d); });
+      // Mașinile din flotă, nu doar cele care au deja acte: altfel una fără NIMIC introdus n-ar
+      // apărea nicăieri, adică exact cazul cel mai periculos.
+      const flota = (typeof adminDevicesCache !== 'undefined' ? adminDevicesCache : []).map(function (d) { return d.imei; });
+      const toate = Array.from(new Set(flota.concat(Array.from(byVeh.keys()))));
+      const lipsaDe = {};
+      toate.forEach(function (imei) {
+        const are = (byVeh.get(imei) || []).map(function (d) { return _mntNorm(d.doc_type); });
+        lipsaDe[imei] = docNeedsOf(imei).filter(function (m) { return are.indexOf(_mntNorm(m.type)) < 0; })
+          .filter(function (m) { return !q || _mntNorm([m.type, mntPlate(imei), mntModel(imei)].join(' ')).indexOf(q) >= 0; });
+      });
+      const rangDoc = { expired: 0, soon: 1, none: 2, ok: 3 };
+      const scorul = function (imei) {
+        const acte = byVeh.get(imei) || [], lip = lipsaDe[imei] || [];
+        if (acte.some(function (d) { return docState(d) === 'expired'; })) return 0;
+        if (lip.some(function (m) { return m.need === 'req'; })) return 1;   // lipsă obligatorie = aproape la fel de rău
+        if (acte.some(function (d) { return docState(d) === 'soon'; })) return 2;
+        return 3;
       };
-      if (!body.imei || !body.doc_type) return alert('Alege vehiculul și tipul');
-      const res = await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); return alert(e.error || 'Eroare'); }
-      ['mdoc-number', 'mdoc-issuer', 'mdoc-issue', 'mdoc-expiry', 'mdoc-cost'].forEach(clearField);
-      await loadDocuments();
+      const imeis = toate.filter(function (i) { return (byVeh.get(i) || []).length || (lipsaDe[i] || []).length; })
+        .sort(function (a, b) {
+          const sa = scorul(a), sb = scorul(b);
+          return sa !== sb ? sa - sb : String(mntPlate(a)).localeCompare(String(mntPlate(b)));
+        });
+
+      const cnt = document.getElementById('doc-count');
+      if (cnt) cnt.textContent = list.length + (list.length === 1 ? ' act valabil' : ' acte');
+
+      if (imeis.length) {
+        const nExp = imeis.filter(function (i) { return (byVeh.get(i) || []).some(function (d) { return docState(d) === 'expired'; }); }).length;
+        const nSoon = imeis.filter(function (i) { return (byVeh.get(i) || []).some(function (d) { return docState(d) === 'soon'; }); }).length;
+        const nLip = imeis.filter(function (i) { return (lipsaDe[i] || []).some(function (m) { return m.need === 'req'; }); }).length;
+        const parti = [];
+        if (nExp) parti.push('<b>' + nExp + (nExp === 1 ? ' mașină are acte expirate' : ' mașini au acte expirate') + '.</b>');
+        if (nSoon) parti.push(nSoon + (nSoon === 1 ? ' mașină are un act care expiră curând.' : ' mașini au acte care expiră curând.'));
+        if (nLip) parti.push('<b>' + nLip + (nLip === 1 ? ' mașină n-are un act obligatoriu' : ' mașini n-au acte obligatorii') + '.</b>');
+        const cls = nExp || nLip ? 's-over' : nSoon ? 's-soon' : 's-done';
+        const ico = nExp || nLip ? 'fa-triangle-exclamation' : nSoon ? 'fa-clock' : 'fa-circle-check';
+        body += '<div class="mnt-banner ' + cls + '"><i class="fas ' + ico + '"></i><span>'
+          + (parti.length ? parti.join(' ') : '<b>Toate actele sunt în regulă.</b>') + '</span></div>';
+      }
+
+      imeis.forEach(function (imei) {
+        const acte = (byVeh.get(imei) || []).slice().sort(function (a, b) {
+          const ra = rangDoc[docState(a)], rb = rangDoc[docState(b)];
+          return ra !== rb ? ra - rb : String(a.expiry_date || '').localeCompare(String(b.expiry_date || ''));
+        });
+        const lip = lipsaDe[imei] || [];
+        const lipReq = lip.filter(function (m) { return m.need === 'req'; }).length;
+        const exp = acte.filter(function (d) { return docState(d) === 'expired'; }).length;
+        const soon = acte.filter(function (d) { return docState(d) === 'soon'; }).length;
+        const key = 'valid:' + imei;
+        if (_docOpen[key] === undefined) _docOpen[key] = (exp > 0 || lipReq > 0) || imeis.length === 1;
+        const open = _docOpen[key];
+        let badge;
+        if (exp) badge = '<span class="mnt-gn al">' + exp + (exp === 1 ? ' expirat' : ' expirate') + '</span>';
+        else if (lipReq) badge = '<span class="mnt-gn al">' + lipReq + (lipReq === 1 ? ' act lipsă' : ' acte lipsă') + '</span>';
+        else if (soon) badge = '<span class="mnt-gn soon">' + soon + ' expiră curând</span>';
+        else badge = '<span class="mnt-gn ok">în regulă · ' + acte.length + (acte.length === 1 ? ' act' : ' acte') + '</span>';
+        body += '<div class="mnt-g' + (open ? ' open' : '') + '">'
+          + '<div class="mnt-ghead" onclick="docToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' actele">'
+          + '<i class="fas fa-chevron-right mnt-caret"></i>'
+          + '<div><div class="mnt-gp">' + esc(mntPlate(imei)) + '</div><div class="mnt-gm">' + esc(mntModel(imei)) + '</div></div>'
+          + badge + '</div>'
+          + (open ? '<div class="mnt-gbody">'
+              + (acte.length ? acte.map(function (d) { return docCard(d, false, canEdit); }).join('') : '')
+              + (lip.length ? '<div class="mnt-sub">Nu sunt introduse</div>' + lip.map(function (m) { return docMissingCard(m, imei, canEdit); }).join('') : '')
+            + '</div>' : '')
+          + '</div>';
+      });
+      if (!imeis.length) body = '<div class="mnt-empty"><i class="fas fa-file-contract" style="font-size:22px;opacity:.4;display:block;margin-bottom:8px;"></i>'
+        + (q ? 'Niciun act pentru „' + esc(_docQ) + '".' : 'Niciun act introdus încă.') + '</div>';
+      el.innerHTML = costBar + body;
     }
-    async function deleteDocument(id) {
-      if (!await raConfirm('Ștergi documentul?', { okLabel: 'Șterge' })) return;
-      await fetch('/api/documents/' + id, { method: 'DELETE' }); await loadDocuments();
+
+    // ── Fila „Acte cerute": ce trebuie să aibă fiecare fel de mașină ──
+    function renderDocReq(canEdit) {
+      const classes = (_docReq && _docReq.classes) || [];
+      const cell = function (row, ck) {
+        const v = row[ck] || '', def = (row.def && row.def[ck]) || null;
+        const custom = !!(row.custom && row.custom[ck]);
+        const tit = 'Implicit: ' + (def === 'req' ? 'obligatoriu' : def === 'opt' ? 'opțional' : 'nu se cere');
+        return '<select data-t="' + esc(row.type) + '" data-c="' + ck + '" title="' + esc(tit) + '"'
+          + (custom ? ' class="custom"' : '') + (canEdit ? '' : ' disabled') + ' onchange="docReqTouch()">'
+          + '<option value=""' + (v ? '' : ' selected') + '>nu se cere</option>'
+          + '<option value="opt"' + (v === 'opt' ? ' selected' : '') + '>opțional</option>'
+          + '<option value="req"' + (v === 'req' ? ' selected' : '') + '>obligatoriu</option>'
+          + '</select>';
+      };
+      return '<div class="mnt-iv-hint"><b>Ce acte trebuie să aibă fiecare fel de mașină.</b> '
+        + '„Obligatoriu" = dacă lipsește, ți-o spunem cu roșu în lista de acte. „Opțional" = îl urmărim '
+        + 'dacă îl introduci, dar nu te batem la cap. Cifrele sunt punctul nostru de plecare — schimbă-le '
+        + 'dacă la voi e altfel.</div>'
+        + '<div class="mnt-iv-wrap"><div class="mnt-iv"><div class="mnt-ivh"><span>Act</span>'
+        + classes.map(function (c) { return '<span>' + esc(c.label) + '</span>'; }).join('') + '</div>'
+        + ((_docReq && _docReq.rows) || []).map(function (r) {
+          return '<div class="mnt-ivr"><span class="mnt-ivn"><span class="mnt-ic ' + r.fam + '" style="width:28px;height:28px;font-size:12px;border-radius:8px;"><i class="fas ' + r.icon + '"></i></span>'
+            + '<span>' + esc(r.type) + '</span></span>'
+            + classes.map(function (c) { return '<span class="doc-reqc">' + cell(r, c.key) + '</span>'; }).join('') + '</div>';
+        }).join('') + '</div></div>'
+        + (canEdit ? '<div class="mnt-ivsave"><span class="msg" id="doc-req-msg">' + esc(_docReqMsg) + '</span>'
+          + '<button class="btn-sm" onclick="docReqReset()"><i class="fas fa-rotate-left"></i> Revino la lista noastră</button>'
+          + '<button class="btn-sm btn-primary" onclick="saveDocReq()"><i class="fas fa-save"></i> Salvează</button></div>' : '');
+    }
+    function docReqTouch() { const m = document.getElementById('doc-req-msg'); if (m) { _docReqMsg = 'Ai modificări nesalvate.'; m.textContent = _docReqMsg; } }
+    async function docReqReset() {
+      if (!await raConfirm('Se șterge lista voastră de acte cerute și rămâne cea propusă de aplicație.\n\nActele deja introduse NU se ating — se schimbă doar ce anume socotim că lipsește.',
+        { okLabel: 'Revino la implicit' })) return;
+      const res = await fetch('/api/doc-requirements', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ overrides: {} }) });
+      if (!res.ok) { const e = await res.json().catch(function () { return {}; }); return alert(e.error || 'Eroare'); }
+      _docReq = await res.json(); _docReqMsg = 'Revenit la lista aplicației.';
+      renderDocuments();
+    }
+    async function saveDocReq() {
+      const ov = {};
+      document.querySelectorAll('#admin-documente-list .doc-reqc select').forEach(function (s) {
+        const t = s.dataset.t, c = s.dataset.c;
+        ov[t] = ov[t] || {};
+        ov[t][c] = s.value || null;
+      });
+      const res = await fetch('/api/doc-requirements', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ overrides: ov }) });
+      if (!res.ok) { const e = await res.json().catch(function () { return {}; }); return alert(e.error || 'Eroare'); }
+      _docReq = await res.json(); _docReqMsg = 'Salvat.';
+      renderDocuments();
+    }
+
+    // ── Fereastra actului: aceeași pentru Management ȘI pentru fișa mașinii ──
+    let _docEditId = null;
+    function docModalOpen(on, imei, tip, scan) {
+      const ov = document.getElementById('doc-modal'); if (!ov) return;
+      if (on) {
+        docFillTypes();
+        if (!_docEditId) docResetForm();
+        if (imei) { const s = document.getElementById('doc-imei'); if (s) { s.value = imei; if (s._ssSync) s._ssSync(); } }
+        if (tip) { const s = document.getElementById('doc-type'); if (s) s.value = tip; }
+        docModRender();
+      }
+      ov.classList.toggle('visible', !!on);
+      if (!on) { docResetForm(); docScanCancel(); }
+      if (on && scan) setTimeout(function () { const f = document.getElementById('doc-scan-file'); if (f) f.click(); }, 120);
+    }
+    function docResetForm() {
+      _docEditId = null;
+      ['doc-id', 'doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
+      const t = document.getElementById('doc-type'); if (t) t.selectedIndex = 0;
+      _docScanFile = null; _docScanProp = null;
+      const r = document.getElementById('doc-scan-result'); if (r) r.style.display = 'none';
+      docModRender();
+    }
+    function docModRender() {
+      const t = document.getElementById('doc-modal-title');
+      if (t) t.textContent = _docEditId ? 'Corectează actul' : 'Act nou';
+      const b = document.getElementById('doc-btn');
+      if (b) b.textContent = _docEditId ? 'Salvează modificarea' : 'Adaugă actul';
+      // La corectare n-are rost scanarea: scanarea aduce un act NOU, nu corectează unul existent.
+      const z = document.getElementById('doc-scan-zone'); if (z) z.style.display = _docEditId ? 'none' : '';
+    }
+    async function docEdit(id) {
+      const d = (Array.isArray(_docAll) ? _docAll : []).find(function (x) { return String(x.id) === String(id); });
+      if (!d) return;
+      docFillTypes();
+      _docEditId = id;
+      document.getElementById('doc-id').value = id;
+      const s = document.getElementById('doc-imei'); if (s) { s.value = d.imei; if (s._ssSync) s._ssSync(); }
+      document.getElementById('doc-type').value = d.doc_type || 'ITP';
+      document.getElementById('doc-number').value = d.number || '';
+      document.getElementById('doc-issuer').value = d.issuer || '';
+      setField('doc-issue', d.issue_date);
+      setField('doc-expiry', d.expiry_date);
+      document.getElementById('doc-cost').value = d.cost != null ? d.cost : '';
+      docModRender();
+      docModalOpen(true);
+    }
+    // Reînnoirea nu e o corectare: deschide un act GOL, de același tip, pe aceeași mașină.
+    // Cel vechi pleacă în istoric abia la salvare, și numai după ce omul confirmă.
+    function docRenew(id) {
+      const d = (Array.isArray(_docAll) ? _docAll : []).find(function (x) { return String(x.id) === String(id); });
+      if (!d) return;
+      _docEditId = null;
+      docResetForm();
+      docModalOpen(true, d.imei, d.doc_type);
+    }
+    async function docSave() {
+      const imei = document.getElementById('doc-imei').value;
+      const tip = document.getElementById('doc-type').value;
+      if (!imei || !tip) return alert('Alege vehiculul și tipul actului');
+      const body = {
+        imei: imei, doc_type: tip,
+        number: document.getElementById('doc-number').value.trim(),
+        issuer: document.getElementById('doc-issuer').value.trim(),
+        issue_date: document.getElementById('doc-issue').value || null,
+        expiry_date: document.getElementById('doc-expiry').value || null,
+        cost: parseFloat(document.getElementById('doc-cost').value) || null
+      };
+      // Actul scanat se trimite DOAR dacă s-a încărcat unul acum. La corectare, altfel s-ar șterge
+      // scanul existent pentru o simplă îndreptare de dată.
+      if (_docScanFile) { body.file_b64 = _docScanFile.b64; body.file_mime = _docScanFile.mime; body.file_name = _docScanFile.name; }
+
+      // Reînnoirea întreabă ÎNAINTE. Actul vechi nu dispare — pleacă în istoric — dar omul trebuie
+      // să știe că se întâmplă, nu s-o descopere după.
+      if (!_docEditId && tip !== 'Altul') {
+        const vechi = (Array.isArray(_docAll) ? _docAll : []).find(function (x) { return x.imei === imei && x.doc_type === tip; });
+        if (vechi) {
+          const pana = vechi.expiry_date ? ', valabil până ' + docDate(vechi.expiry_date) : '';
+          if (!await raConfirm(mntPlate(imei) + ' are deja un act „' + tip + '"' + pana + '.\n\nÎl trimit în istoric și pun actul nou în locul lui?',
+            { title: 'Reînnoiești actul?', danger: false, icon: 'fa-rotate', okLabel: 'Da, reînnoiește' })) return false;
+        }
+      }
+      const url = _docEditId ? '/api/documents/' + _docEditId : '/api/documents';
+      const res = await fetch(url, { method: _docEditId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) { const e = await res.json().catch(function () { return {}; }); alert(e.error || 'Eroare'); return false; }
+      docModalOpen(false);
+      await loadDocuments();
+      if (typeof loadVehicleDocuments === 'function' && document.getElementById('edit-imei') && document.getElementById('edit-imei').value) loadVehicleDocuments();
+      return true;
+    }
+    async function docDelete(id) {
+      const d = (Array.isArray(_docAll) ? _docAll : []).find(function (x) { return String(x.id) === String(id); });
+      const nume = d ? '„' + d.doc_type + '" de la ' + mntPlate(d.imei) : 'actul';
+      if (!await raConfirm('Ștergi ' + nume + '?\n\nDacă vrei doar să pui unul nou în locul lui, folosește butonul de reînnoire — atunci ăsta rămâne în istoric.',
+        { okLabel: 'Șterge' })) return;
+      const r = await fetch('/api/documents/' + id, { method: 'DELETE' });
+      if (!r.ok) { alert('Eroare la ștergere'); return; }
+      await loadDocuments();
+      if (typeof loadVehicleDocuments === 'function' && document.getElementById('edit-imei') && document.getElementById('edit-imei').value) loadVehicleDocuments();
     }
 
     // ─── Zone (geofence): listă admin + desenare + randare pe hartă ───
@@ -6847,7 +7229,7 @@ const pozitii = await r.json();</code></pre>
     function initSingleDatePickers() {
       if (typeof flatpickr === 'undefined') return;
       var ro = (flatpickr.l10ns && flatpickr.l10ns.ro) ? 'ro' : 'default';
-      ['doc-issue', 'doc-expiry', 'svc-date', 'mnt-due-date', 'mdoc-issue', 'mdoc-expiry', 'drv-expiry'].forEach(function (id) {
+      ['doc-issue', 'doc-expiry', 'svc-date', 'mnt-due-date', 'drv-expiry'].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el || el._fp) return;
         el.type = 'text';
@@ -12416,7 +12798,7 @@ const pozitii = await r.json();</code></pre>
       rebuild();
     }
     (function initVehicleSearch() {
-      function go() { ['rep-imei', 'sch-imei', 'alert-imei', 'mnt-imei', 'hs-imei'].forEach(function (id) { const el = document.getElementById(id); if (el) enhanceSelectSearch(el); }); }
+      function go() { ['rep-imei', 'sch-imei', 'alert-imei', 'mnt-imei', 'doc-imei', 'hs-imei'].forEach(function (id) { const el = document.getElementById(id); if (el) enhanceSelectSearch(el); }); }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
     })();
 
@@ -13539,7 +13921,7 @@ const pozitii = await r.json();</code></pre>
       // Câmpurile FIȘEI rămân doar completate: ele aparțin vehiculului, care se salvează cu butonul
       // lui („Salvează"). Sunt două lucruri diferite și e cinstit să rămână două acțiuni.
       if (document.getElementById('doc-type').value) {
-        saveVehicleDocument().then((mers) => {
+        docSave().then((mers) => {
           if (mers && window.raxToast) raxToast(
             'Act salvat' + (inFisa ? ' · ' + inFisa + ' câmpuri completate în fișă — apasă „Salvează" pentru ele' : ''),
             'success');
@@ -13553,119 +13935,53 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('doc-scan-result').style.display = 'none';
     }
 
+    // Actele mașinii, cu ACELEAȘI rânduri ca în Management → Documente (docCard) — și cu ce-i
+    // lipsește, scris tot aici. Înainte era o listă proprie, cu alt aspect și fără „lipsește".
+    let _vehDocHistOpen = false;
     async function loadVehicleDocuments() {
       const imei = document.getElementById('edit-imei').value; if (!imei) return;
       docFillTypes();
-      var _vp = document.getElementById('veh-docs-plate'); if (_vp) _vp.textContent = (typeof vehicleLabel === 'function' ? '· ' + vehicleLabel(imei) : '');
-      try {
-        const docs = await (await fetch('/api/documents?imei=' + encodeURIComponent(imei))).json();
-        let hist = [];
-        try { hist = await (await fetch('/api/documents/history?imei=' + encodeURIComponent(imei))).json(); } catch (e) { hist = []; }
-        if (!Array.isArray(hist)) hist = [];
-        const rand = function (d) {
-          // Starea vine de la SERVER (_due), cu preavizul companiei. Era socotită aici, cu 30 de zile
-          // bătute în cod — a doua copie a aceleiași reguli, care se bătea cap în cap cu alerta.
-          const st = d._due || (d.expiry_date ? 'ok' : 'none');
-          const txt = d.expiry_date ? new Date(d.expiry_date).toLocaleDateString('ro-RO') : '';
-          let badge = 'fără dată expirare';
-          if (st === 'expired') badge = '<span style="color:var(--red);font-weight:700;">EXPIRAT (' + txt + ')</span>';
-          else if (st === 'soon') badge = '<span style="color:#B45309;font-weight:700;">expiră ' + txt + (d._days != null ? ' (' + d._days + (d._days === 1 ? ' zi' : ' zile') + ')' : '') + '</span>';
-          else if (st === 'ok') badge = '<span style="color:var(--accent);">valabil până ' + txt + '</span>';
-          // Două butoane, nu unul: „vezi" deschide actul în filă nouă (PDF-ul se randează, poza se
-          // afișează), „descarcă" îl salvează pe calculator cu un nume care spune ce e — nu „file".
-          const numeFis = (d.doc_type + '-' + (d.number || d.imei)).replace(/[^\w\-]+/g, '-')
-            + (String(d.file_mime || '').includes('pdf') ? '.pdf' : '.jpg');
-          const fisier = d.has_file
-            ? '<a class="btn-sm" href="/api/documents/' + d.id + '/file" target="_blank" rel="noopener" title="Vezi actul" style="margin-right:4px;"><i class="fas fa-eye"></i></a>'
-            + '<a class="btn-sm" href="/api/documents/' + d.id + '/file" download="' + esc(numeFis) + '" title="Descarcă actul" style="margin-right:6px;"><i class="fas fa-download"></i></a>'
-            : '';
-          return '<div class="admin-row"><div><strong>' + _docEsc(d.doc_type) + '</strong>' + (d.number ? ' · ' + _docEsc(d.number) : '') + (d.issuer ? ' · ' + _docEsc(d.issuer) : '') + '<div class="meta">' + badge + (d.cost ? ' · ' + Math.round(parseFloat(d.cost)) + ' RON' : '') + '</div></div><div style="display:flex;align-items:center;">' + fisier
-            + '<button class="btn-sm" onclick="editVehicleDoc(' + d.id + ')" title="Modifică actul" style="margin-right:4px;"><i class="fas fa-pen"></i></button>'
-            + '<button class="btn-sm btn-danger" onclick="deleteVehicleDoc(' + d.id + ')"><i class="fas fa-trash"></i></button></div></div>';
-        };
-        // Actele înlocuite: ce RCA aveai anul trecut, la ce firmă și cât ai dat. Până acum se ștergeau.
-        const randVechi = function (d) {
-          const meta = [d.number, d.issuer,
-            (d.issue_date ? 'emis ' + new Date(d.issue_date).toLocaleDateString('ro-RO') : ''),
-            (d.expiry_date ? 'valabil până ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') : ''),
-            (d.cost ? Math.round(parseFloat(d.cost)) + ' RON' : '')].filter(Boolean).join(' · ');
-          return '<div class="admin-row" style="opacity:.72;"><div><strong>' + _docEsc(d.doc_type) + '</strong> '
-            + '<span class="role">' + _docEsc(d.replaced_at ? 'înlocuit ' + new Date(d.replaced_at).toLocaleDateString('ro-RO') : 'înlocuit') + '</span>'
-            + (meta ? '<div class="meta">' + _docEsc(meta) + '</div>' : '') + '</div></div>';
-        };
-        const lista = (Array.isArray(docs) && docs.length) ? docs.map(rand).join('')
-          : '<p style="color:var(--text-muted);font-size:12px;">Niciun document.</p>';
-        const istoric = hist.length
-          ? '<div onclick="vehDocHistToggle()" id="veh-docs-hist-head" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 4px;font-size:11.5px;font-weight:700;color:var(--text-muted);border-top:1px solid var(--border);margin-top:8px;">'
-            + '<i class="fas fa-chevron-' + (_vehDocHistOpen ? 'down' : 'right') + '" style="font-size:10px;width:10px;"></i>'
-            + '<i class="fas fa-clock-rotate-left"></i> Istoric acte · ' + hist.length + ' înlocuit' + (hist.length > 1 ? 'e' : '') + '</div>'
-            + (_vehDocHistOpen ? hist.map(randVechi).join('') : '')
-          : '';
-        document.getElementById('veh-docs-list').innerHTML = lista + istoric;
-      } catch (e) { document.getElementById('veh-docs-list').innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</p>'; }
-    }
-    let _vehDocHistOpen = false;
-    function vehDocHistToggle() { _vehDocHistOpen = !_vehDocHistOpen; loadVehicleDocuments(); }
-    async function saveVehicleDocument() {
-      const imei = document.getElementById('edit-imei').value;
-      const body = { imei, doc_type: document.getElementById('doc-type').value, number: document.getElementById('doc-number').value.trim(), issuer: document.getElementById('doc-issuer').value.trim(), issue_date: document.getElementById('doc-issue').value || null, expiry_date: document.getElementById('doc-expiry').value || null, cost: parseFloat(document.getElementById('doc-cost').value) || null };
-      // Actul scanat se atașează ABIA aici — dacă omul renunță, nu rămâne nimic pe server.
-      // La MODIFICARE, fișierul se trimite doar dacă s-a scanat unul nou: altfel o corectură de
-      // dată ar șterge scanul existent.
-      if (_docScanFile) { body.file_b64 = _docScanFile.b64; body.file_mime = _docScanFile.mime; body.file_name = _docScanFile.name; }
-      const r = _docEditId
-        ? await fetch('/api/documents/' + _docEditId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        : await fetch('/api/documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      // Întoarce dacă a mers: cine cheamă funcția asta (inclusiv validarea scanării) trebuie să
-      // poată spune adevărul. Un „salvat ✓" după o salvare eșuată e mai rău decât eroarea însăși.
-      if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Eroare: ' + (e.error || r.status)); return false; }
-      _docScanFile = null; _docScanProp = null;
-      _docEditId = null; _docModRender();
-      ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
-      loadVehicleDocuments();
-      return true;
-    }
-    // Editarea unui act: se folosește ACELAȘI formular de jos, comutat în modul „modifică".
-    // Un al doilea formular ar fi însemnat două locuri de întreținut și două ocazii de a diverge.
-    let _docEditId = null;
-    async function editVehicleDoc(id) {
-      const imei = document.getElementById('edit-imei').value;
-      const docs = await (await fetch('/api/documents?imei=' + encodeURIComponent(imei))).json().catch(() => []);
-      const d = (Array.isArray(docs) ? docs : []).find(x => x.id === id);
-      if (!d) return;
-      _docEditId = id;
-      document.getElementById('doc-type').value = d.doc_type || 'ITP';
-      document.getElementById('doc-number').value = d.number || '';
-      document.getElementById('doc-issuer').value = d.issuer || '';
-      // Datele TREBUIE puse prin setField: sunt gestionate de calendar (vezi comentariul de acolo).
-      setField('doc-issue', d.issue_date);
-      setField('doc-expiry', d.expiry_date);
-      document.getElementById('doc-cost').value = d.cost != null ? d.cost : '';
-      _docModRender();
-      document.getElementById('doc-type').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    // Butonul spune ce face, iar când ești în modificare apare și „renunță" — altfel n-ai cum să
-    // ieși din modul de editare decât închizând fișa.
-    function _docModRender() {
-      const b = document.querySelector('#edit-tab-documents .doc-actions');
-      if (!b) return;
-      b.innerHTML = _docEditId
-        ? '<button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-check"></i> Salvează modificarea</button>'
-          + '<button class="btn-sm" onclick="docEditCancel()" style="margin-left:6px;">Renunță</button>'
-        : '<button class="btn-sm btn-primary" onclick="saveVehicleDocument()"><i class="fas fa-plus"></i> Adaugă</button>';
-    }
-    function docEditCancel() {
-      _docEditId = null;
-      ['doc-number', 'doc-issuer', 'doc-issue', 'doc-expiry', 'doc-cost'].forEach(clearField);
-      _docModRender();
-    }
+      await docReqLoad();
+      const el = document.getElementById('veh-docs-list'); if (!el) return;
+      const canEdit = (typeof can === 'function') ? !!can('manageFleet') : true;
+      const _vp = document.getElementById('veh-docs-plate');
+      if (_vp) _vp.textContent = (typeof vehicleLabel === 'function' ? '· ' + vehicleLabel(imei) : '');
+      let acte = [], hist = [];
+      try { acte = await (await fetch('/api/documents?imei=' + encodeURIComponent(imei))).json(); } catch (e) { acte = []; }
+      if (!Array.isArray(acte)) acte = [];
+      try { hist = await (await fetch('/api/documents/history?imei=' + encodeURIComponent(imei))).json(); } catch (e) { hist = []; }
+      if (!Array.isArray(hist)) hist = [];
+      // Rândurile cheamă docEdit/docRenew/docDelete, care caută actul în _docAll. Când fișa e
+      // deschisă fără să fi trecut prin ecranul Documente, lista aia e goală — o completăm aici.
+      const known = new Set((Array.isArray(_docAll) ? _docAll : []).map(function (d) { return d.id; }));
+      if (!Array.isArray(_docAll)) _docAll = [];
+      acte.forEach(function (d) { if (!known.has(d.id)) _docAll.push(d); });
 
-    async function deleteVehicleDoc(id) {
-      if (!await raConfirm('Ștergi documentul?', { okLabel: 'Șterge' })) return;
-      const r = await fetch('/api/documents/' + id, { method: 'DELETE' });
-      if (!r.ok) { alert('Eroare la ștergere'); return; }
-      loadVehicleDocuments();
+      const rang = { expired: 0, soon: 1, none: 2, ok: 3 };
+      acte.sort(function (a, b) {
+        const ra = rang[docState(a)], rb = rang[docState(b)];
+        return ra !== rb ? ra - rb : String(a.expiry_date || '').localeCompare(String(b.expiry_date || ''));
+      });
+      const are = acte.map(function (d) { return _mntNorm(d.doc_type); });
+      const lip = docNeedsOf(imei).filter(function (m) { return are.indexOf(_mntNorm(m.type)) < 0; });
+
+      el.innerHTML =
+        (acte.length ? acte.map(function (d) { return docCard(d, false, canEdit); }).join('')
+                     : '<div class="mnt-empty" style="padding:18px;">Niciun act introdus pentru mașina asta.</div>')
+        + (lip.length ? '<div class="mnt-sub">Nu sunt introduse</div>' + lip.map(function (m) { return docMissingCard(m, imei, canEdit); }).join('') : '')
+        + (hist.length
+            ? '<div class="mnt-g' + (_vehDocHistOpen ? ' open' : '') + '" style="margin-top:10px;">'
+              + '<div class="mnt-ghead" onclick="vehDocHistToggle()" title="' + (_vehDocHistOpen ? 'Ascunde' : 'Arată') + ' actele înlocuite">'
+              + '<i class="fas fa-chevron-right mnt-caret"></i>'
+              + '<div><div class="mnt-gp" style="font-size:13px;">Acte înlocuite</div></div>'
+              + '<span class="mnt-gn">' + hist.length + (hist.length === 1 ? ' act' : ' acte') + '</span></div>'
+              + (_vehDocHistOpen ? '<div class="mnt-gbody">' + hist.map(docHistCard).join('') + '</div>' : '')
+            + '</div>'
+            : '');
     }
+    function vehDocHistToggle() { _vehDocHistOpen = !_vehDocHistOpen; loadVehicleDocuments(); }
+
+
     // Lucrările mașinii, cu ACELEAȘI rânduri ca în ecranul Mentenanță (mntCard) — deci vezi și aici
     // „depășit cu 2.300 km", cu roșu, nu un „planificat" galben care minte.
     let _mntVehRows = null;
@@ -13815,7 +14131,7 @@ const pozitii = await r.json();</code></pre>
       // Propunerile scanate și modul „modifică act" aparțin vehiculului DINAINTE — nu au voie să
       // supraviețuiască schimbării. Altfel ai edita actul altei mașini fără să-ți dai seama.
       if (typeof docScanCancel === 'function') docScanCancel();
-      if (typeof docEditCancel === 'function') docEditCancel();
+      if (typeof docResetForm === 'function') docResetForm();
       _taburiToate = false;   // portița e per-vehicul, nu o setare care rămâne
       document.querySelectorAll('.scan-filled').forEach(el => el.classList.remove('scan-filled'));
 
