@@ -2639,6 +2639,30 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
+  <style id="fc-css">
+    /* Card combustibil. Rândurile și grupele sunt cele comune din Management (.mnt-*); aici stă
+       doar ce e specific: rezumatul lunii și caseta de previzualizare a importului. */
+    .fc-sum { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .fc-card { flex: 1 1 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; }
+    .fc-l { font-size: 10px; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
+    .fc-v { font-size: 23px; font-weight: 800; line-height: 1.15; margin-top: 3px; color: var(--text-primary); }
+    .fc-v em { font-size: 12px; font-weight: 600; color: var(--text-muted); font-style: normal; }
+    .fc-s { font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-top: 3px; }
+    .fc-note { font-size: 11.5px; color: var(--text-muted); margin-top: 12px; line-height: 1.55; }
+    .fc-prep { background: var(--bg-dark); border: 1px solid var(--accent); border-radius: 12px; padding: 13px 15px; margin-bottom: 12px; font-size: 12.5px; }
+    .fc-prep.err { border-color: var(--red); color: var(--red); }
+    .fc-prep-t { font-size: 12px; font-weight: 800; margin-bottom: 8px; }
+    .fc-prep-l { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .fc-prep-l li { padding-left: 15px; position: relative; font-weight: 600; }
+    .fc-prep-l li::before { content: '•'; position: absolute; left: 3px; opacity: .6; }
+    .fc-prep-l li.w { color: var(--orange); }
+    .fc-prep-b { display: flex; gap: 8px; justify-content: flex-end; }
+    .fc-prep-b .btn-sm { height: 34px; padding: 0 14px; border-radius: 9px; font-size: 12.5px; font-weight: 700; width: auto; }
+    .fc-prep-b .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; }
+    .fc-add-g { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 10px; }
+    #fuelcard-view .toolbar-row > .btn-sm { height: 36px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; background: var(--bg-panel); width: auto; }
+    #fuelcard-view .toolbar-row > .btn-sm.btn-primary { background: var(--accent); border-color: var(--accent); color: #06210F; box-shadow: 0 2px 8px rgba(63, 224, 125, .28); }
+  </style>
   <div id="fuelcard-view" class="modal-overlay">
     <div class="modal" style="width:1080px;max-width:96vw;max-height:92vh;">
       <h2><span><i class="fas fa-credit-card" style="margin-right:8px;color:var(--accent);"></i> Card combustibil — alimentări &amp; reconciliere</span>
@@ -16743,69 +16767,248 @@ const pozitii = await r.json();</code></pre>
         (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >1h">⚠ ' + h.offline30 + '</span>' : '') +
         (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
     }
-    window.loadFuelCard = async function () {
-      var host = document.getElementById('fuelcard-host'); if (!host) return;
-      host.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
-      var rows = [];
-      try { rows = await fetch('/api/fuel-transactions', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) { rows = []; }
-      if (!Array.isArray(rows)) rows = [];
-      var badge = function (s) {
-        var map = { reconciliat: ['#16a34a', 'reconciliat'], suspect: ['#ef4444', 'SUSPECT'], partial: ['#f59e0b', 'parțial'], fara_can: ['#64748b', 'fără CAN'], nou: ['#64748b', 'neverificat'] };
-        var x = map[s] || map.nou;
-        return '<span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:' + x[0] + '22;color:' + x[0] + ';">' + x[1] + '</span>';
-      };
-      var dt = function (ms) { if (!ms) return '—'; try { return new Date(Number(ms)).toLocaleDateString('ro-RO'); } catch (e) { return '—'; } };
-      var nL = rows.reduce(function (a, r) { return a + (Number(r.liters) || 0); }, 0);
-      var nAmt = rows.reduce(function (a, r) { return a + (Number(r.amount) || 0); }, 0);
-      var nSus = rows.filter(function (r) { return r.status === 'suspect'; }).length;
-      var trs = rows.map(function (r) {
-        var veh = (r.plate || r.vehicle_name) ? esc(r.plate || r.vehicle_name) : (r.imei ? '<span style="color:var(--text-muted)">' + esc(r.imei) + '</span>' : '<span style="color:var(--text-muted)">nealocat</span>');
-        return '<tr style="border-bottom:1px solid var(--border);' + (r.status === 'suspect' ? 'background:rgba(239,68,68,.06);' : '') + '">' +
-          '<td style="padding:6px 8px;">' + dt(r.ts) + '</td><td style="padding:6px 8px;">' + esc(r.station || '—') + '</td><td style="padding:6px 8px;">' + veh + '</td>' +
-          '<td style="padding:6px 8px;text-align:right;">' + (Number(r.liters) || 0).toFixed(1) + ' L</td>' +
-          '<td style="padding:6px 8px;text-align:right;color:var(--text-muted);">' + (r.tank_delta != null ? (Number(r.tank_delta).toFixed(1) + ' L') : '—') + '</td>' +
-          '<td style="padding:6px 8px;text-align:right;">' + (r.amount != null ? (Number(r.amount).toFixed(0) + ' ' + esc(r.currency || 'RON')) : '—') + '</td>' +
-          '<td style="padding:6px 8px;">' + badge(r.status) + '</td>' +
-          '<td style="padding:6px 8px;text-align:right;"><button class="rax-btn" style="padding:3px 7px;font-size:11px;" onclick="raxFcDelete(' + r.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
-      }).join('');
-      host.innerHTML =
-        '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;">' +
-          '<div style="flex:1;min-width:260px;background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px;">' +
-            '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:8px;"><i class="fas fa-file-csv"></i> Import CSV</div>' +
-            '<textarea id="fc-csv" class="rax-field" style="width:100%;min-height:70px;margin:0;font-size:12px;" placeholder="Lipește CSV-ul de la furnizorul de card (cu antet). Coloane recunoscute: data, litri, sumă, înmatriculare, stație, card…"></textarea>' +
-            '<button class="rax-btn primary" style="margin-top:8px;" onclick="raxFcImport(this)"><i class="fas fa-upload"></i> Importă</button>' +
-          '</div>' +
-          '<div style="flex:1;min-width:260px;background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px;">' +
-            '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:8px;"><i class="fas fa-plus"></i> Adaugă manual</div>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
-              '<input id="fc-plate" class="rax-field" style="margin:0;" placeholder="Înmatriculare">' +
-              '<input id="fc-date" type="date" class="rax-field" style="margin:0;">' +
-              '<input id="fc-liters" type="number" class="rax-field" style="margin:0;" placeholder="Litri">' +
-              '<input id="fc-amount" type="number" class="rax-field" style="margin:0;" placeholder="Sumă (RON)">' +
-              '<input id="fc-station" class="rax-field" style="margin:0;grid-column:1/3;" placeholder="Stație (opțional)">' +
-            '</div>' +
-            '<button class="rax-btn primary" style="margin-top:8px;" onclick="raxFcAdd(this)"><i class="fas fa-plus"></i> Adaugă + verifică</button>' +
-          '</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">' +
-          '<button class="rax-btn" onclick="raxFcReconcile(this)"><i class="fas fa-scale-balanced"></i> Reconciliază toate</button>' +
-          '<span style="font-size:12px;color:var(--text-muted);margin-left:auto;">' + rows.length + ' alimentări · ' + nL.toFixed(0) + ' L · ' + nAmt.toFixed(0) + ' RON' + (nSus ? ' · <strong style="color:#ef4444;">' + nSus + ' suspecte</strong>' : '') + '</span>' +
-        '</div>' +
-        '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr style="text-align:left;color:var(--text-muted);border-bottom:1px solid var(--border);">' +
-          '<th style="padding:6px 8px;">Data</th><th style="padding:6px 8px;">Stație</th><th style="padding:6px 8px;">Vehicul</th><th style="padding:6px 8px;text-align:right;">Litri</th><th style="padding:6px 8px;text-align:right;">Δ rezervor</th><th style="padding:6px 8px;text-align:right;">Sumă</th><th style="padding:6px 8px;">Status</th><th></th>' +
-          '</tr></thead><tbody>' + (trs || '<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--text-muted);">Nicio alimentare. Importă un CSV sau adaugă manual.</td></tr>') + '</tbody></table></div>' +
-        '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;"><strong>Cum funcționează:</strong> comparăm litrii de pe card cu creșterea reală a nivelului din rezervor (CAN), în jurul alimentării. „SUSPECT" = s-a plătit combustibil dar rezervorul NU a crescut (posibil furt). „Fără CAN" = vehiculul nu raportează nivel combustibil (nu poate fi verificat automat).</div>';
+    // ─── Card combustibil ───
+    // Ritualul lunar: exporți decontul de la card (DKV, OMV…), îl imporți aici, iar aplicația îl
+    // pune față în față cu ce a intrat REAL în rezervoare (CAN sau sondă calibrată) și arată unde
+    // sunt abateri. Înainte era un tabel plat, fără concluzie: trebuia să aduni tu din rânduri.
+    let _fcRows = null, _fcPeriod = 'prev', _fcOpen = {}, _fcPrep = null;
+
+    // Cuvintele: „reconciliat/suspect" e limbaj de contabil. Omul vrea să știe dacă motorina a
+    // ajuns în rezervor.
+    const FC_ST = {
+      reconciliat: { t: 'a intrat tot', cls: 's-done', ic: 'fa-circle-check' },
+      partial:     { t: 'a intrat parțial', cls: 's-soon', ic: 'fa-circle-half-stroke' },
+      suspect:     { t: 'NU a intrat', cls: 's-over', ic: 'fa-triangle-exclamation' },
+      fara_can:    { t: 'nu se poate verifica', cls: 's-none', ic: 'fa-circle-question' },
+      nou:         { t: 'neverificat', cls: 's-none', ic: 'fa-clock' }
     };
-    window.raxFcImport = async function (btn) {
-      var ta = document.getElementById('fc-csv'); var csv = ta ? ta.value.trim() : '';
-      if (!csv) { if (window.raxToast) raxToast('Lipește un CSV întâi', 'error'); return; }
-      if (btn) btn.disabled = true;
+    function fcSt(r) { return FC_ST[r.status] || FC_ST.nou; }
+    // Se poate pune față în față? Doar când mașina a raportat nivelul din rezervor.
+    function fcVerificabil(r) { return r.tank_delta != null && r.status !== 'fara_can' && r.status !== 'nou'; }
+    function fcLipsa(r) { return fcVerificabil(r) ? Math.max(0, (Number(r.liters) || 0) - (Number(r.tank_delta) || 0)) : 0; }
+    // Diferența care CHIAR înseamnă ceva. Un litru lipsă la o alimentare de 60 e clătinatul
+    // combustibilului în rezervor, nu furt — serverul a și zis „a intrat tot". Doar alimentările
+    // pe care el le-a marcat ca neintrate (sau intrate pe jumătate) sortează lista și deschid mașina.
+    function fcLipsaGrava(r) { return (r.status === 'suspect' || r.status === 'partial') ? fcLipsa(r) : 0; }
+    function fcLeiPeL(r) { const l = Number(r.liters) || 0, a = Number(r.amount) || 0; return l > 0 ? a / l : 0; }
+
+    // Perioada: ritualul e lunar, deci implicit arătăm LUNA TRECUTĂ — aia se decontează.
+    function fcInterval() {
+      const n = new Date();
+      if (_fcPeriod === 'cur') return [new Date(n.getFullYear(), n.getMonth(), 1).getTime(), Infinity];
+      if (_fcPeriod === 'prev') {
+        const d1 = new Date(n.getFullYear(), n.getMonth() - 1, 1).getTime();
+        const d2 = new Date(n.getFullYear(), n.getMonth(), 1).getTime() - 1;
+        return [d1, d2];
+      }
+      return [-Infinity, Infinity];
+    }
+    function fcPeriodLabel() {
+      const n = new Date();
+      if (_fcPeriod === 'cur') return 'luna aceasta';
+      if (_fcPeriod === 'prev') return new Date(n.getFullYear(), n.getMonth() - 1, 1).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+      return 'toate alimentările';
+    }
+    window.fcSetPeriod = function (p) { _fcPeriod = p; renderFuelCard(); };
+    window.fcToggle = function (k) { _fcOpen[k] = !_fcOpen[k]; renderFuelCard(); };
+
+    window.loadFuelCard = async function () {
+      const host = document.getElementById('fuelcard-host'); if (!host) return;
+      host.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try { _fcRows = await fetch('/api/fuel-transactions', { credentials: 'same-origin' }).then(r => r.json()); } catch (e) { _fcRows = []; }
+      if (!Array.isArray(_fcRows)) _fcRows = [];
+      renderFuelCard();
+    };
+
+    function renderFuelCard() {
+      const host = document.getElementById('fuelcard-host'); if (!host) return;
+      const [d1, d2] = fcInterval();
+      const rows = (_fcRows || []).filter(r => { const t = Number(r.ts) || 0; return t >= d1 && t <= d2; });
+
+      // ── Concluzia lunii: cifra pentru care omul face toată treaba ──
+      let platL = 0, platLei = 0, verifL = 0, intratL = 0, lipsaL = 0, lipsaLei = 0;
+      rows.forEach(r => {
+        platL += Number(r.liters) || 0;
+        platLei += Number(r.amount) || 0;
+        if (fcVerificabil(r)) {
+          verifL += Number(r.liters) || 0;               // cât din ce s-a plătit a putut fi verificat
+          intratL += Number(r.tank_delta) || 0;
+          const m = fcLipsa(r); lipsaL += m; lipsaLei += m * fcLeiPeL(r);
+        }
+      });
+      const masini = Array.from(new Set(rows.map(r => r.imei).filter(Boolean)));
+      const verificate = masini.filter(im => rows.some(r => r.imei === im && fcVerificabil(r))).length;
+      const nf1 = n => (Math.round(n * 10) / 10).toLocaleString('ro-RO');
+      const nf0 = n => Math.round(n).toLocaleString('ro-RO');
+
+      const card = (lbl, val, unit, sub, col) =>
+        '<div class="fc-card"><div class="fc-l">' + lbl + '</div>'
+        + '<div class="fc-v"' + (col ? ' style="color:' + col + '"' : '') + '>' + val + ' <em>' + unit + '</em></div>'
+        + (sub ? '<div class="fc-s">' + sub + '</div>' : '') + '</div>';
+
+      const rezumat = rows.length
+        ? '<div class="fc-sum">'
+          + card('Plătit pe card', nf1(platL), 'L', nf0(platLei) + ' lei')
+          + card('A intrat în rezervoare', nf1(intratL), 'L', verificate
+              ? 'din ' + nf1(verifL) + ' L verificabili · ' + verificate + ' din ' + masini.length + ' mașini'
+              : 'nicio mașină nu raportează nivelul')
+          + card('Lipsă', nf1(lipsaL), 'L', nf0(lipsaLei) + ' lei', lipsaL > 0 ? 'var(--red)' : 'var(--accent)')
+          + '</div>'
+          + (verificate < masini.length
+              ? '<div class="mnt-banner s-soon"><i class="fas fa-circle-info"></i><span>'
+                + (masini.length - verificate) + (masini.length - verificate === 1 ? ' mașină nu raportează' : ' mașini nu raportează')
+                + ' nivelul din rezervor (fără CAN sau sondă necalibrată), deci alimentările lor <b>nu pot fi verificate</b>.</span></div>'
+              : '')
+        : '';
+
+      // ── Pe mașină: unde pierd bani, nu o listă în ordinea datei ──
+      const byVeh = new Map();
+      rows.forEach(r => { const k = r.imei || '_'; if (!byVeh.has(k)) byVeh.set(k, []); byVeh.get(k).push(r); });
+      const chei = Array.from(byVeh.keys()).sort((a, b) => {
+        const la = byVeh.get(a).reduce((x, r) => x + fcLipsaGrava(r), 0);
+        const lb = byVeh.get(b).reduce((x, r) => x + fcLipsaGrava(r), 0);
+        if (la !== lb) return lb - la;                      // cele cu lipsă, primele
+        return String(fcVeh(a)).localeCompare(String(fcVeh(b)));
+      });
+
+      let lista = '';
+      chei.forEach(k => {
+        const list = byVeh.get(k).slice().sort((a, b) => fcLipsaGrava(b) - fcLipsaGrava(a) || (Number(b.ts) || 0) - (Number(a.ts) || 0));
+        const lipsa = list.reduce((x, r) => x + fcLipsaGrava(r), 0);
+        const lei = list.reduce((x, r) => x + fcLipsaGrava(r) * fcLeiPeL(r), 0);
+        const nVer = list.filter(fcVerificabil).length;
+        if (_fcOpen[k] === undefined) _fcOpen[k] = lipsa > 0 || chei.length === 1;
+        const open = _fcOpen[k];
+        const badge = lipsa > 0
+          ? '<span class="mnt-gn al">lipsă ' + nf1(lipsa) + ' L · ' + nf0(lei) + ' lei</span>'
+          : (nVer ? '<span class="mnt-gn ok">în regulă · ' + list.length + (list.length === 1 ? ' alimentare' : ' alimentări') + '</span>'
+                  : '<span class="mnt-gn">neverificabil · ' + list.length + (list.length === 1 ? ' alimentare' : ' alimentări') + '</span>');
+        lista += '<div class="mnt-g' + (open ? ' open' : '') + '">'
+          + '<div class="mnt-ghead" onclick="fcToggle(\'' + esc(k) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' alimentările">'
+          + '<i class="fas fa-chevron-right mnt-caret"></i>'
+          + '<div><div class="mnt-gp">' + esc(fcVeh(k)) + '</div><div class="mnt-gm">'
+          + esc(list.reduce((x, r) => x + (Number(r.liters) || 0), 0).toFixed(0) + ' L · '
+                + Math.round(list.reduce((x, r) => x + (Number(r.amount) || 0), 0)) + ' lei') + '</div></div>'
+          + badge + '</div>'
+          + (open ? '<div class="mnt-gbody">' + list.map(fcRow).join('') + '</div>' : '')
+          + '</div>';
+      });
+      if (!rows.length) lista = '<div class="mnt-empty"><i class="fas fa-credit-card" style="font-size:22px;opacity:.4;display:block;margin-bottom:8px;"></i>'
+        + 'Nicio alimentare în ' + esc(fcPeriodLabel()) + '. Încarcă decontul de la furnizorul de card.</div>';
+
+      host.innerHTML =
+        '<div class="toolbar-row" style="margin-bottom:12px;">'
+          + '<div class="mnt-seg" id="fc-seg">'
+            + '<button' + (_fcPeriod === 'prev' ? ' class="on"' : '') + ' onclick="fcSetPeriod(\'prev\')">Luna trecută</button>'
+            + '<button' + (_fcPeriod === 'cur' ? ' class="on"' : '') + ' onclick="fcSetPeriod(\'cur\')">Luna aceasta</button>'
+            + '<button' + (_fcPeriod === 'all' ? ' class="on"' : '') + ' onclick="fcSetPeriod(\'all\')">Tot</button>'
+          + '</div>'
+          + '<span class="toolbar-spacer"></span>'
+          + '<button class="btn-sm" onclick="raxFcReconcile(this)" title="Verifică din nou toate alimentările, cu datele de acum"><i class="fas fa-rotate"></i> Verifică din nou</button>'
+          + '<button class="btn-sm" onclick="fcAddOpen()"><i class="fas fa-plus"></i> Adaugă manual</button>'
+          + '<button class="btn-sm btn-primary" onclick="fcPickFile()"><i class="fas fa-arrow-up-from-bracket"></i> Încarcă decontul</button>'
+        + '</div>'
+        + '<input type="file" id="fc-file" accept=".csv,.txt,text/csv,text/plain" style="display:none;" onchange="fcFilePicked(this.files[0]); this.value=\'\';">'
+        + '<div id="fc-prep"></div>'
+        + '<div id="fc-add" style="display:none;"></div>'
+        + rezumat + lista
+        + '<div class="fc-note"><b>Cum verificăm:</b> punem litrii de pe bon față în față cu creșterea reală a nivelului din rezervor '
+        + '(CAN sau sondă calibrată), în jurul alimentării. <b>„NU a intrat"</b> = s-a plătit, dar rezervorul nu a crescut. '
+        + '<b>„Nu se poate verifica"</b> = mașina nu raportează nivelul.</div>';
+    }
+    function fcVeh(k) {
+      if (k === '_') return 'Fără mașină alocată';
+      const r = (_fcRows || []).find(x => x.imei === k);
+      return (r && (r.plate || r.vehicle_name)) || k;
+    }
+    function fcRow(r) {
+      const st = fcSt(r), lipsa = fcLipsaGrava(r);
+      const t = r.ts ? new Date(Number(r.ts)) : null;
+      const bits = [];
+      if (r.station) bits.push(esc(r.station));
+      if (r.tank_delta != null) bits.push('a intrat ' + (Math.round(Number(r.tank_delta) * 10) / 10).toLocaleString('ro-RO') + ' L');
+      if (lipsa > 0) bits.push('<b>lipsă ' + (Math.round(lipsa * 10) / 10).toLocaleString('ro-RO') + ' L</b>');
+      const lei = Number(r.amount) || 0, l = Number(r.liters) || 0;
+      if (l > 0 && lei > 0) bits.push((lei / l).toFixed(2).replace('.', ',') + ' lei/L');
+      return '<div class="mnt-r dated ' + st.cls + '">'
+        + (t ? '<div class="mnt-d"><b>' + t.getDate() + '</b><span>' + MNT_LUNI[t.getMonth()] + '</span></div>'
+             : '<div class="mnt-d"><b>—</b><span>fără</span></div>')
+        + '<span class="mnt-ic mnt-c-ic f-fuel"><i class="fas fa-gas-pump"></i></span>'
+        + '<div class="mnt-c-tt"><div class="mnt-t">' + (Math.round(l * 10) / 10).toLocaleString('ro-RO') + ' L'
+        + (lei ? ' <span style="font-weight:600;color:var(--text-muted);">· ' + Math.round(lei) + ' ' + esc(r.currency || 'RON') + '</span>' : '') + '</div>'
+        + '<div class="mnt-s"><span>' + (bits.join(' · ') || '—') + '</span></div></div>'
+        + '<span class="mnt-pill mnt-c-pi"><i class="fas ' + st.ic + '"></i>' + st.t + '</span>'
+        + '<span class="mnt-c mnt-c-co"></span>'
+        + '<div class="mnt-act mnt-c-ac"><button class="btn-sm btn-danger" title="Șterge alimentarea" onclick="raxFcDelete(' + r.id + ')"><i class="fas fa-trash"></i></button></div>'
+        + '</div>';
+    }
+
+    // ── Încărcarea decontului: fișier, previzualizare, apoi import ──
+    window.fcPickFile = function () { const f = document.getElementById('fc-file'); if (f) { f.value = ''; f.click(); } };
+    window.fcFilePicked = function (file) {
+      if (!file) return;
+      const box = document.getElementById('fc-prep');
+      if (box) box.innerHTML = '<div class="fc-prep"><i class="fas fa-circle-notch fa-spin"></i> Citesc fișierul…</div>';
+      const fr = new FileReader();
+      fr.onload = async function () {
+        const csv = String(fr.result || '');
+        try {
+          const r = await fetch('/api/fuel-transactions/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ csv }) }).then(x => x.json());
+          if (r.error) { if (box) box.innerHTML = '<div class="fc-prep err"><i class="fas fa-triangle-exclamation"></i> ' + esc(r.error) + '</div>'; return; }
+          _fcPrep = { csv: csv, r: r };
+          fcPrepRender();
+        } catch (e) { if (box) box.innerHTML = '<div class="fc-prep err">Nu am putut citi fișierul.</div>'; }
+      };
+      fr.readAsText(file, 'utf-8');
+    };
+    // Spune ce URMEAZĂ să se întâmple, înainte să se întâmple. Fără asta, un fișier dat de două ori
+    // dubla tăcut tot decontul, iar rândurile fără mașină treceau neobservate.
+    function fcPrepRender() {
+      const box = document.getElementById('fc-prep'); if (!box || !_fcPrep) return;
+      const r = _fcPrep.r;
+      const per = (r.dela && r.panala)
+        ? new Date(r.dela).toLocaleDateString('ro-RO') + ' – ' + new Date(r.panala).toLocaleDateString('ro-RO') : '';
+      box.innerHTML = '<div class="fc-prep">'
+        + '<div class="fc-prep-t"><i class="fas fa-file-csv"></i> Am citit ' + r.total + (r.total === 1 ? ' rând' : ' rânduri') + (per ? ' · ' + esc(per) : '') + '</div>'
+        + '<ul class="fc-prep-l">'
+        + '<li><b>' + r.noi + '</b> ' + (r.noi === 1 ? 'alimentare nouă' : 'alimentări noi') + ' — ' + r.litri.toLocaleString('ro-RO') + ' L, ' + r.suma.toLocaleString('ro-RO') + ' lei</li>'
+        + (r.dubluri ? '<li><b>' + r.dubluri + '</b> ' + (r.dubluri === 1 ? 'o ai deja' : 'le ai deja') + ' — se sar, nu se dublează</li>' : '')
+        + (r.faraVehicul ? '<li class="w"><b>' + r.faraVehicul + '</b> fără mașină găsită după număr — intră, dar nu pot fi verificate</li>' : '')
+        + '</ul>'
+        + '<div class="fc-prep-b">'
+        + '<button class="btn-sm" onclick="fcPrepCancel()">Renunță</button>'
+        + (r.noi ? '<button class="btn-sm btn-primary" onclick="fcPrepGo(this)"><i class="fas fa-check"></i> Importă și verifică</button>' : '')
+        + '</div></div>';
+    }
+    window.fcPrepCancel = function () { _fcPrep = null; const b = document.getElementById('fc-prep'); if (b) b.innerHTML = ''; };
+    window.fcPrepGo = async function (btn) {
+      if (!_fcPrep) return;
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Import și verific…'; }
       try {
-        var r = await fetch('/api/fuel-transactions/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ csv: csv }) }).then(function (x) { return x.json(); });
+        const r = await fetch('/api/fuel-transactions/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ csv: _fcPrep.csv }) }).then(x => x.json());
         if (r.error) { if (window.raxToast) raxToast(r.error, 'error'); }
-        else { if (window.raxToast) raxToast('Importate ' + r.imported + ' alimentări' + (r.unmatchedPlate ? ' (' + r.unmatchedPlate + ' fără vehicul găsit)' : '') + '. Apasă „Reconciliază".', 'success'); loadFuelCard(); }
+        else if (window.raxToast) raxToast('Importate ' + r.imported + (r.sarite ? ' · ' + r.sarite + ' sărite (le aveai)' : '')
+          + (r.suspect ? ' · ' + r.suspect + ' unde motorina NU a intrat' : ''), r.suspect ? 'error' : 'success');
+        _fcPrep = null;
+        await loadFuelCard();
       } catch (e) { if (window.raxToast) raxToast('Eroare la import', 'error'); }
-      finally { if (btn) btn.disabled = false; }
+    };
+
+    // ── Adăugare manuală (pentru bonurile care nu vin pe card) ──
+    window.fcAddOpen = function () {
+      const b = document.getElementById('fc-add'); if (!b) return;
+      if (b.style.display !== 'none') { b.style.display = 'none'; return; }
+      b.style.display = '';
+      b.innerHTML = '<div class="fc-prep"><div class="fc-prep-t"><i class="fas fa-plus"></i> Alimentare adăugată de mână</div>'
+        + '<div class="fc-add-g">'
+        + '<input id="fc-plate" class="rax-field" placeholder="Înmatriculare">'
+        + '<input id="fc-date" type="date" class="rax-field">'
+        + '<input id="fc-liters" type="number" step="0.01" class="rax-field" placeholder="Litri">'
+        + '<input id="fc-amount" type="number" step="0.01" class="rax-field" placeholder="Sumă (lei)">'
+        + '<input id="fc-station" class="rax-field" placeholder="Stație (opțional)">'
+        + '</div>'
+        + '<div class="fc-prep-b"><button class="btn-sm" onclick="fcAddOpen()">Renunță</button>'
+        + '<button class="btn-sm btn-primary" onclick="raxFcAdd(this)"><i class="fas fa-plus"></i> Adaugă și verifică</button></div></div>';
     };
     window.raxFcAdd = async function (btn) {
       var g = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
@@ -16825,7 +17028,7 @@ const pozitii = await r.json();</code></pre>
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se verifică…'; }
       try {
         var r = await fetch('/api/fuel-transactions/reconcile', { method: 'POST', credentials: 'same-origin' }).then(function (x) { return x.json(); });
-        if (window.raxToast) raxToast('Verificate ' + (r.reconciled || 0) + ' alimentări' + (r.suspect ? ' · ' + r.suspect + ' suspecte' : ''), r.suspect ? 'error' : 'success');
+        if (window.raxToast) raxToast('Verificate ' + (r.reconciled || 0) + ' alimentări' + (r.suspect ? ' · ' + r.suspect + ' unde motorina NU a intrat' : ''), r.suspect ? 'error' : 'success');
         loadFuelCard();
       } catch (e) { if (window.raxToast) raxToast('Eroare', 'error'); if (btn) { btn.disabled = false; btn.innerHTML = o; } }
     };

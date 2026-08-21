@@ -3987,19 +3987,51 @@ app.post('/api/fuel-transactions', requireAuth, requireFleet, withCompany, async
     res.json(row);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Ce se va întâmpla dacă imporți fișierul ăsta — FĂRĂ să scrii nimic. Ritualul lunar e „export
+// din DKV → import aici"; e ușor să dai de două ori același fișier, iar până acum se dubla tot.
+async function _fcPregatire(csv, companyId) {
+  const parsed = parseFuelCsv(csv || '');
+  const out = { total: parsed.length, noi: [], dubluri: 0, faraVehicul: 0, litri: 0, suma: 0, dela: null, panala: null };
+  for (const p of parsed.slice(0, 5000)) {
+    const imei = p.plate ? await db.getDeviceImeiByPlate(p.plate, companyId) : null;
+    if (p.plate && !imei) out.faraVehicul++;
+    const rand = { imei, plate: p.plate || null, ts: p.ts, station: p.station, country: p.country,
+                   liters: p.liters, amount: p.amount, card_number: p.card_number };
+    const dubl = await db.findFuelTxDuplicate(companyId, rand);
+    if (dubl) { out.dubluri++; continue; }
+    out.noi.push(rand);
+    out.litri += Number(p.liters) || 0;
+    out.suma += Number(p.amount) || 0;
+    if (p.ts) { if (!out.dela || p.ts < out.dela) out.dela = p.ts; if (!out.panala || p.ts > out.panala) out.panala = p.ts; }
+  }
+  out.litri = Math.round(out.litri * 10) / 10;
+  out.suma = Math.round(out.suma);
+  return out;
+}
+app.post('/api/fuel-transactions/preview', requireAuth, requireFleet, withCompany, async (req, res) => {
+  try {
+    const prep = await _fcPregatire((req.body && req.body.csv) || '', req.companyId);
+    if (!prep.total) return res.status(400).json({ error: 'Fișier gol sau format necunoscut (antet așteptat: dată, litri, sumă, înmatriculare, stație…)' });
+    res.json({ total: prep.total, noi: prep.noi.length, dubluri: prep.dubluri, faraVehicul: prep.faraVehicul,
+               litri: prep.litri, suma: prep.suma, dela: prep.dela, panala: prep.panala,
+               exemple: prep.noi.slice(0, 5) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/fuel-transactions/import', requireAuth, requireFleet, withCompany, async (req, res) => {
   try {
-    const parsed = parseFuelCsv((req.body && req.body.csv) || '');
-    if (!parsed.length) return res.status(400).json({ error: 'CSV gol sau format necunoscut (antet așteptat: data, litri, sumă, înmatriculare, stație…)' });
-    let imported = 0, noVeh = 0;
-    for (const p of parsed.slice(0, 5000)) {
-      const imei = p.plate ? await db.getDeviceImeiByPlate(p.plate, req.companyId) : null;
-      if (p.plate && !imei) noVeh++;
-      await db.createFuelTransaction({ imei, ts: p.ts, station: p.station, country: p.country, liters: p.liters, amount: p.amount, card_number: p.card_number, source: 'csv', status: 'nou' }, req.companyId);
+    const prep = await _fcPregatire((req.body && req.body.csv) || '', req.companyId);
+    if (!prep.total) return res.status(400).json({ error: 'Fișier gol sau format necunoscut (antet așteptat: dată, litri, sumă, înmatriculare, stație…)' });
+    let imported = 0, suspect = 0;
+    for (const rand of prep.noi) {
+      // Verificarea se face ACUM, la import, nu la un al doilea buton. Omul a venit să afle unde
+      // are abateri; n-are rost să-i mai cerem o apăsare ca să i le arătăm.
+      const rec = await reconcileFuelTx(rand);
+      if (rec.status === 'suspect') suspect++;
+      await db.createFuelTransaction(Object.assign({}, rand, { source: 'csv', status: rec.status, tank_delta: rec.tankDelta }), req.companyId);
       imported++;
     }
-    auditReq(req, 'import', 'fuel-tx', null, { count: imported });
-    res.json({ ok: true, imported, unmatchedPlate: noVeh });
+    auditReq(req, 'import', 'fuel-tx', null, { count: imported, dubluri: prep.dubluri });
+    res.json({ ok: true, imported, sarite: prep.dubluri, unmatchedPlate: prep.faraVehicul, suspect });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/fuel-transactions/reconcile', requireAuth, requireFleet, withCompany, async (req, res) => {

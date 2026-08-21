@@ -20,6 +20,59 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-20
 
+### AMÂNDOI · Card combustibil: îți spune cât lipsește și de la ce mașină
+
+**Ritualul, așa cum l-a descris Alin:** clientul lucrează cu DKV, toată flota alimentează cu
+cardurile lor, la început de lună exportă alimentările și vrea să le pună față în față cu ce a
+intrat REAL în rezervoare. Aplicația făcea comparația — dar nu-i dădea niciodată concluzia.
+
+**Acum, sus, trei cifre:**
+
+> **Plătit pe card** 740 L · 5.205 lei  |  **A intrat în rezervoare** 323 L  |  **Lipsă** 372 L · 2.604 lei
+
+Iar sub „a intrat" scrie *din câți litri s-a putut verifica* și *câte mașini din câte* — altfel „0
+lipsă" putea să însemne, de fapt, „n-am avut cu ce verifica". Mașinile fără senzor sunt numite
+separat, într-un rând galben.
+
+**Lista e pe MAȘINĂ, nu pe dată.** Prima e cea de la care pierzi cel mai mult: *TM 07 RAT — lipsă
+370 L · 2.590 lei*. O deschizi și vezi alimentările ei. Cele curate rămân închise.
+
+**Cuvintele s-au schimbat.** „Reconciliere", „suspect", „fără CAN" sunt limbaj de contabil:
+
+| Se scria | Se scrie |
+|---|---|
+| Reconciliază toate | **Verifică din nou** |
+| reconciliat | **a intrat tot** |
+| parțial | **a intrat parțial** |
+| suspect | **NU a intrat** |
+| fără CAN | **nu se poate verifica** |
+
+**Importul, altfel.** Înainte lipeai textul CSV într-o casetă. Acum **încarci fișierul**, iar
+aplicația îți spune ce urmează să se întâmple, ÎNAINTE:
+
+> Am citit 264 de rânduri · 01.07 – 31.07
+> • **251** alimentări noi — 12.480 L, 87.360 lei
+> • **12** le ai deja — se sar, nu se dublează
+> • **1** fără mașină găsită după număr
+
+Până acum, același fișier dat de două ori **dubla tot decontul**, în tăcere. Iar verificarea se face
+automat la import — nu mai trebuie apăsat al doilea buton.
+
+**Un litru nu mai e furt.** La o alimentare de 60 de litri, o diferență de un litru e clătinatul
+combustibilului în rezervor. Aplicația trata orice diferență ca abatere și deschidea mașina ca pe un
+caz grav. Acum numai alimentările pe care verificarea le-a marcat ca neintrate (sau intrate pe
+jumătate) sortează lista și aprind roșu.
+
+**Fondatorul vede:** o funcție care se vinde singură la demo — „uite, aici ai 2.600 de lei".
+
+**Clientul vede:** unde pierde bani, pe ce mașină, în cât timp îi ia să deschidă ecranul.
+
+> Verificat pe cod real, 34 de controale — inclusiv cele trei cifre de sus, socotite pe o lună de
+> probă, și faptul că un litru diferență nu mai e strigat ca abatere.
+
+---
+
+
 ### AMÂNDOI · Documente: fără total, avertisment pe mașină, iar actul completează fișa
 
 **1. Totalul de sus a dispărut.** Scria „8 acte" — o cifră care nu spunea nimic: nu e o listă de

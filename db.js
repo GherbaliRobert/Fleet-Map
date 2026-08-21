@@ -3056,6 +3056,24 @@ async function listFuelTransactions(companyId, opts = {}) {
   const r = await pool.query(q, p);
   return r.rows;
 }
+// Alimentarea asta o avem deja? Decontul se importă lună de lună și e ușor să dai de două ori
+// același fișier. Aceeași mașină (sau același card), în aceeași zi, cu aceiași litri = același
+// bon. Fereastra de o zi acoperă și cazul în care furnizorul scrie ora, iar noi n-o avem.
+async function findFuelTxDuplicate(companyId, d) {
+  if (!d || d.liters == null || !d.ts) return null;
+  const zi = 24 * 3600 * 1000;
+  const r = await pool.query(
+    `SELECT id FROM fuel_transactions
+      WHERE company_id IS NOT DISTINCT FROM $1
+        AND ts BETWEEN $2 AND $3
+        AND ABS(COALESCE(liters,0) - $4) < 0.05
+        AND ( (imei IS NOT NULL AND imei = $5)
+           OR (imei IS NULL AND $5 IS NULL AND card_number IS NOT DISTINCT FROM $6) )
+      LIMIT 1`,
+    [companyId || null, Number(d.ts) - zi, Number(d.ts) + zi, Number(d.liters), d.imei || null, d.card_number || null]
+  );
+  return r.rows[0] ? r.rows[0].id : null;
+}
 async function createFuelTransaction(d, companyId) {
   const r = await pool.query(
     `INSERT INTO fuel_transactions (company_id, imei, driver_id, ts, station, country, liters, amount, currency, card_number, source, status, tank_delta, note, created_at)
@@ -3471,7 +3489,7 @@ module.exports = {
   getAlerts, createAlert, updateAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,
-  listFuelTransactions, createFuelTransaction, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,
+  listFuelTransactions, createFuelTransaction, findFuelTxDuplicate, deleteFuelTransaction, setFuelTxReconcile, getDeviceImeiByPlate,
   saveFuelPriceSnapshot, getFuelPriceHistory,
   getVehicleDocuments,
   getVehicleDocumentFile, createVehicleDocument, updateVehicleDocument, deleteVehicleDocument, deleteVehicleDocumentsByType,
