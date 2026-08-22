@@ -7,6 +7,7 @@ import { fmtAgo, voltageStr } from '../lib/format';
 import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { CanList } from './VehicleDetail';
+import { CanFlags } from '../components/CanFlags';
 import './detail.css';
 import './can.css';
 
@@ -156,7 +157,11 @@ export function CanScreen() {
     catch { showToast('Nu s-a putut copia VIN-ul', true); }
   }
 
-  const areCeva = [v?.speed, rpm, temp, fuelL, odo, greutate, vitCan, adbluePct, cons].some((x) => x != null);
+  // Steagurile (uși, lumini, martori de bord) contează la „transmite ceva": o mașină poate să nu dea
+  // nicio cifră, dar să spună că are o ușă deschisă și CHECK ENGINE aprins. Fără ele în listă, scria
+  // „Vehiculul nu transmite date CAN" chiar deasupra plăcuțelor care arătau contrariul.
+  const areSteaguri = !!(io._security_flags || io._control_flags);
+  const areCeva = areSteaguri || [v?.speed, rpm, temp, fuelL, odo, greutate, vitCan, adbluePct, cons].some((x) => x != null);
   const asteptam = !gata || !v;   // fișa nu s-a încărcat sau lista live nu are încă vehiculul
 
   return (
@@ -218,6 +223,10 @@ export function CanScreen() {
           : (!areCeva
             ? <div class="center-msg">Vehiculul nu transmite date CAN.<br />Apare doar ce trimite dispozitivul montat pe el.</div>
             : null)}
+
+        {/* Uși, lumini, martori de bord — aceleași plăcuțe ca în panoul CAN din web, din același
+            catalog (can_flags.js). Stau sub cifre: cifrele sunt titlul, steagurile sunt starea. */}
+        <CanFlags io={io} />
 
         {greutate != null && nrAxe > 0
           ? <div class="card d-stats">

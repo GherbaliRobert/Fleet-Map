@@ -190,6 +190,51 @@ sect('9. Cei 9 parametri generali din fișă sunt mapați și vizibili clientulu
   });
 }
 
+// ════════════ 10. Aplicația de telefon ════════════
+// Ăsta e cel mai important din listă. Prima oară am pus plăcuțele într-o ramură pe care N-O DESCHIDE
+// NIMIC (`sheet === 'can'` din VehicleDetail — nicăieri nu se cheamă `setSheet('can')`), iar butonul
+// „Date CAN" merge de fapt pe altă rută, către CanScreen. Codul se compila, testele treceau, iar pe
+// telefon nu se vedea nimic. Deci nu verificăm doar că există componenta, ci că ecranul la care
+// AJUNGE omul o desenează.
+sect('10. Telefonul — plăcuțele sunt pe ecranul la care se ajunge');
+{
+  const rd = (f) => fs.readFileSync(require('path').join(__dirname, 'mobile', 'src', f), 'utf8');
+  const comp = rd('components/CanFlags.tsx');
+  const app = rd('App.tsx');
+  const canScr = rd('screens/CanScreen.tsx');
+  const vehDet = rd('screens/VehicleDetail.tsx');
+  const lib = rd('lib/canflags.ts');
+  const ico = rd('components/Icon.tsx');
+
+  T('componenta CanFlags există și e exportată', /export function CanFlags\(/.test(comp));
+  T('CanScreen o desenează', /<CanFlags\b/.test(canScr));
+  T('CanScreen o importă', /import \{ CanFlags \}/.test(canScr));
+  // ruta pe care o deschide butonul „Date CAN" trebuie să ducă exact la ecranul care le desenează
+  const ruta = /path="([^"]*\/can)"\s+component=\{(\w+)\}/.exec(app);
+  T('ruta /…/can duce la CanScreen', !!ruta && ruta[2] === 'CanScreen', ruta ? ruta[2] : 'rută negăsită');
+  T('butonul „Date CAN" merge pe acea rută', new RegExp('/can`\\)').test(vehDet) && /Date CAN/.test(vehDet));
+
+  T('catalogul se ia de la server, nu e rescris local', /\/api\/can-flags/.test(rd('api/endpoints.ts')) && /Api\.canFlags\(\)/.test(lib));
+  T('catalogul se ține offline (Preferences)', /Preferences\.(set|get)/.test(lib));
+  T('nicio listă paralelă de etichete pentru steaguri în telefon',
+    !/_sf_|_cf_/.test(vehDet.slice(vehDet.indexOf('CAN_LABELS'), vehDet.indexOf('function prettyKey'))));
+  T('lista brută nu mai repetă steagurile descifrate',
+    /k === '_security_flags' \|\| k === '_control_flags'/.test(vehDet));
+
+  // fiecare desen cerut de catalog există CU ADEVĂRAT în Icon.tsx (și în tip, și în harta de desene)
+  const harta = ico.slice(ico.indexOf('const P: Record<IconName, string> = {'));
+  const desenate = new Set([...harta.matchAll(/^  ([A-Za-z][A-Za-z0-9]*):/gm)].map(m => m[1]));
+  const tip = ico.slice(ico.indexOf('export type IconName'), ico.indexOf('const P:'));
+  const inTip = new Set([...tip.matchAll(/'([A-Za-z][A-Za-z0-9]*)'/g)].map(m => m[1]));
+  const cerute = [...new Set(cat.FLAGS.map(f => f.mi).concat(cat.GROUPS.map(g => g.mi)))];
+  const faraDesen = cerute.filter(n => !desenate.has(n));
+  const faraTip = cerute.filter(n => !inTip.has(n));
+  T('toate iconițele de telefon au desen în Icon.tsx', faraDesen.length === 0, faraDesen.join(', '));
+  T('toate sunt declarate în tipul IconName', faraTip.length === 0, faraTip.join(', '));
+  T('stilurile stau lângă componentă', /import '\.\/CanFlags\.css'/.test(comp) &&
+    fs.existsSync(require('path').join(__dirname, 'mobile', 'src', 'components', 'CanFlags.css')));
+}
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);

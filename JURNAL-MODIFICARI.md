@@ -51,8 +51,8 @@ numai pentru super-admin.
 4. **Grupele se pot strânge**, iar pe capul fiecăreia stă o bulină cu câte semnale sunt aprinse
    acolo, colorată după cel mai serios dintre ele. Sunt deschise toate de la început — s-a cerut să
    se **vadă** tot, plierea e ca să-și strângă omul singur ce nu-l interesează.
-5. **Aceleași plăcuțe în aplicația de telefon**, în fereastra CAN. Am desenat 36 de iconițe noi
-   pentru ea (telefonul nu folosește Font Awesome, are desenele lui, ca să meargă și fără internet).
+5. **Aceleași plăcuțe în aplicația de telefon.** Am desenat 36 de iconițe noi pentru ea (telefonul
+   nu folosește Font Awesome, are desenele lui, ca să meargă și fără internet).
 6. **Am mapat IO-urile care lipseau.** Cei nouă parametri generali de pe fișa adaptorului
    — turație, temperatura motorului, viteză, kilometraj total, kilometraj contorizat, combustibil în
    rezervor, combustibil consumat, timp de funcționare a motorului, seria de șasiu (VIN) — erau
@@ -70,6 +70,16 @@ apăsări) — dar noi nu știm **unde** anume le pune aparatul în mesaj. Nu le
 martor aprins greșit e mai rău decât unul care lipsește. Se văd cu ramă punctată și scrie „necitit",
 ca să nu fie confundate cu „e în regulă". Ce ne trebuie ca să le pornim: fie foaia de biți de la
 Teltonika pentru adaptorul ăsta, fie o mașină pe care să le încercăm pe rând.
+
+**Unde se văd.**
+- **Pe calculator:** dai clic pe o mașină (pe hartă sau în lista din stânga) → se deschide fișa din
+  dreapta, pe „Info" → derulezi până la **IO Live**. Acolo sunt.
+- **Pe telefon:** deschizi mașina → butonul **„Date CAN"** → sub cifrele de sus.
+
+**Ce era să scap.** Prima oară pusesem plăcuțele, în telefon, într-o fereastră pe care **n-o deschide
+nimic** — un rest de cod vechi. Se compila, probele treceau, și pe telefon nu s-ar fi văzut nimic.
+Le-am mutat pe ecranul unde duce butonul „Date CAN" și am adăugat o probă care verifică tocmai asta:
+că ecranul la care ajunge omul chiar le desenează, nu doar că există componenta.
 
 - **Ce vede fondatorul:** aceleași plăcuțe ca și clientul. În plus, lista brută de sub ele (pentru
   maparea senzorilor) **nu mai repetă** cele ~60 de semnale descifrate — rămâne doar ce chiar e brut
