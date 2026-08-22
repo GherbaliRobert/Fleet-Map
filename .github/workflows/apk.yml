@@ -1,0 +1,96 @@
+name: APK de test (Android)
+
+# Pornit MANUAL, din fila Actions. Nu rulează la fiecare push: un build Android durează câteva
+# minute și n-are rost la o modificare de server.
+#
+# Ce produce: un APK de DEBUG, pentru încercat pe telefonul propriu. NU e de dat clienților —
+# vezi mobile/android/app/build.gradle: un build de debug are `debuggable=true`, adică datele
+# aplicației (inclusiv tokenul de autentificare) se pot citi de pe telefon cu `adb`. APK-ul de
+# livrare are nevoie de cheia de semnătură, care încă nu e creată (e pe lista de dinainte de lansare).
+on:
+  workflow_dispatch:
+    inputs:
+      ramura:
+        description: 'Ramura din care se construiește'
+        required: false
+        default: 'main'
+
+jobs:
+  apk:
+    name: Construiește APK de test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ramura }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalează dependențele aplicației de telefon
+        working-directory: mobile
+        run: npm ci
+
+      - name: Verifică tipurile
+        working-directory: mobile
+        run: npx tsc --noEmit
+
+      - name: Construiește partea web (dist/)
+        working-directory: mobile
+        run: npx vite build
+
+      # Proiectul nativ Android NU e în git (vezi mobile/.gitignore) — se regenerează. Excepțiile
+      # urmărite (configurația de build, manifestul, tema) trebuie PUSE LA LOC după regenerare:
+      # `cap add android` scrie peste ele cu șabloanele lui, iar cu ele s-ar pierde versiunea
+      # aplicației, semnătura de release și ecranul complet.
+      - name: Regenerează proiectul Android, păstrând fișierele noastre
+        working-directory: mobile
+        run: |
+          set -e
+          mkdir -p /tmp/alenoastre
+          cp -a android/. /tmp/alenoastre/
+          rm -rf android
+          npx cap add android
+          cp -a /tmp/alenoastre/variables.gradle android/variables.gradle
+          cp -a /tmp/alenoastre/app/build.gradle android/app/build.gradle
+          cp -a /tmp/alenoastre/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp -a /tmp/alenoastre/app/src/main/res/. android/app/src/main/res/
+          npx cap sync android
+
+      - name: Construiește APK-ul
+        working-directory: mobile/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Cum se cheamă versiunea
+        id: v
+        working-directory: mobile
+        run: echo "nume=ratracks-test-$(grep -oP "appVersionName = '\K[^']+" android/variables.gradle)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.v.outputs.nume }}
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Ce trebuie știut despre APK-ul ăsta
+        run: |
+          {
+            echo "### APK de test — RA Tracks"
+            echo ""
+            echo "Se descarcă de mai jos, de la **Artifacts**. Se dezarhivează și se copiază pe telefon."
+            echo ""
+            echo "**De reținut:**"
+            echo "- E build de **debug**, pentru încercat pe telefonul propriu. Nu se dă clienților."
+            echo "- **Nu are notificări push**: \`google-services.json\` (cheia Firebase) nu e în git."
+            echo "- Are același nume de pachet ca aplicația reală (\`ro.ratracks.app\`), dar altă"
+            echo "  semnătură — dacă ai deja RA Tracks pe telefon, Android cere să o **dezinstalezi**"
+            echo "  întâi. Datele din aplicație se pierd (nu și cele de pe server)."
+            echo "- Telefonul va cere permisiunea de a instala din afara magazinului."
+          } >> "$GITHUB_STEP_SUMMARY"
