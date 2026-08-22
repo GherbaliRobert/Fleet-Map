@@ -6,7 +6,12 @@ export type IconName =
   | 'x' | 'check' | 'logout' | 'layers' | 'alert' | 'calendar' | 'zap' | 'mapPin' | 'map' | 'wifiOff'
   | 'menu' | 'moon' | 'sun' | 'headset' | 'settings' | 'wrench' | 'user' | 'truck' | 'robot' | 'flame' | 'fileBar'
   | 'plus' | 'trash' | 'edit' | 'phone' | 'mail' | 'idCard' | 'sparkles' | 'coins' | 'maximize' | 'eye'
-  | 'compass';
+  | 'compass'
+  // Steaguri CAN (vezi can_flags.js, campul `mi`) — martori de bord, usi, lumini, transmisie.
+  | 'key' | 'doorOpen' | 'lock' | 'unlock' | 'bulb' | 'shield' | 'gears' | 'fan' | 'play' | 'ban'
+  | 'hand' | 'foot' | 'reverse' | 'parking' | 'circleDot' | 'arrowRight' | 'arrowDown'
+  | 'trunk' | 'hood' | 'roof' | 'engine' | 'esp' | 'steering' | 'airbag' | 'belt' | 'snow'
+  | 'thermo' | 'oil' | 'battery' | 'pump' | 'filter' | 'fog' | 'glow' | 'tire' | 'plug' | 'alertO';
 
 const P: Record<IconName, string> = {
   car: '<path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11M5 11h14M5 11v6m14-6v6M6 17h2m8 0h2M7 14h.01M17 14h.01"/>',
@@ -57,6 +62,47 @@ const P: Record<IconName, string> = {
   sparkles: '<path d="M12 3 L13.8 7.9 L18.7 9.7 L13.8 11.5 L12 16.4 L10.2 11.5 L5.3 9.7 L10.2 7.9 Z"/><path d="M19 13 L19.7 14.8 L21.5 15.5 L19.7 16.2 L19 18 L18.3 16.2 L16.5 15.5 L18.3 14.8 Z"/>',
   coins: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
   maximize: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
+
+  // ─── Steaguri CAN ─────────────────────────────────────────────────────────
+  key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M17 6l3 3M14 9l2.5 2.5"/>',
+  doorOpen: '<path d="M4 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M2 21h20M12.5 12h.01"/>',
+  lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  unlock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 2a6 6 0 0 0-3.6 10.8c.6.5 1 1.3 1.1 2.2h5c.1-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 2z"/>',
+  shield: '<path d="M12 2 4 5.5V11c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5.5z"/>',
+  // Schema în H a schimbătorului de viteze. NU o roată dințată: desenată la 17px ieșea identică cu
+  // `sun`, care e chiar alături în același panou („Faza lungă").
+  gears: '<path d="M6 4v8M18 4v8M6 8h12M12 8v10"/><circle cx="12" cy="20" r="2"/>',
+  fan: '<circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-8 4-8 2 0 3 2 2 4-.8 1.6-3 3-6 4M14 12c4 0 8 1 8 4 0 2-2 3-4 2-1.6-.8-3-3-4-6M12 14c0 4-1 8-4 8-2 0-3-2-2-4 .8-1.6 3-3 6-4M10 12c-4 0-8-1-8-4 0-2 2-3 4-2 1.6.8 3 3 4 6"/>',
+  play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5 16 12l-6 3.5z"/>',
+  ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6 18.4 18.4"/>',
+  hand: '<path d="M18 11V6.5a1.5 1.5 0 0 0-3 0M15 10.5v-6a1.5 1.5 0 0 0-3 0M12 10.5v-5a1.5 1.5 0 0 0-3 0V13M9 12.5V9a1.5 1.5 0 0 0-3 0v6a7 7 0 0 0 7 7h1a7 7 0 0 0 7-7v-3.5a1.5 1.5 0 0 0-3 0"/>',
+  foot: '<path d="M7 3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7z"/><path d="M10 15v4a2 2 0 0 0 2 2h5"/>',
+  reverse: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  parking: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9.5 17V7h3.2a3 3 0 0 1 0 6H9.5"/>',
+  circleDot: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/>',
+  arrowRight: '<path d="M4 12h15M13 6l6 6-6 6"/>',
+  arrowDown: '<path d="M12 4v15M6 13l6 6 6-6"/>',
+  trunk: '<path d="M3 17v-4l2-4h14l2 4v4M3 17h18M6 17v2M18 17v2M8 13h8"/>',
+  hood: '<path d="M2 18h20M4 18v-4l4-1 2-3h4l2 3 4 1v4"/><path d="M8 10 6 4h5"/>',
+  roof: '<rect x="5" y="3" width="14" height="18" rx="4"/><rect x="8" y="6" width="8" height="6" rx="1"/>',
+  engine: '<path d="M4 12v4h2l2 3h8v-3h2l2-3v-3h-2l-2-3H9v3H6l-2 2z"/><path d="M10 6V4h4v2"/>',
+  esp: '<path d="M4 15v-3l2-1 2-3h8l2 3 2 1v3M4 15h16"/><path d="M7 19c1-1 2-1 3 0s2 1 3 0 2-1 3 0"/>',
+  steering: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 9V3M9.5 13.5 4.5 18M14.5 13.5 19.5 18"/>',
+  airbag: '<circle cx="8" cy="6" r="2.5"/><path d="M5 21v-4a3 3 0 0 1 3-3h1"/><circle cx="16" cy="14.5" r="5.5"/>',
+  belt: '<path d="M6 3 16 17"/><rect x="12.5" y="15" width="7.5" height="5" rx="1.5"/><path d="M4 21h6"/>',
+  snow: '<path d="M12 2v20M4 7l16 10M20 7 4 17"/><path d="M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5"/>',
+  thermo: '<path d="M14 14.8V4a2 2 0 1 0-4 0v10.8a5 5 0 1 0 4 0z"/><path d="M12 9v7"/>',
+  // Picătură peste linia de nivel. Bidonul de ulei, desenat mic, ieșea un nor — la fel ca `hood`.
+  oil: '<path d="M12 3s5 5.5 5 9a5 5 0 0 1-10 0c0-3.5 5-9 5-9z"/><path d="M4 21h16"/>',
+  battery: '<rect x="2" y="8" width="18" height="10" rx="2"/><path d="M22 11v4M6 5v3M16 5v3M5 13h4M13 13h4M15 11v4"/>',
+  pump: '<path d="M3 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M2 21h12M5 9h6"/><path d="M13 8h3a2 2 0 0 1 2 2v6a2 2 0 0 0 4 0V9l-3-3"/>',
+  filter: '<path d="M3 4h18l-7 8v7l-4 2v-9z"/>',
+  fog: '<path d="M5 7h14M3 11h18M4 15h16M6 19h12"/>',
+  glow: '<path d="M12 2v4M8 8h8M9 11h6M10 14h4M11 17h2M12 20v2"/>',
+  tire: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/>',
+  plug: '<path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0zM12 17v5"/>',
+  alertO: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
 };
 
 export function Icon({ name, size = 22, color = 'currentColor', style, class: cls }: P) {

@@ -18,6 +18,68 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-08-22
+
+### AMÂNDOI · Panoul CAN arată acum toate semnalele din mașină, cu iconițe
+
+**Cererea lui Alin, 22.08 (cu fișa adaptorului Teltonika pentru VW Passat B7 în mână):** *„Vreau să
+se afișeze în CAN toate iconițele din imagine și să mapezi toate IO-urile lipsă. Și în modalul CAN
+pe mobil."*
+
+**Ce era înainte.** Adaptorul CAN trimite, pe lângă cifre (turație, kilometraj, combustibil), un
+teanc de semnale de tip *pornit / oprit*: uși, capotă, portbagaj, lumini, frâne, cutie de viteze,
+alarmă și martorii de pe bord (CHECK ENGINE, ABS, airbag, ulei, presiune în anvelope…). Le
+descifram corect încă de mult, dar le arătam ca rânduri de text, iar **unsprezece dintre ele nu erau
+trecute în nicio grupă**, așa că nimereau în „Date tehnice avansate" — un sertar care se deschide
+**numai pentru super-admin**. Pe scurt: clientul plătea adaptorul și nu vedea jumătate din ce
+trimite. În telefon era mai rău: apăreau doar ca text brut, „security_flags.door_front_left", și tot
+numai pentru super-admin.
+
+**Ce am făcut.**
+
+1. **Fiecare semnal are acum un nume pe românește și un desen.** 68 de semnale, împărțite în zece
+   grupe: contact și motor, frâne și transmisie, uși și capace, închidere și alarmă, lumini, martori
+   de bord, confort și siguranță, camion, electric, starea adaptorului. Se văd ca **plăcuțe** —
+   iconiță, nume, starea dedesubt.
+2. **Culoarea spune singură cât e de grav.** Roșu = martor aprins pe bord. Portocaliu = ceva e
+   deschis (ușă, capotă, portbagaj). Verde = e pornit și e în regulă (contact, lumini, aer
+   condiționat). Alb = doar o stare, nici bună nici rea (marșarier, cutia în D).
+3. **Sus, un rând care spune ce anume e în neregulă — nu câte.** Scrie „Martori aprinși: CHECK
+   ENGINE, Presiune / nivel ulei" și „Deschis: Ușă față stânga, Capotă", nu „2 probleme". Când nu e
+   nimic: „Niciun martor aprins, totul închis". Aceeași regulă ca la alertele de acte, unde „1
+   mașină are acte expirate" nu ajuta pe nimeni.
+4. **Grupele se pot strânge**, iar pe capul fiecăreia stă o bulină cu câte semnale sunt aprinse
+   acolo, colorată după cel mai serios dintre ele. Sunt deschise toate de la început — s-a cerut să
+   se **vadă** tot, plierea e ca să-și strângă omul singur ce nu-l interesează.
+5. **Aceleași plăcuțe în aplicația de telefon**, în fereastra CAN. Am desenat 36 de iconițe noi
+   pentru ea (telefonul nu folosește Font Awesome, are desenele lui, ca să meargă și fără internet).
+6. **Am mapat IO-urile care lipseau.** Cei nouă parametri generali de pe fișa adaptorului
+   — turație, temperatura motorului, viteză, kilometraj total, kilometraj contorizat, combustibil în
+   rezervor, combustibil consumat, timp de funcționare a motorului, seria de șasiu (VIN) — erau
+   descifrați, dar **ascunși clientului**, tratați ca „date brute". Sunt exact datele pentru care se
+   pune adaptorul pe mașină. Acum se văd, împreună cu cele de camion (priza de putere, uleiul,
+   lichidul de răcire) și cu numărul de erori de pe bord.
+7. **Un singur loc unde scriu numele.** Toate denumirile și iconițele stau în `can_flags.js`;
+   pagina web și telefonul le citesc de acolo. Nu mai există două liste care să o ia razna una față
+   de cealaltă. Proba automată `verify_can_flags.js` rulează la fiecare `npm test` și cade dacă un
+   semnal rămâne fără nume sau dacă apare din greșeală în două locuri.
+
+**Cinci semnale rămân stinse, marcate „necitit".** Fișa adaptorului le listează — ambreiaj,
+închidere centralizată, și cele trei apăsări de telecomandă (deschide / închide / armare din trei
+apăsări) — dar noi nu știm **unde** anume le pune aparatul în mesaj. Nu le-am ghicit poziția: un
+martor aprins greșit e mai rău decât unul care lipsește. Se văd cu ramă punctată și scrie „necitit",
+ca să nu fie confundate cu „e în regulă". Ce ne trebuie ca să le pornim: fie foaia de biți de la
+Teltonika pentru adaptorul ăsta, fie o mașină pe care să le încercăm pe rând.
+
+- **Ce vede fondatorul:** aceleași plăcuțe ca și clientul. În plus, lista brută de sub ele (pentru
+  maparea senzorilor) **nu mai repetă** cele ~60 de semnale descifrate — rămâne doar ce chiar e brut
+  și are nevoie de mapare. Înainte le vedeai de două ori, a doua oară cu nume tehnice de nemapat.
+- **Ce vede clientul:** deschide o mașină → fila CAN și vede pe loc dacă are o ușă deschisă sau un
+  martor aprins pe bord, cu numele lui, nu cu un cod. La fel pe telefon. Plus turația, temperatura
+  motorului, viteza de pe bord și VIN-ul, care înainte erau ascunse.
+
+---
+
 ## 2026-08-20
 
 ### AMÂNDOI · „Card combustibil" a fost scos din Management
@@ -2342,6 +2404,13 @@ cheia propriu-zisă rămâne exclusă, ca să nu ajungă niciodată acolo.
 ---
 
 ## De verificat înainte de lansare
+
+- **Cinci semnale CAN sunt afișate, dar nu se aprind niciodată.** Ambreiaj, închidere
+  centralizată și cele trei apăsări de telecomandă. Fișa adaptorului le listează, noi nu știm unde
+  le pune aparatul în mesaj, iar ghicitul ar aprinde martori greșiți. Scrie „necitit" pe ele, deci
+  nu induc în eroare — dar înainte de lansare merită să decidem: fie obținem foaia de biți de la
+  Teltonika, fie le probăm pe o mașină, fie le scoatem de tot din listă ca să nu ridice întrebări.
+  *(22.08)*
 
 - **Grila TollRo: valorile marcate cu ⚠ și data de aplicare.** Treapta 7,5–12 t și pozițiile
   intermediare pe Euro 4/5 nu erau publicate la 20.08 — sunt estimările noastre. La apariția

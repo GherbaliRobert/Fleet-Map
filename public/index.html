@@ -3299,6 +3299,7 @@ const pozitii = await r.json();</code></pre>
        Interfața NU ține o listă proprie: adaugi o categorie acolo, apare aici fără altă modificare. -->
   <script src="/js/license-cats.js"></script>
   <script src="/js/maint-types.js"></script>
+  <script src="/js/can-flags.js"></script>
   <script>
     // ─── Global State ───
     // Escape HTML — GLOBAL pentru acest bloc de script. Mai multe funcții își definesc un `esc` LOCAL (care
@@ -12293,6 +12294,12 @@ const pozitii = await r.json();</code></pre>
         }
       }
 
+      // Steagurile CAN (uși, lumini, martori de bord) — plăcuțe cu iconiță, ÎNAINTE de valorile numerice.
+      // Sunt starea mașinii dintr-o privire, deci stau sus. Marchează cheile ca folosite ca să nu mai
+      // apară a doua oară ca rânduri text. Vizibil pentru ORICINE: înainte, jumătate din steaguri
+      // nimereau în „Date tehnice avansate", care se arată doar super-adminului.
+      html += canFlagsHtml(flatIo, usedKeys);
+
       // Axle limits from device config (for visual bars)
       const dev = devices.get(imei);
       const axleLimits = (dev && dev.max_axle_loads) ? (typeof dev.max_axle_loads === 'string' ? JSON.parse(dev.max_axle_loads) : dev.max_axle_loads) : {};
@@ -14537,6 +14544,115 @@ const pozitii = await r.json();</code></pre>
     }
 
     // ─── IO Categories & Formatting ───
+    // ─── Steagurile CAN, ca plăcuțe cu iconiță ───────────────────────────────────────────────
+    // Catalogul (nume pe românește + iconiță + ce înseamnă aprins) e în can_flags.js, servit ca
+    // /js/can-flags.js → window.RA_CANFLAGS. Aceleași date le folosește și aplicația de telefon,
+    // prin /api/can-flags. NU scrie aici o listă paralelă de etichete.
+    //
+    // Înainte, steagurile erau rânduri de text în IO_CATEGORIES, iar unsprezece dintre ele
+    // (martor frână de mână, bec ars, avertisment general, motor electric, cablu de încărcare,
+    // regim personal, contact dinamic, cele două retardere, starea celor două magistrale CAN)
+    // nu erau trecute în nicio categorie → cădeau în „Date tehnice avansate", care se arată DOAR
+    // super-adminului. Adică pentru client, pur și simplu nu existau.
+    function canFlagsHtml(flatIo, usedKeys) {
+      const cat = window.RA_CANFLAGS;
+      if (!cat || !cat.flags || !cat.flags.length) return '';
+      const kt = cat.kindText || {};
+      const nedecodate = new Set(cat.undecoded || []);
+      // Adaptorul trimite steagurile în bloc (un IO pentru securitate, unul pentru control).
+      // Dacă lipsește tot blocul, nu desenăm nici plăcuțele „necitite" din el.
+      const areSf = cat.flags.some(f => f.key.indexOf('_sf_') === 0 && flatIo[f.key] !== undefined);
+      const areCf = cat.flags.some(f => f.key.indexOf('_cf_') === 0 && flatIo[f.key] !== undefined);
+      if (!areSf && !areCf) return '';
+
+      const aprinse = { warn: [], open: [] };
+      let nedecodateVazute = 0;
+      const sectiuni = [];
+
+      (cat.groups || []).forEach(function (g) {
+        const placi = [];
+        const aprinseGrup = [];   // felul fiecărui semnal aprins din grupa asta ('warn' / 'open' / …)
+        cat.flags.filter(f => f.group === g.key).forEach(function (f) {
+          const val = flatIo[f.key];
+          const lipsa = (val === undefined || val === null);
+          const necitit = lipsa && nedecodate.has(f.key) &&
+            ((f.key.indexOf('_sf_') === 0 && areSf) || (f.key.indexOf('_cf_') === 0 && areCf));
+          if (lipsa && !necitit) return;
+          usedKeys.add(f.key);
+
+          let aprins, text;
+          if (necitit) {
+            aprins = false;
+            text = 'necitit';
+            nedecodateVazute++;
+          } else if (f.kind === 'code') {
+            aprins = Number(val) > 0;
+            text = 'cod ' + val;
+          } else {
+            aprins = !!val;
+            const per = f.st || kt[f.kind] || kt.info || ['Da', 'Nu'];
+            text = per[aprins ? 0 : 1];
+            if (aprins && (f.kind === 'warn' || f.kind === 'open')) aprinse[f.kind].push(f.label);
+          }
+          if (aprins) aprinseGrup.push(f.kind);
+
+          placi.push(
+            '<div class="cf k-' + f.kind + (aprins ? ' lit' : '') + (necitit ? ' cf-nd' : '') + '"' +
+              ' title="' + _usEsc(f.label + ' — ' + text) + '">' +
+              '<i class="fas ' + _usEsc(f.icon) + '"></i>' +
+              '<span class="cf-l">' + _usEsc(f.label) + '</span>' +
+              '<span class="cf-s">' + _usEsc(text) + '</span>' +
+            '</div>'
+          );
+        });
+        if (placi.length) {
+          // Bulina din dreptul grupei = câte semnale sunt aprinse acolo, colorată după cel mai
+          // serios dintre ele (roșu > portocaliu > verde > neutru). Rămâne vizibilă și cu grupa strânsă.
+          const rang = { warn: 3, open: 2, on: 1, info: 0, code: 0 };
+          let cel = null;
+          aprinseGrup.forEach(function (k) { if (cel === null || rang[k] > rang[cel]) cel = k; });
+          const bulina = aprinseGrup.length
+            ? '<span class="cf-cnt c-' + (cel || 'info') + '">' + aprinseGrup.length + '</span>' : '';
+          sectiuni.push(
+            '<details class="cf-g" open><summary class="io-section-title"><i class="fas ' + _usEsc(g.icon) + '"></i> ' +
+            _usEsc(g.label) + ' ' + bulina + '<i class="fas fa-chevron-right cf-chev"></i></summary>' +
+            '<div class="cf-grid">' + placi.join('') + '</div></details>'
+          );
+        }
+      });
+      if (!sectiuni.length) return '';
+
+      // Rezumatul de sus: NU un număr, ci ce anume e aprins/deschis — la fel ca la alertele de acte,
+      // unde „1 mașină are acte expirate" nu ajuta pe nimeni.
+      function _lista(v) {
+        return v.length <= 4 ? v.join(', ') : v.slice(0, 4).join(', ') + ' +' + (v.length - 4);
+      }
+      let rezumat = '';
+      if (aprinse.warn.length) {
+        rezumat += '<span class="cf-b b-warn"><i class="fas fa-triangle-exclamation"></i> ' +
+          (aprinse.warn.length === 1 ? 'Martor aprins: ' : 'Martori aprinși: ') + _usEsc(_lista(aprinse.warn)) + '</span>';
+      }
+      if (aprinse.open.length) {
+        rezumat += '<span class="cf-b b-open"><i class="fas fa-door-open"></i> Deschis: ' +
+          _usEsc(_lista(aprinse.open)) + '</span>';
+      }
+      if (!rezumat) {
+        rezumat = '<span class="cf-b b-ok"><i class="fas fa-circle-check"></i> Niciun martor aprins, totul închis</span>';
+      }
+
+      let out = '<div class="cf-sum">' + rezumat + '</div>' + sectiuni.join('');
+      if (nedecodateVazute) {
+        out += '<div class="cf-note"><i class="fas fa-circle-info"></i> ' + nedecodateVazute +
+          ' semnale sunt marcate <em>necitit</em>: adaptorul le poate trimite, dar încă nu știm ' +
+          'unde le pune în mesaj. Le aprindem după ce le confirmăm pe un vehicul — până atunci ' +
+          'preferăm să lipsească decât să arate greșit.</div>';
+      }
+      return out;
+    }
+
+    // ATENȚIE: aici stau DOAR valorile numerice/text din IO. Steagurile de tip pornit/oprit
+    // (`_sf_…` / `_cf_…`) se desenează separat, cu iconiță, din can_flags.js — vezi canFlagsHtml.
+    // Dacă le pui și aici, apar de două ori.
     const IO_CATEGORIES = {
       'Motor / Vehicul': ['ignition', 'movement', 'speed_io', 'can_vehicle_speed', 'can_engine_rpm', 'can_engine_temp', 'can_engine_load', 'can_accelerator_pedal', 'can_engine_worktime', 'can_engine_worktime_counted', 'can_retarder_load'],
       'Combustibil': ['tank_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_fuel_consumed', 'can_fuel_consumed_counted', 'can_fuel_rate', 'can_adblue_level_pct', 'can_adblue_level_liters', 'fuel_used_gps_total', 'fuel_rate_gps'],
@@ -14549,17 +14665,9 @@ const pozitii = await r.json();</code></pre>
       'Tahograf': ['can_tacho_distance', 'can_tacho_speed', 'can_tacho_overspeed', 'can_tacho_driver1_card', 'can_tacho_driver2_card', 'can_tacho_driver1_drive_time', 'can_tacho_driver2_drive_time', 'can_tacho_driver1_break_time', 'can_tacho_driver2_break_time', 'can_tacho_driver1_continuous', 'can_tacho_driver2_continuous'],
       'AdBlue': ['can_adblue_level_pct', 'can_adblue_level_liters'],
       'Identificare': ['can_vin'],
-      'Usi (detaliat)': ['_sf_door_front_left', '_sf_door_front_right', '_sf_door_rear_left', '_sf_door_rear_right', '_sf_hood_open', '_sf_trunk_open', '_sf_roof_open'],
-      'Contact / Motor': ['_sf_key_in_ignition', '_sf_ignition_on', '_sf_engine_working', '_sf_webasto', '_sf_car_closed', '_sf_closed_by_remote'],
-      'Transmisie': ['_sf_parking', '_sf_neutral', '_sf_drive', '_sf_reverse', '_sf_handbrake', '_sf_footbrake'],
-      'Lumini': ['_cf_parking_lights', '_cf_dipped_headlights', '_cf_full_beam', '_cf_front_fog_lights', '_cf_rear_fog_lights', '_sf_hazard_lights'],
-      'Avertizari Motor': ['_cf_check_engine', '_cf_dpf_warning', '_cf_epc_warning', '_cf_glow_plug', '_cf_oil_pressure_warning', '_cf_coolant_warning', '_cf_low_fuel', '_cf_maintenance', '_cf_stop_indicator'],
-      'Siguranta': ['_cf_airbag_warning', '_cf_abs_warning', '_cf_esp_warning', '_cf_eps_warning', '_cf_driver_seatbelt', '_cf_passenger_seatbelt', '_cf_low_tire_pressure', '_cf_brake_pad_wear'],
-      'Sistem Activ': ['_cf_cruise_control', '_cf_air_conditioning', '_cf_esp_active', '_cf_ready_to_drive'],
-      'Alarma / Securitate': ['_sf_factory_armed', '_sf_factory_alarm', '_sf_alarm_emulated', '_sf_engine_lock'],
       'Diagnosticare': ['can_dtc_errors'],
       'Stare CAN': ['can_program_number', 'can_module_id', 'can_manual_0', 'can_manual_2', 'can_manual_4'],
-      'Electric / Baterie': ['can_battery_temp', 'can_battery_level_pct', '_cf_battery_warning', '_sf_battery_charging'],
+      'Electric / Baterie': ['can_battery_temp', 'can_battery_level_pct'],
       'Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
       'GPS / Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'data_mode'],
       'I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
@@ -14576,7 +14684,11 @@ const pozitii = await r.json();</code></pre>
     // vizibile DOAR pentru super-admin, care le mapează la nume prietenoase din „Debug IO".
     const CUSTOMER_IO_CATEGORIES = new Set([
       'Combustibil', 'Senzori BLE Combustibil', 'Senzori LLS Combustibil (RS485)',
-      'AdBlue', 'Vehicul', 'Sarcina Axe (Camion)', 'Mentenanta Camion', 'Tahograf', 'FMS (Camioane)'
+      'AdBlue', 'Vehicul', 'Sarcina Axe (Camion)', 'Mentenanta Camion', 'Tahograf', 'FMS (Camioane)',
+      // Adăugate: sunt parametrii de pe fișa adaptorului CAN (turație, temperatură motor, viteză,
+      // timp de funcționare, VIN, PTO, erori de bord). Erau tratați ca „IO brut" și ascunși
+      // clientului, deși sunt tocmai datele pentru care se pune adaptorul pe mașină.
+      'Motor / Vehicul', 'Identificare', 'Specific Camion', 'Diagnosticare'
     ]);
 
     function formatIoValue(key, value) {

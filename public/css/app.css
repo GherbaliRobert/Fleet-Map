@@ -1467,6 +1467,72 @@
     .io-value.on { color: var(--green); font-weight: 800; }
     .io-value.off { color: var(--text-muted); }
 
+    /* Steaguri CAN — plăcuțe cu iconiță (uși, lumini, martori de bord).
+       Catalogul (nume + iconiță + ce înseamnă aprins) e în can_flags.js, servit ca /js/can-flags.js.
+       Aici e DOAR desenul; nu adăuga etichete în CSS. */
+    .cf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .cf {
+      --cfc: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 3px;
+      padding: 8px 4px 7px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-dark);
+      text-align: center;
+      min-height: 74px;
+      transition: border-color .15s, background .15s;
+    }
+    .cf i { font-size: 17px; color: var(--cfc); line-height: 1; }
+    .cf .cf-l { font-size: 10px; color: var(--text-secondary); line-height: 1.15; }
+    .cf .cf-s { font-size: 10px; font-weight: 800; color: var(--cfc); margin-top: auto; }
+    /* Aprins: rama și textul preiau culoarea stării, fundalul se colorează discret. */
+    .cf.lit { --cfc: var(--accent); border-color: var(--cfc); background: color-mix(in srgb, var(--cfc) 12%, var(--bg-dark)); }
+    .cf.lit i { color: var(--cfc); }
+    .cf.k-warn.lit { --cfc: var(--red); }
+    .cf.k-open.lit { --cfc: var(--orange); }
+    .cf.k-on.lit   { --cfc: var(--green); }
+    /* „info" = doar o stare, nici bună nici rea. NU verde: în paleta noastră --blue e alias de --accent,
+       deci verdele ar face „Marșarier cuplat" să arate ca „totul e în regulă". Neutru puternic. */
+    .cf.k-info.lit, .cf.k-code.lit { --cfc: var(--text-primary); }
+    /* Necitit: adaptorul poate da steagul, dar nu știm poziția bitului — se vede că lipsește,
+       nu se confundă cu „stins/OK". */
+    .cf.cf-nd { border-style: dashed; opacity: .75; }
+    .cf.cf-nd .cf-s { font-weight: 600; font-style: italic; }
+    .cf-note { font-size: 10px; color: var(--text-muted); margin: 2px 0 6px; line-height: 1.3; }
+    /* Grupele se pot plia. Deschise implicit — omul a cerut să vadă TOATE semnalele; plierea e ca
+       să-și poată strânge singur ce nu-l interesează, nu ca să ascundem noi. */
+    details.cf-g { margin-bottom: 12px; }
+    details.cf-g > summary { cursor: pointer; list-style: none; user-select: none; }
+    details.cf-g > summary::-webkit-details-marker { display: none; }
+    details.cf-g > summary .cf-chev { margin-left: auto; transition: transform .15s; font-size: 10px; }
+    details.cf-g[open] > summary .cf-chev { transform: rotate(90deg); }
+    .cf-cnt {
+      font-size: 10px; font-weight: 800; line-height: 1;
+      padding: 2px 6px; border-radius: 999px; color: #fff;
+    }
+    .cf-cnt.c-warn { background: var(--red); }
+    .cf-cnt.c-open { background: var(--orange); }
+    .cf-cnt.c-on   { background: var(--green); color: #06240f; }
+    .cf-cnt.c-info { background: var(--text-muted); }
+    .cf-sum { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+    .cf-sum .cf-b {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid currentColor;
+    }
+    .cf-b.b-warn { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+    .cf-b.b-open { color: var(--orange); background: color-mix(in srgb, var(--orange) 12%, transparent); }
+    .cf-b.b-ok   { color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); }
+
     /* Istoric Tab in detail panel */
     .detail-history-form {
       display: flex;

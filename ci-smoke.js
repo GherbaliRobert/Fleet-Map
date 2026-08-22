@@ -38,7 +38,9 @@ function runSmoke(script) {
 (async () => {
   if (!await waitUp()) { console.error('[ci] serverul nu a pornit la timp'); return finish(1); }
   let fail = 0;
-  for (const s of ['tenant_smoke.js', 'rbac_smoke.js', 'catalog_smoke.js']) {
+  // verify_can_flags.js nu are nevoie de server (verifică fișierele), dar stă aici ca să prindem
+  // la fiecare `npm test` un steag CAN rămas fără nume — altfel dispare tăcut din panou.
+  for (const s of ['tenant_smoke.js', 'rbac_smoke.js', 'catalog_smoke.js', 'verify_can_flags.js']) {
     console.log('\n=== ' + s + ' ===');
     if (await runSmoke(s)) fail++;
   }

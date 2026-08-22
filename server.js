@@ -164,6 +164,7 @@ let agents = null;
 try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indisponibil:', e.message); }
 const licenseCats = require('./license_cats');   // categorii permis + încadrare șofer (sursă unică)
 const maintTypes = require('./maint_types');     // tipuri de lucrări la service + granița față de Documente
+const canFlags = require('./can_flags');         // steagurile CAN (uși, lumini, martori) — nume + iconiță
 let fuelprice = null;
 try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
 let roadlimits = null;
@@ -1159,6 +1160,14 @@ app.get('/js/license-cats.js', (req, res) => { res.set('Cache-Control', NO_CACHE
 // erau scrise de mână în două locuri din pagină, cu conținut diferit.
 const _MAINT_JS = 'window.RA_MAINT=' + JSON.stringify({ work: maintTypes.WORK, docs: maintTypes.DOCS, classes: maintTypes.CLASSES, classMap: maintTypes.CLASS_MAP }) + ';';
 app.get('/js/maint-types.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_MAINT_JS); });
+
+// Steagurile CAN (uși, lumini, martori de bord) — nume + iconiță, dintr-o sursă (can_flags.js).
+// Web-ul le ia ca script (window.RA_CANFLAGS), telefonul prin /api/can-flags. Aceleași date, două
+// transporturi: dacă schimbi o etichetă aici, se schimbă în amândouă ecranele deodată.
+const _CANFLAGS = { groups: canFlags.GROUPS, flags: canFlags.FLAGS, kindText: canFlags.KIND_TEXT, undecoded: canFlags.NEDECODATE };
+const _CANFLAGS_JS = 'window.RA_CANFLAGS=' + JSON.stringify(_CANFLAGS) + ';';
+app.get('/js/can-flags.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_CANFLAGS_JS); });
+app.get('/api/can-flags', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(_CANFLAGS); });
 
 // Healthcheck public (monitorizare/uptime + Railway) — verifică și conexiunea la DB
 const _startedAt = Date.now();
