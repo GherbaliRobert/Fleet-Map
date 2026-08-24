@@ -20,6 +20,57 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-22
 
+### AMÂNDOI · Raportul de consum arăta aproape dublu. Reparat.
+
+Robert a scos un raport de consum pentru mașina lui: **52 de litri**. În realitate consumase **27**.
+Aceeași cifră greșită apărea și în raportul de consum, și în cel analitic.
+
+**De ce.** Consumul dintr-un senzor de nivel se calcula adunând **toate scăderile de nivel**. Sună
+rezonabil, dar nivelul dintr-un rezervor nu scade lin: combustibilul se plimbă la viraje, pante,
+frânări și accelerări, iar senzorul are și el zgomotul lui. Acul urcă și coboară tot timpul. Dacă
+aduni doar coborârile, aduni și zgomotul — **de fiecare dată în plus, niciodată în minus**.
+
+Partea care arată cel mai limpede că era greșit: **cifra depindea de cât de des transmite trackerul**.
+Pe exact același drum, cu același consum real de 27 de litri:
+
+| Trackerul transmite | Raportul zicea |
+|---|---|
+| la 10 secunde | **208 L** |
+| la 30 secunde | 74 L |
+| la 1 minut | 48 L |
+| la 2 minute | 29 L |
+| la 5 minute | 25 L |
+
+Cât combustibil arde o mașină nu are nicio legătură cu cât de des raportează cutia GPS. Cifrele astea
+nu vin dintr-un vehicul real — sunt dintr-o probă în care se știe exact cât s-a consumat, ca să se
+vadă negru pe alb unde e greșeala.
+
+**Ce am schimbat.** Consumul din senzor se calculează acum cum e firesc: **cât a scăzut nivelul între
+început și sfârșit, plus cât s-a alimentat între timp**. Zgomotul se anulează singur, fiindcă la fel
+de des urcă pe cât coboară. Capetele intervalului se iau ca mediană a primelor și ultimelor câteva
+citiri, ca o singură citire nimerită prost să nu mute tot rezultatul. Aceeași formulă o folosea deja
+graficul pe zile — doar totalul pe mașină nu.
+
+**Încă două lucruri găsite cu aceeași ocazie:**
+
+- **Mașinile cu contor CAN puteau raporta triplu.** Unele trackere trimit ba un contor de combustibil,
+  ba altul, de la un pachet la altul — două contoare diferite, amândouă crescătoare. Aplicația sărea
+  între ele, iar fiecare săritură se aduna ca „încă niște litri consumați": 79 în loc de 27. Acum ne
+  legăm de un singur contor și mergem numai pe el.
+- **Cele două rapoarte se contraziceau.** Raportul de consum avea o regulă în plus: alimentările erau
+  luate în seamă doar dacă apăreau la mai puțin de o oră una de alta. O alimentare făcută peste noapte
+  nu se număra, și lipsea apoi din calcul. Raportul analitic n-a avut niciodată regula asta. Acum
+  amândouă socotesc la fel, iar proba automată cade dacă vreodată încep iar să difere.
+
+**Ce rămâne de știut:** dacă cineva fură combustibil din rezervor, litrii aceia apar tot ca „consum"
+în raport — nivelul a scăzut, iar raportul de consum asta măsoară. Pentru furt există alertele și
+raportul de anomalii, care se uită la altceva (scăderi bruște cu motorul oprit). Era așa și înainte.
+
+- **Ce vede fondatorul:** cifre în care se poate avea încredere când le arată unui client. Proba
+  `verify_consum.js` rulează la fiecare `npm test` și verifică pe un consum cunoscut, nu pe „pare ok".
+- **Ce vede clientul:** consumul real, nu unul umflat. Cine s-a uitat până acum la rapoartele astea a
+  văzut cifre prea mari — merită spus, dacă a discutat cineva cu un client pe baza lor.
+
 ### AMÂNDOI · Tot ce s-a făcut la CAN, dus și în aplicația de telefon
 
 Cererea lui Alin: *„toate modificările astea le vreau și pe APK."* Erau trei lucruri de dus, plus o

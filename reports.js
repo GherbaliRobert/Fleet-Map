@@ -74,6 +74,60 @@ function fuelL(p) { const i = io(p); if (i.fuel_level_liters != null) { const n 
 // IO-urile CAN vin adesea ca STRING numeric (ca `can_total_mileage` → vezi _odoFromIo): citim cu != null + parseFloat,
 // altfel `typeof === 'number'` respinge stringul și contorul e ignorat (sursa cădea mereu pe Senzor/Estimat).
 function fuelCumul(p) { const i = io(p); const raw = i.can_fuel_consumed != null ? i.can_fuel_consumed : (i.can_fuel_consumed_counted != null ? i.can_fuel_consumed_counted : (i.can_engine_total_fuel_used != null ? i.can_engine_total_fuel_used : null)); const v = raw != null ? parseFloat(raw) : NaN; return (isFinite(v) && v > 0) ? v : null; }
+// ── Consumul din nivelul rezervorului ───────────────────────────────────────────────────────────
+// Cât a scăzut NET, plus cât s-a alimentat. NU suma tuturor scăderilor.
+//
+// Aici era greșeala care a dat 52 L la o mașină care consumase 27 (semnalat de Robert, 24.08).
+// Nivelul dintr-un rezervor oscilează tot timpul: combustibilul se plimbă la viraje, pante,
+// frânări, iar senzorul are și el zgomotul lui. Dacă aduni DOAR coborârile, aduni și zgomotul —
+// de fiecare dată în plus, niciodată în minus. Iar cât se adună depinde de CÂT DE DES transmite
+// trackerul, nu de cât s-a ars: pe exact același drum, cu punct la 10 secunde ieșeau 208 L, cu
+// punct la 5 minute ieșeau 25. (Adevărul: 27.)
+//
+// Scăderea netă e imună la asta — zgomotul se anulează singur, fiindcă la fel de des urcă pe cât
+// coboară. Alimentările se adună înapoi, ca să nu treacă drept „nu s-a consumat".
+// Seria pe zile din `fuelStats` folosea deja formula asta; doar totalul pe vehicul nu.
+function _nivelConsum(first, last, refueled) {
+  if (first == null || last == null) return 0;
+  const v = (first - last) + (refueled || 0);
+  return v > 0 ? v : 0;
+}
+// Capătul unui interval, luat ca MEDIANĂ a primelor (sau ultimelor) câteva citiri. O singură
+// citire nimerită pe un vârf de zgomot ar muta tot rezultatul cu litri buni.
+function _capat(valori, dinCoada) {
+  if (!valori.length) return null;
+  const n = Math.min(5, valori.length);
+  const felie = dinCoada ? valori.slice(-n) : valori.slice(0, n);
+  const sortate = felie.slice().sort((a, b) => a - b);
+  return sortate[Math.floor(sortate.length / 2)];
+}
+// Contorul CAN cumulativ. Ne LEGĂM de un singur câmp și mergem numai pe el.
+// Unele trackere trimit ba `can_fuel_consumed`, ba `can_fuel_consumed_counted` — două contoare
+// diferite, amândouă crescătoare, cu zeci de litri între ele. Sărind de la unul la altul, fiecare
+// alternanță producea un „consum" din senin: în probă, 79 L în loc de 27.
+const _CUMUL_KEYS = ['can_fuel_consumed', 'can_fuel_consumed_counted', 'can_engine_total_fuel_used'];
+function _cumulTracker() {
+  let cheie = null, prev = null, sum = 0, vazut = false;
+  return {
+    add(p) {
+      const i = io(p);
+      if (cheie === null) {
+        for (const k of _CUMUL_KEYS) {
+          const v = i[k] != null ? parseFloat(i[k]) : NaN;
+          if (isFinite(v) && v > 0) { cheie = k; break; }
+        }
+        if (cheie === null) return;
+      }
+      const v = i[cheie] != null ? parseFloat(i[cheie]) : NaN;
+      if (!isFinite(v) || v <= 0) return;   // pachet fără contorul nostru → îl sărim, nu sărim la altul
+      if (prev !== null) { const d = v - prev; if (d > 0 && d < 100) sum += d; }
+      prev = v; vazut = true;
+    },
+    total() { return (vazut && sum > 0) ? sum : null; },
+    vazut() { return vazut; },
+  };
+}
+
 function ignOn(p) { return io(p).ignition === 1; }
 // Turația CAN (RON: „can_rpm" în raportul CAN, unele parsere „can_engine_rpm"). null dacă lipsește.
 function canRpm(p) { const i = io(p); const v = i.can_rpm != null ? i.can_rpm : (i.can_engine_rpm != null ? i.can_engine_rpm : null); const n = v != null ? parseFloat(v) : NaN; return isFinite(n) ? n : null; } // string-tolerant (valorile CAN pot veni ca string)
@@ -1699,15 +1753,19 @@ async function _consumptionMap(db, imeis, from, to, opts) {
   const out = {};
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
-    let first = null, last = null, refueled = 0, dist = 0, prevFuel = null, prevFuelTs = 0, idleSec = 0, prevP = null;
-    let cumulSum = 0, prevCumul = null, cumulSeen = false, dropSum = 0; // contor incremente + sumă scăderi de nivel
+    let refueled = 0, dist = 0, prevFuel = null, idleSec = 0, prevP = null;
+    const niveluri = [];                 // toate citirile de nivel, pentru capete robuste
+    const cumul = _cumulTracker();
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], fl = fuelL(p), ts = t(p);
-      const fc = fuelCumul(p); if (fc != null) { if (prevCumul != null) { const dc = fc - prevCumul; if (dc > 0 && dc < 100) cumulSum += dc; } prevCumul = fc; cumulSeen = true; }
+      cumul.add(p);
       if (fl != null) {
-        if (first == null) first = fl; last = fl;
-        if (prevFuel != null && (ts - prevFuelTs) <= 3600 * 1000) { const d = fl - prevFuel; if (d >= refuelMin) refueled += d; const dd = prevFuel - fl; if (dd >= 0.4 && dd < 40) dropSum += dd; }
-        prevFuel = fl; prevFuelTs = ts;
+        niveluri.push(fl);
+        // Alimentarea se numără ORICÂND apare saltul, nu doar în pauze scurte: aici era o gardă de
+        // o oră care pierdea alimentările făcute peste noapte, iar acelea lipseau apoi din consum.
+        // `fuelStats` n-a avut niciodată garda asta — cele două rapoarte se contraziceau.
+        if (prevFuel != null) { const d = fl - prevFuel; if (d >= refuelMin) refueled += d; }
+        prevFuel = fl;
       }
       if (i > 0) { const pr = pts[i - 1], dt = (ts - t(pr)) / 1000, dd = haversineKm(pr.latitude, pr.longitude, p.latitude, p.longitude); if (dt > 0 && dt <= 300 && dd < MAX_STEP_KM) dist += dd; }
       if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED && prevP && ignOn(prevP) && (prevP.speed || 0) <= IDLE_SPEED) { const dt = (new Date(p.timestamp) - new Date(prevP.timestamp)) / 1000; if (dt > 0 && dt < 3600) idleSec += dt; }
@@ -1717,12 +1775,13 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     const price = resolvePrice(c, opts);
     const cRoad = c.cRoad || defConsumption(c.vtype);
     const idleL = idleSec / 3600 * (c.cIdle || idleLph);
+    const first = _capat(niveluri, false), last = _capat(niveluri, true);
     const hasFuel = first != null;
     // Contor cumulativ (cel mai exact) — preferat înaintea scăderii de nivel.
-    const cumulL = (cumulSeen && cumulSum > 0) ? cumulSum : null;
+    const cumulL = cumul.total();
     const cumulPer100 = (cumulL != null && dist > 1) ? (cumulL / dist * 100) : null;
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
-    const sensorL = dropSum; // consum din nivel = suma scăderilor reale (gestionează alimentări/grad. automat)
+    const sensorL = _nivelConsum(first, last, refueled); // scăderea NETĂ + alimentările (vezi _nivelConsum)
     const sensorPer100 = (sensorL > 0 && dist > 1) ? (sensorL / dist * 100) : null;
     // Prag minim 3 L/100km: sub atât pe distanță reală = ac „gros" (în trepte) care a ratat consum → NU-l credem,
     // trecem pe estimare (evită cifre absurd de mici, gen 1.6 L/100km la Caddy). Contorul CAN cumulativ NU are pragul ăsta (e exact).
@@ -2252,15 +2311,16 @@ async function fuelStats(db, imeis, from, to, opts) {
   let kL = 0, kKm = 0, kCost = 0, kIdleL = 0, kIdleSec = 0, kCo2 = 0, kIdleCost = 0, vWith = 0, vEst = 0;
   for (const imei of imeis) {
     const pts = await history(db, imei, from, to);
-    let first = null, last = null, refueled = 0, dist = 0, prev = null, idleSec = 0, prevP = null;
-    let cumulSum = 0, prevCumul = null, cumulSeen = false, dropSum = 0; // contor incremente + sumă scăderi de nivel
+    let refueled = 0, dist = 0, prev = null, idleSec = 0, prevP = null;
+    const niveluri = [];
+    const cumul = _cumulTracker();
     const bF = {}, bL = {}, bPrev = {}, bRefuel = {}, bIdle = {}, bDist = {};
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i], fl = fuelL(p), bk = _bucketKey(p.timestamp, bucket);
-      const fc = fuelCumul(p); if (fc != null) { if (prevCumul != null) { const dc = fc - prevCumul; if (dc > 0 && dc < 100) cumulSum += dc; } prevCumul = fc; cumulSeen = true; }
+      cumul.add(p);
       if (fl != null) {
-        if (first == null) first = fl; last = fl;
-        if (prev != null) { const d = fl - prev; if (d >= refuelMin) refueled += d; const dd = prev - fl; if (dd >= 0.4 && dd < 40) dropSum += dd; }
+        niveluri.push(fl);
+        if (prev != null) { const d = fl - prev; if (d >= refuelMin) refueled += d; }
         prev = fl;
         if (bF[bk] === undefined) bF[bk] = fl; bL[bk] = fl;
         if (bPrev[bk] !== undefined) { const d = fl - bPrev[bk]; if (d >= refuelMin) bRefuel[bk] = (bRefuel[bk] || 0) + d; }
@@ -2276,12 +2336,13 @@ async function fuelStats(db, imeis, from, to, opts) {
     const cIdleLph = c.cIdle || idleLph;                          // L/h ralanti
     const idleH = idleSec / 3600, idleL = idleH * cIdleLph;
     // Consum din senzorul de nivel (sondă/CAN): scădere netă + realimentări detectate (salturi ≥ refuelMin).
+    const first = _capat(niveluri, false), last = _capat(niveluri, true);
     const hasFuel = first != null;
     // Contor cumulativ CAN (consum exact, merge și pe distanțe scurte) — preferat înaintea scăderii de nivel.
-    const cumulL = (cumulSeen && cumulSum > 0) ? cumulSum : null;
+    const cumulL = cumul.total();
     const cumulPer100 = (cumulL != null && dist > 1) ? (cumulL / dist * 100) : null;
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
-    const sensorL = dropSum; // consum din nivel = suma scăderilor reale (gestionează alimentări/scăderi graduale automat)
+    const sensorL = _nivelConsum(first, last, refueled); // scăderea NETĂ + alimentările (vezi _nivelConsum)
     const sensorPer100 = (sensorL > 0 && dist > 1) ? (sensorL / dist * 100) : null;
     // Senzorul de nivel e „de încredere" doar dacă dă consum > 0 pe distanță reală și un L/100km plauzibil ≥3
     // (sub atât = ac grosier care a ratat consum → estimăm). Ține pasul cu _consumptionMap (raportul Consum carburant).
