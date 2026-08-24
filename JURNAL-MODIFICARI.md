@@ -20,6 +20,39 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-22
 
+### AMÂNDOI · Tot ce s-a făcut la CAN, dus și în aplicația de telefon
+
+Cererea lui Alin: *„toate modificările astea le vreau și pe APK."* Erau trei lucruri de dus, plus o
+curățenie fără de care al treilea ar fi însemnat să scriu aceleași reguli a doua oară.
+
+**1. Mesajul „mașina asta nu trimite semnalele de stare".** Telefonul avea aceeași tăcere ca web-ul.
+Acum scrie același lucru, cu aceleași cuvinte.
+
+**2. Fereastra „Ce trimite mașina"** — echivalentul lui „Ce înseamnă?" din web. Se deschide din
+ecranul **Date CAN**, cu butonul din dreapta sus. Arată ce trimite mașina, ce înseamnă fiecare cod,
+valoarea de acum, și marchează portocaliu ce trimite fără să știm noi ce e. Are și căutare, tot fără
+diacritice.
+
+**3. O regulă, un singur loc.** Cele ~300 de rânduri care spun *cum se scrie pe ecran o valoare de
+IO* (că tensiunea vine în milivolți și se împarte la o mie, că timpul de funcționare se scrie
+„12h 30m") stăteau înăuntrul paginii web. Ca să apară aceleași valori și pe telefon aveam două
+variante: să le copiez în aplicația de telefon — adică două liste care în șase luni ar fi zis lucruri
+diferite — sau să le scot într-un loc al lor. Le-am scos, în `io_format.js`. Acum le folosesc toate
+trei: pagina web, serverul, și telefonul (prin server, fără copie proprie).
+
+Mutarea asta se poate strica tăcut, așa că are o probă care compară versiunea **de dinainte**, luată
+din istoricul git, cu cea de acum: **12.750 de perechi cod/valoare**, toate identice. Am probat și că
+proba chiar pică — am schimbat „RPM" în „rpm" într-un singur loc și a căzut imediat.
+
+**Ce s-a mai reparat pe drum.** Proba nouă a rutei raporta „6 verificări trecute" fără să verifice
+nimic din ce contează: ruta de injectare tăia literele din IMEI-ul de probă („TEST222" devenea „222"),
+lista venea goală, iar proba sărea liniștită peste partea importantă. Acum, dacă injectarea nu merge,
+proba **cade**. Un test care trece degeaba e mai rău decât niciun test.
+
+- **Ce vede fondatorul:** aceeași fișă „ce dă mașina asta" în telefon ca pe calculator, inclusiv
+  codurile necatalogate, pe care le poate denumi apoi din Administrare.
+- **Ce vede clientul:** la fel — fereastra e deschisă oricui, ca pe web.
+
 ### AMÂNDOI · „Ce înseamnă?" răspunde acum despre MAȘINA deschisă, nu în general
 
 Întrebarea lui Alin, 22.08: *„așa arată acum la toate mașinile, ideea e că unde nu am cum arăta? sau

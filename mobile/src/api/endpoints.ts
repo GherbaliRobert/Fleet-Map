@@ -53,6 +53,9 @@ export const Api = {
   ioMappings: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/io-mappings`),
   // Catalogul steagurilor CAN (nume + iconiță). Public, aceleași date pe care le folosește web-ul.
   canFlags: () => api<any>('/api/can-flags', { auth: false }),
+  // „Ce trimite mașina asta și ce înseamnă" — potrivirea cu catalogul și formatarea se fac pe server,
+  // ca telefonul să nu-și țină o a doua copie a regulilor.
+  ioExplained: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/io-explained`),
   fuelSensors: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/fuel-sensors`),
   history: (imei: string, from: string, to: string) => api<any[]>(`/api/history/${encodeURIComponent(imei)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&ext=1`),
   report: (imei: string, from: string, to: string) => api<any>(`/api/report/${encodeURIComponent(imei)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),

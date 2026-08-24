@@ -165,6 +165,7 @@ try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indispo
 const licenseCats = require('./license_cats');   // categorii permis + încadrare șofer (sursă unică)
 const maintTypes = require('./maint_types');     // tipuri de lucrări la service + granița față de Documente
 const canFlags = require('./can_flags');         // steagurile CAN (uși, lumini, martori) — nume + iconiță
+const ioFormat = require('./io_format');         // cum se scrie pe ecran o valoare de IO (web + telefon)
 let fuelprice = null;
 try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
 let roadlimits = null;
@@ -1168,6 +1169,12 @@ const _CANFLAGS = { groups: canFlags.GROUPS, flags: canFlags.FLAGS, kindText: ca
 const _CANFLAGS_JS = 'window.RA_CANFLAGS=' + JSON.stringify(_CANFLAGS) + ';';
 app.get('/js/can-flags.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_CANFLAGS_JS); });
 app.get('/api/can-flags', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(_CANFLAGS); });
+
+// Formatarea valorilor IO — aceeași sursă pentru pagină și pentru rutele de mai jos (io_format.js).
+const _IOFMT_JS = 'window.RA_IOFMT=(function(){' +
+  ioFormat.formatIoValue.toString() + '\n' + ioFormat.formatIoLabel.toString() +
+  '\nreturn {formatIoValue:formatIoValue,formatIoLabel:formatIoLabel};})();';
+app.get('/js/io-format.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_IOFMT_JS); });
 
 // Healthcheck public (monitorizare/uptime + Railway) — verifică și conexiunea la DB
 const _startedAt = Date.now();
@@ -3681,6 +3688,23 @@ if (process.env.NODE_ENV === 'test') {
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
+  // Pune un vehicul în lista LIVE cu IO-uri alese, ca probele să poată verifica ecranele care
+  // depind de ce transmite mașina (ex. „ce trimite și ce înseamnă"). Altfel proba ar putea doar
+  // să se uite la forma răspunsului, nu și la conținut — adică exact partea care se strică.
+  app.post('/api/debug/live-io', requireAuth, requireSuperadmin, (req, res) => {
+    const b = req.body || {};
+    // Nu doar cifre: vehiculele semănate pentru probe au IMEI-uri de forma „TEST222". Tăind literele,
+    // poziția ajungea sub altă cheie și proba se uita la un vehicul gol fără să se plângă.
+    const imei = String(b.imei || '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 32);
+    if (!imei) return res.status(400).json({ error: 'IMEI lipsă' });
+    const vechi = livePositions.get(imei) || { imei };
+    livePositions.set(imei, Object.assign({}, vechi, {
+      imei, latitude: 44.43, longitude: 26.10, speed: 0,
+      timestamp: new Date().toISOString(),
+      io: expandCanFlags(Object.assign({}, b.io || {})),
+    }));
+    res.json({ ok: true, imei });
+  });
 }
 
 app.get('/api/debug/live-stats', requireAuth, requireSuperadmin, (req, res) => {
@@ -4988,6 +5012,90 @@ app.get('/api/devices/:imei/io-mappings', requireAuth, withScope, async (req, re
     res.json(await db.getIoMappings(req.params.imei));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// „Ce trimite mașina asta și ce înseamnă" — pentru fereastra din telefon (echivalentul lui
+// „Ce înseamnă?" din web). Se face pe SERVER ca să nu ajungă în aplicația de telefon o a doua copie
+// a catalogului și a formatării: ar fi două liste care o iau razna una față de cealaltă.
+//
+// Ce întoarce, pentru fiecare semnal pe care vehiculul îl trimite ACUM:
+//   cod (io_NNN) · nume pe românește · descriere · categorie · valoarea formatată · codurile echivalente
+// plus cele pe care le trimite dar nu-s în catalog, marcate `necatalogat`.
+app.get('/api/devices/:imei/io-explained', requireAuth, withScope, async (req, res) => {
+  try {
+    const imei = req.params.imei;
+    if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+
+    const poz = livePositions.get(imei);
+    const io = (poz && poz.io) || {};
+    // Doar valorile simple: blocurile de steaguri decodate au ecranul lor, cu iconițe.
+    const chei = {};
+    Object.keys(io).forEach((k) => {
+      if (k === '_security_flags' || k === '_control_flags') return;
+      const v = io[k];
+      if (v === null || v === undefined || typeof v === 'object') return;
+      chei[k] = v;
+    });
+
+    // Catalogul, cu override-urile companiei, exact ca /api/io-catalog
+    let overrides = {};
+    try { const raw = await db.getSetting('io_catalog_overrides'); overrides = raw ? JSON.parse(raw) : {}; } catch (e) { overrides = {}; }
+    const catalog = (ioCatalog ? ioCatalog.IO_CATALOG : []).map((e) => {
+      const ov = overrides[e.id];
+      const m = ov ? Object.assign({}, e, ov, { id: e.id }) : e;
+      let key; try { key = getIoName(e.id, null) || ('io_' + e.id); } catch (x) { key = 'io_' + e.id; }
+      return Object.assign({}, m, { key });
+    });
+    const byId = {}; catalog.forEach((e) => { byId[e.id] = e; });
+
+    // Mai multe ID-uri duc la același semnal intern (io_35/85/88 = turația). Păstrăm codul cel mai
+    // mic — e și cel cu unitatea corectă: io_84 se cheamă „(%)" dar primește litrii.
+    const peSemnal = {};
+    catalog.forEach((e) => {
+      if (!e.key || chei[e.key] === undefined) return;
+      (peSemnal[e.key] = peSemnal[e.key] || []).push(e.id);
+    });
+
+    const semnale = [];
+    Object.keys(peSemnal).forEach((k) => {
+      const ids = peSemnal[k].slice().sort((a, b) => a - b);
+      const e = byId[ids[0]];
+      semnale.push({
+        id: e.id, cod: 'io_' + e.id, cheie: k,
+        nume: e.name_ro || e.name || ('IO ' + e.id),
+        numeConfig: e.name || '', descriere: e.desc_ro || '', categorie: e.category || '',
+        unitate: (e.unit && e.unit !== '-') ? e.unit : '',
+        valoare: ioFormat.formatIoValue(k, chei[k]),
+        echivalente: ids.slice(1).map((x) => 'io_' + x),
+        necatalogat: false,
+      });
+    });
+
+    // Ce trimite, dar nu e în catalog — tocmai codurile despre care omul vrea să afle ceva.
+    const acoperite = {};
+    catalog.forEach((e) => { if (e.key) acoperite[e.key] = 1; acoperite['io_' + e.id] = 1; });
+    Object.keys(chei).forEach((k) => {
+      if (acoperite[k]) return;
+      const m = /^io_(\d+)$/.exec(k);
+      semnale.push({
+        id: m ? parseInt(m[1]) : null, cod: m ? k : k, cheie: k,
+        nume: ioFormat.formatIoLabel(k, byId),
+        numeConfig: '', categorie: 'Necatalogat', unitate: '',
+        descriere: 'Mașina trimite valoarea asta, dar nu știm ce înseamnă.',
+        valoare: ioFormat.formatIoValue(k, chei[k]),
+        echivalente: [], necatalogat: true,
+      });
+    });
+
+    semnale.sort((a, b) => (a.id == null ? 99999 : a.id) - (b.id == null ? 99999 : b.id));
+    res.json({
+      imei, semnale,
+      total: semnale.length,
+      necatalogate: semnale.filter((x) => x.necatalogat).length,
+      dinCatalog: catalog.length,
+      actualizat: (poz && poz.timestamp) || null,
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Setare mapare pentru un IO (doar super-admin)
 app.put('/api/devices/:imei/io-mappings/:ioId', requireAuth, requireSuperadmin, async (req, res) => {
   try {

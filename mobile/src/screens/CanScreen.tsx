@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { CanList } from './VehicleDetail';
 import { CanFlags } from '../components/CanFlags';
+import { IoExplained } from '../components/IoExplained';
 import './detail.css';
 import './can.css';
 
@@ -60,13 +61,14 @@ export function CanScreen() {
   const [err, setErr] = useState('');
   const [gata, setGata] = useState(false);
   const [brute, setBrute] = useState(false);
+  const [explic, setExplic] = useState(false);
 
   // preact-iso REFOLOSEȘTE instanța când se schimbă doar parametrul rutei. Fără resetare, ecranul ar
   // arăta kilometrajul și combustibilul vehiculului precedent. `viu` anulează răspunsurile întârziate:
   // pe rețea slabă, fișa cerută pentru mașina veche se putea întoarce PESTE starea deja resetată.
   useEffect(() => {
     let viu = true;
-    setFull(null); setSenzori(null); setCons(null); setErr(''); setGata(false); setBrute(false);
+    setFull(null); setSenzori(null); setCons(null); setErr(''); setGata(false); setBrute(false); setExplic(false);
     Promise.all([
       Api.deviceFull(imei).then((r) => { if (viu) setFull(r); }).catch((e: any) => { if (viu) setErr(e?.message || 'Nu am putut încărca fișa vehiculului'); }),
       Api.fuelSensors(imei).then((r: any) => { if (viu) setSenzori(Array.isArray(r) ? r : (r?.sensors || [])); }).catch(() => { if (viu) setSenzori([]); }),
@@ -169,7 +171,9 @@ export function CanScreen() {
       <header class="app-header">
         <button class="h-btn" onClick={() => history.back()} aria-label="Înapoi"><Icon name="chevronL" /></button>
         <div class="h-title">Date CAN</div>
-        <div style="width:36px" />
+        {/* „Ce înseamnă?" — deschis oricui, ca în web. Nu e o unealtă de administrare, e răspunsul
+            la „ce dă mașina asta?", pe care și-l pune orice om care se uită la ecranul ăsta. */}
+        <button class="h-btn" onClick={() => setExplic(true)} aria-label="Ce înseamnă semnalele"><Icon name="cpu" /></button>
       </header>
 
       <div class="content d-content">
@@ -258,6 +262,8 @@ export function CanScreen() {
           : null}
 
         {isSuper && brute ? <div class="card d-stats"><CanList io={io} adblueOk showRaw /></div> : null}
+
+        {explic ? <IoExplained imei={imei} onClose={() => setExplic(false)} /> : null}
 
         <div class="can-note">
           Ecranul arată doar ce transmite efectiv mașina. Ce lipsește nu e o defecțiune a aplicației —

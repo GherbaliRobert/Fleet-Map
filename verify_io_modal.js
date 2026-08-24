@@ -17,6 +17,9 @@ const catalog = IO_CATALOG.map(function (e) {
 
 function grabTo(a, b) { const i = src.indexOf(a); const j = src.indexOf(b, i); if (i < 0 || j < 0) throw new Error('nu găsesc ' + a.slice(0, 40)); return src.slice(i, j); }
 const fnRender = grabTo('    window.raxRenderIoDetails = function () {', '\n    window.raxOpenIoEditor');
+// Pagina nu mai ține formatarea: deleagă la `window.RA_IOFMT` (io_format.js, servit ca
+// /js/io-format.js). Îi dăm modulul REAL — așa proba trece prin exact lanțul din browser.
+const ioFormat = require('./io_format.js');
 const fnFmtVal = grabTo('    function formatIoValue(key, value) {', '\n    function renderIoPanel');
 
 // DOM fals: doar elementele pe care le atinge funcția
@@ -29,7 +32,7 @@ const els = {
   'rax-io-nr': mkEl(''),
   'rax-io-veh': mkEl(''),
 };
-const win = { IO_CAT: catalog, IO_CAT_CATEGORIES: [...new Set(catalog.map(e => e.category))].sort(), _raxIoVeh: null };
+const win = { IO_CAT: catalog, IO_CAT_CATEGORIES: [...new Set(catalog.map(e => e.category))].sort(), _raxIoVeh: null, RA_IOFMT: ioFormat };
 const ctx = {
   document: { getElementById: id => els[id] || null },
   esc: s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
@@ -112,6 +115,23 @@ sect('5. Mașină care nu trimite nimic util');
   win._raxIoVeh = null; els['rax-io-doar'].checked = true;
   render();
   T('fără vehicul, bifa nu filtrează nimic', nrDin(els['rax-io-details-body'].innerHTML) === catalog.length);
+}
+
+sect('6. Pagina chiar deleagă formatarea, nu-și ține copie');
+{
+  // sectiunea 5 a golit vehiculul; il punem la loc, altfel nu se randeaza nicio valoare
+  win._raxIoVeh = masina;
+  els['rax-io-doar'].checked = true; els['rax-io-details-search'].value = ''; render();
+  const cu = els['rax-io-details-body'].innerHTML;
+  // fără modul, delegarea trebuie să cadă pe valoarea brută — dovada că formatarea vine de-acolo
+  const winFara = Object.assign({}, win, { RA_IOFMT: null });
+  const rFara = new Function('window', 'document', 'esc',
+    fnFmtVal + '\n' + fnRender + '\n; return window.raxRenderIoDetails;')(winFara, ctx.document, ctx.esc);
+  rFara();
+  const fara = els['rax-io-details-body'].innerHTML;
+  T('cu modul, valorile sunt formatate', cu.includes('679 RPM') && cu.includes('12.82 V'));
+  T('fără modul, rămân brute (deci nu există copie ascunsă)', !fara.includes('679 RPM') && !fara.includes('12.82 V'));
+  render();
 }
 
 console.log('\n──────────────────────────────');

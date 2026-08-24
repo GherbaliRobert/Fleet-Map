@@ -22,7 +22,26 @@ export function CanFlags({ io }: { io: any }) {
   const nedecodate = new Set(cat.undecoded || []);
   const areSf = cat.flags.some((f) => f.key.startsWith('_sf_') && flat[f.key] !== undefined);
   const areCf = cat.flags.some((f) => f.key.startsWith('_cf_') && flat[f.key] !== undefined);
-  if (!areSf && !areCf) return null;
+  if (!areSf && !areCf) {
+    // Mașina are adaptor CAN (trimite cifre) dar nu și cele două semnale de stare — IO 132 și 123.
+    // Fără rândul ăsta, secțiunea lipsea pur și simplu și părea că aplicația e stricată. Aceeași
+    // regulă ca în panoul din web; textul e ținut la fel intenționat.
+    const areCan = Object.keys(io || {}).some((k) => k.indexOf('can_') === 0);
+    if (!areCan) return null;
+    const brut = (io && (io.can_security_state_flags !== undefined || io.can_control_state_flags !== undefined));
+    return (
+      <div class="cfm">
+        <details class="cfm-g" open>
+          <summary><Icon name="alert" size={14} /><b>Stare (uși, lumini, martori de bord)</b></summary>
+          <div class="cfm-note">
+            {brut
+              ? 'Mașina trimite semnalele de stare, dar nu le-am putut desface — anunță-ne, e o problemă de-a noastră, nu a adaptorului.'
+              : 'Mașina asta nu trimite semnalele de stare: nici uși, nici lumini, nici martori de bord. Adaptorul ei citește de pe magistrală doar valorile numerice de mai sus. Ține de ce anume suportă adaptorul pe modelul respectiv, nu de aplicație.'}
+          </div>
+        </details>
+      </div>
+    );
+  }
 
   const aprinse: { warn: string[]; open: string[] } = { warn: [], open: [] };
   let necitite = 0;
