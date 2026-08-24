@@ -16381,6 +16381,10 @@ const pozitii = await r.json();</code></pre>
           <input class="rax-field" id="rax-io-details-search" placeholder="Caută id / nume / descriere…" oninput="raxRenderIoDetails()" style="flex:1;min-width:160px;margin:0;">
           <select class="rax-field" id="rax-io-details-cat" onchange="raxRenderIoDetails()" style="width:auto;min-width:140px;margin:0;"><option value="">Toate categoriile</option></select>
         </div>
+        <label id="rax-io-doar-rand" style="display:none;align-items:center;gap:7px;margin-bottom:10px;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="rax-io-doar" checked onchange="raxRenderIoDetails()" style="margin:0;width:15px;height:15px;cursor:pointer;">
+          <span>Doar ce trimite <strong id="rax-io-veh"></strong> <span id="rax-io-nr" style="color:var(--text-muted);"></span></span>
+        </label>
         <div id="rax-io-details-body" style="max-height:60vh;overflow-y:auto;"></div>
       </div>
     </div>
@@ -16546,8 +16550,32 @@ const pozitii = await r.json();</code></pre>
     };
     loadIoCatalog();
     // Modal „Detalii IO" — read-only, accesibil oricui (afișat din panoul de detaliu vehicul)
+    // Ce trimite ACUM vehiculul deschis în panoul de detaliu — ca fereastra să nu mai fie un dicționar
+    // identic pe toate mașinile, ci un răspuns la „mașina asta ce dă și ce înseamnă?".
+    window._raxIoVeh = null;
+    function _raxIoVehicul() {
+      try {
+        if (!detailPanelImei) return null;
+        var d = devices.get(detailPanelImei); if (!d || !d.io) return null;
+        var chei = {};
+        Object.keys(d.io).forEach(function (k) {
+          if (k === '_security_flags' || k === '_control_flags') return;
+          if (d.io[k] === null || d.io[k] === undefined || typeof d.io[k] === 'object') return;
+          chei[k] = d.io[k];
+        });
+        if (!Object.keys(chei).length) return null;
+        return { nume: (d.plate || d.name || detailPanelImei), chei: chei };
+      } catch (e) { return null; }
+    }
+
     window.raxOpenIoDetails = function () {
       var ov = document.getElementById('rax-io-details-overlay'); if (!ov) return;
+      window._raxIoVeh = _raxIoVehicul();
+      var rand = document.getElementById('rax-io-doar-rand');
+      if (rand) {
+        rand.style.display = window._raxIoVeh ? 'flex' : 'none';
+        if (window._raxIoVeh) document.getElementById('rax-io-veh').textContent = window._raxIoVeh.nume;
+      }
       ov.classList.add('open');
       // `loadIoCatalog()` se cheamă o dată, când se încarcă pagina — dar ruta cere autentificare, iar
       // atunci ecranul de login e încă la vedere. Cererea lua 401, eroarea era înghițită de `catch`,
@@ -16570,21 +16598,105 @@ const pozitii = await r.json();</code></pre>
     window.raxCloseIoDetails = function () { var ov = document.getElementById('rax-io-details-overlay'); if (ov) ov.classList.remove('open'); };
     window.raxRenderIoDetails = function () {
       var body = document.getElementById('rax-io-details-body'); if (!body) return;
-      var q = (document.getElementById('rax-io-details-search').value || '').toLowerCase();
+      // Fără diacritice, ca la căutarea de vehicule: omul tastează „turatie", catalogul scrie
+      // „Turație", și nu găsea nimic. Aceeași regulă în ambele capete ale comparației.
+      var _fd = function (t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[șşŞȘ]/g, 's').replace(/[țţŢȚ]/g, 't').toLowerCase(); };
+      var q = _fd(document.getElementById('rax-io-details-search').value);
       var cat = document.getElementById('rax-io-details-cat').value || '';
+      var veh = window._raxIoVeh;
+      var doarEl = document.getElementById('rax-io-doar');
+      var doar = !!(veh && doarEl && doarEl.checked);
+      // Un cod din catalog e „trimis de mașină" dacă apare fie sub cheia lui internă (can_engine_rpm),
+      // fie brut ca io_NNN — trackerele trimit și coduri pe care parserul nu le are numite.
+      function valoarea(e) {
+        if (!veh) return undefined;
+        if (e.key && veh.chei[e.key] !== undefined) return veh.chei[e.key];
+        if (e.id !== null && e.id !== undefined && veh.chei['io_' + e.id] !== undefined) return veh.chei['io_' + e.id];
+        return undefined;
+      }
+      // Mai multe ID-uri din catalog duc la ACELAȘI semnal intern (io_35, io_85 și io_88 sunt toate
+      // turația; codec8e le normalizează la `can_engine_rpm`). Afișate toate, păreau trei semnale
+      // diferite, iar unul apărea chiar cu unitatea greșită — io_84 scrie „(%)" dar primea litrii.
+      // Păstrăm o singură intrare per semnal, iar celelalte coduri le trecem lângă ea.
+      var alias = {};
+      if (doar) {
+        // Grupăm pe semnalul intern și păstrăm ID-ul cel mai MIC. Nu e o preferință estetică:
+        // io_84 se cheamă în catalog „Nivel combustibil CAN (%)", dar parserul îi dă litrii, deci
+        // afișa „51.1 L" sub o etichetă cu procente. io_34, „Nivel combustibil in litri", spune
+        // adevărul despre aceeași valoare. Cel mai mic ID e și regula stabilă, nu ordinea din listă.
+        var peSemnal = {};
+        (window.IO_CAT || []).forEach(function (e) {
+          if (!e.key || veh.chei[e.key] === undefined) return;
+          (peSemnal[e.key] = peSemnal[e.key] || []).push(e.id);
+        });
+        var _dubluri = {};
+        Object.keys(peSemnal).forEach(function (k) {
+          var ids = peSemnal[k].slice().sort(function (a, b) { return a - b; });
+          alias[ids[0]] = ids.slice(1);
+          ids.slice(1).forEach(function (id) { _dubluri[id] = 1; });
+        });
+        window._raxIoDubluri = _dubluri;
+      } else { window._raxIoDubluri = {}; }
+
       var list = (window.IO_CAT || []).filter(function (e) {
+        if (doar && window._raxIoDubluri[e.id]) return false;
+        if (doar && valoarea(e) === undefined) return false;
         if (cat && e.category !== cat) return false;
         if (!q) return true;
-        var s = ((e.name || '') + ' ' + (e.name_ro || '') + ' io_' + e.id + ' ' + (e.desc_ro || '') + ' ' + (e.category || '')).toLowerCase();
+        var s = _fd((e.name || '') + ' ' + (e.name_ro || '') + ' io_' + e.id + ' ' + (e.desc_ro || '') + ' ' + (e.category || ''));
         return s.indexOf(q) >= 0;
       });
+      // Codurile pe care mașina le trimite, dar care NU sunt în catalog. Tocmai astea sunt cazul în
+      // care omul are cel mai mult nevoie de ajutor („ce naiba e io_1148?"), iar o listă construită
+      // doar din catalog nu le-ar fi arătat niciodată. Le punem la vedere, marcate „necatalogat" —
+      // de acolo un super-admin le poate denumi din editorul de catalog.
+      if (doar) {
+        var acoperite = {};
+        (window.IO_CAT || []).forEach(function (e) {
+          if (e.key) acoperite[e.key] = 1;
+          acoperite['io_' + e.id] = 1;
+        });
+        Object.keys(veh.chei).forEach(function (k) {
+          if (acoperite[k]) return;
+          var m = /^io_(\d+)$/.exec(k);
+          var e = {
+            id: m ? parseInt(m[1]) : null, key: k, _necat: true,
+            name_ro: formatIoLabel(k), name: '', unit: '-',
+            category: 'Necatalogat',
+            desc_ro: 'Mașina trimite valoarea asta, dar nu știm ce înseamnă. Se poate denumi din Administrare → Catalog IO.'
+          };
+          // Aceleași filtre ca pentru restul listei. Fără asta, codurile fără nume rămâneau agățate
+          // de rezultat oricât ai fi căutat — cauți „adblue" și tot îți apărea io_1148.
+          if (cat && e.category !== cat) return;
+          if (q && _fd(e.name_ro + ' ' + k + ' ' + e.category).indexOf(q) < 0) return;
+          list.push(e);
+        });
+        list.sort(function (a, b) { return (a.id || 99999) - (b.id || 99999); });
+      }
+      var nrEl = document.getElementById('rax-io-nr');
+      if (nrEl && veh) {
+        // Numărăm SEMNALE distincte, nu potriviri din catalog: după ce io_35/io_85/io_88 se strâng
+        // într-unul, „13 semnale" deasupra unei liste de 9 rânduri era pur și simplu greșit.
+        var chei = {};
+        (window.IO_CAT || []).forEach(function (e) { if (e.key && veh.chei[e.key] !== undefined) chei[e.key] = 1; });
+        var acop = {};
+        (window.IO_CAT || []).forEach(function (e) { if (e.key) acop[e.key] = 1; acop['io_' + e.id] = 1; });
+        var necat = Object.keys(veh.chei).filter(function (k) { return !acop[k]; }).length;
+        var cate = Object.keys(chei).length;
+        nrEl.textContent = '(' + (cate + necat) + ' semnale' + (necat ? ', ' + necat + ' fără nume' : '') + ')';
+      }
       // Header categorii
       var catSel = document.getElementById('rax-io-details-cat');
       if (catSel && catSel.dataset.populated !== '1') {
         catSel.innerHTML = '<option value="">Toate categoriile</option>' + (window.IO_CAT_CATEGORIES || []).map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
         catSel.dataset.populated = '1';
       }
-      if (!list.length) { body.innerHTML = '<div class="rax-co-meta">Niciun IO găsit.</div>'; return; }
+      if (!list.length) {
+        body.innerHTML = '<div class="rax-co-meta">' + (doar
+          ? 'Mașina asta nu trimite niciun cod care să se potrivească. Debifează de mai sus ca să vezi tot catalogul.'
+          : 'Niciun IO găsit.') + '</div>';
+        return;
+      }
       body.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + list.length + ' IO-uri</div>' + list.map(function (e) {
         // Nume în 3 niveluri: RO (utilizator final) · Configurator (cum vezi prin USB) · wiki (dacă diferă)
         var nameRo = e.name_ro || e.name || ('IO ' + e.id);
@@ -16596,13 +16708,23 @@ const pozitii = await r.json();</code></pre>
         var wikiLine = nameWiki && nameWiki !== nameCfg && nameWiki !== nameRo
           ? '<div style="font-size:10px;color:var(--text-muted);margin-top:1px;">📖 wiki: <code style="font-size:10px;background:var(--surface-alt,#f3f4f6);padding:1px 4px;border-radius:3px;">' + esc(nameWiki) + '</code></div>'
           : '';
-        return '<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:start;gap:8px;flex-wrap:wrap;">' +
-          '<div style="min-width:60px;font-family:inherit;font-size:12px;color:var(--accent);font-weight:700;">io_' + e.id + '</div>' +
+        // Valoarea de acum, dacă mașina deschisă chiar trimite codul ăsta. Asta transformă lista
+        // dintr-un dicționar într-un răspuns: nu doar „ce înseamnă io_100", ci „ce zice acum".
+        var val = valoarea(e);
+        var valBox = val === undefined ? '' :
+          '<div style="flex:0 0 auto;text-align:right;"><div style="font-size:13px;font-weight:800;color:var(--accent);">' +
+          esc(formatIoValue(e.key && veh.chei[e.key] !== undefined ? e.key : ('io_' + e.id), val)) +
+          '</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;">acum</div></div>';
+        return '<div style="border:1px solid ' + (val === undefined ? 'var(--border)' : 'var(--accent)') + ';border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:start;gap:8px;flex-wrap:wrap;">' +
+          '<div style="min-width:60px;font-family:inherit;font-size:12px;color:' + (e._necat ? 'var(--orange)' : 'var(--accent)') + ';font-weight:700;">' +
+            esc(e.id !== null && e.id !== undefined ? 'io_' + e.id : e.key) + '</div>' +
           '<div style="flex:1;min-width:200px;">' +
-            '<div style="font-weight:600;font-size:13px;">' + esc(nameRo) + (e.unit && e.unit !== '-' ? ' <span style="font-size:10px;color:var(--text-muted);font-weight:400;">[' + esc(e.unit) + ']</span>' : '') + '</div>' +
+            '<div style="font-weight:600;font-size:13px;">' + esc(nameRo) + (e.unit && e.unit !== '-' ? ' <span style="font-size:10px;color:var(--text-muted);font-weight:400;">[' + esc(e.unit) + ']</span>' : '') +
+              ((alias[e.id] && alias[e.id].length) ? ' <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(același semnal ca ' + alias[e.id].map(function (x) { return 'io_' + x; }).join(', ') + ')</span>' : '') + '</div>' +
             cfgLine + wikiLine +
             (e.desc_ro ? '<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">' + esc(e.desc_ro) + '</div>' : '') +
           '</div>' +
+          valBox +
           '<div><span class="rax-tag" style="font-size:10px;">' + esc(e.category || '') + '</span></div>' +
         '</div>';
       }).join('');

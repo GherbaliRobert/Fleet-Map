@@ -202,7 +202,7 @@ const IO_CATALOG = [
 
   // ─── Motor (31, 35, 88, 104, 114-115) ────────────────────────────────────
   { id: 31, name: "Accelerator Pedal Position", name_ro: "Pozitie pedala acceleratie", unit: "%", multiplier: 1, category: "Motor", desc_ro: "Procentul de apasare pedala acceleratie" },
-  { id: 35, name: "Engine RPM", name_ro: "Turatie motor", unit: "RPM", multiplier: 1, category: "Motor", desc_ro: "Turatia motorului in rotatii/minut" },
+  { id: 35, name: "Engine RPM", name_ro: "Turație motor", unit: "RPM", multiplier: 1, category: "Motor", desc_ro: "Turația motorului, în rotații pe minut" },
   { id: 88, name: "Engine Speed", name_ro: "Turatie motor (CAN)", unit: "RPM", multiplier: 1, category: "CAN", desc_ro: "Turatie motor citita din CAN" },
   { id: 104, name: "Engine Total Hours Of Operation", name_ro: "Ore totale functionare motor", unit: "h", multiplier: 1, category: "CAN", desc_ro: "Ore totale de functionare motor" },
   { id: 114, name: "Engine Load", name_ro: "Sarcina motor", unit: "%", multiplier: 1, category: "Motor", desc_ro: "Procent incarcare motor" },

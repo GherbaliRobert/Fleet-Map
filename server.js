@@ -8623,6 +8623,10 @@ app.get('/api/io-catalog', requireAuth, async (req, res) => {
         merged.push(Object.assign({ id: id, name: 'IO ' + id, name_ro: 'IO ' + id, unit: '-', multiplier: 1, category: 'Custom', desc_ro: '' }, ov, { id: id }));
       }
     });
+    // Cheia internă sub care ajunge fiecare ID în `io` (AVL 100 → `can_program_number`). Fără ea,
+    // interfața nu poate lega catalogul de ce trimite EFECTIV o mașină — rămâne un dicționar la fel
+    // pentru toate vehiculele, care nu răspunde la „ce dă mașina ASTA?".
+    merged.forEach(function (e) { try { e.key = getIoName(e.id, null) || ('io_' + e.id); } catch (x) { e.key = 'io_' + e.id; } });
     // Categoriile finale
     const categories = Array.from(new Set(merged.map(function (e) { return e.category || 'Altele'; }))).sort();
     res.json({ catalog: merged, categories: categories, overrideCount: Object.keys(overrides).length });

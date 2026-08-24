@@ -20,6 +20,36 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-22
 
+### AMÂNDOI · „Ce înseamnă?" răspunde acum despre MAȘINA deschisă, nu în general
+
+Întrebarea lui Alin, 22.08: *„așa arată acum la toate mașinile, ideea e că unde nu am cum arăta? sau
+cum le interpretez?"*
+
+Avea dreptate. Fereastra era un **dicționar**: 253 de coduri, exact aceleași pe orice mașină. Îți
+spunea ce înseamnă `io_100` în general, dar nu-ți spunea nimic despre mașina din fața ta — nici ce
+trimite, nici ce valoare are acum, nici ce trimite fără să știm noi ce e.
+
+**Acum e o fișă a mașinii.** Se deschide bifat pe „Doar ce trimite <mașina>", iar fiecare cod are
+valoarea de acum lângă el. Se debifează dacă vrei tot catalogul. Pe mașina din exemplu: din 253 de
+coduri, **9 semnale** — atât dă ea.
+
+Trei lucruri care ieșeau strâmb și s-au reparat pe drum:
+
+- **Codurile fără nume se văd.** Mașina trimitea `io_1148` și nu apărea nicăieri, fiindcă lista se
+  construia doar din catalog — exact codul despre care ai fi vrut să afli ceva lipsea cu totul. Acum
+  apare, marcat portocaliu „Necatalogat", cu îndemnul să-l denumești din Administrare → Catalog IO.
+- **Același semnal nu mai apare de trei ori.** `io_35`, `io_85` și `io_88` sunt toate turația —
+  aplicația le aduce sub același nume intern. Afișate toate, păreau trei senzori diferiți. Mai rău:
+  `io_84` se cheamă în catalog „Nivel combustibil (%)" dar primește litrii, deci scria „51.1 L" sub o
+  etichetă cu procente. Acum se păstrează un singur rând (codul cel mai mic, care spune adevărul
+  despre unitate), iar celelalte coduri sunt notate lângă el: „același semnal ca io_85, io_88".
+- **Căutarea nu ținea cont de diacritice.** Scriai „turatie" și nu găsea „Turație". La căutarea de
+  vehicule regula asta există de mult; aici nu ajunsese.
+
+- **Ce vede fondatorul:** poate răspunde pe loc la „ce dă mașina asta și ce înseamnă", fără să
+  cerceteze prin liste — inclusiv ce trimite și n-am catalogat încă.
+- **Ce vede clientul:** același lucru; fereastra e deschisă oricui, nu doar nouă.
+
 ### AMÂNDOI · Două lucruri care păreau stricate, dar tăceau
 
 Alin a deschis o mașină și n-a văzut plăcuțele. Am verificat, și erau două probleme diferite —
