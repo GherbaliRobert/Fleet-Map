@@ -20,6 +20,33 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-22
 
+### AMÂNDOI · Două lucruri care păreau stricate, dar tăceau
+
+Alin a deschis o mașină și n-a văzut plăcuțele. Am verificat, și erau două probleme diferite —
+niciuna nu dădea vreo eroare, amândouă lăsau ecranul gol.
+
+**1. „Mașina asta nu trimite semnalele de stare" — acum scrie, nu mai tace.** Vehiculul are adaptor
+CAN și trimite cifre (turație, combustibil, kilometraj), dar nu și cele două semnale de stare din
+care ies ușile, luminile și martorii de bord. Nu toate adaptoarele le citesc, depinde de model și de
+mașină. Până acum, în cazul ăsta secțiunea pur și simplu **lipsea** — și arăta ca și cum aplicația
+n-ar merge. Acum scrie negru pe alb ce se întâmplă și de ce nu ține de noi. Pe o mașină fără CAN
+deloc nu apare nimic, ca înainte — n-are rost să-i spunem asta cuiva cu GPS simplu.
+
+**2. Fereastra „Ce înseamnă?" era goală pentru toată lumea.** Butonul de lângă „IO Live" care explică
+codurile Teltonika scria „Niciun IO găsit". Motivul: lista se cerea de la server **în timp ce ecranul
+de autentificare era încă pe ecran**, serverul răspundea „nu ești autentificat", eroarea era înghițită
+în tăcere, și lista rămânea goală până la o reîncărcare a paginii. Adică pentru oricine se autentifica
+normal, fereastra n-a funcționat niciodată. Acum se încarcă la autentificare și se mai încearcă o dată
+la deschiderea ferestrei; dacă tot nu merge, o spune, nu se preface că lista e goală.
+
+Efect lăturalnic al aceleiași reparații: numele senzorilor. Fără catalog, un semnal nemapat apărea ca
+„Io 1148" în loc de denumirea lui adevărată — și asta se vedea în fișa oricărui vehicul.
+
+- **Ce vede fondatorul:** la fel ca clientul, plus catalogul IO care chiar se deschide când e nevoie
+  de el la maparea senzorilor.
+- **Ce vede clientul:** nu mai rămâne cu un ecran gol fără explicație, nici la CAN, nici la „Ce
+  înseamnă?".
+
 ### AMÂNDOI · Panoul CAN arată acum toate semnalele din mașină, cu iconițe
 
 **Cererea lui Alin, 22.08 (cu fișa adaptorului Teltonika pentru VW Passat B7 în mână):** *„Vreau să

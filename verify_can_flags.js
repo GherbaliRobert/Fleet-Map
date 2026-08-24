@@ -235,6 +235,37 @@ sect('10. Telefonul — plăcuțele sunt pe ecranul la care se ajunge');
     fs.existsSync(require('path').join(__dirname, 'mobile', 'src', 'components', 'CanFlags.css')));
 }
 
+// ════════════ 11. Mașină cu adaptor CAN, dar fără steaguri ════════════
+// Cazul REAL semnalat de Alin, 22.08: vehicul care trimite turație, combustibil și kilometraj prin
+// CAN, dar nu și IO 132/123. Panoul nu desena nimic și părea că aplicația e stricată.
+sect('11. Mașină cu CAN, dar care nu trimite steaguri');
+{
+  const doarCifre = { can_engine_rpm: 679, can_fuel_level_liters: 51.1, can_total_mileage: 404795, ignition: 0 };
+  const h = canFlagsHtml(doarCifre, new Set());
+  T('nu mai tace — spune de ce lipsesc', h.length > 0);
+  T('scrie limpede că mașina NU trimite semnalele', /nu trimite<\/strong> semnalele de stare/.test(h));
+  T('nu arată nicio plăcuță', !h.includes('class="cf k-'));
+  T('nu arată rezumatul verde „totul e în regulă"', !h.includes('b-ok'));
+  T('are titlu de secțiune', h.includes('Stare (uși, lumini, martori de bord)'));
+
+  // vehicul FĂRĂ CAN deloc → tot tăcere, nu vrem mesajul pe fiecare mașină cu GPS simplu
+  T('mașină fără CAN → nimic', canFlagsHtml({ ignition: 1, gsm_signal: 4, external_voltage: 12820 }, new Set()) === '');
+
+  // dacă IO-ul brut vine dar decodarea n-a mers, e problema NOASTRĂ și o spunem ca atare
+  const h2 = canFlagsHtml({ can_engine_rpm: 800, can_security_state_flags: 12345 }, new Set());
+  T('IO brut prezent, nedesfăcut → recunoaștem că e problema noastră', /problemă de-a noastră/.test(h2));
+}
+
+// ════════════ 12. Catalogul IO se reîncarcă după autentificare ════════════
+// Ruta /api/io-catalog cere autentificare, dar `loadIoCatalog()` rula la încărcarea paginii, cu
+// ecranul de login încă pe ecran → 401 înghițit, catalog gol pe veci („Niciun IO găsit").
+sect('12. Catalogul IO nu mai rămâne gol după login');
+{
+  T('se reîncearcă la deschiderea ferestrei', /if \(!\(window\.IO_CAT \|\| \[\]\)\.length\)[\s\S]{0,400}loadIoCatalog\(\)/.test(src));
+  T('se încarcă și la autentificare', /applyPermissionsUI\(\);[\s\S]{0,300}window\.loadIoCatalog\(\)/.test(src));
+  T('mesaj de eroare dacă tot nu merge', /Nu am putut încărca catalogul/.test(src));
+}
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);
