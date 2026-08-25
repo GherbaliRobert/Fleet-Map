@@ -12496,7 +12496,13 @@ const pozitii = await r.json();</code></pre>
       }
 
       // Uncategorized (exclude internal flag objects and already used keys)
-      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && k !== 'eventIoId' && k !== 'totalCount' && k !== '_security_flags' && k !== '_control_flags' && k !== 'can_security_state_flags' && k !== 'can_control_state_flags');
+      const _containereFlags = new Set(['eventIoId', 'totalCount', '_security_flags', '_control_flags',
+        'can_security_state_flags', 'can_control_state_flags',
+        // containerele P4 (ALL-CAN300): numere pe 8 octeti fara sens pentru om — bitii lor sunt deja
+        // desfacuti in _sf_*/_cf_* si apar in categoriile Usi / Lumini / Transmisie / Avertizari.
+        'can_security_state_flags_p4', 'can_control_state_flags_p4', 'can_indicator_state_flags_p4',
+        'can_agricultural_state_flags_p4', 'can_utility_state_flags_p4', 'can_cistern_state_flags_p4']);
+      const uncategorized = Object.keys(io).filter(k => !usedKeys.has(k) && !_containereFlags.has(k));
       // IO mapate de super-admin (Senzori personalizați) vs restul (avansate)
       var _maps = ioMappingsCache[imei] || {};
       var _mappedRows = [], _advRows = [];
@@ -14690,12 +14696,16 @@ const pozitii = await r.json();</code></pre>
       'Stare CAN': ['can_program_number', 'can_module_id', 'can_manual_0', 'can_manual_2', 'can_manual_4'],
       'Electric / Baterie': ['can_battery_temp', 'can_battery_level_pct'],
       'Alimentare': ['external_voltage', 'battery_voltage', 'battery_current', 'battery_level'],
-      'GPS / Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'data_mode'],
+      'GPS / Retea': ['gsm_signal', 'gnss_status', 'gnss_pdop', 'gnss_hdop', 'active_gsm_operator', 'data_mode', 'umts_lte_cell_id', 'gsm_cell_id', 'gsm_area_code'],
       'I/O Digital': ['digital_input_1', 'digital_input_2', 'digital_input_3', 'digital_output_1', 'digital_output_2'],
       'I/O Analog': ['analog_input_1', 'analog_input_2'],
       'Distanta': ['total_odometer', 'total_mileage', 'trip_odometer'],
       'Evenimente': ['trip', 'over_speeding', 'crash_detection', 'idling', 'towing', 'unplug', 'green_driving_type', 'green_driving_value'],
-      'Sistem': ['sleep_mode', 'sd_status', 'iccid', 'auto_geofence'],
+      'Sistem': ['sleep_mode', 'sd_status', 'iccid', 'auto_geofence', 'eco_score', 'instant_movement', 'network_type', 'wake_reason', 'charger_connected', 'bt_status', 'user_id', 'ibutton'],
+      'Accelerometru': ['axis_x', 'axis_y', 'axis_z'],
+      'Temperaturi (Dallas)': ['dallas_temp_1', 'dallas_temp_2', 'dallas_temp_3', 'dallas_temp_4'],
+      'Senzori BLE (temp/umiditate)': ['ble_temperature_1', 'ble_temperature_2', 'ble_temperature_3', 'ble_temperature_4', 'ble_humidity_1', 'ble_humidity_2', 'ble_humidity_3', 'ble_humidity_4', 'ble_battery_1', 'ble_battery_2', 'ble_battery_3', 'ble_battery_4'],
+      'OBD (diagnoza)': ['obd_dtc_count', 'obd_engine_load', 'obd_coolant_temp', 'obd_vehicle_speed', 'obd_fuel_level', 'obd_intake_air_temperature', 'obd_throttle_position', 'obd_engine_oil_temperature', 'obd_fuel_rate', 'obd_barometic_pressure', 'obd_control_module_voltage', 'obd_ambient_air_temperature'],
       // FMS/J1939 (trucks)
       'FMS (Camioane)': ['fms_fuel_level', 'fms_fuel_consumed', 'fms_fuel_rate', 'fms_speed', 'fms_rpm', 'fms_coolant_temp', 'fms_pedal_position', 'fms_engine_hours', 'fms_total_mileage']
     };

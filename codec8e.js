@@ -1,4 +1,8 @@
 // codec8e.js — Parser pentru Teltonika Codec 8 Extended
+// Restul listei oficiale FMC130 (501 ID-uri, GENERAT din spec — vezi tools/gen-io-extra.js).
+// Harta scrisa de mana de mai jos are prioritate; asta acopera coada lunga (ALL-CAN300, OBD, BLE),
+// ca un vehicul cu ALL-CAN300 sa nu apara cu zeci de io_517 nedescifrate.
+const IO_EXTRA = require('./io_names_extra.js');
 // Decodează pachetele AVL primite de la dispozitivele FMB140
 
 // ─── Mod FMS / J1939 (ex: FMC650 cu sursă CAN = FMS) ───
@@ -272,12 +276,21 @@ function parseIoGroup(buffer, offset, byteSize, isExtended) {
       case 1: value = buffer.readUInt8(offset); break;
       case 2: value = buffer.readUInt16BE(offset); break;
       case 4: value = buffer.readUInt32BE(offset); break;
-      case 8: value = Number(buffer.readBigUInt64BE(offset)); break;
+      case 8: {
+        // Number(BigUInt64) pierde bitii de jos peste 2^53 — exact stegulele P4 (8 octeti) pateau
+        // asta: 0x0080000000100002 se rotunjea si usa deschisa "disparea". Peste prag pastram
+        // valoarea ca hex string; decodoarele o normalizeaza cu BigInt, iar JSON o stocheaza intact.
+        const big = buffer.readBigUInt64BE(offset);
+        // Sir ZECIMAL, nu hex: ICCID-ul (tot 8 octeti) trebuie sa ramana lizibil ca numar,
+        // iar BigInt() parseaza ambele forme la decodarea steguletelor.
+        value = big <= 9007199254740991n ? Number(big) : big.toString(10);
+        break;
+      }
     }
     offset += byteSize;
 
     raw[id] = value;
-    values[getIoName(id)] = value;
+    values[getIoName(id)] = (_ifaceForParse == null) ? normalizeExtraValue(id, value) : value;
   }
 
   return { values, raw, nextOffset: offset };
@@ -344,12 +357,9 @@ function getIoName(id, iface) {
     180: 'digital_output_2',
     113: 'battery_level',
     199: 'trip_odometer',
-    // FMS/J1939 CAN (trucks/buses)
-    29:  'fms_fuel_level',
-    30:  'fms_fuel_consumed',
-    31:  'fms_fuel_rate',
-    32:  'fms_speed',
-    33:  'fms_rpm',
+    // 29-33 si 37-38 NU mai sunt aici: vechile nume fms_* erau GHICITE si gresite pe platforma
+    // FMB (FMC130) — oficial 29 = BLE Battery #1, 30-38 = elemente OBD. Numele corecte vin acum din
+    // IO_EXTRA (generat din spec). FMS-ul adevarat (FMC650) foloseste FMS_NAMES, prin iface='fms'.
     // ─── LV-CAN200 / FMC650 — ID-uri CAN REALE (sursă: io_catalog.js; confirmat live pe Dacia B 154 UIP) ───
     // Cheia 'can_*' declanșează convertCanValue pe server (litri/km/°C corecte). Vechile etichete de la 35/36
     // ('fms_coolant_temp'/'fms_pedal_position') erau GREȘITE: afișau RPM-ul (687) ca „687 °C" și kilometrajul
@@ -357,8 +367,6 @@ function getIoName(id, iface) {
     34:  'can_fuel_level_liters',   // L — Fuel Level (brut ×10 → /10) — confirmat 430 → 43.0 L
     35:  'can_engine_rpm',          // RPM — Engine RPM — confirmat 687 (era 'fms_coolant_temp')
     36:  'can_total_mileage',       // m → /1000 = km — confirmat 31798270 → 31798 km (era 'fms_pedal_position')
-    37:  'fms_engine_hours',
-    38:  'fms_total_mileage',
     // ALL-CAN300 / LV-CAN200 (official IO element list)
     81:  'can_vehicle_speed',           // km/h
     82:  'can_accelerator_pedal',       // %
@@ -506,7 +514,24 @@ function getIoName(id, iface) {
     387: 'gps_trajectory_encoded',      // ISO6709 coordinates hex
   };
 
-  return names[id] || `io_${id}`;
+  if (names[id] !== undefined) return names[id];
+  if (IO_EXTRA[id] !== undefined) return IO_EXTRA[id].name;
+  return `io_${id}`;
+}
+
+// Normalizarea valorilor din lista generata (DOAR harta standard — FMS/tacho au alte semnificatii):
+// two's complement pentru campurile semnate + multiplicatorul oficial. Astfel io_data ajunge in
+// unitati reale (°C, mG, %), ca la campurile poastre mapate de mana, nu in unitati brute de device.
+function normalizeExtraValue(id, value) {
+  const e = IO_EXTRA[id];
+  if (!e || typeof value !== 'number') return value;
+  let v = value;
+  if (e.semnat && e.octeti) {
+    const biti = e.octeti * 8;
+    if (biti < 53 && v >= 2 ** (biti - 1)) v -= 2 ** biti;
+  }
+  if (e.mult) v = Math.round(v * e.mult * 1000) / 1000;
+  return v;
 }
 
 // Conversii valori CAN raw -> valori reale
@@ -542,19 +567,32 @@ function convertCanValue(name, rawValue) {
 }
 
 // Decodare Security State Flags P2 (ID 132, 8 bytes)
+// Valoarea unui container de stegulete poate sosi ca Number, BigInt sau hex string ('0x...', dupa
+// fixul de precizie pe 8 octeti). O aducem la BigInt, apoi la octeti (byte 0 = LSB, cum documenteaza
+// Teltonika bitii: bit 8 = byte 1 bit 0).
+function _flagBytes(value, n) {
+  let v;
+  try { v = typeof value === 'bigint' ? value : BigInt(typeof value === 'number' ? Math.round(value) : value); }
+  catch (e) { v = 0n; }
+  const b = [];
+  for (let i = 0; i < n; i++) { b.push(Number(v & 0xFFn)); v >>= 8n; }
+  return b;
+}
+function _bit(value, poz) {
+  let v;
+  try { v = typeof value === 'bigint' ? value : BigInt(typeof value === 'number' ? Math.round(value) : value); }
+  catch (e) { return false; }
+  return ((v >> BigInt(poz)) & 1n) === 1n;
+}
+
 function decodeSecurityFlags(value) {
   const flags = {};
-  // value poate fi un numar mare (8 bytes) - il convertim in bytes
-  const bytes = [];
-  let v = typeof value === 'bigint' ? value : BigInt(value);
-  for (let i = 0; i < 8; i++) {
-    bytes.push(Number(v & 0xFFn));
-    v >>= 8n;
-  }
-  // Nota: bytes sunt in ordine inversa (little-endian din BigInt)
-  // Reconstruim in ordine corecta (byte 0 = MSB din valoare)
+  // Formatul istoric al decodorului P2: byte 0 = MSB din valoarea hex (asa a fost confirmat pe
+  // vehiculele existente — NU se schimba; P4 de mai jos foloseste conventia oficiala pe biti).
+  let vv;
+  try { vv = typeof value === 'bigint' ? value : BigInt(typeof value === 'number' ? Math.round(value) : value); } catch (e) { vv = 0n; }
+  const hex = vv.toString(16).padStart(16, '0');
   const b = [];
-  const hex = value.toString(16).padStart(16, '0');
   for (let i = 0; i < 8; i++) {
     b.push(parseInt(hex.substr(i * 2, 2), 16));
   }
@@ -608,8 +646,10 @@ function decodeSecurityFlags(value) {
 // Decodare Control State Flags P2 (ID 123, 4 bytes)
 function decodeControlFlags(value) {
   const flags = {};
+  let vv;
+  try { vv = typeof value === 'bigint' ? value : BigInt(typeof value === 'number' ? Math.round(value) : value); } catch (e) { vv = 0n; }
+  const hex = vv.toString(16).padStart(8, '0');
   const b = [];
-  const hex = value.toString(16).padStart(8, '0');
   for (let i = 0; i < 4; i++) {
     b.push(parseInt(hex.substr(i * 2, 2), 16));
   }
@@ -657,15 +697,161 @@ function decodeControlFlags(value) {
   return flags;
 }
 
-// Expandeaza flag-urile in IO data
+// ── Stegulete P4 (ALL-CAN300 / programele noi de vehicul, ex. VW Passat B7) ─────────────────────
+// Bitii vin din tabelul oficial „Security State Flags P4" (wiki Teltonika, fixture:
+// tools/fixtures/p4-flags.json). Numerotarea e ABSOLUTA pe bit (bit 8 = byte 1, bit 0).
+// Unde semantica exista si in P2, folosim ACELASI nume de steag — categoriile din interfata
+// (Usi, Lumini, Transmisie...) functioneaza atunci pentru amandoua protocoalele fara nicio schimbare.
+function decodeSecurityFlagsP4(value) {
+  const flags = {};
+  const b = _flagBytes(value, 8);
+  // byte 0: starea legaturilor CAN (campuri pe 2 biti, nu booleene)
+  flags.can1_status = b[0] & 0x03;
+  flags.can2_status = (b[0] >> 2) & 0x03;
+  flags.can3_status = (b[0] >> 4) & 0x03;
+  const B = (poz) => _bit(value, poz);
+  flags.ignition_on = B(8);
+  flags.key_in_ignition = B(9);
+  flags.webasto = B(10);
+  flags.engine_working = B(11);
+  flags.standalone_engine = B(12);
+  flags.ready_to_drive = B(13);
+  flags.cng_running = B(14);            // motorul merge pe CNG
+  flags.work_mode_private = !B(15);     // oficial: 0 = privat, 1 = firma
+  flags.operator_present = B(16);
+  flags.interlock = B(17);
+  flags.handbrake = B(18);
+  flags.footbrake = B(19);
+  flags.clutch_pushed = B(20);
+  flags.hazard_lights = B(21);
+  flags.door_front_left = B(22);
+  flags.door_front_right = B(23);
+  flags.door_rear_left = B(24);
+  flags.door_rear_right = B(25);
+  flags.trunk_open = B(26);
+  flags.hood_open = B(27);              // oficial „engine cover opened"
+  flags.charging_cable = B(28);
+  flags.battery_charging = B(29);
+  flags.electric_engine = B(30);
+  flags.closed_by_remote = B(31);
+  flags.car_closed = B(32);
+  flags.factory_alarm = B(33);
+  flags.alarm_emulated = B(34);
+  flags.remote_close_signal = B(35);
+  flags.remote_open_signal = B(36);
+  flags.rearm_signal = B(37);
+  flags.trunk_remote_open = B(38);
+  flags.can_sleep_mode = B(39);
+  flags.remote_close_x3 = B(40);
+  flags.parking = B(41);
+  flags.reverse = B(42);
+  flags.neutral = B(43);
+  flags.drive = B(44);
+  flags.engine_lock = B(45);
+  flags.engine_lock_request = B(46);
+  flags.factory_armed = B(47);
+  flags.roof_open = B(48);
+  return flags;
+}
+
+// Control State Flags P4 (ID 518): lumini + sisteme active. Nume identice cu P2 unde exista.
+function decodeControlFlagsP4(value) {
+  const flags = {};
+  const B = (poz) => _bit(value, poz);
+  flags.parking_lights = B(0);
+  flags.dipped_headlights = B(1);
+  flags.full_beam = B(2);
+  flags.rear_fog_lights = B(3);
+  flags.front_fog_lights = B(4);
+  flags.additional_front_lights = B(5);
+  flags.additional_rear_lights = B(6);
+  flags.light_signal = B(7);
+  flags.air_conditioning = B(8);
+  flags.cruise_control = B(9);
+  flags.auto_retarder = B(10);
+  flags.manual_retarder = B(11);
+  flags.driver_seatbelt = B(12);
+  flags.passenger_seatbelt = B(13);
+  flags.seatbelt_rear_left = B(14);
+  flags.seatbelt_rear_right = B(15);
+  flags.seatbelt_rear_centre = B(16);
+  flags.passenger_present = B(17);
+  flags.pto_on = B(18);
+  flags.diff_front_locked = B(19);
+  flags.diff_rear_locked = B(20);
+  flags.diff_central_locked = B(21);
+  flags.diff_central_reductor = B(22);
+  flags.trailer_axle1_lift = B(23);
+  flags.trailer_axle2_lift = B(24);
+  return flags;
+}
+
+// Indicator State Flags P4 (ID 519): martorii din bord. Nume identice cu P2 unde exista.
+function decodeIndicatorFlagsP4(value) {
+  const flags = {};
+  const B = (poz) => _bit(value, poz);
+  flags.check_engine = B(0);
+  flags.abs_warning = B(1);
+  flags.esp_warning = B(2);
+  flags.esp_off = B(3);
+  flags.stop_indicator = B(4);
+  flags.oil_pressure_warning = B(5);
+  flags.coolant_warning = B(6);
+  flags.battery_warning = B(7);
+  flags.handbrake_warning = B(8);
+  flags.airbag_warning = B(9);
+  flags.eps_warning = B(10);
+  flags.general_warning = B(11);
+  flags.lights_failure = B(12);
+  flags.low_tire_pressure = B(13);
+  flags.brake_pad_wear = B(14);
+  flags.low_fuel = B(15);
+  flags.maintenance = B(16);
+  flags.glow_plug = B(17);
+  flags.dpf_warning = B(18);            // oficial „FAP indicator"
+  flags.epc_warning = B(19);
+  flags.oil_filter_clogged = B(20);
+  flags.oil_pressure_low = B(21);
+  flags.oil_temp_high = B(22);
+  flags.coolant_low = B(23);
+  flags.hydraulic_filter_clogged = B(24);
+  flags.hydraulic_low_pressure = B(25);
+  flags.hydraulic_oil_low = B(26);
+  flags.hydraulic_high_temp = B(27);
+  flags.hydraulic_oil_overflow = B(28);
+  flags.air_filter_clogged = B(29);
+  flags.fuel_filter_clogged = B(30);
+  flags.water_in_fuel = B(31);
+  flags.brake_filter_clogged = B(32);
+  flags.washer_fluid_low = B(33);
+  flags.adblue_low = B(34);
+  flags.trailer_tire_pressure_low = B(35);
+  flags.trailer_brake_wear = B(36);
+  flags.trailer_brake_temp_high = B(37);
+  flags.trailer_pneumatic_bad = B(38);
+  flags.cng_low = B(39);
+  return flags;
+}
+
+// Expandeaza flag-urile in IO data. P2 si P4 pot coexista (unele programe trimit ambele);
+// P4 e mai nou si mai bogat → cand un steag exista in amandoua, valoarea P4 castiga.
 function expandCanFlags(ioData) {
   if (ioData.can_security_state_flags !== undefined) {
     ioData._security_flags = decodeSecurityFlags(ioData.can_security_state_flags);
   }
+  if (ioData.can_security_state_flags_p4 !== undefined) {
+    ioData._security_flags = Object.assign(ioData._security_flags || {}, decodeSecurityFlagsP4(ioData.can_security_state_flags_p4));
+  }
   if (ioData.can_control_state_flags !== undefined) {
     ioData._control_flags = decodeControlFlags(ioData.can_control_state_flags);
+  }
+  if (ioData.can_control_state_flags_p4 !== undefined) {
+    ioData._control_flags = Object.assign(ioData._control_flags || {}, decodeControlFlagsP4(ioData.can_control_state_flags_p4));
+  }
+  if (ioData.can_indicator_state_flags_p4 !== undefined) {
+    ioData._control_flags = Object.assign(ioData._control_flags || {}, decodeIndicatorFlagsP4(ioData.can_indicator_state_flags_p4));
   }
   return ioData;
 }
 
-module.exports = { parseAvlPacket, getIoName, convertCanValue, expandCanFlags, decodeSecurityFlags, decodeControlFlags };
+module.exports = { parseAvlPacket, getIoName, convertCanValue, expandCanFlags, decodeSecurityFlags, decodeControlFlags, decodeSecurityFlagsP4, decodeControlFlagsP4, decodeIndicatorFlagsP4, IO_EXTRA };

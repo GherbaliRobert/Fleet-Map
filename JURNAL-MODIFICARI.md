@@ -231,6 +231,51 @@ că ecranul la care ajunge omul chiar le desenează, nu doar că există compone
 
 ---
 
+## 2026-08-26
+
+### AMÂNDOI · Toate IO-urile Teltonika sunt mapate + bordul mașinii pe telefon — `COMMIT_HASH`
+
+**De ce.** Passat-ul B7 (B112RFG) are FMC130 cu adaptor ALL-CAN300 — trimite zeci de semnale
+(uși, lumini, frână de mână, martori de bord). Noi mapam ~150 din cele **640** de semnale din
+lista oficială Teltonika; restul apăreau ca numere fără nume („io_517") sau deloc. În plus,
+stegulețele „P4" — protocolul nou prin care mașinile moderne trimit ușile, luminile și martorii —
+**nu se decodau deloc**.
+
+**1. Lista completă, generată din documentația oficială — nu scrisă de mână.** Am descărcat specul
+oficial Teltonika (640 de parametri), l-am transformat în fișier de date și am scris un generator
+care produce harta de nume. De ce așa: o listă scrisă de mână la scara asta SE VA desincroniza —
+s-a și întâmplat: 7 ID-uri fuseseră „ghicite" demult și afișau date greșite (le-am corectat, cu
+documentație). Un test în CI garantează de-acum două lucruri: **orice ID oficial primește nume** și
+**niciun nume existent nu se mai schimbă vreodată** (datele stocate depind de ele).
+
+**2. Stegulețele P4, decodate bit cu bit.** Uși, frână de mână, ambreiaj, treaptă (P/R/N/D),
+lumini, centuri, toți martorii de bord (check engine, presiune ulei, AdBlue…) — din tabelele
+oficiale de biți, cu test bit-cu-bit în CI. Unde starea există și în protocolul vechi (P2), numele
+e ACELAȘI — categoriile din aplicație merg pentru amândouă fără nicio schimbare.
+
+**3. O eroare reală de precizie, găsită pe drum.** Valorile pe 8 octeți (exact stegulețele P4) se
+citeau într-un tip numeric care **pierde biții de jos** la valori mari — chiar valoarea văzută pe
+Passat în Configurator depășea pragul: o ușă deschisă putea pur și simplu să dispară din date.
+Reparat + test cu valoarea reală a Passat-ului.
+
+**4. Pe telefon: cardul „Stări vehicul"** (cerut de Robert) — în ecranul de date CAN, un cartonaș
+cu **pictograme de bord**: mașină încuiată, fiecare ușă, frână de mână, faruri, centuri, tempomat,
+AC, treapta P/R/N/D. Gri = inactiv, colorat = activ. **Atingi pictograma → un balon** îți spune ce
+e și în ce stare e acum. Avertizările (check engine, presiune ulei, baterie…) apar **doar când sunt
+aprinse** — un perete de martori gri ar îngropa exact semnalul care contează.
+
+**5. Etichete românești pentru tot.** Catalogul de IO-uri (editorul „Mapează" + consola de
+diagnoză) acoperă acum toate cele 640 de ID-uri, cu 14 etichete vechi corectate pe spec.
+
+- **Ce vede fondatorul:** în fișa vehiculului, categoriile noi (Accelerometru, Dallas, OBD, BLE) +
+  semnalele care înainte erau numere fără nume.
+- **Ce vede clientul:** pe telefon, bordul mașinii cu pictograme; pe web, uși/lumini/martori
+  decodate la mașinile cu ALL-CAN300 — adică exact ce va transmite Passat-ul când pornește SIM-ul.
+
+Verificat cap-coadă pe sandbox: pachet TCP real cu stegulețe P4 → uși/frână/contact decodate
+corect în API, accelerometrul negativ corect, valoarea pe 8 octeți fără nicio pierdere de biți.
+APK reconstruit.
+
 ## 2026-08-20
 
 ### AMÂNDOI · „Card combustibil" a fost scos din Management

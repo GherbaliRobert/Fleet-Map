@@ -131,14 +131,14 @@ const IO_CATALOG = [
   { id: 208, name: 'Authorized iButton', name_ro: 'iButton autorizat', unit: '0/1', multiplier: 1, category: 'iButton', desc_ro: 'iButton prezentat este în lista autorizați' },
 
   // ─── BLE Sensori (22-30, 86, 99, 110, 238, 263-264, 384) ──────────────────
-  { id: 22, name: 'BLE1 Temperature', name_ro: 'Temperatură BLE1', unit: '°C', multiplier: 0.01, category: 'BLE', desc_ro: 'Temperatură citită de la senzorul BLE 1' },
-  { id: 23, name: 'BLE2 Temperature', name_ro: 'Temperatură BLE2', unit: '°C', multiplier: 0.01, category: 'BLE', desc_ro: 'Temperatură citită de la senzorul BLE 2' },
-  { id: 25, name: 'BLE3 Temperature', name_ro: 'Temperatură BLE3', unit: '°C', multiplier: 0.01, category: 'BLE', desc_ro: 'Temperatură senzor BLE 3' },
-  { id: 26, name: 'BLE4 Temperature', name_ro: 'Temperatură BLE4', unit: '°C', multiplier: 0.01, category: 'BLE', desc_ro: 'Temperatură senzor BLE 4' },
-  { id: 27, name: 'BLE1 Humidity', name_ro: 'Umiditate BLE1', unit: '%', multiplier: 1, category: 'BLE', desc_ro: 'Umiditate relativă de la senzor BLE 1' },
-  { id: 28, name: 'BLE2 Humidity', name_ro: 'Umiditate BLE2', unit: '%', multiplier: 1, category: 'BLE', desc_ro: 'Umiditate relativă de la senzor BLE 2' },
-  { id: 29, name: 'BLE3 Humidity', name_ro: 'Umiditate BLE3', unit: '%', multiplier: 1, category: 'BLE', desc_ro: 'Umiditate relativă de la senzor BLE 3' },
-  { id: 30, name: 'BLE4 Humidity', name_ro: 'Umiditate BLE4', unit: '%', multiplier: 1, category: 'BLE', desc_ro: 'Umiditate relativă de la senzor BLE 4' },
+  { id: 22, name: "BLE Battery #3", name_ro: "Baterie BLE3", unit: "%", multiplier: 1, category: "BLE", desc_ro: "Nivel baterie senzor BLE 3" },
+  { id: 23, name: "BLE Battery #4", name_ro: "Baterie BLE4", unit: "%", multiplier: 1, category: "BLE", desc_ro: "Nivel baterie senzor BLE 4" },
+  { id: 25, name: "BLE Temperature #1", name_ro: "Temperatură BLE1", unit: "°C", multiplier: 0.01, category: "BLE", desc_ro: "Temperatură senzor BLE 1" },
+  { id: 26, name: "BLE Temperature #2", name_ro: "Temperatură BLE2", unit: "°C", multiplier: 0.01, category: "BLE", desc_ro: "Temperatură senzor BLE 2" },
+  { id: 27, name: "BLE Temperature #3", name_ro: "Temperatură BLE3", unit: "°C", multiplier: 0.01, category: "BLE", desc_ro: "Temperatură senzor BLE 3" },
+  { id: 28, name: "BLE Temperature #4", name_ro: "Temperatură BLE4", unit: "°C", multiplier: 0.01, category: "BLE", desc_ro: "Temperatură senzor BLE 4" },
+  { id: 29, name: "BLE Battery #1", name_ro: "Baterie BLE1", unit: "%", multiplier: 1, category: "BLE", desc_ro: "Nivel baterie senzor BLE 1" },
+  { id: 30, name: "Number of DTC", name_ro: "Număr erori DTC (OBD)", unit: "-", multiplier: 1, category: "OBD", desc_ro: "Câte erori de diagnoză raportează mașina prin OBD" },
   { id: 86, name: 'BLE Humidity (legacy)', name_ro: 'Umiditate BLE (legacy)', unit: '%', multiplier: 1, category: 'BLE', desc_ro: 'Umiditate (compatibilitate firmware vechi)' },
   { id: 99, name: 'BLE Fuel Level 1', name_ro: 'Nivel combustibil BLE 1', unit: 'l', multiplier: 1, category: 'BLE', desc_ro: 'Nivel combustibil de la senzor BLE 1' },
   { id: 110, name: 'Fuel Level (BLE)', name_ro: 'Nivel combustibil BLE', unit: 'l', multiplier: 1, category: 'BLE', desc_ro: 'Nivel combustibil de la senzor BLE generic' },
@@ -196,12 +196,12 @@ const IO_CATALOG = [
   { id: 65, name: "Dallas Temperature ID 4", name_ro: "ID senzor Dallas 4", multiplier: 1, category: "Dallas", desc_ro: "Identificator senzor Dallas 4" },
 
   // ─── AdBlue (20, 112, 229) ────────────────────────────────────────────────
-  { id: 20, name: "AdBlue Level Liters", name_ro: "Nivel AdBlue in litri", unit: "L", multiplier: 0.1, category: "AdBlue", desc_ro: "Nivel AdBlue exprimat in litri" },
+  { id: 20, name: "BLE Battery #2", name_ro: "Baterie BLE2", unit: "%", multiplier: 1, category: "BLE", desc_ro: "Nivel baterie senzor BLE 2 (oficial FMB; vechea eticheta AdBlue era gresita — AdBlue in litri e ID 112)" },
   { id: 112, name: "AdBlue Level Liters", name_ro: "Nivel AdBlue (L)", unit: "L", multiplier: 1, category: "AdBlue", desc_ro: "Cantitate AdBlue in rezervor", name_wiki: "AdBlue Level (liters)" },
   { id: 229, name: "AdBlue Status", name_ro: "Stare AdBlue", multiplier: 1, category: "AdBlue", desc_ro: "Stare sistem AdBlue (info/galben/rosu)", name_wiki: "AdBlue status" },
 
   // ─── Motor (31, 35, 88, 104, 114-115) ────────────────────────────────────
-  { id: 31, name: "Accelerator Pedal Position", name_ro: "Pozitie pedala acceleratie", unit: "%", multiplier: 1, category: "Motor", desc_ro: "Procentul de apasare pedala acceleratie" },
+  { id: 31, name: "Engine Load (OBD)", name_ro: "Sarcină motor (OBD)", unit: "%", multiplier: 1, category: "OBD", desc_ro: "Sarcina motorului prin OBD (vechea etichetă „pedala accelerație” era greșită — aceea e ID 82)" },
   { id: 35, name: "Engine RPM", name_ro: "Turație motor", unit: "RPM", multiplier: 1, category: "Motor", desc_ro: "Turația motorului, în rotații pe minut" },
   { id: 88, name: "Engine Speed", name_ro: "Turatie motor (CAN)", unit: "RPM", multiplier: 1, category: "CAN", desc_ro: "Turatie motor citita din CAN" },
   { id: 104, name: "Engine Total Hours Of Operation", name_ro: "Ore totale functionare motor", unit: "h", multiplier: 1, category: "CAN", desc_ro: "Ore totale de functionare motor" },
@@ -212,9 +212,9 @@ const IO_CATALOG = [
   { id: 357, name: "Brake Pedal Position", name_ro: "Pozitie pedala frana", unit: "%", multiplier: 1, category: "CAN", desc_ro: "Procent apasare pedala frana" },
 
   // ─── Combustibil CAN (33-34, 37, 135-136, 138, 226-228) ──────────────────
-  { id: 33, name: "Fuel Consumed", name_ro: "Combustibil consumat", unit: "L", multiplier: 0.1, category: "Combustibil", desc_ro: "Combustibil consumat citit din CAN" },
+  { id: 33, name: "Short Fuel Trim (OBD)", name_ro: "Corecție scurtă amestec (OBD)", unit: "%", multiplier: 1, category: "OBD", desc_ro: "Corecția de amestec prin OBD (vechea etichetă „combustibil consumat” era greșită — acela e ID 83/107)" },
   { id: 34, name: "Fuel Level Liters", name_ro: "Nivel combustibil in litri", unit: "L", multiplier: 0.1, category: "Combustibil", desc_ro: "Nivel combustibil in rezervor" },
-  { id: 37, name: "Fuel Level Percent", name_ro: "Nivel combustibil procentual", unit: "%", multiplier: 1, category: "Combustibil", desc_ro: "Nivel combustibil in procente" },
+  { id: 37, name: "Vehicle Speed (OBD)", name_ro: "Viteză vehicul (OBD)", unit: "km/h", multiplier: 1, category: "OBD", desc_ro: "Viteza prin OBD (vechea etichetă „nivel combustibil %” era greșită — acela e ID 89)" },
   { id: 135, name: "Fuel Rate", name_ro: "Debit combustibil (CAN)", unit: "L/h", multiplier: 1, category: "CAN", desc_ro: "Debit combustibil instantaneu din CAN" },
   { id: 136, name: "Instantaneous Fuel Economy", name_ro: "Economie combustibil instantanee", unit: "km/L", multiplier: 1, category: "CAN", desc_ro: "Eficienta consum instantanee km/L" },
   { id: 138, name: "HiRes Engine Total Fuel Used", name_ro: "Combustibil total inalt rez.", unit: "L", multiplier: 0.001, category: "CAN", desc_ro: "Combustibil total motor in rezolutie inalta", name_wiki: "High Resolution Engine Total Fuel Used" },
@@ -223,7 +223,7 @@ const IO_CATALOG = [
   { id: 228, name: "CNG Level", name_ro: "Nivel CNG", unit: "%", multiplier: 1, category: "Combustibil", desc_ro: "Procent rezervor CNG" },
 
   // ─── Anvelope/Punți (32, 91-98, 118-121, 139) ────────────────────────────
-  { id: 32, name: "Axle 5 Load", name_ro: "Sarcina punte 5", unit: "kg", multiplier: 1, category: "Anvelope", desc_ro: "Greutate distribuita pe puntea 5" },
+  { id: 32, name: "Coolant Temperature (OBD)", name_ro: "Temperatură lichid răcire (OBD)", unit: "°C", multiplier: 1, category: "OBD", desc_ro: "Temperatura lichidului de răcire prin OBD" },
   { id: 91, name: "Axle Weight 3", name_ro: "Greutate punte 3", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 3", name_wiki: "Axle weight 3" },
   { id: 92, name: "Axle Weight 4", name_ro: "Greutate punte 4", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 4", name_wiki: "Axle weight 4" },
   { id: 93, name: "Axle Weight 5", name_ro: "Greutate punte 5", unit: "kg", multiplier: 1, category: "CAN", desc_ro: "Greutate masurata pe puntea 5", name_wiki: "Axle weight 5" },
@@ -307,7 +307,7 @@ const IO_CATALOG = [
   { id: 51, name: "Digital Output 4", name_ro: "Iesire digitala 4", multiplier: 1, category: "I/O Digital", desc_ro: "Stare iesire digitala 4 (0/1)" },
 
   // ─── Sistem (38, 70, 144, 231, 242, 244) ─────────────────────────────────
-  { id: 38, name: "Control State Flags", name_ro: "Flaguri stare control", multiplier: 1, category: "Sistem", desc_ro: "Indicator stare operationala (bitmask)" },
+  { id: 38, name: "Timing Advance (OBD)", name_ro: "Avans aprindere (OBD)", unit: "°", multiplier: 1, category: "OBD", desc_ro: "Avansul aprinderii prin OBD" },
   { id: 70, name: "PCB Temperature", name_ro: "Temperatura PCB", unit: "°C", multiplier: 0.1, category: "Sistem", desc_ro: "Temperatura placii electronice" },
   { id: 144, name: "SD Status", name_ro: "Stare card SD (CAN)", multiplier: 1, category: "Sistem", desc_ro: "Stare card SD (0-absent, 1-prezent) — variantă alternativă" },
   { id: 231, name: "VIN", name_ro: "VIN vehicul", multiplier: 1, category: "Sistem", desc_ro: "Numar identificare vehicul (CAN)" },
@@ -328,6 +328,14 @@ const IO_CATALOG = [
   { id: 137, name: "PTO Drive Engagement", name_ro: "Cuplare PTO", multiplier: 1, category: "CAN", desc_ro: "Stare cuplare priza de putere (Power Take-Off)" },
   { id: 178, name: "Network Type", name_ro: "Tip retea", multiplier: 1, category: "GSM", desc_ro: "Tehnologie retea celulara (2G/3G/4G)" }
 ];
+
+// Restul listei oficiale FMC130 (GENERAT — vezi tools/gen-io-catalog-extra.js): catalogul de mână
+// rămâne sursa pentru intrările lui, iar coada lungă (ALL-CAN300, OBD, BLE) vine de aici, ca
+// editorul „Mapează" și DevConsole să aibă etichete pentru toate ID-urile, nu doar primele ~140.
+try {
+  const _ids = new Set(IO_CATALOG.map(function (e) { return e.id; }));
+  require('./io_catalog_extra.js').forEach(function (e) { if (!_ids.has(e.id)) IO_CATALOG.push(e); });
+} catch (e) { /* fișierul generat lipsește → rămâne doar catalogul de mână */ }
 
 // Hartă rapidă id → entry
 const IO_CATALOG_BY_ID = {};

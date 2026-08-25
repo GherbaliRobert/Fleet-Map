@@ -1,0 +1,662 @@
+{
+ "securityP4": [
+  {
+   "byte": 0,
+   "bit": 0,
+   "desc": "0x00 - CAN1 connected, currently no data is received | 0x01 - CAN1 connected, currently data is received | 0x02 - CAN1 not connected, needs connection | 0x03 - CAN1 not connected does not need connection",
+   "lvcan": true
+  },
+  {
+   "byte": 0,
+   "bit": 2,
+   "desc": "0x00 - CAN2 connected, currently no data is received | 0x01 - CAN2 connected, currently data is received | 0x02 - CAN2 not connected, needs connection | 0x03 - CAN2 not connected does not need connection",
+   "lvcan": true
+  },
+  {
+   "byte": 0,
+   "bit": 4,
+   "desc": "0x00 - CAN3 connected, currently no data is received | 0x01 - CAN3 connected, currently data is received | 0x02 - CAN3 not connected, needs connection | 0x03 - CAN3 not connected does not need connection",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 8,
+   "desc": "0x01 - ignition on",
+   "lvcan": true
+  },
+  {
+   "byte": 1,
+   "bit": 9,
+   "desc": "0x02 - key in ignition lock",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 10,
+   "desc": "0x04 - webasto",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 11,
+   "desc": "0x08 - engine is working",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 12,
+   "desc": "0x10 - standalone engine",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 13,
+   "desc": "0x20 - ready to drive",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 14,
+   "desc": "0x40 - engine is working on CNG",
+   "lvcan": true
+  },
+  {
+   "byte": 1,
+   "bit": 15,
+   "desc": "0x80 - work mode (0 - private, 1 - company)",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 16,
+   "desc": "0x01 - operator is present",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 17,
+   "desc": "0x02 - interlock active",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 18,
+   "desc": "0x04 - handbrake is active",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 19,
+   "desc": "0x08 - footbrake is active",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 20,
+   "desc": "0x10 - clutch is pushed",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 21,
+   "desc": "0x20 - status of the hazard warning lights switch active",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 22,
+   "desc": "0x40 - front left door opened",
+   "lvcan": true
+  },
+  {
+   "byte": 2,
+   "bit": 23,
+   "desc": "0x80 - front right door opened",
+   "lvcan": true
+  },
+  {
+   "byte": 3,
+   "bit": 24,
+   "desc": "0x01 - rear left door opened",
+   "lvcan": true
+  },
+  {
+   "byte": 3,
+   "bit": 25,
+   "desc": "0x02 - rear right door opened",
+   "lvcan": true
+  },
+  {
+   "byte": 3,
+   "bit": 26,
+   "desc": "0x04 - trunk door opened",
+   "lvcan": true
+  },
+  {
+   "byte": 3,
+   "bit": 27,
+   "desc": "0x08 - engine cover opened",
+   "lvcan": true
+  },
+  {
+   "byte": 3,
+   "bit": 28,
+   "desc": "0x10 - charging wire is plugged",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 29,
+   "desc": "0x20 - battery charging on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 30,
+   "desc": "0x40 - electric engine is working",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 31,
+   "desc": "0x80 - car is closed with factory remote control",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 32,
+   "desc": "0x01 - car is closed",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 33,
+   "desc": "0x02 - factory installed alarm is active",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 34,
+   "desc": "0x04 - emulated alarm is active",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 35,
+   "desc": "0x08 - signal of closing with factory remote control was sent",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 36,
+   "desc": "0x10 - signal of opening with factory remote control was sent",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 37,
+   "desc": "0x20 - rearm signal was sent",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 38,
+   "desc": "0x40 - trunk was opened with remote control",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 39,
+   "desc": "0x80 - CAN module is in SLEEP mode",
+   "lvcan": true
+  },
+  {
+   "byte": 5,
+   "bit": 40,
+   "desc": "0x01 - signal of closing with factory remote control was sent 3 times",
+   "lvcan": false
+  },
+  {
+   "byte": 5,
+   "bit": 41,
+   "desc": "0x02 - parking is active",
+   "lvcan": false
+  },
+  {
+   "byte": 5,
+   "bit": 42,
+   "desc": "0x04 - reverse is active",
+   "lvcan": false
+  },
+  {
+   "byte": 5,
+   "bit": 43,
+   "desc": "0x08 - neutral is active",
+   "lvcan": false
+  },
+  {
+   "byte": 5,
+   "bit": 44,
+   "desc": "0x10 - drive is active",
+   "lvcan": false
+  },
+  {
+   "byte": 5,
+   "bit": 45,
+   "desc": "0x20 - engine lock active",
+   "lvcan": false
+  },
+  {
+   "byte": 5,
+   "bit": 46,
+   "desc": "0x40 - request to lock the engine (activation after attempt to restart the engine)",
+   "lvcan": false
+  },
+  {
+   "byte": 5,
+   "bit": 47,
+   "desc": "0x80 - factory armed",
+   "lvcan": false
+  },
+  {
+   "byte": 6,
+   "bit": 48,
+   "desc": "0x01 - roof opened",
+   "lvcan": true
+  }
+ ],
+ "controlP4": [
+  {
+   "byte": 0,
+   "bit": 0,
+   "desc": "0x01 - parking lights turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 1,
+   "desc": "0x02 - dipped headlights turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 2,
+   "desc": "0x04 - full beam headlights turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 3,
+   "desc": "0x08 - rear fog lights turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 4,
+   "desc": "0x10 - front fog lights turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 5,
+   "desc": "0x20 - additional front lights turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 6,
+   "desc": "0x40 - additional rear lights turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 7,
+   "desc": "0x80 - light signal turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 8,
+   "desc": "0x01 - air conditioning turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 9,
+   "desc": "0x02 - cruise control turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 10,
+   "desc": "0x04 - automatic retarder turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 11,
+   "desc": "0x08 - manual retarder turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 12,
+   "desc": "0x10 - driver's seatbelt fastened",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 13,
+   "desc": "0x20 - front passenger's seatbelt fastened",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 14,
+   "desc": "0x40 - rear left passenger's seatbelt fastened",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 15,
+   "desc": "0x80 - rear right passenger's seatbelt fastened",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 16,
+   "desc": "0x01 - rear centre passenger's seatbelt fastened",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 17,
+   "desc": "0x02 - front passenger is present",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 18,
+   "desc": "0x04 - PTO is on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 19,
+   "desc": "0x08 - front differential locked",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 20,
+   "desc": "0x10 - rear differential locked",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 21,
+   "desc": "0x20 - central differential (4HI) locked",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 22,
+   "desc": "0x40 - central differential with reductor (4LO) locked",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 23,
+   "desc": "0x80 - trailer axle 1 lift active",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 24,
+   "desc": "0x01 - trailer axle 2 lift active",
+   "lvcan": false
+  }
+ ],
+ "indicatorP4": [
+  {
+   "byte": 0,
+   "bit": 0,
+   "desc": "0x01 - CHECK ENGINE (MIL) indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 1,
+   "desc": "0x02 - ABS indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 2,
+   "desc": "0x04 - ESP indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 3,
+   "desc": "0x08 - ESP is turned off",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 4,
+   "desc": "0x10 - STOP indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 5,
+   "desc": "0x20 - oil pressure / level indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 6,
+   "desc": "0x40 - coolant liquid temperature / level indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 0,
+   "bit": 7,
+   "desc": "0x80 - battery not charging indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 8,
+   "desc": "0x01 - handbrake system indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 9,
+   "desc": "0x02 - AIRBAG indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 10,
+   "desc": "0x04 - EPS (Electric Power Steering) indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 11,
+   "desc": "0x08 - warning indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 12,
+   "desc": "0x10 - lights failure indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 13,
+   "desc": "0x20 - low tire pressure indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 14,
+   "desc": "0x40 - wear of brake pads indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 1,
+   "bit": 15,
+   "desc": "0x80 - low fuel level indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 16,
+   "desc": "0x01 - maintenance required indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 17,
+   "desc": "0x02 - glow plug indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 18,
+   "desc": "0x04 - FAP indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 19,
+   "desc": "0x08 - EPC (Electronic Power Control) indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 20,
+   "desc": "0x10 - engine oil filter plugged indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 21,
+   "desc": "0x20 - low engine oil pressure indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 22,
+   "desc": "0x40 - too high engine oil temperature indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 2,
+   "bit": 23,
+   "desc": "0x80 - low coolant level indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 24,
+   "desc": "0x01 - hydraulic system oil filter plugged indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 25,
+   "desc": "0x02 - hydraulic system low pressure indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 26,
+   "desc": "0x04 - hydraulic oil low level indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 27,
+   "desc": "0x08 - hydraulic system high temperature indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 28,
+   "desc": "0x10 - oil overflow in hydraulic chamber indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 29,
+   "desc": "0x20 - air filter is plugged indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 30,
+   "desc": "0x40 - fuel filter is plugged indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 3,
+   "bit": 31,
+   "desc": "0x80 - water in fuel indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 32,
+   "desc": "0x01 - Clogged brake system filter indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 33,
+   "desc": "0x02 -low washer fluid level indicator turned on",
+   "lvcan": true
+  },
+  {
+   "byte": 4,
+   "bit": 34,
+   "desc": "0x04 - low AdBlue level indicator turned on",
+   "lvcan": true
+  },
+  {
+   "byte": 4,
+   "bit": 35,
+   "desc": "0x08 - low trailer tyre pressure indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 36,
+   "desc": "0x10 - wear of trailer brake lining indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 37,
+   "desc": "0x20 - high trailer brake temperature indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 38,
+   "desc": "0x40 - incorrect trailer pneumatic supply indicator turned on",
+   "lvcan": false
+  },
+  {
+   "byte": 4,
+   "bit": 39,
+   "desc": "0x80 - low CNG level indicator turned on",
+   "lvcan": true
+  }
+ ]
+}
