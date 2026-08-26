@@ -153,6 +153,19 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
     filename: 'x.ddd', b64: buf.toString('base64'), driverId: 999999,
   });
   T('șofer inexistent → refuzat', rauId.status === 400, rauId.status);
+
+  // Un fișier nelegat de nimeni rămâne în bază fără să conteze pentru vreun termen: o descărcare
+  // făcută, dar invizibilă în scadențar. Regula stătea doar în pagina web — de când încarcă și
+  // telefonul, e pe server. Dacă s-ar întoarce în interfață, ar trebui scrisă de două ori.
+  const faraLegatura = await POST('/api/tacho/upload', { filename: 'orfan.ddd', b64: buf.toString('base64') });
+  const jOrfan = await faraLegatura.json();
+  T('fără șofer ȘI fără vehicul → refuzat de SERVER, nu doar de pagină', faraLegatura.status === 400, faraLegatura.status);
+  T('și explică de ce', /scadențar/.test(jOrfan.error || ''), jOrfan.error);
+  const imeiRau = await POST('/api/tacho/upload', { filename: 'x.ddd', b64: buf.toString('base64'), imei: '000000000000000' });
+  T('vehicul inexistent → refuzat (altfel aceeași legătură moartă)', imeiRau.status === 400, imeiRau.status);
+  const dupaOrfan = await (await GET('/api/tacho')).json();
+  T('niciunul dintre cele refuzate n-a ajuns în bază',
+    !dupaOrfan.some(f => f.filename === 'orfan.ddd'), dupaOrfan.map(f => f.filename).join(', '));
   const fara = await fetch(B + '/api/tacho/scadentar');
   T('fără autentificare → refuzat', fara.status === 401 || fara.status === 403, fara.status);
   const istFara = await (await GET('/api/tacho/istoric')).json();

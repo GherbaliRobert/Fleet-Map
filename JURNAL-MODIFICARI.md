@@ -20,6 +20,41 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Fișierul de tahograf se încarcă și de pe telefon
+
+Ultimul lucru care se putea face DOAR din web. Acum se face și din aplicația de telefon: deschizi
+Tahograf → „Încarcă un fișier descărcat", alegi șoferul (sau vehiculul), alegi fișierul, trimiți.
+
+**Fără plugin nou.** Selectorul de fișiere al Androidului se deschide direct din aplicație, la fel ca
+la pozele de talon. Zero dependințe native în plus, deci zero risc la construirea APK-ului.
+
+Un amănunt care ar fi trecut neobservat: fișierele `.DDD` **n-au un tip înregistrat** în Android. Dacă
+i-aș fi cerut selectorului „doar .ddd", fișierul ar fi apărut gri, neselectabil, și omul ar fi crezut
+că aplicația e stricată. Așa că selectorul le arată pe toate — oricum serverul e cel care spune dacă
+fișierul e sau nu un tahograf, nu extensia din nume.
+
+**O regulă mutată la locul ei.** „Fișierul trebuie legat de un șofer sau de un vehicul" trăia doar în
+pagina web. Un fișier nelegat rămâne în bază fără să conteze pentru niciun termen — o descărcare
+făcută, dar invizibilă în scadențar. Cu al doilea client care încarcă, regula ar fi trebuit scrisă de
+două ori, deci am mutat-o pe **server**. Tot acolo am adăugat și verificarea că vehiculul ales chiar
+există: un IMEI tastat greșit trecea de verificarea de acces și crea aceeași legătură moartă.
+
+Ecranul o mai spune o dată înainte de trimitere, dar din alt motiv: ca omul să afle că a uitat să
+aleagă **înainte** de a urca câțiva MB pe date mobile, nu după.
+
+**Ce NU face:** un fișier pe care serverul nu-l poate citi nu e raportat ca reușită. Scrie, cu roșu,
+„s-a păstrat, dar NU l-am putut citi — nu contează ca descărcare", plus motivul. Ar fi fost cel mai
+prost mesaj posibil aici: „încărcat ✓" pe ceva ce nu ține loc de nimic la un control.
+
+**Probele.** Pe lângă cele de pe server (61 acum), am condus chiar interfața de telefon dintr-un
+browser, la dimensiune de telefon, pe date reale: am construit un `.DDD` din specificație, l-am ales
+prin selectorul de fișiere și am verificat că șoferul trece din „niciodată descărcat" în „ultima
+descărcare 25.08" **fără reîncărcarea ecranului**. Apoi am trimis un fișier stricat și am verificat
+că mesajul nu e verde. Regula mutată pe server am stricat-o intenționat: trei verificări au căzut.
+
+- **Ce vede fondatorul:** poate încărca un fișier de la un client direct de pe telefon, din mașină.
+- **Ce vede clientul:** la fel — nu mai trebuie să ajungă la calculator ca să pună o descărcare.
+
 ### AMÂNDOI · Rândul cu „cine nu apare", rescris de Alin
 
 Scria „Nu apar aici: 2 șoferi fără categorie de tahograf și 3 vehicule fără tahograf — n-au ce

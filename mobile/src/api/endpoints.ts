@@ -230,6 +230,12 @@ export const Api = {
   tachoScadentar: () => api<any>('/api/tacho/scadentar'),
   tachoIstoric: (driverId?: number | null, imei?: string | null) =>
     api<any>('/api/tacho/istoric?' + (driverId ? 'driverId=' + driverId : 'imei=' + encodeURIComponent(String(imei)))),
+  // Încărcarea unui .DDD. Regula „trebuie legat de un șofer SAU de un vehicul" e a SERVERULUI —
+  // acolo se hotărăște dacă fișierul intră. Ecranul o mai spune o dată înainte de trimitere, doar ca
+  // omul să nu urce degeaba câțiva MB pe date mobile; dacă regula se schimbă, cea de pe server
+  // câștigă oricum, iar mesajul ei ajunge pe ecran neschimbat.
+  uploadTacho: (b: { filename: string; b64: string; driverId?: number | null; imei?: string | null }) =>
+    api<any>('/api/tacho/upload', { method: 'POST', body: b }),
   users: () => api<any[]>('/api/users'),
   createUser: (b: any) => api('/api/users', { method: 'POST', body: b }),
   updateUser: (id: number, b: any) => api(`/api/users/${id}`, { method: 'PUT', body: b }),

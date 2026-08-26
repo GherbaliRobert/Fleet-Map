@@ -4017,6 +4017,12 @@ app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, requireFea
     const buf = Buffer.from(b64, 'base64');
     if (buf.length < 8) return res.status(400).json({ error: 'Fișier invalid' });
     if (buf.length > 4 * 1024 * 1024) return res.status(413).json({ error: 'Fișier prea mare (max 4MB)' });
+    // Fișierul trebuie legat de CINEVA — de șofer (cardul) sau de vehicul (memoria). Unul nelegat
+    // rămâne în bază fără să conteze pentru niciun termen: o descărcare făcută, dar invizibilă în
+    // scadențar. Regula stătea doar în pagina web; de când încarcă și telefonul, stă aici, o dată.
+    if (!driverId && !imei) {
+      return res.status(400).json({ error: 'Alege șoferul (card) sau vehiculul (memorie) de care ține fișierul — altfel nu intră în scadențar' });
+    }
     const parsed = tacho.parse(buf);
 
     // Șoferul și vehiculul se ALEG, nu se ghicesc din fișier. Numele citit din card rămâne ca reper
@@ -4030,7 +4036,12 @@ app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, requireFea
       if (!req.isSuper && d.company_id !== req.companyId) return res.status(403).json({ error: 'Șoferul nu e din compania ta' });
       drvId = d.id;
     }
-    if (imei && !canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis la vehicul' });
+    if (imei) {
+      if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis la vehicul' });
+      // Un IMEI greșit tastat trece de verificarea de acces (super-adminul le poate pe toate) și ar
+      // crea aceeași legătură moartă ca lipsa lui. Verificăm că vehiculul chiar există.
+      if (!(await db.getDeviceFull(imei))) return res.status(400).json({ error: 'Vehiculul ales nu există' });
+    }
 
     const rec = await db.createTachoFile({
       companyId: req.companyId, imei: imei || null, driverId: drvId,

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
+import { me, showToast } from '../app/store';
 import './detail.css';
 import './admin.css';
 import './reports.css';
@@ -28,6 +29,54 @@ export function Tahograf() {
   const [detail, setDetail] = useState<any | null>(null);
   const [ist, setIst] = useState<any | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  // ── încărcare .DDD ──
+  const canWrite = !!me.value?.permissions?.manageFleet;
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [up, setUp] = useState<{ open: boolean; drv: string; veh: string; file: File | null; busy: boolean; msg: any }>(
+    { open: false, drv: '', veh: '', file: null, busy: false, msg: null });
+  const setUpF = (p: any) => setUp((s) => ({ ...s, ...p }));
+
+  async function incarca() {
+    if (!due) return;
+    const { file, drv, veh } = up;
+    if (!file) return setUpF({ msg: { t: 'warn', s: 'Alege întâi fișierul.' } });
+    if (!drv && !veh) return setUpF({ msg: { t: 'warn', s: 'Alege șoferul sau vehiculul de care ține fișierul — altfel nu intră în scadențar.' } });
+    // Limita serverului e 4 MB. O verificăm și aici ca omul să afle ÎNAINTE de a urca 4 MB pe date
+    // mobile, nu după. Nu e a doua regulă — e aceeași, spusă mai devreme.
+    if (file.size > 4 * 1024 * 1024) {
+      return setUpF({ msg: { t: 'bad', s: 'Fișierul are ' + (file.size / 1048576).toFixed(1) + ' MB, limita e 4.' } });
+    }
+    setUpF({ busy: true, msg: { t: 'muted', s: 'Se încarcă…' } });
+    try {
+      const b64 = await new Promise<string>((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(String(fr.result).split(',')[1] || '');
+        fr.onerror = () => rej(new Error('Nu am putut citi fișierul.'));
+        fr.readAsDataURL(file);
+      });
+      const r = await Api.uploadTacho({ filename: file.name, b64, driverId: drv ? Number(drv) : null, imei: veh || null });
+      const p = r.parsed || {};
+      // Un fișier necitit NU se raportează ca reușită. Ar fi cel mai rău fel de mesaj aici:
+      // „încărcat ✓" pe ceva ce nu contează ca descărcare.
+      if (p.incredere === 'necitit') {
+        setUpF({ busy: false, file: null, msg: { t: 'bad', s: 'S-a păstrat, dar NU l-am putut citi — nu contează ca descărcare. ' + (p.parseNote || '') } });
+      } else if (p.incredere === 'partial') {
+        setUpF({ busy: false, file: null, msg: { t: 'warn', s: 'Înregistrat. ' + (p.parseNote || '') } });
+      } else {
+        setUpF({ busy: false, file: null, msg: { t: 'ok', s: 'Citit ✓ — ' + ((p.totals && p.totals.zile) || 0) + ' zile, ' + ((p.totals && p.totals.infractiuni) || 0) + ' abateri.' } });
+        showToast('Fișier încărcat');
+      }
+      if (fileRef.current) fileRef.current.value = '';
+      reload();
+    } catch (e: any) {
+      setUpF({ busy: false, msg: { t: 'bad', s: e?.message || 'Eroare la încărcare' } });
+    }
+  }
+
+  function reload() {
+    Api.tachoScadentar().then(setDue).catch(() => {});
+    Api.tachoFiles().then((d) => setItems(Array.isArray(d) ? d : [])).catch(() => {});
+  }
 
   useEffect(() => {
     const nuEActiv = (e: any) => e?.status === 403;
@@ -90,6 +139,63 @@ export function Tahograf() {
     );
   }
 
+  // ── Încarcă un fișier descărcat ──────────────────────────────────────────────────────────────
+  // FĂRĂ plugin nativ de fișiere, ca la pozele de talon (vezi VehicleDocs): <input type="file">
+  // deschide selectorul Android din WebView. Zero dependințe native, zero risc la construirea APK-ului.
+  // `accept` e larg dinadins: extensia .ddd n-are tip MIME înregistrat, iar un accept strict face ca
+  // selectorul Android să afișeze fișierul gri, neselectabil. Verificarea reală o face serverul, care
+  // marchează „necitit" ce nu e tahograf — nu extensia din nume.
+  function randIncarcare() {
+    const M = up.msg;
+    const cul = M && (M.t === 'ok' ? 'var(--accent)' : M.t === 'bad' ? 'var(--red)' : M.t === 'warn' ? '#f5b43c' : 'var(--text-muted)');
+    return (
+      <div class="th-up">
+        <button class="th-up-h" onClick={() => setUpF({ open: !up.open, msg: null })}>
+          <Icon name="plus" size={16} color="var(--accent)" />
+          <span>Încarcă un fișier descărcat</span>
+          <span class={'th-up-ch' + (up.open ? ' on' : '')}><Icon name="chevronR" size={16} color="var(--text-muted)" /></span>
+        </button>
+        {up.open && (
+          <div class="th-up-b">
+            {/* Cerem legătura ÎNAINTE de fișier: e alegerea care decide dacă descărcarea se vede în
+                scadențar, iar dacă o pui după, omul o sare. */}
+            <div class="fld">
+              <label>Șofer (cardul lui)</label>
+              <select value={up.drv} disabled={!!up.veh} onChange={(e: any) => setUpF({ drv: e.target.value, msg: null })}>
+                <option value="">— alege șoferul —</option>
+                {soferi.map((s: any) => <option value={String(s.id)}>{s.nume}</option>)}
+              </select>
+            </div>
+            <div class="th-up-sau">sau</div>
+            <div class="fld">
+              <label>Vehicul (memoria tahografului)</label>
+              <select value={up.veh} disabled={!!up.drv} onChange={(e: any) => setUpF({ veh: e.target.value, msg: null })}>
+                <option value="">— alege vehiculul —</option>
+                {vehicule.map((v: any) => <option value={v.imei}>{v.nume}</option>)}
+              </select>
+            </div>
+
+            <input ref={fileRef} type="file" style="display:none"
+              onChange={(e: any) => setUpF({ file: (e.target.files && e.target.files[0]) || null, msg: null })} />
+            <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);margin-top:4px"
+              onClick={() => fileRef.current?.click()}>
+              <Icon name="fileBar" size={16} /> {up.file ? up.file.name : 'Alege fișierul .DDD'}
+            </button>
+            {up.file && <div class="th-excl quiet" style="margin-top:0">{(up.file.size / 1024).toFixed(0)} KB</div>}
+
+            <button class="btn btn-primary" disabled={up.busy} onClick={incarca}>
+              {up.busy ? 'Se încarcă…' : 'Trimite'}
+            </button>
+            {M && <div class="th-up-msg" style={`color:${cul}`}>{M.s}</div>}
+            {(up.drv || up.veh) && (
+              <button class="th-up-reset" onClick={() => setUpF({ drv: '', veh: '', msg: null })}>schimbă alegerea</button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const soferi = (due && due.soferi) || [];
   const vehicule = (due && due.vehicule) || [];
   const sumar = (due && due.sumar) || {};
@@ -140,7 +246,9 @@ export function Tahograf() {
               : <div class="th-note">Niciun vehicul cu tahograf în flotă. Se recunosc după „Categorie" din fișa vehiculului: Camion, TIR, Autotractor, Autobuz, Autocar.</div>}
 
             {randExcluse(true, true)}
-            <div class="th-excl quiet" style="margin-top:14px">Încărcarea fișierelor .DDD se face din aplicația web.</div>
+            {canWrite
+              ? randIncarcare()
+              : <div class="th-excl quiet" style="margin-top:14px">Încărcarea fișierelor .DDD o poate face cine are drept de administrare a flotei.</div>}
           </>
         )}
 

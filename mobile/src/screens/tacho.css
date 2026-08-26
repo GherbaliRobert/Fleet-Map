@@ -39,3 +39,19 @@
 .th-gap { display: flex; gap: 10px; align-items: flex-start; background: rgba(245,180,60,.09); border: 1px solid rgba(245,180,60,.34); border-radius: 11px; padding: 11px 12px; margin-bottom: 8px; }
 .th-gap b { display: block; font-size: 13.5px; color: #f5b43c; }
 .th-gap span { font-size: 12px; color: var(--text-muted); }
+
+/* Încărcarea unui .DDD. Strâns implicit: e o acțiune rară, iar deschis permanent ar împinge
+   scadențarul — partea pentru care se deschide ecranul — sub linia de vizibilitate. */
+.th-up { margin-top: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.th-up-h { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent; border: none; color: var(--text-primary); font-family: inherit; font-size: 14px; font-weight: 700; padding: 13px 13px; text-align: left; }
+.th-up-h > span { flex: 1; }
+.th-up-b { display: flex; flex-direction: column; gap: 11px; padding: 0 13px 14px; border-top: 1px solid var(--border); padding-top: 13px; }
+/* Cele două selectoare se exclud: fișierul ține ori de cardul șoferului, ori de memoria vehiculului. */
+.th-up-sau { text-align: center; font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin: -4px 0; }
+.th-up-b select:disabled { opacity: .45; }
+.th-up-msg { font-size: 13px; line-height: 1.5; font-weight: 700; }
+.th-up-reset { background: transparent; border: none; color: var(--text-muted); font-family: inherit; font-size: 12.5px; text-decoration: underline; padding: 0; }
+/* Chevronul se rotește în jos când blocul e deschis — nu avem iconiță separată „în jos", iar una
+   care ar arăta în stânga ar sugera „înapoi", nu „desfășurat". */
+.th-up-ch { display: flex; transition: transform .15s; }
+.th-up-ch.on { transform: rotate(90deg); }
