@@ -14633,12 +14633,12 @@ const pozitii = await r.json();</code></pre>
           if (f.ascuns) { usedKeys.add(f.key); return; }
           usedKeys.add(f.key);
 
+          // „Necitit" nu e o stare activă — sub regula nouă nu mai desenăm plăcuța, doar o
+          // numărăm pentru nota de jos. Altfel rămânea singura casetă stinsă de pe ecran.
+          if (necitit) { nedecodateVazute++; return; }
+
           let aprins, text;
-          if (necitit) {
-            aprins = false;
-            text = 'necitit';
-            nedecodateVazute++;
-          } else if (f.kind === 'code') {
+          if (f.kind === 'code') {
             aprins = Number(val) > 0;
             text = 'cod ' + val;
           } else if (f.kind === 'text') {
@@ -14707,9 +14707,10 @@ const pozitii = await r.json();</code></pre>
       let out = '<div class="cf-sum">' + rezumat + '</div>' + sectiuni.join('');
       if (nedecodateVazute) {
         out += '<div class="cf-note"><i class="fas fa-circle-info"></i> ' +
-          (nedecodateVazute === 1 ? '1 semnal e marcat' : nedecodateVazute + ' semnale sunt marcate') +
-          ' <em>necitit</em>: adaptorul le poate trimite, dar încă nu știm ' +
-          'unde le pune în mesaj. Le aprindem după ce le confirmăm pe un vehicul — până atunci ' +
+          (nedecodateVazute === 1 ? '1 semnal pe care adaptorul îl poate trimite nu apare' : nedecodateVazute + ' semnale pe care adaptorul le poate trimite nu apar') +
+          ' aici: încă nu știm unde le pune în mesaj. ' +
+          (nedecodateVazute === 1 ? 'Îl aprindem' : 'Le aprindem') + ' după ce ' +
+          (nedecodateVazute === 1 ? 'îl confirmăm' : 'le confirmăm') + ' pe un vehicul — până atunci ' +
           'preferăm să lipsească decât să arate greșit.</div>';
       }
       return out;

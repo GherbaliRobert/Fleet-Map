@@ -54,6 +54,10 @@ verificarea automată înainte de livrare.
 Verificat pe datele reale ale Passat-ului și pe toate combinațiile din protocol: 91 de verificări la
 panoul din web, 84 la decodor, toate verzi.
 
+Sub aceeași regulă a picat și ultima casetă stinsă de pe ecran: semnalul pe care adaptorul îl poate
+trimite, dar pe care încă nu știm să-l citim (închiderea centralizată), nu mai apare ca plăcuță
+„necitit". A rămas rândul de jos care spune limpede că lipsește ceva și de ce.
+
 **De reținut:** stările se arată din ultimul pachet primit. Dacă mașina stă parcată și adaptorul
 adoarme, cele trei permanente rămân cu ultima valoare primită — corect pentru o mașină parcată, dar
 nu e o „memorie" separată.

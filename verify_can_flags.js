@@ -137,13 +137,13 @@ sect('4. Steagurile pe care nu le citim încă');
   // NU număra `necitit<` peste tot: nota explicativă de jos conține și ea cuvântul. Doar plăcuțele.
   // 26.08: din cele 5 nedecodate a rămas UNA (închiderea centralizată). Ambreiajul și telecomanda
   // au acum biți oficiali (P4) și se decodează — deci nu mai apar „necitite", ci ca plăcuțe vii.
-  const placiNecitite = (h.match(/cf-s">necitit</g) || []).length;
-  T('apar marcate „necitit"', placiNecitite === 1, 'găsite ' + placiNecitite);
-  T('au ramă punctată (cf-nd)', (h.match(/cf-nd/g) || []).length === 1);
-  T('nu sunt aprinse', !/cf-nd lit|lit cf-nd/.test(h));
-  T('nota explicativă apare', h.includes('1 semnal e marcat'));
-  T('Ambreiajul NU mai e necitit (P4 îl decodează)', !/Ambreiaj<\/span><span class="cf-s">necitit</.test(h));
-  T('Închiderea centralizată a rămas necitită', /Închidere centralizată<\/span><span class="cf-s">necitit</.test(h));
+  // 27.08: sub regula „doar stările active", plăcuța „necitit" nu se mai desenează — era singura
+  // casetă stinsă rămasă pe ecran. Rămâne nota de jos, care spune limpede că lipsește ceva.
+  T('nu mai desenăm plăcuțe „necitit"', !/cf-s">necitit</.test(h) && !/cf-nd/.test(h));
+  T('dar nota explicativă rămâne', h.includes('nu apare aici'));
+  T('nota spune și de ce lipsește', h.includes('preferăm să lipsească decât să arate greșit'));
+  T('Închiderea centralizată nu apare ca plăcuță', !h.includes('>Închidere centralizată<'));
+  T('Ambreiajul se decodează (P4), deci nu intră la nedecodate', !cat.NEDECODATE.includes('_sf_clutch'));
   cat.NEDECODATE.forEach(k => T('are fișă în catalog: ' + k, !!cat.flagMeta(k)));
 }
 

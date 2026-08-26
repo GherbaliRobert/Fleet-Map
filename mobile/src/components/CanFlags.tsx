@@ -64,7 +64,8 @@ export function CanFlags({ io }: { io: any }) {
       if (lipsa && !necitit) return;
       // Treptele P/R/N/D nu apar una câte una — intră în plăcuța „Treapta de viteză".
       if (f.ascuns) return;
-      if (necitit) { necitite++; placi.push({ f, aprins: false, text: 'necitit', necitit: true }); return; }
+      // „Necitit" nu e o stare activă: o numărăm pentru nota de jos, dar nu mai desenăm plăcuța.
+      if (necitit) { necitite++; return; }
       if (f.kind === 'code') {
         const pornit = Number(val) > 0;
         if (pornit || f.mereu) placi.push({ f, aprins: pornit, text: 'cod ' + val, necitit: false, val });
@@ -163,9 +164,10 @@ export function CanFlags({ io }: { io: any }) {
 
       {necitite > 0 && (
         <div class="cfm-note">
-          {necitite === 1 ? '1 semnal e marcat' : necitite + ' semnale sunt marcate'} „necitit": adaptorul le poate trimite, dar încă nu știm unde le pune
-          în mesaj. Le aprindem după ce le confirmăm pe un vehicul — până atunci preferăm să lipsească decât
-          să arate greșit.
+          {necitite === 1
+            ? '1 semnal pe care adaptorul îl poate trimite nu apare aici: încă nu știm unde îl pune în mesaj.'
+            : necitite + ' semnale pe care adaptorul le poate trimite nu apar aici: încă nu știm unde le pune în mesaj.'}
+          {' '}Le aprindem după ce le confirmăm pe un vehicul — până atunci preferăm să lipsească decât să arate greșit.
         </div>
       )}
     </div>
