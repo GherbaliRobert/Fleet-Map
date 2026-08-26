@@ -29,7 +29,10 @@ const vechi = require('./tools/fixtures/io_map_inainte.json');
 // Corectate deliberat — vezi jurnalul din 26.08. FMS-ul adevărat merge prin iface='fms'.
 // 217: era etichetat 'can_vin', dar oficial e „Geofence zone 36" — VIN-ul real e ID 325.
 // Aceeași categorie de greșeală ca 29-38: un nume ghicit, care arăta date de altundeva.
-const CORECTATE = new Set([29, 30, 31, 32, 33, 37, 38, 217]);
+// 652/658-661/898: erau „can_security_flag_ext", „can_indicator_left/right/hazard/lights" si
+// „can_handbrake" — toate GHICITE. Oficial sunt steaguri individuale: cheia in contact, portbagaj,
+// treptele N/P/R si CONTACTUL. Rulau LIVE cu intelesul gresit pe VW Passat B7. Vezi jurnalul 26.08.
+const CORECTATE = new Set([29, 30, 31, 32, 33, 37, 38, 217, 652, 658, 659, 660, 661, 898]);
 const schimbate = [];
 for (const [id, nume] of Object.entries(vechi)) {
   if (CORECTATE.has(Number(id))) continue;
@@ -189,11 +192,52 @@ const emise = new Set();
 const TOT = '18446744073709551615';
 [['decodeSecurityFlags', '_sf_'], ['decodeSecurityFlagsP4', '_sf_']].forEach(([fn, pfx]) => Object.keys(c[fn](TOT)).forEach((k) => emise.add(pfx + k)));
 [['decodeControlFlags', '_cf_'], ['decodeControlFlagsP4', '_cf_'], ['decodeIndicatorFlagsP4', '_cf_']].forEach(([fn, pfx]) => Object.keys(c[fn](TOT)).forEach((k) => emise.add(pfx + k)));
-const orfane = cflags.FLAGS.filter((f) => !emise.has(f.key) && !cflags.NEDECODATE.includes(f.key));
-t('fiecare placuta are decodor (' + cflags.FLAGS.length + ' placute)', orfane.length === 0, orfane.map((f) => f.key).join(', '));
+// O placuta e legitima daca o poate aprinde ORICARE dintre cai: decodoarele de biti (P2/P4) SAU
+// puntea semnalelor separate (can_flag_io.js). Unele stari — geamuri, GPL, Start-Stop — exista doar
+// ca semnal individual, deci n-au bit in nicio masca.
+const dinPunte = new Set(Object.values(require('./can_flag_io.js').PE_ID));
+const orfane = cflags.FLAGS.filter((f) => !emise.has(f.key) && !dinPunte.has(f.key) && !cflags.NEDECODATE.includes(f.key));
+t('fiecare placuta poate fi aprinsa de o cale (' + cflags.FLAGS.length + ' placute)', orfane.length === 0, orfane.map((f) => f.key).join(', '));
 const faraPlacuta = [...emise].filter((k) => !cflags.FLAGS.find((f) => f.key === k));
 t('fiecare steag decodat are placuta', faraPlacuta.length === 0, faraPlacuta.join(', '));
 t('fiecare placuta are explicatie pentru balon', cflags.FLAGS.every((f) => f.desc && f.desc.length > 10), cflags.FLAGS.filter((f) => !f.desc).map((f) => f.key).join(', '));
+
+console.log('\n=== 11. Steaguri trimise ca SEMNALE SEPARATE (VW Passat B7 / ALL-CAN300) ===\n');
+// Adaptorul poate trimite starile fie impachetate pe biti, fie cate un semnal AVL per stare.
+// Passat-ul (program 11173) trimite varianta a doua — placutele citeau doar prima, deci ecranul
+// ramanea GOL pe o masina care trimitea totul.
+const fio = require('./can_flag_io.js');
+const cfl = require('./can_flags.js');
+const specIds = new Set(spec.map((e) => e.id));
+const idNecunoscut = Object.keys(fio.PE_ID).filter((id) => !specIds.has(Number(id)));
+t('toate ID-urile din punte exista in specul oficial (' + Object.keys(fio.PE_ID).length + ')', idNecunoscut.length === 0, idNecunoscut.join(', '));
+const steagFaraPlacuta = Object.entries(fio.PE_ID).filter(([, k]) => !cfl.isFlagKey(k));
+t('fiecare steag din punte are placuta', steagFaraPlacuta.length === 0, steagFaraPlacuta.map(([i, k]) => i + ':' + k).join(', '));
+const dubleSteag = Object.values(fio.PE_ID).filter((k, i, a2) => a2.indexOf(k) !== i);
+t('niciun steag nu e legat de doua ID-uri', dubleSteag.length === 0, [...new Set(dubleSteag)].join(', '));
+
+// Exact ce trimite Passat-ul acum (citit din productie, 26.08)
+const ioPassat = {
+  can_ssf_clutch_pushed: 1, can_ssf_can_module_in_sleep: 1,
+  can_ssf_front_left_door_open: 0, can_ssf_rear_right_door_open: 0, can_ssf_engine_cover_open: 0,
+  can_csf_dipped_head_lights: 0, can_csf_air_conditioning: 0,
+  can_isf_check_engine_indicator: 0, can_isf_low_fuel_level_indicator: 0,
+};
+c.expandCanFlags(ioPassat);
+t('semnalele separate produc steaguri', !!ioPassat._security_flags && !!ioPassat._control_flags);
+t('ambreiajul apasat se vede', ioPassat._security_flags.clutch === true);
+t('adaptorul in repaus se vede', ioPassat._security_flags.can_sleep_mode === true);
+t('usa inchisa ramane STINSA (0 nu inseamna lipsa)', ioPassat._security_flags.door_front_left === false);
+t('martorii stinsi raman stinsi', ioPassat._control_flags.check_engine === false && ioPassat._control_flags.low_fuel === false);
+// o masina fara semnale separate nu capata steaguri din senin
+const ioGol = { can_engine_rpm: 800, can_fuel_level_liters: 40 };
+c.expandCanFlags(ioGol);
+t('masina fara steaguri NU capata _security_flags', ioGol._security_flags === undefined);
+// varianta impachetata are prioritate pe cheile pe care semnalul separat nu le trimite
+const ioMixt = { can_security_state_flags_p4: b(22), can_ssf_clutch_pushed: 1 };
+c.expandCanFlags(ioMixt);
+t('impachetat + separat: amandoua ajung in acelasi loc', ioMixt._security_flags.door_front_left === true && ioMixt._security_flags.clutch === true);
+
 
 console.log('\n' + ok + '/' + (ok + fail) + ' verificări trecute\n');
 process.exit(fail ? 1 : 0);

@@ -486,13 +486,11 @@ function getIoName(id, iface) {
     // System IO
     232: 'can_battery_soc',             // % (EV battery state of charge)
     235: 'can_odo_high_res',            // high resolution odometer
-    // ALL-CAN300 state flags
-    652: 'can_security_flag_ext',       // extended security flag
-    658: 'can_indicator_left',          // left turn indicator
-    659: 'can_indicator_right',         // right turn indicator
-    660: 'can_indicator_hazard',        // hazard lights
-    661: 'can_indicator_lights',        // lights status
-    898: 'can_handbrake',               // handbrake status
+    // 652/658-661/898 NU mai sunt aici: erau GHICITE („semnalizator stanga", „frana de mana"...).
+    // Oficial sunt steaguri individuale de stare: 652 = cheia in contact, 658 = portbagaj deschis,
+    // 659/660/661 = treapta N/P/R, 898 = CONTACT. Confirmate pe VW Passat B7 (program 11173), unde
+    // rulau live cu intelesul gresit. Numele corecte vin din IO_EXTRA; legatura cu placutele din
+    // interfata se face in can_flag_io.js.
     // Manual CAN data
     900: 'can_manual_0',                // manual CAN element 0
     902: 'can_manual_2',                // manual CAN element 2
@@ -875,6 +873,32 @@ function decodeIndicatorFlagsP4(value) {
   return flags;
 }
 
+// Steagurile trimise ca SEMNALE SEPARATE (cate un AVL ID per stare) — asa trimite VW Passat B7 cu
+// ALL-CAN300, program 11173. Le adunam in aceleasi `_security_flags`/`_control_flags` ca varianta
+// impachetata, ca interfata sa nu stie si sa nu-i pese cum trimite masina.
+const _FLAG_IO = require('./can_flag_io.js');
+const _FLAG_PE_NUME = (() => {
+  const m = {};
+  for (const [id, steag] of Object.entries(_FLAG_IO.PE_ID)) {
+    const nume = getIoName(Number(id), null);
+    if (!/^io_\d+$/.test(nume)) m[nume] = steag;
+  }
+  return m;
+})();
+function _dinSemnaleSeparate(ioData) {
+  const sf = {}, cf = {};
+  let gasite = 0;
+  for (const [nume, steag] of Object.entries(_FLAG_PE_NUME)) {
+    const v = ioData[nume];
+    if (v === undefined || v === null) continue;
+    gasite++;
+    const pornit = !(v === 0 || v === '0' || v === false);
+    if (steag.startsWith('_sf_')) sf[steag.slice(4)] = pornit;
+    else cf[steag.slice(4)] = pornit;
+  }
+  return gasite ? { sf, cf } : null;
+}
+
 // Expandeaza flag-urile in IO data. P2 si P4 pot coexista (unele programe trimit ambele);
 // P4 e mai nou si mai bogat → cand un steag exista in amandoua, valoarea P4 castiga.
 function expandCanFlags(ioData) {
@@ -892,6 +916,13 @@ function expandCanFlags(ioData) {
   }
   if (ioData.can_indicator_state_flags_p4 !== undefined) {
     ioData._control_flags = Object.assign(ioData._control_flags || {}, decodeIndicatorFlagsP4(ioData.can_indicator_state_flags_p4));
+  }
+  // Semnalele separate se pun PESTE cele din pachet: daca masina trimite si una si alta, valoarea
+  // individuala e cea mai proaspata si mai putin ambigua (nu depinde de ce protocol de biti e activ).
+  const sep = _dinSemnaleSeparate(ioData);
+  if (sep) {
+    if (Object.keys(sep.sf).length) ioData._security_flags = Object.assign(ioData._security_flags || {}, sep.sf);
+    if (Object.keys(sep.cf).length) ioData._control_flags = Object.assign(ioData._control_flags || {}, sep.cf);
   }
   return ioData;
 }

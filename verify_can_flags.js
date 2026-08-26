@@ -163,7 +163,11 @@ sect('7. Acoperire față de codec8e.js');
   ])].map(k => '_cf_' + k);
   const fara = [...sf, ...cf].filter(k => !cat.isFlagKey(k));
   T('toate steagurile decodate au nume + iconiță', fara.length === 0, fara.join(', '));
-  const orfane = cat.FLAGS.filter(f => ![...sf, ...cf].includes(f.key)).map(f => f.key);
+  // 26.08: o placuta mai poate fi aprinsa si de puntea semnalelor SEPARATE (can_flag_io.js) —
+  // asa trimite VW Passat B7. Starile care exista doar acolo (geamuri, GPL, Start-Stop, remorca)
+  // n-au bit in nicio masca, deci nu apar in listele sf/cf de mai sus.
+  const dinPunte = new Set(Object.values(require('./can_flag_io.js').PE_ID));
+  const orfane = cat.FLAGS.filter(f => ![...sf, ...cf].includes(f.key) && !dinPunte.has(f.key)).map(f => f.key);
   const neasteptate = orfane.filter(k => !cat.NEDECODATE.includes(k));
   T('nu avem fișe pentru chei inexistente', neasteptate.length === 0, neasteptate.join(', '));
 

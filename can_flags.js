@@ -183,6 +183,16 @@ const FLAGS = [
   { key: '_cf_trailer_pneumatic_bad', label: 'Alimentare pneumatică remorcă', icon: 'fa-truck',      mi: 'truck',      group: 'camion', kind: 'warn' },
   { key: '_sf_can_sleep_mode',    label: 'Adaptor CAN în repaus',    icon: 'fa-moon',                mi: 'moon',       group: 'stare', kind: 'info', st: ['Da', 'Nu'] },
   { key: '_sf_can3_status',       label: 'Magistrala CAN 3',         icon: 'fa-plug-circle-check',   mi: 'plug',       group: 'stare', kind: 'code' },
+
+  // ── Stari trimise ca semnale SEPARATE (ALL-CAN300 program 11173 — VW Passat B7) ──
+  { key: '_sf_window_front_left',  label: 'Geam față stânga',        icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
+  { key: '_sf_window_front_right', label: 'Geam față dreapta',       icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
+  { key: '_sf_window_rear_left',   label: 'Geam spate stânga',       icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
+  { key: '_sf_window_rear_right',  label: 'Geam spate dreapta',      icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
+  { key: '_sf_dual_fuel',          label: 'Merge pe combustibil dublu', icon: 'fa-gas-pump',         mi: 'pump',       group: 'motor', kind: 'info', st: ['Da', 'Nu'] },
+  { key: '_sf_lpg_running',        label: 'Merge pe GPL',            icon: 'fa-gas-pump',            mi: 'pump',       group: 'motor', kind: 'info', st: ['Da', 'Nu'] },
+  { key: '_cf_start_stop_inactive', label: 'Start-Stop dezactivat',  icon: 'fa-power-off',           mi: 'ban',        group: 'confort', kind: 'info', st: ['Dezactivat', 'Activ'] },
+  { key: '_cf_trailer_connected',  label: 'Remorcă atașată',         icon: 'fa-trailer',             mi: 'truck',      group: 'camion', kind: 'info', st: ['Atașată', 'Nu'] },
 ];
 
 // ── Ce înseamnă fiecare steag — textul din balonul care se deschide la atingerea pictogramei ──
@@ -293,6 +303,14 @@ const DESC = {
   _sf_can2_status: 'Starea magistralei CAN 2 — aceleași coduri ca la CAN 1.',
   _sf_can3_status: 'Starea magistralei CAN 3 — aceleași coduri ca la CAN 1.',
   _sf_can_sleep_mode: 'Adaptorul CAN a intrat în repaus (mașina parcată de ceva timp).',
+  _sf_window_front_left: 'Geamul din față stânga (șofer). Colorat = deschis acum.',
+  _sf_window_front_right: 'Geamul din față dreapta. Colorat = deschis acum.',
+  _sf_window_rear_left: 'Geamul din spate stânga. Colorat = deschis acum.',
+  _sf_window_rear_right: 'Geamul din spate dreapta. Colorat = deschis acum.',
+  _sf_dual_fuel: 'Motorul funcționează pe combustibil dublu (benzină + gaz).',
+  _sf_lpg_running: 'Motorul merge acum pe GPL.',
+  _cf_start_stop_inactive: 'Sistemul Start-Stop e dezactivat (din buton sau de mașină).',
+  _cf_trailer_connected: 'Mașina are remorcă atașată electric.',
   _cf_hydraulic_filter_clogged: 'Filtrul sistemului hidraulic e înfundat (utilaje/camioane cu instalație hidraulică).',
   _cf_hydraulic_low_pressure: 'Presiunea din sistemul hidraulic e scăzută.',
   _cf_hydraulic_oil_low: 'Uleiul hidraulic e sub nivel.',

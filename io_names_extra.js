@@ -1,6 +1,6 @@
 // io_names_extra.js — GENERAT de tools/gen-io-extra.js din specul oficial Teltonika FMC130.
 // NU edita de mână: rulează generatorul după ce actualizezi tools/fixtures/avl-fmc130.json.
-// Harta scrisă de mână din codec8e.js are prioritate; aici e restul listei oficiale (502 ID-uri),
+// Harta scrisă de mână din codec8e.js are prioritate; aici e restul listei oficiale (508 ID-uri),
 // ca un Passat cu ALL-CAN300 să nu mai apară cu zeci de „io_517" nedescifrate.
 // Câmpuri: name (cheia din io_data) · mult (multiplicator afișare/conversie) · semnat (two's complement)
 //          · octeti (lățimea valorii) · unit · comentariu = numele oficial + grupul din spec.
@@ -234,11 +234,16 @@ module.exports = {
   623: { name: 'frequency_din2', mult: 0.1, octeti: 2, unit: "Hz" }, // Frequency DIN2 [Permanent I/O elements]
   636: { name: 'umts_lte_cell_id', octeti: 4 }, // UMTS/LTE Cell ID [Permanent I/O elements]
   637: { name: 'wake_reason', octeti: 1 }, // Wake Reason [Permanent I/O elements]
+  652: { name: 'can_ssf_keyinignitionlock', octeti: 1 }, // SSF KeyInIgnitionLock [ALLCAN300, CANCONTROL]
   653: { name: 'can_ssf_handbrake_is_active', octeti: 1 }, // SSF Handbrake Is Active [ALLCAN300, CANCONTROL]
   654: { name: 'can_ssf_front_left_door_open', octeti: 1 }, // SSF Front Left Door Open [LVCAN, ALLCAN300, CANCONTROL]
   655: { name: 'can_ssf_front_right_door_open', octeti: 1 }, // SSF Front Right Door Open [LVCAN, ALLCAN300, CANCONTROL]
   656: { name: 'can_ssf_rear_left_door_open', octeti: 1 }, // SSF Rear Left Door Open [LVCAN, ALLCAN300, CANCONTROL]
   657: { name: 'can_ssf_rear_right_door_open', octeti: 1 }, // SSF Rear Right Door Open [LVCAN, ALLCAN300, CANCONTROL]
+  658: { name: 'can_ssf_trunk_door_open', octeti: 1 }, // SSF Trunk Door Open [LVCAN, ALLCAN300, CANCONTROL]
+  659: { name: 'can_ssf_neutral_gear_active_automatic_gear_box', octeti: 1 }, // SSF Neutral Gear Active (automatic gear box) [ALLCAN300, CANCONTROL]
+  660: { name: 'can_ssf_parking_gear_active_automatic_gear_box', octeti: 1 }, // SSF Parking Gear Active (automatic gear box) [ALLCAN300, CANCONTROL]
+  661: { name: 'can_ssf_reverse_gear_active', octeti: 1 }, // SSF Reverse Gear Active [ALLCAN300, CANCONTROL]
   662: { name: 'can_ssf_car_is_closed', octeti: 1 }, // SSF Car Is Closed [ALLCAN300, CANCONTROL]
   755: { name: 'obd_oem_oem_remaining_distance', octeti: 2, unit: "km" }, // OEM Remaining distance [OBD OEM elements]
   759: { name: 'obd_fuel_type', octeti: 1 }, // Fuel Type [OBD elements]
@@ -251,6 +256,7 @@ module.exports = {
   865: { name: 'can_time_to_next_oil_service', octeti: 2, unit: "day" }, // Time to next oil service [CAN adapters]
   866: { name: 'can_lvcan_vehicle_range', octeti: 4, unit: "km" }, // LVCAN Vehicle Range [CAN adapters]
   867: { name: 'can_lvcan_total_cng_counted', octeti: 4, unit: "kg" }, // LVCAN Total CNG counted [CAN adapters]
+  898: { name: 'can_ssf_ignition', octeti: 1 }, // SSF Ignition [LVCAN, ALLCAN300, CANCONTROL]
   899: { name: 'can_ssf_webasto', octeti: 1 }, // SSF Webasto [ALLCAN300]
   901: { name: 'can_ssf_standalone_engine', octeti: 1 }, // SSF Standalone Engine [ALLCAN300]
   903: { name: 'can_ssf_engine_working_on_cng', octeti: 1 }, // SSF Engine Working On CNG [ALLCAN300, CANCONTROL]

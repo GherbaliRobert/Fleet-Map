@@ -20,6 +20,44 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · De ce nu se vedeau pictogramele pe Passat — și cele 6 semnale citite greșit — `COMMIT_HASH`
+
+Passat-ul **transmite** de aseară: 106 semnale, tot ce scrie în fișa Teltonika pentru modelul ăsta.
+Dar ecranul de stări rămânea gol. Am găsit de ce, uitându-mă la datele lui reale.
+
+**Adaptorul poate trimite stările mașinii în două feluri.** Fie împachetate — un singur semnal, cu
+câte un bit pentru fiecare stare. Fie separat — câte un semnal pentru fiecare stare: unul pentru ușa
+șoferului, unul pentru luminile de poziție, unul pentru fiecare martor din bord. Noi citeam **doar
+prima variantă**. Passat-ul o folosește pe a doua. Deci mașina trimitea totul, iar aplicația se uita
+în locul greșit și arăta gol.
+
+Acum citim amândouă variantele, iar rezultatul intră în același loc — pictogramele, categoriile și
+baloanele cu explicații merg neschimbate. Pe datele reale ale Passat-ului **apar 34 de plăcuțe** unde
+înainte nu era niciuna: cele patru uși, capota, trapa, ambreiajul, treapta de viteză, toate luminile,
+aerul condiționat, pilotul automat și toți martorii de bord.
+
+**Al doilea lucru, mai serios: șase semnale erau citite greșit, chiar acum, pe mașină.** Erau
+etichetate demult „semnalizator stânga", „semnalizator dreapta", „avarii", „lumini", „frână de mână"
+și „stare securitate". În documentația oficială sunt cu totul altceva: **contactul**, cheia în
+contact, portbagajul și treptele N/P/R. Adică în dreptul „frânei de mână" se afișa, de fapt, dacă e
+contactul pus. Corectate, cu documentație.
+
+**Fișa pe care ați trimis-o confirmă și corectura de ieri:** în lista de parametri pentru VW Passat
+B7 (program 11173) scrie negru pe alb „VIN number" — exact semnalul pe care ieri l-am mutat de la
+ID-ul greșit la cel corect.
+
+**Ce am adăugat în plus**, pentru că Passat-ul le trimite: geamurile (toate patru), Start-Stop
+dezactivat, mers pe GPL sau combustibil dublu, remorcă atașată.
+
+- **Ce vede fondatorul:** aceleași ecrane, plus semnalele care înainte erau numere fără nume.
+- **Ce vede clientul:** bordul mașinii pe telefon, cu pictograme care chiar se aprind — atingi una și
+  afli ce înseamnă.
+
+Verificat pe datele reale ale Passat-ului, nu pe date inventate: 34 de plăcuțe, ambreiajul apăsat
+văzut corect, ușile închise rămân stinse. Trei verificări noi în CI leagă puntea de catalog, ca să nu
+se mai poată desincroniza.
+
+
 ### AMÂNDOI · Fișierul de tahograf se încarcă și de pe telefon
 
 Ultimul lucru care se putea face DOAR din web. Acum se face și din aplicația de telefon: deschizi
