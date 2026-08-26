@@ -50,9 +50,19 @@ function gata(code) {
   const imei = Array.isArray(dev) && dev.length ? (dev[0].imei || dev[0].IMEI) : null;
   if (!imei) { console.log('nu am niciun vehicul de test'); return gata(1); }
 
+  // Codul „pe care nu-l cunoaștem" se alege LA RULARE, nu se scrie de mână: pe 26.08 proba pica
+  // fiindcă io_1148 fusese între timp catalogat („Connectivity quality") — adică exact lucrul bun
+  // pe care ni-l dorim făcea proba să sune alarma. Luăm primul ID liber din catalog.
+  const { IO_CATALOG } = require('./io_catalog.js');
+  const idsCunoscute = new Set(IO_CATALOG.map((e) => e.id));
+  let idNecunoscut = 9001;
+  while (idsCunoscute.has(idNecunoscut)) idNecunoscut++;
+  const cheiaNecunoscuta = 'io_' + idNecunoscut;
+
   const io = {
     ignition: 0, movement: 0, gsm_signal: 4, external_voltage: 12820, battery_voltage: 4080,
-    can_engine_rpm: 679, can_fuel_level_liters: 51.1, can_total_mileage: 404795, io_1148: 7,
+    can_engine_rpm: 679, can_fuel_level_liters: 51.1, can_total_mileage: 404795,
+    [cheiaNecunoscuta]: 7,
   };
   const pr = await fetch(B + '/api/debug/live-io', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: ck },
@@ -95,7 +105,7 @@ function gata(code) {
 
     console.log('\n4. Codurile pe care nu le cunoaștem sunt la vedere');
     const nec = d.semnale.filter(s => s.necatalogat);
-    T('io_1148 apare, marcat necatalogat', nec.some(s => s.cheie === 'io_1148'),
+    T(cheiaNecunoscuta + ' apare, marcat necatalogat', nec.some(s => s.cheie === cheiaNecunoscuta),
       nec.map(s => s.cheie).join(', ') || 'niciunul');
     T('numărătoarea lor e corectă', d.necatalogate === nec.length);
     if (nec.length) T('are o explicație, nu doar eticheta', /nu știm ce înseamnă/.test(nec[0].descriere));

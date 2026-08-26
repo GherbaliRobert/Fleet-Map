@@ -20,6 +20,17 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-22
 
+### FONDATOR · O probă care suna alarma degeaba
+
+Robert a catalogat `io_1148` („Connectivity quality"), adică fix lucrul bun pe care ni-l dorim — iar
+proba mea a picat, fiindcă avea scris de mână că `io_1148` e „un cod pe care nu-l cunoaștem". Acum
+alege singură, la rulare, primul cod care chiar lipsește din catalog. O probă care se supără când
+cineva face treabă bună e o probă stricată.
+
+- **Ce vede fondatorul:** nimic în aplicație; doar că testele nu mai dau alarme false pe măsură ce
+  catalogul crește.
+- **Ce vede clientul:** nimic.
+
 ### AMÂNDOI · Aceeași greșeală de consum mai era într-un loc: „Consum azi"
 
 Alin a întrebat *„deci e totul ok?"* — și bine a întrebat. Reparasem consumul **doar în rapoarte**.
