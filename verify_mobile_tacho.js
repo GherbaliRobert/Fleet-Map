@@ -82,6 +82,10 @@ for (const [nume, sursa] of [['web', WEB], ['telefon', MOB]]) {
     /Camion, TIR, Autotractor, Autobuz, Autocar/.test(sursa));
   T(nume + ': lista goală nu pretinde că totul e la zi',
     /Nimic de descărcat/.test(sursa));
+  // Fraza asta a fost dictată de Alin, cuvânt cu cuvânt. Dacă unul dintre ecrane o rescrie, aceeași
+  // flotă ar fi descrisă în două feluri în aceeași aplicație.
+  T(nume + ': cei excluși se rezumă cu aceeași frază ca pe celălalt ecran',
+    /Acum aveți: /.test(sursa) && /, nimic de descărcat\./.test(sursa));
 }
 
 console.log('\n──────────────────────────────');

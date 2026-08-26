@@ -20036,7 +20036,7 @@ const pozitii = await r.json();</code></pre>
       var q = [];
       if (cuSoferi && e.soferiNeprofesionisti) q.push(e.soferiNeprofesionisti + (e.soferiNeprofesionisti === 1 ? ' șofer fără categorie de tahograf' : ' șoferi fără categorie de tahograf'));
       if (cuVehicule && e.vehiculeFaraTahograf) q.push(e.vehiculeFaraTahograf + (e.vehiculeFaraTahograf === 1 ? ' vehicul fără tahograf' : ' vehicule fără tahograf'));
-      if (q.length) h += '<div class="rax-co-meta" style="margin-top:6px">Nu apar aici: ' + q.join(' și ') + ' — n-au ce descărca.</div>';
+      if (q.length) h += '<div class="rax-co-meta" style="margin-top:6px">Acum aveți: ' + q.join(' și ') + ', nimic de descărcat.</div>';
       return h;
     }
 

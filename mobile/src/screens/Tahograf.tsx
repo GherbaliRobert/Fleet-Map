@@ -85,7 +85,7 @@ export function Tahograf() {
             {fc.length} {fc.length === 1 ? 'șofer nu are' : 'șoferi nu au'} categoriile de pe permis completate: {fc.slice(0, 4).join(', ')}{fc.length > 4 ? ' +' + (fc.length - 4) : ''} — dacă vreunul e profesionist, completează-i categoriile din Șoferi, altfel nu apare aici.
           </div>
         )}
-        {q.length > 0 && <div class="th-excl quiet">Nu apar aici: {q.join(' și ')} — n-au ce descărca.</div>}
+        {q.length > 0 && <div class="th-excl quiet">Acum aveți: {q.join(' și ')}, nimic de descărcat.</div>}
       </>
     );
   }

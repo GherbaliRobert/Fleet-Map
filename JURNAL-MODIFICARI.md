@@ -20,6 +20,22 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Rândul cu „cine nu apare", rescris de Alin
+
+Scria „Nu apar aici: 2 șoferi fără categorie de tahograf și 3 vehicule fără tahograf — n-au ce
+descărca." Alin a cerut altfel: **„Acum aveți: 2 șoferi fără categorie de tahograf și 3 vehicule fără
+tahograf, nimic de descărcat."**
+
+Are dreptate. Varianta veche începea cu o negație („nu apar") și te punea să te întrebi de ce lipsește
+ceva. A lui începe cu ce ai și se termină cu concluzia — asta e informația, nu absența ei.
+
+Schimbat în amândouă interfețele, cuvânt cu cuvânt la fel, iar proba verifică de acum că fraza rămâne
+identică pe web și pe telefon. Fără verificarea asta, aceeași flotă ar putea fi descrisă în două feluri
+în aceeași aplicație.
+
+- **Ce vede fondatorul:** același rând, spus mai limpede.
+- **Ce vede clientul:** la fel.
+
 ### AMÂNDOI · Tahograful și bifele de pe permis, și pe telefon
 
 Alin a cerut ca modificarea de dimineață să ajungă și în aplicația de Android. Erau două lipsuri, nu una.
