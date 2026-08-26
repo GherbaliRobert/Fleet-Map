@@ -3905,6 +3905,72 @@ app.put('/api/users/company/bulk', requireAuth, requireSuperadmin, async (req, r
 app.get('/api/tacho', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
   try { res.json(await db.getTachoFiles(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ATENȚIE la ordine: rutele cu nume fix (scadentar, istoric) trebuie declarate ÎNAINTEA lui
+// `/api/tacho/:id`. Express potrivește în ordinea scrierii, iar `:id` le-ar înghiți numele —
+// `parseInt('scadentar')` iese NaN, iar ruta ar răspunde 404 fără să spună de ce.
+// „Cine trebuie descărcat următorul" — ecranul de intrare al secțiunii Tahograf.
+// Termenele sunt cele din regulament: cardul șoferului la 28 de zile, memoria vehiculului la 90.
+// Se pot STRÂNGE per companie (o firmă prudentă descarcă la 21 de zile), niciodată lărgi peste lege.
+app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
+  try {
+    const cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(() => null) : null;
+    const _prag = (cheie, implicit) => {
+      const v = cs && cs[cheie] != null ? parseInt(cs[cheie]) : NaN;
+      return (Number.isFinite(v) && v > 0 && v <= implicit) ? v : implicit;
+    };
+    const pragCard = _prag('tacho_zile_card', tacho.TERMEN_CARD_ZILE);
+    const pragVu = _prag('tacho_zile_vu', tacho.TERMEN_VU_ZILE);
+
+    const { soferi, vehicule } = await db.getTachoScadentar(req.isSuper ? null : req.companyId);
+    const acum = new Date().toISOString();
+
+    const S = soferi.map(d => Object.assign(
+      { id: d.id, nume: d.name, fisiere: Number(d.fisiere) || 0, ultima: tacho.ziISO(d.ultima) },
+      tacho.scadenta(d.ultima, pragCard, acum)));
+
+    // Doar vehiculele care au tahograf de descărcat (peste 3,5 t). O dubă n-are memorie de citit,
+    // și n-are rost s-o punem în listă ca „niciodată descărcată" — ar fi o alarmă falsă permanentă.
+    const areTahograf = (t) => /truck|camion|tir|lorry|tractor|autotractor|bus|autobuz|autocar/i.test(String(t || ''));
+    const V = vehicule.filter(v => areTahograf(v.vehicle_type)).map(v => Object.assign(
+      { imei: v.imei, nume: v.plate || v.name || v.imei, model: [v.brand, v.model].filter(Boolean).join(' ') || null,
+        fisiere: Number(v.fisiere) || 0, ultima: tacho.ziISO(v.ultima) },
+      tacho.scadenta(v.ultima, pragVu, acum)));
+
+    const numar = (lista, stare) => lista.filter(x => x.stare === stare).length;
+    res.json({
+      praguri: { card: pragCard, vu: pragVu },
+      soferi: S, vehicule: V,
+      sumar: {
+        depasite: numar(S, 'depasit') + numar(V, 'depasit'),
+        niciodata: numar(S, 'niciodata') + numar(V, 'niciodata'),
+        curand: numar(S, 'curand') + numar(V, 'curand'),
+      },
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Istoricul unui șofer sau al unui vehicul + GOLURILE din arhivă (zilele pe care nu le poți dovedi).
+app.get('/api/tacho/istoric', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
+  try {
+    const driverId = req.query.driverId ? parseInt(req.query.driverId) : null;
+    const imei = req.query.imei || null;
+    if (!driverId && !imei) return res.status(400).json({ error: 'Alege un șofer sau un vehicul' });
+    if (driverId) {
+      const d = await db.getDriverById(driverId);
+      if (!d) return res.status(404).json({ error: 'Șofer inexistent' });
+      if (!req.isSuper && d.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
+    }
+    if (imei && !canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+
+    const fisiere = await db.getTachoIstoric(req.isSuper ? null : req.companyId, driverId, imei);
+    // Golurile se socotesc DOAR din fișierele citite cu adevărat: unul necitit nu acoperă nimic.
+    const perioade = fisiere
+      .filter(f => f.period_from && f.period_to && f.incredere !== 'necitit')
+      .map(f => ({ from: f.period_from, to: f.period_to }));
+    res.json({ fisiere, goluri: tacho.goluri(perioade), acoperit: perioade.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
     const f = await db.getTachoFile(parseInt(req.params.id));
@@ -3915,13 +3981,33 @@ app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, 
 });
 app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
-    const { filename, b64, imei } = req.body;
+    const { filename, b64, imei, driverId } = req.body;
     if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
     const buf = Buffer.from(b64, 'base64');
     if (buf.length < 8) return res.status(400).json({ error: 'Fișier invalid' });
     if (buf.length > 4 * 1024 * 1024) return res.status(413).json({ error: 'Fișier prea mare (max 4MB)' });
     const parsed = tacho.parse(buf);
-    const rec = await db.createTachoFile({ companyId: req.companyId, imei: imei || null, driverName: parsed.driverName, filename: (filename || 'tahograf.ddd').slice(0, 200), kind: parsed.kind, periodFrom: parsed.periodFrom || null, periodTo: parsed.periodTo || null, parsed, rawB64: b64.slice(0, 2 * 1024 * 1024) });
+
+    // Șoferul și vehiculul se ALEG, nu se ghicesc din fișier. Numele citit din card rămâne ca reper
+    // (se propune în formular), dar legătura care contează pentru termenul de descărcare e cea pe
+    // care o confirmă omul. Verificăm că amândouă sunt ale companiei lui — altfel un admin ar putea
+    // lega un fișier de șoferul altei firme.
+    let drvId = null;
+    if (driverId) {
+      const d = await db.getDriverById(parseInt(driverId));
+      if (!d) return res.status(400).json({ error: 'Șoferul ales nu există' });
+      if (!req.isSuper && d.company_id !== req.companyId) return res.status(403).json({ error: 'Șoferul nu e din compania ta' });
+      drvId = d.id;
+    }
+    if (imei && !canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis la vehicul' });
+
+    const rec = await db.createTachoFile({
+      companyId: req.companyId, imei: imei || null, driverId: drvId,
+      driverName: parsed.driverName, filename: (filename || 'tahograf.ddd').slice(0, 200),
+      kind: parsed.kind, incredere: parsed.incredere, vin: parsed.vin || null,
+      periodFrom: parsed.periodFrom || null, periodTo: parsed.periodTo || null,
+      parsed, rawB64: b64.slice(0, 2 * 1024 * 1024),
+    });
     auditReq(req, 'upload', 'tacho', rec.id, { filename, kind: parsed.kind });
     res.json({ id: rec.id, parsed });
   } catch (e) { res.status(500).json({ error: e.message }); }

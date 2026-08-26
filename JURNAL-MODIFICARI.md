@@ -20,6 +20,64 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-22
 
+### AMÂNDOI · Tahograf refăcut: „cine trebuie descărcat" pe primul loc
+
+Alin a ales varianta 2 + 1 din machete, plus cele patru lipsuri pe care i le arătasem. Secțiunea are
+acum trei file, în ordinea în care contează: **De descărcat**, **Pe șofer**, **Abateri**.
+
+**1. Scadențarul — partea cu amendă.** Legea cere descărcarea cardului de șofer la cel mult 28 de
+zile și a memoriei camionului la 90. Aplicația nu spunea nimic despre asta. Acum e primul lucru pe
+care îl vezi: fiecare șofer și fiecare camion, cu câte zile mai ai, colorat ca la acte (roșu depășit,
+portocaliu aproape, verde în regulă). Termenele se pot **strânge** per companie, dacă firma vrea să
+fie mai prudentă — niciodată lărgi peste lege.
+
+Lista pleacă de la **șoferi și camioane**, nu de la fișiere. Diferența e toată: cine n-a fost
+descărcat niciodată apare pe primul loc, roșu. Într-o listă făcută din fișiere, exact ăia lipseau —
+adică tocmai cazul periculos.
+
+**2. Fișierul se leagă de om și de mașină.** Când încarci, alegi șoferul din lista firmei și, dacă e
+un fișier din memoria camionului, vehiculul. Numele citit din card rămâne doar ca reper. Fără
+legătura asta, scadențarul n-ar avea de unde ști pe cine ai descărcat.
+
+**3. Fișierele din memoria camionului** (altă formă decât cardul) sunt acum recunoscute și
+înregistrate, cu seria de șasiu scoasă din ele. Atât cât trebuie pentru termenul de 90 de zile.
+Activitatea din ele n-o citim încă și **o spunem pe ecran**, nu ne prefacem.
+
+**4. Istoricul arată ce-ți LIPSEȘTE.** Deschizi un șofer și vezi toate descărcările lui, iar între
+ele — dacă e cazul — „**14 zile pe care nu le poți dovedi: 29.06 → 12.07**". Legea cere să poți arăta
+activitatea continuu; o zi fără descărcare e o zi pe care n-o poți justifica la control.
+
+**Partea grea: cum am făcut asta corect fără un fișier real.**
+
+N-avem un `.DDD` real — firma n-are șoferi profesioniști. Varianta veche ghicea, și scotea ore chiar
+și când nu înțelesese nimic din fișier. Puteai vedea 47 de ore de condus care nu există niciunde.
+
+Am scris-o pe dos: **fiecare pas se verifică singur**, iar dacă verificarea nu trece, fișierul e
+marcat „necitit" și scrie de ce. Lanțul de blocuri trebuie să acopere fișierul cap-coadă. Inelul de
+zile trebuie să se închidă — mergând înapoi din ziua cea mai nouă, trebuie să ajungi exact unde
+scrie că e cea mai veche. Numele se ia de la poziția fixă din specificație, și doar dacă blocul are
+exact lungimea de acolo. Orele nu apar niciodată dintr-un fișier neînțeles.
+
+Iar ca să nu rămână doar pe cuvântul meu, proba **construiește** fișiere după specificație, cu
+activități știute exact, și cere aplicației să le citească înapoi. Dacă orele care ies nu sunt fix
+cele puse, proba cade. 81 de verificări pe citire, 25 pe ecran și rute.
+
+**Ce NU dovedește asta:** dacă specificația a fost înțeleasă greșit, și constructorul, și cititorul o
+înțeleg greșit la fel. Un `.DDD` adevărat rămâne de făcut, oricând apare unul.
+
+**Trei greșeli reale, prinse de probe pe drum:**
+- Un fișier necitit trecea drept descărcare valabilă — adică aplicația ar fi spus „ești în regulă" pe
+  baza unui fișier pe care nu-l înțelege. Cel mai rău fel de greșeală: liniștitoare și falsă.
+- Datele din baza de date vin ca obiecte, nu ca text. Scadențarul răspundea „null zile rămase" —
+  fix întrebarea pentru care există secțiunea, fără răspuns, tăcut.
+- Ruta „scadentar" era scrisă DUPĂ `/api/tacho/:id`, iar aceea o înghițea. Ar fi dat 404 fără nicio
+  explicație.
+
+- **Ce vede fondatorul:** poate spune unui client, în două secunde, pe cine trebuie să descarce și
+  ce zile nu poate dovedi la un control.
+- **Ce vede clientul:** același lucru, plus certitudinea că o cifră afișată vine dintr-un fișier chiar
+  citit — nu dintr-o presupunere.
+
 ### FONDATOR · O probă care suna alarma degeaba
 
 Robert a catalogat `io_1148` („Connectivity quality"), adică fix lucrul bun pe care ni-l dorim — iar

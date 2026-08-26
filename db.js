@@ -965,6 +965,15 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_tacho_company ON tacho_files(company_id)`);
+    // Fișierul se leagă de ȘOFERUL din aplicație, nu doar de numele ghicit din fișier. Fără legătura
+    // asta nu poți spune „pe cine trebuie să descarci următorul" — și tocmai aia e partea cu amendă.
+    // `incredere` reține dacă citirea s-a verificat structural: un fișier necitit NU trebuie să
+    // treacă drept descărcare valabilă la calculul termenului.
+    await client.query(`ALTER TABLE tacho_files ADD COLUMN IF NOT EXISTS driver_id INTEGER`);
+    await client.query(`ALTER TABLE tacho_files ADD COLUMN IF NOT EXISTS incredere VARCHAR(12)`);
+    await client.query(`ALTER TABLE tacho_files ADD COLUMN IF NOT EXISTS vin VARCHAR(17)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tacho_driver ON tacho_files(driver_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tacho_imei ON tacho_files(imei)`);
 
     // e-Transport (ANAF): coduri UIT per vehicul/transport
     await client.query(`
@@ -1643,12 +1652,71 @@ async function getDriverById(id) {
 // ─── Tahograf ───
 async function createTachoFile(rec) {
   const r = await pool.query(
-    `INSERT INTO tacho_files (company_id, imei, driver_name, filename, kind, period_from, period_to, parsed, raw_b64)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, company_id, imei, driver_name, filename, kind, period_from, period_to, parsed, uploaded_at`,
-    [rec.companyId || null, rec.imei || null, rec.driverName || null, rec.filename || null, rec.kind || null,
+    `INSERT INTO tacho_files (company_id, imei, driver_id, driver_name, filename, kind, incredere, vin, period_from, period_to, parsed, raw_b64)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     RETURNING id, company_id, imei, driver_id, driver_name, filename, kind, incredere, vin, period_from, period_to, parsed, uploaded_at`,
+    [rec.companyId || null, rec.imei || null, rec.driverId || null, rec.driverName || null, rec.filename || null,
+     rec.kind || null, rec.incredere || null, rec.vin || null,
      rec.periodFrom || null, rec.periodTo || null, rec.parsed ? JSON.stringify(rec.parsed) : null, rec.rawB64 || null]
   );
   return r.rows[0];
+}
+
+// ─── Termene de descărcare ───────────────────────────────────────────────────────────────────────
+// „Cine trebuie descărcat următorul." Întoarce TOȚI șoferii și TOATE camioanele companiei, inclusiv
+// pe cei care n-au fost descărcați niciodată — ăia sunt cazul periculos, și tocmai ei lipseau dintr-o
+// listă construită din fișiere. De-aia se pleacă de la șoferi/vehicule, nu de la fișiere.
+//
+// Ca dată a descărcării se ia ULTIMA ZI ACOPERITĂ de fișier (period_to), nu data încărcării: un
+// fișier pus în aplicație azi, dar care acoperă până acum două luni, nu te scoate din termen.
+// Fișierele pe care nu le-am putut citi (incredere='necitit') NU contează ca descărcare.
+async function getTachoScadentar(companyId) {
+  const pc = companyId != null ? [companyId] : [];
+  const wDrv = companyId != null ? 'WHERE d.company_id = $1' : '';
+  const wDev = companyId != null ? 'WHERE dv.company_id = $1' : '';
+
+  const soferi = await pool.query(`
+    SELECT d.id, d.name,
+           MAX(COALESCE(t.period_to, t.uploaded_at::date)) AS ultima,
+           COUNT(t.id) FILTER (WHERE t.id IS NOT NULL) AS fisiere
+    FROM drivers d
+    LEFT JOIN tacho_files t
+      ON t.driver_id = d.id
+     AND t.kind IS DISTINCT FROM 'demo'
+     AND COALESCE(t.incredere, 'confirmat') <> 'necitit'
+    ${wDrv}
+    GROUP BY d.id, d.name
+    ORDER BY ultima NULLS FIRST, d.name`, pc);
+
+  // Doar vehiculele care chiar au tahograf: camioane/autobuze (peste 3,5 t). O dubă n-are ce descărca.
+  const vehicule = await pool.query(`
+    SELECT dv.imei, dv.name, dv.plate, dv.brand, dv.model, dv.vehicle_type,
+           MAX(COALESCE(t.period_to, t.uploaded_at::date)) AS ultima,
+           COUNT(t.id) FILTER (WHERE t.id IS NOT NULL) AS fisiere
+    FROM devices dv
+    LEFT JOIN tacho_files t
+      ON t.imei = dv.imei
+     AND t.kind IS DISTINCT FROM 'demo'
+     AND COALESCE(t.incredere, 'confirmat') <> 'necitit'
+    ${wDev}
+    GROUP BY dv.imei, dv.name, dv.plate, dv.brand, dv.model, dv.vehicle_type
+    ORDER BY ultima NULLS FIRST, dv.plate, dv.name`, pc);
+
+  return { soferi: soferi.rows, vehicule: vehicule.rows };
+}
+
+// Istoricul descărcărilor unui șofer (sau al unui vehicul) — pentru „ce am și ce-mi lipsește".
+async function getTachoIstoric(companyId, driverId, imei) {
+  const cond = [], params = [];
+  if (companyId != null) { params.push(companyId); cond.push('company_id = $' + params.length); }
+  if (driverId) { params.push(driverId); cond.push('driver_id = $' + params.length); }
+  if (imei) { params.push(imei); cond.push('imei = $' + params.length); }
+  cond.push("kind IS DISTINCT FROM 'demo'");
+  const r = await pool.query(
+    `SELECT id, filename, kind, incredere, driver_id, driver_name, imei, vin, period_from, period_to, uploaded_at,
+            parsed->'totals' AS totals
+     FROM tacho_files WHERE ${cond.join(' AND ')} ORDER BY COALESCE(period_to, uploaded_at::date) DESC`, params);
+  return r.rows;
 }
 // Fișiere tahograf. Implicit EXCLUDE rândurile kind='demo' (generate de modulul demonstrativ) — altfel
 // apăreau în lista reală ca și cum ar fi descărcări legale. `includeDemo` doar pentru ecranul demo.
@@ -1658,7 +1726,7 @@ async function getTachoFiles(companyId, includeDemo) {
     ? ('WHERE company_id = $1' + (demoFilter ? ' AND' + demoFilter : ''))
     : (demoFilter ? 'WHERE' + demoFilter : '');
   const params = companyId != null ? [companyId] : [];
-  const r = await pool.query(`SELECT id, company_id, imei, driver_name, filename, kind, period_from, period_to, parsed, uploaded_at FROM tacho_files ${where} ORDER BY uploaded_at DESC`, params);
+  const r = await pool.query(`SELECT id, company_id, imei, driver_id, driver_name, filename, kind, incredere, vin, period_from, period_to, parsed, uploaded_at FROM tacho_files ${where} ORDER BY uploaded_at DESC`, params);
   return r.rows;
 }
 async function getTachoFile(id) { const r = await pool.query('SELECT * FROM tacho_files WHERE id = $1', [id]); return r.rows[0] || null; }
@@ -3356,7 +3424,7 @@ module.exports = {
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
-  createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile,
+  createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
   getWebhooks, getEnabledWebhooks, getWebhookById, createWebhook, deleteWebhook, updateWebhookStatus,
   getSetting, setSetting,

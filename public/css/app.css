@@ -2293,3 +2293,105 @@
       background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px;
       color: var(--text-primary); font-family: inherit; }
     .tr-nota .btn-sm { margin-left: 6px; vertical-align: 1px; }
+
+    /* ─── Tahograf ────────────────────────────────────────────────────────────────────────────
+       Trei file: „De descărcat" (termenele legale), „Pe șofer", „Abateri". Culorile urmează
+       aceeași regulă ca la Documente și Mentenanță: roșu = depășit, portocaliu = curând, verde = ok.
+       Machetele din care au ieșit sunt în discuția din 26.08. */
+.th-sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.th-b{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
+  padding:5px 10px;border-radius:999px;border:1px solid currentColor}
+.b-warn{color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent)}
+.b-open{color:var(--orange);background:color-mix(in srgb,var(--orange) 12%,transparent)}
+.th-seg{display:inline-flex;background:var(--bg-dark);border:1px solid var(--border);border-radius:999px;padding:3px;margin-bottom:12px}
+.th-seg button{border:0;background:none;font:inherit;font-size:12.5px;font-weight:700;color:var(--text-muted);padding:6px 14px;border-radius:999px;cursor:pointer}
+.th-seg button.on{background:var(--bg-panel);color:var(--text-primary)}
+
+.th-card{border:1px solid var(--border);border-radius:11px;background:var(--bg-dark);margin-bottom:7px;overflow:hidden}
+.th-card.open{border-color:var(--border-light)}
+.th-head{display:flex;align-items:center;gap:10px;padding:11px 13px}
+.th-av{width:32px;height:32px;border-radius:50%;background:var(--bg-panel);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;flex:0 0 auto}
+.th-who{flex:1;min-width:0}
+.th-who b{display:block;font-size:13.5px;color:var(--text-primary)}
+.th-who span{font-size:11px;color:var(--text-muted)}
+.th-head .fa.i-chevron-right{color:var(--text-muted);font-size:11px}
+.th-pill{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.p-red{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.p-orange{background:color-mix(in srgb,var(--orange) 16%,transparent);color:var(--orange)}
+.p-green{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
+.p-dim{background:var(--bg-panel);color:var(--text-muted)}
+.th-body{padding:0 13px 12px;border-top:1px solid var(--border)}
+.th-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:11px 0}
+.th-kpis div{background:var(--bg-panel);border:1px solid var(--border);border-radius:9px;padding:9px 6px;text-align:center}
+.th-kpis b{display:block;font-size:16px;font-weight:800;color:var(--text-primary);font-variant-numeric:tabular-nums}
+.th-kpis span{font-size:10px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;gap:4px;margin-top:2px}
+.th-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;
+  border:1px solid var(--border);background:var(--bg-panel);margin-bottom:6px}
+.th-row.s-over{border-color:var(--red)}.th-row.s-over>.fa{color:var(--red)}
+.th-row.s-soon{border-color:var(--orange)}.th-row.s-soon>.fa{color:var(--orange)}
+.th-rt{flex:1;min-width:0}
+.th-rt b{display:block;font-size:12.5px;color:var(--text-primary);line-height:1.3}
+.th-rt span{font-size:11px;color:var(--text-muted)}
+.th-files{font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-top:4px}
+.th-files a{color:var(--accent);cursor:pointer}
+
+.th-gh{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--accent);padding:4px 0 7px;border-bottom:1px solid var(--border);margin:14px 0 8px}
+.th-gh em{font-style:normal;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text-muted);margin-left:auto;font-size:11px}
+.th-due{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid var(--border);
+  border-radius:10px;background:var(--bg-dark);margin-bottom:6px}
+.th-due.s-over{border-color:var(--red)}.th-due.s-soon{border-color:var(--orange)}
+.th-due-i{width:30px;height:30px;border-radius:8px;background:var(--bg-panel);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;flex:0 0 auto}
+.th-due-m{flex:1;min-width:0}
+.th-due-m b{display:block;font-size:13px;color:var(--text-primary)}
+.th-due-m span{font-size:11px;color:var(--text-muted)}
+.th-bar{height:4px;background:var(--bg-panel);border-radius:3px;margin-top:5px;overflow:hidden}
+.th-bar i{display:block;height:100%}
+.th-due-r{text-align:right;flex:0 0 auto;line-height:1.15}
+.th-due-r b{display:block;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.th-due-r span{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;opacity:.85}
+.th-btn{border:1px solid var(--accent);background:none;color:var(--accent);font:inherit;font-size:11.5px;
+  font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;flex:0 0 auto}
+.th-btn.ghost{border-color:var(--border);color:var(--text-secondary)}
+
+.th-who2{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);margin-bottom:11px}
+.th-who2 b{color:var(--text-primary);font-size:14px}
+.th-who2 span{color:var(--text-muted);font-size:11.5px}
+.th-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.th-cz{font-size:10px;font-weight:800;color:var(--text-muted);text-align:center;padding-bottom:2px}
+.th-zi{border-radius:8px;padding:7px 3px 6px;text-align:center;border:1px solid var(--border);background:var(--bg-dark)}
+.th-zi b{display:block;font-size:12px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums}
+.th-zi span{font-size:9.5px;color:var(--text-muted)}
+.z-liber{opacity:.45}
+.z-ok{border-color:color-mix(in srgb,var(--green) 55%,var(--border));background:color-mix(in srgb,var(--green) 10%,var(--bg-dark))}
+.z-mult{border-color:color-mix(in srgb,var(--orange) 60%,var(--border));background:color-mix(in srgb,var(--orange) 12%,var(--bg-dark))}
+.z-abatere{border-color:var(--red);background:color-mix(in srgb,var(--red) 15%,var(--bg-dark))}
+.th-leg{display:flex;flex-wrap:wrap;gap:12px;margin-top:11px;font-size:11px;color:var(--text-muted)}
+.th-leg span{display:inline-flex;align-items:center;gap:5px}
+.lg{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid var(--border)}
+
+.th-score{display:flex;align-items:center;gap:14px;padding:13px 15px;border:1px solid var(--border);
+  border-radius:11px;background:var(--bg-dark);margin-bottom:6px}
+.th-sc-n{text-align:center;flex:0 0 auto}
+.th-sc-n b{display:block;font-size:30px;font-weight:800;color:var(--red);line-height:1}
+.th-sc-n span{font-size:10px;color:var(--text-muted)}
+.th-sc-b{flex:1;min-width:0}
+.th-sc-l{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--bg-panel)}
+.th-sc-t{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;margin-top:5px}
+
+.th-tl-h{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);
+  font-variant-numeric:tabular-nums;margin-bottom:3px}
+.th-tl-b{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.th-tl-b i{display:block;height:100%}
+.t-condus{background:var(--accent)}
+.t-munca{background:var(--yellow)}
+.t-pauza{background:var(--text-muted);opacity:.55}
+/* Odihna nu poate fi „fundalul": pe tema închisă dispărea de tot și nu se mai vedea unde începe ziua. */
+.t-odihna{background:color-mix(in srgb,var(--purple) 45%,var(--bg-dark))}
+.t-condus.rau{background:repeating-linear-gradient(45deg,var(--red),var(--red) 5px,color-mix(in srgb,var(--red) 70%,#000) 5px,color-mix(in srgb,var(--red) 70%,#000) 10px)}
+.th-tl-m{position:relative;height:16px;margin-top:3px}
+.th-tl-m span{position:absolute;transform:translateX(-4px);font-size:10px;font-weight:700;color:var(--red);white-space:nowrap}
+.lg.t-pauza{opacity:.55}
+.lg.t-odihna{background:color-mix(in srgb,var(--purple) 45%,var(--bg-dark))}

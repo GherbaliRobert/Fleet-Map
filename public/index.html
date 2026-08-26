@@ -16056,16 +16056,30 @@ const pozitii = await r.json();</code></pre>
 
   <div class="rax-overlay" id="rax-tacho-overlay">
     <div class="rax-card">
-      <div class="rax-head"><h3><i class="fas fa-id-card" style="color:var(--accent)"></i> Tahograf — analiză .DDD</h3><button class="rax-x" onclick="document.getElementById('rax-tacho-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-head"><h3><i class="fas fa-id-card" style="color:var(--accent)"></i> Tahograf</h3><button class="rax-x" onclick="document.getElementById('rax-tacho-overlay').classList.remove('open')">&times;</button></div>
       <div class="rax-body">
-        <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;">
-          <strong style="font-size:13px;">Încarcă fișier tahograf</strong>
-          <div style="font-size:11px;color:var(--text-muted);margin:4px 0 8px;">Fișiere card șofer .DDD / .C1B. Analiză best-effort: timpi conducere/odihnă + infracțiuni.</div>
-          <input type="file" id="rax-tacho-file" accept=".ddd,.c1b,.v1b,.tgd" class="rax-field">
-          <button class="rax-btn primary" style="margin-top:8px;" onclick="raxUploadTacho()"><i class="fas fa-upload"></i> Încarcă & analizează</button>
-          <div id="rax-tacho-msg" style="font-size:12px;margin-top:8px;"></div>
+        <div class="th-seg" id="th-tabs">
+          <button class="on" data-tt="due" onclick="raxTachoTab('due')">De descărcat</button>
+          <button data-tt="drv" onclick="raxTachoTab('drv')">Pe șofer</button>
+          <button data-tt="inf" onclick="raxTachoTab('inf')">Abateri</button>
         </div>
-        <div id="rax-tacho-list"><div class="rax-co-meta">Se încarcă…</div></div>
+        <div id="th-sumar" class="th-sum"></div>
+        <div id="th-body"><div class="rax-co-meta">Se încarcă…</div></div>
+
+        <details id="th-upl" style="margin-top:16px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
+          <summary style="cursor:pointer;font-size:13px;font-weight:700;"><i class="fas fa-upload"></i> Încarcă un fișier descărcat</summary>
+          <div style="font-size:11.5px;color:var(--text-muted);margin:8px 0;">
+            Fișier de card șofer (.DDD / .C1B) sau din memoria tahografului (.V1B).
+            Alege de cine ține — legătura asta ține scadențarul la zi.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <select class="rax-field" id="th-drv" style="margin:0;"><option value="">— șofer (card) —</option></select>
+            <select class="rax-field" id="th-veh" style="margin:0;"><option value="">— vehicul (memorie) —</option></select>
+          </div>
+          <input type="file" id="rax-tacho-file" accept=".ddd,.c1b,.v1b,.tgd" class="rax-field">
+          <button class="rax-btn primary" style="margin-top:8px;" onclick="raxUploadTacho()"><i class="fas fa-upload"></i> Încarcă și citește</button>
+          <div id="rax-tacho-msg" style="font-size:12px;margin-top:8px;"></div>
+        </details>
         <div id="rax-tacho-detail" style="margin-top:12px;"></div>
       </div>
     </div>
@@ -19895,48 +19909,280 @@ const pozitii = await r.json();</code></pre>
     };
 
     // ── Tahograf (.DDD) ──
-    window.raxOpenTacho = function () { document.getElementById('rax-tacho-overlay').classList.add('open'); $('rax-tacho-detail').innerHTML = ''; raxLoadTacho(); };
+    // ═══ Tahograf ═══════════════════════════════════════════════════════════════════════════
+    // Trei file, în ordinea în care contează: ce trebuie descărcat (acolo e amenda), apoi pe șofer,
+    // apoi abaterile. Aceeași formă ca Mentenanță și Documente, ca omul să nu învețe alt ecran.
+    //
+    // Regula de aur a secțiunii: un fișier pe care serverul NU l-a putut citi (incredere='necitit')
+    // NU se pune la socoteală nicăieri — nici ca descărcare făcută, nici ca ore. Vezi tacho.js.
+    var _thTab = 'due', _thDate = null, _thSoferi = [], _thVeh = [];
+
+    window.raxOpenTacho = function () {
+      document.getElementById('rax-tacho-overlay').classList.add('open');
+      $('rax-tacho-detail').innerHTML = '';
+      raxLoadTacho();
+    };
+    window.raxTachoTab = function (t) {
+      _thTab = t;
+      var b = document.querySelectorAll('#th-tabs button');
+      for (var i = 0; i < b.length; i++) b[i].classList.toggle('on', b[i].getAttribute('data-tt') === t);
+      $('rax-tacho-detail').innerHTML = '';
+      raxTachoRender();
+    };
+
+    function _thStare(x) {
+      if (x.stare === 'depasit') return { cls: 's-over', pill: 'p-red', c: 'var(--red)' };
+      if (x.stare === 'niciodata') return { cls: 's-over', pill: 'p-red', c: 'var(--red)' };
+      if (x.stare === 'curand') return { cls: 's-soon', pill: 'p-orange', c: 'var(--orange)' };
+      return { cls: 's-ok', pill: 'p-dim', c: 'var(--green)' };
+    }
+    function _thRand(x, ic, sub, onclick) {
+      var st = _thStare(x);
+      // Bara arată cât din termen s-a consumat. Fără descărcare = plină și roșie: nu e „gol", e „tot".
+      var pct = x.stare === 'niciodata' ? 100
+        : Math.max(2, Math.min(100, Math.round(((x.prag - (x.zileRamase || 0)) / x.prag) * 100)));
+      var mare = x.stare === 'niciodata' ? '—' : String(Math.abs(x.zileRamase));
+      var mic = x.stare === 'niciodata' ? 'niciodată' : (x.zileRamase < 0 ? 'zile întârziere' : 'zile rămase');
+      return '<div class="th-due ' + st.cls + '"' + (onclick ? ' style="cursor:pointer" onclick="' + onclick + '"' : '') + '>' +
+        '<div class="th-due-i"><i class="fas ' + ic + '"></i></div>' +
+        '<div class="th-due-m"><b>' + esc(x.nume) + '</b><span>' + esc(sub) + '</span>' +
+          '<div class="th-bar"><i style="width:' + pct + '%;background:' + st.c + '"></i></div></div>' +
+        '<div class="th-due-r" style="color:' + st.c + '"><b>' + mare + '</b><span>' + mic + '</span></div>' +
+        '</div>';
+    }
+
     async function raxLoadTacho() {
-      var box = $('rax-tacho-list');
+      var box = $('th-body');
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
-        var list = await fetch('/api/tacho', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Niciun fișier încărcat încă.</div>'; return; }
-        box.innerHTML = list.map(function (f) { var t = (f.parsed && f.parsed.totals) || {}; return '<div class="rax-co-item"><h4>' + esc(f.filename) + (f.driver_name ? ' · ' + esc(f.driver_name) : '') + '</h4><div class="rax-co-meta">' + esc(f.kind || '') + ' · ' + (t.zile || 0) + ' zile · ' + (t.infractiuni || 0) + ' infracțiuni</div><div class="rax-co-actions"><button class="rax-btn" onclick="raxViewTacho(' + f.id + ')">Detalii</button><button class="rax-btn" onclick="raxDelTacho(' + f.id + ')">Șterge</button></div></div>'; }).join('');
+        _thDate = await fetch('/api/tacho/scadentar', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (_thDate.error) { box.innerHTML = '<div class="rax-co-meta">' + esc(_thDate.error) + '</div>'; return; }
+        var fis = await fetch('/api/tacho', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        _thDate.fisiere = Array.isArray(fis) ? fis : [];
+        _thPopuleazaSelectoare();
+        raxTachoRender();
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
+
+    // Selectoarele din formular: șoferii companiei + vehiculele cu tahograf, aceleași pe care le
+    // arată scadențarul. Dacă nu-s încărcate, formularul cere ceva ce omul n-are de unde alege.
+    async function _thPopuleazaSelectoare() {
+      try {
+        if (!_thSoferi.length) _thSoferi = await fetch('/api/drivers/lite', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+      } catch (e) { _thSoferi = []; }
+      _thVeh = (_thDate && _thDate.vehicule) || [];
+      var sd = $('th-drv'), sv = $('th-veh');
+      if (sd) sd.innerHTML = '<option value="">— șofer (card) —</option>' +
+        (_thSoferi || []).map(function (d) { return '<option value="' + d.id + '">' + esc(d.name) + '</option>'; }).join('');
+      if (sv) sv.innerHTML = '<option value="">— vehicul (memorie) —</option>' +
+        _thVeh.map(function (v) { return '<option value="' + esc(v.imei) + '">' + esc(v.nume) + '</option>'; }).join('');
+    }
+
+    function raxTachoRender() {
+      var d = _thDate, box = $('th-body'), sum = $('th-sumar');
+      if (!d) return;
+      // Rezumatul spune CE e în neregulă, nu doar câte — ca la alertele de acte.
+      var numeDepasite = [].concat(d.soferi || [], d.vehicule || [])
+        .filter(function (x) { return x.stare === 'depasit'; }).map(function (x) { return x.nume; });
+      var numeNiciodata = [].concat(d.soferi || [], d.vehicule || [])
+        .filter(function (x) { return x.stare === 'niciodata'; }).map(function (x) { return x.nume; });
+      var _l = function (v) { return v.length <= 3 ? v.join(', ') : v.slice(0, 3).join(', ') + ' +' + (v.length - 3); };
+      var h = '';
+      if (numeDepasite.length) h += '<span class="th-b b-warn"><i class="fas fa-circle-exclamation"></i> Termen depășit: ' + esc(_l(numeDepasite)) + '</span>';
+      if (numeNiciodata.length) h += '<span class="th-b b-warn"><i class="fas fa-ban"></i> Niciodată descărcat: ' + esc(_l(numeNiciodata)) + '</span>';
+      if (d.sumar && d.sumar.curand) h += '<span class="th-b b-open"><i class="fas fa-clock"></i> ' + d.sumar.curand + ' în următoarele 5 zile</span>';
+      if (!h) h = '<span class="th-b b-ok"><i class="fas fa-circle-check"></i> Toate descărcările sunt la zi</span>';
+      sum.innerHTML = h;
+
+      if (_thTab === 'due') return _thRandDue(box, d);
+      if (_thTab === 'drv') return _thRandSoferi(box, d);
+      return _thRandAbateri(box, d);
+    }
+
+    function _thRandDue(box, d) {
+      var h = '';
+      h += '<div class="th-gh"><i class="fas fa-id-card"></i> CARDURI DE ȘOFER <em>la ' + d.praguri.card + ' de zile</em></div>';
+      h += (d.soferi || []).length
+        ? d.soferi.map(function (x) { return _thRand(x, 'fa-user', 'card șofer · ' + (x.ultima ? 'ultima descărcare ' + x.ultima : 'nicio descărcare'), "raxTachoIstoric(" + x.id + ",null)"); }).join('')
+        : '<div class="rax-co-meta">Niciun șofer înregistrat. Adaugă-i din Administrare → Șoferi.</div>';
+      h += '<div class="th-gh"><i class="fas fa-truck"></i> MEMORIA VEHICULELOR <em>la ' + d.praguri.vu + ' de zile</em></div>';
+      h += (d.vehicule || []).length
+        ? d.vehicule.map(function (x) { return _thRand(x, 'fa-truck', (x.model ? x.model + ' · ' : '') + (x.ultima ? 'ultima descărcare ' + x.ultima : 'nicio descărcare'), "raxTachoIstoric(null,'" + esc(x.imei) + "')"); }).join('')
+        : '<div class="rax-co-meta">Niciun camion sau autobuz în flotă. Doar vehiculele peste 3,5 t au tahograf de descărcat.</div>';
+      box.innerHTML = h;
+    }
+
+    function _thRandSoferi(box, d) {
+      var fis = d.fisiere || [];
+      var h = (d.soferi || []).map(function (x) {
+        var ale = fis.filter(function (f) { return f.driver_id === x.id; });
+        var citite = ale.filter(function (f) { return f.incredere !== 'necitit'; });
+        var t = citite.reduce(function (a, f) {
+          var tt = (f.parsed && f.parsed.totals) || {};
+          a.zile += tt.zile || 0; a.cond += tt.conducereMin || 0; a.inf += tt.infractiuni || 0; a.grave += tt.infractiuniGrave || 0;
+          return a;
+        }, { zile: 0, cond: 0, inf: 0, grave: 0 });
+        var st = _thStare(x);
+        return '<div class="th-card" onclick="raxTachoIstoric(' + x.id + ',null)" style="cursor:pointer">' +
+          '<div class="th-head"><div class="th-av"><i class="fas fa-user"></i></div>' +
+          '<div class="th-who"><b>' + esc(x.nume) + '</b><span>' + (
+            !ale.length ? 'niciun fișier'
+            // „1 fișier · 0 zile citite" e derutant lângă „niciodată descărcat". Dacă niciunul dintre
+            // fișiere n-a putut fi citit, o spunem pe șleau — altfel pare că avem date și n-avem.
+            : !citite.length ? (ale.length + (ale.length === 1 ? ' fișier, dar nu s-a putut citi' : ' fișiere, niciunul citit'))
+            : (ale.length + (ale.length === 1 ? ' fișier' : ' fișiere') + ' · ' + t.zile + ' zile citite')
+          ) + '</span></div>' +
+          (t.grave ? '<span class="th-pill p-red">' + t.grave + ' grave</span>' : '') +
+          (t.inf - t.grave > 0 ? '<span class="th-pill p-orange">' + (t.inf - t.grave) + ' serioase</span>' : '') +
+          (!t.inf && citite.length ? '<span class="th-pill p-green">fără abateri</span>' : '') +
+          '<span class="th-pill ' + st.pill + '">' + esc(x.text) + '</span>' +
+          '<i class="fas fa-chevron-right"></i></div></div>';
+      }).join('');
+      box.innerHTML = h || '<div class="rax-co-meta">Niciun șofer înregistrat.</div>';
+    }
+
+    function _thRandAbateri(box, d) {
+      var toate = [];
+      (d.fisiere || []).forEach(function (f) {
+        if (f.incredere === 'necitit') return;   // dintr-un fișier necitit nu iese nicio abatere
+        var p = f.parsed || {};
+        (p.infringements || []).forEach(function (i) {
+          toate.push({ cine: f.driver_name || f.filename, data: i.date, regula: i.rule, val: i.value, grav: i.severity });
+        });
+      });
+      if (!toate.length) {
+        box.innerHTML = '<div class="th-b b-ok" style="display:inline-flex"><i class="fas fa-circle-check"></i> Nicio abatere în fișierele citite</div>';
+        return;
+      }
+      var grup = function (nivel, titlu, sub, ic, cls) {
+        var l = toate.filter(function (x) { return x.grav === nivel; });
+        if (!l.length) return '';
+        return '<div class="th-gh"><i class="fas ' + ic + '"></i> ' + titlu + (sub ? ' <em>' + sub + '</em>' : '') + '</div>' +
+          l.map(function (x) {
+            return '<div class="th-row ' + cls + '"><i class="fas ' + ic + '"></i>' +
+              '<div class="th-rt"><b>' + esc(x.regula) + '</b><span>' + esc(x.cine) + ' · ' + esc(x.data || '') + ' · măsurat ' + esc(x.val) + '</span></div></div>';
+          }).join('');
+      };
+      box.innerHTML = grup('gravă', 'GRAVE', 'risc de amendă la control', 'fa-circle-exclamation', 's-over') +
+        grup('serioasă', 'SERIOASE', '', 'fa-triangle-exclamation', 's-soon');
+    }
+
+    // Istoricul unui șofer / vehicul + GOLURILE: zilele pe care nu le poți dovedi la un control.
+    window.raxTachoIstoric = async function (driverId, imei) {
+      var box = $('rax-tacho-detail');
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
+      try {
+        var q = driverId ? ('driverId=' + driverId) : ('imei=' + encodeURIComponent(imei));
+        var r = await fetch('/api/tacho/istoric?' + q, { credentials: 'same-origin' }).then(function (x) { return x.json(); });
+        if (r.error) { box.innerHTML = '<div class="rax-co-meta">' + esc(r.error) + '</div>'; return; }
+        var h = '<div class="th-gh"><i class="fas fa-file-arrow-down"></i> DESCĂRCĂRI <em>' + (r.fisiere || []).length + '</em></div>';
+        h += (r.fisiere || []).map(function (f) {
+          var necitit = f.incredere === 'necitit';
+          var per = (f.period_from && f.period_to) ? (String(f.period_from).slice(0, 10) + ' → ' + String(f.period_to).slice(0, 10)) : 'fără perioadă';
+          var tt = f.totals || {};
+          return '<div class="th-row ' + (necitit ? 's-over' : '') + '">' +
+            '<i class="fas ' + (necitit ? 'fa-ban' : 'fa-file-arrow-down') + '"></i>' +
+            '<div class="th-rt"><b>' + esc(f.filename) + '</b><span>' + esc(per) +
+              (necitit ? ' · nu s-a putut citi — nu contează ca descărcare'
+                : (tt.zile ? ' · ' + tt.zile + ' zile · ' + Math.round((tt.conducereMin || 0) / 60) + 'h condus' : '')) + '</span></div>' +
+            '<button class="rax-btn" onclick="event.stopPropagation();raxViewTacho(' + f.id + ')">Detalii</button>' +
+            '<button class="rax-btn" onclick="event.stopPropagation();raxDelTacho(' + f.id + ')">Șterge</button></div>';
+        }).join('') || '<div class="rax-co-meta">Nicio descărcare.</div>';
+
+        if ((r.goluri || []).length) {
+          h += '<div class="th-gh"><i class="fas fa-circle-exclamation"></i> ZILE PE CARE NU LE POȚI DOVEDI</div>';
+          h += r.goluri.map(function (g) {
+            return '<div class="th-row s-soon"><i class="fas fa-calendar-days"></i>' +
+              '<div class="th-rt"><b>' + g.zile + (g.zile === 1 ? ' zi lipsă' : ' zile lipsă') + '</b>' +
+              '<span>' + esc(g.de) + ' → ' + esc(g.pana) + ' — nu există nicio descărcare pentru perioada asta</span></div></div>';
+          }).join('');
+        } else if (r.acoperit > 1) {
+          h += '<div class="th-b b-ok" style="display:inline-flex;margin-top:10px;"><i class="fas fa-circle-check"></i> Arhivă fără goluri</div>';
+        }
+        box.innerHTML = h;
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
+    };
+
     window.raxUploadTacho = function () {
-      var inp = $('rax-tacho-file'), msg = $('rax-tacho-msg'); msg.style.color = 'var(--text-muted)';
-      if (!inp.files || !inp.files[0]) { msg.textContent = 'Alege un fișier .DDD.'; return; }
+      var inp = $('rax-tacho-file'), msg = $('rax-tacho-msg');
+      msg.style.color = 'var(--text-muted)';
+      if (!inp.files || !inp.files[0]) { msg.textContent = 'Alege un fișier.'; return; }
+      var drv = $('th-drv').value, veh = $('th-veh').value;
+      if (!drv && !veh) { msg.style.color = 'var(--orange)'; msg.textContent = 'Alege șoferul sau vehiculul de care ține fișierul — altfel nu intră în scadențar.'; return; }
       var f = inp.files[0]; msg.textContent = 'Se încarcă…';
       var reader = new FileReader();
       reader.onload = async function () {
         var b64 = String(reader.result).split(',')[1] || '';
         try {
-          var r = await fetch('/api/tacho/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ filename: f.name, b64: b64 }) });
+          var r = await fetch('/api/tacho/upload', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify({ filename: f.name, b64: b64, driverId: drv || null, imei: veh || null }),
+          });
           var j = await r.json();
           if (j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error; return; }
-          msg.style.color = 'var(--accent)'; msg.textContent = 'Încărcat ✓' + (j.parsed && j.parsed.parseNote ? (' — ' + j.parsed.parseNote) : '');
-          inp.value = ''; raxLoadTacho(); if (j.id) raxViewTacho(j.id);
+          var p = j.parsed || {};
+          if (p.incredere === 'necitit') {
+            msg.style.color = 'var(--red)';
+            msg.textContent = 'Fișierul s-a păstrat, dar NU l-am putut citi — nu contează ca descărcare. ' + (p.parseNote || '');
+          } else if (p.incredere === 'partial') {
+            msg.style.color = 'var(--orange)';
+            msg.textContent = 'Înregistrat. ' + (p.parseNote || '');
+          } else {
+            msg.style.color = 'var(--accent)';
+            msg.textContent = 'Citit ✓ — ' + ((p.totals && p.totals.zile) || 0) + ' zile, ' +
+              ((p.totals && p.totals.infractiuni) || 0) + ' abateri.';
+          }
+          inp.value = '';
+          raxLoadTacho();
+          if (j.id) raxViewTacho(j.id);
         } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
       };
       reader.readAsDataURL(f);
     };
+
     window.raxViewTacho = async function (id) {
       var box = $('rax-tacho-detail'); box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
         var f = await fetch('/api/tacho/' + id, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         var p = f.parsed || {}, t = p.totals || {};
         function h(m) { return Math.round((m || 0) / 60 * 10) / 10; }
-        var s = '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;">';
-        s += '<strong>' + esc(f.filename) + '</strong> · ' + esc(p.kind || '') + (f.driver_name ? ' · ' + esc(f.driver_name) : '');
-        if (p.parseNote) s += '<div style="font-size:11px;color:var(--orange);margin-top:4px;">⚠ ' + esc(p.parseNote) + '</div>';
-        s += '<div class="rax-co-meta" style="margin-top:6px;">Conducere: ' + h(t.conducereMin) + 'h · Muncă: ' + h(t.muncaMin) + 'h · Odihnă: ' + h(t.odihnaMin) + 'h · ' + (t.km || 0) + ' km · ' + (t.zile || 0) + ' zile</div>';
-        if (p.infringements && p.infringements.length) { s += '<div style="margin-top:8px;"><strong style="color:var(--red);font-size:12px;">Infracțiuni (' + p.infringements.length + ')</strong>'; p.infringements.slice(0, 25).forEach(function (i) { s += '<div style="font-size:12px;">• ' + esc(i.date || '') + ' — ' + esc(i.rule) + ' (' + esc(i.value) + ')</div>'; }); s += '</div>'; }
-        else s += '<div class="rax-co-meta" style="margin-top:6px;color:var(--accent)">Fără infracțiuni detectate.</div>';
-        s += '</div>'; box.innerHTML = s;
+        var s = '<div class="th-card open"><div class="th-head"><div class="th-av"><i class="fas fa-file-arrow-down"></i></div>' +
+          '<div class="th-who"><b>' + esc(f.filename) + '</b><span>' + esc(p.kind || '') +
+          (f.driver_name ? ' · ' + esc(f.driver_name) : '') + '</span></div></div><div class="th-body">';
+        if (p.incredere === 'necitit') {
+          // Aici NU se afișează nicio cifră. Un fișier necitit înseamnă că nu știm nimic despre el.
+          s += '<div class="th-row s-over"><i class="fas fa-ban"></i><div class="th-rt">' +
+            '<b>Nu am putut citi fișierul</b><span>' + esc(p.parseNote || '') + '</span></div></div>';
+        } else {
+          if (p.parseNote) s += '<div class="th-row s-soon"><i class="fas fa-circle-info"></i><div class="th-rt"><b>De reținut</b><span>' + esc(p.parseNote) + '</span></div></div>';
+          if (t.zile) {
+            s += '<div class="th-kpis">' +
+              '<div><b>' + h(t.conducereMin) + 'h</b><span><i class="fas fa-road"></i> condus</span></div>' +
+              '<div><b>' + h(t.muncaMin) + 'h</b><span><i class="fas fa-wrench"></i> alte munci</span></div>' +
+              '<div><b>' + h(t.odihnaMin) + 'h</b><span><i class="fas fa-bed"></i> odihnă</span></div>' +
+              '<div><b>' + (t.km || 0) + '</b><span><i class="fas fa-gauge-high"></i> km</span></div></div>';
+          }
+          if (p.infringements && p.infringements.length) {
+            s += p.infringements.slice(0, 40).map(function (i) {
+              var gr = i.severity === 'gravă';
+              return '<div class="th-row ' + (gr ? 's-over' : 's-soon') + '"><i class="fas ' + (gr ? 'fa-circle-exclamation' : 'fa-triangle-exclamation') + '"></i>' +
+                '<div class="th-rt"><b>' + esc(i.rule) + '</b><span>' + esc(i.date || '') + ' · măsurat ' + esc(i.value) + '</span></div>' +
+                '<span class="th-pill ' + (gr ? 'p-red' : 'p-orange') + '">' + esc(i.severity) + '</span></div>';
+            }).join('');
+          } else if (t.zile) {
+            s += '<div class="th-b b-ok" style="display:inline-flex"><i class="fas fa-circle-check"></i> Fără abateri</div>';
+          }
+        }
+        s += '</div></div>';
+        box.innerHTML = s;
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     };
-    window.raxDelTacho = async function (id) { await fetch('/api/tacho/' + id, { method: 'DELETE', credentials: 'same-origin' }); $('rax-tacho-detail').innerHTML = ''; raxLoadTacho(); };
+    window.raxDelTacho = async function (id) {
+      await fetch('/api/tacho/' + id, { method: 'DELETE', credentials: 'same-origin' });
+      $('rax-tacho-detail').innerHTML = '';
+      raxLoadTacho();
+    };
 
     // ── e-Transport (ANAF) ──
     window.raxOpenEt = function () { document.getElementById('rax-et-overlay').classList.add('open'); raxLoadEt(); };
