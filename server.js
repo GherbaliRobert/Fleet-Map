@@ -10467,6 +10467,10 @@ async function start() {
     // dacă ultimul pachet (probabil cu motorul oprit) n-are carburant/odometru, completează din snapshot-ul restaurat
     const _snap = lastCanIo.get(pos.imei);
     if (_snap) { const _f = Object.assign({}, _io); if (_fillSticky(_f, _snap.io)) { _io = _f; _stale = true; } }
+    // Stegulețele (uși, lumini, martori) se desfac la INGEST, nu la citirea din bază. Fără rândul
+    // ăsta, după fiecare deploy orice mașină PARCATĂ rămânea fără panoul de stări până la următorul
+    // pachet — la o mașină lăsată peste noapte, ore întregi de ecran gol care arată a defecțiune.
+    try { _io = expandCanFlags(Object.assign({}, _io)); } catch (e) { /* io stricat → lăsăm cum e */ }
     livePositions.set(pos.imei, {
       imei: pos.imei,
       timestamp: pos.timestamp,
