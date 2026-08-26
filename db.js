@@ -1663,9 +1663,13 @@ async function createTachoFile(rec) {
 }
 
 // ─── Termene de descărcare ───────────────────────────────────────────────────────────────────────
-// „Cine trebuie descărcat următorul." Întoarce TOȚI șoferii și TOATE camioanele companiei, inclusiv
-// pe cei care n-au fost descărcați niciodată — ăia sunt cazul periculos, și tocmai ei lipseau dintr-o
-// listă construită din fișiere. De-aia se pleacă de la șoferi/vehicule, nu de la fișiere.
+// „Cine trebuie descărcat următorul." Întoarce șoferii și vehiculele companiei, inclusiv pe cei care
+// n-au fost descărcați niciodată — ăia sunt cazul periculos, și tocmai ei lipseau dintr-o listă
+// construită din fișiere. De-aia se pleacă de la șoferi/vehicule, nu de la fișiere.
+//
+// Funcția asta NU decide CINE intră în tahograf: întoarce tot ce are compania, iar ruta
+// `/api/tacho/scadentar` alege (categorie de tahograf pe permis, categorie de vehicul, fără demo).
+// Regula stă acolo pentru că are nevoie de `demoCompanyId`, care e stare de server, nu de bază.
 //
 // Ca dată a descărcării se ia ULTIMA ZI ACOPERITĂ de fișier (period_to), nu data încărcării: un
 // fișier pus în aplicație azi, dar care acoperă până acum două luni, nu te scoate din termen.
@@ -1675,8 +1679,10 @@ async function getTachoScadentar(companyId) {
   const wDrv = companyId != null ? 'WHERE d.company_id = $1' : '';
   const wDev = companyId != null ? 'WHERE dv.company_id = $1' : '';
 
+  // `license_categories` și `company_id` NU sunt decor: ruta le folosește ca să lase în listă doar
+  // șoferii cu card de tahograf (categorie de marfă/persoane) și să scoată compania demo.
   const soferi = await pool.query(`
-    SELECT d.id, d.name,
+    SELECT d.id, d.name, d.company_id, d.license_categories,
            MAX(COALESCE(t.period_to, t.uploaded_at::date)) AS ultima,
            COUNT(t.id) FILTER (WHERE t.id IS NOT NULL) AS fisiere
     FROM drivers d
@@ -1685,10 +1691,9 @@ async function getTachoScadentar(companyId) {
      AND t.kind IS DISTINCT FROM 'demo'
      AND COALESCE(t.incredere, 'confirmat') <> 'necitit'
     ${wDrv}
-    GROUP BY d.id, d.name
+    GROUP BY d.id, d.name, d.company_id, d.license_categories
     ORDER BY ultima NULLS FIRST, d.name`, pc);
 
-  // Doar vehiculele care chiar au tahograf: camioane/autobuze (peste 3,5 t). O dubă n-are ce descărca.
   const vehicule = await pool.query(`
     SELECT dv.imei, dv.name, dv.plate, dv.brand, dv.model, dv.vehicle_type,
            MAX(COALESCE(t.period_to, t.uploaded_at::date)) AS ultima,

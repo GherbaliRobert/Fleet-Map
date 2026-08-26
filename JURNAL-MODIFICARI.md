@@ -18,6 +18,69 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-08-26
+
+### AMÂNDOI · În Tahograf intră doar cine are ce descărca
+
+Alin s-a uitat pe scadențar și a găsit acolo, roșii, cele cinci vehicule DEMO și pe fondatorii înșiși
+ca „șoferi niciodată descărcați". Trei greșeli diferite, toate cu același efect: un ecran care sună
+alarma pentru lucruri care n-au ce descărca. Un ecran care strigă degeaba se învață să fie ignorat,
+iar ăsta e exact ecranul pe care nu-ți permiți să-l ignori.
+
+**1. Flota demo n-are ce căuta în flota reală.** Vehiculele demonstrative sunt semănate cu categoria
+„camion", așa că treceau de filtru și apăreau ca restanțe. Regula există deja peste tot în aplicație
+(demo se vede DOAR în contul demo) — în scadențar lipsea. Acum e și acolo.
+
+**2. Nu orice om cu permis e șofer de camion.** Card de tahograf au doar cei cu o categorie de marfă
+sau persoane pe permis — C, C1, CE, D, D1, DE. Cine are permis de autoturism nu conduce vehicul cu
+tahograf, deci n-are ce descărca. Regula se citește din bifele de pe fișa șoferului, dintr-o singură
+sursă (`license_cats.js`), aceeași care spune „profesionist" în lista de șoferi.
+
+Detaliu de reținut: **troleibuzul și tramvaiul sunt meserii de profesionist, dar nu intră sub
+tahograf** — tramvaiul e vehicul de cale ferată, troleibuzul circulă pe traseu urban scurt, exceptat.
+De-aia „profesionist" și „are card de tahograf" sunt două întrebări diferite, nu una.
+
+**3. Nu orice vehicul are tahograf.** Autoturismele, dubele, utilajele — nu. Se recunosc după
+„Categorie" din fișa vehiculului: Camion, TIR, Autotractor, Autobuz, Autocar.
+
+Aici era ascunsă o greșeală pe care n-o văzuse nimeni: filtrul vechi căuta textul „tractor" oriunde
+în categorie, deci prindea și **„Autotractor"** (capul de TIR, care are tahograf), și **„Tractor"**
+(tractorul agricol, care n-are). Orice fermă cu tractoare în aplicație ar fi primit alarme de
+descărcare pentru utilaje agricole. Acum lista e explicită, iar proba verifică anume cazul ăsta.
+
+**Partea la care am stat cel mai mult: ce se întâmplă cu cine NU apare.**
+
+Un filtru care ascunde e periculos exact pe ecranul ăsta. Dacă unui șofer profesionist nu i s-au bifat
+categoriile pe permis, el dispare tăcut din singura listă care există ca să nu dispară nimeni. De-aia
+ecranul spune cine lipsește și de ce:
+
+- cei **fără nicio categorie completată** sunt numiți pe nume — „2 șoferi nu au categoriile de pe
+  permis completate: Gherbali Robert, Tilvar Alin — dacă vreunul e profesionist, completează-i
+  categoriile";
+- cei cu permis doar de autoturism sunt doar numărați, discret („nu apar aici: 3 șoferi fără categorie
+  de tahograf — n-au ce descărca");
+- iar când nu e nimic de descărcat, scrie **„Nimic de descărcat"**, nu „toate descărcările sunt la zi".
+  A doua variantă e o minciună liniștitoare: nu e nimic la zi, nu e nimic pornit.
+
+Ca să se închidă cercul, în fișa șoferului, când bifezi C sau CE, apare pe loc eticheta **„Card de
+tahograf — apare în Tahograf, de descărcat la 28 de zile"**. Nu mai trebuie să ghicești ce bifă pe ce
+ecran are efect.
+
+**Încă o potrivire reparată:** formularul de încărcare oferea toți șoferii firmei. Puteai lega un
+fișier de un om care nu intră în tahograf — fișierul rămânea în bază, dar descărcarea nu se vedea
+nicăieri. Acum formularul oferă exact pe cine arată lista.
+
+**Probele.** 57 de verificări pe secțiunea asta (erau 25). Am stricat pe rând fiecare regulă și am
+verificat că probele chiar cad: fără filtrul demo → 2 verificări picate; fără filtrul de șoferi → 4;
+cu vechea potrivire pe „tractor" → tractorul agricol reapare în listă; cu sumarul care spune mereu
+„la zi" → 2. Ultimele verificări iau răspunsul REAL al serverului și îl dau funcțiilor REALE de
+desenare din aplicație, ca să nu fie corectă ruta și mincinos ecranul.
+
+- **Ce vede fondatorul:** secțiunea Tahograf goală și curată, cu explicația de ce e goală și ce are de
+  completat ca să nu fie — nu cinci vehicule demo și doi fondatori pe post de șoferi de TIR.
+- **Ce vede clientul:** doar șoferii lui profesioniști și doar camioanele/autobuzele lui, fiecare cu
+  termenul de descărcare. Restul flotei nu-i mai zgomotează ecranul.
+
 ## 2026-08-22
 
 ### AMÂNDOI · Tahograf refăcut: „cine trebuie descărcat" pe primul loc

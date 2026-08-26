@@ -1952,6 +1952,8 @@ const pozitii = await r.json();</code></pre>
           .drv-cls.pro { background: rgba(63, 224, 125, .14); color: var(--drv-ink); border: 1px solid rgba(63, 224, 125, .4); }
           .drv-cls.basic { background: var(--bg-dark); color: var(--text-secondary); border: 1px solid var(--border-light); }
           .drv-cls.none { background: var(--bg-dark); color: var(--text-muted); border: 1px solid var(--border); font-weight: 600; }
+          /* „bifa asta îl bagă în Tahograf" — legătura dintre fișa șoferului și scadențarul de descărcare */
+          .drv-cls.tacho { background: rgba(96, 165, 250, .12); color: #93c5fd; border: 1px solid rgba(96, 165, 250, .38); margin-left: 8px; }
           /* Eticheta din listă, lângă nume */
           .drv-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; margin-left: 7px; vertical-align: 1px; white-space: nowrap; }
           .drv-tag.pro { background: rgba(63, 224, 125, .16); color: var(--drv-ink); }
@@ -4858,7 +4860,15 @@ const pozitii = await r.json();</code></pre>
         <div class="drv-cg-b">${byGroup[g].map(c =>
           `<button type="button" class="drv-cat${_drvCats.indexOf(c.code) >= 0 ? ' on' : ''}${c.pro ? ' pro' : ''}" title="${c.label}${c.pro ? ' — categorie profesionistă' : ''}" onclick="drvToggleCat('${c.code}')">${c.code}</button>`
         ).join('')}</div></div>` : '').join('');
-      if (cls) { const k = drvClassify(); cls.innerHTML = `<span class="drv-cls ${k.key}">${k.key === 'pro' ? '<i class="fas fa-award"></i>' : ''}${k.label}</span>`; }
+      if (cls) {
+        const k = drvClassify();
+        // Cine intră în secțiunea Tahograf se decide AICI, din bifele de pe permis. Spunem asta pe loc,
+        // ca omul să nu caute pe urmă de ce un șofer nu apare în scadențarul de descărcări.
+        const tac = (window.RA_LICENSE && RA_LICENSE.tacho) || [];
+        const areCard = _drvCats.some(c => tac.indexOf(c) >= 0);
+        cls.innerHTML = `<span class="drv-cls ${k.key}">${k.key === 'pro' ? '<i class="fas fa-award"></i>' : ''}${k.label}</span>`
+          + (areCard ? '<span class="drv-cls tacho"><i class="fas fa-id-card"></i>Card de tahograf — apare în Tahograf, de descărcat la 28 de zile</span>' : '');
+      }
     }
     // Formularul nu mai stă deschis permanent — ocupa jumătate de ecran fără să fie cerut.
     function toggleDrvAdd() {
@@ -19964,16 +19974,16 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
 
-    // Selectoarele din formular: șoferii companiei + vehiculele cu tahograf, aceleași pe care le
-    // arată scadențarul. Dacă nu-s încărcate, formularul cere ceva ce omul n-are de unde alege.
-    async function _thPopuleazaSelectoare() {
-      try {
-        if (!_thSoferi.length) _thSoferi = await fetch('/api/drivers/lite', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-      } catch (e) { _thSoferi = []; }
+    // Selectoarele din formular: EXACT cine e în scadențar, nu toată lista de șoferi. Dacă legai un
+    // fișier de un om care nu intră în tahograf (permis doar de B), fișierul rămânea în bază, dar
+    // descărcarea nu se vedea nicăieri — omul nu apare în listă. Ca să nu existe alegerea aia,
+    // formularul oferă doar cine e afișat.
+    function _thPopuleazaSelectoare() {
+      _thSoferi = (_thDate && _thDate.soferi) || [];
       _thVeh = (_thDate && _thDate.vehicule) || [];
       var sd = $('th-drv'), sv = $('th-veh');
       if (sd) sd.innerHTML = '<option value="">— șofer (card) —</option>' +
-        (_thSoferi || []).map(function (d) { return '<option value="' + d.id + '">' + esc(d.name) + '</option>'; }).join('');
+        _thSoferi.map(function (d) { return '<option value="' + d.id + '">' + esc(d.nume) + '</option>'; }).join('');
       if (sv) sv.innerHTML = '<option value="">— vehicul (memorie) —</option>' +
         _thVeh.map(function (v) { return '<option value="' + esc(v.imei) + '">' + esc(v.nume) + '</option>'; }).join('');
     }
@@ -19991,7 +20001,14 @@ const pozitii = await r.json();</code></pre>
       if (numeDepasite.length) h += '<span class="th-b b-warn"><i class="fas fa-circle-exclamation"></i> Termen depășit: ' + esc(_l(numeDepasite)) + '</span>';
       if (numeNiciodata.length) h += '<span class="th-b b-warn"><i class="fas fa-ban"></i> Niciodată descărcat: ' + esc(_l(numeNiciodata)) + '</span>';
       if (d.sumar && d.sumar.curand) h += '<span class="th-b b-open"><i class="fas fa-clock"></i> ' + d.sumar.curand + ' în următoarele 5 zile</span>';
-      if (!h) h = '<span class="th-b b-ok"><i class="fas fa-circle-check"></i> Toate descărcările sunt la zi</span>';
+      // Pe o listă goală, „totul e la zi" e o minciună liniștitoare: nu e nimic la zi, nu e nimic de
+      // descărcat. Diferența contează — una spune „ești în regulă", cealaltă „n-ai pornit încă".
+      if (!h) {
+        var _n = (d.soferi || []).length + (d.vehicule || []).length;
+        h = _n
+          ? '<span class="th-b b-ok"><i class="fas fa-circle-check"></i> Toate descărcările sunt la zi</span>'
+          : '<span class="th-b b-open"><i class="fas fa-circle-info"></i> Nimic de descărcat — niciun șofer cu card de tahograf și niciun vehicul cu tahograf</span>';
+      }
       sum.innerHTML = h;
 
       if (_thTab === 'due') return _thRandDue(box, d);
@@ -19999,16 +20016,41 @@ const pozitii = await r.json();</code></pre>
       return _thRandAbateri(box, d);
     }
 
+    // ── Cine NU e în listă și de ce ──────────────────────────────────────────────────────────────
+    // În tahograf intră doar șoferii cu card (categorie de marfă/persoane pe permis) și doar
+    // vehiculele care au tahograf. Restul flotei — autoturisme, dube, utilaje, oameni cu permis doar
+    // de B — n-are ce descărca; dacă i-am arăta, scadențarul ar fi plin de alarme false permanente.
+    //
+    // Dar un ecran gol arată la fel ca o aplicație stricată. Și mai rău: un șofer profesionist căruia
+    // nu i s-au completat categoriile ar dispărea în tăcere din exact lista care există ca să nu
+    // dispară nimeni. De-aia golul își spune motivul, iar cei neîncadrați se numesc pe nume.
+    function _thExcluse(d, cuSoferi, cuVehicule) {
+      var e = d.excluse || {}, h = '';
+      var fc = e.soferiFaraCategorie || [];
+      if (cuSoferi && fc.length) {
+        var l = fc.length <= 4 ? fc.join(', ') : fc.slice(0, 4).join(', ') + ' +' + (fc.length - 4);
+        h += '<div class="th-b b-open" style="display:flex;margin:6px 0 2px"><i class="fas fa-circle-question"></i> ' +
+          fc.length + (fc.length === 1 ? ' șofer nu are' : ' șoferi nu au') + ' categoriile de pe permis completate: ' +
+          esc(l) + ' — dacă vreunul e profesionist, completează-i categoriile în Administrare → Șoferi, altfel nu apare aici.</div>';
+      }
+      var q = [];
+      if (cuSoferi && e.soferiNeprofesionisti) q.push(e.soferiNeprofesionisti + (e.soferiNeprofesionisti === 1 ? ' șofer fără categorie de tahograf' : ' șoferi fără categorie de tahograf'));
+      if (cuVehicule && e.vehiculeFaraTahograf) q.push(e.vehiculeFaraTahograf + (e.vehiculeFaraTahograf === 1 ? ' vehicul fără tahograf' : ' vehicule fără tahograf'));
+      if (q.length) h += '<div class="rax-co-meta" style="margin-top:6px">Nu apar aici: ' + q.join(' și ') + ' — n-au ce descărca.</div>';
+      return h;
+    }
+
     function _thRandDue(box, d) {
       var h = '';
       h += '<div class="th-gh"><i class="fas fa-id-card"></i> CARDURI DE ȘOFER <em>la ' + d.praguri.card + ' de zile</em></div>';
       h += (d.soferi || []).length
-        ? d.soferi.map(function (x) { return _thRand(x, 'fa-user', 'card șofer · ' + (x.ultima ? 'ultima descărcare ' + x.ultima : 'nicio descărcare'), "raxTachoIstoric(" + x.id + ",null)"); }).join('')
-        : '<div class="rax-co-meta">Niciun șofer înregistrat. Adaugă-i din Administrare → Șoferi.</div>';
+        ? d.soferi.map(function (x) { return _thRand(x, 'fa-user', 'card șofer · ' + (x.categorii ? x.categorii + ' · ' : '') + (x.ultima ? 'ultima descărcare ' + x.ultima : 'nicio descărcare'), "raxTachoIstoric(" + x.id + ",null)"); }).join('')
+        : '<div class="rax-co-meta">Niciun șofer profesionist. Card de tahograf au doar șoferii cu o categorie de marfă sau persoane pe permis (C, C1, CE, D, D1, DE). Le bifezi în Administrare → Șoferi, la fișa omului.</div>';
       h += '<div class="th-gh"><i class="fas fa-truck"></i> MEMORIA VEHICULELOR <em>la ' + d.praguri.vu + ' de zile</em></div>';
       h += (d.vehicule || []).length
         ? d.vehicule.map(function (x) { return _thRand(x, 'fa-truck', (x.model ? x.model + ' · ' : '') + (x.ultima ? 'ultima descărcare ' + x.ultima : 'nicio descărcare'), "raxTachoIstoric(null,'" + esc(x.imei) + "')"); }).join('')
-        : '<div class="rax-co-meta">Niciun camion sau autobuz în flotă. Doar vehiculele peste 3,5 t au tahograf de descărcat.</div>';
+        : '<div class="rax-co-meta">Niciun vehicul cu tahograf în flotă. Se recunosc după „Categorie" din fișa vehiculului: Camion, TIR, Autotractor, Autobuz, Autocar. Autoturismele, dubele și utilajele n-au tahograf.</div>';
+      h += _thExcluse(d, true, true);
       box.innerHTML = h;
     }
 
@@ -20038,7 +20080,8 @@ const pozitii = await r.json();</code></pre>
           '<span class="th-pill ' + st.pill + '">' + esc(x.text) + '</span>' +
           '<i class="fas fa-chevron-right"></i></div></div>';
       }).join('');
-      box.innerHTML = h || '<div class="rax-co-meta">Niciun șofer înregistrat.</div>';
+      box.innerHTML = (h || '<div class="rax-co-meta">Niciun șofer profesionist. Aici apar doar șoferii cu card de tahograf, adică cei cu o categorie de marfă sau persoane pe permis (C, C1, CE, D, D1, DE).</div>')
+        + _thExcluse(d, true, false);
     }
 
     function _thRandAbateri(box, d) {

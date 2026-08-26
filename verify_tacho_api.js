@@ -7,6 +7,10 @@
 // fișier pe care nu l-am putut citi NU trece drept descărcare valabilă. Dacă ar trece, aplicația ar
 // spune „ești în regulă" pe baza unui fișier pe care nu-l înțelege. Ăsta ar fi cel mai rău fel de
 // greșeală posibilă aici: liniștitoare și falsă.
+//
+// Și apără CINE intră în listă: doar șoferii cu card de tahograf, doar vehiculele care au tahograf,
+// niciodată flota demo. Serverul de probă pornește ANUME cu demo-ul activ (fără DEMO_DISABLED), ca
+// DEMO0001..5 să existe cu adevărat în bază — altfel „nu apar" ar fi trecut degeaba, pe o bază goală.
 
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -16,7 +20,7 @@ const PORT = 3196, DIR = '.tacho-api-db';
 const env = {
   ...process.env,
   NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', SESSION_SECRET: 'ci_tacho',
-  PORT: String(PORT), TCP_PORT: '5196', DEMO_DISABLED: 'true', PGLITE_DIR: DIR + '/pgdata',
+  PORT: String(PORT), TCP_PORT: '5196', PGLITE_DIR: DIR + '/pgdata',
 };
 try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {}
 const srv = spawn(process.execPath, ['server.js'], { env, stdio: ['ignore', 'ignore', 'inherit'] });
@@ -80,7 +84,8 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
 
   // ─── un șofer nou ───
   sect('1. Un șofer nou apare imediat ca „niciodată descărcat"');
-  const cr = await POST('/api/drivers', { name: 'Vasile Probă', phone: '0700000000' });
+  // categoriile NU sunt decor: în tahograf intră doar șoferii cu card, adică cei cu C*/D* pe permis
+  const cr = await POST('/api/drivers', { name: 'Vasile Probă', phone: '0700000000', license_categories: 'B,C,CE' });
   const drv = await cr.json();
   T('șoferul s-a creat', cr.status === 200 && drv.id, JSON.stringify(drv).slice(0, 100));
   const s1 = await (await GET('/api/tacho/scadentar')).json();
@@ -112,7 +117,7 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
 
   // ─── fișier necitit: NU trebuie să conteze ───
   sect('3. Un fișier pe care nu-l putem citi NU trece drept descărcare');
-  const cr2 = await POST('/api/drivers', { name: 'Ion Necitit' });
+  const cr2 = await POST('/api/drivers', { name: 'Ion Necitit', license_categories: 'C' });
   const drv2 = await (cr2).json();
   const gunoi = Buffer.from(Array.from({ length: 500 }, (_, i) => (i * 91 + 7) & 0xFF));
   const up2 = await POST('/api/tacho/upload', {
@@ -158,6 +163,120 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
   const j = await sc.json();
   T('„scadentar" chiar ajunge la scadențar, nu la un fișier cu id-ul „scadentar"',
     sc.status === 200 && Array.isArray(j.soferi), sc.status + ' · ' + Object.keys(j).join(','));
+
+  // ─── CINE intră în listă ─────────────────────────────────────────────────────────────────────
+  // Ecranul e util doar dacă e curat. Un scadențar plin de autoturisme, de oameni cu permis de B și
+  // de vehicule demo sună alarme false permanent, iar omul se învață să nu se mai uite la el.
+  sect('7. Doar șoferii cu card de tahograf apar în listă');
+  const drvB = await (await POST('/api/drivers', { name: 'Marcel Doar B', license_categories: 'B,BE' })).json();
+  const drvGol = await (await POST('/api/drivers', { name: 'Necompletat Necompletat' })).json();
+  const drvD = await (await POST('/api/drivers', { name: 'Dorel Autobuz', license_categories: 'B,D' })).json();
+  const s7 = await (await GET('/api/tacho/scadentar')).json();
+  const nume7 = (s7.soferi || []).map(x => x.nume);
+  T('șoferul cu permis doar de autoturism NU apare', nume7.indexOf('Marcel Doar B') < 0, nume7.join(', '));
+  T('șoferul fără nicio categorie NU apare', nume7.indexOf('Necompletat Necompletat') < 0, nume7.join(', '));
+  T('șoferul de autobuz (D) APARE', nume7.indexOf('Dorel Autobuz') >= 0, nume7.join(', '));
+  T('șoferul de camion (C, CE) APARE', nume7.indexOf('Vasile Probă') >= 0, nume7.join(', '));
+  T('categoriile ajung în listă, curățate și sortate',
+    (s7.soferi.find(x => x.nume === 'Vasile Probă') || {}).categorii === 'B,C,CE',
+    (s7.soferi.find(x => x.nume === 'Vasile Probă') || {}).categorii);
+
+  // Cel exclus pentru că n-are categorii completate NU dispare tăcut: e numit pe nume, ca să se
+  // poată repara. Ăsta e singurul caz în care lipsa din listă poate ascunde un profesionist real.
+  T('cel fără categorii e numit în „excluse", ca să nu dispară în tăcere',
+    (s7.excluse && (s7.excluse.soferiFaraCategorie || []).indexOf('Necompletat Necompletat') >= 0),
+    JSON.stringify(s7.excluse));
+  T('cel cu permis de B e doar numărat, nu numit', s7.excluse && s7.excluse.soferiNeprofesionisti >= 1,
+    JSON.stringify(s7.excluse));
+  T('cel cu categorii completate nu e trecut la „fără categorii"',
+    (s7.excluse.soferiFaraCategorie || []).indexOf('Marcel Doar B') < 0, JSON.stringify(s7.excluse.soferiFaraCategorie));
+
+  sect('8. Doar vehiculele care CHIAR au tahograf');
+  const veh = [
+    { imei: '8811000000001', plate: 'TM 01 CAM', vehicle_type: 'Camion', apare: true },
+    { imei: '8811000000002', plate: 'TM 02 CAP', vehicle_type: 'Autotractor', apare: true },
+    { imei: '8811000000003', plate: 'TM 03 BUS', vehicle_type: 'Autobuz', apare: true },
+    // capcana: „Tractor" e tractorul AGRICOL, n-are tahograf. O potrivire pe conținut („/tractor/i")
+    // l-ar fi prins odată cu „Autotractor" și ar fi băgat utilaje agricole în scadențar.
+    { imei: '8811000000004', plate: 'TM 04 TRA', vehicle_type: 'Tractor', apare: false },
+    { imei: '8811000000005', plate: 'TM 05 DUB', vehicle_type: 'Duba', apare: false },
+    { imei: '8811000000006', plate: 'TM 06 AUT', vehicle_type: 'Auto', apare: false },
+    { imei: '8811000000007', plate: 'TM 07 UTI', vehicle_type: 'Buldoexcavator', apare: false },
+  ];
+  for (const v of veh) await POST('/api/devices', { imei: v.imei, plate: v.plate, vehicle_type: v.vehicle_type });
+  const s8 = await (await GET('/api/tacho/scadentar')).json();
+  const imei8 = (s8.vehicule || []).map(x => x.imei);
+  for (const v of veh) {
+    T((v.apare ? 'APARE: ' : 'nu apare: ') + v.vehicle_type,
+      (imei8.indexOf(v.imei) >= 0) === v.apare, v.plate + ' → ' + (imei8.indexOf(v.imei) >= 0 ? 'în listă' : 'lipsă'));
+  }
+  T('vehiculele fără tahograf sunt numărate, nu ascunse fără urmă',
+    s8.excluse && s8.excluse.vehiculeFaraTahograf >= 4, JSON.stringify(s8.excluse));
+
+  sect('9. Flota demo nu intră în scadențarul unei flote reale');
+  const demoImeis = require('./demo-sim.js').DEMO_IMEIS;
+  // Proba asta trece degeaba dacă demo-ul n-a fost semănat — „nu apar" e adevărat și pe o bază goală.
+  // De-aia întâi DOVEDIM că vehiculele demo chiar sunt în bază (`/api/companies` le numără per companie,
+  // fără filtrul de demo), și abia apoi verificăm că scadențarul nu le arată.
+  const cos = await (await GET('/api/companies')).json();
+  const coDemo = (Array.isArray(cos) ? cos : []).find(c => c.slug === 'demo');
+  T('compania demo există', !!coDemo, JSON.stringify((cos || []).map(c => c.slug)));
+  T('și are cele 5 vehicule sintetice în bază (altfel proba n-ar verifica nimic)',
+    coDemo && Number(coDemo.device_count) === demoImeis.length,
+    coDemo && (coDemo.device_count + ' vehicule — pornește serverul de probă FĂRĂ DEMO_DISABLED'));
+
+  const s9 = await (await GET('/api/tacho/scadentar')).json();
+  const imei9 = (s9.vehicule || []).map(x => x.imei);
+  T('niciun IMEI demo în listă', demoImeis.every(i => imei9.indexOf(i) < 0),
+    imei9.filter(i => demoImeis.indexOf(i) >= 0).join(', '));
+  T('niciun nume DEMO-x în listă', (s9.vehicule || []).every(v => !/^DEMO-\d/.test(String(v.nume))),
+    (s9.vehicule || []).map(v => v.nume).join(', '));
+  // Sumarul se calculează din aceleași liste — dacă s-ar socoti din altă parte, ar renumăra demo-ul.
+  const nic9 = (s9.soferi || []).concat(s9.vehicule || []).filter(x => x.stare === 'niciodata').length;
+  T('sumarul numără exact ce e afișat, nu altceva', s9.sumar.niciodata === nic9,
+    s9.sumar.niciodata + ' în sumar vs ' + nic9 + ' pe ecran');
+
+  // ─── de la răspunsul serverului până la ce scrie pe ecran ────────────────────────────────────
+  // Rutele pot fi corecte și ecranul tot să mintă. Aici luăm răspunsul REAL primit mai sus și îl dăm
+  // funcțiilor REALE de randare din public/index.html — aceleași care rulează în browser.
+  sect('10. Ecranul spune de ce lipsește cineva');
+  const html = fs.readFileSync('./public/index.html', 'utf8');
+  const _de = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); return (i < 0 || j < 0) ? null : html.slice(i, j); };
+  const codUI = _de('    var _thTab = ', '    // ── e-Transport (ANAF) ──');
+  T('găsesc codul ecranului în index.html', !!codUI);
+  if (codUI) {
+    const nod = () => ({ innerHTML: '', textContent: '', value: '', style: {}, classList: { toggle() {}, add() {} }, scrollIntoView() {} });
+    const noduri = { 'th-body': nod(), 'th-sumar': nod(), 'rax-tacho-detail': nod(), 'th-drv': nod(), 'th-veh': nod() };
+    const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ui = new Function('window', 'document', 'esc', '$', 'fetch',
+      codUI + '\n; return { render: raxTachoRender, set: (d) => { _thDate = d; _thTab = "due"; } };')(
+      {}, { getElementById: (i) => noduri[i] || null, querySelectorAll: () => [] },
+      escHtml, (i) => noduri[i] || null, () => Promise.resolve({ json: () => ({}) }));
+    const rand = (d) => { noduri['th-body'].innerHTML = ''; noduri['th-sumar'].innerHTML = ''; ui.set(d); ui.render(); return noduri['th-sumar'].innerHTML + noduri['th-body'].innerHTML; };
+
+    const ec = rand(s9);
+    T('pe ecran nu ajunge niciun vehicul demo', ec.indexOf('DEMO-') < 0 && ec.indexOf('DEMO0') < 0);
+    T('șoferul profesionist e pe ecran', ec.indexOf('Vasile Probă') >= 0);
+    T('cel cu permis doar de B nu e pe ecran', ec.indexOf('Marcel Doar B') < 0);
+    T('cel fără categorii e NUMIT pe ecran, nu doar scos', ec.indexOf('Necompletat Necompletat') >= 0);
+
+    // Cazul lui azi: nimic de descărcat. Nu are voie să scrie „totul e la zi" — n-ar fi fals liniștitor
+    // din greșeală, ci exact pe ecranul care există ca să te avertizeze.
+    const gol = rand(Object.assign({}, s9, { soferi: [], vehicule: [] }));
+    T('lista goală NU spune „toate descărcările sunt la zi"', gol.indexOf('la zi') < 0, gol.slice(0, 160));
+    T('lista goală spune că nu e nimic de descărcat', gol.indexOf('Nimic de descărcat') >= 0);
+    T('golul explică ce categorie de permis aduce un șofer aici', gol.indexOf('CE') >= 0 && gol.indexOf('permis') >= 0);
+    T('golul explică ce categorie de vehicul are tahograf', gol.indexOf('Camion') >= 0 && gol.indexOf('Autotractor') >= 0);
+  }
+
+  // Legătura dintre regula de pe server și bifele din fișa șoferului: aceeași listă, un singur loc.
+  const licJs = await (await GET('/js/license-cats.js')).text();
+  const lic = JSON.parse(licJs.replace(/^window\.RA_LICENSE=/, '').replace(/;\s*$/, ''));
+  const licSursa = require('./license_cats.js');
+  T('interfața primește lista categoriilor cu tahograf',
+    Array.isArray(lic.tacho) && lic.tacho.join(',') === licSursa.TACHO.join(','), JSON.stringify(lic.tacho));
+  T('troleibuzul și tramvaiul sunt profesioniste, dar FĂRĂ tahograf',
+    lic.pro.indexOf('Tb') >= 0 && lic.tacho.indexOf('Tb') < 0 && lic.tacho.indexOf('Tv') < 0);
 
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');

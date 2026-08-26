@@ -54,6 +54,28 @@ const DATA_MAX = Date.UTC(2100, 0, 1) / 1000;
 const TERMEN_CARD_ZILE = 28;
 const TERMEN_VU_ZILE = 90;
 
+// ─── Care vehicule au tahograf de descărcat ──────────────────────────────────────────────────────
+// Reg. (UE) 165/2014: tahograful e obligatoriu la marfă peste 3,5 t și la persoane cu peste 9 locuri.
+// În aplicație asta se citește din câmpul „Categorie" al vehiculului (`devices.vehicle_type`).
+//
+// ⚠ CAPCANĂ, prinsă în producție: „Tractor" din lista de categorii e tractorul AGRICOL (permis Tr),
+// care n-are tahograf; „Autotractor" e capul de TIR, care are. O potrivire liberă pe text (/tractor/i)
+// le prinde pe amândouă și umple scadențarul cu utilaje agricole care n-au ce descărca. De-aia lista
+// e EXPLICITĂ și potrivirea e pe egalitate, nu pe conținut. Nu o transforma înapoi într-un tipar.
+//
+// Un vehicul special de peste 3,5 t care chiar transportă marfă pe drum public (o betonieră, de ex.)
+// se pune pe categoria „Camion" din fișa vehiculului — atunci intră în scadențar. Lista de aici
+// rămâne pe cazurile fără dubiu, ca să nu sune alarme false pe utilaje.
+const TIPURI_CU_TAHOGRAF = [
+  'autotractor', 'camion', 'tir', 'autobuz', 'autocar',
+  'truck', 'lorry', 'bus', 'coach',   // valori venite din import sau de la echipamente, în engleză
+];
+const _TIPURI_SET = new Set(TIPURI_CU_TAHOGRAF);
+function vehiculAreTahograf(tip) {
+  if (tip == null) return false;
+  return _TIPURI_SET.has(String(tip).trim().toLowerCase());
+}
+
 // ─── Blocuri (fișier de card) ────────────────────────────────────────────────────────────────────
 // Întoarce { blocuri, acopera } — `acopera` e adevărat doar dacă lanțul consumă TOT fișierul.
 // Un lanț care se oprește la jumătate înseamnă că n-am înțeles formatul, nu că fișierul e scurt.
@@ -445,7 +467,7 @@ function goluri(perioade) {
 
 module.exports = {
   parse, infringements, statZi, scadenta, goluri, ziISO,
-  TERMEN_CARD_ZILE, TERMEN_VU_ZILE,
+  TERMEN_CARD_ZILE, TERMEN_VU_ZILE, TIPURI_CU_TAHOGRAF, vehiculAreTahograf,
   // expuse pentru probe
   _citesteBlocuri: citesteBlocuri, _citesteZile: citesteZile, _numeDinIdentificare: numeDinIdentificare,
   _cautaVin: cautaVin, _esteVu: esteVu, _LEN_IDENTIFICATION: LEN_IDENTIFICATION,

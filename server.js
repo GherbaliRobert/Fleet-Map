@@ -1153,7 +1153,7 @@ app.get('/css/app.css', (req, res) => { res.set('Cache-Control', NO_CACHE); res.
 // Categoriile de permis, generate din license_cats.js — interfața NU ține o listă proprie. Dacă adaugi
 // o categorie sau muți una la „profesionist", se schimbă în același timp și în formular, și în raport.
 const _LICENSE_JS = 'window.RA_LICENSE=' + JSON.stringify({
-  categories: licenseCats.CATEGORIES, groups: licenseCats.GROUPS, pro: licenseCats.PRO
+  categories: licenseCats.CATEGORIES, groups: licenseCats.GROUPS, pro: licenseCats.PRO, tacho: licenseCats.TACHO
 }) + ';';
 app.get('/js/license-cats.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_LICENSE_JS); });
 
@@ -3921,17 +3921,37 @@ app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCom
     const pragCard = _prag('tacho_zile_card', tacho.TERMEN_CARD_ZILE);
     const pragVu = _prag('tacho_zile_vu', tacho.TERMEN_VU_ZILE);
 
-    const { soferi, vehicule } = await db.getTachoScadentar(req.isSuper ? null : req.companyId);
+    let { soferi, vehicule } = await db.getTachoScadentar(req.isSuper ? null : req.companyId);
     const acum = new Date().toISOString();
 
-    const S = soferi.map(d => Object.assign(
-      { id: d.id, nume: d.name, fisiere: Number(d.fisiere) || 0, ultima: tacho.ziISO(d.ultima) },
+    // 1. Flota demo nu are ce căuta aici. Vehiculele DEMO-1..5 sunt sintetice și au fost semănate cu
+    //    categoria „truck", deci treceau de filtrul de categorie și apăreau ca „niciodată descărcate"
+    //    în scadențarul unui super-admin. Aceeași regulă ca peste tot: demo se vede DOAR în contul demo.
+    if (req.companyId !== demoCompanyId) {
+      soferi = soferi.filter(d => d.company_id !== demoCompanyId);
+      vehicule = vehicule.filter(v => !DEMO_SET.has(v.imei));
+    }
+
+    // 2. Doar șoferii cu card de tahograf, adică cei cu o categorie de marfă/persoane pe permis
+    //    (C*, D*). Cine are doar B nu conduce vehicul cu tahograf, deci n-are ce descărca — a apărea
+    //    în listă ca „niciodată descărcat" ar fi o alarmă falsă permanentă.
+    //    Șoferii FĂRĂ nicio categorie completată sunt un caz aparte: s-ar putea să fie profesioniști
+    //    necompletați. Îi numărăm și îi spunem pe nume în ecran, ca să nu dispară în tăcere.
+    const proSoferi = [], nepro = [], neincadrati = [];
+    for (const d of soferi) {
+      if (licenseCats.needsTacho(d.license_categories)) proSoferi.push(d);
+      else if (licenseCats.classify(d.license_categories).key === 'none') neincadrati.push(d.name);
+      else nepro.push(d.name);
+    }
+    const S = proSoferi.map(d => Object.assign(
+      { id: d.id, nume: d.name, categorii: licenseCats.format(d.license_categories),
+        fisiere: Number(d.fisiere) || 0, ultima: tacho.ziISO(d.ultima) },
       tacho.scadenta(d.ultima, pragCard, acum)));
 
-    // Doar vehiculele care au tahograf de descărcat (peste 3,5 t). O dubă n-are memorie de citit,
-    // și n-are rost s-o punem în listă ca „niciodată descărcată" — ar fi o alarmă falsă permanentă.
-    const areTahograf = (t) => /truck|camion|tir|lorry|tractor|autotractor|bus|autobuz|autocar/i.test(String(t || ''));
-    const V = vehicule.filter(v => areTahograf(v.vehicle_type)).map(v => Object.assign(
+    // 3. Doar vehiculele care au tahograf de descărcat. Regula (și capcana „Tractor" vs „Autotractor")
+    //    stă în tacho.js — o singură dată, ca s-o poată citi și rapoartele.
+    const faraTahograf = vehicule.filter(v => !tacho.vehiculAreTahograf(v.vehicle_type));
+    const V = vehicule.filter(v => tacho.vehiculAreTahograf(v.vehicle_type)).map(v => Object.assign(
       { imei: v.imei, nume: v.plate || v.name || v.imei, model: [v.brand, v.model].filter(Boolean).join(' ') || null,
         fisiere: Number(v.fisiere) || 0, ultima: tacho.ziISO(v.ultima) },
       tacho.scadenta(v.ultima, pragVu, acum)));
@@ -3940,6 +3960,13 @@ app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCom
     res.json({
       praguri: { card: pragCard, vu: pragVu },
       soferi: S, vehicule: V,
+      // Ce am lăsat pe dinafară și de ce. Fără rândurile astea, un ecran gol nu se distinge de o
+      // aplicație stricată — și un profesionist necompletat ar lipsi fără ca nimeni să afle.
+      excluse: {
+        soferiFaraCategorie: neincadrati,
+        soferiNeprofesionisti: nepro.length,
+        vehiculeFaraTahograf: faraTahograf.length,
+      },
       sumar: {
         depasite: numar(S, 'depasit') + numar(V, 'depasit'),
         niciodata: numar(S, 'niciodata') + numar(V, 'niciodata'),
