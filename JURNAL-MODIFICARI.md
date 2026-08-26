@@ -43,6 +43,10 @@ scrie EPC, bujiile incandescente sunt spirala, treapta e caseta cu litera. Înai
 diferite împrumutau același desen, iar geamurile îl luau pe cel al trapei — Font Awesome n-are
 iconițe de bord, așa că nu prea avea de unde alege.
 
+Opt dintre desene nu se citeau la mărimea reală (19 pixeli): mâna de STOP ieșea un bulgăre, centura
+un „%", motorul un norișor. Le-am privit pe rând, mărite și la mărimea din aplicație, și le-am
+refăcut până s-au citit — inclusiv centura, pentru care am desenat patru variante ca să aleg una.
+
 **Și pe web, și pe telefon, desenele sunt acum ACELEAȘI.** Se scriu într-un singur loc și se
 generează automat pentru web; dacă cineva schimbă un desen și uită să-l regenereze, se oprește
 verificarea automată înainte de livrare.
