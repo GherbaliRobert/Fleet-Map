@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
-### AMÂNDOI · De ce nu se vedeau pictogramele pe Passat — și cele 6 semnale citite greșit — `COMMIT_HASH`
+### AMÂNDOI · De ce nu se vedeau pictogramele pe Passat — și cele 6 semnale citite greșit — `b734a01`
 
 Passat-ul **transmite** de aseară: 106 semnale, tot ce scrie în fișa Teltonika pentru modelul ăsta.
 Dar ecranul de stări rămânea gol. Am găsit de ce, uitându-mă la datele lui reale.
