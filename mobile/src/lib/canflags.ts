@@ -12,7 +12,7 @@ import type { IconName } from '../components/Icon';
 
 export type CanKind = 'warn' | 'open' | 'on' | 'info' | 'code';
 export interface CanFlag {
-  key: string; label: string; icon: string; mi: IconName; group: string; kind: CanKind; st?: [string, string];
+  key: string; label: string; icon: string; mi: IconName; group: string; kind: CanKind; st?: [string, string]; desc?: string;
 }
 export interface CanGroup { key: string; label: string; icon: string; mi: IconName; }
 export interface CanCatalog {

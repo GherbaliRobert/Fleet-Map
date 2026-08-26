@@ -276,6 +276,15 @@ Verificat cap-coadă pe sandbox: pachet TCP real cu stegulețe P4 → uși/frân
 corect în API, accelerometrul negativ corect, valoarea pe 8 octeți fără nicio pierdere de biți.
 APK reconstruit.
 
+**Completare, după împăcarea cu lucrul din sesiunea paralelă:** panoul de plăcuțe CAN (web + telefon)
+există deja, cu sursa unică `can_flags.js` — acolo au intrat cele **45 de plăcuțe noi P4** (ambreiaj,
+telecomandă, CNG, diferențiale, martori hidraulici/remorcă…), fiecare cu explicația ei. Lista
+„necitite" a scăzut de la 5 la 1: ambreiajul și telecomanda, anticipate acolo ca necunoscute, au
+acum biți oficiali și se aprind. **Balonul cerut e pe telefon:** atingi orice plăcuță → balon cu ce
+înseamnă și starea curentă; pe web, același text apare la ținerea mouse-ului. Un test nou în CI ține
+catalogul și decodoarele lipite: fiecare plăcuță are decodor, fiecare steag decodat are plăcuță,
+fiecare plăcuță are explicație.
+
 ## 2026-08-20
 
 ### AMÂNDOI · „Card combustibil" a fost scos din Management

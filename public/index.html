@@ -14625,7 +14625,7 @@ const pozitii = await r.json();</code></pre>
 
           placi.push(
             '<div class="cf k-' + f.kind + (aprins ? ' lit' : '') + (necitit ? ' cf-nd' : '') + '"' +
-              ' title="' + _usEsc(f.label + ' — ' + text) + '">' +
+              ' title="' + _usEsc(f.label + ' — ' + text + (f.desc ? '. ' + f.desc : '')) + '">' +
               '<i class="fas ' + _usEsc(f.icon) + '"></i>' +
               '<span class="cf-l">' + _usEsc(f.label) + '</span>' +
               '<span class="cf-s">' + _usEsc(text) + '</span>' +
@@ -14669,8 +14669,9 @@ const pozitii = await r.json();</code></pre>
 
       let out = '<div class="cf-sum">' + rezumat + '</div>' + sectiuni.join('');
       if (nedecodateVazute) {
-        out += '<div class="cf-note"><i class="fas fa-circle-info"></i> ' + nedecodateVazute +
-          ' semnale sunt marcate <em>necitit</em>: adaptorul le poate trimite, dar încă nu știm ' +
+        out += '<div class="cf-note"><i class="fas fa-circle-info"></i> ' +
+          (nedecodateVazute === 1 ? '1 semnal e marcat' : nedecodateVazute + ' semnale sunt marcate') +
+          ' <em>necitit</em>: adaptorul le poate trimite, dar încă nu știm ' +
           'unde le pune în mesaj. Le aprindem după ce le confirmăm pe un vehicul — până atunci ' +
           'preferăm să lipsească decât să arate greșit.</div>';
       }

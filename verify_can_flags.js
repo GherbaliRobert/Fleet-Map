@@ -117,12 +117,15 @@ sect('4. Steagurile pe care nu le citim încă');
 {
   const h = canFlagsHtml(flat(mkSec([5, 0, 0, 3, 0, 0, 0, 0]), mkCtl([0, 0, 0, 0])), new Set());
   // NU număra `necitit<` peste tot: nota explicativă de jos conține și ea cuvântul. Doar plăcuțele.
+  // 26.08: din cele 5 nedecodate a rămas UNA (închiderea centralizată). Ambreiajul și telecomanda
+  // au acum biți oficiali (P4) și se decodează — deci nu mai apar „necitite", ci ca plăcuțe vii.
   const placiNecitite = (h.match(/cf-s">necitit</g) || []).length;
-  T('apar marcate „necitit"', placiNecitite === 5, 'găsite ' + placiNecitite);
-  T('au ramă punctată (cf-nd)', (h.match(/cf-nd/g) || []).length === 5);
+  T('apar marcate „necitit"', placiNecitite === 1, 'găsite ' + placiNecitite);
+  T('au ramă punctată (cf-nd)', (h.match(/cf-nd/g) || []).length === 1);
   T('nu sunt aprinse', !/cf-nd lit|lit cf-nd/.test(h));
-  T('nota explicativă apare', h.includes('5 semnale sunt marcate'));
-  T('Ambreiaj e printre ele', /Ambreiaj<\/span><span class="cf-s">necitit</.test(h));
+  T('nota explicativă apare', h.includes('1 semnal e marcat'));
+  T('Ambreiajul NU mai e necitit (P4 îl decodează)', !/Ambreiaj<\/span><span class="cf-s">necitit</.test(h));
+  T('Închiderea centralizată a rămas necitită', /Închidere centralizată<\/span><span class="cf-s">necitit</.test(h));
   cat.NEDECODATE.forEach(k => T('are fișă în catalog: ' + k, !!cat.flagMeta(k)));
 }
 
@@ -148,17 +151,33 @@ sect('6. Adaptor care dă doar martorii de bord');
 // ════════════ 7. Acoperire: fiecare steag decodat are fișă ════════════
 sect('7. Acoperire față de codec8e.js');
 {
-  const sf = Object.keys(codec.decodeSecurityFlags(BigInt(0))).map(k => '_sf_' + k);
-  const cf = Object.keys(codec.decodeControlFlags(0)).map(k => '_cf_' + k);
+  // 26.08: cheile valabile vin din TOATE decodoarele — P2 și P4 (ALL-CAN300).
+  const sf = [...new Set([
+    ...Object.keys(codec.decodeSecurityFlags(BigInt(0))),
+    ...Object.keys(codec.decodeSecurityFlagsP4('0')),
+  ])].map(k => '_sf_' + k);
+  const cf = [...new Set([
+    ...Object.keys(codec.decodeControlFlags(0)),
+    ...Object.keys(codec.decodeControlFlagsP4('0')),
+    ...Object.keys(codec.decodeIndicatorFlagsP4('0')),
+  ])].map(k => '_cf_' + k);
   const fara = [...sf, ...cf].filter(k => !cat.isFlagKey(k));
   T('toate steagurile decodate au nume + iconiță', fara.length === 0, fara.join(', '));
   const orfane = cat.FLAGS.filter(f => ![...sf, ...cf].includes(f.key)).map(f => f.key);
   const neasteptate = orfane.filter(k => !cat.NEDECODATE.includes(k));
   T('nu avem fișe pentru chei inexistente', neasteptate.length === 0, neasteptate.join(', '));
 
-  // fiecare steag decodat ajunge efectiv pe ecran
+  // fiecare steag decodat ajunge efectiv pe ecran — inclusiv cele P4 (26.08): aprindem și
+  // containerele P4 cu totul, exact cum ar veni de la un ALL-CAN300 cu toate semnalele active.
   const b = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
-  const h = canFlagsHtml(flat(mkSec(b), mkCtl([0xff, 0xff, 0xff, 0xff])), new Set());
+  const ioTot = { can_security_state_flags: mkSec(b), can_control_state_flags: mkCtl([0xff, 0xff, 0xff, 0xff]),
+    can_security_state_flags_p4: '18446744073709551615', can_control_state_flags_p4: '18446744073709551615',
+    can_indicator_state_flags_p4: '18446744073709551615' };
+  codec.expandCanFlags(ioTot);
+  const fTot = {};
+  for (const [k, v] of Object.entries(ioTot._security_flags || {})) fTot['_sf_' + k] = v;
+  for (const [k, v] of Object.entries(ioTot._control_flags || {})) fTot['_cf_' + k] = v;
+  const h = canFlagsHtml(fTot, new Set());
   const lipsa = [...sf, ...cf].map(k => cat.flagMeta(k)).filter(f => f && !h.includes('>' + f.label + '<'));
   T('toate apar pe ecran cu totul aprins', lipsa.length === 0, lipsa.map(f => f.key).join(', '));
   T('nu rămâne nimic în „avansate"', true);

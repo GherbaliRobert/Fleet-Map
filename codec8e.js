@@ -722,7 +722,7 @@ function decodeSecurityFlagsP4(value) {
   flags.interlock = B(17);
   flags.handbrake = B(18);
   flags.footbrake = B(19);
-  flags.clutch_pushed = B(20);
+  flags.clutch = B(20);                 // cheia din can_flags.js (era anticipata acolo ca „necitita")
   flags.hazard_lights = B(21);
   flags.door_front_left = B(22);
   flags.door_front_right = B(23);
@@ -737,12 +737,12 @@ function decodeSecurityFlagsP4(value) {
   flags.car_closed = B(32);
   flags.factory_alarm = B(33);
   flags.alarm_emulated = B(34);
-  flags.remote_close_signal = B(35);
-  flags.remote_open_signal = B(36);
+  flags.remote_close = B(35);
+  flags.remote_open = B(36);
   flags.rearm_signal = B(37);
   flags.trunk_remote_open = B(38);
   flags.can_sleep_mode = B(39);
-  flags.remote_close_x3 = B(40);
+  flags.remote_arm3x = B(40);
   flags.parking = B(41);
   flags.reverse = B(42);
   flags.neutral = B(43);

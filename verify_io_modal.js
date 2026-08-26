@@ -46,11 +46,14 @@ const sect = t => console.log('\n' + t);
 const nrDin = h => { const m = /^<div [^>]*>(\d+) IO-uri/.exec(h); return m ? +m[1] : 0; };
 
 // ── Mașina lui Alin: CAN cu cifre, fără steaguri ──
+// io_9999 = un ID inventat, garantat NEcatalogat. Era io_1148, dar din 26.08 catalogul acoperă
+// TOATĂ lista oficială Teltonika (io_catalog_extra generat din spec), deci 1148 are acum nume —
+// iar testul de „necatalogat" trebuie să folosească ceva ce chiar nu există.
 const masina = {
   nume: 'B 112 RFG',
   chei: { ignition: 0, movement: 0, can_engine_rpm: 679, can_fuel_level_liters: 51.1,
           can_total_mileage: 404795, external_voltage: 12820, battery_voltage: 4080,
-          gsm_signal: 4, io_1148: 7 },
+          gsm_signal: 4, io_9999: 7 },
 };
 
 sect('1. Fără vehicul deschis — dicționarul întreg, ca înainte');
@@ -75,11 +78,11 @@ sect('2. Cu vehicul deschis, bifat „doar ce trimite"');
   T('arată valoarea de acum', h.includes('>acum<'));
   T('valoarea turației e formatată', h.includes('679 RPM'), h.match(/679[^<]*/));
   T('tensiunea e în volți, nu mV', h.includes('12.82 V'));
-  T('prinde și codul brut io_1148', h.includes('io_1148'));
+  T('prinde și codul brut io_9999', h.includes('io_9999'));
   T('rama e accentuată pe cele trimise', h.includes('border:1px solid var(--accent)'));
   T('contorul spune câte semnale', /\d+ semnale/.test(els['rax-io-nr'].textContent), els['rax-io-nr'].textContent);
   T('contorul spune câte n-au nume', /fără nume/.test(els['rax-io-nr'].textContent), els['rax-io-nr'].textContent);
-  T('io_1148 e marcat necatalogat', h.includes('Necatalogat'));
+  T('io_9999 e marcat necatalogat', h.includes('Necatalogat'));
   // nu trebuie să apară coduri pe care mașina NU le trimite
   T('nu arată AdBlue (mașina nu-l trimite)', !/adblue/i.test(h));
 }

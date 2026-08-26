@@ -52,7 +52,7 @@ t('biți 23+26+27 → ușa dreapta + portbagaj + capotă', f.door_front_right &&
 f = c.decodeSecurityFlagsP4(b(8, 11));
 t('biți 8+11 → contact pus + motor pornit', f.ignition_on === true && f.engine_working === true);
 f = c.decodeSecurityFlagsP4(b(18, 20));
-t('biți 18+20 → frâna de mână + ambreiaj apăsat', f.handbrake === true && f.clutch_pushed === true);
+t('biți 18+20 → frâna de mână + ambreiaj apăsat', f.handbrake === true && f.clutch === true);
 f = c.decodeSecurityFlagsP4(b(32));
 t('bit 32 → mașina închisă', f.car_closed === true);
 f = c.decodeSecurityFlagsP4(b(41, 45, 47));
@@ -108,7 +108,7 @@ if (r.records && r.records[0]) {
   t('dallas_temp_1: semnat + ×0.1 → -20 °C', d.dallas_temp_1 === -20, String(d.dallas_temp_1));
   t('P4 pe 8 octeți NU pierde biții (2^53)', String(d.can_security_state_flags_p4) === P4_REAL.toString(10), String(d.can_security_state_flags_p4));
   c.expandCanFlags(d);
-  t('expandCanFlags decodează P4 → ambreiaj apăsat (bit 20)', d._security_flags && d._security_flags.clutch_pushed === true, JSON.stringify(d._security_flags || {}).slice(0, 120));
+  t('expandCanFlags decodează P4 → ambreiaj apăsat (bit 20)', d._security_flags && d._security_flags.clutch === true, JSON.stringify(d._security_flags || {}).slice(0, 120));
   t('și lucrurile NESETATE rămân stinse', d._security_flags.door_front_left === false && d._security_flags.handbrake === false);
 }
 
@@ -127,6 +127,20 @@ const cat = require('./io_catalog.js');
 const lipsaCat = spec.filter((e) => !cat.IO_CATALOG_BY_ID[e.id]);
 t('fiecare ID oficial are intrare în catalog (etichetă RO)', lipsaCat.length === 0, lipsaCat.slice(0, 6).map((e) => e.id).join(', '));
 t('corecturile de etichete s-au aplicat (30 nu mai e „umiditate BLE")', /DTC/.test(cat.IO_CATALOG_BY_ID[30].name_ro), cat.IO_CATALOG_BY_ID[30].name_ro);
+
+console.log('\n=== 8. Catalogul de placute <-> decodoarele (sursa unica nu deraiaza) ===\n');
+// Fiecare placuta din can_flags.js trebuie sa aiba un decodor care s-o aprinda (altfel minte ca
+// exista), si fiecare steag decodat trebuie sa aiba placuta (altfel se decodeaza in gol).
+const cflags = require('./can_flags.js');
+const emise = new Set();
+const TOT = '18446744073709551615';
+[['decodeSecurityFlags', '_sf_'], ['decodeSecurityFlagsP4', '_sf_']].forEach(([fn, pfx]) => Object.keys(c[fn](TOT)).forEach((k) => emise.add(pfx + k)));
+[['decodeControlFlags', '_cf_'], ['decodeControlFlagsP4', '_cf_'], ['decodeIndicatorFlagsP4', '_cf_']].forEach(([fn, pfx]) => Object.keys(c[fn](TOT)).forEach((k) => emise.add(pfx + k)));
+const orfane = cflags.FLAGS.filter((f) => !emise.has(f.key) && !cflags.NEDECODATE.includes(f.key));
+t('fiecare placuta are decodor (' + cflags.FLAGS.length + ' placute)', orfane.length === 0, orfane.map((f) => f.key).join(', '));
+const faraPlacuta = [...emise].filter((k) => !cflags.FLAGS.find((f) => f.key === k));
+t('fiecare steag decodat are placuta', faraPlacuta.length === 0, faraPlacuta.join(', '));
+t('fiecare placuta are explicatie pentru balon', cflags.FLAGS.every((f) => f.desc && f.desc.length > 10), cflags.FLAGS.filter((f) => !f.desc).map((f) => f.key).join(', '));
 
 console.log('\n' + ok + '/' + (ok + fail) + ' verificări trecute\n');
 process.exit(fail ? 1 : 0);

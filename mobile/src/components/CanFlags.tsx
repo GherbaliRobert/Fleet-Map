@@ -11,6 +11,9 @@ import './CanFlags.css';
 // numai pentru super-admin, în lista „Toate semnalele (brut)".
 export function CanFlags({ io }: { io: any }) {
   const [cat, setCat] = useState<CanCatalog | null>(null);
+  // Placuta atinsa → balonul cu explicatia (cerut de Robert, 26.08: „apesi pe pictograma si iti
+  // apare un balon cu informatia"). A doua atingere pe aceeasi placuta il inchide.
+  const [ales, setAles] = useState<string | null>(null);
   useEffect(() => { let viu = true; loadCanCatalog().then((c) => { if (viu) setCat(c); }); return () => { viu = false; }; }, []);
   if (!cat) return null;
 
@@ -97,16 +100,34 @@ export function CanFlags({ io }: { io: any }) {
             </summary>
             <div class="cfm-grid">
               {placi.map(({ f, aprins, text, necitit }) => (
-                <div
-                  class={'cfm-t' + (aprins ? ' lit' : '') + (necitit ? ' nd' : '')}
+                <button
+                  type="button"
+                  class={'cfm-t' + (aprins ? ' lit' : '') + (necitit ? ' nd' : '') + (ales === f.key ? ' sel' : '')}
                   key={f.key}
                   style={aprins ? { '--c': canColor(f.kind) } as any : undefined}
+                  onClick={() => setAles(ales === f.key ? null : f.key)}
                 >
                   <Icon name={f.mi} size={17} />
                   <span class="cfm-l">{f.label}</span>
                   <span class="cfm-s">{text}</span>
-                </div>
+                </button>
               ))}
+              {(() => {
+                const b = placi.find((x) => x.f.key === ales);
+                if (!b) return null;
+                return (
+                  <div class="cfm-balon" onClick={() => setAles(null)}>
+                    <div class="cfm-balon-cap">
+                      <Icon name={b.f.mi} size={18} color={b.aprins ? canColor(b.f.kind) : 'currentColor'} />
+                      <b>{b.f.label}</b>
+                      <span class="cfm-balon-st" style={b.aprins ? { color: canColor(b.f.kind) } : undefined}>{b.text}</span>
+                    </div>
+                    {b.necitit
+                      ? <div class="cfm-balon-txt">Adaptorul poate trimite semnalul ăsta, dar încă nu-i știm poziția în mesaj — îl aprindem după ce îl confirmăm pe un vehicul.</div>
+                      : b.f.desc ? <div class="cfm-balon-txt">{b.f.desc}</div> : null}
+                  </div>
+                );
+              })()}
             </div>
           </details>
         );
@@ -114,7 +135,7 @@ export function CanFlags({ io }: { io: any }) {
 
       {necitite > 0 && (
         <div class="cfm-note">
-          {necitite} semnale sunt marcate „necitit": adaptorul le poate trimite, dar încă nu știm unde le pune
+          {necitite === 1 ? '1 semnal e marcat' : necitite + ' semnale sunt marcate'} „necitit": adaptorul le poate trimite, dar încă nu știm unde le pune
           în mesaj. Le aprindem după ce le confirmăm pe un vehicul — până atunci preferăm să lipsească decât
           să arate greșit.
         </div>

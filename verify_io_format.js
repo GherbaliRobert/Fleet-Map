@@ -83,7 +83,8 @@ console.log('\n3. Catalogul completează numele codurilor brute');
   const byId = {}; IO_CATALOG.forEach(e => { byId[e.id] = e; });
   T('io_35 ia numele din catalog', fmt.formatIoLabel('io_35', byId) === 'Turație motor', fmt.formatIoLabel('io_35', byId));
   T('fără catalog rămâne înfrumusețat', fmt.formatIoLabel('io_35', null) === 'Io 35');
-  T('cod necunoscut, cu catalog', fmt.formatIoLabel('io_1148', byId) === 'Io 1148');
+  // io_1148 are nume din 26.08 (catalogul acoperă toată lista oficială Teltonika) → un id inventat
+  T('cod necunoscut, cu catalog', fmt.formatIoLabel('io_9999', byId) === 'Io 9999');
   T('cheile numite nu trec prin catalog', fmt.formatIoLabel('_sf_hood_open', byId) === 'Capota motor');
 }
 
