@@ -27,7 +27,9 @@ console.log('\n══ 2. Numele vechi rămân neatinse ══\n');
 const vechi = require('./tools/fixtures/io_map_inainte.json');
 // 29-38: etichete fms_* GHICITE, care afișau date greșite (oficial: BLE baterie + OBD).
 // Corectate deliberat — vezi jurnalul din 26.08. FMS-ul adevărat merge prin iface='fms'.
-const CORECTATE = new Set([29, 30, 31, 32, 33, 37, 38]);
+// 217: era etichetat 'can_vin', dar oficial e „Geofence zone 36" — VIN-ul real e ID 325.
+// Aceeași categorie de greșeală ca 29-38: un nume ghicit, care arăta date de altundeva.
+const CORECTATE = new Set([29, 30, 31, 32, 33, 37, 38, 217]);
 const schimbate = [];
 for (const [id, nume] of Object.entries(vechi)) {
   if (CORECTATE.has(Number(id))) continue;
@@ -35,6 +37,8 @@ for (const [id, nume] of Object.entries(vechi)) {
 }
 t('niciun nume istoric schimbat (' + (Object.keys(vechi).length - CORECTATE.size) + ' verificate)', schimbate.length === 0, schimbate.slice(0, 5).join(' | '));
 t('corecturile documentate au numele oficiale', c.getIoName(29, null) === 'ble_battery_1' && c.getIoName(30, null) === 'obd_dtc_count' && c.getIoName(37, null) === 'obd_vehicle_speed');
+t('217 nu mai e „VIN", ci zona de geofence', c.getIoName(217, null) === 'geofence_zone_36', c.getIoName(217, null));
+t('VIN-ul real e ID 325', c.getIoName(325, null) === 'can_vin', c.getIoName(325, null));
 
 console.log('\n══ 3. Interfețele FMS/tacho NU sunt atinse de lista generată ══\n');
 // IO_EXTRA se aplică DOAR hărții standard: pe FMC650 (iface fms) aceleași ID-uri înseamnă altceva.
@@ -127,6 +131,55 @@ const cat = require('./io_catalog.js');
 const lipsaCat = spec.filter((e) => !cat.IO_CATALOG_BY_ID[e.id]);
 t('fiecare ID oficial are intrare în catalog (etichetă RO)', lipsaCat.length === 0, lipsaCat.slice(0, 6).map((e) => e.id).join(', '));
 t('corecturile de etichete s-au aplicat (30 nu mai e „umiditate BLE")', /DTC/.test(cat.IO_CATALOG_BY_ID[30].name_ro), cat.IO_CATALOG_BY_ID[30].name_ro);
+
+console.log('\n=== 9. Campuri TEXT si valori lungi (grupul NX) ===\n');
+// Cazul real: VIN-ul soseste pe 17 octeti ASCII (ID 325). Soseau ca sir hex si asa ramaneau —
+// „5756325a..." in loc de „WV2ZZZ...". Iar containerele de stegulete trimise prin NX ajungeau ca
+// sir hex FARA prefix, iar BigInt() le citea ca ZECIMAL → toti bitii gresiti.
+function pachetNX(elem) {
+  const q2 = (n) => { const x = Buffer.alloc(2); x.writeUInt16BE(n, 0); return x; };
+  const nx = Buffer.concat([q2(elem.length)].concat(elem.map(([id, buf]) => Buffer.concat([q2(id), q2(buf.length), buf]))));
+  const ioB = Buffer.concat([q2(0), q2(elem.length), q2(0), q2(0), q2(0), q2(0), nx]);
+  const ts2 = Buffer.alloc(8); ts2.writeBigUInt64BE(1756150000000n, 0);
+  const g2 = Buffer.alloc(15);
+  g2.writeInt32BE(261025000, 0); g2.writeInt32BE(444268000, 4);
+  g2.writeUInt16BE(80, 8); g2.writeUInt16BE(90, 10); g2.writeUInt8(10, 12); g2.writeUInt16BE(0, 13);
+  const rec2 = Buffer.concat([ts2, Buffer.from([0x01]), g2, ioB]);
+  const dat2 = Buffer.concat([Buffer.from([0x8e, 0x01]), rec2, Buffer.from([0x01])]);
+  const h2 = Buffer.alloc(8); h2.writeUInt32BE(0, 0); h2.writeUInt32BE(dat2.length, 4);
+  return Buffer.concat([h2, dat2, Buffer.alloc(4)]);
+}
+const VIN = 'WV2ZZZ2KZ8X017409';
+const P4buf = Buffer.alloc(8); P4buf.writeBigUInt64BE(P4_REAL, 0);
+const rNx = c.parseAvlPacket(pachetNX([[325, Buffer.from(VIN, 'latin1')], [517, P4buf]]), null);
+t('pachetul NX se parseaza', !rNx.error, rNx.error);
+const dNx = rNx.records && rNx.records[0] ? rNx.records[0].io : {};
+t('VIN-ul e text lizibil, nu hex', dNx.can_vin === VIN, String(dNx.can_vin));
+t('stegulete P4 prin NX: valoare ZECIMALA corecta', String(dNx.can_security_state_flags_p4) === P4_REAL.toString(10), String(dNx.can_security_state_flags_p4));
+c.expandCanFlags(dNx);
+t('deci bitii ies corect si pe calea NX', dNx._security_flags && dNx._security_flags.clutch === true && dNx._security_flags.door_front_left === false);
+// VIN cu umplutura de octeti nuli (multe adaptoare umplu pana la 17)
+const rPad = c.parseAvlPacket(pachetNX([[325, Buffer.concat([Buffer.from('WVWZZZ', 'latin1'), Buffer.alloc(11)])]]), null);
+t('VIN cu umplutura nula → text curat', rPad.records[0].io.can_vin === 'WVWZZZ', JSON.stringify(rPad.records[0].io.can_vin));
+// Ceva ce NU e text imprimabil ramane hex — mai bine tehnic decat caractere aiurea
+const rBin = c.parseAvlPacket(pachetNX([[325, Buffer.from([0x01, 0x02, 0x9f, 0xfe])]]), null);
+t('continut ne-imprimabil ramane hex', /^[0-9a-f]+$/.test(String(rBin.records[0].io.can_vin)), String(rBin.records[0].io.can_vin));
+
+console.log('\n=== 10. Cele doua kilometraje NU se amesteca ===\n');
+// Intrebarea lui Robert (26.08): „Total Odometer intra in conflict cu odometrul masinii?"
+// Nu: sunt doua marimi diferite. ID 16 = contorul DISPOZITIVULUI din GPS, de la montare (metri).
+// ID 87 = kilometrajul REAL din bordul masinii, prin CAN (convertit la km inca de la primire).
+t('ID 16 e contorul GPS al dispozitivului', c.getIoName(16, null) === 'total_odometer');
+t('ID 87 e kilometrajul din bord', c.getIoName(87, null) === 'can_total_mileage');
+t('sunt chei DIFERITE (nu se suprascriu)', c.getIoName(16, null) !== c.getIoName(87, null));
+const catKm = require('./io_catalog.js');
+t('87 e etichetat in km (valoarea stocata e deja km)', catKm.IO_CATALOG_BY_ID[87].unit === 'km', catKm.IO_CATALOG_BY_ID[87].unit);
+t('105 la fel', catKm.IO_CATALOG_BY_ID[105].unit === 'km', catKm.IO_CATALOG_BY_ID[105].unit);
+t('16 ramane in metri (nu trece prin conversie CAN)', catKm.IO_CATALOG_BY_ID[16].unit === 'm', catKm.IO_CATALOG_BY_ID[16].unit);
+t('eticheta lui 16 spune ca e al dispozitivului', /GPS|montare/i.test(catKm.IO_CATALOG_BY_ID[16].name_ro), catKm.IO_CATALOG_BY_ID[16].name_ro);
+// conversia: doar cheile can_ trec prin convertCanValue
+t('can_total_mileage: metri → km', c.convertCanValue('can_total_mileage', 31798270) === 31798.27, String(c.convertCanValue('can_total_mileage', 31798270)));
+t('total_odometer NU e atins de conversie', c.convertCanValue('total_odometer', 31798270) === 31798270);
 
 console.log('\n=== 8. Catalogul de placute <-> decodoarele (sursa unica nu deraiaza) ===\n');
 // Fiecare placuta din can_flags.js trebuie sa aiba un decodor care s-o aprinda (altfel minte ca

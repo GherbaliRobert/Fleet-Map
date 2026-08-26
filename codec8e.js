@@ -309,12 +309,12 @@ function parseIoGroupNX(buffer, offset) {
     const length = buffer.readUInt16BE(offset);
     offset += 2;
 
-    // Citim valoarea ca hex string
-    const value = buffer.slice(offset, offset + length).toString('hex');
+    const bruta = buffer.slice(offset, offset + length);
+    const value = bruta.toString('hex');   // `raw` pastreaza mereu forma bruta, pentru diagnoza
     offset += length;
 
     raw[id] = value;
-    values[getIoName(id)] = value;
+    values[getIoName(id)] = normalizeNxValue(id, bruta, value);
   }
 
   return { values, raw, nextOffset: offset };
@@ -473,8 +473,9 @@ function getIoName(id, iface) {
     213: 'lls_fuel_temp_4',             // LLS 4 Temperature (°C)
     214: 'lls_fuel_level_5',            // LLS 5 Fuel Level
     // 215, 216 → io_215/io_216 (necunoscute) — de confirmat din configurator, fără mapare greșită
-    // Truck VIN si identificare
-    217: 'can_vin',                     // string (VIN number)
+    // 217 NU mai e aici: era etichetat 'can_vin', dar oficial ID 217 = „Geofence zone 36".
+    // VIN-ul adevarat pe ALL-CAN300 e ID 325 (17 octeti ASCII) — vine din IO_EXTRA. Aceeasi
+    // categorie de greseala ca fms_* de la 29-38: un nume ghicit care arata date de altundeva.
     218: 'can_engine_total_fuel_used', // liters * 100 (lifetime)
     219: 'can_total_engine_revolutions',
     // Sarcina si transport
@@ -515,13 +516,54 @@ function getIoName(id, iface) {
   };
 
   if (names[id] !== undefined) return names[id];
+  _HARTA_DE_MANA = names;          // vezi numeDeMana(): generatorul trebuie sa vada DOAR harta asta
   if (IO_EXTRA[id] !== undefined) return IO_EXTRA[id].name;
   return `io_${id}`;
+}
+
+// Numele din harta scrisa DE MANA (fara lista generata). Exista pentru tools/gen-io-extra.js:
+// generatorul isi citea propriul rezultat prin getIoName si, de la a doua rulare, credea ca „tot e
+// deja mapat" — a doua rulare a produs 52 de ID-uri in loc de 501. Un generator care nu e idempotent
+// e mai rau decat lipsa lui: prima rulare pare buna, a doua sterge munca.
+let _HARTA_DE_MANA = null;
+function numeDeMana(id, iface) {
+  const useIface = (iface !== undefined) ? iface : _ifaceForParse;
+  if (useIface === 'tacho' && TACHO_NAMES[id] !== undefined) return TACHO_NAMES[id];
+  if (useIface === 'fms' && FMS_NAMES[id] !== undefined) return FMS_NAMES[id];
+  if (_HARTA_DE_MANA === null) getIoName(-1, null);   // umple _HARTA_DE_MANA o singura data
+  const n = _HARTA_DE_MANA[id];
+  return n !== undefined ? n : null;
 }
 
 // Normalizarea valorilor din lista generata (DOAR harta standard — FMS/tacho au alte semnificatii):
 // two's complement pentru campurile semnate + multiplicatorul oficial. Astfel io_data ajunge in
 // unitati reale (°C, mG, %), ca la campurile poastre mapate de mana, nu in unitati brute de device.
+// Valorile din grupul NX (lungime variabila) soseau TOATE ca sir hex — si ramaneau asa.
+// Doua urmari, amandoua vazute in practica:
+//   • campurile TEXT (VIN, cod de bare, nume sofer) se afisau ca „5756325a5a..." in loc de
+//     „WV2ZZZ2KZ8X017409" — adica erau acolo, dar ilizibile;
+//   • containerele de stegulete P4, daca dispozitivul le trimite prin NX in loc de grupul de 8
+//     octeti, ajungeau ca „0080000000100002", iar BigInt() citeste asa ceva ca ZECIMAL → toti
+//     bitii ieseau gresiti, deci usi/lumini raportate aiurea. Aici le aducem la forma corecta.
+const _NX_HEX_NUMERIC = new Set([
+  'can_security_state_flags_p4', 'can_control_state_flags_p4', 'can_indicator_state_flags_p4',
+  'can_agricultural_state_flags_p4', 'can_utility_state_flags_p4', 'can_cistern_state_flags_p4',
+]);
+function normalizeNxValue(id, bufer, hex) {
+  const e = IO_EXTRA[id];
+  const nume = getIoName(id);
+  if (e && e.ascii) {
+    // ASCII cu umplutura: taiem octetii nuli si spatiile de la capete. Daca iese ceva ne-imprimabil,
+    // ramanem pe hex — mai bine un sir tehnic decat caractere aiurea intr-un camp de VIN.
+    const txt = bufer.toString('latin1').replace(/\u0000+/g, '').trim();
+    return /^[\x20-\x7E]*$/.test(txt) && txt.length ? txt : hex;
+  }
+  if (_NX_HEX_NUMERIC.has(nume)) {
+    try { return BigInt('0x' + hex).toString(10); } catch (err) { return hex; }
+  }
+  return hex;
+}
+
 function normalizeExtraValue(id, value) {
   const e = IO_EXTRA[id];
   if (!e || typeof value !== 'number') return value;
@@ -854,4 +896,4 @@ function expandCanFlags(ioData) {
   return ioData;
 }
 
-module.exports = { parseAvlPacket, getIoName, convertCanValue, expandCanFlags, decodeSecurityFlags, decodeControlFlags, decodeSecurityFlagsP4, decodeControlFlagsP4, decodeIndicatorFlagsP4, IO_EXTRA };
+module.exports = { parseAvlPacket, getIoName, numeDeMana, convertCanValue, expandCanFlags, decodeSecurityFlags, decodeControlFlags, decodeSecurityFlagsP4, decodeControlFlagsP4, decodeIndicatorFlagsP4, IO_EXTRA };

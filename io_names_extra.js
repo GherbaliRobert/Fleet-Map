@@ -1,6 +1,6 @@
 // io_names_extra.js — GENERAT de tools/gen-io-extra.js din specul oficial Teltonika FMC130.
 // NU edita de mână: rulează generatorul după ce actualizezi tools/fixtures/avl-fmc130.json.
-// Harta scrisă de mână din codec8e.js are prioritate; aici e restul listei oficiale (501 ID-uri),
+// Harta scrisă de mână din codec8e.js are prioritate; aici e restul listei oficiale (502 ID-uri),
 // ca un Passat cu ALL-CAN300 să nu mai apară cu zeci de „io_517" nedescifrate.
 // Câmpuri: name (cheia din io_data) · mult (multiplicator afișare/conversie) · semnat (two's complement)
 //          · octeti (lățimea valorii) · unit · comentariu = numele oficial + grupul din spec.
@@ -121,6 +121,7 @@ module.exports = {
   186: { name: 'can_distance_during_salting', octeti: 4, unit: "km" }, // Distance During Salting [ALLCAN300]
   215: { name: 'lls_fuel_temp_5', semnat: true, octeti: 1, unit: "°C" }, // LLS 5 Temperature [Permanent I/O elements]
   216: { name: 'geofence_zone_35', octeti: 1 }, // Geofence zone 35 [Eventual I/O elements]
+  217: { name: 'geofence_zone_36', octeti: 1 }, // Geofence zone 36 [Eventual I/O elements]
   224: { name: 'geofence_zone_43', octeti: 1 }, // Geofence zone 43 [Eventual I/O elements]
   225: { name: 'geofence_zone_44', octeti: 1 }, // Geofence zone 44 [Eventual I/O elements]
   226: { name: 'geofence_zone_45', octeti: 1 }, // Geofence zone 45 [Eventual I/O elements]
@@ -137,14 +138,14 @@ module.exports = {
   243: { name: 'green_driving_event_duration', octeti: 2, unit: "ms" }, // Green driving event duration [Eventual I/O elements]
   248: { name: 'immobilizer', octeti: 1 }, // Immobilizer [Eventual I/O elements]
   249: { name: 'jamming', octeti: 1 }, // Jamming [Eventual I/O elements]
-  256: { name: 'obd_vin', octeti: 17 }, // VIN [OBD elements]
+  256: { name: 'obd_vin', octeti: 17, ascii: true }, // VIN [OBD elements]
   257: { name: 'crash_trace_data' }, // Crash trace data [Eventual I/O elements]
   258: { name: 'ecomaximum', octeti: 8 }, // EcoMaximum [Eventual I/O elements]
   259: { name: 'ecoaverage', octeti: 8 }, // EcoAverage [Eventual I/O elements]
   260: { name: 'ecoduration', octeti: 2, unit: "ms" }, // EcoDuration [Eventual I/O elements]
   263: { name: 'bt_status', octeti: 1 }, // BT Status [Permanent I/O elements]
-  264: { name: 'barcode_id' }, // Barcode ID [FMBXXX FMB001 FMB010 FMB110 FMB120 FMB12]
-  281: { name: 'obd_fault_codes' }, // Fault Codes [OBD elements]
+  264: { name: 'barcode_id', ascii: true }, // Barcode ID [FMBXXX FMB001 FMB010 FMB110 FMB120 FMB12]
+  281: { name: 'obd_fault_codes', ascii: true }, // Fault Codes [OBD elements]
   303: { name: 'instant_movement', octeti: 1 }, // Instant Movement [Permanent I/O elements]
   304: { name: 'can_vehicles_range_on_battery', octeti: 4, unit: "m" }, // Vehicles Range On Battery [ALLCAN300, CANCONTROL]
   305: { name: 'can_vehicles_range_on_additional_fuel', octeti: 4, unit: "m" }, // Vehicles Range On Additional Fuel [ALLCAN300, CANCONTROL]
@@ -154,7 +155,7 @@ module.exports = {
   309: { name: 'ble_fuel_frequency_4_309', octeti: 4 }, // BLE Fuel Frequency #4 [Bluetooth Low Energy]
   317: { name: 'crash_event_counter', octeti: 1 }, // Crash event counter [Eventual I/O elements]
   318: { name: 'gnss_jamming', octeti: 1 }, // GNSS Jamming [Eventual I/O elements]
-  325: { name: 'can_vin_325', octeti: 17 }, // VIN [ALLCAN300, CANCONTROL]
+  325: { name: 'can_vin', octeti: 17, ascii: true }, // VIN [ALLCAN300, CANCONTROL]
   327: { name: 'ul202_fuel_level', mult: 0.1, semnat: true, octeti: 2, unit: "mm" }, // UL202-02 Sensor Fuel level [Permanent I/O elements]
   329: { name: 'ain_speed', octeti: 2 }, // AIN Speed [Permanent I/O elements]
   331: { name: 'ble_1_custom_1' }, // BLE 1 Custom #1 [Bluetooth Low Energy]
@@ -214,8 +215,8 @@ module.exports = {
   477: { name: 'ble_4_custom_4', octeti: 4 }, // BLE 4 Custom #4 [Bluetooth Low Energy]
   478: { name: 'ble_4_custom_5', octeti: 4 }, // BLE 4 Custom #5 [Bluetooth Low Energy]
   483: { name: 'ul202_sensor_status', octeti: 1 }, // UL202-02 Sensor Status [Permanent I/O elements]
-  500: { name: 'msp500_vendor_name', octeti: 40 }, // MSP500 vendor name [Permanent I/O elements]
-  501: { name: 'msp500_vehicle_number', octeti: 40 }, // MSP500 vehicle number [Permanent I/O elements]
+  500: { name: 'msp500_vendor_name', octeti: 40, ascii: true }, // MSP500 vendor name [Permanent I/O elements]
+  501: { name: 'msp500_vehicle_number', octeti: 40, ascii: true }, // MSP500 vehicle number [Permanent I/O elements]
   502: { name: 'msp500_speed_sensor', octeti: 1 }, // MSP500 speed sensor [Permanent I/O elements]
   517: { name: 'can_security_state_flags_p4', octeti: 8 }, // Security State Flags P4 [ALLCAN300]
   518: { name: 'can_control_state_flags_p4', octeti: 8 }, // Control State Flags P4 [ALLCAN300]

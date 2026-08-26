@@ -174,6 +174,42 @@ desenare din aplicație, ca să nu fie corectă ruta și mincinos ecranul.
 - **Ce vede clientul:** doar șoferii lui profesioniști și doar camioanele/autobuzele lui, fiecare cu
   termenul de descărcare. Restul flotei nu-i mai zgomotează ecranul.
 
+### AMÂNDOI · VIN-ul se citea de unde nu trebuie, iar textele veneau ca șiruri de cifre — `COMMIT_HASH`
+
+Două întrebări ale lui Robert (26.08) — „ce înseamnă VIN 325?" și „Total Odometer intră în conflict
+cu odometrul mașinii?" — au scos la iveală trei probleme, una serioasă.
+
+**1. VIN-ul era luat de la ID-ul greșit.** Aveam scris de mult că VIN-ul e semnalul **217**. În
+documentația oficială, 217 e cu totul altceva: „zona de geofence 36". VIN-ul adevărat, pe adaptorul
+ALL-CAN300, e **325** — 17 caractere text. Deci: în dreptul VIN-ului se afișa o valoare care nu avea
+nicio legătură cu seria de șasiu, iar VIN-ul real ajungea într-un câmp fără nume. Corectat amândouă.
+
+**2. Textele soseau ca șiruri de cifre.** VIN-ul, codul de bare scanat, numele șoferului de pe card —
+toate vin ca text, dar noi le păstram în forma tehnică: în loc de `WV2ZZZ2KZ8X017409` se vedea
+`5756325a5a5a...`. Erau acolo, dar ilizibile. Acum se afișează ca text.
+
+**3. Cea mai serioasă, deși nu se vedea:** stegulețele de stare (uși, lumini, frână de mână) pot sosi
+pe două căi. Pe una dintre ele erau citite ca număr **zecimal** deși erau scrise în hexazecimal —
+adică toți biții ieșeau greșiți. Ar fi însemnat uși raportate deschise când erau închise. Reparat, cu
+probă pe amândouă căile.
+
+**Despre cele două kilometraje — nu e conflict, sunt două lucruri diferite:**
+- **„Kilometraj din bord (CAN)"** = kilometrii REALI ai mașinii, citiți din bordul ei;
+- **„Odometru GPS (de la montare)"** = un contor al DISPOZITIVULUI nostru, care numără din GPS de
+  când a fost montat. Pornește de la zero la instalare.
+
+Aplicația le folosea deja în ordinea corectă (bord + GPS din fișă → CAN → GPS), dar **etichetele
+semănau prea tare** și una zicea „metri" deși valoarea era în kilometri. Le-am făcut explicite, cu
+explicație în catalog. Am scos și o intrare moartă din lista „Distanță": aștepta un semnal pe care
+nu-l produce nimic.
+
+- **Ce vede fondatorul:** VIN corect în fișă, etichete de kilometraj care nu se mai confundă.
+- **Ce vede clientul:** seria de șasiu citită automat din mașină, lizibil.
+
+Pe drum am reparat și **generatorul de hartă IO**: își citea propriul rezultat și, de la a doua
+rulare, credea că totul e deja făcut — ar fi produs 52 de intrări în loc de 502. Un generator care nu
+dă același rezultat la fiecare rulare e mai rău decât lipsa lui. Acum e verificat că e idempotent.
+
 ## 2026-08-22
 
 ### AMÂNDOI · Tahograf refăcut: „cine trebuie descărcat" pe primul loc

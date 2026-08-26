@@ -36,6 +36,9 @@ const NUME_ALESE = {
   403: 'driver_name', 404: 'driver_license_type', 405: 'driver_gender', 406: 'driver_card_id',
   407: 'driver_card_expiry', 408: 'driver_card_issue_place', 409: 'driver_status_event',
   636: 'umts_lte_cell_id', 637: 'wake_reason',
+  // VIN-ul: oficial ID 325 pe ALL-CAN300 (17 octeti ASCII). Numele `can_vin` fusese luat de ID 217,
+  // care in realitate e „Geofence zone 36" — corectat in codec8e, deci numele e liber pentru cel real.
+  325: 'can_vin', 217: 'geofence_zone_36',
   // Containere de stegulețe P4 (ALL-CAN300) — decodate bit cu bit în codec8e (expandCanFlags).
   517: 'can_security_state_flags_p4',
   518: 'can_control_state_flags_p4',
@@ -72,18 +75,20 @@ function numeDinOficial(nume, grup) {
   return (prefix + baza).replace(/^(can_|obd_|ble_)\1+/, '$1');
 }
 
+// ATENȚIE: se citește harta scrisă DE MÂNĂ (numeDeMana), NU getIoName — acela include deja lista
+// pe care tocmai o generăm, așa că a doua rulare ar crede că „tot e mapat" și ar produce un fișier
+// aproape gol. Generatorul trebuie să dea ACELAȘI rezultat oricâte rulări la rând.
 const folosite = new Set();          // nume deja luate (de harta de mână sau de un id anterior)
 for (let id = 0; id <= 1300; id++) {
-  const n = codec.getIoName(id, null);
-  if (!/^io_\d+$/.test(n)) folosite.add(n);
+  const n = codec.numeDeMana(id, null);
+  if (n) folosite.add(n);
 }
 
 const extra = {};
 const dubluri = [];
 for (const e of spec) {
   if (REZERVATE.has(e.id)) continue;
-  const curent = codec.getIoName(e.id, null);
-  const eNemapat = /^io_\d+$/.test(curent);
+  const eNemapat = codec.numeDeMana(e.id, null) === null;
   const eCorectie = NUME_ALESE[e.id] !== undefined;
   if (!eNemapat && !eCorectie) continue;      // deja mapat de mână și fără corecție → nu-l atingem
   if (extra[e.id]) continue;                   // specul are dubluri de id între grupuri → primul câștigă
@@ -101,6 +106,7 @@ for (const e of spec) {
     ...(Number.isFinite(mult) && mult !== 1 ? { mult } : {}),
     ...(semnat ? { semnat: true } : {}),
     ...(Number.isFinite(octeti) ? { octeti } : {}),
+    ...(/ascii/i.test(e.tip) ? { ascii: true } : {}),
     ...(e.unit && e.unit !== '-' ? { unit: e.unit } : {}),
     grup: e.grup.slice(0, 40),
   };
@@ -112,6 +118,7 @@ const rand = (id) => {
   if (x.mult !== undefined) p.push(`mult: ${x.mult}`);
   if (x.semnat) p.push(`semnat: true`);
   if (x.octeti !== undefined) p.push(`octeti: ${x.octeti}`);
+  if (x.ascii) p.push(`ascii: true`);
   if (x.unit) p.push(`unit: ${JSON.stringify(x.unit)}`);
   return `  ${id}: { ${p.join(', ')} }, // ${x.oficial} [${x.grup}]`;
 };
