@@ -97,6 +97,49 @@ async function ruleaza(nume, pts, tolerantaPct) {
     void before;
   }
 
+  // ── „Consum azi" din fișa vehiculului ────────────────────────────────────────────────────────
+  // A DOUA copie a aceleiași greșeli, în server.js. O reparasem doar în rapoarte, iar cifra din fișa
+  // vehiculului (și din telefon) ar fi rămas umflată. Proba rulează chiar bucata din server, nu o
+  // rescriere a ei: o extrage din fișier ca text și o execută.
+  console.log('\nD. „Consum azi" din fișa vehiculului (server.js)');
+  {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+    const a = src.indexOf('        let deviceFuel = 0;');
+    const b = src.indexOf('        km = Math.round(km * 100) / 100;', a);
+    if (a < 0 || b < 0) {
+      rele++; console.log('  ✗ nu găsesc blocul de consum din server.js — s-a mutat?');
+    } else {
+      const bloc = src.slice(a, b);
+      const calc = new Function('history', 'km', 'reports',
+        bloc + '\n; return deviceFuel;');
+      const R = require('./reports.js');
+      const ruleazaAzi = (nume, pts, tol) => {
+        const kmTot = KM;
+        const litri = calc(pts, kmTot, R);
+        const ab = (litri / LITRI - 1) * 100;
+        const bun = Math.abs(ab) <= (tol || 10);
+        if (bun) ok++; else rele++;
+        console.log('  ' + (bun ? '✓' : '✗') + ' ' + nume.padEnd(44) +
+          String(litri.toFixed(1) + ' L').padStart(8) + '  (' + (ab >= 0 ? '+' : '') + ab.toFixed(0) + '%)');
+      };
+      ruleazaAzi('senzor curat', drum({ zgomot: 0 }));
+      ruleazaAzi('zgomot ±0.5 L', drum({ zgomot: 0.5 }));
+      ruleazaAzi('zgomot ±1.0 L', drum({ zgomot: 1.0 }));
+      ruleazaAzi('zgomot ±0.5 L + alimentare 30 L', drum({ zgomot: 0.5, alimentare: 30 }));
+      ruleazaAzi('două contoare CAN care alternează', drum({ zgomot: 0.5,
+        cumul: (c, i) => (i % 2 === 0 ? { can_fuel_consumed: +(1000 + c).toFixed(2) } : { can_fuel_consumed_counted: +(940 + c).toFixed(2) }) }));
+      // acelasi drum, alt ritm — cifra nu are voie sa se schimbe
+      const laPas = [10, 60, 300].map((pas) => calc(drum({ zgomot: 0.5, pas }), KM, R));
+      const spread = Math.max(...laPas) - Math.min(...laPas);
+      if (spread <= 4) ok++; else rele++;
+      console.log('  ' + (spread <= 4 ? '✓' : '✗') +
+        ' cifra NU depinde de ritmul de transmisie      ' +
+        laPas.map((x) => x.toFixed(1)).join(' / ') + ' L  (diferență ' + spread.toFixed(1) + ' L)');
+    }
+  }
+
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');
   process.exit(rele ? 1 : 0);

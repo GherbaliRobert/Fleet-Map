@@ -5417,28 +5417,37 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
         // Înainte folosea doar can_fuel_level_liters + prag per-segment 0.5L → rata senzorii non-CAN și consumul mic gradual.
         let deviceFuel = 0;
         {
-          // Consum din nivel = SUMA scăderilor reale (≥0.4 L/pas, <40 L/pas); creșterile (alimentări/zgomot) sunt ignorate.
-          // Mai robust decât (start−final)+alimentări: nu se strică pe zilele cu alimentare și prinde scăderile graduale.
-          let dropSum = 0, prevFL = null;
+          // Consum din nivel = cât a scăzut NET + cât s-a alimentat. NU suma tuturor scăderilor.
+          //
+          // Aici era a doua copie a greșelii care a dat 52 de litri la o mașină care consumase 27
+          // (semnalat de Robert, 24.08). Comentariul vechi zicea că adunarea scăderilor e „mai robustă
+          // decât (start−final)+alimentări". Nu e: nivelul dintr-un rezervor oscilează (combustibilul se
+          // plimbă la viraje, pante, frânări), iar adunând doar coborârile aduni și zgomotul — mereu în
+          // plus, niciodată în minus. Cifra ajungea să depindă de cât de des transmite trackerul: pe
+          // același drum, punct la 10 s dădea 208 L, punct la 5 min dădea 25.
+          // Aceleași funcții ca în rapoarte (reports.js) — o singură regulă, nu trei copii.
+          const niveluri = [];
+          let refueled = 0, prevFL = null;
           for (const row of history) {
             const rio = row.io_data || {};
             const fl = (typeof rio.fuel_level_liters === 'number') ? rio.fuel_level_liters : rio.can_fuel_level_liters;
             if (typeof fl === 'number' && fl > 0) {
-              if (prevFL !== null) { const d = prevFL - fl; if (d >= 0.4 && d < 40) dropSum += d; }
+              niveluri.push(fl);
+              if (prevFL !== null) { const d = fl - prevFL; if (d >= 5) refueled += d; }
               prevFL = fl;
             }
           }
-          if (dropSum > 0 && km > 1) { const p = dropSum / km * 100; if (p >= 1.5 && p <= 200) deviceFuel = Math.round(dropSum * 10) / 10; }
+          const nivelL = reports._nivelConsum(reports._capat(niveluri, false), reports._capat(niveluri, true), refueled);
+          if (nivelL > 0 && km > 1) { const p = nivelL / km * 100; if (p >= 1.5 && p <= 200) deviceFuel = Math.round(nivelL * 10) / 10; }
         }
         // Contor cumulativ CAN (consum EXACT, merge și pe drumuri scurte) — preferat dacă vehiculul îl raportează plauzibil.
         // (La vehiculele cu nivel grosier/contor stricat, ex. unele VW, nu se aplică → rămâne estimarea.)
         {
-          let cumulSum = 0, prevCum = null;
-          for (const row of history) {
-            const rio = row.io_data || {};
-            const cum = (typeof rio.can_fuel_consumed === 'number') ? rio.can_fuel_consumed : (typeof rio.can_fuel_consumed_counted === 'number' ? rio.can_fuel_consumed_counted : (typeof rio.can_engine_total_fuel_used === 'number' ? rio.can_engine_total_fuel_used : null));
-            if (cum != null && cum > 0) { if (prevCum != null) { const dc = cum - prevCum; if (dc > 0 && dc < 100) cumulSum += dc; } prevCum = cum; }
-          }
+          // Ne legăm de UN SINGUR contor: unele trackere trimit ba unul, ba altul, iar săritul între ele
+          // adăuga litri din senin (79 în loc de 27, în probă).
+          const cumul = reports._cumulTracker();
+          for (const row of history) cumul.add(row);
+          const cumulSum = cumul.total();
           if (cumulSum > 0 && km > 0.5) { const p100 = cumulSum / km * 100; if (p100 >= 1 && p100 <= 200) deviceFuel = Math.round(cumulSum * 10) / 10; }
         }
 

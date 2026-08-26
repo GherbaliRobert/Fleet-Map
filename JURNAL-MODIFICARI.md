@@ -20,6 +20,34 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-22
 
+### AMÂNDOI · Aceeași greșeală de consum mai era într-un loc: „Consum azi"
+
+Alin a întrebat *„deci e totul ok?"* — și bine a întrebat. Reparasem consumul **doar în rapoarte**.
+Am căutat și în restul aplicației dacă mai socotește cineva combustibilul, și era: **„Consum azi"**
+din fișa vehiculului (și din telefon) avea a doua copie a aceleiași greșeli.
+
+Cât de rău: pe același drum simulat cu **27 de litri** consumați real, „Consum azi" arăta **72 L** la
+un senzor obișnuit, **180 L** la unul mai zgomotos, iar la un senzor perfect curat arăta **0**. Și
+acolo cifra depindea de cât de des transmite trackerul: 183 L la 10 secunde, 24 L la 5 minute.
+
+Comentariul din cod explica chiar raționamentul care a dus la greșeală: *„mai robust decât
+(start−final)+alimentări"*. Sună logic, dar e invers — adunarea scăderilor pare mai fină, în realitate
+adună zgomotul senzorului, mereu în plus.
+
+**Ce am schimbat.** Aceeași formulă ca în rapoarte, și **aceleași funcții**, nu o a treia copie:
+`reports.js` le dă mai departe, iar serverul le folosește. Dacă se schimbă regula, se schimbă într-un
+singur loc, pentru toate ecranele deodată.
+
+Proba `verify_consum.js` acoperă acum și bucata din server — o ia din fișier și o rulează pe drumul cu
+consum cunoscut. Pe codul vechi pică 6 verificări, pe cel nou trec toate 30. Am verificat și că
+mașinile de tip „a treia cale" (rezumatul de traseu) foloseau deja formula corectă — acolo n-a fost
+nimic de schimbat.
+
+- **Ce vede fondatorul:** aceeași cifră în raport, în fișa mașinii și pe telefon. Până acum se puteau
+  contrazice între ele.
+- **Ce vede clientul:** „Consum azi" din fișa mașinii arată consumul real, nu unul de două-trei ori
+  mai mare.
+
 ### AMÂNDOI · Raportul de consum arăta aproape dublu. Reparat.
 
 Robert a scos un raport de consum pentru mașina lui: **52 de litri**. În realitate consumase **27**.

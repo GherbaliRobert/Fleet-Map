@@ -2478,4 +2478,8 @@ async function analyzeZone(db, imeis, from, to, zone) {
     label: 'Analiză zonă', from, to };
 }
 
-module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack, setDefaultFuelPrices };
+// `_nivelConsum` / `_capat` / `_cumulTracker` sunt exportate ca să le folosească ȘI serverul, pentru
+// „Consum azi" din fișa vehiculului. Acolo era A DOUA copie a aceleiași greșeli — aduna toate scăderile
+// de nivel. O reparasem doar în rapoarte, iar cifra din fișă ar fi rămas umflată.
+module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, analyzeZone, segmentTrack, setDefaultFuelPrices,
+  _nivelConsum, _capat, _cumulTracker };
