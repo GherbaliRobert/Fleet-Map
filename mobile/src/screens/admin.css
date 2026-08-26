@@ -102,3 +102,20 @@
 .np-thr input { width: 92px; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 9px; padding: 8px 10px; font-size: 15px; font-family: inherit; }
 .np-chan { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); }
 .np-chan .np-cl { flex: 1; }
+
+/* Bife multiple (categorii de permis). Ținta de atingere e 34px — sub atât, degetul ratează.
+   `.hi` = categorie profesionistă, marcată cu un punct, exact ca pe web (.drv-cat.pro). NU cu albastru:
+   în ecranul ăsta albastrul înseamnă deja „card de tahograf", iar Tb/Tv sunt profesioniste FĂRĂ tahograf
+   — două albastre diferite pe același rând ar spune că troleibuzul are tahograf. */
+.chips { display: flex; flex-direction: column; gap: 9px; }
+.chips-g { display: flex; flex-direction: column; gap: 5px; }
+.chips-gt { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.chips-b { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  min-width: 40px; min-height: 34px; padding: 0 11px;
+  background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary);
+  border-radius: 9px; font-size: 13.5px; font-weight: 700; font-family: inherit;
+}
+.chip.hi::after { content: '•'; margin-left: 4px; opacity: .5; }
+.chip.on { background: rgba(63,224,125,.16); border-color: var(--accent); color: var(--accent); }
+.fld-note { font-size: 12.5px; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

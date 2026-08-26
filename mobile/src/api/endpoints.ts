@@ -53,6 +53,9 @@ export const Api = {
   ioMappings: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/io-mappings`),
   // Catalogul steagurilor CAN (nume + iconiță). Public, aceleași date pe care le folosește web-ul.
   canFlags: () => api<any>('/api/can-flags', { auth: false }),
+  // Categoriile de pe permis + care dintre ele înseamnă „profesionist" și „card de tahograf".
+  // Sursa e license_cats.js, aceeași pentru web, telefon, rapoarte și scadențarul de tahograf.
+  licenseCats: () => api<any>('/api/license-cats', { auth: false }),
   // „Ce trimite mașina asta și ce înseamnă" — potrivirea cu catalogul și formatarea se fac pe server,
   // ca telefonul să nu-și țină o a doua copie a regulilor.
   ioExplained: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/io-explained`),
@@ -221,6 +224,12 @@ export const Api = {
   etransport: () => api<any[]>('/api/etransport'),
   tachoFiles: () => api<any[]>('/api/tacho'),
   tachoFile: (id: number) => api<any>(`/api/tacho/${id}`),
+  // „Cine trebuie descărcat următorul" — aceeași rută pe care o folosește web-ul, cu aceleași filtre
+  // (fără flota demo, doar șoferii cu card de tahograf, doar vehiculele care au tahograf). Telefonul
+  // NU rejudecă cine intră în listă: ar fi a doua regulă, care s-ar contrazice cu prima.
+  tachoScadentar: () => api<any>('/api/tacho/scadentar'),
+  tachoIstoric: (driverId?: number | null, imei?: string | null) =>
+    api<any>('/api/tacho/istoric?' + (driverId ? 'driverId=' + driverId : 'imei=' + encodeURIComponent(String(imei)))),
   users: () => api<any[]>('/api/users'),
   createUser: (b: any) => api('/api/users', { method: 'POST', body: b }),
   updateUser: (id: number, b: any) => api(`/api/users/${id}`, { method: 'PUT', body: b }),

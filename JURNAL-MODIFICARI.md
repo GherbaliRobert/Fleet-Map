@@ -20,6 +20,48 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Tahograful și bifele de pe permis, și pe telefon
+
+Alin a cerut ca modificarea de dimineață să ajungă și în aplicația de Android. Erau două lipsuri, nu una.
+
+**1. Fișa șoferului n-avea categoriile de pe permis.** Pe telefon puteai completa nume, telefon, email,
+număr de permis și data de expirare — dar nu și categoriile. Adică fix bifa care decide dacă omul intră
+în Tahograf. Un administrator care lucrează de pe telefon n-avea cum să repare ce-i cere ecranul de
+Tahograf să repare. Acum are: bifele sunt grupate ca pe permis (Moto / Auto / Marfă / Persoane /
+Speciale), iar sub ele scrie pe loc ce a ieșit — „Șofer profesionist" și, dacă e cazul, „Card de
+tahograf — apare în Tahograf, de descărcat la 28 de zile".
+
+Categoriile profesioniste sunt marcate cu un punct, nu cu culoare. Motivul: în ecranul ăsta albastrul
+înseamnă deja „card de tahograf", iar troleibuzul și tramvaiul sunt profesioniste FĂRĂ tahograf. Două
+albastre diferite pe același rând ar fi spus că troleibuzul are tahograf.
+
+**2. Tahograful de pe telefon arăta doar fișiere.** Era o listă de .DDD încărcate, atât — nu spunea pe
+cine trebuie să descarci. Acum are aceleași două lucruri ca web-ul: **De descărcat** (scadențarul, cu
+zilele rămase și bara de termen) și **Fișiere**. Atingi un șofer și vezi descărcările lui plus zilele
+pe care nu le poți dovedi la un control.
+
+Un fișier necitit arată acum și pe telefon ca necitit — „nu contează ca descărcare" — și nu mai scoate
+patru zerouri care ar fi trecut drept măsurători.
+
+**Regula de care m-am ținut: telefonul NU rejudecă cine intră în listă.** Filtrele (fără flota demo,
+doar șoferii cu card, doar vehiculele cu tahograf) rulează O SINGURĂ DATĂ, pe server. Telefonul cere
+aceeași adresă ca web-ul și desenează ce primește. Dacă și-ar fi filtrat singur lista, ar fi ajuns să
+arate altă flotă decât web-ul, iar cineva ar fi descărcat după lista greșită.
+
+Ca să rămână așa, am scris o probă anume pentru asta (33 de verificări): se uită în codul aplicației de
+telefon și **cade dacă apare acolo un filtru propriu sau o listă proprie de categorii**. Am încercat
+deliberat amândouă — proba le-a prins. Tot ea verifică și că serverul, web-ul și telefonul folosesc
+aceleași denumiri pentru motivele de excludere; dacă cineva redenumește unul, proba spune care ecran
+a rămas în urmă.
+
+Ecranele le-am și văzut, nu doar compilat: aplicația de telefon pornită pe un server de probă cu
+șoferi și camioane reale, autentificare adevărată, capturi din browser la dimensiune de telefon.
+
+- **Ce vede fondatorul:** poate completa categoriile unui șofer și poate verifica scadențarul de pe
+  telefon, fără să deschidă laptopul.
+- **Ce vede clientul:** același Tahograf ca pe web, cu aceleași cifre. Nu mai există „pe telefon scrie
+  altceva".
+
 ### AMÂNDOI · În Tahograf intră doar cine are ce descărca
 
 Alin s-a uitat pe scadențar și a găsit acolo, roșii, cele cinci vehicule DEMO și pe fondatorii înșiși

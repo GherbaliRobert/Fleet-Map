@@ -1156,6 +1156,10 @@ const _LICENSE_JS = 'window.RA_LICENSE=' + JSON.stringify({
   categories: licenseCats.CATEGORIES, groups: licenseCats.GROUPS, pro: licenseCats.PRO, tacho: licenseCats.TACHO
 }) + ';';
 app.get('/js/license-cats.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_LICENSE_JS); });
+// Aceleași categorii pentru telefon, în JSON. Ca la steagurile CAN: o sursă, două transporturi —
+// dacă mutăm o categorie la „profesionist" sau la „cu tahograf", se schimbă în amândouă odată.
+const _LICENSE_JSON = { categories: licenseCats.CATEGORIES, groups: licenseCats.GROUPS, pro: licenseCats.PRO, tacho: licenseCats.TACHO };
+app.get('/api/license-cats', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(_LICENSE_JSON); });
 
 // Tipurile de lucrări la service + lista de acte, tot dintr-o sursă (maint_types.js). Înainte
 // erau scrise de mână în două locuri din pagină, cu conținut diferit.

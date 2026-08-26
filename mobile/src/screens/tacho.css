@@ -1,0 +1,41 @@
+/* Tahograf — scadențarul de descărcare. Aceleași reguli ca pe web (fără flota demo, doar șoferii cu
+   card și vehiculele cu tahograf); filtrarea o face serverul, aici doar desenăm ce vine. */
+.th-tabs { display: flex; gap: 2px; margin: 0 0 12px; background: var(--bg-dark); border-radius: 10px; padding: 3px; }
+.th-tab { flex: 1; border: none; background: transparent; color: var(--text-secondary); border-radius: 8px; padding: 9px; font-weight: 700; font-size: 13.5px; font-family: inherit; }
+.th-tab.on { background: var(--accent); color: #06210F; }
+
+.th-sum { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.th-badge { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary); }
+.th-badge.bad { border-color: rgba(240,90,90,.42); color: var(--red); background: rgba(240,90,90,.09); }
+.th-badge.warn { border-color: rgba(245,180,60,.42); color: #f5b43c; background: rgba(245,180,60,.09); }
+.th-badge.ok { border-color: rgba(63,224,125,.4); color: var(--accent); background: rgba(63,224,125,.09); }
+.th-badge svg { flex: 0 0 auto; }
+
+.th-gh { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); margin: 16px 0 8px; }
+.th-gh em { margin-left: auto; font-style: normal; font-weight: 700; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+.th-gh.warn { color: #f5b43c; }
+
+.th-due { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: var(--bg-card); border: 1px solid var(--border); border-left-width: 3px; border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; font-family: inherit; color: var(--text-primary); }
+.th-due.over { border-left-color: var(--red); }
+.th-due.soon { border-left-color: #f5b43c; }
+.th-due.ok { border-left-color: var(--accent); }
+.th-due .ic { flex: 0 0 auto; opacity: .75; }
+.th-due .mid { flex: 1; min-width: 0; }
+.th-due .nm { font-weight: 700; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.th-due .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Bara arată cât din termen s-a consumat. Fără nicio descărcare = plină și roșie: nu e „gol", e „tot". */
+.th-bar { height: 3px; border-radius: 2px; background: var(--bg-dark); margin-top: 7px; overflow: hidden; }
+.th-bar i { display: block; height: 100%; border-radius: 2px; }
+.th-due .rt { flex: 0 0 auto; text-align: right; }
+.th-due .rt b { display: block; font-size: 19px; font-weight: 800; line-height: 1.1; }
+.th-due .rt span { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+
+/* Golul își spune motivul: un ecran gol arată altfel identic cu o aplicație stricată. */
+.th-note { font-size: 13px; color: var(--text-muted); line-height: 1.5; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 13px; }
+.th-excl { font-size: 12.5px; margin-top: 10px; line-height: 1.5; }
+.th-excl.name { color: #f5b43c; background: rgba(245,180,60,.09); border: 1px solid rgba(245,180,60,.34); border-radius: 10px; padding: 10px 12px; }
+.th-excl.quiet { color: var(--text-muted); }
+
+.th-gap { display: flex; gap: 10px; align-items: flex-start; background: rgba(245,180,60,.09); border: 1px solid rgba(245,180,60,.34); border-radius: 11px; padding: 11px 12px; margin-bottom: 8px; }
+.th-gap b { display: block; font-size: 13.5px; color: #f5b43c; }
+.th-gap span { font-size: 12px; color: var(--text-muted); }

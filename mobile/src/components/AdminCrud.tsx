@@ -5,16 +5,20 @@ import { showToast } from '../app/store';
 import '../screens/detail.css'; // .sheet*, .btn*
 import '../screens/admin.css';
 
-export type FieldType = 'text' | 'tel' | 'email' | 'date' | 'number' | 'textarea' | 'color' | 'select';
+export type FieldType = 'text' | 'tel' | 'email' | 'date' | 'number' | 'textarea' | 'color' | 'select' | 'chips';
 export interface FieldDef {
   key: string;
   label: string;
   type?: FieldType;
   required?: boolean;
   placeholder?: string;
-  options?: { value: string; label: string }[];
+  options?: { value: string; label: string; group?: string; hi?: boolean; title?: string }[];
   half?: boolean;       // pune două câmpuri pe un rând
   default?: any;
+  // `chips`: bife multiple, salvate ca listă separată prin virgulă („B,C,CE"). `group` le împarte pe
+  // rânduri, `hi` le scoate în evidență (ex: categoriile profesioniste). `note` desenează un rând sub
+  // câmp, recalculat la fiecare bifă — acolo spunem ce înseamnă alegerea, nu într-un ajutor separat.
+  note?: (value: string) => any;
 }
 export interface CrudConfig {
   title: string;
@@ -220,6 +224,34 @@ function field(fd: FieldDef, form: Record<string, any>, setF: (k: string, v: any
         {(fd.options || []).map((o) => <option value={o.value}>{o.label}</option>)}
       </select>
     );
+  } else if (fd.type === 'chips') {
+    // Valoarea stă tot ca string („B,C,CE") — la fel ca pe web și ca în bază. Serverul o normalizează
+    // oricum (license_cats.format), deci nu ne batem capul aici cu ordinea sau cu duplicatele.
+    const sel = String(val).split(',').map((s) => s.trim()).filter(Boolean);
+    const toggle = (code: string) => {
+      const i = sel.indexOf(code);
+      const next = i >= 0 ? sel.filter((c) => c !== code) : sel.concat(code);
+      setF(fd.key, next.join(','));
+    };
+    const opts = fd.options || [];
+    const grupe: string[] = [];
+    for (const o of opts) { const g = o.group || ''; if (grupe.indexOf(g) < 0) grupe.push(g); }
+    ctrl = (
+      <div class="chips">
+        {grupe.map((g) => (
+          <div class="chips-g">
+            {g && <span class="chips-gt">{g}</span>}
+            <div class="chips-b">
+              {opts.filter((o) => (o.group || '') === g).map((o) => (
+                <button type="button" title={o.title || o.label}
+                  class={'chip' + (sel.indexOf(o.value) >= 0 ? ' on' : '') + (o.hi ? ' hi' : '')}
+                  onClick={() => toggle(o.value)}>{o.label}</button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   } else {
     ctrl = <input type={fd.type || 'text'} value={val} placeholder={fd.placeholder} onInput={onInput}
       inputMode={fd.type === 'number' ? 'numeric' : fd.type === 'tel' ? 'tel' : undefined} />;
@@ -228,6 +260,7 @@ function field(fd: FieldDef, form: Record<string, any>, setF: (k: string, v: any
     <div class="fld">
       <label>{fd.label}{fd.required && <span class="req"> *</span>}</label>
       {ctrl}
+      {fd.note && fd.note(String(val))}
     </div>
   );
 }
