@@ -10,16 +10,23 @@ import { Preferences } from '@capacitor/preferences';
 import { Api } from '../api/endpoints';
 import type { IconName } from '../components/Icon';
 
-export type CanKind = 'warn' | 'open' | 'on' | 'info' | 'code';
+export type CanKind = 'warn' | 'open' | 'on' | 'info' | 'code' | 'text';
 export interface CanFlag {
   key: string; label: string; icon: string; mi: IconName; group: string; kind: CanKind; st?: [string, string]; desc?: string;
+  /** se arata tot timpul, cu ultima stare stiuta (frana de mana, treapta, incuietoarea) */
+  mereu?: boolean;
+  /** nu se deseneaza singura - valoarea intra in alta placuta (treptele P/R/N/D -> _sf_gear) */
+  ascuns?: boolean;
 }
 export interface CanGroup { key: string; label: string; icon: string; mi: IconName; }
 export interface CanCatalog {
   groups: CanGroup[]; flags: CanFlag[]; kindText: Record<string, [string, string]>; undecoded: string[];
 }
 
-const KEY = 'can_flags_v1';
+// v2: catalogul are campuri noi (`mereu`, `ascuns`, treapta ca o singura placuta). Cu cheia veche,
+// un telefon care avea deja catalogul salvat ar fi ramas cu cel vechi pana la urmatoarea pornire cu
+// semnal - adica exact cu ecranul pe care tocmai l-am schimbat.
+const KEY = 'can_flags_v2';
 let _cache: CanCatalog | null = null;
 let _refresh: Promise<CanCatalog | null> | null = null;
 

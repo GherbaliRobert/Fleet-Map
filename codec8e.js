@@ -925,6 +925,13 @@ function expandCanFlags(ioData) {
     if (Object.keys(sep.sf).length) ioData._security_flags = Object.assign(ioData._security_flags || {}, sep.sf);
     if (Object.keys(sep.cf).length) ioData._control_flags = Object.assign(ioData._control_flags || {}, sep.cf);
   }
+  // Treapta de viteza: masina trimite patru semnale separate (P/R/N/D), dar omul vrea sa vada UN
+  // singur lucru — in ce treapta e. Le strangem intr-o stare cu litera, iar cele patru raman ascunse
+  // ca placute individuale (ar fi patru casute din care trei mereu stinse).
+  const _s = ioData._security_flags;
+  if (_s && (_s.parking !== undefined || _s.reverse !== undefined || _s.neutral !== undefined || _s.drive !== undefined)) {
+    _s.gear = _s.parking ? 'P' : _s.reverse ? 'R' : _s.neutral ? 'N' : _s.drive ? 'D' : null;
+  }
   return ioData;
 }
 

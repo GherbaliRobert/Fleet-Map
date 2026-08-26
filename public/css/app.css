@@ -2395,3 +2395,9 @@
 .th-tl-m span{position:absolute;transform:translateX(-4px);font-size:10px;font-weight:700;color:var(--red);white-space:nowrap}
 .lg.t-pauza{opacity:.55}
 .lg.t-odihna{background:color-mix(in srgb,var(--purple) 45%,var(--bg-dark))}
+
+
+/* Pictograma unei plăcuțe de stare. Vine ca SVG din /js/can-icons.js (aceleași desene ca în
+   aplicația de telefon), nu ca iconiță Font Awesome — de aceea are nevoie de dimensiune. */
+.cf-i{ width:22px; height:22px; flex:0 0 22px; display:block; }
+.cf-b.b-note{ background:transparent; border:1px dashed var(--border); color:var(--muted); font-weight:600; }

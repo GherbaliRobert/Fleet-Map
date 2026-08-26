@@ -3302,6 +3302,7 @@ const pozitii = await r.json();</code></pre>
   <script src="/js/license-cats.js"></script>
   <script src="/js/maint-types.js"></script>
   <script src="/js/can-flags.js"></script>
+  <script src="/js/can-icons.js"></script>
   <script src="/js/io-format.js"></script>
   <script>
     // ─── Global State ───
@@ -14574,6 +14575,19 @@ const pozitii = await r.json();</code></pre>
     // regim personal, contact dinamic, cele două retardere, starea celor două magistrale CAN)
     // nu erau trecute în nicio categorie → cădeau în „Date tehnice avansate", care se arată DOAR
     // super-adminului. Adică pentru client, pur și simplu nu existau.
+    // Desenul unei pictograme, din /js/can-icons.js (generat din Icon.tsx — aceleași desene ca pe
+    // telefon). Dacă lipsește, cădem înapoi pe Font Awesome, ca să nu rămână plăcuța goală.
+    function cfIcon(f, val) {
+      const set = window.RA_CANICONS || {};
+      // Treapta de viteză: litera E starea, deci desenăm chiar caseta cu litera potrivită.
+      let nume = f.mi;
+      if (f.kind === 'text' && val && set['gear' + String(val).toUpperCase()]) nume = 'gear' + String(val).toUpperCase();
+      const d = set[nume];
+      if (!d) return '<i class="fas ' + _usEsc(f.icon) + '"></i>';
+      return '<svg class="cf-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+    }
+
     function canFlagsHtml(flatIo, usedKeys) {
       const cat = window.RA_CANFLAGS;
       if (!cat || !cat.flags || !cat.flags.length) return '';
@@ -14615,6 +14629,8 @@ const pozitii = await r.json();</code></pre>
           const necitit = lipsa && nedecodate.has(f.key) &&
             ((f.key.indexOf('_sf_') === 0 && areSf) || (f.key.indexOf('_cf_') === 0 && areCf));
           if (lipsa && !necitit) return;
+          // Treptele P/R/N/D nu se desenează una câte una — intră în plăcuța „Treapta de viteză".
+          if (f.ascuns) { usedKeys.add(f.key); return; }
           usedKeys.add(f.key);
 
           let aprins, text;
@@ -14625,18 +14641,27 @@ const pozitii = await r.json();</code></pre>
           } else if (f.kind === 'code') {
             aprins = Number(val) > 0;
             text = 'cod ' + val;
+          } else if (f.kind === 'text') {
+            // Valoarea E starea (P/R/N/D). „Aprins" aici înseamnă doar că avem ce arăta.
+            aprins = (val !== '' && val !== null && val !== undefined);
+            text = aprins ? String(val) : '—';
           } else {
             aprins = !!val;
             const per = f.st || kt[f.kind] || kt.info || ['Da', 'Nu'];
             text = per[aprins ? 0 : 1];
             if (aprins && (f.kind === 'warn' || f.kind === 'open')) aprinse[f.kind].push(f.label);
           }
-          if (aprins) aprinseGrup.push(f.kind);
+          // Regula cerută: se văd DOAR stările aprinse. Excepție, cele marcate `mereu` în
+          // can_flags.js — frâna de mână, treapta și încuiat/descuiat se arată tot timpul, cu
+          // ultima stare primită, fiindcă acolo contează și răspunsul „nu".
+          if (!aprins && !f.mereu && !necitit) return;
+          // Treapta are mereu o valoare; daca ar intra in bulina, grupa ar arata permanent „1 activ".
+          if (aprins && f.kind !== 'text') aprinseGrup.push(f.kind);
 
           placi.push(
             '<div class="cf k-' + f.kind + (aprins ? ' lit' : '') + (necitit ? ' cf-nd' : '') + '"' +
               ' title="' + _usEsc(f.label + ' — ' + text + (f.desc ? '. ' + f.desc : '')) + '">' +
-              '<i class="fas ' + _usEsc(f.icon) + '"></i>' +
+              cfIcon(f, val) +
               '<span class="cf-l">' + _usEsc(f.label) + '</span>' +
               '<span class="cf-s">' + _usEsc(text) + '</span>' +
             '</div>'
@@ -14645,7 +14670,7 @@ const pozitii = await r.json();</code></pre>
         if (placi.length) {
           // Bulina din dreptul grupei = câte semnale sunt aprinse acolo, colorată după cel mai
           // serios dintre ele (roșu > portocaliu > verde > neutru). Rămâne vizibilă și cu grupa strânsă.
-          const rang = { warn: 3, open: 2, on: 1, info: 0, code: 0 };
+          const rang = { warn: 3, open: 2, on: 1, info: 0, code: 0, text: 0 };
           let cel = null;
           aprinseGrup.forEach(function (k) { if (cel === null || rang[k] > rang[cel]) cel = k; });
           const bulina = aprinseGrup.length
@@ -14676,6 +14701,8 @@ const pozitii = await r.json();</code></pre>
       if (!rezumat) {
         rezumat = '<span class="cf-b b-ok"><i class="fas fa-circle-check"></i> Niciun martor aprins, totul închis</span>';
       }
+      rezumat += '<span class="cf-b b-note">Se arată doar stările active. Frâna de mână, treapta ' +
+        'și încuietoarea se văd tot timpul.</span>';
 
       let out = '<div class="cf-sum">' + rezumat + '</div>' + sectiuni.join('');
       if (nedecodateVazute) {

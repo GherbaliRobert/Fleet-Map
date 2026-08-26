@@ -22,8 +22,14 @@
 //              'on'   — pornit, normal: lumini, contact, aer condiționat (verde)
 //              'info' — stare, fără judecată de valoare (neutru)
 //              'code' — nu e pornit/oprit, e un cod numeric; se afișează ca atare
+//              'text' — o stare cu literă/cuvânt (treapta P/R/N/D); se afișează valoarea
 //   st     — [text aprins, text stins]; DOAR când textul implicit al lui `kind` nu se acordă
 //            gramatical („Faza scurtă — Pornit" ar fi greșit → ['Pornită','Oprită']).
+//   mereu  — plăcuța se arată ÎNTOTDEAUNA, cu ultima stare știută, chiar și stinsă. Restul apar
+//            doar când sunt aprinse (altfel ecranul era un perete de casete stinse, din care
+//            nu se distingea ce se întâmplă acum).
+//   ascuns — nu se desenează niciodată singură; valoarea ei intră în altă plăcuță (treptele
+//            P/R/N/D intră în `_sf_gear`).
 
 const GROUPS = [
   { key: 'motor',    label: 'Contact și motor',     icon: 'fa-key',                mi: 'key' },
@@ -48,88 +54,92 @@ const KIND_TEXT = {
 
 const FLAGS = [
   // ── Contact și motor ──
-  { key: '_sf_ignition_on',       label: 'Contact',                  icon: 'fa-key',                 mi: 'key',        group: 'motor', kind: 'on' },
-  { key: '_sf_key_in_ignition',   label: 'Cheia în contact',         icon: 'fa-key',                 mi: 'key',        group: 'motor', kind: 'info' },
-  { key: '_sf_engine_working',    label: 'Motorul funcționează',     icon: 'fa-fan',                 mi: 'fan',        group: 'motor', kind: 'on' },
+  { key: '_sf_ignition_on',       label: 'Contact',                  icon: 'fa-key',                 mi: 'ignitionKey',        group: 'motor', kind: 'on' },
+  { key: '_sf_key_in_ignition',   label: 'Cheia în contact',         icon: 'fa-key',                 mi: 'keySlot',        group: 'motor', kind: 'info' },
+  { key: '_sf_engine_working',    label: 'Motorul funcționează',     icon: 'fa-fan',                 mi: 'engineBlock',        group: 'motor', kind: 'on' },
   { key: '_cf_ready_to_drive',    label: 'Gata de plecare',          icon: 'fa-circle-play',         mi: 'play',       group: 'motor', kind: 'on', st: ['Da', 'Nu'] },
   { key: '_sf_dynamic_ignition',  label: 'Contact dinamic',          icon: 'fa-wave-square',         mi: 'zap',        group: 'motor', kind: 'info' },
   { key: '_sf_webasto',           label: 'Încălzire staționară',     icon: 'fa-fire',                mi: 'flame',      group: 'motor', kind: 'on', st: ['Pornită', 'Oprită'] },
-  { key: '_sf_electric_engine',   label: 'Motor electric',           icon: 'fa-charging-station',    mi: 'plug',       group: 'motor', kind: 'info' },
+  { key: '_sf_electric_engine',   label: 'Motor electric',           icon: 'fa-charging-station',    mi: 'plugCharge',       group: 'motor', kind: 'info' },
 
   // ── Frâne și transmisie ──
-  { key: '_sf_handbrake',         label: 'Frână de mână',            icon: 'fa-hand',                mi: 'hand',       group: 'transm', kind: 'info', st: ['Trasă', 'Eliberată'] },
-  { key: '_sf_footbrake',         label: 'Frână de picior',          icon: 'fa-shoe-prints',         mi: 'foot',       group: 'transm', kind: 'info', st: ['Apăsată', 'Eliberată'] },
-  { key: '_sf_clutch',            label: 'Ambreiaj',                 icon: 'fa-circle-half-stroke',  mi: 'disc',       group: 'transm', kind: 'info', st: ['Apăsat', 'Eliberat'] },
-  { key: '_sf_reverse',           label: 'Marșarier',                icon: 'fa-arrow-rotate-left',   mi: 'reverse',    group: 'transm', kind: 'info', st: ['Cuplat', 'Nu'] },
-  { key: '_sf_parking',           label: 'Cutie în parcare (P)',     icon: 'fa-square-parking',      mi: 'parking',    group: 'transm', kind: 'info' },
-  { key: '_sf_neutral',           label: 'Cutie în neutru (N)',      icon: 'fa-circle-dot',          mi: 'circleDot',  group: 'transm', kind: 'info' },
-  { key: '_sf_drive',             label: 'Cutie în mers (D)',        icon: 'fa-arrow-right',         mi: 'arrowRight', group: 'transm', kind: 'info' },
+  { key: '_sf_handbrake',         label: 'Frână de mână',            icon: 'fa-hand',                mi: 'brakeP',       group: 'transm', kind: 'info', st: ['Trasă', 'Eliberată'], mereu: true },
+  { key: '_sf_footbrake',         label: 'Frână de picior',          icon: 'fa-shoe-prints',         mi: 'brakePedal',       group: 'transm', kind: 'info', st: ['Apăsată', 'Eliberată'] },
+  { key: '_sf_clutch',            label: 'Ambreiaj',                 icon: 'fa-circle-half-stroke',  mi: 'clutchPedal',       group: 'transm', kind: 'info', st: ['Apăsat', 'Eliberat'] },
+  // Treapta de viteză: mașina trimite patru semnale (P/R/N/D). Ca plăcuțe separate ar fi patru
+  // casete din care trei mereu stinse — omul vrea să vadă O literă. codec8e le strânge în
+  // `_security_flags.gear`; cele patru rămân `ascuns: true`.
+  { key: '_sf_gear',              label: 'Treapta de viteză',        icon: 'fa-gears',               mi: 'gearBox',    group: 'transm', kind: 'text', mereu: true },
+  { key: '_sf_reverse',           label: 'Marșarier',                icon: 'fa-arrow-rotate-left',   mi: 'gearR',    group: 'transm', kind: 'info', st: ['Cuplat', 'Nu'], ascuns: true },
+  { key: '_sf_parking',           label: 'Cutie în parcare (P)',     icon: 'fa-square-parking',      mi: 'gearP',    group: 'transm', kind: 'info', ascuns: true },
+  { key: '_sf_neutral',           label: 'Cutie în neutru (N)',      icon: 'fa-circle-dot',          mi: 'gearN',  group: 'transm', kind: 'info', ascuns: true },
+  { key: '_sf_drive',             label: 'Cutie în mers (D)',        icon: 'fa-arrow-right',         mi: 'gearD', group: 'transm', kind: 'info', ascuns: true },
 
   // ── Uși și capace ──
-  { key: '_sf_door_front_left',   label: 'Ușă față stânga',          icon: 'fa-door-open',           mi: 'doorOpen',   group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
-  { key: '_sf_door_front_right',  label: 'Ușă față dreapta',         icon: 'fa-door-open',           mi: 'doorOpen',   group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
-  { key: '_sf_door_rear_left',    label: 'Ușă spate stânga',         icon: 'fa-door-open',           mi: 'doorOpen',   group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
-  { key: '_sf_door_rear_right',   label: 'Ușă spate dreapta',        icon: 'fa-door-open',           mi: 'doorOpen',   group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
-  { key: '_sf_trunk_open',        label: 'Portbagaj',                icon: 'fa-car-rear',            mi: 'trunk',      group: 'usi', kind: 'open' },
-  { key: '_sf_hood_open',         label: 'Capotă',                   icon: 'fa-car-side',            mi: 'hood',       group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
-  { key: '_sf_roof_open',         label: 'Trapă / plafon',           icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
+  { key: '_sf_door_front_left',   label: 'Ușă față stânga',          icon: 'fa-door-open',           mi: 'carDoorFL',   group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
+  { key: '_sf_door_front_right',  label: 'Ușă față dreapta',         icon: 'fa-door-open',           mi: 'carDoorFR',   group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
+  { key: '_sf_door_rear_left',    label: 'Ușă spate stânga',         icon: 'fa-door-open',           mi: 'carDoorRL',   group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
+  { key: '_sf_door_rear_right',   label: 'Ușă spate dreapta',        icon: 'fa-door-open',           mi: 'carDoorRR',   group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
+  { key: '_sf_trunk_open',        label: 'Portbagaj',                icon: 'fa-car-rear',            mi: 'carTrunk',      group: 'usi', kind: 'open' },
+  { key: '_sf_hood_open',         label: 'Capotă',                   icon: 'fa-car-side',            mi: 'carHood',       group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
+  { key: '_sf_roof_open',         label: 'Trapă / plafon',           icon: 'fa-window-maximize',     mi: 'carRoof',       group: 'usi', kind: 'open', st: ['Deschisă', 'Închisă'] },
 
   // ── Închidere și alarmă ──
-  { key: '_sf_car_closed',        label: 'Mașina încuiată',          icon: 'fa-lock',                mi: 'lock',       group: 'inchid', kind: 'on', st: ['Da', 'Nu'] },
-  { key: '_sf_closed_by_remote',  label: 'Încuiată din telecomandă', icon: 'fa-lock',                mi: 'lock',       group: 'inchid', kind: 'on', st: ['Da', 'Nu'] },
-  { key: '_sf_central_lock',      label: 'Închidere centralizată',   icon: 'fa-lock-open',           mi: 'unlock',     group: 'inchid', kind: 'on', st: ['Activă', 'Inactivă'] },
-  { key: '_sf_remote_close',      label: 'Telecomandă — închide',    icon: 'fa-lock',                mi: 'lock',       group: 'inchid', kind: 'info', st: ['Apăsat', 'Nu'] },
-  { key: '_sf_remote_open',       label: 'Telecomandă — deschide',   icon: 'fa-lock-open',           mi: 'unlock',     group: 'inchid', kind: 'info', st: ['Apăsat', 'Nu'] },
-  { key: '_sf_remote_arm3x',      label: 'Telecomandă — armare 3x',  icon: 'fa-shield-halved',       mi: 'shield',     group: 'inchid', kind: 'info', st: ['Apăsat', 'Nu'] },
+  { key: '_sf_car_closed',        label: 'Mașina încuiată',          icon: 'fa-lock',                mi: 'carLocked',       group: 'inchid', kind: 'on', st: ['Da', 'Nu'], mereu: true },
+  { key: '_sf_closed_by_remote',  label: 'Încuiată din telecomandă', icon: 'fa-lock',                mi: 'remoteLock',       group: 'inchid', kind: 'on', st: ['Da', 'Nu'] },
+  { key: '_sf_central_lock',      label: 'Închidere centralizată',   icon: 'fa-lock-open',           mi: 'carUnlocked',     group: 'inchid', kind: 'on', st: ['Activă', 'Inactivă'] },
+  { key: '_sf_remote_close',      label: 'Telecomandă — închide',    icon: 'fa-lock',                mi: 'remoteLock',       group: 'inchid', kind: 'info', st: ['Apăsat', 'Nu'] },
+  { key: '_sf_remote_open',       label: 'Telecomandă — deschide',   icon: 'fa-lock-open',           mi: 'remoteUnlock',     group: 'inchid', kind: 'info', st: ['Apăsat', 'Nu'] },
+  { key: '_sf_remote_arm3x',      label: 'Telecomandă — armare 3x',  icon: 'fa-shield-halved',       mi: 'remote3x',     group: 'inchid', kind: 'info', st: ['Apăsat', 'Nu'] },
   { key: '_sf_factory_armed',     label: 'Alarmă de fabrică armată', icon: 'fa-shield-halved',       mi: 'shield',     group: 'inchid', kind: 'on', st: ['Armată', 'Dezarmată'] },
-  { key: '_sf_factory_alarm',     label: 'Alarmă de fabrică pornită', icon: 'fa-bell',               mi: 'bell',       group: 'inchid', kind: 'warn', st: ['Sună', 'Liniște'] },
-  { key: '_sf_alarm_emulated',    label: 'Alarmă emulată',           icon: 'fa-bell',                mi: 'bell',       group: 'inchid', kind: 'warn', st: ['Sună', 'Liniște'] },
+  { key: '_sf_factory_alarm',     label: 'Alarmă de fabrică pornită', icon: 'fa-bell',               mi: 'sirenAlarm',       group: 'inchid', kind: 'warn', st: ['Sună', 'Liniște'] },
+  { key: '_sf_alarm_emulated',    label: 'Alarmă emulată',           icon: 'fa-bell',                mi: 'bellAlarm',       group: 'inchid', kind: 'warn', st: ['Sună', 'Liniște'] },
   { key: '_sf_engine_lock',       label: 'Motor blocat (imobilizator)', icon: 'fa-ban',              mi: 'ban',        group: 'inchid', kind: 'info', st: ['Blocat', 'Liber'] },
 
   // ── Lumini ──
-  { key: '_cf_parking_lights',    label: 'Lumini de poziție',        icon: 'fa-lightbulb',           mi: 'bulb',       group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
-  { key: '_cf_dipped_headlights', label: 'Faza scurtă',              icon: 'fa-lightbulb',           mi: 'bulb',       group: 'lumini', kind: 'on', st: ['Aprinsă', 'Stinsă'] },
-  { key: '_cf_full_beam',         label: 'Faza lungă',               icon: 'fa-sun',                 mi: 'sun',        group: 'lumini', kind: 'on', st: ['Aprinsă', 'Stinsă'] },
-  { key: '_cf_front_fog_lights',  label: 'Proiectoare ceață față',   icon: 'fa-smog',                mi: 'fog',        group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
-  { key: '_cf_rear_fog_lights',   label: 'Lumini ceață spate',       icon: 'fa-smog',                mi: 'fog',        group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
-  { key: '_sf_hazard_lights',     label: 'Avarii',                   icon: 'fa-triangle-exclamation', mi: 'alert',     group: 'lumini', kind: 'warn', st: ['Pornite', 'Oprite'] },
+  { key: '_cf_parking_lights',    label: 'Lumini de poziție',        icon: 'fa-lightbulb',           mi: 'beamPark',       group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
+  { key: '_cf_dipped_headlights', label: 'Faza scurtă',              icon: 'fa-lightbulb',           mi: 'beamDip',       group: 'lumini', kind: 'on', st: ['Aprinsă', 'Stinsă'] },
+  { key: '_cf_full_beam',         label: 'Faza lungă',               icon: 'fa-sun',                 mi: 'beamFull',        group: 'lumini', kind: 'on', st: ['Aprinsă', 'Stinsă'] },
+  { key: '_cf_front_fog_lights',  label: 'Proiectoare ceață față',   icon: 'fa-smog',                mi: 'fogFront',        group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
+  { key: '_cf_rear_fog_lights',   label: 'Lumini ceață spate',       icon: 'fa-smog',                mi: 'fogRear',        group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
+  { key: '_sf_hazard_lights',     label: 'Avarii',                   icon: 'fa-triangle-exclamation', mi: 'hazardTri',     group: 'lumini', kind: 'warn', st: ['Pornite', 'Oprite'] },
   // „Bec ars — Stins" ar suna a bec, nu a martor. Da/Nu nu lasă loc de interpretare.
-  { key: '_cf_lights_failure',    label: 'Bec ars',                  icon: 'fa-lightbulb',           mi: 'bulb',       group: 'lumini', kind: 'warn', st: ['Da', 'Nu'] },
+  { key: '_cf_lights_failure',    label: 'Bec ars',                  icon: 'fa-lightbulb',           mi: 'lightBulbOut',       group: 'lumini', kind: 'warn', st: ['Da', 'Nu'] },
 
   // ── Martori de bord ──
-  { key: '_cf_check_engine',      label: 'CHECK ENGINE',             icon: 'fa-car-burst',           mi: 'engine',     group: 'martori', kind: 'warn' },
-  { key: '_cf_stop_indicator',    label: 'STOP (oprește motorul)',   icon: 'fa-hand',                mi: 'hand',       group: 'martori', kind: 'warn' },
-  { key: '_cf_oil_pressure_warning', label: 'Presiune / nivel ulei', icon: 'fa-oil-can',             mi: 'oil',        group: 'martori', kind: 'warn' },
-  { key: '_cf_coolant_warning',   label: 'Lichid de răcire',         icon: 'fa-temperature-high',    mi: 'thermo',     group: 'martori', kind: 'warn' },
-  { key: '_cf_battery_warning',   label: 'Încărcare baterie',        icon: 'fa-car-battery',         mi: 'battery',    group: 'martori', kind: 'warn' },
-  { key: '_cf_abs_warning',       label: 'ABS',                      icon: 'fa-circle-notch',        mi: 'disc',       group: 'martori', kind: 'warn' },
-  { key: '_cf_esp_warning',       label: 'ESP (control stabilitate)', icon: 'fa-car-on',             mi: 'esp',        group: 'martori', kind: 'warn' },
-  { key: '_cf_eps_warning',       label: 'Servodirecție',            icon: 'fa-life-ring',           mi: 'steering',   group: 'martori', kind: 'warn' },
-  { key: '_cf_airbag_warning',    label: 'AIRBAG',                   icon: 'fa-person-falling-burst', mi: 'airbag',    group: 'martori', kind: 'warn' },
-  { key: '_cf_handbrake_warning', label: 'Martor frână de mână',     icon: 'fa-circle-exclamation',  mi: 'alertO',     group: 'martori', kind: 'warn' },
-  { key: '_cf_brake_pad_wear',    label: 'Uzură plăcuțe frână',      icon: 'fa-record-vinyl',        mi: 'disc',       group: 'martori', kind: 'warn' },
-  { key: '_cf_low_tire_pressure', label: 'Presiune scăzută în anvelope', icon: 'fa-circle-notch',    mi: 'tire',       group: 'martori', kind: 'warn' },
-  { key: '_cf_low_fuel',          label: 'Rezervă combustibil',      icon: 'fa-gas-pump',            mi: 'pump',       group: 'martori', kind: 'warn' },
-  { key: '_cf_glow_plug',         label: 'Bujii incandescente',      icon: 'fa-fire-flame-simple',   mi: 'glow',       group: 'martori', kind: 'info', st: ['Aprinse', 'Stinse'] },
-  { key: '_cf_epc_warning',       label: 'EPC (control electronic motor)', icon: 'fa-microchip',     mi: 'cpu',        group: 'martori', kind: 'warn' },
-  { key: '_cf_dpf_warning',       label: 'Filtru de particule (DPF)', icon: 'fa-filter',             mi: 'filter',     group: 'martori', kind: 'warn' },
-  { key: '_cf_maintenance',       label: 'Revizie necesară',         icon: 'fa-wrench',              mi: 'wrench',     group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
-  { key: '_cf_general_warning',   label: 'Avertisment general',      icon: 'fa-circle-exclamation',  mi: 'alertO',     group: 'martori', kind: 'warn' },
+  { key: '_cf_check_engine',      label: 'CHECK ENGINE',             icon: 'fa-car-burst',           mi: 'engineBlock',     group: 'martori', kind: 'warn' },
+  { key: '_cf_stop_indicator',    label: 'STOP (oprește motorul)',   icon: 'fa-hand',                mi: 'stopHand',       group: 'martori', kind: 'warn' },
+  { key: '_cf_oil_pressure_warning', label: 'Presiune / nivel ulei', icon: 'fa-oil-can',             mi: 'oilCanDrop',        group: 'martori', kind: 'warn' },
+  { key: '_cf_coolant_warning',   label: 'Lichid de răcire',         icon: 'fa-temperature-high',    mi: 'coolantTemp',     group: 'martori', kind: 'warn' },
+  { key: '_cf_battery_warning',   label: 'Încărcare baterie',        icon: 'fa-car-battery',         mi: 'batteryPM',    group: 'martori', kind: 'warn' },
+  { key: '_cf_abs_warning',       label: 'ABS',                      icon: 'fa-circle-notch',        mi: 'absRing',       group: 'martori', kind: 'warn' },
+  { key: '_cf_esp_warning',       label: 'ESP (control stabilitate)', icon: 'fa-car-on',             mi: 'espSkid',        group: 'martori', kind: 'warn' },
+  { key: '_cf_eps_warning',       label: 'Servodirecție',            icon: 'fa-life-ring',           mi: 'steeringEps',   group: 'martori', kind: 'warn' },
+  { key: '_cf_airbag_warning',    label: 'AIRBAG',                   icon: 'fa-person-falling-burst', mi: 'airbagIcon',    group: 'martori', kind: 'warn' },
+  { key: '_cf_handbrake_warning', label: 'Martor frână de mână',     icon: 'fa-circle-exclamation',  mi: 'brakeP',     group: 'martori', kind: 'warn' },
+  { key: '_cf_brake_pad_wear',    label: 'Uzură plăcuțe frână',      icon: 'fa-record-vinyl',        mi: 'brakePad',       group: 'martori', kind: 'warn' },
+  { key: '_cf_low_tire_pressure', label: 'Presiune scăzută în anvelope', icon: 'fa-circle-notch',    mi: 'tirePress',       group: 'martori', kind: 'warn' },
+  { key: '_cf_low_fuel',          label: 'Rezervă combustibil',      icon: 'fa-gas-pump',            mi: 'fuelPumpLow',       group: 'martori', kind: 'warn' },
+  { key: '_cf_glow_plug',         label: 'Bujii incandescente',      icon: 'fa-fire-flame-simple',   mi: 'glowCoil',       group: 'martori', kind: 'info', st: ['Aprinse', 'Stinse'] },
+  { key: '_cf_epc_warning',       label: 'EPC (control electronic motor)', icon: 'fa-microchip',     mi: 'epcText',        group: 'martori', kind: 'warn' },
+  { key: '_cf_dpf_warning',       label: 'Filtru de particule (DPF)', icon: 'fa-filter',             mi: 'dpfFilter',     group: 'martori', kind: 'warn' },
+  { key: '_cf_maintenance',       label: 'Revizie necesară',         icon: 'fa-wrench',              mi: 'wrenchService',     group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
+  { key: '_cf_general_warning',   label: 'Avertisment general',      icon: 'fa-circle-exclamation',  mi: 'warnCircle',     group: 'martori', kind: 'warn' },
 
   // ── Confort și siguranță ──
-  { key: '_cf_driver_seatbelt',   label: 'Centură șofer',            icon: 'fa-user-shield',         mi: 'belt',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
-  { key: '_cf_passenger_seatbelt', label: 'Centură pasager',         icon: 'fa-user-shield',         mi: 'belt',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
-  { key: '_cf_air_conditioning',  label: 'Aer condiționat',          icon: 'fa-snowflake',           mi: 'snow',       group: 'confort', kind: 'on' },
-  { key: '_cf_cruise_control',    label: 'Pilot automat',            icon: 'fa-gauge-simple-high',   mi: 'gauge',      group: 'confort', kind: 'on' },
-  { key: '_cf_esp_active',        label: 'ESP intervine',            icon: 'fa-car-on',              mi: 'esp',        group: 'confort', kind: 'info', st: ['Acum', 'Nu'] },
+  { key: '_cf_driver_seatbelt',   label: 'Centură șofer',            icon: 'fa-user-shield',         mi: 'seatbeltIcon',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
+  { key: '_cf_passenger_seatbelt', label: 'Centură pasager',         icon: 'fa-user-shield',         mi: 'seatbeltIcon',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
+  { key: '_cf_air_conditioning',  label: 'Aer condiționat',          icon: 'fa-snowflake',           mi: 'acFlake',       group: 'confort', kind: 'on' },
+  { key: '_cf_cruise_control',    label: 'Pilot automat',            icon: 'fa-gauge-simple-high',   mi: 'cruiseGauge',      group: 'confort', kind: 'on' },
+  { key: '_cf_esp_active',        label: 'ESP intervine',            icon: 'fa-car-on',              mi: 'espSkid',        group: 'confort', kind: 'info', st: ['Acum', 'Nu'] },
 
   // ── Camion ──
   { key: '_cf_auto_retarder',     label: 'Retarder automat',         icon: 'fa-down-long',           mi: 'arrowDown',  group: 'camion', kind: 'info', st: ['Activ', 'Inactiv'] },
   { key: '_cf_manual_retarder',   label: 'Retarder manual',          icon: 'fa-down-long',           mi: 'arrowDown',  group: 'camion', kind: 'info', st: ['Activ', 'Inactiv'] },
 
   // ── Electric ──
-  { key: '_sf_battery_charging',  label: 'Baterie în încărcare',     icon: 'fa-battery-half',        mi: 'battery',    group: 'electric', kind: 'on', st: ['Da', 'Nu'] },
-  { key: '_sf_charging_cable',    label: 'Cablu de încărcare',       icon: 'fa-plug',                mi: 'plug',       group: 'electric', kind: 'info', st: ['Conectat', 'Deconectat'] },
+  { key: '_sf_battery_charging',  label: 'Baterie în încărcare',     icon: 'fa-battery-half',        mi: 'batteryPM',    group: 'electric', kind: 'on', st: ['Da', 'Nu'] },
+  { key: '_sf_charging_cable',    label: 'Cablu de încărcare',       icon: 'fa-plug',                mi: 'plugCharge',       group: 'electric', kind: 'info', st: ['Conectat', 'Deconectat'] },
 
   // ── Starea adaptorului ──
   { key: '_sf_work_mode_private', label: 'Regim personal',           icon: 'fa-user',                mi: 'user',       group: 'stare', kind: 'info', st: ['Personal', 'Serviciu'] },
@@ -138,61 +148,61 @@ const FLAGS = [
 
   // ── Stegulețele P4 (ALL-CAN300, programele noi de vehicul — ex. VW Passat B7). Decodate din
   //    tabelele oficiale de biți; cheile vin din codec8e (decodeSecurityFlagsP4 & co). ──
-  { key: '_sf_standalone_engine', label: 'Motor autonom',            icon: 'fa-gears',               mi: 'engine',     group: 'motor', kind: 'info', st: ['Activ', 'Inactiv'] },
-  { key: '_sf_cng_running',       label: 'Merge pe gaz (CNG)',       icon: 'fa-gas-pump',            mi: 'pump',       group: 'motor', kind: 'info', st: ['Da', 'Nu'] },
+  { key: '_sf_standalone_engine', label: 'Motor autonom',            icon: 'fa-gears',               mi: 'engineBlock',     group: 'motor', kind: 'info', st: ['Activ', 'Inactiv'] },
+  { key: '_sf_cng_running',       label: 'Merge pe gaz (CNG)',       icon: 'fa-gas-pump',            mi: 'gasCanister',       group: 'motor', kind: 'info', st: ['Da', 'Nu'] },
   { key: '_sf_ready_to_drive',    label: 'Gata de plecare',          icon: 'fa-circle-play',         mi: 'play',       group: 'motor', kind: 'on', st: ['Da', 'Nu'] },
-  { key: '_sf_trunk_remote_open', label: 'Portbagaj din telecomandă', icon: 'fa-car-rear',           mi: 'trunk',      group: 'usi', kind: 'info', st: ['Deschis', 'Nu'] },
+  { key: '_sf_trunk_remote_open', label: 'Portbagaj din telecomandă', icon: 'fa-car-rear',           mi: 'carTrunk',      group: 'usi', kind: 'info', st: ['Deschis', 'Nu'] },
   { key: '_sf_interlock',         label: 'Interlock (blocaj pornire)', icon: 'fa-ban',               mi: 'ban',        group: 'inchid', kind: 'info', st: ['Activ', 'Inactiv'] },
   { key: '_sf_engine_lock_request', label: 'Cerere blocare motor',   icon: 'fa-ban',                 mi: 'ban',        group: 'inchid', kind: 'info', st: ['Trimisă', 'Nu'] },
-  { key: '_sf_rearm_signal',      label: 'Semnal de rearmare',       icon: 'fa-shield-halved',       mi: 'shield',     group: 'inchid', kind: 'info', st: ['Trimis', 'Nu'] },
-  { key: '_cf_additional_front_lights', label: 'Lumini suplimentare față', icon: 'fa-lightbulb',     mi: 'bulb',       group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
-  { key: '_cf_additional_rear_lights',  label: 'Lumini suplimentare spate', icon: 'fa-lightbulb',    mi: 'bulb',       group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
-  { key: '_cf_light_signal',      label: 'Semnalizare cu farurile',  icon: 'fa-lightbulb',           mi: 'bulb',       group: 'lumini', kind: 'info', st: ['Acum', 'Nu'] },
-  { key: '_cf_esp_off',           label: 'ESP dezactivat',           icon: 'fa-car-on',              mi: 'esp',        group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
+  { key: '_sf_rearm_signal',      label: 'Semnal de rearmare',       icon: 'fa-shield-halved',       mi: 'remote3x',     group: 'inchid', kind: 'info', st: ['Trimis', 'Nu'] },
+  { key: '_cf_additional_front_lights', label: 'Lumini suplimentare față', icon: 'fa-lightbulb',     mi: 'lightExtra',       group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
+  { key: '_cf_additional_rear_lights',  label: 'Lumini suplimentare spate', icon: 'fa-lightbulb',    mi: 'lightExtra',       group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
+  { key: '_cf_light_signal',      label: 'Semnalizare cu farurile',  icon: 'fa-lightbulb',           mi: 'beamFull',       group: 'lumini', kind: 'info', st: ['Acum', 'Nu'] },
+  { key: '_cf_esp_off',           label: 'ESP dezactivat',           icon: 'fa-car-on',              mi: 'espSkid',        group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
   { key: '_cf_oil_filter_clogged', label: 'Filtru de ulei înfundat', icon: 'fa-filter',              mi: 'filter',     group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
-  { key: '_cf_oil_pressure_low',  label: 'Presiune ulei scăzută',    icon: 'fa-oil-can',             mi: 'oil',        group: 'martori', kind: 'warn' },
-  { key: '_cf_oil_temp_high',     label: 'Ulei supraîncălzit',       icon: 'fa-temperature-high',    mi: 'thermo',     group: 'martori', kind: 'warn' },
-  { key: '_cf_coolant_low',       label: 'Lichid de răcire puțin',   icon: 'fa-temperature-high',    mi: 'thermo',     group: 'martori', kind: 'warn' },
+  { key: '_cf_oil_pressure_low',  label: 'Presiune ulei scăzută',    icon: 'fa-oil-can',             mi: 'oilCanDrop',        group: 'martori', kind: 'warn' },
+  { key: '_cf_oil_temp_high',     label: 'Ulei supraîncălzit',       icon: 'fa-temperature-high',    mi: 'coolantTemp',     group: 'martori', kind: 'warn' },
+  { key: '_cf_coolant_low',       label: 'Lichid de răcire puțin',   icon: 'fa-temperature-high',    mi: 'coolantTemp',     group: 'martori', kind: 'warn' },
   { key: '_cf_air_filter_clogged', label: 'Filtru de aer înfundat',  icon: 'fa-filter',              mi: 'filter',     group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
   { key: '_cf_fuel_filter_clogged', label: 'Filtru combustibil înfundat', icon: 'fa-filter',         mi: 'filter',     group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
   { key: '_cf_water_in_fuel',     label: 'Apă în combustibil',       icon: 'fa-droplet',             mi: 'droplet',    group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
   { key: '_cf_brake_filter_clogged', label: 'Filtru frână înfundat', icon: 'fa-filter',              mi: 'filter',     group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
-  { key: '_cf_washer_fluid_low',  label: 'Lichid de parbriz puțin',  icon: 'fa-droplet',             mi: 'droplet',    group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
-  { key: '_cf_adblue_low',        label: 'AdBlue puțin',             icon: 'fa-droplet',             mi: 'droplet',    group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
-  { key: '_cf_cng_low',           label: 'CNG puțin',                icon: 'fa-gas-pump',            mi: 'pump',       group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
-  { key: '_cf_seatbelt_rear_left',   label: 'Centură spate stânga',  icon: 'fa-user-shield',         mi: 'belt',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
-  { key: '_cf_seatbelt_rear_right',  label: 'Centură spate dreapta', icon: 'fa-user-shield',         mi: 'belt',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
-  { key: '_cf_seatbelt_rear_centre', label: 'Centură spate mijloc',  icon: 'fa-user-shield',         mi: 'belt',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
-  { key: '_cf_passenger_present', label: 'Pasager față prezent',     icon: 'fa-user',                mi: 'user',       group: 'confort', kind: 'info', st: ['Da', 'Nu'] },
-  { key: '_sf_operator_present',  label: 'Operator prezent',         icon: 'fa-user',                mi: 'user',       group: 'camion', kind: 'info', st: ['Da', 'Nu'] },
-  { key: '_cf_pto_on',            label: 'Priză de putere (PTO)',    icon: 'fa-gears',               mi: 'gears',      group: 'camion', kind: 'on', st: ['Cuplată', 'Decuplată'] },
-  { key: '_cf_diff_front_locked', label: 'Diferențial față blocat',  icon: 'fa-circle-notch',        mi: 'disc',       group: 'camion', kind: 'info', st: ['Blocat', 'Liber'] },
-  { key: '_cf_diff_rear_locked',  label: 'Diferențial spate blocat', icon: 'fa-circle-notch',        mi: 'disc',       group: 'camion', kind: 'info', st: ['Blocat', 'Liber'] },
-  { key: '_cf_diff_central_locked', label: 'Diferențial central (4HI)', icon: 'fa-circle-notch',     mi: 'disc',       group: 'camion', kind: 'info', st: ['Blocat', 'Liber'] },
-  { key: '_cf_diff_central_reductor', label: 'Reductor (4LO)',       icon: 'fa-circle-notch',        mi: 'disc',       group: 'camion', kind: 'info', st: ['Cuplat', 'Nu'] },
-  { key: '_cf_trailer_axle1_lift', label: 'Axă remorcă 1 ridicată',  icon: 'fa-truck',               mi: 'truck',      group: 'camion', kind: 'info', st: ['Ridicată', 'Jos'] },
-  { key: '_cf_trailer_axle2_lift', label: 'Axă remorcă 2 ridicată',  icon: 'fa-truck',               mi: 'truck',      group: 'camion', kind: 'info', st: ['Ridicată', 'Jos'] },
+  { key: '_cf_washer_fluid_low',  label: 'Lichid de parbriz puțin',  icon: 'fa-droplet',             mi: 'washerFluid',    group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
+  { key: '_cf_adblue_low',        label: 'AdBlue puțin',             icon: 'fa-droplet',             mi: 'adblueDrop',    group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
+  { key: '_cf_cng_low',           label: 'CNG puțin',                icon: 'fa-gas-pump',            mi: 'gasCanister',       group: 'martori', kind: 'warn', st: ['Da', 'Nu'] },
+  { key: '_cf_seatbelt_rear_left',   label: 'Centură spate stânga',  icon: 'fa-user-shield',         mi: 'seatbeltIcon',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
+  { key: '_cf_seatbelt_rear_right',  label: 'Centură spate dreapta', icon: 'fa-user-shield',         mi: 'seatbeltIcon',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
+  { key: '_cf_seatbelt_rear_centre', label: 'Centură spate mijloc',  icon: 'fa-user-shield',         mi: 'seatbeltIcon',       group: 'confort', kind: 'on', st: ['Pusă', 'Nepusă'] },
+  { key: '_cf_passenger_present', label: 'Pasager față prezent',     icon: 'fa-user',                mi: 'personSeat',       group: 'confort', kind: 'info', st: ['Da', 'Nu'] },
+  { key: '_sf_operator_present',  label: 'Operator prezent',         icon: 'fa-user',                mi: 'personSeat',       group: 'camion', kind: 'info', st: ['Da', 'Nu'] },
+  { key: '_cf_pto_on',            label: 'Priză de putere (PTO)',    icon: 'fa-gears',               mi: 'ptoGear',      group: 'camion', kind: 'on', st: ['Cuplată', 'Decuplată'] },
+  { key: '_cf_diff_front_locked', label: 'Diferențial față blocat',  icon: 'fa-circle-notch',        mi: 'diffLock',       group: 'camion', kind: 'info', st: ['Blocat', 'Liber'] },
+  { key: '_cf_diff_rear_locked',  label: 'Diferențial spate blocat', icon: 'fa-circle-notch',        mi: 'diffLock',       group: 'camion', kind: 'info', st: ['Blocat', 'Liber'] },
+  { key: '_cf_diff_central_locked', label: 'Diferențial central (4HI)', icon: 'fa-circle-notch',     mi: 'diffLock',       group: 'camion', kind: 'info', st: ['Blocat', 'Liber'] },
+  { key: '_cf_diff_central_reductor', label: 'Reductor (4LO)',       icon: 'fa-circle-notch',        mi: 'diffLock',       group: 'camion', kind: 'info', st: ['Cuplat', 'Nu'] },
+  { key: '_cf_trailer_axle1_lift', label: 'Axă remorcă 1 ridicată',  icon: 'fa-truck',               mi: 'trailerHitch',      group: 'camion', kind: 'info', st: ['Ridicată', 'Jos'] },
+  { key: '_cf_trailer_axle2_lift', label: 'Axă remorcă 2 ridicată',  icon: 'fa-truck',               mi: 'trailerHitch',      group: 'camion', kind: 'info', st: ['Ridicată', 'Jos'] },
   { key: '_cf_hydraulic_filter_clogged', label: 'Filtru hidraulic înfundat', icon: 'fa-filter',   mi: 'filter',     group: 'camion', kind: 'warn', st: ['Da', 'Nu'] },
-  { key: '_cf_hydraulic_low_pressure', label: 'Presiune hidraulică scăzută', icon: 'fa-oil-can',    mi: 'oil',        group: 'camion', kind: 'warn' },
-  { key: '_cf_hydraulic_oil_low', label: 'Ulei hidraulic puțin',     icon: 'fa-oil-can',             mi: 'oil',        group: 'camion', kind: 'warn' },
-  { key: '_cf_hydraulic_high_temp', label: 'Hidraulică supraîncălzită', icon: 'fa-temperature-high', mi: 'thermo',     group: 'camion', kind: 'warn' },
-  { key: '_cf_hydraulic_oil_overflow', label: 'Ulei hidraulic peste nivel', icon: 'fa-oil-can',      mi: 'oil',        group: 'camion', kind: 'warn' },
-  { key: '_cf_trailer_tire_pressure_low', label: 'Presiune anvelope remorcă', icon: 'fa-truck',      mi: 'truck',      group: 'camion', kind: 'warn' },
-  { key: '_cf_trailer_brake_wear', label: 'Uzură frâne remorcă',     icon: 'fa-truck',               mi: 'truck',      group: 'camion', kind: 'warn' },
-  { key: '_cf_trailer_brake_temp_high', label: 'Frâne remorcă supraîncălzite', icon: 'fa-truck',     mi: 'truck',      group: 'camion', kind: 'warn' },
-  { key: '_cf_trailer_pneumatic_bad', label: 'Alimentare pneumatică remorcă', icon: 'fa-truck',      mi: 'truck',      group: 'camion', kind: 'warn' },
-  { key: '_sf_can_sleep_mode',    label: 'Adaptor CAN în repaus',    icon: 'fa-moon',                mi: 'moon',       group: 'stare', kind: 'info', st: ['Da', 'Nu'] },
+  { key: '_cf_hydraulic_low_pressure', label: 'Presiune hidraulică scăzută', icon: 'fa-oil-can',    mi: 'oilCanDrop',        group: 'camion', kind: 'warn' },
+  { key: '_cf_hydraulic_oil_low', label: 'Ulei hidraulic puțin',     icon: 'fa-oil-can',             mi: 'oilCanDrop',        group: 'camion', kind: 'warn' },
+  { key: '_cf_hydraulic_high_temp', label: 'Hidraulică supraîncălzită', icon: 'fa-temperature-high', mi: 'coolantTemp',     group: 'camion', kind: 'warn' },
+  { key: '_cf_hydraulic_oil_overflow', label: 'Ulei hidraulic peste nivel', icon: 'fa-oil-can',      mi: 'oilCanDrop',        group: 'camion', kind: 'warn' },
+  { key: '_cf_trailer_tire_pressure_low', label: 'Presiune anvelope remorcă', icon: 'fa-truck',      mi: 'tirePress',      group: 'camion', kind: 'warn' },
+  { key: '_cf_trailer_brake_wear', label: 'Uzură frâne remorcă',     icon: 'fa-truck',               mi: 'brakePad',      group: 'camion', kind: 'warn' },
+  { key: '_cf_trailer_brake_temp_high', label: 'Frâne remorcă supraîncălzite', icon: 'fa-truck',     mi: 'coolantTemp',      group: 'camion', kind: 'warn' },
+  { key: '_cf_trailer_pneumatic_bad', label: 'Alimentare pneumatică remorcă', icon: 'fa-truck',      mi: 'trailerHitch',      group: 'camion', kind: 'warn' },
+  { key: '_sf_can_sleep_mode',    label: 'Adaptor CAN în repaus',    icon: 'fa-moon',                mi: 'sleepMoon',       group: 'stare', kind: 'info', st: ['Da', 'Nu'] },
   { key: '_sf_can3_status',       label: 'Magistrala CAN 3',         icon: 'fa-plug-circle-check',   mi: 'plug',       group: 'stare', kind: 'code' },
 
   // ── Stari trimise ca semnale SEPARATE (ALL-CAN300 program 11173 — VW Passat B7) ──
-  { key: '_sf_window_front_left',  label: 'Geam față stânga',        icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
-  { key: '_sf_window_front_right', label: 'Geam față dreapta',       icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
-  { key: '_sf_window_rear_left',   label: 'Geam spate stânga',       icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
-  { key: '_sf_window_rear_right',  label: 'Geam spate dreapta',      icon: 'fa-window-maximize',     mi: 'roof',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
-  { key: '_sf_dual_fuel',          label: 'Merge pe combustibil dublu', icon: 'fa-gas-pump',         mi: 'pump',       group: 'motor', kind: 'info', st: ['Da', 'Nu'] },
-  { key: '_sf_lpg_running',        label: 'Merge pe GPL',            icon: 'fa-gas-pump',            mi: 'pump',       group: 'motor', kind: 'info', st: ['Da', 'Nu'] },
-  { key: '_cf_start_stop_inactive', label: 'Start-Stop dezactivat',  icon: 'fa-power-off',           mi: 'ban',        group: 'confort', kind: 'info', st: ['Dezactivat', 'Activ'] },
-  { key: '_cf_trailer_connected',  label: 'Remorcă atașată',         icon: 'fa-trailer',             mi: 'truck',      group: 'camion', kind: 'info', st: ['Atașată', 'Nu'] },
+  { key: '_sf_window_front_left',  label: 'Geam față stânga',        icon: 'fa-window-maximize',     mi: 'carWindow',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
+  { key: '_sf_window_front_right', label: 'Geam față dreapta',       icon: 'fa-window-maximize',     mi: 'carWindow',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
+  { key: '_sf_window_rear_left',   label: 'Geam spate stânga',       icon: 'fa-window-maximize',     mi: 'carWindow',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
+  { key: '_sf_window_rear_right',  label: 'Geam spate dreapta',      icon: 'fa-window-maximize',     mi: 'carWindow',       group: 'usi', kind: 'open', st: ['Deschis', 'Închis'] },
+  { key: '_sf_dual_fuel',          label: 'Merge pe combustibil dublu', icon: 'fa-gas-pump',         mi: 'gasCanister',       group: 'motor', kind: 'info', st: ['Da', 'Nu'] },
+  { key: '_sf_lpg_running',        label: 'Merge pe GPL',            icon: 'fa-gas-pump',            mi: 'gasCanister',       group: 'motor', kind: 'info', st: ['Da', 'Nu'] },
+  { key: '_cf_start_stop_inactive', label: 'Start-Stop dezactivat',  icon: 'fa-power-off',           mi: 'startStop',        group: 'confort', kind: 'info', st: ['Dezactivat', 'Activ'] },
+  { key: '_cf_trailer_connected',  label: 'Remorcă atașată',         icon: 'fa-trailer',             mi: 'trailerHitch',      group: 'camion', kind: 'info', st: ['Atașată', 'Nu'] },
 ];
 
 // ── Ce înseamnă fiecare steag — textul din balonul care se deschide la atingerea pictogramei ──
@@ -303,6 +313,7 @@ const DESC = {
   _sf_can2_status: 'Starea magistralei CAN 2 — aceleași coduri ca la CAN 1.',
   _sf_can3_status: 'Starea magistralei CAN 3 — aceleași coduri ca la CAN 1.',
   _sf_can_sleep_mode: 'Adaptorul CAN a intrat în repaus (mașina parcată de ceva timp).',
+  _sf_gear: 'Treapta în care e cutia acum: P = parcare, R = marșarier, N = neutru, D = mers. Se vede tot timpul, cu ultima stare primită de la mașină.',
   _sf_window_front_left: 'Geamul din față stânga (șofer). Colorat = deschis acum.',
   _sf_window_front_right: 'Geamul din față dreapta. Colorat = deschis acum.',
   _sf_window_rear_left: 'Geamul din spate stânga. Colorat = deschis acum.',
@@ -341,8 +352,21 @@ function isFlagKey(key) { return !!_byKey[key]; }
 function stateText(key, on) {
   const f = _byKey[key];
   if (!f) return on ? 'Da' : 'Nu';
+  // 'text' nu e pornit/oprit: valoarea E starea (treapta P/R/N/D). Fără valoare = mașina n-a
+  // trimis-o încă, nu „oprit".
+  if (f.kind === 'text') return (on === null || on === undefined || on === '') ? '—' : String(on);
   const t = f.st || KIND_TEXT[f.kind] || KIND_TEXT.info;
   return on ? t[0] : t[1];
+}
+
+// Se desenează plăcuța? Regula, aceeași în web și pe telefon: doar cele APRINSE, plus cele marcate
+// `mereu` (frâna de mână, treapta, încuiat/descuiat) care se văd și stinse. `ascuns` nu apare deloc.
+function seVede(key, on) {
+  const f = _byKey[key];
+  if (!f || f.ascuns) return false;
+  if (f.mereu) return on !== undefined && on !== null;
+  if (f.kind === 'code' || f.kind === 'text') return on !== undefined && on !== null && on !== '';
+  return !!on;
 }
 
 // Aprins = merită atenție? Doar 'warn' și 'open'. Folosit pentru rezumatul de sus.
@@ -357,4 +381,4 @@ function grouped() {
   return GROUPS.map(g => ({ ...g, flags: FLAGS.filter(f => f.group === g.key) })).filter(g => g.flags.length);
 }
 
-module.exports = { GROUPS, FLAGS, KIND_TEXT, NEDECODATE, flagMeta, isFlagKey, stateText, isAlarming, grouped, _nedecodate };
+module.exports = { GROUPS, FLAGS, KIND_TEXT, NEDECODATE, flagMeta, isFlagKey, stateText, seVede, isAlarming, grouped, _nedecodate };

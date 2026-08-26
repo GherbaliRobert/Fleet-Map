@@ -1,30 +1,12 @@
-// Iconuri inline (SVG, stil Feather) — fără dependență de Font Awesome, ușor + offline.
-type P = { name: IconName; size?: number; color?: string; style?: any; class?: string; sw?: number };
-export type IconName =
-  | 'car' | 'list' | 'chart' | 'bell' | 'search' | 'chevronR' | 'chevronL' | 'navigate'
-  | 'route' | 'report' | 'cpu' | 'droplet' | 'disc' | 'clock' | 'gauge' | 'refresh'
-  | 'x' | 'check' | 'logout' | 'layers' | 'alert' | 'calendar' | 'zap' | 'mapPin' | 'map' | 'wifiOff'
-  | 'menu' | 'moon' | 'sun' | 'headset' | 'settings' | 'wrench' | 'user' | 'truck' | 'robot' | 'flame' | 'fileBar'
-  | 'plus' | 'trash' | 'edit' | 'phone' | 'mail' | 'idCard' | 'sparkles' | 'coins' | 'maximize' | 'eye'
-  | 'compass'
-  // Steaguri CAN (vezi can_flags.js, campul `mi`) — martori de bord, usi, lumini, transmisie.
-  | 'key' | 'doorOpen' | 'lock' | 'unlock' | 'bulb' | 'shield' | 'gears' | 'fan' | 'play' | 'ban'
-  | 'hand' | 'foot' | 'reverse' | 'parking' | 'circleDot' | 'arrowRight' | 'arrowDown'
-  | 'trunk' | 'hood' | 'roof' | 'engine' | 'esp' | 'steering' | 'airbag' | 'belt' | 'snow'
-  | 'thermo' | 'oil' | 'battery' | 'pump' | 'filter' | 'fog' | 'glow' | 'tire' | 'plug' | 'alertO'
-  // Pictograme de bord, în stilul fișei Teltonika: mai fine și specifice fiecărei stări.
-  | 'carDoorFL' | 'carDoorFR' | 'carDoorRL' | 'carDoorRR' | 'carTrunk' | 'carHood' | 'carRoof'
-  | 'carWindow' | 'carLocked' | 'carUnlocked' | 'remoteLock' | 'remoteUnlock' | 'remote3x'
-  | 'keySlot' | 'ignitionKey' | 'engineBlock' | 'brakeP' | 'brakePedal' | 'clutchPedal'
-  | 'gearP' | 'gearR' | 'gearN' | 'gearD' | 'gearBox' | 'hazardTri' | 'beamDip' | 'beamFull'
-  | 'beamPark' | 'fogFront' | 'fogRear' | 'seatbeltIcon' | 'absRing' | 'espSkid' | 'airbagIcon'
-  | 'oilCanDrop' | 'coolantTemp' | 'batteryPM' | 'tirePress' | 'fuelPumpLow' | 'glowCoil'
-  | 'epcText' | 'dpfFilter' | 'wrenchService' | 'bellAlarm' | 'sirenAlarm' | 'acFlake'
-  | 'cruiseGauge' | 'washerFluid' | 'adblueDrop' | 'stopHand' | 'warnCircle' | 'steeringEps'
-  | 'brakePad' | 'lightBulbOut' | 'personSeat' | 'ptoGear' | 'sleepMoon' | 'startStop'
-  | 'gasCanister' | 'plugCharge' | 'trailerHitch' | 'diffLock' | 'lightExtra';
+// can_icons.js — GENERAT de tools/gen-can-icons.js. NU edita de mână.
+//
+// Desenele pictogramelor de stare (uși, lumini, martori de bord), scoase din
+// mobile/src/components/Icon.tsx ca web-ul să deseneze exact aceleași iconițe ca telefonul.
+// Conținutul e corpul unui <svg viewBox="0 0 24 24"> desenat cu contur, nu umplut.
+//
+// Ca să schimbi un desen: schimbă-l în Icon.tsx, apoi rulează `node tools/gen-can-icons.js`.
 
-const P: Record<IconName, string> = {
+const ICOANE = {
   car: '<path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11M5 11h14M5 11v6m14-6v6M6 17h2m8 0h2M7 14h.01M17 14h.01"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
   chart: '<path d="M18 20V10M12 20V4M6 20v-6"/>',
@@ -73,10 +55,6 @@ const P: Record<IconName, string> = {
   sparkles: '<path d="M12 3 L13.8 7.9 L18.7 9.7 L13.8 11.5 L12 16.4 L10.2 11.5 L5.3 9.7 L10.2 7.9 Z"/><path d="M19 13 L19.7 14.8 L21.5 15.5 L19.7 16.2 L19 18 L18.3 16.2 L16.5 15.5 L18.3 14.8 Z"/>',
   coins: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
   maximize: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
-
-  // ─── Bord: uși și capace (mașina văzută de sus, ca în fișa Teltonika) ───
-  // Caroseria e aceeași în toate patru; se schimbă doar ușa deschisă, ca ochiul să prindă imediat
-  // CARE ușă e. Text explicit în balon, deci nu ne bazăm doar pe desen.
   carDoorFL: '<rect x="7" y="2.5" width="10" height="19" rx="3"/><path d="M7 8.5 2.5 6.5v4.5z"/><path d="M10 6h4"/>',
   carDoorFR: '<rect x="7" y="2.5" width="10" height="19" rx="3"/><path d="M17 8.5 21.5 6.5v4.5z"/><path d="M10 6h4"/>',
   carDoorRL: '<rect x="7" y="2.5" width="10" height="19" rx="3"/><path d="M7 15.5 2.5 13.5v4.5z"/><path d="M10 18h4"/>',
@@ -85,30 +63,22 @@ const P: Record<IconName, string> = {
   carHood: '<rect x="6" y="3" width="12" height="14" rx="2.5"/><path d="M6 14.5 3 18.5h18l-3-4"/>',
   carRoof: '<rect x="5.5" y="2.5" width="13" height="19" rx="4"/><rect x="8.5" y="6" width="7" height="6.5" rx="1.5"/><path d="M8.5 15.5h7"/>',
   carWindow: '<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M4 12h16"/><path d="M8 15h3"/>',
-
-  // ─── Închidere ───
   carLocked: '<rect x="5" y="11" width="14" height="9.5" rx="2.5"/><path d="M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"/><circle cx="12" cy="15.5" r="1.3"/>',
   carUnlocked: '<rect x="5" y="11" width="14" height="9.5" rx="2.5"/><path d="M8.5 11V7.5a3.5 3.5 0 0 1 6.7-1.4"/><circle cx="12" cy="15.5" r="1.3"/>',
   remoteLock: '<rect x="6" y="11.5" width="12" height="9" rx="2.5"/><path d="M9 11.5V8.5a3 3 0 0 1 6 0v3"/><path d="M4 5.5h4M6 3.5v4"/>',
   remoteUnlock: '<rect x="6" y="11.5" width="12" height="9" rx="2.5"/><path d="M9 11.5V8.5a3 3 0 0 1 5.7-1.2"/><path d="M4 5.5h4M6 3.5v4"/>',
   remote3x: '<rect x="7" y="12" width="11" height="8.5" rx="2.5"/><path d="M9.7 12V9.2a2.8 2.8 0 0 1 5.6 0V12"/><path d="M2 8.5h4.5M2 5.5h4.5M2 11.5h4.5"/>',
-
-  // ─── Contact și motor ───
   keySlot: '<circle cx="8" cy="12" r="3.5"/><path d="M11.5 12H21M18 12v3M15 12v2.5"/>',
   ignitionKey: '<circle cx="12" cy="12" r="8.5"/><circle cx="10" cy="12" r="2"/><path d="M12 12h5M15.5 12v2"/>',
   engineBlock: '<path d="M3 10.5h2.5V8H10l2-2h4v2.5h2.5L21 11v4.5l-2.5 2.5H16v2h-6l-2-2H5.5L3 15.5z"/><path d="M8 8.5v-2h5"/>',
   brakeP: '<circle cx="12" cy="12" r="7.5"/><path d="M10 16V8h2.6a2.4 2.4 0 0 1 0 4.8H10"/>',
   brakePedal: '<circle cx="12" cy="12" r="7.5"/><path d="M8.6 12c1.2-1.6 2.2-1.6 3.4 0s2.2 1.6 3.4 0"/><path d="M2.5 7.5C1.7 9 1.7 15 2.5 16.5M21.5 7.5c.8 1.5.8 7.5 0 9"/>',
   clutchPedal: '<circle cx="12" cy="12" r="7.5"/><path d="M12 4.5v15" stroke-dasharray="2.5 2"/><path d="M8.6 12c1.2-1.6 2.2-1.6 3.4 0s2.2 1.6 3.4 0"/>',
-
-  // ─── Treapta de viteză: litera, ca în bord ───
   gearP: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" stroke="none">P</text>',
   gearR: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" stroke="none">R</text>',
   gearN: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" stroke="none">N</text>',
   gearD: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" stroke="none">D</text>',
   gearBox: '<path d="M6 5v8M12 5v8M18 5v10M6 9h12M12 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/><circle cx="6" cy="4" r="1.3"/><circle cx="12" cy="4" r="1.3"/><circle cx="18" cy="4" r="1.3"/>',
-
-  // ─── Lumini (glifele clasice de bord) ───
   hazardTri: '<path d="M12 4.5 21 19H3z"/><path d="M12 10v4M12 16.3h.01"/>',
   beamDip: '<path d="M12 5.5a6.5 6.5 0 0 1 0 13H8a6.5 6.5 0 0 1 0-13z"/><path d="M15 8.5l4.5 2M15 12h4.5M15 15.5l4.5-2"/>',
   beamFull: '<path d="M12 5.5a6.5 6.5 0 0 1 0 13H8a6.5 6.5 0 0 1 0-13z"/><path d="M15 8h5M15 12h5M15 16h5"/>',
@@ -117,8 +87,6 @@ const P: Record<IconName, string> = {
   fogRear: '<path d="M13 6.5a5.5 5.5 0 0 0 0 11h3a5.5 5.5 0 0 0 0-11z"/><path d="M10 9.5H4.5M10 14.5H4.5M9 12H5.5"/>',
   lightExtra: '<path d="M12 6.5a5.5 5.5 0 0 1 0 11H9a5.5 5.5 0 0 1 0-11z"/><path d="M15.5 9.5h5M15.5 14.5h5"/><path d="M18 3.5v2M21.5 5.5l-1.4 1.4"/>',
   lightBulbOut: '<path d="M9.5 18.5h5M10.5 21h3M12 3.5a5.5 5.5 0 0 0-3.3 9.9c.6.5 1 1.2 1.1 2h4.4c.1-.8.5-1.5 1.1-2A5.5 5.5 0 0 0 12 3.5z"/><path d="M4 4l16 16"/>',
-
-  // ─── Martori de bord ───
   absRing: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5.5" stroke-dasharray="2 2.4"/><text x="12" y="14.6" text-anchor="middle" font-size="6.5" font-weight="700" fill="currentColor" stroke="none">ABS</text>',
   espSkid: '<path d="M4 14.5h16M6 14.5l1.5-4h9l1.5 4"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/><path d="M3 20c1.2-1 2.4-1 3.6 0M17.4 20c1.2-1 2.4-1 3.6 0"/>',
   airbagIcon: '<circle cx="7.5" cy="6" r="2.4"/><path d="M4.5 20.5v-4.2a3 3 0 0 1 3-3h1.6"/><circle cx="16" cy="14.5" r="5.5"/><path d="M11 20.5h-6"/>',
@@ -138,8 +106,6 @@ const P: Record<IconName, string> = {
   washerFluid: '<path d="M5 20.5V11l3-4h6l3 4v9.5z" /><path d="M9 7V4h4v3"/><path d="M8.5 12.5h7"/><path d="M20.5 6.5c.8 1.2 1.4 2 1.4 2.6a1.4 1.4 0 1 1-2.8 0c0-.6.6-1.4 1.4-2.6z"/>',
   adblueDrop: '<path d="M12 3.5c2.6 3.8 4.4 6.2 4.4 8.2a4.4 4.4 0 1 1-8.8 0c0-2 1.8-4.4 4.4-8.2z"/><text x="12" y="14.5" text-anchor="middle" font-size="5.5" font-weight="700" fill="currentColor" stroke="none">AD</text>',
   gasCanister: '<rect x="6" y="4.5" width="12" height="15" rx="3"/><path d="M9.5 4.5V3h5v1.5"/><text x="12" y="14.5" text-anchor="middle" font-size="6" font-weight="700" fill="currentColor" stroke="none">GAS</text>',
-
-  // ─── Confort și diverse ───
   seatbeltIcon: '<circle cx="9" cy="5.5" r="2.4"/><path d="M6 20.5v-4.6a3.4 3.4 0 0 1 3.4-3.4H11"/><path d="M18.5 4 8.5 20.5"/><rect x="12.5" y="16.5" width="6" height="4" rx="1.5"/>',
   personSeat: '<circle cx="12" cy="5.5" r="2.6"/><path d="M8 20.5v-6a4 4 0 0 1 4-4 4 4 0 0 1 4 4v6"/><path d="M6.5 20.5h11"/>',
   acFlake: '<path d="M12 2.5v19M3.8 7.2l16.4 9.6M20.2 7.2 3.8 16.8"/><path d="M12 6l-2.2-2.2M12 6l2.2-2.2M12 18l-2.2 2.2M12 18l2.2 2.2"/>',
@@ -152,16 +118,12 @@ const P: Record<IconName, string> = {
   diffLock: '<circle cx="12" cy="12" r="4"/><path d="M4 12h4M16 12h4"/><circle cx="3" cy="12" r="1.6"/><circle cx="21" cy="12" r="1.6"/><path d="M12 4.5V8"/><rect x="10" y="2" width="4" height="3" rx="1"/>',
   bellAlarm: '<path d="M18 15.5V11a6 6 0 1 0-12 0v4.5L4.5 18h15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
   sirenAlarm: '<path d="M6 9.5h3l4-3.5v12l-4-3.5H6a1.5 1.5 0 0 1-1.5-1.5v-2A1.5 1.5 0 0 1 6 9.5z"/><path d="M16.5 8.8a4.5 4.5 0 0 1 0 6.4M19 6.3a8 8 0 0 1 0 11.4"/>',
-
-  // ─── Steaguri CAN ─────────────────────────────────────────────────────────
   key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M17 6l3 3M14 9l2.5 2.5"/>',
   doorOpen: '<path d="M4 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M2 21h20M12.5 12h.01"/>',
   lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
   unlock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/>',
   bulb: '<path d="M9 18h6M10 21h4M12 2a6 6 0 0 0-3.6 10.8c.6.5 1 1.3 1.1 2.2h5c.1-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 2z"/>',
   shield: '<path d="M12 2 4 5.5V11c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5.5z"/>',
-  // Schema în H a schimbătorului de viteze. NU o roată dințată: desenată la 17px ieșea identică cu
-  // `sun`, care e chiar alături în același panou („Faza lungă").
   gears: '<path d="M6 4v8M18 4v8M6 8h12M12 8v10"/><circle cx="12" cy="20" r="2"/>',
   fan: '<circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-8 4-8 2 0 3 2 2 4-.8 1.6-3 3-6 4M14 12c4 0 8 1 8 4 0 2-2 3-4 2-1.6-.8-3-3-4-6M12 14c0 4-1 8-4 8-2 0-3-2-2-4 .8-1.6 3-3 6-4M10 12c-4 0-8-1-8-4 0-2 2-3 4-2 1.6.8 3 3 4 6"/>',
   play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5 16 12l-6 3.5z"/>',
@@ -183,7 +145,6 @@ const P: Record<IconName, string> = {
   belt: '<path d="M6 3 16 17"/><rect x="12.5" y="15" width="7.5" height="5" rx="1.5"/><path d="M4 21h6"/>',
   snow: '<path d="M12 2v20M4 7l16 10M20 7 4 17"/><path d="M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5"/>',
   thermo: '<path d="M14 14.8V4a2 2 0 1 0-4 0v10.8a5 5 0 1 0 4 0z"/><path d="M12 9v7"/>',
-  // Picătură peste linia de nivel. Bidonul de ulei, desenat mic, ieșea un nor — la fel ca `hood`.
   oil: '<path d="M12 3s5 5.5 5 9a5 5 0 0 1-10 0c0-3.5 5-9 5-9z"/><path d="M4 21h16"/>',
   battery: '<rect x="2" y="8" width="18" height="10" rx="2"/><path d="M22 11v4M6 5v3M16 5v3M5 13h4M13 13h4M15 11v4"/>',
   pump: '<path d="M3 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M2 21h12M5 9h6"/><path d="M13 8h3a2 2 0 0 1 2 2v6a2 2 0 0 0 4 0V9l-3-3"/>',
@@ -195,15 +156,12 @@ const P: Record<IconName, string> = {
   alertO: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
 };
 
-// `sw` = grosimea conturului. Implicit 2, ca până acum. Pictogramele de bord (uși, martori,
-// trepte) se desenează cu 1.7 — au mai multe linii, iar la 2 se împăstau între ele.
-export function Icon({ name, size = 22, color = 'currentColor', style, class: cls, sw = 2 }: P) {
-  return (
-    <svg
-      width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} stroke-width={sw} stroke-linecap="round" stroke-linejoin="round"
-      class={cls} style={style}
-      dangerouslySetInnerHTML={{ __html: P[name] }}
-    />
-  );
+// Un <svg> gata de pus în pagină. `cls` intră pe element, ca să-i putem da dimensiune din CSS.
+function svg(nume, cls) {
+  const d = ICOANE[nume];
+  if (!d) return '';
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+    'stroke-linecap="round" stroke-linejoin="round"' + (cls ? ' class="' + cls + '"' : '') + '>' + d + '</svg>';
 }
+
+module.exports = { ICOANE, svg };

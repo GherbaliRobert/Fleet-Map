@@ -49,7 +49,11 @@ export function CanFlags({ io }: { io: any }) {
   const aprinse: { warn: string[]; open: string[] } = { warn: [], open: [] };
   let necitite = 0;
 
-  type Placa = { f: CanFlag; aprins: boolean; text: string; necitit: boolean };
+  // Regula (Robert, 27.08): se văd DOAR stările active. Altfel ecranul era un perete de casete
+  // stinse, din care nu se distingea ce se întâmplă chiar acum. Excepțiile sunt marcate `mereu` în
+  // can_flags.js — frâna de mână, treapta și încuiat/descuiat se arată tot timpul, cu ultima stare
+  // primită, fiindcă acolo contează și răspunsul „nu".
+  type Placa = { f: CanFlag; aprins: boolean; text: string; necitit: boolean; val?: any };
   const sectiuni = cat.groups.map((g) => {
     const placi: Placa[] = [];
     cat.flags.filter((f) => f.group === g.key).forEach((f) => {
@@ -58,17 +62,39 @@ export function CanFlags({ io }: { io: any }) {
       const necitit = lipsa && nedecodate.has(f.key) &&
         ((f.key.startsWith('_sf_') && areSf) || (f.key.startsWith('_cf_') && areCf));
       if (lipsa && !necitit) return;
+      // Treptele P/R/N/D nu apar una câte una — intră în plăcuța „Treapta de viteză".
+      if (f.ascuns) return;
       if (necitit) { necitite++; placi.push({ f, aprins: false, text: 'necitit', necitit: true }); return; }
-      if (f.kind === 'code') { placi.push({ f, aprins: Number(val) > 0, text: 'cod ' + val, necitit: false }); return; }
+      if (f.kind === 'code') {
+        const pornit = Number(val) > 0;
+        if (pornit || f.mereu) placi.push({ f, aprins: pornit, text: 'cod ' + val, necitit: false, val });
+        return;
+      }
+      if (f.kind === 'text') {
+        // Valoarea E starea (litera treptei). „Aprins" înseamnă doar că avem ce arăta.
+        const are = val !== '' && val !== null && val !== undefined;
+        if (are || f.mereu) placi.push({ f, aprins: are, text: are ? String(val) : '—', necitit: false, val });
+        return;
+      }
       const aprins = !!val;
       if (aprins && (f.kind === 'warn' || f.kind === 'open')) aprinse[f.kind].push(f.label);
-      placi.push({ f, aprins, text: canStateText(cat, f, aprins), necitit: false });
+      if (!aprins && !f.mereu) return;
+      placi.push({ f, aprins, text: canStateText(cat, f, aprins), necitit: false, val });
     });
     return { g, placi };
   }).filter((x) => x.placi.length);
   if (!sectiuni.length) return null;
 
   const lista = (v: string[]) => (v.length <= 4 ? v.join(', ') : v.slice(0, 4).join(', ') + ' +' + (v.length - 4));
+
+  // Pictograma unei plăcuțe. La treaptă, litera E starea — desenăm caseta cu litera primită.
+  const desen = (f: CanFlag, val: any): any => {
+    if (f.kind === 'text' && val) {
+      const n = 'gear' + String(val).toUpperCase();
+      if (n === 'gearP' || n === 'gearR' || n === 'gearN' || n === 'gearD') return n;
+    }
+    return f.mi;
+  };
 
   return (
     <div class="cfm">
@@ -85,11 +111,13 @@ export function CanFlags({ io }: { io: any }) {
         {aprinse.warn.length === 0 && aprinse.open.length === 0 && (
           <span class="cfm-b b-ok"><Icon name="check" size={13} /> Niciun martor aprins, totul închis</span>
         )}
+        <span class="cfm-b b-note">Doar stările active. Frâna de mână, treapta și încuietoarea se văd tot timpul.</span>
       </div>
 
       {sectiuni.map(({ g, placi }) => {
-        const rang: Record<string, number> = { warn: 3, open: 2, on: 1, info: 0, code: 0 };
-        const lit = placi.filter((x) => x.aprins);
+        const rang: Record<string, number> = { warn: 3, open: 2, on: 1, info: 0, code: 0, text: 0 };
+        // Treapta are mereu o valoare; n-o numaram in bulina, altfel grupa ar arata permanent „1 activ".
+        const lit = placi.filter((x) => x.aprins && x.f.kind !== 'text');
         const cel = lit.reduce<string | null>((a, x) => (a === null || rang[x.f.kind] > rang[a] ? x.f.kind : a), null);
         return (
           <details class="cfm-g" open key={g.key}>
@@ -99,7 +127,7 @@ export function CanFlags({ io }: { io: any }) {
               {lit.length > 0 && <span class="cfm-cnt" style={{ background: canColor(cel as any) }}>{lit.length}</span>}
             </summary>
             <div class="cfm-grid">
-              {placi.map(({ f, aprins, text, necitit }) => (
+              {placi.map(({ f, aprins, text, necitit, val }) => (
                 <button
                   type="button"
                   class={'cfm-t' + (aprins ? ' lit' : '') + (necitit ? ' nd' : '') + (ales === f.key ? ' sel' : '')}
@@ -107,7 +135,7 @@ export function CanFlags({ io }: { io: any }) {
                   style={aprins ? { '--c': canColor(f.kind) } as any : undefined}
                   onClick={() => setAles(ales === f.key ? null : f.key)}
                 >
-                  <Icon name={f.mi} size={17} />
+                  <Icon name={desen(f, val) as any} size={19} sw={1.7} />
                   <span class="cfm-l">{f.label}</span>
                   <span class="cfm-s">{text}</span>
                 </button>
@@ -118,7 +146,7 @@ export function CanFlags({ io }: { io: any }) {
                 return (
                   <div class="cfm-balon" onClick={() => setAles(null)}>
                     <div class="cfm-balon-cap">
-                      <Icon name={b.f.mi} size={18} color={b.aprins ? canColor(b.f.kind) : 'currentColor'} />
+                      <Icon name={desen(b.f, b.val) as any} size={20} sw={1.7} color={b.aprins ? canColor(b.f.kind) : 'currentColor'} />
                       <b>{b.f.label}</b>
                       <span class="cfm-balon-st" style={b.aprins ? { color: canColor(b.f.kind) } : undefined}>{b.text}</span>
                     </div>

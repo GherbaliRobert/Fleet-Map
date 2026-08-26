@@ -20,6 +20,46 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Bordul mașinii pe telefon: doar ce e aprins acum, cu pictograme de bord — `COMMIT_HASH`
+
+Ecranul de stări arăta tot ce știe mașina să trimită — și aprins, și stins. Pe Passat însemnau
+aproape 60 de casete, din care 55 spuneau „Închis", „Stins", „Nu". Ce se întâmpla chiar acum se
+pierdea printre ele.
+
+**Acum se văd doar stările active.** O ușă apare când e deschisă. Un martor apare când e aprins.
+Restul lipsesc, iar sus scrie de ce, ca să nu pară că s-a stricat ceva.
+
+**Trei lucruri se văd tot timpul**, exact cele cerute, fiindcă acolo contează și răspunsul „nu":
+- **frâna de mână** — trasă sau eliberată;
+- **treapta de viteză** — P, R, N sau D;
+- **încuietoarea** — mașina e încuiată sau nu.
+
+**Treapta era împărțită în patru casete** („Cutie în parcare", „Cutie în neutru"…), din care trei
+stăteau mereu stinse. Acum e una singură, cu litera din bord.
+
+**Toate pictogramele sunt redesenate**, în stilul din fișa adaptorului: ușa din față stânga arată
+altfel decât cea din spate dreapta, frâna de mână e „P"-ul în cerc, ABS-ul e inelul cu ABS, EPC-ul
+scrie EPC, bujiile incandescente sunt spirala, treapta e caseta cu litera. Înainte, patru uși
+diferite împrumutau același desen, iar geamurile îl luau pe cel al trapei — Font Awesome n-are
+iconițe de bord, așa că nu prea avea de unde alege.
+
+**Și pe web, și pe telefon, desenele sunt acum ACELEAȘI.** Se scriu într-un singur loc și se
+generează automat pentru web; dacă cineva schimbă un desen și uită să-l regenereze, se oprește
+verificarea automată înainte de livrare.
+
+- **Ce vede fondatorul:** aceleași ecrane, plus 23 de verificări noi care apără regula asta.
+- **Ce vede clientul:** dintr-o privire, ce se întâmplă cu mașina acum — nu o listă de „totul e
+  închis". Atingi o pictogramă și afli ce înseamnă.
+
+Verificat pe datele reale ale Passat-ului și pe toate combinațiile din protocol: 91 de verificări la
+panoul din web, 84 la decodor, toate verzi.
+
+**De reținut:** stările se arată din ultimul pachet primit. Dacă mașina stă parcată și adaptorul
+adoarme, cele trei permanente rămân cu ultima valoare primită — corect pentru o mașină parcată, dar
+nu e o „memorie" separată.
+
+---
+
 ### AMÂNDOI · De ce nu se vedeau pictogramele pe Passat — și cele 6 semnale citite greșit — `b734a01`
 
 Passat-ul **transmite** de aseară: 106 semnale, tot ce scrie în fișa Teltonika pentru modelul ăsta.

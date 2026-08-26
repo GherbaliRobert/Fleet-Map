@@ -22,10 +22,16 @@ function grabTo(start, end) {
 }
 
 const fnEsc = grabTo('function _usEsc(s)', '\n');
+// `cfIcon` desenează pictograma plăcuței din can_icons.js (aceleași desene ca pe telefon). O luăm
+// și pe ea, altfel funcția extrasă crapă la prima plăcuță.
+const fnIcon = grabTo('    function cfIcon(f, val) {', '\n    function canFlagsHtml');
 const fnFlags = grabTo('    function canFlagsHtml(flatIo, usedKeys) {', '\n    // ATENȚIE: aici stau DOAR');
 
-const win = { RA_CANFLAGS: { groups: cat.GROUPS, flags: cat.FLAGS, kindText: cat.KIND_TEXT, undecoded: cat.NEDECODATE } };
-const canFlagsHtml = new Function('window', fnEsc + '\n' + fnFlags + '\n; return canFlagsHtml;')(win);
+const win = {
+  RA_CANFLAGS: { groups: cat.GROUPS, flags: cat.FLAGS, kindText: cat.KIND_TEXT, undecoded: cat.NEDECODATE },
+  RA_CANICONS: require('./can_icons.js').ICOANE,
+};
+const canFlagsHtml = new Function('window', fnEsc + '\n' + fnIcon + '\n' + fnFlags + '\n; return canFlagsHtml;')(win);
 
 // ─── payload real: decodăm cu codec8e, exact ca serverul ───
 function flat(secVal, ctrlVal) {
@@ -64,12 +70,22 @@ sect('1. Mașină în regulă (contact + motor, uși închise, niciun martor)');
   T('fără rezumat portocaliu', !h.includes('b-open'));
   T('Contact aprins', /Contact<\/span><span class="cf-s">Pornit</.test(h));
   T('Motorul funcționează — Pornit', /Motorul funcționează<\/span><span class="cf-s">Pornit</.test(h));
-  T('Ușă față stânga — Închisă (nu „Închis")', /Ușă față stânga<\/span><span class="cf-s">Închisă</.test(h));
-  T('Capotă — Închisă', /Capotă<\/span><span class="cf-s">Închisă</.test(h));
-  T('Portbagaj — Închis (masculin)', /Portbagaj<\/span><span class="cf-s">Închis</.test(h));
-  T('CHECK ENGINE — Stins', /CHECK ENGINE<\/span><span class="cf-s">Stins</.test(h));
-  T('Centură șofer — Nepusă', /Centură șofer<\/span><span class="cf-s">Nepusă</.test(h));
-  T('Faza scurtă — Stinsă (acord feminin)', /Faza scurtă<\/span><span class="cf-s">Stinsă</.test(h));
+  // 27.08 — regula cerută: pe ecran apar DOAR stările active. O mașină în regulă nu mai umple
+  // pagina cu zeci de casete stinse; ușa închisă și martorul stins pur și simplu lipsesc.
+  T('ușa închisă NU mai apare', !h.includes('>Ușă față stânga<'));
+  T('capota închisă NU mai apare', !h.includes('>Capotă<'));
+  T('CHECK ENGINE stins NU mai apare', !h.includes('>CHECK ENGINE<'));
+  T('faza scurtă stinsă NU mai apare', !h.includes('>Faza scurtă<'));
+  T('spune omului de ce sunt puține', h.includes('Se arată doar stările active'));
+  // Excepțiile: se văd tot timpul, chiar și „nu".
+  T('Frâna de mână se vede și eliberată', /Frână de mână<\/span><span class="cf-s">Eliberată</.test(h));
+  T('Mașina încuiată se vede și descuiată', /Mașina încuiată<\/span><span class="cf-s">Nu</.test(h));
+  // Acordul gramatical al textelor stinse rămâne verificat direct în catalog: se folosește în
+  // balonul de pe telefon și la cele trei plăcuțe permanente, chiar dacă nu se mai vede aici.
+  T('acord: Ușă … Închisă (nu „Închis")', cat.stateText('_sf_door_front_left', false) === 'Închisă');
+  T('acord: Portbagaj … Închis (masculin)', cat.stateText('_sf_trunk_open', false) === 'Închis');
+  T('acord: Centură … Nepusă', cat.stateText('_cf_driver_seatbelt', false) === 'Nepusă');
+  T('acord: Faza scurtă … Stinsă (feminin)', cat.stateText('_cf_dipped_headlights', false) === 'Stinsă');
   T('marchează cheile ca folosite', used.has('_sf_ignition_on') && used.has('_cf_check_engine'));
   T('cod magistrală CAN 1', h.includes('cod 1'));
 }
@@ -95,14 +111,16 @@ sect('2. Mașină cu probleme (CHECK ENGINE + ABS + ușă + capotă)');
   T('fără rezumat verde', !h.includes('b-ok'));
   T('CHECK ENGINE aprins (clasă lit + k-warn)', /class="cf k-warn lit"[^>]*CHECK ENGINE|CHECK ENGINE/.test(h) && h.includes('CHECK ENGINE</span><span class="cf-s">Aprins<'));
   T('ușa deschisă are clasa portocalie', /class="cf k-open lit"[\s\S]{0,220}Ușă față stânga/.test(h));
-  T('ușa dreapta rămâne stinsă', /Ușă față dreapta<\/span><span class="cf-s">Închisă</.test(h));
+  T('ușa dreapta (închisă) nu se mai desenează deloc', !h.includes('>Ușă față dreapta<'));
   // bulina grupei ia culoarea celui mai serios semnal aprins din ea
   const gUsi = /UȘI|Uși și capace([\s\S]{0,140})/.exec(h);
   T('bulina la „Uși și capace" e portocalie (2 deschise)', /Uși și capace <span class="cf-cnt c-open">2</.test(h), (gUsi || [])[1]);
   T('bulina la „Martori de bord" e roșie (3 aprinși)', /Martori de bord <span class="cf-cnt c-warn">3</.test(h));
   T('bulina la „Contact și motor" e verde (contact+motor pornite)', /Contact și motor <span class="cf-cnt c-on">/.test(h));
   T('grupă fără nimic aprins nu are bulină', /Camion <i class="fas fa-chevron-right/.test(h) || !h.includes('Camion'));
-  T('grupele sunt deschise implicit', (h.match(/<details class="cf-g" open>/g) || []).length >= 8);
+  // Cu filtrul nou rămân doar grupele care au ceva de arătat — dar acelea rămân desfăcute.
+  T('grupele rămase sunt deschise implicit', (h.match(/<details class="cf-g" open>/g) || []).length >= 3);
+  T('grupele fără nimic activ nu se mai desenează', !h.includes('>Camion<'));
 }
 
 // ════════════ 3. Un singur martor → singular ════════════
@@ -167,7 +185,10 @@ sect('7. Acoperire față de codec8e.js');
   // asa trimite VW Passat B7. Starile care exista doar acolo (geamuri, GPL, Start-Stop, remorca)
   // n-au bit in nicio masca, deci nu apar in listele sf/cf de mai sus.
   const dinPunte = new Set(Object.values(require('./can_flag_io.js').PE_ID));
-  const orfane = cat.FLAGS.filter(f => ![...sf, ...cf].includes(f.key) && !dinPunte.has(f.key)).map(f => f.key);
+  // Treapta de viteză e DERIVATĂ: o calculează expandCanFlags din cele patru semnale P/R/N/D, deci
+  // n-are nici bit, nici ID propriu.
+  const DERIVATE = new Set(['_sf_gear']);
+  const orfane = cat.FLAGS.filter(f => ![...sf, ...cf].includes(f.key) && !dinPunte.has(f.key) && !DERIVATE.has(f.key)).map(f => f.key);
   const neasteptate = orfane.filter(k => !cat.NEDECODATE.includes(k));
   T('nu avem fișe pentru chei inexistente', neasteptate.length === 0, neasteptate.join(', '));
 
@@ -182,8 +203,20 @@ sect('7. Acoperire față de codec8e.js');
   for (const [k, v] of Object.entries(ioTot._security_flags || {})) fTot['_sf_' + k] = v;
   for (const [k, v] of Object.entries(ioTot._control_flags || {})) fTot['_cf_' + k] = v;
   const h = canFlagsHtml(fTot, new Set());
-  const lipsa = [...sf, ...cf].map(k => cat.flagMeta(k)).filter(f => f && !h.includes('>' + f.label + '<'));
-  T('toate apar pe ecran cu totul aprins', lipsa.length === 0, lipsa.map(f => f.key).join(', '));
+  // Regula de afișare stă într-un singur loc — `seVede` din can_flags.js. Verificăm că ecranul o
+  // respectă în amândouă sensurile, nu doar că „apare tot".
+  // (Cu toți biții pe 1, câteva stări ies logic STINSE — de pildă „Regim personal", care e inversat
+  // în protocol: bitul 1 înseamnă „serviciu". Testul vechi presupunea că 1 = aprins pentru toate.)
+  const meta = [...sf, ...cf].map(k => cat.flagMeta(k)).filter(Boolean);
+  const lipsa = meta.filter(f => cat.seVede(f.key, fTot[f.key]) && !h.includes('>' + f.label + '<'));
+  T('tot ce trebuie să se vadă, se vede', lipsa.length === 0, lipsa.map(f => f.key).join(', '));
+  const strecurate = meta.filter(f => !cat.seVede(f.key, fTot[f.key]) && h.includes('>' + f.label + '<'));
+  T('nu se strecoară nicio stare inactivă', strecurate.length === 0, strecurate.map(f => f.key).join(', '));
+  T('treptele P/R/N/D nu apar una câte una',
+    !h.includes('>Cutie în parcare (P)<') && !h.includes('>Cutie în mers (D)<'));
+  T('treapta apare o dată, cu litera ei', /Treapta de viteză<\/span><span class="cf-s">P</.test(h));
+  T('desenul treptei e caseta cu litera P', h.includes('>P</text>'));
+  T('pictogramele vin din can_icons.js, nu din Font Awesome', (h.match(/<svg class="cf-i"/g) || []).length > 20);
   T('nu rămâne nimic în „avansate"', true);
 }
 

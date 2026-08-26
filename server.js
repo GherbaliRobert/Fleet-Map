@@ -165,6 +165,7 @@ try { agents = require('./agents'); } catch (e) { console.warn('[AGENTS] indispo
 const licenseCats = require('./license_cats');   // categorii permis + încadrare șofer (sursă unică)
 const maintTypes = require('./maint_types');     // tipuri de lucrări la service + granița față de Documente
 const canFlags = require('./can_flags');         // steagurile CAN (uși, lumini, martori) — nume + iconiță
+const canIcons = require('./can_icons');         // desenele lor (generat din Icon.tsx — vezi tools/gen-can-icons.js)
 const ioFormat = require('./io_format');         // cum se scrie pe ecran o valoare de IO (web + telefon)
 let fuelprice = null;
 try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
@@ -1173,6 +1174,11 @@ const _CANFLAGS = { groups: canFlags.GROUPS, flags: canFlags.FLAGS, kindText: ca
 const _CANFLAGS_JS = 'window.RA_CANFLAGS=' + JSON.stringify(_CANFLAGS) + ';';
 app.get('/js/can-flags.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_CANFLAGS_JS); });
 app.get('/api/can-flags', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(_CANFLAGS); });
+
+// Desenele pictogramelor. Telefonul le are în cod (Icon.tsx); web-ul le ia de aici, ca aceeași
+// stare să arate la fel în amândouă ecranele. Generate din Icon.tsx, deci o singură sursă.
+const _CANICONS_JS = 'window.RA_CANICONS=' + JSON.stringify(canIcons.ICOANE) + ';';
+app.get('/js/can-icons.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_CANICONS_JS); });
 
 // Formatarea valorilor IO — aceeași sursă pentru pagină și pentru rutele de mai jos (io_format.js).
 const _IOFMT_JS = 'window.RA_IOFMT=(function(){' +
