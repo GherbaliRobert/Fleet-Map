@@ -491,10 +491,10 @@ function getIoName(id, iface) {
     // 659/660/661 = treapta N/P/R, 898 = CONTACT. Confirmate pe VW Passat B7 (program 11173), unde
     // rulau live cu intelesul gresit. Numele corecte vin din IO_EXTRA; legatura cu placutele din
     // interfata se face in can_flag_io.js.
-    // Manual CAN data
-    900: 'can_manual_0',                // manual CAN element 0
-    902: 'can_manual_2',                // manual CAN element 2
-    904: 'can_manual_4',                // manual CAN element 4
+    // 900/902/904 NU mai sunt aici: „can_manual_0/2/4" era GHICIT. Oficial sunt steaguri de stare —
+    // 900 = motorul functioneaza, 902 = gata de plecare, 904 = regim de lucru. Se vedea pe Passat:
+    // can_manual_4 = 1 aprindea „Regim personal", desi 1 inseamna SERVICIU. Numele corecte vin din
+    // IO_EXTRA, iar legatura cu placutele se face in can_flag_io.js.
     // Green driving
     253: 'green_driving_type',
     254: 'green_driving_value',
@@ -881,20 +881,21 @@ const _FLAG_PE_NUME = (() => {
   const m = {};
   for (const [id, steag] of Object.entries(_FLAG_IO.PE_ID)) {
     const nume = getIoName(Number(id), null);
-    if (!/^io_\d+$/.test(nume)) m[nume] = steag;
+    if (!/^io_\d+$/.test(nume)) m[nume] = { steag, invers: _FLAG_IO.INVERS.has(Number(id)) };
   }
   return m;
 })();
 function _dinSemnaleSeparate(ioData) {
   const sf = {}, cf = {};
   let gasite = 0;
-  for (const [nume, steag] of Object.entries(_FLAG_PE_NUME)) {
+  for (const [nume, def] of Object.entries(_FLAG_PE_NUME)) {
     const v = ioData[nume];
     if (v === undefined || v === null) continue;
     gasite++;
-    const pornit = !(v === 0 || v === '0' || v === false);
-    if (steag.startsWith('_sf_')) sf[steag.slice(4)] = pornit;
-    else cf[steag.slice(4)] = pornit;
+    let pornit = !(v === 0 || v === '0' || v === false);
+    if (def.invers) pornit = !pornit;
+    if (def.steag.startsWith('_sf_')) sf[def.steag.slice(4)] = pornit;
+    else cf[def.steag.slice(4)] = pornit;
   }
   return gasite ? { sf, cf } : null;
 }

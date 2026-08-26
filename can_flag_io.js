@@ -146,4 +146,10 @@ const ISF = {
 
 const PE_ID = Object.assign({}, SSF, CSF, ISF);
 
-module.exports = { SSF, CSF, ISF, PE_ID };
+// Semnale la care 1 înseamnă CONTRARIUL plăcuței. Deocamdată unul singur, dar merită tratat curat:
+// oficial, „SSF Work Mode" e 0 = personal, 1 = serviciu — iar plăcuța noastră se numește „Regim
+// personal". Fără inversare, o mașină de serviciu apărea ca fiind în regim personal (se vedea chiar
+// pe Passat, unde semnalul e 1).
+const INVERS = new Set([904]);
+
+module.exports = { SSF, CSF, ISF, PE_ID, INVERS };

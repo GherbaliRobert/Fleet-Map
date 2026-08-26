@@ -32,7 +32,7 @@ const vechi = require('./tools/fixtures/io_map_inainte.json');
 // 652/658-661/898: erau „can_security_flag_ext", „can_indicator_left/right/hazard/lights" si
 // „can_handbrake" — toate GHICITE. Oficial sunt steaguri individuale: cheia in contact, portbagaj,
 // treptele N/P/R si CONTACTUL. Rulau LIVE cu intelesul gresit pe VW Passat B7. Vezi jurnalul 26.08.
-const CORECTATE = new Set([29, 30, 31, 32, 33, 37, 38, 217, 652, 658, 659, 660, 661, 898]);
+const CORECTATE = new Set([29, 30, 31, 32, 33, 37, 38, 217, 652, 658, 659, 660, 661, 898, 900, 902, 904]);
 const schimbate = [];
 for (const [id, nume] of Object.entries(vechi)) {
   if (CORECTATE.has(Number(id))) continue;
@@ -237,6 +237,14 @@ t('masina fara steaguri NU capata _security_flags', ioGol._security_flags === un
 const ioMixt = { can_security_state_flags_p4: b(22), can_ssf_clutch_pushed: 1 };
 c.expandCanFlags(ioMixt);
 t('impachetat + separat: amandoua ajung in acelasi loc', ioMixt._security_flags.door_front_left === true && ioMixt._security_flags.clutch === true);
+// 900/902/904 erau „can_manual_0/2/4" — ghicite. Oficial: motor pornit, gata de plecare, regim de
+// lucru. Pe Passat, can_manual_4 = 1 aprindea „Regim personal", desi 1 inseamna SERVICIU.
+t('900/902/904 au numele oficiale', c.getIoName(900, null) === 'can_ssf_engine_working' && c.getIoName(904, null) === 'can_ssf_work_mode');
+const ioServ = { can_ssf_work_mode: 1 }; c.expandCanFlags(ioServ);
+t('regim de lucru 1 (serviciu) → NU „personal"', ioServ._security_flags.work_mode_private === false);
+const ioPers = { can_ssf_work_mode: 0 }; c.expandCanFlags(ioPers);
+t('regim de lucru 0 (personal) → „personal"', ioPers._security_flags.work_mode_private === true);
+t('inversarea e declarata explicit, nu ascunsa in cod', fio.INVERS instanceof Set && fio.INVERS.has(904));
 
 
 console.log('\n' + ok + '/' + (ok + fail) + ' verificări trecute\n');

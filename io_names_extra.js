@@ -1,6 +1,6 @@
 // io_names_extra.js — GENERAT de tools/gen-io-extra.js din specul oficial Teltonika FMC130.
 // NU edita de mână: rulează generatorul după ce actualizezi tools/fixtures/avl-fmc130.json.
-// Harta scrisă de mână din codec8e.js are prioritate; aici e restul listei oficiale (508 ID-uri),
+// Harta scrisă de mână din codec8e.js are prioritate; aici e restul listei oficiale (511 ID-uri),
 // ca un Passat cu ALL-CAN300 să nu mai apară cu zeci de „io_517" nedescifrate.
 // Câmpuri: name (cheia din io_data) · mult (multiplicator afișare/conversie) · semnat (two's complement)
 //          · octeti (lățimea valorii) · unit · comentariu = numele oficial + grupul din spec.
@@ -258,8 +258,11 @@ module.exports = {
   867: { name: 'can_lvcan_total_cng_counted', octeti: 4, unit: "kg" }, // LVCAN Total CNG counted [CAN adapters]
   898: { name: 'can_ssf_ignition', octeti: 1 }, // SSF Ignition [LVCAN, ALLCAN300, CANCONTROL]
   899: { name: 'can_ssf_webasto', octeti: 1 }, // SSF Webasto [ALLCAN300]
+  900: { name: 'can_ssf_engine_working', octeti: 1 }, // SSF Engine Working [ALLCAN300, CANCONTROL]
   901: { name: 'can_ssf_standalone_engine', octeti: 1 }, // SSF Standalone Engine [ALLCAN300]
+  902: { name: 'can_ssf_ready_to_drive', octeti: 1 }, // SSF Ready To Drive [ALLCAN300, CANCONTROL]
   903: { name: 'can_ssf_engine_working_on_cng', octeti: 1 }, // SSF Engine Working On CNG [ALLCAN300, CANCONTROL]
+  904: { name: 'can_ssf_work_mode', octeti: 1 }, // SSF Work Mode [ALLCAN300]
   905: { name: 'can_ssf_operator', octeti: 1 }, // SSF Operator [ALLCAN300]
   906: { name: 'can_ssf_interlock', octeti: 1 }, // SSF Interlock [ALLCAN300]
   907: { name: 'can_ssf_engine_lock_active', octeti: 1 }, // SSF Engine Lock Active [CANCONTROL]

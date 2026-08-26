@@ -53,8 +53,16 @@ dezactivat, mers pe GPL sau combustibil dublu, remorcă atașată.
 - **Ce vede clientul:** bordul mașinii pe telefon, cu pictograme care chiar se aprind — atingi una și
   afli ce înseamnă.
 
-Verificat pe datele reale ale Passat-ului, nu pe date inventate: 34 de plăcuțe, ambreiajul apăsat
-văzut corect, ușile închise rămân stinse. Trei verificări noi în CI leagă puntea de catalog, ca să nu
+**Confirmat în producție, pe mașina reală:** **59 de plăcuțe** apar acum pe Passat, unde înainte nu
+era niciuna, iar seria de șasiu se citește ca text: **WVWZZZ3CZBE322504**.
+
+Verificând rezultatul, am mai găsit trei semnale citite greșit — erau etichetate „date CAN manuale
+0/2/4", dar sunt de fapt *motorul funcționează*, *gata de plecare* și *regimul de lucru*. Din cauza
+asta se aprindea „Regim personal" pe o mașină care raporta, de fapt, regim de serviciu. Corectat,
+inclusiv sensul inversat (la acest semnal 0 înseamnă personal, 1 înseamnă serviciu).
+
+Verificat pe datele reale ale Passat-ului, nu pe date inventate: ambreiajul apăsat văzut corect,
+ușile închise rămân stinse. Trei verificări noi în CI leagă puntea de catalog, ca să nu
 se mai poată desincroniza.
 
 
