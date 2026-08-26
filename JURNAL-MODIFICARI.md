@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
-### AMÂNDOI · Bordul mașinii pe telefon: doar ce e aprins acum, cu pictograme de bord — `COMMIT_HASH`
+### AMÂNDOI · Bordul mașinii pe telefon: doar ce e aprins acum, cu pictograme de bord — `b210399`
 
 Ecranul de stări arăta tot ce știe mașina să trimită — și aprins, și stins. Pe Passat însemnau
 aproape 60 de casete, din care 55 spuneau „Închis", „Stins", „Nu". Ce se întâmpla chiar acum se
