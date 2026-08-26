@@ -20,6 +20,253 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Fișierul de tahograf se încarcă și de pe telefon
+
+Ultimul lucru care se putea face DOAR din web. Acum se face și din aplicația de telefon: deschizi
+Tahograf → „Încarcă un fișier descărcat", alegi șoferul (sau vehiculul), alegi fișierul, trimiți.
+
+**Fără plugin nou.** Selectorul de fișiere al Androidului se deschide direct din aplicație, la fel ca
+la pozele de talon. Zero dependințe native în plus, deci zero risc la construirea APK-ului.
+
+Un amănunt care ar fi trecut neobservat: fișierele `.DDD` **n-au un tip înregistrat** în Android. Dacă
+i-aș fi cerut selectorului „doar .ddd", fișierul ar fi apărut gri, neselectabil, și omul ar fi crezut
+că aplicația e stricată. Așa că selectorul le arată pe toate — oricum serverul e cel care spune dacă
+fișierul e sau nu un tahograf, nu extensia din nume.
+
+**O regulă mutată la locul ei.** „Fișierul trebuie legat de un șofer sau de un vehicul" trăia doar în
+pagina web. Un fișier nelegat rămâne în bază fără să conteze pentru niciun termen — o descărcare
+făcută, dar invizibilă în scadențar. Cu al doilea client care încarcă, regula ar fi trebuit scrisă de
+două ori, deci am mutat-o pe **server**. Tot acolo am adăugat și verificarea că vehiculul ales chiar
+există: un IMEI tastat greșit trecea de verificarea de acces și crea aceeași legătură moartă.
+
+Ecranul o mai spune o dată înainte de trimitere, dar din alt motiv: ca omul să afle că a uitat să
+aleagă **înainte** de a urca câțiva MB pe date mobile, nu după.
+
+**Ce NU face:** un fișier pe care serverul nu-l poate citi nu e raportat ca reușită. Scrie, cu roșu,
+„s-a păstrat, dar NU l-am putut citi — nu contează ca descărcare", plus motivul. Ar fi fost cel mai
+prost mesaj posibil aici: „încărcat ✓" pe ceva ce nu ține loc de nimic la un control.
+
+**Probele.** Pe lângă cele de pe server (61 acum), am condus chiar interfața de telefon dintr-un
+browser, la dimensiune de telefon, pe date reale: am construit un `.DDD` din specificație, l-am ales
+prin selectorul de fișiere și am verificat că șoferul trece din „niciodată descărcat" în „ultima
+descărcare 25.08" **fără reîncărcarea ecranului**. Apoi am trimis un fișier stricat și am verificat
+că mesajul nu e verde. Regula mutată pe server am stricat-o intenționat: trei verificări au căzut.
+
+- **Ce vede fondatorul:** poate încărca un fișier de la un client direct de pe telefon, din mașină.
+- **Ce vede clientul:** la fel — nu mai trebuie să ajungă la calculator ca să pună o descărcare.
+
+### AMÂNDOI · Rândul cu „cine nu apare", rescris de Alin
+
+Scria „Nu apar aici: 2 șoferi fără categorie de tahograf și 3 vehicule fără tahograf — n-au ce
+descărca." Alin a cerut altfel: **„Acum aveți: 2 șoferi fără categorie de tahograf și 3 vehicule fără
+tahograf, nimic de descărcat."**
+
+Are dreptate. Varianta veche începea cu o negație („nu apar") și te punea să te întrebi de ce lipsește
+ceva. A lui începe cu ce ai și se termină cu concluzia — asta e informația, nu absența ei.
+
+Schimbat în amândouă interfețele, cuvânt cu cuvânt la fel, iar proba verifică de acum că fraza rămâne
+identică pe web și pe telefon. Fără verificarea asta, aceeași flotă ar putea fi descrisă în două feluri
+în aceeași aplicație.
+
+- **Ce vede fondatorul:** același rând, spus mai limpede.
+- **Ce vede clientul:** la fel.
+
+### AMÂNDOI · Tahograful și bifele de pe permis, și pe telefon
+
+Alin a cerut ca modificarea de dimineață să ajungă și în aplicația de Android. Erau două lipsuri, nu una.
+
+**1. Fișa șoferului n-avea categoriile de pe permis.** Pe telefon puteai completa nume, telefon, email,
+număr de permis și data de expirare — dar nu și categoriile. Adică fix bifa care decide dacă omul intră
+în Tahograf. Un administrator care lucrează de pe telefon n-avea cum să repare ce-i cere ecranul de
+Tahograf să repare. Acum are: bifele sunt grupate ca pe permis (Moto / Auto / Marfă / Persoane /
+Speciale), iar sub ele scrie pe loc ce a ieșit — „Șofer profesionist" și, dacă e cazul, „Card de
+tahograf — apare în Tahograf, de descărcat la 28 de zile".
+
+Categoriile profesioniste sunt marcate cu un punct, nu cu culoare. Motivul: în ecranul ăsta albastrul
+înseamnă deja „card de tahograf", iar troleibuzul și tramvaiul sunt profesioniste FĂRĂ tahograf. Două
+albastre diferite pe același rând ar fi spus că troleibuzul are tahograf.
+
+**2. Tahograful de pe telefon arăta doar fișiere.** Era o listă de .DDD încărcate, atât — nu spunea pe
+cine trebuie să descarci. Acum are aceleași două lucruri ca web-ul: **De descărcat** (scadențarul, cu
+zilele rămase și bara de termen) și **Fișiere**. Atingi un șofer și vezi descărcările lui plus zilele
+pe care nu le poți dovedi la un control.
+
+Un fișier necitit arată acum și pe telefon ca necitit — „nu contează ca descărcare" — și nu mai scoate
+patru zerouri care ar fi trecut drept măsurători.
+
+**Regula de care m-am ținut: telefonul NU rejudecă cine intră în listă.** Filtrele (fără flota demo,
+doar șoferii cu card, doar vehiculele cu tahograf) rulează O SINGURĂ DATĂ, pe server. Telefonul cere
+aceeași adresă ca web-ul și desenează ce primește. Dacă și-ar fi filtrat singur lista, ar fi ajuns să
+arate altă flotă decât web-ul, iar cineva ar fi descărcat după lista greșită.
+
+Ca să rămână așa, am scris o probă anume pentru asta (33 de verificări): se uită în codul aplicației de
+telefon și **cade dacă apare acolo un filtru propriu sau o listă proprie de categorii**. Am încercat
+deliberat amândouă — proba le-a prins. Tot ea verifică și că serverul, web-ul și telefonul folosesc
+aceleași denumiri pentru motivele de excludere; dacă cineva redenumește unul, proba spune care ecran
+a rămas în urmă.
+
+Ecranele le-am și văzut, nu doar compilat: aplicația de telefon pornită pe un server de probă cu
+șoferi și camioane reale, autentificare adevărată, capturi din browser la dimensiune de telefon.
+
+- **Ce vede fondatorul:** poate completa categoriile unui șofer și poate verifica scadențarul de pe
+  telefon, fără să deschidă laptopul.
+- **Ce vede clientul:** același Tahograf ca pe web, cu aceleași cifre. Nu mai există „pe telefon scrie
+  altceva".
+
+### AMÂNDOI · În Tahograf intră doar cine are ce descărca
+
+Alin s-a uitat pe scadențar și a găsit acolo, roșii, cele cinci vehicule DEMO și pe fondatorii înșiși
+ca „șoferi niciodată descărcați". Trei greșeli diferite, toate cu același efect: un ecran care sună
+alarma pentru lucruri care n-au ce descărca. Un ecran care strigă degeaba se învață să fie ignorat,
+iar ăsta e exact ecranul pe care nu-ți permiți să-l ignori.
+
+**1. Flota demo n-are ce căuta în flota reală.** Vehiculele demonstrative sunt semănate cu categoria
+„camion", așa că treceau de filtru și apăreau ca restanțe. Regula există deja peste tot în aplicație
+(demo se vede DOAR în contul demo) — în scadențar lipsea. Acum e și acolo.
+
+**2. Nu orice om cu permis e șofer de camion.** Card de tahograf au doar cei cu o categorie de marfă
+sau persoane pe permis — C, C1, CE, D, D1, DE. Cine are permis de autoturism nu conduce vehicul cu
+tahograf, deci n-are ce descărca. Regula se citește din bifele de pe fișa șoferului, dintr-o singură
+sursă (`license_cats.js`), aceeași care spune „profesionist" în lista de șoferi.
+
+Detaliu de reținut: **troleibuzul și tramvaiul sunt meserii de profesionist, dar nu intră sub
+tahograf** — tramvaiul e vehicul de cale ferată, troleibuzul circulă pe traseu urban scurt, exceptat.
+De-aia „profesionist" și „are card de tahograf" sunt două întrebări diferite, nu una.
+
+**3. Nu orice vehicul are tahograf.** Autoturismele, dubele, utilajele — nu. Se recunosc după
+„Categorie" din fișa vehiculului: Camion, TIR, Autotractor, Autobuz, Autocar.
+
+Aici era ascunsă o greșeală pe care n-o văzuse nimeni: filtrul vechi căuta textul „tractor" oriunde
+în categorie, deci prindea și **„Autotractor"** (capul de TIR, care are tahograf), și **„Tractor"**
+(tractorul agricol, care n-are). Orice fermă cu tractoare în aplicație ar fi primit alarme de
+descărcare pentru utilaje agricole. Acum lista e explicită, iar proba verifică anume cazul ăsta.
+
+**Partea la care am stat cel mai mult: ce se întâmplă cu cine NU apare.**
+
+Un filtru care ascunde e periculos exact pe ecranul ăsta. Dacă unui șofer profesionist nu i s-au bifat
+categoriile pe permis, el dispare tăcut din singura listă care există ca să nu dispară nimeni. De-aia
+ecranul spune cine lipsește și de ce:
+
+- cei **fără nicio categorie completată** sunt numiți pe nume — „2 șoferi nu au categoriile de pe
+  permis completate: Gherbali Robert, Tilvar Alin — dacă vreunul e profesionist, completează-i
+  categoriile";
+- cei cu permis doar de autoturism sunt doar numărați, discret („nu apar aici: 3 șoferi fără categorie
+  de tahograf — n-au ce descărca");
+- iar când nu e nimic de descărcat, scrie **„Nimic de descărcat"**, nu „toate descărcările sunt la zi".
+  A doua variantă e o minciună liniștitoare: nu e nimic la zi, nu e nimic pornit.
+
+Ca să se închidă cercul, în fișa șoferului, când bifezi C sau CE, apare pe loc eticheta **„Card de
+tahograf — apare în Tahograf, de descărcat la 28 de zile"**. Nu mai trebuie să ghicești ce bifă pe ce
+ecran are efect.
+
+**Încă o potrivire reparată:** formularul de încărcare oferea toți șoferii firmei. Puteai lega un
+fișier de un om care nu intră în tahograf — fișierul rămânea în bază, dar descărcarea nu se vedea
+nicăieri. Acum formularul oferă exact pe cine arată lista.
+
+**Probele.** 57 de verificări pe secțiunea asta (erau 25). Am stricat pe rând fiecare regulă și am
+verificat că probele chiar cad: fără filtrul demo → 2 verificări picate; fără filtrul de șoferi → 4;
+cu vechea potrivire pe „tractor" → tractorul agricol reapare în listă; cu sumarul care spune mereu
+„la zi" → 2. Ultimele verificări iau răspunsul REAL al serverului și îl dau funcțiilor REALE de
+desenare din aplicație, ca să nu fie corectă ruta și mincinos ecranul.
+
+- **Ce vede fondatorul:** secțiunea Tahograf goală și curată, cu explicația de ce e goală și ce are de
+  completat ca să nu fie — nu cinci vehicule demo și doi fondatori pe post de șoferi de TIR.
+- **Ce vede clientul:** doar șoferii lui profesioniști și doar camioanele/autobuzele lui, fiecare cu
+  termenul de descărcare. Restul flotei nu-i mai zgomotează ecranul.
+
+### AMÂNDOI · VIN-ul se citea de unde nu trebuie, iar textele veneau ca șiruri de cifre — `f077919`
+
+Două întrebări ale lui Robert (26.08) — „ce înseamnă VIN 325?" și „Total Odometer intră în conflict
+cu odometrul mașinii?" — au scos la iveală trei probleme, una serioasă.
+
+**1. VIN-ul era luat de la ID-ul greșit.** Aveam scris de mult că VIN-ul e semnalul **217**. În
+documentația oficială, 217 e cu totul altceva: „zona de geofence 36". VIN-ul adevărat, pe adaptorul
+ALL-CAN300, e **325** — 17 caractere text. Deci: în dreptul VIN-ului se afișa o valoare care nu avea
+nicio legătură cu seria de șasiu, iar VIN-ul real ajungea într-un câmp fără nume. Corectat amândouă.
+
+**2. Textele soseau ca șiruri de cifre.** VIN-ul, codul de bare scanat, numele șoferului de pe card —
+toate vin ca text, dar noi le păstram în forma tehnică: în loc de `WV2ZZZ2KZ8X017409` se vedea
+`5756325a5a5a...`. Erau acolo, dar ilizibile. Acum se afișează ca text.
+
+**3. Cea mai serioasă, deși nu se vedea:** stegulețele de stare (uși, lumini, frână de mână) pot sosi
+pe două căi. Pe una dintre ele erau citite ca număr **zecimal** deși erau scrise în hexazecimal —
+adică toți biții ieșeau greșiți. Ar fi însemnat uși raportate deschise când erau închise. Reparat, cu
+probă pe amândouă căile.
+
+**Despre cele două kilometraje — nu e conflict, sunt două lucruri diferite:**
+- **„Kilometraj din bord (CAN)"** = kilometrii REALI ai mașinii, citiți din bordul ei;
+- **„Odometru GPS (de la montare)"** = un contor al DISPOZITIVULUI nostru, care numără din GPS de
+  când a fost montat. Pornește de la zero la instalare.
+
+Aplicația le folosea deja în ordinea corectă (bord + GPS din fișă → CAN → GPS), dar **etichetele
+semănau prea tare** și una zicea „metri" deși valoarea era în kilometri. Le-am făcut explicite, cu
+explicație în catalog. Am scos și o intrare moartă din lista „Distanță": aștepta un semnal pe care
+nu-l produce nimic.
+
+- **Ce vede fondatorul:** VIN corect în fișă, etichete de kilometraj care nu se mai confundă.
+- **Ce vede clientul:** seria de șasiu citită automat din mașină, lizibil.
+
+Pe drum am reparat și **generatorul de hartă IO**: își citea propriul rezultat și, de la a doua
+rulare, credea că totul e deja făcut — ar fi produs 52 de intrări în loc de 502. Un generator care nu
+dă același rezultat la fiecare rulare e mai rău decât lipsa lui. Acum e verificat că e idempotent.
+
+## 2026-08-22
+
+### AMÂNDOI · Toate IO-urile Teltonika sunt mapate + bordul mașinii pe telefon — `bebf3b2`
+
+**De ce.** Passat-ul B7 (B112RFG) are FMC130 cu adaptor ALL-CAN300 — trimite zeci de semnale
+(uși, lumini, frână de mână, martori de bord). Noi mapam ~150 din cele **640** de semnale din
+lista oficială Teltonika; restul apăreau ca numere fără nume („io_517") sau deloc. În plus,
+stegulețele „P4" — protocolul nou prin care mașinile moderne trimit ușile, luminile și martorii —
+**nu se decodau deloc**.
+
+**1. Lista completă, generată din documentația oficială — nu scrisă de mână.** Am descărcat specul
+oficial Teltonika (640 de parametri), l-am transformat în fișier de date și am scris un generator
+care produce harta de nume. De ce așa: o listă scrisă de mână la scara asta SE VA desincroniza —
+s-a și întâmplat: 7 ID-uri fuseseră „ghicite" demult și afișau date greșite (le-am corectat, cu
+documentație). Un test în CI garantează de-acum două lucruri: **orice ID oficial primește nume** și
+**niciun nume existent nu se mai schimbă vreodată** (datele stocate depind de ele).
+
+**2. Stegulețele P4, decodate bit cu bit.** Uși, frână de mână, ambreiaj, treaptă (P/R/N/D),
+lumini, centuri, toți martorii de bord (check engine, presiune ulei, AdBlue…) — din tabelele
+oficiale de biți, cu test bit-cu-bit în CI. Unde starea există și în protocolul vechi (P2), numele
+e ACELAȘI — categoriile din aplicație merg pentru amândouă fără nicio schimbare.
+
+**3. O eroare reală de precizie, găsită pe drum.** Valorile pe 8 octeți (exact stegulețele P4) se
+citeau într-un tip numeric care **pierde biții de jos** la valori mari — chiar valoarea văzută pe
+Passat în Configurator depășea pragul: o ușă deschisă putea pur și simplu să dispară din date.
+Reparat + test cu valoarea reală a Passat-ului.
+
+**4. Pe telefon: cardul „Stări vehicul"** (cerut de Robert) — în ecranul de date CAN, un cartonaș
+cu **pictograme de bord**: mașină încuiată, fiecare ușă, frână de mână, faruri, centuri, tempomat,
+AC, treapta P/R/N/D. Gri = inactiv, colorat = activ. **Atingi pictograma → un balon** îți spune ce
+e și în ce stare e acum. Avertizările (check engine, presiune ulei, baterie…) apar **doar când sunt
+aprinse** — un perete de martori gri ar îngropa exact semnalul care contează.
+
+**5. Etichete românești pentru tot.** Catalogul de IO-uri (editorul „Mapează" + consola de
+diagnoză) acoperă acum toate cele 640 de ID-uri, cu 14 etichete vechi corectate pe spec.
+
+- **Ce vede fondatorul:** în fișa vehiculului, categoriile noi (Accelerometru, Dallas, OBD, BLE) +
+  semnalele care înainte erau numere fără nume.
+- **Ce vede clientul:** pe telefon, bordul mașinii cu pictograme; pe web, uși/lumini/martori
+  decodate la mașinile cu ALL-CAN300 — adică exact ce va transmite Passat-ul când pornește SIM-ul.
+
+Verificat cap-coadă pe sandbox: pachet TCP real cu stegulețe P4 → uși/frână/contact decodate
+corect în API, accelerometrul negativ corect, valoarea pe 8 octeți fără nicio pierdere de biți.
+APK reconstruit.
+
+**Completare, după împăcarea cu lucrul din sesiunea paralelă:** panoul de plăcuțe CAN (web + telefon)
+există deja, cu sursa unică `can_flags.js` — acolo au intrat cele **45 de plăcuțe noi P4** (ambreiaj,
+telecomandă, CNG, diferențiale, martori hidraulici/remorcă…), fiecare cu explicația ei. Lista
+„necitite" a scăzut de la 5 la 1: ambreiajul și telecomanda, anticipate acolo ca necunoscute, au
+acum biți oficiali și se aprind. **Balonul cerut e pe telefon:** atingi orice plăcuță → balon cu ce
+înseamnă și starea curentă; pe web, același text apare la ținerea mouse-ului. Un test nou în CI ține
+catalogul și decodoarele lipite: fiecare plăcuță are decodor, fiecare steag decodat are plăcuță,
+fiecare plăcuță are explicație.
+
+## 2026-08-20
+
+
 ### AMÂNDOI · VIN-ul se citea de unde nu trebuie, iar textele veneau ca șiruri de cifre — `9bbcdf6`
 
 Două întrebări ale lui Robert (26.08) — „ce înseamnă VIN 325?" și „Total Odometer intră în conflict
