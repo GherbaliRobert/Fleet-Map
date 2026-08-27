@@ -255,7 +255,7 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
   sect('10. Ecranul spune de ce lipsește cineva');
   const html = fs.readFileSync('./public/index.html', 'utf8');
   const _de = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); return (i < 0 || j < 0) ? null : html.slice(i, j); };
-  const codUI = _de('    var _thTab = ', '    // ── e-Transport (ANAF) ──');
+  const codUI = _de('    var _thTab = ', '    // ── sfârșit Tahograf ──');
   T('găsesc codul ecranului în index.html', !!codUI);
   if (codUI) {
     const nod = () => ({ innerHTML: '', textContent: '', value: '', style: {}, classList: { toggle() {}, add() {} }, scrollIntoView() {} });

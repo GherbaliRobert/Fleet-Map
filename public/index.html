@@ -16127,18 +16127,35 @@ const pozitii = await r.json();</code></pre>
     <div class="rax-card">
       <div class="rax-head"><h3><i class="fas fa-truck-fast" style="color:var(--accent)"></i> e-Transport (ANAF)</h3><button class="rax-x" onclick="document.getElementById('rax-et-overlay').classList.remove('open')">&times;</button></div>
       <div class="rax-body">
-        <div id="rax-et-status" style="font-size:12px;margin-bottom:10px;"></div>
-        <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;">
-          <strong style="font-size:13px;">Transport nou (cod UIT)</strong>
-          <input class="rax-field" id="rax-et-uit" placeholder="Cod UIT (de la ANAF)">
-          <div class="rax-row2">
-            <input class="rax-field" id="rax-et-plate" placeholder="Nr. înmatriculare">
-            <input class="rax-field" id="rax-et-imei" placeholder="IMEI vehicul (opțional)">
-          </div>
-          <button class="rax-btn primary" style="margin-top:8px;" onclick="raxCreateEt()"><i class="fas fa-plus"></i> Adaugă UIT</button>
-          <div id="rax-et-msg" style="font-size:12px;margin-top:8px;"></div>
-        </div>
+        <div id="rax-et-anaf"></div>
+        <div class="th-sum" id="rax-et-sumar"></div>
         <div id="rax-et-list"><div class="rax-co-meta">Se încarcă…</div></div>
+        <details class="th-up" style="margin-top:16px;">
+          <summary><i class="fas fa-plus" style="color:var(--accent)"></i> Transport nou (cod UIT)</summary>
+          <div class="th-up-b">
+            <input class="rax-field" id="rax-et-uit" placeholder="Cod UIT primit de la ANAF">
+            <div class="rax-row2">
+              <select class="rax-field" id="rax-et-veh"><option value="">— vehiculul —</option></select>
+              <select class="rax-field" id="rax-et-drv"><option value="">— șofer (opțional) —</option></select>
+            </div>
+            <div class="rax-row2">
+              <input class="rax-field" id="rax-et-de" placeholder="De la (localitate)">
+              <input class="rax-field" id="rax-et-la" placeholder="Până la (localitate)">
+            </div>
+            <input class="rax-field" id="rax-et-marfa" placeholder="Marfa (ex: legume proaspete · 18,4 t)">
+            <div class="rax-row2">
+              <select class="rax-field" id="rax-et-tip" onchange="raxEtRecalc()"></select>
+              <input class="rax-field" id="rax-et-start" type="date" onchange="raxEtRecalc()">
+            </div>
+            <!-- Termenul se PROPUNE, dar rămâne editabil: convenția exactă de numărare a zilelor e de
+                 confirmat cu ANAF, iar un termen ghicit tăcut ar fi exact genul de greșeală care costă. -->
+            <label class="th-et-lbl">Codul UIT e valabil până la</label>
+            <input class="rax-field" id="rax-et-pana" type="date">
+            <div class="th-et-hint" id="rax-et-hint"></div>
+            <button class="rax-btn primary" style="margin-top:8px;" onclick="raxCreateEt()"><i class="fas fa-plus"></i> Adaugă transportul</button>
+            <div id="rax-et-msg" style="font-size:12px;margin-top:8px;"></div>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -20255,21 +20272,149 @@ const pozitii = await r.json();</code></pre>
       raxLoadTacho();
     };
 
-    // ── e-Transport (ANAF) ──
+    // ── sfârșit Tahograf ──
+    // Reperul de mai sus e folosit de probe ca să decupeze codul ecranului din pagină. NU-l șterge
+    // și nu-l rescrie: fără el, `verify_tacho_api.js` nu mai găsește funcțiile și cade. (S-a
+    // întâmplat: proba se lega de antetul secțiunii următoare, iar o redenumire a rupt-o.)
+
+    // ═══ e-Transport (ANAF) ════════════════════════════════════════════════════════════════════
+    // Scadențar, aceeași formă ca Tahograf (aceleași clase .th-*): grupat după cât de urgent e.
+    // Cine a învățat un ecran le știe pe amândouă.
+    //
+    // Regula de aur a secțiunii: „vehiculul transmite către NOI" și „noi trimitem la ANAF" sunt
+    // DOUĂ lucruri, ținute separat. Fără tokenul ANAF nu pleacă nimic către ANAF, oricât de bine ar
+    // transmite tracker-ul — iar dacă le-am arăta ca pe una singură, omul ar citi „transmite" și ar
+    // înțelege „sunt în regulă la ANAF". Vezi etransport.js.
+    var _etDate = null, _etVeh = [], _etDrv = [], _etTipuri = [];
+
     window.raxOpenEt = function () { document.getElementById('rax-et-overlay').classList.add('open'); raxLoadEt(); };
+
+    function _etStare(x) {
+      if (x.stare === 'problema') return { cls: 's-over', c: 'var(--red)' };
+      if (x.stare === 'curand') return { cls: 's-soon', c: 'var(--orange)' };
+      if (x.stare === 'necunoscut') return { cls: 's-soon', c: 'var(--text-muted)' };
+      return { cls: 's-ok', c: 'var(--green)' };
+    }
+    // `incheiat` = transportul s-a terminat. Nu se mai colorează în roșu și nu-și mai spune motivele:
+    // un cod expirat după livrare e normal, nu o problemă. Altfel arhiva ar arăta ca un teanc de amenzi.
+    function _etRand(x, incheiat) {
+      var st = incheiat ? { cls: '', c: 'var(--text-muted)' } : _etStare(x);
+      var mare = incheiat ? '✓' : (x.oreRamase === null ? '—' : String(Math.abs(x.oreRamase)));
+      var mic = incheiat ? 'încheiat' : (x.oreRamase === null ? 'fără termen' : (x.oreRamase < 0 ? 'ore expirat' : 'ore rămase'));
+      var sub = [x.de && x.la ? (x.de + ' → ' + x.la) : (x.de || x.la || null), x.sofer, x.marfa]
+        .filter(Boolean).join(' · ') || 'fără detalii';
+      return '<div class="th-due ' + st.cls + '">' +
+        '<div class="th-due-i"><i class="fas fa-truck-fast"></i></div>' +
+        '<div class="th-due-m"><b>' + esc(x.vehicul) + ' <span class="th-et-uit">UIT ' + esc(x.uit) + '</span></b>' +
+          '<span>' + esc(sub) + '</span>' +
+          (!incheiat && x.motive && x.motive.length ? '<span class="th-et-mut"><i class="fas fa-tower-broadcast"></i> ' + esc(x.motive.join(' · ')) + '</span>' : '') +
+          '<div class="th-bar"><i style="width:' + x.consumatPct + '%;background:' + st.c + '"></i></div></div>' +
+        '<div class="th-due-r" style="color:' + st.c + '"><b>' + mare + '</b><span>' + mic + '</span></div>' +
+        '<button class="rax-btn" style="margin-left:8px" onclick="raxDelEt(' + x.id + ')">Șterge</button>' +
+        '</div>';
+    }
+
     async function raxLoadEt() {
-      try { var s = await fetch('/api/etransport/status', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); $('rax-et-status').innerHTML = s.enabled ? '<span style="color:var(--accent)">● Trimitere către ANAF ACTIVĂ</span>' : '<span style="color:var(--orange)">● Trimiterea la ANAF e dezactivată (lipsesc credențialele). Poți gestiona codurile UIT; se activează când configurezi tokenul ANAF.</span>'; } catch (e) {}
       var box = $('rax-et-list');
+      box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
-        var list = await fetch('/api/etransport', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="rax-co-meta">Niciun transport.</div>'; return; }
-        box.innerHTML = list.map(function (t) { return '<div class="rax-co-item"><h4>UIT ' + esc(t.uit) + '</h4><div class="rax-co-meta">' + esc(t.plate || t.imei || '—') + ' · ' + esc(t.status || '') + (t.last_sent_at ? ' · trimis ' + new Date(t.last_sent_at).toLocaleString('ro-RO') : '') + '</div><div class="rax-co-actions"><button class="rax-btn" onclick="raxDelEt(' + t.id + ')">Șterge</button></div></div>'; }).join('');
+        _etDate = await fetch('/api/etransport/scadentar', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (_etDate.error) { box.innerHTML = '<div class="rax-co-meta">' + esc(_etDate.error) + '</div>'; return; }
+        await _etPopuleaza();
+        raxEtRender();
       } catch (e) { box.innerHTML = '<div class="rax-co-meta">Eroare: ' + esc(e.message) + '</div>'; }
     }
+
+    function raxEtRender() {
+      var d = _etDate, box = $('rax-et-list');
+      if (!d) return;
+
+      // Banda de sus spune dacă pleacă ceva spre ANAF. E prima informație, nu o notă de subsol:
+      // fără token, tot ce urmează e evidență internă, nu conformitate.
+      $('rax-et-anaf').innerHTML = d.anaf && d.anaf.pornit
+        ? '<div class="th-b b-ok" style="display:flex;margin-bottom:10px"><i class="fas fa-tower-broadcast"></i> Trimitem pozițiile la ANAF' + (d.anaf.test ? ' — pe mediul de TEST, nu pe cel real' : '') + '</div>'
+        : '<div class="th-b b-warn" style="display:flex;margin-bottom:10px"><i class="fas fa-triangle-exclamation"></i> Nu trimitem nimic la ANAF — lipsește tokenul. Aici ții evidența codurilor și a termenelor, dar raportarea nu e pornită.</div>';
+
+      var probleme = (d.active || []).filter(function (x) { return x.stare === 'problema'; });
+      var curand = (d.active || []).filter(function (x) { return x.stare === 'curand'; });
+      var restul = (d.active || []).filter(function (x) { return x.stare === 'ok' || x.stare === 'necunoscut'; });
+      var _l = function (v) { return v.length <= 3 ? v.join(', ') : v.slice(0, 3).join(', ') + ' +' + (v.length - 3); };
+
+      var h = '';
+      if (probleme.length) h += '<span class="th-b b-warn"><i class="fas fa-circle-exclamation"></i> De rezolvat: ' + esc(_l(probleme.map(function (x) { return x.vehicul; }))) + '</span>';
+      if (curand.length) h += '<span class="th-b b-open"><i class="fas fa-clock"></i> ' + curand.length + ' expiră în mai puțin de ' + d.praguri.curandOre + ' de ore</span>';
+      if (!h) {
+        h = (d.active || []).length
+          ? '<span class="th-b b-ok"><i class="fas fa-circle-check"></i> Toate transporturile active sunt în regulă</span>'
+          : '<span class="th-b b-open"><i class="fas fa-circle-info"></i> Niciun transport activ</span>';
+      }
+      $('rax-et-sumar').innerHTML = h;
+
+      var grup = function (titlu, sub, ic, lista, incheiat) {
+        if (!lista.length) return '';
+        return '<div class="th-gh"><i class="fas ' + ic + '"></i> ' + titlu + (sub ? ' <em>' + sub + '</em>' : '') + '</div>' +
+          lista.map(function (x) { return _etRand(x, incheiat); }).join('');
+      };
+      var inch = d.incheiate || [];
+      var body = grup('DE REZOLVAT ACUM', 'amendă 20.000–100.000 lei', 'fa-circle-exclamation', probleme)
+        + grup('EXPIRĂ CURÂND', 'reînnoiește codul UIT', 'fa-clock', curand)
+        + grup('ÎN REGULĂ', '', 'fa-circle-check', restul)
+        + grup('ÎNCHEIATE', inch.length > 10 ? 'ultimele 10 din ' + inch.length : '', 'fa-flag-checkered', inch.slice(0, 10), true);
+      box.innerHTML = body || '<div class="rax-co-meta">Niciun transport înregistrat. Adaugă unul mai jos, cu codul UIT primit de la ANAF.</div>';
+    }
+
+    // Selectoarele + tipurile de operațiune vin de la server (etransport.js) — nicio listă scrisă aici.
+    async function _etPopuleaza() {
+      try {
+        if (!_etVeh.length) _etVeh = await fetch('/api/devices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!_etDrv.length) _etDrv = await fetch('/api/drivers/lite', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (!_etTipuri.length) _etTipuri = (await fetch('/api/etransport/tipuri', { credentials: 'same-origin' }).then(function (r) { return r.json(); })).tipuri || [];
+      } catch (e) {}
+      var sv = $('rax-et-veh'), sd = $('rax-et-drv'), stip = $('rax-et-tip');
+      if (sv) sv.innerHTML = '<option value="">— vehiculul —</option>' + (_etVeh || []).map(function (v) {
+        return '<option value="' + esc(v.imei) + '">' + esc(v.plate || v.name || v.imei) + '</option>';
+      }).join('');
+      if (sd) sd.innerHTML = '<option value="">— șofer (opțional) —</option>' + (_etDrv || []).map(function (d) {
+        return '<option value="' + d.id + '">' + esc(d.name) + '</option>';
+      }).join('');
+      if (stip) stip.innerHTML = _etTipuri.map(function (t) { return '<option value="' + esc(t.cod) + '">' + esc(t.label) + ' (' + t.zile + ' zile)</option>'; }).join('');
+      var s = $('rax-et-start');
+      if (s && !s.value) s.value = new Date().toISOString().slice(0, 10);
+      raxEtRecalc();
+    }
+
+    // Propune termenul din data de start + zilele tipului ales. Rămâne editabil — vezi comentariul
+    // din etransport.js: convenția exactă de numărare a celor 5 zile e de confirmat cu ANAF.
+    window.raxEtRecalc = function () {
+      var tip = $('rax-et-tip').value, start = $('rax-et-start').value;
+      var t = _etTipuri.find(function (x) { return x.cod === tip; }) || _etTipuri[0];
+      if (!t || !start) return;
+      var d = new Date(start + 'T00:00:00');
+      d.setDate(d.getDate() + t.zile);
+      $('rax-et-pana').value = d.toISOString().slice(0, 10);
+      $('rax-et-hint').textContent = 'Propus: ' + t.zile + ' zile de la începerea transportului. Corectează data dacă ANAF ți-a dat alt termen.';
+    };
+
     window.raxCreateEt = async function () {
-      var uit = $('rax-et-uit').value.trim(), plate = $('rax-et-plate').value.trim(), imei = $('rax-et-imei').value.trim(), msg = $('rax-et-msg'); msg.style.color = 'var(--red)';
+      var msg = $('rax-et-msg'); msg.style.color = 'var(--red)';
+      var uit = $('rax-et-uit').value.trim();
       if (!uit) { msg.textContent = 'Cod UIT obligatoriu.'; return; }
-      try { var r = await fetch('/api/etransport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ uit: uit, plate: plate, imei: imei }) }); var j = await r.json(); if (j.error) { msg.textContent = j.error; return; } msg.style.color = 'var(--accent)'; msg.textContent = 'Adăugat ✓'; $('rax-et-uit').value = ''; $('rax-et-plate').value = ''; $('rax-et-imei').value = ''; raxLoadEt(); } catch (e) { msg.textContent = 'Eroare: ' + e.message; }
+      var pana = $('rax-et-pana').value;
+      var body = {
+        uit: uit, imei: $('rax-et-veh').value || null, driver_id: $('rax-et-drv').value || null,
+        loc_start: $('rax-et-de').value.trim() || null, loc_final: $('rax-et-la').value.trim() || null,
+        marfa: $('rax-et-marfa').value.trim() || null, tip_operatiune: $('rax-et-tip').value || null,
+        start_at: $('rax-et-start').value || null,
+        valabil_pana: pana ? (pana + 'T23:59:59') : null,
+      };
+      try {
+        var r = await fetch('/api/etransport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+        var j = await r.json();
+        if (j.error) { msg.textContent = j.error; return; }
+        msg.style.color = 'var(--accent)'; msg.textContent = 'Adăugat ✓';
+        ['rax-et-uit', 'rax-et-de', 'rax-et-la', 'rax-et-marfa'].forEach(function (i) { $(i).value = ''; });
+        raxLoadEt();
+      } catch (e) { msg.textContent = 'Eroare: ' + e.message; }
     };
     window.raxDelEt = async function (id) { await fetch('/api/etransport/' + id, { method: 'DELETE', credentials: 'same-origin' }); raxLoadEt(); };
 

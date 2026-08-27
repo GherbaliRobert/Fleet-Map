@@ -20,6 +20,59 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · e-Transport: scadențar în loc de caiet de coduri
+
+Alin a ales varianta 2 din machete. Secțiunea arăta până acum ca un caiet: scriai de mână codul UIT,
+numărul mașinii și IMEI-ul, apăreau într-o listă, atât. Acum e un **scadențar**, cu aceeași formă ca
+Tahograf — grupat după cât de urgent e: **de rezolvat acum**, **expiră curând**, **în regulă**,
+**încheiate**. Cine a învățat un ecran le știe pe amândouă.
+
+**De ce contează acum, nu la anul.** Amenzile pentru netransmiterea datelor GPS către ANAF au intrat
+în vigoare pe **1 ianuarie 2026**, iar pe **16 februarie 2026** a fost dată prima amendă publică fix
+pentru asta. Firmă: 20.000–100.000 lei. Codul UIT ține 5 zile calendaristice (15 la achiziții
+intracomunitare). Până acum aplicația nu știa nimic despre niciunul din lucrurile astea.
+
+**1. Termenul codului UIT există.** Se propune singur din ziua de start (5 sau 15 zile, după tipul
+operațiunii) — dar rămâne **editabil și salvat ca dată explicită**. Convenția exactă de numărare a
+zilelor e de confirmat cu ANAF, iar o aplicație n-are voie să ghicească tăcut un termen care aduce
+amendă. Dacă lipsește, scrie „termen necunoscut", nu o dată inventată.
+
+**2. Cea mai importantă decizie din secțiune: două semafoare, nu unul.**
+„Vehiculul transmite către NOI" și „noi trimitem la ANAF" sunt lucruri diferite. Fără tokenul ANAF nu
+pleacă absolut nimic, oricât de bine ar merge tracker-ul. Macheta le amesteca. Dacă le-aș fi lăsat
+așa, un client fără token ar fi văzut verde și ar fi înțeles „sunt în regulă la ANAF" — exact opusul
+adevărului, pe ecranul care există ca să-l apere de amendă.
+
+Acum sus scrie, cu roșu: **„Nu trimitem nimic la ANAF — lipsește tokenul."** Iar motivele fiecărui
+transport se scriu pe litere, nu doar prin culoare: „cod UIT expirat · vehiculul nu mai transmite de
+47 min".
+
+**3. Vehiculul se alege din flotă**, nu se tastează IMEI-ul. Un IMEI greșit însemna un transport care
+nu se leagă de nicio mașină: nu-i vezi pozițiile și n-ai ce raporta. Numărul de înmatriculare se ia
+acum din fișa vehiculului.
+
+**4. Prospețimea poziției.** Ecranul ia cea mai nouă dintre poziția din bază și cea din memorie —
+adică exact ce citește mecanismul care trimite la ANAF. O poziție veche de o oră nu mai trece drept
+transmisie curentă.
+
+**Probele: 40 de verificări.** Am stricat pe rând regulile și au căzut: termenul implicit pus pe cel
+lung în loc de cel scurt → o verificare picată; banda de avertizare ANAF scoasă → două; verificarea
+de acces la vehicul scoasă → una.
+
+**O probă a mea trecea degeaba** și am prins-o tot printr-un sabotaj: verifica doar că niciun vehicul
+demo nu apare în listă, dar transportul demo nici nu se crea (e refuzat mai devreme), deci lista
+ieșea goală și proba se declara mulțumită. Acum verifică refuzul în sine — apărarea adevărată.
+
+**Și o probă veche a căzut, corect.** Redenumind antetul secțiunii, proba de Tahograf n-a mai găsit
+codul ecranului și a picat zgomotos, în loc să verifice în gol. Am pus un reper stabil în pagină
+(`// ── sfârșit Tahograf ──`) ca să nu se mai rupă la fiecare redenumire.
+
+**Secțiunea NU e terminată** — vezi lista de dinainte de lansare, are punct propriu.
+
+- **Ce vede fondatorul:** poate arăta unui client, în două secunde, care transport îl duce la amendă
+  azi — și poate spune cinstit ce facem și ce nu facem încă.
+- **Ce vede clientul:** aceeași listă, plus avertismentul că raportarea la ANAF nu e pornită. Nu se
+  mai poate crede raportat fără să fie.
 ### AMÂNDOI · Bordul mașinii pe telefon: doar ce e aprins acum, cu pictograme de bord — `b210399`
 
 Ecranul de stări arăta tot ce știe mașina să trimită — și aprins, și stins. Pe Passat însemnau
@@ -3105,6 +3158,29 @@ cheia propriu-zisă rămâne exclusă, ca să nu ajungă niciodată acolo.
 
 Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
 
+- [ ] **e-Transport — mai avem mult de făcut aici (cerut de Alin, 26.08).** Scadențarul e gata, dar
+  secțiunea NU e terminată. Ce lipsește, în ordinea în care costă bani:
+  - **Dovada trimiterilor către ANAF.** Se ține o singură dată — ultima trimitere — suprascrisă de
+    fiecare dată. Dacă ANAF spune „între 14:00 și 16:00 n-ai transmis", n-avem cu ce răspunde. Asta e
+    piesa cea mai valoroasă care lipsește: singurul care poate dovedi transmisia e furnizorul de GPS,
+    adică noi. (Era butonul „Descarcă dovada" din varianta 3 a machetelor.)
+  - **Mecanismul de trimitere încă nu verifică prospețimea.** ECRANUL o verifică acum, dar worker-ul
+    care trimite la ANAF ia ultima poziție știută chiar dacă e veche de o oră — adică declară o
+    poziție falsă. **De reparat OBLIGATORIU înainte de a porni tokenul ANAF**, altfel primul lucru pe
+    care îl facem în producție e să transmitem date greșite.
+  - **Fără reîncercare și fără alertă.** Dacă ANAF pică sau tracker-ul tace, nu se reîncearcă nimic și
+    nu află nimeni. Nicio notificare la „UIT expiră în 6 ore" sau „transportul nu mai transmite".
+  - **Emiterea UIT din aplicație n-are buton.** `anaf.js` știe să depună declarația și să aducă codul,
+    dar formularul n-are câmpurile cerute de ANAF (marfă, cod tarifar, greutăți, expeditor, rută).
+  - **Cadența de 3 minute** a trimiterilor nu e verificată cu specificația ANAF.
+  - **Pornire/oprire automată.** Aplicația știe când pleacă și când ajunge camionul; deocamdată
+    transportul se pornește și se oprește de mână.
+  - **Pe telefon e tot listă read-only.** Șoferul e cel care are nevoie de codul UIT la un control.
+  - **Cod mort de curățat:** rutele demo `/uit`, `/start`, `/stop`, `/sim` n-au buton nicăieri, iar
+    meniul intern trimite către trei ecrane care n-au fost construite niciodată (`etransport-view`,
+    `etoll-view`, `tahograf-view`).
+  - **De confirmat cu ANAF:** felul exact în care se numără cele 5 zile, și schema declarației pe
+    mediul de test (vezi și `ANAF.md`).
 - [ ] **Cheia de semnătură a aplicației de telefon — de creat și de pus la păstrare.** Cel mai
   ireversibil punct din listă: fără ea nu se pot trimite actualizări celor care au deja aplicația
   instalată, iar dacă se pierde după lansare nu există nicio soluție. Comanda e în

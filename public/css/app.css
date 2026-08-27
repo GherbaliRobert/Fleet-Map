@@ -2401,3 +2401,18 @@
    aplicația de telefon), nu ca iconiță Font Awesome — de aceea are nevoie de dimensiune. */
 .cf-i{ width:22px; height:22px; flex:0 0 22px; display:block; }
 .cf-b.b-note{ background:transparent; border:1px dashed var(--border); color:var(--muted); font-weight:600; }
+/* ─── e-Transport ───────────────────────────────────────────────────────────────────────────────
+   Secțiunea refolosește clasele .th-* de la Tahograf (același scadențar, aceeași formă). Aici sunt
+   doar bucățile proprii: codul UIT lângă numărul mașinii, motivul pentru care un transport e roșu,
+   și formularul de transport nou. */
+.th-et-uit{font-size:10.5px;font-weight:700;color:var(--text-muted);letter-spacing:.03em;margin-left:6px}
+/* Motivul se scrie pe litere, nu doar prin culoare: „nu transmite de 47 min" e acționabil, roșul nu. */
+.th-et-mut{display:block;font-size:11px;font-weight:800;color:var(--red);margin-top:3px}
+.th-et-mut i{margin-right:5px}
+.th-up{border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.th-up>summary{cursor:pointer;font-size:13px;font-weight:700;list-style:none}
+.th-up>summary::-webkit-details-marker{display:none}
+.th-up>summary i{margin-right:7px}
+.th-up-b{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.th-et-lbl{display:block;font-size:11.5px;font-weight:700;color:var(--text-muted);margin:8px 0 3px}
+.th-et-hint{font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:4px}

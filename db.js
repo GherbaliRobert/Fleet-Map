@@ -992,6 +992,22 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_etransport_company ON etransport(company_id)`);
+    // Adăugirile stau AICI, nu în blocul mare de migrări de mai sus: acela rulează înaintea creării
+    // tabelei, iar un ALTER pe o tabelă inexistentă oprește pornirea serverului. (Prins la probe.)
+    //
+    // Coloana valabil_pana se propune din data de start (5 zile; 15 la achiziții intracomunitare),
+    // dar se SALVEAZĂ ca dată explicită — convenția exactă de numărare rămâne de confirmat cu ANAF,
+    // iar aplicația n-are voie să ghicească tăcut un termen care aduce amendă. Vezi etransport.js.
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE etransport ADD COLUMN IF NOT EXISTS driver_id INTEGER;
+        ALTER TABLE etransport ADD COLUMN IF NOT EXISTS loc_start VARCHAR(80);
+        ALTER TABLE etransport ADD COLUMN IF NOT EXISTS loc_final VARCHAR(80);
+        ALTER TABLE etransport ADD COLUMN IF NOT EXISTS marfa VARCHAR(160);
+        ALTER TABLE etransport ADD COLUMN IF NOT EXISTS tip_operatiune VARCHAR(20);
+        ALTER TABLE etransport ADD COLUMN IF NOT EXISTS valabil_pana TIMESTAMP;
+      END $$
+    `);
 
     // Setări globale (cheie-valoare) — ex. cheia API Anthropic configurată din UI
     await client.query(`
@@ -1746,14 +1762,39 @@ async function getEtransports(companyId) {
 }
 async function createEtransport(d, companyId) {
   const r = await pool.query(
-    `INSERT INTO etransport (company_id, uit, imei, plate, start_at, end_at, status, note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [companyId || null, d.uit, d.imei || null, d.plate || null, d.start_at || null, d.end_at || null, d.status || 'activ', d.note || null]
+    `INSERT INTO etransport (company_id, uit, imei, plate, start_at, end_at, status, note,
+       driver_id, loc_start, loc_final, marfa, tip_operatiune, valabil_pana)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+    [companyId || null, d.uit, d.imei || null, d.plate || null, d.start_at || null, d.end_at || null, d.status || 'activ', d.note || null,
+     d.driver_id || null, d.loc_start || null, d.loc_final || null, d.marfa || null,
+     d.tip_operatiune || null, d.valabil_pana || null]
   );
   return r.rows[0];
 }
 async function updateEtransport(id, d) {
-  await pool.query(`UPDATE etransport SET status=COALESCE($2,status), end_at=COALESCE($3,end_at), last_sent_at=COALESCE($4,last_sent_at) WHERE id=$1`,
-    [id, d.status || null, d.end_at || null, d.last_sent_at || null]);
+  await pool.query(`UPDATE etransport SET status=COALESCE($2,status), end_at=COALESCE($3,end_at),
+      last_sent_at=COALESCE($4,last_sent_at), valabil_pana=COALESCE($5,valabil_pana)
+    WHERE id=$1`,
+    [id, d.status || null, d.end_at || null, d.last_sent_at || null, d.valabil_pana || null]);
+}
+
+// ─── Scadențarul e-Transport ─────────────────────────────────────────────────────────────────────
+// Rândurile brute pentru „cine trebuie rezolvat acum". Ca la tahograf, funcția asta NU decide starea:
+// întoarce datele (termen, ultima poziție a vehiculului, ultima trimitere la ANAF), iar regulile stau
+// în etransport.js. `ultima_pozitie` vine din `devices.last_seen` — dacă vehiculul nu mai transmite
+// către noi, n-avem ce raporta mai departe, deci e prima cauză de căutat.
+async function getEtransportScadentar(companyId) {
+  const where = companyId != null ? 'WHERE e.company_id = $1' : '';
+  const params = companyId != null ? [companyId] : [];
+  const r = await pool.query(`
+    SELECT e.*, d.name AS driver_name, dv.last_seen AS ultima_pozitie,
+           COALESCE(dv.plate, e.plate) AS vehicul, dv.name AS vehicul_nume
+    FROM etransport e
+    LEFT JOIN drivers d ON d.id = e.driver_id
+    LEFT JOIN devices dv ON dv.imei = e.imei
+    ${where}
+    ORDER BY e.valabil_pana NULLS FIRST, e.created_at DESC`, params);
+  return r.rows;
 }
 async function deleteEtransport(id) { await pool.query('DELETE FROM etransport WHERE id = $1', [id]); }
 async function getActiveEtransports() {
@@ -3430,7 +3471,7 @@ module.exports = {
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,
-  getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports,
+  getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports, getEtransportScadentar,
   getWebhooks, getEnabledWebhooks, getWebhookById, createWebhook, deleteWebhook, updateWebhookStatus,
   getSetting, setSetting,
   altiSuperadminiActivi, dezactiveazaContulDeInstalare, reactiveazaContulDeInstalare,

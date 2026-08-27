@@ -140,6 +140,7 @@ const backup = require('./backup');
 const errortrack = require('./errortrack');
 errortrack.init();
 let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
+const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
@@ -4071,11 +4072,80 @@ app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, requireFeat
 // ─── e-Transport (ANAF) — gestionare UIT + (trimitere doar dacă e configurat tokenul) ───
 function etransportEnabled() { return !!(anaf && anaf.enabled()); }
 app.get('/api/etransport/status', requireAuth, (req, res) => res.json({ enabled: etransportEnabled() }));
+// Tipurile de operațiune + câte zile ține codul la fiecare. Din etransport.js, ca interfața să nu
+// scrie „5 zile" de mână — dacă termenul se schimbă, se schimbă într-un singur loc.
+app.get('/api/etransport/tipuri', requireAuth, (req, res) => res.json({ tipuri: etr.TIPURI }));
 app.get('/api/etransport', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('etransport'), async (req, res) => {
   try { res.json(await db.getEtransports(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// „Cine trebuie rezolvat acum" — ecranul de intrare al secțiunii. Grupat după urgență, ca la Tahograf.
+// ATENȚIE la ordine: ruta cu nume fix trebuie declarată ÎNAINTEA oricărei `/api/etransport/:id`.
+app.get('/api/etransport/scadentar', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('etransport'), async (req, res) => {
+  try {
+    let rows = await db.getEtransportScadentar(req.isSuper ? null : req.companyId);
+    // Flota demo nu intră în scadențarul unei flote reale (aceeași regulă ca peste tot).
+    if (req.companyId !== demoCompanyId) rows = rows.filter(t => !t.imei || !DEMO_SET.has(t.imei));
+
+    const acum = new Date().toISOString();
+    const anafPornit = etransportEnabled();
+    // „Ultima poziție" = cea mai nouă dintre ce scrie în bază (`last_seen`, supraviețuiește
+    // repornirii) și ce e în memorie (`livePositions`, ce citește CHIAR mecanismul care trimite la
+    // ANAF). Dacă am lua doar una, ecranul ar spune altceva decât face trimiterea.
+    for (const t of rows) {
+      const lp = t.imei ? livePositions.get(t.imei) : null;
+      if (lp && lp.timestamp) {
+        const a = t.ultima_pozitie ? new Date(t.ultima_pozitie).getTime() : 0;
+        if (new Date(lp.timestamp).getTime() > a) t.ultima_pozitie = lp.timestamp;
+      }
+    }
+    const proiecteaza = (t) => Object.assign({
+      id: t.id, uit: t.uit, imei: t.imei || null,
+      vehicul: t.vehicul || t.vehicul_nume || t.plate || t.imei || '—',
+      sofer: t.driver_name || null,
+      de: t.loc_start || null, la: t.loc_final || null, marfa: t.marfa || null,
+      tip: t.tip_operatiune || 'national', valabilPana: t.valabil_pana || null,
+      status: t.status || 'activ', consumatPct: etr.consumatPct(t, acum),
+    }, etr.stareTransport(t, acum, anafPornit));
+
+    const active = rows.filter(t => (t.status || 'activ') === 'activ').map(proiecteaza);
+    const incheiate = rows.filter(t => (t.status || 'activ') !== 'activ').map(proiecteaza);
+    const nr = (s) => active.filter(x => x.stare === s).length;
+    res.json({
+      // Fără token ANAF nu se trimite nimic. Ecranul trebuie s-o spună o dată, sus — altfel omul
+      // citește „vehiculul transmite" și înțelege „sunt în regulă la ANAF", care e opusul adevărului.
+      anaf: { pornit: anafPornit, test: anafPornit && anaf.cfg().test },
+      praguri: { tacereMinute: etr.TACERE_MINUTE, curandOre: etr.CURAND_ORE },
+      active, incheiate,
+      sumar: { probleme: nr('problema'), curand: nr('curand'), ok: nr('ok'), necunoscut: nr('necunoscut') },
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/etransport', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
-  try { if (!req.body.uit) return res.status(400).json({ error: 'Cod UIT obligatoriu' }); const tr = await db.createEtransport(req.body, req.companyId); auditReq(req, 'create', 'etransport', tr.id, { uit: req.body.uit }); res.json(tr); } catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    const b = req.body || {};
+    if (!b.uit) return res.status(400).json({ error: 'Cod UIT obligatoriu' });
+    // Vehiculul se ALEGE din flotă, nu se tastează. Un IMEI scris de mână greșit înseamnă un
+    // transport care nu se leagă de nicio mașină: nu-i poți vedea pozițiile și n-ai ce raporta.
+    if (b.imei) {
+      if (!canAccessImei(req, b.imei)) return res.status(403).json({ error: 'Acces interzis la vehicul' });
+      const dev = await db.getDeviceFull(b.imei);
+      if (!dev) return res.status(400).json({ error: 'Vehiculul ales nu există' });
+      b.plate = dev.plate || b.plate || null;
+    }
+    if (b.driver_id) {
+      const d = await db.getDriverById(parseInt(b.driver_id));
+      if (!d) return res.status(400).json({ error: 'Șoferul ales nu există' });
+      if (!req.isSuper && d.company_id !== req.companyId) return res.status(403).json({ error: 'Șoferul nu e din compania ta' });
+    }
+    // Termenul se PROPUNE din data de start, dar se salvează explicit: convenția exactă de numărare
+    // a celor 5 zile rămâne de confirmat cu ANAF (vezi etransport.js), iar dacă omul o corectează,
+    // valoarea lui câștigă. O aplicație n-are voie să ghicească tăcut un termen care aduce amendă.
+    if (!b.valabil_pana) b.valabil_pana = etr.valabilPana(b.start_at || new Date().toISOString(), b.tip_operatiune);
+    const tr = await db.createEtransport(b, req.companyId);
+    auditReq(req, 'create', 'etransport', tr.id, { uit: b.uit });
+    res.json(tr);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.put('/api/etransport/:id', requireAuth, requireFleet, withCompany, requireFeature('etransport'), async (req, res) => {
   try { if (!(await ownsRow(req, 'etransport', req.params.id))) return res.status(403).json({ error: 'Acces interzis' }); await db.updateEtransport(parseInt(req.params.id), req.body); auditReq(req, 'update', 'etransport', req.params.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
