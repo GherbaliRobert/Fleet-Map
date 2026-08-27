@@ -3139,83 +3139,143 @@ cheia propriu-zisă rămâne exclusă, ca să nu ajungă niciodată acolo.
 
 ## De verificat înainte de lansare
 
-- **Cinci semnale CAN sunt afișate, dar nu se aprind niciodată.** Ambreiaj, închidere
-  centralizată și cele trei apăsări de telecomandă. Fișa adaptorului le listează, noi nu știm unde
-  le pune aparatul în mesaj, iar ghicitul ar aprinde martori greșiți. Scrie „necitit" pe ele, deci
-  nu induc în eroare — dar înainte de lansare merită să decidem: fie obținem foaia de biți de la
-  Teltonika, fie le probăm pe o mașină, fie le scoatem de tot din listă ca să nu ridice întrebări.
-  *(22.08)*
+Lista pe care o parcurgem împreună înainte de a da drumul la clienți reali. E ordonată **după cât de
+tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
-- **Grila TollRo: valorile marcate cu ⚠ și data de aplicare.** Treapta 7,5–12 t și pozițiile
-  intermediare pe Euro 4/5 nu erau publicate la 20.08 — sunt estimările noastre. La apariția
-  ordonanței, se corectează din Administrare → Taxa de drum, fără deploy. *(20.08)*
+- **(voi)** — nu pot s-o fac eu din cod: cere o decizie, un cont, un certificat sau o hârtie.
+- **(eu)** — o fac eu, dar trebuie s-o știți, fiindcă ține de ce puteți promite unui client.
 
-- **Furtul de combustibil e OPRIT pentru companiile care nu și-au setat pragul.** Decizia din
+---
+
+### A. Blocante — fără astea nu dăm drumul
+
+- [ ] **(voi) Cheia de semnătură a aplicației de telefon — de creat și de pus la păstrare.** Cel mai
+  ireversibil punct din toată lista: fără ea nu se pot trimite actualizări celor care au deja
+  aplicația instalată, iar dacă se pierde după lansare **nu există nicio soluție** — clienții rămân
+  pe versiunea veche pentru totdeauna. Comanda e în `mobile/android/keystore.properties.exemplu`.
+  Până se creează, construirea versiunii de livrare se oprește singură, cu instrucțiunile pe ecran.
+  *(Robert a spus că se ocupă — 26.08.)*
+
+- [ ] **(voi) Un cont de test ca utilizator obișnuit.** Testați totul ca super-admin, care trece prin
+  toate porțile. Ecranele goale, mesajele „nu ai acces" și ce vede de fapt un client **nu le-a văzut
+  niciunul dintre voi**. E cel mai ieftin mod de a găsi lucruri rupte înainte s-o facă un client.
+
+- [ ] **(voi) Ce vedem noi din conturile clienților** — decizia cea mai mare, are secțiune proprie
+  mai jos: [Ce vedem din conturile clienților](#decizie-ce-vedem-din-conturile-clienților). E
+  blocantă din două motive: notificările (cu push pornit, la 30 de companii telefoanele vă sună
+  continuu și îl veți opri de tot) și politica de confidențialitate — ce le spuneți clienților
+  despre ce vedeți.
+
+- [ ] **(voi) Ce module vindem de la lansare.** Dacă e-Transport intră în ofertă din prima zi, atunci
+  punctele din secțiunea E de mai jos devin și ele blocante. Dacă nu, secțiunea rămâne evidență
+  internă și se anunță ca „în lucru". **Nu se poate vinde ca „raportăm la ANAF în locul tău" în
+  starea de acum** — vezi E.1.
+
+---
+
+### B. De decis împreună (produs, nu cod)
+
+- [ ] **Notificările se revizuiesc înainte de lansare — hotărât de voi, 04.08.** Rămân deocamdată
+  cum sunt; le testați pe teren și veniți cu ce nu merge. Când ajungem la revizuire, aici sunt
+  lucrurile de pus pe masă: cine primește ce, pragurile și răcirea de 5 minute, ce ajunge pe telefon
+  și ce rămâne doar în clopoțel, și dacă tipurile de alertă acoperă ce cer clienții.
+
+- [ ] **Furtul de combustibil e OPRIT pentru companiile care nu și-au setat pragul.** Decizia din
   26.07 („prag nesetat = utilizatorul a ales Dezactivat") e corectă ca principiu, dar un client nou
   nu are de unde ști că trebuie să intre în setări ca să primească alertele. De ales una din două:
   fie punem un prag implicit rezonabil la crearea companiei, fie scriem explicit în interfață
   „detecția e oprită până setezi un prag". Acum nu se vede nici una, nici alta. *(20.08)*
 
-Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
+- [ ] **Turația motorului ajunge la client pe telefon, dar nu pe web.** Pe web, RPM-ul e vizibil DOAR
+  super-adminului; ecranul de pe telefon îl arată oricui. E o schimbare de produs, nu de interfață:
+  fie o acceptăm și pe web, fie o restrângem pe telefon.
 
-- [ ] **e-Transport — mai avem mult de făcut aici (cerut de Alin, 26.08).** Scadențarul e gata, dar
-  secțiunea NU e terminată. Ce lipsește, în ordinea în care costă bani:
-  - **Tokenul ANAF e UNUL SINGUR, pe toată platforma.** `anaf.js` citește un singur
-    `ANAF_ETRANSPORT_TOKEN` și un singur `ANAF_CIF` din variabilele de mediu. Adică, așa cum e acum,
-    putem raporta la ANAF pentru **o singură firmă** — a noastră. Fiecare client declară sub CIF-ul
-    LUI, cu tokenul LUI, obținut cu certificatul LUI digital. Ca să vindem modulul, tokenul și CIF-ul
-    trebuie mutate **pe companie** (în setările fiecărui client, criptate), nu în variabilele
-    serverului. E cea mai mare piesă care lipsește și trebuie hotărâtă înainte de orice altceva aici.
-  - **Dovada trimiterilor către ANAF.** Se ține o singură dată — ultima trimitere — suprascrisă de
-    fiecare dată. Dacă ANAF spune „între 14:00 și 16:00 n-ai transmis", n-avem cu ce răspunde. Asta e
-    piesa cea mai valoroasă care lipsește: singurul care poate dovedi transmisia e furnizorul de GPS,
-    adică noi. (Era butonul „Descarcă dovada" din varianta 3 a machetelor.)
-  - **Mecanismul de trimitere încă nu verifică prospețimea.** ECRANUL o verifică acum, dar worker-ul
-    care trimite la ANAF ia ultima poziție știută chiar dacă e veche de o oră — adică declară o
-    poziție falsă. **De reparat OBLIGATORIU înainte de a porni tokenul ANAF**, altfel primul lucru pe
-    care îl facem în producție e să transmitem date greșite.
-  - **Fără reîncercare și fără alertă.** Dacă ANAF pică sau tracker-ul tace, nu se reîncearcă nimic și
-    nu află nimeni. Nicio notificare la „UIT expiră în 6 ore" sau „transportul nu mai transmite".
-  - **Emiterea UIT din aplicație n-are buton.** `anaf.js` știe să depună declarația și să aducă codul,
-    dar formularul n-are câmpurile cerute de ANAF (marfă, cod tarifar, greutăți, expeditor, rută).
-  - **Cadența de 3 minute** a trimiterilor nu e verificată cu specificația ANAF.
-  - **Pornire/oprire automată.** Aplicația știe când pleacă și când ajunge camionul; deocamdată
-    transportul se pornește și se oprește de mână.
-  - **Pe telefon e tot listă read-only.** Șoferul e cel care are nevoie de codul UIT la un control.
-  - **Cod mort de curățat:** rutele demo `/uit`, `/start`, `/stop`, `/sim` n-au buton nicăieri, iar
-    meniul intern trimite către trei ecrane care n-au fost construite niciodată (`etransport-view`,
-    `etoll-view`, `tahograf-view`).
-  - **De confirmat cu ANAF:** felul exact în care se numără cele 5 zile, și schema declarației pe
-    mediul de test (vezi și `ANAF.md`).
-- [ ] **Cheia de semnătură a aplicației de telefon — de creat și de pus la păstrare.** Cel mai
-  ireversibil punct din listă: fără ea nu se pot trimite actualizări celor care au deja aplicația
-  instalată, iar dacă se pierde după lansare nu există nicio soluție. Comanda e în
-  `mobile/android/keystore.properties.exemplu`. Până se creează, construirea versiunii de livrare
-  se oprește singură, cu instrucțiunile pe ecran.
-- [ ] **Notificările se revizuiesc înainte de lansare — hotărât de voi, 04.08.** Rămân deocamdată
-  cum sunt; le testați pe teren și veniți cu ce nu merge. Când ajungem la revizuire, aici sunt
-  lucrurile de pus pe masă: cine primește ce (vezi punctul următor), pragurile și răcirea de 5
-  minute, ce ajunge pe telefon și ce rămâne doar în clopoțel, și dacă tipurile de alertă acoperă
-  ce cer clienții.
-- [ ] **Ce vedem noi din conturile clienților** — decizia cea mai mare. Are secțiune proprie mai
-  jos: [Ce vedem din conturile clienților](#decizie-ce-vedem-din-conturile-clienților).
-- [ ] **Editorul de Zone n-are selector de companie.** Zonele desenate de voi rămân fără companie.
-  Funcționează (motorul le acceptă), dar nu le puteți atribui unui client anume.
-- [ ] **Eticheta falsă „Consum azi (senzor)" din APK.** Fișa vehiculului o afișează MEREU, inclusiv pe
-  mașini fără niciun senzor, fiindcă endpointul nu întoarce niciodată câmpul pe care se bazează. Nu am
-  propagat-o pe ecranul nou, dar în fișă e încă acolo.
-- [ ] **Turația motorului ajunge acum la client, pe telefon.** Pe web, RPM-ul e vizibil DOAR
-  super-adminului. Ecranul nou îl arată oricui — pentru că așa arăta și modelul cerut. E o schimbare
-  de produs, nu de interfață: fie o acceptăm și pe web, fie o restrângem pe telefon. De decis împreună.
-- [ ] **Ecranul „Date CAN" nu are pereche pe web.** Acolo informația e împrăștiată între fișă și panoul
-  „IO Live". Dacă îl vreți și pe web, e o lucrare separată.
-- [ ] **Verdele aplicației e aproape ilizibil pe tema luminoasă** (nu e redefinit pentru fundal alb).
-  Afectează toate ecranele, nu doar cel nou.
-- [ ] **Contul de test ca utilizator.** Deocamdată testați totul ca super-admin, care trece prin
-  toate porțile. Ecranele goale și mesajele „nu ai acces" nu le vede niciunul dintre voi.
-- [ ] **Rapoartele săptămânale rămase în baza de date.** Funcția a fost scoasă din aplicație pe
-  13.08, dar rapoartele generate până atunci sunt încă salvate. Nu le mai citește nimic. De hotărât
-  dacă le ștergem definitiv înainte de lansare sau le păstrăm ca arhivă.
+- [ ] **Ecranul „Date CAN" nu are pereche pe web.** Acolo informația e împrăștiată între fișa
+  vehiculului și panoul „IO Live". Dacă îl vreți și pe web, e o lucrare separată.
+
+- [ ] **Cele cinci semnale CAN care nu se aprind niciodată.** Ambreiaj, închidere centralizată și
+  cele trei apăsări de telecomandă. Fișa adaptorului le listează, noi nu știm unde le pune aparatul
+  în mesaj, iar ghicitul ar aprinde martori greșiți. Scrie „necitit" pe ele, deci nu induc în eroare
+  — dar de decis: fie obținem foaia de biți de la Teltonika, fie le probăm pe o mașină, fie le
+  scoatem din listă ca să nu ridice întrebări. *(22.08)*
+
+---
+
+### C. De reparat înainte de clienți reali
+
+- [ ] **(eu) Eticheta falsă „Consum azi (senzor)" din aplicația de telefon.** Fișa vehiculului o
+  afișează MEREU, inclusiv pe mașini fără niciun senzor, fiindcă ruta nu întoarce niciodată câmpul pe
+  care se bazează. E o minciună pe ecran, exact genul pe care nu ni-l permitem.
+
+- [ ] **(eu) Verdele aplicației e aproape ilizibil pe tema luminoasă** (nu e redefinit pentru fundal
+  alb). Afectează toate ecranele, nu doar unul.
+
+- [ ] **(eu) Editorul de Zone n-are selector de companie.** Zonele desenate de voi rămân fără
+  companie. Funcționează, dar nu le puteți atribui unui client anume.
+
+- [ ] **(voi) Rapoartele săptămânale rămase în baza de date.** Funcția a fost scoasă pe 13.08, dar
+  rapoartele generate până atunci sunt încă salvate și nu le mai citește nimic. De hotărât dacă le
+  ștergem definitiv sau le păstrăm ca arhivă.
+
+---
+
+### D. De confirmat din afară (nu depinde de cod)
+
+- [ ] **(voi) Un fișier `.DDD` adevărat, de la un șofer profesionist.** Cititorul de tahograf e
+  verificat cu fișiere construite de mine după specificație — ceea ce **nu dovedește nimic** dacă am
+  înțeles greșit specificația: și constructorul, și cititorul ar greși la fel. Când apare unul real,
+  e o oră de lucru să-l confrunt.
+
+- [ ] **(voi) Grila TollRo: valorile marcate cu ⚠ și data de aplicare.** Treapta 7,5–12 t și
+  pozițiile intermediare pe Euro 4/5 nu erau publicate la 20.08 — sunt estimările noastre. La
+  apariția ordonanței se corectează din Administrare → Taxa de drum, fără deploy.
+
+- [ ] **(voi) ANAF: cum se numără exact cele 5 zile ale codului UIT** (de la data declarată, inclusiv
+  sau exclusiv ziua de start) și **schema declarației**, validată pe mediul de test. Vezi `ANAF.md`.
+
+---
+
+### E. e-Transport — infrastructura e pusă, secțiunea NU e terminată
+
+Scadențarul e gata și funcționează (termene, stare, cine trebuie rezolvat acum). Dar în starea de
+acum e **evidență internă**, nu conformitate: nu se trimite nimic la ANAF. Ce mai trebuie, în
+ordinea în care contează:
+
+- [ ] **E.1 — (voi, apoi eu) Tokenul ANAF e UNUL SINGUR, pe toată platforma.** `anaf.js` citește un
+  singur `ANAF_ETRANSPORT_TOKEN` și un singur `ANAF_CIF` din variabilele serverului. Adică putem
+  raporta pentru **o singură firmă** — a noastră. Fiecare client declară sub CIF-ul LUI, cu tokenul
+  LUI, obținut cu certificatul LUI digital. Ca să vindem modulul, tokenul și CIF-ul trebuie mutate
+  **pe companie**, în setările fiecărui client, criptate. **Asta se hotărăște prima**, fiindcă
+  schimbă forma secțiunii — restul e degeaba dacă asta se face altfel.
+
+- [ ] **E.2 — (eu) Mecanismul de trimitere nu verifică prospețimea poziției.** Ecranul o verifică
+  deja; worker-ul care trimite la ANAF ia ultima poziție știută chiar dacă e veche de o oră — adică
+  **ar declara o poziție falsă**. De reparat OBLIGATORIU înainte de a porni tokenul, altfel primul
+  lucru pe care îl facem în producție e să transmitem date greșite.
+
+- [ ] **E.3 — (eu) Dovada trimiterilor către ANAF.** Se ține o singură dată — ultima trimitere —
+  suprascrisă mereu. Dacă ANAF spune „între 14:00 și 16:00 n-ai transmis", n-avem cu ce răspunde.
+  E piesa cea mai valoroasă care lipsește: singurul care poate dovedi transmisia e furnizorul de GPS,
+  adică noi. (Butonul „Descarcă dovada" din varianta 3 a machetelor.)
+
+- [ ] **E.4 — (eu) Fără reîncercare și fără alertă.** Dacă ANAF pică sau tracker-ul tace, nu se
+  reîncearcă nimic și nu află nimeni. Nicio notificare la „UIT expiră în 6 ore" sau „transportul nu
+  mai transmite de 20 de minute".
+
+- [ ] **E.5 — (eu) Emiterea codului UIT din aplicație n-are buton.** `anaf.js` știe să depună
+  declarația și să aducă înapoi codul, dar formularul n-are câmpurile cerute de ANAF (marfă, cod
+  tarifar, greutăți, expeditor, rută).
+
+- [ ] **E.6 — (eu) Amănunte rămase.** Cadența de 3 minute a trimiterilor nu e verificată cu
+  specificația ANAF. Pornirea/oprirea transportului se face de mână, deși aplicația știe când pleacă
+  și când ajunge camionul. Pe telefon secțiunea e tot listă read-only, deși șoferul e cel care are
+  nevoie de codul UIT la un control. Și e cod mort de curățat: rutele demo `/uit`, `/start`, `/stop`,
+  `/sim` n-au buton nicăieri, iar meniul intern trimite către trei ecrane care n-au fost construite
+  niciodată (`etransport-view`, `etoll-view`, `tahograf-view`).
+
+**Ordinea de lucru, când vă apucați:** decideți E.1 → repar E.2 → Robert ia tokenul din SPV →
+testăm împreună pe mediul de test ANAF → producție. E.3–E.6 se pot face în paralel, dar nimic nu se
+pornește în producție înainte de E.2.
 
 ## Decizie: ce vedem din conturile clienților
 
