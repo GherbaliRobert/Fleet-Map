@@ -3160,6 +3160,12 @@ Lista pe care o parcurg cu voi înainte de a da drumul la clienți reali.
 
 - [ ] **e-Transport — mai avem mult de făcut aici (cerut de Alin, 26.08).** Scadențarul e gata, dar
   secțiunea NU e terminată. Ce lipsește, în ordinea în care costă bani:
+  - **Tokenul ANAF e UNUL SINGUR, pe toată platforma.** `anaf.js` citește un singur
+    `ANAF_ETRANSPORT_TOKEN` și un singur `ANAF_CIF` din variabilele de mediu. Adică, așa cum e acum,
+    putem raporta la ANAF pentru **o singură firmă** — a noastră. Fiecare client declară sub CIF-ul
+    LUI, cu tokenul LUI, obținut cu certificatul LUI digital. Ca să vindem modulul, tokenul și CIF-ul
+    trebuie mutate **pe companie** (în setările fiecărui client, criptate), nu în variabilele
+    serverului. E cea mai mare piesă care lipsește și trebuie hotărâtă înainte de orice altceva aici.
   - **Dovada trimiterilor către ANAF.** Se ține o singură dată — ultima trimitere — suprascrisă de
     fiecare dată. Dacă ANAF spune „între 14:00 și 16:00 n-ai transmis", n-avem cu ce răspunde. Asta e
     piesa cea mai valoroasă care lipsește: singurul care poate dovedi transmisia e furnizorul de GPS,
