@@ -20,6 +20,26 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Culorile de la taxa de drum spun acum cât costă, nu ce fel de drum e
+
+Erau pe dos: **verde pe autostradă, roșu pe drumul național**. Pe un ecran cu bani, roșul se citește
+„scump" — dar autostrada e de **două ori mai scumpă** decât nationalul în fiecare celulă din grilă
+(0,48 față de 0,24 lei/km la peste 12 t Euro 6). Cu vechile culori, bara arăta verde exact pe partea
+care înghite banii.
+
+Alin a cerut inversarea. Acum: **roșu = cel mai scump, verde = mai ieftin, albastru = nu se
+plătește deloc**. Culorile stau într-un singur loc (`tollro.js`), deci s-au schimbat deodată și pe
+web, și pe telefon.
+
+**Ce am adăugat pe lângă:** alegerea asta se sprijină pe faptul că autostrada rămâne mai scumpă
+decât nationalul. Grila e editabilă de super-admin — dacă cineva schimbă raportul, roșul ar ajunge
+pe cel ieftin și ecranul ar minți prin culoare, tăcut. Proba verifică acum **toate cele 12 celule**
+și cade dacă raportul se inversează. Am stricat o celulă intenționat: a căzut.
+
+- **Ce vede fondatorul:** bara fiecărei mașini arată acum, dintr-o privire, că banii se duc pe
+  autostradă — care e chiar informația utilă pentru un dispecer care alege ruta.
+- **Ce vede clientul:** la fel.
+
 ### AMÂNDOI · Taxa de drum: toată flota deodată, nu o mașină pe rând
 
 Alin a ales varianta 2. Ecranul calcula până acum **un singur vehicul**, ales dintr-un selector.

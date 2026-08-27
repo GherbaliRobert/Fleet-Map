@@ -36,10 +36,20 @@ const EURO = [
 // Clasele de drum, cu corespondentul lor în OpenStreetMap (de acolo aflăm pe ce fel de drum a mers
 // mașina). `trunk` = drum expres în România, `primary` = drum național.
 // Drumurile județene, comunale și străzile NU se taxează — de aceea a treia clasă are taxabil: false.
+//
+// ── Culorile spun CÂT COSTĂ, nu ce fel de drum e (cerut de Alin, 26.08) ───────────────────────
+// Erau pe dos: verde pe autostradă, roșu pe drumul național. Pe un ecran cu bani, roșul se citește
+// „scump" — iar autostrada e de DOUĂ ORI mai scumpă decât nationalul în fiecare celulă din grilă
+// (0,48 față de 0,24 lei/km la peste 12 t Euro 6). Acum: roșu = cel mai scump, verde = mai ieftin,
+// albastru = nu se plătește deloc.
+// ⚠ Alegerea se sprijină pe faptul că autostrada rămâne mai scumpă decât nationalul în TOATE
+// celulele. Grila e editabilă de super-admin, deci `verify_tollro.js` verifică presupunerea și cade
+// dacă raportul se inversează — altfel roșul ar ajunge pe cel ieftin și ecranul ar minți prin culoare.
+// Culorile astea se folosesc DOAR la costuri (web + telefon), nu sunt legendă de hartă.
 const CLASE_DRUM = [
-  { key: 'autostrada', eticheta: 'Autostradă / drum expres', culoare: '#22c55e', taxabil: true,
+  { key: 'autostrada', eticheta: 'Autostradă / drum expres', culoare: '#ef4444', taxabil: true,
     osm: ['motorway', 'motorway_link', 'trunk', 'trunk_link'] },
-  { key: 'national', eticheta: 'Drum național', culoare: '#ef4444', taxabil: true,
+  { key: 'national', eticheta: 'Drum național', culoare: '#22c55e', taxabil: true,
     osm: ['primary', 'primary_link'] },
   { key: 'alte', eticheta: 'Alte drumuri (netaxate)', culoare: '#3b82f6', taxabil: false,
     osm: ['secondary', 'secondary_link', 'tertiary', 'tertiary_link', 'unclassified', 'residential', 'living_street', 'service', 'road'] },

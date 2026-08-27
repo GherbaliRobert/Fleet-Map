@@ -99,5 +99,21 @@ t('fără kilometri → total 0, fără eroare', r.total === 0 && r.aplicabil ==
 r = T.estimeaza({ masaKg: 30000, euro: 'Euro 6' }, { autostrada: -100 }, null, DUPA);
 t('kilometri negativi → ignorați', r.total === 0, String(r.total));
 
+console.log('\n══ Culorile spun cât costă, nu ce fel de drum e ══\n');
+// Roșu pe autostradă, verde pe național. Alegerea are sens DOAR cât timp autostrada rămâne mai
+// scumpă — altfel roșul ar sta pe cel ieftin și ecranul ar minți prin culoare, tăcut.
+const _c = (k) => (T.CLASE_DRUM.find(x => x.key === k) || {}).culoare;
+t('autostrada e roșie (cea scumpă)', _c('autostrada') === '#ef4444', _c('autostrada'));
+t('nationalul e verde (cel ieftin)', _c('national') === '#22c55e', _c('national'));
+t('drumurile netaxate au culoare neutră, nu verde',
+  _c('alte') !== '#22c55e' && (T.CLASE_DRUM.find(x => x.key === 'alte') || {}).taxabil === false, _c('alte'));
+let _inv = [];
+for (const c of T.CATEGORII) for (const e of T.EURO) {
+  const tf = T.GRILA_IMPLICITA.tarife[c.key][e.key];
+  if (tf.autostrada < tf.national) _inv.push(c.key + '/' + e.key);
+}
+t('autostrada e mai scumpă decât nationalul în TOATE celulele grilei',
+  _inv.length === 0, _inv.join(', ') + ' — dacă raportul s-a schimbat, culorile trebuie reevaluate');
+
 console.log('\n' + ok + '/' + (ok + fail) + ' verificări trecute\n');
 process.exit(fail ? 1 : 0);
