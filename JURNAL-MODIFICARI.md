@@ -20,6 +20,34 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Un Dacia Logan nu mai e întrebat cât cântărește
+
+Alin a deschis Taxa de drum pe flota lor și toate cele trei mașini scriau același lucru: **„fără masa
+maximă în fișă — nu se poate încadra"**. Două dintre ele erau un **Dacia Logan** și un **VW Caddy**.
+
+Întrebarea n-avea răspuns util. Un autoturism nu trece de 3,5 t, oricât ai completa. Omul ori
+completa degeaba, ori se întreba ce a greșit — și în ambele cazuri îi dădeam de lucru pe degeaba, pe
+un ecran care ar fi trebuit să-i spună limpede „mașina asta nu te privește".
+
+Acum **categoria vehiculului se verifică ÎNAINTEA masei**. Un autoturism scrie „autoturism — plătește
+rovinietă, nu taxă pe km". O combină scrie „utilaj — nu e transport rutier de marfă". O remorcă scrie
+„remorca nu se taxează separat — taxa e pe vehiculul care o trage".
+
+**Duba a rămas dinadins pe lista celor întrebate.** Un Sprinter sau un Ducato mare e chiar la limita
+de 3,5 t — acolo chiar trebuie cântărit, nu presupus. Regula acoperă doar cazurile fără dubiu.
+
+Regula stă într-un singur loc (`tollro.js`) și e folosită de toate cele trei căi de calcul — lista
+flotei, calculul din traseu și cel cu kilometri introduși de mână. Altfel ecranul ar fi spus una și
+calculul alta.
+
+**De ce nu vedea Alin culorile noi:** ele apar doar pe bara de sub o mașină care ARE un cost. El avea
+zero mașini taxabile, deci n-avea ce colora. Ecranul nou era acolo — „Calculează toată flota" nu
+exista înainte.
+
+- **Ce vede fondatorul:** flota lor scrie acum de ce fiecare mașină nu intră la taxă, în loc să ceară
+  o completare imposibilă.
+- **Ce vede clientul:** la fel — și nu mai completează fișe degeaba.
+
 ### AMÂNDOI · Culorile de la taxa de drum spun acum cât costă, nu ce fel de drum e
 
 Erau pe dos: **verde pe autostradă, roșu pe drumul național**. Pe un ecran cu bani, roșul se citește

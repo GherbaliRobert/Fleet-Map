@@ -55,6 +55,38 @@ const CLASE_DRUM = [
     osm: ['secondary', 'secondary_link', 'tertiary', 'tertiary_link', 'unclassified', 'residential', 'living_street', 'service', 'road'] },
 ];
 
+// ── Categorii care NU intră NICIODATĂ la taxa pe kilometru ────────────────────────────────────
+// Fără regula asta, aplicația cere „masa maximă autorizată" pentru un Dacia Logan — o întrebare la
+// care nu există răspuns util, fiindcă un autoturism nu trece de 3,5 t. Omul ori o completează
+// degeaba, ori se întreabă ce a greșit. Prins pe flota reală a fondatorilor (Alin, 26.08): toate
+// cele trei mașini ale lor cereau masa, deși două erau un Logan și un Caddy.
+//
+// Aici stau DOAR cazurile fără dubiu. „Dubă" lipsește dinadins: o dubă mare (Sprinter, Ducato) e
+// chiar la limita de 3,5 t și trebuie cântărită, nu presupusă.
+const TIPURI_FARA_TAXA = {
+  'auto': 'autoturism — plătește rovinietă, nu taxă pe km',
+  'motocicleta': 'motocicletă — plătește rovinietă, nu taxă pe km',
+  'barca': 'nu circulă pe drum public',
+  'remorca': 'remorca nu se taxează separat — taxa e pe vehiculul care o trage',
+  'remorca tehnologica': 'remorca nu se taxează separat — taxa e pe vehiculul care o trage',
+  'tractor': 'tractor agricol — nu e transport rutier de marfă',
+  'utilaj': 'utilaj — nu e transport rutier de marfă',
+  'buldoexcavator': 'utilaj — nu e transport rutier de marfă',
+  'motostivuitor': 'utilaj — nu e transport rutier de marfă',
+  'combina agricola': 'utilaj — nu e transport rutier de marfă',
+  'grup electrogen': 'utilaj — nu e transport rutier de marfă',
+};
+// Categoria se scrie cu diacritice în fișă („Combină agricolă"), dar cheile de mai sus sunt fără —
+// altfel o singură literă cu căciulă ar face regula să nu se potrivească niciodată.
+function _faraDiacritice(s) {
+  return String(s == null ? '' : s).toLowerCase().trim()
+    .replace(/[ăâ]/g, 'a').replace(/[îi]/g, 'i').replace(/[șş]/g, 's').replace(/[țţ]/g, 't').replace(/[é]/g, 'e');
+}
+// Motivul pentru care categoria asta nu intră la taxă, sau null dacă poate intra.
+function tipFaraTaxa(tip) {
+  return TIPURI_FARA_TAXA[_faraDiacritice(tip)] || null;
+}
+
 // Data de la care se aplică. Publicată și amânată de mai multe ori — de aceea e editabilă.
 const APLICABIL_DIN = '2026-10-01';
 
@@ -150,6 +182,14 @@ function estimeaza(v, km, grila, acum) {
   const avertismente = [];
   const cat = categorieDupaMasa(v && v.masaKg);
 
+  // Categoria vehiculului se verifică ÎNAINTEA masei: la un autoturism sau la un utilaj, „completează
+  // masa maximă" e o cerință fără rost. Tipul e un răspuns, nu o lipsă de răspuns.
+  const fara = tipFaraTaxa(v && v.tip);
+  if (fara) {
+    return { aplicabil: false, motiv: 'Vehiculul nu intră la taxa pe kilometru: ' + fara + '.',
+      total: 0, linii: [], categorie: null, euro: null, avertismente };
+  }
+
   if (cat == null) {
     const m = Number(v && v.masaKg);
     return {
@@ -193,6 +233,6 @@ function estimeaza(v, km, grila, acum) {
 }
 
 module.exports = {
-  CATEGORII, EURO, CLASE_DRUM, GRILA_IMPLICITA, APLICABIL_DIN,
-  categorieDupaMasa, euroNormalizat, clasaDinOsm, grilaValida, estimeaza,
+  CATEGORII, EURO, CLASE_DRUM, GRILA_IMPLICITA, APLICABIL_DIN, TIPURI_FARA_TAXA,
+  categorieDupaMasa, euroNormalizat, clasaDinOsm, grilaValida, estimeaza, tipFaraTaxa,
 };

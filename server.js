@@ -4322,8 +4322,12 @@ app.get('/api/tollro/flota', requireAuth, withScope, async (req, res) => {
       const euro = tollro.euroNormalizat(d.emission_class);
       // Motivul pentru care o mașină NU intră se scrie aici, o dată. Fără el, ecranul ar arăta un
       // rând gol lângă unul cu bani și n-ai ști dacă e o scutire sau o fișă necompletată.
+      // Categoria se verifică ÎNAINTEA masei: la un autoturism sau la un utilaj, „completează masa
+      // maximă" e o cerință fără rost — tipul vehiculului e deja răspunsul. Regula stă în tollro.js.
+      const faraTaxa = tollro.tipFaraTaxa(d.vehicle_type);
       let motiv = null;
-      if (cat == null) {
+      if (faraTaxa) motiv = faraTaxa;
+      else if (cat == null) {
         motiv = (!Number.isFinite(masa) || !(masa > 0))
           ? 'fără masa maximă în fișă — nu se poate încadra'
           : 'sub 3,5 t — plătește rovinietă, nu taxă pe km';
@@ -4335,8 +4339,8 @@ app.get('/api/tollro/flota', requireAuth, withScope, async (req, res) => {
         categorie: cat, categorieEticheta: cat ? (tollro.CATEGORII.find(c => c.key === cat) || {}).eticheta : null,
         euroCunoscut: !!euro,
         euroEticheta: (tollro.EURO.find(e => e.key === (euro || 'euro3')) || {}).eticheta,
-        leiPerKm: cat ? g.tarife[cat][euro || 'euro3'] : null,
-        aplicabil: cat != null, motiv,
+        leiPerKm: (cat && !faraTaxa) ? g.tarife[cat][euro || 'euro3'] : null,
+        aplicabil: cat != null && !faraTaxa, motiv,
       };
     });
     const taxabile = vehicule.filter(v => v.aplicabil).length;
@@ -4400,7 +4404,7 @@ app.post('/api/tollro/estimate', requireAuth, withScope, async (req, res) => {
     if (!prof) return res.status(404).json({ error: 'Vehicul negăsit' });
     const km = (req.body && req.body.km) || {};
     const cm = _tollroCuManual(prof, req.body && req.body.manual);
-    const rez = tollro.estimeaza({ masaKg: cm.profil.masaKg, euro: cm.profil.euro }, km, await _tollroGrila());
+    const rez = tollro.estimeaza({ masaKg: cm.profil.masaKg, euro: cm.profil.euro, tip: cm.profil.tip }, km, await _tollroGrila());
     res.json({ vehicul: cm.profil, completatManual: cm.completat, rezultat: rez });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4461,7 +4465,7 @@ app.post('/api/tollro/din-istoric', requireAuth, withScope, async (req, res) => 
     kmNecunoscut = Math.round(kmNecunoscut * 10) / 10;
 
     const cmI = _tollroCuManual(prof, req.body && req.body.manual);
-    const rez = tollro.estimeaza({ masaKg: cmI.profil.masaKg, euro: cmI.profil.euro }, km, await _tollroGrila());
+    const rez = tollro.estimeaza({ masaKg: cmI.profil.masaKg, euro: cmI.profil.euro, tip: cmI.profil.tip }, km, await _tollroGrila());
     if (kmNecunoscut > 0) rez.avertismente.push(kmNecunoscut.toString().replace('.', ',') + ' km nu s-au putut încadra pe un drum cunoscut (zonă fără date OSM sau în afara carosabilului) — nu sunt taxați în estimarea de mai sus.');
     res.json({
       vehicul: cmI.profil, completatManual: cmI.completat, rezultat: rez, km, kmNecunoscut,

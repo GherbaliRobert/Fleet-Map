@@ -100,10 +100,32 @@ function gata(code) {
   T('fără masă în fișă → tot nu intră', gol && gol.aplicabil === false);
   T('dar motivul e ALTUL: fișa necompletată', gol && /masa maximă/i.test(gol.motiv) && !/rovinietă/i.test(gol.motiv), gol && gol.motiv);
 
+  sect('2b. Un autoturism nu e întrebat cât cântărește');
+  // Cazul lui Alin (26.08): toate cele trei mașini ale fondatorilor cereau „masa maximă în fișă",
+  // deși două erau un Dacia Logan și un VW Caddy. La un autoturism întrebarea n-are răspuns util.
+  const LOGAN = '6611000000010', COMBINA = '6611000000011', DUBA = '6611000000012';
+  await POST('/api/devices', { imei: LOGAN, plate: 'B 154 UIP', brand: 'Dacia', model: 'Logan', vehicle_type: 'Auto' });
+  await POST('/api/devices', { imei: COMBINA, plate: 'AG 10 CMB', brand: 'Claas', model: 'Lexion', vehicle_type: 'Combină agricolă' });
+  await POST('/api/devices', { imei: DUBA, plate: 'B 268 ROY', brand: 'VW', model: 'Caddy', vehicle_type: 'Duba' });
+  const f2 = await (await GET('/api/tollro/flota')).json();
+  const g2 = (p) => (f2.vehicule || []).find(x => x.numar === p);
+
+  const lg = g2('B 154 UIP');
+  T('autoturismul nu intră la taxă', lg && lg.aplicabil === false, lg && lg.aplicabil);
+  T('și NU i se cere masa — i se spune că e autoturism',
+    lg && /autoturism/i.test(lg.motiv) && !/masa maximă/i.test(lg.motiv), lg && lg.motiv);
+  const cb = g2('AG 10 CMB');
+  T('combina agricolă (cu diacritice în fișă) e recunoscută',
+    cb && cb.aplicabil === false && /utilaj/i.test(cb.motiv), cb && cb.motiv);
+  // Duba rămâne întrebată dinadins: un Sprinter e chiar la limita de 3,5 t.
+  const db2 = g2('B 268 ROY');
+  T('duba TOT e întrebată cât cântărește (poate fi peste 3,5 t)',
+    db2 && /masa maximă/i.test(db2.motiv), db2 && db2.motiv);
+
   sect('3. Sumarul numără exact ce e în listă');
-  const tax = (f.vehicule || []).filter(x => x.aplicabil).length;
-  T('taxabile', f.sumar.taxabile === tax, f.sumar.taxabile + ' vs ' + tax);
-  T('neaplicabile', f.sumar.neaplicabile === (f.vehicule.length - tax), JSON.stringify(f.sumar));
+  const tax = (f2.vehicule || []).filter(x => x.aplicabil).length;
+  T('taxabile', f2.sumar.taxabile === tax, f2.sumar.taxabile + ' vs ' + tax);
+  T('neaplicabile', f2.sumar.neaplicabile === (f2.vehicule.length - tax), JSON.stringify(f2.sumar));
   T('spune de când se aplică taxa', !!f.aplicabilDin, f.aplicabilDin);
   T('și dacă e deja în vigoare', typeof f.inVigoare === 'boolean', f.inVigoare);
 
