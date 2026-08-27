@@ -547,17 +547,43 @@
     .tr-f b { display: block; font-size: 13px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tr-f b.gol { color: var(--red); font-weight: 600; }
 
-    .tr-nota { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45;
+    /* NU flex: cu flex, fiecare <b> din text devine element separat și fraza se rupe în bucăți
+       reașezate („Taxa se aplică  01.10.2026 . Până atunci… din"). Blocul păstrează textul curgător,
+       iar iconița e inline oricum. Afectează toate notele, nu doar cele noi. */
+    .tr-nota { display: block; font-size: 12.5px; line-height: 1.45;
       border-radius: 10px; padding: 9px 11px; margin-top: 9px; border: 1px solid; }
+    .tr-nota > i:first-child { margin-right: 8px; }
     .tr-nota.verde  { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
     .tr-nota.galben { color: #f59e0b; border-color: #f59e0b55; background: #f59e0b14; }
     .tr-nota.rosu   { color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, transparent); background: color-mix(in srgb, var(--red) 10%, transparent); }
     .tr-nota b { color: var(--text-primary); }
 
-    .tr-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-    .tr-tab { flex: 1; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-dark);
-      color: var(--text-muted); font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
-    .tr-tab.on { border-color: var(--accent); color: var(--text-primary); background: color-mix(in srgb, var(--accent) 12%, var(--bg-dark)); }
+    /* ── Lista flotei ─────────────────────────────────────────────────────────────────────────
+       Ecranul pleacă de la „cât mă costă flota", nu de la o mașină pe rând. Totalul de sus se adună
+       DOAR din vehiculele calculate, iar cât timp mai sunt în lucru scrie „până acum" — un total
+       care încă se mișcă, citit ca definitiv, ajunge într-o ofertă greșită. */
+    .tr-tot { text-align: center; padding: 14px 0 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .tr-tot-s { font-size: 34px; font-weight: 800; line-height: 1; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .tr-tot-s span { font-size: 15px; font-weight: 700; color: var(--text-muted); margin-left: 7px; }
+    .tr-tot-b { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; font-weight: 700; }
+
+    .tr-rand { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 12px; margin-bottom: 7px; background: var(--bg-dark); }
+    .tr-rand.clic { cursor: pointer; }
+    .tr-rand.clic:hover { border-color: var(--border-light); }
+    .tr-rand.gri { opacity: .55; }
+    .tr-r-l { flex: 1; min-width: 0; }
+    .tr-r-l b { display: block; font-size: 13.5px; color: var(--text-primary); }
+    .tr-r-l > span { font-size: 11.5px; color: var(--text-muted); }
+    .tr-bara { display: flex; gap: 2px; height: 4px; border-radius: 2px; overflow: hidden; margin-top: 6px; background: var(--bg-panel); }
+    .tr-bara i { display: block; height: 100%; }
+    .tr-r-r { text-align: right; flex: 0 0 auto; line-height: 1.2; }
+    .tr-r-r b { display: block; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+    .tr-r-r b.pal { color: var(--text-muted); font-weight: 700; font-size: 15px; }
+    .tr-r-r span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+    .tr-r-r span.rosu { color: var(--red); text-transform: none; letter-spacing: 0; font-size: 10.5px; }
+    .tr-gh { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--text-muted); margin: 16px 0 8px; }
 
     /* Sumarul: distanța la stânga, TOTALUL mare la dreapta — cifra pentru care se deschide ecranul. */
     .tr-sumar { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px;

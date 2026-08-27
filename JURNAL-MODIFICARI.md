@@ -20,6 +20,50 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Taxa de drum: toată flota deodată, nu o mașină pe rând
+
+Alin a ales varianta 2. Ecranul calcula până acum **un singur vehicul**, ales dintr-un selector.
+Ca să afli care camion te costă cel mai mult trebuia să le iei pe rând și să faci socoteala pe
+hârtie. Acum lista pleacă de la flotă: apeși o dată, iar mașinile se așază singure, **cea mai
+scumpă prima**, cu totalul mare deasupra.
+
+**Partea grea n-a fost lista, ci timpul.** Ca să știm pe ce fel de drum a mers camionul, întrebăm
+OpenStreetMap — care acceptă **o cerere pe secundă**. Pe zece camioane, un singur răspuns ar dura
+minute și ar cădea în timeout, iar zece cereri deodată ar fi refuzate: am primi zece erori în loc
+de zece rezultate.
+
+Așa că se cere pe rând, iar lista se umple pe măsură ce vin. Se vede că se lucrează, și se poate
+opri la jumătate.
+
+**Regula pe care am ținut-o cu dinții: un total pe jumătate nu se prezintă ca total.** Cât timp mai
+sunt mașini în lucru, sus scrie **„până acum · 3 din 4 vehicule"**. Fără asta, cineva ar citi cifra
+la mijlocul calculului și ar pune-o într-o ofertă. Proba verifică exact asta, cu o cifră veche
+strecurată anume în date: dacă suma s-ar aduna din toate rândurile în loc de cele terminate, ar
+intra și ea și proba cade.
+
+**„Nu se taxează" și „nu știm" sunt două lucruri diferite.** O dubă de 3,2 t scrie *„sub 3,5 t —
+plătește rovinietă, nu taxă pe km"*. Un camion fără masa completată în fișă scrie *„fără masa
+maximă în fișă — nu se poate încadra"*. Primul e o scutire, al doilea e o fișă de completat. Dacă
+amândouă ar spune la fel, omul n-ar ști pe care s-o repare. Și asta e probat.
+
+**Prudența rămâne în direcția bună:** fără norma Euro completată, calculăm la tariful **cel mai
+scump** și o spunem. Aici ies bani care ajung în oferte — o estimare optimistă îl face pe om să
+piardă.
+
+**Trei lucruri reparate pe drum:**
+- **Notele galbene se rupeau în bucăți.** Erau desenate ca flex, iar fiecare cuvânt îngroșat devenea
+  element separat: *„Taxa se aplică  01.10.2026 . Până atunci… din"*. Problemă veche, nu doar la
+  ecranul nou — afecta toate notele din secțiune.
+- **Cod rămas fără buton:** două funcții din ecranul vechi (tab-urile „din traseu / îi introduc eu")
+  nu mai erau chemate de nimic. Scoase — exact ce am reproșat la e-Transport.
+- **Probele de taxă nu erau în CI.** `verify_tollro.js` are 55 de verificări, rulează fără server, și
+  nu era pornit la `npm test`. Adăugat, împreună cu cel nou.
+
+- **Ce vede fondatorul:** poate arăta unui client, într-un ecran, cât îl va costa flota lui pe o
+  săptămână și care camion e cel scump. Asta e argumentul de vânzare, nu calculatorul per mașină.
+- **Ce vede clientul:** același lucru pentru flota lui, cu mașinile care nu se taxează separate la
+  coadă și cu motivul scris.
+
 ### AMÂNDOI · e-Transport: scadențar în loc de caiet de coduri
 
 Alin a ales varianta 2 din machete. Secțiunea arăta până acum ca un caiet: scriai de mână codul UIT,

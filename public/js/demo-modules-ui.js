@@ -106,11 +106,13 @@
   // Deosebirea față de calculatoarele publice (unde tastezi numărul și VIN-ul oricărui camion):
   // aici vehiculul se ALEGE DIN FLOTĂ, iar profilul de taxare vine din fișa lui. Nu poți calcula
   // pentru o mașină care nu e a ta, și nu mai tastezi de fiecare dată masa, axele și norma Euro.
-  var _tr = { cfg: null, imei: '', profil: null, sursa: 'istoric', rezultat: null, manual: {} };
+  var _tr = { cfg: null, imei: '', profil: null, rezultat: null, manual: {},
+              flota: null, costuri: {}, lucreaza: false, opreste: false };
 
   window.openEtollDemo = async function () {
     ensureContainers();
     _tr.cfg = await api('/api/tollro/config').catch(function () { return null; });
+    _tr.flota = await api('/api/tollro/flota').catch(function () { return null; });
     // Fara eticheta „DEMO": calculul e REAL — tarifele sunt cele publicate, vehiculul e din flota,
     // kilometrii vin din traseul lui. Provizorii sunt doar cateva valori din grila, iar alea sunt
     // marcate acolo unde sunt. O eticheta „DEMO" peste tot i-ar face pe oameni sa nu creada nici
@@ -125,50 +127,172 @@
   function trNum(v) { return Number(v || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function trKm(v) { return Number(v || 0).toLocaleString('ro-RO', { maximumFractionDigits: 1 }); }
 
+  // ── Ecranul: TOATĂ flota deodată, ordonată după cât costă ─────────────────────────────────────
+  // Înainte se calcula o mașină pe rând, iar „care camion mă costă cel mai mult" nu se putea afla
+  // decât făcând socoteala pe hârtie. Acum lista pleacă de la flotă.
+  //
+  // Costurile NU vin într-un singur răspuns: clasificarea drumurilor se ia de la OpenStreetMap, care
+  // acceptă o cerere pe secundă. Pe zece camioane, un răspuns unic ar dura minute și ar cădea în
+  // timeout. Cerem pe rând și umplem lista pe măsură ce vin — se vede că se lucrează.
   function trRender() {
     var azi = new Date().toISOString().slice(0, 10);
     var acum7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     var g = _tr.cfg && _tr.cfg.grila;
+    var f = _tr.flota;
     el('etoll-view-body').innerHTML =
       '<div class="dm-card">' +
-        '<h3>Vehiculul</h3>' +
-        '<div class="dm-row" style="align-items:center;flex-wrap:wrap">' +
-          '<select id="tr-veh" class="dm-input" style="min-width:230px" onchange="trAlegeVehicul()">' + vehicleOptions() + '</select>' +
-          '<span class="dm-muted" style="font-size:11.5px">Doar vehiculele din flota ta — profilul se ia din fișă.</span>' +
+        '<div class="dm-row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">' +
+          '<label class="dm-lbl">De la<input type="date" id="tr-de-la" class="dm-input" value="' + acum7 + '" max="' + azi + '"></label>' +
+          '<label class="dm-lbl">Până la<input type="date" id="tr-pana-la" class="dm-input" value="' + azi + '" max="' + azi + '"></label>' +
+          '<button class="rax-btn primary" id="tr-btn-flota" onclick="trCalculeazaFlota()"><i class="fas fa-calculator"></i> Calculează toată flota</button>' +
         '</div>' +
-        '<div id="tr-profil" style="margin-top:10px"></div>' +
+        '<div class="dm-muted" style="font-size:11.5px;margin-top:6px">Luăm traseul real al fiecărei mașini și, pentru fiecare bucată de drum, aflăm din OpenStreetMap ce fel de drum e. Maxim 8 zile odată.</div>' +
       '</div>' +
 
-      '<div class="dm-card">' +
-        '<h3>Kilometrii</h3>' +
-        '<div class="tr-tabs">' +
-          '<button class="tr-tab' + (_tr.sursa === 'istoric' ? ' on' : '') + '" onclick="trSursa(\'istoric\')"><i class="fas fa-route"></i> Din traseul parcurs</button>' +
-          '<button class="tr-tab' + (_tr.sursa === 'manual' ? ' on' : '') + '" onclick="trSursa(\'manual\')"><i class="fas fa-keyboard"></i> Îi introduc eu</button>' +
-        '</div>' +
-        (_tr.sursa === 'istoric'
-          ? '<div class="dm-row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">' +
-              '<label class="dm-lbl">De la<input type="date" id="tr-de-la" class="dm-input" value="' + acum7 + '" max="' + azi + '"></label>' +
-              '<label class="dm-lbl">Până la<input type="date" id="tr-pana-la" class="dm-input" value="' + azi + '" max="' + azi + '"></label>' +
-              '<button class="rax-btn primary" onclick="trDinIstoric()"><i class="fas fa-calculator"></i> Calculează din traseu</button>' +
-            '</div>' +
-            '<div class="dm-muted" style="font-size:11.5px;margin-top:6px">Luăm traseul real al mașinii și, pentru fiecare bucată, aflăm din OpenStreetMap ce fel de drum e. Maxim 8 zile odată.</div>'
-          : '<div class="dm-row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">' +
-              '<label class="dm-lbl">Autostradă / expres (km)<input type="number" id="tr-km-a" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
-              '<label class="dm-lbl">Drum național (km)<input type="number" id="tr-km-n" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
-              '<label class="dm-lbl">Alte drumuri (km)<input type="number" id="tr-km-x" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
-              '<button class="rax-btn primary" onclick="trManual()"><i class="fas fa-calculator"></i> Calculează</button>' +
-            '</div>') +
-      '</div>' +
-
-      '<div class="dm-card" id="tr-rezultat"><h3>Detalii costuri</h3>' +
-        '<div class="dm-muted">Alege vehiculul și perioada, apoi apasă „Calculează".</div></div>' +
+      '<div class="dm-card" id="tr-flota">' + trFlotaHtml() + '</div>' +
+      '<div id="tr-detaliu"></div>' +
 
       (g ? '<div class="dm-card"><h3>Grila de tarife' + (_tr.cfg.editabil ? '' : ' (doar informativ)') + '</h3>' +
         '<div class="dm-muted" style="font-size:11.5px;margin-bottom:8px">Se aplică din <b>' + esc(trData(g.aplicabilDin)) + '</b>. ' +
         'Valorile se stabilesc prin ordonanță și s-au tot amânat — de aceea stau aici, editabile, nu îngropate în cod.</div>' +
         trGrilaHtml(g, _tr.cfg.editabil) + '</div>' : '');
-    if (_tr.imei) { var sel = el('tr-veh'); if (sel) sel.value = _tr.imei; trAlegeVehicul(); }
   }
+
+  // Suma de sus se adună DOAR din vehiculele calculate. Cât timp mai sunt în lucru, scrie „până acum",
+  // nu „total" — altfel omul citește un total care încă se mișcă și îl pune într-o ofertă.
+  function trFlotaHtml() {
+    var f = _tr.flota;
+    if (!f) return '<h3>Flota</h3><div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> Nu s-a putut citi lista vehiculelor.</div>';
+    var v = f.vehicule || [];
+    if (!v.length) return '<h3>Flota</h3><div class="dm-muted">Niciun vehicul în flotă.</div>';
+
+    var taxabile = v.filter(function (x) { return x.aplicabil; });
+    var restul = v.filter(function (x) { return !x.aplicabil; });
+    var gata = taxabile.filter(function (x) { var c = _tr.costuri[x.imei]; return c && c.stare === 'gata'; });
+    var total = gata.reduce(function (a, x) { return a + (_tr.costuri[x.imei].total || 0); }, 0);
+    var kmTaxati = gata.reduce(function (a, x) { return a + (_tr.costuri[x.imei].kmTaxati || 0); }, 0);
+    var inLucru = taxabile.length - gata.length;
+
+    // Ordinea: cele calculate, descrescător după cost; apoi cele care încă așteaptă, în ordinea flotei.
+    var calc = gata.slice().sort(function (a, b) { return _tr.costuri[b.imei].total - _tr.costuri[a.imei].total; });
+    var restante = taxabile.filter(function (x) { var c = _tr.costuri[x.imei]; return !c || c.stare !== 'gata'; });
+
+    var h = '<h3>Flota <span class="dm-muted" style="font-weight:400;font-size:12px">· ' +
+      f.sumar.taxabile + ' cu taxă pe km, ' + f.sumar.neaplicabile + ' fără</span></h3>';
+
+    if (gata.length) {
+      h += '<div class="tr-tot">' +
+        '<div class="tr-tot-s">' + trNum(total) + '<span>lei</span></div>' +
+        '<div class="tr-tot-b">' + (inLucru ? 'până acum · ' + gata.length + ' din ' + taxabile.length + ' vehicule' : gata.length + ' vehicule') +
+        ' · ' + trKm(kmTaxati) + ' km pe drum cu taxă</div></div>';
+    }
+    if (!f.inVigoare) {
+      h += '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> Taxa se aplică din <b>' + esc(trData(f.aplicabilDin)) +
+        '</b>. Până atunci plătești rovinietă, iar sumele de aici sunt o previziune.</div>';
+    }
+
+    h += calc.map(trRandFlota).join('') + restante.map(trRandFlota).join('');
+
+    if (restul.length) {
+      h += '<div class="tr-gh">Fără taxă pe kilometru</div>' + restul.map(trRandFlota).join('');
+    }
+    return h;
+  }
+
+  function trRandFlota(v) {
+    var c = _tr.costuri[v.imei];
+    var sub = [v.model, v.categorieEticheta, v.euroCunoscut ? v.euroEticheta : null].filter(Boolean).join(' · ');
+    var dr = '';
+    if (!v.aplicabil) {
+      dr = '<b>—</b><span>' + esc(v.motiv) + '</span>';
+    } else if (!c || c.stare === 'asteapta') {
+      dr = '<b class="pal">—</b><span>neCalculat</span>';
+    } else if (c.stare === 'lucreaza') {
+      dr = '<b class="pal"><i class="fas fa-spinner fa-spin"></i></b><span>se calculează</span>';
+    } else if (c.stare === 'eroare') {
+      dr = '<b class="pal">—</b><span class="rosu">' + esc(c.err || 'eroare') + '</span>';
+    } else {
+      dr = '<b>' + trNum(c.total) + '</b><span>lei</span>';
+    }
+    // Bara arată din CE se compune costul (autostradă vs național), nu cât e față de altă mașină.
+    var bara = '';
+    if (c && c.stare === 'gata' && c.total > 0) {
+      bara = '<div class="tr-bara">' + (c.linii || []).filter(function (l) { return l.taxabil && l.cost > 0; }).map(function (l) {
+        return '<i style="width:' + Math.round(l.cost / c.total * 100) + '%;background:' + l.culoare + '"></i>';
+      }).join('') + '</div>';
+    }
+    return '<div class="tr-rand' + (v.aplicabil ? '' : ' gri') + (c && c.stare === 'gata' ? ' clic' : '') + '"' +
+      (v.aplicabil ? ' onclick="trDeschideVehicul(\'' + esc(v.imei) + '\')"' : '') + '>' +
+      '<div class="tr-r-l"><b>' + esc(v.numar || v.nume || v.imei) + '</b><span>' + esc(sub || '—') + '</span>' + bara + '</div>' +
+      '<div class="tr-r-r">' + dr + '</div></div>';
+  }
+
+  // Calculul flotei: SECVENȚIAL, nu toate odată. Overpass acceptă o cerere pe secundă, iar zece
+  // cereri paralele ar fi refuzate — am primi zece erori în loc de zece rezultate.
+  window.trCalculeazaFlota = async function () {
+    if (_tr.lucreaza) { _tr.opreste = true; return; }
+    var f = _tr.flota; if (!f) return;
+    var from = el('tr-de-la').value, to = el('tr-pana-la').value;
+    if (!from || !to) { toast('Alege intervalul', 'error'); return; }
+
+    var taxabile = (f.vehicule || []).filter(function (x) { return x.aplicabil; });
+    if (!taxabile.length) { toast('Niciun vehicul cu taxă pe kilometru în flotă', 'error'); return; }
+
+    _tr.lucreaza = true; _tr.opreste = false; _tr.costuri = {};
+    taxabile.forEach(function (x) { _tr.costuri[x.imei] = { stare: 'asteapta' }; });
+    var btn = el('tr-btn-flota');
+    if (btn) btn.innerHTML = '<i class="fas fa-stop"></i> Oprește';
+    el('tr-flota').innerHTML = trFlotaHtml();
+
+    for (var i = 0; i < taxabile.length; i++) {
+      if (_tr.opreste) break;
+      var v = taxabile[i];
+      _tr.costuri[v.imei] = { stare: 'lucreaza' };
+      el('tr-flota').innerHTML = trFlotaHtml();
+      var r = await postJSON('/api/tollro/din-istoric', { imei: v.imei, from: from + 'T00:00:00', to: to + 'T23:59:59' })
+        .catch(function (e) { return { error: (e && e.message) || 'eroare de rețea' }; });
+      if (r && r.rezultat && r.rezultat.aplicabil) {
+        var z = r.rezultat;
+        _tr.costuri[v.imei] = {
+          stare: 'gata', total: z.total, linii: z.linii, avertismente: z.avertismente,
+          kmTaxati: z.linii.reduce(function (a, l) { return a + (l.taxabil ? l.km : 0); }, 0),
+          brut: r,
+        };
+      } else {
+        // „Nu s-a mișcat" nu e o eroare — e un cost de zero, și trebuie să se vadă ca atare.
+        var msg = (r && r.error) || (r && r.rezultat && r.rezultat.motiv) || 'nu s-a putut calcula';
+        if (/nu există traseu|aproape nu s-a deplasat/i.test(msg)) {
+          _tr.costuri[v.imei] = { stare: 'gata', total: 0, linii: [], kmTaxati: 0, nuSaMiscat: true };
+        } else {
+          _tr.costuri[v.imei] = { stare: 'eroare', err: msg };
+        }
+      }
+      el('tr-flota').innerHTML = trFlotaHtml();
+    }
+    _tr.lucreaza = false;
+    if (btn) btn.innerHTML = '<i class="fas fa-calculator"></i> Calculează toată flota';
+    el('tr-flota').innerHTML = trFlotaHtml();
+  };
+
+  // Detaliul unei mașini: fișa ei + defalcarea costului, sub listă.
+  window.trDeschideVehicul = function (imei) {
+    _tr.imei = imei; _tr.manual = {};
+    var box = el('tr-detaliu');
+    box.innerHTML = '<div class="dm-card"><h3>Detalii vehicul</h3><div id="tr-profil"></div>' +
+      '<div id="tr-rezultat" style="margin-top:12px"></div>' +
+      '<details style="margin-top:12px"><summary class="dm-muted" style="cursor:pointer;font-size:12px">Vreau să introduc eu kilometrii</summary>' +
+        '<div class="dm-row" style="align-items:flex-end;flex-wrap:wrap;gap:10px;margin-top:10px">' +
+          '<label class="dm-lbl">Autostradă / expres (km)<input type="number" id="tr-km-a" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
+          '<label class="dm-lbl">Drum național (km)<input type="number" id="tr-km-n" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
+          '<label class="dm-lbl">Alte drumuri (km)<input type="number" id="tr-km-x" class="dm-input" min="0" step="0.1" placeholder="0"></label>' +
+          '<button class="rax-btn primary" onclick="trManual()"><i class="fas fa-calculator"></i> Calculează</button>' +
+        '</div></details></div>';
+    trAlegeVehicul();
+    var c = _tr.costuri[imei];
+    if (c && c.stare === 'gata' && c.brut) trAfiseaza(c.brut, c.brut.atribuire);
+    else if (c && c.nuSaMiscat) el('tr-rezultat').innerHTML = '<div class="dm-muted">Vehiculul nu s-a deplasat în intervalul ales — zero kilometri taxabili.</div>';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
 
   function trGrilaHtml(g, editabil) {
     var cat = _tr.cfg.categorii, euro = _tr.cfg.euro;
@@ -195,13 +319,12 @@
     return h;
   }
 
-  window.trSursa = function (s) { _tr.sursa = s; trRender(); };
-
+  // Vehiculul se alege acum dintr-un RÂND al listei, nu dintr-un selector. Selectorul rămâne
+  // acceptat dacă mai există undeva, ca să nu rup o cale veche.
   window.trAlegeVehicul = async function () {
-    var sel = el('tr-veh'); if (!sel) return;
-    _tr.imei = sel.value;
+    var sel = el('tr-veh');
+    if (sel) _tr.imei = sel.value;
     var box = el('tr-profil'); if (!box) return;
-    _tr.manual = {};   // alt vehicul, alte date — nu caram masa camionului dinainte
     if (!_tr.imei) { _tr.profil = null; box.innerHTML = ''; return; }
     box.innerHTML = '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se citește fișa…</div>';
     // Profilul vine de la SERVER, nu din lista încărcată în browser: pe ecran trebuie să scrie exact
@@ -279,16 +402,6 @@
     trManualSchimbat();
     var r = await postJSON('/api/tollro/estimate', { imei: _tr.imei, km: km, manual: _tr.manual });
     trAfiseaza(r, null);
-  };
-
-  window.trDinIstoric = async function () {
-    if (!trCereVehicul()) return;
-    var box = el('tr-rezultat');
-    box.innerHTML = '<h3>Detalii costuri</h3><div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se citește traseul și se întreabă OpenStreetMap ce fel de drumuri sunt… poate dura până la un minut.</div>';
-    trManualSchimbat();
-    var from = el('tr-de-la').value, to = el('tr-pana-la').value;
-    var r = await postJSON('/api/tollro/din-istoric', { imei: _tr.imei, from: from + 'T00:00:00', to: to + 'T23:59:59', manual: _tr.manual });
-    trAfiseaza(r, r && r.atribuire);
   };
 
   function trAfiseaza(r, atribuire) {

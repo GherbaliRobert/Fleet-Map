@@ -4302,6 +4302,52 @@ app.get('/api/tollro/profil/:imei', requireAuth, withScope, async (req, res) => 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Toată flota, încadrată ──────────────────────────────────────────────────────────────────────
+// Lista vehiculelor cu profilul lor de taxare, FĂRĂ să atingă OpenStreetMap — deci răspunde imediat.
+//
+// De ce nu calculează și costurile aici: clasificarea drumurilor se ia de la Overpass, care e limitat
+// la o cerere pe secundă (politica lor de uz, vezi roadlimits.js). Pe o flotă de zece camioane, un
+// singur răspuns ar dura minute și ar cădea în timeout. Ecranul cere costurile pe rând, cu ruta de
+// mai jos, și umple lista pe măsură ce vin — omul vede că se lucrează, în loc să se uite la un ceas.
+app.get('/api/tollro/flota', requireAuth, withScope, async (req, res) => {
+  try {
+    let devs = await db.getDevices(req.isSuper ? null : req.companyId);
+    if (req.companyId !== demoCompanyId) devs = devs.filter(d => !DEMO_SET.has(d.imei));
+    devs = devs.filter(d => (d.status || '') !== 'archived' && canAccessImei(req, d.imei));
+
+    const g = await _tollroGrila();
+    const vehicule = devs.map(d => {
+      const masa = d.max_weight_legal != null ? Number(d.max_weight_legal) : null;
+      const cat = tollro.categorieDupaMasa(masa);
+      const euro = tollro.euroNormalizat(d.emission_class);
+      // Motivul pentru care o mașină NU intră se scrie aici, o dată. Fără el, ecranul ar arăta un
+      // rând gol lângă unul cu bani și n-ai ști dacă e o scutire sau o fișă necompletată.
+      let motiv = null;
+      if (cat == null) {
+        motiv = (!Number.isFinite(masa) || !(masa > 0))
+          ? 'fără masa maximă în fișă — nu se poate încadra'
+          : 'sub 3,5 t — plătește rovinietă, nu taxă pe km';
+      }
+      return {
+        imei: d.imei, numar: d.plate || null, nume: d.name || null,
+        model: [d.brand, d.model].filter(Boolean).join(' ') || null,
+        masaKg: Number.isFinite(masa) ? masa : null, euro: d.emission_class || null,
+        categorie: cat, categorieEticheta: cat ? (tollro.CATEGORII.find(c => c.key === cat) || {}).eticheta : null,
+        euroCunoscut: !!euro,
+        euroEticheta: (tollro.EURO.find(e => e.key === (euro || 'euro3')) || {}).eticheta,
+        leiPerKm: cat ? g.tarife[cat][euro || 'euro3'] : null,
+        aplicabil: cat != null, motiv,
+      };
+    });
+    const taxabile = vehicule.filter(v => v.aplicabil).length;
+    res.json({
+      vehicule, aplicabilDin: g.aplicabilDin,
+      inVigoare: Date.now() >= Date.parse(g.aplicabilDin + 'T00:00:00'),
+      sumar: { total: vehicule.length, taxabile, neaplicabile: vehicule.length - taxabile },
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Completarile de mana: se accepta DOAR pentru campurile pe care fisa nu le are. Daca fisa spune
 // 30 t, nimeni nu poate „calcula la 5 t" trimitand alta masa — altfel taxa ar deveni negociabila din
 // browser, iar cifra pusa in oferta n-ar mai avea nicio legatura cu vehiculul.
