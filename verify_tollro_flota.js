@@ -188,6 +188,30 @@ function gata(code) {
       'titlu=' + complet.indexOf('Fără taxă pe kilometru'));
   }
 
+  sect('6. O flotă fără camioane își spune de ce e goală');
+  // Cazul fondatorilor: trei autoturisme. Ecranul nu va avea NICIODATĂ ce calcula, iar fără un mesaj
+  // rămâne o listă gri fără cap și fără coadă — omul crede că a stricat ceva.
+  if (i > 0 && j > i) {
+    const escH = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const nr = (v) => Number(v || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const kmF = (v) => Number(v || 0).toLocaleString('ro-RO', { maximumFractionDigits: 1 });
+    const dt = (x) => String(x || '');
+    const mkF = new Function('_tr', 'esc', 'trNum', 'trKm', 'trData', js.slice(i, j) + '\n; return trFlotaHtml;');
+    const doarMasini = {
+      vehicule: (f2.vehicule || []).filter(v => !v.aplicabil),
+      aplicabilDin: f2.aplicabilDin, inVigoare: false,
+      sumar: { total: 3, taxabile: 0, neaplicabile: 3 },
+    };
+    const gol2 = mkF({ flota: doarMasini, costuri: {} }, escH, nr, kmF, dt)();
+    T('spune limpede că nicio mașină nu intră la taxă', /Nicio mașină din flotă nu intră/.test(gol2));
+    T('și explică pentru cine e taxa', /peste 3,5 t/.test(gol2) && /rovinietă/i.test(gol2));
+    // Un avertisment despre data intrării în vigoare, pe un ecran fără nicio sumă, avertizează
+    // despre nimic — și împinge mesajul care contează mai jos.
+    T('NU mai avertizează despre data taxei când n-are ce calcula', !/Taxa se aplică din/.test(gol2), gol2.slice(0, 200));
+    T('motivul stă lângă mașină, ca frază, nu ca etichetă în colț', /tr-motiv/.test(gol2));
+    T('titlul grupei nu mai zice „fără taxă" când toate sunt așa', /Vehiculele tale/.test(gol2), (gol2.match(/tr-gh">([^<]+)/) || [])[1]);
+  }
+
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');
   gata(rele ? 1 : 0);

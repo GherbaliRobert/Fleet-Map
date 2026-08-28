@@ -571,7 +571,13 @@
       padding: 10px 12px; margin-bottom: 7px; background: var(--bg-dark); }
     .tr-rand.clic { cursor: pointer; }
     .tr-rand.clic:hover { border-color: var(--border-light); }
-    .tr-rand.gri { opacity: .55; }
+    /* Rândurile fără taxă erau `opacity: .55` peste un fundal deja aproape alb pe tema luminoasă —
+       practic invizibile, deși motivul scris pe ele e singura informație utilă la o flotă fără
+       camioane. Acum sunt secundare prin CONTUR (linie punctată, fără fundal), nu prin transparență. */
+    .tr-rand.gri { background: transparent; border-style: dashed; }
+    .tr-rand.gri .tr-r-l > b { color: var(--text-secondary); font-weight: 700; }
+    /* Motivul e o frază, nu o etichetă: rând normal, lizibil, sub numele mașinii. */
+    .tr-motiv { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
     .tr-r-l { flex: 1; min-width: 0; }
     .tr-r-l b { display: block; font-size: 13.5px; color: var(--text-primary); }
     .tr-r-l > span { font-size: 11.5px; color: var(--text-muted); }
@@ -584,6 +590,13 @@
     .tr-r-r span.rosu { color: var(--red); text-transform: none; letter-spacing: 0; font-size: 10.5px; }
     .tr-gh { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
       color: var(--text-muted); margin: 16px 0 8px; }
+
+    /* Ecranul gol își spune rostul. O flotă fără camioane nu va avea NICIODATĂ ce calcula aici —
+       fără mesajul ăsta rămâne o listă gri fără explicație, iar omul crede că a stricat ceva. */
+    .tr-empty { text-align: center; padding: 26px 20px 22px; }
+    .tr-empty > i { font-size: 30px; color: var(--text-muted); opacity: .5; display: block; margin-bottom: 12px; }
+    .tr-empty > b { display: block; font-size: 15px; color: var(--text-primary); margin-bottom: 7px; }
+    .tr-empty > span { display: block; font-size: 12.5px; color: var(--text-muted); line-height: 1.6; max-width: 520px; margin: 0 auto; }
 
     /* Sumarul: distanța la stânga, TOTALUL mare la dreapta — cifra pentru care se deschide ecranul. */
     .tr-sumar { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px;

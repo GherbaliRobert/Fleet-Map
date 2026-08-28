@@ -20,6 +20,46 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Taxa de drum, refăcută pentru ecranul pe care îl vede omul
+
+Alin: *„aici am un ecran când intru în taxa de drum, mai sus mi-ai zis că am alt ecran… nu mai
+înțeleg nimic."* Avea dreptate să nu înțeleagă, și e vina mea.
+
+**E același ecran.** Eu i-am arătat capturi pe **tema întunecată**, el are aplicația pe **tema
+luminoasă** — și în plus, la el nu apare partea colorată, fiindcă n-are nicio mașină taxabilă. Două
+diferențe care fac același ecran să pară altul.
+
+Am randat ecranul **exact cum îl vede el** — temă luminoasă, flota lui — și abia atunci s-a văzut cât
+de prost arăta:
+
+**1. Rândurile erau aproape invizibile.** Aveau `opacity: .55` peste un fundal deja aproape alb. Pe
+tema întunecată mergea; pe alb, dispăreau. Acum sunt secundare **prin contur** (linie punctată, fără
+fundal), nu prin transparență.
+
+**2. Motivul stătea unde nu se putea citi.** „AUTOTURISM — PLĂTEȘTE ROVINIETĂ, NU TAXĂ PE KM" era
+scris mic, cu majuscule, în colțul din dreapta — adică o frază lungă înghesuită în locul rezervat
+unei etichete scurte. Iar pe o flotă fără camioane e **singura informație de pe ecran**. Acum stă sub
+numele mașinii, ca rând normal.
+
+**3. Ecranul gol nu-și spunea rostul.** O flotă de autoturisme nu va avea NICIODATĂ ce calcula aici,
+dar ecranul arăta doar o listă gri, fără explicație. Acum scrie: *„Nicio mașină din flotă nu intră la
+taxa pe kilometru — taxa se plătește doar pentru marfă peste 3,5 t."*
+
+**4. Butonul cerea o apăsare inutilă.** „Calculează toată flota" era activ chiar când nu era nimic de
+calculat; apăsarea răspundea cu o eroare, iar omul credea că a stricat ceva. Acum e stins, cu motivul
+scris lângă el.
+
+**5. Avertismentul despre data taxei apărea și când nu exista nicio sumă** — avertiza despre nimic și
+împingea mai jos mesajul care conta.
+
+**Ce am învățat pentru data viitoare:** capturile pe care le trimit trebuie să fie pe **tema pe care
+o folosesc ei** și **cu datele lor**, nu cu o flotă inventată de camioane. Altfel arăt un produs pe
+care ei nu-l au.
+
+- **Ce vede fondatorul:** ecranul îi spune, în două rânduri, de ce flota lui de autoturisme nu are ce
+  căuta acolo — în loc să pară stricat.
+- **Ce vede clientul:** la fel, plus rânduri lizibile pe tema deschisă.
+
 ### AMÂNDOI · Un Dacia Logan nu mai e întrebat cât cântărește
 
 Alin a deschis Taxa de drum pe flota lor și toate cele trei mașini scriau același lucru: **„fără masa

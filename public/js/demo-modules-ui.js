@@ -139,14 +139,21 @@
     var acum7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     var g = _tr.cfg && _tr.cfg.grila;
     var f = _tr.flota;
+    // Dacă nicio mașină nu intră la taxă, butonul n-are ce calcula. Îl lăsăm stins și spunem de ce —
+    // altfel omul îl apasă, primește un mesaj de eroare și crede că aplicația e stricată.
+    var nimicDeCalculat = !!(f && f.sumar && f.sumar.taxabile === 0);
     el('etoll-view-body').innerHTML =
       '<div class="dm-card">' +
         '<div class="dm-row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">' +
-          '<label class="dm-lbl">De la<input type="date" id="tr-de-la" class="dm-input" value="' + acum7 + '" max="' + azi + '"></label>' +
-          '<label class="dm-lbl">Până la<input type="date" id="tr-pana-la" class="dm-input" value="' + azi + '" max="' + azi + '"></label>' +
-          '<button class="rax-btn primary" id="tr-btn-flota" onclick="trCalculeazaFlota()"><i class="fas fa-calculator"></i> Calculează toată flota</button>' +
+          '<label class="dm-lbl">De la<input type="date" id="tr-de-la" class="dm-input" value="' + acum7 + '" max="' + azi + '"' + (nimicDeCalculat ? ' disabled' : '') + '></label>' +
+          '<label class="dm-lbl">Până la<input type="date" id="tr-pana-la" class="dm-input" value="' + azi + '" max="' + azi + '"' + (nimicDeCalculat ? ' disabled' : '') + '></label>' +
+          '<button class="rax-btn primary" id="tr-btn-flota" onclick="trCalculeazaFlota()"' + (nimicDeCalculat ? ' disabled' : '') + '><i class="fas fa-calculator"></i> Calculează toată flota</button>' +
         '</div>' +
-        '<div class="dm-muted" style="font-size:11.5px;margin-top:6px">Luăm traseul real al fiecărei mașini și, pentru fiecare bucată de drum, aflăm din OpenStreetMap ce fel de drum e. Maxim 8 zile odată.</div>' +
+        '<div class="dm-muted" style="font-size:11.5px;margin-top:6px">' +
+          (nimicDeCalculat
+            ? 'Nu e nimic de calculat: niciun vehicul din flotă nu intră la taxa pe kilometru.'
+            : 'Luăm traseul real al fiecărei mașini și, pentru fiecare bucată de drum, aflăm din OpenStreetMap ce fel de drum e. Maxim 8 zile odată.') +
+        '</div>' +
       '</div>' +
 
       '<div class="dm-card" id="tr-flota">' + trFlotaHtml() + '</div>' +
@@ -180,21 +187,35 @@
     var h = '<h3>Flota <span class="dm-muted" style="font-weight:400;font-size:12px">· ' +
       f.sumar.taxabile + ' cu taxă pe km, ' + f.sumar.neaplicabile + ' fără</span></h3>';
 
-    if (gata.length) {
-      h += '<div class="tr-tot">' +
-        '<div class="tr-tot-s">' + trNum(total) + '<span>lei</span></div>' +
-        '<div class="tr-tot-b">' + (inLucru ? 'până acum · ' + gata.length + ' din ' + taxabile.length + ' vehicule' : gata.length + ' vehicule') +
-        ' · ' + trKm(kmTaxati) + ' km pe drum cu taxă</div></div>';
+    // Niciun vehicul taxabil = ecranul n-are ce calcula NICIODATĂ pentru flota asta. Fără mesajul
+    // ăsta rămâne o listă gri fără cap și fără coadă, iar omul se întreabă ce a stricat. E cazul
+    // real al fondatorilor: trei autoturisme, zero camioane.
+    if (!taxabile.length) {
+      h += '<div class="tr-empty">' +
+        '<i class="fas fa-road"></i>' +
+        '<b>Nicio mașină din flotă nu intră la taxa pe kilometru</b>' +
+        '<span>Taxa se plătește doar pentru transportul de marfă peste 3,5 t — camioane, autotractoare, autobuze. ' +
+        'Autoturismele și vehiculele ușoare plătesc rovinietă, ca până acum.</span>' +
+        '</div>';
+    } else {
+      if (gata.length) {
+        h += '<div class="tr-tot">' +
+          '<div class="tr-tot-s">' + trNum(total) + '<span>lei</span></div>' +
+          '<div class="tr-tot-b">' + (inLucru ? 'până acum · ' + gata.length + ' din ' + taxabile.length + ' vehicule' : gata.length + ' vehicule') +
+          ' · ' + trKm(kmTaxati) + ' km pe drum cu taxă</div></div>';
+      }
+      // Avertismentul despre data intrării în vigoare are sens doar dacă există sume de citit.
+      // Pe o flotă fără camioane n-ar avertiza despre nimic.
+      if (!f.inVigoare) {
+        h += '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> Taxa se aplică din <b>' + esc(trData(f.aplicabilDin)) +
+          '</b>. Până atunci plătești rovinietă, iar sumele de aici sunt o previziune.</div>';
+      }
+      h += calc.map(trRandFlota).join('') + restante.map(trRandFlota).join('');
     }
-    if (!f.inVigoare) {
-      h += '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> Taxa se aplică din <b>' + esc(trData(f.aplicabilDin)) +
-        '</b>. Până atunci plătești rovinietă, iar sumele de aici sunt o previziune.</div>';
-    }
-
-    h += calc.map(trRandFlota).join('') + restante.map(trRandFlota).join('');
 
     if (restul.length) {
-      h += '<div class="tr-gh">Fără taxă pe kilometru</div>' + restul.map(trRandFlota).join('');
+      h += '<div class="tr-gh">' + (taxabile.length ? 'Fără taxă pe kilometru' : 'Vehiculele tale') + '</div>' +
+        restul.map(trRandFlota).join('');
     }
     return h;
   }
@@ -203,8 +224,11 @@
     var c = _tr.costuri[v.imei];
     var sub = [v.model, v.categorieEticheta, v.euroCunoscut ? v.euroEticheta : null].filter(Boolean).join(' · ');
     var dr = '';
+    // Motivul e o FRAZĂ, nu o etichetă. Stătea în coloana din dreapta, scris mic și cu majuscule,
+    // adică exact unde nu se poate citi un text lung — iar la o flotă fără camioane e singura
+    // informație de pe ecran. Acum stă sub numele mașinii, în rând normal.
     if (!v.aplicabil) {
-      dr = '<b>—</b><span>' + esc(v.motiv) + '</span>';
+      dr = '<b class="pal">—</b>';
     } else if (!c || c.stare === 'asteapta') {
       dr = '<b class="pal">—</b><span>neCalculat</span>';
     } else if (c.stare === 'lucreaza') {
@@ -223,7 +247,10 @@
     }
     return '<div class="tr-rand' + (v.aplicabil ? '' : ' gri') + (c && c.stare === 'gata' ? ' clic' : '') + '"' +
       (v.aplicabil ? ' onclick="trDeschideVehicul(\'' + esc(v.imei) + '\')"' : '') + '>' +
-      '<div class="tr-r-l"><b>' + esc(v.numar || v.nume || v.imei) + '</b><span>' + esc(sub || '—') + '</span>' + bara + '</div>' +
+      '<div class="tr-r-l"><b>' + esc(v.numar || v.nume || v.imei) + '</b>' +
+        (sub ? '<span>' + esc(sub) + '</span>' : '') +
+        (!v.aplicabil && v.motiv ? '<span class="tr-motiv">' + esc(v.motiv) + '</span>' : '') +
+        bara + '</div>' +
       '<div class="tr-r-r">' + dr + '</div></div>';
   }
 
