@@ -145,7 +145,7 @@ function gata(code) {
   sect('5. Ecranul nu prezintă un total pe jumătate ca fiind total');
   const js = fs.readFileSync('./public/js/demo-modules-ui.js', 'utf8');
   const i = js.indexOf('  function trFlotaHtml() {');
-  const j = js.indexOf('  // Calculul flotei: SECVENȚIAL', i);
+  const j = js.indexOf('  // ── sfârșit lista flotei ──', i);
   T('găsesc codul listei în interfață', i > 0 && j > i);
   if (i > 0 && j > i) {
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -211,6 +211,54 @@ function gata(code) {
     T('motivul stă lângă mașină, ca frază, nu ca etichetă în colț', /tr-motiv/.test(gol2));
     T('titlul grupei nu mai zice „fără taxă" când toate sunt așa', /Vehiculele tale/.test(gol2), (gol2.match(/tr-gh">([^<]+)/) || [])[1]);
   }
+
+  sect('7. Cursă nouă: profilul NU se poate contrazice');
+  // Pe ecranul concurenței, treapta de taxare era un selector liber. Alin a lăsat „3,5–7,5 t" pe un
+  // camion de 41 t declarat în ACELAȘI formular, iar costul a ieșit de trei ori mai mic. Aici treapta
+  // se calculează din masa din fișă; formularul nu are ce contrazice.
+  const st = await (await GET('/api/tollro/rutare')).json();
+  T('serverul spune dacă rutarea e pornită', typeof st.pornit === 'boolean', JSON.stringify(st));
+  T('fără cheie, o spune pe litere, nu tace', st.pornit || /chei/i.test(st.motiv || ''), st.motiv);
+
+  const faraPuncte = await POST('/api/tollro/cursa', { imei: V[0].imei });
+  T('fără plecare și destinație → refuzat', faraPuncte.status === 400, faraPuncte.status);
+  const altVehicul = await POST('/api/tollro/cursa', {
+    imei: '000000000000999', start: { lat: 44.43, lng: 26.10 }, end: { lat: 45.7, lng: 27.2 },
+  });
+  T('vehicul inexistent sau inaccesibil → refuzat', altVehicul.status === 403 || altVehicul.status === 404, altVehicul.status);
+
+  // Chiar dacă cineva ar trimite o masă mică prin cerere, fișa câștigă: `_tollroCuManual` acceptă
+  // completări DOAR pentru câmpurile pe care fișa nu le are.
+  const minte = await POST('/api/tollro/cursa', {
+    imei: V[1].imei, manual: { masaKg: 5000 },
+    start: { lat: 44.43, lng: 26.10 }, end: { lat: 45.7, lng: 27.2 },
+  });
+  const jm = await minte.json();
+  if (minte.status === 200) {
+    T('masa trimisă din browser NU înlocuiește fișa (40 t rămâne 40 t)',
+      jm.vehicul && jm.vehicul.masaKg === 40000, jm.vehicul && jm.vehicul.masaKg);
+  } else {
+    // Fără cheie de rutare, cererea se oprește înainte — dar atunci trebuie să spună DE CE, nu 500.
+    T('fără rutare configurată → 503 cu explicație, nu o eroare oarecare',
+      minte.status === 503 && /cheie|hărți/i.test(jm.error || ''), minte.status + ' · ' + (jm.error || ''));
+  }
+
+  sect('8. Căutarea de adrese');
+  const scurt = await (await GET('/api/tollro/adrese?q=ab')).json();
+  T('sub 3 litere → listă goală, fără apel la furnizor', Array.isArray(scurt.sugestii) && scurt.sugestii.length === 0,
+    JSON.stringify(scurt).slice(0, 80));
+  const faraAuth = await fetch(B + '/api/tollro/adrese?q=bucuresti');
+  T('fără autentificare → refuzat', faraAuth.status === 401 || faraAuth.status === 403, faraAuth.status);
+
+  // Modulul de rutare, verificat direct: cele trei stări trebuie să rămână trei, nu patru.
+  const rt = require('./routing.js');
+  T('starea rutării are întotdeauna un motiv când e oprită',
+    rt.stare().pornit || !!rt.stare().motiv, JSON.stringify(rt.stare()));
+  // Geometria Valhalla vine codată; dacă decodarea s-ar strica, traseul ar ieși în mijlocul oceanului.
+  const pd = rt._decodePolyline6('ye}vwAdvxdKoBrA');
+  T('geometria codată se desface în coordonate plauzibile',
+    Array.isArray(pd) && pd.length >= 2 && Math.abs(pd[0][0]) <= 90 && Math.abs(pd[0][1]) <= 180,
+    JSON.stringify(pd && pd[0]));
 
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');

@@ -146,6 +146,7 @@ let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opționa
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
 const fueltheft = require('./fueltheft');   // decizia "chiar a disparut combustibil?" - modul pur, verificabil
 const tollro = require('./tollro');           // taxa rutiera pe km (TollRo) - grila + calcul, modul pur
+const routing = require('./routing');         // traseul dintre doua puncte (doar geometria; taxa ramane a noastra)
 const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7);
 // Regula alertei de viteză: prag MINIM (sub asta nu alertăm niciodată — fără absurdități în zone rezidențiale)
 // + MARJĂ peste limită (toleranță). Alertă DOAR dacă speed > max(BASE, limita configurată) + MARGIN.
@@ -4298,6 +4299,95 @@ app.get('/api/tollro/profil/:imei', requireAuth, withScope, async (req, res) => 
         categorie: cat, euro: euro || 'euro3', euroCunoscut: !!euro,
         leiPerKm: g.tarife[cat][euro || 'euro3'],
       } : null,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Cursă nouă: căutare de adrese + traseu + cost ───────────────────────────────────────────────
+// Întrebarea la care răspunde: „cât mă costă drumul ăsta, pe care încă nu l-am făcut?" — cea pe care
+// o pune un dispecer când dă un preț. Restul secțiunii răspunde la „cât m-a costat" (din traseul real).
+//
+// Cheia furnizorului de hărți stă la SERVER. Dacă ecranul ar chema direct serviciul, cheia ar ajunge
+// în browserul fiecărui client și oricine ar putea consuma plafonul nostru.
+app.get('/api/tollro/adrese', requireAuth, withScope, async (req, res) => {
+  try {
+    if (!geocode || !geocode.searchAddress) return res.status(503).json({ error: 'Căutarea de adrese nu e disponibilă pe acest server.' });
+    const q = String(req.query.q || '').slice(0, 120);
+    const r = await geocode.searchAddress(q);
+    // null = furnizorul n-a răspuns. Lista goală = a răspuns, dar n-a găsit nimic. Două lucruri
+    // diferite: primul e o defecțiune, al doilea e un răspuns. Ecranul trebuie să le poată deosebi.
+    if (r == null) return res.status(502).json({ error: 'Serviciul de adrese nu răspunde acum. Încearcă din nou.' });
+    res.json({ sugestii: r });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Starea rutării — ca ecranul să spună de la început dacă poate calcula un traseu nou.
+app.get('/api/tollro/rutare', requireAuth, (req, res) => res.json(routing.stare()));
+
+app.post('/api/tollro/cursa', requireAuth, withScope, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const imei = String(b.imei || '');
+    if (!imei || !canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
+    const prof = await _tollroProfil(imei);
+    if (!prof) return res.status(404).json({ error: 'Vehicul negăsit' });
+
+    const pct = (p) => (p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)))
+      ? { lat: Number(p.lat), lng: Number(p.lng) } : null;
+    const start = pct(b.start), end = pct(b.end);
+    if (!start || !end) return res.status(400).json({ error: 'Alege punctul de plecare și destinația' });
+
+    // Profilul vine din FIȘĂ, nu din formular — la fel ca în restul secțiunii. Aici se vede cel mai
+    // bine de ce: pe ecranul concurenței se putea alege „3,5–7,5 t" pentru un camion de 41 t declarat
+    // în același formular, iar costul ieșea de trei ori mai mic. La noi treapta se calculează din masă.
+    const cm = _tollroCuManual(prof, b.manual);
+    const v = cm.profil;
+
+    let r;
+    try { r = await routing.ruta(start, end, { masaKg: v.masaKg, axe: v.axe }); }
+    catch (e) { return res.status(e.status || 502).json({ error: e.message }); }
+
+    // De aici încolo e exact drumul folosit la „din istoric": rărire la ~250 m, clasa drumului din
+    // OpenStreetMap, distanța pusă în dreptul clasei. O singură logică de taxare, două surse de puncte.
+    const PAS_M = 250;
+    const esant = [r.puncte[0]];
+    let ultim = r.puncte[0];
+    for (let i = 1; i < r.puncte.length; i++) {
+      if (haversineDistance(ultim[0], ultim[1], r.puncte[i][0], r.puncte[i][1]) * 1000 >= PAS_M) { esant.push(r.puncte[i]); ultim = r.puncte[i]; }
+    }
+    if (esant[esant.length - 1] !== r.puncte[r.puncte.length - 1]) esant.push(r.puncte[r.puncte.length - 1]);
+    if (esant.length < 2) return res.status(400).json({ error: 'Traseul e prea scurt pentru o estimare.' });
+
+    if (!roadlimits || typeof roadlimits.classesForPoints !== 'function') {
+      return res.status(503).json({ error: 'Datele despre tipul drumurilor nu sunt disponibile pe acest server.' });
+    }
+    let cls;
+    try { cls = await roadlimits.classesForPoints(esant); }
+    catch (e) { return res.status(e.code === 'AREA' ? 400 : 502).json({ error: e.message }); }
+
+    const km = { autostrada: 0, national: 0, alte: 0 };
+    let kmNecunoscut = 0;
+    for (let i = 1; i < esant.length; i++) {
+      const d = haversineDistance(esant[i - 1][0], esant[i - 1][1], esant[i][0], esant[i][1]);
+      const hw = cls.classes[i - 1];
+      if (hw == null) { kmNecunoscut += d; continue; }
+      km[tollro.clasaDinOsm(hw)] += d;
+    }
+    for (const k of Object.keys(km)) km[k] = Math.round(km[k] * 10) / 10;
+    kmNecunoscut = Math.round(kmNecunoscut * 10) / 10;
+
+    const rez = tollro.estimeaza({ masaKg: v.masaKg, euro: v.euro, tip: v.tip }, km, await _tollroGrila());
+    if (kmNecunoscut > 0) rez.avertismente.push(kmNecunoscut.toString().replace('.', ',') + ' km nu s-au putut încadra pe un drum cunoscut — nu sunt taxați în suma de mai sus.');
+    if (r.deProba) rez.avertismente.push('Traseul vine de pe un server public de probă, nu de la furnizorul nostru. Bun pentru încercări, nu pentru o ofertă.');
+
+    res.json({
+      vehicul: v, completatManual: cm.completat, rezultat: rez, km, kmNecunoscut,
+      // `clase` merge lângă `traseu` ca harta să coloreze fiecare bucată cu clasa ei — ACEEAȘI
+      // clasificare din care iese suma. Dacă harta ar recolora după alt criteriu, desenul ar
+      // contrazice cifra de dedesubt, iar omul n-ar ști pe care să creadă.
+      traseu: esant, clase: esant.map(function (_, i) { return i === 0 ? null : tollro.clasaDinOsm(cls.classes[i - 1]); }).slice(1),
+      kmTotal: r.km, furnizor: r.furnizor, deProba: !!r.deProba,
+      atribuire: cls.attribution, zone: cls.tiles,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -20,6 +20,60 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Taxa de drum: „O cursă nouă" — cât te costă drumul pe care încă nu l-ai făcut
+
+Alin a văzut la Arobs un calculator de cursă și a cerut același lucru sub RA Tracks. Are dreptate că
+e mai util: un dispecer care dă prețuri îl deschide de zece ori pe zi, pe când lista pe flotă se
+folosește o dată pe lună. Acum secțiunea are două file — **O cursă nouă** (implicită) și **Toată
+flota** — pentru două întrebări diferite: *cât mă va costa* și *cât m-a costat*.
+
+**Cum arată, exact cum a cerut.** Alegi mașina dintr-o listă cu **casetă de căutare deasupra** (la
+trei mașini e de prisos, la patruzeci fără ea nu găsești nimic). Apoi **totul se completează singur
+din fișa vehiculului**: seria de șasiu, masa maximă, numărul de axe, clasa de emisii, categoria — și,
+din masă, treapta de taxare. Traseul: scrii o localitate și primești sugestii de adrese.
+
+**De ce câmpurile alea nu se pot atinge.** Pe ecranul Arobs, categoria era un selector liber. Alin a
+lăsat „3,5–7,5 t" pe un camion de **41 t declarat în același formular** — și costul a ieșit **25 lei
+în loc de 72**. De trei ori mai mic, fără niciun avertisment. El e fondator de firmă de GPS și n-a
+observat; un dispecer grăbit o va face zilnic.
+
+La noi treapta se **calculează din masă**, iar masa vine din fișă. Nu există două câmpuri care să se
+poată contrazice, pentru că e o singură sursă. Scrie și pe ecran de ce: *„datele vin din fișa
+vehiculului și nu se pot schimba de aici"*.
+
+**Ce a fost nou tehnic.** Ne lipsea un singur lucru: cineva care desenează traseul între două adrese.
+Restul aveam deja — clasificarea drumurilor din OpenStreetMap și calculul taxei. Modulul nou de
+rutare întoarce **doar geometria**; tarifele rămân ale noastre, deci furnizorul se poate schimba fără
+să atingem nicio cifră.
+
+Are trei stări, scrise ca să nu existe a patra: cu cheie → serviciul plătit-gratuit (2.500 cereri pe
+zi); cu un comutator explicit → un server public de probă, care **își spune pe ecran că e de probă**;
+fără niciunul → ecranul zice limpede ce lipsește, în loc să pară stricat.
+
+Rutarea cere **profil de camion**, nu de autoturism: un TIR de 40 t nu merge pe unde merge un Logan
+(poduri cu limită de tonaj, treceri joase). Trimitem masa și axele din fișă.
+
+**Căutarea de adrese** s-a așezat lângă geocodarea inversă pe care o aveam deja — același furnizor,
+același throttle, același cache. Altfel am fi respectat politica de uz pe jumătate din apeluri și
+am fi încălcat-o pe cealaltă, ceea ce e totuna cu a n-o respecta deloc.
+
+**Două verificări de bun-simț** pe care le-am pus fiindcă aici ies bani: un traseu rutier nu poate fi
+mai scurt decât linia dreaptă dintre capete (dacă e, furnizorul ne-a dat altceva — mai bine o eroare
+decât un cost pe un drum inexistent); iar harta colorează fiecare bucată cu **aceeași** clasificare
+din care iese suma, ca desenul să nu contrazică cifra.
+
+**O probă a căzut corect pe drum.** Inserasem blocul nou între două funcții pe care o probă le
+decupează din fișier — a picat cu „window is not defined", ceea ce e infinit mai bine decât să treacă
+verificând altceva. Am mutat blocul și am pus repere explicite, cu explicația lângă ele.
+
+- **Ce vede fondatorul:** poate da un preț pe o cursă în trei clicuri, fără să tasteze nimic despre
+  camion — și fără riscul de a-l încadra greșit.
+- **Ce vede clientul:** la fel, pentru flota lui.
+
+**Ce lipsește ca să meargă:** cheia de la serviciul de hărți (OpenRouteService, gratuită, 2.500 de
+cereri pe zi). Se pune ca `ORS_API_KEY`. Până atunci ecranul se poate deschide și umbla, dar costul
+nu se calculează — și o spune.
+
 ### AMÂNDOI · Grila de tarife era greșită. Prinsă de Alin, pe ecranul concurenței
 
 Alin are cont la Arobs de la muncă. A calculat acolo o cursă și mi-a trimis captura. Ecranul lor

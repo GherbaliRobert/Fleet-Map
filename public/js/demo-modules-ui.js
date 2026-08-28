@@ -107,12 +107,16 @@
   // aici vehiculul se ALEGE DIN FLOTĂ, iar profilul de taxare vine din fișa lui. Nu poți calcula
   // pentru o mașină care nu e a ta, și nu mai tastezi de fiecare dată masa, axele și norma Euro.
   var _tr = { cfg: null, imei: '', profil: null, rezultat: null, manual: {},
-              flota: null, costuri: {}, lucreaza: false, opreste: false };
+              flota: null, costuri: {}, lucreaza: false, opreste: false,
+              // ── fila „Cursă" ──
+              fila: 'cursa', rutare: null, cImei: '', cProfil: null, cStart: null, cEnd: null,
+              cRez: null, cHarta: null, cLinii: [] };
 
   window.openEtollDemo = async function () {
     ensureContainers();
     _tr.cfg = await api('/api/tollro/config').catch(function () { return null; });
     _tr.flota = await api('/api/tollro/flota').catch(function () { return null; });
+    _tr.rutare = await api('/api/tollro/rutare').catch(function () { return { pornit: false }; });
     // Fara eticheta „DEMO": calculul e REAL — tarifele sunt cele publicate, vehiculul e din flota,
     // kilometrii vin din traseul lui. Provizorii sunt doar cateva valori din grila, iar alea sunt
     // marcate acolo unde sunt. O eticheta „DEMO" peste tot i-ar face pe oameni sa nu creada nici
@@ -134,7 +138,26 @@
   // Costurile NU vin într-un singur răspuns: clasificarea drumurilor se ia de la OpenStreetMap, care
   // acceptă o cerere pe secundă. Pe zece camioane, un răspuns unic ar dura minute și ar cădea în
   // timeout. Cerem pe rând și umplem lista pe măsură ce vin — se vede că se lucrează.
+  // Două întrebări diferite, două file. „Cursă" = cât mă costă drumul pe care îl PREGĂTESC (întrebarea
+  // dispecerului care dă un preț). „Flota" = cât m-a costat ce am făcut deja. Prima e cea de zi cu zi,
+  // deci e implicită.
+  window.trFila = function (f) { _tr.fila = f; trRender(); };
+
   function trRender() {
+    if (_tr.fila === 'cursa') return trRenderCursa();
+    return trRenderFlota();
+  }
+
+  function trFileHtml() {
+    return '<div class="tz-file">' +
+      ['cursa,fa-route,O cursă nouă', 'flota,fa-truck,Toată flota'].map(function (x) {
+        var p = x.split(',');
+        return '<button class="tz-fila' + (_tr.fila === p[0] ? ' on' : '') + '" onclick="trFila(\'' + p[0] + '\')">' +
+          '<i class="fas ' + p[1] + '"></i> ' + p[2] + '</button>';
+      }).join('') + '</div>';
+  }
+
+  function trRenderFlota() {
     var azi = new Date().toISOString().slice(0, 10);
     var acum7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     var g = _tr.cfg && _tr.cfg.grila;
@@ -143,6 +166,7 @@
     // altfel omul îl apasă, primește un mesaj de eroare și crede că aplicația e stricată.
     var nimicDeCalculat = !!(f && f.sumar && f.sumar.taxabile === 0);
     el('etoll-view-body').innerHTML =
+      trFileHtml() +
       '<div class="dm-card">' +
         '<div class="dm-row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">' +
           '<label class="dm-lbl">De la<input type="date" id="tr-de-la" class="dm-input" value="' + acum7 + '" max="' + azi + '"' + (nimicDeCalculat ? ' disabled' : '') + '></label>' +
@@ -167,6 +191,9 @@
 
   // Suma de sus se adună DOAR din vehiculele calculate. Cât timp mai sunt în lucru, scrie „până acum",
   // nu „total" — altfel omul citește un total care încă se mișcă și îl pune într-o ofertă.
+  // ── începe lista flotei (REPER pentru probe: verify_tollro_flota.js decupează exact bucata
+  // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele — s-a întâmplat
+  // o dată, iar proba a picat cu „window is not defined", ceea ce e mai bine decât să treacă.) ──
   function trFlotaHtml() {
     var f = _tr.flota;
     if (!f) return '<h3>Flota</h3><div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> Nu s-a putut citi lista vehiculelor.</div>';
@@ -253,6 +280,7 @@
         bara + '</div>' +
       '<div class="tr-r-r">' + dr + '</div></div>';
   }
+  // ── sfârșit lista flotei ──
 
   // Calculul flotei: SECVENȚIAL, nu toate odată. Overpass acceptă o cerere pe secundă, iar zece
   // cereri paralele ar fi refuzate — am primi zece erori în loc de zece rezultate.
@@ -320,6 +348,235 @@
     else if (c && c.nuSaMiscat) el('tr-rezultat').innerHTML = '<div class="dm-muted">Vehiculul nu s-a deplasat în intervalul ales — zero kilometri taxabili.</div>';
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
+
+  // ═══ Fila „O cursă nouă" ═══════════════════════════════════════════════════════════════════════
+  // Regula ecranului: OMUL alege trei lucruri — mașina, de unde, până unde. Restul (serie de șasiu,
+  // masă, axe, normă, treaptă) se completează SINGUR din fișa vehiculului și nu se poate atinge.
+  //
+  // De ce nu se poate atinge: pe ecranul concurenței, categoria era un selector liber. Alin a lăsat
+  // „3,5–7,5 t" pe un camion de 41 t declarat în ACELAȘI formular, iar costul a ieșit de trei ori mai
+  // mic. Un câmp care poate contrazice alt câmp e o capcană, oricât ar părea de „flexibil".
+  function trRenderCursa() {
+    var r = _tr.rutare || {};
+    el('etoll-view-body').innerHTML =
+      trFileHtml() +
+      (!r.pornit
+        ? '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> ' + esc(r.motiv || 'Calculul unui traseu nou nu e pornit.') +
+          ' Poți alege vehiculul și adresele, dar costul nu se poate calcula până nu e configurat.</div>'
+        : (r.deProba ? '<div class="tr-nota galben"><i class="fas fa-flask"></i> Traseele vin de pe un server public de probă. Bun pentru încercări, nu pentru o ofertă.</div>' : '')) +
+
+      '<div class="dm-card"><h3>Profil vehicul</h3>' +
+        '<div class="tz-cauta">' +
+          '<i class="fas fa-magnifying-glass"></i>' +
+          '<input id="tr-c-cauta" class="tz-cauta-i" placeholder="Caută după număr sau nume…" oninput="trCautaVehicul()" autocomplete="off">' +
+        '</div>' +
+        '<div id="tr-c-lista" class="tz-lista"></div>' +
+        '<div id="tr-c-profil"></div>' +
+      '</div>' +
+
+      '<div class="dm-card"><h3>Traseu</h3>' +
+        trAdresaHtml('start', 'Plecare', 'Scrie o localitate sau o adresă…') +
+        trAdresaHtml('end', 'Destinație', 'Scrie o localitate sau o adresă…') +
+        '<button class="tz-go mare" id="tr-c-btn" onclick="trCalcCursa()"' + (r.pornit ? '' : ' disabled') + '>' +
+          '<i class="fas fa-bolt"></i> Calculează ruta și costurile</button>' +
+        '<div id="tr-c-msg" class="tr-c-msg"></div>' +
+      '</div>' +
+
+      '<div id="tr-c-rez"></div>';
+    trListaVehicule();
+    trProfilCursa();
+  }
+
+  function trAdresaHtml(k, et, ph) {
+    var ales = k === 'start' ? _tr.cStart : _tr.cEnd;
+    return '<div class="tz-adr">' +
+      '<label class="dm-lbl">' + et + '</label>' +
+      '<div class="tz-cauta">' +
+        '<i class="fas fa-' + (k === 'start' ? 'location-dot' : 'flag-checkered') + '"></i>' +
+        '<input id="tr-a-' + k + '" class="tz-cauta-i" placeholder="' + esc(ph) + '" autocomplete="off"' +
+          ' value="' + esc(ales ? ales.label : '') + '" oninput="trCautaAdresa(\'' + k + '\')">' +
+        (ales ? '<button class="tz-x" onclick="trStergeAdresa(\'' + k + '\')" title="Șterge"><i class="fas fa-xmark"></i></button>' : '') +
+      '</div>' +
+      '<div id="tr-s-' + k + '" class="tz-sug"></div>' +
+    '</div>';
+  }
+
+  // Lista de mașini, filtrată de caseta de căutare. La o flotă de trei mașini e de prisos; la
+  // patruzeci, fără ea nu găsești nimic — de-aia caseta stă DEASUPRA listei, nu în locul ei.
+  window.trCautaVehicul = function () { trListaVehicule(); };
+  function trListaVehicule() {
+    var box = el('tr-c-lista'); if (!box) return;
+    var q = ((el('tr-c-cauta') || {}).value || '').trim().toLowerCase();
+    var toate = (_tr.flota && _tr.flota.vehicule) || [];
+    var l = toate.filter(function (v) {
+      if (!q) return true;
+      return ((v.numar || '') + ' ' + (v.nume || '') + ' ' + (v.model || '')).toLowerCase().indexOf(q) >= 0;
+    });
+    if (!toate.length) { box.innerHTML = '<div class="dm-muted" style="padding:10px 2px">Niciun vehicul în flotă.</div>'; return; }
+    if (!l.length) { box.innerHTML = '<div class="dm-muted" style="padding:10px 2px">Niciun vehicul care să se potrivească.</div>'; return; }
+    box.innerHTML = l.slice(0, 40).map(function (v) {
+      var sub = [v.model, v.categorieEticheta || (v.motiv || '')].filter(Boolean).join(' · ');
+      return '<button class="tz-veh' + (_tr.cImei === v.imei ? ' on' : '') + (v.aplicabil ? '' : ' gri') + '"' +
+        ' onclick="trAlegeCursa(\'' + esc(v.imei) + '\')">' +
+        '<i class="fas fa-truck"></i><span><b>' + esc(v.numar || v.nume || v.imei) + '</b>' +
+        (sub ? '<em>' + esc(sub) + '</em>' : '') + '</span>' +
+        (_tr.cImei === v.imei ? '<i class="fas fa-check"></i>' : '') + '</button>';
+    }).join('') + (l.length > 40 ? '<div class="dm-muted" style="padding:6px 2px">încă ' + (l.length - 40) + ' — scrie ca să filtrezi</div>' : '');
+  }
+
+  window.trAlegeCursa = async function (imei) {
+    _tr.cImei = imei; _tr.cProfil = null; _tr.cRez = null;
+    trListaVehicule();
+    var box = el('tr-c-profil');
+    box.innerHTML = '<div class="dm-muted" style="margin-top:12px"><i class="fas fa-spinner fa-spin"></i> Se citește fișa vehiculului…</div>';
+    // Profilul vine de la SERVER, din fișă. Dacă l-am lua din lista încărcată în browser, cele două
+    // s-ar putea despărți tăcut — iar aici se afișează bani.
+    var r = await api('/api/tollro/profil/' + encodeURIComponent(imei)).catch(function () { return null; });
+    _tr.cProfil = (r && r.vehicul) ? r : null;
+    trProfilCursa();
+  };
+
+  function trProfilCursa() {
+    var box = el('tr-c-profil'); if (!box) return;
+    if (!_tr.cImei) { box.innerHTML = '<div class="dm-muted" style="margin-top:10px">Alege un vehicul din listă.</div>'; return; }
+    if (!_tr.cProfil) { box.innerHTML = ''; return; }
+    var d = _tr.cProfil.vehicul, inc = _tr.cProfil.incadrare;
+    // Câmpurile sunt de CITIT, nu de completat. Se schimbă în fișa vehiculului, într-un singur loc.
+    var camp = function (et, v, lipsa) {
+      return '<div class="tz-f' + (v ? '' : ' gol') + '"><span>' + et + '</span><b>' + esc(v || (lipsa || '—')) + '</b></div>';
+    };
+    var t = function (kg) { return kg ? (kg / 1000).toLocaleString('ro-RO') + ' t' : null; };
+    box.innerHTML =
+      '<div class="tz-fise">' +
+        camp('Serie șasiu (VIN)', d.vin, 'necompletat în fișă') +
+        camp('Masă maximă', t(d.masaKg), 'necompletată în fișă') +
+        camp('Număr de axe', d.axe ? String(d.axe) : null, 'necompletat') +
+        camp('Clasă de emisii', d.euro, 'necompletată în fișă') +
+        camp('Categorie vehicul', d.tip, 'necompletată') +
+        camp('Treaptă de taxare', inc ? (_tr.cfg.categorii.find(function (c) { return c.key === inc.categorie; }) || {}).eticheta : null, 'nu se poate încadra') +
+      '</div>' +
+      '<div class="tz-fise-nota"><i class="fas fa-lock"></i> Datele vin din fișa vehiculului și nu se pot schimba de aici — treapta de taxare se calculează din masă, ca să nu se poată contrazice cu ea. Se corectează din <b>Vehicule → Editare</b>.</div>' +
+      (inc
+        ? '<div class="tr-nota verde"><i class="fas fa-circle-check"></i> Se taxează cu <b>' +
+          inc.leiPerKm.autostrada.toLocaleString('ro-RO', { minimumFractionDigits: 2 }) + ' lei/km</b> pe autostradă și <b>' +
+          inc.leiPerKm.national.toLocaleString('ro-RO', { minimumFractionDigits: 2 }) + ' lei/km</b> pe drum național.' +
+          (inc.euroCunoscut ? '' : ' Norma de poluare lipsește din fișă — am luat tariful maxim.') + '</div>'
+        : '<div class="tr-nota rosu"><i class="fas fa-circle-info"></i> Vehiculul nu se poate încadra la taxare — vezi ce lipsește mai sus.</div>');
+  }
+
+  // ── Adrese cu sugestii ──
+  // Se caută abia după ce omul se oprește din scris (350 ms). Fără asta, fiecare literă ar însemna o
+  // cerere de rețea, iar furnizorul de adrese ne-ar bloca — el permite o cerere pe secundă.
+  var _tAdr = {};
+  window.trCautaAdresa = function (k) {
+    clearTimeout(_tAdr[k]);
+    var inp = el('tr-a-' + k), box = el('tr-s-' + k);
+    var q = (inp.value || '').trim();
+    if (k === 'start') _tr.cStart = null; else _tr.cEnd = null;
+    if (q.length < 3) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="tz-sug-i muted"><i class="fas fa-spinner fa-spin"></i> se caută…</div>';
+    _tAdr[k] = setTimeout(async function () {
+      var r = await api('/api/tollro/adrese?q=' + encodeURIComponent(q)).catch(function () { return null; });
+      if (!r || r.error) { box.innerHTML = '<div class="tz-sug-i rosu">' + esc((r && r.error) || 'Căutarea nu a răspuns.') + '</div>'; return; }
+      var s = r.sugestii || [];
+      if (!s.length) { box.innerHTML = '<div class="tz-sug-i muted">Nicio adresă găsită.</div>'; return; }
+      box.innerHTML = s.map(function (x, i) {
+        return '<button class="tz-sug-i" onclick="trAlegeAdresa(\'' + k + '\',' + i + ')"><i class="fas fa-location-dot"></i>' + esc(x.label) + '</button>';
+      }).join('');
+      box._s = s;
+    }, 350);
+  };
+  window.trAlegeAdresa = function (k, i) {
+    var box = el('tr-s-' + k), s = (box._s || [])[i];
+    if (!s) return;
+    if (k === 'start') _tr.cStart = s; else _tr.cEnd = s;
+    el('tr-a-' + k).value = s.label;
+    box.innerHTML = '';
+  };
+  window.trStergeAdresa = function (k) {
+    if (k === 'start') _tr.cStart = null; else _tr.cEnd = null;
+    el('tr-a-' + k).value = ''; el('tr-s-' + k).innerHTML = '';
+    trRenderCursa();
+  };
+
+  window.trCalcCursa = async function () {
+    var msg = el('tr-c-msg'); msg.className = 'tr-c-msg rosu';
+    if (!_tr.cImei) { msg.textContent = 'Alege întâi vehiculul.'; return; }
+    if (!_tr.cStart || !_tr.cEnd) { msg.textContent = 'Alege plecarea și destinația din sugestii — nu e destul să le scrii.'; return; }
+    var btn = el('tr-c-btn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Se calculează…';
+    msg.className = 'tr-c-msg'; msg.textContent = 'Cerem traseul și aflăm din hartă ce fel de drum e fiecare bucată…';
+    var r = await postJSON('/api/tollro/cursa', {
+      imei: _tr.cImei,
+      start: { lat: _tr.cStart.lat, lng: _tr.cStart.lng },
+      end: { lat: _tr.cEnd.lat, lng: _tr.cEnd.lng },
+    }).catch(function (e) { return { error: (e && e.message) || 'Eroare de rețea' }; });
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt"></i> Calculează ruta și costurile';
+    if (!r || r.error) { msg.className = 'tr-c-msg rosu'; msg.textContent = (r && r.error) || 'Nu s-a putut calcula.'; return; }
+    msg.textContent = '';
+    _tr.cRez = r;
+    trRezCursa();
+  };
+
+  function trRezCursa() {
+    var r = _tr.cRez, box = el('tr-c-rez'); if (!r || !box) return;
+    var z = r.rezultat;
+    if (!z.aplicabil) {
+      box.innerHTML = '<div class="dm-card"><div class="tr-nota rosu"><i class="fas fa-circle-info"></i> ' + esc(z.motiv) + '</div></div>';
+      return;
+    }
+    var kmTaxati = z.linii.reduce(function (a, l) { return a + (l.taxabil ? l.km : 0); }, 0);
+    box.innerHTML =
+      '<div class="dm-card">' +
+        '<div id="tr-c-harta" class="tz-harta"></div>' +
+        '<div class="tz-leg">' + z.linii.map(function (l) {
+          return '<span><i style="background:' + l.culoare + '"></i>' + esc(l.eticheta) + ' · ' + trKm(l.km) + ' km</span>';
+        }).join('') + '</div>' +
+        '<div class="tr-tot"><div class="tr-tot-s">' + trNum(z.total) + '<span>lei</span></div>' +
+          '<div class="tr-tot-b">' + trKm(r.kmTotal) + ' km în total · ' + trKm(kmTaxati) + ' km pe drum cu taxă</div></div>' +
+        z.linii.filter(function (l) { return l.taxabil; }).map(function (l) {
+          return '<div class="tz-lin"><i style="background:' + l.culoare + '"></i>' +
+            '<span class="tz-l1">' + esc(l.eticheta) + '</span>' +
+            '<span class="tz-l2">' + trKm(l.km) + ' km × ' + l.leiPerKm.toLocaleString('ro-RO', { minimumFractionDigits: 2 }) + ' lei</span>' +
+            '<span class="tz-l3">' + trNum(l.cost) + '</span></div>';
+        }).join('') +
+        (z.linii[2] && z.linii[2].km ? '<div class="tz-lin gri"><i style="background:' + z.linii[2].culoare + '"></i>' +
+          '<span class="tz-l1">' + esc(z.linii[2].eticheta) + '</span><span class="tz-l2">' + trKm(z.linii[2].km) + ' km</span>' +
+          '<span class="tz-l3">—</span></div>' : '') +
+        (z.avertismente || []).map(function (a) { return '<div class="tr-nota galben"><i class="fas fa-triangle-exclamation"></i> ' + esc(a) + '</div>'; }).join('') +
+        '<div class="dm-muted" style="font-size:11px;margin-top:8px">Costuri estimative — tarifele se stabilesc de autoritățile române și se pot modifica.' +
+        (r.atribuire ? ' ' + esc(r.atribuire) + '.' : '') + '</div>' +
+      '</div>';
+    trDeseneazaHarta(r);
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Traseul colorat pe bucăți: fiecare segment ia culoarea clasei lui de drum. Asta nu poate face un
+  // calculator public — el n-are nici traseul, nici clasificarea.
+  function trDeseneazaHarta(r) {
+    var host = el('tr-c-harta');
+    if (!host || typeof L === 'undefined' || !r.traseu || r.traseu.length < 2) return;
+    try { if (_tr.cHarta) { _tr.cHarta.remove(); _tr.cHarta = null; } } catch (e) {}
+    var m = L.map(host, { zoomControl: true, attributionControl: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(m);
+    var cul = {};
+    (_tr.cfg && _tr.cfg.claseDrum || []).forEach(function (c) { cul[c.key] = c.culoare; });
+    // Culoarea unui segment o dă clasa punctului de la care pleacă — aceeași convenție ca la calcul,
+    // altfel harta ar arăta altceva decât spune suma.
+    var cls = r.clase || null;
+    var pts = r.traseu;
+    for (var i = 1; i < pts.length; i++) {
+      var k = cls ? cls[i - 1] : null;
+      L.polyline([pts[i - 1], pts[i]], { color: cul[k] || '#3b82f6', weight: 5, opacity: .9 }).addTo(m);
+    }
+    L.circleMarker(pts[0], { radius: 6, color: '#0f172a', fillColor: '#0f172a', fillOpacity: 1 }).addTo(m);
+    L.circleMarker(pts[pts.length - 1], { radius: 6, color: '#3FE07D', fillColor: '#3FE07D', fillOpacity: 1 }).addTo(m);
+    m.fitBounds(L.latLngBounds(pts), { padding: [18, 18] });
+    _tr.cHarta = m;
+    setTimeout(function () { try { m.invalidateSize(); } catch (e) {} }, 60);
+  }
+  // ── sfârșit fila „O cursă nouă" ──
+
 
   function trGrilaHtml(g, editabil) {
     var cat = _tr.cfg.categorii, euro = _tr.cfg.euro;
