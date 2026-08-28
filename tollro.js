@@ -12,11 +12,24 @@
 // VALORI IMPLICITE; grila reală se ține în setări și o poate corecta super-adminul.
 //
 // ── Ce e publicat și ce e presupus ────────────────────────────────────────────────────────────
-// Publicate: peste 12 t → 0,24 lei/km drum național și 0,48 lei/km autostradă pentru Euro VI,
-// respectiv 0,31 și 0,62 pentru cele mai poluante; 3,5–7,5 t → ~0,08 și ~0,22 lei/km.
-// NEPUBLICATE la data scrierii: treapta 7,5–12 t și valorile intermediare pe Euro 4/5.
-// Alea sunt marcate `presupus: true` și apar în interfață cu avertisment. Un tarif presupus,
-// afișat ca și cum ar fi oficial, e mai rău decât lipsa lui — omul își face calcule pe el.
+// Regula anunțată: Euro VI plătește tariful de BAZĂ, Euro V–IV +15%, Euro III și mai vechi +30%.
+// Intervalele publicate pe cele trei trepte (lei/km, TVA inclus):
+//   3,5–7,5 t : autostradă 0,17 – 0,22 · național 0,08 – 0,11
+//   7,5–12 t  : autostradă 0,29 – 0,37 · național 0,14 – 0,19
+//   peste 12 t: autostradă 0,48 – 0,62 · național 0,24 – 0,31
+// Capetele fiecărui interval (Euro VI și Euro III) sunt PUBLICATE. Valorile din mijloc (Euro V–IV)
+// sunt publicate doar la 3,5–7,5 t (0,19 / 0,10); pe celelalte două trepte le derivăm din regula
+// de +15% și le marcăm `presupus: true`. Un tarif presupus, afișat ca și cum ar fi oficial, e mai
+// rău decât lipsa lui — omul își face calcule pe el.
+//
+// ⚠ GREȘEALĂ REPARATĂ (28.08, prinsă de Alin pe ecranul Arobs): pusesem 0,22 lei/km pe Euro 6 la
+// treapta 3,5–7,5 t. Dar 0,22 e tariful pentru Euro 3 ȘI MAI VECHI — luasem cea mai mare cifră
+// publicată și o dădusem celei mai curate mașini. Unui client cu camion Euro 6 de 5 t îi arătam cu
+// ~30% mai mult decât plătește. La fel, toată treapta 7,5–12 t era ghicită prea sus (0,35 față de
+// 0,29 publicat). De-aia intervalele stau acum scrise aici, ca următorul care le atinge să le vadă.
+//
+// ⚠ DATA: CNAIR anunță aplicarea TARIFELOR de la 1 octombrie 2026. Se mai vehiculează 31 august
+// 2026 — aceea e introducerea SISTEMULUI, nu începerea plății. Calculatorul folosește 1 octombrie.
 
 // Treptele de masă (MTMA, în kilograme — cum ține fișa vehiculului `max_weight_legal`).
 const CATEGORII = [
@@ -96,12 +109,12 @@ const GRILA_IMPLICITA = {
   aplicabilDin: APLICABIL_DIN,
   moneda: 'RON',
   tarife: {
-    // 3,5–7,5 t: publicate doar ca ordin de mărime („~0,08" / „~0,22"), fără defalcare pe Euro.
-    c1: { euro6: _t(0.22, 0.08), euro5: _t(0.24, 0.09, true), euro4: _t(0.26, 0.10, true), euro3: _t(0.28, 0.11, true) },
-    // 7,5–12 t: treaptă NEPUBLICATĂ — toată coloana e presupusă, la mijloc între c1 și c3.
-    c2: { euro6: _t(0.35, 0.16, true), euro5: _t(0.38, 0.18, true), euro4: _t(0.42, 0.20, true), euro3: _t(0.45, 0.21, true) },
-    // peste 12 t: capetele sunt publicate (Euro 6 și Euro 3-), mijlocul e interpolat liniar.
-    c3: { euro6: _t(0.48, 0.24), euro5: _t(0.53, 0.26, true), euro4: _t(0.57, 0.29, true), euro3: _t(0.62, 0.31) },
+    // 3,5–7,5 t: TOATE publicate — Euro VI 0,17/0,08 · Euro V–IV 0,19/0,10 · Euro III- 0,22/0,11.
+    c1: { euro6: _t(0.17, 0.08), euro5: _t(0.19, 0.10), euro4: _t(0.19, 0.10), euro3: _t(0.22, 0.11) },
+    // 7,5–12 t: capetele publicate (0,29/0,14 și 0,37/0,19); mijlocul derivat din regula de +15%.
+    c2: { euro6: _t(0.29, 0.14), euro5: _t(0.33, 0.16, true), euro4: _t(0.33, 0.16, true), euro3: _t(0.37, 0.19) },
+    // peste 12 t: capetele publicate (0,48/0,24 și 0,62/0,31); mijlocul derivat din +15%.
+    c3: { euro6: _t(0.48, 0.24), euro5: _t(0.55, 0.28, true), euro4: _t(0.55, 0.28, true), euro3: _t(0.62, 0.31) },
   },
 };
 

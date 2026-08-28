@@ -59,8 +59,11 @@ t('și explicăm că rămâne rovinieta', /rovinie/i.test(r.motiv), r.motiv);
 r = T.estimeaza({ masaKg: null, euro: 'Euro 6' }, { autostrada: 500 }, null, DUPA);
 t('fără masă în fișă → refuzăm calculul, nu ghicim', r.aplicabil === false && /masa/i.test(r.motiv), r.motiv);
 
+// Capetele intervalelor sunt publicate; DOAR mijlocul (Euro V-IV) pe treptele 2 și 3 e derivat.
 r = T.estimeaza({ masaKg: 10000, euro: 'Euro 6' }, { autostrada: 100 }, null, DUPA);
-t('treapta 7,5–12 t e marcată ca NEPUBLICATĂ', r.tarifPresupus === true);
+t('7,5–12 t Euro 6 e PUBLICAT (0,29), nu presupus', r.tarifPresupus === false, String(r.leiPerKm.autostrada));
+r = T.estimeaza({ masaKg: 10000, euro: 'Euro 5' }, { autostrada: 100 }, null, DUPA);
+t('7,5–12 t Euro 5 e derivat → marcat ca nepublicat', r.tarifPresupus === true);
 t('și apare avertisment', r.avertismente.some(a => /nu e publicat/i.test(a)), JSON.stringify(r.avertismente));
 
 console.log('\n══ Data intrării în vigoare ══\n');
@@ -73,7 +76,7 @@ console.log('\n══ Grila editată de super-admin ══\n');
 const g = T.grilaValida({ aplicabilDin: '2027-01-01', tarife: { c3: { euro6: { autostrada: 0.55, national: 0.30 } } } });
 t('valorile scrise de om se păstrează', g.tarife.c3.euro6.autostrada === 0.55 && g.tarife.c3.euro6.national === 0.30, JSON.stringify(g.tarife.c3.euro6));
 t('data se păstrează', g.aplicabilDin === '2027-01-01', g.aplicabilDin);
-t('restul grilei rămâne implicit', g.tarife.c1.euro6.autostrada === 0.22, String(g.tarife.c1.euro6.autostrada));
+t('restul grilei rămâne implicit', g.tarife.c1.euro6.autostrada === 0.17, String(g.tarife.c1.euro6.autostrada));
 t('valoarea scrisă de om nu mai e „presupusă"', g.tarife.c3.euro6.presupus === false);
 
 // Valori absurde: mai bine implicitul decât o taxă de 900 lei/km salvată din greșeală.
@@ -98,6 +101,32 @@ r = T.estimeaza({ masaKg: 30000, euro: 'Euro 6' }, {}, null, DUPA);
 t('fără kilometri → total 0, fără eroare', r.total === 0 && r.aplicabil === true);
 r = T.estimeaza({ masaKg: 30000, euro: 'Euro 6' }, { autostrada: -100 }, null, DUPA);
 t('kilometri negativi → ignorați', r.total === 0, String(r.total));
+
+console.log('\n══ Tarifele publicate, cifră cu cifră ══\n');
+// Greșeala din 28.08: pusesem 0,22 (tariful Euro 3) pe Euro 6, la treapta 3,5–7,5 t. Un client cu
+// camion curat vedea cu ~30% mai mult decât plătește. Aici stau cifrele publicate, scrise pe litere,
+// ca o astfel de inversare să nu mai poată trece.
+const PUBLICATE = [
+  ['c1', 'euro6', 0.17, 0.08], ['c1', 'euro5', 0.19, 0.10], ['c1', 'euro4', 0.19, 0.10], ['c1', 'euro3', 0.22, 0.11],
+  ['c2', 'euro6', 0.29, 0.14], ['c2', 'euro3', 0.37, 0.19],
+  ['c3', 'euro6', 0.48, 0.24], ['c3', 'euro3', 0.62, 0.31],
+];
+for (const [c, e, a, n] of PUBLICATE) {
+  const tf = T.GRILA_IMPLICITA.tarife[c][e];
+  t(c + '/' + e + ' = ' + a + ' / ' + n, tf.autostrada === a && tf.national === n, tf.autostrada + ' / ' + tf.national);
+}
+// Regula legii: cu cât e mașina mai poluantă, cu atât plătește MAI MULT. Niciodată invers.
+for (const c of ['c1', 'c2', 'c3']) {
+  const T6 = T.GRILA_IMPLICITA.tarife[c].euro6, T5 = T.GRILA_IMPLICITA.tarife[c].euro5, T3 = T.GRILA_IMPLICITA.tarife[c].euro3;
+  t(c + ': Euro 6 plătește cel mai puțin',
+    T6.autostrada < T5.autostrada && T5.autostrada <= T3.autostrada &&
+    T6.national < T5.national && T5.national <= T3.national,
+    [T6.autostrada, T5.autostrada, T3.autostrada].join(' < '));
+}
+// Și cu cât e mai grea mașina, cu atât plătește mai mult — treptele nu se pot încurca între ele.
+t('treptele cresc cu masa',
+  T.GRILA_IMPLICITA.tarife.c1.euro6.autostrada < T.GRILA_IMPLICITA.tarife.c2.euro6.autostrada &&
+  T.GRILA_IMPLICITA.tarife.c2.euro6.autostrada < T.GRILA_IMPLICITA.tarife.c3.euro6.autostrada);
 
 console.log('\n══ Culorile spun cât costă, nu ce fel de drum e ══\n');
 // Roșu pe autostradă, verde pe național. Alegerea are sens DOAR cât timp autostrada rămâne mai

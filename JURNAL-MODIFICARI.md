@@ -20,6 +20,48 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Grila de tarife era greșită. Prinsă de Alin, pe ecranul concurenței
+
+Alin are cont la Arobs de la muncă. A calculat acolo o cursă și mi-a trimis captura. Ecranul lor
+arăta **0,17 lei/km** pe autostradă. Noi aveam **0,22**.
+
+Am verificat tarifele oficiale. **Ei aveau dreptate, noi greșeam.**
+
+Pentru treapta 3,5–7,5 t, tarifele publicate sunt: Euro VI **0,17**, Euro V–IV **0,19**, Euro III și
+mai vechi **0,22**. Noi pusesem **0,22 pe Euro 6** — adică luasem cea mai mare cifră publicată și o
+dădusem celei mai curate mașini. Pe dos.
+
+Unui client cu camion Euro 6 de 5 tone îi arătam cu **~30% mai mult** decât plătește. Dacă punea
+cifra într-o ofertă, pierdea cursa pe un cost care nu există.
+
+Și nu era singura: **toată treapta 7,5–12 t era ghicită prea sus** (0,35 în loc de 0,29 publicat).
+
+**Ce am pus în loc.** Regula anunțată e simplă: Euro VI plătește tariful de bază, Euro V–IV +15%,
+Euro III și mai vechi +30%. Capetele fiecărui interval sunt publicate; doar mijlocul pe treptele 2
+și 3 rămâne derivat, marcat ca atare.
+
+| | autostradă | drum național |
+|---|---|---|
+| 3,5–7,5 t | 0,17 – 0,22 | 0,08 – 0,11 |
+| 7,5–12 t | 0,29 – 0,37 | 0,14 – 0,19 |
+| peste 12 t | 0,48 – 0,62 | 0,24 – 0,31 |
+
+**Verificarea care contează:** am pus în calculatorul nostru exact cursa din captura lui Alin —
+117,6 km autostradă + 64 km național, camion 3,5–7,5 t Euro 6. Ne dă **25,11 lei**. Arobs arată
+**25,12**. Diferența de un ban vine din rotunjirea distanței afișate de ei, nu din tarif.
+
+**Plasa pusă ca să nu se mai repete.** Proba verifică acum, cifră cu cifră, toate valorile publicate,
+plus două reguli de bun-simț pe care greșeala mea le încălca: *cu cât mașina e mai poluantă, cu atât
+plătește mai mult* și *cu cât e mai grea, cu atât plătește mai mult*. Oricare inversare cade la probă.
+
+**De ce n-am prins-o singur:** scrisesem în comentariu „3,5–7,5 t → ~0,08 și ~0,22 lei/km" — capetele
+unui interval, pe care le-am citit ca pe o pereche. Un interval citit ca o valoare. Acum intervalele
+stau scrise în cod, întregi, ca următorul care le atinge să vadă că sunt patru rânduri, nu unul.
+
+- **Ce vede fondatorul:** cifre pe care le poate arăta unui client fără să se facă de râs lângă
+  calculatorul concurenței.
+- **Ce vede clientul:** costul real, nu unul umflat cu 30%.
+
 ### AMÂNDOI · Taxa de drum, refăcută pentru ecranul pe care îl vede omul
 
 Alin: *„aici am un ecran când intru în taxa de drum, mai sus mi-ai zis că am alt ecran… nu mai
