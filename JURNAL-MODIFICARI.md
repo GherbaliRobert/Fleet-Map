@@ -3298,6 +3298,21 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   continuu și îl veți opri de tot) și politica de confidențialitate — ce le spuneți clienților
   despre ce vedeți.
 
+- [ ] **(voi) Cele trei module de conformitate — ce direcție luăm (cerut de Alin, 26.08).**
+  **Taxa de drum**, **e-Transport** și **Tahograf** sunt trei categorii separate, de discutat
+  împreună **spre finalul testării**, când o să știți deja cum se poartă aplicația pe teren.
+  Pentru fiecare, aceeași întrebare: **rămâne unealtă de informare, sau devine serviciu?**
+  - **Taxa de drum** — azi e un CALCULATOR: îți spune cât te va costa, nu cumpără nimic. Varianta
+    „serviciu" ar însemna vânzare de roviniete/taxe prin aplicație (în cod există o listă de
+    furnizori — DKV, Shell, AS24, Eurowag, Telepass — rămasă de la un modul demonstrativ, care nu
+    face nimic). Aia ar fi altă afacere: contract cu distribuitor, plăți, răspundere.
+  - **e-Transport** — azi e evidență internă: termene și stare. Varianta „serviciu" e raportarea
+    efectivă la ANAF în locul clientului, cu dovada transmisiei. Vezi grupa E de mai jos.
+  - **Tahograf** — azi citește fișierele descărcate de client. Varianta „serviciu" ar fi
+    descărcarea automată de la distanță (cere echipament separat în camion).
+  Decizia nu e tehnică, e de produs: fiecare pas către „serviciu" aduce bani, dar și obligații pe
+  care le luăm asupra noastră. De-aia se discută la sfârșit, nu acum.
+
 - [ ] **(voi) Ce module vindem de la lansare.** Dacă e-Transport intră în ofertă din prima zi, atunci
   punctele din secțiunea E de mai jos devin și ele blocante. Dacă nu, secțiunea rămâne evidență
   internă și se anunță ca „în lucru". **Nu se poate vinde ca „raportăm la ANAF în locul tău" în
