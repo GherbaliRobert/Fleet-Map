@@ -355,6 +355,9 @@ function stateText(key, on) {
   // 'text' nu e pornit/oprit: valoarea E starea (treapta P/R/N/D). Fără valoare = mașina n-a
   // trimis-o încă, nu „oprit".
   if (f.kind === 'text') return (on === null || on === undefined || on === '') ? '—' : String(on);
+  // 'code' nu e pornit/oprit, e numărul de stare al magistralei. N-avea caz propriu și cădea pe
+  // textele implicite, deci un cod 1 se scria „Da".
+  if (f.kind === 'code') return (on === null || on === undefined || on === '') ? '—' : 'cod ' + on;
   const t = f.st || KIND_TEXT[f.kind] || KIND_TEXT.info;
   return on ? t[0] : t[1];
 }
@@ -365,7 +368,9 @@ function seVede(key, on) {
   const f = _byKey[key];
   if (!f || f.ascuns) return false;
   if (f.mereu) return on !== undefined && on !== null;
-  if (f.kind === 'code' || f.kind === 'text') return on !== undefined && on !== null && on !== '';
+  // Un cod e un NUMĂR. Fără el (0, false, lipsă) plăcuța n-are ce spune — scria „cod false".
+  if (f.kind === 'code') return Number(on) > 0;
+  if (f.kind === 'text') return on !== undefined && on !== null && on !== '';
   return !!on;
 }
 
@@ -376,9 +381,45 @@ function isAlarming(key, on) {
   return !!f && (f.kind === 'warn' || f.kind === 'open');
 }
 
+// ── Cum se AȘAZĂ plăcuțele pe ecran ─────────────────────────────────────────────────────────
+// Grupate pe categorii („Lumini", „Camion"…) aveau sens cât se arătau toate: erau 120 și trebuiau
+// puse undeva. De când se văd doar cele active, categoriile sunt aproape goale — rămâneau cinci
+// titluri cu câte o plăcuță sub fiecare. Acum se așază după CÂT DE MULT CER ATENȚIE, ceea ce e și
+// ordinea în care se uită omul la bordul mașinii:
+//
+//   1. STAREA — cele trei care se văd tot timpul (frâna de mână, treapta, încuietoarea) + contactul
+//      și motorul, dacă mașina le trimite. Astea răspund la „în ce stare e mașina acum?".
+//   2. MARTORI — becurile roșii din bord. Ce e stricat sau pe cale să se strice.
+//   3. DESCHIS — uși, capotă, portbagaj, geamuri. Ce nu e închis.
+//   4. ACTIVE — restul: lumini aprinse, aer condiționat, centuri puse, priză de putere.
+//
+// O bandă goală nu se desenează deloc.
+const BANDA_STARE = ['_sf_handbrake', '_sf_gear', '_sf_car_closed', '_sf_ignition_on', '_sf_engine_working'];
+function benzi(flat) {
+  const s = { stare: [], martori: [], deschis: [], active: [] };
+  const puse = new Set();
+  // 1. starea — în ordinea scrisă, nu în ordinea catalogului: omul se uită întâi la frână și treaptă
+  BANDA_STARE.forEach(function (k) {
+    const f = _byKey[k];
+    if (!f) return;
+    const v = flat[k];
+    if (!seVede(k, v)) return;
+    s.stare.push({ f: f, val: v });
+    puse.add(k);
+  });
+  // 2-4. restul, în ordinea catalogului
+  FLAGS.forEach(function (f) {
+    if (puse.has(f.key)) return;
+    const v = flat[f.key];
+    if (!seVede(f.key, v)) return;
+    const unde = f.kind === 'warn' ? 'martori' : f.kind === 'open' ? 'deschis' : 'active';
+    s[unde].push({ f: f, val: v });
+  });
+  return s;
+}
 // Toate steagurile, grupate — pentru ecranele care desenează secțiuni.
 function grouped() {
   return GROUPS.map(g => ({ ...g, flags: FLAGS.filter(f => f.group === g.key) })).filter(g => g.flags.length);
 }
 
-module.exports = { GROUPS, FLAGS, KIND_TEXT, NEDECODATE, flagMeta, isFlagKey, stateText, seVede, isAlarming, grouped, _nedecodate };
+module.exports = { GROUPS, FLAGS, KIND_TEXT, NEDECODATE, BANDA_STARE, flagMeta, isFlagKey, stateText, seVede, benzi, isAlarming, grouped, _nedecodate };

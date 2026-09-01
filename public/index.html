@@ -14897,23 +14897,18 @@ const pozitii = await r.json();</code></pre>
     function canFlagsHtml(flatIo, usedKeys) {
       const cat = window.RA_CANFLAGS;
       if (!cat || !cat.flags || !cat.flags.length) return '';
-      const kt = cat.kindText || {};
       const nedecodate = new Set(cat.undecoded || []);
-      // Adaptorul trimite steagurile în bloc (un IO pentru securitate, unul pentru control).
-      // Dacă lipsește tot blocul, nu desenăm nici plăcuțele „necitite" din el.
+      // Adaptorul trimite stările în bloc. Dacă lipsește tot blocul, nu desenăm nimic din el.
       const areSf = cat.flags.some(f => f.key.indexOf('_sf_') === 0 && flatIo[f.key] !== undefined);
       const areCf = cat.flags.some(f => f.key.indexOf('_cf_') === 0 && flatIo[f.key] !== undefined);
       if (!areSf && !areCf) {
-        // Mașina are adaptor CAN (trimite cifre: turație, kilometraj, combustibil), dar NU și cele
-        // două IO-uri de stare — 132 „Security State Flags" și 123 „Control State Flags". Fără
-        // rândul ăsta, secțiunea pur și simplu lipsea, iar omul rămânea cu impresia că aplicația e
-        // stricată. Nu e: adaptorul ăla nu citește semnalele alea de pe magistrala mașinii.
+        // Mașina are adaptor CAN (trimite cifre) dar NU și cele două IO-uri de stare — 132 și 123.
+        // Fără rândul ăsta secțiunea lipsea, iar omul rămânea cu impresia că aplicația e stricată.
         const areCan = Object.keys(flatIo).some(k => k.indexOf('can_') === 0);
         if (!areCan) return '';
         const brut = flatIo.can_security_state_flags !== undefined || flatIo.can_control_state_flags !== undefined;
-        return '<div class="io-section"><div class="io-section-title">' +
-          '<i class="fas fa-triangle-exclamation"></i> Stare (uși, lumini, martori de bord)</div>' +
-          '<div class="cf-note">' + (brut
+        return '<div class="cfb"><div class="cfb-h"><i class="fas fa-gauge-high"></i> Starea mașinii</div>' +
+          '<div class="cfb-note">' + (brut
             ? 'Mașina trimite semnalele de stare, dar nu le-am putut desface — anunță-ne, e o ' +
               'problemă de-a noastră, nu a adaptorului.'
             : 'Mașina asta <strong>nu trimite</strong> semnalele de stare: nici uși, nici lumini, ' +
@@ -14922,106 +14917,62 @@ const pozitii = await r.json();</code></pre>
           '</div></div>';
       }
 
-      const aprinse = { warn: [], open: [] };
+      // Marcăm TOATE cheile de steag ca folosite, ca să nu apară a doua oară ca rânduri de text
+      // în listele numerice de mai jos (inclusiv cele pe care nu le desenăm fiindcă sunt stinse).
       let nedecodateVazute = 0;
-      const sectiuni = [];
-
-      (cat.groups || []).forEach(function (g) {
-        const placi = [];
-        const aprinseGrup = [];   // felul fiecărui semnal aprins din grupa asta ('warn' / 'open' / …)
-        cat.flags.filter(f => f.group === g.key).forEach(function (f) {
-          const val = flatIo[f.key];
-          const lipsa = (val === undefined || val === null);
-          const necitit = lipsa && nedecodate.has(f.key) &&
-            ((f.key.indexOf('_sf_') === 0 && areSf) || (f.key.indexOf('_cf_') === 0 && areCf));
-          if (lipsa && !necitit) return;
-          // Treptele P/R/N/D nu se desenează una câte una — intră în plăcuța „Treapta de viteză".
-          if (f.ascuns) { usedKeys.add(f.key); return; }
-          usedKeys.add(f.key);
-
-          // „Necitit" nu e o stare activă — sub regula nouă nu mai desenăm plăcuța, doar o
-          // numărăm pentru nota de jos. Altfel rămânea singura casetă stinsă de pe ecran.
-          if (necitit) { nedecodateVazute++; return; }
-
-          let aprins, text;
-          if (f.kind === 'code') {
-            aprins = Number(val) > 0;
-            text = 'cod ' + val;
-          } else if (f.kind === 'text') {
-            // Valoarea E starea (P/R/N/D). „Aprins" aici înseamnă doar că avem ce arăta.
-            aprins = (val !== '' && val !== null && val !== undefined);
-            text = aprins ? String(val) : '—';
-          } else {
-            aprins = !!val;
-            const per = f.st || kt[f.kind] || kt.info || ['Da', 'Nu'];
-            text = per[aprins ? 0 : 1];
-            if (aprins && (f.kind === 'warn' || f.kind === 'open')) aprinse[f.kind].push(f.label);
-          }
-          // Regula cerută: se văd DOAR stările aprinse. Excepție, cele marcate `mereu` în
-          // can_flags.js — frâna de mână, treapta și încuiat/descuiat se arată tot timpul, cu
-          // ultima stare primită, fiindcă acolo contează și răspunsul „nu".
-          if (!aprins && !f.mereu && !necitit) return;
-          // Treapta are mereu o valoare; daca ar intra in bulina, grupa ar arata permanent „1 activ".
-          if (aprins && f.kind !== 'text') aprinseGrup.push(f.kind);
-
-          placi.push(
-            '<div class="cf k-' + f.kind + (aprins ? ' lit' : '') + (necitit ? ' cf-nd' : '') + '"' +
-              ' title="' + _usEsc(f.label + ' — ' + text + (f.desc ? '. ' + f.desc : '')) + '">' +
-              cfIcon(f, val) +
-              '<span class="cf-l">' + _usEsc(f.label) + '</span>' +
-              '<span class="cf-s">' + _usEsc(text) + '</span>' +
-            '</div>'
-          );
-        });
-        if (placi.length) {
-          // Bulina din dreptul grupei = câte semnale sunt aprinse acolo, colorată după cel mai
-          // serios dintre ele (roșu > portocaliu > verde > neutru). Rămâne vizibilă și cu grupa strânsă.
-          const rang = { warn: 3, open: 2, on: 1, info: 0, code: 0, text: 0 };
-          let cel = null;
-          aprinseGrup.forEach(function (k) { if (cel === null || rang[k] > rang[cel]) cel = k; });
-          const bulina = aprinseGrup.length
-            ? '<span class="cf-cnt c-' + (cel || 'info') + '">' + aprinseGrup.length + '</span>' : '';
-          sectiuni.push(
-            '<details class="cf-g" open><summary class="io-section-title"><i class="fas ' + _usEsc(g.icon) + '"></i> ' +
-            _usEsc(g.label) + ' ' + bulina + '<i class="fas fa-chevron-right cf-chev"></i></summary>' +
-            '<div class="cf-grid">' + placi.join('') + '</div></details>'
-          );
-        }
+      cat.flags.forEach(function (f) {
+        const val = flatIo[f.key];
+        if (val !== undefined && val !== null) { usedKeys.add(f.key); return; }
+        if (nedecodate.has(f.key) && ((f.key.indexOf('_sf_') === 0 && areSf) || (f.key.indexOf('_cf_') === 0 && areCf))) nedecodateVazute++;
       });
-      if (!sectiuni.length) return '';
 
-      // Rezumatul de sus: NU un număr, ci ce anume e aprins/deschis — la fel ca la alertele de acte,
-      // unde „1 mașină are acte expirate" nu ajuta pe nimeni.
-      function _lista(v) {
-        return v.length <= 4 ? v.join(', ') : v.slice(0, 4).join(', ') + ' +' + (v.length - 4);
-      }
-      let rezumat = '';
-      if (aprinse.warn.length) {
-        rezumat += '<span class="cf-b b-warn"><i class="fas fa-triangle-exclamation"></i> ' +
-          (aprinse.warn.length === 1 ? 'Martor aprins: ' : 'Martori aprinși: ') + _usEsc(_lista(aprinse.warn)) + '</span>';
-      }
-      if (aprinse.open.length) {
-        rezumat += '<span class="cf-b b-open"><i class="fas fa-door-open"></i> Deschis: ' +
-          _usEsc(_lista(aprinse.open)) + '</span>';
-      }
-      if (!rezumat) {
-        rezumat = '<span class="cf-b b-ok"><i class="fas fa-circle-check"></i> Niciun martor aprins, totul închis</span>';
-      }
-      rezumat += '<span class="cf-b b-note">Se arată doar stările active. Frâna de mână, treapta ' +
-        'și încuietoarea se văd tot timpul.</span>';
+      const b = cat.benzi(flatIo);
 
-      let out = '<div class="cf-sum">' + rezumat + '</div>' + sectiuni.join('');
+      // O plăcuță. `mare` = plăcuțele din banda de stare, care se citesc de la distanță.
+      function placa(x, mare) {
+        const f = x.f, val = x.val;
+        const aprins = f.kind === 'text' ? (val !== '' && val !== null && val !== undefined)
+          : f.kind === 'code' ? Number(val) > 0 : !!val;
+        const text = cat.stateText(f.key, val);
+        return '<div class="cfb-t k-' + f.kind + (aprins ? ' lit' : '') + (mare ? ' big' : '') + '"' +
+          ' title="' + _usEsc(f.label + ' — ' + text + (f.desc ? '. ' + f.desc : '')) + '">' +
+          cfIcon(f, val) +
+          '<span class="cfb-l">' + _usEsc(f.label) + '</span>' +
+          '<span class="cfb-s">' + _usEsc(text) + '</span>' +
+          '</div>';
+      }
+      function banda(cheie, titlu, icon, lista, mare) {
+        if (!lista.length) return '';
+        // Prima bandă („starea mașinii") nu primește titlu: e chiar subiectul panoului, iar un
+        // al doilea titlu identic sub el arăta a greșeală.
+        const cap = titlu ? '<div class="cfb-bt"><i class="fas ' + icon + '"></i> ' + titlu + ' <span class="cfb-n">' + lista.length + '</span></div>' : '';
+        return '<div class="cfb-band b-' + cheie + '">' + cap +
+          '<div class="cfb-grid">' + lista.map(function (x) { return placa(x, mare); }).join('') + '</div></div>';
+      }
+
+      const corp =
+        banda('stare',   '',                'fa-gauge-high',            b.stare,   true) +
+        banda('martori', 'Martori aprinși', 'fa-triangle-exclamation',  b.martori, false) +
+        banda('deschis', 'Deschis acum',    'fa-door-open',             b.deschis, false) +
+        banda('active',  'Pornite acum',    'fa-circle-check',          b.active,  false);
+
+      // Nimic activ și nicio stare permanentă = mașina e închisă și în regulă. Spunem asta, nu gol.
+      const gol = !corp;
+      let out = '<div class="cfb">';
+      out += '<div class="cfb-h"><i class="fas fa-gauge-high"></i> Starea mașinii' +
+        '<span class="cfb-hint">se arată doar ce e activ acum</span></div>';
+      out += gol ? '<div class="cfb-ok"><i class="fas fa-circle-check"></i> Totul închis, niciun martor aprins</div>' : corp;
       if (nedecodateVazute) {
-        out += '<div class="cf-note"><i class="fas fa-circle-info"></i> ' +
+        out += '<div class="cfb-note"><i class="fas fa-circle-info"></i> ' +
           (nedecodateVazute === 1 ? '1 semnal pe care adaptorul îl poate trimite nu apare' : nedecodateVazute + ' semnale pe care adaptorul le poate trimite nu apar') +
           ' aici: încă nu știm unde le pune în mesaj. ' +
           (nedecodateVazute === 1 ? 'Îl aprindem' : 'Le aprindem') + ' după ce ' +
           (nedecodateVazute === 1 ? 'îl confirmăm' : 'le confirmăm') + ' pe un vehicul — până atunci ' +
           'preferăm să lipsească decât să arate greșit.</div>';
       }
+      out += '</div>';
       return out;
     }
-
     // ATENȚIE: aici stau DOAR valorile numerice/text din IO. Steagurile de tip pornit/oprit
     // (`_sf_…` / `_cf_…`) se desenează separat, cu iconiță, din can_flags.js — vezi canFlagsHtml.
     // Dacă le pui și aici, apar de două ori.

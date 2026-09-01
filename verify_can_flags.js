@@ -28,7 +28,12 @@ const fnIcon = grabTo('    function cfIcon(f, val) {', '\n    function canFlagsH
 const fnFlags = grabTo('    function canFlagsHtml(flatIo, usedKeys) {', '\n    // ATENȚIE: aici stau DOAR');
 
 const win = {
-  RA_CANFLAGS: { groups: cat.GROUPS, flags: cat.FLAGS, kindText: cat.KIND_TEXT, undecoded: cat.NEDECODATE },
+  // Pagina primește de la server și funcțiile de decizie (ce se vede, în ce bandă), serializate
+  // din can_flags.js. Le atașăm la fel aici — sunt EXACT aceleași funcții, nu copii.
+  RA_CANFLAGS: Object.assign(
+    { groups: cat.GROUPS, flags: cat.FLAGS, kindText: cat.KIND_TEXT, undecoded: cat.NEDECODATE, stateBand: cat.BANDA_STARE },
+    { benzi: cat.benzi, seVede: cat.seVede, stateText: cat.stateText }
+  ),
   RA_CANICONS: require('./can_icons.js').ICOANE,
 };
 const canFlagsHtml = new Function('window', fnEsc + '\n' + fnIcon + '\n' + fnFlags + '\n; return canFlagsHtml;')(win);
@@ -65,21 +70,21 @@ sect('1. Mașină în regulă (contact + motor, uși închise, niciun martor)');
   const h = canFlagsHtml(flat(mkSec(b), mkCtl([0, 0, 0, 0])), used);
 
   T('desenează ceva', h.length > 500, 'lungime ' + h.length);
-  T('rezumat verde „nimic aprins"', h.includes('b-ok') && h.includes('Niciun martor aprins'));
-  T('fără rezumat roșu', !h.includes('b-warn'));
-  T('fără rezumat portocaliu', !h.includes('b-open'));
-  T('Contact aprins', /Contact<\/span><span class="cf-s">Pornit</.test(h));
-  T('Motorul funcționează — Pornit', /Motorul funcționează<\/span><span class="cf-s">Pornit</.test(h));
+  T('nu apare bandă de martori', !h.includes('b-martori'));
+  T('nu apare bandă „deschis"', !h.includes('b-deschis'));
+  T('banda de stare există (frână, treaptă, încuietoare)', h.includes('b-stare'));
+  T('Contact aprins', /Contact<\/span><span class="cfb-s">Pornit</.test(h));
+  T('Motorul funcționează — Pornit', /Motorul funcționează<\/span><span class="cfb-s">Pornit</.test(h));
   // 27.08 — regula cerută: pe ecran apar DOAR stările active. O mașină în regulă nu mai umple
   // pagina cu zeci de casete stinse; ușa închisă și martorul stins pur și simplu lipsesc.
   T('ușa închisă NU mai apare', !h.includes('>Ușă față stânga<'));
   T('capota închisă NU mai apare', !h.includes('>Capotă<'));
   T('CHECK ENGINE stins NU mai apare', !h.includes('>CHECK ENGINE<'));
   T('faza scurtă stinsă NU mai apare', !h.includes('>Faza scurtă<'));
-  T('spune omului de ce sunt puține', h.includes('Se arată doar stările active'));
+  T('spune omului de ce sunt puține', h.includes('se arată doar ce e activ acum'));
   // Excepțiile: se văd tot timpul, chiar și „nu".
-  T('Frâna de mână se vede și eliberată', /Frână de mână<\/span><span class="cf-s">Eliberată</.test(h));
-  T('Mașina încuiată se vede și descuiată', /Mașina încuiată<\/span><span class="cf-s">Nu</.test(h));
+  T('Frâna de mână se vede și eliberată', /Frână de mână<\/span><span class="cfb-s">Eliberată</.test(h));
+  T('Mașina încuiată se vede și descuiată', /Mașina încuiată<\/span><span class="cfb-s">Nu</.test(h));
   // Acordul gramatical al textelor stinse rămâne verificat direct în catalog: se folosește în
   // balonul de pe telefon și la cele trei plăcuțe permanente, chiar dacă nu se mai vede aici.
   T('acord: Ușă … Închisă (nu „Închis")', cat.stateText('_sf_door_front_left', false) === 'Închisă');
@@ -104,30 +109,30 @@ sect('2. Mașină cu probleme (CHECK ENGINE + ABS + ușă + capotă)');
   const used = new Set();
   const h = canFlagsHtml(flat(mkSec(b), mkCtl(c)), used);
 
-  T('rezumat roșu prezent', h.includes('b-warn'));
-  T('rezumat NUMEȘTE martorii, nu doar numărul', h.includes('CHECK ENGINE') && h.includes('ABS') && h.includes('Presiune / nivel ulei'));
-  T('scrie „Martori aprinși:" la plural', h.includes('Martori aprinși:'));
-  T('rezumat portocaliu numește ce e deschis', /Deschis: [^<]*Ușă față stânga/.test(h) && /Deschis: [^<]*Capot/.test(h));
-  T('fără rezumat verde', !h.includes('b-ok'));
-  T('CHECK ENGINE aprins (clasă lit + k-warn)', /class="cf k-warn lit"[^>]*CHECK ENGINE|CHECK ENGINE/.test(h) && h.includes('CHECK ENGINE</span><span class="cf-s">Aprins<'));
-  T('ușa deschisă are clasa portocalie', /class="cf k-open lit"[\s\S]{0,220}Ușă față stânga/.test(h));
+  T('banda de martori există', h.includes('b-martori'));
+  T('martorii sunt numiți, fiecare cu plăcuța lui', h.includes('CHECK ENGINE') && h.includes('ABS') && h.includes('Presiune / nivel ulei'));
+  T('banda de martori își spune numărul', /Martori aprinși <span class="cfb-n">3</.test(h));
+  T('ce e deschis stă în banda lui', h.indexOf('b-deschis') > 0 && h.indexOf('b-deschis') < h.indexOf('Ușă față stânga') && h.indexOf('b-deschis') < h.indexOf('Capot'));
+  T('nu apare mesajul „totul e în regulă"', !h.includes('cfb-ok'));
+  T('CHECK ENGINE aprins (clasă lit + k-warn)', /class="cfb-t k-warn lit"/.test(h) && h.includes('CHECK ENGINE</span><span class="cfb-s">Aprins<'));
+  T('ușa deschisă are clasa portocalie', /class="cfb-t k-open lit"[\s\S]{0,260}Ușă față stânga/.test(h));
   T('ușa dreapta (închisă) nu se mai desenează deloc', !h.includes('>Ușă față dreapta<'));
   // bulina grupei ia culoarea celui mai serios semnal aprins din ea
-  const gUsi = /UȘI|Uși și capace([\s\S]{0,140})/.exec(h);
-  T('bulina la „Uși și capace" e portocalie (2 deschise)', /Uși și capace <span class="cf-cnt c-open">2</.test(h), (gUsi || [])[1]);
-  T('bulina la „Martori de bord" e roșie (3 aprinși)', /Martori de bord <span class="cf-cnt c-warn">3</.test(h));
-  T('bulina la „Contact și motor" e verde (contact+motor pornite)', /Contact și motor <span class="cf-cnt c-on">/.test(h));
-  T('grupă fără nimic aprins nu are bulină', /Camion <i class="fas fa-chevron-right/.test(h) || !h.includes('Camion'));
-  // Cu filtrul nou rămân doar grupele care au ceva de arătat — dar acelea rămân desfăcute.
-  T('grupele rămase sunt deschise implicit', (h.match(/<details class="cf-g" open>/g) || []).length >= 3);
-  T('grupele fără nimic activ nu se mai desenează', !h.includes('>Camion<'));
+  T('banda „Deschis acum" numără 2', /Deschis acum <span class="cfb-n">2</.test(h));
+  T('martorii ies vizual din restul (bandă proprie)', /cfb-band b-martori/.test(h));
+  T('contactul și motorul stau în banda de stare', h.indexOf('b-stare') > 0 && h.indexOf('b-stare') < h.indexOf('Motorul funcționează') && h.indexOf('Motorul funcționează') < h.indexOf('b-martori'));
+  T('o bandă goală nu se desenează deloc', !h.includes('b-camion'));
+  // Benzile nu se mai pliază: ce e activ trebuie să se vadă din prima, fără niciun clic.
+  T('nu mai sunt secțiuni de deschis cu clicul', !h.includes('<details class="cf-g"'));
+  T('ordinea e stare → martori → deschis → active',
+    h.indexOf('b-stare') < h.indexOf('b-martori') && h.indexOf('b-martori') < h.indexOf('b-deschis'));
 }
 
 // ════════════ 3. Un singur martor → singular ════════════
 sect('3. Acordul la singular');
 {
   const h = canFlagsHtml(flat(mkSec([5, 0, 0, 3, 0x40, 0, 0, 0]), mkCtl([0, 0x01, 0, 0])), new Set());
-  T('„Martor aprins:" la singular', h.includes('Martor aprins:') && !h.includes('Martori aprinși:'));
+  T('un singur martor → banda numără 1', /Martori aprinși <span class="cfb-n">1</.test(h));
 }
 
 // ════════════ 4. Steagurile nedecodate ════════════
@@ -139,7 +144,7 @@ sect('4. Steagurile pe care nu le citim încă');
   // au acum biți oficiali (P4) și se decodează — deci nu mai apar „necitite", ci ca plăcuțe vii.
   // 27.08: sub regula „doar stările active", plăcuța „necitit" nu se mai desenează — era singura
   // casetă stinsă rămasă pe ecran. Rămâne nota de jos, care spune limpede că lipsește ceva.
-  T('nu mai desenăm plăcuțe „necitit"', !/cf-s">necitit</.test(h) && !/cf-nd/.test(h));
+  T('nu mai desenăm plăcuțe „necitit"', !/necitit</.test(h.replace(/cfb-note[\s\S]*$/, '')));
   T('dar nota explicativă rămâne', h.includes('nu apare aici'));
   T('nota spune și de ce lipsește', h.includes('preferăm să lipsească decât să arate greșit'));
   T('Închiderea centralizată nu apare ca plăcuță', !h.includes('>Închidere centralizată<'));
@@ -214,9 +219,11 @@ sect('7. Acoperire față de codec8e.js');
   T('nu se strecoară nicio stare inactivă', strecurate.length === 0, strecurate.map(f => f.key).join(', '));
   T('treptele P/R/N/D nu apar una câte una',
     !h.includes('>Cutie în parcare (P)<') && !h.includes('>Cutie în mers (D)<'));
-  T('treapta apare o dată, cu litera ei', /Treapta de viteză<\/span><span class="cf-s">P</.test(h));
+  T('treapta apare o dată, cu litera ei', /Treapta de viteză<\/span><span class="cfb-s">P</.test(h));
   T('desenul treptei e caseta cu litera P', h.includes('>P</text>'));
   T('pictogramele vin din can_icons.js, nu din Font Awesome', (h.match(/<svg class="cf-i"/g) || []).length > 20);
+  T('regula de așezare vine de la server, nu e rescrisă în pagină',
+    require('fs').readFileSync(require('path').join(__dirname, 'server.js'), 'utf8').includes('d.benzi=benzi'));
   T('nu rămâne nimic în „avansate"', true);
 }
 
@@ -300,9 +307,9 @@ sect('11. Mașină cu CAN, dar care nu trimite steaguri');
   const h = canFlagsHtml(doarCifre, new Set());
   T('nu mai tace — spune de ce lipsesc', h.length > 0);
   T('scrie limpede că mașina NU trimite semnalele', /nu trimite<\/strong> semnalele de stare/.test(h));
-  T('nu arată nicio plăcuță', !h.includes('class="cf k-'));
-  T('nu arată rezumatul verde „totul e în regulă"', !h.includes('b-ok'));
-  T('are titlu de secțiune', h.includes('Stare (uși, lumini, martori de bord)'));
+  T('nu arată nicio plăcuță', !h.includes('class="cfb-t k-'));
+  T('nu arată mesajul verde „totul e în regulă"', !h.includes('cfb-ok'));
+  T('are titlu de secțiune', h.includes('Starea mașinii'));
 
   // vehicul FĂRĂ CAN deloc → tot tăcere, nu vrem mesajul pe fiecare mașină cu GPS simplu
   T('mașină fără CAN → nimic', canFlagsHtml({ ignition: 1, gsm_signal: 4, external_voltage: 12820 }, new Set()) === '');
@@ -320,6 +327,38 @@ sect('12. Catalogul IO nu mai rămâne gol după login');
   T('se reîncearcă la deschiderea ferestrei', /if \(!\(window\.IO_CAT \|\| \[\]\)\.length\)[\s\S]{0,400}loadIoCatalog\(\)/.test(src));
   T('se încarcă și la autentificare', /applyPermissionsUI\(\);[\s\S]{0,300}window\.loadIoCatalog\(\)/.test(src));
   T('mesaj de eroare dacă tot nu merge', /Nu am putut încărca catalogul/.test(src));
+}
+
+sect('13. Banda de martori de sub hartă (telefon) + paritatea regulii de așezare');
+{
+  const rd = (f) => fs.readFileSync(require('path').join(__dirname, 'mobile', 'src', f), 'utf8');
+  const lib = rd('lib/canflags.ts');
+  const tt = rd('components/CanTellTales.tsx');
+  const comp = rd('components/CanFlags.tsx');
+  const vehDet = rd('screens/VehicleDetail.tsx');
+  const srv = fs.readFileSync(require('path').join(__dirname, 'server.js'), 'utf8');
+
+  T('banda de martori există', /export function CanTellTales\(/.test(tt));
+  T('e desenată pe ecranul cu harta vehiculului', /<CanTellTales\b/.test(vehDet) && /import \{ CanTellTales \}/.test(vehDet));
+  // Trebuie să stea SUB hartă și DEASUPRA butoanelor — acolo a cerut-o Robert.
+  T('stă între hartă și butoane', vehDet.indexOf('<CanTellTales') > vehDet.indexOf('class="d-map"') && vehDet.indexOf('<CanTellTales') < vehDet.indexOf('class="d-actions"'));
+  T('ecranul detaliat rămâne (nu l-am înlocuit)', /export function CanFlags\(/.test(comp));
+
+  // Paritatea regulii: ordinea benzii de stare NU se scrie a doua oară în telefon.
+  T('serverul trimite ordinea benzii de stare', srv.includes('stateBand: canFlags.BANDA_STARE'));
+  T('telefonul o citește de la server, nu o rescrie', lib.includes('cat.stateBand') && !/_sf_handbrake['\"]\s*,\s*['\"]_sf_gear/.test(lib));
+  T('clasificarea e aceeași ca pe server', /kind === 'warn' \? 'martori' : f\.kind === 'open' \? 'deschis' : 'active'/.test(lib));
+  const srvReg = fs.readFileSync(require('path').join(__dirname, 'can_flags.js'), 'utf8');
+  T('și pe server clasificarea e scrisă la fel', /kind === 'warn' \? 'martori' : f\.kind === 'open' \? 'deschis' : 'active'/.test(srvReg));
+
+  // Aceleași patru benzi, cu aceleași nume, în amândouă ecranele.
+  const benziWeb = ['stare', 'martori', 'deschis', 'active'];
+  T('web-ul desenează cele patru benzi', benziWeb.every((b) => src.includes("banda('" + b + "'")));
+  T('telefonul desenează aceleași patru benzi', benziWeb.every((b) => comp.includes('cheie="' + b + '"')));
+
+  // Ordinea din bandă: întâi ce cere atenție.
+  T('sub hartă apar întâi martorii, apoi ce e deschis, apoi starea', /\.\.\.b\.martori, \.\.\.b\.deschis, \.\.\.b\.stare/.test(tt));
+  T('luminile aprinse NU urcă sub hartă (nu e nimic de făcut cu ele)', !/b\.active/.test(tt));
 }
 
 console.log('\n──────────────────────────────');

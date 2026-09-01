@@ -21,6 +21,8 @@ export interface CanFlag {
 export interface CanGroup { key: string; label: string; icon: string; mi: IconName; }
 export interface CanCatalog {
   groups: CanGroup[]; flags: CanFlag[]; kindText: Record<string, [string, string]>; undecoded: string[];
+  /** ordinea plăcuțelor din banda „Starea mașinii" — vine de la server, ca să nu fie două ordini */
+  stateBand?: string[];
 }
 
 // v2: catalogul are campuri noi (`mereu`, `ascuns`, treapta ca o singura placuta). Cu cheia veche,
@@ -73,4 +75,59 @@ export function canColor(kind: CanKind): string {
   if (kind === 'open') return 'var(--orange)';
   if (kind === 'on') return 'var(--green)';
   return 'var(--text-primary)';
+}
+
+
+/** Se desenează plăcuța? Aceeași regulă ca pe web (can_flags.js → seVede): doar cele APRINSE,
+ *  plus cele marcate `mereu` (frâna de mână, treapta, încuietoarea), care se văd și stinse. */
+export function canSeVede(f: CanFlag, val: any): boolean {
+  if (!f || f.ascuns) return false;
+  if (f.mereu) return val !== undefined && val !== null;
+  // Un cod e un NUMĂR. Fără el (0, false, lipsă) plăcuța n-are ce spune.
+  if (f.kind === 'code') return Number(val) > 0;
+  if (f.kind === 'text') return val !== undefined && val !== null && val !== '';
+  return !!val;
+}
+
+/** Textul stării, pentru toate felurile de plăcuță (inclusiv treapta și codurile magistralei). */
+export function canText(cat: CanCatalog, f: CanFlag, val: any): string {
+  if (f.kind === 'text') return (val === null || val === undefined || val === '') ? '—' : String(val);
+  if (f.kind === 'code') return (val === null || val === undefined || val === '') ? '—' : 'cod ' + val;
+  return canStateText(cat, f, !!val);
+}
+
+export type Banda = { f: CanFlag; val: any };
+export type Benzi = { stare: Banda[]; martori: Banda[]; deschis: Banda[]; active: Banda[] };
+
+/** Cum se așază plăcuțele pe ecran — după cât de mult cer atenție, ca la bordul mașinii:
+ *  starea (frână, treaptă, încuietoare, contact, motor) · martori roșii · ce e deschis · ce e pornit.
+ *  Ordinea benzii de stare vine de la server (`stateBand`); clasificarea restului e regula de mai jos,
+ *  identică cu cea din can_flags.js. O bandă goală nu se desenează. */
+export function canBenzi(cat: CanCatalog, flat: Record<string, any>): Benzi {
+  const out: Benzi = { stare: [], martori: [], deschis: [], active: [] };
+  const peCheie: Record<string, CanFlag> = {};
+  cat.flags.forEach((f) => { peCheie[f.key] = f; });
+  const puse = new Set<string>();
+  (cat.stateBand || []).forEach((k) => {
+    const f = peCheie[k]; if (!f) return;
+    const v = flat[k];
+    if (!canSeVede(f, v)) return;
+    out.stare.push({ f, val: v }); puse.add(k);
+  });
+  cat.flags.forEach((f) => {
+    if (puse.has(f.key)) return;
+    const v = flat[f.key];
+    if (!canSeVede(f, v)) return;
+    const unde = f.kind === 'warn' ? 'martori' : f.kind === 'open' ? 'deschis' : 'active';
+    out[unde].push({ f, val: v });
+  });
+  return out;
+}
+
+/** Aplatizarea blocurilor decodate, ca pe web: _security_flags → _sf_*, _control_flags → _cf_*. */
+export function canFlat(io: any): Record<string, any> {
+  const flat: Record<string, any> = {};
+  for (const [k, v] of Object.entries((io && io._security_flags) || {})) flat['_sf_' + k] = v;
+  for (const [k, v] of Object.entries((io && io._control_flags) || {})) flat['_cf_' + k] = v;
+  return flat;
 }

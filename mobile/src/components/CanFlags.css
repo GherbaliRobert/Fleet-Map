@@ -50,3 +50,33 @@
 
 /* Eticheta care explică de ce sunt puține plăcuțe: se arată doar stările active. */
 .cfm-b.b-note { background: transparent; border: 1px dashed var(--border, #33415580); color: var(--muted, #94a3b8); font-weight: 600; }
+
+/* ─── Așezarea pe BENZI (redesenare 02.09) ────────────────────────────────────────────────
+   Înainte: grupe pliabile pe categorii („Lumini", „Camion"…). Avea sens cât se arătau toate
+   plăcuțele. De când se văd doar cele active, categoriile rămâneau aproape goale. Acum se așază
+   după cât de mult cer atenție: starea mașinii · martori · deschis · pornite. Regula e în
+   lib/canflags.ts (canBenzi), iar ordinea benzii de stare vine de la server. */
+.cfm-h {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--text-secondary); padding-bottom: 7px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.cfm-hint { margin-left: auto; font-size: 10px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text-muted); }
+.cfm-band { margin-top: 11px; }
+.cfm-bt {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .55px;
+  color: var(--text-muted);
+}
+.cfm-n { background: color-mix(in srgb, var(--text-muted) 22%, transparent); border-radius: 999px; padding: 1px 6px; font-size: 10px; }
+.cfm-band.b-martori .cfm-bt { color: var(--red); }
+.cfm-band.b-deschis .cfm-bt { color: var(--orange); }
+.cfm-t.big { min-height: 92px; padding: 12px 5px 10px; }
+.cfm-t.big .cfm-s { font-size: 13px; }
+.cfm-ok {
+  display: flex; align-items: center; gap: 7px; margin-top: 11px;
+  padding: 10px 12px; border-radius: 11px;
+  border: 1px solid var(--green); background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green); font-size: 12.5px; font-weight: 700;
+}

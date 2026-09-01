@@ -20,6 +20,48 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Secțiunea CAN, redesenată + martorii apar sub hartă pe telefon — `COMMIT_HASH`
+
+**Ce era.** Plăcuțele de stare erau strânse pe categorii — „Contact și motor", „Lumini", „Uși și
+capace", „Camion" — fiecare într-o secțiune care se deschidea cu clicul. Avea sens cât se arătau
+toate cele ~120. De când se văd doar cele active, rămâneau cinci titluri cu câte o plăcuță sub
+fiecare. Multă mobilă pentru puțin conținut.
+
+**Ce e acum.** Se așază după *cât de mult cer atenție* — adică exact ordinea în care se uită omul la
+bordul mașinii:
+
+1. **Starea mașinii**, cu plăcuțe mai mari: frâna de mână, treapta, încuietoarea, contactul, motorul.
+2. **Martori aprinși** — becurile roșii. Ce e stricat sau pe cale să se strice.
+3. **Deschis acum** — uși, capotă, portbagaj, geamuri, portocaliu.
+4. **Pornite acum** — restul: lumini, aer condiționat, centuri.
+
+Fără secțiuni de deschis cu clicul: ce e activ se vede din prima. O bandă goală nu se desenează
+deloc. Dacă nu e nimic, scrie „Totul închis, niciun martor aprins" — nu rămâne un ecran gol.
+
+**Pe telefon a apărut ceva nou: banda de martori, sub hartă.** Un rând de pictograme, atât. Doar ce
+cere atenție (martori roșii, ce e deschis) plus cele trei stări permanente. Luminile aprinse și
+aerul condiționat NU urcă acolo — nu e nimic de făcut cu ele. Atingi o pictogramă și îți spune ce e.
+
+Rostul benzii e altul decât al ecranului „Date CAN": acolo te duci când vrei să te uiți la mașină,
+aici vezi fără să ceri. **Ecranul detaliat a rămas neatins ca rol** — doar redesenat la fel ca web-ul.
+
+**Regula de așezare e scrisă o singură dată.** Pagina web primește chiar funcțiile de pe server, nu
+o copie a lor. Telefonul primește de acolo ordinea benzii de stare. Am pus și o verificare care cade
+dacă cele două ecrane încep să se despartă.
+
+**Două lucruri mărunte văzute abia pe ecran, la mărimea reală:** titlul „Starea mașinii" apărea de
+două ori (o dată ca titlu de panou, o dată ca titlu de bandă), iar o magistrală CAN care nu
+raportează nimic scria „cod false". Amândouă reparate.
+
+- **Ce vede fondatorul:** aceleași date, altă așezare; 12 verificări noi.
+- **Ce vede clientul:** deschide mașina pe telefon și vede din prima dacă e ceva în neregulă, fără
+  să mai intre nicăieri.
+
+Verificat pe ecran, în două situații: mașină parcată cu probleme (martor aprins, ușă și capotă
+deschise) și mașină în mers cu totul în regulă.
+
+---
+
 ### AMÂNDOI · Raport nou: „CAN detaliat" — istoricul semnalelor pe care le alegi tu — `0a340f6`
 
 Până acum, din datele CAN se putea scoate doar un **instantaneu**: cât are acum în rezervor, ce

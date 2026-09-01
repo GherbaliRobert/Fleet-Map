@@ -1192,8 +1192,14 @@ app.get('/js/maint-types.js', (req, res) => { res.set('Cache-Control', NO_CACHE)
 // Steagurile CAN (uși, lumini, martori de bord) — nume + iconiță, dintr-o sursă (can_flags.js).
 // Web-ul le ia ca script (window.RA_CANFLAGS), telefonul prin /api/can-flags. Aceleași date, două
 // transporturi: dacă schimbi o etichetă aici, se schimbă în amândouă ecranele deodată.
-const _CANFLAGS = { groups: canFlags.GROUPS, flags: canFlags.FLAGS, kindText: canFlags.KIND_TEXT, undecoded: canFlags.NEDECODATE };
-const _CANFLAGS_JS = 'window.RA_CANFLAGS=' + JSON.stringify(_CANFLAGS) + ';';
+const _CANFLAGS = { groups: canFlags.GROUPS, flags: canFlags.FLAGS, kindText: canFlags.KIND_TEXT, undecoded: canFlags.NEDECODATE, stateBand: canFlags.BANDA_STARE };
+// Pagina primește și funcțiile care hotărăsc CE se vede și ÎN CE BANDĂ, serializate din modul —
+// același tipar ca la formatarea IO de mai jos. Fără asta ar fi trebuit rescrise în pagină, iar
+// două copii ale aceleiași reguli o iau razna una față de cealaltă (vezi antetul can_flags.js).
+const _CANFLAGS_JS = 'window.RA_CANFLAGS=(function(){var d=' + JSON.stringify(_CANFLAGS) + ';' +
+  'var FLAGS=d.flags,KIND_TEXT=d.kindText,BANDA_STARE=d.stateBand,_byKey={};FLAGS.forEach(function(f){_byKey[f.key]=f;});' +
+  canFlags.stateText.toString() + '\n' + canFlags.seVede.toString() + '\n' + canFlags.benzi.toString() + '\n' +
+  'd.stateText=stateText;d.seVede=seVede;d.benzi=benzi;return d;})();';
 app.get('/js/can-flags.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_CANFLAGS_JS); });
 app.get('/api/can-flags', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(_CANFLAGS); });
 

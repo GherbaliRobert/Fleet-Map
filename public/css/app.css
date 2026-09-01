@@ -2611,3 +2611,45 @@
 .rep-sig-i input{ width:auto; flex:none; margin:0; }
 .rep-sig-i em{ margin-left:auto; font-style:normal; font-size:11px; color:var(--text-muted); }
 .rep-sig-note{ flex-basis:100%; font-size:11.5px; color:var(--text-secondary); line-height:1.5; }
+
+/* ─── Starea mașinii (steagurile CAN), redesenată pe benzi ────────────────────────────────────
+   Înainte: grupe pliabile pe categorii („Lumini", „Camion"…). Avea sens cât se arătau toate 120
+   de plăcuțe. De când se văd DOAR cele active, categoriile rămâneau aproape goale — cinci titluri
+   cu câte o plăcuță sub fiecare. Acum se așază după cât de mult cer atenție, ca la bordul mașinii:
+   starea (frână, treaptă, încuietoare) · martori roșii · ce e deschis · ce e pornit.
+   Regula de împărțire e în can_flags.js (benzi) — aici e doar cum arată. */
+.cfb{ margin:10px 0 4px; }
+.cfb-h{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; letter-spacing:.4px;
+  text-transform:uppercase; color:var(--text-secondary); padding-bottom:8px; border-bottom:1px solid var(--border); }
+.cfb-hint{ margin-left:auto; font-size:10.5px; font-weight:600; text-transform:none; letter-spacing:0; color:var(--text-muted); }
+.cfb-band{ margin-top:12px; }
+.cfb-bt{ display:flex; align-items:center; gap:7px; font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.6px; color:var(--text-muted); margin-bottom:7px; }
+.cfb-n{ background:rgba(127,127,127,.18); border-radius:999px; padding:1px 7px; font-size:10.5px; }
+.cfb-band.b-martori .cfb-bt{ color:var(--danger); }
+.cfb-band.b-deschis .cfb-bt{ color:var(--warning, #f0a020); }
+.cfb-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); gap:8px; }
+
+/* O plăcuță: pictograma sus, numele dedesubt, starea jos. Stinsă = ton neutru; aprinsă = culoarea
+   felului ei (roșu martor, portocaliu deschis, verde pornit). */
+.cfb-t{ display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center;
+  padding:10px 7px 8px; border-radius:11px; border:1px solid var(--border); background:var(--bg-panel);
+  color:var(--text-secondary); min-height:78px; justify-content:center; }
+.cfb-t .cf-i{ width:24px; height:24px; flex:0 0 24px; }
+.cfb-l{ font-size:11px; font-weight:600; line-height:1.25; color:var(--text-secondary); }
+.cfb-s{ font-size:11.5px; font-weight:800; color:var(--text-primary); }
+.cfb-t.big{ min-height:96px; padding:13px 9px 11px; }
+.cfb-t.big .cf-i{ width:30px; height:30px; flex:0 0 30px; }
+.cfb-t.big .cfb-s{ font-size:14px; }
+.cfb-t.lit.k-warn{ border-color:var(--danger); background:color-mix(in srgb, var(--danger) 12%, transparent); color:var(--danger); }
+.cfb-t.lit.k-warn .cfb-s, .cfb-t.lit.k-warn .cfb-l{ color:var(--danger); }
+.cfb-t.lit.k-open{ border-color:var(--warning, #f0a020); background:color-mix(in srgb, var(--warning, #f0a020) 12%, transparent); color:var(--warning, #f0a020); }
+.cfb-t.lit.k-open .cfb-s, .cfb-t.lit.k-open .cfb-l{ color:var(--warning, #f0a020); }
+.cfb-t.lit.k-on{ border-color:var(--accent); background:color-mix(in srgb, var(--accent) 11%, transparent); color:var(--accent); }
+.cfb-t.lit.k-on .cfb-s{ color:var(--accent); }
+.cfb-t.lit.k-info, .cfb-t.lit.k-text, .cfb-t.lit.k-code{ border-color:var(--text-muted); color:var(--text-primary); }
+.cfb-ok{ display:flex; align-items:center; gap:8px; margin-top:12px; padding:11px 13px; border-radius:11px;
+  border:1px solid var(--accent); background:color-mix(in srgb, var(--accent) 9%, transparent);
+  color:var(--accent); font-size:12.5px; font-weight:700; }
+.cfb-note{ margin-top:12px; font-size:11.5px; line-height:1.55; color:var(--text-secondary);
+  background:rgba(127,127,127,.08); border:1px solid var(--border); border-radius:9px; padding:9px 11px; }

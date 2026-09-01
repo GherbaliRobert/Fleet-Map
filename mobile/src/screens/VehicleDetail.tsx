@@ -13,6 +13,7 @@ import { WorkSchedEditor } from '../components/WorkSchedEditor';
 import { VehicleSpecsView, VehicleSpecsForm, specsFromFull } from '../components/VehicleSpecs';
 import { VehicleDocs } from '../components/VehicleDocs';
 import { CanFlags } from '../components/CanFlags';
+import { CanTellTales } from '../components/CanTellTales';
 import './detail.css';
 import './admin.css';
 
@@ -280,6 +281,9 @@ export function VehicleDetail() {
             <button class="d-map-expand" onClick={() => setShowMap(true)} aria-label="Extinde harta" title="Extinde harta"><Icon name="maximize" size={18} /></button>
           </div>
         )}
+
+        {/* Martorii de bord, sub harta: ce cere atentie chiar acum, fara sa intri in „Date CAN". */}
+        <CanTellTales io={io} />
 
         <div class="d-actions">
           <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/route`)}><Icon name="route" size={18} class="ic" /> Vezi traseu</button>
