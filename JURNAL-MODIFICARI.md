@@ -20,6 +20,53 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Setări devine casa clientului (pasul 1 din administrarea nouă)
+
+Alin a văzut la un concurent (Arobs) o secțiune de administrare pentru client — adrese de email,
+utilizatori, roluri, istoric de activitate, dispozitive — și a cerut același lucru la noi, **grupat,
+pe înțelesul omului**, tot în Setări. Ăsta e primul pas: **casa**. Camerele noi vin pe rând.
+
+**Cum era.** Setările aveau trei file lipite sus (Preferințe · Companie · Program), iar restul
+administrării era împrăștiat în meniu: Panou admin, Companii, Utilizatori, Dispozitive arhivate,
+Audit. Din șase butoane, **cinci deschideau același ecran**, doar pe file diferite — de aceea părea
+că „se deschid aiurea".
+
+**Cum e acum.** Setările au un meniu propriu, în stânga, cu capitole grupate:
+
+| Grupă | Capitole |
+|---|---|
+| Contul meu | Preferințe |
+| Oameni și drepturi | Utilizatori |
+| Regulile firmei | Ce văd toți · Program de lucru · Prețuri combustibil |
+| Abonament și integrări | Facturile mele · Chei API |
+| Doar pentru noi | Catalog coduri GPS |
+
+Fiecare om vede **doar capitolele la care are drept**, iar un titlu de grupă apare doar dacă are ce
+grupa dedesubt — altfel dispecerului i-ar rămâne pe ecran „Oameni și drepturi" fără nimic sub el.
+
+**Trei lucruri care s-au reparat pe drum:**
+
+1. **Dispecerii și viewerii nu ajungeau deloc la Setări.** Toată secțiunea era ascunsă pentru cine
+   nu administrează flota — deci nici la propriile preferințe, deși acolo scrie „se aplică doar
+   contului tău". Acum ajung, și văd exact atât.
+2. **„Utilizatori" avea două uși** (din meniu și din panou). A rămas una singură, în Setări.
+3. **Cod mort scos:** funcția încărca praguri de alertă și lista de agenți în niște căsuțe care **nu
+   mai există** în pagină de când agenții au pagina lor. Rula degeaba la fiecare deschidere.
+
+**Cum am evitat să dublez ecrane.** „Utilizatori" și „Facturile mele" există o singură dată în
+pagină. Setările le **împrumută** (mută bucata de ecran la ele), iar panoul de administrare le cere
+înapoi înainte să le arate. Fără regula asta, panoul ar fi deschis o filă goală, fără nicio eroare —
+exact genul de defect care se descoperă la client. E apărat de o probă automată.
+
+**Ce NU e încă făcut** (urmează, în ordinea asta): Aparate GPS · Istoric activitate · timpul petrecut
+în aplicație · Adrese de email · Roluri proprii. Panoul de administrare rămâne deocamdată neatins.
+
+- **Ce am schimbat:** Setările s-au reorganizat pe capitole și au devenit singurul loc de
+  administrare al clientului.
+- **Ce vede fondatorul:** un capitol în plus, „Catalog coduri GPS", marcat limpede ca fiind al
+  nostru; panoul de administrare rămâne cum era.
+- **Ce vede clientul:** un singur loc, cu capitole pe înțelesul lui, și acces la ce ține de el.
+
 ### AMÂNDOI · Tahograf își primește propria iconiță
 
 Alin a observat că **Șoferi** și **Tahograf** aveau exact aceeași iconiță — legitimația. Dintre cele

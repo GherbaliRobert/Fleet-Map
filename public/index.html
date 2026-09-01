@@ -117,13 +117,12 @@
             <button class="nav-item nav-sub feat-etoll" onclick="navGo(this, function(){ showView('etoll'); })"><i class="fas fa-road"></i><span>Taxa de drum (TollRo)</span></button>
           </div>
         </div>
-        <div class="nav-group fleet-only" data-group="administrare">
+        <div class="nav-group" data-group="administrare">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-gear"></i><span>Administrare</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('settings'); })"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ showView('administrare'); })"><i class="fas fa-gauge-high"></i><span>Panou admin</span></button>
             <button class="nav-item nav-sub companies-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
-            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('users'); })"><i class="fas fa-users"></i><span>Utilizatori</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('archived'); })"><i class="fas fa-box-archive"></i><span>Dispozitive arhivate</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
           </div>
@@ -1093,6 +1092,12 @@
     .admin-row .meta { font-size:11px; color:var(--text-muted); margin-top:2px; }
     .admin-section-title { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin:4px 0 8px; }
     /* ─── Panoul Setări: tab-uri ─── */
+    /* Setări: două coloane — capitolele în stânga (refolosesc stilul .admin-side, deci și purtarea
+       lui pe telefon: se strâng în rânduri de butoane), conținutul în dreapta. Nu-și pun derulare
+       proprie: fereastra Setări derulează întreagă. */
+    .set-shell { display:flex; align-items:flex-start; }
+    .set-shell > .admin-side { overflow:visible; }
+    .set-shell > .admin-content { overflow:visible; }
     .set-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; border-bottom:1px solid var(--border); }
     .set-tab { background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-secondary); font-family:inherit; font-size:13px; font-weight:700; padding:9px 13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-bottom:-1px; }
     .set-tab i { font-size:11px; opacity:.85; }
@@ -2467,60 +2472,81 @@ const pozitii = await r.json();</code></pre>
         </div>
 
         <!-- Setări -->
+        <!-- ═══ Setări — casa clientului: capitolele în stânga, conținutul în dreapta.
+             Meniul se generează din SET_MENIU (o singură sursă pentru nume, iconiță și drept), ca să
+             nu ajungem iar cu două liste care se bat cap în cap.
+             „Utilizatori" și „Facturile mele" NU sunt copiate aici — nodul lor e ÎMPRUMUTAT din panoul
+             de administrare, ca ecranul să existe o singură dată în pagină. Vezi setImprumuta(). ═══ -->
         <div id="atab-settings" class="admin-tab-content" style="display:none;">
-          <div class="set-tabs">
-            <button class="set-tab active" data-stab="prefs" onclick="usTab('prefs')"><i class="fas fa-user"></i> Preferințe</button>
-            <button class="set-tab" data-stab="company" id="set-tab-company" style="display:none;" onclick="usTab('company')"><i class="fas fa-building"></i> Companie</button>
-            <button class="set-tab" data-stab="agents" id="set-tab-agents" style="display:none;" onclick="usTab('agents')"><i class="fas fa-shield-halved"></i> Agenți AI</button>
-            <button class="set-tab" data-stab="thresholds" id="set-tab-thresholds" style="display:none;" onclick="usTab('thresholds')"><i class="fas fa-business-time"></i> Program</button>
-          </div>
+          <div class="admin-shell set-shell">
+            <nav class="admin-side" id="set-nav"></nav>
+            <div class="admin-content set-main">
 
-          <!-- Panel: Preferințe -->
-          <div class="set-panel" data-spanel="prefs">
-            <div class="set-sec-h"><i class="fas fa-user"></i> Preferințele tale</div>
-            <div id="us-list" style="margin-bottom:6px;"><div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div></div>
-            <p class="set-note">Aceste setări se aplică doar contului tău. Reset → cade pe default-ul companiei.</p>
-            <button class="btn-sm btn-primary" onclick="usTestPush(this)" style="margin-top:2px;"><i class="fas fa-bell"></i> Trimite notificare de test pe telefon</button>
-            <div id="us-test-push-res" style="font-size:11.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;"></div>
-          </div>
-
-          <!-- Panel: Companie -->
-          <div class="set-panel" data-spanel="company" style="display:none;">
-            <div id="us-company-defaults">
-              <div class="set-sec-h"><i class="fas fa-building"></i> Default-uri pentru companie</div>
-              <p class="set-note">Aceste valori sunt aplicate userilor companiei care nu și-au setat propriile preferințe.</p>
-              <div id="us-company-list"></div>
-            </div>
-            <div id="us-io-catalog-section" style="display:none;margin:18px 0 0;padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;">
-              <div class="set-sec-h" style="margin-bottom:4px;"><i class="fas fa-microchip"></i> Catalog IO Teltonika (super-admin)</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Editează etichetele și descrierile codurilor IO global pentru toate companiile. Modificările sunt vizibile imediat în panourile vehiculelor.</div>
-              <button class="btn-sm btn-primary" onclick="raxOpenIoEditor()"><i class="fas fa-pen-to-square"></i> Deschide editor catalog</button>
-            </div>
-            <div id="us-fuel-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-              <div class="set-sec-h" style="margin-bottom:6px;"><i class="fas fa-gas-pump"></i> Prețuri combustibil (lei/L)</div>
-              <p class="set-note" style="margin-bottom:6px;">Folosite la calculul costului în rapoarte. Lasă gol → se folosește <b>media națională</b> (auto, zilnic). Lanț: preț pe vehicul → aceste valori → media națională.</p>
-              <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-                <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-                <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-                <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+              <!-- Contul meu -->
+              <div class="set-panel" data-spanel="prefs">
+                <div class="set-sec-h"><i class="fas fa-user"></i> Preferințele tale</div>
+                <div id="us-list" style="margin-bottom:6px;"><div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div></div>
+                <p class="set-note">Aceste setări se aplică doar contului tău. Butonul ↺ te întoarce la regula firmei.</p>
+                <button class="btn-sm btn-primary" onclick="usTestPush(this)" style="margin-top:2px;"><i class="fas fa-bell"></i> Trimite notificare de test pe telefon</button>
+                <div id="us-test-push-res" style="font-size:11.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;"></div>
               </div>
-              <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
-                <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
+
+              <!-- Oameni și drepturi → Utilizatori (nod împrumutat) -->
+              <div class="set-panel" data-spanel="utilizatori" style="display:none;">
+                <div id="set-host-users"></div>
               </div>
+
+              <!-- Regulile firmei → Ce văd toți -->
+              <div class="set-panel" data-spanel="reguli" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-building"></i> Ce văd toți</div>
+                <p class="set-note">Regula firmei: se aplică oricui nu și-a schimbat singur preferințele din „Contul meu".</p>
+                <div id="us-company-list"></div>
+              </div>
+
+              <!-- Regulile firmei → Program de lucru -->
+              <div class="set-panel" data-spanel="program" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-business-time"></i> Program de lucru</div>
+                <p class="set-note">Intervalul de lucru al firmei. Se folosește în rapoarte și la alerta de mișcare în afara programului. Se poate suprascrie pe o grupă sau pe o mașină anume, din fișa lor.</p>
+                <div id="us-worksched"></div>
+              </div>
+
+              <!-- Regulile firmei → Prețuri combustibil -->
+              <div class="set-panel" data-spanel="combustibil" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-gas-pump"></i> Prețuri combustibil (lei/L)</div>
+                <p class="set-note">Folosite la calculul costului în rapoarte. Lasă gol → se folosește <b>media națională</b>, actualizată zilnic. Ordinea: prețul pus pe vehicul → aceste valori → media națională.</p>
+                <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                  <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+                  <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+                  <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+                </div>
+                <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                  <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
+                  <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
+                </div>
+              </div>
+
+              <!-- Abonament și integrări → Facturile mele (nod împrumutat) -->
+              <div class="set-panel" data-spanel="facturi" style="display:none;">
+                <div id="set-host-invoices"></div>
+              </div>
+
+              <!-- Abonament și integrări → Chei API -->
+              <div class="set-panel" data-spanel="api" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-key"></i> Chei API</div>
+                <p class="set-note">Pentru cine leagă alt program de RA Tracks (contabilitate, dispecerizare, ERP). Cheia se dă unui utilizator anume și vede exact cât vede el.</p>
+                <button class="btn-sm btn-primary" onclick="openApiKeys()"><i class="fas fa-key"></i> Deschide cheile API</button>
+              </div>
+
+              <!-- Doar pentru noi → catalogul de coduri (modificările sunt globale) -->
+              <div class="set-panel" data-spanel="iocatalog" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-microchip"></i> Catalog coduri GPS (Teltonika)</div>
+                <p class="set-note">Etichetele și descrierile codurilor trimise de aparate. Modificările sunt <b>globale, pentru toate companiile</b> — de asta capitolul e doar al nostru.</p>
+                <button class="btn-sm btn-primary" onclick="raxOpenIoEditor()"><i class="fas fa-pen-to-square"></i> Deschide editorul de catalog</button>
+              </div>
+
             </div>
           </div>
-
-          <!-- Panel „Agenți AI" mutat pe pagina „Agenți AI" (fiecare card are pragurile lui) -->
-
-          <!-- Panel: Praguri -->
-          <div class="set-panel" data-spanel="thresholds" style="display:none;">
-            <div class="set-sec-h"><i class="fas fa-business-time"></i> Program de lucru</div>
-            <p class="set-note">Intervalul de lucru al companiei (folosit în rapoarte și alerte). Pragurile agenților au trecut pe pagina „Agenți AI" — fiecare card are butonul lui de praguri.</p>
-            <div id="us-worksched" style="margin:18px 0 0;padding-top:16px;border-top:1px solid var(--border);"></div>
-          </div>
-
         </div>
 
         <div id="atab-tacho" class="admin-tab-content" style="display:none;"></div>
@@ -3589,6 +3615,7 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxAdminTab = function (name) {
       if ((name === 'companies' || name === 'accounts') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
+      if (window.setDaInapoi) window.setDaInapoi(); // Setările pot ține nodul „Utilizatori"/„Facturile mele" — îl cerem înapoi, altfel fila iese goală
       var map = { companies: 'admin-tab-companies', devices: 'admin-tab-devices', inventar: 'admin-tab-inventar', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare', demoreq: 'admin-tab-demoreq' };
       var titles = { companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live', demoreq: 'Cereri demo' };
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
@@ -4288,79 +4315,124 @@ const pozitii = await r.json();</code></pre>
     function _usRowCompany(t, val) {
       return '<label class="admin-row" style="cursor:pointer;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + _usEsc(t.label) + '</div><div class="meta">' + _usEsc(t.desc) + '</div></div><input type="checkbox" data-cuk="' + t.k + '" ' + (val ? 'checked' : '') + ' onchange="usSetCompanyPref(\'' + t.k + '\', this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"></label>';
     }
-    function usTab(name) {
-      document.querySelectorAll('#atab-settings .set-tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-stab') === name); });
-      document.querySelectorAll('#atab-settings .set-panel').forEach(function (p) { p.style.display = p.getAttribute('data-spanel') === name ? '' : 'none'; });
+    // ═══ Setări: capitolele din stânga ═══
+    // SURSĂ UNICĂ pentru nume, iconiță și DREPTUL cerut. Dreptul e un cuvânt, nu o clasă CSS:
+    //   oricine · manageUsers · manageFleet · adminFirma (adminul firmei, NU noi) · super (doar noi).
+    // ── începe catalogul de capitole (REPER pentru probe: verify_setari.js decupează bucata dintre
+    // reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+    var SET_MENIU = [
+      { grup: 'Contul meu' },
+      { k: 'prefs',       et: 'Preferințe',           ic: 'fa-user',                drept: 'oricine' },
+      { grup: 'Oameni și drepturi' },
+      { k: 'utilizatori', et: 'Utilizatori',          ic: 'fa-users',               drept: 'manageUsers' },
+      { grup: 'Regulile firmei' },
+      { k: 'reguli',      et: 'Ce văd toți',          ic: 'fa-building',            drept: 'manageUsers' },
+      { k: 'program',     et: 'Program de lucru',     ic: 'fa-business-time',       drept: 'manageUsers' },
+      { k: 'combustibil', et: 'Prețuri combustibil',  ic: 'fa-gas-pump',            drept: 'manageFleet' },
+      { grup: 'Abonament și integrări' },
+      { k: 'facturi',     et: 'Facturile mele',       ic: 'fa-file-invoice-dollar', drept: 'adminFirma' },
+      { k: 'api',         et: 'Chei API',             ic: 'fa-key',                 drept: 'manageUsers' },
+      { grup: 'Doar pentru noi' },
+      { k: 'iocatalog',   et: 'Catalog coduri GPS',   ic: 'fa-microchip',           drept: 'super' }
+    ];
+    // Ce capitole vede omul ăsta. Titlul de grup apare DOAR dacă are ce grupa — altfel unui dispecer
+    // i-ar rămâne pe ecran „Oameni și drepturi" fără nimic sub el.
+    function setCapitole(p) {
+      p = p || {};
+      var poate = function (d) {
+        if (d === 'oricine') return true;
+        if (d === 'manageUsers') return !!p.manageUsers;
+        if (d === 'manageFleet') return !!(p.manageFleet || p.isSuper);
+        if (d === 'adminFirma') return !!(p.manageUsers && !p.isSuper); // noi avem Facturarea întreagă
+        if (d === 'super') return !!p.isSuper;
+        return false;
+      };
+      var out = [], grup = null;
+      SET_MENIU.forEach(function (x) {
+        if (x.grup) { grup = x; return; }
+        if (!poate(x.drept)) return;
+        if (grup) { out.push(grup); grup = null; }
+        out.push(x);
+      });
+      return out;
     }
+    // ── sfârșit catalogul de capitole ──
+
+    function setRenderNav(p) {
+      var nav = document.getElementById('set-nav'); if (!nav) return;
+      nav.innerHTML = setCapitole(p).map(function (x) {
+        return x.grup
+          ? '<div class="aside-grp">' + _usEsc(x.grup) + '</div>'
+          : '<button class="aside-item" data-scap="' + x.k + '" onclick="usTab(\'' + x.k + '\')"><i class="fas ' + x.ic + '"></i> ' + _usEsc(x.et) + '</button>';
+      }).join('');
+    }
+
+    // Ecranele „Utilizatori" și „Facturile mele" există O SINGURĂ dată în pagină. Setările le
+    // ÎMPRUMUTĂ (mută nodul), iar panoul de administrare le cere înapoi înainte să le arate — vezi
+    // setDaInapoi(), apelat din raxAdminTab. Fără asta, panoul ar deschide o filă goală, tăcut.
+    var _setImprumut = {};
+    function setImprumuta(idNod, idGazda) {
+      var n = document.getElementById(idNod), g = document.getElementById(idGazda);
+      if (!n || !g) return;
+      if (!_setImprumut[idNod]) _setImprumut[idNod] = n.parentNode;
+      if (n.parentNode !== g) g.appendChild(n);
+      n.style.display = 'block';
+    }
+    window.setDaInapoi = function () {
+      Object.keys(_setImprumut).forEach(function (id) {
+        var n = document.getElementById(id), acasa = _setImprumut[id];
+        if (n && acasa && n.parentNode !== acasa) { acasa.appendChild(n); n.style.display = 'none'; }
+      });
+    };
+
+    var _setCap = 'prefs'; // capitolul deschis — ca să nu sară înapoi la „Preferințe" după fiecare salvare
+    function usTab(name) {
+      var host = document.getElementById('atab-settings'); if (!host) return;
+      if (!host.querySelector('[data-scap="' + name + '"]')) name = 'prefs'; // capitol la care nu are drept
+      _setCap = name;
+      host.querySelectorAll('.aside-item').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-scap') === name); });
+      host.querySelectorAll('.set-panel').forEach(function (p) { p.style.display = p.getAttribute('data-spanel') === name ? '' : 'none'; });
+      // conținutul se aduce când se cere, nu la deschiderea Setărilor
+      if (name === 'utilizatori') { setImprumuta('admin-tab-users', 'set-host-users'); if (window.loadUsers) window.loadUsers(); }
+      else if (name === 'facturi') { setImprumuta('admin-tab-myinvoices', 'set-host-invoices'); if (window.raxLoadMyInvoices) window.raxLoadMyInvoices(); }
+      else if (name === 'combustibil' && window.usLoadFuelPrices) window.usLoadFuelPrices();
+    }
+    window.usTab = usTab;
     async function loadSettingsTab() {
-      // Setările au pagină proprie acum: mută #atab-settings în #settings-host (o singură dată) + afișează-l.
+      // Setările au pagină proprie: mută #atab-settings în #settings-host (o singură dată) + afișează-l.
       var _sc = document.getElementById('atab-settings'), _sh = document.getElementById('settings-host');
       if (_sc && _sh && _sc.parentElement !== _sh) _sh.appendChild(_sc);
       if (_sc) _sc.style.display = 'block';
-      var box = document.getElementById('us-list'); box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
+
+      var perm = {
+        isSuper: !!(currentUser && currentUser.isSuper),
+        manageUsers: !!(currentUser && currentUser.permissions && currentUser.permissions.manageUsers),
+        manageFleet: !!(currentUser && currentUser.permissions && currentUser.permissions.manageFleet)
+      };
+      setRenderNav(perm);
+      usTab(_setCap); // rămâne pe capitolul deschis (salvările reîncarcă ecranul)
+
+      var box = document.getElementById('us-list');
+      if (box) box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
       try {
-        var p = await fetch('/api/me/ui-prefs', { credentials: 'same-origin' }).then(r => r.json());
-        box.innerHTML = US_TOGGLES.map(t => _usRow(t, p.effective[t.k], p.source[t.k])).join('');
-        // Default-uri companie — doar pentru admin/superadmin/company_admin (manageUsers)
-        var canMgr = !!(currentUser && currentUser.permissions && currentUser.permissions.manageUsers);
-        var canFleet = !!(currentUser && (currentUser.isSuper || (currentUser.permissions && currentUser.permissions.manageFleet)));
-        // Vizibilitatea tab-urilor + sub-secțiunilor după permisiuni („Preferințe" e mereu vizibil)
-        var _usShow = function (id, on) { var e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-        _usShow('set-tab-company', canMgr || canFleet);
-        _usShow('set-tab-agents', false); // „Agenți AI" mutat pe pagina dedicată (fiecare card cu pragurile lui)
-        _usShow('set-tab-thresholds', canMgr);
-        _usShow('us-company-defaults', canMgr);
-        var fuelSec = document.getElementById('us-fuel-section');
-        if (fuelSec) fuelSec.style.display = canFleet ? 'block' : 'none';
-        if (canFleet) usLoadFuelPrices();
-        // Catalog IO Teltonika — DOAR super-admin (modificările sunt globale)
-        var ioCatBox = document.getElementById('us-io-catalog-section');
-        if (ioCatBox) ioCatBox.style.display = (currentUser && currentUser.isSuper) ? 'block' : 'none';
-        if (canMgr) {
-          var coBox = document.getElementById('us-company-list');
-          coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
-          try {
-            var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
-            var dft = cs.ui_defaults || {};
-            coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
-            // Populez pragurile alertă (RA Watch + RA Optimize + RA Care). Setez și data-initial pentru anti-no-change.
-            var thr = cs.alert_thresholds || {};
-            function _setThrInput(id, key) { var el = document.getElementById(id); if (el) { el.value = thr[key] != null ? thr[key] : ''; el.dataset.initial = el.value; } }
-            _setThrInput('us-th-offline', 'offlineMin');
-            _setThrInput('us-th-fuel', 'fuelDropL');
-            _setThrInput('us-th-fueltheft', 'fuelTheftL');
-            _setThrInput('us-th-idle', 'idleMaxMin');
-            _setThrInput('us-th-eco', 'ecoScoreMin');
-            _setThrInput('us-th-srv', 'serviceSoonKm');
-            if (window.usRenderWorkSched) usRenderWorkSched(cs.work_schedule, 'us-worksched', 'company');
-            // Secțiunea Agenți AI per companie
-            var agBox = document.getElementById('us-agents-list');
-            if (agBox) {
-              try {
-                var ag = await fetch('/api/agents', { credentials: 'same-origin' }).then(r => r.json());
-                var allKeys = ['watch','dispatch','care','optimize','compliance','client'];
-                // Numele/descrierile vin din AGP_META (pagina Agenți AI) — o singură sursă, ca să nu mai
-                // rămână aici o listă paralelă care se învechește la fiecare schimbare de agent.
-                var _M = window.AGP_META || {};
-                var labels = {}, descs = {};
-                allKeys.forEach(function (k) {
-                  var m = _M[k] || {};
-                  labels[k] = m.name || k;
-                  descs[k] = m.desc || '';
-                });
-                var enabledKeys = ag.enabledKeys || [];
-                var agLocked = !(currentUser && currentUser.isSuper); // agenții AI = funcție cu plată → adminul firmei îi vede DOAR read-only
-                var agNote = agLocked ? '<div style="font-size:11px;color:var(--text-muted);margin:0 0 10px;padding:9px 11px;background:var(--bg-dark);border:1px solid var(--border);border-radius:8px;line-height:1.5;"><i class="fas fa-lock" style="color:var(--accent);margin-right:5px;"></i>Agenții AI sunt o <b>funcție cu plată</b>, activată de administratorul platformei (RA Tracks). Mai jos vezi ce e activ pentru compania ta. Pentru activare, contactează-ne.</div>' : '';
-                agBox.innerHTML = agNote + allKeys.map(k => {
-                  var on = enabledKeys.indexOf(k) >= 0;
-                  var tag = agLocked ? ('<span style="font-size:10px;font-weight:700;margin-left:6px;color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';">' + (on ? '● activ' : '○ inactiv') + '</span>') : '';
-                  return '<label class="admin-row" style="cursor:' + (agLocked ? 'default' : 'pointer') + ';' + (agLocked && !on ? 'opacity:.6;' : '') + '"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + labels[k] + tag + '</div><div class="meta">' + descs[k] + '</div></div><input type="checkbox" data-agk="' + k + '" ' + (on ? 'checked' : '') + (agLocked ? ' disabled title="Funcție cu plată — activată de super-admin"' : ' onchange="usSetAgent(\'' + k + '\', this.checked)"') + ' style="width:18px;height:18px;accent-color:var(--accent);cursor:' + (agLocked ? 'not-allowed' : 'pointer') + ';"></label>';
-                }).join('');
-              } catch (e) { agBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare.</div>'; }
-            }
-          } catch (e) { coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>'; }
-        }
-      } catch (e) { box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>'; }
+        var pr = await fetch('/api/me/ui-prefs', { credentials: 'same-origin' }).then(r => r.json());
+        if (box) box.innerHTML = US_TOGGLES.map(t => _usRow(t, pr.effective[t.k], pr.source[t.k])).join('');
+      } catch (e) {
+        if (box) box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>';
+      }
+
+      // Regulile firmei (default-uri + program) — doar cine administrează utilizatori.
+      if (!perm.manageUsers) return;
+      var coBox = document.getElementById('us-company-list');
+      if (coBox) coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
+      try {
+        var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
+        var dft = cs.ui_defaults || {};
+        if (coBox) coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
+        if (window.usRenderWorkSched) usRenderWorkSched(cs.work_schedule, 'us-worksched', 'company');
+      } catch (e) {
+        if (coBox) coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>';
+      }
     }
     async function usTestPush(btn) {
       var res = document.getElementById('us-test-push-res');
