@@ -106,7 +106,7 @@
         <div class="nav-group fleet-only" data-group="management">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-pen-to-square"></i><span>Management</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('vehicles'); })"><i class="fas fa-truck"></i><span>Vehicule</span></button>
+            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('vehicles'); })"><i class="fas fa-car"></i><span>Vehicule</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('drivers'); })"><i class="fas fa-id-card"></i><span>Șoferi</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('groups'); })"><i class="fas fa-layer-group"></i><span>Grupe</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('alerts'); })"><i class="fas fa-bell"></i><span>Alerte</span></button>
@@ -1784,7 +1784,7 @@ const pozitii = await r.json();</code></pre>
       </h2>
       <!-- Bara de tab-uri ascunsă: navigarea între secțiuni se face din meniul lateral (un singur loc). -->
       <div id="admin-tabbar" style="display:none;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;">
-        <button class="admin-tab active" data-atab="vehicles" onclick="switchAdminTab('vehicles')"><i class="fas fa-truck"></i> Vehicule</button>
+        <button class="admin-tab active" data-atab="vehicles" onclick="switchAdminTab('vehicles')"><i class="fas fa-car"></i> Vehicule</button>
         <button class="admin-tab" data-atab="drivers" onclick="switchAdminTab('drivers')"><i class="fas fa-id-card"></i> Șoferi</button>
         <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
         <button class="admin-tab" data-atab="alerts" onclick="switchAdminTab('alerts')"><i class="fas fa-bell"></i> Alerte</button>
@@ -4256,7 +4256,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('atab-' + tab).style.display = 'block';
       // Bara de tab-uri e ascunsă → titlul paginii reflectă secțiunea aleasă din meniul lateral (cu iconița ei).
       var _alabels = { vehicles: 'Vehicule', drivers: 'Șoferi', groups: 'Grupe', alerts: 'Alerte', maintenance: 'Mentenanță', documente: 'Documente', tacho: 'Tahograf', etransport: 'e-Transport', settings: 'Setări' };
-      var _aicons = { vehicles: 'fa-truck', drivers: 'fa-id-card', groups: 'fa-layer-group', alerts: 'fa-bell', maintenance: 'fa-wrench', documente: 'fa-file-contract', tacho: 'fa-gauge-high', etransport: 'fa-truck-fast', settings: 'fa-sliders-h' };
+      var _aicons = { vehicles: 'fa-car', drivers: 'fa-id-card', groups: 'fa-layer-group', alerts: 'fa-bell', maintenance: 'fa-wrench', documente: 'fa-file-contract', tacho: 'fa-gauge-high', etransport: 'fa-truck-fast', settings: 'fa-sliders-h' };
       var _at = document.getElementById('admin-modal-title');
       if (_at) _at.innerHTML = '<i class="fas ' + (_aicons[tab] || 'fa-sliders-h') + '" style="margin-right:8px;color:var(--accent);"></i> ' + (_alabels[tab] || 'Administrare');
       if (tab === 'vehicles') loadVehicles();
@@ -15086,7 +15086,7 @@ const pozitii = await r.json();</code></pre>
             '<div class="dash-hero-sub">' + sub + '</div></div>';
         };
         document.getElementById('dash-hero').innerHTML =
-          heroCard('fa-truck', 'var(--green)', 'var(--green)', 'Total vehicule', d.totalDevices, '', d.onlineCount + ' online · ' + d.offlineCount + ' offline') +
+          heroCard('fa-car', 'var(--green)', 'var(--green)', 'Total vehicule', d.totalDevices, '', d.onlineCount + ' online · ' + d.offlineCount + ' offline') +
           heroCard('fa-road', 'var(--green)', 'var(--green)', 'Km azi', d.totalKm, ' km', 'total flotă azi') +
           heroCard('fa-gas-pump', 'var(--orange)', 'var(--orange)', 'Consum azi', d.totalFuel, ' L', _consPer100) +
           heroCard('fa-bell', (_alertOn ? 'var(--red)' : 'var(--green)'), (_alertOn ? 'var(--red)' : 'var(--green)'), 'Alerte', d.totalAlerts, '', (_alertOn ? d.totalAlerts + ' necitite' : 'nicio alertă'));
@@ -16060,7 +16060,7 @@ const pozitii = await r.json();</code></pre>
           <strong style="font-size:13px;"><i class="fas fa-arrows-left-right" style="color:var(--accent)"></i> Mută între companii</strong>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-bottom:8px;">Alege tipul, bifează rândurile, selectează destinația în bara de jos și apasă „Mută selectate". Poți muta unul singur cu butonul „Mută" din rând.</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-            <button class="rax-btn primary" id="rax-mv-tab-devices" type="button" onclick="raxMoveSwitch('devices')"><i class="fas fa-truck"></i> Vehicule</button>
+            <button class="rax-btn primary" id="rax-mv-tab-devices" type="button" onclick="raxMoveSwitch('devices')"><i class="fas fa-car"></i> Vehicule</button>
             <button class="rax-btn" id="rax-mv-tab-users" type="button" onclick="raxMoveSwitch('users')"><i class="fas fa-user"></i> Utilizatori</button>
             <button class="rax-btn" id="rax-mv-tab-drivers" type="button" onclick="raxMoveSwitch('drivers')"><i class="fas fa-id-card-clip"></i> Șoferi</button>
           </div>
@@ -17761,7 +17761,7 @@ const pozitii = await r.json();</code></pre>
             '<div class="rax-cod-tabs">' +
               '<button class="rax-cod-tab on" data-ct="detalii" onclick="raxCodTab(\'detalii\')"><i class="fas fa-id-card"></i> Detalii</button>' +
               '<button class="rax-cod-tab" data-ct="utilizatori" onclick="raxCodTab(\'utilizatori\')"><i class="fas fa-users"></i> Utilizatori</button>' +
-              '<button class="rax-cod-tab" data-ct="vehicule" onclick="raxCodTab(\'vehicule\')"><i class="fas fa-truck"></i> Vehicule</button>' +
+              '<button class="rax-cod-tab" data-ct="vehicule" onclick="raxCodTab(\'vehicule\')"><i class="fas fa-car"></i> Vehicule</button>' +
               '<button class="rax-cod-tab" data-ct="facturi" onclick="raxCodTab(\'facturi\')"><i class="fas fa-receipt"></i> Facturi</button>' +
               '<button class="rax-cod-tab" data-ct="abonament" onclick="raxCodTab(\'abonament\')"><i class="fas fa-tags"></i> Abonament &amp; plăți</button>' +
             '</div>' +
@@ -18943,7 +18943,7 @@ const pozitii = await r.json();</code></pre>
         row('CUI', '<input id="of-cl-cui" class="rax-field" style="width:150px;margin:0;" placeholder="RO12345678">') +
         row('Contact', '<input id="of-cl-contact" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="email / telefon">') +
         row('Nume ofertă', '<input id="of-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="ex. Ofertă standard" oninput="raxOfRecalc()">'));
-      var vehCard = card('<i class="fas fa-truck"></i> Vehicule',
+      var vehCard = card('<i class="fas fa-car"></i> Vehicule',
         row('Total vehicule', fNum('of-nveh', 10)) +
         row('din care cu CAN', fNum('of-ncan', 0), 'date motor/combustibil') +
         row('din care cu FMS', fNum('of-nfms', 0), 'camioane / tahograf'));

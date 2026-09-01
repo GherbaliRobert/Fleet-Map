@@ -20,6 +20,27 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Iconița de la „Vehicule" — mașină, nu camion
+
+Alin a cerut altă iconiță pentru **Management → Vehicule** și a ales **mașina din față**.
+
+Motivul pentru care merita schimbată, dincolo de gust: iconița veche (camion cu ladă, din lateral)
+era **aproape identică** cu cea de la **e-Transport** din același meniu — același camion, doar cu
+două liniuțe de viteză în spate. La mărimea din meniu nu le deosebeai. Acum se văd clar diferit.
+
+Am schimbat-o în **toate cele 7 locuri** unde eticheta e „Vehicule" și înseamnă *lista tuturor
+mașinilor*, ca să nu rămână desincronizate: meniul lateral, fila din Administrare, harta de iconițe
+a secțiunilor de administrare, mutarea vehiculelor între companii, fila de coduri a companiei,
+cardul „Vehicule" din ofertare și cardul „Total vehicule" de pe tabloul de bord.
+
+**Ce am lăsat neatins, intenționat:** camionul rămâne acolo unde chiar înseamnă *camion* — configul
+de camion, profilurile CAN pentru camioane, memoria vehiculelor din Tahograf (unde e vorba de
+vehicule profesionale) și rândurile din Taxa de drum. Acolo camionul e informație, nu decor.
+
+- **Ce am schimbat:** iconița de la „Vehicule" e acum o mașină, peste tot unde apare lista.
+- **Ce vede fondatorul:** meniul nu mai are două rânduri care arată la fel.
+- **Ce vede clientul:** același lucru — iar „Vehicule" nu mai promite doar camioane.
+
 ### AMÂNDOI · Grila de tarife: „lei/km" scris lângă fiecare cifră
 
 Alin s-a uitat la tabelul de tarife și a întrebat: *„cifrele astea, 0,17 etc, sunt în lei? scrie și
