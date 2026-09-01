@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
-### AMÂNDOI · Secțiunea CAN, redesenată + martorii apar sub hartă pe telefon — `COMMIT_HASH`
+### AMÂNDOI · Secțiunea CAN, redesenată + martorii apar sub hartă pe telefon — `33fde7b`
 
 **Ce era.** Plăcuțele de stare erau strânse pe categorii — „Contact și motor", „Lumini", „Uși și
 capace", „Camion" — fiecare într-o secțiune care se deschidea cu clicul. Avea sens cât se arătau
