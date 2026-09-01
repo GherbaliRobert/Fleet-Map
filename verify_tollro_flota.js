@@ -167,8 +167,11 @@ function gata(code) {
       },
     };
     const partial = mk(stare, esc, trNum, trKm, trData)();
-    T('cât timp se lucrează, scrie „până acum"', /până acum/.test(partial), partial.slice(0, 300));
-    T('și spune câte vehicule au intrat în sumă', /2 din 3 vehicule/.test(partial), (partial.match(/\d+ din \d+ vehicule/) || [])[0]);
+    // Verificarea se uită DOAR în eticheta totalului. Titlul filei conține și el „până acum"
+    // („Ce a costat până acum"), iar o căutare pe tot HTML-ul ar trece chiar dacă totalul ar minți.
+    const etTotal = (h) => (h.match(/tr-tot-b">([^<]*)/) || [])[1] || '';
+    T('cât timp se lucrează, totalul scrie „până acum"', /până acum/.test(etTotal(partial)), etTotal(partial));
+    T('și spune câte vehicule au intrat în sumă', /2 din 3 vehicule/.test(etTotal(partial)), etTotal(partial));
     T('totalul e suma celor TERMINATE, nu a tuturor rândurilor',
       partial.indexOf(trNum(238.37 + 260.40)) >= 0 && partial.indexOf(trNum(238.37 + 260.40 + 999)) < 0,
       'aștept ' + trNum(238.37 + 260.40) + ', am găsit ' + ((partial.match(/tr-tot-s">([^<]+)/) || [])[1]));
@@ -178,7 +181,7 @@ function gata(code) {
 
     stare.costuri[gasesc('SB 45 LOG').imei] = { stare: 'gata', total: 108.48, kmTaxati: 336, linii: [{ taxabil: true, cost: 108.48, culoare: '#22c55e' }] };
     const complet = mk(stare, esc, trNum, trKm, trData)();
-    T('când s-a terminat, nu mai scrie „până acum"', !/până acum/.test(complet));
+    T('când s-a terminat, totalul NU mai scrie „până acum"', !/până acum/.test(etTotal(complet)), etTotal(complet));
     T('ordinea e după cost, cel mai scump primul',
       complet.indexOf('B 84 TRK') < complet.indexOf('CJ 12 ABC') && complet.indexOf('CJ 12 ABC') < complet.indexOf('SB 45 LOG'),
       'B=' + complet.indexOf('B 84 TRK') + ' CJ=' + complet.indexOf('CJ 12 ABC') + ' SB=' + complet.indexOf('SB 45 LOG'));

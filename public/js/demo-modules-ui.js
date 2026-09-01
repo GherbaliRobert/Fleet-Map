@@ -150,7 +150,7 @@
 
   function trFileHtml() {
     return '<div class="tz-file">' +
-      ['cursa,fa-route,O cursă nouă', 'flota,fa-truck,Toată flota'].map(function (x) {
+      ['cursa,fa-route,O cursă nouă', 'flota,fa-clock-rotate-left,Ce a costat până acum'].map(function (x) {
         var p = x.split(',');
         return '<button class="tz-fila' + (_tr.fila === p[0] ? ' on' : '') + '" onclick="trFila(\'' + p[0] + '\')">' +
           '<i class="fas ' + p[1] + '"></i> ' + p[2] + '</button>';
@@ -183,9 +183,7 @@
       '<div class="dm-card" id="tr-flota">' + trFlotaHtml() + '</div>' +
       '<div id="tr-detaliu"></div>' +
 
-      (g ? '<div class="dm-card"><h3>Grila de tarife' + (_tr.cfg.editabil ? '' : ' (doar informativ)') + '</h3>' +
-        '<div class="dm-muted" style="font-size:11.5px;margin-bottom:8px">Se aplică din <b>' + esc(trData(g.aplicabilDin)) + '</b>. ' +
-        'Valorile se stabilesc prin ordonanță și s-au tot amânat — de aceea stau aici, editabile, nu îngropate în cod.</div>' +
+      (g ? '<div class="dm-card"><h3>Cât costă un kilometru' + (_tr.cfg.editabil ? '' : ' (doar de citit)') + '</h3>' +
         trGrilaHtml(g, _tr.cfg.editabil) + '</div>' : '');
   }
 
@@ -211,8 +209,10 @@
     var calc = gata.slice().sort(function (a, b) { return _tr.costuri[b.imei].total - _tr.costuri[a.imei].total; });
     var restante = taxabile.filter(function (x) { var c = _tr.costuri[x.imei]; return !c || c.stare !== 'gata'; });
 
-    var h = '<h3>Flota <span class="dm-muted" style="font-weight:400;font-size:12px">· ' +
-      f.sumar.taxabile + ' cu taxă pe km, ' + f.sumar.neaplicabile + ' fără</span></h3>';
+    var h = '<h3>Ce a costat până acum <span class="dm-muted" style="font-weight:400;font-size:12px">· ' +
+      f.sumar.taxabile + ' cu taxă pe km, ' + f.sumar.neaplicabile + ' fără</span></h3>' +
+      '<div class="tz-explic">Cât te-a costat taxa de drum pentru <b>drumurile deja făcute</b>, în perioada aleasă sus. ' +
+      'Kilometrii sunt cei reali, din traseul fiecărei mașini — nu o estimare.</div>';
 
     // Niciun vehicul taxabil = ecranul n-are ce calcula NICIODATĂ pentru flota asta. Fără mesajul
     // ăsta rămâne o listă gri fără cap și fără coadă, iar omul se întreabă ce a stricat. E cazul
@@ -578,28 +578,65 @@
   // ── sfârșit fila „O cursă nouă" ──
 
 
+  // Tabelul de tarife, pe înțelesul cuiva care nu l-a mai văzut. Înainte arăta două cifre lipite
+  // într-o celulă („0.17  0.08") și o notă de subsol care explica ce e prima și ce e a doua — adică
+  // omul trebuia să țină minte o convenție ca să citească niște bani. Acum fiecare cifră stă sub
+  // capul ei de coloană și are unitatea scrisă.
   function trGrilaHtml(g, editabil) {
     var cat = _tr.cfg.categorii, euro = _tr.cfg.euro;
-    var h = '<div style="overflow-x:auto"><table class="tr-grid"><thead><tr><th>Masă</th>' +
-      euro.map(function (e) { return '<th>' + esc(e.eticheta) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    var lei = function (v) { return Number(v).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+    var h = '<div class="tz-grila-int">Cât costă <b>un kilometru</b>, în lei. Depinde de cât cântărește ' +
+      'mașina și de cât de poluantă e: cu cât e mai grea și mai veche, cu atât plătești mai mult. ' +
+      'Pe autostradă e mai scump decât pe drum național.</div>';
+
+    h += '<div style="overflow-x:auto"><table class="tr-grid tz-grila"><thead>' +
+      '<tr><th rowspan="2" class="tz-g-masa">Masa maximă<br><span>a vehiculului</span></th>' +
+      euro.map(function (e) { return '<th colspan="2" class="tz-g-euro">' + esc(e.eticheta) + '</th>'; }).join('') + '</tr>' +
+      '<tr>' + euro.map(function () {
+        return '<th class="tz-g-sub">Autostradă</th><th class="tz-g-sub">Drum național</th>';
+      }).join('') + '</tr></thead><tbody>';
+
     cat.forEach(function (c) {
-      h += '<tr><th>' + esc(c.eticheta) + '</th>';
+      h += '<tr><th class="tz-g-masa">' + esc(c.eticheta) + '</th>';
       euro.forEach(function (e) {
         var t = g.tarife[c.key][e.key];
-        h += '<td' + (t.presupus ? ' class="presupus" title="Tarif nepublicat oficial — estimarea noastră"' : '') + '>' +
-          (editabil
-            ? '<input type="number" step="0.01" min="0" max="10" value="' + t.autostrada + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="autostrada" class="tr-cel">' +
-              '<input type="number" step="0.01" min="0" max="10" value="' + t.national + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="national" class="tr-cel">'
-            : '<span>' + t.autostrada + '</span><span>' + t.national + '</span>') +
-          (t.presupus ? '<i class="fas fa-triangle-exclamation"></i>' : '') + '</td>';
+        var cls = t.presupus ? ' class="presupus"' : '';
+        var titlu = t.presupus ? ' title="Tariful ăsta nu a fost publicat încă — e o estimare a noastră"' : '';
+        ['autostrada', 'national'].forEach(function (k) {
+          h += '<td' + cls + titlu + '>' +
+            (editabil
+              ? '<input type="number" step="0.01" min="0" max="10" value="' + t[k] + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="' + k + '" class="tr-cel">'
+              : '<span class="tz-g-val">' + lei(t[k]) + '</span>') +
+            (t.presupus && k === 'national' ? '<i class="fas fa-triangle-exclamation"></i>' : '') + '</td>';
+        });
       });
       h += '</tr>';
     });
-    h += '</tbody></table></div><div class="dm-muted" style="font-size:11px;margin-top:6px">Prima cifră = autostradă/drum expres, a doua = drum național (lei/km). ' +
-      '<i class="fas fa-triangle-exclamation" style="color:#f59e0b"></i> = tarif nepublicat încă, estimat de noi.</div>';
-    if (editabil) h += '<div class="dm-row" style="margin-top:10px;align-items:flex-end;gap:10px">' +
-      '<label class="dm-lbl">Se aplică din<input type="date" id="tr-din" class="dm-input" value="' + esc(g.aplicabilDin) + '"></label>' +
-      '<button class="rax-btn primary" onclick="trSalveazaGrila()"><i class="fas fa-save"></i> Salvează grila</button></div>';
+    h += '</tbody></table></div>' +
+      '<div class="tz-grila-jos"><i class="fas fa-triangle-exclamation"></i> Celulele îngălbenite sunt ' +
+      'tarife care <b>nu au fost publicate încă</b> — le-am estimat noi. Restul sunt cele oficiale.</div>';
+
+    // Data se scrie și în cuvinte: câmpul de calendar o arată în formatul browserului (adesea
+    // american — „10/01/2026" citit ca 10 ianuarie), iar aici e vorba de ziua din care se plătește.
+    var _dRo = (function (x) {
+      var L = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(x || ''));
+      return m ? (parseInt(m[3], 10) + ' ' + L[parseInt(m[2], 10) - 1] + ' ' + m[1]) : String(x || '');
+    })(g.aplicabilDin);
+
+    if (editabil) {
+      h += '<div class="tz-grila-ed">' +
+        '<div class="dm-muted" style="font-size:11.5px;margin-bottom:8px">Tarifele se schimbă prin hotărâre de guvern. ' +
+        'Când apar valori noi, le scrii aici și se aplică imediat tuturor.</div>' +
+        '<div class="dm-row" style="align-items:flex-end;gap:10px">' +
+          '<label class="dm-lbl">Se plătește începând cu<input type="date" id="tr-din" class="dm-input" value="' + esc(g.aplicabilDin) + '"></label>' +
+          '<span class="tz-grila-data">' + esc(_dRo) + '</span>' +
+          '<button class="tz-go" onclick="trSalveazaGrila()"><i class="fas fa-floppy-disk"></i> Salvează</button>' +
+        '</div></div>';
+    } else {
+      h += '<div class="tz-grila-jos">Se plătește începând cu <b>' + esc(_dRo) + '</b>.</div>';
+    }
     return h;
   }
 

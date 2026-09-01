@@ -2528,3 +2528,28 @@
     .tz-l1 { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
     .tz-l2 { margin-left: auto; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
     .tz-l3 { width: 86px; text-align: right; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+    /* Grila de tarife, pe înțelesul cuiva care n-a mai văzut-o. Înainte arăta două cifre lipite
+       într-o celulă („0.17  0.08") plus o notă de subsol care explica ce e prima și ce e a doua —
+       omul trebuia să țină minte o convenție ca să citească niște bani. */
+    .tz-grila-int { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px; }
+    .tz-grila-int b { color: var(--text-primary); }
+    .tz-grila th.tz-g-euro { background: var(--bg-dark); font-size: 12px; color: var(--text-primary); font-weight: 800;
+      border-bottom: none; }
+    .tz-grila th.tz-g-sub { background: var(--bg-dark); font-size: 10.5px; color: var(--text-muted); font-weight: 700;
+      padding: 3px 6px; white-space: nowrap; }
+    .tz-grila th.tz-g-masa { background: var(--bg-dark); text-align: left; white-space: nowrap; font-size: 12px; }
+    .tz-grila th.tz-g-masa span { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+    .tz-grila td { padding: 7px 6px; }
+    .tz-g-val { display: inline-block; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+      color: var(--text-primary); min-width: auto; }
+    .tz-grila-jos { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-top: 8px; }
+    .tz-grila-jos > i { color: #f59e0b; margin-right: 5px; }
+    .tz-grila-jos b { color: var(--text-primary); }
+    .tz-grila-ed { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+    /* Data scrisă și în cuvinte: câmpul de calendar o arată în formatul browserului (adesea
+       american — „10/01/2026" se citește ca 10 ianuarie), iar aici e ziua din care se plătește. */
+    .tz-grila-data { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding-bottom: 10px; }
+    /* Sub titlul listei: de unde vin cifrele. Alin a întrebat direct „ăsta e un istoric de costuri?" */
+    .tz-explic { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; margin: -4px 0 12px; }
+    .tz-explic b { color: var(--text-primary); }

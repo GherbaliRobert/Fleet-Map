@@ -20,6 +20,47 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Trei corecturi de limbaj la Taxa de drum, cerute de Alin
+
+**1. Un rând scris pentru programatori, ajuns sub ochii clientului.** Deasupra grilei scria:
+*„Valorile se stabilesc prin ordonanță și s-au tot amânat — de aceea stau aici, editabile, nu
+îngropate în cod."* Ultima jumătate e o explicație tehnică despre cum e făcută aplicația. N-are ce
+căuta pe un ecran de client. Scos.
+
+Pentru super-admin a rămas ce e util practic: *„Tarifele se schimbă prin hotărâre de guvern. Când
+apar valori noi, le scrii aici și se aplică imediat tuturor."*
+
+**2. Grila nu se putea citi.** Arăta două cifre lipite într-o celulă — „0.17  0.08" — și o notă de
+subsol care explica: *„prima cifră = autostradă, a doua = drum național"*. Adică omul trebuia să
+țină minte o convenție ca să citească niște bani, iar dacă sărea nota, cifrele nu însemnau nimic.
+
+Acum fiecare cifră stă **sub capul ei de coloană** (Autostradă / Drum național, sub fiecare normă
+Euro), iar deasupra tabelului scrie pe litere ce sunt: *„Cât costă un kilometru, în lei. Depinde de
+cât cântărește mașina și de cât de poluantă e."*
+
+Titlul cardului a devenit **„Cât costă un kilometru"** în loc de „Grila de tarife" — spune ce e, nu
+cum îi zicem noi.
+
+Și încă un amănunt: câmpul de dată arăta „10/01/2026", pe care un om îl citește **10 ianuarie**. E
+formatul american al browserului, nu ceva ce putem schimba în câmp. Am pus data scrisă în cuvinte
+lângă el: **1 octombrie 2026**.
+
+**3. „Toată flota" nu spunea ce e.** Alin a întrebat direct: *„e un istoric de costuri? adică ce a
+fost în trecut? sau nu înțeleg."* Înțelesese perfect — numele era de vină. Se cheamă acum **„Ce a
+costat până acum"**, iar sub titlu scrie de unde vin cifrele: *„pentru drumurile deja făcute, în
+perioada aleasă. Kilometrii sunt cei reali, din traseul fiecărei mașini — nu o estimare."*
+
+Perechea de file e acum limpede: **O cursă nouă** (ce va costa) și **Ce a costat până acum** (ce a
+costat). Iar în meniu secțiunea se cheamă **Taxa de drum (TollRo)**, ca peste tot.
+
+**O probă a devenit ambiguă din cauza redenumirii** și a picat: verifica dacă undeva în ecran scrie
+„până acum" ca să știe că totalul e parțial — dar acum și TITLUL filei conține „până acum". Am
+restrâns-o la eticheta totalului. O căutare pe tot ecranul ar fi trecut chiar dacă totalul ar fi
+mințit.
+
+- **Ce vede fondatorul:** un tabel de tarife pe care îl poate arăta unui client fără să-l explice.
+- **Ce vede clientul:** aceleași cifre, cu unitatea scrisă, și file care spun ce fac.
+
 ### AMÂNDOI · Taxa de drum: „O cursă nouă" — cât te costă drumul pe care încă nu l-ai făcut
 
 Alin a văzut la Arobs un calculator de cursă și a cerut același lucru sub RA Tracks. Are dreptate că
