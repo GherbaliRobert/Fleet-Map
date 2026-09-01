@@ -3624,8 +3624,8 @@ function _invScope(req) {
   // null = toate companiile (doar super-admin). Altfel, compania utilizatorului.
   return req.isSuper ? null : req.companyId;
 }
-async function _deviceInventory(req) {
-  const rows = await db.getDeviceInventory(_invScope(req));
+async function _deviceInventory(req, opts) {
+  const rows = await db.getDeviceInventory(_invScope(req), opts);
   // Demo NU intră în inventarul flotei reale (regula din CLAUDE.md), exceptând chiar compania demo.
   return rows.filter(function (r) {
     if (req.companyId === demoCompanyId) return true;
@@ -3633,7 +3633,9 @@ async function _deviceInventory(req) {
   });
 }
 app.get('/api/device-inventory', requireAuth, requireFleet, async (req, res) => {
-  try { res.json(await _deviceInventory(req)); }
+  // ?arhivate=1 → și aparatele scoase din flotă. Ecranul „Aparate GPS" din Setări le cere pe toate
+  // o dată și le desparte pe file; inventarul vechi nu trimite parametrul, deci rămâne cum era.
+  try { res.json(await _deviceInventory(req, { includeArchived: req.query.arhivate === '1' })); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Export brandat: trece prin sendReport → nume „RA-Tracks - Raport ... - data" + logo (regula din CLAUDE.md).

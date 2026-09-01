@@ -1916,12 +1916,16 @@ async function upsertDevice(imei) {
   return { created };
 }
 
+// Trimite null ca să ștergi o valoare; undefined lasă câmpul neatins. Înainte scria toate trei de
+// fiecare dată, așa că un update parțial — de pildă doar modelul de GPS, prin API — ȘTERGEA numărul
+// de înmatriculare, numele și tipul, în tăcere. S-a prins scriind proba pentru „Aparate GPS".
 async function updateDeviceInfo(imei, name, vehicleType, plate) {
-  await pool.query(`
-    UPDATE devices
-    SET name = $2, vehicle_type = $3, plate = $4
-    WHERE imei = $1
-  `, [imei, name, vehicleType, plate]);
+  const sets = [], vals = [imei];
+  if (name !== undefined) { vals.push(name); sets.push('name = $' + vals.length); }
+  if (vehicleType !== undefined) { vals.push(vehicleType); sets.push('vehicle_type = $' + vals.length); }
+  if (plate !== undefined) { vals.push(plate); sets.push('plate = $' + vals.length); }
+  if (!sets.length) return;
+  await pool.query('UPDATE devices SET ' + sets.join(', ') + ' WHERE imei = $1', vals);
 }
 // Inventar echipament GPS: modelul trackerului + numărul cartelei SIM. Trimite null ca să ștergi valoarea;
 // undefined lasă câmpul neatins (ca să nu golim din greșeală la un update parțial).
@@ -1934,14 +1938,16 @@ async function setDeviceGpsInfo(imei, gpsModel, simNumber) {
 }
 // Inventarul de echipamente: un rând per dispozitiv, cu clientul, mașina, IMEI, model GPS, SIM și ultima
 // transmisie. companyId = null → toate companiile (super-admin); altfel doar flota companiei.
-async function getDeviceInventory(companyId) {
+// opts.includeArchived = true → intră și cele arhivate (ecranul „Aparate GPS" le arată pe o filă
+// separată). Implicit rămâne fără ele, ca să nu se schimbe inventarul și exportul de până acum.
+async function getDeviceInventory(companyId, opts) {
   const params = [];
-  let where = "d.status IS DISTINCT FROM 'archived'";
+  let where = (opts && opts.includeArchived) ? 'TRUE' : "d.status IS DISTINCT FROM 'archived'";
   if (companyId != null) { params.push(companyId); where += ' AND d.company_id = $1'; }
   // „Ultima transmisie" = cea mai recentă poziție (LATERAL, ca în getDevices), cu `last_seen` ca rezervă
   // pentru dispozitivele care s-au conectat dar n-au trimis încă nicio poziție.
   const r = await pool.query(
-    `SELECT d.imei, d.name, d.plate, d.gps_model, d.sim_number,
+    `SELECT d.imei, d.name, d.plate, d.gps_model, d.sim_number, d.status, d.vehicle_type,
             d.company_id, c.name AS company_name,
             GREATEST(COALESCE(p.timestamp, to_timestamp(0)), COALESCE(d.last_seen, to_timestamp(0))) AS last_tx
        FROM devices d
@@ -1954,7 +1960,8 @@ async function getDeviceInventory(companyId) {
   return r.rows.map(function (x) {
     const t = x.last_tx && new Date(x.last_tx).getTime() > 0 ? x.last_tx : null;
     return { imei: x.imei, name: x.name || null, plate: x.plate || null, gps_model: x.gps_model || null,
-      sim_number: x.sim_number || null, company_id: x.company_id, company_name: x.company_name || null, last_tx: t };
+      sim_number: x.sim_number || null, company_id: x.company_id, company_name: x.company_name || null, last_tx: t,
+      status: x.status || 'active', vehicle_type: x.vehicle_type || null };
   });
 }
 // Sursa stării de „contact": 'auto' (IO 239 calculat de device, implicit) sau 'din1' (folosește DIN1 — pentru

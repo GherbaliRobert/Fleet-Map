@@ -20,6 +20,39 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Aparate GPS — ecranul care spune dacă un aparat a amuțit
+
+Al doilea pas din administrarea nouă. Setări → **Evidență → Aparate GPS**.
+
+**De ce contează.** Pe harta live, o mașină **tăcută arată exact ca una parcată**. Dacă un aparat s-a
+defectat sau i s-a scos siguranța, omul află abia peste trei săptămâni, când îi trebuie traseul —
+și atunci nu mai are ce recupera. Ecranul ăsta răspunde la o singură întrebare, dintr-o privire:
+*mai transmite?*
+
+**Ce vezi.** Sus, patru cifre: câte aparate ai, câte comunică acum, câte nu transmit, câte sunt
+arhivate. Dedesubt, fiecare aparat cu un bulin colorat: **verde** = a transmis în ultimele 30 de
+minute, **portocaliu** = tăcut de câteva ore, **roșu** = fără semnal de peste o zi (sau n-a transmis
+niciodată). Cele care nu transmit stau **primele** — ele cer o acțiune, restul sunt doar o listă.
+
+Pe fiecare rând: numărul mașinii, modelul aparatului, IMEI-ul, cartela SIM și când a transmis ultima
+oară. Căutare după orice dintre ele, și un buton care deschide direct fișa mașinii. Lista se poate
+descărca în Excel sau PDF (același nume brandat ca la toate rapoartele).
+
+**„Dispozitive arhivate" a dispărut din meniu** — s-a mutat aici, ca filă. Nu am rescris-o: ecranul
+arhivelor are deja istoric, restaurare și ștergere definitivă, așa că fila îl **împrumută**, la fel
+ca „Utilizatori". O singură implementare, aceleași butoane peste tot.
+
+**Un defect vechi, găsit scriind proba.** Când se salva doar modelul de GPS sau cartela prin API
+(`PUT /api/devices/:imei`), interogarea rescria și numele, tipul și **numărul de înmatriculare** —
+cu gol. Adică un client care își completa inventarul printr-o integrare **își ștergea numerele de
+înmatriculare**, în tăcere. Din interfață nu se vedea, fiindcă formularul trimite mereu toate
+câmpurile. Acum câmpurile netrimise rămân neatinse; ștergerea se cere explicit.
+
+- **Ce am schimbat:** un capitol nou, „Aparate GPS", cu starea fiecărui aparat; arhivele s-au mutat
+  înăuntru; s-a reparat ștergerea tăcută a numerelor de înmatriculare la salvarea parțială.
+- **Ce vede fondatorul:** același ecran, plus numele companiei pe fiecare rând (el vede toate firmele).
+- **Ce vede clientul:** un loc unde află imediat dacă un GPS a amuțit, fără să deschidă harta.
+
 ### AMÂNDOI · Setări devine casa clientului (pasul 1 din administrarea nouă)
 
 Alin a văzut la un concurent (Arobs) o secțiune de administrare pentru client — adrese de email,

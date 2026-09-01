@@ -2556,6 +2556,45 @@
     /* Data scrisă și în cuvinte: câmpul de calendar o arată în formatul browserului (adesea
        american — „10/01/2026" se citește ca 10 ianuarie), iar aici e ziua din care se plătește. */
     .tz-grila-data { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding-bottom: 10px; }
+    /* ── Aparate GPS (Setări → Evidență) ──
+       Ecran de echipamente: sumar cu cifre mari, căutare, două file și rânduri-card cu un bulin
+       colorat care spune starea. Aceleași cărămizi ca la Taxa de drum, ca să nu arate a alt program. */
+    .ag-sumar { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 9px; margin-bottom: 13px; }
+    .ag-s { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; }
+    .ag-s b { display: block; font-size: 21px; font-weight: 800; line-height: 1.05; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+    .ag-s span { display: block; font-size: 11px; color: var(--text-muted); font-weight: 700; margin-top: 3px; }
+    .ag-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 11px; }
+    .ag-bar input.ag-cauta { flex: 1; min-width: 170px; margin: 0; }
+    .ag-file { display: inline-flex; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 2px; }
+    .ag-file button { border: none; background: transparent; font-family: inherit; font-size: 12px; font-weight: 800;
+      color: var(--text-muted); padding: 6px 13px; border-radius: 8px; cursor: pointer; transition: background-color .15s, color .15s; }
+    .ag-file button:hover { color: var(--text-primary); }
+    .ag-file button.on { background: var(--accent); color: #06210f; }
+    .ag-bar a.btn-sm { text-decoration: none; }
+    .ag-rand { display: flex; align-items: center; gap: 12px; padding: 11px 13px; margin-bottom: 7px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      transition: border-color .15s ease, transform .15s ease; }
+    @media (hover: hover) { .ag-rand:hover { border-color: var(--border-light); transform: translateY(-1px); } }
+    .ag-rand.gri { opacity: .6; }
+    .ag-p { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+    .ag-l { min-width: 0; }
+    .ag-l b { display: block; font-size: 13.5px; font-weight: 800; color: var(--text-primary); }
+    .ag-l span { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 2px; overflow-wrap: anywhere; }
+    .ag-r { margin-left: auto; text-align: right; white-space: nowrap; }
+    .ag-pill { display: inline-block; font-size: 10.5px; font-weight: 800; border: 1px solid; border-radius: 999px; padding: 3px 9px; }
+    .ag-cand { display: block; font-size: 10.5px; color: var(--text-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .ag-gol { text-align: center; padding: 26px 18px; border: 1px dashed var(--border); border-radius: 12px; }
+    .ag-gol > i { font-size: 24px; color: var(--text-muted); opacity: .55; display: block; margin-bottom: 9px; }
+    .ag-gol b { display: block; font-size: 13.5px; font-weight: 800; margin-bottom: 4px; }
+    .ag-gol span { font-size: 12px; color: var(--text-muted); }
+    .ag-nota { font-size: 11.5px; color: var(--text-muted); line-height: 1.55; margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border); }
+    .ag-nota b { color: var(--text-secondary); }
+    @media (max-width: 560px) {
+      .ag-rand { flex-wrap: wrap; }
+      .ag-r { margin-left: 21px; text-align: left; width: 100%; }
+      .ag-cand { display: inline; margin-left: 8px; }
+    }
+
     /* Sub titlul listei: de unde vin cifrele. Alin a întrebat direct „ăsta e un istoric de costuri?" */
     .tz-explic { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; margin: -4px 0 12px; }
     .tz-explic b { color: var(--text-primary); }

@@ -123,7 +123,6 @@
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('settings'); })"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ showView('administrare'); })"><i class="fas fa-gauge-high"></i><span>Panou admin</span></button>
             <button class="nav-item nav-sub companies-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
-            <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ goSistem('archived'); })"><i class="fas fa-box-archive"></i><span>Dispozitive arhivate</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
           </div>
         </div>
@@ -2526,6 +2525,13 @@ const pozitii = await r.json();</code></pre>
                 </div>
               </div>
 
+              <!-- Evidență → Aparate GPS -->
+              <div class="set-panel" data-spanel="aparate" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-satellite-dish"></i> Aparate GPS</div>
+                <p class="set-note">Aparatele de pe mașinile tale: pe ce mașină e fiecare, ce model, ce cartelă are și când a transmis ultima dată. Pe hartă, o mașină tăcută arată la fel ca una parcată — aici se vede diferența.</p>
+                <div id="agps-host"><div class="dm-muted">Se încarcă…</div></div>
+              </div>
+
               <!-- Abonament și integrări → Facturile mele (nod împrumutat) -->
               <div class="set-panel" data-spanel="facturi" style="display:none;">
                 <div id="set-host-invoices"></div>
@@ -4329,6 +4335,8 @@ const pozitii = await r.json();</code></pre>
       { k: 'reguli',      et: 'Ce văd toți',          ic: 'fa-building',            drept: 'manageUsers' },
       { k: 'program',     et: 'Program de lucru',     ic: 'fa-business-time',       drept: 'manageUsers' },
       { k: 'combustibil', et: 'Prețuri combustibil',  ic: 'fa-gas-pump',            drept: 'manageFleet' },
+      { grup: 'Evidență' },
+      { k: 'aparate',     et: 'Aparate GPS',          ic: 'fa-satellite-dish',      drept: 'manageFleet' },
       { grup: 'Abonament și integrări' },
       { k: 'facturi',     et: 'Facturile mele',       ic: 'fa-file-invoice-dollar', drept: 'adminFirma' },
       { k: 'api',         et: 'Chei API',             ic: 'fa-key',                 drept: 'manageUsers' },
@@ -4396,8 +4404,148 @@ const pozitii = await r.json();</code></pre>
       if (name === 'utilizatori') { setImprumuta('admin-tab-users', 'set-host-users'); if (window.loadUsers) window.loadUsers(); }
       else if (name === 'facturi') { setImprumuta('admin-tab-myinvoices', 'set-host-invoices'); if (window.raxLoadMyInvoices) window.raxLoadMyInvoices(); }
       else if (name === 'combustibil' && window.usLoadFuelPrices) window.usLoadFuelPrices();
+      else if (name === 'aparate') agpsLoad();
     }
     window.usTab = usTab;
+
+    // ═══ Aparate GPS (Setări → Evidență) ═══
+    // Ecranul de echipamente, nu de mașini: pe ce mașină e fiecare aparat, ce model, ce cartelă, când
+    // a transmis ultima dată. Pe harta live, o mașină TĂCUTĂ arată exact ca una parcată — omul află
+    // că i-a murit un aparat abia când are nevoie de traseu. Aici se vede dintr-o privire.
+    // ── începe „Aparate GPS" (REPER pentru probe: verify_aparate.js decupează exact bucata dintre
+    // reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+    var _agps = { randuri: null, fila: 'montate', cauta: '', eroare: null };
+    var AGPS_TACUT_MIN = 30;   // sub atât: aparatul vorbește (trackerele transmit la ~30 s, dar și la 15 min când stau)
+    var AGPS_MUT_ORE = 24;     // peste atât nu mai e „tăcut", e „fără semnal" — se sună instalatorul
+    // Cât timp a trecut, pe românește. Rotunjit ÎN JOS: „3 h", nu „3,4 h" — nimeni nu citește zecimale de timp.
+    function agpsDeCand(ms) {
+      var m = Math.floor(ms / 60000);
+      if (m < 1) return 'câteva secunde';
+      if (m < 60) return m + ' min';
+      var h = Math.floor(m / 60);
+      if (h < 24) return h + (h === 1 ? ' oră' : ' ore');
+      var z = Math.floor(h / 24);
+      return z + (z === 1 ? ' zi' : ' zile');
+    }
+    // Starea unui aparat — o SINGURĂ dată, folosită și la sumar, și pe rând. Culoarea vine tot de aici,
+    // ca să nu ajungem cu un rând roșu și un contor verde care spun lucruri diferite despre același aparat.
+    function agpsStare(lastTx, acum) {
+      if (!lastTx) return { k: 'niciodata', t: 'nicio transmisie', c: 'var(--red)' };
+      var d = acum - new Date(lastTx).getTime();
+      if (d < 0) d = 0; // ceasul aparatului o poate lua înainte; nu inventăm viitor
+      if (d < AGPS_TACUT_MIN * 60000) return { k: 'ok', t: 'comunică', c: 'var(--accent)' };
+      if (d < AGPS_MUT_ORE * 3600000) return { k: 'tacut', t: 'tăcut de ' + agpsDeCand(d), c: 'var(--orange)' };
+      return { k: 'mut', t: 'fără semnal de ' + agpsDeCand(d), c: 'var(--red)' };
+    }
+    // Căutarea prinde tot ce e scris pe rând: număr, nume, IMEI, model, cartelă.
+    function agpsPotrivit(r, q) {
+      if (!q) return true;
+      q = String(q).toLowerCase().trim();
+      return [r.plate, r.name, r.imei, r.gps_model, r.sim_number, r.company_name]
+        .filter(Boolean).some(function (x) { return String(x).toLowerCase().indexOf(q) >= 0; });
+    }
+    function agpsCard(nr, et, col) {
+      return '<div class="ag-s"><b' + (col ? ' style="color:' + col + '"' : '') + '>' + nr + '</b><span>' + et + '</span></div>';
+    }
+    function agpsRandHtml(r, acum, arata) {
+      var st = agpsStare(r.last_tx, acum);
+      var sub = [r.gps_model || 'model necunoscut', 'IMEI ' + r.imei];
+      if (arata.sim && r.sim_number) sub.push('SIM ' + r.sim_number);
+      if (arata.companie && r.company_name) sub.push(r.company_name);
+      var cand = r.last_tx ? new Date(r.last_tx).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+      return '<div class="ag-rand' + (r.status === 'archived' ? ' gri' : '') + '">' +
+        '<span class="ag-p" style="background:' + st.c + '"></span>' +
+        '<div class="ag-l"><b>' + esc(r.plate || r.name || r.imei) + '</b><span>' + esc(sub.join(' · ')) + '</span></div>' +
+        '<div class="ag-r"><span class="ag-pill" style="color:' + st.c + ';border-color:' + st.c + '">' + st.t + '</span>' +
+        '<span class="ag-cand">ultima dată: ' + cand + '</span></div>' +
+        '<button class="btn-sm" title="Fișa mașinii" onclick="openEditModal(\'' + esc(r.imei) + '\')"><i class="fas fa-pen"></i></button>' +
+        '</div>';
+    }
+    function agpsRender() {
+      var host = document.getElementById('agps-host'); if (!host) return;
+      // Redesenez cu innerHTML → orice nod ÎMPRUMUTAT dinăuntru ar fi șters. Îl trimit acasă întâi.
+      if (window.setDaInapoi) window.setDaInapoi();
+      if (_agps.eroare) { host.innerHTML = '<div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc(_agps.eroare) + '</div>'; return; }
+      if (!_agps.randuri) { host.innerHTML = '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>'; return; }
+      var acum = Date.now();
+      var toate = _agps.randuri;
+      var montate = toate.filter(function (r) { return r.status !== 'archived'; });
+      var arhivate = toate.filter(function (r) { return r.status === 'archived'; });
+      var stari = montate.map(function (r) { return agpsStare(r.last_tx, acum); });
+      var nOk = stari.filter(function (s) { return s.k === 'ok'; }).length;
+      var nRau = montate.length - nOk;
+      var arata = { sim: true, companie: !!(window.currentUser && window.currentUser.isSuper) }; // scris pe window peste tot: așa se poate rula și în probe, fără browser
+
+      var h = '<div class="ag-sumar">' +
+        agpsCard(montate.length, 'aparate montate') +
+        agpsCard(nOk, 'comunică acum', 'var(--accent)') +
+        agpsCard(nRau, nRau === 1 ? 'nu transmite' : 'nu transmit', nRau ? 'var(--orange)' : null) +
+        agpsCard(arhivate.length, 'arhivate') +
+        '</div>';
+
+      h += '<div class="ag-bar">' +
+        (_agps.fila === 'montate'
+          ? '<input class="ag-cauta" type="search" placeholder="Caută număr, IMEI, model, cartelă…" value="' + esc(_agps.cauta) + '" oninput="agpsCauta(this.value)">'
+          : '<span style="flex:1"></span>') +
+        '<span class="ag-file">' +
+          '<button class="' + (_agps.fila === 'montate' ? 'on' : '') + '" onclick="agpsFila(\'montate\')">Montate</button>' +
+          '<button class="' + (_agps.fila === 'arhivate' ? 'on' : '') + '" onclick="agpsFila(\'arhivate\')">Arhivate</button>' +
+        '</span>' +
+        (_agps.fila === 'montate'
+          ? '<a class="btn-sm" href="/api/device-inventory/export?format=xlsx"><i class="fas fa-file-excel"></i> Excel</a>' +
+            '<a class="btn-sm" href="/api/device-inventory/export?format=pdf"><i class="fas fa-file-pdf"></i> PDF</a>'
+          : '') +
+        '</div>';
+
+      // Arhivele au deja un ecran întreg, cu istoric, restaurare și ștergere definitivă. Nu-l copiez:
+      // îl împrumut, exact ca la „Utilizatori". O singură implementare, aceleași butoane peste tot.
+      if (_agps.fila === 'arhivate') {
+        host.innerHTML = h + '<div id="agps-host-arh"></div>';
+        setImprumuta('admin-tab-archived', 'agps-host-arh');
+        if (window.loadArchivedDevices) window.loadArchivedDevices();
+        return;
+      }
+
+      var lista = montate.filter(function (r) { return agpsPotrivit(r, _agps.cauta); });
+      // Cele care nu transmit stau primele: ele cer o acțiune, restul sunt doar o listă.
+      lista.sort(function (a, b) {
+        var sa = agpsStare(a.last_tx, acum).k === 'ok' ? 1 : 0, sb = agpsStare(b.last_tx, acum).k === 'ok' ? 1 : 0;
+        if (sa !== sb) return sa - sb;
+        return String(a.plate || a.name || a.imei).localeCompare(String(b.plate || b.name || b.imei), 'ro');
+      });
+
+      if (!lista.length) {
+        h += '<div class="ag-gol"><i class="fas fa-satellite-dish"></i>' +
+          (_agps.cauta ? '<b>Nicio potrivire pentru „' + esc(_agps.cauta) + '"</b><span>Încearcă doar numărul de înmatriculare sau ultimele cifre din IMEI.</span>'
+            : (_agps.fila === 'arhivate' ? '<b>Niciun aparat arhivat</b><span>Aici ajung aparatele scoase din flotă. Istoricul lor rămâne.</span>'
+              : '<b>Niciun aparat înregistrat</b><span>Aparatele apar aici după ce sunt montate și legate de o mașină.</span>')) + '</div>';
+      } else {
+        h += lista.map(function (r) { return agpsRandHtml(r, acum, arata); }).join('');
+      }
+      // „Tăcut" nu înseamnă neapărat stricat — omul trebuie să știe ce citește înainte să sune pe cineva.
+      h += '<div class="ag-nota">Un aparat scrie <b>„comunică"</b> dacă a transmis în ultimele ' + AGPS_TACUT_MIN +
+        ' de minute. Peste ' + AGPS_MUT_ORE + ' de ore de tăcere devine <b>„fără semnal"</b> — de obicei mașina e într-un loc fără acoperire, are bateria scoasă sau aparatul s-a defectat.</div>';
+      host.innerHTML = h;
+    }
+    window.agpsFila = function (f) { _agps.fila = f; agpsRender(); };
+    window.agpsCauta = function (q) {
+      _agps.cauta = q;
+      // redesenez fără să pierd cursorul din căsuță: pun textul înapoi și duc cursorul la capăt
+      agpsRender();
+      var c = document.querySelector('#agps-host .ag-cauta');
+      if (c) { c.focus(); c.setSelectionRange(c.value.length, c.value.length); }
+    };
+    async function agpsLoad() {
+      _agps.eroare = null;
+      if (!_agps.randuri) agpsRender();
+      try {
+        var d = await fetch('/api/device-inventory?arhivate=1', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d && d.error) { _agps.eroare = d.error; _agps.randuri = null; }
+        else _agps.randuri = Array.isArray(d) ? d : [];
+      } catch (e) { _agps.eroare = 'Nu s-a putut citi lista aparatelor.'; }
+      agpsRender();
+    }
+    // ── sfârșit „Aparate GPS" ──
     async function loadSettingsTab() {
       // Setările au pagină proprie: mută #atab-settings în #settings-host (o singură dată) + afișează-l.
       var _sc = document.getElementById('atab-settings'), _sh = document.getElementById('settings-host');
