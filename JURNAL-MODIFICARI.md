@@ -20,6 +20,52 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Dacia Logan: „scădere de la 43 la 32 L" la fiecare pornire — reparat — `COMMIT_HASH`
+
+Am reprodus-o. Un ciclu banal — mașina merge, se oprește, pornește — scotea exact mesajul primit:
+**„Scădere 11.0 L (43 → 32 L)"**, fără să dispară un strop.
+
+**De ce.** Aplicația avea, de fapt, *trei* locuri care hotărau că a scăzut carburantul, nu unul.
+În august am întărit unul singur — cel care așteaptă să se așeze sonda, cere mai multe citiri și
+anulează alarma dacă nivelul revine. Celelalte două făceau mai departe cea mai simplă socoteală
+posibilă: „cât era în pachetul anterior minus cât e acum". Iar „pachetul anterior", la o mașină
+parcată, e chiar nivelul de dinainte de parcare, ținut de noi ca să se vadă rezervorul cât stă
+mașina. Deci comparam prezentul cu trecutul și numeam diferența furt.
+
+**Acum decide un singur loc**, cel serios, iar celelalte două îi folosesc verdictul. Fiecare își
+păstrează pragul lui.
+
+**Al doilea lucru: da, era ceva blocat în baza de date** — ați intuit corect. Momentul ultimei valori
+salvate se scria ca text, dar la repornirea serverului era citit ca număr. „Acum minus text" nu dă
+un număr, ci nimic — iar din nimic nu iese niciodată „au trecut 5 minute". Efectul: **după ORICE
+repornire, valoarea păstrată pentru un vehicul nu se mai actualiza niciodată.** Rămânea înghețată
+acolo, la nesfârșit. Reparat.
+
+Tot de acolo venea și o a doua ciudățenie: turația, care ar fi trebuit să expire după 15 minute, se
+căra la nesfârșit după o repornire.
+
+**Al treilea: o regulă care n-a funcționat niciodată.** Regula de alertă „scădere combustibil" pe
+care o poate face un client compara o valoare cu ea însăși — deci ieșea mereu zero. Nu s-a declanșat
+niciodată, de când există. Acum merge.
+
+**Un buton nou, doar pentru noi** (consola tehnică `/debug` → IO Inspector): *Golește sticky*. Șterge
+valorile păstrate pentru un vehicul, și din memorie, și din baza de date. Până acum nu exista nicio
+cale de a scoate o valoare citită greșit, decât intrând direct în baza de date.
+
+- **Ce vede fondatorul:** butonul de golire + un test nou care rulează la fiecare livrare.
+- **Ce vede clientul:** nu mai primește anunțuri de furt care nu s-au întâmplat. Cele reale vin la
+  fel, cu aceleași cuvinte.
+
+**Ce merită verificat împreună:** ca să sune la 11 litri, cineva a coborât un prag sub 15. Implicit,
+nici alerta de companie („furt combustibil"), nici cea personală („scădere bruscă") nu s-ar fi
+declanșat la atât. Merită să ne uităm ce prag e pus și dacă e cel dorit.
+
+Probat cap-coadă cu server adevărat, în patru situații: pornire normală cu citire nesigură → tăcere;
+furt adevărat → exact o notificare, cu „de la … la …"; două feluri de a măsura → tăcere; prima
+citire 0 → tăcere. 10 din 10.
+
+---
+
 ### AMÂNDOI · Aparate GPS — ecranul care spune dacă un aparat a amuțit
 
 Al doilea pas din administrarea nouă. Setări → **Evidență → Aparate GPS**.

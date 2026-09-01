@@ -23,11 +23,18 @@
 // paguba s-a produs demult — o confirmare de câteva minute nu schimbă nimic, dar taie alarmele false
 // care fac oamenii să ignore alertele.
 
+// Ferestrele de mai jos se pot scurta din mediu, DOAR ca lanțul complet (pachet → detector →
+// notificare) să poată fi probat într-un test care rulează în câteva secunde, nu în șapte minute.
+// Fără variabile setate, valorile sunt exact cele de producție.
+function _dinMediu(nume, implicit) {
+  const v = Number(process.env[nume]);
+  return (Number.isFinite(v) && v > 0) ? v : implicit;
+}
 // Rezervorul se așază după pornire: citirile din primele minute nu se iau în seamă deloc.
-const ASEZARE_MS = 2 * 60 * 1000;
+const ASEZARE_MS = _dinMediu('FUEL_ASEZARE_MS', 2 * 60 * 1000);
 // După fereastra de așezare, nivelul trebuie să rămână jos atâta timp ȘI pe atâtea citiri.
-const CONFIRM_MS = 5 * 60 * 1000;
-const CONFIRM_N = 3;
+const CONFIRM_MS = _dinMediu('FUEL_CONFIRM_MS', 5 * 60 * 1000);
+const CONFIRM_N = _dinMediu('FUEL_CONFIRM_N', 3);
 // Suspiciune care nu se confirmă (mașina a încetat să transmită) → se uită, NU se emite pe orb.
 const PEND_MAX_MS = 2 * 60 * 60 * 1000;
 // Modul „în mers": nemodificat — o oră până la confirmare.
@@ -35,9 +42,15 @@ const MERS_CONFIRM_MS = 60 * 60 * 1000;
 
 // Litri REALI (nu procente), cu sursa lor. Ordinea = de la cea mai de încredere la cea mai brută.
 const SURSE = ['tank_level_liters', 'fuel_level_liters', 'can_fuel_level_liters'];
-function citire(io) {
+// `cheiVechi` = cheile pe care serverul le-a CĂRAT din ultima citire reală (carry-forward „sticky"),
+// fiindcă pachetul curent nu le conținea. Arată exact ca o citire proaspătă, dar e nivelul de acum
+// câteva ore. Dacă o luăm drept citire, comparăm prezentul cu trecutul și inventăm o scădere —
+// exact alarma falsă de pe Dacia Logan, la fiecare pornire. O mașină parcată care nu mai trimite
+// nimic trebuie să pară că NU trimite nimic.
+function citire(io, cheiVechi) {
   if (!io) return null;
   for (const k of SURSE) {
+    if (cheiVechi && cheiVechi.has && cheiVechi.has(k)) continue;
     const v = Number(io[k]);
     if (Number.isFinite(v) && v > 0) return { v, src: k };
   }
@@ -55,14 +68,17 @@ function revenire(prag) { return Math.max(2, prag * 0.25); }
 // ca testul să poată derula timpul.
 //   st    — starea vehiculului (stareNoua() la început)
 //   io    — câmpurile decodate ale poziției curente
-//   prag  — fuelTheftL al companiei (litri). ≤ 0 sau lipsă = detecția e oprită.
+//   prag  — cel mai MIC prag activ pe vehiculul ăsta (companie sau utilizator). ≤ 0 = nimeni
+//           nu urmărește scăderile → detecția e oprită. Mărimea scăderii se întoarce în alertă,
+//           iar fiecare abonat își aplică apoi propriul prag.
 //   acum  — timpul în ms
+//   cheiVechi — Set cu cheile CĂRATE în pachetul curent (valori vechi, nu citiri noi)
 // Întoarce { st, alerta } — alerta e null sau { drop, from, to, mode: 'parked' | 'motion' }.
-function pas(st, io, prag, acum) {
+function pas(st, io, prag, acum, cheiVechi) {
   const X = Number(prag);
-  if (!Number.isFinite(X) || X <= 0) return { st: stareNoua(), alerta: null }; // oprit pentru companie
+  if (!Number.isFinite(X) || X <= 0) return { st: stareNoua(), alerta: null }; // nimeni nu urmărește
   st = st || stareNoua();
-  const r = citire(io);
+  const r = citire(io, cheiVechi);
   const ignBrut = io ? io.ignition : undefined;
   // Contact lipsă dintr-un pachet (heartbeat doar cu GPS) NU înseamnă „oprit": păstrăm starea de
   // dinainte, altfel apăreau tranziții false pornit→oprit→pornit la fiecare pachet incomplet.
@@ -139,4 +155,4 @@ function expira(st, prag, acum) {
   return { st, alerta: null };
 }
 
-module.exports = { citire, stareNoua, pas, expira, ASEZARE_MS, CONFIRM_MS, CONFIRM_N, PEND_MAX_MS, MERS_CONFIRM_MS };
+module.exports = { citire, stareNoua, pas, expira, SURSE, ASEZARE_MS, CONFIRM_MS, CONFIRM_N, PEND_MAX_MS, MERS_CONFIRM_MS };

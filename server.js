@@ -352,14 +352,27 @@ const STICKY_CAN = ['fuel_level_liters', 'can_fuel_level_liters', 'can_fuel_leve
 const STICKY_VOLATILE = new Set(['can_engine_rpm', 'speed_limit_sign']);
 const STICKY_VOLATILE_MAX_MS = 15 * 60 * 1000;
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
+// Momentul snapshotului trebuie să fie MEREU un număr. La ingest vine ca obiect Date, dar în baza de
+// date ajunge text ISO (JSON), iar la repornire era citit înapoi tot ca text. „Acum − text" = NaN,
+// iar NaN nu e mai mare decât nimic: după ORICE restart, `devices.last_can` nu se mai actualiza
+// niciodată pentru vehiculul acela, iar valorile cu expirare (turația) se cărau la nesfârșit.
+function _ms(x) {
+  if (x == null) return 0;
+  if (typeof x === 'number') return x;
+  const n = (x instanceof Date) ? x.getTime() : Date.parse(x);
+  return Number.isFinite(n) ? n : 0;
+}
 // Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
 // „0.0 km (ultima)" / „- (ultima)" fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire".
 function _stickyOf(io) { const o = {}; if (!io) return o; for (const k of STICKY_CAN) { const v = io[k]; if (v !== undefined && v !== null && Number(v) > 0) o[k] = v; } return o; }
 // Completează în targetIo cheile sticky LIPSĂ cu ultima valoare reală din snapshot. Întoarce true dacă a completat ceva.
-function _fillSticky(targetIo, snapIo, snapTs) { let c = false; const volStale = (Date.now() - (snapTs || 0)) > STICKY_VOLATILE_MAX_MS; for (const k of STICKY_CAN) { if (volStale && STICKY_VOLATILE.has(k)) continue; const sv = snapIo[k]; if (targetIo[k] === undefined && sv !== undefined && sv !== null && Number(sv) > 0) { targetIo[k] = sv; c = true; } } return c; }
+// Întoarce LISTA cheilor completate, nu doar „am completat ceva". Detectoarele au nevoie să știe
+// exact care valoare e veche: un pachet poate avea carburant proaspăt și odometru cărat, iar un
+// singur steag pe toată poziția nu spune care e care.
+function _fillSticky(targetIo, snapIo, snapTs) { const carate = []; const volStale = (Date.now() - _ms(snapTs)) > STICKY_VOLATILE_MAX_MS; for (const k of STICKY_CAN) { if (volStale && STICKY_VOLATILE.has(k)) continue; const sv = snapIo[k]; if (targetIo[k] === undefined && sv !== undefined && sv !== null && Number(sv) > 0) { targetIo[k] = sv; carate.push(k); } } return carate; }
 function _persistLastCan(imei, io, ts) {
   const s = _stickyOf(io); if (!Object.keys(s).length) return;
-  s._ts = ts || null; lastCanPersistTs.set(imei, ts || 0);
+  s._ts = _ms(ts) || null; lastCanPersistTs.set(imei, _ms(ts));
   db.setDeviceLastCan(imei, s).catch(function () {});
 }
 const activeConnections = new Map(); // IMEI -> socket info
@@ -854,19 +867,22 @@ const tcpServer = net.createServer((socket) => {
         if (Object.keys(_freshSticky).length > 0) {
           const _prev = lastCanIo.get(imei);
           const _merged = Object.assign({}, _prev && _prev.io, _freshSticky); // acumulează (suportă update parțial)
-          lastCanIo.set(imei, { io: _merged, ts: liveRec.timestamp });
+          lastCanIo.set(imei, { io: _merged, ts: _ms(liveRec.timestamp) });
           // checkpoint periodic în DB (max ~o scriere / 5 min / device) — ca să nu pierdem date la un crash pe traseu
-          if (liveRec.timestamp - (lastCanPersistTs.get(imei) || 0) > 5 * 60 * 1000) _persistLastCan(imei, _merged, liveRec.timestamp);
+          if (_ms(liveRec.timestamp) - _ms(lastCanPersistTs.get(imei)) > 5 * 60 * 1000) _persistLastCan(imei, _merged, liveRec.timestamp);
         }
         // Completează cheile sticky LIPSĂ din pachetul curent (indiferent dacă pachetul are alte chei can_*).
         // can_stale = true DOAR dacă chiar am completat o valoare reală → fără „(ultima)" fals pe camioane fără CAN.
         const _snap = lastCanIo.get(imei);
-        const _carried = _snap ? _fillSticky(liveData.io, _snap.io, _snap.ts) : false;
-        liveData.can_stale = _carried;
-        if (_carried) {
-          liveData.can_snapshot_ts = _snap.ts;
+        const _carried = _snap ? _fillSticky(liveData.io, _snap.io, _snap.ts) : [];
+        liveData.can_stale = _carried.length > 0;
+        // CARE chei sunt vechi, nu doar „sunt". Detectorul de scădere de carburant le ignoră, ca să
+        // nu compare nivelul de dinainte de parcare cu prima citire de după pornire.
+        liveData.can_stale_keys = _carried;
+        if (_carried.length) {
+          liveData.can_snapshot_ts = _ms(_snap.ts);
           // capturează valoarea „de parcare" în DB o singură dată (prima dată când rămâne fără CAN proaspăt)
-          if ((lastCanPersistTs.get(imei) || 0) < (_snap.ts || 0)) _persistLastCan(imei, _snap.io, _snap.ts);
+          if (_ms(lastCanPersistTs.get(imei)) < _ms(_snap.ts)) _persistLastCan(imei, _snap.io, _snap.ts);
         }
         // Memorie „s-a mișcat recent" (histerezis anti-fals-„staționat" în trafic): reține momentul ultimei viteze reale;
         // se propagă din intrarea live anterioară când viteza curentă e ≤3, ca să nu resetăm memoria la fiecare oprire scurtă.
@@ -876,16 +892,19 @@ const tcpServer = net.createServer((socket) => {
         // Trimite update live prin WebSocket (coalescing opțional via WS_BATCH_MS, vezi broadcastPosition)
         broadcastPosition(liveData);
 
-        // Evaluare alerte automate
-        evaluateAlerts(imei, liveData).catch(err => {
-          console.error(`[ALERTS] Eroare evaluare alerte pentru ${imei}: ${err.message}`);
-        });
-
-        // Evenimente per-utilizator (abonamente + praguri proprii) — 'existing' = poziția anterioară
-        evaluateUserEvents(imei, liveData, existing).catch(() => {});
-
-        // Alertă „furt combustibil" (prag per companie) — stare proprie (NU livePositions, care e deja actualizat)
-        checkFuelTheft(imei, liveData, undefined).catch(() => {});
+        // Detectorul de scădere de carburant decide PRIMUL: verdictul lui (`liveData._fuelDrop`) e
+        // folosit și de regulile de alertă, și de evenimentele per-utilizator. Înainte rula ultimul,
+        // iar ceilalți doi își scădeau singuri două numere — de acolo alarma falsă la fiecare pornire.
+        checkFuelTheft(imei, liveData, undefined)
+          .catch(() => {})
+          .then(() => {
+            // Evaluare alerte automate
+            evaluateAlerts(imei, liveData).catch(err => {
+              console.error(`[ALERTS] Eroare evaluare alerte pentru ${imei}: ${err.message}`);
+            });
+            // Evenimente per-utilizator (abonamente + praguri proprii) — 'existing' = poziția anterioară
+            evaluateUserEvents(imei, liveData, existing).catch(() => {});
+          });
 
         // Alertă „mișcare în afara programului de lucru" (supraveghere flotă)
         checkAfterHoursMovement(imei, liveData).catch(() => {});
@@ -3753,6 +3772,24 @@ app.get('/api/debug/live/:imei', requireAuth, requireSuperadmin, (req, res) => {
     sticky: sticky ? { io: sticky.io, ts: sticky.ts } : null,
     sticky_persist_ts: lastCanPersistTs.get(imei) || null,
   });
+});
+
+// Golește snapshotul CAN „sticky" al unui vehicul — și din memorie, și din baza de date.
+// De ce există: valorile cărate (carburant, kilometraj) rămân valabile cât mașina e parcată, dar
+// dacă una a fost citită greșit o dată, se cară la nesfârșit și poate hrăni alerte false. Până acum
+// singura cale de a scăpa de ea era o intervenție directă în baza de date.
+app.post('/api/debug/sticky-reset/:imei', requireAuth, requireSuperadmin, async (req, res) => {
+  const imei = req.params.imei;
+  try {
+    const avea = lastCanIo.get(imei) || null;
+    lastCanIo.delete(imei);
+    lastCanPersistTs.delete(imei);
+    _fuelTheft.delete(imei);            // și suspiciunea de scădere pornește de la zero
+    _fuelTheftCooldown.delete(imei);
+    await db.clearDeviceLastCan(imei);
+    console.log('[STICKY] reset ' + imei + ' de ' + (req.auth && req.auth.username || 'super-admin'));
+    res.json({ ok: true, imei, sters: avea ? { io: avea.io, ts: avea.ts } : null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Clienții WebSocket conectați (cine ascultă live feed-ul) — pentru consola /debug.
@@ -7219,17 +7256,55 @@ async function _emitFuelTheft(imei, data, info) {
   notify({ type: 'alert', severity: 'warning', imei, title: 'Posibil furt combustibil', body, dedupHours: 1, data: { alertType: 'fuel_theft', key: 'fueltheft:' + imei + ':' + Math.round(now / 1800000), ...payload } });
   console.log(`[FUEL-THEFT] ${imei}: -${info.drop.toFixed(1)}L (${info.mode})`);
 }
+// Cel mai MIC prag activ pe vehiculul asta, din toti cei care asculta scaderile de carburant:
+// pragul companiei („furt combustibil") si pragul fiecarui utilizator abonat la evenimentul
+// „Scadere brusca combustibil". Automatul ruleaza o singura data, pe pragul cel mai sensibil, si
+// intoarce CAT a scazut; fiecare abonat isi aplica apoi propriul prag. Daca nu asculta nimeni,
+// intoarce 0 si detectia sta oprita — ca pana acum.
+async function _pragCarburantMin(imei, companyId) {
+  let m = Infinity;
+  try {
+    const th = await _companyThresholds(companyId);
+    const X = Number(th.fuelTheftL);
+    if (Number.isFinite(X) && X > 0) m = Math.min(m, X);
+  } catch (e) { /* fara praguri de companie */ }
+  try {
+    const users = await getEligibleUsers(imei);
+    if (users.length) {
+      const prefsMap = await getPrefsMap();
+      const def = EVENT_TYPE_MAP.fuel_drop;
+      for (const u of users) {
+        const up = userTypePref(prefsMap, u.id, 'fuel_drop');
+        if (!up || !up.enabled) continue;
+        const thr = (up.threshold != null && up.threshold !== '') ? Number(up.threshold) : def.def;
+        if (Number.isFinite(thr) && thr > 0) m = Math.min(m, thr);
+      }
+    }
+  } catch (e) { /* fara abonati */ }
+  return Number.isFinite(m) ? m : 0;
+}
+
 // Decizia propriu-zisa sta in fueltheft.js (modul pur, verificabil). Aici raman doar accesul la
 // praguri, emiterea si matura periodica.
+//
+// 02.09: e SINGURUL loc care mai decide ca a scazut carburantul. Verdictul se agata de pozitie
+// (`data._fuelDrop`) si il folosesc si evenimentele per-utilizator, si regulile de alerta — inainte
+// isi faceau fiecare scaderea proprie, pe un singur pachet, fara nicio aparare. De acolo venea
+// „Scadere 11.0 L (43 -> 32 L)" la FIECARE pornire pe Dacia Logan.
 async function checkFuelTheft(imei, data, devCompany) {
   try {
     const companyId = (devCompany !== undefined) ? devCompany : await getDeviceCompanyCached(imei);
+    const prag = await _pragCarburantMin(imei, companyId);
+    if (!prag) { if (_fuelTheft.has(imei)) _fuelTheft.delete(imei); return; } // nu asculta nimeni
+    // Cheile CARATE (valori vechi, completate fiindca pachetul nu le avea) nu sunt citiri.
+    const vechi = Array.isArray(data.can_stale_keys) && data.can_stale_keys.length ? new Set(data.can_stale_keys) : null;
+    const r = fueltheft.pas(_fuelTheft.get(imei) || fueltheft.stareNoua(), data.io || {}, prag, Date.now(), vechi);
+    _fuelTheft.set(imei, r.st);
+    if (!r.alerta) return;
+    data._fuelDrop = r.alerta;                    // verdictul, pentru ceilalti abonati
     const th = await _companyThresholds(companyId);
     const X = Number(th.fuelTheftL);
-    if (!Number.isFinite(X) || X <= 0) { if (_fuelTheft.has(imei)) _fuelTheft.delete(imei); return; } // dezactivat pt. companie
-    const r = fueltheft.pas(_fuelTheft.get(imei) || fueltheft.stareNoua(), data.io || {}, X, Date.now());
-    _fuelTheft.set(imei, r.st);
-    if (r.alerta) await _emitFuelTheft(imei, data, r.alerta);
+    if (Number.isFinite(X) && X > 0 && r.alerta.drop > X) await _emitFuelTheft(imei, data, r.alerta);
   } catch (e) { /* nu bloca ingestul */ }
 }
 // Confirma suspiciunile "in mers" mai vechi de 1h chiar daca vehiculul a incetat sa raporteze intre
@@ -7341,19 +7416,18 @@ async function evaluateAlerts(imei, data) {
           break;
         }
 
-        case 'fuel_drop':
-          if (cond.dropLiters && io.can_fuel_level_liters !== undefined) {
-            // Compare with previous reading stored in livePositions
-            const prev = livePositions.get(imei);
-            if (prev && prev.io && prev.io.can_fuel_level_liters !== undefined) {
-              const drop = prev.io.can_fuel_level_liters - io.can_fuel_level_liters;
-              if (drop > cond.dropLiters) {
-                triggered = true;
-                alertData = { previousLevel: prev.io.can_fuel_level_liters, currentLevel: io.can_fuel_level_liters, drop };
-              }
-            }
+        case 'fuel_drop': {
+          // Regula asta nu s-a declanșat NICIODATĂ: citea „poziția anterioară" din `livePositions`,
+          // care fusese deja înlocuită cu poziția curentă câteva rânduri mai sus — deci scădea o
+          // valoare din ea însăși și obținea mereu zero. Acum folosește verdictul detectorului
+          // (aceeași sursă ca alerta de furt și ca evenimentele per-utilizator).
+          const fd = data._fuelDrop;
+          if (cond.dropLiters && fd && fd.drop > cond.dropLiters) {
+            triggered = true;
+            alertData = { previousLevel: Math.round(fd.from * 10) / 10, currentLevel: Math.round(fd.to * 10) / 10, drop: Math.round(fd.drop * 10) / 10, mode: fd.mode };
           }
           break;
+        }
 
         case 'ignition_on':
           if (io.ignition === 1) {
@@ -8186,12 +8260,17 @@ async function evaluateUserEvents(imei, data, prev) {
     const io = data.io || {}, pio = (prev && prev.io) || {};
     const speed = data.speed || 0;
     const cand = [];
-    const pf = (typeof pio.fuel_level_liters === 'number') ? pio.fuel_level_liters : pio.can_fuel_level_liters;
-    const cf = (typeof io.fuel_level_liters === 'number') ? io.fuel_level_liters : io.can_fuel_level_liters;
-    if (typeof pf === 'number' && typeof cf === 'number') {
-      const drop = pf - cf;
-      if (drop >= 2) cand.push({ type: 'fuel_drop', mag: drop, body: `Scădere ${drop.toFixed(1)} L (${pf} → ${cf} L)`,
-        extra: { alertType: 'fuel_drop', fromL: Math.round(pf * 10) / 10, toL: Math.round(cf * 10) / 10, drop: Math.round(drop * 10) / 10 } }); // → detaliul arată de la cât la cât + cantitatea
+    // Scăderea de carburant NU se mai calculează aici. Se calcula ca „nivelul din poziția anterioară
+    // minus nivelul de acum", pe un singur pachet — fără să aștepte așezarea sondei, fără să verifice
+    // că amândouă citirile vin din aceeași sursă și fără să observe că valoarea „anterioară" era, de
+    // fapt, cea cărată de dinainte de parcare. Rezultatul: la fiecare pornire de motor, un anunț de
+    // furt care nu se întâmplase (Dacia Logan, „de la 43 L la 32 L"). Verdictul vine acum de la
+    // singurul detector serios, `checkFuelTheft` → fueltheft.js, care rulează înaintea noastră.
+    const fd = data._fuelDrop;
+    if (fd && fd.drop > 0) {
+      const unde = fd.mode === 'parked' ? 'cât a stat oprit' : 'în mers';
+      cand.push({ type: 'fuel_drop', mag: fd.drop, body: `Scădere ${fd.drop.toFixed(1)} L ${unde} (${fd.from.toFixed(1)} → ${fd.to.toFixed(1)} L)`,
+        extra: { alertType: 'fuel_drop', fromL: Math.round(fd.from * 10) / 10, toL: Math.round(fd.to * 10) / 10, drop: Math.round(fd.drop * 10) / 10, mode: fd.mode } }); // → detaliul arată de la cât la cât + cantitatea
     }
     if (speed >= 50) cand.push({ type: 'overspeed', mag: speed, body: `Viteză ${speed} km/h` });
     if (typeof io.can_engine_temp === 'number' && io.can_engine_temp >= 80) cand.push({ type: 'engine_temp', mag: io.can_engine_temp, body: `Temperatură motor ${io.can_engine_temp}°C` });
@@ -10338,6 +10417,10 @@ if (process.env.SEED_TEST === '1') {
       try { const fsensors = await getFuelSensors(imei); if (fsensors && fsensors.length) computeFuelFromSensors(data.io, fsensors); } catch (e) {}
       const prev = livePositions.get(imei) || {};
       livePositions.set(imei, data);
+      // Aceeasi ordine ca la ingestul real: detectorul de carburant decide PRIMUL, iar evenimentele
+      // per-utilizator ii folosesc verdictul. Fara randul asta, simularea nu putea produce niciodata
+      // o scadere de carburant — si nici testul nu putea dovedi ca una REALA tot suna.
+      await checkFuelTheft(imei, data, undefined).catch(function () {});
       await evaluateUserEvents(imei, data, prev);
       res.json({ ok: true, io: data.io });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -10673,9 +10756,9 @@ async function start() {
 
     // Restaurează snapshot-ul CAN sticky (carburant/odometru) → supraviețuiește restartului serverului
     let _seedIo = null, _seedTs = null;
-    if (dev.last_can && typeof dev.last_can === 'object') { _seedTs = dev.last_can._ts || null; _seedIo = _stickyOf(dev.last_can); }
+    if (dev.last_can && typeof dev.last_can === 'object') { _seedTs = _ms(dev.last_can._ts) || null; _seedIo = _stickyOf(dev.last_can); }
     else if (stickyBackfill[dev.imei]) { _seedIo = _stickyOf(stickyBackfill[dev.imei]); }
-    if (_seedIo && Object.keys(_seedIo).length) { lastCanIo.set(dev.imei, { io: _seedIo, ts: _seedTs }); lastCanPersistTs.set(dev.imei, _seedTs || 0); }
+    if (_seedIo && Object.keys(_seedIo).length) { lastCanIo.set(dev.imei, { io: _seedIo, ts: _ms(_seedTs) }); lastCanPersistTs.set(dev.imei, _ms(_seedTs)); }
   }
   for (const pos of lastPositions) {
     if (archivedImeis.has(pos.imei)) continue; // NU încărca vehiculele arhivate în harta live la pornire
@@ -10684,7 +10767,10 @@ async function start() {
     let _stale = false;
     // dacă ultimul pachet (probabil cu motorul oprit) n-are carburant/odometru, completează din snapshot-ul restaurat
     const _snap = lastCanIo.get(pos.imei);
-    if (_snap) { const _f = Object.assign({}, _io); if (_fillSticky(_f, _snap.io)) { _io = _f; _stale = true; } }
+    // Momentul 0 e INTENȚIONAT: la pornirea serverului nu știm cât a stat oprit procesul, deci
+    // valorile cu expirare (turația, semnul de limită) NU se cară niciodată de aici. Pe calea de
+    // ingest se pasează momentul real, fiindcă acolo îl cunoaștem.
+    if (_snap) { const _f = Object.assign({}, _io); if (_fillSticky(_f, _snap.io, 0).length) { _io = _f; _stale = true; } }
     // Stegulețele (uși, lumini, martori) se desfac la INGEST, nu la citirea din bază. Fără rândul
     // ăsta, după fiecare deploy orice mașină PARCATĂ rămânea fără panoul de stări până la următorul
     // pachet — la o mașină lăsată peste noapte, ore întregi de ecran gol care arată a defecțiune.

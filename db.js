@@ -1621,6 +1621,12 @@ async function getDeviceCanInterface(imei) {
 async function setDeviceLastCan(imei, obj) {
   try { await pool.query('UPDATE devices SET last_can = $2 WHERE imei = $1', [imei, JSON.stringify(obj || {})]); } catch (e) {}
 }
+// Golește snapshotul CAN păstrat pentru un vehicul. Există fiindcă o valoare greșită rămasă acolo
+// (ex. un nivel de carburant citit prost o dată) se cară la nesfârșit și poate hrăni alerte false;
+// până acum nu exista niciun fel de a o șterge fără acces la baza de date.
+async function clearDeviceLastCan(imei) {
+  await pool.query('UPDATE devices SET last_can = NULL WHERE imei = $1', [imei]);
+}
 // Backfill o singură dată la pornire: ultima poziție din istoricul recent care CHIAR are carburant/odometru,
 // pentru devices fără last_can persistat încă. Best-effort (wrapped în try/catch de apelant).
 async function getLastStickyCan() {
@@ -3476,7 +3482,7 @@ module.exports = {
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
-  setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, getLastStickyCan,
+  setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports, getEtransportScadentar,
   getWebhooks, getEnabledWebhooks, getWebhookById, createWebhook, deleteWebhook, updateWebhookStatus,

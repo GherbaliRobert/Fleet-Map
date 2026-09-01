@@ -154,6 +154,7 @@ a{color:var(--cyan)}
           <button onclick="inspect()">Inspectează</button>
           <button onclick="ioPeek()">IO-Peek (combustibil/odo)</button>
           <button onclick="ignCheck()">Ignition-check 48h</button>
+          <button onclick="stickyReset()" style="border-color:#a33">Golește sticky</button>
         </div>
         <div id="in-head" class="statrow"></div>
         <div class="grid2">
@@ -403,6 +404,21 @@ function mapPreviewValue(m, raw) {
   const v = n * (m.scale != null && m.scale !== '' ? Number(m.scale) : 1) + (m.offset != null && m.offset !== '' ? Number(m.offset) : 0);
   return String(Math.round(v * 100) / 100) + (m.type === 'temp' ? ' °C' : (m.unit ? ' ' + m.unit : ''));
 }
+// Golește valorile CAN „cărate" (sticky) ale unui vehicul — și din memorie, și din baza de date.
+// Există fiindcă o valoare citită greșit o dată rămâne cărată cât mașina e parcată și poate hrăni
+// alerte false; până acum se putea scoate doar direct din baza de date.
+async function stickyReset() {
+  const imei = $('in-imei').value.trim(); if (!imei) return toast('Pune un IMEI', true);
+  if (!confirm('Golesc valorile CAN păstrate pentru ' + imei + '?\n\nSe pierde ultimul nivel de carburant / kilometraj cunoscut cât timp mașina e parcată — revine la primul pachet cu date CAN.')) return;
+  try {
+    const r = await fetch('/api/debug/sticky-reset/' + encodeURIComponent(imei), { method: 'POST', credentials: 'include' });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    toast('Golit. ' + (j.sters ? Object.keys(j.sters.io || {}).length + ' chei șterse' : 'nu era nimic păstrat'));
+    inspect();
+  } catch (e) { toast(e.message, true); }
+}
+
 async function inspect() {
   const imei = $('in-imei').value.trim(); if (!imei) return toast('Pune un IMEI', true);
   $('in-head').innerHTML = '<div class="stat"><div class="n mut">…</div><div class="l">se încarcă</div></div>';
