@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
-### AMÂNDOI · Dacia Logan: „scădere de la 43 la 32 L" la fiecare pornire — reparat — `COMMIT_HASH`
+### AMÂNDOI · Dacia Logan: „scădere de la 43 la 32 L" la fiecare pornire — reparat — `6ba6e9a`
 
 Am reprodus-o. Un ciclu banal — mașina merge, se oprește, pornește — scotea exact mesajul primit:
 **„Scădere 11.0 L (43 → 32 L)"**, fără să dispară un strop.
