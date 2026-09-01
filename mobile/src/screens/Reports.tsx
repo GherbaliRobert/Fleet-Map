@@ -60,6 +60,12 @@ export function Reports() {
   const [hFrom, setHFrom] = useState('');           // interval orar HH:MM
   const [hTo, setHTo] = useState('');
   const [pvOpen, setPvOpen] = useState<number>(-1); // secțiunea „pe vehicul" deschisă (-1 = niciuna)
+  // „CAN detaliat": semnalele bifate. Lista vine de la server și conține DOAR ce trimit mașinile
+  // alese — altfel omul bifează turația pe o mașină fără adaptor CAN și primește un tabel gol.
+  const [canSignals, setCanSignals] = useState<{ key: string; label: string; unit: string; group: string; seen: boolean }[]>([]);
+  const [canGroups, setCanGroups] = useState<{ key: string; label: string }[]>([]);
+  const [canSel, setCanSel] = useState<string[]>([]);
+  const [canLoad, setCanLoad] = useState(false);
 
   // Perioada efectivă (gestionează intervalul personalizat).
   function curRange(): { from: string; to: string } {
@@ -75,11 +81,42 @@ export function Reports() {
     if (type === 'speeding' && osm) { o.osm = 1; o.osmOver = osmOver; }
     if ((type === 'ecodrive' || type === 'ecodrive_drivers') && !geoAddr) o.geo = 0;
     if (type === 'geofence') o.zoneMin = zoneMin;
+    if (type === 'can_detail' && canSel.length) o.signals = canSel.join(',');
     if (type === 'due' && dueAll) o.all = 1; // implicit: arată TOATE scadențele (nu ascunde cele viitoare)
     if (fdays.length && fdays.length < 7) o.days = fdays.join(',');
     if (hFrom && hTo) { o.hoursFrom = hFrom; o.hoursTo = hTo; }
     return o;
   }
+  // Lista de semnale se cere la alegerea tipului și la schimbarea vehiculelor: altfel bifele ar
+  // rămâne cele de la mașina precedentă.
+  useEffect(() => {
+    if (type !== 'can_detail') return;
+    setCanLoad(true);
+    const r = curRange();
+    Api.canSignals(sel.join(","), r.from, r.to)
+      .then((d: any) => {
+        const toate = (d && d.signals) || [];
+        const vazute = toate.filter((x: any) => x.seen);
+        const lista = vazute.length ? vazute : toate;
+        setCanSignals(lista);
+        setCanGroups((d && d.groups) || []);
+        setCanSel((c) => {
+          if (c.length) return c.filter((k) => lista.some((x: any) => x.key === k));
+          const impl = ((d && d.defaults) || []).filter((k: string) => lista.some((x: any) => x.key === k));
+          return impl.length ? impl : lista.slice(0, 4).map((x: any) => x.key);
+        });
+      })
+      .catch(() => { setCanSignals([]); setCanGroups([]); })
+      .finally(() => setCanLoad(false));
+  }, [type, sel.join(",")]);
+  function toggleSignal(k: string) {
+    setCanSel((c) => {
+      if (c.includes(k)) return c.filter((x) => x !== k);
+      if (c.length >= 10) return c;   // peste 10 coloane, tabelul devine ilizibil pe telefon
+      return [...c, k];
+    });
+  }
+
   function toggleDay(k: string) { setFdays((c) => c.includes(k) ? c.filter((x) => x !== k) : [...c, k]); }
 
   useEffect(() => {
@@ -265,6 +302,30 @@ export function Reports() {
                     <button class={'rp-seg-b' + (geoAddr ? ' on' : '')} onClick={() => setGeoAddr(true)}>Adrese exacte</button>
                     <button class={'rp-seg-b' + (!geoAddr ? ' on' : '')} onClick={() => setGeoAddr(false)}>Coordonate (rapid)</button>
                   </div>
+                </div>
+              )}
+              {type === 'can_detail' && (
+                <div>
+                  <div class="rp-opt-lbl">Ce semnale te interesează{canSel.length ? " · " + canSel.length + " bifate" : ""}</div>
+                  {canLoad && <div style="color:var(--text-muted);font-size:12px">Se încarcă lista…</div>}
+                  {!canLoad && !canSignals.length && (
+                    <div style="color:var(--text-muted);font-size:12px;line-height:1.5">Nu am găsit semnale trimise de mașinile alese. Raportul va folosi turația, temperatura, viteza și nivelul de carburant.</div>
+                  )}
+                  {!canLoad && canGroups.map((g) => {
+                    const lst = canSignals.filter((x) => x.group === g.key);
+                    if (!lst.length) return null;
+                    return (
+                      <div key={g.key} style="margin-top:8px">
+                        <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:4px">{g.label}</div>
+                        {lst.map((x) => (
+                          <label key={x.key} class="rp-opt-row" onClick={() => toggleSignal(x.key)}>
+                            <span>{x.label}{x.unit ? " (" + x.unit + ")" : ""}</span>
+                            <input type="checkbox" checked={canSel.includes(x.key)} onChange={() => toggleSignal(x.key)} />
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               {type === 'geofence' && (

@@ -266,6 +266,10 @@ export const Api = {
   // Fără asta, pe telefon apărea „N constatări" peste o listă goală (findings-urile lor nu se salvează).
   agentLive: (key: string) => api<{ agent: string; findings: AgentFinding[] }>(`/api/agents/${encodeURIComponent(key)}/live`),
   agentFindingAction: (id: number, action: 'dismiss' | 'ack') => api(`/api/agents/findings/${id}/${action}`, { method: 'POST' }),
+  // Semnalele CAN care se pot bifa in raportul „CAN detaliat", pentru vehiculele si perioada alese.
+  // Aceeasi ruta o foloseste si web-ul — o singura lista, doua ecrane.
+  canSignals: (imeis: string, from: string, to: string) =>
+    api<any>('/api/can-signals?' + (imeis ? 'imei=' + encodeURIComponent(imeis) + '&' : '') + 'from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to)),
   reportTypes: () => api<{ categories: { key: string; label: string }[]; reports: ReportTypeInfo[] }>('/api/reports'),
   runReport: (type: string, from: string, to: string, imeis?: string[], opts?: ReportOpts) => {
     const e = encodeURIComponent;

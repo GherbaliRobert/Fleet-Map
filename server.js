@@ -168,6 +168,7 @@ const licenseCats = require('./license_cats');   // categorii permis + încadrar
 const maintTypes = require('./maint_types');     // tipuri de lucrări la service + granița față de Documente
 const canFlags = require('./can_flags');         // steagurile CAN (uși, lumini, martori) — nume + iconiță
 const canIcons = require('./can_icons');         // desenele lor (generat din Icon.tsx — vezi tools/gen-can-icons.js)
+const ioSignals = require('./io_signals');       // semnalele numerice care se pot pune într-un raport de istoric
 const ioFormat = require('./io_format');         // cum se scrie pe ecran o valoare de IO (web + telefon)
 let fuelprice = null;
 try { fuelprice = require('./fuelprice'); } catch (e) { console.warn('[FUEL] modul preț carburant indisponibil:', e.message); }
@@ -8472,6 +8473,30 @@ app.get('/api/reports', requireAuth, (req, res) => {
 
 // ─── Istoric rapoarte (per user, generate la cerere — retenție 7 zile) ───
 // NB: declarate ÎNAINTE de /api/reports/:type ca să nu fie capturate de ruta parametrizată.
+// Ce semnale CAN se pot bifa pentru raportul „CAN detaliat" — și, dintre ele, care sunt chiar
+// trimise de mașinile alese. Fără asta, omul ar avea în față 40 de bife din care mașina lui
+// completează trei, iar raportul ar ieși gol fără să înțeleagă de ce.
+// Eșantionăm ultimele poziții din interval, nu tot istoricul: o listă de bife nu merită o citire
+// de milioane de rânduri.
+app.get('/api/can-signals', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
+  try {
+    const imeis = await resolveReportImeis(req);
+    if (imeis === null) return res.status(403).json({ error: 'Acces interzis' });
+    const to = req.query.to || new Date().toISOString();
+    const from = req.query.from || new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    let vazute = [];
+    if (imeis.length) { try { vazute = await db.getCanKeysSeen(imeis, from, to, 400); } catch (e) { vazute = []; } }
+    const set = new Set(vazute);
+    const semnale = ioSignals.SEMNALE.map(function (x) {
+      let et = x.cheie;
+      try { et = ioFormat.formatIoLabel(x.cheie, ioCatalog && ioCatalog.IO_CATALOG_BY_ID) || x.cheie; } catch (e) { /* rămâne cheia brută */ }
+      return { key: x.cheie, label: et, unit: x.unitate, group: x.grup, seen: set.has(x.cheie) };
+    });
+    res.json({ groups: ioSignals.GRUPURI.map(function (g) { return { key: g.cheie, label: g.eticheta }; }),
+               signals: semnale, defaults: ioSignals.IMPLICITE, vehicles: imeis.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/reports/history', requireAuth, requirePerm('viewReports'), async (req, res) => {
   try {
     const uid = req.auth && req.auth.userId;
@@ -8527,7 +8552,11 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       all: req.query.all === '1', // Scadențe: „Tot" (arată toate scadențele, fără orizont de lună)
       geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
       timeFilter: parseReportTimeFilter(req.query), // filtru zile/ore (cascadă) — null dacă nu e cerut
-      priceByType: effectiveFuelPrices(_cs)
+      priceByType: effectiveFuelPrices(_cs),
+      // CAN detaliat: semnalele bifate de om. Se curăță în io_signals.curata() — orice cheie
+      // necunoscută se aruncă, fiindcă ajunge într-o interogare pe baza de date.
+      signals: req.query.signals ? String(req.query.signals).split(',').slice(0, 20) : null,
+      canBucket: parseInt(req.query.canBucket) || 0   // lățimea unui interval (sec); 0 = aleasă din perioadă
     };
     const _scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
     // ─── Generare în FUNDAL (background=1): răspundem imediat, generăm async, apoi notificăm userul ───
@@ -8543,7 +8572,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
         try {
           const report = await reports.runReport(db, _type, imeis, from, to, opts, _scope);
           const label = (req.query.label ? String(req.query.label).slice(0, 120) : null) || (reports.REPORTS[_type] && reports.REPORTS[_type].label) || _type;
-          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId, sm: opts.sampleSec, o: opts.osm, oo: opts.osmOver, zm: opts.zoneMin, ha: opts.harshAccel, hb: opts.harshBrake, ht: opts.harshTurn, ge: opts.geo, tf: opts.timeFilter })].join('|').slice(0, 200);
+          const sig = [_type, _imei || 'all', from, to, JSON.stringify({ l: opts.limit, s: opts.stopMin, r: opts.refuelMin, d: opts.dropMin, g: opts.geofenceId, sm: opts.sampleSec, sg: opts.signals, cb: opts.canBucket, o: opts.osm, oo: opts.osmOver, zm: opts.zoneMin, ha: opts.harshAccel, hb: opts.harshBrake, ht: opts.harshTurn, ge: opts.geo, tf: opts.timeFilter })].join('|').slice(0, 200);
           const saved = await db.saveReportHistory({
             company_id: _cid, user_id: _uid, username: _uname, report_type: _type, label, imei: (_imei && _imei.indexOf(',') < 0) ? _imei : null,
             vehicle_count: imeis.length, period_from: from, period_to: to, opts, data: report, signature: sig,
@@ -10411,10 +10440,18 @@ app.post('/api/push/device/unregister', requireAuth, async (req, res) => {
 if (process.env.SEED_TEST === '1') {
   app.post('/api/test/simulate', requireAuth, async (req, res) => {
     try {
-      const { imei, io, speed, name } = req.body;
-      const data = { imei, io: io || {}, speed: speed || 0, name: name || imei, timestamp: new Date().toISOString() };
+      const { imei, io, speed, name, ts, lat, lng } = req.body;
+      const _cand = ts ? new Date(ts) : new Date();
+      const data = { imei, io: io || {}, speed: speed || 0, name: name || imei, timestamp: _cand.toISOString(),
+        latitude: (lat != null ? lat : 45.75), longitude: (lng != null ? lng : 21.23) };
       // aplică maparea de sonde (ca în ingestul TCP)
       try { const fsensors = await getFuelSensors(imei); if (fsensors && fsensors.length) computeFuelFromSensors(data.io, fsensors); } catch (e) {}
+      // simulare: scriem si in istoric, ca rapoartele care citesc din baza de date sa aiba ce citi.
+      // Fara randul asta, orice raport probat pe date simulate iesea gol si parea stricat.
+      try {
+        await db.insertPositions(imei, [{ timestamp: _cand, priority: 0, io: data.io,
+          gps: { latitude: data.latitude, longitude: data.longitude, altitude: 0, angle: 0, speed: data.speed, satellites: 10 } }]);
+      } catch (e) { /* istoricul e optional pentru testele de evenimente */ }
       const prev = livePositions.get(imei) || {};
       livePositions.set(imei, data);
       // Aceeasi ordine ca la ingestul real: detectorul de carburant decide PRIMUL, iar evenimentele

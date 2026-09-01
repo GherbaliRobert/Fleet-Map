@@ -20,6 +20,49 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Raport nou: „CAN detaliat" — istoricul semnalelor pe care le alegi tu — `COMMIT_HASH`
+
+Până acum, din datele CAN se putea scoate doar un **instantaneu**: cât are acum în rezervor, ce
+kilometraj arată bordul. Dacă voiai să vezi *cum a evoluat* temperatura motorului marți, sau când a
+început să crească turația, nu aveai de unde.
+
+**Raportul nou face exact asta.** Alegi mașinile, alegi perioada și **bifezi ce te interesează** —
+turație, temperatură, nivel carburant, kilometraj, consum instantaneu, tensiune, sarcină pe axe,
+sonde de combustibil. Primești istoricul lor, în tabel și în grafice, cu minim / mediu / maxim pe
+toată perioada.
+
+**Bifezi doar ce trimite mașina ta.** Lista nu e teoretică: aplicația se uită la ce a trimis efectiv
+vehiculul ales și îți arată doar acele semnale. Altfel ai fi bifat turația pe o mașină fără adaptor
+CAN și ai fi primit un tabel gol, fără să înțelegi de ce.
+
+**Un rând nu e o poziție, e un interval** — și scrie asta pe raport. Un aparat trimite la câteva
+secunde; o lună ar însemna sute de mii de rânduri, adică un fișier care nu se deschide. Așa că
+valorile se grupează: ceri o zi → un rând la 5 minute; ceri o lună → un rând pe zi. Se alege singur,
+și scrie în capul raportului ce interval s-a folosit.
+
+**Celulă goală ≠ zero.** Gol înseamnă că mașina n-a trimis semnalul în intervalul ăla. Zero e o
+valoare. Sunt lucruri diferite și se văd diferit.
+
+**Merge și programat.** Poți primi raportul săptămânal pe email, cu bifele tale. Aici am reparat și
+ceva mai vechi: **programările nu trimiteau niciodată opțiunile alese** — serverul le aștepta, dar
+niciun ecran nu le completa.
+
+Excel și PDF vin cu numele brandat și logo-ul, ca la toate rapoartele — n-a trebuit nimic în plus.
+
+**Pe drum am mai reparat ceva care se vedea peste tot:** numele semnalelor de bază lipseau din lista
+noastră de traduceri, așa că se generau automat din cheie și ieșeau „Can Engine Rpm", „Speed Io",
+„Total Odometer" — engleză cu majuscule, într-o aplicație românească. Acum sunt scrise pe românește
+(„Turație motor", „Viteza (din mașină)", „Kilometraj GPS") și apar așa **peste tot**: în fișa
+vehiculului, în raport, în explicațiile IO.
+
+- **Ce vede fondatorul:** raportul e în catalog, la categoria „Date CAN"; 33 de verificări noi.
+- **Ce vede clientul:** un raport în care își alege singur ce urmărește, fără să ne ceară nouă.
+
+Verificat cap-coadă pe server adevărat: pachete → istoric → raport, inclusiv că o cheie inventată
+nu poate ajunge în interogarea pe baza de date și că bifele chiar se păstrează într-o programare.
+
+---
+
 ### AMÂNDOI · Dacia Logan: „scădere de la 43 la 32 L" la fiecare pornire — reparat — `6ba6e9a`
 
 Am reprodus-o. Un ciclu banal — mașina merge, se oprește, pornește — scotea exact mesajul primit:

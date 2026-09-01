@@ -35,6 +35,10 @@ export function ReportSchedules() {
   const [confirmDel, setConfirmDel] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<any>({ name: '', report_type: '', imei: '', period: 'yesterday', frequency: 'daily', hour: '6', format: 'pdf', recipients: '' });
+  // „CAN detaliat" e singurul raport programabil cu o listă de semnale. Serverul le păstrează în
+  // programare (`opts`) și le folosește la rulare — până acum niciun client nu le trimitea.
+  const [schedSignals, setSchedSignals] = useState<{ key: string; label: string; unit: string }[]>([]);
+  const [schedSel, setSchedSel] = useState<string[]>([]);
 
   async function reload() {
     setErr('');
@@ -52,6 +56,19 @@ export function ReportSchedules() {
     setForm({ name: s.name || '', report_type: s.report_type || '', imei: s.imei || '', period: s.period || 'yesterday', frequency: s.frequency || 'daily', hour: String(s.hour != null ? s.hour : 6), format: s.format || 'pdf', recipients: s.recipients || '' });
     setAdd(true);
   }
+  useEffect(() => {
+    if (form.report_type !== 'can_detail' || schedSignals.length) return;
+    const to = new Date().toISOString(), from = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    Api.canSignals('', from, to)
+      .then((d: any) => {
+        setSchedSignals((d && d.signals) || []);
+        setSchedSel((c) => (c.length ? c : ((d && d.defaults) || [])));
+      })
+      .catch(() => { /* rămâne gol → raportul folosește semnalele implicite */ });
+  }, [form.report_type]);
+  function toggleSchedSignal(k: string) {
+    setSchedSel((c) => (c.includes(k) ? c.filter((x) => x !== k) : (c.length >= 10 ? c : [...c, k])));
+  }
   function closeSheet() { setAdd(false); setEditId(null); }
   const setF = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
 
@@ -63,6 +80,7 @@ export function ReportSchedules() {
         name: form.name.trim() || null, report_type: form.report_type, imei: form.imei || null,
         period: form.period, frequency: form.frequency, hour: parseInt(form.hour) || 6,
         format: form.format, recipients: form.recipients.trim() || null,
+        opts: (form.report_type === 'can_detail' && schedSel.length) ? { signals: schedSel.join(',') } : {},
       };
       if (editId != null) { await Api.updateReportSchedule(editId, body); showToast('Programare modificată'); }
       else { await Api.createReportSchedule(body); showToast('Programare adăugată'); }
@@ -157,6 +175,19 @@ export function ReportSchedules() {
                   </div>
                   <div class="fld"><label>Ora (0–23)</label><input type="number" inputMode="numeric" value={form.hour} onInput={(e) => setF('hour', (e.target as HTMLInputElement).value)} /></div>
                 </div>
+                {form.report_type === 'can_detail' && schedSignals.length > 0 && (
+                  <div class="fld">
+                    <label>Semnale urmărite{schedSel.length ? " · " + schedSel.length + " bifate" : ""}</label>
+                    <div style="max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:6px 8px">
+                      {schedSignals.map((x) => (
+                        <label key={x.key} style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px" onClick={() => toggleSchedSignal(x.key)}>
+                          <input type="checkbox" checked={schedSel.includes(x.key)} onChange={() => toggleSchedSignal(x.key)} style="width:auto;flex:none" />
+                          <span>{x.label}{x.unit ? " (" + x.unit + ")" : ""}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div class="fld"><label>Destinatari (email)</label><input type="text" value={form.recipients} onInput={(e) => setF('recipients', (e.target as HTMLInputElement).value)} placeholder="gol = emailul tău; separă cu virgulă" autocapitalize="none" /></div>
                 <div class="frm-actions"><button class="btn btn-primary" disabled={busy} onClick={save}>{busy ? 'Se salvează…' : (editId != null ? 'Salvează modificările' : 'Programează')}</button></div>
               </div>

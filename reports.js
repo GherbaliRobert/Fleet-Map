@@ -1203,6 +1203,156 @@ async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN — instant
   };
 }
 
+// ── CAN detaliat: ISTORICUL semnalelor alese de om ────────────────────────────────────────────────
+// Restul rapoartelor CAN răspund la o întrebare fixă („de câte ori a supraturat?"). Ăsta răspunde la
+// întrebarea pe care nu i-o putem ghici: *arată-mi cum a evoluat exact ce mă interesează pe mine*.
+// Omul bifează semnalele (turație, temperatură, nivel carburant…), noi îi dăm istoricul lor.
+//
+// Trei decizii care contează:
+//  • Se agregă pe INTERVALE, nu poziție cu poziție. Un tracker trimite la câteva secunde; o lună
+//    înseamnă sute de mii de rânduri per mașină, adică un tabel pe care nu-l citește nimeni și un
+//    fișier care nu se deschide. Lățimea intervalului se alege din perioada cerută și scrie în
+//    legendă, ca omul să știe ce vede.
+//  • Agregarea se face în BAZĂ (db.getCanSeries), nu în memorie — altfel un raport pe 30 de zile ar
+//    încetini și primirea datelor de la mașini (același pool de conexiuni).
+//  • O celulă goală înseamnă „mașina n-a trimis semnalul în intervalul ăla", nu zero. Zero e o
+//    valoare; goul e o lipsă. Le ținem separat.
+function _canBucketSec(fromMs, toMs) {
+  const ore = Math.max(1, (toMs - fromMs) / 3600000);
+  if (ore <= 6) return 60;          // sub 6 ore  → un rând pe minut
+  if (ore <= 24) return 300;        // o zi       → 5 minute
+  if (ore <= 72) return 900;        // 3 zile     → 15 minute
+  if (ore <= 24 * 14) return 3600;  // 2 săptămâni→ o oră
+  return 86400;                     // peste      → o zi
+}
+async function rCanDetail(db, imeis, from, to, opts, devMap) {
+  const ioSig = require('./io_signals.js');
+  const chei = ioSig.curata((opts && opts.signals) || null, 10);
+  const fromMs = new Date(from).getTime(), toMs = new Date(to).getTime();
+  const bucket = (opts && opts.canBucket) ? Math.max(60, Math.min(86400, parseInt(opts.canBucket))) : _canBucketSec(fromMs, toMs);
+  const serie = await db.getCanSeries(imeis, from, to, chei, bucket);
+
+  // Eticheta vine din sursa unică (io_format + catalogul Teltonika), nu dintr-o listă scrisă aici.
+  const _fmt = (function () { try { return require('./io_format.js'); } catch (e) { return null; } })();
+  const _cat = (function () { try { return require('./io_catalog.js'); } catch (e) { return null; } })();
+  const numeSemnal = (k) => {
+    const meta = ioSig.semnal(k);
+    let et = k;
+    try { et = (_fmt && _fmt.formatIoLabel(k, (_cat && _cat.IO_CATALOG_BY_ID) || null)) || k; } catch (e) { /* fără catalog → cheia brută */ }
+    return meta && meta.unitate ? et + ' (' + meta.unitate + ')' : et;
+  };
+
+  // serie → { imei: { intervalISO: { cheie: {min,med,max} } } }
+  const peVehicul = {};
+  for (const r of serie) {
+    const t = new Date(r.interval_start).toISOString();
+    (peVehicul[r.imei] = peVehicul[r.imei] || {});
+    (peVehicul[r.imei][t] = peVehicul[r.imei][t] || {});
+    peVehicul[r.imei][t][r.cheie] = {
+      min: ioSig.valoare(r.cheie, r.minim),
+      med: ioSig.valoare(r.cheie, r.medie),
+      max: ioSig.valoare(r.cheie, r.maxim),
+      n: r.n,
+    };
+  }
+
+  const columns = ['Vehicul', 'Interval'].concat(chei.map(numeSemnal));
+  const rows = [];
+  const perVehicle = [];
+  const totaluri = {};   // cheie → {min,max,suma,n} pe toată flota
+  chei.forEach((k) => { totaluri[k] = { min: null, max: null, suma: 0, n: 0 }; });
+
+  const imeisOrdonate = imeis.slice().sort((a, b) => String(label(devMap, a)).localeCompare(String(label(devMap, b))));
+  for (const imei of imeisOrdonate) {
+    const nm = label(devMap, imei);
+    const perIntervale = peVehicul[imei] || {};
+    const momente = Object.keys(perIntervale).sort();
+    const randuriV = [];
+    for (const t of momente) {
+      const c = perIntervale[t];
+      const rand = [nm, fmtTsMin(t)];
+      chei.forEach((k) => {
+        const v = c[k];
+        rand.push(v && v.med != null ? v.med : '');
+        if (v && v.med != null) {
+          const tot = totaluri[k];
+          if (tot.min == null || v.min < tot.min) tot.min = v.min;
+          if (tot.max == null || v.max > tot.max) tot.max = v.max;
+          tot.suma += v.med; tot.n++;
+        }
+      });
+      rows.push(rand);
+      randuriV.push(rand);
+    }
+    if (randuriV.length) {
+      perVehicle.push({
+        vehicul: nm,
+        summary: [['Intervale cu date', randuriV.length], ['Semnale urmărite', chei.length], ['Primul interval', randuriV[0][1]], ['Ultimul interval', randuriV[randuriV.length - 1][1]]],
+        rows: randuriV,
+        charts: _canDetailCharts(perIntervale, chei, numeSemnal, nm),
+      });
+    }
+  }
+
+  // Rezumat: pentru fiecare semnal, cât de jos / cât de sus / cât în medie a fost pe toată flota.
+  const summary = {};
+  const numeInterval = bucket >= 86400 ? 'o zi' : bucket >= 3600 ? (bucket / 3600) + ' h' : (bucket / 60) + ' min';
+  summary['Interval de grupare'] = numeInterval;
+  summary['Rânduri'] = rows.length;
+  chei.forEach((k) => {
+    const t = totaluri[k], meta = ioSig.semnal(k);
+    const u = meta && meta.unitate ? ' ' + meta.unitate : '';
+    summary[numeSemnal(k)] = t.n
+      ? 'min ' + t.min + u + ' · mediu ' + (Math.round((t.suma / t.n) * 100) / 100) + u + ' · max ' + t.max + u
+      : 'fără date';
+  });
+
+  const faraDate = chei.filter((k) => totaluri[k].n === 0).map(numeSemnal);
+
+  return {
+    columns, rows, summary, summarySheet: true, perVehicle,
+    charts: perVehicle.length === 1 ? perVehicle[0].charts : _canDetailChartsFlota(peVehicul, chei, numeSemnal, devMap),
+    periodLabel: 'Valorile sunt media pe fiecare interval de ' + numeInterval,
+    legend: { title: 'CAN detaliat — ce înseamnă coloanele', items: [
+      ['Interval', 'Începutul intervalului. Un rând = ' + numeInterval + '; lățimea se alege din perioada cerută (o zi cerută → 5 minute, o lună → o zi).'],
+      ['Valorile', 'Media semnalului pe intervalul acela. Minimul, media și maximul pe toată perioada sunt în rezumatul de sus.'],
+      ['Celulă goală', 'Mașina NU a trimis semnalul în intervalul acela. Nu înseamnă zero — zero e o valoare, goul e o lipsă.'],
+      ['Ce pot bifa', 'Doar semnalele pe care mașina chiar le trimite. Dacă unul lipsește din listă, adaptorul CAN al mașinii nu-l dă.'],
+    ].concat(faraDate.length ? [['Semnale fără date', 'Le-ai bifat, dar nicio mașină nu le-a trimis în perioada asta: ' + faraDate.join(', ') + '.']] : []) },
+  };
+}
+// Graficele unui vehicul: o linie pentru fiecare semnal bifat, pe aceleași momente.
+function _canDetailCharts(perIntervale, chei, numeSemnal, numeVehicul) {
+  const momente = Object.keys(perIntervale).sort();
+  if (momente.length < 2) return [];
+  const labels = momente.map((t) => fmtTsMin(t));
+  return chei.map((k) => ({
+    type: 'line',
+    title: numeSemnal(k) + (numeVehicul ? ' — ' + numeVehicul : ''),
+    labels,
+    datasets: [{ label: numeSemnal(k), data: momente.map((t) => (perIntervale[t][k] ? perIntervale[t][k].med : null)) }],
+  })).filter((c) => c.datasets[0].data.some((v) => v != null));
+}
+// Graficele pe flotă: un grafic pe semnal, cu o linie pentru fiecare vehicul (maxim 8, ca să rămână citibil).
+function _canDetailChartsFlota(peVehicul, chei, numeSemnal, devMap) {
+  const imeis = Object.keys(peVehicul).slice(0, 8);
+  if (!imeis.length) return [];
+  const toate = new Set();
+  imeis.forEach((i) => Object.keys(peVehicul[i]).forEach((t) => toate.add(t)));
+  const momente = Array.from(toate).sort();
+  if (momente.length < 2) return [];
+  const labels = momente.map((t) => fmtTsMin(t));
+  return chei.map((k) => ({
+    type: 'line',
+    title: numeSemnal(k),
+    labels,
+    datasets: imeis.map((i) => ({
+      label: label(devMap, i),
+      data: momente.map((t) => (peVehicul[i][t] && peVehicul[i][t][k] ? peVehicul[i][t][k].med : null)),
+    })).filter((d) => d.data.some((v) => v != null)),
+  })).filter((c) => c.datasets.length);
+}
+
 // ── Rapoarte CAN/FMS: Supraturații · PTO · Ore motor (gol/sarcină) ─────────────────────────────────
 // Prag de supraturație pe tip de combustibil: diesel toarce jos (linie roșie ~2500–3000); benzină/GPL toarcă sus (~6000).
 function _revThreshold(fuelType) { return _ftKey(fuelType) === 'motorina' ? 2500 : 4000; }
@@ -2261,6 +2411,7 @@ const REPORTS = {
   costs:       { label: 'Costuri combustibil',    cat: 'consum',       desc: 'Banii cheltuiți pe carburant, pe fiecare vehicul și pe total.', fn: rCosts },
   emissions:   { label: 'Emisii CO₂',             cat: 'consum',       desc: 'Amprenta de carbon a flotei, calculată din consum.', fn: rEmissions },
   can:         { label: 'Date CAN',               cat: 'can',          desc: 'Instantaneu tehnic pe mașină: combustibil, kilometraj real (bord + GPS), erori de defect.', fn: rCan },
+  can_detail:  { label: 'CAN detaliat (istoric)', cat: 'can',      desc: 'Istoricul semnalelor pe care le alegi tu: turație, temperatură, nivel carburant, kilometraj — cum au evoluat în timp.', fn: rCanDetail },
   overrev:     { label: 'Supraturații',           cat: 'can',          desc: 'De câte ori și cât timp turația a depășit pragul — condus agresiv / uzură motor.', fn: rOverRev },
   pto:         { label: 'PTO (priză de putere)',  cat: 'can',          desc: 'Timp și porniri cu priza de putere activă (macara, basculă, frigorific).', fn: rPto },
   enginehours: { label: 'Ore motor',              cat: 'can',          desc: 'Orele motorului împărțite: ralanti (gol), în mers, și cu PTO (lucru la utilaje).', fn: rEngineHours },

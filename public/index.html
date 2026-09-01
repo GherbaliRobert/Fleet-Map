@@ -1638,6 +1638,7 @@ const pozitii = await r.json();</code></pre>
             <option value="monthly">Lunar (ziua 1)</option></select></label>
           <label class="rep-f"><span>Ora</span><input id="sch-hour" type="number" min="0" max="23" value="6"></label>
           <label class="rep-f"><span>Format</span><select id="sch-format"><option value="pdf">PDF</option><option value="xlsx">Excel</option></select></label>
+          <label class="rep-f" id="sch-signals-wrap" style="grid-column:span 2;display:none;"><span>Semnale urmărite (ține Ctrl pentru mai multe)</span><select id="sch-signals" multiple size="6" style="min-height:120px;"></select></label>
           <label class="rep-f" style="grid-column:span 2;"><span>Destinatari (email, separați prin virgulă)</span><input id="sch-recips" placeholder="gol = emailul tău"></label>
         </div>
         <div class="sch-foot">
@@ -7465,7 +7466,7 @@ const pozitii = await r.json();</code></pre>
     let repHistoryId = null, repActiveTab = 'generate';
     // Iconiță proprie pentru FIECARE tip de raport (catalogul are 32). Fallback: fa-file-lines — dacă apare,
     // înseamnă că s-a adăugat un raport nou în reports.js fără iconiță aici.
-    const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', idling:'fa-hourglass-half', uptime:'fa-tower-broadcast', due:'fa-file-circle-exclamation', fuel_anomaly:'fa-magnifying-glass-chart', costs:'fa-coins', emissions:'fa-leaf', ecodrive:'fa-award', ecodrive_drivers:'fa-ranking-star', hos:'fa-bed', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell',
+    const REP_ICONS = { trips:'fa-route', route:'fa-map-location-dot', location:'fa-location-dot', stops:'fa-hand', daily:'fa-calendar-day', driver:'fa-id-card', utilization:'fa-gauge', analytic:'fa-table-list', idling:'fa-hourglass-half', uptime:'fa-tower-broadcast', due:'fa-file-circle-exclamation', fuel_anomaly:'fa-magnifying-glass-chart', costs:'fa-coins', emissions:'fa-leaf', ecodrive:'fa-award', ecodrive_drivers:'fa-ranking-star', hos:'fa-bed', consumption:'fa-gas-pump', fuel:'fa-droplet', can:'fa-microchip', can_detail:'fa-chart-line', speeding:'fa-gauge-high', geofence:'fa-draw-polygon', hotspot:'fa-bullseye', events:'fa-bell',
       overrev:'fa-gauge-simple-high', pto:'fa-gears', enginehours:'fa-stopwatch', fuelprobe:'fa-ruler-vertical', weight:'fa-weight-hanging', tipping:'fa-dumpster', arm:'fa-tractor', iot:'fa-temperature-half' };
     // Iconițe SVG per CATEGORIE (currentColor → moștenesc culoarea tab-ului): locație / pompă / cip / clopoțel / scut.
     const REP_CAT_ICONS = {
@@ -7673,6 +7674,7 @@ const pozitii = await r.json();</code></pre>
         + (t === 'ecodrive' ? '<label class="rep-f"><span>Locație</span><select id="rep-geomode" style="min-width:175px;"><option value="addr">Adrese exacte (mai lent)</option><option value="coords">Coordonate (rapid)</option></select></label>' : '');
       else if (t === 'hotspot') html = '<label class="rep-f"><span>Hotspot (zonă)</span><select id="rep-geofence" style="min-width:170px;"><option value="">Se încarcă…</option></select></label>';
       else if (t === 'analytic') html = '<label class="rep-f"><span>Detaliu</span><select id="rep-sample" style="min-width:150px;"><option value="0">Toate pozițiile</option><option value="30">1 la 30 sec</option><option value="60">1 la 1 min</option><option value="300" selected>1 la 5 min</option></select></label>';
+      else if (t === 'can_detail') html = '<div id="rep-signals" class="rep-sig"><div class="rep-sig-h"><i class="fas fa-list-check"></i> Ce semnale te interesează <span id="rep-sig-cnt" class="rep-sig-cnt"></span></div><div id="rep-sig-body" class="rep-sig-b">Se încarcă…</div></div>';
       var _rx = document.getElementById('rep-extra'); _rx.innerHTML = html; _rx.style.flexWrap = ['speeding','ecodrive','ecodrive_drivers'].includes(t) ? 'wrap' : '';
       // La „Scadențe" (due): ascundem intervalul pe zile și arătăm selectorul de LUNĂ (scadențe până la finalul lunii alese).
       var _due = (t === 'due');
@@ -7683,6 +7685,7 @@ const pozitii = await r.json();</code></pre>
       var _mp = document.getElementById('rep-month-picker'); if (_mp) _mp.style.display = _due ? '' : 'none';
       if (_due) { if (!repMonthSel) repInitMonthPicker(); else repRenderMonths(); }
       if (t === 'hotspot') repLoadGeofences();
+      if (t === 'can_detail') repLoadSignals();
     }
     // Panou de ajutor pt. bifa „Limite reale (OSM)" — apare la bifare, ca userul să știe riscurile și cum să evite erorile.
     function repOsmHint() {
@@ -7709,6 +7712,53 @@ const pozitii = await r.json();</code></pre>
         sel.innerHTML = gfs.map(function (g) { return '<option value="' + g.id + '">' + esc(g.name || ('Zonă ' + g.id)) + '</option>'; }).join('');
       }).catch(function () { var sel = document.getElementById('rep-geofence'); if (sel) sel.innerHTML = '<option value="">(eroare la încărcare)</option>'; });
     }
+    // Semnalele pentru „CAN detaliat". Le cerem pentru VEHICULELE ALESE și pe perioada aleasă,
+    // ca lista să conțină doar ce trimite mașina — altfel omul bifează turația pe o mașină fără
+    // adaptor CAN și primește un tabel gol, fără să înțeleagă de ce.
+    var _repSigSel = {};      // cheie → bifat
+    function repLoadSignals() {
+      var body = document.getElementById("rep-sig-body"); if (!body) return;
+      var imei = _repImeisList().join(",");
+      var u = "/api/can-signals" + (imei ? "?imei=" + encodeURIComponent(imei) : "");
+      fetch(u, { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !Array.isArray(d.signals)) throw new Error("fără date");
+        var vazute = d.signals.filter(function (x) { return x.seen; });
+        var lista = vazute.length ? vazute : d.signals;
+        // implicit bifăm ce recomandăm, dar doar dintre cele pe care mașina chiar le trimite
+        if (!Object.keys(_repSigSel).length) {
+          (d.defaults || []).forEach(function (k) { if (lista.some(function (x) { return x.key === k; })) _repSigSel[k] = true; });
+          if (!Object.keys(_repSigSel).length) lista.slice(0, 4).forEach(function (x) { _repSigSel[x.key] = true; });
+        }
+        var peGrup = {};
+        lista.forEach(function (x) { (peGrup[x.group] = peGrup[x.group] || []).push(x); });
+        var h = "";
+        if (!vazute.length) h += '<div class="rep-sig-note"><i class="fas fa-circle-info"></i> Nu am găsit încă semnale trimise de mașinile alese în perioada asta. Le arătăm pe toate — dacă unul lipsește din raport, mașina nu-l trimite.</div>';
+        (d.groups || []).forEach(function (g) {
+          var lst = peGrup[g.key]; if (!lst || !lst.length) return;
+          h += '<div class="rep-sig-g"><div class="rep-sig-gt">' + _repEsc(g.label) + '</div>';
+          lst.forEach(function (x) {
+            h += '<label class="rep-sig-i"><input type="checkbox" data-k="' + _repEsc(x.key) + '"' + (_repSigSel[x.key] ? " checked" : "") + ' onchange="repToggleSignal(this)"><span>' + _repEsc(x.label) + '</span><em>' + _repEsc(x.unit || "") + '</em></label>';
+          });
+          h += "</div>";
+        });
+        body.innerHTML = h || "Niciun semnal disponibil.";
+        repSignalCount();
+      }).catch(function () { body.innerHTML = '<div class="rep-sig-note">Nu am putut încărca lista de semnale. Raportul va folosi semnalele obișnuite (turație, temperatură, viteză, carburant).</div>'; });
+    }
+    function repToggleSignal(el) {
+      var k = el.getAttribute("data-k");
+      if (el.checked) {
+        if (Object.keys(_repSigSel).filter(function (x) { return _repSigSel[x]; }).length >= 10) { el.checked = false; alert("Maximum 10 semnale într-un raport — altfel tabelul devine ilizibil."); return; }
+        _repSigSel[k] = true;
+      } else { delete _repSigSel[k]; }
+      repSignalCount();
+    }
+    function repSignalCount() {
+      var n = Object.keys(_repSigSel).filter(function (k) { return _repSigSel[k]; }).length;
+      var c = document.getElementById("rep-sig-cnt"); if (c) c.textContent = n ? n + " bifate" : "niciunul bifat";
+    }
+    function repSignalsParam() { return Object.keys(_repSigSel).filter(function (k) { return _repSigSel[k]; }); }
+
     function repBuildUrl() {
       const t = document.getElementById('rep-type').value;
       const imei = _repImeisList().join(','); // clasic: 0/1 elemente (URL identic); cascadă: selecția din coloana Obiecte
@@ -7741,6 +7791,7 @@ const pozitii = await r.json();</code></pre>
       const gf = document.getElementById('rep-geofence');
       if (gf) { if (!gf.value) { alert('Alege un hotspot (zonă) pentru raport.'); return null; } url += '&geofenceId=' + encodeURIComponent(gf.value); }
       const sp = document.getElementById('rep-sample'); if (sp) url += '&sampleSec=' + (parseInt(sp.value) || 0);
+      if (t === 'can_detail') { var _sg = repSignalsParam(); if (!_sg.length) { alert('Bifează cel puțin un semnal pentru raportul CAN detaliat.'); return null; } url += '&signals=' + encodeURIComponent(_sg.join(',')); }
       if (_repViewMode() === 'cascade') {
         url += repCascadeTimeParams();
         const _ct = repCascadeTitle(); if (_ct) url += '&label=' + encodeURIComponent(_ct); // titlul devine eticheta din Istoric
@@ -8386,6 +8437,9 @@ const pozitii = await r.json();</code></pre>
       try {
         let cat = (typeof repCatalog !== 'undefined' && repCatalog && repCatalog.reports) ? repCatalog : await (await fetch('/api/reports', { credentials: 'same-origin' })).json();
         document.getElementById('sch-type').innerHTML = (cat.reports || []).map(r => '<option value="' + r.type + '">' + r.label + '</option>').join('');
+        var _st = document.getElementById('sch-type');
+        if (_st && !_st._legat) { _st._legat = true; _st.addEventListener('change', schedOnType); }
+        schedOnType();
       } catch (e) {}
       try { await fillVehicleSelect('sch-imei', true, 'Toată flota'); } // listă reală de vehicule (nume + nr), nu IMEI brut
       catch (e) { var _d = document.getElementById('sch-imei'); if (_d && !_d.options.length) _d.innerHTML = '<option value="">Toată flota</option>'; }
@@ -8428,6 +8482,35 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { box.innerHTML = '<div style="color:var(--danger);font-size:13px;">Eroare la încărcare.</div>'; }
     }
     var _schedEditId = null; // != null → formularul editează programarea cu acest id (PUT), altfel adaugă (POST)
+    // „CAN detaliat" e singurul raport programabil cu o listă de semnale. Fără bife, raportul
+    // programat ar rula cu semnalele implicite — util, dar nu ce a cerut omul.
+    function schedOpts() {
+      var t = (document.getElementById('sch-type') || {}).value, o = {};
+      if (t === 'can_detail') {
+        var sel = document.getElementById('sch-signals');
+        if (sel) { var k = Array.prototype.filter.call(sel.options, function (x) { return x.selected; }).map(function (x) { return x.value; });
+          if (k.length) o.signals = k.join(','); }
+      }
+      return o;
+    }
+    function schedOnType() {
+      var t = (document.getElementById('sch-type') || {}).value;
+      var w = document.getElementById('sch-signals-wrap'); if (!w) return;
+      var e = (t === 'can_detail');
+      w.style.display = e ? '' : 'none';
+      if (e) schedLoadSignals();
+    }
+    function schedLoadSignals() {
+      var sel = document.getElementById('sch-signals'); if (!sel || sel._umplut) return;
+      fetch('/api/can-signals', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !Array.isArray(d.signals)) return;
+        sel._umplut = true;
+        sel.innerHTML = d.signals.map(function (x) { return '<option value="' + _repEsc(x.key) + '">' + _repEsc(x.label) + (x.unit ? ' (' + _repEsc(x.unit) + ')' : '') + '</option>'; }).join('');
+        var impl = d.defaults || [];
+        Array.prototype.forEach.call(sel.options, function (o) { if (impl.indexOf(o.value) >= 0) o.selected = true; });
+      }).catch(function () { /* rămâne gol → raportul folosește semnalele implicite */ });
+    }
+
     async function schedCreate() {
       const body = {
         name: document.getElementById('sch-name').value.trim(),
@@ -8437,7 +8520,10 @@ const pozitii = await r.json();</code></pre>
         frequency: document.getElementById('sch-freq').value,
         hour: parseInt(document.getElementById('sch-hour').value) || 6,
         format: document.getElementById('sch-format').value,
-        recipients: document.getElementById('sch-recips').value.trim()
+        recipients: document.getElementById('sch-recips').value.trim(),
+        // Opțiunile raportului. Serverul le păstrează în programare și le dă mai departe la rulare;
+        // până acum niciun client nu le trimitea, deci rulau mereu cu valorile implicite.
+        opts: schedOpts()
       };
       const msg = document.getElementById('sch-msg');
       if (!body.report_type) { msg.style.color = 'var(--danger)'; msg.textContent = 'Alege un raport.'; return; }

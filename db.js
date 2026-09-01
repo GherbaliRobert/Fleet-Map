@@ -1627,6 +1627,61 @@ async function setDeviceLastCan(imei, obj) {
 async function clearDeviceLastCan(imei) {
   await pool.query('UPDATE devices SET last_can = NULL WHERE imei = $1', [imei]);
 }
+// Istoricul unor semnale CAN, pe intervale de timp. Agregarea se face ÎN BAZĂ, nu în Node: un
+// raport pe 30 de zile × 20 de vehicule înseamnă milioane de rânduri, iar aducerea lor în memorie
+// ar bloca și ingestul (același pool). Aici se întorc câteva mii de rânduri gata calculate.
+//
+// Trei lucruri care par mărunte și nu sunt:
+//   • cheile vin ca PARAMETRU (`unnest($4::text[])`), niciodată lipite în text — sunt alese de om;
+//   • valorile pot fi TEXT în JSON ("1450"), deci se filtrează cu o expresie și abia apoi se convertesc;
+//   • istoricul vehiculelor arhivate stă în altă tabelă, deci UNION — altfel raportul iese gol.
+// `bucketSec` = lățimea unui interval, în secunde. Se calculează din durata cerută (vezi reports.js).
+async function getCanSeries(imeis, from, to, chei, bucketSec) {
+  if (!Array.isArray(imeis) || !imeis.length || !Array.isArray(chei) || !chei.length) return [];
+  const b = Math.max(60, Math.min(86400, parseInt(bucketSec) || 3600));
+  const r = await pool.query(
+    `WITH p AS (
+       SELECT imei, timestamp, io_data FROM positions
+        WHERE imei = ANY($1) AND timestamp BETWEEN $2 AND $3
+       UNION ALL
+       SELECT imei, timestamp, io_data FROM positions_archive
+        WHERE imei = ANY($1) AND timestamp BETWEEN $2 AND $3
+     ), e AS (
+       SELECT p.imei,
+              to_timestamp(floor(extract(epoch from p.timestamp) / $5) * $5) AS interval_start,
+              k.cheie,
+              (p.io_data ->> k.cheie) AS txt
+         FROM p CROSS JOIN LATERAL unnest($4::text[]) AS k(cheie)
+     )
+     SELECT imei, interval_start, cheie,
+            min(txt::float8) AS minim, avg(txt::float8) AS medie, max(txt::float8) AS maxim, count(*)::int AS n
+       FROM e
+      WHERE txt IS NOT NULL AND txt ~ '^-?[0-9]+(\\.[0-9]+)?$'
+      GROUP BY imei, interval_start, cheie
+      ORDER BY imei, interval_start`,
+    [imeis, from, to, chei, b]
+  );
+  return r.rows;
+}
+
+// Ce semnale trimite EFECTIV un vehicul. Nu are rost să-i punem omului în față 40 de bife din care
+// mașina lui completează trei. Ne uităm la un eșantion din intervalul cerut (cele mai recente
+// poziții), nu la tot istoricul — o listă de bife nu merită o citire de milioane de rânduri.
+async function getCanKeysSeen(imeis, from, to, limitaEsantion) {
+  if (!Array.isArray(imeis) || !imeis.length) return [];
+  const lim = Math.max(50, Math.min(2000, parseInt(limitaEsantion) || 400));
+  const r = await pool.query(
+    `WITH p AS (
+       SELECT io_data FROM positions
+        WHERE imei = ANY($1) AND timestamp BETWEEN $2 AND $3
+        ORDER BY timestamp DESC LIMIT $4
+     )
+     SELECT DISTINCT k AS cheie FROM p, LATERAL jsonb_object_keys(p.io_data) AS k`,
+    [imeis, from, to, lim]
+  );
+  return r.rows.map(function (x) { return x.cheie; });
+}
+
 // Backfill o singură dată la pornire: ultima poziție din istoricul recent care CHIAR are carburant/odometru,
 // pentru devices fără last_can persistat încă. Best-effort (wrapped în try/catch de apelant).
 async function getLastStickyCan() {
@@ -3483,6 +3538,7 @@ module.exports = {
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,
   setDeviceCanInterface, getDeviceCanInterface, setDeviceLastCan, clearDeviceLastCan, getLastStickyCan,
+  getCanSeries, getCanKeysSeen,
   createTachoFile, getTachoFiles, getTachoFile, deleteTachoFile, getTachoScadentar, getTachoIstoric,
   getEtransports, createEtransport, updateEtransport, deleteEtransport, getActiveEtransports, getEtransportScadentar,
   getWebhooks, getEnabledWebhooks, getWebhookById, createWebhook, deleteWebhook, updateWebhookStatus,

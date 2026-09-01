@@ -2598,3 +2598,16 @@
     /* Sub titlul listei: de unde vin cifrele. Alin a întrebat direct „ăsta e un istoric de costuri?" */
     .tz-explic { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; margin: -4px 0 12px; }
     .tz-explic b { color: var(--text-primary); }
+
+/* Panoul de bife pentru raportul „CAN detaliat": omul alege ce semnale vrea în istoric.
+   Se arată doar semnalele pe care mașinile alese chiar le trimit — vezi /api/can-signals. */
+.rep-sig{ flex-basis:100%; border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-top:6px; background:rgba(127,127,127,.06); }
+.rep-sig-h{ font-size:12px; font-weight:700; color:var(--text-secondary); display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+.rep-sig-cnt{ margin-left:auto; font-weight:600; color:var(--text-muted); }
+.rep-sig-b{ display:flex; flex-wrap:wrap; gap:14px; }
+.rep-sig-g{ min-width:190px; }
+.rep-sig-gt{ font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); margin-bottom:5px; }
+.rep-sig-i{ display:flex; align-items:center; gap:7px; font-size:12.5px; padding:2px 0; cursor:pointer; }
+.rep-sig-i input{ width:auto; flex:none; margin:0; }
+.rep-sig-i em{ margin-left:auto; font-style:normal; font-size:11px; color:var(--text-muted); }
+.rep-sig-note{ flex-basis:100%; font-size:11.5px; color:var(--text-secondary); line-height:1.5; }

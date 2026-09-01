@@ -45,6 +45,7 @@ jobs:
           node verify_fueltheft.js
           node verify_fuel_parcare.js
           node verify_fuel_alarma.js
+          node verify_can_report.js
           node verify_tollro.js
           node verify_io_map.js
           node tools/gen-can-icons.js --check
