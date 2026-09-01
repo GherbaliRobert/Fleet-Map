@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
-### AMÂNDOI · Raport nou: „CAN detaliat" — istoricul semnalelor pe care le alegi tu — `COMMIT_HASH`
+### AMÂNDOI · Raport nou: „CAN detaliat" — istoricul semnalelor pe care le alegi tu — `0a340f6`
 
 Până acum, din datele CAN se putea scoate doar un **instantaneu**: cât are acum în rezervor, ce
 kilometraj arată bordul. Dacă voiai să vezi *cum a evoluat* temperatura motorului marți, sau când a
