@@ -20,6 +20,27 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Tahograf își primește propria iconiță
+
+Alin a observat că **Șoferi** și **Tahograf** aveau exact aceeași iconiță — legitimația. Dintre cele
+două, cea de schimbat era Tahograf: la Șoferi legitimația chiar are sens (e permisul de conducere).
+
+Tahograf are acum **desenul aparatului digital din bordul camionului** — există gata făcut în setul
+de iconițe și nu seamănă cu nimic altceva din aplicație. Ales de Alin dintre 9 variante.
+
+**Pe drum am găsit o nepotrivire mai veche:** meniul lateral arăta legitimația, iar Administrarea
+arăta un ceas de bord — două iconițe diferite pentru același lucru, în aceeași aplicație. Acum toate
+cele 8 locuri arată la fel: meniul lateral, meniul de Administrare, fila Tahograf, harta de iconițe
+a secțiunilor, categoria „Tahograf" din parametrii de camion, butonul și fereastra din aplicația de
+telefon, plus antetul ferestrei Tahograf.
+
+Ce am lăsat neatins: eticheta **„Card de tahograf"** de la un șofer rămâne cu legitimația — acolo
+chiar despre un card e vorba.
+
+- **Ce am schimbat:** Tahograf are iconița lui, aceeași peste tot; Șoferi păstrează legitimația.
+- **Ce vede fondatorul:** meniul lateral și Administrarea nu se mai contrazic.
+- **Ce vede clientul:** două rânduri din meniu care nu mai arată identic.
+
 ### AMÂNDOI · Iconița de la „Vehicule" — mașină, nu camion
 
 Alin a cerut altă iconiță pentru **Management → Vehicule** și a ales **mașina din față**.

@@ -112,7 +112,7 @@
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('alerts'); })"><i class="fas fa-bell"></i><span>Alerte</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('maintenance'); })"><i class="fas fa-wrench"></i><span>Mentenanță</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('documente'); })"><i class="fas fa-file-contract"></i><span>Documente</span></button>
-            <button class="nav-item nav-sub feat-tacho" onclick="navGo(this, function(){ goManage('tacho'); })"><i class="fas fa-id-card"></i><span>Tahograf</span></button>
+            <button class="nav-item nav-sub feat-tacho" onclick="navGo(this, function(){ goManage('tacho'); })"><i class="fas fa-tachograph-digital"></i><span>Tahograf</span></button>
             <button class="nav-item nav-sub feat-etransport" onclick="navGo(this, function(){ goManage('etransport'); })"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
             <button class="nav-item nav-sub feat-etoll" onclick="navGo(this, function(){ showView('etoll'); })"><i class="fas fa-road"></i><span>Taxa de drum (TollRo)</span></button>
           </div>
@@ -1404,7 +1404,7 @@
           <button class="aside-item aside-warn" data-atab="archived" onclick="raxAdminTab('archived')"><i class="fas fa-box-archive"></i> Dispozitive arhivate</button>
           <div class="aside-grp" data-super>AI &amp; Module</div>
           <button class="aside-item" data-super data-atab="agents" onclick="raxAdminTab('agents')"><i class="fas fa-wand-magic-sparkles"></i> Utilizare RA Insight</button>
-          <button class="aside-item" data-super data-atab="tahograf" onclick="raxAdminTab('tahograf')"><i class="fas fa-gauge-high"></i> Tahograf</button>
+          <button class="aside-item" data-super data-atab="tahograf" onclick="raxAdminTab('tahograf')"><i class="fas fa-tachograph-digital"></i> Tahograf</button>
           <button class="aside-item" data-super data-atab="etransport" onclick="raxAdminTab('etransport')"><i class="fas fa-truck-fast"></i> e-Transport</button>
           <div class="aside-grp" data-super>Business</div>
           <button class="aside-item" data-super data-atab="billing" onclick="raxAdminTab('billing')"><i class="fas fa-file-invoice-dollar"></i> Facturare</button>
@@ -1789,7 +1789,7 @@ const pozitii = await r.json();</code></pre>
         <button class="admin-tab" data-atab="groups" onclick="switchAdminTab('groups')"><i class="fas fa-layer-group"></i> Grupe</button>
         <button class="admin-tab" data-atab="alerts" onclick="switchAdminTab('alerts')"><i class="fas fa-bell"></i> Alerte</button>
         <button class="admin-tab" data-atab="maintenance" onclick="switchAdminTab('maintenance')"><i class="fas fa-wrench"></i> Mentenanță</button>
-        <button class="admin-tab" data-atab="tacho" onclick="switchAdminTab('tacho')"><i class="fas fa-id-card"></i> Tahograf</button>
+        <button class="admin-tab" data-atab="tacho" onclick="switchAdminTab('tacho')"><i class="fas fa-tachograph-digital"></i> Tahograf</button>
         <button class="admin-tab" data-atab="etransport" onclick="switchAdminTab('etransport')"><i class="fas fa-truck-fast"></i> e-Transport</button>
       </div>
       <div style="overflow-y:auto;flex:1;padding-right:4px;">
@@ -4256,7 +4256,7 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('atab-' + tab).style.display = 'block';
       // Bara de tab-uri e ascunsă → titlul paginii reflectă secțiunea aleasă din meniul lateral (cu iconița ei).
       var _alabels = { vehicles: 'Vehicule', drivers: 'Șoferi', groups: 'Grupe', alerts: 'Alerte', maintenance: 'Mentenanță', documente: 'Documente', tacho: 'Tahograf', etransport: 'e-Transport', settings: 'Setări' };
-      var _aicons = { vehicles: 'fa-car', drivers: 'fa-id-card', groups: 'fa-layer-group', alerts: 'fa-bell', maintenance: 'fa-wrench', documente: 'fa-file-contract', tacho: 'fa-gauge-high', etransport: 'fa-truck-fast', settings: 'fa-sliders-h' };
+      var _aicons = { vehicles: 'fa-car', drivers: 'fa-id-card', groups: 'fa-layer-group', alerts: 'fa-bell', maintenance: 'fa-wrench', documente: 'fa-file-contract', tacho: 'fa-tachograph-digital', etransport: 'fa-truck-fast', settings: 'fa-sliders-h' };
       var _at = document.getElementById('admin-modal-title');
       if (_at) _at.innerHTML = '<i class="fas ' + (_aicons[tab] || 'fa-sliders-h') + '" style="margin-right:8px;color:var(--accent);"></i> ' + (_alabels[tab] || 'Administrare');
       if (tab === 'vehicles') loadVehicles();
@@ -12272,7 +12272,7 @@ const pozitii = await r.json();</code></pre>
         'Sarcina Axe (Camion)': 'fa-weight-hanging',
         'Specific Camion': 'fa-truck-moving',
         'Mentenanta Camion': 'fa-tools',
-        'Tahograf': 'fa-id-card',
+        'Tahograf': 'fa-tachograph-digital',
         'AdBlue': 'fa-tint',
         'Identificare': 'fa-fingerprint',
         'Usi (detaliat)': 'fa-door-open',
@@ -16007,7 +16007,7 @@ const pozitii = await r.json();</code></pre>
       <div id="rax-co-chip" style="display:none;"></div>
       <button class="rax-fab secondary" id="rax-co-btn" style="display:none;" onclick="raxOpenCompanies()"><i class="fas fa-building"></i> Companii</button>
       <button class="rax-fab secondary" id="rax-acc-btn" style="display:none;" onclick="raxOpenAccounts()"><i class="fas fa-users-gear"></i> Conturi</button>
-      <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-id-card"></i> Tahograf</button>
+      <button class="rax-fab secondary" id="rax-tacho-btn" style="display:none;" onclick="raxOpenTacho()"><i class="fas fa-tachograph-digital"></i> Tahograf</button>
       <button class="rax-fab secondary" id="rax-et-btn" style="display:none;" onclick="raxOpenEt()"><i class="fas fa-truck-fast"></i> e-Transport</button>
       <button class="rax-fab secondary" id="rax-sub-btn" style="display:none;" onclick="raxOpenSub()"><i class="fas fa-credit-card"></i> Abonament</button>
       <!-- buton „Agenți AI" flotant eliminat: pagina din meniul lateral îl înlocuiește -->
@@ -16094,7 +16094,7 @@ const pozitii = await r.json();</code></pre>
 
   <div class="rax-overlay" id="rax-tacho-overlay">
     <div class="rax-card">
-      <div class="rax-head"><h3><i class="fas fa-id-card" style="color:var(--accent)"></i> Tahograf</h3><button class="rax-x" onclick="document.getElementById('rax-tacho-overlay').classList.remove('open')">&times;</button></div>
+      <div class="rax-head"><h3><i class="fas fa-tachograph-digital" style="color:var(--accent)"></i> Tahograf</h3><button class="rax-x" onclick="document.getElementById('rax-tacho-overlay').classList.remove('open')">&times;</button></div>
       <div class="rax-body">
         <div class="th-seg" id="th-tabs">
           <button class="on" data-tt="due" onclick="raxTachoTab('due')">De descărcat</button>
