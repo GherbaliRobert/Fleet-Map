@@ -263,6 +263,59 @@ function gata(code) {
     Array.isArray(pd) && pd.length >= 2 && Math.abs(pd[0][0]) <= 90 && Math.abs(pd[0][1]) <= 180,
     JSON.stringify(pd && pd[0]));
 
+  sect('9. Grila de tarife: fiecare cifră spune în ce e');
+  // Tabelul ăsta a mințit o dată (0,22 stătea pe Euro 6) și a fost prins abia comparând cu ecranul
+  // concurenței. Apoi Alin s-a uitat la el și a întrebat „0,17 e în lei?". Amândouă se apără aici:
+  // valorile de pe ecran trebuie să fie EXACT cele din catalog, iar fiecare celulă își poartă
+  // unitatea — nu doar textul de deasupra tabelului, pe care nimeni nu-l citește.
+  const iG = js.indexOf('  // ── începe grila de tarife');
+  const jG = js.indexOf('  // ── sfârșit grila de tarife ──', iG);
+  T('găsesc codul grilei în interfață', iG > 0 && jG > iG);
+  if (iG > 0 && jG > iG) {
+    const escG = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const mkG = new Function('_tr', 'esc', js.slice(iG, jG) + '\n; return trGrilaHtml;');
+    const cfg = { cfg: { categorii: toll.CATEGORII, euro: toll.EURO } };
+    const G = toll.GRILA_IMPLICITA;
+    const celule = toll.CATEGORII.length * toll.EURO.length * 2;
+
+    for (const [mod, editabil] of [['citire', false], ['editare', true]]) {
+      const h = mkG(cfg, escG)(G, editabil);
+      const uni = (h.match(/tz-g-um">lei\/km</g) || []).length;
+      T('(' + mod + ') fiecare celulă își poartă unitatea', uni === celule, uni + ' din ' + celule);
+
+      // Fiecare valoare din catalog trebuie să se regăsească pe ecran, la locul ei.
+      let gresite = [];
+      toll.CATEGORII.forEach((c) => {
+        toll.EURO.forEach((e) => {
+          ['autostrada', 'national'].forEach((k) => {
+            const v = G.tarife[c.key][e.key][k];
+            const gasit = editabil
+              ? new RegExp('value="' + v.toFixed(2) + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="' + k + '"').test(h)
+              : h.indexOf('tz-g-val">' + v.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) >= 0;
+            if (!gasit) gresite.push(c.key + '/' + e.key + '/' + k + '=' + v);
+          });
+        });
+      });
+      T('(' + mod + ') cifrele de pe ecran sunt cele din catalog', !gresite.length, gresite.join(', '));
+    }
+
+    const hc = mkG(cfg, escG)(G, false);
+    T('fiecare coloană Euro e despărțită în autostradă și drum național',
+      (hc.match(/Autostradă/g) || []).length === toll.EURO.length &&
+      (hc.match(/Drum național/g) || []).length === toll.EURO.length,
+      (hc.match(/Autostradă/g) || []).length + ' / ' + (hc.match(/Drum național/g) || []).length);
+    // Un tarif estimat afișat ca oficial e mai rău decât lipsa lui.
+    const presupuse = toll.CATEGORII.reduce((a, c) => a + toll.EURO.filter(e => G.tarife[c.key][e.key].presupus).length, 0);
+    T('celulele nepublicate rămân marcate', (hc.match(/class="presupus"/g) || []).length === presupuse * 2,
+      (hc.match(/class="presupus"/g) || []).length + ' din ' + presupuse * 2);
+    // Câmpul de calendar arată data în formatul browserului („10/01/2026" se citește ca 10 ianuarie).
+    T('data de la care se plătește e scrisă și în cuvinte', /1 octombrie 2026/.test(hc), hc.slice(-220));
+    T('fără jargon de programator pe ecranul clientului', !/în cod|ordonanță și s-au tot amânat/i.test(hc));
+
+    console.log('  → o celulă arată așa: ' +
+      (hc.match(/<span class="tz-g-cel">[\s\S]*?<\/span><\/span>/) || [''])[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  }
+
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');
   gata(rele ? 1 : 0);

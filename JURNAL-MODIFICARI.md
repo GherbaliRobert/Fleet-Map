@@ -20,6 +20,31 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Grila de tarife: „lei/km" scris lângă fiecare cifră
+
+Alin s-a uitat la tabelul de tarife și a întrebat: *„cifrele astea, 0,17 etc, sunt în lei? scrie și
+în dreptul lor."* Deasupra tabelului scria deja *„Cât costă un kilometru, în lei"* — dar el nu
+citise rândul ăla, fiindcă **nimeni nu citește introducerea când se uită la un tabel**. Ochiul sare
+direct la cifre, iar cifrele erau goale: 0,17 putea fi lei, euro sau procente.
+
+Acum fiecare celulă își poartă unitatea: **0,17 lei/km**. Scris mic și gri, ca să nu acopere cifra,
+dar prezent în toate cele 24 de căsuțe. Nu mai depinde de nimic de deasupra.
+
+Un amănunt reparat pe drum: în modul de editare (doar voi îl vedeți) căsuța arăta **0.1** acolo unde
+tabelul alăturat scrie **0,10** — două scrieri diferite ale aceluiași ban, exact genul de lucru care
+te face să te întrebi dacă nu cumva e altă valoare. Acum arată mereu două zecimale.
+
+**Am pus și o probă automată pe tabelul ăsta**, fiindcă tabelul ăsta a mai mințit o dată (0,22 stătea
+pe Euro 6 și l-am prins abia comparând cu ecranul concurenței). De acum, la orice modificare,
+aplicația verifică singură două lucruri: că fiecare cifră de pe ecran e **exact** cea din catalogul
+oficial, și că fiecare cifră își poartă unitatea. Am stricat-o intenționat în ambele feluri ca să
+mă asigur că proba chiar pică — și pică.
+
+- **Ce am schimbat:** lângă fiecare tarif din grilă scrie acum „lei/km"; în modul de editare cifrele
+  au mereu două zecimale; o probă automată apără cifrele și unitățile.
+- **Ce vede fondatorul:** aceeași grilă, dar nu mai trebuie să explice nimănui în ce sunt cifrele.
+- **Ce vede clientul:** un tabel din care poate citi un preț fără să întrebe pe nimeni.
+
 ### AMÂNDOI · Trei corecturi de limbaj la Taxa de drum, cerute de Alin
 
 **1. Un rând scris pentru programatori, ajuns sub ochii clientului.** Deasupra grilei scria:

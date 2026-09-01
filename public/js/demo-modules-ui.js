@@ -582,9 +582,15 @@
   // într-o celulă („0.17  0.08") și o notă de subsol care explica ce e prima și ce e a doua — adică
   // omul trebuia să țină minte o convenție ca să citească niște bani. Acum fiecare cifră stă sub
   // capul ei de coloană și are unitatea scrisă.
+  // ── începe grila de tarife (REPER pentru probe: verify_tollro_flota.js decupează exact bucata
+  // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
   function trGrilaHtml(g, editabil) {
     var cat = _tr.cfg.categorii, euro = _tr.cfg.euro;
     var lei = function (v) { return Number(v).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    // Unitatea stă lângă FIECARE cifră, nu doar în textul de sus. Alin a întrebat, uitându-se la
+    // tabel: „0,17 e în lei?" — dacă întrebarea apare, tabelul nu răspunde singur, iar un om care
+    // se uită la un tabel nu citește introducerea.
+    var um = '<span class="tz-g-um">lei/km</span>';
 
     var h = '<div class="tz-grila-int">Cât costă <b>un kilometru</b>, în lei. Depinde de cât cântărește ' +
       'mașina și de cât de poluantă e: cu cât e mai grea și mai veche, cu atât plătești mai mult. ' +
@@ -604,10 +610,12 @@
         var cls = t.presupus ? ' class="presupus"' : '';
         var titlu = t.presupus ? ' title="Tariful ăsta nu a fost publicat încă — e o estimare a noastră"' : '';
         ['autostrada', 'national'].forEach(function (k) {
-          h += '<td' + cls + titlu + '>' +
+          h += '<td' + cls + titlu + '><span class="tz-g-cel">' +
             (editabil
-              ? '<input type="number" step="0.01" min="0" max="10" value="' + t[k] + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="' + k + '" class="tr-cel">'
-              : '<span class="tz-g-val">' + lei(t[k]) + '</span>') +
+              // Două zecimale mereu: căsuța de tip „number" ar arăta „0.1" acolo unde tabelul de
+              // alături scrie „0,10", iar două scrieri diferite ale aceluiași ban dau de bănuit.
+              ? '<input type="number" step="0.01" min="0" max="10" value="' + Number(t[k]).toFixed(2) + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="' + k + '" class="tr-cel">'
+              : '<span class="tz-g-val">' + lei(t[k]) + '</span>') + um + '</span>' +
             (t.presupus && k === 'national' ? '<i class="fas fa-triangle-exclamation"></i>' : '') + '</td>';
         });
       });
@@ -639,6 +647,7 @@
     }
     return h;
   }
+  // ── sfârșit grila de tarife ──
 
   // Vehiculul se alege acum dintr-un RÂND al listei, nu dintr-un selector. Selectorul rămâne
   // acceptat dacă mai există undeva, ca să nu rup o cale veche.

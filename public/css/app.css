@@ -2543,6 +2543,12 @@
     .tz-grila td { padding: 7px 6px; }
     .tz-g-val { display: inline-block; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
       color: var(--text-primary); min-width: auto; }
+    /* Unitatea de măsură lângă fiecare cifră. Fără ea, tabelul e o pânză de numere goale și omul
+       întreabă „0,17 e în lei?" — exact ce s-a și întâmplat. Regula veche `.tr-grid td span`
+       (min-width 34px) ar lăți inutil eticheta, de aceea o anulez explicit aici. */
+    .tz-grila td .tz-g-cel { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; }
+    .tz-grila td .tz-g-um { min-width: 0; font-size: 10px; font-weight: 700; color: var(--text-muted);
+      letter-spacing: .2px; white-space: nowrap; }
     .tz-grila-jos { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-top: 8px; }
     .tz-grila-jos > i { color: #f59e0b; margin-right: 5px; }
     .tz-grila-jos b { color: var(--text-primary); }
