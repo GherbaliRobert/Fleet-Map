@@ -1978,7 +1978,10 @@ app.post('/api/login', async (req, res) => {
     req.session.companyId = user.company_id != null ? user.company_id : null;
 
     db.setUserLastLogin(user.id).catch(() => {});
-    db.logAudit({ userId: user.id, username: user.username, action: 'login', entity: 'session', ip });
+    // Compania TREBUIE trecută: istoricul firmei se filtrează pe ea, iar fără ea autentificările
+    // nu apăreau deloc în „Istoric activitate" — se vedea ce s-a modificat, dar nu și cine a intrat.
+    db.logAudit({ userId: user.id, username: user.username, action: 'login', entity: 'session', ip,
+      companyId: user.company_id != null ? user.company_id : null });
 
     res.json({ username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
   } catch (err) {
@@ -2027,10 +2030,11 @@ app.post('/api/mobile/login', async (req, res) => {
 
 // Logout
 app.post('/api/logout', (req, res) => {
-  const u = req.session ? { userId: req.session.userId, username: req.session.username } : {};
+  const u = req.session ? { userId: req.session.userId, username: req.session.username, companyId: req.session.companyId } : {};
   const ip = clientIp(req);
   req.session.destroy(() => {
-    if (u.userId) db.logAudit({ userId: u.userId, username: u.username, action: 'logout', entity: 'session', ip });
+    if (u.userId) db.logAudit({ userId: u.userId, username: u.username, action: 'logout', entity: 'session', ip,
+      companyId: u.companyId != null ? u.companyId : null });
     res.json({ ok: true });
   });
 });
@@ -2243,6 +2247,23 @@ app.get('/api/audit', requireAuth, requireSuperadmin, withCompany, async (req, r
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── Istoric activitate (Setări → Evidență) ───
+// Jurnalul FIRMEI, nu al platformei: adminul de firmă vede doar rândurile companiei lui, iar filtrul
+// pe companie e pus de server, nu de client. Super-adminul, care are jurnalul global la Audit, vede
+// aici tot — de aceea nu ne bazăm pe un parametru din URL pentru a decide ce firmă se citește.
+app.get('/api/activity', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    res.json(await db.getActivityLog({
+      companyId: req.isSuper ? null : req.companyId,
+      zile: Math.min(Math.max(parseInt(req.query.zile, 10) || 30, 1), 365),
+      userId: req.query.user ? parseInt(req.query.user, 10) : null,
+      actiune: req.query.actiune || null,
+      familie: req.query.familie || null,
+      limit: req.query.limit, offset: req.query.offset,
+    }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── Chei API (doar admin) — pentru integrări programatice ───

@@ -2544,6 +2544,55 @@ async function getAuditLog(limit = 100, offset = 0, companyId) {
   return result.rows;
 }
 
+// Familiile de acțiuni, pe înțelesul omului. „Modificări" înseamnă tot ce schimbă date, indiferent
+// cum se cheamă acțiunea în cod.
+const ACT_FAMILII = {
+  conectari: ['login', 'logout'],
+  modificari: ['create', 'update', 'delete', 'assign', 'assign_company', 'assign_company_bulk', 'import',
+               'adopt', 'set_access', 'set_plan', 'set_can_interface', 'set_ai_limit', 'reset_password',
+               'revoke', 'approve', 'reject', 'upload', 'scan', 'erase', 'clear', 'takeover', 'apply_offer'],
+  descarcari: ['export', 'download'],
+};
+
+// Istoricul de activitate al UNEI firme: cine s-a conectat, cine ce a modificat, când și de unde.
+// Spre deosebire de getAuditLog (jurnalul global al platformei), aici se filtrează pe firmă, pe
+// perioadă și pe om, iar numărul de înmatriculare vine odată cu rândul — altfel ecranul ar afișa
+// IMEI-uri, iar omul n-ar ști despre ce mașină e vorba.
+// companyId null = toate firmele (doar super-admin).
+async function getActivityLog(opts) {
+  const o = opts || {};
+  const lim = Math.min(Math.max(parseInt(o.limit, 10) || 50, 1), 200);
+  const off = Math.max(parseInt(o.offset, 10) || 0, 0);
+  const cond = [], p = [];
+  if (o.companyId != null) { p.push(o.companyId); cond.push('a.company_id = $' + p.length); }
+  if (o.zile) {
+    // Pragul se calculează aici, nu în SQL cu interval — merge la fel pe Postgres și pe PGlite.
+    p.push(new Date(Date.now() - Number(o.zile) * 86400000).toISOString());
+    cond.push('a.created_at > $' + p.length);
+  }
+  if (o.userId) { p.push(Number(o.userId)); cond.push('a.user_id = $' + p.length); }
+  if (o.actiune) { p.push(String(o.actiune)); cond.push('a.action = $' + p.length); }
+  // Familiile sunt definite AICI, nu în interfață: dacă un ecran ar trimite lista de acțiuni, orice
+  // acțiune nouă ar rămâne pe dinafara filtrului fără ca cineva să observe.
+  if (o.familie && ACT_FAMILII[o.familie]) {
+    const lista = ACT_FAMILII[o.familie];
+    const marci = lista.map(function (x) { p.push(x); return '$' + p.length; });
+    cond.push('a.action IN (' + marci.join(', ') + ')');
+  }
+  const w = cond.length ? 'WHERE ' + cond.join(' AND ') : '';
+  const tot = await pool.query('SELECT COUNT(*)::int AS n FROM audit_log a ' + w, p);
+  const pp = p.slice(); pp.push(lim); pp.push(off);
+  const r = await pool.query(
+    `SELECT a.id, a.user_id, a.username, a.action, a.entity, a.entity_id, a.details, a.ip, a.created_at,
+            d.plate AS device_plate, d.name AS device_name
+       FROM audit_log a
+       LEFT JOIN devices d ON a.entity = 'device' AND d.imei = a.entity_id
+       ${w}
+      ORDER BY a.created_at DESC
+      LIMIT $${pp.length - 1} OFFSET $${pp.length}`, pp);
+  return { total: tot.rows[0] ? tot.rows[0].n : 0, randuri: r.rows };
+}
+
 // ─── Chei API ───
 
 async function createApiKey(userId, name, keyHash, prefix, expiresAt) {
@@ -3547,6 +3596,7 @@ module.exports = {
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
+  getActivityLog, ACT_FAMILII,
   updateDeviceInfo, setDeviceGpsInfo, getDeviceInventory, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
   updateVehicleDetails,
   deviceExists,

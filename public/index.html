@@ -2526,6 +2526,13 @@ const pozitii = await r.json();</code></pre>
                 </div>
               </div>
 
+              <!-- Evidență → Istoric activitate -->
+              <div class="set-panel" data-spanel="istoric" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-clock-rotate-left"></i> Istoric activitate</div>
+                <p class="set-note">Cine s-a conectat și cine ce a modificat în contul firmei. Se păstrează automat, nu se poate șterge din aplicație.</p>
+                <div id="ist-host"><div class="dm-muted">Se încarcă…</div></div>
+              </div>
+
               <!-- Evidență → Aparate GPS -->
               <div class="set-panel" data-spanel="aparate" style="display:none;">
                 <div class="set-sec-h"><i class="fas fa-satellite-dish"></i> Aparate GPS</div>
@@ -4337,6 +4344,7 @@ const pozitii = await r.json();</code></pre>
       { k: 'program',     et: 'Program de lucru',     ic: 'fa-business-time',       drept: 'manageUsers' },
       { k: 'combustibil', et: 'Prețuri combustibil',  ic: 'fa-gas-pump',            drept: 'manageFleet' },
       { grup: 'Evidență' },
+      { k: 'istoric',     et: 'Istoric activitate',   ic: 'fa-clock-rotate-left',   drept: 'manageUsers' },
       { k: 'aparate',     et: 'Aparate GPS',          ic: 'fa-satellite-dish',      drept: 'manageFleet' },
       { grup: 'Abonament și integrări' },
       { k: 'facturi',     et: 'Facturile mele',       ic: 'fa-file-invoice-dollar', drept: 'adminFirma' },
@@ -4406,6 +4414,7 @@ const pozitii = await r.json();</code></pre>
       else if (name === 'facturi') { setImprumuta('admin-tab-myinvoices', 'set-host-invoices'); if (window.raxLoadMyInvoices) window.raxLoadMyInvoices(); }
       else if (name === 'combustibil' && window.usLoadFuelPrices) window.usLoadFuelPrices();
       else if (name === 'aparate') agpsLoad();
+      else if (name === 'istoric') istLoad(true);
     }
     window.usTab = usTab;
 
@@ -4547,6 +4556,151 @@ const pozitii = await r.json();</code></pre>
       agpsRender();
     }
     // ── sfârșit „Aparate GPS" ──
+
+    // ═══ Istoric activitate (Setări → Evidență) ═══
+    // Jurnalul firmei, scris pe românește. În bază, un rând arată așa: action=update, entity=device,
+    // entity_id=350317170000101. Pe ecran trebuie să scrie „Ion a modificat mașina CJ 12 ABC" —
+    // altfel e un tabel pe care nu-l citește nimeni, adică o funcție care există doar în ofertă.
+    // ── începe „Istoric activitate" (REPER pentru probe: verify_istoric.js decupează exact bucata
+    // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+    var _ist = { randuri: null, total: 0, zile: 30, familie: '', user: '', eroare: null, seIncarca: false };
+    // Verbul, iconița și culoarea, după ce s-a făcut. Acțiunile pe care nu le-am botezat încă NU se
+    // ascund: apar cu un verb neutru și cu numele lor tehnic în paranteză, ca omul să vadă că s-a
+    // întâmplat ceva. Un jurnal care tace la ce nu cunoaște e mai rău decât unul urât.
+    var IST_VERB = {
+      login:            ['s-a conectat',        'fa-right-to-bracket',  'var(--text-muted)'],
+      logout:           ['a ieșit din cont',    'fa-right-from-bracket','var(--text-muted)'],
+      create:           ['a adăugat',           'fa-plus',              'var(--accent)'],
+      import:           ['a importat',          'fa-file-import',       'var(--accent)'],
+      upload:           ['a încărcat',          'fa-file-arrow-up',     'var(--accent)'],
+      adopt:            ['a preluat',           'fa-hand-holding',      'var(--accent)'],
+      approve:          ['a aprobat',           'fa-circle-check',      'var(--accent)'],
+      update:           ['a modificat',         'fa-pen',               'var(--text-secondary)'],
+      assign:           ['a atribuit',          'fa-arrow-right-arrow-left', 'var(--text-secondary)'],
+      assign_company:   ['a mutat la altă firmă', 'fa-arrow-right-arrow-left', 'var(--text-secondary)'],
+      set_access:       ['a schimbat accesul la', 'fa-key',             'var(--text-secondary)'],
+      set_can_interface:['a schimbat setarea CAN la', 'fa-microchip',   'var(--text-secondary)'],
+      scan:             ['a scanat',            'fa-expand',            'var(--text-secondary)'],
+      reset_password:   ['a resetat parola pentru', 'fa-key',           'var(--orange)'],
+      revoke:           ['a anulat',            'fa-ban',               'var(--orange)'],
+      reject:           ['a respins',           'fa-circle-xmark',      'var(--orange)'],
+      'delete':         ['a șters',             'fa-trash',             'var(--red)'],
+      erase:            ['a șters definitiv',   'fa-trash',             'var(--red)'],
+      clear:            ['a golit',             'fa-eraser',            'var(--red)'],
+      'export':         ['a descărcat',         'fa-file-arrow-down',   'var(--purple)'],
+      download:         ['a descărcat',         'fa-file-arrow-down',   'var(--purple)'],
+      run:              ['a pornit',            'fa-play',              'var(--text-secondary)'],
+      test:             ['a testat',            'fa-vial',              'var(--text-secondary)']
+    };
+    var IST_OBIECT = {
+      device: 'mașina', devices: 'lista de mașini', device_details: 'fișa mașinii', device_inventory: 'inventarul de aparate',
+      driver: 'șoferul', drivers: 'lista de șoferi', user: 'utilizatorul', group: 'grupa', geofence: 'hotspotul',
+      alert: 'alerta', maintenance: 'o lucrare de mentenanță', maint_intervals: 'intervalele de mentenanță',
+      document: 'un document', doc_needs: 'actele obligatorii', report: 'un raport', report_schedule: 'un raport programat',
+      apikey: 'o cheie API', webhook: 'o integrare', tacho: 'un fișier de tahograf', etransport: 'un transport ANAF',
+      company_settings: 'setările firmei', company_features: 'modulele firmei', company: 'compania',
+      session: '', assistant: 'asistentul AI', agent: 'un agent AI', gdpr: 'date personale (GDPR)',
+      push_token: 'notificările pe telefon', io_catalog: 'catalogul de coduri', tollro_grid: 'grila de tarife',
+      invoice: 'o factură', offer: 'o ofertă', support: 'un mesaj către suport', backup: 'o copie de siguranță'
+    };
+    // Un rând de jurnal → o propoziție. Ținta se caută în ordinea în care e de folos omului:
+    // numărul de înmatriculare, apoi numele din detalii, abia la urmă identificatorul brut.
+    function istFapta(r) {
+      var v = IST_VERB[r.action] || ['a făcut o modificare (' + r.action + ')', 'fa-circle-dot', 'var(--text-secondary)'];
+      var ob = IST_OBIECT[r.entity];
+      if (ob === undefined) ob = r.entity ? String(r.entity).replace(/_/g, ' ') : '';
+      var d = r.details || {};
+      var tinta = r.device_plate || r.device_name || d.plate || d.name || d.username || d.nume || null;
+      if (!tinta && r.entity_id && r.entity !== 'session') tinta = String(r.entity_id);
+      // IMEI-ul brut nu spune nimic. Dacă mașina a fost ștearsă și n-avem numărul, îl scurtăm.
+      if (tinta && r.entity === 'device' && !r.device_plate && !r.device_name && /^\d{10,}$/.test(tinta)) tinta = '…' + tinta.slice(-6);
+      return { verb: v[0], ic: v[1], col: v[2], obiect: ob, tinta: tinta };
+    }
+    // Ziua, scrisă cum o spune omul: „Azi", „Ieri", altfel data.
+    function istZi(ts, acum) {
+      var d = new Date(ts), a = new Date(acum);
+      var zi = function (x) { return x.getFullYear() + '-' + x.getMonth() + '-' + x.getDate(); };
+      if (zi(d) === zi(a)) return 'Azi';
+      if (zi(d) === zi(new Date(acum - 86400000))) return 'Ieri';
+      return d.toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: d.getFullYear() === a.getFullYear() ? undefined : 'numeric' });
+    }
+    function istRandHtml(r, arataIp) {
+      var f = istFapta(r);
+      var ora = new Date(r.created_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+      var text = '<b>' + esc(r.username || 'cineva') + '</b> ' + esc(f.verb) +
+        (f.obiect ? ' ' + esc(f.obiect) : '') + (f.tinta ? ' <b>' + esc(f.tinta) + '</b>' : '');
+      return '<div class="ist-rand">' +
+        '<span class="ist-ic" style="color:' + f.col + '"><i class="fas ' + f.ic + '"></i></span>' +
+        '<div class="ist-t">' + text + '</div>' +
+        '<div class="ist-d">' + ora + (arataIp && r.ip ? '<span>' + esc(r.ip) + '</span>' : '') + '</div>' +
+        '</div>';
+    }
+    function istRender() {
+      var host = document.getElementById('ist-host'); if (!host) return;
+      var chip = function (et, val, camp) {
+        return '<button class="ist-chip' + (String(_ist[camp]) === String(val) ? ' on' : '') +
+          '" onclick="istFiltru(\'' + camp + '\',\'' + val + '\')">' + et + '</button>';
+      };
+      var h = '<div class="ist-filtre">' +
+        '<span class="ist-gr">' + chip('7 zile', 7, 'zile') + chip('30 de zile', 30, 'zile') + chip('90 de zile', 90, 'zile') + '</span>' +
+        '<span class="ist-gr">' + chip('Tot', '', 'familie') + chip('Conectări', 'conectari', 'familie') +
+          chip('Modificări', 'modificari', 'familie') + chip('Descărcări', 'descarcari', 'familie') + '</span>' +
+        '<select class="ist-om" onchange="istFiltru(\'user\', this.value)"><option value="">Toți oamenii</option>' +
+          (window._istOameni || []).map(function (u) {
+            return '<option value="' + esc(u.id) + '"' + (String(_ist.user) === String(u.id) ? ' selected' : '') + '>' +
+              esc(u.full_name || u.username) + '</option>';
+          }).join('') + '</select>' +
+        '</div>';
+
+      if (_ist.eroare) { host.innerHTML = h + '<div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc(_ist.eroare) + '</div>'; return; }
+      if (!_ist.randuri) { host.innerHTML = h + '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>'; return; }
+      if (!_ist.randuri.length) {
+        host.innerHTML = h + '<div class="ag-gol"><i class="fas fa-clock-rotate-left"></i><b>Nimic în perioada asta</b>' +
+          '<span>Schimbă perioada sau filtrele de mai sus.</span></div>';
+        return;
+      }
+
+      var acum = Date.now(), ziCurenta = null;
+      var arataIp = !!(window.currentUser && window.currentUser.isSuper);
+      h += '<div class="ist-total">' + _ist.total + (_ist.total === 1 ? ' acțiune' : ' acțiuni') + ' în perioada aleasă</div>';
+      _ist.randuri.forEach(function (r) {
+        var z = istZi(r.created_at, acum);
+        if (z !== ziCurenta) { ziCurenta = z; h += '<div class="ist-zi">' + esc(z) + '</div>'; }
+        h += istRandHtml(r, arataIp);
+      });
+      if (_ist.randuri.length < _ist.total) {
+        h += '<button class="btn-sm ist-mai" onclick="istMaiMulte()"' + (_ist.seIncarca ? ' disabled' : '') + '>' +
+          (_ist.seIncarca ? '<i class="fas fa-spinner fa-spin"></i> Se încarcă…' : 'Mai vezi ' + Math.min(50, _ist.total - _ist.randuri.length)) + '</button>';
+      }
+      host.innerHTML = h;
+    }
+    window.istFiltru = function (camp, val) { _ist[camp] = val; istLoad(true); };
+    window.istMaiMulte = function () { istLoad(false); };
+    async function istLoad(dela0) {
+      if (dela0) { _ist.randuri = null; istRender(); }
+      _ist.seIncarca = true; _ist.eroare = null;
+      var off = dela0 ? 0 : (_ist.randuri || []).length;
+      var u = '/api/activity?zile=' + _ist.zile + '&limit=50&offset=' + off +
+        (_ist.familie ? '&familie=' + encodeURIComponent(_ist.familie) : '') +
+        (_ist.user ? '&user=' + encodeURIComponent(_ist.user) : '');
+      try {
+        var d = await fetch(u, { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d && d.error) { _ist.eroare = d.error; _ist.randuri = _ist.randuri || []; }
+        else {
+          _ist.total = d.total || 0;
+          _ist.randuri = dela0 ? (d.randuri || []) : (_ist.randuri || []).concat(d.randuri || []);
+        }
+      } catch (e) { _ist.eroare = 'Nu s-a putut citi istoricul.'; _ist.randuri = _ist.randuri || []; }
+      _ist.seIncarca = false;
+      // Lista de oameni pentru filtru se citește o singură dată.
+      if (!window._istOameni) {
+        try { window._istOameni = await fetch('/api/users', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+        catch (e) { window._istOameni = []; }
+      }
+      istRender();
+    }
+    // ── sfârșit „Istoric activitate" ──
+
     async function loadSettingsTab() {
       // Setările au pagină proprie: mută #atab-settings în #settings-host (o singură dată) + afișează-l.
       var _sc = document.getElementById('atab-settings'), _sh = document.getElementById('settings-host');

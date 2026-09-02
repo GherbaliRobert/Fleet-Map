@@ -150,6 +150,43 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### AMÂNDOI · Istoric activitate — cine s-a conectat și cine ce a modificat
+
+Al treilea pas. Setări → **Evidență → Istoric activitate**.
+
+**Jurnalul exista de mult, dar era doar al nostru.** Aplicația scrie de mult timp fiecare modificare
+— sunt **125 de locuri** în cod care lasă urmă — numai că se vedea exclusiv din Audit, adică doar
+super-adminii. Acum îl vede și administratorul unei firme, **pentru firma lui**.
+
+**Scris pe românește, nu în termeni de programator.** În bază, un rând arată așa:
+`update / device / 350317170000101`. Pe ecran scrie: *„maria@firma.ro a modificat mașina CJ 12
+ABC"*. Numărul de înmatriculare vine odată cu rândul, tocmai ca să nu rămână IMEI-uri pe ecran.
+Fiecare fel de acțiune are verbul, iconița și culoarea lui: verde la adăugare, roșu la ștergere,
+gri la conectări, mov la descărcări.
+
+**Cum se citește.** Zilele sunt titluri — „Azi", „Ieri", apoi data. Sus: perioada (7 / 30 / 90 de
+zile), un filtru pe felul acțiunii (Tot · Conectări · Modificări · Descărcări) și unul pe om.
+Se încarcă 50 de rânduri o dată, cu buton pentru restul.
+
+**Două lucruri reparate ca să nu mintă ecranul:**
+
+1. **Autentificările nu erau legate de firmă.** Se scriau fără companie, deci într-un istoric de
+   firmă nu apărea nimeni conectându-se — vedeai ce s-a modificat, dar nu și cine a intrat în cont.
+   Ecranul ar fi arătat complet fără să fie.
+2. **Filtrul pe firmă îl pune serverul, nu ecranul.** Jurnalul e comun tuturor clienților; dacă
+   filtrul ar veni din adresa paginii, oricine l-ar putea schimba. Proba încearcă exact asta: un
+   admin dintr-o firmă nu vede nici rândurile altei firme, nici pe ale platformei.
+
+**Ce vedem noi în plus:** adresa IP de pe fiecare rând. Clientului nu i-o arătăm — nu-i folosește la
+nimic și e dată personală despre angajații lui.
+
+**Ce NU e încă:** coloana cu **cât timp a petrecut fiecare în aplicație**. Urmează separat, fiindcă
+cere un semnal periodic de la fereastra deschisă — altfel cine închide browserul fără să apese
+„Deconectare" lasă o sesiune fără capăt, iar numărul ar minți.
+
+- **Ce am schimbat:** un capitol nou, „Istoric activitate", cu jurnalul firmei scris în cuvinte.
+- **Ce vede fondatorul:** același ecran, plus IP-ul; Auditul global rămâne neatins, la locul lui.
+- **Ce vede clientul:** cine s-a conectat, cine ce a modificat și când — fără să ne întrebe pe noi.
 
 ### AMÂNDOI · Aparate GPS — ecranul care spune dacă un aparat a amuțit
 
