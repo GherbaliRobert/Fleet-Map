@@ -124,6 +124,16 @@ async function runSchedule(s, deps, now) {
   if (!recips.length && s.user_id) {
     try { const u = await db.getUserById(s.user_id); if (u && u.email) recips = [u.email]; } catch (e) {}
   }
+  // Agenda firmei (Setări → Adrese de email): adresele CONFIRMATE, bifate pentru rapoarte, primesc și
+  // ele. Bifa de pe ecran trebuie să însemne ceva — o bifă care nu face nimic e mai rea decât lipsa ei.
+  // Neconfirmatele nu intră: getConfirmedCompanyEmails le lasă afară.
+  if (s.company_id != null && db.getConfirmedCompanyEmails) {
+    try {
+      const agenda = await db.getConfirmedCompanyEmails(s.company_id, 'rapoarte');
+      const vazute = new Set(recips.map(x => String(x).toLowerCase()));
+      for (const a of agenda) if (!vazute.has(String(a).toLowerCase())) { recips.push(a); vazute.add(String(a).toLowerCase()); }
+    } catch (e) { /* dacă agenda nu se poate citi, raportul pleacă oricum către lista scrisă de mână */ }
+  }
   const rowsN = (report.rows && report.rows.length) || 0;
   const subject = '[RA Track] ' + (report.label || s.report_type) + ' — ' + from.slice(0, 10) + ' … ' + to.slice(0, 10);
   const text = 'Raport „' + (report.label || s.report_type) + '" pentru perioada ' + from.slice(0, 10) + ' — ' + to.slice(0, 10) +

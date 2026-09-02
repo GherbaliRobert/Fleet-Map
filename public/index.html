@@ -2496,6 +2496,13 @@ const pozitii = await r.json();</code></pre>
                 <div id="set-host-users"></div>
               </div>
 
+              <!-- Notificări → Adrese de email -->
+              <div class="set-panel" data-spanel="adrese" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-envelope"></i> Adrese de email</div>
+                <p class="set-note">Adresele firmei care primesc alerte și rapoarte, pe lângă conturile oamenilor. O adresă primește ceva <b>doar după ce e confirmată din inbox</b> — altfel oricine ar putea trimite emailuri, de pe serverul nostru, oriunde.</p>
+                <div id="adr-host"><div class="dm-muted">Se încarcă…</div></div>
+              </div>
+
               <!-- Regulile firmei → Ce văd toți -->
               <div class="set-panel" data-spanel="reguli" style="display:none;">
                 <div class="set-sec-h"><i class="fas fa-building"></i> Ce văd toți</div>
@@ -4369,6 +4376,8 @@ const pozitii = await r.json();</code></pre>
       { k: 'prefs',       et: 'Preferințe',           ic: 'fa-user',                drept: 'oricine' },
       { grup: 'Oameni și drepturi' },
       { k: 'utilizatori', et: 'Utilizatori',          ic: 'fa-users',               drept: 'manageUsers' },
+      { grup: 'Notificări' },
+      { k: 'adrese',      et: 'Adrese de email',      ic: 'fa-envelope',            drept: 'manageUsers' },
       { grup: 'Regulile firmei' },
       { k: 'reguli',      et: 'Ce văd toți',          ic: 'fa-building',            drept: 'manageUsers' },
       { k: 'program',     et: 'Program de lucru',     ic: 'fa-business-time',       drept: 'manageUsers' },
@@ -4445,6 +4454,7 @@ const pozitii = await r.json();</code></pre>
       else if (name === 'combustibil' && window.usLoadFuelPrices) window.usLoadFuelPrices();
       else if (name === 'aparate') agpsLoad();
       else if (name === 'istoric') istLoad(true);
+      else if (name === 'adrese') adrLoad();
     }
     window.usTab = usTab;
 
@@ -4769,6 +4779,111 @@ const pozitii = await r.json();</code></pre>
       istRender();
     }
     // ── sfârșit „Istoric activitate" ──
+
+    // ═══ Adrese de email (Setări → Notificări) ═══
+    // Agenda firmei: dispecerat@, contabilitate@ … O adresă NU primește nimic până nu e confirmată
+    // din inbox. Regula nu e birocrație: fără ea, oricine își face cont ar putea trimite emailuri de
+    // pe serverul nostru către orice adresă, iar domeniul nostru ar ajunge pe liste negre.
+    // ── începe „Adrese de email" (REPER pentru probe: verify_adrese.js decupează exact bucata dintre
+    // reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+    var _adr = { randuri: null, eroare: null, mesaj: null };
+    function adrStare(a) {
+      return a.confirmed_at
+        ? { t: 'confirmată', c: 'var(--accent)', ok: true }
+        : { t: 'așteaptă confirmarea', c: 'var(--orange)', ok: false };
+    }
+    function adrRandHtml(a) {
+      var st = adrStare(a);
+      var bif = function (camp, et) {
+        var on = !!a[camp];
+        return '<button class="adr-bif' + (on ? ' on' : '') + '" onclick="adrBifa(' + a.id + ',\'' + camp + '\',' + (!on) + ')">' +
+          '<i class="fas fa-' + (on ? 'check' : 'xmark') + '"></i> ' + et + '</button>';
+      };
+      return '<div class="adr-rand' + (st.ok ? '' : ' neconf') + '">' +
+        '<span class="adr-p" style="background:' + st.c + '"></span>' +
+        '<div class="adr-l"><b>' + esc(a.email) + '</b>' +
+          '<span>' + (a.eticheta ? esc(a.eticheta) + ' · ' : '') +
+          '<i style="color:' + st.c + ';font-style:normal;font-weight:700">' + st.t + '</i></span></div>' +
+        '<div class="adr-b">' + bif('la_alerte', 'Alerte') + bif('la_rapoarte', 'Rapoarte') + '</div>' +
+        '<div class="adr-a">' +
+          (st.ok ? '' : '<button class="btn-sm" onclick="adrRetrimite(' + a.id + ')" title="Trimite din nou emailul de confirmare"><i class="fas fa-paper-plane"></i></button>') +
+          '<button class="btn-sm" onclick="adrSterge(' + a.id + ',\'' + esc(a.email) + '\')" title="Șterge adresa"><i class="fas fa-trash"></i></button>' +
+        '</div></div>';
+    }
+    function adrRender() {
+      var host = document.getElementById('adr-host'); if (!host) return;
+      var h = '<div class="adr-nou">' +
+        '<input type="email" id="adr-email" placeholder="adresa@firma.ro" autocomplete="off">' +
+        '<input type="text" id="adr-et" placeholder="la ce e (ex. Dispecerat)" maxlength="60">' +
+        '<button class="btn-sm btn-primary" onclick="adrAdauga()"><i class="fas fa-plus"></i> Adaugă</button>' +
+        '</div>';
+      if (_adr.mesaj) h += '<div class="tr-nota ' + (_adr.mesaj.rau ? 'rosu' : 'verde') + '"><i class="fas fa-' +
+        (_adr.mesaj.rau ? 'circle-exclamation' : 'circle-check') + '"></i> ' + esc(_adr.mesaj.t) + '</div>';
+      if (_adr.eroare) { host.innerHTML = h + '<div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc(_adr.eroare) + '</div>'; return; }
+      if (!_adr.randuri) { host.innerHTML = h + '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>'; return; }
+      if (!_adr.randuri.length) {
+        host.innerHTML = h + '<div class="ag-gol"><i class="fas fa-envelope"></i><b>Nicio adresă în agendă</b>' +
+          '<span>Alertele merg deocamdată doar către conturile oamenilor. Adaugă aici o adresă comună, de tipul dispecerat@firma.ro.</span></div>';
+        return;
+      }
+      h += _adr.randuri.map(adrRandHtml).join('');
+      var neconf = _adr.randuri.filter(function (a) { return !a.confirmed_at; }).length;
+      h += '<div class="ag-nota">Bifele spun <b>ce primește</b> fiecare adresă. ' +
+        (neconf ? 'Ai <b>' + neconf + (neconf === 1 ? ' adresă neconfirmată</b> — nu primește nimic până nu se apasă linkul din emailul de confirmare.' : ' adrese neconfirmate</b> — nu primesc nimic până nu se apasă linkul din emailul de confirmare.')
+                : 'Toate adresele sunt confirmate.') + '</div>';
+      host.innerHTML = h;
+    }
+    window.adrBifa = async function (id, camp, val) {
+      var b = {}; b[camp] = val;
+      try {
+        var r = await fetch('/api/company-emails/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin', body: JSON.stringify(b) }).then(function (x) { return x.json(); });
+        if (r && r.error) { _adr.mesaj = { t: r.error, rau: true }; }
+        else { (_adr.randuri || []).forEach(function (a) { if (a.id === id) a[camp] = val; }); _adr.mesaj = null; }
+      } catch (e) { _adr.mesaj = { t: 'Nu s-a putut salva.', rau: true }; }
+      adrRender();
+    };
+    window.adrAdauga = async function () {
+      var e = document.getElementById('adr-email'), t = document.getElementById('adr-et');
+      var email = (e && e.value || '').trim();
+      if (!email) { _adr.mesaj = { t: 'Scrie o adresă de email.', rau: true }; adrRender(); return; }
+      try {
+        var r = await fetch('/api/company-emails', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin', body: JSON.stringify({ email: email, eticheta: t && t.value }) }).then(function (x) { return x.json(); });
+        if (r && r.error) _adr.mesaj = { t: r.error, rau: true };
+        else if (r && r.confirmareTrimisa === false) _adr.mesaj = { t: 'Adresa a fost adăugată, dar emailul de confirmare NU a plecat. Verifică setările de email ale serverului sau apasă butonul de retrimitere.', rau: true };
+        else _adr.mesaj = { t: 'Am trimis un email de confirmare la ' + email + '. Adresa începe să primească după ce se apasă linkul.', rau: false };
+      } catch (er) { _adr.mesaj = { t: 'Nu s-a putut adăuga adresa.', rau: true }; }
+      await adrLoad();
+    };
+    window.adrRetrimite = async function (id) {
+      try {
+        var r = await fetch('/api/company-emails/' + id + '/retrimite', { method: 'POST', credentials: 'same-origin' })
+          .then(function (x) { return x.json(); });
+        _adr.mesaj = (r && r.error) ? { t: r.error, rau: true }
+          : (r && r.confirmareTrimisa === false ? { t: 'Emailul de confirmare nu a plecat — verifică setările de email ale serverului.', rau: true }
+            : { t: 'Am trimis din nou emailul de confirmare.', rau: false });
+      } catch (e) { _adr.mesaj = { t: 'Nu s-a putut trimite.', rau: true }; }
+      adrRender();
+    };
+    window.adrSterge = async function (id, email) {
+      if (!confirm('Ștergi adresa ' + email + ' din agendă?')) return;
+      try { await fetch('/api/company-emails/' + id, { method: 'DELETE', credentials: 'same-origin' }); _adr.mesaj = null; }
+      catch (e) { _adr.mesaj = { t: 'Nu s-a putut șterge.', rau: true }; }
+      await adrLoad();
+    };
+    async function adrLoad() {
+      _adr.eroare = null;
+      if (!_adr.randuri) adrRender();
+      try {
+        var d = await fetch('/api/company-emails', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d && d.error) { _adr.eroare = d.error; _adr.randuri = null; }
+        else _adr.randuri = Array.isArray(d) ? d : [];
+      } catch (e) { _adr.eroare = 'Nu s-a putut citi agenda de adrese.'; }
+      adrRender();
+    }
+    // ── sfârșit „Adrese de email" ──
+
 
     async function loadSettingsTab() {
       // Setările au pagină proprie: mută #atab-settings în #settings-host (o singură dată) + afișează-l.

@@ -150,6 +150,37 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### AMÂNDOI · Adrese de email — agenda firmei, cu confirmare din inbox
+
+Al patrulea pas. Setări → **Notificări → Adrese de email**.
+
+**La ce folosește.** Până acum, alertele mergeau doar către **conturile oamenilor**, iar rapoartele
+programate aveau, la fiecare raport, o listă de adrese **scrisă de mână**. Acum firma își ține
+adresele o dată — `dispecerat@`, `contabilitate@`, `siguranta@` — și bifează pentru fiecare **ce
+primește**: alerte, rapoarte, sau amândouă.
+
+**Regula care ține totul în picioare: confirmarea din inbox.** O adresă adăugată aici **nu primește
+absolut nimic** până când cineva nu apasă linkul din emailul de confirmare. Nu e birocrație — e
+singurul lucru care ne ține departe de listele negre: fără ea, oricine își face cont ar putea trimite
+emailuri **de pe serverul nostru** către orice adresă, iar apoi n-ar mai ajunge nici rapoartele
+clienților corecți. Linkul e valabil 7 zile, se folosește o singură dată, iar din ecran se poate
+retrimite. Adresele neconfirmate se văd altfel, cu galben, și scrie sub listă câte sunt.
+
+**Alte limite puse dinadins:** maximum 20 de adrese per firmă, cel mult 5 emailuri de confirmare pe
+oră, iar contul demo nu poate adăuga adrese deloc.
+
+**Unde ajung, concret.** Alertele merg către adresele bifate „Alerte" — **o singură dată pe
+eveniment**, nu o dată pentru fiecare om care are alerta pornită (altfel `dispecerat@` primea patru
+copii ale aceleiași alerte). Rapoartele programate trimit acum și către adresele bifate „Rapoarte",
+pe lângă lista scrisă de mână, fără să dubleze o adresă care apare în amândouă.
+
+**Ce vede fiecare:** doar administratorul firmei umblă în agendă, și doar în a lui. Un dispecer nu o
+vede deloc.
+
+- **Ce am schimbat:** un capitol nou, agenda de adrese, legată de alerte și de rapoartele programate.
+- **Ce vede fondatorul:** același ecran (pe firma lui); regula demo rămâne în picioare.
+- **Ce vede clientul:** un loc unde scrie o dată unde vrea să primească, fără să repete adresele.
+
 ### AMÂNDOI · Cât stau oamenii în aplicație — în procente, cum a cerut Alin
 
 Stă sus, în **Istoric activitate**: fiecare om, cât timp a petrecut în aplicație, o bară și

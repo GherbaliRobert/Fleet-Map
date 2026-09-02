@@ -2266,6 +2266,113 @@ app.get('/api/activity', requireAuth, requireAdmin, withCompany, async (req, res
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── Agenda de adrese a firmei (Setări → Notificări → Adrese de email) ───
+// O adresă adăugată aici NU primește nimic până nu e confirmată din inbox. Motivul e serios: fără
+// confirmare, oricine își face cont ar putea trimite emailuri de pe serverul nostru către orice
+// adresă — adică am fi un releu de spam, iar domeniul nostru ar ajunge pe liste negre.
+const CO_EMAIL_MAX = 20;                 // câte adrese poate avea o firmă
+const _coEmailTrimiteri = new Map();     // companyId -> { n, ts } — câte confirmări am trimis în ultima oră
+function _coEmailRata(companyId) {
+  const acum = Date.now(), c = _coEmailTrimiteri.get(companyId);
+  if (!c || acum - c.ts > 3600000) { _coEmailTrimiteri.set(companyId, { n: 1, ts: acum }); return true; }
+  if (c.n >= 5) return false;
+  c.n++; return true;
+}
+async function _trimiteConfirmare(req, rand, token, companyName) {
+  const link = appBaseUrl(req) + '/api/email/confirm?token=' + encodeURIComponent(token);
+  const subiect = 'Confirmă adresa pentru RA Tracks' + (companyName ? ' — ' + companyName : '');
+  const text = 'Bună,\n\nAdresa asta (' + rand.email + ') a fost adăugată în RA Tracks'
+    + (companyName ? ' de ' + companyName : '') + ', ca să primească alerte și rapoarte despre flotă.\n\n'
+    + 'Confirmă că ești de acord (link valabil 7 zile):\n' + link + '\n\n'
+    + 'Dacă nu știi despre ce e vorba, ignoră mesajul — fără confirmare nu se trimite nimic la adresa asta.\n\n— RA Tracks';
+  return await channels.sendEmailTo(rand.email, subiect, text);
+}
+
+app.get('/api/company-emails', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    if (req.companyId == null) return res.json([]); // super-adminul nu are firmă proprie
+    res.json(await db.listCompanyEmails(req.companyId));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/company-emails', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  if (_demoBlocked(req, res)) return; // conturile demo nu trimit emailuri (regula din CLAUDE.md)
+  try {
+    if (req.companyId == null) return res.status(400).json({ error: 'Contul tău nu e legat de o firmă' });
+    if (await db.countCompanyEmails(req.companyId) >= CO_EMAIL_MAX) {
+      return res.status(400).json({ error: 'Ai atins limita de ' + CO_EMAIL_MAX + ' adrese. Șterge una înainte să adaugi alta.' });
+    }
+    if (!_coEmailRata(req.companyId)) {
+      return res.status(429).json({ error: 'Prea multe confirmări trimise în ultima oră. Încearcă mai târziu.' });
+    }
+    const a = getAuth(req) || {};
+    let r;
+    try {
+      r = await db.addCompanyEmail({ companyId: req.companyId, email: req.body.email, eticheta: req.body.eticheta, createdBy: a.userId });
+    } catch (e) {
+      if (/unic|unique|duplicate/i.test(e.message)) return res.status(400).json({ error: 'Adresa e deja în agendă' });
+      return res.status(400).json({ error: e.message });
+    }
+    const co = req.companyId != null ? await db.getCompanyById(req.companyId).catch(() => null) : null;
+    let trimis = false;
+    try { trimis = await _trimiteConfirmare(req, r.rand, r.token, co && co.name); } catch (e) {}
+    auditReq(req, 'create', 'company_email', r.rand.id, { email: r.rand.email });
+    res.json(Object.assign({}, r.rand, { confirmareTrimisa: !!trimis }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/company-emails/:id', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const r = await db.setCompanyEmailUses(parseInt(req.params.id, 10), req.companyId, req.body || {});
+    if (!r) return res.status(404).json({ error: 'Adresa nu există' });
+    auditReq(req, 'update', 'company_email', r.id, { email: r.email, la_alerte: r.la_alerte, la_rapoarte: r.la_rapoarte });
+    res.json(r);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/company-emails/:id/retrimite', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  if (_demoBlocked(req, res)) return;
+  try {
+    if (!_coEmailRata(req.companyId)) return res.status(429).json({ error: 'Prea multe confirmări trimise în ultima oră. Încearcă mai târziu.' });
+    const r = await db.refreshCompanyEmailToken(parseInt(req.params.id, 10), req.companyId);
+    if (!r) return res.status(404).json({ error: 'Adresa nu există' });
+    const co = req.companyId != null ? await db.getCompanyById(req.companyId).catch(() => null) : null;
+    let trimis = false;
+    try { trimis = await _trimiteConfirmare(req, r.rand, r.token, co && co.name); } catch (e) {}
+    res.json({ ok: true, confirmareTrimisa: !!trimis });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/company-emails/:id', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const r = await db.deleteCompanyEmail(parseInt(req.params.id, 10), req.companyId);
+    if (!r) return res.status(404).json({ error: 'Adresa nu există' });
+    auditReq(req, 'delete', 'company_email', r.id, { email: r.email });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Confirmarea se apasă din inbox, deci ruta e PUBLICĂ și răspunde cu o pagină, nu cu JSON.
+app.get('/api/email/confirm', async (req, res) => {
+  const pagina = (titlu, text, culoare) => `<!doctype html><html lang="ro"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${titlu} — RA Tracks</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef2f6;font-family:'Nunito',sans-serif;color:#0f172a}
+.c{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px 30px;max-width:420px;text-align:center;box-shadow:0 10px 30px -20px rgba(0,0,0,.4)}
+h1{font-size:19px;margin:0 0 8px;color:${culoare}}p{font-size:14px;line-height:1.6;color:#475569;margin:0}</style></head>
+<body><div class="c"><h1>${titlu}</h1><p>${text}</p></div></body></html>`;
+  try {
+    const r = await db.confirmCompanyEmail(req.query.token);
+    if (!r) return res.status(400).send(pagina('Link expirat sau folosit',
+      'Cere din aplicație o nouă confirmare, de la <b>Setări → Adrese de email</b>.', '#dc2626'));
+    res.send(pagina('Adresă confirmată ✓',
+      'De acum, <b>' + String(r.email).replace(/[<>&"]/g, '') + '</b> poate primi alerte și rapoarte din RA Tracks. Poți închide pagina.', '#16a34a'));
+  } catch (e) {
+    res.status(500).send(pagina('Ceva n-a mers', 'Încearcă din nou peste câteva minute.', '#dc2626'));
+  }
+});
+
 // ─── Prezența în aplicație ───
 // Fereastra deschisă trimite un semnal la 5 minute, DOAR cât timp e vizibilă. Ora și compania le
 // pune serverul; clientul nu trimite nimic, ca să nu-și poată scrie singur orele.
@@ -3756,6 +3863,20 @@ app.get('/api/debug/last-io/:imei', requireAuth, requireSuperadmin, async (req, 
 // poartă de protejat, e cod care nu ajunge în aplicație. Servesc la un singur lucru: să dovedim că
 // o pană de bază de date NU pierde poziții (vezi verify_ack_durabil.js).
 if (process.env.NODE_ENV === 'test') {
+  // Lista REALĂ de adrese către care s-ar trimite. Proba nu poate deschide baza serverului (PGlite are
+  // un singur scriitor), iar fără ruta asta ar verifica doar ce scrie pe ecran — adică exact partea
+  // care nu contează. Aici se dovedește că o adresă neconfirmată chiar NU primește.
+  app.get('/api/debug/email-list', requireAuth, requireSuperadmin, async (req, res) => {
+    try { res.json(await db.getConfirmedCompanyEmails(parseInt(req.query.company, 10), req.query.scop)); }
+    catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  // Jetonul de confirmare, ca proba să poată apăsa linkul din email fără să existe email.
+  app.get('/api/debug/email-token', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const r = await db.pool.query('SELECT token FROM company_emails WHERE id = $1', [parseInt(req.query.id, 10)]);
+      res.json({ token: r.rows[0] ? r.rows[0].token : null });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
   app.get('/api/debug/break-db', requireAuth, requireSuperadmin, (req, res) => {
     db._simulateWriteFailure = true; res.json({ ok: true, scrierile: 'vor eșua' });
   });
@@ -8148,6 +8269,20 @@ function userTypePref(prefsMap, userId, type) {
   if (!up || !up.types) return dflt;                        // fără preferințe → in-app implicit pornit
   return up.types[type] || (PUSH_DEFAULT_TYPES.has(type) ? dflt : null); // bifă lipsă → implicit / null
 }
+// Alertele merg și la adresele confirmate din agenda firmei (dispecerat@, siguranta@ …). Aceleași
+// reguli de răcire ca la oameni, dar cheiate pe firmă: o adresă comună nu trebuie să primească de
+// zece ori aceeași alertă fiindcă zece oameni o au pornită.
+async function deliverCompanyEvent(imei, ev) {
+  try {
+    if (!channels.emailConfigured()) return;
+    const coId = await _deviceCompanyId(imei);
+    if (coId == null) return;
+    if (demoCompanyId != null && coId === demoCompanyId) return; // demo nu trimite emailuri
+    if (!userCooldownOk('co' + coId, ev.type, imei)) return;
+    const adrese = await db.getConfirmedCompanyEmails(coId, 'alerte');
+    for (const a of adrese) channels.sendEmailTo(a, ev.title, ev.body).catch(() => {});
+  } catch (e) { /* alertele către oameni nu au voie să cadă din cauza asta */ }
+}
 async function deliverUserEvent(user, ev, p) {
   try {
     // data completă: locul evenimentului (lat/lng) + extra per tip (ex. idling: alertType/idleStart → detaliu „De la…Până la")
@@ -8366,6 +8501,9 @@ async function evaluateUserEvents(imei, data, prev) {
         if (!userCooldownOk(u.id, c.type, imei)) continue;
         await deliverUserEvent(u, { type: c.type, imei, severity: c.type === 'no_ignition_move' ? 'critical' : 'warning', title: eventVehTitle(def.label, data, imei), body: c.body, lat: data.latitude, lng: data.longitude, extra: c.extra }, up);
       }
+      // Adresele din agenda firmei primesc O SINGURĂ dată pe eveniment, nu o dată pentru fiecare om
+      // care are alerta pornită. Altfel dispecerat@ ar primi patru copii ale aceleiași alerte.
+      await deliverCompanyEvent(imei, { title: eventVehTitle(def.label, data, imei), body: c.body, type: c.type });
     }
   } catch (e) { console.error('[UEVENTS]', e.message); }
 }

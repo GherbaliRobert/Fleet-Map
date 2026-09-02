@@ -2595,6 +2595,29 @@
       .ag-cand { display: inline; margin-left: 8px; }
     }
 
+    /* ── Adrese de email (Setări → Notificări) ──
+       Agenda firmei: adăugare sus, apoi câte un rând per adresă, cu bulinul de stare, bifele „ce
+       primește" și acțiunile în dreapta. Adresele neconfirmate se văd altfel: ele NU primesc nimic. */
+    .adr-nou { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .adr-nou input { margin: 0; flex: 1; min-width: 150px; }
+    .adr-nou input#adr-et { max-width: 190px; }
+    .adr-rand { display: flex; align-items: center; gap: 11px; padding: 10px 12px; margin-bottom: 7px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; flex-wrap: wrap; }
+    .adr-rand.neconf { background: #f59e0b0d; border-color: #f59e0b44; }
+    .adr-p { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+    .adr-l { min-width: 140px; flex: 1; }
+    .adr-l b { display: block; font-size: 13px; font-weight: 800; color: var(--text-primary); overflow-wrap: anywhere; }
+    .adr-l span { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .adr-b { display: flex; gap: 6px; flex: none; }
+    .adr-bif { border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-muted);
+      font-family: inherit; font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px; transition: background-color .15s, color .15s, border-color .15s; }
+    .adr-bif > i { font-size: 9px; }
+    .adr-bif.on { background: rgba(63, 224, 125, .14); border-color: rgba(63, 224, 125, .45); color: var(--accent); }
+    .adr-bif:hover { border-color: var(--border-light); }
+    .adr-a { display: flex; gap: 6px; flex: none; margin-left: auto; }
+    @media (max-width: 560px) { .adr-a { margin-left: 0; } }
+
     /* ── Istoric activitate (Setări → Evidență) ──
        Un jurnal se citește ca o poveste, nu ca un tabel: filtre-pastilă sus, zilele ca titluri, iar
        fiecare rând o propoziție cu o iconiță colorată după ce s-a făcut. */

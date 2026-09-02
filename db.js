@@ -1050,6 +1050,27 @@ async function initDb() {
       )
     `);
 
+    // Agenda de adrese a firmei: unde trimitem alerte și rapoarte, în afară de conturile oamenilor.
+    // O adresă NU primește nimic până nu e confirmată din inbox (link cu jeton). Fără regula asta,
+    // oricine își face cont ar putea trimite emailuri, de pe serverul nostru, către orice adresă —
+    // adică am fi un releu de spam pe reputația domeniului nostru.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS company_emails (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER NOT NULL,
+        email VARCHAR(160) NOT NULL,
+        eticheta VARCHAR(60),
+        la_alerte BOOLEAN DEFAULT TRUE,
+        la_rapoarte BOOLEAN DEFAULT TRUE,
+        confirmed_at TIMESTAMPTZ,
+        token VARCHAR(64),
+        token_expires BIGINT,
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_co_email_unic ON company_emails (company_id, lower(email))');
+
     // Prezența în aplicație: un rând la fiecare 5 minute în care omul a avut fereastra DESCHISĂ ȘI ÎN
     // FAȚĂ. Nu se măsoară „cât e logat" (o filă uitată deschisă peste noapte ar raporta 24 de ore),
     // ci cât a stat efectiv cu aplicația sub ochi. Cheia primară e (om, interval) → semnalele
@@ -2607,6 +2628,73 @@ async function getActivityLog(opts) {
   return { total: tot.rows[0] ? tot.rows[0].n : 0, randuri: r.rows };
 }
 
+// ─── Agenda de adrese a firmei ───
+const EMAIL_RE_DB = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function _emailCurat(x) { return String(x == null ? '' : x).trim().toLowerCase().slice(0, 160); }
+
+async function listCompanyEmails(companyId) {
+  const r = await pool.query(
+    'SELECT id, email, eticheta, la_alerte, la_rapoarte, confirmed_at, created_at FROM company_emails WHERE company_id = $1 ORDER BY created_at',
+    [companyId]);
+  return r.rows;
+}
+// Întoarce rândul + jetonul de confirmare. Jetonul NU se mai citește după asta: se trimite pe email.
+async function addCompanyEmail(o) {
+  const email = _emailCurat(o.email);
+  if (!EMAIL_RE_DB.test(email)) throw new Error('Adresa de email nu pare validă');
+  const token = require('crypto').randomBytes(24).toString('hex');
+  const exp = Date.now() + 7 * 86400000; // o săptămână de confirmat
+  const r = await pool.query(
+    `INSERT INTO company_emails (company_id, email, eticheta, la_alerte, la_rapoarte, token, token_expires, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, email, eticheta, la_alerte, la_rapoarte, confirmed_at, created_at`,
+    [o.companyId, email, (o.eticheta || '').trim().slice(0, 60) || null,
+     o.la_alerte !== false, o.la_rapoarte !== false, token, exp, o.createdBy || null]);
+  return { rand: r.rows[0], token: token };
+}
+async function countCompanyEmails(companyId) {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM company_emails WHERE company_id = $1', [companyId]);
+  return r.rows[0] ? r.rows[0].n : 0;
+}
+async function setCompanyEmailUses(id, companyId, uses) {
+  const sets = [], vals = [id, companyId];
+  if (uses.la_alerte !== undefined) { vals.push(!!uses.la_alerte); sets.push('la_alerte = $' + vals.length); }
+  if (uses.la_rapoarte !== undefined) { vals.push(!!uses.la_rapoarte); sets.push('la_rapoarte = $' + vals.length); }
+  if (!sets.length) return null;
+  const r = await pool.query(
+    'UPDATE company_emails SET ' + sets.join(', ') + ' WHERE id = $1 AND company_id = $2 RETURNING id, email, eticheta, la_alerte, la_rapoarte, confirmed_at',
+    vals);
+  return r.rows[0] || null;
+}
+async function deleteCompanyEmail(id, companyId) {
+  const r = await pool.query('DELETE FROM company_emails WHERE id = $1 AND company_id = $2 RETURNING id, email', [id, companyId]);
+  return r.rows[0] || null;
+}
+// Un jeton nou (adresa a fost adăugată acum o lună și nimeni n-a apucat să confirme).
+async function refreshCompanyEmailToken(id, companyId) {
+  const token = require('crypto').randomBytes(24).toString('hex');
+  const r = await pool.query(
+    'UPDATE company_emails SET token = $3, token_expires = $4, confirmed_at = NULL WHERE id = $1 AND company_id = $2 RETURNING id, email, eticheta',
+    [id, companyId, token, Date.now() + 7 * 86400000]);
+  return r.rows[0] ? { rand: r.rows[0], token: token } : null;
+}
+// Confirmarea vine din inbox: jetonul e singura dovadă că adresa există și că cineva o citește.
+async function confirmCompanyEmail(token) {
+  if (!token) return null;
+  const r = await pool.query(
+    'UPDATE company_emails SET confirmed_at = NOW(), token = NULL, token_expires = NULL WHERE token = $1 AND token_expires > $2 RETURNING id, email, company_id',
+    [String(token), Date.now()]);
+  return r.rows[0] || null;
+}
+// Adresele care chiar primesc: confirmate ȘI bifate pentru scopul cerut.
+async function getConfirmedCompanyEmails(companyId, scop) {
+  if (companyId == null) return [];
+  const camp = scop === 'rapoarte' ? 'la_rapoarte' : 'la_alerte';
+  const r = await pool.query(
+    'SELECT email FROM company_emails WHERE company_id = $1 AND confirmed_at IS NOT NULL AND ' + camp + ' = TRUE',
+    [companyId]);
+  return r.rows.map(function (x) { return x.email; });
+}
+
 // ─── Prezența în aplicație ───
 // Cât INTERVAL acoperă un semnal. Dacă se schimbă, se schimbă și minutele calculate mai jos.
 const PRESENCE_MIN = 5;
@@ -3654,6 +3742,8 @@ module.exports = {
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
   getActivityLog, ACT_FAMILII, notePresence, getPresence, prunePresence,
+  listCompanyEmails, addCompanyEmail, countCompanyEmails, setCompanyEmailUses, deleteCompanyEmail,
+  refreshCompanyEmailToken, confirmCompanyEmail, getConfirmedCompanyEmails,
   updateDeviceInfo, setDeviceGpsInfo, getDeviceInventory, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
   updateVehicleDetails,
   deviceExists,
