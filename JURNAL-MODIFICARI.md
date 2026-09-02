@@ -150,6 +150,24 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### AMÂNDOI · „Client" iese din listă, rămâne „Viewer"
+
+Alin a decis, după ce a văzut tabelul: cele două roluri aveau **exact aceleași drepturi**, iar două
+nume pentru același lucru îl pun pe om să ghicească. Rămâne **Viewer**, cu explicația scrisă lângă el
+(„doar se uită, la mașinile atribuite").
+
+**Rolul nu se șterge din cod.** Conturile care îl au deja merg mai departe fără nicio schimbare —
+drepturile lor sunt oricum identice cu ale unui viewer. Doar nu se mai poate **atribui** de aici
+înainte.
+
+Tot atunci s-a confirmat și cealaltă întrebare: **rolul de Admin rămâne dat de noi**, la semnarea
+contractului. Un administrator de firmă nu-și poate face alți administratori — și asta rămâne așa
+intenționat.
+
+- **Ce am schimbat:** „Client" nu mai apare la alegerea rolului; Viewer are acum o explicație.
+- **Ce vede fondatorul:** o listă de roluri fără dubluri.
+- **Ce vede clientul:** trei roluri de ales, fiecare cu rost diferit.
+
 ### FONDATOR · Trei drepturi care nu păzeau nimic, scoase de pe ecranul de Roluri
 
 Alin a cerut lista completă „cine ce poate face". Verificând-o **rută cu rută**, a ieșit ceva ce nu

@@ -1460,8 +1460,7 @@
           <select id="new-role">
             <option value="manager">Manager (toată flota, editează)</option>
             <option value="dispatcher">Dispecer (atribuit + confirmă alerte)</option>
-            <option value="client">Client (vede doar vehiculele atribuite)</option>
-            <option value="viewer">Viewer (read-only, atribuit)</option>
+            <option value="viewer">Viewer (doar se uită, la mașinile atribuite)</option>
           </select>
           <button onclick="addUser()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă utilizator</button>
         </div>
@@ -1483,7 +1482,6 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <label class="ue-field"><span>Rol</span>
           <select id="ue-role">
-            <option value="client">Client</option>
             <option value="dispatcher">Dispecer</option>
             <option value="manager">Manager</option>
             <option value="admin">Admin</option>
