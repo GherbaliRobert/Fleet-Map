@@ -150,6 +150,27 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### FONDATOR · Trei drepturi care nu păzeau nimic, scoase de pe ecranul de Roluri
+
+Alin a cerut lista completă „cine ce poate face". Verificând-o **rută cu rută**, a ieșit ceva ce nu
+se vedea din afară: din cele opt drepturi din tabela de roluri, **trei nu păzesc nimic**:
+
+- **„Trimite comenzi către mașini"** — funcția nu există încă în aplicație, deci n-are ce păzi;
+- **„Confirmă alertele"** — confirmarea notificărilor e deschisă oricui e logat;
+- **„Vede jurnalul de audit"** — jurnalul global e păzit de „super-admin", nu de dreptul ăsta.
+
+Le-am **scos de pe ecranul de Roluri**. Motivul e chiar regula pe care am pus-o la Adrese de email: o
+bifă care se salvează frumos și nu schimbă nimic e **mai rea decât lipsa ei** — adminul ar crede că a
+închis o ușă care de fapt e deschisă. Se pun la loc în clipa în care dreptul chiar păzește ceva; o
+probă automată verifică asta și pică dacă rămân pe dinafară.
+
+Rămân patru drepturi ajustabile, toate reale: **administrează utilizatorii** (26 de rute),
+**modifică flota** (50), **vede rapoartele** (34) și **vede toată flota** (filtrează lista de mașini).
+
+- **Ce am schimbat:** ecranul de Roluri arată doar drepturi care chiar fac ceva.
+- **Ce vede fondatorul:** lista completă a rolurilor, generată din cod (v. tabelul din discuție).
+- **Ce vede clientul:** patru bife care funcționează, în loc de șapte din care trei mimau.
+
 ### AMÂNDOI · Roluri — firma își botează rolurile și le taie din drepturi
 
 Ultimul pas din administrarea nouă. Setări → **Oameni și drepturi → Roluri**.

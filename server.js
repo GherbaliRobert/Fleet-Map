@@ -1262,14 +1262,21 @@ const ROLURI_AJUSTABILE = COMPANY_ASSIGNABLE_ROLES.slice(); // manager, dispecer
 const ROLE_LABELS_RO = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer' };
 // Adminul firmei NU e ajustabil: dacă și-ar tăia dreptul de administrare, ar rămâne pe dinafară din
 // propriul cont, fără cale de întoarcere. Nici rolurile de platformă, evident.
+// AICI apar DOAR drepturile care chiar păzesc ceva pe server. Verificat rută cu rută:
+//   manageUsers → 26 de rute (conturi, roluri, adrese, istoric, chei API)
+//   manageFleet → 50 de rute (mașini, șoferi, grupe, alerte, documente, mentenanță, aparate GPS)
+//   viewReports → 34 de rute (rapoarte, programări, tahograf, e-Transport, hotspot, RA Insight)
+//   viewAll     → filtrează lista de mașini (fără el: doar cele atribuite)
+// `sendCommands`, `ackAlerts` și `viewAudit` există în tabela de roluri, dar NU păzesc nicio rută:
+// trimiterea de comenzi nu e încă implementată, confirmarea notificărilor e deschisă oricui e logat,
+// iar jurnalul e păzit de „super-admin", nu de viewAudit. Le-am scos de pe ecran ANUME: o bifă care
+// se salvează frumos și nu schimbă nimic e mai rea decât lipsa ei — adminul ar crede că a închis o
+// ușă care de fapt e deschisă. Se pun la loc în clipa în care dreptul chiar păzește ceva.
 const DREPTURI_ETICHETE = {
-  manageUsers:  'Administrează utilizatorii',
-  manageFleet:  'Modifică flota (mașini, șoferi, grupe)',
-  sendCommands: 'Trimite comenzi către mașini',
-  viewReports:  'Vede rapoartele',
-  ackAlerts:    'Confirmă alertele',
+  manageUsers:  'Administrează utilizatorii (conturi, roluri, adrese de email)',
+  manageFleet:  'Modifică flota (mașini, șoferi, grupe, alerte, documente)',
+  viewReports:  'Vede rapoartele (și tahograf, e-Transport, RA Insight)',
   viewAll:      'Vede toată flota (altfel doar mașinile atribuite)',
-  viewAudit:    'Vede istoricul de activitate',
 };
 function rolAjustabil(rol) { return ROLURI_AJUSTABILE.indexOf(rol) >= 0; }
 // Ce drepturi se pot tăia dintr-un rol: doar cele pe care rolul le ARE. Restul n-ar însemna nimic.

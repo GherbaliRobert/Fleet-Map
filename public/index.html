@@ -4946,7 +4946,8 @@ const pozitii = await r.json();</code></pre>
       // Rolul de administrator lipsește din listă ANUME — dacă și-ar tăia dreptul de administrare,
       // omul ar rămâne pe dinafară din propriul cont, fără cale de întoarcere.
       h += '<div class="ag-nota">Rolul de <b>administrator</b> nu se poate ajusta: cine îl are trebuie să poată oricând intra înapoi și repara. ' +
-        'Schimbările se aplică la <b>următoarea cerere</b> a omului — nu trebuie să se delogheze.</div>';
+        'Schimbările se aplică la <b>următoarea cerere</b> a omului — nu trebuie să se delogheze.<br>' +
+        'Aici apar doar drepturile care chiar <b>păzesc ceva</b>. Pe măsură ce adăugăm funcții noi (de pildă trimiterea de comenzi către aparat), apar și ele în listă.</div>';
       host.innerHTML = h;
     }
     window.rolSalveaza = async function (rol) {

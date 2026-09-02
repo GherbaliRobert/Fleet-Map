@@ -80,6 +80,15 @@ const login = async (u, p) => {
   T('un drept pe care rolul nu-l are nu apare deloc',
     rolMgr && rolMgr.drepturi.every(d => d.cheie !== 'manageUsers'),
     rolMgr && rolMgr.drepturi.map(d => d.cheie).join(', '));
+  // Pe ecran apar DOAR drepturi care păzesc ceva pe server. „sendCommands"/„ackAlerts"/„viewAudit"
+  // există în tabela de roluri, dar nu păzesc nicio rută — o bifă care nu face nimic e mai rea decât
+  // lipsa ei. Dacă vreodată sunt puse la treabă, proba asta pică și le punem la loc pe ecran.
+  T('nu oferim bife care nu fac nimic',
+    rolMgr && rolMgr.drepturi.every(d => ['sendCommands', 'ackAlerts', 'viewAudit'].indexOf(d.cheie) < 0),
+    rolMgr && rolMgr.drepturi.map(d => d.cheie).join(', '));
+  T('iar cele oferite chiar păzesc rute',
+    rolMgr && rolMgr.drepturi.every(d => ['manageUsers', 'manageFleet', 'viewReports', 'viewAll'].indexOf(d.cheie) >= 0),
+    rolMgr && rolMgr.drepturi.map(d => d.cheie).join(', '));
 
   sect('2. Managerul poate ce trebuie, ÎNAINTE de tăiere');
   const inainte = await GET('/api/devices', ckM);
@@ -140,12 +149,12 @@ const login = async (u, p) => {
   const co2 = await (await POST('/api/companies', { name: 'Firma Roluri 2' })).json();
   await POST('/api/users', { username: 'admin.r2@test.ro', password: 'Str4da-Verde-2026', full_name: 'Admin R2', role: 'admin', company_id: co2.id });
   const ckA2 = await login('admin.r2@test.ro', 'Str4da-Verde-2026');
-  await PUT('/api/company-roles/manager', { nume: 'Sef tura', taiate: ['sendCommands'] }, ckA2);
+  await PUT('/api/company-roles/manager', { nume: 'Sef tura', taiate: ['viewReports'] }, ckA2);
   const laMine = await (await GET('/api/company-roles', ckA)).json();
   const mgrA = (laMine || []).find(x => x.rol === 'manager');
   T('ajustarea altei firme nu se vede la noi', mgrA && !mgrA.nume, mgrA && mgrA.nume);
   const meAltaFirma = await (await GET('/api/me', ckM)).json();
-  T('și nu-i taie drepturi managerului nostru', meAltaFirma.permissions && meAltaFirma.permissions.sendCommands === true,
+  T('și nu-i taie drepturi managerului nostru', meAltaFirma.permissions && meAltaFirma.permissions.viewReports === true,
     JSON.stringify(meAltaFirma.permissions));
 
   sect('8. Cine nu administrează firma nu umblă la roluri');
