@@ -193,25 +193,89 @@ const login = async (u, p) => {
     T('rolurile de administrare nu sunt ajustabile', !F.ajustabil('admin') && !F.ajustabil('superadmin') && !F.ajustabil('company_admin'));
   }
 
-  sect('10. Cardul de pe ecran nu minte despre ce s-a schimbat');
-  const htmlTxt = fs.readFileSync('./public/index.html', 'utf8');
-  const iu = htmlTxt.indexOf('    // ── începe „Roluri"');
-  const ju = htmlTxt.indexOf('    // ── sfârșit „Roluri" ──', iu);
-  if (iu > 0 && ju > iu) {
-    const escU = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const U = new Function('esc', 'window', 'document', 'fetch',
-      htmlTxt.slice(iu, ju) + '\n; return { card: rolCardHtml };')(
-      escU, {}, { getElementById: () => null, querySelectorAll: () => [] }, () => Promise.resolve({ json: () => ({}) }));
-    const dr = (c, e, are) => ({ cheie: c, eticheta: e, are: are });
-    const std = U.card({ rol: 'viewer', numeStandard: 'Viewer', nume: null, drepturi: [dr('viewReports', 'Vede rapoartele', true)] });
-    T('un rol neatins scrie „standard"', /standard<\/span>/.test(std) && !/redenumit/.test(std));
-    const ren = U.card({ rol: 'client', numeStandard: 'Client', nume: 'Beneficiar', drepturi: [dr('viewReports', 'Vede rapoartele', true)] });
-    T('un rol DOAR redenumit nu mai scrie „standard"', /redenumit/.test(ren), ren.slice(0, 200));
-    T('și arată de la ce a pornit', /Client/.test(ren));
-    const tai = U.card({ rol: 'manager', numeStandard: 'Manager', nume: null, drepturi: [dr('manageFleet', 'Modifică flota', false), dr('viewReports', 'Vede rapoartele', true)] });
-    T('un rol cu drepturi tăiate o spune, cu număr', /1 drept tăiat/.test(tai), tai.slice(0, 220));
-    T('dreptul tăiat se vede tăiat pe ecran', /rol-d taiat/.test(tai));
-  }
+  sect('10. Ajustările fine: ecrane, editări, rapoarte');
+  // Bifele astea trebuie să păzească RUTE, nu doar să se salveze frumos.
+  const rolFin = await (await GET('/api/company-roles', ckA)).json();
+  const mgr = (rolFin || []).find(x => x.rol === 'manager');
+  T('rolul aduce lista de ecrane', mgr && mgr.ecrane && mgr.ecrane.length > 5, mgr && (mgr.ecrane || []).length);
+  T('și lista de rapoarte, din catalogul real', mgr && mgr.rapoarte && mgr.rapoarte.length > 20, mgr && (mgr.rapoarte || []).length);
+  T('și ce poate edita', mgr && mgr.editari && mgr.editari.length > 3, mgr && (mgr.editari || []).length);
+  const viewer = (rolFin || []).find(x => x.rol === 'viewer');
+  T('un rol care nu modifică nimic nu primește bife de editare', viewer && (viewer.editari || []).length === 0,
+    viewer && (viewer.editari || []).length);
+
+  // RAPOARTE: tăiat = refuzat pe ruta care generează raportul ȘI la programare.
+  await PUT('/api/company-roles/manager', { nume: 'Operator depou', taiate: [], rapoarte: ['trips'] }, ckA);
+  const rapTaiat = await GET('/api/reports/trips?from=2026-08-01T00:00:00Z&to=2026-08-02T00:00:00Z', ckM);
+  T('un raport tăiat NU se mai poate scoate', rapTaiat.status === 403, rapTaiat.status);
+  const rapOk = await GET('/api/reports/stops?from=2026-08-01T00:00:00Z&to=2026-08-02T00:00:00Z', ckM);
+  T('dar celelalte rapoarte merg mai departe', rapOk.status === 200, rapOk.status);
+  const progr = await POST('/api/report-schedules', { report_type: 'trips', period: 'day', frequency: 'daily', hour: 6, format: 'pdf' }, ckM);
+  T('și nici programat pe email nu se poate scoate', progr.status === 403, progr.status);
+
+  // ECRANE: tăiat = ruta ecranului răspunde „acces interzis", nu doar se ascunde din meniu.
+  await PUT('/api/company-roles/manager', { nume: 'Operator depou', taiate: [], ecrane: ['soferi'] }, ckA);
+  const ecrTaiat = await GET('/api/drivers', ckM);
+  T('un ecran tăiat e închis și pe server', ecrTaiat.status === 403, ecrTaiat.status);
+  const ecrOk = await GET('/api/alerts', ckM);
+  T('celelalte ecrane rămân deschise', ecrOk.status === 200, ecrOk.status);
+
+  // EDITARE: tăiat = nu mai poate SCRIE, dar poate în continuare să VADĂ.
+  await PUT('/api/company-roles/manager', { nume: 'Operator depou', taiate: [], editari: ['soferi'] }, ckA);
+  const vedeSoferi = await GET('/api/drivers', ckM);
+  T('cu editarea tăiată, tot vede lista', vedeSoferi.status === 200, vedeSoferi.status);
+  const scrieSofer = await POST('/api/drivers', { name: 'Ion Probă' }, ckM);
+  T('dar nu mai poate adăuga', scrieSofer.status === 403, scrieSofer.status);
+  const scrieAlta = await PUT('/api/company/fuel-prices', { motorina: 7.4 }, ckM);
+  T('iar ce n-a fost tăiat merge mai departe', scrieAlta.status === 200, scrieAlta.status);
+
+  // Și în meniu: un ecran tăiat nu trebuie să rămână ca buton care răspunde „acces interzis".
+  const htmlMeniu = fs.readFileSync('./public/index.html', 'utf8');
+  T('butoanele din meniu știu de ce ecran aparțin', (htmlMeniu.match(/data-ecran=/g) || []).length >= 14,
+    (htmlMeniu.match(/data-ecran=/g) || []).length);
+  T('și se ascund după ce trimite serverul', /ecraneAscunse/.test(htmlMeniu) && /function ascundeEcraneTaiate/.test(htmlMeniu));
+  T('iar o grupă rămasă goală dispare și ea', /vizibile\.length \? '' : 'none'/.test(htmlMeniu));
+
+  sect('11. Nici pe calea asta nu se pot ADĂUGA drepturi');
+  const gunoi = await PUT('/api/company-roles/manager', { nume: 'Operator depou',
+    ecrane: ['inventat'], editari: ['facturare'], rapoarte: ['nu_exista'] }, ckA);
+  const gj = await gunoi.json();
+  T('cheile inventate sunt aruncate',
+    (gj.ecrane || []).length === 0 && (gj.editari || []).length === 0 && (gj.rapoarte || []).length === 0,
+    JSON.stringify([gj.ecrane, gj.editari, gj.rapoarte]));
+  // Un rol care NU modifică flota nu poate primi tăieri de editare — n-ar însemna nimic.
+  const peViewer = await PUT('/api/company-roles/viewer', { editari: ['soferi'] }, ckA);
+  const pv = await peViewer.json();
+  T('un rol fără drept de modificare nu capătă bife de editare', (pv.editari || []).length === 0, JSON.stringify(pv.editari));
+
+  sect('12. Rol nou: pornește dintr-un șablon și nu-l poate depăși');
+  const nou = await POST('/api/company-roles', { nume: 'Operator depou', baza: 'dispatcher' }, ckA);
+  T('rolul nou se creează', nou.status === 200, nou.status + ' ' + (await nou.clone().text()).slice(0, 80));
+  const nj = await nou.json();
+  T('și primește un slug propriu', !!nj.rol && nj.rol !== 'dispatcher', nj.rol);
+  const faraBaza = await POST('/api/company-roles', { nume: 'Sef peste tot', baza: 'admin' }, ckA);
+  T('nu poate porni de la un rol de administrare', faraBaza.status === 400, faraBaza.status);
+  const faraNume = await POST('/api/company-roles', { baza: 'viewer' }, ckA);
+  T('și are nevoie de nume', faraNume.status === 400, faraNume.status);
+
+  // Atribuirea rolului propriu unui om: drepturile lui vin din șablon minus tăierile rolului propriu.
+  const useri = await (await GET('/api/users', ckA)).json();
+  const mgrUser = (useri || []).find(u => u.username === 'manager.r@test.ro');
+  const atrib = await PUT('/api/users/' + mgrUser.id, { role: nj.rol }, ckA);
+  T('omul poate fi mutat pe rolul propriu', atrib.status === 200, atrib.status);
+  const meNou = await (await GET('/api/me', ckM)).json();
+  T('și capătă numele rolului propriu', meNou.roleLabel === 'Operator depou', meNou.roleLabel);
+  T('cu drepturile ȘABLONULUI, nu ale rolului vechi', meNou.permissions && meNou.permissions.manageFleet === false,
+    JSON.stringify(meNou.permissions));
+  const rolInexistent = await PUT('/api/users/' + mgrUser.id, { role: 'rol_inventat' }, ckA);
+  T('un rol inventat e refuzat', rolInexistent.status === 400, rolInexistent.status);
+
+  sect('13. Un rol propriu nu se șterge de sub picioarele oamenilor');
+  const stergeFolosit = await DEL('/api/company-roles/' + nj.rol, ckA);
+  T('ștergerea e oprită cât timp e folosit', stergeFolosit.status === 400, stergeFolosit.status);
+  await PUT('/api/users/' + mgrUser.id, { role: 'manager' }, ckA);
+  const stergeLiber = await DEL('/api/company-roles/' + nj.rol, ckA);
+  T('după ce nu-l mai are nimeni, se șterge', stergeLiber.status === 200, stergeLiber.status);
 
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');

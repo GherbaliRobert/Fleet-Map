@@ -1087,6 +1087,19 @@ async function initDb() {
     `);
     await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_co_email_unic ON company_emails (company_id, lower(email))');
 
+    // Ajustările fine ale unui rol: ce ECRANE vede, ce poate EDITA, ce RAPOARTE scoate. Ca și la
+    // drepturile mari, se ține doar ce s-a TĂIAT — deci un rol nu poate ajunge, prin nicio scriere,
+    // să aibă mai mult decât șablonul din care pornește.
+    // Câte o comandă pe rând: PGlite (baza locală de probă) nu primește mai multe instrucțiuni
+    // într-un singur query, iar dacă pică aici nu mai pornește serverul deloc.
+    await client.query("ALTER TABLE company_roles ADD COLUMN IF NOT EXISTS ecrane_taiate JSONB NOT NULL DEFAULT '[]'");
+    await client.query("ALTER TABLE company_roles ADD COLUMN IF NOT EXISTS editari_taiate JSONB NOT NULL DEFAULT '[]'");
+    await client.query("ALTER TABLE company_roles ADD COLUMN IF NOT EXISTS rapoarte_taiate JSONB NOT NULL DEFAULT '[]'");
+    await client.query('ALTER TABLE company_roles ADD COLUMN IF NOT EXISTS baza VARCHAR(20)');
+    // Rolurile proprii ale firmei („Rol nou"): omul primește un slug de rol, iar rolul lui de bază
+    // rămâne în users.role. Așa, TOATE verificările existente merg mai departe neschimbate.
+    await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS role_slug VARCHAR(40)');
+
     // Prezența în aplicație: un rând la fiecare 5 minute în care omul a avut fereastra DESCHISĂ ȘI ÎN
     // FAȚĂ. Nu se măsoară „cât e logat" (o filă uitată deschisă peste noapte ar raporta 24 de ore),
     // ci cât a stat efectiv cu aplicația sub ochi. Cheia primară e (om, interval) → semnalele
@@ -2502,7 +2515,9 @@ async function countSuperadminsInIds(ids) {
 
 async function getUserById(id) {
   const result = await pool.query(
-    'SELECT id, username, role, full_name, email, phone, active, last_login, company_id, created_at, access_until, demo_request_id FROM users WHERE id = $1',
+    // role_slug = rolul PROPRIU al firmei, dacă omul are unul. Fără el aici, refreshAuth nu-l vede și
+    // ajustările rolului propriu n-ar avea niciun efect.
+    'SELECT id, username, role, role_slug, full_name, email, phone, active, last_login, company_id, created_at, access_until, demo_request_id FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0] || null;
@@ -2645,24 +2660,50 @@ async function getActivityLog(opts) {
 }
 
 // ─── Rolurile firmei (renumite / restrânse) ───
+function _lista(x) {
+  if (typeof x === 'string') { try { x = JSON.parse(x); } catch (e) { return []; } }
+  return Array.isArray(x) ? x : [];
+}
 async function getCompanyRoles(companyId) {
   if (companyId == null) return [];
-  const r = await pool.query('SELECT role_key, nume, taiate FROM company_roles WHERE company_id = $1', [companyId]);
+  const r = await pool.query(
+    'SELECT role_key, nume, baza, taiate, ecrane_taiate, editari_taiate, rapoarte_taiate FROM company_roles WHERE company_id = $1 ORDER BY role_key',
+    [companyId]);
   return r.rows.map(function (x) {
-    let t = x.taiate;
-    if (typeof t === 'string') { try { t = JSON.parse(t); } catch (e) { t = []; } }
-    return { role_key: x.role_key, nume: x.nume || null, taiate: Array.isArray(t) ? t : [] };
+    return {
+      role_key: x.role_key, nume: x.nume || null,
+      // Rândurile vechi (dinainte de rolurile proprii) n-au „baza" scrisă: la ele slug-ul ESTE rolul.
+      baza: x.baza || x.role_key,
+      taiate: _lista(x.taiate),
+      ecrane: _lista(x.ecrane_taiate),
+      editari: _lista(x.editari_taiate),
+      rapoarte: _lista(x.rapoarte_taiate),
+    };
   });
 }
 async function setCompanyRole(companyId, roleKey, o) {
-  const nume = (o && o.nume != null) ? String(o.nume).trim().slice(0, 40) || null : null;
-  const taiate = JSON.stringify(Array.isArray(o && o.taiate) ? o.taiate : []);
+  o = o || {};
+  const nume = (o.nume != null) ? String(o.nume).trim().slice(0, 40) || null : null;
+  const J = function (x) { return JSON.stringify(Array.isArray(x) ? x : []); };
+  const taiate = J(o.taiate), ecrane = J(o.ecrane), editari = J(o.editari), rapoarte = J(o.rapoarte);
+  const baza = o.baza ? String(o.baza).slice(0, 20) : roleKey;
   await pool.query(
-    `INSERT INTO company_roles (company_id, role_key, nume, taiate, updated_at)
-     VALUES ($1,$2,$3,$4::jsonb, NOW())
-     ON CONFLICT (company_id, role_key) DO UPDATE SET nume = $3, taiate = $4::jsonb, updated_at = NOW()`,
-    [companyId, roleKey, nume, taiate]);
-  return { role_key: roleKey, nume: nume, taiate: JSON.parse(taiate) };
+    `INSERT INTO company_roles (company_id, role_key, nume, baza, taiate, ecrane_taiate, editari_taiate, rapoarte_taiate, updated_at)
+     VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8::jsonb, NOW())
+     ON CONFLICT (company_id, role_key) DO UPDATE SET
+       nume = $3, baza = $4, taiate = $5::jsonb, ecrane_taiate = $6::jsonb,
+       editari_taiate = $7::jsonb, rapoarte_taiate = $8::jsonb, updated_at = NOW()`,
+    [companyId, roleKey, nume, baza, taiate, ecrane, editari, rapoarte]);
+  return { role_key: roleKey, nume: nume, baza: baza, taiate: JSON.parse(taiate),
+    ecrane: JSON.parse(ecrane), editari: JSON.parse(editari), rapoarte: JSON.parse(rapoarte) };
+}
+// Câți oameni folosesc rolul ăsta — ca să nu se șteargă un rol de sub picioarele cuiva.
+async function countUsersWithRoleSlug(companyId, slug) {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM users WHERE company_id = $1 AND role_slug = $2', [companyId, slug]);
+  return r.rows[0] ? r.rows[0].n : 0;
+}
+async function setUserRoleSlug(userId, slug) {
+  await pool.query('UPDATE users SET role_slug = $2 WHERE id = $1', [userId, slug || null]);
 }
 // Revenire la standard = ștergerea rândului. Rolul redevine exact cel din cod.
 async function resetCompanyRole(companyId, roleKey) {
@@ -3783,7 +3824,7 @@ module.exports = {
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
   getActivityLog, ACT_FAMILII, notePresence, getPresence, prunePresence,
-  getCompanyRoles, setCompanyRole, resetCompanyRole,
+  getCompanyRoles, setCompanyRole, resetCompanyRole, countUsersWithRoleSlug, setUserRoleSlug,
   listCompanyEmails, addCompanyEmail, countCompanyEmails, setCompanyEmailUses, deleteCompanyEmail,
   refreshCompanyEmailToken, confirmCompanyEmail, getConfirmedCompanyEmails,
   updateDeviceInfo, setDeviceGpsInfo, getDeviceInventory, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,

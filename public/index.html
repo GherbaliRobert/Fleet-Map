@@ -89,32 +89,32 @@
     <div id="shell-body">
       <!-- Meniu vertical -->
       <nav id="navrail">
-        <button class="nav-item active" data-view="localizare" onclick="showView('localizare')"><i class="fas fa-location-dot"></i><span>Localizare</span></button>
-        <button class="nav-item" data-view="traseu" onclick="showView('traseu')"><i class="fas fa-route"></i><span>Traseu</span></button>
+        <button data-ecran="localizare" class="nav-item active" data-view="localizare" onclick="showView('localizare')"><i class="fas fa-location-dot"></i><span>Localizare</span></button>
+        <button data-ecran="traseu" class="nav-item" data-view="traseu" onclick="showView('traseu')"><i class="fas fa-route"></i><span>Traseu</span></button>
         <div class="nav-group" data-group="analize">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-chart-column"></i><span>Analize statistice</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici</span></button>
+            <button data-ecran="statistici" class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici</span></button>
             <!-- „Asistenți AI" scos din meniu: arăta ORICUI (n-avea data-super) numărul de „Tokeni in/out"
                  și „Cereri API" — detalii tehnice care ne privesc doar pe noi. Pentru fondatori, aceleași
                  date, mai bine puse, sunt în Administrare → Utilizare RA Insight (apeluri, cost, rată de
                  folosire, per companie). Agenții au secțiunea lor dedicată, „Agenți AI". -->
-            <button class="nav-item nav-sub" onclick="navGo(this, goAnalizeConsum)"><i class="fas fa-gas-pump"></i><span>Statistici consum</span></button>
+            <button data-ecran="statistici" class="nav-item nav-sub" onclick="navGo(this, goAnalizeConsum)"><i class="fas fa-gas-pump"></i><span>Statistici consum</span></button>
             <button class="nav-item nav-sub" onclick="navGo(this, goFuelPrice)"><i class="fas fa-coins"></i><span>Preț combustibil</span></button>
           </div>
         </div>
         <div class="nav-group fleet-only" data-group="management">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-pen-to-square"></i><span>Management</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('vehicles'); })"><i class="fas fa-car"></i><span>Vehicule</span></button>
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('drivers'); })"><i class="fas fa-id-card"></i><span>Șoferi</span></button>
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('groups'); })"><i class="fas fa-layer-group"></i><span>Grupe</span></button>
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('alerts'); })"><i class="fas fa-bell"></i><span>Alerte</span></button>
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('maintenance'); })"><i class="fas fa-wrench"></i><span>Mentenanță</span></button>
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('documente'); })"><i class="fas fa-file-contract"></i><span>Documente</span></button>
-            <button class="nav-item nav-sub feat-tacho" onclick="navGo(this, function(){ goManage('tacho'); })"><i class="fas fa-tachograph-digital"></i><span>Tahograf</span></button>
-            <button class="nav-item nav-sub feat-etransport" onclick="navGo(this, function(){ goManage('etransport'); })"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
-            <button class="nav-item nav-sub feat-etoll" onclick="navGo(this, function(){ showView('etoll'); })"><i class="fas fa-road"></i><span>Taxa de drum (TollRo)</span></button>
+            <button data-ecran="vehicule" class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('vehicles'); })"><i class="fas fa-car"></i><span>Vehicule</span></button>
+            <button data-ecran="soferi" class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('drivers'); })"><i class="fas fa-id-card"></i><span>Șoferi</span></button>
+            <button data-ecran="grupe" class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('groups'); })"><i class="fas fa-layer-group"></i><span>Grupe</span></button>
+            <button data-ecran="alerte" class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('alerts'); })"><i class="fas fa-bell"></i><span>Alerte</span></button>
+            <button data-ecran="mentenanta" class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('maintenance'); })"><i class="fas fa-wrench"></i><span>Mentenanță</span></button>
+            <button data-ecran="documente" class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('documente'); })"><i class="fas fa-file-contract"></i><span>Documente</span></button>
+            <button data-ecran="tahograf" class="nav-item nav-sub feat-tacho" onclick="navGo(this, function(){ goManage('tacho'); })"><i class="fas fa-tachograph-digital"></i><span>Tahograf</span></button>
+            <button data-ecran="etransport" class="nav-item nav-sub feat-etransport" onclick="navGo(this, function(){ goManage('etransport'); })"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
+            <button data-ecran="tollro" class="nav-item nav-sub feat-etoll" onclick="navGo(this, function(){ showView('etoll'); })"><i class="fas fa-road"></i><span>Taxa de drum (TollRo)</span></button>
           </div>
         </div>
         <div class="nav-group" data-group="administrare">
@@ -126,9 +126,9 @@
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
           </div>
         </div>
-        <button class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
-        <button class="nav-item" id="nav-agenti" data-view="agenti" onclick="showView('agenti')" style="display:none;"><i class="fas fa-robot"></i><span>Agenți AI</span></button>
-        <button class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
+        <button data-ecran="rapoarte" class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
+        <button data-ecran="insight" class="nav-item" id="nav-agenti" data-view="agenti" onclick="showView('agenti')" style="display:none;"><i class="fas fa-robot"></i><span>Agenți AI</span></button>
+        <button data-ecran="hotspot" class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
         <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
 
         <!-- Documentele legale trebuie să fie accesibile din APLICAȚIE, nu doar din subsolul paginii publice:
@@ -3546,6 +3546,22 @@ const pozitii = await r.json();</code></pre>
       }
     });
 
+    // Ecranele tăiate din rol dispar din meniu. Serverul le refuză oricum (vezi pazaEcrane), dar un
+    // buton care răspunde „acces interzis" arată a aplicație stricată — mai bine nu există deloc.
+    function ascundeEcraneTaiate() {
+      var ascunse = (window.currentUser && currentUser.ecraneAscunse) || [];
+      document.querySelectorAll('[data-ecran]').forEach(function (b) {
+        b.style.display = ascunse.indexOf(b.getAttribute('data-ecran')) >= 0 ? 'none' : '';
+      });
+      // O grupă din meniu rămasă fără niciun buton vizibil nu mai are ce grupa.
+      document.querySelectorAll('.nav-group').forEach(function (g) {
+        var corp = g.querySelector('.nav-group-body');
+        if (!corp) return;
+        var vizibile = Array.prototype.filter.call(corp.querySelectorAll('.nav-item'), function (x) { return x.style.display !== 'none'; });
+        g.style.display = vizibile.length ? '' : 'none';
+      });
+    }
+
     // ── începe „prezența" (semnalul de la fereastră) ──
     // Cât stă omul în aplicație se măsoară cu un semnal la 5 minute, trimis DOAR cât timp fereastra e
     // deschisă ȘI în față. Nu măsurăm „cât e logat": o filă uitată deschisă peste noapte ar raporta
@@ -3594,6 +3610,7 @@ const pozitii = await r.json();</code></pre>
       // adică super-adminul nu-și primea coloanele lui, iar butonul „Salvează în fișă" de la Taxa de
       // drum nu apărea NICIODATĂ. O singură sursă, pusă unde intrăm în aplicație.
       window.currentUser = currentUser;
+      ascundeEcraneTaiate();
       prezPornit();
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app').classList.add('visible');
@@ -4905,33 +4922,65 @@ const pozitii = await r.json();</code></pre>
     // cel mult un rol cu mai puține drepturi, niciodată unul cu mai multe.
     // ── începe „Roluri" (REPER pentru probe: verify_roluri.js decupează exact bucata dintre reperul
     // ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
-    var _rol = { randuri: null, eroare: null, mesaj: null };
-    // Numele alese de firmă, folosite și în lista de utilizatori și în selectoarele de rol.
+    // Ecranul are aceeași formă ca la orice program de flotă: rolurile în stânga, ce poate rolul în
+    // dreapta, pe patru file. Fiecare bifă păzește ceva REAL pe server — nu există bife decorative.
+    var _rol = { randuri: null, ales: null, fila: 'drepturi', eroare: null, mesaj: null };
     window.RA_ROL_NUME = window.RA_ROL_NUME || null;
-    function rolCardHtml(r) {
-      var taiate = r.drepturi.filter(function (d) { return !d.are; }).length;
-      // Eticheta trebuie să spună ADEVĂRUL despre card: un rol doar redenumit nu e „standard".
-      var stare = taiate
-        ? '<span class="rol-tag mod">' + taiate + (taiate === 1 ? ' drept tăiat' : ' drepturi tăiate') + '</span>'
-        : (r.nume ? '<span class="rol-tag mod">redenumit</span>' : '<span class="rol-tag std">standard</span>');
-      var nume = r.nume || '';
-      return '<div class="rol-card">' +
-        '<div class="rol-cap">' +
-          '<div class="rol-n"><b>' + esc(r.nume || r.numeStandard) + '</b>' +
-            '<span>' + (r.nume ? 'la noi: „' + esc(r.numeStandard) + '"' : 'nume standard') + '</span></div>' +
-          stare +
-        '</div>' +
-        '<label class="rol-lbl">Cum îi spuneți la voi</label>' +
-        '<input type="text" class="rol-nume" id="rol-nume-' + r.rol + '" maxlength="40" value="' + esc(nume) + '" placeholder="' + esc(r.numeStandard) + '">' +
-        '<div class="rol-drepturi">' + r.drepturi.map(function (d) {
-          return '<label class="rol-d' + (d.are ? '' : ' taiat') + '">' +
-            '<input type="checkbox" data-rd="' + r.rol + '" value="' + d.cheie + '"' + (d.are ? ' checked' : '') + '>' +
-            '<span>' + esc(d.eticheta) + '</span></label>';
-        }).join('') + '</div>' +
-        '<div class="rol-act">' +
-          '<button class="btn-sm btn-primary" onclick="rolSalveaza(\'' + r.rol + '\')"><i class="fas fa-check"></i> Salvează</button>' +
-          (r.nume || taiate ? '<button class="btn-sm" onclick="rolReset(\'' + r.rol + '\')"><i class="fas fa-rotate-left"></i> Revino la standard</button>' : '') +
-        '</div></div>';
+    var ROL_FILE = [
+      ['drepturi', 'Ce poate face', 'fa-key'],
+      ['ecrane',   'Ce ecrane vede', 'fa-desktop'],
+      ['editari',  'Ce poate edita', 'fa-pen'],
+      ['rapoarte', 'Ce rapoarte scoate', 'fa-file-lines'],
+    ];
+    function rolCurent() {
+      var l = _rol.randuri || [];
+      return l.filter(function (r) { return r.rol === _rol.ales; })[0] || l[0] || null;
+    }
+    function rolTaiate(r) {
+      // Câte lucruri a scos firma din rolul ăsta, la un loc — cifra de pe eticheta din stânga.
+      return ['drepturi', 'ecrane', 'editari', 'rapoarte'].reduce(function (n, c) {
+        return n + ((r[c] || []).filter(function (x) { return !x.are; }).length);
+      }, 0);
+    }
+    function rolListaHtml() {
+      return (_rol.randuri || []).map(function (r) {
+        var n = rolTaiate(r);
+        return '<button class="rol-li' + (r.rol === (rolCurent() || {}).rol ? ' on' : '') + '" onclick="rolAlege(\'' + r.rol + '\')">' +
+          '<span class="rol-li-n">' + esc(r.nume || r.numeStandard) + '</span>' +
+          (r.propriu ? '<span class="rol-li-p">rol propriu</span>' : '') +
+          (n ? '<span class="rol-li-t">' + n + ' tăiate</span>' : '') +
+          '</button>';
+      }).join('');
+    }
+    function rolBifeHtml(r, camp) {
+      var lista = r[camp] || [];
+      if (!lista.length) {
+        return '<div class="rol-gol">' + (camp === 'editari'
+          ? 'Rolul ăsta nu modifică nimic în aplicație — nu are ce edita.'
+          : 'Nimic de ales aici.') + '</div>';
+      }
+      // Grupate (ex. rapoartele pe categorii), ca să nu fie un perete de bife.
+      var grupe = {}, ordine = [];
+      lista.forEach(function (d) {
+        var g = d.grup || '';
+        if (!grupe[g]) { grupe[g] = []; ordine.push(g); }
+        grupe[g].push(d);
+      });
+      var toate = lista.every(function (d) { return d.are; });
+      var h = '<div class="rol-tools">' +
+        '<button class="rol-tt" onclick="rolToate(\'' + camp + '\',' + (toate ? 'false' : 'true') + ')">' +
+        (toate ? '<i class="fas fa-square"></i> Debifează tot' : '<i class="fas fa-check-double"></i> Bifează tot') + '</button>' +
+        '<span class="rol-cnt">' + lista.filter(function (d) { return d.are; }).length + ' din ' + lista.length + '</span></div>';
+      h += ordine.map(function (g) {
+        return (g ? '<div class="rol-gr">' + esc(g) + '</div>' : '') +
+          '<div class="rol-drepturi">' + grupe[g].map(function (d) {
+            return '<label class="rol-d' + (d.are ? '' : ' taiat') + '">' +
+              '<input type="checkbox" data-rc="' + camp + '" value="' + esc(d.cheie) + '"' + (d.are ? ' checked' : '') +
+              ' onchange="rolBifa(\'' + camp + '\',\'' + esc(d.cheie) + '\',this.checked)">' +
+              '<span>' + esc(d.eticheta) + '</span></label>';
+          }).join('') + '</div>';
+      }).join('');
+      return h;
     }
     function rolRender() {
       var host = document.getElementById('rol-host'); if (!host) return;
@@ -4940,36 +4989,93 @@ const pozitii = await r.json();</code></pre>
         (_rol.mesaj.rau ? 'circle-exclamation' : 'circle-check') + '"></i> ' + esc(_rol.mesaj.t) + '</div>';
       if (_rol.eroare) { host.innerHTML = h + '<div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc(_rol.eroare) + '</div>'; return; }
       if (!_rol.randuri) { host.innerHTML = h + '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>'; return; }
-      h += _rol.randuri.map(rolCardHtml).join('');
-      // Rolul de administrator lipsește din listă ANUME — dacă și-ar tăia dreptul de administrare,
-      // omul ar rămâne pe dinafară din propriul cont, fără cale de întoarcere.
-      h += '<div class="ag-nota">Rolul de <b>administrator</b> nu se poate ajusta: cine îl are trebuie să poată oricând intra înapoi și repara. ' +
-        'Schimbările se aplică la <b>următoarea cerere</b> a omului — nu trebuie să se delogheze.<br>' +
-        'Aici apar doar drepturile care chiar <b>păzesc ceva</b>. Pe măsură ce adăugăm funcții noi (de pildă trimiterea de comenzi către aparat), apar și ele în listă.</div>';
+      var r = rolCurent();
+      if (!r) { host.innerHTML = h + '<div class="dm-muted">Niciun rol.</div>'; return; }
+
+      h += '<div class="rol-shell">' +
+        '<div class="rol-lista">' + rolListaHtml() +
+          '<button class="btn-sm btn-primary rol-nou" onclick="rolNou()"><i class="fas fa-plus"></i> Rol nou</button>' +
+        '</div>' +
+        '<div class="rol-edit">' +
+          '<label class="rol-lbl">Cum îi spuneți la voi</label>' +
+          '<input type="text" class="rol-nume" id="rol-nume" maxlength="40" value="' + esc(r.nume || '') + '" placeholder="' + esc(r.numeStandard) + '">' +
+          '<div class="rol-baza">Pornit de la rolul standard <b>' + esc(r.numeStandard) + '</b>' +
+            (r.propriu ? ' · rol propriu al firmei' : '') + '</div>' +
+          '<div class="rol-file">' + ROL_FILE.map(function (f) {
+            return '<button class="rol-f' + (_rol.fila === f[0] ? ' on' : '') + '" onclick="rolFila(\'' + f[0] + '\')">' +
+              '<i class="fas ' + f[2] + '"></i> ' + f[1] + '</button>';
+          }).join('') + '</div>' +
+          '<div class="rol-body">' + rolBifeHtml(r, _rol.fila) + '</div>' +
+          '<div class="rol-act">' +
+            '<button class="btn-sm btn-primary" onclick="rolSalveaza()"><i class="fas fa-check"></i> Salvează</button>' +
+            '<button class="btn-sm" onclick="rolReset()"><i class="fas fa-rotate-left"></i> ' +
+              (r.propriu ? 'Șterge rolul' : 'Revino la standard') + '</button>' +
+          '</div>' +
+        '</div></div>';
+      h += '<div class="ag-nota">Debifezi ceva → omul nu mai poate. Nu poți adăuga peste ce știe rolul standard, așa că o greșeală aici poate doar <b>strânge</b> drepturi, niciodată da mai multe. ' +
+        'Rolul de <b>administrator</b> nu apare deloc: cine îl are trebuie să poată oricând intra înapoi și repara. ' +
+        'Schimbările se aplică la <b>următoarea cerere</b> a omului — nu trebuie să se delogheze.</div>';
       host.innerHTML = h;
     }
-    window.rolSalveaza = async function (rol) {
-      var nume = (document.getElementById('rol-nume-' + rol) || {}).value || '';
-      var taiate = [];
-      document.querySelectorAll('[data-rd="' + rol + '"]').forEach(function (c) { if (!c.checked) taiate.push(c.value); });
+    window.rolAlege = function (slug) { _rol.ales = slug; _rol.mesaj = null; rolRender(); };
+    window.rolFila = function (f) { _rol.fila = f; rolRender(); };
+    // Bifele se țin în memorie până la „Salvează" — altfel fiecare clic ar fi o cerere la server.
+    window.rolBifa = function (camp, cheie, are) {
+      var r = rolCurent(); if (!r) return;
+      (r[camp] || []).forEach(function (d) { if (d.cheie === cheie) d.are = !!are; });
+      rolRender();
+    };
+    window.rolToate = function (camp, are) {
+      var r = rolCurent(); if (!r) return;
+      (r[camp] || []).forEach(function (d) { d.are = !!are; });
+      rolRender();
+    };
+    function rolCuleg(r, camp) {
+      return (r[camp] || []).filter(function (d) { return !d.are; }).map(function (d) { return d.cheie; });
+    }
+    window.rolSalveaza = async function () {
+      var r = rolCurent(); if (!r) return;
+      var nume = (document.getElementById('rol-nume') || {}).value || '';
       try {
-        var r = await fetch('/api/company-roles/' + encodeURIComponent(rol), {
+        var x = await fetch('/api/company-roles/' + encodeURIComponent(r.rol), {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-          body: JSON.stringify({ nume: nume, taiate: taiate })
-        }).then(function (x) { return x.json(); });
-        _rol.mesaj = (r && r.error) ? { t: r.error, rau: true } : { t: 'Rol salvat.', rau: false };
+          body: JSON.stringify({ nume: nume, taiate: rolCuleg(r, 'drepturi'), ecrane: rolCuleg(r, 'ecrane'),
+            editari: rolCuleg(r, 'editari'), rapoarte: rolCuleg(r, 'rapoarte') })
+        }).then(function (y) { return y.json(); });
+        _rol.mesaj = (x && x.error) ? { t: x.error, rau: true } : { t: 'Rol salvat.', rau: false };
       } catch (e) { _rol.mesaj = { t: 'Nu s-a putut salva.', rau: true }; }
       await rolLoad();
     };
-    window.rolReset = async function (rol) {
-      try { await fetch('/api/company-roles/' + encodeURIComponent(rol), { method: 'DELETE', credentials: 'same-origin' });
-        _rol.mesaj = { t: 'Rolul a revenit la standard.', rau: false };
-      } catch (e) { _rol.mesaj = { t: 'Nu s-a putut reseta.', rau: true }; }
+    window.rolReset = async function () {
+      var r = rolCurent(); if (!r) return;
+      var ce = r.propriu ? 'Ștergi rolul „' + (r.nume || r.numeStandard) + '"?' :
+        'Rolul „' + (r.nume || r.numeStandard) + '" revine la standard. Continui?';
+      if (!confirm(ce)) return;
+      try {
+        var x = await fetch('/api/company-roles/' + encodeURIComponent(r.rol), { method: 'DELETE', credentials: 'same-origin' })
+          .then(function (y) { return y.json(); });
+        _rol.mesaj = (x && x.error) ? { t: x.error, rau: true }
+          : { t: r.propriu ? 'Rol șters.' : 'Rolul a revenit la standard.', rau: false };
+        if (!(x && x.error)) _rol.ales = null;
+      } catch (e) { _rol.mesaj = { t: 'Nu s-a putut.', rau: true }; }
       await rolLoad();
     };
-    // Numele alese de firmă se folosesc peste tot unde se vede un rol: lista de utilizatori,
-    // selectoarele din formulare, bara de sus. Altfel omul ar boteza rolul aici și l-ar vedea tot
-    // „Dispecer" în rest.
+    window.rolNou = async function () {
+      var nume = prompt('Cum se numește rolul nou? (ex. „Operator depou")');
+      if (!nume) return;
+      var baza = prompt('De la ce rol pornește? Scrie: manager, dispatcher sau viewer.\n\n' +
+        'Manager = vede tot și modifică flota. Dispecer = vede mașinile atribuite și rapoartele. Viewer = doar se uită.', 'dispatcher');
+      if (!baza) return;
+      try {
+        var x = await fetch('/api/company-roles', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ nume: nume, baza: String(baza).trim().toLowerCase() })
+        }).then(function (y) { return y.json(); });
+        if (x && x.error) _rol.mesaj = { t: x.error, rau: true };
+        else { _rol.mesaj = { t: 'Rol creat. Acum taie din el ce nu-i trebuie.', rau: false }; _rol.ales = x.rol; }
+      } catch (e) { _rol.mesaj = { t: 'Nu s-a putut crea rolul.', rau: true }; }
+      await rolLoad();
+    };
     function rolAplicaNume() {
       var n = window.RA_ROL_NUME || {};
       document.querySelectorAll('#new-role option, #ue-role option').forEach(function (o) {
@@ -4979,18 +5085,34 @@ const pozitii = await r.json();</code></pre>
         // numele, explicația din paranteză rămâne — ea spune ce poate rolul.
         o.textContent = n[cheie] ? (n[cheie] + (par >= 0 ? baza.slice(par) : '')) : baza;
       });
+      // Rolurile PROPRII ale firmei se adaugă în selectoare, ca să poată fi atribuite.
+      var proprii = window.RA_ROL_PROPRII || [];
+      ['new-role', 'ue-role'].forEach(function (id) {
+        var sel = document.getElementById(id); if (!sel) return;
+        sel.querySelectorAll('option[data-propriu]').forEach(function (o) { o.remove(); });
+        proprii.forEach(function (r) {
+          var o = document.createElement('option');
+          o.value = r.rol; o.textContent = r.nume + ' (rol propriu)'; o.setAttribute('data-propriu', '1');
+          sel.appendChild(o);
+        });
+      });
       var tr = document.getElementById('topbar-role');
-      if (tr && window.currentUser && n[window.currentUser.role]) tr.textContent = n[window.currentUser.role];
+      if (tr && window.currentUser && window.currentUser.roleLabel) tr.textContent = window.currentUser.roleLabel;
+    }
+    function rolMemoreaza(lista) {
+      var n = {}, proprii = [];
+      (lista || []).forEach(function (r) {
+        if (r.nume) n[r.rol] = r.nume;
+        if (r.propriu) proprii.push({ rol: r.rol, nume: r.nume || r.numeStandard });
+      });
+      window.RA_ROL_NUME = n;
+      window.RA_ROL_PROPRII = proprii;
+      rolAplicaNume();
     }
     window.rolIncarcaNume = async function () {
       try {
         var d = await fetch('/api/company-roles', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
-        if (Array.isArray(d)) {
-          var n = {};
-          d.forEach(function (r) { if (r.nume) n[r.rol] = r.nume; });
-          window.RA_ROL_NUME = n;
-          rolAplicaNume();
-        }
+        if (Array.isArray(d)) rolMemoreaza(d);
       } catch (e) { window.RA_ROL_NUME = window.RA_ROL_NUME || {}; }
     };
     async function rolLoad() {
@@ -4999,13 +5121,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var d = await fetch('/api/company-roles', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         if (d && d.error) { _rol.eroare = d.error; _rol.randuri = null; }
-        else {
-          _rol.randuri = Array.isArray(d) ? d : [];
-          var n = {};
-          _rol.randuri.forEach(function (r) { if (r.nume) n[r.rol] = r.nume; });
-          window.RA_ROL_NUME = n;
-          rolAplicaNume();
-        }
+        else { _rol.randuri = Array.isArray(d) ? d : []; rolMemoreaza(_rol.randuri); }
       } catch (e) { _rol.eroare = 'Nu s-au putut citi rolurile.'; }
       rolRender();
     }

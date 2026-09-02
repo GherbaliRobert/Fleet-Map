@@ -2598,21 +2598,52 @@
     /* ── Roluri (Setări → Oameni și drepturi) ──
        Un card per rol: numele ales de firmă sus, drepturile ca bife dedesubt. Cele tăiate se văd
        șterse, ca să se citească dintr-o privire ce a scos firma. */
-    .rol-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; margin-bottom: 10px; }
-    .rol-cap { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-    .rol-n { flex: 1; min-width: 0; }
-    .rol-n b { display: block; font-size: 14px; font-weight: 800; color: var(--text-primary); }
-    .rol-n span { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-    .rol-tag { flex: none; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 3px 9px; border: 1px solid; white-space: nowrap; }
-    .rol-tag.std { color: var(--text-muted); border-color: var(--border); }
-    .rol-tag.mod { color: var(--orange); border-color: #f59e0b55; background: #f59e0b12; }
+    /* Rolurile în stânga, ce poate rolul în dreapta, pe patru file. Aceeași formă pe care o are
+       orice program de flotă serios — omul o recunoaște fără să i-o explice cineva. */
+    .rol-shell { display: flex; gap: 16px; align-items: flex-start; }
+    .rol-lista { width: 205px; flex: none; }
+    .rol-li { display: block; width: 100%; text-align: left; background: var(--bg-dark); border: 1px solid var(--border);
+      border-radius: 10px; padding: 9px 11px; margin-bottom: 6px; cursor: pointer; font-family: inherit; transition: border-color .15s, background-color .15s; }
+    .rol-li:hover { border-color: var(--border-light); }
+    .rol-li.on { background: var(--accent); border-color: var(--accent); }
+    .rol-li-n { display: block; font-size: 13px; font-weight: 800; color: var(--text-primary); }
+    .rol-li.on .rol-li-n { color: #06210f; }
+    .rol-li-p, .rol-li-t { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text-muted); margin-top: 3px; margin-right: 6px; }
+    .rol-li.on .rol-li-p, .rol-li.on .rol-li-t { color: #06210fbb; }
+    .rol-li-t { color: var(--orange); }
+    button.rol-nou { width: 100%; margin-top: 4px; }
+    .rol-edit { flex: 1; min-width: 0; }
     .rol-lbl { display: block; font-size: 10.5px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
-    input.rol-nume { width: 100%; margin: 0 0 11px; }
-    .rol-drepturi { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 4px 14px; }
+    input.rol-nume { width: 100%; margin: 0 0 6px; }
+    .rol-baza { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+    .rol-baza b { color: var(--text-secondary); }
+    .rol-file { display: flex; gap: 3px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .rol-f { background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
+      font-family: inherit; font-size: 12px; font-weight: 800; color: var(--text-muted); padding: 8px 11px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px; }
+    .rol-f > i { font-size: 10.5px; }
+    .rol-f:hover { color: var(--text-primary); }
+    .rol-f.on { color: var(--accent); border-bottom-color: var(--accent); }
+    .rol-tools { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .rol-tt { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; font-family: inherit;
+      font-size: 11px; font-weight: 800; color: var(--text-secondary); padding: 5px 10px; cursor: pointer; }
+    .rol-tt:hover { border-color: var(--border-light); }
+    .rol-cnt { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+    .rol-gr { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+      color: var(--text-muted); margin: 12px 0 5px; }
+    .rol-gr:first-child { margin-top: 0; }
+    .rol-drepturi { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 3px 14px; }
     .rol-d { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; padding: 3px 0; }
     .rol-d input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; margin: 0; flex: none; }
     .rol-d.taiat span { color: var(--text-muted); text-decoration: line-through; }
-    .rol-act { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .rol-gol { font-size: 12px; color: var(--text-muted); padding: 10px 0; }
+    .rol-act { display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    @media (max-width: 700px) {
+      .rol-shell { flex-direction: column; }
+      .rol-lista { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+      .rol-li { width: auto; margin: 0; }
+      button.rol-nou { width: auto; margin: 0; }
+    }
 
     /* ── Adrese de email (Setări → Notificări) ──
        Agenda firmei: adăugare sus, apoi câte un rând per adresă, cu bulinul de stare, bifele „ce

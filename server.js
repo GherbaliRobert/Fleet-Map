@@ -1039,6 +1039,10 @@ const sessionMiddleware = session({
 app.use(sessionMiddleware);
 app.use(apiKeyAuth); // permite și autentificarea programatică prin cheie API
 app.use(refreshAuth); // re-sincronizează rol/companie din DB (sesiuni vechi cu rol învechit)
+// Ecranele tăiate de firmă: o singură poartă pentru toate rutele care aparțin unui ecran. Stă AICI,
+// imediat după refreshAuth, ca ajustările să fie deja încărcate — și înaintea rutelor, ca ascunderea
+// din meniu să fie dublată de un refuz pe server, nu doar de o perdea în interfață.
+app.use(pazaEcrane);
 app.use(accessGate);  // abonament expirat → 402 pe TOATE rutele /api (mai puțin cele din ACCESS_FREE)
 
 // ─── Headere de securitate (toate răspunsurile) ───
@@ -1283,6 +1287,60 @@ const DREPTURI_ETICHETE = {
   viewAll:      'Vede toată flota (altfel doar mașinile atribuite)',
 };
 function rolAjustabil(rol) { return ROLURI_AJUSTABILE.indexOf(rol) >= 0; }
+
+// ── Ajustările FINE, ca la fila „Funcționalități / Management date / Rapoarte" ──
+// Trei liste, aceeași regulă ca la drepturile mari: se poate doar TĂIA. Fiecare intrare de aici
+// păzește ceva real (rute, în server) — dacă adaugi una nouă, leag-o de rute în aceeași trecere,
+// altfel ajunge o bifă care nu face nimic.
+//
+// ECRANE = ce deschide omul din meniu. `cai` sunt începuturile de adresă păzite pe server; ecranele
+// fără `cai` se ascund doar din meniu (n-au rute proprii — de pildă harta live).
+const ECRANE = [
+  { cheie: 'localizare',  et: 'Localizare (harta live)', grup: 'Urmărire' },
+  { cheie: 'traseu',      et: 'Traseu (istoric)',        grup: 'Urmărire', cai: ['/api/history', '/api/trips'] },
+  { cheie: 'statistici',  et: 'Analize statistice',      grup: 'Urmărire', cai: ['/api/stats', '/api/fuel-stats'] },
+  { cheie: 'rapoarte',    et: 'Rapoarte',                grup: 'Rapoarte', cai: ['/api/reports'] },
+  { cheie: 'programari',  et: 'Rapoarte programate',     grup: 'Rapoarte', cai: ['/api/report-schedules'] },
+  { cheie: 'hotspot',     et: 'Hotspot-uri și rute',     grup: 'Urmărire', cai: ['/api/hotspot', '/api/geofences', '/api/zone-report'] },
+  { cheie: 'vehicule',    et: 'Vehicule (fișele mașinilor)', grup: 'Management', cai: [] },
+  { cheie: 'soferi',      et: 'Șoferi',                  grup: 'Management', cai: ['/api/drivers'] },
+  { cheie: 'grupe',       et: 'Grupe de vehicule',       grup: 'Management', cai: ['/api/device-groups'] },
+  { cheie: 'alerte',      et: 'Alerte',                  grup: 'Management', cai: ['/api/alerts'] },
+  { cheie: 'mentenanta',  et: 'Mentenanță',              grup: 'Management', cai: ['/api/maintenance'] },
+  { cheie: 'documente',   et: 'Documente vehicule',      grup: 'Management', cai: ['/api/documents', '/api/doc-requirements'] },
+  { cheie: 'tahograf',    et: 'Tahograf',                grup: 'Module',     cai: ['/api/tacho'] },
+  { cheie: 'etransport',  et: 'e-Transport',             grup: 'Module',     cai: ['/api/etransport'] },
+  { cheie: 'tollro',      et: 'Taxa de drum (TollRo)',   grup: 'Module',     cai: ['/api/tollro'] },
+  { cheie: 'insight',     et: 'RA Insight și agenți AI', grup: 'Module',     cai: ['/api/insight', '/api/agents', '/api/ai'] },
+];
+// EDITARE = ce are voie să SCHIMBE. Se aplică peste dreptul mare „modifică flota": cine nu-l are,
+// n-ajunge oricum aici.
+const EDITARI = [
+  { cheie: 'vehicule',   et: 'Editare vehicule (fișă, config, senzori)' },
+  { cheie: 'soferi',     et: 'Editare șoferi' },
+  { cheie: 'grupe',      et: 'Editare grupe de vehicule' },
+  { cheie: 'hotspoturi', et: 'Editare hotspot-uri și zone' },
+  { cheie: 'alerte',     et: 'Editare alerte' },
+  { cheie: 'mentenanta', et: 'Editare mentenanță' },
+  { cheie: 'documente',  et: 'Editare documente vehicule' },
+  { cheie: 'setari',     et: 'Editare setări de flotă (prețuri, program)' },
+];
+function ecranDupaCale(cale) {
+  for (const e of ECRANE) {
+    if (!e.cai || !e.cai.length) continue;
+    for (const c of e.cai) if (cale.indexOf(c) === 0) return e.cheie;
+  }
+  return null;
+}
+// Rapoartele vin din catalogul REAL (reports.js) — nicio listă paralelă care să se învechească.
+function rapoarteCatalog() {
+  const R = (reports && reports.REPORTS) || {};
+  const cats = (reports && reports.REPORT_CATEGORIES) || [];
+  const numeCat = {}; cats.forEach(function (c) { numeCat[c.key] = c.label; });
+  return Object.keys(R).map(function (k) {
+    return { cheie: k, et: R[k].label || k, grup: numeCat[R[k].cat] || 'Altele' };
+  });
+}
 // Ce drepturi se pot tăia dintr-un rol: doar cele pe care rolul le ARE. Restul n-ar însemna nimic.
 function drepturiTaiabile(rol) {
   const b = ROLE_PERMISSIONS[rol] || {};
@@ -1300,13 +1358,25 @@ async function roluriCompaniei(companyId) {
   try {
     const randuri = await db.getCompanyRoles(companyId);
     const map = {};
+    const cheiEcrane = ECRANE.map(function (x) { return x.cheie; });
+    const cheiEditari = EDITARI.map(function (x) { return x.cheie; });
+    const cheiRap = rapoarteCatalog().map(function (x) { return x.cheie; });
     randuri.forEach(function (r) {
-      if (!rolAjustabil(r.role_key)) return; // rând vechi sau scris de mână: nu-l luăm în seamă
-      const taiabile = drepturiTaiabile(r.role_key);
+      // Rolul de bază trebuie să fie unul ajustabil. Un rând scris de mână cu „admin" se ignoră.
+      const baza = rolAjustabil(r.baza) ? r.baza : (rolAjustabil(r.role_key) ? r.role_key : null);
+      if (!baza) return;
+      const taiabile = drepturiTaiabile(baza);
+      // Filtrele astea sunt paza: din orice listă păstrăm doar chei pe care le cunoaștem.
+      const cerne = function (lista, valide) {
+        return new Set((lista || []).filter(function (x) { return valide.indexOf(x) >= 0; }));
+      };
       map[r.role_key] = {
         nume: r.nume || null,
-        // se pot tăia DOAR drepturi pe care rolul le are; orice altceva se ignoră
-        taiate: new Set((r.taiate || []).filter(function (x) { return taiabile.indexOf(x) >= 0; })),
+        baza: baza,
+        taiate: cerne(r.taiate, taiabile),
+        ecrane: cerne(r.ecrane, cheiEcrane),
+        editari: cerne(r.editari, cheiEditari),
+        rapoarte: cerne(r.rapoarte, cheiRap),
       };
     });
     _rolCo.set(companyId, { ts: Date.now(), map: map });
@@ -1317,18 +1387,60 @@ async function roluriCompaniei(companyId) {
     return (c && c.map) || null;
   }
 }
+// Ajustarea care se aplică unui OM anume: dacă are un rol propriu al firmei (slug), aia e; altfel
+// ajustarea rolului standard. Într-un singur loc, ca să nu existe două feluri de a răspunde.
+function _ajDin(ajustari, rol, slug) {
+  if (!ajustari) return null;
+  return (slug && ajustari[slug]) || ajustari[rol] || null;
+}
+function ajustareaMea(req) {
+  const a = getAuth(req) || {};
+  return _ajDin(req && req._rolAjust, a.role, req && req._freshAuth && req._freshAuth.roleSlug);
+}
+function _taiat(req, camp, cheie) {
+  const a = ajustareaMea(req);
+  return !!(a && a[camp] && a[camp].has(cheie));
+}
 // Drepturile REALE ale cuiva: cele din rol, minus ce a tăiat firma lui.
-function drepturiEfective(rol, ajustari) {
+function drepturiEfective(rol, ajustari, slug) {
   const baza = permsFor(rol);
-  const aj = ajustari && ajustari[rol];
+  const aj = _ajDin(ajustari, rol, slug);
   if (!aj || !aj.taiate || !aj.taiate.size) return baza;
   const out = {};
   Object.keys(baza).forEach(function (k) { out[k] = baza[k] === true && !aj.taiate.has(k); });
   return out;
 }
-function numeRol(rol, ajustari) {
-  const aj = ajustari && ajustari[rol];
+function numeRol(rol, ajustari, slug) {
+  const aj = _ajDin(ajustari, rol, slug);
   return (aj && aj.nume) || null;
+}
+// ── Ajustările FINE, aplicate pe cerere ──
+// Ecranele au rute: dacă ecranul e tăiat, ruta lui răspunde „acces interzis". Așa, ascunderea din
+// meniu nu e o perdea — e o ușă închisă și pe server.
+function poateEcran(req, cheie) { return !_taiat(req, 'ecrane', cheie); }
+function _listaTaiata(req, camp) {
+  const a = ajustareaMea(req);
+  return (a && a[camp]) ? Array.from(a[camp]) : [];
+}
+function poateEditare(req, cheie) { return !_taiat(req, 'editari', cheie); }
+function poateRaport(req, tip) { return !_taiat(req, 'rapoarte', tip); }
+// Poarta pentru ecrane: o singură dată, pentru toate rutele care aparțin unui ecran.
+function pazaEcrane(req, res, next) {
+  try {
+    if (!req.path || req.path.indexOf('/api') !== 0) return next();
+    const e = ecranDupaCale(req.path);
+    if (e && !poateEcran(req, e)) return res.status(403).json({ error: 'Acces interzis' });
+  } catch (err) { /* o eroare aici nu are voie să blocheze aplicația */ }
+  next();
+}
+// Editarea, peste dreptul mare „modifică flota": cine nu-l are nici nu ajunge aici.
+function requireEdit(entitate) {
+  return (req, res, next) => {
+    const a = getAuth(req);
+    if (!a || !permReq(req, 'manageFleet')) return res.status(403).json({ error: 'Acces interzis' });
+    if (!poateEditare(req, entitate)) return res.status(403).json({ error: 'Acces interzis' });
+    req.auth = a; next();
+  };
 }
 // ── sfârșit „roluri de firmă" ──
 
@@ -1429,10 +1541,10 @@ async function refreshAuth(req, res, next) {
       let c = roleCache.get(uid);
       if (!c || Date.now() - c.ts > 30000) {
         const u = await db.getUserById(uid);
-        if (u) { c = { ts: Date.now(), role: u.role, companyId: u.company_id, accessUntil: u.access_until }; roleCache.set(uid, c); }
+        if (u) { c = { ts: Date.now(), role: u.role, companyId: u.company_id, accessUntil: u.access_until, roleSlug: u.role_slug || null }; roleCache.set(uid, c); }
       }
       if (c) {
-        req._freshAuth = { role: c.role, companyId: c.companyId, accessUntil: c.accessUntil };
+        req._freshAuth = { role: c.role, companyId: c.companyId, accessUntil: c.accessUntil, roleSlug: c.roleSlug || null };
         // Ajustările de rol ale firmei (renumire / drepturi tăiate). Se încarcă O DATĂ pe cerere, ca
         // toate verificările de mai jos să fie sincrone și să vadă exact aceeași realitate.
         req._rolAjust = await roluriCompaniei(c.companyId);
@@ -1523,7 +1635,7 @@ function requireAuth(req, res, next) {
 function permReq(req, perm) {
   const a = getAuth(req);
   if (!a || !hasPerm(a.role, perm)) return false;
-  const aj = req._rolAjust && req._rolAjust[a.role];
+  const aj = ajustareaMea(req);
   return !(aj && aj.taiate && aj.taiate.has(perm));
 }
 function requirePerm(perm) {
@@ -2174,8 +2286,13 @@ app.get('/api/me', async (req, res) => {
   res.json({
     // Drepturile trimise interfeței sunt cele EFECTIVE (rol minus ce a tăiat firma). Altfel ecranul
     // ar arăta butoane pe care serverul le refuză — adică ar părea stricat.
-    username: a.username, full_name: fullName, role: a.role, permissions: drepturiEfective(a.role, req._rolAjust),
-    roleLabel: numeRol(a.role, req._rolAjust), viaApiKey: !!a.viaApiKey,
+    username: a.username, full_name: fullName, role: a.role,
+    permissions: drepturiEfective(a.role, req._rolAjust, req._freshAuth && req._freshAuth.roleSlug),
+    roleLabel: numeRol(a.role, req._rolAjust, req._freshAuth && req._freshAuth.roleSlug),
+    // Ce ecrane și ce rapoarte are voie să vadă — interfața ascunde restul din meniu, ca omul să nu
+    // apese pe butoane care apoi îi răspund „acces interzis".
+    ecraneAscunse: _listaTaiata(req, 'ecrane'), rapoarteAscunse: _listaTaiata(req, 'rapoarte'),
+    editariTaiate: _listaTaiata(req, 'editari'), viaApiKey: !!a.viaApiKey,
     accessUntil: (req._freshAuth && req._freshAuth.accessUntil != null) ? Number(req._freshAuth.accessUntil) : null,
     isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access,
     announcement: sys.announcement, offline_minutes: sys.offline_minutes
@@ -2262,7 +2379,17 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
   try {
     const id = parseInt(req.params.id);
     if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
-    const { role, full_name, email, phone, active } = req.body;
+    let { role, full_name, email, phone, active } = req.body;
+    // Un rol PROPRIU al firmei se trimite ca slug. În users.role rămâne rolul standard din care
+    // derivă (așa, toate verificările existente merg neschimbate), iar slug-ul se ține alături.
+    let slugCerut = null;
+    if (role !== undefined && role !== null && !VALID_ROLES.includes(role)) {
+      const aj = (await roluriCompaniei(req.companyId)) || {};
+      const propriu = aj[role];
+      if (!propriu || !propriu.baza) return res.status(400).json({ error: 'Rol invalid' });
+      slugCerut = role;
+      role = propriu.baza;
+    }
     const allowed = req.isSuper ? VALID_ROLES : COMPANY_ASSIGNABLE_ROLES;
     if (role !== undefined && role !== null && !allowed.includes(role)) {
       return res.status(400).json({ error: 'Rol invalid' });
@@ -2277,8 +2404,10 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
       return res.status(400).json({ error: 'Acesta e ultimul super-admin activ — creează altul înainte de a-l retrograda sau dezactiva.' });
     }
     await db.updateUserProfile(id, { role, full_name, email, phone, active });
+    // Rolul propriu se pune (sau se scoate, dacă omul a fost mutat pe unul standard).
+    if (role !== undefined && role !== null) await db.setUserRoleSlug(id, slugCerut);
     invalidateAccessCache(id);
-    auditReq(req, 'update', 'user', id, { role, active });
+    auditReq(req, 'update', 'user', id, { role, rolPropriu: slugCerut, active });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2380,41 +2509,97 @@ app.get('/api/activity', requireAuth, requireAdmin, withCompany, async (req, res
 app.get('/api/company-roles', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const aj = (await roluriCompaniei(req.companyId)) || {};
-    res.json(ROLURI_AJUSTABILE.map(function (rol) {
-      const a = aj[rol] || {};
+    const rap = rapoarteCatalog();
+    // Rolurile standard + cele proprii ale firmei, în aceeași listă: ecranul le tratează la fel.
+    const proprii = Object.keys(aj).filter(function (k) { return ROLURI_AJUSTABILE.indexOf(k) < 0; });
+    const construieste = function (slug) {
+      const a = aj[slug] || {};
+      const baza = a.baza || slug;
+      const bif = function (camp, cheie) { return !(a[camp] && a[camp].has(cheie)); };
       return {
-        rol: rol,
-        numeStandard: ROLE_LABELS_RO[rol] || rol,
+        rol: slug,
+        baza: baza,
+        propriu: ROLURI_AJUSTABILE.indexOf(slug) < 0,
+        numeStandard: ROLE_LABELS_RO[baza] || baza,
         nume: a.nume || null,
-        drepturi: drepturiTaiabile(rol).map(function (k) {
-          return { cheie: k, eticheta: DREPTURI_ETICHETE[k], are: !(a.taiate && a.taiate.has(k)) };
+        drepturi: drepturiTaiabile(baza).map(function (k) {
+          return { cheie: k, eticheta: DREPTURI_ETICHETE[k], are: bif('taiate', k) };
         }),
+        // Ecranele și editările se oferă doar dacă rolul are dreptul mare din spate — altfel am pune
+        // pe ecran bife care oricum nu schimbă nimic (un viewer n-are ce „edita").
+        ecrane: ECRANE.map(function (e) { return { cheie: e.cheie, eticheta: e.et, grup: e.grup, are: bif('ecrane', e.cheie) }; }),
+        editari: hasPerm(baza, 'manageFleet')
+          ? EDITARI.map(function (e) { return { cheie: e.cheie, eticheta: e.et, are: bif('editari', e.cheie) }; })
+          : [],
+        rapoarte: rap.map(function (r) { return { cheie: r.cheie, eticheta: r.et, grup: r.grup, are: bif('rapoarte', r.cheie) }; }),
       };
-    }));
+    };
+    res.json(ROLURI_AJUSTABILE.map(construieste).concat(proprii.map(construieste)));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// „ROL NOU" — pornește de la un rol standard (șablon) și primește un nume al firmei. Nu e un rol
+// „gol": moștenește exact drepturile șablonului și de acolo se poate DOAR tăia. Așa, un rol propriu
+// nu poate depăși niciodată ce poate șablonul din care a pornit.
+app.post('/api/company-roles', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    if (req.companyId == null) return res.status(400).json({ error: 'Contul tău nu e legat de o firmă' });
+    const baza = String((req.body && req.body.baza) || '');
+    if (!rolAjustabil(baza)) return res.status(400).json({ error: 'Alege un rol de pornire dintre cele standard' });
+    const nume = String((req.body && req.body.nume) || '').trim().slice(0, 40);
+    if (nume.length < 2) return res.status(400).json({ error: 'Dă-i un nume rolului (minim 2 litere)' });
+    const aj = (await roluriCompaniei(req.companyId)) || {};
+    const proprii = Object.keys(aj).filter(function (k) { return !rolAjustabil(k); });
+    if (proprii.length >= 20) return res.status(400).json({ error: 'Ai atins limita de 20 de roluri proprii' });
+    // Slug scurt și unic: nu se vede nicăieri, e doar cheia rolului în bază.
+    const slug = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    await db.setCompanyRole(req.companyId, slug, { nume: nume, baza: baza, taiate: [], ecrane: [], editari: [], rapoarte: [] });
+    invalideazaRoluriCo(req.companyId);
+    auditReq(req, 'create', 'company_role', slug, { nume: nume, baza: baza });
+    res.json({ ok: true, rol: slug, baza: baza, nume: nume });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/company-roles/:rol', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const rol = String(req.params.rol || '');
-    if (!rolAjustabil(rol)) return res.status(400).json({ error: 'Rolul ăsta nu se poate ajusta' });
     if (req.companyId == null) return res.status(400).json({ error: 'Contul tău nu e legat de o firmă' });
-    const taiabile = drepturiTaiabile(rol);
-    // Filtrul ăsta e paza: orice ar trimite clientul, rămân doar drepturi pe care rolul le are.
-    const taiate = (Array.isArray(req.body && req.body.taiate) ? req.body.taiate : [])
-      .map(String).filter(function (x) { return taiabile.indexOf(x) >= 0; });
-    const r = await db.setCompanyRole(req.companyId, rol, { nume: req.body && req.body.nume, taiate: taiate });
+    // Rolul de ajustat: unul standard, sau unul propriu al firmei (care derivă dintr-un standard).
+    const ajAcum = (await roluriCompaniei(req.companyId)) || {};
+    const baza = rolAjustabil(rol) ? rol : (ajAcum[rol] && ajAcum[rol].baza);
+    if (!baza || !rolAjustabil(baza)) return res.status(400).json({ error: 'Rolul ăsta nu se poate ajusta' });
+    const taiabile = drepturiTaiabile(baza);
+    // Filtrele astea sunt paza: orice ar trimite clientul, rămân doar chei pe care le cunoaștem și
+    // drepturi pe care rolul de bază le are oricum. Pe calea asta nu se poate ADĂUGA nimic.
+    const cerne = function (lista, valide) {
+      return (Array.isArray(lista) ? lista : []).map(String).filter(function (x) { return valide.indexOf(x) >= 0; });
+    };
+    const b = req.body || {};
+    const taiate = cerne(b.taiate, taiabile);
+    const ecrane = cerne(b.ecrane, ECRANE.map(function (x) { return x.cheie; }));
+    const editari = hasPerm(baza, 'manageFleet') ? cerne(b.editari, EDITARI.map(function (x) { return x.cheie; })) : [];
+    const rapoarte = cerne(b.rapoarte, rapoarteCatalog().map(function (x) { return x.cheie; }));
+    const r = await db.setCompanyRole(req.companyId, rol, {
+      nume: b.nume, baza: baza, taiate: taiate, ecrane: ecrane, editari: editari, rapoarte: rapoarte });
     invalideazaRoluriCo(req.companyId);
     invalidateAccessCache(); // „vede toată flota" poate fi tocmai ce s-a tăiat
-    auditReq(req, 'update', 'company_role', rol, { nume: r.nume, taiate: taiate });
-    res.json({ ok: true, rol: rol, nume: r.nume, taiate: taiate });
+    auditReq(req, 'update', 'company_role', rol, { nume: r.nume, taiate: taiate, ecrane: ecrane, editari: editari, rapoarte: rapoarte });
+    res.json({ ok: true, rol: rol, baza: baza, nume: r.nume, taiate: taiate, ecrane: ecrane, editari: editari, rapoarte: rapoarte });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/company-roles/:rol', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const rol = String(req.params.rol || '');
-    if (!rolAjustabil(rol)) return res.status(400).json({ error: 'Rolul ăsta nu se poate ajusta' });
+    const ajAcum = (await roluriCompaniei(req.companyId)) || {};
+    const propriu = !rolAjustabil(rol) && !!ajAcum[rol];
+    if (!rolAjustabil(rol) && !propriu) return res.status(400).json({ error: 'Rolul ăsta nu se poate ajusta' });
+    // Un rol propriu nu se șterge de sub picioarele oamenilor care îl au — altfel s-ar trezi
+    // dimineața cu alte drepturi, fără să știe nimeni de ce.
+    if (propriu) {
+      const n = await db.countUsersWithRoleSlug(req.companyId, rol);
+      if (n > 0) return res.status(400).json({ error: 'Rolul e folosit de ' + n + (n === 1 ? ' persoană' : ' persoane') + '. Mută-i pe alt rol întâi.' });
+    }
     await db.resetCompanyRole(req.companyId, rol);
     invalideazaRoluriCo(req.companyId);
     invalidateAccessCache();
@@ -5020,7 +5205,7 @@ app.get('/api/devices/lite', requireAuth, withScope, async (req, res) => {
 });
 
 // API: Adăugare manuală vehicul (pre-înregistrare IMEI). Trackerul cu acel IMEI se va lega automat.
-app.post('/api/devices', requireAuth, requireFleet, withScope, async (req, res) => {
+app.post('/api/devices', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     const imei = String(req.body.imei || '').trim();
     if (!/^\d{10,20}$/.test(imei)) return res.status(400).json({ error: 'IMEI invalid (10–20 cifre)' });
@@ -5158,7 +5343,7 @@ app.get('/api/devices/template.csv', requireAuth, (req, res) => {
 });
 
 // Import în masă: rânduri parsate din CSV (frontend) → create/update după IMEI, scoped pe companie
-app.post('/api/devices/import', requireAuth, requireFleet, withScope, async (req, res) => {
+app.post('/api/devices/import', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
     if (!rows.length) return res.status(400).json({ error: 'Niciun rând de importat' });
@@ -5192,7 +5377,7 @@ app.post('/api/devices/import', requireAuth, requireFleet, withScope, async (req
 });
 
 // API: Arhivare / restaurare vehicul
-app.put('/api/devices/:imei/status', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/status', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
@@ -5506,7 +5691,7 @@ app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
 });
 
 // API: Actualizare info dispozitiv (nume, tip, nr. înmatriculare)
-app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
@@ -5539,7 +5724,7 @@ app.put('/api/devices/:imei', requireAuth, requireFleet, withScope, async (req, 
 });
 
 // API: Actualizare fișă vehicul completă (toate câmpurile editabile — paritate AROBS)
-app.put('/api/devices/:imei/details', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/details', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
@@ -5620,7 +5805,7 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
 });
 
 // API: Update truck configuration (tara, limite, costuri)
-app.put('/api/devices/:imei/truck-config', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/truck-config', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await db.updateTruckConfig(req.params.imei, req.body);
@@ -5634,7 +5819,7 @@ app.put('/api/devices/:imei/truck-config', requireAuth, requireFleet, withScope,
 
 // Mută un vehicul într-o grupă (sau îl scoate, cu group_id null) — folosit din ecranul „Grupe".
 // Separat de /assign fiindcă acela scrie ȘI driver_id: mutarea între grupe ar rămâne fără șofer.
-app.put('/api/devices/:imei/group', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/group', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const gid = (req.body.group_id === null || req.body.group_id === '' || req.body.group_id === undefined)
@@ -5652,7 +5837,7 @@ app.put('/api/devices/:imei/group', requireAuth, requireFleet, withScope, async 
 });
 
 // Atribuire grup + șofer pe vehicul (grupul afectează accesul multi-client)
-app.put('/api/devices/:imei/assign', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/assign', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await db.assignDevice(req.params.imei, req.body.driver_id, req.body.group_id);
@@ -5663,7 +5848,7 @@ app.put('/api/devices/:imei/assign', requireAuth, requireFleet, withScope, async
 });
 
 // API: Update tank calibration (perechi voltage -> liters pentru sonda Escort)
-app.put('/api/devices/:imei/tank-calibration', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/tank-calibration', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await db.updateTankCalibration(req.params.imei, req.body.calibration);
@@ -5685,7 +5870,7 @@ app.get('/api/devices/:imei/fuel-sensors', requireAuth, withScope, async (req, r
     res.json(await db.getFuelSensorsRow(req.params.imei) || []);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.put('/api/devices/:imei/fuel-sensors', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/fuel-sensors', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const sensors = Array.isArray(req.body.sensors) ? req.body.sensors : [];
@@ -6657,7 +6842,7 @@ app.get('/api/drivers/lite', requireAuth, withCompany, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.post('/api/drivers', requireAuth, requireEdit('soferi'), withCompany, async (req, res) => {
   try {
     if (req.body && req.body.photo_b64 && String(req.body.photo_b64).length > 1.5 * 1024 * 1024) return res.status(413).json({ error: 'Poza e prea mare' });
     // super-admin poate adăuga șoferul direct într-o companie aleasă; company_admin = STRICT compania proprie (ignoră body.company_id)
@@ -6675,7 +6860,7 @@ app.post('/api/drivers', requireAuth, requireFleet, withCompany, async (req, res
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.put('/api/drivers/:id', requireAuth, requireEdit('soferi'), withCompany, async (req, res) => {
   try {
     if (req.body && req.body.photo_b64 && String(req.body.photo_b64).length > 1.5 * 1024 * 1024) return res.status(413).json({ error: 'Poza e prea mare' });
     if (!(await ownsRow(req, 'drivers', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
@@ -6777,7 +6962,7 @@ app.get('/api/drivers/template.csv', requireAuth, (req, res) => {
 // Import șoferi. Spre deosebire de vehicule, aici NU există o cheie naturală ca IMEI-ul, așa că
 // potrivim în ordine: numărul de permis → email → nume. Dacă numele nimerește în două persoane,
 // rândul e SĂRIT cu explicație — mai bine îl rezolvi tu decât să suprascriem omul greșit.
-app.post('/api/drivers/import', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.post('/api/drivers/import', requireAuth, requireEdit('soferi'), withCompany, async (req, res) => {
   try {
     const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
     if (!rows.length) return res.status(400).json({ error: 'Niciun rând de importat' });
@@ -6857,7 +7042,7 @@ app.get('/api/drivers/export', requireAuth, withScope, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/drivers/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/drivers/:id', requireAuth, requireEdit('soferi'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'drivers', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteDriver(req.params.id); auditReq(req, 'delete', 'driver', req.params.id); res.json({ ok: true });
@@ -6955,19 +7140,19 @@ app.get('/api/geofences', requireAuth, withCompany, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/geofences', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.post('/api/geofences', requireAuth, requireEdit('hotspoturi'), withCompany, async (req, res) => {
   try { const g = await db.createGeofence(await enrichGeofence(req.body), req.companyId); invalidateReguliCache(); auditReq(req, 'create', 'geofence', g.id, { name: req.body.name }); res.json(g); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/geofences/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.put('/api/geofences/:id', requireAuth, requireEdit('hotspoturi'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.updateGeofence(req.params.id, await enrichGeofence(req.body)); invalidateReguliCache(); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/geofences/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/geofences/:id', requireAuth, requireEdit('hotspoturi'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteGeofence(req.params.id); invalidateReguliCache(); auditReq(req, 'delete', 'geofence', req.params.id); res.json({ ok: true });
@@ -6984,7 +7169,7 @@ app.get('/api/alerts', requireAuth, withScope, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/alerts', requireAuth, requireFleet, withScope, async (req, res) => {
+app.post('/api/alerts', requireAuth, requireEdit('alerte'), withScope, async (req, res) => {
   try {
     if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
     // Compania regulii: pentru super-admin vine din formular (compania nu se poate deduce — el n-are una).
@@ -7013,7 +7198,7 @@ app.post('/api/alerts', requireAuth, requireFleet, withScope, async (req, res) =
 
 // Modificarea unei reguli. Până acum NU exista: ca să schimbi un prag de la 90 la 80 ștergeai regula
 // și o făceai din nou. Acceptă și schimbări parțiale — comutatorul din listă trimite doar `enabled`.
-app.put('/api/alerts/:id', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/alerts/:id', requireAuth, requireEdit('alerte'), withScope, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'alerts', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     const b = req.body || {};
@@ -7042,7 +7227,7 @@ app.put('/api/alerts/:id', requireAuth, requireFleet, withScope, async (req, res
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/alerts/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/alerts/:id', requireAuth, requireEdit('alerte'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'alerts', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteAlert(req.params.id); invalidateReguliCache(); auditReq(req, 'delete', 'alert', req.params.id); res.json({ ok: true });
@@ -7198,7 +7383,7 @@ async function maybeCreateNextMaintenance(oldRow, body, companyId) {
   } catch (e) { console.warn('[MAINT] recurență:', e.message); }
 }
 
-app.post('/api/maintenance', requireAuth, requireFleet, withScope, async (req, res) => {
+app.post('/api/maintenance', requireAuth, requireEdit('mentenanta'), withScope, async (req, res) => {
   try {
     if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await stampMaintenanceDone(req.body);
@@ -7208,7 +7393,7 @@ app.post('/api/maintenance', requireAuth, requireFleet, withScope, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.put('/api/maintenance/:id', requireAuth, requireEdit('mentenanta'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     let _oldM = null; try { _oldM = (await db.pool.query('SELECT * FROM maintenance WHERE id = $1', [req.params.id])).rows[0] || null; } catch (e) {}
@@ -7219,7 +7404,7 @@ app.put('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async (r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/maintenance/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/maintenance/:id', requireAuth, requireEdit('mentenanta'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteMaintenance(req.params.id); auditReq(req, 'delete', 'maintenance', req.params.id); res.json({ ok: true });
@@ -7294,7 +7479,7 @@ app.get('/api/doc-requirements', requireAuth, withCompany, async (req, res) => {
     res.json({ classes: maintTypes.CLASSES, rows: _docNeedTable(ov) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.put('/api/doc-requirements', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.put('/api/doc-requirements', requireAuth, requireEdit('documente'), withCompany, async (req, res) => {
   try {
     const clean = maintTypes.sanitizeDocNeeds((req.body && req.body.overrides) || {});
     if (req.companyId == null) await db.setSetting('doc_needs_global', JSON.stringify(clean));
@@ -7326,7 +7511,7 @@ app.put('/api/maint-intervals', requireAuth, requireFleet, withCompany, async (r
 // Vezi maint_types.js pentru graniță. Nu suprascrie niciodată un act existent: dacă vehiculul are deja
 // acel tip, răspunde 409 și lasă omul să decidă — altfel mutarea ar înlocui un act complet, cu scan,
 // cu unul sărac, refăcut dintr-o linie de mentenanță.
-app.post('/api/maintenance/:id/to-document', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.post('/api/maintenance/:id/to-document', requireAuth, requireEdit('mentenanta'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     const m = (await db.pool.query('SELECT * FROM maintenance WHERE id = $1', [req.params.id])).rows[0];
@@ -7379,7 +7564,7 @@ app.get('/api/documents/history', requireAuth, withScope, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/documents', requireAuth, requireFleet, withScope, async (req, res) => {
+app.post('/api/documents', requireAuth, requireEdit('documente'), withScope, async (req, res) => {
   try {
     if (!req.body.imei || !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
     if (!req.body.doc_type) return res.status(400).json({ error: 'Tipul documentului e obligatoriu' });
@@ -7402,7 +7587,7 @@ app.post('/api/documents', requireAuth, requireFleet, withScope, async (req, res
 // se pierdea fișierul atașat, dacă nu-l încărcai din nou. O greșeală de tastare la data expirării
 // costa astfel actul scanat.
 // Fișierul NU se atinge dacă nu se trimite unul nou: câmpurile se corectează fără să pierzi scanul.
-app.put('/api/documents/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.put('/api/documents/:id', requireAuth, requireEdit('documente'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'vehicle_documents', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     if (req.body && req.body.doc_type === '') return res.status(400).json({ error: 'Tipul documentului e obligatoriu' });
@@ -7413,7 +7598,7 @@ app.put('/api/documents/:id', requireAuth, requireFleet, withCompany, async (req
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/documents/:id', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.delete('/api/documents/:id', requireAuth, requireEdit('documente'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'vehicle_documents', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     await db.deleteVehicleDocument(req.params.id);
@@ -7428,7 +7613,7 @@ app.delete('/api/documents/:id', requireAuth, requireFleet, withCompany, async (
 // merge pe căile existente (POST /api/documents + PUT /api/devices/:imei/details).
 // PDF cu strat de text = gratuit (extras local); poză = un apel de model, contorizat în ai_usage.
 const docscan = require('./docscan');
-app.post('/api/documents/scan', requireAuth, requireFleet, withScope, async (req, res) => {
+app.post('/api/documents/scan', requireAuth, requireEdit('documente'), withScope, async (req, res) => {
   try {
     const { b64, mime, tip } = req.body || {};
     const r = await docscan.scan({
@@ -8873,6 +9058,9 @@ app.delete('/api/reports/history/:id', requireAuth, requirePerm('viewReports'), 
 
 app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try {
+    // Raport cu raport: firma poate tăia din rol exact ce rapoarte scoate omul. Verificarea stă AICI,
+    // pe singura rută prin care se generează rapoarte — nu în interfață, unde ar fi doar o sugestie.
+    if (!poateRaport(req, req.params.type)) return res.status(403).json({ error: 'Nu ai acces la raportul ăsta' });
     const imeis = await resolveReportImeis(req);
     if (imeis === null) return res.status(403).json({ error: 'Acces interzis' });
     const from = req.query.from || new Date(Date.now() - 7*24*3600*1000).toISOString();
@@ -8987,7 +9175,7 @@ app.get('/api/fuel-price-history', requireAuth, async (req, res) => {
   try { res.json({ history: await db.getFuelPriceHistory(req.query.days || 90), source: fuelprice ? fuelprice.SOURCE : 'PretCarburant.ro' }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.put('/api/company/fuel-prices', requireAuth, requireFleet, withCompany, async (req, res) => {
+app.put('/api/company/fuel-prices', requireAuth, requireEdit('setari'), withCompany, async (req, res) => {
   try {
     if (req.companyId == null) return res.status(400).json({ error: 'Super-adminul nu are companie proprie; setează prețul din fișa companiei.' });
     const b = req.body || {}, clean = {};
@@ -9023,6 +9211,8 @@ app.post('/api/report-schedules', requireAuth, requirePerm('viewReports'), withS
   try {
     const b = req.body || {};
     if (!b.report_type) return res.status(400).json({ error: 'report_type obligatoriu' });
+    // Un raport tăiat din rol nu se poate scoate nici pe ocolite, programându-l să vină pe email.
+    if (!poateRaport(req, b.report_type)) return res.status(403).json({ error: 'Nu ai acces la raportul ăsta' });
     if (b.imei && !canAccessImei(req, b.imei)) return res.status(403).json({ error: 'Acces interzis la vehicul' });
     const hour = Math.min(23, Math.max(0, parseInt(b.hour) || 6));
     const next = reportSchedules.computeNextRun(b.frequency || 'daily', hour, new Date());
@@ -9412,7 +9602,7 @@ app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), a
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Program de lucru — override pe VEHICUL (admin companie / super). null = revine la programul grupului/companiei.
-app.put('/api/devices/:imei/work-schedule', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/work-schedule', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     const imei = String(req.params.imei);
     const dev = await db.getDeviceFull(imei); if (!dev) return res.status(404).json({ error: 'Vehicul inexistent' });
@@ -9425,7 +9615,7 @@ app.put('/api/devices/:imei/work-schedule', requireAuth, requireFleet, withScope
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Semnalare „problemă la montaj" pe vehicul — set / anulare (reversibilă).
-app.put('/api/devices/:imei/install-issue', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/devices/:imei/install-issue', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     const imei = String(req.params.imei);
     const dev = await db.getDeviceFull(imei); if (!dev) return res.status(404).json({ error: 'Vehicul inexistent' });
@@ -9440,7 +9630,7 @@ app.put('/api/devices/:imei/install-issue', requireAuth, requireFleet, withScope
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Program de lucru — override pe GRUP.
-app.put('/api/device-groups/:id/work-schedule', requireAuth, requireFleet, withScope, async (req, res) => {
+app.put('/api/device-groups/:id/work-schedule', requireAuth, requireEdit('grupe'), withScope, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (!req.isSuper) { const g = await db.pool.query('SELECT company_id FROM device_groups WHERE id=$1', [id]); if (!g.rows[0] || g.rows[0].company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' }); }
