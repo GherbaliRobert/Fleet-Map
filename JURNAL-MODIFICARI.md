@@ -150,6 +150,47 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### AMÂNDOI · Roluri, până la capăt: ecrane, editare, raport cu raport — și „Rol nou"
+
+Alin a văzut la Arobs un editor de roluri cu trei file (Funcționalități / Management date / Rapoarte)
+și un buton „ROL NOU". A cerut toate patru bucățile, „și să fie înțeles ușor de useri".
+
+**Cum arată acum.** Rolurile în stânga, ce poate rolul în dreapta, pe patru file scrise pe românește:
+
+| Fila | Ce conține |
+|---|---|
+| **Ce poate face** | cele patru drepturi mari (utilizatori, flotă, rapoarte, toată flota) |
+| **Ce ecrane vede** | 16 ecrane: Localizare, Traseu, Analize, Rapoarte, Hotspot, Vehicule, Șoferi, Grupe, Alerte, Mentenanță, Documente, Tahograf, e-Transport, Taxa de drum, RA Insight |
+| **Ce poate edita** | 8 feluri de date: vehicule, șoferi, grupe, hotspot-uri, alerte, mentenanță, documente, setări |
+| **Ce rapoarte scoate** | **toate cele 33**, grupate pe categorii, luate din catalogul real — nu dintr-o listă scrisă de mână |
+
+Plus „bifează tot / debifează tot" pe fiecare filă și un contor („22 din 33"), ca să nu numeri bife.
+
+**„Rol nou" — cum funcționează, și de ce e sigur.** Un rol propriu nu se face „de la zero": pornește
+dintr-un **șablon** standard (Manager, Dispecer sau Viewer), îi dai numele tău („Operator depou",
+„Contabilitate"), și de acolo poți **doar tăia**. Așa, un rol inventat de client nu poate depăși
+niciodată ce poate șablonul. Rolul propriu apare imediat în lista de la Utilizatori și se poate
+atribui; nu se poate șterge cât timp îl folosește cineva.
+
+**Fiecare bifă păzește ceva REAL.** Asta a fost partea de muncă, nu ecranul:
+
+- **rapoartele** — verificate pe singura rută prin care se generează, plus la programarea pe email
+  (altfel se scotea pe ocolite un raport tăiat);
+- **ecranele** — o poartă unică, pusă înaintea tuturor rutelor: ecranul tăiat răspunde „acces
+  interzis", nu doar dispare din meniu. Iar din meniu dispare și el, ca omul să nu apese pe butoane
+  care îl refuză;
+- **editarea** — 33 de rute de scriere legate pe cele 8 feluri de date. Cu editarea tăiată, omul
+  vede în continuare lista, dar nu mai poate adăuga sau modifica.
+
+**Regula rămâne aceeași ca la început: doar scădere.** În bază se ține doar ce s-a tăiat; serverul
+aruncă orice cheie inventată; un rol care nu modifică flota nici nu primește bife de editare. Probele
+au fost sabotate pe toate cele trei porți noi — au picat toate trei.
+
+- **Ce am schimbat:** ecranul de Roluri a devenit un editor complet, cu roluri proprii.
+- **Ce vede fondatorul:** nimic schimbat la noi — rolurile de platformă rămân în afara jocului.
+- **Ce vede clientul:** poate croi rolul exact pe omul lui, cu vocabularul firmei.
+
+
 ### AMÂNDOI · „Client" iese din listă, rămâne „Viewer"
 
 Alin a decis, după ce a văzut tabelul: cele două roluri aveau **exact aceleași drepturi**, iar două
