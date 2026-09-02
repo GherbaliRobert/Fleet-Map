@@ -1252,6 +1252,75 @@ function permsFor(role) { return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.view
 function hasPerm(role, perm) { return !!permsFor(role)[perm]; }
 function isSuper(role) { return role === 'superadmin'; }
 
+// ── începe „roluri de firmă" (REPER pentru probe: verify_roluri.js decupează bucata dintre reperul
+// ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+// O firmă își poate RENUMI rolurile și le poate TĂIA din drepturi. Nu poate adăuga nimic: drepturile
+// de bază stau în ROLE_PERMISSIONS, iar în bază se ține doar ce s-a tăiat. Așa, orice greșeală (a
+// noastră sau a clientului) poate produce cel mult un rol cu mai PUȚINE drepturi.
+const ROLURI_AJUSTABILE = COMPANY_ASSIGNABLE_ROLES.slice(); // manager, dispecer, client, viewer
+// Numele standard, ca ecranul să arate „Dispecer (standard)" lângă numele ales de firmă.
+const ROLE_LABELS_RO = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer' };
+// Adminul firmei NU e ajustabil: dacă și-ar tăia dreptul de administrare, ar rămâne pe dinafară din
+// propriul cont, fără cale de întoarcere. Nici rolurile de platformă, evident.
+const DREPTURI_ETICHETE = {
+  manageUsers:  'Administrează utilizatorii',
+  manageFleet:  'Modifică flota (mașini, șoferi, grupe)',
+  sendCommands: 'Trimite comenzi către mașini',
+  viewReports:  'Vede rapoartele',
+  ackAlerts:    'Confirmă alertele',
+  viewAll:      'Vede toată flota (altfel doar mașinile atribuite)',
+  viewAudit:    'Vede istoricul de activitate',
+};
+function rolAjustabil(rol) { return ROLURI_AJUSTABILE.indexOf(rol) >= 0; }
+// Ce drepturi se pot tăia dintr-un rol: doar cele pe care rolul le ARE. Restul n-ar însemna nimic.
+function drepturiTaiabile(rol) {
+  const b = ROLE_PERMISSIONS[rol] || {};
+  return Object.keys(DREPTURI_ETICHETE).filter(function (k) { return b[k] === true; });
+}
+// Ajustările unei firme, ținute în memorie 30 s (ca rolul din refreshAuth). La salvare se golește.
+const _rolCo = new Map(); // companyId -> { ts, map: { rol -> { nume, taiate:Set } } }
+function invalideazaRoluriCo(companyId) {
+  if (companyId == null) _rolCo.clear(); else _rolCo.delete(companyId);
+}
+async function roluriCompaniei(companyId) {
+  if (companyId == null) return null;
+  const c = _rolCo.get(companyId);
+  if (c && Date.now() - c.ts < 30000) return c.map;
+  try {
+    const randuri = await db.getCompanyRoles(companyId);
+    const map = {};
+    randuri.forEach(function (r) {
+      if (!rolAjustabil(r.role_key)) return; // rând vechi sau scris de mână: nu-l luăm în seamă
+      const taiabile = drepturiTaiabile(r.role_key);
+      map[r.role_key] = {
+        nume: r.nume || null,
+        // se pot tăia DOAR drepturi pe care rolul le are; orice altceva se ignoră
+        taiate: new Set((r.taiate || []).filter(function (x) { return taiabile.indexOf(x) >= 0; })),
+      };
+    });
+    _rolCo.set(companyId, { ts: Date.now(), map: map });
+    return map;
+  } catch (e) {
+    // Dacă ajustările nu se pot citi, rămâne comportamentul de bază (cel din cod). Fail-safe:
+    // pierdem o restricție, nu câștigăm un drept.
+    return (c && c.map) || null;
+  }
+}
+// Drepturile REALE ale cuiva: cele din rol, minus ce a tăiat firma lui.
+function drepturiEfective(rol, ajustari) {
+  const baza = permsFor(rol);
+  const aj = ajustari && ajustari[rol];
+  if (!aj || !aj.taiate || !aj.taiate.size) return baza;
+  const out = {};
+  Object.keys(baza).forEach(function (k) { out[k] = baza[k] === true && !aj.taiate.has(k); });
+  return out;
+}
+function numeRol(rol, ajustari) {
+  const aj = ajustari && ajustari[rol];
+  return (aj && aj.nume) || null;
+}
+// ── sfârșit „roluri de firmă" ──
+
 // IP-ul REAL al clientului. NU citim primul element din X-Forwarded-For — acela e scris de client și e
 // spoofabil (rotindu-l, un atacator ocolea complet rate-limit-ul de login și polua jurnalul de audit).
 // Ordine: CF-Connecting-IP (Cloudflare, în fața noastră) → req.ip (Express, cu `trust proxy` setat) → socket.
@@ -1336,7 +1405,9 @@ function getAuth(req) {
   return null;
 }
 
-// Re-sincronizează rolul + compania din DB (cache 30s) → imun la sesiuni cu rol învechit
+// Re-sincronizează rolul + compania din DB (cache 30s) → imun la sesiuni cu rol învechit.
+// Tot aici se încarcă ajustările de rol ale firmei (renumiri/tăieri), ca toate verificările de mai
+// târziu din cerere să fie sincrone și să vadă aceeași realitate.
 const roleCache = new Map(); // userId -> { ts, role, companyId }
 function invalidateRoleCache(userId) { if (userId == null) roleCache.clear(); else roleCache.delete(userId); }
 async function refreshAuth(req, res, next) {
@@ -1351,6 +1422,9 @@ async function refreshAuth(req, res, next) {
       }
       if (c) {
         req._freshAuth = { role: c.role, companyId: c.companyId, accessUntil: c.accessUntil };
+        // Ajustările de rol ale firmei (renumire / drepturi tăiate). Se încarcă O DATĂ pe cerere, ca
+        // toate verificările de mai jos să fie sincrone și să vadă exact aceeași realitate.
+        req._rolAjust = await roluriCompaniei(c.companyId);
         // Sesiunea deschisă înainte de expirare nu se invalidează singură (cookie 24h) → o oprim aici.
         // Lăsăm doar /api/me și /api/logout, ca interfața să poată afișa motivul și să iasă curat.
         if (userAccessExpired({ access_until: c.accessUntil }) && req.path !== '/api/me' && req.path !== '/api/logout') {
@@ -1389,7 +1463,11 @@ async function getAllowedImeiSet(userId, role, companyId) {
   const cached = accessCache.get(userId);
   if (cached && (Date.now() - cached.ts) < ACCESS_TTL) return cached.imeis;
   let set;
-  if (hasPerm(role, 'viewAll')) {
+  // „Vede toată flota" e un drept ca oricare: dacă firma l-a tăiat din rol, omul vede doar mașinile
+  // care i-au fost atribuite. Fără linia asta, tăierea ar apărea pe ecran, dar n-ar face nimic.
+  const _aj = await roluriCompaniei(companyId);
+  const _taiatViewAll = !!(_aj && _aj[role] && _aj[role].taiate && _aj[role].taiate.has('viewAll'));
+  if (hasPerm(role, 'viewAll') && !_taiatViewAll) {
     // viewAll = toate vehiculele COMPANIEI (nu globale)
     set = new Set(companyId != null ? await db.getCompanyImeis(companyId) : []);
   } else {
@@ -1429,10 +1507,18 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'Neautorizat' });
 }
 
+// Poarta prin care trec TOATE rutele. Aici se aplică și tăierile firmei: rolul spune ce poate omul
+// din start, iar firma poate doar să scadă din asta. Nu există cale prin care o ajustare să adauge.
+function permReq(req, perm) {
+  const a = getAuth(req);
+  if (!a || !hasPerm(a.role, perm)) return false;
+  const aj = req._rolAjust && req._rolAjust[a.role];
+  return !(aj && aj.taiate && aj.taiate.has(perm));
+}
 function requirePerm(perm) {
   return (req, res, next) => {
     const a = getAuth(req);
-    if (a && hasPerm(a.role, perm)) { req.auth = a; return next(); }
+    if (a && permReq(req, perm)) { req.auth = a; return next(); }
     res.status(403).json({ error: 'Acces interzis' });
   };
 }
@@ -1983,7 +2069,10 @@ app.post('/api/login', async (req, res) => {
     db.logAudit({ userId: user.id, username: user.username, action: 'login', entity: 'session', ip,
       companyId: user.company_id != null ? user.company_id : null });
 
-    res.json({ username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
+    const _ajLogin = await roluriCompaniei(user.company_id != null ? user.company_id : null);
+    res.json({ username: user.username, role: user.role, permissions: drepturiEfective(user.role, _ajLogin),
+      roleLabel: numeRol(user.role, _ajLogin),
+      companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2024,7 +2113,10 @@ app.post('/api/mobile/login', async (req, res) => {
     await db.createApiKey(user.id, 'mobile:' + (String(device || 'app').slice(0, 40)), hashApiKey(token), token.slice(0, 12), expiresAt);
     db.setUserLastLogin(user.id).catch(() => {});
     db.logAudit({ userId: user.id, username: user.username, action: 'mobile_login', entity: 'session', ip });
-    res.json({ token, expires_at: expiresAt.toISOString(), username: user.username, role: user.role, permissions: permsFor(user.role), companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
+    const _ajMob = await roluriCompaniei(user.company_id != null ? user.company_id : null);
+    res.json({ token, expires_at: expiresAt.toISOString(), username: user.username, role: user.role,
+      permissions: drepturiEfective(user.role, _ajMob), roleLabel: numeRol(user.role, _ajMob),
+      companyId: user.company_id != null ? user.company_id : null, isSuper: isSuper(user.role), company, features, access });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2069,7 +2161,10 @@ app.get('/api/me', async (req, res) => {
   let fullName = null;
   try { if (a.userId) { const _u = await db.getUserById(a.userId); if (_u) fullName = _u.full_name || null; } } catch (e) {}
   res.json({
-    username: a.username, full_name: fullName, role: a.role, permissions: permsFor(a.role), viaApiKey: !!a.viaApiKey,
+    // Drepturile trimise interfeței sunt cele EFECTIVE (rol minus ce a tăiat firma). Altfel ecranul
+    // ar arăta butoane pe care serverul le refuză — adică ar părea stricat.
+    username: a.username, full_name: fullName, role: a.role, permissions: drepturiEfective(a.role, req._rolAjust),
+    roleLabel: numeRol(a.role, req._rolAjust), viaApiKey: !!a.viaApiKey,
     accessUntil: (req._freshAuth && req._freshAuth.accessUntil != null) ? Number(req._freshAuth.accessUntil) : null,
     isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access,
     announcement: sys.announcement, offline_minutes: sys.offline_minutes
@@ -2263,6 +2358,57 @@ app.get('/api/activity', requireAuth, requireAdmin, withCompany, async (req, res
       familie: req.query.familie || null,
       limit: req.query.limit, offset: req.query.offset,
     }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Rolurile firmei (Setări → Oameni și drepturi → Roluri) ───
+// Firma poate RENUMI un rol și îi poate TĂIA drepturi. Nu poate adăuga: serverul primește o listă de
+// tăieri și o filtrează prin drepturile pe care rolul le are oricum. Rolurile de administrare (ale
+// firmei și ale platformei) nu sunt ajustabile deloc — altfel cineva și-ar putea tăia singur dreptul
+// de administrare și ar rămâne pe dinafară din propriul cont.
+app.get('/api/company-roles', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const aj = (await roluriCompaniei(req.companyId)) || {};
+    res.json(ROLURI_AJUSTABILE.map(function (rol) {
+      const a = aj[rol] || {};
+      return {
+        rol: rol,
+        numeStandard: ROLE_LABELS_RO[rol] || rol,
+        nume: a.nume || null,
+        drepturi: drepturiTaiabile(rol).map(function (k) {
+          return { cheie: k, eticheta: DREPTURI_ETICHETE[k], are: !(a.taiate && a.taiate.has(k)) };
+        }),
+      };
+    }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/company-roles/:rol', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const rol = String(req.params.rol || '');
+    if (!rolAjustabil(rol)) return res.status(400).json({ error: 'Rolul ăsta nu se poate ajusta' });
+    if (req.companyId == null) return res.status(400).json({ error: 'Contul tău nu e legat de o firmă' });
+    const taiabile = drepturiTaiabile(rol);
+    // Filtrul ăsta e paza: orice ar trimite clientul, rămân doar drepturi pe care rolul le are.
+    const taiate = (Array.isArray(req.body && req.body.taiate) ? req.body.taiate : [])
+      .map(String).filter(function (x) { return taiabile.indexOf(x) >= 0; });
+    const r = await db.setCompanyRole(req.companyId, rol, { nume: req.body && req.body.nume, taiate: taiate });
+    invalideazaRoluriCo(req.companyId);
+    invalidateAccessCache(); // „vede toată flota" poate fi tocmai ce s-a tăiat
+    auditReq(req, 'update', 'company_role', rol, { nume: r.nume, taiate: taiate });
+    res.json({ ok: true, rol: rol, nume: r.nume, taiate: taiate });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/company-roles/:rol', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const rol = String(req.params.rol || '');
+    if (!rolAjustabil(rol)) return res.status(400).json({ error: 'Rolul ăsta nu se poate ajusta' });
+    await db.resetCompanyRole(req.companyId, rol);
+    invalideazaRoluriCo(req.companyId);
+    invalidateAccessCache();
+    auditReq(req, 'update', 'company_role', rol, { revenit: 'standard' });
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

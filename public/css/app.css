@@ -2595,6 +2595,25 @@
       .ag-cand { display: inline; margin-left: 8px; }
     }
 
+    /* ── Roluri (Setări → Oameni și drepturi) ──
+       Un card per rol: numele ales de firmă sus, drepturile ca bife dedesubt. Cele tăiate se văd
+       șterse, ca să se citească dintr-o privire ce a scos firma. */
+    .rol-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; margin-bottom: 10px; }
+    .rol-cap { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+    .rol-n { flex: 1; min-width: 0; }
+    .rol-n b { display: block; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+    .rol-n span { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .rol-tag { flex: none; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 3px 9px; border: 1px solid; white-space: nowrap; }
+    .rol-tag.std { color: var(--text-muted); border-color: var(--border); }
+    .rol-tag.mod { color: var(--orange); border-color: #f59e0b55; background: #f59e0b12; }
+    .rol-lbl { display: block; font-size: 10.5px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+    input.rol-nume { width: 100%; margin: 0 0 11px; }
+    .rol-drepturi { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 4px 14px; }
+    .rol-d { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; padding: 3px 0; }
+    .rol-d input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; margin: 0; flex: none; }
+    .rol-d.taiat span { color: var(--text-muted); text-decoration: line-through; }
+    .rol-act { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
     /* ── Adrese de email (Setări → Notificări) ──
        Agenda firmei: adăugare sus, apoi câte un rând per adresă, cu bulinul de stare, bifele „ce
        primește" și acțiunile în dreapta. Adresele neconfirmate se văd altfel: ele NU primesc nimic. */

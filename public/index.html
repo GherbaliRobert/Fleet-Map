@@ -2496,6 +2496,13 @@ const pozitii = await r.json();</code></pre>
                 <div id="set-host-users"></div>
               </div>
 
+              <!-- Oameni și drepturi → Roluri -->
+              <div class="set-panel" data-spanel="roluri" style="display:none;">
+                <div class="set-sec-h"><i class="fas fa-user-shield"></i> Roluri</div>
+                <p class="set-note">Poți <b>redenumi</b> rolurile ca la tine în firmă și poți <b>tăia</b> din ce are voie fiecare. Nu poți adăuga drepturi peste cele standard — așa, o greșeală poate produce cel mult un rol cu mai puține drepturi, niciodată unul cu mai multe.</p>
+                <div id="rol-host"><div class="dm-muted">Se încarcă…</div></div>
+              </div>
+
               <!-- Notificări → Adrese de email -->
               <div class="set-panel" data-spanel="adrese" style="display:none;">
                 <div class="set-sec-h"><i class="fas fa-envelope"></i> Adrese de email</div>
@@ -3598,7 +3605,7 @@ const pozitii = await r.json();</code></pre>
       var _tbu = document.getElementById('topbar-username');
       _tbu.textContent = currentUser.full_name || currentUser.username || '';
       _tbu.title = currentUser.username || '';
-      document.getElementById('topbar-role').textContent = ROLE_LABELS[currentUser.role] || currentUser.role || '';
+      document.getElementById('topbar-role').textContent = currentUser.roleLabel || ROLE_LABELS[currentUser.role] || currentUser.role || '';
 
       applyPermissionsUI();
       // Catalogul IO cere autentificare, deci prima încercare (de la încărcarea paginii) a luat 401.
@@ -3842,7 +3849,11 @@ const pozitii = await r.json();</code></pre>
     // Ierarhie utilizatori (super-admin): Companie ▸ Admini ▸ Useri normali, cu filtru pe companie.
     var _usersFilter = '';
     var _USR_ADMIN_ROLES = ['admin', 'company_admin', 'superadmin'];
-    function _usrRoleLabel(r) { return ROLE_LABELS[r] || ({ company_admin: 'Admin companie', superadmin: 'Super-admin' }[r]) || r; }
+    // Numele ales de firmă bate numele standard — omul a botezat rolul, trebuie să-l vadă peste tot.
+    function _usrRoleLabel(r) {
+      var n = window.RA_ROL_NUME || {};
+      return n[r] || ROLE_LABELS[r] || ({ company_admin: 'Admin companie', superadmin: 'Super-admin' }[r]) || r;
+    }
     function _userRowHtml(u) {
       var isSelf = u.username === currentUser.username;
       var last = u.last_login ? new Date(u.last_login).toLocaleString('ro-RO') : 'niciodată';
@@ -3912,6 +3923,9 @@ const pozitii = await r.json();</code></pre>
     async function loadUsers() {
       ueUsersErr = null;
       _populateNewUserForm();
+      // Numele de roluri alese de firmă, citite o singură dată: fără ele, lista ar scrie „Dispecer"
+      // acolo unde firma a botezat rolul „Operator depou".
+      if (!window.RA_ROL_NUME && window.rolIncarcaNume) { try { await rolIncarcaNume(); } catch (e) {} }
       try {
         const res = await fetch('/api/users');
         if (!res.ok) {
@@ -4376,6 +4390,7 @@ const pozitii = await r.json();</code></pre>
       { k: 'prefs',       et: 'Preferințe',           ic: 'fa-user',                drept: 'oricine' },
       { grup: 'Oameni și drepturi' },
       { k: 'utilizatori', et: 'Utilizatori',          ic: 'fa-users',               drept: 'manageUsers' },
+      { k: 'roluri',      et: 'Roluri',               ic: 'fa-user-shield',         drept: 'manageUsers' },
       { grup: 'Notificări' },
       { k: 'adrese',      et: 'Adrese de email',      ic: 'fa-envelope',            drept: 'manageUsers' },
       { grup: 'Regulile firmei' },
@@ -4455,6 +4470,7 @@ const pozitii = await r.json();</code></pre>
       else if (name === 'aparate') agpsLoad();
       else if (name === 'istoric') istLoad(true);
       else if (name === 'adrese') adrLoad();
+      else if (name === 'roluri') rolLoad();
     }
     window.usTab = usTab;
 
@@ -4883,6 +4899,119 @@ const pozitii = await r.json();</code></pre>
       adrRender();
     }
     // ── sfârșit „Adrese de email" ──
+
+    // ═══ Roluri (Setări → Oameni și drepturi) ═══
+    // Firma NU își face roluri noi — le ia pe cele standard, le redenumește („Operator depou" în loc
+    // de „Dispecer") și le taie din drepturi. Alegerea asta e deliberată: drepturile de bază rămân în
+    // cod, iar aici se poate doar SCĂDEA. O greșeală de-a clientului (sau de-a noastră) poate produce
+    // cel mult un rol cu mai puține drepturi, niciodată unul cu mai multe.
+    // ── începe „Roluri" (REPER pentru probe: verify_roluri.js decupează exact bucata dintre reperul
+    // ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+    var _rol = { randuri: null, eroare: null, mesaj: null };
+    // Numele alese de firmă, folosite și în lista de utilizatori și în selectoarele de rol.
+    window.RA_ROL_NUME = window.RA_ROL_NUME || null;
+    function rolCardHtml(r) {
+      var taiate = r.drepturi.filter(function (d) { return !d.are; }).length;
+      // Eticheta trebuie să spună ADEVĂRUL despre card: un rol doar redenumit nu e „standard".
+      var stare = taiate
+        ? '<span class="rol-tag mod">' + taiate + (taiate === 1 ? ' drept tăiat' : ' drepturi tăiate') + '</span>'
+        : (r.nume ? '<span class="rol-tag mod">redenumit</span>' : '<span class="rol-tag std">standard</span>');
+      var nume = r.nume || '';
+      return '<div class="rol-card">' +
+        '<div class="rol-cap">' +
+          '<div class="rol-n"><b>' + esc(r.nume || r.numeStandard) + '</b>' +
+            '<span>' + (r.nume ? 'la noi: „' + esc(r.numeStandard) + '"' : 'nume standard') + '</span></div>' +
+          stare +
+        '</div>' +
+        '<label class="rol-lbl">Cum îi spuneți la voi</label>' +
+        '<input type="text" class="rol-nume" id="rol-nume-' + r.rol + '" maxlength="40" value="' + esc(nume) + '" placeholder="' + esc(r.numeStandard) + '">' +
+        '<div class="rol-drepturi">' + r.drepturi.map(function (d) {
+          return '<label class="rol-d' + (d.are ? '' : ' taiat') + '">' +
+            '<input type="checkbox" data-rd="' + r.rol + '" value="' + d.cheie + '"' + (d.are ? ' checked' : '') + '>' +
+            '<span>' + esc(d.eticheta) + '</span></label>';
+        }).join('') + '</div>' +
+        '<div class="rol-act">' +
+          '<button class="btn-sm btn-primary" onclick="rolSalveaza(\'' + r.rol + '\')"><i class="fas fa-check"></i> Salvează</button>' +
+          (r.nume || taiate ? '<button class="btn-sm" onclick="rolReset(\'' + r.rol + '\')"><i class="fas fa-rotate-left"></i> Revino la standard</button>' : '') +
+        '</div></div>';
+    }
+    function rolRender() {
+      var host = document.getElementById('rol-host'); if (!host) return;
+      var h = '';
+      if (_rol.mesaj) h += '<div class="tr-nota ' + (_rol.mesaj.rau ? 'rosu' : 'verde') + '"><i class="fas fa-' +
+        (_rol.mesaj.rau ? 'circle-exclamation' : 'circle-check') + '"></i> ' + esc(_rol.mesaj.t) + '</div>';
+      if (_rol.eroare) { host.innerHTML = h + '<div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc(_rol.eroare) + '</div>'; return; }
+      if (!_rol.randuri) { host.innerHTML = h + '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>'; return; }
+      h += _rol.randuri.map(rolCardHtml).join('');
+      // Rolul de administrator lipsește din listă ANUME — dacă și-ar tăia dreptul de administrare,
+      // omul ar rămâne pe dinafară din propriul cont, fără cale de întoarcere.
+      h += '<div class="ag-nota">Rolul de <b>administrator</b> nu se poate ajusta: cine îl are trebuie să poată oricând intra înapoi și repara. ' +
+        'Schimbările se aplică la <b>următoarea cerere</b> a omului — nu trebuie să se delogheze.</div>';
+      host.innerHTML = h;
+    }
+    window.rolSalveaza = async function (rol) {
+      var nume = (document.getElementById('rol-nume-' + rol) || {}).value || '';
+      var taiate = [];
+      document.querySelectorAll('[data-rd="' + rol + '"]').forEach(function (c) { if (!c.checked) taiate.push(c.value); });
+      try {
+        var r = await fetch('/api/company-roles/' + encodeURIComponent(rol), {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ nume: nume, taiate: taiate })
+        }).then(function (x) { return x.json(); });
+        _rol.mesaj = (r && r.error) ? { t: r.error, rau: true } : { t: 'Rol salvat.', rau: false };
+      } catch (e) { _rol.mesaj = { t: 'Nu s-a putut salva.', rau: true }; }
+      await rolLoad();
+    };
+    window.rolReset = async function (rol) {
+      try { await fetch('/api/company-roles/' + encodeURIComponent(rol), { method: 'DELETE', credentials: 'same-origin' });
+        _rol.mesaj = { t: 'Rolul a revenit la standard.', rau: false };
+      } catch (e) { _rol.mesaj = { t: 'Nu s-a putut reseta.', rau: true }; }
+      await rolLoad();
+    };
+    // Numele alese de firmă se folosesc peste tot unde se vede un rol: lista de utilizatori,
+    // selectoarele din formulare, bara de sus. Altfel omul ar boteza rolul aici și l-ar vedea tot
+    // „Dispecer" în rest.
+    function rolAplicaNume() {
+      var n = window.RA_ROL_NUME || {};
+      document.querySelectorAll('#new-role option, #ue-role option').forEach(function (o) {
+        if (!o.dataset.rolStd) o.dataset.rolStd = o.textContent;
+        var baza = o.dataset.rolStd, cheie = o.value, par = baza.indexOf(' (');
+        // „Manager (toată flota, editează)" → „Operator depou (toată flota, editează)": schimb doar
+        // numele, explicația din paranteză rămâne — ea spune ce poate rolul.
+        o.textContent = n[cheie] ? (n[cheie] + (par >= 0 ? baza.slice(par) : '')) : baza;
+      });
+      var tr = document.getElementById('topbar-role');
+      if (tr && window.currentUser && n[window.currentUser.role]) tr.textContent = n[window.currentUser.role];
+    }
+    window.rolIncarcaNume = async function () {
+      try {
+        var d = await fetch('/api/company-roles', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (Array.isArray(d)) {
+          var n = {};
+          d.forEach(function (r) { if (r.nume) n[r.rol] = r.nume; });
+          window.RA_ROL_NUME = n;
+          rolAplicaNume();
+        }
+      } catch (e) { window.RA_ROL_NUME = window.RA_ROL_NUME || {}; }
+    };
+    async function rolLoad() {
+      _rol.eroare = null;
+      if (!_rol.randuri) rolRender();
+      try {
+        var d = await fetch('/api/company-roles', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (d && d.error) { _rol.eroare = d.error; _rol.randuri = null; }
+        else {
+          _rol.randuri = Array.isArray(d) ? d : [];
+          var n = {};
+          _rol.randuri.forEach(function (r) { if (r.nume) n[r.rol] = r.nume; });
+          window.RA_ROL_NUME = n;
+          rolAplicaNume();
+        }
+      } catch (e) { _rol.eroare = 'Nu s-au putut citi rolurile.'; }
+      rolRender();
+    }
+    // ── sfârșit „Roluri" ──
+
 
 
     async function loadSettingsTab() {

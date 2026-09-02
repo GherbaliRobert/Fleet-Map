@@ -150,6 +150,38 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### AMÂNDOI · Roluri — firma își botează rolurile și le taie din drepturi
+
+Ultimul pas din administrarea nouă. Setări → **Oameni și drepturi → Roluri**.
+
+Alin a ales varianta prudentă, și a ales bine. Firma **nu-și face roluri noi**: le ia pe cele
+standard, le **redenumește** („Operator depou" în loc de „Dispecer") și le **taie** din drepturi.
+
+**De ce așa și nu altfel.** Drepturile de bază rămân scrise în cod, iar în baza de date se ține doar
+**lista celor tăiate**. Consecința e cea care contează: orice greșeală — a noastră, a clientului, sau
+chiar cineva care ar scrie de mână în tabelă — poate produce cel mult un rol cu **mai puține**
+drepturi. Niciodată unul cu mai multe. Un ecran de administrare care poate greși doar într-o direcție
+e cu totul altceva decât unul care poate greși în amândouă.
+
+**Ce se poate tăia:** doar drepturile pe care rolul le are oricum. Serverul filtrează ce primește, așa
+că nu contează ce trimite cineva prin API — un drept inexistent nu devine drept.
+
+**Ce NU se poate atinge:** rolul de **administrator**. Dacă și-ar tăia singur dreptul de
+administrare, omul ar rămâne pe dinafară din propriul cont, fără cale de întoarcere. Rolurile de
+platformă, evident, nici atât.
+
+**Se aplică imediat**, la următoarea cerere a omului — nu trebuie să se delogheze. Iar tăierea merge
+până la capăt: „Vede toată flota" tăiat nu doar ascunde un buton, ci chiar **restrânge lista de
+mașini** pe care o primește. Un drept tăiat care ar rămâne activ în spate ar fi mai rău decât unul
+neatins: adminul ar crede că a închis o ușă care de fapt e deschisă.
+
+**Numele ales se vede peste tot** — în lista de utilizatori, în selectoarele de rol, în bara de sus.
+Altfel omul boteza rolul aici și-l vedea tot „Dispecer" în rest.
+
+- **Ce am schimbat:** un capitol nou, „Roluri", cu redenumire și tăiere de drepturi.
+- **Ce vede fondatorul:** nimic schimbat la noi; rolurile de platformă rămân neatinse.
+- **Ce vede clientul:** rolurile scrise pe limba firmei lui, cu exact ce are voie fiecare.
+
 ### AMÂNDOI · Adrese de email — agenda firmei, cu confirmare din inbox
 
 Al patrulea pas. Setări → **Notificări → Adrese de email**.

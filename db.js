@@ -1050,6 +1050,22 @@ async function initDb() {
       )
     `);
 
+    // Rolurile firmei: NU roluri noi, ci ajustări peste cele standard. Firma poate să le RENUMEASCĂ
+    // („Operator depou" în loc de „Dispecer") și să le TAIE din drepturi. Nu poate adăuga drepturi —
+    // de aceea aici se ține doar lista celor tăiate, iar drepturile de bază rămân în cod. Așa, o
+    // greșeală în tabela asta poate produce cel mult un rol cu MAI PUȚINE drepturi, niciodată unul
+    // cu mai multe.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS company_roles (
+        company_id INTEGER NOT NULL,
+        role_key VARCHAR(30) NOT NULL,
+        nume VARCHAR(40),
+        taiate JSONB NOT NULL DEFAULT '[]',
+        updated_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (company_id, role_key)
+      )
+    `);
+
     // Agenda de adrese a firmei: unde trimitem alerte și rapoarte, în afară de conturile oamenilor.
     // O adresă NU primește nimic până nu e confirmată din inbox (link cu jeton). Fără regula asta,
     // oricine își face cont ar putea trimite emailuri, de pe serverul nostru, către orice adresă —
@@ -2628,6 +2644,31 @@ async function getActivityLog(opts) {
   return { total: tot.rows[0] ? tot.rows[0].n : 0, randuri: r.rows };
 }
 
+// ─── Rolurile firmei (renumite / restrânse) ───
+async function getCompanyRoles(companyId) {
+  if (companyId == null) return [];
+  const r = await pool.query('SELECT role_key, nume, taiate FROM company_roles WHERE company_id = $1', [companyId]);
+  return r.rows.map(function (x) {
+    let t = x.taiate;
+    if (typeof t === 'string') { try { t = JSON.parse(t); } catch (e) { t = []; } }
+    return { role_key: x.role_key, nume: x.nume || null, taiate: Array.isArray(t) ? t : [] };
+  });
+}
+async function setCompanyRole(companyId, roleKey, o) {
+  const nume = (o && o.nume != null) ? String(o.nume).trim().slice(0, 40) || null : null;
+  const taiate = JSON.stringify(Array.isArray(o && o.taiate) ? o.taiate : []);
+  await pool.query(
+    `INSERT INTO company_roles (company_id, role_key, nume, taiate, updated_at)
+     VALUES ($1,$2,$3,$4::jsonb, NOW())
+     ON CONFLICT (company_id, role_key) DO UPDATE SET nume = $3, taiate = $4::jsonb, updated_at = NOW()`,
+    [companyId, roleKey, nume, taiate]);
+  return { role_key: roleKey, nume: nume, taiate: JSON.parse(taiate) };
+}
+// Revenire la standard = ștergerea rândului. Rolul redevine exact cel din cod.
+async function resetCompanyRole(companyId, roleKey) {
+  await pool.query('DELETE FROM company_roles WHERE company_id = $1 AND role_key = $2', [companyId, roleKey]);
+}
+
 // ─── Agenda de adrese a firmei ───
 const EMAIL_RE_DB = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 function _emailCurat(x) { return String(x == null ? '' : x).trim().toLowerCase().slice(0, 160); }
@@ -3742,6 +3783,7 @@ module.exports = {
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
   getActivityLog, ACT_FAMILII, notePresence, getPresence, prunePresence,
+  getCompanyRoles, setCompanyRole, resetCompanyRole,
   listCompanyEmails, addCompanyEmail, countCompanyEmails, setCompanyEmailUses, deleteCompanyEmail,
   refreshCompanyEmailToken, confirmCompanyEmail, getConfirmedCompanyEmails,
   updateDeviceInfo, setDeviceGpsInfo, getDeviceInventory, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
