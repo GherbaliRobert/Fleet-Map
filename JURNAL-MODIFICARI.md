@@ -150,6 +150,33 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### AMÂNDOI · Cât stau oamenii în aplicație — în procente, cum a cerut Alin
+
+Stă sus, în **Istoric activitate**: fiecare om, cât timp a petrecut în aplicație, o bară și
+**procentul din totalul echipei**. Lângă procent scrie și ora exactă („16 h 55 min · 21 zile"),
+fiindcă 50% din două ore nu înseamnă același lucru cu 50% din două sute.
+
+**Ce măsurăm, exact.** Fereastra deschisă trimite un semnal la 5 minute, **doar cât timp e în față**.
+Nu măsurăm „cât e logat": o filă uitată deschisă peste noapte ar raporta opt ore de lucru care nu
+s-au întâmplat. Ora o pune serverul, nu calculatorul omului — altfel și-ar putea scrie singur orele.
+Două semnale în același interval de 5 minute nu se adună de două ori, oricâte file ar avea deschise.
+
+**Cine vede.** Doar cine administrează firma, și doar oamenii firmei lui. Un dispecer își trimite
+prezența (e om ca oricare), dar **nu vede** cât stau colegii.
+
+**Cât se păstrează.** Șase luni, apoi se șterge singură. E dată despre angajați, nu despre mașini —
+n-are rost s-o ținem la nesfârșit.
+
+**Un defect vechi, scos la iveală de treaba asta.** În aplicație, `currentUser` trăia doar în
+scriptul principal. Restul fișierelor (și bucățile decupate pentru probe) citeau `window.currentUser`
+— care **nu era pus niciodată**. Consecința tăcută: orice verificare „e super-admin?" din afara
+scriptului principal ieșea *nu*, mereu. Printre ele, butonul **„Salvează în fișă"** de la Taxa de
+drum, care nu apărea nimănui. O linie a rezolvat tot.
+
+- **Ce am schimbat:** un bloc nou cu procentele de timp petrecut, plus măsurarea din spate.
+- **Ce vede fondatorul:** același bloc, pe toate firmele.
+- **Ce vede clientul:** cine folosește aplicația și cine a primit un cont degeaba.
+
 ### AMÂNDOI · Istoric activitate — cine s-a conectat și cine ce a modificat
 
 Al treilea pas. Setări → **Evidență → Istoric activitate**.

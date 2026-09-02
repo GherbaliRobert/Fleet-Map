@@ -118,6 +118,34 @@ const login = async (u, p) => {
       (db2.randuri || []).map(x => x.device_plate).filter(Boolean).join(', '));
   }
 
+  sect('5c. Cât stau oamenii în aplicație');
+  // Măsurăm PREZENȚA, nu „cât e logat": semnalul vine doar cât timp fereastra e în față, iar ora o
+  // pune serverul. Două semnale în același interval de 5 minute NU trebuie să dea 10 minute.
+  const p1 = await POST('/api/presence', {});
+  T('semnalul de prezență e primit', p1.status === 200, p1.status);
+  await POST('/api/presence', {});
+  await POST('/api/presence', {});
+  const pr = await (await GET('/api/presence?zile=30')).json();
+  T('ruta de prezență răspunde', Array.isArray(pr.oameni), JSON.stringify(pr).slice(0, 120));
+  const eu = (pr.oameni || []).find(x => x.username === 'admin');
+  T('apar în listă', !!eu, (pr.oameni || []).map(x => x.username).join(', '));
+  T('trei semnale în același interval = un singur pas de 5 minute', eu && eu.minute === 5, eu && eu.minute);
+  T('și o singură zi activă', eu && eu.zile === 1, eu && eu.zile);
+  T('totalul echipei e suma oamenilor', pr.minuteTotal === (pr.oameni || []).reduce((a, x) => a + x.minute, 0), pr.minuteTotal);
+  T('pasul de măsurare e spus, ca să se poată citi cifra', pr.pasMinute === 5, pr.pasMinute);
+  if (ckD) {
+    // Dispecerul își trimite prezența (e om ca oricare), dar NU are voie să vadă raportul pe echipă.
+    const pd = await fetch(B + '/api/presence', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: ckD }, body: '{}' });
+    T('și dispecerul își poate semnala prezența', pd.status === 200, pd.status);
+    const pv = await GET('/api/presence?zile=30', ckD);
+    T('dar nu vede cât stau colegii', pv.status === 403 || pv.status === 401, pv.status);
+  }
+  if (ckB) {
+    const pb = await (await GET('/api/presence?zile=30', ckB)).json();
+    T('adminul firmei B nu vede oamenii firmei A', (pb.oameni || []).every(x => x.username !== 'admin'),
+      (pb.oameni || []).map(x => x.username).join(', '));
+  }
+
   sect('6. Limbajul de pe ecran');
   const html = fs.readFileSync('./public/index.html', 'utf8');
   const i = html.indexOf('    // ── începe „Istoric activitate"');
@@ -163,6 +191,11 @@ const login = async (u, p) => {
     const randSuper = F.rand({ action: 'update', entity: 'device', device_plate: 'IS 10 IST', username: 'ion@firma.ro',
       created_at: '2026-09-01T09:30:00Z', ip: '86.120.1.2' }, true);
     T('nouă, super-admini, ni se arată', /86\.120\.1\.2/.test(randSuper));
+
+    // `let currentUser` nu ajunge pe window de la sine. Fără linia din showApp, TOATE verificările de
+    // super-admin din fișierele separate erau mereu false — inclusiv butonul „Salvează în fișă" de la
+    // Taxa de drum, care nu apărea niciodată.
+    T('currentUser e pus și pe window, pentru restul aplicației', /window\.currentUser = currentUser;/.test(html));
   }
 
   console.log('\n──────────────────────────────');

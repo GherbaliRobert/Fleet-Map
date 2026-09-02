@@ -3534,6 +3534,30 @@ const pozitii = await r.json();</code></pre>
       }
     });
 
+    // ── începe „prezența" (semnalul de la fereastră) ──
+    // Cât stă omul în aplicație se măsoară cu un semnal la 5 minute, trimis DOAR cât timp fereastra e
+    // deschisă ȘI în față. Nu măsurăm „cât e logat": o filă uitată deschisă peste noapte ar raporta
+    // opt ore de lucru care nu s-au întâmplat. Ora și compania le pune serverul; clientul nu trimite
+    // nimic în afară de faptul că e acolo, ca să nu-și poată scrie singur orele.
+    var PREZ_MIN = 5;
+    var _prezTimer = null;
+    function prezSemnal() {
+      if (!window.currentUser) return;
+      if (typeof document.visibilityState === 'string' && document.visibilityState !== 'visible') return;
+      fetch('/api/presence', { method: 'POST', credentials: 'same-origin' }).catch(function () {});
+    }
+    function prezPornit() {
+      if (_prezTimer) return;
+      prezSemnal();
+      _prezTimer = setInterval(prezSemnal, PREZ_MIN * 60000);
+      // Când omul se întoarce la filă, semnalăm imediat: altfel prima jumătate de oră de lucru s-ar
+      // pierde dacă a venit între două bătăi de ceas.
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') prezSemnal();
+      });
+    }
+    // ── sfârșit „prezența" ──
+
     async function checkAuth() {
       try {
         const res = await fetch('/api/me');
@@ -3553,6 +3577,12 @@ const pozitii = await r.json();</code></pre>
     }
 
     function showApp() {
+      // `let currentUser` trăiește doar în scriptul ăsta. Fișierele separate (demo-modules-ui.js) și
+      // bucățile decupate în probe citesc `window.currentUser` — fără linia asta era mereu nedefinit,
+      // adică super-adminul nu-și primea coloanele lui, iar butonul „Salvează în fișă" de la Taxa de
+      // drum nu apărea NICIODATĂ. O singură sursă, pusă unde intrăm în aplicație.
+      window.currentUser = currentUser;
+      prezPornit();
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app').classList.add('visible');
 
@@ -4563,7 +4593,7 @@ const pozitii = await r.json();</code></pre>
     // altfel e un tabel pe care nu-l citește nimeni, adică o funcție care există doar în ofertă.
     // ── începe „Istoric activitate" (REPER pentru probe: verify_istoric.js decupează exact bucata
     // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
-    var _ist = { randuri: null, total: 0, zile: 30, familie: '', user: '', eroare: null, seIncarca: false };
+    var _ist = { randuri: null, total: 0, zile: 30, familie: '', user: '', eroare: null, seIncarca: false, prez: null };
     // Verbul, iconița și culoarea, după ce s-a făcut. Acțiunile pe care nu le-am botezat încă NU se
     // ascund: apar cu un verb neutru și cu numele lor tehnic în paranteză, ca omul să vadă că s-a
     // întâmplat ceva. Un jurnal care tace la ce nu cunoaște e mai rău decât unul urât.
@@ -4635,6 +4665,38 @@ const pozitii = await r.json();</code></pre>
         '<div class="ist-d">' + ora + (arataIp && r.ip ? '<span>' + esc(r.ip) + '</span>' : '') + '</div>' +
         '</div>';
     }
+    // Minutele, pe înțelesul omului: „12 h 30 min", nu „750".
+    function istOre(min) {
+      min = Math.max(0, Math.round(Number(min) || 0));
+      if (min < 60) return min + ' min';
+      var h = Math.floor(min / 60), m = min % 60;
+      return h + ' h' + (m ? ' ' + m + ' min' : '');
+    }
+    // Cât stă fiecare în aplicație, ca procent din tot timpul echipei. Procentul e cel cerut de Alin:
+    // „să vadă adminul cât petrec utilizatorii". Ora exactă rămâne alături, ca procentul să nu poată
+    // fi citit greșit — 50% dintr-o oră totală nu e același lucru cu 50% din o sută de ore.
+    function istPrezentaHtml(p, zile) {
+      var cap = '<div class="ist-prez-h"><i class="fas fa-hourglass-half"></i> Cât stau oamenii în aplicație' +
+        '<span>· ultimele ' + zile + ' de zile</span></div>';
+      if (!p || !p.oameni || !p.oameni.length) {
+        return '<div class="ist-prez">' + cap +
+          '<div class="ist-prez-gol">Încă nu s-a strâns nimic. Măsurarea pornește odată cu prima intrare în aplicație de acum înainte.</div></div>';
+      }
+      var total = p.minuteTotal || 0;
+      var randuri = p.oameni.map(function (o) {
+        var pct = total ? Math.round(o.minute / total * 100) : 0;
+        return '<div class="ist-prez-r">' +
+          '<div class="ist-prez-n"><b>' + esc(o.full_name || o.username) + '</b>' +
+            '<span>' + istOre(o.minute) + ' · ' + o.zile + (o.zile === 1 ? ' zi' : ' zile') + '</span></div>' +
+          '<div class="ist-prez-b"><i style="width:' + Math.max(pct, 2) + '%"></i></div>' +
+          '<div class="ist-prez-p">' + pct + '%</div>' +
+          '</div>';
+      }).join('');
+      return '<div class="ist-prez">' + cap + randuri +
+        '<div class="ist-prez-nota">Se numără doar timpul cu aplicația <b>deschisă și în față</b>, în pași de ' +
+        (p.pasMinute || 5) + ' minute. O filă lăsată deschisă în spate nu se pune la socoteală. ' +
+        'Procentul e din totalul echipei, pe perioada aleasă.</div></div>';
+    }
     function istRender() {
       var host = document.getElementById('ist-host'); if (!host) return;
       var chip = function (et, val, camp) {
@@ -4651,6 +4713,8 @@ const pozitii = await r.json();</code></pre>
               esc(u.full_name || u.username) + '</option>';
           }).join('') + '</select>' +
         '</div>';
+
+      h += istPrezentaHtml(_ist.prez, _ist.zile);
 
       if (_ist.eroare) { host.innerHTML = h + '<div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc(_ist.eroare) + '</div>'; return; }
       if (!_ist.randuri) { host.innerHTML = h + '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>'; return; }
@@ -4691,6 +4755,11 @@ const pozitii = await r.json();</code></pre>
           _ist.randuri = dela0 ? (d.randuri || []) : (_ist.randuri || []).concat(d.randuri || []);
         }
       } catch (e) { _ist.eroare = 'Nu s-a putut citi istoricul.'; _ist.randuri = _ist.randuri || []; }
+      // Prezența se citește doar la reîncărcarea de la zero (la „mai vezi 50" nu se schimbă).
+      if (dela0) {
+        try { _ist.prez = await fetch('/api/presence?zile=' + _ist.zile, { credentials: 'same-origin' }).then(function (r) { return r.json(); }); }
+        catch (e) { _ist.prez = null; }
+      }
       _ist.seIncarca = false;
       // Lista de oameni pentru filtru se citește o singură dată.
       if (!window._istOameni) {

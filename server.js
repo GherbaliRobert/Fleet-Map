@@ -2266,6 +2266,27 @@ app.get('/api/activity', requireAuth, requireAdmin, withCompany, async (req, res
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── Prezența în aplicație ───
+// Fereastra deschisă trimite un semnal la 5 minute, DOAR cât timp e vizibilă. Ora și compania le
+// pune serverul; clientul nu trimite nimic, ca să nu-și poată scrie singur orele.
+app.post('/api/presence', requireAuth, withCompany, async (req, res) => {
+  try {
+    const a = getAuth(req) || {};
+    if (!a.userId) return res.status(401).json({ error: 'Neautentificat' });
+    await db.notePresence(a.userId, req.companyId != null ? req.companyId : null);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Cât stau oamenii în aplicație — pentru adminul firmei, despre firma lui.
+app.get('/api/presence', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    res.json(await db.getPresence({
+      companyId: req.isSuper ? null : req.companyId,
+      zile: Math.min(Math.max(parseInt(req.query.zile, 10) || 30, 1), 365),
+    }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── Chei API (doar admin) — pentru integrări programatice ───
 app.get('/api/apikeys', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try { res.json(await db.getApiKeys(req.isSuper ? null : req.companyId)); }
@@ -10941,6 +10962,9 @@ async function start() {
 
   // Întreținere: curăță sesiunile expirate din oră în oră
   setInterval(() => { db.cleanupExpiredSessions().catch(() => {}); }, 60 * 60 * 1000);
+  // Prezența e dată despre oameni: se păstrează o jumătate de an, apoi se șterge singură.
+  db.prunePresence(180).catch(() => {});
+  setInterval(() => { db.prunePresence(180).catch(() => {}); }, 24 * 60 * 60 * 1000);
   // Întreținere memorie + retenție constatări (rulează la 6h; mapele in-memory creșteau NELIMITAT —
   // cea mai expusă e _clientErrHits, cheiată pe IP pe un endpoint PUBLIC = creștere provocabilă din exterior).
   setInterval(() => {

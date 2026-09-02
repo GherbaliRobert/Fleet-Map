@@ -1050,6 +1050,20 @@ async function initDb() {
       )
     `);
 
+    // Prezența în aplicație: un rând la fiecare 5 minute în care omul a avut fereastra DESCHISĂ ȘI ÎN
+    // FAȚĂ. Nu se măsoară „cât e logat" (o filă uitată deschisă peste noapte ar raporta 24 de ore),
+    // ci cât a stat efectiv cu aplicația sub ochi. Cheia primară e (om, interval) → semnalele
+    // repetate din aceleași 5 minute nu se adună de două ori, oricâte file ar avea deschise.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_presence (
+        user_id INTEGER NOT NULL,
+        bucket TIMESTAMPTZ NOT NULL,
+        company_id INTEGER,
+        PRIMARY KEY (user_id, bucket)
+      )
+    `);
+    await client.query('CREATE INDEX IF NOT EXISTS idx_presence_co ON user_presence (company_id, bucket DESC)');
+
     // Agenți AI — constatări/recomandări (RA Watch etc.)
     await client.query(`
       CREATE TABLE IF NOT EXISTS agent_findings (
@@ -2593,6 +2607,49 @@ async function getActivityLog(opts) {
   return { total: tot.rows[0] ? tot.rows[0].n : 0, randuri: r.rows };
 }
 
+// ─── Prezența în aplicație ───
+// Cât INTERVAL acoperă un semnal. Dacă se schimbă, se schimbă și minutele calculate mai jos.
+const PRESENCE_MIN = 5;
+// Un semnal = intervalul de 5 minute în care se află ACUM. Ora o pune serverul, nu clientul.
+async function notePresence(userId, companyId) {
+  const acum = Date.now();
+  const bucket = new Date(Math.floor(acum / (PRESENCE_MIN * 60000)) * PRESENCE_MIN * 60000).toISOString();
+  await pool.query(
+    'INSERT INTO user_presence (user_id, bucket, company_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, bucket) DO NOTHING',
+    [userId, bucket, companyId != null ? companyId : null]
+  );
+  return bucket;
+}
+// Cât a stat fiecare om în aplicație, pe perioada cerută. companyId null = toate firmele (super-admin).
+async function getPresence(opts) {
+  const o = opts || {};
+  const de = new Date(Date.now() - Math.max(1, Number(o.zile) || 30) * 86400000).toISOString();
+  const p = [de];
+  let w = 'WHERE p.bucket > $1';
+  if (o.companyId != null) { p.push(o.companyId); w += ' AND p.company_id = $' + p.length; }
+  const r = await pool.query(
+    `SELECT u.id, u.username, u.full_name, u.role,
+            COUNT(*)::int AS intervale,
+            COUNT(DISTINCT date_trunc('day', p.bucket))::int AS zile,
+            MAX(p.bucket) AS ultima
+       FROM user_presence p
+       JOIN users u ON u.id = p.user_id
+       ${w}
+      GROUP BY u.id, u.username, u.full_name, u.role
+      ORDER BY intervale DESC`, p);
+  const oameni = r.rows.map(function (x) {
+    return { id: x.id, username: x.username, full_name: x.full_name || null, role: x.role,
+      minute: x.intervale * PRESENCE_MIN, zile: x.zile, ultima: x.ultima };
+  });
+  const total = oameni.reduce(function (a, x) { return a + x.minute; }, 0);
+  return { minuteTotal: total, pasMinute: PRESENCE_MIN, oameni: oameni };
+}
+// Prezența e dată despre oameni: se ține cât e de folos (jumătate de an), nu la nesfârșit.
+async function prunePresence(zile) {
+  const de = new Date(Date.now() - (Number(zile) || 180) * 86400000).toISOString();
+  try { await pool.query('DELETE FROM user_presence WHERE bucket < $1', [de]); } catch (e) {}
+}
+
 // ─── Chei API ───
 
 async function createApiKey(userId, name, keyHash, prefix, expiresAt) {
@@ -3596,7 +3653,7 @@ module.exports = {
   logError, getErrors, clearErrors, pruneErrors,
   createAgentFinding, getAgentFindings, updateAgentFinding, countNewFindings,
   upsertDevice,
-  getActivityLog, ACT_FAMILII,
+  getActivityLog, ACT_FAMILII, notePresence, getPresence, prunePresence,
   updateDeviceInfo, setDeviceGpsInfo, getDeviceInventory, setDeviceIgnitionSource, getDin1Imeis, getArchivedImeis, deleteDeviceCompletely,
   updateVehicleDetails,
   deviceExists,
