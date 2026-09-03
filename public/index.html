@@ -1452,8 +1452,8 @@
       <div style="border-top:1px solid var(--border);padding-top:12px;">
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
         <div class="add-user-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <input type="email" id="new-username" placeholder="Email (= utilizator) *" autocomplete="off" autocapitalize="none" spellcheck="false">
-          <input type="password" id="new-password" placeholder="Parolă *" autocomplete="new-password">
+          <input type="email" id="new-username" placeholder="Email (așa se autentifică) *" autocomplete="off" autocapitalize="none" spellcheck="false">
+          <input type="password" id="new-password" placeholder="Parolă (gol = îi trimitem invitație pe email)" autocomplete="new-password">
           <input type="text" id="new-fullname" placeholder="Nume afișat *">
           <input type="tel" id="new-phone" placeholder="Telefon">
           <select id="new-company" class="super-only"><option value="">— alege compania —</option></select>
@@ -4014,11 +4014,14 @@ const pozitii = await r.json();</code></pre>
       const full_name = document.getElementById('new-fullname').value.trim();
       const phone = document.getElementById('new-phone').value.trim();
 
-      if (!username || !password) return alert('Emailul și parola sunt obligatorii');
+      // Parola e OPȚIONALĂ: fără ea, omul primește o invitație pe email și își pune singur parola.
+      // Așa nu mai circulă parole pe telefon, iar adminul nu ajunge să știe parola nimănui.
+      if (!username) return alert('Scrie adresa de email a persoanei.');
       if (!/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(username)) return alert('Utilizatorul trebuie să fie o adresă de email validă (ex. ion.popescu@firma.ro).');
       if (full_name.length < 2) return alert('Completează numele afișat — așa apare persoana în aplicație.');
 
-      const body = { username, password, role, full_name, email: username, phone };
+      const body = { username, role, full_name, email: username, phone };
+      if (password) body.password = password;
       // Cont de PLATFORMĂ: nu ține de nicio companie și vede/administrează TOT → cere confirmare explicită.
       if (role === 'superadmin') {
         if (!await raConfirm('„' + username + '" va avea acces la TOATE companiile, la toate vehiculele și la datele de facturare ale platformei — nu doar la o companie.',
@@ -4041,6 +4044,13 @@ const pozitii = await r.json();</code></pre>
 
       const created = await res.json();
       ['new-username','new-password','new-fullname','new-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      // Omul trebuie să afle DACĂ a plecat invitația — altfel așteaptă degeaba un email care n-a plecat.
+      if (!password && window.raxToast) {
+        raxToast(created.invitat
+          ? 'Cont creat. I-am trimis invitația pe ' + username + ' — își pune singur parola.'
+          : 'Cont creat, dar invitația NU a plecat. Trimite-i tu o parolă din „Editează", altfel nu poate intra.',
+          created.invitat ? 'success' : 'error');
+      }
       await loadUsers();
       // Pentru roluri scoped, deschide direct atribuirea de vehicule
       // Rolurile „scoped" au nevoie de atribuire de vehicule; super-adminul vede TOT, deci n-are ce atribui.

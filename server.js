@@ -2335,14 +2335,28 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     const { password, role, email, phone } = req.body;
     const username = normUsername(req.body.username);
     const full_name = String(req.body.full_name == null ? '' : req.body.full_name).trim();
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Emailul și parola sunt obligatorii' });
+    if (!username) {
+      return res.status(400).json({ error: 'Emailul e obligatoriu' });
     }
     // Conturile NOI se creează pe adresa de email (vezi normUsername/EMAIL_RE)
     if (!EMAIL_RE.test(username)) {
       return res.status(400).json({ error: 'Utilizatorul trebuie să fie o adresă de email validă (ex. ion.popescu@firma.ro)' });
     }
-    { const e = verificaParola(password, username); if (e) return res.status(400).json({ error: e }); }
+    // FĂRĂ parolă = INVITAȚIE. Adminul firmei scrie adresa colegului, alege rolul, iar omul își pune
+    // singur parola din emailul primit. Așa nu mai circulă parole pe WhatsApp, iar adminul nu ajunge
+    // să știe parola nimănui. Cu parolă scrisă de mână, comportamentul rămâne cel de până acum.
+    const invitatie = !password;
+    if (invitatie) {
+      // Conturile demo nu trimit emailuri prin serverul nostru (regula din CLAUDE.md).
+      if (demoCompanyId != null && req.companyId === demoCompanyId) {
+        return res.status(400).json({ error: 'În contul demo, scrie o parolă — invitațiile pe email nu pleacă de aici.' });
+      }
+      if (!channels.emailConfigured()) {
+        return res.status(400).json({ error: 'Serverul nu are email configurat, deci invitația nu poate pleca. Scrie o parolă pentru cont.' });
+      }
+    } else {
+      const e = verificaParola(password, username); if (e) return res.status(400).json({ error: e });
+    }
     if (full_name.length < 2) {
       return res.status(400).json({ error: 'Numele afișat este obligatoriu (așa apare persoana în aplicație)' });
     }
@@ -2364,12 +2378,21 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
       return res.status(409).json({ error: 'Username-ul există deja' });
     }
 
-    const hash = await bcrypt.hash(password, 10);
+    // La invitație, parola din bază e una aleatoare pe care n-o știe NIMENI — contul se deschide doar
+    // prin linkul din email. Fără asta, un cont „fără parolă" ar fi un cont cu parolă goală.
+    const hash = await bcrypt.hash(invitatie ? crypto.randomBytes(24).toString('hex') : password, 10);
     // Emailul contului = username-ul. Îl salvăm explicit ca recuperarea parolei și invitațiile să aibă
     // întotdeauna o adresă, fără să depindă de un al doilea câmp completat de mână.
     const user = await db.createUser(username, hash, finalRole, { full_name, email: (email && String(email).trim()) || username, phone, company_id: companyId });
-    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, company_id: companyId });
-    res.json(user);
+    let invitat = false, invitErr = null;
+    if (invitatie) {
+      const co = companyId != null ? await db.getCompanyById(companyId).catch(function () { return null; }) : null;
+      try { invitat = await sendSetPasswordEmail(req, user, { invite: true, company: co }); }
+      catch (e) { invitErr = e.message; }
+      if (!invitat) console.warn('[INVITAȚIE] Nu a plecat pentru „' + username + '": ' + (invitErr || 'trimitere eșuată'));
+    }
+    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, company_id: companyId, invitat: invitatie ? invitat : undefined });
+    res.json(Object.assign({}, user, invitatie ? { invitat: invitat } : {}));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

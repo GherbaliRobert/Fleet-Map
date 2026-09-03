@@ -270,6 +270,24 @@ const login = async (u, p) => {
   const rolInexistent = await PUT('/api/users/' + mgrUser.id, { role: 'rol_inventat' }, ckA);
   T('un rol inventat e refuzat', rolInexistent.status === 400, rolInexistent.status);
 
+  sect('12b. Oameni adăugați prin adresa de email, cu rol de la bun început');
+  // Fluxul cerut de Alin: adminul firmei scrie adresa colegului, alege rolul, iar omul își pune
+  // singur parola din emailul primit. Fără SMTP în probă, invitația NU pleacă — și tocmai asta
+  // trebuie să spună serverul, ca ecranul să nu promită un email care n-a plecat.
+  const faraSmtp = await POST('/api/users', { username: 'razvan.popescu@transport.ro',
+    full_name: 'Razvan Popescu', role: 'dispatcher', company_id: co.id }, ckA);
+  T('fără email configurat, invitația e refuzată cu explicație', faraSmtp.status === 400, faraSmtp.status);
+  const mesaj = (await faraSmtp.json()).error || '';
+  T('și explicația spune ce să facă omul', /parol/i.test(mesaj), mesaj);
+  // Cu parolă scrisă de mână, calea veche merge neschimbată.
+  const cuParola = await POST('/api/users', { username: 'sorin.ionut@transport.ro', password: 'Str4da-Verde-2026',
+    full_name: 'Sorin Ionut', role: 'manager', company_id: co.id }, ckA);
+  T('cu parolă, contul se creează ca înainte', cuParola.status === 200, cuParola.status);
+  const listaU = await (await GET('/api/users', ckA)).json();
+  const sorin = (listaU || []).find(u => u.username === 'sorin.ionut@transport.ro');
+  T('și primește rolul ales din prima', sorin && sorin.role === 'manager', sorin && sorin.role);
+  T('în firma adminului care l-a adăugat', sorin && sorin.company_id === co.id, sorin && sorin.company_id);
+
   sect('13. Un rol propriu nu se șterge de sub picioarele oamenilor');
   const stergeFolosit = await DEL('/api/company-roles/' + nj.rol, ckA);
   T('ștergerea e oprită cât timp e folosit', stergeFolosit.status === 400, stergeFolosit.status);

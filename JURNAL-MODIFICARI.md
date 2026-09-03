@@ -150,6 +150,34 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### AMÂNDOI · Oamenii se adaugă prin adresa de email, cu invitație — nu cu parolă spusă la telefon
+
+Alin a descris exact fluxul pe care îl vrea: *„eu, adminul firmei, vreau să introduc mai mulți oameni
+prin adrese de email și să le dau roluri"*. Verificând, ieșea o lipsă: formularul cerea **parolă
+obligatorie**. Adică adminul inventa o parolă și i-o trimitea colegului pe WhatsApp — parola circula
+în afara aplicației, iar adminul ajungea să știe parola tuturor.
+
+Invitația exista deja în aplicație, dar **doar pentru noi**: când deschidem un cont de administrator
+la semnarea contractului. Acum o are și adminul firmei.
+
+**Cum e acum.** Scrii adresa, numele și rolul. **Parola o lași goală** → omul primește un email cu un
+link, își pune singur parola și intră. Dacă preferi să-i dai tu o parolă, scrii una și merge ca până
+acum — n-am scos nimic.
+
+**Trei lucruri spuse cinstit pe ecran:**
+- dacă emailul a plecat, scrie *„i-am trimis invitația pe adresa X"*;
+- dacă **nu** a plecat (server fără email configurat), scrie asta direct, cu ce are de făcut omul —
+  nu-l lăsăm să aștepte un mesaj care n-a plecat niciodată;
+- în contul demo, invitațiile nu pleacă deloc (regula din CLAUDE.md: demo-ul nu trimite emailuri).
+
+Parola din bază, la invitație, e una **aleatoare pe care n-o știe nimeni** — contul se deschide
+exclusiv prin linkul din email. Altfel un cont „fără parolă" ar fi fost un cont cu parolă goală.
+
+- **Ce am schimbat:** parola e opțională la adăugarea unui utilizator; fără ea pleacă invitația.
+- **Ce vede fondatorul:** același formular; calea noastră de invitație rămâne neatinsă.
+- **Ce vede clientul:** își adaugă echipa scriind doar adrese de email, fără să inventeze parole.
+
+
 ### AMÂNDOI · Roluri, până la capăt: ecrane, editare, raport cu raport — și „Rol nou"
 
 Alin a văzut la Arobs un editor de roluri cu trei file (Funcționalități / Management date / Rapoarte)
