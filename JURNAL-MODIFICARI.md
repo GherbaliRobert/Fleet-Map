@@ -53,6 +53,11 @@ extinde și la restul meniului — dar acolo e altă discuție, fiindcă ecranel
   clientului.
 - **Ce vede clientul:** nimic. Nici comutatorul, nici banda — pentru el nu s-a schimbat un pixel.
 
+**E temporar, și așa rămâne scris.** Alin a cerut, în aceeași zi, ca la lansarea aplicației
+comutatorul să fie **scos** din Setări: e o unealtă pentru perioada în care construim, nu o funcție
+pe care o vindem. Punctul e trecut la [„De verificat înainte de lansare"](#a-blocante--fără-astea-nu-dăm-drumul),
+la blocante, cu lista exactă a bucăților de șters.
+
 
 ### AMÂNDOI · Secțiunea CAN, redesenată + martorii apar sub hartă pe telefon — `33fde7b`
 
@@ -3991,6 +3996,19 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### A. Blocante — fără astea nu dăm drumul
+
+- [ ] **(eu) DE SCOS LA LANSARE: comutatorul „Fondator / Admin de firmă" din Setări. Hotărât de
+  Alin, 03.09.** E o schelă de probă, nu o funcție a produsului: l-am pus ca să nu ne mai încurcăm
+  între ce vedem noi și ce vede clientul cât timp construim. Când dăm drumul aplicației, iese —
+  altfel rămâne în cod un buton care nu are ce căuta acolo și pe care, peste un an, nimeni nu-și mai
+  amintește de ce e. **Nu e periculos** dacă rămâne (nu dă și nu ia niciun drept, iar clientul nu-l
+  vede), dar l-am pus aici tocmai ca să nu se strecoare din uitare.
+
+  **Ce se șterge, concret:** blocul dintre reperele „Comutatorul de privire" din `public/index.html`,
+  cele două rânduri din `setRenderNav` care îl desenează, `<div id="set-banda">`, stilurile `.set-ochi`
+  / `.set-banda` din `public/css/app.css` și secțiunea 7 din `verify_setari.js`. Restul Setărilor nu
+  se atinge — meniul se generează la fel și fără el.
+
 
 - [ ] **(voi) Cheia de semnătură a aplicației de telefon — de creat și de pus la păstrare.** Cel mai
   ireversibil punct din toată lista: fără ea nu se pot trimite actualizări celor care au deja

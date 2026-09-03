@@ -4457,7 +4457,11 @@ const pozitii = await r.json();</code></pre>
     }
     // ── sfârșit catalogul de capitole ──
 
-    // ═══ Comutatorul de privire (doar pentru noi) ═══
+    // ═══ Comutatorul de privire (doar pentru noi) — SCHELĂ, SE SCOATE LA LANSARE ═══
+    // ⚠ TEMPORAR, hotărât cu Alin pe 03.09.2026: la lansarea aplicației blocul ăsta se ȘTERGE, cu tot
+    // cu cele două rânduri din setRenderNav care îl desenează, <div id="set-banda">, stilurile
+    // .set-ochi/.set-banda din app.css și secțiunea 7 din verify_setari.js. E o unealtă pentru
+    // perioada în care construim, nu o funcție a produsului. Vezi JURNAL-MODIFICARI.md → „A. Blocante".
     // Noi testăm aplicația jucând două roluri: uneori ca proprietari de platformă, alteori punându-ne
     // în locul clientului. Meniul Setărilor arată altfel pentru fiecare, iar când te uiți la el toată
     // ziua nu mai știi ce vezi — „Ce văd toți", „Program de lucru" sunt regulile FIRMEI, nu ale

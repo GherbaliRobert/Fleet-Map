@@ -115,7 +115,9 @@ const grupAdm = html.slice(html.indexOf('data-group="administrare"') - 60, html.
 T('grupul „Administrare" nu mai e doar pentru cine administrează flota', !/fleet-only/.test(grupAdm), grupAdm.trim());
 T('„Utilizatori" nu mai are a doua ușă în meniu', !/goSistem\('users'\)/.test(html));
 
-sect('7. Comutatorul de privire („vezi ca un admin de firmă")');
+sect('7. Comutatorul de privire („vezi ca un admin de firmă") — SCHELĂ, SE SCOATE LA LANSARE');
+// ⚠ TEMPORAR (03.09.2026): secțiunea asta se șterge odată cu comutatorul din index.html.
+// Vezi JURNAL-MODIFICARI.md → „A. Blocante".
 // Noi testăm aplicația din două poziții și ne încurcăm între ele. Comutatorul schimbă DOAR ce se
 // afișează. Cele două lucruri care nu au voie să se strice niciodată:
 //   • privirea împrumutată să nu DEA drepturi cuiva care nu le are (ar fi o gaură, nu o unealtă);

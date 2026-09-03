@@ -2595,7 +2595,9 @@
       .ag-cand { display: inline; margin-left: 8px; }
     }
 
-    /* ── Comutatorul de privire (Setări, doar în conturile noastre) ──
+    /* ── Comutatorul de privire (Setări, doar în conturile noastre) — SE SCOATE LA LANSARE ──
+       ⚠ TEMPORAR (03.09.2026): blocul .set-ochi/.set-banda dispare odată cu comutatorul din
+       index.html. Vezi JURNAL-MODIFICARI.md → „A. Blocante".
        Stă sus, deasupra capitolelor. Violet, nu verde: e o unealtă de-a noastră, nu o funcție a
        aplicației — se deosebește dintr-o privire de restul meniului. */
     .set-ochi { border: 1px solid var(--purple, #7c3aed); border-radius: 10px; padding: 7px 8px 8px;
