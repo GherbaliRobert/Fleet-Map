@@ -3965,6 +3965,34 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   Până se creează, construirea versiunii de livrare se oprește singură, cu instrucțiunile pe ecran.
   *(Robert a spus că se ocupă — 26.08.)*
 
+- [ ] **(voi) Emailul serverului — de configurat pe Railway și de probat cu o adresă reală.** Cerut de
+  Alin, 02.09. Fără el, aplicația merge, dar **tot ce înseamnă „îți trimitem un email" nu pleacă**, iar
+  asta se vede abia la primul client. Ce depinde de configurare, în ordinea în care doare:
+
+  1. **Invitația către administratorul firmei** — exact pasul cu care începe orice contract nou. Fără
+     email, contul lui nu se poate deschide decât dictându-i o parolă la telefon.
+  2. **Invitațiile pe care le trimite el echipei lui** (dispecer, manager) — la fel.
+  3. **Resetarea parolei** — orice om care își uită parola rămâne blocat până îl ajută cineva de mână.
+  4. **Confirmarea adreselor din agenda firmei** — o adresă neconfirmată nu primește nimic, deci
+     alertele și rapoartele către `dispecerat@` nu pleacă niciodată.
+  5. **Rapoartele programate pe email** și **alertele pe email** — funcția pe care o vindem.
+  6. Formularul de suport și înștiințările despre cererile de demo.
+
+  **Ce trebuie pus** (variabile de mediu, în Railway): `SMTP_HOST`, `SMTP_PORT` (587, sau 465 cu
+  `SMTP_SECURE=true`), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (adresa de pe care pleacă, de pildă
+  `noreply@ratrack.ro`) și `BASE_URL=https://ratrack.ro` — ultima e cea din care se compun linkurile
+  din emailuri; fără ea, linkul se construiește din adresa cererii și poate ieși greșit.
+
+  **Cum se probează, în trei minute:** creezi o companie de probă cu adresa ta reală ca administrator,
+  **fără parolă**. Dacă mesajul de la final zice „invitația a plecat la …" și emailul chiar ajunge (și
+  **nu în Spam** — verifică și acolo), e gata. Dacă nu ajunge, mai sunt de pus SPF și DKIM la domeniu,
+  altfel mesajele noastre vor fi tratate ca spam de Gmail și Outlook.
+
+  Aplicația **nu minte** cât timp nu e configurat: la companie nouă și la utilizator nou refuză din
+  start invitația și îți spune să scrii o parolă; la adrese de email spune că mesajul de confirmare
+  n-a plecat. Deci nu e periculos — dar e o promisiune pe care n-o putem ține în fața unui client.
+
+
 - [ ] **(voi) Un cont de test ca utilizator obișnuit.** Testați totul ca super-admin, care trece prin
   toate porțile. Ecranele goale, mesajele „nu ai acces" și ce vede de fapt un client **nu le-a văzut
   niciunul dintre voi**. E cel mai ieftin mod de a găsi lucruri rupte înainte s-o facă un client.
