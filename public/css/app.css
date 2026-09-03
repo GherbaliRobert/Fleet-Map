@@ -1728,31 +1728,45 @@
       flex-wrap: wrap;
     }
 
+    /* Câmpurile din „Adaugă utilizator" — același aspect ca în Preferințe: colț rotunjit, chenar de
+       1,5px și un inel verde la câmpul în care scrii. */
     .add-user-form input, .add-user-form select {
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg-dark);
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-card);
       color: var(--text-primary);
+      font-family: inherit;
       font-size: 13px;
+      font-weight: 600;
       flex: 1;
       min-width: 100px;
       outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s;
     }
+    .add-user-form input:hover:not(:disabled), .add-user-form select:hover:not(:disabled) { border-color: var(--border-light); }
+    .add-user-form input:focus, .add-user-form select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+    .add-user-form input::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
 
     .add-user-form button {
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 11px 16px;
+      border-radius: 10px;
       background: var(--green-dim);
       color: white;
       border: none;
       cursor: pointer;
-      font-weight: 600;
+      font-family: inherit;
+      font-weight: 800;
       font-size: 13px;
       transition: background 0.2s;
     }
 
     .add-user-form button:hover { background: var(--green); }
+    @media (prefers-reduced-motion: reduce) { .add-user-form input, .add-user-form select { transition: none !important; } }
 
     /* ─── Mobile toggle ─── */
     #mobile-toggle {
@@ -2727,9 +2741,19 @@
     .rol-li-t { color: var(--orange); }
     button.rol-nou { width: 100%; margin-top: 4px; }
     .rol-edit { flex: 1; min-width: 0; }
-    .rol-lbl { display: block; font-size: 10.5px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
-    input.rol-nume { width: 100%; margin: 0 0 6px; }
-    .rol-baza { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+    .rol-lbl { display: block; font-size: 10.5px; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; }
+    /* Câmpul cu numele rolului — același aspect ca în Preferințe. */
+    input.rol-nume {
+      width: 100%; margin: 0 0 7px;
+      background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 10px;
+      color: var(--text-primary); font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 10px 12px; outline: none; box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input.rol-nume:hover { border-color: var(--border-light); }
+    input.rol-nume:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+    input.rol-nume::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
+    .rol-baza { font-size: 11.5px; color: var(--text-muted); line-height: 1.55; margin-bottom: 14px; }
     .rol-baza b { color: var(--text-secondary); }
     .rol-file { display: flex; gap: 3px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
     .rol-f { background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
@@ -2739,17 +2763,28 @@
     .rol-f:hover { color: var(--text-primary); }
     .rol-f.on { color: var(--accent); border-bottom-color: var(--accent); }
     .rol-tools { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .rol-tt { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; font-family: inherit;
-      font-size: 11px; font-weight: 800; color: var(--text-secondary); padding: 5px 10px; cursor: pointer; }
-    .rol-tt:hover { border-color: var(--border-light); }
+    .rol-tt { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 9px; font-family: inherit;
+      font-size: 11px; font-weight: 800; color: var(--text-secondary); padding: 7px 12px; cursor: pointer;
+      transition: border-color .15s, color .15s; }
+    .rol-tt:hover { border-color: var(--border-light); color: var(--text-primary); }
     .rol-cnt { font-size: 11px; color: var(--text-muted); font-weight: 700; }
     .rol-gr { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
       color: var(--text-muted); margin: 12px 0 5px; }
     .rol-gr:first-child { margin-top: 0; }
-    .rol-drepturi { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 3px 14px; }
-    .rol-d { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; padding: 3px 0; }
-    .rol-d input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; margin: 0; flex: none; }
-    .rol-d.taiat span { color: var(--text-muted); text-decoration: line-through; }
+    /* Fiecare drept e un rând ca în „Afișaj": ce poate rolul în stânga, comutatorul în dreapta.
+       Ce a tăiat firma se vede șters — dintr-o privire știi ce a scos. */
+    .rol-drepturi { display: grid; grid-template-columns: repeat(auto-fit, minmax(275px, 1fr)); gap: 6px 12px; }
+    .rol-d { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      font-size: 12.5px; font-weight: 600; color: var(--text-primary); cursor: pointer;
+      background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 8px 11px;
+      transition: border-color .15s; }
+    .rol-d:hover { border-color: var(--border-light); }
+    .rol-dn { min-width: 0; }
+    .rol-d.taiat .rol-dn { color: var(--text-muted); text-decoration: line-through; }
+    /* Comutatorul e ceva mai mic aici: sunt zeci pe ecran. */
+    .rol-d .pref-sw { width: 34px; height: 20px; }
+    .rol-d .pref-sw span::before { width: 14px; height: 14px; }
+    .rol-d .pref-sw input:checked + span::before { transform: translateX(14px); }
     .rol-gol { font-size: 12px; color: var(--text-muted); padding: 10px 0; }
     .rol-act { display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
     @media (max-width: 700px) {

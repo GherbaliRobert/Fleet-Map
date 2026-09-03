@@ -1028,12 +1028,25 @@
 
   <!-- Stiluri pentru ecranele RBAC -->
   <style>
-    #user-edit-modal input, #user-edit-modal select,
-    #apikeys-modal input, #apikeys-modal select,
+    /* Câmpurile din ferestrele legate de utilizatori — același aspect ca în „Adaugă utilizator" și
+       ca în Preferințe: colț rotunjit, chenar de 1,5px, inel verde la câmpul în care scrii. */
+    #user-edit-modal input:not([type=checkbox]):not([type=radio]), #user-edit-modal select,
+    #apikeys-modal input:not([type=checkbox]):not([type=radio]), #apikeys-modal select,
     #users-modal .add-user-form input, #users-modal .add-user-form select {
-      background: var(--bg-dark); border:1px solid var(--border); color: var(--text, #e5e7eb);
-      border-radius:6px; padding:8px 10px; font-size:13px; width:100%; box-sizing:border-box;
+      background: var(--bg-card); border:1.5px solid var(--border); color: var(--text, #e5e7eb);
+      border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; font-family:inherit;
+      width:100%; box-sizing:border-box; outline:none; transition:border-color .15s, box-shadow .15s;
     }
+    #user-edit-modal input:not([type=checkbox]):not([type=radio]):hover:not(:disabled), #user-edit-modal select:hover:not(:disabled),
+    #apikeys-modal input:not([type=checkbox]):not([type=radio]):hover:not(:disabled), #apikeys-modal select:hover:not(:disabled),
+    #users-modal .add-user-form input:hover:not(:disabled), #users-modal .add-user-form select:hover:not(:disabled) { border-color: var(--border-light); }
+    #user-edit-modal input:not([type=checkbox]):not([type=radio]):focus, #user-edit-modal select:focus,
+    #apikeys-modal input:not([type=checkbox]):not([type=radio]):focus, #apikeys-modal select:focus,
+    #users-modal .add-user-form input:focus, #users-modal .add-user-form select:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+    #user-edit-modal input::placeholder, #apikeys-modal input::placeholder,
+    #users-modal .add-user-form input::placeholder { color: var(--text-muted); font-weight:500; opacity:1; }
     #user-edit-modal label.ue-field { display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--text-muted); }
     label.ue-check { display:flex; align-items:center; gap:8px; padding:4px 2px; font-size:13px; cursor:pointer; }
     label.ue-check input { width:auto !important; }
@@ -5322,9 +5335,9 @@ const pozitii = await r.json();</code></pre>
         return (g ? '<div class="rol-gr">' + esc(g) + '</div>' : '') +
           '<div class="rol-drepturi">' + grupe[g].map(function (d) {
             return '<label class="rol-d' + (d.are ? '' : ' taiat') + '">' +
-              '<input type="checkbox" data-rc="' + camp + '" value="' + esc(d.cheie) + '"' + (d.are ? ' checked' : '') +
-              ' onchange="rolBifa(\'' + camp + '\',\'' + esc(d.cheie) + '\',this.checked)">' +
-              '<span>' + esc(d.eticheta) + '</span></label>';
+              '<span class="rol-dn">' + esc(d.eticheta) + '</span>' +
+              '<span class="pref-sw"><input type="checkbox" data-rc="' + camp + '" value="' + esc(d.cheie) + '"' + (d.are ? ' checked' : '') +
+              ' onchange="rolBifa(\'' + camp + '\',\'' + esc(d.cheie) + '\',this.checked)"><span></span></span></label>';
           }).join('') + '</div>';
       }).join('');
       return h;
@@ -5344,10 +5357,12 @@ const pozitii = await r.json();</code></pre>
           '<button class="btn-sm btn-primary rol-nou" onclick="rolNou()"><i class="fas fa-plus"></i> Rol nou</button>' +
         '</div>' +
         '<div class="rol-edit">' +
-          '<label class="rol-lbl">Cum îi spuneți la voi</label>' +
+          '<label class="rol-lbl" for="rol-nume">Numele rolului, la voi în firmă</label>' +
           '<input type="text" class="rol-nume" id="rol-nume" maxlength="40" value="' + esc(r.nume || '') + '" placeholder="' + esc(r.numeStandard) + '">' +
-          '<div class="rol-baza">Pornit de la rolul standard <b>' + esc(r.numeStandard) + '</b>' +
-            (r.propriu ? ' · rol propriu al firmei' : '') + '</div>' +
+          '<div class="rol-baza">Aici îi dai numele cu care îl știe lumea la voi — de pildă „' +
+            esc(r.numeStandard) + '" → „Operator depou". Numele apare peste tot în aplicație, dar numai la voi în firmă; ' +
+            'drepturile nu se schimbă cu el. Lași gol → rămâne <b>' + esc(r.numeStandard) + '</b>.' +
+            (r.propriu ? ' <b>Rol făcut de voi.</b>' : '') + '</div>' +
           '<div class="rol-file">' + ROL_FILE.map(function (f) {
             return '<button class="rol-f' + (_rol.fila === f[0] ? ' on' : '') + '" onclick="rolFila(\'' + f[0] + '\')">' +
               '<i class="fas ' + f[2] + '"></i> ' + f[1] + '</button>';

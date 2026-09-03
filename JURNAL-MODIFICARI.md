@@ -20,6 +20,35 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · Utilizatori și Roluri: aceleași câmpuri și aceleași comutatoare ca la Preferințe
+
+Alin, după ce a văzut Preferințele: *„modernizează și aici inputurile, în Utilizatori"*, apoi
+*„la fel și secțiunea Roluri, ca și Afișaj"*. Adică: să nu ai trei ecrane care arată a trei
+aplicații diferite.
+
+**Utilizatori.** Câmpurile din „Adaugă utilizator" (email, parolă, nume, telefon, firma, rolul) și
+cele din fereastra de editare a unui om au acum același aspect ca în Preferințe: colț rotunjit,
+chenar mai apăsat și **inelul verde la câmpul în care scrii**. Butonul verde a fost potrivit cu ele.
+Bifele au rămas bife — nu le-am umflat degeaba.
+
+**Roluri.** Fiecare drept era o bifă mică lipită de un text. Acum e un **rând cu comutator**, exact
+ca în „Afișaj": ce poate face rolul în stânga, comutatorul în dreapta. Ce a tăiat firma se vede
+**șters**, deci dintr-o privire știi ce a scos. Comutatoarele sunt puțin mai mici decât în
+Preferințe, fiindcă aici sunt zeci pe ecran (rapoartele singure sunt 33).
+
+**Câmpul care „suna aiurea".** Sus, în Roluri, scria „Cum îi spuneți la voi" — o întrebare aruncată
+pe ecran, fără să spună la ce folosește. Alin, pe bună dreptate: *„nu-i văd rostul"*. E câmpul prin
+care firma **își botează rolurile**: „Dispecer" devine „Operator depou", dacă așa le zic ei în firmă.
+Acum scrie **„Numele rolului, la voi în firmă"**, iar dedesubt explicația, cu exemplu: numele apare
+peste tot în aplicație, dar **numai la firma aceea**, iar **drepturile nu se schimbă odată cu el**.
+Lași gol → rămâne numele standard.
+
+- **Ce am schimbat:** aspectul câmpurilor din Utilizatori, comutatoarele din Roluri și eticheta care
+  nu spunea nimic.
+- **Ce vede fondatorul:** aceleași trei ecrane, în același limbaj vizual.
+- **Ce vede clientul:** la fel — plus că înțelege, în sfârșit, la ce e bun câmpul cu numele rolului.
+
+
 ### FONDATOR · Comutatorul de privire ajunge și la „Utilizatori"
 
 Până acum, comutatorul schimba doar **meniul** Setărilor. Alin: *„la toggle admin de firmă lasă doar
