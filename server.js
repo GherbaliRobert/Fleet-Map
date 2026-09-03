@@ -2281,9 +2281,10 @@ app.get('/api/me', async (req, res) => {
   let sys = { announcement: '', offline_minutes: 65 };
   try { const s = await getSystemSettings(); sys = { announcement: s.announcement, offline_minutes: s.offline_minutes }; } catch (e) {}
   // Numele afișat: e ce vede omul în aplicație (bara de sus), în locul adresei de email cu care s-a logat.
-  let fullName = null;
-  try { if (a.userId) { const _u = await db.getUserById(a.userId); if (_u) fullName = _u.full_name || null; } } catch (e) {}
+  let fullName = null, phone = null;
+  try { if (a.userId) { const _u = await db.getUserById(a.userId); if (_u) { fullName = _u.full_name || null; phone = _u.phone || null; } } } catch (e) {}
   res.json({
+    phone, // pentru „Preferințe → Contul meu", unde omul își schimbă singur datele de contact
     // Drepturile trimise interfeței sunt cele EFECTIVE (rol minus ce a tăiat firma). Altfel ecranul
     // ar arăta butoane pe care serverul le refuză — adică ar părea stricat.
     username: a.username, full_name: fullName, role: a.role,
@@ -9554,21 +9555,58 @@ app.put('/api/notification-prefs', requireAuth, async (req, res) => {
 // Whitelist de chei UI permise (previne injection în JSONB cu chei arbitrare)
 // Ultimele două nu sunt preferințe de afișare, ci „compania asta folosește funcția X": ascund file
 // întregi din fișa vehiculului pentru clienții care nu au sonde de combustibil sau nu au camioane.
-const UI_PREF_KEYS = ['overspeed_heatmap', 'replay_marker', 'geocoded_address', 'show_driver_names', 'tab_camion', 'tab_sonde'];
-const UI_PREF_DEFAULTS = { overspeed_heatmap: true, replay_marker: true, geocoded_address: true, show_driver_names: true, tab_camion: true, tab_sonde: true };
-function _filterUiKeys(obj) {
+// ── începe „Catalogul de preferințe" (REPER pentru probe: verify_preferinte.js decupează exact
+// bucata dintre reperul ăsta și cel de la sfârșit. Nu insera altceva între ele.) ──
+// O SINGURĂ sursă pentru cheie, fel (bifă sau alegere din listă), valoare din fabrică și LOCUL unde
+// se poate seta. „unde" contează: temele, harta sau sunetul sunt gustul OMULUI, iar filele pentru
+// camioane și sonde sunt „firma asta nu folosește funcția" — nu au ce căuta în contul cuiva.
+const UI_PREFS = [
+  // Afișare — și personale, și cu regulă pe firmă (cascada: fabrică → firmă → om)
+  { k: 'overspeed_heatmap', tip: 'bifa', implicit: true, unde: 'ambele' },
+  { k: 'replay_marker', tip: 'bifa', implicit: true, unde: 'ambele' },
+  { k: 'geocoded_address', tip: 'bifa', implicit: true, unde: 'ambele' },
+  { k: 'show_driver_names', tip: 'bifa', implicit: true, unde: 'ambele' },
+  // Nu sunt preferințe de gust: ascund file întregi din fișa vehiculului pentru firmele care n-au
+  // camioane sau n-au sonde de combustibil. Se hotărăsc pe firmă, nu pe om.
+  { k: 'tab_camion', tip: 'bifa', implicit: true, unde: 'firma' },
+  { k: 'tab_sonde', tip: 'bifa', implicit: true, unde: 'firma' },
+  // Cum arată aplicația pentru MINE. Stăteau doar în browser: le schimbai pe laptop, pe telefon
+  // rămâneau cum erau. Acum stau pe cont și te urmează oriunde te loghezi.
+  { k: 'tema', tip: 'lista', implicit: 'inchisa', valori: ['inchisa', 'deschisa', 'sistem'], unde: 'user' },
+  { k: 'harta', tip: 'lista', implicit: 'auto', valori: ['auto', 'streets', 'light', 'dark', 'sat', 'hybrid', 'terrain'], unde: 'user' },
+  { k: 'masini_harta', tip: 'lista', implicit: 'iconite', valori: ['iconite', 'sageti'], unde: 'user' },
+  { k: 'uneste_masini', tip: 'bifa', implicit: false, unde: 'user' },
+  { k: 'panou_lateral', tip: 'lista', implicit: 'deschis', valori: ['deschis', 'strans'], unde: 'user' },
+  { k: 'ecran_pornire', tip: 'lista', implicit: 'localizare', valori: ['localizare', 'traseu', 'statistici', 'rapoarte'], unde: 'user' },
+  // Alerte — cât deranj vrea omul pe ecran
+  { k: 'sunet_alerte', tip: 'bifa', implicit: true, unde: 'user' },
+  { k: 'cat_sta_alerta', tip: 'lista', implicit: '15', valori: ['5', '15', '30', 'manual'], unde: 'user' }
+];
+const _uiPref = {}; UI_PREFS.forEach(p => { _uiPref[p.k] = p; });
+const UI_PREF_KEYS = UI_PREFS.map(p => p.k);
+const UI_PREF_DEFAULTS = {}; UI_PREFS.forEach(p => { UI_PREF_DEFAULTS[p.k] = p.implicit; });
+const _cheiPentru = (unde) => UI_PREFS.filter(p => p.unde === 'ambele' || p.unde === unde).map(p => p.k);
+// Curăță ce vine din afară: chei necunoscute cad, bifele devin true/false, alegerile din listă sunt
+// acceptate DOAR dacă sunt în listă. Fără asta, în JSONB ar ajunge orice.
+function _filterUiKeys(obj, unde) {
   const out = {};
   if (!obj || typeof obj !== 'object') return out;
-  for (const k of UI_PREF_KEYS) if (Object.prototype.hasOwnProperty.call(obj, k)) out[k] = !!obj[k];
+  for (const k of (unde ? _cheiPentru(unde) : UI_PREF_KEYS)) {
+    if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+    const p = _uiPref[k];
+    if (p.tip === 'bifa') out[k] = !!obj[k];
+    else if (p.valori.indexOf(String(obj[k])) >= 0) out[k] = String(obj[k]);
+  }
   return out;
 }
+// ── sfârșit „Catalogul de preferințe" ──
 // Întoarce prefs efective după cascadă + sursa fiecărei chei (app/company/user) pentru UI
 app.get('/api/me/ui-prefs', requireAuth, async (req, res) => {
   try {
     const a = getAuth(req);
-    const userPrefs = _filterUiKeys(await db.getUiPrefs(a.userId));
+    const userPrefs = _filterUiKeys(await db.getUiPrefs(a.userId), 'user');
     const compSettings = await db.getCompanySettings(a.companyId);
-    const compDefaults = _filterUiKeys(compSettings.ui_defaults || {});
+    const compDefaults = _filterUiKeys(compSettings.ui_defaults || {}, 'firma');
     const effective = Object.assign({}, UI_PREF_DEFAULTS, compDefaults, userPrefs);
     const source = {};
     for (const k of UI_PREF_KEYS) source[k] = Object.prototype.hasOwnProperty.call(userPrefs, k) ? 'user' : (Object.prototype.hasOwnProperty.call(compDefaults, k) ? 'company' : 'app');
@@ -9583,9 +9621,11 @@ app.put('/api/me/ui-prefs', requireAuth, async (req, res) => {
     const body = req.body || {};
     // Permite și ștergere (null) ca să cadă pe default companiei
     const cur = await db.getUiPrefs(a.userId);
-    for (const k of UI_PREF_KEYS) {
+    const curat = _filterUiKeys(body, 'user');
+    for (const k of _cheiPentru('user')) {
       if (!Object.prototype.hasOwnProperty.call(body, k)) continue;
-      if (body[k] === null) delete cur[k]; else patch[k] = !!body[k];
+      if (body[k] === null) delete cur[k];
+      else if (Object.prototype.hasOwnProperty.call(curat, k)) patch[k] = curat[k];
     }
     // Aplicăm patch peste cur (pe care l-am eventual modificat prin delete pentru reset)
     const next = Object.assign({}, cur, patch);
@@ -9596,13 +9636,63 @@ app.put('/api/me/ui-prefs', requireAuth, async (req, res) => {
     res.json({ ok: true, userPrefs: next });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ─── Contul meu: parola și datele de contact ───
+// Până acum, un om nu-și putea schimba parola din aplicație: doar administratorul firmei i-o putea
+// pune. Un dispecer trebuia să-și roage patronul — sau să treacă prin „am uitat parola", care merge
+// pe email. Aici își face treaba singur, dar numai dovedind că știe parola veche.
+const _parolaIncercari = new Map(); // userId → { n, ts } — o sesiune furată nu ghicește parola veche
+function _parolaPreaDes(userId) {
+  const acum = Date.now();
+  let r = _parolaIncercari.get(userId);
+  if (!r || acum - r.ts > 15 * 60000) { r = { n: 0, ts: acum }; _parolaIncercari.set(userId, r); }
+  r.n++;
+  return r.n > 5;
+}
+app.post('/api/me/password', requireAuth, async (req, res) => {
+  try {
+    const a = getAuth(req);
+    const u = await db.getUserById(a.userId);
+    if (!u) return res.status(404).json({ error: 'Cont inexistent.' });
+    // Contul demo e împărțit de mai mulți: dacă și-ar schimba parola cineva, i-ar bloca pe ceilalți.
+    if (u.username === 'demo') return res.status(403).json({ error: 'Contul demo are parolă fixă. Cere-ne un cont pe adresa ta.' });
+    const veche = String((req.body || {}).veche || '');
+    const noua = String((req.body || {}).noua || '');
+    if (_parolaPreaDes(a.userId)) return res.status(429).json({ error: 'Prea multe încercări. Mai încearcă peste 15 minute.' });
+    const hashVechi = await db.getPasswordHash(a.userId); // getUserById nu întoarce parola, dinadins
+    if (!hashVechi || !(await bcrypt.compare(veche, hashVechi))) return res.status(400).json({ error: 'Parola de acum nu e bună.' });
+    { const e = verificaParola(noua, u.username); if (e) return res.status(400).json({ error: e }); }
+    if (noua === veche) return res.status(400).json({ error: 'Parola nouă e aceeași cu cea de acum.' });
+    await db.updateUserPassword(a.userId, await bcrypt.hash(noua, 10));
+    _parolaIncercari.delete(a.userId);
+    auditReq(req, 'update', 'parola', a.userId);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Numele afișat și telefonul. Adresa de email NU se schimbă de aici: ea e și numele de utilizator,
+// deci ar însemna schimbarea contului — aia rămâne la administratorul firmei.
+app.put('/api/me/profile', requireAuth, async (req, res) => {
+  try {
+    const a = getAuth(req);
+    const b = req.body || {};
+    const campuri = {};
+    if (Object.prototype.hasOwnProperty.call(b, 'full_name')) campuri.full_name = String(b.full_name == null ? '' : b.full_name).trim().slice(0, 120);
+    if (Object.prototype.hasOwnProperty.call(b, 'phone')) campuri.phone = String(b.phone == null ? '' : b.phone).trim().slice(0, 30);
+    if (campuri.full_name && campuri.full_name.length < 2) return res.status(400).json({ error: 'Numele e prea scurt.' });
+    if (campuri.phone && !/^[0-9+().\s-]{6,30}$/.test(campuri.phone)) return res.status(400).json({ error: 'Numărul de telefon nu pare valid.' });
+    await db.setUserContact(a.userId, campuri);
+    auditReq(req, 'update', 'profil', a.userId);
+    const u = await db.getUserById(a.userId);
+    res.json({ ok: true, full_name: u.full_name || '', phone: u.phone || '' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Admin companie: setează default-urile UI pentru întreaga companie (cascadă)
 app.get('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
   try {
     const a = getAuth(req);
     if (a.companyId == null) return res.json({ ui_defaults: {}, alert_thresholds: await _getGlobalAlertThresholds() }); // super-admin fără companie → praguri globale (platformă)
     const s = await db.getCompanySettings(a.companyId);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {}, work_schedule: s.work_schedule || null });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), alert_thresholds: s.alert_thresholds || {}, enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, features: s.features || {}, work_schedule: s.work_schedule || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/me/settings', requireAuth, requirePerm('manageUsers'), async (req, res) => {
@@ -9669,7 +9759,7 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   const cur = await db.getCompanySettings(companyId);
   const next = Object.assign({}, cur);
   if (body.ui_defaults && typeof body.ui_defaults === 'object') {
-    next.ui_defaults = Object.assign({}, cur.ui_defaults || {}, _filterUiKeys(body.ui_defaults));
+    next.ui_defaults = Object.assign({}, cur.ui_defaults || {}, _filterUiKeys(body.ui_defaults, 'firma'));
   }
   if (opts && opts.allowAgents) { // enabled_agents = funcție cu PLATĂ → DOAR super-admin; company_admin NU-și poate auto-activa agenții
     if (Array.isArray(body.enabled_agents)) {
@@ -9719,7 +9809,7 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const s = await db.getCompanySettings(id);
     const planAgents = plans && plans.enabledAgentsFor(co);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings) });
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {

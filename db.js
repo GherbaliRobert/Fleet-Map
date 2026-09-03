@@ -2537,6 +2537,30 @@ async function updateUserProfile(id, data) {
   );
 }
 
+// Parola cifrată a unui om, cerută anume. getUserById NU o întoarce, dinadins: e folosit peste tot
+// în aplicație și n-are de ce să plimbe parola prin obiecte care ajung, din greșeală, într-un
+// răspuns. Aici o cere doar cine chiar are nevoie să o verifice.
+async function getPasswordHash(id) {
+  const r = await pool.query('SELECT password_hash FROM users WHERE id = $1', [id]);
+  return r.rows[0] ? r.rows[0].password_hash : null;
+}
+
+// Datele de contact ale OMULUI, schimbate de el însuși din „Preferințe → Contul meu".
+// Nu folosește updateUserProfile fiindcă acela merge pe COALESCE: acolo un câmp golit înseamnă
+// „lasă-l cum era", deci nimeni nu și-ar putea ȘTERGE telefonul. Aici se scrie exact ce s-a trimis,
+// și numai câmpurile trimise.
+async function setUserContact(id, campuri) {
+  const set = [], p = [id];
+  for (const k of ['full_name', 'phone']) {
+    if (!Object.prototype.hasOwnProperty.call(campuri || {}, k)) continue;
+    const v = campuri[k];
+    p.push(v === null || v === '' ? null : String(v));
+    set.push(k + ' = $' + p.length);
+  }
+  if (!set.length) return;
+  await pool.query('UPDATE users SET ' + set.join(', ') + ' WHERE id = $1', p);
+}
+
 async function setUserLastLogin(id) {
   await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [id]);
 }
@@ -3856,6 +3880,8 @@ module.exports = {
   getUsers,
   getUserById,
   updateUserProfile,
+  setUserContact,
+  getPasswordHash,
   setUserLastLogin,
   deleteUser,
   updateUserPassword,

@@ -20,6 +20,65 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · „Preferințele tale", refăcute din temelii — plus parola, care lipsea cu totul
+
+Alin, uitându-se la ecran: *„preferințele astea nu sunt cam vagi? adică așa puține preferințe??"*.
+Avea dreptate de două ori, din două motive diferite.
+
+**1. Erau scrise în limba noastră, nu a lui.** Pe ecran scria „Afișează depășiri viteză pe traseu
+(heatmap)", „Afișează adresa (reverse-geocode)", „Punctul verde animat pe traseu la redarea
+istoricului", iar sub fiecare, „default aplicație". Nu erau vagi — erau scrise pentru programatori.
+Omul nu avea de unde ști ce pierde dacă debifează. Acum scrie *„Colorează traseul după viteză"*,
+*„Arată adresa, nu coordonatele"*, *„Arată mașina care se plimbă pe traseu"*, iar „default
+aplicație" a devenit **„așa e din fabrică"**, „default companie" → **„hotărâtă de firmă"**.
+
+**2. Două din cele șase nici nu erau preferințe de om.** „Fila Camion" și „Filele pentru sonde"
+înseamnă *„firma asta n-are camioane / n-are sonde"* — o hotărâre a firmei, nu un gust personal.
+Au fost mutate la **Setări → Ce văd toți**, unde le e locul. În contul omului nu mai apar.
+
+**3. Lipseau exact lucrurile pe care omul chiar vrea să le schimbe.** Existau în aplicație, dar
+stăteau **numai în browser**: le puneai pe laptop și pe telefon erau tot cum fuseseră. Acum stau pe
+**cont** și te urmează oriunde te loghezi:
+
+- **Tema** (închisă / deschisă / *ca pe dispozitiv* — adică urmează telefonul sau calculatorul).
+- **Harta cu care pornești**: potrivită cu tema, Străzi, Deschisă, Închisă, Satelit, Satelit cu
+  denumiri, Relief.
+- **Cum arată mașinile pe hartă** (iconițe sau săgeți) și dacă **mașinile apropiate se unesc** într-un
+  singur semn cu numărul lor.
+- **Lista de mașini din stânga**: deschisă sau strânsă.
+- **Ecranul cu care se deschide aplicația**: Localizare, Traseu, Statistici sau Rapoarte. Dacă rolul
+  omului nu ajunge la ecranul ales, se deschide tot pe Localizare — o preferință nu poate deschide o
+  ușă la care nu are voie.
+- **Sunetul la alertă** și **cât stă alerta pe ecran** (5 / 15 / 30 de secunde sau *până o închid
+  eu*). Până acum suna **mereu** și dispărea după 15 secunde, fără să se poată schimba de nicăieri.
+  Un dispecer care stă opt ore în aplicație ne-ar fi întrebat asta în prima zi.
+
+Butoanele vechi rămân unde erau: schimbi tema din butonul cu lună/soare de sus, harta din butonul ei
+de pe hartă — doar că acum alegerea urcă și pe cont, nu se mai pierde.
+
+**4. Parola. Aici nu era o preferință lipsă, era o gaură.** Un om **nu-și putea schimba parola din
+aplicație, deloc**. Doar administratorul firmei i-o putea pune. Un dispecer trebuia să-și roage
+patronul — sau să treacă prin „am uitat parola", care merge pe email, adică deocamdată nu merge.
+Acum, în **Preferințe → Contul meu**, își schimbă singur parola, dar **numai scriind-o pe cea de
+acum**. Paza aia nu e formalitate: fără ea, o sesiune uitată deschisă pe un calculator străin ar
+însemna pierderea contului. După câteva încercări greșite, se oprește pentru un sfert de oră.
+Tot acolo își schimbă **numele afișat și telefonul**; adresa de email nu, fiindcă ea e totodată
+numele de utilizator — aia rămâne la administratorul firmei.
+
+**Ce s-a mai reparat pe drum**, găsit de probe: telefonul nu se putea **șterge** (câmpul golit
+însemna „lasă-l cum era" — aceeași capcană pe care o avusesem la fișa vehiculului), iar numele
+omului ajungea pe ecran neprotejat: un nume cu ghilimele scris de un administrator ar fi putut rupe
+pagina altcuiva.
+
+- **Ce am schimbat:** Preferințele au acum trei capitole — Contul meu, Cum arată aplicația pentru
+  mine, Alerte — plus schimbarea parolei; alegerile se țin minte pe cont, nu pe calculator.
+- **Ce vede fondatorul:** exact același ecran ca și clientul. Aici nu e nimic „doar al nostru", deci
+  comutatorul de privire nu schimbă nimic. În plus, la **Ce văd toți** au apărut cele două file
+  mutate de la om la firmă.
+- **Ce vede clientul:** un ecran scris pe românește, în care își poate schimba singur parola și își
+  potrivește aplicația cum îi place — o dată, pentru toate dispozitivele.
+
+
 ### FONDATOR · Un comutator în Setări: „te uiți ca fondator" / „ca admin de firmă"
 
 Alin: *„noi testăm acum, ne încurcăm — ar trebui să avem un toggle"*. Are dreptate, și motivul e

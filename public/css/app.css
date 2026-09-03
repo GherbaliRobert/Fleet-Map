@@ -2595,6 +2595,61 @@
       .ag-cand { display: inline; margin-left: 8px; }
     }
 
+    /* ── Preferințe (Setări → Contul meu) ──
+       Un rând = o preferință: numele sus, explicația dedesubt, comanda în dreapta. Bifele sunt
+       comutatoare, alegerile scurte sunt butoane lipite (nu liste derulante) — se văd toate variantele
+       dintr-o privire, fără să deschizi nimic. */
+    .pref-gr { margin-bottom: 22px; }
+    .pref-gr:last-child { margin-bottom: 0; }
+    .pref-load { color: var(--text-muted); font-size: 12px; padding: 8px 0; }
+    .pref-r { display: flex; align-items: center; gap: 14px; padding: 11px 13px; margin-bottom: 6px;
+      background: var(--bg-dark); border: 1px solid var(--border); border-radius: 11px; }
+    .pref-r-l { align-items: flex-start; }
+    /* Multe variante (harta, cât stă alerta): comanda trece sub text, ca explicația să aibă loc. */
+    .pref-r-w { flex-direction: column; align-items: stretch; gap: 0; }
+    .pref-r-w .pref-seg { justify-content: flex-start; margin-top: 10px; }
+    .pref-txt { flex: 1; min-width: 0; }
+    .pref-t { font-size: 13px; font-weight: 800; color: var(--text-primary); display: flex; align-items: center;
+      gap: 7px; flex-wrap: wrap; }
+    .pref-src { font-size: 10px; font-weight: 800; letter-spacing: .02em; }
+    .pref-reset { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted);
+      font-family: inherit; font-size: 11px; line-height: 1; padding: 3px 6px; cursor: pointer; }
+    .pref-reset:hover { border-color: var(--border-light); color: var(--text-primary); }
+    .pref-d { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-top: 3px; }
+    .pref-c { flex: none; }
+    /* Comutator (bifă) */
+    .pref-sw { position: relative; display: inline-block; width: 40px; height: 23px; flex: none; cursor: pointer; }
+    .pref-sw input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .pref-sw span { position: absolute; inset: 0; background: var(--border); border-radius: 999px; transition: background-color .18s; }
+    .pref-sw span::before { content: ""; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: transform .18s; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+    .pref-sw input:checked + span { background: var(--accent); }
+    .pref-sw input:checked + span::before { transform: translateX(17px); }
+    .pref-sw input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* Alegere din câteva variante */
+    .pref-seg { display: flex; flex-wrap: wrap; gap: 3px; justify-content: flex-end; }
+    .pref-sg { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; font-family: inherit;
+      font-size: 11.5px; font-weight: 800; color: var(--text-secondary); padding: 6px 11px; cursor: pointer;
+      transition: background-color .15s, color .15s, border-color .15s; white-space: nowrap; }
+    .pref-sg:hover { border-color: var(--border-light); color: var(--text-primary); }
+    .pref-sg.on { background: var(--accent); border-color: var(--accent); color: #06210f; }
+    /* Contul meu: câmpuri + butoane */
+    .pref-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; margin-bottom: 10px; }
+    .pref-f label { display: block; font-size: 10.5px; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; }
+    .pref-f input { width: 100%; }
+    .pref-f input:disabled { opacity: .6; cursor: not-allowed; }
+    .pref-act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pref-msg { font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
+    .pref-msg.bun { color: var(--accent); }
+    .pref-msg.rau { color: var(--red); }
+    .pref-parola { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .pref-parola .pref-t { margin-bottom: 9px; }
+    @media (max-width: 620px) {
+      .pref-r, .pref-r-l { flex-direction: column; align-items: stretch; }
+      .pref-c { align-self: flex-start; }
+      .pref-seg { justify-content: flex-start; }
+    }
+
     /* ── Comutatorul de privire (Setări, doar în conturile noastre) — SE SCOATE LA LANSARE ──
        ⚠ TEMPORAR (03.09.2026): blocul .set-ochi/.set-banda dispare odată cu comutatorul din
        index.html. Vezi JURNAL-MODIFICARI.md → „A. Blocante".

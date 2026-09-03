@@ -2483,13 +2483,20 @@ const pozitii = await r.json();</code></pre>
               <!-- Banda „vezi ca un admin de firmă" — apare doar în conturile noastre, când e pornită -->
               <div id="set-banda"></div>
 
-              <!-- Contul meu -->
+              <!-- Contul meu: datele lui, parola lui, apoi preferințele pe grupe -->
               <div class="set-panel" data-spanel="prefs">
-                <div class="set-sec-h"><i class="fas fa-user"></i> Preferințele tale</div>
-                <div id="us-list" style="margin-bottom:6px;"><div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div></div>
-                <p class="set-note">Aceste setări se aplică doar contului tău. Butonul ↺ te întoarce la regula firmei.</p>
-                <button class="btn-sm btn-primary" onclick="usTestPush(this)" style="margin-top:2px;"><i class="fas fa-bell"></i> Trimite notificare de test pe telefon</button>
-                <div id="us-test-push-res" style="font-size:11.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;"></div>
+                <div class="pref-gr">
+                  <div class="set-sec-h"><i class="fas fa-id-badge"></i> Contul meu</div>
+                  <p class="set-note">Numele de aici e cel care apare sus, în bară, și în istoricul de activitate. Adresa de email e totodată numele tău de utilizator — pe aceea o schimbă doar administratorul firmei.</p>
+                  <div id="pref-cont"></div>
+                </div>
+                <div id="pref-restul"><div class="pref-load">Se încarcă…</div></div>
+                <div class="pref-gr">
+                  <div class="set-sec-h"><i class="fas fa-mobile-screen"></i> Notificări pe telefon</div>
+                  <p class="set-note">Trimite un mesaj de probă pe telefoanele pe care ești conectat, ca să vezi dacă ajung.</p>
+                  <button class="btn-sm btn-primary" onclick="usTestPush(this)" style="margin-top:2px;"><i class="fas fa-bell"></i> Trimite o notificare de probă</button>
+                  <div id="us-test-push-res" style="font-size:11.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;"></div>
+                </div>
               </div>
 
               <!-- Oameni și drepturi → Utilizatori (nod împrumutat) -->
@@ -3618,7 +3625,8 @@ const pozitii = await r.json();</code></pre>
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app').classList.add('visible');
 
-      applyTheme(localStorage.getItem('gpsTheme') || 'dark');
+      applyTheme(localStorage.getItem('gpsTheme') || 'dark'); // din memoria browserului, ca să nu pâlpâie
+      prefIncarcaSiAplica(); // …apoi adevărul, de pe cont: temă, hartă, panou, ecranul de pornire
       // Arătăm numele afișat, nu adresa de email cu care s-a autentificat (emailul rămâne în tooltip).
       var _tbu = document.getElementById('topbar-username');
       _tbu.textContent = currentUser.full_name || currentUser.username || '';
@@ -4390,23 +4398,220 @@ const pozitii = await r.json();</code></pre>
       else if (tab === 'etransport') { _raxMountBody('#rax-et-overlay', 'atab-etransport'); if (window.raxLoadEt) window.raxLoadEt(); }
     }
 
-    // ─── Tab Setări — preferințe UI per user + default-uri pe companie ───
-    const US_TOGGLES = [
-      { k: 'overspeed_heatmap', label: 'Afișează depășiri viteză pe traseu (heatmap)', desc: 'Colorează traseul de istoric verde/portocaliu/roșu în funcție de viteză vs. limita vehiculului.' },
-      { k: 'replay_marker', label: 'Afișează marker mobil în replay', desc: 'Punctul verde animat pe traseu la redarea istoricului.' },
-      { k: 'geocoded_address', label: 'Afișează adresa (reverse-geocode)', desc: 'În panoul de detaliu, conversia coordonatelor în adresă (Nominatim).' },
-      { k: 'show_driver_names', label: 'Afișează numele șoferilor', desc: 'Numele șoferului în panoul de detaliu și listă.' },
-      { k: 'tab_camion', label: 'Fila „Config Camion" în fișa vehiculului', desc: 'Tara, masele maxime și sarcinile pe axe. Apare oricum DOAR la vehiculele de tip camion/autotractor/TIR/remorcă — aici o poți scoate de tot, pentru companiile fără camioane.' },
-      { k: 'tab_sonde', label: 'Filele pentru sonde de combustibil', desc: 'Calibrarea sondei și sondele avansate. Apar oricum DOAR la vehiculele care au sonde configurate — aici le poți scoate de tot. Super-adminul le vede mereu, ca să poată instala prima sondă.' }
-    ];
     function _usEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-    function _usRow(t, val, source) {
-      var srcLabel = source === 'user' ? '<span style="color:var(--accent);font-size:10px;">setat de tine</span>' : (source === 'company' ? '<span style="color:#f59e0b;font-size:10px;">default companie</span>' : '<span style="color:var(--text-muted);font-size:10px;">default aplicație</span>');
-      var resetBtn = source === 'user' ? ' <button class="btn-sm" style="font-size:10px;padding:2px 6px;" onclick="usResetPref(\'' + t.k + '\')" title="Resetează la default companie">↺</button>' : '';
-      return '<label class="admin-row" style="cursor:pointer;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + _usEsc(t.label) + ' ' + srcLabel + resetBtn + '</div><div class="meta">' + _usEsc(t.desc) + '</div></div><input type="checkbox" data-uk="' + t.k + '" ' + (val ? 'checked' : '') + ' onchange="usSetPref(\'' + t.k + '\', this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"></label>';
+
+    // ═══ Preferințe (Setări → Contul meu) ═══
+    // Erau șase bife scrise pentru programatori („heatmap", „reverse-geocode (Nominatim)"), din care
+    // două nici nu erau preferințe de om, ci „firma asta n-are camioane / n-are sonde". Iar lucrurile
+    // pe care omul chiar le schimbă — tema, harta, sunetul alertelor — stăteau doar în browser: le
+    // puneai pe laptop și pe telefon rămâneau cum erau. Acum stau pe CONT și te urmează.
+    // ── începe „Preferințele mele" (REPER pentru probe: verify_preferinte.js decupează exact bucata
+    // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+    var PREF_GRUPE = [
+      { g: 'aspect', et: 'Cum arată aplicația pentru mine', ic: 'fa-palette', nota: 'Alegerile de aici se țin minte pe contul tău, nu pe calculatorul ăsta: le pui o dată și le regăsești și pe telefon.' },
+      { g: 'alerte', et: 'Alerte', ic: 'fa-bell', nota: 'Cât deranj vrei pe ecran când apare o alertă.' },
+      { g: 'afisare', et: 'Ce se vede pe hartă și în fișe', ic: 'fa-eye', nota: 'Dacă nu atingi nimic, rămâne cum a hotărât firma.' }
+    ];
+    // Fiecare preferință: unde apare (grup), cum se schimbă (bifă sau alegere), ce scrie pe ecran.
+    // „unde" ține minte cine hotărăște: 'user' = doar omul, 'ambele' = omul, peste regula firmei,
+    // 'firma' = numai firma (nu e gust, e „folosim sau nu funcția asta").
+    const US_TOGGLES = [
+      { k: 'tema', g: 'aspect', tip: 'lista', unde: 'user', label: 'Tema aplicației',
+        desc: 'Se schimbă și din butonul cu lună/soare, sus în bară.',
+        valori: [['inchisa', 'Închisă'], ['deschisa', 'Deschisă'], ['sistem', 'Ca pe dispozitiv']] },
+      { k: 'harta', g: 'aspect', tip: 'lista', unde: 'user', label: 'Harta cu care pornești',
+        desc: '„Potrivit cu tema" înseamnă hartă deschisă pe temă deschisă și invers.',
+        valori: [['auto', 'Potrivit cu tema'], ['streets', 'Străzi'], ['light', 'Deschisă'], ['dark', 'Închisă'], ['sat', 'Satelit'], ['hybrid', 'Satelit cu denumiri'], ['terrain', 'Relief']] },
+      { k: 'masini_harta', g: 'aspect', tip: 'lista', unde: 'user', label: 'Cum arată mașinile pe hartă',
+        desc: 'Săgețile se citesc mai ușor când ai multe mașini în același loc: arată direcția de mers.',
+        valori: [['iconite', 'Iconițe'], ['sageti', 'Săgeți']] },
+      { k: 'uneste_masini', g: 'aspect', tip: 'bifa', unde: 'user', label: 'Unește mașinile apropiate',
+        desc: 'Când mai multe mașini stau una peste alta, se strâng într-un singur semn cu numărul lor. Le desfaci cu un clic.' },
+      { k: 'panou_lateral', g: 'aspect', tip: 'lista', unde: 'user', label: 'Lista de mașini din stânga',
+        desc: 'Strânsă, harta ocupă tot ecranul. O deschizi oricând din butonul ei.',
+        valori: [['deschis', 'Deschisă'], ['strans', 'Strânsă']] },
+      { k: 'ecran_pornire', g: 'aspect', tip: 'lista', unde: 'user', label: 'Ecranul cu care se deschide aplicația',
+        desc: 'Dacă rolul tău nu ajunge la ecranul ales, se deschide tot pe Localizare.',
+        valori: [['localizare', 'Localizare'], ['traseu', 'Traseu'], ['statistici', 'Statistici'], ['rapoarte', 'Rapoarte']] },
+
+      { k: 'sunet_alerte', g: 'alerte', tip: 'bifa', unde: 'user', label: 'Sunet când apare o alertă',
+        desc: 'Un sunet scurt, o dată per alertă. Notificările de pe telefon nu se opresc de aici.' },
+      { k: 'cat_sta_alerta', g: 'alerte', tip: 'lista', unde: 'user', label: 'Cât stă alerta pe ecran',
+        desc: 'Alerta rămâne oricum în clopoțel — asta e doar despre fereastra care apare în colț.',
+        valori: [['5', '5 secunde'], ['15', '15 secunde'], ['30', '30 de secunde'], ['manual', 'Până o închid eu']] },
+
+      { k: 'overspeed_heatmap', g: 'afisare', tip: 'bifa', unde: 'ambele', label: 'Colorează traseul după viteză',
+        desc: 'Pe istoricul unei curse, drumul se face verde, portocaliu sau roșu, după cât de repede s-a mers față de limita mașinii.' },
+      { k: 'replay_marker', g: 'afisare', tip: 'bifa', unde: 'ambele', label: 'Arată mașina care se plimbă pe traseu',
+        desc: 'Punctul care merge pe drum când redai istoricul, ca la un film.' },
+      { k: 'geocoded_address', g: 'afisare', tip: 'bifa', unde: 'ambele', label: 'Arată adresa, nu coordonatele',
+        desc: 'În panoul de detalii scrie strada și localitatea, în loc de cifre („45.75, 21.22").' },
+      { k: 'show_driver_names', g: 'afisare', tip: 'bifa', unde: 'ambele', label: 'Arată numele șoferilor',
+        desc: 'Numele omului de la volan, în listă și în panoul de detalii.' },
+
+      { k: 'tab_camion', g: 'afisare', tip: 'bifa', unde: 'firma', label: 'Fila „Camion" din fișa vehiculului',
+        desc: 'Tara, masele maxime și sarcinile pe axe. Apare oricum doar la camioane, autotractoare și remorci — de aici o scoți de tot, dacă firma nu are așa ceva.' },
+      { k: 'tab_sonde', g: 'afisare', tip: 'bifa', unde: 'firma', label: 'Filele pentru sondele de combustibil',
+        desc: 'Calibrarea sondei. Apar oricum doar la mașinile care au sondă montată — de aici le scoți de tot.' }
+    ];
+    var _prefDupaCheie = {}; US_TOGGLES.forEach(function (t) { _prefDupaCheie[t.k] = t; });
+    // Ce se poate schimba din contul omului și ce se hotărăște pe firmă. O singură regulă, două ecrane.
+    function prefPersonale() { return US_TOGGLES.filter(function (t) { return t.unde === 'user' || t.unde === 'ambele'; }); }
+    function prefAleFirmei() { return US_TOGGLES.filter(function (t) { return t.unde === 'firma' || t.unde === 'ambele'; }); }
+    // De unde vine valoarea, pe românește. „default aplicație" nu spune nimic nimănui.
+    function prefSursa(sursa) {
+      if (sursa === 'user') return ['setată de tine', 'var(--accent)'];
+      if (sursa === 'company') return ['hotărâtă de firmă', 'var(--orange)'];
+      return ['așa e din fabrică', 'var(--text-muted)'];
     }
-    function _usRowCompany(t, val) {
-      return '<label class="admin-row" style="cursor:pointer;"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + _usEsc(t.label) + '</div><div class="meta">' + _usEsc(t.desc) + '</div></div><input type="checkbox" data-cuk="' + t.k + '" ' + (val ? 'checked' : '') + ' onchange="usSetCompanyPref(\'' + t.k + '\', this.checked)" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"></label>';
+    function prefControl(t, val, fn) {
+      if (t.tip === 'bifa') {
+        return '<label class="pref-sw"><input type="checkbox" data-uk="' + t.k + '"' + (val ? ' checked' : '') +
+          ' onchange="' + fn + '(\'' + t.k + '\', this.checked)"><span></span></label>';
+      }
+      return '<div class="pref-seg" data-uk="' + t.k + '">' + t.valori.map(function (v) {
+        return '<button type="button" class="pref-sg' + (String(val) === v[0] ? ' on' : '') +
+          '" onclick="' + fn + '(\'' + t.k + '\', \'' + v[0] + '\')">' + _usEsc(v[1]) + '</button>';
+      }).join('') + '</div>';
+    }
+    // Rândurile cu multe variante nu încap pe un rând: acolo comanda coboară sub text, altfel
+    // explicația rămâne strivită într-o coloană de patru cuvinte.
+    function prefFel(t) { return t.tip !== 'lista' ? '' : (t.valori.length >= 4 ? ' pref-r-w' : ' pref-r-l'); }
+    function prefRand(t, val, sursa) {
+      var s = prefSursa(sursa);
+      var reset = sursa === 'user' && t.unde === 'ambele'
+        ? ' <button class="pref-reset" onclick="usResetPref(\'' + t.k + '\')" title="Înapoi la ce a hotărât firma">↺</button>' : '';
+      return '<div class="pref-r' + prefFel(t) + '">' +
+        '<div class="pref-txt"><div class="pref-t">' + _usEsc(t.label) +
+          '<span class="pref-src" style="color:' + s[1] + '">' + s[0] + '</span>' + reset + '</div>' +
+          '<div class="pref-d">' + _usEsc(t.desc) + '</div></div>' +
+        '<div class="pref-c">' + prefControl(t, val, 'usSetPref') + '</div></div>';
+    }
+    function prefRandFirma(t, val) {
+      return '<div class="pref-r' + prefFel(t) + '">' +
+        '<div class="pref-txt"><div class="pref-t">' + _usEsc(t.label) + '</div>' +
+        '<div class="pref-d">' + _usEsc(t.desc) + '</div></div>' +
+        '<div class="pref-c">' + prefControl(t, val, 'usSetCompanyPref') + '</div></div>';
+    }
+    // Ecranul întreg al preferințelor personale, pe grupe. Un grup fără nimic în el nu se desenează.
+    function prefEcranHtml(eff, sursa, ecraneOK) {
+      return PREF_GRUPE.map(function (gr) {
+        var randuri = prefPersonale().filter(function (t) {
+          return t.g === gr.g && (ecraneOK !== false || t.k !== 'ecran_pornire');
+        });
+        if (!randuri.length) return '';
+        return '<div class="pref-gr"><div class="set-sec-h"><i class="fas ' + gr.ic + '"></i> ' + _usEsc(gr.et) + '</div>' +
+          '<p class="set-note">' + _usEsc(gr.nota) + '</p>' +
+          randuri.map(function (t) { return prefRand(t, eff[t.k], (sursa || {})[t.k]); }).join('') + '</div>';
+      }).join('');
+    }
+    // „Contul meu": datele de contact + schimbarea parolei. Parola nu se putea schimba din aplicație
+    // deloc — un dispecer trebuia să-și roage patronul. Se cere parola de acum tocmai fiindcă o
+    // sesiune lăsată deschisă pe un calculator străin n-are voie să devină preluarea contului.
+    function prefContHtml(u) {
+      u = u || {};
+      var camp = function (id, et, val, tip, ph, extra) {
+        return '<div class="pref-f"><label for="' + id + '">' + _usEsc(et) + '</label>' +
+          '<input id="' + id + '" type="' + tip + '" value="' + _usEsc(val || '') + '" placeholder="' + _usEsc(ph || '') + '"' + (extra || '') + '></div>';
+      };
+      return '<div class="pref-form">' +
+          camp('pref-nume', 'Numele tău', u.full_name, 'text', 'Ion Popescu', ' maxlength="120"') +
+          camp('pref-tel', 'Telefon', u.phone, 'tel', '07xx xxx xxx', ' maxlength="30"') +
+          camp('pref-mail', 'Adresa de email (numele de utilizator)', u.username, 'text', '', ' disabled') +
+        '</div>' +
+        '<div class="pref-act"><button class="btn-sm btn-primary" onclick="prefSalvezContul(this)"><i class="fas fa-check"></i> Salvează</button>' +
+        '<span id="pref-cont-msg" class="pref-msg"></span></div>' +
+        '<div class="pref-parola">' +
+          '<div class="pref-t">Schimbă-ți parola</div>' +
+          '<div class="pref-form">' +
+            camp('pref-p0', 'Parola de acum', '', 'password', '', ' autocomplete="current-password"') +
+            camp('pref-p1', 'Parola nouă', '', 'password', 'minim 8 caractere', ' autocomplete="new-password"') +
+            camp('pref-p2', 'Încă o dată parola nouă', '', 'password', '', ' autocomplete="new-password"') +
+          '</div>' +
+          '<div class="pref-act"><button class="btn-sm btn-primary" onclick="prefSchimbParola(this)"><i class="fas fa-key"></i> Schimbă parola</button>' +
+          '<span id="pref-parola-msg" class="pref-msg"></span></div>' +
+        '</div>';
+    }
+    // ── sfârșit „Preferințele mele" ──
+
+    // Valoarea unei preferințe, aici și acum. `hpUiPrefs` e ce a venit de la server la intrarea în
+    // cont; până sosește (sau dacă cererea a picat), rămâne ce scrie în catalog.
+    function prefVal(k, dacaNu) {
+      if (hpUiPrefs && hpUiPrefs[k] !== undefined && hpUiPrefs[k] !== null) return hpUiPrefs[k];
+      return dacaNu;
+    }
+    // Preferința → efectul ei în aplicație. Aceeași funcție se folosește și la intrarea în cont
+    // (pentru toate), și când omul schimbă una din Setări — ca s-o vadă pe loc, fără reîncărcare.
+    // Browserul rămâne memorie de moment (ca să nu pâlpâie ecranul la următoarea deschidere), dar
+    // adevărul stă pe cont: de asta tema aleasă pe laptop se vede și pe telefon.
+    function prefAplicaUna(k, v) {
+      try {
+        if (k === 'tema') {
+          var t = v === 'deschisa' ? 'light'
+            : v === 'sistem' ? ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light')
+            : 'dark';
+          try { localStorage.setItem('gpsTheme', t); } catch (e) {}
+          applyTheme(t);
+        } else if (k === 'harta') {
+          try { localStorage.setItem('mapLayer', v); } catch (e) {}
+          mapLayerChoice = v;
+          if (typeof applyMapTheme === 'function') applyMapTheme();
+        } else if (k === 'masini_harta') {
+          var s = v === 'sageti' ? 'arrows' : 'icons';
+          try { localStorage.setItem('mapStyle', s); } catch (e) {}
+          if (mapMarkerStyle !== '3d' && mapMarkerStyle !== s) {   // 3D e mod de moment, nu preferință
+            mapMarkerStyle = s;
+            if (typeof updateViewControlUI === 'function') updateViewControlUI();
+            if (typeof rerenderAllMarkers === 'function') rerenderAllMarkers();
+          }
+        } else if (k === 'uneste_masini') {
+          try { localStorage.setItem('mapGroup', v ? '1' : '0'); } catch (e) {}
+          if (mapGroupOn !== !!v) {
+            mapGroupOn = !!v;
+            if (typeof updateViewControlUI === 'function') updateViewControlUI();
+            if (typeof recomputeGrouping === 'function') recomputeGrouping();
+          }
+        } else if (k === 'panou_lateral') {
+          var strans = v === 'strans';
+          try { localStorage.setItem('ra_sidebar_hidden', strans ? '1' : '0'); } catch (e) {}
+          if (window.matchMedia && window.matchMedia('(min-width: 769px)').matches) {
+            document.body.classList.toggle('sidebar-hidden', strans);
+            if (typeof map !== 'undefined' && map) setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 220);
+          }
+        }
+      } catch (e) {}
+    }
+    var PREF_LA_PORNIRE = ['tema', 'harta', 'masini_harta', 'uneste_masini', 'panou_lateral'];
+    function prefAplicaToate(eff) {
+      if (!eff) return;
+      PREF_LA_PORNIRE.forEach(function (k) { if (eff[k] !== undefined) prefAplicaUna(k, eff[k]); });
+    }
+    // Ecranul cu care se deschide aplicația. Dacă rolul omului nu ajunge acolo (butonul e ascuns),
+    // rămâne pe Localizare — o preferință nu poate deschide un ecran la care nu are voie.
+    function prefDeschideEcranul(k) {
+      if (!k || k === 'localizare') return;
+      var b = document.querySelector('#navrail [data-ecran="' + k + '"]');
+      if (!b) return;
+      try { if (window.getComputedStyle(b).display === 'none') return; } catch (e) { return; }
+      try { b.click(); } catch (e) {}
+    }
+    // Se cheamă o singură dată, la intrarea în aplicație.
+    async function prefIncarcaSiAplica() {
+      try {
+        var d = await fetch('/api/me/ui-prefs', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        hpUiPrefs = d.effective || {};
+        prefAplicaToate(hpUiPrefs);
+        prefDeschideEcranul(hpUiPrefs.ecran_pornire);
+      } catch (e) {}
+    }
+    // Când omul schimbă ceva din butoanele hărții sau din bara de sus, alegerea urcă și pe cont —
+    // altfel ar rămâne iar închisă în browserul ăla. Nu blocăm ecranul dacă serverul nu răspunde.
+    function prefUrca(k, v) {
+      if (hpUiPrefs) hpUiPrefs[k] = v;
+      var b = {}; b[k] = v;
+      try {
+        fetch('/api/me/ui-prefs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(b) }).catch(function () {});
+      } catch (e) {}
     }
     // ═══ Setări: capitolele din stânga ═══
     // SURSĂ UNICĂ pentru nume, iconiță și DREPTUL cerut. Dreptul e un cuvânt, nu o clasă CSS:
@@ -4751,7 +4956,8 @@ const pozitii = await r.json();</code></pre>
       company_settings: 'setările firmei', company_features: 'modulele firmei', company: 'compania',
       session: '', assistant: 'asistentul AI', agent: 'un agent AI', gdpr: 'date personale (GDPR)',
       push_token: 'notificările pe telefon', io_catalog: 'catalogul de coduri', tollro_grid: 'grila de tarife',
-      invoice: 'o factură', offer: 'o ofertă', support: 'un mesaj către suport', backup: 'o copie de siguranță'
+      invoice: 'o factură', offer: 'o ofertă', support: 'un mesaj către suport', backup: 'o copie de siguranță',
+      parola: 'parola', profil: 'datele lui de contact'
     };
     // Un rând de jurnal → o propoziție. Ținta se caută în ordinea în care e de folos omului:
     // numărul de înmatriculare, apoi numele din detalii, abia la urmă identificatorul brut.
@@ -5218,27 +5424,69 @@ const pozitii = await r.json();</code></pre>
       setRenderNav(perm);
       usTab(_setCap); // rămâne pe capitolul deschis (salvările reîncarcă ecranul)
 
-      var box = document.getElementById('us-list');
-      if (box) box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
+      var cont = document.getElementById('pref-cont');
+      if (cont) cont.innerHTML = prefContHtml(window.currentUser || {});
+
+      var box = document.getElementById('pref-restul');
+      if (box) box.innerHTML = '<div class="pref-load">Se încarcă…</div>';
       try {
         var pr = await fetch('/api/me/ui-prefs', { credentials: 'same-origin' }).then(r => r.json());
-        if (box) box.innerHTML = US_TOGGLES.map(t => _usRow(t, pr.effective[t.k], pr.source[t.k])).join('');
+        hpUiPrefs = pr.effective || {}; // aceeași sursă pentru tot ce citește preferințe în pagină
+        if (box) box.innerHTML = prefEcranHtml(pr.effective || {}, pr.source || {});
       } catch (e) {
-        if (box) box.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>';
+        if (box) box.innerHTML = '<div class="pref-load">Nu s-au putut citi preferințele.</div>';
       }
 
       // Regulile firmei (default-uri + program) — doar cine administrează utilizatori.
       if (!perm.manageUsers) return;
       var coBox = document.getElementById('us-company-list');
-      if (coBox) coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Se încarcă…</div>';
+      if (coBox) coBox.innerHTML = '<div class="pref-load">Se încarcă…</div>';
       try {
         var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
         var dft = cs.ui_defaults || {};
-        if (coBox) coBox.innerHTML = US_TOGGLES.map(t => _usRowCompany(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
+        if (coBox) coBox.innerHTML = prefAleFirmei().map(t => prefRandFirma(t, dft[t.k] !== undefined ? dft[t.k] : true)).join('');
         if (window.usRenderWorkSched) usRenderWorkSched(cs.work_schedule, 'us-worksched', 'company');
       } catch (e) {
         if (coBox) coBox.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Eroare la încărcare.</div>';
       }
+    }
+    // Datele mele de contact. Numele se schimbă și sus, în bară, pe loc — altfel omul salvează și
+    // crede că nu s-a întâmplat nimic.
+    async function prefSalvezContul(btn) {
+      var msg = document.getElementById('pref-cont-msg');
+      var nume = (document.getElementById('pref-nume') || {}).value || '';
+      var tel = (document.getElementById('pref-tel') || {}).value || '';
+      if (btn) btn.disabled = true;
+      if (msg) { msg.className = 'pref-msg'; msg.textContent = 'Se salvează…'; }
+      try {
+        var r = await fetch('/api/me/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ full_name: nume, phone: tel }) });
+        var d = await r.json();
+        if (!r.ok) { if (msg) { msg.className = 'pref-msg rau'; msg.textContent = d.error || 'Nu s-a putut salva.'; } }
+        else {
+          if (window.currentUser) { currentUser.full_name = d.full_name; currentUser.phone = d.phone; }
+          var tb = document.getElementById('topbar-username');
+          if (tb) tb.textContent = d.full_name || (window.currentUser && currentUser.username) || '';
+          if (msg) { msg.className = 'pref-msg bun'; msg.textContent = 'Salvat ✓'; }
+        }
+      } catch (e) { if (msg) { msg.className = 'pref-msg rau'; msg.textContent = 'Eroare: ' + ((e && e.message) || e); } }
+      if (btn) btn.disabled = false;
+    }
+    async function prefSchimbParola(btn) {
+      var msg = document.getElementById('pref-parola-msg');
+      var p0 = document.getElementById('pref-p0'), p1 = document.getElementById('pref-p1'), p2 = document.getElementById('pref-p2');
+      var zi = function (text, bun) { if (msg) { msg.className = 'pref-msg ' + (bun ? 'bun' : 'rau'); msg.textContent = text; } };
+      if (!p0 || !p1 || !p2) return;
+      if (!p0.value) return zi('Scrie mai întâi parola de acum.');
+      if (p1.value !== p2.value) return zi('Cele două parole noi nu sunt la fel.');
+      if (btn) btn.disabled = true;
+      if (msg) { msg.className = 'pref-msg'; msg.textContent = 'Se schimbă…'; }
+      try {
+        var r = await fetch('/api/me/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ veche: p0.value, noua: p1.value }) });
+        var d = await r.json();
+        if (!r.ok) zi(d.error || 'Nu s-a putut schimba parola.');
+        else { p0.value = p1.value = p2.value = ''; zi('Parola a fost schimbată ✓', true); }
+      } catch (e) { zi('Eroare: ' + ((e && e.message) || e)); }
+      if (btn) btn.disabled = false;
     }
     async function usTestPush(btn) {
       var res = document.getElementById('us-test-push-res');
@@ -5255,11 +5503,12 @@ const pozitii = await r.json();</code></pre>
       if (btn) btn.disabled = false;
     }
     async function usSetPref(key, val) {
-      var body = {}; body[key] = !!val;
+      var body = {}; body[key] = val;
       var r = await fetch('/api/me/ui-prefs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
       if (!r.ok) { alert('Eroare la salvare'); return; }
       invalidateUiPrefs(); // forțează rerender la următoarea încărcare istoric
-      loadSettingsTab(); // refresh ca să arate sursa nouă „setat de tine"
+      prefAplicaUna(key, val); // se vede pe loc: tema, harta, panoul — fără reîncărcarea paginii
+      loadSettingsTab(); // refresh ca să arate sursa nouă „setată de tine"
     }
     async function usResetPref(key) {
       var body = {}; body[key] = null;
@@ -5268,7 +5517,7 @@ const pozitii = await r.json();</code></pre>
       invalidateUiPrefs(); loadSettingsTab();
     }
     async function usSetCompanyPref(key, val) {
-      var body = { ui_defaults: {} }; body.ui_defaults[key] = !!val;
+      var body = { ui_defaults: {} }; body.ui_defaults[key] = val;
       var r = await fetch('/api/companies/me/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
       if (!r.ok) { alert('Eroare la salvare default companie'); return; }
       invalidateUiPrefs(); loadSettingsTab();
@@ -10327,6 +10576,7 @@ const pozitii = await r.json();</code></pre>
     function toggleTheme() {
       const dark = !document.body.classList.contains('dark');
       localStorage.setItem('gpsTheme', dark ? 'dark' : 'light');
+      prefUrca('tema', dark ? 'inchisa' : 'deschisa'); // ține minte pe cont, nu doar în browserul ăsta
       applyTheme(dark ? 'dark' : 'light');
       if (typeof map !== 'undefined' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
     }
@@ -10710,6 +10960,7 @@ const pozitii = await r.json();</code></pre>
     function setMapLayer(key) {
       mapLayerChoice = key;
       try { localStorage.setItem('mapLayer', key); } catch (e) {}
+      prefUrca('harta', key);
       if (key !== 'auto') satMode = false; // alegerea manuală anulează modul satelit de desenare
       applyMapTheme();
       _apply3dLayer(); // dacă harta 3D e activă, schimbă și baza ei (ex: Satelit)
@@ -11812,6 +12063,8 @@ const pozitii = await r.json();</code></pre>
       // Ciclu: pictograme → săgeți → 3D → pictograme
       mapMarkerStyle = (mapMarkerStyle === 'icons') ? 'arrows' : (mapMarkerStyle === 'arrows') ? '3d' : 'icons';
       localStorage.setItem('mapStyle', mapMarkerStyle);
+      // 3D nu e preferinta: e un mod de moment, care nici nu se restaureaza la pornire.
+      if (mapMarkerStyle !== '3d') prefUrca('masini_harta', mapMarkerStyle === 'arrows' ? 'sageti' : 'iconite');
       updateViewControlUI();                 // întâi UI-ul (sigur) — butonul reflectă mereu starea
       try { rerenderAllMarkers(); } catch (e) { if (window.console) console.warn('rerenderAllMarkers:', e); }
       try { if (mapMarkerStyle === '3d') { enter3dMode(); } else if (_ml3dMap) { leave3dMode(); } } catch (e) {}
@@ -11821,6 +12074,7 @@ const pozitii = await r.json();</code></pre>
       try { _unspiderfy(false); } catch (e) {}   // dacă un grup e desfăcut, strânge-l înainte de re-grupare
       mapGroupOn = !mapGroupOn;
       localStorage.setItem('mapGroup', mapGroupOn ? '1' : '0');
+      prefUrca('uneste_masini', mapGroupOn);
       updateViewControlUI();                 // întâi UI-ul: butonul se înverzește/revine chiar dacă gruparea dă eroare
       try { recomputeGrouping(); } catch (e) { if (window.console) console.warn('recomputeGrouping:', e); }
     }
@@ -14614,15 +14868,18 @@ const pozitii = await r.json();</code></pre>
 
       container.appendChild(notif);
 
-      // Play sound
-      try {
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1kbHN8g4OJi4yNjY2LiYaDfXdwa2VgXV1fY2lxeYGHjI+RkpKRj4yIg3x1bmhjX11dYGZtdX2EiY2QkpOTkZCMiIN9dnBqZGBdXV9ja3J6gYeMkJKUlJOSkI2Jg3x2cGplYV5eYGRrcnqBh4yQk5SUk5KQjYmEfnhybGZiX19hZWxze4KIjJCTlJSTkpCNiYR+eHJsZmJfX2Fla3N7goiMkJOUlJOSkI2JhH54cmxmYl9fYWVrc3uCiIyQk5SUk5KQjQ==');
-        audio.volume = 0.3;
-        audio.play().catch(() => {});
-      } catch (e) {}
+      // Sunetul și cât stă fereastra pe ecran sunt preferințe ale OMULUI (Setări → Preferințe).
+      // Înainte sunau mereu și dispăreau după 15 secunde, fără să se poată schimba de nicăieri.
+      if (prefVal('sunet_alerte', true)) {
+        try {
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1kbHN8g4OJi4yNjY2LiYaDfXdwa2VgXV1fY2lxeYGHjI+RkpKRj4yIg3x1bmhjX11dYGZtdX2EiY2QkpOTkZCMiIN9dnBqZGBdXV9ja3J6gYeMkJKUlJOSkI2Jg3x2cGplYV5eYGRrcnqBh4yQk5SUk5KQjYmEfnhybGZiX19hZWxze4KIjJCTlJSTkpCNiYR+eHJsZmJfX2Fla3N7goiMkJOUlJOSkI2JhH54cmxmYl9fYWVrc3uCiIyQk5SUk5KQjQ==');
+          audio.volume = 0.3;
+          audio.play().catch(() => {});
+        } catch (e) {}
+      }
 
-      // Auto-remove after 15 seconds
-      setTimeout(function() { if (notif.parentElement) notif.remove(); }, 15000);
+      var _cat = prefVal('cat_sta_alerta', '15');
+      if (_cat !== 'manual') setTimeout(function() { if (notif.parentElement) notif.remove(); }, (parseInt(_cat, 10) || 15) * 1000);
     }
 
     // ─── Reverse Geocoding ───
@@ -14743,6 +15000,7 @@ const pozitii = await r.json();</code></pre>
     function toggleSidebar() {
       var hidden = document.body.classList.toggle('sidebar-hidden');
       try { localStorage.setItem('ra_sidebar_hidden', hidden ? '1' : '0'); } catch (e) {}
+      prefUrca('panou_lateral', hidden ? 'strans' : 'deschis');
       if (typeof map !== 'undefined' && map) setTimeout(function () { try { map.invalidateSize(); } catch (e) {} }, 220);
     }
     (function () { try { if (localStorage.getItem('ra_sidebar_hidden') === '1' && window.matchMedia('(min-width: 769px)').matches) document.body.classList.add('sidebar-hidden'); } catch (e) {} })();
