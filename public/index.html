@@ -16893,8 +16893,8 @@ const pozitii = await r.json();</code></pre>
           <strong style="font-size:13px;">Companie nouă</strong>
           <input class="rax-field" id="rax-co-name" placeholder="Nume companie (ex. Transport Alfa SRL)">
           <div class="rax-row2">
-            <input class="rax-field" id="rax-co-admin-user" placeholder="Username admin">
-            <input class="rax-field" id="rax-co-admin-pass" placeholder="Parolă admin" type="text">
+            <input class="rax-field" id="rax-co-admin-user" placeholder="Email administrator (aici pleacă invitația)">
+            <input class="rax-field" id="rax-co-admin-pass" placeholder="Parolă (gol = primește invitație)" type="text">
           </div>
           <button class="rax-btn primary" style="margin-top:10px;" onclick="raxCreateCompany()"><i class="fas fa-plus"></i> Creează companie + admin</button>
           <div id="rax-co-msg" style="font-size:12px;margin-top:8px;"></div>
@@ -20801,12 +20801,19 @@ const pozitii = await r.json();</code></pre>
       try {
         var c = await fetch('/api/companies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ name: name }) }).then(function (r) { return r.json(); });
         if (!c.id) { msg.textContent = c.error || 'Eroare la creare.'; return; }
-        if (u && p) {
-          var a = await fetch('/api/companies/' + c.id + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ username: u, password: p }) }).then(function (r) { return r.json(); });
-          if (a.error) { msg.textContent = 'Companie creată, dar admin: ' + a.error; }
-          else if (a.warning) { msg.style.color = '#f59e0b'; msg.textContent = a.warning; return; } // invitația nu a plecat → contul e inaccesibil
+        // Adminul se creează cu SAU FĂRĂ parolă: fără ea pleacă invitația pe email și omul își pune
+        // singur parola. Înainte scria aici `u && p`, adică dacă scriai doar adresa, contul de admin
+        // NU se crea — compania rămânea fără administrator, în tăcere.
+        var invitat = false;
+        if (u) {
+          var trup = p ? { username: u, password: p } : { username: u };
+          var a = await fetch('/api/companies/' + c.id + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(trup) }).then(function (r) { return r.json(); });
+          if (a.error) { msg.textContent = 'Companie creată, dar admin: ' + a.error; return; }
+          if (a.warning) { msg.style.color = '#f59e0b'; msg.textContent = a.warning; return; } // invitația nu a plecat → contul e inaccesibil
+          invitat = !p;
         }
-        msg.style.color = 'var(--accent)'; msg.textContent = 'Companie creată ✓';
+        msg.style.color = 'var(--accent)';
+        msg.textContent = 'Companie creată ✓' + (u ? (invitat ? ' — invitația a plecat la ' + u : ' — admin creat cu parola scrisă de tine') : ' — fără administrator încă');
         $('rax-co-name').value = ''; $('rax-co-admin-user').value = ''; $('rax-co-admin-pass').value = '';
         raxLoadCompanies();
       } catch (e) { msg.textContent = 'Eroare: ' + e.message; }

@@ -150,6 +150,33 @@ furt adevărat → exact o notificare, cu „de la … la …"; două feluri de 
 citire 0 → tăcere. 10 din 10.
 
 ---
+### FONDATOR · La crearea unei companii, adminul nu se făcea dacă nu-i scriai și parola
+
+Alin a întrebat, ca să fie sigur: *„noi, când încheiem un contract, îi atribuim firmei un cont de
+admin, iar de acolo el își gestionează singur conturile și rolurile — da?"*. Da, exact așa e gândit.
+Verificând drumul de la cap la coadă, a ieșit însă o capcană în ecranul NOSTRU.
+
+**Ce se întâmpla.** În Administrare → Companii, formularul de companie nouă are trei câmpuri: numele
+firmei, adresa administratorului și o parolă. Codul crea administratorul **doar dacă erau completate
+amândouă** — adresa ȘI parola. Dacă scriai doar adresa (adică voiai să-i trimiți invitația), compania
+se crea, mesajul zicea „Companie creată ✓", iar **contul de administrator nu se făcea deloc**. În
+tăcere. Aflai peste două zile, când te suna omul că nu poate intra.
+
+**Ce e acum.** Adresa e de ajuns: fără parolă pleacă **invitația**, iar omul își pune singur parola.
+Cu parolă scrisă de tine, merge ca înainte. Mesajul de la final spune exact ce s-a întâmplat:
+*„Companie creată ✓ — invitația a plecat la patron@transport.ro"*, sau *„— admin creat cu parola
+scrisă de tine"*, sau *„— fără administrator încă"*, dacă n-ai completat adresa.
+
+**Lanțul întreg e acum verificat automat**, ca să nu se rupă pe viitor: noi creăm compania → dăm
+contul de administrator → el intră → își adaugă singur dispecerul → **nu** poate face alt admin peste
+el și cu atât mai puțin un cont de platformă (rolul cerut cade pe cel mai mic, nu pe cel cerut) → își
+face rolurile lui.
+
+- **Ce am schimbat:** contul de administrator se creează și doar cu adresa de email, prin invitație.
+- **Ce vede fondatorul:** un formular care nu mai tace când nu face ce credeai; mesaj clar la final.
+- **Ce vede clientul:** primește invitația și intră singur, fără să-i dictăm o parolă la telefon.
+
+
 ### AMÂNDOI · Oamenii se adaugă prin adresa de email, cu invitație — nu cu parolă spusă la telefon
 
 Alin a descris exact fluxul pe care îl vrea: *„eu, adminul firmei, vreau să introduc mai mulți oameni

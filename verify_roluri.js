@@ -288,6 +288,40 @@ const login = async (u, p) => {
   T('și primește rolul ales din prima', sorin && sorin.role === 'manager', sorin && sorin.role);
   T('în firma adminului care l-a adăugat', sorin && sorin.company_id === co.id, sorin && sorin.company_id);
 
+  sect('12c. Lanțul complet: noi dăm contul de admin, el își face echipa');
+  // Așa arată realitatea la semnarea unui contract. Verificăm capătul care contează: adminul primit
+  // de la noi POATE să-și facă oameni și roluri, dar NU poate face alți administratori.
+  const coNou = await (await POST('/api/companies', { name: 'Transport SRL' })).json();
+  T('noi creăm compania', !!coNou.id, JSON.stringify(coNou).slice(0, 80));
+  const adminFirma = await POST('/api/companies/' + coNou.id + '/admin',
+    { username: 'patron@transport-srl.ro', password: 'Str4da-Verde-2026' });
+  T('și îi dăm un cont de administrator', adminFirma.status === 200, adminFirma.status);
+  const ckP = await login('patron@transport-srl.ro', 'Str4da-Verde-2026');
+  T('adminul firmei intră în contul lui', !!ckP);
+  if (ckP) {
+    const meP = await (await GET('/api/me', ckP)).json();
+    T('are drepturi depline în firma lui', meP.permissions && meP.permissions.manageUsers && meP.permissions.manageFleet,
+      JSON.stringify(meP.permissions));
+    T('dar NU e cont de platformă', meP.isSuper === false, meP.isSuper);
+    // Își face echipa singur.
+    const disp = await POST('/api/users', { username: 'razvan.popescu@transport-srl.ro', password: 'Str4da-Verde-2026',
+      full_name: 'Razvan Popescu', role: 'dispatcher' }, ckP);
+    T('își adaugă singur un dispecer', disp.status === 200, disp.status + ' ' + (await disp.clone().text()).slice(0, 70));
+    // …dar nu poate crea alți administratori. Asta rămâne la noi, la semnarea contractului.
+    const altAdmin = await POST('/api/users', { username: 'sef2@transport-srl.ro', password: 'Str4da-Verde-2026',
+      full_name: 'Sef Doi', role: 'admin' }, ckP);
+    const aj = await altAdmin.json();
+    T('nu poate face alt ADMIN peste el', altAdmin.status !== 200 || aj.role !== 'admin', altAdmin.status + ' ' + aj.role);
+    const superNou = await POST('/api/users', { username: 'hacker@transport-srl.ro', password: 'Str4da-Verde-2026',
+      full_name: 'Nimeni', role: 'superadmin' }, ckP);
+    const sj = await superNou.json();
+    T('și cu atât mai puțin un cont de platformă', superNou.status !== 200 || sj.role !== 'superadmin', superNou.status + ' ' + sj.role);
+    T('rolul cerut cade pe cel mai mic, nu pe cel cerut', !sj.role || sj.role === 'viewer', sj.role);
+    // Și își face rolurile lui, fără să ne întrebe.
+    const rolPropriu = await POST('/api/company-roles', { nume: 'Operator depou', baza: 'dispatcher' }, ckP);
+    T('își face singur roluri proprii', rolPropriu.status === 200, rolPropriu.status);
+  }
+
   sect('13. Un rol propriu nu se șterge de sub picioarele oamenilor');
   const stergeFolosit = await DEL('/api/company-roles/' + nj.rol, ckA);
   T('ștergerea e oprită cât timp e folosit', stergeFolosit.status === 400, stergeFolosit.status);
