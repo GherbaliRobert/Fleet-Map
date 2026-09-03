@@ -369,6 +369,9 @@ const login = async (u, p) => {
     T('spune că rolurile sunt ale unei firme', /Rolurile sunt ale unei firme/.test(G));
     T('și de ce nu se poate aici', /nu ține de o firmă anume/.test(G), G.slice(0, 200));
     T('nu lasă niciun buton pe care serverul l-ar refuza', !/<button/.test(G), G);
+    // Alin a pus comutatorul pe „Admin de firmă" și a primit același refuz. Explicația trebuie să
+    // spună și asta, altfel ecranul îl trimite a doua oară în același zid.
+    T('spune limpede că nici comutatorul nu ajută', /comutatorul de sus nu schimbă asta/i.test(G), G);
   }
   T('ecranul chiar iese devreme pentru contul de platformă',
     /currentUser\.isSuper && !currentUser\.companyId[\s\S]{0,80}rolFaraFirmaHtml\(\)/.test(html));

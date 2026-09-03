@@ -37,11 +37,17 @@ Ecranul te lăsa să crezi că merge, și îți spunea „nu" la ultimul clic.
 o explicație: rolurile sunt ale unei firme, contul tău e de platformă, iar ecranul ăsta e al
 administratorului firmei — acolo își botează rolurile și taie din ele. Fără buton de apăsat degeaba.
 
-**Rămâne de hotărât** (nu am făcut nimic în direcția asta): dacă vrem ca **noi** să putem pregăti
-rolurile unui client — de pildă la semnarea contractului, ca omul să găsească totul gata — atunci
-ecranul are nevoie de un selector de firmă, iar rutele de roluri trebuie să accepte firma aleasă,
-exact cum face deja lista de utilizatori. E o schimbare de produs, nu de aspect: înseamnă că un
-cont de-al nostru poate scrie în rolurile unei firme. Merită, dar se decide, nu se strecoară.
+**Alin a încercat și cu comutatorul pe „Admin de firmă"** — și a primit același refuz. Normal: acela
+schimbă ce se AFIȘEAZĂ, nu cine ești pentru server. Rolurile se scriu într-o firmă adevărată, nu
+într-una „jucată". Explicația de pe ecran spune acum și asta, ca să nu te trimită a doua oară în
+același zid.
+
+**Decis de Alin, 03.09: rămâne așa.** I-am pus pe masă trei variante — (1) să putem lucra pe rolurile
+unei firme din contul nostru, cu selector de firmă, ca să i le pregătim la semnarea contractului;
+(2) doar să le vedem, fără să le putem schimba; (3) să lăsăm cum e. A ales **(3)**: rolurile se fac
+numai din contul firmei, iar la noi rămâne explicația. Motivul e sănătos — dacă noi putem scrie în
+rolurile unui client, o greșeală de-a noastră taie drepturi oamenilor lui, într-un ecran pe care el
+nici nu se uită în ziua aia.
 
 - **Ce am schimbat:** în conturile de platformă, Roluri arată o explicație în loc de un formular care
   nu poate reuși.

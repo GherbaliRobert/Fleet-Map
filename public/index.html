@@ -5350,7 +5350,10 @@ const pozitii = await r.json();</code></pre>
         'De aceea aici n-ai ce rol să faci sau să schimbi — n-ar avea la ce firmă să se lipească.' +
         '<br><br>Ecranul ăsta e al administratorului unei firme: acolo își botează rolurile ' +
         '(„Dispecer" → „Operator depou") și taie din ce are voie fiecare, iar ce taie el se aplică ' +
-        '<b>numai la firma lui</b>.</div></div>';
+        '<b>numai la firma lui</b>.' +
+        '<br><br><b>Nici comutatorul de sus nu schimbă asta.</b> El schimbă doar ce ți se arată pe ' +
+        'ecran, nu și cine ești pentru server — iar rolurile se scriu în firmă, deci serverul are ' +
+        'nevoie de o firmă adevărată, nu de una „jucată".</div></div>';
     }
     function rolRender() {
       var host = document.getElementById('rol-host'); if (!host) return;
