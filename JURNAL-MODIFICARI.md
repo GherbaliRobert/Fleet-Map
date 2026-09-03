@@ -20,6 +20,37 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · „Rol nou" nu mai deschide ferestrele gri ale browserului
+
+Alin a apăsat „Rol nou" și i-a sărit în față o fereastră cu scris mic, cu „ratrack.ro says"
+deasupra: *„nu e OK, trebuie să am ceva specific cu ce este în Roluri"*. Avea dreptate, și era
+mai rău decât se vede în poză: erau **două** astfel de ferestre, una după alta. În a doua, aplicația
+îi cerea omului să **scrie de mână** cuvântul „manager", „dispatcher" sau „viewer" — trei cuvinte
+englezești pe care nu le văzuse nicăieri pe ecran. Dacă scria greșit, rolul nu se făcea.
+
+**Ce e acum.** O fereastră a aplicației, cu aceleași forme și culori ca restul secțiunii Roluri:
+
+- un câmp pentru nume, cu exemplu în el („ex. Operator depou");
+- **cele trei șabloane, ca butoane**, fiecare cu o linie care spune ce poate: *Manager — vede toată
+  flota și o modifică; Dispecer — vede mașinile care i se dau, confirmă alerte, scoate rapoarte;
+  Viewer — doar se uită.* Nu mai are nimic de ghicit și nimic de scris;
+- dedesubt, regula, scrisă acolo unde contează: rolul nou pornește cu drepturile șablonului și
+  **poți doar să tai** din ele — n-are cum să ajungă mai puternic decât el;
+- dacă serverul refuză (nume care există deja, de pildă), motivul apare **în fereastră**, nu într-o
+  altă casetă gri; iar cât se creează rolul, butonul nu se mai poate apăsa a doua oară.
+
+Se închide cu Escape sau cu un clic în afară, se trimite cu Enter.
+
+**Încă una, din aceeași familie.** La resetarea parolei unui om, fereastra browserului scria „min 4
+caractere" — o **minciună**: serverul cere de mult 8 și încă niște reguli. Adică omul scria o parolă
+scurtă și primea un refuz pe care nu-l înțelegea. Acum e tot fereastra aplicației, scrie cerința
+corectă, iar dacă serverul are ceva de obiectat, arată exact ce.
+
+- **Ce am schimbat:** „Rol nou" și resetarea parolei nu mai folosesc ferestrele browserului.
+- **Ce vede fondatorul:** o fereastră în stilul aplicației, în care alege dintr-o listă.
+- **Ce vede clientul:** același lucru — plus că nu i se mai cere să scrie cuvinte pe care nu le știe.
+
+
 ### AMÂNDOI · Utilizatori și Roluri: aceleași câmpuri și aceleași comutatoare ca la Preferințe
 
 Alin, după ce a văzut Preferințele: *„modernizează și aici inputurile, în Utilizatori"*, apoi

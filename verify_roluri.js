@@ -329,6 +329,42 @@ const login = async (u, p) => {
   const stergeLiber = await DEL('/api/company-roles/' + nj.rol, ckA);
   T('după ce nu-l mai are nimeni, se șterge', stergeLiber.status === 200, stergeLiber.status);
 
+  sect('14. „Rol nou": fereastra aplicației, nu a browserului');
+  // Erau două `prompt()`-uri de browser, iar în al doilea omul trebuia să SCRIE „manager",
+  // „dispatcher" sau „viewer". Adică trebuia să ghicească niște cuvinte englezești pe care nu le
+  // văzuse nicăieri. Acum alege dintr-o listă în care scrie ce poate fiecare.
+  const html = htmlMeniu;
+  const q1 = html.indexOf('    // ── Rol nou: fereastra aplicației');
+  const q2 = html.indexOf('    window.rolNou = function () {', q1);
+  T('găsesc fereastra în cod', q1 > 0 && q2 > q1, 'q1=' + q1 + ' q2=' + q2);
+  if (q1 > 0 && q2 > q1) {
+    const N = new Function('esc', html.slice(q1, q2) + '\n; return { BAZE: ROL_BAZE, html: rolNouHtml };')(
+      (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])));
+
+    T('nu se mai deschide nicio fereastră de browser pentru rol nou',
+      !/window\.rolNou = async function \(\) \{\s*\n\s*var nume = prompt/.test(html));
+    T('cele trei șabloane sunt exact rolurile pe care firma le poate da',
+      N.BAZE.map(b => b[0]).join(',') === 'manager,dispatcher,viewer', N.BAZE.map(b => b[0]).join(','));
+    N.BAZE.forEach(b => T('„' + b[1] + '" spune pe ecran ce poate face', b[2].length > 30, b[2]));
+
+    const h = N.html({ nume: '', baza: 'dispatcher' });
+    T('are câmp pentru nume', /id="rol-nm-nume"/.test(h));
+    T('are cele trei șabloane ca butoane', (h.match(/rol-nm-b[ "]/g) || []).length >= 3, h.slice(0, 200));
+    T('cel ales e aprins, și numai el', (h.match(/rol-nm-b on/g) || []).length === 1);
+    T('scrie negru pe alb că poți doar să tai', /poți doar să tai/.test(h));
+    T('nu cere nimănui să scrie „dispatcher"', !/Scrie: manager/.test(h) && !/scrie.{0,12}dispatcher/i.test(h), h);
+    T('numele scris de om nu sparge fereastra',
+      N.html({ nume: '"><img src=x onerror=alert(1)>', baza: 'manager' }).indexOf('<img src=x') < 0);
+    T('cât se creează, butonul nu se poate apăsa de două ori', /disabled/.test(N.html({ nume: 'X', baza: 'viewer', lucrez: true })));
+    T('eroarea de la server se vede în fereastră, nu într-un alert',
+      N.html({ nume: 'X', baza: 'viewer', eroare: 'Există deja un rol cu numele ăsta.' }).indexOf('Există deja') > 0);
+  }
+  // Parola pusă de administrator: tot fereastra aplicației, și fără regula falsă de dinainte.
+  T('resetarea parolei nu mai trece prin prompt-ul browserului',
+    !/var np = prompt\('Parolă nouă pentru/.test(html));
+  T('și nu mai promite „minim 4 caractere", când serverul cere 8',
+    !/min 4 caractere/.test(html) && /minim 8 caractere/.test(html));
+
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');
   gata(rele ? 1 : 0);

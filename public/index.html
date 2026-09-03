@@ -5422,20 +5422,80 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { _rol.mesaj = { t: 'Nu s-a putut.', rau: true }; }
       await rolLoad();
     };
-    window.rolNou = async function () {
-      var nume = prompt('Cum se numește rolul nou? (ex. „Operator depou")');
-      if (!nume) return;
-      var baza = prompt('De la ce rol pornește? Scrie: manager, dispatcher sau viewer.\n\n' +
-        'Manager = vede tot și modifică flota. Dispecer = vede mașinile atribuite și rapoartele. Viewer = doar se uită.', 'dispatcher');
-      if (!baza) return;
+    // ── Rol nou: fereastra aplicației, nu a browserului ──
+    // Erau două `prompt()`-uri legate: unul pentru nume, altul în care trebuia să SCRII „manager",
+    // „dispatcher" sau „viewer". Adică o fereastră gri de browser, cu numele site-ului deasupra, în
+    // care omul trebuia să ghicească niște cuvinte englezești. Aici alege dintr-o listă în care scrie
+    // ce poate fiecare, iar regula „poți doar să tai" e spusă pe loc.
+    var ROL_BAZE = [
+      ['manager', 'Manager', 'Vede toată flota și o modifică: mașini, șoferi, alerte, documente.'],
+      ['dispatcher', 'Dispecer', 'Vede mașinile care i se dau, confirmă alerte și scoate rapoarte.'],
+      ['viewer', 'Viewer', 'Doar se uită la mașinile care i se dau. Nu modifică nimic.']
+    ];
+    var _rolNou = { nume: '', baza: 'dispatcher', eroare: null, lucrez: false };
+    function rolNouHtml(st) {
+      st = st || {};
+      return '<div class="rol-nm-card">' +
+        '<div class="rol-nm-h"><i class="fas fa-user-shield"></i> Rol nou</div>' +
+        '<label class="rol-lbl" for="rol-nm-nume">Cum îl numiți la voi în firmă</label>' +
+        '<input type="text" class="rol-nume" id="rol-nm-nume" maxlength="40" placeholder="ex. Operator depou" value="' + esc(st.nume || '') + '" oninput="rolNouNume(this.value)">' +
+        '<div class="rol-lbl" style="margin-top:12px;">Pornește de la</div>' +
+        '<div class="rol-nm-baze">' + ROL_BAZE.map(function (b) {
+          return '<button type="button" class="rol-nm-b' + (st.baza === b[0] ? ' on' : '') + '" onclick="rolNouBaza(\'' + b[0] + '\')">' +
+            '<span class="rol-nm-bn">' + esc(b[1]) + '</span><span class="rol-nm-bd">' + esc(b[2]) + '</span></button>';
+        }).join('') + '</div>' +
+        '<div class="rol-baza">Rolul nou pornește cu drepturile acestuia, iar apoi <b>poți doar să tai</b> din ele. ' +
+          'Nu are cum să ajungă mai puternic decât rolul de la care a pornit.</div>' +
+        (st.eroare ? '<div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc(st.eroare) + '</div>' : '') +
+        '<div class="rol-act">' +
+          '<button class="btn-sm btn-primary" onclick="rolNouCreeaza()"' + (st.lucrez ? ' disabled' : '') + '><i class="fas fa-plus"></i> ' + (st.lucrez ? 'Se creează…' : 'Creează rolul') + '</button>' +
+          '<button class="btn-sm" onclick="rolNouInchide()">Renunță</button>' +
+        '</div></div>';
+    }
+    window.rolNou = function () {
+      _rolNou = { nume: '', baza: 'dispatcher', eroare: null, lucrez: false };
+      rolNouDeseneaza();
+      var c = document.getElementById('rol-nm-nume'); if (c) c.focus();
+    };
+    function rolNouDeseneaza() {
+      var ov = document.getElementById('rol-nm');
+      if (!ov) {
+        ov = document.createElement('div'); ov.id = 'rol-nm'; ov.className = 'rol-nm';
+        ov.onclick = function (e) { if (e.target === ov) rolNouInchide(); };
+        document.body.appendChild(ov);
+        document.addEventListener('keydown', _rolNouTasta);
+      }
+      ov.innerHTML = rolNouHtml(_rolNou);
+    }
+    function _rolNouTasta(e) {
+      if (!document.getElementById('rol-nm')) return;
+      if (e.key === 'Escape') rolNouInchide();
+      else if (e.key === 'Enter' && !_rolNou.lucrez) rolNouCreeaza();
+    }
+    window.rolNouInchide = function () {
+      var ov = document.getElementById('rol-nm'); if (ov) ov.remove();
+      document.removeEventListener('keydown', _rolNouTasta);
+    };
+    // Numele se ține în stare, dar NU redesenăm la fiecare literă — altfel cursorul ar sări.
+    window.rolNouNume = function (v) { _rolNou.nume = v; };
+    window.rolNouBaza = function (b) { _rolNou.baza = b; rolNouDeseneaza(); };
+    window.rolNouCreeaza = async function () {
+      var camp = document.getElementById('rol-nm-nume');
+      _rolNou.nume = camp ? camp.value : _rolNou.nume;
+      if (!String(_rolNou.nume || '').trim()) { _rolNou.eroare = 'Scrie un nume pentru rol.'; rolNouDeseneaza(); return; }
+      _rolNou.eroare = null; _rolNou.lucrez = true; rolNouDeseneaza();
       try {
         var x = await fetch('/api/company-roles', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-          body: JSON.stringify({ nume: nume, baza: String(baza).trim().toLowerCase() })
+          body: JSON.stringify({ nume: String(_rolNou.nume).trim(), baza: _rolNou.baza })
         }).then(function (y) { return y.json(); });
-        if (x && x.error) _rol.mesaj = { t: x.error, rau: true };
-        else { _rol.mesaj = { t: 'Rol creat. Acum taie din el ce nu-i trebuie.', rau: false }; _rol.ales = x.rol; }
-      } catch (e) { _rol.mesaj = { t: 'Nu s-a putut crea rolul.', rau: true }; }
+        if (x && x.error) { _rolNou.eroare = x.error; _rolNou.lucrez = false; rolNouDeseneaza(); return; }
+        rolNouInchide();
+        _rol.mesaj = { t: 'Rol creat. Acum taie din el ce nu-i trebuie.', rau: false };
+        _rol.ales = x.rol;
+      } catch (e) {
+        _rolNou.eroare = 'Nu s-a putut crea rolul.'; _rolNou.lucrez = false; rolNouDeseneaza(); return;
+      }
       await rolLoad();
     };
     function rolAplicaNume() {
@@ -18498,13 +18558,19 @@ const pozitii = await r.json();</code></pre>
     function _raxFindUser(id) { for (var i = 0; i < _raxAccounts.length; i++) if (_raxAccounts[i].id === id) return _raxAccounts[i]; return null; }
     window.raxResetPassword = async function (id) {
       var u = _raxFindUser(id); var name = u ? u.username : ('#' + id);
-      var np = prompt('Parolă nouă pentru „' + name + '" (min 4 caractere):');
-      if (np == null) return;
-      np = String(np).trim();
-      if (np.length < 4) { alert('Parola e prea scurtă (minim 4 caractere).'); return; }
+      // Fereastra aplicației, nu prompt-ul browserului — și fără minciuna de dinainte („min 4
+      // caractere"): serverul cere de mult 8 și încă niște reguli, deci omul scria o parolă scurtă
+      // și primea un refuz pe care nu-l înțelegea.
+      var np = await raConfirm('Omul va intra cu parola asta până și-o schimbă singur din Preferințe.', {
+        title: 'Parolă nouă pentru „' + name + '"', danger: false, icon: 'fa-key', okLabel: 'Schimbă parola',
+        field: { label: 'Parola nouă (minim 8 caractere)', type: 'password', placeholder: 'ex. Curte-Verde-2026' }
+      });
+      if (np === false) return;
+      np = String(np || '').trim();
+      if (!np) return;
       var r = await fetch('/api/users/' + id + '/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ password: np }) });
-      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert('Eroare: ' + (e.error || r.status)); return; }
-      alert('Parola pentru „' + name + '" a fost resetată.');
+      if (!r.ok) { var e = await r.json().catch(function () { return {}; }); alert(e.error || ('Eroare ' + r.status)); return; }
+      alert('Parola pentru „' + name + '" a fost schimbată.');
     };
     window.raxToggleUserActive = async function (id, makeActive) {
       var u = _raxFindUser(id); if (!u) return;
