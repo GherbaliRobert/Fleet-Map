@@ -70,8 +70,17 @@ numele de utilizator — aia rămâne la administratorul firmei.
 omului ajungea pe ecran neprotejat: un nume cu ghilimele scris de un administrator ar fi putut rupe
 pagina altcuiva.
 
-- **Ce am schimbat:** Preferințele au acum trei capitole — Contul meu, Cum arată aplicația pentru
-  mine, Alerte — plus schimbarea parolei; alegerile se țin minte pe cont, nu pe calculator.
+**Retușurile cerute de Alin după ce a văzut ecranul.** Numele capitolelor erau propoziții, nu
+titluri: „Cum arată aplicația pentru mine" a devenit **Afișaj**, iar „Ce se vede pe hartă și în
+fișe" → **Vizualizare**. Butonul **„Trimite o notificare de probă" a fost scos** din ecranul
+clientului: era o unealtă de verificare, nu o preferință, și n-avea ce căuta acolo. *(Dacă avem
+vreodată nevoie să probăm notificările pe telefon, îi facem loc în panoul nostru — ruta de pe
+server a rămas.)* Iar câmpurile de scris din Preferințe — nume, telefon, email, cele trei de
+parolă — au primit un aspect nou: colț rotunjit, chenar mai apăsat și un **inel verde la câmpul în
+care scrii**, ca să se vadă din colțul ochiului unde ești. Restul aplicației nu s-a atins.
+
+- **Ce am schimbat:** Preferințele au acum trei capitole — Contul meu, Afișaj, Alerte — plus
+  schimbarea parolei; alegerile se țin minte pe cont, nu pe calculator.
 - **Ce vede fondatorul:** exact același ecran ca și clientul. Aici nu e nimic „doar al nostru", deci
   comutatorul de privire nu schimbă nimic. În plus, la **Ce văd toți** au apărut cele două file
   mutate de la om la firmă.

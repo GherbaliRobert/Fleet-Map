@@ -2491,12 +2491,6 @@ const pozitii = await r.json();</code></pre>
                   <div id="pref-cont"></div>
                 </div>
                 <div id="pref-restul"><div class="pref-load">Se încarcă…</div></div>
-                <div class="pref-gr">
-                  <div class="set-sec-h"><i class="fas fa-mobile-screen"></i> Notificări pe telefon</div>
-                  <p class="set-note">Trimite un mesaj de probă pe telefoanele pe care ești conectat, ca să vezi dacă ajung.</p>
-                  <button class="btn-sm btn-primary" onclick="usTestPush(this)" style="margin-top:2px;"><i class="fas fa-bell"></i> Trimite o notificare de probă</button>
-                  <div id="us-test-push-res" style="font-size:11.5px;color:var(--text-muted);margin-top:7px;line-height:1.5;"></div>
-                </div>
               </div>
 
               <!-- Oameni și drepturi → Utilizatori (nod împrumutat) -->
@@ -4408,9 +4402,9 @@ const pozitii = await r.json();</code></pre>
     // ── începe „Preferințele mele" (REPER pentru probe: verify_preferinte.js decupează exact bucata
     // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
     var PREF_GRUPE = [
-      { g: 'aspect', et: 'Cum arată aplicația pentru mine', ic: 'fa-palette', nota: 'Alegerile de aici se țin minte pe contul tău, nu pe calculatorul ăsta: le pui o dată și le regăsești și pe telefon.' },
+      { g: 'aspect', et: 'Afișaj', ic: 'fa-palette', nota: 'Alegerile de aici se țin minte pe contul tău, nu pe calculatorul ăsta: le pui o dată și le regăsești și pe telefon.' },
       { g: 'alerte', et: 'Alerte', ic: 'fa-bell', nota: 'Cât deranj vrei pe ecran când apare o alertă.' },
-      { g: 'afisare', et: 'Ce se vede pe hartă și în fișe', ic: 'fa-eye', nota: 'Dacă nu atingi nimic, rămâne cum a hotărât firma.' }
+      { g: 'afisare', et: 'Vizualizare', ic: 'fa-eye', nota: 'Dacă nu atingi nimic, rămâne cum a hotărât firma.' }
     ];
     // Fiecare preferință: unde apare (grup), cum se schimbă (bifă sau alegere), ce scrie pe ecran.
     // „unde" ține minte cine hotărăște: 'user' = doar omul, 'ambele' = omul, peste regula firmei,
@@ -5486,20 +5480,6 @@ const pozitii = await r.json();</code></pre>
         if (!r.ok) zi(d.error || 'Nu s-a putut schimba parola.');
         else { p0.value = p1.value = p2.value = ''; zi('Parola a fost schimbată ✓', true); }
       } catch (e) { zi('Eroare: ' + ((e && e.message) || e)); }
-      if (btn) btn.disabled = false;
-    }
-    async function usTestPush(btn) {
-      var res = document.getElementById('us-test-push-res');
-      if (btn) btn.disabled = true;
-      if (res) res.textContent = 'Se trimite…';
-      try {
-        var r = await fetch('/api/push/test', { method: 'POST', credentials: 'same-origin' }).then(function (x) { return x.json(); });
-        if (res) {
-          if (!r.fcm) res.innerHTML = '<span style="color:var(--red)">⚠ Serverul nu are FCM activ (FIREBASE_SA_JSON).</span>';
-          else if (!r.deviceTokens) res.innerHTML = '<span style="color:var(--orange)">Trimis, dar <b>0 telefoane înregistrate</b> pe contul tău. Deschide APK-ul, loghează-te și acceptă notificările — apoi reîncearcă.</span>' + (r.webSubs ? ' <span style="color:var(--text-muted)">(' + r.webSubs + ' abonare web push)</span>' : '');
-          else res.innerHTML = '<span style="color:var(--accent)">✓ Trimis către <b>' + r.deviceTokens + '</b> telefon(e). Verifică notificările pe telefon.</span>';
-        }
-      } catch (e) { if (res) res.innerHTML = '<span style="color:var(--red)">Eroare: ' + ((e && e.message) || e) + '</span>'; }
       if (btn) btn.disabled = false;
     }
     async function usSetPref(key, val) {

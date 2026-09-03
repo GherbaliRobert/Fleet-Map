@@ -2636,8 +2636,27 @@
     /* Contul meu: câmpuri + butoane */
     .pref-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; margin-bottom: 10px; }
     .pref-f label { display: block; font-size: 10.5px; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; }
-    .pref-f input { width: 100%; }
-    .pref-f input:disabled { opacity: .6; cursor: not-allowed; }
+    /* Câmpurile din Preferințe (nume, telefon, email, cele trei de parolă): colț rotunjit, chenar de
+       1,5px și un inel verde la câmpul în care scrii — se vede din colțul ochiului unde ești. */
+    .pref-f input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 12px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .pref-f input:hover:not(:disabled) { border-color: var(--border-light); }
+    .pref-f input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+    .pref-f input::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
+    .pref-f input:disabled { background: var(--bg-dark); color: var(--text-muted); opacity: 1; cursor: not-allowed; }
+    @media (prefers-reduced-motion: reduce) { .pref-f input { transition: none !important; } }
     .pref-act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .pref-msg { font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
     .pref-msg.bun { color: var(--accent); }
