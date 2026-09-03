@@ -115,6 +115,99 @@ const grupAdm = html.slice(html.indexOf('data-group="administrare"') - 60, html.
 T('grupul „Administrare" nu mai e doar pentru cine administrează flota', !/fleet-only/.test(grupAdm), grupAdm.trim());
 T('„Utilizatori" nu mai are a doua ușă în meniu', !/goSistem\('users'\)/.test(html));
 
+sect('7. Comutatorul de privire („vezi ca un admin de firmă")');
+// Noi testăm aplicația din două poziții și ne încurcăm între ele. Comutatorul schimbă DOAR ce se
+// afișează. Cele două lucruri care nu au voie să se strice niciodată:
+//   • privirea împrumutată să nu DEA drepturi cuiva care nu le are (ar fi o gaură, nu o unealtă);
+//   • privirea să nu ajungă la server — acolo se cere mereu dreptul REAL.
+const k1 = html.indexOf('    // ── începe „Comutatorul de privire"');
+const k2 = html.indexOf('    var _setImprumut = {};', k1);
+T('găsesc comutatorul între repere', k1 > 0 && k2 > k1, 'k1=' + k1 + ' k2=' + k2);
+if (k1 > 0 && k2 > k1) {
+  // DOM de carton + un „browser" cu memorie, cât să meargă codul real.
+  const noduri = { 'set-nav': { innerHTML: '' }, 'set-banda': { innerHTML: '' } };
+  const doc = { getElementById: (id) => noduri[id] || null };
+  const memorie = (start) => { let v = start; return { getItem: () => v, setItem: (_, x) => { v = x; } }; };
+  const facWin = (v) => ({ localStorage: memorie(v), currentUser: null });
+
+  const prelude = 'var _setCap = "prefs"; var _ultimulTab = null; function usTab(n){ _ultimulTab = n; }\n';
+  const cerere = '\n; return { privireCa: setPrivireCa, ochi: setOchiCitit, comutator: setComutatorHtml,' +
+    ' banda: setBandaHtml, nav: setRenderNav, privire: window.setPrivire, permCurent: setPermCurent,' +
+    ' tab: function(){ return _ultimulTab; } };';
+  const fac = (win) => new Function('document', 'window', '_usEsc',
+    html.slice(i, j) + prelude + html.slice(k1, k2) + cerere)(doc, win, (s) => String(s == null ? '' : s));
+
+  let W = facWin(null);
+  let C = fac(W);
+
+  // a) Privirea nu inventează drepturi.
+  T('privirea de firmă scoate steagul de fondator', C.privireCa(SUPER, 'firma').isSuper === false);
+  T('pe fondator, „fondator" lasă drepturile exact cum erau', C.privireCa(SUPER, 'fondator') === SUPER);
+  T('unui admin de firmă nu i se schimbă nimic, oricare ar fi privirea',
+    C.privireCa(ADMIN_FIRMA, 'firma') === ADMIN_FIRMA && C.privireCa(ADMIN_FIRMA, 'fondator') === ADMIN_FIRMA);
+  T('unui dispecer nu i se dă nimic pe furiș', C.privireCa(DISPECER, 'firma') === DISPECER);
+  T('și nici măcar un obiect gol nu devine ceva', C.privireCa(null, 'firma') === null);
+
+  // b) Ce vede fondatorul cu privirea împrumutată e EXACT ce vede un admin de firmă.
+  const imprumutat = chei(C.privireCa(SUPER, 'firma'));
+  T('privirea împrumutată dă fix meniul unui admin de firmă',
+    imprumutat.join(',') === chei(ADMIN_FIRMA).join(','), imprumutat.join(', '));
+  T('deci capitolul nostru dispare din el', imprumutat.indexOf('iocatalog') < 0, imprumutat.join(', '));
+  T('și apar „Facturile mele", pe care clientul le are', imprumutat.indexOf('facturi') >= 0, imprumutat.join(', '));
+
+  // c) Memoria browserului: orice altceva decât „firma" înseamnă fondator.
+  T('memorie goală → fondator', C.ochi(memorie(null)) === 'fondator');
+  T('memorie cu „firma" → firma', C.ochi(memorie('firma')) === 'firma');
+  T('memorie cu gunoi → fondator', C.ochi(memorie('ceva')) === 'fondator');
+  T('browser care refuză memoria (mod privat) → fondator',
+    C.ochi({ getItem: () => { throw new Error('blocat'); } }) === 'fondator');
+
+  // d) Comutatorul și banda se văd DOAR la noi, și doar când e cazul.
+  W.currentUser = { isSuper: true, permissions: { manageUsers: true, manageFleet: true } };
+  C.nav(C.permCurent());
+  T('fondatorul vede comutatorul', /set-ochi/.test(noduri['set-nav'].innerHTML));
+  T('fără bandă cât timp e în privirea lui', noduri['set-banda'].innerHTML === '', noduri['set-banda'].innerHTML);
+  T('și își vede capitolul de platformă', /data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
+
+  W.currentUser = { isSuper: false, permissions: { manageUsers: true, manageFleet: true } };
+  C.nav(C.permCurent());
+  T('adminul firmei NU vede comutatorul', !/set-ochi/.test(noduri['set-nav'].innerHTML));
+  T('și nici banda', noduri['set-banda'].innerHTML === '', noduri['set-banda'].innerHTML);
+
+  // Chiar dacă cineva i-ar pune „firma" în memoria browserului, un client nu capătă comutator.
+  W = facWin('firma'); C = fac(W);
+  W.currentUser = { isSuper: false, permissions: { manageUsers: true, manageFleet: true } };
+  C.nav(C.permCurent());
+  T('memoria pusă de mână nu-i dă clientului comutator', !/set-ochi/.test(noduri['set-nav'].innerHTML));
+  T('și nici bandă', noduri['set-banda'].innerHTML === '', noduri['set-banda'].innerHTML);
+
+  // e) Fondatorul cu privirea pornită: meniul se schimbă, banda apare, capitolul nostru dispare.
+  W.currentUser = { isSuper: true, permissions: { manageUsers: true, manageFleet: true } };
+  C.nav(C.permCurent());
+  T('privirea ținută minte se aplică la redeschidere', /set-banda-x/.test(noduri['set-banda'].innerHTML));
+  T('banda spune limpede că drepturile nu se ating', /drepturile tale rămân întregi/i.test(noduri['set-banda'].innerHTML),
+    noduri['set-banda'].innerHTML);
+  T('capitolul de platformă e ascuns', !/data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
+  T('butonul „Admin de firmă" e cel aprins', /set-ochi-b on"[^>]*>Admin de firmă/.test(noduri['set-nav'].innerHTML),
+    noduri['set-nav'].innerHTML.slice(0, 300));
+
+  // f) Apăsatul pe comutator: ține minte, redesenează și rămâne pe capitolul deschis.
+  C.privire('fondator');
+  T('întoarcerea se ține minte', W.localStorage.getItem() === 'fondator');
+  T('meniul se redesenează pe loc', /data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
+  T('banda dispare', noduri['set-banda'].innerHTML === '', noduri['set-banda'].innerHTML);
+  T('rămâne pe capitolul deschis', C.tab() === 'prefs', C.tab());
+  C.privire('firma');
+  T('și înapoi', W.localStorage.getItem() === 'firma' && !/iocatalog/.test(noduri['set-nav'].innerHTML));
+}
+
+// g) Drepturile cu care se ÎNCARCĂ ecranul rămân cele reale — privirea e doar la desenat.
+T('Setările se încarcă pe drepturile reale, nu pe cele împrumutate',
+  /var perm = setPermCurent\(\);/.test(html) && !/setPrivireCa\(perm/.test(html.slice(html.indexOf('async function loadSettingsTab'))));
+// Cea mai importantă: privirea nu pleacă NICIODATĂ la server.
+T('serverul nu știe și nu poate ști de comutator',
+  !/ra_set_ochi|setPrivireCa/.test(fs.readFileSync('./server.js', 'utf8')));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);

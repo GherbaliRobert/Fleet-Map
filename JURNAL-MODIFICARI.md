@@ -20,6 +20,40 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### FONDATOR · Un comutator în Setări: „te uiți ca fondator" / „ca admin de firmă"
+
+Alin: *„noi testăm acum, ne încurcăm — ar trebui să avem un toggle"*. Are dreptate, și motivul e
+concret: în contul nostru, Setările au **unsprezece capitole**, din care trei sunt **regulile
+FIRMEI** — „Ce văd toți", „Program de lucru", „Prețuri combustibil". Noi nu avem flotă; ele n-au ce
+face acolo, dar apar, fiindcă tehnic avem drepturi peste tot. Iar când te uiți la ecranul ăsta toată
+ziua, nu mai știi dacă ce vezi e al tău sau al clientului.
+
+**Ce e acum.** Sus, deasupra capitolelor, un comutator cu două butoane: **Fondator** și **Admin de
+firmă**. Apare **numai în conturile noastre** — clientul nu-l vede și nu are cum să-l pornească.
+
+- Pe **Fondator**: ce vedeți acum, plus „Catalog coduri GPS" (capitolul platformei).
+- Pe **Admin de firmă**: exact ce vede patronul unei firme — apare „Facturile mele", dispare
+  catalogul de coduri. Și o **bandă violet** sus, cât timp e pornit, ca să nu uitați unde sunteți și
+  să nu-mi raportați ca lipsă un capitol pe care l-ați ascuns singuri.
+
+Alegerea **rămâne pusă** și după reîncărcarea paginii, până o schimbați voi.
+
+**Ce NU face, și e important.** Comutatorul schimbă **doar ce se afișează pe ecranul vostru**.
+Drepturile de pe server rămân neatinse: nu vă ia nimic și, mai ales, **nu poate da nimănui nimic**.
+Serverul nici nu știe că există — verificat automat: dacă cineva ar încerca vreodată să lege
+comutatorul de drepturi, proba pică înainte de livrare. Deci e o **fereastră de probă**, nu un
+buton de „intru în pielea clientului cu tot cu puteri".
+
+De reținut: e o privire peste **Setări**, nu peste toată aplicația. Dacă se dovedește util, se poate
+extinde și la restul meniului — dar acolo e altă discuție, fiindcă ecranele aduc date, nu doar liste.
+
+- **Ce am schimbat:** un comutator de privire în Setări, doar pentru conturile noastre; schimbă
+  afișarea, nu drepturile.
+- **Ce vede fondatorul:** două butoane sus, în stânga, și o bandă violet cât timp se uită cu ochii
+  clientului.
+- **Ce vede clientul:** nimic. Nici comutatorul, nici banda — pentru el nu s-a schimbat un pixel.
+
+
 ### AMÂNDOI · Secțiunea CAN, redesenată + martorii apar sub hartă pe telefon — `33fde7b`
 
 **Ce era.** Plăcuțele de stare erau strânse pe categorii — „Contact și motor", „Lumini", „Uși și
@@ -4054,6 +4088,15 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### C. De reparat înainte de clienți reali
+
+- [ ] **(eu) „Chei API" e capitol al clientului — de mutat pe „la cerere". Hotărât de Alin, 03.09.**
+  Acum, orice admin de firmă poate intra în Setări → Chei API și își face singur o cheie. Cheia e o
+  parolă permanentă care vede tot ce vede omul pentru care a fost făcută, și prin ea se poate trage
+  automat, la nesfârșit, tot ce are firma în aplicație. Nu vrem să se dea singură: **o dăm noi, la
+  cerere, și o legăm de abonament.** De făcut: capitolul dispare din Setările clientului (rămâne la
+  noi), iar cine are nevoie ne cere. De decis odată cu asta: intră în prețul de bază sau se plătește
+  separat — vezi „Ofertare Live".
+
 
 - [ ] **(eu) Eticheta falsă „Consum azi (senzor)" din aplicația de telefon.** Fișa vehiculului o
   afișează MEREU, inclusiv pe mașini fără niciun senzor, fiindcă ruta nu întoarce niciodată câmpul pe

@@ -2480,6 +2480,9 @@ const pozitii = await r.json();</code></pre>
             <nav class="admin-side" id="set-nav"></nav>
             <div class="admin-content set-main">
 
+              <!-- Banda „vezi ca un admin de firmă" — apare doar în conturile noastre, când e pornită -->
+              <div id="set-banda"></div>
+
               <!-- Contul meu -->
               <div class="set-panel" data-spanel="prefs">
                 <div class="set-sec-h"><i class="fas fa-user"></i> Preferințele tale</div>
@@ -4454,13 +4457,75 @@ const pozitii = await r.json();</code></pre>
     }
     // ── sfârșit catalogul de capitole ──
 
+    // ═══ Comutatorul de privire (doar pentru noi) ═══
+    // Noi testăm aplicația jucând două roluri: uneori ca proprietari de platformă, alteori punându-ne
+    // în locul clientului. Meniul Setărilor arată altfel pentru fiecare, iar când te uiți la el toată
+    // ziua nu mai știi ce vezi — „Ce văd toți", „Program de lucru" sunt regulile FIRMEI, nu ale
+    // noastre. Comutatorul de aici schimbă DOAR ce se afișează: drepturile de pe server rămân
+    // neatinse, deci nu poate nici da, nici lua voie la ceva. Se vede doar în conturile noastre.
+    // ── începe „Comutatorul de privire" (REPER pentru probe: verify_setari.js decupează exact bucata
+    // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+    var SET_OCHI_CHEIE = 'ra_set_ochi';
+    // Ce privire e pusă acum. Orice altceva decât „firma" înseamnă fondator — inclusiv o memorie
+    // stricată sau un browser care refuză localStorage (mod privat): atunci vezi ce vezi de obicei.
+    function setOchiCitit(memorie) {
+      try { return (memorie && memorie.getItem(SET_OCHI_CHEIE)) === 'firma' ? 'firma' : 'fondator'; }
+      catch (e) { return 'fondator'; }
+    }
+    // Cu ce ochi se desenează meniul. DOAR fondatorul poate împrumuta privirea clientului; pentru
+    // oricine altcineva funcția întoarce exact ce a primit, neatins.
+    function setPrivireCa(p, ochi) {
+      if (!p || !p.isSuper || ochi !== 'firma') return p;
+      return { isSuper: false, manageUsers: true, manageFleet: true, imprumutat: true };
+    }
+    function setComutatorHtml(ochi) {
+      var f = ochi === 'firma';
+      return '<div class="set-ochi">' +
+        '<div class="set-ochi-t">Te uiți ca</div>' +
+        '<div class="set-ochi-g">' +
+          '<button type="button" class="set-ochi-b' + (f ? '' : ' on') + '" onclick="setPrivire(\'fondator\')">Fondator</button>' +
+          '<button type="button" class="set-ochi-b' + (f ? ' on' : '') + '" onclick="setPrivire(\'firma\')">Admin de firmă</button>' +
+        '</div></div>';
+    }
+    // Banda de sus, cât timp ești în privirea clientului. Fără ea ai uita în cinci minute și ai
+    // raporta ca lipsă un capitol pe care tu l-ai ascuns.
+    function setBandaHtml(ochi) {
+      if (ochi !== 'firma') return '';
+      return '<div class="set-banda"><i class="fas fa-eye"></i>' +
+        '<span><b>Vezi Setările ca un admin de firmă.</b> Se schimbă doar ce ți se arată — drepturile tale rămân întregi.</span>' +
+        '<button type="button" class="set-banda-x" onclick="setPrivire(\'fondator\')">Înapoi la fondator</button></div>';
+    }
+    // ── sfârșit „Comutatorul de privire" ──
+
     function setRenderNav(p) {
       var nav = document.getElementById('set-nav'); if (!nav) return;
-      nav.innerHTML = setCapitole(p).map(function (x) {
+      var suntem = !!(p && p.isSuper);
+      var ochi = suntem ? setOchiCitit(window.localStorage) : 'fondator';
+      nav.innerHTML = (suntem ? setComutatorHtml(ochi) : '') + setCapitole(setPrivireCa(p, ochi)).map(function (x) {
         return x.grup
           ? '<div class="aside-grp">' + _usEsc(x.grup) + '</div>'
           : '<button class="aside-item" data-scap="' + x.k + '" onclick="usTab(\'' + x.k + '\')"><i class="fas ' + x.ic + '"></i> ' + _usEsc(x.et) + '</button>';
       }).join('');
+      var banda = document.getElementById('set-banda');
+      if (banda) banda.innerHTML = suntem ? setBandaHtml(ochi) : '';
+    }
+    // Schimbarea privirii: se ține minte în browser (rămâne pusă și după reîncărcare), se redesenează
+    // meniul și se rămâne pe capitolul deschis — dacă el nu mai există în privirea nouă, usTab cade
+    // singur pe „Preferințe".
+    window.setPrivire = function (ochi) {
+      try { window.localStorage.setItem(SET_OCHI_CHEIE, ochi === 'firma' ? 'firma' : 'fondator'); } catch (e) {}
+      setRenderNav(setPermCurent());
+      usTab(_setCap);
+    };
+    // Drepturile REALE ale omului logat — o singură sursă, ca privirea împrumutată să nu se strecoare
+    // niciodată în locul lor.
+    function setPermCurent() {
+      var u = window.currentUser || {};
+      return {
+        isSuper: !!u.isSuper,
+        manageUsers: !!(u.permissions && u.permissions.manageUsers),
+        manageFleet: !!(u.permissions && u.permissions.manageFleet)
+      };
     }
 
     // Ecranele „Utilizatori" și „Facturile mele" există O SINGURĂ dată în pagină. Setările le
@@ -5145,11 +5210,7 @@ const pozitii = await r.json();</code></pre>
       if (_sc && _sh && _sc.parentElement !== _sh) _sh.appendChild(_sc);
       if (_sc) _sc.style.display = 'block';
 
-      var perm = {
-        isSuper: !!(currentUser && currentUser.isSuper),
-        manageUsers: !!(currentUser && currentUser.permissions && currentUser.permissions.manageUsers),
-        manageFleet: !!(currentUser && currentUser.permissions && currentUser.permissions.manageFleet)
-      };
+      var perm = setPermCurent(); // drepturile REALE — privirea împrumutată se aplică doar la desenat
       setRenderNav(perm);
       usTab(_setCap); // rămâne pe capitolul deschis (salvările reîncarcă ecranul)
 
