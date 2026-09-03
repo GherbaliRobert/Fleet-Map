@@ -5342,12 +5342,26 @@ const pozitii = await r.json();</code></pre>
       }).join('');
       return h;
     }
+    function rolFaraFirmaHtml() {
+      return '<div class="rol-gol-mare">' +
+        '<i class="fas fa-building-lock"></i>' +
+        '<div class="rol-gol-t">Rolurile sunt ale unei firme</div>' +
+        '<div class="rol-gol-d">Contul tău e cont de <b>platformă</b>: nu ține de o firmă anume, ci le vede pe toate. ' +
+        'De aceea aici n-ai ce rol să faci sau să schimbi — n-ar avea la ce firmă să se lipească.' +
+        '<br><br>Ecranul ăsta e al administratorului unei firme: acolo își botează rolurile ' +
+        '(„Dispecer" → „Operator depou") și taie din ce are voie fiecare, iar ce taie el se aplică ' +
+        '<b>numai la firma lui</b>.</div></div>';
+    }
     function rolRender() {
       var host = document.getElementById('rol-host'); if (!host) return;
       var h = '';
       if (_rol.mesaj) h += '<div class="tr-nota ' + (_rol.mesaj.rau ? 'rosu' : 'verde') + '"><i class="fas fa-' +
         (_rol.mesaj.rau ? 'circle-exclamation' : 'circle-check') + '"></i> ' + esc(_rol.mesaj.t) + '</div>';
       if (_rol.eroare) { host.innerHTML = h + '<div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> ' + esc(_rol.eroare) + '</div>'; return; }
+      // Rolurile sunt ale unei FIRME. Un cont de platformă (al nostru) nu ține de niciuna, deci n-are
+      // ce să boteze și din ce să taie — serverul refuză oricum la salvare. Mai bine o spunem de la
+      // început decât după ce omul completează formularul și primește un refuz în față.
+      if (window.currentUser && currentUser.isSuper && !currentUser.companyId) { host.innerHTML = h + rolFaraFirmaHtml(); return; }
       if (!_rol.randuri) { host.innerHTML = h + '<div class="dm-muted"><i class="fas fa-spinner fa-spin"></i> Se încarcă…</div>'; return; }
       var r = rolCurent();
       if (!r) { host.innerHTML = h + '<div class="dm-muted">Niciun rol.</div>'; return; }

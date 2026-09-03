@@ -20,6 +20,35 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### FONDATOR · „Contul tău nu e legat de o firmă" — de ce, și de ce nu mai afli abia la final
+
+Alin a completat fereastra de rol nou și, la „Creează rolul", a primit *„Contul tău nu e legat de o
+firmă"*. Nu e o defecțiune, e o consecință — dar ecranul o spunea în cel mai prost moment cu putință.
+
+**De ce.** Un rol trăiește **într-o firmă**: „Operator depou" e rolul firmei Transport Zebra, nu al
+platformei. Când firma îl botează sau taie din el, schimbarea se aplică numai la ea. Conturile
+noastre de fondator sunt **conturi de platformă**: nu aparțin niciunei firme, ci le văd pe toate.
+Deci un rol făcut din contul nostru n-ar avea la ce firmă să se lipească — de asta serverul refuză.
+
+**Ce era prost.** Serverul refuza corect, dar abia **după** ce completai numele și alegeai șablonul.
+Ecranul te lăsa să crezi că merge, și îți spunea „nu" la ultimul clic.
+
+**Ce e acum.** În conturile de platformă, ecranul Roluri nu mai arată editorul deloc. În locul lui,
+o explicație: rolurile sunt ale unei firme, contul tău e de platformă, iar ecranul ăsta e al
+administratorului firmei — acolo își botează rolurile și taie din ele. Fără buton de apăsat degeaba.
+
+**Rămâne de hotărât** (nu am făcut nimic în direcția asta): dacă vrem ca **noi** să putem pregăti
+rolurile unui client — de pildă la semnarea contractului, ca omul să găsească totul gata — atunci
+ecranul are nevoie de un selector de firmă, iar rutele de roluri trebuie să accepte firma aleasă,
+exact cum face deja lista de utilizatori. E o schimbare de produs, nu de aspect: înseamnă că un
+cont de-al nostru poate scrie în rolurile unei firme. Merită, dar se decide, nu se strecoară.
+
+- **Ce am schimbat:** în conturile de platformă, Roluri arată o explicație în loc de un formular care
+  nu poate reuși.
+- **Ce vede fondatorul:** motivul, de la început, nu la ultimul clic.
+- **Ce vede clientul:** nimic — el are firmă, deci vede editorul ca până acum.
+
+
 ### AMÂNDOI · „Rol nou" nu mai deschide ferestrele gri ale browserului
 
 Alin a apăsat „Rol nou" și i-a sărit în față o fereastră cu scris mic, cu „ratrack.ro says"
