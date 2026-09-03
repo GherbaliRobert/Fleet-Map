@@ -2493,12 +2493,12 @@ const pozitii = await r.json();</code></pre>
                 <div id="pref-restul"><div class="pref-load">Se încarcă…</div></div>
               </div>
 
-              <!-- Oameni și drepturi → Utilizatori (nod împrumutat) -->
+              <!-- Conturi și roluri → Utilizatori (nod împrumutat) -->
               <div class="set-panel" data-spanel="utilizatori" style="display:none;">
                 <div id="set-host-users"></div>
               </div>
 
-              <!-- Oameni și drepturi → Roluri -->
+              <!-- Conturi și roluri → Roluri -->
               <div class="set-panel" data-spanel="roluri" style="display:none;">
                 <div class="set-sec-h"><i class="fas fa-user-shield"></i> Roluri</div>
                 <p class="set-note">Poți <b>redenumi</b> rolurile ca la tine în firmă și poți <b>tăia</b> din ce are voie fiecare. Nu poți adăuga drepturi peste cele standard — așa, o greșeală poate produce cel mult un rol cu mai puține drepturi, niciodată unul cu mai multe.</p>
@@ -4615,7 +4615,7 @@ const pozitii = await r.json();</code></pre>
     var SET_MENIU = [
       { grup: 'Contul meu' },
       { k: 'prefs',       et: 'Preferințe',           ic: 'fa-user',                drept: 'oricine' },
-      { grup: 'Oameni și drepturi' },
+      { grup: 'Conturi și roluri' },
       { k: 'utilizatori', et: 'Utilizatori',          ic: 'fa-users',               drept: 'manageUsers' },
       { k: 'roluri',      et: 'Roluri',               ic: 'fa-user-shield',         drept: 'manageUsers' },
       { grup: 'Notificări' },
@@ -4634,7 +4634,7 @@ const pozitii = await r.json();</code></pre>
       { k: 'iocatalog',   et: 'Catalog coduri GPS',   ic: 'fa-microchip',           drept: 'super' }
     ];
     // Ce capitole vede omul ăsta. Titlul de grup apare DOAR dacă are ce grupa — altfel unui dispecer
-    // i-ar rămâne pe ecran „Oameni și drepturi" fără nimic sub el.
+    // i-ar rămâne pe ecran „Conturi și roluri" fără nimic sub el.
     function setCapitole(p) {
       p = p || {};
       var poate = function (d) {
@@ -5194,7 +5194,7 @@ const pozitii = await r.json();</code></pre>
     }
     // ── sfârșit „Adrese de email" ──
 
-    // ═══ Roluri (Setări → Oameni și drepturi) ═══
+    // ═══ Roluri (Setări → Conturi și roluri) ═══
     // Firma NU își face roluri noi — le ia pe cele standard, le redenumește („Operator depou" în loc
     // de „Dispecer") și le taie din drepturi. Alegerea asta e deliberată: drepturile de bază rămân în
     // cod, iar aici se poate doar SCĂDEA. O greșeală de-a clientului (sau de-a noastră) poate produce

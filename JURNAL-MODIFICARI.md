@@ -20,6 +20,21 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · „Oameni și drepturi" s-a făcut „Conturi și roluri"
+
+Alin, uitându-se la meniul Setărilor: *„sună aiurea"*. Are dreptate — „drepturi" e cuvântul nostru,
+din cod, nu al omului care intră acolo. Iar „oameni" e vag: în aplicație oamenii sunt și șoferii,
+care n-au nicio treabă cu secțiunea asta.
+
+Titlul nou spune exact ce e înăuntru: **conturile** oamenilor din firmă (cine intră în aplicație) și
+**rolurile** (ce are voie fiecare). Sub el stau, ca înainte, **Utilizatori** și **Roluri**.
+
+- **Ce am schimbat:** numele grupei din meniul Setărilor. Atât — nu s-a atins niciun drept și niciun
+  ecran.
+- **Ce vede fondatorul:** „Conturi și roluri" în loc de „Oameni și drepturi".
+- **Ce vede clientul:** același lucru; un titlu pe care îl înțelege din prima.
+
+
 ### AMÂNDOI · „Preferințele tale", refăcute din temelii — plus parola, care lipsea cu totul
 
 Alin, uitându-se la ecran: *„preferințele astea nu sunt cam vagi? adică așa puține preferințe??"*.
@@ -394,7 +409,7 @@ Rămân patru drepturi ajustabile, toate reale: **administrează utilizatorii** 
 
 ### AMÂNDOI · Roluri — firma își botează rolurile și le taie din drepturi
 
-Ultimul pas din administrarea nouă. Setări → **Oameni și drepturi → Roluri**.
+Ultimul pas din administrarea nouă. Setări → **Conturi și roluri → Roluri**.
 
 Alin a ales varianta prudentă, și a ales bine. Firma **nu-și face roluri noi**: le ia pe cele
 standard, le **redenumește** („Operator depou" în loc de „Dispecer") și le **taie** din drepturi.
@@ -569,13 +584,13 @@ că „se deschid aiurea".
 | Grupă | Capitole |
 |---|---|
 | Contul meu | Preferințe |
-| Oameni și drepturi | Utilizatori |
+| Conturi și roluri | Utilizatori |
 | Regulile firmei | Ce văd toți · Program de lucru · Prețuri combustibil |
 | Abonament și integrări | Facturile mele · Chei API |
 | Doar pentru noi | Catalog coduri GPS |
 
 Fiecare om vede **doar capitolele la care are drept**, iar un titlu de grupă apare doar dacă are ce
-grupa dedesubt — altfel dispecerului i-ar rămâne pe ecran „Oameni și drepturi" fără nimic sub el.
+grupa dedesubt — altfel dispecerului i-ar rămâne pe ecran „Conturi și roluri" fără nimic sub el.
 
 **Trei lucruri care s-au reparat pe drum:**
 
