@@ -3900,6 +3900,11 @@ const pozitii = await r.json();</code></pre>
     let _newUserCompaniesCache = null;
     async function _populateNewUserForm() {
       var sup = !!(currentUser && currentUser.role === 'superadmin');
+      // ⚠ TEMPORAR (comutatorul de privire) — se scoate la lansare. În privirea clientului,
+      // formularul e al unui admin de firmă: fără rolul de platformă și fără alegerea companiei
+      // (omul lui intră în firma în care stăm).
+      var _priv = sup && setPrivescCaFirma();
+      if (_priv) sup = false;
       var sel = document.getElementById('new-role');
       if (sel) {
         var opts = sup
@@ -3909,6 +3914,7 @@ const pozitii = await r.json();</code></pre>
         sel.onchange = _usrRoleChanged;
       }
       var csel = document.getElementById('new-company');
+      if (csel && _priv) csel.style.display = 'none';   // ⚠ TEMPORAR (comutatorul de privire)
       if (csel && sup) {
         // Cache: companiile se încarcă O SINGURĂ DATĂ per sesiune — nu /api/companies (interogare grea) la FIECARE
         // deschidere a tabului Utilizatori (asta încetinea pagina). Reumplem dropdown-ul instant din cache.
@@ -3966,6 +3972,17 @@ const pozitii = await r.json();</code></pre>
       if (ueUsersErr) { list.innerHTML = '<div class="rax-co-meta" style="color:var(--orange);padding:10px;line-height:1.5;"><i class="fas fa-triangle-exclamation"></i> ' + esc(ueUsersErr) + '</div>'; return; }
       var isSuper = !!(currentUser && currentUser.role === 'superadmin');
       var users = ueUsersCache || [];
+      // ⚠ TEMPORAR — ține de comutatorul de privire, SE SCOATE LA LANSARE odată cu el.
+      // În privirea clientului, ecranul arată exact ca la un admin de firmă: oamenii UNEI firme,
+      // fără conturile de platformă și fără lista tuturor companiilor. Serverul trimite în
+      // continuare tot — filtrăm doar ce se AFIȘEAZĂ, ca peste tot la comutatorul ăsta.
+      var _privFirme = null, _privAleasa = null;
+      if (setPrivescCaFirma()) {
+        _privFirme = setFirmeDin(users);
+        _privAleasa = setFirmaDeJucat(_privFirme, setFirmaCitita(window.localStorage));
+        users = users.filter(function (u) { return String(u.company_id) === String(_privAleasa); });
+        isSuper = false; // de aici încolo se desenează ca pentru un admin de firmă
+      }
       var groups = {};
       users.forEach(function (u) {
         var key = (u.company_id != null) ? String(u.company_id) : '_none';
@@ -3975,6 +3992,8 @@ const pozitii = await r.json();</code></pre>
       var keys = Object.keys(groups).sort(function (a, b) { return (groups[a].name || '').localeCompare(groups[b].name || ''); });
       var subH = 'font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 4px;';
       var html = '';
+      // ⚠ TEMPORAR (comutatorul de privire) — se scoate la lansare.
+      if (_privFirme && _privFirme.length) html += setFirmaPickerHtml(_privFirme, _privAleasa);
       if (isSuper && keys.length > 1) {
         html += '<div style="margin-bottom:10px;"><select onchange="_usersFilter=this.value; renderUsersGrouped();" style="width:100%;box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;">' +
           '<option value="">Toate companiile (' + users.length + ' utilizatori)</option>' +
@@ -4035,8 +4054,14 @@ const pozitii = await r.json();</code></pre>
         // Super-admin: alege compania noului cont (admin de companie → automat compania lui, pe backend).
         const _csel = document.getElementById('new-company');
         if (currentUser && currentUser.role === 'superadmin' && _csel) {
-          if (!_csel.value) return alert('Selectează compania pentru noul cont.');
-          body.company_id = parseInt(_csel.value);
+          // ⚠ TEMPORAR (comutatorul de privire): în privirea clientului, contul nou intră în firma
+          // în care stăm — exact cum s-ar întâmpla la un admin de firmă, care n-are ce alege.
+          const _privF = setPrivescCaFirma() ? setFirmaCitita(window.localStorage) : null;
+          if (_privF) body.company_id = parseInt(_privF);
+          else {
+            if (!_csel.value) return alert('Selectează compania pentru noul cont.');
+            body.company_id = parseInt(_csel.value);
+          }
         }
       }
       const res = await fetch('/api/users', {
@@ -4698,7 +4723,50 @@ const pozitii = await r.json();</code></pre>
         '<span><b>Vezi Setările ca un admin de firmă.</b> Se schimbă doar ce ți se arată — drepturile tale rămân întregi.</span>' +
         '<button type="button" class="set-banda-x" onclick="setPrivire(\'fondator\')">Înapoi la fondator</button></div>';
     }
+    // ── În ce firmă „stă" fondatorul cât timp e în privirea clientului ──
+    // Un admin de firmă vede DOAR oamenii firmei lui. Noi îi vedem pe toți, din toate companiile,
+    // plus conturile de platformă. Ca privirea să însemne ceva la ecranul „Utilizatori", trebuie să
+    // stăm într-o firmă anume — de obicei una de probă. Se ține minte, ca și privirea.
+    var SET_FIRMA_CHEIE = 'ra_set_firma';
+    function setFirmaCitita(memorie) {
+      try { var v = memorie && memorie.getItem(SET_FIRMA_CHEIE); return v ? String(v) : null; } catch (e) { return null; }
+    }
+    // Firmele din listă, o dată fiecare, cu câți oameni au. Conturile de platformă (fără companie)
+    // nu sunt ale nimănui — un admin de firmă nu le vede niciodată.
+    function setFirmeDin(useri) {
+      var vazute = {}, out = [];
+      (useri || []).forEach(function (u) {
+        if (u.company_id == null) return;
+        var k = String(u.company_id);
+        if (vazute[k]) { vazute[k].n++; return; }
+        vazute[k] = { id: k, nume: u.company_name || ('#' + k), n: 1 };
+        out.push(vazute[k]);
+      });
+      return out.sort(function (a, b) { return (a.nume || '').localeCompare(b.nume || ''); });
+    }
+    // Cea ținută minte, dacă mai există; altfel prima. Fără firme, nimic — nu inventăm una.
+    function setFirmaDeJucat(firme, tinuta) {
+      if (!firme || !firme.length) return null;
+      for (var i = 0; i < firme.length; i++) if (String(firme[i].id) === String(tinuta)) return firme[i].id;
+      return firme[0].id;
+    }
+    function setFirmaPickerHtml(firme, aleasa) {
+      return '<div class="set-firma"><i class="fas fa-eye"></i><span>Te uiți ca admin al firmei</span>' +
+        '<select onchange="setSchimbFirma(this.value)">' + firme.map(function (f) {
+          return '<option value="' + f.id + '"' + (String(f.id) === String(aleasa) ? ' selected' : '') +
+            '>' + _usEsc(f.nume) + ' · ' + f.n + (f.n === 1 ? ' om' : ' oameni') + '</option>';
+        }).join('') + '</select></div>';
+    }
     // ── sfârșit „Comutatorul de privire" ──
+
+    window.setSchimbFirma = function (id) {
+      try { window.localStorage.setItem(SET_FIRMA_CHEIE, String(id)); } catch (e) {}
+      try { renderUsersGrouped(); } catch (e) {}
+    };
+    // Adevărat doar în conturile noastre, cu privirea pusă pe client. Folosit de ecranul Utilizatori.
+    function setPrivescCaFirma() {
+      return !!(window.currentUser && currentUser.isSuper) && setOchiCitit(window.localStorage) === 'firma';
+    }
 
     function setRenderNav(p) {
       var nav = document.getElementById('set-nav'); if (!nav) return;

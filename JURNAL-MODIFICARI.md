@@ -20,6 +20,41 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### FONDATOR · Comutatorul de privire ajunge și la „Utilizatori"
+
+Până acum, comutatorul schimba doar **meniul** Setărilor. Alin: *„la toggle admin de firmă lasă doar
+[firma] de test, el nu trebuie să le vadă pe toate — adică pregătim exact ca infrastructura"*.
+Corect: un patron de firmă nu vede niciodată oamenii altor firme, și cu atât mai puțin conturile
+noastre de platformă. Dacă privirea nu face și asta, ea arată doar jumătate de adevăr.
+
+**Ce e acum.** Pe **Fondator**, ecranul Utilizatori rămâne exact cum era: toate companiile, plus
+conturile de platformă, cu selectorul care le comută.
+
+Pe **Admin de firmă**, ecranul devine al unei singure firme:
+
+- **o bară violet sus** — „Te uiți ca admin al firmei …" — de unde alegi în ce firmă stai. Alegerea
+  se ține minte, ca și privirea; lângă fiecare firmă scrie câți oameni are;
+- lista arată **doar oamenii firmei alese**, fără capetele de companie și fără selectorul „toate
+  companiile" — exact forma pe care o vede un client;
+- **conturile noastre de platformă dispar** cu totul;
+- formularul de cont nou devine al unui admin de firmă: **fără rolul de super-admin** și fără
+  alegerea companiei — omul intră direct în firma în care stai.
+
+**Ce NU s-a schimbat, și rămâne regula comutatorului.** Serverul trimite mai departe tot ce are
+dreptul să trimită; noi filtrăm doar **ce se afișează**. Privirea nu ia și nu dă niciun drept, iar
+serverul tot nu știe că ea există. Practic: cât ești în privirea clientului, ecranul se poartă ca al
+lui — dar dacă apeși un buton, apeși cu mâna ta de fondator.
+
+- **Ce am schimbat:** privirea de client se aplică acum și la ecranul Utilizatori, pe o singură firmă,
+  aleasă de tine.
+- **Ce vede fondatorul:** pe „Fondator", nimic nou. Pe „Admin de firmă", ecranul unei singure firme,
+  cu bara violet de sus.
+- **Ce vede clientul:** nimic — pentru el nu s-a schimbat un pixel.
+
+*(Se scoate la lansare, împreună cu tot comutatorul — punctul e pe lista de blocante, cu lista
+bucăților de șters actualizată.)*
+
+
 ### AMÂNDOI · „Oameni și drepturi" s-a făcut „Conturi și roluri"
 
 Alin, uitându-se la meniul Setărilor: *„sună aiurea"*. Are dreptate — „drepturi" e cuvântul nostru,
@@ -4087,10 +4122,12 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   amintește de ce e. **Nu e periculos** dacă rămâne (nu dă și nu ia niciun drept, iar clientul nu-l
   vede), dar l-am pus aici tocmai ca să nu se strecoare din uitare.
 
-  **Ce se șterge, concret:** blocul dintre reperele „Comutatorul de privire" din `public/index.html`,
-  cele două rânduri din `setRenderNav` care îl desenează, `<div id="set-banda">`, stilurile `.set-ochi`
-  / `.set-banda` din `public/css/app.css` și secțiunea 7 din `verify_setari.js`. Restul Setărilor nu
-  se atinge — meniul se generează la fel și fără el.
+  **Ce se șterge, concret** (toate bucățile sunt marcate în cod cu „⚠ TEMPORAR"): blocul dintre
+  reperele „Comutatorul de privire" din `public/index.html`, cele două rânduri din `setRenderNav`
+  care îl desenează, `<div id="set-banda">`, cele patru cârlige din ecranul Utilizatori
+  (`renderUsersGrouped`, `_populateNewUserForm`, `addUser`), stilurile `.set-ochi` / `.set-banda` /
+  `.set-firma` din `public/css/app.css` și secțiunea 7 din `verify_setari.js`. Restul aplicației nu
+  se atinge — meniul și lista de utilizatori se generează la fel și fără el.
 
 
 - [ ] **(voi) Cheia de semnătură a aplicației de telefon — de creat și de pus la păstrare.** Cel mai

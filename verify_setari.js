@@ -135,6 +135,7 @@ if (k1 > 0 && k2 > k1) {
   const prelude = 'var _setCap = "prefs"; var _ultimulTab = null; function usTab(n){ _ultimulTab = n; }\n';
   const cerere = '\n; return { privireCa: setPrivireCa, ochi: setOchiCitit, comutator: setComutatorHtml,' +
     ' banda: setBandaHtml, nav: setRenderNav, privire: window.setPrivire, permCurent: setPermCurent,' +
+    ' firme: setFirmeDin, deJucat: setFirmaDeJucat, picker: setFirmaPickerHtml,' +
     ' tab: function(){ return _ultimulTab; } };';
   const fac = (win) => new Function('document', 'window', '_usEsc',
     html.slice(i, j) + prelude + html.slice(k1, k2) + cerere)(doc, win, (s) => String(s == null ? '' : s));
@@ -201,7 +202,35 @@ if (k1 > 0 && k2 > k1) {
   T('rămâne pe capitolul deschis', C.tab() === 'prefs', C.tab());
   C.privire('firma');
   T('și înapoi', W.localStorage.getItem() === 'firma' && !/iocatalog/.test(noduri['set-nav'].innerHTML));
+
+  // g) Firma în care „stă" fondatorul cât e în privirea clientului (ecranul Utilizatori).
+  const USERI = [
+    { id: 1, username: 'noi@ratrack.ro', company_id: null },                                  // cont de platformă
+    { id: 2, username: 'a@x.ro', company_id: 7, company_name: 'Transport Zebra' },
+    { id: 3, username: 'b@x.ro', company_id: 7, company_name: 'Transport Zebra' },
+    { id: 4, username: 'c@y.ro', company_id: 3, company_name: 'Firma de probă' },
+  ];
+  const firme = C.firme(USERI);
+  T('conturile de platformă nu sunt ale niciunei firme', firme.length === 2, JSON.stringify(firme));
+  T('firmele ies în ordine alfabetică', firme.map(f => f.nume).join(' | ') === 'Firma de probă | Transport Zebra',
+    firme.map(f => f.nume).join(' | '));
+  T('se numără oamenii fiecăreia', firme.map(f => f.n).join(',') === '1,2', firme.map(f => f.n).join(','));
+  T('fără nimic ținut minte, se ia prima', C.deJucat(firme, null) === '3', C.deJucat(firme, null));
+  T('cea ținută minte are întâietate', C.deJucat(firme, '7') === '7', C.deJucat(firme, '7'));
+  T('o firmă ștearsă între timp nu blochează ecranul', C.deJucat(firme, '999') === '3', C.deJucat(firme, '999'));
+  T('fără nicio firmă, nu inventăm una', C.deJucat([], '7') === null && C.deJucat(null, null) === null);
+  const picker = C.picker(firme, '7');
+  T('firma în care stai e cea aleasă în listă', /value="7" selected/.test(picker), picker);
+  T('și se văd câți oameni are fiecare', /Transport Zebra · 2 oameni/.test(picker) && /Firma de probă · 1 om/.test(picker), picker);
 }
+
+// h) Cârligele din ecranul Utilizatori: fără ele, tot ce e mai sus rămâne teorie.
+T('ecranul Utilizatori chiar se strânge la firma privită',
+  /setPrivescCaFirma\(\)[\s\S]{0,500}?users = users\.filter\(/.test(html));
+T('și se desenează ca pentru un admin de firmă, nu ca pentru noi',
+  /setPrivescCaFirma\(\)[\s\S]{0,600}?isSuper = false;/.test(html));
+T('formularul de cont nou nu mai oferă rolul de platformă în privirea clientului',
+  /var _priv = sup && setPrivescCaFirma\(\);\s*\n\s*if \(_priv\) sup = false;/.test(html));
 
 // g) Drepturile cu care se ÎNCARCĂ ecranul rămân cele reale — privirea e doar la desenat.
 T('Setările se încarcă pe drepturile reale, nu pe cele împrumutate',
