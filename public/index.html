@@ -2525,33 +2525,36 @@ const pozitii = await r.json();</code></pre>
                 <div id="adr-host"><div class="dm-muted">Se încarcă…</div></div>
               </div>
 
-              <!-- Regulile firmei → Ce văd toți -->
+              <!-- Toată echipa → Afișaj pentru toți -->
               <div class="set-panel" data-spanel="reguli" style="display:none;">
-                <div class="set-sec-h"><i class="fas fa-building"></i> Ce văd toți</div>
-                <p class="set-note">Regula firmei: se aplică oricui nu și-a schimbat singur preferințele din „Contul meu".</p>
+                <div class="set-sec-h"><i class="fas fa-palette"></i> Afișaj pentru toți</div>
+                <p class="set-note">Aceleași reglaje ca la Preferințe → Afișaj, dar pentru toată firma deodată: traseul colorat după viteză, numele șoferilor, adresa în loc de coordonate, filele pentru camioane și sonde. Ce pui aici e valoarea de pornire — fiecare om din firmă și-o poate schimba apoi la el, din contul lui.</p>
                 <div id="us-company-list"></div>
               </div>
 
-              <!-- Regulile firmei → Program de lucru -->
+              <!-- Toată echipa → Program de lucru -->
               <div class="set-panel" data-spanel="program" style="display:none;">
                 <div class="set-sec-h"><i class="fas fa-business-time"></i> Program de lucru</div>
                 <p class="set-note">Intervalul de lucru al firmei. Se folosește în rapoarte și la alerta de mișcare în afara programului. Se poate suprascrie pe o grupă sau pe o mașină anume, din fișa lor.</p>
                 <div id="us-worksched"></div>
               </div>
 
-              <!-- Regulile firmei → Prețuri combustibil -->
+              <!-- Toată echipa → Prețuri combustibil -->
               <div class="set-panel" data-spanel="combustibil" style="display:none;">
                 <div class="set-sec-h"><i class="fas fa-gas-pump"></i> Prețuri combustibil (lei/L)</div>
                 <p class="set-note">Folosite la calculul costului în rapoarte. Lasă gol → se folosește <b>media națională</b>, actualizată zilnic. Ordinea: prețul pus pe vehicul → aceste valori → media națională.</p>
-                <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-                  <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-                  <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-                  <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
-                </div>
-                <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                  <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
-                  <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
+                <div id="us-fuel-nofirma" style="display:none;"></div>
+                <div id="us-fuel-body">
+                  <div id="us-fuel-auto" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se încarcă prețul național…</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                    <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Motorină</span><input type="number" id="us-fp-motorina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+                    <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>Benzină</span><input type="number" id="us-fp-benzina" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+                    <label style="display:flex;flex-direction:column;font-size:11px;color:var(--text-muted);"><span>GPL</span><input type="number" id="us-fp-gpl" min="0" max="99" step="0.01" placeholder="auto" style="margin-top:4px;"></label>
+                  </div>
+                  <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn-sm btn-primary" onclick="usSaveFuelPrices()"><i class="fas fa-floppy-disk"></i> Salvează prețurile</button>
+                    <button id="us-fuel-refresh" class="btn-sm" style="display:none;" onclick="usRefreshFuelAuto()"><i class="fas fa-rotate"></i> Actualizează media națională</button>
+                  </div>
                 </div>
               </div>
 
@@ -4658,8 +4661,8 @@ const pozitii = await r.json();</code></pre>
       { k: 'roluri',      et: 'Roluri',               ic: 'fa-user-shield',         drept: 'manageUsers' },
       { grup: 'Notificări' },
       { k: 'adrese',      et: 'Adrese de email',      ic: 'fa-envelope',            drept: 'manageUsers' },
-      { grup: 'Regulile firmei' },
-      { k: 'reguli',      et: 'Ce văd toți',          ic: 'fa-building',            drept: 'manageUsers' },
+      { grup: 'Toată echipa' },
+      { k: 'reguli',      et: 'Afișaj pentru toți',   ic: 'fa-palette',             drept: 'manageUsers' },
       { k: 'program',     et: 'Program de lucru',     ic: 'fa-business-time',       drept: 'manageUsers' },
       { k: 'combustibil', et: 'Prețuri combustibil',  ic: 'fa-gas-pump',            drept: 'manageFleet' },
       { grup: 'Evidență' },
@@ -4701,9 +4704,10 @@ const pozitii = await r.json();</code></pre>
     // perioada în care construim, nu o funcție a produsului. Vezi JURNAL-MODIFICARI.md → „A. Blocante".
     // Noi testăm aplicația jucând două roluri: uneori ca proprietari de platformă, alteori punându-ne
     // în locul clientului. Meniul Setărilor arată altfel pentru fiecare, iar când te uiți la el toată
-    // ziua nu mai știi ce vezi — „Ce văd toți", „Program de lucru" sunt regulile FIRMEI, nu ale
-    // noastre. Comutatorul de aici schimbă DOAR ce se afișează: drepturile de pe server rămân
-    // neatinse, deci nu poate nici da, nici lua voie la ceva. Se vede doar în conturile noastre.
+    // ziua nu mai știi ce vezi — „Afișaj pentru toți", „Program de lucru" sunt reglaje ALE UNEI
+    // FIRME, nu ale noastre. Comutatorul de aici schimbă DOAR ce se afișează: drepturile de pe
+    // server rămân neatinse, deci nu poate nici da, nici lua voie la ceva. Se vede doar în conturile
+    // noastre.
     // ── începe „Comutatorul de privire" (REPER pentru probe: verify_setari.js decupează exact bucata
     // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
     var SET_OCHI_CHEIE = 'ra_set_ochi';
@@ -4840,7 +4844,7 @@ const pozitii = await r.json();</code></pre>
       // conținutul se aduce când se cere, nu la deschiderea Setărilor
       if (name === 'utilizatori') { setImprumuta('admin-tab-users', 'set-host-users'); if (window.loadUsers) window.loadUsers(); }
       else if (name === 'facturi') { setImprumuta('admin-tab-myinvoices', 'set-host-invoices'); if (window.raxLoadMyInvoices) window.raxLoadMyInvoices(); }
-      else if (name === 'combustibil' && window.usLoadFuelPrices) window.usLoadFuelPrices();
+      else if (name === 'combustibil') usTabCombustibil();
       else if (name === 'aparate') agpsLoad();
       else if (name === 'istoric') istLoad(true);
       else if (name === 'adrese') adrLoad();
@@ -5343,10 +5347,10 @@ const pozitii = await r.json();</code></pre>
       return h;
     }
     function rolFaraFirmaHtml() {
-      return '<div class="rol-gol-mare">' +
+      return '<div class="set-gol-mare">' +
         '<i class="fas fa-building-lock"></i>' +
-        '<div class="rol-gol-t">Rolurile sunt ale unei firme</div>' +
-        '<div class="rol-gol-d">Contul tău e cont de <b>platformă</b>: nu ține de o firmă anume, ci le vede pe toate. ' +
+        '<div class="set-gol-t">Rolurile sunt ale unei firme</div>' +
+        '<div class="set-gol-d">Contul tău e cont de <b>platformă</b>: nu ține de o firmă anume, ci le vede pe toate. ' +
         'De aceea aici n-ai ce rol să faci sau să schimbi — n-ar avea la ce firmă să se lipească.' +
         '<br><br>Ecranul ăsta e al administratorului unei firme: acolo își botează rolurile ' +
         '(„Dispecer" → „Operator depou") și taie din ce are voie fiecare, iar ce taie el se aplică ' +
@@ -5354,6 +5358,23 @@ const pozitii = await r.json();</code></pre>
         '<br><br><b>Nici comutatorul de sus nu schimbă asta.</b> El schimbă doar ce ți se arată pe ' +
         'ecran, nu și cine ești pentru server — iar rolurile se scriu în firmă, deci serverul are ' +
         'nevoie de o firmă adevărată, nu de una „jucată".</div></div>';
+    }
+    // Aceeași poveste ca la Roluri, dar pentru „Toată echipa": afișajul de pornire, programul de
+    // lucru și prețul combustibilului sunt reglaje ALE UNEI FIRME. Un cont de platformă (al nostru)
+    // nu ține de nicio firmă — înainte, ecranul arăta formulare care păreau normale, dar la
+    // „Salvează" serverul răspundea cu un 400 („Super-adminul nu are companie proprie"), fiindcă nu
+    // avea unde să scrie. Mai bine spunem de la început, ca la Roluri, decât să lăsăm omul să
+    // completeze ceva care oricum n-are cum să se salveze.
+    function regFaraFirmaHtml() {
+      return '<div class="set-gol-mare">' +
+        '<i class="fas fa-building-lock"></i>' +
+        '<div class="set-gol-t">Astea sunt reglaje ale unei firme</div>' +
+        '<div class="set-gol-d">Afișajul de pornire, programul de lucru și prețul combustibilului se ' +
+        'pun pe o firmă anume. Contul tău e cont de <b>platformă</b>: nu ține de nicio firmă, deci ' +
+        'n-are ce reglaje să pună aici.' +
+        '<br><br><b>Nici comutatorul de sus nu schimbă asta</b> — el schimbă doar ce ți se arată, nu ' +
+        'și cine ești pentru server.' +
+        '<br><br>Ecranul ăsta e al administratorului unei firme.</div></div>';
     }
     function rolRender() {
       var host = document.getElementById('rol-host'); if (!host) return;
@@ -5591,9 +5612,18 @@ const pozitii = await r.json();</code></pre>
         if (box) box.innerHTML = '<div class="pref-load">Nu s-au putut citi preferințele.</div>';
       }
 
-      // Regulile firmei (default-uri + program) — doar cine administrează utilizatori.
+      // „Toată echipa" (afișaj de pornire + program de lucru) — doar cine administrează utilizatori.
       if (!perm.manageUsers) return;
       var coBox = document.getElementById('us-company-list');
+      var wsBox = document.getElementById('us-worksched');
+      // Un cont de platformă (fără firmă) n-are pe ce firmă să pună reglajele astea — vezi
+      // regFaraFirmaHtml(). Fără verificarea asta, ecranul arăta un formular normal care la
+      // „Salvează" răspundea cu un 400 de la server.
+      if (window.currentUser && currentUser.isSuper && !currentUser.companyId) {
+        if (coBox) coBox.innerHTML = regFaraFirmaHtml();
+        if (wsBox) wsBox.innerHTML = regFaraFirmaHtml();
+        return;
+      }
       if (coBox) coBox.innerHTML = '<div class="pref-load">Se încarcă…</div>';
       try {
         var cs = await fetch('/api/companies/me/settings', { credentials: 'same-origin' }).then(r => r.json());
@@ -5687,6 +5717,16 @@ const pozitii = await r.json();</code></pre>
     // Coadă pentru serializare PUT-uri concurente (evită race condition între input-uri adiacente)
     var _usThrQueue = Promise.resolve();
     // ─── Prețuri combustibil (companie) — media națională auto + override ───
+    // Fila e a unei firme: un cont de platformă n-are unde să salveze prețul, deci arătăm
+    // explicația (regFaraFirmaHtml) în locul formularului, în loc să lăsăm omul să scrie ceva
+    // care la „Salvează" s-ar întoarce cu un 400.
+    function usTabCombustibil() {
+      var faraFirma = !!(window.currentUser && currentUser.isSuper && !currentUser.companyId);
+      var nf = document.getElementById('us-fuel-nofirma'), fb = document.getElementById('us-fuel-body');
+      if (nf) { nf.style.display = faraFirma ? '' : 'none'; if (faraFirma) nf.innerHTML = regFaraFirmaHtml(); }
+      if (fb) fb.style.display = faraFirma ? 'none' : '';
+      if (!faraFirma && window.usLoadFuelPrices) window.usLoadFuelPrices();
+    }
     window.usLoadFuelPrices = async function () {
       try {
         var d = await fetch('/api/fuel-prices', { credentials: 'same-origin' }).then(function (r) { return r.json(); });

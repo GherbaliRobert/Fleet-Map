@@ -239,6 +239,37 @@ T('Setările se încarcă pe drepturile reale, nu pe cele împrumutate',
 T('serverul nu știe și nu poate ști de comutator',
   !/ra_set_ochi|setPrivireCa/.test(fs.readFileSync('./server.js', 'utf8')));
 
+sect('8. „Toată echipa" (fostă „Regulile firmei"): nume + starea „fără firmă"');
+// „Regulile firmei" era ambiguu chiar din contul nostru: „firma" a cui, a noastră sau a
+// clientului? Și „Ce văd toți" nu spunea ce se regăsește acolo. Alin, 03.09.
+T('grupa se numește „Toată echipa"', M.SET_MENIU.some(x => x.grup === 'Toată echipa'));
+T('nu mai există „Regulile firmei"', !M.SET_MENIU.some(x => x.grup === 'Regulile firmei'));
+const capReguli = M.SET_MENIU.filter(x => x.k === 'reguli')[0];
+T('capitolul „reguli" se cheamă „Afișaj pentru toți"', !!capReguli && capReguli.et === 'Afișaj pentru toți', capReguli && capReguli.et);
+
+// Bug adevărat, nu doar de nume: un cont de platformă (fără firmă) vedea la „Ce văd toți" / „Program
+// de lucru" / „Prețuri combustibil" formulare normale — dar la „Salvează", serverul refuza cu 400
+// („Super-adminul nu are companie proprie"), fiindcă nu exista nicio firmă unde să scrie. Aceeași
+// idee ca la Roluri: se spune de la ÎNCEPUT, nu după ce omul completează ceva degeaba.
+const rg1 = html.indexOf('function regFaraFirmaHtml() {');
+const rg2 = html.indexOf('\n    }', rg1) + 6;
+T('găsesc explicația pentru „Toată echipa" fără firmă', rg1 > 0, 'rg1=' + rg1);
+if (rg1 > 0) {
+  const RG = new Function(html.slice(rg1, rg2) + '\n; return regFaraFirmaHtml();')();
+  T('spune că reglajele sunt ale unei firme', /reglaje ale unei firme/i.test(RG), RG);
+  T('spune că e cont de platformă', /cont de <b>platformă<\/b>/.test(RG));
+  T('spune că nici comutatorul nu ajută (aceeași lecție ca la Roluri)', /Nici comutatorul de sus nu schimbă asta/.test(RG));
+  T('nu lasă niciun buton de apăsat degeaba', !/<button/.test(RG), RG);
+}
+T('„Ce văd toți" / „Program de lucru" ies devreme pentru contul de platformă, ÎNAINTE de fetch',
+  /currentUser\.isSuper && !currentUser\.companyId\)\s*\{\s*\n\s*if \(coBox\) coBox\.innerHTML = regFaraFirmaHtml\(\);\s*\n\s*if \(wsBox\) wsBox\.innerHTML = regFaraFirmaHtml\(\);\s*\n\s*return;/.test(html));
+T('fila „Prețuri combustibil" trece prin comutatorul care verifică firma',
+  /name === 'combustibil'\) usTabCombustibil\(\)/.test(html));
+T('comutatorul de combustibil arată explicația și ascunde formularul pentru contul de platformă',
+  /faraFirma \? '' : 'none'[\s\S]{0,200}?faraFirma \? 'none' : ''/.test(html));
+T('și NU cere prețurile de la server cât timp arată explicația',
+  /if \(!faraFirma && window\.usLoadFuelPrices\) window\.usLoadFuelPrices\(\);/.test(html));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);

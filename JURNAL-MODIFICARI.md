@@ -20,6 +20,38 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · „Regulile firmei" a devenit „Toată echipa" — și un bug adevărat, găsit pe drum
+
+Alin, uitându-se la meniu: *„regulile firmei, ce văd toți, nu prea e ok... noi avem regulile
+noastre, firmele partenere regulile lor... nu mi se pare ok secțiunea asta"*. Avea dreptate din două
+motive — unul de exprimare, unul de funcționare.
+
+**Exprimarea.** „Regulile firmei" era ambiguu chiar din contul nostru: firma a cui, a RA Tracks sau
+a clientului? Iar „Ce văd toți" nu spunea ce se găsește acolo. Grupa se cheamă acum **„Toată
+echipa"** — perechea firească a lui „Contul meu": una e a ta, cealaltă e a tuturor. Capitolul dintâi
+e **„Afișaj pentru toți"**, pereche directă cu „Afișaj" din Preferințe, unde omul schimbă exact
+aceleași lucruri, dar numai pentru el. Iar textul de sub titlu spune acum ce e înăuntru: traseul
+colorat după viteză, numele șoferilor, adresa în loc de coordonate, filele pentru camioane și sonde
+— **valoarea de pornire**, pe care fiecare om și-o poate schimba apoi la el.
+
+**Funcționarea — asta era mai gravă.** Alin tocmai reclamase, la Roluri, că nici pe comutatorul de
+„Admin de firmă" nu merge. M-am dus să verific și aici și am găsit exact aceeași boală: un cont de
+platformă (fără firmă) vedea la „Ce văd toți", „Program de lucru" și „Prețuri combustibil" niște
+formulare cu aspect perfect normal — dar la **Salvează**, serverul răspundea cu un 400
+(„Super-adminul nu are companie proprie"). Ecranul promitea ceva ce nu putea ține.
+
+**Ce e acum.** Aceeași rețetă ca la Roluri: contul de platformă vede, în locul formularului, o
+explicație — reglajele astea sunt ale unei firme, contul tău e de platformă, iar **nici comutatorul
+de sus nu ajută** (schimbă doar ce se arată, nu cine ești pentru server). Un admin de firmă adevărat
+nu vede nicio schimbare: formularele lui arată și funcționează exact ca înainte.
+
+- **Ce am schimbat:** grupa și primul ei capitol redenumite; cele trei file arată o explicație în loc
+  de un formular care oricum n-avea unde să salveze.
+- **Ce vede fondatorul:** „Toată echipa" → „Afișaj pentru toți", iar în cele trei file, motivul
+  pentru care n-are ce pune acolo — de la început, nu la ultimul clic.
+- **Ce vede clientul:** numele noi, mai limpezi. Restul, neschimbat.
+
+
 ### FONDATOR · „Contul tău nu e legat de o firmă" — de ce, și de ce nu mai afli abia la final
 
 Alin a completat fereastra de rol nou și, la „Creează rolul", a primit *„Contul tău nu e legat de o
@@ -179,7 +211,7 @@ aplicație" a devenit **„așa e din fabrică"**, „default companie" → **�
 
 **2. Două din cele șase nici nu erau preferințe de om.** „Fila Camion" și „Filele pentru sonde"
 înseamnă *„firma asta n-are camioane / n-are sonde"* — o hotărâre a firmei, nu un gust personal.
-Au fost mutate la **Setări → Ce văd toți**, unde le e locul. În contul omului nu mai apar.
+Au fost mutate la **Setări → Afișaj pentru toți**, unde le e locul. În contul omului nu mai apar.
 
 **3. Lipseau exact lucrurile pe care omul chiar vrea să le schimbe.** Existau în aplicație, dar
 stăteau **numai în browser**: le puneai pe laptop și pe telefon erau tot cum fuseseră. Acum stau pe
@@ -227,7 +259,7 @@ care scrii**, ca să se vadă din colțul ochiului unde ești. Restul aplicație
 - **Ce am schimbat:** Preferințele au acum trei capitole — Contul meu, Afișaj, Alerte — plus
   schimbarea parolei; alegerile se țin minte pe cont, nu pe calculator.
 - **Ce vede fondatorul:** exact același ecran ca și clientul. Aici nu e nimic „doar al nostru", deci
-  comutatorul de privire nu schimbă nimic. În plus, la **Ce văd toți** au apărut cele două file
+  comutatorul de privire nu schimbă nimic. În plus, la **Afișaj pentru toți** au apărut cele două file
   mutate de la om la firmă.
 - **Ce vede clientul:** un ecran scris pe românește, în care își poate schimba singur parola și își
   potrivește aplicația cum îi place — o dată, pentru toate dispozitivele.
@@ -237,7 +269,7 @@ care scrii**, ca să se vadă din colțul ochiului unde ești. Restul aplicație
 
 Alin: *„noi testăm acum, ne încurcăm — ar trebui să avem un toggle"*. Are dreptate, și motivul e
 concret: în contul nostru, Setările au **unsprezece capitole**, din care trei sunt **regulile
-FIRMEI** — „Ce văd toți", „Program de lucru", „Prețuri combustibil". Noi nu avem flotă; ele n-au ce
+FIRMEI** — „Afișaj pentru toți", „Program de lucru", „Prețuri combustibil". Noi nu avem flotă; ele n-au ce
 face acolo, dar apar, fiindcă tehnic avem drepturi peste tot. Iar când te uiți la ecranul ăsta toată
 ziua, nu mai știi dacă ce vezi e al tău sau al clientului.
 
@@ -715,7 +747,7 @@ că „se deschid aiurea".
 |---|---|
 | Contul meu | Preferințe |
 | Conturi și roluri | Utilizatori |
-| Regulile firmei | Ce văd toți · Program de lucru · Prețuri combustibil |
+| Toată echipa | Afișaj pentru toți · Program de lucru · Prețuri combustibil |
 | Abonament și integrări | Facturile mele · Chei API |
 | Doar pentru noi | Catalog coduri GPS |
 
