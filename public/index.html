@@ -4460,8 +4460,8 @@ const pozitii = await r.json();</code></pre>
         desc: 'Se schimbă și din butonul cu lună/soare, sus în bară.',
         valori: [['inchisa', 'Închisă'], ['deschisa', 'Deschisă'], ['sistem', 'Ca pe dispozitiv']] },
       { k: 'harta', g: 'aspect', tip: 'lista', unde: 'user', label: 'Harta cu care pornești',
-        desc: '„Potrivit cu tema" înseamnă hartă deschisă pe temă deschisă și invers.',
-        valori: [['auto', 'Potrivit cu tema'], ['streets', 'Străzi'], ['light', 'Deschisă'], ['dark', 'Închisă'], ['sat', 'Satelit'], ['hybrid', 'Satelit cu denumiri'], ['terrain', 'Relief']] },
+        desc: '„Automat" o alege aplicația — acum e harta cu străzi. O poți schimba oricând și din butonul de pe hartă.',
+        valori: [['auto', 'Automat'], ['streets', 'Străzi'], ['sat', 'Satelit'], ['hybrid', 'Satelit cu denumiri'], ['terrain', 'Relief']] },
       { k: 'masini_harta', g: 'aspect', tip: 'lista', unde: 'user', label: 'Cum arată mașinile pe hartă',
         desc: 'Săgețile se citesc mai ușor când ai multe mașini în același loc: arată direcția de mers.',
         valori: [['iconite', 'Iconițe'], ['sageti', 'Săgeți']] },
@@ -11142,24 +11142,25 @@ const pozitii = await r.json();</code></pre>
     let mapTiles = null, mapLabelsLayer = null;
     const MAP_TILES = {
       streets: { label: 'Străzi', icon: 'fa-map', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', sub: 'abc', max: 19 },
-      light:   { label: 'Deschis', icon: 'fa-sun', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO', sub: 'abcd', max: 20 },
-      dark:    { label: 'Închis', icon: 'fa-moon', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO', sub: 'abcd', max: 20 },
       sat:     { label: 'Satelit', icon: 'fa-satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri World Imagery', sub: '', max: 19 },
       hybrid:  { label: 'Satelit + etichete', icon: 'fa-earth-europe', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri', sub: '', max: 19, labels: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}' },
       terrain: { label: 'Relief', icon: 'fa-mountain', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenTopoMap (CC-BY-SA)', sub: 'abc', max: 17 }
     };
-    const MAP_LAYER_ORDER = ['auto', 'streets', 'light', 'dark', 'sat', 'hybrid', 'terrain'];
-    // 'auto' = urmează tema aplicației (deschis/închis) — comportamentul de dinainte.
+    const MAP_LAYER_ORDER = ['auto', 'streets', 'sat', 'hybrid', 'terrain'];
+    // ⚠ Straturile „Deschis"/„Închis" erau de la CARTO (basemaps.cartocdn.com). CARTO a început să
+    // ceară CHEIE: tile-urile vin acum cu „API KEY REQUIRED" scris peste toată harta. Le-am scos —
+    // un strat care nu se desenează e mai rău decât unul care lipsește. „Automat" merge pe Străzi
+    // (OpenStreetMap) până punem un furnizor de hărți cu cheie. Vezi JURNAL → „A. Blocante".
     let mapLayerChoice = (function () { try { var v = localStorage.getItem('mapLayer'); return (v && (v === 'auto' || MAP_TILES[v])) ? v : 'auto'; } catch (e) { return 'auto'; } })();
     let satMode = false; // strat satelit forțat (util la desenare precisă) — are prioritate peste alegerea userului
     function _resolveLayerKey() {
       if (satMode) return 'sat';
       if (mapLayerChoice !== 'auto' && MAP_TILES[mapLayerChoice]) return mapLayerChoice;
-      return document.body.classList.contains('dark') ? 'dark' : 'light';
+      return 'streets';   // cât timp n-avem cheie de hărți, „Automat" = Străzi, pe ambele teme
     }
     function applyMapTheme() {
       if (typeof map === 'undefined' || !map) return;
-      const cfg = MAP_TILES[_resolveLayerKey()] || MAP_TILES.light;
+      const cfg = MAP_TILES[_resolveLayerKey()] || MAP_TILES.streets;
       if (mapTiles) { try { map.removeLayer(mapTiles); } catch (e) {} }
       if (mapLabelsLayer) { try { map.removeLayer(mapLabelsLayer); } catch (e) {} mapLabelsLayer = null; }
       mapTiles = L.tileLayer(cfg.url, { attribution: cfg.attribution, subdomains: cfg.sub, maxZoom: cfg.max || 20 }).addTo(map);
@@ -11877,7 +11878,7 @@ const pozitii = await r.json();</code></pre>
     // Harta 3D urmează stratul ales de utilizator (meniul „Straturi hartă") → SATELIT funcționează și în 3D.
     // Convertește un tile-template Leaflet ({s} subdomenii, {r} retina) în lista de URL-uri cerută de MapLibre.
     function _ml3dTilesFor(key) {
-      var cfg = MAP_TILES[key] || MAP_TILES.light;
+      var cfg = MAP_TILES[key] || MAP_TILES.streets;
       var tiles = cfg.sub ? cfg.sub.split('').map(function (s) { return cfg.url.replace('{s}', s).replace('{r}', ''); })
         : [cfg.url.replace('{r}', '')];
       return { tiles: tiles, attribution: cfg.attribution, max: cfg.max || 19, labels: cfg.labels || null };

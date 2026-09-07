@@ -9573,7 +9573,7 @@ const UI_PREFS = [
   // Cum arată aplicația pentru MINE. Stăteau doar în browser: le schimbai pe laptop, pe telefon
   // rămâneau cum erau. Acum stau pe cont și te urmează oriunde te loghezi.
   { k: 'tema', tip: 'lista', implicit: 'inchisa', valori: ['inchisa', 'deschisa', 'sistem'], unde: 'user' },
-  { k: 'harta', tip: 'lista', implicit: 'auto', valori: ['auto', 'streets', 'light', 'dark', 'sat', 'hybrid', 'terrain'], unde: 'user' },
+  { k: 'harta', tip: 'lista', implicit: 'auto', valori: ['auto', 'streets', 'sat', 'hybrid', 'terrain'], unde: 'user' },
   { k: 'masini_harta', tip: 'lista', implicit: 'iconite', valori: ['iconite', 'sageti'], unde: 'user' },
   { k: 'uneste_masini', tip: 'bifa', implicit: false, unde: 'user' },
   { k: 'panou_lateral', tip: 'lista', implicit: 'deschis', valori: ['deschis', 'strans'], unde: 'user' },

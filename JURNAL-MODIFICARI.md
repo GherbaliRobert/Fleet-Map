@@ -57,6 +57,39 @@ gaură pe ecran.
 ⚠️ **Trebuie instalat APK-ul nou** — reparația e în aplicație, nu pe server.
 
 ---
+### AMÂNDOI · „API KEY REQUIRED" peste toată harta — CARTO a început să ceară cheie
+
+Alin, cu o captură în care harta e acoperită de scrisul *„API KEY REQUIRED — carto.com/basemaps"*:
+*„de ce apare așa? ce ai stricat?"*.
+
+**Nu e de la noi.** Scrisul ăla e desenat de CARTO **pe tile-urile lor**, nu de aplicație — noi
+n-avem cum să scriem ceva peste hartă. Iar adresele de unde luam harta nu s-au atins din iulie
+(se poate verifica: `git log -S basemaps.cartocdn`). **CARTO a început să ceară cheie** pentru
+hărțile lui, care până acum erau libere. S-a schimbat la ei, peste noapte, fără să ne întrebe.
+
+**Ce foloseam de la ei:** straturile **„Deschis"** și **„Închis"** — exact cele două pe care
+„Automat" le alegea după temă. Adică fix ce vedea toată lumea, implicit. De asta a apărut dintr-o
+dată la toți.
+
+**Ce am făcut acum.** Le-am scos din listă — un strat care nu se desenează e mai rău decât unul care
+lipsește — iar **„Automat" merge pe „Străzi" (OpenStreetMap)**, care se încarcă normal. Rămân în
+meniu: Străzi, Satelit, Satelit cu denumiri, Relief. Harta funcționează din nou, pe ambele teme.
+
+Am legat și cele două liste care se despărțiseră: preferința „Harta cu care pornești" oferea
+straturi care nu mai existau. Acum o probă automată le ține împreună — dacă cineva scoate un strat
+și uită preferința (sau invers), pică înainte de livrare. Tot ea refuză orice furnizor care cere
+cheie fără să i-o dăm.
+
+- **Ce am schimbat:** straturile de la CARTO au ieșit; „Automat" = Străzi; preferința pusă la zi.
+- **Ce vede fondatorul:** harta merge iar. Lipsesc „Deschis"/„Închis" din selectorul de pe hartă.
+- **Ce vede clientul:** același lucru — dar el n-a apucat să le vadă vreodată.
+
+**Rămâne de rezolvat, și e pe lista de blocante:** OpenStreetMap ne ține acum, dar serverul lor e
+din donații și regulile spun că nu e pentru produse comerciale. Înainte de primii clienți ne luăm
+cont la un furnizor cu cheie — și recuperăm și varianta deschisă/închisă, mai frumoasă decât ce
+aveam.
+
+
 ### AMÂNDOI · Meniul se împarte în două verticale: a partenerului și a noastră
 
 Alin, după ce s-a lovit de câteva ori de aceleași ziduri: *„practic sunt două verticale, noi
@@ -4318,6 +4351,22 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### A. Blocante — fără astea nu dăm drumul
+
+- [ ] **(voi + eu) Un furnizor de hărți ca lumea, cu cheie. URGENT — a apărut singur, pe 04.09.**
+  Straturile „Deschis" și „Închis" veneau de la **CARTO**, gratuit și fără cheie. CARTO a început
+  să ceară cheie, iar de atunci tile-urile lor vin cu **„API KEY REQUIRED" scris peste toată harta**.
+  Le-am scos din aplicație pe loc, iar „Automat" merge acum pe **Străzi (OpenStreetMap)**, care se
+  desenează normal. Deci harta funcționează — dar am rămas fără varianta deschisă/închisă.
+
+  **De ce nu e o reparație definitivă:** serverul public de tile-uri al OpenStreetMap e ținut din
+  donații, iar regulile lor spun limpede că **nu e pentru produse comerciale** cu mulți utilizatori.
+  Cât timp suntem noi doi și câteva mașini, nimeni nu ne bagă în seamă. La zece clienți care se uită
+  toată ziua la hartă, riscăm să fim blocați — și atunci rămânem fără hartă la toți deodată.
+
+  **Ce e de făcut:** ne luăm cont la un furnizor (MapTiler, Stadia, Thunderforest — toate au și
+  varianta deschisă/închisă, mult mai frumoasă decât OSM standard) și punem cheia în variabilele de
+  mediu, ca la restul. Costă de la zero (planuri gratuite generoase) până la câteva zeci de euro pe
+  lună, după cât ne uităm la hartă. **Până atunci, harta merge, dar stăm pe mila cuiva.**
 
 - [ ] **(eu) DE SCOS LA LANSARE: comutatorul „Fondator / Admin de firmă" din Setări. Hotărât de
   Alin, 03.09.** E o schelă de probă, nu o funcție a produsului: l-am pus ca să nu ne mai încurcăm

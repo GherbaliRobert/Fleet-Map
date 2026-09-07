@@ -145,6 +145,26 @@ T('dar poate seta ce e al ei', S.filtru({ tab_camion: false }, 'firma').tab_cami
 T('fiecare cheie are valoare din fabrică', S.KEYS.every(k => S.DEF[k] !== undefined),
   S.KEYS.filter(k => S.DEF[k] === undefined).join(', '));
 
+sect('11b. Hartile oferite in preferinte chiar exista');
+// CARTO a inceput sa ceara cheie: tile-urile lui vin cu "API KEY REQUIRED" scris peste hartă. Am
+// scos straturile alea, dar preferinta „harta" le mai oferea — adica omul ar fi ales un strat care
+// nu se deseneaza. Proba leaga cele doua liste, ca sa nu se mai poata desparti.
+const mt = html.indexOf('const MAP_TILES = {');
+const mtEnd = html.indexOf('};', mt);
+T('gasesc catalogul de harti', mt > 0 && mtEnd > mt);
+if (mt > 0) {
+  const bucata = html.slice(mt, mtEnd);
+  const straturi = (bucata.match(/^\s{6}(\w+):/gm) || []).map(x => x.trim().replace(':', ''));
+  const harta = C.T.filter(t => t.k === 'harta')[0];
+  const oferite = harta.valori.map(v => v[0]).filter(v => v !== 'auto');
+  const lipsa = oferite.filter(v => straturi.indexOf(v) < 0);
+  T('fiecare harta oferita exista in catalog', !lipsa.length, 'oferite fara strat: ' + lipsa.join(', '));
+  T('si fiecare strat din catalog se poate alege', !straturi.filter(v => oferite.indexOf(v) < 0).length,
+    'straturi neoferite: ' + straturi.filter(v => oferite.indexOf(v) < 0).join(', '));
+  T('niciun strat nu mai vine de la un furnizor care cere cheie', !/cartocdn/.test(bucata));
+  T('„Automat" nu mai cade pe un strat inexistent', !/return document\.body\.classList\.contains\('dark'\) \? 'dark' : 'light';/.test(html));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {}
 const srv = spawn(process.execPath, ['server.js'], { env, stdio: ['ignore', 'ignore', 'inherit'] });
