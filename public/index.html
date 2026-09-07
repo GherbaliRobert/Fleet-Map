@@ -125,10 +125,10 @@
              Panoul de admin avea meniul LUI, înăuntru: intrai în „Administrare", apăsai „Panou
              admin" și dădeai peste încă un meniu, cu 16 rânduri. Două meniuri, unul în altul, plus
              Companii și Audit în amândouă. Acum secțiunile lui sunt chiar aici, în meniul din
-             stânga, cu grupele lor — un singur meniu, un singur clic până la orice.
+             stânga, cu grupele și numele lui — un singur meniu, un singur clic până la orice.
              „Setări" a ieșit de aici demult: e casa clientului, deci stă în verticala lui, jos. -->
-        <div class="nav-group" data-vert="fondator" data-group="clienti">
-          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-building"></i><span>Clienți și aparate</span><i class="fas fa-chevron-down nav-caret"></i></button>
+        <div class="nav-group" data-vert="fondator" data-group="gestiune">
+          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-building"></i><span>Gestiune</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('administrare'); })"><i class="fas fa-gauge"></i><span>Acasă</span></button>
             <button class="nav-item nav-sub companies-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
@@ -139,19 +139,19 @@
           </div>
         </div>
         <div class="nav-group" data-vert="fondator" data-super data-group="module">
-          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-cubes"></i><span>Module</span><i class="fas fa-chevron-down nav-caret"></i></button>
+          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-cubes"></i><span>AI &amp; Module</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('agents'); })"><i class="fas fa-wand-magic-sparkles"></i><span>Utilizare RA Insight</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('tahograf'); })"><i class="fas fa-tachograph-digital"></i><span>Tahograf</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('etransport'); })"><i class="fas fa-truck-fast"></i><span>e-Transport</span></button>
           </div>
         </div>
-        <div class="nav-group" data-vert="fondator" data-super data-group="bani">
-          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-coins"></i><span>Bani și vânzări</span><i class="fas fa-chevron-down nav-caret"></i></button>
+        <div class="nav-group" data-vert="fondator" data-super data-group="business">
+          <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-coins"></i><span>Business</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('billing'); })"><i class="fas fa-file-invoice-dollar"></i><span>Facturare</span></button>
-            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('accounts'); })"><i class="fas fa-users-gear"></i><span>Conturi și abonamente</span></button>
-            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('dashboard'); })"><i class="fas fa-chart-line"></i><span>Cifrele platformei</span></button>
+            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('accounts'); })"><i class="fas fa-users-gear"></i><span>Conturi &amp; Abonamente</span></button>
+            <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('dashboard'); })"><i class="fas fa-chart-line"></i><span>Dashboard platformă</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('costs'); })"><i class="fas fa-wallet"></i><span>Control costuri</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('ofertare'); })"><i class="fas fa-tag"></i><span>Ofertare Live</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('demoreq'); })"><i class="fas fa-envelope-open-text"></i><span>Cereri demo</span><span id="nav-demoreq-badge" class="rax-tag" style="display:none;background:var(--red);color:#fff;margin-left:auto;"></span></button>

@@ -218,7 +218,7 @@ if (k1 > 0 && k2 > k1) {
   T('memoria pusa de mana nu-i da clientului comutator', R.com === 'none' && R.html === '');
 
   // e) Meniul aplicatiei e impartit pe verticale, iar Setarile au iesit din Administrare.
-  ['clienti', 'module', 'bani', 'sistem'].forEach(function (g) {
+  ['gestiune', 'module', 'business', 'sistem'].forEach(function (g) {
     T('grupa „' + g + '" e a noastra', new RegExp('data-vert="fondator"[^>]*data-group="' + g + '"').test(html));
   });
   T('nu mai exista invelisul „Administrare" (sectiunile au urcat in meniu)',

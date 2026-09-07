@@ -71,15 +71,18 @@ meniu?"*. Da. Și e mai mult decât o mutare de butoane.
 
 | Grupă | Ce e în ea |
 |---|---|
-| **Clienți și aparate** | Acasă · Companii · Dispozitive · Utilizatori · Inventar dispozitive · Dispozitive arhivate |
-| **Module** | Utilizare RA Insight · Tahograf · e-Transport |
-| **Bani și vânzări** | Facturare · Conturi și abonamente · Cifrele platformei · Control costuri · Ofertare Live · Cereri demo |
+| **Gestiune** | Acasă · Companii · Dispozitive · Utilizatori · Inventar dispozitive · Dispozitive arhivate |
+| **AI & Module** | Utilizare RA Insight · Tahograf · e-Transport |
+| **Business** | Facturare · Conturi & Abonamente · Dashboard platformă · Control costuri · Ofertare Live · Cereri demo |
 | **Sistem** | Chei API · Jurnal audit |
 
-„Administrare" ca înveliș și „Panou admin" ca buton **au dispărut** — nu mai aveau ce înveli. Grupele
-au primit nume pe românește, ca peste tot: „Gestiune" → **Clienți și aparate**, „AI & Module" →
-**Module**, „Business" → **Bani și vânzări**. Iar „Dashboard platformă" a devenit **Cifrele
-platformei**.
+„Administrare" ca înveliș și „Panou admin" ca buton **au dispărut** — nu mai aveau ce înveli.
+
+**Numele rămân cele din panou, neschimbate.** Le tradusesem pe românește („Gestiune" → „Clienți și
+aparate", „Business" → „Bani și vânzări"), fiindcă înțelesesem greșit un „da" al lui Alin. El le
+voia exact așa cum erau — și are dreptate: ecranele astea sunt **ale noastre**, nu ale clientului.
+Regula „fără jargon" e pentru ecranele pe care le vede el; la noi contează să găsim repede ce
+căutăm, iar numele astea le știm de un an.
 
 **Ce se câștigă, pe scurt.** Ușa dublă dispare: fiecare ecran are un singur loc. Drumul până la orice
 scade de la trei clicuri la unul. Și meniul nu mai e sec — toată munca noastră e la vedere, nu
