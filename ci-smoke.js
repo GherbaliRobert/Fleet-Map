@@ -23,7 +23,10 @@ srv.on('exit', (c) => { if (!finished) { console.error('[ci] serverul s-a oprit 
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function waitUp() {
-  for (let i = 0; i < 60; i++) {
+  // 4 minute, nu 30 de secunde. La o bază locală PORNITĂ LA RECE (director șters, schema se creează
+  // de la zero) pornirea ia ~90s pe o mașină obișnuită — iar mesajul „serverul nu a pornit la timp"
+  // arată exact ca o suită picată. M-a trimis de două ori pe pistă greșită.
+  for (let i = 0; i < 480; i++) {
     try { const r = await fetch('http://localhost:' + PORT + '/api'); if (r.ok) return true; } catch (e) {}
     await sleep(500);
   }
