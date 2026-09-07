@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
-### AMÂNDOI · De ce lipseau pictogramele CAN pe telefon — `COMMIT_HASH`
+### AMÂNDOI · De ce lipseau pictogramele CAN pe telefon — `d6b9c86`
 
 Aveați dreptate. Le-am văzut lipsă cu ochii mei, în aplicație.
 
