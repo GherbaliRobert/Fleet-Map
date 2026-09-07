@@ -286,18 +286,21 @@ T('capitolul „reguli" se cheamă „Afișaj pentru toți"', !!capReguli && cap
 // de lucru" / „Prețuri combustibil" formulare normale — dar la „Salvează", serverul refuza cu 400
 // („Super-adminul nu are companie proprie"), fiindcă nu exista nicio firmă unde să scrie. Aceeași
 // idee ca la Roluri: se spune de la ÎNCEPUT, nu după ce omul completează ceva degeaba.
-const rg1 = html.indexOf('function regFaraFirmaHtml() {');
+const rg1 = html.indexOf('function regFaraFirmaHtml(caPartener) {');
 const rg2 = html.indexOf('\n    }', rg1) + 6;
 T('găsesc explicația pentru „Toată echipa" fără firmă', rg1 > 0, 'rg1=' + rg1);
 if (rg1 > 0) {
-  const RG = new Function(html.slice(rg1, rg2) + '\n; return regFaraFirmaHtml();')();
+  const facRG = new Function(html.slice(rg1, rg2) + '\n; return regFaraFirmaHtml;')();
+  const RG = facRG(false), RGP = facRG(true);
+  T('pe verticala partenerului, mesajul spune ca EL are ecranul intreg', /vede ecranul întreg/.test(RGP), RGP.slice(0, 200));
+  T('si nu-i lipseste nimic', /Nu-i lipsește nimic/.test(RGP));
   T('spune că reglajele sunt ale unei firme', /reglaje ale unei firme/i.test(RG), RG);
   T('spune că e cont de platformă', /cont de <b>platformă<\/b>/.test(RG));
-  T('spune că nici comutatorul nu ajută (aceeași lecție ca la Roluri)', /Nici comutatorul de sus nu schimbă asta/.test(RG));
+  T('spune că nici comutatorul nu ajută (aceeași lecție ca la Roluri)', /[Cc]omutatorul de sus nu schimbă asta/.test(RG) && /[Cc]omutatorul de sus nu schimbă asta/.test(RGP));
   T('nu lasă niciun buton de apăsat degeaba', !/<button/.test(RG), RG);
 }
 T('„Ce văd toți" / „Program de lucru" ies devreme pentru contul de platformă, ÎNAINTE de fetch',
-  /currentUser\.isSuper && !currentUser\.companyId\)\s*\{\s*\n\s*if \(coBox\) coBox\.innerHTML = regFaraFirmaHtml\(\);\s*\n\s*if \(wsBox\) wsBox\.innerHTML = regFaraFirmaHtml\(\);\s*\n\s*return;/.test(html));
+  /currentUser\.isSuper && !currentUser\.companyId\)[\s\S]{0,320}?if \(coBox\) coBox\.innerHTML = regFaraFirmaHtml\([\s\S]{0,120}?if \(wsBox\) wsBox\.innerHTML = regFaraFirmaHtml\([\s\S]{0,60}?return;/.test(html));
 T('fila „Prețuri combustibil" trece prin comutatorul care verifică firma',
   /name === 'combustibil'\) usTabCombustibil\(\)/.test(html));
 T('comutatorul de combustibil arată explicația și ascunde formularul pentru contul de platformă',

@@ -57,6 +57,34 @@ gaură pe ecran.
 ⚠️ **Trebuie instalat APK-ul nou** — reparația e în aplicație, nu pe server.
 
 ---
+### FONDATOR · „Rolurile sunt ale unei firme" suna, pe verticala partenerului, ca si cum clientul n-ar avea roluri
+
+Alin, pe verticala Partener, la Roluri: *„de ce apare asa? adica el nu isi poate stabili roluri sau
+ce?"*. **Ba da, poate — si nu-i lipseste nimic.** Ce vedea era limitarea contului NOSTRU, aratata in
+locul gresit.
+
+**De ce.** Comutatorul schimba ce se AFISEAZA, nu cine esti pentru server. Pe „Partener" ti se
+deseneaza meniul clientului, dar contul tau ramane cont de platforma, fara firma — iar rolurile se
+scriu intr-o firma. Deci ecranul spunea, corect, „contul tau nu tine de nicio firma". Numai ca,
+citit pe verticala clientului, suna ca si cum **clientului** i s-ar fi luat ceva.
+
+**Ce e acum.** Mesajul stie pe ce verticala esti:
+
+- pe **Partener** incepe cu ce vede EL: *„Aici clientul isi face rolurile — partenerul vede pe
+  ecranul asta editorul intreg... Nu-i lipseste nimic"*, si abia apoi explica de ce tu nu-l vezi;
+- pe **Fondator** ramane cum era: e vorba despre contul tau.
+
+Amandoua se termina la fel, cu singura concluzie care conteaza: ca sa vezi ecranul cu date reale,
+**iti trebuie un cont de partener adevarat** — comutatorul nu tine loc de asa ceva.
+
+Aceeasi reparatie si la „Toata echipa" (Afisaj pentru toti, Program de lucru, Preturi combustibil),
+unde mesajul avea exact aceeasi problema.
+
+- **Ce am schimbat:** textul celor doua ecrane „aici n-ai ce vedea" se potriveste cu verticala.
+- **Ce vede fondatorul:** pe Partener, un mesaj care spune limpede ca clientul are ecranul intreg.
+- **Ce vede clientul:** nimic — el are firma, deci vede editorul, nu mesajul.
+
+
 ### AMÂNDOI · „API KEY REQUIRED" peste toată harta — CARTO a început să ceară cheie
 
 Alin, cu o captură în care harta e acoperită de scrisul *„API KEY REQUIRED — carto.com/basemaps"*:

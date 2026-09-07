@@ -361,11 +361,17 @@ const login = async (u, p) => {
   }
   // Contul de platformă (al nostru) nu ține de nicio firmă: n-are la ce lipi un rol. Serverul refuza
   // oricum, dar abia DUPĂ ce omul completa formularul — acum ecranul o spune de la început.
-  const g1 = html.indexOf('    function rolFaraFirmaHtml() {');
+  const g1 = html.indexOf('    function rolFaraFirmaHtml(caPartener) {');
   const g2 = html.indexOf('    function rolRender() {', g1);
   T('găsesc explicația pentru contul fără firmă', g1 > 0 && g2 > g1, 'g1=' + g1);
   if (g1 > 0 && g2 > g1) {
-    const G = new Function(html.slice(g1, g2) + '\n; return rolFaraFirmaHtml();')();
+    const facG = new Function(html.slice(g1, g2) + '\n; return rolFaraFirmaHtml;')();
+    const G = facG(false), GP = facG(true);
+    // Pe verticala partenerului, mesajul trebuie sa inceapa cu ce vede EL - altfel pare ca i s-a
+    // luat ceva, cand de fapt el are ecranul intreg si doar noi nu i-l putem imprumuta.
+    T('pe verticala partenerului, mesajul spune ca EL are ecranul intreg', /editorul întreg/.test(GP), GP.slice(0, 200));
+    T('si nu-i lipseste nimic', /Nu-i lipsește nimic/.test(GP));
+    T('pe verticala noastra, mesajul ramane despre contul nostru', /Rolurile sunt ale unei firme/.test(G));
     T('spune că rolurile sunt ale unei firme', /Rolurile sunt ale unei firme/.test(G));
     T('și de ce nu se poate aici', /nu ține de o firmă anume/.test(G), G.slice(0, 200));
     T('nu lasă niciun buton pe care serverul l-ar refuza', !/<button/.test(G), G);
@@ -374,7 +380,7 @@ const login = async (u, p) => {
     T('spune limpede că nici comutatorul nu ajută', /comutatorul de sus nu schimbă asta/i.test(G), G);
   }
   T('ecranul chiar iese devreme pentru contul de platformă',
-    /currentUser\.isSuper && !currentUser\.companyId[\s\S]{0,80}rolFaraFirmaHtml\(\)/.test(html));
+    /currentUser\.isSuper && !currentUser\.companyId[\s\S]{0,120}rolFaraFirmaHtml\(/.test(html));
 
   // Parola pusă de administrator: tot fereastra aplicației, și fără regula falsă de dinainte.
   T('resetarea parolei nu mai trece prin prompt-ul browserului',
