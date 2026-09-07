@@ -4368,12 +4368,21 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   mediu, ca la restul. Costă de la zero (planuri gratuite generoase) până la câteva zeci de euro pe
   lună, după cât ne uităm la hartă. **Până atunci, harta merge, dar stăm pe mila cuiva.**
 
-- [ ] **(eu) DE SCOS LA LANSARE: comutatorul „Fondator / Admin de firmă" din Setări. Hotărât de
-  Alin, 03.09.** E o schelă de probă, nu o funcție a produsului: l-am pus ca să nu ne mai încurcăm
-  între ce vedem noi și ce vede clientul cât timp construim. Când dăm drumul aplicației, iese —
-  altfel rămâne în cod un buton care nu are ce căuta acolo și pe care, peste un an, nimeni nu-și mai
-  amintește de ce e. **Nu e periculos** dacă rămâne (nu dă și nu ia niciun drept, iar clientul nu-l
-  vede), dar l-am pus aici tocmai ca să nu se strecoare din uitare.
+- [ ] **(eu) DE SCOS LA LANSARE: comutatorul „Fondator / Partener" din bara de sus. Hotărât de
+  Alin, 03.09, confirmat 04.09.** E o schelă de probă, nu o funcție a produsului.
+
+  **De ce există acum:** avem un singur fel de cont — al nostru, de super-admin. Din el trebuie să
+  putem vedea și ce vedem noi, și ce vede clientul, ca să putem construi amândouă verticalele fără
+  să ne încurcăm.
+
+  **De ce dispare:** *„vom șterge acest buton Fondator și Partener pentru că vom avea conturi
+  separate"* (Alin, 04.09). Când există conturi de partener adevărate, comutatorul nu mai are rost:
+  intri cu contul tău de fondator și vezi Administrare; intri cu un cont de partener și vezi
+  aplicația lui. Verticala nu se mai alege dintr-un buton, ci **din contul cu care te-ai logat** —
+  adică exact cum va fi și la client.
+
+  **Nu e periculos** dacă rămâne (nu dă și nu ia niciun drept, iar clientul nu-l vede), dar l-am pus
+  aici tocmai ca să nu se strecoare din uitare.
 
   **Ce se șterge, concret** (toate bucățile sunt marcate în cod cu „⚠ TEMPORAR"): blocurile dintre
   reperele „Comutatorul de privire" și „Verticalele" din `public/index.html`, `vertAplica()` și
