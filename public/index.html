@@ -70,6 +70,10 @@
       <!-- Centru topbar: aici se montează bara de căutare vehicule (map-tools.js), vizibilă pe „Localizare". -->
       <div class="topbar-center" id="topbar-center"></div>
       <div class="topbar-right">
+        <!-- Comutatorul de verticală — SCHELĂ, SE SCOATE LA LANSARE (vezi JURNAL → „A. Blocante").
+             Stă în bară, nu în Setări: în verticala noastră, Setările nici nu se văd, deci de acolo
+             n-ai avea cum să te întorci. Se desenează doar în conturile noastre. -->
+        <div id="vert-comutator" class="vert-com" style="display:none;"></div>
         <button class="topbar-icon" onclick="openSupport()" title="Suport clienți"><i class="fas fa-headset"></i></button>
         <button class="topbar-icon" id="theme-toggle" onclick="toggleTheme()" title="Comută tema"><i class="fas fa-moon"></i></button>
         <button class="topbar-icon" onclick="toggleNotifications()" title="Notificări" style="position:relative;">
@@ -89,9 +93,9 @@
     <div id="shell-body">
       <!-- Meniu vertical -->
       <nav id="navrail">
-        <button data-ecran="localizare" class="nav-item active" data-view="localizare" onclick="showView('localizare')"><i class="fas fa-location-dot"></i><span>Localizare</span></button>
-        <button data-ecran="traseu" class="nav-item" data-view="traseu" onclick="showView('traseu')"><i class="fas fa-route"></i><span>Traseu</span></button>
-        <div class="nav-group" data-group="analize">
+        <button data-vert="partener" data-ecran="localizare" class="nav-item active" data-view="localizare" onclick="showView('localizare')"><i class="fas fa-location-dot"></i><span>Localizare</span></button>
+        <button data-vert="partener" data-ecran="traseu" class="nav-item" data-view="traseu" onclick="showView('traseu')"><i class="fas fa-route"></i><span>Traseu</span></button>
+        <div class="nav-group" data-vert="partener" data-group="analize">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-chart-column"></i><span>Analize statistice</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button data-ecran="statistici" class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici</span></button>
@@ -103,7 +107,7 @@
             <button class="nav-item nav-sub" onclick="navGo(this, goFuelPrice)"><i class="fas fa-coins"></i><span>Preț combustibil</span></button>
           </div>
         </div>
-        <div class="nav-group fleet-only" data-group="management">
+        <div class="nav-group fleet-only" data-vert="partener" data-group="management">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-pen-to-square"></i><span>Management</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
             <button data-ecran="vehicule" class="nav-item nav-sub" onclick="navGo(this, function(){ goManage('vehicles'); })"><i class="fas fa-car"></i><span>Vehicule</span></button>
@@ -117,19 +121,22 @@
             <button data-ecran="tollro" class="nav-item nav-sub feat-etoll" onclick="navGo(this, function(){ showView('etoll'); })"><i class="fas fa-road"></i><span>Taxa de drum (TollRo)</span></button>
           </div>
         </div>
-        <div class="nav-group" data-group="administrare">
+        <!-- ═══ Verticala NOASTRĂ. Administrare e a platformei: Panou admin, Companii, Audit.
+             „Setări" a ieșit de aici — e casa clientului, deci stă în verticala lui, jos. ═══ -->
+        <div class="nav-group" data-vert="fondator" data-group="administrare">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-gear"></i><span>Administrare</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
-            <button class="nav-item nav-sub" onclick="navGo(this, function(){ showView('settings'); })"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
             <button class="nav-item nav-sub users-only" onclick="navGo(this, function(){ showView('administrare'); })"><i class="fas fa-gauge-high"></i><span>Panou admin</span></button>
             <button class="nav-item nav-sub companies-only" onclick="navGo(this, function(){ goSistem('companies'); })"><i class="fas fa-building"></i><span>Companii</span></button>
             <button class="nav-item nav-sub" data-super onclick="navGo(this, function(){ goSistem('audit'); })"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
           </div>
         </div>
-        <button data-ecran="rapoarte" class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
-        <button data-ecran="insight" class="nav-item" id="nav-agenti" data-view="agenti" onclick="showView('agenti')" style="display:none;"><i class="fas fa-robot"></i><span>Agenți AI</span></button>
-        <button data-ecran="hotspot" class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
-        <button class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
+        <button data-vert="partener" data-ecran="rapoarte" class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
+        <button data-vert="partener" data-ecran="insight" class="nav-item" id="nav-agenti" data-view="agenti" onclick="showView('agenti')" style="display:none;"><i class="fas fa-robot"></i><span>Agenți AI</span></button>
+        <button data-vert="partener" data-ecran="hotspot" class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
+        <button data-vert="partener" class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
+        <!-- Setări: ultimul din verticala clientului, ca peste tot. Are pagina lui, cu capitolele ei. -->
+        <button data-vert="partener" id="nav-setari" class="nav-item" onclick="showView('settings')"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
 
         <!-- Documentele legale trebuie să fie accesibile din APLICAȚIE, nu doar din subsolul paginii publice:
              un utilizator care primește cont direct (invitație / cont demo) nu trece niciodată prin landing. -->
@@ -2493,9 +2500,6 @@ const pozitii = await r.json();</code></pre>
             <nav class="admin-side" id="set-nav"></nav>
             <div class="admin-content set-main">
 
-              <!-- Banda „vezi ca un admin de firmă" — apare doar în conturile noastre, când e pornită -->
-              <div id="set-banda"></div>
-
               <!-- Contul meu: datele lui, parola lui, apoi preferințele pe grupe -->
               <div class="set-panel" data-spanel="prefs">
                 <div class="pref-gr">
@@ -3631,6 +3635,7 @@ const pozitii = await r.json();</code></pre>
       // drum nu apărea NICIODATĂ. O singură sursă, pusă unde intrăm în aplicație.
       window.currentUser = currentUser;
       ascundeEcraneTaiate();
+      vertAplica();   // meniul se așază pe verticala potrivită: a noastră sau a partenerului
       prezPornit();
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app').classList.add('visible');
@@ -4698,10 +4703,12 @@ const pozitii = await r.json();</code></pre>
     // ── sfârșit catalogul de capitole ──
 
     // ═══ Comutatorul de privire (doar pentru noi) — SCHELĂ, SE SCOATE LA LANSARE ═══
-    // ⚠ TEMPORAR, hotărât cu Alin pe 03.09.2026: la lansarea aplicației blocul ăsta se ȘTERGE, cu tot
-    // cu cele două rânduri din setRenderNav care îl desenează, <div id="set-banda">, stilurile
-    // .set-ochi/.set-banda din app.css și secțiunea 7 din verify_setari.js. E o unealtă pentru
-    // perioada în care construim, nu o funcție a produsului. Vezi JURNAL-MODIFICARI.md → „A. Blocante".
+    // ⚠ TEMPORAR, hotărât cu Alin pe 03.09.2026: la lansare se ȘTERGE tot ce ține de comutator —
+    // blocul ăsta, blocul „Verticalele", <div id="vert-comutator"> din bară, atributele data-vert
+    // din meniu, stilurile .vert-* din app.css și secțiunile 7-8 din verify_setari.js. E o unealtă
+    // pentru perioada în care construim: clientul are oricum o singură verticală, a lui, iar
+    // separarea reală o face dreptul de pe server, nu comutatorul.
+    // Vezi JURNAL-MODIFICARI.md → „A. Blocante".
     // Noi testăm aplicația jucând două roluri: uneori ca proprietari de platformă, alteori punându-ne
     // în locul clientului. Meniul Setărilor arată altfel pentru fiecare, iar când te uiți la el toată
     // ziua nu mai știi ce vezi — „Afișaj pentru toți", „Program de lucru" sunt reglaje ALE UNEI
@@ -4722,23 +4729,6 @@ const pozitii = await r.json();</code></pre>
     function setPrivireCa(p, ochi) {
       if (!p || !p.isSuper || ochi !== 'firma') return p;
       return { isSuper: false, manageUsers: true, manageFleet: true, imprumutat: true };
-    }
-    function setComutatorHtml(ochi) {
-      var f = ochi === 'firma';
-      return '<div class="set-ochi">' +
-        '<div class="set-ochi-t">Te uiți ca</div>' +
-        '<div class="set-ochi-g">' +
-          '<button type="button" class="set-ochi-b' + (f ? '' : ' on') + '" onclick="setPrivire(\'fondator\')">Fondator</button>' +
-          '<button type="button" class="set-ochi-b' + (f ? ' on' : '') + '" onclick="setPrivire(\'firma\')">Admin de firmă</button>' +
-        '</div></div>';
-    }
-    // Banda de sus, cât timp ești în privirea clientului. Fără ea ai uita în cinci minute și ai
-    // raporta ca lipsă un capitol pe care tu l-ai ascuns.
-    function setBandaHtml(ochi) {
-      if (ochi !== 'firma') return '';
-      return '<div class="set-banda"><i class="fas fa-eye"></i>' +
-        '<span><b>Vezi Setările ca un admin de firmă.</b> Se schimbă doar ce ți se arată — drepturile tale rămân întregi.</span>' +
-        '<button type="button" class="set-banda-x" onclick="setPrivire(\'fondator\')">Înapoi la fondator</button></div>';
     }
     // ── În ce firmă „stă" fondatorul cât timp e în privirea clientului ──
     // Un admin de firmă vede DOAR oamenii firmei lui. Noi îi vedem pe toți, din toate companiile,
@@ -4776,6 +4766,54 @@ const pozitii = await r.json();</code></pre>
     }
     // ── sfârșit „Comutatorul de privire" ──
 
+    // ═══ Cele două verticale ═══
+    // Aplicația e, de fapt, două produse într-o interfață: verticala PARTENERULUI (Localizare,
+    // Traseu, Analize, Management, Rapoarte, Agenți AI, Hotspot, Dashboard, Setări) și verticala
+    // NOASTRĂ (Administrare: Panou admin, Companii, Audit). Noi le testăm pe amândouă din același
+    // cont, de asta comutatorul. Pentru client nu există niciun comutator: el are o singură
+    // verticală, a lui, și o vede întotdeauna.
+    // ── începe „Verticalele" (REPER pentru probe: verify_setari.js decupează bucata dintre reperul
+    // ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
+    // Ce verticală se vede acum. Doar fondatorii au două; oricine altcineva are doar „partener".
+    function vertCurenta(suntemNoi, ochi) {
+      if (!suntemNoi) return 'partener';
+      return ochi === 'firma' ? 'partener' : 'fondator';
+    }
+    function vertComutatorHtml(vert) {
+      var f = vert === 'partener';
+      return '<button type="button" class="vert-b' + (f ? '' : ' on') + '" onclick="vertSchimba(\'fondator\')" title="Meniul nostru: Administrare">' +
+          '<i class="fas fa-screwdriver-wrench"></i><span>Fondator</span></button>' +
+        '<button type="button" class="vert-b' + (f ? ' on' : '') + '" onclick="vertSchimba(\'firma\')" title="Meniul clientului: aplicația lui, întreagă">' +
+          '<i class="fas fa-truck-fast"></i><span>Partener</span></button>';
+    }
+    // ── sfârșit „Verticalele" ──
+
+    // Arată din meniu doar verticala cerută. Rândurile care nu-s marcate (documente legale, etc.)
+    // rămân neatinse — nu sunt ale niciunei verticale.
+    function vertAplica() {
+      var suntemNoi = !!(window.currentUser && currentUser.isSuper);
+      var vert = vertCurenta(suntemNoi, setOchiCitit(window.localStorage));
+      // Ascundem cu o CLASĂ, nu cu style.display — altfel ne-am bate cu ascundeEcraneTaiate(), care
+      // folosește style.display pentru ecranele tăiate din rol. Dacă am pune și noi display:'' aici,
+      // un ecran tăiat de rol s-ar aprinde înapoi la fiecare schimbare de verticală.
+      document.querySelectorAll('#navrail [data-vert]').forEach(function (n) {
+        n.classList.toggle('vert-ascuns', n.getAttribute('data-vert') !== vert);
+      });
+      var com = document.getElementById('vert-comutator');
+      if (com) {
+        com.style.display = suntemNoi ? '' : 'none';
+        com.innerHTML = suntemNoi ? vertComutatorHtml(vert) : '';
+      }
+      document.body.classList.toggle('vert-partener', suntemNoi && vert === 'partener');
+    }
+    // Schimbarea verticalei: se ține minte (aceeași cheie ca înainte), se redesenează meniul și se
+    // pleacă spre un ecran care există în verticala nouă — altfel ai rămâne pe un ecran ascuns.
+    window.vertSchimba = function (ochi) {
+      try { window.localStorage.setItem(SET_OCHI_CHEIE, ochi === 'firma' ? 'firma' : 'fondator'); } catch (e) {}
+      vertAplica();
+      try { showView(ochi === 'firma' ? 'localizare' : 'administrare'); } catch (e) {}
+    };
+
     window.setSchimbFirma = function (id) {
       try { window.localStorage.setItem(SET_FIRMA_CHEIE, String(id)); } catch (e) {}
       try { renderUsersGrouped(); } catch (e) {}
@@ -4787,24 +4825,17 @@ const pozitii = await r.json();</code></pre>
 
     function setRenderNav(p) {
       var nav = document.getElementById('set-nav'); if (!nav) return;
+      // Comutatorul nu mai stă aici, ci în bara de sus: în verticala noastră, Setările nici nu se
+      // văd, deci de aici n-ai avea cum să te întorci. Capitolele rămân însă legate de el — pe
+      // „Partener" vezi Setările exact ca un admin de firmă.
       var suntem = !!(p && p.isSuper);
       var ochi = suntem ? setOchiCitit(window.localStorage) : 'fondator';
-      nav.innerHTML = (suntem ? setComutatorHtml(ochi) : '') + setCapitole(setPrivireCa(p, ochi)).map(function (x) {
+      nav.innerHTML = setCapitole(setPrivireCa(p, ochi)).map(function (x) {
         return x.grup
           ? '<div class="aside-grp">' + _usEsc(x.grup) + '</div>'
           : '<button class="aside-item" data-scap="' + x.k + '" onclick="usTab(\'' + x.k + '\')"><i class="fas ' + x.ic + '"></i> ' + _usEsc(x.et) + '</button>';
       }).join('');
-      var banda = document.getElementById('set-banda');
-      if (banda) banda.innerHTML = suntem ? setBandaHtml(ochi) : '';
     }
-    // Schimbarea privirii: se ține minte în browser (rămâne pusă și după reîncărcare), se redesenează
-    // meniul și se rămâne pe capitolul deschis — dacă el nu mai există în privirea nouă, usTab cade
-    // singur pe „Preferințe".
-    window.setPrivire = function (ochi) {
-      try { window.localStorage.setItem(SET_OCHI_CHEIE, ochi === 'firma' ? 'firma' : 'fondator'); } catch (e) {}
-      setRenderNav(setPermCurent());
-      usTab(_setCap);
-    };
     // Drepturile REALE ale omului logat — o singură sursă, ca privirea împrumutată să nu se strecoare
     // niciodată în locul lor.
     function setPermCurent() {

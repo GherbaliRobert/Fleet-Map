@@ -2683,32 +2683,25 @@
       .pref-seg { justify-content: flex-start; }
     }
 
-    /* ── Comutatorul de privire (Setări, doar în conturile noastre) — SE SCOATE LA LANSARE ──
-       ⚠ TEMPORAR (03.09.2026): blocul .set-ochi/.set-banda dispare odată cu comutatorul din
-       index.html. Vezi JURNAL-MODIFICARI.md → „A. Blocante".
-       Stă sus, deasupra capitolelor. Violet, nu verde: e o unealtă de-a noastră, nu o funcție a
-       aplicației — se deosebește dintr-o privire de restul meniului. */
-    .set-ochi { border: 1px solid var(--purple, #7c3aed); border-radius: 10px; padding: 7px 8px 8px;
-      margin: 0 0 12px; background: color-mix(in srgb, var(--purple, #7c3aed) 8%, transparent); }
-    .set-ochi-t { font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-      color: var(--purple, #7c3aed); margin: 0 0 5px 2px; }
-    .set-ochi-g { display: flex; gap: 3px; }
-    .set-ochi-b { flex: 1; min-width: 0; background: var(--bg-dark); border: 1px solid var(--border);
-      border-radius: 7px; font-family: inherit; font-size: 11px; font-weight: 800; color: var(--text-secondary);
-      padding: 6px 4px; cursor: pointer; transition: background-color .15s, color .15s, border-color .15s; }
-    .set-ochi-b:hover { border-color: var(--border-light); color: var(--text-primary); }
-    .set-ochi-b.on { background: var(--purple, #7c3aed); border-color: var(--purple, #7c3aed); color: #fff; }
-    .set-banda { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      border: 1px solid var(--purple, #7c3aed); border-left-width: 3px; border-radius: 10px;
-      background: color-mix(in srgb, var(--purple, #7c3aed) 10%, transparent);
-      padding: 9px 12px; margin-bottom: 14px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
-    .set-banda > i { color: var(--purple, #7c3aed); font-size: 13px; }
-    .set-banda span { flex: 1; min-width: 180px; }
-    .set-banda b { color: var(--text-primary); }
-    .set-banda-x { background: transparent; border: 1px solid var(--purple, #7c3aed); border-radius: 7px;
-      font-family: inherit; font-size: 11px; font-weight: 800; color: var(--purple, #7c3aed);
-      padding: 5px 10px; cursor: pointer; white-space: nowrap; }
-    .set-banda-x:hover { background: var(--purple, #7c3aed); color: #fff; }
+    /* ── Comutatorul de verticală (bara de sus, doar la noi) — SE SCOATE LA LANSARE ──
+       ⚠ TEMPORAR (03.09.2026): dispare odată cu tot ce ține de comutator. Vezi
+       JURNAL-MODIFICARI.md → „A. Blocante". Violet, ca tot ce e unealtă de-a noastră: se deosebește
+       dintr-o privire de ce e al aplicației. */
+    /* Rândurile din meniu care nu-s ale verticalei curente. Clasă, nu style.display: ecranele
+       tăiate din rol se ascund tot cu display, iar cele două reguli n-au voie să se calce. */
+    .vert-ascuns { display: none !important; }
+    .vert-com { display: flex; gap: 3px; padding: 3px; border-radius: 10px; margin-right: 4px;
+      border: 1px solid var(--purple, #7c3aed);
+      background: color-mix(in srgb, var(--purple, #7c3aed) 10%, transparent); }
+    .vert-b { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none;
+      border-radius: 8px; font-family: inherit; font-size: 11.5px; font-weight: 800;
+      color: var(--purple, #7c3aed); padding: 6px 10px; cursor: pointer; white-space: nowrap;
+      transition: background-color .15s, color .15s; }
+    .vert-b > i { font-size: 11px; }
+    .vert-b:hover { background: color-mix(in srgb, var(--purple, #7c3aed) 18%, transparent); }
+    .vert-b.on { background: var(--purple, #7c3aed); color: #fff; }
+    @media (max-width: 900px) { .vert-b span { display: none; } .vert-b { padding: 6px 9px; } }
+
     /* Firma în care „stă" fondatorul, deasupra listei de utilizatori. Violet, ca tot ce ține de
        comutator: se deosebește dintr-o privire de ce e al aplicației. */
     .set-firma { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
@@ -2719,10 +2712,6 @@
     .set-firma select { flex: 1; min-width: 160px; background: var(--bg-panel); border: 1px solid var(--border);
       color: var(--text-primary); border-radius: 8px; padding: 6px 9px; font-family: inherit;
       font-size: 12px; font-weight: 700; }
-    @media (max-width: 760px) {
-      .set-ochi { width: 100%; margin-bottom: 8px; }
-    }
-
     /* ── Setări: „aici n-ai ce vedea" — folosit la Roluri și la „Toată echipa", pentru conturile de
        platformă (fără firmă), care n-au ce reglaje de firmă să pună. ── */
     .set-gol-mare { text-align: center; padding: 34px 20px; border: 1px dashed var(--border);

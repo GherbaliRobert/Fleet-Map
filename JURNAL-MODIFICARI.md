@@ -57,6 +57,45 @@ gaură pe ecran.
 ⚠️ **Trebuie instalat APK-ul nou** — reparația e în aplicație, nu pe server.
 
 ---
+### AMÂNDOI · Meniul se împarte în două verticale: a partenerului și a noastră
+
+Alin, după ce s-a lovit de câteva ori de aceleași ziduri: *„practic sunt două verticale, noi
+fondatorii și ei partenerii"*. Are dreptate, și asta explică jumătate din ce ne-a enervat săptămâna
+asta: **aplicația e două produse într-o singură interfață**, iar meniul le ținea amestecate.
+
+**Cum se împarte, exact așa cum a cerut:**
+
+| Verticala | Ce e în meniu |
+|---|---|
+| **Partenerul** | Localizare · Traseu · Analize statistice · Management · Rapoarte · Agenți AI · Hotspot · Dashboard · **Setări** (cu capitolele ei) |
+| **Noi** | **Administrare** — Panou admin · Companii · Audit |
+
+**Ce s-a mutat.** „Setări" a ieșit din Administrare și a devenit **buton propriu, ultimul din meniul
+partenerului** — acolo îi e locul, e casa lui, nu a noastră. Administrare a rămas cu cele trei
+lucruri care sunt ale platformei.
+
+**Comutatorul a urcat în bara de sus.** Era în meniul Setărilor, ceea ce acum n-ar mai fi mers: în
+verticala noastră Setările nici nu se văd, deci de acolo n-ai mai fi avut cum să te întorci. Acum
+sunt două butoane lângă clopoțel — **Fondator** și **Partener** — vizibile din orice ecran, și
+numai în conturile noastre. Alegerea se ține minte, ca înainte.
+
+**Un lucru găsit înainte să livrez.** Ascunderea pe verticale se bătea cap în cap cu ascunderea
+ecranelor tăiate din rol: amândouă foloseau aceeași unealtă (`style.display`), așa că schimbarea
+verticalei ar fi **aprins înapoi** un ecran pe care rolul îl tăiase. Acum verticala ascunde cu o
+clasă separată, deci cele două reguli se adună în loc să se calce.
+
+- **Ce am schimbat:** meniul are două verticale; Setări a ieșit din Administrare; comutatorul stă în
+  bara de sus.
+- **Ce vede fondatorul:** pe „Fondator", doar Administrare. Pe „Partener", aplicația clientului
+  întreagă, fără Administrare.
+- **Ce vede clientul:** aplicația lui, cu Setări ca buton separat, jos. Niciun comutator — el are o
+  singură verticală și n-are ce comuta.
+
+**De hotărât** (nu am atins nimic): în Panou admin sunt două ecrane pe care le vedea și un admin de
+firmă — **„Inventar dispozitive"** și **„Dispozitive arhivate"**. Odată ce Administrare e numai a
+noastră, clientul nu mai ajunge la ele. Fie le mutăm în Setări → Evidență, lângă „Aparate GPS", fie
+rămân ale noastre. Deocamdată nu e urgent: nu avem încă niciun partener care să le folosească.
+
 
 ### AMÂNDOI · „Regulile firmei" a devenit „Toată echipa" — și un bug adevărat, găsit pe drum
 
@@ -4287,12 +4326,17 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   amintește de ce e. **Nu e periculos** dacă rămâne (nu dă și nu ia niciun drept, iar clientul nu-l
   vede), dar l-am pus aici tocmai ca să nu se strecoare din uitare.
 
-  **Ce se șterge, concret** (toate bucățile sunt marcate în cod cu „⚠ TEMPORAR"): blocul dintre
-  reperele „Comutatorul de privire" din `public/index.html`, cele două rânduri din `setRenderNav`
-  care îl desenează, `<div id="set-banda">`, cele patru cârlige din ecranul Utilizatori
-  (`renderUsersGrouped`, `_populateNewUserForm`, `addUser`), stilurile `.set-ochi` / `.set-banda` /
-  `.set-firma` din `public/css/app.css` și secțiunea 7 din `verify_setari.js`. Restul aplicației nu
-  se atinge — meniul și lista de utilizatori se generează la fel și fără el.
+  **Ce se șterge, concret** (toate bucățile sunt marcate în cod cu „⚠ TEMPORAR"): blocurile dintre
+  reperele „Comutatorul de privire" și „Verticalele" din `public/index.html`, `vertAplica()` și
+  `vertSchimba()`, `<div id="vert-comutator">` din bara de sus, **atributele `data-vert` din meniu**,
+  apelul `vertAplica()` din `showApp`, cele patru cârlige din ecranul Utilizatori
+  (`renderUsersGrouped`, `_populateNewUserForm`, `addUser`), stilurile `.vert-*` și `.set-firma` din
+  `public/css/app.css` și secțiunea 7 din `verify_setari.js`.
+
+  **Atenție la ce NU se șterge:** împărțirea în sine rămâne. Administrare e a noastră fiindcă
+  butoanele ei cer `manageCompanies` / super-admin, nu fiindcă are `data-vert="fondator"`. Scoaterea
+  comutatorului înseamnă doar că noi nu ne mai putem uita cu ochii clientului — nu că i se deschide
+  clientului ceva.
 
 
 - [ ] **(voi) Cheia de semnătură a aplicației de telefon — de creat și de pus la păstrare.** Cel mai

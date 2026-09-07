@@ -115,7 +115,7 @@ const grupAdm = html.slice(html.indexOf('data-group="administrare"') - 60, html.
 T('grupul „Administrare" nu mai e doar pentru cine administrează flota', !/fleet-only/.test(grupAdm), grupAdm.trim());
 T('„Utilizatori" nu mai are a doua ușă în meniu', !/goSistem\('users'\)/.test(html));
 
-sect('7. Comutatorul de privire („vezi ca un admin de firmă") — SCHELĂ, SE SCOATE LA LANSARE');
+sect('7. Comutatorul de verticala (Fondator / Partener) - SCHELA, SE SCOATE LA LANSARE');
 // ⚠ TEMPORAR (03.09.2026): secțiunea asta se șterge odată cu comutatorul din index.html.
 // Vezi JURNAL-MODIFICARI.md → „A. Blocante".
 // Noi testăm aplicația din două poziții și ne încurcăm între ele. Comutatorul schimbă DOAR ce se
@@ -127,16 +127,28 @@ const k2 = html.indexOf('    var _setImprumut = {};', k1);
 T('găsesc comutatorul între repere', k1 > 0 && k2 > k1, 'k1=' + k1 + ' k2=' + k2);
 if (k1 > 0 && k2 > k1) {
   // DOM de carton + un „browser" cu memorie, cât să meargă codul real.
-  const noduri = { 'set-nav': { innerHTML: '' }, 'set-banda': { innerHTML: '' } };
-  const doc = { getElementById: (id) => noduri[id] || null };
+  const noduri = { 'set-nav': { innerHTML: '' } };
+  // Pentru vertAplica: un meniu de carton (doua randuri, cate una pe verticala) + cutia din bara.
+  const randNav = (v) => { const cl = new Set(); return { get vert() { return v; }, getAttribute: () => v,
+    classList: { toggle: (c, on) => { on ? cl.add(c) : cl.delete(c); }, has: (c) => cl.has(c) }, _cl: cl }; };
+  const meniuCarton = [randNav('fondator'), randNav('partener')];
+  const cutia = { style: {}, innerHTML: '' };
+  const corpCls = new Set();
+  const doc = {
+    getElementById: (id) => (id === 'vert-comutator' ? cutia : (noduri[id] || null)),
+    querySelectorAll: () => meniuCarton,
+    body: { classList: { toggle: (c, on) => { on ? corpCls.add(c) : corpCls.delete(c); } } },
+  };
   const memorie = (start) => { let v = start; return { getItem: () => v, setItem: (_, x) => { v = x; } }; };
   const facWin = (v) => ({ localStorage: memorie(v), currentUser: null });
 
-  const prelude = 'var _setCap = "prefs"; var _ultimulTab = null; function usTab(n){ _ultimulTab = n; }\n';
-  const cerere = '\n; return { privireCa: setPrivireCa, ochi: setOchiCitit, comutator: setComutatorHtml,' +
-    ' banda: setBandaHtml, nav: setRenderNav, privire: window.setPrivire, permCurent: setPermCurent,' +
+  const prelude = 'var _setCap = "prefs"; var _ultimulTab = null; var currentUser = null;' +
+    ' function usTab(n){ _ultimulTab = n; }\n';
+  const cerere = '\n; return { privireCa: setPrivireCa, ochi: setOchiCitit, nav: setRenderNav,' +
+    ' permCurent: setPermCurent, vert: vertCurenta, comutator: vertComutatorHtml, aplica: vertAplica,' +
     ' firme: setFirmeDin, deJucat: setFirmaDeJucat, picker: setFirmaPickerHtml,' +
-    ' tab: function(){ return _ultimulTab; } };';
+    ' tab: function(){ return _ultimulTab; },' +
+    ' cine: function(u){ currentUser = u; window.currentUser = u; } };';
   const fac = (win) => new Function('document', 'window', '_usEsc',
     html.slice(i, j) + prelude + html.slice(k1, k2) + cerere)(doc, win, (s) => String(s == null ? '' : s));
 
@@ -165,43 +177,66 @@ if (k1 > 0 && k2 > k1) {
   T('browser care refuză memoria (mod privat) → fondator',
     C.ochi({ getItem: () => { throw new Error('blocat'); } }) === 'fondator');
 
-  // d) Comutatorul și banda se văd DOAR la noi, și doar când e cazul.
-  W.currentUser = { isSuper: true, permissions: { manageUsers: true, manageFleet: true } };
-  C.nav(C.permCurent());
-  T('fondatorul vede comutatorul', /set-ochi/.test(noduri['set-nav'].innerHTML));
-  T('fără bandă cât timp e în privirea lui', noduri['set-banda'].innerHTML === '', noduri['set-banda'].innerHTML);
-  T('și își vede capitolul de platformă', /data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
+  // d) Comutatorul de verticala: doar fondatorii au doua verticale.
+  T('clientul are o singura verticala, a lui', C.vert(false, 'fondator') === 'partener' && C.vert(false, 'firma') === 'partener');
+  T('fondatorul, pe "fondator", vede verticala noastra', C.vert(true, 'fondator') === 'fondator');
+  T('fondatorul, pe "firma", vede verticala partenerului', C.vert(true, 'firma') === 'partener');
+  const comFond = C.comutator('fondator'), comPart = C.comutator('partener');
+  T('butonul Fondator e aprins cand esti la noi', /vert-b on"[\s\S]{0,200}?Fondator/.test(comFond), comFond);
+  T('si numai el', (comFond.match(/vert-b on/g) || []).length === 1);
+  T('butonul Partener e aprins cand esti la client', /vert-b on"[\s\S]{0,200}?Partener/.test(comPart), comPart);
+  T('si numai el', (comPart.match(/vert-b on/g) || []).length === 1);
 
-  W.currentUser = { isSuper: false, permissions: { manageUsers: true, manageFleet: true } };
-  C.nav(C.permCurent());
-  T('adminul firmei NU vede comutatorul', !/set-ochi/.test(noduri['set-nav'].innerHTML));
-  T('și nici banda', noduri['set-banda'].innerHTML === '', noduri['set-banda'].innerHTML);
+  // Comutatorul se DESENEAZA doar la noi — proba pe functia adevarata, nu pe textul ei.
+  const asezat = (esteSuper, ochi) => {
+    const W2 = facWin(ochi); const C2 = fac(W2);
+    C2.cine({ isSuper: esteSuper, permissions: { manageUsers: true, manageFleet: true } });
+    C2.aplica();
+    return { com: cutia.style.display, html: cutia.innerHTML,
+      ascuns: meniuCarton.map(n => n._cl.has('vert-ascuns')) };
+  };
+  let R = asezat(false, null);
+  T('clientul nu primeste niciun comutator', R.com === 'none' && R.html === '', R.com + ' / ' + R.html.slice(0, 40));
+  T('si i se ascunde verticala noastra', R.ascuns[0] === true && R.ascuns[1] === false, JSON.stringify(R.ascuns));
+  R = asezat(true, null);
+  T('noi primim comutatorul', R.com === '' && /vert-b/.test(R.html));
+  T('si pe "Fondator" ni se ascunde verticala partenerului', R.ascuns[0] === false && R.ascuns[1] === true, JSON.stringify(R.ascuns));
+  R = asezat(true, 'firma');
+  T('pe "Partener" se intoarce', R.ascuns[0] === true && R.ascuns[1] === false, JSON.stringify(R.ascuns));
+  // Chiar daca cineva pune "firma" in memoria unui client, tot n-are comutator.
+  R = asezat(false, 'firma');
+  T('memoria pusa de mana nu-i da clientului comutator', R.com === 'none' && R.html === '');
 
-  // Chiar dacă cineva i-ar pune „firma" în memoria browserului, un client nu capătă comutator.
+  // e) Meniul aplicatiei e impartit pe verticale, iar Setarile au iesit din Administrare.
+  T('Administrare e a noastra', /data-vert="fondator" data-group="administrare"/.test(html));
+  T('Setari e un buton al partenerului, nu un capitol din Administrare',
+    /data-vert="partener" id="nav-setari"/.test(html));
+  T('Setari nu mai sta in grupul Administrare',
+    !/data-group="administrare"[\s\S]{0,400}?showView\('settings'\)/.test(html));
+  ['localizare', 'traseu', 'rapoarte', 'hotspot'].forEach(function (k) {
+    T('"' + k + '" e in verticala partenerului', new RegExp('data-vert="partener" data-ecran="' + k + '"').test(html));
+  });
+  T('grupele Analize si Management sunt ale partenerului',
+    /data-vert="partener" data-group="analize"/.test(html) && /data-vert="partener" data-group="management"/.test(html));
+  T('meniul se aseaza pe verticala chiar la intrarea in aplicatie',
+    /ascundeEcraneTaiate\(\);\s*\n\s*vertAplica\(\);/.test(html));
+  T('comutatorul sta in bara de sus, nu in Setari (de acolo n-ai putea reveni)',
+    /<div id="vert-comutator"/.test(html) && !/set-ochi/.test(html));
+  // Ecranele taiate din rol se ascund cu style.display. Daca verticala ar folosi tot display, ar
+  // aprinde inapoi un ecran pe care rolul l-a taiat - de asta ascunde cu o clasa.
+  T('verticala ascunde cu o clasa, nu cu style.display (ca sa nu strice ecranele taiate din rol)',
+    /classList\.toggle\('vert-ascuns'/.test(html) && !/data-vert\]'\)[\s\S]{0,200}?style\.display = \(/.test(html));
+
+  // f) Setarile raman legate de aceeasi alegere: pe "Partener" arata ca la un admin de firma.
+  C.cine({ isSuper: true, permissions: { manageUsers: true, manageFleet: true } });
+  C.nav(C.permCurent());
+  T('fondatorul isi vede capitolul de platforma', /data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
+  T('si nu mai are niciun comutator in meniul Setarilor', !/set-ochi/.test(noduri['set-nav'].innerHTML));
   W = facWin('firma'); C = fac(W);
-  W.currentUser = { isSuper: false, permissions: { manageUsers: true, manageFleet: true } };
+  C.cine({ isSuper: true, permissions: { manageUsers: true, manageFleet: true } });
   C.nav(C.permCurent());
-  T('memoria pusă de mână nu-i dă clientului comutator', !/set-ochi/.test(noduri['set-nav'].innerHTML));
-  T('și nici bandă', noduri['set-banda'].innerHTML === '', noduri['set-banda'].innerHTML);
-
-  // e) Fondatorul cu privirea pornită: meniul se schimbă, banda apare, capitolul nostru dispare.
-  W.currentUser = { isSuper: true, permissions: { manageUsers: true, manageFleet: true } };
-  C.nav(C.permCurent());
-  T('privirea ținută minte se aplică la redeschidere', /set-banda-x/.test(noduri['set-banda'].innerHTML));
-  T('banda spune limpede că drepturile nu se ating', /drepturile tale rămân întregi/i.test(noduri['set-banda'].innerHTML),
-    noduri['set-banda'].innerHTML);
-  T('capitolul de platformă e ascuns', !/data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
-  T('butonul „Admin de firmă" e cel aprins', /set-ochi-b on"[^>]*>Admin de firmă/.test(noduri['set-nav'].innerHTML),
-    noduri['set-nav'].innerHTML.slice(0, 300));
-
-  // f) Apăsatul pe comutator: ține minte, redesenează și rămâne pe capitolul deschis.
-  C.privire('fondator');
-  T('întoarcerea se ține minte', W.localStorage.getItem() === 'fondator');
-  T('meniul se redesenează pe loc', /data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
-  T('banda dispare', noduri['set-banda'].innerHTML === '', noduri['set-banda'].innerHTML);
-  T('rămâne pe capitolul deschis', C.tab() === 'prefs', C.tab());
-  C.privire('firma');
-  T('și înapoi', W.localStorage.getItem() === 'firma' && !/iocatalog/.test(noduri['set-nav'].innerHTML));
+  T('pe "Partener", capitolul de platforma dispare din Setari', !/data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
+  T('si apar "Facturile mele", ca la client', /data-scap="facturi"/.test(noduri['set-nav'].innerHTML));
 
   // g) Firma în care „stă" fondatorul cât e în privirea clientului (ecranul Utilizatori).
   const USERI = [
