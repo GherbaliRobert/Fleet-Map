@@ -346,7 +346,10 @@ sect('13. Banda de martori de sub hartă (telefon) + paritatea regulii de așeza
 
   // Paritatea regulii: ordinea benzii de stare NU se scrie a doua oară în telefon.
   T('serverul trimite ordinea benzii de stare', srv.includes('stateBand: canFlags.BANDA_STARE'));
-  T('telefonul o citește de la server, nu o rescrie', lib.includes('cat.stateBand') && !/_sf_handbrake['\"]\s*,\s*['\"]_sf_gear/.test(lib));
+  // Ordinea se CITEȘTE de la server. Singura listă scrisă în telefon e rezerva declarată, folosită
+  // doar cand serverul nu a trimis-o — iar sectiunea 14 verifica separat ca e identica cu cea de pe server.
+  T('telefonul citeste ordinea de la server', lib.includes('cat.stateBand'));
+  T('singura lista scrisa in telefon e rezerva declarata', (lib.match(/_sf_handbrake/g) || []).length === 1 && lib.includes('STARE_IMPLICITA'));
   T('clasificarea e aceeași ca pe server', /kind === 'warn' \? 'martori' : f\.kind === 'open' \? 'deschis' : 'active'/.test(lib));
   const srvReg = fs.readFileSync(require('path').join(__dirname, 'can_flags.js'), 'utf8');
   T('și pe server clasificarea e scrisă la fel', /kind === 'warn' \? 'martori' : f\.kind === 'open' \? 'deschis' : 'active'/.test(srvReg));
@@ -359,6 +362,78 @@ sect('13. Banda de martori de sub hartă (telefon) + paritatea regulii de așeza
   // Ordinea din bandă: întâi ce cere atenție.
   T('sub hartă apar întâi martorii, apoi ce e deschis, apoi starea', /\.\.\.b\.martori, \.\.\.b\.deschis, \.\.\.b\.stare/.test(tt));
   T('luminile aprinse NU urcă sub hartă (nu e nimic de făcut cu ele)', !/b\.active/.test(tt));
+}
+
+sect('14. Catalogul salvat pe telefon (cauza pictogramelor lipsă)');
+{
+  const lib = fs.readFileSync(require('path').join(__dirname, 'mobile', 'src', 'lib', 'canflags.ts'), 'utf8');
+  const flags = fs.readFileSync(require('path').join(__dirname, 'can_flags.js'), 'utf8');
+
+  // Telefonul folosește catalogul SALVAT înaintea celui proaspăt (ca să meargă fără semnal). Deci
+  // orice câmp NOU din catalog lipsește la prima deschidere de după actualizare — iar ecranul
+  // construit pe el iese gol. De asta cheia de salvare trebuie urcată la fiecare câmp nou.
+  T('catalogul salvat se citeste inainte de cel proaspat (asta e capcana)', /if \(_valid\(parsed\)\) \{ _cache = parsed;/.test(lib));
+  T('cheia de salvare a fost urcata pentru campul `stateBand`', /const KEY = 'can_flags_v3'/.test(lib), (lib.match(/const KEY = '[^']+'/) || [])[0]);
+  T('cheia isi spune de ce a fost urcata', /v3: `stateBand`/.test(lib));
+
+  // Apărarea durabilă: un catalog VECHI (fără `stateBand`) nu mai are voie să golească banda.
+  T('exista o ordine de rezerva pentru banda de stare', /const STARE_IMPLICITA = \[/.test(lib));
+  T('rezerva se foloseste doar cand serverul nu a trimis ordinea', /cat\.stateBand && cat\.stateBand\.length\) \? cat\.stateBand : STARE_IMPLICITA/.test(lib));
+  // …și trebuie să fie ACEEAȘI listă ca pe server, altfel „rezerva" minte.
+  const dinLib = (lib.match(/const STARE_IMPLICITA = \[([^\]]+)\]/) || [])[1] || '';
+  const dinSrv = (flags.match(/const BANDA_STARE = \[([^\]]+)\]/) || [])[1] || '';
+  const norm = (x) => (x.match(/'[^']+'/g) || []).join(',');
+  T('ordinea de rezerva e identica cu cea de pe server', norm(dinLib) === norm(dinSrv) && !!norm(dinSrv), { lib: norm(dinLib), server: norm(dinSrv) });
+
+  // Aceeași capcană, pe ruta de simulare: dacă nu desface stările, orice probă pe date simulate
+  // arată „mașina nu trimite semnale de stare" și trimite căutarea în direcția greșită.
+  const srv = fs.readFileSync(require('path').join(__dirname, 'server.js'), 'utf8');
+  T('ruta de simulare desface starile, ca ingestul real', /simulare: desfacem starile[\s\S]{0,400}expandCanFlags\(data\.io\)/.test(srv));
+}
+
+sect('15. Fiecare pictograma ceruta in aplicatie chiar are un desen');
+{
+  const pathMod = require('path');
+  const radacina = pathMod.join(__dirname, 'mobile', 'src');
+  function fisiere(dir, acc) {
+    for (const f of fs.readdirSync(dir)) {
+      const q = pathMod.join(dir, f);
+      if (fs.statSync(q).isDirectory()) fisiere(q, acc);
+      else if (/\.(tsx|ts)$/.test(f)) acc.push(q);
+    }
+    return acc;
+  }
+  const icoSrc = fs.readFileSync(pathMod.join(radacina, 'components', 'Icon.tsx'), 'utf8');
+  const harta = icoSrc.match(/const P: Record<IconName, string> = \{([\s\S]*?)\n\};/);
+  T('harta de desene exista in Icon.tsx', !!harta);
+  const desenate = new Set(harta ? [...harta[1].matchAll(/^  ([a-zA-Z][a-zA-Z0-9]*): '/gm)].map((m) => m[1]) : []);
+
+  // Numele declarate in tip, dar nedesenate — ar trece de TypeScript si ar iesi goale pe ecran.
+  const tip = (icoSrc.match(/export type IconName =([\s\S]*?);/) || [])[1] || '';
+  const tipate = [...tip.matchAll(/'([a-zA-Z][a-zA-Z0-9]*)'/g)].map((m) => m[1]);
+  const declarateFaraDesen = tipate.filter((n) => !desenate.has(n));
+  T('niciun nume declarat fara desen', declarateFaraDesen.length === 0, declarateFaraDesen);
+
+  // Numele scrise direct in ecrane (<Icon name="...">), din tot mobile/src.
+  const cerute = new Map();
+  fisiere(radacina, []).forEach((q) => {
+    const txt = fs.readFileSync(q, 'utf8');
+    [...txt.matchAll(/<Icon[^>]*?name="([a-zA-Z0-9]+)"/g)].forEach((m) => {
+      if (!cerute.has(m[1])) cerute.set(m[1], new Set());
+      cerute.get(m[1]).add(pathMod.relative(radacina, q));
+    });
+  });
+  const scriseFaraDesen = [...cerute.keys()].filter((n) => !desenate.has(n));
+  T('fiecare nume scris in ecrane are desen (' + cerute.size + ' nume)', scriseFaraDesen.length === 0,
+    scriseFaraDesen.map((n) => n + ' ← ' + [...cerute.get(n)].join(', ')));
+
+  // Si numele care vin din catalog (campul `mi`) — cele mai multe placute le folosesc pe astea.
+  const dinCatalog = [...new Set([...cat.FLAGS.map((f) => f.mi), ...cat.GROUPS.map((g) => g.mi)])];
+  const catalogFaraDesen = dinCatalog.filter((n) => !desenate.has(n));
+  T('fiecare `mi` din catalog are desen (' + dinCatalog.length + ' nume)', catalogFaraDesen.length === 0, catalogFaraDesen);
+
+  // Casetele treptei: se aleg din valoare, nu din catalog — deci nu le prinde verificarea de sus.
+  T('casetele treptei P/R/N/D sunt desenate', ['gearP', 'gearR', 'gearN', 'gearD'].every((n) => desenate.has(n)));
 }
 
 console.log('\n──────────────────────────────');

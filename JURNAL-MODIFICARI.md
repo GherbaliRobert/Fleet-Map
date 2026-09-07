@@ -20,6 +20,44 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-08-26
 
+### AMÂNDOI · De ce lipseau pictogramele CAN pe telefon — `COMMIT_HASH`
+
+Aveați dreptate. Le-am văzut lipsă cu ochii mei, în aplicație.
+
+**Cauza n-a fost la pictograme.** Toate erau la locul lor. Telefonul își **salvează lista de stări**
+(nume, desene, explicații) ca să meargă și fără semnal — și o folosește pe cea salvată *înainte* de a
+cere una proaspătă. Ieri lista a primit un câmp nou: ordinea plăcuțelor din „Starea mașinii".
+Numele sub care se salvează n-a fost schimbat, așa că la prima deschidere după actualizare telefonul
+folosea lista **veche**, fără câmpul nou.
+
+Efectul: banda de sub hartă începe cu starea mașinii (frâna, treapta, încuietoarea). Fără ordinea
+aia, banda rămânea goală — iar pe o mașină fără martori aprinși **nu se vedea nimic**.
+
+**Am reparat în două feluri**, nu unul:
+1. numele sub care se salvează lista urcă la fiecare câmp nou — o listă veche nu mai poate fi
+   confundată cu una nouă;
+2. dacă lista salvată e totuși veche, aplicația **nu mai rămâne goală**: are o ordine de rezervă,
+   verificată automat că e identică cu cea de pe server.
+
+A doua reparație e cea care contează: prima rezolvă cazul de azi, a doua îl împiedică să se mai
+poată întâmpla la orice câmp adăugat pe viitor.
+
+**Ceva ce trebuie spus:** căutarea a durat mai mult decât ar fi trebuit, fiindcă **unealta mea de
+probă mințea**. Când simulez o mașină, poziția nu trecea prin pasul care desface stările — deci
+ecranul scria „mașina nu trimite semnale de stare", deși trimitea, și părea o problemă de interfață.
+Am reparat și unealta: acum simularea face exact ce face un aparat real.
+
+**Verificare nouă care ar fi prins asta din prima:** trece prin toată aplicația de telefon și cere ca
+fiecare pictogramă cerută să aibă chiar un desen — o pictogramă lipsă nu dă nicio eroare, lasă doar o
+gaură pe ecran.
+
+- **Ce vede fondatorul:** 13 verificări noi; unealta de probă nu mai minte.
+- **Ce vede clientul:** pictogramele apar de la prima deschidere, fără să reinstaleze sau să aștepte.
+
+⚠️ **Trebuie instalat APK-ul nou** — reparația e în aplicație, nu pe server.
+
+---
+
 ### AMÂNDOI · „Regulile firmei" a devenit „Toată echipa" — și un bug adevărat, găsit pe drum
 
 Alin, uitându-se la meniu: *„regulile firmei, ce văd toți, nu prea e ok... noi avem regulile

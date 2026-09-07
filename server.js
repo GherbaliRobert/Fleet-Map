@@ -11090,6 +11090,10 @@ if (process.env.SEED_TEST === '1') {
       const _cand = ts ? new Date(ts) : new Date();
       const data = { imei, io: io || {}, speed: speed || 0, name: name || imei, timestamp: _cand.toISOString(),
         latitude: (lat != null ? lat : 45.75), longitude: (lng != null ? lng : 21.23) };
+      // simulare: desfacem starile (usi, lumini, martori) exact ca la ingestul TCP (server.js:773).
+      // Fara randul asta, pozitia simulata ajunge cu semnalele BRUTE (can_ssf_*) si fara
+      // `_security_flags`, iar ecranele de stare scriu „masina nu trimite semnale" — desi trimite.
+      try { expandCanFlags(data.io); } catch (e) { /* io stricat -> il lasam cum e */ }
       // aplică maparea de sonde (ca în ingestul TCP)
       try { const fsensors = await getFuelSensors(imei); if (fsensors && fsensors.length) computeFuelFromSensors(data.io, fsensors); } catch (e) {}
       // simulare: scriem si in istoric, ca rapoartele care citesc din baza de date sa aiba ce citi.

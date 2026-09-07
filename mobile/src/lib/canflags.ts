@@ -25,10 +25,13 @@ export interface CanCatalog {
   stateBand?: string[];
 }
 
-// v2: catalogul are campuri noi (`mereu`, `ascuns`, treapta ca o singura placuta). Cu cheia veche,
-// un telefon care avea deja catalogul salvat ar fi ramas cu cel vechi pana la urmatoarea pornire cu
-// semnal - adica exact cu ecranul pe care tocmai l-am schimbat.
-const KEY = 'can_flags_v2';
+// ⚠ CHEIA SE URCĂ LA FIECARE CÂMP NOU DIN CATALOG. Catalogul salvat se folosește ÎNAINTEA celui
+// proaspăt (ca aplicația să meargă fără semnal), deci un câmp nou lipsește la prima deschidere de
+// după actualizare — și ecranul construit pe el iese gol.
+//   v2: `mereu`, `ascuns`, treapta ca o singură plăcuță
+//   v3: `stateBand` (ordinea benzii „Starea mașinii") — fără el, banda de martori de sub hartă
+//       rămânea goală pe o mașină fără martori aprinși.
+const KEY = 'can_flags_v3';
 let _cache: CanCatalog | null = null;
 let _refresh: Promise<CanCatalog | null> | null = null;
 
@@ -103,12 +106,19 @@ export type Benzi = { stare: Banda[]; martori: Banda[]; deschis: Banda[]; active
  *  starea (frână, treaptă, încuietoare, contact, motor) · martori roșii · ce e deschis · ce e pornit.
  *  Ordinea benzii de stare vine de la server (`stateBand`); clasificarea restului e regula de mai jos,
  *  identică cu cea din can_flags.js. O bandă goală nu se desenează. */
+/** Ordinea de rezervă a benzii de stare, folosită doar dacă serverul nu a trimis-o. Ține pasul cu
+ *  BANDA_STARE din can_flags.js — verificat în CI (`verify_can_flags.js`). */
+const STARE_IMPLICITA = ['_sf_handbrake', '_sf_gear', '_sf_car_closed', '_sf_ignition_on', '_sf_engine_working'];
+
 export function canBenzi(cat: CanCatalog, flat: Record<string, any>): Benzi {
   const out: Benzi = { stare: [], martori: [], deschis: [], active: [] };
   const peCheie: Record<string, CanFlag> = {};
   cat.flags.forEach((f) => { peCheie[f.key] = f; });
   const puse = new Set<string>();
-  (cat.stateBand || []).forEach((k) => {
+  // Ordinea vine de la server. Dacă lipsește (catalog salvat mai vechi, server mai bătrân), NU
+  // lăsăm banda goală — ar dispărea tocmai plăcuțele care trebuie văzute tot timpul.
+  const ordine = (cat.stateBand && cat.stateBand.length) ? cat.stateBand : STARE_IMPLICITA;
+  ordine.forEach((k) => {
     const f = peCheie[k]; if (!f) return;
     const v = flat[k];
     if (!canSeVede(f, v)) return;
