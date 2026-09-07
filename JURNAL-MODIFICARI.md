@@ -57,6 +57,45 @@ gaură pe ecran.
 ⚠️ **Trebuie instalat APK-ul nou** — reparația e în aplicație, nu pe server.
 
 ---
+### FONDATOR · Panoul de admin s-a mutat în meniu — gata cu meniul din meniu
+
+Alin: *„meniul din stânga mi se pare sec... am doar Administrare, apoi Panou admin cu multe alte
+subsecțiuni. Ce părere ai dacă în loc de Administrare aș trece tot ce e în Panou admin direct în
+meniu?"*. Da. Și e mai mult decât o mutare de butoane.
+
+**Ce era.** Apăsai **Administrare** → apăsai **Panou admin** → se deschidea o pagină care avea
+**încă un meniu**, cu patru secțiuni și șaisprezece rânduri. Două meniuri, unul în altul. Iar
+*Companii* și *Audit* apăreau în amândouă — aceleași ecrane, două uși.
+
+**Ce e acum.** Secțiunile panoului sunt chiar în meniul din stânga, cu grupele lor:
+
+| Grupă | Ce e în ea |
+|---|---|
+| **Clienți și aparate** | Acasă · Companii · Dispozitive · Utilizatori · Inventar dispozitive · Dispozitive arhivate |
+| **Module** | Utilizare RA Insight · Tahograf · e-Transport |
+| **Bani și vânzări** | Facturare · Conturi și abonamente · Cifrele platformei · Control costuri · Ofertare Live · Cereri demo |
+| **Sistem** | Chei API · Jurnal audit |
+
+„Administrare" ca înveliș și „Panou admin" ca buton **au dispărut** — nu mai aveau ce înveli. Grupele
+au primit nume pe românește, ca peste tot: „Gestiune" → **Clienți și aparate**, „AI & Module" →
+**Module**, „Business" → **Bani și vânzări**. Iar „Dashboard platformă" a devenit **Cifrele
+platformei**.
+
+**Ce se câștigă, pe scurt.** Ușa dublă dispare: fiecare ecran are un singur loc. Drumul până la orice
+scade de la trei clicuri la unul. Și meniul nu mai e sec — toată munca noastră e la vedere, nu
+ascunsă sub un buton.
+
+**Un lucru pe care l-am scos dinadins: X-ul din colțul panoului.** Panoul nu mai e o fereastră pe
+care o deschizi peste aplicație, ci **locul în care ești**. Iar X-ul te trimitea la „Localizare" —
+un ecran care, în verticala noastră, nici nu se vede. Ai fi rămas cu o hartă în față și un meniu în
+care nimic nu mai era apăsat.
+
+- **Ce am schimbat:** cele patru secțiuni ale panoului au urcat în meniul din stânga; învelișul și
+  meniul dinăuntru au dispărut.
+- **Ce vede fondatorul:** un singur meniu, cu tot ce ține de platformă, la un clic distanță.
+- **Ce vede clientul:** nimic — el n-a avut niciodată acces la partea asta.
+
+
 ### AMÂNDOI · Câmpurile din „Adrese de email" + o singură regulă pentru toate formularele
 
 Alin: *„în Setări, în secțiunea Adrese de email, modernizează aspectul inputurilor"*. A patra oară
@@ -4450,7 +4489,8 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
   **Ce se șterge, concret** (toate bucățile sunt marcate în cod cu „⚠ TEMPORAR"): blocurile dintre
   reperele „Comutatorul de privire" și „Verticalele" din `public/index.html`, `vertAplica()` și
-  `vertSchimba()`, `<div id="vert-comutator">` din bara de sus, **atributele `data-vert` din meniu**,
+  `vertSchimba()`, `<div id="vert-comutator">` din bara de sus, **atributele `data-vert` din meniu**
+  (acum pe patru grupe ale noastre: `clienti`, `module`, `bani`, `sistem`),
   apelul `vertAplica()` din `showApp`, cele patru cârlige din ecranul Utilizatori
   (`renderUsersGrouped`, `_populateNewUserForm`, `addUser`), stilurile `.vert-*` și `.set-firma` din
   `public/css/app.css` și secțiunea 7 din `verify_setari.js`.

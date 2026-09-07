@@ -110,10 +110,20 @@ T('panoul de administrare chiar cere ecranele înapoi',
   /raxAdminTab = function[\s\S]{0,400}?setDaInapoi\(\)/.test(html));
 
 sect('6. Setările nu mai sunt ascunse rolurilor mici');
-// Grupul „Administrare" era marcat fleet-only → un dispecer nu vedea nici măcar butonul.
-const grupAdm = html.slice(html.indexOf('data-group="administrare"') - 60, html.indexOf('data-group="administrare"') + 40);
-T('grupul „Administrare" nu mai e doar pentru cine administrează flota', !/fleet-only/.test(grupAdm), grupAdm.trim());
-T('„Utilizatori" nu mai are a doua ușă în meniu', !/goSistem\('users'\)/.test(html));
+// Setarile erau ingropate intr-un grup marcat fleet-only → un dispecer nu vedea nici macar butonul,
+// desi „Preferinte" scrie negru pe alb ca se aplica doar contului lui. Acum Setari e buton propriu:
+// proba verifica sa nu capete iar vreo poarta care sa-l ascunda rolurilor mici.
+const butSetari = (html.match(/<button[^>]*id="nav-setari"[^>]*>/) || [''])[0];
+T('butonul Setari exista in meniu', !!butSetari, butSetari);
+T('si nu e ascuns rolurilor mici (fara fleet-only / users-only / data-super)',
+  !!butSetari && !/fleet-only|users-only|companies-only|data-super/.test(butSetari), butSetari);
+// Fondatorul are „Utilizatori" in meniul LUI (lista de pe toata platforma), clientul il are in
+// Setari (oamenii firmei lui). Nu e o usa dubla: sunt in verticale diferite, deci nimeni nu vede
+// doua drumuri spre acelasi ecran. Proba pazeste tocmai asta.
+T('drumul nostru spre Utilizatori e in verticala noastra',
+  /data-vert="fondator"[\s\S]{0,2000}?goSistem\('users'\)/.test(html));
+T('clientul NU are un al doilea drum spre Utilizatori',
+  !/data-vert="partener"[\s\S]{0,600}?goSistem\('users'\)/.test(html));
 
 sect('7. Comutatorul de verticala (Fondator / Partener) - SCHELA, SE SCOATE LA LANSARE');
 // ⚠ TEMPORAR (03.09.2026): secțiunea asta se șterge odată cu comutatorul din index.html.
@@ -208,7 +218,13 @@ if (k1 > 0 && k2 > k1) {
   T('memoria pusa de mana nu-i da clientului comutator', R.com === 'none' && R.html === '');
 
   // e) Meniul aplicatiei e impartit pe verticale, iar Setarile au iesit din Administrare.
-  T('Administrare e a noastra', /data-vert="fondator" data-group="administrare"/.test(html));
+  ['clienti', 'module', 'bani', 'sistem'].forEach(function (g) {
+    T('grupa „' + g + '" e a noastra', new RegExp('data-vert="fondator"[^>]*data-group="' + g + '"').test(html));
+  });
+  T('nu mai exista invelisul „Administrare" (sectiunile au urcat in meniu)',
+    !/data-group="administrare"/.test(html));
+  T('meniul dinauntru al panoului nu se mai vede',
+    /<nav id="admin-side"[^>]*style="display:none;"/.test(html));
   T('Setari e un buton al partenerului, nu un capitol din Administrare',
     /data-vert="partener" id="nav-setari"/.test(html));
   T('Setari nu mai sta in grupul Administrare',
