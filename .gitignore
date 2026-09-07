@@ -13,6 +13,10 @@ server_test.log
 
 .smoke-db/
 .ci-db/
+# Orice bază de date de probă (o pornesc la fiecare verificare, cu nume diferite: .pref-db, .verif-db…).
+# Regula generală, ca să nu mai depindă de ținut minte: dacă o probă își lasă baza în urmă fiindcă a
+# fost oprită la mijloc, ea NU are ce căuta în depozit — sunt zeci de MB de fișiere temporare.
+.*-db/
 *.pid
 .test_*.js
 # Dump de migrare DB (conține hash-uri de parole / chei — nu se comite)
