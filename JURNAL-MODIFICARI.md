@@ -57,6 +57,31 @@ gaură pe ecran.
 ⚠️ **Trebuie instalat APK-ul nou** — reparația e în aplicație, nu pe server.
 
 ---
+### AMÂNDOI · Câmpurile din „Adrese de email" + o singură regulă pentru toate formularele
+
+Alin: *„în Setări, în secțiunea Adrese de email, modernizează aspectul inputurilor"*. A patra oară
+când cere același lucru pentru alt ecran — semn că problema nu era ecranul, ci că regula era scrisă
+de fiecare dată de la capăt.
+
+**Ce era.** Câmpurile de la „Adrese de email" nu aveau niciun stil: arătau ca niște casete goale de
+browser, lângă ecrane care fuseseră deja aranjate. Iar aspectul „modern" era scris de **patru ori**
+în fișierul de stiluri — la Preferințe, la „Adaugă utilizator", la numele rolului și (acum) ar fi
+fost a cincea oară.
+
+**Ce e acum.** O **singură regulă**, care le acoperă pe toate: colț rotunjit, chenar de 1,5px, inel
+verde la câmpul în care scrii, scris de umplere mai discret. Fiecare ecran păstrează doar ce ține de
+așezarea lui (cât de lat e câmpul, cât spațiu are în jur).
+
+Am scris în cod și instrucțiunea pentru data viitoare: **când apare un ecran nou cu formular, i se
+adaugă selectorul la regula comună** — nu se mai rescrie aspectul. Așa nu se mai poate întâmpla ca
+un ecran să rămână în urma celorlalte.
+
+- **Ce am schimbat:** câmpurile de la Adrese de email arată ca restul; regula a fost scrisă o
+  singură dată, în loc de patru.
+- **Ce vede fondatorul:** un ecran care nu mai iese din rând.
+- **Ce vede clientul:** același lucru — el e cel care adaugă adresele firmei acolo.
+
+
 ### FONDATOR · „Rolurile sunt ale unei firme" suna, pe verticala partenerului, ca si cum clientul n-ar avea roluri
 
 Alin, pe verticala Partener, la Roluri: *„de ce apare asa? adica el nu isi poate stabili roluri sau

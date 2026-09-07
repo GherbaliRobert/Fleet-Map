@@ -1728,29 +1728,7 @@
       flex-wrap: wrap;
     }
 
-    /* Câmpurile din „Adaugă utilizator" — același aspect ca în Preferințe: colț rotunjit, chenar de
-       1,5px și un inel verde la câmpul în care scrii. */
-    .add-user-form input, .add-user-form select {
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1.5px solid var(--border);
-      background: var(--bg-card);
-      color: var(--text-primary);
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      flex: 1;
-      min-width: 100px;
-      outline: none;
-      box-sizing: border-box;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .add-user-form input:hover:not(:disabled), .add-user-form select:hover:not(:disabled) { border-color: var(--border-light); }
-    .add-user-form input:focus, .add-user-form select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
-    }
-    .add-user-form input::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
+    .add-user-form input, .add-user-form select { flex: 1; min-width: 100px; }
 
     .add-user-form button {
       padding: 11px 16px;
@@ -2609,6 +2587,41 @@
       .ag-cand { display: inline; margin-left: 8px; }
     }
 
+    /* ── Câmpurile de scris din Setări — o singură regulă pentru toate ecranele ──
+       Colț rotunjit, chenar de 1,5px și un inel verde la câmpul în care scrii, ca să se vadă din
+       colțul ochiului unde ești. Când mai apare un ecran cu formular, se adaugă selectorul aici;
+       așa nu se mai poate întâmpla ca un ecran să rămână în urmă. */
+    .pref-f input,
+    .add-user-form input, .add-user-form select,
+    input.rol-nume,
+    .adr-nou input {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 12px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .pref-f input:hover:not(:disabled),
+    .add-user-form input:hover:not(:disabled), .add-user-form select:hover:not(:disabled),
+    input.rol-nume:hover, .adr-nou input:hover { border-color: var(--border-light); }
+    .pref-f input:focus,
+    .add-user-form input:focus, .add-user-form select:focus,
+    input.rol-nume:focus, .adr-nou input:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+    .pref-f input::placeholder, .add-user-form input::placeholder,
+    input.rol-nume::placeholder, .adr-nou input::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
+    .pref-f input:disabled { background: var(--bg-dark); color: var(--text-muted); opacity: 1; cursor: not-allowed; }
+    @media (prefers-reduced-motion: reduce) {
+      .pref-f input, .add-user-form input, .add-user-form select, input.rol-nume, .adr-nou input { transition: none !important; }
+    }
+
     /* ── Preferințe (Setări → Contul meu) ──
        Un rând = o preferință: numele sus, explicația dedesubt, comanda în dreapta. Bifele sunt
        comutatoare, alegerile scurte sunt butoane lipite (nu liste derulante) — se văd toate variantele
@@ -2650,27 +2663,7 @@
     /* Contul meu: câmpuri + butoane */
     .pref-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; margin-bottom: 10px; }
     .pref-f label { display: block; font-size: 10.5px; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; }
-    /* Câmpurile din Preferințe (nume, telefon, email, cele trei de parolă): colț rotunjit, chenar de
-       1,5px și un inel verde la câmpul în care scrii — se vede din colțul ochiului unde ești. */
-    .pref-f input {
-      width: 100%;
-      background: var(--bg-card);
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      color: var(--text-primary);
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 10px 12px;
-      outline: none;
-      box-sizing: border-box;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .pref-f input:hover:not(:disabled) { border-color: var(--border-light); }
-    .pref-f input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
-    .pref-f input::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
-    .pref-f input:disabled { background: var(--bg-dark); color: var(--text-muted); opacity: 1; cursor: not-allowed; }
-    @media (prefers-reduced-motion: reduce) { .pref-f input { transition: none !important; } }
+    .pref-f input { width: 100%; }   /* aspectul vine din blocul comun de mai jos */
     .pref-act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .pref-msg { font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
     .pref-msg.bun { color: var(--accent); }
@@ -2740,17 +2733,7 @@
     button.rol-nou { width: 100%; margin-top: 4px; }
     .rol-edit { flex: 1; min-width: 0; }
     .rol-lbl { display: block; font-size: 10.5px; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; }
-    /* Câmpul cu numele rolului — același aspect ca în Preferințe. */
-    input.rol-nume {
-      width: 100%; margin: 0 0 7px;
-      background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 10px;
-      color: var(--text-primary); font-family: inherit; font-size: 13px; font-weight: 600;
-      padding: 10px 12px; outline: none; box-sizing: border-box;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    input.rol-nume:hover { border-color: var(--border-light); }
-    input.rol-nume:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
-    input.rol-nume::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
+    input.rol-nume { width: 100%; margin: 0 0 7px; }
     .rol-baza { font-size: 11.5px; color: var(--text-muted); line-height: 1.55; margin-bottom: 14px; }
     .rol-baza b { color: var(--text-secondary); }
     .rol-file { display: flex; gap: 3px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
@@ -2815,7 +2798,7 @@
        Agenda firmei: adăugare sus, apoi câte un rând per adresă, cu bulinul de stare, bifele „ce
        primește" și acțiunile în dreapta. Adresele neconfirmate se văd altfel: ele NU primesc nimic. */
     .adr-nou { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-    .adr-nou input { margin: 0; flex: 1; min-width: 150px; }
+    .adr-nou input { margin: 0; flex: 1; min-width: 170px; }
     .adr-nou input#adr-et { max-width: 190px; }
     .adr-rand { display: flex; align-items: center; gap: 11px; padding: 10px 12px; margin-bottom: 7px;
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; flex-wrap: wrap; }
