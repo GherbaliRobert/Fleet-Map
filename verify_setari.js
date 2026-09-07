@@ -153,12 +153,17 @@ if (k1 > 0 && k2 > k1) {
   const facWin = (v) => ({ localStorage: memorie(v), currentUser: null });
 
   const prelude = 'var _setCap = "prefs"; var _ultimulTab = null; var currentUser = null;' +
-    ' function usTab(n){ _ultimulTab = n; }\n';
+    ' var _undeAmAterizat = null;' +
+    ' function usTab(n){ _ultimulTab = n; }' +
+    ' function showView(v){ _undeAmAterizat = v; }' +
+    ' function prefDeschideEcranul(k){ _undeAmAterizat = k || "localizare"; }\n';
   const cerere = '\n; return { privireCa: setPrivireCa, ochi: setOchiCitit, nav: setRenderNav,' +
     ' permCurent: setPermCurent, vert: vertCurenta, comutator: vertComutatorHtml, aplica: vertAplica,' +
+    ' aterizeaza: vertAterizeaza,' +
     ' firme: setFirmeDin, deJucat: setFirmaDeJucat, picker: setFirmaPickerHtml,' +
     ' tab: function(){ return _ultimulTab; },' +
-    ' cine: function(u){ currentUser = u; window.currentUser = u; } };';
+    ' cine: function(u){ currentUser = u; window.currentUser = u; },' +
+    ' unde: function(){ return _undeAmAterizat; } };';
   const fac = (win) => new Function('document', 'window', '_usEsc',
     html.slice(i, j) + prelude + html.slice(k1, k2) + cerere)(doc, win, (s) => String(s == null ? '' : s));
 
@@ -216,6 +221,22 @@ if (k1 > 0 && k2 > k1) {
   // Chiar daca cineva pune "firma" in memoria unui client, tot n-are comutator.
   R = asezat(false, 'firma');
   T('memoria pusa de mana nu-i da clientului comutator', R.com === 'none' && R.html === '');
+
+  // d2) Unde aterizezi la intrarea in cont. Verticala hotaraste; preferinta partenerului ramane.
+  const ateriza = (esteSuper, ochi, ecranAles) => {
+    const W3 = facWin(ochi); const C3 = fac(W3);
+    C3.cine({ isSuper: esteSuper, permissions: { manageUsers: true, manageFleet: true } });
+    C3.aterizeaza(ecranAles);
+    return C3.unde();
+  };
+  T('noi aterizam pe Acasa, nu pe harta', ateriza(true, null, null) === 'administrare', ateriza(true, null, null));
+  T('chiar daca preferinta zice altceva (ecranele ei nici nu se vad la noi)',
+    ateriza(true, null, 'rapoarte') === 'administrare', ateriza(true, null, 'rapoarte'));
+  T('pe verticala partenerului aterizam pe harta', ateriza(true, 'firma', null) === 'localizare', ateriza(true, 'firma', null));
+  T('clientul, la fel', ateriza(false, null, null) === 'localizare', ateriza(false, null, null));
+  // Preferinta lui e a lui: daca si-a ales alt ecran de pornire, aia ramane.
+  T('dar alegerea lui din Preferinte ramane', ateriza(false, null, 'rapoarte') === 'rapoarte', ateriza(false, null, 'rapoarte'));
+  T('si pe privirea de partener, tot a lui', ateriza(true, 'firma', 'traseu') === 'traseu', ateriza(true, 'firma', 'traseu'));
 
   // e) Meniul aplicatiei e impartit pe verticale, iar Setarile au iesit din Administrare.
   ['gestiune', 'module', 'business', 'sistem'].forEach(function (g) {

@@ -57,6 +57,39 @@ gaură pe ecran.
 ⚠️ **Trebuie instalat APK-ul nou** — reparația e în aplicație, nu pe server.
 
 ---
+### FONDATOR · Verticala hotărăște și pe ce ecran aterizezi
+
+Alin: *„în verticala fondator, Acasă e ecranul pe care aterizezi, implicit; iar la verticala
+partener, Localizare — harta"*. Jumătate mergea deja, jumătate nu, și tocmai jumătatea care nu
+mergea era cea pe care o vedeai cel mai des.
+
+**Ce mergea.** Când apeși comutatorul: pe „Fondator" te duce la Acasă, pe „Partener" la hartă.
+
+**Ce nu mergea.** La **intrarea în cont** și la **refresh**, aplicația doar așeza meniul pe verticala
+potrivită — ecranul rămânea harta, pentru amândouă. Adică, ca fondator, deschideai aplicația pe un
+ecran care **nici măcar nu e în meniul tău**. Aceeași scăpare ca la X-ul scos cu o zi înainte: după
+ce am împărțit meniul în două, au rămas câteva drumuri care duceau în verticala cealaltă.
+
+**Și ceva ce ar fi tras înapoi.** Preferința „Ecranul cu care se deschide aplicația" (Setări →
+Afișaj) alege dintre Localizare / Traseu / Statistici / Rapoarte — toate ale partenerului. Dacă n-o
+opream pe verticala noastră, ea ar fi suprascris „Acasă" imediat.
+
+**Ce e acum.** Verticala hotărăște, o singură dată, într-un singur loc:
+
+- **la noi** → „Acasă", tabloul cu cifre. Mereu: la login, la refresh, la comutare. Preferința de
+  mai sus nu se mai aplică aici — n-are ce alege, ecranele ei nici nu se văd în meniul nostru.
+- **la partener** → harta. **Dar dacă și-a ales singur alt ecran de pornire, alegerea LUI rămâne** —
+  harta e doar ce primește dacă n-a atins nimic. Hotărât de Alin: *„preferința partenerului
+  rămâne"*. Altfel preferința aia ar fi fost o minciună pe ecran.
+
+Dacă preferințele nu vin de la server (rețea proastă), tot aterizezi pe verticala corectă — doar
+alegerea personală se pierde până la următoarea încărcare.
+
+- **Ce am schimbat:** ecranul de aterizare e hotărât de verticală, nu de întâmplare.
+- **Ce vede fondatorul:** deschide aplicația și e pe Acasă, nu pe o hartă fără meniu.
+- **Ce vede clientul:** harta, ca întotdeauna — sau ecranul pe care și l-a ales el.
+
+
 ### FONDATOR · Panoul de admin s-a mutat în meniu — gata cu meniul din meniu
 
 Alin: *„meniul din stânga mi se pare sec... am doar Administrare, apoi Panou admin cu multe alte

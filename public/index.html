@@ -4675,8 +4675,10 @@ const pozitii = await r.json();</code></pre>
         var d = await fetch('/api/me/ui-prefs', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         hpUiPrefs = d.effective || {};
         prefAplicaToate(hpUiPrefs);
-        prefDeschideEcranul(hpUiPrefs.ecran_pornire);
-      } catch (e) {}
+        vertAterizeaza(hpUiPrefs.ecran_pornire);
+      } catch (e) {
+        vertAterizeaza(null);   // dacă preferințele n-au venit, măcar aterizăm pe verticala potrivită
+      }
     }
     // Când omul schimbă ceva din butoanele hărții sau din bara de sus, alegerea urcă și pe cont —
     // altfel ar rămâne iar închisă în browserul ăla. Nu blocăm ecranul dacă serverul nu răspunde.
@@ -4848,6 +4850,20 @@ const pozitii = await r.json();</code></pre>
       try { showView(ochi === 'firma' ? 'localizare' : 'administrare'); } catch (e) {}
     };
 
+    // Unde aterizezi când intri în cont sau dai refresh. VERTICALA hotărăște:
+    //   • la noi → „Acasă" (tabloul cu cifre). Restul ecranelor nici nu se văd în meniul nostru,
+    //     deci a ateriza pe hartă însemna să te trezești pe un ecran care nu există pentru tine.
+    //   • la partener → harta. Dar dacă și-a ales singur alt ecran din Preferințe → Afișaj
+    //     (Traseu, Statistici, Rapoarte), ALEGEREA LUI rămâne: harta e doar ce primești dacă n-ai
+    //     atins nimic. De asta există preferința aia.
+    function vertAterizeaza(ecranAles) {
+      var suntemNoi = !!(window.currentUser && currentUser.isSuper);
+      if (vertCurenta(suntemNoi, setOchiCitit(window.localStorage)) === 'fondator') {
+        try { showView('administrare'); } catch (e) {}   // deschide „Acasă" (openUsersModal → raxAdminHome)
+        return;
+      }
+      prefDeschideEcranul(ecranAles);   // gol / „localizare" = rămâi pe hartă, care e ecranul de start
+    }
     window.setSchimbFirma = function (id) {
       try { window.localStorage.setItem(SET_FIRMA_CHEIE, String(id)); } catch (e) {}
       try { renderUsersGrouped(); } catch (e) {}
