@@ -345,6 +345,48 @@ T('comutatorul de combustibil arată explicația și ascunde formularul pentru c
 T('și NU cere prețurile de la server cât timp arată explicația',
   /if \(!faraFirma && window\.usLoadFuelPrices\) window\.usLoadFuelPrices\(\);/.test(html));
 
+sect('9. Iconițele grupelor din meniul nostru nu se repetă');
+// Trei din cele patru grupe aveau iconițe folosite deja în altă parte: „monede" era și la Business
+// și la „Preț combustibil", „șurubelniță+cheie" și la Sistem și pe butonul Fondator din bara de sus,
+// iar clădirea apare în tot meniul. Când capul de grupă are aceeași iconiță ca un rând de altundeva,
+// ochiul nu mai deosebește grupa de rândurile ei. Alin, 07.09: puzzle / servietă / roți dințate.
+//
+// Regula pe care o ține proba asta (nu numele iconițelor — alea se pot schimba oricând):
+// iconița unui cap de grupă poate fi refolosită DOAR de un rând din propria ei grupă. Așa rămâne
+// permisă perechea Gestiune ↔ „Companii" (se citește ca familie: toate firmele / o firmă), dar nu
+// se mai poate strecura o iconiță comună cu altă grupă sau cu verticala clientului.
+const nv1 = html.indexOf('<nav id="navrail">');
+const nv2 = html.indexOf('</nav>', nv1);
+T('găsesc meniul în pagină', nv1 > 0 && nv2 > nv1, 'nv1=' + nv1 + ' nv2=' + nv2);
+if (nv1 > 0 && nv2 > nv1) {
+  const meniu = html.slice(nv1, nv2);
+  const icoana = (s) => { const m = /<i class="fas (fa-[a-z0-9-]+)"/.exec(s); return m ? m[1] : null; };
+  // toate iconițele din meniu, mai puțin săgețile de deschis/închis grupa
+  const toate = (meniu.match(/<i class="fas (fa-[a-z0-9-]+)"/g) || [])
+    .map(x => /fas (fa-[a-z0-9-]+)/.exec(x)[1]);
+  const sageti = (meniu.match(/<i class="fas fa-chevron-down nav-caret"/g) || []).length;
+  const numar = (ic) => toate.filter(x => x === ic).length - (ic === 'fa-chevron-down' ? sageti : 0);
+
+  const grupe = [];
+  const re = /<div class="nav-group[^"]*" data-vert="fondator"[^>]*data-group="([a-z]+)">([\s\S]*?)<\/div>\s*<\/div>/g;
+  let g;
+  while ((g = re.exec(meniu))) grupe.push({ nume: g[1], corp: g[2], ic: icoana(g[2]) });
+  T('găsesc cele patru grupe ale noastre', grupe.length === 4, grupe.map(x => x.nume).join(', '));
+  T('fiecare are o iconiță', grupe.every(x => x.ic), grupe.map(x => x.nume + '=' + x.ic).join(', '));
+  T('nu există două grupe cu aceeași iconiță',
+    new Set(grupe.map(x => x.ic)).size === grupe.length, grupe.map(x => x.nume + '=' + x.ic).join(', '));
+  grupe.forEach(x => {
+    const inGrupa = (x.corp.match(new RegExp('<i class="fas ' + x.ic + '"', 'g')) || []).length;
+    T('„' + x.nume + '" (' + x.ic + ') nu e refolosită în afara grupei ei',
+      numar(x.ic) === inGrupa, 'în tot meniul: ' + numar(x.ic) + ', în grupa ei: ' + inGrupa);
+  });
+  // Butonul „Fondator" din comutatorul de sus e tot un cap de verticală: nici el nu are voie
+  // să poarte iconița vreunei grupe. (Se șterge odată cu comutatorul — vezi secțiunea 7.)
+  const com = /<i class="fas (fa-[a-z0-9-]+)"><\/i><span>Fondator<\/span>/.exec(html);
+  T('butonul Fondator din bara de sus nu poartă iconița niciunei grupe',
+    !!com && grupe.every(x => x.ic !== com[1]), com && com[1]);
+}
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);

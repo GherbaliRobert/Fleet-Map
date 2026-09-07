@@ -57,6 +57,44 @@ gaură pe ecran.
 ⚠️ **Trebuie instalat APK-ul nou** — reparația e în aplicație, nu pe server.
 
 ---
+
+### FONDATOR · Iconițele grupelor din meniul nostru: trei se repetau prin aplicație
+
+Alin, uitându-se la meniul nou: *„hai să schimbăm SVG-urile astea, dă-mi niște variante
+reprezentative titlurilor"*. Uitându-mă după variante, am dat peste motivul pentru care păreau seci:
+**trei din cele patru iconițe erau deja folosite în altă parte din aplicație.**
+
+| Grupa | Avea | Unde se mai folosea |
+|---|---|---|
+| Gestiune | clădire | în 14 locuri, inclusiv la **Companii**, chiar rândul de sub ea |
+| AI & Module | cuburi | nicăieri altundeva |
+| Business | monede | în 5 locuri, inclusiv **Preț combustibil**, la partener |
+| Sistem | șurubelniță și cheie | în 6 locuri, inclusiv butonul **Fondator** din bara de sus |
+
+Când capul de grupă poartă aceeași iconiță ca un rând de altundeva, ochiul nu mai deosebește grupa
+de rândurile ei — se citește ca o listă plată. I-am dat cinci variante de fiecare grupă, desenate
+în aplicația adevărată, și a ales:
+
+| Grupa | Acum | De ce |
+|---|---|---|
+| Gestiune | **rămâne clădirea** | perechea cu „Companii" se citește ca familie: toate firmele / o firmă |
+| AI & Module | **piesă de puzzle** | „bucăți care se adaugă la aplicație" — merge și pentru Tahograf și e-Transport, care n-au treabă cu AI |
+| Business | **servietă** | „business", simplu, și nu se mai bate cu prețul combustibilului |
+| Sistem | **roți dințate** | motorul aplicației; scapă și de confuzia cu butonul Fondator |
+
+**Ce am mai lăsat în urmă:** o probă care ține minte regula, nu numele iconițelor. Ea spune că
+*iconița unui cap de grupă poate fi refolosită doar de un rând din propria ei grupă* — așa rămâne
+permisă perechea Gestiune ↔ Companii, dar nu se mai poate strecura una comună cu altă grupă sau cu
+meniul clientului. Am stricat-o dinadins de trei ori (Business înapoi pe monede, Sistem înapoi pe
+șurubelniță, două grupe cu aceeași iconiță) și de fiecare dată proba a picat, cum trebuie.
+
+- **Ce am schimbat:** iconițele a trei grupe din meniul nostru, plus o probă care nu mai lasă
+  dublurile să reapară.
+- **Ce vede fondatorul:** meniul se citește dintr-o privire — fiecare grupă are semnul ei, nu unul
+  împrumutat de la un rând de dedesubt.
+- **Ce vede clientul:** nimic, grupele astea sunt doar în verticala noastră.
+
+
 ### FONDATOR · Verticala hotărăște și pe ce ecran aterizezi
 
 Alin: *„în verticala fondator, Acasă e ecranul pe care aterizezi, implicit; iar la verticala
