@@ -76,8 +76,19 @@ Am scris în cod și instrucțiunea pentru data viitoare: **când apare un ecran
 adaugă selectorul la regula comună** — nu se mai rescrie aspectul. Așa nu se mai poate întâmpla ca
 un ecran să rămână în urma celorlalte.
 
-- **Ce am schimbat:** câmpurile de la Adrese de email arată ca restul; regula a fost scrisă o
-  singură dată, în loc de patru.
+**Și butoanele, în aceeași zi.** Alin, imediat după: *„butonul Adaugă de aici, fă-l standard ca
+celelalte din secțiunea Setări. E valabil pentru toate butoanele din Setări"*. Avea dreptate și era
+ușor de văzut de ce: butoanele aveau colț de **6px** și chenar de **1px**, lângă câmpuri care
+tocmai primiseră colț de **10px** și chenar de **1,5px**. Se vedea că sunt din altă serie.
+
+Acum forma o primesc **toate** butoanele din Setări, dintr-o singură regulă — inclusiv cele din
+fereastra „Rol nou", care stă agățată de pagină, nu în ecran. Mărimea confortabilă o primesc doar
+butoanele de **acțiune** (cele de lângă un câmp sau de la capătul unui formular); butoanele mici de
+pe rândurile din liste — retrimite, șterge — rămân mici, altfel s-ar umfla rândurile degeaba.
+Măsurat în browser: butonul „Adaugă" și câmpul de lângă el au acum **exact aceeași înălțime**.
+
+- **Ce am schimbat:** câmpurile de la Adrese de email și **butoanele din tot ecranul de Setări**
+  arată la fel; ambele reguli sunt scrise o singură dată, nu o dată per ecran.
 - **Ce vede fondatorul:** un ecran care nu mai iese din rând.
 - **Ce vede clientul:** același lucru — el e cel care adaugă adresele firmei acolo.
 

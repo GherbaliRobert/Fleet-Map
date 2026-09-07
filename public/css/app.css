@@ -2587,6 +2587,25 @@
       .ag-cand { display: inline; margin-left: 8px; }
     }
 
+    /* ── Butoanele din Setări — o singură regulă, ca la câmpuri ──
+       Aveau colț de 6px si chenar de 1px, langa campuri cu colt de 10px si chenar de 1,5px: se vedea
+       ca sunt din alta serie. Forma o primesc TOATE butoanele din Setari (si fereastra „Rol nou",
+       care sta agatata de pagina, nu in ecran). Marimea confortabila o primesc doar cele de
+       ACTIUNE — cele de langa un camp sau de la capatul unui formular; butoanele mici de pe randurile
+       din liste (retrimite, sterge) raman mici, ca randurile sa nu se umfle. */
+    #atab-settings .btn-sm, .rol-nm-card .btn-sm {
+      border-radius: 10px; border-width: 1.5px; font-weight: 800;
+      transition: border-color .15s, background-color .15s, color .15s;
+    }
+    #atab-settings .btn-sm:hover, .rol-nm-card .btn-sm:hover { border-color: var(--border-light); color: var(--text-primary); }
+    #atab-settings .btn-sm.btn-primary, .rol-nm-card .btn-sm.btn-primary { border-color: var(--accent); }
+    #atab-settings .btn-sm.btn-primary:hover, .rol-nm-card .btn-sm.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    #atab-settings .btn-sm.btn-danger:hover { color: #fff; }
+    .adr-nou button, .pref-act .btn-sm, .rol-act .btn-sm, .rol-nm-card .btn-sm,
+    #atab-settings .set-panel > .btn-sm {
+      padding: 11px 15px; font-size: 12.5px;
+    }
+
     /* ── Câmpurile de scris din Setări — o singură regulă pentru toate ecranele ──
        Colț rotunjit, chenar de 1,5px și un inel verde la câmpul în care scrii, ca să se vadă din
        colțul ochiului unde ești. Când mai apare un ecran cu formular, se adaugă selectorul aici;
