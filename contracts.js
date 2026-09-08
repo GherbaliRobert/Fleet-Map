@@ -27,6 +27,26 @@ LIPSURI.forEach(function (l) { ETICHETE[l[0]] = l[1]; });
 // Câte zile înainte de expirare începem să atragem atenția.
 const PRAG_EXPIRA_ZILE = 60;
 
+// Drumul unui contract, pe românește. Numele stărilor rămân scurte în bază (ciorna, aprobat,
+// trimis, activ, incheiat), dar OMUL nu vede niciodată cuvintele astea — vede rândul de aici.
+// Sursa e una singură: și serverul, și interfața, și pastila de pe listă citesc de aici.
+const ETICHETE_STARE = {
+  ciorna: 'în lucru',
+  aprobat: 'aprobat — gata de semnat',
+  trimis: 'trimis la client',
+  activ: 'semnat, în vigoare',
+  incheiat: 'încheiat'
+};
+// Ce urmează firesc după fiecare stare: [starea următoare, ce scrie pe buton].
+// „aprobat" e treapta pe care o cerea Alin: din clipa aia hârtia nu mai e ciornă, se printează.
+const URMATORUL_PAS = {
+  ciorna: ['aprobat', 'Aprobă contractul'],
+  aprobat: ['trimis', 'Am trimis contractul la client'],
+  trimis: ['activ', 'Contractul e semnat de amândoi'],
+  activ: ['incheiat', 'Încheie contractul'],
+  incheiat: null
+};
+
 // Sfârșitul contractului, din start + durată. Durata lipsă = perioadă nedeterminată → fără sfârșit.
 function calcSfarsit(startAt, luni) {
   if (!startAt || !luni) return null;
@@ -71,10 +91,10 @@ function stareDosar(firma, contract, acum) {
     return { nivel: 'incheiat', eticheta: 'contract încheiat', lipsuri: [], text: '', zileRamase: null };
   }
   if (contract.status !== 'activ') {
-    // Aici NU trecem „data semnării" la lipsuri, chiar dacă e goală: eticheta spune deja că actul
-    // nu e semnat, iar a scrie „lipsește data semnării" lângă un câmp completat era pur și simplu
-    // fals. Rămân doar lipsurile adevărate ale firmei (CUI, sediu, reprezentant).
-    const et = contract.status === 'trimis' ? 'trimis la semnat' : 'ciornă de contract';
+    // Aici NU trecem „data semnării" la lipsuri, chiar dacă e goală: eticheta spune deja unde e
+    // contractul pe drum, iar a scrie „lipsește data semnării" lângă un câmp completat era pur și
+    // simplu fals. Rămân doar lipsurile adevărate ale firmei (CUI, sediu, reprezentant).
+    const et = ETICHETE_STARE[contract.status] || ETICHETE_STARE.ciorna;
     return { nivel: 'nesemnat', eticheta: et, lipsuri: lipsuri, text: _text(lipsuri), zileRamase: null };
   }
 
@@ -133,6 +153,6 @@ function facAnexa(vehicule, pret) {
 }
 
 module.exports = {
-  ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE,
+  ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ETICHETE_STARE, URMATORUL_PAS,
   calcSfarsit, areGdpr, stareDosar, ultimaZiDePreaviz, facAnexa
 };

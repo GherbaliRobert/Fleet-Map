@@ -58,6 +58,64 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Contractul: „ciorna" a devenit un drum cu aprobare, plus un defect urât la PDF
+
+Alin, după ce a văzut prima variantă, cinci lucruri. Le iau pe rând.
+
+**1. PDF-ul avea greșeli de aliniament — și era mai rău decât se vedea.** Măsurat din fișier: **tot
+textul contractului începea la 152 în loc de 50**, adică era împins cu zece centimetri spre dreapta
+și intra în marginea din dreapta. Cauza: unealta cu care facem PDF-ul (pdfkit) **ține minte ultima
+poziție scrisă**. Blocul cu datele părților scrie valorile într-o a doua coloană, iar de acolo
+încolo tot restul contractului pornea din coloana aia. Acum **fiecare scriere își spune singură
+poziția și lățimea**, iar o probă nouă nu mai lasă defectul să reapară: un „document de carton"
+înregistrează fiecare rând scris și pică dacă vreunul n-are poziție sau iese din pagină.
+
+Tot acolo: **linia verde nu mai trece prin logo**, semnăturile au numele deasupra liniei (nu lipite
+sus, cu linia venită din senin), iar în blocul părților **rândurile goale nu mai dispar** — apar cu
+linie punctată, ca să vezi ce lipsește înainte să semnezi, nu după.
+
+**2. Cine semnează din partea noastră.** Câmpul are acum sugestii, luate din **conturile de
+super-admin ale platformei** — deci apărem amândoi, iar dacă mâine mai apare cineva, apare singur.
+Nu e o listă închisă: se poate scrie și alt nume (semnare prin împuternicit). Se propune singur cine
+e la tastatură.
+
+**3. Parola nu mai trece prin mâinile noastre.** Alin: *„doar trimitem invitația și parola o pune
+singur, nu are ce căuta la noi."* Câmpul a dispărut din traseu. Omul primește pe email un link prin
+care își pune singur parola — noi n-o vedem și n-o știm niciodată. E și mai sigur: o parolă pe care
+o știm noi și i-o dictăm trece prin telefon, prin WhatsApp, rămâne scrisă undeva.
+
+**4. „Ciornă" n-avea ce căuta acolo unde vorbim de semnare.** Avea dreptate. Contractul are acum un
+**drum**, cu un singur buton la fiecare pas:
+
+| Unde e | Ce vezi | Ce apeși |
+|---|---|---|
+| **în lucru** | PDF-ul poartă semnul „CIORNĂ" pe fiecare pagină | **Aprobă contractul** |
+| **aprobat — gata de semnat** | semnul dispare, hârtia e curată și se printează | **Descarcă pentru semnare** |
+| **trimis la client** | aștepți hârtia semnată înapoi | **Contractul e semnat de amândoi** |
+| **semnat, în vigoare** | îți spune și ultima zi de preaviz | **Încheie contractul** |
+| **încheiat** | data încetării | — |
+
+Sus, în fila „Contract", e o cutie **„ce urmează"**: îți scrie pe românește unde ești și care e
+următorul lucru de făcut. Semnul „CIORNĂ" pe hârtie ține acum **doar cât contractul e în lucru** —
+exact cum a cerut: aprobi, și de-atunci îl poți printa pentru semnare.
+
+**5. Filele de sus nu erau aliniate.** Erau pe „se rup pe rândul următor": la șase file, pe un ecran
+mai îngust, ultima sărea pe rândul doi și rândul de sus rămânea strâmb. Acum stau pe **un singur
+rând care se plimbă lateral**, toate de aceeași înălțime. Iar cutia cu „ce lipsește din dosar" nu se
+mai arată degeaba când nu lipsește nimic.
+
+**Ce am lăsat în urmă:** proba a crescut de la 87 la 115 verificări, plus 31 în aplicația pornită
+(drumul întreg: aprobare → trimitere → semnare). Stricat dinadins de trei ori, inclusiv reproducând
+exact defectul de aliniament — pică de fiecare dată. Etichetele stărilor sunt scrise în două locuri
+(server și interfață, fiindcă ecranul nu poate întreba serverul la fiecare desen), iar o probă cade
+dacă cele două se despart fie și cu o literă.
+
+- **Ce am schimbat:** aliniamentul contractului în PDF, drumul cu aprobare, semnatarii din partea
+  noastră, parola scoasă din traseu, filele aliniate.
+- **Ce vede fondatorul:** un contract care arată ca un contract și un singur buton la fiecare pas.
+- **Ce vede clientul:** nimic în aplicație. Primește hârtia și invitația pe email.
+
+
 ### FONDATOR · Contractul, GDPR-ul și dosarul juridic — „Creează companie + admin" a devenit un proces
 
 Alin: *„mi se pare foarte seacă partea asta de companii. Practic noi fondatorii de aici dăm

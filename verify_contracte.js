@@ -83,6 +83,49 @@ T('starea are mereu aceeași formă (interfața nu are de gândit)',
   ['lipsa', 'nesemnat', 'ok', 'demo'].every(function () { return true; }) &&
   ['nivel', 'eticheta', 'lipsuri', 'text', 'zileRamase'].every(function (k) { return k in s(FIRMA, null); }));
 
+sect('2b. Drumul contractului: în lucru → aprobat → trimis → semnat → încheiat');
+// Treapta „aprobat" e cea cerută de Alin: până acolo e ciornă, de acolo încolo se printează și se
+// semnează. Fără ea, singura cale de la „ciornă" la „semnat" era să minți despre stare.
+T('starea „aprobat" există pe server', /const CONTRACT_STARI = \['ciorna', 'aprobat', 'trimis', 'activ', 'incheiat'\]/.test(server));
+T('un contract aprobat NU e dat drept semnat', s(FIRMA, { status: 'aprobat' }).nivel === 'nesemnat');
+T('și se citește „gata de semnat", nu „ciornă"', /gata de semnat/.test(s(FIRMA, { status: 'aprobat' }).eticheta), s(FIRMA, { status: 'aprobat' }).eticheta);
+T('„trimis" spune că e la client', /la client/.test(s(FIRMA, { status: 'trimis' }).eticheta), s(FIRMA, { status: 'trimis' }).eticheta);
+T('nicio stare nu mai foloseşte cuvântul „ciornă" în afară de prima',
+  Object.keys(C.ETICHETE_STARE).filter(function (k) { return /ciorn/i.test(C.ETICHETE_STARE[k]); }).length === 0,
+  JSON.stringify(C.ETICHETE_STARE));
+// Interfața are propria copie a etichetelor (nu poate cere serverul pentru fiecare desen). Copia
+// aia trebuie să fie IDENTICĂ — altfel un ecran spune „trimis la client" și altul „trimis la semnat".
+const mCli = /var CTR_STARI = \{([\s\S]*?)\};/.exec(html);
+T('găsesc etichetele din interfață', !!mCli);
+if (mCli) {
+  const cli = {};
+  [...mCli[1].matchAll(/(\w+):\s*\['([^']*)'/g)].forEach(m => { cli[m[1]] = m[2]; });
+  T('interfața cunoaște exact aceleași stări ca serverul',
+    Object.keys(cli).sort().join(',') === Object.keys(C.ETICHETE_STARE).sort().join(','),
+    Object.keys(cli).join(',') + '  ≠  ' + Object.keys(C.ETICHETE_STARE).join(','));
+  Object.keys(C.ETICHETE_STARE).forEach(k =>
+    T('eticheta „' + k + '" e scrisă la fel în amândouă locurile', cli[k] === C.ETICHETE_STARE[k], cli[k] + ' ≠ ' + C.ETICHETE_STARE[k]));
+}
+const mPas = /var CTR_PAS = \{([\s\S]*?)\};/.exec(html);
+T('găsesc pașii din interfață', !!mPas);
+if (mPas) {
+  const pas = {};
+  [...mPas[1].matchAll(/(\w+):\s*\['([^']*)',\s*'([^']*)'\]/g)].forEach(m => { pas[m[1]] = [m[2], m[3]]; });
+  Object.keys(C.URMATORUL_PAS).filter(k => C.URMATORUL_PAS[k]).forEach(k => {
+    T('după „' + k + '" urmează același pas în amândouă locurile',
+      pas[k] && pas[k][0] === C.URMATORUL_PAS[k][0] && pas[k][1] === C.URMATORUL_PAS[k][1],
+      JSON.stringify(pas[k]) + ' ≠ ' + JSON.stringify(C.URMATORUL_PAS[k]));
+  });
+  T('din „încheiat" nu mai urmează nimic', !pas.incheiat && C.URMATORUL_PAS.incheiat === null);
+}
+
+sect('2c. Parola clientului nu trece niciodată prin mâinile noastre');
+// Alin, 08.09: „doar trimitem invitația și parola o pune singur, nu are ce căuta la noi."
+T('traseul nu mai are câmp de parolă', !/cn-pass/.test(html));
+T('și nu mai trimite parolă la crearea administratorului',
+  /body: JSON\.stringify\(\{ username: s\.admin\.username \}\)/.test(html));
+T('scrie limpede că omul își pune singur parola', /își pune SINGUR parola/.test(html));
+
 sect('3. Datele actului: durată, GDPR, anexă');
 T('12 luni de la 1 ianuarie → 1 ianuarie la anul', new Date(C.calcSfarsit(Date.parse('2026-01-01T00:00:00Z'), 12)).getUTCFullYear() === 2027);
 // 31 ianuarie + 1 lună nu are voie să sară în martie.
@@ -191,7 +234,9 @@ sect('7. Ciorna de contract spune că e ciornă');
 const cpdf = fs.readFileSync('./contract_pdf.js', 'utf8');
 T('scrie pe hârtie că e ciornă până la semnare', /CIORNĂ — generată automat/.test(cpdf));
 T('și că trebuie verificată juridic', /A se verifica juridic înainte de semnare/.test(cpdf));
-T('semnul de ciornă dispare când contractul e activ', /const ciorna = contract\.status !== 'activ';/.test(cpdf));
+// Alin, 08.09: „de ce o ciornă, dacă noi deja vorbim de o semnare de contract?" — din clipa în care
+// contractul e APROBAT, hârtia e curată și se poate printa. Semnul rămâne doar cât e în lucru.
+T('semnul de ciornă apare DOAR cât contractul e în lucru', /const ciorna = contract\.status === 'ciorna';/.test(cpdf));
 T('foloseşte logo-ul pentru fundal alb (vezi CLAUDE.md)', /logo-light\.png/.test(cpdf));
 T('numele fișierului e brandat, ca la rapoarte', /'RA-Tracks - Contract '/.test(cpdf));
 T('rolurile GDPR sunt scrise corect: clientul operator, noi împuternicit',
@@ -199,6 +244,58 @@ T('rolurile GDPR sunt scrise corect: clientul operator, noi împuternicit',
 T('anexa GDPR dispare dacă acordul e act separat', /const gdprAnexa = !\(contract\.gdpr && contract\.gdpr\.kind === 'separat'\);/.test(cpdf));
 T('datele noastre vin din „Date emitent", nu scrise a doua oară',
   /invoice_issuer/.test(server) && /const emitent = \(\(await getSystemSettings\(\)\)\.invoice_issuer\) \|\| \{\};/.test(server));
+
+sect('8. Aliniamentul contractului — fiecare scriere își spune poziția');
+// DEFECTUL GĂSIT DE ALIN, 08.09, și motivul pentru care proba asta există:
+// pdfkit ȚINE MINTE ultima poziție scrisă. Blocul părților scria valorile la x = margine + 106;
+// de acolo încolo, orice `doc.text(t)` fără poziție pornea de la 156 în loc de 50 — adică TOT
+// contractul era împins cu zece centimetri spre dreapta și intra în marginea din dreapta.
+// Aici punem un „document de carton" care înregistrează fiecare scriere și verificăm că fiecare
+// și-a dat singură x-ul și lățimea, și că nimic nu iese din pagină.
+const CP = require('./contract_pdf');
+const A4 = { width: 595.28, height: 841.89, margins: { top: 50, bottom: 50, left: 50, right: 50 } };
+const scrieri = [];
+const carton = {
+  page: A4, x: A4.margins.left, y: A4.margins.top, _pagini: 1,
+  font() { return this; }, fontSize() { return this; }, fillColor() { return this; },
+  strokeColor() { return this; }, lineWidth() { return this; },
+  moveTo() { return this; }, lineTo() { return this; }, stroke() { return this; },
+  image() { return this; },
+  addPage() { this._pagini++; this.x = A4.margins.left; this.y = A4.margins.top; return this; },
+  moveDown(n) { this.y += 12 * (n == null ? 1 : n); return this; },
+  text(t, x, y, o) {
+    scrieri.push({ t: String(t == null ? '' : t).slice(0, 60), x: x, y: y, o: o, pagina: this._pagini });
+    if (typeof y === 'number') this.y = y + 11;
+    else this.y += 11;
+    return this;
+  }
+};
+const start2 = Date.parse('2026-09-15T00:00:00Z');
+CP.scrieContract(carton, {
+  contract: { number: 'RAT-C-2026-0007', status: 'aprobat', signed_at: start2, start_at: start2, months: 12,
+    end_at: C.calcSfarsit(start2, 12), auto_renew: true, notice_days: 30,
+    client_rep: { name: 'Ion Popescu', role: 'Administrator' }, our_rep: { name: 'Alin Tîlvar', role: 'Administrator' },
+    gdpr: { kind: 'anexa' }, annex: C.facAnexa([{ imei: '860000000000001', name: 'Camion A', plate: 'B-111-AAA', monthlyRON: 49 }]) },
+  firma: { name: 'Transport Zebra SRL', cui: 'RO12345678', address: 'Str. Exemplu 1', payment_term_days: 15, billing_day: 5 },
+  emitent: { name: 'RA TRACKS SRL', cui: 'RO44556677', vat_rate: 19 }
+});
+T('contractul chiar se scrie (nu pică pe drum)', scrieri.length > 40, scrieri.length + ' scrieri');
+const faraX = scrieri.filter(w => typeof w.x !== 'number');
+T('FIECARE scriere își dă explicit poziția pe orizontală', faraX.length === 0,
+  faraX.slice(0, 3).map(w => JSON.stringify(w.t)).join(' | '));
+const faraLat = scrieri.filter(w => !w.o || (typeof w.o.width !== 'number' && w.o.lineBreak !== false));
+T('și lățimea (sau spune limpede că nu se rupe rândul)', faraLat.length === 0,
+  faraLat.slice(0, 3).map(w => JSON.stringify(w.t)).join(' | '));
+const inAfara = scrieri.filter(w => w.x < A4.margins.left - 0.5 || (w.o && typeof w.o.width === 'number' && w.x + w.o.width > A4.width - A4.margins.right + 0.5));
+T('nimic nu iese din marginile paginii', inAfara.length === 0,
+  inAfara.slice(0, 3).map(w => JSON.stringify(w.t) + ' la x=' + w.x).join(' | '));
+// Paragrafele contractului trebuie să înceapă FIX la margine, nu la coloana valorilor din antet.
+const laMargine = scrieri.filter(w => w.x === A4.margins.left).length;
+T('cele mai multe rânduri pornesc chiar de la margine', laMargine >= scrieri.length * 0.4,
+  laMargine + ' din ' + scrieri.length);
+T('blocul părților scrie toate rândurile, chiar goale (linie punctată, nu rând lipsă)',
+  scrieri.filter(w => w.t === 'IBAN').length === 2 && scrieri.filter(w => w.t === '____________').length > 0);
+T('contractul are patru pagini: actul, restul, Anexa 1, Anexa 2', carton._pagini === 4, carton._pagini + ' pagini');
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

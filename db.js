@@ -920,7 +920,7 @@ async function initDb() {
         id SERIAL PRIMARY KEY,
         company_id INTEGER NOT NULL,
         number VARCHAR(60),                       -- numărul contractului (RAT-C-2026-0001)
-        status VARCHAR(16) NOT NULL DEFAULT 'ciorna', -- ciorna | trimis | activ | incheiat
+        status VARCHAR(16) NOT NULL DEFAULT 'ciorna', -- ciorna | aprobat | trimis | activ | incheiat
         signed_at BIGINT,                         -- data semnării
         start_at BIGINT,                          -- de când produce efecte
         months INTEGER,                           -- durata în luni (null = nedeterminată)

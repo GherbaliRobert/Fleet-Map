@@ -32,101 +32,134 @@ function _bani(v, moneda) {
 function _sauLinie(v) { const t = String(v == null ? '' : v).trim(); return t || '____________'; }
 
 // ─── Cărămizile paginii ──────────────────────────────────────────────────────────────────────
-function _antet(doc, contract, ciorna) {
+// ⚠ REGULA CASEI, învățată pe pielea noastră: pdfkit ȚINE MINTE ultima poziție scrisă. Dacă scrii
+// o dată la `left + 102` (coloana valorilor din blocul părților) și pe urmă chemi `doc.text(t)`
+// fără poziție, TOT restul contractului pornește de la 152 în loc de 50 — adică textul e împins
+// cu zece centimetri spre dreapta și intră în marginea din dreapta. Exact asta s-a întâmplat.
+// De aceea, aici, FIECARE scriere își dă explicit x-ul și lățimea. Nu scoate `_ST(doc)`.
+function _ST(doc) {
   const left = doc.page.margins.left;
-  const w = doc.page.width - left - doc.page.margins.right;
+  return { left: left, w: doc.page.width - left - doc.page.margins.right };
+}
+// Trece la pagină nouă dacă nu mai încap `inaltime` puncte până jos.
+function _incape(doc, inaltime) {
+  if (doc.y > doc.page.height - doc.page.margins.bottom - inaltime) { doc.addPage(); return true; }
+  return false;
+}
+function _antet(doc, contract, ciorna) {
+  const { left, w } = _ST(doc);
+  const sus = doc.page.margins.top;
   const lg = _logo();
-  if (lg) { try { doc.image(lg, left, doc.y, { height: 22 }); } catch (e) {} }
+  const hLogo = 22;
+  if (lg) { try { doc.image(lg, left, sus, { height: hLogo }); } catch (e) {} }
   doc.fillColor(GRI).font('Nunito').fontSize(9)
-    .text('Contract nr. ' + _sauLinie(contract.number) + ' / ' + _data(contract.signed_at), left, doc.y + 6, { width: w, align: 'right' });
-  doc.moveDown(0.4);
-  const y = doc.y;
-  doc.moveTo(left, y).lineTo(left + w, y).strokeColor(VERDE).lineWidth(2).stroke();
-  doc.moveDown(0.8);
+    .text('Contract nr. ' + _sauLinie(contract.number) + ' / ' + _data(contract.signed_at), left, sus + 7, { width: w, align: 'right' });
+  // Linia verde stă sub CE E MAI JOS dintre logo și text, nu sub ultimul lucru scris.
+  const yLinie = sus + hLogo + 8;
+  doc.moveTo(left, yLinie).lineTo(left + w, yLinie).strokeColor(VERDE).lineWidth(2).stroke();
+  doc.y = yLinie + 14;
   doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(15)
-    .text('CONTRACT DE PRESTĂRI SERVICII', { align: 'center' });
+    .text('CONTRACT DE PRESTĂRI SERVICII', left, doc.y, { width: w, align: 'center' });
   doc.font('Nunito').fontSize(9).fillColor(GRI)
-    .text('monitorizare GPS a flotei prin platforma RA Tracks', { align: 'center' });
+    .text('monitorizare GPS a flotei prin platforma RA Tracks', left, doc.y + 2, { width: w, align: 'center' });
   if (ciorna) {
-    doc.moveDown(0.5);
     doc.fillColor('#b45309').font('Nunito-Bold').fontSize(8.5)
-      .text('CIORNĂ — generată automat din datele din aplicație. A se verifica juridic înainte de semnare.', { align: 'center' });
+      .text('CIORNĂ — generată automat din datele din aplicație. A se verifica juridic înainte de semnare.',
+        left, doc.y + 8, { width: w, align: 'center' });
   }
-  doc.moveDown(1);
+  doc.x = left;
+  doc.y = doc.y + 16;
 }
 function _titlu(doc, t) {
-  if (doc.y > doc.page.height - doc.page.margins.bottom - 70) doc.addPage();
-  doc.moveDown(0.6);
-  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(10.5).text(t);
-  doc.moveDown(0.25);
+  const { left, w } = _ST(doc);
+  _incape(doc, 70);
+  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(10.5).text(t, left, doc.y + 8, { width: w });
+  doc.x = left;
+  doc.y += 3;
 }
 function _p(doc, t, optiuni) {
+  const { left, w } = _ST(doc);
   doc.fillColor('#1f2937').font('Nunito').fontSize(9.5)
-    .text(t, Object.assign({ align: 'justify', lineGap: 1.2 }, optiuni || {}));
-  doc.moveDown(0.35);
+    .text(t, left, doc.y, Object.assign({ width: w, align: 'justify', lineGap: 1.2 }, optiuni || {}));
+  doc.x = left;
+  doc.y += 4;
 }
 function _parte(doc, eticheta, d) {
-  const left = doc.page.margins.left;
-  const w = doc.page.width - left - doc.page.margins.right;
-  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(9.5).text(eticheta);
+  const { left, w } = _ST(doc);
+  const xEt = left + 6, latEt = 96, xVal = left + 106, latVal = w - 112;
+  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(9.5).text(eticheta, left, doc.y, { width: w });
+  doc.y += 2;
+  // TOATE rândurile se scriu, chiar goale. Un contract în care lipsește IBAN-ul trebuie să ARATE
+  // că lipsește (linie punctată), nu să ascundă rândul — altfel semnezi fără să bagi de seamă.
   const randuri = [
     ['Denumire', d.name], ['CUI / CIF', d.cui], ['Nr. Reg. Com.', d.reg_com],
     ['Sediu', d.address], ['IBAN', d.iban], ['Banca', d.bank],
-    ['Email', d.email], ['Telefon', d.phone],
-    ['Reprezentat prin', d.rep]
-  ].filter(function (r) { return r[1] || r[0] === 'Reprezentat prin'; });
+    ['Email', d.email], ['Telefon', d.phone], ['Reprezentat prin', d.rep]
+  ];
   doc.font('Nunito').fontSize(9);
   randuri.forEach(function (r) {
+    _incape(doc, 40);
     const y = doc.y;
-    doc.fillColor(GRI).text(r[0], left + 6, y, { width: 92, lineBreak: false });
-    doc.fillColor('#1f2937').text(_sauLinie(r[1]), left + 102, y, { width: w - 108 });
+    doc.fillColor(GRI).text(r[0], xEt, y, { width: latEt, lineBreak: false });
+    doc.fillColor('#1f2937').text(_sauLinie(r[1]), xVal, y, { width: latVal });
+    // Valoarea poate ocupa două rânduri (o adresă lungă): rândul următor pornește de sub ea.
+    doc.y = Math.max(doc.y, y + 10.5);
   });
-  doc.moveDown(0.6);
+  doc.x = left;
+  doc.y += 8;
 }
 function _tabelAnexa(doc, anexa) {
-  const left = doc.page.margins.left;
-  const w = doc.page.width - left - doc.page.margins.right;
-  const col = [w * 0.40, w * 0.20, w * 0.22, w * 0.18];
+  const { left, w } = _ST(doc);
+  const col = [w * 0.38, w * 0.19, w * 0.24, w * 0.19];
   const cap = ['Vehicul', 'Nr. înmatriculare', 'Aparat (IMEI)', 'Abonament / lună'];
   function rand(valori, gros) {
-    if (doc.y > doc.page.height - doc.page.margins.bottom - 30) { doc.addPage(); }
+    _incape(doc, 34);
     const y = doc.y;
     doc.font(gros ? 'Nunito-Bold' : 'Nunito').fontSize(8.5).fillColor(gros ? NEGRU : '#1f2937');
     let x = left;
     valori.forEach(function (v, i) {
-      doc.text(String(v == null ? '—' : v), x + 4, y + 4, { width: col[i] - 8, lineBreak: false, ellipsis: true, align: i === 3 ? 'right' : 'left' });
+      doc.text(String(v == null ? '—' : v), x + 4, y + 5, { width: col[i] - 8, lineBreak: false, ellipsis: true, align: i === 3 ? 'right' : 'left' });
       x += col[i];
     });
-    doc.moveTo(left, y + 17).lineTo(left + w, y + 17).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
-    doc.y = y + 21;
+    doc.moveTo(left, y + 18).lineTo(left + w, y + 18).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
+    doc.x = left;
+    doc.y = y + 22;
   }
   rand(cap, true);
   const veh = (anexa && anexa.vehicles) || [];
-  if (!veh.length) { _p(doc, 'Nu au fost trecute aparate în anexă la momentul generării.'); return; }
+  if (!veh.length) {
+    doc.x = left;
+    _p(doc, 'Nu au fost trecute aparate în anexă la momentul generării. Anexa se completează în aplicație, la fila „Contract" a firmei, după ce aparatele sunt adoptate.');
+    return;
+  }
   const moneda = (anexa && anexa.currency) || 'RON';
   veh.forEach(function (v) { rand([v.name || v.imei, v.plate, v.imei, v.monthlyRON == null ? '—' : _bani(v.monthlyRON, moneda)]); });
-  doc.moveDown(0.3);
   doc.font('Nunito-Bold').fontSize(9.5).fillColor(NEGRU)
-    .text('Total abonament lunar: ' + _bani(anexa.monthlyTotal, moneda) + ' (fără TVA)', left, doc.y, { width: w, align: 'right' });
-  doc.moveDown(0.5);
+    .text('Total abonament lunar: ' + _bani(anexa.monthlyTotal, moneda) + ' (fără TVA)', left, doc.y + 4, { width: w, align: 'right' });
+  doc.x = left;
+  doc.y += 10;
 }
 function _semnaturi(doc, numePrestator, numeBeneficiar) {
-  if (doc.y > doc.page.height - doc.page.margins.bottom - 110) doc.addPage();
-  const left = doc.page.margins.left;
-  const w = doc.page.width - left - doc.page.margins.right;
-  doc.moveDown(1.5);
-  const y = doc.y;
+  const { left, w } = _ST(doc);
+  _incape(doc, 120);
+  const y = doc.y + 24;
+  const latCol = w / 2 - 12, xDr = left + w / 2 + 12;
   doc.font('Nunito-Bold').fontSize(9.5).fillColor(NEGRU);
-  doc.text('PRESTATOR', left, y, { width: w / 2 - 10 });
-  doc.text('BENEFICIAR', left + w / 2 + 10, y, { width: w / 2 - 10 });
+  doc.text('PRESTATOR', left, y, { width: latCol, lineBreak: false });
+  doc.text('BENEFICIAR', xDr, y, { width: latCol, lineBreak: false });
   doc.font('Nunito').fontSize(9).fillColor('#1f2937');
-  doc.text(_sauLinie(numePrestator), left, y + 15, { width: w / 2 - 10 });
-  doc.text(_sauLinie(numeBeneficiar), left + w / 2 + 10, y + 15, { width: w / 2 - 10 });
+  doc.text(_sauLinie(numePrestator), left, y + 14, { width: latCol, lineBreak: false, ellipsis: true });
+  doc.text(_sauLinie(numeBeneficiar), xDr, y + 14, { width: latCol, lineBreak: false, ellipsis: true });
+  // Numele sus, locul de semnat gol dedesubt, linia sub el, iar explicația sub linie — cum arată
+  // orice contract pe hârtie. Înainte numele stătea lipit sus, iar linia venea din senin, jos.
+  const yLinie = y + 62;
+  doc.moveTo(left, yLinie).lineTo(left + latCol, yLinie).strokeColor(LINIE).lineWidth(0.8).stroke();
+  doc.moveTo(xDr, yLinie).lineTo(xDr + latCol, yLinie).stroke();
   doc.fillColor(GRI).fontSize(8.5);
-  doc.text('Semnătura și ștampila', left, y + 62, { width: w / 2 - 10 });
-  doc.text('Semnătura și ștampila', left + w / 2 + 10, y + 62, { width: w / 2 - 10 });
-  doc.moveTo(left, y + 58).lineTo(left + w / 2 - 10, y + 58).strokeColor(LINIE).lineWidth(0.8).stroke();
-  doc.moveTo(left + w / 2 + 10, y + 58).lineTo(left + w, y + 58).stroke();
+  doc.text('Semnătura și ștampila', left, yLinie + 4, { width: latCol, lineBreak: false });
+  doc.text('Semnătura și ștampila', xDr, yLinie + 4, { width: latCol, lineBreak: false });
+  doc.x = left;
+  doc.y = yLinie + 20;
 }
 
 // ─── Contractul întreg ───────────────────────────────────────────────────────────────────────
@@ -136,7 +169,10 @@ function scrieContract(doc, date) {
   const firma = date.firma || {};
   const em = date.emitent || {};
   const anexa = contract.annex || { vehicles: [], monthlyTotal: 0, currency: 'RON' };
-  const ciorna = contract.status !== 'activ';
+  // Semnul „CIORNĂ" ține de o singură stare: „în lucru". Din clipa în care contractul e APROBAT,
+  // hârtia e curată și se poate printa pentru semnare — asta a fost cererea lui Alin: „dacă noi deja
+  // vorbim de o semnare de contract, aici ar trebui aprobă contractul și îl poți descărca printabil".
+  const ciorna = contract.status === 'ciorna';
   const clientRep = contract.client_rep || firma.legal_rep || {};
   const ourRep = contract.our_rep || {};
   const gdprAnexa = !(contract.gdpr && contract.gdpr.kind === 'separat');
@@ -202,10 +238,11 @@ function scrieContract(doc, date) {
 
   // ── Anexa 1: aparatele contractate ──
   doc.addPage();
-  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 1 — Aparate și vehicule contractate');
+  const A1 = _ST(doc);
+  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 1 — Aparate și vehicule contractate', A1.left, doc.y, { width: A1.w });
   doc.font('Nunito').fontSize(8.5).fillColor(GRI)
-    .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at));
-  doc.moveDown(0.8);
+    .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), A1.left, doc.y + 2, { width: A1.w });
+  doc.x = A1.left; doc.y += 12;
   _tabelAnexa(doc, anexa);
   _p(doc, 'Modificarea listei de mai sus (adăugarea sau scoaterea unui vehicul) se face prin act adițional sau prin anexă nouă, semnată de ambele părți.');
   _semnaturi(doc, em.name, firma.name);
@@ -213,10 +250,11 @@ function scrieContract(doc, date) {
   // ── Anexa 2: acordul GDPR, dacă e anexă și nu act separat ──
   if (gdprAnexa) {
     doc.addPage();
-    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 2 — Acord de prelucrare a datelor cu caracter personal');
+    const A2 = _ST(doc);
+    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 2 — Acord de prelucrare a datelor cu caracter personal', A2.left, doc.y, { width: A2.w });
     doc.font('Nunito').fontSize(8.5).fillColor(GRI)
-      .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at));
-    doc.moveDown(0.8);
+      .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), A2.left, doc.y + 2, { width: A2.w });
+    doc.x = A2.left; doc.y += 12;
     _titlu(doc, '1. Rolurile părților');
     _p(doc, 'Beneficiarul, în calitate de OPERATOR, stabilește scopurile și mijloacele prelucrării. Prestatorul, în calitate de PERSOANĂ ÎMPUTERNICITĂ, prelucrează datele numai la instrucțiunile documentate ale Operatorului, cuprinse în prezentul acord și în contract.');
     _titlu(doc, '2. Obiectul, durata și scopul prelucrării');

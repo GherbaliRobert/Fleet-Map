@@ -3759,7 +3759,15 @@ app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res
 //
 // Documentele semnate se țin ca base64 în rândul contractului, la fel ca actele vehiculelor. NU se
 // aduc niciodată în liste — doar la descărcarea explicită — fiindcă un PDF scanat are megaocteți.
-const CONTRACT_STARI = ['ciorna', 'trimis', 'activ', 'incheiat'];
+// Drumul unui contract, în ordinea în care se întâmplă în realitate:
+//   ciorna    — în lucru la noi, se completează. Doar aici PDF-ul poartă semnul „CIORNĂ".
+//   aprobat   — l-am verificat și e gata de semnat. PDF-ul e curat, se printează și se semnează.
+//   trimis    — a plecat la client, așteptăm hârtia semnată înapoi.
+//   activ     — semnat de amândoi, în vigoare.
+//   incheiat  — relația s-a terminat.
+// „aprobat" a fost adăugat la cererea lui Alin: „de ce o ciornă, dacă noi deja vorbim de o semnare
+// de contract? Aici ar trebui aprobă contractul și îl poți descărca printabil pentru semnare."
+const CONTRACT_STARI = ['ciorna', 'aprobat', 'trimis', 'activ', 'incheiat'];
 const CONTRACT_MIME = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
 const CONTRACT_MAX_B = 4 * 1024 * 1024; // 4 MB per act (limita de body e 6 MB)
 

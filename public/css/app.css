@@ -2801,6 +2801,14 @@
     .raco .raco-dosbox.bad { border-color: var(--red); }
     .raco .raco-ctr-cap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; }
     .raco .raco-ctr-per { color: var(--text-muted); font-size: 12px; }
+    /* „Ce urmează": unde e contractul pe drum și care e următorul lucru de făcut. */
+    .raco .raco-urmeaza {
+      padding: 13px 15px; border-radius: 12px; margin-bottom: 18px;
+      background: var(--bg-dark); border: 1.5px solid var(--border);
+    }
+    .raco .raco-urmeaza-t { font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); margin-bottom: 11px; }
+    .raco .raco-urmeaza-b { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .raco .raco-urmeaza-b a.rax-btn { text-decoration: none; }
     .raco .raco-pret { width: 110px; flex: 0 0 110px; min-width: 0; text-align: right; }
     .raco .raco-anexa-t { font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
     .raco label.rax-btn { cursor: pointer; }
