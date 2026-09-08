@@ -2641,6 +2641,117 @@
       .pref-f input, .add-user-form input, .add-user-form select, input.rol-nume, .adr-nou input { transition: none !important; }
     }
 
+    /* ── Companii (verticala noastră) — același limbaj vizual ca Setările ──
+       Ecranul ăsta vorbea altă limbă decât restul aplicației: câmpuri palide cu chenar de 1px și
+       fără inel la focus, butoane mici, tabel fără cap, iar cele patru treburi ale ecranului
+       (firmă nouă / lista / adopții / mutări) curgeau una într-alta, fără nicio despărțire.
+       Regulile de mai jos stau sub clasa `.raco`, pusă pe corpul ecranului și pe ferestrele lui
+       (Editează compania, Configurare). Când mai urcă un ecran de-al nostru la modernizare, i se
+       pune aceeași clasă pe corp — nu se rescrie regula. */
+    .raco .raco-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 15px 16px 16px; margin-bottom: 14px;
+    }
+    .raco .raco-card:last-child { margin-bottom: 0; }
+    .raco .raco-h {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 13.5px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px;
+    }
+    .raco .raco-h i { color: var(--accent); font-size: 13px; width: 16px; text-align: center; }
+    .raco .raco-sub { font-size: 11.5px; color: var(--text-muted); margin: -6px 0 12px; line-height: 1.45; }
+    .raco .raco-count { font-size: 11.5px; font-weight: 700; color: var(--accent); }
+
+    /* Câmpuri: aceeași formă ca în Setări — 1,5px, colț de 10, inel verde unde scrii. */
+    .raco .rax-field {
+      background: var(--bg-dark); border: 1.5px solid var(--border); border-radius: 10px;
+      color: var(--text-primary); font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 10px 12px; margin-top: 0; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .raco input.rax-field, .raco select.rax-field { width: 100%; }
+    .raco .rax-field:hover:not(:disabled) { border-color: var(--border-light); }
+    .raco .rax-field:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+    .raco .rax-field::placeholder { color: var(--text-muted); font-weight: 500; opacity: 1; }
+    .raco .rax-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .raco #rax-co-name { margin-bottom: 0; }
+    /* Câmpul de căutare, cu lupa înăuntru (nu emoji în placeholder). */
+    .raco .raco-search { position: relative; margin-bottom: 12px; }
+    .raco .raco-search i {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 12px; pointer-events: none;
+    }
+    .raco .raco-search .rax-field { padding-left: 34px; }
+
+    /* Butoane: colț de 10, chenar de 1,5px, scris gros — ca în Setări. */
+    .raco .rax-btn {
+      border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg-dark);
+      color: var(--text-primary); font-family: inherit; font-size: 12.5px; font-weight: 700;
+      padding: 9px 14px; display: inline-flex; align-items: center; gap: 7px;
+      transition: border-color .15s, background .15s, color .15s;
+    }
+    .raco .rax-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .raco .rax-btn.primary { background: var(--accent); color: #06210F; border-color: var(--accent); font-weight: 800; }
+    .raco .rax-btn.primary:hover { color: #06210F; filter: brightness(1.06); }
+    .raco .raco-seg { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+    /* Tabelul companiilor: cap cu fundal, rânduri cu aer, numele firmei = intrarea în ea. */
+    .raco .rax-co-table { border-radius: 12px; overflow: hidden; }
+    .raco .rax-co-table th { background: var(--bg-dark); padding: 10px 12px; font-weight: 800; border-bottom: 1.5px solid var(--border); }
+    .raco .rax-co-table td { padding: 12px; }
+    .raco .rax-co-table tbody tr:last-child td { border-bottom: none; }
+    .raco .rax-co-open strong { font-size: 13px; }
+    /* Pastile pentru plan și pentru starea accesului — se citesc dintr-o privire, nu ca text simplu. */
+    .raco .raco-pill {
+      display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+      background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap;
+    }
+    .raco .raco-pill.ok { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: transparent; color: var(--accent); }
+    .raco .raco-pill.warn { background: rgba(245,158,11,.14); border-color: transparent; color: #b45309; }
+    .raco .raco-pill.bad { background: color-mix(in srgb, var(--red) 14%, transparent); border-color: transparent; color: var(--red); }
+    .raco .raco-until { display: block; font-size: 10.5px; color: var(--text-muted); margin-top: 3px; }
+    /* Butoanele de acțiune: pătrate egale, liniștite. Coșul se face roșu abia când pui mâna pe el. */
+    .raco .rax-co-actions-cell { gap: 6px; }
+    .raco .rax-ico-btn {
+      width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+      border: 1.5px solid var(--border); border-radius: 9px; color: var(--text-secondary); font-size: 12.5px;
+      transition: border-color .15s, color .15s;
+    }
+    .raco .rax-ico-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .raco .rax-ico-btn.danger { border-color: var(--border); color: var(--text-secondary); }
+    .raco .rax-ico-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+    /* Rândurile din „Vehicule neasignate" și „Mută între companii" — nume la stânga, comenzile la
+       dreapta. Erau scrise italic și centrate fiindcă purtau clasa mesajului de listă goală. */
+    .raco .raco-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 12px; margin-bottom: 8px;
+      background: var(--bg-dark); border: 1px solid var(--border); border-radius: 11px;
+    }
+    .raco .raco-row:last-child { margin-bottom: 0; }
+    .raco .raco-row-t { flex: 1; min-width: 150px; font-size: 12.5px; font-style: normal; text-align: left; }
+    .raco .raco-row-t strong { font-weight: 700; color: var(--text-primary); }
+    .raco .raco-row-s { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .raco .raco-row .rax-field { width: auto; min-width: 150px; flex: 0 1 220px; }
+    /* Bifele: verdele aplicației, nu albastrul browserului (se vedea în „Companie activă"). */
+    .raco input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+    .raco .raco-row input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 auto; }
+    .raco .raco-bulk {
+      position: sticky; bottom: -12px; margin-top: 12px;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 11px 12px; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 11px;
+    }
+    .raco .raco-bulk > span { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+    .raco .raco-bulk .rax-field { width: auto; flex: 1; min-width: 150px; }
+    @media (max-width: 640px) {
+      .raco .rax-row2 { grid-template-columns: 1fr; }
+      .raco .raco-row .rax-field, .raco .raco-bulk .rax-field { flex: 1 1 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .raco .rax-field, .raco .rax-btn, .raco .rax-ico-btn { transition: none !important; }
+    }
+
     /* ── Preferințe (Setări → Contul meu) ──
        Un rând = o preferință: numele sus, explicația dedesubt, comanda în dreapta. Bifele sunt
        comutatoare, alegerile scurte sunt butoane lipite (nu liste derulante) — se văd toate variantele

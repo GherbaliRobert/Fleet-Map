@@ -58,6 +58,51 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Ecranul „Companii" — modernizat, plus două lucruri care nu erau doar de aspect
+
+Alin: *„secțiunea companii, ce roluri are, ce funcționalități, cum ajută fondatorii. Și vreau să
+modernizăm aspectul."*
+
+**Ce e ecranul.** E singurul loc din care se naște un client. Are patru treburi, care înainte curgeau
+toate într-o singură fâșie, fără nicio despărțire: **deschizi o firmă nouă** (cu administratorul ei,
+care primește invitație pe email), **te uiți la firmele existente** (câte vehicule, câți oameni, ce
+plan, dacă mai au acces plătit, cât au plătit), **adopți aparatele** care au început să transmită dar
+nu sunt încă la nimeni, și **muți** vehicule, utilizatori sau șoferi dintr-o firmă în alta.
+
+**Cine are voie.** Numai noi. Dreptul se cheamă `manageCompanies` și îl are **un singur rol:
+super-admin**. Nu e doar meniul ascuns — fiecare cale către server cere dreptul separat, deci nici
+măcar cu adresa scrisă de mână nu se ajunge acolo. Proba nouă verifică amândouă capetele.
+
+**Ce s-a schimbat la aspect.** Cele patru treburi au acum **patru cartonașe cu titlu**, fiecare cu
+rostul lui scris pe scurt. Câmpurile și butoanele vorbesc aceeași limbă ca Setările (chenar mai
+gros, colț rotunjit, inel verde unde scrii). Planul și starea accesului au devenit **pastile
+colorate** — verde activ, portocaliu în grație, roșu expirat — se vede dintr-o privire care client
+n-a mai plătit. Butoanele de pe rând sunt pătrate egale și liniștite; **coșul de gunoi nu mai e roșu
+tot timpul**, se colorează abia când pui mâna pe el. Lupa de la căutare e iconiță, nu emoji.
+
+**Două lucruri care nu erau de aspect:**
+- **Rândurile erau scrise înclinat și centrate.** Nu era o alegere — containerul listelor purta din
+  greșeală clasa mesajului de „listă goală" (aia e italic și centrată dinadins), și o dădea mai
+  departe tuturor rândurilor. Acum numele stă la stânga, normal, iar mesajul gol își păstrează stilul.
+- **Butonul de ștergere striga.** Era roșu aprins pe fiecare rând de firmă goală, lângă butoane
+  banale. Acțiunea e ireversibilă și oricum cere să scrii numele firmei ca s-o confirmi — nu trebuie
+  să te și sperie din priviri.
+
+**Ce am lăsat în urmă:** `verify_companii.js`, 34 de verificări. Ține minte că ecranul e strict al
+nostru, că fiecare stare de acces se desenează cu culoarea ei (o stare necunoscută NU se dă drept
+„activ") și că listele nu-și mai iau stilul mesajului gol. Stricat dinadins de cinci ori, a picat de
+fiecare dată.
+
+- **Ce am schimbat:** ecranul Companii, împărțit în patru cartonașe, cu aceleași câmpuri și butoane
+  ca restul aplicației; două defecte reparate pe drum.
+- **Ce vede fondatorul:** același ecran, dar citibil — se vede imediat unde ești, ce firmă a expirat
+  și ce poți apăsa.
+- **Ce vede clientul:** nimic, ecranul e închis pentru el la toate nivelurile.
+
+⚠️ Emoji-ul de lupă (🔎) a rămas la căutarea din **Facturare**, **Control costuri**, **Dispozitive** și
+**Rapoarte** — ecranele alea n-au fost atinse încă. Se rezolvă când le vine rândul la modernizare.
+
+
 ### FONDATOR · Iconițele grupelor din meniul nostru: trei se repetau prin aplicație
 
 Alin, uitându-se la meniul nou: *„hai să schimbăm SVG-urile astea, dă-mi niște variante
