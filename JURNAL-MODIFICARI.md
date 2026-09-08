@@ -58,6 +58,89 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Contractul, GDPR-ul și dosarul juridic — „Creează companie + admin" a devenit un proces
+
+Alin: *„mi se pare foarte seacă partea asta de companii. Practic noi fondatorii de aici dăm
+companiilor startul în aplicație, ne trebuiesc părțile juridice de trecut, părțile contractuale...
+contractul. Nu crezi? Ce înseamnă doar «Creează companie + admin»? Nu e ok deloc."*
+
+Avea dreptate, și era mai rău decât „sec". Butonul făcea **exact două lucruri**: scria un rând în
+tabela de companii (doar numele) și crea contul de administrator, căruia îi trimitea invitația.
+Atât. În toată aplicația, cuvântul „contract" nu exista ca lucru pe care să-l poți deschide, semna
+sau vedea că a expirat — apărea doar prin comentarii, ca vorbă.
+
+**Ce s-a construit.**
+
+**1. Contractul, ca act adevărat.** Are număr (se numerotează singur: `RAT-C-2026-0001`), dată de
+semnare, început, durată, reînnoire automată da/nu, preaviz de reziliere, dată de încetare și motiv.
+O firmă poate avea mai multe contracte în timp; cel „al firmei" e ultimul care nu s-a încheiat.
+
+**2. Cine semnează.** Reprezentantul legal al clientului (nume și funcție) și al nostru. Al
+clientului rămâne pe firmă, nu doar pe hârtia aia — se regăsește la contractul următor.
+
+**3. Acordul GDPR.** Ăsta nu era o scăpare de birou: noi ținem datele de localizare ale șoferilor
+clientului, deci suntem **persoană împuternicită**, iar el **operator**. Fără actul ăsta semnat, e
+în neregulă și el, și noi. Acum se poate ține fie ca anexă la contract, fie ca act separat urcat ca
+fișier. O bifă goală **nu** se pune la socoteală — trebuie dată sau fișier.
+
+**4. Anexa cu aparatele.** Bifezi ce aparate intră în contract și scrii abonamentul fiecăruia;
+prețul se propune singur din oferta firmei. E o **fotografie** a înțelegerii: dacă mâine clientul mai
+adaugă un vehicul, anexa semnată rămâne ce s-a semnat.
+
+**5. Ciorna contractului, în PDF.** Aplicația scoate contractul întreg, cu logo-ul nostru: părțile
+cu datele reale, obiectul, durata, prețul și plata, obligațiile, protecția datelor, încetarea, plus
+**Anexa nr. 1** (aparatele și prețurile) și **Anexa nr. 2** (acordul GDPR, cu rolurile, categoriile
+de date, subîmputerniciții, ce se întâmplă cu datele la încetare). Pe fiecare pagină scrie **CIORNĂ**
+și „a se verifica juridic înainte de semnare" — semnul dispare abia când marchezi contractul activ.
+Datele noastre vin din „Date emitent", aceleași de pe facturi, ca să nu existe două versiuni ale
+firmei noastre în aceeași aplicație.
+
+**6. Actul semnat se urcă înapoi.** PDF, JPG sau PNG, până la 4 MB, atât pentru contract cât și
+pentru acordul GDPR separat. Un contract **semnat nu se poate șterge** — se încheie. Altfel ar
+dispărea dovada că a existat.
+
+**7. Datele firmei, luate de la ANAF.** Scrii CUI-ul, apeși un buton, și se completează singure
+denumirea exactă, sediul, numărul de la Registrul Comerțului și starea TVA. Dacă firma apare
+**radiată** sau **inactivă**, ți-o spune cu roșu — exact lucrul pe care vrei să-l vezi înainte să
+semnezi cu ea. (Steagurile astea se arată, nu se scriu automat nicăieri: decizia rămâne a ta.)
+
+**8. „Creează companie + admin" a dispărut.** În locul lui: **trei pași** — Firma (cu preluarea de
+la ANAF) · Contractul (durată, reînnoire, preaviz, cine semnează, GDPR) · Administratorul (cu sau
+fără parolă). La final îți spune ce s-a întâmplat și ce urmează: adoptă aparatele, treci-le în anexă,
+descarcă ciorna. Anexa nu e la pasul 2 dinadins — la deschiderea firmei încă nu există niciun aparat.
+
+**9. Se vede de pe listă unde s-a oprit fiecare.** Sub numele fiecărei firme e o pastilă: *fără
+contract* (roșu), *ciornă de contract* / *trimis la semnat* / *dosar incomplet* / *expiră în N zile*
+(portocaliu), *în regulă* (verde), *contract încheiat* (gri). Apeși pe ea și intri direct în dosar.
+
+**Un lucru pe care l-am reparat pe drum:** un identificator care nu e număr (`/api/contracts/abc`)
+dădea eroare 500 — adică „s-a stricat serverul" — când de fapt cererea era greșită. Acum răspunde
+curat, cu 400.
+
+**Ce am lăsat în urmă:** `verify_contracte.js`, 87 de verificări, plus 24 de probe în aplicația
+pornită (traseul întreg, pastila, fila, PDF-ul). Ține minte că dosarul e strict al nostru (fiecare
+rută cere `manageCompanies`, pe care doar super-adminul îl are), că starea dosarului **nu minte**
+(un contract activ fără act semnat sau fără GDPR nu e „în regulă"), că un contract semnat nu se
+șterge și că PDF-urile scanate nu ies niciodată în liste. Stricat dinadins de șase ori, a picat de
+fiecare dată.
+
+- **Ce am schimbat:** deschiderea unui client a devenit un proces cu dosar juridic — contract, GDPR,
+  anexă, acte semnate, date luate de la ANAF.
+- **Ce vede fondatorul:** trei pași în loc de un buton, și, pe fiecare rând din listă, unde s-a oprit
+  fiecare client.
+- **Ce vede clientul:** nimic. Contractul e relația dintre noi și el, nu ceva ce-și administrează
+  singur din aplicație.
+
+⚠️ **De verificat pe server, nu se poate din cutia de dezvoltare:** preluarea de la ANAF. Rețeaua
+către `webservicesp.anaf.ro` e închisă în mediul în care lucrez, așa că am probat doar *citirea*
+răspunsului (cu răspunsuri reale ca formă), nu și cererea în sine. La primul CUI încercat pe
+ratrack.ro se vede dacă merge; adresa serviciului se poate schimba din `ANAF_TVA_URL`.
+
+⚠️ **Textul contractului e o ciornă scrisă de mine, nu de un avocat.** Clauzele sunt sobre și
+obișnuite pentru genul ăsta de serviciu, dar înainte să-l trimiți primului client, dă-l unui jurist.
+Se schimbă într-un singur loc (`contract_pdf.js`) și se aplică peste tot.
+
+
 ### FONDATOR · Ecranul „Companii" — modernizat, plus două lucruri care nu erau doar de aspect
 
 Alin: *„secțiunea companii, ce roluri are, ce funcționalități, cum ajută fondatorii. Și vreau să
@@ -4589,6 +4672,19 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   varianta deschisă/închisă, mult mai frumoasă decât OSM standard) și punem cheia în variabilele de
   mediu, ca la restul. Costă de la zero (planuri gratuite generoase) până la câteva zeci de euro pe
   lună, după cât ne uităm la hartă. **Până atunci, harta merge, dar stăm pe mila cuiva.**
+
+- [ ] **(voi) Textul contractului, citit de un jurist.** Aplicația scoate acum ciorna contractului și
+  a acordului GDPR (Anexa nr. 2), cu clauze obișnuite pentru genul ăsta de serviciu — dar scrise de
+  mine, nu de un avocat. Pe fiecare pagină scrie „CIORNĂ, a se verifica juridic înainte de semnare",
+  tocmai ca să nu plece așa la client. Se schimbă într-un singur loc: `contract_pdf.js`.
+
+- [ ] **(voi) „Date emitent" completate.** Contractul ia datele noastre (denumire, CUI, Reg. Com.,
+  sediu, IBAN, bancă) din aceeași setare ca facturile. Cât timp e goală, la „PRESTATOR" în contract
+  apar linii punctate.
+
+- [ ] **(eu, pe server) Preluarea de la ANAF, încercată pe viu.** Citirea răspunsului e probată, dar
+  cererea în sine n-a putut fi încercată din cutia de dezvoltare (rețeaua către ANAF e închisă
+  acolo). Se vede la primul CUI încercat pe ratrack.ro. Adresa serviciului: `ANAF_TVA_URL`.
 
 - [ ] **(eu) DE SCOS LA LANSARE: comutatorul „Fondator / Partener" din bara de sus. Hotărât de
   Alin, 03.09, confirmat 04.09.** E o schelă de probă, nu o funcție a produsului.

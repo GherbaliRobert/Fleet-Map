@@ -2744,9 +2744,70 @@
     }
     .raco .raco-bulk > span { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
     .raco .raco-bulk .rax-field { width: auto; flex: 1; min-width: 150px; }
+    /* ── Dosarul juridic: pastila de pe rând, traseul „client nou", fila „Contract" ──
+       Pastila de sub numele firmei spune într-o vorbă ce lipsește din dosar (contract, semnătură,
+       acord GDPR) și duce direct acolo. Traseul are trei pași, ca omul să nu vadă odată douăzeci
+       de câmpuri. */
+    .raco .raco-dos {
+      display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;
+      font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-secondary);
+      cursor: pointer; font-family: inherit;
+    }
+    .raco .raco-dos i { font-size: 9px; opacity: .8; }
+    .raco .raco-dos:hover { border-color: var(--accent); color: var(--accent); }
+    .raco .raco-dos.ok { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: transparent; color: var(--accent); }
+    .raco .raco-dos.warn { background: rgba(245,158,11,.14); border-color: transparent; color: #b45309; }
+    .raco .raco-dos.bad { background: color-mix(in srgb, var(--red) 14%, transparent); border-color: transparent; color: var(--red); }
+    /* Pașii */
+    .raco .raco-pasi { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .raco .raco-pas {
+      display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700;
+      color: var(--text-muted); padding: 6px 12px; border-radius: 999px;
+      background: var(--bg-dark); border: 1.5px solid var(--border);
+    }
+    .raco .raco-pas .n {
+      width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center;
+      justify-content: center; font-size: 10.5px; background: var(--border); color: var(--text-secondary);
+    }
+    .raco .raco-pas.acum { color: var(--text-primary); border-color: var(--accent); }
+    .raco .raco-pas.acum .n { background: var(--accent); color: #06210F; }
+    .raco .raco-pas.gata { color: var(--accent); border-color: transparent; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .raco .raco-pas.gata .n { background: var(--accent); color: #06210F; }
+    /* Câmpuri cu etichetă deasupra + două pe rând */
+    .raco .raco-f { display: block; margin-bottom: 12px; }
+    .raco .raco-f > span { display: block; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 5px; }
+    .raco .raco-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .raco .raco-cui { display: flex; gap: 8px; }
+    .raco .raco-cui .rax-field { flex: 1; min-width: 0; }
+    .raco .raco-cui .rax-btn { white-space: nowrap; }
+    .raco .raco-h2 { font-size: 12.5px; font-weight: 800; color: var(--text-primary); margin: 14px 0 8px; }
+    .raco .raco-msg { font-size: 12px; min-height: 16px; margin-top: 8px; }
+    .raco .raco-nav { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+    .raco .raco-nav .rax-btn.primary { margin-left: auto; }
+    .raco .raco-nav a.rax-btn { text-decoration: none; }
+    /* Ecranul de final al traseului */
+    .raco .raco-gata { padding: 4px 0; }
+    .raco .raco-gata-t { font-size: 14px; font-weight: 800; color: var(--accent); margin-bottom: 10px; }
+    .raco .raco-gata-l { margin: 0 0 4px; padding-left: 18px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.7; }
+    /* Fila „Contract" */
+    .raco .raco-dosbox {
+      padding: 11px 13px; border-radius: 11px; margin-bottom: 16px; font-size: 12px; line-height: 1.5;
+      background: var(--bg-dark); border: 1.5px solid var(--border); color: var(--text-secondary);
+    }
+    .raco .raco-dosbox strong { font-size: 13px; color: var(--text-primary); }
+    .raco .raco-dosbox.ok { border-color: var(--accent); }
+    .raco .raco-dosbox.warn { border-color: #f59e0b; }
+    .raco .raco-dosbox.bad { border-color: var(--red); }
+    .raco .raco-ctr-cap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; }
+    .raco .raco-ctr-per { color: var(--text-muted); font-size: 12px; }
+    .raco .raco-pret { width: 110px; flex: 0 0 110px; min-width: 0; text-align: right; }
+    .raco .raco-anexa-t { font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
+    .raco label.rax-btn { cursor: pointer; }
     @media (max-width: 640px) {
-      .raco .rax-row2 { grid-template-columns: 1fr; }
+      .raco .rax-row2, .raco .raco-2 { grid-template-columns: 1fr; }
       .raco .raco-row .rax-field, .raco .raco-bulk .rax-field { flex: 1 1 100%; }
+      .raco .raco-pret { flex: 0 0 100%; width: 100%; text-align: left; }
     }
     @media (prefers-reduced-motion: reduce) {
       .raco .rax-field, .raco .rax-btn, .raco .rax-ico-btn { transition: none !important; }

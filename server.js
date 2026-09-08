@@ -140,6 +140,9 @@ const backup = require('./backup');
 const errortrack = require('./errortrack');
 errortrack.init();
 let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
+const contracte = require('./contracts');           // dosarul juridic al firmelor client (reguli curate)
+const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
+let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
 const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
@@ -3525,7 +3528,18 @@ async function _runAgentsWorkerBody() {
 app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const list = await db.getCompanies();
-    res.json(list.map(function (c) { return Object.assign({}, c, { features: plans ? plans.featuresFor(c) : null, access: companyAccessStatus(c) }); }));
+    // Dosarul juridic vine odată cu lista (o singură interogare pentru toate firmele), ca fiecare
+    // rând să poată arăta pe loc dacă are contract, dacă e semnat și dacă mai e valabil.
+    let dos = {}; try { dos = await db.contractsByCompany(); } catch (e) { dos = {}; }
+    res.json(list.map(function (c) {
+      const contract = dos[c.id] || null;
+      return Object.assign({}, c, {
+        features: plans ? plans.featuresFor(c) : null,
+        access: companyAccessStatus(c),
+        dosar: contracte.stareDosar(c, contract, Date.now()),
+        contract: contract ? { id: contract.id, number: contract.number, status: contract.status, end_at: contract.end_at } : null
+      });
+    }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -3715,7 +3729,14 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     const billCounts = { can: vehicles.filter(v => v.bill_can).length, none: vehicles.filter(v => !v.bill_can).length, fms: 0 };
     const features = plans ? plans.featuresFor(company) : {};
     const price = plans ? plans.computeCompanyPrice(company, billCounts, { features }) : null;
-    res.json({ company, access: companyAccessStatus(company), counts, billCounts, users, vehicles, payments, offer, price, features, ai_quota: _aiQuotaFromSettings(company.settings) });
+    // Dosarul juridic vine în același apel ca restul: fila „Contract" nu trebuie să mai ceară o dată.
+    let contract = null, istoric = [];
+    try { [contract, istoric] = await Promise.all([db.getCompanyContract(id), db.listContracts(id)]); } catch (e) {}
+    res.json({ company, access: companyAccessStatus(company), counts, billCounts, users, vehicles, payments, offer, price, features,
+      ai_quota: _aiQuotaFromSettings(company.settings),
+      contract, contract_istoric: istoric, dosar: contracte.stareDosar(company, contract, Date.now()),
+      preaviz_pana: contracte.ultimaZiDePreaviz(contract),
+      numar_propus: contract ? null : await db.nextContractNumber().catch(function () { return null; }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res) => {
@@ -3731,6 +3752,189 @@ app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ─── Contractele cu clienții ─────────────────────────────────────────────────────────────────────
+// Tot ce urmează e strict al nostru (requireSuperadmin): contractul e relația dintre RA Tracks și
+// client, nu ceva ce clientul își administrează singur din aplicație.
+//
+// Documentele semnate se țin ca base64 în rândul contractului, la fel ca actele vehiculelor. NU se
+// aduc niciodată în liste — doar la descărcarea explicită — fiindcă un PDF scanat are megaocteți.
+const CONTRACT_STARI = ['ciorna', 'trimis', 'activ', 'incheiat'];
+const CONTRACT_MIME = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
+const CONTRACT_MAX_B = 4 * 1024 * 1024; // 4 MB per act (limita de body e 6 MB)
+
+// Un id care nu e număr nu trebuie să ajungă până la baza de date: acolo dă eroare 500 („invalid
+// input syntax for type integer"), adică „s-a stricat serverul", când de fapt cererea era greșită.
+function _idCtr(req, res) {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: 'Identificator invalid' }); return null; }
+  return id;
+}
+function _rep(v) {
+  if (!v || typeof v !== 'object') return null;
+  const name = String(v.name || '').trim().slice(0, 120);
+  const role = String(v.role || '').trim().slice(0, 80);
+  return (name || role) ? { name: name, role: role } : null;
+}
+// Curăț ce vine de la client. Un contract e un act: nu las să intre stări inventate sau durate
+// negative, iar sfârșitul se CALCULEAZĂ din început + durată, nu se primește de-a gata.
+function _contractDinCerere(b) {
+  const luni = (b.months === '' || b.months == null) ? null : Math.max(0, Math.min(240, parseInt(b.months) || 0)) || null;
+  const start = b.start_at ? Number(b.start_at) : null;
+  const g = (b.gdpr && typeof b.gdpr === 'object') ? b.gdpr : {};
+  return {
+    number: String(b.number || '').trim().slice(0, 60) || null,
+    status: CONTRACT_STARI.indexOf(b.status) >= 0 ? b.status : 'ciorna',
+    signed_at: b.signed_at ? Number(b.signed_at) : null,
+    start_at: start, months: luni,
+    end_at: contracte.calcSfarsit(start, luni),
+    auto_renew: b.auto_renew !== false,
+    notice_days: b.notice_days == null ? 30 : Math.max(0, Math.min(365, parseInt(b.notice_days) || 0)),
+    ended_at: b.ended_at ? Number(b.ended_at) : null,
+    ended_reason: b.ended_reason ? String(b.ended_reason).slice(0, 500) : null,
+    client_rep: _rep(b.client_rep), our_rep: _rep(b.our_rep),
+    gdpr: { kind: g.kind === 'separat' ? 'separat' : 'anexa', signed_at: g.signed_at ? Number(g.signed_at) : null },
+    annex: (b.annex && typeof b.annex === 'object') ? contracte.facAnexa(b.annex.vehicles, b.annex) : null,
+    notes: b.notes ? String(b.notes).slice(0, 4000) : null
+  };
+}
+
+// Dosarul unei firme: contractul curent + istoricul + ce lipsește.
+app.get('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const co = await db.getCompanyById(id);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const [curent, istoric] = await Promise.all([db.getCompanyContract(id), db.listContracts(id)]);
+    res.json({
+      company: co,
+      contract: curent,
+      istoric: istoric,
+      dosar: contracte.stareDosar(co, curent, Date.now()),
+      preaviz_pana: contracte.ultimaZiDePreaviz(curent),
+      numar_propus: curent ? null : await db.nextContractNumber()
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const co = await db.getCompanyById(id);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    if (co.is_demo) return res.status(400).json({ error: 'Compania demo nu are contract.' });
+    const date = _contractDinCerere(req.body || {});
+    if (!date.number) date.number = await db.nextContractNumber();
+    date.company_id = id;
+    date.created_by = req.user ? req.user.id : null;
+    const c = await db.createContract(date);
+    // Reprezentantul legal e o însușire a FIRMEI, nu doar a hârtiei: rămâne și la contractul următor.
+    if (date.client_rep && !co.legal_rep) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [id, JSON.stringify(date.client_rep)]); } catch (e) {} }
+    auditReq(req, 'create', 'contract', c.id, { company_id: id, number: c.number });
+    res.json(c);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/contracts/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const vechi = await db.getContractById(id);
+    if (!vechi) return res.status(404).json({ error: 'Contract inexistent' });
+    const date = _contractDinCerere(Object.assign({}, vechi, req.body || {}));
+    // „Încheiat" fără dată de încetare n-are sens — pune ziua de azi, ca să nu rămână o gaură în act.
+    if (date.status === 'incheiat' && !date.ended_at) date.ended_at = Date.now();
+    if (date.status !== 'incheiat') { date.ended_at = null; date.ended_reason = null; }
+    const c = await db.updateContract(id, date);
+    if (date.client_rep) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [vechi.company_id, JSON.stringify(date.client_rep)]); } catch (e) {} }
+    auditReq(req, 'update', 'contract', id, { status: date.status, number: date.number });
+    res.json(c);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/contracts/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractById(id);
+    if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    // Un contract semnat NU se șterge — se încheie. Altfel dispare dovada că a existat vreodată.
+    if (c.status === 'activ' || c.status === 'incheiat') {
+      return res.status(400).json({ error: 'Un contract semnat nu se șterge. Marchează-l „încheiat" dacă relația s-a terminat.' });
+    }
+    await db.deleteContract(id);
+    auditReq(req, 'delete', 'contract', id, { company_id: c.company_id });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Actul semnat: încărcare / descărcare / scoatere. `care` = 'contract' (implicit) sau 'gdpr'.
+app.post('/api/contracts/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractById(id);
+    if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    const care = req.body && req.body.care === 'gdpr' ? 'gdpr' : 'contract';
+    const nume = String((req.body && req.body.name) || '').slice(0, 200);
+    const b64 = String((req.body && req.body.b64) || '').replace(/^data:[^;]+;base64,/, '');
+    if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
+    const ext = (nume.split('.').pop() || '').toLowerCase();
+    const mime = CONTRACT_MIME[ext];
+    if (!mime) return res.status(400).json({ error: 'Se acceptă doar PDF, JPG sau PNG.' });
+    if (Buffer.byteLength(b64, 'base64') > CONTRACT_MAX_B) return res.status(413).json({ error: 'Fișierul depășește 4 MB.' });
+    const out = await db.setContractFile(id, care, { b64: b64, name: nume, mime: mime });
+    auditReq(req, 'upload', 'contract', id, { care: care, name: nume });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/contracts/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const care = req.query.care === 'gdpr' ? 'gdpr' : 'contract';
+    const f = await db.getContractFile(id, care);
+    if (!f || !f.b64) return res.status(404).json({ error: 'Actul nu are fișier atașat' });
+    const buf = Buffer.from(f.b64, 'base64');
+    res.setHeader('Content-Type', f.mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(f.name || 'act') + '"');
+    res.send(buf);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/contracts/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const care = req.query.care === 'gdpr' ? 'gdpr' : 'contract';
+    const out = await db.setContractFile(id, care, null);
+    if (!out) return res.status(404).json({ error: 'Contract inexistent' });
+    auditReq(req, 'delete', 'contract', id, { care: care, fisier: true });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Ciorna contractului, în PDF, cu datele reale ale părților și cu anexele.
+app.get('/api/contracts/:id/pdf', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractById(id);
+    if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    const co = await db.getCompanyById(c.company_id);
+    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(contractPdf.numeFisier(c, co)) + '"');
+    const doc = contractPdf.contractPdf({ contract: c, firma: co, emitent: emitent });
+    doc.pipe(res);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Datele firmei de la ANAF, după CUI. Public la ei, dar la noi strict al fondatorilor: e o unealtă
+// de deschis clienți, nu un serviciu de interogare pus la dispoziția oricui are cont.
+app.get('/api/anaf/firma', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const r = await anafFirme.cautaFirma(req.query.cui);
+    if (!r.ok) return res.status(404).json({ error: r.error });
+    res.json(r.firma);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── GDPR: dreptul de acces și dreptul la ștergere ───────────────────────────────────────────────
 // Urmărim poziția unor persoane fizice (șoferii). Clientul e operatorul de date, noi împuternicitul —
 // deci clientul trebuie să poată scoate tot ce ținem despre flota lui și să ceară ștergerea. Vezi

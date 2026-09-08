@@ -719,6 +719,8 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS payment_term_days INTEGER DEFAULT 15;  -- termen de plată (zile) → scadența facturii
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS auto_invoice BOOLEAN DEFAULT false;    -- intră în ciclul lunar automat de facturare
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS vat_payer BOOLEAN DEFAULT true;        -- clientul e plătitor de TVA (informativ pe factură)
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS legal_rep JSONB;                       -- reprezentantul legal {name, role} — cine semnează pentru firmă
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS anaf_at BIGINT;                        -- când s-au preluat ultima dată datele de la ANAF
       END $$
     `);
     // Indecși pt. interogările REALE ale clopoțelului (listă + contor necitite, pollat de UI). Se creează AICI,
@@ -904,6 +906,39 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_offers_created ON offers(created_at DESC)`);
+    // ─── Contractele cu clienții ───────────────────────────────────────────────────────────────
+    // Până acum „contract" era doar o vorbă prin comentarii: o firmă se năștea cu un buton, fără
+    // niciun act în spate. Aici stă dosarul juridic: cine a semnat, de când, pe cât timp, cu ce
+    // preaviz, ce aparate sunt contractate (anexa) și acordul GDPR — plus PDF-urile semnate.
+    //   • O firmă poate avea mai multe contracte în timp (unul se încheie, altul îl urmează);
+    //     „contractul firmei" e cel mai recent care nu e încheiat.
+    //   • `annex` e o FOTOGRAFIE a aparatelor și prețurilor la semnare, nu o legătură vie: dacă
+    //     mâine clientul mai adaugă un vehicul, anexa semnată trebuie să rămână ce s-a semnat.
+    //   • Documentele semnate stau ca base64, exact ca actele vehiculelor (vehicle_documents).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS contracts (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER NOT NULL,
+        number VARCHAR(60),                       -- numărul contractului (RAT-C-2026-0001)
+        status VARCHAR(16) NOT NULL DEFAULT 'ciorna', -- ciorna | trimis | activ | incheiat
+        signed_at BIGINT,                         -- data semnării
+        start_at BIGINT,                          -- de când produce efecte
+        months INTEGER,                           -- durata în luni (null = nedeterminată)
+        end_at BIGINT,                            -- până când (calculat din start + luni)
+        auto_renew BOOLEAN DEFAULT true,          -- se reînnoiește singur la termen
+        notice_days INTEGER DEFAULT 30,           -- preaviz de reziliere (zile)
+        ended_at BIGINT, ended_reason TEXT,       -- încetarea, când se întâmplă
+        client_rep JSONB,                         -- {name, role} — cine semnează pentru client
+        our_rep JSONB,                            -- {name, role} — cine semnează pentru noi
+        gdpr JSONB,                               -- {kind:'anexa'|'separat', signed_at}
+        annex JSONB,                              -- {vehicles:[{imei,name,plate,monthlyRON}], monthlyTotal, currency}
+        file_b64 TEXT, file_name VARCHAR(200), file_mime VARCHAR(80),           -- contractul SEMNAT
+        gdpr_b64 TEXT, gdpr_name VARCHAR(200), gdpr_mime VARCHAR(80),           -- acordul GDPR semnat
+        notes TEXT,
+        created_by INTEGER, created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_contracts_company ON contracts(company_id, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_demoreq_created ON demo_requests(created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_demoreq_email ON demo_requests(email, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
@@ -1611,6 +1646,95 @@ async function deleteOffer(id) {
   await pool.query('DELETE FROM offers WHERE id = $1', [id]);
   return { ok: true };
 }
+// ─── Contracte ───────────────────────────────────────────────────────────────────────────────
+// Coloanele de fișier (file_b64 / gdpr_b64) sunt GRELE — un PDF scanat poate avea megaocteți. Nu
+// se aduc niciodată în liste, doar la descărcarea explicită a actului. De asta există `_FARA_FISIERE`.
+const _FARA_FISIERE = `id, company_id, number, status, signed_at, start_at, months, end_at,
+  auto_renew, notice_days, ended_at, ended_reason, client_rep, our_rep, gdpr, annex, notes,
+  created_by, created_at, updated_at,
+  (file_b64 IS NOT NULL) AS has_file, file_name, file_mime,
+  (gdpr_b64 IS NOT NULL) AS has_gdpr_file, gdpr_name, gdpr_mime`;
+async function listContracts(companyId) {
+  const r = await pool.query(`SELECT ${_FARA_FISIERE} FROM contracts WHERE company_id = $1 ORDER BY created_at DESC`, [companyId]);
+  return r.rows;
+}
+// Contractul „al firmei": cel mai recent care nu s-a încheiat. Dacă toate s-au încheiat, îl dăm pe
+// ultimul — ca să se vadă că a EXISTAT unul, nu ca și cum firma n-ar fi avut niciodată contract.
+async function getCompanyContract(companyId) {
+  const r = await pool.query(
+    `SELECT ${_FARA_FISIERE} FROM contracts WHERE company_id = $1
+     ORDER BY (status = 'incheiat') ASC, created_at DESC LIMIT 1`, [companyId]);
+  return r.rows[0] || null;
+}
+async function getContractById(id) {
+  const r = await pool.query(`SELECT ${_FARA_FISIERE} FROM contracts WHERE id = $1`, [id]);
+  return r.rows[0] || null;
+}
+// Fișierul unui act, cerut explicit („contract" sau „gdpr"). Singura cale prin care ies base64-urile.
+async function getContractFile(id, care) {
+  const col = care === 'gdpr' ? 'gdpr' : 'file';
+  const r = await pool.query(`SELECT ${col}_b64 AS b64, ${col}_name AS name, ${col}_mime AS mime FROM contracts WHERE id = $1`, [id]);
+  return r.rows[0] || null;
+}
+const _J = (v) => (v == null ? null : JSON.stringify(v));
+async function createContract(c) {
+  const now = Date.now();
+  const r = await pool.query(
+    `INSERT INTO contracts (company_id, number, status, signed_at, start_at, months, end_at, auto_renew,
+       notice_days, client_rep, our_rep, gdpr, annex, notes, created_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16) RETURNING id`,
+    [c.company_id, c.number || null, c.status || 'ciorna', c.signed_at || null, c.start_at || null,
+     c.months == null ? null : c.months, c.end_at || null, c.auto_renew !== false,
+     c.notice_days == null ? 30 : c.notice_days, _J(c.client_rep), _J(c.our_rep), _J(c.gdpr), _J(c.annex),
+     c.notes || null, c.created_by || null, now]
+  );
+  return getContractById(r.rows[0].id);
+}
+async function updateContract(id, c) {
+  const r = await pool.query(
+    `UPDATE contracts SET number=$2, status=$3, signed_at=$4, start_at=$5, months=$6, end_at=$7,
+       auto_renew=$8, notice_days=$9, ended_at=$10, ended_reason=$11, client_rep=$12, our_rep=$13,
+       gdpr=$14, annex=$15, notes=$16, updated_at=$17 WHERE id=$1 RETURNING id`,
+    [id, c.number || null, c.status || 'ciorna', c.signed_at || null, c.start_at || null,
+     c.months == null ? null : c.months, c.end_at || null, c.auto_renew !== false,
+     c.notice_days == null ? 30 : c.notice_days, c.ended_at || null, c.ended_reason || null,
+     _J(c.client_rep), _J(c.our_rep), _J(c.gdpr), _J(c.annex), c.notes || null, Date.now()]
+  );
+  return r.rows[0] ? getContractById(id) : null;
+}
+async function setContractFile(id, care, f) {
+  const col = care === 'gdpr' ? 'gdpr' : 'file';
+  await pool.query(
+    `UPDATE contracts SET ${col}_b64=$2, ${col}_name=$3, ${col}_mime=$4, updated_at=$5 WHERE id=$1`,
+    [id, f && f.b64 ? f.b64 : null, f && f.name ? f.name : null, f && f.mime ? f.mime : null, Date.now()]
+  );
+  return getContractById(id);
+}
+async function deleteContract(id) { await pool.query('DELETE FROM contracts WHERE id = $1', [id]); return { ok: true }; }
+// Numerotare: RAT-C-<an>-<4 cifre>, continuă de la ce există deja în anul curent.
+async function nextContractNumber(an) {
+  const y = an || new Date().getFullYear();
+  const r = await pool.query(`SELECT number FROM contracts WHERE number LIKE $1`, ['RAT-C-' + y + '-%']);
+  let max = 0;
+  for (const row of r.rows) {
+    const m = /-(\d+)$/.exec(row.number || '');
+    if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
+  }
+  return 'RAT-C-' + y + '-' + String(max + 1).padStart(4, '0');
+}
+// Dosarul juridic al TUTUROR firmelor, într-o singură interogare — lista de companii îl arată pe
+// fiecare rând. Fără asta ar fi o interogare per firmă la fiecare deschidere a ecranului.
+async function contractsByCompany() {
+  const r = await pool.query(
+    `SELECT DISTINCT ON (company_id) company_id, id, number, status, start_at, end_at, months,
+       auto_renew, notice_days, signed_at, ended_at, client_rep, gdpr,
+       (file_b64 IS NOT NULL) AS has_file, (gdpr_b64 IS NOT NULL) AS has_gdpr_file, annex
+     FROM contracts ORDER BY company_id, (status = 'incheiat') ASC, created_at DESC`);
+  const m = {};
+  for (const row of r.rows) m[row.company_id] = row;
+  return m;
+}
+
 async function getCompanyBySlug(slug) {
   const r = await pool.query('SELECT * FROM companies WHERE slug = $1', [slug]);
   return r.rows[0] || null;
@@ -3834,6 +3958,8 @@ module.exports = {
   pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity,
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
+  listContracts, getCompanyContract, getContractById, getContractFile, createContract,
+  updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,

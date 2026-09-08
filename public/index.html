@@ -3765,6 +3765,7 @@ const pozitii = await r.json();</code></pre>
       var t = document.getElementById('admin-title'); if (t) t.textContent = titles[name] || 'Administrare';
       if (name === 'companies') {
         _raxMountBody('#rax-co-overlay', 'admin-tab-companies');
+        if (window.coNouRandeaza) window.coNouRandeaza();   // traseul „client nou", în starea lui de pornire
         if (window.raxLoadCompanies) window.raxLoadCompanies();
         if (window.raxLoadUnassigned) window.raxLoadUnassigned();
         if (window.raxMoveLoadAll) window.raxMoveLoadAll(); // încarcă lista „Mută între companii" la deschiderea tabului (altfel rămânea pe „Se încarcă…")
@@ -17499,15 +17500,13 @@ const pozitii = await r.json();</code></pre>
            Clasa „raco" de pe corp duce cu ea limbajul vizual al secțiunii (câmpuri, butoane, tabel)
            oriunde e mutat nodul — și în panou, și în fereastra veche. -->
       <div class="rax-body raco">
+        <!-- „Creează companie + admin" scria un rând în bază și trimitea o invitație. Atât. Niciun
+             act, nicio durată, niciun acord GDPR — deși noi ținem datele de localizare ale
+             șoferilor clientului. Acum deschiderea unui client e un traseu în trei pași, iar ce
+             lipsește din dosar se vede pe fiecare rând din lista de mai jos. -->
         <section class="raco-card">
-          <div class="raco-h"><i class="fas fa-plus"></i> Companie nouă</div>
-          <input class="rax-field" id="rax-co-name" placeholder="Nume companie (ex. Transport Alfa SRL)">
-          <div class="rax-row2">
-            <input class="rax-field" id="rax-co-admin-user" placeholder="Email administrator (aici pleacă invitația)">
-            <input class="rax-field" id="rax-co-admin-pass" placeholder="Parolă (gol = primește invitație)" type="text">
-          </div>
-          <button class="rax-btn primary" style="margin-top:12px;" onclick="raxCreateCompany()"><i class="fas fa-plus"></i> Creează companie + admin</button>
-          <div id="rax-co-msg" style="font-size:12px;margin-top:8px;"></div>
+          <div class="raco-h"><i class="fas fa-user-plus"></i> Client nou</div>
+          <div id="rax-conou"></div>
         </section>
         <section class="raco-card">
           <div class="raco-h"><i class="fas fa-building"></i> Companiile din platformă</div>
@@ -18241,7 +18240,7 @@ const pozitii = await r.json();</code></pre>
     };
 
     // ── Companii ──
-    window.raxOpenCompanies = async function () { $('rax-co-overlay').classList.add('open'); await raxLoadCompanies(); raxLoadUnassigned(); raxMoveLoadAll(); };
+    window.raxOpenCompanies = async function () { $('rax-co-overlay').classList.add('open'); if (window.coNouRandeaza) window.coNouRandeaza(); await raxLoadCompanies(); raxLoadUnassigned(); raxMoveLoadAll(); };
     window.raxCloseCompanies = function () { $('rax-co-overlay').classList.remove('open'); };
 
     // ─── Dashboard platformă — super-admin (montat în modalul Administrare, tab „Platformă") ───
@@ -18927,6 +18926,222 @@ const pozitii = await r.json();</code></pre>
       var until = a.access_until ? new Date(Number(a.access_until)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '';
       return '<span class="raco-pill ' + m[1] + '">' + m[0] + '</span>' + (until ? '<span class="raco-until">până ' + until + '</span>' : '');
     }
+    // ── începe „Dosarul juridic" (REPER pentru probe: verify_contracte.js decupează bucata dintre
+    //    reperul ăsta și cel de la sfârșit. Nu insera funcții străine între ele.) ──
+    //
+    // O firmă nu se mai naște cu un buton. „Creează companie + admin" scria un rând în bază și
+    // trimitea o invitație — atât; nicăieri nu se vedea dacă există contract, cine l-a semnat, pe
+    // cât timp, sau dacă avem acordul GDPR fără de care nici noi, nici clientul nu suntem în regulă.
+    // Aici stau: pastila de pe fiecare rând (ce lipsește din dosar) și traseul de deschidere a unui
+    // client, în trei pași. Regulile despre CE lipsește nu se scriu aici — vin de la server, din
+    // `contracts.js`, ca să nu existe două adevăruri.
+    var DOSAR_FEL = { lipsa: 'bad', nesemnat: 'warn', incomplet: 'warn', expira: 'warn', ok: 'ok', incheiat: '', demo: '' };
+    function dosarPastila(dosar, companyId) {
+      if (!dosar || dosar.nivel === 'demo') return '';
+      var fel = DOSAR_FEL[dosar.nivel] || '';
+      var titlu = dosar.text ? ('Lipsește din dosar: ' + dosar.text)
+        : ((dosar.eticheta || 'Dosarul juridic') + ' — apasă pentru dosarul juridic al firmei');
+      return '<button class="raco-dos ' + fel + '" title="' + esc(titlu) + '" onclick="raxOpenCompanyDetail(' + companyId + ', \'contract\')">' +
+        '<i class="fas fa-file-signature"></i>' + esc(dosar.eticheta || '') + '</button>';
+    }
+
+    // ─── Deschiderea unui client, în trei pași ───────────────────────────────────────────────
+    // 1. Firma (cu datele luate de la ANAF, ca să nu fie tastate greșit)
+    // 2. Contractul (durată, reînnoire, preaviz, cine semnează, GDPR)
+    // 3. Contul de administrator (cu sau fără parolă — fără = pleacă invitația)
+    // Anexa cu aparatele NU e aici dinadins: la deschiderea firmei încă nu există niciun aparat
+    // adoptat. Se completează în fila „Contract" a firmei, după adopție, și abia atunci are sens.
+    var _coNou = null;
+    var CO_PASI = ['Firma', 'Contractul', 'Administratorul'];
+    function coNouStart() {
+      _coNou = {
+        pas: 1, gata: null, lucrez: false,
+        firma: { cui: '', name: '', reg_com: '', address: '', contact_email: '', phone: '', vat_payer: true, anaf: null },
+        contract: { number: '', signed_at: '', start_at: '', months: '12', auto_renew: true, notice_days: '30',
+          rep_name: '', rep_role: 'Administrator', our_name: '', our_role: 'Administrator', gdpr_kind: 'anexa' },
+        admin: { username: '', password: '' }
+      };
+      coNouRandeaza();
+    }
+    function coNouRandeaza() {
+      var box = document.getElementById('rax-conou'); if (!box) return;
+      box.innerHTML = _coNou ? coNouHtml() : coNouInchisHtml();
+    }
+    window.coNouRandeaza = coNouRandeaza;
+    function coNouInchisHtml() {
+      return '<div class="raco-sub" style="margin:0 0 12px;">Deschiderea unui client trece prin trei pași: datele firmei (luate de la ANAF), contractul cu durata și acordul GDPR, apoi contul de administrator.</div>' +
+        '<button class="rax-btn primary" onclick="coNouStart()"><i class="fas fa-plus"></i> Deschide un client nou</button>';
+    }
+    function _coPasi(pas) {
+      return '<div class="raco-pasi">' + CO_PASI.map(function (n, i) {
+        var k = i + 1, st = k < pas ? 'gata' : (k === pas ? 'acum' : '');
+        return '<div class="raco-pas ' + st + '"><span class="n">' + (k < pas ? '✓' : k) + '</span>' + n + '</div>';
+      }).join('') + '</div>';
+    }
+    function _f(et, id, val, ph, tip) {
+      return '<label class="raco-f"><span>' + et + '</span><input class="rax-field" id="' + id + '" type="' + (tip || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '"></label>';
+    }
+    function coNouHtml() {
+      var s = _coNou;
+      if (s.gata) return coNouGataHtml();
+      var h = _coPasi(s.pas);
+      if (s.pas === 1) {
+        var a = s.firma.anaf;
+        h += '<div class="raco-2">' +
+            '<label class="raco-f"><span>CUI / CIF</span><div class="raco-cui">' +
+              '<input class="rax-field" id="cn-cui" value="' + esc(s.firma.cui) + '" placeholder="ex. RO12345678">' +
+              '<button class="rax-btn" type="button" onclick="coNouAnaf()"><i class="fas fa-cloud-arrow-down"></i> Preia de la ANAF</button>' +
+            '</div></label>' +
+            _f('Denumire', 'cn-name', s.firma.name, 'Transport Alfa SRL') +
+          '</div>' +
+          '<div class="raco-2">' + _f('Nr. Reg. Com.', 'cn-reg', s.firma.reg_com, 'J40/1234/2020') + _f('Sediu', 'cn-addr', s.firma.address, 'Str. …, oraș, județ') + '</div>' +
+          '<div class="raco-2">' + _f('Email contact', 'cn-email', s.firma.contact_email, 'contact@firma.ro') + _f('Telefon', 'cn-phone', s.firma.phone, '07xx xxx xxx') + '</div>' +
+          '<div id="cn-anaf-msg" class="raco-msg">' + (a ? _coAnafHtml(a) : '') + '</div>';
+      } else if (s.pas === 2) {
+        var c = s.contract;
+        h += '<div class="raco-2">' + _f('Număr contract', 'cn-nr', c.number, 'se propune automat') + _f('Data semnării', 'cn-signed', c.signed_at, '', 'date') + '</div>' +
+          '<div class="raco-2">' + _f('Începe la', 'cn-start', c.start_at, '', 'date') +
+            '<label class="raco-f"><span>Durata</span><select class="rax-field" id="cn-months">' +
+              [['12', '12 luni'], ['24', '24 de luni'], ['36', '36 de luni'], ['', 'nedeterminată']].map(function (o) {
+                return '<option value="' + o[0] + '"' + (String(c.months) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+              }).join('') + '</select></label>' +
+          '</div>' +
+          '<div class="raco-2">' +
+            '<label class="raco-f"><span>La termen</span><select class="rax-field" id="cn-renew">' +
+              '<option value="1"' + (c.auto_renew ? ' selected' : '') + '>se reînnoiește singur</option>' +
+              '<option value="0"' + (c.auto_renew ? '' : ' selected') + '>se oprește</option></select></label>' +
+            _f('Preaviz de reziliere (zile)', 'cn-notice', c.notice_days, '30', 'number') +
+          '</div>' +
+          '<div class="raco-h2">Cine semnează</div>' +
+          '<div class="raco-2">' + _f('Reprezentantul clientului', 'cn-rep', c.rep_name, 'nume și prenume') + _f('Funcția', 'cn-reprole', c.rep_role, 'Administrator') + '</div>' +
+          '<div class="raco-2">' + _f('Din partea noastră', 'cn-our', c.our_name, 'nume și prenume') + _f('Funcția', 'cn-ourrole', c.our_role, 'Administrator') + '</div>' +
+          '<label class="raco-f"><span>Acordul GDPR</span><select class="rax-field" id="cn-gdpr">' +
+            '<option value="anexa"' + (c.gdpr_kind === 'anexa' ? ' selected' : '') + '>anexă la contract (Anexa nr. 2)</option>' +
+            '<option value="separat"' + (c.gdpr_kind === 'separat' ? ' selected' : '') + '>act semnat separat</option></select></label>' +
+          '<div class="raco-sub" style="margin-top:8px;">Fără acordul ăsta noi ținem datele de localizare ale șoferilor clientului fără temei — e obligatoriu, nu opțional.</div>';
+      } else {
+        h += '<div class="raco-2">' + _f('Email administrator', 'cn-user', s.admin.username, 'aici pleacă invitația') +
+          _f('Parolă (gol = primește invitație)', 'cn-pass', s.admin.password, '') + '</div>' +
+          '<div class="raco-sub" style="margin-top:8px;">Dacă lași parola goală, omul primește pe email un link prin care își pune singur parola. Poți sări peste pasul ăsta și adăuga administratorul mai târziu.</div>';
+      }
+      h += '<div class="raco-nav">' +
+        (s.pas > 1 ? '<button class="rax-btn" onclick="coNouPas(' + (s.pas - 1) + ')"><i class="fas fa-arrow-left"></i> Înapoi</button>' : '<button class="rax-btn" onclick="coNouRenunta()">Renunț</button>') +
+        (s.pas < 3
+          ? '<button class="rax-btn primary" onclick="coNouPas(' + (s.pas + 1) + ')">Mai departe <i class="fas fa-arrow-right"></i></button>'
+          : '<button class="rax-btn primary" id="cn-fin" onclick="coNouCreeaza()"><i class="fas fa-check"></i> Deschide clientul</button>') +
+        '</div><div id="cn-msg" class="raco-msg"></div>';
+      return h;
+    }
+    function _coAnafHtml(a) {
+      if (a.eroare) return '<span style="color:var(--red)">' + esc(a.eroare) + '</span>';
+      var av = [];
+      if (a.radiata) av.push('firma apare RADIATĂ la ANAF');
+      if (a.inactiva) av.push('firma e declarată INACTIVĂ');
+      return '<span style="color:var(--accent)"><i class="fas fa-check"></i> Preluat de la ANAF' + (a.vat_payer ? ' · plătitoare de TVA' : ' · neplătitoare de TVA') + '</span>' +
+        (av.length ? '<div style="color:var(--red);font-weight:700;margin-top:4px;">⚠ ' + esc(av.join(' · ')) + '</div>' : '');
+    }
+    function coNouGataHtml() {
+      var g = _coNou.gata;
+      return '<div class="raco-gata"><div class="raco-gata-t"><i class="fas fa-circle-check"></i> ' + esc(g.name) + ' e deschis</div>' +
+        '<ul class="raco-gata-l">' +
+          '<li>Firma e creată' + (g.cui ? ', cu CUI ' + esc(g.cui) : '') + '.</li>' +
+          '<li>' + (g.contract ? 'Contractul <strong>' + esc(g.contract) + '</strong> e salvat ca ciornă.' : 'Fără contract încă.') + '</li>' +
+          '<li>' + (g.admin ? (g.invitat ? 'Invitația a plecat la <strong>' + esc(g.admin) + '</strong>.' : 'Administratorul <strong>' + esc(g.admin) + '</strong> e creat cu parola scrisă de tine.') : 'Fără administrator încă.') + '</li>' +
+        '</ul>' +
+        '<div class="raco-sub" style="margin:10px 0 12px;">Mai departe: adoptă aparatele clientului, apoi treci-le în anexa contractului și descarcă ciorna de semnat.</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          (g.contractId ? '<button class="rax-btn primary" onclick="raxOpenCompanyDetail(' + g.id + ', \'contract\')"><i class="fas fa-file-signature"></i> Deschide dosarul</button>' : '') +
+          '<button class="rax-btn" onclick="coNouRenunta()">Deschid alt client</button>' +
+        '</div></div>';
+    }
+    window.coNouStart = coNouStart;
+    window.coNouRenunta = function () { _coNou = null; coNouRandeaza(); };
+    function _coCiteste() {
+      var s = _coNou, v = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
+      if (s.pas === 1) {
+        s.firma.cui = v('cn-cui').trim(); s.firma.name = v('cn-name').trim(); s.firma.reg_com = v('cn-reg').trim();
+        s.firma.address = v('cn-addr').trim(); s.firma.contact_email = v('cn-email').trim(); s.firma.phone = v('cn-phone').trim();
+      } else if (s.pas === 2) {
+        var c = s.contract;
+        c.number = v('cn-nr').trim(); c.signed_at = v('cn-signed'); c.start_at = v('cn-start');
+        c.months = v('cn-months'); c.auto_renew = v('cn-renew') === '1'; c.notice_days = v('cn-notice');
+        c.rep_name = v('cn-rep').trim(); c.rep_role = v('cn-reprole').trim();
+        c.our_name = v('cn-our').trim(); c.our_role = v('cn-ourrole').trim(); c.gdpr_kind = v('cn-gdpr');
+      } else {
+        s.admin.username = v('cn-user').trim(); s.admin.password = v('cn-pass');
+      }
+    }
+    window.coNouPas = function (n) {
+      _coCiteste();
+      if (n === 2 && !_coNou.firma.name) { _coMsg('Denumirea firmei e obligatorie.', true); return; }
+      _coNou.pas = n; coNouRandeaza();
+    };
+    function _coMsg(t, rau) {
+      var e = document.getElementById('cn-msg'); if (!e) return;
+      e.innerHTML = '<span style="color:' + (rau ? 'var(--red)' : 'var(--accent)') + '">' + esc(t) + '</span>';
+    }
+    window.coNouAnaf = async function () {
+      _coCiteste();
+      var cui = _coNou.firma.cui;
+      var box = document.getElementById('cn-anaf-msg');
+      if (!cui) { if (box) box.innerHTML = '<span style="color:var(--red)">Scrie întâi CUI-ul.</span>'; return; }
+      if (box) box.innerHTML = '<span style="color:var(--text-muted)">Întreb ANAF…</span>';
+      try {
+        var r = await fetch('/api/anaf/firma?cui=' + encodeURIComponent(cui), { credentials: 'same-origin' });
+        var j = await r.json();
+        if (!r.ok) { _coNou.firma.anaf = { eroare: j.error || 'Nu am găsit firma.' }; coNouRandeaza(); return; }
+        var f = _coNou.firma;
+        f.name = j.name || f.name; f.reg_com = j.reg_com || f.reg_com; f.address = j.address || f.address;
+        f.phone = j.phone || f.phone; f.cui = j.cui || f.cui; f.vat_payer = !!j.vat_payer;
+        f.anaf = { vat_payer: !!j.vat_payer, inactiva: !!j.inactiva, radiata: !!j.radiata };
+        coNouRandeaza();
+      } catch (e) { _coNou.firma.anaf = { eroare: 'Nu am putut ajunge la ANAF.' }; coNouRandeaza(); }
+    };
+    function _zi(v) { if (!v) return null; var t = Date.parse(v + 'T00:00:00'); return isNaN(t) ? null : t; }
+    window.coNouCreeaza = async function () {
+      _coCiteste();
+      var s = _coNou; if (s.lucrez) return;
+      if (!s.firma.name) { _coMsg('Denumirea firmei e obligatorie.', true); return; }
+      s.lucrez = true;
+      var btn = document.getElementById('cn-fin'); if (btn) btn.disabled = true;
+      _coMsg('Lucrez…');
+      try {
+        var co = await fetch('/api/companies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ name: s.firma.name }) }).then(function (r) { return r.json(); });
+        if (!co.id) { _coMsg(co.error || 'Nu am putut crea firma.', true); s.lucrez = false; if (btn) btn.disabled = false; return; }
+        // Datele juridice se salvează imediat după creare — ruta de creare primește doar numele.
+        await fetch('/api/companies/' + co.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ cui: s.firma.cui, reg_com: s.firma.reg_com, address: s.firma.address,
+            contact_email: s.firma.contact_email, phone: s.firma.phone }) }).catch(function () {});
+        var c = s.contract, contractId = null, numar = null;
+        if (c.rep_name || c.signed_at || c.start_at || c.number) {
+          var ct = await fetch('/api/companies/' + co.id + '/contract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify({ number: c.number || null, status: 'ciorna',
+              signed_at: _zi(c.signed_at), start_at: _zi(c.start_at), months: c.months === '' ? null : parseInt(c.months),
+              auto_renew: !!c.auto_renew, notice_days: parseInt(c.notice_days) || 30,
+              client_rep: { name: c.rep_name, role: c.rep_role }, our_rep: { name: c.our_name, role: c.our_role },
+              gdpr: { kind: c.gdpr_kind } }) }).then(function (r) { return r.json(); });
+          if (ct && ct.id) { contractId = ct.id; numar = ct.number; }
+        }
+        var invitat = false, adminOk = null;
+        if (s.admin.username) {
+          var trup = s.admin.password ? { username: s.admin.username, password: s.admin.password } : { username: s.admin.username };
+          var a = await fetch('/api/companies/' + co.id + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify(trup) }).then(function (r) { return r.json(); });
+          if (a && a.error) { _coMsg('Firma e creată, dar contul de admin nu: ' + a.error, true); }
+          else { adminOk = s.admin.username; invitat = !s.admin.password; }
+        }
+        s.gata = { id: co.id, name: s.firma.name, cui: s.firma.cui, contract: numar, contractId: contractId, admin: adminOk, invitat: invitat };
+        s.lucrez = false;
+        coNouRandeaza();
+        raxLoadCompanies();
+      } catch (e) {
+        s.lucrez = false; if (btn) btn.disabled = false;
+        _coMsg('Eroare: ' + e.message, true);
+      }
+    };
+    // ── sfârșit „Dosarul juridic" ──
+
     // Listă companii ca TABEL, cu search (nume/plan). Coloane: vehicule, utilizatori, plan, acces, plăți, acțiuni.
     window.raxRenderCompanies = function () {
       var box = $('rax-co-list'); if (!box) return;
@@ -18947,7 +19162,8 @@ const pozitii = await r.json();</code></pre>
             (canDel ? '<button class="rax-ico-btn danger" title="Șterge compania (e goală)" onclick="raxDeleteCompany(' + c.id + ')"><i class="fas fa-trash"></i></button>' : '') +
           '</div>';
         return '<tr>' +
-          '<td><a href="#" class="rax-co-open" title="Deschide compania (detalii · utilizatori · vehicule · facturi)" onclick="raxOpenCompanyDetail(' + c.id + ');return false;"><strong>' + esc(c.name) + '</strong></a>' + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') + '</td>' +
+          '<td><a href="#" class="rax-co-open" title="Deschide compania (detalii · utilizatori · vehicule · facturi)" onclick="raxOpenCompanyDetail(' + c.id + ');return false;"><strong>' + esc(c.name) + '</strong></a>' + (c.is_demo ? ' <span class="rax-tag demo">DEMO</span>' : '') + (c.active === false ? ' <span class="rax-tag">inactiv</span>' : '') +
+            dosarPastila(c.dosar, c.id) + '</td>' +
           '<td class="num">' + (c.device_count || 0) + '</td>' +
           '<td class="num">' + (c.user_count || 0) + '</td>' +
           '<td><span class="raco-pill">' + esc(c.plan || 'standard') + '</span></td>' +
@@ -19221,11 +19437,224 @@ const pozitii = await r.json();</code></pre>
         raxOpenCompanyDetail(_raxAbo.id, 'abonament');
       } catch (e) { if (msg) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; } btn.disabled = false; btn.innerHTML = '<i class="fas fa-credit-card"></i> Înregistrează plata + extinde accesul'; }
     };
+    // ─── Fila „Contract": dosarul juridic al unei firme ──────────────────────────────────────
+    // Ce se poate face aici: scrii datele actului (număr, durată, reînnoire, preaviz, cine
+    // semnează), treci aparatele în anexă cu prețul lor, descarci ciorna în PDF, urci înapoi
+    // varianta semnată și, la final, marchezi contractul încheiat. Ce NU se poate: să ștergi un
+    // contract semnat — ăla se încheie, nu dispare (regula stă pe server, nu doar aici).
+    var _raxCtr = null;
+    function _zile(ms) { return ms ? new Date(Number(ms)).toLocaleDateString('ro-RO') : '—'; }
+    function _inputZi(ms) { if (!ms) return ''; var d = new Date(Number(ms)); return isNaN(d) ? '' : d.toISOString().slice(0, 10); }
+    var CTR_STARI = { ciorna: ['ciornă', ''], trimis: ['trimis la semnat', 'warn'], activ: ['activ', 'ok'], incheiat: ['încheiat', 'bad'] };
+    function _raxCodContract(d) {
+      var co = d.company, c = d.contract, dos = d.dosar || {};
+      _raxCtr = { id: co.id, contract: c, vehicles: d.vehicles || [], offer: d.offer || {}, numarPropus: d.numar_propus };
+      var h = '';
+      // Ce lipsește — sus de tot, fiindcă ăsta e motivul pentru care omul a deschis fila.
+      if (dos.nivel && dos.nivel !== 'demo') {
+        var fel = DOSAR_FEL[dos.nivel] || '';
+        h += '<div class="raco-dosbox ' + fel + '"><strong>' + esc(dos.eticheta || '') + '</strong>' +
+          (dos.text ? '<div>Lipsește: ' + esc(dos.text) + '</div>' : '') +
+          (d.preaviz_pana && c && c.status === 'activ' ? '<div>Ultima zi în care se poate anunța rezilierea: <strong>' + _zile(d.preaviz_pana) + '</strong></div>' : '') +
+          '</div>';
+      }
+      if (!c) {
+        return h + '<div class="rax-co-meta" style="padding:18px 0;">Firma asta nu are încă niciun contract.</div>' +
+          '<button class="rax-btn primary" onclick="raxCtrCreeaza()"><i class="fas fa-file-circle-plus"></i> Fă un contract (' + esc(d.numar_propus || 'număr nou') + ')</button>';
+      }
+      var st = CTR_STARI[c.status] || CTR_STARI.ciorna;
+      h += '<div class="raco-ctr-cap"><span class="raco-pill ' + st[1] + '">' + st[0] + '</span>' +
+        '<strong>' + esc(c.number || 'fără număr') + '</strong>' +
+        '<span class="raco-ctr-per">' + _zile(c.start_at) + ' → ' + (c.end_at ? _zile(c.end_at) : 'nedeterminat') + '</span></div>';
+
+      h += '<div class="raco-2">' + _f('Număr', 'ct-nr', c.number, '') + _f('Data semnării', 'ct-signed', _inputZi(c.signed_at), '', 'date') + '</div>' +
+        '<div class="raco-2">' + _f('Începe la', 'ct-start', _inputZi(c.start_at), '', 'date') +
+          '<label class="raco-f"><span>Durata</span><select class="rax-field" id="ct-months">' +
+            [['12', '12 luni'], ['24', '24 de luni'], ['36', '36 de luni'], ['', 'nedeterminată']].map(function (o) {
+              return '<option value="' + o[0] + '"' + (String(c.months == null ? '' : c.months) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+            }).join('') + '</select></label></div>' +
+        '<div class="raco-2">' +
+          '<label class="raco-f"><span>La termen</span><select class="rax-field" id="ct-renew">' +
+            '<option value="1"' + (c.auto_renew !== false ? ' selected' : '') + '>se reînnoiește singur</option>' +
+            '<option value="0"' + (c.auto_renew === false ? ' selected' : '') + '>se oprește</option></select></label>' +
+          _f('Preaviz (zile)', 'ct-notice', c.notice_days == null ? 30 : c.notice_days, '30', 'number') + '</div>' +
+        '<div class="raco-h2">Cine semnează</div>' +
+        '<div class="raco-2">' + _f('Reprezentantul clientului', 'ct-rep', (c.client_rep || {}).name, 'nume și prenume') + _f('Funcția', 'ct-reprole', (c.client_rep || {}).role, 'Administrator') + '</div>' +
+        '<div class="raco-2">' + _f('Din partea noastră', 'ct-our', (c.our_rep || {}).name, 'nume și prenume') + _f('Funcția', 'ct-ourrole', (c.our_rep || {}).role, 'Administrator') + '</div>' +
+        '<div class="raco-2"><label class="raco-f"><span>Acordul GDPR</span><select class="rax-field" id="ct-gdpr">' +
+            '<option value="anexa"' + ((c.gdpr || {}).kind !== 'separat' ? ' selected' : '') + '>anexă la contract</option>' +
+            '<option value="separat"' + ((c.gdpr || {}).kind === 'separat' ? ' selected' : '') + '>act semnat separat</option></select></label>' +
+          '<label class="raco-f"><span>Stare</span><select class="rax-field" id="ct-status">' +
+            ['ciorna', 'trimis', 'activ', 'incheiat'].map(function (k) {
+              return '<option value="' + k + '"' + (c.status === k ? ' selected' : '') + '>' + CTR_STARI[k][0] + '</option>';
+            }).join('') + '</select></label></div>' +
+        (c.status === 'incheiat' ? _f('Motivul încetării', 'ct-endreason', c.ended_reason, 'ex. denunțare cu preaviz') : '') +
+        '<button class="rax-btn primary" style="margin-top:12px;" onclick="raxCtrSalveaza()"><i class="fas fa-check"></i> Salvează contractul</button>' +
+        '<div id="ct-msg" class="raco-msg"></div>';
+
+      // ── Anexa: aparatele contractate, cu prețul lor ──
+      h += '<div class="raco-h2" style="margin-top:22px;">Anexa nr. 1 — aparate contractate</div>' +
+        '<div class="raco-sub">Bifează aparatele care intră în contract și scrie abonamentul lunar al fiecăruia. E o fotografie a înțelegerii: dacă mâine clientul mai adaugă un vehicul, anexa semnată rămâne ce s-a semnat.</div>' +
+        _raxCtrAnexaHtml();
+
+      // ── Actele semnate ──
+      h += '<div class="raco-h2" style="margin-top:22px;">Actele semnate</div>' +
+        _raxCtrFisier('contract', 'Contractul semnat', c.has_file, c.file_name) +
+        ((c.gdpr || {}).kind === 'separat' ? _raxCtrFisier('gdpr', 'Acordul GDPR semnat', c.has_gdpr_file, c.gdpr_name) : '');
+
+      h += '<div class="raco-nav" style="margin-top:18px;">' +
+        '<a class="rax-btn" href="/api/contracts/' + c.id + '/pdf" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Descarcă ciorna (PDF)</a>' +
+        (c.status !== 'incheiat' && c.status !== 'activ' ? '<button class="rax-btn" onclick="raxCtrSterge()"><i class="fas fa-trash"></i> Șterge ciorna</button>' : '') +
+        '</div>';
+
+      var ist = (d.contract_istoric || []).filter(function (x) { return x.id !== c.id; });
+      if (ist.length) {
+        h += '<div class="raco-h2" style="margin-top:22px;">Contracte anterioare</div>' +
+          ist.map(function (x) {
+            var s2 = CTR_STARI[x.status] || CTR_STARI.ciorna;
+            return '<div class="raco-row"><span class="raco-row-t"><strong>' + esc(x.number || '—') + '</strong>' +
+              '<span class="raco-row-s">' + _zile(x.start_at) + ' → ' + (x.end_at ? _zile(x.end_at) : '—') + (x.ended_at ? ' · încheiat ' + _zile(x.ended_at) : '') + '</span></span>' +
+              '<span class="raco-pill ' + s2[1] + '">' + s2[0] + '</span></div>';
+          }).join('');
+      }
+      setTimeout(function () { try { raxCtrAnexaTotal(); } catch (e) {} }, 0);
+      return h;
+    }
+    // Preț sugerat pe vehicul, din oferta firmei: dacă e „cu CAN" ia prețul CAN, altfel pe cel simplu.
+    function _raxCtrPretSugerat(v) {
+      var o = _raxCtr.offer || {};
+      var p = v.bill_can ? (o.priceCanRON != null ? o.priceCanRON : o.priceNoneRON) : o.priceNoneRON;
+      if (p == null && o.pricePerVehicleRON != null) p = o.pricePerVehicleRON;
+      return p == null ? '' : p;
+    }
+    function _raxCtrAnexaHtml() {
+      var c = _raxCtr.contract, veh = _raxCtr.vehicles;
+      if (!veh.length) return '<div class="rax-co-meta" style="padding:14px 0;">Firma n-are încă niciun aparat adoptat. Adoptă-le întâi din „Vehicule neasignate", apoi treci-le aici.</div>';
+      var inAnexa = {};
+      ((c.annex && c.annex.vehicles) || []).forEach(function (v) { inAnexa[v.imei] = v; });
+      var gol = !Object.keys(inAnexa).length;
+      return '<div id="ct-anexa">' + veh.map(function (v) {
+        var a = inAnexa[v.imei];
+        var bifat = gol ? false : !!a;
+        var pret = a && a.monthlyRON != null ? a.monthlyRON : _raxCtrPretSugerat(v);
+        return '<div class="raco-row"><input type="checkbox" data-anx="' + esc(v.imei) + '"' + (bifat ? ' checked' : '') + ' onchange="raxCtrAnexaTotal()">' +
+          '<span class="raco-row-t"><strong>' + esc(v.name || v.imei) + '</strong>' + (v.plate ? ' · ' + esc(v.plate) : '') +
+          '<span class="raco-row-s">' + esc(v.imei) + (v.bill_can ? ' · cu CAN' : '') + '</span></span>' +
+          '<input class="rax-field raco-pret" type="number" min="0" step="1" data-pret="' + esc(v.imei) + '" value="' + esc(pret) + '" placeholder="lei/lună" oninput="raxCtrAnexaTotal()"></div>';
+      }).join('') + '</div><div class="raco-anexa-t" id="ct-anexa-total"></div>' +
+        '<button class="rax-btn" style="margin-top:10px;" onclick="raxCtrSalveazaAnexa()"><i class="fas fa-check"></i> Salvează anexa</button>';
+    }
+    window.raxCtrAnexaTotal = function () {
+      var box = document.getElementById('ct-anexa'); if (!box) return;
+      var t = 0, n = 0;
+      box.querySelectorAll('input[data-anx]').forEach(function (b) {
+        if (!b.checked) return;
+        n++;
+        var p = box.querySelector('input[data-pret="' + b.getAttribute('data-anx').replace(/"/g, '') + '"]');
+        t += parseFloat(p && p.value) || 0;
+      });
+      var e = document.getElementById('ct-anexa-total');
+      if (e) e.innerHTML = n ? ('<strong>' + n + '</strong> aparate în anexă · total <strong>' + t.toLocaleString('ro-RO') + ' lei/lună</strong> (fără TVA)') : 'Niciun aparat bifat.';
+    };
+    function _raxCtrFisier(care, eticheta, are, nume) {
+      return '<div class="raco-row"><span class="raco-row-t"><strong>' + eticheta + '</strong>' +
+        '<span class="raco-row-s">' + (are ? esc(nume || 'fișier atașat') : 'niciun fișier încă') + '</span></span>' +
+        (are ? '<a class="rax-btn" href="/api/contracts/' + _raxCtr.contract.id + '/file?care=' + care + '" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descarcă</a>' +
+               '<button class="rax-btn" onclick="raxCtrScoateFisier(\'' + care + '\')"><i class="fas fa-xmark"></i> Scoate</button>'
+             : '<label class="rax-btn"><i class="fas fa-upload"></i> Urcă<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="raxCtrUrca(\'' + care + '\', this)"></label>') +
+        '</div>';
+    }
+    function _ctMsg(t, rau) {
+      var e = document.getElementById('ct-msg'); if (!e) return;
+      e.innerHTML = '<span style="color:' + (rau ? 'var(--red)' : 'var(--accent)') + '">' + esc(t) + '</span>';
+    }
+    window.raxCtrCreeaza = async function () {
+      try {
+        var j = await fetch('/api/companies/' + _raxCtr.id + '/contract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ status: 'ciorna', months: 12, auto_renew: true, notice_days: 30, gdpr: { kind: 'anexa' } }) }).then(function (r) { return r.json(); });
+        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+        raxOpenCompanyDetail(_raxCtr.id, 'contract');
+        if (window.raxLoadCompanies) raxLoadCompanies();
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+    window.raxCtrSalveaza = async function () {
+      var v = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
+      var luni = v('ct-months');
+      var trup = {
+        number: v('ct-nr').trim(), status: v('ct-status'),
+        signed_at: _zi(v('ct-signed')), start_at: _zi(v('ct-start')),
+        months: luni === '' ? null : parseInt(luni),
+        auto_renew: v('ct-renew') === '1', notice_days: parseInt(v('ct-notice')) || 0,
+        client_rep: { name: v('ct-rep').trim(), role: v('ct-reprole').trim() },
+        our_rep: { name: v('ct-our').trim(), role: v('ct-ourrole').trim() },
+        gdpr: { kind: v('ct-gdpr'), signed_at: _zi(v('ct-signed')) },
+        ended_reason: v('ct-endreason') || null
+      };
+      try {
+        var j = await fetch('/api/contracts/' + _raxCtr.contract.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(trup) }).then(function (r) { return r.json(); });
+        if (j.error) { _ctMsg(j.error, true); return; }
+        (window.raxToast || function () {})('Contract salvat ✓', 'success');
+        if (window.raxLoadCompanies) raxLoadCompanies();
+        raxOpenCompanyDetail(_raxCtr.id, 'contract');
+      } catch (e) { _ctMsg('Eroare: ' + e.message, true); }
+    };
+    window.raxCtrSalveazaAnexa = async function () {
+      var box = document.getElementById('ct-anexa'); if (!box) return;
+      var lista = [];
+      box.querySelectorAll('input[data-anx]').forEach(function (b) {
+        if (!b.checked) return;
+        var imei = b.getAttribute('data-anx');
+        var p = box.querySelector('input[data-pret="' + imei + '"]');
+        var v = (_raxCtr.vehicles || []).filter(function (x) { return x.imei === imei; })[0] || {};
+        lista.push({ imei: imei, name: v.name || imei, plate: v.plate || null, monthlyRON: p && p.value !== '' ? parseFloat(p.value) : null });
+      });
+      try {
+        var j = await fetch('/api/contracts/' + _raxCtr.contract.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ annex: { vehicles: lista, currency: 'RON' } }) }).then(function (r) { return r.json(); });
+        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+        (window.raxToast || function () {})('Anexă salvată ✓ (' + lista.length + ' aparate)', 'success');
+        raxOpenCompanyDetail(_raxCtr.id, 'contract');
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+    window.raxCtrUrca = function (care, input) {
+      var f = input && input.files && input.files[0]; if (!f) return;
+      if (f.size > 4 * 1024 * 1024) { (window.raxToast || alert)('Fișierul depășește 4 MB.', 'error'); return; }
+      var fr = new FileReader();
+      fr.onload = async function () {
+        try {
+          var j = await fetch('/api/contracts/' + _raxCtr.contract.id + '/file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify({ care: care, name: f.name, b64: String(fr.result).split(',').pop() }) }).then(function (r) { return r.json(); });
+          if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+          (window.raxToast || function () {})('Act urcat ✓', 'success');
+          if (window.raxLoadCompanies) raxLoadCompanies();
+          raxOpenCompanyDetail(_raxCtr.id, 'contract');
+        } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+      };
+      fr.readAsDataURL(f);
+    };
+    window.raxCtrScoateFisier = async function (care) {
+      if (!await raConfirm('Scoți fișierul din dosar? Datele contractului rămân.')) return;
+      try {
+        await fetch('/api/contracts/' + _raxCtr.contract.id + '/file?care=' + care, { method: 'DELETE', credentials: 'same-origin' });
+        if (window.raxLoadCompanies) raxLoadCompanies();
+        raxOpenCompanyDetail(_raxCtr.id, 'contract');
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+    window.raxCtrSterge = async function () {
+      if (!await raConfirm('Ștergi ciorna de contract? Un contract semnat nu se poate șterge — se încheie.')) return;
+      try {
+        var j = await fetch('/api/contracts/' + _raxCtr.contract.id, { method: 'DELETE', credentials: 'same-origin' }).then(function (r) { return r.json(); });
+        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
+        if (window.raxLoadCompanies) raxLoadCompanies();
+        raxOpenCompanyDetail(_raxCtr.id, 'contract');
+      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+    };
+
     window.raxCodTab = function (tab) {
       var d = window._raxCod; if (!d) return;
       document.querySelectorAll('#rax-codetail-overlay .rax-cod-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-ct') === tab); });
       var body = document.getElementById('rax-cod-body'); if (!body) return;
-      body.innerHTML = tab === 'utilizatori' ? _raxCodUsers(d) : tab === 'vehicule' ? _raxCodVehicule(d) : tab === 'facturi' ? _raxCodFacturi(d) : tab === 'abonament' ? _raxCodAbonament(d) : _raxCodDetalii(d);
+      body.innerHTML = tab === 'utilizatori' ? _raxCodUsers(d) : tab === 'vehicule' ? _raxCodVehicule(d) : tab === 'facturi' ? _raxCodFacturi(d) : tab === 'abonament' ? _raxCodAbonament(d) : tab === 'contract' ? _raxCodContract(d) : _raxCodDetalii(d);
     };
     window.raxCloseCompanyDetail = function () { var ov = document.getElementById('rax-codetail-overlay'); if (ov) ov.classList.remove('open'); };
     window.raxOpenCompanyDetail = async function (id, tab) {
@@ -19240,8 +19669,9 @@ const pozitii = await r.json();</code></pre>
               '<button class="rax-cod-tab" data-ct="vehicule" onclick="raxCodTab(\'vehicule\')"><i class="fas fa-car"></i> Vehicule</button>' +
               '<button class="rax-cod-tab" data-ct="facturi" onclick="raxCodTab(\'facturi\')"><i class="fas fa-receipt"></i> Facturi</button>' +
               '<button class="rax-cod-tab" data-ct="abonament" onclick="raxCodTab(\'abonament\')"><i class="fas fa-tags"></i> Abonament &amp; plăți</button>' +
+              '<button class="rax-cod-tab" data-ct="contract" onclick="raxCodTab(\'contract\')"><i class="fas fa-file-signature"></i> Contract</button>' +
             '</div>' +
-            '<div class="rax-body" id="rax-cod-body"><div class="rax-co-meta" style="padding:20px;">Se încarcă…</div></div>' +
+            '<div class="rax-body raco" id="rax-cod-body"><div class="rax-co-meta" style="padding:20px;">Se încarcă…</div></div>' +
           '</div>';
         document.body.appendChild(ov);
         ov.addEventListener('click', function (e) { if (e.target === ov) raxCloseCompanyDetail(); });
@@ -21423,30 +21853,6 @@ const pozitii = await r.json();</code></pre>
         raxToast && raxToast((j.moved != null ? j.moved : ids.length) + ' mutate ✓', 'success');
       } catch (e) { raxToast && raxToast('Eroare de rețea', 'error'); return; }
       raxLoadCompanies(); raxLoadUnassigned(); raxMoveReload();
-    };
-    window.raxCreateCompany = async function () {
-      var name = $('rax-co-name').value.trim(), u = $('rax-co-admin-user').value.trim(), p = $('rax-co-admin-pass').value;
-      var msg = $('rax-co-msg'); msg.style.color = 'var(--red)';
-      if (name.length < 2) { msg.textContent = 'Numele companiei e prea scurt.'; return; }
-      try {
-        var c = await fetch('/api/companies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ name: name }) }).then(function (r) { return r.json(); });
-        if (!c.id) { msg.textContent = c.error || 'Eroare la creare.'; return; }
-        // Adminul se creează cu SAU FĂRĂ parolă: fără ea pleacă invitația pe email și omul își pune
-        // singur parola. Înainte scria aici `u && p`, adică dacă scriai doar adresa, contul de admin
-        // NU se crea — compania rămânea fără administrator, în tăcere.
-        var invitat = false;
-        if (u) {
-          var trup = p ? { username: u, password: p } : { username: u };
-          var a = await fetch('/api/companies/' + c.id + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(trup) }).then(function (r) { return r.json(); });
-          if (a.error) { msg.textContent = 'Companie creată, dar admin: ' + a.error; return; }
-          if (a.warning) { msg.style.color = '#f59e0b'; msg.textContent = a.warning; return; } // invitația nu a plecat → contul e inaccesibil
-          invitat = !p;
-        }
-        msg.style.color = 'var(--accent)';
-        msg.textContent = 'Companie creată ✓' + (u ? (invitat ? ' — invitația a plecat la ' + u : ' — admin creat cu parola scrisă de tine') : ' — fără administrator încă');
-        $('rax-co-name').value = ''; $('rax-co-admin-user').value = ''; $('rax-co-admin-pass').value = '';
-        raxLoadCompanies();
-      } catch (e) { msg.textContent = 'Eroare: ' + e.message; }
     };
 
     // ── Tahograf (.DDD) ──
