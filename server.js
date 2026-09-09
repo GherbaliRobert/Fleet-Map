@@ -2062,7 +2062,10 @@ async function billingAutoInvoiceTick() {
       const num = await db.nextInvoiceNumber(INV_SERIES, now.getFullYear());
       const ps = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
       const pe = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 0).getTime();
-      const termDays = Math.max(0, parseInt(co.payment_term_days) || 15);
+      // Zero e valoare falsă în JavaScript: `parseInt(0) || 15` dădea 15, deci o firmă cu „plata la
+      // emitere" (0 zile) primea totuși 15 zile. Verificăm dacă e număr, nu dacă e adevărat.
+      const _t = parseInt(co.payment_term_days, 10);
+      const termDays = Math.max(0, Number.isFinite(_t) ? _t : 15);
       const inv = await db.createInvoice({
         companyId: co.id, series: num.series, number: num.number, year: num.year, fullNumber: num.full,
         type: 'invoice', status: 'issued', issueDate: Date.now(), dueDate: Date.now() + termDays * 86400000, periodStart: ps, periodEnd: pe, currency: 'RON',
@@ -3975,6 +3978,112 @@ function _contractDinCerere(b) {
   };
 }
 
+// ─── Acte adiționale ─────────────────────────────────────────────────────────────────────────
+// Un contract SEMNAT nu se mai schimbă — ăsta e tot rostul unei semnături. Ce se schimbă în timp
+// (clientul mai cumpără mașini, vrea alt modul, se schimbă prețul, se prelungește) se scrie într-un
+// act adițional, agățat de contractul vechi. Numerotarea e per contract: RAT-C-2026-0001/A1.
+const ACT_STARI = ['ciorna', 'aprobat', 'trimis', 'activ'];
+function _actDinCerere(b) {
+  return {
+    number: String(b.number || '').trim().slice(0, 60) || null,
+    status: ACT_STARI.indexOf(b.status) >= 0 ? b.status : 'ciorna',
+    obiect: b.obiect ? String(b.obiect).slice(0, 4000) : null,
+    signed_at: b.signed_at ? Number(b.signed_at) : null,
+    start_at: b.start_at ? Number(b.start_at) : null,
+    annex: (b.annex && typeof b.annex === 'object') ? contracte.facAnexa(b.annex.vehicles, b.annex) : null,
+    montaj: (b.montaj && Array.isArray(b.montaj.items)) ? montaj.facAnexaMontaj(montaj.randuri(b.montaj.items), 'RON') : null,
+    luni_noi: (b.luni_noi === '' || b.luni_noi == null) ? null : (Math.max(0, Math.min(240, parseInt(b.luni_noi) || 0)) || null),
+    client_rep: _rep(b.client_rep), our_rep: _rep(b.our_rep),
+    notes: b.notes ? String(b.notes).slice(0, 2000) : null
+  };
+}
+app.get('/api/contracts/:id/acte', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    res.json(await db.listActe(id));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/contracts/:id/acte', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const c = await db.getContractById(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
+    // Nu se face act adițional la ceva ce încă nu s-a semnat: acolo se schimbă contractul în sine.
+    if (c.status === 'ciorna' || c.status === 'aprobat') {
+      return res.status(400).json({ error: 'Contractul nu e semnat încă — modifică-l direct, nu prin act adițional.' });
+    }
+    const nr = await db.urmatorulNrAct(id);
+    const date = _actDinCerere(req.body || {});
+    if (!date.number) date.number = (c.number || 'contract') + '/A' + nr;
+    date.contract_id = id; date.company_id = c.company_id; date.nr_ordine = nr;
+    date.created_by = req.auth && req.auth.userId;
+    const a = await db.upsertAct(date);
+    auditReq(req, 'create', 'act_aditional', a.id, { contract_id: id, number: a.number });
+    res.json(a);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/acte/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const vechi = await db.getAct(id); if (!vechi) return res.status(404).json({ error: 'Act inexistent' });
+    const date = _actDinCerere(Object.assign({}, vechi, req.body || {}));
+    date.id = id;
+    const a = await db.upsertAct(date);
+    auditReq(req, 'update', 'act_aditional', id, { status: date.status });
+    res.json(a);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/acte/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const a = await db.getAct(id); if (!a) return res.status(404).json({ error: 'Act inexistent' });
+    // Ca la contract: ce s-a semnat nu se șterge.
+    if (a.status === 'activ') return res.status(400).json({ error: 'Un act adițional semnat nu se șterge.' });
+    await db.deleteAct(id);
+    auditReq(req, 'delete', 'act_aditional', id, { contract_id: a.contract_id });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/acte/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const a = await db.getAct(id); if (!a) return res.status(404).json({ error: 'Act inexistent' });
+    const nume = String((req.body && req.body.name) || '').slice(0, 200);
+    const b64 = String((req.body && req.body.b64) || '').replace(/^data:[^;]+;base64,/, '');
+    if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
+    const ext = (nume.split('.').pop() || '').toLowerCase();
+    const mime = CONTRACT_MIME[ext];
+    if (!mime) return res.status(400).json({ error: 'Se acceptă doar PDF, JPG sau PNG.' });
+    if (Buffer.byteLength(b64, 'base64') > CONTRACT_MAX_B) return res.status(413).json({ error: 'Fișierul depășește 4 MB.' });
+    const out = await db.setActFile(id, { b64: b64, name: nume, mime: mime });
+    auditReq(req, 'upload', 'act_aditional', id, { name: nume });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/acte/:id/file', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const f = await db.getActFile(id);
+    if (!f || !f.b64) return res.status(404).json({ error: 'Actul nu are fișier atașat' });
+    res.setHeader('Content-Type', f.mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(f.name || 'act') + '"');
+    res.send(Buffer.from(f.b64, 'base64'));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/acte/:id/pdf', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
+    const id = _idCtr(req, res); if (id == null) return;
+    const a = await db.getAct(id); if (!a) return res.status(404).json({ error: 'Act inexistent' });
+    const c = await db.getContractById(a.contract_id);
+    const co = await db.getCompanyById(a.company_id);
+    if (!c || !co) return res.status(404).json({ error: 'Contract sau companie inexistentă' });
+    const emitent = ((await getSystemSettings()).invoice_issuer) || {};
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(contractPdf.numeFisier(a, co, 'Act aditional')) + '"');
+    contractPdf.actPdf({ act: a, contract: c, firma: co, emitent: emitent }).pipe(res);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Montaj: parteneri + lucrări ─────────────────────────────────────────────────────────────
 // Toate rutele astea sunt strict ale noastre. Partenerul de montaj e informația cea mai sensibilă
 // comercial din aplicație: clientul crede (pe drept) că montăm noi, iar cât ne cere firma X e
@@ -4902,7 +5011,13 @@ app.put('/api/companies/:id/billing-config', requireAuth, requireSuperadmin, asy
     const sets = [], args = [id];
     if (b.auto_invoice !== undefined) { args.push(b.auto_invoice === true || b.auto_invoice === 'true'); sets.push('auto_invoice=$' + args.length); }
     if (b.billing_day !== undefined) { args.push(Math.max(1, Math.min(parseInt(b.billing_day) || 1, 28))); sets.push('billing_day=$' + args.length); }
-    if (b.payment_term_days !== undefined) { args.push(Math.max(0, Math.min(parseInt(b.payment_term_days) || 15, 120))); sets.push('payment_term_days=$' + args.length); }
+    // `parseInt(0) || 15` dădea 15: termenul „plata la emitere" (0 zile) era imposibil de setat,
+    // fiindcă zero e o valoare falsă în JavaScript. Verificăm dacă e număr, nu dacă e adevărat.
+    if (b.payment_term_days !== undefined) {
+      const t = parseInt(b.payment_term_days, 10);
+      args.push(Math.max(0, Math.min(Number.isFinite(t) ? t : 15, 120)));
+      sets.push('payment_term_days=$' + args.length);
+    }
     if (!sets.length) return res.json({ ok: true });
     await db.pool.query('UPDATE companies SET ' + sets.join(', ') + ' WHERE id=$1', args);
     auditReq(req, 'billing-config', 'company', id, b);
@@ -10626,7 +10741,10 @@ app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
     const num = await db.nextInvoiceNumber(INV_SERIES, year);
     const periodStart = b.periodStart ? Number(b.periodStart) : now;
     const periodEnd = b.periodEnd ? Number(b.periodEnd) : _addMonthsMs(periodStart, 1);
-    const termDays = Math.max(0, parseInt(co.payment_term_days) || 15);
+    // Zero e valoare falsă în JavaScript: `parseInt(0) || 15` dădea 15, deci o firmă cu „plata la
+    // emitere" (0 zile) primea totuși 15 zile de termen. Verificăm dacă e număr, nu dacă e adevărat.
+    const _tz = parseInt(co.payment_term_days, 10);
+    const termDays = Math.max(0, Number.isFinite(_tz) ? _tz : 15);
     const inv = await db.createInvoice({
       companyId: id, series: num.series, number: num.number, year: num.year, fullNumber: num.full,
       type: 'invoice', status: 'issued', issueDate: now, dueDate: now + termDays * 86400000, periodStart, periodEnd, currency: 'RON',
@@ -10656,22 +10774,6 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
       auditReq(req, 'paid', 'invoice', inv.id, { paymentId: pay.id }); return res.json({ ok: true, payment: pay });
     }
     return res.status(400).json({ error: 'Stare necunoscută (paid|canceled)' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-// Amânarea scadenței unei facturi. E o înțelegere obișnuită („mai dă-mi două săptămâni"), iar
-// ceasul de neplată o respectă pe loc: numărătoarea până la suspendare pornește de la scadența
-// NOUĂ. Fără asta, singura cale de a amâna era să nu faci nimic și să suspenzi omul degeaba.
-app.put('/api/invoices/:id/due', requireAuth, requireSuperadmin, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
-    const inv = await db.getInvoice(id); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
-    if (inv.status === 'paid' || inv.status === 'canceled') return res.status(400).json({ error: 'Factura e închisă — scadența nu se mai schimbă.' });
-    const due = (req.body && req.body.due != null && req.body.due !== '') ? Number(req.body.due) : null;
-    if (due == null || !Number.isFinite(due)) return res.status(400).json({ error: 'Dată invalidă' });
-    await db.updateInvoice(id, { dueDate: due });
-    _invalidateAccessCache(inv.company_id);
-    auditReq(req, 'set_due', 'invoice', id, { due: due });
-    res.json({ ok: true, invoice: await db.getInvoice(id) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── e-Factura ANAF (super-admin): config + preview UBL + trimitere SPV + status. Dormant fără ANAF_EFACTURA_TOKEN. ───

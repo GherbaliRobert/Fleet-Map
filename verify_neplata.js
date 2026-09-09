@@ -105,6 +105,18 @@ T('ceasul rulează de mai multe ori pe zi, ca ziua 16 să însemne ziua 16',
   /setInterval\(\(\) => neplataTick\(\)\.catch\(\(\) => \{\}\), 6 \* 60 \* 60 \* 1000\)/.test(server));
 T('se poate rula și cu mâna', /app\.post\('\/api\/admin\/billing\/check-neplata', requireAuth, requireSuperadmin/.test(server));
 
+sect('4b. Termenul de plată de ZERO zile („plata la emitere")');
+// Defect găsit probând suspendarea: `parseInt(0) || 15` dă 15, fiindcă zero e o valoare FALSĂ în
+// JavaScript. Adică o firmă cu „plata la emitere" primea în tăcere 15 zile de termen — și ceasul
+// de neplată pornea cu două săptămâni mai târziu decât trebuia. Era în TREI locuri.
+T('nu mai există nicăieri capcana `parseInt(...) || 15`',
+  !/parseInt\(co\.payment_term_days\) \|\| 15/.test(server) && !/parseInt\(b\.payment_term_days\) \|\| 15/.test(server));
+T('termenul se citește ca NUMĂR, nu ca adevărat/fals',
+  (server.match(/Number\.isFinite\(_t[a-z]*\) \? _t[a-z]* : 15/g) || []).length >= 2,
+  (server.match(/Number\.isFinite\(_t[a-z]*\) \? _t[a-z]* : 15/g) || []).length + ' locuri');
+T('și la salvarea configurării de facturare', /Number\.isFinite\(t\) \? t : 15/.test(server));
+T('un termen lipsă rămâne 15 zile, ca înainte', /: 15/.test(server));
+
 sect('5. Textele și suspendarea manuală');
 const mAvert = N.mesajClient(st(7), N.treaptaDeAnuntat(7));
 T('avertismentul spune numărul facturii', /RAT-2026-00042/.test(mAvert), mAvert);

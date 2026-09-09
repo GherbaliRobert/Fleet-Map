@@ -2811,6 +2811,10 @@
     .raco .raco-urmeaza-b a.rax-btn { text-decoration: none; }
     .raco .raco-pret { width: 110px; flex: 0 0 110px; min-width: 0; text-align: right; }
     .raco .raco-anexa-t { font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
+    /* Cine semnează din partea noastră: de regulă amândoi fondatorii, deci bife, nu un singur nume. */
+    .raco .raco-semn { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 7px; }
+    .raco .raco-semn-b { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
+    .raco .raco-semn-b input { width: 16px; height: 16px; }
     /* Montajul: patru coloane — lucrarea, cantitatea, prețul CĂTRE CLIENT și costul DE LA PARTENER.
        Ultima coloană nu ajunge niciodată pe hârtia clientului; e aici ca să se vadă marja. */
     .raco .raco-mont-cap, .raco .raco-mont-r {

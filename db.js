@@ -980,6 +980,31 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_montaje_company ON montaje(company_id, created_at DESC)`);
+    // ─── Acte adiționale ──────────────────────────────────────────────────────────────────────
+    // Un contract semnat NU se mai schimbă — asta e tot rostul unei semnături. Când clientul mai
+    // cumpără mașini, mai vrea un modul sau se schimbă prețul, se face un ACT ADIȚIONAL: o hârtie
+    // nouă, care se agață de contractul vechi și spune ce se schimbă de la o dată încolo.
+    // Anexele lui (aparate / montaj) sunt tot fotografii, ca la contract: ce s-a semnat rămâne.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS acte_aditionale (
+        id SERIAL PRIMARY KEY,
+        contract_id INTEGER NOT NULL,
+        company_id INTEGER NOT NULL,
+        number VARCHAR(60),                 -- RAT-C-2026-0001/A1
+        nr_ordine INTEGER,                  -- al câtelea act adițional la contractul ăsta
+        status VARCHAR(16) NOT NULL DEFAULT 'ciorna',  -- ciorna | aprobat | trimis | activ
+        obiect TEXT,                        -- ce se schimbă, pe românește
+        signed_at BIGINT, start_at BIGINT,  -- semnat la / produce efecte de la
+        annex JSONB,                        -- lista NOUĂ de aparate (dacă se schimbă)
+        montaj JSONB,                       -- montaj nou (dacă se adaugă)
+        luni_noi INTEGER,                   -- prelungire, dacă e cazul
+        client_rep JSONB, our_rep JSONB,
+        file_b64 TEXT, file_name VARCHAR(200), file_mime VARCHAR(80),
+        notes TEXT,
+        created_by INTEGER, created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_acte_contract ON acte_aditionale(contract_id, nr_ordine)`);
     // Legătura ofertă → client → contract. Până acum erau trei lumi separate: făceai oferta în
     // Ofertare Live, apoi retastai tot în firma nouă, apoi iar în contract. Coloanele astea țin
     // minte în ce s-a transformat o ofertă, ca să nu mai scrii nimic de două ori și ca să se vadă
@@ -1705,12 +1730,17 @@ async function listContracts(companyId) {
   const r = await pool.query(`SELECT ${_FARA_FISIERE} FROM contracts WHERE company_id = $1 ORDER BY created_at DESC`, [companyId]);
   return r.rows;
 }
-// Contractul „al firmei": cel mai recent care nu s-a încheiat. Dacă toate s-au încheiat, îl dăm pe
-// ultimul — ca să se vadă că a EXISTAT unul, nu ca și cum firma n-ar fi avut niciodată contract.
+// Contractul „al firmei" = cel care CONTEAZĂ acum, nu pur și simplu ultimul scris.
+// Ordinea: cel în vigoare bate orice; apoi cel trimis la semnat, apoi cel aprobat, apoi ciorna;
+// la urmă cele încheiate (ca să se vadă că a EXISTAT unul, nu ca și cum firma n-ar fi avut).
+// Fără regula asta, o ciornă de reînnoire scrisă azi ascundea contractul semnat de anul trecut.
+const _ORDINE_CONTRACT = `CASE status
+    WHEN 'activ' THEN 0 WHEN 'trimis' THEN 1 WHEN 'aprobat' THEN 2
+    WHEN 'ciorna' THEN 3 WHEN 'incheiat' THEN 4 ELSE 5 END`;
 async function getCompanyContract(companyId) {
   const r = await pool.query(
     `SELECT ${_FARA_FISIERE} FROM contracts WHERE company_id = $1
-     ORDER BY (status = 'incheiat') ASC, created_at DESC LIMIT 1`, [companyId]);
+     ORDER BY ${_ORDINE_CONTRACT} ASC, created_at DESC LIMIT 1`, [companyId]);
   return r.rows[0] || null;
 }
 async function getContractById(id) {
@@ -1776,11 +1806,62 @@ async function contractsByCompany() {
     `SELECT DISTINCT ON (company_id) company_id, id, number, status, start_at, end_at, months,
        auto_renew, notice_days, signed_at, ended_at, client_rep, gdpr,
        (file_b64 IS NOT NULL) AS has_file, (gdpr_b64 IS NOT NULL) AS has_gdpr_file, annex
-     FROM contracts ORDER BY company_id, (status = 'incheiat') ASC, created_at DESC`);
+     FROM contracts ORDER BY company_id, ${_ORDINE_CONTRACT} ASC, created_at DESC`);
   const m = {};
   for (const row of r.rows) m[row.company_id] = row;
   return m;
 }
+
+// ─── Acte adiționale ─────────────────────────────────────────────────────────────────────────
+const _ACT_FARA_FISIER = `id, contract_id, company_id, number, nr_ordine, status, obiect,
+  signed_at, start_at, annex, montaj, luni_noi, client_rep, our_rep, notes, created_by, created_at,
+  updated_at, (file_b64 IS NOT NULL) AS has_file, file_name, file_mime`;
+async function listActe(contractId) {
+  const r = await pool.query(`SELECT ${_ACT_FARA_FISIER} FROM acte_aditionale WHERE contract_id = $1 ORDER BY nr_ordine ASC`, [contractId]);
+  return r.rows;
+}
+async function getAct(id) {
+  const r = await pool.query(`SELECT ${_ACT_FARA_FISIER} FROM acte_aditionale WHERE id = $1`, [id]);
+  return r.rows[0] || null;
+}
+async function getActFile(id) {
+  const r = await pool.query('SELECT file_b64 AS b64, file_name AS name, file_mime AS mime FROM acte_aditionale WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+// Al câtelea act adițional e ăsta, la contractul dat. Numerotarea e per contract, nu globală:
+// „A1, A2…" se citește lângă numărul contractului și se înțelege dintr-o privire.
+async function urmatorulNrAct(contractId) {
+  const r = await pool.query('SELECT COALESCE(MAX(nr_ordine), 0) + 1 AS n FROM acte_aditionale WHERE contract_id = $1', [contractId]);
+  return Number(r.rows[0].n) || 1;
+}
+async function upsertAct(a) {
+  const now = Date.now();
+  if (a.id) {
+    const r = await pool.query(
+      `UPDATE acte_aditionale SET number=$2, status=$3, obiect=$4, signed_at=$5, start_at=$6,
+         annex=$7, montaj=$8, luni_noi=$9, client_rep=$10, our_rep=$11, notes=$12, updated_at=$13
+       WHERE id=$1 RETURNING id`,
+      [a.id, a.number || null, a.status || 'ciorna', a.obiect || null, a.signed_at || null, a.start_at || null,
+       _J(a.annex), _J(a.montaj), a.luni_noi == null ? null : a.luni_noi, _J(a.client_rep), _J(a.our_rep),
+       a.notes || null, now]);
+    return r.rows[0] ? getAct(a.id) : null;
+  }
+  const r = await pool.query(
+    `INSERT INTO acte_aditionale (contract_id, company_id, number, nr_ordine, status, obiect, signed_at,
+       start_at, annex, montaj, luni_noi, client_rep, our_rep, notes, created_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16) RETURNING id`,
+    [a.contract_id, a.company_id, a.number || null, a.nr_ordine, a.status || 'ciorna', a.obiect || null,
+     a.signed_at || null, a.start_at || null, _J(a.annex), _J(a.montaj),
+     a.luni_noi == null ? null : a.luni_noi, _J(a.client_rep), _J(a.our_rep), a.notes || null,
+     a.created_by || null, now]);
+  return getAct(r.rows[0].id);
+}
+async function setActFile(id, f) {
+  await pool.query('UPDATE acte_aditionale SET file_b64=$2, file_name=$3, file_mime=$4, updated_at=$5 WHERE id=$1',
+    [id, f && f.b64 ? f.b64 : null, f && f.name ? f.name : null, f && f.mime ? f.mime : null, Date.now()]);
+  return getAct(id);
+}
+async function deleteAct(id) { await pool.query('DELETE FROM acte_aditionale WHERE id = $1', [id]); return { ok: true }; }
 
 // ─── Montaj: parteneri și lucrări ────────────────────────────────────────────────────────────
 async function listParteneriMontaj() {
@@ -4144,6 +4225,7 @@ module.exports = {
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,
   updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany,
   contracteInVigoare, contracteToate, firmeFaraContract, legOferta,
+  listActe, getAct, getActFile, urmatorulNrAct, upsertAct, setActFile, deleteAct,
   listParteneriMontaj, upsertPartenerMontaj, deletePartenerMontaj,
   listMontaje, getMontaj, upsertMontaj, deleteMontaj, setContractMontaj,
   facturiNeachitate, facturiNeachitateToate, setCompanySuspend,

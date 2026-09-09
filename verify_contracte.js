@@ -256,7 +256,7 @@ T('și că trebuie verificată juridic', /A se verifica juridic înainte de semn
 // contractul e APROBAT, hârtia e curată și se poate printa. Semnul rămâne doar cât e în lucru.
 T('semnul de ciornă apare DOAR cât contractul e în lucru', /const ciorna = contract\.status === 'ciorna';/.test(cpdf));
 T('foloseşte logo-ul pentru fundal alb (vezi CLAUDE.md)', /logo-light\.png/.test(cpdf));
-T('numele fișierului e brandat, ca la rapoarte', /'RA-Tracks - Contract '/.test(cpdf));
+T('numele fișierului e brandat', /'RA TRAKS-' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
 T('rolurile GDPR sunt scrise corect: clientul operator, noi împuternicit',
   /Beneficiarul are calitatea de OPERATOR, iar Prestatorul pe cea de PERSOANĂ ÎMPUTERNICITĂ/.test(cpdf));
 T('anexa GDPR dispare dacă acordul e act separat', /const gdprAnexa = !\(contract\.gdpr && contract\.gdpr\.kind === 'separat'\);/.test(cpdf));
@@ -345,6 +345,53 @@ T('ecranul are filtre după ce te întrebi de fapt, nu după stări din bază',
 T('și se poate căuta după client, număr sau CUI', /Caută după client, număr de contract sau CUI/.test(html));
 T('fiecare rând duce în dosarul clientului',
   /raxOpenCompanyDetail\(' \+ c\.company_id \+ ', \\'contract\\'\)/.test(html));
+
+sect('7e. Semnăm amândoi, numele fișierului, și fără amânări de scadență');
+// Alin, 09.09: „la administrator trece și Alin Tîlvar și Gherbali Robert. Ți-am mai zis."
+// De regulă semnează amândoi fondatorii, deci bife cu toți bifați implicit — nu un singur nume.
+T('semnatarii noștri sunt bife, nu un singur nume', /function _raxNoiBifeHtml\(idPrefix, valoare\)/.test(html));
+T('la un contract nou sunt bifați TOȚI', /var bifat = function \(n\) \{ return alesi\.length \? alesi\.indexOf\(n\) >= 0 : true; \};/.test(html));
+T('numele se leagă cu „și", ca pe hârtie', /return \(_raxNoi \|\| \[\]\)\.join\(' și '\);/.test(html));
+T('funcția devine „Administratori" la mai mulți', /return cati > 1 \? 'Administratori' : 'Administrator';/.test(html));
+T('lista vine tot din conturile de super-admin, nu din nume scrise în cod',
+  /x\.role === 'superadmin' && x\.active !== false/.test(html));
+T('câmpul rămâne editabil (se poate semna și prin împuternicit)', /id="' \+ idPrefix \+ '-our"/.test(html));
+// Numele fișierului descărcat, cerut de Alin.
+T('contractul se descarcă „RA TRAKS-Contract …"', /return 'RA TRAKS-' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
+// Amânarea scadenței: Alin, 09.09 — „nu înțeleg, nu vreau să existe asta". Scoasă de tot.
+T('nu mai există rută de amânare a scadenței', !/\/api\/invoices\/:id\/due/.test(server));
+T('și nici funcția din spate', !/'set_due', 'invoice'/.test(server));
+
+sect('7f. Actele adiționale: contractul semnat nu se mai schimbă');
+// „Ca na se poate modifica contractul inițial, gen mai cumpără clientul mașini, mai vrea servicii."
+T('actele adiționale au tabela lor', /CREATE TABLE IF NOT EXISTS acte_aditionale/.test(dbjs));
+T('sunt legate de contract și de firmă', /contract_id INTEGER NOT NULL,\s*\n\s*company_id INTEGER NOT NULL/.test(dbjs));
+T('se numerotează per contract (A1, A2…), nu global',
+  /async function urmatorulNrAct\(contractId\)[\s\S]{0,220}MAX\(nr_ordine\), 0\) \+ 1/.test(dbjs));
+T('numărul se propune ca „<contract>/A<n>"', /date\.number = \(c\.number \|\| 'contract'\) \+ '\/A' \+ nr;/.test(server));
+T('NU se face act adițional la un contract nesemnat',
+  /if \(c\.status === 'ciorna' \|\| c\.status === 'aprobat'\)[\s\S]{0,180}modifică-l direct, nu prin act adițional/.test(server));
+T('un act adițional SEMNAT nu se șterge', /Un act adițional semnat nu se șterge/.test(server));
+T('are PDF propriu', /app\.get\('\/api\/acte\/:id\/pdf', requireAuth, requireSuperadmin/.test(server));
+T('și se descarcă tot brandat', /contractPdf\.numeFisier\(a, co, 'Act aditional'\)/.test(server));
+T('actul semnat se poate urca înapoi', /app\.post\('\/api\/acte\/:id\/file', requireAuth, requireSuperadmin/.test(server));
+T('toate rutele de acte sunt ale fondatorilor',
+  [...server.matchAll(/app\.(get|post|put|delete)\('(\/api\/acte[^']*|\/api\/contracts\/:id\/acte)'([^\n]*)/g)]
+    .every(m => /requireSuperadmin/.test(m[3])));
+// Pe hârtie: actul spune ce se schimbă și că restul rămâne neschimbat.
+T('hârtia se cheamă ACT ADIȚIONAL și trimite la contractul inițial',
+  /text\('ACT ADIȚIONAL'/.test(cpdf) && /la contractul de prestări servicii nr\. '/.test(cpdf));
+T('scrie de când produce efecte', /Modificările produc efecte începând cu data de/.test(cpdf));
+T('și că restul clauzelor rămân neschimbate',
+  /Restul clauzelor contractului inițial și ale anexelor sale rămân neschimbate/.test(cpdf));
+T('anexele se repetă DOAR dacă se schimbă',
+  /const areAnexa = !!\(act\.annex && \(act\.annex\.vehicles \|\| \[\]\)\.length\);/.test(cpdf));
+T('anexa nouă spune limpede că o înlocuiește pe cea veche',
+  /înlocuiește Anexa nr\. 1 a contractului nr\./.test(cpdf));
+T('în ecran, actele apar doar la contractele semnate',
+  /if \(c\.status === 'activ' \|\| c\.status === 'trimis' \|\| c\.status === 'incheiat'\) \{/.test(html));
+T('și se explică de ce există', /Contractul semnat nu se mai schimbă\. Când clientul mai cumpără mașini/.test(html));
+T('nu se salvează un act fără să scrie ce schimbă', /Scrie ce se schimbă — asta ajunge pe hârtie/.test(html));
 
 sect('8. Aliniamentul contractului — fiecare scriere își spune poziția');
 // DEFECTUL GĂSIT DE ALIN, 08.09, și motivul pentru care proba asta există:

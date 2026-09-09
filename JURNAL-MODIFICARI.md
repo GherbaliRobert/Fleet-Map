@@ -58,6 +58,68 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Semnăm amândoi, acte adiționale, și trei defecte găsite pe drum
+
+Patru corecturi cerute de Alin (09.09), plus ce a ieșit la iveală probându-le.
+
+**1. Semnăm amândoi.** *„La administrator trece și Alin Tîlvar și Gherbali Robert. Ți-am mai zis."*
+Aveam un singur câmp cu sugestii; acum sunt **bife**, cu toți fondatorii bifați din start la un
+contract nou. Numele se leagă cu „și", iar funcția devine singură **„Administratori"** la mai mulți.
+Lista vine tot din conturile de super-admin — niciun nume scris în cod. Câmpul rămâne de scris, ca
+să se poată semna și prin împuternicit.
+
+**2. Amânarea scadenței — scoasă.** *„Nu înțeleg, nu vreau să existe asta."* Ruta a dispărut cu
+totul. Scadența se calculează la emitere (data + termenul de plată al firmei) și rămâne așa.
+
+**3. Numele fișierului.** Contractul se descarcă acum **„RA TRAKS-Contract RAT-C-2026-0001 -
+Transport Zebra SRL.pdf"**, iar actul adițional **„RA TRAKS-Act aditional …"**. (Rapoartele au
+rămas pe forma lor veche, „RA-Tracks - Raport …" — dacă vrei aceeași formă și acolo, se schimbă
+într-un loc.)
+
+**4. Acte adiționale.** *„Că nu se poate modifica contractul inițial, gen mai cumpără clientul
+mașini, mai vrea servicii în plus."* Exact. Un contract semnat nu se mai atinge — ăsta e tot rostul
+unei semnături. Ce se schimbă după aceea se scrie într-un **act adițional**:
+
+- se numerotează după contract: **RAT-C-2026-0001/A1**, apoi /A2, /A3;
+- scrii **ce se schimbă**, cu cuvintele tale — textul ăla ajunge cuvânt cu cuvânt pe hârtie;
+- și **de când** produce efecte;
+- dacă se schimbă lista de aparate, bifezi noua listă, iar actul o duce ca **anexă nouă**, care
+  scrie negru pe alb că o înlocuiește pe cea veche;
+- se poate prelungi contractul cu N luni;
+- are **PDF propriu**, semnat de aceleași părți, care spune că restul clauzelor rămân neschimbate;
+- actul semnat se urcă înapoi, ca la contract;
+- **la un contract nesemnat nu se poate face act adițional** — acolo modifici contractul, e încă al
+  tău. Iar un act adițional **semnat nu se șterge**.
+
+---
+
+**Trei defecte găsite probând, niciunul cerut:**
+
+**a) Termenul de plată de ZERO zile era imposibil.** `parseInt(0) || 15` dă 15, fiindcă zero e o
+valoare „falsă" în JavaScript. Adică o firmă cu **„plata la emitere"** primea în tăcere 15 zile de
+termen, iar ceasul de neplată pornea cu două săptămâni mai târziu decât trebuia. Era în **trei
+locuri**: la salvarea configurării, la emiterea manuală a facturii și la facturarea automată lunară.
+
+**b) O ciornă ascundea contractul semnat.** „Contractul firmei" era pur și simplu ultimul scris.
+Dacă azi începeai o ciornă de reînnoire, ea lua locul contractului semnat de anul trecut — în listă,
+în fila Contract, peste tot. Acum ordinea e după ce contează: **în vigoare** bate orice, apoi trimis,
+aprobat, ciornă, iar cele încheiate la urmă.
+
+**c) Bifele de semnatari nu apăreau la prima deschidere.** Lista de fondatori vine de la server;
+redesenarea se uita după un element pe care tocmai îl scosesem, deci nu se întâmpla niciodată. Acum
+fila se redesenează o dată, când lista ajunge.
+
+**Ce am lăsat în urmă:** probele au crescut la **192** (contracte) și **68** (neplată), plus **30 de
+probe noi în aplicația pornită** care fac tot drumul actului adițional: contract semnat → act cu
+anexă nouă → PDF verificat cuvânt cu cuvânt → bifele de semnatari pe ecran.
+
+- **Ce am schimbat:** semnatarii noștri, numele fișierelor, actele adiționale; scoasă amânarea
+  scadenței; reparate trei defecte.
+- **Ce vede fondatorul:** amândoi bifați din start, o secțiune de acte adiționale la contractele
+  semnate, și fișiere care se cheamă cum trebuie.
+- **Ce vede clientul:** nimic nou în aplicație. Primește hârtia actului adițional, ca pe contract.
+
+
 ### AMÂNDOI · Anexa completă, suspendarea pentru neplată, meniul pe flux și montajul
 
 Patru lucruri cerute de Alin (09.09), în ordinea în care le-a vrut: 1, 4, 3, 2.

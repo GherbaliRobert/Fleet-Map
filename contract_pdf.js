@@ -350,6 +350,106 @@ function scrieContract(doc, date) {
   }
 }
 
+// ─── Actul adițional ─────────────────────────────────────────────────────────────────────────
+// Un contract semnat nu se mai schimbă. Ce se schimbă în timp (mai multe mașini, alt preț, alte
+// module, prelungire) se scrie într-un act adițional: o hârtie scurtă, care se agață de contractul
+// vechi, spune CE se schimbă și de CÂND, și repetă doar anexele care se modifică.
+function scrieAct(doc, date) {
+  const act = date.act || {};
+  const contract = date.contract || {};
+  const firma = date.firma || {};
+  const em = date.emitent || {};
+  const ciorna = act.status === 'ciorna';
+  const clientRep = act.client_rep || contract.client_rep || firma.legal_rep || {};
+  const ourRep = act.our_rep || contract.our_rep || {};
+
+  const { left, w } = _ST(doc);
+  const sus = doc.page.margins.top;
+  const lg = _logo();
+  if (lg) { try { doc.image(lg, left, sus, { height: 22 }); } catch (e) {} }
+  doc.fillColor(GRI).font('Nunito').fontSize(9)
+    .text('Act adițional nr. ' + _sauLinie(act.number) + ' / ' + _data(act.signed_at), left, sus + 7, { width: w, align: 'right' });
+  const yLinie = sus + 30;
+  doc.moveTo(left, yLinie).lineTo(left + w, yLinie).strokeColor(VERDE).lineWidth(2).stroke();
+  doc.y = yLinie + 14;
+  doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(15).text('ACT ADIȚIONAL', left, doc.y, { width: w, align: 'center' });
+  doc.font('Nunito').fontSize(9).fillColor(GRI)
+    .text('la contractul de prestări servicii nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at),
+      left, doc.y + 2, { width: w, align: 'center' });
+  if (ciorna) {
+    doc.fillColor('#b45309').font('Nunito-Bold').fontSize(8.5)
+      .text('CIORNĂ — a se verifica juridic înainte de semnare.', left, doc.y + 8, { width: w, align: 'center' });
+  }
+  doc.x = left; doc.y += 16;
+
+  _titlu(doc, 'I. PĂRȚILE');
+  _parte(doc, 'PRESTATOR', {
+    name: em.name, cui: em.cui, reg_com: em.reg_com,
+    address: [em.address, em.city, em.county].filter(Boolean).join(', '),
+    iban: em.iban, bank: em.bank, email: em.email, phone: em.phone,
+    rep: [ourRep.name, ourRep.role].filter(Boolean).join(', ')
+  });
+  _parte(doc, 'BENEFICIAR', {
+    name: firma.name, cui: firma.cui, reg_com: firma.reg_com, address: firma.address,
+    iban: firma.iban, bank: firma.bank_name, email: firma.contact_email, phone: firma.phone,
+    rep: [clientRep.name, clientRep.role].filter(Boolean).join(', ')
+  });
+
+  _titlu(doc, 'II. OBIECTUL ACTULUI ADIȚIONAL');
+  _p(doc, 'Părțile convin modificarea contractului menționat mai sus, după cum urmează:');
+  _p(doc, act.obiect || '____________________________________________________________________');
+  _p(doc, 'Modificările produc efecte începând cu data de ' + _data(act.start_at) + '.');
+  if (act.luni_noi) {
+    _p(doc, 'Durata contractului se prelungește cu ' + act.luni_noi + ' luni de la data de mai sus.');
+  }
+
+  _titlu(doc, 'III. CELELALTE CLAUZE');
+  _p(doc, 'Restul clauzelor contractului inițial și ale anexelor sale rămân neschimbate și își produc efectele în continuare. Prezentul act adițional face parte integrantă din contract.');
+  _p(doc, 'Încheiat astăzi, ' + _data(act.signed_at) + ', în două exemplare originale, câte unul pentru fiecare parte.');
+  _semnaturi(doc, em.name, firma.name);
+
+  // Anexele se REPETĂ doar dacă se schimbă. Un act adițional care nu atinge aparatele n-are de ce
+  // să retipărească lista lor — altfel nu se mai înțelege ce s-a schimbat de fapt.
+  const areAnexa = !!(act.annex && (act.annex.vehicles || []).length);
+  const areMontaj = !!(act.montaj && (act.montaj.items || []).length);
+  if (areAnexa) {
+    doc.addPage();
+    const A = _ST(doc);
+    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12)
+      .text('ANEXA nr. 1 la actul adițional — lista actualizată de aparate', A.left, doc.y, { width: A.w });
+    doc.font('Nunito').fontSize(8.5).fillColor(GRI)
+      .text('înlocuiește Anexa nr. 1 a contractului nr. ' + _sauLinie(contract.number), A.left, doc.y + 2, { width: A.w });
+    doc.x = A.left; doc.y += 12;
+    _tabelAnexa(doc, act.annex);
+    _semnaturi(doc, em.name, firma.name);
+  }
+  if (areMontaj) {
+    doc.addPage();
+    const A = _ST(doc);
+    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12)
+      .text('ANEXA nr. ' + (areAnexa ? 2 : 1) + ' la actul adițional — montaj (cost unic)', A.left, doc.y, { width: A.w });
+    doc.x = A.left; doc.y += 12;
+    _p(doc, 'Lucrările de montaj de mai jos se tarifează o singură dată, la execuție, și nu fac parte din abonamentul lunar.');
+    _tabelMontaj(doc, act.montaj);
+    _semnaturi(doc, em.name, firma.name);
+  }
+}
+function actPdf(date) {
+  const doc = new PDFDocument({
+    size: 'A4', margin: 50,
+    info: { Title: 'Act adițional ' + ((date.act && date.act.number) || ''), Author: 'RA Tracks' }
+  });
+  try {
+    doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
+    doc.registerFont('Nunito-Bold', path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf'));
+  } catch (e) {
+    try { doc.registerFont('Nunito', 'Helvetica'); doc.registerFont('Nunito-Bold', 'Helvetica-Bold'); } catch (e2) {}
+  }
+  scrieAct(doc, date);
+  doc.end();
+  return doc;
+}
+
 // Randează contractul într-un flux (răspunsul HTTP). Întoarce documentul, ca apelantul să-l poată lega.
 function contractPdf(date) {
   const doc = new PDFDocument({
@@ -367,11 +467,12 @@ function contractPdf(date) {
   return doc;
 }
 
-// Numele fișierului, în aceeași formă brandată ca rapoartele (vezi CLAUDE.md).
-function numeFisier(contract, firma) {
+// Numele fișierului descărcat. Alin, 09.09: „să apară ca nume, RA TRAKS-Contract".
+// (Rapoartele folosesc „RA-Tracks - Raport …", vezi CLAUDE.md — aici e forma cerută pentru acte.)
+function numeFisier(contract, firma, fel) {
   const nr = (contract && contract.number) || 'ciorna';
   const cine = String((firma && firma.name) || '').replace(/[\\/:*?"<>|]+/g, '').trim();
-  return 'RA-Tracks - Contract ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
+  return 'RA TRAKS-' + (fel || 'Contract') + ' ' + nr + (cine ? ' - ' + cine : '') + '.pdf';
 }
 
-module.exports = { contractPdf, scrieContract, numeFisier };
+module.exports = { contractPdf, scrieContract, actPdf, scrieAct, numeFisier };
