@@ -720,6 +720,9 @@ async function initDb() {
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS auto_invoice BOOLEAN DEFAULT false;    -- intră în ciclul lunar automat de facturare
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS vat_payer BOOLEAN DEFAULT true;        -- clientul e plătitor de TVA (informativ pe factură)
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS legal_rep JSONB;                       -- reprezentantul legal {name, role} — cine semnează pentru firmă
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS suspended_at BIGINT;                   -- suspendare MANUALĂ (de noi); neplata se calculează din facturi, nu se scrie aici
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS suspend_reason VARCHAR(200);
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS suspended_by INTEGER;
         ALTER TABLE companies ADD COLUMN IF NOT EXISTS anaf_at BIGINT;                        -- când s-au preluat ultima dată datele de la ANAF
       END $$
     `);
@@ -939,6 +942,44 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_contracts_company ON contracts(company_id, created_at DESC)`);
+    // Anexa nr. 2 a contractului: montajul, așa cum a fost semnat. DOAR partea clientului
+    // (ce-i facturăm lui). Costul partenerului stă în `montaje`, care nu ajunge niciodată pe hârtie.
+    await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS montaj JSONB`);
+    // ─── Montajul: partenerii care execută și lucrările propriu-zise ──────────────────────────
+    // Montajul îl vindem noi, îl execută firma X. X ne facturează pe noi, noi facturăm clientul.
+    // Clientul nu vede niciodată firma X — de asta partenerul stă într-o tabelă separată, la care
+    // se ajunge doar din ecranele noastre.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS montaj_parteneri (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(160) NOT NULL,
+        cui VARCHAR(40),
+        contact VARCHAR(200),
+        tarife JSONB DEFAULT '{}',          -- cât ne cere el, pe tip de lucrare {gps: 60, lvcan: 40…}
+        active BOOLEAN DEFAULT true,
+        notes TEXT,
+        created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS montaje (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER NOT NULL,
+        contract_id INTEGER,
+        partener_id INTEGER,
+        data_lucrare BIGINT,
+        items JSONB DEFAULT '[]',           -- [{tip, buc, pretClient, costPartener}]
+        total_client NUMERIC(12,2) DEFAULT 0,
+        total_partener NUMERIC(12,2) DEFAULT 0,
+        currency VARCHAR(3) DEFAULT 'RON',
+        status VARCHAR(24) DEFAULT 'de_programat',
+        factura_partener VARCHAR(60),       -- numărul facturii primite de la partener
+        factura_client INTEGER,             -- factura noastră către client (id din invoices)
+        notes TEXT,
+        created_by INTEGER, created_at BIGINT, updated_at BIGINT
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_montaje_company ON montaje(company_id, created_at DESC)`);
     // Legătura ofertă → client → contract. Până acum erau trei lumi separate: făceai oferta în
     // Ofertare Live, apoi retastai tot în firma nouă, apoi iar în contract. Coloanele astea țin
     // minte în ce s-a transformat o ofertă, ca să nu mai scrii nimic de două ori și ca să se vadă
@@ -1656,7 +1697,7 @@ async function deleteOffer(id) {
 // Coloanele de fișier (file_b64 / gdpr_b64) sunt GRELE — un PDF scanat poate avea megaocteți. Nu
 // se aduc niciodată în liste, doar la descărcarea explicită a actului. De asta există `_FARA_FISIERE`.
 const _FARA_FISIERE = `id, company_id, number, status, signed_at, start_at, months, end_at,
-  auto_renew, notice_days, ended_at, ended_reason, client_rep, our_rep, gdpr, annex, notes,
+  auto_renew, notice_days, ended_at, ended_reason, client_rep, our_rep, gdpr, annex, montaj, notes,
   created_by, created_at, updated_at,
   (file_b64 IS NOT NULL) AS has_file, file_name, file_mime,
   (gdpr_b64 IS NOT NULL) AS has_gdpr_file, gdpr_name, gdpr_mime`;
@@ -1741,9 +1782,126 @@ async function contractsByCompany() {
   return m;
 }
 
+// ─── Montaj: parteneri și lucrări ────────────────────────────────────────────────────────────
+async function listParteneriMontaj() {
+  const r = await pool.query('SELECT * FROM montaj_parteneri ORDER BY active DESC, name');
+  return r.rows;
+}
+async function upsertPartenerMontaj(p) {
+  const now = Date.now();
+  if (p.id) {
+    const r = await pool.query(
+      `UPDATE montaj_parteneri SET name=$2, cui=$3, contact=$4, tarife=$5, active=$6, notes=$7, updated_at=$8
+         WHERE id=$1 RETURNING *`,
+      [p.id, p.name, p.cui || null, p.contact || null, JSON.stringify(p.tarife || {}), p.active !== false, p.notes || null, now]);
+    return r.rows[0] || null;
+  }
+  const r = await pool.query(
+    `INSERT INTO montaj_parteneri (name, cui, contact, tarife, active, notes, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$7) RETURNING *`,
+    [p.name, p.cui || null, p.contact || null, JSON.stringify(p.tarife || {}), p.active !== false, p.notes || null, now]);
+  return r.rows[0];
+}
+async function deletePartenerMontaj(id) { await pool.query('DELETE FROM montaj_parteneri WHERE id = $1', [id]); return { ok: true }; }
+
+// Lucrările de montaj ale unei firme, cu numele partenerului lângă (ca să nu se ceară separat).
+async function listMontaje(companyId) {
+  const r = await pool.query(
+    `SELECT m.*, p.name AS partener_nume FROM montaje m
+       LEFT JOIN montaj_parteneri p ON p.id = m.partener_id
+      WHERE m.company_id = $1 ORDER BY m.created_at DESC`, [companyId]);
+  return r.rows;
+}
+async function getMontaj(id) {
+  const r = await pool.query(
+    `SELECT m.*, p.name AS partener_nume FROM montaje m
+       LEFT JOIN montaj_parteneri p ON p.id = m.partener_id WHERE m.id = $1`, [id]);
+  return r.rows[0] || null;
+}
+async function upsertMontaj(m) {
+  const now = Date.now();
+  if (m.id) {
+    const r = await pool.query(
+      `UPDATE montaje SET contract_id=$2, partener_id=$3, data_lucrare=$4, items=$5, total_client=$6,
+         total_partener=$7, currency=$8, status=$9, factura_partener=$10, notes=$11, updated_at=$12
+         WHERE id=$1 RETURNING id`,
+      [m.id, m.contract_id || null, m.partener_id || null, m.data_lucrare || null, JSON.stringify(m.items || []),
+       m.total_client || 0, m.total_partener || 0, m.currency || 'RON', m.status || 'de_programat',
+       m.factura_partener || null, m.notes || null, now]);
+    return r.rows[0] ? getMontaj(m.id) : null;
+  }
+  const r = await pool.query(
+    `INSERT INTO montaje (company_id, contract_id, partener_id, data_lucrare, items, total_client,
+       total_partener, currency, status, factura_partener, notes, created_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13) RETURNING id`,
+    [m.company_id, m.contract_id || null, m.partener_id || null, m.data_lucrare || null, JSON.stringify(m.items || []),
+     m.total_client || 0, m.total_partener || 0, m.currency || 'RON', m.status || 'de_programat',
+     m.factura_partener || null, m.notes || null, m.created_by || null, now]);
+  return getMontaj(r.rows[0].id);
+}
+async function deleteMontaj(id) { await pool.query('DELETE FROM montaje WHERE id = $1', [id]); return { ok: true }; }
+// Anexa nr. 2 (montajul semnat) se scrie pe contract, separat de lucrare.
+async function setContractMontaj(contractId, anexa) {
+  const r = await pool.query('UPDATE contracts SET montaj = $2, updated_at = $3 WHERE id = $1 RETURNING id',
+    [contractId, anexa == null ? null : JSON.stringify(anexa), Date.now()]);
+  return r.rows[0] ? getContractById(contractId) : null;
+}
+
+// Toate contractele, pentru ecranul „Contracte": un rând per contract, cu numele firmei lângă.
+// Fără fișiere (sunt grele) — doar dacă EXISTĂ, ca să se vadă ce dosar e complet.
+async function contracteToate(limita) {
+  const r = await pool.query(
+    `SELECT c.id, c.company_id, c.number, c.status, c.signed_at, c.start_at, c.months, c.end_at,
+            c.auto_renew, c.notice_days, c.ended_at, c.client_rep, c.gdpr, c.annex, c.created_at,
+            (c.file_b64 IS NOT NULL) AS has_file, (c.gdpr_b64 IS NOT NULL) AS has_gdpr_file,
+            co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo
+       FROM contracts c JOIN companies co ON co.id = c.company_id
+      ORDER BY c.created_at DESC LIMIT $1`, [Math.min(parseInt(limita) || 500, 2000)]);
+  return r.rows;
+}
+// Firmele care n-au NICIUN contract — ele sunt gaura din dosar, nu contractele existente.
+async function firmeFaraContract() {
+  const r = await pool.query(
+    `SELECT co.id, co.name, co.cui, co.created_at FROM companies co
+      WHERE COALESCE(co.is_demo, false) = false
+        AND NOT EXISTS (SELECT 1 FROM contracts c WHERE c.company_id = co.id)
+      ORDER BY co.name`);
+  return r.rows;
+}
 // Contractele pe care le urmărim pentru expirare: doar cele în vigoare, la firme adevărate.
 // NU filtrăm aici după „se reînnoiește singur" sau după câte zile au rămas — regula aia stă în
 // contracts.js și e aceeași peste tot. Aici doar scoatem materia primă, cu numele firmei lângă.
+// Facturile neachitate ale unei firme, cât mai puține coloane: ceasul de neplată are nevoie doar de
+// scadență, stare și sumă. Ordinea e de la cea mai veche, fiindcă ea dă ceasul.
+async function facturiNeachitate(companyId) {
+  const r = await pool.query(
+    `SELECT id, company_id, full_number, type, status, due_date, total, currency
+       FROM invoices WHERE company_id = $1 AND status IN ('issued','sent','overdue')
+      ORDER BY due_date ASC NULLS LAST`, [companyId]);
+  return r.rows;
+}
+// Aceleași facturi, dar pentru TOATE firmele deodată — ceasul zilnic le ia dintr-o singură
+// interogare, nu una per client.
+async function facturiNeachitateToate() {
+  const r = await pool.query(
+    `SELECT i.id, i.company_id, i.full_number, i.type, i.status, i.due_date, i.total, i.currency,
+            c.name AS company_name, c.contact_email
+       FROM invoices i JOIN companies c ON c.id = i.company_id
+      WHERE i.status IN ('issued','sent','overdue') AND COALESCE(c.is_demo, false) = false
+      ORDER BY i.company_id, i.due_date ASC NULLS LAST`);
+  const m = {};
+  for (const row of r.rows) (m[row.company_id] = m[row.company_id] || []).push(row);
+  return m;
+}
+// Suspendarea MANUALĂ, pusă sau ridicată de noi. `motiv` e liber, ca să se vadă de ce.
+async function setCompanySuspend(id, date) {
+  const r = await pool.query(
+    'UPDATE companies SET suspended_at = $2, suspend_reason = $3, suspended_by = $4 WHERE id = $1 RETURNING *',
+    [id, date && date.at != null ? date.at : null, date && date.reason ? String(date.reason).slice(0, 200) : null,
+     date && date.by != null ? date.by : null]);
+  return r.rows[0] || null;
+}
+
 async function contracteInVigoare() {
   const r = await pool.query(
     `SELECT c.id, c.company_id, c.number, c.status, c.start_at, c.months, c.end_at, c.auto_renew,
@@ -3985,7 +4143,10 @@ module.exports = {
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,
   updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany,
-  contracteInVigoare, legOferta,
+  contracteInVigoare, contracteToate, firmeFaraContract, legOferta,
+  listParteneriMontaj, upsertPartenerMontaj, deletePartenerMontaj,
+  listMontaje, getMontaj, upsertMontaj, deleteMontaj, setContractMontaj,
+  facturiNeachitate, facturiNeachitateToate, setCompanySuspend,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,

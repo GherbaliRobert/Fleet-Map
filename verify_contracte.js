@@ -143,11 +143,29 @@ const preaviz = C.ultimaZiDePreaviz({ start_at: start, months: 12, notice_days: 
 T('ultima zi de preaviz e cu 30 de zile înainte de sfârșit',
   Math.round((C.calcSfarsit(start, 12) - preaviz) / ZI) === 30, String(preaviz));
 
-const anexa = C.facAnexa([{ imei: '1', name: 'Camion A', plate: 'B-1', monthlyRON: 49 }, { imei: '2', name: 'B', monthlyRON: 59 }]);
+const anexa = C.facAnexa([
+  { imei: '1', name: 'Camion A', plate: 'B-1', gps_model: 'Teltonika FMC650', bill_can: true, monthlyRON: 49 },
+  { imei: '2', name: 'B', gps_model: 'FMC130', bill_can: false, monthlyRON: 59 }]);
 T('anexa își face singură totalul', anexa.monthlyTotal === 108, String(anexa.monthlyTotal));
 T('anexa păstrează numărul de înmatriculare', anexa.vehicles[0].plate === 'B-1');
 T('anexa e în lei, dacă nu se spune altfel', anexa.currency === 'RON');
 T('un aparat fără preț nu strică totalul', C.facAnexa([{ imei: '1' }, { imei: '2', monthlyRON: 10 }]).monthlyTotal === 10);
+// Modelul aparatului și CAN-ul justifică prețul: fără ele anexa spunea o sumă fără să spună pentru ce.
+T('anexa îngheață modelul aparatului', anexa.vehicles[0].gpsModel === 'Teltonika FMC650', anexa.vehicles[0].gpsModel);
+T('și dacă citește date din motor (CAN)', anexa.vehicles[0].can === true && anexa.vehicles[1].can === false,
+  JSON.stringify([anexa.vehicles[0].can, anexa.vehicles[1].can]));
+T('un aparat fără model nu inventează unul', C.facAnexa([{ imei: '9' }]).vehicles[0].gpsModel === null);
+T('lipsa informației despre CAN nu devine „are CAN"', C.facAnexa([{ imei: '9' }]).vehicles[0].can === false);
+T('anexa deja salvată își păstrează modelul la recitire',
+  C.facAnexa([{ imei: '9', gpsModel: 'FMC650', can: true }]).vehicles[0].gpsModel === 'FMC650');
+// Pe hârtie: coloanele există, IMEI-ul NU se taie (stă pe rândul lui, sub model).
+T('PDF-ul are coloana „Aparat" și „Date motor"',
+  /const cap = \['Vehicul', 'Nr\. înmatric\.', 'Aparat', 'Date motor', 'Abonament'\]/.test(fs.readFileSync('./contract_pdf.js', 'utf8')));
+T('IMEI-ul are rândul lui, ca să nu fie tăiat',
+  /sub: 'IMEI ' \+ v\.imei/.test(fs.readFileSync('./contract_pdf.js', 'utf8')));
+T('textul din tabel se taie MĂSURAT, nu ghicit după litere',
+  /function _taie\(doc, text, latime\)[\s\S]{0,200}doc\.widthOfString/.test(fs.readFileSync('./contract_pdf.js', 'utf8')));
+T('modelul aparatului ajunge de la server în ecran', /gps_model: d\.gps_model \|\| null/.test(server));
 
 sect('4. Datele de la ANAF se citesc corect');
 T('CUI-ul se curăță de „RO" și spații', A.curataCui('RO 12345678') === '12345678');
@@ -298,6 +316,36 @@ T('ofertele deja devenite contract nu se mai propun a doua oară',
 T('pe lista de oferte se vede care a devenit client', /a devenit client/.test(html));
 T('și duce direct în dosarul lui', /onclick="raxOpenCompanyDetail\(' \+ o\.company_id \+ ', \\'contract\\'\)/.test(html));
 
+sect('7d. Meniul urmează fluxul, iar Contractele au ecranul lor');
+// Alin, 09.09: „întâi ofertare, apoi contract și anexe, apoi îmi apar companiile. E mai sănătos
+// așa, să știm și noi fluxul și să-l vedem." Ordinea din meniu E fluxul, nu alfabetul.
+const grupBiz = /<div class="nav-group" data-vert="fondator" data-super data-group="business">([\s\S]*?)<\/div>\s*<\/div>/.exec(html);
+T('găsesc grupul Business în meniu', !!grupBiz);
+if (grupBiz) {
+  const randuri = [...grupBiz[1].matchAll(/<span>([^<]+)<\/span>/g)].map(m => m[1].replace(/&amp;/g, '&').trim());
+  // randuri[0] e chiar titlul grupei („Business"); pașii încep de la al doilea.
+  T('primele trei rânduri sunt exact pașii, în ordine',
+    randuri.slice(1, 4).join(' → ') === 'Ofertare Live → Contracte → Companii', randuri.join(' · '));
+  T('Companii a plecat din Gestiune', !/data-group="gestiune"[\s\S]*?<span>Companii<\/span>/.test(html.slice(0, html.indexOf('data-group="module"'))));
+  T('Gestiune a rămas cu aparatele și oamenii',
+    /data-group="gestiune"[\s\S]{0,900}?<span>Dispozitive<\/span>[\s\S]{0,900}?<span>Utilizatori<\/span>/.test(html));
+}
+T('ecranul „Contracte" are containerul lui', /<div id="admin-tab-contracte" style="display:none;"><\/div>/.test(html));
+T('și se încarcă la deschiderea filei', /name === 'contracte'\) \{\s*\n\s*if \(window\.raxLoadContracte\)/.test(html));
+T('e strict al fondatorilor, ca și Companii',
+  /name === 'accounts' \|\| name === 'contracte'\) && !can\('manageCompanies'\)/.test(html) &&
+  /tab === 'audit' \|\| tab === 'contracte'\) && !can\('manageCompanies'\)/.test(html));
+T('ruta care dă toate contractele cere super-admin',
+  /app\.get\('\/api\/contracts', requireAuth, requireSuperadmin/.test(server));
+T('ruta trimite și firmele FĂRĂ contract — aia e gaura adevărată',
+  /fara_contract: fara/.test(server) && /async function firmeFaraContract\(\)/.test(dbjs));
+T('firmele demo nu apar ca „fără contract"', /firmeFaraContract[\s\S]{0,300}COALESCE\(co\.is_demo, false\) = false/.test(dbjs));
+T('ecranul are filtre după ce te întrebi de fapt, nu după stări din bază',
+  /\['desemnat', 'De semnat'/.test(html) && /\['incomplet', 'Dosar incomplet'/.test(html) && /\['expira', 'Expiră curând'/.test(html));
+T('și se poate căuta după client, număr sau CUI', /Caută după client, număr de contract sau CUI/.test(html));
+T('fiecare rând duce în dosarul clientului',
+  /raxOpenCompanyDetail\(' \+ c\.company_id \+ ', \\'contract\\'\)/.test(html));
+
 sect('8. Aliniamentul contractului — fiecare scriere își spune poziția');
 // DEFECTUL GĂSIT DE ALIN, 08.09, și motivul pentru care proba asta există:
 // pdfkit ȚINE MINTE ultima poziție scrisă. Blocul părților scria valorile la x = margine + 106;
@@ -314,6 +362,8 @@ const carton = {
   strokeColor() { return this; }, lineWidth() { return this; },
   moveTo() { return this; }, lineTo() { return this; }, stroke() { return this; },
   image() { return this; },
+  // Tăierea textului din tabel măsoară lățimea reală. Aproximăm: 4,6 puncte pe literă la 8,5pt.
+  widthOfString(s) { return String(s == null ? '' : s).length * 4.6; },
   addPage() { this._pagini++; this.x = A4.margins.left; this.y = A4.margins.top; return this; },
   moveDown(n) { this.y += 12 * (n == null ? 1 : n); return this; },
   text(t, x, y, o) {
@@ -328,7 +378,7 @@ CP.scrieContract(carton, {
   contract: { number: 'RAT-C-2026-0007', status: 'aprobat', signed_at: start2, start_at: start2, months: 12,
     end_at: C.calcSfarsit(start2, 12), auto_renew: true, notice_days: 30,
     client_rep: { name: 'Ion Popescu', role: 'Administrator' }, our_rep: { name: 'Alin Tîlvar', role: 'Administrator' },
-    gdpr: { kind: 'anexa' }, annex: C.facAnexa([{ imei: '860000000000001', name: 'Camion A', plate: 'B-111-AAA', monthlyRON: 49 }]) },
+    gdpr: { kind: 'anexa' }, annex: C.facAnexa([{ imei: '860000000000001', name: 'Camion A', plate: 'B-111-AAA', gps_model: 'Teltonika FMC650', bill_can: true, monthlyRON: 49 }]) },
   firma: { name: 'Transport Zebra SRL', cui: 'RO12345678', address: 'Str. Exemplu 1', payment_term_days: 15, billing_day: 5 },
   emitent: { name: 'RA TRACKS SRL', cui: 'RO44556677', vat_rate: 19 }
 });

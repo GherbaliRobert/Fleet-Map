@@ -141,6 +141,8 @@ const errortrack = require('./errortrack');
 errortrack.init();
 let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 const contracte = require('./contracts');           // dosarul juridic al firmelor client (reguli curate)
+const neplata = require('./neplata');               // ce se întâmplă când nu se plătește la termen (reguli curate)
+const montaj = require('./montaj');                 // montajul la client: ce-i facturăm lui, cât ne costă pe noi
 const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
 const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăcere, stare) — sursă unică
@@ -1890,6 +1892,81 @@ async function billingReminderTick() {
   }
   return report;
 }
+// ─── Ceasul neplății: avertizează, apoi suspendă ─────────────────────────────────────────────
+// Regula lui Alin (09.09): scadență depășită → 15 zile de grație cu patru avertismente → în ziua
+// a 16-a, accesul se taie. Ceasul ăsta NU taie el accesul: suspendarea se CALCULEAZĂ din facturi,
+// la fiecare cerere (vezi _accessStatusCached). Aici doar se anunță — clientul, prin email și în
+// aplicație; noi, în aplicație. Așa, dacă serverul stă oprit o zi, nimeni nu scapă nesuspendat.
+async function neplataTick() {
+  const raport = { firme: 0, avertizate: [], suspendate: [] };
+  let peFirma = {};
+  try { peFirma = await db.facturiNeachitateToate(); } catch (e) { return raport; }
+  const acum = Date.now();
+  let supers = [];
+  try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
+  for (const cid of Object.keys(peFirma)) {
+    try {
+      const facturi = peFirma[cid];
+      const stare = neplata.stareNeplata(facturi, acum);
+      if (stare.faza === 'ok') continue;
+      raport.firme++;
+      const companyId = parseInt(cid, 10);
+      const numeFirma = (facturi[0] && facturi[0].company_name) || ('#' + cid);
+      const email = facturi[0] && facturi[0].contact_email;
+      const f = stare.factura;
+
+      if (stare.faza === 'suspendat') {
+        // Cheia ține numărul facturii: se anunță o dată per factură restantă, nu zilnic.
+        const cheie = 'neplata_suspendat:' + f.id;
+        if (await db.notificationKeyExists(cheie, 24 * 400)) continue;
+        const corp = neplata.mesajClient(stare, null);
+        await db.createNotification({
+          type: 'neplata_suspendat', severity: 'critical', companyId: companyId, userId: null, imei: null,
+          title: 'Acces suspendat pentru neplată', body: corp, data: { key: cheie, invoiceId: f.id }
+        });
+        await _anuntaSuperadmini(supers, 'neplata_suspendat_intern', 'critical',
+          'Am suspendat: ' + numeFirma, 'Factura ' + (f.numar || '') + ' e neachitată de ' + stare.zile + ' de zile. Accesul clientului e oprit până la plată.',
+          { key: cheie + ':noi', companyId: companyId, invoiceId: f.id });
+        if (mailer && mailer.enabled() && email) {
+          mailer.send({ to: email, subject: 'RA Tracks — acces suspendat pentru neplată',
+            html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Tracks</p>' }).catch(function () {});
+        }
+        _invalidateAccessCache(companyId);
+        raport.suspendate.push(companyId);
+        continue;
+      }
+
+      const treapta = neplata.treaptaDeAnuntat(stare.zile);
+      if (!treapta) continue;
+      const cheie = 'neplata:' + f.id + ':' + treapta.zi;
+      if (await db.notificationKeyExists(cheie, 24 * 400)) continue;
+      const corp = neplata.mesajClient(stare, treapta);
+      await db.createNotification({
+        type: 'neplata', severity: treapta.fel, companyId: companyId, userId: null, imei: null,
+        title: treapta.titlu, body: corp, data: { key: cheie, invoiceId: f.id, zile: stare.zile }
+      });
+      if (mailer && mailer.enabled() && email) {
+        mailer.send({ to: email, subject: 'RA Tracks — ' + treapta.titlu,
+          html: '<p>Bună ziua,</p><p>' + _he(corp) + '</p><p>Vă mulțumim,<br>RA Tracks</p>' }).catch(function () {});
+      }
+      raport.avertizate.push({ companyId: companyId, zi: treapta.zi });
+    } catch (e) { /* per firmă, best-effort */ }
+  }
+  return raport;
+}
+// Anunț către noi, fondatorii. Aceeași formă ca la cererile demo: notificare de platformă + push.
+async function _anuntaSuperadmini(supers, tip, gravitate, titlu, corp, date) {
+  const n = await db.createNotification({
+    type: tip, severity: gravitate, companyId: null, userId: null, imei: null,
+    title: titlu, body: corp, data: date || {}
+  });
+  for (const u of (supers || [])) {
+    try { broadcastWsToUser(u.id, { type: 'notification', data: n }); } catch (e) {}
+    try { await sendPushToUser(u.id, n.title, n.body, { notifId: n.id }); } catch (e) {}
+  }
+  return n;
+}
+
 // ─── Ceasul contractelor: anunță din timp ce se termină ──────────────────────────────────────
 // Alin, 08.09: „o alertă cu 60 de zile înainte de expirarea contractelor care nu se reînnoiesc
 // singure". Sună O SINGURĂ DATĂ per contract și per termen (cheia are data de sfârșit în ea), deci
@@ -2063,15 +2140,35 @@ async function checkAfterHoursMovement(imei, liveData) {
 // Cache scurt al stării de acces — evită un getCompanyById pe FIECARE request. Invalidat la schimbarea accesului.
 const _accessCache = new Map();
 function _invalidateAccessCache(companyId) { _accessCache.delete(companyId); }
+// Un singur mesaj pentru toate felurile de suspendare, ales de Alin (09.09). Motivul exact
+// (abonament / neplată / oprit de noi) merge separat, în câmpul `motiv`, pentru ecranul care-l arată.
+const MESAJ_SUSPENDAT = 'Abonament suspendat pentru neplată. Contactați furnizorul.';
+// Accesul unei firme se poate tăia din TREI motive, iar toate trei se verifică aici, într-un
+// singur loc, ca să nu existe o cale prin care cineva intră pe ușa din dos:
+//   1. suspendare MANUALĂ, pusă de noi (un caz aparte, cu motiv scris);
+//   2. NEPLATĂ: o factură emisă, neachitată, mai veche de 15 zile peste scadență (regula lui Alin);
+//   3. abonamentul expirat, ca până acum (perioada plătită s-a terminat + 15 zile de grație).
+// Toate trei întorc `status: 'expired'`, fiindcă asta verifică restul aplicației în vreo zece locuri.
+// Ce se adaugă e `motiv`, ca mesajul arătat omului să spună adevărul.
 async function _accessStatusCached(companyId) {
   let e = _accessCache.get(companyId);
   if (!e || (Date.now() - e.ts) >= 20000) {
-    let until = null;
-    try { const co = await db.getCompanyById(companyId); until = co ? (co.access_until != null ? Number(co.access_until) : null) : null; } catch (err) { until = null; }
-    e = { until: until, ts: Date.now() };
+    let until = null, susp = null, facturi = [];
+    try {
+      const co = await db.getCompanyById(companyId);
+      until = co ? (co.access_until != null ? Number(co.access_until) : null) : null;
+      susp = co && co.suspended_at != null ? { at: Number(co.suspended_at), motiv: co.suspend_reason || null } : null;
+    } catch (err) { until = null; }
+    try { facturi = await db.facturiNeachitate(companyId); } catch (err) { facturi = []; }
+    e = { until: until, susp: susp, facturi: facturi, ts: Date.now() };
     _accessCache.set(companyId, e);
   }
-  return companyAccessStatus({ access_until: e.until });
+  const baza = companyAccessStatus({ access_until: e.until });
+  if (e.susp) return Object.assign({}, baza, { status: 'expired', motiv: 'manual', suspendat_din: e.susp.at, nota: e.susp.motiv });
+  const np = neplata.stareNeplata(e.facturi, Date.now());
+  if (np.faza === 'suspendat') return Object.assign({}, baza, { status: 'expired', motiv: 'neplata', factura: np.factura, suspendat_din: np.suspendareLa });
+  if (baza.status === 'expired') return Object.assign({}, baza, { motiv: 'abonament' });
+  return Object.assign({}, baza, { neplata: np.faza === 'ok' ? null : np });
 }
 // Gate central: blochează (402) requesturile companiilor EXPIRATE (non-super) — sesiuni vechi, chei API, orice endpoint de date.
 // Allowlist ca userul blocat să-și poată vedea starea / plăti: /api/me, /api/logout, /api/billing/*.
@@ -2090,8 +2187,9 @@ async function _accessBlocked(req, res) {
   if (req.isSuper || req.companyId == null) return false;
   if (_accessFreePath(req.path || req.originalUrl || '')) return false;
   try {
-    if ((await _accessStatusCached(req.companyId)).status === 'expired') {
-      res.status(402).json({ error: 'Abonament expirat — acces suspendat. Contactați furnizorul.', access_expired: true });
+    const st = await _accessStatusCached(req.companyId);
+    if (st.status === 'expired') {
+      res.status(402).json({ error: MESAJ_SUSPENDAT, access_expired: true, motiv: st.motiv || null });
       return true;
     }
   } catch (e) { /* la eroare nu blocăm */ }
@@ -2112,8 +2210,9 @@ async function accessGate(req, res, next) {
     if (isSuper(a.role)) return next();
     const cid = (a.companyId !== undefined && a.companyId !== null) ? a.companyId : await resolveCompanyId(a);
     if (cid == null) return next();
-    if ((await _accessStatusCached(cid)).status === 'expired') {
-      return res.status(402).json({ error: 'Abonament expirat — acces suspendat. Contactați furnizorul.', access_expired: true });
+    const st = await _accessStatusCached(cid);
+    if (st.status === 'expired') {
+      return res.status(402).json({ error: MESAJ_SUSPENDAT, access_expired: true, motiv: st.motiv || null });
     }
   } catch (e) { /* fail-open, ca și înainte: o eroare de interogare nu blochează platforma */ }
   next();
@@ -2222,9 +2321,12 @@ app.post('/api/login', async (req, res) => {
       try {
         const co = await db.getCompanyById(user.company_id);
         if (co) {
-          access = companyAccessStatus(co);
+          // Aceeași verificare ca peste tot (_accessStatusCached): abonament, neplată SAU
+          // suspendare manuală. Înainte se uita doar la abonament, deci un client suspendat
+          // pentru neplată se putea totuși autentifica.
+          access = await _accessStatusCached(co.id);
           if (!isSuper(user.role) && access.status === 'expired') {
-            return res.status(402).json({ error: 'Abonament expirat — accesul este suspendat până la reînnoire. Contactați furnizorul.', access_expired: true });
+            return res.status(402).json({ error: MESAJ_SUSPENDAT, access_expired: true, motiv: access.motiv || null });
           }
           company = { id: co.id, name: co.name, is_demo: !!co.is_demo };
           features = plans ? plans.featuresFor(co) : null;
@@ -2274,8 +2376,8 @@ app.post('/api/mobile/login', async (req, res) => {
       try {
         const co = await db.getCompanyById(user.company_id);
         if (co) {
-          access = companyAccessStatus(co);
-          if (!isSuper(user.role) && access.status === 'expired') return res.status(402).json({ error: 'Abonament expirat — accesul este suspendat până la reînnoire. Contactați furnizorul.', access_expired: true });
+          access = await _accessStatusCached(co.id);
+          if (!isSuper(user.role) && access.status === 'expired') return res.status(402).json({ error: MESAJ_SUSPENDAT, access_expired: true, motiv: access.motiv || null });
           company = { id: co.id, name: co.name, is_demo: !!co.is_demo };
           features = plans ? plans.featuresFor(co) : null;
         }
@@ -3581,11 +3683,22 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
     // Dosarul juridic vine odată cu lista (o singură interogare pentru toate firmele), ca fiecare
     // rând să poată arăta pe loc dacă are contract, dacă e semnat și dacă mai e valabil.
     let dos = {}; try { dos = await db.contractsByCompany(); } catch (e) { dos = {}; }
+    // Facturile neachitate ale TUTUROR firmelor, dintr-o singură interogare: fiecare rând trebuie
+    // să poată spune dacă e restanță și în câte zile se taie accesul.
+    let facturi = {}; try { facturi = await db.facturiNeachitateToate(); } catch (e) { facturi = {}; }
+    const acum = Date.now();
     res.json(list.map(function (c) {
       const contract = dos[c.id] || null;
+      const np = neplata.stareNeplata(facturi[c.id] || [], acum);
+      const suspendatManual = c.suspended_at != null;
+      const acc = companyAccessStatus(c);
+      if (suspendatManual) { acc.status = 'expired'; acc.motiv = 'manual'; }
+      else if (np.faza === 'suspendat') { acc.status = 'expired'; acc.motiv = 'neplata'; }
+      else if (acc.status === 'expired') { acc.motiv = 'abonament'; }
       return Object.assign({}, c, {
         features: plans ? plans.featuresFor(c) : null,
-        access: companyAccessStatus(c),
+        access: acc,
+        neplata: np.faza === 'ok' ? null : np,
         dosar: contracte.stareDosar(c, contract, Date.now()),
         contract: contract ? { id: contract.id, number: contract.number, status: contract.status, end_at: contract.end_at } : null
       });
@@ -3764,6 +3877,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         const ct = classifyDeviceCan(d);
         return {
           imei: d.imei, name: d.name || null, plate: d.plate || null, vehicle_type: d.vehicle_type || null,
+          gps_model: d.gps_model || null,   // modelul aparatului (FMC650…) — intră în anexa contractului
           can_type: ct, can_interface: d.can_interface || null,
           bill_can: canSet ? canSet.has(d.imei) : (ct !== 'none'), // „cu CAN" pt. facturare: override manual sau auto
           last_position_time: d.last_position_time || d.last_seen || null
@@ -3782,7 +3896,11 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     // Dosarul juridic vine în același apel ca restul: fila „Contract" nu trebuie să mai ceară o dată.
     let contract = null, istoric = [];
     try { [contract, istoric] = await Promise.all([db.getCompanyContract(id), db.listContracts(id)]); } catch (e) {}
-    res.json({ company, access: companyAccessStatus(company), counts, billCounts, users, vehicles, payments, offer, price, features,
+    // Starea de plată a firmei: aceeași regulă ca gardul de acces, ca ecranul să nu spună altceva.
+    let npFirma = { faza: 'ok' };
+    try { npFirma = neplata.stareNeplata(await db.facturiNeachitate(id), Date.now()); } catch (e) {}
+    res.json({ company, access: await _accessStatusCached(id), counts, billCounts, users, vehicles, payments, offer, price, features,
+      neplata: npFirma.faza === 'ok' ? null : npFirma,
       ai_quota: _aiQuotaFromSettings(company.settings),
       contract, contract_istoric: istoric, dosar: contracte.stareDosar(company, contract, Date.now()),
       preaviz_pana: contracte.ultimaZiDePreaviz(contract),
@@ -3857,6 +3975,108 @@ function _contractDinCerere(b) {
   };
 }
 
+// ─── Montaj: parteneri + lucrări ─────────────────────────────────────────────────────────────
+// Toate rutele astea sunt strict ale noastre. Partenerul de montaj e informația cea mai sensibilă
+// comercial din aplicație: clientul crede (pe drept) că montăm noi, iar cât ne cere firma X e
+// exact diferența din care trăim. Nu iese niciodată printr-o rută de client.
+app.get('/api/montaj/parteneri', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await db.listParteneriMontaj()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/montaj/parteneri', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const nume = String(b.name || '').trim();
+    if (nume.length < 2) return res.status(400).json({ error: 'Numele partenerului e prea scurt.' });
+    const tarife = {};
+    if (b.tarife && typeof b.tarife === 'object') {
+      for (const t of montaj.TIPURI) {
+        const v = b.tarife[t.k];
+        if (v != null && v !== '') { const n = Number(v); if (Number.isFinite(n) && n >= 0) tarife[t.k] = n; }
+      }
+    }
+    const p = await db.upsertPartenerMontaj({
+      id: b.id ? parseInt(b.id, 10) : null, name: nume.slice(0, 160),
+      cui: b.cui ? String(b.cui).slice(0, 40) : null, contact: b.contact ? String(b.contact).slice(0, 200) : null,
+      tarife: tarife, active: b.active !== false, notes: b.notes ? String(b.notes).slice(0, 2000) : null
+    });
+    auditReq(req, b.id ? 'update' : 'create', 'montaj_partener', p.id, { name: p.name });
+    res.json(p);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/montaj/parteneri/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    await db.deletePartenerMontaj(id);
+    auditReq(req, 'delete', 'montaj_partener', id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Lucrările de montaj ale unei firme + socoteala (cât încasăm, cât plătim, cât rămâne).
+app.get('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const lista = await db.listMontaje(id);
+    res.json(lista.map(function (m) {
+      return Object.assign({}, m, { socoteala: montaj.calc(m.items || []) });
+    }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    const b = req.body || {};
+    const rd = montaj.randuri(b.items);
+    if (!rd.length) return res.status(400).json({ error: 'Nicio linie de montaj — scrie măcar o lucrare cu bucăți.' });
+    const s = montaj.calc(rd);
+    const m = await db.upsertMontaj({
+      id: b.id ? parseInt(b.id, 10) : null, company_id: id,
+      contract_id: b.contract_id ? parseInt(b.contract_id, 10) : null,
+      partener_id: b.partener_id ? parseInt(b.partener_id, 10) : null,
+      data_lucrare: b.data_lucrare ? Number(b.data_lucrare) : null,
+      items: rd, total_client: s.totalClient, total_partener: s.totalPartener,
+      currency: 'RON', status: montaj.STARI.indexOf(b.status) >= 0 ? b.status : 'de_programat',
+      factura_partener: b.factura_partener ? String(b.factura_partener).slice(0, 60) : null,
+      notes: b.notes ? String(b.notes).slice(0, 2000) : null,
+      created_by: req.auth && req.auth.userId
+    });
+    // Montajul convenit intră și în ANEXA nr. 2 a contractului — dar numai partea clientului.
+    if (m && m.contract_id) {
+      try { await db.setContractMontaj(m.contract_id, montaj.facAnexaMontaj(rd, 'RON')); } catch (e) {}
+    }
+    auditReq(req, b.id ? 'update' : 'create', 'montaj', m.id, { company_id: id, total_client: s.totalClient });
+    res.json(Object.assign({}, m, { socoteala: s }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = _idCtr(req, res); if (id == null) return;
+    const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
+    await db.deleteMontaj(id);
+    auditReq(req, 'delete', 'montaj', id, { company_id: m.company_id });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Toate contractele, pentru ecranul „Contracte" din meniu — pasul dintre ofertă și client.
+// Vine și lista firmelor FĂRĂ contract: aia e gaura adevărată, nu contractele care există.
+app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const [lista, fara] = await Promise.all([db.contracteToate(req.query.limit), db.firmeFaraContract()]);
+    const acum = Date.now();
+    res.json({
+      contracte: lista.map(function (c) {
+        const firma = { is_demo: c.is_demo, cui: c.cui, address: c.address, legal_rep: c.legal_rep };
+        return Object.assign({}, c, {
+          dosar: contracte.stareDosar(firma, c, acum),
+          preaviz_pana: contracte.ultimaZiDePreaviz(c)
+        });
+      }),
+      fara_contract: fara
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // Dosarul unei firme: contractul curent + istoricul + ce lipsește.
 app.get('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -4640,6 +4860,27 @@ app.post('/api/debug/billing-run', requireAuth, requireSuperadmin, async (req, r
 // Facturare AUTOMATĂ — rulare manuală (super-admin): emite facturile lunii pt. companiile cu auto_invoice.
 app.post('/api/admin/billing/run-auto', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await billingAutoInvoiceTick()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Ceasul neplății — rulare manuală (super-admin).
+app.post('/api/admin/billing/check-neplata', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await neplataTick()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Suspendare / reactivare MANUALĂ. Ceasul e bun pentru regulă, dar excepțiile le hotărăsc oamenii:
+// un client vechi care a întârziat două zile nu trebuie oprit de un calendar, iar unul care ne-a
+// mințit poate fi oprit înainte de a 16-a zi.
+app.put('/api/companies/:id/suspend', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
+    if (co.is_demo) return res.status(400).json({ error: 'Compania demo nu se suspendă de aici.' });
+    const pornit = !!(req.body && req.body.suspend);
+    const motiv = (req.body && req.body.reason) ? String(req.body.reason).slice(0, 200) : null;
+    if (pornit && !motiv) return res.status(400).json({ error: 'Scrie motivul suspendării — rămâne scris în dosar.' });
+    await db.setCompanySuspend(id, pornit ? { at: Date.now(), reason: motiv, by: req.auth && req.auth.userId } : { at: null, reason: null, by: null });
+    _invalidateAccessCache(id);
+    auditReq(req, pornit ? 'suspend' : 'unsuspend', 'company', id, { reason: motiv });
+    res.json({ ok: true, access: await _accessStatusCached(id) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Ceasul contractelor — rulare manuală (super-admin), ca să se poată verifica fără să aștepți o zi.
 app.post('/api/admin/contracts/check-expiry', requireAuth, requireSuperadmin, async (req, res) => {
@@ -10417,6 +10658,22 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
     return res.status(400).json({ error: 'Stare necunoscută (paid|canceled)' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Amânarea scadenței unei facturi. E o înțelegere obișnuită („mai dă-mi două săptămâni"), iar
+// ceasul de neplată o respectă pe loc: numărătoarea până la suspendare pornește de la scadența
+// NOUĂ. Fără asta, singura cale de a amâna era să nu faci nimic și să suspenzi omul degeaba.
+app.put('/api/invoices/:id/due', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const inv = await db.getInvoice(id); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
+    if (inv.status === 'paid' || inv.status === 'canceled') return res.status(400).json({ error: 'Factura e închisă — scadența nu se mai schimbă.' });
+    const due = (req.body && req.body.due != null && req.body.due !== '') ? Number(req.body.due) : null;
+    if (due == null || !Number.isFinite(due)) return res.status(400).json({ error: 'Dată invalidă' });
+    await db.updateInvoice(id, { dueDate: due });
+    _invalidateAccessCache(inv.company_id);
+    auditReq(req, 'set_due', 'invoice', id, { due: due });
+    res.json({ ok: true, invoice: await db.getInvoice(id) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 // ─── e-Factura ANAF (super-admin): config + preview UBL + trimitere SPV + status. Dormant fără ANAF_EFACTURA_TOKEN. ───
 app.get('/api/efactura/config', requireAuth, requireSuperadmin, (req, res) => {
   try { const c = efactura ? efactura.cfg() : { cif: null, test: true }; res.json({ enabled: !!(efactura && efactura.enabled()), test: c.test, cif: c.cif || null }); }
@@ -11946,6 +12203,10 @@ async function start() {
   // Notificare facturare: la intrarea în grație anunță adminii companiei (verificare la pornire + orar).
   setTimeout(billingReminderTick, 30000);
   setInterval(billingReminderTick, 60 * 60 * 1000);
+  // Ceasul neplății: de patru ori pe zi. Nu o dată, fiindcă avertismentele au trepte pe zile și
+  // vrem ca ziua a 16-a să însemne ziua a 16-a, nu „când s-a nimerit să ruleze".
+  setTimeout(() => neplataTick().then(r => { if (r && (r.avertizate.length || r.suspendate.length)) console.log('[NEPLATĂ] ' + r.avertizate.length + ' avertismente, ' + r.suspendate.length + ' suspendări'); }).catch(() => {}), 150 * 1000);
+  setInterval(() => neplataTick().catch(() => {}), 6 * 60 * 60 * 1000);
   // Ceasul contractelor: o dată pe zi ajunge — un contract nu expiră între două ore. Prima
   // verificare la 2 minute după pornire, ca să nu se piardă nimic dacă serverul se repornește des.
   setTimeout(() => contractExpiryTick().then(r => { if (r && r.anuntate && r.anuntate.length) console.log('[CONTRACTE] ' + r.anuntate.length + ' contracte aproape de expirare — anunțate'); }).catch(() => {}), 120 * 1000);

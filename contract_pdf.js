@@ -108,22 +108,45 @@ function _parte(doc, eticheta, d) {
   doc.x = left;
   doc.y += 8;
 }
+// Taie un text ca să încapă într-o coloană, MĂSURÂND lățimea lui, nu ghicind după numărul de
+// litere. Fără asta, „Teltonika FMC650 · 860000000000001" se rupea pe două rânduri și strica tot
+// tabelul; iar `ellipsis` din pdfkit nu se poartă la fel pentru orice combinație de opțiuni.
+function _taie(doc, text, latime) {
+  let s = String(text == null ? '—' : text);
+  if (doc.widthOfString(s) <= latime) return s;
+  while (s.length > 1 && doc.widthOfString(s + '…') > latime) s = s.slice(0, -1);
+  return s + '…';
+}
 function _tabelAnexa(doc, anexa) {
   const { left, w } = _ST(doc);
-  const col = [w * 0.38, w * 0.19, w * 0.24, w * 0.19];
-  const cap = ['Vehicul', 'Nr. înmatriculare', 'Aparat (IMEI)', 'Abonament / lună'];
+  // Cinci coloane, fiindcă anexa trebuie să justifice prețul: un vehicul „cu CAN" costă mai mult
+  // tocmai pentru că aparatul citește date din motor. Fără coloanele astea, anexa spunea o sumă
+  // fără să spună pentru ce.
+  const col = [w * 0.23, w * 0.14, w * 0.32, w * 0.13, w * 0.18];
+  const cap = ['Vehicul', 'Nr. înmatric.', 'Aparat', 'Date motor', 'Abonament'];
+  // O celulă poate avea și un al doilea rând, mai mic (modelul sus, IMEI-ul dedesubt). IMEI-ul e
+  // numărul care identifică aparatul în contract: NU are voie să fie tăiat ca să încapă.
   function rand(valori, gros) {
-    _incape(doc, 34);
+    const cuSub = valori.some(function (v) { return v && typeof v === 'object' && v.sub; });
+    const h = cuSub ? 28 : 18;
+    _incape(doc, h + 16);
     const y = doc.y;
-    doc.font(gros ? 'Nunito-Bold' : 'Nunito').fontSize(8.5).fillColor(gros ? NEGRU : '#1f2937');
     let x = left;
     valori.forEach(function (v, i) {
-      doc.text(String(v == null ? '—' : v), x + 4, y + 5, { width: col[i] - 8, lineBreak: false, ellipsis: true, align: i === 3 ? 'right' : 'left' });
+      const t = (v && typeof v === 'object') ? v.t : v;
+      const sub = (v && typeof v === 'object') ? v.sub : null;
+      const alin = i === 4 ? 'right' : (i === 3 ? 'center' : 'left');
+      doc.font(gros ? 'Nunito-Bold' : 'Nunito').fontSize(8.5).fillColor(gros ? NEGRU : '#1f2937');
+      doc.text(_taie(doc, t, col[i] - 8), x + 4, y + 5, { width: col[i] - 8, lineBreak: false, align: alin });
+      if (sub) {
+        doc.font('Nunito').fontSize(7.5).fillColor(GRI)
+          .text(_taie(doc, sub, col[i] - 8), x + 4, y + 15, { width: col[i] - 8, lineBreak: false, align: alin });
+      }
       x += col[i];
     });
-    doc.moveTo(left, y + 18).lineTo(left + w, y + 18).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
+    doc.moveTo(left, y + h).lineTo(left + w, y + h).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
     doc.x = left;
-    doc.y = y + 22;
+    doc.y = y + h + 4;
   }
   rand(cap, true);
   const veh = (anexa && anexa.vehicles) || [];
@@ -133,11 +156,44 @@ function _tabelAnexa(doc, anexa) {
     return;
   }
   const moneda = (anexa && anexa.currency) || 'RON';
-  veh.forEach(function (v) { rand([v.name || v.imei, v.plate, v.imei, v.monthlyRON == null ? '—' : _bani(v.monthlyRON, moneda)]); });
+  veh.forEach(function (v) {
+    rand([v.name || v.imei, v.plate,
+      { t: v.gpsModel || 'model necompletat', sub: 'IMEI ' + v.imei },
+      v.can ? 'DA' : 'nu',
+      v.monthlyRON == null ? '—' : _bani(v.monthlyRON, moneda)]);
+  });
   doc.font('Nunito-Bold').fontSize(9.5).fillColor(NEGRU)
     .text('Total abonament lunar: ' + _bani(anexa.monthlyTotal, moneda) + ' (fără TVA)', left, doc.y + 4, { width: w, align: 'right' });
   doc.x = left;
   doc.y += 10;
+}
+// Tabelul montajului. Aceleași reguli ca la Anexa 1: fiecare scriere își dă poziția, textul se
+// taie măsurat. Patru coloane, fiindcă aici nu e nimic de justificat cu CAN — e o lucrare și un preț.
+function _tabelMontaj(doc, mont) {
+  const { left, w } = _ST(doc);
+  const col = [w * 0.46, w * 0.14, w * 0.20, w * 0.20];
+  const moneda = (mont && mont.currency) || 'RON';
+  function rand(valori, gros) {
+    _incape(doc, 34);
+    const y = doc.y;
+    doc.font(gros ? 'Nunito-Bold' : 'Nunito').fontSize(8.5).fillColor(gros ? NEGRU : '#1f2937');
+    let x = left;
+    valori.forEach(function (v, i) {
+      doc.text(_taie(doc, v, col[i] - 8), x + 4, y + 5, { width: col[i] - 8, lineBreak: false, align: i === 0 ? 'left' : 'right' });
+      x += col[i];
+    });
+    doc.moveTo(left, y + 18).lineTo(left + w, y + 18).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
+    doc.x = left; doc.y = y + 22;
+  }
+  rand(['Lucrare', 'Cantitate', 'Preț unitar', 'Total'], true);
+  (mont.items || []).forEach(function (r) {
+    rand([r.eticheta || r.tip, r.buc + ' ' + (r.um || 'buc'),
+      r.pretClient == null ? '—' : _bani(r.pretClient, moneda),
+      _bani(r.total, moneda)]);
+  });
+  doc.font('Nunito-Bold').fontSize(9.5).fillColor(NEGRU)
+    .text('Total montaj (cost unic): ' + _bani(mont.totalClient, moneda) + ' (fără TVA)', left, doc.y + 4, { width: w, align: 'right' });
+  doc.x = left; doc.y += 12;
 }
 function _semnaturi(doc, numePrestator, numeBeneficiar) {
   const { left, w } = _ST(doc);
@@ -247,11 +303,30 @@ function scrieContract(doc, date) {
   _p(doc, 'Modificarea listei de mai sus (adăugarea sau scoaterea unui vehicul) se face prin act adițional sau prin anexă nouă, semnată de ambele părți.');
   _semnaturi(doc, em.name, firma.name);
 
+  // ── Anexa 2: montajul, dacă s-a convenit. COST UNIC, separat de abonamentul lunar. ──
+  // Aici apare DOAR prețul către client. Cât ne cere partenerul care execută nu are ce căuta pe
+  // hârtia asta și nici nu ajunge până aici: `facAnexaMontaj` nu-l copiază.
+  const mont = contract.montaj;
+  const areMontaj = !!(mont && (mont.items || []).length);
+  if (areMontaj) {
+    doc.addPage();
+    const AM = _ST(doc);
+    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 2 — Montaj și punere în funcțiune', AM.left, doc.y, { width: AM.w });
+    doc.font('Nunito').fontSize(8.5).fillColor(GRI)
+      .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), AM.left, doc.y + 2, { width: AM.w });
+    doc.x = AM.left; doc.y += 12;
+    _p(doc, 'Montajul echipamentelor și punerea lor în funcțiune se tarifează O SINGURĂ DATĂ, la execuție, și nu face parte din abonamentul lunar din Anexa nr. 1.');
+    _tabelMontaj(doc, mont);
+    _p(doc, 'Lucrările se execută de Prestator sau prin colaboratori ai acestuia, sub răspunderea Prestatorului. Deplasările suplimentare, lucrările neprevăzute și intervențiile cerute ulterior se tarifează separat, la tarifele de mai sus.');
+    _semnaturi(doc, em.name, firma.name);
+  }
+
   // ── Anexa 2: acordul GDPR, dacă e anexă și nu act separat ──
   if (gdprAnexa) {
     doc.addPage();
     const A2 = _ST(doc);
-    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 2 — Acord de prelucrare a datelor cu caracter personal', A2.left, doc.y, { width: A2.w });
+    // Numărul anexei se mută dacă există montaj: GDPR-ul e mereu ULTIMA anexă.
+    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. ' + (areMontaj ? 3 : 2) + ' — Acord de prelucrare a datelor cu caracter personal', A2.left, doc.y, { width: A2.w });
     doc.font('Nunito').fontSize(8.5).fillColor(GRI)
       .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), A2.left, doc.y + 2, { width: A2.w });
     doc.x = A2.left; doc.y += 12;

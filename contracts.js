@@ -168,6 +168,11 @@ function facAnexa(vehicule, pret) {
   const lista = (vehicule || []).map(function (v) {
     return {
       imei: v.imei, name: v.name || v.imei, plate: v.plate || null,
+      // Modelul aparatului și dacă citește date din motor (CAN) fac parte din ÎNȚELEGERE, nu din
+      // starea de azi a flotei: prețul e mai mare tocmai fiindcă e cu CAN, deci anexa semnată
+      // trebuie să spună asta. Se îngheață aici, odată cu prețul.
+      gpsModel: v.gpsModel || v.gps_model || null,
+      can: v.can === true || v.can === false ? v.can : (v.bill_can === true),
       monthlyRON: v.monthlyRON == null ? null : Number(v.monthlyRON)
     };
   });

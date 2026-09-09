@@ -2811,6 +2811,24 @@
     .raco .raco-urmeaza-b a.rax-btn { text-decoration: none; }
     .raco .raco-pret { width: 110px; flex: 0 0 110px; min-width: 0; text-align: right; }
     .raco .raco-anexa-t { font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
+    /* Montajul: patru coloane — lucrarea, cantitatea, prețul CĂTRE CLIENT și costul DE LA PARTENER.
+       Ultima coloană nu ajunge niciodată pe hârtia clientului; e aici ca să se vadă marja. */
+    .raco .raco-mont-cap, .raco .raco-mont-r {
+      display: grid; grid-template-columns: 1fr 78px 96px 96px; gap: 8px; align-items: center;
+    }
+    .raco .raco-mont-cap {
+      font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px;
+      color: var(--text-muted); padding: 8px 0 6px; border-bottom: 1.5px solid var(--border); margin-bottom: 4px;
+    }
+    .raco .raco-mont-cap > span:not(:first-child) { text-align: right; }
+    .raco .raco-mont-r { padding: 5px 0; font-size: 12.5px; color: var(--text-secondary); }
+    .raco .raco-mont-r em { font-style: normal; color: var(--text-muted); font-size: 11px; }
+    .raco .raco-mont-r .rax-field { width: 100%; text-align: right; padding: 8px 9px; }
+    @media (max-width: 620px) {
+      .raco .raco-mont-cap { display: none; }
+      .raco .raco-mont-r { grid-template-columns: 1fr 1fr 1fr; }
+      .raco .raco-mont-r > span { grid-column: 1 / -1; font-weight: 700; color: var(--text-primary); }
+    }
     .raco label.rax-btn { cursor: pointer; }
     @media (max-width: 640px) {
       .raco .rax-row2, .raco .raco-2 { grid-template-columns: 1fr; }

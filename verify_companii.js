@@ -47,7 +47,7 @@ T('manageCompanies e doar pe superadmin', rolCu.length === 1 && rolCu[0] === 'su
 
 // În interfață: fila se refuză singură dacă nu ai dreptul (nu se bazează doar pe meniu).
 T('fila „companies" din panou verifică dreptul înainte să se deschidă',
-  /name === 'companies' \|\| name === 'accounts'\) && !can\('manageCompanies'\)/.test(html));
+  /name === 'companies' \|\| name === 'accounts'[^)]*\) && !can\('manageCompanies'\)/.test(html));
 T('și butonul din meniu verifică același drept',
   /function goSistem\(tab\) \{ if \(\(tab === 'companies'[^)]*\) && !can\('manageCompanies'\)\) return;/.test(html));
 
@@ -58,7 +58,10 @@ T('găsesc funcția care desenează starea', a1 > 0, 'a1=' + a1);
 if (a1 > 0) {
   const cel = new Function(html.slice(a1, a2) + '\n; return _raxAccessCell;')();
   const stare = (s, until) => cel({ access: { status: s, access_until: until } });
-  T('„expirat" iese roșu (pastila bad)', /raco-pill bad/.test(stare('expired')) && /expirat/.test(stare('expired')), stare('expired'));
+  // De la 09.09, un client oprit se vede ca SUSPENDAT, cu motivul (abonament / neplată / oprit de
+  // noi) — trei cauze care se rezolvă altfel. Roșul rămâne, cuvântul „expirat" nu mai spunea tot.
+  T('un client oprit iese roșu', /raco-pill bad/.test(stare('expired')), stare('expired'));
+  T('și scrie că e SUSPENDAT, cu motivul', /suspendat/.test(stare('expired')), stare('expired'));
   T('„grație" iese portocaliu (pastila warn)', /raco-pill warn/.test(stare('grace')), stare('grace'));
   T('„activ" iese verde (pastila ok)', /raco-pill ok/.test(stare('active')), stare('active'));
   T('„nelimitat" rămâne neutru', /class="raco-pill "/.test(stare('unlimited')), stare('unlimited'));
@@ -97,14 +100,16 @@ T('regulile există în CSS-ul aplicației, nu împrăștiate în pagină', /\.r
 T('câmpurile au aceeași formă ca în Setări (1,5px + inel la focus)',
   /\.raco \.rax-field \{[^}]*1\.5px solid var\(--border\)/.test(css) &&
   /\.raco \.rax-field:focus \{[^}]*box-shadow: 0 0 0 3px/.test(css));
-const carduri = [...html.matchAll(/<section class="raco-card">/g)].length;
+// Numărăm doar cartonașele din MARKUP-ul ecranului Companii. Ecranul „Contracte" își construiește
+// cartonașul din JavaScript, ca text între ghilimele — de-aia cerem să NU fie precedat de ghilimea.
+const carduri = [...html.matchAll(/(?<!')<section class="raco-card">/g)].length;
 T('ecranul e împărțit în patru cartonașe', carduri === 4, carduri + ' cartonașe');
-const capete = [...html.matchAll(/<div class="raco-h"><i class="fas ([a-z-]+)"><\/i> ([^<]+)</g)].map(m => m[2].trim());
+const capete = [...html.matchAll(/(?<!')<div class="raco-h"><i class="fas ([a-z-]+)"><\/i> ([^<]+)</g)].map(m => m[2].trim());
 T('fiecare cartonaș are titlul lui', capete.length === 4, capete.join(' | '));
 // Emoji-ul 🔎 mai trăiește pe alte ecrane ale noastre (Facturare, Control costuri, Dispozitive,
 // Rapoarte) — alea nu au fost atinse încă. Aici verificăm doar cele două căutări din Companii.
 const cautari = [...html.matchAll(/<input class="rax-field" id="(rax-co-search|rax-move-search)" placeholder="([^"]*)"/g)];
-T('ambele căutări din Companii sunt în cutia cu lupă', [...html.matchAll(/class="raco-search"/g)].length === 2);
+T('ambele căutări din Companii sunt în cutia cu lupă', [...html.matchAll(/(?<!')<div class="raco-search">/g)].length === 2);
 T('și niciuna nu mai are emoji în text', cautari.length === 2 && cautari.every(m => !/🔎/.test(m[2])),
   cautari.map(m => m[1] + ': ' + m[2]).join(' | '));
 

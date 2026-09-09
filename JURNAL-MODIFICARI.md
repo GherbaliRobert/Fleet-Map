@@ -58,6 +58,117 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Anexa completă, suspendarea pentru neplată, meniul pe flux și montajul
+
+Patru lucruri cerute de Alin (09.09), în ordinea în care le-a vrut: 1, 4, 3, 2.
+
+---
+
+#### 1. Anexa spune acum PENTRU CE plătește clientul
+
+Anexa nr. 1 avea *Vehicul · Nr. înmatriculare · IMEI · Abonament*. Nu scria ce aparat e montat și
+nici dacă citește date din motor — deși prețul e mai mare tocmai fiindcă e cu CAN. Adică anexa
+spunea o sumă fără să spună pentru ce.
+
+Acum are cinci coloane: **Vehicul · Nr. înmatric. · Aparat (model + IMEI) · Date motor · Abonament**.
+Modelul și CAN-ul se **îngheață** în anexă la salvare: dacă mâine schimbi aparatul, hârtia semnată
+rămâne ce s-a semnat. IMEI-ul stă pe rândul lui, sub model, ca să nu fie tăiat — e numărul care
+identifică aparatul într-un contract, nu poate fi scurtat ca să încapă.
+
+---
+
+#### 4. Neplata: patru avertismente, apoi accesul se taie
+
+**Cum e regula acum, cap-coadă:** se emite factura → scadența e la termenul firmei (îl pui la 30 de
+zile) → dacă trece neplătită, încep **15 zile de grație** → în **ziua a 16-a, accesul se suspendă**
+→ când marchezi plata, revine pe loc.
+
+**Avertismentele, patru, prin email ȘI în aplicație:**
+
+| Ziua de la scadență | Ce primește clientul |
+|---|---|
+| **0** | „Factura X a depășit termenul. Aveți 15 zile." |
+| **5** | reamintire |
+| **10** | „Mai aveți 5 zile." |
+| **13** | ultimul avertisment, cu data exactă a suspendării |
+| **16** | **suspendat** — plus un anunț separat către noi |
+
+Patru, nu mai multe: peste asta oamenii încep să le ignore, iar noi ne obișnuim să le vedem.
+
+**Ce am găsit făcut deja:** jumătate din mecanism exista — blocarea la expirare era pusă peste tot
+(aplicație, login web, login pe telefon, conexiunea live). Ce lipsea era ca ceasul să pornească **de
+la factură**, nu de la abonament. Și am găsit o ușă din dos: **autentificarea se uita doar la
+abonament**, deci un client suspendat pentru neplată se putea totuși loga. Acum toate căile trec
+prin aceeași verificare, într-un singur loc.
+
+**Mesajul, exact cum l-ai cerut:** „Abonament suspendat pentru neplată. Contactați furnizorul."
+Scris o singură dată în cod, folosit peste tot.
+
+**Trei lucruri gândite dinadins:**
+- **Aparatele transmit mai departe și datele se strâng.** Se blochează doar intrarea în cont. Dacă
+  plătește peste o săptămână, își găsește tot istoricul. Altfel l-am pedepsi pe șofer pentru o
+  factură a patronului.
+- **Contează cea mai VECHE factură restantă.** Altfel un rău-platnic ar câștiga alte 15 zile la
+  fiecare factură nouă și n-ar fi suspendat niciodată.
+- **Butoane manuale pentru noi:** „Suspendă acum" și „Reactivează", cu **motiv obligatoriu** care
+  rămâne scris în dosar și în jurnalul de audit. Regula e bună, dar excepțiile le hotărăsc oamenii.
+
+Plus, apărut pe drum fiindcă era nevoie: **amânarea scadenței unei facturi**. E o înțelegere
+obișnuită („mai dă-mi două săptămâni"), iar ceasul o respectă pe loc.
+
+---
+
+#### 3. Meniul urmează fluxul
+
+**Business** e acum, în ordinea în care se întâmplă: **Ofertare Live → Contracte → Companii** →
+Facturare → Conturi & Abonamente → Dashboard → Control costuri → Cereri demo. „Companii" a plecat din
+Gestiune; acolo au rămas aparatele și oamenii.
+
+**„Contracte" e un ecran nou**: toate contractele, de la toți clienții, cu filtre după ce te întrebi
+de fapt — *De semnat · Dosar incomplet · Expiră curând · În vigoare · Încheiate* — plus căutare după
+client, număr sau CUI. Sus de tot, **firmele care n-au niciun contract**: aia e gaura adevărată.
+
+Iconița grupei **Gestiune** s-a schimbat din clădire în **depozit**. Clădirea avea sens cât „Companii"
+era în grupă; după mutare rămânea o dublură peste două grupe. (Proba de iconițe a prins-o singură.)
+
+---
+
+#### 2. Montajul: două prețuri pe aceeași lucrare
+
+**Cum merge afacerea:** montajul îl vindem noi, ca RA Tracks. Îl execută un partener. Partenerul ne
+facturează pe noi, noi facturăm clientul, iar clientul nu află niciodată cine a montat.
+
+- **Parteneri de montaj** — o listă mică (firmă, CUI, contact, tarifele lui), în ecranul Contracte.
+  Tarifele se propun singure la fiecare lucrare.
+- **Lucrarea de montaj**, în fila Contract a clientului: ce s-a montat, câte bucăți, **prețul către
+  client** și **costul de la partener**, pe același rând. **Marja se calculează**, nu se scrie — și
+  se vede cât scrii, roșu dacă iese negativă.
+- **Anexa nr. 2 din contract = Montajul**, cost unic, separat de abonamentul lunar. GDPR-ul s-a mutat
+  la Anexa nr. 3.
+- **Costul partenerului nu ajunge NICIODATĂ pe hârtia clientului.** Anexa se face printr-o singură
+  funcție, care copiază doar coloana clientului; în PDF nu există niciun cuvânt despre partener, iar
+  contractul scrie doar că lucrările se fac „de Prestator sau prin colaboratori ai acestuia".
+
+---
+
+**Un defect găsit pe drum, fără legătură cu cererile:** ecranul **Istoric traseu** se strica dacă
+harta nu apucase să pornească (internet slab, Leaflet neîncărcat) — subtitlul cu numele vehiculului
+căuta într-o listă care încă nu exista. Acum, fără hartă, cade frumos pe textul din listă.
+
+**Ce am lăsat în urmă:** două probe noi — `verify_neplata.js` (64 de verificări) și
+`verify_montaj.js` (47) — plus creșteri în cele existente: **449 de verificări în total**, toate în
+CI. Peste ele, **65 de probe în aplicația pornită**: drumul întreg (ofertă → client → contract →
+anexă cu model și CAN → montaj cu marjă → PDF cu trei anexe), suspendarea reală (clientul chiar nu
+mai intră, plătește, intră iar), și verticala clientului neatinsă de mutările din meniu.
+
+- **Ce am schimbat:** anexa spune ce aparat și ce date, neplata suspendă singură după 15 zile de
+  avertismente, meniul urmează fluxul, montajul are partener și marjă.
+- **Ce vede fondatorul:** un ecran cu toate contractele, marja pe fiecare montaj, și butoane de
+  suspendare cu motiv.
+- **Ce vede clientul:** avertismente clare înainte de suspendare (email + în aplicație), iar dacă
+  ajunge acolo, un mesaj care spune limpede de ce. Partenerul de montaj — niciodată.
+
+
 ### FONDATOR · Ceasul contractelor și legătura ofertă → client
 
 Alin, 09.09: *„da, aplică și astea"* — cele două idei rămase din discuția de ieri.
