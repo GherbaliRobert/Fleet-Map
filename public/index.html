@@ -18960,21 +18960,57 @@ const pozitii = await r.json();</code></pre>
     // adoptat. Se completează în fila „Contract" a firmei, după adopție, și abia atunci are sens.
     var _coNou = null;
     var CO_PASI = ['Firma', 'Contractul', 'Administratorul'];
-    function coNouStart() {
+    // Ofertele făcute în Ofertare Live, ca să nu se retasteze nimic. O ofertă care a devenit deja
+    // contract nu mai apare aici — se vede legătura pe ecranul de oferte.
+    var _coOferte = null;
+    function coOferteAsigura(dupa) {
+      if (_coOferte) { if (dupa) dupa(); return; }
+      _coOferte = [];
+      fetch('/api/admin/offers', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (l) { _coOferte = (Array.isArray(l) ? l : []).filter(function (o) { return !o.contract_id; }); if (dupa) dupa(); })
+        .catch(function () { if (dupa) dupa(); });
+    }
+    function coNouStart(dinOferta) {
       _coNou = {
-        pas: 1, gata: null, lucrez: false,
+        pas: 1, gata: null, lucrez: false, offerId: null, offerTotal: null,
         firma: { cui: '', name: '', reg_com: '', address: '', contact_email: '', phone: '', vat_payer: true, anaf: null },
         contract: { number: '', signed_at: '', start_at: '', months: '12', auto_renew: true, notice_days: '30',
           rep_name: '', rep_role: 'Administrator', our_name: '', our_role: 'Administrator', gdpr_kind: 'anexa' },
         admin: { username: '' }
       };
+      if (dinOferta) coOferteAsigura(function () { _coIaOferta(dinOferta); });
       coNouRandeaza();
     }
+    // Umple datele firmei din ofertă. Contactul din ofertă e un singur câmp („email / telefon"),
+    // deci îl punem unde se potrivește: cu @ → email, altfel telefon.
+    function _coIaOferta(id) {
+      var o = (_coOferte || []).filter(function (x) { return String(x.id) === String(id); })[0];
+      if (!o || !_coNou) return;
+      _coNou.offerId = o.id;
+      _coNou.offerTotal = Number(o.monthly_total) || 0;
+      var f = _coNou.firma;
+      if (o.client_name) f.name = o.client_name;
+      if (o.client_cui) f.cui = o.client_cui;
+      var ct = String(o.client_contact || '').trim();
+      if (ct) { if (ct.indexOf('@') >= 0) f.contact_email = ct; else f.phone = ct; }
+      // Durata contractului a fost deja discutată în ofertă — o luăm de acolo.
+      var luni = o.config && o.config.cfg && o.config.cfg.contract;
+      if (luni && ['12', '24', '36'].indexOf(String(parseInt(luni))) >= 0) _coNou.contract.months = String(parseInt(luni));
+      coNouRandeaza();
+    }
+    window.coNouIaOferta = function (id) { if (!id) { _coNou.offerId = null; _coNou.offerTotal = null; coNouRandeaza(); return; } _coIaOferta(id); };
+    // Apelat din ecranul „Ofertare Live": sari în Companii cu traseul deja pornit pe oferta aia.
+    window.coNouDinOferta = function (offerId) {
+      if (window.raxAdminTab) raxAdminTab('companies');
+      setTimeout(function () { coNouStart(offerId); }, 250);
+    };
     function coNouRandeaza() {
       var box = document.getElementById('rax-conou'); if (!box) return;
       box.innerHTML = _coNou ? coNouHtml() : coNouInchisHtml();
-      // Lista noastră de semnatari vine de la server; când ajunge, redesenăm o singură dată.
+      // Lista noastră de semnatari și ofertele vin de la server; când ajung, redesenăm o dată.
       if (_raxNoi === null) raxNoiAsigura(function () { coNouRandeaza(); });
+      if (_coOferte === null) coOferteAsigura(function () { coNouRandeaza(); });
     }
     window.coNouRandeaza = coNouRandeaza;
     function coNouInchisHtml() {
@@ -19026,6 +19062,19 @@ const pozitii = await r.json();</code></pre>
       var h = _coPasi(s.pas);
       if (s.pas === 1) {
         var a = s.firma.anaf;
+        // Dacă există oferte nelegate încă de niciun contract, prima întrebare e „de la care pornim?".
+        // Alegi oferta și datele clientului, plus durata și prețul convenit, vin singure.
+        var lib = (_coOferte || []);
+        if (lib.length) {
+          h += '<label class="raco-f"><span>Pornește de la o ofertă</span><select class="rax-field" id="cn-of" onchange="coNouIaOferta(this.value)">' +
+            '<option value="">— fără ofertă, scriu datele de mână —</option>' +
+            lib.map(function (o) {
+              return '<option value="' + o.id + '"' + (String(s.offerId) === String(o.id) ? ' selected' : '') + '>' +
+                esc(o.client_name || o.name || ('#' + o.id)) + ' · ' + Number(o.monthly_total || 0).toFixed(0) + ' ' + esc(o.currency || 'RON') + '/lună</option>';
+            }).join('') + '</select></label>' +
+            (s.offerId ? '<div class="raco-msg" style="margin:-6px 0 12px;"><span style="color:var(--accent)"><i class="fas fa-check"></i> Datele clientului și prețul de ' +
+              Number(s.offerTotal || 0).toFixed(0) + ' lei/lună vin din ofertă — nu le mai scrii încă o dată.</span></div>' : '');
+        }
         h += '<div class="raco-2">' +
             '<label class="raco-f"><span>CUI / CIF</span><div class="raco-cui">' +
               '<input class="rax-field" id="cn-cui" value="' + esc(s.firma.cui) + '" placeholder="ex. RO12345678">' +
@@ -19087,7 +19136,8 @@ const pozitii = await r.json();</code></pre>
       return '<div class="raco-gata"><div class="raco-gata-t"><i class="fas fa-circle-check"></i> ' + esc(g.name) + ' e deschis</div>' +
         '<ul class="raco-gata-l">' +
           '<li>Firma e creată' + (g.cui ? ', cu CUI ' + esc(g.cui) : '') + '.</li>' +
-          '<li>' + (g.contract ? 'Contractul <strong>' + esc(g.contract) + '</strong> e salvat ca ciornă.' : 'Fără contract încă.') + '</li>' +
+          '<li>' + (g.contract ? ('Contractul <strong>' + esc(g.contract) + '</strong> e salvat, în lucru.' +
+            (g.offerTotal ? ' Prețul din ofertă (' + Number(g.offerTotal).toFixed(0) + ' lei/lună) e trecut în anexă.' : '')) : 'Fără contract încă.') + '</li>' +
           '<li>' + (g.admin ? 'Invitația a plecat la <strong>' + esc(g.admin) + '</strong> — își pune singur parola.' : 'Fără administrator încă.') + '</li>' +
         '</ul>' +
         '<div class="raco-sub" style="margin:10px 0 12px;">Mai departe: adoptă aparatele clientului, apoi treci-le în anexa contractului și descarcă ciorna de semnat.</div>' +
@@ -19156,9 +19206,9 @@ const pozitii = await r.json();</code></pre>
           body: JSON.stringify({ cui: s.firma.cui, reg_com: s.firma.reg_com, address: s.firma.address,
             contact_email: s.firma.contact_email, phone: s.firma.phone }) }).catch(function () {});
         var c = s.contract, contractId = null, numar = null;
-        if (c.rep_name || c.signed_at || c.start_at || c.number) {
+        if (c.rep_name || c.signed_at || c.start_at || c.number || s.offerId) {
           var ct = await fetch('/api/companies/' + co.id + '/contract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-            body: JSON.stringify({ number: c.number || null, status: 'ciorna',
+            body: JSON.stringify({ number: c.number || null, status: 'ciorna', offer_id: s.offerId || null,
               signed_at: _zi(c.signed_at), start_at: _zi(c.start_at), months: c.months === '' ? null : parseInt(c.months),
               auto_renew: !!c.auto_renew, notice_days: parseInt(c.notice_days) || 30,
               client_rep: { name: c.rep_name, role: c.rep_role }, our_rep: { name: c.our_name, role: c.our_role },
@@ -19174,7 +19224,9 @@ const pozitii = await r.json();</code></pre>
           else if (a && a.warning) { _coMsg(a.warning, true); }
           else { adminOk = s.admin.username; }
         }
-        s.gata = { id: co.id, name: s.firma.name, cui: s.firma.cui, contract: numar, contractId: contractId, admin: adminOk };
+        s.gata = { id: co.id, name: s.firma.name, cui: s.firma.cui, contract: numar, contractId: contractId, admin: adminOk,
+          offerTotal: s.offerId ? s.offerTotal : null };
+        _coOferte = null;  // o ofertă tocmai a devenit client — lista trebuie recitită
         s.lucrez = false;
         coNouRandeaza();
         raxLoadCompanies();
@@ -19625,11 +19677,18 @@ const pozitii = await r.json();</code></pre>
     }
     function _raxCtrAnexaHtml() {
       var c = _raxCtr.contract, veh = _raxCtr.vehicles;
-      if (!veh.length) return '<div class="rax-co-meta" style="padding:14px 0;">Firma n-are încă niciun aparat adoptat. Adoptă-le întâi din „Vehicule neasignate", apoi treci-le aici.</div>';
+      // Prețul convenit în ofertă ajunge aici la crearea contractului, chiar dacă încă nu există
+      // niciun aparat. Se vede, ca să știi de la ce ai pornit când completezi anexa.
+      var dinOferta = (c.annex && Number(c.annex.monthlyTotal) > 0 && !((c.annex.vehicles || []).length))
+        ? '<div class="raco-msg" style="margin:-4px 0 10px;"><span style="color:var(--accent)"><i class="fas fa-tag"></i> Preț convenit: <strong>' +
+          Number(c.annex.monthlyTotal).toFixed(0) + ' ' + esc(c.annex.currency || 'RON') + '/lună</strong> — venit din ofertă. Se recalculează din rândurile de mai jos când bifezi aparatele.</span></div>'
+        : '';
+      if (!veh.length) return dinOferta + '<div class="rax-co-meta" style="padding:14px 0;">Firma n-are încă niciun aparat adoptat. Adoptă-le întâi din „Vehicule neasignate", apoi treci-le aici.</div>';
+      if (dinOferta) { /* lista de mai jos preia ștafeta */ }
       var inAnexa = {};
       ((c.annex && c.annex.vehicles) || []).forEach(function (v) { inAnexa[v.imei] = v; });
       var gol = !Object.keys(inAnexa).length;
-      return '<div id="ct-anexa">' + veh.map(function (v) {
+      return dinOferta + '<div id="ct-anexa">' + veh.map(function (v) {
         var a = inAnexa[v.imei];
         var bifat = gol ? false : !!a;
         var pret = a && a.monthlyRON != null ? a.monthlyRON : _raxCtrPretSugerat(v);
@@ -21036,7 +21095,15 @@ const pozitii = await r.json();</code></pre>
         rows.map(function (o) {
           var hasAi = !!((o.config && o.config.cfg && o.config.cfg.aiA));
           var applyBtn = hasAi ? ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;color:var(--accent);" onclick="raxOfApply(' + o.id + ')" title="Aplică pachetul RA Insight pe o companie"><i class="fas fa-wand-magic-sparkles"></i></button>' : '';
-          return '<tr><td><b>' + esc(o.name || '—') + '</b>' + (hasAi ? ' <span style="font-size:9.5px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;vertical-align:middle;">AI</span>' : '') + '</td><td>' + esc(o.client_name || '—') + '</td><td class="num"><b>' + Number(o.monthly_total || 0).toFixed(0) + ' ' + esc(o.currency || 'RON') + '</b></td><td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;"><button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button>' + applyBtn + ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
+          // O ofertă e făcută ca să devină client. Dacă a devenit, se vede și duci direct în dosarul
+          // lui; dacă nu, un buton deschide traseul „client nou" cu datele ofertei deja puse.
+          var devenit = !!o.contract_id;
+          var ofBtn = devenit
+            ? ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;color:var(--accent);" onclick="raxOpenCompanyDetail(' + o.company_id + ', \'contract\')" title="Deschide dosarul clientului"><i class="fas fa-file-signature"></i></button>'
+            : ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="coNouDinOferta(' + o.id + ')" title="Deschide un client pornind de la oferta asta — datele și prețul vin singure"><i class="fas fa-user-plus"></i></button>';
+          return '<tr><td><b>' + esc(o.name || '—') + '</b>' + (hasAi ? ' <span style="font-size:9.5px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;vertical-align:middle;">AI</span>' : '') +
+            (devenit ? '<br><span style="font-size:10px;color:var(--accent);font-weight:700;"><i class="fas fa-check"></i> a devenit client</span>' : '') +
+            '</td><td>' + esc(o.client_name || '—') + '</td><td class="num"><b>' + Number(o.monthly_total || 0).toFixed(0) + ' ' + esc(o.currency || 'RON') + '</b></td><td style="color:var(--text-muted);font-size:11px;">' + _costFmtD(o.created_at) + '</td><td style="white-space:nowrap;text-align:right;">' + ofBtn + '<button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfLoad(' + o.id + ')" title="Încarcă / editează"><i class="fas fa-pen"></i></button>' + applyBtn + ' <button class="rax-btn" style="padding:4px 8px;font-size:11px;" onclick="raxOfDelete(' + o.id + ')" title="Șterge"><i class="fas fa-trash"></i></button></td></tr>';
         }).join('') + '</tbody></table>';
     };
     window.raxOfLoad = function (id) {

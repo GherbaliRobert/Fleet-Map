@@ -939,6 +939,12 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_contracts_company ON contracts(company_id, created_at DESC)`);
+    // Legătura ofertă → client → contract. Până acum erau trei lumi separate: făceai oferta în
+    // Ofertare Live, apoi retastai tot în firma nouă, apoi iar în contract. Coloanele astea țin
+    // minte în ce s-a transformat o ofertă, ca să nu mai scrii nimic de două ori și ca să se vadă
+    // pe listă care ofertă a devenit client și care încă așteaptă.
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS company_id INTEGER`);
+    await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS contract_id INTEGER`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_demoreq_created ON demo_requests(created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_demoreq_email ON demo_requests(email, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id)`);
@@ -1733,6 +1739,25 @@ async function contractsByCompany() {
   const m = {};
   for (const row of r.rows) m[row.company_id] = row;
   return m;
+}
+
+// Contractele pe care le urmărim pentru expirare: doar cele în vigoare, la firme adevărate.
+// NU filtrăm aici după „se reînnoiește singur" sau după câte zile au rămas — regula aia stă în
+// contracts.js și e aceeași peste tot. Aici doar scoatem materia primă, cu numele firmei lângă.
+async function contracteInVigoare() {
+  const r = await pool.query(
+    `SELECT c.id, c.company_id, c.number, c.status, c.start_at, c.months, c.end_at, c.auto_renew,
+            c.notice_days, co.name AS company_name, co.contact_email
+       FROM contracts c JOIN companies co ON co.id = c.company_id
+      WHERE c.status = 'activ' AND COALESCE(co.is_demo, false) = false`);
+  return r.rows;
+}
+// Leagă o ofertă de firma și contractul în care s-a transformat.
+async function legOferta(id, leg) {
+  const r = await pool.query(
+    'UPDATE offers SET company_id = $2, contract_id = $3, updated_at = $4 WHERE id = $1 RETURNING *',
+    [id, leg.company_id == null ? null : leg.company_id, leg.contract_id == null ? null : leg.contract_id, Date.now()]);
+  return r.rows[0] || null;
 }
 
 async function getCompanyBySlug(slug) {
@@ -3960,6 +3985,7 @@ module.exports = {
   listOffers, getOfferById, createOffer, updateOffer, deleteOffer,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,
   updateContract, setContractFile, deleteContract, nextContractNumber, contractsByCompany,
+  contracteInVigoare, legOferta,
   createDemoRequest, listDemoRequests, getDemoRequestById, updateDemoRequest, deleteDemoRequest, countDemoRequestsByEmail,
   setUserAccessUntil, listUsersByCompany, countActiveDemoUsers,
   getCompanyImeis, getCompanyActiveImeis, setDeviceCompany, adoptDevice, setUserCompany, setDriverCompany, getDriverById, getUnassignedDevices, getRowCompany,

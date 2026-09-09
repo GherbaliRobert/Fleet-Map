@@ -245,6 +245,59 @@ T('anexa GDPR dispare dacă acordul e act separat', /const gdprAnexa = !\(contra
 T('datele noastre vin din „Date emitent", nu scrise a doua oară',
   /invoice_issuer/.test(server) && /const emitent = \(\(await getSystemSettings\(\)\)\.invoice_issuer\) \|\| \{\};/.test(server));
 
+sect('7b. Ceasul care anunță contractele aproape de capăt');
+// Alin, 08.09: „o alertă cu 60 de zile înainte de expirarea contractelor care nu se reînnoiesc
+// singure". Regula: se anunță DOAR contractele în vigoare, cu termen, care se opresc singure la
+// data aia. Cele care se prelungesc automat nu sunt un eveniment — acolo n-ai ce face.
+const CT = (schimb) => Object.assign({ status: 'activ', auto_renew: false, notice_days: 30,
+  start_at: start, months: 12, end_at: null }, schimb);
+const anunt = (schimb, acum) => C.deAnuntat(CT(schimb), acum || ACUM);
+T('la 30 de zile de capăt, fără reînnoire → se anunță', !!anunt({ end_at: ACUM + 30 * ZI }));
+T('și spune în câte zile', anunt({ end_at: ACUM + 30 * ZI }).zileRamase === 30, String(anunt({ end_at: ACUM + 30 * ZI }).zileRamase));
+T('la 90 de zile e prea devreme, nu deranjează', anunt({ end_at: ACUM + 90 * ZI }) === null);
+T('exact la 60 de zile se anunță (pragul e inclusiv)', !!anunt({ end_at: ACUM + 60 * ZI }));
+T('un contract care SE REÎNNOIEȘTE singur nu sună niciodată',
+  anunt({ end_at: ACUM + 10 * ZI, auto_renew: true }) === null);
+T('un contract nesemnat nu sună', anunt({ end_at: ACUM + 10 * ZI, status: 'ciorna' }) === null);
+T('un contract încheiat nu mai sună', anunt({ end_at: ACUM + 10 * ZI, status: 'incheiat' }) === null);
+T('un contract pe durată nedeterminată nu are ce anunța',
+  anunt({ end_at: null, months: null }) === null);
+T('un contract deja expirat se anunță, marcat ca trecut',
+  anunt({ end_at: ACUM - 3 * ZI }) && anunt({ end_at: ACUM - 3 * ZI }).trecut === true);
+T('anunțul spune și ultima zi de preaviz', typeof anunt({ end_at: ACUM + 30 * ZI }).preavizPana === 'number');
+T('și dacă termenul de preaviz a trecut deja', anunt({ end_at: ACUM + 10 * ZI }).preavizTrecut === true);
+T('la 45 de zile, preavizul de 30 încă nu a trecut', anunt({ end_at: ACUM + 45 * ZI }).preavizTrecut === false);
+// Pe server: anunțul e pentru NOI, sună o dată per termen, și nu bate la ușa clientului.
+T('serverul are ceasul contractelor', /async function contractExpiryTick\(\)/.test(server));
+T('sună o singură dată per contract și per termen (cheia ține data)',
+  /const cheie = 'contract_expira:' \+ c\.id \+ ':' \+ a\.sfarsit;/.test(server) &&
+  /await db\.notificationKeyExists\(cheie/.test(server));
+T('anunțul merge la super-admini, nu în compania clientului',
+  /type: 'contract_expira'[\s\S]{0,200}companyId: null, userId: null/.test(server) &&
+  /u\.role === 'superadmin'/.test(server));
+T('un contract deja expirat e anunțat mai tare (critical)', /severity: a\.trecut \? 'critical' : 'warning'/.test(server));
+T('ceasul bate zilnic, nu la fiecare minut', /setInterval\(\(\) => contractExpiryTick\(\)\.catch\(\(\) => \{\}\), 24 \* 60 \* 60 \* 1000\)/.test(server));
+T('companiile demo nu intră în ceas', /WHERE c\.status = 'activ' AND COALESCE\(co\.is_demo, false\) = false/.test(dbjs));
+T('se poate rula și manual, ca să nu aștepți o zi',
+  /app\.post\('\/api\/admin\/contracts\/check-expiry', requireAuth, requireSuperadmin/.test(server));
+
+sect('7c. Oferta se transformă în client, fără să retastezi nimic');
+T('oferta ține minte în ce s-a transformat',
+  /ALTER TABLE offers ADD COLUMN IF NOT EXISTS company_id INTEGER/.test(dbjs) &&
+  /ALTER TABLE offers ADD COLUMN IF NOT EXISTS contract_id INTEGER/.test(dbjs));
+T('serverul leagă oferta de firmă și de contract la creare',
+  /await db\.legOferta\(oferta\.id, \{ company_id: id, contract_id: c\.id \}\)/.test(server));
+T('prețul din ofertă intră în anexa contractului',
+  /date\.annex = contracte\.facAnexa\(\[\], \{ monthlyTotal: Number\(oferta\.monthly_total\)/.test(server));
+T('dar aparatele NU vin din ofertă (acolo sunt doar numere)',
+  /Aparatele NU vin din ofertă/.test(server));
+T('traseul „client nou" poate porni dintr-o ofertă', /window\.coNouDinOferta = function \(offerId\)/.test(html));
+T('și trimite oferta mai departe la crearea contractului', /offer_id: s\.offerId \|\| null/.test(html));
+T('ofertele deja devenite contract nu se mai propun a doua oară',
+  /\.filter\(function \(o\) \{ return !o\.contract_id; \}\)/.test(html));
+T('pe lista de oferte se vede care a devenit client', /a devenit client/.test(html));
+T('și duce direct în dosarul lui', /onclick="raxOpenCompanyDetail\(' \+ o\.company_id \+ ', \\'contract\\'\)/.test(html));
+
 sect('8. Aliniamentul contractului — fiecare scriere își spune poziția');
 // DEFECTUL GĂSIT DE ALIN, 08.09, și motivul pentru care proba asta există:
 // pdfkit ȚINE MINTE ultima poziție scrisă. Blocul părților scria valorile la x = margine + 106;

@@ -135,6 +135,33 @@ function ultimaZiDePreaviz(contract) {
   return Number(sfarsit) - zile * ZI;
 }
 
+// Trebuie anunțat cineva că un contract se apropie de capăt?
+//
+// DA doar pentru contractele care sunt în vigoare, au un termen și NU se reînnoiesc singure — alea
+// se opresc pur și simplu la data respectivă, iar dacă nimeni nu bagă de seamă, rămâi cu un client
+// care folosește platforma fără act. Cele care se prelungesc automat nu sunt un eveniment: acolo nu
+// e nimic de făcut, deci n-are rost să sune ceasul.
+//
+// Întoarce null (nimic de anunțat) sau datele anunțului. Funcție curată: nu știe de notificări.
+function deAnuntat(contract, acum, pragZile) {
+  if (!contract || contract.status !== 'activ') return null;
+  if (contract.auto_renew !== false) return null;
+  const sfarsit = contract.end_at || calcSfarsit(contract.start_at, contract.months);
+  if (!sfarsit) return null;                       // durată nedeterminată → n-are capăt
+  const now = acum || Date.now();
+  const prag = pragZile == null ? PRAG_EXPIRA_ZILE : pragZile;
+  const zileRamase = Math.ceil((Number(sfarsit) - now) / ZI);
+  if (zileRamase > prag) return null;              // încă departe
+  const preavizPana = ultimaZiDePreaviz(contract);
+  return {
+    sfarsit: Number(sfarsit),
+    zileRamase: zileRamase,
+    trecut: zileRamase < 0,
+    preavizPana: preavizPana,
+    preavizTrecut: preavizPana != null && now > preavizPana
+  };
+}
+
 // Anexa: fotografia aparatelor contractate și a prețurilor, la momentul semnării. NU e o legătură
 // vie cu flota — dacă mâine clientul mai pune un vehicul, anexa semnată rămâne ce s-a semnat.
 function facAnexa(vehicule, pret) {
@@ -154,5 +181,5 @@ function facAnexa(vehicule, pret) {
 
 module.exports = {
   ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ETICHETE_STARE, URMATORUL_PAS,
-  calcSfarsit, areGdpr, stareDosar, ultimaZiDePreaviz, facAnexa
+  calcSfarsit, areGdpr, stareDosar, ultimaZiDePreaviz, deAnuntat, facAnexa
 };

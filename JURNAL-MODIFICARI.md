@@ -58,6 +58,54 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Ceasul contractelor și legătura ofertă → client
+
+Alin, 09.09: *„da, aplică și astea"* — cele două idei rămase din discuția de ieri.
+
+**1. Un ceas care te anunță din timp.** Zilnic, aplicația se uită peste contractele **în vigoare**
+care **NU se reînnoiesc singure** și au un termen. Dacă termenul e la mai puțin de **60 de zile**,
+primești o notificare: numele firmei, în câte zile expiră, și **ultima zi în care se mai poate anunța
+rezilierea**. Dacă termenul a trecut deja, notificarea e mai tare (roșie).
+
+Trei lucruri gândite dinadins:
+- **Sună o singură dată per contract și per termen.** Cheia notificării conține data de sfârșit, deci
+  dacă prelungești contractul, ceasul se rearmează singur pentru noul termen. Nu te bate la cap zilnic.
+- **Contractele care se prelungesc automat NU sună.** Acolo nu e nimic de făcut, deci nu e un
+  eveniment. (Dacă vrei vreodată și alea — „clientul mai are 10 zile în care poate renunța" — se
+  adaugă ușor, dar deocamdată ar fi zgomot.)
+- **Anunțul e pentru NOI, nu pentru client.** Merge la conturile de super-admin, nu în compania lui:
+  e treaba noastră să mergem cu actul nou înainte să se termine cel vechi.
+
+Se poate rula și cu mâna, din Administrare, fără să aștepți o zi (`/api/admin/contracts/check-expiry`).
+
+**2. Oferta devine client, fără să retastezi nimic.** Erau trei lumi separate: făceai oferta în
+Ofertare Live, apoi scriai iar tot în firma nouă, apoi iar în contract.
+
+Acum, în **Ofertare Live**, fiecare ofertă are un buton nou. Îl apeși și sari în **Companii**, cu
+traseul „client nou" deja pornit: **denumirea, CUI-ul și contactul sunt completate**, durata
+discutată în ofertă e aleasă, iar **prețul lunar convenit intră direct în anexa contractului**. Scrie
+și de unde vin datele, ca să nu pară magie.
+
+Invers la fel: o ofertă care a devenit client se vede pe listă cu **„a devenit client"**, iar butonul
+te duce direct în dosarul lui. O ofertă deja transformată **nu se mai propune** a doua oară în traseu.
+
+Ce **nu** vine din ofertă, dinadins: **aparatele**. În ofertă sunt doar numere („10 vehicule, din
+care 3 cu CAN"), nu aparate adevărate. Alea se bifează în anexă după ce sunt adoptate — altfel anexa
+ar semna niște vehicule care încă nu există.
+
+**Ce am lăsat în urmă:** proba a crescut de la 115 la **143 de verificări**, plus **26 de probe noi
+în aplicația pornită** care fac tot drumul: ofertă salvată → buton → traseu precompletat → firmă →
+contract cu prețul din ofertă → ceas care sună o dată și nu a doua oară. Stricat dinadins de cinci
+ori (ceasul care sună degeaba, ceasul care sună zilnic, anunțul trimis la client în loc de noi,
+oferta propusă de două ori, prețul care nu mai ajunge în anexă) — pică de fiecare dată.
+
+- **Ce am schimbat:** un ceas zilnic pentru contractele care se apropie de capăt și legătura
+  ofertă → client → contract.
+- **Ce vede fondatorul:** o notificare din timp, și un client deschis din ofertă cu trei câmpuri
+  completate singure.
+- **Ce vede clientul:** nimic. Notificarea e a noastră, oferta e a noastră.
+
+
 ### FONDATOR · Contractul: „ciorna" a devenit un drum cu aprobare, plus un defect urât la PDF
 
 Alin, după ce a văzut prima variantă, cinci lucruri. Le iau pe rând.

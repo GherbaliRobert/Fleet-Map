@@ -1890,6 +1890,56 @@ async function billingReminderTick() {
   }
   return report;
 }
+// ─── Ceasul contractelor: anunță din timp ce se termină ──────────────────────────────────────
+// Alin, 08.09: „o alertă cu 60 de zile înainte de expirarea contractelor care nu se reînnoiesc
+// singure". Sună O SINGURĂ DATĂ per contract și per termen (cheia are data de sfârșit în ea), deci
+// dacă se prelungește contractul, ceasul se rearmează singur pentru noul termen.
+//
+// Anunțul e pentru NOI, nu pentru client: e treaba noastră să mergem cu actul nou înainte să se
+// termine cel vechi. De aceea notificarea merge la super-admini, nu în compania clientului.
+async function contractExpiryTick() {
+  const raport = { verificate: 0, deAnuntat: [], anuntate: [] };
+  let lista = [];
+  try { lista = await db.contracteInVigoare(); } catch (e) { return raport; }
+  raport.verificate = lista.length;
+  const acum = Date.now();
+  let supers = [];
+  try { supers = (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) {}
+  for (const c of lista) {
+    try {
+      const a = contracte.deAnuntat(c, acum);
+      if (!a) continue;
+      raport.deAnuntat.push(c.id);
+      const cheie = 'contract_expira:' + c.id + ':' + a.sfarsit;
+      if (await db.notificationKeyExists(cheie, 24 * 120)) continue; // deja anunțat pentru termenul ăsta
+      const dSfarsit = new Date(a.sfarsit).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' });
+      const dPreaviz = a.preavizPana ? new Date(a.preavizPana).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : null;
+      const titlu = a.trecut
+        ? 'Contract expirat: ' + (c.company_name || ('#' + c.company_id))
+        : 'Contract care expiră în ' + a.zileRamase + ' zile: ' + (c.company_name || ('#' + c.company_id));
+      const corp = 'Contractul ' + (c.number || '') + ' ' +
+        (a.trecut ? 'a expirat pe ' + dSfarsit : 'expiră pe ' + dSfarsit) +
+        ' și NU se reînnoiește automat.' +
+        (dPreaviz ? (a.preavizTrecut
+          ? ' Termenul de preaviz (' + dPreaviz + ') a trecut deja.'
+          : ' Ultima zi de preaviz: ' + dPreaviz + '.') : '') +
+        ' Deschide Companii → firma → Contract pentru act nou sau prelungire.';
+      const n = await db.createNotification({
+        type: 'contract_expira', severity: a.trecut ? 'critical' : 'warning',
+        companyId: null, userId: null, imei: null,
+        title: titlu, body: corp,
+        data: { key: cheie, contractId: c.id, companyId: c.company_id, end_at: a.sfarsit, zile: a.zileRamase }
+      });
+      for (const u of supers) {
+        try { broadcastWsToUser(u.id, { type: 'notification', data: n }); } catch (e) {}
+        try { await sendPushToUser(u.id, n.title, n.body, { notifId: n.id }); } catch (e) {}
+      }
+      raport.anuntate.push(c.id);
+    } catch (e) { /* per contract, best-effort */ }
+  }
+  return raport;
+}
+
 // Escape HTML minimal pentru email-uri (valori dinamice companie/emitent).
 function _he(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 // Corpul de email pentru o factură emisă (rezumat + instrucțiuni plată).
@@ -3835,7 +3885,22 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     if (!date.number) date.number = await db.nextContractNumber();
     date.company_id = id;
     date.created_by = req.user ? req.user.id : null;
+    // Din ofertă direct în contract: prețul convenit intră în anexă fără să-l mai scrie nimeni a
+    // doua oară. Aparatele NU vin din ofertă (acolo sunt doar numere: „10 vehicule, din care 3 cu
+    // CAN"), ci se bifează în fila „Contract" după ce aparatele adevărate sunt adoptate.
+    let oferta = null;
+    const offerId = parseInt(req.body && req.body.offer_id, 10);
+    if (Number.isFinite(offerId)) {
+      try { oferta = await db.getOfferById(offerId); } catch (e) {}
+      if (oferta && !date.annex) {
+        date.annex = contracte.facAnexa([], { monthlyTotal: Number(oferta.monthly_total) || 0, currency: oferta.currency || 'RON' });
+      }
+    }
     const c = await db.createContract(date);
+    if (oferta) {
+      try { await db.legOferta(oferta.id, { company_id: id, contract_id: c.id }); } catch (e) {}
+      auditReq(req, 'link', 'offer', oferta.id, { company_id: id, contract_id: c.id });
+    }
     // Reprezentantul legal e o însușire a FIRMEI, nu doar a hârtiei: rămâne și la contractul următor.
     if (date.client_rep && !co.legal_rep) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [id, JSON.stringify(date.client_rep)]); } catch (e) {} }
     auditReq(req, 'create', 'contract', c.id, { company_id: id, number: c.number });
@@ -4575,6 +4640,10 @@ app.post('/api/debug/billing-run', requireAuth, requireSuperadmin, async (req, r
 // Facturare AUTOMATĂ — rulare manuală (super-admin): emite facturile lunii pt. companiile cu auto_invoice.
 app.post('/api/admin/billing/run-auto', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await billingAutoInvoiceTick()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// Ceasul contractelor — rulare manuală (super-admin), ca să se poată verifica fără să aștepți o zi.
+app.post('/api/admin/contracts/check-expiry', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await contractExpiryTick()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Stare integrări facturare (email SMTP / e-Factura / Stripe) — pentru panoul de automatizare.
 app.get('/api/admin/billing/config', requireAuth, requireSuperadmin, (req, res) => {
@@ -11877,6 +11946,10 @@ async function start() {
   // Notificare facturare: la intrarea în grație anunță adminii companiei (verificare la pornire + orar).
   setTimeout(billingReminderTick, 30000);
   setInterval(billingReminderTick, 60 * 60 * 1000);
+  // Ceasul contractelor: o dată pe zi ajunge — un contract nu expiră între două ore. Prima
+  // verificare la 2 minute după pornire, ca să nu se piardă nimic dacă serverul se repornește des.
+  setTimeout(() => contractExpiryTick().then(r => { if (r && r.anuntate && r.anuntate.length) console.log('[CONTRACTE] ' + r.anuntate.length + ' contracte aproape de expirare — anunțate'); }).catch(() => {}), 120 * 1000);
+  setInterval(() => contractExpiryTick().catch(() => {}), 24 * 60 * 60 * 1000);
   // Facturare automată lunară: la scurt timp după boot + de ~4x/zi (idempotent — o factură/companie/lună, pe billing_day).
   setTimeout(() => billingAutoInvoiceTick().then(r => { if (r && r.issued && r.issued.length) console.log('[BILLING] auto-facturare: ' + r.issued.length + ' facturi emise'); }).catch(() => {}), 90 * 1000);
   setInterval(() => billingAutoInvoiceTick().catch(() => {}), 6 * 60 * 60 * 1000);
