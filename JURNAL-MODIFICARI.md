@@ -58,6 +58,73 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Calculatorul de ofertare: spune adevărul și duce tot în contract
+
+*„Verifică un pic calculatorul de ofertare. Pentru că de aici, dacă facem ofertă ok și înțeleasă,
+clientul o acceptă, draftul de contract îl avem, doar mai adăugăm la el în funcție de ce mai vrea
+clientul, adică dispozitivele, instalarea, abonamentul, serviciile."*
+
+L-am probat cu scenariul tău exact — **client cu 20 de mașini, GPS cu date din motor pe toate** — și
+am găsit patru lucruri care nu erau în regulă. Le-am reparat pe toate.
+
+**1. „Totalul inițial" spunea o sumă de cinci ori mai mică decât adevărul.** Aduna doar montajul
+(3.500 lei) și lăsa pe dinafară **aparatele** — 20 × FMC650 + 20 × modul LV-CAN, adică 3.600 € =
+18.000 lei. Ofertai 3.500 și îi cereai clientului 21.500. Acum, în locul lui, e o casetă cu două
+rânduri, scrise pe românește:
+
+> **La început, o dată: 21.500 lei** (aparate 18.000 + montaj 3.500)
+> **Apoi, în fiecare lună: 944 lei**
+
+Astea sunt cele două cifre pe care clientul le înțelege dintr-o privire și pe care le va compara cu
+ale concurenței. Restul calculatorului a rămas neatins.
+
+**2. Trebuia să retastezi cantitățile de trei ori.** Scriai „20 de mașini", apoi tot tu scriai 20 la
+montaj, 20 la aparate, 20 la module. Acum **se completează singure** din numărul de vehicule și din
+câte au date din motor. Regula, ca să nu te încurce: **ce ai scris tu de mână nu se mai calcă
+niciodată** — dacă montezi doar 18 din 20 (două le are deja), scrii 18 și rămâne 18, chiar dacă
+schimbi pe urmă numărul de mașini.
+
+**3. Modulul Tahograf și e-Transport nu se puteau vinde.** Erau în aplicație, dar nu existau în
+calculator — deci nu apăreau nici în ofertă, nici în abonament. Acum sunt două bife cu preț lunar
+modificabil (25 lei / 20 lei, de pornire), care intră în totalul lunar ca orice altă linie.
+
+**4. Cei 6 agenți automați nu se vedeau nicăieri.** Sunt incluși, nu se facturează — dar dacă nu
+apar pe hârtie, clientul nu știe că îi primește. Acum apar ca linie, cu numele lor, la **0 lei**.
+Nu se adună nicăieri, doar se văd. *(Dacă vrei altfel — să nu apară deloc, sau să aibă preț — se
+schimbă într-un loc.)*
+
+**Și partea a doua, cea cerută: oferta acceptată devine contract fără să mai retastezi nimic.** Când
+faci contractul pornind de la ofertă, se duc mai departe, singure:
+
+| Din ofertă | Unde ajunge în contract |
+|---|---|
+| abonamentul lunar | corpul contractului + Anexa 1 |
+| aparatele (câte, ce model, cu ce preț în €) | **Anexa 2 — Echipamente și montaj (costuri unice)**, tabelul A |
+| montajul (instalări, module, deplasare) | aceeași Anexa 2, tabelul B |
+| cursul euro din ziua ofertei | **îngheață** în anexă — hârtia semnată nu se schimbă mâine |
+
+Anexa 2 se cheamă acum **„Echipamente și montaj (costuri unice)"** și are cele două tabele, A și B,
+cu un TOTAL la final: *atât plătește clientul o singură dată, la început*. Ce **nu** ajunge acolo,
+niciodată: **cât ne costă pe noi montajul la partener**. Aia rămâne doar la noi, în fișa de montaj.
+
+**Un defect tăcut, găsit pe drum:** anexa de montaj se calcula corect, dar **nu se salva** — coloana
+exista în bază, dar comanda de scriere n-o trecea. Deschideai contractul a doua zi și Anexa 2 era
+goală, fără niciun mesaj de eroare. Reparat, cu probă care cade dacă se mai întâmplă.
+
+**Ce am lăsat în urmă:** probele de montaj au crescut la **89**, plus **32 de probe noi în aplicația
+pornită**, care fac drumul întreg: completez oferta cu 20 de mașini → verific fiecare cifră de pe
+ecran → o salvez → fac contractul din ea → verific că anexele au aparatele, montajul și cursul
+înghețat, și că nu au costul partenerului.
+
+- **Ce am schimbat:** calculatorul de ofertare (totaluri adevărate, completare automată, module noi,
+  agenții vizibili) și trecerea ofertei în anexele contractului.
+- **Ce vede fondatorul:** o ofertă care se face din trei numere și un contract care se scrie singur
+  din ea.
+- **Ce vede clientul:** nimic nou în aplicație. Pe hârtie vede două cifre limpezi (o dată / lunar) și
+  o anexă care spune pentru ce plătește.
+
+---
+
 ### FONDATOR · Semnăm amândoi, acte adiționale, și trei defecte găsite pe drum
 
 Patru corecturi cerute de Alin (09.09), plus ce a ieșit la iveală probându-le.

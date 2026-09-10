@@ -64,10 +64,42 @@ T('găsesc rutele de montaj', rute.length >= 5, rute.length + ' rute');
 T('fiecare cere super-admin', rute.every(r => /requireSuperadmin/.test(r[3])), rute.filter(r => !/requireSuperadmin/.test(r[3])).map(r => r[2]).join(', '));
 T('și autentificare', rute.every(r => /requireAuth/.test(r[3])));
 
-sect('4. Montajul e cost UNIC, nu abonament');
-T('anexa de montaj e separată de anexa de abonament', /ANEXA nr\. 2 — Montaj și punere în funcțiune/.test(cpdf));
-T('și scrie limpede că nu e în abonament',
-  /se tarifează O SINGURĂ DATĂ, la execuție, și nu face parte din abonamentul lunar/.test(cpdf));
+sect('4. Costurile UNICE (echipamente + montaj) sunt separate de abonament');
+T('anexa are și marfa, și manopera', /ANEXA nr\. 2 — Echipamente și montaj \(costuri unice\)/.test(cpdf));
+T('și scrie limpede că nu fac parte din abonament',
+  /se plătesc O SINGURĂ DATĂ, la livrare și la execuție, și NU fac parte din abonamentul lunar/.test(cpdf));
+T('marfa e primul tabel, manopera al doilea', /A\. Echipamente livrate/.test(cpdf) && /B\. Montaj și punere în funcțiune/.test(cpdf));
+T('când sunt amândouă, apare un TOTAL de plată o singură dată', /TOTAL de plată o singură dată/.test(cpdf));
+T('scrie și că echipamentele rămân ale clientului după plată',
+  /Echipamentele rămân în proprietatea Beneficiarului de la data achitării lor/.test(cpdf));
+
+sect('4b. Echipamentele: euro pe hârtie, curs înghețat');
+const ech = M.facAnexaEchip(M.randuriEchip([{ tip: 'fmc650', buc: 20, pretEur: 120 }, { tip: 'lvcan200', buc: 20, pretEur: 60 }]), 5);
+T('totalul în euro e corect', ech.totalEur === 3600, String(ech.totalEur));
+T('și echivalentul în lei, la cursul dat', ech.totalLei === 18000, String(ech.totalLei));
+T('cursul rămâne SCRIS în anexă', ech.curs === 5, String(ech.curs));
+T('fără curs, nu se inventează unul aiurea', M.facAnexaEchip([], null).curs === 5);
+T('un echipament inventat se aruncă', M.randuriEchip([{ tip: 'nokia3310', buc: 5 }]).length === 0);
+T('zero bucăți nu e o livrare', M.randuriEchip([{ tip: 'fmc650', buc: 0, pretEur: 120 }]).length === 0);
+const unic = M.facAnexaCosturiUnice(
+  M.randuri([{ tip: 'gps', buc: 20, pretClient: 100, costPartener: 60 }]),
+  M.randuriEchip([{ tip: 'fmc650', buc: 20, pretEur: 120 }]), 5, 'RON');
+T('totalul unic adună marfa (în lei) și manopera', unic.totalUnicLei === 2000 + 12000, String(unic.totalUnicLei));
+T('și pe hârtie NU ajunge costul partenerului', JSON.stringify(unic).indexOf('costPartener') < 0);
+T('pe hârtie apare cursul folosit', /Curs de schimb folosit în prezenta anexă/.test(cpdf));
+
+sect('4c. Oferta duce TOTUL în contract, fără retastare');
+T('serverul construiește anexa de costuri unice din ofertă', /function _montajDinOferta\(oferta\)/.test(server));
+T('ia cantitățile de montaj din ofertă', /cfg\.montaj \? cfg\.montaj\[t\.ofertaQ\] : 0/.test(server));
+T('și cantitățile de echipamente', /cfg\.devices \? cfg\.devices\[e\.ofertaQ\] : 0/.test(server));
+T('cu prețurile din ofertă', /pretClient: pret\[t\.oferta\]/.test(server) && /pretEur: pret\[e\.oferta\]/.test(server));
+T('se leagă la crearea contractului din ofertă', /if \(anexa2\) date\.montaj = anexa2;/.test(server));
+T('cursul se îngheață din ofertă', /Number\(cfg\.fxRate\) > 0 \? Number\(cfg\.fxRate\) : /.test(server));
+T('și oferta chiar salvează cursul zilei', /fxRate: _fxRate,/.test(html));
+T('fiecare tip de lucrare știe din ce cantitate a ofertei vine', M.TIPURI.every(t => !!t.ofertaQ));
+T('la fel și fiecare echipament', M.ECHIPAMENTE.every(e => !!e.ofertaQ && !!e.oferta));
+// Costul partenerului NU vine din ofertă: acolo nu există. Se completează după ce știm cine execută.
+T('costul partenerului NU se ia din ofertă', !/costPartener: pret/.test(server));
 T('GDPR-ul se mută la Anexa 3 când există montaj',
   /'ANEXA nr\. ' \+ \(areMontaj \? 3 : 2\) \+ ' — Acord de prelucrare/.test(cpdf));
 T('anexa de montaj se scrie pe contract, nu pe lucrare',
@@ -76,6 +108,43 @@ T('și se completează la salvarea lucrării, din partea clientului',
   /await db\.setContractMontaj\(m\.contract_id, montaj\.facAnexaMontaj\(rd, 'RON'\)\)/.test(server));
 T('totalul lunar din Anexa 1 NU include montajul',
   !/monthlyTotal[\s\S]{0,80}montaj/.test(fs.readFileSync('./contracts.js', 'utf8')));
+
+sect('4d. Calculatorul de ofertare — cele trei lucruri reparate');
+// DEFECT GĂSIT probând scenariul lui Alin (20 de mașini): scria „Total inițial (montaj + prima
+// lună) = 4.419 lei" și NU includea echipamentele. Adevărul era 22.419 lei — de cinci ori mai mult,
+// pe hârtia trimisă clientului.
+// Căutăm în MARKUP-ul desenat (`<span>Total inițial…`), nu în comentariile care explică de ce
+// l-am scos — altfel proba ar pica pe propria noastră explicație.
+T('nu se mai desenează „Total inițial" care ascunde echipamentele',
+  !/<span>Total inițial \(montaj \+ prima lună\)<\/span>/.test(html));
+T('și nici în PDF-ul ofertei', !/Cost inițial \(montaj \+ prima lună\): ' \+ r\.initial/.test(html));
+T('există un bloc „Cât plătește clientul"', /function _ofBlocPlata\(r\)/.test(html));
+T('care adună MONTAJUL și ECHIPAMENTELE', /var unic = \(r\.montaj \|\| 0\) \+ hwLei;/.test(html));
+T('cu echipamentele transformate în lei', /var hwLei = \(r\.hwTotal \|\| 0\) \* _fxRate;/.test(html));
+T('spune limpede „la început, o dată" și „apoi, în fiecare lună"',
+  /La început, o dată/.test(html) && /Apoi, în fiecare lună/.test(html));
+T('și în PDF-ul ofertei e același răspuns', /<h2>Cât plătiți<\/h2>/.test(html));
+
+// DEFECT: același număr se scria de patru ori (20 de vehicule → 20 la montaj GPS, 20 la LV-CAN,
+// 20 la FMC650, 20 la LV-CAN200). Dacă uitai unul, oferta ieșea greșită și nu-ți spunea nimeni.
+T('cantitățile se completează din numărul de vehicule', /function _ofCompleteazaDinVehicule\(\)/.test(html));
+T('un GPS de montat și un aparat de cumpărat, per vehicul',
+  /_ofPropune\('of-qGps', nVeh\);/.test(html) && /_ofPropune\('of-dq650', nVeh\);/.test(html));
+T('LV-CAN doar la vehiculele cu CAN',
+  /_ofPropune\('of-qLvCan', nCan\);/.test(html) && /_ofPropune\('of-dqLvCan', nCan\);/.test(html));
+T('FMS doar la cele cu FMS', /_ofPropune\('of-qFms', nFms\);/.test(html));
+T('DAR nu se calcă peste ce ai scris tu', /if \(_ofAtinse\[id\]\) return;/.test(html));
+T('un câmp devine „al tău" când scrii în el', /oninput="raxOfAtins\(this\.id\);raxOfRecalc\(\)"/.test(html));
+T('și scrie pe ecran cum funcționează', /se completează singure din numerele astea/.test(html));
+
+// LIPSĂ: dădeam șase agenți gratis fără ca omul să afle, iar două module reale nu erau în ofertă.
+T('cei 6 agenți apar în ofertă, cu 0 lei', /Agenți automați \(6\) — incluși/.test(html));
+T('și li se spun numele, ca să se vadă ce primește', /RA Watch[\s\S]{0,200}RA Client/.test(html));
+T('Tahograf are bifă și preț lunar', /id="of-tahograf"/.test(html) && /pTahograf/.test(html));
+T('e-Transport la fel', /id="of-etransport"/.test(html) && /pEtransport/.test(html));
+T('amândouă intră în totalul lunar',
+  /if \(cfg\.tahograf\) lines\.push/.test(html) && /if \(cfg\.etransport\) lines\.push/.test(html));
+T('și se salvează în ofertă', /tahograf: c\('of-tahograf'\), etransport: c\('of-etransport'\), agenti: c\('of-agenti'\)/.test(html));
 
 sect('5. Partenerul și lucrarea, în bază');
 T('partenerii au tabela lor', /CREATE TABLE IF NOT EXISTS montaj_parteneri/.test(dbjs));

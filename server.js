@@ -3978,6 +3978,24 @@ function _contractDinCerere(b) {
   };
 }
 
+// Anexa de costuri unice (montaj + echipamente), construită din ce s-a socotit deja în ofertă.
+// Cantitățile și prețurile către client vin de acolo; costul partenerului NU — pe ăla îl completăm
+// noi, în fila Contract, după ce știm cine execută lucrarea.
+function _montajDinOferta(oferta) {
+  const cfg = (oferta && oferta.config && oferta.config.cfg) || {};
+  const pret = (oferta && oferta.config && oferta.config.prices) || {};
+  const rdMontaj = montaj.TIPURI
+    .map(function (t) { return { tip: t.k, buc: cfg.montaj ? cfg.montaj[t.ofertaQ] : 0, pretClient: pret[t.oferta] }; })
+    .filter(function (r) { return Number(r.buc) > 0; });
+  const rdEchip = montaj.ECHIPAMENTE
+    .map(function (e) { return { tip: e.k, buc: cfg.devices ? cfg.devices[e.ofertaQ] : 0, pretEur: pret[e.oferta] }; })
+    .filter(function (r) { return Number(r.buc) > 0; });
+  if (!rdMontaj.length && !rdEchip.length) return null;
+  // Cursul se îngheață în anexă: hârtia semnată nu are voie să spună altă sumă peste o lună.
+  const curs = Number(cfg.fxRate) > 0 ? Number(cfg.fxRate) : Number(process.env.EUR_RON_RATE) || 5;
+  return montaj.facAnexaCosturiUnice(montaj.randuri(rdMontaj), montaj.randuriEchip(rdEchip), curs, 'RON');
+}
+
 // ─── Acte adiționale ─────────────────────────────────────────────────────────────────────────
 // Un contract SEMNAT nu se mai schimbă — ăsta e tot rostul unei semnături. Ce se schimbă în timp
 // (clientul mai cumpără mașini, vrea alt modul, se schimbă prețul, se prelungește) se scrie într-un
@@ -4223,6 +4241,13 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
       try { oferta = await db.getOfferById(offerId); } catch (e) {}
       if (oferta && !date.annex) {
         date.annex = contracte.facAnexa([], { monthlyTotal: Number(oferta.monthly_total) || 0, currency: oferta.currency || 'RON' });
+      }
+      // Montajul și echipamentele sunt deja socotite în ofertă — le ducem în Anexa nr. 2, ca să nu
+      // le retasteze nimeni. Ce NU se ia: aparatele cu IMEI (în ofertă sunt doar numere) și costul
+      // partenerului de montaj (ăla e al nostru, se completează după ce știm cine execută).
+      if (oferta && !date.montaj) {
+        const anexa2 = _montajDinOferta(oferta);
+        if (anexa2) date.montaj = anexa2;
       }
     }
     const c = await db.createContract(date);

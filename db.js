@@ -1758,12 +1758,12 @@ async function createContract(c) {
   const now = Date.now();
   const r = await pool.query(
     `INSERT INTO contracts (company_id, number, status, signed_at, start_at, months, end_at, auto_renew,
-       notice_days, client_rep, our_rep, gdpr, annex, notes, created_by, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16) RETURNING id`,
+       notice_days, client_rep, our_rep, gdpr, annex, montaj, notes, created_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$17) RETURNING id`,
     [c.company_id, c.number || null, c.status || 'ciorna', c.signed_at || null, c.start_at || null,
      c.months == null ? null : c.months, c.end_at || null, c.auto_renew !== false,
      c.notice_days == null ? 30 : c.notice_days, _J(c.client_rep), _J(c.our_rep), _J(c.gdpr), _J(c.annex),
-     c.notes || null, c.created_by || null, now]
+     _J(c.montaj), c.notes || null, c.created_by || null, now]
   );
   return getContractById(r.rows[0].id);
 }
@@ -1771,11 +1771,11 @@ async function updateContract(id, c) {
   const r = await pool.query(
     `UPDATE contracts SET number=$2, status=$3, signed_at=$4, start_at=$5, months=$6, end_at=$7,
        auto_renew=$8, notice_days=$9, ended_at=$10, ended_reason=$11, client_rep=$12, our_rep=$13,
-       gdpr=$14, annex=$15, notes=$16, updated_at=$17 WHERE id=$1 RETURNING id`,
+       gdpr=$14, annex=$15, notes=$16, updated_at=$17, montaj=COALESCE($18, montaj) WHERE id=$1 RETURNING id`,
     [id, c.number || null, c.status || 'ciorna', c.signed_at || null, c.start_at || null,
      c.months == null ? null : c.months, c.end_at || null, c.auto_renew !== false,
      c.notice_days == null ? 30 : c.notice_days, c.ended_at || null, c.ended_reason || null,
-     _J(c.client_rep), _J(c.our_rep), _J(c.gdpr), _J(c.annex), c.notes || null, Date.now()]
+     _J(c.client_rep), _J(c.our_rep), _J(c.gdpr), _J(c.annex), c.notes || null, Date.now(), _J(c.montaj)]
   );
   return r.rows[0] ? getContractById(id) : null;
 }

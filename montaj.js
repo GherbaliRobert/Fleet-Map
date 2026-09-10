@@ -14,15 +14,28 @@
 // Tipurile de lucrare, în ordinea în care se întâmplă la o montare adevărată. Cheile („gps",
 // „lvcan"…) sunt cele care se salvează; etichetele se pot schimba fără să strice datele vechi.
 // `oferta` e cheia aceleiași lucrări din Ofertare Live, ca prețurile să se poată prelua de acolo.
+// `oferta` = cheia PREȚULUI din Ofertare Live; `ofertaQ` = cheia CANTITĂȚII de acolo. Amândouă,
+// ca o ofertă să se poată transforma în anexă de contract fără să retasteze nimeni nimic.
 const TIPURI = [
-  { k: 'gps',       et: 'Instalare dispozitiv GPS',   um: 'buc', oferta: 'mGps' },
-  { k: 'lvcan',     et: 'Instalare modul LV-CAN',     um: 'buc', oferta: 'mLvCan' },
-  { k: 'caninc',    et: 'Instalare CAN încorporat',   um: 'buc', oferta: 'mCanInc' },
-  { k: 'fms',       et: 'Instalare FMS (tahograf)',   um: 'buc', oferta: 'mFms' },
-  { k: 'demontare', et: 'Dezinstalare echipament',    um: 'buc', oferta: 'mUninstall' },
-  { k: 'inlocuire', et: 'Înlocuire echipament',       um: 'buc', oferta: 'mReplace' },
-  { k: 'deplasare', et: 'Deplasare',                  um: 'km',  oferta: 'mTravel' }
+  { k: 'gps',       et: 'Instalare dispozitiv GPS',   um: 'buc', oferta: 'mGps',       ofertaQ: 'qGps' },
+  { k: 'lvcan',     et: 'Instalare modul LV-CAN',     um: 'buc', oferta: 'mLvCan',     ofertaQ: 'qLvCan' },
+  { k: 'caninc',    et: 'Instalare CAN încorporat',   um: 'buc', oferta: 'mCanInc',    ofertaQ: 'qCanInc' },
+  { k: 'fms',       et: 'Instalare FMS (tahograf)',   um: 'buc', oferta: 'mFms',       ofertaQ: 'qFms' },
+  { k: 'demontare', et: 'Dezinstalare echipament',    um: 'buc', oferta: 'mUninstall', ofertaQ: 'qUninstall' },
+  { k: 'inlocuire', et: 'Înlocuire echipament',       um: 'buc', oferta: 'mReplace',   ofertaQ: 'qReplace' },
+  { k: 'deplasare', et: 'Deplasare',                  um: 'km',  oferta: 'mTravel',    ofertaQ: 'kmTravel' }
 ];
+// Echipamentele VÂNDUTE clientului (cost unic, în EURO — așa le cumpărăm și noi). Sunt un lucru
+// diferit de montaj: aparatul e marfă, montajul e manoperă. Pe hârtie stau în aceeași anexă de
+// costuri unice, dar în două tabele, ca să se vadă ce e marfă și ce e muncă.
+const ECHIPAMENTE = [
+  { k: 'fmc130', et: 'Teltonika FMC130',  oferta: 'dFmc130', ofertaQ: 'd130' },
+  { k: 'fmc150', et: 'Teltonika FMC150',  oferta: 'dFmc150', ofertaQ: 'd150' },
+  { k: 'fmc650', et: 'Teltonika FMC650',  oferta: 'dFmc650', ofertaQ: 'd650' },
+  { k: 'lvcan200', et: 'Modul LV-CAN200', oferta: 'dLvCan',  ofertaQ: 'lvcan' }
+];
+const CHEI_ECHIP = ECHIPAMENTE.map(function (e) { return e.k; });
+function echipament(k) { return ECHIPAMENTE.filter(function (e) { return e.k === k; })[0] || null; }
 const CHEI = TIPURI.map(function (t) { return t.k; });
 function tip(k) { return TIPURI.filter(function (t) { return t.k === k; })[0] || null; }
 
@@ -105,7 +118,50 @@ function pretDinOferta(tarife) {
   return out;
 }
 
+// ─── Echipamentele vândute ───────────────────────────────────────────────────────────────────
+// Aceleași reguli ca la montaj: doar tipuri cunoscute, doar numere pozitive, fără rânduri goale.
+function randuriEchip(brute) {
+  const out = [];
+  for (const r of (brute || [])) {
+    if (!r || CHEI_ECHIP.indexOf(r.tip) < 0) continue;
+    const buc = _n(r.buc);
+    if (buc <= 0) continue;
+    out.push({ tip: r.tip, buc: buc, pretEur: r.pretEur == null || r.pretEur === '' ? null : _n(r.pretEur) });
+  }
+  return out;
+}
+// Anexa de echipamente: preț în euro (așa se negociază), cu echivalentul în lei la cursul zilei.
+// Cursul se ÎNGHEAȚĂ în anexă — altfel hârtia semnată ar spune altă sumă peste o lună.
+function facAnexaEchip(rd, curs) {
+  const c = _n(curs) > 0 ? _n(curs) : 5;
+  const lista = (rd || []).map(function (r) {
+    const e = echipament(r.tip);
+    const total = Math.round(_n(r.buc) * _n(r.pretEur) * 100) / 100;
+    return {
+      tip: r.tip, eticheta: e ? e.et : r.tip, buc: _n(r.buc),
+      pretEur: r.pretEur == null ? null : _n(r.pretEur),
+      totalEur: total, totalLei: Math.round(total * c * 100) / 100
+    };
+  });
+  const totalEur = Math.round(lista.reduce(function (s, r) { return s + r.totalEur; }, 0) * 100) / 100;
+  return { items: lista, totalEur: totalEur, totalLei: Math.round(totalEur * c * 100) / 100, curs: c };
+}
+
+// Anexa de COSTURI UNICE a contractului: echipamentele livrate + montajul. Un singur loc, ca omul
+// să vadă dintr-o privire cât plătește o dată, la început, pe lângă abonamentul lunar.
+function facAnexaCosturiUnice(rdMontaj, rdEchip, curs, moneda) {
+  const m = facAnexaMontaj(rdMontaj, moneda || 'RON');
+  const e = facAnexaEchip(rdEchip, curs);
+  return {
+    items: m.items, totalClient: m.totalClient, currency: m.currency,   // montajul, ca până acum
+    echipamente: e,
+    // Cât plătește clientul O SINGURĂ DATĂ, în lei: marfa (convertită) + manopera.
+    totalUnicLei: Math.round((m.totalClient + e.totalLei) * 100) / 100
+  };
+}
+
 module.exports = {
-  TIPURI, CHEI, STARI, ETICHETE_STARE,
-  tip, randuri, calc, facAnexaMontaj, pretDinOferta
+  TIPURI, CHEI, STARI, ETICHETE_STARE, ECHIPAMENTE, CHEI_ECHIP,
+  tip, echipament, randuri, randuriEchip, calc,
+  facAnexaMontaj, facAnexaEchip, facAnexaCosturiUnice, pretDinOferta
 };

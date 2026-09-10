@@ -195,6 +195,35 @@ function _tabelMontaj(doc, mont) {
     .text('Total montaj (cost unic): ' + _bani(mont.totalClient, moneda) + ' (fără TVA)', left, doc.y + 4, { width: w, align: 'right' });
   doc.x = left; doc.y += 12;
 }
+// Tabelul echipamentelor vândute. Prețul se negociază în euro (așa le cumpărăm și noi), dar pe
+// hârtie apare și echivalentul în lei, la cursul ÎNGHEȚAT în anexă — nu la cursul de mâine.
+function _tabelEchip(doc, echip) {
+  const { left, w } = _ST(doc);
+  const col = [w * 0.44, w * 0.12, w * 0.16, w * 0.14, w * 0.14];
+  function rand(valori, gros) {
+    _incape(doc, 34);
+    const y = doc.y;
+    doc.font(gros ? 'Nunito-Bold' : 'Nunito').fontSize(8.5).fillColor(gros ? NEGRU : '#1f2937');
+    let x = left;
+    valori.forEach(function (v, i) {
+      doc.text(_taie(doc, v, col[i] - 8), x + 4, y + 5, { width: col[i] - 8, lineBreak: false, align: i === 0 ? 'left' : 'right' });
+      x += col[i];
+    });
+    doc.moveTo(left, y + 18).lineTo(left + w, y + 18).strokeColor(LINIE).lineWidth(gros ? 1.2 : 0.6).stroke();
+    doc.x = left; doc.y = y + 22;
+  }
+  rand(['Echipament', 'Cant.', 'Preț unitar', 'Total EUR', 'Total lei'], true);
+  (echip.items || []).forEach(function (r) {
+    rand([r.eticheta || r.tip, r.buc + ' buc',
+      r.pretEur == null ? '—' : _bani(r.pretEur, 'EUR'),
+      _bani(r.totalEur, 'EUR'), _bani(r.totalLei, 'RON')]);
+  });
+  doc.font('Nunito-Bold').fontSize(9.5).fillColor(NEGRU)
+    .text('Total echipamente: ' + _bani(echip.totalEur, 'EUR') + ' = ' + _bani(echip.totalLei, 'RON'), left, doc.y + 4, { width: w, align: 'right' });
+  doc.font('Nunito').fontSize(8).fillColor(GRI)
+    .text('Curs de schimb folosit în prezenta anexă: 1 EUR = ' + Number(echip.curs).toFixed(4) + ' lei.', left, doc.y + 3, { width: w, align: 'right' });
+  doc.x = left; doc.y += 14;
+}
 function _semnaturi(doc, numePrestator, numeBeneficiar) {
   const { left, w } = _ST(doc);
   _incape(doc, 120);
@@ -307,17 +336,35 @@ function scrieContract(doc, date) {
   // Aici apare DOAR prețul către client. Cât ne cere partenerul care execută nu are ce căuta pe
   // hârtia asta și nici nu ajunge până aici: `facAnexaMontaj` nu-l copiază.
   const mont = contract.montaj;
-  const areMontaj = !!(mont && (mont.items || []).length);
+  const echip = mont && mont.echipamente;
+  const areEchip = !!(echip && (echip.items || []).length);
+  const areMontaj = !!(mont && ((mont.items || []).length || areEchip));
   if (areMontaj) {
     doc.addPage();
     const AM = _ST(doc);
-    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12).text('ANEXA nr. 2 — Montaj și punere în funcțiune', AM.left, doc.y, { width: AM.w });
+    doc.fillColor(NEGRU).font('Nunito-Bold').fontSize(12)
+      .text('ANEXA nr. 2 — Echipamente și montaj (costuri unice)', AM.left, doc.y, { width: AM.w });
     doc.font('Nunito').fontSize(8.5).fillColor(GRI)
       .text('la contractul nr. ' + _sauLinie(contract.number) + ' din ' + _data(contract.signed_at), AM.left, doc.y + 2, { width: AM.w });
     doc.x = AM.left; doc.y += 12;
-    _p(doc, 'Montajul echipamentelor și punerea lor în funcțiune se tarifează O SINGURĂ DATĂ, la execuție, și nu face parte din abonamentul lunar din Anexa nr. 1.');
-    _tabelMontaj(doc, mont);
-    _p(doc, 'Lucrările se execută de Prestator sau prin colaboratori ai acestuia, sub răspunderea Prestatorului. Deplasările suplimentare, lucrările neprevăzute și intervențiile cerute ulterior se tarifează separat, la tarifele de mai sus.');
+    _p(doc, 'Sumele din prezenta anexă se plătesc O SINGURĂ DATĂ, la livrare și la execuție, și NU fac parte din abonamentul lunar din Anexa nr. 1.');
+    // Marfa întâi, manopera după: așa se citește o factură și așa se înțelege devizul.
+    if (areEchip) {
+      _titlu(doc, 'A. Echipamente livrate');
+      _tabelEchip(doc, echip);
+    }
+    if ((mont.items || []).length) {
+      if (areEchip) _titlu(doc, 'B. Montaj și punere în funcțiune');
+      _tabelMontaj(doc, mont);
+    }
+    if (areEchip && (mont.items || []).length) {
+      const { left, w } = _ST(doc);
+      doc.font('Nunito-Bold').fontSize(11).fillColor(NEGRU)
+        .text('TOTAL de plată o singură dată: ' + _bani(mont.totalUnicLei != null ? mont.totalUnicLei : (mont.totalClient + echip.totalLei), 'RON') + ' (fără TVA)',
+          left, doc.y + 6, { width: w, align: 'right' });
+      doc.x = left; doc.y += 16;
+    }
+    _p(doc, 'Echipamentele rămân în proprietatea Beneficiarului de la data achitării lor. Lucrările de montaj se execută de Prestator sau prin colaboratori ai acestuia, sub răspunderea Prestatorului. Deplasările suplimentare, lucrările neprevăzute și intervențiile cerute ulterior se tarifează separat, la tarifele de mai sus.');
     _semnaturi(doc, em.name, firma.name);
   }
 
