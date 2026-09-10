@@ -58,6 +58,69 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Modulele intră în abonamentul mașinii · „Cum se plătește", scris ca lumea
+
+*„Tahograf și e-Transport intră în abonament pe fiecare mașină. Nu le taxăm separat, nu abuzăm."*
+*„Explicația nu sună chiar bine… trebuie explicat mai profi: abonamentul e recurent lunar,
+instalarea doar o dată și dispozitivele la fel. Dar împachetate frumos, ca într-o ofertă
+profesională."*
+
+**1. Modulele nu mai sunt linii separate.** Până acum oferta arăta așa: *Vehicule cu CAN 900 lei +
+Modul Tahograf 100 lei + Modul e-Transport 80 lei*. Adică o listă de suplimente lipite deasupra —
+exact senzația de „mai taie o dată". Acum tariful lor intră **în prețul lunar al fiecărei mașini**:
+
+> Vehicule cu CAN · *include e-Transport* — 20 × **49 lei** = 980 lei
+
+45 lei mașina + 4 lei e-Transportul = 49. Clientul vede **un preț pe mașină, cu tot ce-i trebuie în
+el**, și scris sub el ce anume include. Tahograful merge la fel, dar numai pe **camioanele cu
+tahograf** — o mașină mică nu plătește un modul pe care nu-l folosește. (Dacă bifezi tahograful
+fără să treci niciun camion, se pune pe toată flota — altfel ai bifa ceva ce nu s-ar aplica nicăieri
+și n-ar costa nimic, în tăcere.)
+
+**RA Insight rămâne linie de sine stătătoare** — e un pachet de întrebări cu cotă lunară, nu o
+funcție care merge de la sine; acolo clientul trebuie să vadă limpede ce cotă a cumpărat.
+
+**2. „Cum se plătește" — rescris.** Era o listă de sume una sub alta. Acum sunt **două blocuri**, ca
+într-o ofertă serioasă:
+
+> **1. La semnarea contractului, o singură dată — 21.500 lei (4.300 €)**
+> Echipamente și module · Montaj și punere în funcțiune
+> *Se facturează o singură dată. Echipamentele rămân proprietatea clientului; montajul îl facem noi,
+> la sediul dumneavoastră.*
+>
+> **2. Apoi, în fiecare lună — 1.010 lei (202 €)**
+> *Abonament pentru 20 de vehicule, facturat lunar pe toată durata contractului (12 luni). Total pe
+> 12 luni: 12.120 lei.*
+> **Abonamentul lunar include, pentru fiecare mașină:** monitorizare GPS în timp real · date din
+> motor · modulul e-Transport · RA Insight, 50 de întrebări pe lună · cei 6 agenți automați ·
+> păstrarea datelor pe 6 luni · rapoarte, alerte, actualizări și suport.
+
+Diferența nu e de aranjare, e de mesaj: omul înțelege dintr-o citire **ce dă o dată** și **ce dă în
+fiecare lună**, și mai ales **pentru ce** dă în fiecare lună.
+
+**3. Trei lucruri mici, dar exact alea care se văd pe o hârtie trimisă unui străin:**
+- blocurile se **rupeau între pagini** — „Montaj" rămânea singur jos, restul trecea pe pagina
+  următoare. Acum tabelele și casetele nu se mai taie, iar un titlu nu mai rămâne singur la baza
+  paginii;
+- **„20 vehicule"** → **„20 de vehicule"**. Regula limbii române (1–19 fără „de", restul cu) e acum
+  în cod, într-un singur loc, și se aplică peste tot — și la luni, și la întrebări;
+- **„20 vehicule (0 GPS · 20 CAN · 0 FMS)"** arăta a formular necompletat. Acum apar doar felurile
+  pe care le are chiar clientul, scrise pe înțeles: „20 de vehicule — 12 cu date din motor (CAN) ·
+  8 camioane cu tahograf (FMS)".
+
+**Ce am lăsat în urmă:** probele au crescut la **127**. Cele noi rulează **calculatorul întreg** cu
+un „document de carton" — adică socotesc oferta cap-coadă, cu tot cu module, și verifică cifrele
+exacte: 20 × 49 = 980, camionul cu tahograf 70 iar cel fără 45, niciun rând de „modul" în ofertă.
+
+- **Ce am schimbat:** modulele intră în abonamentul pe mașină; secțiunea de plată rescrisă; trei
+  scăpări de limbă și de aranjare pe hârtie.
+- **Ce vede fondatorul:** tarifele modulelor sunt acum **lei/vehicul**, iar sub fiecare scrie cât
+  face pe lună la flota din ofertă.
+- **Ce vede clientul:** un preț pe mașină cu tot inclus, și o pagină „Cum se plătește" din care
+  înțelege fără să întrebe.
+
+---
+
 ### AMÂNDOI · Tarifele se mișcă după mărimea flotei · ce ne costă, măsurat
 
 *„Absolut tot calculăm în lei și în euro, pentru noi, cu gri. Inclusiv aparatele. RA Insight,

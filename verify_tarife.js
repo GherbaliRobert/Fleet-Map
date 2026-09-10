@@ -4,10 +4,11 @@
 //
 // De ce există fișierul ăsta:
 //
-//   1. Modulele (RA Insight, Tahograf, e-Transport) aveau un preț FIX, la fel la 10 mașini și la
-//      100. Nu e drept nici pentru noi (RA Insight ne costă mai mult la flote mari — măsurat), nici
-//      pentru client (la 10 mașini plătea cât unul cu 100). Acum prețul se propune din numărul de
-//      vehicule, cu un minim. Probele de mai jos apără regula asta.
+//   1. Totul avea un preț FIX, la fel la 10 mașini și la 100. Nu e drept nici pentru noi (RA
+//      Insight ne costă mai mult la flote mari — măsurat), nici pentru client (la 10 mașini plătea
+//      cât unul cu 100). Acum totul se socotește PE VEHICUL. Iar Tahograful și e-Transportul nu mai
+//      sunt rânduri separate în ofertă: tariful lor intră în abonamentul lunar al fiecărei mașini
+//      („nu le taxăm separat, nu abuzăm" — Alin, 10.09).
 //
 //   2. Regula casei: ORICE sumă se vede în lei ȘI în euro. Se uita ușor la un rând nou de tabel.
 //
@@ -28,15 +29,42 @@ const server = fs.readFileSync('./server.js', 'utf8');
 const fq = require('./fleet_quick');
 
 // ── Decupez blocul de tarife din pagină și îl rulez ─────────────────────────────────────────────
-const START = '// ── începe „Tarife după mărimea flotei"';
-const STOP = '// ── sfârșit „Tarife după mărimea flotei" ──';
-const a1 = html.indexOf(START), a2 = html.indexOf(STOP);
-if (a1 < 0 || a2 < 0) { console.log('✗ nu găsesc blocul „Tarife după mărimea flotei" în index.html'); process.exit(1); }
-const sursa = html.slice(a1, a2);
+function decupez(nume) {
+  const a = html.indexOf('// ── începe „' + nume + '"'), b = html.indexOf('// ── sfârșit „' + nume + '" ──');
+  if (a < 0 || b < 0) { console.log('✗ nu găsesc blocul „' + nume + '" în index.html'); process.exit(1); }
+  return html.slice(a, b);
+}
 const M = new Function('document', '_ofN', '_ofPropune', '_ofAtinse', 'raxOfRecalc', '_lei2eur',
-  sursa + '\n; return { _aiqCost, _aiqPret, _pretModul, _modVeh, AIQ_PE_VEH, AIQ_MIN, MOD_TARIF, AIQ_COST_BAZA, AIQ_COST_VEH, AIQ_GREU, _ofHintModule };')(
+  decupez('Tarife după mărimea flotei') + '\n; return { _aiqCost, _aiqPret, _modVeh, AIQ_PE_VEH, AIQ_MIN, MOD_TARIF, AIQ_COST_BAZA, AIQ_COST_VEH, AIQ_GREU, _ofHintModul, _ofHintAiq };')(
   { getElementById: () => null }, (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; },
   () => {}, {}, () => {}, (v) => v / 5);
+
+// ── Și calculatorul întreg, cu un document de carton: câmpurile sunt o listă de valori ──────────
+const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate',
+  decupez('Calculatorul de ofertă') + '\n; return { _ofCalc: _ofCalc, _raxOf: _raxOf, _OF_PRETURI_DEF: _OF_PRETURI_DEF };');
+function calculator(campuri) {
+  const val = Object.assign({}, campuri);
+  const doc = {
+    getElementById: (id) => {
+      if (!(id in val)) return null;
+      const v = val[id];
+      return (typeof v === 'boolean') ? { type: 'checkbox', checked: v, value: '' } : { value: String(v) };
+    }
+  };
+  return CALC(doc, {}, () => {}, 5.0);
+}
+// O flotă obișnuită, pe care se sprijină probele de mai jos.
+function flota(peste) {
+  return Object.assign({
+    'of-cl-name': 'Transport Zebra SRL', 'of-cl-cui': '', 'of-cl-contact': '', 'of-name': 'Ofertă',
+    'of-nveh': 20, 'of-ncan': 20, 'of-nfms': 0,
+    'of-aiA': false, 'of-aiAg': false, 'of-tahograf': false, 'of-etransport': false, 'of-agenti': true,
+    'of-aiqN': 50, 'of-aiqP': 0.2, 'of-ret': '6', 'of-retcustom-m': 0, 'of-contract': 12, 'of-notes': '',
+    'of-qGps': 0, 'of-qLvCan': 0, 'of-qCanInc': 0, 'of-qFms': 0, 'of-qUninstall': 0, 'of-qReplace': 0, 'of-kmTravel': 0,
+    'of-dq130': 0, 'of-dq150': 0, 'of-dq650': 0, 'of-dqLvCan': 0
+  }, peste || {});
+}
+const linie = (r, cuvant) => r.lines.filter(l => l.label.indexOf(cuvant) >= 0)[0];
 
 sect('1. Cât ne costă o întrebare — crește cu flota');
 // Cifrele vin din măsurătoarea din aplicația pornită (flote de 5→200 de vehicule, întrebare grea).
@@ -70,14 +98,52 @@ T('un pachet necunoscut nu dă NaN', Number.isFinite(M._aiqPret(77, 10)), M._aiq
   });
 });
 
-sect('3. Tahograf și e-Transport — tot pe vehicul');
+sect('3. Tahograf și e-Transport intră ÎN abonamentul mașinii, nu ca linie separată');
+// Hotărârea lui Alin (10.09): „nu le taxăm separat, nu abuzăm". Deci tariful lor pe vehicul se
+// adaugă în prețul lunar al mașinii, iar în ofertă NU apare niciun rând de „modul".
 T('Tahograf: 5 lei/vehicul', M.MOD_TARIF.tahograf.peVeh === 5);
-T('Tahograf: minim la flotă mică', M._pretModul(M.MOD_TARIF.tahograf, 2) === M.MOD_TARIF.tahograf.min, M._pretModul(M.MOD_TARIF.tahograf, 2));
-T('Tahograf: 20 de camioane = 100 lei', M._pretModul(M.MOD_TARIF.tahograf, 20) === 100, M._pretModul(M.MOD_TARIF.tahograf, 20));
-T('e-Transport: 20 de vehicule = 80 lei', M._pretModul(M.MOD_TARIF.etransport, 20) === 80, M._pretModul(M.MOD_TARIF.etransport, 20));
-T('e-Transport: minim la flotă mică', M._pretModul(M.MOD_TARIF.etransport, 1) === M.MOD_TARIF.etransport.min);
-T('fără vehicule → tot minimul, nu zero', M._pretModul(M.MOD_TARIF.tahograf, 0) === M.MOD_TARIF.tahograf.min);
-// Pe ce vehicule se socotește fiecare modul
+T('e-Transport: 4 lei/vehicul', M.MOD_TARIF.etransport.peVeh === 4);
+T('nu mai există minim pe modul (nu mai e linie de sine stătătoare)',
+  M.MOD_TARIF.tahograf.min === undefined && M.MOD_TARIF.etransport.min === undefined);
+
+const fara = calculator(flota())._ofCalc();
+T('fără module: 20 × 45 = 900 lei', fara.monthly === 900, fara.monthly);
+T('și prețul pe mașină e tariful gol', linie(fara, 'CAN').unit === 45, linie(fara, 'CAN').unit);
+T('fără module nu scrie „include" nimic', !linie(fara, 'CAN').extra);
+
+const cuEt = calculator(flota({ 'of-etransport': true }))._ofCalc();
+T('cu e-Transport, mașina costă 45 + 4 = 49 lei', linie(cuEt, 'CAN').unit === 49, linie(cuEt, 'CAN').unit);
+T('totalul lunar e 20 × 49 = 980 lei', cuEt.monthly === 980, cuEt.monthly);
+T('NU apare o linie separată de modul', !cuEt.lines.some(l => /Modul e-Transport/.test(l.label)),
+  cuEt.lines.map(l => l.label).join(' | '));
+T('dar scrie sub mașină ce include', /e-Transport/.test(linie(cuEt, 'CAN').extra || ''), linie(cuEt, 'CAN').extra);
+
+// Tahograful ține de camioane. Cu camioane trecute, urcă DOAR prețul lor.
+const cuTh = calculator(flota({ 'of-nveh': 20, 'of-ncan': 12, 'of-nfms': 8, 'of-tahograf': true }))._ofCalc();
+T('camionul cu tahograf costă 65 + 5 = 70 lei', linie(cuTh, 'FMS').unit === 70, linie(cuTh, 'FMS').unit);
+T('mașina fără tahograf rămâne la 45 lei', linie(cuTh, 'CAN').unit === 45, linie(cuTh, 'CAN').unit);
+T('totalul: 12 × 45 + 8 × 70 = 1100 lei', cuTh.monthly === 1100, cuTh.monthly);
+T('scrie „include tahograf" doar la camioane',
+  /tahograf/.test(linie(cuTh, 'FMS').extra || '') && !/tahograf/.test(linie(cuTh, 'CAN').extra || ''));
+T('nicio linie de „Modul Tahograf"', !cuTh.lines.some(l => /Modul Tahograf/.test(l.label)));
+
+// Dacă bifezi tahograful fără să treci camioane, se pune pe toată flota — altfel ai bifat degeaba.
+const thGol = calculator(flota({ 'of-nfms': 0, 'of-tahograf': true }))._ofCalc();
+T('tahograf bifat fără camioane → se pune pe toată flota', linie(thGol, 'CAN').unit === 50, linie(thGol, 'CAN').unit);
+T('și se vede în total', thGol.monthly === 1000, thGol.monthly);
+
+// Amândouă odată
+const ambele = calculator(flota({ 'of-tahograf': true, 'of-etransport': true }))._ofCalc();
+T('cu amândouă: 45 + 5 + 4 = 54 lei/mașină', linie(ambele, 'CAN').unit === 54, linie(ambele, 'CAN').unit);
+T('scrie amândouă sub mașină', /tahograf și e-Transport/.test(linie(ambele, 'CAN').extra || ''), linie(ambele, 'CAN').extra);
+
+// RA Insight RĂMÂNE linie separată — e un pachet de întrebări, cu cotă lunară.
+const cuAi = calculator(flota({ 'of-aiA': true }))._ofCalc();
+T('RA Insight rămâne linie de sine stătătoare', !!linie(cuAi, 'RA Insight'), cuAi.lines.map(l => l.label).join(' | '));
+T('și spune câte întrebări are în ea', /50 apeluri/.test(linie(cuAi, 'RA Insight').label));
+T('agenții apar cu 0 lei', linie(cuAi, 'Agenți') && linie(cuAi, 'Agenți').total === 0);
+
+sect('3b. Pe ce vehicule se socotește fiecare modul');
 T('tahograful se socotește pe camioanele cu tahograf, dacă sunt trecute',
   M._modVeh({ nVeh: 30, nFms: 12 }).tahograf === 12, JSON.stringify(M._modVeh({ nVeh: 30, nFms: 12 })));
 T('dacă nu sunt trecute camioane cu FMS, se socotește pe toată flota',
@@ -85,6 +151,32 @@ T('dacă nu sunt trecute camioane cu FMS, se socotește pe toată flota',
 T('nu poate ieși mai mult decât are flota', M._modVeh({ nVeh: 10, nFms: 99 }).tahograf === 10);
 T('e-Transport și RA Insight merg pe toată flota',
   M._modVeh({ nVeh: 30, nFms: 12 }).etransport === 30 && M._modVeh({ nVeh: 30, nFms: 12 }).aiA === 30);
+
+sect('3c. Cum se plătește — scris ca într-o ofertă, nu ca o listă de sume');
+const PL = html.slice(html.indexOf('function _ofBlocPlata'), html.indexOf('window.raxOfRecalc = function'));
+T('în aplicație: două blocuri, o dată și lunar', /La semnare, o singură dată/.test(PL) && /Apoi, lunar/.test(PL));
+T('spune că se facturează o singură dată, la semnare', /Se facturează o singură dată, la semnarea contractului/.test(PL));
+T('spune că abonamentul e lunar, pe toată durata contractului', /facturat în fiecare lună, pe toată durata contractului/.test(PL));
+T('și cât face pe tot contractul', /Pe ' \+ luni \+ ' ' \+ _rDe\(luni\) \+ 'luni/.test(PL));
+const PD = html.slice(html.indexOf('window.raxOfExportPdf'), html.indexOf('window.raxDeleteCompany'));
+T('pe hârtie: „Cum se plătește", nu „Cât plătiți"', /<h2>Cum se plătește<\/h2>/.test(PD) && !/<h2>Cât plătiți<\/h2>/.test(PD));
+T('pasul 1 e la semnarea contractului', /La semnarea contractului, o singură dată/.test(PD));
+T('pasul 2 e lunar, cu totalul pe contract', /Apoi, în fiecare lună/.test(PD) && /Total pe ' \+ luni/.test(PD));
+T('scrie că echipamentele rămân ale clientului', /rămân proprietatea clientului/.test(PD));
+T('și înșiră ce include abonamentul, pe fiecare mașină', /Abonamentul lunar include, pentru fiecare mașină/.test(PD));
+T('lista de incluse pornește de la monitorizarea GPS', /monitorizare GPS în timp real/.test(PD));
+T('și pomenește modulele doar dacă sunt bifate',
+  /if \(r\.cfg\.tahograf\) incl\.push/.test(PD) && /if \(r\.cfg\.etransport\) incl\.push/.test(PD));
+T('blocurile nu se mai rup între pagini', /\.plata\{page-break-inside:avoid;break-inside:avoid;\}|table,\.box,\.plata\{page-break-inside:avoid/.test(PD + html));
+T('nici titlul nu rămâne singur la baza paginii', /h2\{page-break-after:avoid/.test(html));
+// „20 de vehicule", dar „12 luni"
+const DE = new Function(html.slice(html.indexOf('function _rDe(n)'), html.indexOf('// Aceleași sume, dar pentru celule de tabel:')) + '\n; return _rDe;')();
+T('„20 de vehicule"', DE(20) === 'de ');
+T('„12 luni", fără „de"', DE(12) === '');
+T('„100 de vehicule"', DE(100) === 'de ');
+T('„101 vehicule", fără „de"', DE(101) === '');
+T('„1 vehicul"', DE(1) === '');
+T('zero nu devine „0 de vehicule"', DE(0) === '');
 
 sect('4. Moneda dublă — nicio sumă singură pe ecran');
 // Celulele de tabel din rezumat trebuie să treacă prin _celLei/_celEur (care scriu ambele monede).

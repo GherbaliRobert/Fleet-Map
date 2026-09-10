@@ -121,9 +121,10 @@ T('și nici în PDF-ul ofertei', !/Cost inițial \(montaj \+ prima lună\): ' \+
 T('există un bloc „Cât plătește clientul"', /function _ofBlocPlata\(r\)/.test(html));
 T('care adună MONTAJUL și ECHIPAMENTELE', /var unic = \(r\.montaj \|\| 0\) \+ hwLei;/.test(html));
 T('cu echipamentele transformate în lei', /var hwLei = \(r\.hwTotal \|\| 0\) \* _fxRate;/.test(html));
-T('spune limpede „la început, o dată" și „apoi, în fiecare lună"',
-  /La început, o dată/.test(html) && /Apoi, în fiecare lună/.test(html));
-T('și în PDF-ul ofertei e același răspuns', /<h2>Cât plătiți<\/h2>/.test(html));
+T('spune limpede ce se dă o dată și ce se dă lunar',
+  /La semnare, o singură dată/.test(html) && /Apoi, lunar/.test(html));
+T('și în PDF-ul ofertei e același răspuns, scris pe îndelete',
+  /<h2>Cum se plătește<\/h2>/.test(html) && /La semnarea contractului, o singură dată/.test(html) && /Apoi, în fiecare lună/.test(html));
 
 // DEFECT: același număr se scria de patru ori (20 de vehicule → 20 la montaj GPS, 20 la LV-CAN,
 // 20 la FMC650, 20 la LV-CAN200). Dacă uitai unul, oferta ieșea greșită și nu-ți spunea nimeni.
@@ -142,8 +143,11 @@ T('cei 6 agenți apar în ofertă, cu 0 lei', /Agenți automați \(6\) — inclu
 T('și li se spun numele, ca să se vadă ce primește', /RA Watch[\s\S]{0,200}RA Client/.test(html));
 T('Tahograf are bifă și preț lunar', /id="of-tahograf"/.test(html) && /pTahograf/.test(html));
 T('e-Transport la fel', /id="of-etransport"/.test(html) && /pEtransport/.test(html));
-T('amândouă intră în totalul lunar',
-  /if \(cfg\.tahograf\) lines\.push/.test(html) && /if \(cfg\.etransport\) lines\.push/.test(html));
+// Din 10.09 NU mai sunt linii separate: tariful lor intră în abonamentul fiecărei mașini
+// („nu le taxăm separat, nu abuzăm"). Regula e apărată pe larg în verify_tarife.js.
+T('amândouă intră în abonamentul pe vehicul, nu ca linie separată',
+  /var etV = cfg\.etransport \? \(p\.pEtransport \|\| 0\) : 0;/.test(html) &&
+  !/if \(cfg\.tahograf\) lines\.push/.test(html) && !/if \(cfg\.etransport\) lines\.push/.test(html));
 T('și se salvează în ofertă', /tahograf: c\('of-tahograf'\), etransport: c\('of-etransport'\), agenti: c\('of-agenti'\)/.test(html));
 
 sect('5. Partenerul și lucrarea, în bază');
