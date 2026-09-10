@@ -58,6 +58,78 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Oferta pe o pagină · și ce se întâmplă când clientul depășește cota RA Insight
+
+*„Secțiunea 2 din ofertă în PDF se duce pe două pagini… aranjează mai OK PDF-ul."*
+*„RA Insight — văd că în calculator e trecut la 50 de întrebări. Dacă se depășesc, ce facem?"*
+
+#### Oferta încape acum pe o singură pagină
+
+Se ducea pe două și se rupea fix prin mijlocul casetei de plată: titlul rămânea jos pe pagina 1,
+sumele treceau pe 2. Am rescris hârtia, cu trei schimbări:
+
+1. **Ordinea.** Întâi **răspunsul** („cât dau acum, cât dau lunar"), pe urmă tabelele care îl
+   justifică. Așa citește un om o ofertă — nu adună el tabele ca să afle suma. Înainte răspunsul era
+   ultimul, adică tocmai pe pagina care se rupea.
+2. **Costurile unice sub un singur titlu.** Erau două capitole („Montaj", „Echipamente"); acum e
+   unul, *Detaliere costuri unice*, cu două tabele sub el. Mai puțin zgomot, aceeași informație.
+3. **Aranjarea în pagină e hotărâtă de noi, nu de browser.** Marginile paginii sunt scrise în
+   ofertă (`@page`), spațiile sunt strânse, iar fiecare bucată care trebuie citită împreună (o
+   casetă, un tabel cu totalul lui) e marcată să **nu se taie** între pagini. Măsurat: conținutul
+   are 1032 px, o pagină A4 are 1040 — încape, iar dacă o ofertă mai mare trece pe pagina a doua,
+   trece **întreagă**, nu tăiată prin mijloc.
+
+#### Ce se întâmplă la depășirea cotei — regula, așa cum e azi
+
+Întrebarea ta e îndreptățită, fiindcă logica există dar **e neterminată**. Ce funcționează acum:
+
+- cota se ține **pe lună calendaristică** și se reînnoiește pe 1;
+- se numără **doar întrebările care chiar costă** (RA Insight și asistentul). Întrebările rapide —
+  „unde sunt mașinile", „care sunt oprite", „câți km azi" — sunt gratuite și **nu intră în cotă**.
+  Nici citirea actelor cu poza nu intră;
+- la epuizare sunt **două purtări**, după cum se setează pe firmă: *poate depăși* (implicit — merge
+  mai departe, iar fiecare întrebare peste cotă se socotește la prețul negociat, 0,20 € implicit)
+  sau *se oprește* (mai rămân doar întrebările gratuite);
+- clientul vede tot timpul, în panoul de AI, câte mai are, când se reînnoiește și cât costă una în
+  plus. Când depășește: *„Cotă epuizată · 12 apeluri suplimentare · în plus luna asta: 12 lei"*;
+- noi vedem, în Administrare, per client: consumate / cotă / peste cotă / cât ne-a costat.
+
+**Trei lucruri lipsesc, și trebuie hotărâte:**
+
+- **Depășirea nu ajunge pe factură.** Clientul vede „în plus luna asta: 12 lei", dar factura lunară
+  nu are rândul ăla. Arătăm o datorie pe care nu o încasăm niciodată.
+- **Nu avertizează nimeni pe nimeni.** Nici la 80%, nici la epuizare. Clientul află doar dacă
+  deschide panoul.
+- **Prețul peste cotă nu e scris pe hârtia clientului.** E negociat în calculator, dar nu apare nici
+  în ofertă, nici în contract — deci nu am putea factura ceva ce nu a semnat.
+
+Toate trei sunt trecute în lista de dinainte de lansare. **Deciziile sunt ale voastre** și le-am pus
+acolo ca întrebări, nu ca sarcini.
+
+#### Un defect găsit pe drum: vindeam 50 și livram nelimitat
+
+Verificând asta, am dat peste ceva mai grav. Când deschizi un client **din ofertă**, se creau firma
+și contractul cu prețul corect — dar **în fișa firmei nu se scria nimic**: cota RA Insight lipsea,
+iar „fără cotă" înseamnă **nelimitat**. Vindeai 50 de întrebări pe lună și livrai nelimitat, în
+tăcere. (Cota se scria doar dacă apăsai separat butonul „Aplică" din lista de oferte — un pas pe
+care nimeni nu-l ține minte.)
+
+Acum oferta acceptată aprinde exact ce scrie în ea: RA Insight, cota vândută și prețul peste cotă,
+dintr-un **singur loc** în cod, folosit și de traseul „client nou", și de butonul „Aplică".
+
+**Tahograful și e-Transportul NU se aprind singure**, chiar dacă sunt vândute — și e bine așa:
+partea lor de „descărcare la distanță" încă întoarce date demonstrative, iar e-Transportul n-are
+încă tokenul ANAF al clientului (E.1). Un client care plătește nu trebuie să dea peste date
+fabricate crezând că sunt reale. Dar nu se mai pierd în tăcere: la semnarea unui contract care le
+include, **primim o notificare** cu firma și modulul, ca să le pornim de mână când sunt gata.
+
+- **Ce am schimbat:** oferta pe o pagină, cu răspunsul primul; cota vândută se activează singură;
+  modulele vândute dar nepornite ne anunță.
+- **Ce vede fondatorul:** o notificare „de pornit manual" și o ofertă care nu se mai rupe.
+- **Ce vede clientul:** o pagină de ofertă limpede — și cota pe care chiar a cumpărat-o.
+
+---
+
 ### AMÂNDOI · Modulele intră în abonamentul mașinii · „Cum se plătește", scris ca lumea
 
 *„Tahograf și e-Transport intră în abonament pe fiecare mașină. Nu le taxăm separat, nu abuzăm."*
@@ -5302,6 +5374,20 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### B. De decis împreună (produs, nu cod)
+
+- [ ] **Depășirea cotei RA Insight — ce facem, de fapt? (întrebarea lui Alin, 10.09)**
+  Regula de azi: cotă pe lună calendaristică, iar la epuizare fie merge mai departe pe cost
+  suplimentar (0,20 €/întrebare, implicit), fie se oprește. Clientul vede contorul în panoul de AI.
+  **Trei lucruri lipsesc și nu le pot hotărî eu:**
+  1. **Facturarea depășirii.** Clientul citește „în plus luna asta: 12 lei", dar factura lunară nu
+     are rândul ăla — nu încasăm nimic. Fie adăugăm un rând „RA Insight — întrebări peste cotă"
+     (atunci prețul trebuie scris și pe ofertă/contract, altfel facturăm ceva nesemnat), fie
+     renunțăm la cost suplimentar și **oprim** la epuizare, cu un mesaj limpede.
+  2. **Avertismentele.** Nimeni nu e anunțat, nici la 80%, nici la epuizare. Propunerea mea: la 80%
+     o notificare la client, la 100% una la client ȘI una la noi (ocazie de vânzare a unui pachet
+     mai mare).
+  3. **Ce scrie pe hârtie.** Dacă rămâne cost suplimentar, prețul pe întrebare trebuie trecut în
+     ofertă și în contract, la fel ca restul prețurilor.
 
 - [ ] **Notificările se revizuiesc înainte de lansare — hotărât de voi, 04.08.** Rămân deocamdată
   cum sunt; le testați pe teren și veniți cu ce nu merge. Când ajungem la revizuire, aici sunt

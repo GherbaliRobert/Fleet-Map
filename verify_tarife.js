@@ -178,6 +178,18 @@ T('„101 vehicule", fără „de"', DE(101) === '');
 T('„1 vehicul"', DE(1) === '');
 T('zero nu devine „0 de vehicule"', DE(0) === '');
 
+sect('3d. Hârtia se ține pe o pagină');
+T('răspunsul („cum se plătește") vine ÎNAINTEA tabelelor',
+  PD.indexOf('Cum se plătește') < PD.indexOf('Detaliere abonament lunar'), 'ordinea secțiunilor');
+T('costurile unice sunt sub un singur titlu', /<h2>Detaliere costuri unice<\/h2>/.test(PD));
+T('fiecare bucată care se citește împreună e marcată', (PD.match(/impreuna/g) || []).length >= 6,
+  String((PD.match(/impreuna/g) || []).length));
+T('marcajul chiar oprește ruperea între pagini', /\.impreuna\{page-break-inside:avoid;break-inside:avoid;\}/.test(PD));
+T('un titlu nu rămâne singur la baza paginii', /h2\{page-break-after:avoid;break-after:avoid;\}/.test(PD));
+T('regulile de pagină NU stau doar în @media print (le sare pdf-ul din browser)',
+  PD.indexOf('.impreuna{page-break-inside') < PD.indexOf('@media print'));
+T('nu se mai repetă „Anual / Contract N luni" (e deja în caseta de plată)', !/Anual: ' \+ r\.annual/.test(PD));
+
 sect('4. Moneda dublă — nicio sumă singură pe ecran');
 // Celulele de tabel din rezumat trebuie să treacă prin _celLei/_celEur (care scriu ambele monede).
 const rez = html.slice(html.indexOf('window.raxOfRecalc = function'), html.indexOf('// ─── Inventar dispozitive GPS'));
@@ -203,7 +215,9 @@ const listaEur = (html.match(/var _OF_CAMP_EUR = \[([\s\S]*?)\];/) || [])[1] || 
 const pdf = html.slice(html.indexOf('window.raxOfExportPdf'), html.indexOf('window.raxDeleteCompany'));
 T('PDF-ul are coloană „≈ EUR" la abonament', /≈ EUR/.test(pdf));
 T('PDF-ul are coloană „≈ RON" la echipamente', /≈ RON/.test(pdf));
-T('totalul lunar din PDF are și euro', /Total lunar[\s\S]{0,200}_fxRate/.test(pdf));
+T('totalul lunar din PDF are și euro', /Total lunar: ' \+ dubluLei\(r\.monthly\)/.test(pdf));
+T('și fiecare sumă de pe hârtie trece prin dubluLei (lei + euro)',
+  /var dubluLei = function \(v\) \{ return v\.toFixed\(2\) \+ ' lei[\s\S]{0,90}_fxRate/.test(pdf));
 T('PDF-ul spune cursul folosit și că se facturează în lei', /facturarea se face în lei/.test(pdf));
 
 sect('5. Un singur loc pentru tarifele de pornire');
@@ -225,6 +239,26 @@ T('prețurile salvate în ofertă se marchează ca scrise de mână',
 T('la desenarea formularului, urmele vechi se șterg', /_ofAtinse = \{\};/.test(html));
 T('alegerea altui pachet lasă propunerea să scrie iar prețul',
   /raxOfAiqPreset = function[\s\S]{0,220}_ofAtinse\['of-pAiA'\] = false/.test(html));
+
+sect('6b. Ce s-a vândut se și activează pe firmă');
+// Gaura: un client deschis DIN OFERTĂ primea contractul cu prețul corect, dar în fișa firmei nu se
+// scria nimic — fără cotă înseamnă NELIMITAT. Vindeai 50 de întrebări/lună și livrai nelimitat.
+T('există o singură funcție care duce oferta pe firmă', /async function _aplicaOfertaPeFirma\(companyId, oferta\)/.test(server));
+T('contractul făcut din ofertă o cheamă', /_aplicaOfertaPeFirma\(id, oferta\)/.test(server));
+T('și butonul „Aplică" din lista de oferte folosește ACEEAȘI funcție',
+  /_aplicaOfertaPeFirma\(companyId, offer\)/.test(server));
+T('nu mai există o a doua listă paralelă de setări',
+  (server.match(/questions: n, overage: true, overagePriceEur: priceEur/g) || []).length === 1,
+  String((server.match(/questions: n, overage: true, overagePriceEur: priceEur/g) || []).length));
+T('cota vândută ajunge pe firmă', /patch\.ai_quota = n > 0 \?/.test(server));
+T('„nelimitat" în ofertă (0) rămâne fără plafon', /patch\.ai_quota = n > 0 \? \{[^}]*\} : null/.test(server));
+T('prețul peste cotă negociat în ofertă merge și el', /overagePriceEur: priceEur/.test(server));
+T('RA Insight se aprinde odată cu cota', /patch\.features = \{ ai_assistant: true \}/.test(server));
+// Dar modulele demonstrative NU se aprind singure — decizie veche, rămâne.
+T('Tahograful și e-Transportul NU se aprind singure',
+  !/features\.tahograf = true/.test(server) && !/features\.etransport = true/.test(server));
+T('dar nu se trec sub tăcere: rămân pe o listă de pornit manual', /deAprinsManual\.push\('tahograf'\)/.test(server));
+T('și primim o notificare cu firma și modulul', /type: 'module_de_pornit'/.test(server));
 
 sect('7. Flota tăiată nu mai minte');
 T('plafonul nu mai e 80 înfipt în cod', !/positions\.slice\(0, 80\)/.test(server));

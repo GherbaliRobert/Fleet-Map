@@ -4238,6 +4238,32 @@ app.get('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (re
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Ce s-a vândut într-o ofertă se aprinde pe firmă: RA Insight + cota de întrebări, cu prețul peste
+// cotă negociat acolo. UN SINGUR loc, folosit și de „client nou din ofertă", și de butonul „Aplică"
+// din lista de oferte — ca să nu existe două liste care se desincronizează.
+//
+// ⚠ Tahograful și e-Transportul NU se aprind singure, chiar dacă sunt vândute în ofertă. Decizia e
+// veche și rămâne bună: partea lor de „descărcare la distanță" încă întoarce date demonstrative, iar
+// e-Transportul n-are token propriu pe companie (vezi E.1 din lista de dinainte de lansare). Un
+// client care plătește nu trebuie să dea peste date fabricate crezând că sunt reale. Se pornesc de
+// mână, deliberat, când sunt gata — de aceea le și întoarcem, ca să fie spuse omului.
+async function _aplicaOfertaPeFirma(companyId, oferta) {
+  const cfg = (oferta && oferta.config && oferta.config.cfg) || {};
+  const deAprinsManual = [];
+  if (cfg.tahograf) deAprinsManual.push('tahograf');
+  if (cfg.etransport) deAprinsManual.push('etransport');
+  const patch = {};
+  if (cfg.aiA) patch.features = { ai_assistant: true };
+  if (cfg.aiA) {
+    // aiqN = 0 în ofertă înseamnă „nelimitat" → cotă absentă (fără plafon).
+    const n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
+    const priceEur = Math.max(0, Math.round((Number(cfg.aiqP) || 0.20) * 100) / 100);
+    patch.ai_quota = n > 0 ? { questions: n, overage: true, overagePriceEur: priceEur } : null;
+  }
+  if (!Object.keys(patch).length) return { patch: null, deAprinsManual };
+  await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
+  return { patch, deAprinsManual };
+}
 app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -4269,6 +4295,24 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     const c = await db.createContract(date);
     if (oferta) {
       try { await db.legOferta(oferta.id, { company_id: id, contract_id: c.id }); } catch (e) {}
+      // CE S-A VÂNDUT SE ȘI ACTIVEAZĂ. Până acum, un client deschis din ofertă primea contractul cu
+      // prețul corect, dar în fișa firmei nu se scria NIMIC: modulele rămâneau stinse, iar cota RA
+      // Insight lipsea — adică „fără cotă", adică NELIMITAT. Vindeai 50 de întrebări pe lună și
+      // livrai nelimitat, în tăcere. Acum oferta acceptată aprinde exact ce scrie în ea.
+      try {
+        const ap = await _aplicaOfertaPeFirma(id, oferta);
+        // Modulele vândute care NU se pot aprinde singure: nu tăcem, punem o notificare pentru noi.
+        if (ap && ap.deAprinsManual.length) {
+          const et = { tahograf: 'Tahograf', etransport: 'e-Transport' };
+          await db.createNotification({
+            type: 'module_de_pornit', severity: 'warning', companyId: null, userId: null,
+            title: 'De pornit manual: ' + ap.deAprinsManual.map(k => et[k] || k).join(' și '),
+            body: 'Contractul firmei „' + co.name + '" include ' + ap.deAprinsManual.map(k => et[k] || k).join(' și ') +
+              '. Modulele nu se aprind singure (încă dau date demonstrative, iar e-Transportul are nevoie de tokenul ANAF al clientului). Pornește-le din fișa companiei când sunt gata.',
+            data: { company_id: id, module: ap.deAprinsManual }
+          }).catch(function () {});
+        }
+      } catch (e) { console.warn('[OFERTĂ→FIRMĂ]', e.message); }
       auditReq(req, 'link', 'offer', oferta.id, { company_id: id, contract_id: c.id });
     }
     // Reprezentantul legal e o însușire a FIRMEI, nu doar a hârtiei: rămâne și la contractul următor.
@@ -11566,14 +11610,9 @@ app.post('/api/admin/offers/:id/apply-to-company', requireAuth, requireSuperadmi
     const company = await db.getCompanyById(companyId); if (!company) return res.status(404).json({ error: 'Compania nu există' });
     const cfg = (offer.config && offer.config.cfg) || {};
     if (!cfg.aiA) return res.status(400).json({ error: 'Oferta nu include RA Insight — nu e nimic de aplicat.' });
-    // aiqN = 0 în ofertă înseamnă „nelimitat" → cotă absentă (fără plafon). altfel = numărul de apeluri/lună.
     const n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
     const priceEur = Math.max(0, Math.round((Number(cfg.aiqP) || 0.20) * 100) / 100);
-    const patch = {
-      features: { ai_assistant: true },                 // modulul devine activ
-      ai_quota: n > 0 ? { questions: n, overage: true, overagePriceEur: priceEur } : null  // null = nelimitat
-    };
-    await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
+    await _aplicaOfertaPeFirma(companyId, offer);   // aceeași regulă ca la contractul din ofertă
     auditReq(req, 'apply_offer', 'company', companyId, { offer_id: id, quota: n, priceEur: priceEur });
     res.json({ ok: true, company: company.name, quota: n, overagePriceEur: priceEur, unlimited: n === 0 });
   } catch (err) { res.status(500).json({ error: err.message }); }
