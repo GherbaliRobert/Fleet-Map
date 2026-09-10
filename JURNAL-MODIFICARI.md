@@ -58,6 +58,115 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Tarifele se mișcă după mărimea flotei · ce ne costă, măsurat
+
+*„Absolut tot calculăm în lei și în euro, pentru noi, cu gri. Inclusiv aparatele. RA Insight,
+Tahograf, e-Transport, fiecare trebuie să aibă un preț, nu toate la fel… RA Insight consumă tokeni
+la 10 mașini mai puțini decât la o flotă cu 20, 50, 100. Nici nu știu dacă pe noi ne costă ceva
+Tahograf și e-Transport, ia verifică."*
+
+Am verificat. Trei răspunsuri, în ordinea în care le-ai cerut.
+
+---
+
+#### 1. Cât ne costă RA Insight, pe flote de mărimi diferite — MĂSURAT
+
+N-am presupus nimic. Am pornit aplicația adevărată, i-am băgat pe rând **5, 10, 20, 50, 100 și 200
+de mașini** cu poziții reale și am pus de fiecare dată aceeași întrebare grea („ce probleme urgente
+am, cât s-a rulat săptămâna trecută, ce mă costă cel mai mult"). Am prins **exact** ce pleacă spre
+model și am socotit banii cu prețurile reale:
+
+| Flota | Cât ne costă o întrebare | Față de 5 mașini |
+|---|---|---|
+| 5 vehicule | 0,031 lei | — |
+| 10 vehicule | 0,033 lei | 1,05× |
+| 20 vehicule | 0,036 lei | 1,14× |
+| 50 vehicule | 0,044 lei | 1,40× |
+| 100 vehicule | 0,058 lei | 1,86× |
+| 200 vehicule | 0,086 lei | 2,76× |
+
+**Aveai dreptate: crește.** Dar nu de zece ori, ci cam de **trei ori** de la o flotă mică la una
+foarte mare. Motivul: fiecare mașină în plus adaugă vreo 40 de „cuvinte" la răspunsul pe care
+aplicația i-l dă modelului („unde e, ce face, cât carburant are"). Restul (întrebarea, regulile,
+lista de rapoarte) e la fel indiferent de flotă și, fiind aceeași de fiecare dată, se **reține** și
+se plătește cu 10% din preț.
+
+Formula pe care o folosește de-acum calculatorul, scrisă în cod ca să se vadă de unde vine:
+**0,030 lei + 0,00028 lei × numărul de vehicule**, per întrebare.
+
+> Presupunerea veche era „0,04 lei fix, ×5 la uz intens". Prima cifră era aproape bună la o flotă
+> de 20; a doua era mult prea negru — la uz intens adevărat costul se dublează, nu se face de cinci
+> ori. Acum ambele sunt măsurate.
+
+#### 2. Ne costă ceva Tahograf și e-Transport? — NU, nimic pe lună
+
+- **Tahograf: zero.** Fișierele `.DDD` se citesc **la noi în server**, cu cod scris de noi. Niciun
+  serviciu plătit, niciun apel la AI, nicio taxă pe fișier. Singurul cost e spațiul pe disc
+  (maximum 2 MB per fișier descărcat) și curentul. Practic, ce încasăm e profit.
+- **e-Transport: zero pe lună.** ANAF **nu percepe nimic** pentru API. Trimiterea poziției din 3 în
+  3 minute e serverul nostru, nimic altceva. **DAR** — și ăsta e lucrul important — modulul **încă nu
+  se poate vinde**: aplicația are UN SINGUR token ANAF, al nostru, pe toată platforma. Fiecare
+  client declară sub CIF-ul lui, cu tokenul lui, luat cu certificatul lui digital (aia îl costă pe
+  el ~50–100 €/an). E punctul **E.1** din lista de dinainte de lansare. Poți pune modulul în ofertă,
+  dar nu-l porni la client până nu rezolvăm E.1.
+
+#### 3. Tarifele — se mișcă acum după flotă
+
+Modulele nu mai au preț fix. Se propun **pe vehicul**, cu un minim ca să merite și la flote mici:
+
+| Modul | Tarif propus | Minim | La 20 de mașini | La 50 |
+|---|---|---|---|---|
+| RA Insight (50 apeluri) | 1,5 lei/vehicul | 19 lei | 30 lei | 75 lei |
+| RA Insight (100 apeluri) | 2,5 lei/vehicul | 29 lei | 50 lei | 125 lei |
+| RA Insight (nelimitat) | 6 lei/vehicul | 79 lei | 120 lei | 300 lei |
+| Modul Tahograf | 5 lei/camion cu tahograf | 25 lei | 100 lei | 250 lei |
+| Modul e-Transport | 4 lei/vehicul | 20 lei | 80 lei | 200 lei |
+
+Sub fiecare modul scrie, cu gri, **de unde vine prețul**: „propus: 4 lei × 20 vehicule". Iar la RA
+Insight, caseta arată acum **cât ne costă la flota aia anume** — nu o cifră generală.
+
+**Regula rămâne aceeași ca la cantități: dacă scrii tu alt preț, nu ți-l mai calcă nimeni.** Nici
+când schimbi pe urmă numărul de mașini, nici când redeschizi o ofertă salvată — acolo prețul
+negociat e sfânt.
+
+*Cifrele astea sunt propunerea mea, nu o hotărâre. Toate sunt câmpuri editabile; dacă vrei alt
+tarif pe vehicul, se schimbă într-un loc.*
+
+#### 4. Moneda dublă — acum chiar peste tot
+
+Regula era scrisă („toate sumele în lei ȘI euro"), dar jumătate din calculator o încălca: prețurile
+unitare, subtotalurile de abonament, montajul și **aparatele** apăreau într-o singură monedă. Acum:
+
+- fiecare sumă din rezumat are moneda a doua **dedesubt, mică și gri**;
+- fiecare **tarif editabil** are echivalentul lângă el, care se schimbă în timp ce tastezi;
+- **pe oferta clientului** (PDF) fiecare tabel are o coloană „≈ EUR" (la aparate, „≈ RON"), iar jos
+  scrie cursul folosit și că **facturarea se face în lei**.
+
+#### 5. Un defect găsit la măsurat: flotele mari erau tăiate în tăcere
+
+La 100 și la 200 de mașini măsurătoarea dădea **același** cost. De acolo l-am prins: orice răspuns
+despre „toată flota" era tăiat la **80 de vehicule**, fără să spună nimeni nimic. Adică o firmă cu
+200 de mașini întreba „cum stă flota" și primea **„Total: 80 vehicule"** — un număr pur și simplu
+greșit, dat cu toată încrederea.
+
+Reparat în două feluri: plafonul a urcat la 200 (se poate schimba fără cod), **și**, dacă totuși se
+taie, se spune: totalul afișat e cel adevărat, iar dedesubt scrie „flota are 200; mai sus sunt
+primele 80". Modelul primește și el avertismentul, ca să nu dea cifre pe toată flota dintr-o listă
+parțială.
+
+**Ce am lăsat în urmă:** **92 de probe noi** (`verify_tarife.js`), fiecare sabotată o dată ca să
+verific că într-adevăr pică dacă se strică regula, plus **22 de probe în aplicația pornită**:
+schimb flota → mă uit ce fac prețurile → scriu eu unul de mână → verific că nu-l mai calcă nimeni →
+salvez → redeschid.
+
+- **Ce am schimbat:** costul RA Insight e măsurat și depinde de flotă; modulele se vând pe vehicul;
+  moneda dublă peste tot; flota nu mai e tăiată în tăcere.
+- **Ce vede fondatorul:** prețuri care se propun singure din numărul de mașini, cu marja la vedere.
+- **Ce vede clientul:** o ofertă în lei și euro, și răspunsuri de la RA Insight care nu mai mint
+  când flota trece de 80 de mașini.
+
+---
+
 ### FONDATOR · Calculatorul de ofertare: spune adevărul și duce tot în contract
 
 *„Verifică un pic calculatorul de ofertare. Pentru că de aici, dacă facem ofertă ok și înțeleasă,
@@ -5212,6 +5321,9 @@ ordinea în care contează:
   LUI, obținut cu certificatul LUI digital. Ca să vindem modulul, tokenul și CIF-ul trebuie mutate
   **pe companie**, în setările fiecărui client, criptate. **Asta se hotărăște prima**, fiindcă
   schimbă forma secțiunii — restul e degeaba dacă asta se face altfel.
+  ⚠ **De când modulul e în calculatorul de ofertare (cu preț pe vehicul), E.1 blochează o VÂNZARE,
+  nu doar o funcție.** Poți pune e-Transportul în ofertă și în contract, dar nu-l porni la client
+  până nu are token propriu — altfel ar declara la ANAF sub CIF-ul nostru.
 
 - [ ] **E.2 — (eu) Mecanismul de trimitere nu verifică prospețimea poziției.** Ecranul o verifică
   deja; worker-ul care trimite la ANAF ia ultima poziție știută chiar dacă e veche de o oră — adică

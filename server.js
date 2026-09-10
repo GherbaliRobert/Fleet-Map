@@ -2961,10 +2961,16 @@ app.delete('/api/apikeys/:id', requireAuth, requireAdmin, withCompany, async (re
 });
 
 // ─── AI: asistent flotă + rezumate rapoarte (Claude) ───
-function _fleetSnapshot(req) {
+// Câte vehicule intră într-un răspuns despre TOATĂ flota. Plafonul are rostul lui — o listă fără
+// capăt umflă răspunsul și costul — dar până acum era 80 și TĂCEA: o firmă cu 200 de mașini primea
+// „Total: 80 vehicule", un număr pur și simplu greșit, fără niciun semn că s-a tăiat ceva.
+// Acum plafonul e mai mare ȘI numărul adevărat merge mai departe, prin `totalFlota`.
+const FLOTA_IN_RASPUNS = parseInt(process.env.AI_FLEET_MAX) || 200;
+function _fleetSnapshot(req, limit) {
   // izolare strictă: doar vehiculele accesibile (companie + demo ascuns pt. flota reală/super-admin)
   let positions = Array.from(livePositions.values()).filter(p => canAccessImei(req, p.imei));
-  return positions.slice(0, 80).map(p => {
+  const _total = positions.length;
+  const out = positions.slice(0, Math.max(1, limit || FLOTA_IN_RASPUNS)).map(p => {
     const io = p.io || {};
     return {
       imei: p.imei,
@@ -2977,6 +2983,10 @@ function _fleetSnapshot(req) {
       ultima_actualizare: p.timestamp
     };
   });
+  // Proprietate NE-enumerabilă: nu apare în JSON.stringify și nu strică niciun `.map` de mai jos,
+  // dar oricine are lista poate afla câte vehicule are flota cu adevărat.
+  Object.defineProperty(out, 'totalFlota', { value: _total, enumerable: false });
+  return out;
 }
 
 app.get('/api/ai/status', requireAuth, (req, res) => res.json({ enabled: ai.aiEnabled(), model: ai.AI_MODEL }));
@@ -3163,7 +3173,7 @@ app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'),
     if (fleetQuick) {
       const intent = fleetQuick.detectIntent(message);
       if (intent) {
-        const a = fleetQuick.answer(intent, { snapshot, today, now: Date.now() });
+        const a = fleetQuick.answer(intent, { snapshot, today, now: Date.now(), total: snapshot.totalFlota });
         auditReq(req, 'ai_local', 'assistant', null, { intent });
         return res.json({ reply: a.reply, source: 'local' });
       }
@@ -3229,7 +3239,7 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
             const fq = new Date(); fq.setHours(0, 0, 0, 0);
             todayQ = await db.getTripsSummaryForImeis(imeisQ, fq.toISOString(), new Date().toISOString());
           } catch (e) { /* fără sumar curse */ }
-          const aq = fleetQuick.answer(intent, { snapshot: snap, today: todayQ, now: Date.now() });
+          const aq = fleetQuick.answer(intent, { snapshot: snap, today: todayQ, now: Date.now(), total: snap.totalFlota });
           auditReq(req, 'ai_local', 'assistant', null, { intent, via: 'insight' });
           return res.json({ reply: aq.reply, sources: [], source: 'local' });
         }
@@ -3355,7 +3365,13 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
           if (v.combustibil_l != null) r.combustibil_l = v.combustibil_l;
           return r;
         });
-        return { now: new Date().toISOString(), vehicles: vehicles };
+        // Dacă flota e mai mare decât plafonul, MODELUL trebuie să afle — altfel ar număra 200 de
+        // mașini pe o listă de 200 și ar da cifra ca și cum ar fi toată flota.
+        const taiate = (snap.totalFlota || vehicles.length) - vehicles.length;
+        const out = { now: new Date().toISOString(), total_flota: snap.totalFlota || vehicles.length, vehicles: vehicles };
+        if (taiate > 0) out.atentie = 'Flota are ' + out.total_flota + ' vehicule, dar în lista de mai sus sunt doar primele ' +
+          vehicles.length + '. Nu da cifre pe toată flota din lista asta — spune clientului că ai văzut doar o parte.';
+        return out;
       },
       fleet_alerts: async () => {
         let rows = [];

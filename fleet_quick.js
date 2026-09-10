@@ -29,6 +29,13 @@ function loc(v) { return '• 📍 ' + (v.locatie || 'locație indisponibilă');
 function answer(intent, ctx) {
   const snap = ctx.snapshot || [], today = ctx.today || [], now = ctx.now || Date.now();
   if (!snap.length) return { reply: 'Momentan nu am vehicule accesibile în flotă.', source: 'local' };
+  // Câte vehicule are flota CU ADEVĂRAT. Lista primită poate fi tăiată la un plafon; dacă e, nu
+  // avem voie să dăm numere ca și cum ar fi toată flota. Mai bine spunem că am văzut o parte.
+  const total = Number(ctx.total) > 0 ? Number(ctx.total) : snap.length;
+  const taiate = Math.max(0, total - snap.length);
+  const notaTaiere = taiate > 0
+    ? '\n\n_Flota are ' + total + ' vehicule; mai sus sunt primele ' + snap.length + '. Pentru toate, deschide harta sau un raport._'
+    : '';
   let reply;
 
   if (intent === 'stopped') {
@@ -67,15 +74,18 @@ function answer(intent, ctx) {
     const on = snap.filter(v => online(v, now)), mv = snap.filter(v => moving(v, now));
     const km = today.reduce((s, t) => s + (parseFloat(t.km) || 0), 0);
     reply = '📊 **Status flotă**\n\n'
-      + '• 🚚 Total: **' + snap.length + '** vehicule\n'
+      // Totalul e numărul ADEVĂRAT al flotei, nu lungimea listei tăiate. Defalcarea de dedesubt
+      // se face pe cât am văzut, iar nota de la final spune limpede că e o parte.
+      + '• 🚚 Total: **' + total + '** vehicule' + (taiate > 0 ? ' _(defalcarea de mai jos, pe primele ' + snap.length + ')_' : '') + '\n'
       + '• 🟢 În mișcare: ' + mv.length + '\n'
       + '• 🟠 Oprite: ' + (on.length - mv.length) + '\n'
       + '• ⚪ Offline: ' + (snap.length - on.length) + '\n'
       + '• 📏 Km azi: **' + Math.round(km) + ' km**';
   } else {
     reply = 'Reformulează, te rog.';
+    return { reply, source: 'local' };
   }
-  return { reply, source: 'local' };
+  return { reply: reply + notaTaiere, source: 'local' };
 }
 
 module.exports = { detectIntent, answer };
