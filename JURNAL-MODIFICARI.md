@@ -58,6 +58,66 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Clientul nu mai vede prețuri pe întrebare · câmpuri și butoane noi în Ofertare
+
+*„Nu știu, aici e dubios — să vadă cât costă… habar n-am cum s-o facem să nu vadă costurile
+întrebărilor."* *„Modernizează și butoanele și inputurile."*
+
+#### 1. La epuizare se OPREȘTE, și nu se pomenește niciun preț
+
+Aveai dreptate să te strâmbi. A-i arăta clientului „1,00 lei pe întrebare" înseamnă două lucruri
+proaste: pare că plătește la bucată, ca la taximetru, și îi arătăm socoteala noastră de tokeni.
+**Am întors-o.** Implicit, când fondul lunii se termină, RA Insight **se oprește** și spune:
+
+> **Fondul de întrebări al lunii s-a terminat.**
+> • Firma a folosit toate cele **150** de întrebări incluse (3 conturi × 50).
+> • Se reînnoiește pe **1 octombrie**.
+> • Întrebările rapide rămân gratuite: *unde e o mașină, care sunt oprite, care merg acum, câți km
+>   azi, status flotă.*
+> Ai nevoie de mai multe? **Un cont în plus aduce încă 50 de întrebări pe lună** — se adaugă din
+> **Utilizatori**, sau cere-i administratorului firmei.
+
+Nicio sumă, niciun „pe întrebare". Vorbim în **conturi** — limbajul restului produsului — iar
+factura are un singur rând, cel de conturi. Proba verifică anume asta: mesajul **nu are voie** să
+conțină „lei" sau „€".
+
+Calea cu cost suplimentar rămâne în aplicație, dar **stinsă**: se aprinde deliberat, pe o firmă
+anume, dacă vreodată vrei. Când e aprinsă, funcționează cum am făcut ieri (caseta care cere acordul,
+o dată pe lună, plus rândul pe factură).
+
+#### 2. Unde se aprinde: Administrare → Companii → firma → fila „Abonament & plăți"
+
+Acolo sunt acum: *Întrebări / cont*, *Preț / cont (lei)*, *Preț / întrebare peste fond (€)* și bifa
+**„Poate depăși fondul"**, cu explicația a ce se întâmplă în fiecare caz. Nebifată (implicit) = se
+oprește, ca mai sus.
+
+#### 3. „Practic învățăm RA Insight să răspundă gratis?" — exact
+
+Da, și e cea mai bună investiție din zona asta. Fiecare formulare mutată în lista locală e o
+întrebare care **nu ne mai costă niciodată nimic** — nici la primul client, nici la al cincizecilea.
+Azi lista prinde: *unde e · oprite · în mișcare · cel mai rapid · km azi · status flotă*. Ce urmează,
+când vedem ce întreabă oamenii pe bune: *are ITP-ul expirat · cine e cel mai aproape de X · a stat
+mult motorul pornit · ce alerte am azi*. Mi-am notat-o ca temă continuă, nu ca o reparație de o dată.
+
+#### 4. Ofertare Live: câmpuri, bife, butoane
+
+- **Câmpurile** erau cele generice, mici și plate. Acum sunt mai înalte, cifrele **aliniate la
+  dreapta** (se citesc pe coloană, ca într-un tabel), cu marginea verde când scrii în ele. Le-am
+  scos **săgețile de „number"**: furau lățime și, mai rău, schimbau valoarea la o rotiță de mouse
+  dată din greșeală peste câmp — adică schimbau prețul din ofertă fără ca omul să vrea.
+- **Bifele** nu mai sunt cele cenușii ale sistemului: pătrat propriu, verde plin când e pornit.
+- **Butoanele** au ierarhie: „Salvează oferta" e plin și cu umbră, celelalte două au doar contur și
+  se colorează sub mouse. Nu mai arată trei butoane la fel de importante.
+- **Caseta cotei RA Insight** se desfășura pe jumătate de lățime, cu cele trei câmpuri unul sub
+  altul. Acum ocupă tot rândul, cu etichete deasupra.
+
+- **Ce am schimbat:** oprire curată în loc de prețuri pe întrebare; câmpuri, bife și butoane noi în
+  Ofertare Live.
+- **Ce vede fondatorul:** un ecran de lucru care arată a ecran de lucru, nu a formular.
+- **Ce vede clientul:** când i se termină fondul, o explicație și o soluție — nu un preț pe bucată.
+
+---
+
 ### AMÂNDOI · Fără facturi surpriză · Ofertare Live, modernizat și explicat
 
 *„Clar trebuie să-l înștiințăm pe client că intră pe cost suplimentar și să-i detaliem ce înseamnă,
@@ -5538,6 +5598,13 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
      mai mare).
   3. **Ce scrie pe hârtie.** Dacă rămâne cost suplimentar, prețul pe întrebare trebuie trecut în
      ofertă și în contract, la fel ca restul prețurilor.
+
+- [ ] **Lista de întrebări gratuite se lărgește pe măsură ce vedem ce întreabă oamenii.**
+  Fiecare formulare mutată acolo e o întrebare care nu ne mai costă niciodată nimic. Azi prinde:
+  *unde e · oprite · în mișcare · cel mai rapid · km azi · status flotă*. De adăugat, după primele
+  luni de uz real: *are ITP-ul expirat · cine e cel mai aproape de X · a stat mult cu motorul pornit
+  · ce alerte am azi*. Nu e o reparație, e o temă continuă — de trecut în revistă o dată la câteva
+  luni, din jurnalul de întrebări.
 
 - [ ] **Notificările se revizuiesc înainte de lansare — hotărât de voi, 04.08.** Rămân deocamdată
   cum sunt; le testați pe teren și veniți cu ce nu merge. Când ajungem la revizuire, aici sunt

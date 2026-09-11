@@ -3072,8 +3072,36 @@ function _aiQuotaFromSettings(settings) {
     questions: Number.isFinite(n) && n > 0 ? Math.round(n) : 0,   // forma veche; 0 = fără cotă fixă
     questionsPerSeat: Number.isFinite(pe) && pe > 0 ? Math.round(pe) : 0,
     seatPriceRON: Number.isFinite(pret) && pret >= 0 ? Math.round(pret * 100) / 100 : 0,
-    overage: q.overage !== false,                                  // implicit: poate depăși
+    // IMPLICIT: la epuizare SE OPREȘTE. Hotărât cu Alin (11.09): clientul nu trebuie să vadă
+    // prețuri pe întrebare — ar părea că plătește la bucată și i-ar arăta socoteala noastră. Când
+    // fondul se termină, i se propune un CONT în plus, în limbajul restului produsului.
+    // Depășirea contra cost rămâne posibilă, dar se aprinde deliberat, per companie.
+    overage: q.overage === true,
     overagePriceEur: (Number.isFinite(Number(q.overagePriceEur)) && Number(q.overagePriceEur) >= 0) ? Number(q.overagePriceEur) : AI_OVERAGE_PRICE_EUR
+  };
+}
+// ─── Fondul s-a terminat: se oprește, dar SE EXPLICĂ ─────────────────────────────────────────────
+// Ce vede clientul: că fondul lunii s-a epuizat, când se reînnoiește, ce rămâne gratuit și cum
+// poate primi mai mult — un CONT în plus. NICIUN preț pe întrebare: nu vindem la bucată și nu-i
+// arătăm clientului socoteala noastră de tokeni.
+async function _fondEpuizat(req) {
+  if (req.companyId == null) return null;
+  const st = await aiQuotaState(req.companyId, req.auth && req.auth.userId);
+  if (st.unlimited || !st.questions) return null;
+  if (st.used < st.questions) return null;
+  if (st.overage) return null;                          // firma are voie să depășească → altă cale
+  const reinnoire = st.periodEnd ? new Date(st.periodEnd).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : '1 ale lunii';
+  return {
+    limited: true,
+    fondEpuizat: {
+      fond: st.questions, conturi: st.seats, peCont: st.questionsPerSeat, reinnoire: st.periodEnd
+    },
+    reply: '**Fondul de întrebări al lunii s-a terminat.**\n\n' +
+      '• Firma a folosit toate cele **' + st.questions + '** întrebări incluse' +
+      (st.seats ? ' (' + st.seats + ' ' + (st.seats === 1 ? 'cont' : 'conturi') + ' × ' + st.questionsPerSeat + ')' : '') + '.\n' +
+      '• Se reînnoiește pe **' + reinnoire + '**.\n' +
+      '• Întrebările rapide rămân gratuite: *unde e o mașină, care sunt oprite, care merg acum, câți km azi, status flotă.*\n\n' +
+      'Ai nevoie de mai multe? **Un cont în plus aduce încă ' + (st.questionsPerSeat || 50) + ' de întrebări pe lună** — se adaugă din **Utilizatori**, sau cere-i administratorului firmei.'
   };
 }
 // ─── Acordul pentru costul suplimentar ───────────────────────────────────────────────────────────
@@ -3351,7 +3379,8 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
     } catch (e) { /* dacă euristica pică, continuăm pe agentul AI */ }
 
     if (!ai.aiEnabled()) return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
-    if (await aiLimitReached(req.companyId)) return res.json({ reply: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
+    const _stop = await _fondEpuizat(req);
+    if (_stop) return res.json(_stop);
     // ─── Nimeni nu intră pe cost suplimentar fără să știe ────────────────────────────────────────
     // Când fondul lunii s-a terminat, întrebările următoare se facturează. NU le lăsăm să treacă în
     // tăcere: prima dată în luna respectivă, oprim și explicăm — cât costă una, de ce, ce rămâne
@@ -4371,8 +4400,9 @@ async function _aplicaOfertaPeFirma(companyId, oferta) {
     const n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
     const priceEur = Math.max(0, Math.round((Number(cfg.aiqP) || 0.20) * 100) / 100);
     const seatPrice = Math.max(0, Math.round((Number(cfg.aiqSeat) || 0) * 100) / 100);
+    // La epuizare se oprește și se propune un cont în plus — nu cost pe întrebare.
     patch.ai_quota = n > 0
-      ? { questionsPerSeat: n, seatPriceRON: seatPrice, overage: true, overagePriceEur: priceEur }
+      ? { questionsPerSeat: n, seatPriceRON: seatPrice, overage: false, overagePriceEur: priceEur }
       : null;
   }
   if (!Object.keys(patch).length) return { patch: null, deAprinsManual };

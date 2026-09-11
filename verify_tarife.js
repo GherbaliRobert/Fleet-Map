@@ -339,7 +339,35 @@ T('dacă spune nu, întrebarea NU se trimite', /Întrebarea nu a fost trimisă/.
 T('bara are „Cum se socotește"', /Cum se socotește ▾/.test(html));
 T('și scrie ce e gratuit', /Gratuite, nu intră la socoteală/.test(html));
 
-sect('6e. Ofertare Live — limbajul vizual e într-un singur loc');
+sect('6d-bis. La epuizare se OPREȘTE, fără prețuri pe întrebare');
+// Hotărât cu Alin (11.09): clientul nu trebuie să vadă prețuri pe întrebare — ar părea că plătește
+// la bucată și i-am arăta socoteala noastră. Se oprește și i se propune un CONT în plus.
+T('implicit, firma NU poate depăși', /overage: q\.overage === true,/.test(server));
+T('oferta acceptată scrie tot „se oprește"', /seatPriceRON: seatPrice, overage: false/.test(server));
+T('există un răspuns care explică oprirea', /async function _fondEpuizat\(req\)/.test(server));
+T('spune câte întrebări erau incluse', /Firma a folosit toate cele/.test(server));
+T('spune când se reînnoiește', /Se reînnoiește pe/.test(server));
+T('spune ce rămâne gratuit', /Întrebările rapide rămân gratuite/.test(server));
+T('propune un CONT în plus, nu bani pe întrebare', /Un cont în plus aduce încă/.test(server));
+T('și NU pomenește niciun preț în mesajul de oprire',
+  !/lei/.test((server.match(/async function _fondEpuizat[\s\S]*?\n\}/) || [''])[0]));
+T('se verifică ÎNAINTE de calea cu cost suplimentar',
+  server.indexOf('const _stop = await _fondEpuizat(req);') < server.indexOf('const _cost = await _cereAcordCostExtra(req);'));
+// Pe ecran, bara nu mai spune „la epuizare se oprește" sec, ci ce poate face omul
+T('bara propune contul în plus', /Un cont în plus aduce încă ' \+ \(q\.questionsPerSeat \|\| 50\)/.test(html));
+
+sect('6e. Ofertare Live — câmpuri, bife și butoane');
+const css2 = fs.readFileSync('./public/css/app.css', 'utf8');
+T('câmpurile ecranului au stilul lor', /#admin-tab-ofertare \.rax-field\{/.test(css2));
+T('cifrele se citesc pe coloană (aliniate la dreapta)', /input\[type=number\]\.rax-field\{ text-align:right/.test(css2));
+T('fără săgeți de „number" (nu se schimbă valoarea din rotița mouse-ului)',
+  /-webkit-appearance:none; margin:0;/.test(css2) && /-moz-appearance:textfield/.test(css2));
+T('câmpul activ se vede', /#admin-tab-ofertare \.rax-field:focus\{/.test(css2));
+T('bifele sunt verzi când sunt pornite', /#admin-tab-ofertare input\[type=checkbox\]:checked\{ background:var\(--accent\)/.test(css2));
+T('butoanele au ierarhie: unul plin, restul cu contur', /\.raof-act \.rax-btn:not\(\.primary\)\{ background:transparent/.test(css2));
+T('caseta cotei se desface pe toată lățimea', /aq\.style\.display = r\.cfg\.aiA \? 'block' : 'none'/.test(html));
+
+sect('6f. Ofertare Live — limbajul vizual e într-un singur loc');
 const css = fs.readFileSync('./public/css/app.css', 'utf8');
 T('există blocul .raof în foaia de stil', /\.raof-card\{/.test(css) && /\.raof-rez\{/.test(css));
 T('ecranul are un antet care spune ce e', /raof-head/.test(html) && /Calculatorul din care iese oferta/.test(html));

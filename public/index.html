@@ -18159,14 +18159,15 @@ const pozitii = await r.json();</code></pre>
       var lei = function (eur) { return (eur * fx).toFixed(2).replace('.', ',') + ' lei'; };
       var both = function (eur) { return lei(eur) + ' <span style="opacity:.65;">(' + eur.toFixed(2).replace('.', ',') + ' €)</span>'; };
       if (over) {
-        head = '<b>Fondul lunii s-a terminat</b> · ' + q.overageCount + ' ' + (q.overageCount === 1 ? 'întrebare în plus' : 'întrebări în plus');
-        sub = 'Întrebările în plus intră pe factura lunii: ' + lei(q.overagePriceEur) + '/întrebare · până acum <b>' + both(q.overageCostEur) + '</b>' +
-          (aleMele > 0 ? ' · ai folosit tu ' + aleMele : '');
+        head = '<b>Fondul lunii s-a terminat</b>' + (q.overage ? ' · ' + q.overageCount + ' ' + (q.overageCount === 1 ? 'întrebare în plus' : 'întrebări în plus') : '');
+        sub = q.overage
+          ? ('Întrebările în plus intră pe factura lunii: ' + lei(q.overagePriceEur) + '/întrebare · până acum <b>' + both(q.overageCostEur) + '</b>' + (aleMele > 0 ? ' · ai folosit tu ' + aleMele : ''))
+          : ('Se reînnoiește pe ' + reset + '. Un cont în plus aduce încă ' + (q.questionsPerSeat || 50) + ' de întrebări pe lună.');
       } else {
         head = '<b>' + q.remaining + '</b> din ' + q.questions + ' întrebări rămase' +
           (q.seats > 1 ? ' <span style="opacity:.7;">· fond comun, ' + q.seats + ' conturi</span>' : '');
         sub = 'Se reînnoiește pe ' + reset + (aleMele > 0 ? ' · ai folosit tu ' + aleMele : '') +
-          (q.overage ? ' · peste fond: ' + lei(q.overagePriceEur) + '/întrebare' : ' · la epuizare se oprește');
+          (q.overage ? ' · peste fond: ' + lei(q.overagePriceEur) + '/întrebare' : '');
       }
       box.style.display = 'block';
       box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
@@ -18183,7 +18184,9 @@ const pozitii = await r.json();</code></pre>
         + '• <b>Gratuite, nu intră la socoteală:</b> „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".<br>'
         + '• Fondul e al firmei: ' + (q.seats || 1) + ' ' + ((q.seats || 1) === 1 ? 'cont' : 'conturi') + ' × ' + (q.questionsPerSeat || q.questions) + ' de întrebări.<br>'
         + '• Se reînnoiește pe ' + reset + '.'
-        + (q.overage ? '<br>• Peste fond: ' + lei(q.overagePriceEur) + ' de fiecare întrebare, pe factura lunii (ți se cere acordul o dată).' : '<br>• La epuizare se oprește; întrebările rapide rămân.')
+        + (q.overage
+            ? '<br>• Peste fond: ' + lei(q.overagePriceEur) + ' de fiecare întrebare, pe factura lunii (ți se cere acordul o dată).'
+            : '<br>• Când se termină, un cont în plus aduce încă ' + (q.questionsPerSeat || 50) + ' de întrebări pe lună.')
         + '</div></details>';
     };
     window.raxToggleAI = function () {
@@ -21674,7 +21677,7 @@ const pozitii = await r.json();</code></pre>
     window.raxOfRecalc = function () {
       var r = _ofCalc();
       var cm = document.getElementById('of-retcustom-wrap'); if (cm) cm.style.display = (r.cfg.retTier === 'custom') ? 'inline-flex' : 'none';
-      var aq = document.getElementById('of-aiq-wrap'); if (aq) aq.style.display = r.cfg.aiA ? 'flex' : 'none'; // cota apare doar dacă Asistentul AI e inclus
+      var aq = document.getElementById('of-aiq-wrap'); if (aq) aq.style.display = r.cfg.aiA ? 'block' : 'none'; // cota apare doar dacă Asistentul AI e inclus
       _ofAiqCostHint(r); // cât ne costă pachetul ales + preț sugerat (ca să vezi marja când negociezi)
       // Sub fiecare opțiune: cât înseamnă pe lună la flota asta, cu euro alături.
       var _mv = _modVeh(r.cfg), _pk = String(r.cfg.aiqN || 0);
