@@ -2557,6 +2557,21 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
   }
 });
 
+// Pornește/oprește RA Insight pentru un cont. Locurile aprinse = ce se facturează, deci e o decizie
+// cu bani în spate: o ia adminul firmei, deliberat, și rămâne în jurnalul de audit.
+app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
+    const on = !!(req.body && req.body.on);
+    const u = await db.setUserAiSeat(id, on);
+    if (!u) return res.status(404).json({ error: 'Utilizator inexistent' });
+    const seats = await db.getAiSeats(req.companyId);
+    auditReq(req, on ? 'ai_seat_on' : 'ai_seat_off', 'user', id, { username: u.username, seats: seats });
+    res.json({ ok: true, id: id, ai_seat: !!u.ai_seat, seats: seats });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -3037,21 +3052,36 @@ async function aiLimitReached(companyId) {
 //   overage        = are voie să depășească (contra cost) sau se blochează la epuizare
 //   overagePriceEur= cât costă clientul fiecare întrebare peste cotă
 const AI_OVERAGE_PRICE_EUR = Number(process.env.AI_OVERAGE_PRICE_EUR) || 0.20;
+// ─── Cum se socotește cota, din 11.09 ────────────────────────────────────────────────────────────
+// RA Insight se vinde pe CONT (loc). Fiecare loc aduce un număr de întrebări pe lună, iar întrebările
+// se pun TOATE ÎNTR-UN FOND COMUN al firmei: 3 conturi × 50 = 150 pe lună, din care ia cine are
+// nevoie. Așa nu rămâne dispecerul blocat la mijlocul lunii în timp ce managerul are 40 nefolosite.
+// (Hotărât cu Alin, 11.09.)
+//   questionsPerSeat = câte întrebări aduce un loc
+//   seatPriceRON     = cât costă un loc pe lună (merge pe factură)
+//   questions        = forma VECHE, cotă fixă pe firmă. Se respectă în continuare, ca ofertele deja
+//                      semnate să nu-și schimbe înțelesul peste noapte.
+const AI_INTREBARI_PE_LOC = 50;
 function _aiQuotaFromSettings(settings) {
   const s = (settings && (typeof settings === 'string' ? (function () { try { return JSON.parse(settings); } catch (e) { return {}; } })() : settings)) || {};
   const q = s.ai_quota || {};
   const n = Number(q.questions);
+  const pe = Number(q.questionsPerSeat);
+  const pret = Number(q.seatPriceRON);
   return {
-    questions: Number.isFinite(n) && n > 0 ? Math.round(n) : 0,   // 0 = nelimitat
+    questions: Number.isFinite(n) && n > 0 ? Math.round(n) : 0,   // forma veche; 0 = fără cotă fixă
+    questionsPerSeat: Number.isFinite(pe) && pe > 0 ? Math.round(pe) : 0,
+    seatPriceRON: Number.isFinite(pret) && pret >= 0 ? Math.round(pret * 100) / 100 : 0,
     overage: q.overage !== false,                                  // implicit: poate depăși
     overagePriceEur: (Number.isFinite(Number(q.overagePriceEur)) && Number(q.overagePriceEur) >= 0) ? Number(q.overagePriceEur) : AI_OVERAGE_PRICE_EUR
   };
 }
-// Starea contorului pentru o companie: cât a folosit, cât mai are, dacă e pe cost suplimentar.
-async function aiQuotaState(companyId) {
+// Starea contorului: fondul firmei (locuri × întrebări pe loc), cât s-a consumat din el, și — dacă
+// se cere pentru un anume om — cât a pus el însuși. Bara din aplicație arată amândouă.
+async function aiQuotaState(companyId, userId) {
   const now = new Date();
   const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  const base = { questions: 0, used: 0, remaining: null, unlimited: true, overage: true, overagePriceEur: AI_OVERAGE_PRICE_EUR, overageCount: 0, overageCostEur: 0, blocked: false, periodEnd: periodEnd.toISOString() };
+  const base = { questions: 0, seats: 0, questionsPerSeat: 0, used: 0, usedByMe: 0, remaining: null, unlimited: true, overage: true, overagePriceEur: AI_OVERAGE_PRICE_EUR, overageCount: 0, overageCostEur: 0, blocked: false, periodEnd: periodEnd.toISOString() };
   if (companyId == null) return base; // super-admin: fără cotă
   let co = null; try { co = await db.getCompanyById(companyId); } catch (e) {}
   const q = _aiQuotaFromSettings(co && co.settings);
@@ -3059,14 +3089,20 @@ async function aiQuotaState(companyId) {
   // apeluri incluse, fără drept de depășire (vechea limită bloca dur). Așa rămâne un singur contor,
   // iar clientul vede în sfârșit în interfață de ce s-a oprit.
   const legacy = Number(co && co.ai_monthly_limit) || 0;
-  if (!q.questions && legacy > 0) { q.questions = Math.round(legacy); q.overage = false; }
-  let used = 0;
+  if (!q.questions && !q.questionsPerSeat && legacy > 0) { q.questions = Math.round(legacy); q.overage = false; }
+  let seats = 0;
+  try { seats = await db.getAiSeats(companyId); } catch (e) {}
+  // Fondul lunii: locuri × întrebări pe loc. Forma veche (cotă fixă pe firmă) rămâne valabilă.
+  const fond = q.questionsPerSeat > 0 ? seats * q.questionsPerSeat : q.questions;
+  let used = 0, usedByMe = 0;
   try { used = (await db.getAiMonthUsage(companyId)).questions; } catch (e) {}
-  if (!q.questions) return Object.assign(base, { used: used, overage: q.overage, overagePriceEur: q.overagePriceEur });
-  const overageCount = Math.max(0, used - q.questions);
+  if (userId != null) { try { usedByMe = await db.getAiMonthUsageForUser(userId); } catch (e) {} }
+  if (!fond) return Object.assign(base, { seats: seats, questionsPerSeat: q.questionsPerSeat, used: used, usedByMe: usedByMe, overage: q.overage, overagePriceEur: q.overagePriceEur });
+  const overageCount = Math.max(0, used - fond);
   return {
-    questions: q.questions, used: used,
-    remaining: Math.max(0, q.questions - used),
+    questions: fond, seats: seats, questionsPerSeat: q.questionsPerSeat, seatPriceRON: q.seatPriceRON,
+    used: used, usedByMe: usedByMe,
+    remaining: Math.max(0, fond - used),
     unlimited: false, overage: q.overage, overagePriceEur: q.overagePriceEur,
     overageCount: overageCount,
     overageCostEur: Math.round(overageCount * q.overagePriceEur * 100) / 100,
@@ -3143,12 +3179,29 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
 app.get('/api/ai/quota', requireAuth, async (req, res) => {
   try {
     const a = getAuth(req);
-    const st = await aiQuotaState(a.companyId);
-    res.json(Object.assign({ ok: true }, st));
+    const st = await aiQuotaState(a.companyId, a.userId);
+    // Are omul ăsta loc de RA Insight? Bara se arată doar cui îl are.
+    let loc = true;
+    try { if (a.companyId != null && a.userId != null) { const u = await db.getUserById(a.userId); loc = !!(u && u.ai_seat); } } catch (e) {}
+    res.json(Object.assign({ ok: true, seat: loc }, st));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'), async (req, res) => {
+// ─── Locul de RA Insight ─────────────────────────────────────────────────────────────────────────
+// Până acum, orice om cu „vede rapoartele" putea pune întrebări — adică toată firma, la prețul unui
+// singur cont. Din 11.09, RA Insight se vinde pe CONT: adminul firmei alege cine îl primește, iar
+// factura urmează numărul de locuri aprinse. Super-adminul (fără companie) rămâne neîngrădit.
+function requireAiSeat(req, res, next) {
+  if (req.isSuper || req.companyId == null) return next();
+  db.getUserById(req.auth && req.auth.userId).then(function (u) {
+    if (u && u.ai_seat) return next();
+    res.status(403).json({
+      error: 'ai_seat_missing',
+      message: 'Contul tău nu are RA Insight. Administratorul firmei îl poate porni din Utilizatori.'
+    });
+  }).catch(function (e) { res.status(500).json({ error: e.message }); });
+}
+app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
   try {
     const message = (req.body.message || '').toString().slice(0, 2000).trim();
     if (!message) return res.status(400).json({ error: 'Mesaj gol' });
@@ -3192,7 +3245,7 @@ app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'),
     const context = 'STARE FLOTĂ (live):\n' + JSON.stringify(snapshot) + '\n\nCURSE AZI (km/vehicul):\n' + JSON.stringify(today);
     const history = Array.isArray(req.body.history) ? req.body.history.slice(-6).filter(m => m && m.role && m.content) : [];
     const messages = [...history, { role: 'user', content: context + '\n\nÎntrebarea utilizatorului: ' + message }];
-    const reply = await ai.callClaude({ system, messages, maxTokens: 700, onUsage: u => db.recordAiUsage(req.companyId, 'chat', u).catch(() => {}) });
+    const reply = await ai.callClaude({ system, messages, maxTokens: 700, onUsage: u => db.recordAiUsage(req.companyId, 'chat', u, req.auth && req.auth.userId).catch(() => {}) });
     auditReq(req, 'ai_chat', 'assistant', null, { len: message.length });
     res.json({ reply });
   } catch (e) {
@@ -3208,7 +3261,7 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
     if (!report) return res.status(400).json({ error: 'Lipsește raportul' });
     const compact = JSON.stringify(report).slice(0, 7000);
     const system = 'Ești analist de flotă. Rezumi un raport în limba română, în stil executiv: 4-6 puncte scurte, cu cifrele cheie (km, ore, opriri, consum, viteze). Doar pe baza datelor. Fără introduceri lungi.';
-    const summary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Tip raport: ' + (req.body.type || '') + '\nDate (JSON):\n' + compact + '\n\nScrie rezumatul executiv:' }], maxTokens: 600, onUsage: u => db.recordAiUsage(req.companyId, 'report', u).catch(() => {}) });
+    const summary = await ai.callClaude({ system, messages: [{ role: 'user', content: 'Tip raport: ' + (req.body.type || '') + '\nDate (JSON):\n' + compact + '\n\nScrie rezumatul executiv:' }], maxTokens: 600, onUsage: u => db.recordAiUsage(req.companyId, 'report', u, req.auth && req.auth.userId).catch(() => {}) });
     auditReq(req, 'ai_report', 'assistant', null, { type: req.body.type });
     res.json({ summary });
   } catch (e) {
@@ -3219,7 +3272,7 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
 // ─── RA Insight — agent analitic peste rapoarte (tool-use) ───
 // Răspunde la întrebări în limbaj natural combinând mai multe rapoarte, ca clientul să nu genereze manual 5 rapoarte.
 // Per user (scoping prin canAccessImei), pe modelul AI_AGENT_MODEL (default Haiku, urcabil pe Sonnet dintr-o variabilă).
-app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), async (req, res) => {
+app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
   try {
     const message = ((req.body && req.body.message) || '').toString().slice(0, 2000).trim();
     if (!message) return res.status(400).json({ error: 'Mesaj gol' });
@@ -4255,10 +4308,14 @@ async function _aplicaOfertaPeFirma(companyId, oferta) {
   const patch = {};
   if (cfg.aiA) patch.features = { ai_assistant: true };
   if (cfg.aiA) {
-    // aiqN = 0 în ofertă înseamnă „nelimitat" → cotă absentă (fără plafon).
+    // aiqN = câte întrebări aduce UN CONT pe lună; 0 = nelimitat (fără plafon).
+    // Fondul lunii se face din locurile aprinse × aiqN — deci aici se scrie regula, nu suma.
     const n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
     const priceEur = Math.max(0, Math.round((Number(cfg.aiqP) || 0.20) * 100) / 100);
-    patch.ai_quota = n > 0 ? { questions: n, overage: true, overagePriceEur: priceEur } : null;
+    const seatPrice = Math.max(0, Math.round((Number(cfg.aiqSeat) || 0) * 100) / 100);
+    patch.ai_quota = n > 0
+      ? { questionsPerSeat: n, seatPriceRON: seatPrice, overage: true, overagePriceEur: priceEur }
+      : null;
   }
   if (!Object.keys(patch).length) return { patch: null, deAprinsManual };
   await _applyCompanySettingsPatch(companyId, patch, { allowFeatures: true });
@@ -10502,6 +10559,16 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     const q = Object.assign({}, cur.ai_quota || {});
     const n = Number(body.ai_quota.questions);
     if (Number.isFinite(n) && n >= 0 && n <= 100000) q.questions = Math.round(n);
+    // Forma nouă: întrebări pe CONT + prețul unui cont. Fondul lunii = locuri aprinse × întrebări/cont.
+    const ps = Number(body.ai_quota.questionsPerSeat);
+    if (Number.isFinite(ps) && ps >= 0 && ps <= 100000) {
+      q.questionsPerSeat = Math.round(ps);
+      // Cele două forme se bat cap în cap: dacă firma trece pe conturi, cota fixă veche trebuie să
+      // dispară, altfel ar rămâne două fonduri și n-ai ști după care se merge.
+      if (q.questionsPerSeat > 0) delete q.questions;
+    }
+    const sp = Number(body.ai_quota.seatPriceRON);
+    if (Number.isFinite(sp) && sp >= 0 && sp <= 100000) q.seatPriceRON = Math.round(sp * 100) / 100;
     if (typeof body.ai_quota.overage === 'boolean') q.overage = body.ai_quota.overage;
     const p = Number(body.ai_quota.overagePriceEur);
     if (Number.isFinite(p) && p >= 0 && p <= 100) q.overagePriceEur = Math.round(p * 100) / 100;
@@ -10737,7 +10804,25 @@ async function _companyBillCounts(company) {
     else if (canSet ? canSet.has(d.imei) : (ct !== 'none')) can++;
     else none++;
   });
-  return { none, can, fms };
+  // RA Insight: câte conturi are aprinse firma și câte întrebări a pus peste fondul lunii. Cifrele
+  // astea intră DIRECT pe factură, deci se citesc o dată, aici, nu se recalculează în trei locuri.
+  let raInsight = null;
+  try {
+    const st = await aiQuotaState(company.id);
+    const q = _aiQuotaFromSettings(company.settings);
+    const fx = (await fxEurRon().catch(function () { return null; })) || { eur: EUR_RON_FALLBACK };
+    raInsight = {
+      seats: st.seats || 0,
+      questionsPerSeat: st.questionsPerSeat || 0,
+      seatPriceRON: q.seatPriceRON || 0,
+      used: st.used || 0,
+      // Depășirea se facturează DOAR dacă firma are voie să depășească. Dacă e pusă pe „se oprește",
+      // n-a putut întreba peste fond, deci n-are ce factură să primească.
+      overageCount: (st.overage ? (st.overageCount || 0) : 0),
+      overagePriceRON: Math.round((st.overagePriceEur || 0) * (Number(fx.eur) || EUR_RON_FALLBACK) * 100) / 100
+    };
+  } catch (e) { /* fără RA Insight pe factură, restul abonamentului se emite oricum */ }
+  return { none, can, fms, raInsight };
 }
 // Construiește liniile de factură din motorul de preț (plans.computeCompanyPrice → breakdown) + TVA per linie.
 function buildInvoiceLines(company, billCounts, features, vatRatePct) {
@@ -10765,7 +10850,18 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
   } else {
     add('Abonament monitorizare GPS', cnt.total, bd.base);
   }
-  add('Asistent AI', 1, bd.aiAssistant);
+  // RA Insight se facturează pe CONT (loc), nu pe firmă — și, dacă firma a trecut de fondul lunii,
+  // întrebările în plus intră ca rând separat, la prețul convenit. Fără rândul ăsta, clientul vedea
+  // în aplicație „în plus luna asta: 37 lei" și nu-i cerea nimeni banii niciodată.
+  const ra = (billCounts && billCounts.raInsight) || null;
+  if (ra && ra.seats > 0 && ra.seatPriceRON > 0) {
+    add('RA Insight — conturi (' + ra.seats + ' × ' + ra.seatPriceRON.toFixed(2) + ' lei)', ra.seats, ra.seats * ra.seatPriceRON);
+  } else {
+    add('Asistent AI', 1, bd.aiAssistant);   // forma veche: sumă fixă pe firmă
+  }
+  if (ra && ra.overageCount > 0 && ra.overagePriceRON > 0) {
+    add('RA Insight — întrebări peste cota lunii', ra.overageCount, ra.overageCount * ra.overagePriceRON);
+  }
   add('Agenți AI (monitorizare inteligentă)', 1, bd.aiAgents);
   if (!lines.length && (p.monthlyTotal > 0)) add('Abonament monitorizare GPS', 1, p.monthlyTotal);
   const subtotal = Math.round(lines.reduce((s, l) => s + l.net, 0) * 100) / 100;
@@ -11802,6 +11898,18 @@ app.post('/api/push/device/unregister', requireAuth, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Endpoint de test (DOAR cu SEED_TEST=1) — scrie o întrebare consumată, ca să se poată proba
+// fondul lunii, depășirea și rândul de pe factură fără să cheltuim bani pe model.
+if (process.env.SEED_TEST === '1') {
+  app.post('/api/test/ai-usage', requireAuth, async (req, res) => {
+    try {
+      const { companyId, userId, kind } = req.body || {};
+      await db.recordAiUsage(companyId != null ? parseInt(companyId) : null, kind || 'insight',
+        { input_tokens: 1200, output_tokens: 300 }, userId != null ? parseInt(userId) : null);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+}
 // Endpoint de test (DOAR cu SEED_TEST=1) — simulează o poziție live pentru a declanșa evenimente
 if (process.env.SEED_TEST === '1') {
   app.post('/api/test/simulate', requireAuth, async (req, res) => {

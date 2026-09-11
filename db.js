@@ -1206,6 +1206,10 @@ async function initDb() {
     // Rolurile proprii ale firmei („Rol nou"): omul primește un slug de rol, iar rolul lui de bază
     // rămâne în users.role. Așa, TOATE verificările existente merg mai departe neschimbate.
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS role_slug VARCHAR(40)');
+    // RA Insight se vinde pe CONT (loc), nu pe firmă: adminul firmei alege cine îl primește, iar
+    // factura urmează numărul de locuri aprinse. Fără bifa asta, oricine avea „vede rapoartele"
+    // putea întreba — adică toată firma, la prețul unui singur cont.
+    await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_seat BOOLEAN DEFAULT false');
 
     // Prezența în aplicație: un rând la fiecare 5 minute în care omul a avut fereastra DESCHISĂ ȘI ÎN
     // FAȚĂ. Nu se măsoară „cât e logat" (o filă uitată deschisă peste noapte ar raporta 24 de ore),
@@ -2852,11 +2856,44 @@ async function createUser(username, passwordHash, role = 'viewer', extra = {}) {
   return result.rows[0];
 }
 
+// ─── Locurile de RA Insight ──────────────────────────────────────────────────────────────────────
+// Un „loc" = un cont care are voie să folosească RA Insight. Se numără DOAR conturile active: un om
+// dezactivat nu mai poate întreba, deci n-are de ce să apară pe factură.
+async function getAiSeats(companyId) {
+  const r = await pool.query(
+    'SELECT COUNT(*)::int AS n FROM users WHERE company_id IS NOT DISTINCT FROM $1 AND ai_seat = true AND active IS NOT false',
+    [companyId != null ? companyId : null]);
+  return Number(r.rows[0] && r.rows[0].n) || 0;
+}
+async function setUserAiSeat(userId, on) {
+  const r = await pool.query('UPDATE users SET ai_seat = $2 WHERE id = $1 RETURNING id, username, ai_seat', [userId, !!on]);
+  return r.rows[0] || null;
+}
+// Cine a consumat luna asta, pe om — pentru ca adminul firmei să vadă unde se duc întrebările.
+async function getAiMonthUsageByUser(companyId, kinds) {
+  const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
+  const r = await pool.query(
+    `SELECT user_id, COUNT(*)::int AS questions, MAX(created_at) AS last_used
+       FROM ai_usage
+      WHERE company_id IS NOT DISTINCT FROM $1 AND kind = ANY($2) AND created_at >= date_trunc('month', NOW())
+      GROUP BY user_id`, [companyId != null ? companyId : null, k]);
+  return r.rows;
+}
+// Câte întrebări a pus UN OM luna asta (pentru bara lui).
+async function getAiMonthUsageForUser(userId, kinds) {
+  if (userId == null) return 0;
+  const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
+  const r = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM ai_usage WHERE user_id = $1 AND kind = ANY($2) AND created_at >= date_trunc('month', NOW())`,
+    [userId, k]);
+  return Number(r.rows[0] && r.rows[0].n) || 0;
+}
+
 async function getUsers(companyId) {
   const where = companyId != null ? 'WHERE u.company_id = $1' : '';
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
-    SELECT u.id, u.username, u.role, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id,
+    SELECT u.id, u.username, u.role, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat,
       c.name AS company_name,
       (SELECT COUNT(*) FROM user_device_access WHERE user_id = u.id) AS device_count,
       (SELECT COUNT(*) FROM user_group_access WHERE user_id = u.id) AS group_count
@@ -2905,7 +2942,7 @@ async function getUserById(id) {
   const result = await pool.query(
     // role_slug = rolul PROPRIU al firmei, dacă omul are unul. Fără el aici, refreshAuth nu-l vede și
     // ajustările rolului propriu n-ar avea niciun efect.
-    'SELECT id, username, role, role_slug, full_name, email, phone, active, last_login, company_id, created_at, access_until, demo_request_id FROM users WHERE id = $1',
+    'SELECT id, username, role, role_slug, full_name, email, phone, active, last_login, company_id, created_at, access_until, demo_request_id, ai_seat FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0] || null;
@@ -4216,6 +4253,7 @@ module.exports = {
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
+  getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageForUser,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,

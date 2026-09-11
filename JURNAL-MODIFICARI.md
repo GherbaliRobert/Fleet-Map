@@ -58,6 +58,70 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · RA Insight se vinde pe CONT, cu fond comun — și depășirea ajunge pe factură
+
+*„Dacă administratorul contului firmei X vrea să dea acces la RA Insight și celorlalți utilizatori,
+îl costă dublu… la 3 conturi l-ar costa 45 lei. Cu posibilitatea să depășească soldul ăsta, ca la
+abonament."*
+
+Două hotărâri ale lui Alin (11.09), amândouă puse în lucru:
+
+**1. Unitatea vândută e CONTUL, nu firma.** Până acum, orice om cu dreptul „vede rapoartele" putea
+întreba — adică *toată firma*, la prețul unui singur cont. O firmă cu 5 oameni plătea cât una cu 1.
+Acum adminul firmei aprinde RA Insight pe cine vrea, dintr-un buton lângă fiecare utilizator, iar
+factura urmează numărul de conturi aprinse. Un cont dezactivat nu mai ține loc și nu se mai
+facturează.
+
+**2. Întrebările intră într-un FOND COMUN.** 3 conturi × 50 = 150 de întrebări pe lună, din care ia
+cine are nevoie. Așa nu rămâne dispecerul blocat la mijlocul lunii în timp ce managerul are 40
+nefolosite. Bara din aplicație arată fondul firmei și, dedesubt, *„ai folosit tu 12"*.
+
+**Prețul unui cont crește cu flota**, fiindcă asta ne costă (măsurat, vezi mai jos în jurnal):
+
+| Flota | Un cont / lună |
+|---|---|
+| până la 10 mașini | 12 lei |
+| 11–25 | **15 lei** |
+| 26–50 | 19 lei |
+| 51–100 | 25 lei |
+| peste 100 | 35 lei |
+
+**3. La depășire merge mai departe, iar întrebările în plus ajung pe factură** — asta lipsea cu
+totul: clientul citea în aplicație „în plus luna asta: 37 lei" și nu-i cerea nimeni banii niciodată.
+Acum factura arată așa:
+
+| Descriere | Cant. | Preț unitar | Valoare |
+|---|---|---|---|
+| Abonament monitorizare GPS cu CAN | 20 | 45,00 lei | 900,00 lei |
+| **RA Insight — conturi (3 × 15,00 lei)** | **3** | **15,00 lei** | **45,00 lei** |
+| RA Insight — întrebări peste cota lunii | 37 | 1,00 lei | 37,00 lei |
+
+Rândul de depășire apare **doar dacă există** depășire — și **doar dacă firma avea voie să
+depășească**. Dacă e pusă pe „se oprește", n-a putut întreba peste fond, deci n-are ce plăti.
+
+**4. Prețul peste fond e scris acum pe hârtia clientului.** În ofertă, sub blocul lunar:
+*„Întrebările puse peste fondul lunii se facturează separat, la 1,00 lei (0,20 €) fiecare. Conturile
+de RA Insight se pot da sau retrage oricând, din aplicație."* Fără rândul ăsta am cere bani pentru
+ceva ce nu s-a semnat.
+
+**Despre avertismente:** ai zis „de ce să-l avertizăm, vede bara" — și ai dreptate. N-am pus nicio
+notificare. Bara spune tot: câte au mai rămas, când se reînnoiește, cât a pus omul, iar când fondul
+s-a terminat scrie limpede că întrebările în plus intră pe factura lunii.
+
+**Ce am lăsat în urmă:** probele au ajuns la **173** (`verify_tarife.js`), cu sabotaj pe fiecare
+regulă nouă, plus **21 de probe în aplicația pornită** care fac drumul întreg: firmă cu 3 oameni →
+fără cont, RA Insight răspunde „nu ai acces" → adminul dă 3 conturi → fondul devine 150 → un om
+dezactivat scade fondul la 100 → factura arată 3 conturi × 15 lei → consumul peste fond apare ca
+rând separat.
+
+- **Ce am schimbat:** RA Insight se vinde pe cont, cu fond comun; depășirea se facturează; prețul ei
+  e pe hârtie.
+- **Ce vede fondatorul:** factura are rândurile care trebuie, iar oferta vinde conturi, nu firme.
+- **Ce vede clientul:** un buton lângă fiecare coleg („dă-i RA Insight"), o bară care spune adevărul,
+  și o factură în care recunoaște ce a semnat.
+
+---
+
 ### AMÂNDOI · Oferta pe o pagină · și ce se întâmplă când clientul depășește cota RA Insight
 
 *„Secțiunea 2 din ofertă în PDF se duce pe două pagini… aranjează mai OK PDF-ul."*
@@ -5375,7 +5439,13 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
-- [ ] **Depășirea cotei RA Insight — ce facem, de fapt? (întrebarea lui Alin, 10.09)**
+- [x] **Depășirea cotei RA Insight — HOTĂRÂT (11.09).** Se vinde pe cont, întrebările intră într-un
+  fond comun al firmei, la depășire merge mai departe iar întrebările în plus intră pe factură, cu
+  prețul scris în ofertă. Fără notificări — bara din aplicație spune tot. *(Rămâne de urmărit pe
+  teren dacă bara e destul; dacă nu, se adaugă o notificare la epuizare.)* Textul de mai jos rămâne
+  ca reper pentru ce era înainte:
+
+- [ ] ~~**Depășirea cotei RA Insight — ce facem, de fapt? (întrebarea lui Alin, 10.09)**~~
   Regula de azi: cotă pe lună calendaristică, iar la epuizare fie merge mai departe pe cost
   suplimentar (0,20 €/întrebare, implicit), fie se oprește. Clientul vede contorul în panoul de AI.
   **Trei lucruri lipsesc și nu le pot hotărî eu:**

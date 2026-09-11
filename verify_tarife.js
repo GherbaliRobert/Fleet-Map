@@ -35,12 +35,15 @@ function decupez(nume) {
   return html.slice(a, b);
 }
 const M = new Function('document', '_ofN', '_ofPropune', '_ofAtinse', 'raxOfRecalc', '_lei2eur',
-  decupez('Tarife după mărimea flotei') + '\n; return { _aiqCost, _aiqPret, _modVeh, AIQ_PE_VEH, AIQ_MIN, MOD_TARIF, AIQ_COST_BAZA, AIQ_COST_VEH, AIQ_GREU, _ofHintModul, _ofHintAiq };')(
+  decupez('Tarife după mărimea flotei') + '\n; return { _aiqCost, _aiqPretLoc, _aiqFond, _modVeh, AIQ_PRET_LOC, MOD_TARIF, AIQ_COST_BAZA, AIQ_COST_VEH, AIQ_GREU, _ofHintModul, _ofHintAiq };')(
   { getElementById: () => null }, (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; },
   () => {}, {}, () => {}, (v) => v / 5);
 
 // ── Și calculatorul întreg, cu un document de carton: câmpurile sunt o listă de valori ──────────
-const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate',
+// „de" din „20 de vehicule" și fondul de întrebări stau în afara blocului decupat (în aplicație sunt
+// în aceeași pagină); aici se dau ca argumente, ca socoteala să ruleze la fel.
+const _rDe = new Function(html.slice(html.indexOf('function _rDe(n)'), html.indexOf('// Aceleași sume, dar pentru celule de tabel:')) + '\n; return _rDe;')();
+const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_rDe', '_aiqFond',
   decupez('Calculatorul de ofertă') + '\n; return { _ofCalc: _ofCalc, _raxOf: _raxOf, _OF_PRETURI_DEF: _OF_PRETURI_DEF };');
 function calculator(campuri) {
   const val = Object.assign({}, campuri);
@@ -51,7 +54,7 @@ function calculator(campuri) {
       return (typeof v === 'boolean') ? { type: 'checkbox', checked: v, value: '' } : { value: String(v) };
     }
   };
-  return CALC(doc, {}, () => {}, 5.0);
+  return CALC(doc, {}, () => {}, 5.0, _rDe, M._aiqFond);
 }
 // O flotă obișnuită, pe care se sprijină probele de mai jos.
 function flota(peste) {
@@ -80,21 +83,31 @@ T('un număr negativ de vehicule nu scade costul sub bază', M._aiqCost(-50) ===
 T('text în loc de număr → costul de bază, nu NaN', M._aiqCost('multe') === M._aiqCost(0));
 T('scenariul negru e mai scump, dar nu de 5 ori (aia era presupunerea veche)', M.AIQ_GREU > 1.5 && M.AIQ_GREU < 3, M.AIQ_GREU);
 
-sect('2. Prețul RA Insight — pe vehicul, cu minim');
-T('la 5 vehicule intră minimul pachetului de 50', M._aiqPret(50, 5) === M.AIQ_MIN['50'], M._aiqPret(50, 5));
-T('la 20 de vehicule trece de minim', M._aiqPret(50, 20) === 30, M._aiqPret(50, 20));
-T('pachetul mai mare costă mai mult, la aceeași flotă', M._aiqPret(200, 40) > M._aiqPret(50, 40),
-  M._aiqPret(50, 40) + ' vs ' + M._aiqPret(200, 40));
-T('flota mai mare costă mai mult, la același pachet', M._aiqPret(100, 100) > M._aiqPret(100, 20),
-  M._aiqPret(100, 20) + ' vs ' + M._aiqPret(100, 100));
-T('„nelimitat" (0) are cel mai mare tarif pe vehicul', M.AIQ_PE_VEH['0'] > M.AIQ_PE_VEH['200']);
-T('un pachet necunoscut nu dă NaN', Number.isFinite(M._aiqPret(77, 10)), M._aiqPret(77, 10));
-// Regula de bază a afacerii: prețul cerut trebuie să acopere costul, cu marjă, la orice flotă.
+sect('2. RA Insight se vinde pe CONT, iar prețul unui cont crește cu flota');
+// Hotărât cu Alin, 11.09: 1 cont = 15 lei, 3 conturi = 45. Întrebările conturilor intră într-un
+// FOND COMUN al firmei, ca să nu rămână unul blocat în timp ce colegul are cota nefolosită.
+T('la 8 vehicule, un cont costă 12 lei', M._aiqPretLoc(8) === 12, M._aiqPretLoc(8));
+T('la 20 de vehicule, 15 lei', M._aiqPretLoc(20) === 15, M._aiqPretLoc(20));
+T('la 50, 19 lei', M._aiqPretLoc(50) === 19, M._aiqPretLoc(50));
+T('la 100, 25 lei', M._aiqPretLoc(100) === 25, M._aiqPretLoc(100));
+T('peste 100, 35 lei', M._aiqPretLoc(250) === 35, M._aiqPretLoc(250));
+T('prețul unui cont nu scade niciodată când crește flota',
+  [0, 5, 10, 11, 25, 26, 50, 51, 100, 101, 500].every(function (v, i, a2) { return i === 0 || M._aiqPretLoc(v) >= M._aiqPretLoc(a2[i - 1]); }));
+T('fără vehicule, tot are un preț (nu 0)', M._aiqPretLoc(0) > 0, M._aiqPretLoc(0));
+T('text în loc de număr nu dă NaN', Number.isFinite(M._aiqPretLoc('multe')));
+// Fondul comun
+T('3 conturi × 50 = 150 de întrebări pe lună', M._aiqFond(3, 50) === 150, M._aiqFond(3, 50));
+T('un cont singur = 50', M._aiqFond(1, 50) === 50);
+T('„nelimitat" (0 pe cont) nu dă fond', M._aiqFond(3, 0) === 0);
+T('conturi lipsă nu dau fond negativ', M._aiqFond(-2, 50) === 0, M._aiqFond(-2, 50));
+// Regula de bază a afacerii: ce cerem acoperă ce ne costă, la orice flotă și oricâte conturi.
 [10, 20, 50, 100, 200].forEach(function (v) {
-  [50, 100, 150, 200].forEach(function (n) {
-    const cost = n * M._aiqCost(v) * M.AIQ_GREU;
-    T('preț > cost la uz intens (' + v + ' vehicule, ' + n + ' întrebări)', M._aiqPret(n, v) > cost * 1.5,
-      M._aiqPret(n, v) + ' lei vs cost ' + cost.toFixed(1));
+  [1, 3, 5].forEach(function (c) {
+    const fond = M._aiqFond(c, 50);
+    const cost = fond * M._aiqCost(v) * M.AIQ_GREU;
+    const pret = M._aiqPretLoc(v) * c;
+    T('preț > cost la uz intens (' + v + ' vehicule, ' + c + ' conturi)', pret > cost * 1.5,
+      pret + ' lei vs cost ' + cost.toFixed(1));
   });
 });
 
@@ -140,7 +153,18 @@ T('scrie amândouă sub mașină', /tahograf și e-Transport/.test(linie(ambele,
 // RA Insight RĂMÂNE linie separată — e un pachet de întrebări, cu cotă lunară.
 const cuAi = calculator(flota({ 'of-aiA': true }))._ofCalc();
 T('RA Insight rămâne linie de sine stătătoare', !!linie(cuAi, 'RA Insight'), cuAi.lines.map(l => l.label).join(' | '));
-T('și spune câte întrebări are în ea', /50 apeluri/.test(linie(cuAi, 'RA Insight').label));
+T('și scrie câte CONTURI se vând', /RA Insight — 1 cont/.test(linie(cuAi, 'RA Insight').label), linie(cuAi, 'RA Insight').label);
+T('iar dedesubt, fondul comun de întrebări',
+  /50 de întrebări pe lună, în comun/.test(linie(cuAi, 'RA Insight').extra || ''), linie(cuAi, 'RA Insight').extra);
+// Mai multe conturi: prețul se înmulțește, fondul la fel.
+const cuAi3 = calculator(flota({ 'of-aiA': true, 'of-aiqSeats': 3 }))._ofCalc();
+T('3 conturi × 15 lei = 45 lei/lună', linie(cuAi3, 'RA Insight').total === 45, linie(cuAi3, 'RA Insight').total);
+T('și fondul devine 150 de întrebări', /150 de întrebări/.test(linie(cuAi3, 'RA Insight').extra || ''), linie(cuAi3, 'RA Insight').extra);
+T('eticheta zice „3 conturi", nu „3 cont"', /3 conturi/.test(linie(cuAi3, 'RA Insight').label));
+T('totalul lunar crește cu cele 3 conturi', cuAi3.monthly === cuAi.monthly + 30, cuAi.monthly + ' → ' + cuAi3.monthly);
+// „Nelimitat" (0 întrebări pe cont) se vede ca atare, nu ca „0 întrebări".
+const cuAiNel = calculator(flota({ 'of-aiA': true, 'of-aiqN': 0 }))._ofCalc();
+T('„nelimitat" scrie nelimitat', /nelimitate/.test(linie(cuAiNel, 'RA Insight').extra || ''), linie(cuAiNel, 'RA Insight').extra);
 T('agenții apar cu 0 lei', linie(cuAi, 'Agenți') && linie(cuAi, 'Agenți').total === 0);
 
 sect('3b. Pe ce vehicule se socotește fiecare modul');
@@ -177,6 +201,14 @@ T('„100 de vehicule"', DE(100) === 'de ');
 T('„101 vehicule", fără „de"', DE(101) === '');
 T('„1 vehicul"', DE(1) === '');
 T('zero nu devine „0 de vehicule"', DE(0) === '');
+
+sect('3c-bis. RA Insight pe hârtia clientului');
+T('scrie pe câte CONTURI se dă', /RA Insight pe ' \+ nLocP/.test(PD), 'lipsește numărul de conturi');
+T('și cât e fondul comun de întrebări', /dintr-un fond comun al firmei/.test(PD));
+T('prețul peste fond e scris pe hârtie (altfel nu-l putem factura)',
+  /se facturează separat, la/.test(PD) && /aiqP/.test(PD));
+T('și scrie că se pot da/retrage conturi oricând', /se pot da sau retrage oricând/.test(PD));
+T('nota apare DOAR dacă există fond și preț', /r\.cfg\.aiA && fondP > 0 && Number\(r\.cfg\.aiqP\) > 0/.test(PD));
 
 sect('3d. Hârtia se ține pe o pagină');
 T('răspunsul („cum se plătește") vine ÎNAINTEA tabelelor',
@@ -248,10 +280,11 @@ T('contractul făcut din ofertă o cheamă', /_aplicaOfertaPeFirma\(id, oferta\)
 T('și butonul „Aplică" din lista de oferte folosește ACEEAȘI funcție',
   /_aplicaOfertaPeFirma\(companyId, offer\)/.test(server));
 T('nu mai există o a doua listă paralelă de setări',
-  (server.match(/questions: n, overage: true, overagePriceEur: priceEur/g) || []).length === 1,
-  String((server.match(/questions: n, overage: true, overagePriceEur: priceEur/g) || []).length));
-T('cota vândută ajunge pe firmă', /patch\.ai_quota = n > 0 \?/.test(server));
-T('„nelimitat" în ofertă (0) rămâne fără plafon', /patch\.ai_quota = n > 0 \? \{[^}]*\} : null/.test(server));
+  (server.match(/questionsPerSeat: n, seatPriceRON: seatPrice/g) || []).length === 1,
+  String((server.match(/questionsPerSeat: n, seatPriceRON: seatPrice/g) || []).length));
+T('cota vândută ajunge pe firmă, ca întrebări PE CONT', /patch\.ai_quota = n > 0/.test(server) && /questionsPerSeat: n/.test(server));
+T('și prețul unui cont merge cu ea', /seatPriceRON: seatPrice/.test(server));
+T('„nelimitat" în ofertă (0) rămâne fără plafon', /patch\.ai_quota = n > 0[\s\S]{0,160}: null;/.test(server));
 T('prețul peste cotă negociat în ofertă merge și el', /overagePriceEur: priceEur/.test(server));
 T('RA Insight se aprinde odată cu cota', /patch\.features = \{ ai_assistant: true \}/.test(server));
 // Dar modulele demonstrative NU se aprind singure — decizie veche, rămâne.
@@ -259,6 +292,31 @@ T('Tahograful și e-Transportul NU se aprind singure',
   !/features\.tahograf = true/.test(server) && !/features\.etransport = true/.test(server));
 T('dar nu se trec sub tăcere: rămân pe o listă de pornit manual', /deAprinsManual\.push\('tahograf'\)/.test(server));
 T('și primim o notificare cu firma și modulul', /type: 'module_de_pornit'/.test(server));
+
+sect('6c. Pe server: fondul lunii vine din LOCURI');
+T('fondul = locuri × întrebări pe loc',
+  /const fond = q\.questionsPerSeat > 0 \? seats \* q\.questionsPerSeat : q\.questions;/.test(server));
+T('locurile se numără din conturile aprinse', /await db\.getAiSeats\(companyId\)/.test(server));
+T('doar conturile ACTIVE țin loc (unul dezactivat nu se facturează)',
+  /ai_seat = true AND active IS NOT false/.test(fs.readFileSync('./db.js', 'utf8')));
+T('RA Insight se deschide doar cui are loc', /function requireAiSeat\(req, res, next\)/.test(server));
+T('poarta e pusă pe amândouă căile de AI',
+  (server.match(/requireFeature\('ai_assistant'\), requireAiSeat/g) || []).length === 2,
+  String((server.match(/requireFeature\('ai_assistant'\), requireAiSeat/g) || []).length));
+T('mesajul spune cine poate porni contul', /Administratorul firmei îl poate porni din Utilizatori/.test(server));
+T('super-adminul nu e îngrădit', /if \(req\.isSuper \|\| req\.companyId == null\) return next\(\);[\s\S]{0,120}getUserById/.test(server));
+T('bara omului primește și consumul LUI', /aiQuotaState\(a\.companyId, a\.userId\)/.test(server));
+T('consumul se scrie pe om la toate felurile de întrebări',
+  (server.match(/recordAiUsage\(req\.companyId, '(insight|chat|report)', [^)]*req\.auth && req\.auth\.userId\)/g) || []).length === 3,
+  String((server.match(/recordAiUsage\(req\.companyId, '(insight|chat|report)', [^)]*req\.auth && req\.auth\.userId\)/g) || []).length));
+// Factura
+T('factura are rândul de conturi', /RA Insight — conturi \(/.test(server));
+T('și rândul de depășire, separat', /RA Insight — întrebări peste cota lunii/.test(server));
+T('depășirea se facturează DOAR dacă firma avea voie să depășească',
+  /overageCount: \(st\.overage \? \(st\.overageCount \|\| 0\) : 0\)/.test(server));
+T('prețul depășirii se trece în lei, la cursul zilei', /overagePriceRON: Math\.round\(\(st\.overagePriceEur/.test(server));
+T('forma veche („Asistent AI", sumă fixă) rămâne pentru clienții vechi',
+  /add\('Asistent AI', 1, bd\.aiAssistant\);   \/\/ forma veche/.test(server));
 
 sect('7. Flota tăiată nu mai minte');
 T('plafonul nu mai e 80 înfipt în cod', !/positions\.slice\(0, 80\)/.test(server));
