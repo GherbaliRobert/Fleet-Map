@@ -318,6 +318,38 @@ T('prețul depășirii se trece în lei, la cursul zilei', /overagePriceRON: Mat
 T('forma veche („Asistent AI", sumă fixă) rămâne pentru clienții vechi',
   /add\('Asistent AI', 1, bd\.aiAssistant\);   \/\/ forma veche/.test(server));
 
+sect('6d. Nimeni nu intră pe cost suplimentar fără să știe');
+T('există o poartă înainte de a chema modelul', /async function _cereAcordCostExtra\(req\)/.test(server));
+T('se cere acordul DOAR când fondul s-a terminat', /if \(st\.used < st\.questions\) return null;/.test(server));
+T('și doar dacă firma are voie să depășească', /if \(!st\.overage\) return null;/.test(server));
+T('o singură dată pe lună', /extraAcceptedMonth\) === luna\) return null;/.test(server));
+T('caseta primește cifrele care contează', /pretLei: lei, pretEur: st\.overagePriceEur/.test(server));
+T('și NU se cheltuie nimic pe model până nu spune omul da', /const _cost = await _cereAcordCostExtra\(req\);\n    if \(_cost\) return res\.json\(_cost\);/.test(server));
+T('acordul se scrie pe firmă și rămâne în audit', /auditReq\(req, 'ai_extra_accept', 'company'/.test(server));
+T('și lasă o notificare pentru cine plătește factura', /type: 'ai_cost_extra'/.test(server));
+// Pe ecran: fereastra care explică, nu un simplu „da/nu"
+const AC = html.slice(html.indexOf('// ── începe „Acordul pentru cost suplimentar"'), html.indexOf('// ── sfârșit „Acordul pentru cost suplimentar" ──'));
+T('fereastra spune cât costă o întrebare, în lei ȘI în euro', /pretLei/.test(AC) && /pretEur/.test(AC));
+T('spune ce rămâne gratuit', /unde sunt mașinile/.test(AC) && /Gratuit oricând/.test(AC));
+T('spune când se reînnoiește fondul', /se reînnoiește pe/.test(AC));
+T('spune cum se poate mări fondul', /Utilizatori/.test(AC));
+T('și se poate spune NU', /rax-extra-nu/.test(AC) && /gata\(false\)/.test(AC));
+T('dacă spune nu, întrebarea NU se trimite', /Întrebarea nu a fost trimisă/.test(html));
+// Bara are explicația „cum se socotește"
+T('bara are „Cum se socotește"', /Cum se socotește ▾/.test(html));
+T('și scrie ce e gratuit', /Gratuite, nu intră la socoteală/.test(html));
+
+sect('6e. Ofertare Live — limbajul vizual e într-un singur loc');
+const css = fs.readFileSync('./public/css/app.css', 'utf8');
+T('există blocul .raof în foaia de stil', /\.raof-card\{/.test(css) && /\.raof-rez\{/.test(css));
+T('ecranul are un antet care spune ce e', /raof-head/.test(html) && /Calculatorul din care iese oferta/.test(html));
+T('și pașii, ca să știi pe unde merge oferta', /raof-pasi/.test(html) && /Deschizi clientul din ea/.test(html));
+T('cărțile sunt numerotate', /1\. Clientul/.test(html) && /2\. Flota clientului/.test(html) &&
+  /3\. Ce mai primește clientul/.test(html) && /4\. Montajul/.test(html) && /5\. Aparatele/.test(html));
+T('fiecare carte are o propoziție care o explică', /function card\(title, inner, desc\)/.test(html) && /raof-d/.test(html));
+T('rândurile nu mai au stiluri scrise pe fiecare element', /function row\(label, inner, hint\) \{ return '<div class="raof-r">/.test(html));
+T('caseta cotei e o grilă, nu un rând care se rupe', /raof-q3/.test(html) && /\.raof-q3\{ display:grid/.test(css));
+
 sect('7. Flota tăiată nu mai minte');
 T('plafonul nu mai e 80 înfipt în cod', !/positions\.slice\(0, 80\)/.test(server));
 T('există un plafon cu nume și cu variabilă de mediu', /FLOTA_IN_RASPUNS = parseInt\(process\.env\.AI_FLEET_MAX\)/.test(server));

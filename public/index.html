@@ -18175,7 +18175,16 @@ const pozitii = await r.json();</code></pre>
         + (over ? '<span style="color:var(--orange);font-weight:800;font-size:11px;"><i class="fas fa-circle-exclamation"></i> extra</span>' : '')
         + '</div>'
         + '<div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + col + ';transition:width .3s;"></div></div>'
-        + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:5px;">' + sub + '</div>';
+        + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:5px;">' + sub + '</div>'
+        // „Cum se socotește" — scris o dată, la îndemână, ca nimeni să nu ghicească ce se numără.
+        + '<details style="margin-top:5px;"><summary style="font-size:10.5px;color:var(--text-muted);cursor:pointer;list-style:none;">Cum se socotește ▾</summary>'
+        + '<div style="font-size:10.5px;color:var(--text-muted);line-height:1.6;margin-top:4px;padding-left:2px;">'
+        + '• O întrebare pusă aici = 1, oricât de complicat e răspunsul.<br>'
+        + '• <b>Gratuite, nu intră la socoteală:</b> „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".<br>'
+        + '• Fondul e al firmei: ' + (q.seats || 1) + ' ' + ((q.seats || 1) === 1 ? 'cont' : 'conturi') + ' × ' + (q.questionsPerSeat || q.questions) + ' de întrebări.<br>'
+        + '• Se reînnoiește pe ' + reset + '.'
+        + (q.overage ? '<br>• Peste fond: ' + lei(q.overagePriceEur) + ' de fiecare întrebare, pe factura lunii (ți se cere acordul o dată).' : '<br>• La epuizare se oprește; întrebările rapide rămân.')
+        + '</div></details>';
     };
     window.raxToggleAI = function () {
       var ov = $('rax-ai-overlay'); var open = !ov.classList.contains('open');
@@ -18237,6 +18246,45 @@ const pozitii = await r.json();</code></pre>
         raxToggleAI(); raxToggleAI(); // închide + redeschide → re-init cu chat activ
       } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
     };
+    // ── începe „Acordul pentru cost suplimentar" ─────────────────────────────────────────────────
+    // Se arată O SINGURĂ DATĂ pe lună, când fondul de întrebări s-a terminat. Scrie negru pe alb cât
+    // costă o întrebare de acum înainte, ce rămâne gratuit, cum se socotește și când se reînnoiește.
+    // Fără pasul ăsta, omul ar afla din factură — exact ce nu vrem.
+    function _raxAcordCostExtra(c) {
+      return new Promise(function (rezolva) {
+        var reinnoire = c.reinnoire ? new Date(c.reinnoire).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : '1 ale lunii';
+        var ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,12,20,.62);z-index:12000;display:flex;align-items:center;justify-content:center;padding:16px;';
+        ov.innerHTML =
+          '<div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.4);">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+              '<i class="fas fa-circle-exclamation" style="color:var(--orange);font-size:20px;"></i>' +
+              '<b style="font-size:16px;">Fondul de întrebări al lunii s-a terminat</b></div>' +
+            '<p style="font-size:13.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 12px;">' +
+              'Firma a folosit toate cele <b>' + c.fond + '</b> întrebări incluse luna asta' +
+              (c.conturi ? ' (' + c.conturi + ' ' + (c.conturi === 1 ? 'cont' : 'conturi') + ' × ' + c.peCont + ')' : '') + '.' +
+              ' De aici înainte, <b>fiecare întrebare costă ' + Number(c.pretLei).toFixed(2) + ' lei</b> ' +
+              '<span style="color:var(--text-muted);">(' + Number(c.pretEur).toFixed(2) + ' €)</span> și intră pe factura lunii.</p>' +
+            '<div style="background:var(--bg-dark);border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.6;margin-bottom:14px;">' +
+              '<b style="font-size:12px;">Cum se socotește</b>' +
+              '<ul style="margin:5px 0 0 16px;padding:0;color:var(--text-secondary);">' +
+                '<li>O întrebare pusă aici = 1, oricât de complicat ar fi răspunsul.</li>' +
+                '<li><b>Gratuit oricând</b>, fără să intre la socoteală: „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".</li>' +
+                '<li>Fondul se reînnoiește pe <b>' + reinnoire + '</b>.</li>' +
+                '<li>Poți adăuga conturi (fiecare aduce încă ' + (c.peCont || 50) + ' de întrebări) din <b>Utilizatori</b>.</li>' +
+              '</ul></div>' +
+            '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">' +
+              '<button class="rax-btn" id="rax-extra-nu">Nu, mă opresc aici</button>' +
+              '<button class="rax-btn primary" id="rax-extra-da">Am înțeles, continuă</button>' +
+            '</div></div>';
+        document.body.appendChild(ov);
+        var gata = function (v) { try { ov.remove(); } catch (e) {} rezolva(v); };
+        ov.querySelector('#rax-extra-da').onclick = function () { gata(true); };
+        ov.querySelector('#rax-extra-nu').onclick = function () { gata(false); };
+        ov.onclick = function (e) { if (e.target === ov) gata(false); };
+      });
+    }
+    // ── sfârșit „Acordul pentru cost suplimentar" ──
     window.raxSendAI = async function () {
       var inp = $('rax-ai-input'); var msg = (inp.value || '').trim(); if (!msg) return;
       inp.value = ''; addMsg('user', msg);
@@ -18246,6 +18294,18 @@ const pozitii = await r.json();</code></pre>
         // restul rulează pe agentul cu unelte (live + istoric + alerte) și întorc și sursele (rapoartele folosite).
         var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
         var j = await r.json();
+        // Fondul lunii s-a terminat: NU trimitem întrebarea mai departe până nu spune omul „am
+        // înțeles". Altfel s-ar trezi cu o factură pe care n-a văzut-o venind.
+        if (j && j.needsExtraConsent) {
+          thinking.remove();
+          var deAcord = await _raxAcordCostExtra(j.cost);
+          if (!deAcord) { addMsg('sys', 'Întrebarea nu a fost trimisă. Fondul se reînnoiește pe ' +
+            new Date(j.cost.reinnoire).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) +
+            '. Până atunci, întrebările rapide (unde e o mașină, care sunt oprite, câți km azi) rămân gratuite.'); return; }
+          thinking = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
+          r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg, acceptExtra: true }) });
+          j = await r.json();
+        }
         thinking.remove();
         try { raxLoadQuota(); } catch (e) {} // contorul scade imediat după întrebare
         var reply = j.reply || j.error || 'Eroare AI.';
@@ -19427,7 +19487,7 @@ const pozitii = await r.json();</code></pre>
       _raxAbo = {
         id: c.id, vehicles: vehicles, canImeis: s,
         feats: Object.assign({ ai_assistant: false, agents: false }, d.features || {}),
-        aiQuota: Object.assign({ questions: 0, overage: true, overagePriceEur: 0.20 }, d.ai_quota || {}),
+        aiQuota: Object.assign({ questions: 0, questionsPerSeat: 0, seatPriceRON: 0, overage: true, overagePriceEur: 0.20 }, d.ai_quota || {}),
         planKey: (o.key === 'custom' ? 'custom' : (c.plan || 'start')),
         offer: {
           name: o.name || '', priceNoneRON: pick(o.priceNoneRON), priceCanRON: pick(o.priceCanRON),
@@ -19550,14 +19610,16 @@ const pozitii = await r.json();</code></pre>
         '<div class="hint">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții individuali + limita AI se setează din „Module &amp; limite" (tab Detalii).</div>' +
         // Cota de apeluri RA Insight — ce vede clientul în contorul lui.
         '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' +
-          '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">Apeluri RA Insight incluse</div>' +
+          '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">RA Insight — conturi și fond de întrebări</div>' +
           '<div class="rax-abo-grid">' +
-            '<div class="rax-abo-f"><label>Apeluri / lună</label><input type="number" id="rax-aiq-n" min="0" max="100000" step="10" value="' + (s.aiQuota.questions || '') + '" placeholder="gol = nelimitat"></div>' +
-            '<div class="rax-abo-f"><label>Preț / apel peste cotă (€)</label><input type="number" id="rax-aiq-p" min="0" max="100" step="0.05" value="' + (s.aiQuota.overagePriceEur != null ? s.aiQuota.overagePriceEur : '') + '" placeholder="0.20"></div>' +
+            '<div class="rax-abo-f"><label>Întrebări / cont / lună</label><input type="number" id="rax-aiq-n" min="0" max="100000" step="10" value="' + (s.aiQuota.questionsPerSeat || s.aiQuota.questions || '') + '" placeholder="gol = nelimitat"></div>' +
+            '<div class="rax-abo-f"><label>Preț / cont (lei/lună)</label><input type="number" id="rax-aiq-s" min="0" max="100000" step="1" value="' + (s.aiQuota.seatPriceRON || '') + '" placeholder="ex. 15"></div>' +
+            '<div class="rax-abo-f"><label>Preț / întrebare peste fond (€)</label><input type="number" id="rax-aiq-p" min="0" max="100" step="0.05" value="' + (s.aiQuota.overagePriceEur != null ? s.aiQuota.overagePriceEur : '') + '" placeholder="0.20"></div>' +
           '</div>' +
-          '<label class="rax-abo-tog"><input type="checkbox" id="rax-aiq-ov" ' + (s.aiQuota.overage !== false ? 'checked' : '') + '> Poate depăși cota <span class="hint">(altfel se oprește la epuizare)</span></label>' +
-          '<button class="rax-btn primary" style="margin-top:6px;" onclick="raxSaveAiQuota()"><i class="fas fa-floppy-disk"></i> Salvează cota</button>' +
-          '<div class="hint" style="margin-top:6px;">Clientul vede un contor: „îți mai rămân N din X apeluri", iar la depășire i se arată cât îl costă în plus.</div>' +
+          // „Poate depăși" e o alegere cu bani în spate, deci scrie CE se întâmplă în fiecare caz.
+          '<label class="rax-abo-tog"><input type="checkbox" id="rax-aiq-ov" ' + (s.aiQuota.overage !== false ? 'checked' : '') + '> Poate depăși fondul <span class="hint">(bifat: merge mai departe, iar întrebările în plus intră pe factură — clientul e întrebat o dată pe lună dacă acceptă. Nebifat: la epuizare se oprește, rămân doar întrebările rapide, gratuite.)</span></label>' +
+          '<button class="rax-btn primary" style="margin-top:6px;" onclick="raxSaveAiQuota()"><i class="fas fa-floppy-disk"></i> Salvează</button>' +
+          '<div class="hint" style="margin-top:6px;">Fondul lunii = <b>conturile aprinse × întrebări pe cont</b>. Conturile se dau din <b>Utilizatori</b>, cu butonul ✨ de lângă fiecare om — tot de acolo se retrag. Clientul vede o bară cu cât a rămas și cât a folosit el.</div>' +
         '</div></div>';
       html += '<div class="rax-abo-sect"><h4>Preț lunar estimat</h4><div id="rax-abo-preview"></div></div>';
       html += '<div class="rax-abo-sect"><h4>Înregistrează plată</h4>' +
@@ -19639,12 +19701,18 @@ const pozitii = await r.json();</code></pre>
       var p = (pEl && pEl.value !== '') ? Number(pEl.value) : 0.20;
       if (!isFinite(n) || n < 0 || n > 100000) { (window.raxToast || alert)('Număr de apeluri invalid.', 'error'); return; }
       if (!isFinite(p) || p < 0 || p > 100) { (window.raxToast || alert)('Preț invalid.', 'error'); return; }
-      var q = { questions: Math.round(n), overage: !!(oEl && oEl.checked), overagePriceEur: p };
+      var sEl = document.getElementById('rax-aiq-s');
+      var sp = (sEl && sEl.value !== '') ? Number(sEl.value) : 0;
+      if (!isFinite(sp) || sp < 0 || sp > 100000) { (window.raxToast || alert)('Preț pe cont invalid.', 'error'); return; }
+      // Forma NOUĂ: întrebări pe CONT + prețul unui cont. Serverul șterge singur cota fixă veche.
+      var q = { questionsPerSeat: Math.round(n), seatPriceRON: sp, overage: !!(oEl && oEl.checked), overagePriceEur: p };
       try {
         var j = await fetch('/api/companies/' + _raxAbo.id + '/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ ai_quota: q }) }).then(function (r) { return r.json(); });
         if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
         _raxAbo.aiQuota = q;
-        (window.raxToast || function () { })(q.questions ? ('Cotă salvată: ' + q.questions + ' apeluri/lună ✓') : 'Cotă eliminată (nelimitat) ✓', 'success');
+        (window.raxToast || function () { })(q.questionsPerSeat
+          ? ('Salvat: ' + q.questionsPerSeat + ' întrebări/cont, ' + q.seatPriceRON + ' lei/cont ✓')
+          : 'Fond eliminat (nelimitat) ✓', 'success');
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
     window.raxAboToggleFeat = async function (key, on) {
@@ -21586,14 +21654,13 @@ const pozitii = await r.json();</code></pre>
       // Două blocuri, nu o listă: ce se plătește O DATĂ și ce se plătește ÎN FIECARE LUNĂ. Asta e
       // singura împărțire care contează pentru client, și trebuie să iasă din pagină.
       var cap = function (nr, titlu, suma, culoare) {
-        return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">' +
-          '<span style="font-size:11px;font-weight:800;color:' + culoare + ';text-transform:uppercase;letter-spacing:.3px;">' + nr + '. ' + titlu + '</span>' +
-          '<span style="font-size:19px;font-weight:800;color:' + culoare + ';white-space:nowrap;">' + _fmtLei(suma) + '</span></div>';
+        return '<div class="cap"><span class="n" style="color:' + culoare + ';">' + nr + '. ' + titlu + '</span>' +
+          '<span class="s" style="color:' + culoare + ';">' + _fmtLei(suma) + '</span></div>';
       };
       var nVeh = Math.max(0, Number(r.cfg.nVeh) || 0);
       var luni = Math.max(1, Number(r.cfg.contractMonths) || 12);
-      return '<div style="margin-top:16px;border:1.5px solid var(--accent);border-radius:12px;padding:12px 14px;">' +
-        '<div style="font-size:11px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px;">Cum se plătește</div>' +
+      return '<div class="raof-plata">' +
+        '<div class="raof-t">Cum se plătește</div>' +
         (unic > 0 ? cap(1, 'La semnare, o singură dată', unic, 'var(--text-primary)') +
           (hwLei > 0 ? rand('Echipamente', hwLei, true) : '') +
           (r.montaj > 0 ? rand('Montaj și punere în funcțiune', r.montaj, true) : '') +
@@ -21622,14 +21689,14 @@ const pozitii = await r.json();</code></pre>
         (l.extra ? '<div style="font-size:.78em;color:var(--text-muted);line-height:1.25;">' + esc(l.extra) + '</div>' : '') + '</td><td class="num">' + _celLei(l.unit, true) + '</td><td class="num">' + _celLei(l.total) + '</td></tr>'; }).join('') || '<tr><td colspan="3" style="color:var(--text-muted);">Adaugă vehicule…</td></tr>';
       var mRows = r.montajLines.map(function (l) { return '<tr><td>' + esc(l.label) + ((l.qty > 1 && !l.perKm) ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num">' + _celLei(l.unit, true, l.perKm ? '/km' : '') + '</td><td class="num">' + _celLei(l.total) + '</td></tr>'; }).join('');
       var montajBlock = r.montaj > 0 ?
-        ('<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:16px 0 6px;"><i class="fas fa-screwdriver-wrench"></i> Montaj (cost unic)</div>' +
+        ('<div class="raof-sec"><i class="fas fa-screwdriver-wrench"></i> Montaj (o singură dată)</div>' +
          '<table class="rax-co-table" style="margin-bottom:8px;"><thead><tr><th>Operațiune</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead><tbody>' + mRows + '</tbody></table>' +
-         '<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--border);padding-top:8px;"><span style="font-size:13px;color:var(--text-muted);">Total montaj (o dată)</span><span style="font-size:20px;font-weight:800;color:var(--text-primary);">' + _fmtLei(r.montaj) + '</span></div>') : '';
+         '<div class="raof-tot" style="border-top:1px dashed var(--border);padding-top:8px;"><span class="et">Total montaj</span><span class="val">' + _fmtLei(r.montaj) + '</span></div>') : '';
       var hwRows = r.deviceLines.map(function (l) { return '<tr><td>' + esc(l.label) + (l.qty > 1 ? ' <span style="color:var(--text-muted);">× ' + l.qty + '</span>' : '') + '</td><td class="num">' + _celEur(l.unit, true) + '</td><td class="num">' + _celEur(l.total) + '</td></tr>'; }).join('');
       var hwBlock = r.hwTotal > 0 ?
-        ('<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin:16px 0 6px;"><i class="fas fa-microchip"></i> Echipamente (cost unic)</div>' +
+        ('<div class="raof-sec"><i class="fas fa-microchip"></i> Aparate (o singură dată)</div>' +
          '<table class="rax-co-table" style="margin-bottom:8px;"><thead><tr><th>Echipament</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead><tbody>' + hwRows + '</tbody></table>' +
-         '<div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--border);padding-top:8px;"><span style="font-size:13px;color:var(--text-muted);">Total echipamente (o dată)</span><span style="font-size:20px;font-weight:800;color:var(--text-primary);">' + _fmtEur(r.hwTotal) + '</span></div>') : '';
+         '<div class="raof-tot" style="border-top:1px dashed var(--border);padding-top:8px;"><span class="et">Total aparate</span><span class="val">' + _fmtEur(r.hwTotal) + '</span></div>') : '';
       host.innerHTML =
         '<table class="rax-co-table" style="margin-bottom:10px;"><thead><tr><th>Componentă</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead><tbody>' + rows + '</tbody></table>' +
         '<div style="border-top:2px solid var(--accent);padding-top:10px;">' +
@@ -21638,7 +21705,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + _fmtLei(r.annual) + '</b></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
         '</div>' + montajBlock + hwBlock + _ofBlocPlata(r) +
-        '<div style="margin-top:10px;font-size:10.5px;color:var(--text-muted);text-align:right;">Curs BNR: 1 € = ' + _fxRate.toFixed(4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + ' · 1 leu = ' + (100 / _fxRate).toFixed(1) + ' cenți</div>';
+        '<div class="raof-curs">Curs BNR: 1 € = ' + _fxRate.toFixed(4) + ' lei' + (_fxDate ? ' · ' + _fxDate : '') + ' · 1 leu = ' + (100 / _fxRate).toFixed(1) + ' cenți</div>';
     };
     // ─── Inventar dispozitive GPS (super-admin = toate companiile · admin companie = flota lui) ───
     // Un rând per echipament: client, mașină, IMEI, model GPS, cartelă SIM, ultima transmisie.
@@ -21882,37 +21949,43 @@ const pozitii = await r.json();</code></pre>
       _ofAtinse = {};
       var p = _raxOf.prices;
       function fNum(id, val, ph, w, step) { return '<input id="' + id + '" type="number" min="0" step="' + (step || 1) + '" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + (ph || '') + '" oninput="raxOfAtins(this.id);raxOfRecalc()" class="rax-field" style="width:' + (w || 80) + 'px;margin:0;">'; }
-      function row(label, inner, hint) { return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;"><span style="font-size:12.5px;min-width:150px;">' + label + '</span>' + inner + (hint ? '<span style="font-size:10.5px;color:var(--text-muted);">' + hint + '</span>' : '') + '</div>'; }
-      function lei() { return '<span style="font-size:11px;color:var(--text-muted);">lei/lună</span>'; }
-      function leiU(u) { return '<span style="font-size:11px;color:var(--text-muted);">lei/' + u + '</span>'; }
-      function card(title, inner) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">' + title + '</div>' + inner + '</div>'; }
-      var clientCard = card('<i class="fas fa-user"></i> Client',
+      function row(label, inner, hint) { return '<div class="raof-r"><span>' + label + '</span>' + inner + (hint ? '<span class="raof-hint">' + hint + '</span>' : '') + '</div>'; }
+      function lei() { return '<span class="um">lei/lună</span>'; }
+      function leiU(u) { return '<span class="um">lei/' + u + '</span>'; }
+      // Fiecare carte are titlu ȘI o propoziție care spune la ce folosește — ecranul ăsta e cel în
+      // care se hotărăsc banii, nu e loc de ghicit ce face fiecare câmp.
+      function card(title, inner, desc) {
+        return '<div class="raof-card"><div class="raof-t">' + title + '</div>' +
+          (desc ? '<div class="raof-d">' + desc + '</div>' : '') + inner + '</div>';
+      }
+      var clientCard = card('<i class="fas fa-user"></i> 1. Clientul',
         row('Nume client', '<input id="of-cl-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="ex. Transport SRL" oninput="raxOfRecalc()">') +
         row('CUI', '<input id="of-cl-cui" class="rax-field" style="width:150px;margin:0;" placeholder="RO12345678">') +
         row('Contact', '<input id="of-cl-contact" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="email / telefon">') +
-        row('Nume ofertă', '<input id="of-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="ex. Ofertă standard" oninput="raxOfRecalc()">'));
+        row('Nume ofertă', '<input id="of-name" class="rax-field" style="flex:1;min-width:170px;margin:0;" placeholder="ex. Ofertă standard" oninput="raxOfRecalc()">'),
+        'Cui trimiți oferta. Numele și CUI-ul ajung pe hârtie; „Nume ofertă" e doar pentru tine, ca s-o găsești în listă.');
       // Numerele de vehicule completează singure cantitățile de montaj și de echipamente.
       function fVeh(id, val, hint) {
         return '<input id="' + id + '" type="number" min="0" step="1" value="' + val + '" oninput="raxOfVehiculeSchimbate()" class="rax-field" style="width:80px;margin:0;">';
       }
-      var vehCard = card('<i class="fas fa-car"></i> Vehicule',
+      var vehCard = card('<i class="fas fa-car"></i> 2. Flota clientului',
         row('Total vehicule', fVeh('of-nveh', 10)) +
         row('din care cu CAN', fVeh('of-ncan', 0), 'date motor/combustibil') +
         row('din care cu FMS', fVeh('of-nfms', 0), 'camioane / tahograf') +
-        '<div style="font-size:10.5px;color:var(--text-muted);margin-top:-2px;">Montajul și echipamentele de mai jos se completează singure din numerele astea. Dacă scrii tu altceva acolo, rămâne ce ai scris.</div>');
-      var featCard = card('<i class="fas fa-robot"></i> Opțiuni',
+        '<div class="raof-hint" style="margin-top:-2px;">Montajul și echipamentele de mai jos se completează singure din numerele astea. Dacă scrii tu altceva acolo, rămâne ce ai scris.</div>',
+        'De aici pornește tot: abonamentul lunar, cantitățile de montaj, aparatele de cumpărat și prețul unui cont de RA Insight.');
+      var featCard = card('<i class="fas fa-puzzle-piece"></i> 3. Ce mai primește clientul',
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;"><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;flex:1;"><input type="checkbox" id="of-aiA" onchange="raxOfRecalc()"> RA Insight</label>' + fNum('of-pAiA', p.pAiA, '', 70) + '<span style="font-size:11px;color:var(--text-muted);">lei/cont</span></div>' +
         '<div id="of-mod-hint-aiA" style="font-size:10.5px;color:var(--text-muted);margin:0 0 8px 22px;line-height:1.45;"></div>' +
         // Cota de apeluri inclusă în abonament (se trece în oferta clientului și se setează pe companie la activare).
-        '<div id="of-aiq-wrap" style="display:none;margin:2px 0 12px 22px;padding:11px 13px;border-left:2px solid var(--accent);background:var(--bg-dark);border-radius:0 10px 10px 0;">' +
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;">' +
-            '<span style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;">Conturi</span>' +
-            fNum('of-aiqSeats', 1, '', 56) +
-            '<span style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;">Întrebări / cont</span>' +
-            '<select id="of-aiqN" onchange="raxOfAiqPreset(this.value)" style="font-size:12px;padding:5px 8px;border-radius:7px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);font-family:inherit;cursor:pointer;">' +
-              '<option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="150">150 / lună</option><option value="200">200 / lună</option><option value="0">nelimitat</option>' +
-            '</select>' +
-            '<span style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;">peste cotă</span>' + fNum('of-aiqP', 0.20, '', 58, 0.05) + '<span style="font-size:11.5px;color:var(--text-muted);">€</span>' +
+        '<div id="of-aiq-wrap" class="raof-q" style="display:none;">' +
+          '<div class="raof-q3">' +
+            '<div><label>Conturi</label>' + fNum('of-aiqSeats', 1, '', 56) + '</div>' +
+            '<div><label>Întrebări / cont</label>' +
+              '<select id="of-aiqN" class="rax-field" onchange="raxOfAiqPreset(this.value)">' +
+                '<option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="150">150 / lună</option><option value="200">200 / lună</option><option value="0">nelimitat</option>' +
+              '</select></div>' +
+            '<div><label>Peste fond (€)</label>' + fNum('of-aiqP', 0.20, '', 58, 0.05) + '</div>' +
           '</div>' +
           '<div id="of-aiq-cost" style="font-size:11.5px;"></div>' +
         '</div>' +
@@ -21927,21 +22000,24 @@ const pozitii = await r.json();</code></pre>
         '<label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;cursor:pointer;margin-bottom:10px;padding:9px 11px;background:var(--bg-panel);border-radius:9px;"><input type="checkbox" id="of-agenti" checked onchange="raxOfRecalc()" style="margin-top:2px;">' +
           '<span><b>Cei 6 agenți automați — incluși, 0 lei</b><br><span style="font-size:11px;color:var(--text-muted);">RA Watch (offline, furt combustibil, ralanti) · RA Dispatch (vehicule disponibile) · RA Care (ITP, RCA, revizii) · RA Optimize (eco-driving) · RA Compliance (ore de condus) · RA Client (raport zilnic). Merg pe reguli fixe, nu ne costă nimic — dar clientul trebuie să știe că le primește.</span></span></label>' +
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="6">6 luni (inclus)</option><option value="12">12 luni</option><option value="24">24 luni</option><option value="36">36 luni</option><option value="custom">Custom…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
-        row('Durată contract', fNum('of-contract', 12, '', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span>'));
-      var montajCard = card('<i class="fas fa-screwdriver-wrench"></i> Montaj (cost unic, opțional)',
+        row('Durată contract', fNum('of-contract', 12, '', 65) + '<span class="um">luni</span>'),
+        'Tahograful și e-Transportul intră în abonamentul fiecărei mașini, nu ca linie separată. RA Insight se vinde pe cont, iar întrebările conturilor intră într-un fond comun al firmei.');
+      var montajCard = card('<i class="fas fa-screwdriver-wrench"></i> 4. Montajul',
         row('Instalare dispozitiv GPS', fNum('of-qGps', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
         row('Instalare LV-CAN', fNum('of-qLvCan', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
         row('Instalare CAN încorporat', fNum('of-qCanInc', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
         row('Instalare FMS (tahograf)', fNum('of-qFms', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
         row('Dezinstalare echipament', fNum('of-qUninstall', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
         row('Înlocuire echipament', fNum('of-qReplace', '') + '<span style="font-size:11px;color:var(--text-muted);">buc</span>') +
-        row('Deplasare', fNum('of-kmTravel', '') + '<span style="font-size:11px;color:var(--text-muted);">km</span>'));
+        row('Deplasare', fNum('of-kmTravel', '') + '<span class="um">km</span>'),
+        'Manopera, plătită o singură dată. Se completează singură din flotă. Noi o facturăm clientului; cu instalatorul ne socotim separat, în fișa de montaj a firmei.');
       function buc(eur) { return '<span style="font-size:11px;color:var(--text-muted);">buc · ' + eur + '€</span>'; }
-      var deviceCard = card('<i class="fas fa-microchip"></i> Echipamente (cost unic, EUR)',
+      var deviceCard = card('<i class="fas fa-microchip"></i> 5. Aparatele',
         row('Teltonika FMC130', fNum('of-dq130', '') + buc(p.dFmc130)) +
         row('Teltonika FMC150', fNum('of-dq150', '') + buc(p.dFmc150)) +
         row('Teltonika FMC650', fNum('of-dq650', '') + buc(p.dFmc650)) +
-        row('Modul LV-CAN200', fNum('of-dqLvCan', '') + '<span style="font-size:11px;color:var(--text-muted);">buc · ' + p.dLvCan + '€ (extra, la FMC130/650)</span>'));
+        row('Modul LV-CAN200', fNum('of-dqLvCan', '') + '<span class="um">buc · ' + p.dLvCan + '€ (extra, la FMC130/650)</span>'),
+        'Marfa pe care o cumpără clientul, o singură dată. Prețurile sunt în euro (așa le luăm și noi), iar pe hârtie apar și în lei, la cursul BNR.');
       var priceCard = '<details style="margin-bottom:14px;"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:8px 0;"><i class="fas fa-sliders"></i> Tarife (editabile)</summary><div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:6px;">' +
         row('Vehicul GPS (fără CAN)', fNum('of-pPlain', p.pPlain) + lei()) + row('Vehicul CAN', fNum('of-pCan', p.pCan) + lei()) + row('Vehicul FMS', fNum('of-pFms', p.pFms) + lei()) +
         '<div style="font-size:10.5px;color:var(--text-muted);margin:2px 0 8px;">Prețul AI (Asistent / Agenți) se editează în „Opțiuni", direct lângă comutator.</div>' +
@@ -21956,15 +22032,28 @@ const pozitii = await r.json();</code></pre>
         row('Teltonika FMC650', fNum('of-dFmc650', p.dFmc650) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
         row('Modul LV-CAN200', fNum('of-dLvCan', p.dLvCan) + '<span style="font-size:11px;color:var(--text-muted);">€/buc</span>') +
         '</div></details>';
-      var notesCard = card('<i class="fas fa-note-sticky"></i> Observații (apar pe PDF)', '<textarea id="of-notes" class="rax-field" style="width:100%;min-height:54px;margin:0;resize:vertical;" placeholder="ex. Preț valabil 30 zile, instalare inclusă…"></textarea>');
-      var actions = '<div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">' +
-        '<button class="rax-btn primary" style="justify-content:center;" onclick="raxOfSave()"><i class="fas fa-floppy-disk"></i> <span id="of-save-label">Salvează oferta</span></button>' +
-        '<button class="rax-btn" style="justify-content:center;" onclick="raxOfExportPdf()"><i class="fas fa-file-pdf"></i> Export PDF</button>' +
-        '<button class="rax-btn" style="justify-content:center;" onclick="raxOfReset()"><i class="fas fa-rotate-left"></i> Ofertă nouă</button></div>';
-      box.innerHTML =
-        '<div style="display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start;">' +
+      var notesCard = card('<i class="fas fa-note-sticky"></i> 6. Observații', '<textarea id="of-notes" class="rax-field" style="width:100%;min-height:54px;margin:0;resize:vertical;" placeholder="ex. Preț valabil 30 zile, instalare inclusă…"></textarea>');
+      var actions = '<div class="raof-act">' +
+        '<button class="rax-btn primary" onclick="raxOfSave()"><i class="fas fa-floppy-disk"></i> <span id="of-save-label">Salvează oferta</span></button>' +
+        '<button class="rax-btn" onclick="raxOfExportPdf()"><i class="fas fa-file-pdf"></i> Trimite clientului (PDF)</button>' +
+        '<button class="rax-btn" onclick="raxOfReset()"><i class="fas fa-rotate-left"></i> Ofertă nouă</button></div>';
+      // Antetul spune, o dată, ce e ecranul ăsta și pe unde merge oferta mai departe. Fără el,
+      // cine intră prima oară vede zece câmpuri și nu știe de unde să apuce.
+      var antet = '<div class="raof-head">' +
+        '<div style="flex:1;min-width:260px;">' +
+          '<h3><i class="fas fa-calculator" style="color:var(--accent);"></i> Ofertare Live</h3>' +
+          '<p>Calculatorul din care iese oferta pentru un client nou. Completezi flota, alegi ce mai primește, iar prețul se face singur — pe ecran, în lei și în euro. Când clientul acceptă, oferta devine contract fără să retastezi nimic.</p>' +
+          '<div class="raof-pasi">' +
+            '<span class="raof-pas"><i class="fas fa-1"></i> Completezi</span>' +
+            '<span class="raof-pas"><i class="fas fa-2"></i> Salvezi oferta</span>' +
+            '<span class="raof-pas"><i class="fas fa-3"></i> Trimiți PDF-ul</span>' +
+            '<span class="raof-pas"><i class="fas fa-4"></i> Deschizi clientul din ea</span>' +
+          '</div>' +
+        '</div></div>';
+      box.innerHTML = antet +
+        '<div class="raof-grid">' +
           '<div>' + clientCard + vehCard + featCard + montajCard + deviceCard + priceCard + notesCard + '</div>' +
-          '<div style="position:sticky;top:8px;"><div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:14px;padding:16px;"><div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;"><i class="fas fa-receipt"></i> Rezumat ofertă</div><div id="rax-of-summary"></div>' + actions + '</div></div>' +
+          '<div><div class="raof-rez"><div class="raof-t"><i class="fas fa-receipt"></i> Rezumatul ofertei</div><div id="rax-of-summary"></div>' + actions + '</div></div>' +
         '</div><div id="rax-of-list" style="margin-top:22px;"></div>';
       // Ofertă NOUĂ: cantitățile ȘI prețurile modulelor se propun din start, din numărul de
       // vehicule. La o ofertă deschisă pentru editare NU se propune nimic — acolo tot ce se vede a

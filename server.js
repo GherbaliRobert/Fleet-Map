@@ -3076,6 +3076,57 @@ function _aiQuotaFromSettings(settings) {
     overagePriceEur: (Number.isFinite(Number(q.overagePriceEur)) && Number(q.overagePriceEur) >= 0) ? Number(q.overagePriceEur) : AI_OVERAGE_PRICE_EUR
   };
 }
+// ─── Acordul pentru costul suplimentar ───────────────────────────────────────────────────────────
+// Regula, pe românește: cât timp firma are întrebări în fondul lunii, totul e inclus. Când fondul se
+// termină, ÎNTREBAREA URMĂTOARE COSTĂ — și atunci ne oprim și întrebăm o dată, pe lună, arătând
+// negru pe alb cât costă una și ce rămâne gratuit. Acordul se ține pe firmă (`extraAcceptedMonth`),
+// fiindcă factura e a firmei, iar în audit rămâne cine l-a dat.
+// Întoarce un obiect de răspuns dacă trebuie CERUT acordul, sau null dacă se poate merge mai departe.
+async function _cereAcordCostExtra(req) {
+  if (req.companyId == null) return null;               // super-admin: fără cotă, fără cost
+  let co = null; try { co = await db.getCompanyById(req.companyId); } catch (e) { return null; }
+  const q = _aiQuotaFromSettings(co && co.settings);
+  const st = await aiQuotaState(req.companyId, req.auth && req.auth.userId);
+  if (st.unlimited || !st.questions) return null;       // fără fond = nelimitat
+  if (st.used < st.questions) return null;              // mai sunt întrebări în fond
+  if (!st.overage) return null;                         // nu poate depăși → e oprit în altă parte
+  const luna = new Date().toISOString().slice(0, 7);    // „2026-09"
+  const s = (co && (typeof co.settings === 'string' ? (function () { try { return JSON.parse(co.settings); } catch (e) { return {}; } })() : co.settings)) || {};
+  if (((s.ai_quota || {}).extraAcceptedMonth) === luna) return null;   // a acceptat deja luna asta
+  const fx = (await fxEurRon().catch(function () { return null; })) || { eur: EUR_RON_FALLBACK };
+  const lei = Math.round(st.overagePriceEur * (Number(fx.eur) || EUR_RON_FALLBACK) * 100) / 100;
+  return {
+    needsExtraConsent: true,
+    reply: null,
+    cost: {
+      fond: st.questions, folosite: st.used, conturi: st.seats, peCont: st.questionsPerSeat,
+      pretLei: lei, pretEur: st.overagePriceEur,
+      reinnoire: st.periodEnd
+    }
+  };
+}
+// Scrie acordul pe firmă: de acum, până la 1 ale lunii viitoare, întrebările în plus merg fără să
+// mai întrebăm. Se reia luna următoare — luna nouă, hotărâre nouă.
+async function _acceptaCostExtra(req) {
+  const luna = new Date().toISOString().slice(0, 7);
+  await _applyCompanySettingsPatch(req.companyId, { ai_quota: { extraAcceptedMonth: luna } }, { allowFeatures: true });
+  auditReq(req, 'ai_extra_accept', 'company', req.companyId, { luna: luna });
+  // Rămâne și în clopoțel, pentru cine plătește factura: poate n-a fost el cel care a apăsat.
+  try {
+    const st = await aiQuotaState(req.companyId);
+    const fx = (await fxEurRon().catch(function () { return null; })) || { eur: EUR_RON_FALLBACK };
+    const lei = Math.round(st.overagePriceEur * (Number(fx.eur) || EUR_RON_FALLBACK) * 100) / 100;
+    await db.createNotification({
+      type: 'ai_cost_extra', severity: 'warning', companyId: req.companyId, userId: null,
+      title: 'RA Insight: fondul lunii s-a terminat',
+      body: 'Cele ' + st.questions + ' întrebări incluse luna asta au fost folosite. De acum, fiecare întrebare nouă costă ' +
+        lei.toFixed(2) + ' lei și intră pe factura lunii. Întrebările rapide (unde e o mașină, care sunt oprite, câți km azi) rămân gratuite. ' +
+        'Fondul se reînnoiește pe 1. Poți adăuga conturi din Utilizatori.',
+      data: { fond: st.questions, pretLei: lei }
+    });
+  } catch (e) { /* notificarea nu trebuie să oprească răspunsul */ }
+  return luna;
+}
 // Starea contorului: fondul firmei (locuri × întrebări pe loc), cât s-a consumat din el, și — dacă
 // se cere pentru un anume om — cât a pus el însuși. Bara din aplicație arată amândouă.
 async function aiQuotaState(companyId, userId) {
@@ -3301,6 +3352,13 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
 
     if (!ai.aiEnabled()) return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
     if (await aiLimitReached(req.companyId)) return res.json({ reply: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
+    // ─── Nimeni nu intră pe cost suplimentar fără să știe ────────────────────────────────────────
+    // Când fondul lunii s-a terminat, întrebările următoare se facturează. NU le lăsăm să treacă în
+    // tăcere: prima dată în luna respectivă, oprim și explicăm — cât costă una, de ce, ce rămâne
+    // gratuit — iar omul apasă „am înțeles". Fără pasul ăsta, clientul ar afla abia din factură.
+    if (req.body && req.body.acceptExtra === true) { try { await _acceptaCostExtra(req); } catch (e) {} }
+    const _cost = await _cereAcordCostExtra(req);
+    if (_cost) return res.json(_cost);
 
     const companyScope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
 
@@ -10569,6 +10627,10 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     }
     const sp = Number(body.ai_quota.seatPriceRON);
     if (Number.isFinite(sp) && sp >= 0 && sp <= 100000) q.seatPriceRON = Math.round(sp * 100) / 100;
+    // Luna în care firma a spus „am înțeles, continui pe cost suplimentar". Doar formatul AAAA-LL.
+    if (typeof body.ai_quota.extraAcceptedMonth === 'string' && /^\d{4}-\d{2}$/.test(body.ai_quota.extraAcceptedMonth)) {
+      q.extraAcceptedMonth = body.ai_quota.extraAcceptedMonth;
+    }
     if (typeof body.ai_quota.overage === 'boolean') q.overage = body.ai_quota.overage;
     const p = Number(body.ai_quota.overagePriceEur);
     if (Number.isFinite(p) && p >= 0 && p <= 100) q.overagePriceEur = Math.round(p * 100) / 100;

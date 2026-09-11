@@ -58,6 +58,86 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Fără facturi surpriză · Ofertare Live, modernizat și explicat
+
+*„Clar trebuie să-l înștiințăm pe client că intră pe cost suplimentar și să-i detaliem ce înseamnă,
+și cum calculăm… să nu se trezească omul cu factură surpriză."*
+*„Zi-mi panoul de Ofertare Live… și vreau să mi-l explici, toate secțiunile din el, și să-l
+modernizăm ca aspect."*
+
+#### 1. Nimeni nu intră pe cost suplimentar fără să știe
+
+Când fondul de întrebări al lunii s-a terminat, **întrebarea nu mai pleacă** până nu spune omul „am
+înțeles". Se oprește și apare o casetă care scrie, negru pe alb:
+
+> **Fondul de întrebări al lunii s-a terminat.** Firma a folosit toate cele 150 de întrebări incluse
+> (3 conturi × 50). De aici înainte, **fiecare întrebare costă 1,00 lei** (0,20 €) și intră pe
+> factura lunii.
+>
+> **Cum se socotește:** o întrebare pusă aici = 1, oricât de complicat e răspunsul · **gratuite
+> oricând:** „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă" · fondul se
+> reînnoiește pe 1 octombrie · poți adăuga conturi din Utilizatori.
+>
+> *[Nu, mă opresc aici]* *[Am înțeles, continuă]*
+
+Dacă spune **nu**, întrebarea nu se trimite și nu costă nimic. Dacă spune **da**, se ține minte
+**pentru toată luna** (nu întreabă la fiecare întrebare), rămâne în jurnalul de audit **cine** a
+acceptat, și pleacă o **notificare** în clopoțel — fiindcă cel care apasă poate să nu fie cel care
+plătește factura.
+
+În plus, sub bara de consum e acum un **„Cum se socotește ▾"** care spune aceleași reguli, oricând,
+fără să fie nevoie să se termine ceva.
+
+#### 2. Cum știe RA Insight ce e întrebare „normală" și ce nu
+
+Întrebat de Alin, și merită scris limpede: **nu ghicește nimeni.** Aplicația are o listă scurtă de
+întrebări pe care **le poate răspunde singură, din datele ei**, fără să cheme modelul: unde e o
+mașină, care sunt oprite, care merg, cel mai rapid, câți km azi, status flotă. Când întrebarea
+seamănă cu una dintre astea, răspunsul vine **local, în aceeași secundă, gratuit** — și nu se scrie
+nicăieri la socoteală. Orice altceva merge la model, costă, și se scrie **un rând** — indiferent
+dacă modelul a făcut pe dinăuntru 1 apel sau 8.
+
+⚠ **Limita, spusă cinstit:** potrivirea se face pe cuvinte. „Unde e camionul lui Ion" e gratuit;
+„Îmi arăți poziția camionului lui Ion" merge la model și costă, deși e aceeași întrebare. Pe măsură
+ce vedem ce întreabă oamenii în realitate, lista se lărgește — fiecare formulare mutată acolo e o
+întrebare care nu mai costă pe nimeni.
+
+#### 3. Ofertare Live — modernizat
+
+Ecranul era construit numai din stiluri scrise pe fiecare element în parte: aceleași valori
+repetate de zeci de ori, de unde și nepotrivirile mici (un card cu 14px, altul cu 16px). Acum
+limbajul vizual stă **într-un singur loc** în foaia de stil (`.raof`), ca la Companii. Și, mai
+important, ecranul **se explică singur**:
+
+- **antet** care spune ce e panoul și pașii: *completezi → salvezi → trimiți PDF-ul → deschizi
+  clientul din ea*;
+- **cărțile sunt numerotate și au fiecare o propoziție** care spune la ce folosesc:
+  **1. Clientul** (cui trimiți) · **2. Flota clientului** (de aici pornește tot) · **3. Ce mai
+  primește clientul** (module, RA Insight, păstrarea datelor, durata) · **4. Montajul** (manopera,
+  o singură dată) · **5. Aparatele** (marfa, în euro) · **6. Observații** (ce apare pe PDF) · plus
+  **Tarife (editabile)**, ascunse până le ceri;
+- **caseta cotei RA Insight** era un rând care se rupea urât; acum e o grilă cu trei câmpuri și
+  etichete deasupra: *Conturi · Întrebări/cont · Peste fond (€)*;
+- **rezumatul din dreapta** rămâne lipit pe ecran când derulezi, iar butonul se cheamă acum
+  **„Trimite clientului (PDF)"**, nu „Export PDF" — asta și face.
+
+#### 4. Unde se dau conturile de RA Insight
+
+Întrebarea ta: „în RA Tracks ori la roluri?" — **la Utilizatori**, lângă fiecare om, un buton ✨.
+Motivul: nu e un *drept* (ca „vede rapoartele"), ci un **loc plătit**. Drepturile spun ce poate face
+omul; locul spune pentru ce plătește firma. Dacă ar sta la roluri, ar însemna că toți „dispecerii"
+primesc automat RA Insight — adică exact facturarea pe care am scos-o. Așa, adminul alege om cu om,
+vede în listă cine îl are, iar la pornire e întrebat o dată, fiindcă se facturează.
+
+- **Ce am schimbat:** acord explicit înainte de costul suplimentar; explicația „cum se socotește";
+  Ofertare Live modernizat și explicat în el însuși.
+- **Ce vede fondatorul:** un ecran de ofertare care se citește singur și un panou de abonament în
+  care se setează conturi, nu o cotă fixă.
+- **Ce vede clientul:** o casetă limpede înainte să plătească ceva în plus — și nicio surpriză pe
+  factură.
+
+---
+
 ### AMÂNDOI · RA Insight se vinde pe CONT, cu fond comun — și depășirea ajunge pe factură
 
 *„Dacă administratorul contului firmei X vrea să dea acces la RA Insight și celorlalți utilizatori,

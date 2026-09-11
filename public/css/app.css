@@ -3142,3 +3142,72 @@
   color:var(--accent); font-size:12.5px; font-weight:700; }
 .cfb-note{ margin-top:12px; font-size:11.5px; line-height:1.55; color:var(--text-secondary);
   background:rgba(127,127,127,.08); border:1px solid var(--border); border-radius:9px; padding:9px 11px; }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   OFERTARE LIVE — calculatorul de oferte (Administrare → Business)
+   Ecranul era construit numai din stiluri scrise pe fiecare element în parte: fiecare rând își
+   ținea singur culorile și spațiile, aceleași valori repetate de zeci de ori. De aici veneau și
+   nepotrivirile mici (un card cu 14px, altul cu 16px) și greutatea de a schimba ceva.
+   Acum limbajul vizual e AICI, într-un singur loc, ca la Companii (.raco).
+   ══════════════════════════════════════════════════════════════════════════════════════════════ */
+.raof-head{ display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap;
+  background:var(--bg-dark); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+.raof-head h3{ margin:0 0 3px; font-size:15px; font-weight:800; }
+.raof-head p{ margin:0; font-size:12.5px; line-height:1.55; color:var(--text-secondary); max-width:62ch; }
+.raof-pasi{ display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
+.raof-pas{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700;
+  color:var(--text-secondary); background:var(--bg-panel); border:1px solid var(--border);
+  border-radius:999px; padding:4px 10px; }
+.raof-pas i{ font-size:10px; color:var(--accent); }
+
+.raof-grid{ display:grid; grid-template-columns:1fr 348px; gap:18px; align-items:start; }
+@media (max-width:1100px){ .raof-grid{ grid-template-columns:1fr; } }
+
+.raof-card{ background:var(--bg-dark); border:1px solid var(--border); border-radius:14px;
+  padding:15px 17px; margin-bottom:13px; }
+.raof-card > .raof-t{ display:flex; align-items:center; gap:8px; font-size:11px; font-weight:800;
+  color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.raof-card > .raof-d{ font-size:11.5px; line-height:1.5; color:var(--text-muted); margin-bottom:11px; }
+
+.raof-r{ display:flex; align-items:center; gap:9px; margin-bottom:9px; flex-wrap:wrap; }
+.raof-r > span:first-child{ font-size:12.5px; min-width:152px; }
+.raof-r .rax-field{ width:84px; margin:0; }
+.raof-r .um{ font-size:11px; color:var(--text-muted); }
+.raof-hint{ font-size:10.5px; color:var(--text-muted); line-height:1.45; }
+
+.raof-opt{ display:flex; align-items:center; gap:9px; margin-bottom:3px; }
+.raof-opt label{ display:flex; align-items:center; gap:9px; font-size:12.5px; cursor:pointer; flex:1; }
+.raof-opt .rax-field{ width:74px; margin:0; }
+.raof-sub{ font-size:10.5px; color:var(--text-muted); margin:0 0 9px 24px; line-height:1.45; }
+
+.raof-rez{ position:sticky; top:8px; background:var(--bg-dark); border:1px solid var(--border);
+  border-radius:16px; padding:16px; }
+.raof-rez .raof-t{ display:flex; align-items:center; gap:8px; font-size:11px; font-weight:800;
+  color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin-bottom:11px; }
+.raof-sec{ display:flex; align-items:center; gap:7px; font-size:11px; font-weight:800; color:var(--accent);
+  text-transform:uppercase; letter-spacing:.4px; margin:17px 0 6px; }
+.raof-tot{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.raof-tot .et{ font-size:13px; color:var(--text-muted); }
+.raof-tot .val{ font-size:20px; font-weight:800; color:var(--text-primary); white-space:nowrap; }
+
+.raof-plata{ margin-top:16px; border:1.5px solid var(--accent); border-radius:13px; padding:13px 15px; }
+.raof-plata .raof-t{ font-size:11px; font-weight:800; color:var(--accent); text-transform:uppercase;
+  letter-spacing:.5px; margin-bottom:10px; }
+.raof-plata .cap{ display:flex; justify-content:space-between; align-items:baseline; gap:9px; }
+.raof-plata .cap .n{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.3px; }
+.raof-plata .cap .s{ font-size:19px; font-weight:800; white-space:nowrap; }
+.raof-plata .mic{ display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-top:3px; }
+.raof-plata .nota{ font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:5px; }
+.raof-curs{ margin-top:11px; font-size:10.5px; color:var(--text-muted); text-align:right; }
+
+.raof-act{ display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.raof-act .rax-btn{ justify-content:center; }
+/* Caseta cotei RA Insight: trei câmpuri cu eticheta DEASUPRA, nu înșirate pe un rând care se rupe. */
+.raof-q{ margin:2px 0 12px 24px; padding:12px 14px; border-left:2px solid var(--accent);
+  background:var(--bg-panel); border-radius:0 11px 11px 0; }
+.raof-q3{ display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:10px; margin-bottom:10px; }
+.raof-q3 > div{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+.raof-q3 label{ font-size:10.5px; font-weight:700; color:var(--text-muted);
+  text-transform:uppercase; letter-spacing:.3px; }
+.raof-q3 .rax-field, .raof-q3 select{ width:100%; margin:0; }
+.raof-q3 .um{ font-size:10.5px; color:var(--text-muted); }
