@@ -324,7 +324,9 @@ T('se cere acordul DOAR când fondul s-a terminat', /if \(st\.used < st\.questio
 T('și doar dacă firma are voie să depășească', /if \(!st\.overage\) return null;/.test(server));
 T('o singură dată pe lună', /extraAcceptedMonth\) === luna\) return null;/.test(server));
 T('caseta primește cifrele care contează', /pretLei: lei, pretEur: st\.overagePriceEur/.test(server));
-T('și NU se cheltuie nimic pe model până nu spune omul da', /const _cost = await _cereAcordCostExtra\(req\);\n    if \(_cost\) return res\.json\(_cost\);/.test(server));
+// `\r?\n`: fișierele din proiect sunt CRLF în copia de lucru, deși în git stau cu LF. Cu `\n` simplu,
+// proba pica pe calculatorul pe care chiar se rulează `npm test`, deși codul era corect.
+T('și NU se cheltuie nimic pe model până nu spune omul da', /const _cost = await _cereAcordCostExtra\(req\);\r?\n    if \(_cost\) return res\.json\(_cost\);/.test(server));
 T('acordul se scrie pe firmă și rămâne în audit', /auditReq\(req, 'ai_extra_accept', 'company'/.test(server));
 T('și lasă o notificare pentru cine plătește factura', /type: 'ai_cost_extra'/.test(server));
 // Pe ecran: fereastra care explică, nu un simplu „da/nu"

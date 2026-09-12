@@ -73,7 +73,7 @@ aparatele sunt deconectate, iar condiția cere aparate conectate care tac.
 **Ce vede fondatorul:** un rând nou în „Stare producție" — supraveghetorul, cu pragul lui și cu cât
 a trecut de la ultimul pachet. Plus: semaforul de recepție nu se mai face verde din mașinile demo
 (erau simulate în server, deci mereu „proaspete", și ascundeau o recepție reală moartă), iar
-notificarea de la cererile de cont demo nu mai ajunge **goală** pe telefon.
+notificările către noi nu mai ajung **goale** pe telefon (cererile de cont demo și cele două anunțuri noi despre contracte plecau fără titlu și fără text).
 
 **Ce vede clientul:** primește mult mai puține emailuri, dar cele care vin înseamnă ceva.
 

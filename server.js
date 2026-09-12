@@ -2077,7 +2077,7 @@ async function _anuntaSuperadmini(supers, tip, gravitate, titlu, corp, date) {
   });
   for (const u of (supers || [])) {
     try { broadcastWsToUser(u.id, { type: 'notification', data: n }); } catch (e) {}
-    try { await sendPushToUser(u.id, n.title, n.body, { notifId: n.id }); } catch (e) {}
+    try { await sendPushToUser(u.id, { title: n.title, body: n.body, data: { type: n.type, notifId: n.id } }); } catch (e) {}
   }
   return n;
 }
@@ -2124,7 +2124,7 @@ async function contractExpiryTick() {
       });
       for (const u of supers) {
         try { broadcastWsToUser(u.id, { type: 'notification', data: n }); } catch (e) {}
-        try { await sendPushToUser(u.id, n.title, n.body, { notifId: n.id }); } catch (e) {}
+        try { await sendPushToUser(u.id, { title: n.title, body: n.body, data: { type: n.type, notifId: n.id } }); } catch (e) {}
       }
       raport.anuntate.push(c.id);
     } catch (e) { /* per contract, best-effort */ }
