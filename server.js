@@ -12712,20 +12712,26 @@ async function start() {
   db.pruneErrors(2000).catch(() => {});
   setInterval(() => db.pruneErrors(2000).catch(() => {}), 24 * 60 * 60 * 1000);
 
-  // Backup zilnic al datelor de business (off-site dacă BACKUP_S3_* e configurat; altfel doar status + download manual). Vezi backup.js.
-  // Starea ULTIMEI rulări se încarcă din bază: pe Railway procesul reporneşte des, iar fără asta ecranul
+  // Copiile zilnice: backup-ul datelor de business și arhiva pozițiilor pe S3. Vezi backup.js.
+  // Starea ULTIMEI rulări se încarcă din bază: pe Railway procesul repornește des, iar fără asta ecranul
   // spunea „nicio rulare de la pornirea serverului" chiar cu bucket-ul plin de copii.
   await backup.loadState(db).catch(() => {});
-  setTimeout(() => backup.runScheduledBackup(db, COMMIT_VER).catch(() => {}), 5 * 60 * 1000);
-  setInterval(() => backup.runScheduledBackup(db, COMMIT_VER).catch(() => {}), 24 * 60 * 60 * 1000);
-
-  // Arhivarea POZIȚIILOR pe S3, zi cu zi. Rulează doar dacă bucket-ul e configurat și e independentă de
-  // retenție: exportă mereu zilele complete rămase, deci până când ștergerea ajunge la ele (180 de zile
-  // implicit) copia există de mult. Fără ea, retenția ar fi fost o pierdere definitivă de date.
-  if (backup.s3Configured()) {
-    setTimeout(() => backup.runPositionsExport(db).catch(() => {}), 8 * 60 * 1000);
-    setInterval(() => backup.runPositionsExport(db).catch(() => {}), 24 * 60 * 60 * 1000);
-  }
+  // O DATĂ pe zi, după BACKUP_HOUR (ora României, implicit 3 noaptea) — nu la 5 minute după fiecare pornire, cum
+  // era: cu deploy-urile dese, backup-ul complet rula de câteva ori pe zi, exact după valul de reconectare al
+  // aparatelor. Dacă serverul a stat oprit la ora programată, copia se face la prima verificare de după. Și una
+  // singură odată: dacă o copie durează, verificarea următoare nu mai pornește încă una peste ea.
+  let _copieInCurs = false;
+  setInterval(async () => {
+    if (_copieInCurs) return;
+    _copieInCurs = true;
+    try {
+      if (backup.backupDue(Date.now())) await backup.runScheduledBackup(db, COMMIT_VER);
+      // Arhivarea POZIȚIILOR: doar cu bucket configurat; exportă zilele complete rămase, deci până ajunge
+      // retenția la ele (180 de zile implicit) copia există de mult. Fără ea, retenția ar fi pierdere definitivă.
+      if (backup.s3Configured() && backup.positionsExportDue(Date.now())) await backup.runPositionsExport(db);
+    } catch (e) { /* fiecare copie își scrie singură eroarea în starea ei */ }
+    finally { _copieInCurs = false; }
+  }, 10 * 60 * 1000).unref();
 
   // Pornește serverul TCP — reîncarcă allow-list-ul (mod strict) chiar ÎNAINTE, ca să includă orice device creat/seed-uit la pornire
   await loadRegisteredImeis();

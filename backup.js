@@ -110,7 +110,9 @@ function serialize(dump, passphrase) {
   const tag = cipher.getAuthTag();
   return { buf: Buffer.concat([Buffer.from(MAGIC), salt, iv, tag, ct]), encrypted: true, ext: 'json.gz.enc' };
 }
-function deserialize(buf, passphrase) {
+// Desface un fișier de copie (criptat sau nu) până la conținutul necomprimat, ca Buffer.
+function _decodeBlob(buf, passphrase) {
+  let gz = buf;
   if (buf.slice(0, MAGIC.length).toString() === MAGIC) {
     if (!passphrase) throw new Error('Fișier criptat: lipsește BACKUP_PASSPHRASE');
     let o = MAGIC.length;
@@ -118,10 +120,35 @@ function deserialize(buf, passphrase) {
     const key = crypto.scryptSync(passphrase, salt, 32);
     const dec = crypto.createDecipheriv('aes-256-gcm', key, iv);
     dec.setAuthTag(tag);
-    const gz = Buffer.concat([dec.update(ct), dec.final()]);
-    return JSON.parse(zlib.gunzipSync(gz).toString('utf8'));
+    gz = Buffer.concat([dec.update(ct), dec.final()]);
   }
-  return JSON.parse(zlib.gunzipSync(buf).toString('utf8'));
+  return zlib.gunzipSync(gz);
+}
+// Liniile unui Buffer NDJSON, una câte una, fără să-l transforme într-un singur text (aceeași limită V8).
+function* ndjsonLines(raw) {
+  let start = 0;
+  while (start < raw.length) {
+    let i = raw.indexOf(10, start);
+    if (i === -1) i = raw.length;
+    if (i > start) { const line = raw.toString('utf8', start, i).trim(); if (line) yield line; }
+    start = i + 1;
+  }
+}
+function deserialize(buf, passphrase) {
+  const raw = _decodeBlob(buf, passphrase);
+  const nl = raw.indexOf(10);
+  const first = raw.toString('utf8', 0, nl === -1 ? Math.min(raw.length, 4096) : nl);
+  if (first.indexOf('"format":"ndjson-v2"') === -1) return JSON.parse(raw.toString('utf8')); // formatul vechi: un singur JSON
+  const dump = { _meta: null, data: {} };
+  let sfarsit = false;
+  for (const line of ndjsonLines(raw)) {
+    const o = JSON.parse(line);
+    if (o._meta) dump._meta = o._meta;
+    else if (o._end) { sfarsit = true; dump._meta = Object.assign({}, dump._meta, { tables: o._end.tables }); }
+    else if (o.t) (dump.data[o.t] = dump.data[o.t] || []).push(o.r);
+  }
+  if (!sfarsit) throw new Error('Backup incomplet: fișierul se termină înainte de marcajul de sfârșit (upload întrerupt?).');
+  return dump;
 }
 
 // ── Restaurare: ordinea o dau legăturile REALE din bază, nu o listă scrisă de mână ──
@@ -223,15 +250,124 @@ async function s3Put(key, body, contentType) {
 }
 
 // ── Orchestrare ──
+// ── Dump v2 (ndjson): rând cu rând, comprimat în afara firului principal ──
+// Varianta veche citea TOATE tabelele în memorie, le lipea într-un singur text JSON și îl comprima cu
+// gzipSync la nivel 9. Trei probleme la o flotă mare: textul unic are o limită fixă în V8 (~512 MB) peste care
+// backup-ul pică; memoria se dublează (rândurile + textul); iar comprimarea sincronă îngheață serverul
+// (recepția, paginile) cât durează. Acum fiecare rând devine o linie, citită pe loturi, iar comprimarea
+// rulează pe firele de lucru ale Node. Memoria ține un lot + fișierul comprimat, nu toată baza de două ori.
+// `buildDump` și `serialize` de mai sus rămân doar ca să se poată citi și scrie formatul vechi (probe, compatibilitate).
+const DUMP_BATCH = Math.max(100, Math.min(10000, parseInt(process.env.BACKUP_BATCH, 10) || 1000));
+function _gzipCollector(level) {
+  const gz = zlib.createGzip({ level: level == null ? 6 : level });
+  const chunks = [];
+  let size = 0;
+  gz.on('data', function (c) { chunks.push(c); size += c.length; });
+  const done = new Promise(function (res, rej) { gz.on('end', res); gz.on('error', rej); });
+  return {
+    write: function (s) { return new Promise(function (res) { if (gz.write(s)) res(); else gz.once('drain', res); }); },
+    end: async function () { gz.end(); await done; return Buffer.concat(chunks, size); },
+  };
+}
+// Criptare AES-256-GCM cu același antet ca până acum: MAGIC | salt(16) | iv(12) | tag(16) | ciphertext.
+function _encrypt(gz, passphrase) {
+  if (!passphrase) return { buf: gz, encrypted: false };
+  const salt = crypto.randomBytes(16);
+  const iv = crypto.randomBytes(12);
+  const key = crypto.scryptSync(passphrase, salt, 32);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const ct = Buffer.concat([cipher.update(gz), cipher.final()]);
+  return { buf: Buffer.concat([Buffer.from(MAGIC), salt, iv, cipher.getAuthTag(), ct]), encrypted: true };
+}
+async function _tablesWithId(db) {
+  try {
+    const r = await db.pool.query("SELECT table_name FROM information_schema.columns WHERE column_name = 'id' AND table_schema = current_schema()");
+    return new Set(r.rows.map(function (x) { return x.table_name; }));
+  } catch (e) { return new Set(); }
+}
 async function makeBackup(db, commit) {
-  const dump = await buildDump(db, commit);
-  const s = serialize(dump, process.env.BACKUP_PASSPHRASE || null);
-  const rows = Object.values(dump._meta.tables).reduce(function (a, v) { return a + (typeof v === 'number' ? v : 0); }, 0);
-  return { buf: s.buf, ext: s.ext, encrypted: s.encrypted, meta: dump._meta, rows: rows };
+  const meta = { at: new Date().toISOString(), version: commit || null, mode: process.env.DATABASE_URL ? 'postgres' : 'pglite', format: 'ndjson-v2', tables: {} };
+  const out = _gzipCollector(6);
+  await out.write(JSON.stringify({ _meta: { at: meta.at, version: meta.version, mode: meta.mode, format: meta.format } }) + '\n');
+  const cuId = await _tablesWithId(db);
+  let rows = 0;
+  for (const t of BUSINESS_TABLES) {
+    let n = 0;
+    try {
+      if (cuId.has(t)) {
+        // Pe loturi, după id: nu ține tot tabelul în memorie și nu încetinește spre final, cum face OFFSET.
+        let last = null;
+        for (;;) {
+          const r = last == null
+            ? await db.pool.query('SELECT * FROM ' + t + ' ORDER BY id LIMIT ' + DUMP_BATCH)
+            : await db.pool.query('SELECT * FROM ' + t + ' WHERE id > $1 ORDER BY id LIMIT ' + DUMP_BATCH, [last]);
+          for (const row of r.rows) { await out.write(JSON.stringify({ t: t, r: row }) + '\n'); n++; }
+          if (r.rows.length < DUMP_BATCH) break;
+          last = r.rows[r.rows.length - 1].id;
+          await new Promise(function (res) { setImmediate(res); }); // recepția are prioritate între loturi
+        }
+      } else {
+        const r = await db.pool.query('SELECT * FROM ' + t); // tabele fără id: mici (setări, contoare, preferințe)
+        for (const row of r.rows) { await out.write(JSON.stringify({ t: t, r: row }) + '\n'); n++; }
+      }
+      meta.tables[t] = n;
+      rows += n;
+    } catch (e) {
+      // Tabelul a căzut la jumătate: rândurile deja scrise rămân în fișier, iar _meta îl marchează.
+      meta.tables[t] = 'skip: ' + (e.code || e.message);
+    }
+  }
+  // Marcajul de sfârșit: fără el, un fișier tăiat (upload întrerupt, disc plin) ar arăta ca un backup valid.
+  await out.write(JSON.stringify({ _end: { tables: meta.tables, rows: rows } }) + '\n');
+  const gz = await out.end();
+  const enc = _encrypt(gz, process.env.BACKUP_PASSPHRASE || null);
+  return { buf: enc.buf, ext: enc.encrypted ? 'ndjson.gz.enc' : 'ndjson.gz', encrypted: enc.encrypted, meta: meta, rows: rows };
 }
 
-// Rulează un backup și, dacă S3 e configurat, îl urcă. Actualizează statusul. Folosit de cron + endpoint manual.
+// ── Planificarea copiilor: o dată pe zi, noaptea, după ceasul din România ──
+// Până acum backup-ul complet pornea la 5 minute după FIECARE pornire a serverului și apoi la 24 de ore de la
+// ea. Cu deploy-urile dese, rula de câteva ori pe zi — exact după valul de reconectare al aparatelor.
+const _bh = parseInt(process.env.BACKUP_HOUR, 10);
+const BACKUP_HOUR = Number.isFinite(_bh) ? Math.max(0, Math.min(23, _bh)) : 3;
+function localRO(ms) {
+  try {
+    const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms));
+    const g = function (k) { const x = p.find(function (y) { return y.type === k; }); return x ? x.value : ''; };
+    return { zi: g('year') + '-' + g('month') + '-' + g('day'), ora: parseInt(g('hour'), 10) };
+  } catch (e) { const d = new Date(ms); return { zi: d.toISOString().slice(0, 10), ora: d.getUTCHours() }; }
+}
+// E momentul copiei de business? O dată pe zi, după BACKUP_HOUR. O încercare eșuată din motive trecătoare (S3
+// căzut) se reia după cel puțin o oră, de cel mult 3 ori pe zi. Refuzul de a urca necriptat NU se reia: nu se
+// schimbă nimic până nu se pune parola, iar un dump complet în memorie la fiecare oră ar fi degeaba.
+function backupDue(nowMs, stare) {
+  const s = stare || _last;
+  const acum = localRO(nowMs);
+  if (acum.ora < BACKUP_HOUR) return false;
+  const ziUltima = s.day || (s.at ? localRO(new Date(s.at).getTime()).zi : null);
+  if (ziUltima !== acum.zi) return true;
+  if (s.ok || s.target === 'refuzat') return false;
+  if ((s.tries || 0) >= 3) return false;
+  return !s.at || (nowMs - new Date(s.at).getTime()) >= 3600000;
+}
+// Arhiva de poziții: o dată pe zi pe proces, după BACKUP_HOUR. După o repornire rulează din nou, dar e ieftin:
+// marca din `settings` o face să sară peste zilele deja urcate.
+let _posDay = null;
+function positionsExportDue(nowMs, ziUltima) {
+  const acum = localRO(nowMs);
+  const z = arguments.length > 1 ? ziUltima : _posDay;
+  return acum.ora >= BACKUP_HOUR && z !== acum.zi;
+}
+function _incercare(prev, nowMs) {
+  const zi = localRO(nowMs).zi;
+  const ziPrev = prev.day || (prev.at ? localRO(new Date(prev.at).getTime()).zi : null);
+  return { day: zi, tries: (ziPrev === zi ? (prev.tries || 0) : 0) + 1 };
+}
+
+// Rulează un backup și, dacă S3 e configurat, îl urcă. Actualizează statusul. Folosit de planificator + endpoint manual.
 async function runScheduledBackup(db, commit) {
+  const prev = _last;
+  const inc = _incercare(prev, Date.now());
+  const okAt = prev.okAt || (prev.ok && prev.at) || null;   // ultima copie REUȘITĂ, păstrată și peste un eșec
   try {
     const b = await makeBackup(db, commit);
     let target = 'none';
@@ -242,7 +378,7 @@ async function runScheduledBackup(db, commit) {
     if (s3Configured() && !passphraseSet()) {
       const w = 'BACKUP_PASSPHRASE nu e setată → REFUZ să urc dump-ul necriptat (conține hash-uri de parole, chei API și datele clienților). Setează variabila și backup-ul extern pornește singur.';
       _last = { at: new Date().toISOString(), ok: false, offsite: false, target: 'refuzat',
-        sizeBytes: b.buf.length, tables: b.meta.tables, error: w, encrypted: false, warning: w };
+        sizeBytes: b.buf.length, tables: b.meta.tables, error: w, encrypted: false, warning: w, day: inc.day, tries: inc.tries, okAt: okAt };
       await saveState(db);
       console.error('[BACKUP] ⛔ ' + w);
       return getStatus();
@@ -256,13 +392,14 @@ async function runScheduledBackup(db, commit) {
     }
     const offsite = target !== 'none';
     const warning = configWarning(offsite);
-    _last = { at: new Date().toISOString(), ok: true, offsite: offsite, target: target, sizeBytes: b.buf.length, tables: b.meta.tables, error: null, encrypted: b.encrypted, warning: warning };
+    const at = new Date().toISOString();
+    _last = { at: at, ok: true, offsite: offsite, target: target, sizeBytes: b.buf.length, tables: b.meta.tables, error: null, encrypted: b.encrypted, warning: warning, day: inc.day, tries: inc.tries, okAt: at, format: b.meta.format };
     await saveState(db);
     if (!offsite) console.warn('[BACKUP] ⚠ dump generat (' + b.rows + ' rânduri, ' + Math.round(b.buf.length / 1024) + ' KB) dar NU s-a salvat nicăieri: ' + warning);
     else console.log('[BACKUP] ' + target + ' (' + b.rows + ' rânduri, ' + Math.round(b.buf.length / 1024) + ' KB, ' + (b.encrypted ? 'criptat' : 'NECRIPTAT ⚠') + ')');
     return getStatus();
   } catch (e) {
-    _last = Object.assign({}, _last, { at: new Date().toISOString(), ok: false, offsite: false, error: e.message, warning: null });
+    _last = Object.assign({}, _last, { at: new Date().toISOString(), ok: false, offsite: false, error: e.message, warning: null, day: inc.day, tries: inc.tries, okAt: okAt });
     await saveState(db);
     console.error('[BACKUP] eșuat:', e.message);
     return getStatus();
@@ -291,6 +428,7 @@ async function exportPositionsRange(db, opts) {
   const maxDays = (opts && opts.maxDays) || 7;              // câte zile pe rulare (recuperare treptată)
   const prefix = (process.env.BACKUP_S3_PREFIX || 'ratracks-backup').replace(/^\/+|\/+$/g, '') + '/positions';
   const marker = 'positions_export_until';                  // ultima zi exportată (YYYY-MM-DD)
+  const pass = process.env.BACKUP_PASSPHRASE || null;
   let from = null;
   try { from = await db.getSetting(marker); } catch (e) {}
   // Fără marcă: pornim de la cea mai veche zi care există în tabelă (prima rulare pe o bază existentă).
@@ -302,47 +440,85 @@ async function exportPositionsRange(db, opts) {
     from = new Date(Date.parse(from + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10); // ziua următoare
   }
   const today = new Date().toISOString().slice(0, 10);
-  let day = from, days = 0, rows = 0, bytes = 0, lastDay = null;
+  let day = from, days = 0, rows = 0, bytes = 0, files = 0, lastDay = null;
   while (day < today && days < maxDays) {
     const next = new Date(Date.parse(day + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
-    const parts = [];
-    let n = 0, offset = 0;
-    for (;;) {
-      const q = await db.pool.query(
-        `SELECT imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, company_id
-           FROM positions WHERE timestamp >= $1 AND timestamp < $2 ORDER BY timestamp, imei LIMIT ${POS_EXPORT_BATCH} OFFSET ${offset}`,
-        [day, next]
-      );
-      const batch = q.rows || [];
-      if (!batch.length) break;
-      parts.push(Buffer.from(batch.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf8'));
-      n += batch.length; offset += POS_EXPORT_BATCH;
-      if (batch.length < POS_EXPORT_BATCH) break;
-      await new Promise(r => setTimeout(r, 50));            // nu monopoliza pool-ul: ingestul are prioritate
-    }
-    if (n) {
-      const gz = zlib.gzipSync(Buffer.concat(parts), { level: 9 });
-      const pass = process.env.BACKUP_PASSPHRASE || null;
-      let body = gz, ext = 'ndjson.gz';
-      if (pass) {
-        const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12);
-        const key = crypto.scryptSync(pass, salt, 32);
-        const c = crypto.createCipheriv('aes-256-gcm', key, iv);
-        const ct = Buffer.concat([c.update(gz), c.final()]);
-        body = Buffer.concat([Buffer.from(MAGIC), salt, iv, c.getAuthTag(), ct]); // același format ca dump-ul
-        ext = 'ndjson.gz.enc';
+    // PE ORE, nu pe zi. Înainte, o zi întreagă (la 1000 de vehicule: ~1,4 mil. de rânduri) se aduna în memorie
+    // de două ori și se comprima sincron, blocând serverul. Acum memoria ține cel mult un lot + ora comprimată,
+    // iar comprimarea rulează în afara firului principal. Paginarea cu OFFSET rămâne, dar în interiorul unei
+    // ore, unde lista e scurtă — pe o zi întreagă fiecare lot o lua de la capăt și rularea încetinea spre final.
+    let nZi = 0, fZi = 0;
+    for (let h = 0; h < 24; h++) {
+      const hh = (h < 10 ? '0' : '') + h;
+      const t0 = day + ' ' + hh + ':00:00';
+      const t1 = h === 23 ? next + ' 00:00:00' : day + ' ' + ((h + 1) < 10 ? '0' : '') + (h + 1) + ':00:00';
+      const out = _gzipCollector(6);
+      let n = 0, offset = 0;
+      for (;;) {
+        const q = await db.pool.query(
+          `SELECT imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, company_id
+             FROM positions WHERE timestamp >= $1 AND timestamp < $2 ORDER BY timestamp, imei LIMIT ${POS_EXPORT_BATCH} OFFSET ${offset}`,
+          [t0, t1]
+        );
+        const batch = q.rows || [];
+        if (!batch.length) break;
+        await out.write(batch.map(function (r) { return JSON.stringify(r); }).join('\n') + '\n');
+        n += batch.length; offset += POS_EXPORT_BATCH;
+        if (batch.length < POS_EXPORT_BATCH) break;
+        await new Promise(function (r) { setTimeout(r, 50); });   // nu monopoliza baza: ingestul are prioritate
       }
-      await s3Put(prefix + '/' + day + '.' + ext, body, 'application/octet-stream');
-      bytes += body.length; rows += n;
-      console.log('[POZIȚII] ' + day + ': ' + n + ' rânduri → ' + Math.round(body.length / 1024) + ' KB' + (pass ? ' (criptat)' : ' ⚠ NECRIPTAT'));
+      const gz = await out.end();
+      if (!n) continue;
+      const enc = _encrypt(gz, pass);                           // același format ca dump-ul
+      await s3Put(prefix + '/' + day + '/' + hh + '.' + (enc.encrypted ? 'ndjson.gz.enc' : 'ndjson.gz'), enc.buf, 'application/octet-stream');
+      bytes += enc.buf.length; rows += n; nZi += n; fZi++; files++;
     }
+    if (nZi) console.log('[POZIȚII] ' + day + ': ' + nZi + ' rânduri în ' + fZi + ' fișiere orare' + (pass ? ' (criptat)' : ' ⚠ NECRIPTAT'));
     try { await db.setSetting(marker, day); } catch (e) {}   // marchez ziua ca terminată chiar dacă era goală
     lastDay = day; day = next; days++;
   }
-  _posLast = { at: new Date().toISOString(), days, rows, bytes, error: null, lastDay: lastDay || _posLast.lastDay };
-  return { days, rows, bytes, lastDay };
+  _posLast = { at: new Date().toISOString(), days, rows, bytes, files, error: null, lastDay: lastDay || _posLast.lastDay };
+  return { days, rows, bytes, files, lastDay };
 }
+
+// ── Punerea la loc a pozițiilor dintr-un fișier de arhivă (orar, sau pe zi din formatul vechi) ──
+// Rulat de două ori pe aceleași fișiere nu dublează nimic: ON CONFLICT pe (imei, timestamp).
+async function importPositionsBuffer(db, buf, passphrase, opts) {
+  const lot = Math.max(50, Math.min(2000, (opts && opts.batch) || 500));
+  const cols = ['imei', 'timestamp', 'latitude', 'longitude', 'altitude', 'angle', 'speed', 'satellites', 'priority', 'io_data', 'company_id'];
+  const raw = _decodeBlob(buf, passphrase);
+  let batch = [], total = 0, inserted = 0;
+  async function flush() {
+    if (!batch.length) return;
+    const params = [], values = [];
+    batch.forEach(function (r, i) {
+      const b = i * cols.length;
+      values.push('(' + cols.map(function (_, j) { return '$' + (b + j + 1); }).join(',') + ')');
+      cols.forEach(function (c) {
+        const v = r[c];
+        params.push(c === 'io_data' ? (v == null ? null : JSON.stringify(v)) : (v === undefined ? null : v));
+      });
+    });
+    const sql = 'INSERT INTO positions (' + cols.join(', ') + ') VALUES ' + values.join(', ');
+    let res;
+    try { res = await db.pool.query(sql + ' ON CONFLICT (imei, timestamp) DO NOTHING', params); }
+    catch (e) {
+      if (!/no unique or exclusion constraint/i.test(e.message)) throw e;
+      res = await db.pool.query(sql, params);               // bază fără indexul unic: inserare simplă
+    }
+    inserted += (res && res.rowCount) || 0;
+    batch = [];
+  }
+  for (const line of ndjsonLines(raw)) {
+    batch.push(JSON.parse(line)); total++;
+    if (batch.length >= lot) await flush();
+  }
+  await flush();
+  return { rows: total, inserted: inserted };
+}
+
 async function runPositionsExport(db) {
+  _posDay = localRO(Date.now()).zi; // o dată pe zi pe proces (vezi positionsExportDue)
   try { return await exportPositionsRange(db, { maxDays: parseInt(process.env.POSITIONS_EXPORT_MAX_DAYS) || 7 }); }
   catch (e) {
     _posLast = Object.assign({}, _posLast, { at: new Date().toISOString(), error: e.message });
@@ -351,4 +527,4 @@ async function runPositionsExport(db) {
   }
 }
 
-module.exports = { BUSINESS_TABLES, restoreOrder, restoreDump, buildDump, serialize, deserialize, makeBackup, runScheduledBackup, getStatus, loadState, s3Configured, passphraseSet, configWarning, exportPositionsRange, runPositionsExport, positionsStatus };
+module.exports = { BUSINESS_TABLES, restoreOrder, restoreDump, buildDump, serialize, deserialize, makeBackup, backupDue, positionsExportDue, localRO, importPositionsBuffer, ndjsonLines, runScheduledBackup, getStatus, loadState, s3Configured, passphraseSet, configWarning, exportPositionsRange, runPositionsExport, positionsStatus };

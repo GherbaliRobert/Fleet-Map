@@ -20,7 +20,40 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-12
 
-### FONDATOR · Mai puține publicări, iar recepția are conexiunile ei la bază — `în lucru`
+### FONDATOR · Copiile zilnice nu mai îngheață serverul și nu mai pornesc la fiecare repornire — `în lucru`
+
+Am găsit trei probleme în copiile de siguranță, nu una.
+
+**1. Backup-ul complet pornea la 5 minute după FIECARE repornire a serverului.** Nimic nu verifica dacă
+rulase deja în ziua aceea. Cu deploy-urile noastre, rula de câteva ori pe zi — exact după valul de
+reconectare al aparatelor, când serverul e cel mai încărcat. Acum rulează **o dată pe zi, la 3 noaptea**
+(ora României). Dacă serverul a stat oprit la ora aceea, copia se face când revine. Dacă pică (de exemplu,
+S3 nu răspunde), reîncearcă după o oră, de cel mult trei ori. Și nu pornește niciodată o copie peste alta.
+
+**2. Backup-ul strângea toată baza într-un singur text uriaș** și îl comprima blocând serverul. Un astfel de
+text are o limită fixă în Node (~512 MB): peste ea, backup-ul pur și simplu pica, iar până acolo recepția și
+paginile înghețau cât dura comprimarea. Acum fiecare rând se scrie separat, tabel cu tabel, pe bucăți, iar
+comprimarea nu mai blochează serverul. Fișierul are un marcaj de sfârșit, deci o copie tăiată (upload
+întrerupt) e **refuzată** la restaurare, nu pusă la loc pe jumătate. Copiile făcute înainte se citesc în
+continuare.
+
+**3. Arhiva pozițiilor GPS strângea o zi întreagă în memorie** — la 1000 de mașini, în jur de 1,4 milioane de
+poziții — și o comprima tot blocând serverul, iar citirea încetinea spre sfârșitul zilei. Acum merge **pe
+ore**: un fișier pe oră, iar memoria ține cel mult o oră. Am scris și unealta care le pune la loc
+(`restore-positions.js`), care nu exista.
+
+**Verificat:** proba de restaurare face acum tot drumul — backup nou → restaurare pe o bază goală; backup în
+formatul vechi → restaurare; fișier tăiat → refuzat; poziții pe două zile → arhivate pe ore la un „S3" de
+probă → puse la loc într-o bază goală, cu valorile CAN intacte și fără dubluri la a doua rulare. Planificarea
+are proba ei, inclusiv „un deploy la prânz nu mai pornește încă un backup".
+
+**Ce vede fondatorul:** nimic nou pe ecran; „Stare producție" arată copiile ca înainte. Pe S3, arhiva
+pozițiilor are acum câte un dosar pe zi, cu câte un fișier pe oră.
+
+**Ce vede clientul:** nimic. Dar serverul nu mai are o pauză zilnică, iar după o actualizare nu mai încetinește
+din cauza unui backup pornit degeaba.
+
+### FONDATOR · Mai puține publicări, iar recepția are conexiunile ei la bază — `4700838`
 
 **Publicările.** Railway publica o versiune nouă la ORICE modificare împinsă — inclusiv la jurnal, la
 documente sau la aplicația de telefon, care nu schimbă nimic pe server. Fiecare publicare repornește serverul

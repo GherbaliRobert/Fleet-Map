@@ -196,7 +196,7 @@ async function health(key) {
       t('fișierele de poziții au ajuns pe S3', cheiPoz.length > 0, [...puse.keys()].slice(0, 6).join(' | '));
       if (cheiPoz.length) {
         t('arhiva de poziții e criptată cu aceeași parolă', puse.get(cheiPoz[0]).slice(0, 6).toString() === 'RATBK1', cheiPoz[0]);
-        t('numele fișierului e ziua exportată', /\/positions\/\d{4}-\d{2}-\d{2}\.ndjson\.gz\.enc$/.test(cheiPoz[0]), cheiPoz[0]);
+        t('numele fișierului e ziua și ora exportată', /\/positions\/\d{4}-\d{2}-\d{2}\/\d{2}\.ndjson\.gz\.enc$/.test(cheiPoz[0]), cheiPoz[0]);
       }
       // Idempotență: o rulare întreruptă reia de unde a rămas, nu reexportă tot
       t('a doua rulare nu reexportă aceleași zile', lot.exp2 && lot.exp2.rows === 0, JSON.stringify(lot.exp2));

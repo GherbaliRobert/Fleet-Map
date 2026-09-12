@@ -2,7 +2,7 @@
 //
 // Utilizare:
 //   DATABASE_URL=postgres://...  [BACKUP_PASSPHRASE=...]  node restore-backup.js <fișier> [--wipe]
-//     <fișier>  = dump-*.json.gz  sau  dump-*.json.gz.enc  (descărcat din S3 sau prin /api/admin/backup/download)
+//     <fișier>  = dump-*.ndjson.gz[.enc] (formatul de acum) sau dump-*.json.gz[.enc] (cel vechi) — din S3 sau prin /api/admin/backup/download
 //     --wipe    = golește tabelele din backup ÎNAINTE de inserare (restaurare „curată"). FĂRĂ --wipe = upsert idempotent (ON CONFLICT DO NOTHING).
 //
 // Ordinea tabelelor o dau cheile străine din bază (vezi backup.restoreOrder), apoi se resetează secvențele id.
