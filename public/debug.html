@@ -599,6 +599,7 @@ async function loadSystem() {
       ['de la', esc(g.since || '–')], ['bytes primiți', fmtBytes(g.bytes)], ['conexiuni', g.connections], ['pachete AVL', g.packets],
       ['recorduri', g.records], ['ACK-uri', g.acks], ['respinse (strict/imei)', g.rejects], ['erori framing', g.parse_errors],
       ['parse parțial', g.partial_parses], ['drop arhivate', g.archived_drops], ['insert eșuat', g.insert_fails], ['live skip (out-of-order)', g.live_skips_stale],
+      ['citire configurație eșuată', g.cfg_read_fails], ['identitate indisponibilă', g.enrich_fails],
     ].map(([k, v]) => '<span class="k">' + k + '</span><span class="v">' + (v != null ? v : '–') + '</span>').join('');
   } catch (e) { toast('Sistem: ' + e.message, true); }
   loadErrors();

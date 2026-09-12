@@ -1024,12 +1024,27 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_last_seen ON devices(last_seen DESC NULLS LAST)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_driver ON devices(driver_id) WHERE driver_id IS NOT NULL`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_devices_group ON devices(group_id) WHERE group_id IS NOT NULL`);
-    // Backfill o singură dată: pozițiile vechi moștenesc company_id din vehiculul lor (idempotent — doar rândurile NULL)
-    await client.query(`
-      UPDATE positions SET company_id = d.company_id
-      FROM devices d
-      WHERE positions.imei = d.imei AND positions.company_id IS NULL AND d.company_id IS NOT NULL
-    `);
+    // Completarea company_id pe pozițiile VECHI nu mai rulează la pornire. Comentariul spunea „o singură
+    // dată", dar nu exista niciun semn că s-a făcut — deci rula la FIECARE pornire. Pe PostgreSQL cu
+    // TimescaleDB, un UPDATE peste blocurile comprimate obligă motorul să le decomprime și se lovește de
+    // limita max_tuples_decompressed_per_dml_transaction → eroare → start() face process.exit(1), adică
+    // serverul nu mai pornește deloc. MĂSURAT pe 5,85 mil. de poziții: eroare după 1 min 46 s, pentru ZERO
+    // rânduri de schimbat. Coloana e completată oricum la fiecare inserare (insertPositions), iar izolarea
+    // pe companii se face pe liste de IMEI — nicio interogare din aplicație nu citește positions.company_id.
+    // Rămâne disponibilă ca întreținere ASUMATĂ, pornită manual, și nu mai poate opri serverul.
+    if (process.env.BACKFILL_POSITIONS_COMPANY === 'true') {
+      try {
+        console.log('[DB] Completez company_id pe pozițiile vechi (BACKFILL_POSITIONS_COMPANY=true)…');
+        const _bf = await client.query(`
+          UPDATE positions SET company_id = d.company_id
+          FROM devices d
+          WHERE positions.imei = d.imei AND positions.company_id IS NULL AND d.company_id IS NOT NULL
+        `);
+        console.log('[DB] Completare company_id: ' + (_bf.rowCount || 0) + ' poziții.');
+      } catch (e) {
+        console.warn('[DB] Completarea company_id a eșuat (pornirea continuă):', e.message);
+      }
+    }
 
     // Rapoarte programate (trimise automat pe email)
     await client.query(`
@@ -2828,11 +2843,19 @@ async function getDeviceHistory(imei, from, to, limit) {
   return result.rows;
 }
 
-async function getLastPositions() {
+// Semințele hărții live de la pornire: DOAR ultimele zile, nu tot istoricul. Fără margine, interogarea atinge
+// toate blocurile, inclusiv cele comprimate — MĂSURAT 7,4 s la 60 de zile de istoric pentru 1000 de vehicule
+// (estimat ~22 s la 180 de zile), iar Railway declară pornirea eșuată după 30 s. Cu fereastră: 63 ms.
+// Nu se pierde nimic: măturarea periodică scoate oricum din harta live tot ce e mai vechi de LIVE_PURGE_MS
+// (implicit 24h), deci fereastra e mai generoasă decât ce ține serverul în mers normal. Un vehicul din afara
+// ferestrei revine pe hartă la primul pachet primit, iar ultima lui poziție se vede oricum în listă.
+async function getLastPositions(zile) {
+  const z = Math.max(1, parseInt(zile, 10) || parseInt(process.env.BOOT_CACHE_DAYS, 10) || 7);
   const result = await pool.query(`
     SELECT DISTINCT ON (imei) 
       imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, io_data
     FROM positions
+    WHERE timestamp > NOW() - INTERVAL '${z} days'
     ORDER BY imei, timestamp DESC
   `);
   return result.rows;

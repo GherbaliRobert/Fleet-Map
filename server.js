@@ -24,6 +24,26 @@ const tankCalibrationCache = new Map(); // imei -> calibration array
 const tankCalibrationTimestamp = new Map(); // imei -> timestamp ultimei incarcari
 const TANK_CAL_TTL = 60000; // 1 minut
 
+// ─── Citiri de configurație eșuate: ținem ultima valoare bună, NU memorăm eroarea ─────────────────────
+// Cele trei cache-uri de mai jos (calibrare rezervor, interfață CAN, sonde de combustibil) memorau până
+// acum și EȘECUL de citire, sub forma „vehiculul n-are configurație", pentru tot minutul de expirare.
+// Efectul: la un hop al bazei de date, pachetele se decodau după schema implicită, iar valorile greșite de
+// CAN și de carburant rămâneau DEFINITIV în istoric. Acum, la eroare, folosim ultima configurație
+// cunoscută și reîncercăm peste câteva secunde.
+const CFG_FAIL_RETRY_MS = parseInt(process.env.CFG_FAIL_RETRY_MS, 10) || 3000;
+let cfgReadFails = 0, enrichFails = 0;
+function _cfgFail(ce, imei, err) {
+  cfgReadFails++;
+  try { ingestStats.cfg_read_fails = cfgReadFails; } catch (e) {}
+  // Jurnal limitat intenționat: pe o flotă mare, o bază căzută ar scrie mii de rânduri pe minut.
+  if (cfgReadFails <= 3 || cfgReadFails % 500 === 0) console.warn('[CFG] citire eșuată (' + ce + ') ' + imei + ': ' + ((err && err.message) || err) + ' — folosesc ultima configurație cunoscută');
+}
+function _enrichFail(imei, err) {
+  enrichFails++;
+  try { ingestStats.enrich_fails = enrichFails; } catch (e) {}
+  if (enrichFails <= 3 || enrichFails % 500 === 0) console.warn('[LIVE] identitate indisponibilă (' + imei + '): ' + ((err && err.message) || err) + ' — harta și alertele merg mai departe');
+}
+
 async function getTankCalibration(imei) {
   const now = Date.now();
   const lastLoad = tankCalibrationTimestamp.get(imei) || 0;
@@ -40,7 +60,16 @@ async function getTankCalibration(imei) {
       tankCalibrationTimestamp.set(imei, now);
       return cal;
     }
-  } catch (e) { /* skip */ }
+  } catch (e) {
+    // O eroare de citire NU înseamnă „vehiculul n-are calibrare".
+    _cfgFail('calibrare rezervor', imei, e);
+    if (tankCalibrationCache.has(imei)) {
+      tankCalibrationTimestamp.set(imei, now - TANK_CAL_TTL + CFG_FAIL_RETRY_MS); // reîncearcă repede
+      return tankCalibrationCache.get(imei);
+    }
+    return null; // nimic bun în cache: nu memorăm eșecul, următorul pachet reîncearcă
+  }
+  // Citire REUȘITĂ, dar vehiculul chiar n-are calibrare — asta se poate memora liniștit.
   tankCalibrationCache.set(imei, null);
   tankCalibrationTimestamp.set(imei, now);
   return null;
@@ -53,7 +82,14 @@ async function getDeviceIface(imei) {
   const e = _ifaceCache.get(imei);
   if (e && (Date.now() - e.ts) < IFACE_TTL) return e.iface;
   let iface = null;
-  try { iface = await db.getDeviceCanInterface(imei); } catch (err) { iface = null; }
+  try { iface = await db.getDeviceCanInterface(imei); }
+  catch (err) {
+    // Același defect, dar mai scump: memorat ca „fără interfață CAN", un camion FMS e decodat un minut
+    // întreg cu schema implicită (LV-CAN), iar valorile greșite rămân în istoric. Ținem ce știam.
+    _cfgFail('interfață CAN', imei, err);
+    if (e) { _ifaceCache.set(imei, { ts: Date.now() - IFACE_TTL + CFG_FAIL_RETRY_MS, iface: e.iface }); return e.iface; }
+    return null; // n-am avut niciodată o valoare bună: nu memorăm eșecul
+  }
   _ifaceCache.set(imei, { ts: Date.now(), iface });
   return iface;
 }
@@ -87,7 +123,16 @@ async function getFuelSensors(imei) {
   const now = Date.now();
   if (now - (fuelSensorsTs.get(imei) || 0) < TANK_CAL_TTL && fuelSensorsCache.has(imei)) return fuelSensorsCache.get(imei);
   let sensors = null;
-  try { sensors = await dbRef().getFuelSensorsRow(imei); } catch (e) {}
+  try { sensors = await dbRef().getFuelSensorsRow(imei); }
+  catch (e) {
+    // Ca mai sus: memorat, ar face nivelul de carburant să dispară un minut din pozițiile din istoric.
+    _cfgFail('sonde combustibil', imei, e);
+    if (fuelSensorsCache.has(imei)) {
+      fuelSensorsTs.set(imei, now - TANK_CAL_TTL + CFG_FAIL_RETRY_MS);
+      return fuelSensorsCache.get(imei);
+    }
+    return null;
+  }
   fuelSensorsCache.set(imei, sensors); fuelSensorsTs.set(imei, now);
   return sensors;
 }
@@ -285,6 +330,12 @@ const ACTUAL_HTTP_PORT = TCP_PORT === HTTP_PORT ? HTTP_PORT + 1 : HTTP_PORT;
 
 // ─── Stare live (ultima poziție per IMEI, ținută în memorie) ───
 const livePositions = new Map();
+// Cât de adânc citește serverul istoricul la pornire ca să umple harta live. Mai mult nu are rost: măturarea
+// periodică scoate oricum tot ce e mai vechi de LIVE_PURGE_MS (implicit 24h). Fără fereastră, interogarea
+// atinge tot istoricul — MĂSURAT 7,4 s la 60 de zile de date, estimat ~22 s la 180, iar Railway declară
+// pornirea eșuată după 30 s.
+const BOOT_SEED_DAYS = Math.max(2, parseInt(process.env.BOOT_CACHE_DAYS, 10) ||
+  (Math.ceil((parseInt(process.env.LIVE_PURGE_MS, 10) || 24 * 60 * 60 * 1000) / 86400000) + 1));
 // Dispozitive ARHIVATE (contract încheiat): pachetele lor primesc ACK dar NU se stochează / nu apar live.
 // Set în memorie, populat la pornire + actualizat la arhivare/restaurare. Verificat la fiecare pachet (O(1)).
 const archivedImeis = new Set();
@@ -384,7 +435,7 @@ function _persistLastCan(imei, io, ts) {
 const activeConnections = new Map(); // IMEI -> socket info
 
 // Contoare cumulative de ingest (de la boot, in-memory) — expuse în /api/debug/live-stats pentru consola de debug (/debug).
-const ingestStats = { since: new Date().toISOString(), bytes: 0, connections: 0, rejects: 0, acks: 0, packets: 0, records: 0, parse_errors: 0, partial_parses: 0, archived_drops: 0, insert_fails: 0, live_skips_stale: 0 };
+const ingestStats = { since: new Date().toISOString(), bytes: 0, connections: 0, rejects: 0, acks: 0, packets: 0, records: 0, parse_errors: 0, partial_parses: 0, archived_drops: 0, insert_fails: 0, live_skips_stale: 0, cfg_read_fails: 0, enrich_fails: 0 };
 
 // ─── Debug log (circular buffer) ───
 const debugLog = [];
@@ -853,7 +904,12 @@ const tcpServer = net.createServer((socket) => {
         for (const _r of parsed.records) if (_r.io) Object.assign(mergedIo, _r.io);
         // Identitatea (nume/nr/categorie) din registrul de vehicule (DB, cache 20s) — NU doar din snapshot-ul
         // anterior. Altfel, la un vehicul înregistrat după pornire, plăcuța rămânea null și „se reseta".
-        const devInfo = (await getLiveEnrichMap()).get(imei) || {};
+        // Dacă baza tace, mergem mai departe FĂRĂ identitate. Înainte, excepția de aici sărea peste harta
+        // live, peste trimiterea pe WebSocket și peste TOATE detectoarele (alerte, furt de carburant,
+        // program de lucru): poziția intra în istoric, dar dispecerul nu vedea nimic și nimic nu pornea.
+        let devInfo = {};
+        try { devInfo = (await getLiveEnrichMap()).get(imei) || {}; }
+        catch (_eEnrich) { _enrichFail(imei, _eEnrich); }
         const liveData = {
           imei,
           timestamp: liveRec.timestamp,
@@ -6337,7 +6393,15 @@ let _liveEnrichCache = { ts: 0, map: null };
 async function getLiveEnrichMap() {
   const now = Date.now();
   if (_liveEnrichCache.map && (now - _liveEnrichCache.ts) < 20000) return _liveEnrichCache.map;
-  const result = await db.pool.query('SELECT imei, name, plate, vehicle_type, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
+  let result;
+  try {
+    result = await db.pool.query('SELECT imei, name, plate, vehicle_type, tare_weight, max_weight_legal, max_weight_construct, max_axle_loads, tank_calibration, fuel_price, cost_per_ton_km FROM devices');
+  } catch (e) {
+    // Identitatea vehiculelor e un BONUS peste poziție. Dacă baza nu răspunde, servim ultima hartă bună,
+    // chiar expirată, în loc să aruncăm — excepția de aici oprea harta live și toate detectoarele.
+    if (_liveEnrichCache.map) { _liveEnrichCache.ts = now - 20000 + CFG_FAIL_RETRY_MS; return _liveEnrichCache.map; }
+    throw e;
+  }
   const map = new Map(result.rows.map(r => [r.imei, r]));
   _liveEnrichCache = { ts: now, map };
   return map;
@@ -12351,7 +12415,9 @@ async function start() {
   }
 
   // Încarcă ultimele poziții din DB în memorie
-  const lastPositions = await db.getLastPositions();
+  const _t0Seed = Date.now();
+  const lastPositions = await db.getLastPositions(BOOT_SEED_DAYS);
+  console.log('[BOOT] Harta live: ' + lastPositions.length + ' vehicule din ultimele ' + BOOT_SEED_DAYS + ' zile (' + (Date.now() - _t0Seed) + ' ms)');
   const allDevices = await db.getDevices();
   // Backfill o singură dată: ultima valoare CAN sticky din istoric, pentru devices fără last_can persistat încă.
   const stickyBackfill = {};
