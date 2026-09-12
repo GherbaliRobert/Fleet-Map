@@ -18,6 +18,69 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-09-12
+
+### AMÂNDOI · Serverul pornește iar, oricât de mare devine istoricul — `4a237c5`
+
+Am pus aplicația la încercare cu **1000 de mașini** simulate, pe același fel de bază de date ca în
+producție. Recepția a ținut fără nicio pierdere. Dar am dat peste ceva mai urât: **serverul nu mai
+pornea deloc** odată ce baza începe să comprime istoricul (ceea ce face singură, după o săptămână).
+
+De ce: la fiecare pornire rula o completare de date pe care codul o descria drept „o singură dată",
+fără nimic care să țină minte că s-a făcut. Pe datele comprimate, operația trebuie să le desfacă pe
+toate, iar baza o oprește ca măsură de siguranță. Serverul primea eroarea și se închidea singur.
+**Măsurat: pica după 1 minut și 46 de secunde, deși nu avea niciun rând de schimbat.** Acum nu mai
+rulează la pornire (coloana aceea se completează oricum la fiecare poziție nouă și n-o citește nimic).
+
+Al doilea lucru: înainte să accepte aparate și utilizatori, serverul căuta ultima poziție a fiecărei
+mașini în **tot** istoricul — 7,4 secunde la două luni de date, și ar fi trecut peste limita de 30 de
+secunde a Railway la jumătate de an. Acum caută doar în ultimele zile: **0,06 secunde**. Nu se pierde
+nimic, fiindcă o mașină care tace mai mult de o zi ieșea oricum din harta live.
+
+Al treilea: la un hop de câteva secunde al bazei, serverul ținea minte un minut întreg „mașina asta
+n-are configurație" — și în minutul ăla decoda CAN-ul și carburantul după schema greșită, iar valorile
+rămâneau **definitiv** în istoric. Acum, la o eroare de citire, păstrează ultima configurație bună și
+reîncearcă după 3 secunde. La fel, o eroare la citirea numelui vehiculului nu mai oprește harta live,
+trimiterea către browser și detectoarele de alerte.
+
+**Ce vede fondatorul:** două contoare noi în consola de dezvoltare (citiri de configurație eșuate,
+identitate indisponibilă) și un rând în jurnalul serverului la fiecare pornire — câte vehicule a pus
+pe hartă și în cât timp.
+
+**Ce vede clientul:** nimic nou pe ecran. Doar că după o actualizare aplicația revine în câteva
+secunde, iar harta și alertele nu se mai opresc la un hop al bazei de date.
+
+### AMÂNDOI · Emailurile nu mai sună pentru mersul normal, iar o pană nu mai trece neobservată — `în lucru`
+
+**Emailurile către firmă.** Adresele din agenda unei firme (dispecerat@, siguranță@) n-au cont în
+aplicație, deci n-aveau nici praguri — și primeau absolut tot ce iese din detector. Iar detectorul
+pornește **intenționat** de la valori mici (peste 50 km/h, motor peste 80 °C, tensiune sub 13 V),
+fiindcă pragul adevărat îl pune fiecare om în contul lui. Rezultatul: sute de emailuri pe zi de
+fiecare mașină, pentru mers absolut normal. La 1000 de mașini, furnizorul de email ne-ar fi blocat
+adresa de pe care trimitem — și atunci n-ar mai fi plecat **nici alertele adevărate**, la nimeni.
+
+Acum agenda primește doar ce trece pragul obișnuit al tipului — peste 90 km/h, motor peste 105 °C,
+sub 11,8 V, peste 40 t, scădere de peste 15 litri — cel mult un email pe oră pe mașină și pe tip,
+cu un plafon de 50 pe zi pe toată firma. Aceleași valori pe care le vede un om în preferințele lui,
+dintr-o singură listă în cod.
+
+**Pana tăcută.** Dacă recepția se oprea, sau serverul se înțepenea fără să cadă, nu afla nimeni:
+paginile răspundeau normal, iar Railway verifică sănătatea doar la publicare. Acum, dacă aparatele
+sunt conectate și niciunul nu trimite nimic **30 de minute**, serverul vă anunță (în aplicație, pe
+telefon și pe email) și se repornește singur. Când flota doarme nu se declanșează nimic: atunci
+aparatele sunt deconectate, iar condiția cere aparate conectate care tac.
+
+**Ce vede fondatorul:** un rând nou în „Stare producție" — supraveghetorul, cu pragul lui și cu cât
+a trecut de la ultimul pachet. Plus: semaforul de recepție nu se mai face verde din mașinile demo
+(erau simulate în server, deci mereu „proaspete", și ascundeau o recepție reală moartă), iar
+notificarea de la cererile de cont demo nu mai ajunge **goală** pe telefon.
+
+**Ce vede clientul:** primește mult mai puține emailuri, dar cele care vin înseamnă ceva.
+
+**De setat de voi în Railway:** `ALERT_EMAIL` (adresa pe care vreți alerta) și SMTP-ul. Fără ele,
+alerta rămâne doar în aplicație și pe telefon. Restul reglajelor au valori implicite bune și sunt
+scrise în `.env.prod.exemplu`.
+
 ## 2026-08-26
 
 ### AMÂNDOI · De ce lipseau pictogramele CAN pe telefon — `d6b9c86`
@@ -5480,6 +5543,12 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   cererea în sine n-a putut fi încercată din cutia de dezvoltare (rețeaua către ANAF e închisă
   acolo). Se vede la primul CUI încercat pe ratrack.ro. Adresa serviciului: `ANAF_TVA_URL`.
 
+- [ ] **(voi) Pragurile alertelor pe email ale unei firme le hotărâm NOI, din cod.** De la 12.09,
+  adresele din agenda firmei primesc doar evenimentele care trec pragul obișnuit (90 km/h, 105 °C,
+  11,8 V, 40 t, 15 litri), cel mult unul pe oră pe mașină, maximum 50 pe zi pe firmă. Valorile sunt
+  bune pentru un camion, dar **firma nu le poate schimba singură din aplicație** — n-are ecranul.
+  Dacă un client cere alt prag, deocamdată i-l punem noi, la nivel de platformă, pentru toți. De
+  hotărât înainte de lansare: rămâne așa, sau facem ecranul de reglaje per firmă (web + telefon).
 - [ ] **(eu) DE SCOS LA LANSARE: comutatorul „Fondator / Partener" din bara de sus. Hotărât de
   Alin, 03.09, confirmat 04.09.** E o schelă de probă, nu o funcție a produsului.
 

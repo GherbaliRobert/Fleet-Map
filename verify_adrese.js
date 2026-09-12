@@ -155,8 +155,12 @@ const login = async (u, p) => {
   // O DATĂ pe eveniment, în afara buclei pe oameni — altfel dispecerat@ primea o copie de fiecare om.
   const srvTxt = fs.readFileSync('./server.js', 'utf8');
   T('există o livrare separată către adresele firmei', /async function deliverCompanyEvent/.test(srvTxt));
+  // Verificăm STRUCTURA, nu numărul de caractere: bucla pe oameni se închide (acoladă la același nivel
+  // de indentare ca `for`), și abia apoi vine livrarea către firmă, la rândul ei la același nivel.
+  // Varianta veche număra caracterele dintre comentariu și apel și pica la orice comentariu mai lung —
+  // exact ce s-a întâmplat când livrarea către agendă a primit filtrul de prag.
   T('e chemată în afara buclei pe utilizatori',
-    /for \(const u of users\)[\s\S]{0,900}?\}\s*\n\s*\/\/[\s\S]{0,240}?await deliverCompanyEvent\(/.test(srvTxt));
+    /for \(const u of users\) \{[\s\S]{0,1500}?\r?\n      \}\r?\n[\s\S]{0,2000}?\r?\n      await deliverCompanyEvent\(/.test(srvTxt));
   T('demo-ul nu trimite emailuri nici pe calea asta', /deliverCompanyEvent[\s\S]{0,600}?demoCompanyId/.test(srvTxt));
   T('adresa comună are propria răcire, cheiată pe firmă', /userCooldownOk\('co' \+ coId/.test(srvTxt));
   // Conturile demo nu trimit emailuri prin serverul nostru (regula din CLAUDE.md). Nu putem juca un

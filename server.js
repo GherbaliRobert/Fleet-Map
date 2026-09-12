@@ -372,6 +372,64 @@ async function reconcileArchived() {
   } catch (e) { /* best-effort */ }
 }
 
+// ─── Supraveghetorul recepției ───────────────────────────────────────────────────────────────────────
+// Cea mai scumpă pană e cea tăcută: firul de recepție se înțepenește (o bază care nu mai răspunde, un
+// handler care atârnă), aplicația arată perfect, /api/health răspunde 200 — și nimeni nu află ore în șir.
+// Railway verifică ruta de sănătate DOAR la desfășurare, deci nu repornește un proces viu, dar blocat.
+//
+// Regula e intenționat conservatoare, ca să nu sune degeaba noaptea: alarma pornește DOAR dacă avem
+// aparate conectate ACUM și niciunul n-a trimis nimic de INGEST_SILENCE_MIN minute (implicit 30). O flotă
+// care doarme își închide conexiunile, deci nu intră în condiție.
+const INGEST_SILENCE_MS = (parseInt(process.env.INGEST_SILENCE_MIN, 10) || 30) * 60000;
+const WATCHDOG_RESTART = process.env.WATCHDOG_RESTART !== 'false';
+const _bootAt = Date.now();
+let _wdAlarma = false; // ca să anunțăm o dată pe incident, nu din 2 în 2 minute
+
+async function _anuntaTacereaReceptiei(minute, conexiuni) {
+  const title = 'Recepția GPS s-a oprit';
+  const body = conexiuni + ' aparate sunt conectate, dar niciunul n-a trimis nimic de ' + minute + ' minute.'
+    + (WATCHDOG_RESTART ? ' Repornesc serverul acum.' : ' Serverul NU se repornește singur (WATCHDOG_RESTART=false).');
+  console.error('[WATCHDOG] ' + title + ' — ' + body);
+  // 1. în aplicație și pe telefon, către super-admini
+  try {
+    const n = await db.createNotification({
+      type: 'alert', severity: 'critical', imei: null, title: title, body: body,
+      data: { key: 'watchdog:' + Math.round(Date.now() / 3600000), alertType: 'ingest_silence', minute: minute, conexiuni: conexiuni },
+      userId: null, companyId: null,
+    });
+    const toti = await db.getAllActiveUsers();
+    for (const u of toti) {
+      if (u.role !== 'superadmin') continue;
+      try { broadcastWsToUser(u.id, { type: 'notification', data: n }); } catch (e) {}
+      try { await sendPushToUser(u.id, { title: title, body: body, data: { type: 'alert', alertType: 'ingest_silence' } }); } catch (e) {}
+    }
+  } catch (e) { console.warn('[WATCHDOG] notificare:', e.message); }
+  // 2. pe email, către noi (ALERT_EMAIL în Railway)
+  try {
+    const to = process.env.ALERT_EMAIL || process.env.SUPPORT_EMAIL;
+    if (to && channels.emailConfigured && channels.emailConfigured()) await channels.sendEmailTo(to, 'RA Tracks — ' + title, body);
+  } catch (e) { /* best-effort: alarma nu are voie să cadă din cauza emailului */ }
+  // 3. în jurnalul de erori (ajunge în Sentry dacă SENTRY_DSN e setat)
+  try { captureError(new Error(title + ': ' + body), { zona: 'watchdog', minute: minute, conexiuni: conexiuni }); } catch (e) {}
+}
+
+function _verificaReceptia() {
+  try {
+    const conexiuni = (typeof activeConnections !== 'undefined') ? activeConnections.size : 0;
+    const ultim = ingestStats.last_packet_at || _bootAt;
+    const tacere = Date.now() - ultim;
+    if (conexiuni === 0 || tacere < INGEST_SILENCE_MS) { _wdAlarma = false; return; }
+    if (_wdAlarma) return;
+    _wdAlarma = true;
+    _anuntaTacereaReceptiei(Math.round(tacere / 60000), conexiuni).catch(() => {});
+    if (WATCHDOG_RESTART) {
+      // Ieșirea cu cod ≠ 0 e singurul semnal prin care Railway repornește containerul (restartPolicy
+      // ON_FAILURE). Lăsăm 3 secunde ca emailul și notificarea să apuce să plece.
+      setTimeout(() => { console.error('[WATCHDOG] Repornesc procesul — recepția e moartă.'); process.exit(1); }, 3000);
+    }
+  } catch (e) { console.warn('[WATCHDOG]', e.message); }
+}
+
 // ── MOD STRICT de înregistrare device-uri (securitate, ca Traccar) ───────────────────────────────────────
 // Acceptăm la handshake DOAR IMEI-uri PRE-ÎNREGISTRATE (allow-list) + neARHIVATE. Un tracker necunoscut sau
 // RESPINS e refuzat FĂRĂ să se creeze rând sau să se stocheze poziții — doar reținut într-un jurnal de „încercări"
@@ -778,6 +836,7 @@ const tcpServer = net.createServer((socket) => {
         ingestStats.acks++;
       };
       ingestStats.packets++; ingestStats.records += parsed.numberOfRecords || 0;
+      ingestStats.last_packet_at = Date.now(); // de aici știe supraveghetorul dacă recepția mai respiră
 
       // Un record corupt → l-am sărit, dar batch-ul a fost ACK-uit integral (trackerul nu rămâne blocat în resend).
       if (parsed.parseError) {
@@ -4823,7 +4882,8 @@ async function notifyDemoRequest(row) {
     for (const u of all) {
       if (u.role !== 'superadmin') continue;
       try { broadcastWsToUser(u.id, { type: 'notification', data: n }); } catch (e) {}
-      try { await sendPushToUser(u.id, n.title, n.body, { notifId: n.id }); } catch (e) {}
+      // sendPushToUser(id, payload) — cu 4 argumente, pe telefon ajungea o notificare GOALĂ.
+      try { await sendPushToUser(u.id, { title: n.title, body: n.body, data: { type: 'demo_request', notifId: n.id } }); } catch (e) {}
     }
   } catch (e) { console.warn('[DEMO-REQ] notificare:', e.message); }
   // Email de alertă către noi — best-effort, doar dacă SMTP e configurat.
@@ -9569,13 +9629,38 @@ function userTypePref(prefsMap, userId, type) {
 // Alertele merg și la adresele confirmate din agenda firmei (dispecerat@, siguranta@ …). Aceleași
 // reguli de răcire ca la oameni, dar cheiate pe firmă: o adresă comună nu trebuie să primească de
 // zece ori aceeași alertă fiindcă zece oameni o au pornită.
+// Ritmul emailurilor către agenda firmei. Adresele astea n-au cont, deci n-au nici setări proprii: până
+// acum puteau primi un email la fiecare 5 minute, pentru fiecare mașină și fiecare tip de eveniment.
+// Acum: o dată pe oră pe mașină și pe tip, cu un plafon pe zi și pe firmă, ca o singură mașină cu senzor
+// defect să nu poată arde reputația adresei de pe care trimitem pentru toți clienții.
+const CO_MAIL_COOLDOWN_MS = (parseInt(process.env.COMPANY_MAIL_COOLDOWN_MIN, 10) || 60) * 60000;
+const CO_MAIL_DAILY_MAX = parseInt(process.env.COMPANY_MAIL_DAILY_MAX, 10) || 50;
+const _coMailZi = new Map(); // companie -> { zi, n }
+function _ziRO() {
+  // Ziua se schimbă la miezul nopții în România, nu la ora Greenwich — altfel plafonul s-ar reseta la 3 dimineața.
+  try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' }); }
+  catch (e) { return new Date().toISOString().slice(0, 10); }
+}
+function _coMailAreBuget(coId) {
+  const zi = _ziRO();
+  const z = _coMailZi.get(coId);
+  if (!z || z.zi !== zi) { _coMailZi.set(coId, { zi, n: 1 }); return true; }
+  if (z.n >= CO_MAIL_DAILY_MAX) {
+    // Un singur rând în jurnal pe zi și pe firmă, nu unul la fiecare eveniment oprit.
+    if (z.n === CO_MAIL_DAILY_MAX) { z.n++; console.warn('[MAIL] Compania ' + coId + ' a atins plafonul de ' + CO_MAIL_DAILY_MAX + ' emailuri de alertă pe zi — restul se opresc până mâine.'); }
+    return false;
+  }
+  z.n++;
+  return true;
+}
 async function deliverCompanyEvent(imei, ev) {
   try {
     if (!channels.emailConfigured()) return;
     const coId = await _deviceCompanyId(imei);
     if (coId == null) return;
     if (demoCompanyId != null && coId === demoCompanyId) return; // demo nu trimite emailuri
-    if (!userCooldownOk('co' + coId, ev.type, imei)) return;
+    if (!userCooldownOk('co' + coId, ev.type, imei, CO_MAIL_COOLDOWN_MS)) return;
+    if (!_coMailAreBuget(coId)) return;
     const adrese = await db.getConfirmedCompanyEmails(coId, 'alerte');
     for (const a of adrese) channels.sendEmailTo(a, ev.title, ev.body).catch(() => {});
   } catch (e) { /* alertele către oameni nu au voie să cadă din cauza asta */ }
@@ -9800,6 +9885,16 @@ async function evaluateUserEvents(imei, data, prev) {
       }
       // Adresele din agenda firmei primesc O SINGURĂ dată pe eveniment, nu o dată pentru fiecare om
       // care are alerta pornită. Altfel dispecerat@ ar primi patru copii ale aceleiași alerte.
+      //
+      // PRAGUL: adresele din agendă n-au cont, deci n-au prag propriu — iar detectorul de mai sus pornește
+      // INTENȚIONAT de la valori mici (peste 50 km/h, peste 80 °C, sub 13 V), fiindcă pragul adevărat îl
+      // pune fiecare om în contul lui. Fără filtrul ăsta, agenda primea tot: viteze și temperaturi normale
+      // de mers, adică sute de emailuri pe zi de fiecare mașină, până când furnizorul de email ne bloca
+      // adresa — și atunci nu mai plecau nici alertele adevărate. Acum se aplică pragul IMPLICIT al
+      // tipului, din același catalog EVENT_TYPES pe care omul îl vede în preferințele lui.
+      if (def.threshold) {
+        if (def.below) { if (c.mag >= def.def) continue; } else { if (c.mag < def.def) continue; }
+      }
       await deliverCompanyEvent(imei, { title: eventVehTitle(def.label, data, imei), body: c.body, type: c.type });
     }
   } catch (e) { console.error('[UEVENTS]', e.message); }
@@ -11206,8 +11301,13 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   // de mult, e o problemă de ingest (port TCP, SIM, alimentare), nu de interfață.
   try {
     let newest = 0, live = 0;
-    for (const [, p] of livePositions) { const t = new Date(p.timestamp).getTime(); if (Number.isFinite(t)) { live++; if (t > newest) newest = t; } }
-    const totalDev = (await db.pool.query("SELECT COUNT(*)::int AS n FROM devices WHERE status IS DISTINCT FROM 'archived'")).rows[0].n;
+    // Vehiculele DEMO sunt simulate în proces: pozițiile lor sunt mereu proaspete, deci țineau semaforul
+    // pe verde chiar și când recepția REALĂ era moartă. Le scoatem din socoteală, de ambele părți.
+    for (const [_im, p] of livePositions) { if (DEMO_SET.has(_im)) continue; const t = new Date(p.timestamp).getTime(); if (Number.isFinite(t)) { live++; if (t > newest) newest = t; } }
+    const _qDev = demoCompanyId != null
+      ? await db.pool.query("SELECT COUNT(*)::int AS n FROM devices WHERE status IS DISTINCT FROM 'archived' AND (company_id IS NULL OR company_id <> $1)", [demoCompanyId])
+      : await db.pool.query("SELECT COUNT(*)::int AS n FROM devices WHERE status IS DISTINCT FROM 'archived'");
+    const totalDev = _qDev.rows[0].n;
     if (!totalDev) add('ingest', 'Recepție poziții GPS', 'info', 'niciun vehicul înregistrat încă');
     else if (!newest) add('ingest', 'Recepție poziții GPS', 'crit', totalDev + ' vehicule înregistrate, dar NICIO poziție primită de la pornirea serverului. Verifică portul TCP (' + TCP_PORT + ') și configurarea trackerelor.');
     else {
@@ -11217,6 +11317,18 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
         + (lvl === 'ok' ? '' : ' → verifică portul TCP, SIM-urile sau alimentarea'));
     }
   } catch (e) {}
+
+  // Supraveghetorul: fără el, o recepție moartă rămâne nevăzută până sună un client.
+  {
+    const _wdOn = process.env.WATCHDOG_ENABLED !== 'false' && process.env.NODE_ENV !== 'test';
+    const _tacereMin = Math.round((Date.now() - (ingestStats.last_packet_at || _bootAt)) / 60000);
+    add('watchdog', 'Supraveghetorul recepției', _wdOn ? 'ok' : 'warn',
+      _wdOn ? ('pornit · alarmă după ' + Math.round(INGEST_SILENCE_MS / 60000) + ' min de tăcere cu aparate conectate'
+              + (WATCHDOG_RESTART ? ' + repornire automată' : ', fără repornire')
+              + ' · ultimul pachet acum ' + (ingestStats.last_packet_at ? (_tacereMin < 1 ? 'sub un minut' : _tacereMin + ' min') : 'niciunul de la pornire')
+              + (isSet(process.env.ALERT_EMAIL) ? ' · alertă pe email' : ' · FĂRĂ email de alertă (setează ALERT_EMAIL)'))
+            : 'OPRIT — o recepție moartă nu anunță pe nimeni');
+  }
 
   // Contul „admin" se creează la primul boot cu parola din ADMIN_PASSWORD, altfel cu una IMPLICITĂ, publică.
   // Verificăm efectiv hash-ul din DB — nu prezența variabilei (care poate fi adăugată după ce contul există).
@@ -12547,6 +12659,13 @@ async function start() {
     console.log(`  HTTP (hartă/API):  port ${ACTUAL_HTTP_PORT}`);
     console.log('═══════════════════════════════════════');
   });
+
+  // Supraveghetorul recepției (vezi _verificaReceptia). Oprit în teste: suita pornește serverul fără
+  // niciun aparat conectat, deci n-ar avea ce supraveghea.
+  if (process.env.WATCHDOG_ENABLED !== 'false' && process.env.NODE_ENV !== 'test') {
+    setInterval(_verificaReceptia, 2 * 60 * 1000).unref();
+    console.log('[WATCHDOG] Supraveghez recepția: alarmă după ' + Math.round(INGEST_SILENCE_MS / 60000) + ' min de tăcere cu aparate conectate' + (WATCHDOG_RESTART ? ' + repornire' : ' (fără repornire)'));
+  }
 
   // Întreținere: curăță sesiunile expirate din oră în oră
   setInterval(() => { db.cleanupExpiredSessions().catch(() => {}); }, 60 * 60 * 1000);

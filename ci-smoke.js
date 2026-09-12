@@ -46,7 +46,7 @@ function runSmoke(script) {
   // verify_pornire.js nu are nevoie de server: citește fișierele și rulează cele trei cache-uri decupate din
   // server.js. Stă aici ca să nu se mai strecoare pe drumul pornirii o migrare grea (serverul nu mai pornea
   // deloc pe blocuri comprimate) și ca o eroare de citire să nu redevină „vehiculul n-are configurație".
-  for (const s of ['tenant_smoke.js', 'rbac_smoke.js', 'catalog_smoke.js', 'verify_pornire.js', 'verify_can_flags.js', 'verify_io_modal.js', 'verify_io_format.js', 'verify_consum.js', 'verify_tacho.js', 'verify_tacho_api.js', 'verify_mobile_tacho.js', 'verify_etransport.js', 'verify_tollro.js', 'verify_tollro_flota.js', 'verify_setari.js', 'verify_aparate.js', 'verify_istoric.js', 'verify_adrese.js', 'verify_roluri.js', 'verify_preferinte.js', 'verify_companii.js', 'verify_contracte.js', 'verify_neplata.js', 'verify_montaj.js', 'verify_tarife.js']) {
+  for (const s of ['tenant_smoke.js', 'rbac_smoke.js', 'catalog_smoke.js', 'verify_receptie.js', 'verify_pornire.js', 'verify_can_flags.js', 'verify_io_modal.js', 'verify_io_format.js', 'verify_consum.js', 'verify_tacho.js', 'verify_tacho_api.js', 'verify_mobile_tacho.js', 'verify_etransport.js', 'verify_tollro.js', 'verify_tollro_flota.js', 'verify_setari.js', 'verify_aparate.js', 'verify_istoric.js', 'verify_adrese.js', 'verify_roluri.js', 'verify_preferinte.js', 'verify_companii.js', 'verify_contracte.js', 'verify_neplata.js', 'verify_montaj.js', 'verify_tarife.js']) {
     console.log('\n=== ' + s + ' ===');
     if (await runSmoke(s)) fail++;
   }
