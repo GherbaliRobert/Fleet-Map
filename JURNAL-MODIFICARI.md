@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-12
 
-### AMÂNDOI · Serverul pornește iar, oricât de mare devine istoricul — `4a237c5`
+### AMÂNDOI · Serverul pornește iar, oricât de mare devine istoricul — `9cc196f`
 
 Am pus aplicația la încercare cu **1000 de mașini** simulate, pe același fel de bază de date ca în
 producție. Recepția a ținut fără nicio pierdere. Dar am dat peste ceva mai urât: **serverul nu mai
@@ -50,7 +50,7 @@ pe hartă și în cât timp.
 **Ce vede clientul:** nimic nou pe ecran. Doar că după o actualizare aplicația revine în câteva
 secunde, iar harta și alertele nu se mai opresc la un hop al bazei de date.
 
-### AMÂNDOI · Emailurile nu mai sună pentru mersul normal, iar o pană nu mai trece neobservată — `în lucru`
+### AMÂNDOI · Emailurile nu mai sună pentru mersul normal, iar o pană nu mai trece neobservată — `6388a28`
 
 **Emailurile către firmă.** Adresele din agenda unei firme (dispecerat@, siguranță@) n-au cont în
 aplicație, deci n-aveau nici praguri — și primeau absolut tot ce iese din detector. Iar detectorul
