@@ -27,16 +27,25 @@ function fisiere(p) {
   if (!lista.length) { console.error('[poziții] niciun fișier .ndjson.gz[.enc] găsit'); process.exit(1); }
 
   await db.initDb();
+  // O singură conexiune pentru tot importul, cu limita de decomprimare TimescaleDB ridicată. Arhiva vine ordonată pe
+  // timp, deci un lot de 500 de rânduri atinge sute de aparate diferite; pe blocurile deja comprimate, verificarea de
+  // unicitate le decomprimă și s-ar lovi de limita implicită de 100.000 de rânduri — fișierul ar pica.
+  const client = await db.pool.connect();
+  try { await client.query('SET timescaledb.max_tuples_decompressed_per_dml_transaction = 0'); } catch (e) { /* fără TimescaleDB: nu e nevoie */ }
   let rows = 0, inserted = 0, erori = 0;
-  for (const f of lista) {
-    try {
-      const r = await backup.importPositionsBuffer(db, fs.readFileSync(f), process.env.BACKUP_PASSPHRASE || null);
-      rows += r.rows; inserted += r.inserted;
-      console.log('  ' + path.basename(path.dirname(f)) + '/' + path.basename(f) + ': ' + r.rows + ' rânduri, ' + r.inserted + ' puse la loc');
-    } catch (e) {
-      erori++;
-      console.error('  ' + f + ': EȘUAT — ' + e.message);
+  try {
+    for (const f of lista) {
+      try {
+        const r = await backup.importPositionsBuffer(db, fs.readFileSync(f), process.env.BACKUP_PASSPHRASE || null, { client: client });
+        rows += r.rows; inserted += r.inserted;
+        console.log('  ' + path.basename(path.dirname(f)) + '/' + path.basename(f) + ': ' + r.rows + ' rânduri, ' + r.inserted + ' puse la loc');
+      } catch (e) {
+        erori++;
+        console.error('  ' + f + ': EȘUAT — ' + e.message);
+      }
     }
+  } finally {
+    try { client.release(); } catch (e) {}
   }
   console.log('[poziții] GATA: ' + lista.length + ' fișiere · ' + rows + ' rânduri · ' + inserted + ' puse la loc · ' + erori + ' fișiere cu erori.');
   process.exit(erori ? 2 : 0);

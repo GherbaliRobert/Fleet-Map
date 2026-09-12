@@ -1078,6 +1078,11 @@ const tcpServer = net.createServer((socket) => {
 // 2. SERVER HTTP — interfață web + API
 // ══════════════════════════════════════════════
 const app = express();
+// Căile se potrivesc EXACT, cu tot cu litere mici. Implicit Express le potrivește fără să țină cont de majuscule, iar
+// verificările de la fiecare cerere (cont dezactivat sau șters, termen expirat, rol reîmprospătat, poarta de abonament,
+// limitarea de rată) se uită dacă adresa începe cu „/api". Pe „/API/..." ele erau sărite, dar rutele răspundeau — cu
+// rolul vechi, ținut minte în sesiune. Trebuie setat ÎNAINTE de primul app.use / app.get.
+app.set('case sensitive routing', true);
 app.set('trust proxy', 1); // necesar pentru cookie secure în spatele proxy-ului (Railway)
 app.use(express.json({ limit: '6mb', verify: (req, res, buf) => { if (req.originalUrl === '/api/billing/webhook') req.rawBody = buf; } })); // limită mărită pt. upload .DDD; raw body pt. semnătura webhook Stripe
 
@@ -1733,6 +1738,18 @@ async function getAllowedImeiSet(userId, role, companyId) {
 function invalidateAccessCache(userId) {
   if (userId === undefined || userId === null) { accessCache.clear(); invalidateRoleCache(); }
   else { accessCache.delete(userId); invalidateRoleCache(userId); }
+  _programeazaReimprospatareWs();
+}
+// Drepturile s-au schimbat → și legăturile live DESCHISE trebuie să le vadă. Înainte, un vehicul scos din drepturile unui
+// dispecer îi apărea mai departe pe harta live, până se reconecta. Schimbările din aceeași clipă se adună într-o trecere.
+let _wsReimprospatare = null;
+function _programeazaReimprospatareWs() {
+  if (_wsReimprospatare) return;
+  _wsReimprospatare = setTimeout(function () {
+    _wsReimprospatare = null;
+    try { refreshWsScope().catch(function () {}); } catch (e) {}
+  }, 250);
+  if (_wsReimprospatare.unref) _wsReimprospatare.unref();
 }
 
 // ─── Autentificare prin cheie API (Authorization: Bearer <key> sau X-API-Key: <key>) ───
@@ -2703,6 +2720,9 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     const id = parseInt(req.params.id);
     if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     let { role, full_name, email, phone, active } = req.body;
+    // Doar `false` exact tăia sesiunile, dar baza accepta și 0 sau "false" ca „dezactivat": contul se dezactiva fără ca
+    // sesiunile și legăturile lui să se închidă, iar gărzile (auto-dezactivare, ultimul super-admin) erau ocolite.
+    if (active !== undefined && active !== null) active = !(active === false || active === 0 || active === '0' || String(active).toLowerCase() === 'false');
     // Un rol PROPRIU al firmei se trimite ca slug. În users.role rămâne rolul standard din care
     // derivă (așa, toate verificările existente merg neschimbate), iar slug-ul se ține alături.
     let slugCerut = null;
@@ -3095,10 +3115,12 @@ app.delete('/api/apikeys/:id', requireAuth, requireAdmin, withCompany, async (re
     if (req.query.hard === '1') {
       // Ștergere definitivă (scoate înregistrarea). Revocarea simplă (mai jos) doar dezactivează cheia.
       await db.deleteApiKey(id);
+      _inchideLegaturileCheii(id);
       auditReq(req, 'delete', 'apikey', req.params.id);
       return res.json({ ok: true, deleted: true });
     }
     await db.revokeApiKey(id);
+    _inchideLegaturileCheii(id); // legăturile live deschise cu cheia se închid acum, nu la următoarea trecere
     auditReq(req, 'revoke', 'apikey', req.params.id);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -5199,6 +5221,17 @@ if (process.env.NODE_ENV === 'test') {
   // un singur scriitor), iar fără ruta asta ar verifica doar ce scrie pe ecran — adică exact partea
   // care nu contează. Aici se dovedește că o adresă neconfirmată chiar NU primește.
   // Trecerea de verificare a legăturilor live, pornită la cerere — altfel proba ar aștepta un minut întreg.
+  // Dezactivează un cont DIRECT în bază, fără să-i închidă sesiunile sau legăturile — ca proba să poată verifica separat
+  // fiecare plasă (verificarea de la fiecare cerere, cea de la deschiderea legăturii live, trecerea periodică). Ruta
+  // normală le închide pe toate deodată și le ascundea una pe alta.
+  app.post('/api/debug/dezactiveaza-fara-sesiuni', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const id = parseInt((req.body || {}).id, 10);
+      await db.pool.query('UPDATE users SET active = false WHERE id = $1', [id]);
+      invalidateRoleCache(id);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
   app.post('/api/debug/ws-sweep', requireAuth, requireSuperadmin, async (req, res) => {
     try { res.json({ inchise: await _verificaLegaturileLive() }); } catch (e) { res.status(500).json({ error: e.message }); }
   });
@@ -12330,6 +12363,18 @@ function _inchideLegaturileLive(userId, motiv) {
   }
   return n;
 }
+// O cheie sau un token revocat închide pe loc legăturile live deschise cu el (vezi DELETE /api/apikeys/:id).
+function _inchideLegaturileCheii(keyId) {
+  let n = 0;
+  if (typeof wss === 'undefined' || !wss) return n;
+  for (const c of wss.clients) {
+    if (c._keyId == null || Number(c._keyId) !== Number(keyId)) continue;
+    try { c.send(JSON.stringify({ type: 'error', data: { error: 'Neautorizat' } })); } catch (e) {}
+    try { c.close(); } catch (e) {}
+    n++;
+  }
+  return n;
+}
 async function _taieAccesulUtilizatorului(userId, motiv) {
   // Sesiunile web ale omului, din magazinul de sesiuni (userId stă în JSON-ul sesiunii).
   try { await db.pool.query("DELETE FROM user_sessions WHERE sess->>'userId' = $1", [String(userId)]); }
@@ -12339,19 +12384,30 @@ async function _taieAccesulUtilizatorului(userId, motiv) {
 }
 async function _verificaLegaturileLive() {
   if (typeof wss === 'undefined' || !wss || !wss.clients.size) return 0;
-  const ids = Array.from(new Set(Array.from(wss.clients).map(function (c) { return c._userId; }).filter(function (v) { return v != null; }).map(Number)));
+  const clienti = Array.from(wss.clients);
+  const ids = Array.from(new Set(clienti.map(function (c) { return c._userId; }).filter(function (v) { return v != null; }).map(Number)));
   if (!ids.length) return 0;
   let rows;
   try { rows = (await db.pool.query('SELECT id, role, active, access_until FROM users WHERE id = ANY($1::int[])', [ids])).rows; }
   catch (e) { return 0; } // baza nu răspunde: nu închidem nimic pe ghicite
   const dupaId = new Map(rows.map(function (r) { return [Number(r.id), r]; }));
+  // Legăturile deschise cu o CHEIE (telefon, integrare): cheia poate fi revocată sau poate expira fără ca omul să fie
+  // dezactivat. Înainte, legătura rămânea deschisă și primea mai departe pozițiile flotei.
+  const chei = Array.from(new Set(clienti.map(function (c) { return c._keyId; }).filter(function (v) { return v != null; }).map(Number)));
+  let cheiBune = null;
+  if (chei.length) {
+    try {
+      cheiBune = new Set((await db.pool.query('SELECT id FROM api_keys WHERE id = ANY($1::int[]) AND revoked = false AND (expires_at IS NULL OR expires_at > NOW())', [chei])).rows.map(function (r) { return Number(r.id); }));
+    } catch (e) { cheiBune = null; } // nu știm: nu închidem pe ghicite
+  }
   let inchise = 0;
-  for (const c of wss.clients) {
+  for (const c of clienti) {
     if (c._userId == null) continue;
     const u = dupaId.get(Number(c._userId));
     let motiv = null;
     if (!u || u.active === false) motiv = 'Neautorizat';
     else if (userAccessExpired(u)) motiv = DEMO_EXPIRED_MSG;
+    else if (c._keyId != null && cheiBune && !cheiBune.has(Number(c._keyId))) motiv = 'Neautorizat'; // cheie revocată sau expirată
     else if (c._role && u.role !== c._role) motiv = 'reautentificare'; // drepturi schimbate: se reconectează cu cele noi
     if (!motiv) continue;
     try { c.send(JSON.stringify({ type: 'error', data: { error: motiv } })); } catch (e) {}
@@ -12408,6 +12464,7 @@ wss.on('connection', (ws, req) => {
           try { ws.send(JSON.stringify({ type: 'error', data: { error: userAccessExpired(user) ? DEMO_EXPIRED_MSG : 'Neautorizat' } })); } catch (e) {}
           return ws.close();
         }
+        ws._keyId = user.key_id; // ca trecerea periodică și revocarea să vadă cu ce cheie s-a deschis legătura
         await _wsAuthContext(ws, user.id, user.role, user.company_id, 'token:' + user.username);
       } catch (e) { try { ws.close(); } catch (_) {} }
     })();

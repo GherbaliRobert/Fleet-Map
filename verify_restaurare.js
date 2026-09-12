@@ -26,6 +26,10 @@ const TABELE = ['companies', 'device_groups', 'drivers', 'devices', 'users', 'us
 if (faza === 'seed') {
   (async () => {
     const [dirFisiere] = process.argv.slice(3);
+    // Loturi mici, ca paginarea să ruleze de-adevăratelea (altfel toate tabelele încap într-un singur lot și un
+    // `<` scris `<=` sau un `break` pus greșit ar trece neobservate).
+    process.env.BACKUP_BATCH = '100';
+    process.env.POSITIONS_EXPORT_BATCH = '1000';
     const db = require('./db');
     const backup = require('./backup');
     await db.initDb();
@@ -45,6 +49,8 @@ if (faza === 'seed') {
     await q('INSERT INTO user_device_access (user_id, imei) VALUES ($1, $2)', [u1, '350000000000003']);
     const a1 = (await q("INSERT INTO alerts (name, type, imei, condition, company_id) VALUES ('Viteză', 'overspeed', '350000000000001', '{\"limit\":90}', $1) RETURNING id", [co1])).rows[0].id;
     for (let i = 0; i < 3; i++) await q("INSERT INTO alert_history (alert_id, imei, data) VALUES ($1, '350000000000001', '{\"v\":95}')", [a1]);
+    // 250 de rânduri în plus: backup-ul le citește pe trei loturi de câte 100.
+    await q("INSERT INTO alert_history (alert_id, imei, data) SELECT $1, '350000000000001', '{\"v\":1}' FROM generate_series(1, 250)", [a1]);
     await q("INSERT INTO invoices (company_id, series, number, year, full_number) VALUES ($1, 'RAT', 42, 2026, 'RAT-2026-00042')", [co1]);
     await q("INSERT INTO invoice_counters (series, year, last_number) VALUES ('RAT', 2026, 42) ON CONFLICT (series, year) DO UPDATE SET last_number = 42");
 
@@ -80,6 +86,11 @@ if (faza === 'seed') {
         [imei, zi + ' ' + ora + ':1' + m + ':00', JSON.stringify({ can_fuel_level_liters: 40 + m, ignition: 1 }), co1]);
       pozitii++;
     }
+    // 2500 de poziții într-o singură oră: arhivarea le citește pe trei loturi de câte 1000.
+    await q("INSERT INTO positions (imei, timestamp, latitude, longitude, speed, angle, satellites, priority, company_id) SELECT '350000000000003', ($1::timestamp + (g || ' seconds')::interval), 45.3, 21.3, 30, 0, 9, 0, $2 FROM generate_series(0, 2499) g", [zile[1] + ' 09:00:00', co1]);
+    pozitii += 2500;
+    // O poziție de IERI seara: NU se arhivează încă. Aparatele care își descarcă memoria după miezul nopții scriu pe ieri.
+    await q("INSERT INTO positions (imei, timestamp, latitude, longitude, speed, angle, satellites, priority) VALUES ('350000000000002', $1, 45, 21, 0, 0, 10, 0)", [new Date(Date.now() - 86400000).toISOString().slice(0, 10) + ' 22:30:00']);
     await q("INSERT INTO positions (imei, timestamp, latitude, longitude, speed, angle, satellites, priority) VALUES ('350000000000001', NOW(), 45, 21, 0, 0, 10, 0)");
     // „S3" fals, în același proces: primește fișierele și le scrie pe disc, cu cheia drept cale.
     const http = require('http');
@@ -98,11 +109,29 @@ if (faza === 'seed') {
     Object.assign(process.env, { BACKUP_S3_ENDPOINT: 'http://127.0.0.1:' + s3.address().port, BACKUP_S3_BUCKET: 'proba', BACKUP_S3_KEY_ID: 'k', BACKUP_S3_SECRET: 's', BACKUP_PASSPHRASE: 'parola-de-proba-foarte-lunga' });
     const exp = await backup.exportPositionsRange(db, { maxDays: 30 });
     s3.close();
+    // Un backup cu un tabel marcat INCOMPLET (cum face makeBackup când o citire pică la jumătate).
+    const linii = text.split('\n').filter(Boolean);
+    const sf = JSON.parse(linii[linii.length - 1]);
+    sf._end.tables.device_groups = 'skip: citire întreruptă (simulat)';
+    linii[linii.length - 1] = JSON.stringify(sf);
+    fs.writeFileSync(path.join(dirFisiere, 'dump_partial.ndjson.gz'), zlib.gzipSync(Buffer.from(linii.join('\n') + '\n', 'utf8')));
 
-    console.log('REZULTAT ' + JSON.stringify({ numar, enc: 'dump.' + enc.ext, plain: 'dump.' + plain.ext, vechi: 'dump_vechi.' + vechi.ext, criptat: enc.encrypted, v2ok, trunchiat, pozitii, exportRows: exp.rows, exportFiles: exp.files, dirS3 }));
+    console.log('REZULTAT ' + JSON.stringify({ numar, enc: 'dump.' + enc.ext, plain: 'dump.' + plain.ext, vechi: 'dump_vechi.' + vechi.ext, partial: 'dump_partial.ndjson.gz', criptat: enc.encrypted, v2ok, trunchiat, pozitii, exportRows: exp.rows, exportFiles: exp.files, dirS3 }));
 
     process.exit(0);
   })().catch((e) => { console.error('seed eșuat:', e); process.exit(1); });
+  return;
+}
+
+// ════════════ Faza „strain": un rând în B care NU e în backup ════════════
+if (faza === 'strain') {
+  (async () => {
+    const db = require('./db');
+    await db.initDb();
+    await db.pool.query("INSERT INTO device_groups (name) VALUES ('rest din B, nu e în backup')");
+    console.log('REZULTAT {"ok":true}');
+    process.exit(0);
+  })().catch((e) => { console.error('strain eșuat:', e); process.exit(1); });
   return;
 }
 
@@ -121,7 +150,8 @@ if (faza === 'numara') {
     let grupNouOk = false;
     try { await q("INSERT INTO device_groups (name) VALUES ('Grup nou după restaurare')"); grupNouOk = true; } catch (e) { grupNouOk = 'eroare: ' + e.message; }
     await q("DELETE FROM device_groups WHERE name = 'Grup nou după restaurare'");
-    console.log('REZULTAT ' + JSON.stringify({ numar, man, acces, contor: contor ? contor.last_number : null, grupNouOk }));
+    const strain = (await q("SELECT COUNT(*)::int AS n FROM device_groups WHERE name = 'rest din B, nu e în backup'")).rows[0].n;
+    console.log('REZULTAT ' + JSON.stringify({ numar, man, acces, contor: contor ? contor.last_number : null, grupNouOk, strain }));
     process.exit(0);
   })().catch((e) => { console.error('numărare eșuată:', e); process.exit(1); });
   return;
@@ -174,7 +204,7 @@ function gata(code) {
   const A = await ruleaza([__filename, '--faza=seed', FIS], DIR_A);
   T('baza A s-a umplut și backup-urile s-au scris', A.code === 0 && !!A.rez, A.out.slice(-300));
   if (!A.rez) return gata(1);
-  T('backup-ul cu parolă e chiar criptat', A.rez.criptat === true);
+  T('backup-ul cu parolă e chiar criptat (antetul RATBK1 în fișier, nu doar steagul)', A.rez.criptat === true && fs.readFileSync(path.join(FIS, A.rez.enc)).slice(0, 6).toString() === 'RATBK1');
 
   console.log('\n2. Baza B, goală: restaurare din copia criptată, cu scriptul real');
   const R1 = await ruleaza(['restore-backup.js', path.join(FIS, A.rez.enc)], DIR_B, { BACKUP_PASSPHRASE: 'parola-de-proba-foarte-lunga' });
@@ -189,6 +219,8 @@ function gata(code) {
   T('un rând nou după restaurare primește un id liber', B1.rez.grupNouOk === true, B1.rez.grupNouOk);
 
   console.log('\n3. Din nou peste B, cu --wipe, dintr-o copie NECRIPTATĂ în formatul VECHI');
+  // Un rând care NU e în backup: după --wipe trebuie să dispară. Altfel proba trecea și dacă golirea nu se făcea deloc.
+  await ruleaza([__filename, '--faza=strain'], DIR_B);
   const R2 = await ruleaza(['restore-backup.js', path.join(FIS, A.rez.vechi), '--wipe'], DIR_B);
   T('restaurarea „curată" se termină fără erori', R2.code === 0, 'cod ' + R2.code + ' · ' + R2.out.split('\n').filter((l) => /erori|eșuat|EȘUAT/.test(l)).slice(-4).join(' | '));
   // Numărătoarea de mai jos poate ieși bine și din noroc: datele erau deja în B din pasul 2, deci o golire
@@ -201,6 +233,15 @@ function gata(code) {
   const diferente = TABELE.filter((t) => B2.rez.numar[t] !== A.rez.numar[t]);
   T('după --wipe, fiecare tabel are exact rândurile din backup (nu dublate, nu lipsă)', diferente.length === 0, diferente.map((t) => t + ' ' + B2.rez.numar[t] + '≠' + A.rez.numar[t]).join(', '));
   T('și legăturile sunt tot la locul lor', B2.rez.man && B2.rez.man.grup === 'Camioane' && B2.rez.acces[0] === 'Dube');
+  T('golirea chiar a scos ce nu era în backup', B2.rez.strain === 0, B2.rez.strain);
+
+  console.log('\n3b. Un backup cu un tabel INCOMPLET nu golește tabelul și nu iese „reușit"');
+  await ruleaza([__filename, '--faza=strain'], DIR_B);
+  const R3 = await ruleaza(['restore-backup.js', path.join(FIS, A.rez.partial), '--wipe'], DIR_B);
+  T('restaurarea raportează eroare (cod 2), nu succes', R3.code === 2, 'cod ' + R3.code);
+  T('și spune că tabelul e incomplet', /INCOMPLET/.test(R3.out), R3.out.split('\n').filter((l) => /device_groups/.test(l)).slice(0, 2).join(' | '));
+  const B3 = await ruleaza([__filename, '--faza=numara'], DIR_B);
+  T('tabelul incomplet NU a fost golit (rândul din B a rămas)', !!B3.rez && B3.rez.strain === 1, B3.rez && B3.rez.strain);
 
 
   console.log('\n4. Formatul nou se citește înapoi întreg, iar un fișier tăiat e refuzat');
@@ -211,7 +252,7 @@ function gata(code) {
   T('arhiva a urcat exact pozițiile zilelor încheiate (nu și pe cea de azi)', A.rez.exportRows === A.rez.pozitii, A.rez.exportRows + ' din ' + A.rez.pozitii);
   const toate = (d) => fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? toate(path.join(d, e.name)) : [path.join(d, e.name)]) : [];
   const fisPoz = toate(A.rez.dirS3).filter((f) => /[\\/]positions[\\/]/.test(f));
-  T('câte un fișier pe fiecare oră cu date: 2 zile × 3 ore', fisPoz.length === 6 && A.rez.exportFiles === 6, fisPoz.length + ' fișiere, raportate ' + A.rez.exportFiles);
+  T('câte un fișier pe fiecare oră cu date: 2 zile × 3 ore + ora cu 2500 de poziții', fisPoz.length === 7 && A.rez.exportFiles === 7, fisPoz.length + ' fișiere, raportate ' + A.rez.exportFiles);
   T('fișierele se numesc zi/oră și sunt criptate', fisPoz.length > 0 && fisPoz.every((f) => /\d{4}-\d{2}-\d{2}[\\/]\d{2}\.ndjson\.gz\.enc$/.test(f) && fs.readFileSync(f).slice(0, 6).toString() === 'RATBK1'),
     fisPoz.map((f) => path.basename(path.dirname(f)) + '/' + path.basename(f)).join(', '));
   const P1 = await ruleaza(['restore-positions.js', A.rez.dirS3], DIR_B, { BACKUP_PASSPHRASE: 'parola-de-proba-foarte-lunga' });

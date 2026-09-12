@@ -19,7 +19,7 @@ const path = require('path');
 const os = require('os');
 const WebSocket = require('ws');
 
-const PORT = 3196, TCP = 5196;
+const PORT = 3186, TCP = 5186; // proprii: 3196/5196 sunt ale lui verify_tacho_api.js
 const DIR = path.join(os.tmpdir(), 'rax_revocat_' + Date.now());
 const B = 'http://127.0.0.1:' + PORT;
 const env = Object.assign({}, process.env, {
@@ -28,11 +28,15 @@ const env = Object.assign({}, process.env, {
 });
 delete env.DATABASE_URL;
 const srv = spawn(process.execPath, ['server.js'], { cwd: __dirname, env, stdio: ['ignore', 'ignore', 'inherit'] });
+// Dacă serverul probei moare, nu vrem ca verificările să meargă mai departe pe ALT server de pe același port.
+let terminat = false;
+srv.on('exit', (c) => { if (!terminat) { console.log('  ✗ serverul probei s-a oprit singur (cod ' + c + ')'); process.exit(1); } });
 
 let ok = 0, rele = 0;
 const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele++; console.log('  ✗ ' + n + (d !== undefined ? '  → ' + d : '')); } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function gata(code) {
+  terminat = true;
   try { srv.kill(); } catch (e) {}
   setTimeout(() => { try { fs.rmSync(DIR, { recursive: true, force: true }); } catch (e) {} process.exit(code); }, 800);
 }
@@ -61,6 +65,17 @@ function legatura(ck) {
       if (m.type === 'error') st.eroare = m.data && m.data.error;
     } catch (e) {}
   });
+  s.on('close', () => { st.inchisa = true; });
+  s.on('error', () => {});
+  st.sock = s;
+  return st;
+}
+
+// Legătură live deschisă cu o CHEIE (ca telefonul), nu cu cookie.
+function legaturaToken(cheie) {
+  const st = { init: false, inchisa: false, eroare: null };
+  const s = new WebSocket('ws://127.0.0.1:' + PORT + '/?token=' + encodeURIComponent(cheie));
+  s.on('message', (d) => { try { const m = JSON.parse(d.toString()); if (m.type === 'init') st.init = true; if (m.type === 'error') st.eroare = m.data && m.data.error; } catch (e) {} });
   s.on('close', () => { st.inchisa = true; });
   s.on('error', () => {});
   st.sock = s;
@@ -132,13 +147,77 @@ function legatura(ck) {
   await sleep(300);
   T('a doua trecere nu mai închide nimic', !L4b.inchisa && sw2.inchise === 0, JSON.stringify(sw2));
 
-  console.log('\n5. Pagina web');
+  console.log('\n5. Fiecare plasă, verificată separat (fără ștergerea sesiunilor)');
+  // Dezactivarea normală șterge sesiunile și închide legăturile deodată — și așa le ascunde pe celelalte plase. Aici
+  // contul e dezactivat DIRECT în bază, iar sesiunile rămân: fiecare verificare trebuie să-l prindă singură.
+  const tacut = await om('tacut');
+  const ck2 = await login('tacut@revocare.ro', PAROLA);
+  const ck3 = await login('tacut@revocare.ro', PAROLA);
+  const L5 = legatura(ck3);
+  T('omul are harta live', await asteapta(() => L5.init, 8000));
+  const dz = await cerere('POST', '/api/debug/dezactiveaza-fara-sesiuni', S, { id: tacut.id });
+  T('contul e dezactivat direct în bază, sesiunile rămân', dz.status === 200, dz.status);
+  // Căile cu MAJUSCULE: înainte, verificările de la fiecare cerere se uitau doar la „/api" și le săreau, dar rutele
+  // răspundeau pe rolul din sesiune. Nu contează codul exact (404), contează că datele nu mai ies.
+  const rMare = await cerere('GET', '/API/me', tacut.ck);
+  const tMare = await rMare.text();
+  T('„/API/me" scris cu majuscule nu mai dă datele contului', !(rMare.status === 200 && /"username"|"role"/.test(tMare)), rMare.status + ' ' + tMare.slice(0, 80));
+  const rLive = await cerere('GET', '/API/live', tacut.ck);
+  const tLive = await rLive.text();
+  T('„/API/live" scris cu majuscule nu mai dă pozițiile', !(rLive.status === 200 && tLive.trim().charAt(0) === '['), rLive.status + ' ' + tLive.slice(0, 60));
+  T('verificarea de la fiecare cerere îl oprește singură (401)', (await cerere('GET', '/api/me', tacut.ck)).status === 401);
+  const L5b = legatura(ck2);
+  T('legătura live nouă e refuzată de verificarea de la deschidere', (await asteapta(() => L5b.inchisa, 6000)) && !L5b.init);
+  const sw3 = await (await cerere('POST', '/api/debug/ws-sweep', S)).json();
+  T('trecerea periodică închide legătura rămasă deschisă', await asteapta(() => L5.inchisa, 3000), JSON.stringify(sw3));
+
+  console.log('\n6. O cheie revocată închide legătura live deschisă cu ea');
+  const cheiat = await om('cheiat');
+  const cr = await (await cerere('POST', '/api/apikeys', S, { userId: cheiat.id, name: 'proba revocare' })).json();
+  T('cheia se creează', !!cr.key && !!cr.id, JSON.stringify(cr).slice(0, 90));
+  const L6 = legaturaToken(cr.key);
+  T('legătura deschisă cu cheia primește harta live', await asteapta(() => L6.init, 8000));
+  const rv = await cerere('DELETE', '/api/apikeys/' + cr.id, S);
+  T('revocarea reușește', rv.status === 200, rv.status);
+  T('legătura se închide pe loc, nu la următoarea trecere', await asteapta(() => L6.inchisa, 3000));
+  const L6b = legaturaToken(cr.key);
+  T('cheia revocată nu mai deschide o legătură nouă', (await asteapta(() => L6b.inchisa, 6000)) && !L6b.init);
+
+  console.log('\n7. Drepturile tăiate ajung și în harta live deja deschisă');
+  // Administratorul firmei adaugă un vehicul (intră în firma lui) și îi dă unui dispecer drept DOAR pe el.
+  await cerere('POST', '/api/users', S, { username: 'sef@revocare.ro', password: PAROLA, full_name: 'Sef', role: 'company_admin', company_id: co.id });
+  const ckSef = await login('sef@revocare.ro', PAROLA);
+  const IMEI_P = '350000000009911';
+  const imp = await cerere('POST', '/api/devices/import', ckSef, { rows: [{ imei: IMEI_P, name: 'Proba drepturi', plate: 'B-99-DRP' }] });
+  T('administratorul firmei adaugă vehiculul', imp.status === 200, imp.status + ' ' + (await imp.clone().text()).slice(0, 120));
+  const disp = await (await cerere('POST', '/api/users', S, { username: 'dispecer@revocare.ro', password: PAROLA, full_name: 'Dispecer', role: 'dispatcher', company_id: co.id })).json();
+  const acc1 = await cerere('PUT', '/api/users/' + disp.id + '/access', ckSef, { devices: [IMEI_P], groups: [] });
+  T('dispecerul primește drept pe vehicul', acc1.status === 200, acc1.status);
+  const ckDisp = await login('dispecer@revocare.ro', PAROLA);
+  const L7 = legatura(ckDisp);
+  T('dispecerul are harta live', await asteapta(() => L7.init, 8000));
+  const scop = async () => {
+    const lst = await (await cerere('GET', '/api/debug/ws-clients', S)).json();
+    const c = (lst.clients || []).find((x) => x.userId === disp.id && x.open);
+    return c ? c.scope : null;
+  };
+  const inainte = await scop();
+  T('legătura lui vede exact vehiculul primit', inainte === '1 imei', inainte);
+  const acc2 = await cerere('PUT', '/api/users/' + disp.id + '/access', ckSef, { devices: [], groups: [] });
+  T('dreptul i se taie', acc2.status === 200, acc2.status);
+  await sleep(1200);
+  const dupa = await scop();
+  T('legătura DESCHISĂ nu mai vede vehiculul, fără reconectare', dupa === '0 imei', dupa);
+  T('și a rămas deschisă (e aceeași legătură, nu una nouă)', !L7.inchisa);
+
+
+  console.log('\n8. Pagina web');
   const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
   T('la „Neautorizat" pagina întreabă /api/me și duce la autentificare',
     /msg\.data\.error === 'Neautorizat'[\s\S]{0,200}fetch\('\/api\/me'[\s\S]{0,120}r\.status === 401\) location\.href = '\/'/.test(html));
   T('super-adminul își păstrează sesiunea', (await cerere('GET', '/api/me', S)).status === 200);
 
-  for (const L of [L1b, L4b]) { try { L.sock.close(); } catch (e) {} }
+  for (const L of [L1b, L4b, L5b, L6b, L7]) { try { L.sock.close(); } catch (e) {} }
   console.log('\n──────────────────────────────');
   console.log(ok + ' verificări trecute, ' + rele + ' picate');
   gata(rele ? 1 : 0);

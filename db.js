@@ -48,7 +48,10 @@ if (USE_PG) {
   poolIngest = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: _ssl,
-    max: parseInt(process.env.PG_POOL_INGEST_MAX) || 6,
+    // 12 = cât folosea recepția la vârf înainte, din rezerva comună. MĂSURAT la 1000 de aparate reconectate
+    // deodată: cu 6, 621 de pachete au rămas fără confirmare în 15 s (față de 0) — paginile erau protejate,
+    // dar aparatele strâmtate. Paginile își păstrează separat conexiunile lor (PG_POOL_MAX).
+    max: parseInt(process.env.PG_POOL_INGEST_MAX) || 12,
     min: 1,
     idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 8000,
@@ -98,14 +101,23 @@ if (USE_PG) {
 if (poolIngest !== pool) {
   const _origIngest = poolIngest.query.bind(poolIngest);
   const SLOW_INGEST_MS = parseInt(process.env.SLOW_QUERY_MS) || 1500;
+  let _lente = 0, _lentaMax = 0, _lentaSql = '', _ultimaScriere = 0;
   poolIngest.query = async function (text, params) {
     const t0 = Date.now();
     try { return await _origIngest(text, params); }
     finally {
       const dt = Date.now() - t0;
       if (dt >= SLOW_INGEST_MS && typeof text === 'string') {
-        pool.query('INSERT INTO error_log (level, message, context) VALUES ($1,$2,$3)',
-          ['warn', 'SLOW QUERY (recepție) ' + dt + 'ms', JSON.stringify({ ms: dt, sql: String(text).replace(/\s+/g, ' ').trim().slice(0, 300) })]).catch(() => {});
+        _lente++;
+        if (dt > _lentaMax) { _lentaMax = dt; _lentaSql = String(text).replace(/\s+/g, ' ').trim().slice(0, 300); }
+        // Cel mult un rând la 10 secunde, cu totalul din interval. La o bază înfundată, un rând pentru FIECARE cerere
+        // lentă umplea coada conexiunilor paginilor exact când erau mai necesare.
+        if (Date.now() - _ultimaScriere >= 10000) {
+          const n = _lente, mx = _lentaMax, sql = _lentaSql;
+          _lente = 0; _lentaMax = 0; _lentaSql = ''; _ultimaScriere = Date.now();
+          pool.query('INSERT INTO error_log (level, message, context) VALUES ($1,$2,$3)',
+            ['warn', 'SLOW QUERY (recepție) ' + n + ' cereri lente, cea mai lentă ' + mx + 'ms', JSON.stringify({ n: n, ms: mx, sql: sql })]).catch(() => {});
+        }
       }
     }
   };
@@ -2719,6 +2731,12 @@ function _sanitizeIo(io) {
   } catch (e) { return io; }
 }
 
+// Compania vehiculului, ținută minte pe IMEI. Se citea din bază la FIECARE pachet: în valul de după un deploy,
+// jumătate din cererile recepției erau doar asta. `positions.company_id` nu e citit de nicio interogare (izolarea
+// se face pe liste de IMEI), deci o valoare veche de câteva minute după mutarea unui vehicul nu strică nimic.
+// Mapa are cel mult câte o intrare pe aparat înregistrat.
+const _companiePeImei = new Map(); // imei -> { id, ts }
+const COMPANIE_TTL_MS = 5 * 60 * 1000;
 async function insertPositions(imei, records) {
   if (records.length === 0) return;
   // Avarie simulată — comutatorul se poate aprinde DOAR prin ruta de test, care nu se înregistrează
@@ -2728,10 +2746,15 @@ async function insertPositions(imei, records) {
 
   // company_id moștenit de la vehicul (izolare per-tenant + retenție per-companie)
   let companyId = null;
-  try {
-    const dr = await poolIngest.query('SELECT company_id FROM devices WHERE imei = $1', [imei]);
-    companyId = dr.rows[0] ? dr.rows[0].company_id : null;
-  } catch (e) {}
+  const _cunoscuta = _companiePeImei.get(imei);
+  if (_cunoscuta && Date.now() - _cunoscuta.ts < COMPANIE_TTL_MS) companyId = _cunoscuta.id;
+  else {
+    try {
+      const dr = await poolIngest.query('SELECT company_id FROM devices WHERE imei = $1', [imei]);
+      companyId = dr.rows[0] ? dr.rows[0].company_id : null;
+      _companiePeImei.set(imei, { id: companyId, ts: Date.now() });
+    } catch (e) {}
+  }
 
   const values = [];
   const params = [];

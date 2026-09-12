@@ -20,7 +20,76 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-12
 
-### FONDATOR · Copiile zilnice nu mai îngheață serverul și nu mai pornesc la fiecare repornire — `în lucru`
+### FONDATOR · Rezerva de conexiuni a recepției, corectată după măsurare — `în lucru`
+
+Am măsurat reparațiile de azi pe o bază ca în producție (TimescaleDB), cu 1000 de aparate simulate. Ca rezultatul
+să nu depindă de zi sau de starea calculatorului, am făcut un test **A/B**: codul de dinainte și codul nou, pe
+aceeași bază, în aceeași seară, unul după altul.
+
+**Am prins o greșeală a mea.** Rezerva de 6 conexiuni dată recepției (în `4700838`) proteja paginile, dar strâmta
+aparatele: la reconectarea de după un deploy, **621 de pachete au rămas fără confirmare în 15 secunde**. Toate
+probele automate treceau — de asta contează măsurătoarea. Am urcat rezerva la 12 (cât folosea recepția la vârf
+înainte, din conexiunile comune), iar compania vehiculului nu se mai citește din bază la fiecare pachet (era
+jumătate din cererile recepției). Paginile își păstrează separat conexiunile lor.
+
+**Rezultatul A/B, după corecție:**
+
+| | Codul de dinainte | Codul nou |
+|---|---|---|
+| Funcționare normală: pachete confirmate | 8200 din 8201, **378 de reconectări** | 8490 din 8490, 0 reconectări |
+| Funcționare normală: cea mai lentă confirmare | 585 ms | 300 ms |
+| Funcționare normală: cea mai lentă pagină | 667 ms | 365 ms |
+| După deploy: pachete fără confirmare | **545** | **0** |
+| După deploy: pagini, median | 249 ms | 111 ms |
+
+**Ce NU s-a rezolvat:** în valul de reconectare de după un deploy, confirmările rămân lente — 6 secunde la
+jumătate din aparate, 14 secunde la cele mai lente — iar cea mai lentă pagină tot ~8 secunde. Baza nu scrie mai
+repede de atât, pe un singur server. Ce ajută: deploy-uri mai rare (făcut azi) și, ca pas următor, scrierea
+pozițiilor mai multor aparate într-o singură cerere.
+
+**Ce vede fondatorul:** în „Stare producție", rândul de conexiuni arată acum rezerva de 12 a recepției.
+
+**Ce vede clientul:** nimic nou pe ecran; după o actualizare, aparatele nu mai rămân fără confirmare.
+
+### AMÂNDOI · Ce a găsit revizia adversă: o gaură de securitate, contractele lipsă din backup și probe prea blânde — `în lucru`
+
+Înainte să publicăm cele cinci reparații, le-am dat unei revizii adverse: câte un verificator pe securitate, date,
+operare, performanță și onestitatea probelor, fiecare contrazis de încă unul. Au rămas **28 de probleme confirmate**.
+Le-am reparat pe toate, cu o singură excepție, scrisă mai jos.
+
+**Securitate.** Adresele scrise cu MAJUSCULE (`/API/...` în loc de `/api/...`) treceau pe lângă verificările de la
+fiecare cerere: cont dezactivat sau șters, termen expirat, rol schimbat. Serverul le răspundea totuși, cu rolul vechi
+ținut minte în sesiune. Gaura era veche, dar anula exact reparația de azi. Acum adresele se potrivesc exact, cu litere
+mici. Aplicația web și cea de telefon folosesc oricum doar litere mici, deci pentru oameni nu se schimbă nimic.
+
+Tot aici: când i se taie cuiva un vehicul, harta lui live **deja deschisă** nu-l mai vede (înainte îl vedea până se
+reconecta); o cheie sau un token de telefon revocat închide pe loc legătura deschisă cu el; iar un cont trimis ca
+„dezactivat" sub altă formă decât cea obișnuită nu mai scapă de închiderea sesiunilor.
+
+**Backup-ul nu conținea contractele semnate.** Contractele și acordurile GDPR semnate, actele adiționale, montajele
+și partenerii, rolurile tăiate ale firmelor și agenda de emailuri lipseau din copie: tabelele fuseseră adăugate după
+ultima completare a listei, iar nimic nu anunța asta. După o restaurare, clienții ar fi rămas fără contracte, iar
+oamenii cărora le tăiaserăm drepturi le-ar fi primit înapoi. Acum intră în copie, iar o probă pică dacă apare un
+tabel nou care nu e trecut nici în backup, nici pe lista excluderilor (cu motivul scris).
+
+**Backup-ul, mai robust.** O copie care oprește serverul (lipsă de memorie) nu mai intră în buclă de reporniri toată
+ziua: încercarea se notează înainte să înceapă. Un tabel citit doar pe jumătate nu mai face copia „reușită" și nu
+se golește la restaurare. Copia ține în memorie de două ori mai puțin, citește dintr-o singură fotografie a bazei
+(fără curse dublate) și ia fișierele mari pe bucăți mici. Arhiva pozițiilor așteaptă o zi încheiată, ca pozițiile
+descărcate de aparate după miezul nopții să nu rămână pe dinafară. Punerea la loc a pozițiilor merge și pe datele
+deja comprimate.
+
+**Probele.** Mai multe verificau textul codului în loc de ce face, sau ar fi trecut și pe cod stricat: golirea de la
+restaurare nu era dovedită, paginarea nu rula niciodată, criptarea se verifica după un steag, nu după fișier, iar
+separarea conexiunilor se verifica doar pe baza locală, unde nu există. Acum fiecare lucru se verifică pe
+comportament, inclusiv fiecare plasă de securitate separat. Într-o probă erau și câțiva octeți invizibili din cauza
+cărora git o trata ca fișier binar.
+
+**Ce vede fondatorul:** nimic nou pe ecran; copiile și restaurarea sunt mai sigure, iar poarta de livrare mai strictă.
+
+**Ce vede clientul:** nimic nou. Dar dacă îi dezactivăm un om sau îi tăiem un vehicul, se aplică pe loc peste tot.
+
+### FONDATOR · Copiile zilnice nu mai îngheață serverul și nu mai pornesc la fiecare repornire — `45a9f81`
 
 Am găsit trei probleme în copiile de siguranță, nu una.
 
@@ -5621,6 +5690,11 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### A. Blocante — fără astea nu dăm drumul
+
+- [ ] **(eu) Restaurarea unui backup MARE încă ține tot fișierul în memorie.** Singura problemă din revizia adversă
+  pe care n-am reparat-o pe 12.09, fiindcă cere rescrierea restaurării pe bucăți (zile, nu ore). Azi merge; dar peste
+  ~4 GB de date necomprimate (o flotă mare, după luni de notificări și jurnal) restaurarea s-ar opri cu eroare exact
+  în ziua în care avem nevoie de ea. De făcut înainte de 1000 de mașini, și încercată pe o copie mare adevărată.
 
 - [ ] **(voi + eu) Un furnizor de hărți ca lumea, cu cheie. URGENT — a apărut singur, pe 04.09.**
   Straturile „Deschis" și „Închis" veneau de la **CARTO**, gratuit și fără cheie. CARTO a început
