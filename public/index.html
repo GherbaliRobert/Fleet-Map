@@ -15081,6 +15081,16 @@ const pozitii = await r.json();</code></pre>
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
 
+        // Serverul a închis legătura fiindcă sesiunea nu mai e bună (cont dezactivat sau șters, sesiune
+        // expirată). Nu ne mai reconectăm orbește la 3 secunde: întrebăm o dată /api/me. Dacă zice 401, omul
+        // ajunge la ecranul de autentificare; altfel (un hop al bazei) legătura se reface singură.
+        if (msg.type === 'error' && msg.data && msg.data.error === 'Neautorizat') {
+          fetch('/api/me', { credentials: 'same-origin' }).then(function (r) {
+            if (r.status === 401) location.href = '/';
+          }).catch(function () {});
+          return;
+        }
+
         if (msg.type === 'init') {
           msg.data.forEach(updateMarker);
           if (msg.data.length > 0) {

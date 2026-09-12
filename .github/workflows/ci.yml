@@ -63,6 +63,7 @@ jobs:
           set -e
           node verify_push_viteza.js        # comutatorul stins chiar stinge push-ul (2 motoare, 1 preferință)
           node verify_auth_hardening.js     # politica de parole + adresa IP care nu se poate falsifica
+          node verify_acces_revocat.js      # cont dezactivat/șters/expirat: sesiunea și harta live se închid pe loc
           node verify_notif_idor.js         # notificarea altei companii nu se poate citi după id
           node verify_ack_durabil.js        # confirmarea către tracker vine DUPĂ scriere (zero poziții pierdute)
           node verify_admin_retras.js       # contul de instalare se retrage, dar nu ne închide afară

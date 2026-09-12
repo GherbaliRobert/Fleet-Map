@@ -20,6 +20,30 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-12
 
+### AMÂNDOI · Un cont dezactivat sau șters iese din aplicație pe loc — `în lucru`
+
+Pornisem de la „harta live a unui cont dezactivat rămâne deschisă". Am găsit o gaură mai mare: **dezactivarea
+sau ștergerea unui cont nu închidea nimic**. Sesiunea de pe web rămânea bună până expira singură (24 de ore),
+iar serverul nu verifica la fiecare cerere dacă omul mai e activ. La un cont **șters**, cererile mergeau chiar
+pe rolul vechi, ținut minte în sesiune. Adică un om plecat din firmă, dezactivat de administrator, își păstra
+harta, rapoartele și datele încă o zi. Pe telefon nu era problema — acolo verificarea se făcea.
+
+Am confirmat pe codul vechi, cu o probă care pornește serverul, se autentifică și deschide harta live: după
+dezactivare și după ștergere, sesiunea și harta mergeau mai departe.
+
+Acum:
+- dezactivarea și ștergerea închid **pe loc** sesiunile și harta live ale omului;
+- fiecare cerere verifică dacă contul mai există și e activ;
+- o trecere la un minut închide harta live a conturilor care au expirat singure (demo) sau cărora li s-a
+  schimbat rolul — acestea se reconectează automat, cu drepturile noi;
+- pagina web nu se mai reconectează la nesfârșit cu o sesiune moartă: duce omul la autentificare.
+
+**Ce vede fondatorul:** nimic nou pe ecran. Gaura e închisă și are probă în poarta de livrare
+(`verify_acces_revocat.js`, 21 de verificări, trecute și pe codul vechi ca dovadă că prind defectul).
+
+**Ce vede clientul:** când administratorul firmei dezactivează sau șterge pe cineva, omul iese din aplicație în
+câteva secunde, nu a doua zi. Pe telefon se comporta deja așa, deci nu e nimic de schimbat acolo.
+
 ### AMÂNDOI · Serverul pornește iar, oricât de mare devine istoricul — `9cc196f`
 
 Am pus aplicația la încercare cu **1000 de mașini** simulate, pe același fel de bază de date ca în

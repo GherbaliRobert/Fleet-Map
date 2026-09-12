@@ -1661,9 +1661,20 @@ async function refreshAuth(req, res, next) {
       let c = roleCache.get(uid);
       if (!c || Date.now() - c.ts > 30000) {
         const u = await db.getUserById(uid);
-        if (u) { c = { ts: Date.now(), role: u.role, companyId: u.company_id, accessUntil: u.access_until, roleSlug: u.role_slug || null }; roleCache.set(uid, c); }
+        // `gone` = contul nu mai există. Se ține minte ca orice altă stare (30 s), ca un cont șters să nu
+        // mai lovească baza la fiecare cerere.
+        if (u) { c = { ts: Date.now(), role: u.role, companyId: u.company_id, accessUntil: u.access_until, roleSlug: u.role_slug || null, active: u.active !== false }; roleCache.set(uid, c); }
+        else { c = { ts: Date.now(), gone: true }; roleCache.set(uid, c); }
       }
-      if (c) {
+      // Cont DEZACTIVAT sau ȘTERS, cu sesiunea încă deschisă. Până acum treceau mai departe: cookie-ul de 24h
+      // rămânea valid, iar la un cont șters cererea mergea chiar pe rolul vechi din sesiune. Un om plecat din
+      // firmă, dezactivat de administrator, își păstra harta, rapoartele și datele până îi expira sesiunea.
+      if (c && (c.gone || c.active === false) && req.path !== '/api/logout') {
+        try { if (req.session) req.session.destroy(function () {}); } catch (e) {}
+        roleCache.delete(uid);
+        return res.status(401).json({ error: c.gone ? 'Contul nu mai există.' : 'Cont dezactivat. Contactează administratorul.' });
+      }
+      if (c && !c.gone) {
         req._freshAuth = { role: c.role, companyId: c.companyId, accessUntil: c.accessUntil, roleSlug: c.roleSlug || null };
         // Ajustările de rol ale firmei (renumire / drepturi tăiate). Se încarcă O DATĂ pe cerere, ca
         // toate verificările de mai jos să fie sincrone și să vadă exact aceeași realitate.
@@ -2719,6 +2730,9 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     // Rolul propriu se pune (sau se scoate, dacă omul a fost mutat pe unul standard).
     if (role !== undefined && role !== null) await db.setUserRoleSlug(id, slugCerut);
     invalidateAccessCache(id);
+    // Dezactivat → pleacă ACUM, nu când îi expiră cookie-ul. (Un rol schimbat se prinde în legătura live la
+    // trecerea de un minut, iar în cereri în cel mult 30 de secunde.)
+    if (active === false) await _taieAccesulUtilizatorului(id, 'Neautorizat');
     auditReq(req, 'update', 'user', id, { role, rolPropriu: slugCerut, active });
     res.json({ ok: true });
   } catch (err) {
@@ -2776,7 +2790,7 @@ app.delete('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req,
       return res.status(400).json({ error: 'Acesta e ultimul super-admin activ — creează altul înainte de a-l șterge.' });
     }
     await db.deleteUser(id);
-    invalidateAccessCache(id);
+    await _taieAccesulUtilizatorului(id, 'Neautorizat'); // sesiunile și legăturile live ale omului șters
     await syncDemoSim('utilizator șters').catch(() => {}); // dacă era ultimul cont demo, simulatorul se oprește
     auditReq(req, 'delete', 'user', id);
     res.json({ ok: true });
@@ -5184,6 +5198,10 @@ if (process.env.NODE_ENV === 'test') {
   // Lista REALĂ de adrese către care s-ar trimite. Proba nu poate deschide baza serverului (PGlite are
   // un singur scriitor), iar fără ruta asta ar verifica doar ce scrie pe ecran — adică exact partea
   // care nu contează. Aici se dovedește că o adresă neconfirmată chiar NU primește.
+  // Trecerea de verificare a legăturilor live, pornită la cerere — altfel proba ar aștepta un minut întreg.
+  app.post('/api/debug/ws-sweep', requireAuth, requireSuperadmin, async (req, res) => {
+    try { res.json({ inchise: await _verificaLegaturileLive() }); } catch (e) { res.status(500).json({ error: e.message }); }
+  });
   app.get('/api/debug/email-list', requireAuth, requireSuperadmin, async (req, res) => {
     try { res.json(await db.getConfirmedCompanyEmails(parseInt(req.query.company, 10), req.query.scop)); }
     catch (e) { res.status(500).json({ error: e.message }); }
@@ -12284,6 +12302,53 @@ const wsDummyRes = {
 };
 
 // Setează contextul de acces pe socket + trimite init. Comun pt. cookie și token.
+// ─── Accesul revocat ajunge și în legăturile deja deschise ───────────────────────────────────────────
+// Legătura live se verifica O SINGURĂ DATĂ, la deschidere. Un cont dezactivat, șters, expirat sau trecut pe
+// alt rol își păstra harta live cât stătea pagina deschisă. Acum: (1) dezactivarea și ștergerea închid pe loc
+// sesiunile și legăturile omului; (2) o trecere la un minut prinde ce s-a schimbat pe alte căi (un termen
+// demo care expiră singur, un rol schimbat, o modificare făcută direct în bază).
+function _inchideLegaturileLive(userId, motiv) {
+  let n = 0;
+  if (typeof wss === 'undefined' || !wss) return n;
+  for (const c of wss.clients) {
+    if (Number(c._userId) !== Number(userId)) continue;
+    try { c.send(JSON.stringify({ type: 'error', data: { error: motiv || 'Neautorizat' } })); } catch (e) {}
+    try { c.close(); } catch (e) {}
+    n++;
+  }
+  return n;
+}
+async function _taieAccesulUtilizatorului(userId, motiv) {
+  // Sesiunile web ale omului, din magazinul de sesiuni (userId stă în JSON-ul sesiunii).
+  try { await db.pool.query("DELETE FROM user_sessions WHERE sess->>'userId' = $1", [String(userId)]); }
+  catch (e) { console.warn('[AUTH] nu am putut închide sesiunile utilizatorului ' + userId + ':', e.message); }
+  invalidateAccessCache(userId);
+  return _inchideLegaturileLive(userId, motiv);
+}
+async function _verificaLegaturileLive() {
+  if (typeof wss === 'undefined' || !wss || !wss.clients.size) return 0;
+  const ids = Array.from(new Set(Array.from(wss.clients).map(function (c) { return c._userId; }).filter(function (v) { return v != null; }).map(Number)));
+  if (!ids.length) return 0;
+  let rows;
+  try { rows = (await db.pool.query('SELECT id, role, active, access_until FROM users WHERE id = ANY($1::int[])', [ids])).rows; }
+  catch (e) { return 0; } // baza nu răspunde: nu închidem nimic pe ghicite
+  const dupaId = new Map(rows.map(function (r) { return [Number(r.id), r]; }));
+  let inchise = 0;
+  for (const c of wss.clients) {
+    if (c._userId == null) continue;
+    const u = dupaId.get(Number(c._userId));
+    let motiv = null;
+    if (!u || u.active === false) motiv = 'Neautorizat';
+    else if (userAccessExpired(u)) motiv = DEMO_EXPIRED_MSG;
+    else if (c._role && u.role !== c._role) motiv = 'reautentificare'; // drepturi schimbate: se reconectează cu cele noi
+    if (!motiv) continue;
+    try { c.send(JSON.stringify({ type: 'error', data: { error: motiv } })); } catch (e) {}
+    try { c.close(); } catch (e) {}
+    inchise++;
+  }
+  return inchise;
+}
+
 async function _wsAuthContext(ws, userId, role, companyId, label) {
   ws._userId = userId;
   ws._role = role;
@@ -12348,7 +12413,15 @@ wss.on('connection', (ws, req) => {
     try {
       // rol + companie FRESH din DB (sesiunile vechi pot avea rol învechit)
       let role = req.session.role, companyId = req.session.companyId;
-      try { const u = await db.getUserById(req.session.userId); if (u) { role = u.role; companyId = u.company_id; } } catch (e) {}
+      let _u = null, _citit = false;
+      try { _u = await db.getUserById(req.session.userId); _citit = true; } catch (e) {}
+      // Contul trebuie să mai existe și să fie activ — exact ce verifica deja legătura de pe telefon (token).
+      // Dacă baza nu răspunde (_citit=false) nu refuzăm pe ghicite: trecerea de la un minut reverifică.
+      if (_citit && (!_u || _u.active === false || userAccessExpired(_u))) {
+        try { ws.send(JSON.stringify({ type: 'error', data: { error: (_u && userAccessExpired(_u)) ? DEMO_EXPIRED_MSG : 'Neautorizat' } })); } catch (e) {}
+        return ws.close();
+      }
+      if (_u) { role = _u.role; companyId = _u.company_id; }
       ws._role = role;
       ws._isAdmin = hasPerm(role, 'manageUsers');
       ws._isSuper = isSuper(role); // frame-urile type:'debug' (buffer cross-tenant) merg DOAR la super-admin
@@ -12659,6 +12732,9 @@ async function start() {
     console.log(`  HTTP (hartă/API):  port ${ACTUAL_HTTP_PORT}`);
     console.log('═══════════════════════════════════════');
   });
+
+  // Legăturile live ale conturilor dezactivate / șterse / expirate / trecute pe alt rol (vezi _verificaLegaturileLive).
+  setInterval(function () { _verificaLegaturileLive().catch(function () {}); }, 60 * 1000).unref();
 
   // Supraveghetorul recepției (vezi _verificaReceptia). Oprit în teste: suita pornește serverul fără
   // niciun aparat conectat, deci n-ar avea ce supraveghea.
