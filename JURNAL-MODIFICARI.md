@@ -20,7 +20,31 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-12
 
-### FONDATOR · Restaurarea din backup, încercată pentru prima dată — și n-ar fi mers — `în lucru`
+### FONDATOR · Mai puține publicări, iar recepția are conexiunile ei la bază — `în lucru`
+
+**Publicările.** Railway publica o versiune nouă la ORICE modificare împinsă — inclusiv la jurnal, la
+documente sau la aplicația de telefon, care nu schimbă nimic pe server. Fiecare publicare repornește serverul
+și reconectează toate aparatele deodată: la 1000 de mașini am măsurat confirmări de ~9 secunde și pagini de
+3–6 secunde. Acum Railway **sare peste publicare** când se schimbă doar documente (`.md`, `docs/`), aplicația
+de telefon (`mobile/`, care se livrează separat), probele sau CI-ul. Codul serverului publică normal. Regula e
+luată din documentația Railway și verificată cu o probă pe fișiere concrete.
+
+Pe drum: `railway.json` și `railway.toml` spuneau lucruri diferite (unul Dockerfile cu 10 reîncercări, altul
+alt mod de construire cu 5), iar Railway nu spune care câștigă când există amândouă. Acum spun același lucru,
+iar o probă pică dacă se despart din nou.
+
+**Conexiunile la bază.** Recepția, paginile, rapoartele și copiile zilnice împărțeau aceleași 12 conexiuni. Un
+raport greu sau valul de pagini de după un deploy țineau aparatele fără confirmare, și invers. Acum recepția
+are **6 conexiuni ale ei**. O scriere de poziție care atârnă peste 15 secunde e oprită, iar aparatul o
+retrimite. Paginile și rapoartele rămân fără limită de timp: pornirea și copiile zilnice pot dura legitim
+minute. În total sunt 18 conexiuni, iar baza de pe Railway acceptă 100.
+
+**Ce vede fondatorul:** un rând nou în „Stare producție" (și pe telefon): câte conexiuni sunt ocupate la pagini,
+câte la recepție și dacă stă cineva la coadă — primul semn că baza nu mai ține pasul.
+
+**Ce vede clientul:** nimic nou pe ecran. Paginile nu mai încetinesc când recepția e aglomerată, și nici invers.
+
+### FONDATOR · Restaurarea din backup, încercată pentru prima dată — și n-ar fi mers — `dbee7b5`
 
 Backup-ul zilnic exista, dar nimeni nu încercase să-l pună la loc. Am făcut-o acum, cu o probă: o bază cu
 firme, grupuri, șoferi, vehicule, utilizatori, drepturi de acces, alerte și facturi → backup → restaurare

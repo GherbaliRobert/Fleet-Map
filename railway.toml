@@ -1,7 +1,13 @@
+# Oglinda EXACTĂ a lui railway.json. Railway citește „railway.toml sau railway.json", iar documentația lor nu
+# spune care câștigă când există amândouă. Până acum spuneau lucruri diferite (nixpacks cu 5 reîncercări aici,
+# Dockerfile cu 10 în json). Acum spun același lucru, iar verify_conexiuni.js pică dacă se despart din nou.
 [build]
-builder = "nixpacks"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["**", "!/*.md", "!/docs/**", "!/docs_*/**", "!/verify_*.js", "!/*_smoke.js", "!/.github/**", "!/mobile/**"]
 
 [deploy]
-startCommand = "node server.js"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 5
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+healthcheckPath = "/api"
+healthcheckTimeout = 30

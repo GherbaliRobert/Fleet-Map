@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 const USE_PG = !!process.env.DATABASE_URL;
-let pool, _pglite = null;
+let pool, poolIngest, _pglite = null;
 // Flag: există index UNIQUE pe positions(imei, timestamp)? Dacă da, insertPositions folosește ON CONFLICT DO NOTHING
 // (previne duplicate la retry tracker când ACK-ul e pierdut). Setat în initDb; dacă crearea eșuează → false → INSERT simplu.
 let positionsUniqueIdx = false;
@@ -38,6 +38,23 @@ if (USE_PG) {
     keepAlive: true           // TCP keepalive pe socketul PG (previne drop-uri silențioase)
   });
   pool.raw = null;
+  // Conexiuni REZERVATE pentru recepția de la aparate. Până acum recepția, paginile, rapoartele și copiile
+  // zilnice împărțeau aceleași conexiuni: la valul de reconectare de după un deploy (măsurat: 12 din 12
+  // ocupate, paginile răspundeau în 3–6 s) sau în timpul unui raport greu, confirmarea către aparat aștepta
+  // după pagini, și invers. Acum recepția are rezerva ei.
+  // Limita de timp pe cerere e DOAR aici: o scriere de poziție care atârnă pică, aparatul nu primește
+  // confirmarea și retrimite — mai bine decât să țină rezerva ocupată la nesfârșit. Pe conexiunile obișnuite
+  // NU punem limită: migrările de la pornire și copiile zilnice pot dura legitim minute.
+  poolIngest = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: _ssl,
+    max: parseInt(process.env.PG_POOL_INGEST_MAX) || 6,
+    min: 1,
+    idleTimeoutMillis: 60000,
+    connectionTimeoutMillis: 8000,
+    keepAlive: true,
+    statement_timeout: parseInt(process.env.INGEST_STATEMENT_TIMEOUT_MS) || 15000,
+  });
   console.log(`[DB] PostgreSQL (DATABASE_URL) — mod scalabil (SSL: ${_ssl ? 'on' : 'off'})`);
 } else {
   // ─── PGlite embedded — single-connection, serializat printr-un mutex simplu (FIFO) ───
@@ -73,7 +90,25 @@ if (USE_PG) {
       };
     }
   };
+  poolIngest = pool; // PGlite are o singură conexiune: rezerva pentru recepție e aceeași
   console.log('[DB] PGlite embedded (local)');
+}
+
+// Cererile lente ale RECEPȚIEI ajung și ele în error_log (pe PGlite rezerva e chiar `pool`, deja înfășurat mai jos).
+if (poolIngest !== pool) {
+  const _origIngest = poolIngest.query.bind(poolIngest);
+  const SLOW_INGEST_MS = parseInt(process.env.SLOW_QUERY_MS) || 1500;
+  poolIngest.query = async function (text, params) {
+    const t0 = Date.now();
+    try { return await _origIngest(text, params); }
+    finally {
+      const dt = Date.now() - t0;
+      if (dt >= SLOW_INGEST_MS && typeof text === 'string') {
+        pool.query('INSERT INTO error_log (level, message, context) VALUES ($1,$2,$3)',
+          ['warn', 'SLOW QUERY (recepție) ' + dt + 'ms', JSON.stringify({ ms: dt, sql: String(text).replace(/\s+/g, ' ').trim().slice(0, 300) })]).catch(() => {});
+      }
+    }
+  };
 }
 
 // ─── Slow-query logging (observabilitate la scară) ───
@@ -2084,7 +2119,7 @@ async function setDeviceCanInterface(imei, iface) {
   return v;
 }
 async function getDeviceCanInterface(imei) {
-  const r = await pool.query('SELECT can_interface FROM devices WHERE imei = $1', [imei]);
+  const r = await poolIngest.query('SELECT can_interface FROM devices WHERE imei = $1', [imei]); // citită înainte de confirmare
   return r.rows[0] ? (r.rows[0].can_interface || null) : null;
 }
 // Persistă ultimele valori CAN „sticky" (carburant/odometru/AdBlue/ore) per device. Supraviețuiește restartului
@@ -2640,7 +2675,7 @@ async function setFuelSensors(imei, sensors) {
   );
 }
 async function getFuelSensorsRow(imei) {
-  const r = await pool.query('SELECT fuel_sensors FROM devices WHERE imei = $1', [imei]);
+  const r = await poolIngest.query('SELECT fuel_sensors FROM devices WHERE imei = $1', [imei]); // citită înainte de confirmare
   if (!r.rows[0] || !r.rows[0].fuel_sensors) return null;
   const s = r.rows[0].fuel_sensors;
   return typeof s === 'string' ? JSON.parse(s) : s;
@@ -2694,7 +2729,7 @@ async function insertPositions(imei, records) {
   // company_id moștenit de la vehicul (izolare per-tenant + retenție per-companie)
   let companyId = null;
   try {
-    const dr = await pool.query('SELECT company_id FROM devices WHERE imei = $1', [imei]);
+    const dr = await poolIngest.query('SELECT company_id FROM devices WHERE imei = $1', [imei]);
     companyId = dr.rows[0] ? dr.rows[0].company_id : null;
   } catch (e) {}
 
@@ -2734,7 +2769,8 @@ async function insertPositions(imei, records) {
     VALUES ${values.join(', ')}${onConflict}
   `;
 
-  await pool.query(query, params);
+  // Pe rezerva recepției: confirmarea către aparat nu mai stă după pagini și rapoarte.
+  await poolIngest.query(query, params);
 }
 
 // ─── Jurnal erori (observabilitate) — toate funcțiile best-effort, NU aruncă din logger ───
@@ -4268,6 +4304,7 @@ async function listUsersByCompany(companyId) {
 
 module.exports = {
   pool,
+  poolIngest,
   getTimescaleStatus,
   initDb,
   ensureTenancy,

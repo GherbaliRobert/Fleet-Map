@@ -51,7 +51,7 @@ async function getTankCalibration(imei) {
     return tankCalibrationCache.get(imei);
   }
   try {
-    const result = await db.pool.query('SELECT tank_calibration FROM devices WHERE imei = $1', [imei]);
+    const result = await (db.poolIngest || db.pool).query('SELECT tank_calibration FROM devices WHERE imei = $1', [imei]); // înainte de confirmare → rezerva recepției
     if (result.rows.length > 0 && result.rows[0].tank_calibration) {
       const cal = typeof result.rows[0].tank_calibration === 'string'
         ? JSON.parse(result.rows[0].tank_calibration)
@@ -11297,6 +11297,8 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   let dbOk = false, poolStats = null, demoLeft = null;
   try { await db.pool.query('SELECT 1'); dbOk = true; } catch (e) {}
   try { poolStats = { total: db.pool.totalCount, idle: db.pool.idleCount, waiting: db.pool.waitingCount }; } catch (e) {}
+  let poolIngestStats = null;
+  try { if (db.poolIngest && db.poolIngest !== db.pool) poolIngestStats = { total: db.poolIngest.totalCount, idle: db.poolIngest.idleCount, waiting: db.poolIngest.waitingCount }; } catch (e) {}
   try { demoLeft = (await db.pool.query("SELECT COUNT(*)::int AS n FROM companies WHERE slug = 'demo' OR is_demo = TRUE")).rows[0].n; } catch (e) {}
   const ts = (typeof db.getTimescaleStatus === 'function') ? db.getTimescaleStatus() : null;
   const bk = backup.getStatus();
@@ -11335,6 +11337,16 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
         + (lvl === 'ok' ? '' : ' → verifică portul TCP, SIM-urile sau alimentarea'));
     }
   } catch (e) {}
+
+  // Conexiunile la bază: paginile și recepția au rezerve separate. „În așteptare" > 0 = cineva stă la coadă
+  // după o conexiune liberă — primul semn că baza sau numărul de conexiuni nu mai țin pasul.
+  if (poolStats && Number.isFinite(poolStats.total)) {
+    const _ocup = function (p) { return (p.total - p.idle) + ' din ' + p.total + (p.waiting ? ' · ' + p.waiting + ' la coadă' : ''); };
+    const _coada = (poolStats.waiting || 0) + ((poolIngestStats && poolIngestStats.waiting) || 0);
+    add('pool', 'Conexiuni la bază', _coada ? 'warn' : 'ok',
+      'pagini și rapoarte: ' + _ocup(poolStats) + (poolIngestStats ? ' · recepție (rezervate): ' + _ocup(poolIngestStats) : '')
+      + (_coada ? ' → cereri la coadă: baza e lentă sau sunt prea puține conexiuni (PG_POOL_MAX / PG_POOL_INGEST_MAX)' : ''));
+  }
 
   // Supraveghetorul: fără el, o recepție moartă rămâne nevăzută până sună un client.
   {
