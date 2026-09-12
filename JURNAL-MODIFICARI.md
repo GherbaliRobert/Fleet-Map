@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-12
 
-### FONDATOR · Rezerva de conexiuni a recepției, corectată după măsurare — `în lucru`
+### FONDATOR · Rezerva de conexiuni a recepției, corectată după măsurare — `f4e9698`
 
 Am măsurat reparațiile de azi pe o bază ca în producție (TimescaleDB), cu 1000 de aparate simulate. Ca rezultatul
 să nu depindă de zi sau de starea calculatorului, am făcut un test **A/B**: codul de dinainte și codul nou, pe
@@ -51,7 +51,7 @@ pozițiilor mai multor aparate într-o singură cerere.
 
 **Ce vede clientul:** nimic nou pe ecran; după o actualizare, aparatele nu mai rămân fără confirmare.
 
-### AMÂNDOI · Ce a găsit revizia adversă: o gaură de securitate, contractele lipsă din backup și probe prea blânde — `în lucru`
+### AMÂNDOI · Ce a găsit revizia adversă: o gaură de securitate, contractele lipsă din backup și probe prea blânde — `f4e9698`
 
 Înainte să publicăm cele cinci reparații, le-am dat unei revizii adverse: câte un verificator pe securitate, date,
 operare, performanță și onestitatea probelor, fiecare contrazis de încă unul. Au rămas **28 de probleme confirmate**.
