@@ -124,6 +124,72 @@ function deserialize(buf, passphrase) {
   return JSON.parse(zlib.gunzipSync(buf).toString('utf8'));
 }
 
+// ── Restaurare: ordinea o dau legăturile REALE din bază, nu o listă scrisă de mână ──
+// BUSINESS_TABLES spune CE intră în backup. Ordinea în care se pun la loc trebuie să respecte cheile străine:
+// un vehicul trimite la grupul și la șoferul lui, un drept de acces trimite la grup, un istoric de alertă
+// trimite la alertă. Lista punea vehiculele ÎNAINTEA grupurilor — pe o bază goală, fiecare vehicul dintr-un
+// grup și fiecare drept pe grup picau la restaurare. Citim legăturile din catalogul bazei, ca o cheie străină
+// adăugată mâine să fie respectată fără ca cineva să-și amintească de lista asta.
+async function restoreOrder(db, tables) {
+  const list = (tables || BUSINESS_TABLES).slice();
+  const inList = new Set(list);
+  const parents = new Map(list.map(function (t) { return [t, new Set()]; }));
+  try {
+    const r = await db.pool.query(
+      "SELECT tc.relname AS child, tp.relname AS parent FROM pg_constraint c " +
+      "JOIN pg_class tc ON tc.oid = c.conrelid JOIN pg_class tp ON tp.oid = c.confrelid " +
+      "JOIN pg_namespace n ON n.oid = tc.relnamespace WHERE c.contype = 'f' AND n.nspname = current_schema()");
+    for (const e of r.rows) {
+      if (inList.has(e.child) && inList.has(e.parent) && e.child !== e.parent) parents.get(e.child).add(e.parent);
+    }
+  } catch (e) { /* fără acces la catalog: rămâne ordinea din listă */ }
+  // Sortare topologică STABILĂ: între tabele fără legătură se păstrează ordinea din listă.
+  const order = [], placed = new Set();
+  while (order.length < list.length) {
+    const next = list.find(function (t) { return !placed.has(t) && Array.from(parents.get(t)).every(function (p) { return placed.has(p); }); });
+    if (!next) { for (const t of list) if (!placed.has(t)) { order.push(t); placed.add(t); } break; } // ciclu: restul în ordinea listei
+    order.push(next); placed.add(next);
+  }
+  return order;
+}
+
+// Pune la loc un dump (forma { _meta, data: { tabel: [rânduri] } }). `wipe` golește întâi tabelele din dump,
+// în ordine INVERSĂ (întâi cine trimite, apoi la cine se trimite) — altfel golirea pica pe chei străine.
+async function restoreDump(db, dump, opts) {
+  const wipe = !!(opts && opts.wipe);
+  const log = (opts && opts.log) || function () {};
+  const data = (dump && dump.data) || {};
+  const order = await restoreOrder(db, BUSINESS_TABLES);
+  const out = { order: order, tables: {}, inserted: 0, skipped: 0, errors: 0 };
+  if (wipe) {
+    for (const t of order.slice().reverse()) {
+      if (!Array.isArray(data[t]) || !data[t].length) continue;
+      try { await db.pool.query('DELETE FROM ' + t); } catch (e) { log('  [' + t + '] golire eșuată: ' + e.message.slice(0, 120)); }
+    }
+  }
+  for (const t of order) {
+    const rows = Array.isArray(data[t]) ? data[t] : [];
+    if (!rows.length) continue;
+    let ins = 0, skip = 0, err = 0;
+    for (const row of rows) {
+      const cols = Object.keys(row);
+      const vals = cols.map(function (c) { const v = row[c]; return (v !== null && typeof v === 'object') ? JSON.stringify(v) : v; });
+      const ph = cols.map(function (_, i) { return '$' + (i + 1); }).join(',');
+      const sql = 'INSERT INTO ' + t + ' (' + cols.map(function (c) { return '"' + c + '"'; }).join(',') + ') VALUES (' + ph + ') ON CONFLICT DO NOTHING';
+      try { const r = await db.pool.query(sql, vals); if (r.rowCount > 0) ins++; else skip++; }
+      catch (e) { err++; if (err <= 3) log('  [' + t + '] rând eșuat: ' + e.message.slice(0, 160)); }
+    }
+    out.tables[t] = { inserted: ins, skipped: skip, errors: err, total: rows.length };
+    log('  ' + t + ': +' + ins + ' inserate · ' + skip + ' existau · ' + err + ' erori  (din ' + rows.length + ')');
+    out.inserted += ins; out.skipped += skip; out.errors += err;
+  }
+  // Secvențele id (Postgres), ca următorul INSERT să nu se ciocnească de un id restaurat.
+  for (const t of order) {
+    try { await db.pool.query("SELECT setval(pg_get_serial_sequence('" + t + "','id'), GREATEST((SELECT COALESCE(MAX(id),0) FROM " + t + "), 1))"); } catch (e) { /* tabel fără id serial */ }
+  }
+  return out;
+}
+
 // ── S3-compatible PUT (SigV4, fără SDK) ──
 function _sha256hex(b) { return crypto.createHash('sha256').update(b).digest('hex'); }
 function _hmac(key, s) { return crypto.createHmac('sha256', key).update(s).digest(); }
@@ -285,4 +351,4 @@ async function runPositionsExport(db) {
   }
 }
 
-module.exports = { BUSINESS_TABLES, buildDump, serialize, deserialize, makeBackup, runScheduledBackup, getStatus, loadState, s3Configured, passphraseSet, configWarning, exportPositionsRange, runPositionsExport, positionsStatus };
+module.exports = { BUSINESS_TABLES, restoreOrder, restoreDump, buildDump, serialize, deserialize, makeBackup, runScheduledBackup, getStatus, loadState, s3Configured, passphraseSet, configWarning, exportPositionsRange, runPositionsExport, positionsStatus };

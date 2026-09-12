@@ -20,7 +20,34 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-12
 
-### AMÂNDOI · Un cont dezactivat sau șters iese din aplicație pe loc — `în lucru`
+### FONDATOR · Restaurarea din backup, încercată pentru prima dată — și n-ar fi mers — `în lucru`
+
+Backup-ul zilnic exista, dar nimeni nu încercase să-l pună la loc. Am făcut-o acum, cu o probă: o bază cu
+firme, grupuri, șoferi, vehicule, utilizatori, drepturi de acces, alerte și facturi → backup → restaurare
+pe o bază goală.
+
+**Pe codul vechi, restaurarea pierdea două din trei vehicule** — exact cele care făceau parte dintr-un grup —
+și dreptul dispecerului pe grup. Motivul: tabelele se puneau la loc în ordinea dintr-o listă, iar lista punea
+vehiculele înaintea grupurilor la care trimit. Scriptul raporta niște erori, dar într-o zi de criză asta
+înseamnă vehicule care lipsesc din aplicația clientului.
+
+Acum ordinea o dau **legăturile reale din baza de date**, nu o listă scrisă de mână — un tabel nou, legat de
+altele, e respectat singur. Golirea dinainte de restaurare (`--wipe`) merge în ordine inversă, ca să nu se
+împiedice de aceleași legături.
+
+**Verificat:** baza goală primește exact rândurile din backup, vehiculele își păstrează grupul și șoferul,
+contorul facturilor continuă de la numărul la care era (seria fiscală nu repornește de la 1), iar un rând nou
+după restaurare primește un id liber. Pentru copia criptată și pentru cea necriptată, cu și fără golire.
+
+Pozițiile GPS au arhiva lor separată, pe zile. Unealta care le pune la loc vine odată cu reparația copiilor
+zilnice, fiindcă atunci se schimbă și forma fișierelor.
+
+**Ce vede fondatorul:** nimic nou pe ecran. Restaurarea e unealta de urgență — acum chiar merge, iar
+`verify_restaurare.js` stă în poarta de livrare ca să nu se strice iar.
+
+**Ce vede clientul:** nimic. Dar dacă vreodată pierdem baza, datele lui se întorc întregi.
+
+### AMÂNDOI · Un cont dezactivat sau șters iese din aplicație pe loc — `0d4fceb`
 
 Pornisem de la „harta live a unui cont dezactivat rămâne deschisă". Am găsit o gaură mai mare: **dezactivarea
 sau ștergerea unui cont nu închidea nimic**. Sesiunea de pe web rămânea bună până expira singură (24 de ore),
