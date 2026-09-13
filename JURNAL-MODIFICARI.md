@@ -20,7 +20,7 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ## 2026-09-13
 
-### AMÂNDOI · Aplicația de telefon prinde din urmă web-ul: primul lot, tot ce era stricat — `în lucru`
+### AMÂNDOI · Aplicația de telefon prinde din urmă web-ul: primul lot, tot ce era stricat — `f4e2fa4`
 
 Pe 13.09 am comparat web-ul cu aplicația de telefon: de la ultima verificare (23.07) intraseră pe web 175 de
 schimbări care n-au ajuns pe telefon. Au ieșit ~63 de diferențe. **Lotul ăsta le rezolvă pe cele care făceau
@@ -37,7 +37,7 @@ vechi decât lotul** (scrise mai jos, la Securitate și la RA Insight) — repar
 Verificat: probele automate (o probă nouă, `verify_paritate_telefon.js`, 125 de verificări) și aplicația de telefon
 deschisă în browser, pe o bază locală, ecran cu ecran.
 
-### AMÂNDOI · Securitate: rolurile proprii chiar limitează mașinile, iar un cont de platformă nu mai poate fi preluat — `în lucru`
+### AMÂNDOI · Securitate: rolurile proprii chiar limitează mașinile, iar un cont de platformă nu mai poate fi preluat — `f4e2fa4`
 
 **Ce am schimbat:** trei găuri, toate mai vechi decât lucrul la telefon, găsite la verificarea lui:
 - **Rol propriu fără „Vede toată flota".** Firma putea tăia dreptul dintr-un rol propriu (de exemplu „Șef tură",
@@ -54,7 +54,7 @@ deschisă în browser, pe o bază locală, ecran cu ecran.
 
 **Ce vede clientul:** rolurile proprii fac exact ce scrie pe ele. Pentru oamenii cu acces nu se schimbă nimic.
 
-### AMÂNDOI · Zonele nu-și mai pierd detaliile când sunt modificate de pe telefon — `în lucru`
+### AMÂNDOI · Zonele nu-și mai pierd detaliile când sunt modificate de pe telefon — `f4e2fa4`
 
 **Ce am schimbat:** când cineva schimba de pe telefon doar numele sau culoarea unei zone, descrierea, categoria,
 grupa și bifa „Regiune" se ștergeau. Acum se schimbă doar ce a atins omul. O zonă trasată pe străzi nu mai poate fi
@@ -65,7 +65,7 @@ transformată din greșeală în cerc, nici din aplicația veche.
 **Ce vede clientul:** pe telefon, o zonă pe străzi se deschide cu un lacăt: forma ei se modifică de pe web, de aici
 se schimbă numele și culoarea. Cercurile și poligoanele se modifică la fel ca până acum.
 
-### AMÂNDOI · Utilizatori pe telefon: invitație, rolurile firmei, mașini date dispecerului — `în lucru`
+### AMÂNDOI · Utilizatori pe telefon: invitație, rolurile firmei, mașini date dispecerului — `f4e2fa4`
 
 **Ce am schimbat:** ecranul Utilizatori de pe telefon rămăsese pe regulile vechi — parolă obligatorie de „minim 4
 caractere" (serverul cere 10), rolul „Client" care dădea „Rol invalid", fără rolurile firmei. Acum:
@@ -84,7 +84,7 @@ poate primi loc RA Insight (nu stă în fondul unei firme).
 **Ce vede clientul:** administratorul firmei își gestionează colegii și de pe telefon, fără ca rolurile să se strice.
 Atenție: invitația pe email pleacă doar după ce e configurat emailul serverului.
 
-### AMÂNDOI · RA Insight: nicio întrebare peste fond fără acord, pe nicio cale — `în lucru`
+### AMÂNDOI · RA Insight: nicio întrebare peste fond fără acord, pe nicio cale — `f4e2fa4`
 
 **Ce am schimbat:**
 - **„Asistent AI" de pe telefon** ocolea regulile din 11.09: la o firmă cu voie să depășească fondul, întrebările în
@@ -104,7 +104,7 @@ Atenție: invitația pe email pleacă doar după ce e configurat emailul serveru
 
 **Ce vede clientul:** vede din timp câte întrebări mai are și când se reînnoiește fondul; nu mai află din factură.
 
-### AMÂNDOI · Tokenii și modelul AI rămân la voi; „Agenți AI" are rândul lui în meniu — `în lucru`
+### AMÂNDOI · Tokenii și modelul AI rămân la voi; „Agenți AI" are rândul lui în meniu — `f4e2fa4`
 
 **Ce am schimbat:** serverul trimitea oricărui om logat câți tokeni a consumat firma și ce model AI folosim, iar
 telefonul le arăta clienților la „Asistenți AI" (pe web ecranul fusese scos pe 13.08). Acum doar super-adminul
@@ -116,7 +116,7 @@ ecran, „Agenți AI" are acum rândul lui în meniu (Analize).
 **Ce vede clientul:** în meniu, „Agenți AI" în loc de ecranul cu tokeni. În aplicația veche, ecranul cu tokeni rămâne
 gol, dar butonul spre agenți merge.
 
-### CLIENT · Pe telefon dispar ecranele pe care firma le-a tăiat unui rol — `în lucru`
+### CLIENT · Pe telefon dispar ecranele pe care firma le-a tăiat unui rol — `f4e2fa4`
 
 **Ce am schimbat:** firma poate ascunde unui rol ecrane întregi (Statistici, Rapoarte, Șoferi, Alerte etc.). Pe web
 dispăreau din meniu; pe telefon rămâneau și dădeau „Acces interzis". Acum dispar și de pe telefon (meniu, bara de
@@ -127,7 +127,7 @@ liniștită: „Ecranul nu e disponibil pentru rolul tău". Pe web, fila Documen
 
 **Ce vede clientul:** meniul arată doar ce are voie să folosească.
 
-### CLIENT · Agenți AI pe telefon: starea celor 5 agenți, constatările închise nu mai revin — `în lucru`
+### CLIENT · Agenți AI pe telefon: starea celor 5 agenți, constatările închise nu mai revin — `f4e2fa4`
 
 **Ce am schimbat:** pagina de pe telefon rămăsese la varianta veche: RA Compliance și RA Client nu arătau nimic, iar
 constatările închise cu „Am văzut" reapăreau la redeschidere. Acum cei 5 agenți își aduc starea imediat („Ai 1
@@ -140,7 +140,7 @@ afișa nimeni (mai ales din aplicația veche). Acum rezumatul se face doar la ru
 
 **Ce vede clientul:** aceeași pagină ca pe web; ce a închis rămâne închis.
 
-### AMÂNDOI · Hărțile „Deschis" și „Închis" au ieșit și de pe telefon — `în lucru`
+### AMÂNDOI · Hărțile „Deschis" și „Închis" au ieșit și de pe telefon — `f4e2fa4`
 
 **Ce am schimbat:** furnizorul lor (CARTO) cere acum cheie și scrie „API KEY REQUIRED" peste hartă. Pe web fuseseră
 scoase; pe telefon încă se ofereau, iar telefonul ținea minte alegerea. Acum au ieșit, iar cine le alesese e mutat
@@ -150,7 +150,7 @@ singur pe „Străzi". Pe web, opțiunea „Automat (temă)" se numește acum �
 
 **Ce vede clientul:** harta nu mai apare acoperită de scris, fără să schimbe nimic.
 
-### CLIENT · Tahograf și acte pe telefon: fără „OK" fals, „Vezi actul" merge, ștergerea cere confirmare — `în lucru`
+### CLIENT · Tahograf și acte pe telefon: fără „OK" fals, „Vezi actul" merge, ștergerea cere confirmare — `f4e2fa4`
 
 **Ce am schimbat:**
 - un fișier descărcat din memoria camionului arăta „0h condus", „Nicio abatere" și „OK" verde, deși activitatea din
@@ -163,7 +163,7 @@ singur pe „Străzi". Pe web, opțiunea „Automat (temă)" se numește acum �
 **Ce vede clientul:** nu mai are impresia falsă că șoferul n-a condus; își vede actele din telefon; o atingere din
 greșeală nu-i mai pierde actul.
 
-### AMÂNDOI · Alerte: pe telefon regula se modifică și se oprește; pe web pragul gol rămâne gol — `în lucru`
+### AMÂNDOI · Alerte: pe telefon regula se modifică și se oprește; pe web pragul gol rămâne gol — `f4e2fa4`
 
 **Ce am schimbat:**
 - pe telefon o regulă se putea doar crea sau șterge. Acum are creion (formularul completat) și comutator
