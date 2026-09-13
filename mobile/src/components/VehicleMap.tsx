@@ -6,6 +6,7 @@ import { Icon } from './Icon';
 import type { Position } from '../api/endpoints';
 import { statusOf, type Status, type StatusInfo } from '../lib/status';
 import { fmtAgo } from '../lib/format';
+import { MAP_LAYER_DEFAULT, MAP_LAYER_ORDER, loadMapLayer, saveMapLayer, type MapLayerKey } from '../lib/mapLayer';
 import { createVehicleLayer, type VehicleLayer } from './vehicle3d';
 import { markerTopSvg } from './VehicleTop';
 import { vehCatOf } from './VehicleArt';
@@ -19,22 +20,21 @@ const MAP_STYLE: any = {
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 };
 
-// Straturi de bază (paritate cu web): 6 tipuri. {s} extins în URL-uri explicite (MapLibre cere listă), {r} eliminat.
+// Straturi de bază (paritate cu web): Străzi, Satelit, Satelit + etichete, Relief. {s} extins în URL-uri explicite (MapLibre cere listă), {r} eliminat.
+// „Deschis"/„Închis" (CARTO) au ieșit: CARTO cere acum cheie și scrie „API KEY REQUIRED" peste hartă — vezi lib/mapLayer.ts.
+// Tipul Record<MapLayerKey, …> leagă catalogul de lista din lib: un strat scos dintr-o parte și uitat în cealaltă nu mai compilează.
 const OSM_TILES = ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'];
 const SAT_TILES = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
 const HYBRID_LABELS = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
-const MTILES: Record<string, { label: string; icon: string; tiles: string[]; labels?: string; maxzoom: number }> = {
+const MTILES: Record<MapLayerKey, { label: string; icon: string; tiles: string[]; labels?: string; maxzoom: number }> = {
   streets: { label: 'Străzi', icon: '🗺️', tiles: OSM_TILES, maxzoom: 19 },
-  light: { label: 'Deschis', icon: '☀️', tiles: ['a', 'b', 'c', 'd'].map((s) => `https://${s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png`), maxzoom: 20 },
-  dark: { label: 'Închis', icon: '🌙', tiles: ['a', 'b', 'c', 'd'].map((s) => `https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png`), maxzoom: 20 },
   sat: { label: 'Satelit', icon: '🛰️', tiles: SAT_TILES, maxzoom: 19 },
   hybrid: { label: 'Satelit + etichete', icon: '🌍', tiles: SAT_TILES, labels: HYBRID_LABELS, maxzoom: 19 },
   terrain: { label: 'Relief', icon: '⛰️', tiles: ['a', 'b', 'c'].map((s) => `https://${s}.tile.opentopomap.org/{z}/{x}/{y}.png`), maxzoom: 17 },
 };
-const MLAYER_ORDER = ['streets', 'light', 'dark', 'sat', 'hybrid', 'terrain'];
 // Aplică un strat de bază: schimbă tile-urile sursei 'osm' + gestionează overlay-ul de etichete (hibrid). Păstrează clădirile/vehiculele deasupra.
-function applyMapLayer(map: maplibregl.Map, key: string) {
-  const cfg = MTILES[key] || MTILES.streets;
+function applyMapLayer(map: maplibregl.Map, key: MapLayerKey) {
+  const cfg = MTILES[key] || MTILES[MAP_LAYER_DEFAULT];
   try { const src: any = map.getSource('osm'); if (src && src.setTiles) src.setTiles(cfg.tiles); } catch { /* */ }
   try {
     const hasLbl = !!cfg.labels;
@@ -108,10 +108,11 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
   const viewerMarker = useRef<maplibregl.Marker | null>(null); // poziția dispozitivului de pe care urmărești
   const watchId = useRef<string | null>(null);
   const [locating, setLocating] = useState(false);
-  const [layer, setLayer] = useState<string>(() => { try { const v = localStorage.getItem('mapLayer'); if (v && MTILES[v]) return v; if (localStorage.getItem('mapSat') === '1') return 'sat'; } catch { /* */ } return 'streets'; });
+  // Alegerea salvată; „Deschis"/„Închis" (CARTO, scoase) sunt mutate automat pe Străzi — vezi lib/mapLayer.ts.
+  const [layer, setLayer] = useState<MapLayerKey>(loadMapLayer);
   const layerRefC = useRef(layer); layerRefC.current = layer;
   const [layerSheet, setLayerSheet] = useState(false);
-  function pickLayer(k: string) { try { localStorage.setItem('mapLayer', k); } catch { /* */ } setLayer(k); setLayerSheet(false); }
+  function pickLayer(k: MapLayerKey) { saveMapLayer(k); setLayer(k); setLayerSheet(false); }
   // Aplică stratul de bază LIVE (funcționează în 2D și 3D). La montare harta e null → se aplică din on('load').
   useEffect(() => {
     const map = mapRef.current; if (!map) return;
@@ -285,7 +286,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
         <Icon name="navigate" size={18} color="currentColor" />
       </button>
       <button type="button" onClick={() => setLayerSheet(true)} aria-label="Straturi hartă" title="Straturi hartă"
-        style={'position:absolute;top:102px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (layer !== 'streets' ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
+        style={'position:absolute;top:102px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (layer !== MAP_LAYER_DEFAULT ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
         {MTILES[layer]?.icon || '🗺️'}
       </button>
       {layerSheet && (
@@ -294,7 +295,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, follow, 
           <div style="width:100%;background:var(--bg-panel);border-top-left-radius:18px;border-top-right-radius:18px;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.4)">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b style="font-size:15px">Straturi hartă</b><button onClick={() => setLayerSheet(false)} style="background:transparent;border:none;color:var(--text-muted);font-size:20px">×</button></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              {MLAYER_ORDER.map((k) => (
+              {MAP_LAYER_ORDER.map((k) => (
                 <button onClick={() => pickLayer(k)} style={'display:flex;align-items:center;gap:9px;padding:12px;border-radius:12px;border:1px solid ' + (layer === k ? 'var(--accent)' : 'var(--border)') + ';background:' + (layer === k ? 'rgba(63,224,125,.12)' : 'var(--bg-card)') + ';color:var(--text-primary);font-weight:700;font-size:12.5px;font-family:inherit;text-align:left'}>
                   <span style="font-size:18px">{MTILES[k].icon}</span> {MTILES[k].label}
                 </button>

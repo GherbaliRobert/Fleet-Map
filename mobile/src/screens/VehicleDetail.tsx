@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
-import { vehicles, offlineMinutes, me, showToast, refreshVehicles } from '../app/store';
+import { vehicles, offlineMinutes, me, showToast, refreshVehicles, ecranAscuns } from '../app/store';
 import { Api } from '../api/endpoints';
 import type { DeviceFull, DailyStats, NotificationItem } from '../api/endpoints';
 import { reverseGeocode } from '../api/geocode';
@@ -135,7 +135,7 @@ export function VehicleDetail() {
   // Deschiderea automată așteaptă fișa completă (openEdit citește din `full`); altfel formularul
   // s-ar deschide gol și ar salva peste datele vehiculului cu câmpuri necompletate.
   useEffect(() => {
-    if (!_cerutDocs || !full || editOpen || !canManage) return;
+    if (!_cerutDocs || !full || editOpen || !canManage || ecranAscuns('documente')) return;
     openEdit();
     setTimeout(() => { try { document.querySelector('.veh-docs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* */ } }, 260);
   }, [full, _cerutDocs]);
@@ -415,7 +415,8 @@ export function VehicleDetail() {
                 </div>
                 {/* Actele vehiculului + scanarea lor. setFisa varsă propunerile confirmate direct în
                     formularul de deasupra (ef) — aceleași câmpuri, aceeași salvare, nicio cale nouă. */}
-                <VehicleDocs imei={imei} fisa={ef} setFisa={(patch: any) => setEf((p: any) => ({ ...p, ...patch }))} />
+                {/* Fără ecranul „Documente" în rolul omului, serverul refuză lista — iar blocul ar spune fals „niciun act". */}
+                {!ecranAscuns('documente') && <VehicleDocs imei={imei} fisa={ef} setFisa={(patch: any) => setEf((p: any) => ({ ...p, ...patch }))} />}
               </div>
             </div>
           </div>

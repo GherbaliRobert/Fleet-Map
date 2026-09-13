@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
 import L from 'leaflet';
 import { Api } from '../api/endpoints';
-import { refreshUnread } from '../app/store';
+import { refreshUnread, showToast, ecranAscuns } from '../app/store';
 import { Icon } from '../components/Icon';
+import { aduActul, deschideInAfara } from '../components/VehicleDocs';
 import './admin.css';
 import './route.css';
 
@@ -40,6 +41,25 @@ export function NotifDetail() {
   async function markRead() {
     setAckBusy(true);
     try { await Api.ackNotification(Number(id)); setAcked(true); refreshUnread(); } catch { /* */ } finally { setAckBusy(false); }
+  }
+
+  // „Vezi actul": aplicația rulează din fișierele ei, deci un link „/api/documents/…" nu ajungea la
+  // server și nici nu căra tokenul — omul vedea o pagină goală. Deschidem actul EXACT ca fișa mașinii:
+  // poza apare aici, sub butoane; PDF-ul se predă vizualizatorului telefonului.
+  const [actPoza, setActPoza] = useState<string | null>(null);
+  const [actBusy, setActBusy] = useState(false);
+  useEffect(() => () => { if (actPoza) { try { URL.revokeObjectURL(actPoza); } catch { /* */ } } }, [actPoza]);
+  useEffect(() => { setActPoza(null); }, [id]);
+  async function veziActul() {
+    if (actPoza) { setActPoza(null); return; }
+    if (!d || !d.document) return;
+    setActBusy(true);
+    try {
+      const act = await aduActul(Number(d.document.id), d.document.fileMime);
+      if (String(act.mime || d.document.fileMime || '').startsWith('image/')) setActPoza(act.url);
+      else await deschideInAfara(act, d.document.fileName || ('act-' + d.document.id));
+    } catch (e: any) { showToast(e?.message || 'Nu am putut deschide actul', true); }
+    finally { setActBusy(false); }
   }
 
   // Reset stare OSM la schimbarea notificării (preact-iso refolosește instanța pe /notif/:id → altfel rămâne limita veche).
@@ -267,7 +287,7 @@ export function NotifDetail() {
                 {d.documentsFaraData.map((x: any) => (
                   <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--border);font-size:12.5px">
                     <span><b>{String(x.docType || 'act').toUpperCase()}</b>{x.number ? ' · ' + x.number : ''}{x.vehicle ? <span style="color:var(--text-muted)"> — {x.vehicle}</span> : null}</span>
-                    {x.imei ? <button class="btn" style="padding:4px 9px;font-size:11px" onClick={() => loc.route('/vehicles/' + encodeURIComponent(x.imei) + '?edit=docs')}>Completează</button> : null}
+                    {x.imei && !ecranAscuns('documente') ? <button class="btn" style="padding:4px 9px;font-size:11px" onClick={() => loc.route('/vehicles/' + encodeURIComponent(x.imei) + '?edit=docs')}>Completează</button> : null}
                   </div>
                 ))}
               </div>
@@ -314,10 +334,11 @@ export function NotifDetail() {
             {d.body && isIdle && <div style="font-size:12px;color:var(--text-muted);margin-top:10px;text-align:center">{d.body}</div>}
             {d.document && (d.document.hasFile || d.document.imei) && (
               <div style="display:flex;gap:8px;margin-top:12px">
-                {d.document.hasFile ? <a style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:12px;padding:10px 6px;font-size:12.5px;font-weight:600" href={'/api/documents/' + d.document.id + '/file'} target="_blank" rel="noopener"><Icon name="eye" size={13} /> Vezi actul</a> : null}
-                {d.document.imei ? <button class="btn" style="flex:1;padding:10px 6px;font-size:12.5px;border-radius:12px" onClick={() => loc.route('/vehicles/' + encodeURIComponent(d.document.imei) + '?edit=docs')}>Documentele vehiculului</button> : null}
+                {d.document.hasFile ? <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;font-family:inherit;background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);border-radius:12px;padding:10px 6px;font-size:12.5px;font-weight:600" disabled={actBusy} onClick={veziActul}><Icon name={actPoza ? 'x' : 'eye'} size={13} /> {actBusy ? 'Se deschide…' : actPoza ? 'Ascunde actul' : 'Vezi actul'}</button> : null}
+                {d.document.imei && !ecranAscuns('documente') ? <button class="btn" style="flex:1;padding:10px 6px;font-size:12.5px;border-radius:12px" onClick={() => loc.route('/vehicles/' + encodeURIComponent(d.document.imei) + '?edit=docs')}>Documentele vehiculului</button> : null}
               </div>
             )}
+            {actPoza && <img src={actPoza} alt="Actul" style="display:block;max-width:100%;border-radius:12px;margin-top:10px;border:1px solid var(--border)" onClick={veziActul} />}
             <div style="display:flex;gap:8px;margin-top:14px;align-items:stretch">
               {acked
                 ? <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--accent);font-weight:600;font-size:12.5px;border:1px solid var(--border);border-radius:12px;padding:10px 6px"><Icon name="check" size={14} /> Citit</div>

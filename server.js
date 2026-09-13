@@ -1725,14 +1725,21 @@ async function getAllowedImeiSet(userId, role, companyId) {
   // „Vede toată flota" e un drept ca oricare: dacă firma l-a tăiat din rol, omul vede doar mașinile
   // care i-au fost atribuite. Fără linia asta, tăierea ar apărea pe ecran, dar n-ar face nimic.
   const _aj = await roluriCompaniei(companyId);
-  const _taiatViewAll = !!(_aj && _aj[role] && _aj[role].taiate && _aj[role].taiate.has('viewAll'));
-  if (hasPerm(role, 'viewAll') && !_taiatViewAll) {
+  // Tăierea se caută pe rolul PROPRIU al omului (dacă are unul), apoi pe cel standard — exact ca în drepturiEfective.
+  // Înainte se căuta doar pe cel standard: un rol propriu fără „Vede toată flota" apărea limitat pe ecran, dar omul
+  // vedea toată flota (hartă, rapoarte, acte, legătura live). Dacă rolul nu se poate citi, rezultatul nu se ține minte.
+  let _slug = null, _necitit = false;
+  // (O firmă fără roluri ajustate n-are ce tăia: fără citire în plus la fiecare reîmprospătare a accesului.)
+  if (_aj && Object.keys(_aj).length) { try { const _u = await db.getUserById(userId); _slug = _u && _u.role_slug; } catch (e) { _necitit = true; } }
+  const _ajRol = _ajDin(_aj, role, _slug);
+  const _taiatViewAll = !!(_ajRol && _ajRol.taiate && _ajRol.taiate.has('viewAll'));
+  if (hasPerm(role, 'viewAll') && !_taiatViewAll && !_necitit) {
     // viewAll = toate vehiculele COMPANIEI (nu globale)
     set = new Set(companyId != null ? await db.getCompanyImeis(companyId) : []);
   } else {
     set = new Set(await db.computeAllowedImeis(userId));
   }
-  accessCache.set(userId, { ts: Date.now(), imeis: set });
+  if (!_necitit) accessCache.set(userId, { ts: Date.now(), imeis: set });
   return set;
 }
 function invalidateAccessCache(userId) {
@@ -1882,7 +1889,9 @@ async function _isLastActiveSuperadmin(targetId) {
 async function sameCompanyUser(req, targetId) {
   if (req.isSuper) return true;
   const u = await db.getUserById(targetId);
-  return !!(u && u.company_id != null && u.company_id === req.companyId);
+  // Un cont de PLATFORMĂ nu e al niciunei firme, chiar dacă i-a rămas company_id de dinainte să fie promovat.
+  // Altfel adminul firmei aceleia i-ar putea schimba parola sau emailul și ar intra ca super-admin.
+  return !!(u && !isSuper(u.role) && u.company_id != null && u.company_id === req.companyId);
 }
 // Verifică proprietatea pe o entitate (driver/group/geofence/alert/maintenance) pentru update/delete
 async function ownsRow(req, table, id) {
@@ -2616,7 +2625,18 @@ app.get('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) =
   try {
     // company_admin vede doar userii companiei lui; super-admin vede tot (sau filtrat după ?company)
     const scope = req.isSuper ? (req.query.company ? parseInt(req.query.company) : null) : req.companyId;
-    res.json(await db.getUsers(scope));
+    const rows = await db.getUsers(scope);
+    // „Vede toată flota", socotit AICI cu tăierile firmei omului (inclusiv pe rolul lui propriu), exact ca la acces.
+    // Super-adminul n-are firmă, deci ecranele lui nu aflau tăierile altor firme și arătau „toată flota" unde nu era.
+    const _ajPeFirma = {};
+    for (const u of rows) {
+      if (isSuper(u.role)) { u.sees_all = true; continue; }
+      const k = String(u.company_id);
+      if (!(k in _ajPeFirma)) _ajPeFirma[k] = u.company_id != null ? await roluriCompaniei(u.company_id) : null;
+      const aj = _ajDin(_ajPeFirma[k], u.role, u.role_slug);
+      u.sees_all = hasPerm(u.role, 'viewAll') && !(aj && aj.taiate && aj.taiate.has('viewAll'));
+    }
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2664,10 +2684,19 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     }
     // company_admin poate atribui doar roluri din companie (nu superadmin); super-admin poate orice
     const allowed = req.isSuper ? VALID_ROLES : COMPANY_ASSIGNABLE_ROLES;
-    const finalRole = allowed.includes(role) ? role : 'viewer';
     // compania noului user: a adminului; super-adminul poate specifica ?company / body.company_id
     let companyId = req.companyId;
     if (req.isSuper) companyId = (req.body.company_id != null ? parseInt(req.body.company_id) : null);
+    // Un rol PROPRIU al firmei vine ca slug, la fel ca la modificare: în users.role intră rolul standard din care
+    // derivă, iar slug-ul se ține alături. Înainte, formularul de pe web oferea rolurile proprii, dar serverul
+    // le făcea tăcut „viewer" — omul primea alt rol decât cel ales.
+    let rolCerut = role, slugNou = null;
+    if (role && !VALID_ROLES.includes(role) && companyId != null) {
+      const propriu = ((await roluriCompaniei(companyId)) || {})[role];
+      if (propriu && propriu.baza) { rolCerut = propriu.baza; slugNou = role; }
+    }
+    const finalRole = allowed.includes(rolCerut) ? rolCerut : 'viewer';
+    if (finalRole !== rolCerut) slugNou = null;
     // Un super-admin e cont de PLATFORMĂ: nu aparține niciunei companii. Chiar dacă interfața trimite din
     // greșeală o companie, o ignorăm — altfel filtrele pe companie s-ar aplica peste un cont care trebuie să vadă tot.
     if (isSuper(finalRole)) companyId = null;
@@ -2686,6 +2715,7 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     // Emailul contului = username-ul. Îl salvăm explicit ca recuperarea parolei și invitațiile să aibă
     // întotdeauna o adresă, fără să depindă de un al doilea câmp completat de mână.
     const user = await db.createUser(username, hash, finalRole, { full_name, email: (email && String(email).trim()) || username, phone, company_id: companyId });
+    if (slugNou) { await db.setUserRoleSlug(user.id, slugNou); user.role_slug = slugNou; }
     let invitat = false, invitErr = null;
     if (invitatie) {
       const co = companyId != null ? await db.getCompanyById(companyId).catch(function () { return null; }) : null;
@@ -2693,7 +2723,7 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
       catch (e) { invitErr = e.message; }
       if (!invitat) console.warn('[INVITAȚIE] Nu a plecat pentru „' + username + '": ' + (invitErr || 'trimitere eșuată'));
     }
-    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, company_id: companyId, invitat: invitatie ? invitat : undefined });
+    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, rolPropriu: slugNou || undefined, company_id: companyId, invitat: invitatie ? invitat : undefined });
     res.json(Object.assign({}, user, invitatie ? { invitat: invitat } : {}));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2708,9 +2738,14 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     const on = !!(req.body && req.body.on);
+    const tinta = await db.getUserById(id);
+    if (!tinta) return res.status(404).json({ error: 'Utilizator inexistent' });
+    // Un cont de platformă nu stă în fondul niciunei firme; până acum doar interfața ascundea butonul.
+    if (on && isSuper(tinta.role)) return res.status(400).json({ error: 'Contul de platformă are deja RA Insight și nu ocupă un loc în fondul unei firme.' });
     const u = await db.setUserAiSeat(id, on);
     if (!u) return res.status(404).json({ error: 'Utilizator inexistent' });
-    const seats = await db.getAiSeats(req.companyId);
+    // Locurile se numără în firma OMULUI: la super-admin req.companyId e gol și ieșea numărul pe toată platforma.
+    const seats = await db.getAiSeats(tinta.company_id);
     auditReq(req, on ? 'ai_seat_on' : 'ai_seat_off', 'user', id, { username: u.username, seats: seats });
     res.json({ ok: true, id: id, ai_seat: !!u.ai_seat, seats: seats });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2723,18 +2758,46 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     // Doar `false` exact tăia sesiunile, dar baza accepta și 0 sau "false" ca „dezactivat": contul se dezactiva fără ca
     // sesiunile și legăturile lui să se închidă, iar gărzile (auto-dezactivare, ultimul super-admin) erau ocolite.
     if (active !== undefined && active !== null) active = !(active === false || active === 0 || active === '0' || String(active).toLowerCase() === 'false');
+    const tinta = await db.getUserById(id);
+    if (!tinta) return res.status(404).json({ error: 'Utilizator inexistent' });
+    const body = req.body || {};
     // Un rol PROPRIU al firmei se trimite ca slug. În users.role rămâne rolul standard din care
     // derivă (așa, toate verificările existente merg neschimbate), iar slug-ul se ține alături.
-    let slugCerut = null;
+    // Rolurile proprii sunt ale firmei OMULUI (pentru adminul firmei e aceeași firmă — vezi sameCompanyUser).
+    const _rolPropriu = async function (slug) {
+      const aj = (await roluriCompaniei(tinta.company_id)) || {};
+      const p = aj[slug];
+      return (p && p.baza) ? p : null;
+    };
+    // slugCerut: undefined = rolul propriu NU se atinge; null = se scoate; text = se pune.
+    let slugCerut;
+    const cereSlug = Object.prototype.hasOwnProperty.call(body, 'role_slug');
+    // Rolul propriu pe care omul îl are DEJA, dar care nu mai există în firma lui (a fost mutat din altă
+    // firmă înainte ca mutarea să-l scoată). Nu are niciun efect — drepturile vin din rolul standard — așa
+    // că o salvare care îl trimite înapoi nu e „Rol invalid": îl curățăm și omul rămâne pe rolul standard.
+    const slugRamas = function (s) { return !!tinta.role_slug && s === tinta.role_slug; };
     if (role !== undefined && role !== null && !VALID_ROLES.includes(role)) {
-      const aj = (await roluriCompaniei(req.companyId)) || {};
-      const propriu = aj[role];
-      if (!propriu || !propriu.baza) return res.status(400).json({ error: 'Rol invalid' });
-      slugCerut = role;
-      role = propriu.baza;
+      const propriu = await _rolPropriu(role);
+      if (propriu) { slugCerut = role; role = propriu.baza; }
+      else if (slugRamas(role)) { slugCerut = null; role = tinta.role; }
+      else return res.status(400).json({ error: 'Rol invalid' });
+    } else if (cereSlug && body.role_slug) {
+      const cerut = String(body.role_slug);
+      const propriu = await _rolPropriu(cerut);
+      if (propriu) { slugCerut = cerut; role = propriu.baza; }
+      else if (slugRamas(cerut)) { slugCerut = null; }
+      else return res.status(400).json({ error: 'Rol invalid' });
+    } else if (cereSlug) {
+      slugCerut = null;                                  // `role_slug: null` = înapoi pe rolul standard
+    } else if (role !== undefined && role !== null && role !== tinta.role) {
+      slugCerut = null;                                  // rol standard DIFERIT = schimbare reală de rol
     }
+    // Rolul trimis e chiar cel pe care omul îl are deja (telefonul trimite rolul la orice salvare, chiar
+    // și când s-a schimbat doar numărul de telefon). Nu e o schimbare de rol: nu se validează ca atribuire
+    // nouă și, mai ales, NU mută omul de pe rolul propriu pe cel standard, cu mai multe drepturi.
+    const rolNeschimbat = role !== undefined && role !== null && role === tinta.role;
     const allowed = req.isSuper ? VALID_ROLES : COMPANY_ASSIGNABLE_ROLES;
-    if (role !== undefined && role !== null && !allowed.includes(role)) {
+    if (role !== undefined && role !== null && !rolNeschimbat && !allowed.includes(role)) {
       return res.status(400).json({ error: 'Rol invalid' });
     }
     // Protecție: nu te poți dezactiva sau retrograda pe tine dintr-un rol de administrare
@@ -2747,8 +2810,11 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
       return res.status(400).json({ error: 'Acesta e ultimul super-admin activ — creează altul înainte de a-l retrograda sau dezactiva.' });
     }
     await db.updateUserProfile(id, { role, full_name, email, phone, active });
-    // Rolul propriu se pune (sau se scoate, dacă omul a fost mutat pe unul standard).
-    if (role !== undefined && role !== null) await db.setUserRoleSlug(id, slugCerut);
+    // Un super-admin e cont de PLATFORMĂ: nu rămâne legat de firma din care a fost promovat — la fel ca la creare
+    // și la mutarea între firme. (Mutarea scoate și rolul propriu și accesul pe vehicule ale firmei vechi.)
+    if (role && isSuper(role) && tinta.company_id != null) await db.setUserCompany(id, null);
+    // Rolul propriu se pune, se scoate (mutat pe alt rol standard / `role_slug: null`) sau rămâne neatins.
+    if (slugCerut !== undefined) await db.setUserRoleSlug(id, slugCerut);
     invalidateAccessCache(id);
     // Dezactivat → pleacă ACUM, nu când îi expiră cookie-ul. (Un rol schimbat se prinde în legătura live la
     // trecerea de un minut, iar în cereri în cel mult 30 de secunde.)
@@ -3155,13 +3221,24 @@ function _fleetSnapshot(req, limit) {
   return out;
 }
 
-app.get('/api/ai/status', requireAuth, (req, res) => res.json({ enabled: ai.aiEnabled(), model: ai.AI_MODEL }));
-// Utilizare AI per asistent (kind) — pentru panoul „Asistenți AI" (Analize statistice). Scope pe companie; super-adminul poate filtra.
+// ─── Tokenii și modelul AI rămân între fondatori ─────────────────────────────────────────────────
+// Hotărât pe 13.08 (pagina „Asistenți AI" scoasă din meniul web): câți tokeni consumă o firmă și ce
+// model folosim NU se arată clienților. Web-ul are nevoie aici doar de „e pornit sau nu" (butonul
+// rotund), deci atât primește oricine; modelul îl vede doar super-adminul.
+app.get('/api/ai/status', requireAuth, (req, res) => {
+  const out = { enabled: ai.aiEnabled() };
+  if (isSuper((req.auth || {}).role)) out.model = ai.AI_MODEL;
+  res.json(out);
+});
+// Utilizare AI per asistent (kind) — pentru panoul „Asistenți AI". DOAR super-adminul primește cifrele.
+// Un client (inclusiv aplicația de telefon veche, care încă are ecranul în meniu) primește o listă GOALĂ,
+// nu o eroare: pe ecranul acela stă și singurul buton spre „Agenți AI", iar cu o eroare l-ar pierde.
 app.get('/api/ai/usage-stats', requireAuth, withScope, async (req, res) => {
   try {
-    await applyCompanyFilter(req);
-    const companyId = req.isSuper ? (req.filterCompanyId != null ? req.filterCompanyId : null) : req.companyId;
     const days = Math.min(Math.max(parseInt(req.query.days) || 30, 0), 3650);
+    if (!req.isSuper) return res.json({ days, enabled: ai.aiEnabled(), usage: [], restricted: true });
+    await applyCompanyFilter(req);
+    const companyId = req.filterCompanyId != null ? req.filterCompanyId : null;
     const usage = await db.getAiUsageByKind(companyId, days);
     res.json({ days, enabled: ai.aiEnabled(), model: ai.AI_MODEL, usage });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -3237,7 +3314,7 @@ function _aiQuotaFromSettings(settings) {
 // arătăm clientului socoteala noastră de tokeni.
 async function _fondEpuizat(req) {
   if (req.companyId == null) return null;
-  const st = await aiQuotaState(req.companyId, req.auth && req.auth.userId);
+  const st = await aiQuotaState(req.companyId, req.auth && req.auth.userId, { strict: true });
   if (st.unlimited || !st.questions) return null;
   if (st.used < st.questions) return null;
   if (st.overage) return null;                          // firma are voie să depășească → altă cale
@@ -3248,24 +3325,41 @@ async function _fondEpuizat(req) {
       fond: st.questions, conturi: st.seats, peCont: st.questionsPerSeat, reinnoire: st.periodEnd
     },
     reply: '**Fondul de întrebări al lunii s-a terminat.**\n\n' +
-      '• Firma a folosit toate cele **' + st.questions + '** întrebări incluse' +
+      '• Firma a folosit toate cele **' + st.questions + '**' + _deNr(st.questions) + 'întrebări incluse' +
       (st.seats ? ' (' + st.seats + ' ' + (st.seats === 1 ? 'cont' : 'conturi') + ' × ' + st.questionsPerSeat + ')' : '') + '.\n' +
       '• Se reînnoiește pe **' + reinnoire + '**.\n' +
       '• Întrebările rapide rămân gratuite: *unde e o mașină, care sunt oprite, care merg acum, câți km azi, status flotă.*\n\n' +
-      'Ai nevoie de mai multe? **Un cont în plus aduce încă ' + (st.questionsPerSeat || 50) + ' de întrebări pe lună** — se adaugă din **Utilizatori**, sau cere-i administratorului firmei.'
+      'Ai nevoie de mai multe? **Un cont în plus aduce încă ' + (st.questionsPerSeat || 50) + _deNr(st.questionsPerSeat || 50) + 'întrebări pe lună** —se adaugă din **Utilizatori**, sau cere-i administratorului firmei.'
   };
 }
+// „10 întrebări", dar „50 de întrebări": de la 20 în sus româna cere „de" (la fel ca nDe() din aplicația de telefon).
+function _deNr(n) { const r = Math.abs(Number(n) || 0) % 100; return (r === 0 && Number(n)) || r >= 20 ? ' de ' : ' '; }
 // ─── Acordul pentru costul suplimentar ───────────────────────────────────────────────────────────
 // Regula, pe românește: cât timp firma are întrebări în fondul lunii, totul e inclus. Când fondul se
 // termină, ÎNTREBAREA URMĂTOARE COSTĂ — și atunci ne oprim și întrebăm o dată, pe lună, arătând
 // negru pe alb cât costă una și ce rămâne gratuit. Acordul se ține pe firmă (`extraAcceptedMonth`),
 // fiindcă factura e a firmei, iar în audit rămâne cine l-a dat.
+// Aplicația de telefon VECHE nu știe să arate caseta de acord: citește doar `reply` și, fără el, scria
+// „—". Pentru ea (autentificare cu cheie) punem în `reply` o explicație scurtă; web-ul și telefonul nou
+// văd `needsExtraConsent` și arată caseta, deci pentru web `reply` rămâne gol.
+function _textAcordTelefonVechi(req, st, lei) {
+  if (!(req.auth && req.auth.viaApiKey)) return null;
+  const reinnoire = st.periodEnd ? new Date(st.periodEnd).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : '1 ale lunii';
+  return '**Fondul de întrebări al lunii s-a terminat.**\n\n' +
+    'Firma a folosit toate cele **' + st.questions + '**' + _deNr(st.questions) + 'întrebări incluse. De acum, fiecare întrebare nouă costă **' +
+    (Number(lei) || 0).toFixed(2) + ' lei** și intră pe factura lunii, așa că întâi îți cerem acordul.\n\n' +
+    '• Acordul se dă din **RA Insight pe web** sau din versiunea nouă a aplicației.\n' +
+    '• Fondul se reînnoiește pe **' + reinnoire + '**.\n' +
+    '• Întrebările rapide rămân gratuite: *unde e o mașină, care sunt oprite, câți km azi.*\n\n' +
+    'Întrebarea ta nu a fost trimisă și nu a costat nimic.';
+}
 // Întoarce un obiect de răspuns dacă trebuie CERUT acordul, sau null dacă se poate merge mai departe.
 async function _cereAcordCostExtra(req) {
   if (req.companyId == null) return null;               // super-admin: fără cotă, fără cost
-  let co = null; try { co = await db.getCompanyById(req.companyId); } catch (e) { return null; }
-  const q = _aiQuotaFromSettings(co && co.settings);
-  const st = await aiQuotaState(req.companyId, req.auth && req.auth.userId);
+  // O citire eșuată NU înseamnă „merge": eroarea urcă în _regulileFonduluiAi, care răspunde „încearcă din
+  // nou" și nu trimite întrebarea. Înainte, aici se întorcea null și întrebarea pleca fără acord.
+  const co = await db.getCompanyById(req.companyId);
+  const st = await aiQuotaState(req.companyId, req.auth && req.auth.userId, { strict: true });
   if (st.unlimited || !st.questions) return null;       // fără fond = nelimitat
   if (st.used < st.questions) return null;              // mai sunt întrebări în fond
   if (!st.overage) return null;                         // nu poate depăși → e oprit în altă parte
@@ -3276,7 +3370,7 @@ async function _cereAcordCostExtra(req) {
   const lei = Math.round(st.overagePriceEur * (Number(fx.eur) || EUR_RON_FALLBACK) * 100) / 100;
   return {
     needsExtraConsent: true,
-    reply: null,
+    reply: _textAcordTelefonVechi(req, st, lei),   // null pe web; text doar pentru aplicația veche
     cost: {
       fond: st.questions, folosite: st.used, conturi: st.seats, peCont: st.questionsPerSeat,
       pretLei: lei, pretEur: st.overagePriceEur,
@@ -3298,7 +3392,7 @@ async function _acceptaCostExtra(req) {
     await db.createNotification({
       type: 'ai_cost_extra', severity: 'warning', companyId: req.companyId, userId: null,
       title: 'RA Insight: fondul lunii s-a terminat',
-      body: 'Cele ' + st.questions + ' întrebări incluse luna asta au fost folosite. De acum, fiecare întrebare nouă costă ' +
+      body: 'Cele ' + st.questions + _deNr(st.questions) + 'întrebări incluse luna asta au fost folosite. De acum, fiecare întrebare nouă costă ' +
         lei.toFixed(2) + ' lei și intră pe factura lunii. Întrebările rapide (unde e o mașină, care sunt oprite, câți km azi) rămân gratuite. ' +
         'Fondul se reînnoiește pe 1. Poți adăuga conturi din Utilizatori.',
       data: { fond: st.questions, pretLei: lei }
@@ -3308,12 +3402,17 @@ async function _acceptaCostExtra(req) {
 }
 // Starea contorului: fondul firmei (locuri × întrebări pe loc), cât s-a consumat din el, și — dacă
 // se cere pentru un anume om — cât a pus el însuși. Bara din aplicație arată amândouă.
-async function aiQuotaState(companyId, userId) {
+// `strict` e pentru POARTA întrebărilor (_fondEpuizat, _cereAcordCostExtra): o citire eșuată merge mai
+// departe ca eroare, iar întrebarea nu pleacă. Fără el, după o sughițare a bazei fondul părea gol
+// („nelimitat") și o întrebare peste fond ajungea la model și pe factură fără acord. Bara din aplicație
+// rămâne îngăduitoare: acolo o cifră lipsă nu costă nimic.
+async function aiQuotaState(companyId, userId, opts) {
+  const strict = !!(opts && opts.strict);
   const now = new Date();
   const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
   const base = { questions: 0, seats: 0, questionsPerSeat: 0, used: 0, usedByMe: 0, remaining: null, unlimited: true, overage: true, overagePriceEur: AI_OVERAGE_PRICE_EUR, overageCount: 0, overageCostEur: 0, blocked: false, periodEnd: periodEnd.toISOString() };
   if (companyId == null) return base; // super-admin: fără cotă
-  let co = null; try { co = await db.getCompanyById(companyId); } catch (e) {}
+  let co = null; try { co = await db.getCompanyById(companyId); } catch (e) { if (strict) throw e; }
   const q = _aiQuotaFromSettings(co && co.settings);
   // Compatibilitate: dacă un client are doar limita VECHE (`ai_monthly_limit`), o folosim ca număr de
   // apeluri incluse, fără drept de depășire (vechea limită bloca dur). Așa rămâne un singur contor,
@@ -3321,11 +3420,12 @@ async function aiQuotaState(companyId, userId) {
   const legacy = Number(co && co.ai_monthly_limit) || 0;
   if (!q.questions && !q.questionsPerSeat && legacy > 0) { q.questions = Math.round(legacy); q.overage = false; }
   let seats = 0;
-  try { seats = await db.getAiSeats(companyId); } catch (e) {}
+  try { seats = await db.getAiSeats(companyId); } catch (e) { if (strict) throw e; }
   // Fondul lunii: locuri × întrebări pe loc. Forma veche (cotă fixă pe firmă) rămâne valabilă.
   const fond = q.questionsPerSeat > 0 ? seats * q.questionsPerSeat : q.questions;
   let used = 0, usedByMe = 0;
-  try { used = (await db.getAiMonthUsage(companyId)).questions; } catch (e) {}
+  try { used = (await db.getAiMonthUsage(companyId)).questions; } catch (e) { if (strict) throw e; }
+  // Cât a pus omul însuși: doar pentru bară, nu hotărăște nimic — rămâne îngăduitor și în modul strict.
   if (userId != null) { try { usedByMe = await db.getAiMonthUsageForUser(userId); } catch (e) {} }
   if (!fond) return Object.assign(base, { seats: seats, questionsPerSeat: q.questionsPerSeat, used: used, usedByMe: usedByMe, overage: q.overage, overagePriceEur: q.overagePriceEur });
   const overageCount = Math.max(0, used - fond);
@@ -3421,15 +3521,50 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
 // Până acum, orice om cu „vede rapoartele" putea pune întrebări — adică toată firma, la prețul unui
 // singur cont. Din 11.09, RA Insight se vinde pe CONT: adminul firmei alege cine îl primește, iar
 // factura urmează numărul de locuri aprinse. Super-adminul (fără companie) rămâne neîngrădit.
+// Mesajul spune ADEVĂRUL: firma are modulul, contul omului nu are acces. Înainte, telefonul arăta
+// „Modulul AI nu e activ pe planul companiei" și omul pleca să caute un abonament care exista deja.
+const MESAJ_FARA_LOC_AI = 'Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei îl poate porni din Utilizatori, așa că cere-i acces.';
 function requireAiSeat(req, res, next) {
   if (req.isSuper || req.companyId == null) return next();
   db.getUserById(req.auth && req.auth.userId).then(function (u) {
     if (u && u.ai_seat) return next();
-    res.status(403).json({
-      error: 'ai_seat_missing',
-      message: 'Contul tău nu are RA Insight. Administratorul firmei îl poate porni din Utilizatori.'
-    });
+    const corp = { error: 'ai_seat_missing', message: MESAJ_FARA_LOC_AI, reply: MESAJ_FARA_LOC_AI, seatMissing: true };
+    // Aplicația de telefon VECHE (autentificare cu cheie) transformă orice 403 într-un text fix și greșit
+    // („modulul nu e activ pe plan") și citește doar câmpul `reply`. Ca să vadă motivul real, primește
+    // răspunsul ca text. Nimic nu ajunge la model și nimic nu se numără — e tot un refuz.
+    if (req.auth && req.auth.viaApiKey) return res.json(corp);
+    res.status(403).json(corp);
   }).catch(function (e) { res.status(500).json({ error: e.message }); });
+}
+// ─── Regulile fondului, O SINGURĂ DATĂ, pentru toate întrebările libere ──────────────────────────
+// RA Insight (web + telefon) și „Asistent AI" (chat-ul vechi al telefonului) trec prin exact aceleași
+// reguli: fond epuizat → oprire cu explicație; firmă care poate depăși → acord explicit înainte de
+// orice cost. Înainte, chat-ul telefonului le ocolea și întrebările peste fond treceau pe factură
+// fără casetă de acord. Întoarce răspunsul trimis (adevărat) sau null dacă întrebarea poate pleca.
+async function _regulileFonduluiAi(req, res) {
+  try {
+    const _stop = await _fondEpuizat(req);
+    if (_stop) return res.json(_stop);
+    // ─── Nimeni nu intră pe cost suplimentar fără să știe ────────────────────────────────────────
+    // Când fondul lunii s-a terminat, întrebările următoare se facturează. NU le lăsăm să treacă în
+    // tăcere: prima dată în luna respectivă, oprim și explicăm — cât costă una, de ce, ce rămâne
+    // gratuit — iar omul apasă „am înțeles". Fără pasul ăsta, clientul ar afla abia din factură.
+    // Acordul se ține minte DOAR dacă e cerut chiar acum. Altfel, o casetă lăsată deschisă peste schimbarea lunii (sau
+    // un acceptExtra trimis din reflex, cu fond încă disponibil) ar fi scris acordul pentru o lună în care omul n-a
+    // văzut nicio casetă — iar toate întrebările în plus din luna aceea ar fi intrat pe factură fără să întrebăm.
+    let _cost = await _cereAcordCostExtra(req);
+    if (_cost && req.body && req.body.acceptExtra === true) {
+      try { await _acceptaCostExtra(req); } catch (e) {}
+      _cost = await _cereAcordCostExtra(req);
+    }
+    if (_cost) return res.json(_cost);
+    return null;
+  } catch (e) {
+    // Fondul nu s-a putut citi: întrebarea NU pleacă. Mai bine un „încearcă din nou" decât o întrebare
+    // facturată fără acord.
+    const m = 'Nu am putut verifica fondul de întrebări al firmei. Încearcă din nou peste un minut.';
+    return res.status(503).json({ error: m, reply: m });
+  }
 }
 app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
   try {
@@ -3463,7 +3598,8 @@ app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'),
     }
     // 2) Pentru întrebări libere → Claude (dacă e configurat)
     if (!ai.aiEnabled()) return res.json({ reply: 'Întrebările rapide (unde sunt vehiculele, km azi, oprite, cel mai rapid, status) merg instant, fără AI. Pentru întrebări libere, activează asistentul AI (cheie Anthropic).', disabled: true });
-    if (await aiLimitReached(req.companyId)) return res.json({ reply: 'Compania ta a atins limita lunară de AI. Întrebările rapide rămân disponibile; pentru mai mult, contactează administratorul platformei.', limited: true });
+    // Fondul firmei: aceleași reguli ca RA Insight (oprire cu explicație / acord înainte de cost).
+    if (await _regulileFonduluiAi(req, res)) return;
     snapshot.forEach(v => { delete v.imei; }); // nu trimitem imei la Claude (folosește numele)
 
     const system = [
@@ -3487,6 +3623,10 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
   try {
     if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
     if (await aiLimitReached(req.companyId)) return res.json({ summary: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
+    // Rezumatul se numără în fondul firmei ('report'), deci trece prin aceleași reguli ca RA Insight: la epuizare se
+    // oprește, iar pe costul suplimentar se cere întâi acordul. Înainte, la o firmă cu voie să depășească fondul,
+    // rezumatele intrau pe factură fără nicio casetă.
+    if (await _regulileFonduluiAi(req, res)) return;
     const report = req.body.report;
     if (!report) return res.status(400).json({ error: 'Lipsește raportul' });
     const compact = JSON.stringify(report).slice(0, 7000);
@@ -3530,15 +3670,8 @@ app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withS
     } catch (e) { /* dacă euristica pică, continuăm pe agentul AI */ }
 
     if (!ai.aiEnabled()) return res.json({ reply: 'RA Insight nu este activ (cheia Anthropic lipsește). Contactează administratorul platformei.', disabled: true });
-    const _stop = await _fondEpuizat(req);
-    if (_stop) return res.json(_stop);
-    // ─── Nimeni nu intră pe cost suplimentar fără să știe ────────────────────────────────────────
-    // Când fondul lunii s-a terminat, întrebările următoare se facturează. NU le lăsăm să treacă în
-    // tăcere: prima dată în luna respectivă, oprim și explicăm — cât costă una, de ce, ce rămâne
-    // gratuit — iar omul apasă „am înțeles". Fără pasul ăsta, clientul ar afla abia din factură.
-    if (req.body && req.body.acceptExtra === true) { try { await _acceptaCostExtra(req); } catch (e) {} }
-    const _cost = await _cereAcordCostExtra(req);
-    if (_cost) return res.json(_cost);
+    // Fondul firmei: oprire cu explicație / acord înainte de cost (aceeași poartă ca „Asistent AI").
+    if (await _regulileFonduluiAi(req, res)) return;
 
     const companyScope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
 
@@ -3854,6 +3987,10 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     // COST: rezumatul AI consumă tokeni plătiți → DOAR dacă modulul AI e activ pentru companie
     // ȘI limita lunară nu e atinsă. Euristicile (constatările) rămân gratuite și disponibile mereu.
     let _aiAllowed = !!(ai && ai.aiEnabled() && findings.length);
+    // Rezumatul AI se face DOAR la rularea tuturor agenților. La un agent rulat singur nu-l afișează nimeni (web-ul și
+    // telefonul nou arată constatările una câte una; agenții live se citesc din /api/agents/:key/live), dar fiecare
+    // apăsare pe „Rulează" — mai ales din APK-urile vechi — cumpăra un rezumat pe care nu-l citea nimeni.
+    if (which !== 'all') _aiAllowed = false;
     if (_aiAllowed && storeCompany != null) {
       try {
         const _co = await db.getCompanyById(storeCompany);
@@ -8211,17 +8348,72 @@ app.post('/api/geofences', requireAuth, requireEdit('hotspoturi'), withCompany, 
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Aceeași formă? Cheile obiectelor se compară în ordine sortată: baza (JSONB) le întoarce în altă ordine
+// decât le-a trimis clientul, iar o simplă ordine diferită nu înseamnă o zonă mutată.
+function _formaCanonica(v) {
+  if (Array.isArray(v)) return '[' + v.map(_formaCanonica).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + _formaCanonica(v[k]); }).join(',') + '}';
+  return JSON.stringify(v === undefined ? null : v);
+}
+const _TIPURI_ZONA_TELEFON = ['circle', 'polygon'];
 app.put('/api/geofences/:id', requireAuth, requireEdit('hotspoturi'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
-    await db.updateGeofence(req.params.id, await enrichGeofence(req.body)); invalidateReguliCache(); auditReq(req, 'update', 'geofence', req.params.id); res.json({ ok: true });
+    const cur = await db.getGeofenceById(req.params.id);
+    if (!cur) return res.status(404).json({ error: 'Zona nu mai există.' });
+    // ─── Modificare PARȚIALĂ ─────────────────────────────────────────────────────────────────────────
+    // Până acum, orice cheie lipsă din cerere se scria pe gol: telefonul trimitea doar nume, culoare și
+    // formă, iar descrierea, categoria, grupa și bifa „Regiune" puse de pe web dispăreau fără urmă.
+    // Acum cererea se pune PESTE rândul salvat: ce lipsește rămâne cum era, iar o cheie trimisă goală
+    // (așa cum trimite web-ul formularul întreg) golește în continuare câmpul.
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    const are = function (k) { return Object.prototype.hasOwnProperty.call(body, k); };
+    let coordVechi = cur.coordinates;
+    if (typeof coordVechi === 'string') { try { coordVechi = JSON.parse(coordVechi); } catch (e) {} }
+    // O zonă pe străzi nu se mai poate transforma în cerc sau poligon din aplicația de telefon (sau altă
+    // cheie API). Telefonul vechi o deschidea ca pe un cerc gol și, la o atingere pe hartă, o suprascria.
+    if (req.auth && req.auth.viaApiKey && are('type') && body.type !== cur.type && _TIPURI_ZONA_TELEFON.indexOf(cur.type) < 0) {
+      return res.status(400).json({ error: 'Forma acestei zone se modifică doar de pe web. De pe telefon poți schimba numele și culoarea.' });
+    }
+    const merged = Object.assign({
+      name: cur.name, type: cur.type, coordinates: coordVechi, color: cur.color,
+      description: cur.description, category: cur.category, group_id: cur.group_id, address: cur.address,
+      is_region: cur.is_region, center_lat: cur.center_lat, center_lon: cur.center_lon
+    }, body);
+    const formaSchimbata = (are('type') && body.type !== cur.type) ||
+      (are('coordinates') && _formaCanonica(body.coordinates) !== _formaCanonica(coordVechi));
+    if (formaSchimbata) {
+      // Zona s-a mutat: centrul se recalculează, iar adresa veche nu mai e bună (se caută din nou),
+      // afară de cazul în care cererea aduce ea însăși o adresă.
+      if (!are('center_lat')) merged.center_lat = null;
+      if (!are('center_lon')) merged.center_lon = null;
+      if (!are('address')) merged.address = null;
+    }
+    await db.updateGeofence(req.params.id, await enrichGeofence(merged)); invalidateReguliCache(); auditReq(req, 'update', 'geofence', req.params.id, { chei: Object.keys(body) }); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/geofences/:id', requireAuth, requireEdit('hotspoturi'), withCompany, async (req, res) => {
   try {
     if (!(await ownsRow(req, 'geofences', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
-    await db.deleteGeofence(req.params.id); invalidateReguliCache(); auditReq(req, 'delete', 'geofence', req.params.id); res.json({ ok: true });
+    await db.deleteGeofence(req.params.id);
+    // Zona ștearsă iese și din regulile de alertă care o urmăreau. Altfel id-ul rămânea în regulă pentru totdeauna, iar
+    // web-ul și telefonul n-ar mai putea deosebi o zonă ștearsă de una pe care omul doar nu o vede (a platformei).
+    try {
+      const zid = parseInt(req.params.id);
+      for (const a of await db.getAlerts(null)) {
+        let c = a.condition; if (typeof c === 'string') { try { c = JSON.parse(c); } catch (e) { c = null; } }
+        if (!c || typeof c !== 'object') continue;
+        const lista = Array.isArray(c.geofenceIds) ? c.geofenceIds.map(Number) : null;
+        const una = c.geofenceId != null ? Number(c.geofenceId) : null;
+        if (!((lista && lista.indexOf(zid) >= 0) || una === zid)) continue;
+        const nou = Object.assign({}, c);
+        if (lista) nou.geofenceIds = lista.filter(function (x) { return x !== zid; });
+        if (una === zid) delete nou.geofenceId;
+        await db.updateAlert(a.id, { condition: nou });
+      }
+    } catch (e) { console.warn('[ZONE] regulile care urmăreau zona ștearsă nu s-au putut curăța: ' + e.message); }
+    invalidateReguliCache(); auditReq(req, 'delete', 'geofence', req.params.id); res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -8700,6 +8892,9 @@ app.post('/api/documents/scan', requireAuth, requireEdit('documente'), withScope
 app.get('/api/documents/:id/file', requireAuth, withScope, async (req, res) => {
   try {
     const row = await db.getVehicleDocumentFile(parseInt(req.params.id), req.isSuper ? null : req.companyId);
+    // Un om limitat la anumite mașini vedea în listă doar actele lor, dar fișierul ORICĂRUI act din firmă se
+    // deschidea după număr. Aceeași regulă ca la listă (și ca la vehiculele demo): fără acces la mașină, fără act.
+    if (row && !canAccessImei(req, row.imei)) return res.status(403).json({ error: 'Acces interzis' });
     if (!row || !row.file_b64) return res.status(404).json({ error: 'Actul nu are fișier atașat' });
     const buf = Buffer.from(row.file_b64, 'base64');
     res.setHeader('Content-Type', row.file_mime || 'image/jpeg');

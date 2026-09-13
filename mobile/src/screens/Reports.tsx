@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import type { ReportTypeInfo, ReportResult, ReportOpts } from '../api/endpoints';
-import { vehicles, showToast, lastNotif } from '../app/store';
+import { vehicles, showToast, lastNotif, ecranAscuns } from '../app/store';
 import { Icon } from '../components/Icon';
 import { ReportChart } from '../components/ReportChart';
 import { InsightPanel } from '../components/InsightPanel';
@@ -230,12 +230,13 @@ export function Reports() {
   return (
     <div class="screen">
       <header class="app-header"><div class="h-title">Rapoarte</div><button class="h-btn" onClick={openHist} aria-label="Istoric rapoarte"><Icon name="clock" /></button></header>
-      <div class="rp-tabs">
+      {/* RA Insight tăiat de firmă din rol (ecranul „insight") → fără filă; rămâne doar lista de rapoarte. */}
+      {!ecranAscuns('insight') && <div class="rp-tabs">
         <button class={'rp-tab' + (tab === 'rapoarte' ? ' on' : '')} onClick={() => setTab('rapoarte')}><Icon name="report" size={16} /> Rapoarte</button>
         <button class={'rp-tab' + (tab === 'insight' ? ' on' : '')} onClick={() => setTab('insight')}><Icon name="sparkles" size={16} /> RA Insight</button>
-      </div>
+      </div>}
       <div class="content has-tabbar">
-        {tab === 'insight' ? <InsightPanel /> : (<>
+        {tab === 'insight' && !ecranAscuns('insight') ? <InsightPanel /> : (<>
         <div class="rp-controls">
           <button class="rp-pick" onClick={() => { setTq(''); setSheet('type'); }}>
             <Icon name="report" size={20} class="ic" />

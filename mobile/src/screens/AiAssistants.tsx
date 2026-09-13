@@ -53,7 +53,8 @@ export function AiAssistants() {
                   const u = byKind[a.kind] || {};
                   const calls = Number(u.calls) || 0, used = calls > 0;
                   const last = fmtWhen(u.last_used);
-                  const stats = [{ v: fmtN(calls), k: 'Apeluri' }, { v: fmtTok(u.input_tokens), k: 'Tokeni in' }, { v: fmtTok(u.output_tokens), k: 'Tokeni out' }];
+                  // Etichete ca pe web („Cereri API"). Ecranul e doar pentru super-admin (păzit în App.tsx + pe server).
+                  const stats = [{ v: fmtN(calls), k: 'Cereri API' }, { v: fmtTok(u.input_tokens), k: 'Tokeni in' }, { v: fmtTok(u.output_tokens), k: 'Tokeni out' }];
                   return (
                     <div style={`background:var(--bg-panel);border:1px solid var(--border);border-top:3px solid ${a.color};border-radius:12px;padding:13px 14px`}>
                       <div style="display:flex;align-items:center;gap:11px;margin-bottom:8px">
@@ -89,7 +90,7 @@ export function AiAssistants() {
                   );
                 })}
                 <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:4px">
-                  Utilizarea AI din {days ? `ultimele ${days} zile` : 'tot istoricul'} — <b>{fmtN(totCalls)}</b> apeluri în total{d?.model ? ` · model: ${d.model}` : ''}{d?.enabled === false ? ' · AI neconfigurat' : ''}.
+                  Utilizarea AI din {days ? `ultimele ${days} zile` : 'tot istoricul'} — <b>{fmtN(totCalls)}</b> apeluri în total{d?.model ? ` · model: ${d.model}` : ''}{d?.enabled === false ? ' · AI neconfigurat (fără cheie)' : ''}. Tokenii sunt însumați (intrare/ieșire) pe fiecare asistent.
                 </div>
               </div>
             )}

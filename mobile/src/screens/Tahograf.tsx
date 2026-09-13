@@ -257,9 +257,14 @@ export function Tahograf() {
         {!err && tab === 'files' && items != null && items.length > 0 && (
           <div class="adm-list">
             {items.map((f) => {
-              const necitit = f.incredere === 'necitit';
-              const grave = (f.parsed && f.parsed.totals && f.parsed.totals.infractiuniGrave) || 0;
-              const total = (f.parsed && f.parsed.totals && f.parsed.totals.infractiuni) || 0;
+              const necitit = (f.incredere || (f.parsed && f.parsed.incredere)) === 'necitit';
+              const tt = (f.parsed && f.parsed.totals) || {};
+              // „OK" și cifre DOAR din zile citite cu adevărat — aceeași regulă ca pe web. Fișierul din
+              // memoria vehiculului e doar înregistrat: zero abateri acolo nu înseamnă „în regulă", ci
+              // „nu știm încă". Un „OK" verde ar fi exact liniștirea falsă pe care secțiunea o evită.
+              const analizat = !necitit && !!tt.zile;
+              const grave = tt.infractiuniGrave || 0;
+              const total = tt.infractiuni || 0;
               return (
                 <button class="adm-item" onClick={() => open(f.id)} style="align-items:flex-start">
                   <span class="ic-wrap"><Icon name={necitit ? 'ban' : 'disc'} size={19} /></span>
@@ -267,10 +272,12 @@ export function Tahograf() {
                     <div class="nm">{f.driver_name || f.filename || 'Fișier tahograf'}</div>
                     {/* Un fișier necitit NU e o descărcare — se vede la fel de clar ca pe web, altfel
                         rândul ar arăta ca o dovadă pe care n-o ai. */}
-                    <div class="sub">{necitit ? 'nu s-a putut citi — nu contează ca descărcare' : `${f.kind || '—'} · ${fmtDate(f.period_from)} – ${fmtDate(f.period_to)}`}</div>
+                    <div class="sub">{necitit ? 'nu s-a putut citi — nu contează ca descărcare'
+                      : !analizat ? `${f.kind || 'fișier'} · activitatea nu se analizează încă`
+                      : `${f.kind || '—'} · ${fmtDate(f.period_from)} – ${fmtDate(f.period_to)}`}</div>
                   </span>
                   <span class="rt">
-                    <span class={'adm-pill ' + (necitit ? 'bad' : grave > 0 ? 'bad' : total > 0 ? 'warn' : 'ok')}>{necitit ? 'necitit' : total > 0 ? total + ' infr.' : 'OK'}</span>
+                    <span class={'adm-pill ' + (necitit ? 'bad' : !analizat ? 'warn' : grave > 0 ? 'bad' : total > 0 ? 'warn' : 'ok')}>{necitit ? 'necitit' : !analizat ? 'neanalizat' : total > 0 ? total + ' infr.' : 'OK'}</span>
                     <Icon name="chevronR" size={18} color="var(--text-muted)" />
                   </span>
                 </button>
@@ -293,12 +300,15 @@ export function Tahograf() {
                     const necitit = f.incredere === 'necitit';
                     const per = (f.period_from && f.period_to) ? (ziScurta(String(f.period_from).slice(0, 10)) + ' → ' + ziScurta(String(f.period_to).slice(0, 10))) : 'fără perioadă';
                     const tt = f.totals || {};
+                    // Verde doar pentru ce s-a citit. Fișierul doar înregistrat (memoria vehiculului) rămâne
+                    // neutru, ca pe web — nu e o problemă, dar nici o dovadă că totul e în regulă.
+                    const citit = !necitit && !!tt.zile;
                     return (
-                      <button class={'th-due ' + (necitit ? 'over' : 'ok')} onClick={() => open(f.id)}>
+                      <button class={'th-due' + (necitit ? ' over' : citit ? ' ok' : '')} onClick={() => open(f.id)}>
                         <Icon name={necitit ? 'ban' : 'disc'} size={18} class="ic" />
                         <span class="mid">
                           <div class="nm">{f.filename}</div>
-                          <div class="sub">{per}{necitit ? ' · nu s-a putut citi' : (tt.zile ? ` · ${tt.zile} zile · ${Math.round((tt.conducereMin || 0) / 60)}h condus` : '')}</div>
+                          <div class="sub">{per}{necitit ? ' · nu s-a putut citi' : citit ? ` · ${tt.zile} zile · ${Math.round((tt.conducereMin || 0) / 60)}h condus` : ' · activitatea nu se analizează încă'}</div>
                         </span>
                         <Icon name="chevronR" size={16} color="var(--text-muted)" />
                       </button>
@@ -340,25 +350,44 @@ export function Tahograf() {
                 if (p.incredere === 'necitit') {
                   return <div class="th-note"><b style="color:var(--red)">Fișierul nu a putut fi citit.</b><br />{p.parseNote || 'Structura nu se potrivește cu un fișier de tahograf.'}<br /><br />Nu scoatem ore dintr-un fișier pe care nu-l înțelegem și nu îl socotim ca descărcare făcută.</div>;
                 }
+                // Fișierul din memoria vehiculului e doar ÎNREGISTRAT (contează pentru termenul de 90 de
+                // zile), dar activitatea din el nu se citește încă. Ca pe web: nota „De reținut", iar orele
+                // și „nicio abatere" apar DOAR dacă s-au citit zile. Altfel „0h 0m" și „Nicio abatere"
+                // ar spune că șoferul n-a condus și e în regulă, când de fapt nu știm nimic.
+                const citit = !!t.zile;
                 return (
                   <>
-                    <div class="rp-summary" style="margin-bottom:14px">
-                      <div class="rp-kpi"><div class="v">{hm(t.conducereMin || 0)}</div><div class="l">Conducere</div></div>
-                      <div class="rp-kpi"><div class="v">{hm(t.odihnaMin || 0)}</div><div class="l">Odihnă</div></div>
-                      <div class="rp-kpi"><div class="v">{t.km != null ? Math.round(t.km) : '—'}</div><div class="l">km</div></div>
-                      <div class="rp-kpi"><div class="v">{t.zile ?? '—'}</div><div class="l">Zile</div></div>
-                    </div>
-                    <div class="np-card" style="margin-bottom:0">
-                      <div class="np-head"><span class="np-lbl">Abateri</span><span class={'adm-pill ' + (infr.length ? 'bad' : 'ok')}>{infr.length || 0}</span></div>
-                      {infr.length === 0
-                        ? <div class="muted" style="font-size:13px;margin-top:10px">Nicio abatere detectată.</div>
-                        : <div class="np-sub">{infr.map((i: any) => (
-                            <div style="display:flex;gap:8px;align-items:flex-start">
-                              <span class={'adm-pill ' + (i.severity === 'gravă' ? 'bad' : 'warn')} style="flex:0 0 auto">{i.severity || 'minoră'}</span>
-                              <span style="font-size:13px">{i.text || i.rule || i.type || 'Abatere'}{i.date ? ' · ' + fmtDate(i.date) : ''}</span>
-                            </div>
-                          ))}</div>}
-                    </div>
+                    {p.kind && <div class="muted" style="font-size:12.5px;margin:0 0 10px">{p.kind}{detail.driver_name && detail.filename ? ' · ' + detail.filename : ''}</div>}
+                    {p.parseNote && (
+                      <div class="th-gap" style="margin-bottom:12px">
+                        <Icon name="alertO" size={17} color="#f5b43c" />
+                        <span><b>De reținut</b><span>{p.parseNote}</span></span>
+                      </div>
+                    )}
+                    {!citit && !p.parseNote && (
+                      <div class="th-note" style="margin-bottom:12px">Din fișierul ăsta nu s-a citit nicio zi de activitate, așa că nu afișăm ore și nici abateri.</div>
+                    )}
+                    {citit && (
+                      <div class="rp-summary" style="margin-bottom:14px">
+                        <div class="rp-kpi"><div class="v">{hm(t.conducereMin || 0)}</div><div class="l">Conducere</div></div>
+                        <div class="rp-kpi"><div class="v">{hm(t.odihnaMin || 0)}</div><div class="l">Odihnă</div></div>
+                        <div class="rp-kpi"><div class="v">{t.km != null ? Math.round(t.km) : '—'}</div><div class="l">km</div></div>
+                        <div class="rp-kpi"><div class="v">{t.zile}</div><div class="l">Zile</div></div>
+                      </div>
+                    )}
+                    {(citit || infr.length > 0) && (
+                      <div class="np-card" style="margin-bottom:0">
+                        <div class="np-head"><span class="np-lbl">Abateri</span><span class={'adm-pill ' + (infr.length ? 'bad' : 'ok')}>{infr.length || 0}</span></div>
+                        {infr.length === 0
+                          ? <div class="muted" style="font-size:13px;margin-top:10px">Nicio abatere detectată.</div>
+                          : <div class="np-sub">{infr.map((i: any) => (
+                              <div style="display:flex;gap:8px;align-items:flex-start">
+                                <span class={'adm-pill ' + (i.severity === 'gravă' ? 'bad' : 'warn')} style="flex:0 0 auto">{i.severity || 'minoră'}</span>
+                                <span style="font-size:13px">{i.text || i.rule || i.type || 'Abatere'}{i.date ? ' · ' + fmtDate(i.date) : ''}</span>
+                              </div>
+                            ))}</div>}
+                      </div>
+                    )}
                   </>
                 );
               })()}

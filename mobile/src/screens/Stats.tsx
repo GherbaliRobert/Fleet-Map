@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
-import { vehicles, offlineMinutes } from '../app/store';
+import { vehicles, offlineMinutes, ecranAscuns } from '../app/store';
 import { Api } from '../api/endpoints';
 import type { Group, DocItem, Position } from '../api/endpoints';
 import { statusOf, countByStatus } from '../lib/status';
@@ -13,9 +13,12 @@ type Tab = 'sumar' | 'documente' | 'offline' | 'grupuri';
 
 export function Stats() {
   const loc = useLocation();
-  const [tab, setTab] = useState<Tab>('sumar');
+  const [tabAles, setTab] = useState<Tab>('sumar');
   const [docs, setDocs] = useState<DocItem[] | null>(null);
   const [groups, setGroups] = useState<Group[] | null>(null);
+  // Ecranul „Documente" tăiat din rol → serverul refuză actele, iar fila ar spune fals „Niciun document înregistrat".
+  const docsAscunse = ecranAscuns('documente');
+  const tab: Tab = tabAles === 'documente' && docsAscunse ? 'sumar' : tabAles;
 
   const off = offlineMinutes.value;
   const list = vehicles.value;
@@ -26,12 +29,12 @@ export function Stats() {
     if (tab === 'grupuri' && groups === null) Api.groups().then((r) => setGroups(r || [])).catch(() => setGroups([]));
   }, [tab]);
 
-  const TABS: { k: Tab; label: string }[] = [
+  const TABS = ([
     { k: 'sumar', label: 'Sumar activitate' },
     { k: 'documente', label: 'Expirare documente' },
     { k: 'offline', label: 'Fără transmisie' },
     { k: 'grupuri', label: 'Grupuri vehicule' },
-  ];
+  ] as { k: Tab; label: string }[]).filter((t) => !(t.k === 'documente' && docsAscunse));
 
   return (
     <div class="screen">

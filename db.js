@@ -2221,7 +2221,9 @@ async function setUserCompany(id, companyId) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('UPDATE users SET company_id = $2 WHERE id = $1', [id, companyId || null]);
+    // Rolul PROPRIU e al firmei vechi: în firma nouă nu înseamnă nimic (sau, rar, altceva). Se scoate doar
+    // când firma chiar se schimbă; omul rămâne pe rolul standard din care derivă.
+    await client.query('UPDATE users SET company_id = $2, role_slug = CASE WHEN company_id IS DISTINCT FROM $2 THEN NULL ELSE role_slug END WHERE id = $1', [id, companyId || null]);
     await client.query('DELETE FROM user_device_access WHERE user_id = $1', [id]);
     await client.query('DELETE FROM user_group_access WHERE user_id = $1', [id]);
     await client.query('COMMIT');
@@ -2972,14 +2974,21 @@ async function getAiMonthUsageForUser(userId, kinds) {
 }
 
 async function getUsers(companyId) {
-  const where = companyId != null ? 'WHERE u.company_id = $1' : '';
+  // Lista unei FIRME nu arată conturile de platformă — nici pe cele promovate înainte ca promovarea să le scoată din firmă.
+  const where = companyId != null ? "WHERE u.company_id = $1 AND u.role <> 'superadmin'" : '';
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
-    SELECT u.id, u.username, u.role, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat,
+    SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat,
       c.name AS company_name,
+      -- Rolul PROPRIU al firmei (dacă omul are unul) și numele lui. Fără ele, web-ul și telefonul nu știau
+      -- cine are rol propriu: ecranul arăta rolul standard, iar la prima salvare omul era mutat pe el.
+      cr.nume AS role_slug_name,
       (SELECT COUNT(*) FROM user_device_access WHERE user_id = u.id) AS device_count,
       (SELECT COUNT(*) FROM user_group_access WHERE user_id = u.id) AS group_count
-    FROM users u LEFT JOIN companies c ON c.id = u.company_id ${where} ORDER BY u.created_at
+    FROM users u
+      LEFT JOIN companies c ON c.id = u.company_id
+      LEFT JOIN company_roles cr ON cr.company_id = u.company_id AND cr.role_key = u.role_slug
+    ${where} ORDER BY u.created_at
   `, params);
   return result.rows;
 }
@@ -3001,7 +3010,8 @@ async function setUsersCompanyBulk(ids, companyId) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const r = await client.query('UPDATE users SET company_id = $2 WHERE id = ANY($1::int[])', [ids, companyId || null]);
+    // Ca la mutarea unui singur om: rolul propriu al firmei vechi nu pleacă odată cu omul.
+    const r = await client.query('UPDATE users SET company_id = $2, role_slug = CASE WHEN company_id IS DISTINCT FROM $2 THEN NULL ELSE role_slug END WHERE id = ANY($1::int[])', [ids, companyId || null]);
     await client.query('DELETE FROM user_device_access WHERE user_id = ANY($1::int[])', [ids]);
     await client.query('DELETE FROM user_group_access WHERE user_id = ANY($1::int[])', [ids]);
     await client.query('COMMIT');
@@ -3892,6 +3902,12 @@ async function createGeofence(data, companyId) {
   return result.rows[0];
 }
 
+// Rândul complet al unei zone — pentru modificările PARȚIALE (PUT care trimite doar ce s-a schimbat).
+async function getGeofenceById(id) {
+  const r = await pool.query('SELECT * FROM geofences WHERE id = $1', [parseInt(id)]);
+  return r.rows[0] || null;
+}
+
 async function updateGeofence(id, data) {
   await pool.query(
     `UPDATE geofences SET name=$2, type=$3, coordinates=$4, color=$5,
@@ -4114,7 +4130,7 @@ async function archiveVehicleDocumentsByType(imei, docType, companyId) {
 // Imaginea actului, DOAR la cerere. companyId nul = super-admin (vede tot).
 async function getVehicleDocumentFile(id, companyId) {
   const params = [id];
-  let q = 'SELECT id, company_id, file_b64, file_mime, file_name FROM vehicle_documents WHERE id = $1';
+  let q = 'SELECT id, imei, company_id, file_b64, file_mime, file_name FROM vehicle_documents WHERE id = $1';
   if (companyId != null) { params.push(companyId); q += ' AND company_id = $2'; }
   const r = await pool.query(q, params);
   return r.rows[0] || null;
@@ -4447,7 +4463,7 @@ module.exports = {
   closeDb,
   getDrivers, createDriver, updateDriver, deleteDriver,
   getGroups, createGroup, updateGroup, deleteGroup,
-  getGeofences, getGeofencesForScope, createGeofence, updateGeofence, deleteGeofence,
+  getGeofences, getGeofencesForScope, getGeofenceById, createGeofence, updateGeofence, deleteGeofence,
   getAlerts, createAlert, updateAlert, deleteAlert, getAlertHistory, getAlertHistoryRange, insertAlertEvent,
   getTrips, getTripsSummaryForImeis, createTrip, endTrip,
   getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance, getLastIo,

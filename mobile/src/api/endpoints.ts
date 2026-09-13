@@ -9,6 +9,7 @@ export interface Me {
   username: string; role: string; permissions: Record<string, boolean>; companyId: number | null;
   isSuper?: boolean; company?: { id: number; name: string; is_demo?: boolean } | null;
   features?: Record<string, boolean>; sys?: { announcement?: string; offline_minutes?: number }; offline_minutes?: number;
+  ecraneAscunse?: string[]; // ecranele tăiate de firmă din rolul omului (chei din ECRANE, server.js)
 }
 export interface DailyStats {
   imei: string; totalKm: number; avgSpeed: number; maxSpeed: number; movingTime: number; stoppedTime: number;
@@ -215,6 +216,8 @@ export const Api = {
 
   alerts: () => api<any[]>('/api/alerts'),
   createAlert: (b: any) => api('/api/alerts', { method: 'POST', body: b }),
+  // Modificare PARȚIALĂ (ca pe web): comutatorul trimite doar { enabled }; formularul trimite regula întreagă.
+  updateAlert: (id: number, b: any) => api<any>(`/api/alerts/${id}`, { method: 'PUT', body: b }),
   deleteAlert: (id: number) => api(`/api/alerts/${id}`, { method: 'DELETE' }),
   geofences: () => api<any[]>('/api/geofences'),
   // CRUD zone — până acum mobilul avea doar citire, deci zonele se puteau crea exclusiv de pe web.
@@ -240,6 +243,16 @@ export const Api = {
   createUser: (b: any) => api('/api/users', { method: 'POST', body: b }),
   updateUser: (id: number, b: any) => api(`/api/users/${id}`, { method: 'PUT', body: b }),
   deleteUser: (id: number) => api(`/api/users/${id}`, { method: 'DELETE' }),
+  // Parola pusă de admin (aceeași regulă de lungime ca la creare — o verifică serverul).
+  setUserPassword: (id: number, password: string) => api(`/api/users/${id}/password`, { method: 'POST', body: { password } }),
+  // Vehiculele și grupele atribuite unui cont (dispecer, viewer, rol fără „Vede toată flota").
+  // ATENȚIE: /access = vehicule; termenul unui cont demo e pe /access-until (altă rută, doar super-admin).
+  userAccess: (id: number) => api<{ devices: string[]; groups: number[] }>(`/api/users/${id}/access`),
+  setUserAccess: (id: number, devices: string[], groups: number[]) => api(`/api/users/${id}/access`, { method: 'PUT', body: { devices, groups } }),
+  // RA Insight pe cont (se facturează per cont aprins).
+  setUserAiSeat: (id: number, on: boolean) => api<{ ok: boolean; ai_seat: boolean; seats: number }>(`/api/users/${id}/ai-seat`, { method: 'PUT', body: { on } }),
+  // Rolurile firmei: cele standard (cu numele date de firmă) + rolurile proprii.
+  companyRoles: () => api<any[]>('/api/company-roles'),
   webhooks: () => api<any[]>('/api/webhooks'),
   createWebhook: (b: any) => api<any>('/api/webhooks', { method: 'POST', body: b }),
   deleteWebhook: (id: number) => api(`/api/webhooks/${id}`, { method: 'DELETE' }),
@@ -254,8 +267,12 @@ export const Api = {
   runReportSchedule: (id: number) => api<{ ok?: boolean; rows?: number; recipients?: string[]; emailSent?: boolean; historyId?: number | null; reason?: string }>(`/api/report-schedules/${id}/run`, { method: 'POST', body: {} }),
   aiStatus: () => api<{ enabled: boolean; model?: string }>('/api/ai/status'),
   aiUsageStats: (days: number) => api<{ days: number; enabled: boolean; model?: string; usage: { kind: string; input_tokens: number; output_tokens: number; calls: number; last_used: string | null }[] }>(`/api/ai/usage-stats?days=${days}`),
-  aiChat: (message: string, history?: { role: string; content: string }[]) => api<{ reply: string; source?: string; disabled?: boolean; limited?: boolean }>('/api/ai/chat', { method: 'POST', body: { message, history } }),
-  reportsAgent: (message: string) => api<{ reply?: string; disabled?: boolean; limited?: boolean }>('/api/ai/reports-agent', { method: 'POST', body: { message } }), // RA Insight — mod AI (text liber, opțional)
+  // acceptExtra: omul a apăsat „Am înțeles, continuă" în caseta costului suplimentar (needsExtraConsent), ca pe web.
+  aiChat: (message: string, history?: { role: string; content: string }[], acceptExtra?: boolean) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; source?: string; disabled?: boolean; limited?: boolean; needsExtraConsent?: boolean; cost?: { fond?: number; folosite?: number; conturi?: number; peCont?: number; pretLei?: number; pretEur?: number; reinnoire?: string } }>('/api/ai/chat', { method: 'POST', body: acceptExtra ? { message, history, acceptExtra: true } : { message, history } }),
+  reportsAgent: (message: string, acceptExtra?: boolean) => api<{ reply?: string | null; error?: string; message?: string; seatMissing?: boolean; sources?: any[]; disabled?: boolean; limited?: boolean; needsExtraConsent?: boolean; cost?: { fond?: number; folosite?: number; conturi?: number; peCont?: number; pretLei?: number; pretEur?: number; reinnoire?: string } }>('/api/ai/reports-agent', { method: 'POST', body: acceptExtra ? { message, acceptExtra: true } : { message } }), // RA Insight — mod AI (text liber, opțional)
+  // Contorul RA Insight (aceeași sursă ca bara de pe web): fondul firmei, cât a pus omul, reînnoirea, locul pe cont.
+  aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; questionsPerSeat?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; overage?: boolean; overagePriceEur?: number; overageCount?: number; overageCostEur?: number; periodEnd?: string }>('/api/ai/quota', { timeoutMs: 20000 }),
+  fx: () => api<{ eur: number; date?: string | null; source?: string }>('/api/fx', { timeoutMs: 20000 }), // curs BNR EUR→RON
   insightPresets: () => api<{ key: string; title: string }[]>('/api/insight/presets'), // RA Insight — întrebări predefinite (fără AI)
   insightRun: (key: string) => api<{ title: string; label?: string; reportType?: string; period?: any; summary: Record<string, any>; columns?: string[]; rows?: any[][] }>('/api/insight/run', { method: 'POST', body: { key } }),
   // Agenți AI operaționali (RA Watch/Care/Optimize/Compliance/Client): listă + rulare + constatări.

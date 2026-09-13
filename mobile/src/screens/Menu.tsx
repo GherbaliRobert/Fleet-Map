@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
-import { me, theme, toggleTheme, logout, showToast } from '../app/store';
+import { me, theme, toggleTheme, logout, showToast, ecranAscuns, type EcranCheie } from '../app/store';
 import { Api } from '../api/endpoints';
 import { API_BASE } from '../api/client'; // documentele legale sunt servite de server, nu împachetate în APK
 import { Icon, type IconName } from '../components/Icon';
@@ -38,6 +38,12 @@ export function Menu() {
 
   const initials = (u?.username || '?').slice(0, 2).toUpperCase();
 
+  // Ecranele pe care firma le-a tăiat din rolul omului dispar din meniu, ca pe web (data-ecran).
+  const vede = (k: EcranCheie) => !ecranAscuns(k);
+  // Titlul „Administrare" apare doar dacă a rămas măcar un rând sub el.
+  const FLOTA: EcranCheie[] = ['soferi', 'grupe', 'mentenanta', 'documente', 'vehicule', 'alerte'];
+  const areAdmin = !!perms.manageUsers || vede('hotspot') || (!!perms.manageFleet && FLOTA.some(vede));
+
   return (
     <div class="screen">
       <header class="app-header"><div class="h-title">Meniu</div></header>
@@ -48,33 +54,35 @@ export function Menu() {
         </div>
 
         <div class="mn-sec">Analize</div>
-        {item('droplet', 'Statistici consum', () => loc.route('/fuelstats'))}
+        {vede('statistici') && item('droplet', 'Statistici consum', () => loc.route('/fuelstats'))}
         {item('coins', 'Preț combustibil', () => loc.route('/fuelprice'))}
-        {perms.viewReports && item('clock', 'Rapoarte programate', () => loc.route('/report-schedules'))}
-        {u?.features?.ai_assistant && item('robot', 'Asistent AI', () => loc.route('/ai'))}
-        {item('sparkles', 'Asistenți AI', () => loc.route('/ai-stats'))}
+        {perms.viewReports && vede('programari') && item('clock', 'Rapoarte programate', () => loc.route('/report-schedules'))}
+        {u?.features?.ai_assistant && vede('insight') && item('robot', 'Asistent AI', () => loc.route('/ai'))}
+        {/* Agenți AI: rând propriu, ca pe web — vizibil când modulul agenților e activ și omul are voie la rapoarte.
+            Înainte se ajungea aici doar din „Asistenți AI", ecran rămas acum doar pentru super-admin. */}
+        {u?.features?.agents !== false && perms.viewReports && vede('insight') && item('shield', 'Agenți AI', () => loc.route('/ai-agents'))}
 
         <div class="mn-sec">Module</div>
-        {u?.features?.etransport
+        {vede('etransport') && (u?.features?.etransport
           ? item('truck', 'e-Transport (ANAF)', () => loc.route('/etransport'))
-          : soon('truck', 'e-Transport (ANAF)')}
-        {u?.features?.etoll
+          : soon('truck', 'e-Transport (ANAF)'))}
+        {vede('tollro') && (u?.features?.etoll
           ? item('route', 'Taxa de drum (TollRo)', () => loc.route('/etoll'))
-          : soon('route', 'Taxa de drum (TollRo)')}
-        {u?.features?.tahograf && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
+          : soon('route', 'Taxa de drum (TollRo)'))}
+        {u?.features?.tahograf && vede('tahograf') && item('disc', 'Tahograf', () => loc.route('/tahograf'))}
         {item('compass', 'Dispecerizare', () => loc.route('/dispatch'))}
-        {perms.viewReports && item('mapPin', 'Hotspot & Rutare', () => loc.route('/hotspot'))}
+        {perms.viewReports && vede('hotspot') && item('mapPin', 'Hotspot & Rutare', () => loc.route('/hotspot'))}
 
-        {(perms.manageFleet || perms.manageUsers) && (
+        {(perms.manageFleet || perms.manageUsers) && areAdmin && (
           <>
             <div class="mn-sec">Administrare</div>
-            {perms.manageFleet && item('user', 'Șoferi', () => loc.route('/admin/drivers'))}
-            {perms.manageFleet && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
-            {item('mapPin', 'Zone (geofence)', () => loc.route('/admin/geofences'))}
-            {perms.manageFleet && item('wrench', 'Mentenanță', () => loc.route('/admin/maintenance'))}
-            {perms.manageFleet && item('report', 'Documente vehicule', () => loc.route('/admin/documents'))}
-            {perms.manageFleet && item('truck', 'Vehicule (editare fișă)', () => loc.route('/vehicles'))}
-            {perms.manageFleet && item('alert', 'Alerte', () => loc.route('/admin/alerts'))}
+            {perms.manageFleet && vede('soferi') && item('user', 'Șoferi', () => loc.route('/admin/drivers'))}
+            {perms.manageFleet && vede('grupe') && item('layers', 'Grupe', () => loc.route('/admin/groups'))}
+            {vede('hotspot') && item('mapPin', 'Zone (geofence)', () => loc.route('/admin/geofences'))}
+            {perms.manageFleet && vede('mentenanta') && item('wrench', 'Mentenanță', () => loc.route('/admin/maintenance'))}
+            {perms.manageFleet && vede('documente') && item('report', 'Documente vehicule', () => loc.route('/admin/documents'))}
+            {perms.manageFleet && vede('vehicule') && item('truck', 'Vehicule (editare fișă)', () => loc.route('/vehicles'))}
+            {perms.manageFleet && vede('alerte') && item('alert', 'Alerte', () => loc.route('/admin/alerts'))}
             {perms.manageUsers && item('user', 'Utilizatori', () => loc.route('/admin/users'))}
             {perms.manageUsers && item('report', u?.isSuper ? 'Facturare' : 'Facturile mele', () => loc.route('/billing'))}
             {perms.manageUsers && item('zap', 'Webhooks (integrări)', () => loc.route('/admin/webhooks'))}
@@ -89,6 +97,8 @@ export function Menu() {
             {item('cpu', 'Dispozitive (toate)', () => loc.route('/admin/devices'))}
             {item('trash', 'Dispozitive arhivate', () => loc.route('/admin/archived'))}
             {item('zap', 'Control costuri', () => loc.route('/admin/costs'))}
+            {/* Tokeni, cereri și modelul AI: informație doar pentru noi (pe web ecranul a ieșit din meniul clientului). */}
+            {item('sparkles', 'Asistenți AI', () => loc.route('/ai-stats'))}
             {item('fileBar', 'Ofertare Live', () => loc.route('/admin/offers'))}
             {item('mail', 'Cereri demo', () => loc.route('/admin/demo-requests'))}
           </>

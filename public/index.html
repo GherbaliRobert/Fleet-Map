@@ -621,7 +621,7 @@
         <button class="edit-tab" data-tab="sensors" onclick="switchEditTab('sensors', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
           <i class="fas fa-gas-pump"></i> Sonde (avansat)
         </button>
-        <button class="edit-tab" data-tab="documents" onclick="switchEditTab('documents', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
+        <button class="edit-tab" data-tab="documents" data-ecran="documente" onclick="switchEditTab('documents', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
           <i class="fas fa-file-contract"></i> Documente
         </button>
         <button class="edit-tab" data-tab="service" onclick="switchEditTab('service', this)" style="padding:10px 14px;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;">
@@ -3960,7 +3960,11 @@ const pozitii = await r.json();</code></pre>
     function _userRowHtml(u) {
       var isSelf = u.username === currentUser.username;
       var last = u.last_login ? new Date(u.last_login).toLocaleString('ro-RO') : 'niciodată';
-      var scope = (u.role === 'admin' || u.role === 'manager' || u.role === 'company_admin' || u.role === 'superadmin')
+      // „Toată flota" o spune serverul (sees_all), cu tăierile firmei omului — și pe rolul lui propriu. Calculul după rol
+      // rămâne doar pentru un server vechi: el arăta „toată flota" și unde firma tăiase dreptul.
+      var vedeTot = u.role === 'superadmin' || (typeof u.sees_all === 'boolean' ? u.sees_all
+        : (u.role === 'admin' || u.role === 'manager' || u.role === 'company_admin'));
+      var scope = vedeTot
         ? 'toată flota'
         : ((Number(u.device_count) + Number(u.group_count) > 0) ? (u.device_count + ' veh. + ' + u.group_count + ' grupe') : '⚠ fără acces');
       return '<div class="user-row" style="align-items:center;">' +
@@ -4210,7 +4214,22 @@ const pozitii = await r.json();</code></pre>
         : [['manager', 'Manager'], ['dispatcher', 'Dispecer'], ['client', 'Client'], ['viewer', 'Viewer']];
       if (!_ueRoleOpts.some(function (o) { return o[0] === u.role; })) _ueRoleOpts.unshift([u.role, (typeof ROLE_LABELS !== 'undefined' && ROLE_LABELS[u.role]) || u.role]); // arată rolul curent chiar dacă nu e în listă
       document.getElementById('ue-role').innerHTML = _ueRoleOpts.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('');
-      document.getElementById('ue-role').value = u.role;
+      // Numele date de firmă și rolurile ei proprii: lista se refăcea de la zero și le pierdea.
+      if (typeof rolAplicaNume === 'function') { try { rolAplicaNume(); } catch (e) {} }
+      // Omul are un rol PROPRIU al firmei → apare ales acela, nu rolul standard din care derivă. Altfel,
+      // o simplă salvare (alt număr de telefon) îl muta pe rolul standard, cu mai multe drepturi.
+      // Doar dacă rolul chiar există în firma LUI (role_slug_name vine din firma omului). Un rol rămas dintr-o
+      // firmă veche (omul a fost mutat) nu se mai poate da: atunci apare rolul standard, iar salvarea îl curăță,
+      // în loc să se oprească în „Rol invalid".
+      var _ueSel = document.getElementById('ue-role');
+      var _uePropriu = (u.role_slug && u.role_slug_name) ? u.role_slug : null;
+      if (_uePropriu && !Array.prototype.some.call(_ueSel.options, function (o) { return o.value === _uePropriu; })) {
+        var _ueOpt = document.createElement('option');
+        _ueOpt.value = _uePropriu; _ueOpt.textContent = u.role_slug_name + ' (rol propriu)';
+        _ueOpt.setAttribute('data-propriu', '1');
+        _ueSel.appendChild(_ueOpt);
+      }
+      _ueSel.value = _uePropriu || u.role;
       document.getElementById('ue-active').value = (u.active === false) ? 'false' : 'true';
       document.getElementById('ue-fullname').value = u.full_name || '';
       document.getElementById('ue-email').value = u.email || '';
@@ -4245,7 +4264,13 @@ const pozitii = await r.json();</code></pre>
 
     function ueToggleAccessVisibility() {
       const role = document.getElementById('ue-role').value;
-      const scoped = (role !== 'admin' && role !== 'manager');
+      // Rolul salvat, neschimbat: ce spune serverul (sees_all, cu tăierile firmei). Un rol ales acum: regula după rol.
+      const id = Number((document.getElementById('ue-id') || {}).value);
+      const cache = (typeof ueUsersCache !== 'undefined' && Array.isArray(ueUsersCache)) ? ueUsersCache : [];
+      const u = cache.find(x => Number(x.id) === id);
+      const scoped = (u && typeof u.sees_all === 'boolean' && role === (u.role_slug || u.role))
+        ? !u.sees_all
+        : (role !== 'admin' && role !== 'manager');
       document.getElementById('ue-access-wrap').style.display = scoped ? '' : 'none';
     }
 
@@ -4271,16 +4296,22 @@ const pozitii = await r.json();</code></pre>
 
     async function saveUserEdit() {
       const id = document.getElementById('ue-id').value;
-      const role = document.getElementById('ue-role').value;
+      const roleSel = document.getElementById('ue-role');
+      const role = roleSel.value;
       const active = document.getElementById('ue-active').value === 'true';
       const full_name = document.getElementById('ue-fullname').value.trim();
       const email = document.getElementById('ue-email').value.trim();
       const phone = document.getElementById('ue-phone').value.trim();
       const password = document.getElementById('ue-password').value;
+      const ueBody = { role, active, full_name, email, phone };
+      // Rol STANDARD ales → spunem explicit că omul iese de pe rolul propriu, dacă avea unul. Serverul
+      // păstrează rolul propriu când primește doar rolul standard din care derivă (așa trimite telefonul).
+      const ueOptAles = roleSel.options[roleSel.selectedIndex];
+      if (!(ueOptAles && ueOptAles.hasAttribute('data-propriu'))) ueBody.role_slug = null;
 
       let r = await fetch('/api/users/' + id, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, active, full_name, email, phone })
+        body: JSON.stringify(ueBody)
       });
       if (!r.ok) { const e = await r.json(); return alert(e.error); }
 
@@ -6566,15 +6597,15 @@ const pozitii = await r.json();</code></pre>
     // ─── Alerte ───
     const ALERT_TYPES = [
       { v:'overspeed', label:'Depășire viteză', fields:[{k:'maxSpeed',label:'Viteză max (km/h)',def:90}] },
-      { v:'fuel_drop', label:'Scădere combustibil (furt)', fields:[{k:'dropLiters',label:'Scădere minimă (L)',def:10}] },
+      { v:'fuel_drop', label:'Scădere combustibil (furt)', fields:[{k:'dropLiters',label:'Scădere minimă (L)',def:10,empty:'gol = dezactivat'}] },
       { v:'ignition_on', label:'Pornire motor', fields:[] },
       { v:'ignition_off', label:'Oprire motor', fields:[] },
       { v:'geofence_enter', label:'Intrare în zonă', fields:[{k:'geofenceIds',label:'Zone urmărite',geofence:true}] },
       { v:'geofence_exit', label:'Ieșire din zonă', fields:[{k:'geofenceIds',label:'Zone urmărite',geofence:true}] },
-      { v:'engine_temp', label:'Temperatură motor mare', fields:[{k:'maxTemp',label:'Temp max (°C)',def:105}] },
+      { v:'engine_temp', label:'Temperatură motor mare', fields:[{k:'maxTemp',label:'Temp max (°C)',def:105,empty:'gol = dezactivat'}] },
       { v:'dtc_error', label:'Erori motor (DTC)', fields:[] },
-      { v:'overload_legal', label:'Supraîncărcare (legal)', fields:[{k:'maxKg',label:'Limită (kg)',def:40000}] },
-      { v:'overload_construct', label:'Supraîncărcare (constructiv)', fields:[{k:'maxKg',label:'Limită (kg)',def:44000}] },
+      { v:'overload_legal', label:'Supraîncărcare (legal)', fields:[{k:'maxKg',label:'Limită (kg)',def:40000,empty:'gol = dezactivat'}] },
+      { v:'overload_construct', label:'Supraîncărcare (constructiv)', fields:[{k:'maxKg',label:'Limită (kg)',def:44000,empty:'gol = dezactivat'}] },
       { v:'axle_overload', label:'Supraîncărcare pe axă', axles:true, fields:[] },
       { v:'pto_active', label:'PTO activat', fields:[] },
       { v:'brake_pad_wear', label:'Uzură plăcuțe frână', fields:[{k:'minPercent',label:'Prag minim (%)',def:20}] },
@@ -6634,7 +6665,7 @@ const pozitii = await r.json();</code></pre>
           </div>`;
         } else {
           html += `<label style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px;"><span>${f.label}</span>
-            <input type="number" id="alert-cf-${f.k}" value="${f.def!=null?f.def:''}"></label>`;
+            <input type="number" id="alert-cf-${f.k}" value="${f.def!=null?f.def:''}"${f.empty ? ` placeholder="${f.empty}"` : ''}></label>`;
         }
       }
       if (def.axles) {
@@ -6781,6 +6812,9 @@ const pozitii = await r.json();</code></pre>
     const COND_UNIT = { maxSpeed: ' km/h', dropLiters: ' L', maxTemp: ' °C', maxKg: ' kg', minPercent: '%', warnKm: ' km', idleMinutes: ' min', warnDays: ' zile' };
     function alertPragLabel(a) {
       const c = a.condition || {};
+      // La combustibil, temperatură și greutate, un prag GOL înseamnă că regula nu sună niciodată: o spunem pe față.
+      const _def = ALERT_TYPES.find(t => t.v === a.type);
+      if (_def && _def.fields.some(f => f.empty && c[f.k] === null)) return 'fără prag · nu sună';
       for (const k in COND_UNIT) {
         if (c[k] !== undefined && c[k] !== null && c[k] !== '') return c[k] + COND_UNIT[k];
       }
@@ -6805,6 +6839,7 @@ const pozitii = await r.json();</code></pre>
     function resetAlertForm(close) {
       const g = id => document.getElementById(id);
       if (g('alert-id')) g('alert-id').value = '';
+      window._alertZoneSalvate = [];
       if (g('alert-name')) g('alert-name').value = '';
       if (g('alert-enabled')) g('alert-enabled').value = 'true';
       if (g('alert-imei')) g('alert-imei').value = '';
@@ -6828,9 +6863,15 @@ const pozitii = await r.json();</code></pre>
       const c = a.condition || {};
       for (const k in c) {
         const el = g('alert-cf-' + k);
-        if (el && typeof c[k] !== 'object') el.value = c[k];
+        if (!el) continue;
+        // Un prag salvat GOL (null) rămâne gol: la viteză înseamnă regula de bază a motorului (50 km/h + marja de 10),
+        // la combustibil, temperatură și greutate înseamnă „nu sună". Înainte rămânea în căsuță valoarea implicită a
+        // formularului, iar o simplă salvare o scria tăcut în regulă (schimbând sau chiar pornind alerta).
+        if (c[k] === null) el.value = '';
+        else if (typeof c[k] !== 'object') el.value = c[k];
       }
       const zIds = Array.isArray(c.geofenceIds) ? c.geofenceIds : (c.geofenceId ? [c.geofenceId] : []);
+      window._alertZoneSalvate = zIds.map(Number); // zonele pe care lista nu le arată (ex. ale platformei) rămân la salvare
       if (zIds.length) document.querySelectorAll('.alert-zone').forEach(ch => { ch.checked = zIds.indexOf(Number(ch.value)) >= 0; });
       if (c.axleLimits) [1, 2, 3, 4, 5].forEach(n => { const el = g('alert-cf-axle' + n); if (el) el.value = c.axleLimits['axle' + n] || ''; });
       g('alert-btn').textContent = 'Salvează';
@@ -6848,8 +6889,14 @@ const pozitii = await r.json();</code></pre>
       for (const f of def.fields) {
         if (f.geofence) {
           const ids = Array.from(document.querySelectorAll('.alert-zone:checked')).map(c => Number(c.value));
-          if (!ids.length) return alert('Bifează cel puțin o zonă pentru regulă.');
-          condition[f.k] = ids;
+          // Zonele regulii pe care lista nu le arată (ex. zonele platformei, invizibile adminului firmei) nu se pierd la
+          // o salvare: motorul le urmărește în continuare.
+          // „Ascunse" = zonele pe care omul nu le primește deloc de la server (ale platformei), NU cele pe care formularul doar
+          // nu le desenează (zonele altei companii, la super-admin): acelea nu pot fi găsite de motor și ies, ca pe telefon.
+          const cunoscute = new Set((Array.isArray(alertGeofencesCache) ? alertGeofencesCache : []).map(g => Number(g.id)));
+          const ascunse = (document.getElementById('alert-id').value ? (window._alertZoneSalvate || []) : []).filter(id => !cunoscute.has(Number(id)));
+          if (!ids.length && !ascunse.length) return alert('Bifează cel puțin o zonă pentru regulă.');
+          condition[f.k] = ids.concat(ascunse);
           continue;
         }
         const v = document.getElementById('alert-cf-' + f.k).value;
@@ -9521,6 +9568,19 @@ const pozitii = await r.json();</code></pre>
       try {
         var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
         var j = await r.json();
+        // Fondul lunii s-a terminat, iar firma poate trece pe cost suplimentar: întâi acordul, ca în panoul RA Insight.
+        // Înainte, aici apărea „Eroare RA Insight." și nu exista nicio cale de a continua.
+        if (j && j.needsExtraConsent) {
+          if (thinking) thinking.remove();
+          var c = j.cost || {};
+          var deAcord = typeof window._raxAcordCostExtra === 'function'
+            ? await window._raxAcordCostExtra(c)
+            : await raConfirm('Fondul de întrebări al lunii s-a terminat. De acum, fiecare întrebare costă ' + Number(c.pretLei || 0).toFixed(2) + ' lei și intră pe factura lunii. Continui?', { okLabel: 'Am înțeles, continuă' });
+          if (!deAcord) { rinAddMsg('sys', 'Întrebarea nu a fost trimisă. Întrebările rapide (unde e o mașină, care sunt oprite, câți km azi) rămân gratuite.'); rinBusy = false; if (btn) btn.disabled = false; return; }
+          thinking = rinAddMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>', true);
+          r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg, acceptExtra: true }) });
+          j = await r.json();
+        }
         if (thinking) thinking.remove();
         rinAddMsg('ai', j.reply || j.message || j.error || 'Eroare RA Insight.');
         if (j.sources) rinRenderSources(j.sources);
@@ -10510,7 +10570,7 @@ const pozitii = await r.json();</code></pre>
       try {
         await openEditModal(imei);
         var b = document.querySelector('#edit-modal .edit-tab[data-tab="documents"]');
-        if (b) switchEditTab('documents', b);
+        if (b && b.style.display !== 'none') switchEditTab('documents', b); // fila e ascunsă când rolul n-are ecranul Documente
       } catch (e) { toast('Nu s-a putut deschide fișa vehiculului', 'error'); }
     }
     async function openNotifDetail(id) {
@@ -12366,7 +12426,7 @@ const pozitii = await r.json();</code></pre>
         }
         menu = document.createElement('div'); menu.id = 'map-layer-menu';
         menu.innerHTML = '<div class="mlt-head">Straturi hartă</div>' + MAP_LAYER_ORDER.map(function (k) {
-          var cfg = (k === 'auto') ? { label: 'Automat (temă)', icon: 'fa-wand-magic-sparkles' } : MAP_TILES[k];
+          var cfg = (k === 'auto') ? { label: 'Automat', icon: 'fa-wand-magic-sparkles' } : MAP_TILES[k];
           return '<a href="#" class="map-layer-opt" data-k="' + k + '"><i class="fas ' + cfg.icon + '"></i> ' + cfg.label + '</a>';
         }).join('');
         (document.getElementById('map') || document.body).appendChild(menu);
@@ -18157,7 +18217,7 @@ const pozitii = await r.json();</code></pre>
       try { q = await fetch('/api/ai/quota', { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
       if (!q || q.error || q.unlimited) { box.style.display = 'none'; return; } // fără cotă → nu arătăm nimic
       var pct = Math.min(100, Math.round((q.used / Math.max(1, q.questions)) * 100));
-      var reset = q.periodEnd ? new Date(q.periodEnd).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' }) : '';
+      var reset = q.periodEnd ? new Date(q.periodEnd).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : ''; // „1 octombrie": luna scurtă („oct.") ieșea cu două puncte la final de propoziție
       // Fondul e AL FIRMEI (conturile ei × întrebările fiecăruia), dar omul vrea să știe și cât a
       // pus el. Amândouă, pe același rând, ca bara să spună o poveste completă.
       var aleMele = Number(q.usedByMe) || 0;
@@ -18172,9 +18232,9 @@ const pozitii = await r.json();</code></pre>
         head = '<b>Fondul lunii s-a terminat</b>' + (q.overage ? ' · ' + q.overageCount + ' ' + (q.overageCount === 1 ? 'întrebare în plus' : 'întrebări în plus') : '');
         sub = q.overage
           ? ('Întrebările în plus intră pe factura lunii: ' + lei(q.overagePriceEur) + '/întrebare · până acum <b>' + both(q.overageCostEur) + '</b>' + (aleMele > 0 ? ' · ai folosit tu ' + aleMele : ''))
-          : ('Se reînnoiește pe ' + reset + '. Un cont în plus aduce încă ' + (q.questionsPerSeat || 50) + ' de întrebări pe lună.');
+          : ('Se reînnoiește pe ' + reset + '. Un cont în plus aduce încă ' + window._raxNrI(q.questionsPerSeat || 50) + ' pe lună.');
       } else {
-        head = '<b>' + q.remaining + '</b> din ' + q.questions + ' întrebări rămase' +
+        head = '<b>' + q.remaining + '</b> din ' + window._raxNrI(q.questions) + ' rămase' +
           (q.seats > 1 ? ' <span style="opacity:.7;">· fond comun, ' + q.seats + ' conturi</span>' : '');
         sub = 'Se reînnoiește pe ' + reset + (aleMele > 0 ? ' · ai folosit tu ' + aleMele : '') +
           (q.overage ? ' · peste fond: ' + lei(q.overagePriceEur) + '/întrebare' : '');
@@ -18192,11 +18252,11 @@ const pozitii = await r.json();</code></pre>
         + '<div style="font-size:10.5px;color:var(--text-muted);line-height:1.6;margin-top:4px;padding-left:2px;">'
         + '• O întrebare pusă aici = 1, oricât de complicat e răspunsul.<br>'
         + '• <b>Gratuite, nu intră la socoteală:</b> „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".<br>'
-        + '• Fondul e al firmei: ' + (q.seats || 1) + ' ' + ((q.seats || 1) === 1 ? 'cont' : 'conturi') + ' × ' + (q.questionsPerSeat || q.questions) + ' de întrebări.<br>'
+        + '• Fondul e al firmei: ' + (q.seats || 1) + ' ' + ((q.seats || 1) === 1 ? 'cont' : 'conturi') + ' × ' + window._raxNrI(q.questionsPerSeat || q.questions) + '.<br>'
         + '• Se reînnoiește pe ' + reset + '.'
         + (q.overage
             ? '<br>• Peste fond: ' + lei(q.overagePriceEur) + ' de fiecare întrebare, pe factura lunii (ți se cere acordul o dată).'
-            : '<br>• Când se termină, un cont în plus aduce încă ' + (q.questionsPerSeat || 50) + ' de întrebări pe lună.')
+            : '<br>• Când se termină, un cont în plus aduce încă ' + window._raxNrI(q.questionsPerSeat || 50) + ' pe lună.')
         + '</div></details>';
     };
     window.raxToggleAI = function () {
@@ -18274,7 +18334,7 @@ const pozitii = await r.json();</code></pre>
               '<i class="fas fa-circle-exclamation" style="color:var(--orange);font-size:20px;"></i>' +
               '<b style="font-size:16px;">Fondul de întrebări al lunii s-a terminat</b></div>' +
             '<p style="font-size:13.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 12px;">' +
-              'Firma a folosit toate cele <b>' + c.fond + '</b> întrebări incluse luna asta' +
+              'Firma a folosit ' + (Number(c.fond) === 1 ? 'singura întrebare inclusă' : 'toate cele <b>' + c.fond + '</b>' + window._raxNrI(c.fond).slice(String(c.fond).length) + ' incluse') + ' luna asta' +
               (c.conturi ? ' (' + c.conturi + ' ' + (c.conturi === 1 ? 'cont' : 'conturi') + ' × ' + c.peCont + ')' : '') + '.' +
               ' De aici înainte, <b>fiecare întrebare costă ' + Number(c.pretLei).toFixed(2) + ' lei</b> ' +
               '<span style="color:var(--text-muted);">(' + Number(c.pretEur).toFixed(2) + ' €)</span> și intră pe factura lunii.</p>' +
@@ -18284,7 +18344,7 @@ const pozitii = await r.json();</code></pre>
                 '<li>O întrebare pusă aici = 1, oricât de complicat ar fi răspunsul.</li>' +
                 '<li><b>Gratuit oricând</b>, fără să intre la socoteală: „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".</li>' +
                 '<li>Fondul se reînnoiește pe <b>' + reinnoire + '</b>.</li>' +
-                '<li>Poți adăuga conturi (fiecare aduce încă ' + (c.peCont || 50) + ' de întrebări) din <b>Utilizatori</b>.</li>' +
+                '<li>Poți adăuga conturi (fiecare aduce încă ' + window._raxNrI(c.peCont || 50) + ') din <b>Utilizatori</b>.</li>' +
               '</ul></div>' +
             '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">' +
               '<button class="rax-btn" id="rax-extra-nu">Nu, mă opresc aici</button>' +
@@ -18297,6 +18357,9 @@ const pozitii = await r.json();</code></pre>
         ov.onclick = function (e) { if (e.target === ov) gata(false); };
       });
     }
+    window._raxAcordCostExtra = _raxAcordCostExtra; // aceeași casetă și pentru RA Insight din pagina Rapoarte (rinAsk)
+    // „1 întrebare", „10 întrebări", „50 de întrebări" — de la 20 în sus româna cere „de" (ca nDe() de pe telefon).
+    window._raxNrI = function (n) { n = Number(n) || 0; var r = Math.abs(n) % 100; return n === 1 ? '1 întrebare' : n + ((r === 0 && n) || r >= 20 ? ' de ' : ' ') + 'întrebări'; };
     // ── sfârșit „Acordul pentru cost suplimentar" ──
     window.raxSendAI = async function () {
       var inp = $('rax-ai-input'); var msg = (inp.value || '').trim(); if (!msg) return;
@@ -18355,9 +18418,20 @@ const pozitii = await r.json();</code></pre>
       addMsg('user', 'Rezumă raportul afișat (' + rows.length + ' rânduri)');
       var th = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
       try {
-        var r = await fetch('/api/ai/report-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ type: 'tabel', report: { columns: head, rows: rows } }) });
+        var corp = { type: 'tabel', report: { columns: head, rows: rows } };
+        var r = await fetch('/api/ai/report-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
         var j = await r.json(); th.remove();
-        addMsg('ai', j.summary || j.error || 'Eroare la rezumat.');
+        // Rezumatul se numără în fondul firmei: peste fond, întâi acordul — aceeași casetă ca la întrebări.
+        if (j && j.needsExtraConsent) {
+          var deAcord = await _raxAcordCostExtra(j.cost);
+          if (!deAcord) { addMsg('sys', 'Rezumatul nu a fost făcut. Întrebările rapide (unde e o mașină, care sunt oprite, câți km azi) rămân gratuite.'); return; }
+          th = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
+          corp.acceptExtra = true;
+          r = await fetch('/api/ai/report-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
+          j = await r.json(); th.remove();
+        }
+        try { raxLoadQuota(); } catch (e) {}
+        addMsg('ai', j.summary || j.reply || j.error || 'Eroare la rezumat.');
       } catch (e) { th.remove(); addMsg('ai', 'Eroare: ' + e.message); }
     };
 

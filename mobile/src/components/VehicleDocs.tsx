@@ -6,11 +6,21 @@
 // la build. Pluginul ar fi adus doar reglaje fine de care nu avem nevoie la o poză de talon.
 import { useEffect, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { api, API_BASE, getAuthToken } from '../api/client';
-import { showToast } from '../app/store';
+import { showToast, roster, vehicles } from '../app/store';
 import { Icon } from './Icon';
 
 const DOC_TYPES = ['ITP', 'RCA', 'CASCO', 'Rovinietă', 'Licență transport', 'Tahograf', 'Altul'];
+
+// Cum numim vehiculul în întrebarea de ștergere — la fel ca web-ul (mntPlate): numărul SALVAT, altfel
+// numele, altfel IMEI-ul, ca întrebarea să spună mereu de la ce vehicul. Citim vehiculul salvat (lista
+// înregistrată, apoi flota afișată), NU formularul de editare: acolo poate sta un număr încă nesalvat.
+function numeVehicul(imei: string): string {
+  const d: any = roster.value.find((x) => x.imei === imei) || vehicles.value.find((x) => x.imei === imei);
+  const plate = d && d.plate ? String(d.plate).trim() : '';
+  return plate || (d && d.name ? String(d.name) : imei);
+}
 
 // Câmpurile din propunere care aparțin FIȘEI (nu actului) — se aplică prin setFisa în formularul
 // de editare deja deschis. Etichetele sunt pentru ecranul de confirmare.
@@ -51,6 +61,85 @@ function shrink(file: File): Promise<{ b64: string; mime: string; name: string }
   });
 }
 
+// Fișierul actului, adus CU tokenul. Un link simplu (<a href>) nu cară tokenul, iar aplicația rulează
+// din fișierele ei, deci o adresă relativă nici nu ajunge la server. Pe telefon cererea trece prin
+// stratul nativ, ca toate celelalte (api/client.ts, exportul de rapoarte): un fetch() din pagină e
+// blocat, pentru că aplicația și serverul sunt pe „domenii" diferite și serverul nu permite asta
+// (verificat 2026-09-13: ratrack.ro nu trimite antete CORS). Exportat: detaliul notificării
+// („Vezi actul") deschide actul exact la fel ca fișa mașinii — un singur loc, nu două care să divergă.
+export type ActAdus = { url: string; mime: string; b64: string | null };
+
+function _verificaRaspuns(status: number) {
+  if (status === 404) throw new Error('Actul nu are fișier atașat');
+  if (status < 200 || status >= 300) throw new Error('Nu am putut deschide actul');
+}
+
+export async function aduActul(id: number, mimeHint?: string | null): Promise<ActAdus> {
+  const tok = getAuthToken();
+  const headers: Record<string, string> = tok ? { Authorization: 'Bearer ' + tok } : {};
+  const url = API_BASE + '/api/documents/' + id + '/file';
+  const LIMITA_MS = 60000; // fără limită, o rețea proastă lasă butonul fără niciun răspuns
+  const preaMult = 'A durat prea mult. Încearcă din nou.';
+
+  if (Capacitor.isNativePlatform()) {
+    let tm: any;
+    let res: any;
+    try {
+      res = await Promise.race([
+        // responseType 'blob' → CapacitorHttp întoarce conținutul în base64 (la fel ca la rapoarte).
+        CapacitorHttp.request({ url, method: 'GET', headers, responseType: 'blob' as any, connectTimeout: 20000, readTimeout: LIMITA_MS + 30000 } as any),
+        new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(preaMult)), LIMITA_MS); }),
+      ]);
+    } catch (e: any) {
+      throw new Error(e?.message === preaMult ? preaMult : 'Eroare de rețea');
+    } finally { clearTimeout(tm); }
+    _verificaRaspuns(res.status);
+    const hdr = res.headers || {};
+    const cheie = Object.keys(hdr).find((k) => k.toLowerCase() === 'content-type');
+    const mime = String((cheie && hdr[cheie]) || mimeHint || '').split(';')[0].trim();
+    const b64 = String(res.data || '').replace(/\s+/g, '');
+    return { url: 'data:' + (mime || 'application/octet-stream') + ';base64,' + b64, mime, b64 };
+  }
+
+  // În browser (dezvoltare): aceeași cerere, cu fetch.
+  const ctrl = new AbortController();
+  const tm = setTimeout(() => ctrl.abort(), LIMITA_MS);
+  try {
+    const r = await fetch(url, { headers, signal: ctrl.signal });
+    _verificaRaspuns(r.status);
+    const blob = await r.blob();
+    return { url: URL.createObjectURL(blob), mime: blob.type || mimeHint || '', b64: null };
+  } catch (e: any) {
+    if (e && e.name === 'AbortError') throw new Error(preaMult);
+    if (e instanceof TypeError) throw new Error('Eroare de rețea');
+    throw e;
+  } finally { clearTimeout(tm); }
+}
+
+// Un PDF nu se poate afișa în pagină pe telefon. Îl predăm sistemului prin foaia de partajare, la fel
+// ca rapoartele exportate: de acolo se deschide în vizualizatorul de PDF-uri sau se salvează.
+export async function deschideInAfara(act: ActAdus, nume: string) {
+  if (Capacitor.isNativePlatform() && act.b64 != null) {
+    const ext = act.mime === 'application/pdf' ? '.pdf' : act.mime.startsWith('image/') ? '.' + act.mime.slice(6).replace('jpeg', 'jpg') : '';
+    let path = String(nume || 'act').replace(/[^\w.\-]+/g, '_');
+    if (ext && !path.toLowerCase().endsWith(ext)) path += ext;
+    try {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      const { Share } = await import('@capacitor/share');
+      await Filesystem.writeFile({ path, data: act.b64, directory: Directory.Cache });
+      const { uri } = await Filesystem.getUri({ path, directory: Directory.Cache });
+      await Share.share({ title: nume || 'Act', files: [uri] });
+    } catch (e: any) {
+      if (/cancel/i.test(String(e?.message || ''))) return; // omul a închis foaia de partajare — nu e o eroare
+      throw new Error('Nu am putut deschide actul pe acest telefon.');
+    }
+    return;
+  }
+  window.open(act.url, '_blank');
+  // Nu revocăm imediat: fila nouă citește adresa după ce ecranul nostru pierde focusul.
+  setTimeout(() => { try { URL.revokeObjectURL(act.url); } catch {} }, 60000);
+}
+
 const incBadge = (v: number) => v >= 0.85
   ? <span style="color:var(--accent);font-size:10px">sigur</span>
   : v >= 0.6 ? <span style="color:#f59e0b;font-size:10px">probabil</span>
@@ -65,6 +154,8 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
   const [form, setForm] = useState<any>({ doc_type: 'ITP', number: '', issuer: '', issue_date: '', expiry_date: '', cost: '' });
   const [poza, setPoza] = useState<{ id: number; url: string } | null>(null);
   const [editId, setEditId] = useState<number | null>(null);   // actul aflat în modificare
+  const [confirmDel, setConfirmDel] = useState<any | null>(null); // actul pentru care se cere confirmarea ștergerii
+  const [stergBusy, setStergBusy] = useState(false);
 
   const reload = () => api<any[]>('/api/documents?imei=' + encodeURIComponent(imei)).then((d) => setDocs(Array.isArray(d) ? d : [])).catch(() => setDocs([]));
   useEffect(() => { reload(); setProp(null); setFisier(null); }, [imei]);
@@ -149,25 +240,32 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
   async function veziPoza(id: number) {
     if (poza && poza.id === id) { URL.revokeObjectURL(poza.url); setPoza(null); return; }
     try {
-      const res = await fetch(API_BASE + '/api/documents/' + id + '/file', { headers: getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : undefined });
-      if (!res.ok) throw new Error('Actul nu are fișier');
-      const url = URL.createObjectURL(await res.blob());
+      const { url } = await aduActul(id);
       if (poza) URL.revokeObjectURL(poza.url);
       setPoza({ id, url });
     } catch (e: any) { showToast(e?.message || 'Nu am putut deschide actul', true); }
   }
 
-  // PDF-ul nu se poate afișa în pagină pe telefon. Îl aducem cu tokenul (un link simplu nu-l cară)
-  // și îl predăm sistemului: se deschide în vizualizatorul de PDF-uri și se poate salva de acolo.
+  // PDF-ul: adus cu tokenul și predat sistemului (vezi deschideInAfara).
   async function deschideFisier(id: number) {
+    const d = docs.find((x) => x.id === id);
+    try { await deschideInAfara(await aduActul(id, d && d.file_mime), (d && d.file_name) || ('act-' + id)); }
+    catch (e: any) { showToast(e?.message || 'Nu am putut deschide actul', true); }
+  }
+
+  // Ștergerea cere confirmare, ca pe web: o singură atingere pe coș ștergea actul pe loc, cu tot cu
+  // poza sau PDF-ul, fără istoric și fără cale de întoarcere.
+  async function sterge(d: any) {
+    setStergBusy(true);
     try {
-      const res = await fetch(API_BASE + '/api/documents/' + id + '/file', { headers: getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : undefined });
-      if (!res.ok) throw new Error('Actul nu are fișier');
-      const url = URL.createObjectURL(await res.blob());
-      try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); }
-      // Nu revocăm imediat: vizualizatorul citește adresa după ce ecranul nostru pierde focusul.
-      setTimeout(() => { try { URL.revokeObjectURL(url); } catch {} }, 60000);
-    } catch (e: any) { showToast(e?.message || 'Nu am putut deschide actul', true); }
+      await Api.deleteDocument(d.id);
+      if (poza && poza.id === d.id) { URL.revokeObjectURL(poza.url); setPoza(null); }
+      if (editId === d.id) anuleazaEditarea();
+      setConfirmDel(null);
+      showToast('Act șters');
+      reload();
+    } catch (e: any) { showToast(e?.message || 'Eroare la ștergere', true); }
+    finally { setStergBusy(false); }
   }
 
   const azi = Date.now(), curand = 30 * 24 * 3600 * 1000;
@@ -229,7 +327,7 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
                 ? <button class="h-btn" onClick={() => veziPoza(d.id)} aria-label="Vezi actul"><Icon name="eye" size={16} /></button>
                 : <button class="h-btn" onClick={() => deschideFisier(d.id)} aria-label="Deschide actul"><Icon name="fileBar" size={16} /></button>)}
               <button class="h-btn" onClick={() => editeaza(d)} aria-label="Modifică actul"><Icon name="edit" size={16} /></button>
-              <button class="h-btn" onClick={() => Api.deleteDocument(d.id).then(reload).catch(() => showToast('Eroare la ștergere', true))} aria-label="Șterge"><Icon name="trash" size={16} /></button>
+              <button class="h-btn" onClick={() => setConfirmDel(d)} aria-label="Șterge"><Icon name="trash" size={16} /></button>
             </div>
             {poza && poza.id === d.id && (
               <img src={poza.url} style="max-width:100%;border-radius:10px;margin-top:6px" onClick={() => veziPoza(d.id)} />
@@ -238,6 +336,28 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
         );
       })}
       {!docs.length && <div style="font-size:12px;color:var(--text-muted);padding:4px 0">Niciun act încă.</div>}
+
+      {/* Aceeași foaie de confirmare ca pe ecranul Documente; întrebarea e cea de pe web. Reînnoirea pe
+          telefon = adaugi actul nou de același tip: serverul îl trece pe cel vechi în istoric (mai
+          puțin la „Altul", care poate exista în mai multe exemplare — acolo sfatul n-ar fi adevărat). */}
+      {confirmDel && (
+        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !stergBusy) setConfirmDel(null); }}>
+          <div class="sheet">
+            <div class="sheet-h"><b>Confirmare ștergere</b><button class="h-btn" onClick={() => setConfirmDel(null)}><Icon name="x" /></button></div>
+            <div class="sheet-body">
+              <p style="margin:0 0 10px;font-size:14.5px">Ștergi „<b>{confirmDel.doc_type}</b>” de la <b>{numeVehicul(confirmDel.imei || imei)}</b>?</p>
+              {confirmDel.doc_type !== 'Altul' && (
+                <p style="margin:0 0 10px;font-size:13px;color:var(--text-muted)">Dacă vrei doar să pui unul nou în locul lui, adaugă-l din formularul de mai jos — atunci ăsta rămâne în istoric.</p>
+              )}
+              {confirmDel.has_file && <p style="margin:0 0 10px;font-size:13px;color:var(--text-muted)">Se șterge și poza sau PDF-ul atașat.</p>}
+              <div class="frm-actions" style="margin-top:16px">
+                <button class="btn" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)" onClick={() => setConfirmDel(null)}>Anulează</button>
+                <button class="btn btn-danger-ghost" disabled={stergBusy} onClick={() => sterge(confirmDel)}>{stergBusy ? '…' : 'Șterge'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Adăugare / editare manuală */}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">

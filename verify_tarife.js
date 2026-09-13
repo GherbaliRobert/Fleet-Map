@@ -326,7 +326,10 @@ T('o singură dată pe lună', /extraAcceptedMonth\) === luna\) return null;/.te
 T('caseta primește cifrele care contează', /pretLei: lei, pretEur: st\.overagePriceEur/.test(server));
 // `\r?\n`: fișierele din proiect sunt CRLF în copia de lucru, deși în git stau cu LF. Cu `\n` simplu,
 // proba pica pe calculatorul pe care chiar se rulează `npm test`, deși codul era corect.
-T('și NU se cheltuie nimic pe model până nu spune omul da', /const _cost = await _cereAcordCostExtra\(req\);\r?\n    if \(_cost\) return res\.json\(_cost\);/.test(server));
+T('și NU se cheltuie nimic pe model până nu spune omul da', /let _cost = await _cereAcordCostExtra\(req\);[\s\S]{0,400}?\r?\n    if \(_cost\) return res\.json\(_cost\);/.test(server));
+// 13.09: acordul se scria la ORICE acceptExtra, chiar dacă nu fusese cerut — o casetă lăsată deschisă peste sfârșitul
+// lunii aproba luna nouă fără ca omul s-o fi văzut. Comportamentul e dovedit în verify_paritate_telefon.js (secțiunea 6).
+T('acordul se scrie DOAR când caseta e cerută chiar acum', /if \(_cost && req\.body && req\.body\.acceptExtra === true\) \{/.test(server));
 T('acordul se scrie pe firmă și rămâne în audit', /auditReq\(req, 'ai_extra_accept', 'company'/.test(server));
 T('și lasă o notificare pentru cine plătește factura', /type: 'ai_cost_extra'/.test(server));
 // Pe ecran: fereastra care explică, nu un simplu „da/nu"
@@ -354,9 +357,10 @@ T('propune un CONT în plus, nu bani pe întrebare', /Un cont în plus aduce în
 T('și NU pomenește niciun preț în mesajul de oprire',
   !/lei/.test((server.match(/async function _fondEpuizat[\s\S]*?\n\}/) || [''])[0]));
 T('se verifică ÎNAINTE de calea cu cost suplimentar',
-  server.indexOf('const _stop = await _fondEpuizat(req);') < server.indexOf('const _cost = await _cereAcordCostExtra(req);'));
+  server.indexOf('const _stop = await _fondEpuizat(req);') >= 0 &&
+  server.indexOf('const _stop = await _fondEpuizat(req);') < server.indexOf('let _cost = await _cereAcordCostExtra(req);'));
 // Pe ecran, bara nu mai spune „la epuizare se oprește" sec, ci ce poate face omul
-T('bara propune contul în plus', /Un cont în plus aduce încă ' \+ \(q\.questionsPerSeat \|\| 50\)/.test(html));
+T('bara propune contul în plus', /Un cont în plus aduce încă ' \+ window\._raxNrI\(q\.questionsPerSeat \|\| 50\)/.test(html));
 
 sect('6e. Ofertare Live — câmpuri, bife și butoane');
 const css2 = fs.readFileSync('./public/css/app.css', 'utf8');

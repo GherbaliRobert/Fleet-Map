@@ -16,11 +16,42 @@ import './detail.css';
 //   poligon→ [[lat, lon], [lat, lon], …]
 // Desenarea pe ecran mic: cercul se face dintr-o atingere (centru) + un cursor pentru rază — mult mai
 // practic cu degetul decât tras de un mâner; poligonul se face atingând vârfurile pe rând.
+//
+// Web-ul mai știe și alte forme (zona „pe străzi", cu { line, width }, sau un poligon cu goluri). Pe
+// acestea telefonul NU le redesenează: le arată pe hartă și lasă doar numele și culoarea, trimițând
+// serverului numai ce s-a schimbat. Altfel o zonă pe străzi se deschidea ca un cerc gol și, după o
+// atingere pe hartă, devenea cerc.
 type Zone = { id: number; name: string; type: string; coordinates: any; color?: string };
 
 const RAZE = [100, 250, 500, 1000, 2000, 5000];
 const CULORI = ['#2563eb', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9'];
 const fmtRaza = (m: number) => (m >= 1000 ? (m / 1000) + ' km' : m + ' m');
+
+function coordZona(z: Zone | null): any {
+  if (!z) return null;
+  const c = z.coordinates;
+  if (typeof c === 'string') { try { return JSON.parse(c); } catch { return null; } }
+  return c;
+}
+const ePunct = (p: any) => Array.isArray(p) && p.length >= 2 && typeof p[0] !== 'object' && typeof p[1] !== 'object'
+  && isFinite(Number(p[0])) && isFinite(Number(p[1]));
+// Formele pe care editorul de pe telefon le poate desena fără să strice nimic.
+function formaSimpla(z: Zone): boolean {
+  const c = coordZona(z);
+  if (z.type === 'circle') return !!(c && ePunct(c.center));
+  if (z.type === 'polygon') return Array.isArray(c) && c.length >= 3 && c.every(ePunct);
+  return false;
+}
+// Zona desenată pe web, ca strat de previzualizare (fără puncte de tras).
+function stratPrevizualizare(z: Zone, culoare: string): any {
+  const c = coordZona(z);
+  try {
+    if (c && Array.isArray(c.line) && c.line.length >= 2) return L.polyline(c.line, { color: culoare, weight: 5, opacity: 0.85 });
+    if (Array.isArray(c) && c.length) return L.polygon(c, { color: culoare, weight: 2, fillOpacity: 0.15 });
+    if (c && ePunct(c.center)) return L.circle(c.center, { radius: Number(c.radius) || 0, color: culoare, weight: 2, fillOpacity: 0.15 });
+  } catch { }
+  return null;
+}
 
 export function AdminGeofences() {
   const loc = useLocation();
@@ -39,6 +70,9 @@ export function AdminGeofences() {
   const [centru, setCentru] = useState<[number, number] | null>(null);
   const [raza, setRaza] = useState(500);
   const [puncte, setPuncte] = useState<[number, number][]>([]);
+  // Zonă cu formă făcută pe web (pe străzi etc.): se schimbă doar numele și culoarea.
+  const [doarNumeCuloare, setDoarNumeCuloare] = useState(false);
+  const doarNumeCuloareRef = useRef(false);
 
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -52,13 +86,16 @@ export function AdminGeofences() {
   useEffect(reload, []);
 
   function deschide(z: Zone | null) {
+    const simpla = !z || formaSimpla(z);
+    setDoarNumeCuloare(!simpla); doarNumeCuloareRef.current = !simpla;
     setNume(z ? z.name : '');
     setCuloare((z && z.color) || CULORI[0]);
-    if (z && z.type === 'circle' && z.coordinates?.center) {
-      setTip('circle'); setCentru([Number(z.coordinates.center[0]), Number(z.coordinates.center[1])]);
-      setRaza(Number(z.coordinates.radius) || 500); setPuncte([]);
-    } else if (z && Array.isArray(z.coordinates)) {
-      setTip('polygon'); setPuncte(z.coordinates.map((p: any) => [Number(p[0]), Number(p[1])] as [number, number]));
+    const c = coordZona(z);
+    if (z && simpla && z.type === 'circle') {
+      setTip('circle'); setCentru([Number(c.center[0]), Number(c.center[1])]);
+      setRaza(Number(c.radius) || 500); setPuncte([]);
+    } else if (z && simpla) {
+      setTip('polygon'); setPuncte(c.map((p: any) => [Number(p[0]), Number(p[1])] as [number, number]));
       setCentru(null);
     } else {
       setTip('circle'); setCentru(null); setPuncte([]); setRaza(500);
@@ -79,10 +116,16 @@ export function AdminGeofences() {
       if (v.latitude == null || v.longitude == null) continue;
       L.circleMarker([v.latitude, v.longitude], { radius: 3, color: '#64748b', weight: 1, fillOpacity: 0.6 }).addTo(map);
     }
-    const start = centru || puncte[0] || (vehicles.value || []).filter((v: any) => v.latitude != null).map((v: any) => [v.latitude, v.longitude])[0];
-    if (start) map.setView(start as any, 13);
+    const prev = doarNumeCuloareRef.current && editor.zone ? stratPrevizualizare(editor.zone, editor.zone.color || CULORI[0]) : null;
+    if (prev) {
+      try { map.fitBounds(prev.getBounds(), { padding: [20, 20], maxZoom: 16 }); } catch { }
+    } else {
+      const start = centru || puncte[0] || (vehicles.value || []).filter((v: any) => v.latitude != null).map((v: any) => [v.latitude, v.longitude])[0];
+      if (start) map.setView(start as any, 13);
+    }
 
     map.on('click', (e: any) => {
+      if (doarNumeCuloareRef.current) return; // forma zonei făcute pe web nu se schimbă de aici
       const p: [number, number] = [e.latlng.lat, e.latlng.lng];
       setTip((t) => { if (t === 'circle') setCentru(p); else setPuncte((cur) => [...cur, p]); return t; });
     });
@@ -94,6 +137,11 @@ export function AdminGeofences() {
   useEffect(() => {
     const g = drawRef.current, map = mapRef.current; if (!g || !map) return;
     g.clearLayers();
+    if (doarNumeCuloare) {
+      const prev = editor?.zone ? stratPrevizualizare(editor.zone, culoare) : null;
+      if (prev) prev.addTo(g);
+      return;
+    }
     if (tip === 'circle' && centru) {
       L.circle(centru, { radius: raza, color: culoare, weight: 2, fillOpacity: 0.15 }).addTo(g);
       L.circleMarker(centru, { radius: 5, color: culoare, fillOpacity: 1 }).addTo(g);
@@ -102,12 +150,25 @@ export function AdminGeofences() {
       if (puncte.length >= 3) L.polygon(puncte, { color: culoare, weight: 2, fillOpacity: 0.15 }).addTo(g);
       else if (puncte.length === 2) L.polyline(puncte, { color: culoare, weight: 2, dashArray: '5,5' }).addTo(g);
     }
-  }, [tip, centru, raza, puncte, culoare, editor]);
+  }, [tip, centru, raza, puncte, culoare, editor, doarNumeCuloare]);
 
-  const valid = nume.trim().length >= 2 && (tip === 'circle' ? !!centru : puncte.length >= 3);
+  const valid = nume.trim().length >= 2 && (doarNumeCuloare || (tip === 'circle' ? !!centru : puncte.length >= 3));
 
   async function salveaza() {
     if (!valid) { showToast(tip === 'circle' ? 'Atinge harta ca să pui centrul zonei' : 'O zonă are nevoie de minim 3 puncte', true); return; }
+    // Zonă cu formă făcută pe web: trimitem DOAR ce s-a schimbat. Tipul și forma rămân neatinse.
+    if (doarNumeCuloare && editor?.zone) {
+      const z = editor.zone;
+      const body: any = {};
+      if (nume.trim() !== z.name) body.name = nume.trim();
+      if (culoare !== (z.color || CULORI[0])) body.color = culoare;
+      if (!Object.keys(body).length) { setEditor(null); return; }
+      setBusy(true);
+      try { await Api.updateGeofence(z.id, body); showToast('Zonă actualizată'); setEditor(null); reload(); }
+      catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); }
+      finally { setBusy(false); }
+      return;
+    }
     setBusy(true);
     const body: any = {
       name: nume.trim(), type: tip, color: culoare,
@@ -128,11 +189,14 @@ export function AdminGeofences() {
   }
 
   const descriere = (z: Zone) => {
-    if (z.type === 'circle' && z.coordinates?.center) return 'cerc · rază ' + fmtRaza(Number(z.coordinates.radius) || 0);
-    if (Array.isArray(z.coordinates)) return 'poligon · ' + z.coordinates.length + ' puncte';
-    if (z.coordinates?.line) return 'coridor · ' + z.coordinates.line.length + ' puncte';
+    const c = coordZona(z);
+    if (z.type === 'circle' && c?.center) return 'cerc · rază ' + fmtRaza(Number(c.radius) || 0);
+    if (c && Array.isArray(c.line)) return 'pe străzi · ' + c.line.length + ' puncte';
+    if (Array.isArray(c)) return 'poligon · ' + c.length + ' puncte';
     return z.type;
   };
+
+  const zonaEditata = editor?.zone || null;
 
   return (
     <div class="screen">
@@ -167,8 +231,8 @@ export function AdminGeofences() {
                 </span>
                 {poateEdita && (
                   <span class="rt" style="display:flex;gap:6px">
-                    <button onClick={() => deschide(z)} style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px 9px;font-family:inherit"><Icon name="edit" size={14} /></button>
-                    <button onClick={() => sterge(z)} disabled={busy} style="background:var(--bg-dark);border:1px solid var(--border);color:var(--red);border-radius:8px;padding:7px 9px;font-family:inherit"><Icon name="trash" size={14} /></button>
+                    <button onClick={() => deschide(z)} aria-label="Editează zona" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px 9px;font-family:inherit"><Icon name="edit" size={14} /></button>
+                    <button onClick={() => sterge(z)} disabled={busy} aria-label="Șterge zona" style="background:var(--bg-dark);border:1px solid var(--border);color:var(--red);border-radius:8px;padding:7px 9px;font-family:inherit"><Icon name="trash" size={14} /></button>
                   </span>
                 )}
               </div>
@@ -192,22 +256,34 @@ export function AdminGeofences() {
                 <input value={nume} onInput={(e) => setNume((e.target as HTMLInputElement).value)} placeholder="Depozit Timișoara" />
               </div>
 
-              <div style="display:flex;gap:7px;margin:10px 0">
-                {([['circle', 'Cerc'], ['polygon', 'Poligon']] as const).map(([v, l]) => (
-                  <button
-                    onClick={() => setTip(v)}
-                    style={'flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid ' + (tip === v ? 'var(--accent)' : 'var(--border)') + ';'
-                      + (tip === v ? 'background:var(--accent);color:#06210F' : 'background:var(--bg-dark);color:var(--text-primary)')}
-                  >{l}</button>
-                ))}
-              </div>
+              {doarNumeCuloare ? (
+                <div style="display:flex;gap:9px;align-items:flex-start;margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--bg-dark);border:1px solid var(--border);font-size:12.5px;line-height:1.45;color:var(--text-secondary)">
+                  <Icon name="lock" size={16} color="var(--orange)" style="flex:0 0 auto;margin-top:1px" />
+                  <span>
+                    {zonaEditata && coordZona(zonaEditata)?.line ? 'Zona aceasta e trasată pe străzi.' : 'Zona aceasta are o formă desenată pe web.'}
+                    {' '}Forma ei se modifică de pe web. De aici poți schimba numele și culoarea.
+                  </span>
+                </div>
+              ) : (
+                <div style="display:flex;gap:7px;margin:10px 0">
+                  {([['circle', 'Cerc'], ['polygon', 'Poligon']] as const).map(([v, l]) => (
+                    <button
+                      onClick={() => setTip(v)}
+                      style={'flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid ' + (tip === v ? 'var(--accent)' : 'var(--border)') + ';'
+                        + (tip === v ? 'background:var(--accent);color:#06210F' : 'background:var(--bg-dark);color:var(--text-primary)')}
+                    >{l}</button>
+                  ))}
+                </div>
+              )}
 
-              <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">
-                {tip === 'circle' ? 'Atinge harta ca să pui centrul, apoi alege raza.' : 'Atinge harta pentru fiecare colț al zonei (minim 3).'}
-              </div>
+              {!doarNumeCuloare && (
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">
+                  {tip === 'circle' ? 'Atinge harta ca să pui centrul, apoi alege raza.' : 'Atinge harta pentru fiecare colț al zonei (minim 3).'}
+                </div>
+              )}
               <div ref={mapEl} style="height:34vh;min-height:220px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--bg-dark)" />
 
-              {tip === 'circle' && (
+              {!doarNumeCuloare && tip === 'circle' && (
                 <div style="margin-top:10px">
                   <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:6px">Rază</div>
                   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">
@@ -221,7 +297,7 @@ export function AdminGeofences() {
                 </div>
               )}
 
-              {tip === 'polygon' && (
+              {!doarNumeCuloare && tip === 'polygon' && (
                 <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
                   <span style="font-size:12.5px;color:var(--text-muted)">{puncte.length} {puncte.length === 1 ? 'punct' : 'puncte'}{puncte.length > 0 && puncte.length < 3 ? ' (minim 3)' : ''}</span>
                   <button disabled={!puncte.length} onClick={() => setPuncte((p) => p.slice(0, -1))}

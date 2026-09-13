@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
 import { me } from '../app/store';
 import { Icon } from './Icon';
+import { AI_SEAT_MISSING_MSG, AiNote, AiQuotaBar, AiSeatNotice, aiAnswerText, aiDeclinedText, aiErrorText, askWithConsent, isSeatMissing, seatMissingText, useAiQuota, useExtraConsent } from './ChatScreen';
 import '../screens/chat.css'; // pt. .chat-send / .chat-msg (modul AI opțional)
 
 function fmtMd(s: string): string {
@@ -18,7 +19,12 @@ export function InsightPanel() {
   const aiOn = !!me.value?.features?.ai_assistant;
   const [aiQ, setAiQ] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
-  const [aiReply, setAiReply] = useState('');
+  // Răspunsul AI (bulă) sau o notă de sistem (ex. „Întrebarea nu a fost trimisă") — niciodată „—".
+  const [aiOut, setAiOut] = useState<{ kind: 'bot' | 'note'; text: string } | null>(null);
+  const [seatMsg, setSeatMsg] = useState<string | null>(null); // refuzul „fără loc pe cont", primit la întrebare
+  const quota = useAiQuota(aiOn);      // bara „X din Y întrebări rămase", ca pe web
+  const consent = useExtraConsent();   // caseta de acord pentru costul suplimentar, ca pe web
+  const noSeat = !!seatMsg || quota.seatMissing;
 
   useEffect(() => { Api.insightPresets().then(setPresets).catch(() => {}); }, []);
 
@@ -29,15 +35,30 @@ export function InsightPanel() {
     finally { setBusy(''); }
   }
   async function askAi() {
-    const q = aiQ.trim(); if (!q || aiBusy) return;
-    setAiBusy(true); setAiReply('');
-    try { const r = await Api.reportsAgent(q); setAiReply(r.reply || '—'); }
-    catch (e: any) { setAiReply(e?.status === 403 ? 'Modulul AI nu e activ pe planul companiei.' : (e?.message || 'Eroare. Încearcă din nou.')); }
-    finally { setAiBusy(false); }
+    const q = aiQ.trim(); if (!q || aiBusy || consent.open || noSeat) return;
+    setAiBusy(true); setAiOut(null);
+    try {
+      // Fondul lunii s-a terminat și firma poate depăși → serverul cere acordul; „Nu" nu trimite nimic.
+      const out = await askWithConsent((x) => Api.reportsAgent(q, x), consent.ask, (w) => setAiBusy(!w));
+      if (out.kind === 'declined') setAiOut({ kind: 'note', text: aiDeclinedText(out.cost) });
+      else {
+        // Pe telefon, refuzul „fără loc pe cont" vine ca răspuns 200 — nu e o bulă de AI: arătăm explicația.
+        const faraLoc = seatMissingText(out.r);
+        if (faraLoc) setSeatMsg(faraLoc);
+        else setAiOut({ kind: 'bot', text: aiAnswerText(out.r) });
+      }
+    } catch (e: any) {
+      if (isSeatMissing(e)) setSeatMsg(AI_SEAT_MISSING_MSG);
+      else setAiOut({ kind: 'bot', text: aiErrorText(e, 'Modulul AI nu e activ pe planul companiei.') });
+    } finally {
+      setAiBusy(false);
+      quota.reload(); // contorul scade imediat după întrebare
+    }
   }
 
   return (
     <div class="insight">
+      {aiOn && !noSeat && <AiQuotaBar q={quota.q} fx={quota.fx} boxStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '11px', marginBottom: '12px' }} />}
       <div class="insight-intro">Apasă o întrebare — îți calculez răspunsul direct din rapoarte, fără AI.</div>
       <div class="insight-presets">
         {presets.map((p) => (
@@ -72,13 +93,18 @@ export function InsightPanel() {
       {aiOn && (
         <div class="insight-ai">
           <div class="insight-ai-h"><Icon name="sparkles" size={15} color="var(--accent)" /> Întrebare liberă (AI)</div>
-          <div class="insight-ai-bar">
-            <input value={aiQ} placeholder="Ex: consumul flotei luna trecută…" onInput={(e) => setAiQ((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') askAi(); }} />
-            <button class="chat-send" disabled={aiBusy || !aiQ.trim()} onClick={askAi}>{aiBusy ? <span class="spin" /> : <Icon name="navigate" size={18} color="#06210f" />}</button>
-          </div>
-          {aiReply && <div class="chat-msg bot" style="margin-top:10px" dangerouslySetInnerHTML={{ __html: fmtMd(aiReply) }} />}
+          {noSeat ? <AiSeatNotice text={seatMsg} /> : (<>
+            <div class="insight-ai-bar">
+              <input value={aiQ} placeholder="Ex: consumul flotei luna trecută…" onInput={(e) => setAiQ((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') askAi(); }} />
+              <button class="chat-send" disabled={aiBusy || consent.open || !aiQ.trim()} onClick={askAi}>{aiBusy ? <span class="spin" /> : <Icon name="navigate" size={18} color="#06210f" />}</button>
+            </div>
+            {aiOut && (aiOut.kind === 'note'
+              ? <AiNote text={aiOut.text} style={{ marginTop: '10px' }} />
+              : <div class="chat-msg bot" style="margin-top:10px" dangerouslySetInnerHTML={{ __html: fmtMd(aiOut.text) }} />)}
+          </>)}
         </div>
       )}
+      {consent.node}
     </div>
   );
 }

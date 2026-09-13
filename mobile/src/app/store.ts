@@ -50,6 +50,17 @@ export const unread = signal(0);
 export const lastNotif = signal<any | null>(null); // ultima notificare primită pe WS (ex. report_ready) — ecranele o pot urmări
 export const toastMsg = signal<{ text: string; err?: boolean } | null>(null);
 
+// ── Ecranele tăiate de firmă din rolul omului ──
+// Vin din /api/me (`ecraneAscunse`). Cheile sunt EXACT cele din lista ECRANE din server.js — nu inventa
+// altele: o cheie greșită aici ar ascunde sau ar lăsa la vedere alt ecran decât cel tăiat. Serverul refuză
+// oricum rutele ecranului tăiat (pazaEcrane); telefonul doar nu mai arată butoane care ar răspunde „acces interzis".
+export type EcranCheie =
+  | 'localizare' | 'traseu' | 'statistici' | 'rapoarte' | 'programari' | 'hotspot'
+  | 'vehicule' | 'soferi' | 'grupe' | 'alerte' | 'mentenanta' | 'documente'
+  | 'tahograf' | 'etransport' | 'tollro' | 'insight';
+const ecraneAscunse = computed<Set<string>>(() => new Set((me.value && me.value.ecraneAscunse) || []));
+export function ecranAscuns(cheie: EcranCheie): boolean { return ecraneAscunse.value.has(cheie); }
+
 export const offlineMinutes = computed(() =>
   (me.value && ((me.value as any).sys?.offline_minutes ?? (me.value as any).offline_minutes)) || 65
 );
@@ -72,9 +83,24 @@ export async function bootstrap() {
   if (t) {
     token.value = t; setAuthToken(t);
     me.value = await loadUser<Me>();
-    try { me.value = await Api.me(); } catch { /* token invalid → onUnauthorized curăță */ }
+    // Salvăm și copia locală: la o pornire fără rețea, ecranele tăiate rămân ascunse (nu doar până la /api/me).
+    try { me.value = await Api.me(); await saveUser(me.value); } catch { /* token invalid → onUnauthorized curăță */ }
   }
   authReady.value = true;
+}
+
+// Reîmprospătează profilul (drepturi, ecrane tăiate, funcții) — la revenirea în aplicație. Altfel, un ecran
+// tăiat de firmă cât timp aplicația stă deschisă ar rămâne în meniu până la următoarea autentificare.
+export async function refreshMe() {
+  const t = token.value;
+  if (!t) return;
+  try {
+    const m = await Api.me();
+    // Între timp s-a delogat SAU a intrat pe alt cont (fondatorii schimbă conturile pe același telefon):
+    // răspunsul vechi ar pune profilul — meniul, ecranele tăiate — contului celălalt.
+    if (token.value !== t) return;
+    me.value = m; await saveUser(m);
+  } catch { /* păstrează ce e; 401 e tratat de onUnauthorized */ }
 }
 
 export async function login(username: string, password: string) {

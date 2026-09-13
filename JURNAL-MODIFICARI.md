@@ -18,6 +18,169 @@ Când ceva rămâne nelămurit sau nepotrivit între cele două, îl trec jos, l
 
 ---
 
+## 2026-09-13
+
+### AMÂNDOI · Aplicația de telefon prinde din urmă web-ul: primul lot, tot ce era stricat — `în lucru`
+
+Pe 13.09 am comparat web-ul cu aplicația de telefon: de la ultima verificare (23.07) intraseră pe web 175 de
+schimbări care n-au ajuns pe telefon. Au ieșit ~63 de diferențe. **Lotul ăsta le rezolvă pe cele care făceau
+telefonul să arate date greșite sau să nu meargă.** Restul (ecrane rămase în urmă, dar funcționale) vin în loturile
+următoare.
+
+Telefoanele clienților păstrează săptămâni întregi aplicația veche. De aceea tot ce ține de bani, de drepturi sau de
+date pierdute l-am apărat **pe server**, ca să meargă și pe telefoanele neactualizate. Aplicația nouă are versiunea
+**1.0.1** (numărul 3), ca să se vadă cine a primit-o.
+
+Lucrul a trecut prin două revizii adverse. A doua, pe tot ansamblul, a găsit **trei găuri de securitate și bani mai
+vechi decât lotul** (scrise mai jos, la Securitate și la RA Insight) — reparate și ele.
+
+Verificat: probele automate (o probă nouă, `verify_paritate_telefon.js`, 125 de verificări) și aplicația de telefon
+deschisă în browser, pe o bază locală, ecran cu ecran.
+
+### AMÂNDOI · Securitate: rolurile proprii chiar limitează mașinile, iar un cont de platformă nu mai poate fi preluat — `în lucru`
+
+**Ce am schimbat:** trei găuri, toate mai vechi decât lucrul la telefon, găsite la verificarea lui:
+- **Rol propriu fără „Vede toată flota".** Firma putea tăia dreptul dintr-un rol propriu (de exemplu „Șef tură",
+  făcut din Manager). Ecranele arătau omul limitat la mașinile lui, dar serverul îi dădea **toată flota**: hartă,
+  rapoarte, acte, legătura live. Acum vede doar mașinile atribuite.
+- **Un om al firmei promovat super-admin rămânea legat de firmă**, iar administratorul acelei firme îi putea schimba
+  parola sau emailul — adică putea intra ca super-admin peste toate firmele. Acum promovarea îl scoate din firmă, iar
+  un administrator de firmă nu mai are nicio putere asupra unui cont de platformă și nu-l mai vede în lista firmei.
+- **Actul unei mașini la care omul n-are acces.** Un dispecer sau viewer vedea în listă doar actele mașinilor lui,
+  dar putea deschide fișierul oricărui act din firmă dacă îi știa numărul. Acum, fără acces la mașină, fără act.
+
+**Ce vede fondatorul:** un om promovat super-admin nu mai apare la nicio firmă. În Utilizatori, pe web și pe telefon,
+„toată flota" se socotește acum cu tăierile firmei omului.
+
+**Ce vede clientul:** rolurile proprii fac exact ce scrie pe ele. Pentru oamenii cu acces nu se schimbă nimic.
+
+### AMÂNDOI · Zonele nu-și mai pierd detaliile când sunt modificate de pe telefon — `în lucru`
+
+**Ce am schimbat:** când cineva schimba de pe telefon doar numele sau culoarea unei zone, descrierea, categoria,
+grupa și bifa „Regiune" se ștergeau. Acum se schimbă doar ce a atins omul. O zonă trasată pe străzi nu mai poate fi
+transformată din greșeală în cerc, nici din aplicația veche.
+
+**Ce vede fondatorul:** zonele făcute pe web rămân întregi, oricine le-ar deschide de pe telefon.
+
+**Ce vede clientul:** pe telefon, o zonă pe străzi se deschide cu un lacăt: forma ei se modifică de pe web, de aici
+se schimbă numele și culoarea. Cercurile și poligoanele se modifică la fel ca până acum.
+
+### AMÂNDOI · Utilizatori pe telefon: invitație, rolurile firmei, mașini date dispecerului — `în lucru`
+
+**Ce am schimbat:** ecranul Utilizatori de pe telefon rămăsese pe regulile vechi — parolă obligatorie de „minim 4
+caractere" (serverul cere 10), rolul „Client" care dădea „Rol invalid", fără rolurile firmei. Acum:
+- un coleg se adaugă doar cu adresa de email și primește invitație (sau cu o parolă de minim 10 caractere);
+- apar rolurile cu numele date de firmă, inclusiv cele proprii;
+- dispecerului și viewer-ului li se dau mașini direct din telefon (lista se deschide singură după creare);
+- lângă fiecare om e butonul RA Insight, ca bagheta de pe web.
+
+Pe server, trei defecte care loveau și web-ul: rolul propriu al unui om **se ștergea la orice salvare** (chiar și la
+un număr de telefon schimbat), trecându-l pe rolul standard, cu mai multe drepturi; un om creat direct pe un rol
+propriu devenea tăcut „Viewer"; iar numărul de conturi RA Insight din confirmare ieșea greșit pentru super-admin.
+
+**Ce vede fondatorul:** pe web, fereastra de editare a unui om îi arată rolul propriu. Contul de platformă nu mai
+poate primi loc RA Insight (nu stă în fondul unei firme).
+
+**Ce vede clientul:** administratorul firmei își gestionează colegii și de pe telefon, fără ca rolurile să se strice.
+Atenție: invitația pe email pleacă doar după ce e configurat emailul serverului.
+
+### AMÂNDOI · RA Insight: nicio întrebare peste fond fără acord, pe nicio cale — `în lucru`
+
+**Ce am schimbat:**
+- **„Asistent AI" de pe telefon** ocolea regulile din 11.09: la o firmă cu voie să depășească fondul, întrebările în
+  plus treceau pe factură **fără acord**. Acum trece prin exact aceleași reguli ca RA Insight.
+- **„Rezumat raport" de pe web** se numără tot în fond, dar nu cerea acord. Acum, peste fond, arată aceeași casetă.
+- **Acordul se ținea minte și când nu fusese cerut.** O casetă lăsată deschisă peste sfârșitul lunii scria acordul
+  pentru luna nouă, iar toate întrebările în plus din luna aceea ar fi intrat pe factură fără nicio casetă. Acum
+  acordul se scrie doar în clipa în care caseta chiar e cerută.
+- Pe telefon apare caseta de acord (preț, „cum se socotește", Da/Nu) și bara „X din Y întrebări rămase". Pe web,
+  RA Insight din pagina Rapoarte arăta „Eroare RA Insight." când se termina fondul; acum arată caseta.
+- Omul fără acces primea „Modulul AI nu e activ pe planul companiei", deși firma îl avea. Acum află adevărul: contul
+  lui nu are încă acces, iar administratorul firmei îl poate porni din Utilizatori.
+- Aplicația veche nu poate arăta caseta de acord, așa că primește o explicație scrisă, iar întrebarea nu pleacă.
+
+**Ce vede fondatorul:** nicio întrebare sau rezumat peste fond pe factură fără acord. Dacă fondul nu se poate citi,
+întrebarea nu se trimite.
+
+**Ce vede clientul:** vede din timp câte întrebări mai are și când se reînnoiește fondul; nu mai află din factură.
+
+### AMÂNDOI · Tokenii și modelul AI rămân la voi; „Agenți AI" are rândul lui în meniu — `în lucru`
+
+**Ce am schimbat:** serverul trimitea oricărui om logat câți tokeni a consumat firma și ce model AI folosim, iar
+telefonul le arăta clienților la „Asistenți AI" (pe web ecranul fusese scos pe 13.08). Acum doar super-adminul
+primește cifrele, iar pe telefon ecranul a trecut la „Platformă". Pentru că agenții se deschideau doar din acel
+ecran, „Agenți AI" are acum rândul lui în meniu (Analize).
+
+**Ce vede fondatorul:** aceleași cifre ca până acum, în Meniu → Platformă.
+
+**Ce vede clientul:** în meniu, „Agenți AI" în loc de ecranul cu tokeni. În aplicația veche, ecranul cu tokeni rămâne
+gol, dar butonul spre agenți merge.
+
+### CLIENT · Pe telefon dispar ecranele pe care firma le-a tăiat unui rol — `în lucru`
+
+**Ce am schimbat:** firma poate ascunde unui rol ecrane întregi (Statistici, Rapoarte, Șoferi, Alerte etc.). Pe web
+dispăreau din meniu; pe telefon rămâneau și dădeau „Acces interzis". Acum dispar și de pe telefon (meniu, bara de
+jos, actele din fișa mașinii și butoanele spre ele din notificări), iar dacă omul ajunge totuși la unul vede o pagină
+liniștită: „Ecranul nu e disponibil pentru rolul tău". Pe web, fila Documente din fișa mașinii se ascunde acum la fel.
+
+**Ce vede fondatorul:** nimic nou în contul de super-admin.
+
+**Ce vede clientul:** meniul arată doar ce are voie să folosească.
+
+### CLIENT · Agenți AI pe telefon: starea celor 5 agenți, constatările închise nu mai revin — `în lucru`
+
+**Ce am schimbat:** pagina de pe telefon rămăsese la varianta veche: RA Compliance și RA Client nu arătau nimic, iar
+constatările închise cu „Am văzut" reapăreau la redeschidere. Acum cei 5 agenți își aduc starea imediat („Ai 1
+scadență de urmărit", „Niciun vehicul cu tahograf în flotă"), iar închiderea se salvează, cu „Toate văzute".
+
+Tot aici, pe server: la un agent rulat singur, **fiecare apăsare pe „Rulează" cumpăra un rezumat AI** pe care nu-l
+afișa nimeni (mai ales din aplicația veche). Acum rezumatul se face doar la rularea tuturor agenților.
+
+**Ce vede fondatorul:** mai puțin cost AI pe agenți. Pe telefon, super-adminul încă nu poate alege compania la agenți.
+
+**Ce vede clientul:** aceeași pagină ca pe web; ce a închis rămâne închis.
+
+### AMÂNDOI · Hărțile „Deschis" și „Închis" au ieșit și de pe telefon — `în lucru`
+
+**Ce am schimbat:** furnizorul lor (CARTO) cere acum cheie și scrie „API KEY REQUIRED" peste hartă. Pe web fuseseră
+scoase; pe telefon încă se ofereau, iar telefonul ținea minte alegerea. Acum au ieșit, iar cine le alesese e mutat
+singur pe „Străzi". Pe web, opțiunea „Automat (temă)" se numește acum „Automat", pentru că nu mai urmează tema.
+
+**Ce vede fondatorul:** aceleași straturi pe web și pe telefon.
+
+**Ce vede clientul:** harta nu mai apare acoperită de scris, fără să schimbe nimic.
+
+### CLIENT · Tahograf și acte pe telefon: fără „OK" fals, „Vezi actul" merge, ștergerea cere confirmare — `în lucru`
+
+**Ce am schimbat:**
+- un fișier descărcat din memoria camionului arăta „0h condus", „Nicio abatere" și „OK" verde, deși activitatea din
+  el nu se citește încă. Acum arată „neanalizat" și nota „De reținut", ca pe web;
+- „Vezi actul" din notificarea de expirare ducea la o pagină goală; acum deschide poza sau PDF-ul (și în fișa mașinii);
+- coșul de lângă un act din fișa mașinii ștergea pe loc, cu tot cu poză; acum întreabă întâi.
+
+**Ce vede fondatorul:** nimic nou în administrare.
+
+**Ce vede clientul:** nu mai are impresia falsă că șoferul n-a condus; își vede actele din telefon; o atingere din
+greșeală nu-i mai pierde actul.
+
+### AMÂNDOI · Alerte: pe telefon regula se modifică și se oprește; pe web pragul gol rămâne gol — `în lucru`
+
+**Ce am schimbat:**
+- pe telefon o regulă se putea doar crea sau șterge. Acum are creion (formularul completat) și comutator
+  pornit/oprit, plus tipul „Supraîncărcare pe axă". Super-adminul e întrebat înainte să salveze o regulă pentru toată
+  platforma;
+- pe web, la editarea unei reguli cu pragul lăsat gol, formularul punea valoarea implicită, iar salvarea o scria
+  tăcut în regulă (de exemplu 90 km/h, sau pornea o alertă de combustibil oprită). Acum pragul gol rămâne gol, iar la
+  combustibil, temperatură și greutate lista scrie „fără prag · nu sună";
+- o regulă care urmărea și zone ale platformei (pe care administratorul firmei nu le vede în listă) pierdea acele zone
+  la orice salvare, pe web și pe telefon. Acum rămân. Iar o zonă ștearsă iese singură din regulile care o urmăreau.
+
+**Ce vede fondatorul:** poate ajusta sau opri o regulă de pe telefon, fără s-o refacă; zonele puse de voi pe regulile
+firmelor nu mai dispar când le editează clientul.
+
+**Ce vede clientul:** schimbă un prag sau oprește o regulă direct din telefon; regula nu-și mai schimbă singură pragul
+la o simplă salvare.
+
 ## 2026-09-12
 
 ### FONDATOR · Rezerva de conexiuni a recepției, corectată după măsurare — `f4e9698`
@@ -5830,6 +5993,29 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 
 ### B. De decis împreună (produs, nu cod)
 
+- [ ] **(voi) „Rezumat raport" cere acum acord peste fond, dar nu cere loc RA Insight pe cont.** Întrebările libere
+  merg doar la conturile cu RA Insight; rezumatul unui raport îl poate face oricine are voie la rapoarte, iar el se
+  numără tot din fondul firmei. Îl lăsăm așa sau îl legăm și pe el de locul pe cont?
+
+- [ ] **(voi) Un cont RA Insight oprit la mijloc de lună micșorează fondul înapoi în timp.** Fondul se socotește din
+  conturile pornite ACUM, deci întrebările deja puse pot deveni „în plus" pe factură dacă adminul oprește un cont pe
+  15 ale lunii. Variante: fondul lunii = cel mai mare număr de conturi din lună, sau un avertisment la oprire.
+
+- [ ] **(voi) Ștergerea unui act e definitivă, cu tot cu poza.** Pe aplicația de telefon nouă și pe web se cere
+  confirmare, dar aplicația veche de pe telefoane șterge dintr-o atingere. Vreți ca ștergerea să mute actul în
+  istoric (de unde se poate recupera), în loc să-l distrugă?
+
+- [ ] **(voi) „Grupe" tăiată unui rol blochează ecranul, dar serverul încă dă lista de grupe.** Lista e folosită și în
+  fișa mașinii (alegerea grupei), deci blocarea ei ar strica altceva. Propunerea mea: blocăm doar modificarea
+  grupelor pentru rolul acela.
+
+- [ ] **(voi) Paritatea telefonului — lotul 2.** Au rămas ~50 de ecrane care merg, dar sunt în urmă față de web
+  (Mentenanța, Documentele, Traseul cu mai multe mașini, Taxa de drum, Roluri, Istoric activitate, Aparate GPS…).
+  De hotărât înainte: dacă telefonul trimite „sunt în aplicație" (Istoric activitate numără și timpul de pe
+  telefon, adică mai multe date despre oameni), dacă importul de șoferi și Traseul cu mai multe mașini rămân doar
+  pe web și ce ecrane de fondator (Contracte, Ofertare nouă, Chei API) vreți pe telefon. Pe Statistici, telefonul
+  are o filă „Expirare documente" care pe web nu există — o păstrăm?
+
 - [x] **Depășirea cotei RA Insight — HOTĂRÂT (11.09).** Se vinde pe cont, întrebările intră într-un
   fond comun al firmei, la depășire merge mai departe iar întrebările în plus intră pe factură, cu
   prețul scris în ofertă. Fără notificări — bara din aplicație spune tot. *(Rămâne de urmărit pe
@@ -5884,6 +6070,32 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
 ---
 
 ### C. De reparat înainte de clienți reali
+
+- [ ] **(voi) Instalați aplicația de telefon 1.0.1** pe telefoanele de test și, apoi, la clienți. Protecțiile de pe
+  server (fond și acord, zone, roluri, acte) merg și pe aplicația veche, dar caseta de acord, lacătul de la zonele
+  pe străzi, ecranele tăiate unui rol și editarea alertelor apar doar în cea nouă.
+
+- [ ] **(eu) Poarta automată din GitHub e roșie din 20.08.** Proba `verify_expirari.js` așteaptă un preaviz de 7
+  zile pentru acte, dar din 20.08 preavizul implicit e 30. Pică la fel pe versiunea publicată — nu vine din
+  lucrul la telefon. Cât rămâne roșie, o greșeală nouă nu mai oprește nimic. De adus proba la regula de acum.
+
+- [ ] **(eu) Două întrebări puse în aceeași clipă pot trece amândouă de fond.** Fondul se verifică înainte de
+  răspuns, dar întrebarea se numără abia după (RA Insight poate lucra câteva secunde). Cine trimite mai multe
+  deodată, când mai e o singură întrebare în fond, poate trece peste fond fără casetă. De rezervat întrebarea
+  înainte de a o trimite la model.
+
+- [ ] **(eu) Super-adminul pe telefon, la Agenți AI: fără alegerea companiei.** Vede constatările tuturor firmelor
+  amestecate și nu vede a cui e una înainte s-o închidă (butonul „Toate văzute" e ascuns pentru super-admin).
+
+- [ ] **(eu) Limita veche de AI lasă cererea să treacă dacă baza nu răspunde** (la rezumatul de raport și la
+  rezumatul agenților). Fondul RA Insight nu mai are problema asta; căile vechi da.
+
+- [ ] **(eu) Conturi de super-admin rămase legate de o firmă, din promovări de dinainte de 13.09.** Nu mai pot fi
+  preluate (administratorul firmei nu mai are putere asupra lor) și nu mai apar în lista firmei, dar întrebările lor
+  RA Insight s-ar număra încă din fondul acelei firme. De curățat o dată în bază, după o verificare pe producție.
+
+- [ ] **(eu) „Rulează toți" pe pagina Agenți AI de pe web cumpără un rezumat AI pe care pagina nu-l arată.** Costul e
+  al nostru (nu intră pe factura clientului). Fie îl afișăm, fie nu-l mai cerem de acolo.
 
 - [ ] **(eu) „Chei API" e capitol al clientului — de mutat pe „la cerere". Hotărât de Alin, 03.09.**
   Acum, orice admin de firmă poate intra în Setări → Chei API și își face singur o cheie. Cheia e o
