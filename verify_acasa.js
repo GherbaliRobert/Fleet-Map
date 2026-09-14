@@ -66,7 +66,19 @@ T('pornește de sub cardul întreg, nu peste conturul lui', josLinie !== null &&
 T('e o linie subțire, nu un vârf plin care mușcă din card',
   latLinie !== null && latLinie <= 4 && !/rotate\(/.test(linie || ''), String(latLinie));
 
-console.log('\n4. Fiecare cartonaș chiar deschide o secțiune');
+console.log('\n4. Bara secțiunii și secțiunea fac O SINGURĂ cutie');
+// Bara avea chenar sus/stânga/dreapta și se oprea în gol, iar conținutul plutea dedesubt: arăta a
+// margine ruptă. Capacul e al barei, fundul e al secțiunii — împreună închid cutia.
+const capac = regula(css, '#adash-bara{');
+const fund = regula(css, '.adash-continua{');
+T('bara nu-și mai închide chenarul jos', /border-bottom\s*:\s*0/.test(capac || ''), (capac || '').trim().slice(0, 90));
+T('bara are colțuri rotunjite doar sus', /border-radius\s*:\s*12px 12px 0 0/.test(capac || ''));
+T('secțiunea continuă chenarul', /border\s*:\s*1px solid var\(--accent\)/.test(fund || '') && /border-top\s*:\s*0/.test(fund || ''), (fund || '').trim().slice(0, 90));
+T('și îl închide jos, cu colțuri rotunjite', /border-radius\s*:\s*0 0 12px 12px/.test(fund || ''));
+T('chenarul se pune la deschiderea cartonașului', /classList\.add\('adash-continua'\)/.test(html));
+T('și se ia la închidere', /classList\.remove\('adash-continua'\)/.test(html));
+
+console.log('\n5. Fiecare cartonaș chiar deschide o secțiune');
 const carduri = html.match(/<button class="adash-card[^>]*>/g) || [];
 T('sunt cele patru cartonașe', carduri.length === 4, String(carduri.length));
 const perechi = carduri.map(b => ({

@@ -3276,10 +3276,18 @@
 #admin-dash .adash-card.deschis:after{
   content:''; position:absolute; left:50%; bottom:-16px; width:2px; height:16px; margin-left:-1px;
   background:var(--accent); }
+/* Bara secțiunii + secțiunea de sub ea sunt O SINGURĂ cutie. Bara ține capacul (chenar sus, stânga,
+   dreapta, colțuri rotunjite sus), iar secțiunea îl continuă și îl închide jos. Înainte, bara avea
+   chenar care se oprea în gol, iar conținutul plutea dedesubt — arăta a margine ruptă. */
 #adash-bara{
   display:flex; align-items:center; gap:10px; margin-top:16px; padding:10px 14px;
-  background:var(--bg-dark); border:1px solid var(--accent); border-radius:12px 12px 0 0;
-  border-bottom-color:var(--border); }
+  background:var(--bg-dark); border:1px solid var(--accent); border-bottom:0;
+  border-radius:12px 12px 0 0; }
+.adash-continua{
+  border:1px solid var(--accent); border-top:0; border-radius:0 0 12px 12px;
+  padding:14px; margin-bottom:14px; background:var(--bg-dark); }
+/* Cutia are deja chenarul ei: cartonașele dinăuntru nu mai au nevoie de fundal peste fundal. */
+.adash-continua > .rax-card:first-child{ margin-top:0; }
 #adash-bara .nume{ flex:1; font-size:13px; font-weight:800; color:var(--accent);
   text-transform:uppercase; letter-spacing:.4px; }
 #adash-bara .rax-btn{ padding:5px 11px; font-size:12px; }

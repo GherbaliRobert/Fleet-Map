@@ -3853,6 +3853,8 @@ const pozitii = await r.json();</code></pre>
       document.querySelectorAll('#admin-dash .adash-card').forEach(function (b2) { b2.classList.remove('deschis'); });
       var bara = document.getElementById('adash-bara'); if (bara) bara.style.display = 'none';
       var aj = document.getElementById('adash-ajutor'); if (aj) aj.style.display = '';
+      // Chenarul care continua bara în jos se ia o dată cu ea — altfel rămâne o cutie deschisă în gol.
+      document.querySelectorAll('.adash-continua').forEach(function (s) { s.classList.remove('adash-continua'); });
     }
     window.raxDashCard = function (name, btn) {
       var eraDeschis = (_adashDeschis === name);
@@ -3867,6 +3869,10 @@ const pozitii = await r.json();</code></pre>
       raxAdminTab(name, true);                  // deschide secțiunea, dar lasă cartonașele deasupra
       if (btn) btn.classList.add('deschis');
       else { var b3 = document.querySelector('#admin-dash .adash-card[data-card="' + name + '"]'); if (b3) b3.classList.add('deschis'); }
+      // Bara are chenar sus/stânga/dreapta; secțiunea îl continuă și îl ÎNCHIDE dedesubt. Fără asta,
+      // chenarul pornea de sub cartonaș și se oprea în gol — arăta a margine ruptă, nu a cutie.
+      var corp = document.getElementById('admin-tab-' + name);
+      if (corp) corp.classList.add('adash-continua');
       // Adu secțiunea sub ochi, fără să sară pagina brusc.
       var sec = document.getElementById('adash-bara');
       if (sec && sec.scrollIntoView) { try { sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {} }
@@ -22025,7 +22031,7 @@ const pozitii = await r.json();</code></pre>
         + (typeof window.Chart !== 'undefined' ? '<div class="aiu-graf"><canvas id="aiu-canvas"></canvas></div>' : '')
         + '<div class="aiu-ist-wrap"><table class="aiu-ist">'
         + '<thead><tr><th>Luna</th><th class="n">Întrebări</th><th class="n">Ne-a costat</th>'
-        + '<th class="n">Facturat</th><th class="n">Încasat</th><th class="n">Rămas la noi</th></tr></thead>'
+        + '<th class="n">Facturat</th><th class="n">Intrat în cont</th><th class="n">Profit</th></tr></thead>'
         + '<tbody>' + randuri + '</tbody>'
         + '<tfoot><tr><td>Total</td><td class="n">' + tot.intrebari + '</td>'
         + '<td class="n">' + _aiuLei(tot.costEur * fx) + '</td>'
@@ -22085,7 +22091,7 @@ const pozitii = await r.json();</code></pre>
           + '<div style="height:6px;border-radius:4px;background:var(--border);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + culoare + ';"></div></div>';
       var bani = (r.venitLei > 0 ? '<span>încasăm <b>' + _aiuLei(r.venitLei) + '</b></span>' : '<span style="color:var(--text-muted);">nu se facturează</span>')
         + '<span style="color:var(--text-muted);">ne costă ' + _aiuLei(r.costEur * _aiuFx()) + '</span>'
-        + (r.venitLei > 0 ? '<span>rămâne <b style="color:' + ((r.venitLei - r.costEur * _aiuFx()) >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(r.venitLei - r.costEur * _aiuFx()) + '</b></span>' : '');
+        + (r.venitLei > 0 ? '<span>profit <b style="color:' + ((r.venitLei - r.costEur * _aiuFx()) >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(r.venitLei - r.costEur * _aiuFx()) + '</b></span>' : '');
       return '<div class="aiu-card' + (deschis ? ' deschis' : '') + '" data-firma="' + r.id + '">'
         + '<button class="aiu-cap" onclick="raxAiFirma(' + r.id + ')">'
         +   '<span class="aiu-nume">' + esc(r.name) + '</span>'
@@ -22103,10 +22109,32 @@ const pozitii = await r.json();</code></pre>
         +   (r.enabled ? '<div class="aiu-titlu" style="margin-top:10px;">Cine are cont</div>' + _aiuOameni(r) : '')
         +   (r.facturatLei ? '<div class="aiu-titlu" style="margin-top:10px;">Ce am facturat pe RA Insight</div>'
               + '<div>În ultimele 12 luni: <b>' + _aiuLei(r.facturatLei) + '</b>'
-              + (r.incasatLei !== r.facturatLei ? ' — din care încasat: <b>' + _aiuLei(r.incasatLei) + '</b>' : ' — <span style="color:var(--accent);">încasat tot</span>') + '</div>' : '')
+              + (r.incasatLei !== r.facturatLei
+                  ? ' — a intrat în cont: <b>' + _aiuLei(r.incasatLei) + '</b>, restul e neplătit'
+                  : ' — <span style="color:var(--accent);">a plătit tot</span>') + '</div>' : '')
         +   '<div style="margin-top:8px;color:var(--text-muted);font-size:11.5px;">Ultima întrebare: ' + _aiuData(r.lastUsed) + ' · conturile se aprind și se sting de administratorul firmei, din <b>Utilizatori</b>; noi primim notificare.</div>'
         + '</div></div>';
     }
+    // ── Butonul de istoric ────────────────────────────────────────────────────────────────────────
+    // Dashboard-ul cu grafic și tabel e util, dar nu în fiecare zi. Butonul îl pornește și îl oprește,
+    // iar alegerea se ține minte pe calculatorul ăsta — nu trebuie apăsat de fiecare dată.
+    var _aiuIst = null, _aiuIstFx = 5;
+    function _aiuIstoricPornit() { try { return localStorage.getItem('raAiuIstoric') !== '0'; } catch (e) { return true; } }
+    function _aiuIstoricButon(pornit) {
+      var b = document.getElementById('aiu-istoric-btn'); if (!b) return;
+      b.className = 'rax-btn' + (pornit ? ' primary' : '');
+      b.innerHTML = '<i class="fas fa-chart-column"></i> Istoric' + (pornit ? '' : ' (oprit)');
+      b.title = pornit ? 'Ascunde graficul și tabelul pe luni' : 'Arată graficul și tabelul pe luni';
+    }
+    window.raxAiIstoric = function (on) {
+      var pornit = (on === undefined || on === null) ? !_aiuIstoricPornit() : !!on;
+      try { localStorage.setItem('raAiuIstoric', pornit ? '1' : '0'); } catch (e) {}
+      var box = document.querySelector('#admin-tab-agents .aiu-ist-box');
+      if (box) box.style.display = pornit ? '' : 'none';
+      _aiuIstoricButon(pornit);
+      // Graficul se desenează abia când e vizibil: pe o pânză ascunsă iese de mărime zero.
+      if (pornit) { try { _aiuDeseneaza(_aiuIst, _aiuIstFx); } catch (e) {} }
+    };
     window.raxAiFirma = function (id) {
       var c = document.querySelector('.aiu-card[data-firma="' + id + '"]'); if (!c) return;
       var d = c.querySelector('.aiu-det'); if (!d) return;
@@ -22145,7 +22173,8 @@ const pozitii = await r.json();</code></pre>
         || '<div class="rax-co-meta" style="padding:14px;">Nicio companie.</div>';
       box.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'
         + '<span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-wand-magic-sparkles"></i> RA Insight pe firme — luna curentă</span>'
-        + '<button id="aiu-toate" class="rax-btn primary" style="margin-left:auto;padding:5px 11px;font-size:12px;" onclick="raxAiToate(false)"><i class="fas fa-compress"></i> Strânge toate</button></div>'
+        + '<button id="aiu-istoric-btn" class="rax-btn" style="margin-left:auto;padding:5px 11px;font-size:12px;" onclick="raxAiIstoric()"><i class="fas fa-chart-column"></i> Istoric</button>'
+        + '<button id="aiu-toate" class="rax-btn primary" style="padding:5px 11px;font-size:12px;" onclick="raxAiToate(false)"><i class="fas fa-compress"></i> Strânge toate</button></div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;">'
         + card('Firme cu RA Insight', s.withFeature + ' / ' + s.companies, s.active + ' îl folosesc efectiv')
         + card('Conturi de facturat', s.conturi, 'cel mult, luna asta')
@@ -22153,11 +22182,17 @@ const pozitii = await r.json();</code></pre>
             s.epuizate ? 'var(--orange)' : '')
         + card('Ne costă', _aiuLei((Number(s.totalCostEur) || 0) * _aiuFx()), 'plata către model', '', true)
         + card('Încasăm luna asta', _aiuLei(s.totalVenitLei), 'conturi RA Insight', '', true)
-        + card('Rămâne la noi', _aiuLei(profit), 'luna curentă', profit >= 0 ? 'var(--accent)' : 'var(--red)', true)
+        // „Profit" = încasările din RA Insight minus plata către model. NUMAI RA Insight: abonamentele
+        // GPS nu intră în ecranul ăsta, așa că nu-i putem spune „profitul RA Tracks" — ar arăta de zece
+        // ori mai mic decât e și ar induce în eroare exact când te uiți repede.
+        + card('Profit', _aiuLei(profit), 'din RA Insight, luna curentă', profit >= 0 ? 'var(--accent)' : 'var(--red)', true)
         // Cele două de mai jos vin din FACTURI, nu din socoteala lunii — ce am facturat chiar am facturat.
         + card('Facturat pe RA Insight', _aiuLei(s.istoricFacturatLei), 'ultimele ' + (s.istoricLuni || 12) + ' luni', '', true)
-        + card('Din care încasat', _aiuLei(s.istoricIncasatLei),
-            (s.istoricFacturatLei - s.istoricIncasatLei > 0.01 ? _aiuNr(s.istoricFacturatLei - s.istoricIncasatLei) + ' lei neîncasați' : 'încasat tot'),
+        // Rostul cifrei ăsteia: facturat nu înseamnă plătit. Aici se vede cât a intrat CU ADEVĂRAT.
+        + card('Intrat în cont', _aiuLei(s.istoricIncasatLei),
+            (s.istoricFacturatLei - s.istoricIncasatLei > 0.01
+              ? _aiuNr(s.istoricFacturatLei - s.istoricIncasatLei) + ' lei încă neplătiți de clienți'
+              : 'tot ce am facturat a fost plătit'),
             (s.istoricFacturatLei - s.istoricIncasatLei > 0.01 ? 'var(--orange)' : 'var(--accent)'), true)
         + '</div>'
         + (s.epuizate ? '<div style="font-size:12px;color:var(--red);margin-bottom:10px;"><i class="fas fa-triangle-exclamation" style="margin-right:6px;"></i>' + s.epuizate + (s.epuizate === 1 ? ' firmă și-a terminat' : ' firme și-au terminat') + ' fondul lunii.</div>' : '')
@@ -22165,7 +22200,9 @@ const pozitii = await r.json();</code></pre>
         + '<div class="aiu-lista">' + carduri + '</div>'
         // marcaj: gata. Graficul se desenează după, pe canvas-ul deja în pagină.
         + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">Cifrele sunt ale lunii curente și se reînnoiesc pe 1. „Conturi de facturat" = câte conturi a avut firma <b>cel mult</b> luna asta — regula din contract. Cei 6 agenți AI merg pe reguli fixe, nu costă tokeni și nu apar aici; se configurează din pagina <b>Agenți AI</b> din meniul lateral.</div>';
-      try { _aiuDeseneaza(d.istoric, Number(d.fxEur) || _aiuFx()); } catch (e) { /* fără grafic, tabelul rămâne */ }
+      _aiuIst = d.istoric; _aiuIstFx = Number(d.fxEur) || _aiuFx();
+      // Pune istoricul în starea aleasă ultima dată (și desenează graficul doar dacă e pornit).
+      try { raxAiIstoric(_aiuIstoricPornit()); } catch (e) { /* fără grafic, restul panoului rămâne */ }
     };
     // ─── sfârșit „Panoul RA Insight pe firme" ──
     // ─── Cereri de cont demo (super-admin) ───

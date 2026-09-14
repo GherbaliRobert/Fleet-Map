@@ -128,7 +128,7 @@ T('și câte se facturează, când diferă', /4 de facturat/.test(h));
 T('arată consumul din fond', /62<\/b> din 150 de întrebări/.test(h), h.slice(h.indexOf('din 150') - 40, h.indexOf('din 150') + 20));
 T('desface socoteala pe rânduri', /3<\/b> conturi × <b>50 de întrebări/.test(h));
 T('spune de ce se facturează mai mult', /cel mult<\/b> luna asta/.test(h));
-T('arată încasarea, costul și ce rămâne', /încasăm/.test(h) && /ne costă/.test(h) && /rămâne/.test(h));
+T('arată încasarea, costul și profitul', /încasăm/.test(h) && /ne costă/.test(h) && /profit/.test(h));
 T('orice sumă e în lei ȘI în euro', (h.match(/ lei /g) || []).length >= 3 && (h.match(/ €\)/g) || []).length >= 3);
 T('listează oamenii cu cont', /Ion/.test(h) && /Maria/.test(h) && /Vasile/.test(h));
 T('spune cine n-a întrebat deloc', /Vasile[\s\S]{0,200}0 întrebări/.test(h));
@@ -224,7 +224,8 @@ const tabel = gata.istoric([
   { luna: cheieLuna(1), intrebari: 40, firme: 2, costEur: 0.5, facturatLei: 64, incasatLei: 45, conturi: 4, firmeFacturate: 2 },
   { luna: cheieLuna(0), intrebari: 62, firme: 1, costEur: 0.27, facturatLei: 60, incasatLei: 0, conturi: 4, firmeFacturate: 1 }
 ], 5);
-T('are cap de tabel cu ce ne interesează', /Facturat/.test(tabel) && /Încasat/.test(tabel) && /Rămas la noi/.test(tabel));
+T('are cap de tabel cu ce ne interesează', /Facturat/.test(tabel) && /Intrat în cont/.test(tabel) && /Profit/.test(tabel));
+T('nu mai scrie „rămas la noi" — e profit, pe nume', !/Rămas la noi/.test(tabel));
 const corp = (tabel.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || '';
 T('lunile goale de la început nu se arată', (corp.match(/<tr>/g) || []).length === 2, String((corp.match(/<tr>/g) || []).length));
 T('scrie luna pe nume, nu ca un cod', new RegExp(gata.luna(cheieLuna(0))).test(tabel), gata.luna(cheieLuna(0)));
@@ -236,8 +237,15 @@ T('spune de unde vin cifrele', /facturile emise/.test(tabel));
 const gol = gata.istoric([{ luna: cheieLuna(0), intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0 }], 5);
 T('fără istoric, spune omenește că încă nu e nimic', /Încă nu e nimic/.test(gol) && !/<table/.test(gol));
 T('butonul de desfăcut/strâns e verde', /id="aiu-toate" class="rax-btn primary"/.test(html));
+T('istoricul are butonul lui de pornit/oprit', /id="aiu-istoric-btn"/.test(html) && /window\.raxAiIstoric\s*=/.test(html));
+T('alegerea se ține minte pe calculatorul ăsta', /localStorage\.setItem\('raAiuIstoric'/.test(html) && /localStorage\.getItem\('raAiuIstoric'/.test(html));
+T('oprit, graficul nici nu se mai desenează', /if \(pornit\) \{ try \{ _aiuDeseneaza/.test(html));
+T('la deschiderea panoului se aplică alegerea de data trecută', /raxAiIstoric\(_aiuIstoricPornit\(\)\)/.test(html));
 T('cartonașul firmei arată ce i-am facturat', /Ce am facturat pe RA Insight/.test(html));
-T('sus apar și facturatul, și încasatul', /Facturat pe RA Insight/.test(html) && /Din care încasat/.test(html));
+T('sus apar și facturatul, și cât a intrat', /Facturat pe RA Insight/.test(html) && /Intrat în cont/.test(html));
+T('cifra de încasări își spune rostul, nu „încasat tot"', /încă neplătiți de clienți/.test(html) && /tot ce am facturat a fost plătit/.test(html));
+T('profitul e numit profit', /card\('Profit'/.test(html));
+T('și e limpede că e profitul din RA Insight, nu al firmei', /din RA Insight, luna curentă/.test(html));
 
 sect('11. Dashboard: statistici și luna curentă, estimată');
 const M = (luna, o) => Object.assign({ luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 }, o);

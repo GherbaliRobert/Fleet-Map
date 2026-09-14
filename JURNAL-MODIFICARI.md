@@ -461,6 +461,40 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Buton de istoric · „Profit" pe nume · marginea ruptă de sub cartonașe
+
+Patru lucruri cerute pe rând:
+
+**1. Buton de istoric.** Graficul și tabelul pe luni se pornesc și se opresc dintr-un buton, iar
+alegerea se ține minte pe calculatorul ăla — nu trebuie apăsat de fiecare dată. Când e oprit,
+graficul nici nu se mai desenează.
+
+**2. „Rămâne la noi" → „Profit".** Așa i se spune, așa scrie acum — și în cartonașe, și în tabel,
+și pe fiecare firmă. **Nu i-am zis „profit din RA Tracks"**, cu un motiv: ecranul ăsta numără DOAR
+RA Insight, nu și abonamentele GPS, care sunt partea grea a veniturilor. Dacă ar scrie „RA Tracks",
+cifra ar părea profitul întregii firme și ar fi de zece ori mai mică decât adevărul. Scrie **Profit**,
+iar dedesubt: *din RA Insight, luna curentă*.
+
+**3. „Din care încasat / încasat tot".** Avea dreptate că nu se înțelegea. Rostul cifrei e simplu:
+**facturat nu înseamnă plătit**. Acum scrie **„Intrat în cont"**, iar dedesubt fie *„19 lei încă
+neplătiți de clienți"*, fie *„tot ce am facturat a fost plătit"*. Se înțelege fără explicație.
+
+**4. Marginea ruptă de sub cartonașe.** Bara secțiunii („COMPANII & DISPOZITIVE") avea chenar sus,
+în stânga și în dreapta — și **se oprea în gol**, iar conținutul plutea dedesubt. Arăta a cutie
+spartă. Acum bara și secțiunea sunt **o singură cutie**: bara ține capacul, secțiunea continuă
+chenarul pe laturi și îl închide jos, cu colțuri rotunjite. Verificat geometric: aceeași lățime sus
+și jos, zero crăpătură între ele.
+
+**Ce am lăsat în urmă:** 20 de verificări la cartonașe (de la 14), 124 la panoul RA Insight (de la
+116), 32 și 54 pe aplicația pornită. Sabotat în patru feluri.
+
+- **Ce am schimbat:** buton de istoric, denumiri limpezi, cutia secțiunii închisă.
+- **Ce vede fondatorul:** un ecran care nu mai pare rupt și cifre care își spun singure rostul.
+- **Ce vede clientul:** cutia închisă se vede și la cartonașele lui (Utilizatori, Arhivate); restul
+  e numai al nostru.
+
+---
+
 ### FONDATOR · RA Insight, ca dashboard: grafic, statistici, și luna curentă vizibilă din prima zi
 
 *„Rolul istoricului și al prezentului cu încasările din RA Insight este că mă ajută pe mine, ca
