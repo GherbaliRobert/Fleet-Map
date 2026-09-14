@@ -177,11 +177,19 @@ function facAnexa(vehicule, pret) {
     };
   });
   const total = lista.reduce(function (s, v) { return s + (Number(v.monthlyRON) || 0); }, 0);
-  return {
+  const out = {
     vehicles: lista,
     monthlyTotal: (pret && pret.monthlyTotal != null) ? Number(pret.monthlyTotal) : total,
     currency: (pret && pret.currency) || 'RON'
   };
+  // RA Insight se vinde pe CONT, iar clientul își schimbă singur numărul de conturi. Prețul unui
+  // cont și câte întrebări aduce se ÎNGHEAȚĂ aici, ca să ajungă negru pe alb în contract — altfel
+  // factura s-ar putea schimba de la o lună la alta fără nimic semnat în spate.
+  if (pret && Number(pret.aiSeatPriceRON) > 0) {
+    out.aiSeatPriceRON = Math.round(Number(pret.aiSeatPriceRON) * 100) / 100;
+    out.aiQuestionsPerSeat = Math.max(0, Math.round(Number(pret.aiQuestionsPerSeat) || 0)) || 50;
+  }
+  return out;
 }
 
 module.exports = {

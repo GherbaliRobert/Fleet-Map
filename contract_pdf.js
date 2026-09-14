@@ -298,6 +298,15 @@ function scrieContract(doc, date) {
   _titlu(doc, 'IV. PREȚUL ȘI MODALITATEA DE PLATĂ');
   _p(doc, 'Prețul serviciilor este de ' + _bani(anexa.monthlyTotal, anexa.currency) + ' pe lună, fără TVA, conform Anexei nr. 1. ' +
     (em.vat_payer === false ? 'Prestatorul nu este plătitor de TVA.' : 'La preț se adaugă TVA în cota legală de ' + cotaTva + '%.'));
+  // RA Insight se vinde pe CONT, iar numărul de conturi îl schimbă clientul singur, din aplicație.
+  // Fără clauza asta, factura din noiembrie ar putea fi alta decât cea din octombrie fără ca omul să
+  // fi semnat nimic — și ar avea dreptate să întrebe de ce.
+  if (Number(anexa.aiSeatPriceRON) > 0) {
+    _p(doc, 'Prețul unui cont de RA Insight este de ' + _bani(anexa.aiSeatPriceRON, anexa.currency) + ' pe lună, fără TVA. ' +
+      'Numărul de conturi se modifică oricând de către Beneficiar, din aplicație, iar factura urmează numărul de conturi active în luna respectivă. ' +
+      'Fiecare cont aduce ' + (Number(anexa.aiQuestionsPerSeat) || 50) + ' de întrebări pe lună, într-un fond comun al Beneficiarului; ' +
+      'la epuizarea fondului serviciul se oprește până la reînnoirea lunară, fără costuri suplimentare.');
+  }
   _p(doc, 'Factura se emite în data de ' + ziFactura + ' a fiecărei luni, iar plata se face în termen de ' + termenPlata + ' zile de la emitere, prin transfer bancar în contul Prestatorului indicat mai sus.');
   _p(doc, 'Neplata facturii la scadență dă dreptul Prestatorului să suspende accesul la platformă, după o perioadă de grație de 15 zile de la expirarea termenului, cu notificarea prealabilă a Beneficiarului. Suspendarea nu înlătură obligația de plată a sumelor datorate.');
 

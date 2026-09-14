@@ -461,6 +461,74 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · RA Insight, modelul curat: numai conturi. Fără cost suplimentar, deloc
+
+*„Trebuie ca noi să calculăm ce trece pe cost suplimentar pe firma X, câte conturi… e mai complicată
+treaba. Hai să o gândim bine de la început, să nu avem probleme."*
+
+Am gândit-o de la început și am **aruncat costul suplimentar cu totul**. Motivul, scris ca să nu se
+răzgândească nimeni din greșeală peste șase luni: cu cost suplimentar aveam de socotit, pe fiecare
+firmă, *câte întrebări au trecut peste fond · la ce preț · cine a acceptat · în ce lună*. Patru
+lucruri de calculat, patru de explicat clientului, patru de greșit.
+
+#### Tot produsul, în șase propoziții
+
+> 1. RA Insight se dă **pe cont**. Adminul firmei alege cine îl are.
+> 2. Un cont costă **X lei/lună** și aduce **50 de întrebări**.
+> 3. Întrebările tuturor conturilor intră într-un **fond comun** al firmei.
+> 4. Când fondul se termină, **se oprește până pe 1**. Întrebările rapide rămân gratuite.
+> 5. Vrei mai multe? **Mai adaugi un cont** — pe loc, din aplicație.
+> 6. Factura urmează **câte conturi ai avut active în luna aia**.
+
+Exemplul lui Alin: adminul + managerul + un dispecer = **3 conturi**. La o flotă de 11–25 de mașini:
+3 × 15 = **45 lei/lună**, cu **150 de întrebări** în fond comun.
+
+**Riscul nostru e plafonat prin construcție:** un cont = maximum 50 de întrebări, care ne costă
+1,7–4,5 lei (măsurat). Contul se vinde cu 12–35 de lei, după flotă. Nu putem ieși în pierdere,
+oricât ar stoarce clientul cele 50.
+
+#### Ce s-a șters
+
+Prețul pe întrebare (din ofertă, din contract, din factură, din aplicație), caseta care cerea
+acordul, rândul de depășire de pe factură, bifa „poate depăși" din panoul de abonament, și toate
+câmpurile din baza de date care le țineau — se șterg singure la prima salvare a unei firme.
+
+#### Ce s-a adăugat
+
+**1. Aflăm și noi.** Când un client mai aprinde un cont, primim **o notificare în clopoțel** — doar
+noi, clientul n-o vede: *„RA Insight: Transport Zebra SRL a activat încă un cont. vasile@zebra.ro a
+primit RA Insight. Firma are acum 3 conturi — factura lunii: 45,00 lei. Accesul e deja activ; dacă e
+o greșeală, îl poți retrage din fișa firmei."* Click pe ea → buton **„Deschide firma"**, care duce
+în **Administrare → Companii → firma → Abonament & plăți**.
+
+*De ce accesul e imediat, nu după aprobarea noastră:* dacă un dispecer are nevoie vineri la 19:00 și
+noi aprobăm luni, l-am blocat trei zile pentru un venit pe care oricum îl vrem. Aflăm pe loc, iar
+dacă e o greșeală se stinge într-o secundă din fișa firmei.
+
+**2. Factura ia câte conturi a avut CEL MULT luna aia.** Factura se face într-o singură zi. Dacă
+ne-am uita doar atunci, un cont aprins pe 3 și stins pe 25 n-ar fi plătit niciodată, deși omul l-a
+folosit 22 de zile. Acum se ține minte vârful lunii, iar pe factură scrie de ce: *„RA Insight —
+conturi (3 × 15,00 lei) — cel mult active în luna aceasta"*.
+
+**3. Regula e scrisă pe hârtie**, și în ofertă, și în contract: *„Prețul unui cont de RA Insight
+este X lei/lună. Numărul de conturi se modifică oricând de către Beneficiar, din aplicație, iar
+factura urmează numărul de conturi active în luna respectivă. Fiecare cont aduce 50 de întrebări pe
+lună, într-un fond comun; la epuizarea fondului serviciul se oprește până la reînnoirea lunară, fără
+costuri suplimentare."* Prețul contului se **îngheață** în anexă la semnare.
+
+**Ce am lăsat în urmă:** **221 de probe** (`verify_tarife.js`), plus **36 în aplicația pornită** care
+fac drumul întreg: 3 oameni → fără cont ești blocat → adminul dă 3 conturi → primim notificarea →
+fondul devine 150 → stinge 2 conturi → factura rămâne pe 3 și spune de ce → fondul se epuizează →
+se oprește cu explicație și fără niciun preț.
+
+- **Ce am schimbat:** modelul de vânzare al RA Insight, dus la capăt: numai conturi.
+- **Ce vede fondatorul:** o notificare la fiecare cont nou, cu drum direct în fișa firmei; o factură
+  cu un singur rând, previzibil.
+- **Ce vede clientul:** un buton lângă fiecare coleg, o bară care spune adevărul, și zero prețuri pe
+  întrebare — nicăieri.
+
+---
+
 ### AMÂNDOI · Clientul nu mai vede prețuri pe întrebare · câmpuri și butoane noi în Ofertare
 
 *„Nu știu, aici e dubios — să vadă cât costă… habar n-am cum s-o facem să nu vadă costurile

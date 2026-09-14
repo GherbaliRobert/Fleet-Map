@@ -306,7 +306,9 @@ T('oferta ține minte în ce s-a transformat',
 T('serverul leagă oferta de firmă și de contract la creare',
   /await db\.legOferta\(oferta\.id, \{ company_id: id, contract_id: c\.id \}\)/.test(server));
 T('prețul din ofertă intră în anexa contractului',
-  /date\.annex = contracte\.facAnexa\(\[\], \{ monthlyTotal: Number\(oferta\.monthly_total\)/.test(server));
+  /date\.annex = contracte\.facAnexa\(\[\], \{[\s\S]{0,120}monthlyTotal: Number\(oferta\.monthly_total\)/.test(server));
+T('și prețul unui cont de RA Insight, ca regula să fie semnată',
+  /aiSeatPriceRON: _cfgOf\.aiA \?/.test(server) && /aiQuestionsPerSeat: Number\(_cfgOf\.aiqN\)/.test(server));
 T('dar aparatele NU vin din ofertă (acolo sunt doar numere)',
   /Aparatele NU vin din ofertă/.test(server));
 T('traseul „client nou" poate porni dintr-o ofertă', /window\.coNouDinOferta = function \(offerId\)/.test(html));

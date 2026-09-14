@@ -205,10 +205,10 @@ T('zero nu devine „0 de vehicule"', DE(0) === '');
 sect('3c-bis. RA Insight pe hârtia clientului');
 T('scrie pe câte CONTURI se dă', /RA Insight pe ' \+ nLocP/.test(PD), 'lipsește numărul de conturi');
 T('și cât e fondul comun de întrebări', /dintr-un fond comun al firmei/.test(PD));
-T('prețul peste fond e scris pe hârtie (altfel nu-l putem factura)',
-  /se facturează separat, la/.test(PD) && /aiqP/.test(PD));
-T('și scrie că se pot da/retrage conturi oricând', /se pot da sau retrage oricând/.test(PD));
-T('nota apare DOAR dacă există fond și preț', /r\.cfg\.aiA && fondP > 0 && Number\(r\.cfg\.aiqP\) > 0/.test(PD));
+T('scrie prețul unui cont, ca regula să fie pe hârtie', /Prețul unui cont de RA Insight este /.test(PD));
+T('și că numărul de conturi se schimbă din aplicație', /Numărul de conturi se modifică oricând din aplicație/.test(PD));
+T('și că la epuizare se oprește, fără costuri suplimentare', /nu există costuri suplimentare/.test(PD));
+T('nota apare DOAR dacă s-a vândut RA Insight', /r\.cfg\.aiA && Number\(r\.p\.pAiA\) > 0/.test(PD));
 
 sect('3d. Hârtia se ține pe o pagină');
 T('răspunsul („cum se plătește") vine ÎNAINTEA tabelelor',
@@ -285,7 +285,7 @@ T('nu mai există o a doua listă paralelă de setări',
 T('cota vândută ajunge pe firmă, ca întrebări PE CONT', /patch\.ai_quota = n > 0/.test(server) && /questionsPerSeat: n/.test(server));
 T('și prețul unui cont merge cu ea', /seatPriceRON: seatPrice/.test(server));
 T('„nelimitat" în ofertă (0) rămâne fără plafon', /patch\.ai_quota = n > 0[\s\S]{0,160}: null;/.test(server));
-T('prețul peste cotă negociat în ofertă merge și el', /overagePriceEur: priceEur/.test(server));
+T('prețul unui cont negociat în ofertă merge și el', /seatPriceRON: seatPrice/.test(server));
 T('RA Insight se aprinde odată cu cota', /patch\.features = \{ ai_assistant: true \}/.test(server));
 // Dar modulele demonstrative NU se aprind singure — decizie veche, rămâne.
 T('Tahograful și e-Transportul NU se aprind singure',
@@ -311,56 +311,78 @@ T('consumul se scrie pe om la toate felurile de întrebări',
   String((server.match(/recordAiUsage\(req\.companyId, '(insight|chat|report)', [^)]*req\.auth && req\.auth\.userId\)/g) || []).length));
 // Factura
 T('factura are rândul de conturi', /RA Insight — conturi \(/.test(server));
-T('și rândul de depășire, separat', /RA Insight — întrebări peste cota lunii/.test(server));
-T('depășirea se facturează DOAR dacă firma avea voie să depășească',
-  /overageCount: \(st\.overage \? \(st\.overageCount \|\| 0\) : 0\)/.test(server));
-T('prețul depășirii se trece în lei, la cursul zilei', /overagePriceRON: Math\.round\(\(st\.overagePriceEur/.test(server));
 T('forma veche („Asistent AI", sumă fixă) rămâne pentru clienții vechi',
   /add\('Asistent AI', 1, bd\.aiAssistant\);   \/\/ forma veche/.test(server));
 
-sect('6d. Nimeni nu intră pe cost suplimentar fără să știe');
-T('există o poartă înainte de a chema modelul', /async function _cereAcordCostExtra\(req\)/.test(server));
-T('se cere acordul DOAR când fondul s-a terminat', /if \(st\.used < st\.questions\) return null;/.test(server));
-T('și doar dacă firma are voie să depășească', /if \(!st\.overage\) return null;/.test(server));
-T('o singură dată pe lună', /extraAcceptedMonth\) === luna\) return null;/.test(server));
-T('caseta primește cifrele care contează', /pretLei: lei, pretEur: st\.overagePriceEur/.test(server));
-// `\r?\n`: fișierele din proiect sunt CRLF în copia de lucru, deși în git stau cu LF. Cu `\n` simplu,
-// proba pica pe calculatorul pe care chiar se rulează `npm test`, deși codul era corect.
-T('și NU se cheltuie nimic pe model până nu spune omul da', /let _cost = await _cereAcordCostExtra\(req\);[\s\S]{0,400}?\r?\n    if \(_cost\) return res\.json\(_cost\);/.test(server));
-// 13.09: acordul se scria la ORICE acceptExtra, chiar dacă nu fusese cerut — o casetă lăsată deschisă peste sfârșitul
-// lunii aproba luna nouă fără ca omul s-o fi văzut. Comportamentul e dovedit în verify_paritate_telefon.js (secțiunea 6).
-T('acordul se scrie DOAR când caseta e cerută chiar acum', /if \(_cost && req\.body && req\.body\.acceptExtra === true\) \{/.test(server));
-T('acordul se scrie pe firmă și rămâne în audit', /auditReq\(req, 'ai_extra_accept', 'company'/.test(server));
-T('și lasă o notificare pentru cine plătește factura', /type: 'ai_cost_extra'/.test(server));
-// Pe ecran: fereastra care explică, nu un simplu „da/nu"
-const AC = html.slice(html.indexOf('// ── începe „Acordul pentru cost suplimentar"'), html.indexOf('// ── sfârșit „Acordul pentru cost suplimentar" ──'));
-T('fereastra spune cât costă o întrebare, în lei ȘI în euro', /pretLei/.test(AC) && /pretEur/.test(AC));
-T('spune ce rămâne gratuit', /unde sunt mașinile/.test(AC) && /Gratuit oricând/.test(AC));
-T('spune când se reînnoiește fondul', /se reînnoiește pe/.test(AC));
-T('spune cum se poate mări fondul', /Utilizatori/.test(AC));
-T('și se poate spune NU', /rax-extra-nu/.test(AC) && /gata\(false\)/.test(AC));
-T('dacă spune nu, întrebarea NU se trimite', /Întrebarea nu a fost trimisă/.test(html));
-// Bara are explicația „cum se socotește"
-T('bara are „Cum se socotește"', /Cum se socotește ▾/.test(html));
-T('și scrie ce e gratuit', /Gratuite, nu intră la socoteală/.test(html));
-
-sect('6d-bis. La epuizare se OPREȘTE, fără prețuri pe întrebare');
-// Hotărât cu Alin (11.09): clientul nu trebuie să vadă prețuri pe întrebare — ar părea că plătește
-// la bucată și i-am arăta socoteala noastră. Se oprește și i se propune un CONT în plus.
-T('implicit, firma NU poate depăși', /overage: q\.overage === true,/.test(server));
-T('oferta acceptată scrie tot „se oprește"', /seatPriceRON: seatPrice, overage: false/.test(server));
-T('există un răspuns care explică oprirea', /async function _fondEpuizat\(req\)/.test(server));
+sect('6d. NU există cost suplimentar — la epuizare se oprește');
+// Hotărât cu Alin (14.09). Motivul, scris ca să nu se răzgândească nimeni din greșeală: cu cost
+// suplimentar aveam de socotit pe fiecare firmă câte întrebări au trecut peste fond, la ce preț,
+// cine a acceptat și în ce lună. Patru lucruri de calculat, patru de explicat, patru de greșit.
+// Singurul loc unde mai apar numele vechi e linia care le ȘTERGE din baza de date.
+const _fara = server.replace(/\['overage', 'overagePriceEur', 'extraAcceptedMonth'\][^\n]*\n/, '');
+T('nu mai există preț pe întrebare nicăieri pe server',
+  !/overagePriceEur|AI_OVERAGE_PRICE_EUR/.test(_fara));
+T('nici mecanismul de acord', !/_cereAcordCostExtra|_acceptaCostExtra|extraAcceptedMonth/.test(_fara));
+T('nici pe ecran', !/overage|needsExtraConsent|acceptExtra/.test(html));
+T('câmpurile vechi se aruncă din baza de date la prima salvare',
+  /\['overage', 'overagePriceEur', 'extraAcceptedMonth'\]\.forEach\(function \(k\) \{ delete q\[k\]; \}\);/.test(server));
+T('fondul epuizat = blocat', /blocked: used >= fond,/.test(server));
+T('și se explică, nu se dă doar o eroare', /async function _fondEpuizat\(req\)/.test(server));
 T('spune câte întrebări erau incluse', /Firma a folosit toate cele/.test(server));
 T('spune când se reînnoiește', /Se reînnoiește pe/.test(server));
 T('spune ce rămâne gratuit', /Întrebările rapide rămân gratuite/.test(server));
-T('propune un CONT în plus, nu bani pe întrebare', /Un cont în plus aduce încă/.test(server));
-T('și NU pomenește niciun preț în mesajul de oprire',
+T('propune un CONT în plus', /Un cont în plus aduce încă/.test(server));
+T('și NU pomenește niciun preț',
   !/lei/.test((server.match(/async function _fondEpuizat[\s\S]*?\n\}/) || [''])[0]));
-T('se verifică ÎNAINTE de calea cu cost suplimentar',
-  server.indexOf('const _stop = await _fondEpuizat(req);') >= 0 &&
-  server.indexOf('const _stop = await _fondEpuizat(req);') < server.indexOf('let _cost = await _cereAcordCostExtra(req);'));
+// Poarta e una singură și e folosită de toate căile de AI (scrisă la paritatea telefonului).
+T('poarta fondului e chemată din toate căile de AI',
+  /async function _regulileFonduluiAi\(req, res\)/.test(server) &&
+  (server.match(/if \(await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length >= 3,
+  String((server.match(/if \(await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length));
+T('dacă fondul nu se poate citi, întrebarea NU pleacă', /Nu am putut verifica fondul de întrebări/.test(server));
 // Pe ecran, bara nu mai spune „la epuizare se oprește" sec, ci ce poate face omul
 T('bara propune contul în plus', /Un cont în plus aduce încă ' \+ window\._raxNrI\(q\.questionsPerSeat \|\| 50\)/.test(html));
+T('oferta acceptată nu mai scrie niciun preț pe întrebare',
+  /patch\.ai_quota = n > 0 \? \{ questionsPerSeat: n, seatPriceRON: seatPrice \} : null;/.test(server));
+T('factura are UN singur rând de RA Insight', /RA Insight — conturi \(/.test(server) &&
+  !/RA Insight — întrebări peste cota lunii/.test(server));
+
+sect('6d-bis. Factura ia CÂTE CONTURI a avut cel mult luna asta');
+T('vârful lunii se ține minte', /async function _urcaSeatsPeak\(companyId, seats\)/.test(server));
+T('urcă la fiecare aprindere de cont', /await _urcaSeatsPeak\(req\.companyId, seats\)/.test(server));
+T('se resetează la lună nouă', /p2\.luna === _lunaAcum\(\)/.test(server));
+T('factura ia maximul dintre vârf și câte sunt acum',
+  /seats: Math\.max\(st\.seats \|\| 0, _seatsPeakLuna\(company\)\)/.test(server));
+T('și spune pe factură când numărul e mai mare decât cel de azi',
+  /cel mult active în luna aceasta/.test(server));
+T('vârful se scrie doar de aplicație, cu formatul verificat',
+  /q\.seatsPeak = \{ luna: String\(vf\.luna\), n: Math\.max\(0, Math\.round\(Number\(vf\.n\)\)\) \};/.test(server));
+
+sect('6d-ter. Aflăm și noi când un client mai aprinde un cont');
+T('se creează o notificare la aprindere', /type: 'ai_seat_on', severity: 'info'/.test(server));
+T('ajunge DOAR la noi (fără companie)', /type: 'ai_seat_on'[\s\S]{0,80}companyId: null/.test(server));
+T('spune firma, omul și câte conturi are acum',
+  /a activat încă un cont/.test(server) && /Firma are acum ' \+ seats/.test(server));
+T('spune și cât face pe factură', /factura lunii: ' \+ \(seats \* pret\)/.test(server));
+T('spune că accesul e deja activ și cum se retrage', /Accesul e deja activ/.test(server));
+T('doar la APRINDERE, nu și la stingere', /if \(on\) \{[\s\S]{0,900}ai_seat_on/.test(server));
+T('din notificare se ajunge în fișa firmei',
+  /d\.type === 'ai_seat_on'[\s\S]{0,300}raxOpenCompanyDetail/.test(html));
+T('pe fila de abonament', /raxOpenCompanyDetail\(' \+ Number\(d\.data\.company_id\) \+ ', \\'abonament\\'\)/.test(html));
+
+sect('6d-quater. Regula, scrisă în contract și în ofertă');
+const cpdf = fs.readFileSync('./contract_pdf.js', 'utf8');
+T('contractul spune prețul unui cont', /Prețul unui cont de RA Insight este de/.test(cpdf));
+T('și că numărul se schimbă din aplicație', /Numărul de conturi se modifică oricând de către Beneficiar/.test(cpdf));
+T('și că factura urmează conturile active', /factura urmează numărul de conturi active în luna respectivă/.test(cpdf));
+T('și că la epuizare se oprește, fără costuri suplimentare', /fără costuri suplimentare/.test(cpdf));
+T('clauza apare doar dacă s-a vândut RA Insight', /if \(Number\(anexa\.aiSeatPriceRON\) > 0\)/.test(cpdf));
+const ctr = fs.readFileSync('./contracts.js', 'utf8');
+T('prețul contului se îngheață în anexă', /out\.aiSeatPriceRON = Math\.round/.test(ctr));
+T('împreună cu câte întrebări aduce', /out\.aiQuestionsPerSeat = /.test(ctr));
+T('și vine din ofertă', /aiSeatPriceRON: _cfgOf\.aiA \?/.test(server));
+T('aceeași regulă e scrisă și pe ofertă', /Prețul unui cont de RA Insight este /.test(html) &&
+  /nu există costuri suplimentare/.test(html));
 
 sect('6e. Ofertare Live — câmpuri, bife și butoane');
 const css2 = fs.readFileSync('./public/css/app.css', 'utf8');

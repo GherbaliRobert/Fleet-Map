@@ -9568,19 +9568,6 @@ const pozitii = await r.json();</code></pre>
       try {
         var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
         var j = await r.json();
-        // Fondul lunii s-a terminat, iar firma poate trece pe cost suplimentar: întâi acordul, ca în panoul RA Insight.
-        // Înainte, aici apărea „Eroare RA Insight." și nu exista nicio cale de a continua.
-        if (j && j.needsExtraConsent) {
-          if (thinking) thinking.remove();
-          var c = j.cost || {};
-          var deAcord = typeof window._raxAcordCostExtra === 'function'
-            ? await window._raxAcordCostExtra(c)
-            : await raConfirm('Fondul de întrebări al lunii s-a terminat. De acum, fiecare întrebare costă ' + Number(c.pretLei || 0).toFixed(2) + ' lei și intră pe factura lunii. Continui?', { okLabel: 'Am înțeles, continuă' });
-          if (!deAcord) { rinAddMsg('sys', 'Întrebarea nu a fost trimisă. Întrebările rapide (unde e o mașină, care sunt oprite, câți km azi) rămân gratuite.'); rinBusy = false; if (btn) btn.disabled = false; return; }
-          thinking = rinAddMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>', true);
-          r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg, acceptExtra: true }) });
-          j = await r.json();
-        }
         if (thinking) thinking.remove();
         rinAddMsg('ai', j.reply || j.message || j.error || 'Eroare RA Insight.');
         if (j.sources) rinRenderSources(j.sources);
@@ -10694,6 +10681,13 @@ const pozitii = await r.json();</code></pre>
         (!d.event && !isScadenta ? '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Fără poziție GPS pentru acest eveniment.</div>' : '') +
         (isIdle && d.body ? '<div style="font-size:12px;color:var(--text-muted);margin-top:10px;text-align:center;">' + esc(d.body) + '</div>' : '') +
         (scadBtns ? '<div style="display:flex;gap:8px;margin-top:12px;">' + scadBtns + '</div>' : '') +
+        // Notificările de business (un client și-a mai aprins un cont de RA Insight) duc direct în
+        // fișa firmei, pe fila de abonament — acolo se văd conturile și prețul, și tot de acolo se
+        // poate retrage accesul dacă e o greșeală.
+        (d.type === 'ai_seat_on' && d.data && d.data.company_id
+          ? '<button class="rax-btn" style="margin-top:12px;width:100%;justify-content:center;" onclick="closeNotifDetail();raxOpenCompanyDetail(' + Number(d.data.company_id) + ', \'abonament\')">' +
+            '<i class="fas fa-building"></i> Deschide firma</button>'
+          : '') +
         (d.acknowledged
           ? '<div style="margin-top:14px;text-align:center;color:var(--accent);font-weight:600;font-size:13px;"><i class="fas fa-check-circle"></i> Marcat ca citit</div>'
           : '<button id="notif-ack-btn" class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxNotifAck(' + d.id + ', this)"><i class="fas fa-check"></i> Marchează citit</button>');
@@ -18221,7 +18215,7 @@ const pozitii = await r.json();</code></pre>
       // Fondul e AL FIRMEI (conturile ei × întrebările fiecăruia), dar omul vrea să știe și cât a
       // pus el. Amândouă, pe același rând, ca bara să spună o poveste completă.
       var aleMele = Number(q.usedByMe) || 0;
-      var over = q.overageCount > 0;
+      var over = q.remaining <= 0;
       var col = over ? 'var(--orange)' : (q.remaining <= Math.max(3, q.questions * 0.15) ? 'var(--orange)' : 'var(--accent)');
       var head, sub;
       // Sumele se arată în LEI (moneda clientului) cu echivalentul în € — curs BNR.
@@ -18229,15 +18223,12 @@ const pozitii = await r.json();</code></pre>
       var lei = function (eur) { return (eur * fx).toFixed(2).replace('.', ',') + ' lei'; };
       var both = function (eur) { return lei(eur) + ' <span style="opacity:.65;">(' + eur.toFixed(2).replace('.', ',') + ' €)</span>'; };
       if (over) {
-        head = '<b>Fondul lunii s-a terminat</b>' + (q.overage ? ' · ' + q.overageCount + ' ' + (q.overageCount === 1 ? 'întrebare în plus' : 'întrebări în plus') : '');
-        sub = q.overage
-          ? ('Întrebările în plus intră pe factura lunii: ' + lei(q.overagePriceEur) + '/întrebare · până acum <b>' + both(q.overageCostEur) + '</b>' + (aleMele > 0 ? ' · ai folosit tu ' + aleMele : ''))
-          : ('Se reînnoiește pe ' + reset + '. Un cont în plus aduce încă ' + window._raxNrI(q.questionsPerSeat || 50) + ' pe lună.');
+        head = '<b>Fondul lunii s-a terminat</b>';
+        sub = 'Se reînnoiește pe ' + reset + '. Un cont în plus aduce încă ' + window._raxNrI(q.questionsPerSeat || 50) + ' pe lună.';
       } else {
         head = '<b>' + q.remaining + '</b> din ' + window._raxNrI(q.questions) + ' rămase' +
           (q.seats > 1 ? ' <span style="opacity:.7;">· fond comun, ' + q.seats + ' conturi</span>' : '');
-        sub = 'Se reînnoiește pe ' + reset + (aleMele > 0 ? ' · ai folosit tu ' + aleMele : '') +
-          (q.overage ? ' · peste fond: ' + lei(q.overagePriceEur) + '/întrebare' : '');
+        sub = 'Se reînnoiește pe ' + reset + (aleMele > 0 ? ' · ai folosit tu ' + aleMele : '');
       }
       box.style.display = 'block';
       box.style.cssText = 'display:block;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--bg-dark);';
@@ -18254,9 +18245,7 @@ const pozitii = await r.json();</code></pre>
         + '• <b>Gratuite, nu intră la socoteală:</b> „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".<br>'
         + '• Fondul e al firmei: ' + (q.seats || 1) + ' ' + ((q.seats || 1) === 1 ? 'cont' : 'conturi') + ' × ' + window._raxNrI(q.questionsPerSeat || q.questions) + '.<br>'
         + '• Se reînnoiește pe ' + reset + '.'
-        + (q.overage
-            ? '<br>• Peste fond: ' + lei(q.overagePriceEur) + ' de fiecare întrebare, pe factura lunii (ți se cere acordul o dată).'
-            : '<br>• Când se termină, un cont în plus aduce încă ' + window._raxNrI(q.questionsPerSeat || 50) + ' pe lună.')
+        + '<br>• Când se termină, un cont în plus aduce încă ' + window._raxNrI(q.questionsPerSeat || 50) + ' pe lună.'
         + '</div></details>';
     };
     window.raxToggleAI = function () {
@@ -18319,48 +18308,8 @@ const pozitii = await r.json();</code></pre>
         raxToggleAI(); raxToggleAI(); // închide + redeschide → re-init cu chat activ
       } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
     };
-    // ── începe „Acordul pentru cost suplimentar" ─────────────────────────────────────────────────
-    // Se arată O SINGURĂ DATĂ pe lună, când fondul de întrebări s-a terminat. Scrie negru pe alb cât
-    // costă o întrebare de acum înainte, ce rămâne gratuit, cum se socotește și când se reînnoiește.
-    // Fără pasul ăsta, omul ar afla din factură — exact ce nu vrem.
-    function _raxAcordCostExtra(c) {
-      return new Promise(function (rezolva) {
-        var reinnoire = c.reinnoire ? new Date(c.reinnoire).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : '1 ale lunii';
-        var ov = document.createElement('div');
-        ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,12,20,.62);z-index:12000;display:flex;align-items:center;justify-content:center;padding:16px;';
-        ov.innerHTML =
-          '<div style="background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.4);">' +
-            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
-              '<i class="fas fa-circle-exclamation" style="color:var(--orange);font-size:20px;"></i>' +
-              '<b style="font-size:16px;">Fondul de întrebări al lunii s-a terminat</b></div>' +
-            '<p style="font-size:13.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 12px;">' +
-              'Firma a folosit ' + (Number(c.fond) === 1 ? 'singura întrebare inclusă' : 'toate cele <b>' + c.fond + '</b>' + window._raxNrI(c.fond).slice(String(c.fond).length) + ' incluse') + ' luna asta' +
-              (c.conturi ? ' (' + c.conturi + ' ' + (c.conturi === 1 ? 'cont' : 'conturi') + ' × ' + c.peCont + ')' : '') + '.' +
-              ' De aici înainte, <b>fiecare întrebare costă ' + Number(c.pretLei).toFixed(2) + ' lei</b> ' +
-              '<span style="color:var(--text-muted);">(' + Number(c.pretEur).toFixed(2) + ' €)</span> și intră pe factura lunii.</p>' +
-            '<div style="background:var(--bg-dark);border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.6;margin-bottom:14px;">' +
-              '<b style="font-size:12px;">Cum se socotește</b>' +
-              '<ul style="margin:5px 0 0 16px;padding:0;color:var(--text-secondary);">' +
-                '<li>O întrebare pusă aici = 1, oricât de complicat ar fi răspunsul.</li>' +
-                '<li><b>Gratuit oricând</b>, fără să intre la socoteală: „unde sunt mașinile", „care sunt oprite", „câți km azi", „status flotă".</li>' +
-                '<li>Fondul se reînnoiește pe <b>' + reinnoire + '</b>.</li>' +
-                '<li>Poți adăuga conturi (fiecare aduce încă ' + window._raxNrI(c.peCont || 50) + ') din <b>Utilizatori</b>.</li>' +
-              '</ul></div>' +
-            '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">' +
-              '<button class="rax-btn" id="rax-extra-nu">Nu, mă opresc aici</button>' +
-              '<button class="rax-btn primary" id="rax-extra-da">Am înțeles, continuă</button>' +
-            '</div></div>';
-        document.body.appendChild(ov);
-        var gata = function (v) { try { ov.remove(); } catch (e) {} rezolva(v); };
-        ov.querySelector('#rax-extra-da').onclick = function () { gata(true); };
-        ov.querySelector('#rax-extra-nu').onclick = function () { gata(false); };
-        ov.onclick = function (e) { if (e.target === ov) gata(false); };
-      });
-    }
-    window._raxAcordCostExtra = _raxAcordCostExtra; // aceeași casetă și pentru RA Insight din pagina Rapoarte (rinAsk)
     // „1 întrebare", „10 întrebări", „50 de întrebări" — de la 20 în sus româna cere „de" (ca nDe() de pe telefon).
     window._raxNrI = function (n) { n = Number(n) || 0; var r = Math.abs(n) % 100; return n === 1 ? '1 întrebare' : n + ((r === 0 && n) || r >= 20 ? ' de ' : ' ') + 'întrebări'; };
-    // ── sfârșit „Acordul pentru cost suplimentar" ──
     window.raxSendAI = async function () {
       var inp = $('rax-ai-input'); var msg = (inp.value || '').trim(); if (!msg) return;
       inp.value = ''; addMsg('user', msg);
@@ -18370,18 +18319,6 @@ const pozitii = await r.json();</code></pre>
         // restul rulează pe agentul cu unelte (live + istoric + alerte) și întorc și sursele (rapoartele folosite).
         var r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg }) });
         var j = await r.json();
-        // Fondul lunii s-a terminat: NU trimitem întrebarea mai departe până nu spune omul „am
-        // înțeles". Altfel s-ar trezi cu o factură pe care n-a văzut-o venind.
-        if (j && j.needsExtraConsent) {
-          thinking.remove();
-          var deAcord = await _raxAcordCostExtra(j.cost);
-          if (!deAcord) { addMsg('sys', 'Întrebarea nu a fost trimisă. Fondul se reînnoiește pe ' +
-            new Date(j.cost.reinnoire).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) +
-            '. Până atunci, întrebările rapide (unde e o mașină, care sunt oprite, câți km azi) rămân gratuite.'); return; }
-          thinking = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
-          r = await fetch('/api/ai/reports-agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ message: msg, acceptExtra: true }) });
-          j = await r.json();
-        }
         thinking.remove();
         try { raxLoadQuota(); } catch (e) {} // contorul scade imediat după întrebare
         var reply = j.reply || j.error || 'Eroare AI.';
@@ -18421,15 +18358,6 @@ const pozitii = await r.json();</code></pre>
         var corp = { type: 'tabel', report: { columns: head, rows: rows } };
         var r = await fetch('/api/ai/report-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
         var j = await r.json(); th.remove();
-        // Rezumatul se numără în fondul firmei: peste fond, întâi acordul — aceeași casetă ca la întrebări.
-        if (j && j.needsExtraConsent) {
-          var deAcord = await _raxAcordCostExtra(j.cost);
-          if (!deAcord) { addMsg('sys', 'Rezumatul nu a fost făcut. Întrebările rapide (unde e o mașină, care sunt oprite, câți km azi) rămân gratuite.'); return; }
-          th = addMsg('sys', '<span class="rax-typing"><i></i><i></i><i></i></span>');
-          corp.acceptExtra = true;
-          r = await fetch('/api/ai/report-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(corp) });
-          j = await r.json(); th.remove();
-        }
         try { raxLoadQuota(); } catch (e) {}
         addMsg('ai', j.summary || j.reply || j.error || 'Eroare la rezumat.');
       } catch (e) { th.remove(); addMsg('ai', 'Eroare: ' + e.message); }
@@ -19574,7 +19502,7 @@ const pozitii = await r.json();</code></pre>
       _raxAbo = {
         id: c.id, vehicles: vehicles, canImeis: s,
         feats: Object.assign({ ai_assistant: false, agents: false }, d.features || {}),
-        aiQuota: Object.assign({ questions: 0, questionsPerSeat: 0, seatPriceRON: 0, overage: true, overagePriceEur: 0.20 }, d.ai_quota || {}),
+        aiQuota: Object.assign({ questions: 0, questionsPerSeat: 0, seatPriceRON: 0 }, d.ai_quota || {}),
         planKey: (o.key === 'custom' ? 'custom' : (c.plan || 'start')),
         offer: {
           name: o.name || '', priceNoneRON: pick(o.priceNoneRON), priceCanRON: pick(o.priceCanRON),
@@ -19701,10 +19629,9 @@ const pozitii = await r.json();</code></pre>
           '<div class="rax-abo-grid">' +
             '<div class="rax-abo-f"><label>Întrebări / cont / lună</label><input type="number" id="rax-aiq-n" min="0" max="100000" step="10" value="' + (s.aiQuota.questionsPerSeat || s.aiQuota.questions || '') + '" placeholder="gol = nelimitat"></div>' +
             '<div class="rax-abo-f"><label>Preț / cont (lei/lună)</label><input type="number" id="rax-aiq-s" min="0" max="100000" step="1" value="' + (s.aiQuota.seatPriceRON || '') + '" placeholder="ex. 15"></div>' +
-            '<div class="rax-abo-f"><label>Preț / întrebare peste fond (€)</label><input type="number" id="rax-aiq-p" min="0" max="100" step="0.05" value="' + (s.aiQuota.overagePriceEur != null ? s.aiQuota.overagePriceEur : '') + '" placeholder="0.20"></div>' +
           '</div>' +
           // „Poate depăși" e o alegere cu bani în spate, deci scrie CE se întâmplă în fiecare caz.
-          '<label class="rax-abo-tog"><input type="checkbox" id="rax-aiq-ov" ' + (s.aiQuota.overage !== false ? 'checked' : '') + '> Poate depăși fondul <span class="hint">(bifat: merge mai departe, iar întrebările în plus intră pe factură — clientul e întrebat o dată pe lună dacă acceptă. Nebifat: la epuizare se oprește, rămân doar întrebările rapide, gratuite.)</span></label>' +
+          '<div class="hint" style="margin-bottom:8px;">Când fondul lunii se termină, RA Insight se oprește până pe 1. Nu există cost suplimentar și nici prețuri pe întrebare — cine vrea mai mult, mai adaugă un cont.</div>' +
           '<button class="rax-btn primary" style="margin-top:6px;" onclick="raxSaveAiQuota()"><i class="fas fa-floppy-disk"></i> Salvează</button>' +
           '<div class="hint" style="margin-top:6px;">Fondul lunii = <b>conturile aprinse × întrebări pe cont</b>. Conturile se dau din <b>Utilizatori</b>, cu butonul ✨ de lângă fiecare om — tot de acolo se retrag. Clientul vede o bară cu cât a rămas și cât a folosit el.</div>' +
         '</div></div>';
@@ -19783,16 +19710,14 @@ const pozitii = await r.json();</code></pre>
     // Salvează cota de apeluri RA Insight pentru compania deschisă (super-admin).
     window.raxSaveAiQuota = async function () {
       if (!_raxAbo) return;
-      var nEl = document.getElementById('rax-aiq-n'), pEl = document.getElementById('rax-aiq-p'), oEl = document.getElementById('rax-aiq-ov');
+      var nEl = document.getElementById('rax-aiq-n');
       var n = (nEl && nEl.value !== '') ? Number(nEl.value) : 0;
-      var p = (pEl && pEl.value !== '') ? Number(pEl.value) : 0.20;
-      if (!isFinite(n) || n < 0 || n > 100000) { (window.raxToast || alert)('Număr de apeluri invalid.', 'error'); return; }
-      if (!isFinite(p) || p < 0 || p > 100) { (window.raxToast || alert)('Preț invalid.', 'error'); return; }
+      if (!isFinite(n) || n < 0 || n > 100000) { (window.raxToast || alert)('Număr de întrebări invalid.', 'error'); return; }
       var sEl = document.getElementById('rax-aiq-s');
       var sp = (sEl && sEl.value !== '') ? Number(sEl.value) : 0;
       if (!isFinite(sp) || sp < 0 || sp > 100000) { (window.raxToast || alert)('Preț pe cont invalid.', 'error'); return; }
       // Forma NOUĂ: întrebări pe CONT + prețul unui cont. Serverul șterge singur cota fixă veche.
-      var q = { questionsPerSeat: Math.round(n), seatPriceRON: sp, overage: !!(oEl && oEl.checked), overagePriceEur: p };
+      var q = { questionsPerSeat: Math.round(n), seatPriceRON: sp };
       try {
         var j = await fetch('/api/companies/' + _raxAbo.id + '/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ ai_quota: q }) }).then(function (r) { return r.json(); });
         if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
@@ -21426,7 +21351,7 @@ const pozitii = await r.json();</code></pre>
         nVeh: Math.max(0, Math.round(_ofN(g('of-nveh')))), nCan: Math.max(0, Math.round(_ofN(g('of-ncan')))), nFms: Math.max(0, Math.round(_ofN(g('of-nfms')))),
         aiA: c('of-aiA'), aiAg: c('of-aiAg'),
         tahograf: c('of-tahograf'), etransport: c('of-etransport'), agenti: c('of-agenti'),
-        aiqN: Math.max(0, Math.round(_ofN(g('of-aiqN')))), aiqP: Math.max(0, _ofN(g('of-aiqP'))),
+        aiqN: Math.max(0, Math.round(_ofN(g('of-aiqN')))),
         // Câte conturi de RA Insight se vând și cât costă unul — se scriu pe firmă la semnare.
         aiqSeats: Math.max(1, Math.round(_ofN(g('of-aiqSeats')) || 1)),
         aiqSeat: Math.max(0, _ofN((document.getElementById('of-pAiA') || {}).value)),
@@ -22072,7 +21997,6 @@ const pozitii = await r.json();</code></pre>
               '<select id="of-aiqN" class="rax-field" onchange="raxOfAiqPreset(this.value)">' +
                 '<option value="50" selected>50 / lună</option><option value="100">100 / lună</option><option value="150">150 / lună</option><option value="200">200 / lună</option><option value="0">nelimitat</option>' +
               '</select></div>' +
-            '<div><label>Peste fond (€)</label>' + fNum('of-aiqP', 0.20, '', 58, 0.05) + '</div>' +
           '</div>' +
           '<div id="of-aiq-cost" style="font-size:11.5px;"></div>' +
         '</div>' +
@@ -22205,7 +22129,7 @@ const pozitii = await r.json();</code></pre>
         set('of-cl-name', (cfg.client && cfg.client.name) || o.client_name); set('of-cl-cui', (cfg.client && cfg.client.cui) || o.client_cui); set('of-cl-contact', (cfg.client && cfg.client.contact) || o.client_contact);
         set('of-name', cfg.offerName || o.name); set('of-nveh', cfg.nVeh); set('of-ncan', cfg.nCan); set('of-nfms', cfg.nFms);
         set('of-aiA', cfg.aiA); set('of-aiAg', cfg.aiAg); set('of-ret', cfg.retTier || '6'); set('of-retcustom-m', cfg.retCustomMonths); set('of-contract', cfg.contractMonths); set('of-notes', cfg.notes);
-        if (cfg.aiqN != null) set('of-aiqN', String(cfg.aiqN)); if (cfg.aiqP != null) set('of-aiqP', cfg.aiqP); // cota de apeluri RA Insight
+        if (cfg.aiqN != null) set('of-aiqN', String(cfg.aiqN));   // câte întrebări aduce un cont
         if (cfg.aiqSeats != null) set('of-aiqSeats', cfg.aiqSeats);   // câte conturi s-au vândut
         var mj = cfg.montaj || {};
         set('of-qGps', mj.qGps); set('of-qLvCan', mj.qLvCan); set('of-qCanInc', mj.qCanInc); set('of-qFms', mj.qFms); set('of-qUninstall', mj.qUninstall); set('of-qReplace', mj.qReplace); set('of-kmTravel', mj.kmTravel);
@@ -22225,7 +22149,6 @@ const pozitii = await r.json();</code></pre>
       var o = (_raxOf.offers || []).find(function (x) { return x.id === id; }); if (!o) return;
       var cfg = (o.config && o.config.cfg) || {};
       var n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
-      var priceEur = Number(cfg.aiqP) || 0.20;
       var pachet = n > 0 ? (n + ' apeluri/lună') : 'apeluri nelimitate';
       var cos = [];
       try { cos = await fetch('/api/companies', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); } catch (e) {}
@@ -22373,11 +22296,12 @@ const pozitii = await r.json();</code></pre>
           '<div class="muted" style="margin-bottom:4px;">Abonament pentru ' + r.cfg.nVeh + ' ' + _rDe(r.cfg.nVeh) + 'vehicule, facturat lunar pe toată durata contractului (' + luni + ' ' + _rDe(luni) + 'luni). Total pe ' + luni + ' ' + _rDe(luni) + 'luni: ' + dubluLei(r.monthly * luni) + '.</div>' +
           '<div style="font-size:11.5px;"><b>Abonamentul lunar include, pentru fiecare mașină:</b>' +
           '<ul>' + incl.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></div>' +
-          // Dacă se depășește fondul de întrebări, se facturează — deci prețul TREBUIE scris aici.
-          // Altfel am cere bani pentru ceva ce clientul n-a semnat niciodată.
-          ((r.cfg.aiA && fondP > 0 && Number(r.cfg.aiqP) > 0)
-            ? '<div class="muted" style="margin-top:5px;font-size:10.5px;">Întrebările puse peste fondul lunii se facturează separat, la ' +
-              (Number(r.cfg.aiqP) * _fxRate).toFixed(2) + ' lei (' + Number(r.cfg.aiqP).toFixed(2) + ' €) fiecare. Conturile de RA Insight se pot da sau retrage oricând, din aplicație.</div>'
+          // Regula conturilor, scrisă pe hârtie: fără ea, clientul n-ar ști de ce factura din
+          // noiembrie e alta decât cea din octombrie.
+          ((r.cfg.aiA && Number(r.p.pAiA) > 0)
+            ? '<div class="muted" style="margin-top:5px;font-size:10.5px;">Prețul unui cont de RA Insight este ' +
+              Number(r.p.pAiA).toFixed(2) + ' lei/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. ' +
+              'Când fondul de întrebări al lunii se termină, RA Insight se oprește până la reînnoire — nu există costuri suplimentare.</div>'
             : '') +
         '</div>' +
 
