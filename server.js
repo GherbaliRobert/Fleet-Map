@@ -3502,13 +3502,100 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
   };
 }
 // ── sfârșit „Socoteala RA Insight pe o firmă" ──
+// ── începe „Istoricul RA Insight" ────────────────────────────────────────────────────────────────
+// Cartonașele arată luna curentă. Întrebarea următoare e mereu „dar luna trecută?" — și răspunsul
+// nu se poate recalcula, fiindcă prețurile și conturile se schimbă. Așa că istoricul se citește din
+// FACTURI: ce am facturat chiar am facturat, indiferent ce s-a schimbat între timp. Ciornele și
+// facturile anulate nu intră (nu sunt venit); storno-urile scad.
+//   „facturat" = suma NETĂ (fără TVA) a rândurilor RA Insight — aia e partea noastră.
+//   „încasat"  = aceleași rânduri, dar numai de pe facturile marcate PLĂTITE.
+const RA_RAND_FACTURA = /^\s*(RA Insight|Asistent AI)/i;   // forma nouă (pe conturi) și cea veche
+function _lunaDin(ms) { const d = new Date(Number(ms) || 0); return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 7) : null; }
+function _insightIstoric(uzPeLuna, facturi, opt) {
+  const o = opt || {}, luni = Math.max(1, Math.min(Number(o.luni) || 12, 36));
+  const cost = o.cost || function () { return 0; };
+  const acum = new Date();
+  // Scheletul: ultimele N luni, în ordine, chiar dacă unele sunt goale. O lună lipsă din listă se
+  // citește ca „n-a fost", nu ca „n-am avut date" — mai bine un rând cu zerouri.
+  const chei = [];
+  for (let i = luni - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(acum.getUTCFullYear(), acum.getUTCMonth() - i, 1));
+    chei.push(d.toISOString().slice(0, 7));
+  }
+  const gol = function (luna) {
+    return { luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0 };
+  };
+  const map = {}; chei.forEach(function (k) { map[k] = gol(k); });
+  (uzPeLuna || []).forEach(function (u) {
+    const m = map[u.luna]; if (!m) return;
+    m.intrebari = Number(u.questions) || 0;
+    m.firme = Number(u.firme) || 0;
+    m.costEur = Math.round(cost({
+      input_tokens: u.input_tokens, output_tokens: u.output_tokens,
+      cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens
+    }) * 100) / 100;
+  });
+  const firmePeLuna = {};
+  (facturi || []).forEach(function (f) {
+    const luna = _lunaDin(f.period_start || f.issue_date || f.created_at);
+    const m = map[luna]; if (!m) return;
+    const semn = f.type === 'credit_note' ? -1 : 1;
+    let linii = f.lines;
+    if (typeof linii === 'string') { try { linii = JSON.parse(linii); } catch (e) { linii = []; } }
+    (Array.isArray(linii) ? linii : []).forEach(function (l) {
+      if (!RA_RAND_FACTURA.test(String(l.desc || ''))) return;
+      const net = (Number(l.net) || 0) * semn;
+      m.facturatLei += net;
+      m.conturi += (Number(l.qty) || 0) * semn;
+      if (f.status === 'paid') m.incasatLei += net;
+      const cheie = luna + '|' + f.company_id;
+      if (!firmePeLuna[cheie]) { firmePeLuna[cheie] = 1; m.firmeFacturate += 1; }
+    });
+  });
+  return chei.map(function (k) {
+    const m = map[k];
+    m.facturatLei = Math.round(m.facturatLei * 100) / 100;
+    m.incasatLei = Math.round(m.incasatLei * 100) / 100;
+    m.conturi = Math.round(m.conturi);
+    return m;
+  });
+}
+// Cât am facturat fiecărei firme pe RA Insight, în perioada citită — pentru rândul din cartonaș.
+function _insightPeFirme(facturi) {
+  const out = {};
+  (facturi || []).forEach(function (f) {
+    const semn = f.type === 'credit_note' ? -1 : 1;
+    let linii = f.lines;
+    if (typeof linii === 'string') { try { linii = JSON.parse(linii); } catch (e) { linii = []; } }
+    (Array.isArray(linii) ? linii : []).forEach(function (l) {
+      if (!RA_RAND_FACTURA.test(String(l.desc || ''))) return;
+      const c = out[f.company_id] || (out[f.company_id] = { facturatLei: 0, incasatLei: 0, luni: 0 });
+      const net = (Number(l.net) || 0) * semn;
+      c.facturatLei = Math.round((c.facturatLei + net) * 100) / 100;
+      if (f.status === 'paid') c.incasatLei = Math.round((c.incasatLei + net) * 100) / 100;
+      c.luni += 1;
+    });
+  });
+  return out;
+}
+// ── sfârșit „Istoricul RA Insight" ──
 // Privire de ansamblu (super-admin): cine folosește RA Insight, pe câte conturi, cât din fond a
 // consumat, ce încasăm și cât ne costă. Aceleași cifre după care se face factura.
 app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    const [companies, usage, users, peOm] = await Promise.all([
-      db.getCompanies(), db.getAiMonthUsageByCompany(), db.getUsers(), db.getAiMonthUsageByUserAll()
+    const LUNI_ISTORIC = 12;
+    const acum = new Date();
+    const dela = Date.UTC(acum.getUTCFullYear(), acum.getUTCMonth() - (LUNI_ISTORIC - 1), 1);
+    const [companies, usage, users, peOm, uzLunar, facturi] = await Promise.all([
+      db.getCompanies(), db.getAiMonthUsageByCompany(), db.getUsers(), db.getAiMonthUsageByUserAll(),
+      db.getAiUsageByMonth(dela).catch(function () { return []; }),
+      db.getInvoicesSince(dela).catch(function () { return []; })
     ]);
+    const istoric = _insightIstoric(uzLunar, facturi, {
+      luni: LUNI_ISTORIC,
+      cost: function (t) { return ai ? ai.costEur(t) : 0; }
+    });
+    const facturatPeFirma = _insightPeFirme(facturi);
     const byId = {}; usage.forEach(function (u) { byId[u.company_id] = u; });
     const oameniPeFirma = {}; users.forEach(function (u) {
       if (u.company_id == null) return;
@@ -3519,7 +3606,11 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
       const u = byId[c.id] || {};
       const feats = plans ? plans.featuresFor(c) : {};
       const cost = ai ? ai.costEur({ input_tokens: u.input_tokens, output_tokens: u.output_tokens, cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens }) : 0;
-      return _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost });
+      const r = _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost });
+      const ist = facturatPeFirma[c.id] || null;
+      r.facturatLei = ist ? ist.facturatLei : 0;   // ce i-am facturat pe RA Insight în perioada citită
+      r.incasatLei = ist ? ist.incasatLei : 0;
+      return r;
     });
     const cuModul = rows.filter(function (r) { return r.enabled; });
     const folosesc = cuModul.filter(function (r) { return r.used > 0; });
@@ -3542,8 +3633,14 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
         totalCostEur: costEur,
         totalCostLei: Math.round(costEur * (fx.eur || EUR_RON_FALLBACK) * 100) / 100,
         totalVenitLei: venitLei,
-        profitLei: Math.round((venitLei - costEur * (fx.eur || EUR_RON_FALLBACK)) * 100) / 100
-      }
+        profitLei: Math.round((venitLei - costEur * (fx.eur || EUR_RON_FALLBACK)) * 100) / 100,
+        // Din istoric: ce am facturat și ce s-a și încasat, în cele 12 luni citite.
+        istoricFacturatLei: Math.round(istoric.reduce(function (s, m) { return s + m.facturatLei; }, 0) * 100) / 100,
+        istoricIncasatLei: Math.round(istoric.reduce(function (s, m) { return s + m.incasatLei; }, 0) * 100) / 100,
+        istoricLuni: LUNI_ISTORIC
+      },
+      istoric: istoric,
+      fxEur: fx.eur || EUR_RON_FALLBACK
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

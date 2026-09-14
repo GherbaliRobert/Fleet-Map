@@ -461,6 +461,47 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Istoricul încasărilor din RA Insight, lună de lună
+
+*„Am nevoie și de istoric. Să văd aici ce încasări au fost — adică să calculăm cât încasăm din RA
+Insight. Ne trebuie și în istoric, dar și în cardurile de sus."*
+
+Cartonașele arătau luna curentă. Întrebarea următoare e mereu *„dar luna trecută?"* — și răspunsul
+**nu se poate recalcula**: între timp se schimbă prețurile, conturile, oamenii. Așa că istoricul se
+citește din **facturile emise**: ce am facturat chiar am facturat, indiferent ce s-a schimbat de
+atunci.
+
+**Un tabel pe 12 luni**, sub cifrele de sus: pentru fiecare lună — întrebări, cât ne-a costat, cât am
+**facturat**, cât s-a și **încasat** (cu cât a rămas neîncasat, scris cu portocaliu) și **cât ne-a
+rămas**. Jos, un rând de total.
+
+**În cardurile de sus**, două cifre noi: **„Facturat pe RA Insight"** și **„Din care încasat"**, pe
+ultimele 12 luni.
+
+**În fiecare cartonaș de firmă**, un rând nou: cât i-am facturat firmei ăleia pe RA Insight în
+ultimele 12 luni și cât s-a încasat din el.
+
+Reguli după care se numără, ca să nu se certe cu contabilitatea:
+
+- intră **doar rândurile de RA Insight** din factură (abonamentul GPS nu are ce căuta aici), și în
+  ambele forme — cea nouă, pe conturi, și cea veche, „Asistent AI";
+- sumele sunt **fără TVA** — aia e partea noastră;
+- **ciornele și facturile anulate nu sunt venit** și nici nu ajung de la bază; **storno-urile scad**;
+- **„încasat" înseamnă plătit**, nu emis. Diferența se vede, nu se ascunde.
+
+Și, cerut separat: **butonul „Strânge toate / Desfășoară toate" e acum verde.**
+
+**Ce am lăsat în urmă:** 87 de verificări (de la 57) — socoteala istoricului rulată cu facturi
+inventate: storno, factură fără perioadă, factură din afara ferestrei, formă veche, abonament GPS
+strecurat printre rânduri. Plus 35 pe aplicația pornită, cu facturi emise chiar pe lunile trecute și
+unele lăsate neplătite intenționat. Sabotat în cinci feluri.
+
+- **Ce am schimbat:** panoul RA Insight are acum și istoric, citit din facturi.
+- **Ce vede fondatorul:** cât a intrat din RA Insight, lună de lună, și cât a rămas de încasat.
+- **Ce vede clientul:** nimic — e un ecran numai al nostru.
+
+---
+
 ### FONDATOR · „Utilizare RA Insight" arată acum modelul pe conturi — o firmă pe cartonaș
 
 *„Dacă tot am făcut modificări noi în logica RA Insight, n-ar trebui și pe aici? Card pentru fiecare

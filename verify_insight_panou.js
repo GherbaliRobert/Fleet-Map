@@ -112,7 +112,7 @@ const fereastra = {
   _raxNrI: function (n) { n = Number(n) || 0; var x = Math.abs(n) % 100; return n === 1 ? '1 întrebare' : n + ((x === 0 && n) || x >= 20 ? ' de ' : ' ') + 'întrebări'; }
 };
 const gata = new Function('window', 'document', 'esc',
-  bucataPanou + '\n; return { card: _aiuCard, stare: _aiuStare, socoteala: _aiuSocoteala, lei: _aiuLei };')(
+  bucataPanou + '\n; return { card: _aiuCard, stare: _aiuStare, socoteala: _aiuSocoteala, lei: _aiuLei, istoric: _aiuIstoric, luna: _aiuLunaNume };')(
   fereastra, { getElementById: function () { return null; }, querySelector: function () { return null; }, querySelectorAll: function () { return []; } },
   function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); });
 
@@ -161,6 +161,83 @@ sect('8. Cartonașele au stil, nu doar marcaj');
   .forEach(function (s) { T('există stilul ' + s, css.indexOf(s) > 0); });
 T('se strâng și se desfac toate dintr-un buton', /window\.raxAiToate\s*=/.test(html) && /id="aiu-toate"/.test(html));
 T('un clic pe cartonaș îl desface', /window\.raxAiFirma\s*=/.test(html) && /onclick="raxAiFirma\(/.test(html));
+
+// ─── Partea 3: istoricul, citit din facturi ─────────────────────────────────────────────────────
+sect('9. Istoricul lună de lună');
+const bucataIstoric = taie(server, '// ── începe „Istoricul RA Insight"', '// ── sfârșit „Istoricul RA Insight" ──', 'server.js');
+const ist = new Function(bucataIstoric + '\n; return { luni: _insightIstoric, firme: _insightPeFirme };')();
+const ms = (an, luna, zi) => Date.UTC(an, luna - 1, zi || 10);
+const acum = new Date();
+const cheieLuna = (inapoi) => new Date(Date.UTC(acum.getUTCFullYear(), acum.getUTCMonth() - inapoi, 1)).toISOString().slice(0, 7);
+const msLuna = (inapoi) => Date.UTC(acum.getUTCFullYear(), acum.getUTCMonth() - inapoi, 10);
+const linieRa = (net, qty) => ({ desc: 'RA Insight — conturi (' + (qty || 3) + ' × 15.00 lei)', qty: qty || 3, net: net, vat: 0, gross: net });
+const linieGps = (net) => ({ desc: 'Abonament monitorizare GPS', qty: 5, net: net, vat: 0, gross: net });
+
+let L = ist.luni([], [], { luni: 12 });
+T('scheletul are 12 luni, în ordine', L.length === 12 && L[11].luna === cheieLuna(0) && L[0].luna === cheieLuna(11), L.length + ' ' + L[0].luna + '→' + L[11].luna);
+T('lunile goale sunt zero, nu lipsesc', L[0].facturatLei === 0 && L[0].intrebari === 0);
+
+L = ist.luni(
+  [{ luna: cheieLuna(1), questions: 40, firme: 2 }, { luna: cheieLuna(0), questions: 62, firme: 1 }],
+  [
+    { company_id: 1, type: 'invoice', status: 'paid', period_start: msLuna(1), lines: [linieGps(500), linieRa(45, 3)] },
+    { company_id: 2, type: 'invoice', status: 'issued', period_start: msLuna(1), lines: [linieRa(19, 1)] },
+    { company_id: 1, type: 'invoice', status: 'issued', period_start: msLuna(0), lines: [linieRa(60, 4)] }
+  ], { luni: 12, cost: function () { return 0.5; } });
+const lunaTrecuta = L[10], lunaAsta = L[11];
+T('facturatul lunii trecute adună rândurile RA Insight', lunaTrecuta.facturatLei === 64, String(lunaTrecuta.facturatLei));
+T('abonamentul GPS NU intră în socoteala RA Insight', lunaTrecuta.facturatLei !== 564, String(lunaTrecuta.facturatLei));
+T('încasat = doar ce e marcat plătit', lunaTrecuta.incasatLei === 45, String(lunaTrecuta.incasatLei));
+T('conturile facturate se adună', lunaTrecuta.conturi === 4, String(lunaTrecuta.conturi));
+T('numără firmele facturate în luna aia', lunaTrecuta.firmeFacturate === 2, String(lunaTrecuta.firmeFacturate));
+T('întrebările lunii vin din consum', lunaTrecuta.intrebari === 40 && lunaAsta.intrebari === 62);
+T('costul lunii e socotit cu costul real', lunaTrecuta.costEur === 0.5, String(lunaTrecuta.costEur));
+T('luna curentă e separată', lunaAsta.facturatLei === 60 && lunaAsta.incasatLei === 0, JSON.stringify({ f: lunaAsta.facturatLei, i: lunaAsta.incasatLei }));
+
+L = ist.luni([], [
+  { company_id: 1, type: 'invoice', status: 'paid', period_start: msLuna(0), lines: [linieRa(60, 4)] },
+  { company_id: 1, type: 'credit_note', status: 'paid', period_start: msLuna(0), lines: [linieRa(15, 1)] }
+], { luni: 12 });
+T('storno-ul scade, nu se adună', L[11].facturatLei === 45 && L[11].conturi === 3, JSON.stringify({ f: L[11].facturatLei, c: L[11].conturi }));
+L = ist.luni([], [{ company_id: 1, type: 'invoice', status: 'paid', issue_date: msLuna(2), lines: [linieRa(30, 2)] }], { luni: 12 });
+T('fără perioadă, luna se ia după data emiterii', L[9].facturatLei === 30, JSON.stringify(L.map(m => m.facturatLei)));
+L = ist.luni([], [{ company_id: 1, type: 'invoice', status: 'paid', period_start: ms(2001, 5), lines: [linieRa(30, 2)] }], { luni: 12 });
+T('o factură din afara ferestrei nu intră nicăieri', L.every(m => m.facturatLei === 0));
+L = ist.luni([], [{ company_id: 1, type: 'invoice', status: 'paid', period_start: msLuna(0), lines: [{ desc: 'Asistent AI', qty: 1, net: 29 }] }], { luni: 12 });
+T('forma VECHE din factură („Asistent AI") e recunoscută', L[11].facturatLei === 29, String(L[11].facturatLei));
+const dbSrc = fs.readFileSync('./db.js', 'utf8');
+T('ciornele și facturile anulate nu ajung de la bază', /status NOT IN \('draft','canceled'\)/.test(dbSrc));
+T('nici proformele — altfel am număra de două ori', /type <> 'proforma'/.test(dbSrc));
+
+const peFirme = ist.firme([
+  { company_id: 7, type: 'invoice', status: 'paid', period_start: msLuna(1), lines: [linieRa(45, 3)] },
+  { company_id: 7, type: 'invoice', status: 'issued', period_start: msLuna(0), lines: [linieRa(60, 4)] },
+  { company_id: 8, type: 'invoice', status: 'issued', period_start: msLuna(0), lines: [linieGps(300)] }
+]);
+T('pe firmă: facturat cumulat', peFirme[7] && peFirme[7].facturatLei === 105, JSON.stringify(peFirme[7]));
+T('pe firmă: încasat doar ce e plătit', peFirme[7] && peFirme[7].incasatLei === 45, JSON.stringify(peFirme[7]));
+T('firma fără rând RA Insight nu apare', !peFirme[8]);
+
+sect('10. Istoricul, așa cum se vede în pagină');
+const tabel = gata.istoric([
+  { luna: cheieLuna(2), intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0 },
+  { luna: cheieLuna(1), intrebari: 40, firme: 2, costEur: 0.5, facturatLei: 64, incasatLei: 45, conturi: 4, firmeFacturate: 2 },
+  { luna: cheieLuna(0), intrebari: 62, firme: 1, costEur: 0.27, facturatLei: 60, incasatLei: 0, conturi: 4, firmeFacturate: 1 }
+], 5);
+T('are cap de tabel cu ce ne interesează', /Facturat/.test(tabel) && /Încasat/.test(tabel) && /Rămas la noi/.test(tabel));
+const corp = (tabel.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || '';
+T('lunile goale de la început nu se arată', (corp.match(/<tr>/g) || []).length === 2, String((corp.match(/<tr>/g) || []).length));
+T('scrie luna pe nume, nu ca un cod', new RegExp(gata.luna(cheieLuna(0))).test(tabel), gata.luna(cheieLuna(0)));
+T('are rând de total', /<tfoot>[\s\S]*Total/.test(tabel));
+T('totalul adună facturatul', /124 lei/.test(tabel), (tabel.match(/\d+ lei/g) || []).join(' '));
+T('spune ce a rămas neîncasat', /neîncasați/.test(tabel));
+T('sumele din istoric tot în două monede', (tabel.match(/ €\)/g) || []).length >= 4);
+T('spune de unde vin cifrele', /facturile emise/.test(tabel));
+const gol = gata.istoric([{ luna: cheieLuna(0), intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0 }], 5);
+T('fără istoric, spune omenește că încă nu e nimic', /Încă nu e nimic/.test(gol) && !/<table/.test(gol));
+T('butonul de desfăcut/strâns e verde', /id="aiu-toate" class="rax-btn primary"/.test(html));
+T('cartonașul firmei arată ce i-am facturat', /Ce am facturat pe RA Insight/.test(html));
+T('sus apar și facturatul, și încasatul', /Facturat pe RA Insight/.test(html) && /Din care încasat/.test(html));
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

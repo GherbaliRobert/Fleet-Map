@@ -2963,6 +2963,38 @@ async function getAiMonthUsageByUser(companyId, kinds) {
       GROUP BY user_id`, [companyId != null ? companyId : null, k]);
   return r.rows;
 }
+// Consumul RA Insight LUNĂ DE LUNĂ (toate firmele), pentru istoricul din panoul fondatorului.
+// `dela` = momentul de la care începem (epoch ms sau Date). Luna e cheia „AAAA-LL", în UTC — aceeași
+// convenție ca vârful de conturi, ca să nu iasă două adevăruri pe granița lunii.
+async function getAiUsageByMonth(dela, kinds) {
+  const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
+  const d = dela instanceof Date ? dela : new Date(Number(dela) || 0);
+  const r = await pool.query(
+    `SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM') AS luna,
+            COUNT(*)::int AS questions,
+            COUNT(DISTINCT company_id)::int AS firme,
+            COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
+            COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+            COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
+            COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+       FROM ai_usage
+      WHERE kind = ANY($1) AND created_at >= $2
+      GROUP BY 1 ORDER BY 1`, [k, d]);
+  return r.rows;
+}
+// Facturile din care se poate citi ce am facturat pe RA Insight. Doar liniile ne trebuie — nu tragem
+// toată factura. Ciornele și cele anulate NU sunt venit, deci nici nu vin de la bază. Nici proformele:
+// o proformă e o cerere de plată, iar factura adevărată vine după ea — le-am număra de două ori.
+async function getInvoicesSince(delaMs) {
+  const r = await pool.query(
+    `SELECT id, company_id, type, status, period_start, issue_date, created_at, lines
+       FROM invoices
+      WHERE COALESCE(period_start, issue_date, created_at) >= $1
+        AND status NOT IN ('draft','canceled')
+        AND type <> 'proforma'
+      ORDER BY COALESCE(period_start, issue_date, created_at)`, [Number(delaMs) || 0]);
+  return r.rows;
+}
 // Aceeași socoteală, dar pentru TOATE firmele deodată — panoul fondatorului are nevoie de „cine cât
 // a întrebat" pe zeci de firme. O singură interogare, nu una pe firmă.
 async function getAiMonthUsageByUserAll(kinds) {
@@ -4364,6 +4396,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
+  getAiUsageByMonth, getInvoicesSince,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,

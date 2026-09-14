@@ -3303,6 +3303,17 @@
 .aiu-det{ margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); font-size:12.5px; line-height:1.55; }
 .aiu-titlu{ font-size:10.5px; font-weight:800; color:var(--accent); text-transform:uppercase;
   letter-spacing:.4px; margin-bottom:4px; }
+/* Istoricul lună de lună — citit din facturi, nu recalculat. */
+.aiu-ist-box{ background:var(--bg-dark); border:1px solid var(--border); border-radius:12px;
+  padding:12px 14px; margin-bottom:14px; }
+.aiu-ist-wrap{ overflow-x:auto; }
+.aiu-ist{ width:100%; border-collapse:collapse; font-size:12.5px; }
+.aiu-ist th{ text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px;
+  color:var(--text-muted); font-weight:800; padding:5px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+.aiu-ist td{ padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+.aiu-ist .n{ text-align:right; white-space:nowrap; }
+.aiu-ist tbody tr:hover td{ background:color-mix(in srgb, var(--accent) 6%, transparent); }
+.aiu-ist tfoot td{ border-bottom:0; border-top:2px solid var(--border); font-weight:700; padding-top:9px; }
 @media (max-width:640px){
   .aiu-cap{ flex-wrap:wrap; }
   .aiu-nume{ flex:1 1 100%; }

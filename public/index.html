@@ -21934,6 +21934,51 @@ const pozitii = await r.json();</code></pre>
       if (!s.length) return '';
       return s.map(function (x) { return '<div style="color:' + x.c + ';margin-top:5px;"><i class="fas fa-circle-info" style="margin-right:5px;opacity:.8;"></i>' + x.t + '</div>'; }).join('');
     }
+    // Istoricul, citit din FACTURI: ce am facturat chiar am facturat, chiar dacă între timp s-au
+    // schimbat prețurile sau conturile. Nu se recalculează nimic — de asta e istoric, nu estimare.
+    function _aiuLunaNume(luna) {
+      var d = new Date(String(luna) + '-01T00:00:00Z');
+      var s = d.toLocaleDateString('ro-RO', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    function _aiuIstoric(ist, fx) {
+      var l = Array.isArray(ist) ? ist : [];
+      // Lunile goale de la început nu spun nimic; de la prima lună cu viață, le arătăm pe toate —
+      // inclusiv una moartă la mijloc, care ALA e o informație.
+      var prima = -1;
+      for (var i = 0; i < l.length; i++) { if (l[i].intrebari > 0 || l[i].facturatLei !== 0) { prima = i; break; } }
+      if (prima < 0) return '<div class="aiu-titlu">Istoric — lună de lună</div>'
+        + '<div style="color:var(--text-muted);font-size:12.5px;padding:6px 0;">Încă nu e nimic de arătat. Prima lună apare aici imediat ce se emite prima factură cu RA Insight.</div>';
+      var luni = l.slice(prima);
+      var tot = { intrebari: 0, costEur: 0, facturatLei: 0, incasatLei: 0 };
+      var randuri = luni.map(function (m) {
+        tot.intrebari += m.intrebari; tot.costEur += m.costEur;
+        tot.facturatLei += m.facturatLei; tot.incasatLei += m.incasatLei;
+        var ramas = m.facturatLei - m.costEur * fx;
+        var neincasat = m.facturatLei - m.incasatLei;
+        return '<tr><td>' + _aiuLunaNume(m.luna) + '</td>'
+          + '<td class="n">' + (m.intrebari || '—') + '</td>'
+          + '<td class="n">' + (m.costEur ? _aiuLei(m.costEur * fx) : '—') + '</td>'
+          + '<td class="n">' + (m.facturatLei ? '<b>' + _aiuLei(m.facturatLei) + '</b>' : '—')
+          + (m.conturi ? '<div style="color:var(--text-muted);font-size:.82em;">' + m.conturi + ' ' + (m.conturi === 1 ? 'cont' : 'conturi') + '</div>' : '') + '</td>'
+          + '<td class="n">' + (m.incasatLei ? _aiuLei(m.incasatLei) : '—')
+          + (neincasat > 0.01 ? '<div style="color:var(--orange);font-size:.82em;">' + _aiuNr(neincasat) + ' lei neîncasați</div>' : '') + '</td>'
+          + '<td class="n"><b style="color:' + (ramas >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(ramas) + '</b></td></tr>';
+      }).join('');
+      var totRamas = tot.facturatLei - tot.costEur * fx;
+      return '<div class="aiu-titlu">Istoric — lună de lună</div>'
+        + '<div class="aiu-ist-wrap"><table class="aiu-ist">'
+        + '<thead><tr><th>Luna</th><th class="n">Întrebări</th><th class="n">Ne-a costat</th>'
+        + '<th class="n">Facturat</th><th class="n">Încasat</th><th class="n">Rămas la noi</th></tr></thead>'
+        + '<tbody>' + randuri + '</tbody>'
+        + '<tfoot><tr><td>Total</td><td class="n">' + tot.intrebari + '</td>'
+        + '<td class="n">' + _aiuLei(tot.costEur * fx) + '</td>'
+        + '<td class="n"><b>' + _aiuLei(tot.facturatLei) + '</b></td>'
+        + '<td class="n">' + _aiuLei(tot.incasatLei) + '</td>'
+        + '<td class="n"><b style="color:' + (totRamas >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(totRamas) + '</b></td></tr></tfoot>'
+        + '</table></div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele și facturile anulate nu intră, storno-urile scad. „Ne-a costat" e plata către model, convertită în lei la cursul de azi.</div>';
+    }
     function _aiuCard(r, deschis) {
       var st = _aiuStare(r);
       var pct = r.pct == null ? null : Math.min(100, r.pct);
@@ -21960,6 +22005,9 @@ const pozitii = await r.json();</code></pre>
         + '<div class="aiu-det" style="display:' + (deschis ? 'block' : 'none') + ';">'
         +   '<div class="aiu-titlu">Cum iese cifra</div>' + _aiuSocoteala(r)
         +   (r.enabled ? '<div class="aiu-titlu" style="margin-top:10px;">Cine are cont</div>' + _aiuOameni(r) : '')
+        +   (r.facturatLei ? '<div class="aiu-titlu" style="margin-top:10px;">Ce am facturat pe RA Insight</div>'
+              + '<div>În ultimele 12 luni: <b>' + _aiuLei(r.facturatLei) + '</b>'
+              + (r.incasatLei !== r.facturatLei ? ' — din care încasat: <b>' + _aiuLei(r.incasatLei) + '</b>' : ' — <span style="color:var(--accent);">încasat tot</span>') + '</div>' : '')
         +   '<div style="margin-top:8px;color:var(--text-muted);font-size:11.5px;">Ultima întrebare: ' + _aiuData(r.lastUsed) + ' · conturile se aprind și se sting de administratorul firmei, din <b>Utilizatori</b>; noi primim notificare.</div>'
         + '</div></div>';
     }
@@ -22001,17 +22049,23 @@ const pozitii = await r.json();</code></pre>
         || '<div class="rax-co-meta" style="padding:14px;">Nicio companie.</div>';
       box.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'
         + '<span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;"><i class="fas fa-wand-magic-sparkles"></i> RA Insight pe firme — luna curentă</span>'
-        + '<button id="aiu-toate" class="rax-btn" style="margin-left:auto;padding:5px 11px;font-size:12px;" onclick="raxAiToate(false)"><i class="fas fa-compress"></i> Strânge toate</button></div>'
+        + '<button id="aiu-toate" class="rax-btn primary" style="margin-left:auto;padding:5px 11px;font-size:12px;" onclick="raxAiToate(false)"><i class="fas fa-compress"></i> Strânge toate</button></div>'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;">'
         + card('Firme cu RA Insight', s.withFeature + ' / ' + s.companies, s.active + ' îl folosesc efectiv')
         + card('Conturi de facturat', s.conturi, 'cel mult, luna asta')
         + card('Întrebări luna asta', s.totalCalls + (s.fond ? ' / ' + s.fond : ''), s.fond ? 'din fondul lunii' : 'fără fond stabilit',
             s.epuizate ? 'var(--orange)' : '')
         + card('Ne costă', _aiuLei((Number(s.totalCostEur) || 0) * _aiuFx()), 'plata către model', '', true)
-        + card('Încasăm', _aiuLei(s.totalVenitLei), 'conturi RA Insight', '', true)
+        + card('Încasăm luna asta', _aiuLei(s.totalVenitLei), 'conturi RA Insight', '', true)
         + card('Rămâne la noi', _aiuLei(profit), 'luna curentă', profit >= 0 ? 'var(--accent)' : 'var(--red)', true)
+        // Cele două de mai jos vin din FACTURI, nu din socoteala lunii — ce am facturat chiar am facturat.
+        + card('Facturat pe RA Insight', _aiuLei(s.istoricFacturatLei), 'ultimele ' + (s.istoricLuni || 12) + ' luni', '', true)
+        + card('Din care încasat', _aiuLei(s.istoricIncasatLei),
+            (s.istoricFacturatLei - s.istoricIncasatLei > 0.01 ? _aiuNr(s.istoricFacturatLei - s.istoricIncasatLei) + ' lei neîncasați' : 'încasat tot'),
+            (s.istoricFacturatLei - s.istoricIncasatLei > 0.01 ? 'var(--orange)' : 'var(--accent)'), true)
         + '</div>'
         + (s.epuizate ? '<div style="font-size:12px;color:var(--red);margin-bottom:10px;"><i class="fas fa-triangle-exclamation" style="margin-right:6px;"></i>' + s.epuizate + (s.epuizate === 1 ? ' firmă și-a terminat' : ' firme și-au terminat') + ' fondul lunii.</div>' : '')
+        + '<div class="aiu-ist-box">' + _aiuIstoric(d.istoric, Number(d.fxEur) || _aiuFx()) + '</div>'
         + '<div class="aiu-lista">' + carduri + '</div>'
         + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">Cifrele sunt ale lunii curente și se reînnoiesc pe 1. „Conturi de facturat" = câte conturi a avut firma <b>cel mult</b> luna asta — regula din contract. Cei 6 agenți AI merg pe reguli fixe, nu costă tokeni și nu apar aici; se configurează din pagina <b>Agenți AI</b> din meniul lateral.</div>';
     };
