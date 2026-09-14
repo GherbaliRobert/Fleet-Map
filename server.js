@@ -2742,18 +2742,21 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
     if (!tinta) return res.status(404).json({ error: 'Utilizator inexistent' });
     // Un cont de platformă nu stă în fondul niciunei firme; până acum doar interfața ascundea butonul.
     if (on && isSuper(tinta.role)) return res.status(400).json({ error: 'Contul de platformă are deja RA Insight și nu ocupă un loc în fondul unei firme.' });
+    // Câte conturi erau ÎNAINTE. La STINGERE, ăsta e numărul care trebuie plătit pe luna în curs:
+    // fără el, un cont aprins în octombrie și stins pe 3 noiembrie ar fi mers trei zile pe gratis.
+    const seatsInainte = await db.getAiSeats(tinta.company_id);
     const u = await db.setUserAiSeat(id, on);
     if (!u) return res.status(404).json({ error: 'Utilizator inexistent' });
     // Locurile se numără în firma OMULUI: la super-admin req.companyId e gol și ieșea numărul pe toată platforma.
     const seats = await db.getAiSeats(tinta.company_id);
+    // Vârful lunii urcă la ORICE schimbare, cu cel mai mare dintre „înainte" și „după".
+    await _urcaSeatsPeak(tinta.company_id, Math.max(seatsInainte, seats)).catch(function () {});
     auditReq(req, on ? 'ai_seat_on' : 'ai_seat_off', 'user', id, { username: u.username, seats: seats });
     if (on) {
-      // Vârful lunii urcă → factura o să ia numărul ăsta, chiar dacă până atunci contul e stins.
-      await _urcaSeatsPeak(req.companyId, seats).catch(function () {});
       // ȘI AFLĂM ȘI NOI. Un cont în plus e venit nou; până acum nu-l vedea nimeni până la factură.
       // Notificarea are compania NULL → ajunge doar la super-admini, nu în clopoțelul clientului.
       try {
-        const co = await db.getCompanyById(req.companyId);
+        const co = await db.getCompanyById(tinta.company_id);
         const q = _aiQuotaFromSettings(co && co.settings);
         const pret = q.seatPriceRON || 0;
         await db.createNotification({
@@ -2763,7 +2766,7 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
             (seats === 1 ? 'cont' : 'conturi') +
             (pret > 0 ? ' — factura lunii: ' + (seats * pret).toFixed(2) + ' lei.' : '.') +
             ' Accesul e deja activ; dacă e o greșeală, îl poți retrage din fișa firmei.',
-          data: { company_id: req.companyId, company: (co && co.name) || null, seats: seats, user: u.username }
+          data: { company_id: tinta.company_id, company: (co && co.name) || null, seats: seats, user: u.username }
         });
       } catch (e) { /* notificarea nu trebuie să oprească activarea */ }
     }

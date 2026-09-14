@@ -349,7 +349,10 @@ T('factura are UN singur rând de RA Insight', /RA Insight — conturi \(/.test(
 
 sect('6d-bis. Factura ia CÂTE CONTURI a avut cel mult luna asta');
 T('vârful lunii se ține minte', /async function _urcaSeatsPeak\(companyId, seats\)/.test(server));
-T('urcă la fiecare aprindere de cont', /await _urcaSeatsPeak\(req\.companyId, seats\)/.test(server));
+T('urcă la ORICE schimbare de conturi, nu doar la aprindere',
+  /await _urcaSeatsPeak\(tinta\.company_id, Math\.max\(seatsInainte, seats\)\)/.test(server));
+T('la stingere se plătește numărul de DINAINTE (altfel ultimele zile ar fi gratis)',
+  /const seatsInainte = await db\.getAiSeats\(tinta\.company_id\);/.test(server));
 T('se resetează la lună nouă', /p2\.luna === _lunaAcum\(\)/.test(server));
 T('factura ia maximul dintre vârf și câte sunt acum',
   /seats: Math\.max\(st\.seats \|\| 0, _seatsPeakLuna\(company\)\)/.test(server));
