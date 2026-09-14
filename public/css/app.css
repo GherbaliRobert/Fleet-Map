@@ -3259,15 +3259,25 @@
 /* ── „Acasă": cartonașul deschis și bara secțiunii de sub el ────────────────────────────────────
    Cartonașele duceau în alt ecran și cifrele dispăreau. Acum secțiunea se deschide dedesubt, iar
    cartonașul rămâne marcat — ca să se vadă dintr-o privire ce anume e deschis. */
+
+/* Pernă sus și în dreapta. Zona de administrare taie tot ce iese din ea, iar rândul de cartonașe
+   începea exact pe muchia ei: cartonașul se ridică 2px sub mouse și mai are și un contur de 3px
+   când e deschis, așa că marginea lui de sus era retezată — arăta ca un card tăiat. La fel pățea
+   ultimul cartonaș pe latura din dreapta. Acum au loc. */
+#admin-content{ padding-top:8px; padding-right:4px; }
 #admin-dash .adash-card{ position:relative; transition:border-color .15s, box-shadow .15s; }
 #admin-dash .adash-card.deschis{
-  border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+  border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  /* Cardul deschis stă în rând cu vecinii lui. Fără asta rămânea ridicat 2px (pe telefon, „hover"
+     rămâne lipit după atingere) și părea scos din rând. */
+  transform:none; }
+/* Legătura dintre cartonaș și secțiunea lui: o linie scurtă până la bară. Înainte era un vârf
+   plin care acoperea o bucată din conturul cardului — exact de acolo venea impresia de „tăiat". */
 #admin-dash .adash-card.deschis:after{
-  content:''; position:absolute; left:50%; bottom:-9px; width:16px; height:16px; margin-left:-8px;
-  background:var(--bg-dark); border-left:1px solid var(--accent); border-top:1px solid var(--accent);
-  transform:rotate(45deg); }
+  content:''; position:absolute; left:50%; bottom:-16px; width:2px; height:16px; margin-left:-1px;
+  background:var(--accent); }
 #adash-bara{
-  display:flex; align-items:center; gap:10px; margin-top:18px; padding:10px 14px;
+  display:flex; align-items:center; gap:10px; margin-top:16px; padding:10px 14px;
   background:var(--bg-dark); border:1px solid var(--accent); border-radius:12px 12px 0 0;
   border-bottom-color:var(--border); }
 #adash-bara .nume{ flex:1; font-size:13px; font-weight:800; color:var(--accent);

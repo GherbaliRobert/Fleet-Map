@@ -461,6 +461,37 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Cartonașele nu mai apar tăiate sus
+
+*„Marginea de sus tot n-ai rezolvat-o… se vede urât așa, zici că e tăiat cardul."*
+
+Avea dreptate, și nu era o impresie: **cartonașul chiar era retezat**. Zona de administrare are
+derularea ei și **taie tot ce iese din ea**, iar rândul de cartonașe începea exact pe muchia ei.
+Cartonașul se ridică 2 pixeli sub mouse și mai are și un contur de 3 pixeli cât timp e deschis —
+adică ieșea 5 pixeli în afară, iar marginea lui de sus dispărea. Pe telefon era și mai rău: după o
+atingere, „ridicarea" rămâne lipită, așa că lipsa marginii rămânea pe ecran.
+
+Ce am schimbat:
+
+- **loc sus și în dreapta** cât să încapă și ridicarea, și conturul — cartonașul se vede întreg,
+  cu colțurile rotunjite, din orice colț al ecranului;
+- **cartonașul deschis stă în rând** cu vecinii lui, nu mai rămâne ridicat cu 2 pixeli;
+- **vârful de săgeată a devenit o linie subțire** până la bara secțiunii. Vârful era plin și
+  acoperea o bucată din conturul cardului — a doua sursă de „arată tăiat". Linia leagă cartonașul
+  de secțiunea lui fără să muște din el.
+
+
+**Ce am lăsat în urmă:** 14 verificări noi, în `npm test`, care nu se uită la „arată bine", ci
+compară cifre: perna de sus trebuie să fie **cel puțin** cât ridicarea plus conturul. Dacă mâine
+cineva îngroașă conturul și uită perna, proba pică și spune exact cu cât. Le-am stricat pe rând, în
+cinci feluri, ca să văd că prind.
+
+- **Ce am schimbat:** cartonașele de pe „Acasă" au loc să se vadă întregi.
+- **Ce vede fondatorul:** nu mai pare că i s-a rupt ecranul când deschide o secțiune.
+- **Ce vede clientul:** același lucru la cartonașele lui (Utilizatori, Arhivate).
+
+---
+
 ### FONDATOR · Cartonașele de pe „Acasă" deschid secțiunea chiar sub ele
 
 *„Când dai click pe cardurile din verticala fondatori, în Acasă… vreau, când e dat click, să se
