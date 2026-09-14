@@ -3255,3 +3255,21 @@
 /* Cardul se ridică ușor sub mouse — semn că e o secțiune, nu un chenar mort. */
 .raof-card{ transition:border-color .16s; }
 .raof-card:hover{ border-color:var(--border-light); }
+
+/* ── „Acasă": cartonașul deschis și bara secțiunii de sub el ────────────────────────────────────
+   Cartonașele duceau în alt ecran și cifrele dispăreau. Acum secțiunea se deschide dedesubt, iar
+   cartonașul rămâne marcat — ca să se vadă dintr-o privire ce anume e deschis. */
+#admin-dash .adash-card{ position:relative; transition:border-color .15s, box-shadow .15s; }
+#admin-dash .adash-card.deschis{
+  border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+#admin-dash .adash-card.deschis:after{
+  content:''; position:absolute; left:50%; bottom:-9px; width:16px; height:16px; margin-left:-8px;
+  background:var(--bg-dark); border-left:1px solid var(--accent); border-top:1px solid var(--accent);
+  transform:rotate(45deg); }
+#adash-bara{
+  display:flex; align-items:center; gap:10px; margin-top:18px; padding:10px 14px;
+  background:var(--bg-dark); border:1px solid var(--accent); border-radius:12px 12px 0 0;
+  border-bottom-color:var(--border); }
+#adash-bara .nume{ flex:1; font-size:13px; font-weight:800; color:var(--accent);
+  text-transform:uppercase; letter-spacing:.4px; }
+#adash-bara .rax-btn{ padding:5px 11px; font-size:12px; }

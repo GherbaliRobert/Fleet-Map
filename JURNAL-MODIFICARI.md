@@ -461,6 +461,34 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Cartonașele de pe „Acasă" deschid secțiunea chiar sub ele
+
+*„Când dai click pe cardurile din verticala fondatori, în Acasă… vreau, când e dat click, să se
+deschidă secțiunea reprezentativă lui, sub el."*
+
+Până acum, un clic pe „Companii" te ducea în alt ecran și **cifrele dispăreau** — pierdeai tocmai
+privirea de ansamblu pentru care intraseși. Acum:
+
+- **rămâi pe Acasă**, cartonașele stau sus, la vedere;
+- secțiunea se deschide **chiar sub ele**, cu o bară care spune ce s-a deschis și un buton
+  **„Închide"**;
+- cartonașul apăsat se **marchează** (contur verde + un vârf de săgeată care arată spre secțiune),
+  ca să se vadă dintr-o privire ce e deschis;
+- **al doilea clic pe același cartonaș îl închide**; un clic pe altul schimbă secțiunea, nu o adaugă;
+- **meniul din stânga merge exact ca înainte**: de acolo ajungi în secțiune pe tot ecranul, iar
+  cartonașele se dau la o parte.
+
+**Ce am lăsat în urmă:** 24 de probe în aplicația pornită, care verifică inclusiv că secțiunea e
+**geometric** sub cartonașe (nu doar că s-a deschis), că rămâne un singur cartonaș marcat, și că
+drumul vechi prin meniu n-a fost stricat.
+
+- **Ce am schimbat:** cartonașele de pe „Acasă" deschid secțiunea în pagină, ca un sertar.
+- **Ce vede fondatorul:** nu mai pierde cifrele când se uită într-o secțiune.
+- **Ce vede clientul:** același lucru la cartonașele lui (Utilizatori, Arhivate) — restul sunt ale
+  noastre.
+
+---
+
 ### AMÂNDOI · RA Insight, modelul curat: numai conturi. Fără cost suplimentar, deloc
 
 *„Trebuie ca noi să calculăm ce trece pe cost suplimentar pe firma X, câte conturi… e mai complicată

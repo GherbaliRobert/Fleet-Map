@@ -1503,12 +1503,17 @@
         <div id="admin-content" class="admin-content">
           <div id="admin-dash">
             <div class="adash-cards">
-              <button class="adash-card" data-super onclick="raxAdminTab('companies')"><span class="adash-num" id="adash-n-companies">–</span><span class="adash-lbl"><i class="fas fa-building"></i> Companii</span></button>
-              <button class="adash-card users-only" onclick="raxAdminTab('users')"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span></button>
-              <button class="adash-card" data-super onclick="raxAdminTab('companies')"><span class="adash-num" id="adash-n-active">–</span><span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span></button>
-              <button class="adash-card adash-warn" onclick="raxAdminTab('archived')"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span></button>
+              <button class="adash-card" data-super data-card="companies" onclick="raxDashCard('companies', this)"><span class="adash-num" id="adash-n-companies">–</span><span class="adash-lbl"><i class="fas fa-building"></i> Companii</span></button>
+              <button class="adash-card users-only" data-card="users" onclick="raxDashCard('users', this)"><span class="adash-num" id="adash-n-users">–</span><span class="adash-lbl"><i class="fas fa-users"></i> Utilizatori</span></button>
+              <button class="adash-card" data-super data-card="devices" onclick="raxDashCard('devices', this)"><span class="adash-num" id="adash-n-active">–</span><span class="adash-lbl"><i class="fas fa-satellite-dish"></i> Dispozitive active</span></button>
+              <button class="adash-card adash-warn" data-card="archived" onclick="raxDashCard('archived', this)"><span class="adash-num" id="adash-n-archived">–</span><span class="adash-lbl"><i class="fas fa-box-archive"></i> Arhivate</span></button>
             </div>
-            <div style="margin-top:16px;font-size:12.5px;color:var(--text-muted);line-height:1.6;"><i class="fas fa-arrow-left" style="margin-right:6px;"></i>Folosește meniul din stânga pentru a gestiona <strong>companii</strong>, <strong>utilizatori</strong>, <strong>agenți AI</strong>, module (Tahograf / e-Transport), <strong>facturare</strong> și sistemul.</div>
+            <!-- Bara care apare DOAR când un card e deschis: spune ce s-a deschis și îl închide la loc. -->
+            <div id="adash-bara" style="display:none;">
+              <span class="nume"></span>
+              <button class="rax-btn" onclick="raxDashCard(null)"><i class="fas fa-xmark"></i> Închide</button>
+            </div>
+            <div id="adash-ajutor" style="margin-top:16px;font-size:12.5px;color:var(--text-muted);line-height:1.6;"><i class="fas fa-hand-pointer" style="margin-right:6px;"></i>Apasă pe un cartonaș ca să deschizi secțiunea chiar aici, dedesubt. Din meniul din stânga ajungi la orice altă secțiune, pe tot ecranul.</div>
           </div>
 
           <div id="admin-tab-companies" style="display:none;"></div>
@@ -3771,17 +3776,26 @@ const pozitii = await r.json();</code></pre>
     function _raxSideActive(name) {
       document.querySelectorAll('#admin-side .aside-item').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-atab') === name); });
     }
-    window.raxAdminTab = function (name) {
+    // `subCarduri` = deschide secțiunea SUB cartonașele de pe „Acasă", fără să le ascundă. Așa
+    // rămâi pe pagina de start și vezi în continuare cifrele, în loc să fii dus în alt ecran.
+    window.raxAdminTab = function (name, subCarduri) {
       if ((name === 'companies' || name === 'accounts' || name === 'contracte') && !can('manageCompanies')) { if (window.raxAdminHome) raxAdminHome(); return; } // strict super-admin
       if (window.setDaInapoi) window.setDaInapoi(); // Setările pot ține nodul „Utilizatori"/„Facturile mele" — îl cerem înapoi, altfel fila iese goală
       var map = { contracte: 'admin-tab-contracte', companies: 'admin-tab-companies', devices: 'admin-tab-devices', inventar: 'admin-tab-inventar', accounts: 'admin-tab-accounts', users: 'admin-tab-users', archived: 'admin-tab-archived', billing: 'admin-tab-billing', myinvoices: 'admin-tab-myinvoices', agents: 'admin-tab-agents', tahograf: 'admin-tab-tahograf', etransport: 'admin-tab-etransport', dashboard: 'admin-tab-dashboard', costs: 'admin-tab-costs', ofertare: 'admin-tab-ofertare', demoreq: 'admin-tab-demoreq' };
       var titles = { contracte: 'Contracte', companies: 'Companii & Dispozitive', devices: 'Dispozitive (super-admin)', accounts: 'Conturi & Abonamente', users: 'Utilizatori', archived: 'Dispozitive arhivate', billing: 'Facturare', myinvoices: 'Facturile mele', agents: 'Agenți AI', tahograf: 'Tahograf', etransport: 'e-Transport', dashboard: 'Dashboard platformă', costs: 'Control costuri', ofertare: 'Ofertare Live', demoreq: 'Cereri demo' };
-      var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = 'none';
+      var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = subCarduri ? '' : 'none';
+      if (!subCarduri) _raxDashInchide();   // ieși din „Acasă" → cartonașele nu mai au nimic deschis
       Object.keys(map).forEach(function (k) {
         var el = document.getElementById(map[k]); if (el) el.style.display = (k === name) ? 'block' : 'none';
       });
       _raxSideActive(name);
-      var t = document.getElementById('admin-title'); if (t) t.textContent = titles[name] || 'Administrare';
+      // Sub cartonașe rămâne titlul paginii („Panou administrare"); numele secțiunii apare în bara ei.
+      var t = document.getElementById('admin-title'); if (t && !subCarduri) t.textContent = titles[name] || 'Administrare';
+      if (subCarduri) {
+        var bara = document.getElementById('adash-bara');
+        if (bara) { bara.style.display = 'flex'; var nm = bara.querySelector('.nume'); if (nm) nm.textContent = titles[name] || 'Administrare'; }
+        var aj = document.getElementById('adash-ajutor'); if (aj) aj.style.display = 'none';
+      }
       if (name === 'companies') {
         _raxMountBody('#rax-co-overlay', 'admin-tab-companies');
         if (window.coNouRandeaza) window.coNouRandeaza();   // traseul „client nou", în starea lui de pornire
@@ -3827,11 +3841,41 @@ const pozitii = await r.json();</code></pre>
     };
 
     // Acasă: arată cardurile-sumar + reîncarcă statisticile (meniul lateral rămâne mereu vizibil).
+    // ── începe „Cartonașele care se deschid pe loc" ───────────────────────────────────────────────
+    // Cartonașele de pe „Acasă" te duceau în alt ecran, iar cifrele dispăreau. Acum secțiunea se
+    // deschide CHIAR SUB ele: rămâi pe pagina de start, vezi în continuare câte companii ai, și
+    // închizi la loc dintr-un clic. Al doilea clic pe același cartonaș îl închide.
+    var _adashDeschis = null;
+    function _raxDashInchide() {
+      _adashDeschis = null;
+      document.querySelectorAll('#admin-dash .adash-card').forEach(function (b2) { b2.classList.remove('deschis'); });
+      var bara = document.getElementById('adash-bara'); if (bara) bara.style.display = 'none';
+      var aj = document.getElementById('adash-ajutor'); if (aj) aj.style.display = '';
+    }
+    window.raxDashCard = function (name, btn) {
+      var eraDeschis = (_adashDeschis === name);
+      // Închide ce era deschis: și secțiunile, și marcajul de pe cartonaș.
+      ['admin-tab-companies', 'admin-tab-devices', 'admin-tab-inventar', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived',
+       'admin-tab-agents', 'admin-tab-tahograf', 'admin-tab-etransport', 'admin-tab-dashboard', 'admin-tab-billing',
+       'admin-tab-myinvoices', 'admin-tab-costs', 'admin-tab-ofertare', 'admin-tab-contracte', 'admin-tab-demoreq']
+        .forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+      _raxDashInchide();
+      if (!name || eraDeschis) return;          // al doilea clic pe același cartonaș = închide
+      _adashDeschis = name;
+      raxAdminTab(name, true);                  // deschide secțiunea, dar lasă cartonașele deasupra
+      if (btn) btn.classList.add('deschis');
+      else { var b3 = document.querySelector('#admin-dash .adash-card[data-card="' + name + '"]'); if (b3) b3.classList.add('deschis'); }
+      // Adu secțiunea sub ochi, fără să sară pagina brusc.
+      var sec = document.getElementById('adash-bara');
+      if (sec && sec.scrollIntoView) { try { sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {} }
+    };
+    // ── sfârșit „Cartonașele care se deschid pe loc" ──
     window.raxAdminHome = function () {
       var dash = document.getElementById('admin-dash'); if (dash) dash.style.display = '';
       ['admin-tab-companies', 'admin-tab-accounts', 'admin-tab-users', 'admin-tab-archived', 'admin-tab-agents', 'admin-tab-tahograf', 'admin-tab-etransport', 'admin-tab-dashboard',
        'admin-tab-billing', 'admin-tab-myinvoices', 'admin-tab-costs', 'admin-tab-ofertare', 'admin-tab-contracte', 'admin-tab-demoreq'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
       _raxSideActive('dash');
+      _raxDashInchide();
       var t = document.getElementById('admin-title'); if (t) t.textContent = 'Panou administrare';
       if (window.loadAdminDash) window.loadAdminDash();
     };
