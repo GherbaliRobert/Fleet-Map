@@ -2963,6 +2963,17 @@ async function getAiMonthUsageByUser(companyId, kinds) {
       GROUP BY user_id`, [companyId != null ? companyId : null, k]);
   return r.rows;
 }
+// Aceeași socoteală, dar pentru TOATE firmele deodată — panoul fondatorului are nevoie de „cine cât
+// a întrebat" pe zeci de firme. O singură interogare, nu una pe firmă.
+async function getAiMonthUsageByUserAll(kinds) {
+  const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
+  const r = await pool.query(
+    `SELECT user_id, company_id, COUNT(*)::int AS questions, MAX(created_at) AS last_used
+       FROM ai_usage
+      WHERE kind = ANY($1) AND created_at >= date_trunc('month', NOW())
+      GROUP BY user_id, company_id`, [k]);
+  return r.rows;
+}
 // Câte întrebări a pus UN OM luna asta (pentru bara lui).
 async function getAiMonthUsageForUser(userId, kinds) {
   if (userId == null) return 0;
@@ -4352,7 +4363,7 @@ module.exports = {
   getCompanies, getCompanyById, getCompanyBySlug, createCompany, updateCompany, deleteCompany,
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
-  getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageForUser,
+  getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,

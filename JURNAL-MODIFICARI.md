@@ -461,6 +461,44 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · „Utilizare RA Insight" arată acum modelul pe conturi — o firmă pe cartonaș
+
+*„Dacă tot am făcut modificări noi în logica RA Insight, n-ar trebui și pe aici? Card pentru fiecare
+companie, desfășurate, ușor de interpretat pentru noi."*
+
+Avea dreptate: ecranul rămăsese în urmă. Scria „apeluri / cotă" și „0 / ∞" — **povestea de dinainte
+de 11 septembrie**, când RA Insight se vindea pe firmă. Între timp se vinde **pe cont**, iar
+socoteala are mai multe rânduri decât încap într-o celulă de tabel. Ne uitam la un ecran care spunea
+altceva decât factura.
+
+Acum, **o firmă pe cartonaș**, desfăcut din start pentru firmele care chiar au RA Insight:
+
+- **sus, pe cartonaș:** starea în trei cuvinte (*folosește · conturi date, zero întrebări · fond
+  terminat · fără RA Insight*), câte conturi are **acum** și câte se **facturează** (când diferă,
+  scrie de ce), bara de consum din fondul lunii, și banii pe un rând: **încasăm · ne costă · rămâne**;
+- **dedesubt, „Cum iese cifra":** socoteala scrisă ca la carte — *3 conturi × 50 de întrebări = 150
+  pe lună*, *se facturează 4, atâtea a avut cel mult luna asta*, *4 × 15 lei = 60 lei*. Se poate
+  verifica pe hârtie, fără să aduni în cap;
+- **„Cine are cont":** fiecare om, cu câte întrebări a pus și când a întrebat ultima dată;
+- **semnale scoase în față**, nu căutate: fondul terminat, peste 80% consumat, conturi plătite și
+  nefolosite (candidat pentru un telefon), conturi rămase pe oameni dezactivați, o firmă fără preț
+  pe cont în contract, sau — dacă s-ar întâmpla vreodată — cineva care a întrebat **fără** cont;
+- **sus de tot, șase cifre pe platformă:** firme cu RA Insight, conturi de facturat, întrebări din
+  fond, ne costă, încasăm, **rămâne la noi**. Toate sumele în **lei și euro**, ca peste tot.
+
+Un buton **„Strânge toate / Desfășoară toate"**, iar un clic pe un cartonaș îl închide doar pe el.
+
+**Ce am lăsat în urmă:** 57 de verificări care rulează socoteala ADEVĂRATĂ de pe server cu cifre
+inventate (vârf al lunii, cont pe om dezactivat, contract vechi cu cotă fixă, firmă fără preț) și
+randează cartonașul real; plus 23 de verificări pe aplicația pornită, cu patru firme puse în situații
+diferite. Le-am stricat în cinci feluri ca să văd că prind.
+
+- **Ce am schimbat:** panoul de utilizare RA Insight arată aceleași cifre după care se face factura.
+- **Ce vede fondatorul:** dintr-o privire, cine plătește, cine consumă, cine stă degeaba și cât ne rămâne.
+- **Ce vede clientul:** nimic — e un ecran numai al nostru.
+
+---
+
 ### FONDATOR · Cartonașele nu mai apar tăiate sus
 
 *„Marginea de sus tot n-ai rezolvat-o… se vede urât așa, zici că e tăiat cardul."*

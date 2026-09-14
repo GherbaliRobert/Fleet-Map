@@ -86,8 +86,13 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
   apăruseră descrieri vechi, nesincronizate.
 - Câmpurile numerice din ofertă sunt generate cu `fNum(id, val, ph, w, step)`; pentru valori zecimale
   (ex. €/apel) **trebuie dat `step`** — altfel browserul respinge valoarea (step implicit = 1).
-- Cota vândută în ofertă se setează apoi pe companie: `settings.ai_quota = { questions, overage,
-  overagePriceEur }` (doar super-admin). Fără cotă = nelimitat.
+- **RA Insight se vinde pe CONT (din 11.09), nu pe firmă.** Ce se setează pe companie (doar
+  super-admin): `settings.ai_quota = { questionsPerSeat, seatPriceRON }`. Fondul lunii = *conturi
+  aprinse × întrebări pe cont*; când se termină, SE OPREȘTE (nu există depășire contra cost — a fost
+  scoasă deliberat, ca să nu vadă clientul prețuri pe întrebare). Vârful lunii se ține în
+  `ai_quota.seatsPeak = { luna, n }` și e numărul care se facturează. Forma VECHE, `questions`
+  (cotă fixă pe firmă), rămâne respectată pentru contractele deja semnate. Fără nimic = nelimitat.
+  Locul de cont stă pe om: `users.ai_seat`, aprins de administratorul firmei din **Utilizatori**.
 
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 

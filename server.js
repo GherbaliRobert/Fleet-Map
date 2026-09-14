@@ -3434,41 +3434,115 @@ app.get('/api/fx', requireAuth, async (req, res) => {
   try { const f = await fxEurRon(); res.json({ eur: f.eur, date: f.date, source: f.source }); }
   catch (e) { res.json({ eur: EUR_RON_FALLBACK, date: null, source: 'fallback' }); }
 });
-// Privire de ansamblu (super-admin): cine folosește RA Insight, cât din cotă a consumat și cât ne costă.
-// Răspunde la „ce procent din clienți folosesc efectiv asistentul" — nu doar cine îl are activat.
+// ── începe „Socoteala RA Insight pe o firmă" ─────────────────────────────────────────────────────
+// Din 11.09 RA Insight se vinde pe CONT, nu pe firmă: fondul lunii = conturi aprinse × întrebări pe
+// cont, iar factura ia câte conturi a avut firma CEL MULT în luna aia. Panoul fondatorului trebuie
+// să arate exact socoteala după care se face factura — altfel ne uităm la un ecran care spune altceva
+// decât hârtia trimisă clientului.
+//
+// Funcția e CURATĂ (fără bază de date, fără await): primește firma, consumul ei, oamenii ei și cine
+// cât a întrebat, și întoarce rândul gata socotit. Așa poate fi probată cu cifre inventate.
+//   c            = firma (name, settings, ai_monthly_limit)
+//   uz           = consumul lunii pe firmă { questions, last_used }
+//   oameni       = conturile firmei (ai_seat, active, full_name/username)
+//   pePersoana   = { userId: { questions, last_used } }
+//   opt          = { areModul, costEur }  — modulul și costul nostru se află în afară
+function _insightFirma(c, uz, oameni, pePersoana, opt) {
+  const o = opt || {}, u = uz || {}, lista = Array.isArray(oameni) ? oameni : [], pe = pePersoana || {};
+  const q = _aiQuotaFromSettings(c && c.settings);
+  // Forma VECHE (cotă fixă pe firmă) rămâne valabilă pentru contractele deja semnate.
+  const vechi = Number(c && c.ai_monthly_limit) || 0;
+  if (!q.questions && !q.questionsPerSeat && vechi > 0) q.questions = Math.round(vechi);
+  const activi = lista.filter(function (x) { return x.active !== false; });
+  const conturi = activi.filter(function (x) { return !!x.ai_seat; }).length;
+  // Vârful lunii: dacă cineva a stins un cont după ce l-a ținut aprins, factura tot pe el îl ia.
+  const deFacturat = Math.max(conturi, _seatsPeakLuna(c));
+  const peCont = q.questionsPerSeat;
+  const fond = peCont > 0 ? conturi * peCont : q.questions;
+  const used = Number(u.questions) || 0;
+  const costEur = Math.round((Number(o.costEur) || 0) * 100) / 100;
+  const venitLei = q.seatPriceRON > 0 ? Math.round(deFacturat * q.seatPriceRON * 100) / 100 : 0;
+  // Cine are cont, plus oricine a întrebat luna asta (dacă apare aici cineva FĂRĂ cont, e o gaură
+  // pe care vrem s-o vedem, nu s-o ascundem).
+  const oameniRow = lista
+    .map(function (x) {
+      const p = pe[x.id] || {};
+      return {
+        id: x.id,
+        nume: x.full_name || x.username || ('cont #' + x.id),
+        loc: !!x.ai_seat,
+        activ: x.active !== false,
+        used: Number(p.questions) || 0,
+        lastUsed: p.last_used || null
+      };
+    })
+    .filter(function (x) { return x.loc || x.used > 0; })
+    .sort(function (a, b) { return (b.loc - a.loc) || (b.used - a.used) || String(a.nume).localeCompare(String(b.nume), 'ro'); });
+  return {
+    id: c && c.id, name: (c && c.name) || '',
+    enabled: !!o.areModul,
+    conturi: conturi,
+    deFacturat: deFacturat,
+    peCont: peCont,
+    pretCont: q.seatPriceRON,
+    fond: fond,                                   // 0 = fără fond (nelimitat)
+    vechi: !peCont && !!q.questions,              // cotă fixă, din contractele vechi
+    used: used,
+    ramase: fond ? Math.max(0, fond - used) : null,
+    pct: fond ? Math.round((used / fond) * 100) : null,
+    epuizat: !!fond && used >= fond,
+    costEur: costEur,
+    venitLei: venitLei,
+    lastUsed: u.last_used || null,
+    // Semnale pe care fondatorul le vrea văzute, nu căutate:
+    contFaraFolos: oameniRow.filter(function (x) { return x.loc && x.activ && x.used === 0; }).length,
+    folosFaraCont: oameniRow.filter(function (x) { return !x.loc && x.used > 0; }).length,
+    contPeInactiv: lista.filter(function (x) { return x.ai_seat && x.active === false; }).length,
+    oameni: oameniRow
+  };
+}
+// ── sfârșit „Socoteala RA Insight pe o firmă" ──
+// Privire de ansamblu (super-admin): cine folosește RA Insight, pe câte conturi, cât din fond a
+// consumat, ce încasăm și cât ne costă. Aceleași cifre după care se face factura.
 app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    const [companies, usage] = await Promise.all([db.getCompanies(), db.getAiMonthUsageByCompany()]);
+    const [companies, usage, users, peOm] = await Promise.all([
+      db.getCompanies(), db.getAiMonthUsageByCompany(), db.getUsers(), db.getAiMonthUsageByUserAll()
+    ]);
     const byId = {}; usage.forEach(function (u) { byId[u.company_id] = u; });
+    const oameniPeFirma = {}; users.forEach(function (u) {
+      if (u.company_id == null) return;
+      (oameniPeFirma[u.company_id] = oameniPeFirma[u.company_id] || []).push(u);
+    });
+    const pePersoana = {}; peOm.forEach(function (r) { pePersoana[r.user_id] = r; });
     const rows = companies.filter(function (c) { return !c.is_demo; }).map(function (c) {
       const u = byId[c.id] || {};
       const feats = plans ? plans.featuresFor(c) : {};
-      const q = _aiQuotaFromSettings(c.settings);
-      const used = Number(u.questions) || 0;
       const cost = ai ? ai.costEur({ input_tokens: u.input_tokens, output_tokens: u.output_tokens, cache_read_input_tokens: u.cache_read_tokens, cache_creation_input_tokens: u.cache_write_tokens }) : 0;
-      return {
-        id: c.id, name: c.name,
-        enabled: !!feats.ai_assistant,          // are modulul activ (îl poate folosi)
-        used: used,                              // apeluri luna asta
-        quota: q.questions || 0,                 // 0 = nelimitat
-        pct: q.questions ? Math.round((used / q.questions) * 100) : null,
-        over: q.questions ? Math.max(0, used - q.questions) : 0,
-        costEur: Math.round(cost * 100) / 100,
-        lastUsed: u.last_used || null
-      };
+      return _insightFirma(c, u, oameniPeFirma[c.id] || [], pePersoana, { areModul: !!feats.ai_assistant, costEur: cost });
     });
-    const withFeature = rows.filter(function (r) { return r.enabled; });
-    const active = withFeature.filter(function (r) { return r.used > 0; });
+    const cuModul = rows.filter(function (r) { return r.enabled; });
+    const folosesc = cuModul.filter(function (r) { return r.used > 0; });
+    const suma = function (f) { return Math.round(rows.reduce(function (s, r) { return s + f(r); }, 0) * 100) / 100; };
+    const fx = await fxEurRon().catch(function () { return { eur: EUR_RON_FALLBACK }; });
+    const costEur = suma(function (r) { return r.costEur; });
+    const venitLei = suma(function (r) { return r.venitLei; });
     res.json({
-      rows: rows.sort(function (a, b) { return b.used - a.used; }),
+      rows: rows.sort(function (a, b) { return (b.used - a.used) || (b.deFacturat - a.deFacturat); }),
       summary: {
         companies: rows.length,
-        withFeature: withFeature.length,
-        active: active.length,
+        withFeature: cuModul.length,
+        active: folosesc.length,
         // procentul cerut: dintre cei care AU modulul, câți chiar îl folosesc
-        adoptionPct: withFeature.length ? Math.round((active.length / withFeature.length) * 100) : 0,
+        adoptionPct: cuModul.length ? Math.round((folosesc.length / cuModul.length) * 100) : 0,
+        conturi: rows.reduce(function (s, r) { return s + r.deFacturat; }, 0),
+        fond: rows.reduce(function (s, r) { return s + (r.fond || 0); }, 0),
         totalCalls: rows.reduce(function (s, r) { return s + r.used; }, 0),
-        totalCostEur: Math.round(rows.reduce(function (s, r) { return s + r.costEur; }, 0) * 100) / 100
+        epuizate: rows.filter(function (r) { return r.epuizat; }).length,
+        totalCostEur: costEur,
+        totalCostLei: Math.round(costEur * (fx.eur || EUR_RON_FALLBACK) * 100) / 100,
+        totalVenitLei: venitLei,
+        profitLei: Math.round((venitLei - costEur * (fx.eur || EUR_RON_FALLBACK)) * 100) / 100
       }
     });
   } catch (e) { res.status(500).json({ error: e.message }); }

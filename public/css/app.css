@@ -3283,3 +3283,27 @@
 #adash-bara .nume{ flex:1; font-size:13px; font-weight:800; color:var(--accent);
   text-transform:uppercase; letter-spacing:.4px; }
 #adash-bara .rax-btn{ padding:5px 11px; font-size:12px; }
+
+/* ── „RA Insight pe firme" (fondator): o firmă pe cartonaș, desfăcut ─────────────────────────────
+   Tabelul de dinainte spunea povestea veche („apeluri / cotă"), de când RA Insight se vindea pe
+   firmă. Acum se vinde pe cont, iar socoteala are mai multe rânduri decât încap într-o celulă:
+   conturi acum, conturi de facturat, fond, consum, ce încasăm, ce ne costă, cine are cont. */
+.aiu-lista{ display:flex; flex-direction:column; gap:10px; }
+.aiu-card{ background:var(--bg-dark); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+.aiu-card.deschis{ border-color:color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.aiu-cap{ display:flex; align-items:center; gap:10px; width:100%; background:none; border:0; padding:0;
+  cursor:pointer; color:var(--text-primary); font-family:inherit; text-align:left; }
+.aiu-nume{ flex:1; min-width:0; font-size:14px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aiu-pastila{ font-size:11px; font-weight:700; padding:2px 9px; border-radius:20px; border:1px solid; white-space:nowrap; }
+.aiu-conturi{ font-size:12px; color:var(--text-muted); white-space:nowrap; }
+.aiu-sageata{ font-size:11px; opacity:.5; transition:transform .18s; }
+.aiu-card.deschis .aiu-sageata{ transform:rotate(180deg); opacity:1; color:var(--accent); }
+.aiu-bara{ margin-top:9px; }
+.aiu-bani{ display:flex; gap:14px; flex-wrap:wrap; font-size:12px; margin-top:8px; }
+.aiu-det{ margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); font-size:12.5px; line-height:1.55; }
+.aiu-titlu{ font-size:10.5px; font-weight:800; color:var(--accent); text-transform:uppercase;
+  letter-spacing:.4px; margin-bottom:4px; }
+@media (max-width:640px){
+  .aiu-cap{ flex-wrap:wrap; }
+  .aiu-nume{ flex:1 1 100%; }
+}
