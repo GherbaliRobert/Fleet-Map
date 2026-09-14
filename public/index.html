@@ -3488,7 +3488,9 @@ const pozitii = await r.json();</code></pre>
     if (typeof Chart !== 'undefined') {
       Chart.defaults.color = '#9ca3af';
       Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.06)';
-      Chart.defaults.font.family = '-apple-system, system-ui, "Segoe UI", Roboto, sans-serif';
+      // Nunito peste tot, inclusiv pe grafice (regula din CLAUDE.md). Era pe fontul sistemului, așa că
+      // un grafic pus lângă un tabel arăta ca decupat din altă aplicație.
+      Chart.defaults.font.family = "'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
       Chart.defaults.font.size = 11;
       Chart.defaults.plugins.legend.labels.color = '#e5e7eb';
       Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(17, 24, 39, 0.95)';
@@ -21941,32 +21943,86 @@ const pozitii = await r.json();</code></pre>
       var s = d.toLocaleDateString('ro-RO', { month: 'short', year: 'numeric', timeZone: 'UTC' });
       return s.charAt(0).toUpperCase() + s.slice(1);
     }
+    // Ce se vede pe o lună: banii FACTURAȚI, iar pentru luna curentă încă nefacturată, estimarea.
+    // Nu le amestecăm niciodată în totaluri — estimarea e marcată oriunde apare.
+    function _aiuBaniLuna(m) { return m.facturatLei || 0; }
+    function _aiuEstimare(m) { return (!m.facturatLei && m.estimatLei > 0) ? m.estimatLei : 0; }
+    // Statisticile pe care le urmărește un fondator: crește sau nu, se încasează sau nu, cât rămâne
+    // din fiecare leu și cât aduce un cont. Toate calculate din aceleași cifre din tabel.
+    function _aiuStatistici(luni, fx) {
+      // `bani` ține și estimarea lunii curente; `facturat`, numai banii facturați. Marja se socotește
+      // pe `bani`, altfel am pune costul lunii curente față în față cu venitul lunilor trecute — și
+      // ar ieși o marjă mai mică decât adevărul. Rata de încasare rămâne pe facturat: nu poți încasa
+      // ce n-ai facturat.
+      var t = { bani: 0, facturat: 0, incasat: 0, costLei: 0, conturi: 0 };
+      luni.forEach(function (m) {
+        t.bani += (m.facturatLei || _aiuEstimare(m));
+        t.facturat += m.facturatLei; t.incasat += m.incasatLei; t.costLei += m.costEur * fx; t.conturi += m.conturi;
+      });
+      var ultima = luni[luni.length - 1] || {}, penultima = luni[luni.length - 2] || {};
+      var acum = _aiuBaniLuna(ultima) || _aiuEstimare(ultima);
+      var inainte = _aiuBaniLuna(penultima);
+      return {
+        crestere: inainte > 0 ? Math.round(((acum - inainte) / inainte) * 100) : null,
+        estimata: !ultima.facturatLei && _aiuEstimare(ultima) > 0,
+        rataIncasare: t.facturat > 0 ? Math.round((t.incasat / t.facturat) * 100) : null,
+        marja: t.bani > 0 ? Math.round(((t.bani - t.costLei) / t.bani) * 100) : null,
+        peCont: t.conturi > 0 ? Math.round((t.facturat / t.conturi) * 100) / 100 : null,
+        facturat: Math.round(t.facturat * 100) / 100,
+        incasat: Math.round(t.incasat * 100) / 100,
+        costLei: Math.round(t.costLei * 100) / 100
+      };
+    }
+    function _aiuStatBox(s) {
+      var el = function (eticheta, valoare, nota, culoare) {
+        return '<div class="aiu-stat"><div class="v"' + (culoare ? ' style="color:' + culoare + ';"' : '') + '>' + valoare + '</div>'
+          + '<div class="e">' + eticheta + '</div>' + (nota ? '<div class="n">' + nota + '</div>' : '') + '</div>';
+      };
+      var cr = s.crestere;
+      return '<div class="aiu-stats">'
+        + el('Față de luna trecută',
+            cr == null ? '—' : (cr > 0 ? '+' : '') + cr + '%',
+            s.estimata ? 'luna asta e estimată' : 'din ce am facturat',
+            cr == null ? '' : (cr >= 0 ? 'var(--accent)' : 'var(--red)'))
+        + el('Rată de încasare', s.rataIncasare == null ? '—' : s.rataIncasare + '%', 'din tot ce am facturat',
+            s.rataIncasare == null ? '' : (s.rataIncasare >= 90 ? 'var(--accent)' : 'var(--orange)'))
+        + el('Marja noastră', s.marja == null ? '—' : s.marja + '%', 'ce rămâne după plata modelului',
+            s.marja == null ? '' : (s.marja >= 70 ? 'var(--accent)' : 'var(--orange)'))
+        + el('Un cont aduce', s.peCont == null ? '—' : _aiuLei(s.peCont), 'în medie, pe lună')
+        + '</div>';
+    }
     function _aiuIstoric(ist, fx) {
       var l = Array.isArray(ist) ? ist : [];
       // Lunile goale de la început nu spun nimic; de la prima lună cu viață, le arătăm pe toate —
       // inclusiv una moartă la mijloc, care ALA e o informație.
       var prima = -1;
-      for (var i = 0; i < l.length; i++) { if (l[i].intrebari > 0 || l[i].facturatLei !== 0) { prima = i; break; } }
-      if (prima < 0) return '<div class="aiu-titlu">Istoric — lună de lună</div>'
-        + '<div style="color:var(--text-muted);font-size:12.5px;padding:6px 0;">Încă nu e nimic de arătat. Prima lună apare aici imediat ce se emite prima factură cu RA Insight.</div>';
+      for (var i = 0; i < l.length; i++) { if (l[i].intrebari > 0 || l[i].facturatLei !== 0 || l[i].estimatLei > 0) { prima = i; break; } }
+      if (prima < 0) return '<div class="aiu-titlu">RA Insight — dashboard</div>'
+        + '<div style="color:var(--text-muted);font-size:12.5px;padding:6px 0;line-height:1.6;">Încă nu e nimic de arătat aici. Se umple singur: <b>luna curentă</b> apare imediat ce prima firmă are un cont de RA Insight cu preț în contract, iar <b>lunile trecute</b>, pe măsură ce ies facturile.</div>';
       var luni = l.slice(prima);
       var tot = { intrebari: 0, costEur: 0, facturatLei: 0, incasatLei: 0 };
       var randuri = luni.map(function (m) {
         tot.intrebari += m.intrebari; tot.costEur += m.costEur;
         tot.facturatLei += m.facturatLei; tot.incasatLei += m.incasatLei;
-        var ramas = m.facturatLei - m.costEur * fx;
+        var est = _aiuEstimare(m);
+        var bani = m.facturatLei || est;
+        var ramas = bani - m.costEur * fx;
         var neincasat = m.facturatLei - m.incasatLei;
-        return '<tr><td>' + _aiuLunaNume(m.luna) + '</td>'
+        return '<tr' + (est ? ' class="est"' : '') + '><td>' + _aiuLunaNume(m.luna) + '</td>'
           + '<td class="n">' + (m.intrebari || '—') + '</td>'
           + '<td class="n">' + (m.costEur ? _aiuLei(m.costEur * fx) : '—') + '</td>'
-          + '<td class="n">' + (m.facturatLei ? '<b>' + _aiuLei(m.facturatLei) + '</b>' : '—')
+          + '<td class="n">' + (m.facturatLei ? '<b>' + _aiuLei(m.facturatLei) + '</b>' : (est ? '<b>' + _aiuLei(est) + '</b><div style="color:var(--orange);font-size:.82em;">estimat — încă nefacturat</div>' : '—'))
           + (m.conturi ? '<div style="color:var(--text-muted);font-size:.82em;">' + m.conturi + ' ' + (m.conturi === 1 ? 'cont' : 'conturi') + '</div>' : '') + '</td>'
           + '<td class="n">' + (m.incasatLei ? _aiuLei(m.incasatLei) : '—')
           + (neincasat > 0.01 ? '<div style="color:var(--orange);font-size:.82em;">' + _aiuNr(neincasat) + ' lei neîncasați</div>' : '') + '</td>'
           + '<td class="n"><b style="color:' + (ramas >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(ramas) + '</b></td></tr>';
       }).join('');
       var totRamas = tot.facturatLei - tot.costEur * fx;
-      return '<div class="aiu-titlu">Istoric — lună de lună</div>'
+      return '<div class="aiu-titlu">RA Insight — dashboard</div>'
+        + _aiuStatBox(_aiuStatistici(luni, fx))
+        // Pânza se pune doar dacă avem cu ce desena. Fără internet, biblioteca de grafice nu ajunge,
+        // iar un dreptunghi gol de 230px ar arăta a ecran stricat. Tabelul spune oricum tot.
+        + (typeof window.Chart !== 'undefined' ? '<div class="aiu-graf"><canvas id="aiu-canvas"></canvas></div>' : '')
         + '<div class="aiu-ist-wrap"><table class="aiu-ist">'
         + '<thead><tr><th>Luna</th><th class="n">Întrebări</th><th class="n">Ne-a costat</th>'
         + '<th class="n">Facturat</th><th class="n">Încasat</th><th class="n">Rămas la noi</th></tr></thead>'
@@ -21977,7 +22033,47 @@ const pozitii = await r.json();</code></pre>
         + '<td class="n">' + _aiuLei(tot.incasatLei) + '</td>'
         + '<td class="n"><b style="color:' + (totRamas >= 0 ? 'var(--accent)' : 'var(--red)') + ';">' + _aiuLei(totRamas) + '</b></td></tr></tfoot>'
         + '</table></div>'
-        + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele și facturile anulate nu intră, storno-urile scad. „Ne-a costat" e plata către model, convertită în lei la cursul de azi.</div>';
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5;">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele, proformele și facturile anulate nu intră, storno-urile scad. Luna curentă, până se emite factura, e <b>estimată</b> din conturile aprinse (scrie pe ea) și NU intră în total. „Ne-a costat" e plata către model, convertită în lei la cursul de azi.</div>';
+    }
+    // Graficul: bare pe lună, facturat vs. încasat. Se desenează DUPĂ ce marcajul e în pagină.
+    // Dacă biblioteca de grafice n-a ajuns (fără internet), tabelul rămâne — graficul e un plus.
+    function _aiuRgba(c, a) {
+      var s = String(c || '').trim();
+      var m = s.match(/^#?([0-9a-f]{6})$/i);
+      if (m) { var n = parseInt(m[1], 16); return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+      m = s.match(/^rgba?\(([^)]+)\)/i);
+      if (m) { var p = m[1].split(',').map(function (x) { return x.trim(); }); return 'rgba(' + p[0] + ',' + p[1] + ',' + p[2] + ',' + a + ')'; }
+      return 'rgba(63,224,125,' + a + ')';
+    }
+    function _aiuDeseneaza(ist, fx) {
+      if (typeof window.Chart === 'undefined' || !document.getElementById('aiu-canvas')) return;
+      var l = (Array.isArray(ist) ? ist : []).filter(function (m) { return m.intrebari > 0 || m.facturatLei !== 0 || m.estimatLei > 0; });
+      if (!l.length) return;
+      var verde = (typeof cssVar === 'function' ? cssVar('--accent') : '') || '#3fe07d';
+      var portocaliu = (typeof cssVar === 'function' ? cssVar('--orange') : '') || '#f59e0b';
+      var facturat = l.map(function (m) { return Math.round((m.facturatLei || _aiuEstimare(m)) * 100) / 100; });
+      var culori = l.map(function (m) { return _aiuEstimare(m) ? _aiuRgba(portocaliu, .35) : _aiuRgba(verde, .32); });
+      var borduri = l.map(function (m) { return _aiuEstimare(m) ? portocaliu : verde; });
+      createChart('aiu-canvas', 'bar', {
+        labels: l.map(function (m) { return _aiuLunaNume(m.luna); }),
+        datasets: [
+          { label: 'Facturat', data: facturat, backgroundColor: culori, borderColor: borduri, borderWidth: 1.5, borderRadius: 5 },
+          { label: 'Încasat', data: l.map(function (m) { return m.incasatLei; }), backgroundColor: verde, borderRadius: 5 }
+        ]
+      }, {
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: function (v) { return v + ' lei'; } }, grid: { color: _aiuRgba(verde, .08) } },
+          x: { grid: { display: false } }
+        },
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, boxHeight: 12, padding: 14 } },
+          tooltip: { callbacks: { label: function (c) {
+            var m = l[c.dataIndex], e = _aiuEstimare(m);
+            return c.dataset.label + ': ' + _aiuNr(c.parsed.y) + ' lei'
+              + (c.datasetIndex === 0 && e ? ' (estimat, încă nefacturat)' : '');
+          } } }
+        }
+      });
     }
     function _aiuCard(r, deschis) {
       var st = _aiuStare(r);
@@ -22067,7 +22163,9 @@ const pozitii = await r.json();</code></pre>
         + (s.epuizate ? '<div style="font-size:12px;color:var(--red);margin-bottom:10px;"><i class="fas fa-triangle-exclamation" style="margin-right:6px;"></i>' + s.epuizate + (s.epuizate === 1 ? ' firmă și-a terminat' : ' firme și-au terminat') + ' fondul lunii.</div>' : '')
         + '<div class="aiu-ist-box">' + _aiuIstoric(d.istoric, Number(d.fxEur) || _aiuFx()) + '</div>'
         + '<div class="aiu-lista">' + carduri + '</div>'
+        // marcaj: gata. Graficul se desenează după, pe canvas-ul deja în pagină.
         + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">Cifrele sunt ale lunii curente și se reînnoiesc pe 1. „Conturi de facturat" = câte conturi a avut firma <b>cel mult</b> luna asta — regula din contract. Cei 6 agenți AI merg pe reguli fixe, nu costă tokeni și nu apar aici; se configurează din pagina <b>Agenți AI</b> din meniul lateral.</div>';
+      try { _aiuDeseneaza(d.istoric, Number(d.fxEur) || _aiuFx()); } catch (e) { /* fără grafic, tabelul rămâne */ }
     };
     // ─── sfârșit „Panoul RA Insight pe firme" ──
     // ─── Cereri de cont demo (super-admin) ───

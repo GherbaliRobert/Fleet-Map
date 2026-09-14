@@ -3523,7 +3523,10 @@ function _insightIstoric(uzPeLuna, facturi, opt) {
     chei.push(d.toISOString().slice(0, 7));
   }
   const gol = function (luna) {
-    return { luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0 };
+    // `estimatLei` = ce ar ieși pe factură dacă am emite-o acum. Se completează doar pentru luna
+    // curentă, din conturile aprinse — ca panoul să spună ceva încă din prima lună, înainte să
+    // existe vreo factură. E marcat ca estimare peste tot: nu se amestecă niciodată cu banii reali.
+    return { luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 };
   };
   const map = {}; chei.forEach(function (k) { map[k] = gol(k); });
   (uzPeLuna || []).forEach(function (u) {
@@ -3618,6 +3621,10 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     const fx = await fxEurRon().catch(function () { return { eur: EUR_RON_FALLBACK }; });
     const costEur = suma(function (r) { return r.costEur; });
     const venitLei = suma(function (r) { return r.venitLei; });
+    // Luna curentă, încă nefacturată, primește estimarea — altfel dashboard-ul ar arăta gol tocmai
+    // în luna despre care știm cel mai mult.
+    const lunaAsta = _lunaAcum();
+    istoric.forEach(function (m) { if (m.luna === lunaAsta) m.estimatLei = venitLei; });
     res.json({
       rows: rows.sort(function (a, b) { return (b.used - a.used) || (b.deFacturat - a.deFacturat); }),
       summary: {

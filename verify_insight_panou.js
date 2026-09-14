@@ -112,7 +112,7 @@ const fereastra = {
   _raxNrI: function (n) { n = Number(n) || 0; var x = Math.abs(n) % 100; return n === 1 ? '1 întrebare' : n + ((x === 0 && n) || x >= 20 ? ' de ' : ' ') + 'întrebări'; }
 };
 const gata = new Function('window', 'document', 'esc',
-  bucataPanou + '\n; return { card: _aiuCard, stare: _aiuStare, socoteala: _aiuSocoteala, lei: _aiuLei, istoric: _aiuIstoric, luna: _aiuLunaNume };')(
+  bucataPanou + '\n; return { card: _aiuCard, stare: _aiuStare, socoteala: _aiuSocoteala, lei: _aiuLei, istoric: _aiuIstoric, luna: _aiuLunaNume, stat: _aiuStatistici, rgba: _aiuRgba };')(
   fereastra, { getElementById: function () { return null; }, querySelector: function () { return null; }, querySelectorAll: function () { return []; } },
   function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); });
 
@@ -238,6 +238,57 @@ T('fără istoric, spune omenește că încă nu e nimic', /Încă nu e nimic/.t
 T('butonul de desfăcut/strâns e verde', /id="aiu-toate" class="rax-btn primary"/.test(html));
 T('cartonașul firmei arată ce i-am facturat', /Ce am facturat pe RA Insight/.test(html));
 T('sus apar și facturatul, și încasatul', /Facturat pe RA Insight/.test(html) && /Din care încasat/.test(html));
+
+sect('11. Dashboard: statistici și luna curentă, estimată');
+const M = (luna, o) => Object.assign({ luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 }, o);
+let S = gata.stat([
+  M(cheieLuna(1), { facturatLei: 100, incasatLei: 100, costEur: 2, conturi: 5 }),
+  M(cheieLuna(0), { facturatLei: 150, incasatLei: 60, costEur: 3, conturi: 10 })
+], 5);
+T('creșterea față de luna trecută', S.crestere === 50, String(S.crestere));
+T('rata de încasare pe toată perioada', S.rataIncasare === 64, String(S.rataIncasare));   // 160/250
+T('marja după plata modelului', S.marja === 90, String(S.marja));                          // (250-25)/250
+T('cât aduce un cont, în medie', S.peCont === 16.67, String(S.peCont));                    // 250/15
+T('nu e marcată ca estimare când s-a facturat', S.estimata === false);
+S = gata.stat([M(cheieLuna(1), { facturatLei: 100, incasatLei: 100, costEur: 2 }), M(cheieLuna(0), { estimatLei: 120, costEur: 2 })], 5);
+T('luna nefacturată intră în creștere cu estimarea', S.crestere === 20, String(S.crestere));
+T('și e marcată ca estimare', S.estimata === true);
+// Marja pe aceeași perioadă: 220 lei (100 facturați + 120 estimați) față de 20 lei cost = 91%.
+// Dacă am socoti-o doar pe facturat, costul lunii curente ar cădea peste venitul lunii trecute → 80%.
+T('marja nu pune costul lunii curente peste venitul lunii trecute', S.marja === 91, String(S.marja));
+T('rata de încasare rămâne pe facturat — nu poți încasa ce n-ai facturat', S.rataIncasare === 100, String(S.rataIncasare));
+S = gata.stat([M(cheieLuna(0), { estimatLei: 50 })], 5);
+T('fără lună anterioară, creșterea nu se inventează', S.crestere === null, String(S.crestere));
+
+const cuEstimare = gata.istoric([
+  M(cheieLuna(1), { intrebari: 40, costEur: 0.5, facturatLei: 64, incasatLei: 64, conturi: 4 }),
+  M(cheieLuna(0), { intrebari: 62, costEur: 0.27, estimatLei: 79, conturi: 0 })
+], 5);
+T('luna nefacturată apare cu estimarea', /79 lei/.test(cuEstimare) && /estimat — încă nefacturat/.test(cuEstimare));
+T('rândul estimat e marcat, ca să nu fie luat drept bani', /<tr class="est">/.test(cuEstimare));
+T('estimarea NU intră în totalul facturat', /<tfoot>[\s\S]*?<b>64 lei/.test(cuEstimare), (cuEstimare.match(/<tfoot>[\s\S]*<\/tfoot>/) || [''])[0].slice(0, 200));
+T('nota explică regula estimării', /estimată<\/b> din conturile aprinse/.test(cuEstimare) && /NU intră în total/.test(cuEstimare));
+T('fără bibliotecă de grafice, nu lăsăm o gaură goală în pagină',
+  !/aiu-graf/.test(cuEstimare) && /<table/.test(cuEstimare));
+fereastra.Chart = {};   // ca și cum biblioteca s-ar fi încărcat
+const cuGrafic = gata.istoric([
+  M(cheieLuna(1), { intrebari: 40, costEur: 0.5, facturatLei: 64, incasatLei: 64, conturi: 4 }),
+  M(cheieLuna(0), { intrebari: 62, costEur: 0.27, estimatLei: 79 })
+], 5);
+delete fereastra.Chart;
+T('dashboard-ul are și grafic, nu doar tabel', /aiu-graf/.test(cuGrafic) && /id="aiu-canvas"/.test(cuGrafic));
+T('și cele patru statistici', /Față de luna trecută/.test(cuEstimare) && /Rată de încasare/.test(cuEstimare)
+  && /Marja noastră/.test(cuEstimare) && /Un cont aduce/.test(cuEstimare));
+const golDash = gata.istoric([M(cheieLuna(0), {})], 5);
+T('gol, dar explicat: se umple singur', /Se umple singur/.test(golDash) && /luna curentă<\/b> apare imediat/.test(golDash));
+
+T('culorile graficului se iau din temă, nu sunt bătute în cuie', /cssVar\('--accent'\)/.test(bucataPanou));
+T('graficul folosește ajutorul comun al aplicației', /createChart\('aiu-canvas'/.test(bucataPanou));
+T('fără bibliotecă de grafice, desenul e sărit', /typeof window\.Chart === 'undefined'/.test(bucataPanou));
+T('graficele scriu cu Nunito, ca tot restul', /Chart\.defaults\.font\.family\s*=\s*"'Nunito'/.test(html));
+T('culoarea se traduce corect pentru pânză', gata.rgba('#3fe07d', .3) === 'rgba(63,224,125,0.3)', gata.rgba('#3fe07d', .3));
+T('și dacă tema dă o culoare pe care n-o știm, nu crapă', /^rgba\(/.test(gata.rgba('cine-stie', .3)), gata.rgba('cine-stie', .3));
+['.aiu-stats', '.aiu-stat', '.aiu-graf', '.aiu-ist tr.est'].forEach(function (s) { T('există stilul ' + s, css.indexOf(s) > 0); });
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

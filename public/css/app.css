@@ -3314,6 +3314,16 @@
 .aiu-ist .n{ text-align:right; white-space:nowrap; }
 .aiu-ist tbody tr:hover td{ background:color-mix(in srgb, var(--accent) 6%, transparent); }
 .aiu-ist tfoot td{ border-bottom:0; border-top:2px solid var(--border); font-weight:700; padding-top:9px; }
+/* Luna care încă n-a fost facturată: cifra e estimare, nu bani. Se vede că e altceva. */
+.aiu-ist tr.est td{ background:color-mix(in srgb, var(--orange) 7%, transparent); }
+/* Statisticile: patru cifre pe care le urmărești, nu le calculezi. */
+.aiu-stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:10px 0 14px; }
+.aiu-stat{ border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--bg-panel); }
+.aiu-stat .v{ font-size:19px; font-weight:800; line-height:1.15; }
+.aiu-stat .e{ font-size:11px; font-weight:700; color:var(--text-muted); margin-top:3px; }
+.aiu-stat .n{ font-size:10.5px; color:var(--text-muted); margin-top:2px; opacity:.85; }
+.aiu-graf{ height:230px; margin-bottom:14px; }
+@media (max-width:640px){ .aiu-graf{ height:190px; } }
 @media (max-width:640px){
   .aiu-cap{ flex-wrap:wrap; }
   .aiu-nume{ flex:1 1 100%; }

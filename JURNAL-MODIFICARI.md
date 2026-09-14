@@ -461,6 +461,43 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · RA Insight, ca dashboard: grafic, statistici, și luna curentă vizibilă din prima zi
+
+*„Rolul istoricului și al prezentului cu încasările din RA Insight este că mă ajută pe mine, ca
+dashboard, ca statistică."*
+
+Asta schimbă ce trebuia să fie ecranul. Un tabel care stă gol până iese prima factură nu e un
+dashboard — e o arhivă. Acum:
+
+**Luna curentă se vede din prima zi, chiar nefacturată.** Se calculează din conturile aprinse: *„79
+lei — estimat, încă nefacturat"*. E scris pe el, rândul e colorat altfel, și **nu intră în total**.
+Nu confundăm niciodată o estimare cu banii intrați — dar nici nu ne uităm la un ecran gol în luna
+despre care știm cel mai mult.
+
+**Un grafic cu bare**, lună de lună: cât am **facturat** și cât s-a **încasat**, unul lângă altul.
+Luna estimată e portocalie, ca să se vadă din ochi că e altceva. (Dacă biblioteca de grafice nu se
+încarcă — fără internet — graficul dispare complet, nu lasă un dreptunghi gol; tabelul spune oricum tot.)
+
+**Patru statistici**, cele pe care le urmărești, nu pe care le calculezi:
+
+- **Față de luna trecută** — cu cât a crescut sau a scăzut, în procente;
+- **Rată de încasare** — cât din ce am facturat a și intrat în cont;
+- **Marja noastră** — cât rămâne din fiecare leu, după plata către model;
+- **Un cont aduce** — media reală pe cont, pe lună.
+
+**Prins pe drum:** graficele din toată aplicația scriau cu fontul sistemului, nu cu **Nunito** —
+regula casei. Un grafic pus lângă un tabel arăta ca decupat din altă aplicație. Acum e Nunito peste tot.
+
+**Ce am lăsat în urmă:** 114 verificări (de la 88) și 47 pe aplicația pornită. Graficul se probează
+cu un „Chart de carton" care ține minte ce i s-a cerut — așa verificăm înțelegerea dintre panou și
+grafic (etichete, serii, culori, textul de pe tooltip) chiar și fără internet. Sabotat în cinci feluri.
+
+- **Ce am schimbat:** panoul RA Insight a devenit un dashboard, nu un tabel.
+- **Ce vede fondatorul:** dintr-o privire — dacă crește, dacă se încasează, cât rămâne, cât aduce un cont.
+- **Ce vede clientul:** nimic — e un ecran numai al nostru.
+
+---
+
 ### FONDATOR · Istoricul încasărilor din RA Insight, lună de lună
 
 *„Am nevoie și de istoric. Să văd aici ce încasări au fost — adică să calculăm cât încasăm din RA
