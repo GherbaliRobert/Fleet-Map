@@ -461,6 +461,53 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Fiecare tablou la verticala lui — „Flota mea, pe scurt" pentru partener
+
+*„Dashboard-ul din verticala partener nu cred că e pentru partener… practic pe noi ne interesează
+datele de acolo. Fă și un dashboard pentru partener, cu starea flotei, ca sumar."*
+
+Avea dreptate, și era chiar mai rău decât părea. Ecranul acela era **tabloul PLATFORMEI** — MRR, ARR,
+consumul de AI în dolari, **cheia Anthropic**, **backup-urile**, starea de producție — pus în
+verticala partenerului. Și pe deasupra era un **duplicat**: apela exact aceeași funcție ca
+„Business → Dashboard platformă" din verticala fondatorului, doar în alt container. Două uși la
+aceeași cameră, dintre care una în camera greșită.
+
+**Nu era o gaură de securitate** — am verificat fiecare buton: intrarea se arăta doar super-adminului,
+iar serverul cere super-admin pe fiecare cale (cheia AI, backup, cifrele). Un partener sau un client
+real nu vedea și nu putea apăsa nimic. Problema era de **așezare**.
+
+**Acum:** tabloul platformei a rămas într-un singur loc, la fondator. Iar în verticala partenerului
+e ce trebuie să fie — **„Flota mea, pe scurt"**:
+
+- **ACUM:** câte vehicule sunt **în mișcare** (cu câte stau la ralanti), câte sunt **oprite**, câte
+  **fără semnal** — iar cele fără semnal sunt scrise pe nume, nu doar numărate;
+- **AZI:** **kilometri** (cu cel mai rulat vehicul), **timp de mers**, **combustibil**;
+- **DE REZOLVAT:** constatările agenților, strânse pe categorii — *„RA Watch · 3 constatări · 2
+  vehicule"* — fiecare rând duce direct în „Agenți AI". Dacă nu e nimic: *„Nimic de rezolvat. Flota
+  e în regulă."*
+
+**Nu inventează nicio sursă nouă de date.** Se compune din două căi care existau deja și sunt filtrate
+de server pe drepturile omului: starea flotei și constatările agenților. Numele agenților vin din
+`AGP_META`, sursa unică.
+
+**Nu repetă ecranul „Statistici".** Acolo sunt cifrele pe perioadă și graficele; aici e răspunsul la
+două întrebări de dimineață: *ce se întâmplă acum* și *ce am de rezolvat*. De aceea fiecare cartonaș
+duce undeva, iar la final scrie unde te duci pentru grafice.
+
+**O plasă pusă dinainte:** media de consum apare **doar peste 10 km rulați** și doar dacă rezultatul
+e omenesc (între 1 și 100 L/100 km). Altfel, la 2 km făcuți și 5 litri arși la ralanti, ecranul ar
+scrie „250 L/100 km" — iar clientul nu s-ar mai uita niciodată la el. Când lipsește, scrie de ce.
+
+**Ce am lăsat în urmă:** `verify_flota_dash.js`, 36 de verificări în `npm test` (inclusiv că nu mai
+există un al doilea container pentru tabloul platformei și că media de consum nu scoate aberații),
+plus 18 pe aplicația pornită, cu flota pusă în mișcare. Sabotat în trei feluri.
+
+- **Ce am schimbat:** dashboard-ul partenerului arată flota lui, nu afacerea noastră.
+- **Ce vede fondatorul:** tabloul platformei, într-un singur loc, unde îi e locul.
+- **Ce vede clientul:** un ecran de dimineață: ce se mișcă, ce stă, ce n-are semnal, ce e de rezolvat.
+
+---
+
 ### FONDATOR · Registrul de clienți: filtre, căutare adevărată, banii lunari, export
 
 Toate cele nouă lucruri cerute pentru cardul **Companii**, într-un lot.

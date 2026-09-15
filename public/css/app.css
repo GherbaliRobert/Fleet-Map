@@ -3356,6 +3356,30 @@
   text-transform:uppercase; letter-spacing:.4px; }
 #adash-bara .rax-btn{ padding:5px 11px; font-size:12px; }
 
+/* ── „Flota mea, pe scurt": lista „De rezolvat" ─────────────────────────────────────────────────
+   Constatările agenților, strânse pe categorii și făcute butoane: fiecare rând duce în „Agenți AI",
+   unde scrie tot. Un rând care nu duce nicăieri e o informație pe care omul o citește și o uită. */
+.fd-lista{ display:flex; flex-direction:column; gap:8px; }
+.fd-rand{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; cursor:pointer;
+  background:var(--bg-dark); border:1px solid var(--border); border-left:3px solid var(--border);
+  border-radius:12px; padding:11px 14px; font-family:inherit; color:var(--text-primary);
+  transition:border-color .15s, transform .15s; }
+.fd-rand:hover{ border-color:var(--accent); transform:translateX(2px); }
+.fd-rand.warn{ border-left-color:var(--orange); }
+.fd-rand.bad{ border-left-color:var(--red); }
+.fd-rand > i:first-child{ font-size:15px; width:20px; text-align:center; color:var(--text-muted); }
+.fd-rand.warn > i:first-child{ color:var(--orange); }
+.fd-rand.bad > i:first-child{ color:var(--red); }
+.fd-rand .t{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.fd-rand .t b{ font-size:13.5px; }
+.fd-rand .t small{ font-size:11.5px; color:var(--text-muted); }
+.fd-rand .sag{ font-size:11px; opacity:.4; }
+.fd-rand:hover .sag{ opacity:1; color:var(--accent); }
+.fd-liniste{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 8%, transparent);
+  border:1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  border-radius:12px; padding:13px 15px; font-weight:700; }
+
 /* ── Lista de companii: filtre, sortare, bani, și cartonașe pe telefon ──────────────────────────
    Întrebările zilnice („cine e suspendat?", „cine n-are contract?") se rezolvau citind toată lista.
    Acum sunt pastile cu numere, ca la Dispozitive — același limbaj vizual, nu unul nou. */
@@ -3455,6 +3479,10 @@
 .aiu-kpi.bad .val{ color:var(--red); }
 .aiu-kpi .sub{ font-size:12px; color:var(--text-secondary); margin-top:5px; }
 .aiu-kpi .jos{ font-size:11px; color:var(--text-muted); margin-top:5px; padding-top:5px; border-top:1px dashed var(--border); }
+/* Cartonașul care duce undeva: se ridică sub mouse, ca să se vadă că e de apăsat. */
+.aiu-kpi-link{ cursor:pointer; }
+.aiu-kpi-link:hover{ border-color:var(--accent); transform:translateY(-2px); }
+.aiu-kpi{ transition:border-color .15s, transform .15s; }
 .aiu-fond{ height:6px; border-radius:4px; background:var(--border); overflow:hidden; margin-top:3px; }
 .aiu-fond > div{ height:100%; }
 /* Ce nu e în regulă se spune tare, o dată, sus — nu se caută prin cartonașe. */

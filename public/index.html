@@ -183,7 +183,11 @@
         <button data-vert="partener" data-ecran="rapoarte" class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
         <button data-vert="partener" data-ecran="insight" class="nav-item" id="nav-agenti" data-view="agenti" onclick="showView('agenti')" style="display:none;"><i class="fas fa-robot"></i><span>Agenți AI</span></button>
         <button data-vert="partener" data-ecran="hotspot" class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
-        <button data-vert="partener" class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')" style="display:none;"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
+        <!-- „Dashboard" de aici era tabloul PLATFORMEI (MRR, cheia Anthropic, backup-uri) — aceeași
+             funcție ca „Business → Dashboard platformă" din verticala fondatorului, doar în alt
+             container. Adică un duplicat, pus în verticala greșită. A rămas o singură ușă, la
+             fondator. Aici e acum dashboard-ul FLOTEI, care e treaba partenerului. -->
+        <button data-vert="partener" data-ecran="dashboard" class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
         <!-- Setări: ultimul din verticala clientului, ca peste tot. Are pagina lui, cu capitolele ei. -->
         <button data-vert="partener" id="nav-setari" class="nav-item" onclick="showView('settings')"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
 
@@ -2670,13 +2674,20 @@ const pozitii = await r.json();</code></pre>
     </div>
   </div>
 
-  <!-- ═══ Dashboard platformă (super-admin, din meniul stânga) ═══ -->
-  <div id="platform-dash-modal" class="modal-overlay">
+  <!-- ═══ Dashboard flotă (pentru client/partener, din meniul stânga) ═══
+       Aici era, până acum, tabloul PLATFORMEI (MRR, cheia Anthropic, backup-uri) — adică ecranul
+       fondatorului, pus în verticala partenerului, și pe deasupra un duplicat al celui din
+       „Business → Dashboard platformă". Acum e ce trebuie să fie: starea flotei TALE, pe scurt. -->
+  <div id="fleet-dash-modal" class="modal-overlay">
     <div class="modal" style="width:1080px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
-      <h2><span><i class="fas fa-gauge-high" style="margin-right:8px;color:var(--accent);"></i> Dashboard platformă</span>
+      <h2><span><i class="fas fa-gauge-high" style="margin-right:8px;color:var(--accent);"></i> Flota mea, pe scurt</span>
+        <span style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <span id="fdash-ora" style="font-size:11px;color:var(--text-muted);font-weight:500;"></span>
+          <button class="rax-btn" onclick="raxFleetDash()" title="Reîncarcă"><i class="fas fa-rotate"></i></button>
+        </span>
         <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
-      <div id="platform-dash-body" style="overflow-y:auto;flex:1;padding-right:4px;"><div class="rax-co-meta">Se încarcă…</div></div>
+      <div id="fleet-dash-body" class="ra-camp" style="overflow-y:auto;flex:1;padding-right:4px;"><div class="rax-co-meta">Se încarcă…</div></div>
     </div>
   </div>
 
@@ -11036,8 +11047,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'platform-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'openPlatformDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'fleet-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'raxFleetDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -11316,7 +11327,120 @@ const pozitii = await r.json();</code></pre>
     function closeDashboard() { showView('localizare'); }
     function closeAdmin() { document.getElementById('admin-modal').classList.remove('as-view', 'visible'); showView('localizare'); }
     function closeUsersModal() { showView('localizare'); }
-    function openPlatformDash() { if (window.raxLoadDashboard) window.raxLoadDashboard('platform-dash-body'); }
+    // ─── începe „Flota mea, pe scurt" ─────────────────────────────────────────────────────────────
+    // Dashboard-ul PARTENERULUI. Nu repetă ecranul „Statistici" (acolo sunt cifrele și graficele pe
+    // perioadă) — aici e răspunsul la două întrebări pe care le are un om de flotă dimineața:
+    // „ce se întâmplă ACUM?" și „ce am de rezolvat?". De aceea fiecare cifră duce undeva.
+    //
+    // Nu inventează nicio sursă nouă: se compune din două căi care existau deja și sunt filtrate
+    // pe drepturile omului — /api/dashboard (starea live + ziua de azi) și /api/agents/findings
+    // (constatările agenților: offline, service, documente, ralanti, conducere continuă).
+    // Blocul ăsta de script n-are nici `$`, nici `esc` (stau în alte blocuri) — ni le facem aici.
+    function _fdEl(id) { return document.getElementById(id); }
+    function _fdEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+    function _fdOre(min) {
+      var m = Math.max(0, Math.round(Number(min) || 0));
+      if (m < 60) return m + ' min';
+      var h = Math.floor(m / 60), r = m % 60;
+      return h + ' h' + (r ? ' ' + r + ' min' : '');
+    }
+    function _fdVeh(n) { n = Number(n) || 0; return n + (n === 1 ? ' vehicul' : ' vehicule'); }
+    function _fdKpi(o) {
+      return '<div class="aiu-kpi' + (o.ton ? ' ' + o.ton : '') + (o.du ? ' aiu-kpi-link" onclick="' + o.du + '" role="button' : '') + '">'
+        + '<div class="cap">' + (o.icon ? '<i class="fas fa-' + o.icon + '"></i> ' : '') + o.cap + '</div>'
+        + '<div class="val">' + o.val + '</div>'
+        + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '')
+        + (o.jos ? '<div class="jos">' + o.jos + '</div>' : '') + '</div>';
+    }
+    // Constatările agenților, strânse pe categorii: „3 vehicule cu service depășit" spune mai mult
+    // decât trei rânduri identice. Numele agentului vine din AGP_META — sursa unică (vezi CLAUDE.md).
+    function _fdDeRezolvat(findings) {
+      var l = Array.isArray(findings) ? findings : [];
+      if (!l.length) return '<div class="fd-liniste"><i class="fas fa-circle-check"></i> Nimic de rezolvat. Flota e în regulă.</div>';
+      var meta = (window.AGP_META || {});
+      var rang = { critical: 0, warning: 1, info: 2 };
+      var pe = {};
+      l.forEach(function (f) {
+        var k = f.agent || 'altele';
+        var g = pe[k] || (pe[k] = { agent: k, n: 0, sev: 'info', vehicule: [] });
+        g.n++;
+        if ((rang[f.severity] != null ? rang[f.severity] : 3) < (rang[g.sev] != null ? rang[g.sev] : 3)) g.sev = f.severity;
+        if (f.imei && g.vehicule.indexOf(f.imei) < 0) g.vehicule.push(f.imei);
+      });
+      return Object.keys(pe)
+        .sort(function (a, b) { return (rang[pe[a].sev] || 3) - (rang[pe[b].sev] || 3) || pe[b].n - pe[a].n; })
+        .map(function (k) {
+          var g = pe[k];
+          var m = meta[k] || {};
+          var ton = g.sev === 'critical' ? 'bad' : (g.sev === 'warning' ? 'warn' : '');
+          return '<button class="fd-rand ' + ton + '" onclick="showView(\'agenti\')" title="Deschide Agenți AI">'
+            + '<i class="fas ' + (m.icon || 'fa-circle-exclamation') + '"></i>'
+            + '<span class="t"><b>' + _fdEsc(m.name || k) + '</b>'
+            + '<small>' + g.n + (g.n === 1 ? ' constatare' : ' constatări')
+            + (g.vehicule.length ? ' · ' + _fdVeh(g.vehicule.length) : ' · pe toată flota') + '</small></span>'
+            + '<i class="fas fa-chevron-right sag"></i></button>';
+        }).join('');
+    }
+    window.raxFleetDash = async function () {
+      var box = _fdEl('fleet-dash-body'); if (!box) return;
+      box.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>';
+      var d = null, f = [];
+      try { d = await fetch('/api/dashboard' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
+      try { f = await fetch('/api/agents/findings', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); } catch (e) { f = []; }
+      if (!d || d.error) { box.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Nu s-au putut lua datele flotei: ' + _fdEsc((d && d.error) || 'indisponibil') + '</div>'; return; }
+      var ora = _fdEl('fdash-ora'); if (ora) ora.textContent = 'actualizat ' + new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+
+      var tot = Number(d.totalDevices) || 0;
+      var misca = Number(d.movingCount) || 0, stat = Number(d.stationatCount) || 0;
+      var oprit = Number(d.opritCount) || 0, offline = Number(d.offlineCount) || 0;
+      var km = Number(d.totalKm) || 0, lit = Number(d.totalFuel) || 0, min = Number(d.totalEngineTime) || 0;
+      var vehicule = Array.isArray(d.devices) ? d.devices : [];
+      var fara = vehicule.filter(function (v) { return !v.isOnline; });
+      // Vehiculele înregistrate care n-au transmis NICIODATĂ nu apar în lista live — le numărăm separat,
+      // ca să nu pară că am pierdut vehicule între cifră și listă.
+      var niciodata = Math.max(0, offline - fara.length);
+      var celMaiRulat = vehicule.slice().sort(function (a, b) { return (b.km || 0) - (a.km || 0); })[0];
+      // Media de consum are sens abia după ce s-a rulat ceva: la 2 km făcuți și 5 litri arși la
+      // ralanti iese „250 L/100 km", iar omul nu se mai uită niciodată la ecranul ăsta. Așa că o
+      // arătăm doar peste 10 km și doar dacă rezultatul e omenesc.
+      var per100 = (km >= 10 && lit > 0) ? (lit / km * 100) : null;
+      if (per100 != null && (per100 < 1 || per100 > 100)) per100 = null;
+
+      box.innerHTML =
+        '<div class="aiu-grup">Acum</div><div class="aiu-kpiuri">'
+        + _fdKpi({ cap: 'În mișcare', icon: 'truck-fast', val: misca + ' <span class="mic">din ' + tot + '</span>',
+            ton: misca ? 'ok' : '', sub: stat ? stat + (stat === 1 ? ' stă cu motorul pornit' : ' stau cu motorul pornit') : 'niciunul la ralanti',
+            jos: 'apasă pentru hartă', du: "showView('localizare')" })
+        + _fdKpi({ cap: 'Oprite', icon: 'square-parking', val: String(oprit),
+            sub: tot ? Math.round(oprit / tot * 100) + '% din flotă' : '—', jos: 'motor stins' })
+        + _fdKpi({ cap: 'Fără semnal', icon: 'tower-broadcast', val: String(offline),
+            ton: offline ? 'bad' : 'ok',
+            sub: offline ? 'nu transmit de peste o oră' : 'toate transmit',
+            jos: offline ? (fara.slice(0, 3).map(function (v) { return _fdEsc(v.name); }).join(', ')
+                  + (fara.length > 3 ? ' și încă ' + (fara.length - 3) : '')
+                  + (niciodata ? (fara.length ? ' · ' : '') + niciodata + ' n-au transmis niciodată' : ''))
+                : 'nicio grijă' })
+        + '</div>'
+        + '<div class="aiu-grup">Azi</div><div class="aiu-kpiuri">'
+        + _fdKpi({ cap: 'Kilometri', icon: 'road', val: km.toLocaleString('ro-RO') + ' <span class="mic">km</span>',
+            sub: celMaiRulat && celMaiRulat.km > 0 ? 'cel mai rulat: <b>' + _fdEsc(celMaiRulat.name) + '</b> — ' + Math.round(celMaiRulat.km) + ' km' : 'nimic încă azi',
+            jos: 'de la miezul nopții' })
+        + _fdKpi({ cap: 'Timp de mers', icon: 'clock', val: _fdOre(min),
+            sub: misca || stat ? 'motoare pornite acum: ' + (misca + stat) : 'toate motoarele sunt stinse',
+            jos: 'însumat pe toată flota' })
+        + _fdKpi({ cap: 'Combustibil', icon: 'gas-pump', val: lit ? lit.toFixed(1) + ' <span class="mic">L</span>' : '—',
+            sub: per100 ? '≈ ' + per100.toFixed(1) + ' L/100 km'
+              : (lit > 0 ? 'prea puțini km azi pentru o medie' : 'fără date de consum azi'),
+            jos: 'estimat unde nu e senzor' })
+        + '</div>'
+        + '<div class="aiu-grup">De rezolvat</div>'
+        + '<div class="fd-lista">' + _fdDeRezolvat(f) + '</div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">'
+        + 'Cifrele „Azi" se socotesc de la miezul nopții și se reînnoiesc singure. „Fără semnal" = un vehicul '
+        + 'care n-a mai trimis nimic de peste o oră — poate fi oprit în garaj, fără acoperire, sau cu aparatul deconectat. '
+        + 'Pentru cifre pe o perioadă și grafice, mergi la <b>Analize statistice → Statistici</b>.</div>';
+    };
+    // ─── sfârșit „Flota mea, pe scurt" ──
 
     // Gating UI după permisiuni (override: nav Administrare + acțiuni de flotă)
     function applyPermissionsUI() {
@@ -11324,7 +11448,9 @@ const pozitii = await r.json();</code></pre>
       document.body.classList.toggle('no-companies', !can('manageCompanies')); // Companii & mutare între companii = STRICT super-admin (manageCompanies)
       document.body.classList.toggle('is-super', !!(currentUser && currentUser.role === 'superadmin')); // fail-closed pentru [data-super]
       const dashNav = document.getElementById('nav-dashboard');
-      if (dashNav) dashNav.style.display = (currentUser && currentUser.role === 'superadmin') ? '' : 'none';
+      // „Dashboard" nu mai e tabloul platformei (ăla a rămas la fondator, în Business), ci starea
+      // flotei proprii — îl vede orice om logat, iar serverul îi dă doar vehiculele la care are drept.
+      if (dashNav) dashNav.style.display = '';
       document.body.classList.toggle('no-fleet', !can('manageFleet'));
       applyAccessBanner();
       applyAnnouncementBanner();
@@ -18507,8 +18633,10 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { if (window.raxToast) raxToast('Eroare la backup', 'error'); }
       finally { if (btn) { btn.disabled = false; btn.innerHTML = old; } }
     };
+    var _raxDashUnde = 'admin-tab-dashboard';   // unde a fost desenat ultima dată (ca să știm ce reîmprospătăm)
     window.raxLoadDashboard = async function raxLoadDashboard(targetId) {
       if (!(currentUser && currentUser.role === 'superadmin')) return; // STRICT super-admin: dashboard platformă (overview cross-tenant)
+      _raxDashUnde = targetId || _raxDashUnde;
       var box = $(targetId || 'rax-dash-body'); if (!box) return; box.innerHTML = '<div class="rax-co-meta">Se încarcă…</div>';
       try {
         var d = await fetch('/api/admin/overview?days=30', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
@@ -18854,7 +18982,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var j = await fetch('/api/ai/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ key: key }) }).then(function (r) { return r.json(); });
         if (j.error) { msg.style.color = 'var(--red)'; msg.textContent = j.error; return; }
-        aiEnabled = !!j.enabled; raxLoadDashboard('platform-dash-body');
+        aiEnabled = !!j.enabled; raxLoadDashboard(_raxDashUnde);
       } catch (e) { msg.style.color = 'var(--red)'; msg.textContent = 'Eroare: ' + e.message; }
     };
     window.raxSetAiLimit = async function (id, cur) {
@@ -18863,7 +18991,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var j = await fetch('/api/companies/' + id + '/ai-limit', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ limit: (v.trim() === '' ? 0 : parseInt(v)) }) }).then(function (r) { return r.json(); });
         if (j.error) { alert(j.error); return; }
-        raxLoadDashboard('platform-dash-body');
+        raxLoadDashboard(_raxDashUnde);   // reîmprospătează ecranul unde a fost desenat, nu unul care nu mai există
       } catch (e) { alert('Eroare: ' + e.message); }
     };
 
