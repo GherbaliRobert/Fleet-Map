@@ -461,6 +461,50 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Dashboard-ul RA Insight, refăcut pe cartonașe — 12 cifre au devenit 6
+
+*„Dashboard-ul ăsta e greoi de înțeles, îl vreau pe carduri. Cardurile de sus din Utilizare RA Insight
+contopește-le cu ce informații avem în dashboard și să iasă un dashboard frumos, statistic."*
+
+Erau **8 cartonașe sus plus 4 statistici jos** — 12 cifre, unele spuse de două ori („Profit" sus,
+„Marja" jos: aceeași poveste din două părți). Ca să înțelegi una singură, trebuia să te uiți în două
+locuri. Acum sunt **șase cartonașe**, fiecare cu povestea lui întreagă: cifra mare, din ce se
+compune, și ce înseamnă.
+
+**Banii, luna curentă:**
+- **Încasăm** — 79 lei · *5 conturi × 16 lei în medie* · ▲ +11% față de luna trecută
+- **Ne costă** — 1,35 lei · *112 întrebări · 0,01 lei una* · plata către model
+- **Profit** — 78 lei · *marjă 98%* · **din RA Insight, nu din tot RA Tracks**
+
+**Clienții:**
+- **Firme cu RA Insight** — 3 din 4 · *2 îl folosesc* · câte n-au preț pe cont
+- **Conturi de facturat** — 5 · *4 aprinse acum, 1 stins pe parcurs* · un cont aduce 16 lei
+- **Întrebări** — 112 din 200 · *bară de fond* · 88 rămase
+
+**Istoricul a plecat după buton** — și butonul e acum **oprit din start**, cum ai cerut („de
+activare"). Înăuntru: trei cifre mari (Facturat · Intrat în cont · Profit, cu rata de încasare și
+marja), graficul pe luni și tabelul. Alegerea se ține minte.
+
+**Trei lucruri reparate din ce se vedea pe live:**
+
+1. **Nu mai arată patru liniuțe și un profit negativ fără explicație.** Când nicio firmă n-are preț
+   pe cont, scrie tare, sus: *„Nicio firmă nu plătește RA Insight. 47 de întrebări luna asta ne costă
+   0,8 lei, fără niciun venit."* Plus unde se pune prețul. Dacă doar unele n-au preț, o bandă mai
+   blândă spune câte.
+2. **Graficul nu mai e o grilă goală.** Dacă nu există bani de arătat, arată **întrebările pe lună** —
+   tot un istoric e, și tot spune ceva.
+3. **Tendința apare doar când are cu ce compara.** De la zero nu se calculează procent: „+∞%" nu e o
+   informație, e un artefact.
+
+**Ce am lăsat în urmă:** 157 de verificări (de la 124) și 57 pe aplicația pornită. Sabotat în cinci
+feluri — inclusiv ascunzând alerta „nimeni nu plătește" și pornind istoricul din start.
+
+- **Ce am schimbat:** panoul RA Insight e un dashboard pe cartonașe, nu un teanc de cifre.
+- **Ce vede fondatorul:** șase cartonașe care se citesc dintr-o privire; istoricul, la un buton.
+- **Ce vede clientul:** nimic — e un ecran numai al nostru.
+
+---
+
 ### FONDATOR · Buton de istoric · „Profit" pe nume · marginea ruptă de sub cartonașe
 
 Patru lucruri cerute pe rând:

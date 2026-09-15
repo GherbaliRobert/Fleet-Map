@@ -3324,13 +3324,36 @@
 .aiu-ist tfoot td{ border-bottom:0; border-top:2px solid var(--border); font-weight:700; padding-top:9px; }
 /* Luna care încă n-a fost facturată: cifra e estimare, nu bani. Se vede că e altceva. */
 .aiu-ist tr.est td{ background:color-mix(in srgb, var(--orange) 7%, transparent); }
-/* Statisticile: patru cifre pe care le urmărești, nu le calculezi. */
-.aiu-stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:10px 0 14px; }
-.aiu-stat{ border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--bg-panel); }
-.aiu-stat .v{ font-size:19px; font-weight:800; line-height:1.15; }
-.aiu-stat .e{ font-size:11px; font-weight:700; color:var(--text-muted); margin-top:3px; }
-.aiu-stat .n{ font-size:10.5px; color:var(--text-muted); margin-top:2px; opacity:.85; }
-.aiu-graf{ height:230px; margin-bottom:14px; }
+/* Cartonașele mari ale dashboard-ului. Fiecare spune o poveste întreagă: ce e (cap), cât e (val),
+   din ce se compune (sub) și ce înseamnă (jos). Înainte erau 12 cifre împrăștiate în două locuri. */
+.aiu-grup{ font-size:10.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase;
+  letter-spacing:.6px; margin:16px 0 8px; }
+.aiu-grup:first-child{ margin-top:4px; }
+.aiu-kpiuri{ display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:10px; }
+.aiu-kpi{ border:1px solid var(--border); border-radius:14px; padding:13px 15px; background:var(--bg-dark);
+  border-left:3px solid var(--border); }
+.aiu-kpi.ok{ border-left-color:var(--accent); }
+.aiu-kpi.warn{ border-left-color:var(--orange); }
+.aiu-kpi.bad{ border-left-color:var(--red); }
+.aiu-kpi .cap{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; }
+.aiu-kpi .cap i{ margin-right:5px; opacity:.7; }
+.aiu-kpi .val{ font-size:23px; font-weight:800; line-height:1.2; margin-top:5px; }
+.aiu-kpi .val .mic{ font-size:.62em; font-weight:700; color:var(--text-muted); }
+.aiu-kpi.ok .val{ color:var(--accent); }
+.aiu-kpi.bad .val{ color:var(--red); }
+.aiu-kpi .sub{ font-size:12px; color:var(--text-secondary); margin-top:5px; }
+.aiu-kpi .jos{ font-size:11px; color:var(--text-muted); margin-top:5px; padding-top:5px; border-top:1px dashed var(--border); }
+.aiu-fond{ height:6px; border-radius:4px; background:var(--border); overflow:hidden; margin-top:3px; }
+.aiu-fond > div{ height:100%; }
+/* Ce nu e în regulă se spune tare, o dată, sus — nu se caută prin cartonașe. */
+.aiu-alerta{ display:flex; gap:9px; align-items:flex-start; font-size:12.5px; line-height:1.5;
+  border-radius:10px; padding:9px 12px; margin-bottom:8px; }
+.aiu-alerta i{ margin-top:2px; }
+.aiu-alerta.bad{ color:var(--red); background:color-mix(in srgb, var(--red) 8%, transparent);
+  border:1px solid color-mix(in srgb, var(--red) 28%, transparent); }
+.aiu-alerta.warn{ color:var(--orange); background:color-mix(in srgb, var(--orange) 8%, transparent);
+  border:1px solid color-mix(in srgb, var(--orange) 28%, transparent); }
+.aiu-graf{ height:230px; margin:14px 0; }
 @media (max-width:640px){ .aiu-graf{ height:190px; } }
 @media (max-width:640px){
   .aiu-cap{ flex-wrap:wrap; }

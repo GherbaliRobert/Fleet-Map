@@ -112,7 +112,7 @@ const fereastra = {
   _raxNrI: function (n) { n = Number(n) || 0; var x = Math.abs(n) % 100; return n === 1 ? '1 întrebare' : n + ((x === 0 && n) || x >= 20 ? ' de ' : ' ') + 'întrebări'; }
 };
 const gata = new Function('window', 'document', 'esc',
-  bucataPanou + '\n; return { card: _aiuCard, stare: _aiuStare, socoteala: _aiuSocoteala, lei: _aiuLei, istoric: _aiuIstoric, luna: _aiuLunaNume, stat: _aiuStatistici, rgba: _aiuRgba };')(
+  bucataPanou + '\n; return { card: _aiuCard, stare: _aiuStare, socoteala: _aiuSocoteala, lei: _aiuLei, istoric: _aiuIstoric, luna: _aiuLunaNume, stat: _aiuStatistici, rgba: _aiuRgba, kpi: _aiuKpiuri, alerte: _aiuAvertismente, tend: _aiuTendinta };')(
   fereastra, { getElementById: function () { return null; }, querySelector: function () { return null; }, querySelectorAll: function () { return []; } },
   function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); });
 
@@ -242,10 +242,10 @@ T('alegerea se ține minte pe calculatorul ăsta', /localStorage\.setItem\('raAi
 T('oprit, graficul nici nu se mai desenează', /if \(pornit\) \{ try \{ _aiuDeseneaza/.test(html));
 T('la deschiderea panoului se aplică alegerea de data trecută', /raxAiIstoric\(_aiuIstoricPornit\(\)\)/.test(html));
 T('cartonașul firmei arată ce i-am facturat', /Ce am facturat pe RA Insight/.test(html));
-T('sus apar și facturatul, și cât a intrat', /Facturat pe RA Insight/.test(html) && /Intrat în cont/.test(html));
+T('sus apar și facturatul, și cât a intrat', /cap: 'Facturat'/.test(html) && /cap: 'Intrat în cont'/.test(html));
 T('cifra de încasări își spune rostul, nu „încasat tot"', /încă neplătiți de clienți/.test(html) && /tot ce am facturat a fost plătit/.test(html));
-T('profitul e numit profit', /card\('Profit'/.test(html));
-T('și e limpede că e profitul din RA Insight, nu al firmei', /din RA Insight, luna curentă/.test(html));
+T('profitul e numit profit', /cap: 'Profit'/.test(html));
+T('și e limpede că e profitul din RA Insight, nu al firmei', /din RA Insight, nu din tot RA Tracks/.test(html));
 
 sect('11. Dashboard: statistici și luna curentă, estimată');
 const M = (luna, o) => Object.assign({ luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 }, o);
@@ -285,8 +285,8 @@ const cuGrafic = gata.istoric([
 ], 5);
 delete fereastra.Chart;
 T('dashboard-ul are și grafic, nu doar tabel', /aiu-graf/.test(cuGrafic) && /id="aiu-canvas"/.test(cuGrafic));
-T('și cele patru statistici', /Față de luna trecută/.test(cuEstimare) && /Rată de încasare/.test(cuEstimare)
-  && /Marja noastră/.test(cuEstimare) && /Un cont aduce/.test(cuEstimare));
+T('istoricul are cele trei cifre mari ale lui', /Facturat/.test(cuEstimare) && /Intrat în cont/.test(cuEstimare)
+  && /Profit/.test(cuEstimare) && /rată de încasare/.test(cuEstimare));
 const golDash = gata.istoric([M(cheieLuna(0), {})], 5);
 T('gol, dar explicat: se umple singur', /Se umple singur/.test(golDash) && /luna curentă<\/b> apare imediat/.test(golDash));
 
@@ -296,7 +296,63 @@ T('fără bibliotecă de grafice, desenul e sărit', /typeof window\.Chart === '
 T('graficele scriu cu Nunito, ca tot restul', /Chart\.defaults\.font\.family\s*=\s*"'Nunito'/.test(html));
 T('culoarea se traduce corect pentru pânză', gata.rgba('#3fe07d', .3) === 'rgba(63,224,125,0.3)', gata.rgba('#3fe07d', .3));
 T('și dacă tema dă o culoare pe care n-o știm, nu crapă', /^rgba\(/.test(gata.rgba('cine-stie', .3)), gata.rgba('cine-stie', .3));
-['.aiu-stats', '.aiu-stat', '.aiu-graf', '.aiu-ist tr.est'].forEach(function (s) { T('există stilul ' + s, css.indexOf(s) > 0); });
+['.aiu-kpiuri', '.aiu-kpi', '.aiu-grup', '.aiu-alerta', '.aiu-fond', '.aiu-graf', '.aiu-ist tr.est'].forEach(function (s) { T('există stilul ' + s, css.indexOf(s) > 0); });
+
+sect('12. Cele șase cartonașe ale dashboard-ului');
+const F = (o) => Object.assign({ id: 1, name: 'F', enabled: true, conturi: 3, deFacturat: 3, peCont: 50,
+  pretCont: 15, fond: 150, used: 60, venitLei: 45, costEur: 0.2, oameni: [] }, o);
+const SUM = (o) => Object.assign({ companies: 4, withFeature: 3, active: 2, conturi: 5, fond: 200,
+  totalCalls: 112, epuizate: 0, totalCostEur: 0.27, totalVenitLei: 79 }, o);
+const ISTOR = [M(cheieLuna(1), { facturatLei: 64, incasatLei: 64, costEur: 0.5, conturi: 4 }),
+               M(cheieLuna(0), { intrebari: 112, costEur: 0.27, estimatLei: 79 })];
+let K = gata.kpi(SUM(), [F({ conturi: 3 }), F({ id: 2, conturi: 0, pretCont: 15 })], ISTOR, 5);
+T('sunt exact șase cartonașe', (K.match(/class="aiu-kpi[ "]/g) || []).length === 6, String((K.match(/class="aiu-kpi[ "]/g) || []).length));
+T('grupate în „banii" și „clienții"', /Banii, luna curentă/.test(K) && /Clienții/.test(K));
+T('„Încasăm" arată suma în două monede', /Încasăm[\s\S]{0,260}79 lei[\s\S]{0,80}\(16 €\)/.test(K), K.slice(K.indexOf('Încasăm'), K.indexOf('Încasăm') + 300));
+T('și din câte conturi vine', /5 conturi × 16 lei în medie/.test(K));
+T('„Ne costă" spune și cât e o întrebare', /Ne costă/.test(K) && /112 întrebări/.test(K) && /lei una/.test(K),
+  K.slice(K.indexOf('Ne costă'), K.indexOf('Ne costă') + 330));
+T('„Profit" arată marja', /Profit/.test(K) && /marjă 98%/.test(K), (K.match(/marjă \d+%/) || [''])[0]);
+T('și spune că e doar din RA Insight', /din RA Insight, nu din tot RA Tracks/.test(K));
+T('„Firme" arată câte din câte', /3 <span class="mic">din 4<\/span>/.test(K));
+T('„Conturi de facturat" spune și câte sunt aprinse acum', /3 aprinse acum/.test(K) && /2 stinse pe parcurs/.test(K));
+T('și acordă numărul cum trebuie la unul singur',
+  /1 aprins acum · 1 stins pe parcurs/.test(gata.kpi(SUM({ conturi: 2 }), [F({ conturi: 1 })], [], 5)),
+  (gata.kpi(SUM({ conturi: 2 }), [F({ conturi: 1 })], [], 5).match(/\d+ aprins[^<]*/) || [''])[0]);
+T('„Întrebări" are bara de fond și câte au rămas', /aiu-fond/.test(K) && /88 rămase din fondul lunii/.test(K));
+T('tendința față de luna trecută apare pe „Încasăm"', /▲ \+23%/.test(K), (K.match(/[▲▼] [+-]?\d+%/) || [''])[0]);
+
+// fără venit: profitul nu mai e o cifră seacă, ci o explicație
+K = gata.kpi(SUM({ totalVenitLei: 0, conturi: 0, fond: 0 }), [F({ pretCont: 0, venitLei: 0 })], [], 5);
+T('fără venit, profitul spune de ce', /încă nu facturăm RA Insight nimănui/.test(K));
+T('fără fond, nu inventăm o bară', !/aiu-fond/.test(K) && /fără fond stabilit/.test(K));
+T('fără lună anterioară, nicio săgeată', !/[▲▼]/.test(K));
+
+sect('13. Ce nu e în regulă se spune tare, sus');
+let A = gata.alerte(SUM({ totalCalls: 47, totalCostEur: 0.16 }), [F({ pretCont: 0 }), F({ id: 2, pretCont: 0 })]);
+T('nimeni nu plătește → se scrie răspicat', /Nicio firmă nu plătește RA Insight/.test(A));
+T('și se spune cât ne costă degeaba', /47 de întrebări/.test(A) && /0\.8 lei/.test(A), A.slice(0, 220));
+T('și unde se pune prețul', /Conturi &amp; Abonamente/.test(A));
+A = gata.alerte(SUM(), [F({ pretCont: 15 }), F({ id: 2, pretCont: 0 })]);
+T('doar unele fără preț → altă alertă, mai blândă', /1 firmă are RA Insight fără preț pe cont/.test(A) && !/Nicio firmă nu plătește/.test(A));
+A = gata.alerte(SUM({ epuizate: 2 }), [F({ pretCont: 15 })]);
+T('firmele cu fondul terminat sunt strigate', /2 firme și-au terminat/.test(A));
+T('când e totul în regulă, nu apare nicio bandă', gata.alerte(SUM(), [F({ pretCont: 15 })]) === '');
+
+sect('14. Tendința');
+T('crește', gata.tend([M(cheieLuna(1), { facturatLei: 100 }), M(cheieLuna(0), { facturatLei: 150 })]).pct === 50);
+T('scade', gata.tend([M(cheieLuna(1), { facturatLei: 100 }), M(cheieLuna(0), { facturatLei: 60 })]).pct === -40);
+T('luna curentă estimată e marcată ca atare', gata.tend([M(cheieLuna(1), { facturatLei: 100 }), M(cheieLuna(0), { estimatLei: 120 })]).estimat === true);
+T('de la zero nu se calculează procent', gata.tend([M(cheieLuna(1), {}), M(cheieLuna(0), { facturatLei: 50 })]) === null);
+T('cu o singură lună, nici atât', gata.tend([M(cheieLuna(0), { facturatLei: 50 })]) === null);
+
+sect('15. Graficul cade pe întrebări când n-avem bani');
+T('știe să deseneze și doar întrebările', /Întrebări pe lună — bani n-avem încă de arătat/.test(bucataPanou));
+T('alege singur, după ce există în luni', /var areBani = l\.some/.test(bucataPanou));
+
+sect('16. Istoricul e OPRIT din start — buton de activare');
+T('implicit oprit', /localStorage\.getItem\('raAiuIstoric'\) === '1'/.test(bucataPanou));
+T('dar alegerea se ține minte', /localStorage\.setItem\('raAiuIstoric'/.test(bucataPanou));
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
