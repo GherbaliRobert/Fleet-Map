@@ -161,12 +161,21 @@ const FEATURE_KEYS = ['agents', 'ai_assistant', 'etransport', 'tahograf', 'etoll
 // fișierului .DDD răspunde 501, iar costurile de drum vin dintr-un generator pseudo-aleator semănat din IMEI.
 // NU se mai activează singure pe niciun plan plătit — un client care plătește nu trebuie să dea peste date
 // fabricate crezând că sunt reale. Le pornește super-adminul, deliberat, per companie, pentru demonstrații.
+// ATENȚIE la `agents`: cei 6 agenți AI sunt GRATUIȚI și fac parte din produs — merg pe reguli fixe,
+// nu consumă tokeni și sunt scoși din calculatorul de ofertă (vezi CLAUDE.md). Nu-i vindem, deci
+// n-au ce căuta într-un tabel de planuri: RA Tracks nu funcționează pe planuri, ci pe OFERTE, iar
+// fiecare firmă nouă pică implicit pe „standard" (= start). Înainte, asta însemna că agenții porneau
+// OPRIȚI la orice client deschis, pentru o funcție pe care nici măcar n-o taxăm — iar traseul de
+// deschidere a clientului nu-i atingea deloc. Acum pornesc APRINȘI peste tot; comutatorul per firmă
+// (Administrare → Configurează) rămâne, dar ca să-i OPREASCĂ, nu ca să-i pornească.
+// `ai_assistant`, `tahograf`, `etransport` și `etoll` rămân oprite: pe alea chiar le vindem, iar oferta
+// le aprinde pe firma care le-a cumpărat.
 const FEATURE_DEFAULTS_BY_PLAN = {
-  start:      { agents: false, ai_assistant: false, etransport: false, tahograf: false, etoll: false },
-  pro:        { agents: false, ai_assistant: false, etransport: false, tahograf: false, etoll: false },
-  premium:    { agents: true,  ai_assistant: true,  etransport: false, tahograf: false, etoll: false },
-  enterprise: { agents: true,  ai_assistant: true,  etransport: false, tahograf: false, etoll: false },
-  custom:     { agents: true,  ai_assistant: true,  etransport: false, tahograf: false, etoll: false }
+  start:      { agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false },
+  pro:        { agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false },
+  premium:    { agents: true, ai_assistant: true,  etransport: false, tahograf: false, etoll: false },
+  enterprise: { agents: true, ai_assistant: true,  etransport: false, tahograf: false, etoll: false },
+  custom:     { agents: true, ai_assistant: true,  etransport: false, tahograf: false, etoll: false }
 };
 function featuresFor(company) {
   const settings = (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {};
@@ -180,9 +189,11 @@ function featuresFor(company) {
 
 // Agenți AI per plan (default; override per-companie via companies.settings.enabled_agents)
 const ALL_AGENT_KEYS = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
+// Toți agenții, la toate firmele — din același motiv: sunt gratuiți și fac parte din produs.
+// Cine vrea altfel pe o firmă anume pune `settings.enabled_agents` (override per companie).
 const AGENTS_BY_PLAN = {
-  start: [],
-  pro: ['watch', 'dispatch'],
+  start: ALL_AGENT_KEYS.slice(),
+  pro: ALL_AGENT_KEYS.slice(),
   premium: ALL_AGENT_KEYS.slice(),
   enterprise: ALL_AGENT_KEYS.slice(),
   custom: ALL_AGENT_KEYS.slice()

@@ -945,12 +945,14 @@
         <!-- Constatări agenți AI -->
         <div id="dash-agents-wrap" style="margin-bottom:16px;display:none;">
           <div class="chart-section-title" style="display:flex;justify-content:space-between;align-items:center;">
-            <span><i class="fas fa-robot" style="color:var(--accent);margin-right:6px;"></i>Constatări agenți AI</span>
-            <span style="display:flex;gap:6px;">
+            <span><i class="fas fa-robot" style="color:var(--accent);margin-right:6px;"></i>Agenții AI veghează flota</span>
+            <span style="display:flex;gap:6px;align-items:center;">
+              <span id="dash-agents-cand" style="font-size:10.5px;color:var(--text-muted);font-weight:500;"></span>
               <button class="btn-sm" onclick="showView('agenti')" style="font-size:11px;">Vezi toate</button>
             </span>
           </div>
           <div id="dash-agents" class="fd-lista"></div>
+          <div id="dash-agents-veghe" style="margin-top:10px;"></div>
         </div>
 
         <!-- Top vehicule (progress bars) -->
@@ -16799,20 +16801,58 @@ const pozitii = await r.json();</code></pre>
 
         // Render charts DUPA ce content-ul e vizibil (canvas-urile au dimensiuni corecte)
         setTimeout(function() { renderDashboardCharts(d); }, 50);
-        renderDashAgents();
+        renderDashAgents(d.totalDevices || 0);
       } catch (err) {
         document.getElementById('dash-loading').innerHTML = '<div style="color:var(--red);">Eroare: ' + err.message + '</div>';
       }
     }
 
     // ─── Constatări agenți AI pe dashboard ───
-    async function renderDashAgents() {
+    async function renderDashAgents(nrVehicule) {
       var wrap = document.getElementById('dash-agents-wrap'), box = document.getElementById('dash-agents');
       if (!wrap || !box) return;
+      // ─── începe „Ce veghează agenții" ──────────────────────────────────────────────────────────
+      // Secțiunea asta DISPĂREA complet când nu era nicio constatare. Adică nu puteai deosebi
+      // „flota e curată" de „funcția nu există" — și, cum agenții porneau opriți pe planul implicit,
+      // clientul nu vedea niciodată nimic aici și nu avea de unde să știe că are șase agenți.
+      // Acum are trei stări, și în toate spune CE veghează și CÂND a verificat ultima dată.
+      var veghe = document.getElementById('dash-agents-veghe'), cand = document.getElementById('dash-agents-cand');
       try {
-        var list = await fetch('/api/agents/findings' + window.superCompanyQS('?'), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; });
+        var qs = window.superCompanyQS('?');
+        var list = await fetch('/api/agents/findings' + qs, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; });
+        var stare = await fetch('/api/agents' + qs, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+        var activi = (stare && Array.isArray(stare.agents)) ? stare.agents : [];
         var nw = (Array.isArray(list) ? list : []).filter(function (f) { return f.status === 'new'; });
-        if (!nw.length) { wrap.style.display = 'none'; return; }
+        var xv = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        wrap.style.display = 'block';
+        if (cand) {
+          cand.textContent = (stare && stare.auto === false) ? 'verificarea automată e oprită din Setări'
+            : (stare && stare.lastRun ? 'ultima verificare: ' + new Date(Number(stare.lastRun) || stare.lastRun).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+               : 'verifică din oră în oră');
+        }
+        // Ce veghează: numele agentului + ce se uită, în cuvintele lui. Sursa e AGP_META.
+        var meta0 = (window.AGP_META || {});
+        var listaVeghe = activi.length
+          ? '<div class="fd-veghe"><div class="cap"><i class="fas fa-eye"></i> Ce urmăresc, non-stop pe ' + (Number(nrVehicule) || 0) + (Number(nrVehicule) === 1 ? ' vehicul' : ' vehicule') + '</div>'
+            + activi.map(function (a) {
+                var m = meta0[a.key] || {};
+                return '<div class="r"><i class="fas ' + (m.icon || 'fa-robot') + '"></i><span><b>' + xv(m.name || a.name) + '</b> — '
+                  + xv(m.checks || m.desc || a.desc || '') + '</span></div>';
+              }).join('') + '</div>'
+          : '<div class="fd-liniste" style="color:var(--orange);background:color-mix(in srgb, var(--orange) 8%, transparent);border-color:color-mix(in srgb, var(--orange) 26%, transparent);">'
+            + '<i class="fas fa-circle-exclamation"></i> Agenții AI sunt opriți pentru firma asta.'
+            + (currentUser && currentUser.role === 'superadmin'
+                ? ' <a href="#" onclick="event.preventDefault();showView(\'administrare\');" style="color:inherit;text-decoration:underline;">Îi pornești din Administrare → Companii → Configurează.</a>' : '')
+            + '</div>';
+        if (!nw.length) {
+          box.innerHTML = activi.length
+            ? '<div class="fd-liniste"><i class="fas fa-circle-check"></i> Nimic de rezolvat. Agenții au verificat și n-au găsit probleme.</div>'
+            : '';
+          if (veghe) veghe.innerHTML = listaVeghe;
+          return;
+        }
+        if (veghe) veghe.innerHTML = listaVeghe;
+        // ─── sfârșit „Ce veghează agenții" ──
         // ─── începe „Constatările, strânse pe categorii" ──────────────────────────────────────────
         // Erau șase rânduri separate, fiecare cu titlul lui, și niciunul nu ducea nicăieri. Șase
         // titluri aproape identice („Camion A n-a transmis", „Camion B n-a transmis"…) sunt mai

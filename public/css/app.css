@@ -3375,6 +3375,16 @@
 .fd-rand .t small{ font-size:11.5px; color:var(--text-muted); }
 .fd-rand .sag{ font-size:11px; opacity:.4; }
 .fd-rand:hover .sag{ opacity:1; color:var(--accent); }
+/* „Ce urmăresc" — lista agenților activi, cu ce se uită fiecare. Stă sub constatări și e acolo și
+   când nu s-a găsit nimic: altfel omul nu are de unde ști că are șase agenți care îi păzesc flota. */
+.fd-veghe{ border:1px dashed var(--border); border-radius:12px; padding:11px 14px; background:var(--bg-dark); }
+.fd-veghe .cap{ font-size:10.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase;
+  letter-spacing:.4px; margin-bottom:7px; }
+.fd-veghe .cap i{ color:var(--accent); margin-right:5px; }
+.fd-veghe .r{ display:flex; gap:9px; align-items:baseline; font-size:12px; line-height:1.5; padding:3px 0;
+  color:var(--text-secondary); }
+.fd-veghe .r i{ width:16px; text-align:center; color:var(--accent); opacity:.8; font-size:11px; flex:none; }
+.fd-veghe .r b{ color:var(--text-primary); }
 .fd-liniste{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--accent);
   background:color-mix(in srgb, var(--accent) 8%, transparent);
   border:1px solid color-mix(in srgb, var(--accent) 26%, transparent);

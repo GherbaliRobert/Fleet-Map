@@ -461,6 +461,52 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Agenții AI pornesc activi la toate firmele · și se vede ce veghează
+
+*„Iar ajungem aici? Ți-am mai zis că noi nu funcționăm pe planuri, ci pe oferte."*
+
+Avea dreptate, și găsise o gaură reală, nu o chestiune de gust.
+
+**Ce era stricat.** Cei 6 agenți AI sunt **gratuiți** — merg pe reguli fixe, nu consumă tokeni și
+sunt scoși din calculatorul de ofertă. Dar dacă erau porniți sau nu se hotăra dintr-un **tabel de
+planuri**, iar fiecare firmă nouă pică implicit pe „standard" (= *start*), unde scria negru pe alb
+`agents: false`. Rezultatul: **niciun client deschis de noi n-avea agenți**, pentru o funcție pe care
+nici măcar n-o taxăm. Am verificat și traseul de deschidere a clientului: când se aplică oferta pe
+firmă, codul aprinde RA Insight și cota de întrebări, dar **nu atinge agenții deloc**. Deci nici pe
+drumul corect nu se aprindeau. Exista un comutator manual, per firmă, dar nimeni n-avea de unde să
+știe că trebuie apăsat.
+
+**Ce am schimbat.** Agenții pornesc **activi la toate firmele**, indiferent de plan — fiindcă
+planurile nu sunt modelul nostru. Comutatorul per firmă rămâne, dar ca să-i **oprească**, nu ca să-i
+pornească. Ce se **vinde** (RA Insight, tahograf, e-Transport, e-Toll) rămâne oprit până îl aprinde
+oferta — altfel am da module cu plată pe gratis.
+
+**Două lucruri pe care le-am spus greșit și le corectez aici:** agenții **chiar rulează**, din oră în
+oră (prima verificare la un minut după pornirea serverului) — workerul doar sărea peste firmele fără
+niciun agent activ. Și soluția **nu** era „pune firma pe premium", cum am zis: exact asta e problema.
+
+**Secțiunea din „Statistici flotă" nu mai dispare.** Se numește acum **„Agenții AI veghează flota"**
+și are trei stări:
+
+- **au găsit ceva** → rândurile grupate pe categorii, fiecare ducând în „Agenți AI";
+- **au verificat și n-au găsit nimic** → *„Nimic de rezolvat. Agenții au verificat și n-au găsit
+  probleme."* — plus, dedesubt, **ce urmăresc**: fiecare agent cu ce se uită, pe câte vehicule
+  (*„RA Watch — fiecare vehicul pentru semnal, ralanti prelungit, scădere și furt de combustibil…"*);
+- **sunt opriți pe firma aia** → o spune pe față, iar fondatorului îi arată și de unde-i pornește.
+
+În capul secțiunii scrie și **când a fost ultima verificare** (sau „verifică din oră în oră", sau că
+verificarea automată e oprită din Setări). Textele agenților vin din `AGP_META` — sursa unică.
+
+**Ce am lăsat în urmă:** 61 de verificări în `verify_statistici_flota.js` (de la 36) — inclusiv că
+agenții sunt porniți pe **orice** plan, că modulele cu plată rămân oprite, și că secțiunea nu se mai
+poate ascunde. Plus 22 pe aplicația pornită. Sabotat în patru feluri.
+
+- **Ce am schimbat:** agenții nu mai depind de un tabel de planuri pe care nu-l folosim.
+- **Ce vede fondatorul:** la orice client deschis, agenții lucrează din prima zi.
+- **Ce vede clientul:** scrie negru pe alb ce veghează pentru el, non-stop, și când a verificat ultima dată.
+
+---
+
 ### CLIENT · Un singur ecran de flotă: „Statistici flotă"
 
 *„Dashboard și Statistici, din verticala partener, nu sunt la fel? Ce avem în statistici… găsim și

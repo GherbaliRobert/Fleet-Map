@@ -89,6 +89,42 @@ console.log('\n6. Cele șase cifre mari');
 T('rândul de cartonașe se așază singur (nu forțat pe 4 coloane)',
   /id="dash-hero"[^>]*repeat\(auto-fit,minmax\(190px/.test(html));
 
+console.log('\n7. Agenții: gratuiți, deci activi la toate firmele');
+// RA Tracks nu vinde pe planuri, ci pe OFERTE. Agenții sunt gratuiți (reguli fixe, zero tokeni) și
+// sunt scoși din calculatorul de ofertă — deci n-au ce căuta într-un tabel de planuri. Înainte,
+// fiecare firmă nouă pica pe „standard" (= start), unde scria `agents: false`: clientul nu-i avea,
+// iar traseul de deschidere nu-i atingea deloc.
+const plans = require('./plans.js');
+['standard', 'start', 'pro', 'premium', 'enterprise', 'custom', undefined].forEach(function (pl) {
+  const f = plans.featuresFor({ plan: pl });
+  T('agenții sunt porniți pe „' + (pl || 'fără plan') + '"', f.agents === true, JSON.stringify(f));
+});
+T('și sunt toți șase, nu o parte', plans.enabledAgentsFor({ plan: 'standard' }).length === 6,
+  JSON.stringify(plans.enabledAgentsFor({ plan: 'standard' })));
+T('comutatorul per firmă poate să-i OPREASCĂ',
+  plans.featuresFor({ plan: 'standard', settings: { features: { agents: false } } }).agents === false);
+T('și poate alege doar o parte din ei',
+  plans.enabledAgentsFor({ plan: 'standard', settings: { enabled_agents: ['watch'] } }).join() === 'watch');
+// Ce se VINDE rămâne oprit până îl aprinde oferta — altfel am da pe gratis module cu plată.
+['ai_assistant', 'tahograf', 'etransport', 'etoll'].forEach(function (k) {
+  T('„' + k + '" rămâne oprit implicit (se vinde)', plans.featuresFor({ plan: 'standard' })[k] === false);
+});
+
+console.log('\n8. Secțiunea agenților nu mai dispare');
+const ag = taie(html, '// ─── începe „Ce veghează agenții"', '// ─── sfârșit „Ce veghează agenții" ──');
+T('se arată întotdeauna', /wrap\.style\.display = 'block';/.test(ag) && !/if \(!nw\.length\) \{ wrap\.style\.display = 'none'/.test(html));
+T('întreabă și ce agenți sunt activi', /fetch\('\/api\/agents'/.test(ag));
+T('spune că veghează flota', /Agenții AI veghează flota/.test(html));
+T('spune când a fost ultima verificare', /ultima verificare/.test(ag) && /din oră în oră/.test(ag));
+T('și dacă verificarea automată e oprită din Setări', /verificarea automată e oprită din Setări/.test(ag));
+T('când n-a găsit nimic, o spune', /Nimic de rezolvat\. Agenții au verificat/.test(ag));
+T('listează CE urmăresc, pe câte vehicule', /Ce urmăresc, non-stop pe/.test(ag) && /nrVehicule/.test(ag));
+T('textul fiecărui agent vine din AGP_META (`checks`), nu scris de mână', /m\.checks \|\| m\.desc/.test(ag));
+T('dacă sunt opriți pe firma aia, o spune', /Agenții AI sunt opriți pentru firma asta/.test(ag));
+T('iar fondatorului îi arată și de unde-i pornește',
+  /role === 'superadmin'[\s\S]{0,200}Administrare → Companii → Configurează/.test(ag));
+T('are stil propriu, nu inventat pe loc', css.indexOf('.fd-veghe') > 0 && /class="fd-veghe"/.test(ag));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);
