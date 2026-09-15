@@ -2963,6 +2963,63 @@ async function getAiMonthUsageByUser(companyId, kinds) {
       GROUP BY user_id`, [companyId != null ? companyId : null, k]);
   return r.rows;
 }
+// ─── Lista de companii: două cifre pe care fondatorul le caută cu ochii ─────────────────────────
+// Când a mai transmis ceva firma asta (orice vehicul al ei) și cine e omul de contact. Amândouă
+// dintr-o singură interogare pentru TOATE firmele — altfel lista de 60 de clienți ar face 120 de
+// întrebări la bază la fiecare deschidere.
+async function lastActivityByCompany() {
+  const r = await pool.query(
+    `SELECT company_id, MAX(last_seen) AS ultima
+       FROM devices
+      WHERE company_id IS NOT NULL AND COALESCE(status,'') <> 'archived'
+      GROUP BY company_id`);
+  const out = {};
+  r.rows.forEach(function (x) { if (x.company_id != null) out[x.company_id] = x.ultima ? new Date(x.ultima).getTime() : null; });
+  return out;
+}
+// Administratorul fiecărei firme — numele, emailul și telefonul lui intră în căutare: când sună un
+// client, ai în mână un telefon sau un email, nu numele exact din sistem.
+async function companyAdmins() {
+  const r = await pool.query(
+    `SELECT DISTINCT ON (company_id) company_id, full_name, username, email, phone
+       FROM users
+      WHERE company_id IS NOT NULL AND role IN ('company_admin','admin') AND active IS NOT false
+      ORDER BY company_id, id`);
+  const out = {};
+  r.rows.forEach(function (u) {
+    out[u.company_id] = { nume: u.full_name || u.username || null, email: u.email || u.username || null, telefon: u.phone || null };
+  });
+  return out;
+}
+// Ce trebuie ca să știm dacă un vehicul are CAN/FMS, fără să tragem tot ce e pe el: interfața, dacă
+// are semnale CAN reținute, și NUMELE cheilor din ultima poziție (nu și valorile — sunt zeci de
+// câmpuri pe care nu-i nevoie să le cărăm). Clasificarea rămâne în server.js, într-un singur loc:
+// aici doar aducem materia primă, ca prețul lunar de pe listă să iasă EXACT ca cel de pe factură.
+async function deviceCanBits() {
+  const r = await pool.query(
+    `SELECT d.company_id, d.can_interface,
+            (d.last_can IS NOT NULL AND d.last_can::text <> '{}') AS are_can,
+            COALESCE(p.io_keys, '[]'::jsonb) AS io_keys
+       FROM devices d
+       LEFT JOIN LATERAL (
+         SELECT (SELECT COALESCE(jsonb_agg(k), '[]'::jsonb)
+                   FROM jsonb_object_keys(COALESCE(io_data, '{}'::jsonb)) AS k) AS io_keys
+           FROM positions WHERE positions.imei = d.imei ORDER BY timestamp DESC LIMIT 1
+       ) p ON true
+      WHERE d.company_id IS NOT NULL AND COALESCE(d.status,'') <> 'archived'`);
+  return r.rows;
+}
+// Câte conturi de RA Insight are aprinse fiecare firmă (doar oameni activi) — pentru venitul lunar.
+async function aiSeatsByCompany() {
+  const r = await pool.query(
+    `SELECT company_id, COUNT(*)::int AS n
+       FROM users
+      WHERE company_id IS NOT NULL AND ai_seat = true AND active IS NOT false
+      GROUP BY company_id`);
+  const out = {};
+  r.rows.forEach(function (x) { out[x.company_id] = Number(x.n) || 0; });
+  return out;
+}
 // Consumul RA Insight LUNĂ DE LUNĂ (toate firmele), pentru istoricul din panoul fondatorului.
 // `dela` = momentul de la care începem (epoch ms sau Date). Luna e cheia „AAAA-LL", în UTC — aceeași
 // convenție ca vârful de conturi, ca să nu iasă două adevăruri pe granița lunii.
@@ -4396,7 +4453,7 @@ module.exports = {
   recordAiUsage, getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
-  getAiUsageByMonth, getInvoicesSince,
+  getAiUsageByMonth, getInvoicesSince, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
   setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,

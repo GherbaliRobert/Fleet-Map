@@ -4266,6 +4266,11 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
     // Facturile neachitate ale TUTUROR firmelor, dintr-o singură interogare: fiecare rând trebuie
     // să poată spune dacă e restanță și în câte zile se taie accesul.
     let facturi = {}; try { facturi = await db.facturiNeachitateToate(); } catch (e) { facturi = {}; }
+    // Când a mai transmis firma ceva și cine e omul de contact — două interogări în plus pentru
+    // TOATĂ lista, nu una pe firmă. Prima e pentru coloana „Ultima activitate" (clientul care se
+    // stinge se vede din timp), a doua pentru căutare: după telefon, email sau numele adminului.
+    let activitate = {}; try { activitate = await db.lastActivityByCompany(); } catch (e) { activitate = {}; }
+    let admini = {}; try { admini = await db.companyAdmins(); } catch (e) { admini = {}; }
     const acum = Date.now();
     res.json(list.map(function (c) {
       const contract = dos[c.id] || null;
@@ -4280,12 +4285,156 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
         access: acc,
         neplata: np.faza === 'ok' ? null : np,
         dosar: contracte.stareDosar(c, contract, Date.now()),
-        contract: contract ? { id: contract.id, number: contract.number, status: contract.status, end_at: contract.end_at } : null
+        contract: contract ? { id: contract.id, number: contract.number, status: contract.status, end_at: contract.end_at } : null,
+        ultimaActivitate: activitate[c.id] || null,
+        admin: admini[c.id] || null
       });
     }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── începe „Venitul lunar pe firmă" ──────────────────────────────────────────────────────────────
+// „Cât facturez lunar firmei ăsteia" e cifra după care se conduce afacerea, și nu se vedea nicăieri:
+// coloana „Plăți" arăta cât s-a încasat DE LA ÎNCEPUT. Aici o socotim cu ACELAȘI motor de preț care
+// face factura (`plans.computeCompanyPrice` + conturile de RA Insight) — dacă ecranul ar socoti
+// altfel decât factura, am afla de la client, nu de la noi.
+//
+// Funcție CURATĂ (fără bază, fără await): primește firma, vehiculele ei clasificate și conturile
+// de RA Insight, întoarce suma lunară. Se poate proba cu cifre inventate.
+//   c        = firma
+//   nrCan    = { none, can, fms } — câte vehicule din fiecare fel
+//   conturi  = câte conturi de RA Insight are aprinse
+function _venitLunar(c, nrCan, conturi) {
+  const feats = plans ? plans.featuresFor(c) : {};
+  const p = plans ? plans.computeCompanyPrice(c, nrCan, { features: feats }) : { monthlyTotal: 0 };
+  let lei = Number(p.monthlyTotal) || 0;
+  // RA Insight se facturează pe cont, separat de abonamentul de vehicule. Se ia câte conturi a avut
+  // CEL MULT luna asta — aceeași regulă ca pe factură.
+  const q = _aiQuotaFromSettings(c && c.settings);
+  const nConturi = Math.max(Number(conturi) || 0, _seatsPeakLuna(c));
+  if (q.seatPriceRON > 0 && nConturi > 0) lei += nConturi * q.seatPriceRON;
+  return Math.round(lei * 100) / 100;
+}
+// ── sfârșit „Venitul lunar pe firmă" ──
+// Cifrele de bani ale listei de companii, aduse separat: lista se deschide pe loc, iar coloana
+// „Lunar" și totalul apar o clipă mai târziu. Altfel o listă de 60 de clienți ar aștepta după o
+// socoteală care se uită la toate vehiculele din platformă.
+let _mrrCache = { la: 0, date: null };
+async function _venitLunarToate(lista) {
+  const [list, bits, seats] = await Promise.all([
+    lista ? Promise.resolve(lista) : db.getCompanies(), db.deviceCanBits(), db.aiSeatsByCompany()
+  ]);
+  const peFirma = {};
+  (bits || []).forEach(function (b) {
+    const chei = Array.isArray(b.io_keys) ? b.io_keys : (function () { try { return JSON.parse(b.io_keys || '[]'); } catch (e) { return []; } })();
+    const io = {}; chei.forEach(function (k) { io[k] = 1; });
+    // Clasificatorul ADEVĂRAT, același cu cel de pe factură.
+    const fel = classifyDeviceCan({ can_interface: b.can_interface, io: io, last_can: b.are_can ? { x: 1 } : null });
+    const n = peFirma[b.company_id] || (peFirma[b.company_id] = { none: 0, can: 0, fms: 0 });
+    n[fel] += 1;
+  });
+  const out = { firme: {}, totalLei: 0 };
+  (list || []).filter(function (c) { return !c.is_demo; }).forEach(function (c) {
+    const lei = _venitLunar(c, peFirma[c.id] || { none: 0, can: 0, fms: 0 }, seats[c.id] || 0);
+    out.firme[c.id] = lei;
+    out.totalLei += lei;
+  });
+  out.totalLei = Math.round(out.totalLei * 100) / 100;
+  return out;
+}
+app.get('/api/companies/mrr', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (_mrrCache.date && (Date.now() - _mrrCache.la) < 60000) return res.json(_mrrCache.date);
+    const out = await _venitLunarToate(null);
+    _mrrCache = { la: Date.now(), date: out };
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ── începe „Lista de clienți, pe hârtie" ─────────────────────────────────────────────────────────
+// Exportul listei de companii. Două lucruri gândite dinainte, nu după:
+//   • îl poate lua DOAR fondatorul — și refuză SERVERUL, nu doar ecranul care ascunde butonul.
+//     Un buton ascuns tot poate fi apăsat de cine îi știe adresa;
+//   • rămâne un rând în jurnalul de audit: cine l-a descărcat și când. Fișierul iese din aplicație
+//     și nu-l mai controlează nimeni — peste un an vrem să existe un răspuns la „de unde a apărut".
+// Numele și logo-ul respectă regula casei (report_export.js → sendReport).
+function _randuriExportCompanii(lista, bani, acum) {
+  const zi = 86400000;
+  const fmtData = function (ms) { return ms ? new Date(Number(ms)).toLocaleDateString('ro-RO') : '—'; };
+  const acces = function (c) {
+    const a = c.access || {};
+    if (a.status === 'expired') return a.motiv === 'manual' ? 'oprit de noi' : (a.motiv === 'neplata' ? 'suspendat — neplată' : 'suspendat — abonament');
+    if (c.neplata && c.neplata.faza === 'avertisment') return 'restanță · ' + c.neplata.zilePanaLaSuspendare + ' zile până la suspendare';
+    if (a.status === 'grace') return 'în grație (expirat)';
+    if (a.status === 'unlimited') return 'nelimitat';
+    return 'activ' + (a.access_until ? ' până ' + fmtData(a.access_until) : '');
+  };
+  return (lista || []).filter(function (c) { return !c.is_demo; }).map(function (c) {
+    const ad = c.admin || {};
+    const ua = c.ultimaActivitate || null;
+    return [
+      c.name || '', c.cui || '—', c.plan || 'standard', acces(c),
+      (c.dosar && c.dosar.text) ? ('lipsește: ' + c.dosar.text) : ((c.dosar && c.dosar.eticheta) || 'complet'),
+      Number(c.device_count) || 0, Number(c.user_count) || 0,
+      Number((bani && bani[c.id]) || 0),
+      Number(c.paid_total) || 0,
+      ua ? fmtData(ua) : 'niciodată',
+      ua ? Math.floor((acum - ua) / zi) : '',
+      ad.nume || '—', ad.email || '—', ad.telefon || '—'
+    ];
+  });
+}
+// ── sfârșit „Lista de clienți, pe hârtie" ──
+app.get('/api/companies/export', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    if (!reportExport) return res.status(503).json({ error: 'Exportul nu e disponibil pe serverul ăsta.' });
+    const acum = Date.now();
+    const [list, activitate, admini] = await Promise.all([
+      db.getCompanies(),
+      db.lastActivityByCompany().catch(function () { return {}; }),
+      db.companyAdmins().catch(function () { return {}; })
+    ]);
+    let dos = {}; try { dos = await db.contractsByCompany(); } catch (e) { dos = {}; }
+    let facturi = {}; try { facturi = await db.facturiNeachitateToate(); } catch (e) { facturi = {}; }
+    const imbogatit = list.map(function (c) {
+      const np = neplata.stareNeplata(facturi[c.id] || [], acum);
+      const acc = companyAccessStatus(c);
+      if (c.suspended_at != null) { acc.status = 'expired'; acc.motiv = 'manual'; }
+      else if (np.faza === 'suspendat') { acc.status = 'expired'; acc.motiv = 'neplata'; }
+      else if (acc.status === 'expired') { acc.motiv = 'abonament'; }
+      return Object.assign({}, c, {
+        access: acc, neplata: np.faza === 'ok' ? null : np,
+        dosar: contracte.stareDosar(c, dos[c.id] || null, acum),
+        ultimaActivitate: activitate[c.id] || null, admin: admini[c.id] || null
+      });
+    });
+    // Banii: aceeași socoteală ca pe ecran (și ca pe factură) — o singură funcție, nu trei.
+    let bani = {};
+    try { bani = (await _venitLunarToate(imbogatit)).firme || {}; }
+    catch (e) { /* fără coloana de bani, restul listei pleacă oricum */ }
+    const rows = _randuriExportCompanii(imbogatit, bani, acum);
+    const lunarTotal = rows.reduce(function (s, r) { return s + (Number(r[7]) || 0); }, 0);
+    const incasatTotal = rows.reduce(function (s, r) { return s + (Number(r[8]) || 0); }, 0);
+    const report = {
+      type: 'companii', label: 'Companii',
+      periodLabel: 'Situația la ' + new Date(acum).toLocaleDateString('ro-RO'),
+      summarySheet: true,
+      summary: {
+        'Companii': rows.length,
+        'Venit lunar recurent (lei)': Math.round(lunarTotal * 100) / 100,
+        'Încasat total (lei)': Math.round(incasatTotal * 100) / 100,
+        'Fără contract complet': rows.filter(function (r) { return /lipsește/.test(String(r[4])); }).length,
+        'Cu restanță sau suspendate': rows.filter(function (r) { return /restanță|suspendat|oprit/.test(String(r[3])); }).length
+      },
+      columns: ['Companie', 'CUI', 'Plan', 'Acces', 'Dosar', 'Vehicule', 'Utilizatori',
+        'Lunar (lei)', 'Încasat total (lei)', 'Ultima activitate', 'Zile de liniște',
+        'Administrator', 'Email', 'Telefon'],
+      rows: rows
+    };
+    // Registrul de la poartă: cine a scos lista de clienți și când.
+    auditReq(req, 'export', 'companies', null, { firme: rows.length, format: 'xlsx' });
+    return reportExport.sendReport(res, report, 'xlsx');
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // Dashboard super-admin: stat per companie (vehicule, useri) + consum tokeni AI + totaluri
 // Numărătoare rapidă pentru cardurile din panou (COUNT-uri indexate; evită încărcarea listei complete de
 // vehicule cu join LATERAL pe poziții — care era lentă pe baza mare de poziții din producție).
@@ -4299,7 +4448,28 @@ app.get('/api/admin/counts', requireAuth, withScope, async (req, res) => {
         (SELECT COUNT(*)::int FROM users WHERE company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo)) AS users,
         (SELECT COUNT(*)::int FROM devices WHERE status IS DISTINCT FROM 'archived' AND (company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo))) AS active_devices,
         (SELECT COUNT(*)::int FROM devices WHERE status = 'archived' AND (company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo))) AS archived_devices`);
-      return res.json(r.rows[0]);
+      // Cartonașul „Companii" nu spunea decât un număr. Fondatorul vrea să vadă din „Acasă" dacă e
+      // ceva de rezolvat: câte firme au dosarul incomplet și câte au restanță sau sunt suspendate.
+      const out = Object.assign({}, r.rows[0]);
+      try {
+        const [lista, dos, facturi] = await Promise.all([
+          db.getCompanies(),
+          db.contractsByCompany().catch(function () { return {}; }),
+          db.facturiNeachitateToate().catch(function () { return {}; })
+        ]);
+        const acum = Date.now();
+        let faraContract = 0, restante = 0;
+        (lista || []).filter(function (c) { return !c.is_demo; }).forEach(function (c) {
+          const d = contracte.stareDosar(c, dos[c.id] || null, acum);
+          if (d && d.text) faraContract++;
+          const np = neplata.stareNeplata(facturi[c.id] || [], acum);
+          const acc = companyAccessStatus(c);
+          if (np.faza !== 'ok' || c.suspended_at != null || acc.status === 'expired') restante++;
+        });
+        out.companies_fara_contract = faraContract;
+        out.companies_restante = restante;
+      } catch (e) { /* fără rândul de sub cifră, cartonașul rămâne cu numărul */ }
+      return res.json(out);
     }
     const r = await db.pool.query(`SELECT
       (SELECT COUNT(*)::int FROM users WHERE company_id = $1) AS users,

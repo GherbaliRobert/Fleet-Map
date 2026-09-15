@@ -461,6 +461,61 @@ gaură pe ecran.
 
 ---
 
+### FONDATOR · Registrul de clienți: filtre, căutare adevărată, banii lunari, export
+
+Toate cele nouă lucruri cerute pentru cardul **Companii**, într-un lot.
+
+**1. Filtre rapide, ca la Dispozitive.** Pastile cu numere deasupra listei: *Toate · Fără contract ·
+Restanță · Suspendate · Fără semnal · Demo*. Un clic, nu citit toată lista. Ce nu există nu ocupă loc
+pe ecran, iar numerele se socotesc pe lista întreagă, nu pe ce a rămas după căutare — altfel „Fără
+contract 0" ar minți doar pentru că ai scris ceva în căutare.
+
+**2. Căutarea caută ce ai tu în mână.** Nume, **CUI**, nr. reg. com., emailul și telefonul firmei, și
+**numele, emailul și telefonul administratorului**. Când sună un client, ai un telefon sau un CUI, nu
+numele exact din sistem.
+
+**3. Banii, în sfârșit pe ecran.** Coloană **„Lunar"** pe fiecare firmă și, sus, **„Venit lunar
+recurent: X lei"**. Se socotește cu **același motor de preț care face factura** — abonamentul pe
+vehicule (cu prețul pentru cele cu CAN și FMS) plus conturile de RA Insight, luate după vârful lunii,
+ca pe factură. Firma rămasă fără preț se scrie cu portocaliu: **0 lei**. Cifra vine din urmă, ca
+lista să se deschidă pe loc.
+
+**4. Cartonașul de pe „Acasă" spune starea**, nu doar numărul: sub „3 Companii" scrie *„1 fără
+contract · 0 restanțe"* — sau *„toate în regulă"*.
+
+**5. Aparatele neadoptate strigă de sus.** Bandă portocalie în capul ecranului când există: *„Un
+aparat așteaptă să fie adoptat"* — cu săritură direct la ele. Stăteau a treia secțiune, jos.
+
+**6. „Client nou" a devenit buton.** Ocupa vârful ecranului permanent, deși deschizi un client o dată
+pe săptămână, iar lista o citești zilnic. Traseul în trei pași se deschide la cerere.
+
+**7. „Ultima activitate".** *azi · ieri · acum 9 zile*, iar după **14 zile de liniște**, portocaliu.
+Firma care n-a transmis niciodată e strigată; cea fără vehicule nu e trasă la răspundere. Ăsta e un
+telefon dat la timp.
+
+**8. Sortare pe coloane și export în Excel.** Un clic pe cap sortează, al doilea întoarce. Exportul
+poartă numele casei — `RA-Tracks - Raport Companii - 15.09.2026.xlsx` — cu logo și o foaie de sumar
+(companii, venit lunar, încasat, câte fără contract, câte cu restanță). **Compania demo nu apare.**
+
+Cele două lucruri promise înainte de a-l face: îl poate lua **doar fondatorul, iar refuzul vine de la
+SERVER**, nu de la ecranul care ascunde butonul (un buton ascuns tot poate fi apăsat de cine îi știe
+adresa); și **rămâne un rând în jurnalul de audit** — cine a descărcat lista de clienți și când.
+Fișierul iese din aplicație și nu-l mai controlează nimeni; peste un an vrem să existe un răspuns.
+
+**9. Pe telefon**, tabelul de opt coloane nu se mai târăște lateral: fiecare firmă devine cartonaș,
+iar fiecare cifră își spune singură ce e.
+
+**Ce am lăsat în urmă:** 86 de verificări în `verify_companii.js` (de la 35) — filtrele, căutarea și
+venitul lunar rulate cu firme inventate, plus exportul (demo exclus, dosar incomplet, zile de liniște,
+suspendare pentru neplată). Și 35 pe aplicația pornită: se emite un Excel adevărat, se verifică numele
+lui, refuzul fără cont și urma din audit. Sabotat în cinci feluri.
+
+- **Ce am schimbat:** cardul Companii a devenit un registru de clienți, nu o listă.
+- **Ce vede fondatorul:** cine n-are contract, cine nu plătește, cine se stinge — și cât intră lunar.
+- **Ce vede clientul:** nimic — ecranul e strict al fondatorilor.
+
+---
+
 ### AMÂNDOI · Câmpurile și butoanele din cele patru secțiuni, sub aceeași marcă
 
 *„Vreau să modernizezi inputurile și butoanele din fiecare secțiune deschisă, sub branding RA Tracks,
