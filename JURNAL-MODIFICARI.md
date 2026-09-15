@@ -461,6 +461,50 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Câmpurile și butoanele din cele patru secțiuni, sub aceeași marcă
+
+*„Vreau să modernizezi inputurile și butoanele din fiecare secțiune deschisă, sub branding RA Tracks,
+cum am făcut până acum când a fost vorba de modernizare."*
+
+Am măsurat întâi, ca să nu lucrez din ochi. În **Companii, Utilizatori, Dispozitive și Arhivate** se
+adunaseră **opt înălțimi de control diferite** — 10px, 14, 28, 29, 33, 34, 37, 39 — și **șapte
+rotunjiri**. Butoane de zece pixeli lângă altele de treizeci și patru. Bife cenușii ale sistemului
+lângă câmpuri cu chenar verde. Formularul „Adaugă utilizator" avea câmpurile complet brute, fără nicio
+clasă. Arăta a greșeală, nu a alegere.
+
+Acum toate poartă **aceeași rețetă** — cea făcută pentru Ofertare Live, mutată într-un singur loc și
+aplicată prin clasa `ra-camp`:
+
+- **câmpuri** de 34px, chenar de 1,5px, colț de 10px, iar când scrii în ele **marginea devine verde**,
+  cu un halou discret;
+- **select-uri** cu săgeata desenată de noi, nu cea a sistemului;
+- **bife** pătrate, verzi când sunt pornite;
+- **butoane** dintr-o singură familie: principalul plin și verde, restul cu contur care se colorează
+  sub mouse, iar cele periculoase (ștergere) roșii de la bun început, ca să nu se apese din reflex;
+- **pastilele de filtrare** din Dispozitive rămân pastile, dar de aceeași înălțime cu restul.
+
+**După:** două înălțimi pe secțiune în loc de opt, o singură rotunjire, tot pe Nunito.
+
+**Trei lucruri găsite în timpul lucrului:**
+
+1. **„Invalid Date"** în coloana „Ultima poziție" din Dispozitive. Momentul vine din bază uneori ca
+   număr, alteori ca text — iar codul îl trata doar ca număr. Acum le recunoaște pe amândouă, iar
+   dacă tot nu iese o dată bună scrie o liniuță, nu un mesaj de programator.
+2. **Săgeata select-urilor dispăruse** pentru o clipă: scurtătura `background` din CSS ștergea
+   desenul. Se pune acum cu `background-color`.
+3. **Lupa din câmpurile de căutare** ajunsese lipită de prima literă, fiindcă regula nouă cântărea
+   mai greu decât cea locală. Rezolvat cu `:where(...)`, care nu adaugă greutate.
+
+**Ce am lăsat în urmă:** 25 de verificări noi în `npm test` (inclusiv că ora se citește corect din
+număr, din text ISO, din gol și din gunoi) plus 17 pe aplicația pornită, care **măsoară** înălțimile
+și rotunjirile din fiecare secțiune. Sabotat în patru feluri.
+
+- **Ce am schimbat:** un singur stil de câmpuri și butoane în toată Administrarea.
+- **Ce vede fondatorul:** ecrane care arată ca ale aceleiași aplicații, nu adunate din bucăți.
+- **Ce vede clientul:** același lucru în secțiunile lui (Utilizatori), plus ora corectă la dispozitive.
+
+---
+
 ### FONDATOR · Dashboard-ul RA Insight, refăcut pe cartonașe — 12 cifre au devenit 6
 
 *„Dashboard-ul ăsta e greoi de înțeles, îl vreau pe carduri. Cardurile de sus din Utilizare RA Insight

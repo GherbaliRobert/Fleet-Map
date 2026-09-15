@@ -1086,23 +1086,22 @@
   <style>
     /* Câmpurile din ferestrele legate de utilizatori — același aspect ca în „Adaugă utilizator" și
        ca în Preferințe: colț rotunjit, chenar de 1,5px, inel verde la câmpul în care scrii. */
+    /* `.add-user-form` a IEȘIT de aici: câmpurile ei poartă acum stilul casei, definit o singură
+       dată în app.css (`.ra-camp`). Regula de aici le fura chipul — `background` scurt ștergea
+       săgeata desenată a select-ului, iar padding-ul de 10px tăia textul pe înălțimea nouă. */
     #user-edit-modal input:not([type=checkbox]):not([type=radio]), #user-edit-modal select,
-    #apikeys-modal input:not([type=checkbox]):not([type=radio]), #apikeys-modal select,
-    #users-modal .add-user-form input, #users-modal .add-user-form select {
+    #apikeys-modal input:not([type=checkbox]):not([type=radio]), #apikeys-modal select {
       background: var(--bg-card); border:1.5px solid var(--border); color: var(--text, #e5e7eb);
       border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; font-family:inherit;
       width:100%; box-sizing:border-box; outline:none; transition:border-color .15s, box-shadow .15s;
     }
     #user-edit-modal input:not([type=checkbox]):not([type=radio]):hover:not(:disabled), #user-edit-modal select:hover:not(:disabled),
-    #apikeys-modal input:not([type=checkbox]):not([type=radio]):hover:not(:disabled), #apikeys-modal select:hover:not(:disabled),
-    #users-modal .add-user-form input:hover:not(:disabled), #users-modal .add-user-form select:hover:not(:disabled) { border-color: var(--border-light); }
+    #apikeys-modal input:not([type=checkbox]):not([type=radio]):hover:not(:disabled), #apikeys-modal select:hover:not(:disabled) { border-color: var(--border-light); }
     #user-edit-modal input:not([type=checkbox]):not([type=radio]):focus, #user-edit-modal select:focus,
-    #apikeys-modal input:not([type=checkbox]):not([type=radio]):focus, #apikeys-modal select:focus,
-    #users-modal .add-user-form input:focus, #users-modal .add-user-form select:focus {
+    #apikeys-modal input:not([type=checkbox]):not([type=radio]):focus, #apikeys-modal select:focus {
       border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
     }
-    #user-edit-modal input::placeholder, #apikeys-modal input::placeholder,
-    #users-modal .add-user-form input::placeholder { color: var(--text-muted); font-weight:500; opacity:1; }
+    #user-edit-modal input::placeholder, #apikeys-modal input::placeholder { color: var(--text-muted); font-weight:500; opacity:1; }
     #user-edit-modal label.ue-field { display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--text-muted); }
     label.ue-check { display:flex; align-items:center; gap:8px; padding:4px 2px; font-size:13px; cursor:pointer; }
     label.ue-check input { width:auto !important; }
@@ -1516,11 +1515,12 @@
             <div id="adash-ajutor" style="margin-top:16px;font-size:12.5px;color:var(--text-muted);line-height:1.6;"><i class="fas fa-hand-pointer" style="margin-right:6px;"></i>Apasă pe un cartonaș ca să deschizi secțiunea chiar aici, dedesubt. Din meniul din stânga ajungi la orice altă secțiune, pe tot ecranul.</div>
           </div>
 
-          <div id="admin-tab-companies" style="display:none;"></div>
-          <div id="admin-tab-devices" style="display:none;"></div>
-          <div id="admin-tab-inventar" style="display:none;"></div>
-          <div id="admin-tab-accounts" style="display:none;"></div>
-          <div id="admin-tab-archived" style="display:none;"></div>
+          <!-- `ra-camp` = câmpurile și butoanele dinăuntru poartă stilul casei (vezi app.css). -->
+          <div id="admin-tab-companies" class="ra-camp" style="display:none;"></div>
+          <div id="admin-tab-devices" class="ra-camp" style="display:none;"></div>
+          <div id="admin-tab-inventar" class="ra-camp" style="display:none;"></div>
+          <div id="admin-tab-accounts" class="ra-camp" style="display:none;"></div>
+          <div id="admin-tab-archived" class="ra-camp" style="display:none;"></div>
           <div id="admin-tab-billing" style="display:none;"></div>
           <div id="admin-tab-myinvoices" style="display:none;"></div>
           <div id="admin-tab-agents" style="display:none;"></div>
@@ -1528,10 +1528,10 @@
           <div id="admin-tab-etransport" style="display:none;"></div>
           <div id="admin-tab-dashboard" style="display:none;"></div>
           <div id="admin-tab-costs" style="display:none;"></div>
-          <div id="admin-tab-ofertare" style="display:none;"></div>
+          <div id="admin-tab-ofertare" class="ra-camp" style="display:none;"></div>
           <div id="admin-tab-contracte" style="display:none;"></div>
           <div id="admin-tab-demoreq" style="display:none;"></div>
-      <div id="admin-tab-users" style="display:none;">
+      <div id="admin-tab-users" class="ra-camp" style="display:none;">
       <div id="users-list" style="max-height:46vh;overflow-y:auto;margin-bottom:14px;"></div>
       <div style="border-top:1px solid var(--border);padding-top:12px;">
         <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Adaugă utilizator</div>
@@ -4153,7 +4153,8 @@ const pozitii = await r.json();</code></pre>
       // ⚠ TEMPORAR (comutatorul de privire) — se scoate la lansare.
       if (_privFirme && _privFirme.length) html += setFirmaPickerHtml(_privFirme, _privAleasa);
       if (isSuper && keys.length > 1) {
-        html += '<div style="margin-bottom:10px;"><select onchange="_usersFilter=this.value; renderUsersGrouped();" style="width:100%;box-sizing:border-box;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;">' +
+        // Fără stil scris de mână aici: `rax-field` e chipul casei, ținut într-un singur loc.
+        html += '<div style="margin-bottom:10px;"><select class="rax-field" onchange="_usersFilter=this.value; renderUsersGrouped();" style="width:100%;">' +
           '<option value="">Toate companiile (' + users.length + ' utilizatori)</option>' +
           keys.map(function (k) { var g = groups[k]; return '<option value="' + k + '"' + (_usersFilter === k ? ' selected' : '') + '>' + esc(g.name) + ' (' + (g.admins.length + g.users.length) + ')</option>'; }).join('') +
           '</select></div>';
@@ -23250,6 +23251,16 @@ const pozitii = await r.json();</code></pre>
     var _raxDevices = [], _raxDevFilter = 'all', _raxDevSearch = '', _raxAttempts = [], _raxStrict = false;
     var _RAX_IFACE = [['', 'Auto'], ['fms', 'FMS'], ['lvcan', 'LV-CAN'], ['tacho', 'Tahograf']];
     function _raxDevBucket(d) { if (d.status === 'archived') return 'archived'; if (d.company_id == null) return 'unassigned'; return 'active'; }
+    // ── începe „Ora ultimei poziții" ──────────────────────────────────────────────────────────────
+    // În tabelul de dispozitive scria „Invalid Date". Momentul vine din bază uneori ca număr (epoch
+    // în milisecunde), alteori ca text ISO — iar `Number(text ISO)` e NaN. Acum se recunosc
+    // amândouă, iar dacă tot nu iese o dată bună se scrie o liniuță, nu un mesaj de programator.
+    function _raxDataOra(v) {
+      if (v == null || v === '') return '—';
+      var d = /^\d+$/.test(String(v).trim()) ? new Date(Number(v)) : new Date(v);
+      return isNaN(d.getTime()) ? '—' : d.toLocaleString('ro-RO');
+    }
+    // ── sfârșit „Ora ultimei poziții" ──
     function _raxDevCoOptions(sel) {
       var cos = (companiesCache || []).filter(function (c) { return !c.is_demo; });
       return '<option value="">— neasignat —</option>' + cos.map(function (c) { return '<option value="' + c.id + '"' + (String(sel) === String(c.id) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
@@ -23305,7 +23316,7 @@ const pozitii = await r.json();</code></pre>
           : '<select class="rax-dev-co" onchange="raxDevSetCompany(\'' + esc(d.imei) + '\',this.value)">' + _raxDevCoOptions(d.company_id) + '</select>';
         var iface = '<select class="rax-dev-if" title="Interfață CAN (decodare)" onchange="raxDevSetIface(\'' + esc(d.imei) + '\',this.value)">' +
           _RAX_IFACE.map(function (it) { return '<option value="' + it[0] + '"' + ((d.can_interface || '') === it[0] ? ' selected' : '') + '>' + it[1] + '</option>'; }).join('') + '</select>';
-        var lp = d.last_position_time ? new Date(Number(d.last_position_time)).toLocaleString('ro-RO') : '—';
+        var lp = _raxDataOra(d.last_position_time);
         var act = (b === 'archived')
           ? '<button class="rax-btn" onclick="raxDevRestore(\'' + esc(d.imei) + '\')"><i class="fas fa-rotate-left"></i> Restaurează</button> <button class="rax-btn" style="color:var(--red)" onclick="raxDevDelete(\'' + esc(d.imei) + '\')"><i class="fas fa-trash"></i> Șterge</button>'
           : '<button class="rax-btn" onclick="raxDevArchive(\'' + esc(d.imei) + '\',' + (b === 'unassigned' ? 'true' : 'false') + ')"><i class="fas fa-ban"></i> ' + (b === 'unassigned' ? 'Respinge' : 'Arhivează') + '</button>';

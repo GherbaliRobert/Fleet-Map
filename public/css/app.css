@@ -3212,39 +3212,99 @@
 .raof-q3 .rax-field, .raof-q3 select{ width:100%; margin:0; }
 .raof-q3 .um{ font-size:10.5px; color:var(--text-muted); }
 
-/* ── Ofertare Live: câmpuri și butoane ──────────────────────────────────────────────────────────
-   Câmpurile erau cele generice: mici, plate, cu săgeți de „number" care furau lățime și schimbau
-   valoarea la o rotiță de mouse dată din greșeală. Aici se hotărăsc bani, deci merită să fie
-   limpezi: mai înalte, aliniate la dreapta (cifrele se citesc pe coloană), cu marginea colorată
-   când scrii în ele, și fără săgeți. Butoanele capătă ierarhie: unul principal, restul discrete. */
-#admin-tab-ofertare .rax-field{
+/* ── Câmpuri și butoane, sub aceeași marcă, în toată Administrarea ──────────────────────────────
+   Rețeta a fost făcută întâi pentru Ofertare Live: câmpuri mai înalte, cu marginea verde când scrii
+   în ele, fără săgeți de „number" (o rotiță de mouse dată din greșeală schimba un preț), bife
+   proprii în loc de cele cenușii ale sistemului, și butoane cu ierarhie — unul principal, restul
+   discrete. Acum e ACEEAȘI rețetă și în secțiunile deschise din cartonașele de pe „Acasă"
+   (Companii, Utilizatori, Dispozitive, Arhivate), unde se adunaseră opt înălțimi de control
+   diferite (10px, 14px, 28, 29, 33, 34, 37, 39) și șapte rotunjiri.
+
+   Se aplică prin clasa `ra-camp` pe secțiune. O SINGURĂ definiție pentru toate — dacă se schimbă
+   stilul casei, se schimbă într-un loc. */
+.ra-camp .rax-field{
   height:34px; padding:6px 10px; font-size:13px; font-weight:600;
-  background:var(--bg-panel); border:1.5px solid var(--border); border-radius:9px;
+  background-color:var(--bg-panel); border:1.5px solid var(--border); border-radius:10px;
   color:var(--text-primary); font-family:inherit; transition:border-color .14s, box-shadow .14s; }
-#admin-tab-ofertare input[type=number].rax-field{ text-align:right; font-variant-numeric:tabular-nums; }
-#admin-tab-ofertare input[type=number].rax-field::-webkit-outer-spin-button,
-#admin-tab-ofertare input[type=number].rax-field::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
-#admin-tab-ofertare input[type=number].rax-field{ -moz-appearance:textfield; }
-#admin-tab-ofertare .rax-field:hover:not(:disabled){ border-color:var(--border-light); }
-#admin-tab-ofertare .rax-field:focus{
+.ra-camp input[type=number].rax-field{ text-align:right; font-variant-numeric:tabular-nums; }
+.ra-camp input[type=number].rax-field::-webkit-outer-spin-button,
+.ra-camp input[type=number].rax-field::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+.ra-camp input[type=number].rax-field{ -moz-appearance:textfield; }
+.ra-camp .rax-field:hover:not(:disabled){ border-color:var(--border-light); }
+.ra-camp .rax-field:focus{
   outline:none; border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
-#admin-tab-ofertare .rax-field::placeholder{ color:var(--text-muted); font-weight:500; opacity:1; }
-#admin-tab-ofertare select.rax-field{ cursor:pointer; padding-right:26px;
+.ra-camp .rax-field::placeholder{ color:var(--text-muted); font-weight:500; opacity:1; }
+.ra-camp select.rax-field{ cursor:pointer; padding-right:26px;
   background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
   background-position:calc(100% - 14px) 15px, calc(100% - 9px) 15px; background-size:5px 5px, 5px 5px;
   background-repeat:no-repeat; -webkit-appearance:none; appearance:none; }
-#admin-tab-ofertare textarea.rax-field{ height:auto; text-align:left; font-weight:500; line-height:1.5; }
+.ra-camp textarea.rax-field{ height:auto; text-align:left; font-weight:500; line-height:1.5; }
+
+/* Câmpurile FĂRĂ clasă (formularul „Adaugă utilizator" le avea brute) primesc același chip.
+   `:where(...)` NU adaugă greutate: fără el, lanțul de cinci `:not(...)` cântărea mai mult decât
+   regulile locale și le călca — de exemplu locul lăsat lupei în câmpurile de căutare, care ajungea
+   lipită de prima literă. Așa, regula asta e un fundal peste care se poate scrie în continuare. */
+.ra-camp input:where(:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=hidden])),
+.ra-camp select, .ra-camp textarea,
+.ra-camp .rax-dev-co, .ra-camp .rax-dev-if{
+  height:34px; padding:6px 10px; font-size:13px; font-weight:600; box-sizing:border-box;
+  /* `background-color`, NU `background`: scurtătura ar șterge săgeata desenată a select-ului. */
+  background-color:var(--bg-panel); border:1.5px solid var(--border); border-radius:10px;
+  color:var(--text-primary); font-family:inherit; transition:border-color .14s, box-shadow .14s; }
+.ra-camp textarea{ height:auto; font-weight:500; line-height:1.5; }
+.ra-camp input:where(:not([type=checkbox])):hover:not(:disabled),
+.ra-camp select:hover:not(:disabled), .ra-camp textarea:hover:not(:disabled){ border-color:var(--border-light); }
+.ra-camp input:where(:not([type=checkbox])):focus,
+.ra-camp select:focus, .ra-camp textarea:focus{
+  outline:none; border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+.ra-camp input::placeholder, .ra-camp textarea::placeholder{ color:var(--text-muted); font-weight:500; opacity:1; }
+.ra-camp select{ cursor:pointer; padding-right:26px;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 14px) 15px, calc(100% - 9px) 15px; background-size:5px 5px, 5px 5px;
+  background-repeat:no-repeat; -webkit-appearance:none; appearance:none; }
 
 /* Bifele: pătrat propriu, verde când e pornit — nu bifa cenușie a sistemului. */
-#admin-tab-ofertare input[type=checkbox]{
+.ra-camp input[type=checkbox]{
   -webkit-appearance:none; appearance:none; width:17px; height:17px; flex:0 0 17px; margin:0;
   border:1.5px solid var(--border-light); border-radius:5px; background:var(--bg-panel);
   cursor:pointer; position:relative; transition:background .14s, border-color .14s; }
-#admin-tab-ofertare input[type=checkbox]:hover{ border-color:var(--accent); }
-#admin-tab-ofertare input[type=checkbox]:checked{ background:var(--accent); border-color:var(--accent); }
-#admin-tab-ofertare input[type=checkbox]:checked::after{
+.ra-camp input[type=checkbox]:hover{ border-color:var(--accent); }
+.ra-camp input[type=checkbox]:checked{ background:var(--accent); border-color:var(--accent); }
+.ra-camp input[type=checkbox]:checked::after{
   content:''; position:absolute; left:5px; top:1px; width:4px; height:9px;
   border:solid #06210f; border-width:0 2px 2px 0; transform:rotate(42deg); }
+
+/* ── Butoanele: o singură familie, cu ierarhie ──────────────────────────────────────────────────
+   Erau butoane de 10px și de 14px înălțime, lângă altele de 34 — arătau a greșeală, nu a alegere.
+   Acum: principalul e plin și verde, restul au doar contur și se colorează sub mouse, iar cele
+   periculoase (ștergere) sunt roșii de la bun început, ca să nu se apese din reflex. */
+.ra-camp .rax-btn, .ra-camp .btn-sm, .ra-camp .rax-ico-btn, .ra-camp .add-user-form button{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  min-height:34px; padding:6px 13px; border-radius:10px; font-family:inherit;
+  font-size:12.5px; font-weight:700; line-height:1.2; cursor:pointer;
+  background:transparent; border:1.5px solid var(--border); color:var(--text-primary);
+  transition:border-color .14s, color .14s, background .14s, box-shadow .14s; }
+.ra-camp .btn-sm{ min-height:30px; padding:5px 11px; font-size:12px; }
+.ra-camp .rax-ico-btn{ min-width:34px; padding:6px 9px; }
+.ra-camp .rax-btn:hover, .ra-camp .btn-sm:hover, .ra-camp .rax-ico-btn:hover{
+  border-color:var(--accent); color:var(--accent); }
+.ra-camp .rax-btn.primary, .ra-camp .add-user-form button{
+  background:var(--accent); border-color:var(--accent); color:#06210f;
+  box-shadow:0 2px 10px color-mix(in srgb, var(--accent) 24%, transparent); }
+.ra-camp .rax-btn.primary:hover, .ra-camp .add-user-form button:hover{
+  color:#06210f; box-shadow:0 3px 14px color-mix(in srgb, var(--accent) 34%, transparent); }
+.ra-camp .rax-btn.danger, .ra-camp .rax-ico-btn.danger, .ra-camp .btn-danger{
+  border-color:color-mix(in srgb, var(--red) 55%, transparent); color:var(--red); background:transparent; }
+.ra-camp .rax-btn.danger:hover, .ra-camp .rax-ico-btn.danger:hover, .ra-camp .btn-danger:hover{
+  border-color:var(--red); background:color-mix(in srgb, var(--red) 10%, transparent); color:var(--red); }
+.ra-camp .rax-btn:disabled, .ra-camp .btn-sm:disabled{ opacity:.5; cursor:not-allowed; box-shadow:none; }
+
+/* Pastilele de filtrare din „Dispozitive" rămân pastile — dar de aceeași înălțime cu restul. */
+.ra-camp .rax-dev-chip{ min-height:32px; padding:6px 14px; border-radius:20px; border:1.5px solid var(--border);
+  font-size:12.5px; font-weight:700; background:transparent; color:var(--text-secondary);
+  display:inline-flex; align-items:center; gap:6px; transition:border-color .14s, color .14s, background .14s; }
+.ra-camp .rax-dev-chip:hover{ border-color:var(--accent); color:var(--accent); }
+.ra-camp .rax-dev-chip.on{ background:var(--accent); border-color:var(--accent); color:#06210f; }
 
 /* Butoanele din rezumat: unul principal, plin; celelalte discrete, cu contur. */
 .raof-act .rax-btn{ height:40px; border-radius:11px; font-size:13px; font-weight:700; gap:8px; }

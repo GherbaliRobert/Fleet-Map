@@ -389,12 +389,15 @@ T('aceeași regulă e scrisă și pe ofertă', /Prețul unui cont de RA Insight 
 
 sect('6e. Ofertare Live — câmpuri, bife și butoane');
 const css2 = fs.readFileSync('./public/css/app.css', 'utf8');
-T('câmpurile ecranului au stilul lor', /#admin-tab-ofertare \.rax-field\{/.test(css2));
+// Stilul s-a mutat din `#admin-tab-ofertare` în clasa comună `ra-camp`: aceeași rețetă, dar acum e
+// una singură pentru toată Administrarea (vezi verify_campuri.js). Ofertare o poartă și el.
+T('câmpurile ecranului au stilul casei', /\.ra-camp \.rax-field\{/.test(css2)
+  && /<div id="admin-tab-ofertare" class="[^"]*\bra-camp\b/.test(html));
 T('cifrele se citesc pe coloană (aliniate la dreapta)', /input\[type=number\]\.rax-field\{ text-align:right/.test(css2));
 T('fără săgeți de „number" (nu se schimbă valoarea din rotița mouse-ului)',
   /-webkit-appearance:none; margin:0;/.test(css2) && /-moz-appearance:textfield/.test(css2));
-T('câmpul activ se vede', /#admin-tab-ofertare \.rax-field:focus\{/.test(css2));
-T('bifele sunt verzi când sunt pornite', /#admin-tab-ofertare input\[type=checkbox\]:checked\{ background:var\(--accent\)/.test(css2));
+T('câmpul activ se vede', /\.ra-camp \.rax-field:focus\{/.test(css2));
+T('bifele sunt verzi când sunt pornite', /\.ra-camp input\[type=checkbox\]:checked\{ background:var\(--accent\)/.test(css2));
 T('butoanele au ierarhie: unul plin, restul cu contur', /\.raof-act \.rax-btn:not\(\.primary\)\{ background:transparent/.test(css2));
 T('caseta cotei se desface pe toată lățimea', /aq\.style\.display = r\.cfg\.aiA \? 'block' : 'none'/.test(html));
 
