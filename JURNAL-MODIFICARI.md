@@ -461,6 +461,47 @@ gaură pe ecran.
 
 ---
 
+### CLIENT · Un singur ecran de flotă: „Statistici flotă"
+
+*„Dashboard și Statistici, din verticala partener, nu sunt la fel? Ce avem în statistici… găsim și
+în dashboard. Devine inutil dashboard, nu?"*
+
+**Avea dreptate, și greșeala era a mea.** Cu o oră înainte scosesem din verticala partenerului
+tabloul platformei, pentru că era un duplicat. Apoi am construit în locul lui un „dashboard de
+flotă"… care s-a dovedit tot un duplicat: aceleași cifre ca în „Statistici", din aceeași sursă,
+pentru aceeași zi. Aproximativ 85% suprapunere.
+
+**Un lucru care explică de ce s-a întâmplat:** ecranul „Statistici" **nu are selector de perioadă** —
+se uită doar la ziua de azi și la starea live. Adică e deja un dashboard, doar că numele lui spune
+altceva. De-aia am ajuns să construiesc unul identic lângă el.
+
+**Acum e un singur ecran, cu numele bun: „Statistici flotă".** Ecranul construit degeaba a fost
+șters, iar cele patru lucruri bune din el au trecut dincolo:
+
+1. **Timpul de mers** al flotei — exista, dar scris mărunt și gri sub bara de stare, adică nu-l vedea
+   nimeni. Acum e cartonaș, lângă kilometri.
+2. **Numele vehiculelor care tac** — scria doar „2 offline". Care două? Trebuia deschisă harta și
+   căutat. Acum scrie pe nume, iar cele care n-au transmis **niciodată** se numără separat.
+3. **Constatările agenților, strânse pe categorii** — erau șase rânduri aproape identice („Camion A
+   n-a transmis", „Camion B n-a transmis"…), niciunul ducând nicăieri. Acum: *„RA Watch · 3
+   constatări · 2 vehicule"*, iar fiecare rând se apasă și te duce în „Agenți AI".
+   Bonus: numele agenților veneau dintr-o **listă paralelă** scrisă în ecran — exact ce interzice
+   CLAUDE.md. Acum vin din `AGP_META`, sursa unică.
+4. **Plasa de la media de consum** — și asta era o problemă **reală pe ecranul existent**: la 2 km
+   rulați și 5 litri arși la ralanti scria „250 L/100km". Acum media apare doar peste 10 km și doar
+   dacă rezultatul e omenesc (1–100 L/100km); altfel scrie de ce lipsește.
+
+**Ce am lăsat în urmă:** `verify_statistici_flota.js`, 36 de verificări în `npm test` — inclusiv că
+niciunul din cele două duplicate nu se poate întoarce în meniu, și că „153 L/100km" nu mai ajunge pe
+ecran. Plus 15 pe aplicația pornită, cu flota în mișcare.
+
+- **Ce am schimbat:** un singur ecran de flotă, cu numele lui, îmbogățit.
+- **Ce vede fondatorul:** un meniu mai scurt și tabloul platformei tot la Business.
+- **Ce vede clientul:** „Statistici flotă" — cu timpul de mers, cine tace pe nume, și constatările
+  strânse pe categorii, fiecare ducând unde se rezolvă.
+
+---
+
 ### AMÂNDOI · Fiecare tablou la verticala lui — „Flota mea, pe scurt" pentru partener
 
 *„Dashboard-ul din verticala partener nu cred că e pentru partener… practic pe noi ne interesează

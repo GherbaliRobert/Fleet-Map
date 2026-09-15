@@ -98,7 +98,7 @@
         <div class="nav-group" data-vert="partener" data-group="analize">
           <button class="nav-item nav-group-head" onclick="toggleNavGroup(this)"><i class="fas fa-chart-column"></i><span>Analize statistice</span><i class="fas fa-chevron-down nav-caret"></i></button>
           <div class="nav-group-body">
-            <button data-ecran="statistici" class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici</span></button>
+            <button data-ecran="statistici" class="nav-item nav-sub" onclick="navGo(this, function(){ showView('analize'); })"><i class="fas fa-chart-simple"></i><span>Statistici flotă</span></button>
             <!-- „Asistenți AI" scos din meniu: arăta ORICUI (n-avea data-super) numărul de „Tokeni in/out"
                  și „Cereri API" — detalii tehnice care ne privesc doar pe noi. Pentru fondatori, aceleași
                  date, mai bine puse, sunt în Administrare → Utilizare RA Insight (apeluri, cost, rată de
@@ -183,11 +183,10 @@
         <button data-vert="partener" data-ecran="rapoarte" class="nav-item" data-view="rapoarte" onclick="showView('rapoarte')"><i class="fas fa-file-lines"></i><span>Rapoarte</span></button>
         <button data-vert="partener" data-ecran="insight" class="nav-item" id="nav-agenti" data-view="agenti" onclick="showView('agenti')" style="display:none;"><i class="fas fa-robot"></i><span>Agenți AI</span></button>
         <button data-vert="partener" data-ecran="hotspot" class="nav-item" data-view="hotspot" onclick="showView('hotspot')"><i class="fas fa-fire"></i><span>Hotspot &amp; Rutare</span></button>
-        <!-- „Dashboard" de aici era tabloul PLATFORMEI (MRR, cheia Anthropic, backup-uri) — aceeași
-             funcție ca „Business → Dashboard platformă" din verticala fondatorului, doar în alt
-             container. Adică un duplicat, pus în verticala greșită. A rămas o singură ușă, la
-             fondator. Aici e acum dashboard-ul FLOTEI, care e treaba partenerului. -->
-        <button data-vert="partener" data-ecran="dashboard" class="nav-item" id="nav-dashboard" data-view="dashboard" onclick="showView('dashboard')"><i class="fas fa-gauge-high"></i><span>Dashboard</span></button>
+        <!-- Aici a fost, pe rand, tabloul PLATFORMEI (MRR, cheia Anthropic, backup-uri) si apoi un
+             dashboard de flota. Amandoua erau duplicate: primul repeta „Business -> Dashboard
+             platforma" al fondatorului, al doilea repeta „Statistici flota" de mai sus (aceleasi
+             cifre, aceeasi sursa). A ramas un singur ecran de flota, cu numele lui. -->
         <!-- Setări: ultimul din verticala clientului, ca peste tot. Are pagina lui, cu capitolele ei. -->
         <button data-vert="partener" id="nav-setari" class="nav-item" onclick="showView('settings')"><i class="fas fa-sliders-h"></i><span>Setări</span></button>
 
@@ -921,7 +920,7 @@
   <div id="dashboard-modal" class="modal-overlay">
     <div class="modal" style="width:950px;max-width:95vw;max-height:92vh;">
       <h2>
-        <span><i class="fas fa-tachometer-alt" style="margin-right:8px;color:var(--accent);"></i> Dashboard Fleet</span>
+        <span><i class="fas fa-tachometer-alt" style="margin-right:8px;color:var(--accent);"></i> Statistici flotă</span>
         <button class="close-btn" onclick="closeDashboard()" style="position:static;font-size:18px;">&#10005;</button>
       </h2>
 
@@ -939,7 +938,7 @@
           <select id="dash-company-filter" onchange="setSuperCompany(this.value)" style="font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-panel);color:var(--text-primary);min-width:180px;"></select>
         </div>
         <!-- HERO KPI (4 carduri mari) + bară status -->
-        <div id="dash-hero" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;"></div>
+        <div id="dash-hero" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:18px;"></div>
         <div class="chart-section-title"><i class="fas fa-signal" style="color:var(--accent);margin-right:6px;"></i>Status flotă acum</div>
         <div id="dash-status" style="margin-bottom:20px;"></div>
 
@@ -951,7 +950,7 @@
               <button class="btn-sm" onclick="showView('agenti')" style="font-size:11px;">Vezi toate</button>
             </span>
           </div>
-          <div id="dash-agents" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;"></div>
+          <div id="dash-agents" class="fd-lista"></div>
         </div>
 
         <!-- Top vehicule (progress bars) -->
@@ -2671,23 +2670,6 @@ const pozitii = await r.json();</code></pre>
         <div id="atab-etransport" class="admin-tab-content" style="display:none;"></div>
 
       </div>
-    </div>
-  </div>
-
-  <!-- ═══ Dashboard flotă (pentru client/partener, din meniul stânga) ═══
-       Aici era, până acum, tabloul PLATFORMEI (MRR, cheia Anthropic, backup-uri) — adică ecranul
-       fondatorului, pus în verticala partenerului, și pe deasupra un duplicat al celui din
-       „Business → Dashboard platformă". Acum e ce trebuie să fie: starea flotei TALE, pe scurt. -->
-  <div id="fleet-dash-modal" class="modal-overlay">
-    <div class="modal" style="width:1080px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;">
-      <h2><span><i class="fas fa-gauge-high" style="margin-right:8px;color:var(--accent);"></i> Flota mea, pe scurt</span>
-        <span style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-          <span id="fdash-ora" style="font-size:11px;color:var(--text-muted);font-weight:500;"></span>
-          <button class="rax-btn" onclick="raxFleetDash()" title="Reîncarcă"><i class="fas fa-rotate"></i></button>
-        </span>
-        <button class="close-btn" onclick="showView('localizare')" style="position:static;font-size:18px;">&#10005;</button>
-      </h2>
-      <div id="fleet-dash-body" class="ra-camp" style="overflow-y:auto;flex:1;padding-right:4px;"><div class="rax-co-meta">Se încarcă…</div></div>
     </div>
   </div>
 
@@ -11047,8 +11029,8 @@ const pozitii = await r.json();</code></pre>
       const bd = document.getElementById('navrail-backdrop'); if (bd) bd.classList.remove('visible');
     }
 
-    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', administrare: 'users-modal', hotspot: 'hotspot-view', dashboard: 'fleet-dash-modal', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
-    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', dashboard: 'raxFleetDash', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
+    const VIEW_PANELS = { analize: 'dashboard-modal', aiasist: 'ai-assist-view', fuelstats: 'fuel-stats-modal', fuelprice: 'fuel-price-view', settings: 'settings-view', management: 'admin-modal', rapoarte: 'reports-modal', agenti: 'agenti-view', administrare: 'users-modal', hotspot: 'hotspot-view', etransport: 'etransport-view', etoll: 'etoll-view', tahograf: 'tahograf-view' };
+    const VIEW_OPENERS = { analize: 'openDashboard', aiasist: 'loadAiAssistView', fuelstats: 'loadFuelStats', fuelprice: 'loadFuelPriceView', settings: 'loadSettingsTab', management: 'openAdmin', rapoarte: 'openReports', agenti: 'renderAgentsPage', administrare: 'openUsersModal', hotspot: 'openHotspotView', etransport: 'openEtransportDemo', etoll: 'openEtollDemo', tahograf: 'openTahografDemo' };
     let currentView = 'localizare';
     // ─── Dropdown-uri în meniu (scurtături) ───
     function toggleNavGroup(head) { var g = head.closest('.nav-group'); if (g) g.classList.toggle('open'); }
@@ -11327,130 +11309,14 @@ const pozitii = await r.json();</code></pre>
     function closeDashboard() { showView('localizare'); }
     function closeAdmin() { document.getElementById('admin-modal').classList.remove('as-view', 'visible'); showView('localizare'); }
     function closeUsersModal() { showView('localizare'); }
-    // ─── începe „Flota mea, pe scurt" ─────────────────────────────────────────────────────────────
-    // Dashboard-ul PARTENERULUI. Nu repetă ecranul „Statistici" (acolo sunt cifrele și graficele pe
-    // perioadă) — aici e răspunsul la două întrebări pe care le are un om de flotă dimineața:
-    // „ce se întâmplă ACUM?" și „ce am de rezolvat?". De aceea fiecare cifră duce undeva.
-    //
-    // Nu inventează nicio sursă nouă: se compune din două căi care existau deja și sunt filtrate
-    // pe drepturile omului — /api/dashboard (starea live + ziua de azi) și /api/agents/findings
-    // (constatările agenților: offline, service, documente, ralanti, conducere continuă).
-    // Blocul ăsta de script n-are nici `$`, nici `esc` (stau în alte blocuri) — ni le facem aici.
-    function _fdEl(id) { return document.getElementById(id); }
-    function _fdEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
-    function _fdOre(min) {
-      var m = Math.max(0, Math.round(Number(min) || 0));
-      if (m < 60) return m + ' min';
-      var h = Math.floor(m / 60), r = m % 60;
-      return h + ' h' + (r ? ' ' + r + ' min' : '');
-    }
-    function _fdVeh(n) { n = Number(n) || 0; return n + (n === 1 ? ' vehicul' : ' vehicule'); }
-    function _fdKpi(o) {
-      return '<div class="aiu-kpi' + (o.ton ? ' ' + o.ton : '') + (o.du ? ' aiu-kpi-link" onclick="' + o.du + '" role="button' : '') + '">'
-        + '<div class="cap">' + (o.icon ? '<i class="fas fa-' + o.icon + '"></i> ' : '') + o.cap + '</div>'
-        + '<div class="val">' + o.val + '</div>'
-        + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '')
-        + (o.jos ? '<div class="jos">' + o.jos + '</div>' : '') + '</div>';
-    }
-    // Constatările agenților, strânse pe categorii: „3 vehicule cu service depășit" spune mai mult
-    // decât trei rânduri identice. Numele agentului vine din AGP_META — sursa unică (vezi CLAUDE.md).
-    function _fdDeRezolvat(findings) {
-      var l = Array.isArray(findings) ? findings : [];
-      if (!l.length) return '<div class="fd-liniste"><i class="fas fa-circle-check"></i> Nimic de rezolvat. Flota e în regulă.</div>';
-      var meta = (window.AGP_META || {});
-      var rang = { critical: 0, warning: 1, info: 2 };
-      var pe = {};
-      l.forEach(function (f) {
-        var k = f.agent || 'altele';
-        var g = pe[k] || (pe[k] = { agent: k, n: 0, sev: 'info', vehicule: [] });
-        g.n++;
-        if ((rang[f.severity] != null ? rang[f.severity] : 3) < (rang[g.sev] != null ? rang[g.sev] : 3)) g.sev = f.severity;
-        if (f.imei && g.vehicule.indexOf(f.imei) < 0) g.vehicule.push(f.imei);
-      });
-      return Object.keys(pe)
-        .sort(function (a, b) { return (rang[pe[a].sev] || 3) - (rang[pe[b].sev] || 3) || pe[b].n - pe[a].n; })
-        .map(function (k) {
-          var g = pe[k];
-          var m = meta[k] || {};
-          var ton = g.sev === 'critical' ? 'bad' : (g.sev === 'warning' ? 'warn' : '');
-          return '<button class="fd-rand ' + ton + '" onclick="showView(\'agenti\')" title="Deschide Agenți AI">'
-            + '<i class="fas ' + (m.icon || 'fa-circle-exclamation') + '"></i>'
-            + '<span class="t"><b>' + _fdEsc(m.name || k) + '</b>'
-            + '<small>' + g.n + (g.n === 1 ? ' constatare' : ' constatări')
-            + (g.vehicule.length ? ' · ' + _fdVeh(g.vehicule.length) : ' · pe toată flota') + '</small></span>'
-            + '<i class="fas fa-chevron-right sag"></i></button>';
-        }).join('');
-    }
-    window.raxFleetDash = async function () {
-      var box = _fdEl('fleet-dash-body'); if (!box) return;
-      box.innerHTML = '<div class="rax-co-meta" style="padding:20px;">Se încarcă…</div>';
-      var d = null, f = [];
-      try { d = await fetch('/api/dashboard' + (window.superCompanyQS ? window.superCompanyQS('?') : ''), { credentials: 'same-origin' }).then(function (r) { return r.json(); }); } catch (e) {}
-      try { f = await fetch('/api/agents/findings', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; }); } catch (e) { f = []; }
-      if (!d || d.error) { box.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red);">Nu s-au putut lua datele flotei: ' + _fdEsc((d && d.error) || 'indisponibil') + '</div>'; return; }
-      var ora = _fdEl('fdash-ora'); if (ora) ora.textContent = 'actualizat ' + new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
-
-      var tot = Number(d.totalDevices) || 0;
-      var misca = Number(d.movingCount) || 0, stat = Number(d.stationatCount) || 0;
-      var oprit = Number(d.opritCount) || 0, offline = Number(d.offlineCount) || 0;
-      var km = Number(d.totalKm) || 0, lit = Number(d.totalFuel) || 0, min = Number(d.totalEngineTime) || 0;
-      var vehicule = Array.isArray(d.devices) ? d.devices : [];
-      var fara = vehicule.filter(function (v) { return !v.isOnline; });
-      // Vehiculele înregistrate care n-au transmis NICIODATĂ nu apar în lista live — le numărăm separat,
-      // ca să nu pară că am pierdut vehicule între cifră și listă.
-      var niciodata = Math.max(0, offline - fara.length);
-      var celMaiRulat = vehicule.slice().sort(function (a, b) { return (b.km || 0) - (a.km || 0); })[0];
-      // Media de consum are sens abia după ce s-a rulat ceva: la 2 km făcuți și 5 litri arși la
-      // ralanti iese „250 L/100 km", iar omul nu se mai uită niciodată la ecranul ăsta. Așa că o
-      // arătăm doar peste 10 km și doar dacă rezultatul e omenesc.
-      var per100 = (km >= 10 && lit > 0) ? (lit / km * 100) : null;
-      if (per100 != null && (per100 < 1 || per100 > 100)) per100 = null;
-
-      box.innerHTML =
-        '<div class="aiu-grup">Acum</div><div class="aiu-kpiuri">'
-        + _fdKpi({ cap: 'În mișcare', icon: 'truck-fast', val: misca + ' <span class="mic">din ' + tot + '</span>',
-            ton: misca ? 'ok' : '', sub: stat ? stat + (stat === 1 ? ' stă cu motorul pornit' : ' stau cu motorul pornit') : 'niciunul la ralanti',
-            jos: 'apasă pentru hartă', du: "showView('localizare')" })
-        + _fdKpi({ cap: 'Oprite', icon: 'square-parking', val: String(oprit),
-            sub: tot ? Math.round(oprit / tot * 100) + '% din flotă' : '—', jos: 'motor stins' })
-        + _fdKpi({ cap: 'Fără semnal', icon: 'tower-broadcast', val: String(offline),
-            ton: offline ? 'bad' : 'ok',
-            sub: offline ? 'nu transmit de peste o oră' : 'toate transmit',
-            jos: offline ? (fara.slice(0, 3).map(function (v) { return _fdEsc(v.name); }).join(', ')
-                  + (fara.length > 3 ? ' și încă ' + (fara.length - 3) : '')
-                  + (niciodata ? (fara.length ? ' · ' : '') + niciodata + ' n-au transmis niciodată' : ''))
-                : 'nicio grijă' })
-        + '</div>'
-        + '<div class="aiu-grup">Azi</div><div class="aiu-kpiuri">'
-        + _fdKpi({ cap: 'Kilometri', icon: 'road', val: km.toLocaleString('ro-RO') + ' <span class="mic">km</span>',
-            sub: celMaiRulat && celMaiRulat.km > 0 ? 'cel mai rulat: <b>' + _fdEsc(celMaiRulat.name) + '</b> — ' + Math.round(celMaiRulat.km) + ' km' : 'nimic încă azi',
-            jos: 'de la miezul nopții' })
-        + _fdKpi({ cap: 'Timp de mers', icon: 'clock', val: _fdOre(min),
-            sub: misca || stat ? 'motoare pornite acum: ' + (misca + stat) : 'toate motoarele sunt stinse',
-            jos: 'însumat pe toată flota' })
-        + _fdKpi({ cap: 'Combustibil', icon: 'gas-pump', val: lit ? lit.toFixed(1) + ' <span class="mic">L</span>' : '—',
-            sub: per100 ? '≈ ' + per100.toFixed(1) + ' L/100 km'
-              : (lit > 0 ? 'prea puțini km azi pentru o medie' : 'fără date de consum azi'),
-            jos: 'estimat unde nu e senzor' })
-        + '</div>'
-        + '<div class="aiu-grup">De rezolvat</div>'
-        + '<div class="fd-lista">' + _fdDeRezolvat(f) + '</div>'
-        + '<div style="font-size:11px;color:var(--text-muted);margin-top:12px;line-height:1.5;">'
-        + 'Cifrele „Azi" se socotesc de la miezul nopții și se reînnoiesc singure. „Fără semnal" = un vehicul '
-        + 'care n-a mai trimis nimic de peste o oră — poate fi oprit în garaj, fără acoperire, sau cu aparatul deconectat. '
-        + 'Pentru cifre pe o perioadă și grafice, mergi la <b>Analize statistice → Statistici</b>.</div>';
-    };
-    // ─── sfârșit „Flota mea, pe scurt" ──
 
     // Gating UI după permisiuni (override: nav Administrare + acțiuni de flotă)
     function applyPermissionsUI() {
       document.body.classList.toggle('no-users', !can('manageUsers')); // Utilizatori/Audit din „Administrare" — cu permisiunea manageUsers
       document.body.classList.toggle('no-companies', !can('manageCompanies')); // Companii & mutare între companii = STRICT super-admin (manageCompanies)
       document.body.classList.toggle('is-super', !!(currentUser && currentUser.role === 'superadmin')); // fail-closed pentru [data-super]
-      const dashNav = document.getElementById('nav-dashboard');
-      // „Dashboard" nu mai e tabloul platformei (ăla a rămas la fondator, în Business), ci starea
-      // flotei proprii — îl vede orice om logat, iar serverul îi dă doar vehiculele la care are drept.
-      if (dashNav) dashNav.style.display = '';
+      // (Intrarea „Dashboard" din verticala partenerului nu mai există: era un duplicat al ecranului
+      //  „Statistici flotă". Tabloul platformei a rămas la fondator, în Business.)
       document.body.classList.toggle('no-fleet', !can('manageFleet'));
       applyAccessBanner();
       applyAnnouncementBanner();
@@ -16829,7 +16695,17 @@ const pozitii = await r.json();</code></pre>
         var _dashEsc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
 
         // ─── HERO KPI (4 carduri) ───
-        var _consPer100 = (d.totalKm > 0) ? ('≈ ' + (d.totalFuel / d.totalKm * 100).toFixed(1) + ' L/100km') : '—';
+        // ─── începe „Plasa de la media de consum" ────────────────────────────────────────────────
+        // Media are sens abia după ce s-a rulat ceva. La 2 km făcuți și 5 litri arși la ralanti
+        // ieșea „250 L/100km" — o cifră care nu doar că e greșită, dar strică încrederea în tot
+        // ecranul. Acum apare doar peste 10 km și doar dacă rezultatul e omenesc.
+        var _per100 = (d.totalKm >= 10 && d.totalFuel > 0) ? (d.totalFuel / d.totalKm * 100) : null;
+        if (_per100 != null && (_per100 < 1 || _per100 > 100)) _per100 = null;
+        var _consPer100 = _per100 ? ('≈ ' + _per100.toFixed(1) + ' L/100km')
+          : (d.totalFuel > 0
+              ? (d.totalKm < 10 ? 'prea puțini km azi pentru o medie' : 'date de consum incomplete azi')
+              : '—');
+        // ─── sfârșit „Plasa de la media de consum" ──
         var _alertOn = (d.totalAlerts > 0);
         var heroCard = function (icon, iconColor, border, label, num, unit, sub) {
           return '<div class="dash-hero-card" style="border-left-color:' + border + '">' +
@@ -16837,9 +16713,24 @@ const pozitii = await r.json();</code></pre>
             '<div class="dash-hero-num">' + num + (unit ? '<small>' + unit + '</small>' : '') + '</div>' +
             '<div class="dash-hero-sub">' + sub + '</div></div>';
         };
+        // ─── începe „Cine tace" ──────────────────────────────────────────────────────────────────
+        // Scria doar „2 offline". Care două? Trebuia deschisă harta și căutat. Acum le scrie pe nume,
+        // iar cele care n-au transmis NICIODATĂ se numără separat — altfel ar părea că lipsesc
+        // vehicule între cifră și listă (ele nu apar în lista live, fiindcă n-au trimis nimic).
+        var _vehLista = Array.isArray(d.devices) ? d.devices : [];
+        var _tac = _vehLista.filter(function (v) { return !v.isOnline; }).map(function (v) { return v.name || v.imei; });
+        var _niciodata = Math.max(0, (d.offlineCount || 0) - _tac.length);
+        var _subOffline = (d.offlineCount > 0)
+          ? (_tac.slice(0, 3).map(_dashEsc).join(', ') + (_tac.length > 3 ? ' și încă ' + (_tac.length - 3) : '')
+             + (_niciodata ? (_tac.length ? ' · ' : '') + _niciodata + ' n-au transmis niciodată' : ''))
+          : 'toate transmit';
+        // ─── sfârșit „Cine tace" ──
         document.getElementById('dash-hero').innerHTML =
           heroCard('fa-car', 'var(--green)', 'var(--green)', 'Total vehicule', d.totalDevices, '', d.onlineCount + ' online · ' + d.offlineCount + ' offline') +
+          heroCard('fa-tower-broadcast', (d.offlineCount > 0 ? 'var(--red)' : 'var(--green)'), (d.offlineCount > 0 ? 'var(--red)' : 'var(--green)'), 'Fără semnal', (d.offlineCount || 0), '', _subOffline) +
           heroCard('fa-road', 'var(--green)', 'var(--green)', 'Km azi', d.totalKm, ' km', 'total flotă azi') +
+          // Orele de motor existau, dar scrise mic și gri sub bara de stare — adică nu le vedea nimeni.
+          heroCard('fa-clock', 'var(--green)', 'var(--green)', 'Timp de mers azi', (d.totalEngineTime > 0 ? formatDuration(d.totalEngineTime) : '0h 0m'), '', 'motoare pornite, însumat pe flotă') +
           heroCard('fa-gas-pump', 'var(--orange)', 'var(--orange)', 'Consum azi', d.totalFuel, ' L', _consPer100) +
           heroCard('fa-bell', (_alertOn ? 'var(--red)' : 'var(--green)'), (_alertOn ? 'var(--red)' : 'var(--green)'), 'Alerte', d.totalAlerts, '', (_alertOn ? d.totalAlerts + ' necitite' : 'nicio alertă'));
 
@@ -16864,8 +16755,7 @@ const pozitii = await r.json();</code></pre>
         _segs.forEach(function (s) { legHtml += '<span style="opacity:' + (s.n > 0 ? 1 : .45) + '"><i class="dot" style="background:' + s.c + '"></i>' + s.lbl + ' <b>' + s.n + '</b></span>'; });
         document.getElementById('dash-status').innerHTML =
           '<div class="dash-statbar">' + barHtml + '</div>' +
-          '<div class="dash-statleg">' + legHtml + '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:9px;"><i class="fas fa-clock"></i> Ore motor azi: <b>' + (d.totalEngineTime > 0 ? formatDuration(d.totalEngineTime) : '0h 0m') + '</b></div>';
+          '<div class="dash-statleg">' + legHtml + '</div>';   // orele de motor au urcat în cartonașe, nu se mai repetă aici
 
         var _fn = document.getElementById('dash-fleet-n'); if (_fn) _fn.textContent = '(' + (d.totalDevices || 0) + ')';
 
@@ -16923,17 +16813,37 @@ const pozitii = await r.json();</code></pre>
         var list = await fetch('/api/agents/findings' + window.superCompanyQS('?'), { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : []; });
         var nw = (Array.isArray(list) ? list : []).filter(function (f) { return f.status === 'new'; });
         if (!nw.length) { wrap.style.display = 'none'; return; }
+        // ─── începe „Constatările, strânse pe categorii" ──────────────────────────────────────────
+        // Erau șase rânduri separate, fiecare cu titlul lui, și niciunul nu ducea nicăieri. Șase
+        // titluri aproape identice („Camion A n-a transmis", „Camion B n-a transmis"…) sunt mai
+        // greu de citit decât un singur rând: „RA Watch · 3 constatări · 2 vehicule". Iar acum
+        // fiecare rând se apasă și te duce în „Agenți AI", unde scrie tot.
+        // Numele și pictogramele agenților vin din AGP_META — sursa UNICĂ (vezi CLAUDE.md); aici
+        // era o listă paralelă, care se putea desincroniza tăcut.
         var rank = { critical: 0, warning: 1, info: 2 };
-        nw.sort(function (a, b) { return (rank[a.severity] == null ? 3 : rank[a.severity]) - (rank[b.severity] == null ? 3 : rank[b.severity]); });
-        var meta = { watch: ['RA Watch', 'fa-shield-halved'], care: ['RA Care', 'fa-wrench'], optimize: ['RA Optimize', 'fa-leaf'], compliance: ['RA Compliance', 'fa-clipboard-check'], client: ['RA Client', 'fa-file-lines'], dispatch: ['RA Dispatch', 'fa-compass'] };
-        var x = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
-        box.innerHTML = nw.slice(0, 6).map(function (f) {
-          var col = f.severity === 'critical' ? 'var(--red)' : (f.severity === 'warning' ? 'var(--orange)' : 'var(--accent)');
-          var m = meta[f.agent] || ['Agent', 'fa-robot'];
-          return '<div style="border:1px solid var(--border);border-left:3px solid ' + col + ';border-radius:8px;padding:8px 10px;background:var(--bg-dark);">'
-            + '<div style="font-size:12px;font-weight:600;margin-bottom:3px;line-height:1.3;">' + x(f.title) + '</div>'
-            + '<div style="font-size:10px;color:var(--text-muted);"><i class="fas ' + m[1] + '"></i> ' + m[0] + '</div></div>';
-        }).join('');
+        var meta = (window.AGP_META || {});
+        var x = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        var pe = {};
+        nw.forEach(function (f) {
+          var k = f.agent || 'altele';
+          var g = pe[k] || (pe[k] = { n: 0, sev: 'info', vehicule: [] });
+          g.n++;
+          if ((rank[f.severity] == null ? 3 : rank[f.severity]) < (rank[g.sev] == null ? 3 : rank[g.sev])) g.sev = f.severity;
+          if (f.imei && g.vehicule.indexOf(f.imei) < 0) g.vehicule.push(f.imei);
+        });
+        box.innerHTML = Object.keys(pe)
+          .sort(function (a, b) { return (rank[pe[a].sev] == null ? 3 : rank[pe[a].sev]) - (rank[pe[b].sev] == null ? 3 : rank[pe[b].sev]) || pe[b].n - pe[a].n; })
+          .map(function (k) {
+            var g = pe[k], m = meta[k] || {};
+            var ton = g.sev === 'critical' ? 'bad' : (g.sev === 'warning' ? 'warn' : '');
+            return '<button class="fd-rand ' + ton + '" onclick="showView(\'agenti\')" title="Deschide Agenți AI">'
+              + '<i class="fas ' + (m.icon || 'fa-robot') + '"></i>'
+              + '<span class="t"><b>' + x(m.name || k) + '</b><small>'
+              + g.n + (g.n === 1 ? ' constatare' : ' constatări')
+              + (g.vehicule.length ? ' · ' + g.vehicule.length + (g.vehicule.length === 1 ? ' vehicul' : ' vehicule') : ' · pe toată flota')
+              + '</small></span><i class="fas fa-chevron-right sag"></i></button>';
+          }).join('');
+        // ─── sfârșit „Constatările, strânse pe categorii" ──
         wrap.style.display = 'block';
       } catch (e) { wrap.style.display = 'none'; }
     }
