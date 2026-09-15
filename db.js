@@ -789,7 +789,7 @@ async function initDb() {
         FROM devices d
        WHERE a.imei = d.imei AND a.company_id IS NULL AND d.company_id IS NOT NULL
     `);
-    // ─── Plăți (gestionate manual de super-admin; schema pregătită și pentru Stripe) ───
+    // ─── Plăți (înregistrate de super-admin, pe baza facturilor) ───
     await client.query(`
       CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
@@ -1523,23 +1523,13 @@ async function getCompanyById(id) {
   const r = await pool.query('SELECT * FROM companies WHERE id = $1', [id]);
   return r.rows[0] || null;
 }
-async function setCompanyBilling(id, b) {
-  await pool.query(
-    'UPDATE companies SET plan = COALESCE($2, plan), subscription_status = $3, stripe_customer_id = COALESCE($4, stripe_customer_id), stripe_subscription_id = $5, current_period_end = $6 WHERE id = $1',
-    [id, b.plan || null, b.status || null, b.customerId || null, b.subscriptionId || null, b.periodEnd || null]
-  );
+// Oferta scrisă pe firmă. Coloana `plan` rămâne în tabel (nu ștergem date vechi), dar NU mai e
+// citită de nimeni — RA Tracks nu funcționează pe planuri, ci pe oferte.
+async function setCompanyOferta(id, oferta) {
+  await pool.query('UPDATE companies SET custom_plan = $2 WHERE id = $1',
+    [id, oferta ? JSON.stringify(oferta) : null]);
 }
-async function getCompanyByStripeCustomer(customerId) {
-  if (!customerId) return null;
-  const r = await pool.query('SELECT * FROM companies WHERE stripe_customer_id = $1 LIMIT 1', [customerId]);
-  return r.rows[0] || null;
-}
-// Setează planul unei companii: cheie standard (start/pro/premium) sau plan custom (obiect).
-async function setCompanyPlan(id, plan, customPlan) {
-  await pool.query('UPDATE companies SET plan = $2, custom_plan = $3 WHERE id = $1',
-    [id, plan || 'start', customPlan ? JSON.stringify(customPlan) : null]);
-}
-// ─── Acces & plăți (manual de super-admin; pregătit și pentru Stripe) ───
+// ─── Acces & plăți (înregistrate de super-admin) ───
 async function setCompanyAccessUntil(id, untilMs) {
   await pool.query('UPDATE companies SET access_until = $2 WHERE id = $1', [id, untilMs == null ? null : Math.round(untilMs)]);
 }
@@ -4454,7 +4444,7 @@ module.exports = {
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
-  setCompanyBilling, getCompanyByStripeCustomer, setCompanyPlan,
+  setCompanyOferta,
   setCompanyAccessUntil, recordPayment, getPayments, getAllPayments,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic,
   pruneAgentFindings,

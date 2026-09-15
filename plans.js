@@ -1,111 +1,49 @@
-// plans.js — Model de preț RA Tracks (propunere).
-// Model: PER VEHICUL / lună, cu 3 niveluri de funcții. Abonamentul Stripe folosește
-// "quantity" = numărul de vehicule ale companiei. Prețurile sunt orientative (RON, fără TVA)
-// și pot fi schimbate din env (ID-urile de preț Stripe se pun după ce creezi produsele în Stripe).
+// oferte.js — prețul unei firme la RA Tracks.
+//
+// RA Tracks NU funcționează pe planuri și n-a funcționat niciodată așa. Fiecare client primește o
+// OFERTĂ, făcută pe ce are el (câte vehicule, câte cu CAN, ce module), iar contractul se face pe
+// oferta acceptată. Atât.
+//
+// Fișierul ăsta se numea `plans.js` și avea un tabel cu patru planuri (Start / Pro / Premium AI /
+// Enterprise), prețuri pe vehicul, reduceri de volum și perioadă de probă.
+// Nimic din toate astea nu se vindea vreodată — dar tabelul HOTĂRA lucruri reale în spate: ce module
+// are o firmă și ce agenți îi rulează. Așa s-a ajuns ca fiecare client deschis să rămână fără agenți,
+// pentru că pica pe „standard" → „start", unde scria `agents: false`. A fost scos tot.
+//
+// Ce a rămas: socoteala prețului din ofertă și două valori implicite FIXE (nu dintr-un tabel):
+//   • agenții AI sunt PORNIȚI — sunt gratuiți, merg pe reguli fixe și fac parte din produs;
+//   • modulele cu plată (RA Insight, tahograf, e-Transport, e-Toll) sunt OPRITE până le aprinde oferta.
+// Orice firmă poate suprascrie oricare din ele, din Administrare → Configurează.
 
-const PLANS = [
-  {
-    key: 'start',
-    name: 'Start',
-    pricePerVehicleRON: 29,
-    stripePriceId: process.env.STRIPE_PRICE_START || '',
-    features: [
-      'Localizare live + hartă',
-      'Istoric trasee (6 luni)',
-      'Rapoarte de bază + export CSV/Excel/PDF/KML',
-      'Alerte + geofence',
-      'Aplicație mobilă (PWA)'
-    ]
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    pricePerVehicleRON: 45,
-    stripePriceId: process.env.STRIPE_PRICE_PRO || '',
-    features: [
-      'Tot din Start',
-      'Toate cele 32 de rapoarte + programare pe email',
-      'Sonde combustibil (nivel, alimentări, furt)',
-      'Tahograf + e-Transport — în curând (azi doar demonstrativ)',
-      'Notificări avansate (email / Web Push)',
-      'Acces API (chei)'
-    ]
-  },
-  {
-    key: 'premium',
-    name: 'Premium AI',
-    pricePerVehicleRON: 65,
-    stripePriceId: process.env.STRIPE_PRICE_PREMIUM || '',
-    features: [
-      'Tot din Pro',
-      'Cei 6 agenți AI (Watch / Care / Optimize / Compliance / Client / Dispatch)',
-      'Asistent AI (chat flotă) + rezumate AI',
-      'Dashboard avansat + RA Dispatch (sugestie de vehicul; alocarea curselor — în curând)'
-    ]
-  },
-  {
-    key: 'enterprise',
-    name: 'Enterprise',
-    custom: true,            // preț negociat — „la cerere"
-    pricePerVehicleRON: null,
-    stripePriceId: '',
-    features: [
-      'Tot din Premium AI',
-      'Preț negociat (per vehicul sau tarif fix)',
-      'Onboarding asistat + suport prioritar / SLA',
-      'Integrări la cerere, branding propriu, instanță dedicată (opțional)'
-    ]
-  }
-];
-
-// Reduceri de volum (orientativ) — aplicabile prin cupoane Stripe sau prețuri pe trepte.
-const VOLUME_DISCOUNTS = [
-  { minVehicles: 20, percent: 10 },
-  { minVehicles: 50, percent: 20 }
-];
-
-const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS) || 14;
-
-function getPlan(key) { return PLANS.find(p => p.key === key) || null; }
-function publicPlans() {
-  // pentru landing/app — fără ID-uri Stripe
-  return PLANS.map(p => ({ key: p.key, name: p.name, pricePerVehicleRON: p.pricePerVehicleRON, custom: !!p.custom, features: p.features }));
+// Oferta scrisă pe firmă (`companies.custom_plan`, JSONB). Formele acceptate:
+//   direct:  { priceNoneRON, priceCanRON, priceFmsRON, canImeis }   — preț întreg pe fiecare fel de vehicul
+//   tiered:  { basePerVehicleRON, canAddonRON, fmsAddonRON, aiAssistantRON, aiAgentsRON }
+//   vechi:   { pricePerVehicleRON } sau { flatPriceRON }
+// FĂRĂ ofertă → `null`: firma nu are preț, deci nu aduce venit. NU inventează un preț implicit —
+// altfel o firmă nouă ar apărea în registrul de clienți cu bani care nu există.
+function ofertaFirmei(company) {
+  const c = company && company.custom_plan;
+  if (!c) return null;
+  const areP = (c.priceNoneRON != null || c.basePerVehicleRON != null || c.pricePerVehicleRON != null || c.flatPriceRON != null);
+  if (!areP) return null;
+  return {
+    name: c.name || 'Ofert\u0103',
+    priceNoneRON: c.priceNoneRON != null ? c.priceNoneRON : null,
+    priceCanRON: c.priceCanRON != null ? c.priceCanRON : null,
+    priceFmsRON: c.priceFmsRON != null ? c.priceFmsRON : null,
+    canImeis: Array.isArray(c.canImeis) ? c.canImeis : null,
+    basePerVehicleRON: c.basePerVehicleRON != null ? c.basePerVehicleRON : null,
+    canAddonRON: c.canAddonRON != null ? c.canAddonRON : null,
+    fmsAddonRON: c.fmsAddonRON != null ? c.fmsAddonRON : null,
+    aiAssistantRON: c.aiAssistantRON != null ? c.aiAssistantRON : null,
+    aiAgentsRON: c.aiAgentsRON != null ? c.aiAgentsRON : null,
+    pricePerVehicleRON: c.pricePerVehicleRON != null ? c.pricePerVehicleRON : null,
+    flatPriceRON: c.flatPriceRON != null ? c.flatPriceRON : null,
+    vehicleLimit: c.vehicleLimit != null ? c.vehicleLimit : null,
+    note: c.note || ''
+  };
 }
 
-// Planul efectiv al unei companii: dacă are un plan custom setat de super-admin, acela; altfel cel standard.
-// company.custom_plan (JSONB):
-//   legacy:  { name, pricePerVehicleRON, flatPriceRON, vehicleLimit, stripePriceId, note }
-//   tiered:  + { basePerVehicleRON, canAddonRON, fmsAddonRON, aiAssistantRON, aiAgentsRON }
-//   Oferta e „tiered" (nouă) dacă basePerVehicleRON != null: preț de bază/vehicul + spor CAN + spor FMS
-//   (pe fiecare vehicul de tipul respectiv) + add-on-uri AI lunare fixe (asistent / agenți).
-function effectivePlan(company) {
-  if (company && company.custom_plan && (company.custom_plan.priceNoneRON != null || company.custom_plan.basePerVehicleRON != null || company.custom_plan.pricePerVehicleRON != null || company.custom_plan.flatPriceRON != null)) {
-    const c = company.custom_plan;
-    return {
-      key: 'custom', custom: true, name: c.name || 'Custom',
-      priceNoneRON: c.priceNoneRON != null ? c.priceNoneRON : null,
-      priceCanRON: c.priceCanRON != null ? c.priceCanRON : null,
-      priceFmsRON: c.priceFmsRON != null ? c.priceFmsRON : null,
-      canImeis: Array.isArray(c.canImeis) ? c.canImeis : null,
-      basePerVehicleRON: c.basePerVehicleRON != null ? c.basePerVehicleRON : null,
-      canAddonRON: c.canAddonRON != null ? c.canAddonRON : null,
-      fmsAddonRON: c.fmsAddonRON != null ? c.fmsAddonRON : null,
-      aiAssistantRON: c.aiAssistantRON != null ? c.aiAssistantRON : null,
-      aiAgentsRON: c.aiAgentsRON != null ? c.aiAgentsRON : null,
-      pricePerVehicleRON: c.pricePerVehicleRON != null ? c.pricePerVehicleRON : null,
-      flatPriceRON: c.flatPriceRON != null ? c.flatPriceRON : null,
-      vehicleLimit: c.vehicleLimit != null ? c.vehicleLimit : null,
-      stripePriceId: c.stripePriceId || '',
-      note: c.note || ''
-    };
-  }
-  return getPlan((company && company.plan) || 'start') || getPlan('start');
-}
-
-// Preț lunar al unei companii din oferta efectivă + numărul de vehicule pe tip CAN.
-// canCounts = { none, can, fms } (exact forma construită în /overview). opts.features (din featuresFor) →
-// add-on-urile AI se taxează DOAR dacă modulul respectiv e ON; fără opts → „list price" (ambele numărate).
-// Întoarce { model:'preset'|'tiered'|'flat', perVehicleTotal, aiTotal, monthlyTotal, breakdown }.
 function computeCompanyPrice(company, canCounts, opts) {
   opts = opts || {};
   const cc = canCounts || {};
@@ -113,7 +51,8 @@ function computeCompanyPrice(company, canCounts, opts) {
   const can = Math.max(0, parseInt(cc.can) || 0);
   const fms = Math.max(0, parseInt(cc.fms) || 0);
   const total = none + can + fms;
-  const eff = effectivePlan(company) || {};
+  // Fără ofertă, prețul e ZERO și se vede în registru ca „firmă fără ofertă" — nu inventat.
+  const eff = ofertaFirmei(company) || {};
   const num = function (v) { return (v != null && isFinite(v)) ? Number(v) : 0; };
   const feats = opts.features || null;
   const aiAssistOn = feats ? !!feats.ai_assistant : true;
@@ -134,10 +73,10 @@ function computeCompanyPrice(company, canCounts, opts) {
     const noneTotal = pn * none, canTotal = pc * can, fmsTotal = pf * fms;
     const aiAssist = aiAssistOn ? num(eff.aiAssistantRON) : 0;
     const aiAgents = aiAgentsOn ? num(eff.aiAgentsRON) : 0;
-    return mk('direct', noneTotal + canTotal + fmsTotal, aiAssist + aiAgents, { base: noneTotal, canAddon: canTotal, fmsAddon: fmsTotal, aiAssistant: aiAssist, aiAgents: aiAgents });
+    return mk('oferta', noneTotal + canTotal + fmsTotal, aiAssist + aiAgents, { base: noneTotal, canAddon: canTotal, fmsAddon: fmsTotal, aiAssistant: aiAssist, aiAgents: aiAgents });
   }
   // FLAT (legacy): preț fix lunar (fără AI separat) — doar dacă NU e ofertă direct.
-  if (eff.flatPriceRON != null) { const flat = num(eff.flatPriceRON); return mk('flat', flat, 0, { base: flat }); }
+  if (eff.flatPriceRON != null) { const flat = num(eff.flatPriceRON); return mk('fix', flat, 0, { base: flat }); }
   // TIERED custom: bază/vehicul (toate) + spor CAN (vehiculele cu CAN) + spor FMS + add-on-uri AI lunare
   if (eff.basePerVehicleRON != null) {
     const baseTotal = num(eff.basePerVehicleRON) * total;
@@ -145,68 +84,41 @@ function computeCompanyPrice(company, canCounts, opts) {
     const fmsTotal = num(eff.fmsAddonRON) * fms;
     const aiAssist = aiAssistOn ? num(eff.aiAssistantRON) : 0;
     const aiAgents = aiAgentsOn ? num(eff.aiAgentsRON) : 0;
-    return mk('tiered', baseTotal + canTotal + fmsTotal, aiAssist + aiAgents,
+    return mk('trepte', baseTotal + canTotal + fmsTotal, aiAssist + aiAgents,
       { base: baseTotal, canAddon: canTotal, fmsAddon: fmsTotal, aiAssistant: aiAssist, aiAgents: aiAgents });
   }
-  // PRESET / legacy per-vehicul
+  // Forma veche: un singur preț pe vehicul. Fără nimic scris → zero.
   const perVehicleTotal = num(eff.pricePerVehicleRON) * total;
-  return mk('preset', perVehicleTotal, 0, { base: perVehicleTotal });
+  return mk(eff.pricePerVehicleRON != null ? 'pe-vehicul' : 'fara-oferta', perVehicleTotal, 0, { base: perVehicleTotal });
 }
 
-// ─── Funcții (module) controlabile per-companie de super-admin (checkbox-uri) ───
-// Stocate în companies.settings.features = { agents, ai_assistant, etransport, tahograf } (booleeni expliciți).
-// Cheie lipsă → cade pe default-ul planului companiei.
+// Modulele unei firme. Implicit FIX, nu dintr-un tabel de planuri:
+//   agenții — PORNIȚI (gratuiți, parte din produs);
+//   restul — OPRITE până le aprinde oferta semnată.
+// `settings.features` (scris de ofertă sau de mână, din Configurează) bate întotdeauna implicitul.
 const FEATURE_KEYS = ['agents', 'ai_assistant', 'etransport', 'tahograf', 'etoll'];
-// e-Transport, tahograf și e-Toll sunt DEMONSTRATIVE: coduri UIT generate local (UIT_DEMO_*), descărcarea
-// fișierului .DDD răspunde 501, iar costurile de drum vin dintr-un generator pseudo-aleator semănat din IMEI.
-// NU se mai activează singure pe niciun plan plătit — un client care plătește nu trebuie să dea peste date
-// fabricate crezând că sunt reale. Le pornește super-adminul, deliberat, per companie, pentru demonstrații.
-// ATENȚIE la `agents`: cei 6 agenți AI sunt GRATUIȚI și fac parte din produs — merg pe reguli fixe,
-// nu consumă tokeni și sunt scoși din calculatorul de ofertă (vezi CLAUDE.md). Nu-i vindem, deci
-// n-au ce căuta într-un tabel de planuri: RA Tracks nu funcționează pe planuri, ci pe OFERTE, iar
-// fiecare firmă nouă pică implicit pe „standard" (= start). Înainte, asta însemna că agenții porneau
-// OPRIȚI la orice client deschis, pentru o funcție pe care nici măcar n-o taxăm — iar traseul de
-// deschidere a clientului nu-i atingea deloc. Acum pornesc APRINȘI peste tot; comutatorul per firmă
-// (Administrare → Configurează) rămâne, dar ca să-i OPREASCĂ, nu ca să-i pornească.
-// `ai_assistant`, `tahograf`, `etransport` și `etoll` rămân oprite: pe alea chiar le vindem, iar oferta
-// le aprinde pe firma care le-a cumpărat.
-const FEATURE_DEFAULTS_BY_PLAN = {
-  start:      { agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false },
-  pro:        { agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false },
-  premium:    { agents: true, ai_assistant: true,  etransport: false, tahograf: false, etoll: false },
-  enterprise: { agents: true, ai_assistant: true,  etransport: false, tahograf: false, etoll: false },
-  custom:     { agents: true, ai_assistant: true,  etransport: false, tahograf: false, etoll: false }
-};
+const FEATURE_IMPLICIT = { agents: true, ai_assistant: false, etransport: false, tahograf: false, etoll: false };
 function featuresFor(company) {
   const settings = (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {};
-  const planKey = (effectivePlan(company) || {}).key || 'start';
-  const def = FEATURE_DEFAULTS_BY_PLAN[planKey] || FEATURE_DEFAULTS_BY_PLAN.start;
   const ov = (settings && settings.features) || {};
   const out = {};
-  FEATURE_KEYS.forEach(function (k) { out[k] = (typeof ov[k] === 'boolean') ? ov[k] : !!def[k]; });
+  FEATURE_KEYS.forEach(function (k) { out[k] = (typeof ov[k] === 'boolean') ? ov[k] : !!FEATURE_IMPLICIT[k]; });
   return out;
 }
 
-// Agenți AI per plan (default; override per-companie via companies.settings.enabled_agents)
+// Cei 6 agenți AI: toți, la toate firmele. Se pot restrânge per firmă prin `settings.enabled_agents`.
 const ALL_AGENT_KEYS = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
-// Toți agenții, la toate firmele — din același motiv: sunt gratuiți și fac parte din produs.
-// Cine vrea altfel pe o firmă anume pune `settings.enabled_agents` (override per companie).
-const AGENTS_BY_PLAN = {
-  start: ALL_AGENT_KEYS.slice(),
-  pro: ALL_AGENT_KEYS.slice(),
-  premium: ALL_AGENT_KEYS.slice(),
-  enterprise: ALL_AGENT_KEYS.slice(),
-  custom: ALL_AGENT_KEYS.slice()
-};
-// Lista agenților activi pentru o companie: override > default pe plan
 function enabledAgentsFor(company) {
-  if (!featuresFor(company).agents) return [];   // master „Agenți AI" oprit de super-admin
+  if (!featuresFor(company).agents) return [];   // comutatorul „Agenți AI" oprit pe firma asta
   const settings = (company && (typeof company.settings === 'string' ? JSON.parse(company.settings) : company.settings)) || {};
   if (Array.isArray(settings.enabled_agents)) {
     return settings.enabled_agents.filter(function (k) { return ALL_AGENT_KEYS.indexOf(k) >= 0; });
   }
-  const eff = effectivePlan(company);
-  return AGENTS_BY_PLAN[eff && eff.key] || [];
+  return ALL_AGENT_KEYS.slice();
 }
 
-module.exports = { PLANS, VOLUME_DISCOUNTS, TRIAL_DAYS, getPlan, publicPlans, effectivePlan, computeCompanyPrice, ALL_AGENT_KEYS, AGENTS_BY_PLAN, enabledAgentsFor, FEATURE_KEYS, FEATURE_DEFAULTS_BY_PLAN, featuresFor };
+// `effectivePlan` rămâne ca nume vechi, ca să nu rupă apelurile existente — dar întoarce OFERTA.
+module.exports = {
+  ofertaFirmei, effectivePlan: ofertaFirmei, computeCompanyPrice,
+  ALL_AGENT_KEYS, enabledAgentsFor, FEATURE_KEYS, featuresFor
+};

@@ -94,6 +94,24 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
   (cotă fixă pe firmă), rămâne respectată pentru contractele deja semnate. Fără nimic = nelimitat.
   Locul de cont stă pe om: `users.ai_seat`, aprins de administratorul firmei din **Utilizatori**.
 
+## RA Tracks NU funcționează pe planuri (regulă de fond)
+
+**Nu există pachete de-a gata și nu vor exista.** Fiecare client primește o **ofertă** făcută pe ce
+are el (câte vehicule, câte cu CAN, ce module), iar **contractul se face pe oferta acceptată**. Atât.
+
+- Prețul unei firme vine DOAR din `companies.custom_plan` (oferta). **Fără ofertă → 0 lei**, iar
+  firma se vede ca atare în registrul de clienți. Nu inventa un preț implicit.
+- Modulele vin din `settings.features`, scrise de ofertă. Implicitul e FIX, nu dintr-un tabel:
+  **agenții AI porniți** (sunt gratuiți, parte din produs), **restul oprite** (se vind).
+- Coloana `companies.plan` a rămas în bază ca să nu pierdem date vechi, dar **nu o citește nimeni**.
+- **Stripe a fost scos de tot** (plată cu cardul, abonamente, webhook, perioadă de probă). Se
+  încasează prin transfer bancar, pe factură. Dacă vreodată vom vrea card, se face atunci — legat de
+  ofertă, nu de planuri.
+- **Cuvântul „plan" nu are ce căuta în interfață.** Singura excepție: „plan de service/mentenanță"
+  al unui vehicul — altă noțiune, rămâne.
+- Păzit de `verify_fara_planuri.js` (în `npm test`): dacă reapare un tabel de planuri, o valoare
+  implicită luată din plan, Stripe, sau eticheta „Plan" pe ecran — proba pică.
+
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 
 Fondatorii (Robert + echipa) au **conturi de super-admin** și testează aplicația jucând ambele

@@ -241,8 +241,10 @@ function effectiveFuelPrices(companySettings) {
   const pick = function (x, y) { const v = parseFloat(x); return Number.isFinite(v) ? v : (Number.isFinite(y) ? y : null); };
   return { motorina: pick(co.motorina, a.motorina), benzina: pick(co.benzina, a.benzina), gpl: pick(co.gpl, a.gpl) };
 }
-let billing = null, plans = null;
-try { billing = require('./billing'); plans = require('./plans'); } catch (e) { console.warn('[BILLING] indisponibil:', e.message); }
+// Stripe a fost scos de tot (nu vindem cu cardul; dacă vreodată vom vrea, îl facem atunci).
+// `plans.js` a rămas ca nume de fișier, dar înăuntru nu mai e niciun plan — doar prețul din OFERTĂ.
+let plans = null;
+try { plans = require('./plans'); } catch (e) { console.warn('[PREȚURI] plans.js indisponibil:', e.message); }
 let fleetQuick = null;
 try { fleetQuick = require('./fleet_quick'); } catch (e) { console.warn('[AI] euristici locale indisponibile:', e.message); }
 const DEMO_SET = new Set(demoSim.DEMO_IMEIS); // vehiculele demo se văd DOAR în contul demo
@@ -1084,7 +1086,7 @@ const app = express();
 // rolul vechi, ținut minte în sesiune. Trebuie setat ÎNAINTE de primul app.use / app.get.
 app.set('case sensitive routing', true);
 app.set('trust proxy', 1); // necesar pentru cookie secure în spatele proxy-ului (Railway)
-app.use(express.json({ limit: '6mb', verify: (req, res, buf) => { if (req.originalUrl === '/api/billing/webhook') req.rawBody = buf; } })); // limită mărită pt. upload .DDD; raw body pt. semnătura webhook Stripe
+app.use(express.json({ limit: '6mb' })); // limită mărită pentru încărcarea fișierelor .DDD de tahograf
 
 // ─── Session store pe PGlite embedded (înlocuiește connect-pg-simple) ───
 class PgliteSessionStore extends session.Store {
@@ -1912,7 +1914,7 @@ function requireFeature(key) {
   };
 }
 
-// ─── Acces pe bază de plată (manual de super-admin; pregătit pentru Stripe) ───
+// ─── Acces pe bază de plată (înregistrată de super-admin, pe factură) ───
 // Serviciul e ACTIV cât factura e plătită (access_until în viitor). După expirare → 15 zile calendaristice
 // de GRAȚIE (încă activ, cu avertisment), apoi EXPIRAT → acces suspendat (poate doar să se logheze + plătească).
 const GRACE_DAYS = 15;
@@ -2326,9 +2328,9 @@ async function _accessStatusCached(companyId) {
   return Object.assign({}, baza, { neplata: np.faza === 'ok' ? null : np });
 }
 // Gate central: blochează (402) requesturile companiilor EXPIRATE (non-super) — sesiuni vechi, chei API, orice endpoint de date.
-// Allowlist ca userul blocat să-și poată vedea starea / plăti: /api/me, /api/logout, /api/billing/*.
+// Allowlist ca userul blocat să-și poată vedea starea și facturile: /api/me, /api/logout, /api/invoices.
 // Căi care rămân deschise unui cont cu abonamentul expirat — altfel omul e blocat ȘI din a-și rezolva
-// situația. Include explicit `/api/invoices`: linkul de plată e `/api/invoices/:id/pay-link`, NU sub
+// situația. Include explicit `/api/invoices`: facturile lui trebuie să rămână vizibile, NU sub
 // `/api/billing`, deci înainte era blocat exact endpointul prin care clientul ar fi putut plăti.
 const ACCESS_FREE = [
   '/api/health', '/api/login', '/api/logout', '/api/me', '/api/mobile/login',
@@ -4372,7 +4374,7 @@ function _randuriExportCompanii(lista, bani, acum) {
     const ad = c.admin || {};
     const ua = c.ultimaActivitate || null;
     return [
-      c.name || '', c.cui || '—', c.plan || 'standard', acces(c),
+      c.name || '', c.cui || '—', acces(c),
       (c.dosar && c.dosar.text) ? ('lipsește: ' + c.dosar.text) : ((c.dosar && c.dosar.eticheta) || 'complet'),
       Number(c.device_count) || 0, Number(c.user_count) || 0,
       Number((bani && bani[c.id]) || 0),
@@ -4412,8 +4414,8 @@ app.get('/api/companies/export', requireAuth, requireSuperadmin, async (req, res
     try { bani = (await _venitLunarToate(imbogatit)).firme || {}; }
     catch (e) { /* fără coloana de bani, restul listei pleacă oricum */ }
     const rows = _randuriExportCompanii(imbogatit, bani, acum);
-    const lunarTotal = rows.reduce(function (s, r) { return s + (Number(r[7]) || 0); }, 0);
-    const incasatTotal = rows.reduce(function (s, r) { return s + (Number(r[8]) || 0); }, 0);
+    const lunarTotal = rows.reduce(function (s, r) { return s + (Number(r[6]) || 0); }, 0);
+    const incasatTotal = rows.reduce(function (s, r) { return s + (Number(r[7]) || 0); }, 0);
     const report = {
       type: 'companii', label: 'Companii',
       periodLabel: 'Situația la ' + new Date(acum).toLocaleDateString('ro-RO'),
@@ -4422,10 +4424,10 @@ app.get('/api/companies/export', requireAuth, requireSuperadmin, async (req, res
         'Companii': rows.length,
         'Venit lunar recurent (lei)': Math.round(lunarTotal * 100) / 100,
         'Încasat total (lei)': Math.round(incasatTotal * 100) / 100,
-        'Fără contract complet': rows.filter(function (r) { return /lipsește/.test(String(r[4])); }).length,
-        'Cu restanță sau suspendate': rows.filter(function (r) { return /restanță|suspendat|oprit/.test(String(r[3])); }).length
+        'Fără contract complet': rows.filter(function (r) { return /lipsește/.test(String(r[3])); }).length,
+        'Cu restanță sau suspendate': rows.filter(function (r) { return /restanță|suspendat|oprit/.test(String(r[2])); }).length
       },
-      columns: ['Companie', 'CUI', 'Plan', 'Acces', 'Dosar', 'Vehicule', 'Utilizatori',
+      columns: ['Companie', 'CUI', 'Acces', 'Dosar', 'Vehicule', 'Utilizatori',
         'Lunar (lei)', 'Încasat total (lei)', 'Ultima activitate', 'Zile de liniște',
         'Administrator', 'Email', 'Telefon'],
       rows: rows
@@ -4529,7 +4531,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
     const rows = realCompanies.map(function (c) {
       const u = usageMap[c.id] || {};
       return {
-        id: c.id, name: c.name, is_demo: !!c.is_demo, plan: c.plan || null,
+        id: c.id, name: c.name, is_demo: !!c.is_demo,
         vehicles: c.device_count || 0, users: c.user_count || 0,
         ai_input: Number(u.input_tokens) || 0, ai_output: Number(u.output_tokens) || 0, ai_calls: Number(u.calls) || 0,
         // Cât ne COSTĂ efectiv clientul ăsta, în euro (nu doar tokeni) — baza pentru preț în ofertă.
@@ -4555,26 +4557,26 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       healthy_fix_pct: totLive ? Math.round((_sumField('healthyFix') / totLive) * 100) : null
     };
     const pf = usageMap['null'] || {};
-    // ─── Venituri / MRR (estimat din pachetele atribuite, fără TVA) ───
+    // ─── Venituri / MRR (din OFERTELE scrise pe firme, fără TVA) ───
+    // Firma fără ofertă aduce ZERO și se numără separat — nu i se inventează un preț, cum se
+    // întâmpla cât timp exista un tabel de planuri cu preț implicit pe vehicul.
     function _companyMrr(c) {
-      if (c.is_demo || !plans) return { mrr: 0, key: 'start' };
+      if (c.is_demo || !plans) return { mrr: 0, cuOferta: false };
       const eff = plans.effectivePlan(c);
-      const key = eff ? eff.key : 'start';
       // Estimare la scară de dashboard: toate vehiculele numărate pe nivelul de bază (ca „none") → fără query CAN
       // per companie (clasificarea CAN rulează doar în /overview). Pt. presetări/flat e EXACT; pt. oferte tiered e
       // o estimare-minim (cardurile au deja eticheta „estimat"). Add-on-urile AI se numără ca „list price".
       const price = plans.computeCompanyPrice(c, { none: (c.device_count || 0), can: 0, fms: 0 });
-      return { mrr: price.monthlyTotal, key };
+      return { mrr: price.monthlyTotal, cuOferta: !!eff };
     }
-    let mrrTotal = 0, activeSubs = 0; const mrrByPlan = {};
+    let mrrTotal = 0, cuOferta = 0;
     realCompanies.forEach(function (c) {
       const r = _companyMrr(c); mrrTotal += r.mrr;
-      mrrByPlan[r.key] = (mrrByPlan[r.key] || 0) + r.mrr;
-      if (c.subscription_status === 'active' || c.subscription_status === 'trialing') activeSubs++;
+      if (r.cuOferta) cuOferta++;
     });
     res.json({
       days: days, model: ai.AI_MODEL, aiEnabled: ai.aiEnabled(),
-      revenue: { currency: 'RON', mrr: Math.round(mrrTotal), arr: Math.round(mrrTotal * 12), by_plan: mrrByPlan, active_subs: activeSubs, paying_companies: realCompanies.length },
+      revenue: { currency: 'RON', mrr: Math.round(mrrTotal), arr: Math.round(mrrTotal * 12), cu_oferta: cuOferta, fara_oferta: realCompanies.length - cuOferta, paying_companies: realCompanies.length },
       companies: rows,
       platform: { ai_input: Number(pf.input_tokens) || 0, ai_output: Number(pf.output_tokens) || 0, ai_calls: Number(pf.calls) || 0, health: _healthSummary(hbc['null']) },
       totals: {
@@ -4599,7 +4601,7 @@ app.post('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
     if (name.length < 2) return res.status(400).json({ error: 'Numele companiei e obligatoriu' });
     let slug = (req.body.slug || name).toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || null;
     if (slug && await db.getCompanyBySlug(slug)) slug = slug + '-' + Date.now().toString(36).slice(-4); // evită coliziune slug
-    const c = await db.createCompany({ name, slug, contact_email: req.body.contact_email, phone: req.body.phone, plan: req.body.plan, is_demo: req.body.is_demo });
+    const c = await db.createCompany({ name, slug, contact_email: req.body.contact_email, phone: req.body.phone, is_demo: req.body.is_demo });
     auditReq(req, 'create', 'company', c.id, { name: c.name });
     res.json(c);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -5392,154 +5394,9 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   res.json({ ok: true, message: 'Dacă adresa există, vei primi un email cu instrucțiuni.' });
 });
 
-// ─── Facturare (Stripe) — se activează doar dacă STRIPE_SECRET_KEY e setat ───
-// Grila internă de planuri = default-uri de configurare, NU ofertă publică (RA Tracks vinde oferte
-// personalizate, stabilite de fondatori per companie). Endpointul era PUBLIC și expunea prețurile
-// oricui (inclusiv concurenței) → acum cere autentificare.
-app.get('/api/plans', requireAuth, (req, res) => {
-  res.json({ plans: plans ? plans.publicPlans() : [], trialDays: plans ? plans.TRIAL_DAYS : 0, billingEnabled: !!(billing && billing.enabled()) });
-});
-app.get('/api/billing/status', requireAuth, withCompany, async (req, res) => {
-  try {
-    await applyCompanyFilter(req);
-    const cid = req.isSuper ? req.filterCompanyId : req.companyId;
-    const co = cid ? await db.getCompanyById(cid) : null;
-    const eff = (co && plans) ? plans.effectivePlan(co) : null;
-    res.json({
-      billingEnabled: !!(billing && billing.enabled()),
-      plan: eff ? { key: eff.key, name: eff.name, custom: !!eff.custom, pricePerVehicleRON: eff.pricePerVehicleRON, flatPriceRON: eff.flatPriceRON || null, note: eff.note || '' } : null,
-      status: (co && co.subscription_status) || 'inactiv',
-      currentPeriodEnd: (co && co.current_period_end) || null,
-      hasSubscription: !!(co && co.stripe_customer_id)
-    });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/billing/checkout', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
-  try {
-    if (!(billing && billing.enabled())) return res.status(503).json({ error: 'Facturarea nu e configurată (STRIPE_SECRET_KEY)' });
-    const cid = req.companyId;
-    const co = cid ? await db.getCompanyById(cid) : null;
-    if (!co) return res.status(400).json({ error: 'Companie inexistentă' });
-    const reqPlan = (req.body && req.body.plan) || '';
-    let priceId, planKey;
-    if (reqPlan === 'custom') {
-      const eff = plans.effectivePlan(co);
-      if (!eff.custom || !eff.stripePriceId) return res.status(400).json({ error: 'Planul custom nu are un preț Stripe configurat — plata se face prin factură sau super-adminul pune un Stripe Price ID.' });
-      priceId = eff.stripePriceId; planKey = 'custom';
-    } else {
-      const plan = plans.getPlan(reqPlan);
-      if (!plan) return res.status(400).json({ error: 'Plan invalid' });
-      if (plan.custom) return res.status(400).json({ error: 'Planul Enterprise se contractează direct (preț la cerere). Scrie-ne la contact@ratrack.ro.' });
-      if (!plan.stripePriceId) return res.status(400).json({ error: 'Plan neconfigurat în Stripe (lipsește STRIPE_PRICE_' + plan.key.toUpperCase() + ')' });
-      priceId = plan.stripePriceId; planKey = plan.key;
-    }
-    const imeis = await db.getCompanyImeis(cid);
-    const base = appBaseUrl(req);
-    const sess = await billing.createCheckout({
-      priceId: priceId, quantity: Math.max(1, imeis.length),
-      customerId: co.stripe_customer_id || null, customerEmail: co.contact_email || null,
-      successUrl: base + '/app?billing=success', cancelUrl: base + '/app?billing=cancel',
-      trialDays: plans.TRIAL_DAYS, companyId: cid
-    });
-    auditReq(req, 'checkout', 'billing', cid, { plan: planKey, quantity: imeis.length });
-    res.json({ url: sess.url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-app.post('/api/billing/portal', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
-  try {
-    if (!(billing && billing.enabled())) return res.status(503).json({ error: 'Facturarea nu e configurată' });
-    const co = req.companyId ? await db.getCompanyById(req.companyId) : null;
-    if (!co || !co.stripe_customer_id) return res.status(400).json({ error: 'Niciun abonament activ' });
-    const s = await billing.createPortal({ customerId: co.stripe_customer_id, returnUrl: appBaseUrl(req) + '/app' });
-    res.json({ url: s.url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-// Super-admin: setează planul unei companii — standard (start/pro/premium) sau CUSTOM (preț negociat)
-app.put('/api/companies/:id/plan', requireAuth, requireSuperadmin, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const co = await db.getCompanyById(id);
-    if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-    const planKey = (req.body && req.body.plan) || 'start';
-    if (planKey === 'custom') {
-      const c = (req.body && req.body.custom) || {};
-      const numOrNull = function (v) { if (v == null || v === '') return null; const n = Number(v); return (isNaN(n) || n < 0) ? null : n; };
-      const perVeh = numOrNull(c.pricePerVehicleRON);
-      const flat = numOrNull(c.flatPriceRON);
-      const base = numOrNull(c.basePerVehicleRON);
-      const priceNone = numOrNull(c.priceNoneRON);
-      // Oferta are nevoie de CEL PUȚIN un preț de pornire: fără CAN (direct), bază/vehicul (tiered), per-vehicul sau fix.
-      if (priceNone == null && perVeh == null && flat == null && base == null) return res.status(400).json({ error: 'Oferta custom are nevoie de un preț (fără CAN, bază/vehicul, per vehicul SAU fix/lună)' });
-      // IMEI-urile marcate manual „cu CAN" (din checklist-ul de vehicule).
-      const canImeis = Array.isArray(c.canImeis) ? c.canImeis.filter(function (x) { return typeof x === 'string' && /^\d{6,20}$/.test(x); }).slice(0, 5000) : null;
-      const custom = {
-        name: (c.name || 'Custom').toString().slice(0, 60),
-        priceNoneRON: priceNone,
-        priceCanRON: numOrNull(c.priceCanRON),
-        priceFmsRON: numOrNull(c.priceFmsRON),
-        canImeis: canImeis,
-        basePerVehicleRON: base,
-        canAddonRON: numOrNull(c.canAddonRON),
-        fmsAddonRON: numOrNull(c.fmsAddonRON),
-        aiAssistantRON: numOrNull(c.aiAssistantRON),
-        aiAgentsRON: numOrNull(c.aiAgentsRON),
-        pricePerVehicleRON: perVeh,
-        flatPriceRON: flat,
-        vehicleLimit: (c.vehicleLimit != null && c.vehicleLimit !== '') ? parseInt(c.vehicleLimit) : null,
-        stripePriceId: (c.stripePriceId || '').toString().slice(0, 80),
-        note: (c.note || '').toString().slice(0, 300)
-      };
-      await db.setCompanyPlan(id, 'custom', custom);
-    } else {
-      if (!(plans && plans.getPlan(planKey)) || planKey === 'enterprise') return res.status(400).json({ error: 'Plan invalid (folosește start/pro/premium sau custom)' });
-      await db.setCompanyPlan(id, planKey, null);
-    }
-    auditReq(req, 'set_plan', 'company', id, { plan: planKey });
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-// Webhook Stripe — public, semnătură verificată pe raw body
-app.post('/api/billing/webhook', async (req, res) => {
-  if (!(billing && billing.enabled())) return res.status(503).end();
-  let event;
-  try { event = billing.verifyWebhook(req.rawBody, req.get('stripe-signature')); }
-  catch (e) { return res.status(400).send('Semnătură invalidă: ' + e.message); }
-  try {
-    const obj = (event.data && event.data.object) || {};
-    if (event.type === 'checkout.session.completed') {
-      const invoiceId = (obj.metadata && obj.metadata.invoiceId) ? parseInt(obj.metadata.invoiceId) : null;
-      if (invoiceId && (obj.payment_status === 'paid' || obj.mode === 'payment')) {
-        // Plată ONE-TIME a unei facturi cu cardul → marchează factura plătită + înregistrează încasarea + extinde accesul.
-        try {
-          const inv = await db.getInvoice(invoiceId);
-          if (inv && inv.status !== 'paid') {
-            // ATOMIC: plata și marcarea facturii într-o singură tranzacție (înainte: două await-uri →
-            // eșecul celui de-al doilea lăsa plata înregistrată cu factura NEACHITATĂ).
-            await db.payInvoiceAtomic(inv.id, { companyId: inv.company_id, amountRon: Number(inv.total) || null, periodStart: inv.period_start, periodEnd: inv.period_end, method: 'card', note: 'Stripe card · Factură ' + inv.full_number, createdBy: null }, { stripeInvoiceId: obj.payment_intent || obj.id });
-            _invalidateAccessCache(inv.company_id);
-          }
-        } catch (e) { console.error('[BILLING] EȘEC la înregistrarea plății cu cardul (factura ' + invoiceId + '):', e.message); try { captureError(e, { route: 'stripe-webhook', context: { invoiceId: invoiceId } }); } catch (_) {} }
-      } else {
-        const companyId = obj.client_reference_id ? parseInt(obj.client_reference_id) : null;
-        if (companyId) await db.setCompanyBilling(companyId, { status: 'active', customerId: obj.customer, subscriptionId: obj.subscription });
-      }
-    } else if (event.type.indexOf('customer.subscription.') === 0) {
-      const co = await db.getCompanyByStripeCustomer(obj.customer);
-      if (co) {
-        const status = event.type === 'customer.subscription.deleted' ? 'canceled' : (obj.status || 'active');
-        const periodEnd = obj.current_period_end ? obj.current_period_end * 1000 : null;
-        await db.setCompanyBilling(co.id, { status, customerId: obj.customer, subscriptionId: obj.id, periodEnd });
-        // Stripe-ready: o plată reușită prelungește accesul până la finalul perioadei facturate
-        if (periodEnd && (status === 'active' || status === 'trialing')) {
-          try { await db.recordPayment({ companyId: co.id, amountRon: null, periodStart: Date.now(), periodEnd, method: 'stripe', note: 'Stripe ' + event.type, createdBy: null }); }
-          catch (e) { await db.setCompanyAccessUntil(co.id, periodEnd); }
-          _invalidateAccessCache(co.id);
-        }
-      }
-    }
-  } catch (e) { console.warn('[BILLING] webhook:', e.message); }
-  res.json({ received: true });
-});
+// (Aici au fost rutele de planuri și de plată cu cardul prin Stripe. Au fost scoase de tot:
+//  RA Tracks nu vinde pachete și nu încasează cu cardul — se ofertă fiecare client în parte, se
+//  face contract pe oferta acceptată, iar plata vine prin transfer bancar, pe factură.)
 // Device-uri neasignate (super-admin) + asignare la companie
 app.get('/api/unassigned-devices', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.getUnassignedDevices()); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -5836,13 +5693,12 @@ app.put('/api/companies/:id/suspend', requireAuth, requireSuperadmin, async (req
 app.post('/api/admin/contracts/check-expiry', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await contractExpiryTick()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Stare integrări facturare (email SMTP / e-Factura / Stripe) — pentru panoul de automatizare.
+// Stare integrări facturare (email SMTP / e-Factura) — pentru panoul de automatizare.
 app.get('/api/admin/billing/config', requireAuth, requireSuperadmin, (req, res) => {
   const ef = efactura ? efactura.cfg() : {};
   res.json({
     email: !!(mailer && mailer.enabled()), emailFrom: (mailer && mailer.enabled()) ? mailer.fromAddr() : null,
     efactura: !!(efactura && efactura.enabled()), efacturaTest: ef.test !== false,
-    stripe: !!(billing && billing.enabled())
   });
 });
 // Config facturare per companie: auto_invoice + ziua de facturare + termen de plată (actualizare parțială).
@@ -11402,8 +11258,8 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const s = await db.getCompanySettings(id);
-    const planAgents = plans && plans.enabledAgentsFor(co);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, plan_defaults: planAgents, plan: co.plan, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings) });
+    const agentiImplicit = plans && plans.enabledAgentsFor(co);
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, agenti_implicit: agentiImplicit, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (req, res) => {
@@ -11554,6 +11410,53 @@ app.put('/api/companies/:id/features', requireAuth, requireSuperadmin, async (re
     auditReq(req, 'update', 'company_features', id, { features: req.body && req.body.features });
     res.json({ ok: true, features: plans.featuresFor(co2) });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+// ─── Oferta unei firme (super-admin) ────────────────────────────────────────────────────────────
+// Ruta asta a înlocuit vechiul `PUT /api/companies/:id/plan`. Nu mai există „planuri": scriem DOAR
+// oferta pe firmă (`companies.custom_plan`), așa cum a fost convenită și semnată. Fără ofertă,
+// firma n-are preț și se vede ca atare în registrul de clienți — nu i se inventează unul.
+app.put('/api/companies/:id/oferta', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const co = await db.getCompanyById(id);
+    if (!co) return res.status(404).json({ error: 'Companie inexistent\u0103' });
+    const c = (req.body && req.body.oferta) || null;
+    // Ofertă ștearsă: firma rămâne fără preț, deliberat.
+    if (c === null) {
+      await db.setCompanyOferta(id, null);
+      auditReq(req, 'update', 'oferta', id, { sters: true });
+      return res.json({ ok: true, oferta: null });
+    }
+    const numOrNull = function (v) { if (v == null || v === '') return null; const n = Number(v); return (isNaN(n) || n < 0) ? null : n; };
+    const perVeh = numOrNull(c.pricePerVehicleRON);
+    const flat = numOrNull(c.flatPriceRON);
+    const base = numOrNull(c.basePerVehicleRON);
+    const priceNone = numOrNull(c.priceNoneRON);
+    // Oferta are nevoie de CEL PUȚIN un preț de pornire: fără CAN, bază/vehicul, per-vehicul sau fix.
+    if (priceNone == null && perVeh == null && flat == null && base == null) {
+      return res.status(400).json({ error: 'Oferta are nevoie de un pre\u021b (f\u0103r\u0103 CAN, baz\u0103/vehicul, per vehicul SAU fix/lun\u0103)' });
+    }
+    const canImeis = Array.isArray(c.canImeis) ? c.canImeis.filter(function (x) { return typeof x === 'string' && /^\d{6,20}$/.test(x); }).slice(0, 5000) : null;
+    const oferta = {
+      name: (c.name || 'Ofert\u0103').toString().slice(0, 60),
+      priceNoneRON: priceNone,
+      priceCanRON: numOrNull(c.priceCanRON),
+      priceFmsRON: numOrNull(c.priceFmsRON),
+      canImeis: canImeis,
+      basePerVehicleRON: base,
+      canAddonRON: numOrNull(c.canAddonRON),
+      fmsAddonRON: numOrNull(c.fmsAddonRON),
+      aiAssistantRON: numOrNull(c.aiAssistantRON),
+      aiAgentsRON: numOrNull(c.aiAgentsRON),
+      pricePerVehicleRON: perVeh,
+      flatPriceRON: flat,
+      vehicleLimit: (c.vehicleLimit != null && c.vehicleLimit !== '') ? parseInt(c.vehicleLimit) : null,
+      note: (c.note || '').toString().slice(0, 300)
+    };
+    await db.setCompanyOferta(id, oferta);
+    auditReq(req, 'update', 'oferta', id, { pret: priceNone != null ? priceNone : (perVeh != null ? perVeh : flat) });
+    res.json({ ok: true, oferta: oferta });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Super-admin: înregistrează o plată (manual) → prelungește accesul cu N luni (default 1, cumulativ)
 app.post('/api/companies/:id/payment', requireAuth, requireSuperadmin, async (req, res) => {
@@ -11798,22 +11701,6 @@ app.get('/api/invoices/:id/efactura/status', requireAuth, requireSuperadmin, asy
     res.json({ ok: true, stare: r.stare, status: st, idDescarcare: r.idDescarcare });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// Link de plată cu CARDUL (Stripe, one-time) pentru o factură. Super-admin (generează link de trimis) SAU client (propria factură).
-// requirePerm: doar administratorii companiei — un `viewer` nu are ce căuta în fluxul de plată.
-app.post('/api/invoices/:id/pay-link', requireAuth, requirePerm('manageUsers'), withCompany, async (req, res) => {
-  try {
-    if (!(billing && billing.enabled())) return res.status(503).json({ error: 'Plata cu cardul nu e configurată (STRIPE_SECRET_KEY).' });
-    const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' });
-    if (!req.isSuper && inv.company_id !== req.companyId) return res.status(403).json({ error: 'Acces interzis' });
-    if (inv.status === 'paid') return res.status(400).json({ error: 'Factura e deja plătită' });
-    if (inv.status === 'canceled') return res.status(400).json({ error: 'Factură anulată' });
-    const co = await db.getCompanyById(inv.company_id);
-    const base = appBaseUrl(req);
-    const sess = await billing.createInvoiceCheckout({ invoice: inv, customerEmail: (co && co.contact_email) || null, successUrl: base + '/app?pay=success', cancelUrl: base + '/app?pay=cancel' });
-    auditReq(req, 'pay-link', 'invoice', inv.id, { total: inv.total });
-    res.json({ url: sess.url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
 // ─── Control costuri (cheltuielile NOASTRE de platformă) — STRICT super-admin ───
 // ─── Backup date business (super-admin) — vezi backup.js + restore-backup.js ───
 app.get('/api/admin/backup/status', requireAuth, requireSuperadmin, (req, res) => { res.json(backup.getStatus()); });
@@ -11987,8 +11874,6 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     _anafTok ? (_anafTest ? 'token setat, dar rulează în mediul de TEST (implicit) → pune ANAF_EFACTURA_TEST=false / ANAF_ETRANSPORT_TEST=false pentru trimiteri reale' : 'mediu de PRODUCȚIE')
       : 'fără token SPV → modulele ANAF rămân demonstrative');
   add('ai', 'Cheie AI (Anthropic)', isSet(process.env.ANTHROPIC_API_KEY) ? 'ok' : 'info', isSet(process.env.ANTHROPIC_API_KEY) ? 'setată' : 'nesetată → asistentul liber și rezumatele AI sunt oprite');
-  add('stripe', 'Plăți card (Stripe)', isSet(process.env.STRIPE_SECRET_KEY) ? (isSet(process.env.STRIPE_WEBHOOK_SECRET) ? 'ok' : 'warn') : 'info',
-    isSet(process.env.STRIPE_SECRET_KEY) ? (isSet(process.env.STRIPE_WEBHOOK_SECRET) ? 'activ' : 'cheie setată dar STRIPE_WEBHOOK_SECRET lipsește → facturile nu se marchează plătite automat') : 'nesetat → încasare doar prin transfer bancar');
 
   // Nivelul „info" e context, nu problemă: nu împiedică ecranul să ajungă pe verde.
   const worst = checks.some(c => c.level === 'crit') ? 'crit' : (checks.some(c => c.level === 'warn') ? 'warn' : 'ok');
@@ -12551,8 +12436,7 @@ app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), wit
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const invoices = await db.getPayments(cid, 200);
     let issuer = {}; try { issuer = (await getSystemSettings()).invoice_issuer || {}; } catch (e) {}
-    // Prima factură FISCALĂ neachitată + starea Stripe → clientul primește un buton de plată REAL
-    // (nu unul decorativ). Fără Stripe configurat, UI-ul afișează datele pentru transfer bancar.
+    // Prima factură FISCALĂ neachitată → clientul vede ce are de plată și datele pentru transfer bancar.
     let unpaid = null;
     try {
       const fis = await db.getInvoices({ companyId: cid, limit: 50 });
@@ -12560,12 +12444,11 @@ app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), wit
       if (u) unpaid = { id: u.id, series: u.series || null, number: u.number || null, total: u.total, due_date: u.due_date || null };
     } catch (e) {}
     res.json({
-      company: { id: co.id, name: co.name, cui: co.cui || null, reg_com: co.reg_com || null, address: co.address || null, contact_email: co.contact_email || null, phone: co.phone || null, plan: co.plan || null },
+      company: { id: co.id, name: co.name, cui: co.cui || null, reg_com: co.reg_com || null, address: co.address || null, contact_email: co.contact_email || null, phone: co.phone || null },
       access: companyAccessStatus(co),
       invoices,
       issuer,
-      unpaidInvoice: unpaid,
-      billingEnabled: !!(billing && billing.enabled())
+      unpaidInvoice: unpaid
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

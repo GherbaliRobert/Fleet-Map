@@ -173,11 +173,13 @@ T('preț pe vehicul × vehicule', _venitLunar(firmaPret({ priceNoneRON: 30 }), {
   String(_venitLunar(firmaPret({ priceNoneRON: 30 }), { none: 3, can: 0, fms: 0 }, 0)));
 T('vehiculele cu CAN au prețul lor', _venitLunar(firmaPret({ priceNoneRON: 30, priceCanRON: 45 }), { none: 1, can: 2, fms: 0 }, 0) === 120,
   String(_venitLunar(firmaPret({ priceNoneRON: 30, priceCanRON: 45 }), { none: 1, can: 2, fms: 0 }, 0)));
-// Fără ofertă proprie, firma stă pe planul standard („Start", 29 lei/vehicul) — deci NU e zero.
-T('fără ofertă proprie se ia prețul planului standard',
-  _venitLunar({ id: 2, settings: {} }, { none: 5, can: 0, fms: 0 }, 0) === 145,
+// Fără OFERTĂ, firma n-are preț — deci ZERO, nu un preț implicit inventat dintr-un tabel de planuri.
+// (Cât timp exista tabelul, o firmă nouă apărea în registru cu 29 lei/vehicul pe care nu-i cerea nimeni.)
+T('fără ofertă, firma nu aduce nimic',
+  _venitLunar({ id: 2, settings: {} }, { none: 5, can: 0, fms: 0 }, 0) === 0,
   String(_venitLunar({ id: 2, settings: {} }, { none: 5, can: 0, fms: 0 }, 0)));
-T('firma fără niciun vehicul nu aduce nimic', _venitLunar({ id: 2, settings: {} }, { none: 0, can: 0, fms: 0 }, 0) === 0);
+T('nici măcar dacă are vehicule și un plan scris în coloană',
+  _venitLunar({ id: 2, plan: 'premium', settings: {} }, { none: 5, can: 2, fms: 1 }, 0) === 0);
 const cuInsight = { id: 3, custom_plan: { priceNoneRON: 30 }, settings: { ai_quota: { questionsPerSeat: 50, seatPriceRON: 15 } } };
 T('conturile de RA Insight se adaugă', _venitLunar(cuInsight, { none: 2, can: 0, fms: 0 }, 3) === 105,
   String(_venitLunar(cuInsight, { none: 2, can: 0, fms: 0 }, 3)));
@@ -200,13 +202,13 @@ const rExp = _randuri([
   { id: 9, name: 'RA Track Demo', is_demo: true }
 ], { 1: 135 }, acumE);
 T('demo-ul nu iese niciodată în export', rExp.length === 1, String(rExp.length));
-T('rândul are toate coloanele', rExp[0].length === 14, String(rExp[0].length));
-T('și cifra de bani lunari', rExp[0][7] === 135, String(rExp[0][7]));
-T('dosarul incomplet se scrie pe litere', /lipsește: contractul/.test(rExp[0][4]), rExp[0][4]);
-T('zilele de liniște se socotesc', rExp[0][10] === 3, String(rExp[0][10]));
-T('contactul administratorului e în fișier', rExp[0][11] === 'Ion' && rExp[0][12] === 'ion@x.ro', JSON.stringify(rExp[0].slice(11)));
+T('rândul are toate coloanele', rExp[0].length === 13, String(rExp[0].length));
+T('și cifra de bani lunari', rExp[0][6] === 135, String(rExp[0][6]));
+T('dosarul incomplet se scrie pe litere', /lipsește: contractul/.test(rExp[0][3]), rExp[0][3]);
+T('zilele de liniște se socotesc', rExp[0][9] === 3, String(rExp[0][9]));
+T('contactul administratorului e în fișier', rExp[0][10] === 'Ion' && rExp[0][11] === 'ion@x.ro', JSON.stringify(rExp[0].slice(10)));
 const susp = _randuri([{ id: 2, name: 'Y', is_demo: false, access: { status: 'expired', motiv: 'neplata' }, dosar: null }], {}, acumE);
-T('suspendarea pentru neplată se scrie limpede', /suspendat — neplată/.test(susp[0][3]), susp[0][3]);
+T('suspendarea pentru neplată se scrie limpede', /suspendat — neplată/.test(susp[0][2]), susp[0][2]);
 T('exportul cere super-admin pe SERVER, nu doar ascunde butonul',
   /app\.get\('\/api\/companies\/export',\s*requireAuth,\s*requireSuperadmin/.test(server));
 T('și lasă un rând în jurnalul de audit', /auditReq\(req, 'export', 'companies'/.test(server));

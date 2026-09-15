@@ -461,6 +461,50 @@ gaură pe ecran.
 
 ---
 
+### AMÂNDOI · Planurile au fost scoase DIN TOT. Și Stripe odată cu ele
+
+*„Scoate absolut tot ce ține de plan. Și să nu mai întâlnesc așa ceva. Noi nu vom funcționa pe planuri
+niciodată. Ofertăm clientul în funcție de ce are, și facem contracte pe ofertele acceptate."*
+
+**Ce era.** Un tabel cu patru pachete — *Start* 29 lei/vehicul, *Pro* 45, *Premium AI*, *Enterprise* —
+plus reduceri de volum, perioadă de probă și ID-uri de preț Stripe. Niciunul n-a fost vândut vreodată.
+Dar tabelul **hotăra lucruri reale**: ce module are o firmă, ce agenți îi rulează și ce preț i se
+socotește. De acolo au ieșit două pagube concrete: **niciun client n-avea agenți** (cădea pe „standard"
+→ „start", unde scria `agents: false`) și **registrul de clienți arăta venituri lunare inventate**
+pentru firme care n-aveau nicio ofertă.
+
+**Ce a plecat, tot:**
+
+- tabelul de planuri, reducerile de volum, perioada de probă, grila publică și ruta `/api/plans`;
+- **Stripe, în întregime**: fișierul `billing.js`, plata cu cardul, abonamentele, portalul de
+  facturare, webhook-ul și linkul de plată pe factură. Se încasează prin transfer bancar, pe factură;
+- ruta și ecranul de „schimbă planul", inclusiv butonul care cerea să scrii `start / pro / premium`;
+- eticheta **„Plan"** de peste tot: din lista de companii, din fișa firmei, din Configurează, din
+  exportul Excel și din ecranul clientului.
+
+**Ce a rămas și cum funcționează acum:**
+
+- **Prețul vine DOAR din ofertă** (`companies.custom_plan`). Fără ofertă → **0 lei**, iar firma se vede
+  ca atare în registru. Nu i se mai inventează un preț.
+- **Modulele vin din oferta semnată.** Implicitul e fix, nu dintr-un tabel: **agenții porniți** (sunt
+  gratuiți), restul oprite până le aprinde oferta.
+- **O rută nouă, `PUT /api/companies/:id/oferta`**, care scrie doar oferta. Formularul de ofertă din
+  fila „Abonament" e acum mereu deschis — nu mai trebuie să alegi întâi „Custom".
+- **Clientul** vede: *„Abonamentul tău e cel din contract"* — fără pachete, fără prețuri de grilă.
+- Coloana `companies.plan` rămâne în bază, ca să nu pierdem date vechi, dar **n-o mai citește nimeni**.
+
+**Ca să nu se mai întâlnească așa ceva:** `verify_fara_planuri.js` — 41 de verificări în `npm test`.
+Pică dacă reapare un tabel de planuri, dacă o valoare implicită e luată din plan, dacă se inventează un
+preț pentru o firmă fără ofertă, dacă Stripe se întoarce, sau dacă eticheta „Plan" reapare pe ecran.
+Singura excepție lăsată dinadins: „plan de service/mentenanță" al unui vehicul — altă noțiune.
+Regula e scrisă și în `CLAUDE.md`, ca să n-o mai ia nimeni de la capăt. Sabotat în patru feluri.
+
+- **Ce am schimbat:** un model de business străin a fost scos din cod, cu tot cu Stripe.
+- **Ce vede fondatorul:** peste tot scrie „ofertă", nicio firmă nu mai are un preț pe care nu i l-ai dat tu.
+- **Ce vede clientul:** abonamentul lui e cel din contract — nu un pachet ales dintr-o listă.
+
+---
+
 ### AMÂNDOI · Agenții AI pornesc activi la toate firmele · și se vede ce veghează
 
 *„Iar ajungem aici? Ți-am mai zis că noi nu funcționăm pe planuri, ci pe oferte."*
